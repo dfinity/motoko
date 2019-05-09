@@ -79,18 +79,39 @@ type RouteId       = Nat;
 type ReservedRouteId = Nat;
 
 /**
+ EntId
+ -------------------------------------------------------------------
+ An entity's ID; the optional payload of an `#idErr` error message
+*/
+type EntId = {
+  #user        : UserId ;
+  #truckType   : TruckTypeId ;
+  #region      : RegionId ;
+  #produce     : ProduceId ;
+  #producer    : ProducerId ;
+  #retailer    : RetailerId ;
+  #transporter : TransporterId ;
+  #inventory   : InventoryId ;
+  #route       : RouteId ;
+};
+
+/**
  Errors
  -----------
 */
 
+type OpEntId = ?EntId;
+
 type IdErr = {
-  #idErr;
+  // optional for now, to avoid a huge refactoring
+  #idErr: OpEntId;
 };
 
 type ServerErr = {
-  #idErr;
+  #idErr: OpEntId;
   #publicKeyErr;
 };
+
 
 
 /**
@@ -105,8 +126,8 @@ Public info associated with Ids
 
 type UserInfo = shared {
   id: UserId;
-  user_name: Text;
   public_key: Text;
+  user_name: Text;
   description: Text;
   region: RegionId;
   producerId: ?ProducerId;
@@ -159,6 +180,7 @@ type ProduceInfo = shared {
 
 type ProducerInfo = shared {
   id : ProducerId;
+  public_key: Text;
   short_name : Text;
   description : Text;
   region : RegionId;
@@ -223,6 +245,7 @@ type ProduceMarketInfo = shared {
 
 type RetailerInfo = shared {
   id : RetailerId;
+  public_key: Text;
   short_name : Text;
   description : Text;
   region : RegionId;
@@ -235,6 +258,7 @@ type RetailerInfo = shared {
 
 type TransporterInfo = shared {
   id : TransporterId;
+  public_key: Text;
   // no region; the transporters are the supply of routes, not "end
   // points" of any single route.
   short_name : Text;
@@ -289,6 +313,8 @@ type ReservationInfo = shared {
   date_end:    Date;
   prod_cost:   PriceTotal;
   trans_cost:  PriceTotal;
+  inventoryId: InventoryId;
+  routeId:     RouteId;
 };
 
 

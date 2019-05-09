@@ -90,7 +90,7 @@ let process_files files : unit =
     end;
     let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files) in
     let oc = open_out !out_file in
-    let (source_map, wasm) = CustomModule.encode module_ in
+    let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
 
     if !Flags.source_map then begin
@@ -105,9 +105,6 @@ let () =
   (useful for debugging infinite loops)
   *)
   Printexc.record_backtrace true;
-  try
-    Arg.parse argspec add_arg usage;
-    if !mode = Default then mode := (if !args = [] then Interact else Compile);
-    process_files !args
-  with exn ->
-    Interpret.print_exn exn
+  Arg.parse argspec add_arg usage;
+  if !mode = Default then mode := (if !args = [] then Interact else Compile);
+  process_files !args

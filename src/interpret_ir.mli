@@ -9,5 +9,3 @@ val adjoin_scope : scope -> scope -> scope
 exception Trap of Source.region * string
 
 val interpret_prog : scope -> Ir.prog -> scope
-
-val print_exn : exn -> unit

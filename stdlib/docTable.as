@@ -42,8 +42,20 @@ type information.
  choice between (for now) using tries (and internally, association lists).
 
  */
-type Table<Id, Doc> = Trie<Id, Doc>;
+
+let Hash = import "hash.as";
+type Hash = Hash.Hash;
+
+let Trie = import "trie.as";
+type Trie<K,V> = Trie.Trie<K,V>;
+type Key<K> = Trie.Key<K>;
+
+/**
+ We choose to represent each `Table` as a `Trie`:
+*/
+
 let Table = Trie;
+type Table<Id, Doc> = Trie<Id, Doc>;
 
 /**
 

@@ -198,4 +198,8 @@ and decs msgs decs : f =
   M.disjoint_union (map_of_set Eager e) (map_of_set Delayed d) |>
     M.filter (fun v _ -> M.mem v defWhen = false)
 
-let check_prog msgs prog = ignore (decs msgs prog.it)
+let check_prog prog =
+  Diag.with_message_store (fun msgs ->
+    ignore (decs msgs prog.it);
+    Some ()
+  )

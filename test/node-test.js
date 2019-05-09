@@ -1,4 +1,6 @@
-const assert = require('assert');
+process.on('unhandledRejection', error => { assert.fail(error); });
+
+const assert = require('assert').strict;
 
 // Load asc.js
 const m = require('asc.js');
@@ -16,8 +18,7 @@ assert.equal(typeof(empty_wasm_plain.diagnostics), 'object');
 assert.equal(empty_wasm_plain.diagnostics.length, 0);
 
 // Check that the WebAssembly binary can be loaded
-WebAssembly.compile(Buffer.from(empty_wasm_plain.code, 'ascii'))
-  .catch(err => assert.fail(err));
+WebAssembly.compile(Buffer.from(empty_wasm_plain.code, 'ascii'));
 
 // Now again for the definity module
 assert.equal(typeof(empty_wasm_dfinity), 'object');
@@ -26,8 +27,7 @@ assert.equal(empty_wasm_dfinity.code.substr(4,4), '\1\0\0\0');
 assert.equal(typeof(empty_wasm_dfinity.diagnostics), 'object');
 assert.equal(empty_wasm_dfinity.diagnostics.length, 0);
 
-WebAssembly.compile(Buffer.from(empty_wasm_dfinity.code, 'ascii'))
-  .catch(err => assert.fail(err));
+WebAssembly.compile(Buffer.from(empty_wasm_dfinity.code, 'ascii'));
 
 // The plain and the dfinity module should not be the same
 assert.notEqual(empty_wasm_plain.code, empty_wasm_dfinity.code);

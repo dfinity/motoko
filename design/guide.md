@@ -1,7 +1,6 @@
 % ActorScript’s Users Guide
 % [DFINITY Foundation](https://dfinity.org/)
 
-
 <!---
 TODO
 * use menhir --only-preprocess-uu parser.mly followed by sed to create concrete grammar
@@ -10,7 +9,7 @@ TODO
 -->
 TODO:
 
-* [X] *Sort* primitives and operations as arithmetic (A), boolean (L), bitwise (B) and comparable (C) and use these sorts to concisely present sorted operators (unop,binop, relop, a(ssing)op) etc.
+* [X] *Sort* primitives and operations as arithmetic (A), boolean (L), bitwise (B) and comparable (C) and use these sorts to concisely present sorted operators (unop, binop, relop, a(ssing)op) etc.
 * [ ] Various inline TBCs and TBRs and TODOs
 * [ ] Typing of patterns
 * [ ] Variants

@@ -33,7 +33,7 @@ class revrange(x : Nat, y : Nat) {
 
 func charToText(c : Char) : Text = (prim "Char->Text" : Char -> Text) c;
 
-func printInt(x : Int) { (prim "printInt" : Int -> ()) x };
+func printInt(x : Int) { print (@text_of_Int x) };
 func printChar(x : Char) { print (charToText x) };
 func print(x : Text) { (prim "print" : Text -> ()) x };
 
@@ -92,7 +92,7 @@ func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, 
 
 // Internal helper functions for the show translation
 
-// The @ in the name ensures that this connot be shadowed by user code, so
+// The @ in the name ensures that this cannot be shadowed by user code, so
 // compiler passes can rely on them being in scope
 // The text_of functions do not need to be exposed; the user can just use
 // the show above.
@@ -101,22 +101,11 @@ func @text_of_Nat(x : Nat) : Text {
   var text = "";
   var n = x;
   let base = 10;
+  let digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
   while (n > 0) {
     let rem = n % base;
-    text := (switch (rem) {
-      case (0) { "0" };
-      case (1) { "1" };
-      case (2) { "2" };
-      case (3) { "3" };
-      case (4) { "4" };
-      case (5) { "5" };
-      case (6) { "6" };
-      case (7) { "7" };
-      case (8) { "8" };
-      case (9) { "9" };
-      case (_) { assert false; "" };
-    }) # text;
+    text := digits[rem] # text;
     n := n / base;
   };
   return text;
@@ -350,7 +339,6 @@ let prim = function
                                           | code -> Wasm.Utf8.encode [code]
                                in k (Text str)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
-  | "printInt" -> fun v k -> Printf.printf "%d%!" (Int.to_int (as_int v)); k unit
   | "decodeUTF8" -> fun v k ->
                     let s = as_text v in
                     let open Int32 in

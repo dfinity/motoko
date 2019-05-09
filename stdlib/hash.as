@@ -44,7 +44,9 @@ type BitVec = Word32;
 
  */
 
-let BitVec = new {
+module BitVec {
+
+  type t = BitVec;
 
   func length() : Nat = 31;
 
@@ -121,7 +123,9 @@ let BitVec = new {
 
  TODO: Replace with bitwise operations on Words, for greater efficiency.
 */
-let BitList = new {
+module BitList {
+
+  type t = BitList;
 
   func hashOfInt(i:Int) : BitList {
     BitVec.toList(BitVec.hashOfInt(i))

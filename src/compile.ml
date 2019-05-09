@@ -15,7 +15,6 @@ open Wasm.Ast
 open Wasm.Types
 open Source
 open Ir
-open CustomModule
 (* Re-shadow Source.(@@), to get Pervasives.(@@) *)
 let (@@) = Pervasives.(@@)
 
@@ -177,7 +176,7 @@ module E = struct
     func_imports : import list ref;
     other_imports : import list ref;
     exports : export list ref;
-    dfinity_types : (int32 * CustomSections.type_ list) list ref; (* Dfinity types of exports *)
+    dfinity_types : (int32 * CustomModule.type_ list) list ref; (* Dfinity types of exports *)
     funcs : (func * string * local_names) Lib.Promise.t list ref;
     built_in_funcs : lazy_built_in NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
@@ -299,21 +298,18 @@ module E = struct
     let l = env.local_vars_env in
     NameEnv.fold (fun k _ -> Freevars.S.add k) l Freevars.S.empty
 
-  let add_func_import (env : t) f =
-    if !(env.funcs) = []
-    then reg env.func_imports f
-    else assert false (* "add all imports before all functions!" *)
-
   let _add_other_import (env : t) m =
-    let _ = reg env.other_imports m in ()
+    ignore (reg env.other_imports m)
 
-  let add_export (env : t) e = let _ = reg env.exports e in ()
+  let add_export (env : t) e =
+    ignore (reg env.exports e)
 
-  let add_dfinity_type (env : t) e = let _ = reg env.dfinity_types e in ()
+  let add_dfinity_type (env : t) e =
+    ignore (reg env.dfinity_types e)
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
-    let n = Wasm.I32.of_int_u (List.length !(env.func_imports)) in
+    let n = Int32.of_int (List.length !(env.func_imports)) in
     let fi = Int32.add j n in
     let fill_ (f, local_names) = fill (f, name, local_names) in
     (fi, fill_)
@@ -350,7 +346,7 @@ module E = struct
   let get_n_res (env : t) = env.n_res
 
   let get_func_imports (env : t) = !(env.func_imports)
-  let get_other_imports (env : t) = !(env.other_imports) 
+  let get_other_imports (env : t) = !(env.other_imports)
   let get_exports (env : t) = !(env.exports)
   let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
@@ -364,6 +360,21 @@ module E = struct
     go 0 !(env.func_types)
 
   let get_types (env : t) = !(env.func_types)
+
+  let add_func_import (env : t) modname funcname arg_tys ret_tys =
+    if !(env.funcs) = []
+    then
+      let i = {
+        module_name = Wasm.Utf8.decode modname;
+        item_name = Wasm.Utf8.decode funcname;
+        idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
+      } in
+      let fi = reg env.func_imports (nr i) in
+      let name = modname ^ "_" ^ funcname in
+      assert (not (NameEnv.mem name !(env.built_in_funcs)));
+      env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
+    else assert false (* "add all imports before all functions!" *)
+
 
   let add_label (env : t) name (d : G.depth) =
       { env with ld = NameEnv.add name.it d env.ld }
@@ -2106,7 +2117,7 @@ module Text = struct
 
 end (* Text *)
 
-module Array = struct
+module Arr = struct
   (* Object layout:
 
      ┌─────┬──────────┬────────┬───┐
@@ -2293,7 +2304,7 @@ module Tuple = struct
   let compile_unit = compile_unboxed_one
 
   (* Expects on the stack the pointer to the array. *)
-  let load_n n = Heap.load_field (Int32.add Array.header_size n)
+  let load_n n = Heap.load_field (Int32.add Arr.header_size n)
 
   (* Takes n elements of the stack and produces an argument tuple *)
   let from_stack env n =
@@ -2302,7 +2313,7 @@ module Tuple = struct
       let name = Printf.sprintf "to_%i_tuple" n in
       let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
       Func.share_code env name args [I32Type] (fun env ->
-        Array.lit env (Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))))
+        Arr.lit env (Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))))
       )
 
   (* Takes an argument tuple and puts the elements on the stack: *)
@@ -2318,136 +2329,24 @@ end (* Tuple *)
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)
 
-  (* function ids for imported stuff *)
-  let test_print_i env = 0l
-  let test_show_i32_i env = 1l
-  let data_externalize_i env = 2l
-  let data_internalize_i env = 3l
-  let data_length_i env = 4l
-  let elem_externalize_i env = 5l
-  let elem_internalize_i env = 6l
-  let elem_length_i env = 7l
-  let module_new_i env = 8l
-  let actor_new_i env = 9l
-  let actor_self_i env = 10l
-  let actor_export_i env = 11l
-  let func_internalize_i env = 12l
-  let func_externalize_i env = 13l
-  let func_bind_i env = 14l
-
-  (* Based on http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
-  (* Ok to use as long as everything is ASCII *)
-  let explode s =
-    let rec exp i l =
-      if i < 0 then l else exp (i - 1) (Char.code s.[i] :: l) in
-    exp (String.length s - 1) []
-
   let system_imports env =
-    let i = E.add_func_import env (nr {
-      module_name = explode "test";
-      item_name = explode "print";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (test_print_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "test";
-      item_name = explode "show_i32";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (test_show_i32_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "data";
-      item_name = explode "externalize";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (data_externalize_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "data";
-      item_name = explode "internalize";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (data_internalize_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "data";
-      item_name = explode "length";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (data_length_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "elem";
-      item_name = explode "externalize";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (elem_externalize_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "elem";
-      item_name = explode "internalize";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type; I32Type; I32Type],[])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (elem_internalize_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "elem";
-      item_name = explode "length";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (elem_length_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "module";
-      item_name = explode "new";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (module_new_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "actor";
-      item_name = explode "new";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (actor_new_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "actor";
-      item_name = explode "self";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (actor_self_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "actor";
-      item_name = explode "export";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (actor_export_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "func";
-      item_name = explode "internalize";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (func_internalize_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "func";
-      item_name = explode "externalize";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type], [I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (func_externalize_i env));
-
-    let i = E.add_func_import env (nr {
-      module_name = explode "func";
-      item_name = explode "bind_i32";
-      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([I32Type; I32Type],[I32Type])))))
-    }) in
-    assert (Int32.to_int i == Int32.to_int (func_bind_i env))
-
+    begin
+      E.add_func_import env "test" "print" [I32Type] [];
+      E.add_func_import env "test" "show_i32" [I32Type] [I32Type];
+      E.add_func_import env "data" "externalize" [I32Type; I32Type] [I32Type];
+      E.add_func_import env "data" "internalize" [I32Type; I32Type; I32Type; I32Type] [];
+      E.add_func_import env "data" "length" [I32Type] [I32Type];
+      E.add_func_import env "elem" "externalize" [I32Type; I32Type] [I32Type];
+      E.add_func_import env "elem" "internalize" [I32Type; I32Type; I32Type; I32Type] [];
+      E.add_func_import env "elem" "length" [I32Type] [I32Type];
+      E.add_func_import env "module" "new" [I32Type] [I32Type];
+      E.add_func_import env "actor" "new" [I32Type] [I32Type];
+      E.add_func_import env "actor" "self" [] [I32Type];
+      E.add_func_import env "actor" "export" [I32Type; I32Type] [I32Type];
+      E.add_func_import env "func" "internalize" [I32Type; I32Type] [];
+      E.add_func_import env "func" "externalize" [I32Type] [I32Type];
+      E.add_func_import env "func" "bind_i32" [I32Type; I32Type] [I32Type];
+    end
 
   let compile_databuf_of_text env  =
     Func.share_code1 env "databuf_of_text" ("string", I32Type) [I32Type] (fun env get_string ->
@@ -2460,7 +2359,7 @@ module Dfinity = struct
       Heap.load_field (Text.len_field) ^^
 
       (* Externalize *)
-      G.i (Call (nr (data_externalize_i env)))
+      G.i (Call (nr (E.built_in env "data_externalize")))
     )
 
   let compile_databuf_of_bytes env (bytes : string) =
@@ -2469,10 +2368,11 @@ module Dfinity = struct
   (* For debugging *)
   let compile_static_print env s =
       compile_databuf_of_bytes env s ^^
-      G.i (Call (nr (test_print_i env)))
-  let _compile_print_int env =
-      G.i (Call (nr (test_show_i32_i env))) ^^
-      G.i (Call (nr (test_print_i env))) ^^
+      G.i (Call (nr (E.built_in env "test_print")))
+
+  let _compile_println_int env =
+      G.i (Call (nr (E.built_in env "test_show_i32"))) ^^
+      G.i (Call (nr (E.built_in env "test_print"))) ^^
       compile_static_print env "\n"
 
   let trap_with env s =
@@ -2480,33 +2380,22 @@ module Dfinity = struct
     then compile_static_print env (s ^ "\n") ^^ G.i Unreachable
     else G.i Unreachable
 
-  let prim_printInt env =
-    if E.mode env = DfinityMode
-    then
-      BoxedInt.unbox env ^^
-      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-      G.i (Call (nr (test_show_i32_i env))) ^^
-      G.i (Call (nr (test_print_i env)))
-    else
-      G.i Unreachable
-
   let prim_print env =
     if E.mode env = DfinityMode
     then
       compile_databuf_of_text env ^^
-      (* Call print *)
-      G.i (Call (nr (test_print_i env)))
+      G.i (Call (nr (E.built_in env "test_print")))
     else
       G.i Unreachable
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
-      name = explode "mem";
+      name = Wasm.Utf8.decode "mem";
       edesc = nr (MemoryExport (nr 0l))
     });
     E.add_export env (nr {
-      name = explode "table";
+      name = Wasm.Utf8.decode "table";
       edesc = nr (TableExport (nr 0l))
     })
 
@@ -2522,9 +2411,10 @@ module Dfinity = struct
       ) in
     let fi = E.add_fun env "start_stub" empty_f in
     E.add_export env (nr {
-      name = explode "start";
+      name = Wasm.Utf8.decode "start";
       edesc = nr (FuncExport (nr fi))
-    })
+    });
+    E.add_dfinity_type env (fi, [])
 
   let box_reference env =
     Func.share_code1 env "box_reference" ("ref", I32Type) [I32Type] (fun env get_ref ->
@@ -2539,12 +2429,12 @@ module Dfinity = struct
     ElemHeap.recall_reference env
 
   let get_self_reference env =
-    G.i (Call (nr (actor_self_i env))) ^^
+    G.i (Call (nr (E.built_in env "actor_self"))) ^^
     box_reference env
 
   let static_message_funcref env fi =
     compile_unboxed_const fi ^^
-    G.i (Call (nr (func_externalize_i env)))
+    G.i (Call (nr (E.built_in env "func_externalize")))
 
 
 end (* Dfinity *)
@@ -2573,18 +2463,18 @@ module OrthogonalPersistence = struct
 
   let register env start_funid =
     E.add_export env (nr {
-      name = Dfinity.explode "datastore";
+      name = Wasm.Utf8.decode "datastore";
       edesc = nr (GlobalExport (nr mem_global))
     });
     E.add_export env (nr {
-      name = Dfinity.explode "elemstore";
+      name = Wasm.Utf8.decode "elemstore";
       edesc = nr (GlobalExport (nr elem_global))
     });
 
     Func.define_built_in env "restore_mem" [] [] (fun env1 ->
        let (set_i, get_i) = new_local env1 "len" in
        G.i (GlobalGet (nr mem_global)) ^^
-       G.i (Call (nr (Dfinity.data_length_i env1))) ^^
+       G.i (Call (nr (E.built_in env1 "data_length"))) ^^
        set_i ^^
 
        get_i ^^
@@ -2605,11 +2495,11 @@ module OrthogonalPersistence = struct
            get_i ^^
            G.i (GlobalGet (nr mem_global)) ^^
            compile_unboxed_zero ^^
-           G.i (Call (nr (Dfinity.data_internalize_i env1))) ^^
+           G.i (Call (nr (E.built_in env1 "data_internalize"))) ^^
 
            (* Load reference counter *)
            G.i (GlobalGet (nr elem_global)) ^^
-           G.i (Call (nr (Dfinity.elem_length_i env1))) ^^
+           G.i (Call (nr (E.built_in env1 "elem_length"))) ^^
            ElemHeap.set_ref_ctr ^^
 
            (* Load references *)
@@ -2617,7 +2507,7 @@ module OrthogonalPersistence = struct
            ElemHeap.get_ref_ctr ^^
            G.i (GlobalGet (nr elem_global)) ^^
            compile_unboxed_zero ^^
-           G.i (Call (nr (Dfinity.elem_internalize_i env1)))
+           G.i (Call (nr (E.built_in env1 "elem_internalize")))
         )
     );
     Func.define_built_in env "save_mem" [] [] (fun env1 ->
@@ -2626,13 +2516,13 @@ module OrthogonalPersistence = struct
        Heap.get_heap_ptr ^^
        compile_unboxed_const ElemHeap.table_end ^^
        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-       G.i (Call (nr (Dfinity.data_externalize_i env))) ^^
+       G.i (Call (nr (E.built_in env "data_externalize"))) ^^
        G.i (GlobalSet (nr mem_global)) ^^
 
        (* Store references *)
        compile_unboxed_const ElemHeap.ref_location ^^
        ElemHeap.get_ref_ctr ^^
-       G.i (Call (nr (Dfinity.elem_externalize_i env))) ^^
+       G.i (Call (nr (E.built_in env "elem_externalize"))) ^^
        G.i (GlobalSet (nr elem_global))
     )
 
@@ -2663,8 +2553,8 @@ module HeapTraversal = struct
           compile_unboxed_const 2l
         ; Tagged.Array,
           get_x ^^
-          Heap.load_field Array.len_field ^^
-          compile_add_const Array.header_size
+          Heap.load_field Arr.len_field ^^
+          compile_add_const Arr.header_size
         ; Tagged.Text,
           get_x ^^
           Heap.load_field Text.len_field ^^
@@ -2728,12 +2618,12 @@ module HeapTraversal = struct
         mk_code get_ptr_loc
       ; Tagged.Array,
         get_x ^^
-        Heap.load_field Array.len_field ^^
+        Heap.load_field Arr.len_field ^^
         (* Adjust fields *)
         from_0_to_n env (fun get_i ->
           get_x ^^
           get_i ^^
-          Array.idx env ^^
+          Arr.idx env ^^
           set_ptr_loc ^^
           mk_code get_ptr_loc
         )
@@ -2905,9 +2795,9 @@ module Serialization = struct
       | Array t ->
         inc_data_size (compile_unboxed_const Heap.word_size) ^^ (* 32 bit length field *)
         get_x ^^
-        Heap.load_field Array.len_field ^^
+        Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Array.idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
         )
       | Prim Text ->
@@ -3022,10 +2912,10 @@ module Serialization = struct
           write env f.typ
         ) fs
       | Array t ->
-        write_word (get_x ^^ Heap.load_field Array.len_field) ^^
-        get_x ^^ Heap.load_field Array.len_field ^^
+        write_word (get_x ^^ Heap.load_field Arr.len_field) ^^
+        get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Array.idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           write env t
         )
       | (Prim Null | Shared) -> G.nop
@@ -3144,9 +3034,9 @@ module Serialization = struct
         let (set_x, get_x) = new_local env "x" in
 
         read_word ^^ set_len ^^
-        get_len ^^ Array.alloc env ^^ set_x ^^
+        get_len ^^ Arr.alloc env ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Array.idx env ^^
+          get_x ^^ get_i ^^ Arr.idx env ^^
           read env t ^^ store_ptr
         ) ^^
         get_x
@@ -3252,7 +3142,7 @@ module Serialization = struct
         get_refs_start ^^
         get_data_start ^^
         get_data_size ^^
-        G.i (Call (nr (Dfinity.data_externalize_i env))) ^^
+        G.i (Call (nr (E.built_in env "data_externalize"))) ^^
         store_unskewed_ptr  ^^
 
         if has_no_references t
@@ -3268,7 +3158,7 @@ module Serialization = struct
           (* Finally, create elembuf *)
           get_refs_start ^^
           get_refs_size ^^ compile_add_const 1l ^^
-          G.i (Call (nr (Dfinity.elem_externalize_i env)))
+          G.i (Call (nr (E.built_in env "elem_externalize")))
     )
 
   let deserialize_text env get_databuf =
@@ -3276,7 +3166,7 @@ module Serialization = struct
     let (set_x, get_x) = new_local env "x" in
 
     get_databuf ^^
-    G.i (Call (nr (Dfinity.data_length_i env))) ^^
+    G.i (Call (nr (E.built_in env "data_length"))) ^^
     set_data_size ^^
 
     get_data_size ^^
@@ -3287,7 +3177,7 @@ module Serialization = struct
     get_data_size ^^
     get_databuf ^^
     compile_unboxed_const 0l ^^
-    G.i (Call (nr (Dfinity.data_internalize_i env))) ^^
+    G.i (Call (nr (E.built_in env "data_internalize"))) ^^
 
     get_x
 
@@ -3315,12 +3205,12 @@ module Serialization = struct
         else
           (* Allocate space for the elem buffer *)
           get_elembuf ^^
-          G.i (Call (nr (Dfinity.elem_length_i env))) ^^
+          G.i (Call (nr (E.built_in env "elem_length"))) ^^
           set_refs_size ^^
 
           get_refs_size ^^
-          Array.alloc env ^^
-          compile_add_const Array.header_size ^^
+          Arr.alloc env ^^
+          compile_add_const Arr.header_size ^^
           compile_add_const ptr_unskew ^^
           set_refs_start ^^
 
@@ -3329,7 +3219,7 @@ module Serialization = struct
           get_refs_size ^^
           get_elembuf ^^
           compile_unboxed_const 0l ^^
-          G.i (Call (nr (Dfinity.elem_internalize_i env))) ^^
+          G.i (Call (nr (E.built_in env "elem_internalize"))) ^^
 
           (* Get databuf *)
           get_refs_start ^^
@@ -3339,14 +3229,14 @@ module Serialization = struct
 
         (* Allocate space for the data buffer *)
         get_databuf ^^
-        G.i (Call (nr (Dfinity.data_length_i env))) ^^
+        G.i (Call (nr (E.built_in env "data_length"))) ^^
         set_data_size ^^
 
         get_data_size ^^
         compile_add_const 3l ^^
         compile_divU_const Heap.word_size ^^
-        Array.alloc env ^^
-        compile_add_const Array.header_size ^^
+        Arr.alloc env ^^
+        compile_add_const Arr.header_size ^^
         compile_add_const ptr_unskew ^^
         set_data_start ^^
 
@@ -3355,7 +3245,7 @@ module Serialization = struct
         get_data_size ^^
         get_databuf ^^
         compile_unboxed_const 0l ^^
-        G.i (Call (nr (Dfinity.data_internalize_i env))) ^^
+        G.i (Call (nr (E.built_in env "data_internalize"))) ^^
 
         (* Go! *)
         get_data_start ^^
@@ -3364,12 +3254,15 @@ module Serialization = struct
         G.i Drop
     )
 
-    let dfinity_type t = match Type.normalize t with
-      | Type.Prim Type.Text -> CustomSections.DataBuf
-      | Type.Obj (Type.Actor, _) -> CustomSections.ActorRef
-      | Type.Func (Type.Sharable, _, _, _, _) -> CustomSections.FuncRef
-      | t' when has_no_references t' -> CustomSections.DataBuf
-      | _ -> CustomSections.ElemBuf
+    let dfinity_type t =
+      let open Type in
+      let open CustomModule in
+      match normalize t with
+      | Prim Text -> DataBuf
+      | Obj (Actor, _) -> ActorRef
+      | Func (Sharable, _, _, _, _) -> FuncRef
+      | t' when has_no_references t' -> DataBuf
+      | _ -> ElemBuf
 
 end (* Serialization *)
 
@@ -3422,6 +3315,15 @@ module GC = struct
       get_end_to_space ^^
       G.i Return
     ] ^^
+
+    (* Get object size *)
+    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
+
+    (* Grow memory if needed *)
+    get_end_to_space ^^
+    get_len ^^ compile_mul_const Heap.word_size ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    Heap.grow_memory env ^^
 
     (* Copy the referenced object to to space *)
     get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
@@ -3697,7 +3599,7 @@ module FuncDec = struct
     if E.mode env <> DfinityMode then G.i Unreachable else
       compile_unboxed_const tmp_table_slot ^^ (* slot number *)
       get_ref ^^ (* the unboxed funcref *)
-      G.i (Call (nr (Dfinity.func_internalize_i env))) ^^
+      G.i (Call (nr (E.built_in env "func_internalize"))) ^^
 
       compile_unboxed_const tmp_table_slot ^^
       G.i (CallIndirect (nr (message_ty env cc)))
@@ -3706,9 +3608,9 @@ module FuncDec = struct
     Func.share_code1 env "export_self_message" ("name", I32Type) [I32Type] (fun env get_name ->
       Tagged.obj env Tagged.Reference [
         (* Create a funcref for the message *)
-        G.i (Call (nr (Dfinity.actor_self_i env))) ^^
+        G.i (Call (nr (E.built_in env "actor_self"))) ^^
         get_name ^^ (* the databuf with the message name *)
-        G.i (Call (nr (Dfinity.actor_export_i env))) ^^
+        G.i (Call (nr (E.built_in env "actor_export"))) ^^
         ElemHeap.remember_reference env
       ]
     )
@@ -3822,7 +3724,7 @@ module FuncDec = struct
 
   let declare_dfinity_type env has_closure fi args =
       E.add_dfinity_type env (fi,
-        (if has_closure then [ CustomSections.I32 ] else []) @
+        (if has_closure then [ CustomModule.I32 ] else []) @
         List.map (
           fun a -> Serialization.dfinity_type (Type.as_serialized a.note)
         ) args
@@ -3915,10 +3817,10 @@ module FuncDec = struct
         SR.UnboxedReference,
         code ^^
         compile_unboxed_const fi ^^
-        G.i (Call (nr (Dfinity.func_externalize_i env))) ^^
+        G.i (Call (nr (E.built_in env "func_externalize"))) ^^
         get_clos ^^
         ClosureTable.remember_closure env ^^
-        G.i (Call (nr (Dfinity.func_bind_i env)))
+        G.i (Call (nr (E.built_in env "func_bind_i32")))
 
   let lit env how name cc free_vars args mk_body at =
     let is_local = cc.Value.sort <> Type.Sharable in
@@ -4208,16 +4110,16 @@ let compile_load_field env typ ({it=(Name n); _} as name) =
     ( Tagged.Object, Object.load_idx env typ name ) ::
     match n with
     | "len" ->
-      [ Tagged.Array, Array.partial_len env
+      [ Tagged.Array, Arr.partial_len env
       ; Tagged.Text, Text.partial_len env ]
     | "get" ->
-      [ Tagged.Array, Array.partial_get env ]
+      [ Tagged.Array, Arr.partial_get env ]
     | "set" ->
-      [ Tagged.Array, Array.partial_set env ]
+      [ Tagged.Array, Arr.partial_set env ]
     | "keys" ->
-      [ Tagged.Array, Array.keys_iter env ]
+      [ Tagged.Array, Arr.keys_iter env ]
     | "vals" ->
-      [ Tagged.Array, Array.vals_iter env ]
+      [ Tagged.Array, Arr.vals_iter env ]
     | "chars" ->
       [ Tagged.Text, Text.text_chars env ]
     | _ -> []
@@ -4236,7 +4138,7 @@ let rec compile_lexp (env : E.t) exp =
      compile_exp_vanilla env e1 ^^ (* offset to array *)
      compile_exp_as env SR.UnboxedInt64 e2 ^^ (* idx *)
      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-     Array.idx env,
+     Arr.idx env,
      store_ptr
   | DotE (e, n) ->
      compile_exp_vanilla env e ^^
@@ -4253,7 +4155,7 @@ and compile_exp (env : E.t) exp =
     compile_exp_vanilla env e1 ^^ (* offset to array *)
     compile_exp_as env SR.UnboxedInt64 e2 ^^ (* idx *)
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    Array.idx env ^^
+    Arr.idx env ^^
     load_ptr
   | DotE (e, name) ->
     SR.Vanilla,
@@ -4382,10 +4284,6 @@ and compile_exp (env : E.t) exp =
          compile_exp_vanilla env e ^^
          Text.prim_showChar env
 
-       | "printInt" ->
-         SR.unit,
-         compile_exp_vanilla env e ^^
-         Dfinity.prim_printInt env
        | "print" ->
          SR.unit,
          compile_exp_vanilla env e ^^
@@ -4401,8 +4299,8 @@ and compile_exp (env : E.t) exp =
           begin
            let compile_kernel_as sr inst = sr, compile_exp_as env sr e1 ^^ compile_exp_as env sr e2 ^^ inst
            in match p with
-             | "Array.init" -> compile_kernel_as SR.Vanilla (Array.init env)
-             | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Array.tabulate env)
+             | "Array.init" -> compile_kernel_as SR.Vanilla (Arr.init env)
+             | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Arr.tabulate env)
              | "shrs8" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.shrs_kernel Type.Word8)
              | "shrs16" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.shrs_kernel Type.Word16)
              | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
@@ -4507,7 +4405,7 @@ and compile_exp (env : E.t) exp =
     compile_exp_vanilla env e1 ^^ (* offset to tuple (an array) *)
     Tuple.load_n (Int32.of_int n)
   | ArrayE (m, t, es) ->
-    SR.Vanilla, Array.lit env (List.map (compile_exp_vanilla env) es)
+    SR.Vanilla, Arr.lit env (List.map (compile_exp_vanilla env) es)
   | CallE (cc, e1, _, e2) ->
     StackRep.of_arity (cc.Value.n_res),
     let fun_sr, code1 = compile_exp env e1 in
@@ -4918,7 +4816,7 @@ and export_actor_field env (f : Ir.field) =
     ) ts
   );
   E.add_export env (nr {
-    name = Dfinity.explode name;
+    name = Wasm.Utf8.decode name;
     edesc = nr (FuncExport (nr fi))
   })
 
@@ -4954,13 +4852,13 @@ and actor_lit outer_env this ds fs at =
     OrthogonalPersistence.register env start_fi;
 
     let m = conclude_module env this.it None in
-    let (_map, wasm_binary) = CustomModule.encode m in
+    let (_map, wasm_binary) = CustomModuleEncode.encode m in
     wasm_binary in
 
     Dfinity.compile_databuf_of_bytes outer_env wasm_binary ^^
     (* Create actorref *)
-    G.i (Call (nr (Dfinity.module_new_i outer_env))) ^^
-    G.i (Call (nr (Dfinity.actor_new_i outer_env)))
+    G.i (Call (nr (E.built_in outer_env "module_new"))) ^^
+    G.i (Call (nr (E.built_in outer_env "actor_new")))
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env this ds fs =
@@ -4979,7 +4877,7 @@ and main_actor env this ds fs =
 
 and actor_fake_object_idx env name =
     Dfinity.compile_databuf_of_bytes env (name.it) ^^
-    G.i (Call (nr (Dfinity.actor_export_i env)))
+    G.i (Call (nr (E.built_in env "actor_export")))
 
 and conclude_module env module_name start_fi_o =
 
@@ -5008,7 +4906,7 @@ and conclude_module env module_name start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
-      (* persistent elembuf for memory *)
+      (* persistent elembuf for references *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
@@ -5028,7 +4926,7 @@ and conclude_module env module_name start_fi_o =
     init;
     }) (E.get_static_memory env) in
 
-  { module_ = nr {
+  let module_ = {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
@@ -5042,20 +4940,29 @@ and conclude_module env module_name start_fi_o =
       imports = func_imports @ other_imports;
       exports = E.get_exports env;
       data
-    };
-    types = E.get_dfinity_types env;
-    persist =
-           [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
-           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
-           ];
-    module_name;
-    function_names =
-	List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
-    locals_names =
-	List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
-  }
+    } in
 
-let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
+  let emodule =
+    let open CustomModule in
+    { module_;
+      dylink = None;
+      name = {
+        module_ = Some module_name;
+        function_names =
+            List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
+        locals_names =
+            List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
+      };
+      types = E.get_dfinity_types env;
+      persist =
+             [ (OrthogonalPersistence.mem_global, CustomModule.DataBuf)
+             ; (OrthogonalPersistence.elem_global, CustomModule.ElemBuf)
+             ];
+    } in
+
+  emodule
+
+let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : CustomModule.extended_module =
   let env = E.mk_global mode prelude Dfinity.trap_with ClosureTable.table_end in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;

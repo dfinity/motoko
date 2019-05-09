@@ -1465,7 +1465,6 @@ let infer_prog scope prog : (T.typ * scope) Diag.result =
         (fun prog ->
           let env = env_of_scope msgs scope in
           let res = infer_block env prog.it prog.at in
-          Definedness.check_prog msgs prog;
           res
         )
         prog
@@ -1486,7 +1485,6 @@ let check_library scope (filename, prog) : scope Diag.result =
       (fun prog ->
         let env = env_of_scope msgs scope in
         let typ = infer_library env prog.it prog.at in
-        Definedness.check_prog msgs prog;
         library_scope filename typ
       )
       prog
