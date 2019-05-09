@@ -629,7 +629,7 @@ module RTS = struct
 end (* RTS *)
 
 module Heap = struct
-  (* General heap object functionalty (allocation, setting fields, reading fields) *)
+  (* General heap object functionality (allocation, setting fields, reading fields) *)
 
   (* Memory addresses are 32 bit (I32Type). *)
   let word_size = 4l
