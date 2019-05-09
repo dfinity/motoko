@@ -635,7 +635,7 @@ module Heap = struct
   let word_size = 4l
 
   (* We keep track of the end of the used heap in this global, and bump it if
-     we allocate stuff. This the actual memory offset, not-skewed yet *)
+     we allocate stuff. This is the actual memory offset, not-skewed yet *)
   let base_global = 3l
   let heap_global = 4l
   let get_heap_base = G.i (GlobalGet (nr base_global))
