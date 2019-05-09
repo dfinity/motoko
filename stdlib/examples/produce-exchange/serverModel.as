@@ -25,6 +25,7 @@ uses are is not.
 let P = (import "../../prelude.as");
 
 let T = (import "serverTypes.as");
+let L = (import "serverLang.as");
 let M = (import "serverModelTypes.as");
 
 let Hash = (import "../../hash.as").BitVec;
@@ -58,12 +59,220 @@ type RoleId = {
   #retailer    : T.RetailerId;
 };
 
-
 class Model() {
 
   /**
-   Access control: Match a given public key to that of an identified role, whose public key on record.
+   PX server language semantics
    ===================================================================================================
+   Evaluation semantics for the PX server language
+   */
+
+
+  /**
+   `evalReq`
+   ----------
+   evaluate an API call (a "request"), represented as an AS datatype.
+
+   supported calls currently consists of each kind of "add", where
+   each request has the form `#add (entityTag entityInfo)`, and
+   where the type of `entityInfo` varies with each `entityTag` case.
+
+   In each case, the evaluation logic either directly adds the entity
+   to the relevant master table (e.g., the `#add #trucktype` case), or it
+   uses an existing operation to do so, and keeps additional indexing
+   maps up to date (e.g., `producerAddInventory`).  Critically, since
+   this file does not perform access control checks, that logic is
+   separate from this semantic model-level logic.
+
+   To do, each similar to the `producerAddInventory` case:
+   - remove (`#rem`) cases
+   - update (`#update`) cases
+
+   */
+  evalReq(req:L.Req) : Result<L.Resp, T.IdErr> {
+    switch req {
+    case (#add (#truckType info)) Result.fromSomeMap<T.TruckTypeId,L.Resp,T.IdErr>(
+           truckTypeTable.addInfoGetId(
+             func (id_:T.TruckTypeId) : T.TruckTypeInfo =
+               shared {
+                 id=id_;
+                 short_name=info.short_name;
+                 description=info.description;
+                 capacity=info.capacity;
+                 isFridge=info.isFridge;
+                 isFreezer=info.isFreezer;
+               }
+           ),
+           func (id:T.TruckTypeId):L.Resp = #add(#truckType(id)),
+           #idErr null
+         );
+
+    case (#add (#region info)) Result.fromSomeMap<T.RegionId,L.Resp,T.IdErr>(
+           regionTable.addInfoGetId(
+             func (id_:T.RegionId) : T.RegionInfo =
+               shared {
+                 id = id_;
+                 short_name=info.short_name;
+                 description=info.description
+               }
+           ),
+           func (id:T.RegionId):L.Resp = #add(#region(id)),
+           #idErr null
+         );
+
+    case (#add (#produce info)) Result.fromSomeMap<T.ProduceId,L.Resp,T.IdErr>(
+           produceTable.addInfoGetId(
+             func (id_:T.ProduceId) : T.ProduceInfo =
+               shared {
+                 id = id_;
+                 short_name=info.short_name;
+                 description=info.description;
+                 grade=info.grade
+               }
+           ),
+           func (id:T.ProduceId):L.Resp = #add(#produce(id)),
+           #idErr null
+         );
+
+    case (#add (#producer info)) Result.fromSomeMap<T.ProducerId,L.Resp,T.IdErr>(
+           producerTable.addInfoGetId(
+             func(id_:T.ProducerId):T.ProducerInfo {
+               shared {
+                 id=id_;
+                 public_key=info.public_key;
+                 short_name=info.short_name;
+                 description=info.description;
+                 region=info.region;
+                 inventory=[];
+                 reserved=[];
+               }
+             }
+           ),
+           func (id:T.ProducerId):L.Resp = #add(#producer(id)),
+           #idErr null
+         );
+
+    case (#add (#transporter info)) Result.fromSomeMap<T.TransporterId,L.Resp,T.IdErr>(
+           transporterTable.addInfoGetId(
+             func(id_:T.TransporterId):T.TransporterInfo {
+               shared {
+                 id=id_;
+                 public_key=info.public_key;
+                 short_name=info.short_name;
+                 description=info.description;
+                 routes=[];
+                 reserved=[];
+               }
+             }
+           ),
+           func (id:T.TransporterId):L.Resp = #add(#transporter(id)),
+           #idErr null
+         );
+
+    case (#add (#route info)) Result.mapOk<T.RouteId,L.Resp,T.IdErr>(
+           transporterAddRoute(
+             null,
+             info.transporter,
+             info.start_region,
+             info.end_region,
+             info.start_date,
+             info.end_date,
+             info.cost,
+             info.truck_type
+           ),
+           func (id:T.RouteId):L.Resp = #add(#route(id))
+         );
+
+    case (#add (#inventory info)) Result.mapOk<T.InventoryId,L.Resp,T.IdErr>(
+           producerAddInventory(
+             null,
+             info.producer,
+             info.produce,
+             info.quantity,
+             info.weight,
+             info.ppu,
+             info.start_date,
+             info.end_date,
+             info.comments,
+           ),
+           func (id:T.RouteId):L.Resp = #add(#route(id))
+         );
+
+    case (#add (#user info)) Result.fromSomeMap<T.UserId,L.Resp,T.IdErr>(
+           addUser(
+             info.public_key,
+             info.user_name,
+             info.description,
+             info.region,
+             info.isDeveloper,
+             info.isProducer,
+             info.isRetailer,
+             info.isTransporter
+           ),
+           func (id:T.UserId):L.Resp = #add(#user(id)),
+           #idErr null
+         );
+
+    case (#add _) P.unreachable();
+
+    case _ P.nyi();
+    }
+  };
+
+  /**
+   `evalBulk`
+   ----------
+   evaluate groups of similar API calls, grouping their results.
+   Each bulk request consists of an array of similar requests (adds, updates, or removes).
+   */
+  evalBulk(req:L.BulkReq) : L.BulkResp {
+    func eatAdd (x:L.Resp) : T.EntId =
+      switch x { case (#add i) i; case _ P.unreachable() };
+    switch req {
+      case (#add reqs)
+      #add (
+        Array_tabulate<Result<T.EntId, T.IdErr>>(
+          reqs.len(),
+          func(i:Nat):Result<T.EntId, T.IdErr> =
+            Result.mapOk<L.Resp, T.EntId, T.IdErr>(
+              evalReq(#add(reqs[i])),
+              eatAdd
+            )
+        )
+      );
+
+      case (#rem reqs)
+      P.nyi();
+
+      case (#update reqs)
+      P.nyi();
+    }
+  };
+
+  /**
+   `evalBulkArray`
+   ----------
+   evaluate arrays of bulk requests.
+   Notice that there are two levels of grouping:
+   - The request is an array of bulk requests, and
+   - Each bulk request in this array consists of an array of similar requests (adds, updates, or removes).
+   */
+  evalBulkArray(reqs:[L.BulkReq]) : [L.BulkResp] {
+    Array_tabulate<L.BulkResp>(
+      reqs.len(),
+      func(i:Nat):L.BulkResp = evalBulk(reqs[i])
+    )
+  };
+
+
+  /**
+   Access control
+   ===================================================================================================
+
+   `isValidPublicKey`
+   -------------------
+   Match a given public key to that of an identified role, whose public key on record.
+
    */
   func isValidPublicKey(id:RoleId, public_key:T.PublicKey) : Bool {
     switch id {
@@ -818,7 +1027,7 @@ than the MVP goals, however.
   */
   producerAddInventory(
     iid_       : ?T.InventoryId,
-    id_        : T.UserId,
+    id_        : T.ProducerId,
     produce_id : T.ProduceId,
     quantity_  : T.Quantity,
     weight_    : T.Weight,
@@ -826,7 +1035,7 @@ than the MVP goals, however.
     start_date_: T.Date,
     end_date_  : T.Date,
     comments_  : Text,
-  ) : Result<T.InventoryId, T.ServerErr>
+  ) : Result<T.InventoryId, T.IdErr>
   {
     /** The model adds inventory and maintains secondary indicies as follows: */
 
@@ -909,7 +1118,7 @@ than the MVP goals, however.
     start_date_: T.Date,
     end_date_  : T.Date,
     comments_  : Text,
-  ) : Result<(),T.ServerErr>
+  ) : Result<(),T.IdErr>
   {
     /**- Validate these ids; fail here if anything is invalid: */
     let oproducer: ?M.ProducerDoc = producerTable.getDoc(id_);
@@ -1047,7 +1256,7 @@ than the MVP goals, however.
     end_date_:       T.Date,
     cost_:           T.Price,
     trucktype_id:    T.TruckTypeId
-  ) : Result<T.RouteId,T.ServerErr> {
+  ) : Result<T.RouteId,T.IdErr> {
     /** The model adds inventory and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
@@ -1129,7 +1338,7 @@ than the MVP goals, however.
     end_date_       : T.Date,
     cost_           : T.Price,
     trucktype_id    : T.TruckTypeId
-  ) : Result<(),T.ServerErr> {
+  ) : Result<(),T.IdErr> {
     /** The model updates routes and maintains secondary indicies as follows: */
 
     /**- Validate these ids; fail fast if not defined: */
@@ -1178,7 +1387,7 @@ than the MVP goals, however.
    ---------------------------
    Remove the given route from the exchange.
    */
-  transporterRemRoute(id:T.RouteId) : Result<(),T.ServerErr> {
+  transporterRemRoute(id:T.RouteId) : Result<(),T.IdErr> {
 
     let doc = switch (routeTable.getDoc(id)) {
       case null { return #err(#idErr null) };
@@ -1540,7 +1749,7 @@ than the MVP goals, however.
   retailerReserve(
     retailer_id:T.RetailerId,
     inventory_id:T.InventoryId,
-    route_id:T.RouteId) : Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>
+    route_id:T.RouteId) : Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>
   {
     /** ### validate Ids */
 
@@ -1584,6 +1793,17 @@ than the MVP goals, however.
 
     Result.assertOk(producerRemInventory(inventory_id));
     Result.assertOk(transporterRemRoute(route_id));
+
+    /**
+     ## refresh documents
+
+     critically, after we do the remove operations above, we need to
+     "re-fetch" the documents that we've affected before using them again below in subsequent updates.
+     */
+
+    let transporterDoc2 = Option.unwrap<M.TransporterDoc>(transporterTable.getDoc(transporterDoc.id));
+    let producerDoc2 = Option.unwrap<M.ProducerDoc>(producerTable.getDoc(producerDoc.id));
+
 
     /**
      ### create reservation documents
@@ -1631,23 +1851,23 @@ than the MVP goals, however.
 
       let (updatedProducerReserved,_) =
         Map.insert<T.ReservedInventoryId,M.ReservedInventoryDoc>(
-          producerDoc.reserved,
+          producerDoc2.reserved,
           keyOf(reservedInventoryDoc.id), idIsEq,
           reservedInventoryDoc);
 
       // xxx -- AS wishlist: better syntax for functional record update:
       let updatedProducer = new {
-        id=producerDoc.id;
-        public_key=producerDoc.public_key;
-        short_name=producerDoc.short_name;
-        description=producerDoc.description;
-        region=producerDoc.region;
-        inventory=producerDoc.inventory;
+        id=producerDoc2.id;
+        public_key=producerDoc2.public_key;
+        short_name=producerDoc2.short_name;
+        description=producerDoc2.description;
+        region=producerDoc2.region;
+        inventory=producerDoc2.inventory;
         reserved=updatedProducerReserved; // <-- the only field we are updating
       };
 
       Option.assertSome<M.ProducerDoc>(
-        producerTable.updateDoc( producerDoc.id, updatedProducer )
+        producerTable.updateDoc( producerDoc2.id, updatedProducer )
       )
     };
     {
@@ -1655,22 +1875,22 @@ than the MVP goals, however.
 
       let (updatedTransporterReserved,_) =
         Map.insert<T.ReservedRouteId,M.ReservedRouteDoc>(
-          transporterDoc.reserved,
+          transporterDoc2.reserved,
           keyOf(reservedRouteDoc.id), idIsEq,
           reservedRouteDoc);
 
       // xxx -- AS wishlist: better syntax for functional record update:
       let updatedTransporter = new {
-        id=transporterDoc.id;
-        public_key=transporterDoc.public_key;
-        short_name=transporterDoc.short_name;
-        description=transporterDoc.description;
-        routes=transporterDoc.routes;
+        id=transporterDoc2.id;
+        public_key=transporterDoc2.public_key;
+        short_name=transporterDoc2.short_name;
+        description=transporterDoc2.description;
+        routes=transporterDoc2.routes;
         reserved=updatedTransporterReserved; // <-- the only field we are updating
       };
 
       Option.assertSome<M.TransporterDoc>(
-        transporterTable.updateDoc( transporterDoc.id, updatedTransporter )
+        transporterTable.updateDoc( transporterDoc2.id, updatedTransporter )
       )
     };
     {
@@ -1707,9 +1927,9 @@ than the MVP goals, however.
   retailerReserveMany(
     id:T.RetailerId,
     array:[(T.InventoryId,T.RouteId)])
-    : [Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>]
+    : [Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>]
   {
-    let a = Array_init<?(Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>)>(
+    let a = Array_init<?(Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>)>(
       array.len(),
       null
     );
@@ -1719,10 +1939,10 @@ than the MVP goals, however.
       a[i] := ?x;
     };
     let results =
-      Array_tabulate<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>>(
+      Array_tabulate<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>>(
         array.len(),
-        func(i:Nat):Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>{
-          Option.unwrap<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.ServerErr>>(a[i])
+        func(i:Nat):Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>{
+          Option.unwrap<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>>(a[i])
         });
     results
   };
