@@ -756,7 +756,7 @@ module Stack = struct
   (* The RTS includes C code which requires a shadow stack in linear memory.
      We reserve some space for it at the beginning of memory space (just like
      wasm-l would), this way stack overflow would cause out-of-memory, and not
-     just override static data.
+     just overwrite static data.
 
      We don’t use the stack space (yet), but we could easily start to use it for
      scratch space, as long as we don’t need more than 64k.
