@@ -100,7 +100,8 @@ actor class Test() = this {
 
       print "\nExchange setup: Done.\n====================================\n";
 
-      //await debugDumpAll(s);
+      let inventoryCount1 = await debugDumpInventory(pka, 0);
+      let routeCount1 = await debugDumpRoutes(pka, 0);
       await debugDumpAll();
 
       //////////////////////////////////////////////////////////////////
@@ -123,9 +124,6 @@ actor class Test() = this {
 
       print "\nRetailer reservations\n====================================\n";
 
-      { print "\nProducer 0's inventory:\n--------------------------------\n";
-        let x = await s.producerAllInventoryInfo(pka, 0);
-        print (debug_show x) };
 
       print "\nRetailer reservations: begin...\n------------------------\n";
 
@@ -171,19 +169,51 @@ actor class Test() = this {
          }
        });
 
-      { print "\nProducer 0's inventory:\n--------------------------------\n";
-        let x = await s.producerAllInventoryInfo(pka, 0);
-        print (debug_show x) };
-
       print "\nRetailer reservations: done.\n---------------------------------\n";
 
       print "\nExchange interactions: Done.\n====================================\n";
+
+      let inventoryCount2 = await debugDumpInventory(pka, 0);
+      let routeCount2 = await debugDumpRoutes(pka, 0);
+      assert (inventoryCount2 == 0);
+      assert (routeCount2 == 1);
 
       await debugDumpAll();
     })
   };
 };
 
+func debugDumpInventory(pk:T.PublicKey, p:T.ProducerId) : async Nat {
+  print "\nProducer ";
+  printInt p;
+  print "'s inventory:\n--------------------------------\n";
+  let res = await server.producerAllInventoryInfo(pk, p);
+  let items = Result.assertUnwrapAny<[T.InventoryInfo]>(res);
+  for (i in items.keys()) {
+    printInt i;
+    print ". ";
+    print (debug_show (items[i]));
+    print "\n";
+  };
+  print "(list end)\n";
+  items.len()
+};
+
+func debugDumpRoutes(pk:T.PublicKey, t:T.TransporterId) : async Nat {
+  print "\nTransporter ";
+  printInt t;
+  print "'s routes:\n--------------------------------\n";
+  let res = await server.transporterAllRouteInfo(pk, t);
+  let items = Result.assertUnwrapAny<[T.RouteInfo]>(res);
+  for (i in items.keys()) {
+    printInt i;
+    print ". ";
+    print (debug_show (items[i]));
+    print "\n";
+  };
+  print "(list end)\n";
+  items.len()
+};
 
 //func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
 func retailerQueryAll(pk:Text, r:?T.UserId) : async () {

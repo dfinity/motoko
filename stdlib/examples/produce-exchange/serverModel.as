@@ -1795,6 +1795,17 @@ than the MVP goals, however.
     Result.assertOk(transporterRemRoute(route_id));
 
     /**
+     ## refresh documents
+
+     critically, after we do the remove operations above, we need to
+     "re-fetch" the documents that we've affected before using them again below in subsequent updates.
+     */
+
+    let transporterDoc2 = Option.unwrap<M.TransporterDoc>(transporterTable.getDoc(transporterDoc.id));
+    let producerDoc2 = Option.unwrap<M.ProducerDoc>(producerTable.getDoc(producerDoc.id));
+
+
+    /**
      ### create reservation documents
 
      These new documents will "own" the removed documents for the
@@ -1840,23 +1851,23 @@ than the MVP goals, however.
 
       let (updatedProducerReserved,_) =
         Map.insert<T.ReservedInventoryId,M.ReservedInventoryDoc>(
-          producerDoc.reserved,
+          producerDoc2.reserved,
           keyOf(reservedInventoryDoc.id), idIsEq,
           reservedInventoryDoc);
 
       // xxx -- AS wishlist: better syntax for functional record update:
       let updatedProducer = new {
-        id=producerDoc.id;
-        public_key=producerDoc.public_key;
-        short_name=producerDoc.short_name;
-        description=producerDoc.description;
-        region=producerDoc.region;
-        inventory=producerDoc.inventory;
+        id=producerDoc2.id;
+        public_key=producerDoc2.public_key;
+        short_name=producerDoc2.short_name;
+        description=producerDoc2.description;
+        region=producerDoc2.region;
+        inventory=producerDoc2.inventory;
         reserved=updatedProducerReserved; // <-- the only field we are updating
       };
 
       Option.assertSome<M.ProducerDoc>(
-        producerTable.updateDoc( producerDoc.id, updatedProducer )
+        producerTable.updateDoc( producerDoc2.id, updatedProducer )
       )
     };
     {
@@ -1864,22 +1875,22 @@ than the MVP goals, however.
 
       let (updatedTransporterReserved,_) =
         Map.insert<T.ReservedRouteId,M.ReservedRouteDoc>(
-          transporterDoc.reserved,
+          transporterDoc2.reserved,
           keyOf(reservedRouteDoc.id), idIsEq,
           reservedRouteDoc);
 
       // xxx -- AS wishlist: better syntax for functional record update:
       let updatedTransporter = new {
-        id=transporterDoc.id;
-        public_key=transporterDoc.public_key;
-        short_name=transporterDoc.short_name;
-        description=transporterDoc.description;
-        routes=transporterDoc.routes;
+        id=transporterDoc2.id;
+        public_key=transporterDoc2.public_key;
+        short_name=transporterDoc2.short_name;
+        description=transporterDoc2.description;
+        routes=transporterDoc2.routes;
         reserved=updatedTransporterReserved; // <-- the only field we are updating
       };
 
       Option.assertSome<M.TransporterDoc>(
-        transporterTable.updateDoc( transporterDoc.id, updatedTransporter )
+        transporterTable.updateDoc( transporterDoc2.id, updatedTransporter )
       )
     };
     {
