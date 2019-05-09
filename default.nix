@@ -109,7 +109,7 @@ let
   ];
 
   llvmEnv = ''
-    export CLANG="clang-9 -I${nixpkgs.glibc_multi.dev}/include"
+    export CLANG="clang-9"
     export WASM_LD=wasm-ld
   '';
 in
@@ -122,6 +122,8 @@ rec {
     src = sourceByRegex ./rts [
       "rts.c"
       "Makefile"
+      "includes/"
+      "includes/.*.h"
       ];
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
