@@ -1,1 +1,1 @@
-Fatal error: exception Env.Make(X).Clash("x")
+ast81-clash.as:8.11-8.12: type error, duplicate definition for x in block

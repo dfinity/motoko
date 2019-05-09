@@ -15,7 +15,6 @@ open Wasm.Ast
 open Wasm.Types
 open Source
 open Ir
-open CustomModule
 (* Re-shadow Source.(@@), to get Pervasives.(@@) *)
 let (@@) = Pervasives.(@@)
 
@@ -166,6 +165,7 @@ module E = struct
     (* Static *)
     mode : mode;
     prelude : prog; (* The prelude. Re-used when compiling actors *)
+    rts : CustomModule.extended_module option; (* The rts. Re-used when compiling actors *)
     trap_with : t -> string -> G.t;
       (* Trap with message; in the env for dependency injection *)
 
@@ -177,7 +177,7 @@ module E = struct
     func_imports : import list ref;
     other_imports : import list ref;
     exports : export list ref;
-    dfinity_types : (int32 * CustomSections.type_ list) list ref; (* Dfinity types of exports *)
+    dfinity_types : (int32 * CustomModule.type_ list) list ref; (* Dfinity types of exports *)
     funcs : (func * string * local_names) Lib.Promise.t list ref;
     built_in_funcs : lazy_built_in NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
@@ -200,8 +200,9 @@ module E = struct
   }
 
   (* The initial global environment *)
-  let mk_global mode prelude trap_with dyn_mem : t = {
+  let mk_global mode rts prelude trap_with dyn_mem : t = {
     mode;
+    rts;
     prelude;
     trap_with;
     local_vars_env = NameEnv.empty;
@@ -300,15 +301,17 @@ module E = struct
     NameEnv.fold (fun k _ -> Freevars.S.add k) l Freevars.S.empty
 
   let _add_other_import (env : t) m =
-    let _ = reg env.other_imports m in ()
+    ignore (reg env.other_imports m)
 
-  let add_export (env : t) e = let _ = reg env.exports e in ()
+  let add_export (env : t) e =
+    ignore (reg env.exports e)
 
-  let add_dfinity_type (env : t) e = let _ = reg env.dfinity_types e in ()
+  let add_dfinity_type (env : t) e =
+    ignore (reg env.dfinity_types e)
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
-    let n = Wasm.I32.of_int_u (List.length !(env.func_imports)) in
+    let n = Int32.of_int (List.length !(env.func_imports)) in
     let fi = Int32.add j n in
     let fill_ (f, local_names) = fill (f, name, local_names) in
     (fi, fill_)
@@ -345,7 +348,7 @@ module E = struct
   let get_n_res (env : t) = env.n_res
 
   let get_func_imports (env : t) = !(env.func_imports)
-  let get_other_imports (env : t) = !(env.other_imports) 
+  let get_other_imports (env : t) = !(env.other_imports)
   let get_exports (env : t) = !(env.exports)
   let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
@@ -384,6 +387,7 @@ module E = struct
       | None   -> Printf.eprintf "Could not find %s\n" name.it; raise Not_found
 
   let get_prelude (env : t) = env.prelude
+  let get_rts (env : t) = env.rts
 
   let get_trap_with (env : t) = env.trap_with
   let trap_with env msg = env.trap_with env msg
@@ -584,15 +588,47 @@ module Func = struct
 
 end (* Func *)
 
+module RTS = struct
+  (* The connection to the C parts of the RTS *)
+  let system_imports env =
+    E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "version" [] [I32Type];
+    E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word32" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word64" [I32Type] [I64Type];
+    E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_lt" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_gt" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_le" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_ge" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_add" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_sub" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_mul" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_mod" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_div" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_neg" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_lshd" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
+
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "alloc_bytes";
+      edesc = nr (FuncExport (nr (E.built_in env "alloc_bytes")))
+    });
+
+end (* RTS *)
+
 module Heap = struct
-  (* General heap object functionalty (allocation, setting fields, reading fields) *)
+  (* General heap object functionality (allocation, setting fields, reading fields) *)
 
   (* Memory addresses are 32 bit (I32Type). *)
   let word_size = 4l
 
   (* We keep track of the end of the used heap in this global, and bump it if
-     we allocate stuff. This the actual memory offset, not-skewed yet *)
-  let heap_global = 2l
+     we allocate stuff. This is the actual memory offset, not-skewed yet *)
+  let base_global = 3l
+  let heap_global = 4l
+  let get_heap_base = G.i (GlobalGet (nr base_global))
   let get_heap_ptr = G.i (GlobalGet (nr heap_global))
   let set_heap_ptr = G.i (GlobalSet (nr heap_global))
   let get_skewed_heap_ptr = get_heap_ptr ^^ compile_add_const ptr_skew
@@ -693,21 +729,7 @@ module Heap = struct
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env =
-    Func.share_code3 env "memcpy" (("to", I32Type), ("from", I32Type), ("n", I32Type)) [] (fun env get_to get_from get_n ->
-      get_n ^^
-      from_0_to_n env (fun get_i ->
-          get_to ^^
-          get_i ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-
-          get_from ^^
-          get_i ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-
-          G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8})
-      )
-    )
+    G.i (Call (nr (E.built_in env "rts_as_memcpy")))
 
   (* Copying words (works on skewed memory addresses) *)
   let memcpy_words_skewed env =
@@ -730,6 +752,22 @@ module Heap = struct
 
 end (* Heap *)
 
+module Stack = struct
+  (* The RTS includes C code which requires a shadow stack in linear memory.
+     We reserve some space for it at the beginning of memory space (just like
+     wasm-l would), this way stack overflow would cause out-of-memory, and not
+     just overwrite static data.
+
+     We don’t use the stack space (yet), but we could easily start to use it for
+     scratch space, as long as we don’t need more than 64k.
+  *)
+
+  let stack_global = 2l
+
+  let end_of_stack = page_size (* 64k of stack *)
+
+end (* Stack *)
+
 module ElemHeap = struct
   (* The ElemHeap adds a level of indirection for references (elements, as in
      ElemRef). This way, the fake orthogonal persistence code can easily
@@ -740,17 +778,14 @@ module ElemHeap = struct
      target orthogonal persistence anyways.
   *)
 
-  let ref_counter_global = 3l
+  let ref_counter_global = 5l
   let get_ref_ctr = G.i (GlobalGet (nr ref_counter_global))
   let set_ref_ctr = G.i (GlobalSet (nr ref_counter_global))
 
   (* For now, we allocate a fixed size range. This obviously cannot stay. *)
   let max_references = 1024l
 
-  (* By placing the ElemHeap at memory location 0, we incidentally make sure that
-     the 0l pointer is never a valid pointer.
-  *)
-  let ref_location = 0l
+  let ref_location = Stack.end_of_stack
 
   let table_end : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
 
@@ -916,6 +951,8 @@ module Tagged = struct
 
      All tagged heap objects have a size of at least two words
      (important for GC, which replaces them with an Indirection).
+
+     Attention: This mapping is duplicated in rts/rts.c, so update both!
    *)
 
   type tag =
@@ -3250,12 +3287,15 @@ module Serialization = struct
         G.i Drop
     )
 
-    let dfinity_type t = match Type.normalize t with
-      | Type.Prim Type.Text -> CustomSections.DataBuf
-      | Type.Obj (Type.Actor, _) -> CustomSections.ActorRef
-      | Type.Func (Type.Sharable, _, _, _, _) -> CustomSections.FuncRef
-      | t' when has_no_references t' -> CustomSections.DataBuf
-      | _ -> CustomSections.ElemBuf
+    let dfinity_type t =
+      let open Type in
+      let open CustomModule in
+      match normalize t with
+      | Prim Text -> DataBuf
+      | Obj (Actor, _) -> ActorRef
+      | Func (Sharable, _, _, _, _) -> FuncRef
+      | t' when has_no_references t' -> DataBuf
+      | _ -> ElemBuf
 
 end (* Serialization *)
 
@@ -3357,7 +3397,7 @@ module GC = struct
     let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
     let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
 
-    compile_unboxed_const end_of_static_space ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
+    Heap.get_heap_base ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
     Heap.get_skewed_heap_ptr ^^ set_begin_to_space ^^
     Heap.get_skewed_heap_ptr ^^ set_end_to_space ^^
 
@@ -3717,7 +3757,7 @@ module FuncDec = struct
 
   let declare_dfinity_type env has_closure fi args =
       E.add_dfinity_type env (fi,
-        (if has_closure then [ CustomSections.I32 ] else []) @
+        (if has_closure then [ CustomModule.I32 ] else []) @
         List.map (
           fun a -> Serialization.dfinity_type (Type.as_serialized a.note)
         ) args
@@ -4180,6 +4220,11 @@ and compile_exp (env : E.t) exp =
          SR.Vanilla,
          compile_exp_vanilla env e ^^
          Prim.prim_abs env
+
+       | "rts_version" ->
+         SR.Vanilla,
+         compile_exp_as env SR.unit e ^^
+         G.i (Call (nr (E.built_in env "rts_version")))
 
        | "Nat->Word8"
        | "Int->Word8" ->
@@ -4758,7 +4803,7 @@ This function compiles the prelude, just to find out the bound names.
 *)
 and find_prelude_names env =
   (* Create a throw-away environment *)
-  let env0 = E.mk_global (E.mode env) (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
+  let env0 = E.mk_global (E.mode env) None (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
   let env1 = E.mk_fun_env env0 0l 0 in
   let (env2, _) = compile_prelude env1 in
   E.in_scope_set env2
@@ -4820,11 +4865,13 @@ and actor_lit outer_env this ds fs at =
   let wasm_binary =
     let env = E.mk_global
       (E.mode outer_env)
+      (E.get_rts outer_env)
       (E.get_prelude outer_env)
       (E.get_trap_with outer_env)
       ClosureTable.table_end in
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
+    RTS.system_imports env;
 
     let start_fun = Func.of_body env [] [] (fun env3 -> G.with_region at @@
       (* Compile the prelude *)
@@ -4845,7 +4892,7 @@ and actor_lit outer_env this ds fs at =
     OrthogonalPersistence.register env start_fi;
 
     let m = conclude_module env this.it None in
-    let (_map, wasm_binary) = CustomModule.encode m in
+    let (_map, wasm_binary) = CustomModuleEncode.encode m in
     wasm_binary in
 
     Dfinity.compile_databuf_of_bytes outer_env wasm_binary ^^
@@ -4873,6 +4920,15 @@ and actor_fake_object_idx env name =
     G.i (Call (nr (E.built_in env "actor_export")))
 
 and conclude_module env module_name start_fi_o =
+
+  (* Wrap the start function with the RTS initialization *)
+  let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
+    Heap.get_heap_base ^^
+    Heap.set_heap_ptr ^^
+    match start_fi_o with
+    | Some fi -> G.i (Call fi)
+    | None -> G.nop
+  )) in
 
   Dfinity.default_exports env;
   GC.register env (E.get_end_of_static_memory env);
@@ -4903,15 +4959,31 @@ and conclude_module env module_name start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
-      (* end-of-heap pointer *)
+      (* stack pointer *)
       nr { gtype = GlobalType (I32Type, Mutable);
+        value = nr (G.to_instr_list (compile_unboxed_const Stack.end_of_stack))
+      };
+      (* beginning-of-heap pointer, may be changed by linker *)
+      nr { gtype = GlobalType (I32Type, Immutable);
         value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
+      };
+      (* end-of-heap pointer, initialized to __heap_base upon start *)
+      nr { gtype = GlobalType (I32Type, Mutable);
+        value = nr (G.to_instr_list (compile_unboxed_const 0xDEAFBEEFl))
       };
       (* reference counter *)
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
       ] in
+  E.add_export env (nr {
+    name = Wasm.Utf8.decode "__stack_pointer";
+    edesc = nr (GlobalExport (nr Stack.stack_global))
+  });
+  E.add_export env (nr {
+    name = Wasm.Utf8.decode "__heap_base";
+    edesc = nr (GlobalExport (nr Heap.base_global))
+  });
 
   let data = List.map (fun (offset, init) -> nr {
     index = nr 0l;
@@ -4919,7 +4991,7 @@ and conclude_module env module_name start_fi_o =
     init;
     }) (E.get_static_memory env) in
 
-  { module_ = nr {
+  let module_ = {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
@@ -4927,29 +4999,41 @@ and conclude_module env module_name start_fi_o =
         index = nr 0l;
         offset = nr (G.to_instr_list (compile_unboxed_const ni'));
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
-      start = start_fi_o;
+      start = Some (nr rts_start_fi);
       globals = globals;
       memories = memories;
       imports = func_imports @ other_imports;
       exports = E.get_exports env;
       data
-    };
-    types = E.get_dfinity_types env;
-    persist =
-           [ (OrthogonalPersistence.mem_global, CustomSections.DataBuf)
-           ; (OrthogonalPersistence.elem_global, CustomSections.ElemBuf)
-           ];
-    module_name;
-    function_names =
-	List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
-    locals_names =
-	List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
-  }
+    } in
 
-let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : extended_module =
-  let env = E.mk_global mode prelude Dfinity.trap_with ClosureTable.table_end in
+  let emodule =
+    let open CustomModule in
+    { module_;
+      dylink = None;
+      name = {
+        module_ = Some module_name;
+        function_names =
+            List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
+        locals_names =
+            List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
+      };
+      types = E.get_dfinity_types env;
+      persist =
+             [ (OrthogonalPersistence.mem_global, CustomModule.DataBuf)
+             ; (OrthogonalPersistence.elem_global, CustomModule.ElemBuf)
+             ];
+    } in
+
+  match E.get_rts env with
+  | None -> emodule
+  | Some rts -> LinkModule.link emodule "rts" rts
+
+let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : CustomModule.extended_module =
+  let env = E.mk_global mode rts prelude Dfinity.trap_with ClosureTable.table_end in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
+  RTS.system_imports env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in

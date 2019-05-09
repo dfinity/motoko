@@ -1,7 +1,10 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
   test-dvm ? true,
   dvm ? null,
+  export-shell ? false,
 }:
+
+let llvm = (import ./nix/llvm.nix); in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -61,13 +64,15 @@ let
     "test/"
     "test/.*Makefile.*"
     "test/quick.mk"
-    "test/(fail|run|run-dfinity|repl)/"
-    "test/(fail|run|run-dfinity|repl)/lib/"
-    "test/(fail|run|run-dfinity|repl)/lib/dir/"
-    "test/(fail|run|run-dfinity|repl)/.*.as"
-    "test/(fail|run|run-dfinity|repl)/.*.sh"
-    "test/(fail|run|run-dfinity|repl)/ok/"
-    "test/(fail|run|run-dfinity|repl)/ok/.*.ok"
+    "test/(fail|run|run-dfinity|repl|ld)/"
+    "test/(fail|run|run-dfinity|repl|ld)/lib/"
+    "test/(fail|run|run-dfinity|repl|ld)/lib/dir/"
+    "test/(fail|run|run-dfinity|repl|ld)/.*.as"
+    "test/(fail|run|run-dfinity|repl|ld)/.*.sh"
+    "test/(fail|run|run-dfinity|repl|ld)/[^/]*.wat"
+    "test/(fail|run|run-dfinity|repl|ld)/[^/]*.c"
+    "test/(fail|run|run-dfinity|repl|ld)/ok/"
+    "test/(fail|run|run-dfinity|repl|ld)/ok/.*.ok"
     "test/.*.sh"
   ];
   samples_files = [
@@ -91,12 +96,53 @@ let
     "stdlib/examples/produce-exchange/README.md"
   ];
 
+  libtommath = nixpkgs.fetchFromGitHub {
+    owner = "libtom";
+    repo = "libtommath";
+    rev = "9e1a75cfdc4de614eaf4f88c52d8faf384e54dd0";
+    sha256 = "0qwmzmp3a2rg47pnrsls99jpk5cjj92m75alh1kfhcg104qq6w3d";
+  };
+
+  llvmBuildInputs = [
+    llvm.clang_9
+    llvm.lld_9
+  ];
+
+  llvmEnv = ''
+    export CLANG="clang-9"
+    export WASM_LD=wasm-ld
+  '';
 in
 
 rec {
 
-  native = stdenv.mkDerivation {
-    name = "asc";
+  rts = stdenv.mkDerivation {
+    name = "asc-rts";
+
+    src = sourceByRegex ./rts [
+      "rts.c"
+      "Makefile"
+      "includes/"
+      "includes/.*.h"
+      ];
+
+    nativeBuildInputs = [ nixpkgs.makeWrapper ];
+
+    buildInputs = llvmBuildInputs;
+
+    preBuild = ''
+      ${llvmEnv}
+      export TOMMATHSRC=${libtommath}
+    '';
+
+    installPhase = ''
+      mkdir -p $out/rts
+      cp as-rts.wasm $out/rts
+    '';
+  };
+
+  asc-bin = stdenv.mkDerivation {
+    name = "asc-bin";
 
     src = sourceByRegex ./. [
       "src/"
@@ -116,12 +162,23 @@ rec {
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make -C src BUILD=native asc
+      make -C src BUILD=native asc as-ld
     '';
 
     installPhase = ''
       mkdir -p $out/bin
       cp src/asc $out/bin
+      cp src/as-ld $out/bin
+    '';
+  };
+
+  native = nixpkgs.symlinkJoin {
+    name = "asc";
+    paths = [ asc-bin rts ];
+    buildInputs = [ nixpkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/asc \
+        --set-default ASC_RTS "$out/rts/as-rts.wasm"
     '';
   };
 
@@ -141,18 +198,20 @@ rec {
         nixpkgs.perl
         filecheck
       ] ++
-      (if test-dvm then [ real-dvm ] else []);
-
+      (if test-dvm then [ real-dvm ] else []) ++
+      llvmBuildInputs;
     buildPhase = ''
-      patchShebangs .
-      asc --version
-      make -C samples ASC=asc all
-    '' +
-      (if test-dvm
-      then ''
-      make -C test ASC=asc parallel
+        patchShebangs .
+        ${llvmEnv}
+        export ASC=asc
+        export AS_LD=as-ld
+        asc --version
+        make -C samples all
+      '' +
+      (if test-dvm then ''
+        make -C test parallel
       '' else ''
-      make -C test ASC=asc quick
+        make -C test quick
       '');
 
     installPhase = ''
@@ -160,8 +219,8 @@ rec {
     '';
   };
 
-  native-coverage = native.overrideAttrs (oldAttrs: {
-    name = "asc-coverage";
+  asc-bin-coverage = asc-bin.overrideAttrs (oldAttrs: {
+    name = "asc-bin-coverage";
     buildPhase =
       "export BISECT_COVERAGE=YES;" +
       oldAttrs.buildPhase;
@@ -171,8 +230,18 @@ rec {
       '';
   });
 
+  native-coverage = nixpkgs.symlinkJoin {
+    name = "asc-covergage";
+    paths = [ asc-bin-coverage rts ];
+    buildInputs = [ nixpkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/asc \
+        --set-default ASC_RTS "$out/rts/as-rts.wasm"
+    '';
+  };
+
   coverage-report = stdenv.mkDerivation {
-    name = "native.coverage";
+    name = "coverage-report";
 
     src = sourceByRegex ./. (
       test_files ++
@@ -186,12 +255,16 @@ rec {
         nixpkgs.perl
         ocaml_bisect_ppx
       ] ++
-      (if test-dvm then [ real-dvm ] else []);
+      (if test-dvm then [ real-dvm ] else []) ++
+      llvmBuildInputs;
 
     buildPhase = ''
       patchShebangs .
+      ${llvmEnv}
+      export ASC=asc
+      export AS_LD=as-ld
       ln -vs ${native-coverage}/src src
-      make -C test ASC=asc coverage
+      make -C test coverage
       '';
 
     installPhase = ''
@@ -203,7 +276,7 @@ rec {
   };
 
 
-  js = native.overrideAttrs (oldAttrs: {
+  js = asc-bin.overrideAttrs (oldAttrs: {
     name = "asc.js";
 
     buildInputs = commonBuildInputs ++ [
@@ -218,14 +291,15 @@ rec {
     '';
 
     installPhase = ''
-      mkdir -p $out
-      cp src/asc.js $out
+      mkdir -p $out/bin
+      cp -v src/asc.js $out/bin
+      cp -vr ${rts}/rts $out
     '';
 
-    doInstallCheck = true;
+    doInstallCheck = true; # need to fix loading the rts
 
     installCheckPhase = ''
-      NODE_PATH=$out/ node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
+      NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
     '';
 
   });
@@ -327,6 +401,38 @@ rec {
 
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
-    constituents = [ native js native_test coverage-report stdlib-reference produce-exchange users-guide ];
+    constituents = [
+      native
+      js
+      native_test
+      coverage-report
+      rts
+      stdlib-reference
+      produce-exchange
+      users-guide
+    ];
   };
+
+  shell = if export-shell then nixpkgs.mkShell {
+
+    #
+    # Since building asc, and testing it, are two different derivation in default.nix
+    # we have to create a fake derivation for shell.nix that commons up the build dependencies
+    # of the two to provide a build environment that offers both
+    #
+    # Would not be necessary if nix-shell would take more than one `-A` flag, see
+    # https://github.com/NixOS/nix/issues/955
+    #
+
+    buildInputs =
+      native.buildInputs ++
+      builtins.filter (i: i != native) native_test.buildInputs ++
+      users-guide.buildInputs ++
+      [ nixpkgs.ncurses ];
+
+    shellHook = llvmEnv;
+    TOMMATHSRC = libtommath;
+    NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
+  } else null;
+
 }
