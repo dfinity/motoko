@@ -702,11 +702,7 @@ and infer_exp'' env exp : T.typ =
       let t1 = infer_exp_promote env exp1 in
       (try
         let _, tfs = T.as_obj_sub "next" t1 in
-        let t =
-          match T.lookup_field "next" tfs with
-          | Some t -> t
-          | None -> assert false
-        in
+        let t = Lib.Option.value (T.lookup_field "next" tfs) in
         let t1, t2 = T.as_mono_func_sub t in
         if not (T.sub T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub t2 in
@@ -1210,6 +1206,8 @@ and infer_dec env dec : T.typ =
       (* consider instead:
         let env' = adjoin env (scope_of_module t) in
         ignore (infer_block_exps env' decs)
+        This may allow us to avoid repeated calls to gather_dec and the need, within gather_dec,
+        to detect and preserve cons stored (imperatively) in the tree.
       *)
     t
   in
@@ -1283,8 +1281,7 @@ and infer_val_path env exp : T.typ option =
       | None -> None
       | Some t ->
         match T.promote t with
-        | T.Obj (T.Module, flds) ->
-          T.lookup_field id.it flds
+        | T.Obj (T.Module, flds) -> T.lookup_field id.it flds
         | _ -> None
     end
   | _ -> None
@@ -1310,12 +1307,12 @@ and gather_dec env scope dec : scope =
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let c = match id.note with
       | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
-      | Some c ->  c  in
+      | Some c -> c
+    in
     let te' = T.Env.add id.it c scope.typ_env in
     let ce' = T.ConSet.disjoint_add c scope.con_env in
     let ve' =  match dec.it with
-      | ClassD _ ->
-        T.Env.add id.it T.Pre scope.val_env
+      | ClassD _ -> T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
     { typ_env = te'; lib_env = scope.lib_env; con_env = ce'; val_env = ve' }
@@ -1341,12 +1338,8 @@ and gather_pat_field env ve pf : val_env =
   gather_pat env ve pf.it.pat
 
 and gather_id env ve id : val_env =
-  begin
-    match T.Env.find_opt id.it ve with
-    | Some t ->
-      error env id.at "duplicate definition for %s in block" id.it
-    | None -> ()
-  end;
+  if T.Env.find_opt id.it ve <> None then
+    error env id.at "duplicate definition for %s in block" id.it;
   T.Env.add id.it T.Pre ve
 
 (* Pass 2 and 3: infer type definitions *)

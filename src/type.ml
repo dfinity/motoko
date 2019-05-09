@@ -241,8 +241,7 @@ let rec open' i ts t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c ->
-    Typ c
+  | Typ c -> Typ c
 
 and open_bind i ts {var; bound} =
   {var; bound = open' i ts bound}
@@ -250,7 +249,7 @@ and open_bind i ts {var; bound} =
 and open_field i ts {lab; typ} =
   {lab; typ = open' i ts typ}
 
-(* 
+(*
 and open_kind i ts k =
   match k with
   | Def (tbs, t) ->
@@ -259,8 +258,8 @@ and open_kind i ts k =
   | Abs (tbs, t) ->
     let i' = i + List.length tbs in
     Abs (List.map (open_bind i' ts) tbs, open' i' ts t)
- *)
-  
+*)
+
 let open_ ts t =
   if ts = [] then t else
   open' 0 ts t
