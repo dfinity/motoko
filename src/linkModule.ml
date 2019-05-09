@@ -25,6 +25,7 @@ type imports = (int32 * name) list
 let phrase f x = { x with it = f x.it }
 
 let in_extended f (em : extended_module) = { em with module_ = f em.module_ }
+let in_name f (em : extended_module) = { em with name = f em.name }
 
 let find_fun_imports libname m : imports =
   let name = Wasm.Utf8.decode libname in
@@ -189,28 +190,32 @@ let resolve imports exports : (int32 * int32) list =
     ) imports)
 
 let calculate_renaming n_imports1 n_things1 n_imports2 n_things2 resolved12 resolved21 : (renumbering * renumbering) =
-  let n_imports1' = Int32.(sub n_imports1 (of_int (List.length resolved12))) in
-  let n_imports2' = Int32.(sub n_imports2 (of_int (List.length resolved21))) in
+  let open Int32 in
+
+  let n_imports1' = sub n_imports1 (of_int (List.length resolved12)) in
+  let n_imports2' = sub n_imports2 (of_int (List.length resolved21)) in
 
   let rec fun1 i =
     let rec go skipped = function
       | (imp, exp)::is ->
-        if i < imp then Int32.sub i skipped
+        if i < imp then sub i skipped
         else if i = imp then fun2 exp
-        else go (Int32.add skipped 1l) is
+        else go (add skipped 1l) is
       | [] ->
         if i < n_imports1
-        then Int32.sub i skipped
-        else Int32.(sub (add i n_imports2') skipped)
+        then sub i skipped
+        else sub (add i n_imports2') skipped
     in go 0l resolved12
   and fun2 i =
     let rec go skipped = function
       | (imp, exp)::is ->
-        if i < imp then Int32.(sub (add (add i n_imports1') n_things1) skipped)
+        if i < imp then sub (add i n_imports1') skipped
         else if i = imp then fun1 exp
-        else go (Int32.add skipped 1l) is
+        else go (add skipped 1l) is
       | [] ->
-        Int32.(sub (add (add i n_imports1') n_things1) skipped)
+        if i < n_imports2
+        then sub (add i n_imports1') skipped
+        else sub (add (add i n_imports1') n_things1) skipped
     in go 0l resolved21
   in
   (fun1, fun2)
@@ -588,6 +593,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   join_modules
     ( em1
     |> in_extended (remove_fun_imports fun_resolved12)
+    |> in_name (remove_fun_imports_name_section fun_resolved12)
     |> in_extended (remove_global_imports global_resolved12)
     |> rename_funcs_extended funs1
     |> rename_globals_extended globals1
