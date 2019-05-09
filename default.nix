@@ -110,8 +110,6 @@ in
 
 rec {
 
-  rpclib_core = ocaml-rpc.rpclib_core;
-
   language-server = stdenv.mkDerivation {
     name = "actorscript-language-server";
     src = sourceByRegex ./. (native_src_files ++ [
