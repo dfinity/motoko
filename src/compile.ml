@@ -753,8 +753,13 @@ module Heap = struct
 end (* Heap *)
 
 module Stack = struct
-  (* We don’t actually use the shadow stack here, but we need to reserve
-     space for it.
+  (* The RTS includes C code which requires a shadow stack in linear memory.
+     We reserve some space for it at the beginning of memory space (just like
+     wasm-l would), this way stack overflow would cause out-of-memory, and not
+     just override static data.
+
+     We don’t use the stack space (yet), but we could easily start to use it for
+     scratch space, as long as we don’t need more than 64k.
   *)
 
   let stack_global = 2l
@@ -946,6 +951,8 @@ module Tagged = struct
 
      All tagged heap objects have a size of at least two words
      (important for GC, which replaces them with an Indirection).
+
+     Attention: This mapping is duplicated in rts/rts.c, so update both!
    *)
 
   type tag =
@@ -3366,140 +3373,97 @@ module GC = struct
   (* Returns the new end of to_space *)
   (* Invariant: Must not be called on the same pointer twice. *)
   (* All pointers, including ptr_loc and space end markers, are skewed *)
-  let evacuate env = Func.share_code4 env "evacuate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
+
+  let evacuate_common env
+        get_obj update_ptr
+        get_begin_from_space get_begin_to_space get_end_to_space
+        =
+
     let (set_len, get_len) = new_local env "len" in
+
+    (* If this is static, ignore it *)
+    get_obj ^^
+    get_begin_from_space ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    G.if_ (ValBlockType None) (get_end_to_space ^^ G.i Return) G.nop ^^
+
+    (* If this is an indirection, just use that value *)
+    get_obj ^^
+    Tagged.branch_default env (ValBlockType None) G.nop [
+      Tagged.Indirection,
+      update_ptr (get_obj ^^ Heap.load_field 1l) ^^
+      get_end_to_space ^^ G.i Return
+    ] ^^
+
+    (* Get object size *)
+    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
+
+    (* Grow memory if needed *)
+    get_end_to_space ^^
+    get_len ^^ compile_mul_const Heap.word_size ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    Heap.grow_memory env ^^
+
+    (* Copy the referenced object to to space *)
+    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
+
+    get_end_to_space ^^ get_obj ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
+
     let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
+
+    (* Calculate new pointer *)
+    get_end_to_space ^^
+    get_begin_to_space ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+    get_begin_from_space ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    set_new_ptr ^^
+
+    (* Set indirection *)
+    get_obj ^^
+    Tagged.store Tagged.Indirection ^^
+    get_obj ^^
+    get_new_ptr ^^
+    Heap.store_field 1l ^^
+
+    (* Update pointer *)
+    update_ptr get_new_ptr ^^
+
+    (* Calculate new end of to space *)
+    get_end_to_space ^^
+    get_len ^^ compile_mul_const Heap.word_size ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add))
+
+  (* Used for normal skewed pointers *)
+  let evacuate env = Func.share_code4 env "evacuate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
 
     let get_obj = get_ptr_loc ^^ load_ptr in
 
-    get_obj ^^
     (* If this is an unboxed scalar, ignore it *)
+    get_obj ^^
     BitTagged.if_unboxed env (ValBlockType None) (get_end_to_space ^^ G.i Return) G.nop ^^
 
-    (* If this is static, ignore it *)
-    get_obj ^^
-    get_begin_from_space ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    G.if_ (ValBlockType None) (get_end_to_space ^^ G.i Return) G.nop ^^
+    let update_ptr new_val_code =
+      get_ptr_loc ^^ new_val_code ^^ store_ptr in
 
-    (* If this is an indirection, just use that value *)
-    get_obj ^^
-    Tagged.branch_default env (ValBlockType None) G.nop [
-      Tagged.Indirection,
-      (* Update pointer *)
-      get_ptr_loc ^^
-      get_ptr_loc ^^ load_ptr ^^ Heap.load_field 1l ^^
-      store_ptr ^^
-
-      get_end_to_space ^^
-      G.i Return
-    ] ^^
-
-    (* Get object size *)
-    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
-
-    (* Grow memory if needed *)
-    get_end_to_space ^^
-    get_len ^^ compile_mul_const Heap.word_size ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    Heap.grow_memory env ^^
-
-    (* Copy the referenced object to to space *)
-    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
-
-    get_end_to_space ^^ get_obj ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
-
-    (* Calculate new pointer *)
-    get_end_to_space ^^
-    get_begin_to_space ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-    get_begin_from_space ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    set_new_ptr ^^
-
-    (* Set indirection *)
-    get_obj ^^
-    Tagged.store Tagged.Indirection ^^
-    get_obj ^^
-    get_new_ptr ^^
-    Heap.store_field 1l ^^
-
-    (* Update pointer *)
-    get_ptr_loc ^^
-    get_new_ptr ^^
-    store_ptr ^^
-
-    (* Calculate new end of to space *)
-    get_end_to_space ^^
-    get_len ^^ compile_mul_const Heap.word_size ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add))
+    evacuate_common env
+        get_obj update_ptr
+        get_begin_from_space get_begin_to_space get_end_to_space
   )
 
-  (* A variant for an offseted pointer. These are never scalars *)
+  (* A variant for pointers that point into the payload (used for the bignum objects).
+     These are never scalars. *)
   let evacuate_offset env offset =
     let name = Printf.sprintf "evacuate_offset_%d" (Int32.to_int offset) in
     Func.share_code4 env name (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
-    let (set_len, get_len) = new_local env "len" in
-    let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
-
     let get_obj = get_ptr_loc ^^ load_ptr ^^ compile_sub_const offset in
 
-    (* If this is static, ignore it *)
-    get_obj ^^
-    get_begin_from_space ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    G.if_ (ValBlockType None) (get_end_to_space ^^ G.i Return) G.nop ^^
+    let update_ptr new_val_code =
+      get_ptr_loc ^^ new_val_code ^^ compile_add_const offset ^^ store_ptr in
 
-    (* If this is an indirection, just use that value *)
-    get_obj ^^
-    Tagged.branch_default env (ValBlockType None) G.nop [
-      Tagged.Indirection,
-      (* Update pointer *)
-      get_ptr_loc ^^
-      get_ptr_loc ^^ load_ptr ^^ Heap.load_field 1l ^^
-      store_ptr ^^
-
-      get_end_to_space ^^
-      G.i Return
-    ] ^^
-
-    (* Get object size *)
-    get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
-
-    (* Grow memory if needed *)
-    get_end_to_space ^^
-    get_len ^^ compile_mul_const Heap.word_size ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    Heap.grow_memory env ^^
-
-    (* Copy the referenced object to to space *)
-    get_end_to_space ^^ get_obj ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
-
-    (* Calculate new pointer *)
-    get_end_to_space ^^
-    get_begin_to_space ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-    get_begin_from_space ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    set_new_ptr ^^
-
-    (* Set indirection *)
-    get_obj ^^
-    Tagged.store Tagged.Indirection ^^
-    get_obj ^^
-    get_new_ptr ^^
-    Heap.store_field 1l ^^
-
-    (* Update pointer *)
-    get_ptr_loc ^^
-    get_new_ptr ^^
-    compile_add_const offset ^^
-    store_ptr ^^
-
-    (* Calculate new end of to space *)
-    get_end_to_space ^^
-    get_len ^^ compile_mul_const Heap.word_size ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add))
+    evacuate_common env
+        get_obj update_ptr
+        get_begin_from_space get_begin_to_space get_end_to_space
   )
 
   let register env (end_of_static_space : int32) = Func.define_built_in env "collect" [] [] (fun env ->
