@@ -1527,7 +1527,7 @@ module BoxedWord = struct
       get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub))
     )
 
-  let compile_unsigned_pow env mul_code bt =
+  let compile_unsigned_pow env bt =
     let rec pow () = Func.share_code2 env "pow"
                        (("n", I64Type), ("exp", I64Type)) [I64Type]
                        Wasm.Values.(fun env get_n get_exp ->
@@ -1536,7 +1536,7 @@ module BoxedWord = struct
          let square_recurse_with_shifted =
            get_n ^^ get_exp ^^ one ^^
            G.i (Binary (I64 I64Op.ShrU)) ^^
-           pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul_code
+           pow () ^^ set_res ^^ get_res ^^ get_res ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul))
          in get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
             G.if_ (bt env SR.UnboxedWord64)
              one
@@ -1545,7 +1545,7 @@ module BoxedWord = struct
                 square_recurse_with_shifted
                 (get_n ^^
                  square_recurse_with_shifted ^^
-                 mul_code)))
+                 G.i (Binary (Wasm.Values.I64 I64Op.Mul)))))
     in pow ()
 
 end (* BoxedWord *)
@@ -1776,7 +1776,7 @@ sig
   val compile_signed_mod : E.t -> G.t
   val compile_unsigned_div : E.t -> G.t
   val compile_unsigned_rem : E.t -> G.t
-  val compile_unsigned_pow : E.t -> G.t -> (E.t -> SR.t -> Wasm.Ast.block_type) -> G.t
+  val compile_unsigned_pow : E.t -> (E.t -> SR.t -> Wasm.Ast.block_type) -> G.t
 
   (* comparisons *)
   val compile_eq : E.t -> G.t
@@ -1835,8 +1835,8 @@ module BigNum64 : BigNumType = struct
   let compile_unsigned_div = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.DivU)))
   let compile_unsigned_rem = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.RemU)))
   let compile_unsigned_sub env = with_both_unboxed (BoxedWord.compile_unsigned_sub env) env
-  let compile_unsigned_pow env _ bt =
-    with_both_unboxed (BoxedWord.compile_unsigned_pow env (G.i (Binary (Wasm.Values.I64 I64Op.Mul))) bt) env
+  let compile_unsigned_pow env bt =
+    with_both_unboxed (BoxedWord.compile_unsigned_pow env bt) env
 
   let with_comp_unboxed op env =
     let set_tmp, get_tmp = new_local64 env "top" in
@@ -4264,9 +4264,9 @@ let rec compile_binop env t op =
      E.then_trap_with env "negative power" ^^
      get_n ^^ get_exp ^^ pow
   | Type.(Prim Word64),                       PowOp ->
-    BoxedWord.compile_unsigned_pow env (snd (compile_binop env t MulOp)) StackRep.to_block_type
+    BoxedWord.compile_unsigned_pow env StackRep.to_block_type
   | Type.(Prim Nat),                          PowOp ->
-    BigNum.compile_unsigned_pow env (snd (compile_binop env t MulOp)) StackRep.to_block_type
+    BigNum.compile_unsigned_pow env StackRep.to_block_type
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.(Prim Word64),                       OrOp  -> G.i (Binary (Wasm.Values.I64 I64Op.Or))
