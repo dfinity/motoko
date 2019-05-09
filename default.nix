@@ -141,8 +141,8 @@ rec {
     '';
   };
 
-  native = stdenv.mkDerivation {
-    name = "asc";
+  asc-bin = stdenv.mkDerivation {
+    name = "asc-bin";
 
     src = sourceByRegex ./. [
       "src/"
@@ -172,6 +172,16 @@ rec {
     '';
   };
 
+  native = nixpkgs.symlinkJoin {
+    name = "asc";
+    paths = [ asc-bin rts ];
+    buildInputs = [ nixpkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/asc \
+        --set-default ASC_RTS "$out/rts/as-rts.wasm"
+    '';
+  };
+
   native_test = stdenv.mkDerivation {
     name = "native.test";
 
@@ -190,7 +200,6 @@ rec {
       ] ++
       (if test-dvm then [ real-dvm ] else []) ++
       llvmBuildInputs;
-
     buildPhase = ''
         patchShebangs .
         ${llvmEnv}
@@ -210,8 +219,8 @@ rec {
     '';
   };
 
-  native-coverage = native.overrideAttrs (oldAttrs: {
-    name = "asc-coverage";
+  asc-bin-coverage = asc-bin.overrideAttrs (oldAttrs: {
+    name = "asc-bin-coverage";
     buildPhase =
       "export BISECT_COVERAGE=YES;" +
       oldAttrs.buildPhase;
@@ -221,8 +230,18 @@ rec {
       '';
   });
 
+  native-coverage = nixpkgs.symlinkJoin {
+    name = "asc-covergage";
+    paths = [ asc-bin-coverage rts ];
+    buildInputs = [ nixpkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/asc \
+        --set-default ASC_RTS "$out/rts/as-rts.wasm"
+    '';
+  };
+
   coverage-report = stdenv.mkDerivation {
-    name = "native.coverage";
+    name = "coverage-report";
 
     src = sourceByRegex ./. (
       test_files ++
@@ -257,7 +276,7 @@ rec {
   };
 
 
-  js = native.overrideAttrs (oldAttrs: {
+  js = asc-bin.overrideAttrs (oldAttrs: {
     name = "asc.js";
 
     buildInputs = commonBuildInputs ++ [
@@ -272,14 +291,15 @@ rec {
     '';
 
     installPhase = ''
-      mkdir -p $out
-      cp src/asc.js $out
+      mkdir -p $out/bin
+      cp -v src/asc.js $out/bin
+      cp -vr ${rts}/rts $out
     '';
 
-    doInstallCheck = true;
+    doInstallCheck = true; # need to fix loading the rts
 
     installCheckPhase = ''
-      NODE_PATH=$out/ node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
+      NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
     '';
 
   });

@@ -426,6 +426,27 @@ let show_translation =
 
 (* Compilation *)
 
+let load_as_rts () =
+
+  let load_file f =
+    let ic = open_in f in
+    let n = in_channel_length ic in
+    let s = Bytes.create n in
+    really_input ic s 0 n;
+    close_in ic;
+    Bytes.to_string s in
+
+  (*
+  The RTS can be found via environment (in particular when built via nix),
+  or relative to the directory of the invoked asc (when developing)
+  *)
+  let wasm_filename =
+    match Sys.getenv_opt "ASC_RTS" with
+    | Some filename -> filename
+    | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/as-rts.wasm") in
+  let wasm = load_file wasm_filename in
+  CustomModuleDecode.decode "rts.wasm" wasm
+
 type compile_mode = Compile.mode = WasmMode | DfinityMode
 type compile_result = (CustomModule.extended_module, Diag.messages) result
 
@@ -443,27 +464,28 @@ let lower_prog senv lib_env libraries progs name =
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir
 
-let compile_prog mode lib_env libraries progs : compile_result =
+let compile_prog mode do_link lib_env libraries progs : compile_result =
   let prelude_ir = Desugar.transform prelude in
   let name = name_progs progs in
   let prog_ir = lower_prog initial_stat_env lib_env libraries progs name in
   phase "Compiling" name;
-  let module_ = Compile.compile mode name prelude_ir [prog_ir] in
+  let rts = if do_link then Some (load_as_rts ()) else None in
+  let module_ = Compile.compile mode name rts prelude_ir [prog_ir] in
   Ok module_
 
-let compile_files mode files : compile_result =
+let compile_files mode do_link files : compile_result =
   match load_progs (parse_files files) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((libraries, progs, senv), msgs) ->
     Diag.print_messages msgs;
-    compile_prog mode senv.Typing.lib_env libraries progs
+    compile_prog mode do_link senv.Typing.lib_env libraries progs
 
 let compile_string mode s name : compile_result =
   match load_decl (parse_string s name) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((libraries, prog, senv, _t, _sscope), msgs) ->
     Diag.print_messages msgs;
-    compile_prog mode senv.Typing.lib_env libraries [prog]
+    compile_prog mode false senv.Typing.lib_env libraries [prog]
 
 
 (* Interpretation (IR) *)

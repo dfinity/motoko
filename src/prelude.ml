@@ -36,6 +36,7 @@ func charToText(c : Char) : Text = (prim "Char->Text" : Char -> Text) c;
 func printInt(x : Int) { print (@text_of_Int x) };
 func printChar(x : Char) { print (charToText x) };
 func print(x : Text) { (prim "print" : Text -> ()) x };
+func rts_version() : Text { (prim "rts_version" : () -> Text) () };
 
 // Hashing
 func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
@@ -339,6 +340,7 @@ let prim = function
                                           | code -> Wasm.Utf8.encode [code]
                                in k (Text str)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
+  | "rts_version" -> fun v k -> as_unit v; k (Text "0.1")
   | "decodeUTF8" -> fun v k ->
                     let s = as_text v in
                     let open Int32 in
