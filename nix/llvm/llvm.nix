@@ -34,8 +34,8 @@ in stdenv.mkDerivation (rec {
 
   unpackPhase = ''
     unpackFile ${src}
+    chmod -R u+w llvm-r*
     mv llvm-r* llvm
-    chmod -R u+w llvm
     sourceRoot=$PWD/llvm
   '' + optionalString enablePolly ''
     unpackFile ${polly_src}
