@@ -437,7 +437,7 @@ let load_as_rts () =
     Bytes.to_string s in
 
   (*
-  The RTS can be found via enviornment (in particular when built via nix),
+  The RTS can be found via environment (in particular when built via nix),
   or relative to the directory of the invoked asc (when developing)
   *)
   let wasm_filename =
