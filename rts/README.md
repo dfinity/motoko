@@ -6,7 +6,7 @@ This directory contains the parts of the ActorScript runtime implemented in C.
 tl;dr
 -----
 
-If you just want to get `rts.wasm` in this directory, run
+If you just want to get `as-rts.wasm` in this directory, run
 
     nix-shell --run 'make -C rts'
 
@@ -15,7 +15,7 @@ from the top-level directory of the ActorScript repository.
 Compilation
 -----------
 
-Running `make` should produce `rts.wasm`.
+Running `make` should produce `as-rts.wasm`.
 
 If run within `nix-shell`, the environment variables `CLANG` and `WASM_LD`
 should point to suitable binaries. If not present, the `Makefile` will try to

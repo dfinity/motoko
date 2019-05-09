@@ -5161,7 +5161,7 @@ and conclude_module env module_name start_fi_o =
       let wasm_filename =
         match Sys.getenv_opt "ASC_RTS" with
         | Some filename -> filename
-        | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/rts.wasm") in
+        | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/as-rts.wasm") in
       let wasm = load_file wasm_filename in
       CustomModuleDecode.decode "rts.wasm" wasm in
 

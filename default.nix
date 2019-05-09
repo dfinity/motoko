@@ -109,7 +109,7 @@ let
   ];
 
   llvmEnv = ''
-    export CLANG="clang-9 -I${nixpkgs.glibc_multi.dev}/include"
+    export CLANG="clang-9"
     export WASM_LD=wasm-ld
   '';
 in
@@ -122,6 +122,8 @@ rec {
     src = sourceByRegex ./rts [
       "rts.c"
       "Makefile"
+      "includes/"
+      "includes/.*.h"
       ];
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
@@ -135,7 +137,7 @@ rec {
 
     installPhase = ''
       mkdir -p $out/rts
-      cp rts.wasm $out/rts
+      cp as-rts.wasm $out/rts
     '';
   };
 
@@ -176,7 +178,7 @@ rec {
     buildInputs = [ nixpkgs.makeWrapper ];
     postBuild = ''
       wrapProgram $out/bin/asc \
-        --set-default ASC_RTS "$out/rts/rts.wasm"
+        --set-default ASC_RTS "$out/rts/as-rts.wasm"
     '';
   };
 
@@ -234,7 +236,7 @@ rec {
     buildInputs = [ nixpkgs.makeWrapper ];
     postBuild = ''
       wrapProgram $out/bin/asc \
-        --set-default ASC_RTS "$out/rts/rts.wasm"
+        --set-default ASC_RTS "$out/rts/as-rts.wasm"
     '';
   };
 
@@ -399,7 +401,16 @@ rec {
 
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
-    constituents = [ native js native_test coverage-report stdlib-reference produce-exchange users-guide ];
+    constituents = [
+      native
+      js
+      native_test
+      coverage-report
+      rts
+      stdlib-reference
+      produce-exchange
+      users-guide
+    ];
   };
 
   shell = if export-shell then nixpkgs.mkShell {
@@ -420,7 +431,7 @@ rec {
       [ nixpkgs.ncurses ];
 
     shellHook = llvmEnv;
-
+    TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
   } else null;
 

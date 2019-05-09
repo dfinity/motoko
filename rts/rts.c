@@ -3,7 +3,10 @@
 #define export __attribute__ ((visibility("default")))
 #define from_rts __attribute__ ((import_module("env"))) extern
 
-export void as_memcpy(char *str1, const char *str2, int n) {
+#include <stdint.h>
+#include <stdlib.h>
+
+export void as_memcpy(char *str1, const char *str2, size_t n) {
   for (int i = 0; i < n; i++) {
     str1[i] = str2[i];
   }
@@ -13,7 +16,7 @@ export void as_memcpy(char *str1, const char *str2, int n) {
 ActorScript pointers are offset by one. So let us represent
 them as a typedef, and access the fields using the payload macro.
 */
-typedef long as_ptr;
+typedef intptr_t as_ptr;
 #define FIELD(p,n) (((int *)(p+1))[n])
 #define TAG(p) FIELD(p,0)
 #define TEXT_LEN(p) ((char *)(&FIELD(p,1)))
@@ -56,14 +59,14 @@ enum as_heap_tag {
   TAG_BIGINT = 13,
   };
 
-int as_strlen(const char* p) {
+size_t as_strlen(const char* p) {
   int i = 0;
   while (p[i]) i++;
   return i;
 }
 
 as_ptr as_str_of_cstr(const char * const s) {
-  int l = as_strlen(s);
+  size_t l = as_strlen(s);
   as_ptr r = alloc_bytes (2*sizeof(void*) + l);
   FIELD(r, 0) = TAG_TEXT;
   FIELD(r, 1) = l;
@@ -102,14 +105,14 @@ pointer to a data array.
 
 */
 
-void* mp_alloc(int l) {
+void* mp_alloc(size_t l) {
   as_ptr r = alloc_bytes (2*sizeof(void*) + l);
   FIELD(r, 0) = TAG_TEXT; // abusing text as byte array here
   FIELD(r, 1) = l;
   return &FIELD(r,2);
 }
 
-export void* mp_calloc(int n, int size) {
+export void* mp_calloc(size_t n, size_t size) {
   int l = n * size; // check overflow?
   void *payload = mp_alloc(l);
   char *tmp = (char *)payload;
@@ -119,7 +122,7 @@ export void* mp_calloc(int n, int size) {
   return payload;
 }
 
-export void* mp_realloc(void *ptr, int old_size, int new_size) {
+export void* mp_realloc(void *ptr, size_t old_size, size_t new_size) {
   as_ptr r = (as_ptr)(((char *)ptr) - (2 * sizeof(void*) - 1));
   if (new_size > FIELD(r, 1)) {
     void *newptr = mp_alloc(new_size);
@@ -130,7 +133,7 @@ export void* mp_realloc(void *ptr, int old_size, int new_size) {
   }
 }
 
-export void mp_free(void *ptr, int size) {
+export void mp_free(void *ptr, size_t size) {
 }
 
 /* Wrapper functions for libtommath */

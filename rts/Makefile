@@ -15,32 +15,43 @@ TOMMATH_O=$(patsubst %,_build/tommath_%.o,$(TOMMATHFILES))
 
 TOMMATHSRC ?= $(PWD)/../../libtommath
 
-_build/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build
-	$(CLANG) --compile -fpic --target=wasm32-unknown-unknown-wasm -fvisibility=hidden --optimize=3 \
-		$< --output $@ \
-		-fno-builtin \
-		-DMP_MALLOC=mp_malloc -DMP_REALLOC=mp_realloc -DMP_CALLOC=mp_calloc -DMP_FREE=mp_free -DMP_MEMSET=0 \
-		-DMP_FIXED_CUTOFFS
+MP_FLAGS = \
+  -DMP_MALLOC=mp_malloc \
+  -DMP_REALLOC=mp_realloc \
+  -DMP_CALLOC=mp_calloc \
+  -DMP_FREE=mp_free \
+  -DMP_MEMSET=0 \
+  -DMP_FIXED_CUTOFFS \
+  -DLTM_NO_FILE \
 
+CLANG_FLAGS = \
+   --compile  \
+   -fpic \
+   --target=wasm32-unknown-unknown-wasm -fvisibility=hidden \
+   -fno-builtin -ffreestanding \
+   --optimize=3 \
+   -Iincludes \
+   -fvisibility=hidden \
 
-all: rts.wasm
+HEADER_STUBS = $(wildcard includes/*.h)
+
+_build/tommath_%.o: $(TOMMATHSRC)/bn_%.c $(HEADER_STUBS) | _build
+	$(CLANG) $(CLANG_FLAGS) $(MP_FLAGS)$< --output $@
+
+all: as-rts.wasm
 
 _build:
 	mkdir _build
 
-_build/rts.o: rts.c | _build
-	$(CLANG) --compile -fpic --std=c11 --target=wasm32-unknown-unknown-wasm -fvisibility=hidden --optimize=3 \
-		-fno-builtin -Wall \
-		-I$(TOMMATHSRC) \
-		$< --output $@
+_build/rts.o: rts.c $(HEADER_STUBS) | _build
+	$(CLANG) $(CLANG_FLAGS) $(MP_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
 
-rts.wasm: _build/rts.o $(TOMMATH_O)
+as-rts.wasm: _build/rts.o $(TOMMATH_O)
 	$(WASM_LD) --import-memory --shared --no-entry --gc-sections \
 		_build/rts.o $(TOMMATH_O) -o $@ \
 		--export=__wasm_call_ctors \
 		$(patsubst %,--export=%,$(TOMMATHFUNCS))
 
-
 clean:
-	rm -rf _build rts.wasm
+	rm -rf _build as-rts.wasm
 
