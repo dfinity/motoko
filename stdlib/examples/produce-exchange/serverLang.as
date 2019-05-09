@@ -111,6 +111,10 @@ type RouteAddReq = shared {
  AddReq
  --------------------------------------
  a server `Add` request, as an AS datatype
+
+ note that each case with a `T.XInfo` payload (where `X` = `Producer`,
+ etc.), the identifier is ignored; the request, if successful, will
+ generate a fresh identifier for the new entity.
 */
 type AddReq = {
   #user        : UserAddReq ;
@@ -130,13 +134,13 @@ type AddReq = {
  a server `Update` request, as an AS datatype
 */
 type UpdateReq = {
-  #user        : (T.UserId,        T.UserInfo) ;
-  #truckType   : (T.TruckTypeId,   T.TruckTypeInfo) ;
-  #region      : (T.RegionId,      T.RegionInfo) ;
-  #produce     : (T.ProduceId,     T.ProduceInfo) ;
-  #producer    : (T.ProducerId,    T.ProducerInfo) ;
-  #retailer    : (T.RetailerId,    T.RetailerInfo) ;
-  #transporter : (T.TransporterId, T.TransporterInfo) ;
-  #inventory   : (T.InventoryId,   T.InventoryInfo) ;
-  #route       : (T.RouteId,       T.RouteInfo) ;
+  #user        : T.UserInfo ;
+  #truckType   : T.TruckTypeInfo ;
+  #region      : T.RegionInfo ;
+  #produce     : T.ProduceInfo ;
+  #producer    : T.ProducerInfo ;
+  #retailer    : T.RetailerInfo ;
+  #transporter : T.TransporterInfo ;
+  #inventory   : T.InventoryInfo ;
+  #route       : T.RouteInfo ;
 } ;
