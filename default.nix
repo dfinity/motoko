@@ -296,10 +296,10 @@ rec {
       cp -vr ${rts}/rts $out
     '';
 
-    doInstallCheck = false; # need to fix loading the rts
+    doInstallCheck = true; # need to fix loading the rts
 
     installCheckPhase = ''
-      NODE_PATH=$out/ node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
+      NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
     '';
 
   });

@@ -165,6 +165,7 @@ module E = struct
     (* Static *)
     mode : mode;
     prelude : prog; (* The prelude. Re-used when compiling actors *)
+    rts : CustomModule.extended_module option; (* The rts. Re-used when compiling actors *)
     trap_with : t -> string -> G.t;
       (* Trap with message; in the env for dependency injection *)
 
@@ -199,8 +200,9 @@ module E = struct
   }
 
   (* The initial global environment *)
-  let mk_global mode prelude trap_with dyn_mem : t = {
+  let mk_global mode rts prelude trap_with dyn_mem : t = {
     mode;
+    rts;
     prelude;
     trap_with;
     local_vars_env = NameEnv.empty;
@@ -385,6 +387,7 @@ module E = struct
       | None   -> Printf.eprintf "Could not find %s\n" name.it; raise Not_found
 
   let get_prelude (env : t) = env.prelude
+  let get_rts (env : t) = env.rts
 
   let get_trap_with (env : t) = env.trap_with
   let trap_with env msg = env.trap_with env msg
@@ -4921,7 +4924,7 @@ This function compiles the prelude, just to find out the bound names.
 *)
 and find_prelude_names env =
   (* Create a throw-away environment *)
-  let env0 = E.mk_global (E.mode env) (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
+  let env0 = E.mk_global (E.mode env) None (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
   let env1 = E.mk_fun_env env0 0l 0 in
   let (env2, _) = compile_prelude env1 in
   E.in_scope_set env2
@@ -4983,6 +4986,7 @@ and actor_lit outer_env this ds fs at =
   let wasm_binary =
     let env = E.mk_global
       (E.mode outer_env)
+      (E.get_rts outer_env)
       (E.get_prelude outer_env)
       (E.get_trap_with outer_env)
       ClosureTable.table_end in
@@ -5142,35 +5146,12 @@ and conclude_module env module_name start_fi_o =
              ];
     } in
 
-  if !(Flags.link)
-  then
-    (* Load standard library *)
-    let load_file f =
-      let ic = open_in f in
-      let n = in_channel_length ic in
-      let s = Bytes.create n in
-      really_input ic s 0 n;
-      close_in ic;
-      Bytes.to_string s in
+  match E.get_rts env with
+  | None -> emodule
+  | Some rts -> LinkModule.link emodule "rts" rts
 
-    let stdlib =
-      (*
-      The RTS can come via enviornment (in particular when built via nix),
-      or relative to the directory of the invoked asc (when developing)
-      *)
-      let wasm_filename =
-        match Sys.getenv_opt "ASC_RTS" with
-        | Some filename -> filename
-        | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/as-rts.wasm") in
-      let wasm = load_file wasm_filename in
-      CustomModuleDecode.decode "rts.wasm" wasm in
-
-    LinkModule.link emodule "rts" stdlib
-  else
-    emodule
-
-let compile mode module_name (prelude : Ir.prog) (progs : Ir.prog list) : CustomModule.extended_module =
-  let env = E.mk_global mode prelude Dfinity.trap_with ClosureTable.table_end in
+let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : CustomModule.extended_module =
+  let env = E.mk_global mode rts prelude Dfinity.trap_with ClosureTable.table_end in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   RTS.system_imports env;
