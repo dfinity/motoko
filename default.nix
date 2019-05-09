@@ -137,7 +137,7 @@ rec {
 
     installPhase = ''
       mkdir -p $out/rts
-      cp rts.wasm $out/rts
+      cp as-rts.wasm $out/rts
     '';
   };
 

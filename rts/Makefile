@@ -38,7 +38,7 @@ HEADER_STUBS = $(wildcard includes/*.h)
 _build/tommath_%.o: $(TOMMATHSRC)/bn_%.c $(HEADER_STUBS) | _build
 	$(CLANG) $(CLANG_FLAGS) $(MP_FLAGS)$< --output $@
 
-all: rts.wasm
+all: as-rts.wasm
 
 _build:
 	mkdir _build
@@ -46,13 +46,12 @@ _build:
 _build/rts.o: rts.c $(HEADER_STUBS) | _build
 	$(CLANG) $(CLANG_FLAGS) $(MP_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
 
-rts.wasm: _build/rts.o $(TOMMATH_O)
+as-rts.wasm: _build/rts.o $(TOMMATH_O)
 	$(WASM_LD) --import-memory --shared --no-entry --gc-sections \
 		_build/rts.o $(TOMMATH_O) -o $@ \
 		--export=__wasm_call_ctors \
 		$(patsubst %,--export=%,$(TOMMATHFUNCS))
 
-
 clean:
-	rm -rf _build rts.wasm
+	rm -rf _build as-rts.wasm
 
