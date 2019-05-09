@@ -10,8 +10,8 @@ let
 
     unpackPhase = ''
       unpackFile ${fetch "cfe" "1ifvdcjs1dpwm61xk7wlqwmmq0afxj9g7lknpcxsb1w239aza36z"}
+      chmod -R u+w cfe-*
       mv cfe-* clang
-      chmod -R u+w clang
       sourceRoot=$PWD/clang
       unpackFile ${clang-tools-extra_src}
       chmod -R u+w $sourceRoot/tools
