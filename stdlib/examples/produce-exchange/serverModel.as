@@ -254,7 +254,7 @@ class Model() {
    ----------
    evaluate arrays of bulk requests.
    Notice that there are two levels of grouping:
-   - The request is an array of bulk request, and
+   - The request is an array of bulk requests, and
    - Each bulk request in this array consists of an array of similar requests (adds, updates, or removes).
    */
   evalBulkArray(reqs:[L.BulkReq]) : [L.BulkResp] {
@@ -266,8 +266,13 @@ class Model() {
 
 
   /**
-   Access control: Match a given public key to that of an identified role, whose public key on record.
+   Access control
    ===================================================================================================
+
+   `isValidPublicKey`
+   -------------------
+   Match a given public key to that of an identified role, whose public key on record.
+
    */
   func isValidPublicKey(id:RoleId, public_key:T.PublicKey) : Bool {
     switch id {

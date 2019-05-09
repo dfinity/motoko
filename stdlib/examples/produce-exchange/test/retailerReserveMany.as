@@ -123,6 +123,10 @@ actor class Test() = this {
 
       print "\nRetailer reservations\n====================================\n";
 
+      { print "\nProducer 0's inventory:\n--------------------------------\n";
+        let x = await s.producerAllInventoryInfo(pka, 0);
+        print (debug_show x) };
+
       print "\nRetailer reservations: begin...\n------------------------\n";
 
       let rrm =
@@ -167,8 +171,15 @@ actor class Test() = this {
          }
        });
 
+      { print "\nProducer 0's inventory:\n--------------------------------\n";
+        let x = await s.producerAllInventoryInfo(pka, 0);
+        print (debug_show x) };
+
       print "\nRetailer reservations: done.\n---------------------------------\n";
 
+      print "\nExchange interactions: Done.\n====================================\n";
+
+      await debugDumpAll();
     })
   };
 };

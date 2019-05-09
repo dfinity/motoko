@@ -19,6 +19,7 @@ TESTS=\
 	SetDb \
 	SetDbTest \
 	ProduceExchange \
+	producerRemInventory \
 	retailerReserveMany \
 	evalBulk \
 
@@ -162,6 +163,10 @@ $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 $(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
 	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/retailerReserveMany.as > $@
+
+$(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/producerRemInventory.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/producerRemInventory.as > $@
 
 $(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
