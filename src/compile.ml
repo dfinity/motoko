@@ -1860,16 +1860,16 @@ module BigNum64 : BigNumType = struct
     compile_lit ^^
     compile_eq env
 
-  (* examine the skewed pointer and determine if it fits into 31 bits *)
+  (* examine the skewed pointer and determine if number fits into 31 bits *)
   let _fits_in_vanilla env =
     let set_n, get_n = new_local64 env "n" in
     unbox(*FIXME*) env ^^ set_n ^^ get_n ^^ get_n ^^
     compile_const_64 1L ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^
-    compile_const_64 33L ^^
-    G.i (Compare (Wasm.Values.I64 I64Op.GeU))
+    compile_const_64 0xFFFFFFFF8000000L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
   (* dereference the skewed pointer and extract into 31 bits,
      with legal Vanilla word layout
@@ -1881,7 +1881,7 @@ module BigNum64 : BigNumType = struct
     compile_const_64 2L ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
 
-  (* build a skewed pointer numeric object from
+  (* build a skewed pointer of numeric object from
      a legal Vanilla word layout *)
   let _from_vanilla env =
     compile_const_64 1L ^^
