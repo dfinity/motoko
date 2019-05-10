@@ -1782,6 +1782,17 @@ sig
   val compile_eq : E.t -> G.t
   val compile_is_negative : E.t -> G.t
   val compile_relop : E.t -> string -> Wasm.Ast.I64Op.relop -> G.t
+
+  (* representation checks *)
+  (* given a numeric object on the stack as skewed pointer,
+     check whether it can be faithfully stored in 31 bits
+     of Vanilla stackrep
+     leaves boolean result on the stack
+   *)
+  val _fits_in_vanilla : E.t -> G.t
+
+  val _to_vanilla : E.t -> G.t
+  val _from_vanilla : E.t -> G.t
 end
 
 module BigNum64 : BigNumType = struct
@@ -1848,6 +1859,37 @@ module BigNum64 : BigNumType = struct
   let compile_lit_pat env compile_lit =
     compile_lit ^^
     compile_eq env
+
+  (* examine the skewed pointer and determine if it fits into 31 bits *)
+  let _fits_in_vanilla env =
+    let set_n, get_n = new_local64 env "n" in
+    unbox(*FIXME*) env ^^ set_n ^^ get_n ^^ get_n ^^
+    compile_const_64 1L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
+    G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^
+    compile_const_64 33L ^^
+    G.i (Compare (Wasm.Values.I64 I64Op.GeU))
+
+  (* dereference the skewed pointer and extract into 31 bits,
+     with legal Vanilla word layout
+     precondition: fits_in_vanilla *)
+  let _to_vanilla env =
+    unbox(*FIXME*) env ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+    compile_const_64 0x7FFFFFFFL ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
+    compile_const_64 2L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
+
+  (* build a skewed pointer numeric object from
+     a legal Vanilla word layout *)
+  let _from_vanilla env =
+    compile_const_64 1L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Rotr)) ^^
+    compile_const_64 1L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
+    box(*FIXME*) env
 end
 
 module BigNum = BigNum64
