@@ -443,7 +443,7 @@ let compile_op_const op i =
     compile_unboxed_const i ^^
     G.i (Binary (Wasm.Values.I32 op))
 let compile_add_const = compile_op_const I32Op.Add
-let _compile_sub_const = compile_op_const I32Op.Sub
+let compile_sub_const = compile_op_const I32Op.Sub
 let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
 let compile_shrU_const = function
@@ -980,6 +980,7 @@ module Tagged = struct
     | Text
     | Indirection
     | SmallWord (* Contains a 32 bit unsigned number *)
+    | BigInt
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -995,6 +996,7 @@ module Tagged = struct
     | Text -> 10l
     | Indirection -> 11l
     | SmallWord -> 12l
+    | BigInt -> 13l
 
   (* The tag *)
   let header_size = 1l
@@ -2586,6 +2588,8 @@ module HeapTraversal = struct
           compile_unboxed_const 3l
         ; Tagged.SmallWord,
           compile_unboxed_const 2l
+        ; Tagged.BigInt,
+          compile_unboxed_const 5l (* HeapTag + sizeof(mp_int) *)
         ; Tagged.Reference,
           compile_unboxed_const 2l
         ; Tagged.Some,
@@ -2636,31 +2640,39 @@ module HeapTraversal = struct
         )
 
   (* Calls mk_code for each pointer in the object pointed to by get_x,
-     passing code get the address of the pointer. *)
-  let for_each_pointer env get_x mk_code =
+     passing code get the address of the pointer,
+     and code to get the offset of the pointer (for the BigInt payload field). *)
+  let for_each_pointer env get_x mk_code mk_code_offset =
     let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
+    let code = mk_code get_ptr_loc in
+    let code_offset = mk_code_offset get_ptr_loc in
     get_x ^^
     Tagged.branch_default env (ValBlockType None) G.nop
       [ Tagged.MutBox,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size Var.mutbox_field) ^^
         set_ptr_loc ^^
-        mk_code get_ptr_loc
+        code
+      ; Tagged.BigInt,
+        get_x ^^
+        compile_add_const (Int32.mul Heap.word_size 4l) ^^
+        set_ptr_loc ^^
+        code_offset Text.unskewed_payload_offset
       ; Tagged.Some,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
         set_ptr_loc ^^
-        mk_code get_ptr_loc
+        code
       ; Tagged.Variant,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size Variant.payload_field) ^^
         set_ptr_loc ^^
-        mk_code get_ptr_loc
+        code
       ; Tagged.ObjInd,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size 1l) ^^
         set_ptr_loc ^^
-        mk_code get_ptr_loc
+        code
       ; Tagged.Array,
         get_x ^^
         Heap.load_field Arr.len_field ^^
@@ -2670,7 +2682,7 @@ module HeapTraversal = struct
           get_i ^^
           Arr.idx env ^^
           set_ptr_loc ^^
-          mk_code get_ptr_loc
+          code
         )
       ; Tagged.Object,
         get_x ^^
@@ -2685,7 +2697,7 @@ module HeapTraversal = struct
           get_x ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           set_ptr_loc ^^
-          mk_code get_ptr_loc
+          code
         )
       ; Tagged.Closure,
         get_x ^^
@@ -2698,7 +2710,7 @@ module HeapTraversal = struct
           get_x ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           set_ptr_loc ^^
-          mk_code get_ptr_loc
+          code
         )
       ]
 
@@ -3338,15 +3350,13 @@ module GC = struct
   (* Returns the new end of to_space *)
   (* Invariant: Must not be called on the same pointer twice. *)
   (* All pointers, including ptr_loc and space end markers, are skewed *)
-  let evacuate env = Func.share_code4 env "evacuate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
+
+  let evacuate_common env
+        get_obj update_ptr
+        get_begin_from_space get_begin_to_space get_end_to_space
+        =
+
     let (set_len, get_len) = new_local env "len" in
-    let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
-
-    let get_obj = get_ptr_loc ^^ load_ptr in
-
-    get_obj ^^
-    (* If this is an unboxed scalar, ignore it *)
-    BitTagged.if_unboxed env (ValBlockType None) (get_end_to_space ^^ G.i Return) G.nop ^^
 
     (* If this is static, ignore it *)
     get_obj ^^
@@ -3358,13 +3368,8 @@ module GC = struct
     get_obj ^^
     Tagged.branch_default env (ValBlockType None) G.nop [
       Tagged.Indirection,
-      (* Update pointer *)
-      get_ptr_loc ^^
-      get_ptr_loc ^^ load_ptr ^^ Heap.load_field 1l ^^
-      store_ptr ^^
-
-      get_end_to_space ^^
-      G.i Return
+      update_ptr (get_obj ^^ Heap.load_field 1l) ^^
+      get_end_to_space ^^ G.i Return
     ] ^^
 
     (* Get object size *)
@@ -3380,6 +3385,8 @@ module GC = struct
     get_obj ^^ HeapTraversal.object_size env ^^ set_len ^^
 
     get_end_to_space ^^ get_obj ^^ get_len ^^ Heap.memcpy_words_skewed env ^^
+
+    let (set_new_ptr, get_new_ptr) = new_local env "new_ptr" in
 
     (* Calculate new pointer *)
     get_end_to_space ^^
@@ -3397,14 +3404,43 @@ module GC = struct
     Heap.store_field 1l ^^
 
     (* Update pointer *)
-    get_ptr_loc ^^
-    get_new_ptr ^^
-    store_ptr ^^
+    update_ptr get_new_ptr ^^
 
     (* Calculate new end of to space *)
     get_end_to_space ^^
     get_len ^^ compile_mul_const Heap.word_size ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add))
+
+  (* Used for normal skewed pointers *)
+  let evacuate env = Func.share_code4 env "evacuate" (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
+
+    let get_obj = get_ptr_loc ^^ load_ptr in
+
+    (* If this is an unboxed scalar, ignore it *)
+    get_obj ^^
+    BitTagged.if_unboxed env (ValBlockType None) (get_end_to_space ^^ G.i Return) G.nop ^^
+
+    let update_ptr new_val_code =
+      get_ptr_loc ^^ new_val_code ^^ store_ptr in
+
+    evacuate_common env
+        get_obj update_ptr
+        get_begin_from_space get_begin_to_space get_end_to_space
+  )
+
+  (* A variant for pointers that point into the payload (used for the bignum objects).
+     These are never scalars. *)
+  let evacuate_offset env offset =
+    let name = Printf.sprintf "evacuate_offset_%d" (Int32.to_int offset) in
+    Func.share_code4 env name (("begin_from_space", I32Type), ("begin_to_space", I32Type), ("end_to_space", I32Type), ("ptr_loc", I32Type)) [I32Type] (fun env get_begin_from_space get_begin_to_space get_end_to_space get_ptr_loc ->
+    let get_obj = get_ptr_loc ^^ load_ptr ^^ compile_sub_const offset in
+
+    let update_ptr new_val_code =
+      get_ptr_loc ^^ new_val_code ^^ compile_add_const offset ^^ store_ptr in
+
+    evacuate_common env
+        get_obj update_ptr
+        get_begin_from_space get_begin_to_space get_end_to_space
   )
 
   let register env (end_of_static_space : int32) = Func.define_built_in env "collect" [] [] (fun env ->
@@ -3429,6 +3465,14 @@ module GC = struct
         evacuate env ^^
         set_end_to_space in
 
+    let evac_offset get_ptr_loc offset =
+        get_begin_from_space ^^
+        get_begin_to_space ^^
+        get_end_to_space ^^
+        get_ptr_loc ^^
+        evacuate_offset env offset ^^
+        set_end_to_space in
+
     (* Go through the roots, and evacuate them *)
     ClosureTable.get_counter ^^
     from_0_to_n env (fun get_i -> evac (
@@ -3441,7 +3485,7 @@ module GC = struct
     HeapTraversal.walk_heap_from_to env
       (compile_unboxed_const Int32.(add ClosureTable.table_end ptr_skew))
       (compile_unboxed_const Int32.(add end_of_static_space ptr_skew))
-      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac) ^^
+      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
 
     (* Go through the to-space, and evacuate that.
        Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
@@ -3449,7 +3493,7 @@ module GC = struct
     HeapTraversal.walk_heap_from_to env
       get_begin_to_space
       get_end_to_space
-      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac) ^^
+      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
 
     (* Copy the to-space to the beginning of memory. *)
     get_begin_from_space ^^ compile_add_const ptr_unskew ^^
