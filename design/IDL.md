@@ -64,8 +64,8 @@ This is a summary of the grammar proposed:
 
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
-<functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcannot>*
-<funcannot> ::= pure
+<functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
+<funcann>   ::= pure
 <paramtype> ::= <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 
@@ -175,8 +175,8 @@ service {
 A function type describes the list of parameters and results and their respective types. It can optionally be annotated to be *pure*, which indicates that it does not modify any state and can potentially be executed more efficiently (e.g., on cached state). (Other annotations may be added in the future.)
 
 ```
-<functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcannot>*
-<funcannot> ::= pure
+<functype> ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
+<funcann>  ::= pure
 ```
 
 The parameter and result lists are essentially treated as records, see below. That is, they are named, not positional.
@@ -714,8 +714,8 @@ T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) T(<datatype>)
 
 T : <reftype> -> i8*
-T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcannot>*) =
-  i8(20) T*(<fieldtype2>*) T*(<fieldtype2>*) T*(<funcannot>*)
+T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
+  i8(20) T*(<fieldtype2>*) T*(<fieldtype2>*) T*(<funcann>*)
 T(service {<methtype>*}) =
   i8(21) T*(<methtype>*)
 
@@ -723,7 +723,7 @@ T : <methtype> -> i8*
 T(<name>:<datatype>) =
   leb128(|utf8(<name>)|) i8*(utf8(<name>)) T(<datatype>)
 
-T : <funcannot> -> i8*
+T : <funcann> -> i8*
 T(pure)   = i8(1)
 T(oneway) = i8(2)
 
@@ -772,12 +772,8 @@ M : <val> -> <constype> -> i8*
 M(null   : opt <datatype>) = i8(0)
 M(?v     : opt <datatype>) = i8(1) M(v : <datatype>)
 M(v*     : vec <datatype>) = leb128(N) M(v : <datatype>)*
-M((k,v)* : record {<fieldtype>*}) = M((k,v) : <fieldtype>*)*
-M((k,v)  : variant {<fieldtype>*}) = i32(k) M((k,v) : <fieldtype>*)
-
-M : (<nat>, <val>) -> <datatype> -> i8*
-M((k,v) : <fieldtype>*) = M(v : <datatype>)  iff k : <datatype> in <fieldtype>*
-M((k,v) : <fieldtype>*) = .                  otherwise
+M((k,v)* : record {<fieldtype>*}) = M(v : <fieldtype>)*          iff <fieldtype>* = (k:<datatype>)*
+M((k,v)  : variant {<fieldtype>*}) = leb128(i) M(v : <datatype>) iff <fieldtype>*[i] = (k:<datatype>)
 
 M : <val> -> <reftype> -> i8*
 M(r : service <actortype>) = .
@@ -798,12 +794,8 @@ R : <val> -> <constype> -> <ref>*
 R(null   : opt <datatype>) = .
 R(?v     : opt <datatype>) = R(v : <datatype>)
 R(v*     : vec <datatype>) = R(v : <datatype>)*
-R((k,v)* : record {<fieldtype>*}) = R((k,v) : <fieldtype>*)*
-R((k,v)  : variant {<fieldtype>*}) = R((k,v) : <fieldtype>*)
-
-R : (<nat>, <val>) -> <datatype> -> <ref>*
-R((k,v) : <fieldtype>*) = R(v : <datatype>)  iff k : <datatype> in <fieldtype>*
-R((k,v) : <fieldtype>*) = .                  otherwise
+R((k,v)* : record {<fieldtype>*}) = R(v : <datatype>)*  iff <fieldtype>* = (k:<datatype>)*
+R((k,v)  : variant {<fieldtype>*}) = R(v : <datatype>)  iff <fieldtype>*[i] = (k:<datatype>)
 
 R : <val> -> <reftype> -> <ref>*
 R(r : service <actortype>) = r
@@ -821,7 +813,7 @@ Deserialisation is the parallel application of the inverse functions of `T`, `M`
 
 * A serialised type may be headed by an opcode other than the ones defined above (i.e., 22-254). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
 
-* A value corresponding to a future type is called a *future value*. It is likewise represented by an LEB128-encoded count, followed by a number of bytes corresponding to this count.
+* A value corresponding to a future type is called a *future value*. It is  represented by two LEB128-encoded counts, *m* and *m*, followed by a *m* bytes in the memory representation M and accompanied by *n* corresponding references in R.
 
 These measures allow the serialisation format to be extended with new types in the future, as long as their representation and the representation of the corresponding values include a length prefix matching the above scheme, and thereby allowing an older deserialiser not understanding them to skip over them. The subtyping rules ensure that upgradability is maintained in this situation, i.e., an old deserialiser has no need to understand the encoded data.
 
