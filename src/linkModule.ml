@@ -27,43 +27,82 @@ let phrase f x = { x with it = f x.it }
 let map_module f (em : extended_module) = { em with module_ = f em.module_ }
 let map_name_section f (em : extended_module) = { em with name = f em.name }
 
-let find_fun_imports libname m : imports =
+(* Generic functions about import and export lists *)
+
+let find_imports is_thing libname m : imports =
   let name = Wasm.Utf8.decode libname in
   let rec go i acc = function
     | [] -> List.rev acc
-    | imp::is -> match imp.it.idesc.it with
-      | FuncImport _ty when imp.it.module_name = name ->
-        go (i + 1) ((Int32.of_int i, imp.it.item_name) :: acc) is
-      | FuncImport _ ->
-        go (i + 1) acc is
-      | _ ->
-        go i acc is
+    | imp::is ->
+      if is_thing imp.it.idesc.it
+      then
+        if imp.it.module_name = name
+        then go (i + 1) ((Int32.of_int i, imp.it.item_name) :: acc) is
+        else go (i + 1) acc is
+      else go i acc is
   in go 0 [] m.imports
 
-let find_global_imports libname m : imports =
-  let name = Wasm.Utf8.decode libname in
-  let rec go i acc = function
-    | [] -> List.rev acc
-    | imp::is -> match imp.it.idesc.it with
-      | GlobalImport _ty when imp.it.module_name = name ->
-        go (i + 1) ((Int32.of_int i, imp.it.item_name) :: acc) is
-      | GlobalImport _ ->
-        go (i + 1) acc is
-      | _ ->
-        go i acc is
-  in go 0 [] m.imports
-
-let remove_fun_imports resolved : module_' -> module_' = fun m ->
+let remove_imports is_thing resolved : module_' -> module_' = fun m ->
   let rec go i = function
     | [] -> []
-    | (imp::is) -> match imp.it.idesc.it with
-      | FuncImport _ when List.mem_assoc i resolved
-        -> go (Int32.add i 1l) is
-      | FuncImport _
-        -> imp :: go (Int32.add i 1l) is
-      | _
-        -> imp :: go i is in
+    | (imp::is) ->
+      if is_thing imp.it.idesc.it
+      then
+        if List.mem_assoc i resolved
+        then go (Int32.add i 1l) is
+        else imp :: go (Int32.add i 1l) is
+      else imp :: go i is in
   { m with imports = go 0l m.imports }
+
+let count_imports is_thing m =
+  Lib.List32.length (List.filter (fun i -> is_thing i.it.idesc.it) m.imports)
+
+let remove_export is_thing name : module_' -> module_' = fun m ->
+  let to_remove e =
+    is_thing e.it.edesc.it <> None && e.it.name = Wasm.Utf8.decode name
+  in
+  { m with exports = List.filter to_remove m.exports }
+
+module NameMap = Map.Make(struct type t = Wasm.Ast.name let compare = compare end)
+
+type exports = int32 NameMap.t
+
+let find_exports is_thing m : exports =
+  List.fold_left (fun map exp ->
+    match is_thing exp.it.edesc.it with
+    | Some v -> NameMap.add exp.it.name v.it map
+    | _ -> map
+  ) NameMap.empty m.exports
+
+
+(* Predicate to specialize these generic functions to the various entities *)
+
+let is_fun_import = function
+  | FuncImport _ -> true
+  | _ -> false
+
+let is_global_import = function
+  | GlobalImport _ -> true
+  | _ -> false
+
+let is_table_import = function
+  | TableImport _ -> true
+  | _ -> false
+
+let is_memory_import = function
+  | MemoryImport _ -> true
+  | _ -> false
+
+let is_fun_export = function
+  | FuncExport v -> Some v
+  | _ -> None
+
+let is_global_export = function
+  | GlobalExport v -> Some v
+  | _ -> None
+
+
+(* Utilities related to functions *)
 
 let remove_fun_imports_name_section resolved : name_section -> name_section = fun ns ->
   let keep (fi, x) = not (List.mem_assoc fi resolved) in
@@ -72,39 +111,8 @@ let remove_fun_imports_name_section resolved : name_section -> name_section = fu
     locals_names = List.filter keep ns.locals_names;
   }
 
-let remove_global_imports resolved : module_' -> module_' = fun m ->
-  let rec go i = function
-    | [] -> []
-    | (imp::is) -> match imp.it.idesc.it with
-      | GlobalImport _ when List.mem_assoc i resolved
-        -> go (Int32.add i 1l) is
-      | GlobalImport _
-        -> imp :: go (Int32.add i 1l) is
-      | _
-        -> imp :: go i is in
-  { m with imports = go 0l m.imports }
-
-let remove_table_import : module_' -> module_' = fun m ->
-  let go imp = match imp.it.idesc.it with
-      | TableImport _ -> false
-      | _ -> true in
-  { m with imports = List.filter go m.imports }
-
-let count_fun_imports m =
-  let is_fun_import imp = match imp.it.idesc.it with
-        | FuncImport _ -> true
-        | _ -> false in
-  Lib.List32.length (List.filter is_fun_import m.imports)
-
-let count_global_imports m =
-  let is_global_import imp = match imp.it.idesc.it with
-        | GlobalImport _ -> true
-        | _ -> false in
-  Lib.List32.length (List.filter is_global_import m.imports)
-
-
 let prepend_to_start fi (em : extended_module)  =
-  let imports_n = count_fun_imports em.module_ in
+  let imports_n = count_imports is_fun_import em.module_ in
   let ftype = Lib.List32.length em.module_.types in
   let wrap_fi = Int32.add imports_n (Lib.List32.length em.module_.funcs) in
 
@@ -131,22 +139,10 @@ let prepend_to_start fi (em : extended_module)  =
       }
   }
 
-let remove_memory_import : module_' -> module_' = fun m ->
-  let go imp = match imp.it.idesc.it with
-      | MemoryImport _ -> false
-      | _ -> true in
-  { m with imports = List.filter go m.imports }
-
-let remove_function_export name : module_' -> module_' = fun m ->
-  let is_func_export exp = match exp.it.edesc.it with
-      | FuncExport _var when exp.it.name = Wasm.Utf8.decode name ->
-          false
-      | _ -> true in
-  { m with exports = List.filter is_func_export m.exports }
-
 module VarMap = Map.Make(Int32)
+
 let remove_non_dfinity_exports (em : extended_module) : extended_module =
-  (* We assume that every expoted function that does not have an entry in the
+  (* We assume that every exported function that does not have an entry in the
    custom types section was only exported for linking, and should not be
    exported in the final module *)
   let dfinity_exports = List.fold_left
@@ -158,25 +154,8 @@ let remove_non_dfinity_exports (em : extended_module) : extended_module =
       | _ -> true in
   map_module (fun m -> { m with exports = List.filter is_dfinity_export m.exports }) em
 
-module NameMap = Map.Make(struct type t = Wasm.Ast.name let compare = compare end)
-type exports = int32 NameMap.t
-let find_fun_exports m : exports =
-  List.fold_left
-    (fun map exp ->
-      match exp.it.edesc.it with
-      | FuncExport fi -> NameMap.add exp.it.name fi.it map
-      | _ -> map
-    )
-    NameMap.empty m.exports
-let find_global_exports m : exports =
-  List.fold_left
-    (fun map exp ->
-      match exp.it.edesc.it with
-      | GlobalExport fi -> NameMap.add exp.it.name fi.it map
-      | _ -> map
-    )
-    NameMap.empty m.exports
 
+(* Generic linking logic *)
 
 exception LinkError of string
 
@@ -220,60 +199,8 @@ let calculate_renaming n_imports1 n_things1 n_imports2 n_things2 resolved12 reso
   in
   (fun1, fun2)
 
-let read_global gi (m : module_') : int32 =
-  let n_impo = count_global_imports m in
-  let g = List.nth m.globals (Int32.(to_int (sub gi n_impo))) in
-  let open Wasm.Types in
-  assert (g.it.gtype = GlobalType (I32Type, Immutable));
-  match g.it.value.it with
-  | [{ it = Const {it = Wasm.Values.I32 i;_}; _}] -> i
-  | _ -> assert false
 
-let read_table_size (m : module_') : int32 =
-  (* Assumes there is one table *)
-  let open Wasm.Types in
-  match m.tables with
-  | [t] ->
-    let TableType ({min;max}, _) = t.it.ttype in
-    if Some min <> max
-    then raise (LinkError "Expect fixed sized table in first module")
-    else min
-  | _ -> raise (LinkError "Expect one table in first module")
-
-let set_table_size new_size : module_' -> module_' = fun m ->
-  let open Wasm.Types in
-  match m.tables with
-  | [t] ->
-    { m with
-      tables = [ phrase (fun t ->
-        let TableType (_, ty) = t.ttype in
-        { ttype = TableType ({min = new_size; max = Some new_size}, ty) }
-      ) t ]
-    }
-  | _ -> raise (LinkError "Expect one table in first module")
-
-let join_modules (em1 : extended_module) (m2 : module_') (ns2 : name_section) : extended_module =
-  assert (m2.start = None);
-  let m1 = em1.module_ in
-  { em1 with
-    module_ = {
-      types = m1.types @ m2.types;
-      globals = m1.globals @ m2.globals;
-      tables = m1.tables @ m2.tables;
-      memories = m1.memories @ m2.memories;
-      funcs = m1.funcs @ m2.funcs;
-      start = m1.start;
-      elems = m1.elems @ m2.elems;
-      data = m1.data @ m2.data;
-      imports = m1.imports @ m2.imports;
-      exports = m1.exports @ m2.exports;
-    };
-    name = {
-      em1.name with
-      function_names = em1.name.function_names @ ns2.function_names;
-      locals_names = em1.name.locals_names @ ns2.locals_names;
-    }
-  }
+(* AST traversals *)
 
 let rename_funcs rn : module_' -> module_' = fun m ->
   let var' = rn in
@@ -453,6 +380,40 @@ let rename_types rn m =
     imports = imports m.imports;
   }
 
+(* Setting and getting top-level module data *)
+
+let read_global gi (m : module_') : int32 =
+  let n_impo = count_imports is_global_import m in
+  let g = List.nth m.globals (Int32.(to_int (sub gi n_impo))) in
+  let open Wasm.Types in
+  assert (g.it.gtype = GlobalType (I32Type, Immutable));
+  match g.it.value.it with
+  | [{ it = Const {it = Wasm.Values.I32 i;_}; _}] -> i
+  | _ -> assert false
+
+let read_table_size (m : module_') : int32 =
+  (* Assumes there is one table *)
+  let open Wasm.Types in
+  match m.tables with
+  | [t] ->
+    let TableType ({min;max}, _) = t.it.ttype in
+    if Some min <> max
+    then raise (LinkError "Expect fixed sized table in first module")
+    else min
+  | _ -> raise (LinkError "Expect one table in first module")
+
+let set_table_size new_size : module_' -> module_' = fun m ->
+  let open Wasm.Types in
+  match m.tables with
+  | [t] ->
+    { m with
+      tables = [ phrase (fun t ->
+        let TableType (_, ty) = t.ttype in
+        { ttype = TableType ({min = new_size; max = Some new_size}, ty) }
+      ) t ]
+    }
+  | _ -> raise (LinkError "Expect one table in first module")
+
 let fill_memory_base_import new_base : module_' -> module_' = fun m ->
   (* We need to find the right import,
      replace all uses of get_global of that import with the constant,
@@ -473,7 +434,7 @@ let fill_memory_base_import new_base : module_' -> module_' = fun m ->
     in go 0 m.imports in
 
     m |> fill_global base_global new_base
-      |> remove_global_imports [(base_global, base_global)]
+      |> remove_imports is_global_import [(base_global, base_global)]
       |> rename_globals Int32.(fun i ->
           if i < base_global then i
           else if i = base_global then assert false
@@ -500,13 +461,40 @@ let fill_table_base_import new_base : module_' -> module_' = fun m ->
     in go 0 m.imports in
 
     m |> fill_global base_global new_base
-      |> remove_global_imports [(base_global, base_global)]
+      |> remove_imports is_global_import [(base_global, base_global)]
       |> rename_globals Int32.(fun i ->
           if i < base_global then i
           else if i = base_global then assert false
           else sub i 1l
         )
 
+
+(* Concatenation of modules *)
+
+let join_modules (em1 : extended_module) (m2 : module_') (ns2 : name_section) : extended_module =
+  assert (m2.start = None);
+  let m1 = em1.module_ in
+  { em1 with
+    module_ = {
+      types = m1.types @ m2.types;
+      globals = m1.globals @ m2.globals;
+      tables = m1.tables @ m2.tables;
+      memories = m1.memories @ m2.memories;
+      funcs = m1.funcs @ m2.funcs;
+      start = m1.start;
+      elems = m1.elems @ m2.elems;
+      data = m1.data @ m2.data;
+      imports = m1.imports @ m2.imports;
+      exports = m1.exports @ m2.exports;
+    };
+    name = {
+      em1.name with
+      function_names = em1.name.function_names @ ns2.function_names;
+      locals_names = em1.name.locals_names @ ns2.locals_names;
+    }
+  }
+
+(* The main linking function *)
 
 let align p n =
   let open Int32 in
@@ -517,7 +505,7 @@ let align p n =
 start of free memory *)
 let link (em1 : extended_module) libname (em2 : extended_module) =
 
-  let global_exports1 = find_global_exports em1.module_ in
+  let global_exports1 = find_exports is_global_export em1.module_ in
 
   let heap_global =
     match NameMap.find_opt (Wasm.Utf8.decode "__heap_base") global_exports1 with
@@ -543,34 +531,34 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> fill_table_base_import lib_elem_start in
 
   (* Link functions *)
-  let fun_required1 = find_fun_imports libname em1.module_ in
-  let fun_required2 = find_fun_imports "env" dm2 in
-  let fun_exports1 = find_fun_exports em1.module_ in
-  let fun_exports2 = find_fun_exports dm2 in
+  let fun_required1 = find_imports is_fun_import libname em1.module_ in
+  let fun_required2 = find_imports is_fun_import "env" dm2 in
+  let fun_exports1 = find_exports is_fun_export em1.module_ in
+  let fun_exports2 = find_exports is_fun_export dm2 in
   (* Resolve imports, to produce a renumbering function: *)
   let fun_resolved12 = resolve fun_required1 fun_exports2 in
   let fun_resolved21 = resolve fun_required2 fun_exports1  in
   let (funs1, funs2) =
     calculate_renaming
-      (count_fun_imports em1.module_)
+      (count_imports is_fun_import em1.module_)
       (Lib.List32.length em1.module_.funcs)
-      (count_fun_imports dm2)
+      (count_imports is_fun_import dm2)
       (Lib.List32.length dm2.funcs)
       fun_resolved12
       fun_resolved21 in
 
   (* Link globals *)
-  let global_required1 = find_global_imports libname em1.module_ in
-  let global_required2 = find_global_imports "env" dm2 in
-  let global_exports2 = find_global_exports dm2 in
+  let global_required1 = find_imports is_global_import libname em1.module_ in
+  let global_required2 = find_imports is_global_import  "env" dm2 in
+  let global_exports2 = find_exports is_global_export dm2 in
   (* Resolve imports, to produce a renumbering globalction: *)
   let global_resolved12 = resolve global_required1 global_exports2 in
   let global_resolved21 = resolve global_required2 global_exports1  in
   let (globals1, globals2) =
     calculate_renaming
-      (count_global_imports em1.module_)
+      (count_imports is_global_import em1.module_)
       (Lib.List32.length em1.module_.globals)
-      (count_global_imports dm2)
+      (count_imports is_global_import dm2)
       (Lib.List32.length dm2.globals)
       global_resolved12
       global_resolved21 in
@@ -592,23 +580,23 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
 
   join_modules
     ( em1
-    |> map_module (remove_fun_imports fun_resolved12)
+    |> map_module (remove_imports is_fun_import fun_resolved12)
     |> map_name_section (remove_fun_imports_name_section fun_resolved12)
-    |> map_module (remove_global_imports global_resolved12)
+    |> map_module (remove_imports is_global_import global_resolved12)
     |> rename_funcs_extended funs1
     |> rename_globals_extended globals1
     |> map_module (set_global heap_global new_heap_start)
     |> map_module (set_table_size new_elem_size)
     )
     ( dm2
-    |> remove_fun_imports fun_resolved21
-    |> remove_global_imports global_resolved21
-    |> remove_memory_import
-    |> remove_table_import
+    |> remove_imports is_fun_import fun_resolved21
+    |> remove_imports is_global_import global_resolved21
+    |> remove_imports is_memory_import [0l, 0l]
+    |> remove_imports is_table_import [0l, 0l]
     |> rename_funcs funs2
     |> rename_globals globals2
     |> rename_types tys2
-    |> remove_function_export "__wasm_call_ctors"
+    |> remove_export is_fun_export "__wasm_call_ctors"
     )
     ( em2.name
     |> remove_fun_imports_name_section fun_resolved21
