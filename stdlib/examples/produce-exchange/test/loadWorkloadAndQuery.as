@@ -18,7 +18,8 @@ actor class Test() = this {
   go() {
     ignore(async
     {
-      // Vary the choice of region count and scaling factor here:
+      // Vary the choice of region count and scaling factor here;
+      // Each choice leads to a different count of (InventoryCount, RouteCount), and load time:
       let params = {
         scaledParams(2, 2);     // (40,    40   ), loads in 0.7s in my AS intepreter
         //scaledParams(5, 5);   // (625  , 625  ), loads in 8.8s in my AS interpreter
