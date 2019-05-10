@@ -609,12 +609,22 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_div" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_neg" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lshd" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type]
 
+  let system_exports env =
     E.add_export env (nr {
       name = Wasm.Utf8.decode "alloc_bytes";
       edesc = nr (FuncExport (nr (E.built_in env "alloc_bytes")))
     });
+    let bigint_trap_fi = E.add_fun env "bigint_trap" (
+      Func.of_body env [] [] (fun env ->
+        E.trap_with env "bigint function error"
+      )
+    ) in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "bigint_trap";
+      edesc = nr (FuncExport (nr bigint_trap_fi))
+    })
 
 end (* RTS *)
 
@@ -4872,6 +4882,7 @@ and actor_lit outer_env this ds fs at =
 
     if E.mode env = DfinityMode then Dfinity.system_imports env;
     RTS.system_imports env;
+    RTS.system_exports env;
 
     let start_fun = Func.of_body env [] [] (fun env3 -> G.with_region at @@
       (* Compile the prelude *)
@@ -5034,6 +5045,7 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Cu
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   RTS.system_imports env;
+  RTS.system_exports env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in
