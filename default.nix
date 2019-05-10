@@ -200,6 +200,7 @@ rec {
       ] ++
       (if test-dvm then [ real-dvm ] else []) ++
       llvmBuildInputs;
+
     buildPhase = ''
         patchShebangs .
         ${llvmEnv}
@@ -424,11 +425,13 @@ rec {
     # https://github.com/NixOS/nix/issues/955
     #
 
-    buildInputs =
-      native.buildInputs ++
-      builtins.filter (i: i != native) native_test.buildInputs ++
+    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != native) (
+      asc-bin.buildInputs ++
+      rts.buildInputs ++
+      native_test.buildInputs ++
       users-guide.buildInputs ++
-      [ nixpkgs.ncurses ];
+      [ nixpkgs.ncurses ]
+    ));
 
     shellHook = llvmEnv;
     TOMMATHSRC = libtommath;
