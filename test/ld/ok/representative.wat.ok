@@ -4,15 +4,22 @@
   (type (;2;) (func))
   (type (;3;) (func (param i32) (result i32)))
   (type (;4;) (func))
-  (import "rts" "imported" (func (;0;) (type 1)))
+  (import "rts" "not_yet_imported1" (func $not_yet_imported1 (type 0)))
+  (import "rts" "not_yet_imported2" (func $not_yet_imported2 (type 0)))
+  (import "env" "unresolved_import" (func $unresolved_import (type 2)))
   (func $call_imported (type 0)
     i32.const 42
-    call 0
-    drop)
+    call $square
+    drop
+    call $not_yet_imported1
+    call $not_yet_imported2)
+  (func $resolved_export (type 0))
   (func $__wasm_call_ctors (type 2)
     call $__wasm_apply_relocs)
   (func $__wasm_apply_relocs (type 2))
   (func $square (type 3) (param i32) (result i32)
+    call $resolved_export
+    call $unresolved_import
     local.get 0
     local.get 0
     i32.mul)
@@ -22,4 +29,4 @@
   (memory (;0;) 2)
   (global (;0;) i32 (i32.const 65536))
   (export "__heap_base" (global 0))
-  (start 5))
+  (start 8))
