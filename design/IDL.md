@@ -663,15 +663,16 @@ actor server = {
 
 ## Binary Format
 
-### Serialisation
-
 At runtime, every IDL value is serialised into a triple (T, M, R), where T ("type") and M ("memory") are sequences of bytes and R ("references") is a sequence of references. If R is empty, it can be omitted.
 
 By making the type of the data explicit, (1) the serialised data becomes self-describing, which is useful for tooling, (2) error discovery and error handling is improved, (3) the binary format is decoupled from versioning concerns, so that the latter can be designed more flexible.
 
 By using references, (1) the wire representation of reference values (which may be complex and involve system meta data such as types) need not be exposed to client code, and (2) the system knows where the references are in the serialised data, such that it can rewrite/map/filter/adjust them as it sees fit.
 
-Accordingly, serialisation is defined by two mapping functions, `M` and `T`, producing the respective parts. They are defined independently, but both definitions are indexed by IDL types.
+Accordingly, serialisation is defined by three mapping functions, `T`, `M` and `R`, producing the respective components.
+
+
+### Serialisation
 
 #### Notation
 
@@ -691,17 +692,15 @@ The following notation is used:
 `T` maps an IDL type to a byte sequence representing that type.
 We assume that the fields in a record or function type are sorted by increasing id and the methods in an actor are sorted by name.
 
-TODO: deal with type recursion (and sharing!) in the type representation, either through a type definition prefix or by allowing de-Bruijn style back references
-
 ```
 T : <primtype> -> i8*
 T(null)     = i8(0)
 T(bool)     = i8(1)
 T(nat)      = i8(2)
 T(int)      = i8(3)
-T(nat<N>)   = i8(4 + log2 N - 3)
-T(int<N>)   = i8(8 + log2 N - 3)
-T(float<N>) = i8(12 + log2 N - 5)
+T(nat<N>)   = i8(4 + log2(N/8))
+T(int<N>)   = i8(8 + log2(N/8))
+T(float<N>) = i8(12 + log2(N/32))
 T(text)     = i8(14)
 T(unavailable) = i8(15)
 
@@ -730,9 +729,26 @@ T(oneway) = i8(2)
 
 T* : <X>* -> i8*
 T*(<X>^N) = leb128(N) T(<X>)^N
-
-<datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 ```
+
+This definition assumes that a type is finite. However, the IDL supports structurally recursive types. In order to represent those, and to allow efficient sharing of type components occuring multiple types, the binary format is prefixed by a sequence of mutually recursive *type definitions* that can be referenced with a special tag:
+
+```
+T : <datatype> -> i8*
+T(<datatype>) = i8(255) leb128(i)  iff type definition i defines <datatype>
+```
+
+Type definitions themselves are represented as a list of serialised data types:
+```
+T*(<datatype>*)
+```
+The data types in this list can themselves refer to any of the definitions via the encoding above. However, a definition in the list must not consist solely of such a reference.
+
+Note:
+
+* Due to the type definition prefix, there are always multiple possible ways to represent any given serialised type. Type serialisation hence is not technically a function but a relation.
+
+* The serialised data type representing a method type must denote a function type, either directly, or via reference to a type definition.
 
 
 #### Memory
@@ -753,11 +769,11 @@ M(_ : null)     = .
 M(_ : unavailable) = .
 
 M : <val> -> <constype> -> i8*
-M(null    : opt <datatype>) = i8(0)
-M(?v      : opt <datatype>) = i8(1) M(v : <datatype>)
-M(v^N     : vec <datatype>) = leb128(N) M(v : <datatype>)^N
-M((k,v)^N : record {<fieldtype>*}) = M((k,v) : <fieldtype>*)^N
-M((k,v)   : variant {<fieldtype>*}) = i32(k) M((k,v) : <fieldtype>*)
+M(null   : opt <datatype>) = i8(0)
+M(?v     : opt <datatype>) = i8(1) M(v : <datatype>)
+M(v*     : vec <datatype>) = leb128(N) M(v : <datatype>)*
+M((k,v)* : record {<fieldtype>*}) = M((k,v) : <fieldtype>*)*
+M((k,v)  : variant {<fieldtype>*}) = i32(k) M((k,v) : <fieldtype>*)
 
 M : (<nat>, <val>) -> <datatype> -> i8*
 M((k,v) : <fieldtype>*) = M(v : <datatype>)  iff k : <datatype> in <fieldtype>*
@@ -779,11 +795,11 @@ R : <val> -> <primtype> -> <ref>*
 R(_ : <primtype>) = .
 
 R : <val> -> <constype> -> <ref>*
-R(null    : opt <datatype>) = .
-M(?v      : opt <datatype>) = R(v : <datatype>)
-M(v^N     : vec <datatype>) = R(v : <datatype>)^N
-R((k,v)^N : record {<fieldtype>*}) = R((k,v) : <fieldtype>*)^N
-R((k,v)   : variant {<fieldtype>*}) = R((k,v) : <fieldtype>*)
+R(null   : opt <datatype>) = .
+R(?v     : opt <datatype>) = R(v : <datatype>)
+R(v*     : vec <datatype>) = R(v : <datatype>)*
+R((k,v)* : record {<fieldtype>*}) = R((k,v) : <fieldtype>*)*
+R((k,v)  : variant {<fieldtype>*}) = R((k,v) : <fieldtype>*)
 
 R : (<nat>, <val>) -> <datatype> -> <ref>*
 R((k,v) : <fieldtype>*) = R(v : <datatype>)  iff k : <datatype> in <fieldtype>*
@@ -801,22 +817,33 @@ Note:
 
 ### Deserialisation
 
-Deserialisation is the parallel application of the inverse functions of `T`, `M`, and `R` defined above, with the following relaxation:
+Deserialisation is the parallel application of the inverse functions of `T`, `M`, and `R` defined above, with the following mechanism for robustness towards future extensions:
 
-* A record representation may include *additional* fields not occurring in the static type, or which serialisation would omit (`null`, `unavailable`); they are simply ignored, the deserialiser can skip over the body using the field size.
+* A serialised type may be headed by an opcode other than the ones defined above (i.e., 22-254). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
+
+* A value corresponding to a future type is called a *future value*. It is likewise represented by an LEB128-encoded count, followed by a number of bytes corresponding to this count.
+
+These measures allow the serialisation format to be extended with new types in the future, as long as their representation and the representation of the corresponding values include a length prefix matching the above scheme, and thereby allowing an older deserialiser not understanding them to skip over them. The subtyping rules ensure that upgradability is maintained in this situation, i.e., an old deserialiser has no need to understand the encoded data.
 
 
-### Parameters
+### Parameters and Results
 
-`P` defines the parameter mapping. Essentially, a parameter list is serialised into the triple (T,M,R) as if it was a single closed record, preceded by the string "DIDL" as a magic number:
-We assume that the parameter values are sorted by increasing id.
+`A` defines the argument mapping. Essentially, an argument list is serialised into the triple (T,M,R) as if it was a single closed record. T and M are combined into a single byte stream B, where they are preceded by the string "DIDL" as a magic number and a possible list of type definitions.
+We assume that the argument values are sorted by increasing id.
 
 ```
-P(kv^N : <fieldtype>,*) =
+A(kv* : <fieldtype>*) = ( B(kv* : <fieldtype>*), R(kv* : <fieldtype>*) )
+
+B(kv* : <fieldtype>*) =
   i8('D') i8('I') i8('D') i8('L')
-  leb128(N)
-  T(kv : <fieldtype>*)^N
-  M(kv* : <fieldtype>;*)
+  T*(<datatype>*)
+  T*(<fieldtype>*)
+  M(kv* : <fieldtype>*)
 ```
+The `<datatype>` vector contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the `<fieldtype>` vector.
 
 The same representation is used for function results.
+
+Note:
+
+* It is unspecified how the pair (B,R) representing a serialised value is bundled together in an external environment.
