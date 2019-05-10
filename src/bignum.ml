@@ -7,13 +7,10 @@ Besides the usual arithmetics it supports:
 - Boxing / (speculative) unboxing to i32/i64
 - Transparent representation change on overflow
 - Bounds check (e.g. for array indexing)
-- Garbage collection (moving)
+- Garbage collection (moving) -- explicitly handled in heap walker
 - (De)serialization
 - Materialise literal
 - Match literal pattern
-
-Can be queried about the preferred stack representation
-Can create locals
 
 Arithmetic operations
 
@@ -27,7 +24,6 @@ Conversions to/from Word*
 Low-level tests, i.e.
 - fits in i32, i64 (can roundtrip!)
 - is negative (underflow test for Nat)
-- is zero (neutral element: +)
-- is one (neutral element: *)
+- is zero (neutral element: + )
+- is one (neutral element: * )
 *)
-
