@@ -4,7 +4,7 @@
   export-shell ? false,
 }:
 
-let llvm = (import ./nix/llvm.nix); in
+let llvm = (import ./nix/llvm.nix) { system = nixpkgs.system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -41,7 +41,7 @@ let real-dvm =
         ref = "master";
         rev = "aff35b2a015108f7d1d694471ccaf3ffd6f0340c";
       }; in
-      (import dev {}).dvm
+      (import dev { system = nixpkgs.system; }).dvm
     else null
   else dvm; in
 
