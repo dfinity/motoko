@@ -4,7 +4,7 @@
   export-shell ? false,
 }:
 
-let llvm = (import ./nix/llvm.nix) { system = nixpkgs.system; }; in
+let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -17,18 +17,18 @@ let sourceByRegex = src: regexes: builtins.path
       ( type == "directory"  &&  match (relPath + "/") != null || match relPath != null);
   }; in
 
-let ocaml_wasm = (import ./nix/ocaml-wasm.nix) {
+let ocaml_wasm = import ./nix/ocaml-wasm.nix {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
   inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
 }; in
 
-let ocaml_vlq = (import ./nix/ocaml-vlq.nix) {
+let ocaml_vlq = import ./nix/ocaml-vlq.nix {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml dune;
   inherit (nixpkgs.ocamlPackages) findlib;
 }; in
 
-let ocaml_bisect_ppx = (import ./nix/ocaml-bisect_ppx.nix) nixpkgs; in
-let ocaml_bisect_ppx-ocamlbuild = (import ./nix/ocaml-bisect_ppx-ocamlbuild.nix) nixpkgs; in
+let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
+let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
 
 # Include dvm
 let real-dvm =
