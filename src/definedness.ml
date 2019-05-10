@@ -155,9 +155,9 @@ and dec msgs d = match d.it with
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (i, tp, s, p, i', efs) ->
     (M.empty, S.singleton i.it) +++ delayify (exp_fields msgs efs /// pat msgs p // i'.it)
-  | ModuleD (i, ds) ->
+(*  | ModuleD (i, ds) ->
     (M.empty, S.singleton i.it) +++ decs msgs ds    (* TBR *)
-
+ *)
 
 and decs msgs decs : f =
   (* Annotate the declarations with the analysis results *)

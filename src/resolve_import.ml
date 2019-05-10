@@ -104,8 +104,8 @@ and dec env d = match d.it with
     exp env e
   | ClassD (_, _, _, _ , _, efs) ->
     List.iter (fun ef -> dec env ef.it.dec) efs
-  | ModuleD(_, ds) ->
-    decs env ds
+(*  | ModuleD(_, ds) ->
+    decs env ds *)
 
 let prog env p = decs env p.it
 

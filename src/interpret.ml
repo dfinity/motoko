@@ -622,7 +622,7 @@ and declare_dec dec : val_env =
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (id, _, _, _, _, _) -> declare_id {id with note = ()}
-  | ModuleD (id, _) -> declare_id id
+(*  | ModuleD (id, _) -> declare_id id *)
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -659,12 +659,13 @@ and interpret_dec env dec (k : V.value V.cont) =
     let v = V.Func (V.call_conv_of_typ dec.note.note_typ, f) in
     define_id env {id with note = ()} v;
     k v
+(*    
   | ModuleD (id, decs) ->
     let ve = ref V.Env.empty in
     interpret_block env decs (Some ve) (fun v ->
       let v = V.Obj (V.Env.map Lib.Promise.value (!ve)) in
       define_id env id v;
-      k v)
+      k v) *)
 
 and interpret_decs env decs (k : V.value V.cont) =
   match decs with

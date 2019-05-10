@@ -156,13 +156,15 @@ and block force_unit ds =
   match force_unit, last.it with
   | _, S.ExpD e ->
     (extra @ List.map dec prefix, exp e)
+   (*TBD: delete me *)
+  | false, S.LetD ({ it = S.VarP x; _ },
+                   { it = S.ObjE ( { it = T.Module; _ }, efs); _ }) ->
+    (extra @ List.map dec ds, idE x last.note.S.note_typ)
   | false, S.LetD ({it = S.VarP x; _}, e) ->
     (extra @ List.map dec ds, idE x e.note.S.note_typ)
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
     (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
-  | false, S.ModuleD (x, _) ->
-    (extra @ List.map dec ds, idE x last.note.S.note_typ)
   | _, _ ->
     (extra @ List.map dec ds, tupE [])
 
@@ -183,6 +185,10 @@ and dec d = { (phrase' dec' d) with note = () }
 
 and dec' at n d = match d with
   | S.ExpD e -> (expD (exp e)).it
+  | S.LetD ({ it = S.VarP id; _ },
+            { it = S.ObjE ( { it = T.Module; _ }, efs); _ }) ->
+    let ds = List.map (fun ef -> ef.it.S.dec) efs in
+    (build_module id ds (n.S.note_typ)).it
   | S.LetD (p, e) ->
     let p' = pat p in
     let e' = exp e in
@@ -224,9 +230,6 @@ and dec' at n d = match d with
       note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
     } in
     I.LetD (varPat, fn)
-  | S.ModuleD(id, ds) ->
-    (build_module id ds (n.S.note_typ)).it
-
 
 and field_typ_to_obj_entry (f: T.field) =
   match f.T.typ with
@@ -340,27 +343,49 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
   let t = Type.Env.find f imp_env in
   let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
   match prog.it with
-  |  [{it = Syntax.ExpD _;_}] ->
+  |  [{it = Syntax.ExpD e;_}] ->
      { it = Syntax.LetD
               (
                 { it = Syntax.VarP (id_of_full_path f)
                 ; at = no_region
                 ; note = t
                 }
-              , { it = Syntax.BlockE prog.it
+              , e
+                (*
+                { it = Syntax.BlockE prog.it
                 ; at = no_region
                 ; note = typ_note
                 }
+                 *)
               )
      ; at = no_region
      ; note = typ_note
      }
   (* HACK: to be removed once we support module expressions *)
   |  ds ->
+(*     
      { it = Syntax.ModuleD
               (  id_of_full_path f
                , ds
               )
+ *)  Diag.(print_message { sev = Warning;
+                           at = prog.at;
+                           cat = "import";
+                           text =
+                             "imported declarations as module; rewrite program as module instead."});
+     { it = Syntax.LetD
+              (
+                { it = Syntax.VarP (id_of_full_path f)
+                ; at = no_region
+                ; note = t
+                }
+              , { it = Syntax.ObjE (Type.Module @@ no_region,
+                                    List.map (fun d -> {Syntax.dec=d;vis=Syntax.Public @@ no_region} @@ d.at) prog.it)
+                ; at = no_region
+                ; note = typ_note
+                }
+              )
+
      ; at = no_region
      ; note = typ_note
      }

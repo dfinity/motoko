@@ -182,6 +182,7 @@ seplist(X, SEP) :
   | OBJECT { Type.Object Type.Local @@ at $sloc }
   | SHARED { Type.Object Type.Sharable @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
+  | MODULE { Type.Module @@ at $sloc }
 
 %inline obj_sort_opt :
   | (* empty *) { Type.Object Type.Local @@ no_region }
@@ -244,7 +245,7 @@ typ_pre :
     { AsyncT(t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
-        if s.it = Type.Object Type.Local
+        if s.it = Type.Object Type.Local || s.it = Type.Module
         then tfs
         else List.map share_typfield tfs
       in ObjT(s, tfs') @! at $sloc }
@@ -577,7 +578,7 @@ dec_nonvar :
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
       let efs' =
-        if s.it = Type.Object Type.Local
+        if s.it = Type.Object Type.Local || s.it = Type.Module
         then efs
         else List.map share_expfield efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
@@ -587,13 +588,13 @@ dec_nonvar :
   | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_argument xefs=class_body
     { let x, efs = xefs in
       let efs' =
-        if s.it = Type.Object Type.Local
+        if s.it = Type.Object Type.Local || s.it = Type.Module
         then efs
         else List.map share_expfield efs
       in ClassD(xf "class" $sloc, tps, s, p, x, efs') @? at $sloc }
-  | MODULE xf=id_opt EQ? LCURLY ds=seplist(dec, semicolon) RCURLY
+(*  | MODULE xf=id_opt EQ? LCURLY ds=seplist(dec, semicolon) RCURLY
     { let _named, id = xf "module" $sloc in
-      ModuleD(id, ds) @? at $sloc }
+      ModuleD(id, ds) @? at $sloc } *)
 
 dec :
   | d=dec_var

@@ -78,7 +78,7 @@ and dec m d = match d.it with
   | ExpD e -> exp m e
   | LetD (p, e) -> triv m p; exp m e
   | VarD _ -> err m d.at
-  | ModuleD (_, ds) -> List.iter (dec m) ds
+(*  | ModuleD (_, ds) -> List.iter (dec m) ds *)
 
 and triv m p = match p.it with
   | (WildP | VarP _) -> ()

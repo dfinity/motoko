@@ -688,7 +688,7 @@ and type_exp_fields env s fs : T.field list =
 and type_exp_field env s f : T.field =
   let {name = {it = Name name; _}; var} = f.it in
   let t = try T.Env.find var.it env.vals with
-          | Not_found -> error env f.at "field typing not found"
+          | Not_found -> error env f.at "field typing for %s not found" name
   in
   assert (t <> T.Pre);
   check_sub env f.at t f.note;
