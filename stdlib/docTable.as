@@ -121,6 +121,17 @@ class DocTable<Id,Doc,Info>(
   };
 
   /**
+   `reset`
+   --------
+
+   Reset the document table back to its initial counter, and empty state.
+   */
+  reset() {
+    idNext := idFirst;
+    table := null;
+  };
+
+  /**
    `getTable`
    ---------
 

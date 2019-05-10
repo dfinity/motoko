@@ -28,6 +28,9 @@ let T = (import "serverTypes.as");
 let L = (import "serverLang.as");
 let M = (import "serverModelTypes.as");
 
+let List = (import "../../list.as");
+type List<T> = List.List<T>;
+
 let Hash = (import "../../hash.as").BitVec;
 type Hash = Hash.t;
 
@@ -68,6 +71,7 @@ class Model() {
    */
 
 
+
   /**
    `evalReq`
    ----------
@@ -90,7 +94,36 @@ class Model() {
 
    */
   evalReq(req:L.Req) : Result<L.Resp, T.IdErr> {
+    if false {print "Model::evalReq: "; print (debug_show req); print "\n"; };
     switch req {
+    case (#reset) {
+           /**- 1. reset each entity table: */
+           userTable.reset();
+           truckTypeTable.reset();
+           regionTable.reset();
+           produceTable.reset();
+           producerTable.reset();
+           inventoryTable.reset();
+           transporterTable.reset();
+           retailerTable.reset();
+           routeTable.reset();
+           reservedInventoryTable.reset();
+           reservedRouteTable.reset();
+
+           /**- 2. clear secondary indices: */
+           usersByUserName := null;
+           routesByDstSrcRegions := null;
+           inventoryByRegion := null;
+           reservationsByProduceByRegion := null;
+
+           /**- 3. reset counters: */
+           joinCount := 0;
+           retailerQueryCount := 0;
+           retailerQueryCost := 0;
+           retailerJoinCount := 0;
+
+           #ok(#reset)
+         };
     case (#add (#truckType info)) Result.fromSomeMap<T.TruckTypeId,L.Resp,T.IdErr>(
            truckTypeTable.addInfoGetId(
              func (id_:T.TruckTypeId) : T.TruckTypeInfo =
@@ -169,6 +202,22 @@ class Model() {
            #idErr null
          );
 
+    case (#add (#retailer info)) Result.fromSomeMap<T.RetailerId,L.Resp,T.IdErr>(
+           retailerTable.addInfoGetId(
+             func(id_:T.RetailerId):T.RetailerInfo {
+               shared {
+                 id=id_;
+                 public_key=info.public_key;
+                 short_name=info.short_name;
+                 description=info.description;
+                 region=info.region;
+               }
+             }
+           ),
+           func (id:T.RetailerId):L.Resp = #add(#retailer(id)),
+           #idErr null
+         );
+
     case (#add (#route info)) Result.mapOk<T.RouteId,L.Resp,T.IdErr>(
            transporterAddRoute(
              null,
@@ -213,11 +262,18 @@ class Model() {
            #idErr null
          );
 
-    case (#add _) P.unreachable();
+    //case (#add _) P.unreachable();
 
     case _ P.nyi();
     }
   };
+
+  /**
+   `evalReqList`
+   ----------
+   */
+  evalReqList(reqs:List<L.Req>) : List<L.ResultResp> =
+    List.map<L.Req, L.ResultResp>(reqs, evalReq);
 
   /**
    `evalBulk`
@@ -264,6 +320,138 @@ class Model() {
     )
   };
 
+  /**
+   `genAddReqs`
+   -------------
+   generate a list of add requests, based on a set of parameters,
+   and a simple, deterministic strategy, with predictable combinatoric properties.
+
+   Used for seeding unit tests with predictable properties,
+   and for profiling performance properties of the produce exchange,
+   e.g., average response time for a retailer query.
+   */
+  genAddReqs(
+    day_count:Nat,
+    max_route_duration:Nat,
+    producer_count:Nat,
+    transporter_count:Nat,
+    retailer_count:Nat,
+    region_count:Nat
+  ) : List<L.AddReq> {
+    assert(region_count > 0);
+    func min(x:Nat, y:Nat) : Nat = if (x < y) { x } else { y };
+    /**- `reqs` accumulates the add requests that we form below: */
+    var reqs : List<L.AddReq> = null;
+    /**- add truck types; for now, just 2. */
+    for (i in range(0, 1)) {
+      reqs := ?(
+        #truckType (
+          shared {
+            id=i; short_name=""; description="";
+            capacity=i * 50;
+            isFridge=true; isFreezer=true
+          }
+        ), reqs);
+    };
+    /**- add regions */
+    for (i in range(0, region_count - 1)) {
+      reqs := ?(#region (shared {
+                           id=i; short_name=""; description=""
+                         }), reqs);
+    };
+    /**- add produce types, one per region. */
+    for (i in range(0, region_count - 1)) {
+      reqs := ?(#produce (shared {
+                           id=i; short_name=""; description=""; grade=1;
+                         }), reqs);
+    };
+    /**- add producers  */
+    for (i in range(0, producer_count - 1)) {
+      reqs := ?(#producer (shared {
+                             id=i; public_key=""; short_name=""; description="";
+                             region=(i % region_count);
+                             inventory=[]; reserved=[];
+                           }), reqs);
+    };
+    /**- add transporters  */
+    for (i in range(0, producer_count - 1)) {
+      reqs := ?(#transporter (shared {
+                                id=i; public_key=""; short_name=""; description="";
+                                routes=[]; reserved=[];
+                              }), reqs);
+    };
+    /**- add retailers  */
+    for (i in range(0, retailer_count - 1)) {
+      reqs := ?(#retailer (shared {
+                             id=i; public_key=""; short_name=""; description="";
+                             region=(i % region_count);
+                           }), reqs);
+    };
+    /**- add routes and inventory, across time and space: */
+    for (start_day in range(0, day_count-1)) {
+
+      let max_end_day =
+        min( start_day + max_route_duration,
+             day_count - 1 );
+
+      for (end_day in range(start_day, max_end_day)) {
+
+        /**- consider all pairs of start and end region: */
+        for (start_reg in range(0, region_count - 1)) {
+          for (end_reg in range(0, region_count - 1)) {
+
+            /**- for each producer we choose,
+             add inventory that will be ready on "start_day", but not beforehand.
+             It will remain ready until the end of the day count. */
+
+            for (p in range(0, producer_count)) {
+              /**- choose this producer iff they are located in the start region: */
+              if ((p % region_count) == start_reg) {
+                reqs := ?(#inventory
+                (shared {
+                   id=666;
+                   producer   = p;
+                   produce    = start_reg;
+                   start_date = start_day;
+                   end_date   = day_count-1;
+                   quantity   = 33;
+                   weight     = 66;
+                   ppu        = 22;
+                   comments   = "";
+                 }), reqs);
+              }
+            };
+
+            /**- for each transporter we choose,
+             add a route that will start and end on the current values
+             of `start_day`, `end_day`, `start_reg`, `end_reg`, respectively: */
+
+            for (t in range(0, transporter_count - 1)) {
+              /**- choose this transporter iff their id matches the id of the region, modulo the number of regions: */
+              if ((t % region_count) == start_reg) {
+                reqs := ?(#route
+                (shared {
+                   id=666;
+                   transporter  = t;
+                   start_region = start_reg;
+                   end_region   = end_reg;
+                   // there are two truck types; just choose one based on the "produce type", which is based on the region:
+                   truck_type   = (start_reg % 2);
+                   start_date   = start_day;
+                   end_date     = end_day;
+                   // cost is inversely proportional to route duration: slower is cheaper.
+                   // this example cost formula is "linear in duration, with a fixed base cost":
+                   cost         = 100 + ((end_day - start_day) * 20);
+                 }), reqs);
+              }
+            };
+          };
+        };
+      };
+    };
+    /**- use "chronological order" for adds above: */
+    List.rev<L.AddReq>(reqs)
+  };
 
   /**
    Access control
@@ -1562,12 +1750,12 @@ than the MVP goals, however.
            }
     };
     /** - window start: check that the route begins after the inventory window begins */
-    if (item.start_date > route.start_date) {
+    if (not (item.start_date <= route.start_date)) {
       debugOff "nope: item start after route start\n";
       return false
     };
     /** - window end: check that the route ends before the inventory window ends */
-    if (route.end_date > item.end_date) {
+    if (not (route.end_date <= item.end_date)) {
       debugOff "nope: route ends after item ends\n";
       return false
     };

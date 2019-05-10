@@ -21,6 +21,7 @@ let T = import "serverTypes.as";
  - [bulk request](#bulkreq)
 */
 type Req = {
+  #reset  : () ;
   #add    : AddReq ;
   #update : UpdateReq ;
   #rem    : T.EntId ;
@@ -39,6 +40,7 @@ type Req = {
  - [bulk response](#bulkresp)
 */
 type Resp = {
+  #reset;
   #add    : T.EntId;
   #update : ();
   #rem    : ();

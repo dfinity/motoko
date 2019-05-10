@@ -11,6 +11,9 @@ let L = (import "serverLang.as");
 let Model = (import "serverModel.as");
 let Result = (import "../../result.as");
 
+let List = (import "../../list.as");
+type List<T> = List.List<T>;
+
 type Result<Ok,Err> = Result.Result<Ok,Err>;
 
 actor server {
@@ -1026,6 +1029,38 @@ been processed
     getModel().evalBulkArray(reqs)
   };
 
+
+  /**
+   `loadWorkload`
+   ----------------
+   clear existing server state, and replace with a synthetic workload, based on the given parameters.
+   */
+
+  loadWorkload(params:T.WorkloadParams) : async () {
+    func db(s:Text) = {print "Server::loadWorkload: "; print s; print "\n"};
+
+    /**- generate add requests for these params: */
+    db "generate requests for workload...";
+    let addreqs : List<L.AddReq> = getModel().genAddReqs(
+      params.day_count,
+      params.max_route_duration,
+      params.producer_count,
+      params.transporter_count,
+      params.retailer_count,
+      params.region_count
+    );
+
+    /**- reset to initial state before adding this new workload: */
+    let reqs : List<L.Req> =
+      ?(#reset, List.map<L.AddReq,L.Req>(addreqs, func (r:L.AddReq):L.Req = #add r));
+
+    /**- evaluate each request: */
+    db "evaluate requests for workload...";
+    let resps = getModel().evalReqList(reqs);
+
+    /**- assert that everything worked; a sanity check. */
+    // to do
+  };
 
   ///////////////////////////////////////////////////////////////////////////
   // @Omit:
