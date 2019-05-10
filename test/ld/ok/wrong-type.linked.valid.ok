@@ -1,1 +1,0 @@
-_out/wrong-type.linked.wasm:000007b: error: type mismatch in function, expected [] but got [i32, i32]

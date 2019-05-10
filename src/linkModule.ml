@@ -29,6 +29,19 @@ let map_name_section f (em : extended_module) = { em with name = f em.name }
 
 (* Generic functions about import and export lists *)
 
+let get_import is_thing j m =
+  let open Int32 in
+  let rec go i = function
+    | [] -> assert false
+    | imp::is ->
+      if is_thing imp.it.idesc.it
+      then
+        if i = j
+        then imp
+        else go (add i 1l) is
+      else go i is
+  in go 0l m.imports
+
 let find_imports is_thing libname m : imports =
   let name = Wasm.Utf8.decode libname in
   let rec go i acc = function
@@ -101,6 +114,31 @@ let is_global_export = function
   | GlobalExport v -> Some v
   | _ -> None
 
+
+let get_fun_typ i m : Wasm.Types.func_type =
+  let imports_n = count_imports is_fun_import m in
+  let tyvar =
+    if i < imports_n
+    then
+      match (get_import is_fun_import i m).it.idesc.it with
+      | FuncImport ty -> ty.it
+      | _ -> assert false
+    else
+      let f = Lib.List32.nth m.funcs (Int32.sub i imports_n) in
+      f.it.ftype.it
+    in
+  (Lib.List32.nth m.types tyvar).it
+
+let get_global_typ i m : Wasm.Types.global_type =
+  let imports_n = count_imports is_global_import m in
+  if i < imports_n
+  then
+    match (get_import is_global_import i m).it.idesc.it with
+    | GlobalImport ty -> ty
+    | _ -> assert false
+  else
+    let f = Lib.List32.nth m.globals (Int32.sub i imports_n) in
+    f.it.gtype
 
 (* Utilities related to functions *)
 
@@ -496,6 +534,26 @@ let join_modules (em1 : extended_module) (m2 : module_') (ns2 : name_section) : 
 
 (* The main linking function *)
 
+let check_typ is_thing get_typ string_of m1 m2 (i1, i2) =
+  let t1 = get_typ i1 m1 in
+  let t2 = get_typ i2 m2 in
+  let imp = get_import is_thing i1 m1 in
+  if t1 <> t2 then
+    let msg = Printf.sprintf
+      "Typ mismatch when linking %s.%s:\n    %s\n /= %s"
+      (string_of_name imp.it.module_name)
+      (string_of_name imp.it.item_name)
+      (string_of t1)
+      (string_of t2)
+    in
+    raise (LinkError msg)
+
+let check_fun_typ =
+  check_typ is_fun_import get_fun_typ Wasm.Types.string_of_func_type
+let check_global_typ =
+  check_typ is_global_import get_global_typ Wasm.Types.string_of_global_type
+
+
 let align p n =
   let open Int32 in
   let p = to_int p in
@@ -537,7 +595,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let fun_exports2 = find_exports is_fun_export dm2 in
   (* Resolve imports, to produce a renumbering function: *)
   let fun_resolved12 = resolve fun_required1 fun_exports2 in
-  let fun_resolved21 = resolve fun_required2 fun_exports1  in
+  let fun_resolved21 = resolve fun_required2 fun_exports1 in
   let (funs1, funs2) =
     calculate_renaming
       (count_imports is_fun_import em1.module_)
@@ -547,13 +605,16 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
       fun_resolved12
       fun_resolved21 in
 
+  List.iter (check_fun_typ em1.module_ dm2) fun_resolved12;
+  List.iter (check_fun_typ dm2 em1.module_) fun_resolved21;
+
   (* Link globals *)
   let global_required1 = find_imports is_global_import libname em1.module_ in
   let global_required2 = find_imports is_global_import  "env" dm2 in
   let global_exports2 = find_exports is_global_export dm2 in
   (* Resolve imports, to produce a renumbering globalction: *)
   let global_resolved12 = resolve global_required1 global_exports2 in
-  let global_resolved21 = resolve global_required2 global_exports1  in
+  let global_resolved21 = resolve global_required2 global_exports1 in
   let (globals1, globals2) =
     calculate_renaming
       (count_imports is_global_import em1.module_)
@@ -564,6 +625,8 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
       global_resolved21 in
   assert (global_required1 = []); (* so far, we do not import globals *)
 
+  List.iter (check_global_typ em1.module_ dm2) global_resolved12;
+  List.iter (check_global_typ dm2 em1.module_) global_resolved21;
 
   (* Rename types *)
   let ty_offset2 = Lib.List32.length (em1.module_.types) in
