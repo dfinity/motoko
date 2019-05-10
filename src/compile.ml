@@ -1527,7 +1527,7 @@ module BoxedWord = struct
       get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub))
     )
 
-  let compile_unsigned_pow env bt =
+  let compile_unsigned_pow env =
     let rec pow () = Func.share_code2 env "pow"
                        (("n", I64Type), ("exp", I64Type)) [I64Type]
                        Wasm.Values.(fun env get_n get_exp ->
@@ -1538,10 +1538,10 @@ module BoxedWord = struct
            G.i (Binary (I64 I64Op.ShrU)) ^^
            pow () ^^ set_res ^^ get_res ^^ get_res ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul))
          in get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-            G.if_ (bt env SR.UnboxedWord64)
+            G.if_ (ValBlockType (Some I64Type))
              one
              (get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-              G.if_ (bt env SR.UnboxedWord64)
+              G.if_ (ValBlockType (Some I64Type))
                 square_recurse_with_shifted
                 (get_n ^^
                  square_recurse_with_shifted ^^
@@ -1769,14 +1769,14 @@ sig
   (* aritmetics *)
   val compile_abs : E.t -> G.t
   val compile_add : E.t -> G.t
-  val compile_sub : E.t -> G.t
+  val compile_signed_sub : E.t -> G.t
   val compile_unsigned_sub : E.t -> G.t
   val compile_mul : E.t -> G.t
   val compile_signed_div : E.t -> G.t
   val compile_signed_mod : E.t -> G.t
   val compile_unsigned_div : E.t -> G.t
   val compile_unsigned_rem : E.t -> G.t
-  val compile_unsigned_pow : E.t -> (E.t -> SR.t -> Wasm.Ast.block_type) -> G.t
+  val compile_unsigned_pow : E.t -> G.t
 
   (* comparisons *)
   val compile_eq : E.t -> G.t
@@ -1828,15 +1828,14 @@ module BigNum64 : BigNumType = struct
     unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op ^^ box env
 
   let compile_add = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.Add)))
-  let compile_sub = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.Sub)))
+  let compile_signed_sub = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.Sub)))
   let compile_mul = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.Mul)))
   let compile_signed_div = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.DivS)))
   let compile_signed_mod = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.RemS)))
   let compile_unsigned_div = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.DivU)))
   let compile_unsigned_rem = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.RemU)))
   let compile_unsigned_sub env = with_both_unboxed (BoxedWord.compile_unsigned_sub env) env
-  let compile_unsigned_pow env bt =
-    with_both_unboxed (BoxedWord.compile_unsigned_pow env bt) env
+  let compile_unsigned_pow env = with_both_unboxed (BoxedWord.compile_unsigned_pow env) env
 
   let with_comp_unboxed op env =
     let set_tmp, get_tmp = new_local64 env "top" in
@@ -4218,7 +4217,7 @@ let rec compile_binop env t op =
   | Type.(Prim (Nat | Int)),                  AddOp -> BigNum.compile_add env
   | Type.(Prim Word64),                       AddOp -> G.i (Binary (Wasm.Values.I64 I64Op.Add))
   | Type.(Prim Nat),                          SubOp -> BigNum.compile_unsigned_sub env
-  | Type.(Prim Int),                          SubOp -> BigNum.compile_sub env
+  | Type.(Prim Int),                          SubOp -> BigNum.compile_signed_sub env
   | Type.(Prim (Nat | Int)),                  MulOp -> BigNum.compile_mul env
   | Type.(Prim Word64),                       MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
   | Type.(Prim Word64),                       DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
@@ -4263,10 +4262,8 @@ let rec compile_binop env t op =
      get_exp ^^ BigNum.compile_is_negative env ^^
      E.then_trap_with env "negative power" ^^
      get_n ^^ get_exp ^^ pow
-  | Type.(Prim Word64),                       PowOp ->
-    BoxedWord.compile_unsigned_pow env StackRep.to_block_type
-  | Type.(Prim Nat),                          PowOp ->
-    BigNum.compile_unsigned_pow env StackRep.to_block_type
+  | Type.(Prim Word64),                       PowOp -> BoxedWord.compile_unsigned_pow env
+  | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
   | Type.(Prim Word64),                       OrOp  -> G.i (Binary (Wasm.Values.I64 I64Op.Or))
