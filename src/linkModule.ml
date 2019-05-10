@@ -24,7 +24,8 @@ type imports = (int32 * name) list
 
 let phrase f x = { x with it = f x.it }
 
-let in_extended f (em : extended_module) = { em with module_ = f em.module_ }
+let map_module f (em : extended_module) = { em with module_ = f em.module_ }
+let map_name_section f (em : extended_module) = { em with name = f em.name }
 
 let find_fun_imports libname m : imports =
   let name = Wasm.Utf8.decode libname in
@@ -155,7 +156,7 @@ let remove_non_dfinity_exports (em : extended_module) : extended_module =
   let is_dfinity_export exp = match exp.it.edesc.it with
       | FuncExport var -> VarMap.mem var.it dfinity_exports
       | _ -> true in
-  in_extended (fun m -> { m with exports = List.filter is_dfinity_export m.exports }) em
+  map_module (fun m -> { m with exports = List.filter is_dfinity_export m.exports }) em
 
 module NameMap = Map.Make(struct type t = Wasm.Ast.name let compare = compare end)
 type exports = int32 NameMap.t
@@ -191,8 +192,8 @@ let resolve imports exports : (int32 * int32) list =
 let calculate_renaming n_imports1 n_things1 n_imports2 n_things2 resolved12 resolved21 : (renumbering * renumbering) =
   let open Int32 in
 
-  let n_imports1' = sub n_imports1 (of_int (List.length resolved12)) in
-  let n_imports2' = sub n_imports2 (of_int (List.length resolved21)) in
+  let n_imports1' = sub n_imports1 (Lib.List32.length resolved12) in
+  let n_imports2' = sub n_imports2 (Lib.List32.length resolved21) in
 
   let rec fun1 i =
     let rec go skipped = function
@@ -577,7 +578,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
 
 
   (* Rename types *)
-  let ty_offset2 = Int32.of_int (List.length (em1.module_.types)) in
+  let ty_offset2 = Lib.List32.length (em1.module_.types) in
   let tys2 t = Int32.(add t ty_offset2) in
 
   (* Inject call to "__wasm_call_ctors" *)
@@ -591,12 +592,13 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
 
   join_modules
     ( em1
-    |> in_extended (remove_fun_imports fun_resolved12)
-    |> in_extended (remove_global_imports global_resolved12)
+    |> map_module (remove_fun_imports fun_resolved12)
+    |> map_name_section (remove_fun_imports_name_section fun_resolved12)
+    |> map_module (remove_global_imports global_resolved12)
     |> rename_funcs_extended funs1
     |> rename_globals_extended globals1
-    |> in_extended (set_global heap_global new_heap_start)
-    |> in_extended (set_table_size new_elem_size)
+    |> map_module (set_global heap_global new_heap_start)
+    |> map_module (set_table_size new_elem_size)
     )
     ( dm2
     |> remove_fun_imports fun_resolved21

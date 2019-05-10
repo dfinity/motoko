@@ -803,6 +803,12 @@ module ElemHeap = struct
      reference table *)
   let remember_reference env : G.t =
     Func.share_code1 env "remember_reference" ("ref", I32Type) [I32Type] (fun env get_ref ->
+      (* Check table space *)
+      get_ref_ctr ^^
+      compile_unboxed_const max_references ^^
+      G.i (Compare (Wasm.Values.I32 I64Op.LtU)) ^^
+      E.else_trap_with env "Reference table full" ^^
+
       (* Return index *)
       get_ref_ctr ^^
 
@@ -856,6 +862,12 @@ module ClosureTable = struct
      reference table *)
   let remember_closure env : G.t =
     Func.share_code1 env "remember_closure" ("ptr", I32Type) [I32Type] (fun env get_ptr ->
+      (* Check table space *)
+      get_counter ^^
+      compile_unboxed_const (Int32.sub max_entries 1l) ^^
+      G.i (Compare (Wasm.Values.I32 I64Op.LtU)) ^^
+      E.else_trap_with env "Closure table full" ^^
+
       (* Return index *)
       get_counter ^^
       compile_add_const 1l ^^
@@ -2628,7 +2640,7 @@ module HeapTraversal = struct
         ; Tagged.SmallWord,
           compile_unboxed_const 2l
         ; Tagged.BigInt,
-          compile_unboxed_const 5l
+          compile_unboxed_const 5l (* HeapTag + sizeof(mp_int) *)
         ; Tagged.Reference,
           compile_unboxed_const 2l
         ; Tagged.Some,
@@ -2679,7 +2691,7 @@ module HeapTraversal = struct
         )
 
   (* Calls mk_code for each pointer in the object pointed to by get_x,
-     passing code get the address of the pointer.
+     passing code get the address of the pointer,
      and code to get the offset of the pointer (for the BigInt payload field). *)
   let for_each_pointer env get_x mk_code mk_code_offset =
     let (set_ptr_loc, get_ptr_loc) = new_local env "ptr_loc" in
@@ -2922,6 +2934,8 @@ module Serialization = struct
       | (Func _ | Obj (Actor, _)) ->
         inc_data_size (compile_unboxed_const Heap.word_size) ^^
         inc_ref_size 1l
+      | Non ->
+        E.trap_with env "buffer_size called on value of type None"
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
       get_data_size ^^
@@ -3050,6 +3064,8 @@ module Serialization = struct
         get_x ^^ Dfinity.unbox_reference env ^^
         store_unskewed_ptr ^^
         write_word allocate_ref
+      | Non ->
+        E.trap_with env "serializing value of type None"
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
       get_data_buf ^^
@@ -3176,6 +3192,8 @@ module Serialization = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         load_unskewed_ptr ^^
         Dfinity.box_reference env
+      | Non ->
+        E.trap_with env "deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
       end ^^
       get_data_buf

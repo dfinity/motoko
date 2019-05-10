@@ -4,7 +4,7 @@
   export-shell ? false,
 }:
 
-let llvm = (import ./nix/llvm.nix); in
+let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -17,18 +17,18 @@ let sourceByRegex = src: regexes: builtins.path
       ( type == "directory"  &&  match (relPath + "/") != null || match relPath != null);
   }; in
 
-let ocaml_wasm = (import ./nix/ocaml-wasm.nix) {
+let ocaml_wasm = import ./nix/ocaml-wasm.nix {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
   inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
 }; in
 
-let ocaml_vlq = (import ./nix/ocaml-vlq.nix) {
+let ocaml_vlq = import ./nix/ocaml-vlq.nix {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml dune;
   inherit (nixpkgs.ocamlPackages) findlib;
 }; in
 
-let ocaml_bisect_ppx = (import ./nix/ocaml-bisect_ppx.nix) nixpkgs; in
-let ocaml_bisect_ppx-ocamlbuild = (import ./nix/ocaml-bisect_ppx-ocamlbuild.nix) nixpkgs; in
+let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
+let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
 
 # Include dvm
 let real-dvm =
@@ -41,7 +41,7 @@ let real-dvm =
         ref = "master";
         rev = "aff35b2a015108f7d1d694471ccaf3ffd6f0340c";
       }; in
-      (import dev {}).dvm
+      (import dev { system = nixpkgs.system; }).dvm
     else null
   else dvm; in
 
@@ -200,6 +200,7 @@ rec {
       ] ++
       (if test-dvm then [ real-dvm ] else []) ++
       llvmBuildInputs;
+
     buildPhase = ''
         patchShebangs .
         ${llvmEnv}
@@ -424,11 +425,13 @@ rec {
     # https://github.com/NixOS/nix/issues/955
     #
 
-    buildInputs =
-      native.buildInputs ++
-      builtins.filter (i: i != native) native_test.buildInputs ++
+    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != native) (
+      asc-bin.buildInputs ++
+      rts.buildInputs ++
+      native_test.buildInputs ++
       users-guide.buildInputs ++
-      [ nixpkgs.ncurses ];
+      [ nixpkgs.ncurses ]
+    ));
 
     shellHook = llvmEnv;
     TOMMATHSRC = libtommath;
