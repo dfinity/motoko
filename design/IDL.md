@@ -665,13 +665,15 @@ actor server = {
 
 At runtime, every IDL value is serialised into a triple (T, M, R), where T ("type") and M ("memory") are sequences of bytes and R ("references") is a sequence of references. If R is empty, it can be omitted.
 
-The type is the value's *principal* type. That is, for records, it does not have fewer fields than contained in the value, and for variants, it does not have more fields than the one of the value (variant types with more than one field can still occur in higher-order types, e.g., function parameters or results).
-
 By making the type of the data explicit, (1) the serialised data becomes self-describing, which is useful for tooling, (2) error discovery and error handling is improved, (3) the binary format is decoupled from versioning concerns, so that the latter can be designed more flexible.
 
 By using references, (1) the wire representation of reference values (which may be complex and involve system meta data such as types) need not be exposed to client code, and (2) the system knows where the references are in the serialised data, such that it can rewrite/map/filter/adjust them as it sees fit.
 
 Accordingly, serialisation is defined by three mapping functions, `T`, `M` and `R`, producing the respective components.
+
+Note:
+
+* While not required, a serialiser can minimise the size of the serialised type by first computing a value's *principal* type with respect to the subtyping relation. In particular, a variant type need not include more fields than necessary. For example, if `E = variant { A, B, C }` and the value to serialise is `A` of type `E`, then it can be serialised with type `variant { A }`. Similarly, if the value is the vector `[C, A, C]`, then the principal type `vec (variant { A, C })` suffices.
 
 
 ### Serialisation
@@ -770,14 +772,14 @@ M(_ : null)     = .
 M(_ : unavailable) = .
 
 M : <val> -> <constype> -> i8*
-M(null   : opt <datatype>) = i8(0)
-M(?v     : opt <datatype>) = i8(1) M(v : <datatype>)
-M(v*     : vec <datatype>) = leb128(N) M(v : <datatype>)*
-M((k,v)* : record {<fieldtype>*}) = M(v : <fieldtype>)*
-M((k,v)  : variant {<fieldtype>}) = M(v : <fieldtype>)
+M(null : opt <datatype>) = i8(0)
+M(?v   : opt <datatype>) = i8(1) M(v : <datatype>)
+M(v*   : vec <datatype>) = leb128(N) M(v : <datatype>)*
+M(kv*  : record {<fieldtype>*}) = M(kv : <fieldtype>)*
+M(kv   : variant {<fieldtype>*}) = leb128(i) M(kv : <fieldtype>*[i])
 
-M : <val> -> <fieldtype> -> i8*
-M(v : k:<datatype>) = M(v : <datatype>)
+M : (<nat>, <val>) -> <fieldtype> -> i8*
+M((k,v) : k:<datatype>) = M(v : <datatype>)
 
 M : <val> -> <reftype> -> i8*
 M(r : service <actortype>) = .
@@ -795,14 +797,14 @@ R : <val> -> <primtype> -> <ref>*
 R(_ : <primtype>) = .
 
 R : <val> -> <constype> -> <ref>*
-R(null   : opt <datatype>) = .
-R(?v     : opt <datatype>) = R(v : <datatype>)
-R(v*     : vec <datatype>) = R(v : <datatype>)*
-R((k,v)* : record {<fieldtype>*}) = R(v : <fieldtype>)*
-R((k,v)  : variant {<fieldtype>}) = R(v : <fieldtype>)
+R(null : opt <datatype>) = .
+R(?v   : opt <datatype>) = R(v : <datatype>)
+R(v*   : vec <datatype>) = R(v : <datatype>)*
+R(kv*  : record {<fieldtype>*}) = R(kv : <fieldtype>)*
+R(kv   : variant {<fieldtype>*}) = R(kv : <fieldtype>*[i])
 
-R : <val> -> <fieldtype> -> <ref>*
-R(v : k:<datatype>) = M(v : <datatype>)
+R : (<nat>, <val>) -> <fieldtype> -> <ref>*
+R((k,v) : k:<datatype>) = R(v : <datatype>)
 
 R : <val> -> <reftype> -> <ref>*
 R(r : service <actortype>) = r
