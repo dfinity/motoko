@@ -1892,6 +1892,49 @@ module BigNum64 : BigNumType = struct
     box(*FIXME*) env
 end
 
+
+[@@@warning "-60-32"] (* until we start using these, see #359 *)
+module BigInt = struct
+
+  let lit env n =
+    let twoto32 = Big_int.power_int_positive_int 2 31 in
+
+    compile_unboxed_const 0l ^^
+    G.i (Call (nr (E.built_in env "rts_bigint_of_word32"))) ^^
+
+    let rec go n =
+      if Big_int.sign_big_int n = 0 then G.nop else
+      let (a, b) = Big_int.quomod_big_int n twoto32 in
+      go a ^^
+      compile_unboxed_const 32l ^^
+      G.i (Call (nr (E.built_in env "rts_bigint_lshd"))) ^^
+      compile_unboxed_const (Big_int.int32_of_big_int b) ^^
+      G.i (Call (nr (E.built_in env "rts_bigint_of_word32"))) ^^
+      G.i (Call (nr (E.built_in env "rts_bigint_add"))) in
+
+    go (Big_int.abs_big_int n) ^^
+
+    if Big_int.sign_big_int n < 0
+      then G.i (Call (nr (E.built_in env "rts_bigint_neg")))
+      else G.nop
+
+  let from_word32 env =
+    G.i (Call (nr (E.built_in env "rts_bigint_of_word32")))
+
+  let to_word32 env =
+    G.i (Call (nr (E.built_in env "rts_bigint_to_word32")))
+
+  let from_word64 env =
+    G.i (Call (nr (E.built_in env "rts_bigint_of_word64")))
+
+  let to_word64 env =
+    G.i (Call (nr (E.built_in env "rts_bigint_to_word64")))
+
+end (* BigInt *)
+[@@@warning "+60+32"]
+
+
+
 module BigNum = BigNum64
 
 (* Primitive functions *)
