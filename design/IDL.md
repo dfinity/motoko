@@ -665,6 +665,8 @@ actor server = {
 
 At runtime, every IDL value is serialised into a triple (T, M, R), where T ("type") and M ("memory") are sequences of bytes and R ("references") is a sequence of references. If R is empty, it can be omitted.
 
+The type is the value's *principal* type. That is, for records, it does not have fewer fields than contained in the value, and for variants, it does not have more fields than the one of the value (variant types with more than one field can still occur in higher-order types, e.g., function parameters or results).
+
 By making the type of the data explicit, (1) the serialised data becomes self-describing, which is useful for tooling, (2) error discovery and error handling is improved, (3) the binary format is decoupled from versioning concerns, so that the latter can be designed more flexible.
 
 By using references, (1) the wire representation of reference values (which may be complex and involve system meta data such as types) need not be exposed to client code, and (2) the system knows where the references are in the serialised data, such that it can rewrite/map/filter/adjust them as it sees fit.
@@ -720,8 +722,7 @@ T(service {<methtype>*}) =
   i8(21) T*(<methtype>*)
 
 T : <methtype> -> i8*
-T(<name>:<datatype>) =
-  leb128(|utf8(<name>)|) i8*(utf8(<name>)) T(<datatype>)
+T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) T(<datatype>)
 
 T : <funcann> -> i8*
 T(pure)   = i8(1)
@@ -772,8 +773,11 @@ M : <val> -> <constype> -> i8*
 M(null   : opt <datatype>) = i8(0)
 M(?v     : opt <datatype>) = i8(1) M(v : <datatype>)
 M(v*     : vec <datatype>) = leb128(N) M(v : <datatype>)*
-M((k,v)* : record {<fieldtype>*}) = M(v : <datatype>)*           iff <fieldtype>* = (k:<datatype>)*
-M((k,v)  : variant {<fieldtype>*}) = leb128(i) M(v : <datatype>) iff <fieldtype>*[i] = (k:<datatype>)
+M((k,v)* : record {<fieldtype>*}) = M(v : <fieldtype>)*
+M((k,v)  : variant {<fieldtype>}) = M(v : <fieldtype>)
+
+M : <val> -> <fieldtype> -> i8*
+M(v : k:<datatype>) = M(v : <datatype>)
 
 M : <val> -> <reftype> -> i8*
 M(r : service <actortype>) = .
@@ -794,8 +798,11 @@ R : <val> -> <constype> -> <ref>*
 R(null   : opt <datatype>) = .
 R(?v     : opt <datatype>) = R(v : <datatype>)
 R(v*     : vec <datatype>) = R(v : <datatype>)*
-R((k,v)* : record {<fieldtype>*}) = R(v : <datatype>)*  iff <fieldtype>* = (k:<datatype>)*
-R((k,v)  : variant {<fieldtype>*}) = R(v : <datatype>)  iff <fieldtype>*[i] = (k:<datatype>)
+R((k,v)* : record {<fieldtype>*}) = R(v : <fieldtype>)*
+R((k,v)  : variant {<fieldtype>}) = R(v : <fieldtype>)
+
+R : <val> -> <fieldtype> -> <ref>*
+R(v : k:<datatype>) = M(v : <datatype>)
 
 R : <val> -> <reftype> -> <ref>*
 R(r : service <actortype>) = r
