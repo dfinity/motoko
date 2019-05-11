@@ -1894,7 +1894,7 @@ end
 
 
 [@@@warning "-60-32"] (* until we start using these, see #359 *)
-module BigInt = struct
+module BigInt : BigNumType = struct
 
   let lit env n =
     let twoto32 = Big_int.power_int_positive_int 2 31 in
@@ -1929,6 +1929,53 @@ module BigInt = struct
 
   let to_word64 env =
     G.i (Call (nr (E.built_in env "rts_bigint_to_word64")))
+
+  let compile_add env =
+    G.i (Call (nr (E.built_in env "rts_bigint_add")))
+
+  let compile_signed_sub env =
+    G.i (Call (nr (E.built_in env "rts_bigint_sub")))
+
+  let compile_unsigned_sub env =
+    G.i (Call (nr (E.built_in env "rts_bigint_sub"))) (* todo(gabor) ensure non-negative *)
+
+  let compile_mul env =
+    G.i (Call (nr (E.built_in env "rts_bigint_mul")))
+
+  let compile_signed_div env =
+    G.i (Call (nr (E.built_in env "rts_bigint_div")))
+
+  let compile_unsigned_div env =
+    G.i (Call (nr (E.built_in env "rts_bigint_div")))
+
+  let compile_signed_mod env =
+    G.i (Call (nr (E.built_in env "rts_bigint_mod")))
+
+  let compile_unsigned_rem env =
+    G.i (Call (nr (E.built_in env "rts_bigint_mod"))) (* todo(gabor) make it non-negative *)
+
+  let compile_abs env =
+    G.i (Call (nr (E.built_in env "rts_bigint_abs")))
+
+  let compile_unsigned_pow env =
+    G.i (Call (nr (E.built_in env "rts_bigint_mul"))) (* !!!!   todo(gabor) call POW *)
+
+  let compile_eq env =
+    G.i (Call (nr (E.built_in env "rts_bigint_eq")))
+
+  let compile_relop env bigintop _ =
+    G.i (Call (nr (E.built_in env ("rts_bigint_" ^ bigintop))))
+
+  let compile_is_negative env =
+    compile_unboxed_const 0l ^^
+    from_word32 env ^^
+    G.i (Call (nr (E.built_in env "rts_bigint_gt")))
+
+  let compile_lit = lit
+
+  let compile_lit_pat env compile_lit =
+    compile_lit ^^
+    compile_eq env
 
 end (* BigInt *)
 [@@@warning "+60+32"]
