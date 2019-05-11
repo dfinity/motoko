@@ -1921,6 +1921,10 @@ module BigInt : BigNumType = struct
   let from_word32 env =
     G.i (Call (nr (E.built_in env "rts_bigint_of_word32")))
 
+  let from_signed_word32 env =
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
+    G.i (Call (nr (E.built_in env "rts_bigint_of_word64")))
+
   let to_word32 env =
     G.i (Call (nr (E.built_in env "rts_bigint_to_word32")))
 
@@ -1976,6 +1980,23 @@ module BigInt : BigNumType = struct
   let compile_lit_pat env compile_lit =
     compile_lit ^^
     compile_eq env
+
+
+  let compile_data_size = todo "compile_data_size" (Arrange_ir.typ Type.(Prim Int)) G.nop
+  let compile_load_from_data_buf env = todo "compile_load_from_data_buf" (Arrange_ir.typ Type.(Prim Int)) G.nop
+  let compile_store_to_data_buf env = todo "compile_store_to_data_buf" (Arrange_ir.typ Type.(Prim Int)) G.nop
+
+  let _fits_in_vanilla env =
+    compile_unboxed_const 0l (* todo(gabor) implement this *)
+
+  let _from_vanilla env =
+    compile_const_64 1L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Rotr)) ^^
+    compile_const_64 1L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+    from_word32 env
+
+  let _to_vanilla env = todo "to_vanilla" (Arrange_ir.typ Type.(Prim Int)) G.nop
 
 end (* BigInt *)
 [@@@warning "+60+32"]
