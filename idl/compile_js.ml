@@ -19,19 +19,15 @@ let rec pp_typ ppf env t =
   (match t.it with
   | VarT s -> pp_print_string ppf s.it; str ppf "()"
   | PrimT p -> str ppf ("IDL."^(Arrange_idl.string_of_prim p))
-  | RecordT ts ->
-     str ppf "IDL.Obj({";
-     concat ppf pp_field env "," ts;
-     str ppf "})";
+  | RecordT ts -> pp_fields ppf env ts
   | VecT t -> str ppf "IDL.Arr("; pp_typ ppf env t; str ppf ")";
   | OptT t -> str ppf "IDL.Opt("; pp_typ ppf env t; str ppf ")";
   | VariantT ts -> str ppf "IDL.Variant({"; concat ppf pp_field env "," ts; str ppf "})";
-  | TupT ts -> str ppf "IDL.Tuple("; concat ppf pp_typ env "," ts; str ppf ")";
   | FuncT (ms, t1, t2) ->
      str ppf "IDL.message(";
-     pp_typ ppf env t1;
+     pp_fields ppf env t1;
      kwd ppf ",";
-     pp_typ ppf env t2;
+     pp_fields ppf env t2;
      str ppf ")";
   | ServT ts ->
      pp_open_hovbox ppf 1;
@@ -43,6 +39,13 @@ let rec pp_typ ppf env t =
   );
   pp_close_box ppf ()
 
+and pp_fields ppf env fs =
+  pp_open_box ppf 1;
+  str ppf "IDL.Obj({";
+  concat ppf pp_field env "," fs;
+  str ppf "})";
+  pp_close_box ppf ()
+  
 and pp_field ppf env tf =
   pp_open_box ppf 1;
   id ppf tf.it.name; kwd ppf ":"; pp_typ ppf env tf.it.typ;
@@ -52,7 +55,7 @@ and pp_meth ppf env meth =
   pp_open_box ppf 1;
   id ppf meth.it.var;
   kwd ppf ":";
-  pp_typ ppf env meth.it.bound;
+  pp_typ ppf env meth.it.meth;
   pp_close_box ppf ()
   
 let pp_dec ppf env dec =
@@ -64,19 +67,30 @@ let pp_dec ppf env dec =
       kwd ppf "=";
       kwd ppf "()"; kwd ppf "=>";
       pp_typ ppf env t
-   | ActorD (x, tp) ->
-      id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
-      str ppf "IDL.ActorInterface({";
-      concat ppf pp_meth env "," tp;
-      str ppf "})"
-  | ActorVarD (x, var) -> id ppf x; space ppf (); kwd ppf "="; id ppf var;
   );
   pp_close_box ppf ();
   pp_print_cut ppf ()
-    
+
+let pp_actor ppf env actor_opt =
+  pp_open_hovbox ppf 1;
+  kwd ppf "const";
+  (match actor_opt with
+    None -> ()
+  | Some actor ->
+     (match actor.it with
+     | ActorD (x, tp) ->
+        id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
+        str ppf "IDL.ActorInterface({";
+        concat ppf pp_meth env "," tp;
+        str ppf "})"
+     | ActorVarD (x, var) -> id ppf x; space ppf (); kwd ppf "="; id ppf var)
+  );
+  pp_close_box ppf ()
+
 let pp_prog ppf env prog =
   pp_open_vbox ppf 0;
-  List.map (pp_dec ppf env) prog.it;
+  List.map (pp_dec ppf env) prog.it.decs;
+  pp_actor ppf env prog.it.actor;
   pp_close_box ppf ()
    
 let compile (scope : Typing_idl.scope) (prog : Syntax_idl.prog) =

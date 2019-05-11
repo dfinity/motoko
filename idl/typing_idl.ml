@@ -5,6 +5,7 @@ open Arrange_idl
 (* Environments *)
 module FieldEnv = Env_idl.Make(struct type t = Stdint.uint64 let compare = Stdint.Uint64.compare end)   
 module Env = Env_idl.Make(String)
+module TS = Set.Make(String)           
            
 (* Error recovery *)
 
@@ -16,21 +17,21 @@ let recover f y = recover_with () f y
   
 (* Scopes *)
 
-type val_env = typ Env.t
+type typ_env = typ Env.t
 
-type scope = val_env
+type scope = typ_env
 
 let empty_scope : scope = Env.empty;
 
 (* Contexts (internal) *)
 
 type env =
-  { vals : val_env;
+  { typs : typ_env;
     msgs : Diag.msg_store;
   }
 
 let env_of_scope msgs scope =
-  { vals = scope;
+  { typs = scope;
     msgs;
   }
 
@@ -48,14 +49,12 @@ let warn env at fmt =
 
 (* Context extension *)
 
-let add_val env x t = {env with vals = Env.add x t env.vals}
-
 let adjoin env scope =
   { env with
-    vals = Env.adjoin env.vals scope;
+    typs = Env.adjoin env.typs scope;
   }
 
-let adjoin_vals env ve = {env with vals = Env.adjoin env.vals ve}
+let adjoin_typs env te = {env with typs = Env.adjoin env.typs te}
 
 let disjoint_union env at fmt env1 env2 =
   try Env.disjoint_union env1 env2
@@ -73,23 +72,15 @@ let rec check_typ env t =
   match t.it with
   | PrimT prim -> t
   | VarT id ->
-     (match Env.find_opt id.it env.vals with
+     (match Env.find_opt id.it env.typs with
       | None ->
          error env id.at "unbound type identifier %s" id.it;
       | Some t' -> if is_pre t' then t else t'
      )
   | FuncT (ms, t1, t2) ->
-     let t1' = check_typ env t1 in
-     let t2' = check_typ env t2 in
-     let modes' = List.map (fun m -> m.it) ms in
-     if List.mem Pure modes' && List.mem Updatable modes' then
-       error env (List.hd ms).at "function mode cannot be pure and update at the same time";
-     if not (is_record t1') then
-       error env t1.at "function has non-record parameter type\n %s" (string_of_typ t1');
-     if not (is_record t2') then
-       error env t2.at "function has non-record result type\n %s" (string_of_typ t2');     
+     let t1' = check_fields env t1 in
+     let t2' = check_fields env t2 in
      FuncT (ms, t1', t2') @@ t.at
-  | TupT ts -> TupT (List.map (check_typ env) ts) @@ t.at
   | OptT t -> OptT (check_typ env t) @@ t.at
   | VecT t -> VecT (check_typ env t) @@ t.at
   | RecordT fs ->
@@ -98,7 +89,7 @@ let rec check_typ env t =
   | VariantT fs ->
      let fs' = check_fields env fs in
      VariantT (List.sort compare_field fs') @@ t.at
-  | ServT meths -> ServT (List.map (check_meth env) meths) @@ t.at
+  | ServT meths -> ServT (check_meths env meths) @@ t.at
   | PreT -> assert false
 
 and check_fields env fs =
@@ -115,10 +106,21 @@ and check_fields env fs =
   in fields
 
 and check_meth env meth =
-  let t' = check_typ env meth.it.bound in
+  let t' = check_typ env meth.it.meth in
   if not (is_func t') then
-    error env meth.it.bound.at "%s is a non-function type\n %s" meth.it.var.it (string_of_typ t');
-  {var=meth.it.var; bound=t'} @@ meth.at
+    error env meth.it.meth.at "%s is a non-function type\n %s" meth.it.var.it (string_of_typ t');
+  {var=meth.it.var; meth=t'} @@ meth.at
+
+and check_meths env meths =
+  let _, meths =
+    List.fold_left (fun (name_env, meths) meth ->
+        if TS.mem meth.it.var.it name_env then
+          error env meth.it.var.at "duplicate binding for %s in service" meth.it.var.it
+        else
+          let meth' = check_meth env meth in
+          (TS.add meth.it.var.it name_env, meth'::meths)
+      ) (TS.empty, []) meths
+  in meths
   
 (* Declarations *)
                     
@@ -127,11 +129,15 @@ and check_def env dec =
   | TypD (id, t) ->
      let t' = check_typ env t in
      Env.singleton id.it t'
-  | ActorD (id, meth_list) ->
-     let sigs = List.map (check_meth env) meth_list in
-     Env.singleton id.it (ServT sigs @@ dec.at)
-  | ActorVarD (id, var) ->
-     (match Env.find_opt var.it env.vals with
+
+and check_actor env actor_opt =
+  match actor_opt with
+  | None -> Env.empty
+  | Some {it=ActorD (id, meths); at; _} ->
+     let meths' = check_meths env meths in
+     Env.singleton id.it (ServT meths' @@ at)
+  | Some {it=ActorVarD (id, var); _} ->
+     (match Env.find_opt var.it env.typs with
       | None -> error env var.at "unbound service reference type %s" var.it
       | Some t ->
          if not (is_serv t) then
@@ -139,25 +145,23 @@ and check_def env dec =
          Env.singleton id.it t)
                     
 and check_defs env decs =
-  let _, ve =
-    List.fold_left (fun (env, ve) dec ->
-        let ve' = check_def env dec in
-        adjoin_vals env ve', Env.adjoin ve ve'
-      ) (env, Env.empty) decs.it
-  in ve
+  let _, te =
+    List.fold_left (fun (env, te) dec ->
+        let te' = check_def env dec in
+        adjoin_typs env te', Env.adjoin te te'
+      ) (env, Env.empty) decs
+  in te
 
 and gather_id dec =
   match dec.it with
   | TypD (id, _) -> id
-  | ActorD (id, _) -> id
-  | ActorVarD (id, _) -> id
 
-and gather_decs decs =
-  List.fold_left (fun ve dec ->
+and gather_decs env decs =
+  List.fold_left (fun te dec ->
       let id = gather_id dec in
-      let ve' = Env.singleton id.it (PreT @@ id.at) in
-      Env.adjoin ve ve'
-    ) Env.empty decs.it
+      let te' = Env.singleton id.it (PreT @@ id.at) in
+      disjoint_union env id.at "duplicate binding for %s in type definitions" te te'
+    ) env.typs decs
 
 (* Programs *)
 
@@ -166,11 +170,12 @@ let check_prog scope prog : scope Diag.result =
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let init_scope = gather_decs prog in
-          let scope = Env.adjoin scope init_scope in
-          let env = env_of_scope msgs scope in
-          let res = check_defs env prog in
-          res
+          let env = env_of_scope msgs scope in          
+          let init_scope = gather_decs env prog.it.decs in
+          let env = adjoin env init_scope in
+          let te = check_defs env prog.it.decs in
+          let _ = check_actor (env_of_scope msgs te) prog.it.actor in
+          te
         )
         prog
     )

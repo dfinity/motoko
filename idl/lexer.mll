@@ -109,14 +109,12 @@ rule token = parse
   | "{" { LCURLY }
   | "}" { RCURLY }
   | ";" { SEMICOLON }
-  | ";\n" { Lexing.new_line lexbuf; SEMICOLON_EOL }
   | "," { COMMA }
   | ":" { COLON }
   | "=" { EQ }
 
   | "->" { ARROW }
   | "pure" { PURE }
-  | "update" { UPDATE }
   | "sensitive" { SENSITIVE }
 
   | nat as s { NAT s }

@@ -33,14 +33,12 @@ let is_prim_typs t = List.assoc_opt t prim_typs
 
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token ARROW
-%token FUNC TYPE SERVICE SENSITIVE PURE UPDATE
-%token SEMICOLON SEMICOLON_EOL COMMA COLON EQ
+%token FUNC TYPE SERVICE SENSITIVE PURE
+%token SEMICOLON COMMA COLON EQ
 %token OPT VEC RECORD VARIANT ENUM BLOB
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
-
-%left COLON
 
 %start<Syntax_idl.prog> parse_prog
 
@@ -54,10 +52,6 @@ seplist(X, SEP) :
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
 (* Basics *)
-
-%inline semicolon :
-  | SEMICOLON
-  | SEMICOLON_EOL { () }
 
 %inline id :
   | id=ID { id @@ at $sloc }
@@ -89,10 +83,10 @@ field_typ :
       { id = Stdint.Uint64.of_int (Hashtbl.hash name.it); name = name; typ = t } @@ at $sloc }
 
 field_typs :
-  | LCURLY fs=seplist(field_typ, semicolon) RCURLY { fs }
+  | LCURLY fs=seplist(field_typ, SEMICOLON) RCURLY { fs }
 
 enums :
-  | LCURLY es=seplist(name, semicolon) RCURLY { }
+  | LCURLY es=seplist(name, SEMICOLON) RCURLY { }
 
 cons_typ :
   | OPT t=data_typ { OptT t @@ at $sloc }
@@ -109,14 +103,13 @@ data_typ :
   | t=prim_typ { t }
 
 param_typs :
-  | f = field_typ { RecordT [f] @@ at $sloc }
+  | f = field_typ { [f] }
   | LPAR fs=seplist(field_typ, COMMA) RPAR
-    { RecordT fs @@ at $sloc }
+    { fs }
 
 func_mode :
   | SENSITIVE { Sensitive @@ at $sloc }
   | PURE { Pure @@ at $sloc }
-  | UPDATE { Updatable @@ at $sloc }
 
 func_modes_opt :
   | (* empty *) { [] }
@@ -128,12 +121,12 @@ func_typ :
 
 meth_typ :
   | x=name COLON t=func_typ
-    { { var = x; bound = t } @@ at $sloc }
+    { { var = x; meth = t } @@ at $sloc }
   | x=name COLON id=id
-    { { var = x; bound = VarT id @@ at $sloc } @@ at $sloc }
+    { { var = x; meth = VarT id @@ at $sloc } @@ at $sloc }
 
 actor_typ :
-  | LCURLY ds=seplist(meth_typ, semicolon) RCURLY
+  | LCURLY ds=seplist(meth_typ, SEMICOLON) RCURLY
     { ds }
 
 (* Declarations *)
@@ -143,18 +136,15 @@ def :
     { TypD(x, t) @@ at $sloc }
 
 actor :
+  | (* empty *) { None }
   | SERVICE id=id tys=actor_typ
-    { ActorD(id, tys) @@ at $sloc }
+    { Some (ActorD(id, tys) @@ at $sloc) }
   | SERVICE id=id COLON x=id
-    { ActorVarD(id, x) @@ at $sloc }
-
-dec :
-  | d=def { d }
-  | d=actor { d }
+    { Some (ActorVarD(id, x) @@ at $sloc) }
 
 (* Programs *)
 
 parse_prog :
-  | ds=seplist(dec, semicolon) EOF { ds @@ at $sloc }
+  | ds=seplist(def, SEMICOLON) actor=actor EOF { {decs=ds; actor=actor} @@ at $sloc }
 
 %%

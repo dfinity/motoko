@@ -1,8 +1,8 @@
 module Env : Env_idl.S with type key = string
 
-type val_env = Syntax_idl.typ Env.t
+type typ_env = Syntax_idl.typ Env.t
 
-type scope = val_env
+type scope = typ_env
 
 val empty_scope : scope
 
