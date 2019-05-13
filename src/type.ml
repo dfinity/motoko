@@ -677,13 +677,6 @@ and eq t1 t2 : bool =
   let eq = ref S.empty in eq_typ eq eq t1 t2
 
 and sub t1 t2 : bool =
-  let res = rel_typ (ref S.empty) (ref S.empty) t1 t2 in
-  (*let l = lub t1 t2 in
-  let g = glb t1 t2 in
-  if res && not (eq t2 l) then Printf.printf "bad LUB: %s     (%s     <:     %s) \n%!" (!str l) (!str t1) (!str t2);
-  if res && not (eq t1 g) then Printf.printf "bad GLB: %s     (%s     <:     %s) \n%!" (!str g) (!str t1) (!str t2);
-   *)res
-and sub' t1 t2 : bool =
   rel_typ (ref S.empty) (ref S.empty) t1 t2
 
 and eq_kind k1 k2 : bool =
@@ -743,8 +736,8 @@ and lub' lubs glbs t1 t2 =
   | _, Non -> t1
   | Non, _ -> t2
   | Var (v1, i1), Var (v2, i2) when i1 = i2 && v1 = v2 -> t1
-  | Shared, t2' when sub' t2' Shared -> Shared
-  | t1', Shared when sub' t1' Shared -> Shared
+  | Shared, t2' when sub t2' Shared -> Shared
+  | t1', Shared when sub t1' Shared -> Shared
   | Mut (Var _ as t1'), Mut (Var _ as t2') when t1' = t2' -> t1
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Int
@@ -817,16 +810,16 @@ and glb' lubs glbs t1 t2 =
   | Non, _ -> Non
   | Var (v1, i1), Var (v2, i2) when i1 = i2 && v1 = v2 -> t1
   | Mut (Var _ as t1'), Mut (Var _ as t2') when t1' = t2' -> t1 (* TODO(gabor) not general enough *)
-  | Shared, t2' when sub' t2' Shared -> t2
-  | t1', Shared when sub' t1' Shared -> t1
+  | Shared, t2' when sub t2' Shared -> t2
+  | t1', Shared when sub t1' Shared -> t1
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
   | Prim Null, Opt _
   | Opt _, Prim Null -> Prim Null
-  | Array t1', (Obj _ as t2') when sub' (array_obj t1') t2' -> t1
-  | (Obj _ as t1'), Array t2' when sub' (array_obj t2') t1' -> t2
-  | Prim Text, (Obj _ as t2') when sub' text_obj t2' -> t1
-  | (Obj _ as t1'), Prim Text when sub' text_obj t1' -> t2
+  | Array t1', (Obj _ as t2') when sub (array_obj t1') t2' -> t1
+  | (Obj _ as t1'), Array t2' when sub (array_obj t2') t1' -> t2
+  | Prim Text, (Obj _ as t2') when sub text_obj t2' -> t1
+  | (Obj _ as t1'), Prim Text when sub text_obj t1' -> t2
 
   | t1', t2' when eq t1' t2' -> t1
   (* Potentially recursive types follow *)
