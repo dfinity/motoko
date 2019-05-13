@@ -709,13 +709,13 @@ T(text)     = i8(14)
 T(unavailable) = i8(15)
 
 T : <constype> -> i8*
-T(opt <datatype>) = i8(16) T(<datatype>)
-T(vec <datatype>) = i8(17) T(<datatype>)
+T(opt <datatype>) = i8(16) I(<datatype>)
+T(vec <datatype>) = i8(17) I(<datatype>)
 T(record {<fieldtype>^N}) = i8(18) T*(<fieldtype>^N)
 T(variant {<fieldtype>^N}) = i8(19) T*(<fieldtype>^N)
 
 T : <fieldtype> -> i8*
-T(<nat>:<datatype>) = leb128(<nat>) T(<datatype>)
+T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
 T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
@@ -724,7 +724,7 @@ T(service {<methtype>*}) =
   i8(21) T*(<methtype>*)
 
 T : <methtype> -> i8*
-T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) T(<datatype>)
+T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
 
 T : <funcann> -> i8*
 T(pure)   = i8(1)
@@ -734,24 +734,24 @@ T* : <X>* -> i8*
 T*(<X>^N) = leb128(N) T(<X>)^N
 ```
 
-This definition assumes that a type is finite. However, the IDL supports structurally recursive types. In order to represent those, and to allow efficient sharing of type components occuring multiple types, the binary format is prefixed by a sequence of mutually recursive *type definitions* that can be referenced with a special tag:
+Every recursive occurence of a type is encoded as an index into a sequence of *type definitions*. This allows for recursive types and sharing of types occuring multiple times:
 
 ```
-T : <datatype> -> i8*
-T(<datatype>) = i8(255) leb128(i)  iff type definition i defines <datatype>
+I : <datatype> -> i8*
+I(<datatype>) = leb128(i)  iff type definition i defines <datatype>
 ```
 
 Type definitions themselves are represented as a list of serialised data types:
 ```
 T*(<datatype>*)
 ```
-The data types in this list can themselves refer to any of the definitions via the encoding above. However, a definition in the list must not consist solely of such a reference.
-
 Note:
 
 * Due to the type definition prefix, there are always multiple possible ways to represent any given serialised type. Type serialisation hence is not technically a function but a relation.
 
-* The serialised data type representing a method type must denote a function type, either directly, or via reference to a type definition.
+* The serialised data type representing a method type must denote a function type.
+
+* Because recursion goes through `T`, this format by construction rules out circluar definitions like `type t = t`.
 
 
 #### Memory
