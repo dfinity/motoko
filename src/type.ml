@@ -713,9 +713,9 @@ and is_recursive_con = function
 (* for a Con that normalises to t, figure out whether the Con itself
    is missing from the types transitively referenced by t *)
 and is_loop_free con t =
-  let rec check_no_pointer ts followers =
+  let rec check_no_pointer followers =
     List.length followers = 0 || not (List.memq con followers)
-    && check_no_pointer (ts @ followers) List.(flatten (map references followers))
+    && check_no_pointer List.(flatten (map references followers))
   and references = function
     | Tup ts -> ts
     | Opt t | Array t | Async t | Mut t -> [t]
@@ -723,7 +723,7 @@ and is_loop_free con t =
     | Variant vts -> let ts = List.map snd vts in ts
     | Func (s, c, bs, args, res) -> args @ res (* todo(gabor) bs bounds*)
     | _ -> [] in
-  check_no_pointer [con] (references t)
+  check_no_pointer (references t)
 
 and lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
