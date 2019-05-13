@@ -803,7 +803,7 @@ actor server {
   /**
    `allReservedRouteInfo`
    ---------------------------
-   Get the information for all known routes.
+   Get the information for all reserved routes.
    */
   allReservedRouteInfo() : async [T.ReservedRouteInfo] {
     getModel()
