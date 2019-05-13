@@ -6,6 +6,7 @@ Purely-functional, singly-linked lists.
 
 */
 
+module {
 /**
  Representation
  =================
@@ -437,3 +438,5 @@ To do:
 - more regression tests for everything that is below
 
 */
+
+}

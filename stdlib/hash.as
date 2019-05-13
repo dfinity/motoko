@@ -30,166 +30,171 @@ going forward.
 
 */
 
-/** A "bit string" as a linked list of bits: */
-type BitList = ?(Bool, BitList);
+module {
 
-/** A "bit vector" is a bounded-length bit string packed into a single word: */
-type BitVec = Word32;
+  /** A "bit string" as a linked list of bits: */
+  type BitList = ?(Bool, BitList);
 
-/**
+  /** A "bit vector" is a bounded-length bit string packed into a single word: */
+  type BitVec = Word32;
 
- `BitVec`
- ----------------------
- A "bit vector" is a bounded-length bit string packed into a single word.
+  /**
 
- */
+   `BitVec`
+   ----------------------
+   A "bit vector" is a bounded-length bit string packed into a single word.
 
-module BitVec {
+   */
 
-  type t = BitVec;
+  module BitVec {
 
-  func length() : Nat = 31;
+    type t = BitVec;
 
-  func hashOfInt(i:Int) : BitVec {
-    hashInt(i)
-  };
+    func length() : Nat = 31;
 
-  func hashOfIntAcc(h:BitVec, i:Int) : BitVec {
-    //hashIntAcc(h, i)
-    // xxx use the value h
-    hashInt(i)
-  };
-
-  func hashOfText(t:Text) : BitVec {
-    var x = 0 : Word32;
-    for (c in t.chars()) {
-      x := x ^ charToWord32(c);
+    func hashOfInt(i:Int) : BitVec {
+      hashInt(i)
     };
-    return x
-  };
 
-  /** Test if two lists of bits are equal. */
-  func getHashBit(h:BitVec, pos:Nat) : Bool {
-    assert (pos <= length());
-    if ((h & (natToWord32(1) << natToWord32(pos))) != natToWord32(0)) { true }
-    else { false }
-  };
+    func hashOfIntAcc(h:BitVec, i:Int) : BitVec {
+      //hashIntAcc(h, i)
+      // xxx use the value h
+      hashInt(i)
+    };
 
-  /** Test if two lists of bits are equal. */
-  func hashEq(ha:BitVec, hb:BitVec) : Bool {
-    ha == hb
-  };
+    func hashOfText(t:Text) : BitVec {
+      var x = 0 : Word32;
+      for (c in t.chars()) {
+	x := x ^ charToWord32(c);
+      };
+      return x
+    };
 
-  func bitsPrintRev(bits:BitVec) {
-    for (j in range(0, length() - 1)) {
-      if (getHashBit(bits, j)) {
-        print "1"
-      } else {
-        print "0"
-      }
-    }
-  };
+    /** Test if two lists of bits are equal. */
+    func getHashBit(h:BitVec, pos:Nat) : Bool {
+      assert (pos <= length());
+      if ((h & (natToWord32(1) << natToWord32(pos))) != natToWord32(0)) { true }
+      else { false }
+    };
 
-  func hashPrintRev(bits:BitVec) {
-    for (j in range(length() - 1, 0)) {
-      if (getHashBit(bits, j)) {
-        print "1"
-      } else {
-        print "0"
-      }
-    }
-  };
+    /** Test if two lists of bits are equal. */
+    func hashEq(ha:BitVec, hb:BitVec) : Bool {
+      ha == hb
+    };
 
-  func toList(v:BitVec) : BitList {
-    func rec(pos:Nat) : BitList {
-      if (pos >= length()) { null }
-      else {
-        let rest = rec(pos + 1);
-        if (getHashBit(v, pos)) { ?(true, rest) }
-        else { ?(false, rest) }
+    func bitsPrintRev(bits:BitVec) {
+      for (j in range(0, length() - 1)) {
+	if (getHashBit(bits, j)) {
+	  print "1"
+	} else {
+	  print "0"
+	}
       }
     };
-    rec(0)
-  }
 
-};
+    func hashPrintRev(bits:BitVec) {
+      for (j in range(length() - 1, 0)) {
+	if (getHashBit(bits, j)) {
+	  print "1"
+	} else {
+	  print "0"
+	}
+      }
+    };
 
-/**
-
- `BitList`
- ----------
-
- Encode hashes as lists of booleans.
-
- TODO: Replace with bitwise operations on Words, for greater efficiency.
-*/
-module BitList {
-
-  type t = BitList;
-
-  func hashOfInt(i:Int) : BitList {
-    BitVec.toList(BitVec.hashOfInt(i))
-  };
-
-  /** Test if two lists of bits are equal. */
-  func getHashBit(h:BitList, pos:Nat) : Bool {
-    switch h {
-    case null {
-	         // XXX: Should be an error case; it shouldn't happen in our tests if we set them up right.
-	         false
-	       };
-    case (?(b, h_)) {
-	         if (pos == 0) { b }
-	         else { getHashBit(h_, pos-1) }
-	       };
+    func toList(v:BitVec) : BitList {
+      func rec(pos:Nat) : BitList {
+	if (pos >= length()) { null }
+	else {
+	  let rest = rec(pos + 1);
+	  if (getHashBit(v, pos)) { ?(true, rest) }
+	  else { ?(false, rest) }
+	}
+      };
+      rec(0)
     }
+
   };
 
-  /** Test if two lists of bits are equal. */
-  func hashEq(ha:BitList, hb:BitList) : Bool {
-    switch (ha, hb) {
-    case (null, null) true;
-    case (null, _) false;
-    case (_, null) false;
-    case (?(bita, ha2), ?(bitb, hb2)) {
-	         if (bita == bitb) { hashEq(ha2, hb2) }
-	         else { false }
-	       };
-    }
+  /**
+
+   `BitList`
+   ----------
+
+   Encode hashes as lists of booleans.
+
+   TODO: Replace with bitwise operations on Words, for greater efficiency.
+  */
+  module BitList {
+
+    type t = BitList;
+
+    func hashOfInt(i:Int) : BitList {
+      BitVec.toList(BitVec.hashOfInt(i))
+    };
+
+    /** Test if two lists of bits are equal. */
+    func getHashBit(h:BitList, pos:Nat) : Bool {
+      switch h {
+      case null {
+		   // XXX: Should be an error case; it shouldn't happen in our tests if we set them up right.
+		   false
+		 };
+      case (?(b, h_)) {
+		   if (pos == 0) { b }
+		   else { getHashBit(h_, pos-1) }
+		 };
+      }
+    };
+
+    /** Test if two lists of bits are equal. */
+    func hashEq(ha:BitList, hb:BitList) : Bool {
+      switch (ha, hb) {
+      case (null, null) true;
+      case (null, _) false;
+      case (_, null) false;
+      case (?(bita, ha2), ?(bitb, hb2)) {
+		   if (bita == bitb) { hashEq(ha2, hb2) }
+		   else { false }
+		 };
+      }
+    };
+
+    func bitsPrintRev(bits:BitList) {
+	    switch bits {
+	    case null { print "" };
+	    case (?(bit,bits_)) {
+			 bitsPrintRev(bits_);
+			 if bit { print "1R." }
+			 else   { print "0L." }
+		 }
+	    }
+    };
+
+    func hashPrintRev(bits:BitList) {
+	    switch bits {
+	    case null { print "" };
+	    case (?(bit,bits_)) {
+			 hashPrintRev(bits_);
+			 if bit { print "1" }
+			 else   { print "0" }
+		 }
+	    }
+    };
+
   };
 
-  func bitsPrintRev(bits:BitList) {
-	  switch bits {
-	  case null { print "" };
-	  case (?(bit,bits_)) {
-		       bitsPrintRev(bits_);
-		       if bit { print "1R." }
-		       else   { print "0L." }
-	       }
-	  }
-  };
 
-  func hashPrintRev(bits:BitList) {
-	  switch bits {
-	  case null { print "" };
-	  case (?(bit,bits_)) {
-		       hashPrintRev(bits_);
-		       if bit { print "1" }
-		       else   { print "0" }
-	       }
-	  }
-  };
+  /**
+   Canonical representations
+   ---------------------------
 
-};
+   Choose a canonical representation of hash values for the rest of
+   the standard library to use:
+  */
 
+  type Hash = BitVec;
+  let Hash = BitVec;
 
-/**
- Canonical representations
- ---------------------------
+}
 
- Choose a canonical representation of hash values for the rest of
- the standard library to use:
-*/
-
-type Hash = BitVec;
-let Hash = BitVec;

@@ -9,6 +9,7 @@ some further experience and discussion.  Until then, they live here.
 
 */
 
+module {
 /***
 
  `nyi`: Not yet implemented
@@ -39,3 +40,5 @@ func xxx() : None =
 
 */
 func unreachable() : None = { assert false ; loop { } };
+
+}

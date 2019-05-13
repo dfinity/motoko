@@ -9,7 +9,9 @@ Implements the same interface as `Trie`, but as a linked-list of key-value pairs
 
 */
 
-let List = import "list.as";
+module {
+
+private let List = import "list.as";
 
 // polymorphic association linked lists between keys and values
 type AssocList<K,V> = List.List<(K,V)>;
@@ -194,3 +196,5 @@ type AssocList<K,V> = List.List<(K,V)>;
     };
     rec(al)
   };
+
+}

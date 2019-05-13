@@ -6,5 +6,3 @@
 -- Definedness ListClient.as:
 -- Interpreting ListLib.as:
 -- Interpreting ListClient.as:
-nil()
-  <= null
