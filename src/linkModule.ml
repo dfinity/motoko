@@ -540,7 +540,7 @@ let check_typ is_thing get_typ string_of m1 m2 (i1, i2) =
   let imp = get_import is_thing i1 m1 in
   if t1 <> t2 then
     let msg = Printf.sprintf
-      "Typ mismatch when linking %s.%s:\n    %s\n /= %s"
+      "Type mismatch when linking %s.%s:\nimport type: %s\nexport type: %s"
       (string_of_name imp.it.module_name)
       (string_of_name imp.it.item_name)
       (string_of t1)
