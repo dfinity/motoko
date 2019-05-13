@@ -509,7 +509,7 @@ let is_loop_breaker = function
     begin match Con.kind c with
     | Def ([], _) ->
       let name = Con.name c in
-      String.length name > 4 && name.[3] = ' '
+      name.[0] = '@'
     | _ -> false
     end
   | _ -> false
@@ -714,7 +714,7 @@ and lub' lubs glbs t1 t2 =
   if M.mem (t1, t2) !lubs then M.find (t1, t2) !lubs else
   if M.mem (t2, t1) !lubs then M.find (t2, t1) !lubs else
   if is_recursive_con t1 || is_recursive_con t2 then
-    let c = Con.fresh (Printf.sprintf "lub (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
+    let c = Con.fresh (Printf.sprintf "@lub (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
     lubs := M.add (t1, t2) (Con (c, [])) !lubs;
     let inner = lub' lubs glbs (normalize t1) (normalize t2) in
     set_kind c (Def ([], inner));
@@ -787,7 +787,7 @@ and glb' lubs glbs t1 t2 =
   if M.mem (t1, t2) !glbs then M.find (t1, t2) !glbs else
   if M.mem (t2, t1) !glbs then M.find (t2, t1) !glbs else
   if is_recursive_con t1 || is_recursive_con t2 then
-    let c = Con.fresh (Printf.sprintf "glb (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
+    let c = Con.fresh (Printf.sprintf "@glb (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
     glbs := M.add (t1, t2) (Con (c, [])) !glbs;
     let inner = glb' lubs glbs (normalize t1) (normalize t2) in
     set_kind c (Def ([], inner));
