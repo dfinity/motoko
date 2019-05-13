@@ -714,7 +714,7 @@ and is_recursive_con = function
    is missing from the types transitively referenced by t *)
 and is_loop_free con t =
   let rec check_no_pointer ts followers =
-    List.length followers = 0 || List.for_all (fun p -> not (List.exists (fun p' -> p' == p) ts)) followers
+    List.length followers = 0 || List.for_all (fun p -> not (List.memq p ts)) followers
     && check_no_pointer (ts @ followers) List.(flatten (map references followers))
   and references = function
     | Tup ts -> ts
