@@ -190,9 +190,9 @@ do
   else
     # The file is a .wat file, so we are expected to test linking
     $ECHO -n " [as-ld]"
-    rm -f _out/$base.wat
-    make --quiet _out/$base.wat
-    diff_files="$diff_files $base.wat"
+    rm -f _out/$base.*
+    make --quiet _out/$base.linked.{wat,valid} 2> _out/$base.make
+    diff_files="$diff_files $base.linked.wat $base.linked.valid $base.make"
   fi
   $ECHO ""
 

@@ -1,0 +1,4 @@
+Typ mismatch when linking rts.exported:
+    [i32] -> []
+ /= [] -> [i32]
+make[1]: *** [Makefile:30: _out/wrong-type.linked.wasm] Fehler 1

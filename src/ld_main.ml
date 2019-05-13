@@ -60,7 +60,12 @@ let () =
 
   let base = decode_file !base_file in
   let lib = decode_file !lib_file in
-  let linked = LinkModule.link base !lib_name lib in
+  let linked =
+    try LinkModule.link base !lib_name lib
+    with LinkModule.LinkError e ->
+      Printf.eprintf "%s\n" e;
+      exit 1
+  in
   let (_map, wasm) = CustomModuleEncode.encode linked in
   write_file !out_file wasm
 
