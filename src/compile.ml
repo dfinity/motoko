@@ -1742,7 +1742,7 @@ sig
   (* given a numeric object on stack (vanilla),
      push the number (i32) of bytes necessary
      to externalize the numeric object *)
-  val compile_data_size : G.t
+  val compile_data_size : E.t -> G.t
   (* given on stack
      - numeric object (vanilla, TOS)
      - data buffer
@@ -1807,7 +1807,7 @@ module BigNum64 : BigNumType = struct
 
   let compile_lit env n = compile_const_64 (Big_int.int64_of_big_int n) ^^ box env
 
-  let compile_data_size = G.i Drop ^^ compile_unboxed_const 8l (* 64 bit for now *)
+  let compile_data_size env = G.i Drop ^^ compile_unboxed_const 8l (* 64 bit for now *)
 
   let compile_store_to_data_buf env =
     unbox env ^^
@@ -1984,7 +1984,7 @@ module BigInt : BigNumType = struct
     compile_eq env
 
 
-  let compile_data_size = G.i Drop ^^ compile_unboxed_const 8l (* todo(gabor) 64 bit for now *)
+  let compile_data_size env = G.i Drop ^^ compile_unboxed_const 8l (* todo(gabor) 64 bit for now *)
 
   let compile_store_to_data_buf env =
     to_word64 env ^^
@@ -3142,7 +3142,7 @@ module Serialization = struct
 
       (* Now the actual type-dependent code *)
       begin match t with
-      | Prim (Nat|Int) -> inc_data_size (get_x ^^ BigNum.compile_data_size)
+      | Prim (Nat|Int) -> inc_data_size (get_x ^^ BigNum.compile_data_size env)
       | Prim Word64 -> inc_data_size (compile_unboxed_const 8l) (* 64 bit *)
       | Prim Word8 -> inc_data_size (compile_unboxed_const 1l)
       | Prim Word16 -> inc_data_size (compile_unboxed_const 2l)
