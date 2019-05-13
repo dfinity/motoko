@@ -734,7 +734,7 @@ T* : <X>* -> i8*
 T*(<X>^N) = leb128(N) T(<X>)^N
 ```
 
-Every recursive occurence of a type is encoded as an index into a sequence of *type definitions*. This allows for recursive types and sharing of types occuring multiple times:
+Every nested type is encoded as an index into a sequence of *type definitions*. This allows for recursive types and sharing of types occuring multiple times:
 
 ```
 I : <datatype> -> i8*
