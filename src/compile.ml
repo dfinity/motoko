@@ -1984,9 +1984,17 @@ module BigInt : BigNumType = struct
     compile_eq env
 
 
-  let compile_data_size = todo "compile_data_size" (Arrange_ir.typ Type.(Prim Int)) G.nop
-  let compile_load_from_data_buf env = todo "compile_load_from_data_buf" (Arrange_ir.typ Type.(Prim Int)) G.nop
-  let compile_store_to_data_buf env = todo "compile_store_to_data_buf" (Arrange_ir.typ Type.(Prim Int)) G.nop
+  let compile_data_size = G.i Drop ^^ compile_unboxed_const 8l (* todo(gabor) 64 bit for now *)
+
+  let compile_store_to_data_buf env =
+    to_word64 env ^^
+    G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
+    compile_unboxed_const 8l (* todo(gabor) 64 bit for now *)
+
+  let compile_load_from_data_buf env =
+    G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
+    from_word64 env ^^
+    compile_unboxed_const 8l (* todo(gabor) 64 bit for now *)
 
   let _fits_in_vanilla env =
     compile_unboxed_const 0l (* todo(gabor) implement this *)
