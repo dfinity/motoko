@@ -1911,19 +1911,16 @@ module Prim = struct
      Both Word8/16 easily fit into the vanilla stackrep, so no boxing is necessary.
      This MSB-stored schema is also essentially what the interpreter is using.
   *)
-  let prim_word32toNat env =
-    BigNum.from_word32 env
+  let prim_word32toNat env = BigNum.from_word32 env
   let prim_shiftWordNtoUnsigned env b =
     compile_shrU_const b ^^
     prim_word32toNat env
-  let prim_word32toInt env =
-    BigNum.from_signed_word32 env
+  let prim_word32toInt env = BigNum.from_signed_word32 env
   let prim_shiftWordNtoSigned env b =
     compile_unboxed_const b ^^
     G.i (Binary (I32 I32Op.ShrS)) ^^
     prim_word32toInt env
-  let prim_intToWord32 env =
-    BigNum.to_word32 env
+  let prim_intToWord32 env = BigNum.to_word32 env
   let prim_shiftToWordN env b =
     prim_intToWord32 env ^^
     UnboxedSmallWord.shift_leftWordNtoI32 b
