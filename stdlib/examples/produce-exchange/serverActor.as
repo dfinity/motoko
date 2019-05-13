@@ -5,7 +5,9 @@
 */
 
 let P = (import "../../prelude.as");
+let Option = (import "../../option.as");
 let T = (import "serverTypes.as");
+let L = (import "serverLang.as");
 let Model = (import "serverModel.as");
 let Result = (import "../../result.as");
 
@@ -47,9 +49,11 @@ actor server {
  - `Producer`,
  - `Retailer`, or
  - `Transporter`.
+*/
 
+/**
 
- `User`
+ `-User`
  =========
  Messages about users.
 
@@ -83,7 +87,7 @@ actor server {
         isRetailer,
         isTransporter
       ),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -104,7 +108,7 @@ actor server {
   getUserInfo(id:T.UserId) : async Result<T.UserInfo, T.IdErr> {
     Result.fromOption<T.UserInfo, T.IdErr>(
       getModel().userTable.getInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -170,7 +174,7 @@ actor server {
   ) : async Result<(),T.ServerErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().truckTypeTable.remGetUnit(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -184,7 +188,7 @@ actor server {
   ) : async Result<T.TruckTypeInfo,T.IdErr> {
     Result.fromOption<T.TruckTypeInfo,T.IdErr>(
       getModel().truckTypeTable.getInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -239,7 +243,7 @@ actor server {
   ) : async Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().regionTable.remGetUnit(id),
-      {#idErr},
+      #idErr null,
     )
   };
 
@@ -256,7 +260,7 @@ actor server {
   ) : async Result<T.RegionInfo,T.IdErr> {
     Result.fromOption<T.RegionInfo,T.IdErr>(
       getModel().regionTable.getInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -317,7 +321,7 @@ actor server {
   ) : async Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().produceTable.remGetUnit(id),
-      {#idErr},
+      #idErr null,
     )
   };
 
@@ -332,7 +336,7 @@ actor server {
   ) : async Result<T.ProduceInfo,T.IdErr> {
     Result.fromOption<T.ProduceInfo,T.IdErr>(
       getModel().produceTable.getInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -378,7 +382,7 @@ actor server {
             reserved=[];
           }
         }),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -394,7 +398,7 @@ actor server {
   ) : async Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().producerTable.remGetUnit(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -409,7 +413,7 @@ actor server {
   ) : async Result<T.ProducerInfo,T.IdErr> {
     Result.fromOption<T.ProducerInfo,T.IdErr>(
       getModel().producerTable.getInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -453,7 +457,7 @@ actor server {
             region=region_:T.RegionId
           }
         }),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -469,7 +473,7 @@ actor server {
   ) : async Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().retailerTable.remGetUnit(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -483,7 +487,7 @@ actor server {
   ) : async Result<T.RetailerInfo,T.IdErr> {
     Result.fromOption<T.RetailerInfo,T.IdErr>(
       getModel().retailerTable.getInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -540,7 +544,7 @@ actor server {
   ) : async Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().transporterTable.remGetUnit(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -554,7 +558,7 @@ actor server {
   ) : async Result<T.TransporterInfo,T.IdErr> {
     Result.fromOption<T.TransporterInfo,T.IdErr>(
       getModel().transporterTable.getInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -643,7 +647,7 @@ actor server {
     Result.fromOption<[T.InventoryInfo],T.IdErr>(
       getModel()
         .producerAllInventoryInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -655,7 +659,7 @@ actor server {
     Result.fromOption<[T.ReservedInventoryInfo],T.IdErr>(
       getModel()
         .producerAllReservationInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -676,7 +680,7 @@ actor server {
     Result.fromOption<[T.ProduceMarketInfo],T.IdErr>(
       getModel()
         .produceMarketInfo(id, reg),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -700,7 +704,7 @@ actor server {
     Result.fromOption<T.InventoryInfo,T.IdErr>(
       getModel()
         .inventoryTable.getInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -770,7 +774,7 @@ actor server {
     Result.fromOption<[T.RouteInfo],T.IdErr>(
       getModel()
         .transporterAllRouteInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -782,7 +786,7 @@ actor server {
     Result.fromOption<[T.ReservedRouteInfo],T.IdErr>(
       getModel()
         .transporterAllReservationInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -809,7 +813,7 @@ actor server {
   ) : async Result<T.RouteInfo,T.IdErr> {
     Result.fromOption<T.RouteInfo,T.IdErr>(
       getModel().routeTable.getInfo(id),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -828,7 +832,7 @@ actor server {
     Result.fromOption<T.QueryAllResults,T.IdErr>(
       getModel().
         retailerQueryAll(id, queryProduce, queryDate),
-      {#idErr}
+      #idErr null
     )
   };
 
@@ -879,7 +883,7 @@ actor server {
                    T.ReservedRouteInfo)],T.ServerErr>(
       getModel().
         retailerAllReservationInfo(id),
-      #idErr
+      #idErr null
     )
   };
 
@@ -1009,6 +1013,17 @@ been processed
 
   devViewRetailers() : async [T.RetailerInfo] {
     getModel().retailerTable.allInfo()
+  };
+
+
+  /**
+   `evalBulk`
+   -------------------
+   evaluate a collection of API calls (a "bulk request"), represented as an AS datatype.
+   */
+
+  evalBulkArray(reqs:[L.BulkReq]) : async [L.BulkResp] {
+    getModel().evalBulkArray(reqs)
   };
 
 

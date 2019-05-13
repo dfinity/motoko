@@ -6,7 +6,7 @@ MDofMD=./markdown-of-markdown.py
 PANDOC=pandoc
 
 # Add new module targets here:
-MODULES=\
+TESTS=\
 	Option \
 	Result \
 	Hash \
@@ -19,11 +19,15 @@ MODULES=\
 	SetDb \
 	SetDbTest \
 	ProduceExchange \
+	producerRemInventory \
+	retailerReserveMany \
+	evalBulk \
+
 
 WASM=\
   ProduceExchange
 
-OUTFILES=$(addsuffix .out, $(MODULES)) $(addsuffix .wasm, $(WASM))
+OUTFILES=$(addsuffix .out, $(TESTS)) $(addsuffix .wasm, $(WASM))
 
 OUTPATHS=$(addprefix $(OUTDIR)/, $(OUTFILES))
 
@@ -57,6 +61,7 @@ docMd: \
 	$(DOCDIR)/setDbTest.md \
 	$(DOCDIR)/examples/produce-exchange/README.md \
 	$(DOCDIR)/examples/produce-exchange/serverTypes.md \
+	$(DOCDIR)/examples/produce-exchange/serverLang.md \
 	$(DOCDIR)/examples/produce-exchange/serverActor.md \
 	$(DOCDIR)/examples/produce-exchange/serverModelTypes.md \
 	$(DOCDIR)/examples/produce-exchange/serverModel.md \
@@ -80,6 +85,7 @@ docHtml: \
 	$(DOCDIR)/setDbTest.html \
 	$(DOCDIR)/examples/produce-exchange/README.html \
 	$(DOCDIR)/examples/produce-exchange/serverTypes.html \
+	$(DOCDIR)/examples/produce-exchange/serverLang.html \
 	$(DOCDIR)/examples/produce-exchange/serverActor.html \
 	$(DOCDIR)/examples/produce-exchange/serverModelTypes.html \
 	$(DOCDIR)/examples/produce-exchange/serverModel.html \
@@ -145,6 +151,7 @@ $(OUTDIR)/SetDbTest.out: setDbTest.as | $(OUTDIR)
 PRODUCE_EXCHANGE_SRC=\
 	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as result.as \
 	examples/produce-exchange/serverTypes.as \
+	examples/produce-exchange/serverLang.as \
 	examples/produce-exchange/serverModelTypes.as \
 	examples/produce-exchange/serverModel.as \
 	examples/produce-exchange/serverActor.as \
@@ -152,6 +159,18 @@ PRODUCE_EXCHANGE_SRC=\
 $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
 	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/simpleSetupAndQuery.as > $@
+
+$(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/retailerReserveMany.as > $@
+
+$(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/producerRemInventory.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/producerRemInventory.as > $@
+
+$(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/evalBulk.as > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
 	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as

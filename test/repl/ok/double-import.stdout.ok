@@ -2,6 +2,7 @@ ActorScript 0.1 interpreter
 -- Parsing stdin:
 > -- Parsing empty.as:
 -- Checking empty.as:
+-- Definedness empty.as:
 -- Checking stdin:
 -- Interpreting empty.as:
 -- Interpreting stdin:

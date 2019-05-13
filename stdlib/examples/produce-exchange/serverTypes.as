@@ -79,16 +79,48 @@ type RouteId       = Nat;
 type ReservedRouteId = Nat;
 
 /**
- Errors
- -----------
-*/
+ `EntId`
+ ----------------
+ An entity's ID, distinguished (by tag) from other kinds of entities with the same ID.
 
-type IdErr = {
-  #idErr;
+ The optional payload of an `#idErr` error message.
+*/
+type EntId = {
+  #user        : UserId ;
+  #truckType   : TruckTypeId ;
+  #region      : RegionId ;
+  #produce     : ProduceId ;
+  #producer    : ProducerId ;
+  #retailer    : RetailerId ;
+  #transporter : TransporterId ;
+  #inventory   : InventoryId ;
+  #route       : RouteId ;
 };
 
+/**
+ Errors
+ ===============
+*/
+
+/** Optional entity ID */
+type OpEntId = ?EntId;
+
+/**
+ `IdErr`
+ ---------
+ An ID error consists only of the `#idErr` case, which carries an optional ID.
+*/
+type IdErr = {
+  #idErr: OpEntId;
+};
+
+/**
+ `ServerErr`
+ ------------
+ A Server error occurs when the client either has access control issues (e.g., `#publicKeyErr`) or provides invalid parameters (e.g., `#idErr`).
+ */
 type ServerErr = {
-  #idErr;
+  #idErr: OpEntId;
   #publicKeyErr;
 };
 
@@ -292,6 +324,8 @@ type ReservationInfo = shared {
   date_end:    Date;
   prod_cost:   PriceTotal;
   trans_cost:  PriceTotal;
+  inventoryId: InventoryId;
+  routeId:     RouteId;
 };
 
 
