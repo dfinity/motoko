@@ -1795,7 +1795,6 @@ sig
   val _from_vanilla : E.t -> G.t
 end
 
-[@@@warning "-60-32"] (* in case we stop using these, see #359 *)
 module BigNum64 : BigNumType = struct
   include BoxedWord
 
@@ -1892,7 +1891,6 @@ module BigNum64 : BigNumType = struct
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
     box(*FIXME*) env
 end
-[@@@warning "+60+32"]
 
 
 module BigNum = BigNum64
