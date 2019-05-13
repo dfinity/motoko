@@ -20,7 +20,12 @@ let string_of_prim p =
   | Text -> "text"
   | Null -> "null"
   | Unavailable -> "unavailable"          
-   
+
+let string_of_mode m =
+  match m.it with
+  | Oneway -> "oneway"
+  | Pure -> "pure"
+                 
 let ($$) head inner = Node (head, inner)
 
 and id i = Atom i.it
@@ -35,9 +40,7 @@ let rec typ_field (tf : typ_field)
 and typ_meth (tb : typ_meth)
   = tb.it.var.it $$ [typ tb.it.meth]
 
-and mode m = match m.it with
-  | Sensitive -> Atom "Sensitive"
-  | Pure -> Atom "Pure"
+and mode m = Atom (string_of_mode m)
   
 and typ t = match t.it with
   | VarT s        -> "VarT" $$ [id s]
@@ -75,7 +78,7 @@ let rec string_of_typ t =
   | VarT id -> sprintf "var %s" id.it
   | PrimT s -> string_of_prim s
   | FuncT (ms,s,t) ->
-     sprintf "(%s) -> (%s) %s" (string_of_list string_of_field ", " s) (string_of_list string_of_field ", " t) (string_of_list string_of_mode ", " ms)
+     sprintf "(%s) -> [%s] (%s)" (string_of_list string_of_field ", " s) (string_of_list string_of_mode ", " ms) (string_of_list string_of_field ", " t)
   | OptT t -> "opt " ^ string_of_typ t
   | VecT t -> "vec " ^ string_of_typ t
   | RecordT fs -> sprintf "{%s}" (string_of_list string_of_field "; " fs)
@@ -87,7 +90,4 @@ and string_of_field f =
   sprintf "%s : %s" f.it.name.it (string_of_typ f.it.typ)
 and string_of_meth m =
   sprintf "%s : %s" m.it.var.it (string_of_typ m.it.meth)
-and string_of_mode m =
-  match m.it with
-  | Sensitive -> "Sensitive"
-  | Pure -> "Pure"
+

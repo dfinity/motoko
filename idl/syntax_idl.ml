@@ -24,7 +24,7 @@ type prim =
   | Unavailable        
         
 type func_mode = func_mode' Source.phrase
-and func_mode' = Sensitive | Pure
+and func_mode' = Oneway | Pure
 
 type typ = typ' Source.phrase
 and typ' =

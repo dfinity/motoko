@@ -26,14 +26,18 @@ let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat6
                  "int", Int; "int8", Int8; "int16", Int16; "int32", Int32; "int64", Int64;
                  "float32", Float32; "float64", Float64; "bool", Bool; "text", Text;
                  "null", Null; "unavailable", Unavailable]
-let is_prim_typs t = List.assoc_opt t prim_typs         
+let is_prim_typs t = List.assoc_opt t prim_typs
+
+let func_modes = ["oneway", Oneway; "pure", Pure]
+let get_func_mode m = List.assoc m func_modes               
+                   
 %}
 
 %token EOF
 
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token ARROW
-%token FUNC TYPE SERVICE SENSITIVE PURE
+%token FUNC TYPE SERVICE
 %token SEMICOLON COMMA COLON EQ
 %token OPT VEC RECORD VARIANT ENUM BLOB
 %token<string> NAT
@@ -108,8 +112,8 @@ param_typs :
     { fs }
 
 func_mode :
-  | SENSITIVE { Sensitive @@ at $sloc }
-  | PURE { Pure @@ at $sloc }
+  | m=id
+    { get_func_mode m.it @@ at $sloc }
 
 func_modes_opt :
   | (* empty *) { [] }

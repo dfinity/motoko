@@ -112,10 +112,7 @@ rule token = parse
   | "," { COMMA }
   | ":" { COLON }
   | "=" { EQ }
-
   | "->" { ARROW }
-  | "pure" { PURE }
-  | "sensitive" { SENSITIVE }
 
   | nat as s { NAT s }
   | text as s { TEXT (text lexbuf s) }

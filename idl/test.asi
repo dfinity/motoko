@@ -18,7 +18,7 @@ type broker = service {
 type stream = opt record {head:nat; next:func ()->[pure] stream};
 
 service user {
-  addUser : nat -> [sensitive, pure] (my_type);
+  addUser : nat -> [oneway, pure] (my_type);
   userName : (nat) -> [pure] stream;
 }
 

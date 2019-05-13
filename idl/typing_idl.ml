@@ -66,7 +66,6 @@ let compare_field (f1: typ_field) (f2: typ_field) = compare f1.it.id f2.it.id
 let is_record t = match t.it with RecordT _ -> true | _ -> false
 let is_func t = match t.it with FuncT _ -> true | _ -> false
 let is_serv t = match t.it with ServT _ -> true | _ -> false
-let is_pre t = match t.it with PreT -> true | _ -> false
 
 let rec check_typ env t =
   match t.it with
@@ -75,7 +74,7 @@ let rec check_typ env t =
      (match Env.find_opt id.it env.typs with
       | None ->
          error env id.at "unbound type identifier %s" id.it;
-      | Some t' -> if is_pre t' then t else t'
+      | Some _ -> t
      )
   | FuncT (ms, t1, t2) ->
      let t1' = check_fields env t1 in
