@@ -12,3 +12,10 @@ val string_of_region : region -> string
 val span : region -> region -> region
 
 val (@@) : 'a -> region -> 'a phrase
+
+module Counters : sig
+  type t
+  val zeros : unit -> t
+  val bump : t -> region -> unit
+  val dump : t -> unit
+end

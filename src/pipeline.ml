@@ -235,7 +235,8 @@ let load_decl parse_one senv : load_decl_result =
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   phase "Interpreting" prog.Source.note;
-  Interpret.interpret_prog denv prog
+  let result = Interpret.interpret_prog denv prog in
+  result
 
 let rec interpret_libraries denv libraries : Interpret.scope =
   match libraries with
@@ -316,8 +317,9 @@ let check_string s name : check_result =
 (* Running *)
 
 let run_files files : unit Diag.result =
-  Diag.ignore (interpret_files initial_env files)
-
+  let result = Diag.ignore (interpret_files initial_env files) in
+  Interpret.dump_profile () ;
+  result
 
 (* Interactively *)
 
@@ -499,6 +501,7 @@ let interpret_ir_prog inp_env libraries progs =
   let dscope = Interpret_ir.interpret_prog denv0 prelude_ir in
   let denv1 = Interpret_ir.adjoin_scope denv0 dscope in
   let _ = Interpret_ir.interpret_prog denv1 prog_ir in
+  let _ = Interpret_ir.dump_profile () in
   ()
 
 let interpret_ir_files files =

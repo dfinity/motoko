@@ -1037,7 +1037,7 @@ been processed
    */
 
   loadWorkload(params:T.WorkloadParams) : async () {
-    func db(s:Text) = {print "Server::loadWorkload: "; print s; print "\n"};
+    func db(s:Text) = if false {print "Server::loadWorkload: "; print s; print "\n"};
 
     /**- generate add requests for these params: */
     db "generate requests for workload...";

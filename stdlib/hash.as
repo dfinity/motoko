@@ -68,11 +68,13 @@ module BitVec {
     return x
   };
 
-  /** Test if two lists of bits are equal. */
+  /** Project a given bit from the bit vector. */
   func getHashBit(h:BitVec, pos:Nat) : Bool {
     assert (pos <= length());
-    if ((h & (natToWord32(1) << natToWord32(pos))) != natToWord32(0)) { true }
-    else { false }
+    if ((h & (natToWord32(1) << natToWord32(pos))) != natToWord32(0))
+    { true }
+    else
+    { false }
   };
 
   /** Test if two lists of bits are equal. */

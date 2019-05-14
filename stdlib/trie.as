@@ -70,6 +70,7 @@ let AssocList = import "assocList.as";
 type AssocList<K,V> = AssocList.AssocList<K,V>;
 
 let HASH_BITS = 4;
+//let HASH_BITS = 16;
 
 type Key<K> = {
   // hash field: permits fast inequality checks, permits collisions;

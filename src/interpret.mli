@@ -13,3 +13,5 @@ exception Trap of Source.region * string
 
 val interpret_prog : scope -> Syntax.prog -> (V.value * scope) option
 val interpret_library : scope -> Syntax.library -> scope
+
+val dump_profile : unit -> unit

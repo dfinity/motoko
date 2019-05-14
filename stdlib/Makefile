@@ -19,14 +19,15 @@ TESTS=\
 	SetDb \
 	SetDbTest \
 	ProduceExchange \
-	loadWorkloadAndQuery \
 	producerRemInventory \
 	retailerReserveMany \
 	evalBulk \
 
 
 WASM=\
-  ProduceExchange
+  ProduceExchange\
+	loadWorkloadAndQueryBig\
+
 
 OUTFILES=$(addsuffix .out, $(TESTS)) $(addsuffix .wasm, $(WASM))
 
@@ -161,9 +162,25 @@ $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
 	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/simpleSetupAndQuery.as > $@
 
-$(OUTDIR)/loadWorkloadAndQuery.out: $(PRODUCE_EXCHANGE_SRC) \
+PROFILE_SRC=\
+	examples/produce-exchange/serverActor.as \
+	examples/produce-exchange/test/loadWorkloadAndQuery.Common.as
+
+$(OUTDIR)/loadWorkloadAndQuery.profile.4-5-5.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-5.as $(PROFILE_SRC) --profile-file $@ --profile-line-prefix "4, 5, 5, "
+
+$(OUTDIR)/loadWorkloadAndQuery.profile.4-5-10.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-10.as $(PROFILE_SRC) --profile-file $@  --profile-line-prefix "4, 5, 10, "
+
+$(OUTDIR)/loadWorkloadAndQuery.profile.4-5-20.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-20.as $(PROFILE_SRC) --profile-file $@  --profile-line-prefix "4, 5, 20, "
+
+$(OUTDIR)/loadWorkloadAndQuery.profile.4-5-50.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-50.as $(PROFILE_SRC) --profile-file $@  --profile-line-prefix "4, 5, 50, "
+
+$(OUTDIR)/loadWorkloadAndQueryBig.wasm: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/loadWorkloadAndQuery.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/loadWorkloadAndQuery.as > $@
+	$(ASC) examples/produce-exchange/serverActor.as examples/produce-exchange/test/loadWorkloadAndQueryBig.as -c --dfinity -o $@
 
 $(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)

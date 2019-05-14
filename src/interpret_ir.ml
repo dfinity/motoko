@@ -4,7 +4,6 @@ open Source
 module V = Value
 module T = Type
 
-
 (* Context *)
 
 type val_env = V.def V.Env.t
@@ -62,6 +61,7 @@ let string_of_arg = function
 
 let last_env = ref (env_of_scope empty_scope)
 let last_region = ref Source.no_region
+let region_counters : Counters.t = Counters.zeros ()
 
 let print_exn exn =
   Printf.printf "%!";
@@ -263,6 +263,7 @@ let rec interpret_exp env exp (k : V.value V.cont) =
 and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
   last_env := env;
+  Counters.bump region_counters exp.at ;
   match exp.it with
   | PrimE s ->
     let at = exp.at in
@@ -661,3 +662,6 @@ let interpret_prog scope ((ds, exp), _flavor) : scope =
     !ve
   with exn -> print_exn exn; !ve
 
+
+let dump_profile () =
+  Counters.dump region_counters

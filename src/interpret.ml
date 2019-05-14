@@ -75,6 +75,7 @@ let string_of_arg = function
 
 let last_env = ref (env_of_scope empty_scope)
 let last_region = ref Source.no_region
+let region_counters : Counters.t = Counters.zeros ()
 
 let print_exn exn =
   Printf.printf "%!";
@@ -246,6 +247,7 @@ let rec interpret_exp env exp (k : V.value V.cont) =
 and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
   last_env := env;
+  Counters.bump region_counters exp.at ;
   match exp.it with
   | PrimE s ->
     k (V.Func (V.call_conv_of_typ exp.note.note_typ, Prelude.prim s))
@@ -737,3 +739,6 @@ let interpret_library scope (filename, p) : scope =
   in
   library_scope filename v scope
 
+
+let dump_profile () =
+  Counters.dump region_counters
