@@ -1811,23 +1811,28 @@ module BigNum64 : BigNumType = struct
 
   (* examine the skewed pointer and determine if the unsigned number
      it points to fits into N bits *)
-  let _fits_unsigned_bits env n =
-    unbox(*FIXME*) env ^^
-    compile_const_64 Int64.(shift_left minus_one n) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz))
+  let _fits_unsigned_bits env = function
+    | 64 -> G.i Drop ^^ compile_unboxed_one
+    | n when n > 64 || n < 1 -> assert false
+    | n ->
+      unbox(*FIXME*) env ^^
+      compile_const_64 Int64.(shift_left minus_one n) ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
   (* examine the skewed pointer and determine if the signed number
      it points to fits into N bits *)
-  let _fits_signed_bits env n =
-    let set_num, get_num = new_local64 env "num" in
-    unbox(*FIXME*) env ^^ set_num ^^ get_num ^^ get_num ^^
-    compile_const_64 1L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    compile_const_64 Int64.(shift_left minus_one n) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz))
+  let _fits_signed_bits env = function
+    | n when n > 63 || n < 2 -> assert false
+    | n ->
+      let set_num, get_num = new_local64 env "num" in
+      unbox(*FIXME*) env ^^ set_num ^^ get_num ^^ get_num ^^
+      compile_const_64 1L ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
+      compile_const_64 Int64.(shift_left minus_one n) ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
   let to_word32 env =
     let (set_num, get_num) = new_local env "num" in
