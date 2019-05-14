@@ -50,7 +50,7 @@ let mut_arrs = [[var 42], [var 25], [77]]; // boring
 
 let sh : Shared = 42;
 let shareds = [sh, 77, [1, 2, 3]];
-// let shared2s = [77, [1, 2, 3], sh]; // CAVEAT: order dependency in lub!
+// let shared2s = [77, [1, 2, 3], sh]; // infers [Any]; CAVEAT: order dependency in lub!
 
 let shared_funcs = [ func (a : Int) : Int = a
                    , func (a : Shared) : Nat = 42
@@ -87,6 +87,11 @@ type R = ?S;
 type S = ?Q;
 
 func g(o : O, p : P, q : Q, r : R) : [O] { ignore([o, p, q, r]); [o, p, q, r] };
+
+// example from https://dfinity.atlassian.net/browse/AST-83
+
+type Foo<A> = ?(Foo<A>);
+ignore (if true (null : Foo<Int>) else (null : Foo<Bool>));
 
 
 type U = { #a : U; #b : Int };

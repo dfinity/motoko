@@ -30,4 +30,6 @@ ActorScript 0.1 interpreter
 > [func, func] : [(Int -> Int)]
 > 25 : Int
 > 42 : Int
+>   func : (C, D) -> [C]
+> [async ?4, async ?-42] : [(async (?Int))]
 > 

@@ -48,4 +48,7 @@ shareds;
 shared_funcs;
 shared_funcs[0](25);
 shared_funcs[1](25);
+
+c0;
+c1s;
 __END__
