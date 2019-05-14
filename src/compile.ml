@@ -1796,12 +1796,22 @@ sig
      N must be 2..64
    *)
   val _fits_signed_bits : E.t -> int -> G.t
+  val _fits_unsigned_bits : E.t -> int -> G.t
 end
 
 module BigNum64 : BigNumType = struct
   include BoxedWord
 
-  (* examine the skewed pointer and determine if signed number fits into N bits *)
+  (* examine the skewed pointer and determine if the unsigned number
+     it points to fits into N bits *)
+  let _fits_unsigned_bits env n =
+    unbox(*FIXME*) env ^^
+    compile_const_64 Int64.(shift_left minus_one n) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz))
+
+  (* examine the skewed pointer and determine if the signed number
+     it points to fits into N bits *)
   let _fits_signed_bits env n =
     let set_num, get_num = new_local64 env "num" in
     unbox(*FIXME*) env ^^ set_num ^^ get_num ^^ get_num ^^
@@ -1815,7 +1825,7 @@ module BigNum64 : BigNumType = struct
   let to_word32 env =
     let (set_num, get_num) = new_local env "num" in
     set_num ^^ get_num ^^
-    _fits_signed_bits env 32 ^^
+    _fits_unsigned_bits env 32 ^^
     E.else_trap_with env "Losing precision" ^^
     get_num ^^
     unbox env ^^
