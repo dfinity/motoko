@@ -1790,21 +1790,40 @@ sig
   val compile_relop : E.t -> string -> Wasm.Ast.I64Op.relop -> G.t
 
   (* representation checks *)
-  (* given a numeric object on the stack as skewed pointer,
-     check whether it can be faithfully stored in 31 bits
-     of Vanilla stackrep
+  (* given a numeric object on the stack as skewed pointer, check whether
+     it can be faithfully stored in N bits, including sign
      leaves boolean result on the stack
+     N must be 2..64
    *)
-  val _fits_signed_31bits : E.t -> G.t
+  val _fits_signed_bits : E.t -> int -> G.t
 end
 
 module BigNum64 : BigNumType = struct
   include BoxedWord
 
-  let to_word32 env = unbox env ^^ (*TODO trap check*) BoxedWord.to_word32 env
+  (* examine the skewed pointer and determine if signed number fits into N bits *)
+  let _fits_signed_bits env n =
+    let set_num, get_num = new_local64 env "num" in
+    unbox(*FIXME*) env ^^ set_num ^^ get_num ^^ get_num ^^
+    compile_const_64 1L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
+    compile_const_64 Int64.(shift_left minus_one n) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz))
+
+  let to_word32 env =
+    let (set_num, get_num) = new_local env "num" in
+    set_num ^^ get_num ^^
+    _fits_signed_bits env 32 ^^
+    E.else_trap_with env "Losing precision" ^^
+    get_num ^^
+    unbox env ^^
+    BoxedWord.to_word32 env
+
   let from_word32 env = BoxedWord.from_word32 env ^^ box env
   let from_signed_word32 env = BoxedWord.from_signed_word32 env ^^ box env
-  let to_word64 env = unbox env ^^ (*TODO trap check*) BoxedWord.to_word64 env
+  let to_word64 env = unbox env ^^ BoxedWord.to_word64 env
   let from_word64 env = BoxedWord.from_word64 env ^^ box env
 
   let truncate_to_word32 env = unbox env ^^ BoxedWord.to_word32 env
@@ -1865,17 +1884,6 @@ module BigNum64 : BigNumType = struct
   let compile_lit_pat env compile_lit =
     compile_lit ^^
     compile_eq env
-
-  (* examine the skewed pointer and determine if number fits into 31 bits *)
-  let _fits_signed_31bits env =
-    let set_n, get_n = new_local64 env "n" in
-    unbox(*FIXME*) env ^^ set_n ^^ get_n ^^ get_n ^^
-    compile_const_64 1L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    compile_const_64 0xFFFFFFFF8000000L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
 end
 
@@ -4416,8 +4424,8 @@ and compile_exp (env : E.t) exp =
   | IdxE (e1, e2)  ->
     SR.Vanilla,
     compile_exp_vanilla env e1 ^^ (* offset to array *)
-    compile_exp_as env SR.UnboxedWord64 e2 ^^ (* idx *)
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+    compile_exp_vanilla env e2 ^^ (* idx *)
+    BigNum.to_word32 env ^^
     Arr.idx env ^^
     load_ptr
   | DotE (e, name) ->
