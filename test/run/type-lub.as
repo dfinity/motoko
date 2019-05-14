@@ -50,7 +50,7 @@ let mut_arrs = [[var 42], [var 25], [77]]; // boring
 
 let sh : Shared = 42;
 let shareds = [sh, 77, [1, 2, 3]];
-// let shared2s = [77, [1, 2, 3], sh]; // infers [Any]; CAVEAT: order dependency in lub!
+let shared2s = [77, [1, 2, 3], sh];
 
 let shared_funcs = [ func (a : Int) : Int = a
                    , func (a : Shared) : Nat = 42

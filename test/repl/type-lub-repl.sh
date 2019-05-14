@@ -45,6 +45,7 @@ variant_funcs[1](#bar);
 mut_arrs;
 
 shareds;
+shared2s;
 shared_funcs;
 shared_funcs[0](25);
 shared_funcs[1](25);

@@ -767,6 +767,7 @@ and lub' lubs glbs t1 t2 =
     Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
   | Async t1', Async t2' ->
     Async (lub' lubs glbs t1' t2')
+  | t1', t2' when sub t1' Shared && sub t2' Shared -> Shared
   | _ -> Any
   end
 
