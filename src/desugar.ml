@@ -69,7 +69,7 @@ and exp' at note = function
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, s, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ note.S.note_typ in
-    let args, wrap = to_args cc p in
+    let args, wrap = to_fun_args cc p in
     I.FuncE (name, cc, typ_binds tbs, args, Type.as_seq ty.note, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in
@@ -214,12 +214,13 @@ and dec' at n d = match d with
       | _ -> assert false
     in
     let varPat = {it = I.VarP id'; at = at; note = fun_typ } in
-    let args, wrap = to_args cc p in
+    let args, extra_ds = to_args cc p in
     let fn = {
-      it = I.FuncE (id.it, cc, typ_binds tbs, args, [obj_typ], wrap
-         { it = obj at s (Some self_id) es obj_typ;
-           at = at;
-           note = { S.note_typ = obj_typ; S.note_eff = T.Triv } });
+      it = I.FuncE (id.it, cc, typ_binds tbs, args, [obj_typ],
+        blockE extra_ds
+           { it = obj at s (Some self_id) es obj_typ;
+             at = at;
+             note = { S.note_typ = obj_typ; S.note_eff = T.Triv } });
       at = at;
       note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
     } in
@@ -271,57 +272,57 @@ and pat_fields pfs = List.map pat_field pfs
 
 and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=phrase (fun s -> Name s) id; pat=pat p}) pf
 
-and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
+and to_arg p : (Ir.arg * Ir.dec list) =
   match p.it with
   | S.AnnotP (p, _) -> to_arg p
   | S.VarP i ->
     { i with note = p.note },
-    (fun e -> e)
+    []
   | S.WildP ->
     let v = fresh_var "param" p.note in
     arg_of_exp v,
-    (fun e -> e)
+    []
   |  _ ->
     let v = fresh_var "param" p.note in
     arg_of_exp v,
-    (fun e -> blockE [letP (pat p) v] e)
+    [letP (pat p) v]
 
 
-and to_args cc p : (Ir.arg list * (Ir.exp -> Ir.exp)) =
+and to_args cc p : (Ir.arg list * Ir.dec list) =
   let n = cc.Value.n_args in
   let tys = if n = 1 then [p.note] else T.as_seq p.note in
 
-  let args, wrap =
-    match n, p.it with
-    | _, S.WildP ->
-      let vs = fresh_vars "param" tys in
-      List.map arg_of_exp vs,
-      (fun e -> e)
-    | 1, _ ->
-      let a, wrap = to_arg p in
-      [a], wrap
-    | 0, S.TupP [] ->
-      [] , (fun e -> e)
-    | _, S.TupP ps ->
-      assert (List.length ps = n);
-      List.fold_right (fun p (args, wrap) ->
-        let (a, wrap1) = to_arg p in
-        (a::args, fun e -> wrap1 (wrap e))
-      ) ps ([], (fun e -> e))
-    | _, _ ->
-      let vs = fresh_vars "param" tys in
-      List.map arg_of_exp vs,
-      (fun e -> blockE [letP (pat p) (tupE vs)] e)
-  in
+  match n, p.it with
+  | _, S.WildP ->
+    let vs = fresh_vars "param" tys in
+    List.map arg_of_exp vs,
+    []
+  | 1, _ ->
+    let a, extra_ds = to_arg p in
+    [a], extra_ds
+  | 0, S.TupP [] ->
+    [], []
+  | _, S.TupP ps ->
+    assert (List.length ps = n);
+    List.fold_right (fun p (args, extra_ds) ->
+      let (a, extra_ds1) = to_arg p in
+      (a::args, extra_ds1 @ extra_ds)
+    ) ps ([], [])
+  | _, _ ->
+    let vs = fresh_vars "param" tys in
+    List.map arg_of_exp vs,
+    [letP (pat p) (tupE vs)]
 
-  let wrap_under_async e =
+and to_fun_args cc p : Ir.arg list * (Ir.exp -> Ir.exp) =
+  let args, extra_ds = to_args cc p in
+
+  args, (fun e ->
     if cc.Value.sort = T.Sharable && cc.Value.control = T.Promises
     then match e.it with
-      | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
+      | Ir.AsyncE e' -> { e with it = Ir.AsyncE (blockE extra_ds e') }
       | _ -> assert false
-    else wrap e in
-
-  args, wrap_under_async
+    else blockE extra_ds e
+  )
 
 and prog (p : Syntax.prog) : Ir.prog =
   begin match p.it with
