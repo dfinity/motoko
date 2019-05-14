@@ -101,6 +101,8 @@ let _ : async (Int,Bool,Text)  = async {
 };
 };
 
+()
+
 
 
 /* special case: unary tuples */

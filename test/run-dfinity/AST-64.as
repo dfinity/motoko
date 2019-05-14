@@ -13,4 +13,4 @@ let _ = (actor { func x(){x();}; }) : Any;
 let _ = (object this { func x(){ this.x(); }; }) : Any;
 let _ = (object { func x(){x();}; }) : Any;
 
-
+()

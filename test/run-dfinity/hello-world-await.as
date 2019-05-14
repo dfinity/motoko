@@ -10,4 +10,4 @@ let a = actor {
   };
 };
 
-let _ = a.go()
+ignore(a.go())

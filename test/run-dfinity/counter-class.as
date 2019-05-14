@@ -21,4 +21,4 @@ func test() {
   }
 };
 
-let _ = test();
+test();

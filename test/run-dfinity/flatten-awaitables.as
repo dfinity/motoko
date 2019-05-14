@@ -34,7 +34,7 @@ let a = actor {
 
 func println(s:Text) {print s;print ",";};
 
-let _ = async {
+ignore(async {
 
     println "\nfirst-order\n";
 
@@ -117,5 +117,5 @@ let _ = async {
     println "15";
 
     print "\n";
-};
+});
 

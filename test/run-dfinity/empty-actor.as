@@ -1,1 +1,1 @@
-let _ = actor {};
+ignore(actor {})

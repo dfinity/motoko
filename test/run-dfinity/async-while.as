@@ -1,5 +1,4 @@
-let _ =
-async {
+ignore(async {
 
 { var i = 0;
   var j = 0;
@@ -56,4 +55,4 @@ async {
   assert(i == 11);
 };
 
-};
+})

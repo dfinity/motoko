@@ -59,3 +59,5 @@ let e = async {
    print b;
    print "\n";
 };
+
+()

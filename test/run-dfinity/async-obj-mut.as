@@ -1,4 +1,4 @@
-let _ = async {
+ignore(async {
   let o = new {
     var x = await { async { 1 } };
     private a = printInt(x);
@@ -16,4 +16,4 @@ let _ = async {
   o.foo();
   printInt(o.x);
   print("\n");
-}
+})
