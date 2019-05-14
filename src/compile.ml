@@ -1731,18 +1731,20 @@ end (* UnboxedSmallWord *)
 
 module type BigNumType =
 sig
-  (* word from SR.Vanilla, trapping *)
+  (* word from SR.Vanilla, trapping, unsigned semantics *)
   val to_word32 : E.t -> G.t
   val to_word64 : E.t -> G.t
 
-  (* word from SR.Vanilla, lossy *)
+  (* word from SR.Vanilla, lossy, raw bits *)
   val truncate_to_word32 : E.t -> G.t
   val _truncate_to_word64 : E.t -> G.t
 
-  (* word to SR.Vanilla *)
+  (* unsigned word to SR.Vanilla *)
   val from_word32 : E.t -> G.t
-  val from_signed_word32 : E.t -> G.t
   val from_word64 : E.t -> G.t
+
+  (* signed word to SR.Vanilla *)
+  val from_signed_word32 : E.t -> G.t
 
   (* buffers *)
   (* given a numeric object on stack (vanilla),
@@ -1791,11 +1793,16 @@ sig
 
   (* representation checks *)
   (* given a numeric object on the stack as skewed pointer, check whether
-     it can be faithfully stored in N bits, including sign
+     it can be faithfully stored in N bits, including a leading sign bit
      leaves boolean result on the stack
-     N must be 2..64
+     N must be 2..63
    *)
   val _fits_signed_bits : E.t -> int -> G.t
+  (* given a numeric object on the stack as skewed pointer, check whether
+     it can be faithfully stored in N unsigned bits
+     leaves boolean result on the stack
+     N must be 1..64
+   *)
   val _fits_unsigned_bits : E.t -> int -> G.t
 end
 
