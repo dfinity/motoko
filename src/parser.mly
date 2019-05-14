@@ -220,10 +220,8 @@ typ_variant :
 typ_nullary :
   | LPAR ts=seplist(typ_item, COMMA) RPAR
     { (match ts with [t] -> ParT(t) | _ -> TupT(ts)) @! at $sloc }
-  | x=id tso=typ_args?
-    { VarT(x, Lib.Option.get tso []) @! at $sloc }
-  | p=path DOT x=id tso=typ_args?
-    { PathT(p, x, Lib.Option.get tso []) @! at $sloc }
+  | p=path tso=typ_args?
+    { PathT(p, Lib.Option.get tso []) @! at $sloc }
   | LBRACKET m=var_opt t=typ RBRACKET
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj

@@ -1069,21 +1069,21 @@ module Tagged = struct
       | (Con _ | Shared | Any) -> true
       | (Array _ | Tup _ | Obj _) -> true
       | (Prim _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Kind _) -> assert false
+      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Text ->
       begin match normalize ty with
       | (Con _ | Shared | Any) -> true
       | (Prim Text | Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Kind _) -> assert false
+      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Object ->
       begin match normalize ty with
       | (Con _ | Shared | Any) -> true
       | (Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Kind _) -> assert false
+      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | _ -> true
 
@@ -1874,7 +1874,10 @@ module Object = struct
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type ({it = Name s; _}) =
     let _, fields = Type.as_obj_sub "" obj_type in
-    let field_typ = Type.lookup_field s fields in
+    let field_typ =
+      match Type.lookup_field s fields with
+      | Some t -> t
+      | None -> assert false in
     let mut = Type.is_mut field_typ in
     mut
 
@@ -2806,7 +2809,7 @@ module Serialization = struct
         | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
         | Mut t -> go t
         | Serialized t -> go t
-        | Kind (_c,_k) -> false
+        | Typ _ -> false
       end
     in go t
 
