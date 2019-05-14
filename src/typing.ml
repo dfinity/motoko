@@ -133,35 +133,6 @@ let disjoint_union env at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
   with T.Env.Clash k -> error env at fmt k
 
-(* Module/Scope transformations *)
-
-(* TODO: remove by merging conenv and valenv or by separating typ_fields *)
-
-let module_of_scope scope =
-  let typ_fields =
-    T.Env.fold
-      (fun id con flds ->
-        { T.lab = id; T.typ = T.Typ con }::flds) scope.typ_env  []
-  in
-  let fields =
-    T.Env.fold
-      (fun id typ flds ->
-        { T.lab = id; T.typ = typ }::flds) scope.val_env typ_fields
-  in
-  T.Obj (T.Module, List.sort T.compare_field fields)
-
-let scope_of_module t =
-  match t with
-  | T.Obj (T.Module, flds) ->
-    List.fold_right
-      (fun {T.lab;T.typ} scope ->
-        match typ with
-        | T.Typ c ->
-          { scope with con_env = T.ConSet.add c scope.con_env;
-                       typ_env = T.Env.add lab c scope.typ_env}
-        | typ ->
-          { scope with val_env = T.Env.add lab typ scope.val_env }) flds empty_scope
-  | _ -> assert false
 
 (* Types *)
 
@@ -1121,6 +1092,7 @@ and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
 and pub_val_id id (xs, ys) : region T.Env.t * region T.Env.t =
   (xs, T.Env.add id.it id.at ys)
 
+  
 (*
 let vis_fields visfields : region T.Env.t * region T.Env.t =
   let pub_fields fields : region T.Env.t * region T.Env.t =
@@ -1159,6 +1131,46 @@ let vis_fields visfields : region T.Env.t * region T.Env.t =
   pub_fields vis fields
 *)
 
+(* Module/Scope transformations *)
+
+(* TODO: remove by merging conenv and valenv or by separating typ_fields *)
+
+and module_of_scope env sort fields scope =
+  let pub_typ, pub_val = pub_fields fields in
+  (* TODO: type fields for non-modules*)
+  if sort <> Type.Module then
+    T.Env.iter (fun _ at' ->
+        local_error env at' "public type fields not supported yet"
+      ) pub_typ;
+  let typ_fields =
+    T.Env.fold
+      (fun id con flds ->
+       if T.Env.mem id pub_typ then
+         { T.lab = id; T.typ = T.Typ con }::flds
+       else flds) scope.typ_env  []
+  in
+  let fields =
+    T.Env.fold
+      (fun id typ flds ->
+        if T.Env.mem id pub_val then
+          { T.lab = id; T.typ = typ }::flds
+        else flds) scope.val_env typ_fields
+  in
+  T.Obj (sort, List.sort T.compare_field fields)
+
+and scope_of_module t =
+  match t with
+  | T.Obj (T.Module, flds) ->
+    List.fold_right
+      (fun {T.lab;T.typ} scope ->
+        match typ with
+        | T.Typ c ->
+          { scope with con_env = T.ConSet.add c scope.con_env;
+                       typ_env = T.Env.add lab c scope.typ_env}
+        | typ ->
+          { scope with val_env = T.Env.add lab typ scope.val_env }) flds empty_scope
+  | _ -> assert false
+
 and is_actor_method dec : bool = match dec.it with
   | LetD ({ it = VarP _; _}, {it = FuncE _; _} ) -> true
   | _ -> false
@@ -1166,6 +1178,7 @@ and is_actor_method dec : bool = match dec.it with
 and infer_obj env s fields at : T.typ =
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
+(*  
   let pub_typ, pub_val = pub_fields fields in
   (* TODO: type fields for non-modules*)
   if s <> Type.Module then
@@ -1180,15 +1193,19 @@ and infer_obj env s fields at : T.typ =
     List.map (fun lab -> T.{lab; typ = T.Env.find lab scope.val_env}) dom in
   let tfs = List.sort T.compare_field (typ_tfs @ val_tfs) in
   let t = T.Obj (s, tfs ) in
+ *)
+  let t = module_of_scope env s fields scope in
+  let (_, tfs) = T.as_obj t in
   let accessible_con_env = gather_typ T.ConSet.empty t in
   let inaccessible_con_env = T.ConSet.diff scope.con_env accessible_con_env in
   if not env.pre && (s == T.Object T.Sharable || s == T.Actor) then begin
     List.iter (fun T.{lab; typ} ->
-      if not (T.sub typ T.Shared) then
-        error env (T.Env.find lab pub_val)
-          "public shared object or actor field %s has non-shared type\n  %s"
-          lab (T.string_of_typ_expand typ)
-    ) val_tfs
+        if not (T.is_typ typ) && not (T.sub typ T.Shared) then
+          let _, pub_val = pub_fields fields in
+          error env (T.Env.find lab pub_val)
+            "public shared object or actor field %s has non-shared type\n  %s"
+            lab (T.string_of_typ_expand typ)
+      ) tfs
   end;
   if not env.pre && s = T.Actor then begin
     List.iter (fun ef ->
@@ -1348,12 +1365,12 @@ and gather_dec env scope dec : scope =
   match dec.it with
   | ExpD _ -> scope
   | LetD ({ it = VarP id; _ },
-          { it = ObjE ( { it = T.Module; _ }, efs); _ }) ->
+          { it = ObjE ( { it = T.Module as sort; _ }, efs); _ }) ->
     let decs = List.map (fun ef -> ef.it.dec) efs in
     if T.Env.mem id.it scope.val_env then
       error env dec.at "duplicate definition for module %s in block" id.it;
     let scope' = gather_block_decs env decs in
-    let ve' = T.Env.add id.it (module_of_scope scope') scope.val_env in
+    let ve' = T.Env.add id.it (module_of_scope env sort efs scope') scope.val_env in
     {val_env = ve';
      typ_env = scope.typ_env;
      lib_env = scope.lib_env;
@@ -1405,7 +1422,7 @@ and infer_block_typdecs env decs : scope =
 and infer_dec_typdecs env dec : scope =
   match dec.it with
   | LetD ({ it = VarP id; _},
-          { it = ObjE ({ it = T.Module; _ }, efs); _ }) ->
+          { it = ObjE ({ it = T.Module as sort; _ }, efs); _ }) ->
     let decs = List.map (fun {it = {vis;dec}; _} -> dec) efs in
     let t = T.Env.find id.it env.vals in
     let scope = scope_of_module t in
@@ -1413,7 +1430,7 @@ and infer_dec_typdecs env dec : scope =
     let mod_scope = infer_block_typdecs env' decs in
     { empty_scope with
       con_env = mod_scope.con_env ;
-      val_env = T.Env.singleton id.it (module_of_scope mod_scope) }
+      val_env = T.Env.singleton id.it (module_of_scope env sort efs mod_scope) }
   | LetD ({ it = VarP id; _ } , exp) ->
     (match infer_val_path env exp with
      | Some t ->
@@ -1472,7 +1489,7 @@ and infer_dec_valdecs env dec : scope =
   | ExpD _ ->
     empty_scope
   | LetD ({ it = VarP id; _ },
-          { it = ObjE( { it=T.Module;_ }, efs); _ }) ->
+          { it = ObjE( { it=T.Module as sort;_ }, efs); _ }) ->
     let decs = List.map (fun ef -> ef.it.dec) efs in
     let t = try T.Env.find id.it env.vals with _ -> assert false  in
     let mod_scope = scope_of_module t in
@@ -1482,7 +1499,7 @@ and infer_dec_valdecs env dec : scope =
         decs empty_scope
     in
     { empty_scope with
-      val_env = T.Env.singleton id.it (module_of_scope mod_scope')}
+      val_env = T.Env.singleton id.it (module_of_scope env sort efs mod_scope')}
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
     let ve' = check_pat_exhaustive env t pat in
@@ -1532,7 +1549,7 @@ let infer_library env prog at =
      typ
   (* HACK: to be removed once we support module expressions, remove ModuleD *)
   |  ds ->
-     module_of_scope scope
+     module_of_scope env T.Module (List.map (fun d -> { vis = Public @@ no_region ; dec = d } @@ no_region) ds) scope
 
 let check_library scope (filename, prog) : scope Diag.result =
   Diag.with_message_store (fun msgs ->

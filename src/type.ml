@@ -310,6 +310,7 @@ let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_serialized = function Serialized _ -> true | _ -> false
+let is_typ = function Typ _ -> true | _ -> false
 
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
@@ -326,6 +327,7 @@ let as_async = function Async t -> t | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_serialized = function Serialized t -> t | _ -> invalid "as_serialized"
+let as_typ = function Typ c -> c | _ -> invalid "as_typ"
 
 let as_seq = function Tup ts -> ts | t -> [t]
 
