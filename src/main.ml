@@ -76,13 +76,13 @@ let process_files files : unit =
     assert false
   | Run ->
     if !Flags.interpret_ir
-    then run_diag (Pipeline.interpret_ir_files files)
-    else run_diag (Pipeline.run_files files)
+    then run_diag (Pipeline.interpret_ir_files !compile_mode files)
+    else run_diag (Pipeline.run_files !compile_mode files)
   | Interact ->
     printf "%s\n" banner;
-    run_diag (Pipeline.run_files_and_stdin files)
+    run_diag (Pipeline.run_files_and_stdin !compile_mode files)
   | Check ->
-    let ((), msgs) = exit_on_failure (Pipeline.check_files files) in
+    let ((), msgs) = exit_on_failure (Pipeline.check_files !compile_mode files) in
     Diag.print_messages msgs
   | Compile ->
     if !out_file = "" then begin

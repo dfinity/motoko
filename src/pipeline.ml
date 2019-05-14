@@ -146,6 +146,23 @@ let defindeness_prog prog : unit Diag.result =
 let defindeness_progs progs : unit Diag.result =
   Diag.traverse_ defindeness_prog progs
 
+(* Actor file syntax checks *)
+
+type mode = Compile.mode = WasmMode | DfinityMode
+
+let actor_file_progs mode progs : unit Diag.result =
+  if mode = Compile.DfinityMode
+  then
+    if progs = []
+    then Diag.return ()
+    else
+      let prog = Lib.List.last progs in
+      phase "Actor file restrictions" prog.Source.note;
+      Actor_file.prog prog
+  else
+    Diag.return ()
+
+
 (* Imported file loading *)
 
 (*
@@ -208,7 +225,7 @@ let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result 
   in
   Diag.map_result (fun () -> (List.rev !libraries, !senv)) (go_set imports)
 
-let load_progs parse senv : load_result =
+let load_progs mode parse senv : load_result =
   Diag.bind parse (fun parsed ->
   Diag.bind (resolve_progs parsed) (fun rs ->
   let progs' = List.map fst rs in
@@ -217,9 +234,10 @@ let load_progs parse senv : load_result =
     (List.map snd rs) in
   Diag.bind (chase_imports senv libraries) (fun (libraries, senv') ->
   Diag.bind (typecheck_progs senv' progs') (fun senv'' ->
-  Diag.bind (defindeness_progs progs') (fun _ ->
+  Diag.bind (defindeness_progs progs') (fun () ->
+  Diag.bind (actor_file_progs mode progs') (fun () ->
   Diag.return (libraries, progs', senv'')
-  )))))
+  ))))))
 
 let load_decl parse_one senv : load_decl_result =
   Diag.bind parse_one (fun parsed ->
@@ -256,9 +274,9 @@ let rec interpret_progs denv progs : Interpret.scope option =
       interpret_progs denv' ps
     | None -> None
 
-let interpret_files (senv0, denv0) files : (Typing.scope * Interpret.scope) Diag.result =
+let interpret_files mode (senv0, denv0) files : (Typing.scope * Interpret.scope) Diag.result =
   Diag.bind (Diag.flush_messages
-    (load_progs (parse_files files) senv0))
+    (load_progs mode (parse_files files) senv0))
     (fun (libraries, progs, senv1) ->
   let denv1 = interpret_libraries denv0 libraries in
   match interpret_progs denv1 progs with
@@ -306,8 +324,8 @@ let initial_env = (initial_stat_env, initial_dyn_env)
 
 type check_result = unit Diag.result
 
-let check_files files : check_result =
-  Diag.ignore (load_progs (parse_files files) initial_stat_env)
+let check_files mode files : check_result =
+  Diag.ignore (load_progs mode (parse_files files) initial_stat_env)
 
 let check_string s name : check_result =
   Diag.ignore (load_decl (parse_string s name) initial_stat_env)
@@ -315,8 +333,8 @@ let check_string s name : check_result =
 
 (* Running *)
 
-let run_files files : unit Diag.result =
-  Diag.ignore (interpret_files initial_env files)
+let run_files mode files : unit Diag.result =
+  Diag.ignore (interpret_files mode initial_env files)
 
 
 (* Interactively *)
@@ -378,9 +396,9 @@ let run_stdin lexer (senv, denv) : env option =
       if !Flags.verbose then printf "\n";
       Some env'
 
-let run_files_and_stdin files =
+let run_files_and_stdin mode files =
   let lexer = Lexing.from_function lexer_stdin in
-  Diag.bind (interpret_files initial_env files) (fun env ->
+  Diag.bind (interpret_files mode initial_env files) (fun env ->
     let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
     try loop env with End_of_file ->
       printf "\n%!";
@@ -447,7 +465,6 @@ let load_as_rts () =
   let wasm = load_file wasm_filename in
   CustomModuleDecode.decode "rts.wasm" wasm
 
-type compile_mode = Compile.mode = WasmMode | DfinityMode
 type compile_result = (CustomModule.extended_module, Diag.messages) result
 
 let name_progs progs =
@@ -474,7 +491,7 @@ let compile_prog mode do_link lib_env libraries progs : compile_result =
   Ok module_
 
 let compile_files mode do_link files : compile_result =
-  match load_progs (parse_files files) initial_stat_env with
+  match load_progs mode (parse_files files) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((libraries, progs, senv), msgs) ->
     Diag.print_messages msgs;
@@ -501,8 +518,8 @@ let interpret_ir_prog inp_env libraries progs =
   let _ = Interpret_ir.interpret_prog denv1 prog_ir in
   ()
 
-let interpret_ir_files files =
-  match load_progs (parse_files files) initial_stat_env with
+let interpret_ir_files mode files =
+  match load_progs mode (parse_files files) initial_stat_env with
   | Error msgs -> Error msgs
   | Ok ((libraries, progs, senv), msgs) ->
     Diag.print_messages msgs;
