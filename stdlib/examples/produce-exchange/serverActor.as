@@ -801,6 +801,16 @@ actor server {
   };
 
   /**
+   `allReservedRouteInfo`
+   ---------------------------
+   Get the information for all reserved routes.
+   */
+  allReservedRouteInfo() : async [T.ReservedRouteInfo] {
+    getModel()
+      .reservedRouteTable.allInfo()
+  };
+
+  /**
    `getRouteInfo`
    ---------------------
 

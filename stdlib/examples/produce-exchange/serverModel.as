@@ -706,8 +706,18 @@ secondary maps.
     idHash,
     func(doc:M.ReservedInventoryDoc):T.ReservedInventoryInfo = shared {
       id=doc.id;
-      item=doc.item.id;
-      retailer=doc.retailer
+      retailer=doc.retailer;
+      item=shared {
+        id=doc.item.id;
+        produce=doc.item.produce.id;
+        producer=doc.item.producer;
+        quantity=doc.item.quantity;
+        weight=doc.item.weight;
+        ppu=doc.item.ppu;
+        start_date=doc.item.start_date;
+        end_date=doc.item.end_date;
+        comments=doc.item.comments;
+      };
     },
     func(info:T.ReservedInventoryInfo):?M.ReservedInventoryDoc = {
       // validate the info's item id
@@ -739,8 +749,24 @@ secondary maps.
     idHash,
     func(doc:M.ReservedRouteDoc):T.ReservedRouteInfo = shared {
       id=doc.id;
-      route=doc.route.id;
-      retailer=doc.retailer
+      retailer=doc.retailer;
+      route=shared {
+        id=doc.route.id;
+        transporter=doc.route.transporter;
+        truck_type=shared {
+          id=doc.route.truck_type.id;
+          short_name=doc.route.truck_type.short_name;
+          description=doc.route.truck_type.description;
+          capacity=doc.route.truck_type.capacity;
+          isFridge=doc.route.truck_type.isFridge;
+          isFreezer=doc.route.truck_type.isFreezer;
+        };
+        start_region=doc.route.start_region.id;
+        end_region=doc.route.end_region.id;
+        start_date=doc.route.start_date;
+        end_date=doc.route.end_date;
+        cost=doc.route.cost;
+      }
     },
     func(info:T.ReservedRouteInfo):?M.ReservedRouteDoc = {
       // validate the info's item id
