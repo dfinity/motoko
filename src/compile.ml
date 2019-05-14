@@ -1731,11 +1731,17 @@ end (* UnboxedSmallWord *)
 
 module type BigNumType =
 sig
-  (* word to/from SR.Vanilla *)
+  (* word from SR.Vanilla, trapping *)
   val to_word32 : E.t -> G.t
+  val to_word64 : E.t -> G.t
+
+  (* word from SR.Vanilla, lossy *)
+  val truncate_to_word32 : E.t -> G.t
+  val _truncate_to_word64 : E.t -> G.t
+
+  (* word to SR.Vanilla *)
   val from_word32 : E.t -> G.t
   val from_signed_word32 : E.t -> G.t
-  val to_word64 : E.t -> G.t
   val from_word64 : E.t -> G.t
 
   (* buffers *)
@@ -1789,20 +1795,20 @@ sig
      of Vanilla stackrep
      leaves boolean result on the stack
    *)
-  val _fits_in_vanilla : E.t -> G.t
-
-  val _to_vanilla : E.t -> G.t
-  val _from_vanilla : E.t -> G.t
+  val _fits_signed_31bits : E.t -> G.t
 end
 
 module BigNum64 : BigNumType = struct
   include BoxedWord
 
-  let to_word32 env = unbox env ^^ BoxedWord.to_word32 env
+  let to_word32 env = unbox env ^^ (*TODO trap check*) BoxedWord.to_word32 env
   let from_word32 env = BoxedWord.from_word32 env ^^ box env
   let from_signed_word32 env = BoxedWord.from_signed_word32 env ^^ box env
-  let to_word64 env = unbox env ^^ BoxedWord.to_word64 env
+  let to_word64 env = unbox env ^^ (*TODO trap check*) BoxedWord.to_word64 env
   let from_word64 env = BoxedWord.from_word64 env ^^ box env
+
+  let truncate_to_word32 env = unbox env ^^ BoxedWord.to_word32 env
+  let _truncate_to_word64 env = unbox env ^^ BoxedWord.to_word64 env
 
   let compile_lit env n = compile_const_64 (Big_int.int64_of_big_int n) ^^ box env
 
@@ -1861,7 +1867,7 @@ module BigNum64 : BigNumType = struct
     compile_eq env
 
   (* examine the skewed pointer and determine if number fits into 31 bits *)
-  let _fits_in_vanilla env =
+  let _fits_signed_31bits env =
     let set_n, get_n = new_local64 env "n" in
     unbox(*FIXME*) env ^^ set_n ^^ get_n ^^ get_n ^^
     compile_const_64 1L ^^
@@ -1871,25 +1877,6 @@ module BigNum64 : BigNumType = struct
     G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
-  (* dereference the skewed pointer and extract into 31 bits,
-     with legal Vanilla word layout
-     precondition: fits_in_vanilla *)
-  let _to_vanilla env =
-    unbox(*FIXME*) env ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compile_const_64 0x7FFFFFFFL ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    compile_const_64 2L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
-
-  (* build a skewed pointer of numeric object from
-     a legal Vanilla word layout *)
-  let _from_vanilla env =
-    compile_const_64 1L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Rotr)) ^^
-    compile_const_64 1L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
-    box(*FIXME*) env
 end
 
 
@@ -1918,7 +1905,7 @@ module Prim = struct
     compile_unboxed_const b ^^
     G.i (Binary (I32 I32Op.ShrS)) ^^
     prim_word32toInt env
-  let prim_intToWord32 env = BigNum.to_word32 env
+  let prim_intToWord32 env = BigNum.truncate_to_word32 env
   let prim_shiftToWordN env b =
     prim_intToWord32 env ^^
     UnboxedSmallWord.shift_leftWordNtoI32 b
