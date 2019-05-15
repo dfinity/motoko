@@ -1948,10 +1948,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
 
   (* check if both arguments are compact (i.e. unboxed),
-  if so, promote to signed i64 (with last bit (i.e. LSB) zero) and perform the fast path.
-  Otherwise make sure that both arguments are in heap representation,
-  and run the slow path on them.
-  In both cases bring the results into normal form.
+     if so, promote to signed i64 (with last bit (i.e. LSB) zero) and perform the fast path.
+     Otherwise make sure that both arguments are in heap representation,
+     and run the slow path on them.
+     In both cases bring the results into normal form.
    *)
   let try_unbox2 fast slow env =
     let set_a, get_a = new_local env "a" in
@@ -1968,17 +1968,21 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_res64 ^^ get_res64 ^^ speculate_compact64 ^^
         G.if_ (ValBlockType (Some I32Type))
           (get_res64 ^^ compress64)
-          (get_res64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64 env)
+          begin
+            get_res64 ^^
+            compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+            Num.from_word64 env
+          end
       end
       begin
         get_a ^^
         BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend64 ^^ Num.from_word64 env)
+          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64 env)
           get_a ^^
         get_b ^^
         BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend64 ^^ Num.from_word64 env)
-          get_a ^^
+          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64 env)
+          get_b ^^
         slow env ^^ set_res ^^ get_res ^^
         fits_in_vanilla env ^^
         G.if_ (ValBlockType (Some I32Type))
@@ -2002,7 +2006,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let compile_unsigned_pow = try_unbox2 BoxedWord.compile_unsigned_pow Num.compile_unsigned_pow
 
   let compile_lit env = function
-    | n when Big_int.(is_int_big_int n && (int_of_big_int n >= -1073741824 || int_of_big_int n <= 1073741823)) ->
+    | n when Big_int.(is_int_big_int n && int_of_big_int n >= -1073741824 && int_of_big_int n <= 1073741823) ->
       let i = Int32.of_int (Big_int.int_of_big_int n) in
       compile_unboxed_const Int32.(logor (shift_left i 2) (shift_right_logical i 31))
     | n -> Num.compile_lit env n
