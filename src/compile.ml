@@ -1496,7 +1496,7 @@ module BoxedWord = struct
     get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_const_64 (Int64.of_int (1 lsl 5)) ^^
+      get_n ^^ compile_const_64 0L(*Int64.of_int (1 lsl 5)*) ^^
       G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
       G.if_ (ValBlockType (Some I32Type))
         (get_n ^^ BitTagged.tag)
@@ -1522,6 +1522,13 @@ module BoxedWord = struct
   let from_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   let from_signed_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
+  let compile_add = G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  let compile_signed_sub = G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+  let compile_mul = G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+  let compile_signed_div = G.i (Binary (Wasm.Values.I64 I64Op.DivS))
+  let compile_signed_mod = G.i (Binary (Wasm.Values.I64 I64Op.RemS))
+  let compile_unsigned_div = G.i (Binary (Wasm.Values.I64 I64Op.DivU))
+  let compile_unsigned_rem = G.i (Binary (Wasm.Values.I64 I64Op.RemU))
   let compile_unsigned_sub env =
     Func.share_code2 env "nat_sub" (("n1", I64Type), ("n2", I64Type)) [I64Type] (fun env get_n1 get_n2 ->
       get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
@@ -1883,13 +1890,13 @@ module BigNum64 : BigNumType = struct
     let set_tmp, get_tmp = new_local64 env "top" in
     unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op ^^ box env
 
-  let compile_add = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.Add)))
-  let compile_signed_sub = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.Sub)))
-  let compile_mul = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.Mul)))
-  let compile_signed_div = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.DivS)))
-  let compile_signed_mod = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.RemS)))
-  let compile_unsigned_div = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.DivU)))
-  let compile_unsigned_rem = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.RemU)))
+  let compile_add = with_both_unboxed BoxedWord.compile_add
+  let compile_signed_sub = with_both_unboxed BoxedWord.compile_signed_sub
+  let compile_mul = with_both_unboxed BoxedWord.compile_mul
+  let compile_signed_div = with_both_unboxed BoxedWord.compile_signed_div
+  let compile_signed_mod = with_both_unboxed BoxedWord.compile_signed_mod
+  let compile_unsigned_div = with_both_unboxed BoxedWord.compile_unsigned_div
+  let compile_unsigned_rem = with_both_unboxed BoxedWord.compile_unsigned_rem
   let compile_unsigned_sub env = with_both_unboxed (BoxedWord.compile_unsigned_sub env) env
   let compile_unsigned_pow env = with_both_unboxed (BoxedWord.compile_unsigned_pow env) env
 
@@ -1912,10 +1919,22 @@ end
 
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
-  include Num
+  include Num (* FIXME: for now *)
 
   (* examine the skewed pointer and determine if number fits into 31 bits *)
   let _fits_in_vanilla env = _fits_signed_bits env 31
+
+  (* check if both arguments are compact,
+  if so, promote to signed i64 (with last bit zero) and perform the fast path.
+  Otherwise make sure that both arguments are in heap representation,
+  and run the slow path on them.
+  In both cases bring the results into normal form.
+  let try_unbox2 fast slow env =
+    let set_a, get_a = new_local env "a" in
+    let set_b, get_b = new_local env "b" in
+    G.nop
+  let compile_add = try_unbox2 BoxedWord.compile_add Num.compile_add
+   *)
 (*
   (* dereference the skewed pointer and extract into 31 bits,
      with legal Vanilla word layout
