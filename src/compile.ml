@@ -1922,19 +1922,72 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   include Num (* FIXME: for now *)
 
   (* examine the skewed pointer and determine if number fits into 31 bits *)
-  let _fits_in_vanilla env = _fits_signed_bits env 31
+  let fits_in_vanilla env = _fits_signed_bits env 31
 
-  (* check if both arguments are compact,
-  if so, promote to signed i64 (with last bit zero) and perform the fast path.
+  let extend64 =
+    compile_unboxed_one ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Rotr)) ^^
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+
+  let speculate_compact64 =
+    compile_const_64 1L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
+    compile_const_64 Int64.(shift_left minus_one 31) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz))
+
+  let compress64 =
+    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+    compile_unboxed_one ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
+
+  let compress =
+    compile_unboxed_one ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+    compile_unboxed_one ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
+
+  (* check if both arguments are compact (i.e. unboxed),
+  if so, promote to signed i64 (with last bit (i.e. LSB) zero) and perform the fast path.
   Otherwise make sure that both arguments are in heap representation,
   and run the slow path on them.
   In both cases bring the results into normal form.
+   *)
   let try_unbox2 fast slow env =
     let set_a, get_a = new_local env "a" in
     let set_b, get_b = new_local env "b" in
-    G.nop
+    let set_res, get_res = new_local env "res" in
+    let set_res64, get_res64 = new_local64 env "res64" in
+    set_a ^^ set_b ^^
+    get_b ^^ get_a ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+      begin
+        get_a ^^ extend64 ^^
+        get_b ^^ extend64 ^^
+        fast ^^ set_res64 ^^
+        get_res64 ^^ get_res64 ^^ speculate_compact64 ^^
+        G.if_ (ValBlockType (Some I32Type))
+          (get_res64 ^^ compress64)
+          (get_res64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64 env)
+      end
+      begin
+        get_a ^^
+        BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+          (get_a ^^ extend64 ^^ Num.from_word64 env)
+          get_a ^^
+        get_b ^^
+        BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+          (get_b ^^ extend64 ^^ Num.from_word64 env)
+          get_a ^^
+        slow env ^^ set_res ^^ get_res ^^
+        fits_in_vanilla env ^^
+        G.if_ (ValBlockType (Some I32Type))
+          (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+          get_res
+      end
   let compile_add = try_unbox2 BoxedWord.compile_add Num.compile_add
-   *)
+  let compile_mul = try_unbox2 BoxedWord.compile_mul Num.compile_mul
 (*
   (* dereference the skewed pointer and extract into 31 bits,
      with legal Vanilla word layout
@@ -1949,10 +2002,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   (* build a skewed pointer of numeric object from
      a legal Vanilla word layout *)
   let _from_vanilla env =
-    compile_const_64 1L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Rotr)) ^^
-    compile_const_64 1L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+    compile_unboxed_one ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Rotr)) ^^
+    compile_unboxed_one ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.ShrS))
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
     box(*FIXME*) env
  *)
