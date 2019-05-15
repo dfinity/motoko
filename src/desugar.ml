@@ -335,19 +335,18 @@ and prog (p : Syntax.prog) : Ir.prog =
         let obj_typ = note.S.note_typ in
         let fs = build_fields obj_typ in
         let object_ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
-        ([], [extra; List.map dec ds; object_ds], fs)
+        ([], [extra @ List.map dec prefix; object_ds], fs)
       | S.LetD ({it = S.VarP x; _}, {it = S.ObjE ({it = Type.Actor;_}, es); note;_}) ->
         let obj_typ = note.S.note_typ in
         let fs = build_fields obj_typ in
         let object_ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
-        ([], [extra; List.map dec ds; object_ds], fs)
+        ([], [extra @ List.map dec prefix; object_ds], fs)
       | S.ClassD (id, tbs, {it = Type.Actor;_}, p, self_id, es) ->
         assert (tbs = []);
         assert false
       | _ ->
-        Printf.eprintf "Last expression: %s" (Wasm.Sexpr.to_string 80 (Arrange.dec last));
         assert (Type.is_unit last.note.S.note_typ);
-        ([], [extra; List.map dec ds], [])
+        ([], [extra @ List.map dec ds], [])
   end
   , { I.has_await = true
     ; I.has_async_typ = true

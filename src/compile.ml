@@ -4881,8 +4881,8 @@ and compile_start_func env (prelude : Ir.dec list list) (prog : Ir.prog) : E.fun
     let ((as_, dss, fs), _flavor) = prog in
     if as_ <> []
     (* TODO: this way, parameters would shadow the prelude *)
-    then todo_trap env "parametrized actor" (List.hd (Arrange_ir.args as_))
-    else main_actor env (nr_ "TODO") (prelude @ dss) fs
+    then todo_trap env1 "parametrized actor" (List.hd (Arrange_ir.args as_))
+    else main_actor env1 (nr_ "TODO") (prelude @ dss) fs
     )
 
 and export_actor_field env (f : Ir.field) =
