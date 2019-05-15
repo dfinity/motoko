@@ -1774,7 +1774,7 @@ sig
    *)
   val compile_lit_pat : E.t -> G.t -> G.t
 
-  (* aritmetics *)
+  (* arithmetics *)
   val compile_abs : E.t -> G.t
   val compile_add : E.t -> G.t
   val compile_signed_sub : E.t -> G.t
