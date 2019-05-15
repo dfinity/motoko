@@ -2005,6 +2005,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let compile_unsigned_sub = try_unbox2 BoxedWord.compile_unsigned_sub Num.compile_unsigned_sub
   let compile_unsigned_pow = try_unbox2 BoxedWord.compile_unsigned_pow Num.compile_unsigned_pow
 
+  let compile_is_negative env =
+    let set_n, get_n = new_local env "n" in
+    set_n ^^ get_n ^^
+    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+      (get_n ^^ compile_bitand_const 1l)
+      (get_n ^^ Num.compile_is_negative env)
+
   let compile_lit env = function
     | n when Big_int.(is_int_big_int n && int_of_big_int n >= -1073741824 && int_of_big_int n <= 1073741823) ->
       let i = Int32.of_int (Big_int.int_of_big_int n) in
