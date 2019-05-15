@@ -3,8 +3,6 @@ BUILD = byte
 MAIN = main
 JS_MAIN = js_main
 
-LIBRARY_NAME = actorscript
-
 LANGUAGE_SERVER_DIR = language_server
 LANGUAGE_SERVER_BIN = aslan
 LANGUAGE_SERVER_MAIN = language_server_main
@@ -55,9 +53,6 @@ $(LANGUAGE_SERVER_BIN): $(LANGUAGE_SERVER_MAIN).${BUILD}
 
 $(LANGUAGE_SERVER_MAIN).${BUILD}: sanity
 	$(OCAMLBUILD) -tag thread $(LANGUAGE_SERVER_OPAM_PACKAGES:%=-pkg %) $(LANGUAGE_SERVER_DIR)/$@
-
-$(LIBRARY_NAME).cma: sanity
-	$(OCAMLBUILD) $@
 
 sanity:
 	ocamlfind query $(OPAM_PACKAGES)
