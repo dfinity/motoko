@@ -1522,13 +1522,13 @@ module BoxedWord = struct
   let from_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   let from_signed_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
-  let compile_add = G.i (Binary (Wasm.Values.I64 I64Op.Add))
-  let compile_signed_sub = G.i (Binary (Wasm.Values.I64 I64Op.Sub))
-  let compile_mul = G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-  let compile_signed_div = G.i (Binary (Wasm.Values.I64 I64Op.DivS))
-  let compile_signed_mod = G.i (Binary (Wasm.Values.I64 I64Op.RemS))
-  let compile_unsigned_div = G.i (Binary (Wasm.Values.I64 I64Op.DivU))
-  let compile_unsigned_rem = G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  let compile_add env = G.i (Binary (Wasm.Values.I64 I64Op.Add))
+  let compile_signed_sub env = G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+  let compile_mul env = G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+  let compile_signed_div env = G.i (Binary (Wasm.Values.I64 I64Op.DivS))
+  let compile_signed_mod env = G.i (Binary (Wasm.Values.I64 I64Op.RemS))
+  let compile_unsigned_div env = G.i (Binary (Wasm.Values.I64 I64Op.DivU))
+  let compile_unsigned_rem env = G.i (Binary (Wasm.Values.I64 I64Op.RemU))
   let compile_unsigned_sub env =
     Func.share_code2 env "nat_sub" (("n1", I64Type), ("n2", I64Type)) [I64Type] (fun env get_n1 get_n2 ->
       get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
@@ -1802,7 +1802,7 @@ sig
      leaves boolean result on the stack
      N must be 2..63
    *)
-  val _fits_signed_bits : E.t -> int -> G.t
+  val fits_signed_bits : E.t -> int -> G.t
   (* given a numeric object on the stack as skewed pointer, check whether
      it can be faithfully stored in N unsigned bits
      leaves boolean result on the stack
@@ -1827,7 +1827,7 @@ module BigNum64 : BigNumType = struct
 
   (* examine the skewed pointer and determine if the signed number
      it points to fits into N bits *)
-  let _fits_signed_bits env = function
+  let fits_signed_bits env = function
     | n when n > 63 || n < 2 -> assert false
     | n ->
       let set_num, get_num = new_local64 env "num" in
@@ -1888,7 +1888,7 @@ module BigNum64 : BigNumType = struct
 
   let with_both_unboxed op env =
     let set_tmp, get_tmp = new_local64 env "top" in
-    unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op ^^ box env
+    unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op env ^^ box env
 
   let compile_add = with_both_unboxed BoxedWord.compile_add
   let compile_signed_sub = with_both_unboxed BoxedWord.compile_signed_sub
@@ -1897,8 +1897,8 @@ module BigNum64 : BigNumType = struct
   let compile_signed_mod = with_both_unboxed BoxedWord.compile_signed_mod
   let compile_unsigned_div = with_both_unboxed BoxedWord.compile_unsigned_div
   let compile_unsigned_rem = with_both_unboxed BoxedWord.compile_unsigned_rem
-  let compile_unsigned_sub env = with_both_unboxed (BoxedWord.compile_unsigned_sub env) env
-  let compile_unsigned_pow env = with_both_unboxed (BoxedWord.compile_unsigned_pow env) env
+  let compile_unsigned_sub = with_both_unboxed BoxedWord.compile_unsigned_sub
+  let compile_unsigned_pow = with_both_unboxed BoxedWord.compile_unsigned_pow
 
   let compile_neg env =
     Func.share_code1 env "negInt" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -1922,7 +1922,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   include Num (* FIXME: for now *)
 
   (* examine the skewed pointer and determine if number fits into 31 bits *)
-  let fits_in_vanilla env = _fits_signed_bits env 31
+  let fits_in_vanilla env = fits_signed_bits env 31
 
   let extend64 =
     compile_unboxed_one ^^
@@ -1965,7 +1965,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       begin
         get_a ^^ extend64 ^^
         get_b ^^ extend64 ^^
-        fast ^^ set_res64 ^^
+        fast env ^^ set_res64 ^^
         get_res64 ^^ get_res64 ^^ speculate_compact64 ^^
         G.if_ (ValBlockType (Some I32Type))
           (get_res64 ^^ compress64)
@@ -1987,7 +1987,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_res
       end
   let compile_add = try_unbox2 BoxedWord.compile_add Num.compile_add
-  let compile_mul = try_unbox2 BoxedWord.compile_mul Num.compile_mul
+  let compile_mul =
+    try_unbox2
+      (fun env ->
+        BoxedWord.compile_mul env ^^
+        compile_const_64 1L ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
+      Num.compile_mul
 (*
   (* dereference the skewed pointer and extract into 31 bits,
      with legal Vanilla word layout
