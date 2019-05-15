@@ -452,8 +452,6 @@ let rec avoid' cons = function
   | Typ c ->  if ConSet.mem c cons then raise (Unavoidable c)
               else Typ c (* TBR *)
 
-
-
 and avoid_bind cons {var; bound} =
   {var; bound = avoid' cons bound}
 
