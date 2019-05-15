@@ -64,6 +64,8 @@ module API(R : RPC) = struct
     ~name:"initialize_result"
     InitializeResult.t
 
+  (* let initialized_params = Param.mk *)
+
   (* let show_message_params = Param.mk
    *   ShowMessageParams.t *)
 
@@ -119,17 +121,21 @@ let my_start_server handler =
     log_to_file raw;
     (* Printf.fprintf oc "%s\n" (String.trim raw); *)
     let open M in
-    handler (Jsonrpc.call_of_string raw)
+    let call = Jsonrpc.call_of_string raw in
+    if call.name = "initialized"
+    then
+      let mes_res =
+        (Jsonrpc.string_of_call ~version:V2
+            (Rpc.call "window/showMessage"
+              [ rpc_of_show_message_params { type_ = 2; message = "Handled command"}; ])); in
+      log_to_file mes_res;
+      respond mes_res;
+      server_loop ()
+    else
+    handler call
       >>= fun response -> let res = Jsonrpc.string_of_response ~version:V2 response in
                           log_to_file res;
-                          let mes_res =
-                            (Jsonrpc.string_of_call ~version:V2
-                               (Rpc.call "window/showMessage"
-                                  [ rpc_of_show_message_params { type_ = 2; message = "Handled command"}; ])); in
-                          log_to_file mes_res;
                           respond res;
-                          respond mes_res;
-                          return res;
     server_loop ()
   in server_loop ()
 
