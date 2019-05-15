@@ -1911,7 +1911,35 @@ module BigNum64 : BigNumType = struct
 end
 
 
-module BigNum = BigNum64
+module MakeCompact (Num : BigNumType) : BigNumType = struct
+  include Num
+
+  (* examine the skewed pointer and determine if number fits into 31 bits *)
+  let _fits_in_vanilla env = _fits_signed_bits env 31
+(*
+  (* dereference the skewed pointer and extract into 31 bits,
+     with legal Vanilla word layout
+     precondition: fits_in_vanilla *)
+  let _to_vanilla env =
+    unbox(*FIXME*) env ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+    compile_const_64 0x7FFFFFFFL ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
+    compile_const_64 2L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
+
+  (* build a skewed pointer of numeric object from
+     a legal Vanilla word layout *)
+  let _from_vanilla env =
+    compile_const_64 1L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Rotr)) ^^
+    compile_const_64 1L ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
+    box(*FIXME*) env
+ *)
+end
+
+module BigNum = MakeCompact(BigNum64)
 
 (* Primitive functions *)
 module Prim = struct
