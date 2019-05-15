@@ -176,16 +176,20 @@ PROFILE_FIELDS=\
 		--profile-field "inventory_count" \
 		--profile-field "transporter_count" \
 		--profile-field "route_count" \
+		--profile-field "retailer_join_count" \
+		--profile-field "retailer_query_cost" \
+		--profile-field "retailer_query_size_max" \
 
 profile-small: \
 	$(OUTDIR)/profileLoad.04-05-01.csv \
-	$(OUTDIR)/profileLoad.04-05-05.csv \
+	$(OUTDIR)/profileLoad.04-05-02.csv \
 	\
 	$(OUTDIR)/profileLoadQuery.04-05-01.csv \
-	$(OUTDIR)/profileLoadQuery.04-05-05.csv \
+	$(OUTDIR)/profileLoadQuery.04-05-02.csv \
 
 profile: \
 	$(OUTDIR)/profileLoad.04-05-01.csv \
+	$(OUTDIR)/profileLoad.04-05-02.csv \
 	$(OUTDIR)/profileLoad.04-05-05.csv \
 	$(OUTDIR)/profileLoad.04-05-10.csv \
 	$(OUTDIR)/profileLoad.04-05-20.csv \
@@ -193,14 +197,20 @@ profile: \
 	$(OUTDIR)/profileLoad.04-05-100.csv \
 	\
 	$(OUTDIR)/profileLoadQuery.04-05-01.csv \
+	$(OUTDIR)/profileLoadQuery.04-05-02.csv \
 	$(OUTDIR)/profileLoadQuery.04-05-05.csv \
 	$(OUTDIR)/profileLoadQuery.04-05-10.csv \
 	$(OUTDIR)/profileLoadQuery.04-05-20.csv \
 	$(OUTDIR)/profileLoadQuery.04-05-50.csv \
 	$(OUTDIR)/profileLoadQuery.04-05-100.csv \
 
+## AS wishlist: the following various targets would be easier to relate if we could accept named AS values as CLI params; that feature would also obviate the need for the `param-X-Y.as` files used below:
+
 $(OUTDIR)/profileLoad.04-05-01.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC) | $(OUTDIR)
 	$(ASC) -r --profile examples/produce-exchange/test/params-5-1.as $(PROFILE_LOAD_SRC) --profile-file $@ $(PROFILE_FIELDS)
+
+$(OUTDIR)/profileLoad.04-05-02.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-2.as $(PROFILE_LOAD_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoad.04-05-05.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC) | $(OUTDIR)
 	$(ASC) -r --profile examples/produce-exchange/test/params-5-5.as $(PROFILE_LOAD_SRC) --profile-file $@ $(PROFILE_FIELDS)
@@ -220,6 +230,9 @@ $(OUTDIR)/profileLoad.04-05-100.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC)
 
 $(OUTDIR)/profileLoadQuery.04-05-01.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	$(ASC) -r --profile examples/produce-exchange/test/params-5-1.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+
+$(OUTDIR)/profileLoadQuery.04-05-02.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-2.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.04-05-05.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	$(ASC) -r --profile examples/produce-exchange/test/params-5-5.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)

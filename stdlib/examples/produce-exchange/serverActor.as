@@ -923,6 +923,7 @@ actor server {
       route_count              = m.routeTable.count();
       reserved_route_count     = m.reservedRouteTable.count();
 
+      retailer_query_size_max  = m.retailerQuerySizeMax;
       retailer_query_count     = m.retailerQueryCount;
       retailer_query_cost      = m.retailerQueryCost;
       retailer_join_count      = m.retailerJoinCount;

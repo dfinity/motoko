@@ -121,6 +121,7 @@ class Model() {
            retailerQueryCount := 0;
            retailerQueryCost := 0;
            retailerJoinCount := 0;
+           retailerQuerySizeMax := 0;
 
            #ok(#reset)
          };
@@ -501,6 +502,7 @@ class Model() {
 
   private debugOff (t:Text)   {  };
   private debugIntOff (i:Int) {  };
+  private debugOffInt (i:Int) {  };
 
   private idIsEq(x:Nat,y:Nat):Bool { x == y };
 
@@ -530,6 +532,7 @@ class Model() {
    */
 
   var joinCount = 0;
+  var retailerQuerySizeMax = 0;
 
 
 /**
@@ -1801,14 +1804,14 @@ than the MVP goals, however.
       case (null) { return null };
       case (?x) { x }};
 
-    debug "- user_name: ";
-    debug (retailer.short_name);
-    debug "\n";
+    debugOff "- user_name: ";
+    debugOff (retailer.short_name);
+    debugOff "\n";
 
     /** - Temp: */
-    debug "- retailer is located in region ";
-    debugInt (retailer.region.id);
-    debug ", and\n- is accessible via routes from ";
+    debugOff "- retailer is located in region ";
+    debugOffInt (retailer.region.id);
+    debugOff ", and\n- is accessible via routes from ";
 
     /** - Find all routes whose the destination region is the retailer's region: */
     let retailerRoutes =
@@ -1820,8 +1823,8 @@ than the MVP goals, however.
       case (null) { return ?[] };
       case (?x) { x }};
 
-    debugInt(Trie.count<T.RegionId, M.RouteMap>(retailerRoutes));
-    debug " production regions.\n";
+    debugOffInt(Trie.count<T.RegionId, M.RouteMap>(retailerRoutes));
+    debugOff " production regions.\n";
 
     /** - Join: For each production region, consider all routes and inventory: */
     let queryResults : Trie<T.RegionId, RouteInventoryMap> = {
@@ -1873,10 +1876,14 @@ than the MVP goals, however.
       Trie.mergeDisjoint2D<T.RegionId, (T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>(
         queryResults, idIsEq, idPairIsEq);
 
-    debug "- query result count: ";
-    debugInt(Trie.count<(T.RouteId, T.InventoryId),
-                        (M.RouteDoc, M.InventoryDoc)>(queryResultsMerged));
-    debug " (count of feasible route-item pairs).\n";
+    debugOff "- query result count: ";
+    let size = Trie.count<(T.RouteId, T.InventoryId),
+                          (M.RouteDoc, M.InventoryDoc)>(queryResultsMerged);
+    if ( size > retailerQuerySizeMax ) {
+      retailerQuerySizeMax := size;
+    };
+    debugOffInt(size);
+    debugOff " (count of feasible route-item pairs).\n";
 
     /** - Prepare reservation information for client, as an array; see also [`makeReservationInfo`](#makereservationinfo) */
     let arr =

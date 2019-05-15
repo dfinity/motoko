@@ -64,15 +64,19 @@ let dump (c:t) (ve: Value.value Value.Env.t) =
                    ) counts
     in
     let file = open_out (!Flags.profile_file) in
-    let suffix =
+    let (suffix, flds) =
       (* the suffix of the line consists of field values for each field in `profile_field_names`: *)
       List.fold_right
-        (fun var line ->
+        (fun var (line, flds) ->
           match Value.Env.find_opt var ve with
-            None   -> Printf.sprintf "%s, #err(\"undefined field `%s`\")" line var
-          | Some v -> Printf.sprintf "%s, %s" line (Value.string_of_val v)
-        ) !Flags.profile_field_names ""
+            None   -> (Printf.sprintf "%s, #err" line, (var :: flds))
+          | Some v -> (Printf.sprintf "%s, %s" line (Value.string_of_val v), var :: flds)
+        ) !Flags.profile_field_names ("", [])
     in
+    Printf.fprintf file "# column: source region\n" ;
+    Printf.fprintf file "# column: source region count\n" ;
+    List.iter (fun fld -> Printf.fprintf file "# column: --profile-field: %s\n" fld)
+      (List.rev flds) ;
     List.iter (fun (region, region_count) ->
         assert (dump_count = 0);
         Printf.fprintf file "%s\"%s\", %d%s\n"

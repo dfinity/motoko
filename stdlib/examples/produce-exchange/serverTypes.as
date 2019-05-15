@@ -349,6 +349,7 @@ type ProduceExchangeCounts = shared {
   route_count : Nat;
   reserved_route_count : Nat;
   retailer_count : Nat;
+  retailer_query_size_max : Nat;
   retailer_query_count : Nat;
   retailer_query_cost : Nat;
   retailer_join_count : Nat;
