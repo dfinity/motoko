@@ -113,6 +113,22 @@ struct
       match f x y with
       | 0 -> compare f xs' ys'
       | n -> n
+
+  let rec is_ordered f xs =
+    match xs with
+    | [] | [_] -> true
+    | x1::x2::xs' ->
+      match f x1 x2 with
+      | -1 | 0 -> is_ordered f (x2::xs')
+      | _ -> false
+
+  let rec is_strictly_ordered f xs =
+    match xs with
+    | [] | [_] -> true
+    | x1::x2::xs' ->
+      match f x1 x2 with
+      | -1 -> is_strictly_ordered f (x2::xs')
+      | _ -> false
 end
 
 module List32 =

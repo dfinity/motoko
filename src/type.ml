@@ -27,9 +27,9 @@ and typ =
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
+  | Variant of field list                     (* variant *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
-  | Variant of (lab * typ) list               (* variant *)
   | Tup of typ list                           (* tuple *)
   | Func of sharing * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)
@@ -49,8 +49,6 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-(* Helper for variant constructors *)
-let map_constr_typ f = List.map (fun (c, t) -> c, f t)
 
 (* Constructors *)
 
@@ -94,8 +92,6 @@ let compare_field f1 f2 =
   | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
   | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
 
-let compare_summand (c1, _) (c2, _) = compare c1 c2
-
 let iter_obj t =
   Obj (Object Local,
     [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t])}])
@@ -120,6 +116,7 @@ let text_obj =
     ] in
   Obj (Object Local, List.sort compare_field immut)
 
+
 (* Shifting *)
 
 let rec shift i n t =
@@ -133,9 +130,9 @@ let rec shift i n t =
     let i' = i + List.length tbs in
     Func (s, c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
   | Opt t -> Opt (shift i n t)
-  | Variant cts -> Variant (map_constr_typ (shift i n) cts)
   | Async t -> Async (shift i n t)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
+  | Variant fs -> Variant (List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
   | Shared -> Shared
   | Serialized t -> Serialized (shift i n t)
@@ -161,6 +158,7 @@ and shift_kind i n k =
     Abs (List.map (shift_bind i' n) tbs, shift i' n t)
  *)
 
+
 (* First-order substitution *)
 
 let rec subst sigma t =
@@ -182,7 +180,7 @@ let rec subst sigma t =
   | Opt t -> Opt (subst sigma t)
   | Async t -> Async (subst sigma t)
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
-  | Variant cts -> Variant (map_constr_typ (subst sigma) cts)
+  | Variant fs -> Variant (List.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
   | Shared -> Shared
   | Serialized t -> Serialized (subst sigma t)
@@ -234,7 +232,7 @@ let rec open' i ts t =
   | Opt t -> Opt (open' i ts t)
   | Async t -> Async (open' i ts t)
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
-  | Variant cts -> Variant (map_constr_typ (open' i ts) cts)
+  | Variant fs -> Variant (List.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
   | Shared -> Shared
   | Serialized t -> Serialized (open' i ts t)
@@ -317,7 +315,7 @@ let as_prim p = function Prim p' when p = p' -> () | _ -> invalid "as_prim"
 let as_obj = function Obj (s, tfs) -> s, tfs | _ -> invalid "as_obj"
 let as_array = function Array t -> t | _ -> invalid "as_array"
 let as_opt = function Opt t -> t | _ -> invalid "as_opt"
-let as_variant = function Variant cts -> cts | _ -> invalid "as_variant"
+let as_variant = function Variant fs -> fs | _ -> invalid "as_variant"
 let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
@@ -371,29 +369,20 @@ let as_async_sub t = match promote t with
   | Non -> Non
   | _ -> invalid "as_async_sub"
 
-let inst_func_type fun_ty sort typs =
-  let _, tbs, t2, t3 = as_func_sub sort (List.length typs) fun_ty in
-  let t_arg = open_ typs t2 in
-  let t_ret = open_ typs t3 in
-  t_arg, t_ret
 
-let lookup_field lab' tfs =
-  let is_lab { lab; typ } = match typ with
-    | Typ _ -> false
-    | _ -> lab = lab' in
+let lookup_val_field l tfs =
+  let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
   match List.find_opt is_lab tfs with
-  | Some { typ = Typ _; _ } -> assert false
-  | Some {typ = t; _} -> Some t
+  | Some tf -> Some tf.typ
   | None -> None
 
-let lookup_typ_field lab' tfs =
-  let is_lab {lab; typ } = match typ with
-    | Typ _ -> lab = lab'
-    | _ -> false in
+let lookup_typ_field l tfs =
+  let is_lab = function {typ = Typ _; lab} -> lab = l | _ -> false in
   match List.find_opt is_lab tfs with
-  | Some { typ = Typ c; _ } -> Some c
+  | Some {typ = Typ c; _} -> Some c
   | Some _ -> assert false
   | None -> None
+
 
 (* Span *)
 
@@ -407,13 +396,14 @@ let rec span = function
   | Prim Word16 -> Some 0x10000
   | Prim (Word32 | Word64 | Char) -> None  (* for all practical purpuses *)
   | Obj _ | Tup _ | Async _ -> Some 1
+  | Variant fs -> Some (List.length fs)
   | Array _ | Func _ | Shared | Any -> None
   | Opt _ -> Some 2
-  | Variant cts -> Some (List.length cts)
   | Mut t -> span t
   | Serialized t -> None
   | Non -> Some 0
   | Typ _ -> assert false (* TBR *)
+
 
 (* Avoiding local constructors *)
 
@@ -442,9 +432,9 @@ let rec avoid' cons = function
           List.map (avoid_bind cons) tbs,
           List.map (avoid' cons) ts1, List.map (avoid' cons) ts2)
   | Opt t -> Opt (avoid' cons t)
-  | Variant cts -> Variant (map_constr_typ (avoid' cons) cts)
   | Async t -> Async (avoid' cons t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons) fs)
+  | Variant fs -> Variant (List.map (avoid_field cons) fs)
   | Mut t -> Mut (avoid' cons t)
   | Serialized t -> Serialized (avoid' cons t)
   | Typ c ->  if ConSet.mem c cons then raise (Unavoidable c)
@@ -503,9 +493,9 @@ let is_concrete t =
         List.for_all go (List.map (open_ ts) ts1) &&
         List.for_all go (List.map (open_ ts) ts2)
       | Opt t -> go t
-      | Variant cts -> List.for_all (fun (_, t) -> go t) cts
       | Async t -> go t
       | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
+      | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Mut t -> go t
       | Typ c -> assert false (* TBR *)
       | Serialized t -> go t
@@ -583,10 +573,10 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t1' t2'
   | Opt t1', Shared ->
     rel_typ rel eq t1' Shared
-  | Variant cts1, Variant cts2 ->
-    rel_summands rel eq cts1 cts2
-  | Variant cts1, Shared ->
-    rel_list rel_typ rel eq (List.map snd cts1) (List.map (fun _ -> Shared) cts1)
+  | Variant fs1, Variant fs2 ->
+    rel_tags rel eq fs1 fs2
+  | Variant fs1, Shared ->
+    rel_tags rel eq fs1 (List.map (fun f -> {f with typ = Shared}) fs1)
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Tup ts1, Tup ts2 ->
@@ -639,20 +629,20 @@ and rel_fields rel eq tfs1 tfs2 =
     )
   | _, _ -> false
 
-and rel_summands rel eq tcs1 tcs2 =
-  (* Assume that tcs1 and tcs2 are sorted. *)
-  match tcs1, tcs2 with
+and rel_tags rel eq tfs1 tfs2 =
+  (* Assume that tfs1 and tfs2 are sorted. *)
+  match tfs1, tfs2 with
   | [], [] ->
     true
   | [], _ when rel != eq ->
     true
-  | (c1, t1)::tcs1', (c2, t2)::tcs2' ->
-    (match compare c1 c2 with
+  | tf1::tfs1', tf2::tfs2' ->
+    (match compare_field tf1 tf2 with
     | 0 ->
-      rel_typ rel eq t1 t2 &&
-      rel_summands rel eq tcs1' tcs2'
+      rel_typ rel eq tf1.typ tf2.typ &&
+      rel_tags rel eq tfs1' tfs2'
     | 1 when rel != eq ->
-      rel_summands rel eq tcs1 tcs2'
+      rel_tags rel eq tfs1 tfs2'
     | _ -> false
     )
   | _, _ -> false
@@ -700,7 +690,7 @@ let rec lub t1 t2 =
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Int
   | Opt t1', Opt t2' -> Opt (lub t1' t2')
-  | Variant t1', Variant t2' -> Variant (lub_summands t1' t2')
+  | Variant t1', Variant t2' -> Variant (lub_tags t1' t2')
   | Prim Null, Opt t'
   | Opt t', Prim Null -> Opt t'
   | Array t1', (Obj _ as t2) -> lub (array_obj t1') t2
@@ -708,15 +698,14 @@ let rec lub t1 t2 =
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Any
 
-and lub_summands fs1 fs2 = match fs1, fs2 with
+and lub_tags fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
   | [], fs2 -> fs2
   | f1::fs1', f2::fs2' ->
-     begin match compare_summand f1 f2 with
-     | 0 -> (fst f1, lub (snd f1) (snd f2))::lub_summands fs1' fs2'
-     | 1 -> f2::lub_summands fs1 fs2'
-     | _ -> f1::lub_summands fs1' fs2
-     end
+    match compare_field f1 f2 with
+    | -1 -> f1 :: lub_tags fs1' fs2
+    | +1 -> f2 :: lub_tags fs1 fs2'
+    | _ -> {f1 with typ = lub f1.typ f2.typ} :: lub_tags fs1' fs2'
 
 let rec glb t1 t2 =
   if t1 == t2 then t1 else
@@ -731,21 +720,21 @@ let rec glb t1 t2 =
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
   | Opt t1', Opt t2' -> Opt (glb t1' t2')
-  | Variant t1', Variant t2' -> Variant (glb_summands t1' t2')
+  | Variant t1', Variant t2' -> Variant (glb_tags t1' t2')
   | Prim Null, Opt _
   | Opt _, Prim Null -> Prim Null
   | t1', t2' when eq t1' t2' -> t1
   | _ -> Non
 
-and glb_summands fs1 fs2 = match fs1, fs2 with
+and glb_tags fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> []
   | [], fs2 -> []
   | f1::fs1', f2::fs2' ->
-     begin match compare_summand f1 f2 with
-     | 0 -> (fst f1, glb (snd f1) (snd f2))::glb_summands fs1' fs2'
-     | 1 -> glb_summands fs1 fs2'
-     | _ -> glb_summands fs1' fs2
-     end
+    match compare_field f1 f2 with
+    | -1 -> glb_tags fs1' fs2
+    | +1 -> glb_tags fs1 fs2'
+    | _ -> {f1 with typ = glb f1.typ f2.typ}::glb_tags fs1' fs2'
+
 
 (* Pretty printing *)
 
@@ -797,8 +786,8 @@ let rec string_of_typ_nullary vs = function
   | Obj (Object Local, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
   | Variant [] -> "{#}"
-  | Variant cts ->
-    sprintf "{%s}" (String.concat "; " (List.map (string_of_summand vs) cts))
+  | Variant fs ->
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_tag vs) fs))
   | Typ c ->
     sprintf "= {%s}" (string_of_kind (Con.kind c))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
@@ -859,9 +848,10 @@ and string_of_field vs {lab; typ} =
   | _ ->
     sprintf "%s : %s" lab (string_of_typ' vs typ)
 
-and string_of_summand vs = function
-  | (tag, Tup []) -> sprintf "#%s" tag
-  | (tag, typ) -> sprintf "#%s : %s" tag (string_of_typ' vs typ)
+and string_of_tag vs {lab; typ} =
+  match typ with
+  | Tup [] -> sprintf "#%s" lab
+  | _ -> sprintf "#%s : %s" lab (string_of_typ' vs typ)
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs

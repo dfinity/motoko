@@ -67,7 +67,7 @@ let share_typ t =
     { t with it = FuncT ({s with it = Type.Sharable}, tbs, t1, t2)}
   | _ -> t
 
-let share_typfield tf =
+let share_typfield (tf : typ_field) =
   {tf with it = {tf.it with typ = share_typ tf.it.typ}}
 
 let share_exp e =
@@ -115,7 +115,7 @@ let share_expfield (ef : exp_field) =
 %token<Value.unicode> CHAR
 %token<bool> BOOL
 %token<string> ID
-%token<string> VARIANT_TAG
+%token<string> TAG
 %token<string> TEXT
 %token PRIM
 %token UNDERSCORE
@@ -159,8 +159,8 @@ seplist(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
-%inline variant_tag :
-  | variant_tag=VARIANT_TAG { variant_tag @@ at $sloc }
+%inline tag :
+  | id=TAG { id @@ at $sloc }
 
 %inline typ_id :
   | id=ID { id @= at $sloc }
@@ -212,10 +212,10 @@ typ_obj :
 typ_variant :
   | LCURLY CATOP RCURLY
     { [] }
-  | LCURLY ct=typ_tag RCURLY
-    { [ct] }
-  | LCURLY ct=typ_tag semicolon cts=seplist(typ_tag, semicolon) RCURLY
-    { ct :: cts }
+  | LCURLY tf=typ_tag RCURLY
+    { [tf] }
+  | LCURLY tf=typ_tag semicolon tfs=seplist(typ_tag, semicolon) RCURLY
+    { tf::tfs }
 
 typ_nullary :
   | LPAR ts=seplist(typ_item, COMMA) RPAR
@@ -226,8 +226,8 @@ typ_nullary :
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj
     { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @! at $sloc }
-  | cts=typ_variant
-    { VariantT cts @! at $sloc }
+  | tfs=typ_variant
+    { VariantT tfs @! at $sloc }
 
 typ_un :
   | t=typ_nullary
@@ -275,8 +275,8 @@ typ_field :
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
-  | i=variant_tag t=return_typ_nullary?
-    { (i, Lib.Option.get t (TupT [] @! at $sloc)) }
+  | x=tag t=return_typ_nullary?
+    { {tag = x; typ = Lib.Option.get t (TupT [] @! at $sloc)} @@ at $sloc }
 
 typ_bind :
   | x=id SUB t=typ
@@ -381,8 +381,10 @@ exp_post :
 exp_un :
   | e=exp_post
     { e }
-  | i=variant_tag
-    { VariantE (i, TupE([]) @? at $sloc) @? at $sloc }
+  | x=tag
+    { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
+  | x=tag e=exp_nullary
+    { TagE (x, e) @? at $sloc }
   | QUEST e=exp_un
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un
@@ -393,8 +395,6 @@ exp_un :
     { NotE e @? at $sloc }
   | IMPORT f=TEXT
     { ImportE (f, ref "") @? at $sloc }
-  | i=variant_tag e=exp_nullary
-    { VariantE (i, e) @? at $sloc }
   | DEBUG_SHOW e=exp_un
     { ShowE (ref Type.Pre, e) @? at $sloc }
 
@@ -521,14 +521,14 @@ pat_nullary :
 pat_un :
   | p=pat_nullary
     { p }
-  | i=variant_tag
-    { VariantP(i, TupP [] @! at $sloc) @! at $sloc }
+  | x=tag
+    { TagP(x, TupP [] @! at $sloc) @! at $sloc }
+  | x=tag p=pat_nullary
+    { TagP(x, p) @! at $sloc }
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }
   | op=unop l=lit
     { SignP(op, ref l) @! at $sloc }
-  | i=variant_tag p=pat_nullary
-    { VariantP(i, p) @! at $sloc }
 
 pat_bin :
   | p=pat_un

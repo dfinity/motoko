@@ -154,10 +154,10 @@ let boolE b =
 let callE exp1 ts exp2 =
   let fun_ty = typ exp1 in
   let cc = Value.call_conv_of_typ fun_ty in
-  let arg_ty, ret_ty = T.inst_func_type fun_ty cc.Value.sort ts in
+  let _, _, _, ret_ty = T.as_func_sub cc.Value.sort (List.length ts) fun_ty in
   { it = CallE (cc, exp1, ts, exp2);
     at = no_region;
-    note = { S.note_typ = ret_ty;
+    note = { S.note_typ = T.open_ ts ret_ty;
              S.note_eff = max_eff (eff exp1) (eff exp2) }
   }
 
@@ -203,7 +203,7 @@ let switch_variantE exp1 cases typ1 =
   { it =
       SwitchE (exp1,
         List.map (fun (l,p,e) ->
-          { it = {pat = {it = VariantP (l, p);
+          { it = {pat = {it = TagP (l, p);
                          at = no_region;
                          note = typ exp1};
                   exp = e};
@@ -498,10 +498,7 @@ let forE pat exp1 exp2 =
   let lab = fresh_id "done" () in
   let ty1 = exp1.note.S.note_typ in
   let _, tfs = Type.as_obj_sub "next" ty1 in
-  let tnxt =
-    match T.lookup_field "next" tfs with
-    | Some tnxt -> tnxt
-    | None -> assert false in
+  let tnxt = Lib.Option.value (T.lookup_val_field "next" tfs) in
   let nxt = fresh_var "nxt" tnxt in
   letE nxt (dotE exp1 (nameN "next") tnxt) (
     labelE lab Type.unit (

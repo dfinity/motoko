@@ -2074,12 +2074,7 @@ module Object = struct
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type ({it = Name s; _}) =
     let _, fields = Type.as_obj_sub "" obj_type in
-    let field_typ =
-      match Type.lookup_field s fields with
-      | Some t -> t
-      | None -> assert false in
-    let mut = Type.is_mut field_typ in
-    mut
+    Type.is_mut (Lib.Option.value (Type.lookup_val_field s fields))
 
   let idx env obj_type name =
     compile_unboxed_const (hash_field_name name) ^^
@@ -3005,7 +3000,7 @@ module Serialization = struct
           List.for_all go (List.map (open_ ts) ts1) &&
           List.for_all go (List.map (open_ ts) ts2)
         | Opt t -> go t
-        | Variant cts -> List.for_all (fun (_, t) -> go t) cts
+        | Variant fs -> List.for_all (fun f -> go f.typ) fs
         | Async t -> go t
         | Obj (Actor, fs) -> false
         | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
@@ -3087,7 +3082,7 @@ module Serialization = struct
         G.if_ (ValBlockType None) (get_x ^^ Opt.project ^^ size env t) G.nop
       | Variant vs ->
         inc_data_size (compile_unboxed_const 4l) ^^ (* one word tag *)
-        List.fold_right (fun (l,t) continue ->
+        List.fold_right (fun {lab = l; typ = t} continue ->
             get_x ^^
             Variant.test_is env l ^^
             G.if_ (ValBlockType None)
@@ -3206,7 +3201,7 @@ module Serialization = struct
           ( write_byte (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project ^^ write env t )
           ( write_byte (compile_unboxed_const 0l) )
       | Variant vs ->
-        List.fold_right (fun (i, (l,t)) continue ->
+        List.fold_right (fun (i, {lab = l; typ = t}) continue ->
             get_x ^^
             Variant.test_is env l ^^
             G.if_ (ValBlockType None)
@@ -3214,7 +3209,7 @@ module Serialization = struct
                 get_x ^^ Variant.project ^^ write env t)
               continue
           )
-          ( List.mapi (fun i x -> (i,x)) vs )
+          ( List.mapi (fun i f -> (i,f)) vs )
           ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Text ->
         let (set_len, get_len) = new_local env "len" in
@@ -3336,14 +3331,14 @@ module Serialization = struct
       | Variant vs ->
         let (set_tag, get_tag) = new_local env "tag" in
         read_word ^^ set_tag ^^
-        List.fold_right (fun (i, (l,t)) continue ->
+        List.fold_right (fun (i, {lab = l; typ = t}) continue ->
             get_tag ^^
             compile_eq_const (Int32.of_int i) ^^
             G.if_ (ValBlockType (Some I32Type))
               ( Variant.inject env l (read env t) )
               continue
           )
-          ( List.mapi (fun i x -> (i,x)) vs )
+          ( List.mapi (fun i f -> (i,f)) vs )
           ( E.trap_with env "deserialize_go: unexpected variant tag" )
       | Prim Text ->
         let (set_len, get_len) = new_local env "len" in
@@ -4699,7 +4694,7 @@ and compile_exp (env : E.t) exp =
   | OptE e ->
     SR.Vanilla,
     Opt.inject env (compile_exp_vanilla env e)
-  | VariantE (l, e) ->
+  | TagE (l, e) ->
     SR.Vanilla,
     Variant.inject env l.it (compile_exp_vanilla env e)
   | TupE es ->
@@ -4880,8 +4875,8 @@ and fill_pat env pat : patternCode =
           )
           fail_code
       )
-  | VariantP (l, p) ->
-      let (set_x, get_x) = new_local env "variant_scrut" in
+  | TagP (l, p) ->
+      let (set_x, get_x) = new_local env "tag_scrut" in
       CanFail (fun fail_code ->
         set_x ^^
         get_x ^^
