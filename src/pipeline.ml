@@ -330,10 +330,7 @@ let check_string s name : check_result =
 (* Running *)
 
 let run_files files : unit Diag.result =
-  Diag.bind (interpret_files initial_env files)
-    (fun (_, _) ->
-      Diag.return ()
-    )
+  Diag.ignore (interpret_files initial_env files)
 
 (* Interactively *)
 
