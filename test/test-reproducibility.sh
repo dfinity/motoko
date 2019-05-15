@@ -12,6 +12,6 @@ files="*/*.as"
 
 reprotest --source-pattern "*/*.as" \
   --vary=-fileordering,-user_group,-domain_host \
-  "for file in */*.as; do ${ASC} -c --map --dfinity \$file 2> \$(basename \$file).stderr || true ; done" \
+  "for file in */*.as; do ${ASC} -c --map \$file 2> \$(basename \$file).stderr || true ; done" \
   '*.wasm *.map *.stderr'
 

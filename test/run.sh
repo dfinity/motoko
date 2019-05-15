@@ -7,7 +7,7 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Compile with --dfinity, use dvm to run
+#    -d: Compile without -no-dfinity-api, uses dvm to run
 #    -s: Be silent in sunny-day execution
 #
 
@@ -33,13 +33,17 @@ while getopts "ads" o; do
             ;;
         d)
             DFINITY=yes
-            EXTRA_ASC_FLAGS=--dfinity
             ;;
         s)
             ECHO=true
             ;;
     esac
 done
+
+if [ $DFINITY = "no" ]
+then
+    EXTRA_ASC_FLAGS=-no-dfinity-api
+fi
 
 shift $((OPTIND-1))
 
