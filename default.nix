@@ -458,6 +458,7 @@ rec {
     shellHook = llvmEnv;
     TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
+    language-server = language-server;
   } else null;
 
 }
