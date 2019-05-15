@@ -141,6 +141,7 @@ val promote : typ -> typ
 
 exception Unavoidable of con
 val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
+val avoid_cons : ConSet.t -> ConSet.t-> unit (* raise Unavoidable *)
 
 val is_concrete : typ -> bool
 

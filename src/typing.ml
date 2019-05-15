@@ -32,19 +32,22 @@ type lib_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.ConSet.t
 
+type obj_env = { env: scope T.Env.t } (* internal object scopes *)
 
-type scope =
+and scope =
   { val_env : val_env;
     lib_env : lib_env;
     typ_env : typ_env;
     con_env : con_env;
+    obj_env : obj_env;
   }
 
 let empty_scope : scope =
   { val_env = T.Env.empty;
     lib_env = T.Env.empty;
     typ_env = T.Env.empty;
-    con_env = T.ConSet.empty
+    con_env = T.ConSet.empty;
+    obj_env = { env = T.Env.empty };
   }
 
 let adjoin_scope scope1 scope2 =
@@ -52,6 +55,7 @@ let adjoin_scope scope1 scope2 =
     lib_env = T.Env.adjoin scope1.lib_env scope2.lib_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
     con_env = T.ConSet.union scope1.con_env scope2.con_env;
+    obj_env = { env = T.Env.adjoin scope1.obj_env.env scope2.obj_env.env};
   }
 
 
@@ -71,6 +75,7 @@ type env =
     libs : lib_env;
     typs : typ_env;
     cons : con_env;
+    objs : obj_env;
     labs : lab_env;
     rets : ret_env;
     async : bool;
@@ -83,6 +88,7 @@ let env_of_scope msgs scope =
     libs = scope.lib_env;
     typs = scope.typ_env;
     cons = scope.con_env;
+    objs = { env = T.Env.empty };
     labs = T.Env.empty;
     rets = None;
     async = false;
@@ -120,6 +126,7 @@ let adjoin env scope =
     libs = T.Env.adjoin env.libs scope.lib_env;
     typs = T.Env.adjoin env.typs scope.typ_env;
     cons = T.ConSet.union env.cons scope.con_env;
+    objs = { env = T.Env.adjoin env.objs.env scope.obj_env.env };
   }
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals ve}
@@ -1158,6 +1165,7 @@ and module_of_scope env sort fields scope =
   in
   T.Obj (sort, List.sort T.compare_field fields)
 
+(*  
 and scope_of_module t =
   match t with
   | T.Obj (T.Module, flds) ->
@@ -1170,7 +1178,8 @@ and scope_of_module t =
         | typ ->
           { scope with val_env = T.Env.add lab typ scope.val_env }) flds empty_scope
   | _ -> assert false
-
+ *)
+  
 and is_actor_method dec : bool = match dec.it with
   | LetD ({ it = VarP _; _}, {it = FuncE _; _} ) -> true
   | _ -> false
@@ -1196,8 +1205,8 @@ and infer_obj env s fields at : T.typ =
  *)
   let t = module_of_scope env s fields scope in
   let (_, tfs) = T.as_obj t in
-  let accessible_con_env = gather_typ T.ConSet.empty t in
-  let inaccessible_con_env = T.ConSet.diff scope.con_env accessible_con_env in
+  let accessible_cons = gather_typ T.ConSet.empty t in
+  let inaccessible_cons = T.ConSet.diff scope.con_env accessible_cons in
   if not env.pre && (s == T.Object T.Sharable || s == T.Actor) then begin
     List.iter (fun T.{lab; typ} ->
         if not (T.is_typ typ) && not (T.sub typ T.Shared) then
@@ -1213,12 +1222,15 @@ and infer_obj env s fields at : T.typ =
         local_error env ef.it.dec.at "public actor field needs to be a manifest function"
     ) fields
   end;
-  if s <> T.Module then
-    try T.avoid inaccessible_con_env t with T.Unavoidable c ->
+  (*  if s <> T.Module then *)
+  try
+    T.avoid_cons inaccessible_cons accessible_cons;
+    T.avoid inaccessible_cons t
+  with T.Unavoidable c ->
       error env at "local class type %s is contained in object or actor type\n  %s"
         (Con.to_string c)
         (T.string_of_typ_expand t)
-  else t
+(*  else t *)
 
 
 (* Blocks and Declarations *)
@@ -1371,10 +1383,12 @@ and gather_dec env scope dec : scope =
       error env dec.at "duplicate definition for module %s in block" id.it;
     let scope' = gather_block_decs env decs in
     let ve' = T.Env.add id.it (module_of_scope env sort efs scope') scope.val_env in
+    let obj_env = { env = T.Env.add id.it scope' scope.obj_env.env } in
     {val_env = ve';
      typ_env = scope.typ_env;
      lib_env = scope.lib_env;
-     con_env = scope.con_env }
+     con_env = scope.con_env;
+     obj_env = obj_env }
   | LetD (pat, _) -> adjoin_val_env scope (gather_pat env scope.val_env pat)
   | VarD (id, _) -> adjoin_val_env scope (gather_id env scope.val_env id)
   | TypD (id, binds, _) | ClassD (id, binds, _, _, _, _) ->
@@ -1392,7 +1406,7 @@ and gather_dec env scope dec : scope =
       | ClassD _ -> T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
-    { typ_env = te'; lib_env = scope.lib_env; con_env = ce'; val_env = ve' }
+    { typ_env = te'; lib_env = scope.lib_env; con_env = ce'; val_env = ve'; obj_env = scope.obj_env  }
 
 and gather_pat env ve pat : val_env =
   match pat.it with
@@ -1424,13 +1438,13 @@ and infer_dec_typdecs env dec : scope =
   | LetD ({ it = VarP id; _},
           { it = ObjE ({ it = T.Module as sort; _ }, efs); _ }) ->
     let decs = List.map (fun {it = {vis;dec}; _} -> dec) efs in
-    let t = T.Env.find id.it env.vals in
-    let scope = scope_of_module t in
+    let scope = T.Env.find id.it env.objs.env in
     let env' = adjoin env scope in
     let mod_scope = infer_block_typdecs env' decs in
     { empty_scope with
       con_env = mod_scope.con_env ;
-      val_env = T.Env.singleton id.it (module_of_scope env sort efs mod_scope) }
+      val_env = T.Env.singleton id.it (module_of_scope env sort efs mod_scope);
+      obj_env = { env = T.Env.singleton id.it mod_scope } }
   | LetD ({ it = VarP id; _ } , exp) ->
     (match infer_val_path env exp with
      | Some t ->
@@ -1491,15 +1505,14 @@ and infer_dec_valdecs env dec : scope =
   | LetD ({ it = VarP id; _ },
           { it = ObjE( { it=T.Module as sort;_ }, efs); _ }) ->
     let decs = List.map (fun ef -> ef.it.dec) efs in
-    let t = try T.Env.find id.it env.vals with _ -> assert false  in
-    let mod_scope = scope_of_module t in
+    let mod_scope = T.Env.find id.it env.objs.env  in
     let mod_scope' =
       infer_block_valdecs
         (adjoin {env with pre = true} mod_scope)
         decs empty_scope
     in
     { empty_scope with
-      val_env = T.Env.singleton id.it (module_of_scope env sort efs mod_scope')}
+      val_env = T.Env.singleton id.it (module_of_scope env sort efs mod_scope') }
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
     let ve' = check_pat_exhaustive env t pat in

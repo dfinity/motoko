@@ -460,7 +460,6 @@ and avoid_bind cons {var; bound} =
 and avoid_field cons {lab; typ} =
   {lab; typ = avoid' cons typ}
 
-(*
 and avoid_kind cons k =
   match k with
   | Def (tbs, t) ->
@@ -469,7 +468,9 @@ and avoid_kind cons k =
   | Abs (tbs, t) ->
     Abs (List.map (avoid_bind cons) tbs,
          avoid' cons t)
- *)
+
+and avoid_cons cons1 cons2 =
+  ConSet.iter (fun c -> Con.unsafe_set_kind c (avoid_kind cons1 (Con.kind c))) cons2
 
 let avoid cons t =
   if cons = ConSet.empty then t else
