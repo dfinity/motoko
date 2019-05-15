@@ -1776,6 +1776,7 @@ sig
 
   (* arithmetics *)
   val compile_abs : E.t -> G.t
+  val compile_neg : E.t -> G.t
   val compile_add : E.t -> G.t
   val compile_signed_sub : E.t -> G.t
   val compile_unsigned_sub : E.t -> G.t
@@ -1894,6 +1895,13 @@ module BigNum64 : BigNumType = struct
   let compile_unsigned_rem = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.RemU)))
   let compile_unsigned_sub env = with_both_unboxed (BoxedWord.compile_unsigned_sub env) env
   let compile_unsigned_pow env = with_both_unboxed (BoxedWord.compile_unsigned_pow env) env
+
+  let compile_neg env =
+    Func.share_code1 env "negInt" ("n", I32Type) [I32Type] (fun env get_n ->
+      compile_lit env (Big_int.big_int_of_int 0) ^^
+      get_n ^^
+      compile_signed_sub env
+    )
 
   let with_comp_unboxed op env =
     let set_tmp, get_tmp = new_local64 env "top" in
@@ -4235,7 +4243,10 @@ let compile_lit_as env sr_out lit =
 let compile_unop env t op =
   let open Syntax in
   match op, t with
-  | NegOp, Type.(Prim (Int | Word64)) ->
+  | NegOp, Type.(Prim Int) ->
+      SR.Vanilla,
+      BigNum.compile_neg env
+  | NegOp, Type.(Prim Word64) ->
       SR.UnboxedWord64,
       Func.share_code1 env "neg" ("n", I64Type) [I64Type] (fun env get_n ->
         compile_const_64 0L ^^
