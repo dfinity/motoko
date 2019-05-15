@@ -592,9 +592,6 @@ dec_nonvar :
         then efs
         else List.map share_expfield efs
       in ClassD(xf "class" $sloc, tps, s, p, x, efs') @? at $sloc }
-(*  | MODULE xf=id_opt EQ? LCURLY ds=seplist(dec, semicolon) RCURLY
-    { let _named, id = xf "module" $sloc in
-      ModuleD(id, ds) @? at $sloc } *)
 
 dec :
   | d=dec_var

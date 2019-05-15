@@ -1074,8 +1074,6 @@ and pub_dec dec xs : region T.Env.t * region T.Env.t =
   | ClassD (id, _, _, _, _, _) ->
     pub_val_id {id with note = ()} (pub_typ_id id xs)
   | TypD (id, _, _) -> pub_typ_id id xs
-(*  | ModuleD (id, _) -> pub_val_id id xs *)
-
 
 and pub_pat pat xs : region T.Env.t * region T.Env.t =
   match pat.it with

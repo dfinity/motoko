@@ -361,14 +361,9 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
      ; at = no_region
      ; note = typ_note
      }
-  (* HACK: to be removed once we support module expressions *)
+  (* HACK: to be removed once we restrict programs to expressions *)
   |  ds ->
-(*     
-     { it = Syntax.ModuleD
-              (  id_of_full_path f
-               , ds
-              )
- *)  Diag.(print_message { sev = Warning;
+  Diag.(print_message { sev = Warning;
                            at = prog.at;
                            cat = "import";
                            text =

@@ -188,7 +188,6 @@ and dec' =
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
       typ_id * typ_bind list * obj_sort * pat * id * exp_field list
-(*  | ModuleD of id * dec list *)
 
 (* Program *)
 

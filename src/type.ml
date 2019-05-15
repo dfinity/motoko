@@ -421,58 +421,59 @@ let rec span = function
 
 exception Unavoidable of con
 
-let rec avoid' cons = function
+let rec avoid' cons seen = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
   | Con (c, ts) ->
+    if ConSet.mem c seen then raise (Unavoidable c) else
     if ConSet.mem c cons
     then match Con.kind c with
       | Abs _ -> raise (Unavoidable c)
-      | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
+      | Def (tbs, t) -> avoid' cons (ConSet.add c seen) (reduce tbs t ts)
     else
       begin try
-        Con (c, List.map (avoid' cons) ts)
+        Con (c, List.map (avoid' cons seen) ts)
       with Unavoidable d ->
         match Con.kind c with
-        | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
+        | Def (tbs, t) -> avoid' cons seen (reduce tbs t ts)
         | Abs _ -> raise (Unavoidable d)
       end
-  | Array t -> Array (avoid' cons t)
-  | Tup ts -> Tup (List.map (avoid' cons) ts)
+  | Array t -> Array (avoid' cons seen t)
+  | Tup ts -> Tup (List.map (avoid' cons seen) ts)
   | Func (s, c, tbs, ts1, ts2) ->
     Func (s,
           c,
-          List.map (avoid_bind cons) tbs,
-          List.map (avoid' cons) ts1, List.map (avoid' cons) ts2)
-  | Opt t -> Opt (avoid' cons t)
-  | Variant cts -> Variant (map_constr_typ (avoid' cons) cts)
-  | Async t -> Async (avoid' cons t)
-  | Obj (s, fs) -> Obj (s, List.map (avoid_field cons) fs)
-  | Mut t -> Mut (avoid' cons t)
-  | Serialized t -> Serialized (avoid' cons t)
+          List.map (avoid_bind cons seen) tbs,
+          List.map (avoid' cons seen) ts1, List.map (avoid' cons seen) ts2)
+  | Opt t -> Opt (avoid' cons seen t)
+  | Variant cts -> Variant (map_constr_typ (avoid' cons seen) cts)
+  | Async t -> Async (avoid' cons seen t)
+  | Obj (s, fs) -> Obj (s, List.map (avoid_field cons seen) fs)
+  | Mut t -> Mut (avoid' cons seen t)
+  | Serialized t -> Serialized (avoid' cons seen t)
   | Typ c ->  if ConSet.mem c cons then raise (Unavoidable c)
               else Typ c (* TBR *)
 
-and avoid_bind cons {var; bound} =
-  {var; bound = avoid' cons bound}
+and avoid_bind cons seen {var; bound} =
+  {var; bound = avoid' cons seen bound}
 
-and avoid_field cons {lab; typ} =
-  {lab; typ = avoid' cons typ}
+and avoid_field cons seen {lab; typ} =
+  {lab; typ = avoid' cons seen typ}
 
-and avoid_kind cons k =
+and avoid_kind cons seen k =
   match k with
   | Def (tbs, t) ->
-    Def (List.map (avoid_bind cons) tbs,
-         avoid' cons t)
+    Def (List.map (avoid_bind cons seen) tbs,
+         avoid' cons seen t)
   | Abs (tbs, t) ->
-    Abs (List.map (avoid_bind cons) tbs,
-         avoid' cons t)
+    Abs (List.map (avoid_bind cons seen) tbs,
+         avoid' cons seen t)
 
 and avoid_cons cons1 cons2 =
-  ConSet.iter (fun c -> Con.unsafe_set_kind c (avoid_kind cons1 (Con.kind c))) cons2
+  ConSet.iter (fun c -> Con.unsafe_set_kind c (avoid_kind cons1 ConSet.empty (Con.kind c))) cons2
 
 let avoid cons t =
   if cons = ConSet.empty then t else
-  avoid' cons t
+  avoid' cons ConSet.empty t
 
 (* Checking for concrete types *)
 
