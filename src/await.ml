@@ -150,6 +150,8 @@ and t_dec' context dec' =
 
 and t_decs context decs = List.map (t_dec context) decs
 
+and t_decss context decss = List.map (t_decs context) decss
+
 and t_block context (ds, exp) = (t_decs context ds, t_exp context exp)
 
 (* non-trivial translation of possibly impure terms (eff = T.Await) *)
@@ -477,8 +479,10 @@ and define_pat patenv pat : dec list =
 and define_pats patenv (pats : pat list) : dec list =
   List.concat (List.map (define_pat patenv) pats)
 
-and t_prog (prog, flavor) =
-  (t_block LabelEnv.empty prog, { flavor with has_await = false })
+and t_prog (((as_, dss, fs), flavor) : prog) =
+  let context = LabelEnv.empty in
+  (as_, t_decss context dss, fs),
+  { flavor with has_await = false }
 
 let transform prog = t_prog prog
 

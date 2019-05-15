@@ -361,6 +361,8 @@ module Transform() = struct
 
   and t_decs decs = List.map t_dec decs
 
+  and t_decss decss = List.map t_decs decss
+
   and t_block (ds, exp) = (t_decs ds, t_exp exp)
 
   and t_fields fs =
@@ -400,7 +402,9 @@ module Transform() = struct
 
   and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
-  and t_prog (prog, flavor) = (t_block prog, { flavor with has_async_typ = false } )
+  and t_prog ((as_, ds, fs), flavor) =
+    (t_args as_, t_decss ds, t_fields fs),
+    { flavor with has_async_typ = false }
 
 end
 

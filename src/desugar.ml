@@ -326,15 +326,34 @@ and to_fun_args cc p : Ir.arg list * (Ir.exp -> Ir.exp) =
 
 and prog (p : Syntax.prog) : Ir.prog =
   begin match p.it with
-    | [] -> ([], tupE [])
-    | _ -> block false p.it
+    | [] -> ([], [], [])
+    | ds ->
+      let extra = extra_typDs ds in
+      let prefix, last = Lib.List.split_last ds in
+      match last.it with
+      | S.ExpD ({it = S.ObjE ({it = Type.Actor;_} , es); note; _}) ->
+        let obj_typ = note.S.note_typ in
+        let fs = build_fields obj_typ in
+        let object_ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+        ([], [extra; List.map dec ds; object_ds], fs)
+      | S.LetD ({it = S.VarP x; _}, {it = S.ObjE ({it = Type.Actor;_}, es); note;_}) ->
+        let obj_typ = note.S.note_typ in
+        let fs = build_fields obj_typ in
+        let object_ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+        ([], [extra; List.map dec ds; object_ds], fs)
+      | S.ClassD (id, tbs, {it = Type.Actor;_}, p, self_id, es) ->
+        assert (tbs = []);
+        assert false
+      | _ ->
+        Printf.eprintf "Last expression: %s" (Wasm.Sexpr.to_string 80 (Arrange.dec last));
+        assert (Type.is_unit last.note.S.note_typ);
+        ([], [extra; List.map dec ds], [])
   end
   , { I.has_await = true
     ; I.has_async_typ = true
     ; I.has_show = true
     ; I.serialized = false
     }
-
 
 let declare_import imp_env (f, (prog:Syntax.prog))  =
   let open Source in
@@ -379,6 +398,8 @@ let combine_files imp_env libraries progs : Syntax.prog =
   }
 
 let transform p = prog p
+
+let transform_prelude p = [ decs p.it ]
 
 let transform_graph imp_env libraries progs =
   prog (combine_files imp_env libraries progs)

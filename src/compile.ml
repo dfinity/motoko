@@ -164,7 +164,7 @@ module E = struct
     (* Global fields *)
     (* Static *)
     mode : mode;
-    prelude : prog; (* The prelude. Re-used when compiling actors *)
+    prelude : dec list list; (* The prelude. Re-used when compiling actors *)
     rts : CustomModule.extended_module option; (* The rts. Re-used when compiling actors *)
     trap_with : t -> string -> G.t;
       (* Trap with message; in the env for dependency injection *)
@@ -4824,7 +4824,7 @@ and compile_dec pre_env how dec : E.t * G.t * (E.t -> G.t) =
 
 and compile_decs env lvl decs : E.t * G.t =
   let how = AllocHow.decs env lvl decs in
-  let rec go pre_env decs = match decs with
+  let rec go pre_env = function
     | []          -> (pre_env, G.nop, fun _ -> G.nop)
     | [dec]       -> compile_dec pre_env how dec
     | (dec::decs) ->
@@ -4840,19 +4840,14 @@ and compile_decs env lvl decs : E.t * G.t =
   let code = mk_code env1 in
   (env1, alloc_code ^^ code)
 
-and compile_top_lvl_expr env e = match e.it with
-  | BlockE (decs, exp) ->
-    let (env', code1) = compile_decs env AllocHow.NotTopLvl decs in
-    let code2 = compile_top_lvl_expr env' exp in
-    code1 ^^ code2
-  | _ ->
-    let (sr, code) = compile_exp env e in
-    code ^^ StackRep.drop env sr
-
-and compile_prog env (ds, e) =
-    let (env', code1) = compile_decs env AllocHow.TopLvl ds in
-    let code2 = compile_top_lvl_expr env' e in
-    (env', code1 ^^ code2)
+and compile_decss env0 lvl decs : E.t * G.t =
+  let rec go env = function
+    | []          -> (env, G.nop)
+    | (dec::decs) ->
+        let (env1, code1) = compile_decs env lvl dec in
+        let (env2, code2) = go env1 decs in
+        (env2, code1 ^^ code2)
+  in go env0 decs
 
 and compile_static_exp pre_env how exp = match exp.it with
   | FuncE (name, cc, typ_binds, args, _rt, e) ->
@@ -4862,9 +4857,8 @@ and compile_static_exp pre_env how exp = match exp.it with
 
 and compile_prelude env =
   (* Allocate the primitive functions *)
-  let (decs, _flavor) = E.get_prelude env in
-  let (env1, code) = compile_prog env decs in
-  (env1, code)
+  let dss = E.get_prelude env in
+  compile_decss env AllocHow.TopLvl dss
 
 (*
 This is a horrible hack
@@ -4881,33 +4875,14 @@ and find_prelude_names env =
   E.in_scope_set env2
 
 
-and compile_start_func env (progs : Ir.prog list) : E.func_with_names =
-  let find_last_actor (ds1,e) = match ds1, e.it with
-    | _, ActorE (i, ds2, fs, _) -> Some (i, ds1 @ ds2, fs)
-    | [], _ -> None
-    | _, _ ->
-      match Lib.List.split_last ds1, e.it with
-      | (ds1', {it = LetD ({it = VarP i1; _}, {it = ActorE (i2, ds2, fs, _); _}); _})
-        , VarE i3 when i1 = i2 && i2 = i3 -> Some (i2, ds1' @ ds2, fs)
-      | _ -> None
-  in
-
+and compile_start_func env (prelude : Ir.dec list list) (prog : Ir.prog) : E.func_with_names =
   Func.of_body env [] [] (fun env1 ->
-    let rec go env = function
-      | [] -> G.nop
-      (* If the last program ends with an actor, then consider this the current actor  *)
-      | [(prog, _flavor)] ->
-        begin match find_last_actor prog with
-        | Some (i, ds, fs) -> main_actor env i ds fs
-        | None ->
-          let (_env, code) = compile_prog env prog in
-          code
-        end
-      | ((prog, _flavor) :: progs) ->
-        let (env1, code1) = compile_prog env prog in
-        let code2 = go env1 progs in
-        code1 ^^ code2 in
-    go env1 progs
+    (* TODO name of current actor? *)
+    let ((as_, dss, fs), _flavor) = prog in
+    if as_ <> []
+    (* TODO: this way, parameters would shadow the prelude *)
+    then todo_trap env "parametrized actor" (List.hd (Arrange_ir.args as_))
+    else main_actor env (nr_ "TODO") (prelude @ dss) fs
     )
 
 and export_actor_field env (f : Ir.field) =
@@ -4974,14 +4949,14 @@ and actor_lit outer_env this ds fs at =
     G.i (Call (nr (E.built_in outer_env "actor_new")))
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
-and main_actor env this ds fs =
+and main_actor env (this : Ir.id) dss fs =
   if E.mode env <> DfinityMode then G.i Unreachable else
 
   (* Add this pointer *)
   let env2 = E.add_local_deferred_vanilla env this.it Dfinity.get_self_reference in
 
   (* Compile the declarations *)
-  let (env3, decls_code) = compile_decs env2 AllocHow.TopLvl ds in
+  let (env3, decls_code) = compile_decss env2 AllocHow.TopLvl dss in
 
   (* Export the public functions *)
   List.iter (export_actor_field env3) fs;
@@ -5102,14 +5077,14 @@ and conclude_module env module_name start_fi_o =
   | None -> emodule
   | Some rts -> LinkModule.link emodule "rts" rts
 
-let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : CustomModule.extended_module =
+let compile mode module_name rts (prelude : Ir.dec list list) (prog : Ir.prog) : CustomModule.extended_module =
   let env = E.mk_global mode rts prelude Dfinity.trap_with ClosureTable.table_end in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   RTS.system_imports env;
   RTS.system_exports env;
 
-  let start_fun = compile_start_func env (prelude :: progs) in
+  let start_fun = compile_start_func env prelude prog in
   let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o =
     if E.mode env = DfinityMode

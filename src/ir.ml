@@ -109,7 +109,7 @@ type flavor = {
 
 (* Program *)
 
-type prog = (dec list * exp) * flavor
+type prog = (arg list * dec list list * field list) * flavor
 
 
 (* object pattern helpers *)

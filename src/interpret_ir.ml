@@ -11,8 +11,6 @@ type val_env = V.def V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 
-type scope = val_env
-
 type env =
   { vals : val_env;
     labs : lab_env;
@@ -348,7 +346,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       )
     )
   | BlockE (decs, exp1) ->
-     interpret_block env None decs exp1 k
+     interpret_block env decs (fun env1 -> interpret_exp env1 exp1 k)
   | IfE (exp1, exp2, exp3) ->
     interpret_exp env exp1 (fun v1 ->
       if V.as_bool v1
@@ -590,11 +588,18 @@ and match_pat_fields pfs vs ve : val_env option =
 
 (* Blocks and Declarations *)
 
-and interpret_block env ro decs exp k =
+and interpret_block env decs k =
   let ve = declare_decs decs V.Env.empty in
-  Lib.Option.app (fun r -> r := ve) ro;
   let env' = adjoin_vals env ve in
-  interpret_decs env' decs (fun _ -> interpret_exp env' exp k)
+  interpret_decs env' decs (fun () -> k env')
+
+and interpret_decss env decss k =
+  match decss with
+  | [] -> k env
+  | decs::decss ->
+    interpret_block env decs (fun env' ->
+      interpret_decss env' decss k
+    )
 
 and declare_dec dec : val_env =
   match dec.it with
@@ -649,15 +654,16 @@ and interpret_func env at x args f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog scope ((ds, exp), _flavor) : scope =
-  let env = env_of_scope scope in
+let interpret_prog prelude (((as_, dss, fs), _flavor) : Ir.prog) =
+  let env = env_of_scope empty_scope in
   trace_depth := 0;
-  let ve = ref V.Env.empty in
   try
     Scheduler.queue (fun () ->
-      interpret_block env (Some ve) ds exp  (fun v -> ())
+      interpret_decss env (prelude @ dss) (fun env' ->
+        (* No point in interpreting the fields *)
+        ()
+      )
     );
-    Scheduler.run ();
-    !ve
-  with exn -> print_exn exn; !ve
+    Scheduler.run ()
+  with exn -> print_exn exn
 

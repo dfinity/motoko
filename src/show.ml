@@ -137,10 +137,12 @@ and t_dec' env dec' =
 
 and t_decs env decs = List.map (t_dec env) decs
 
+and t_decss env decss = List.map (t_decs env) decss
+
 and t_block env (ds, exp) = (t_decs env ds, t_exp env exp)
 
-and t_prog env (prog, flavor) = (t_block env prog, flavor)
-
+and t_prog env ((as_, dss, fs), flavor) =
+  (as_, t_decss env dss, fs), flavor
 
 (* Construction helpers *)
 
@@ -443,5 +445,5 @@ let transform scope prog =
   (* Create declarations for them *)
   let decls = show_decls !(env.params) in
   (* Add them to the program *)
-  let prog' = let ((d,e),f) = prog in ((decls @ d,e), { f with has_show = false }) in
-  prog';
+  let ((a,d,e),f) = prog in
+  ((a, decls :: d,e), { f with has_show = false })

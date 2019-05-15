@@ -481,13 +481,14 @@ let lower_prog senv lib_env libraries progs name =
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir
 
+let prelude_ir = Desugar.transform_prelude prelude
+
 let compile_prog mode do_link lib_env libraries progs : compile_result =
-  let prelude_ir = Desugar.transform prelude in
   let name = name_progs progs in
   let prog_ir = lower_prog initial_stat_env lib_env libraries progs name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
-  let module_ = Compile.compile mode name rts prelude_ir [prog_ir] in
+  let module_ = Compile.compile mode name rts prelude_ir prog_ir in
   Ok module_
 
 let compile_files mode do_link files : compile_result =
@@ -508,15 +509,10 @@ let compile_string mode s name : compile_result =
 (* Interpretation (IR) *)
 
 let interpret_ir_prog inp_env libraries progs =
-  let prelude_ir = Desugar.transform prelude in
   let name = name_progs progs in
   let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
-  let denv0 = Interpret_ir.empty_scope in
-  let dscope = Interpret_ir.interpret_prog denv0 prelude_ir in
-  let denv1 = Interpret_ir.adjoin_scope denv0 dscope in
-  let _ = Interpret_ir.interpret_prog denv1 prog_ir in
-  ()
+  Interpret_ir.interpret_prog prelude_ir prog_ir
 
 let interpret_ir_files mode files =
   match load_progs mode (parse_files files) initial_stat_env with

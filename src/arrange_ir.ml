@@ -79,4 +79,7 @@ and typ_bind (tb : typ_bind) =
   Con.to_string tb.it.con $$ [typ tb.it.bound]
 
 
-and prog ((ds, e), _flavor)= "BlockE"  $$ List.map dec ds @ [ exp e ]
+and prog (p : prog) =
+  let ((as_, dss, fs), _flavor) = p in
+  let go ds e = "BlockE" $$ List.map dec ds @ [ e ] in
+  "ProgE" $$ args as_ @ [ List.fold_right go dss ("fields" $$ fields fs) ]

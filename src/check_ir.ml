@@ -739,6 +739,7 @@ and check_dec env dec  =
 and check_decs env decs  =
   List.iter (check_dec env) decs;
 
+
 and gather_block_decs env decs =
   List.fold_left (gather_dec env) empty_scope decs
 
@@ -771,15 +772,21 @@ and gather_typ env ce typ =
        ) fs ce
    | _ -> ce
 
+let gather_check_dec env ds =
+  let scope = gather_block_decs env ds in
+  let env' = adjoin env scope in
+  check_decs env' ds;
+  env'
+
 (* Programs *)
 
-let check_prog scope phase (((ds, exp), flavor) as prog) : unit =
+let check_prog scope phase (((as_, dss, fs), flavor) as prog) : unit =
   let env = env_of_scope scope flavor in
   try
-    let scope = gather_block_decs env ds in
-    let env' = adjoin env scope in
-    check_decs env' ds;
-    check_exp env' exp;
+    let ve = check_args env as_ in
+    let env1 = adjoin_vals env ve in
+    let env2 = List.fold_left gather_check_dec env1 dss in
+    ignore (type_obj env2 T.Actor fs)
   with CheckFailed s ->
     let bt = Printexc.get_backtrace () in
     if !Flags.verbose

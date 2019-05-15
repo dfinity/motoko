@@ -236,7 +236,7 @@ and dec' env d =
     (fun env -> d.it),
     env
 
-and block env ds exp =
+and decs env ds =
   let rec decs_aux env ds =
     match ds with
     | [] -> ([],env)
@@ -246,15 +246,29 @@ and block env ds exp =
       (mk_d :: mk_ds,env2)
   in
   let mk_ds,env1 = decs_aux env ds in
-  ( List.map
+  ( env1
+  , List.map
       (fun mk_d ->
         let env2 = { env1 with tail_pos = false } in
         { mk_d with it = mk_d.it env2 })
-      mk_ds
-  , tailexp env1 exp)
+      mk_ds)
 
-and prog ((ds, exp), flavor) = (block { tail_pos = false; info = None } ds exp, flavor)
+and block env ds exp =
+  let (env1, ds') = decs env ds in
+  (ds', tailexp env1 exp)
+
+and decss env = function
+  | [] -> (env, [])
+  | ds::dss ->
+    let (env1, ds') = decs env ds in
+    let (env2, dss') = decss env1 dss in
+    (env2, ds' :: dss')
+
+and prog ((as_, dss, fs), flavor) =
+  let env0 = { tail_pos = false; info = None } in 
+  let (env1, dss') = decss env0 dss in
+  (as_, dss', fs), flavor
 
 (* validation *)
 
-let transform p = prog p
+let transform (p : prog) = prog p
