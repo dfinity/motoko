@@ -1933,7 +1933,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     compile_const_64 1L ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    compile_const_64 Int64.(shift_left minus_one 31) ^^
+    compile_const_64 Int64.(shift_left minus_one 32) ^^
     G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
@@ -1943,8 +1943,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
 
   let compress =
-    compile_unboxed_one ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+    compile_shrU_const 1l ^^
     compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
 
@@ -1959,8 +1958,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_b, get_b = new_local env "b" in
     let set_res, get_res = new_local env "res" in
     let set_res64, get_res64 = new_local64 env "res64" in
-    set_a ^^ set_b ^^
-    get_b ^^ get_a ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    set_b ^^ set_a ^^
+    get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
     BitTagged.if_unboxed env (ValBlockType (Some I32Type))
       begin
         get_a ^^ extend64 ^^
@@ -1994,6 +1993,20 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         compile_const_64 1L ^^
         G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
       Num.compile_mul
+  let compile_signed_sub = try_unbox2 BoxedWord.compile_signed_sub Num.compile_signed_sub
+  let compile_signed_div = try_unbox2 BoxedWord.compile_signed_div Num.compile_signed_div
+  let compile_signed_mod = try_unbox2 BoxedWord.compile_signed_mod Num.compile_signed_mod
+  let compile_unsigned_div = try_unbox2 BoxedWord.compile_unsigned_div Num.compile_unsigned_div
+  let compile_unsigned_rem = try_unbox2 BoxedWord.compile_unsigned_rem Num.compile_unsigned_rem
+  let compile_unsigned_sub = try_unbox2 BoxedWord.compile_unsigned_sub Num.compile_unsigned_sub
+  let compile_unsigned_pow = try_unbox2 BoxedWord.compile_unsigned_pow Num.compile_unsigned_pow
+
+  let compile_lit env = function
+    | n when Big_int.(is_int_big_int n && (int_of_big_int n >= -1073741824 || int_of_big_int n <= 1073741823)) ->
+      let i = Int32.of_int (Big_int.int_of_big_int n) in
+      compile_unboxed_const Int32.(logor (shift_left i 2) (shift_right_logical i 31))
+    | n -> Num.compile_lit env n
+
 (*
   (* dereference the skewed pointer and extract into 31 bits,
      with legal Vanilla word layout
