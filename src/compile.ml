@@ -1815,7 +1815,7 @@ module BigNum64 : BigNumType = struct
     | 64 -> G.i Drop ^^ compile_unboxed_one
     | n when n > 64 || n < 1 -> assert false
     | n ->
-      unbox(*FIXME*) env ^^
+      unbox env ^^
       compile_const_64 Int64.(shift_left minus_one n) ^^
       G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
       G.i (Test (Wasm.Values.I64 I64Op.Eqz))
@@ -1826,7 +1826,7 @@ module BigNum64 : BigNumType = struct
     | n when n > 63 || n < 2 -> assert false
     | n ->
       let set_num, get_num = new_local64 env "num" in
-      unbox(*FIXME*) env ^^ set_num ^^ get_num ^^ get_num ^^
+      unbox env ^^ set_num ^^ get_num ^^ get_num ^^
       compile_const_64 1L ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
@@ -4311,7 +4311,7 @@ let rec compile_binop env t op =
                  mul)))
      in pow ()
   | Type.(Prim Int),                          PowOp ->
-     let _, pow = compile_binop env Type.(Prim Nat) PowOp in
+     let pow = BigNum.compile_unsigned_pow env in
      let (set_n, get_n) = new_local env "n" in
      let (set_exp, get_exp) = new_local env "exp" in
      set_exp ^^ set_n ^^
