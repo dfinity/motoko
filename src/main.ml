@@ -44,6 +44,9 @@ let argspec = Arg.align
   "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
   "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
   "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, " prefix each profile line with the given string ";
+  "--profile-field",
+  Arg.String (fun n -> Flags.profile_field_names := n :: !Flags.profile_field_names),
+  " suffix each profile line with the given string ";
   "-iR", Arg.Set Flags.interpret_ir, " interpret the lowered code";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";

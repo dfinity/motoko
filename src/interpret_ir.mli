@@ -10,4 +10,3 @@ exception Trap of Source.region * string
 
 val interpret_prog : scope -> Ir.prog -> scope
 
-val dump_profile : unit -> unit

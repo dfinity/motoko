@@ -740,5 +740,5 @@ let interpret_library scope (filename, p) : scope =
   library_scope filename v scope
 
 
-let dump_profile () =
-  Counters.dump region_counters
+let dump_profile (results: Value.value Value.Env.t) =
+  Counters.dump region_counters results

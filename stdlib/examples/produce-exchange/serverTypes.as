@@ -338,6 +338,7 @@ type ReservationInfo = shared {
 
 */
 type ProduceExchangeCounts = shared {
+  hash_bit_length : Nat;
   truck_type_count : Nat;
   region_count : Nat;
   produce_count : Nat;

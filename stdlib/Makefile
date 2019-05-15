@@ -33,7 +33,7 @@ OUTFILES=$(addsuffix .out, $(TESTS)) $(addsuffix .wasm, $(WASM))
 
 OUTPATHS=$(addprefix $(OUTDIR)/, $(OUTFILES))
 
-.PHONY: default all clean alltests alldoc docMd docHtml
+.PHONY: default all clean alltests alldoc docMd docHtml profile
 
 default: all
 
@@ -164,19 +164,40 @@ $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 
 PROFILE_SRC=\
 	examples/produce-exchange/serverActor.as \
-	examples/produce-exchange/test/loadWorkloadAndQuery.Common.as
+	examples/produce-exchange/test/profileLoad.as
 
-$(OUTDIR)/loadWorkloadAndQuery.profile.4-5-5.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
-	$(ASC) -r --profile examples/produce-exchange/test/params-5-5.as $(PROFILE_SRC) --profile-file $@ --profile-line-prefix "4, 5, 5, "
+PROFILE_FIELDS=\
+		--profile-field "hash_bit_length" \
+		--profile-field "producer_count" \
+		--profile-field "inventory_count" \
+		--profile-field "transporter_count" \
+		--profile-field "route_count" \
 
-$(OUTDIR)/loadWorkloadAndQuery.profile.4-5-10.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
-	$(ASC) -r --profile examples/produce-exchange/test/params-5-10.as $(PROFILE_SRC) --profile-file $@  --profile-line-prefix "4, 5, 10, "
+profile: \
+	$(OUTDIR)/profileLoad.04-05-01.csv \
+	$(OUTDIR)/profileLoad.04-05-05.csv \
+	$(OUTDIR)/profileLoad.04-05-10.csv \
+	$(OUTDIR)/profileLoad.04-05-20.csv \
+	$(OUTDIR)/profileLoad.04-05-50.csv \
+	$(OUTDIR)/profileLoad.04-05-100.csv \
 
-$(OUTDIR)/loadWorkloadAndQuery.profile.4-5-20.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
-	$(ASC) -r --profile examples/produce-exchange/test/params-5-20.as $(PROFILE_SRC) --profile-file $@  --profile-line-prefix "4, 5, 20, "
+$(OUTDIR)/profileLoad.04-05-01.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-1.as $(PROFILE_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
-$(OUTDIR)/loadWorkloadAndQuery.profile.4-5-50.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
-	$(ASC) -r --profile examples/produce-exchange/test/params-5-50.as $(PROFILE_SRC) --profile-file $@  --profile-line-prefix "4, 5, 50, "
+$(OUTDIR)/profileLoad.04-05-05.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-5.as $(PROFILE_SRC) --profile-file $@ $(PROFILE_FIELDS)
+
+$(OUTDIR)/profileLoad.04-05-10.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-10.as $(PROFILE_SRC) --profile-file $@ $(PROFILE_FIELDS)
+
+$(OUTDIR)/profileLoad.04-05-20.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-20.as $(PROFILE_SRC) --profile-file $@ $(PROFILE_FIELDS)
+
+$(OUTDIR)/profileLoad.04-05-50.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-50.as $(PROFILE_SRC) --profile-file $@ $(PROFILE_FIELDS)
+
+$(OUTDIR)/profileLoad.04-05-100.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_SRC) | $(OUTDIR)
+	$(ASC) -r --profile examples/produce-exchange/test/params-5-100.as $(PROFILE_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/loadWorkloadAndQueryBig.wasm: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/loadWorkloadAndQuery.as | $(OUTDIR)

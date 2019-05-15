@@ -661,7 +661,3 @@ let interpret_prog scope ((ds, exp), _flavor) : scope =
     Scheduler.run ();
     !ve
   with exn -> print_exn exn; !ve
-
-
-let dump_profile () =
-  Counters.dump region_counters
