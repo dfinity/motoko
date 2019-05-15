@@ -3,15 +3,11 @@ BUILD = byte
 MAIN = main
 JS_MAIN = js_main
 
-LANGUAGE_SERVER_DIR = language_server
-LANGUAGE_SERVER_BIN = aslan
-LANGUAGE_SERVER_MAIN = language_server_main
-LANGUAGE_SERVER_OPAM_PACKAGES = ppx_deriving_rpc rpclib rpclib.json rpclib.cmdliner
-
 ASC = `pwd`/$(NAME)
 
 OPAM_PACKAGES = wasm num vlq yojson bisect_ppx-ocamlbuild
 JS_OPAM_PACKAGES = js_of_ocaml js_of_ocaml-ppx
+LANGUAGE_SERVER_OPAM_PACKAGES = ppx_deriving_rpc rpclib rpclib.json rpclib.cmdliner
 
 MENHIR = menhir
 MENHIR_FLAGS = --infer --dump --explain --strict
@@ -24,7 +20,9 @@ OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  -I src \
  -I lib \
  $(OPAM_PACKAGES:%=-pkg %) \
- -tags debug
+ -tags debug \
+ -tag thread \
+ $(LANGUAGE_SERVER_OPAM_PACKAGES:%=-pkg %)
 
 .PHONY: all parallel quick clean test test-parallel test-quick
 
@@ -47,12 +45,6 @@ $(NAME).js: $(JS_MAIN).byte
 
 $(JS_MAIN).byte: $(JS_MAIN).ml sanity
 	$(OCAMLBUILD) $(JS_OPAM_PACKAGES:%=-pkg %) $@
-
-$(LANGUAGE_SERVER_BIN): $(LANGUAGE_SERVER_MAIN).${BUILD}
-	mv $< $@
-
-$(LANGUAGE_SERVER_MAIN).${BUILD}: sanity
-	$(OCAMLBUILD) -tag thread $(LANGUAGE_SERVER_OPAM_PACKAGES:%=-pkg %) $(LANGUAGE_SERVER_DIR)/$@
 
 sanity:
 	ocamlfind query $(OPAM_PACKAGES)

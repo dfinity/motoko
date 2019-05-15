@@ -51,6 +51,8 @@ let argspec = Arg.align
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
   "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
   "--disable-prelude", Arg.Clear Flags.prelude, " disable prelude";
+
+  "-ide", Arg.Unit (fun () -> LanguageServer.start (); ()), " start the language server"
 ]
 
 

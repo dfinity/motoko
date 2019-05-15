@@ -62,18 +62,6 @@ let commonBuildInputs = [
 ]; in
 
 let
-  asc_src_files = [
-    "src/"
-    "src/Makefile.*"
-    "src/.*.ml"
-    "src/.*.mli"
-    "src/.*.mly"
-    "src/.*.mll"
-    "src/.*.mlpack"
-    "src/_tags"
-    "test/"
-    "test/node-test.js"
-  ];
   test_files = [
     "test/"
     "test/.*Makefile.*"
@@ -130,25 +118,6 @@ in
 
 rec {
 
-  language-server = stdenv.mkDerivation {
-    name = "actorscript-language-server";
-    src = sourceByRegex ./. (asc_src_files ++ [
-      "^src/language_server/$"
-      "^src/language_server/.*\.ml(i|l|pack|y){0,1}$"
-    ]);
-    nativeBuildInputs = asc-bin.nativeBuildInputs;
-    buildInputs = asc-bin.buildInputs
-      ++ ocaml-rpc.ppx_deriving_rpc.buildInputs
-      ++ [ ocaml-rpc.ppx_deriving_rpc ];
-    buildPhase = ''
-      make -C src BUILD=native aslan
-    '';
-    installPhase = ''
-      mkdir -p $out/bin
-      cp src/aslan $out/bin
-    '';
-  };
-
   rts = stdenv.mkDerivation {
     name = "asc-rts";
 
@@ -177,11 +146,25 @@ rec {
   asc-bin = stdenv.mkDerivation {
     name = "asc-bin";
 
-    src = sourceByRegex ./. asc_src_files;
+    src = sourceByRegex ./. [
+      "src/"
+      "src/Makefile.*"
+      "src/.*.ml"
+      "src/.*.mli"
+      "src/.*.mly"
+      "src/.*.mll"
+      "src/.*.mlpack"
+      "src/_tags"
+      "^src/language_server/$"
+      "test/"
+      "test/node-test.js"
+    ];
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
-    buildInputs = commonBuildInputs;
+    buildInputs = commonBuildInputs
+      ++ ocaml-rpc.ppx_deriving_rpc.buildInputs
+      ++ [ ocaml-rpc.ppx_deriving_rpc ];
 
     buildPhase = ''
       make -C src BUILD=native asc as-ld
@@ -458,7 +441,6 @@ rec {
     shellHook = llvmEnv;
     TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
-    language-server = language-server;
   } else null;
 
 }

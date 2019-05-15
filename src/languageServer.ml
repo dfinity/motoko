@@ -144,7 +144,7 @@ let initialize InitializeParams.{ processId } =
   MyIdl.ErrM.return (InitializeResult.{ capabilities = ServerCapabilities.{ textDocumentSync = None }})
   (* MyIdl.ErrM.return (ShowMessageParams.{ type_ = 2; message = "Hello from aslan"}) *)
 
-let _ =
+let start () =
   Server.initialize initialize;
   let rpc_fn = MyIdl.server Server.implementation
   in my_start_server rpc_fn;
