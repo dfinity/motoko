@@ -299,12 +299,14 @@ and check_typ' env typ : T.typ =
 and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ env typ) in
-  if s = T.Actor && not (T.is_func (T.promote t)) then
-    error env typ.at "actor field %s has non-function type\n  %s"
-      id.it (T.string_of_typ_expand t);
-  if s <> T.Object T.Local && not (T.sub t T.Shared) then
-    error env typ.at "shared object or actor field %s has non-shared type\n  %s"
-      id.it (T.string_of_typ_expand t);
+  if not env.pre then begin
+    if s = T.Actor && not (T.is_func (T.promote t)) then
+      error env typ.at "actor field %s has non-function type\n  %s"
+        id.it (T.string_of_typ_expand t);
+    if s <> T.Object T.Local && not (T.sub t T.Shared) then
+      error env typ.at "shared object or actor field %s has non-shared type\n  %s"
+        id.it (T.string_of_typ_expand t)
+  end;
   T.{lab = id.it; typ = t}
 
 and check_typ_tag env typ_tag =
