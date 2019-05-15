@@ -292,15 +292,15 @@ rec {
     '';
 
     installPhase = ''
-      mkdir -p $out/bin
-      cp -v src/asc.js $out/bin
+      mkdir -p $out
+      cp -v src/asc.js $out
       cp -vr ${rts}/rts $out
     '';
 
-    doInstallCheck = true; # need to fix loading the rts
+    doInstallCheck = true;
 
     installCheckPhase = ''
-      NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
+      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
     '';
 
   });
