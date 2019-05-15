@@ -521,10 +521,11 @@ let rel_list p rel eq xs1 xs2 =
 
 let str = ref (fun _ -> failwith "")
 let rec rel_typ rel eq t1 t2 =
-(*Printf.printf "[sub] %s == %s\n%!" (!str t1) (!str t2);*)
   t1 == t2 || S.mem (t1, t2) !rel || begin
   rel := S.add (t1, t2) !rel;
   match t1, t2 with
+  | Pre, _ | _, Pre ->
+    assert false
   | Any, Any ->
     true
   | _, Any when rel != eq ->
