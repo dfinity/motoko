@@ -89,7 +89,7 @@ Three ways of obtaining the coverage report:
    ```
 2. Run `asc` as normal, e.g.
    ```
-   ./src/asc --dfinity -c foo.as -o foo.wasm
+   ./src/asc -c foo.as -o foo.wasm
    ```
    this should dump a `gmon.out` file in the current directory.
 3. Create the report, e.g. using

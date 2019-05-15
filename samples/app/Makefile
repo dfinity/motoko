@@ -15,7 +15,7 @@ all:
 	$(ASC) -r -t -v $(LIB) main.as >main.txt 2>&1
 
 dvm:
-	$(ASC) --dfinity -o $(OUT) $(LIB) main.as
+	$(ASC) -o $(OUT) $(LIB) main.as
 	$(DVM) $(OUT)
 
 clean:

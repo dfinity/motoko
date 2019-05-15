@@ -82,7 +82,7 @@ in one big record, for convenience).
 The fields fall into the following categories:
 
  1. Static global fields. Never change.
-    Example: whether we are compiling with --dfinity; the prelude code
+    Example: whether we are compiling with -no-dfinity-api; the prelude code
 
  2. Immutable global fields. Change in a well-scoped manner.
     Example: Mapping from ActorScript names to their location.
