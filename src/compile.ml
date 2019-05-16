@@ -594,9 +594,13 @@ module RTS = struct
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_to_word32" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word32_trap" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word32_signed_trap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
-    E.add_func_import env "rts" "bigint_to_word64" [I32Type] [I64Type];
+    E.add_func_import env "rts" "bigint_to_word64_wrap" [I32Type] [I64Type];
+    E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
+    E.add_func_import env "rts" "bigint_to_word64_signed_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_isneg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_count_bits" [I32Type] [I32Type];
@@ -1924,17 +1928,11 @@ end
 
 module BigNumLibtommmath : BigNumType = struct
 
-  (* TODO: Need to trap *)
-  let to_word32 env =
-    G.i (Call (nr (E.built_in env "rts_bigint_to_word32")))
-  let to_word64 env =
-    G.i (Call (nr (E.built_in env "rts_bigint_to_word64")))
+  let to_word32 env = G.i (Call (nr (E.built_in env "rts_bigint_to_word32_trap")))
+  let to_word64 env = G.i (Call (nr (E.built_in env "rts_bigint_to_word64_trap")))
 
-  (* TODO: check bits of negative numbers (if defined there) *)
-  let truncate_to_word32 env =
-    G.i (Call (nr (E.built_in env "rts_bigint_to_word32")))
-  let _truncate_to_word64 env =
-    G.i (Call (nr (E.built_in env "rts_bigint_to_word64")))
+  let truncate_to_word32 env = G.i (Call (nr (E.built_in env "rts_bigint_to_word32_wrap")))
+  let _truncate_to_word64 env = G.i (Call (nr (E.built_in env "rts_bigint_to_word64_wrap")))
 
   let from_word32 env =
     G.i (Call (nr (E.built_in env "rts_bigint_of_word32")))

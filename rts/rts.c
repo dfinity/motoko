@@ -175,18 +175,69 @@ export as_ptr bigint_of_word32(unsigned long b) {
   return r;
 }
 
-export unsigned long bigint_to_word32(as_ptr a) {
-  return mp_get_int(BIGINT_PAYLOAD(a));
+export unsigned long bigint_to_word32_wrap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n))
+    return - mp_get_long(n);
+  else
+    return mp_get_long(n);
 }
+
+export unsigned long bigint_to_word32_trap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n)) bigint_trap();
+  if (mp_count_bits(n) > 32) bigint_trap();
+  return mp_get_long(n);
+}
+
+export signed long bigint_to_word32_signed_trap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_count_bits(n) > 32) bigint_trap();
+  if (mp_isneg(n)) {
+    long x = - (signed long)(mp_get_long(n));
+    if (x >= 0) bigint_trap();
+    return x;
+  } else {
+    long x = (signed long)(mp_get_long(n));
+    if (x < 0) bigint_trap();
+    return x;
+  }
+}
+
+export unsigned long long bigint_to_word64_wrap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n))
+    return - mp_get_long_long(n);
+  else
+    return mp_get_long_long(n);
+}
+
+export unsigned long long bigint_to_word64_trap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n)) bigint_trap();
+  if (mp_count_bits(n) > 64) bigint_trap();
+  return mp_get_long_long(n);
+}
+
+export signed long long bigint_to_word64_signed_trap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_count_bits(n) > 64) bigint_trap();
+  if (mp_isneg(n)) {
+    long long x = - (signed long long)(mp_get_long_long(n));
+    if (x >= 0) bigint_trap();
+    return x;
+  } else {
+    long long x = (signed long long)(mp_get_long_long(n));
+    if (x < 0) bigint_trap();
+    return x;
+  }
+}
+
 
 export as_ptr bigint_of_word64(unsigned long long b) {
   as_ptr r = bigint_alloc();
   CHECK(mp_set_long_long(BIGINT_PAYLOAD(r), b));
   return r;
-}
-
-export unsigned long long bigint_to_word64(as_ptr a) {
-  return mp_get_long_long(BIGINT_PAYLOAD(a));
 }
 
 export bool bigint_eq(as_ptr a, as_ptr b) {
