@@ -393,8 +393,6 @@ exp_un :
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
-  | IMPORT f=TEXT
-    { ImportE (f, ref "") @? at $sloc }
   | DEBUG_SHOW e=exp_un
     { ShowE (ref Type.Pre, e) @? at $sloc }
 
@@ -467,13 +465,13 @@ exp_nonvar :
   | e=exp_nondec
     { e }
   | d=dec_nonvar
-    { BlockE([d]) @? at $sloc }
+    { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 exp :
   | e=exp_nonvar
     { e }
   | d=dec_var
-    { BlockE([d]) @? at $sloc }
+    { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 
 case :
@@ -592,8 +590,11 @@ dec_nonvar :
         else List.map share_expfield efs
       in ClassD(xf "class" $sloc, tps, s, p, x, efs') @? at $sloc }
   | MODULE xf=id_opt EQ? LCURLY ds=seplist(dec, semicolon) RCURLY
-    { let _named, id = xf "module" $sloc in
-      ModuleD(id, ds) @? at $sloc }
+    { let _named, x = xf "module" $sloc in
+      ModuleD(x, ds) @? at $sloc }
+  | IMPORT xf=id_opt EQ? f=TEXT
+    { let named, x = xf "import" $sloc in
+      let_or_exp named x (ImportE (f, ref "")) (at $sloc) }
 
 dec :
   | d=dec_var

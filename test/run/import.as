@@ -1,2 +1,2 @@
-assert (import "lib/hello-string.as" == "Hello!");
-assert (import "lib/dir" == "Hello!");
+assert ((import "lib/hello-string.as") == "Hello!");
+assert ((import "lib/dir") == "Hello!");
