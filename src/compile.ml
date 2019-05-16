@@ -4439,8 +4439,8 @@ let rec compile_lexp (env : E.t) exp =
      Var.set_val env var.it
   | IdxE (e1,e2) ->
      compile_exp_vanilla env e1 ^^ (* offset to array *)
-     compile_exp_as env SR.UnboxedWord64 e2 ^^ (* idx *)
-     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+     compile_exp_vanilla env e2 ^^ (* idx *)
+     BigNum.to_word32 env ^^
      Arr.idx env,
      store_ptr
   | DotE (e, n) ->
