@@ -594,10 +594,12 @@ module RTS = struct
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_trap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_signed_trap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_of_word64_signed" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word64_wrap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word64_signed_trap" [I32Type] [I64Type];
@@ -1934,14 +1936,10 @@ module BigNumLibtommmath : BigNumType = struct
   let truncate_to_word32 env = G.i (Call (nr (E.built_in env "rts_bigint_to_word32_wrap")))
   let _truncate_to_word64 env = G.i (Call (nr (E.built_in env "rts_bigint_to_word64_wrap")))
 
-  let from_word32 env =
-    G.i (Call (nr (E.built_in env "rts_bigint_of_word32")))
-  let from_word64 env =
-    G.i (Call (nr (E.built_in env "rts_bigint_of_word64")))
-
-  (* TODO: Check sign *)
-  let from_signed_word32 env =
-    G.i (Call (nr (E.built_in env "rts_bigint_of_word32")))
+  let from_word32 env = G.i (Call (nr (E.built_in env "rts_bigint_of_word32")))
+  let from_word64 env = G.i (Call (nr (E.built_in env "rts_bigint_of_word64")))
+  let from_signed_word32 env = G.i (Call (nr (E.built_in env "rts_bigint_of_word32_signed")))
+  let _from_signed_word64 env = G.i (Call (nr (E.built_in env "rts_bigint_of_word64_signed")))
 
   (* TODO: Actually change binary encoding *)
   let compile_data_size env = G.i Drop ^^ compile_unboxed_const 8l

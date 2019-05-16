@@ -171,7 +171,20 @@ as_ptr bigint_alloc() {
 
 export as_ptr bigint_of_word32(unsigned long b) {
   as_ptr r = bigint_alloc();
-  CHECK(mp_set_int(BIGINT_PAYLOAD(r), b));
+  CHECK(mp_set_long(BIGINT_PAYLOAD(r), b));
+  return r;
+}
+
+export as_ptr bigint_of_word32_signed(signed long b) {
+  as_ptr r = bigint_alloc();
+  mp_int *n = BIGINT_PAYLOAD(r);
+  CHECK(mp_set_long(n, b));
+  if (b < 0) {
+    mp_int sub;
+    CHECK(mp_init(&sub));
+    CHECK(mp_2expt(&sub, 32));
+    CHECK(mp_sub(n,&sub,n));
+  }
   return r;
 }
 
@@ -233,10 +246,22 @@ export signed long long bigint_to_word64_signed_trap(as_ptr a) {
   }
 }
 
-
 export as_ptr bigint_of_word64(unsigned long long b) {
   as_ptr r = bigint_alloc();
   CHECK(mp_set_long_long(BIGINT_PAYLOAD(r), b));
+  return r;
+}
+
+export as_ptr bigint_of_word64_signed(signed long long b) {
+  as_ptr r = bigint_alloc();
+  mp_int *n = BIGINT_PAYLOAD(r);
+  CHECK(mp_set_long_long(n, b));
+  if (b < 0) {
+    mp_int sub;
+    CHECK(mp_init(&sub));
+    CHECK(mp_2expt(&sub, 64));
+    CHECK(mp_sub(n,&sub,n));
+  }
   return r;
 }
 
