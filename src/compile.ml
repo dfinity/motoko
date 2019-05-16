@@ -1887,14 +1887,6 @@ module BigNum64 : BigNumType = struct
       )
       ( get_i )
 
-  let compile_neg env =
-    let (set_i, get_i) = new_local env "neg_param" in
-    set_i ^^
-    compile_const_64 0L ^^
-    get_i ^^ unbox env ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-    box env
-
   let with_both_unboxed op env =
     let set_tmp, get_tmp = new_local64 env "top" in
     unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op ^^ box env
