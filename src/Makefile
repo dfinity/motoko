@@ -11,7 +11,7 @@ JS_OPAM_PACKAGES = js_of_ocaml js_of_ocaml-ppx
 MENHIR = menhir
 MENHIR_FLAGS = --infer --dump --explain --strict
 
-OCAML_FLAGS = -cflags '' #'-w +a-4-27-30-42-44-45-58 -warn-error +a'
+OCAML_FLAGS = -cflags '-w +a-4-27-30-42-44-45-58 -warn-error +a'
 OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  -use-ocamlfind \
  -plugin-tag 'package(bisect_ppx-ocamlbuild)' \
