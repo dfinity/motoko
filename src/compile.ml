@@ -1777,11 +1777,6 @@ sig
 
   (* literals *)
   val compile_lit : E.t -> Big_int.big_int -> G.t
-  (* given a numeric object on the stack,
-     compile the literal and leave equality
-     comparison result on the stack
-   *)
-  val compile_lit_pat : E.t -> G.t -> G.t
 
   (* arithmetics *)
   val compile_abs : E.t -> G.t
@@ -1921,10 +1916,6 @@ module BigNum64 : BigNumType = struct
   let compile_eq = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 I64Op.Eq)))
   let compile_relop env bigintop i64op = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 i64op))) env
   let compile_is_negative env = unbox env ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS))
-
-  let compile_lit_pat env compile_lit =
-    compile_lit ^^
-    compile_eq env
 end
 [@@@warning "+60"]
 
@@ -2001,11 +1992,6 @@ module BigNumLibtommmath : BigNumType = struct
   let compile_is_negative env = G.i (Call (nr (E.built_in env "rts_bigint_isneg")))
   let compile_relop env op _ = G.i (Call (nr (E.built_in env ("rts_bigint_" ^ op))))
 
-  (* TODO: Can this be moved out of this interface? *)
-  let compile_lit_pat env compile_lit =
-    compile_lit ^^
-    compile_eq env
-
   let _fits_signed_bits env bits =
     G.i (Call (nr (E.built_in env ("rts_bigint_count_bits")))) ^^
     compile_unboxed_const (Int32.of_int (bits - 1)) ^^
@@ -2046,13 +2032,6 @@ module Prim = struct
   let prim_shiftToWordN env b =
     prim_intToWord32 env ^^
     UnboxedSmallWord.shift_leftWordNtoI32 b
-  let prim_hashInt env =
-    let (set_n, get_n) = new_local64 env "n" in
-    BigNum.to_word64 env ^^ (* TODO(gabor) other bits *)
-    set_n ^^
-    get_n ^^ get_n ^^ compile_const_64 32L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 end (* Prim *)
 
 module Object = struct
@@ -4659,11 +4638,6 @@ and compile_exp (env : E.t) exp =
          compile_exp_as env SR.UnboxedWord32 e ^^
          UnboxedSmallWord.box_codepoint
 
-       | "Int~hash" ->
-         SR.UnboxedWord32,
-         compile_exp_vanilla env e ^^
-         Prim.prim_hashInt env
-
        | "popcnt" ->
          SR.UnboxedWord32,
          compile_exp_as env SR.UnboxedWord32 e ^^
@@ -4960,7 +4934,8 @@ and compile_lit_pat env l =
     Bool.lit false ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _) ->
-    BigNum.compile_lit_pat env (compile_lit_as env SR.Vanilla l)
+    compile_lit_as env SR.Vanilla l ^^
+    BigNum.compile_eq env
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env
