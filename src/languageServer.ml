@@ -34,6 +34,12 @@ let start () =
     log_to_file raw;
 
     let json = Yojson.Basic.from_string raw in
+
+    let json2 = Lsp2_j.message_of_string raw in
+    (* let open Yojson.Basic.Util in
+     * log_to_file (json2 |> member "jsonrpc" |> to_string); *)
+    log_to_file (json2.Lsp2_t.message_jsonrpc);
+
     let received = LSP.parse json in
 
     let string_of_int_option =

@@ -1,0 +1,53 @@
+type message =
+  { jsonrpc : string
+  }
+  <ocaml field_prefix="message_">
+
+(*
+type 'a request_message =
+  { inherit message
+  ; id : int
+  ; method : string
+  ; params : 'a
+  }
+  <ocaml field_prefix="request_message_">
+*)
+
+(*
+type ('a, 'b) response_message =
+  { inherit message
+  ; id : int
+  ; ?result : 'a option
+  (* ; ?error : (b' response_error) option *)
+  ; ?error : 'b option
+  }
+
+type 'a response_error =
+  { code : error_code
+  ; message : string
+  ; ?data : 'a option
+  }
+
+type error_code =
+  (* Defined by JSON RPC *)
+  [ ParseError
+	| InvalidRequest
+	| MethodNotFound
+	| InvalidParams
+	| InternalError
+	| ServerErrorStart
+	| ServerErrorEnd
+	| ServerNotInitialized
+	| UnknownErrorCode
+
+	(* Defined by the protocol *)
+	| RequestCancelled
+	| ContentModified
+  ]
+
+type 'a notification_message =
+  { jsonrpc : string
+  ; method : string
+  ; ?params : 'a option
+  }
+*)

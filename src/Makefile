@@ -5,7 +5,7 @@ JS_MAIN = js_main
 
 ASC = `pwd`/$(NAME)
 
-OPAM_PACKAGES = wasm num vlq yojson bisect_ppx-ocamlbuild
+OPAM_PACKAGES = wasm num vlq yojson bisect_ppx-ocamlbuild atdgen
 JS_OPAM_PACKAGES = js_of_ocaml js_of_ocaml-ppx
 
 MENHIR = menhir
@@ -15,6 +15,7 @@ OCAML_FLAGS = -cflags '-w +a-4-27-30-42-44-45-58 -warn-error +a'
 OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  -use-ocamlfind \
  -plugin-tag 'package(bisect_ppx-ocamlbuild)' \
+ -plugin-tag 'package(ocamlbuild_atdgen)' \
  -use-menhir -menhir "$(MENHIR) $(MENHIR_FLAGS)" \
  -I src \
  -I lib \
