@@ -155,7 +155,7 @@ rec {
       "src/_tags"
       "test/"
       "test/node-test.js"
-    ];
+      ];
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 

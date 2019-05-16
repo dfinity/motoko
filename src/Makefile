@@ -43,6 +43,7 @@ $(NAME).js: $(JS_MAIN).byte
 $(JS_MAIN).byte: $(JS_MAIN).ml sanity
 	$(OCAMLBUILD) $(JS_OPAM_PACKAGES:%=-pkg %) $@
 
+
 sanity:
 	ocamlfind query $(OPAM_PACKAGES)
 
