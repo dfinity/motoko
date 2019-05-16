@@ -19,7 +19,7 @@ OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  -I src \
  -I lib \
  $(OPAM_PACKAGES:%=-pkg %) \
- -tags debug \
+ -tags debug
 
 .PHONY: all parallel quick clean test test-parallel test-quick
 
