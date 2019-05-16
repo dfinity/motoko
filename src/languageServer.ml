@@ -38,7 +38,7 @@ let start () =
     let jsonrpc = json |> member "jsonrpc" |> to_string in
     let id = json |> member "id" |> to_int_option in
     let method_ = json |> member "method" |> to_string in
-    let params = json |> member "params" in
+    (* let params = json |> member "params" in *)
 
     let string_of_int_option =
       function
