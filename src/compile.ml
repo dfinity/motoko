@@ -1557,6 +1557,9 @@ module BoxedWord = struct
                  G.i (Binary (Wasm.Values.I64 I64Op.Mul)))))
     in pow ()
 
+  let compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  let compile_relop env _ i64op = G.i (Compare (Wasm.Values.I64 i64op))
+
 end (* BoxedWord *)
 
 module BoxedSmallWord = struct
@@ -1911,8 +1914,9 @@ module BigNum64 : BigNumType = struct
     let set_tmp, get_tmp = new_local64 env "top" in
     unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op
 
-  let compile_eq = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 I64Op.Eq)))
-  let compile_relop env bigintop i64op = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 i64op))) env
+  let compile_eq env = with_comp_unboxed (BoxedWord.compile_eq env) env
+  let compile_relop env bigintop i64op = with_comp_unboxed (BoxedWord.compile_relop env bigintop i64op) env
+
   let compile_is_negative env = unbox env ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS))
 
 end
@@ -1997,13 +2001,29 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         compile_const_64 1L ^^
         G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
       Num.compile_mul
+
+  let adjust a1 a2 r binop env = (* FIXME *)
+    if a2 then
+      compile_const_64 1L ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+      binop env
+    else
+      binop env
+
   let compile_signed_sub = try_unbox2 BoxedWord.compile_signed_sub Num.compile_signed_sub
-  let compile_signed_div = try_unbox2 BoxedWord.compile_signed_div Num.compile_signed_div
-  let compile_signed_mod = try_unbox2 BoxedWord.compile_signed_mod Num.compile_signed_mod
-  let compile_unsigned_div = try_unbox2 BoxedWord.compile_unsigned_div Num.compile_unsigned_div
-  let compile_unsigned_rem = try_unbox2 BoxedWord.compile_unsigned_rem Num.compile_unsigned_rem
+  let compile_signed_div = try_unbox2 (adjust false true false BoxedWord.compile_signed_div) Num.compile_signed_div
+  let compile_signed_mod = try_unbox2 BoxedWord.compile_signed_mod(*FIXME*) Num.compile_signed_mod
+  let compile_unsigned_div = try_unbox2 BoxedWord.compile_unsigned_div(*FIXME*) Num.compile_unsigned_div
+  let compile_unsigned_rem = try_unbox2 BoxedWord.compile_unsigned_rem(*FIXME*) Num.compile_unsigned_rem
   let compile_unsigned_sub = try_unbox2 BoxedWord.compile_unsigned_sub Num.compile_unsigned_sub
   let compile_unsigned_pow = try_unbox2 BoxedWord.compile_unsigned_pow(*FIXME*) Num.compile_unsigned_pow
+
+  let compile_neg env =
+    Func.share_code1 env "negCompInt" ("n", I32Type) [I32Type] (fun env get_n ->
+      compile_lit env (Big_int.big_int_of_int 0) ^^
+      get_n ^^
+      compile_signed_sub env
+    )
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
@@ -2017,6 +2037,36 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       let i = Int32.of_int (Big_int.int_of_big_int n) in
       compile_unboxed_const Int32.(logor (shift_left i 2) (shift_right_logical i 31))
     | n -> Num.compile_lit env n
+
+  let try_comp_unbox2 fast slow env =
+    let set_a, get_a = new_local env "a" in
+    let set_b, get_b = new_local env "b" in
+    set_b ^^ set_a ^^
+    get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+      begin
+        get_a ^^ extend64 ^^
+        get_b ^^ extend64 ^^
+        fast env
+      end
+      begin
+        get_a ^^
+        BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64 env)
+          get_a ^^
+        get_b ^^
+        BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64 env)
+          get_b ^^
+        slow env
+      end
+
+  let compile_eq = try_comp_unbox2 BoxedWord.compile_eq Num.compile_eq
+  let compile_relop env bigintop i64op =
+    try_comp_unbox2
+      (fun env' -> BoxedWord.compile_relop env' bigintop i64op)
+      (fun env' -> Num.compile_relop env' bigintop i64op)
+      env
 
 (*
   (* dereference the skewed pointer and extract into 31 bits,
