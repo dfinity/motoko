@@ -1949,13 +1949,6 @@ module Prim = struct
   let prim_shiftToWordN env b =
     prim_intToWord32 env ^^
     UnboxedSmallWord.shift_leftWordNtoI32 b
-  let prim_hashInt env =
-    let (set_n, get_n) = new_local64 env "n" in
-    BigNum.to_word64 env ^^ (* TODO(gabor) other bits *)
-    set_n ^^
-    get_n ^^ get_n ^^ compile_const_64 32L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 end (* Prim *)
 
 module Object = struct
@@ -4563,11 +4556,6 @@ and compile_exp (env : E.t) exp =
          SR.Vanilla,
          compile_exp_as env SR.UnboxedWord32 e ^^
          UnboxedSmallWord.box_codepoint
-
-       | "Int~hash" ->
-         SR.UnboxedWord32,
-         compile_exp_vanilla env e ^^
-         Prim.prim_hashInt env
 
        | "popcnt" ->
          SR.UnboxedWord32,
