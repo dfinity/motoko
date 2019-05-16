@@ -1909,6 +1909,13 @@ module BigNum64 : BigNumType = struct
   let compile_unsigned_sub env = with_both_unboxed (BoxedWord.compile_unsigned_sub env) env
   let compile_unsigned_pow env = with_both_unboxed (BoxedWord.compile_unsigned_pow env) env
 
+  let compile_neg env =
+    Func.share_code1 env "negInt" ("n", I32Type) [I32Type] (fun env get_n ->
+      compile_lit env (Big_int.big_int_of_int 0) ^^
+      get_n ^^
+      compile_signed_sub env
+    )
+
   let with_comp_unboxed op env =
     let set_tmp, get_tmp = new_local64 env "top" in
     unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op
