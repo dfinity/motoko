@@ -1957,7 +1957,7 @@ module BigNumLibtommmath : BigNumType = struct
     compile_unboxed_const 8l (* 64 bit for now *)
 
   let compile_lit env n =
-    let limb_size = 32 in
+    let limb_size = 31 in
     let twoto = Big_int.power_int_positive_int 2 limb_size in
 
     compile_unboxed_const 0l ^^
