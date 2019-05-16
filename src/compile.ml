@@ -1770,11 +1770,6 @@ sig
 
   (* literals *)
   val compile_lit : E.t -> Big_int.big_int -> G.t
-  (* given a numeric object on the stack,
-     compile the literal and leave equality
-     comparison result on the stack
-   *)
-  val compile_lit_pat : E.t -> G.t -> G.t
 
   (* arithmetics *)
   val compile_abs : E.t -> G.t
@@ -1912,10 +1907,6 @@ module BigNum64 : BigNumType = struct
   let compile_eq = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 I64Op.Eq)))
   let compile_relop env bigintop i64op = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 i64op))) env
   let compile_is_negative env = unbox env ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS))
-
-  let compile_lit_pat env compile_lit =
-    compile_lit ^^
-    compile_eq env
 
 end
 
@@ -4865,7 +4856,8 @@ and compile_lit_pat env l =
     Bool.lit false ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _) ->
-    BigNum.compile_lit_pat env (compile_lit_as env SR.Vanilla l)
+    compile_lit_as env SR.Vanilla l ^^
+    BigNum.compile_eq env
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env
