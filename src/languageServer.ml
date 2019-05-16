@@ -1,96 +1,5 @@
 (* https://microsoft.github.io/language-server-protocol/specification *)
 
-open Rpc
-open Idl
-
-module ResponseError(*(D : RPC.t)*) = struct
-  type t =
-    { code: int
-    ; message: string
-    (* ; data: D option *) (* FIXME *)
-    } [@@deriving rpcty]
-end
-
-module InitializeParams = struct
-  type t =
-    { processId: int (* FIXME *)
-    } [@@deriving rpcty]
-end
-
-module ServerCapabilities = struct
-  type t =
-    { textDocumentSync: int option (* FIXME *)
-    } [@@deriving rpcty]
-end
-
-module InitializeResult = struct
-  type t =
-    { capabilities: ServerCapabilities.t (* FIXME *)
-    } [@@deriving rpcty]
-end
-
-type show_message_params =
-    { type_: int [@key "type"] (* FIXME *)
-    ; message: string
-    } [@@deriving rpc]
-
-module API(R : RPC) = struct
-  open R
-
-  let description = Interface.
-    { name = "API"
-    ; namespace = None
-    ; description = [ "ActorScript LSP" ]
-    ; version = (1, 0, 0)
-    }
-
-  let implementation = implement description
-
-  (* FIXME: use ResponseError *)
-  let error = Idl.DefaultError.err
-
-  (* FIXME *)
-  let initialize_params = Param.mk
-    (* ~name:"initialize_params" *)
-    InitializeParams.t
-
-  (* FIXME *)
-  let server_capabilities = Param.mk
-    ~name:"server_capabilities"
-    ServerCapabilities.t
-
-  (* FIXME *)
-  let initialize_result = Param.mk
-    ~name:"initialize_result"
-    InitializeResult.t
-
-  (* let initialized_params = Param.mk *)
-
-  (* let show_message_params = Param.mk
-   *   ShowMessageParams.t *)
-
-  let unit_p = Param.mk Types.unit
-
-  let initialize = declare
-    "initialize"
-    [ "The initialize request is sent as the first request from the client to "
-    ; "the server."
-    ]
-    (initialize_params @-> returning initialize_result error)
-
-  (* let show_message = declare
-   *   "window/showMessage"
-   *   [ "The show message notification is sent from a "
-   *   ; "server to a client to ask the client to display a particular message in the user interface."
-   *   ]
-   *   (show_message_params @-> returning unit_p error) *)
-end
-
-module M = Idl.IdM (* You can easily but ExnM here and the code would stay unchanged. *)
-module MyIdl = Idl.Make(M)
-module Server = API(MyIdl.GenServer ())
-module Client = API(MyIdl.GenClient ())
-
 let oc = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"
 let log_to_file txt =
     Printf.fprintf oc "%s\n" txt;
@@ -100,11 +9,15 @@ let respond out =
   let cl = "Content-Length: " ^ string_of_int (String.length out) ^ "\r\n\r\n" in
   print_string cl;
   print_string out;
-  flush stdout
+  flush stdout;
+  log_to_file "Response:";
+  log_to_file cl;
+  log_to_file out
 
-let my_start_server handler =
-  let rec server_loop () =
+let start () =
+  let rec loop () =
     let clength = read_line () in
+    log_to_file "Request:";
     log_to_file clength;
     let cl = "Content-Length: " in
     let cll = String.length cl in
@@ -119,41 +32,56 @@ let my_start_server handler =
     Buffer.add_channel buffer stdin num;
     let raw = Buffer.contents buffer in
     log_to_file raw;
-    (* Printf.fprintf oc "%s\n" (String.trim raw); *)
-    let open M in
-    let call = Jsonrpc.call_of_string raw in
-    if call.name = "initialized"
-    then
-      let mes_res =
-        (Jsonrpc.string_of_call ~version:V2
-            (Rpc.call "window/showMessage"
-              [ rpc_of_show_message_params { type_ = 2; message = "Handled command"}; ])); in
-      log_to_file mes_res;
-      respond mes_res;
-      server_loop ()
+
+    let json = Yojson.Basic.from_string raw in
+    let open Yojson.Basic.Util in
+    let jsonrpc = json |> member "jsonrpc" |> to_string in
+    let id = json |> member "id" |> to_int_option in
+    let method_ = json |> member "method" |> to_string in
+    let params = json |> member "params" in
+
+    let string_of_int_option =
+      function
+      | None -> "None"
+      | Some id -> string_of_int id in
+
+    log_to_file (jsonrpc ^ ", " ^ string_of_int_option id ^ ", " ^ method_);
+
+    if method_ = "initialize"
+      then begin
+        log_to_file "Handle initialize";
+        let capabilities = `Assoc
+          [ ("textDocumentSync", `Null)
+          ] in
+        let result = `Assoc
+          [ ("capabilities", capabilities)
+          ] in
+        let response = `Assoc
+          [ ("jsonrpc", `String "2.0")
+          ; ("id", json |> member "id")
+          ; ("result", result)
+          ; ("error", `Null)
+          ] in
+        respond (Yojson.Basic.pretty_to_string response);
+      end
+
+    else if method_ = "initialized"
+      then begin
+        log_to_file "Handle initialized";
+        let params = `Assoc
+          [ ("type", `Int 3)
+          ; ("message", `String "Language server initialized")
+          ] in
+        let notification = `Assoc
+          [ ("jsonrpc", `String "2.0")
+          ; ("method", `String "window/showMessage")
+          ; ("params", params)
+          ] in
+        respond (Yojson.Basic.pretty_to_string notification);
+      end
+
     else
-    handler call
-      >>= fun response -> let res = Jsonrpc.string_of_response ~version:V2 response in
-                          log_to_file res;
-                          respond res;
-    server_loop ()
-  in server_loop ()
+      loop ();
 
-let initialize InitializeParams.{ processId } =
-  log_to_file (string_of_int processId);
-  MyIdl.ErrM.return (InitializeResult.{ capabilities = ServerCapabilities.{ textDocumentSync = None }})
-  (* MyIdl.ErrM.return (ShowMessageParams.{ type_ = 2; message = "Hello from aslan"}) *)
-
-let start () =
-  Server.initialize initialize;
-  let rpc_fn = MyIdl.server Server.implementation
-  in my_start_server rpc_fn;
-  (* my_start_server (); *)
-
-
-(* let () =
- *   print_string "Hello, World!\n"; *)
-
-  (* TODO: basic sanity check *)
-  (* print_string (Rpc.string_of_call ...) *)
-  (* print_string (Rpc.string_of_response ...) *)
+    loop ()
+  in loop ()

@@ -7,7 +7,6 @@ ASC = `pwd`/$(NAME)
 
 OPAM_PACKAGES = wasm num vlq yojson bisect_ppx-ocamlbuild
 JS_OPAM_PACKAGES = js_of_ocaml js_of_ocaml-ppx
-LANGUAGE_SERVER_OPAM_PACKAGES = ppx_deriving_rpc rpclib rpclib.json rpclib.cmdliner
 
 MENHIR = menhir
 MENHIR_FLAGS = --infer --dump --explain --strict
@@ -21,8 +20,6 @@ OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
  -I lib \
  $(OPAM_PACKAGES:%=-pkg %) \
  -tags debug \
- -tag thread \
- $(LANGUAGE_SERVER_OPAM_PACKAGES:%=-pkg %)
 
 .PHONY: all parallel quick clean test test-parallel test-quick
 

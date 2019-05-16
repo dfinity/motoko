@@ -30,8 +30,6 @@ let ocaml_vlq = import ./nix/ocaml-vlq.nix {
 let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
 let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
 
-let ocaml-rpc = import ./nix/ocaml-rpc.nix { pkgs = nixpkgs; }; in
-
 # Include dvm
 let real-dvm =
   if dvm == null
@@ -162,9 +160,7 @@ rec {
 
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
-    buildInputs = commonBuildInputs
-      ++ ocaml-rpc.ppx_deriving_rpc.buildInputs
-      ++ [ ocaml-rpc.ppx_deriving_rpc ];
+    buildInputs = commonBuildInputs;
 
     buildPhase = ''
       make -C src BUILD=native asc as-ld
