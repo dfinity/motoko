@@ -1075,12 +1075,7 @@ been processed
   //private var model : ?Model.Model = null;
 
 
-  private var model : ?Model.Model = {
-    // TEMP:
-    devTestLoadQuery(5, 2);
-    //
-    ?(Model.Model());
-  };
+  private var model : ?Model.Model = ?(Model.Model());
 
   private getModel() : Model.Model {
     switch model {

@@ -163,6 +163,27 @@ $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
 	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/simpleSetupAndQuery.as > $@
 
+$(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/retailerReserveMany.as > $@
+
+$(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/producerRemInventory.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/producerRemInventory.as > $@
+
+$(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/evalBulk.as > $@
+
+$(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
+	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as
+
+#########################################################################################################33
+
+##
+## Profiling targets
+##
+
 PROFILE_LOAD_SRC=\
 	examples/produce-exchange/serverActor.as \
 	examples/produce-exchange/test/profileLoad.as
@@ -181,101 +202,50 @@ PROFILE_FIELDS=\
 		--profile-field "retailer_query_cost" \
 		--profile-field "retailer_query_size_max" \
 
-profile-small: \
-	$(OUTDIR)/profileLoad.04-05-01.csv \
-	$(OUTDIR)/profileLoad.04-05-02.csv \
-	\
-	$(OUTDIR)/profileLoadQuery.04-05-01.csv \
-	$(OUTDIR)/profileLoadQuery.04-05-02.csv \
-
-profile: \
-	$(OUTDIR)/profileLoad.04-05-01.csv \
-	$(OUTDIR)/profileLoad.04-05-02.csv \
-	$(OUTDIR)/profileLoad.04-05-05.csv \
-	$(OUTDIR)/profileLoad.04-05-10.csv \
-	$(OUTDIR)/profileLoad.04-05-20.csv \
-	$(OUTDIR)/profileLoad.04-05-50.csv \
-	$(OUTDIR)/profileLoad.04-05-100.csv \
-	\
+profile-interp-small: \
 	$(OUTDIR)/profileLoadQuery.04-05-01.csv \
 	$(OUTDIR)/profileLoadQuery.04-05-02.csv \
 	$(OUTDIR)/profileLoadQuery.04-05-03.csv \
-	$(OUTDIR)/profileLoadQuery.04-05-04.csv \
-	$(OUTDIR)/profileLoadQuery.04-05-05.csv \
-	$(OUTDIR)/profileLoadQuery.04-05-10.csv \
-	$(OUTDIR)/profileLoadQuery.04-05-20.csv \
-	$(OUTDIR)/profileLoadQuery.04-05-50.csv \
-	$(OUTDIR)/profileLoadQuery.04-05-100.csv \
+
+profile-interp: \
+	$(OUTDIR)/profileLoadQuery.05-01.csv \
+	$(OUTDIR)/profileLoadQuery.05-02.csv \
+	$(OUTDIR)/profileLoadQuery.05-03.csv \
+	$(OUTDIR)/profileLoadQuery.05-04.csv \
+	$(OUTDIR)/profileLoadQuery.05-05.csv \
+	$(OUTDIR)/profileLoadQuery.05-10.csv \
+	$(OUTDIR)/profileLoadQuery.05-20.csv \
+	$(OUTDIR)/profileLoadQuery.05-50.csv \
+	$(OUTDIR)/profileLoadQuery.05-100.csv \
 
 ## AS wishlist: the following various targets would be easier to relate if we could accept named AS values as CLI params; that feature would also obviate the need for the `param-X-Y.as` files used below:
 
-$(OUTDIR)/profileLoad.04-05-01.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-1.as $(PROFILE_LOAD_SRC) --profile-file $@ $(PROFILE_FIELDS)
-
-$(OUTDIR)/profileLoad.04-05-02.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-2.as $(PROFILE_LOAD_SRC) --profile-file $@ $(PROFILE_FIELDS)
-
-$(OUTDIR)/profileLoad.04-05-05.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-5.as $(PROFILE_LOAD_SRC) --profile-file $@ $(PROFILE_FIELDS)
-
-$(OUTDIR)/profileLoad.04-05-10.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-10.as $(PROFILE_LOAD_SRC) --profile-file $@ $(PROFILE_FIELDS)
-
-$(OUTDIR)/profileLoad.04-05-20.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-20.as $(PROFILE_LOAD_SRC) --profile-file $@ $(PROFILE_FIELDS)
-
-$(OUTDIR)/profileLoad.04-05-50.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-50.as $(PROFILE_LOAD_SRC) --profile-file $@ $(PROFILE_FIELDS)
-
-$(OUTDIR)/profileLoad.04-05-100.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-100.as $(PROFILE_LOAD_SRC) --profile-file $@ $(PROFILE_FIELDS)
-
-
-$(OUTDIR)/profileLoadQuery.04-05-01.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+$(OUTDIR)/profileLoadQuery.05-01.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-1.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
-$(OUTDIR)/profileLoadQuery.04-05-02.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+$(OUTDIR)/profileLoadQuery.05-02.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-2.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
-$(OUTDIR)/profileLoadQuery.04-05-03.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+$(OUTDIR)/profileLoadQuery.05-03.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-3.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
-$(OUTDIR)/profileLoadQuery.04-05-04.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+$(OUTDIR)/profileLoadQuery.05-04.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-4.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
-$(OUTDIR)/profileLoadQuery.04-05-05.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+$(OUTDIR)/profileLoadQuery.05-05.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-5.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
-$(OUTDIR)/profileLoadQuery.04-05-10.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+$(OUTDIR)/profileLoadQuery.05-10.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-10.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
-$(OUTDIR)/profileLoadQuery.04-05-20.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+$(OUTDIR)/profileLoadQuery.05-20.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-20.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
-$(OUTDIR)/profileLoadQuery.04-05-50.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+$(OUTDIR)/profileLoadQuery.05-50.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-50.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
-$(OUTDIR)/profileLoadQuery.04-05-100.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+$(OUTDIR)/profileLoadQuery.05-100.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-100.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
-
-$(OUTDI	R)/loadWorkloadAndQueryBig.wasm: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/loadWorkloadAndQuery.as | $(OUTDIR)
-	$(ASC) examples/produce-exchange/serverActor.as examples/produce-exchange/test/loadWorkloadAndQueryBig.as -c --dfinity -o $@
-
-$(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/retailerReserveMany.as > $@
-
-$(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/producerRemInventory.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/producerRemInventory.as > $@
-
-$(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/evalBulk.as > $@
-
-$(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as
 
 
 profile-wasm:\
@@ -293,6 +263,18 @@ profile-wasm:\
 	\
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm \
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm.csv \
 	\
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm \
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm.csv \
@@ -322,6 +304,18 @@ $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
 $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
 	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-5.as examples/produce-exchange/profileActor.as
 
+$(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
+	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-6.as examples/produce-exchange/profileActor.as
+
+$(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
+	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-7.as examples/produce-exchange/profileActor.as
+
+$(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
+	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-8.as examples/produce-exchange/profileActor.as
+
+$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
+	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-9.as examples/produce-exchange/profileActor.as
+
 $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
 	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-10.as examples/produce-exchange/profileActor.as
 
@@ -342,63 +336,91 @@ $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQu
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start -t" "5, 1, " > $@
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 1, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm $(OUTDIR)/time
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start -t" "5, 2, " > $@
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 2, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm $(OUTDIR)/time
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start -t" "5, 3, " > $@
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 3, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm $(OUTDIR)/time
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start -t" "5, 4, " > $@
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 4, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm $(OUTDIR)/time
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start -t" "5, 5, " > $@
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 5, " > $@
+	cat $@
+
+$(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm $(OUTDIR)/time
+	rm -rf ./.dvm
+	$(DVM) reset
+	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 6, " > $@
+	cat $@
+
+$(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm $(OUTDIR)/time
+	rm -rf ./.dvm
+	$(DVM) reset
+	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 7, " > $@
+	cat $@
+
+$(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm $(OUTDIR)/time
+	rm -rf ./.dvm
+	$(DVM) reset
+	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 8, " > $@
+	cat $@
+
+$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm $(OUTDIR)/time
+	rm -rf ./.dvm
+	$(DVM) reset
+	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 9, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm $(OUTDIR)/time
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start -t" "5, 10, " > $@
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 10, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm $(OUTDIR)/time
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start -t" "5, 20, " > $@
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 20, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm $(OUTDIR)/time
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start -t" "5, 50, " > $@
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 50, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm $(OUTDIR)/time
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start -t" "5, 100, " > $@
+	$(OUTDIR)/time "$(DVM) run 1 start " "5, 100, " > $@
 	cat $@
 
 $(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
