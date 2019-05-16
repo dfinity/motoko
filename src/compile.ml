@@ -598,6 +598,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word64" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_isneg" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_count_bits" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lt" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_gt" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_le" [I32Type; I32Type] [I32Type];
@@ -608,7 +610,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_mod" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_div" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_neg" [I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_lshd" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_lsh" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type]
 
   let system_exports env =
