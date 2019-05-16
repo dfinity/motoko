@@ -118,7 +118,9 @@ and build_field {Type.lab; Type.typ} =
 and build_fields obj_typ =
     match obj_typ with
     | Type.Obj (_, fields) ->
-      List.map build_field fields
+      (* TBR: do we need to sort val_fields?*)
+      let val_fields = List.filter (fun {Type.lab;Type.typ} -> not (Type.is_typ typ)) fields in
+      List.map build_field val_fields
     | _ -> assert false
 
 and build_actor at self_id es obj_typ =
@@ -156,10 +158,6 @@ and block force_unit ds =
   match force_unit, last.it with
   | _, S.ExpD e ->
     (extra @ List.map dec prefix, exp e)
-   (*TBD: delete me *)
-  | false, S.LetD ({ it = S.VarP x; _ },
-                   { it = S.ObjE ( { it = T.Module; _ }, efs); _ }) ->
-    (extra @ List.map dec ds, idE x last.note.S.note_typ)
   | false, S.LetD ({it = S.VarP x; _}, e) ->
     (extra @ List.map dec ds, idE x e.note.S.note_typ)
   | false, S.LetD (p', e') ->
@@ -185,10 +183,6 @@ and dec d = { (phrase' dec' d) with note = () }
 
 and dec' at n d = match d with
   | S.ExpD e -> (expD (exp e)).it
-  | S.LetD ({ it = S.VarP id; _ },
-            { it = S.ObjE ( { it = T.Module; _ }, efs); _ }) ->
-    let ds = List.map (fun ef -> ef.it.S.dec) efs in
-    (build_module id ds (n.S.note_typ)).it
   | S.LetD (p, e) ->
     let p' = pat p in
     let e' = exp e in
@@ -230,21 +224,6 @@ and dec' at n d = match d with
       note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
     } in
     I.LetD (varPat, fn)
-
-and field_typ_to_obj_entry (f: T.field) =
-  match f.T.typ with
-  | T.Typ _ -> []
-  | _ -> [ build_field f ]
-
-and build_module id ds typ =
-  let self = idE id typ in
-  let (s, fs) = T.as_obj typ in
-  letD self
-    (blockE
-       (decs ds)
-       (newObjE T.Module
-          (List.concat (List.map field_typ_to_obj_entry fs)) typ));
-          (* ^^^^ TBR: do these need to be sorted? *)
 
 and cases cs = List.map case cs
 

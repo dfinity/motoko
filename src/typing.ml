@@ -177,7 +177,7 @@ and check_typ_path' env path : T.con =
     match T.promote t with
     | T.Pre ->
       error env path.at "cannot infer type of forward path reference"
-    | T.Obj (T.Module, flds) ->
+    | T.Obj (_, flds) ->
       (match T.lookup_typ_field id.it flds with
        | Some c -> c
        | _ -> error env id.at "type field name %s does not exist in module type\n  %s"
@@ -204,10 +204,10 @@ and check_path' env path : T.typ =
     match T.promote t with
     | T.Pre ->
       error env path.at "cannot infer type of forward path reference"
-    | T.Obj (T.Module, flds) ->
+    | T.Obj (_, flds) ->
       (match T.lookup_field id.it flds with
        | Some t -> t
-       | _ -> error env id.at "field name %s does not exist in module type\n  %s"
+       | _ -> error env id.at "field name %s does not exist in type\n  %s"
                 id.it (T.string_of_typ_expand t))
     | _ -> error env path.at "expecting a module type, but path expression produces a value of type %s"
              (T.string_of_typ_expand t)
@@ -1101,13 +1101,8 @@ and pub_val_id id (xs, ys) : region T.Env.t * region T.Env.t =
 
 (* TODO: remove by merging conenv and valenv or by separating typ_fields *)
 
-and module_of_scope env sort fields scope at =
+and object_of_scope env sort fields scope at =
   let pub_typ, pub_val = pub_fields fields in
-  (* TODO: type fields for non-modules*)
-  if sort <> Type.Module then
-    T.Env.iter (fun _ at' ->
-        local_error env at' "public type fields not supported yet"
-      ) pub_typ;
   let typ_fields =
     T.Env.fold
       (fun id con flds ->
@@ -1137,23 +1132,28 @@ and is_actor_method dec : bool = match dec.it with
   | LetD ({ it = VarP _; _}, {it = FuncE _; _} ) -> true
   | _ -> false
 
+and is_typ_dec dec : bool = match dec.it with
+  | TypD _ -> true
+  | _ -> false
+
+
 and infer_obj env s fields at : T.typ =
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
-  let t = module_of_scope env s fields scope at in
+  let t = object_of_scope env s fields scope at in
   let (_, tfs) = T.as_obj t in
   if not env.pre && (s == T.Object T.Sharable || s == T.Actor) then begin
-    List.iter (fun T.{lab; typ} ->
-        if not (T.is_typ typ) && not (T.sub typ T.Shared) then
-          let _, pub_val = pub_fields fields in
-          error env (T.Env.find lab pub_val)
-            "public shared object or actor field %s has non-shared type\n  %s"
-            lab (T.string_of_typ_expand typ)
-      ) tfs
+      List.iter (fun T.{lab; typ} ->
+          if  (not (T.is_typ typ)) && not (T.sub typ T.Shared) then
+            let _, pub_val = pub_fields fields in
+            error env (T.Env.find lab pub_val)
+              "public shared object or actor field %s has non-shared type\n  %s"
+              lab (T.string_of_typ_expand typ)
+        ) tfs
   end;
   if not env.pre && s = T.Actor then begin
     List.iter (fun ef ->
-      if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) then
+      if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) && not (is_typ_dec ef.it.dec) then
         local_error env ef.it.dec.at "public actor field needs to be a manifest function"
     ) fields
   end;
@@ -1283,7 +1283,7 @@ and infer_val_path env exp : T.typ option =
       | None -> None
       | Some t ->
         match T.promote t with
-        | T.Obj (T.Module, flds) -> T.lookup_field id.it flds
+        | T.Obj ( _, flds) -> T.lookup_field id.it flds
         | _ -> None
     end
   | _ -> None
@@ -1301,12 +1301,12 @@ and gather_dec env scope dec : scope =
   match dec.it with
   | ExpD _ -> scope
   | LetD ({ it = VarP id; _ },
-          { it = ObjE ( { it = T.Module as sort; _ }, fields); at; _ }) ->
+          { it = ObjE ( { it = sort; _ }, fields); at; _ }) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
     if T.Env.mem id.it scope.val_env then
       error env dec.at "duplicate definition for module %s in block" id.it;
     let scope' = gather_block_decs env decs in
-    let ve' = T.Env.add id.it (module_of_scope env sort fields scope' at) scope.val_env in
+    let ve' = T.Env.add id.it (object_of_scope env sort fields scope' at) scope.val_env in
     let obj_env = { env = T.Env.add id.it scope' scope.obj_env.env } in
     {val_env = ve';
      typ_env = scope.typ_env;
@@ -1360,20 +1360,20 @@ and infer_block_typdecs env decs : scope =
 and infer_dec_typdecs env dec : scope =
   match dec.it with
   | LetD ({ it = VarP id; _},
-          { it = ObjE ({ it = T.Module as sort; _ }, fields); at; _ }) ->
+          { it = ObjE ({ it = sort; _ }, fields); at; _ }) ->
     let decs = List.map (fun {it = {vis;dec}; _} -> dec) fields in
     let scope = T.Env.find id.it env.objs.env in
     let env' = adjoin env scope in
-    let mod_scope = infer_block_typdecs env' decs in
+    let obj_scope = infer_block_typdecs env' decs in
     { empty_scope with
-      con_env = mod_scope.con_env ;
-      val_env = T.Env.singleton id.it (module_of_scope env sort fields mod_scope at);
-      obj_env = { env = T.Env.singleton id.it mod_scope } }
+      con_env = obj_scope.con_env ;
+      val_env = T.Env.singleton id.it (object_of_scope env sort fields obj_scope at);
+      obj_env = { env = T.Env.singleton id.it obj_scope } }
   | LetD ({ it = VarP id; _ } , exp) ->
     (match infer_val_path env exp with
      | Some t ->
        (match T.promote t with
-        | T.Obj (T.Module, _) as t' -> { empty_scope with val_env = T.Env.singleton id.it t' }
+        | T.Obj ( _, _) as t' -> { empty_scope with val_env = T.Env.singleton id.it t' }
         | _ -> { empty_scope with val_env = T.Env.singleton id.it T.Pre }
        )
      | None -> empty_scope)
@@ -1426,17 +1426,19 @@ and infer_dec_valdecs env dec : scope =
   match dec.it with
   | ExpD _ ->
     empty_scope
-  | LetD ({ it = VarP id; _ },
-          { it = ObjE( { it=T.Module as sort;_ }, fields); at; _ }) ->
+  | LetD ({ it = VarP id; _ } as pat,
+          { it = ObjE( { it = sort;_ }, fields); at; _ }) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
-    let mod_scope = T.Env.find id.it env.objs.env  in
-    let mod_scope' =
+    let obj_scope = T.Env.find id.it env.objs.env  in
+    let obj_scope' =
       infer_block_valdecs
-        (adjoin {env with pre = true} mod_scope)
+        (adjoin {env with pre = true} obj_scope)
         decs empty_scope
     in
+    let obj_typ = object_of_scope env sort fields obj_scope' at in
+    let _ve = check_pat env obj_typ pat in
     { empty_scope with
-      val_env = T.Env.singleton id.it (module_of_scope env sort fields mod_scope' at) }
+      val_env = T.Env.singleton id.it obj_typ }
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
     let ve' = check_pat_exhaustive env t pat in
@@ -1486,7 +1488,7 @@ let infer_library env prog at =
      typ
   (* HACK: to be removed once we insist on single expression imports *)
   |  ds ->
-     module_of_scope env T.Module (List.map (fun d -> { vis = Public @@ no_region ; dec = d } @@ no_region) ds) scope at
+     object_of_scope env T.Module (List.map (fun d -> { vis = Public @@ no_region ; dec = d } @@ no_region) ds) scope at
 
 let check_library scope (filename, prog) : scope Diag.result =
   Diag.with_message_store (fun msgs ->
