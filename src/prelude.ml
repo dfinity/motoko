@@ -104,6 +104,12 @@ func @text_of_Nat(x : Nat) : Text {
   let base = 10;
   let digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
+  assert(n >= 0);
+
+  if (n == 0) {
+    return "0";
+  };
+
   while (n > 0) {
     let rem = n % base;
     text := digits[rem] # text;
