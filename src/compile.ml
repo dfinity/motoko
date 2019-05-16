@@ -1923,10 +1923,14 @@ end
 
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
-  include Num (* FIXME: for now *)
 
   (* examine the skewed pointer and determine if number fits into 31 bits *)
-  let fits_in_vanilla env = fits_signed_bits env 31
+  let fits_in_vanilla env = Num.fits_signed_bits env 31
+
+  (* left-padded with 0 *)
+  let extend32 =
+    compile_unboxed_one ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
 
   let extend64 =
     compile_unboxed_one ^^
@@ -2018,13 +2022,6 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let compile_unsigned_sub = try_unbox2 BoxedWord.compile_unsigned_sub Num.compile_unsigned_sub
   let compile_unsigned_pow = try_unbox2 BoxedWord.compile_unsigned_pow(*FIXME*) Num.compile_unsigned_pow
 
-  let compile_neg env =
-    Func.share_code1 env "negCompInt" ("n", I32Type) [I32Type] (fun env get_n ->
-      compile_lit env (Big_int.big_int_of_int 0) ^^
-      get_n ^^
-      compile_signed_sub env
-    )
-
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
     set_n ^^ get_n ^^
@@ -2037,6 +2034,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       let i = Int32.of_int (Big_int.int_of_big_int n) in
       compile_unboxed_const Int32.(logor (shift_left i 2) (shift_right_logical i 31))
     | n -> Num.compile_lit env n
+
+  let compile_neg env =
+    Func.share_code1 env "negCompInt" ("n", I32Type) [I32Type] (fun env get_n ->
+      compile_lit env (Big_int.big_int_of_int 0) ^^
+      get_n ^^
+      compile_signed_sub env
+    )
 
   let try_comp_unbox2 fast slow env =
     let set_a, get_a = new_local env "a" in
@@ -2068,27 +2072,62 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env' -> Num.compile_relop env' bigintop i64op)
       env
 
-(*
-  (* dereference the skewed pointer and extract into 31 bits,
-     with legal Vanilla word layout
-     precondition: fits_in_vanilla *)
-  let _to_vanilla env =
-    unbox(*FIXME*) env ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compile_const_64 0x7FFFFFFFL ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    compile_const_64 2L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
+  let try_unbox iN fast slow env =
+    let set_a, get_a = new_local env "a" in
+    set_a ^^ get_a ^^
+    BitTagged.if_unboxed env (ValBlockType (Some iN))
+      (get_a ^^ fast env)
+      (get_a ^^ slow env)
 
-  (* build a skewed pointer of numeric object from
-     a legal Vanilla word layout *)
-  let _from_vanilla env =
-    compile_unboxed_one ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Rotr)) ^^
-    compile_unboxed_one ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.ShrS))
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
-    box(*FIXME*) env
- *)
+  let _fits_unsigned_bits env = assert false
+  let fits_signed_bits env = assert false
+
+  let compile_abs env =
+    try_unbox I32Type
+      (fun env -> compile_unboxed_const 4l)
+      (Num.compile_abs env)
+      env
+
+  let compile_load_from_data_buf env = assert false
+  let compile_store_to_data_buf env =
+    try_unbox I32Type
+      (fun env ->
+        extend32 ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 4l
+      )
+      Num.compile_store_to_data_buf
+      env
+
+  let compile_data_size env =
+    try_unbox I32Type
+      (fun env -> G.i Drop ^^ compile_unboxed_const 4l)
+      (fun env -> G.i Drop ^^ Num.compile_data_size env)
+      env
+
+   let from_signed_word32 env = assert false
+   let from_word64 env = assert false
+   let from_word32 env = assert false
+   let _truncate_to_word64 env = assert false
+   let truncate_to_word32 env =
+    let set_a, get_a = new_local env "a" in
+    set_a ^^ get_a ^^
+    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+      (get_a ^^ extend32 ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ Num.truncate_to_word32 env)
+
+   let to_word64 env =
+    let set_a, get_a = new_local env "a" in
+    set_a ^^ get_a ^^
+    BitTagged.if_unboxed env (ValBlockType (Some I64Type))
+      (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
+      (get_a ^^ Num.to_word64 env)
+   let to_word32 env =
+    let set_a, get_a = new_local env "a" in
+    set_a ^^ get_a ^^
+    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+      (get_a ^^ extend32 ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ Num.to_word32 env)
 end
 
 module BigNum = MakeCompact(BigNum64)
