@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 export void as_memcpy(char *str1, const char *str2, size_t n) {
   for (size_t i = 0; i < n; i++) {
@@ -188,19 +189,19 @@ export unsigned long long bigint_to_word64(as_ptr a) {
   return mp_get_long_long(BIGINT_PAYLOAD(a));
 }
 
-export int bigint_eq(as_ptr a, as_ptr b) {
+export bool bigint_eq(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) == 0;
 }
-export int bigint_lt(as_ptr a, as_ptr b) {
+export bool bigint_lt(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) < 0;
 }
-export int bigint_gt(as_ptr a, as_ptr b) {
+export bool bigint_gt(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) > 0;
 }
-export int bigint_le(as_ptr a, as_ptr b) {
+export bool bigint_le(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) <= 0;
 }
-export int bigint_ge(as_ptr a, as_ptr b) {
+export bool bigint_ge(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) >= 0;
 }
 
@@ -222,6 +223,14 @@ export as_ptr bigint_mul(as_ptr a, as_ptr b) {
   return r;
 }
 
+export as_ptr bigint_div(as_ptr a, as_ptr b) {
+  as_ptr r = bigint_alloc();
+  mp_int rem;
+  CHECK(mp_init(&rem));
+  CHECK(mp_div(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r), &rem));
+  return r;
+}
+
 export as_ptr bigint_mod(as_ptr a, as_ptr b) {
   as_ptr r = bigint_alloc();
   CHECK(mp_mod(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r)));
@@ -240,18 +249,16 @@ export as_ptr bigint_abs(as_ptr a) {
   return r;
 }
 
-export as_ptr bigint_lshd(as_ptr a, int b) {
+export bool bigint_isneg(as_ptr a) {
+  return mp_isneg(BIGINT_PAYLOAD(a));
+}
+
+export as_ptr bigint_lsh(as_ptr a, int b) {
   as_ptr r = bigint_alloc();
-  CHECK(mp_copy(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(r)));
-  CHECK(mp_lshd(BIGINT_PAYLOAD(a), b));
+  CHECK(mp_mul_2d(BIGINT_PAYLOAD(a), b, BIGINT_PAYLOAD(r)));
   return r;
 }
 
-export as_ptr bigint_div(as_ptr a, as_ptr b) {
-  as_ptr r = bigint_alloc();
-  mp_int rem;
-  CHECK(mp_init(&rem));
-  CHECK(mp_div(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r), &rem));
-  return r;
+export int bigint_count_bits(as_ptr a) {
+  return mp_count_bits(BIGINT_PAYLOAD(a));
 }
-
