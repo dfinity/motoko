@@ -2003,7 +2003,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let compile_unsigned_div = try_unbox2 BoxedWord.compile_unsigned_div Num.compile_unsigned_div
   let compile_unsigned_rem = try_unbox2 BoxedWord.compile_unsigned_rem Num.compile_unsigned_rem
   let compile_unsigned_sub = try_unbox2 BoxedWord.compile_unsigned_sub Num.compile_unsigned_sub
-  let compile_unsigned_pow = try_unbox2 BoxedWord.compile_unsigned_pow Num.compile_unsigned_pow
+  let compile_unsigned_pow = try_unbox2 BoxedWord.compile_unsigned_pow(*FIXME*) Num.compile_unsigned_pow
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
