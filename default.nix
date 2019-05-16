@@ -153,7 +153,6 @@ rec {
       "src/.*.mll"
       "src/.*.mlpack"
       "src/_tags"
-      "^src/language_server/$"
       "test/"
       "test/node-test.js"
     ];
