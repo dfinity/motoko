@@ -1811,6 +1811,7 @@ sig
   val _fits_unsigned_bits : E.t -> int -> G.t
 end
 
+[@@@warning "-60"] (* Do not warn about unused module *)
 module BigNum64 : BigNumType = struct
   include BoxedWord
 
@@ -1920,6 +1921,7 @@ module BigNum64 : BigNumType = struct
     compile_lit ^^
     compile_eq env
 end
+[@@@warning "+60"]
 
 module BigNumLibtommmath : BigNumType = struct
 
