@@ -1034,55 +1034,60 @@ been processed
   };
 
 
+  loadWorkload(params:T.WorkloadParams) : () {
+    func db(s:Text) = if false {print "Model::loadWorkload: "; print s; print "\n"};
+    getModel().loadWorkload(params)
+  };
+
   /**
-   `loadWorkload`
-   ----------------
-   clear existing server state, and replace with a synthetic workload, based on the given parameters.
+   Standard workloads
+   =========================
    */
 
-  loadWorkload(params:T.WorkloadParams) : async () {
-    func db(s:Text) = if false {print "Server::loadWorkload: "; print s; print "\n"};
-
-    /**- generate add requests for these params: */
-    db "generate requests for workload...";
-    let addreqs : List<L.AddReq> = getModel().genAddReqs(
-      params.day_count,
-      params.max_route_duration,
-      params.producer_count,
-      params.transporter_count,
-      params.retailer_count,
-      params.region_count
-    );
-
-    /**- reset to initial state before adding this new workload: */
-    let reqs : List<L.Req> =
-      ?(#reset, List.map<L.AddReq,L.Req>(addreqs, func (r:L.AddReq):L.Req = #add r));
-
-    /**- evaluate each request: */
-    db "evaluate requests for workload...";
-    let resps = getModel().evalReqList(reqs);
-
-    /**- assert that everything worked; a sanity check. */
-    // to do
+  devTestLoadQuery (region_count:Nat, scale_factor:Nat) {
+    func scaledParams(region_count_:Nat, factor:Nat) : T.WorkloadParams = {
+      shared {
+        region_count        = region_count_:Nat;
+        day_count           = 3:Nat;
+        max_route_duration  = 1:Nat;
+        producer_count      = region_count * factor:Nat;
+        transporter_count   = region_count * factor:Nat;
+        retailer_count      = region_count * factor:Nat;
+      }
+    };
+    let m = Model.Model();
+    let _ = m.loadWorkload(scaledParams(5, 2));
+    let _ = m.retailerQueryAll(0, null, null);
   };
 
   ///////////////////////////////////////////////////////////////////////////
-  // @Omit:
 
   // See `serverModel.as` for the Model class's implementation
 
   // Matthew-Says:
   // There are two initialization options for the model field:
-  // 1. Call Model() directly; using this option now.
+  // 1. Call Model() directly
   // 2. Call Model() later, when we try to access the model field.
+  //
+  // Option 1 is simpler, but option 2 permits a "static" class or actor definition,
+  // which is needed in some contexts.
 
-  private var model : ?Model.Model = null;
+  //private var model : ?Model.Model = null;
+
+
+  private var model : ?Model.Model = {
+    // TEMP:
+    devTestLoadQuery(5, 2);
+    //
+    ?(Model.Model());
+  };
 
   private getModel() : Model.Model {
     switch model {
     case (null) {
            let m = Model.Model();
-           model := ?m; m
+           model := ?m;
+           m
          };
     case (?m) m;
     }
