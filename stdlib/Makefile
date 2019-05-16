@@ -6,6 +6,38 @@ MDofAS=./markdown-of-actorscript.py
 MDofMD=./markdown-of-markdown.py
 PANDOC=pandoc
 
+WASM=\
+  ProduceExchange\
+	loadWorkloadAndQueryBig\
+
+OUTFILES=$(addsuffix .out, $(TESTS)) $(addsuffix .wasm, $(WASM))
+
+OUTPATHS=$(addprefix $(OUTDIR)/, $(OUTFILES))
+
+.PHONY: default all clean alltests alldoc docMd docHtml profile-wasm profile-wasm-success profile-interp profile-interp-small
+
+default: all
+
+docmsg:
+	@echo Begin building documentation in \`$(DOCDIR)\`...
+	@echo $(HRULE)
+
+alltests: $(OUTDIR) $(OUTPATHS)
+
+all: alltests alldoc profile-wasm-success profile-interp-small
+
+clean:
+	rm -rf $(OUTDIR) $(DOCDIR)
+
+$(OUTDIR):
+	@mkdir $@
+
+#########################################################################################################33
+
+##
+## Unit tests
+##
+
 # Add new module targets here:
 TESTS=\
 	Option \
@@ -24,27 +56,77 @@ TESTS=\
 	retailerReserveMany \
 	evalBulk \
 
+$(OUTDIR)/Hash.out: hash.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-WASM=\
-  ProduceExchange\
-	loadWorkloadAndQueryBig\
+$(OUTDIR)/Option.out: option.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
+$(OUTDIR)/Result.out: result.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-OUTFILES=$(addsuffix .out, $(TESTS)) $(addsuffix .wasm, $(WASM))
+$(OUTDIR)/List.out: list.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-OUTPATHS=$(addprefix $(OUTDIR)/, $(OUTFILES))
+$(OUTDIR)/ListTest.out: listTest.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-.PHONY: default all clean alltests alldoc docMd docHtml profile
+$(OUTDIR)/AssocList.out: assocList.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-default: all
+$(OUTDIR)/Trie.out: trie.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-docmsg:
-	@echo Begin building documentation in \`$(DOCDIR)\`...
-	@echo $(HRULE)
+$(OUTDIR)/DocTable.out: docTable.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-alltests: $(OUTDIR) $(OUTPATHS)
+$(OUTDIR)/Set.out: set.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-all: alltests alldoc
+$(OUTDIR)/SetDb.out: setDb.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/SetDbTest.out: setDbTest.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+#########################################################################################################33
+
+##
+## PX Unit tests
+##
+
+PRODUCE_EXCHANGE_SRC=\
+	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as result.as \
+	examples/produce-exchange/serverTypes.as \
+	examples/produce-exchange/serverLang.as \
+	examples/produce-exchange/serverModelTypes.as \
+	examples/produce-exchange/serverModel.as \
+	examples/produce-exchange/serverActor.as \
+
+$(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/simpleSetupAndQuery.as > $@
+
+$(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/retailerReserveMany.as > $@
+
+$(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/producerRemInventory.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/producerRemInventory.as > $@
+
+$(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/evalBulk.as > $@
+
+$(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
+	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as
+
+#########################################################################################################33
+
+##
+## Documentation
+##
 
 alldoc: docMd docHtml
 
@@ -96,12 +178,6 @@ docHtml: \
 	$(DOCDIR)/ \
 	$(DOCDIR)/examples/produce-exchange/
 
-clean:
-	rm -rf $(OUTDIR) $(DOCDIR)
-
-$(OUTDIR):
-	@mkdir $@
-
 $(DOCDIR):
 	mkdir $@
 
@@ -118,71 +194,23 @@ $(DOCDIR)/examples/produce-exchange/README.md: examples/produce-exchange/README.
 	@echo "" >> $@
 	$(MDofMD) $< >> $@
 
-$(OUTDIR)/Hash.out: hash.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
+	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@
+	@echo "" >> $@
+	@echo "" >> $@
+	$(MDofAS) $< >> $@
 
-$(OUTDIR)/Option.out: option.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/Result.out: result.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/List.out: list.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/ListTest.out: listTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/AssocList.out: assocList.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/Trie.out: trie.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/DocTable.out: docTable.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/Set.out: set.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/SetDb.out: setDb.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/SetDbTest.out: setDbTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
-
-PRODUCE_EXCHANGE_SRC=\
-	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as result.as \
-	examples/produce-exchange/serverTypes.as \
-	examples/produce-exchange/serverLang.as \
-	examples/produce-exchange/serverModelTypes.as \
-	examples/produce-exchange/serverModel.as \
-	examples/produce-exchange/serverActor.as \
-
-$(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/simpleSetupAndQuery.as > $@
-
-$(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/retailerReserveMany.as > $@
-
-$(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/producerRemInventory.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/producerRemInventory.as > $@
-
-$(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/evalBulk.as > $@
-
-$(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as
+$(DOCDIR)/%.html: $(DOCDIR)/%.md
+	$(PANDOC) -f gfm $^ > $@
 
 #########################################################################################################33
 
 ##
-## Profiling targets
+## Profiling
 ##
+
+# to do: Fix my Makefile targets below to make the file shorter; 
+#        There is lot of redundancy, but I don't know how to hack the Makefile to overcome it without also making it too complex.
 
 PROFILE_LOAD_SRC=\
 	examples/produce-exchange/serverActor.as \
@@ -213,12 +241,17 @@ profile-interp: \
 	$(OUTDIR)/profileLoadQuery.05-03.csv \
 	$(OUTDIR)/profileLoadQuery.05-04.csv \
 	$(OUTDIR)/profileLoadQuery.05-05.csv \
+	$(OUTDIR)/profileLoadQuery.05-06.csv \
+	$(OUTDIR)/profileLoadQuery.05-07.csv \
+	$(OUTDIR)/profileLoadQuery.05-08.csv \
+	$(OUTDIR)/profileLoadQuery.05-09.csv \
 	$(OUTDIR)/profileLoadQuery.05-10.csv \
 	$(OUTDIR)/profileLoadQuery.05-20.csv \
 	$(OUTDIR)/profileLoadQuery.05-50.csv \
 	$(OUTDIR)/profileLoadQuery.05-100.csv \
 
-## AS wishlist: the following various targets would be easier to relate if we could accept named AS values as CLI params; that feature would also obviate the need for the `param-X-Y.as` files used below:
+## AS wishlist: the following various targets each take a params file that defines two variables used in the common test file.
+##              it would be better if we could accept named AS values as CLI params; that feature would obviate the need for the `param-X-Y.as` files used below:
 
 $(OUTDIR)/profileLoadQuery.05-01.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-1.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
@@ -235,6 +268,18 @@ $(OUTDIR)/profileLoadQuery.05-04.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUE
 $(OUTDIR)/profileLoadQuery.05-05.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-5.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
+$(OUTDIR)/profileLoadQuery.05-06.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+	time $(ASC) -r --profile examples/produce-exchange/test/params-5-6.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+
+$(OUTDIR)/profileLoadQuery.05-07.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+	time $(ASC) -r --profile examples/produce-exchange/test/params-5-7.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+
+$(OUTDIR)/profileLoadQuery.05-08.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+	time $(ASC) -r --profile examples/produce-exchange/test/params-5-8.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+
+$(OUTDIR)/profileLoadQuery.05-09.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
+	time $(ASC) -r --profile examples/produce-exchange/test/params-5-9.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+
 $(OUTDIR)/profileLoadQuery.05-10.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-10.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
@@ -247,7 +292,38 @@ $(OUTDIR)/profileLoadQuery.05-50.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUE
 $(OUTDIR)/profileLoadQuery.05-100.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-100.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
+# wasm binaries and time measurements for various-sized PX workloads
+#
+# these sizes all run without memory limitation issues; bigger sizes complain about growing memory
+profile-wasm-success:\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm.csv \
+	\
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm \
+	$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm.csv \
 
+# wasm binaries and time measurements for various-sized PX workloads
 profile-wasm:\
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm \
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv \
@@ -329,7 +405,7 @@ $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDI
 	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-100.as examples/produce-exchange/profileActor.as
 
 
-$(OUTDIR)/time:
+$(OUTDIR)/time: time.c
 	gcc time.c -o $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm $(OUTDIR)/time
@@ -422,12 +498,3 @@ $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm.csv: $(OUTDIR)/ProduceExchangeLoad
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm
 	$(OUTDIR)/time "$(DVM) run 1 start " "5, 100, " > $@
 	cat $@
-
-$(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
-	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@
-	@echo "" >> $@
-	@echo "" >> $@
-	$(MDofAS) $< >> $@
-
-$(DOCDIR)/%.html: $(DOCDIR)/%.md
-	$(PANDOC) -f gfm $^ > $@
