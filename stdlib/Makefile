@@ -230,10 +230,21 @@ PROFILE_FIELDS=\
 		--profile-field "retailer_query_cost" \
 		--profile-field "retailer_query_size_max" \
 
+##
+## To see the sizes of the workloads below, run `make profile-fast-counts`:
+##
+
+profile-fast-counts: \
+	$(OUTDIR)/profileFastCounts.csv
+
+$(OUTDIR)/profileFastCounts.csv: examples/produce-exchange/test/profileFastCounts.as
+	$(ASC) -r examples/produce-exchange/test/profileFastCounts.as > $@
+
+
 profile-interp-small: \
-	$(OUTDIR)/profileLoadQuery.04-05-01.csv \
-	$(OUTDIR)/profileLoadQuery.04-05-02.csv \
-	$(OUTDIR)/profileLoadQuery.04-05-03.csv \
+	$(OUTDIR)/profileLoadQuery.05-01.csv \
+	$(OUTDIR)/profileLoadQuery.05-02.csv \
+	$(OUTDIR)/profileLoadQuery.05-03.csv \
 
 profile-interp: \
 	$(OUTDIR)/profileLoadQuery.05-01.csv \

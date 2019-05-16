@@ -353,6 +353,67 @@ class Model() {
   };
 
   /**
+   `countAddReqs`
+   -------------
+   xxx
+   */
+  countAddReqs(
+    day_count:Nat,
+    max_route_duration:Nat,
+    producer_count:Nat,
+    transporter_count:Nat,
+    retailer_count:Nat,
+    region_count:Nat
+  ) : (Nat, Nat) {
+    var inventoryCount : Nat = 0;
+    var routeCount : Nat = 0;
+
+    assert(region_count > 0);
+    func min(x:Nat, y:Nat) : Nat = if (x < y) { x } else { y };
+
+    /**- add routes and inventory, across time and space: */
+    for (start_day in range(0, day_count-1)) {
+
+      let max_end_day =
+        min( start_day + max_route_duration,
+             day_count - 1 );
+
+      for (end_day in range(start_day, max_end_day)) {
+
+        /**- consider all pairs of start and end region: */
+        for (start_reg in range(0, region_count - 1)) {
+          for (end_reg in range(0, region_count - 1)) {
+
+            /**- for each producer we choose,
+             add inventory that will be ready on "start_day", but not beforehand.
+             It will remain ready until the end of the day count. */
+
+            for (p in range(0, producer_count - 1)) {
+              /**- choose this producer iff they are located in the start region: */
+              if ((p % region_count) == start_reg) {
+                inventoryCount := inventoryCount + 1;
+              };
+            };
+
+            /**- for each transporter we choose,
+             add a route that will start and end on the current values
+             of `start_day`, `end_day`, `start_reg`, `end_reg`, respectively: */
+
+            for (t in range(0, transporter_count - 1)) {
+              /**- choose this transporter iff their id matches the id of the region, modulo the number of regions: */
+              if ((t % region_count) == start_reg) {
+                routeCount := routeCount + 1;
+              }
+            }
+          };
+        };
+      };
+    };
+
+    return (inventoryCount, routeCount)
+  };
+
+  /**
    `genAddReqs`
    -------------
    generate a list of add requests, based on a set of parameters,
