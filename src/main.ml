@@ -20,7 +20,7 @@ let set_mode m () =
   end;
   mode := m
 
-let compile_mode = ref Pipeline.WasmMode
+let compile_mode = ref Pipeline.DfinityMode
 let out_file = ref ""
 
 let argspec = Arg.align
@@ -35,15 +35,17 @@ let argspec = Arg.align
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
-  "--dfinity",
-    Arg.Unit (fun () -> compile_mode := Pipeline.DfinityMode),
-      " compile for dfinity";
   "--map", Arg.Set Flags.source_map, " output source map";
 
   "-t", Arg.Set Flags.trace, " activate tracing";
   "-iR", Arg.Set Flags.interpret_ir, " interpret the lowered code";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
+
+  "-no-link", Arg.Clear Flags.link, " do not statically link-in runtime";
+  "-no-dfinity-api",
+    Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
+      " do not import the DFINITY system API";
 
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
@@ -88,7 +90,8 @@ let process_files files : unit =
       | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
-    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files) in
+    let module_ = exit_on_failure
+      Pipeline.(compile_files !compile_mode !(Flags.link) files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;

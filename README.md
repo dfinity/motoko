@@ -19,23 +19,13 @@ $ nix-build
 ```
 
 To enter a shell with the necessary dependencies, you can use
-
 ```
 $ nix-shell
 ```
-within this shell you can run `make asc` in `src/` to build the `asc` binary,
-and use the test suite in `src/test`.
-
-
-To build `asc.js`, the JavaScript library, use
-```
-nix-build -A js
-```
-
-
-By default, `dvm` is built using the V8 engine. To build with the Haskell
-engine, pass `--arg v8 false` to any of the above `nix-*` commands.
-
+within this shell you can run
+ * `make asc` in `src/` to build the `asc` binary,
+ * `make` in `rts/` to build the ActorScript runtime
+ * `make` in `test/` to run the test suite.
 
 ## Development without Nix
 
@@ -63,6 +53,11 @@ installing all required tools without nix is out of scope).
    nix-env -i -f . -A wabt
    nix-env -i -f . -A dvm
    ```
+ * Building the ActorScript runtime without nix is tricky. But you can run
+   ```
+   nix-shell --run 'make -C rts'
+   ```
+   to get `rts/as-rts.wasm`.
 
 
 ## Create a coverage report
@@ -94,7 +89,7 @@ Three ways of obtaining the coverage report:
    ```
 2. Run `asc` as normal, e.g.
    ```
-   ./src/asc --dfinity -c foo.as -o foo.wasm
+   ./src/asc -c foo.as -o foo.wasm
    ```
    this should dump a `gmon.out` file in the current directory.
 3. Create the report, e.g. using

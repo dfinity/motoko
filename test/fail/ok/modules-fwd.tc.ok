@@ -1,2 +1,2 @@
-modules-fwd.as:5.9-5.10: type error, field name v does not exist in type
+modules-fwd.as:5.9-5.10: type error, field v does not exist in type
   module {type T = ()}

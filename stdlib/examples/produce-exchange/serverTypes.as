@@ -80,9 +80,11 @@ module {
   type ReservedRouteId = Nat;
 
   /**
-   EntId
-   -------------------------------------------------------------------
-   An entity's ID; the optional payload of an `#idErr` error message
+   `EntId`
+   ----------------
+   An entity's ID, distinguished (by tag) from other kinds of entities with the same ID.
+
+   The optional payload of an `#idErr` error message.
   */
   type EntId = {
     #user        : UserId ;
@@ -97,22 +99,32 @@ module {
   };
 
   /**
-   Errors
-   -----------
+     Errors
+   ===============
   */
 
+  /** Optional entity ID */
   type OpEntId = ?EntId;
 
+  /**
+   `IdErr`
+   ---------
+   An ID error consists only of the `#idErr` case, which carries an optional ID.
+  */
   type IdErr = {
-    // optional for now, to avoid a huge refactoring
     #idErr: OpEntId;
   };
 
+
+  /**
+   `ServerErr`
+   ------------
+   A Server error occurs when the client either has access control issues (e.g., `#publicKeyErr`) or provides invalid parameters (e.g., `#idErr`).
+   */
   type ServerErr = {
     #idErr: OpEntId;
     #publicKeyErr;
   };
-
 
 
   /**
@@ -190,17 +202,6 @@ module {
   };
 
   /**
-  `ReservedInventoryInfo`
-  -----------------------------
-  */
-
-  type ReservedInventoryInfo = shared {
-    id : ReservedInventoryId;
-    retailer : RetailerId;
-    item : InventoryId;
-  };
-
-  /**
   `InventoryInfo`
   -----------------
   */
@@ -215,6 +216,17 @@ module {
     start_date : Date;
     end_date : Date;
     comments : Text;
+  };
+
+  /**
+  `ReservedInventoryInfo`
+  -----------------------------
+  */
+
+  type ReservedInventoryInfo = shared {
+  id : ReservedInventoryId;
+  retailer : RetailerId;
+  item : InventoryInfo;
   };
 
   /**
@@ -269,17 +281,6 @@ module {
   };
 
   /**
-  `ReservedRouteInfo`
-  -----------------
-  */
-
-  type ReservedRouteInfo = shared {
-    id : ReservedRouteId;
-    retailer : RetailerId;
-    route : RouteId;
-  };
-
-  /**
   `RouteInfo`
   -----------------
   */
@@ -293,6 +294,17 @@ module {
     start_date : Date;
     end_date : Date;
     cost : Price;
+  };
+
+  /**
+  `ReservedRouteInfo`
+  -----------------
+  */
+
+  type ReservedRouteInfo = shared {
+    id : ReservedRouteId;
+    retailer : RetailerId;
+    route : RouteInfo;
   };
 
   /**

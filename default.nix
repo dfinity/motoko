@@ -4,7 +4,7 @@
   export-shell ? false,
 }:
 
-let llvm = (import ./nix/llvm.nix); in
+let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -17,18 +17,18 @@ let sourceByRegex = src: regexes: builtins.path
       ( type == "directory"  &&  match (relPath + "/") != null || match relPath != null);
   }; in
 
-let ocaml_wasm = (import ./nix/ocaml-wasm.nix) {
+let ocaml_wasm = import ./nix/ocaml-wasm.nix {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
   inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
 }; in
 
-let ocaml_vlq = (import ./nix/ocaml-vlq.nix) {
+let ocaml_vlq = import ./nix/ocaml-vlq.nix {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml dune;
   inherit (nixpkgs.ocamlPackages) findlib;
 }; in
 
-let ocaml_bisect_ppx = (import ./nix/ocaml-bisect_ppx.nix) nixpkgs; in
-let ocaml_bisect_ppx-ocamlbuild = (import ./nix/ocaml-bisect_ppx-ocamlbuild.nix) nixpkgs; in
+let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
+let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
 
 # Include dvm
 let real-dvm =
@@ -39,9 +39,9 @@ let real-dvm =
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
         ref = "master";
-        rev = "aff35b2a015108f7d1d694471ccaf3ffd6f0340c";
+        rev = "8016991c399761c4d60571d0300426e8482ee1da";
       }; in
-      (import dev {}).dvm
+      (import dev { system = nixpkgs.system; }).dvm
     else null
   else dvm; in
 
@@ -141,8 +141,8 @@ rec {
     '';
   };
 
-  native = stdenv.mkDerivation {
-    name = "asc";
+  asc-bin = stdenv.mkDerivation {
+    name = "asc-bin";
 
     src = sourceByRegex ./. [
       "src/"
@@ -169,6 +169,16 @@ rec {
       mkdir -p $out/bin
       cp src/asc $out/bin
       cp src/as-ld $out/bin
+    '';
+  };
+
+  native = nixpkgs.symlinkJoin {
+    name = "asc";
+    paths = [ asc-bin rts ];
+    buildInputs = [ nixpkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/asc \
+        --set-default ASC_RTS "$out/rts/as-rts.wasm"
     '';
   };
 
@@ -210,8 +220,8 @@ rec {
     '';
   };
 
-  native-coverage = native.overrideAttrs (oldAttrs: {
-    name = "asc-coverage";
+  asc-bin-coverage = asc-bin.overrideAttrs (oldAttrs: {
+    name = "asc-bin-coverage";
     buildPhase =
       "export BISECT_COVERAGE=YES;" +
       oldAttrs.buildPhase;
@@ -221,8 +231,18 @@ rec {
       '';
   });
 
+  native-coverage = nixpkgs.symlinkJoin {
+    name = "asc-covergage";
+    paths = [ asc-bin-coverage rts ];
+    buildInputs = [ nixpkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/asc \
+        --set-default ASC_RTS "$out/rts/as-rts.wasm"
+    '';
+  };
+
   coverage-report = stdenv.mkDerivation {
-    name = "native.coverage";
+    name = "coverage-report";
 
     src = sourceByRegex ./. (
       test_files ++
@@ -257,7 +277,7 @@ rec {
   };
 
 
-  js = native.overrideAttrs (oldAttrs: {
+  js = asc-bin.overrideAttrs (oldAttrs: {
     name = "asc.js";
 
     buildInputs = commonBuildInputs ++ [
@@ -273,13 +293,14 @@ rec {
 
     installPhase = ''
       mkdir -p $out
-      cp src/asc.js $out
+      cp -v src/asc.js $out
+      cp -vr ${rts}/rts $out
     '';
 
     doInstallCheck = true;
 
     installCheckPhase = ''
-      NODE_PATH=$out/ node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
+      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
     '';
 
   });
@@ -404,11 +425,13 @@ rec {
     # https://github.com/NixOS/nix/issues/955
     #
 
-    buildInputs =
-      native.buildInputs ++
-      builtins.filter (i: i != native) native_test.buildInputs ++
+    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != native) (
+      asc-bin.buildInputs ++
+      rts.buildInputs ++
+      native_test.buildInputs ++
       users-guide.buildInputs ++
-      [ nixpkgs.ncurses ];
+      [ nixpkgs.ncurses ]
+    ));
 
     shellHook = llvmEnv;
     TOMMATHSRC = libtommath;

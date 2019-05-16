@@ -112,6 +112,8 @@ Productions marked * probably deferred to later versions.
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>  function
   type <id> <typ-params>? = <typ>                             type
   actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
+  module <id>? =? { <dec>* }                                  module
+  import <id>? =? <text>                                      import
 ```
 
 ## Programs

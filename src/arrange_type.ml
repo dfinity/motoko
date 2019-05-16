@@ -36,12 +36,12 @@ let con c = Atom (Con.to_string c)
 
 let rec typ (t:Type.typ) = match t with
   | Var (s, i)             -> "Var" $$ [Atom s; Atom (string_of_int i)]
-  | Con (c,ts)             -> "Con" $$ (con c::List.map typ ts)
+  | Con (c, ts)            -> "Con" $$ (con c::List.map typ ts)
   | Prim p                 -> "Prim" $$ [prim p]
-  | Obj (s, ts)            -> "Obj" $$ [obj_sort s] @ List.map typ_field ts
+  | Obj (s, tfs)           -> "Obj" $$ [obj_sort s] @ List.map typ_field tfs
   | Array t                -> "Array" $$ [typ t]
   | Opt t                  -> "Opt" $$ [typ t]
-  | Variant cts            -> "Variant" $$ List.map typ_summand cts
+  | Variant tfs            -> "Variant" $$ List.map typ_field tfs
   | Tup ts                 -> "Tup" $$ List.map typ ts
   | Func (s, c, tbs, at, rt) -> "Func" $$ [Atom (sharing s); Atom (control c)] @ List.map typ_bind tbs @ [ "" $$ (List.map typ at); "" $$ (List.map typ rt)]
   | Async t               -> "Async" $$ [typ t]
@@ -58,6 +58,3 @@ and typ_bind (tb : Type.bind) =
 
 and typ_field (tf : Type.field) =
   tf.lab $$ [typ tf.typ]
-
-and typ_summand (c, t) =
-  c $$ [typ t]

@@ -34,7 +34,7 @@ let pat_err m at =
 let rec exp m e = match e.it with
   (* Plain values *)
   | (PrimE _ | LitE _ | FuncE _) -> ()
-  | (VariantE (_, exp1) | OptE exp1) -> exp m exp1
+  | (TagE (_, exp1) | OptE exp1) -> exp m exp1
   | (TupE es | ArrayE (_, es)) -> List.iter (exp m) es
   | ObjE (_, efs) -> fields m efs
 

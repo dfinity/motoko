@@ -1,4 +1,4 @@
-{ stdenv, fetch, cmake, libxml2, llvm, version, clang-tools-extra_src, python
+{ stdenv, fetch, fetchpatch, cmake, libxml2, llvm, version, clang-tools-extra_src, python
 , fixDarwinDylibNames
 , enableManpages ? false
 , enablePolly ? false # TODO: get this info from llvm (passthru?)
@@ -10,8 +10,8 @@ let
 
     unpackPhase = ''
       unpackFile ${fetch "cfe" "1ifvdcjs1dpwm61xk7wlqwmmq0afxj9g7lknpcxsb1w239aza36z"}
+      chmod -R u+w cfe-*
       mv cfe-* clang
-      chmod -R u+w clang
       sourceRoot=$PWD/clang
       unpackFile ${clang-tools-extra_src}
       chmod -R u+w $sourceRoot/tools
@@ -27,6 +27,7 @@ let
 
     cmakeFlags = [
       "-DCMAKE_CXX_FLAGS=-std=c++11"
+      "-DCLANGD_BUILD_XPC=OFF"
     ] ++ stdenv.lib.optionals enableManpages [
       "-DCLANG_INCLUDE_DOCS=ON"
       "-DLLVM_ENABLE_SPHINX=ON"
@@ -38,7 +39,18 @@ let
       "-DLINK_POLLY_INTO_TOOLS=ON"
     ];
 
-    # patches = [ ./purity.patch ];
+    patches = [
+      #./purity.patch
+      # already applied upstream it seems:
+      # ./clang-xpc.patch
+      # Backport for -static-pie, which the latter touches, and which is nice in
+      # its own right.
+      #./static-pie.patch
+      # Backport for the `--unwindlib=[libgcc|complier-rt]` flag, which is
+      # needed for our bootstrapping to not interfere with C.
+      #./unwindlib.patch
+    ];
+
 
     postPatch = ''
       sed -i -e 's/DriverArgs.hasArg(options::OPT_nostdlibinc)/true/' \

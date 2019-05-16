@@ -1,3 +1,4 @@
+{ system } :
 let overlay = self: super:
   with super;
   {
@@ -12,6 +13,7 @@ let overlay = self: super:
   }; in
 
 let pkgs = (import ./nixpkgs-newer.nix) {
+  system = system;
   overlays = [overlay];
  }; in
 

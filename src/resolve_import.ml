@@ -55,7 +55,7 @@ let rec
   | ShowE (_, exp1)
   | ProjE (exp1, _)
   | OptE exp1
-  | VariantE (_, exp1)
+  | TagE (_, exp1)
   | DotE (exp1, _)
   | NotE exp1
   | AssertE exp1

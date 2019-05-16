@@ -10,10 +10,12 @@
 
 //module {
 
-  /*private*/ let P = (import "../../prelude.as");
-  /*private*/ let T = (import "serverTypes.as");
-  /*private*/ let Model = (import "serverModel.as");
-  /*private*/ let Result = (import "../../result.as");
+  /* private */ import P = "../../prelude.as";
+  /* private */ import Option = "../../option.as";
+  /* private */ import T = "serverTypes.as";
+  /* private */ import L = "serverLang.as";
+  /* private */ import Model = "serverModel.as";
+  /* private */ import Result = "../../result.as";
 
   type Result<Ok,Err> = Result.Result<Ok,Err>;
 
@@ -53,9 +55,11 @@
    - `Producer`,
    - `Retailer`, or
    - `Transporter`.
+  */
 
+  /**
 
-   `User`
+ `-User`
    =========
    Messages about users.
 
@@ -803,6 +807,16 @@
     };
 
     /**
+   `allReservedRouteInfo`
+   ---------------------------
+   Get the information for all reserved routes.
+   */
+  allReservedRouteInfo() : async [T.ReservedRouteInfo] {
+    getModel()
+      .reservedRouteTable.allInfo()
+  };
+
+  /**
      `getRouteInfo`
      ---------------------
 
@@ -1018,6 +1032,17 @@
     };
 
 
+  /**
+   `evalBulk`
+   -------------------
+   evaluate a collection of API calls (a "bulk request"), represented as an AS datatype.
+   */
+
+  evalBulkArray(reqs:[L.BulkReq]) : async [L.BulkResp] {
+    getModel().evalBulkArray(reqs)
+  };
+
+
     ///////////////////////////////////////////////////////////////////////////
     // @Omit:
 
@@ -1047,4 +1072,4 @@
    */
   };// end: actor class `Server`
 
-//}
+//} // module

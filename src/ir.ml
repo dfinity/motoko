@@ -25,7 +25,7 @@ and pat' =
   | TupP of pat list                           (* tuple *)
   | ObjP of pat_field list                     (* object *)
   | OptP of pat                                (* option *)
-  | VariantP of id * pat                       (* variant *)
+  | TagP of id * pat                           (* variant *)
   | AltP of pat * pat                          (* disjunctive *)
 
 and pat_field = pat_field' Source.phrase
@@ -48,7 +48,7 @@ and exp' =
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
-  | VariantE of id * exp                       (* variant injection *)
+  | TagE of id * exp                           (* variant injection *)
   | DotE of exp * name                         (* object projection *)
   | ActorDotE of exp * name                    (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
