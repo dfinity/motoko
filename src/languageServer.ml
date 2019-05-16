@@ -34,20 +34,16 @@ let start () =
     log_to_file raw;
 
     let json = Yojson.Basic.from_string raw in
-    let open Yojson.Basic.Util in
-    let jsonrpc = json |> member "jsonrpc" |> to_string in
-    let id = json |> member "id" |> to_int_option in
-    let method_ = json |> member "method" |> to_string in
-    (* let params = json |> member "params" in *)
+    let received = LSP.parse json in
 
     let string_of_int_option =
       function
       | None -> "None"
-      | Some id -> string_of_int id in
+      | Some i -> string_of_int i in
 
-    log_to_file (jsonrpc ^ ", " ^ string_of_int_option id ^ ", " ^ method_);
+    log_to_file (string_of_int_option received.LSP.id ^ ", " ^ received.LSP.method_);
 
-    if method_ = "initialize"
+    if received.LSP.method_ = "initialize"
       then begin
         log_to_file "Handle initialize";
         let capabilities = `Assoc
@@ -56,26 +52,16 @@ let start () =
         let result = `Assoc
           [ ("capabilities", capabilities)
           ] in
-        let response = `Assoc
-          [ ("jsonrpc", `String "2.0")
-          ; ("id", json |> member "id")
-          ; ("result", result)
-          ; ("error", `Null)
-          ] in
+        let response = LSP.response received.LSP.id result `Null in
         respond (Yojson.Basic.pretty_to_string response);
       end
 
-    else if method_ = "initialized"
+    else if received.LSP.method_ = "initialized"
       then begin
         log_to_file "Handle initialized";
-        let params = `Assoc
+        let notification = LSP.notification "window/showMessage"
           [ ("type", `Int 3)
           ; ("message", `String "Language server initialized")
-          ] in
-        let notification = `Assoc
-          [ ("jsonrpc", `String "2.0")
-          ; ("method", `String "window/showMessage")
-          ; ("params", params)
           ] in
         respond (Yojson.Basic.pretty_to_string notification);
       end
