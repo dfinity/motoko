@@ -1097,7 +1097,7 @@ and pub_typ_id id (xs, ys) : region T.Env.t * region T.Env.t =
 and pub_val_id id (xs, ys) : region T.Env.t * region T.Env.t =
   (xs, T.Env.add id.it id.at ys)
 
-(* Module/Scope transformations *)
+(* Object/Scope transformations *)
 
 (* TODO: remove by merging conenv and valenv or by separating typ_fields *)
 
@@ -1156,6 +1156,9 @@ and infer_obj env s fields at : T.typ =
       if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) && not (is_typ_dec ef.it.dec) then
         local_error env ef.it.dec.at "public actor field needs to be a manifest function"
     ) fields
+  end;
+  if not env.pre && s = T.Module then begin
+      Static.fields env.msgs fields
   end;
   t
 
@@ -1290,7 +1293,7 @@ and infer_val_path env exp : T.typ option =
 
 (* Pass 1: collect:
    * type identifiers and their arity,
-   * module identifiers and their fields (if known) (recursively)
+   * object identifiers and their fields (if known) (recursively)
    * other value identifiers at type T.Pre
 *)
 

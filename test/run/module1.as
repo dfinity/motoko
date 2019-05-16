@@ -54,9 +54,10 @@ module Y = {
 
   let x = X.X.x;
   let (x1,x2) : T<Int> = X.X.x;
-  let _ = assert (x1 == 1);
-  let _ = assert (x2 == 2);
 };
+
+let _ = assert (Y.x1 == 1);
+let _ = assert (Y.x2 == 2);
 
 type U<A> = (X.X.T<A>,Y.T<A>);
 

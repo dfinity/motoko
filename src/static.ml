@@ -36,7 +36,7 @@ let rec exp m e = match e.it with
   | (PrimE _ | LitE _ | FuncE _) -> ()
   | (VariantE (_, exp1) | OptE exp1) -> exp m exp1
   | (TupE es | ArrayE (_, es)) -> List.iter (exp m) es
-  | ObjE (_, efs) -> List.iter (fun ef -> dec m ef.it.dec) efs
+  | ObjE (_, efs) -> fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
   | (VarE _ | ImportE _) -> ()
@@ -73,6 +73,8 @@ let rec exp m e = match e.it with
   | SwitchE _
   -> err m e.at
 
+and fields m efs = List.iter (fun ef -> dec m ef.it.dec) efs
+
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
   | ExpD e -> exp m e
@@ -87,6 +89,10 @@ and triv m p = match p.it with
   patterns here.
   *)
   | TupP ps -> List.iter (triv m) ps
+
+  (* TODO:
+    claudio: what about record patterns, singleton variant patterns? These are irrefutable too.
+  *)
 
   (* Everything else is forbidden *)
   | _ -> pat_err m p.at
