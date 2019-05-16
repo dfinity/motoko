@@ -22,32 +22,32 @@ uses are is not.
 */
 
 
-let P = (import "../../prelude.as");
+import P = "../../prelude.as";
 
-let T = (import "serverTypes.as");
-let L = (import "serverLang.as");
-let M = (import "serverModelTypes.as");
+import T = "serverTypes.as";
+import L = "serverLang.as";
+import M = "serverModelTypes.as";
 
 let Hash = (import "../../hash.as").BitVec;
 type Hash = Hash.t;
 
-let Option = (import "../../option.as");
-let Trie = (import "../../trie.as");
+import Option = "../../option.as";
+import Trie = "../../trie.as";
 
 type Trie<K,V> = Trie.Trie<K,V>;
 type Key<K> = Trie.Key<K>;
 
 type Table<K,V> = Trie.Trie<K,V>;
-let Table = (import "../../trie.as");
+let Table = Trie;
 
 type Map<K,V> = Trie.Trie<K,V>;
-let Map = (import "../../trie.as");
+let Map = Trie;
 
-let DT = (import "../../docTable.as");
+import DT = "../../docTable.as";
 let DocTable = DT.DocTable;
 type DocTable<X,Y,Z> = DT.DocTable<X,Y,Z>;
 
-let Result = (import "../../result.as");
+import Result = "../../result.as";
 type Result<Ok,Err> = Result.Result<Ok,Err>;
 
 type RouteInventoryMap = Trie<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;

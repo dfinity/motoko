@@ -32,9 +32,9 @@ Representation
 
 */
 
-let T = (import "serverTypes.as");
+import T = "serverTypes.as";
 
-let Trie = (import "../../trie.as");
+import Trie = "../../trie.as";
 type Trie<K,V> = Trie.Trie<K,V>;
 
 type Map<X, Y> = Trie<X, Y>;
