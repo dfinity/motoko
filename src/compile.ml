@@ -623,7 +623,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_add" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sub" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_mul" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_mod" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_rem" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_div" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_pow" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_neg" [I32Type] [I32Type];
@@ -1998,9 +1998,9 @@ module BigNumLibtommmath : BigNumType = struct
   let compile_mul env = E.call_import env "rts" "bigint_mul"
   let compile_signed_sub env = E.call_import env "rts" "bigint_sub"
   let compile_signed_div env = E.call_import env "rts" "bigint_div"
-  let compile_signed_mod env = E.call_import env "rts" "bigint_mod"
+  let compile_signed_mod env = E.call_import env "rts" "bigint_rem"
   let compile_unsigned_sub env = E.call_import env "rts" "bigint_sub" ^^ assert_nonneg env
-  let compile_unsigned_rem env = E.call_import env "rts" "bigint_mod"
+  let compile_unsigned_rem env = E.call_import env "rts" "bigint_rem"
   let compile_unsigned_div env = E.call_import env "rts" "bigint_div"
   let compile_unsigned_pow env = E.call_import env "rts" "bigint_pow"
 

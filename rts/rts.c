@@ -316,9 +316,11 @@ export as_ptr bigint_div(as_ptr a, as_ptr b) {
   return r;
 }
 
-export as_ptr bigint_mod(as_ptr a, as_ptr b) {
+export as_ptr bigint_rem(as_ptr a, as_ptr b) {
   as_ptr r = bigint_alloc();
-  CHECK(mp_mod(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r)));
+  mp_int quot;
+  CHECK(mp_init(&quot));
+  CHECK(mp_div(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), &quot, BIGINT_PAYLOAD(r)));
   return r;
 }
 
