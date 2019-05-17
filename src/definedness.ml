@@ -120,7 +120,7 @@ let rec exp msgs e : f = match e.it with
   | AssertE e           -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e
   | OptE e              -> exp msgs e
-  | VariantE (_, e)     -> exp msgs e
+  | TagE (_, e)         -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
 
@@ -134,7 +134,7 @@ and pat msgs p : fd = match p.it with
   | LitP l        -> (M.empty, S.empty)
   | SignP (uo, l) -> (M.empty, S.empty)
   | OptP p
-  | VariantP (_, p) -> pat msgs p
+  | TagP (_, p)   -> pat msgs p
   | AltP (p1, p2) -> pat msgs p1 ++++ pat msgs p2
 
 and pats msgs ps : fd = union_binders (pat msgs) ps
@@ -198,4 +198,8 @@ and decs msgs decs : f =
   M.disjoint_union (map_of_set Eager e) (map_of_set Delayed d) |>
     M.filter (fun v _ -> M.mem v defWhen = false)
 
-let check_prog msgs prog = ignore (decs msgs prog.it)
+let check_prog prog =
+  Diag.with_message_store (fun msgs ->
+    ignore (decs msgs prog.it);
+    Some ()
+  )

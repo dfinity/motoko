@@ -1,3 +1,5 @@
+let P = (import "prelude.as");
+
 /**
 
  Result
@@ -17,17 +19,6 @@ type Result<Ok,Err> = {
 };
 
 
-/**
- `unwrapOptionResult`
- ---------------
- to do: rename me. cc @paulyoung.
-*/
-func optionUnwrapResult<Ok>(o:?Ok):Result<Ok,None> {
-  switch(o) {
-    case (?o) (#ok o);
-    case _ unreachable();
-  }
-};
 
 /**
  `assertUnwrap`
@@ -36,7 +27,7 @@ func optionUnwrapResult<Ok>(o:?Ok):Result<Ok,None> {
 */
 func assertUnwrap<Ok,Error>(r:Result<Ok,Error>):Ok {
   switch(r) {
-    case (#err e) unreachable();
+    case (#err e) P.unreachable();
     case (#ok r) r;
   }
 };
@@ -47,7 +38,7 @@ func assertUnwrap<Ok,Error>(r:Result<Ok,Error>):Ok {
  */
 func assertUnwrapAny<Ok>(r:Result<Ok,Any>):Ok {
   switch(r) {
-    case (#err e) unreachable();
+    case (#err e) P.unreachable();
     case (#ok r) r;
   }
 };
@@ -75,6 +66,24 @@ func assertErr(r:Result<Any,Any>) {
 };
 
 /**
+ `assertErrIs`
+ ---------------
+*/
+func assertErrIs<E>(r:Result<Any,E>, f:E->Bool) : Bool =
+  assertErrAs<E,Bool>(r, f);
+
+/**
+ `assertErrAs`
+ ---------------
+*/
+func assertErrAs<E,X>(r:Result<Any,E>, f:E->X) : X {
+  switch(r) {
+    case (#err e) f e;
+    case (#ok _) P.unreachable();
+  }
+};
+
+/**
  `bind`
  -------
  bind operation in result monad.
@@ -88,14 +97,70 @@ func bind<R1,R2,Error>(
   }
 };
 
+
 /**
- `option`
+ `mapOk`
  -------
+ map the `Ok` type/value, leaving any `Error` type/value unchanged.
+*/
+func mapOk<Ok1,Ok2,Error>(
+  x:Result<Ok1,Error>,
+  y:Ok1 -> Ok2) : Result<Ok2,Error> {
+  switch x {
+  case (#err e) (#err e);
+  case (#ok r) (#ok (y r));
+  }
+};
+
+/**
+ `fromOption`
+ --------------
  create a result from an option, including an error value to handle the `null` case.
 */
-func optionResult<R,E>(x:?R, err:E):Result<R,E> {
+func fromOption<R,E>(x:?R, err:E):Result<R,E> {
   switch x {
     case (? x) {#ok x};
     case null {#err err};
   }
+};
+
+/**
+ `fromSomeMap`
+ --------------
+ map the `Ok` type/value from the optional value, or else use the given error value.
+*/
+func fromSomeMap<R1,R2,E>(x:?R1, f:R1->R2, err:E):Result<R2,E> {
+  switch x {
+    case (? x) {#ok (f x)};
+    case null {#err err};
+  }
+};
+
+/**
+ `fromSome`
+ ---------------
+ asserts that the option is Some(_) form.
+*/
+func fromSome<Ok>(o:?Ok):Result<Ok,None> {
+  switch(o) {
+    case (?o) (#ok o);
+    case _ P.unreachable();
+  }
+};
+
+/**
+ `joinArrayIfOk`
+ ---------------
+ a result that consists of an array of Ok results from an array of results, or the first error in the result array, if any.
+*/
+func joinArrayIfOk<R,E>(x:[Result<R,E>]) : Result<[R],E> {
+  /**- return early with the first Err result, if any */
+  for (i in x.keys()) {
+    switch (x[i]) {
+      case (#err e) { return #err(e) };
+      case (#ok _) { };
+    }
+  };
+  /**- all of the results are Ok; tabulate them. */
+  #ok(Array_tabulate<R>(x.len(), func (i:Nat):R { assertUnwrap<R,E>(x[i]) }))
 };

@@ -73,8 +73,8 @@ and t_exp' context exp' =
     TupE (List.map (t_exp context) exps)
   | OptE exp1 ->
     OptE (t_exp context exp1)
-  | VariantE (id, exp1) ->
-    VariantE (id, t_exp context exp1)
+  | TagE (id, exp1) ->
+    TagE (id, t_exp context exp1)
   | ProjE (exp1, n) ->
     ProjE (t_exp context exp1, n)
   | DotE (exp1, id) ->
@@ -249,8 +249,8 @@ and c_exp' context exp k =
     nary context k (fun vs -> e (TupE vs)) exps
   | OptE exp1 ->
     unary context k (fun v1 -> e (OptE v1)) exp1
-  | VariantE (i, exp1) ->
-    unary context k (fun v1 -> e (VariantE (i, v1))) exp1
+  | TagE (i, exp1) ->
+    unary context k (fun v1 -> e (TagE (i, v1))) exp1
   | ProjE (exp1, n) ->
     unary context k (fun v1 -> e (ProjE (v1, n))) exp1
   | ActorE _ ->
@@ -411,7 +411,7 @@ and declare_pat pat exp : exp =
   | TupP pats -> declare_pats pats exp
   | ObjP pfs -> declare_pats (pats_of_obj_pat pfs) exp
   | OptP pat1
-  | VariantP (_, pat1) -> declare_pat pat1 exp
+  | TagP (_, pat1) -> declare_pat pat1 exp
   | AltP (pat1, pat2) -> declare_pat pat1 exp
 
 and declare_pats pats exp : exp =
@@ -442,9 +442,9 @@ and rename_pat' pat =
   | OptP pat1 ->
     let (patenv,pat1) = rename_pat pat1 in
     (patenv, OptP pat1)
-  | VariantP (i, pat1) ->
+  | TagP (i, pat1) ->
     let (patenv,pat1) = rename_pat pat1 in
-    (patenv, VariantP (i, pat1))
+    (patenv, TagP (i, pat1))
   | AltP (pat1,pat2) ->
     assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
     assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));
@@ -468,7 +468,7 @@ and define_pat patenv pat : dec list =
   | TupP pats -> define_pats patenv pats
   | ObjP pfs -> define_pats patenv (pats_of_obj_pat pfs)
   | OptP pat1
-  | VariantP (_, pat1) -> define_pat patenv pat1
+  | TagP (_, pat1) -> define_pat patenv pat1
   | AltP (pat1, pat2) ->
     assert(Freevars.S.is_empty (snd (Freevars.pat pat1)));
     assert(Freevars.S.is_empty (snd (Freevars.pat pat2)));

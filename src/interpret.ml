@@ -142,14 +142,13 @@ let await at async k =
   if !Flags.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
-      Scheduler.queue (fun () ->
-          if !Flags.trace then
-            trace "<- await %s%s" (string_of_region at) (string_of_arg v);
-          incr trace_depth;
-          k v
-        )
+    Scheduler.queue (fun () ->
+      if !Flags.trace then
+        trace "<- await %s%s" (string_of_region at) (string_of_arg v);
+      incr trace_depth;
+      k v
     )
-(*;  Scheduler.yield () *)
+  )
 
 let actor_msg id f v (k : V.value V.cont) =
   if !Flags.trace then trace "-> message %s%s" id (string_of_arg v);
@@ -167,9 +166,8 @@ let make_unit_message id v =
       actor_msg id f v (fun _ -> ());
       k V.unit
     )
-  | _ ->
+  | _ -> (* assert false *)
     failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
-    (* assert (false) *)
 
 let make_async_message id v =
   let call_conv, f = V.as_func v in
@@ -182,18 +180,16 @@ let make_async_message id v =
       );
       k (V.Async async)
     )
-  | _ ->
+  | _ -> (* assert false *)
     failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
-    (* assert (false) *)
 
 
 let make_message name t v : V.value =
   match t with
   | T.Func (_, _, _, _, []) -> make_unit_message name v
   | T.Func (_, _, _, _, [T.Async _]) -> make_async_message name v
-  | _ ->
+  | _ -> (* assert false *)
     failwith (Printf.sprintf "actorfield: %s %s" name (T.string_of_typ t))
-    (* assert false *)
 
 
 (* Literals *)
@@ -219,25 +215,31 @@ let interpret_lit env lit : V.value =
 let check_call_conv exp call_conv =
   let exp_call_conv = V.call_conv_of_typ exp.note.note_typ in
   if not (exp_call_conv = call_conv) then
-    failwith (Printf.sprintf "call_conv mismatch: function %s of type %s expecting %s, found %s"
+    failwith (Printf.sprintf
+      "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
       (T.string_of_typ exp.note.note_typ)
       (V.string_of_call_conv exp_call_conv)
-      (V.string_of_call_conv call_conv))
+      (V.string_of_call_conv call_conv)
+    )
 
 let check_call_conv_arg exp v call_conv =
   if call_conv.V.n_args <> 1 then
-  let es = try V.as_tup v
-    with Invalid_argument _ ->
-      failwith (Printf.sprintf "call %s: calling convention %s cannot handle non-tuple value %s"
-        (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
-        (V.string_of_call_conv call_conv)
-        (V.string_of_val v)) in
+  let es = try V.as_tup v with Invalid_argument _ ->
+    failwith (Printf.sprintf
+      "call %s: calling convention %s cannot handle non-tuple value %s"
+      (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+      (V.string_of_call_conv call_conv)
+      (V.string_of_val v)
+    )
+  in
   if List.length es <> call_conv.V.n_args then
-    failwith (Printf.sprintf "call %s: calling convention %s got tuple of wrong length %s"
-        (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
-        (V.string_of_call_conv call_conv)
-        (V.string_of_val v))
+    failwith (Printf.sprintf
+      "call %s: calling convention %s got tuple of wrong length %s"
+      (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+      (V.string_of_call_conv call_conv)
+      (V.string_of_val v)
+    )
 
 
 let rec interpret_exp env exp (k : V.value V.cont) =
@@ -286,7 +288,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, fields) ->
     interpret_obj env sort fields k
-  | VariantE (i, exp1) ->
+  | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
@@ -324,12 +326,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     in k v'
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
-        interpret_exp env exp2 (fun v2 ->
-            let call_conv, f = V.as_func v1 in
-            check_call_conv exp1 call_conv;
-            check_call_conv_arg exp v2 call_conv;
-            f v2 k
-
+      interpret_exp env exp2 (fun v2 ->
+        let call_conv, f = V.as_func v1 in
+        check_call_conv exp1 call_conv;
+        check_call_conv_arg exp v2 call_conv;
+        f v2 k
 (*
         try
           let _, f = V.as_func v1 in f v2 k
@@ -460,7 +461,7 @@ and declare_pat pat : val_env =
   | TupP pats -> declare_pats pats V.Env.empty
   | ObjP pfs -> declare_pat_fields pfs V.Env.empty
   | OptP pat1
-  | VariantP (_, pat1)
+  | TagP (_, pat1)
   | AltP (pat1, _)    (* both have empty binders *)
   | AnnotP (pat1, _)
   | ParP pat1 -> declare_pat pat1
@@ -499,7 +500,7 @@ and define_pat env pat v =
       trap pat.at "value %s does not match pattern" (V.string_of_val v)
     | _ -> assert false
     )
-  | VariantP (_, pat1)
+  | TagP (_, pat1)
   | AnnotP (pat1, _)
   | ParP pat1 -> define_pat env pat1 v
 
@@ -550,7 +551,7 @@ and match_pat pat v : val_env option =
     | V.Null -> None
     | _ -> assert false
     )
-  | VariantP (i, pat1) ->
+  | TagP (i, pat1) ->
     let k, v1 = V.as_variant v in
     if i.it = k
     then match_pat pat1 v1
@@ -562,7 +563,7 @@ and match_pat pat v : val_env option =
     )
   | AnnotP (pat1, _)
   | ParP pat1 ->
-     match_pat pat1 v
+    match_pat pat1 v
 
 and match_pats pats vs ve : val_env option =
   match pats, vs with
@@ -699,16 +700,25 @@ and interpret_func env name pat f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog scope p : V.value option * scope =
-  let env = env_of_scope scope in
-  trace_depth := 0;
-  let vo = ref None in
-  let ve = ref V.Env.empty in
-  Scheduler.queue (fun () ->
-    interpret_block env p.it (Some ve) (fun v -> vo := Some v)
-  );
-  Scheduler.run ();
-  !vo, { val_env = !ve; lib_env = scope.lib_env }
+let interpret_prog scope p : (V.value * scope) option =
+  try
+    let env = env_of_scope scope in
+    trace_depth := 0;
+    let vo = ref None in
+    let ve = ref V.Env.empty in
+    Scheduler.queue (fun () ->
+      interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+    );
+    Scheduler.run ();
+    let scope = { val_env = !ve; lib_env = scope.lib_env } in
+    match !vo with
+    | Some v -> Some (v, scope)
+    | None -> None
+  with exn ->
+    (* For debugging, should never happen. *)
+    print_exn exn;
+    None
+
 
 let interpret_library scope (filename, p) : scope =
   let env = env_of_scope scope in

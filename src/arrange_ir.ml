@@ -34,7 +34,7 @@ let rec exp e = match e.it with
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
   | OptE e              -> "OptE"    $$ [exp e]
-  | VariantE (i, e)     -> "VariantE" $$ [id i; exp e]
+  | TagE (i, e)         -> "TagE" $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; Arrange.mut m; exp e1]
@@ -58,7 +58,7 @@ and pat p = match p.it with
   | ObjP pfs        -> "ObjP"       $$ List.map pat_field pfs
   | LitP l          -> "LitP"       $$ [ Arrange.lit l ]
   | OptP p          -> "OptP"       $$ [ pat p ]
-  | VariantP (i, p) -> "VariantP"   $$ [ id i; pat p ]
+  | TagP (i, p)     -> "TagP"       $$ [ id i; pat p ]
   | AltP (p1,p2)    -> "AltP"       $$ [ pat p1; pat p2 ]
 
 and pat_field pf = name pf.it.name $$ [pat pf.it.pat]

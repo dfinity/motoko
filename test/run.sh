@@ -7,7 +7,7 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Compile with --dfinity, use dvm to run
+#    -d: Compile without -no-dfinity-api, uses dvm to run
 #    -s: Be silent in sunny-day execution
 #
 
@@ -20,6 +20,8 @@ ACCEPT=no
 DFINITY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
+AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
+export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 ECHO=echo
@@ -31,13 +33,17 @@ while getopts "ads" o; do
             ;;
         d)
             DFINITY=yes
-            EXTRA_ASC_FLAGS=--dfinity
             ;;
         s)
             ECHO=true
             ;;
     esac
 done
+
+if [ $DFINITY = "no" ]
+then
+    EXTRA_ASC_FLAGS=-no-dfinity-api
+fi
 
 shift $((OPTIND-1))
 
@@ -72,8 +78,10 @@ do
   then base=$(basename $file .as)
   elif [ ${file: -3} == ".sh" ]
   then base=$(basename $file .sh)
+  elif [ ${file: -4} == ".wat" ]
+  then base=$(basename $file .wat)
   else
-    echo "Unknown file extension in $file, expected .as or .sh"; exit 1
+    echo "Unknown file extension in $file, expected .as, .sh or .wat"; exit 1
     failures=yes
     continue
   fi
@@ -89,7 +97,11 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run,filecheck,diff-ir,diff-low,stdout,stderr}
+  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat}
+  if [ $ACCEPT = yes ]
+  then
+    rm -f $ok/$base.{tc,wasm,wasm.map,wasm-run,dvm-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat}.ok
+  fi
 
   # First run all the steps, and remember what to diff
   diff_files=
@@ -166,18 +178,34 @@ do
             diff_files="$diff_files $base.dvm-run"
           else
             $ECHO -n " [wasm-run]"
-            $WASM _out/$base.wasm  > $out/$base.wasm-run 2>&1
+            $WASM $out/$base.wasm  > $out/$base.wasm-run 2>&1
             normalize $out/$base.wasm-run
             diff_files="$diff_files $base.wasm-run"
           fi
         fi
       fi
     fi
-  else
+  elif [ ${file: -3} == ".sh" ]
+  then
     # The file is a shell script, just run it
     $ECHO -n " [out]"
     ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"
+  else
+    # The file is a .wat file, so we are expected to test linking
+    $ECHO -n " [as-ld]"
+    rm -f $out/$base.{base,lib,linked}.{wasm,wat,o}
+    make --quiet $out/$base.{base,lib}.wasm
+    $AS_LD -b $out/$base.base.wasm -l $out/$base.lib.wasm -o $out/$base.linked.wasm > $out/$base.as-ld 2>&1
+    diff_files="$diff_files $base.as-ld"
+
+    if [ -e $out/$base.linked.wasm ]
+    then
+        $ECHO -n " [wat]"
+	wasm2wat $out/$base.linked.wasm -o $out/$base.linked.wat 2> $out/$base.linked.wat.stderr
+        diff_files="$diff_files $base.linked.wat $base.linked.wat.stderr"
+    fi
+
   fi
   $ECHO ""
 
@@ -195,8 +223,11 @@ do
   else
     for file in $diff_files
     do
-      diff -a -u -N --label "$file (expected)" $ok/$file.ok --label "$file (actual)" $out/$file
-      if [ $? != 0 ]; then failures=yes; fi
+      if [ -e $ok/$file.ok -o -e $out/$file ]
+      then
+        diff -a -u -N --label "$file (expected)" $ok/$file.ok --label "$file (actual)" $out/$file
+        if [ $? != 0 ]; then failures=yes; fi
+      fi
     done
   fi
   popd >/dev/null

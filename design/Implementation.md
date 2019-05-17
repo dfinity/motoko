@@ -36,7 +36,7 @@
 
 * Flattened when used as function parameter or result.
 
-* Q: How avoid calling convention mismatch when instantiating polymorphic function with tuple type?
+* Q: How to avoid calling convention mismatch when instantiating polymorphic function with tuple type?
   - Don't make tuples subtypes of Any, thereby disallowing their use in instantiation?
 
 
@@ -72,7 +72,7 @@
 
 * Compile to immediately instantiated modules.
 
-* Private field become regular globals or functions.
+* Private fields become regular globals or functions.
 
 * Public methods become exported functions.
   - In general, have to generate wrapper functions to forward external calls to pre-existing local closure.

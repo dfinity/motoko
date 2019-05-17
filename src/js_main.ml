@@ -59,7 +59,7 @@ let js_compile_with mode_string source_map source convert =
 
 let js_compile_wasm mode source_map s =
   js_compile_with mode source_map s
-    (fun m -> let (map, wasm) = CustomModule.encode m in Js.bytestring wasm, Js.string map)
+    (fun m -> let (map, wasm) = CustomModuleEncode.encode m in Js.bytestring wasm, Js.string map)
 
 let () =
   Js.export "ActorScript"
