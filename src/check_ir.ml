@@ -739,7 +739,7 @@ and gather_dec env scope dec : scope =
 
 and gather_typ env ce typ =
    match typ with
-   | T.Obj( _, fs) ->
+   | T.Obj(_, fs) ->
      List.fold_right (fun {T.lab;T.typ = typ1} ce ->
          match typ1 with
          | T.Typ c -> T.ConSet.add c ce

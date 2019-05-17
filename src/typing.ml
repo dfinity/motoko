@@ -1166,23 +1166,21 @@ and infer_obj env s fields at : T.typ =
   let _, scope = infer_block env decs at in
   let t = object_of_scope env s fields scope at in
   let (_, tfs) = T.as_obj t in
-  if not env.pre && (s = T.Object T.Sharable || s = T.Actor) then begin
+  if not env.pre then begin
+    if s = T.Object T.Sharable || s = T.Actor then
       List.iter (fun T.{lab; typ} ->
           if  (not (T.is_typ typ)) && not (T.sub typ T.Shared) then
             let _, pub_val = pub_fields fields in
             error env (T.Env.find lab pub_val)
               "public shared object or actor field %s has non-shared type\n  %s"
               lab (T.string_of_typ_expand typ)
-        ) tfs
-  end;
-  if not env.pre && s = T.Actor then begin
-    List.iter (fun ef ->
-      if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) && not (is_typ_dec ef.it.dec) then
-        local_error env ef.it.dec.at "public actor field needs to be a manifest function"
-    ) fields
-  end;
-  if not env.pre && s = T.Module then begin
-      Static.fields env.msgs fields
+        ) tfs;
+    if s = T.Actor then
+      List.iter (fun ef ->
+          if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) && not (is_typ_dec ef.it.dec) then
+            local_error env ef.it.dec.at "public actor field needs to be a manifest function"
+        ) fields;
+    if s = T.Module then Static.fields env.msgs fields
   end;
   t
 

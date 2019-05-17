@@ -330,23 +330,19 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
                 ; note = t
                 }
               , e
-                (*
-                { it = Syntax.BlockE prog.it
-                ; at = no_region
-                ; note = typ_note
-                }
-                 *)
               )
      ; at = no_region
      ; note = typ_note
      }
   (* HACK: to be removed once we restrict programs to expressions *)
   |  ds ->
-  Diag.(print_message { sev = Warning;
+     Diag.(print_message { sev = Warning;
                            at = prog.at;
                            cat = "import";
                            text =
-                             "imported declarations as module; rewrite program as module instead."});
+                             "imported declarations as module; rewrite program as module instead."
+                         }
+           );
      { it = Syntax.LetD
               (
                 { it = Syntax.VarP (id_of_full_path f)
@@ -359,7 +355,6 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
                 ; note = typ_note
                 }
               )
-
      ; at = no_region
      ; note = typ_note
      }
