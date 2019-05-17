@@ -17,7 +17,7 @@ let rec concat ppf f env sep list =
 let rec pp_typ ppf env t =
   pp_open_box ppf 1;
   (match t.it with
-  | VarT s -> pp_print_string ppf s.it; str ppf "()"
+  | VarT s -> id ppf s  (*pp_print_string ppf s.it; str ppf "()"*)
   | PrimT p -> str ppf ("IDL."^(Arrange_idl.string_of_prim p))
   | RecordT ts -> pp_fields ppf env ts
   | VecT t -> str ppf "IDL.Arr("; pp_typ ppf env t; str ppf ")";
@@ -65,7 +65,7 @@ let pp_dec ppf env dec =
    | TypD (x, t) ->
       kwd ppf x.it;
       kwd ppf "=";
-      kwd ppf "()"; kwd ppf "=>";
+      (*kwd ppf "()"; kwd ppf "=>";*)
       pp_typ ppf env t
   );
   pp_close_box ppf ();
