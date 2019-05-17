@@ -81,7 +81,7 @@ type initialize_params =
   (*; rootUri : document_uri nullable*)
   (*; ?initializationOptions : any*)
   (*; capabilities : client_capabilities*)
-  (*; ?trace : trace nullable*)
+  ; ?trace : trace nullable
   (*; ?workspaceFolders : (workspace_folder list) nullable*)
   }
 

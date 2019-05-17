@@ -39,6 +39,14 @@ let start () =
     (* Request messages *)
 
     | (Some id, `Initialize params) ->
+        (match params.Lsp_t.trace with
+        | Some trace -> (match trace with
+                        | `Off -> log_to_file "trace: Off"
+                        | `Messages -> log_to_file "trace: Messages"
+                        | `Verbose -> log_to_file "trace: Verbose"
+                        );
+        | None -> log_to_file "trace: null"
+        );
         let result = `Initialize (Lsp_t.
           { capabilities =
               { hoverProvider = Some false
