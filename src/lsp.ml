@@ -21,10 +21,10 @@ let notification params = Lsp_t.
   ; notification_message_params = params
   }
 
-let response_result id result = Lsp_t.
+let response_result_message id result = Lsp_t.
   { response_message_jsonrpc = jsonrpc_version
   ; response_message_id = id
   ; response_message_result = Some result
   }
 
-(* let response_error id error = *)
+(* let response_error_message id error = *)

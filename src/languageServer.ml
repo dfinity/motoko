@@ -44,7 +44,7 @@ let start () =
               { hoverProvider = Some false
               }
           }) in
-        let response = Lsp.response_result id result in
+        let response = Lsp.response_result_message id result in
         send (Lsp_j.string_of_response_message response);
 
 
