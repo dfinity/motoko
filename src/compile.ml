@@ -377,6 +377,16 @@ module E = struct
       env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
     else assert false (* "add all imports before all functions!" *)
 
+  let call_import (env : t) modname funcname =
+    let name = modname ^ "_" ^ funcname in
+    let fi = match NameEnv.find_opt name !(env.built_in_funcs) with
+      | Some (Defined fi) -> fi
+      | _ ->
+        Printf.eprintf "Function import not declared: %s.%s\n" modname funcname;
+        assert false
+    in
+    G.i (Call (nr fi))
+
 
   let add_label (env : t) name (d : G.depth) =
       { env with ld = NameEnv.add name.it d env.ld }
@@ -747,8 +757,7 @@ module Heap = struct
 
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
-  let memcpy env =
-    G.i (Call (nr (E.built_in env "rts_as_memcpy")))
+  let memcpy env = E.call_import env "rts" "as_memcpy"
 
   (* Copying words (works on skewed memory addresses) *)
   let memcpy_words_skewed env =
@@ -1928,16 +1937,16 @@ end
 
 module BigNumLibtommmath : BigNumType = struct
 
-  let to_word32 env = G.i (Call (nr (E.built_in env "rts_bigint_to_word32_trap")))
-  let to_word64 env = G.i (Call (nr (E.built_in env "rts_bigint_to_word64_trap")))
+  let to_word32 env = E.call_import env "rts" "bigint_to_word32_trap"
+  let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
 
-  let truncate_to_word32 env = G.i (Call (nr (E.built_in env "rts_bigint_to_word32_wrap")))
-  let _truncate_to_word64 env = G.i (Call (nr (E.built_in env "rts_bigint_to_word64_wrap")))
+  let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
+  let _truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
 
-  let from_word32 env = G.i (Call (nr (E.built_in env "rts_bigint_of_word32")))
-  let from_word64 env = G.i (Call (nr (E.built_in env "rts_bigint_of_word64")))
-  let from_signed_word32 env = G.i (Call (nr (E.built_in env "rts_bigint_of_word32_signed")))
-  let _from_signed_word64 env = G.i (Call (nr (E.built_in env "rts_bigint_of_word64_signed")))
+  let from_word32 env = E.call_import env "rts" "bigint_of_word32"
+  let from_word64 env = E.call_import env "rts" "bigint_of_word64"
+  let from_signed_word32 env = E.call_import env "rts" "bigint_of_word32_signed"
+  let _from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
 
   (* TODO: Actually change binary encoding *)
   let compile_data_size env = G.i Drop ^^ compile_unboxed_const 8l
@@ -1955,7 +1964,7 @@ module BigNumLibtommmath : BigNumType = struct
     let twoto = Big_int.power_int_positive_int 2 limb_size in
 
     compile_unboxed_const 0l ^^
-    G.i (Call (nr (E.built_in env "rts_bigint_of_word32"))) ^^
+    E.call_import env "rts" "bigint_of_word32" ^^
 
     let rec go n =
       if Big_int.sign_big_int n = 0
@@ -1964,39 +1973,39 @@ module BigNumLibtommmath : BigNumType = struct
         let (a, b) = Big_int.quomod_big_int n twoto in
         go a ^^
         compile_unboxed_const (Int32.of_int limb_size) ^^
-        G.i (Call (nr (E.built_in env "rts_bigint_lsh"))) ^^
+        E.call_import env "rts" "bigint_lsh" ^^
         compile_unboxed_const (Big_int.int32_of_big_int b) ^^
-        G.i (Call (nr (E.built_in env "rts_bigint_of_word32"))) ^^
-        G.i (Call (nr (E.built_in env "rts_bigint_add"))) in
+        E.call_import env "rts" "bigint_of_word32" ^^
+        E.call_import env "rts" "bigint_add" in
 
     go (Big_int.abs_big_int n) ^^
 
     if Big_int.sign_big_int n < 0
-      then G.i (Call (nr (E.built_in env "rts_bigint_neg")))
+      then E.call_import env "rts" "bigint_neg"
       else G.nop
 
   let assert_nonneg env =
     Func.share_code1 env "assert_nonneg" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
-      G.i (Call (nr (E.built_in env "rts_bigint_isneg"))) ^^
+      E.call_import env "rts" "bigint_isneg" ^^
       E.then_trap_with env "Natural subtraction underflow" ^^
       get_n
     )
 
-  let compile_abs env = G.i (Call (nr (E.built_in env "rts_bigint_abs")))
-  let compile_neg env = G.i (Call (nr (E.built_in env "rts_bigint_neg")))
-  let compile_add env = G.i (Call (nr (E.built_in env "rts_bigint_add")))
-  let compile_mul env = G.i (Call (nr (E.built_in env "rts_bigint_mul")))
-  let compile_signed_sub env = G.i (Call (nr (E.built_in env "rts_bigint_sub")))
-  let compile_signed_div env = G.i (Call (nr (E.built_in env "rts_bigint_div")))
-  let compile_signed_mod env = G.i (Call (nr (E.built_in env "rts_bigint_mod")))
-  let compile_unsigned_sub env = G.i (Call (nr (E.built_in env "rts_bigint_sub"))) ^^ assert_nonneg env
-  let compile_unsigned_rem env = G.i (Call (nr (E.built_in env "rts_bigint_mod")))
-  let compile_unsigned_div env = G.i (Call (nr (E.built_in env "rts_bigint_div")))
-  let compile_unsigned_pow env = G.i (Call (nr (E.built_in env "rts_bigint_pow")))
+  let compile_abs env = E.call_import env "rts" "bigint_abs"
+  let compile_neg env = E.call_import env "rts" "bigint_neg"
+  let compile_add env = E.call_import env "rts" "bigint_add"
+  let compile_mul env = E.call_import env "rts" "bigint_mul"
+  let compile_signed_sub env = E.call_import env "rts" "bigint_sub"
+  let compile_signed_div env = E.call_import env "rts" "bigint_div"
+  let compile_signed_mod env = E.call_import env "rts" "bigint_mod"
+  let compile_unsigned_sub env = E.call_import env "rts" "bigint_sub" ^^ assert_nonneg env
+  let compile_unsigned_rem env = E.call_import env "rts" "bigint_mod"
+  let compile_unsigned_div env = E.call_import env "rts" "bigint_div"
+  let compile_unsigned_pow env = E.call_import env "rts" "bigint_pow"
 
-  let compile_eq env = G.i (Call (nr (E.built_in env "rts_bigint_eq")))
-  let compile_is_negative env = G.i (Call (nr (E.built_in env "rts_bigint_isneg")))
+  let compile_eq env = E.call_import env "rts" "bigint_eq"
+  let compile_is_negative env = E.call_import env "rts" "bigint_isneg"
   let compile_relop env op =
     let fn = match op with
       | Lt -> "rts_bigint_lt"
@@ -4581,7 +4590,7 @@ and compile_exp (env : E.t) exp =
        | "rts_version" ->
          SR.Vanilla,
          compile_exp_as env SR.unit e ^^
-         G.i (Call (nr (E.built_in env "rts_version")))
+         E.call_import env "rts" "version"
 
        | "Nat->Word8"
        | "Int->Word8" ->
@@ -5159,6 +5168,7 @@ This function compiles the prelude, just to find out the bound names.
 and find_prelude_names env =
   (* Create a throw-away environment *)
   let env0 = E.mk_global (E.mode env) None (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
+  RTS.system_imports env0;
   let env1 = E.mk_fun_env env0 0l 0 in
   let (env2, _) = compile_prelude env1 in
   E.in_scope_set env2
