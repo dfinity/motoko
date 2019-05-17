@@ -31,48 +31,26 @@ let start () =
     let raw = Buffer.contents buffer in
     log_to_file raw;
 
-    let json = Yojson.Basic.from_string raw in
+    let json = Lsp2_j.incoming_message_of_string raw in
 
-    let json2 = Lsp2_j.incoming_message_of_string raw in
-    let jsonrpc = json2.Lsp2_t.incoming_message_jsonrpc in
-    (* let method_ = Lsp2_j.string_of_incoming_message_method json2.Lsp2_t.incoming_message_method in *)
-    (* log_to_file ("jsonrpc: " ^ jsonrpc ^ ", method: " ^ method_); *)
-    log_to_file ("jsonrpc: " ^ jsonrpc);
-
-    let received = LSP.parse json in
-
-    let string_of_int_option =
-      function
-      | None -> "None"
-      | Some i -> string_of_int i in
-
-    log_to_file (string_of_int_option received.LSP.id ^ ", " ^ received.LSP.method_);
-
-    if received.LSP.method_ = "initialize"
-      then begin
+    match json.Lsp2_t.incoming_message_params with
+    | `Initialize params ->
         log_to_file "Handle initialize";
-        let capabilities = `Assoc
-          [ ("textDocumentSync", `Null)
-          ] in
-        let result = `Assoc
-          [ ("capabilities", capabilities)
-          ] in
-        let response = LSP.response received.LSP.id result `Null in
-        respond (Yojson.Basic.pretty_to_string response);
-      end
-
-    else if received.LSP.method_ = "initialized"
-      then begin
+        (* let capabilities = `Assoc
+         *   [ ("textDocumentSync", `Null)
+         *   ] in
+         * let result = `Assoc
+         *   [ ("capabilities", capabilities)
+         *   ] in
+         * let response = LSP.response received.LSP.id result `Null in
+         * respond (Yojson.Basic.pretty_to_string response); *)
+    | `Initialized _ ->
         log_to_file "Handle initialized";
-        let notification = LSP.notification "window/showMessage"
-          [ ("type", `Int 3)
-          ; ("message", `String "Language server initialized")
-          ] in
-        respond (Yojson.Basic.pretty_to_string notification);
-      end
-
-    else
-      loop ();
+        (* let notification = LSP.notification "window/showMessage"
+         *   [ ("type", `Int 3)
+         *   ; ("message", `String "Language server initialized")
+         *   ] in
+         * respond (Yojson.Basic.pretty_to_string notification); *)
 
     loop ()
   in loop ()
