@@ -34,7 +34,7 @@ let start () =
     let message = Lsp2_j.incoming_message_of_string raw in
     let message_id = message.Lsp2_t.incoming_message_id in
 
-    match (message_id, message.Lsp2_t.incoming_message_params) with
+    (match (message_id, message.Lsp2_t.incoming_message_params) with
     | (Some id, `Initialize params) ->
         log_to_file "Handle initialize";
         let result = `Initialize (Lsp2_t.
@@ -43,15 +43,19 @@ let start () =
               }
           }) in
         let response = Lsp2.response_result id result in
-        respond (Lsp2_j.string_of_response_message response)
+        respond (Lsp2_j.string_of_response_message response);
     | (_, `Initialized _) ->
         log_to_file "Handle initialized";
-        (* let notification = LSP.notification "window/showMessage"
-         *   [ ("type", `Int 3)
-         *   ; ("message", `String "Language server initialized")
-         *   ] in
-         * respond (Yojson.Basic.pretty_to_string notification); *)
+        let params = `ShowMessage (Lsp2_t.
+          { type_ = 3
+          ; message = "Language server initialized"
+          }) in
+        let notification = Lsp2.notification params in
+        respond (Lsp2_j.string_of_notification_message notification);
     | _ ->
-      loop ()
+      (* TODO: log useful info here *)
+      log_to_file "Unhandled message";
+    );
 
+    loop ()
   in loop ()

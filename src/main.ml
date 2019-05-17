@@ -52,7 +52,7 @@ let argspec = Arg.align
   "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
   "--disable-prelude", Arg.Clear Flags.prelude, " disable prelude";
 
-  "-ide", Arg.Unit (fun () -> LanguageServer.start (); ()), " start the language server"
+  "-ide", Arg.Unit (fun () -> ignore (LanguageServer.start ()); ()), " start the language server"
 ]
 
 
