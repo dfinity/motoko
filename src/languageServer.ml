@@ -31,28 +31,27 @@ let start () =
     let raw = Buffer.contents buffer in
     log_to_file raw;
 
-    let json = Lsp2_j.incoming_message_of_string raw in
+    let message = Lsp2_j.incoming_message_of_string raw in
+    let message_id = message.Lsp2_t.incoming_message_id in
 
-    match json.Lsp2_t.incoming_message_params with
-    | `Initialize params ->
+    match (message_id, message.Lsp2_t.incoming_message_params) with
+    | (Some id, `Initialize params) ->
         log_to_file "Handle initialize";
-        (* let capabilities = `Assoc
-         *   [ ("textDocumentSync", `Null)
-         *   ] in
-         * let result = `Assoc
-         *   [ ("capabilities", capabilities)
-         *   ] in
-         * let response = LSP.response received.LSP.id result `Null in
-         * respond (Yojson.Basic.pretty_to_string response); *)
-        (* let response = 
-         * log_to_file (Lsp2_j.string_of_response_result response) *)
-    | `Initialized _ ->
+        let result = `Initialize (Lsp2_t.
+          { capabilities =
+              { hoverProvider = Some false
+              }
+          }) in
+        let response = Lsp2.response_result id result in
+        respond (Lsp2_j.string_of_response_message response)
+    | (_, `Initialized _) ->
         log_to_file "Handle initialized";
         (* let notification = LSP.notification "window/showMessage"
          *   [ ("type", `Int 3)
          *   ; ("message", `String "Language server initialized")
          *   ] in
          * respond (Yojson.Basic.pretty_to_string notification); *)
+    | _ ->
+      loop ()
 
-    loop ()
   in loop ()
