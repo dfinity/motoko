@@ -31,27 +31,27 @@ let start () =
     let raw = Buffer.contents buffer in
     log_to_file raw;
 
-    let message = Lsp2_j.incoming_message_of_string raw in
-    let message_id = message.Lsp2_t.incoming_message_id in
+    let message = Lsp_j.incoming_message_of_string raw in
+    let message_id = message.Lsp_t.incoming_message_id in
 
-    (match (message_id, message.Lsp2_t.incoming_message_params) with
+    (match (message_id, message.Lsp_t.incoming_message_params) with
     | (Some id, `Initialize params) ->
         log_to_file "Handle initialize";
-        let result = `Initialize (Lsp2_t.
+        let result = `Initialize (Lsp_t.
           { capabilities =
               { hoverProvider = Some false
               }
           }) in
-        let response = Lsp2.response_result id result in
-        send (Lsp2_j.string_of_response_message response);
+        let response = Lsp.response_result id result in
+        send (Lsp_j.string_of_response_message response);
     | (_, `Initialized _) ->
         log_to_file "Handle initialized";
-        let params = `ShowMessage (Lsp2_t.
+        let params = `ShowMessage (Lsp_t.
           { type_ = 3
           ; message = "Language server initialized"
           }) in
-        let notification = Lsp2.notification params in
-        send (Lsp2_j.string_of_notification_message notification);
+        let notification = Lsp.notification params in
+        send (Lsp_j.string_of_notification_message notification);
     | _ ->
       (* TODO: log useful info here *)
       log_to_file "Unhandled message";

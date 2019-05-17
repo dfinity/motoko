@@ -16,12 +16,12 @@ module Response_message_adapter = Atdgen_runtime.Json_adapter.Type_and_value_fie
 
 let jsonrpc_version = "2.0"
 
-let notification params = Lsp2_t.
+let notification params = Lsp_t.
   { notification_message_jsonrpc = jsonrpc_version
   ; notification_message_params = params
   }
 
-let response_result id result = Lsp2_t.
+let response_result id result = Lsp_t.
   { response_message_jsonrpc = jsonrpc_version
   ; response_message_id = id
   ; response_message_result = Some result

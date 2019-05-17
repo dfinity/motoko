@@ -15,7 +15,7 @@ type notification_message =
   { inherit message
   ; params : notification_message_params
   }
-  <json adapter.ocaml="Lsp2.Message_adapter">
+  <json adapter.ocaml="Lsp.Message_adapter">
   <ocaml field_prefix="notification_message_">
 
 
@@ -34,7 +34,7 @@ type incoming_message =
   ; ?id : int nullable
   ; params : incoming_message_params
   }
-  <json adapter.ocaml="Lsp2.Message_adapter">
+  <json adapter.ocaml="Lsp.Message_adapter">
   <ocaml field_prefix="incoming_message_">
 
 (* All tags must also provide params, even if they are an `empty_record` *)
@@ -58,7 +58,7 @@ type response_message =
   ; ?result : response_result nullable
   (*; ?error : response_error nullable*)
   }
-  <json adapter.ocaml="Lsp2.Response_message_adapter">
+  <json adapter.ocaml="Lsp.Response_message_adapter">
   <ocaml field_prefix="response_message_">
 
 type response_result =
