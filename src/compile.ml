@@ -1558,7 +1558,7 @@ module BoxedWord = struct
     in pow ()
 
   let compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  let compile_relop env _ i64op = G.i (Compare (Wasm.Values.I64 i64op))
+  let compile_relop env i64op = G.i (Compare (Wasm.Values.I64 i64op))
 
 end (* BoxedWord *)
 
@@ -1758,6 +1758,7 @@ sig
 
   (* signed word to SR.Vanilla *)
   val from_signed_word32 : E.t -> G.t
+  (* val from_signed_word64 : E.t -> G.t *)
 
   (* buffers *)
   (* given a numeric object on stack (vanilla),
@@ -1814,6 +1815,12 @@ sig
    *)
   val _fits_unsigned_bits : E.t -> int -> G.t
 end
+
+let i64op_from_relop = function
+  | Lt -> I64Op.LtS
+  | Le -> I64Op.LeS
+  | Ge -> I64Op.GeS
+  | Gt -> I64Op.GtS
 
 module BigNum64 : BigNumType = struct
   include BoxedWord
@@ -1914,12 +1921,6 @@ module BigNum64 : BigNumType = struct
   let with_comp_unboxed op env =
     let set_tmp, get_tmp = new_local64 env "top" in
     unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op
-
-  let i64op_from_relop = function
-    | Lt -> I64Op.LtS
-    | Le -> I64Op.LeS
-    | Ge -> I64Op.GeS
-    | Gt -> I64Op.GtS
 
   let compile_eq env = with_comp_unboxed (BoxedWord.compile_eq env) env
   let compile_relop env relop = with_comp_unboxed (BoxedWord.compile_relop env (i64op_from_relop relop)) env
@@ -2072,10 +2073,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       end
 
   let compile_eq = try_comp_unbox2 BoxedWord.compile_eq Num.compile_eq
-  let compile_relop env bigintop i64op =
+  let compile_relop env bigintop =
     try_comp_unbox2
-      (fun env' -> BoxedWord.compile_relop env' bigintop i64op)
-      (fun env' -> Num.compile_relop env' bigintop i64op)
+      (fun env' -> BoxedWord.compile_relop env' (i64op_from_relop bigintop))
+      (fun env' -> Num.compile_relop env' bigintop)
       env
 
   let try_unbox iN fast slow env =
@@ -2090,8 +2091,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let compile_abs env =
     try_unbox I32Type
-      (fun env -> compile_unboxed_const 4l)
-      (Num.compile_abs env)
+      (fun _ -> compile_unboxed_const 4l)
+      Num.compile_abs
       env
 
   let compile_load_from_data_buf env = assert false
@@ -2107,7 +2108,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let compile_data_size env =
     try_unbox I32Type
-      (fun env -> G.i Drop ^^ compile_unboxed_const 4l)
+      (fun _ -> G.i Drop ^^ compile_unboxed_const 4l)
       (fun env -> G.i Drop ^^ Num.compile_data_size env)
       env
 
@@ -4173,7 +4174,7 @@ module FuncDec = struct
       (* Add arguments to the environment *)
       let env3 = bind_args env2 1 args (fun env a get ->
         E.add_local_deferred env a.it
-          { materialize = (fun env -> SR.Vanilla, get)
+          { materialize = (fun _ -> SR.Vanilla, get)
           ; materialize_vanilla = (fun _ -> get)
           ; is_local = true
           }
@@ -4209,7 +4210,7 @@ module FuncDec = struct
       (* Add arguments to the environment, as unboxed references *)
       let env3 = bind_args env2 1 args (fun env a get ->
         E.add_local_deferred env a.it
-          { materialize = (fun env -> SR.UnboxedReference, get)
+          { materialize = (fun _ -> SR.UnboxedReference, get)
           ; materialize_vanilla = (fun env ->
                get ^^ StackRep.adjust env SR.UnboxedReference SR.Vanilla)
           ; is_local = true
@@ -4237,7 +4238,7 @@ module FuncDec = struct
       (* Add arguments to the environment, as unboxed references *)
       let env2 = bind_args env1 0 args (fun env a get ->
         E.add_local_deferred env a.it
-          { materialize = (fun env -> SR.UnboxedReference, get)
+          { materialize = (fun _ -> SR.UnboxedReference, get)
           ; materialize_vanilla = (fun env ->
                get ^^ StackRep.adjust env SR.UnboxedReference SR.Vanilla)
           ; is_local = true
