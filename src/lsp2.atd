@@ -17,14 +17,16 @@ type message =
 type incoming_message =
   { inherit message
   ; ?id : int nullable
-  ; method : incoming_message_method
+  ; params : incoming_message_params
   }
+  <json adapter.ocaml="Lsp2.Message_adapter">
   <ocaml field_prefix="incoming_message_">
 
-type incoming_message_method =
-  [ Initialize <json name="initialize"> (*of initialize_params*) (* <-- uncomment to trigger decoding issue *)
-  | Initialized <json name="initialized">
-  ] <json adapter.ocaml="Lsp2.Message_adapter">
+(* All tags must also provide params, even if they are an `empty_record` *)
+type incoming_message_params =
+  [ Initialize <json name="initialize"> of initialize_params
+  | Initialized <json name="initialized"> of initialized_params
+  ]
 
 
 (* Outgoing messages *)
@@ -37,7 +39,7 @@ type outgoing_message_method =
   ]
 
 
-(* "initialize" request message *)
+(* "initialize" request *)
 
 type initialize_params =
   { ?processId : int nullable
@@ -62,6 +64,21 @@ type trace =
   | Messages <json name="messages">
   | Verbose <json name="verbose">
   ]
+
+
+(* "initialized" notification *)
+
+type initialized_params = empty_record
+
+
+(* Helpers *)
+
+(* Empty records aren't valid in OCaml but some notifications send them in the
+   params field. Work around that by defining a record with a field that is
+   never expected to be provided. *)
+type empty_record =
+  { ?omitted : int nullable
+  }
 
 
 (*
