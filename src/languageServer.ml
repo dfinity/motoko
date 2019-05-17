@@ -44,7 +44,7 @@ let start () =
           }) in
         let response = Lsp.response_result id result in
         send (Lsp_j.string_of_response_message response);
-    | (_, `Initialized _) ->
+    | (None, `Initialized _) ->
         log_to_file "Handle initialized";
         let params = `ShowMessage (Lsp_t.
           { type_ = 3
