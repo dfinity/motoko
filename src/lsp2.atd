@@ -19,7 +19,7 @@ type incoming_message =
   <ocaml field_prefix="incoming_message_">
 
 type incoming_message_method =
-  [ Initialize <json name="initialize"> of initialize_params
+  [ Initialize <json name="initialize"> (*of initialize_params*) (* <-- uncomment to trigger decoding issue *)
   | Initialized <json name="initialized">
   ] <json adapter.ocaml="Lsp2.Message_adapter">
 
