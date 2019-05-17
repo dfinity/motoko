@@ -39,7 +39,6 @@ let start () =
     (* Request messages *)
 
     | (Some id, `Initialize params) ->
-        log_to_file "Handle initialize";
         let result = `Initialize (Lsp_t.
           { capabilities =
               { hoverProvider = Some false
@@ -52,7 +51,6 @@ let start () =
     (* Notification messages *)
 
     | (None, `Initialized _) ->
-        log_to_file "Handle initialized";
         let params = `ShowMessage (Lsp_t.
           { type_ = 3
           ; message = "Language server initialized"
