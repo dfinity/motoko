@@ -922,8 +922,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
       label profile_trie_toArray_arrayAppend : [W]
       Array_tabulate<W> (
         x.len() + y.len(),
-        func (i:Nat) : W {
-          label profile_trie_toArray_arrayAppend_projelm : W
+        func (i:Nat) : W = label profile_trie_toArray_arrayAppend_projelm : W {
           if (i >= x.len()) { y[i - x.len()] }
           else { x[i] }
         }

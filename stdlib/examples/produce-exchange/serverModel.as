@@ -1824,6 +1824,8 @@ than the MVP goals, however.
     queryProduce:?T.ProduceId,
     queryDate:?T.Date)
     : Bool
+    =
+    label profile_isFeasibleReservation_begin : Bool
   {
 
     switch queryProduce {
@@ -1831,6 +1833,7 @@ than the MVP goals, however.
       case (?qp) {
              if (item.produce.id != qp) {
                debugOff "nope: wrong produce kind\n";
+               label profile_isFeasibleReservation_false_wrong_product_kind
                return false
              };
            };
@@ -1840,6 +1843,7 @@ than the MVP goals, however.
       case (?qd) {
              if (route.end_date > qd ) {
                debugOff "nope: route arrives too late\n";
+               label profile_isFeasibleReservation_false_arrives_too_late
                return false
              }
            }
@@ -1847,19 +1851,23 @@ than the MVP goals, however.
     /** - window start: check that the route begins after the inventory window begins */
     if (not (item.start_date <= route.start_date)) {
       debugOff "nope: item start after route start\n";
+      label profile_isFeasibleReservation_false_item_start_ater_route_start
       return false
     };
     /** - window end: check that the route ends before the inventory window ends */
     if (not (route.end_date <= item.end_date)) {
       debugOff "nope: route ends after item ends\n";
+      label profile_isFeasibleReservation_false_item_route_ends_after_item_ends
       return false
     };
     /** - check that truck can carry the given produce */
     if (not isCompatibleTruckType(route.truck_type, item.produce)) {
       debugOff "nope: truck is not compatible\n";
+      label profile_isFeasibleReservation_false_truck_is_not_compatible
       return false
     };
     /** - all checks pass: */
+    label profile_isFeasibleReservation_true : Bool
     true
   };
 
@@ -1886,7 +1894,8 @@ than the MVP goals, however.
     id:T.RetailerId,
     queryProduce:?T.ProduceId,
     queryDate:?T.Date
-  ) : ?T.QueryAllResults
+  ) : ?T.QueryAllResults =
+    label profile_retailerQueryAll_begin : (?T.QueryAllResults)
   {
     retailerQueryCount += 1;
 
@@ -1930,6 +1939,8 @@ than the MVP goals, however.
         idIsEq,
         func (routes:M.RouteMap,
               inventory:M.ByProducerInventoryMap) : RouteInventoryMap
+          =
+          label profile_retailerQueryAll_product_region : RouteInventoryMap
       {
 
         /** - Within this production region, consider every route-item pairing: */
@@ -1948,14 +1959,28 @@ than the MVP goals, however.
                 item    :M.InventoryDoc) :
             ?(Key<(T.RouteId, T.InventoryId)>,
               (M.RouteDoc, M.InventoryDoc))
+            =
+            label profile_retailerQueryAll_candidate_check :
+            ( ?(Key<(T.RouteId, T.InventoryId)>,
+                (M.RouteDoc, M.InventoryDoc)) )
         {
           retailerQueryCost += 1;
           /** - Consider the constraints of the retailer-route-item combination: */
           if (isFeasibleReservation(retailer, item, route, queryProduce, queryDate)) {
+            label profile_retailerQueryAll_candidate_check_true :
+              ( ?(Key<(T.RouteId, T.InventoryId)>,
+                  (M.RouteDoc, M.InventoryDoc)) )
+
             ?( keyOfIdPair(route_id, item_id),
                (route, item)
             )
-          } else { null }
+          } else {
+            label profile_retailerQueryAll_candidate_check_false :
+              ( ?(Key<(T.RouteId, T.InventoryId)>,
+                  (M.RouteDoc, M.InventoryDoc)) )
+
+            null
+          }
         },
         idPairIsEq
         );
