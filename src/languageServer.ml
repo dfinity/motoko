@@ -44,6 +44,8 @@ let start () =
          *   ] in
          * let response = LSP.response received.LSP.id result `Null in
          * respond (Yojson.Basic.pretty_to_string response); *)
+        (* let response = 
+         * log_to_file (Lsp2_j.string_of_response_result response) *)
     | `Initialized _ ->
         log_to_file "Handle initialized";
         (* let notification = LSP.notification "window/showMessage"

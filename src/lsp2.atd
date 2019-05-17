@@ -9,10 +9,23 @@ type message =
   <ocaml field_prefix="message_">
 
 
-(* Incoming messages *)
+(* Notification message *)
 
-(* Incoming messages may be either request or notification messages. The latter
-  omits the `id` field. *)
+type notification_message =
+  { inherit message;
+  }
+  <ocaml field_prefix="notification_message_">
+
+
+(*
+   Incoming messages
+
+   Incoming messages may be either request or notification messages.
+
+   Notification messages are a subtype of response messages (notification
+   messages omit the `id` field) so both are represented by the
+   `incoming_message` type to allow them to be decoded in a single pass.
+*)
 
 type incoming_message =
   { inherit message
@@ -29,12 +42,30 @@ type incoming_message_params =
   ]
 
 
-(* Outgoing messages *)
+(*
+   Outgoing messages
 
-(* Outgoing messages may be either response or notification messages. The latter
-  omits the `id` field. *)
+   Outgoing messages may be either response or notification messages.
+*)
 
-type outgoing_message_method =
+(* Response message *)
+
+type response_message =
+  { inherit message
+  ; id : int
+  ; ?result : response_result nullable
+  (*; ?error : response_error nullable*)
+  }
+  <ocaml field_prefix="response_message_">
+
+type response_result =
+  [ InitializeResult of initialize_result
+  ]
+
+
+(* Outgoing notifications *)
+
+type outgoing_notification_method =
   [ WindowShowMessage <json name ="window/showMessage">
   ]
 
@@ -66,6 +97,22 @@ type trace =
   ]
 
 
+(* "initialize" response *)
+
+type initialize_result =
+  { capabilities : server_capabilities
+  }
+
+(* FIXME: incomplete *)
+type server_capabilities =
+  (*{ ?textDocumentSync : text_document_sync_options*)
+  { ?hoverProvider : bool nullable
+  }
+
+(* TODO: see LSP spec for InitializeError *)
+(*type initialize_error = *)
+
+
 (* "initialized" notification *)
 
 type initialized_params = empty_record
@@ -74,41 +121,8 @@ type initialized_params = empty_record
 (* Helpers *)
 
 (* Empty records aren't valid in OCaml but some notifications send them in the
-   params field. Work around that by defining a record with a field that is
+   `params` field. Work around that by defining a record with a field that is
    never expected to be provided. *)
 type empty_record =
   { ?omitted : int nullable
   }
-
-
-(*
-type ('a, 'b) response_message =
-  { inherit message
-  ; id : int
-  ; ?result : 'a nullable
-  ; ?error : 'b
-  }
-
-type 'a response_error =
-  { code : error_code
-  ; message : string
-  ; ?data : 'a
-  }
-
-type error_code =
-  (* Defined by JSON RPC *)
-  [ ParseError
-	| InvalidRequest
-	| MethodNotFound
-	| InvalidParams
-	| InternalError
-	| ServerErrorStart
-	| ServerErrorEnd
-	| ServerNotInitialized
-	| UnknownErrorCode
-
-	(* Defined by the protocol *)
-	| RequestCancelled
-	| ContentModified
-  ]
-*)

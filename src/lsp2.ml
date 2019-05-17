@@ -5,3 +5,11 @@ module Message_adapter = Atdgen_runtime.Json_adapter.Type_and_value_fields.Make(
     let known_tags = None
   end
 )
+
+let response_result id result = Lsp2_t.
+  { response_message_jsonrpc = "2.0"
+  ; response_message_id = id
+  ; response_message_result = Some result
+  }
+
+(* let response_error id error = *)
