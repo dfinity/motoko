@@ -1,6 +1,8 @@
 // Testing utility
 
-// expects 2 elements in results for each in etalon
+// expects 2 elements in results for each one in etalon
+// asserts that those compare equal
+
 func verify<T>(etalon : [T], results : [T], cmp : (T, T) -> Bool) {
     //print "\n";
     for (i in etalon.keys())
@@ -9,6 +11,8 @@ func verify<T>(etalon : [T], results : [T], cmp : (T, T) -> Bool) {
       assert cmp(etalon[i], results[i * 2 + 1]);
     }
 };
+
+func intCompare (a : Int, b : Int) : Bool = a == b;
 
 // Numeric operators
 
@@ -50,7 +54,7 @@ func testInt(a : Int, b : Int) : [Int] {
   [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
 };
 
-verify<Int>([3, -3, 8, -2, 15, 0, 3, 243], testInt(3, 5), func (a : Int, b : Int) : Bool = a == b);
+verify<Int>([3, -3, 8, -2, 15, 0, 3, 243], testInt(3, 5), intCompare);
 
 func testNatInt(a : Nat, b : Int) : [Int] {
   let pos1 = + a;
@@ -86,7 +90,7 @@ func testNatInt(a : Nat, b : Int) : [Int] {
 };
 
 verify<Int>([3, -3, 8, 8, -2, 2, 15, 15, 0, 1, 3, 2, 243, 125], testNatInt(3, 5),
-             func (a : Int, b : Int) : Bool = a == b);
+            intCompare);
 
 func testFloat(a : Float, b : Float) : [Float] {
   let pos1 = + a;
@@ -174,7 +178,7 @@ func testWord32(a : Word32, b : Word32) : [Word32] {
 };
 
 verify<Word32>([3, 4_294_967_293, 8, 4_294_967_294, 15, 0, 3, 243], testWord32(3, 5),
-                func (a : Word32, b : Word32) : Bool = a == b);
+               func (a : Word32, b : Word32) : Bool = a == b);
 
 func testWord64(a : Word64, b : Word64) : [Word64] {
   let pos1 = + a;
@@ -197,4 +201,4 @@ func testWord64(a : Word64, b : Word64) : [Word64] {
 };
 
 verify<Word64>([3, 18_446_744_073_709_551_613, 8, 18_446_744_073_709_551_614, 15, 0, 3, 243], testWord64(3, 5),
-                func (a : Word64, b : Word64) : Bool = a == b);
+               func (a : Word64, b : Word64) : Bool = a == b);
