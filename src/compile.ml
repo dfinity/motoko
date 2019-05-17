@@ -1730,6 +1730,7 @@ module UnboxedSmallWord = struct
 
 end (* UnboxedSmallWord *)
 
+type comparator = Lt | Le | Ge | Gt
 
 module type BigNumType =
 sig
@@ -1787,7 +1788,7 @@ sig
   (* comparisons *)
   val compile_eq : E.t -> G.t
   val compile_is_negative : E.t -> G.t
-  val compile_relop : E.t -> string -> Wasm.Ast.I64Op.relop -> G.t
+  val compile_relop : E.t -> comparator -> G.t
 
   (* representation checks *)
   (* given a numeric object on the stack as skewed pointer, check whether
@@ -1904,8 +1905,14 @@ module BigNum64 : BigNumType = struct
     let set_tmp, get_tmp = new_local64 env "top" in
     unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op
 
+  let i64op_from_relop = function
+    | Lt -> I64Op.LtS
+    | Le -> I64Op.LeS
+    | Ge -> I64Op.GeS
+    | Gt -> I64Op.GtS
+
   let compile_eq = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 I64Op.Eq)))
-  let compile_relop env bigintop i64op = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 i64op))) env
+  let compile_relop env relop = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 (i64op_from_relop relop)))) env
   let compile_is_negative env = unbox env ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS))
 
 end
@@ -4363,20 +4370,19 @@ let compile_eq env t = match t with
   | _ -> todo_trap env "compile_eq" (Arrange.relop Syntax.EqOp)
 
 let get_relops = Syntax.(function
-  | GeOp -> "ge", I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
-  | GtOp -> "gt", I64Op.GtU, I64Op.GtS, I32Op.GtU, I32Op.GtS
-  | LeOp -> "le", I64Op.LeU, I64Op.LeS, I32Op.LeU, I32Op.LeS
-  | LtOp -> "lt", I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
+  | GeOp -> Ge, I64Op.GeU, I32Op.GeU, I32Op.GeS
+  | GtOp -> Gt, I64Op.GtU, I32Op.GtU, I32Op.GtS
+  | LeOp -> Le, I64Op.LeU, I32Op.LeU, I32Op.LeS
+  | LtOp -> Lt, I64Op.LtU, I32Op.LtU, I32Op.LtS
   | _ -> failwith "uncovered relop")
 
 let compile_comparison env t op =
-  let bigintop, u64op, s64op, u32op, s32op = get_relops op in
+  let bigintop, u64op, u32op, s32op = get_relops op in
   let open Type in
   match t with
-    | Nat -> BigNum.compile_relop env bigintop u64op
-    | Int -> BigNum.compile_relop env bigintop s64op 
+    | Nat | Int -> BigNum.compile_relop env bigintop
     | Word64 -> G.i (Compare (Wasm.Values.I64 u64op))
-    | (Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 u32op))
+    | Word8 | Word16 | Word32 | Char -> G.i (Compare (Wasm.Values.I32 u32op))
     | _ -> todo_trap env "compile_comparison" (Arrange.prim t)
 
 let compile_relop env t op =
