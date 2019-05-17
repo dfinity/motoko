@@ -1,5 +1,3 @@
-(* https://microsoft.github.io/language-server-protocol/specification *)
-
 let oc = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"
 let log_to_file txt =
     Printf.fprintf oc "%s\n" txt;
