@@ -35,6 +35,9 @@ let start () =
     let message_id = message.Lsp_t.incoming_message_id in
 
     (match (message_id, message.Lsp_t.incoming_message_params) with
+
+    (* Request messages *)
+
     | (Some id, `Initialize params) ->
         log_to_file "Handle initialize";
         let result = `Initialize (Lsp_t.
@@ -44,6 +47,10 @@ let start () =
           }) in
         let response = Lsp.response_result id result in
         send (Lsp_j.string_of_response_message response);
+
+
+    (* Notification messages *)
+
     | (None, `Initialized _) ->
         log_to_file "Handle initialized";
         let params = `ShowMessage (Lsp_t.
@@ -52,6 +59,9 @@ let start () =
           }) in
         let notification = Lsp.notification params in
         send (Lsp_j.string_of_notification_message notification);
+
+
+    (* Unhandled messages *)
     | _ ->
       log_to_file "Unhandled message:";
       log_to_file raw;
