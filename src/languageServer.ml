@@ -53,8 +53,8 @@ let start () =
         let notification = Lsp.notification params in
         send (Lsp_j.string_of_notification_message notification);
     | _ ->
-      (* TODO: log useful info here *)
-      log_to_file "Unhandled message";
+      log_to_file "Unhandled message:";
+      log_to_file raw;
     );
 
     loop ()
