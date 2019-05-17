@@ -39,7 +39,20 @@ func print(x : Text) { (prim "print" : Text -> ()) x };
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
 
 // Hashing
-func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
+func hashInt(x : Int) : Word32 {
+  var n = x;
+  var hash : Word32 = 0;
+  if (n < 0) {
+    hash := ^hash;
+    n := abs n;
+  };
+  let base = 2**32;
+  while (n > 0) {
+    hash ^= intToWord32(n % base);
+    n /= base;
+  };
+  return hash;
+};
 
 // Conversions
 func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
@@ -103,6 +116,12 @@ func @text_of_Nat(x : Nat) : Text {
   var n = x;
   let base = 10;
   let digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+  assert(n >= 0);
+
+  if (n == 0) {
+    return "0";
+  };
 
   while (n > 0) {
     let rem = n % base;
@@ -229,10 +248,6 @@ end (* Conv *)
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
 
-  | "Int~hash" -> fun v k ->
-                  let i = Word64.of_int_s (Big_int.int_of_big_int (as_int v)) in
-                  let j = Word64.(and_ 0xFFFFFFFFL (xor (shr_u i 32L) i))
-                  in k (Word32 (Word32.of_int_u (Int64.to_int j)))
   | "Nat->Word8" -> fun v k ->
                     let i = Big_int.int_of_big_int (as_int v)
                     in k (Word8 (Word8.of_int_u i))

@@ -41,7 +41,7 @@ let real-dvm =
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
         ref = "master";
-        rev = "aff35b2a015108f7d1d694471ccaf3ffd6f0340c";
+        rev = "8016991c399761c4d60571d0300426e8482ee1da";
       }; in
       (import dev { system = nixpkgs.system; }).dvm
     else null

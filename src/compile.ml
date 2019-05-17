@@ -377,6 +377,16 @@ module E = struct
       env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
     else assert false (* "add all imports before all functions!" *)
 
+  let call_import (env : t) modname funcname =
+    let name = modname ^ "_" ^ funcname in
+    let fi = match NameEnv.find_opt name !(env.built_in_funcs) with
+      | Some (Defined fi) -> fi
+      | _ ->
+        Printf.eprintf "Function import not declared: %s.%s\n" modname funcname;
+        assert false
+    in
+    G.i (Call (nr fi))
+
 
   let add_label (env : t) name (d : G.depth) =
       { env with ld = NameEnv.add name.it d env.ld }
@@ -598,6 +608,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word64" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_isneg" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_count_bits" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lt" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_gt" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_le" [I32Type; I32Type] [I32Type];
@@ -608,7 +620,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_mod" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_div" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_neg" [I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_lshd" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_lsh" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type]
 
   let system_exports env =
@@ -738,8 +750,7 @@ module Heap = struct
 
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
-  let memcpy env =
-    G.i (Call (nr (E.built_in env "rts_as_memcpy")))
+  let memcpy env = E.call_import env "rts" "as_memcpy"
 
   (* Copying words (works on skewed memory addresses) *)
   let memcpy_words_skewed env =
@@ -1728,6 +1739,7 @@ module UnboxedSmallWord = struct
 
 end (* UnboxedSmallWord *)
 
+type comparator = Lt | Le | Ge | Gt
 
 module type BigNumType =
 sig
@@ -1768,14 +1780,10 @@ sig
 
   (* literals *)
   val compile_lit : E.t -> Big_int.big_int -> G.t
-  (* given a numeric object on the stack,
-     compile the literal and leave equality
-     comparison result on the stack
-   *)
-  val compile_lit_pat : E.t -> G.t -> G.t
 
   (* arithmetics *)
   val compile_abs : E.t -> G.t
+  val compile_neg : E.t -> G.t
   val compile_add : E.t -> G.t
   val compile_signed_sub : E.t -> G.t
   val compile_unsigned_sub : E.t -> G.t
@@ -1789,7 +1797,7 @@ sig
   (* comparisons *)
   val compile_eq : E.t -> G.t
   val compile_is_negative : E.t -> G.t
-  val compile_relop : E.t -> string -> Wasm.Ast.I64Op.relop -> G.t
+  val compile_relop : E.t -> comparator -> G.t
 
   (* representation checks *)
   (* given a numeric object on the stack as skewed pointer, check whether
@@ -1895,17 +1903,26 @@ module BigNum64 : BigNumType = struct
   let compile_unsigned_sub env = with_both_unboxed (BoxedWord.compile_unsigned_sub env) env
   let compile_unsigned_pow env = with_both_unboxed (BoxedWord.compile_unsigned_pow env) env
 
+  let compile_neg env =
+    Func.share_code1 env "negInt" ("n", I32Type) [I32Type] (fun env get_n ->
+      compile_lit env (Big_int.big_int_of_int 0) ^^
+      get_n ^^
+      compile_signed_sub env
+    )
+
   let with_comp_unboxed op env =
     let set_tmp, get_tmp = new_local64 env "top" in
     unbox env ^^ set_tmp ^^ unbox env ^^ get_tmp ^^ op
 
-  let compile_eq = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 I64Op.Eq)))
-  let compile_relop env bigintop i64op = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 i64op))) env
-  let compile_is_negative env = unbox env ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS))
+  let i64op_from_relop = function
+    | Lt -> I64Op.LtS
+    | Le -> I64Op.LeS
+    | Ge -> I64Op.GeS
+    | Gt -> I64Op.GtS
 
-  let compile_lit_pat env compile_lit =
-    compile_lit ^^
-    compile_eq env
+  let compile_eq = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 I64Op.Eq)))
+  let compile_relop env relop = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 (i64op_from_relop relop)))) env
+  let compile_is_negative env = unbox env ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS))
 
 end
 
@@ -1939,13 +1956,6 @@ module Prim = struct
   let prim_shiftToWordN env b =
     prim_intToWord32 env ^^
     UnboxedSmallWord.shift_leftWordNtoI32 b
-  let prim_hashInt env =
-    let (set_n, get_n) = new_local64 env "n" in
-    BigNum.to_word64 env ^^ (* TODO(gabor) other bits *)
-    set_n ^^
-    get_n ^^ get_n ^^ compile_const_64 32L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 end (* Prim *)
 
 module Object = struct
@@ -4235,7 +4245,10 @@ let compile_lit_as env sr_out lit =
 let compile_unop env t op =
   let open Syntax in
   match op, t with
-  | NegOp, Type.(Prim (Int | Word64)) ->
+  | NegOp, Type.(Prim Int) ->
+      SR.Vanilla,
+      BigNum.compile_neg env
+  | NegOp, Type.(Prim Word64) ->
       SR.UnboxedWord64,
       Func.share_code1 env "neg" ("n", I64Type) [I64Type] (fun env get_n ->
         compile_const_64 0L ^^
@@ -4366,20 +4379,19 @@ let compile_eq env t = match t with
   | _ -> todo_trap env "compile_eq" (Arrange.relop Syntax.EqOp)
 
 let get_relops = Syntax.(function
-  | GeOp -> "ge", I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
-  | GtOp -> "gt", I64Op.GtU, I64Op.GtS, I32Op.GtU, I32Op.GtS
-  | LeOp -> "le", I64Op.LeU, I64Op.LeS, I32Op.LeU, I32Op.LeS
-  | LtOp -> "lt", I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
+  | GeOp -> Ge, I64Op.GeU, I32Op.GeU, I32Op.GeS
+  | GtOp -> Gt, I64Op.GtU, I32Op.GtU, I32Op.GtS
+  | LeOp -> Le, I64Op.LeU, I32Op.LeU, I32Op.LeS
+  | LtOp -> Lt, I64Op.LtU, I32Op.LtU, I32Op.LtS
   | _ -> failwith "uncovered relop")
 
 let compile_comparison env t op =
-  let bigintop, u64op, s64op, u32op, s32op = get_relops op in
+  let bigintop, u64op, u32op, s32op = get_relops op in
   let open Type in
   match t with
-    | Nat -> BigNum.compile_relop env bigintop u64op
-    | Int -> BigNum.compile_relop env bigintop s64op 
+    | Nat | Int -> BigNum.compile_relop env bigintop
     | Word64 -> G.i (Compare (Wasm.Values.I64 u64op))
-    | (Word8 | Word16 | Word32 | Char) -> G.i (Compare (Wasm.Values.I32 u32op))
+    | Word8 | Word16 | Word32 | Char -> G.i (Compare (Wasm.Values.I32 u32op))
     | _ -> todo_trap env "compile_comparison" (Arrange.prim t)
 
 let compile_relop env t op =
@@ -4428,8 +4440,8 @@ let rec compile_lexp (env : E.t) exp =
      Var.set_val env var.it
   | IdxE (e1,e2) ->
      compile_exp_vanilla env e1 ^^ (* offset to array *)
-     compile_exp_as env SR.UnboxedWord64 e2 ^^ (* idx *)
-     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+     compile_exp_vanilla env e2 ^^ (* idx *)
+     BigNum.to_word32 env ^^
      Arr.idx env,
      store_ptr
   | DotE (e, n) ->
@@ -4482,7 +4494,7 @@ and compile_exp (env : E.t) exp =
        | "rts_version" ->
          SR.Vanilla,
          compile_exp_as env SR.unit e ^^
-         G.i (Call (nr (E.built_in env "rts_version")))
+         E.call_import env "rts" "version"
 
        | "Nat->Word8"
        | "Int->Word8" ->
@@ -4550,11 +4562,6 @@ and compile_exp (env : E.t) exp =
          SR.Vanilla,
          compile_exp_as env SR.UnboxedWord32 e ^^
          UnboxedSmallWord.box_codepoint
-
-       | "Int~hash" ->
-         SR.UnboxedWord32,
-         compile_exp_vanilla env e ^^
-         Prim.prim_hashInt env
 
        | "popcnt" ->
          SR.UnboxedWord32,
@@ -4852,7 +4859,8 @@ and compile_lit_pat env l =
     Bool.lit false ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Syntax.(NatLit _ | IntLit _) ->
-    BigNum.compile_lit_pat env (compile_lit_as env SR.Vanilla l)
+    compile_lit_as env SR.Vanilla l ^^
+    BigNum.compile_eq env
   | Syntax.(TextLit t) ->
     Text.lit env t ^^
     Text.compare env
@@ -5064,6 +5072,7 @@ This function compiles the prelude, just to find out the bound names.
 and find_prelude_names env =
   (* Create a throw-away environment *)
   let env0 = E.mk_global (E.mode env) None (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
+  RTS.system_imports env0;
   let env1 = E.mk_fun_env env0 0l 0 in
   let (env2, _) = compile_prelude env1 in
   E.in_scope_set env2
