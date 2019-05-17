@@ -1,31 +1,78 @@
+(* Abstract message *)
+
 type message =
   { jsonrpc : string
   }
   <ocaml field_prefix="message_">
 
-(*
-type 'a request_message =
+
+(* Incoming messages *)
+
+(* Incoming messages may be either request or notification messages. The latter
+  omits the `id` field. *)
+
+type incoming_message =
   { inherit message
-  ; id : int
-  ; method : string
-  ; params : 'a
+  ; ?id : int nullable
+  ; method : incoming_message_method
   }
-  <ocaml field_prefix="request_message_">
+  <ocaml field_prefix="incoming_message_">
+
+type incoming_message_method =
+  [ Initialize <json name="initialize"> of initialize_params
+  | Initialized <json name="initialized">
+  ] <json adapter.ocaml="Lsp2.Message_adapter">
+
+
+(* Outgoing messages *)
+
+(* Outgoing messages may be either response or notification messages. The latter
+  omits the `id` field. *)
+
+type outgoing_message_method =
+  [ WindowShowMessage <json name ="window/showMessage">
+  ]
+
+
+(* "initialize" request message *)
+
+type initialize_params =
+  { ?processId : int nullable
+  ; ?rootPath : string nullable
+  (*; rootUri : document_uri nullable*)
+  (*; ?initializationOptions : any*)
+  (*; capabilities : client_capabilities*)
+  (*; ?trace : trace nullable*)
+  (*; ?workspaceFolders : (workspace_folder list) nullable*)
+  }
+
+(*
+type client_capabilities =
+  { ?workspace : workspace_client_capabilities
+  ; ?textDocument : text_document_client_capabilities
+  ; ?experimental : any
+  }
 *)
+
+type trace =
+  [ Off <json name="off">
+  | Messages <json name="messages">
+  | Verbose <json name="verbose">
+  ]
+
 
 (*
 type ('a, 'b) response_message =
   { inherit message
   ; id : int
-  ; ?result : 'a option
-  (* ; ?error : (b' response_error) option *)
-  ; ?error : 'b option
+  ; ?result : 'a nullable
+  ; ?error : 'b
   }
 
 type 'a response_error =
   { code : error_code
   ; message : string
-  ; ?data : 'a option
+  ; ?data : 'a
   }
 
 type error_code =
@@ -44,10 +91,4 @@ type error_code =
 	| RequestCancelled
 	| ContentModified
   ]
-
-type 'a notification_message =
-  { jsonrpc : string
-  ; method : string
-  ; ?params : 'a option
-  }
 *)

@@ -35,10 +35,11 @@ let start () =
 
     let json = Yojson.Basic.from_string raw in
 
-    let json2 = Lsp2_j.message_of_string raw in
-    (* let open Yojson.Basic.Util in
-     * log_to_file (json2 |> member "jsonrpc" |> to_string); *)
-    log_to_file (json2.Lsp2_t.message_jsonrpc);
+    let json2 = Lsp2_j.incoming_message_of_string raw in
+    let jsonrpc = json2.Lsp2_t.incoming_message_jsonrpc in
+    (* let method_ = Lsp2_j.string_of_incoming_message_method json2.Lsp2_t.incoming_message_method in *)
+    (* log_to_file ("jsonrpc: " ^ jsonrpc ^ ", method: " ^ method_); *)
+    log_to_file ("jsonrpc: " ^ jsonrpc);
 
     let received = LSP.parse json in
 
