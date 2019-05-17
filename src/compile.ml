@@ -2106,7 +2106,20 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let compile_abs env =
     try_unbox I32Type
-      (fun _ -> compile_unboxed_const 4l)
+      begin
+        fun _ ->
+        let set_a, get_a = new_local env "a" in
+        set_a ^^ get_a ^^
+        compile_bitand_const 1l ^^
+        G.if_ (ValBlockType (Some I32Type))
+          begin
+            get_a ^^
+              compile_unboxed_const Int32.minus_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+              compile_unboxed_const 4l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
+              (*FIXME: handle -2^30*) 
+          end
+          get_a
+      end
       Num.compile_abs
       env
 
@@ -2123,13 +2136,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let compile_data_size env =
     try_unbox I32Type
-      (fun _ -> G.i Drop ^^ compile_unboxed_const 4l)
-      (fun env -> G.i Drop ^^ Num.compile_data_size env)
+      (fun _ -> G.i Drop ^^ compile_unboxed_const 8l) (* FIXME: this is a lie *)
+      (fun env -> Num.compile_data_size env)
       env
 
   let from_signed_word32 env =
     let set_a, get_a = new_local env "a" in
-    set_a ^^ get_a ^^
+    set_a ^^ get_a ^^ get_a ^^
     speculate_compact ^^
     G.if_ (ValBlockType (Some I32Type))
       (get_a ^^ compress)
@@ -2137,7 +2150,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 (*
   let from_signed_word64 env =
     let set_a, get_a = new_local64 env "a" in
-    set_a ^^ get_a ^^
+    set_a ^^ get_a ^^ get_a ^^
     speculate_compact64 31 ^^
     G.if_ (ValBlockType (Some I32Type))
       (get_a ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^ compress64)
@@ -2161,7 +2174,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     G.if_ (ValBlockType (Some I32Type))
       (get_a ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^ compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Rotl)))
-      (get_a ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ Num.from_word64 env)
+      (get_a ^^ Num.from_word64 env)
 
   let _truncate_to_word64 env = assert false
   let truncate_to_word32 env =
