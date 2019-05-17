@@ -299,6 +299,15 @@ export as_ptr bigint_mul(as_ptr a, as_ptr b) {
   return r;
 }
 
+export as_ptr bigint_pow(as_ptr a, as_ptr b) {
+  unsigned long exp = bigint_to_word32_trap(b);
+  as_ptr r = bigint_alloc();
+  // Replace with mp_expt_long once available,
+  // see https://github.com/libtom/libtommath/issues/243
+  CHECK(mp_expt_d(BIGINT_PAYLOAD(a), exp, BIGINT_PAYLOAD(r)));
+  return r;
+}
+
 export as_ptr bigint_div(as_ptr a, as_ptr b) {
   as_ptr r = bigint_alloc();
   mp_int rem;
