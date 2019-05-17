@@ -1730,7 +1730,7 @@ module UnboxedSmallWord = struct
 
 end (* UnboxedSmallWord *)
 
-type bignum_relop = Lt | Le | Ge | Gt
+type comparator = Lt | Le | Ge | Gt
 
 module type BigNumType =
 sig
@@ -1788,7 +1788,7 @@ sig
   (* comparisons *)
   val compile_eq : E.t -> G.t
   val compile_is_negative : E.t -> G.t
-  val compile_relop : E.t -> bignum_relop -> G.t
+  val compile_relop : E.t -> comparator -> G.t
 
   (* representation checks *)
   (* given a numeric object on the stack as skewed pointer, check whether
