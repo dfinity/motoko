@@ -1934,28 +1934,43 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   (* examine the skewed pointer and determine if number fits into 31 bits *)
   let fits_in_vanilla env = Num.fits_signed_bits env 31
 
-  (* left-padded with 0 *)
-  let extend32 =
+  (* right-padded with 0 *)
+  let extend =
     compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
 
+  (* right-padded with 0 *)
   let extend64 =
-    compile_unboxed_one ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Rotr)) ^^
+    extend ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
-  let speculate_compact64 =
+  (* bits should be 31 for right-aligned
+     and 32 for right-0-padded *)
+  let speculate_compact64 bits =
     compile_const_64 1L ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-    compile_const_64 Int64.(shift_left minus_one 32) ^^
+    compile_const_64 Int64.(shift_left minus_one bits) ^^
     G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
-  let compress64 =
-    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+  (* input is right-padded with 0 *)
+  let compress =
     compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
+
+  (* input is right-padded with 0 *)
+  let compress64 =
+    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+    compress
+
+  let speculate_compact =
+    compile_unboxed_one ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+    compile_unboxed_const Int32.(shift_left minus_one 31) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz))
 
   let compress =
     compile_shrU_const 1l ^^
@@ -1963,7 +1978,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
 
   (* check if both arguments are compact (i.e. unboxed),
-     if so, promote to signed i64 (with last bit (i.e. LSB) zero) and perform the fast path.
+     if so, promote to signed i64 (with right bit (i.e. LSB) zero) and perform the fast path.
      Otherwise make sure that both arguments are in heap representation,
      and run the slow path on them.
      In both cases bring the results into normal form.
@@ -1980,7 +1995,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_a ^^ extend64 ^^
         get_b ^^ extend64 ^^
         fast env ^^ set_res64 ^^
-        get_res64 ^^ get_res64 ^^ speculate_compact64 ^^
+        get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
         G.if_ (ValBlockType (Some I32Type))
           (get_res64 ^^ compress64)
           begin
@@ -2099,7 +2114,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let compile_store_to_data_buf env =
     try_unbox I32Type
       (fun env ->
-        extend32 ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+        extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 4l
       )
@@ -2112,28 +2127,61 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env -> G.i Drop ^^ Num.compile_data_size env)
       env
 
-   let from_signed_word32 env = assert false
-   let from_word64 env = assert false
-   let from_word32 env = assert false
-   let _truncate_to_word64 env = assert false
-   let truncate_to_word32 env =
+  let from_signed_word32 env =
+    let set_a, get_a = new_local env "a" in
+    set_a ^^ get_a ^^
+    speculate_compact ^^
+    G.if_ (ValBlockType (Some I32Type))
+      (get_a ^^ compress)
+      (get_a ^^ Num.from_signed_word32 env)
+(*
+  let from_signed_word64 env =
+    let set_a, get_a = new_local64 env "a" in
+    set_a ^^ get_a ^^
+    speculate_compact64 31 ^^
+    G.if_ (ValBlockType (Some I32Type))
+      (get_a ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^ compress64)
+      (get_a ^^ Num._from_signed_word64 env)
+ *)
+  let from_word32 env =
+    let set_a, get_a = new_local env "a" in
+    set_a ^^ get_a ^^
+    compile_unboxed_const Int32.(shift_left minus_one 30) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+    G.if_ (ValBlockType (Some I32Type))
+      (get_a ^^ compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Rotl)))
+      (get_a ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ Num.from_word64 env)
+
+  let from_word64 env =
+    let set_a, get_a = new_local64 env "a" in
+    set_a ^^ get_a ^^
+    compile_const_64 Int64.(shift_left minus_one 30) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+    G.if_ (ValBlockType (Some I32Type))
+      (get_a ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^ compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Rotl)))
+      (get_a ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ Num.from_word64 env)
+
+  let _truncate_to_word64 env = assert false
+  let truncate_to_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-      (get_a ^^ extend32 ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
       (get_a ^^ Num.truncate_to_word32 env)
 
-   let to_word64 env =
+  let to_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_unboxed env (ValBlockType (Some I64Type))
       (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
       (get_a ^^ Num.to_word64 env)
-   let to_word32 env =
+  let to_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-      (get_a ^^ extend32 ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
+      (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
       (get_a ^^ Num.to_word32 env)
 end
 
