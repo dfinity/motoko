@@ -3,7 +3,7 @@ let log_to_file txt =
     Printf.fprintf oc "%s\n" txt;
     flush oc
 
-let respond out =
+let send out =
   let cl = "Content-Length: " ^ string_of_int (String.length out) ^ "\r\n\r\n" in
   print_string cl;
   print_string out;
@@ -43,7 +43,7 @@ let start () =
               }
           }) in
         let response = Lsp2.response_result id result in
-        respond (Lsp2_j.string_of_response_message response);
+        send (Lsp2_j.string_of_response_message response);
     | (_, `Initialized _) ->
         log_to_file "Handle initialized";
         let params = `ShowMessage (Lsp2_t.
@@ -51,7 +51,7 @@ let start () =
           ; message = "Language server initialized"
           }) in
         let notification = Lsp2.notification params in
-        respond (Lsp2_j.string_of_notification_message notification);
+        send (Lsp2_j.string_of_notification_message notification);
     | _ ->
       (* TODO: log useful info here *)
       log_to_file "Unhandled message";
