@@ -48,7 +48,9 @@ module BitVec {
 
   type t = BitVec;
 
-  func length() : Nat = 31;
+  func length() : Nat =
+    label profile_hash_length : Nat
+    31;
 
   func hashOfInt(i:Int) : BitVec {
     hashInt(i)
@@ -69,16 +71,22 @@ module BitVec {
   };
 
   /** Project a given bit from the bit vector. */
-  func getHashBit(h:BitVec, pos:Nat) : Bool {
+  func getHashBit(h:BitVec, pos:Nat) : Bool =
+    label profile_getHashBit : Bool {
     assert (pos <= length());
     if ((h & (natToWord32(1) << natToWord32(pos))) != natToWord32(0))
-    { true }
+    { label profile_getHashBit_true : Bool
+      true
+    }
     else
-    { false }
+    { label profile_getHashBit_false : Bool
+      false
+    }
   };
 
   /** Test if two lists of bits are equal. */
   func hashEq(ha:BitVec, hb:BitVec) : Bool {
+    label profile_hashEq : Bool
     ha == hb
   };
 

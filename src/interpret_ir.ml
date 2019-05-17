@@ -62,7 +62,7 @@ let string_of_arg = function
 
 let last_env = ref (env_of_scope empty_scope)
 let last_region = ref Source.no_region
-let region_counters : Counters.t = Counters.zeros ()
+let profile_counters : Counters.t = Counters.zeros ()
 
 let print_exn exn =
   Printf.printf "%!";
@@ -264,7 +264,7 @@ let rec interpret_exp env exp (k : V.value V.cont) =
 and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
   last_env := env;
-  Counters.bump region_counters exp.at ;
+  Counters.bump_region profile_counters exp.at ;
   match exp.it with
   | PrimE s ->
     let at = exp.at in

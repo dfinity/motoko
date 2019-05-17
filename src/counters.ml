@@ -10,18 +10,29 @@ such as search, sorting, etc.
 
 open Source
 
-type t = (region, int) Hashtbl.t
+type t = {
+    label  : ((region * string), int) Hashtbl.t ;
+    region : (region, int) Hashtbl.t ;
+  }
 
 let dump_count = ref 0
 
-let zeros () =
-  Hashtbl.create 100
+let zeros () = {
+    label  = Hashtbl.create 100 ;
+    region = Hashtbl.create 100 ;
+  }
 
-let bump c reg =
+let bump_region c reg =
   if !Flags.profile then
-    match Hashtbl.find_opt c reg with
-      Some n -> Hashtbl.replace c reg (n + 1)
-    | None   -> Hashtbl.replace c reg 1
+    match Hashtbl.find_opt c.region reg with
+      Some n -> Hashtbl.replace c.region reg (n + 1)
+    | None   -> Hashtbl.replace c.region reg 1
+
+let bump_label c reg lab =
+  if !Flags.profile then
+    match Hashtbl.find_opt c.label (reg, lab) with
+      Some n -> Hashtbl.replace c.label (reg, lab) (n + 1)
+    | None   -> Hashtbl.replace c.label (reg, lab) 1
 
 (* lexicographic on (left.file, left.line, left.column, right.line, right.column) *)
 let region_order rega regb =
@@ -38,6 +49,9 @@ let region_order rega regb =
       compare rega.left.line regb.left.line
   else
     compare rega.left.file regb.left.file
+
+let label_order laba labb =
+  compare laba labb
 
 let dump (c:t) (ve: Value.value Value.Env.t) =
   if !Flags.profile then
@@ -56,12 +70,39 @@ let dump (c:t) (ve: Value.value Value.Env.t) =
         d
       end
     in
-    let counts = Hashtbl.fold (fun region count counts -> (region, count) :: counts) c [] in
-    let counts = List.sort (fun (rega, x) (regb, y) ->
-                     let diff = x - y in
-                     if diff <> 0 then -diff else
-                       region_order rega regb
-                   ) counts
+    (* Include all labeled regions in the final table: *)
+    let labeled_counts =
+      Hashtbl.fold (
+          fun (reg, label) count counts ->
+          ((reg, Some label), count) :: counts)
+        c.label []
+    in
+    (* Include all other regions in the final table: *)
+    let all_region_counts =
+      Hashtbl.fold (
+          fun reg count counts ->
+          ((reg, None), count) :: counts)
+        c.region labeled_counts
+    in
+    let sorted_counts =
+      List.sort (
+          (* Final ordering: 
+             - counts; bigger first; this is the main ordering constraint.
+             - labels; labeled expressions before unlabeled
+             - regions; earlier/outer regions before later/enclosed ones
+           *)
+          fun
+            ((rega, laba), x)
+            ((regb, labb), y)
+          ->
+          let diff = x - y in
+          if diff <> 0 then -diff else
+            match (laba, labb) with
+              (Some _, None) -> -1
+            | (None, Some _) ->  1
+            | (Some _, Some _) -> label_order laba labb
+            | (None, None) -> region_order rega regb
+        ) all_region_counts
     in
     let file = open_out (!Flags.profile_file) in
     let (suffix, flds) =
@@ -77,12 +118,16 @@ let dump (c:t) (ve: Value.value Value.Env.t) =
     Printf.fprintf file "# column: source region count\n" ;
     List.iter (fun fld -> Printf.fprintf file "# column: --profile-field: %s\n" fld)
       (List.rev flds) ;
-    List.iter (fun (region, region_count) ->
+    List.iter (fun ((region, labop), region_count) ->
         assert (dump_count = 0);
-        Printf.fprintf file "%s\"%s\", %d%s\n"
+        Printf.fprintf file "%s\"%s\", %s, %d%s\n"
           (!Flags.profile_line_prefix)
           (string_of_region region)
+          (match labop with 
+             None   -> "null"
+           | Some x -> Printf.sprintf "?\"%s\"" x
+          )
           region_count
           suffix
-      ) counts;
+      ) sorted_counts;
     close_out file

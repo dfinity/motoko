@@ -25,16 +25,19 @@ type AssocList<K,V> = List.List<(K,V)>;
     : ?V
   {
     func rec(al:AssocList<K,V>) : ?V {
+    label profile_assocList_find_rec : (?V)
       switch (al) {
-      case (null) null;
+      case (null) { label profile_assocList_find_end_fail : (?V) null };
       case (?((hd_k, hd_v), tl)) {
              if (k_eq(k, hd_k)) {
+               label profile_assocList_find_end_success : (?V)
                ?hd_v
              } else {
                rec(tl)
              }
            };
     }};
+    label profile_assocList_find_begin : (?V)
     rec(al)
   };
 
