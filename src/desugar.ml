@@ -340,7 +340,7 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
                            at = prog.at;
                            cat = "import";
                            text =
-                             "imported declarations as module; rewrite program as module instead."
+                             Printf.sprintf "imported declarations `...` from file %s as a module; please rewrite library %s as `module { ... }` instead." f f
                          }
            );
      { it = Syntax.LetD

@@ -134,10 +134,14 @@ exception Unavoidable of con
 val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
 val avoid_cons : ConSet.t -> ConSet.t-> unit (* raise Unavoidable *)
 
+
+(*  cons occuring in kind *)
+
+val cons_kind : kind -> ConSet.t
+
 val is_concrete : typ -> bool
 
 val span : typ -> int option
-
 
 (* Equivalence and Subtyping *)
 
@@ -166,6 +170,7 @@ module Env : Env.S with type key = string
 
 (* Pretty printing *)
 
+val string_of_con : con -> string
 val string_of_prim : prim -> string
 val string_of_sharing: sharing -> string
 val string_of_typ : typ -> string

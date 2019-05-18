@@ -468,7 +468,43 @@ and avoid_cons cons1 cons2 =
 
 let avoid cons t =
   if cons = ConSet.empty then t else
-  avoid' cons ConSet.empty t
+   avoid' cons ConSet.empty t
+
+(* Checking for concrete types *)
+
+let rec cons t cs =
+    begin
+      match t with
+      | Var _ ->  cs
+      | (Prim _ | Any | Non | Shared | Pre) -> cs
+      | Con (c, ts) ->
+        List.fold_right cons ts (ConSet.add c cs)
+      | Opt t
+      | Async t
+      | Mut t
+      | Serialized t
+      | Array t -> cons t cs
+      | Tup ts -> List.fold_right cons ts cs
+      | Func (s, c, tbs, ts1, ts2) ->
+        let cs = List.fold_right cons_bind tbs  cs in
+        let cs = List.fold_right cons ts1 cs in
+        List.fold_right cons ts2 cs
+      | Obj (_, fs)
+      | Variant fs -> List.fold_right cons_field fs cs
+      | Typ c -> ConSet.add c cs
+    end
+
+and cons_bind {var; bound} cs =
+  cons bound cs
+
+and cons_field {lab; typ} cs =
+  cons typ cs
+
+let cons_kind k =
+  match k with
+  | Def (tbs, t)
+  | Abs (tbs, t) ->
+    cons t (List.fold_right cons_bind tbs ConSet.empty)
 
 (* Checking for concrete types *)
 
@@ -516,7 +552,6 @@ module S = Set.Make (struct type t = typ * typ let compare = compare end)
 let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
 
-let str = ref (fun _ -> failwith "")
 let rec rel_typ rel eq t1 t2 =
   t1 == t2 || S.mem (t1, t2) !rel || begin
   rel := S.add (t1, t2) !rel;
@@ -764,7 +799,7 @@ let string_of_prim = function
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
 
-let string_of_con vs c =
+let string_of_con' vs c =
   let s = Con.to_string c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
@@ -779,9 +814,9 @@ let rec string_of_typ_nullary vs = function
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
   | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
-  | Con (c, []) -> string_of_con vs c
+  | Con (c, []) -> string_of_con' vs c
   | Con (c, ts) ->
-    sprintf "%s<%s>" (string_of_con vs c)
+    sprintf "%s<%s>" (string_of_con' vs c)
       (String.concat ", " (List.map (string_of_typ' vs) ts))
   | Tup ts ->
     sprintf "(%s%s)"
@@ -891,8 +926,8 @@ and string_of_kind k =
   let op, sbs, st = strings_of_kind k in
   sprintf "%s %s%s" op sbs st
 
+let string_of_con = string_of_con' []
 let string_of_typ = string_of_typ' []
-let _ = str := string_of_typ
 
 let rec string_of_typ_expand t =
   let s = string_of_typ t in

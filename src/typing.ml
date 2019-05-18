@@ -1416,6 +1416,22 @@ and infer_dec_typdecs env dec : scope =
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
+    begin
+      let is_typ_param c =
+        match Con.kind c with
+        | T.Def _ -> false
+        | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
+        | T.Abs( _, _) -> true in
+      let typ_params = T.ConSet.filter is_typ_param env.cons in
+      let cs_k = T.cons_kind k in
+      let free_params = T.ConSet.inter typ_params cs_k in
+      if not (T.ConSet.is_empty free_params) then
+        error env dec.at
+          "type definition %s %s references forbidden type parameter(s) %s"
+          con_id.it
+          (T.string_of_kind k)
+          (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
+    end;
     { empty_scope with
       typ_env = T.Env.singleton con_id.it c;
       con_env = infer_id_typdecs con_id c k;
