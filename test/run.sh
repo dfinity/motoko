@@ -51,7 +51,7 @@ function normalize () {
     grep -a -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $1 |
     sed 's/\x00//g' |
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
-    sed 's/^.*W, hypervisor:/W, hypervisor:/g' |
+    sed 's/^.*I, hypervisor:/I, hypervisor:/g' |
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
     sed 's/^.*run-dfinity\/\.\.\/dvm.sh: line/dvm.sh: line/g' |
     sed 's/ *[0-9]* Illegal instruction.*dvm/ Illegal instruction dvm/g' |
