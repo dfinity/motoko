@@ -727,9 +727,9 @@ and lub' lubs glbs t1 t2 =
     set_kind c (Def ([], inner));
     inner
   else
-  begin match normalize t1, normalize t2 with
+  match normalize t1, normalize t2 with
   | _, Pre
-  | Pre, _ -> Pre
+  | Pre, _ -> assert false
   | _, Any
   | Any, _ -> Any
   | _, Non -> t1
@@ -767,7 +767,6 @@ and lub' lubs glbs t1 t2 =
     Async (lub' lubs glbs t1' t2')
   | t1', t2' when sub t1' Shared && sub t2' Shared -> Shared
   | _ -> Any
-  end
 
 and lub_fields lubs glbs fs1 fs2 = match fs1, fs2 with
   | _, [] -> []
@@ -798,9 +797,9 @@ and glb' lubs glbs t1 t2 =
     set_kind c (Def ([], inner));
     inner
   else
-  begin match normalize t1, normalize t2 with
+  match normalize t1, normalize t2 with
   | _, Pre
-  | Pre, _ -> Pre
+  | Pre, _ -> assert false
   | _, Any -> t1
   | Any, _ -> t2
   | _, Non -> Non
@@ -811,6 +810,7 @@ and glb' lubs glbs t1 t2 =
   | t1', Shared when sub t1' Shared -> t1
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
+  | t1', t2' when eq t1' t2' -> t1
   | Opt t1', Opt t2' ->
     Opt (glb' lubs glbs t1' t2')
   | Variant t1', Variant t2' ->
@@ -822,8 +822,6 @@ and glb' lubs glbs t1 t2 =
   | Prim Text, (Obj _ as t2') when sub text_obj t2' -> t1
   | (Obj _ as t1'), Prim Text when sub text_obj t1' -> t2
 
-  | t1', t2' when eq t1' t2' -> t1
-  (* Potentially recursive types follow *)
   | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
     Tup (List.map2 (glb' lubs glbs) ts1 ts2)
   | Array t1', Array t2' ->
@@ -837,7 +835,6 @@ and glb' lubs glbs t1 t2 =
   | Async t1', Async t2' ->
     Async (glb' lubs glbs t1' t2')
   | _ -> Non
-  end
 
 and glb_fields lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
