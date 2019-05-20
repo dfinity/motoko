@@ -2119,8 +2119,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.if_ (ValBlockType (Some I32Type))
           begin
             get_a ^^
-              compile_unboxed_const Int32.minus_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-              compile_unboxed_const 4l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
+            compile_unboxed_const Int32.minus_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+            compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
               (*FIXME: handle -2^30*) 
           end
           get_a
@@ -2144,7 +2144,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_x, get_x = new_local env "x" in
     let set_buf, get_buf = new_local env "buf" in
     set_x ^^ set_buf ^^
-    get_x ^^ 
+    get_x ^^
     try_unbox I32Type
       (fun env ->
         (* POSSIBLY sometime when we externalise LEB128
