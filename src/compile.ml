@@ -1955,14 +1955,14 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
   (* input is right-padded with 0 *)
-  let compress =
+  let compress32 =
     compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
 
   (* input is right-padded with 0 *)
   let compress64 =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compress
+    compress32
 
   let speculate_compact =
     compile_unboxed_one ^^
@@ -1973,7 +1973,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Test (Wasm.Values.I32 I32Op.Eqz))
 
   let compress =
-    compile_shrU_const 1l ^^
+    compile_shl_const 1l ^^
     compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
 
