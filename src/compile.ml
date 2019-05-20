@@ -2141,13 +2141,25 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_size
  
   let compile_store_to_data_buf env =
+    let set_x, get_x = new_local env "x" in
+    let set_buf, get_buf = new_local env "buf" in
+    set_x ^^ set_buf ^^
+    get_x ^^ 
     try_unbox I32Type
       (fun env ->
+        (* POSSIBLY sometime when we externalise LEB128
         extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 4l
+         *)
+        G.i Drop ^^
+        get_buf ^^
+        get_x ^^
+        extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+        G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 8l (* 64 bit for now *)
       )
-      Num.compile_store_to_data_buf
+      (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf env)
       env
 
   let compile_data_size env =
@@ -3443,7 +3455,7 @@ module Serialization = struct
       | Prim (Nat | Int) ->
         get_data_buf ^^
         get_x ^^
-        BigNum.compile_store_to_data_buf env ^^
+        BigNum.compile_store_to_data_buf env ^^ (*todo(gabor) pass get_data_buf and get_x *)
         advance_data_buf
       | Prim Word64 ->
         get_data_buf ^^
