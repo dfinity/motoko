@@ -21,17 +21,17 @@ false produces
 type-inference.as:18.33-18.41: warning, the switch has type Shared because branches have inconsistent types,
 this case produces type
   Bool
-the previous produces type
+the previous produce type
   Nat
 type-inference.as:19.33-19.47: warning, the switch has type Any because branches have inconsistent types,
 this case produces type
   Bool
-the previous produces type
+the previous produce type
   [var Nat]
 type-inference.as:20.43-20.56: warning, the switch has type Shared because branches have inconsistent types,
 this case produces type
   Int
-the previous produces type
+the previous produce type
   Text
 type-inference.as:25.9-25.18: warning, this array has type [Shared] because elements have inconsistent types
 type-inference.as:26.9-26.24: warning, this array has type [Any] because elements have inconsistent types
@@ -58,17 +58,17 @@ false produces
 type-inference.as:18.33-18.41: warning, the switch has type Shared because branches have inconsistent types,
 this case produces type
   Bool
-the previous produces type
+the previous produce type
   Nat
 type-inference.as:19.33-19.47: warning, the switch has type Any because branches have inconsistent types,
 this case produces type
   Bool
-the previous produces type
+the previous produce type
   [var Nat]
 type-inference.as:20.43-20.56: warning, the switch has type Shared because branches have inconsistent types,
 this case produces type
   Int
-the previous produces type
+the previous produce type
   Text
 type-inference.as:25.9-25.18: warning, this array has type [Shared] because elements have inconsistent types
 type-inference.as:26.9-26.24: warning, this array has type [Any] because elements have inconsistent types
