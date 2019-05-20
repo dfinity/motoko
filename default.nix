@@ -433,7 +433,12 @@ rec {
       [ nixpkgs.ncurses ]
     ));
 
-    shellHook = llvmEnv;
+    shellHook = ''
+      ${llvmEnv}
+      # Populate _build directories for merlin
+      make -C rts
+      make -C src main.byte
+    '';
     TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
   } else null;
