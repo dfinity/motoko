@@ -694,34 +694,36 @@ The following notation is used:
 #### Types
 
 `T` maps an IDL type to a byte sequence representing that type.
+Each type constructor is encoded as a negative opcode;
+positive numbers index auxiliary *type definitions* that define more complex types.
 We assume that the fields in a record or function type are sorted by increasing id and the methods in an actor are sorted by name.
 
 ```
 T : <primtype> -> i8*
-T(null)     = i8(0)
-T(bool)     = i8(1)
-T(nat)      = i8(2)
-T(int)      = i8(3)
-T(nat<N>)   = i8(4 + log2(N/8))
-T(int<N>)   = i8(8 + log2(N/8))
-T(float<N>) = i8(12 + log2(N/32))
-T(text)     = i8(14)
-T(unavailable) = i8(15)
+T(null)     = sleb128(-1)
+T(bool)     = sleb128(-2)
+T(nat)      = sleb128(-3)
+T(int)      = sleb128(-4)
+T(nat<N>)   = sleb128(-5 - log2(N/8))
+T(int<N>)   = sleb128(-9 - log2(N/8))
+T(float<N>) = sleb128(-13 - log2(N/32))
+T(text)     = sleb128(-15)
+T(unavailable) = sleb128(-16)
 
 T : <constype> -> i8*
-T(opt <datatype>) = i8(16) I(<datatype>)
-T(vec <datatype>) = i8(17) I(<datatype>)
-T(record {<fieldtype>^N}) = i8(18) T*(<fieldtype>^N)
-T(variant {<fieldtype>^N}) = i8(19) T*(<fieldtype>^N)
+T(opt <datatype>) = sleb128(-17) I(<datatype>)
+T(vec <datatype>) = sleb128(-18) I(<datatype>)
+T(record {<fieldtype>^N}) = sleb128(-19) T*(<fieldtype>^N)
+T(variant {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
 
 T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
 T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
-  i8(20) T*(<fieldtype2>*) T*(<fieldtype2>*) T*(<funcann>*)
+  sleb128(-21) T*(<fieldtype2>*) T*(<fieldtype2>*) T*(<funcann>*)
 T(service {<methtype>*}) =
-  i8(21) T*(<methtype>*)
+  sleb128(-22) T*(<methtype>*)
 
 T : <methtype> -> i8*
 T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
@@ -734,19 +736,19 @@ T* : <X>* -> i8*
 T*(<X>^N) = leb128(N) T(<X>)^N
 ```
 
-Every nested type is encoded as an index into a list of *type definitions*. This allows for recursive types and sharing of types occuring multiple times:
+Every nested type is encoded as either a primitive type or an index into a list of *type definitions*. This allows for recursive types and sharing of types occuring multiple times:
 
 ```
 I : <datatype> -> i8*
-I(<datatype>) = leb128(i) where type_defs[i] = T(<datatype>)
+I(<primtype>) = T(<primtype>)
+I(<datatype>) = sleb128(i)  where type definition i defines T(<datatype>)
 ```
 
-The type definitions list consists of a static prefix for the primitive types, i.e. `T(null)` through `T(unavailable)`, followed by the list of message-specific type definitions:
+Type definitions themselves are represented as a list of serialised data types:
 ```
-type_defs : <datatype*> = 0 1 2 3 … 15 TD
-TD : <datatype*>
+T*(<datatype>*)
 ```
-The data types in `TD` can themselves refer to any of the definitions via the encoding above.
+The data types in this list can themselves refer to each other (or themselves) via `I`.
 
 Note:
 
@@ -754,9 +756,7 @@ Note:
 
 * The serialised data type representing a method type must denote a function type.
 
-* Because recursion goes through `T`, this format by construction rules out circluar definitions like `type t = t`.
-
-* The static prefix is not present in the encoding of the message, only `TD` is (see below).
+* Because recursion goes through `T`, this format by construction rules out non-well-founded definitions like `type t = t`.
 
 #### Memory
 
@@ -822,9 +822,9 @@ Note:
 
 ### Deserialisation
 
-Deserialisation is the parallel application of the inverse functions of `TD`, `M`, and `R` defined above, with the following mechanism for robustness towards future extensions:
+Deserialisation is the parallel application of the inverse functions of `T`, `M`, and `R` defined above, with the following mechanism for robustness towards future extensions:
 
-* A serialised type may be headed by an opcode other than the ones defined above (i.e., ≥22). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
+* A serialised type may be headed by an opcode other than the ones defined above (i.e., less than -23). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
 
 * A value corresponding to a future type is called a *future value*. It is  represented by two LEB128-encoded counts, *m* and *n*, followed by a *m* bytes in the memory representation M and accompanied by *n* corresponding references in R.
 
@@ -833,17 +833,17 @@ These measures allow the serialisation format to be extended with new types in t
 
 ### Parameters and Results
 
-`A` defines the argument mapping. Essentially, an argument list is serialised into the triple (TD,M,R) as if it was a single closed record. T and M are combined into a single byte stream B, where they are preceded by the string "DIDL" as a magic number and a possible list of type definitions.
+`A` defines the argument mapping. Essentially, an argument list is serialised into the triple (T,M,R) as if it was a single closed record. T and M are combined into a single byte stream B, where they are preceded by the string "DIDL" as a magic number and a possible list of type definitions.
 We assume that the argument values are sorted by increasing id.
 
 ```
 A(kv* : <fieldtype>*) = ( B(kv* : <fieldtype>*), R(kv* : <fieldtype>*) )
 
 B(kv* : <fieldtype>*) =
-  i8('D') i8('I') i8('D') i8('L')
-  TD
-  T*(<fieldtype>*)
-  M(kv* : <fieldtype>*)
+  i8('D') i8('I') i8('D') i8('L')      magic number
+  T*(<datatype>*)                      type definition table
+  T*(<fieldtype>*)                     type of argument list
+  M(kv* : <fieldtype>*)                values of argument list
 ```
 The `<datatype>` vector contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the `<fieldtype>` vector.
 
