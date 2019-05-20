@@ -1410,7 +1410,7 @@ and infer_dec_typdecs env dec : scope =
      | None -> empty_scope
      | Some t ->
        match T.promote t with
-       | T.Obj ( _, _) as t' -> { empty_scope with val_env = T.Env.singleton id.it t' }
+       | T.Obj (_, _) as t' -> { empty_scope with val_env = T.Env.singleton id.it t' }
        | _ -> { empty_scope with val_env = T.Env.singleton id.it T.Pre }
     )
   | LetD _ | ExpD _ | VarD _ ->
