@@ -2005,13 +2005,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           end
       end
       begin
-        get_a ^^
-        BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64 env)
+        get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
           get_a ^^
-        get_b ^^
-        BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64 env)
+        get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
           get_b ^^
         slow env ^^ set_res ^^ get_res ^^
         fits_in_vanilla env ^^
@@ -2019,30 +2017,37 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           (get_res ^^ Num.truncate_to_word32 env ^^ compress)
           get_res
       end
-  let compile_add = try_unbox2 BoxedWord.compile_add Num.compile_add
-  let compile_mul =
-    try_unbox2
-      (fun env ->
-        BoxedWord.compile_mul env ^^
-        compile_const_64 1L ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
-      Num.compile_mul
 
-  let adjust a1 a2 r binop env = (* FIXME *)
+  let compile_add = try_unbox2 BoxedWord.compile_add Num.compile_add
+
+  let adjust a1 a2 r code env = (* FIXME *)
+    begin
+      if a1 then
+        let set_n, get_n = new_local64 env "n" in
+        set_n ^^
+        compile_const_64 1L ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+        get_n
+      else G.nop
+    end ^^
     if a2 then
       compile_const_64 1L ^^
       G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-      binop env
+      code env ^^ if r then
+                     compile_const_64 1L ^^
+                     G.i (Binary (Wasm.Values.I64 I64Op.Shl))
+                   else G.nop
     else
-      binop env
+      code env
 
+  let compile_mul = try_unbox2 (adjust false true false BoxedWord.compile_mul) Num.compile_mul
   let compile_signed_sub = try_unbox2 BoxedWord.compile_signed_sub Num.compile_signed_sub
-  let compile_signed_div = try_unbox2 (adjust false true false BoxedWord.compile_signed_div) Num.compile_signed_div
-  let compile_signed_mod = try_unbox2 BoxedWord.compile_signed_mod(*FIXME*) Num.compile_signed_mod
-  let compile_unsigned_div = try_unbox2 BoxedWord.compile_unsigned_div(*FIXME*) Num.compile_unsigned_div
-  let compile_unsigned_rem = try_unbox2 BoxedWord.compile_unsigned_rem(*FIXME*) Num.compile_unsigned_rem
+  let compile_signed_div = try_unbox2 (adjust true true true BoxedWord.compile_signed_div) Num.compile_signed_div
+  let compile_signed_mod = try_unbox2 BoxedWord.compile_signed_mod Num.compile_signed_mod
+  let compile_unsigned_div = try_unbox2 (adjust true true true BoxedWord.compile_unsigned_div) Num.compile_unsigned_div
+  let compile_unsigned_rem = try_unbox2 BoxedWord.compile_unsigned_rem Num.compile_unsigned_rem
   let compile_unsigned_sub = try_unbox2 BoxedWord.compile_unsigned_sub Num.compile_unsigned_sub
-  let compile_unsigned_pow = try_unbox2 BoxedWord.compile_unsigned_pow(*FIXME*) Num.compile_unsigned_pow
+  let compile_unsigned_pow = try_unbox2 (adjust true true true BoxedWord.compile_unsigned_pow(*FIXME: OVERFLOWS FAST*)) Num.compile_unsigned_pow
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
@@ -2052,7 +2057,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ Num.compile_is_negative env)
 
   let compile_lit env = function
-    | n when Big_int.(is_int_big_int n && int_of_big_int n >= -1073741824 && int_of_big_int n <= 1073741823) ->
+    | n when Big_int.(is_int_big_int n
+                      && int_of_big_int n >= Int32.(to_int (shift_left 3l 30))
+                      && int_of_big_int n <= Int32.(to_int (shift_right_logical minus_one 2))) ->
       let i = Int32.of_int (Big_int.int_of_big_int n) in
       compile_unboxed_const Int32.(logor (shift_left i 2) (shift_right_logical i 31))
     | n -> Num.compile_lit env n
@@ -2076,13 +2083,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         fast env
       end
       begin
-        get_a ^^
-        BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64 env)
+        get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
           get_a ^^
-        get_b ^^
-        BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64 env)
+        get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
           get_b ^^
         slow env
       end
@@ -2123,7 +2128,18 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       Num.compile_abs
       env
 
-  let compile_load_from_data_buf env = assert false
+  let compile_load_from_data_buf env =
+    let set_res, get_res = new_local env "res" in
+    let set_size, get_size = new_local env "size" in
+    Num.compile_load_from_data_buf env ^^
+    set_size ^^ set_res ^^ get_res ^^
+    fits_in_vanilla env ^^
+    begin G.if_ (ValBlockType (Some I32Type))
+      (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+      get_res
+    end ^^
+    get_size
+ 
   let compile_store_to_data_buf env =
     try_unbox I32Type
       (fun env ->
