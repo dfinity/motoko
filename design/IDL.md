@@ -709,13 +709,13 @@ T(text)     = i8(14)
 T(unavailable) = i8(15)
 
 T : <constype> -> i8*
-T(opt <datatype>) = i8(16) T(<datatype>)
-T(vec <datatype>) = i8(17) T(<datatype>)
+T(opt <datatype>) = i8(16) I(<datatype>)
+T(vec <datatype>) = i8(17) I(<datatype>)
 T(record {<fieldtype>^N}) = i8(18) T*(<fieldtype>^N)
 T(variant {<fieldtype>^N}) = i8(19) T*(<fieldtype>^N)
 
 T : <fieldtype> -> i8*
-T(<nat>:<datatype>) = leb128(<nat>) T(<datatype>)
+T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
 T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
@@ -724,7 +724,7 @@ T(service {<methtype>*}) =
   i8(21) T*(<methtype>*)
 
 T : <methtype> -> i8*
-T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) T(<datatype>)
+T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
 
 T : <funcann> -> i8*
 T(pure)   = i8(1)
@@ -734,25 +734,29 @@ T* : <X>* -> i8*
 T*(<X>^N) = leb128(N) T(<X>)^N
 ```
 
-This definition assumes that a type is finite. However, the IDL supports structurally recursive types. In order to represent those, and to allow efficient sharing of type components occuring multiple types, the binary format is prefixed by a sequence of mutually recursive *type definitions* that can be referenced with a special tag:
+Every nested type is encoded as an index into a list of *type definitions*. This allows for recursive types and sharing of types occuring multiple times:
 
 ```
-T : <datatype> -> i8*
-T(<datatype>) = i8(255) leb128(i)  iff type definition i defines <datatype>
+I : <datatype> -> i8*
+I(<datatype>) = leb128(i) where type_defs[i] = T(<datatype>)
 ```
 
-Type definitions themselves are represented as a list of serialised data types:
+The type definitions list consists of a static prefix for the primitive types, i.e. `T(null)` through `T(unavailable)`, followed by the list of message-specific type definitions:
 ```
-T*(<datatype>*)
+type_defs : <datatype*> = 0 1 2 3 … 15 TD
+TD : <datatype*>
 ```
-The data types in this list can themselves refer to any of the definitions via the encoding above. However, a definition in the list must not consist solely of such a reference.
+The data types in `TD` can themselves refer to any of the definitions via the encoding above.
 
 Note:
 
 * Due to the type definition prefix, there are always multiple possible ways to represent any given serialised type. Type serialisation hence is not technically a function but a relation.
 
-* The serialised data type representing a method type must denote a function type, either directly, or via reference to a type definition.
+* The serialised data type representing a method type must denote a function type.
 
+* Because recursion goes through `T`, this format by construction rules out circluar definitions like `type t = t`.
+
+* The static prefix is not present in the encoding of the message, only `TD` is (see below).
 
 #### Memory
 
@@ -818,9 +822,9 @@ Note:
 
 ### Deserialisation
 
-Deserialisation is the parallel application of the inverse functions of `T`, `M`, and `R` defined above, with the following mechanism for robustness towards future extensions:
+Deserialisation is the parallel application of the inverse functions of `TD`, `M`, and `R` defined above, with the following mechanism for robustness towards future extensions:
 
-* A serialised type may be headed by an opcode other than the ones defined above (i.e., 22-254). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
+* A serialised type may be headed by an opcode other than the ones defined above (i.e., ≥22). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
 
 * A value corresponding to a future type is called a *future value*. It is  represented by two LEB128-encoded counts, *m* and *n*, followed by a *m* bytes in the memory representation M and accompanied by *n* corresponding references in R.
 
@@ -829,7 +833,7 @@ These measures allow the serialisation format to be extended with new types in t
 
 ### Parameters and Results
 
-`A` defines the argument mapping. Essentially, an argument list is serialised into the triple (T,M,R) as if it was a single closed record. T and M are combined into a single byte stream B, where they are preceded by the string "DIDL" as a magic number and a possible list of type definitions.
+`A` defines the argument mapping. Essentially, an argument list is serialised into the triple (TD,M,R) as if it was a single closed record. T and M are combined into a single byte stream B, where they are preceded by the string "DIDL" as a magic number and a possible list of type definitions.
 We assume that the argument values are sorted by increasing id.
 
 ```
@@ -837,7 +841,7 @@ A(kv* : <fieldtype>*) = ( B(kv* : <fieldtype>*), R(kv* : <fieldtype>*) )
 
 B(kv* : <fieldtype>*) =
   i8('D') i8('I') i8('D') i8('L')
-  T*(<datatype>*)
+  TD
   T*(<fieldtype>*)
   M(kv* : <fieldtype>*)
 ```
