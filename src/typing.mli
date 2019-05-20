@@ -5,7 +5,7 @@ type lib_env = typ Env.t
 type typ_env = con Env.t
 type con_env = ConSet.t
 
-type obj_env = { env: scope Env.t } (* internal object scopes *)
+type obj_env = scope Env.t  (* internal object scopes *)
 
 and scope =
   { val_env : val_env;

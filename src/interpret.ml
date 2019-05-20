@@ -142,12 +142,12 @@ let await at async k =
   if !Flags.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
-      Scheduler.queue (fun () ->
-          if !Flags.trace then
-            trace "<- await %s%s" (string_of_region at) (string_of_arg v);
-          incr trace_depth;
-          k v
-        )
+    Scheduler.queue (fun () ->
+      if !Flags.trace then
+        trace "<- await %s%s" (string_of_region at) (string_of_arg v);
+      incr trace_depth;
+      k v
+      )
     )
 
 let actor_msg id f v (k : V.value V.cont) =
@@ -228,16 +228,16 @@ let check_call_conv_arg exp v call_conv =
   let es = try V.as_tup v with Invalid_argument _ ->
     failwith (Printf.sprintf
       "call %s: calling convention %s cannot handle non-tuple value %s"
-        (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
-        (V.string_of_call_conv call_conv)
+      (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+      (V.string_of_call_conv call_conv)
       (V.string_of_val v)
     )
   in
   if List.length es <> call_conv.V.n_args then
     failwith (Printf.sprintf
       "call %s: calling convention %s got tuple of wrong length %s"
-        (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
-        (V.string_of_call_conv call_conv)
+      (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+      (V.string_of_call_conv call_conv)
       (V.string_of_val v)
     )
 
@@ -326,11 +326,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     in k v'
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
-        interpret_exp env exp2 (fun v2 ->
-            let call_conv, f = V.as_func v1 in
-            check_call_conv exp1 call_conv;
-            check_call_conv_arg exp v2 call_conv;
-            f v2 k
+      interpret_exp env exp2 (fun v2 ->
+        let call_conv, f = V.as_func v1 in
+        check_call_conv exp1 call_conv;
+        check_call_conv_arg exp v2 call_conv;
+        f v2 k
 (*
         try
           let _, f = V.as_func v1 in f v2 k
@@ -563,7 +563,7 @@ and match_pat pat v : val_env option =
     )
   | AnnotP (pat1, _)
   | ParP pat1 ->
-     match_pat pat1 v
+    match_pat pat1 v
 
 and match_pats pats vs ve : val_env option =
   match pats, vs with

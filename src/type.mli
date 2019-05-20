@@ -132,16 +132,17 @@ val promote : typ -> typ
 
 exception Unavoidable of con
 val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
-val avoid_cons : ConSet.t -> ConSet.t-> unit (* raise Unavoidable *)
-
-
-(*  cons occuring in kind *)
-
-val cons_kind : kind -> ConSet.t
+val avoid_cons : ConSet.t -> ConSet.t -> unit (* raise Unavoidable *)
 
 val is_concrete : typ -> bool
 
 val span : typ -> int option
+
+
+(* Cons occuring in kind *)
+
+val cons_kind : kind -> ConSet.t
+
 
 (* Equivalence and Subtyping *)
 

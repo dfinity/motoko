@@ -323,8 +323,7 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
   let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
   match prog.it with
   |  [{it = Syntax.ExpD e;_}] ->
-     { it = Syntax.LetD
-              (
+     { it = Syntax.LetD (
                 { it = Syntax.VarP (id_of_full_path f)
                 ; at = no_region
                 ; note = t
@@ -336,29 +335,37 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
      }
   (* HACK: to be removed once we restrict programs to expressions *)
   |  ds ->
-     Diag.(print_message { sev = Warning;
-                           at = prog.at;
-                           cat = "import";
-                           text =
-                             Printf.sprintf "imported declarations `...` from file %s as a module; please rewrite library %s as `module { ... }` instead." f f
-                         }
-           );
-     { it = Syntax.LetD
-              (
-                { it = Syntax.VarP (id_of_full_path f)
-                ; at = no_region
-                ; note = t
-                }
-              , { it = Syntax.ObjE (Type.Module @@ no_region,
-                                    List.map (fun d -> {Syntax.dec=d;vis=Syntax.Public @@ no_region} @@ d.at) prog.it)
-                ; at = no_region
-                ; note = typ_note
-                }
-              )
+     Diag.(
+       print_message
+         { sev = Warning
+         ; at = prog.at
+         ; cat = "import"
+         ; text = Printf.sprintf
+                    "imported declarations `...` from file %s as a module; \
+                     please rewrite library %s as `module { ... }` instead." f f
+         }
+     );
+     { it =
+         Syntax.LetD
+           (
+             { it = Syntax.VarP (id_of_full_path f)
+             ; at = no_region
+             ; note = t
+             }
+           , { it = Syntax.ObjE
+                      (Type.Module @@ no_region,
+                       List.map
+                         (fun d ->
+                           { Syntax.dec=d; vis=Syntax.Public @@ no_region }
+                              @@ d.at)
+                         prog.it)
+             ; at = no_region
+             ; note = typ_note
+             }
+           )
      ; at = no_region
      ; note = typ_note
      }
-
 
 let combine_files imp_env libraries progs : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)

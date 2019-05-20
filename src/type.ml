@@ -473,26 +473,21 @@ let avoid cons t =
 (* Checking for concrete types *)
 
 let rec cons t cs =
-    begin
-      match t with
-      | Var _ ->  cs
-      | (Prim _ | Any | Non | Shared | Pre) -> cs
-      | Con (c, ts) ->
-        List.fold_right cons ts (ConSet.add c cs)
-      | Opt t
-      | Async t
-      | Mut t
-      | Serialized t
-      | Array t -> cons t cs
-      | Tup ts -> List.fold_right cons ts cs
-      | Func (s, c, tbs, ts1, ts2) ->
-        let cs = List.fold_right cons_bind tbs  cs in
-        let cs = List.fold_right cons ts1 cs in
-        List.fold_right cons ts2 cs
-      | Obj (_, fs)
-      | Variant fs -> List.fold_right cons_field fs cs
-      | Typ c -> ConSet.add c cs
-    end
+  match t with
+  | Var _ ->  cs
+  | (Prim _ | Any | Non | Shared | Pre) -> cs
+  | Con (c, ts) ->
+    List.fold_right cons ts (ConSet.add c cs)
+  | (Opt t | Async t | Mut t | Serialized t | Array t) ->
+    cons t cs
+  | Tup ts -> List.fold_right cons ts cs
+  | Func (s, c, tbs, ts1, ts2) ->
+    let cs = List.fold_right cons_bind tbs  cs in
+    let cs = List.fold_right cons ts1 cs in
+    List.fold_right cons ts2 cs
+  | (Obj (_, fs) | Variant fs) ->
+    List.fold_right cons_field fs cs
+  | Typ c -> ConSet.add c cs
 
 and cons_bind {var; bound} cs =
   cons bound cs

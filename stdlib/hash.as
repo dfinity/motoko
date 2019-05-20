@@ -197,4 +197,3 @@ module {
   let Hash = BitVec;
 
 }
-

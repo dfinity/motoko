@@ -92,6 +92,8 @@ and triv m p = match p.it with
 
   (* TODO:
     claudio: what about record patterns, singleton variant patterns? These are irrefutable too.
+    Andreas suggests simply allowing all patterns: "The worst that can happen is that the program
+    is immediately terminated, but that doesn't break anything semantically."
   *)
 
   (* Everything else is forbidden *)
