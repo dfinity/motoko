@@ -65,6 +65,7 @@ func testIntAbs(a : Int) : [Int] {
 };
 
 verify<Int>([4567, 4567], testIntAbs(-4567), intCompare);
+verify<Int>([1073741824, 1073741824], testIntAbs(-1073741824), intCompare);
 
 func testNatInt(a : Nat, b : Int) : [Int] {
   let pos1 = + a;

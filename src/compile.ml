@@ -2068,7 +2068,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     Func.share_code1 env "negCompInt" ("n", I32Type) [I32Type] (fun env get_n ->
       compile_lit env (Big_int.big_int_of_int 0) ^^
       get_n ^^
-      compile_signed_sub env
+      compile_signed_sub env (*TODO(gabor) we can do better*)
     )
 
   let try_comp_unbox2 fast slow env =
@@ -2119,9 +2119,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.if_ (ValBlockType (Some I32Type))
           begin
             get_a ^^
-            compile_unboxed_const Int32.minus_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-            compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
-              (*FIXME: handle -2^30*) 
+            compile_unboxed_one ^^ (* i.e. -1073741824 *)
+            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+            G.if_ (ValBlockType (Some I32Type))
+              (compile_const_64 1073741824L ^^ Num.from_word64 env) (* is non-representable *)
+              begin
+                get_a ^^
+                compile_unboxed_const Int32.minus_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+                compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
+              end
           end
           get_a
       end
