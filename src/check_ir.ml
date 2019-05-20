@@ -204,13 +204,13 @@ and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
   check_typ env typ;
   if not (T.is_typ typ) then begin
-      check env no_region
-     (s <> Some T.Actor || T.is_func (T.promote typ))
-        "actor field has non-function type";
-      check env no_region
-     ((s <> Some T.Actor && s <> Some (T.Object T.Sharable)) || T.sub typ T.Shared)
-        "shared object or actor field has non-shared type"
-    end
+    check env no_region
+      (s <> Some T.Actor || T.is_func (T.promote typ))
+      "actor field has non-function type";
+    check env no_region
+      ((s <> Some T.Actor && s <> Some (T.Object T.Sharable)) || T.sub typ T.Shared)
+      "shared object or actor field has non-shared type"
+  end
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
@@ -665,10 +665,10 @@ and type_exp_field env s f : T.field =
   assert (t <> T.Pre);
   check_sub env f.at t f.note;
   if not (T.is_typ t) then begin
-      check env f.at ((s = T.Actor) ==> T.is_func t)
-        "public actor field is not a function";
-      check env f.at ((s <> T.Object T.Local && s <> T.Module) ==> T.sub t T.Shared)
-        "public shared object or actor field has non-shared type";
+    check env f.at ((s = T.Actor) ==> T.is_func t)
+      "public actor field is not a function";
+    check env f.at ((s <> T.Object T.Local && s <> T.Module) ==> T.sub t T.Shared)
+      "public shared object or actor field has non-shared type";
   end;
   T.{lab = name; typ = t}
 
