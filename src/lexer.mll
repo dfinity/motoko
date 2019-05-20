@@ -219,7 +219,7 @@ rule token mode = parse
 
   | "prim" as s { if mode = Privileged then PRIM else ID s }
   | id as s { ID s }
-  | "#" (id as s) { VARIANT_TAG s }
+  | "#" (id as s) { TAG s }
   | privileged_id as s { if mode = Privileged then ID s else error lexbuf "privileged identifier" }
 
   | "//"utf8_no_nl*eof { EOF }

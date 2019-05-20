@@ -25,6 +25,8 @@ sig
   val map_filter : ('a -> 'b option) -> 'a list -> 'b list
 
   val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
+  val is_ordered : ('a -> 'a -> int) -> 'a list -> bool
+  val is_strictly_ordered : ('a -> 'a -> int) -> 'a list -> bool
 end
 
 module List32 :

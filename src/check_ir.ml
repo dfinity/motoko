@@ -103,14 +103,6 @@ let disjoint_union env at fmt env1 env2 =
 
 (* Types *)
 
-let check_ids env ids = ignore (
-    List.fold_left (fun dom id ->
-      check env no_region (not (List.mem id dom))
-        "duplicate field name %s in object type" id;
-      id::dom
-    ) [] ids
-  )
-
 let check_sub env at t1 t2 =
   check env at (T.sub t1 t2) "subtype violation:\n  %s\n  %s\n"
     (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
@@ -178,26 +170,14 @@ let rec check_typ env typ : unit =
     let t' = T.promote typ in
     check_shared env no_region t'
   | T.Obj (sort, fields) ->
-    let rec strictly_sorted fields =
-      match fields with
-      | []
-      | [_] -> true
-      | f1::((f2::_) as fields') ->
-        T.compare_field f1 f2  < 0 && strictly_sorted fields'
-    in
-    List.iter (check_typ_field env sort) fields;
+    List.iter (check_typ_field env (Some sort)) fields;
     (* fields strictly sorted (and) distinct *)
-    if (not (strictly_sorted fields)) then
+    if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "object type's fields are not distinct and sorted %s" (T.string_of_typ typ)
-  | T.Variant cts ->
-    let rec sorted = function
-      | [] | [_] -> true
-      | (c1, _)::(((c2, _)::_) as summands') ->
-        compare c1 c2  < 0 && sorted summands'
-    in
-    check_ids env (List.map fst cts);
-    List.iter (check_typ_summand env) cts;
-    check env no_region (sorted cts) "variant type's constructors are not sorted"
+  | T.Variant fields ->
+    List.iter (check_typ_field env None) fields;
+    if not (Lib.List.is_strictly_ordered T.compare_field fields) then
+      error env no_region "variant type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Mut typ ->
     check_typ env typ
   | T.Serialized typ ->
@@ -205,9 +185,10 @@ let rec check_typ env typ : unit =
       "Serialized in non-serialized flavor";
     check_typ env typ;
     check_sub env no_region typ T.Shared
-  | T.Kind (c,k) ->
-    check_kind env k
+  | T.Typ c ->
+    check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
 
+(*
 and check_kind env k =
   let (binds,typ) =
     match k with
@@ -218,19 +199,17 @@ and check_kind env k =
   let ts = List.map (fun c -> T.Con(c,[])) cs in
   let env' = adjoin_cons env ce in
   check_typ env' (T.open_ ts  typ);
+*)
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
   check_typ env typ;
   check env no_region
-     (s <> T.Actor || T.is_func (T.promote typ))
+     (s <> Some T.Actor || T.is_func (T.promote typ))
     "actor field has non-function type";
   check env no_region
-     (s = T.Object T.Local || s = T.Module || T.sub typ T.Shared)
+     ((s <> Some T.Actor && s <> Some (T.Object T.Sharable)) || T.sub typ T.Shared)
     "shared object or actor field has non-shared type"
-
-and check_typ_summand env (c, typ) : unit =
-  check_typ env typ
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
@@ -322,7 +301,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     typ exp1 <: ot;
     typ exp2 <: ot;
-    ot <: t;
+    ot <: t
   | ShowE (ot, exp1) ->
     check env.flavor.has_show "show expression in non-show flavor";
     check (Show.can_show ot) "show is not defined for operand type";
@@ -335,18 +314,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     typ exp1 <: ot;
     typ exp2 <: ot;
-    T.bool <: t;
+    T.bool <: t
   | TupE exps ->
     List.iter (check_exp env) exps;
-    T.Tup (List.map typ exps) <: t;
+    T.Tup (List.map typ exps) <: t
   | OptE exp1 ->
     check_exp env exp1;
-    T.Opt (typ exp1) <: t;
-  | VariantE (i, exp1) ->
+    T.Opt (typ exp1) <: t
+  | TagE (i, exp1) ->
     check_exp env exp1;
-    T.Variant [(i.it, typ exp1)] <: t;
+    T.Variant [{T.lab = i.it; typ = typ exp1}] <: t
   | ProjE (exp1, n) ->
-    begin
     check_exp env exp1;
     let t1 = T.promote (immute_typ exp1) in
     let ts = try T.as_tup_sub n t1
@@ -358,7 +336,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
                error env exp.at "tuple projection %n is out of bounds for type\n  %s"
                  n (T.string_of_typ_expand t1) in
     tn <: t
-    end
   | ActorDotE(exp1,{it = Name n;_})
   | DotE (exp1, {it = Name n;_}) ->
     begin
@@ -374,10 +351,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
              | ActorDotE _ -> sort = T.Actor
              | DotE _ -> sort <> T.Actor
              | _ -> false) "sort mismatch";
-      match T.lookup_field n tfs with (*CRUSSO: FIX ME*)
-      | tn ->
+      match T.lookup_val_field n tfs with
+      | Some tn ->
         tn <~ t
-      | exception _ ->
+      | None ->
         error env exp1.at "field name %s does not exist in type\n  %s"
           n (T.string_of_typ_expand t1)
     end
@@ -388,12 +365,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
                Invalid_argument _ -> error env exp.at "expected mutable assignment target"
     in
     typ exp2 <: t2;
-    T.unit <: t;
+    T.unit <: t
   | ArrayE (mut, t0, exps) ->
     List.iter (check_exp env) exps;
     List.iter (fun e -> typ e <: t0) exps;
     let t1 = T.Array (match mut.it with Syntax.Const -> t0 | Syntax.Var -> T.Mut t0) in
-    t1 <: t;
+    t1 <: t
   | IdxE (exp1, exp2) ->
     check_exp env exp1;
     check_exp env exp2;
@@ -425,7 +402,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_concrete env exp.at t_ret;
     end;
     typ exp2 <: t_arg;
-    t_ret <: t;
+    t_ret <: t
   | BlockE (ds, exp1) ->
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
@@ -438,7 +415,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     typ exp2 <: t;
     check_exp env exp3;
-    typ exp3 <: t;
+    typ exp3 <: t
   | SwitchE (exp1, cases) ->
     check_exp env exp1;
     let t1 = T.promote (typ exp1) in
@@ -446,7 +423,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       if not (Coverage.check_cases env.cons cases t1) then
         warn env exp.at "the cases in this switch do not cover all possible values";
  *)
-    check_cases env t1 t cases;
+    check_cases env t1 t cases
   | LoopE exp1 ->
     check_exp env exp1;
     typ exp1 <: T.unit;
@@ -456,7 +433,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_typ env t0;
     check_exp (add_lab env id.it t0) exp1;
     typ exp1 <: t0;
-    t0 <: t;
+    t0 <: t
   | BreakE (id, exp1) ->
     begin
       match T.Env.find_opt id.it env.labs with
@@ -466,7 +443,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         check_exp env exp1;
         typ exp1 <: t1;
     end;
-    T.Non <: t; (* vacuously true *)
+    T.Non <: t (* vacuously true *)
   | RetE exp1 ->
     begin
       match env.rets with
@@ -477,7 +454,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         check_exp env exp1;
         typ exp1 <: t0;
     end;
-    T.Non <: t; (* vacuously true *)
+    T.Non <: t (* vacuously true *)
   | AsyncE exp1 ->
     check env.flavor.has_await "async expression in non-await flavor";
     let t1 = typ exp1 in
@@ -496,16 +473,16 @@ let rec check_exp env (exp:Ir.exp) : unit =
                error env exp1.at "expected async type, but expression has type\n  %s"
                  (T.string_of_typ_expand t1)
     in
-    t2 <: t;
+    t2 <: t
   | AssertE exp1 ->
     check_exp env exp1;
     typ exp1 <: T.bool;
-    T.unit <: t;
+    T.unit <: t
   | DeclareE (id, t0, exp1) ->
     check_typ env t0;
     let env' = adjoin_vals env (T.Env.singleton id.it t0) in
     check_exp env' exp1;
-    (typ exp1) <: t;
+    (typ exp1) <: t
   | DefineE (id, mut, exp1) ->
     check_exp env exp1;
     begin
@@ -553,11 +530,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let t1 = type_obj env'' T.Actor fs in
     check (T.is_obj t0) "bad annotation (object type expected)";
     t1 <: t0;
-    t0 <: t;
+    t0 <: t
   | NewObjE (s, fs, t0) ->
     check (T.is_obj t0) "bad annotation (object type expected)";
     let is_typ_field {T.lab;T.typ} =
-      match typ with T.Kind _ -> true | _ -> false
+      match typ with T.Typ _ -> true | _ -> false
     in
     let (_s,tfs0) = T.as_obj t0 in
     let typ_tfs0, val_tfs0 = List.partition is_typ_field tfs0
@@ -567,6 +544,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let t1 = T.Obj(s, List.sort T.compare_field (typ_tfs0 @ tfs1)) in
     t1 <: t0;
     t0 <: t
+
 (* Cases *)
 
 and check_cases env t_pat t cases =
@@ -609,7 +587,7 @@ and gather_pat env ve0 pat : val_env =
     | AltP (pat1, pat2) ->
       ve
     | OptP pat1
-    | VariantP (_, pat1) ->
+    | TagP (_, pat1) ->
       go ve pat1
   in T.Env.adjoin ve0 (go T.Env.empty pat)
 
@@ -642,9 +620,9 @@ and check_pat env pat : val_env =
     let ve = check_pat env pat1 in
     T.Opt pat1.note <: t;
     ve
-  | VariantP (i, pat1) ->
+  | TagP (i, pat1) ->
     let ve = check_pat env pat1 in
-    T.Variant [(i.it, pat1.note)] <: t;
+    T.Variant [{T.lab = i.it; typ = pat1.note}] <: t;
     ve
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in
@@ -671,8 +649,8 @@ and check_pat_field env t (pf : pat_field) =
   let s, tfs = T.as_obj_sub lab t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
-  if T.is_mut (T.lookup_field lab tfs)
-  then error env pf.it.pat.at "cannot match mutable field %s" lab
+  if T.is_mut (Lib.Option.value (T.lookup_val_field lab tfs)) then
+    error env pf.it.pat.at "cannot match mutable field %s" lab
 
 (* Objects *)
 
@@ -767,7 +745,7 @@ and gather_typ env ce typ =
    | T.Obj(T.Module,fs) ->
      List.fold_right (fun {T.lab;T.typ = typ1} ce ->
          match typ1 with
-         | T.Kind (c, k) -> T.ConSet.add c ce
+         | T.Typ c -> T.ConSet.add c ce
          | _ -> gather_typ env ce typ1
        ) fs ce
    | _ -> ce

@@ -50,7 +50,7 @@ let rec exp e = match e.it with
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | OptE e              -> "OptE"    $$ [exp e]
-  | VariantE (i, e)     -> "VariantE" $$ [id i; exp e]
+  | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | ImportE (f, fp)     -> "ImportE" $$ [Atom (if !fp = "" then f else !fp)]
 
@@ -63,7 +63,7 @@ and pat p = match p.it with
   | LitP l          -> "LitP"       $$ [lit !l]
   | SignP (uo, l)   -> "SignP"      $$ [unop uo ; lit !l]
   | OptP p          -> "OptP"       $$ [pat p]
-  | VariantP (i, p) -> "VariantP"   $$ [tag i; pat p]
+  | TagP (i, p)     -> "TagP"       $$ [tag i; pat p]
   | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
   | ParP p          -> "ParP"       $$ [pat p]
 
@@ -143,8 +143,8 @@ and vis v = match v.it with
 and typ_field (tf : typ_field)
   = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
 
-and typ_tag (c, t)
-  = c.it $$ [typ t]
+and typ_tag (tt : typ_tag)
+  = tt.it.tag.it $$ [typ tt.it.typ]
 
 and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
@@ -159,7 +159,7 @@ and path p = match p.it with
   | DotH (p,i) -> "DotH" $$ [path p; id i]
 
 and typ t = match t.it with
-  | VarT (s, ts)        -> "VarT" $$ [id s] @ List.map typ ts
+  | PathT (p, ts)       -> "PathT" $$ [path p] @ List.map typ ts
   | PrimT p             -> "PrimT" $$ [Atom p]
   | ObjT (s, ts)        -> "ObjT" $$ [obj_sort s] @ List.map typ_field ts
   | ArrayT (m, t)       -> "ArrayT" $$ [mut m; typ t]
@@ -169,7 +169,6 @@ and typ t = match t.it with
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [Atom (sharing s.it)] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
   | ParT t              -> "ParT" $$ [typ t]
-  | PathT (p, i, ts)         -> "PathT" $$ [path p; id i] @ List.map typ ts
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]

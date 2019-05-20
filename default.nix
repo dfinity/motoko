@@ -39,7 +39,7 @@ let real-dvm =
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
         ref = "master";
-        rev = "aff35b2a015108f7d1d694471ccaf3ffd6f0340c";
+        rev = "8016991c399761c4d60571d0300426e8482ee1da";
       }; in
       (import dev { system = nixpkgs.system; }).dvm
     else null
@@ -292,15 +292,15 @@ rec {
     '';
 
     installPhase = ''
-      mkdir -p $out/bin
-      cp -v src/asc.js $out/bin
+      mkdir -p $out
+      cp -v src/asc.js $out
       cp -vr ${rts}/rts $out
     '';
 
-    doInstallCheck = true; # need to fix loading the rts
+    doInstallCheck = true;
 
     installCheckPhase = ''
-      NODE_PATH=$out/bin node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
+      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
     '';
 
   });

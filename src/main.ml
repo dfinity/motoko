@@ -20,7 +20,7 @@ let set_mode m () =
   end;
   mode := m
 
-let compile_mode = ref Pipeline.WasmMode
+let compile_mode = ref Pipeline.DfinityMode
 let out_file = ref ""
 
 let argspec = Arg.align
@@ -35,9 +35,6 @@ let argspec = Arg.align
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
-  "--dfinity",
-    Arg.Unit (fun () -> compile_mode := Pipeline.DfinityMode),
-      " compile for dfinity";
   "--map", Arg.Set Flags.source_map, " output source map";
 
   "-t", Arg.Set Flags.trace, " activate tracing";
@@ -46,6 +43,9 @@ let argspec = Arg.align
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
 
   "-no-link", Arg.Clear Flags.link, " do not statically link-in runtime";
+  "-no-dfinity-api",
+    Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
+      " do not import the DFINITY system API";
 
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";

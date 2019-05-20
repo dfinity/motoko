@@ -85,10 +85,10 @@ module Transform() = struct
     | T.Func (T.Local, c, tbs, t1, t2) ->
       T.Func (T.Local, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
     | T.Opt t -> T.Opt (t_typ t)
-    | T.Variant cts -> T.(Variant (map_constr_typ t_typ cts))
+    | T.Variant fs -> T.(Variant (List.map t_field fs))
     | T.Obj (s, fs) -> T.Obj (s, List.map t_field fs)
     | T.Mut t -> T.Mut (t_typ t)
-    | T.Kind(c,k) -> T.Kind(t_con c, t_kind k) (* TBR *)
+    | T.Typ c -> T.Typ (t_con c) (* TBR *)
     | T.Serialized t -> assert false (* This transformation should only run once *)
     | T.Async t -> assert false (* Should happen after async-translation *)
 
@@ -134,9 +134,9 @@ module Transform() = struct
         (* We should take the type to serialize at from the function, not the
            argument, as the latter could be a subtype *)
         let fun_ty = exp1.note.note_typ in
-        let t_arg, t_ret = T.inst_func_type fun_ty cc.Value.sort typs in
+        let _, _, t_arg, t_ret = T.as_func_sub cc.Value.sort (List.length typs) fun_ty in
         assert (T.is_unit t_ret);
-        let exp2' = map_tuple cc.Value.n_args serialize (t_exp exp2) (t_typ t_arg) in
+        let exp2' = map_tuple cc.Value.n_args serialize (t_exp exp2) (t_typ (T.open_ typs t_arg)) in
         CallE (cc, t_exp exp1, [], exp2')
       end
     | FuncE (x, cc, typbinds, args, ret_tys, exp) ->
@@ -168,8 +168,8 @@ module Transform() = struct
       TupE (List.map t_exp exps)
     | OptE exp1 ->
       OptE (t_exp exp1)
-    | VariantE (i, exp1) ->
-      VariantE (i, t_exp exp1)
+    | TagE (i, exp1) ->
+      TagE (i, t_exp exp1)
     | ProjE (exp1, n) ->
       ProjE (t_exp exp1, n)
     | DotE (exp1, id) ->
@@ -249,8 +249,8 @@ module Transform() = struct
       ObjP (map_obj_pat t_pat pfs)
     | OptP pat1 ->
       OptP (t_pat pat1)
-    | VariantP (id, pat1) ->
-      VariantP (id, t_pat pat1)
+    | TagP (id, pat1) ->
+      TagP (id, t_pat pat1)
     | AltP (pat1, pat2) ->
       AltP (t_pat pat1, t_pat pat2)
 

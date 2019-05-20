@@ -2,6 +2,8 @@ func printLn(x : Text) { print(x # "\n"); };
 printLn(debug_show (true));
 printLn(debug_show (false));
 printLn(debug_show (-42));
+printLn(debug_show (-0));
+printLn(debug_show (0));
 printLn(debug_show (42));
 printLn(debug_show (42,-42,()));
 printLn(debug_show ("Foobar", null, null, ?23));
