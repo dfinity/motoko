@@ -3604,7 +3604,7 @@ end (* StackRep *)
 
 module ASEnv = struct
   (*
-  The Actor-Script specific environment:
+  The ActorScript specific environment:
   In scope variables and in-scope jump labels
   *)
 
