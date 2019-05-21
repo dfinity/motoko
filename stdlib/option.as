@@ -4,9 +4,7 @@ Functions for Option types.
 
 */
 
-module {
-
-private let P = import "prelude.as";
+let P = (import "prelude.as");
 
 type t<A> = ?A;
 
@@ -153,5 +151,3 @@ func printOpInt(x : ?Int) =
     case null  { print "null" };
     case (?x_) { print "?"; printInt x_ };
   };
-
-}
