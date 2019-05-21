@@ -187,7 +187,12 @@ let rec subst sigma t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c -> Typ c
+  | Typ c -> Typ c (* NB: this is incorrect unless we ensure dom(sigma) \cap FV(c.kind) = {}
+                      For now, we could do this by ensuring all type definitions are closed,
+                      in particular, type components defined within the scope of an enclosing
+                      type parameter cannot mention that parameter
+                      (but can mention other (closed) type constructors).
+                   *)
 
 and subst_bind sigma {var; bound} =
   {var; bound = subst sigma bound}
@@ -308,6 +313,7 @@ let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_serialized = function Serialized _ -> true | _ -> false
+let is_typ = function Typ _ -> true | _ -> false
 
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
@@ -324,6 +330,7 @@ let as_async = function Async t -> t | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_serialized = function Serialized t -> t | _ -> invalid "as_serialized"
+let as_typ = function Typ c -> c | _ -> invalid "as_typ"
 
 let as_seq = function Tup ts -> ts | t -> [t]
 
@@ -409,59 +416,90 @@ let rec span = function
 
 exception Unavoidable of con
 
-let rec avoid' cons = function
+let rec avoid' cons seen = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
   | Con (c, ts) ->
+    if ConSet.mem c seen then raise (Unavoidable c) else
     if ConSet.mem c cons
     then match Con.kind c with
       | Abs _ -> raise (Unavoidable c)
-      | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
+      | Def (tbs, t) -> avoid' cons (ConSet.add c seen) (reduce tbs t ts)
     else
       begin try
-        Con (c, List.map (avoid' cons) ts)
+        Con (c, List.map (avoid' cons seen) ts)
       with Unavoidable d ->
         match Con.kind c with
-        | Def (tbs, t) -> avoid' cons (reduce tbs t ts)
+        | Def (tbs, t) -> avoid' cons seen (reduce tbs t ts)
         | Abs _ -> raise (Unavoidable d)
       end
-  | Array t -> Array (avoid' cons t)
-  | Tup ts -> Tup (List.map (avoid' cons) ts)
+  | Array t -> Array (avoid' cons seen t)
+  | Tup ts -> Tup (List.map (avoid' cons seen) ts)
   | Func (s, c, tbs, ts1, ts2) ->
     Func (s,
           c,
-          List.map (avoid_bind cons) tbs,
-          List.map (avoid' cons) ts1, List.map (avoid' cons) ts2)
-  | Opt t -> Opt (avoid' cons t)
-  | Async t -> Async (avoid' cons t)
-  | Obj (s, fs) -> Obj (s, List.map (avoid_field cons) fs)
-  | Variant fs -> Variant (List.map (avoid_field cons) fs)
-  | Mut t -> Mut (avoid' cons t)
-  | Serialized t -> Serialized (avoid' cons t)
+          List.map (avoid_bind cons seen) tbs,
+          List.map (avoid' cons seen) ts1, List.map (avoid' cons seen) ts2)
+  | Opt t -> Opt (avoid' cons seen t)
+  | Async t -> Async (avoid' cons seen t)
+  | Obj (s, fs) -> Obj (s, List.map (avoid_field cons seen) fs)
+  | Variant fs -> Variant (List.map (avoid_field cons seen) fs)
+  | Mut t -> Mut (avoid' cons seen t)
+  | Serialized t -> Serialized (avoid' cons seen t)
   | Typ c ->  if ConSet.mem c cons then raise (Unavoidable c)
               else Typ c (* TBR *)
 
+and avoid_bind cons seen {var; bound} =
+  {var; bound = avoid' cons seen bound}
 
+and avoid_field cons seen {lab; typ} =
+  {lab; typ = avoid' cons seen typ}
 
-and avoid_bind cons {var; bound} =
-  {var; bound = avoid' cons bound}
-
-and avoid_field cons {lab; typ} =
-  {lab; typ = avoid' cons typ}
-
-(*
-and avoid_kind cons k =
+and avoid_kind cons seen k =
   match k with
   | Def (tbs, t) ->
-    Def (List.map (avoid_bind cons) tbs,
-         avoid' cons t)
+    Def (List.map (avoid_bind cons seen) tbs,
+         avoid' cons seen t)
   | Abs (tbs, t) ->
-    Abs (List.map (avoid_bind cons) tbs,
-         avoid' cons t)
- *)
+    Abs (List.map (avoid_bind cons seen) tbs,
+         avoid' cons seen t)
+
+and avoid_cons cons1 cons2 =
+  ConSet.iter (fun c -> Con.unsafe_set_kind c (avoid_kind cons1 ConSet.empty (Con.kind c))) cons2
 
 let avoid cons t =
   if cons = ConSet.empty then t else
-  avoid' cons t
+   avoid' cons ConSet.empty t
+
+(* Checking for concrete types *)
+
+let rec cons t cs =
+  match t with
+  | Var _ ->  cs
+  | (Prim _ | Any | Non | Shared | Pre) -> cs
+  | Con (c, ts) ->
+    List.fold_right cons ts (ConSet.add c cs)
+  | (Opt t | Async t | Mut t | Serialized t | Array t) ->
+    cons t cs
+  | Tup ts -> List.fold_right cons ts cs
+  | Func (s, c, tbs, ts1, ts2) ->
+    let cs = List.fold_right cons_bind tbs  cs in
+    let cs = List.fold_right cons ts1 cs in
+    List.fold_right cons ts2 cs
+  | (Obj (_, fs) | Variant fs) ->
+    List.fold_right cons_field fs cs
+  | Typ c -> ConSet.add c cs
+
+and cons_bind {var; bound} cs =
+  cons bound cs
+
+and cons_field {lab; typ} cs =
+  cons typ cs
+
+let cons_kind k =
+  match k with
+  | Def (tbs, t)
+  | Abs (tbs, t) ->
+    cons t (List.fold_right cons_bind tbs ConSet.empty)
 
 (* Checking for concrete types *)
 
@@ -509,7 +547,6 @@ module S = Set.Make (struct type t = typ * typ let compare = compare end)
 let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
 
-let str = ref (fun _ -> failwith "")
 let rec rel_typ rel eq t1 t2 =
   t1 == t2 || S.mem (t1, t2) !rel || begin
   rel := S.add (t1, t2) !rel;
@@ -757,7 +794,7 @@ let string_of_prim = function
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
 
-let string_of_con vs c =
+let string_of_con' vs c =
   let s = Con.to_string c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
@@ -772,9 +809,9 @@ let rec string_of_typ_nullary vs = function
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
   | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
-  | Con (c, []) -> string_of_con vs c
+  | Con (c, []) -> string_of_con' vs c
   | Con (c, ts) ->
-    sprintf "%s<%s>" (string_of_con vs c)
+    sprintf "%s<%s>" (string_of_con' vs c)
       (String.concat ", " (List.map (string_of_typ' vs) ts))
   | Tup ts ->
     sprintf "(%s%s)"
@@ -884,8 +921,8 @@ and string_of_kind k =
   let op, sbs, st = strings_of_kind k in
   sprintf "%s %s%s" op sbs st
 
+let string_of_con = string_of_con' []
 let string_of_typ = string_of_typ' []
-let _ = str := string_of_typ
 
 let rec string_of_typ_expand t =
   let s = string_of_typ t in
@@ -904,4 +941,3 @@ let rec string_of_typ_expand t =
 (* Environments *)
 
 module Env = Env.Make(String)
-

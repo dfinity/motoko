@@ -203,12 +203,14 @@ and check_kind env k =
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
   check_typ env typ;
-  check env no_region
-     (s <> Some T.Actor || T.is_func (T.promote typ))
-    "actor field has non-function type";
-  check env no_region
-     ((s <> Some T.Actor && s <> Some (T.Object T.Sharable)) || T.sub typ T.Shared)
-    "shared object or actor field has non-shared type"
+  if not (T.is_typ typ) then begin
+    check env no_region
+      (s <> Some T.Actor || T.is_func (T.promote typ))
+      "actor field has non-function type";
+    check env no_region
+      ((s <> Some T.Actor && s <> Some (T.Object T.Sharable)) || T.sub typ T.Shared)
+      "shared object or actor field has non-shared type"
+  end
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
@@ -526,22 +528,16 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let scope0 = { empty_scope with val_env = ve0 } in
     let scope1 = List.fold_left (gather_dec env') scope0 ds in
     let env'' = adjoin env' scope1 in
-    let t1 = type_obj env'' T.Actor fs in
     check (T.is_obj t0) "bad annotation (object type expected)";
-    t1 <: t0;
-    t0 <: t
+    let (s0, tfs0) = T.as_obj t0 in
+    let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
+    (type_obj env'' T.Actor fs) <: (T.Obj (s0, val_tfs0));
+    t0 <: t;
   | NewObjE (s, fs, t0) ->
     check (T.is_obj t0) "bad annotation (object type expected)";
-    let is_typ_field {T.lab;T.typ} =
-      match typ with T.Typ _ -> true | _ -> false
-    in
-    let (_s,tfs0) = T.as_obj t0 in
-    let typ_tfs0, val_tfs0 = List.partition is_typ_field tfs0
-    in
-    let t1 = type_obj env s fs in
-    let (_s, tfs1) = T.as_obj t1 in
-    let t1 = T.Obj(s, List.sort T.compare_field (typ_tfs0 @ tfs1)) in
-    t1 <: t0;
+    let (s0, tfs0) = T.as_obj t0 in
+    let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
+    (type_obj env s fs) <: (T.Obj (s0, val_tfs0));
     t0 <: t
 
 (* Cases *)
@@ -664,14 +660,16 @@ and type_exp_fields env s fs : T.field list =
 and type_exp_field env s f : T.field =
   let {name = {it = Name name; _}; var} = f.it in
   let t = try T.Env.find var.it env.vals with
-          | Not_found -> error env f.at "field typing not found"
+          | Not_found -> error env f.at "field typing for %s not found" name
   in
   assert (t <> T.Pre);
   check_sub env f.at t f.note;
-  check env f.at ((s = T.Actor) ==> T.is_func t)
-    "public actor field is not a function";
-  check env f.at ((s <> T.Object T.Local && s <> T.Module) ==> T.sub t T.Shared)
-    "public shared object or actor field has non-shared type";
+  if not (T.is_typ t) then begin
+    check env f.at ((s = T.Actor) ==> T.is_func t)
+      "public actor field is not a function";
+    check env f.at ((s <> T.Object T.Local && s <> T.Module) ==> T.sub t T.Shared)
+      "public shared object or actor field has non-shared type";
+  end;
   T.{lab = name; typ = t}
 
 (* Declarations *)
@@ -741,7 +739,7 @@ and gather_dec env scope dec : scope =
 
 and gather_typ env ce typ =
    match typ with
-   | T.Obj(T.Module,fs) ->
+   | T.Obj(_, fs) ->
      List.fold_right (fun {T.lab;T.typ = typ1} ce ->
          match typ1 with
          | T.Typ c -> T.ConSet.add c ce
