@@ -41,8 +41,12 @@ type incoming_message =
 type incoming_message_params =
   [ Initialize <json name="initialize"> of initialize_params
   | Initialized <json name="initialized"> of initialized_params
+  | TextDocumentDidOpen <json name="textDocument/didOpen"> of text_document_did_open_params
+  | TextDocumentDidClose <json name="textDocument/didClose"> of text_document_did_close_params
+  | TextDocumentDidChange <json name="textDocument/didChange"> of text_document_did_change_params
+  | TextDocumentDidSave <json name="textDocument/didSave"> of text_document_did_save_params
+  | TextDocumentHover <json name="textDocument/hover"> of text_document_position_params
   ]
-
 
 (*
    Outgoing messages
@@ -63,7 +67,12 @@ type response_message =
 
 type response_result =
   [ Initialize <json name="initialize"> of initialize_result
+  | TextDocumentHoverResponse <json name="textDocument/hover"> of hover_result
   ]
+
+type hover_result =
+  { contents : string
+  }
 
 
 (* Outgoing notifications *)
@@ -83,6 +92,53 @@ type initialize_params =
   (*; capabilities : client_capabilities*)
   ; ?trace : trace nullable
   (*; ?workspaceFolders : (workspace_folder list) nullable*)
+  }
+
+type text_document_did_open_params =
+  { textDocument : text_document_item
+  }
+
+type text_document_did_change_params =
+  { textDocument : versioned_text_document_identifier
+  }
+
+type text_document_did_close_params =
+  { textDocument : text_document_identifier
+  }
+
+type text_document_did_save_params =
+  { textDocument : text_document_identifier
+  }
+
+type text_document_position_params =
+  { textDocument : text_document_identifier
+  ; position : position
+  }
+
+(* See https://microsoft.github.io/language-server-protocol/specification#position
+
+   We'll have to do some work to make sure we can split text
+   efficiently regardless of what line endings are being used
+*)
+type position =
+  { line : int
+  ; character : int
+  }
+
+type text_document_item =
+  { uri: string
+  ; text: string
+  ; languageId: string
+  ; version: int
+  }
+
+type text_document_identifier =
+  { uri: string
+  }
+
+type versioned_text_document_identifier =
+  { inherit text_document_identifier
+  ; ?version: int option
   }
 
 (*
@@ -108,8 +164,8 @@ type initialize_result =
 
 (* FIXME: incomplete *)
 type server_capabilities =
-  (*{ ?textDocumentSync : text_document_sync_options*)
-  { ?hoverProvider : bool nullable
+  { textDocumentSync : int
+  ; ?hoverProvider : bool nullable
   }
 
 (* TODO: see LSP spec for InitializeError *)
