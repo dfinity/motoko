@@ -1,6 +1,6 @@
 module {
 
-private let List = import "ListLib.as"; // private, so we don't re-export List
+private import List = "ListLib.as"; // private, so we don't re-export List
 
 type Stack = List.List<Int>;
 
