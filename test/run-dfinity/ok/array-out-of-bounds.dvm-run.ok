@@ -1,4 +1,4 @@
-W, hypervisor: calling func$NNN failed with trap message: Uncaught RuntimeError: unreachable
-W, hypervisor: calling func$NNN failed with trap message: Uncaught RuntimeError: unreachable
+hypervisor: calling func$NNN failed with trap message: Uncaught RuntimeError: unreachable
+hypervisor: calling func$NNN failed with trap message: Uncaught RuntimeError: unreachable
 Array index out of bounds
 Array index out of bounds
