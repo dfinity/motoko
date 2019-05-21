@@ -655,46 +655,36 @@ bob received goodbye from charlie
 
 ### Produce Exchange
 
-- Example DFINITY app: a marketplace application
-  - Participants include:
-    Producers, transporters and retailers
-  - Resources: Money, truck routes, produce
-  - Other entities: Produce and truck types, regions, reservations
+Example DFINITY app: a marketplace application
 
-- As a communication tool:
-  Substance: Demonstrate example ActorScript app
-  Process: Document internal development process
+**User roles**: Producer, transporter and retailer
+ 
+**Resources**: Money, truck routes, produce
+ 
+**Other entities**: Produce and truck types, regions, reservations
 
-- [WIP: Canister in ActorScript](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange)
+### Produce Exchange: Why?
 
-### Produce Exchange: Define MVP
+#### Substance
 
-[**Full MVP def** on Confluence](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
+- Demonstrate example ActorScript app
 
-[**MVP on ActorScript Canister**](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#produce-exchange-canister-mvp-requirements)
+- Discover what is needed and currently missing
 
-**Summary:**
+#### Process
 
-- defines **users**:
-  Developers, transporters, retailers and producers.
-- defines **features** and **use cases**:
-  - Resource data can be published and updated
-  - Queries require database logic, including joins
-- defines non-goals, and out-of-scope goals.
+- Document internal development process
 
-### Produce Exchange: Exit criteria
+- Discover what is needed and currently missing
 
-[**Full details**](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements)
 
-**Summary:**
+### Produce Exchange: Current MVP prototype
 
- - People: SDK + ActorScript teams.
- - Feature-based criteria: Same as MVP.
- - Test-based criteria: Automated tests.
- - Operational criteria: Run on DFINITY node.
- - Performance criteria: Run at certain scales / rates.
+**Front end** is "standard" JavaScript, plus a JS client library from SDK/AS teams
 
-### [Produce exchange server components](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange#server-components)
+**Back end** is in ActorScript, and compiled to Wasm
+
+### Produce exchange: Server components
 
 - **Server types**: Types for client-server messages
 - **Server actor**: Interface for client-server messages
@@ -702,7 +692,9 @@ bob received goodbye from charlie
 - **Server model implementation**: Implements the actor
 
 
-### [Standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library)
+### Standard library
+
+[Documentation](https://hydra.oregon.dfinity.build//build/146434/download/1/doc/README.html)
 
 Why?
 
@@ -712,18 +704,68 @@ Why?
 
 How?
 
-- ActorScript supports some namespace management, and multiple input files.
-- [Documentation](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#actorscript-standard-library) generated from the source code
+- ActorScript supports data types and modules
 
-
-### [Standard library: Produce exchange](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib#produce-exchange)
+### Standard library: Produce exchange
 
 We focus on abstractions for implementing the database for the produce exchange:
 
-- [Document Table](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/docTable.md): Mutable collection of immutable documents.
+- [Document Table](https://hydra.oregon.dfinity.build//build/146434/download/1/doc/docTable.html): Mutable collection of immutable documents.
 
-- [Hash trie](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/trie.md): Immutable finite map representation based on hashing each key.
+- [Hash trie](https://hydra.oregon.dfinity.build//build/146434/download/1/doc/trie.html): Immutable finite map representation based on hashing each key.
 
-- [Association list](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/design/stdlib/assocList.md): Immutable finite map representation based on a list of key-value pairs.
+- [Association list](https://hydra.oregon.dfinity.build//build/146434/download/1/doc/assocList.html): Immutable finite map representation based on a list of key-value pairs.
 
 # (not yet) The End
+
+### AS Deliverables
+
+#### Epics
+
+ - 0.5 (Dev network)
+ - 1.0 (Launch)
+ - 1.5 (Launch + X months)
+
+#### 
+
+- Each epic has the same deliverables, but with increasingly complex user stories.
+
+- AS and SDK teams will coordinate on shared/overlapping deliverables.
+
+### AS Deliverables
+
+- Language Design
+- Runtime system
+- Compile AS to Wasm
+- Debugging
+- Standard libraries
+- IDL
+
+### AS Deliverables' stories
+
+Each deliverable has user stories.
+
+The "new user" story is special:
+
+> "A new user can pick up the sdk and can compile and run 'hello world' canister service in 10min or less"
+
+# IDL
+
+### IDL Overview
+
+IDL = **Interface description language**
+
+A language for describing interfaces for values that cross language, canister and user boundaries.
+
+It provides a "common type system" bridging Wasm, AS and other PLs.
+
+Examples for the IDL:
+
+ - User A sends ingress message to Canister B
+ - Canister A sends message to Canister B
+ - Canister A serializes its state, e.g., for a checkpoint
+
+# Other PLs + Wasm (e.g. Rust)
+
+# Q&A Discussion
+
