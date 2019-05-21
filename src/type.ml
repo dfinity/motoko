@@ -758,7 +758,7 @@ and lub' lubs glbs t1 t2 =
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
     Obj (s1, lub_fields lubs glbs tf1 tf2)
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
+    when s1 = s2 && c1 = c2 && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
       List.(length args1 = length args2 && length res1 = length res2) ->
     Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
   | Async t1', Async t2' ->
@@ -825,7 +825,7 @@ and glb' lubs glbs t1 t2 =
   | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
     Obj (s1, glb_fields lubs glbs tf1 tf2)
   | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-    when s1 = s2 && c1 = c2 && bs1 = bs2 && (* TBR: alpha-equivalence, bounds *)
+    when s1 = s2 && c1 = c2 && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
       List.(length args1 = length args2 && length res1 = length res2) ->
     Func (s1, c1, bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
   | Async t1', Async t2' ->
@@ -849,6 +849,8 @@ and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     | -1 -> glb_tags lubs glbs fs1' fs2
     | +1 -> glb_tags lubs glbs fs1 fs2'
     | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_tags lubs glbs fs1' fs2'
+
+and eq_bind {var=v1; bound=b1} {var=v2; bound=b2} = v1 = v2 && eq b1 b2
 
 (* Pretty printing *)
 
