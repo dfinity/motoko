@@ -31,7 +31,7 @@ within this shell you can run
 
 > For Merlin to be able to give you the type of identifiers or to offer completion from other file of your projects, it needs to know where to find the cmi files of the other modules of your project. 
 
-To do this, run `make -C rts && make -C src BUILD=byte asc` within a nix shell.
+To do this, run `make -C src asc` within a nix shell.
 
 ## Development without Nix
 
