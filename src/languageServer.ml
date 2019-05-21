@@ -67,7 +67,7 @@ TODO(Christoph): Can't figure out how this works yet
     (* Notification messages *)
 
     | (None, `Initialized _) ->
-        let params = `ShowMessage (Lsp_t.
+        let params = `WindowShowMessage (Lsp_t.
           { type_ = 3
           ; message = "Language server initialized"
           }) in

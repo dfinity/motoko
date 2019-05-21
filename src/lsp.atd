@@ -78,7 +78,7 @@ type hover_result =
 (* Outgoing notifications *)
 
 type notification_message_params =
-  [ ShowMessage <json name ="window/showMessage"> of show_message_params
+  [ WindowShowMessage <json name ="window/showMessage"> of window_show_message_params
   ]
 
 
@@ -179,7 +179,7 @@ type initialized_params = empty_record
 
 (* "window/showMessage" notification *)
 
-type show_message_params =
+type window_show_message_params =
   { type_ <json name="type"> : int
   ; message : string
   }
