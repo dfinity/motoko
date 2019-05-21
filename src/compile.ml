@@ -3399,7 +3399,7 @@ end (* GC *)
 
 module VarLoc = struct
   (* Most names are stored in heap locations or in locals.
-     But some are special (static funcions, the current actor, static messages of
+     But some are special (static functions, the current actor, static messages of
      the current actor). These have no real location (yet), but we still need to
      produce a value on demand:
    *)
