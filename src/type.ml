@@ -734,10 +734,8 @@ and lub' lubs glbs t1 t2 =
   | Any, _ -> Any
   | _, Non -> t1
   | Non, _ -> t2
-  | Var (v1, i1), Var (v2, i2) when i1 = i2 && v1 = v2 -> assert (eq t1 t2); t1
   | Shared, t2' when sub t2' Shared -> Shared
   | t1', Shared when sub t1' Shared -> Shared
-  | Mut (Var _ as t1'), Mut (Var _ as t2') when t1' = t2' -> assert (eq t1 t2); t1
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Int
   | t1', t2' when eq t1' t2' -> t1
@@ -804,8 +802,6 @@ and glb' lubs glbs t1 t2 =
   | Any, _ -> t2
   | _, Non -> Non
   | Non, _ -> Non
-  | Var (v1, i1), Var (v2, i2) when i1 = i2 && v1 = v2 -> assert (eq t1 t2); t1
-  | Mut (Var _ as t1'), Mut (Var _ as t2') when t1' = t2' -> assert (eq t1 t2); t1 (* TODO(gabor) not general enough *)
   | Shared, t2' when sub t2' Shared -> t2
   | t1', Shared when sub t1' Shared -> t1
   | Prim Nat, Prim Int
