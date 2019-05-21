@@ -1,6 +1,6 @@
 let oc = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"
-let log_to_file txt =
-    Printf.fprintf oc "%s\n" txt;
+let log_to_file lbl txt =
+    Printf.fprintf oc "[%s] %s\n" lbl txt;
     flush oc
 
 let send out =
@@ -8,15 +8,13 @@ let send out =
   print_string cl;
   print_string out;
   flush stdout;
-  log_to_file "Response:";
-  log_to_file cl;
-  log_to_file out
+  log_to_file "response_length" cl;
+  log_to_file "response" out
 
 let start () =
   let rec loop () =
     let clength = read_line () in
-    log_to_file "Request:";
-    log_to_file clength;
+    log_to_file "content-length" clength;
     let cl = "Content-Length: " in
     let cll = String.length cl in
     let num =
@@ -28,8 +26,8 @@ let start () =
               (String.length(clength) - cll - 1)))) + 2 in
     let buffer = Buffer.create num in
     Buffer.add_channel buffer stdin num;
-    let raw = Buffer.contents buffer in
-    log_to_file raw;
+    let raw = String.trim (Buffer.contents buffer) in
+    log_to_file "raw" raw;
 
     let message = Lsp_j.incoming_message_of_string raw in
     let message_id = message.Lsp_t.incoming_message_id in
@@ -41,21 +39,31 @@ let start () =
     | (Some id, `Initialize params) ->
         (match params.Lsp_t.trace with
         | Some trace -> (match trace with
-                        | `Off -> log_to_file "trace: Off"
-                        | `Messages -> log_to_file "trace: Messages"
-                        | `Verbose -> log_to_file "trace: Verbose"
+                        | `Off -> log_to_file "trace" "Off"
+                        | `Messages -> log_to_file "trace" "Messages"
+                        | `Verbose -> log_to_file "trace" "Verbose"
                         );
-        | None -> log_to_file "trace: null"
+        | None -> log_to_file "trace" "null"
         );
         let result = `Initialize (Lsp_t.
           { capabilities =
-              { hoverProvider = Some false
+              { textDocumentSync = 1
+              ; hoverProvider = Some true
               }
           }) in
         let response = Lsp.response_result_message id result in
+        log_to_file "response" (Lsp_j.string_of_response_message response);
         send (Lsp_j.string_of_response_message response);
 
-
+(*
+TODO(Christoph): Can't figure out how this works yet
+    | (Some id, `TextDocumentHover params) ->
+       let result = `TextDocumentHoverResponse (Lsp_t. {
+             contents = "Hovered over: "
+           }) in
+       let response = Lsp.response_result_message id result in
+       send (Lsp_j.string_of_response_message response);
+ *)
     (* Notification messages *)
 
     | (None, `Initialized _) ->
@@ -66,12 +74,10 @@ let start () =
         let notification = Lsp.notification params in
         send (Lsp_j.string_of_notification_message notification);
 
-
     (* Unhandled messages *)
 
     | _ ->
-      log_to_file "Unhandled message:";
-      log_to_file raw;
+      log_to_file "unhandled message" raw;
     );
 
     loop ()
