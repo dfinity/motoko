@@ -83,6 +83,9 @@ type notification_message_params =
   ]
 
 
+type document_uri = string
+
+
 (* "initialize" request *)
 
 type initialize_params =
@@ -134,7 +137,7 @@ type position =
   <ocaml field_prefix="position_">
 
 type text_document_item =
-  { uri: string
+  { uri: document_uri
   ; text: string
   ; languageId: string
   ; version: int
@@ -142,7 +145,7 @@ type text_document_item =
   <ocaml field_prefix="text_document_item_">
 
 type text_document_identifier =
-  { uri: string
+  { uri: document_uri
   }
   <ocaml field_prefix="text_document_identifier_">
 
