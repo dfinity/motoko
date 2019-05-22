@@ -76,18 +76,19 @@ This is a summary of the grammar proposed:
   | bool
   | text
   | null
-  | unavailable
+  | reserved
 
 <constype>  ::=
   | opt <datatype>
   | vec <datatype>
-  | record { <fieldtype>;* }
+  | record <role> { <fieldtype>;* }
   | variant { <fieldtype>;* }
 
 <reftype>  ::=
   | func <functype>
   | service <actortype>
 
+<role> ::= in | out | inout
 <name> ::= <id> | <text>
 <id>   ::= (A..Z|a..z|_)(A..Z|a..z|_|0..9)*
 <text> ::= "<char>*"
@@ -113,6 +114,9 @@ In addition to this basic grammar, a few syntactic shorthands are supported that
   | <datatype>             :=  N : <datatype>  where N is either 0 or previous + 1  (only in records)
   | <nat>                  :=  <nat> : null   (only in variants)
   | <name>                 :=  <name> : null  (only in variants)
+
+<role> ::= ...
+  |                        := inout
 ```
 
 #### Comments
@@ -250,11 +254,11 @@ The type `null` has exactly one value (the *null* value) and therefor carries no
 <primtype> ::= ... | null | ...
 ```
 
-#### Unavailable
+#### Reserved
 
-The type `unavailable` is a type with unknown content that ought to be ignored. Its purpose is to occupy field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record types below.
+The type `reserved` is a type with unknown content that ought to be ignored. Its purpose is to occupy field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record types below.
 ```
-<primtype> ::= ... | unavailable
+<primtype> ::= ... | reserved
 ```
 **Note:** This type has a similar role as *reserved fields* in proto buffers.
 
@@ -291,8 +295,9 @@ A shorthand exists for the specific vector *blob*, which is an arbitrary sequenc
 A *record* is a *heterogeneous* sequence of values of different data types. Each value is tagged by a *field id* which is a numeric value that has to be unique within the record and carries a single value of specified data type. The order in which fields are specified is immaterial.
 
 ```
-<constype>  ::= ... | record { <fieldtype>;* } | ...
+<constype>  ::= ... | record <role> { <fieldtype>;* } | ...
 <fieldtype> ::= <nat> : <datatype>
+<role>      ::= in | out | inout
 ```
 
 The id is described as a simple unsigned integer that has to fit the 64 bit value range. It can be given in either decimal or hexadecimal notation:
@@ -302,6 +307,7 @@ The id is described as a simple unsigned integer that has to fit the 64 bit valu
 ```
 An id value must be smaller than 2^32 and no id may occur twice in the same record type.
 
+The role of a record controls how it can be modified in future upgrades. In particular, an `out` record can have fields added, while an `in` record can have optional fields removed (see the discussion of upgrading below). When omitted, the role is `inout`, which is the most flexible choice because it can still be refined to either of the other roles in an upgrade.
 
 
 ##### Shorthand: Symbolic Field Ids
@@ -313,6 +319,8 @@ An id can also be given as a *name*, which is a shorthand for a numeric id that 
 ```
 This expansion implies that a hash collision between field names within a single record is disallowed. However, the chosen hash function makes such a collision highly unlikely in practice.
 
+The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by an IDL function: a new version of an IDL can safely *add* fields to an out record as long as their id has not been used before. See the discussion on upgrading below for more details.
+
 **Note:** For example, the following hash function [Jacques Garrigue, "Programming with Polymorphic Variants", ML 1998],
 ```
 hash(id) = ( Sum_(i=0..|id|) id[i] * 223^(|id|-1) ) mod 2^64
@@ -323,6 +331,7 @@ p(n) = Sum_(i=1..n-1) i/2^64
 ```
 That is, the likelihood p(100) of a collision for a variant with 100 cases is less than 2.74 * 10^(-16).
 
+
 ##### Shorthand: Tuple Fields
 
 Field ids can also be omitted entirely, which is just a shorthand for picking either 0 (for the first field) or N+1 when the previous field has id N.
@@ -330,10 +339,6 @@ Field ids can also be omitted entirely, which is just a shorthand for picking ei
 <fieldtype> ::= ...
   | <datatype>    :=  N : <datatype>
 ```
-
-##### Upgrading
-
-The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by an IDL function: a new version of an IDL can safely *add* fields to a record as long as their id has not been used before. See below for more details.
 
 ##### Examples
 ```
@@ -343,13 +348,13 @@ record {
   num : nat;
   city : text;
   zip : nat;
-  state : unavailable;  // removed since no longer needed
 }
 
 record { nat; nat }
 record { 0 : nat; 1 : nat }
 ```
 The latter two records are equivalent.
+
 
 #### Variants
 
@@ -499,14 +504,11 @@ For upgrading data structures passed between service and client, it is important
 
 That is, outbound message results can only be replaced with a subtype (more fields) in an upgrade, while inbound message parameters can only be replaced with a supertype (fewer fields). This corresponds to the notions of co-variance and contra-variance in type systems.
 
-Subtyping replies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
+Subtyping applies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
 
-To make these constraints as flexible as possible, two special rules apply:
+To make these constraints as flexible as possible, a special rules applies to `in` records:
 
-* An absent record field is considered equivalent to a present field with value `null`. Moreover, a record field of type `null` is a subtype of a field with type `opt <datatype>`. That way,
-
-  - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;
-  - in an inbound record, a field of option (or null) type can also be added, in which case the service will read it as if its value was null.
+* An absent field in an `in` record is considered equivalent to a present field with value `null`. That way, a field of option (or null) type can also be added, in which case the service will read it as if its value was null if the client did not provide it.
 
 Future extensions: defaults, including for variants?
 
@@ -515,18 +517,25 @@ Future extensions: defaults, including for variants?
 
 #### Primitive Types
 
-A primitive type cannot be changed in an upgrade.
+Most primitive types cannot be changed in an upgrade.
 ```
 
 ------------------------
 <primtype> <: <primtype>
 ```
 
-An additional rule applies to `unavailable`, which makes it a top type, i.e., a supertype of every type.
+An exception are integers, which can be specialised to natural numbers:
 ```
 
--------------------------
-<datatype> <: unavailable
+----------
+Nat <: Int
+```
+
+An additional rule applies to `reserved`, which makes it a top type, i.e., a supertype of every type.
+```
+
+----------------------
+<datatype> <: reserved
 ```
 
 #### Options and Vectors
@@ -541,37 +550,59 @@ opt <datatype> <: opt <datatype'>
 ---------------------------------
 vec <datatype> <: vec <datatype'>
 ```
-More flexible rules apply to option types used as record field types, see below.
+Furthermore, an option type can be specialised to either `null` or to its constituent type:
+```
+
+----------------------
+null <: opt <datatype>
+
+<datatype> <: <datatype'>
+-----------------------------
+<datatype> <: opt <datatype'>
+```
+Note: By these rules, e.g., both `opt nat` and `opt opt nat` are subtypes of `opt opt int`.
+
 
 #### Records
 
-In a specialised record type, the type of a record field can be specialised,  or a field can be added.
+In a specialised record type, the type of a record field can be specialised,
+and an undirected record can be turned into a directed one:
 ```
-
+<role'> = <role> \/ <role'> = inout
 ---------------------------------------
-record { <fieldtype'>;* } <: record { }
+record <role> { } <: record <role'> { }
 
 <datatype> <: <datatype'>
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
-----------------------------------------------------------------------------------------------
-record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
+record <role> { <fieldtype>;* } <: record <role> { <fieldtype'>;* }
+------------------------------------------------------------------------------------------------------------
+record <role> { <nat> : <datatype>; <fieldtype>;* } <: record <role> { <nat> : <datatype'>; <fieldtype'>;* }
 ```
 
-**TODO: Rules below are unsound as is, need fixing!**
-
-In addition, special rules apply to fields of `null` or option type, which makes an absent field interchangeable with a field of value `null`. Moreover, an optional field can be specialised to non-optional if the constituent type is not itself `null` or an option (this restriction is necessary to avoid confusing the different null values in an `opt (opt T)` type).
+For out records, fields can be added:
 ```
-<datatype> = null \/ <datatype> = opt <datatype'>
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
+record out { } <: record <role> { }
+--------------------------------------------------
+record out { <fieldtype'>;* } <: record <role> { }
+```
+
+For in records, fields of `null` or option type can be removed, treating the absent field as having value `null`. Moreover, an optional field can be specialised to non-optional.
+```
+record in { <fieldtype>;* } <: record <role> { <fieldtype'>;* }
 -----------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : <datatype>; <fieldtype'>;* }
+record in { <fieldtype>;* } <: record <role> { <nat> : null; <fieldtype'>;* }
 
-<datatype> <> null /\ <datatype> <> opt <datatype''>
-<datatype> <: <datatype'>
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
---------------------------------------------------------------------------------------------------
-record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : opt <datatype'>; <fieldtype'>;* }
+record in { <fieldtype>;* } <: record <role> { <fieldtype'>;* }
+---------------------------------------------------------------------------------------
+record in { <fieldtype>;* } <: record <role> { <nat> : opt <datatype>; <fieldtype'>;* }
 ```
+Note: In records are intended to be used for inbound data, such that subtyping applies in the opposite direction. For example, an optional field can be *added* to a method input.
+
+Note: The separation into in and out records ensures that subtyping is still transitive in the presence of the above two rules. Without the role distinction, we would have
+```
+record {x : opt text} <: record {} <: record {x : opt nat}
+```
+but clearly, the left type is incompatible with the right one.
+
 
 #### Variants
 
@@ -591,10 +622,10 @@ variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; 
 
 For a specialised function, any parameter type can be generalised and any result type specialised. Moreover, arguments can be dropped while results can be added. That is, the rules mirror those of records.
 ```
-record { <fieldtype1'>;* } <: record { <fieldtype1>;* }
-record { <fieldtype2>;* } <: record { <fieldtype2'>;* }
-------------------------------------------------------------------------------------------------
-func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* )
+record in { <fieldtype1'>;* } <: record in { <fieldtype1>;* }
+record out { <fieldtype2>;* } <: record out { <fieldtype2'>;* }
+-----------------------------------------------------------------------------------------------------------------------
+func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
 ```
 
 #### Actors
@@ -621,12 +652,12 @@ type TruckTypeId = nat;
 type Weight = float32;
 
 type TruckTypeInfo = record {
- id : TruckTypeId;
- short_name : Text;
- description : Text;
- capacity : opt Weight;
- isFridge : opt bool;
- isFreezer : opt bool;
+  id : TruckTypeId;
+  short_name : Text;
+  description : Text;
+  capacity : opt Weight;
+  isFridge : opt bool;
+  isFreezer : opt bool;
 };
 
 service Server : {
@@ -638,9 +669,9 @@ service Server : {
 Note:
 * `TruckTypeId` and `nat` are used interchangeably.
 
-With this IDL file, the server actor code will be:
+With this IDL file, the server code in ActorScript could be:
 ```
-actor server = {
+actor Server {
   registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
     getModel().truckTypeTable.AddInfoGetId(
       func (id_ : TruckTypeId) : TruckTypeInfo = shared {
@@ -708,7 +739,7 @@ T(nat<N>)   = sleb128(-5 - log2(N/8))
 T(int<N>)   = sleb128(-9 - log2(N/8))
 T(float<N>) = sleb128(-13 - log2(N/32))
 T(text)     = sleb128(-15)
-T(unavailable) = sleb128(-16)
+T(reserved) = sleb128(-16)
 
 T : <constype> -> i8*
 T(opt <datatype>) = sleb128(-17) I(<datatype>)
@@ -773,7 +804,7 @@ M(z : float<N>) = f<N>(z)
 M(b : bool)     = i8(if b then 1 else 0)
 M(t : text)     = leb128(|utf8(t)|) i8*(utf8(t))
 M(_ : null)     = .
-M(_ : unavailable) = .
+M(_ : reserved) = .
 
 M : <val> -> <constype> -> i8*
 M(null : opt <datatype>) = i8(0)
