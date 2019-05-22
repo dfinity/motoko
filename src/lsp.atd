@@ -139,7 +139,7 @@ type text_document_identifier =
 
 type versioned_text_document_identifier =
   { inherit text_document_identifier
-  ; ?version: int option
+  ; ?version: int nullable
   }
 
 (*
