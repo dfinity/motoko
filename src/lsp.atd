@@ -73,6 +73,7 @@ type response_result =
 type hover_result =
   { contents : string
   }
+  <ocaml field_prefix="hover_result_">
 
 
 (* Outgoing notifications *)
@@ -113,7 +114,7 @@ type text_document_did_save_params =
 type text_document_position_params =
   { textDocument : text_document_identifier
   ; position : position
-  }
+  } <ocaml field_prefix="text_document_position_params_">
 
 (* See https://microsoft.github.io/language-server-protocol/specification#position
 

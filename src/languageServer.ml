@@ -55,15 +55,17 @@ let start () =
         log_to_file "response" (Lsp_j.string_of_response_message response);
         send (Lsp_j.string_of_response_message response);
 
-(*
-TODO(Christoph): Can't figure out how this works yet
     | (Some id, `TextDocumentHover params) ->
-       let result = `TextDocumentHoverResponse (Lsp_t. {
-             contents = "Hovered over: "
-           }) in
-       let response = Lsp.response_result_message id result in
-       send (Lsp_j.string_of_response_message response);
- *)
+        let position = params.Lsp_t.text_document_position_params_position in
+        let textDocument = params.Lsp_t.text_document_position_params_textDocument in
+        let result = `TextDocumentHoverResponse (Lsp_t. {
+          hover_result_contents = "hovered over: " ^ textDocument.uri
+            ^ " " ^ string_of_int position.line
+            ^ ", " ^ string_of_int position.character
+        }) in
+        let response = Lsp.response_result_message id result in
+        send (Lsp_j.string_of_response_message response);
+
     (* Notification messages *)
 
     | (None, `Initialized _) ->
