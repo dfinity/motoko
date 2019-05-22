@@ -18,7 +18,6 @@ let show_message msg =
       }) in
   let notification = Lsp.notification params in
   send (Lsp_j.string_of_notification_message notification)
-;;
 
 let start () =
   let rec loop () =
