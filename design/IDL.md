@@ -81,14 +81,13 @@ This is a summary of the grammar proposed:
 <constype>  ::=
   | opt <datatype>
   | vec <datatype>
-  | record <role> { <fieldtype>;* }
+  | record { <fieldtype>;* }
   | variant { <fieldtype>;* }
 
 <reftype>  ::=
   | func <functype>
   | service <actortype>
 
-<role> ::= in | out | inout
 <name> ::= <id> | <text>
 <id>   ::= (A..Z|a..z|_)(A..Z|a..z|_|0..9)*
 <text> ::= "<char>*"
@@ -114,9 +113,6 @@ In addition to this basic grammar, a few syntactic shorthands are supported that
   | <datatype>             :=  N : <datatype>  where N is either 0 or previous + 1  (only in records)
   | <nat>                  :=  <nat> : null   (only in variants)
   | <name>                 :=  <name> : null  (only in variants)
-
-<role> ::= ...
-  |                        := inout
 ```
 
 #### Comments
@@ -295,9 +291,8 @@ A shorthand exists for the specific vector *blob*, which is an arbitrary sequenc
 A *record* is a *heterogeneous* sequence of values of different data types. Each value is tagged by a *field id* which is a numeric value that has to be unique within the record and carries a single value of specified data type. The order in which fields are specified is immaterial.
 
 ```
-<constype>  ::= ... | record <role> { <fieldtype>;* } | ...
+<constype>  ::= ... | record { <fieldtype>;* } | ...
 <fieldtype> ::= <nat> : <datatype>
-<role>      ::= in | out | inout
 ```
 
 The id is described as a simple unsigned integer that has to fit the 64 bit value range. It can be given in either decimal or hexadecimal notation:
@@ -306,8 +301,6 @@ The id is described as a simple unsigned integer that has to fit the 64 bit valu
 <nat> ::= (0..9)(_? 0..9)* | 0x(0..9|a..f|A..F)(_? 0..9|a..f|A..F)*
 ```
 An id value must be smaller than 2^32 and no id may occur twice in the same record type.
-
-The role of a record controls how it can be modified in future upgrades. In particular, an `out` record can have fields added, while an `in` record can have optional fields removed (see the discussion of upgrading below). When omitted, the role is `inout`, which is the most flexible choice because it can still be refined to either of the other roles in an upgrade.
 
 
 ##### Shorthand: Symbolic Field Ids
@@ -506,9 +499,9 @@ That is, outbound message results can only be replaced with a subtype (more fiel
 
 Subtyping applies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
 
-To make these constraints as flexible as possible, a special rules applies to `in` records:
+To make these constraints as flexible as possible, a special rule allows *adding* records fields in a supertype as long as it is optional. To make this sound (i.e., not break transitivity), the subtyping rules on records are different for co- and contra-variant occurrences. To that end, the subtyping relation is indexed by a *polarity* parameter `P` that controls which rules apply. In the co-variant `+` polarity, records can have fields added in a subtype as usual, while the `-` polarity instead allows having optional fields removed (see the discussion of upgrading below).
 
-* An absent field in an `in` record is considered equivalent to a present field with value `null`. That way, a field of option (or null) type can also be added, in which case the service will read it as if its value was null if the client did not provide it.
+That way, a field of option (or null) type can always be added to a record type, no matter whether in co- or contra-variant position. If an optional field is added to an inbound record, and he client did not provide it, the service will read it as if its value was null.
 
 Future extensions: defaults, including for variants?
 
@@ -520,45 +513,45 @@ Future extensions: defaults, including for variants?
 Most primitive types cannot be changed in an upgrade.
 ```
 
-------------------------
-<primtype> <: <primtype>
+-------------------------
+<primtype> <:P <primtype>
 ```
 
 An exception are integers, which can be specialised to natural numbers:
 ```
 
-----------
-Nat <: Int
+-----------
+Nat <:P Int
 ```
 
 An additional rule applies to `reserved`, which makes it a top type, i.e., a supertype of every type.
 ```
 
-----------------------
-<datatype> <: reserved
+-----------------------
+<datatype> <:P reserved
 ```
 
 #### Options and Vectors
 
 An option or vector type can be specialised via its constituent type.
 ```
-<datatype> <: <datatype'>
----------------------------------
-opt <datatype> <: opt <datatype'>
+<datatype> <:P <datatype'>
+----------------------------------
+opt <datatype> <:P opt <datatype'>
 
-<datatype> <: <datatype'>
----------------------------------
-vec <datatype> <: vec <datatype'>
+<datatype> <:P <datatype'>
+----------------------------------
+vec <datatype> <:P vec <datatype'>
 ```
 Furthermore, an option type can be specialised to either `null` or to its constituent type:
 ```
 
-----------------------
-null <: opt <datatype>
+-----------------------
+null <:P opt <datatype>
 
-<datatype> <: <datatype'>
------------------------------
-<datatype> <: opt <datatype'>
+<datatype> <:P <datatype'>
+------------------------------
+<datatype> <:P opt <datatype'>
 ```
 Note: By these rules, e.g., both `opt nat` and `opt opt nat` are subtypes of `opt opt int`.
 
@@ -568,36 +561,52 @@ Note: By these rules, e.g., both `opt nat` and `opt opt nat` are subtypes of `op
 In a specialised record type, the type of a record field can be specialised,
 and an undirected record can be turned into a directed one:
 ```
-<role'> = <role> \/ <role'> = inout
----------------------------------------
-record <role> { } <: record <role'> { }
 
-<datatype> <: <datatype'>
-record <role> { <fieldtype>;* } <: record <role> { <fieldtype'>;* }
-------------------------------------------------------------------------------------------------------------
-record <role> { <nat> : <datatype>; <fieldtype>;* } <: record <role> { <nat> : <datatype'>; <fieldtype'>;* }
+-------------------------
+record { } <:P record { }
+
+<datatype> <:P <datatype'>
+record { <fieldtype>;* } <:P record { <fieldtype'>;* }
+-----------------------------------------------------------------------------------------------
+record { <nat> : <datatype>; <fieldtype>;* } <:P record { <nat> : <datatype'>; <fieldtype'>;* }
 ```
 
-For out records, fields can be added:
-```
-record out { } <: record <role> { }
---------------------------------------------------
-record out { <fieldtype'>;* } <: record <role> { }
+With `+` polarity, record fields can be added:
 ```
 
-For in records, fields of `null` or option type can be removed, treating the absent field as having value `null`. Moreover, an optional field can be specialised to non-optional.
+----------------------------------------
+record { <fieldtype'>;* } <:+ record { }
 ```
-record in { <fieldtype>;* } <: record <role> { <fieldtype'>;* }
------------------------------------------------------------------------------
-record in { <fieldtype>;* } <: record <role> { <nat> : null; <fieldtype'>;* }
 
-record in { <fieldtype>;* } <: record <role> { <fieldtype'>;* }
----------------------------------------------------------------------------------------
-record in { <fieldtype>;* } <: record <role> { <nat> : opt <datatype>; <fieldtype'>;* }
+With `-` polarity, record fields of `null` or option type can be removed, treating the absent field as having value `null`.
 ```
-Note: In records are intended to be used for inbound data, such that subtyping applies in the opposite direction. For example, an optional field can be *added* to a method input.
+record { <fieldtype>;* } <:- record { <fieldtype'>;* }
+--------------------------------------------------------------------
+record { <fieldtype>;* } <:- record { <nat> : null; <fieldtype'>;* }
 
-Note: The separation into in and out records ensures that subtyping is still transitive in the presence of the above two rules. Without the role distinction, we would have
+record { <fieldtype>;* } <:- record { <fieldtype'>;* }
+------------------------------------------------------------------------------
+record { <fieldtype>;* } <:- record { <nat> : opt <datatype>; <fieldtype'>;* }
+```
+Taken together, these rules ensure that it is always possible to add an optional field to a record, no matter whether it it is used as parameter or result. In particular, that allows extending round-tripping record types as well. For example,
+```
+type T = {};
+```
+can safely be upgraded to
+```
+type T' = {x : opt text};
+```
+for all first-order uses of `T`, because both of the following hold:
+```
+T' <:+ T
+T <:- T'
+```
+And hence:
+```
+(T' -> T')  <:+  (T -> T)
+```
+
+Note: The separation into polarities ensures that subtyping is still transitive in the presence of the last two rules. Without the distinction, we would have
 ```
 record {x : opt text} <: record {} <: record {x : opt nat}
 ```
@@ -609,37 +618,37 @@ but clearly, the left type is incompatible with the right one.
 For a specialised variants, the type of a tag can be specialised, or a tag can be removed.
 ```
 
------------------------------------------
-variant { } <: variant { <fieldtype'>;* }
+------------------------------------------
+variant { } <:P variant { <fieldtype'>;* }
 
-<datatype> <: <datatype'>
-variant { <fieldtype>;* } <: variant { <fieldtype'>;* }
-------------------------------------------------------------------------------------------------
-variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; <fieldtype'>;* }
+<datatype> <:P <datatype'>
+variant { <fieldtype>;* } <:P variant { <fieldtype'>;* }
+-------------------------------------------------------------------------------------------------
+variant { <nat> : <datatype>; <fieldtype>;* } <:P variant { <nat> : <datatype'>; <fieldtype'>;* }
 ```
 
 #### Functions
 
 For a specialised function, any parameter type can be generalised and any result type specialised. Moreover, arguments can be dropped while results can be added. That is, the rules mirror those of records.
 ```
-record in { <fieldtype1'>;* } <: record in { <fieldtype1>;* }
-record out { <fieldtype2>;* } <: record out { <fieldtype2'>;* }
------------------------------------------------------------------------------------------------------------------------
-func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
+record { <fieldtype1'>;* } <:~P record { <fieldtype1>;* }
+record { <fieldtype2>;* } <:P record { <fieldtype2'>;* }
+------------------------------------------------------------------------------------------------------------------------
+func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <:P func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
 ```
 
 #### Actors
 
-For an actor, a method can be specialised (by specialising its function type), or a method added. Essentially, they are treated exactly like records of functions.
+For an actor, a method can be specialised (by specialising its function type), or a method added. Essentially, they are treated like records of functions.
 ```
 
-------------------------------------
-actor { <methtype'>;* } <: actor { }
+-------------------------------------
+actor { <methtype'>;* } <:P actor { }
 
-<functype> <: <functype'>
-actor { <methtype>;* } <: actor { <methtype'>;* }
---------------------------------------------------------------------------------------------
-actor { <name> : <functype>; <methtype>;* } <: actor { <name> : <functype'>; <methtype'>;* }
+<functype> <:P <functype'>
+actor { <methtype>;* } <:P actor { <methtype'>;* }
+---------------------------------------------------------------------------------------------
+actor { <name> : <functype>; <methtype>;* } <:P actor { <name> : <functype'>; <methtype'>;* }
 ```
 
 ## Example Development Flow
