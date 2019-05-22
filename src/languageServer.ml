@@ -98,6 +98,7 @@ let start () =
            log_to_file
              "error"
              ("Failed to strip filename from: " ^ uri));
+
     (* Notification messages *)
 
     | (None, `Initialized _) ->
