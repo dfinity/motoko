@@ -436,7 +436,7 @@ rec {
       rts.buildInputs ++
       native_test.buildInputs ++
       users-guide.buildInputs ++
-      [ nixpkgs.ncurses ]
+      [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
     ));
 
     shellHook = llvmEnv;
