@@ -90,7 +90,7 @@ type initialize_params =
   ; ?rootPath : string nullable
   (*; rootUri : document_uri nullable*)
   (*; ?initializationOptions : any*)
-  (*; capabilities : client_capabilities*)
+  ; capabilities : client_capabilities
   ; ?trace : trace nullable
   (*; ?workspaceFolders : (workspace_folder list) nullable*)
   }
@@ -152,13 +152,44 @@ type versioned_text_document_identifier =
   }
   <ocaml field_prefix="versioned_text_document_identifier_">
 
-(*
 type client_capabilities =
-  { ?workspace : workspace_client_capabilities
-  ; ?textDocument : text_document_client_capabilities
-  ; ?experimental : any
+  (* { ?workspace : workspace_client_capabilities *)
+  { ?textDocument : text_document_client_capabilities nullable
+  (* ; ?experimental : any *)
   }
+  <ocaml field_prefix="client_capabilities_">
+
+type text_document_client_capabilities =
+  (* { ?synchronization : TODO *)
+  (* ; ?completion : TODO *)
+  (* ; ?hover : TODO *)
+  (* ; ?signatureHelp : TODO *)
+  (* ; ?references : TODO *)
+  (* ; ?documentHighlight : TODO *)
+  (* ; ?documentSymbol : TODO *)
+  (* ; ?formatting : TODO *)
+  (* ; ?rangeFormatting : TODO *)
+  (* ; ?onTypeFormatting : TODO *)
+  (* ; ?declaration : TODO *)
+  (* ; ?definition : TODO *)
+  (* ; ?typeDefinition : TODO *)
+  (* ; ?implementation : TODO *)
+  (* ; ?codeAction : TODO *)
+  (* ; ?codeLens : TODO *)
+  (* ; ?documentLink : TODO *)
+  (* ; ?colorProvider : TODO *)
+  (* ; ?rename : TODO *)
+  { ?publishDiagnostics : publish_diagnostics_field_type nullable
+  (* { ?publishDiagnostics : bool nullable *)
+  (* ; ?foldingRange : TODO *)
+  }
+  <ocaml field_prefix="text_document_client_capabilities_">
+
+(* Defining this inline in `text_document_client_capabilities` resulted in
+   a syntax error in the generated `lsp_t.mli` file.
 *)
+type publish_diagnostics_field_type = { ?relatedInformation : bool nullable }
+
 
 type trace =
   [ Off <json name="off">
@@ -172,12 +203,14 @@ type trace =
 type initialize_result =
   { capabilities : server_capabilities
   }
+  <ocaml field_prefix="initialize_result_">
 
 (* FIXME: incomplete *)
 type server_capabilities =
   { textDocumentSync : int
   ; ?hoverProvider : bool nullable
   }
+  <ocaml field_prefix="server_capabilities_">
 
 (* TODO: see LSP spec for InitializeError *)
 (*type initialize_error = *)
@@ -194,6 +227,7 @@ type window_show_message_params =
   { type_ <json name="type"> : int
   ; message : string
   }
+  <ocaml field_prefix="window_show_message_params_">
 
 
 (* Helpers *)
@@ -204,3 +238,4 @@ type window_show_message_params =
 type empty_record =
   { ?omitted : int nullable
   }
+  <ocaml field_prefix="empty_record_">

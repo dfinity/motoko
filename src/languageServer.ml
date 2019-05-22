@@ -87,6 +87,7 @@ let start () =
            (match result with
             | Ok _ -> show_message "Compilation successful"
             | Error diag ->
+               (* TODO: publish diagnostics, if capable *)
                show_message
                  ("Compilation failed with " ^
                     String.concat
