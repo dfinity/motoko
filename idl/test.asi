@@ -2,10 +2,19 @@ type my_type = nat;
 type B = my_type;
 type C = E;
 type E = opt C;
+type enum = variant {red; blue; green;};
 type message = record { 
   name : text;
-  2 : C;
-  unavailable; 
+  25 : C;
+  reserved; 
+};
+type test = record {nat;nat;nat;99:nat;nat;named_field:nat;nat;nat;nat;};
+type nest_record = record {
+  nat;nat;nat;
+  record { 
+    nat;nat;nat;
+  };
+  nat;nat;nat;
 };
 type tree = variant {
   leaf : int;
@@ -13,12 +22,15 @@ type tree = variant {
 };
 type broker = service {
   find : (name : text) -> 
-    (service {up:() -> (); current:() -> nat});
+    (service {up:() -> (); current:() -> (nat)});
 };
-type stream = opt record {head:nat; next:func ()->[pure] stream};
+type stream = opt record {head:nat; next:func ()-> (stream) pure};
+
+//service use2 : test
 
 service user {
-  addUser : nat -> [oneway, pure] (my_type);
-  userName : (nat) -> [pure] stream;
+  addUser : (nat) -> (my_type) oneway pure ;
+  userName : (nat) -> (stream) pure;
 }
+
 

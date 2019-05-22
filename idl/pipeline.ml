@@ -34,7 +34,7 @@ let parse_with lexer parser name =
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
     let prog = parser Lexer.token lexer in
-    dump_prog !Flags.dump_tc prog;
+    dump_prog !Flags.dump_parse prog;
     Ok prog
   with
     | Lexer.Error (at, msg) ->

@@ -78,18 +78,20 @@ let pp_actor ppf env actor_opt =
     None -> ()
   | Some actor ->
      (match actor.it with
-     | ActorD (x, tp) ->
+     | ActorD (x, {it=ServT tp; _}) ->
         id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
         str ppf "IDL.ActorInterface({";
         concat ppf pp_meth env "," tp;
         str ppf "})"
-     | ActorVarD (x, var) -> id ppf x; space ppf (); kwd ppf "="; id ppf var)
+     | ActorD (x, {it=VarT var; _}) -> id ppf x; space ppf (); kwd ppf "="; id ppf var
+     | ActorD (x, _) -> ()
+     )
   );
   pp_close_box ppf ()
 
 let pp_prog ppf env prog =
   pp_open_vbox ppf 0;
-  List.map (pp_dec ppf env) prog.it.decs;
+  List.iter (pp_dec ppf env) prog.it.decs;
   pp_actor ppf env prog.it.actor;
   pp_close_box ppf ()
    

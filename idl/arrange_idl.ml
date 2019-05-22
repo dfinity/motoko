@@ -19,7 +19,7 @@ let string_of_prim p =
   | Bool -> "bool"
   | Text -> "text"
   | Null -> "null"
-  | Unavailable -> "unavailable"          
+  | Reserved -> "reserved"          
 
 let string_of_mode m =
   match m.it with
@@ -59,13 +59,10 @@ and dec d = match d.it with
 
 and actor a = match a with
   | None -> Atom "NoActor"
-  | Some {it=ActorD (x, tp); _} -> 
-     "ActorD" $$ id x :: List.map typ_meth tp
-  | Some {it=ActorVarD (x, var); _} ->
-     "ActorVarD" $$ [id x] @ [id var]
+  | Some {it=ActorD (x, t); _} -> 
+     "ActorD" $$ id x :: [typ t]
     
-and prog prog = "Decs" $$ List.map dec prog.it.decs;
-                "Actor" $$ [actor prog.it.actor]
+and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
 
 (* Pretty printing  *)
@@ -78,7 +75,7 @@ let rec string_of_typ t =
   | VarT id -> sprintf "var %s" id.it
   | PrimT s -> string_of_prim s
   | FuncT (ms,s,t) ->
-     sprintf "(%s) -> [%s] (%s)" (string_of_list string_of_field ", " s) (string_of_list string_of_mode ", " ms) (string_of_list string_of_field ", " t)
+     sprintf "(%s) -> (%s) %s" (string_of_list string_of_field ", " s) (string_of_list string_of_field ", " t) (string_of_list string_of_mode " " ms)
   | OptT t -> "opt " ^ string_of_typ t
   | VecT t -> "vec " ^ string_of_typ t
   | RecordT fs -> sprintf "{%s}" (string_of_list string_of_field "; " fs)

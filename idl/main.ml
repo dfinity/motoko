@@ -29,13 +29,8 @@ let argspec = Arg.align
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
-  (*
-  "-t", Arg.Set Flags.trace, " activate tracing";
   "-v", Arg.Set Flags.verbose, " verbose output";
-  "-p", Arg.Set_int Flags.print_depth, " set print depth";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
-  "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
-   *)
   "-o", Arg.Set_string out_file, " output file";
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";

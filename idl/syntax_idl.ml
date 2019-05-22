@@ -21,7 +21,7 @@ type prim =
   | Bool
   | Text
   | Null
-  | Unavailable        
+  | Reserved        
         
 type func_mode = func_mode' Source.phrase
 and func_mode' = Oneway | Pure
@@ -52,8 +52,7 @@ and dec' =
 
 and actor = actor' Source.phrase
 and actor' = 
-  | ActorD of id * typ_meth list     (* service *)
-  | ActorVarD of id * id  (* service reference *)
+  | ActorD of id * typ     (* service *)
                
 (* Program *)
 

@@ -63,19 +63,29 @@ let disjoint_union env at fmt env1 env2 =
 (* Types *)
 
 let compare_field (f1: typ_field) (f2: typ_field) = compare f1.it.id f2.it.id
-let is_record t = match t.it with RecordT _ -> true | _ -> false
-let is_func t = match t.it with FuncT _ -> true | _ -> false
-let is_serv t = match t.it with ServT _ -> true | _ -> false
+let compare_meth (m1: typ_meth) (m2: typ_meth) = compare m1.it.var m2.it.var
+let find_type env id =
+  match Env.find_opt id.it env.typs with
+  | None -> error env id.at "unbound type identifier %s" id.it
+  | Some t -> t
+let rec is_func env t =
+  match t.it with
+  | FuncT _ -> true
+  | VarT id -> is_func env (find_type env id)
+  | _ -> false
+let rec is_serv env t =
+  match t.it with
+  | ServT _ -> true, t
+  | VarT id -> is_serv env (find_type env id)
+  | _ -> false, t
 
 let rec check_typ env t =
   match t.it with
   | PrimT prim -> t
   | VarT id ->
      (match Env.find_opt id.it env.typs with
-      | None ->
-         error env id.at "unbound type identifier %s" id.it;
-      | Some _ -> t
-     )
+      | None -> error env id.at "unbound type identifier %s" id.it
+      | Some _ -> t)
   | FuncT (ms, t1, t2) ->
      let t1' = check_fields env t1 in
      let t2' = check_fields env t2 in
@@ -88,7 +98,9 @@ let rec check_typ env t =
   | VariantT fs ->
      let fs' = check_fields env fs in
      VariantT (List.sort compare_field fs') @@ t.at
-  | ServT meths -> ServT (check_meths env meths) @@ t.at
+  | ServT meths ->
+     let ms' = check_meths env meths in
+     ServT (List.sort compare_meth ms') @@ t.at
   | PreT -> assert false
 
 and check_fields env fs =
@@ -106,7 +118,7 @@ and check_fields env fs =
 
 and check_meth env meth =
   let t' = check_typ env meth.it.meth in
-  if not (is_func t') then
+  if not (is_func env t') then
     error env meth.it.meth.at "%s is a non-function type\n %s" meth.it.var.it (string_of_typ t');
   {var=meth.it.var; meth=t'} @@ meth.at
 
@@ -132,17 +144,16 @@ and check_def env dec =
 and check_actor env actor_opt =
   match actor_opt with
   | None -> Env.empty
-  | Some {it=ActorD (id, meths); at; _} ->
-     let meths' = check_meths env meths in
-     Env.singleton id.it (ServT meths' @@ at)
-  | Some {it=ActorVarD (id, var); _} ->
-     (match Env.find_opt var.it env.typs with
-      | None -> error env var.at "unbound service reference type %s" var.it
-      | Some t ->
-         if not (is_serv t) then
-           error env var.at "%s is a non-service reference type\n %s" var.it (string_of_typ t);
-         Env.singleton id.it t)
-                    
+  | Some {it=ActorD (id, t); at; _} ->
+     (match is_serv env t with
+      | false, t' ->
+         error env at "%s is a non-service reference type\n %s" (string_of_typ t) (string_of_typ t')
+      | true, {it=ServT meths; _} ->
+         let meths' = check_meths env meths in
+         Env.singleton id.it (ServT (List.sort compare_meth meths') @@ at)
+      | _ -> assert false
+     )
+     
 and check_defs env decs =
   let _, te =
     List.fold_left (fun (env, te) dec ->

@@ -104,8 +104,6 @@ let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
 rule token = parse
   | "(" { LPAR }
   | ")" { RPAR }
-  | "[" { LBRACKET }
-  | "]" { RBRACKET }
   | "{" { LCURLY }
   | "}" { RCURLY }
   | ";" { SEMICOLON }
@@ -130,8 +128,6 @@ rule token = parse
   | "vec" { VEC }
   | "record" { RECORD }
   | "variant" { VARIANT }
-
-  | "enum" { ENUM }
   | "blob" { BLOB }
 
   | id as s { ID s }

@@ -25,21 +25,32 @@ let anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
 let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat64", Nat64;
                  "int", Int; "int8", Int8; "int16", Int16; "int32", Int32; "int64", Int64;
                  "float32", Float32; "float64", Float64; "bool", Bool; "text", Text;
-                 "null", Null; "unavailable", Unavailable]
+                 "null", Null; "reserved", Reserved]
 let is_prim_typs t = List.assoc_opt t prim_typs
 
 let func_modes = ["oneway", Oneway; "pure", Pure]
 let get_func_mode m = List.assoc m func_modes               
-                   
+
+let hash name = Stdint.Uint64.of_int (Hashtbl.hash name)                  
+
+let record_fields fs =
+  let rec go start fs =
+    match fs with
+    | [] -> []
+    | hd :: tl ->
+       let field = hd start in
+       let next = Stdint.Uint64.succ field.it.id in
+       field :: (go next tl)
+  in go Stdint.Uint64.zero fs
 %}
 
 %token EOF
 
-%token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
+%token LPAR RPAR LCURLY RCURLY
 %token ARROW
 %token FUNC TYPE SERVICE
 %token SEMICOLON COMMA COLON EQ
-%token OPT VEC RECORD VARIANT ENUM BLOB
+%token OPT VEC RECORD VARIANT BLOB
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
@@ -80,26 +91,33 @@ field_typ :
   | n=NAT COLON t=data_typ
     { { id = Stdint.Uint64.of_string n; name = n @@ at $loc(n); typ = t } @@ at $sloc }
   | name=name COLON t=data_typ
-    (* TODO find a better hash function *)
-    { { id = Stdint.Uint64.of_int (Hashtbl.hash name.it); name = name; typ = t } @@ at $sloc }
+    { { id = hash name.it; name = name; typ = t } @@ at $sloc }
+
+record_typ :
+  | f=field_typ { fun _ -> f }
   | t=data_typ
-    { let name = anon "field" t.at @@ t.at in 
-      { id = Stdint.Uint64.of_int (Hashtbl.hash name.it); name = name; typ = t } @@ at $sloc }
+    { fun x -> { id = x; name = Stdint.Uint64.to_string x @@ no_region; typ = t } @@ at $sloc }
 
-field_typs :
-  | LCURLY fs=seplist(field_typ, SEMICOLON) RCURLY { fs }
+variant_typ :
+  | f=field_typ { f }
+  | name=name
+    { { id = hash name.it; name = name; typ = PrimT Null @@ no_region } @@ at $sloc }
+  | n=NAT
+    { { id = Stdint.Uint64.of_string n; name = n @@ at $loc(n); typ = PrimT Null @@ no_region } @@ at $sloc }
 
-enums :
-  | LCURLY es=seplist(name, SEMICOLON) RCURLY { }
+record_typs :
+  | LCURLY fs=seplist(record_typ, SEMICOLON) RCURLY
+    { record_fields fs }
+
+variant_typs :
+  | LCURLY fs=seplist(variant_typ, SEMICOLON) RCURLY { fs }
 
 cons_typ :
   | OPT t=data_typ { OptT t @@ at $sloc }
   | VEC t=data_typ { VecT t @@ at $sloc }
-  | RECORD fs=field_typs { RecordT fs @@ at $sloc }
-  | VARIANT fs=field_typs { VariantT fs @@ at $sloc }
+  | RECORD fs=record_typs { RecordT fs @@ at $sloc }
+  | VARIANT fs=variant_typs { VariantT fs @@ at $sloc }
   | BLOB { VecT (PrimT Nat8 @@ no_region) @@ at $sloc }
-  (* TODO add enums  *)
-  | ENUM enums { PrimT Nat64 @@ at $sloc }
 
 data_typ :
   | t=cons_typ { t }
@@ -107,9 +125,8 @@ data_typ :
   | t=prim_typ { t }
 
 param_typs :
-  | f = field_typ { [f] }
-  | LPAR fs=seplist(field_typ, COMMA) RPAR
-    { fs }
+  | LPAR fs=seplist(record_typ, COMMA) RPAR
+    { record_fields fs }
 
 func_mode :
   | m=id
@@ -117,10 +134,10 @@ func_mode :
 
 func_modes_opt :
   | (* empty *) { [] }
-  | LBRACKET ms=seplist(func_mode, COMMA) RBRACKET { ms }
+  | m=func_mode ms=func_modes_opt { m::ms }
 
 func_typ :
-  | t1=param_typs ARROW ms=func_modes_opt t2=param_typs
+  | t1=param_typs ARROW t2=param_typs ms=func_modes_opt
     { FuncT(ms, t1, t2) @@ at $sloc }
 
 meth_typ :
@@ -142,9 +159,9 @@ def :
 actor :
   | (* empty *) { None }
   | SERVICE id=id tys=actor_typ
-    { Some (ActorD(id, tys) @@ at $sloc) }
+    { Some (ActorD(id, ServT tys @@ at $loc(tys)) @@ at $sloc) }
   | SERVICE id=id COLON x=id
-    { Some (ActorVarD(id, x) @@ at $sloc) }
+    { Some (ActorD(id, VarT x @@ x.at) @@ at $sloc) }
 
 (* Programs *)
 

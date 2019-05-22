@@ -20,7 +20,18 @@ type EntId = record {
 type OpEntId = opt EntId;
 type IdErr = record { idErr: OpEntId };
 
+type Inventory = record {
+  produce_id: nat;
+  quantity: nat;
+}
+
+service ProduceExchange {
+  getInventory: (producer_id: nat) -> (Inventory) pure;
+}
+
+/*
 service server {
   registrarAddUser : (user_name: text, description: text, region: RegionId, isDeveloper: bool) -> (UserId, IdErr);
-  allUserInfo: () -> UserInfo;
+  allUserInfo: () -> (UserInfo);
 }
+*/
