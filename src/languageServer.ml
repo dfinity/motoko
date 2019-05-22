@@ -88,7 +88,7 @@ let start () =
             | Ok _ -> show_message "Compilation successful"
             | Error diag ->
                show_message
-                 ("Compilation failed with" ^
+                 ("Compilation failed with " ^
                     String.concat
                       " "
                       (List.map Diag.string_of_message diag)))
