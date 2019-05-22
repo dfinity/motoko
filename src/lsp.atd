@@ -109,7 +109,7 @@ type text_document_did_close_params =
 
 type text_document_did_save_params =
   { textDocument : text_document_identifier
-  }
+  } <ocaml field_prefix="text_document_did_save_params_">
 
 type text_document_position_params =
   { textDocument : text_document_identifier

@@ -50,6 +50,7 @@ let real-dvm =
 let commonBuildInputs = [
   nixpkgs.ocaml
   nixpkgs.ocamlPackages.atdgen
+  nixpkgs.ocamlPackages.base
   nixpkgs.ocamlPackages.menhir
   nixpkgs.ocamlPackages.findlib
   nixpkgs.ocamlPackages.ocamlbuild

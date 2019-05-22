@@ -11,6 +11,15 @@ let send out =
   log_to_file "response_length" cl;
   log_to_file "response" out
 
+let show_message msg =
+  let params = `WindowShowMessage (Lsp_t.
+      { type_ = 3
+      ; message = msg
+      }) in
+  let notification = Lsp.notification params in
+  send (Lsp_j.string_of_notification_message notification)
+;;
+
 let start () =
   let rec loop () =
     let clength = read_line () in
@@ -66,15 +75,32 @@ let start () =
         let response = Lsp.response_result_message id result in
         send (Lsp_j.string_of_response_message response);
 
+    | (_, `TextDocumentDidSave params) ->
+       let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
+       (match Base.String.chop_prefix ~prefix:"file://" textDocumentIdent.Lsp_t.uri with
+        | Some file_name -> begin
+           let result = Pipeline.compile_files
+             Pipeline.DfinityMode
+             false
+             [file_name] in
+           show_message ("Compiling file: " ^ file_name);
+           (match result with
+            | Ok _ -> show_message "Compilation successful"
+            | Error diag ->
+               show_message
+                 ("Compilation failed with" ^
+                    String.concat
+                      " "
+                      (List.map Diag.string_of_message diag)))
+          end
+        | None ->
+           log_to_file
+             "error"
+             ("Failed to strip filename from: " ^ textDocumentIdent.Lsp_t.uri));
     (* Notification messages *)
 
     | (None, `Initialized _) ->
-        let params = `WindowShowMessage (Lsp_t.
-          { type_ = 3
-          ; message = "Language server initialized"
-          }) in
-        let notification = Lsp.notification params in
-        send (Lsp_j.string_of_notification_message notification);
+       show_message "Language server initialized"
 
     (* Unhandled messages *)
 
