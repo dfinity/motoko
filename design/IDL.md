@@ -588,7 +588,7 @@ record { <fieldtype>;* } <:- record { <fieldtype'>;* }
 ------------------------------------------------------------------------------
 record { <fieldtype>;* } <:- record { <nat> : opt <datatype>; <fieldtype'>;* }
 ```
-Taken together, these rules ensure that it is always possible to add an optional field to a record, no matter whether it it is used as parameter or result. In particular, that allows extending round-tripping record types as well. For example,
+Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
 ```
 type T = {};
 ```
