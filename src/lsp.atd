@@ -94,27 +94,33 @@ type initialize_params =
   ; ?trace : trace nullable
   (*; ?workspaceFolders : (workspace_folder list) nullable*)
   }
+  <ocaml field_prefix="initialize_params_">
 
 type text_document_did_open_params =
   { textDocument : text_document_item
   }
+  <ocaml field_prefix="text_document_did_open_params_">
 
 type text_document_did_change_params =
   { textDocument : versioned_text_document_identifier
   }
+  <ocaml field_prefix="text_document_did_change_params_">
 
 type text_document_did_close_params =
   { textDocument : text_document_identifier
   }
+  <ocaml field_prefix="text_document_did_close_params_">
 
 type text_document_did_save_params =
   { textDocument : text_document_identifier
-  } <ocaml field_prefix="text_document_did_save_params_">
+  }
+  <ocaml field_prefix="text_document_did_save_params_">
 
 type text_document_position_params =
   { textDocument : text_document_identifier
   ; position : position
-  } <ocaml field_prefix="text_document_position_params_">
+  }
+  <ocaml field_prefix="text_document_position_params_">
 
 (* See https://microsoft.github.io/language-server-protocol/specification#position
 
@@ -125,6 +131,7 @@ type position =
   { line : int
   ; character : int
   }
+  <ocaml field_prefix="position_">
 
 type text_document_item =
   { uri: string
@@ -132,15 +139,18 @@ type text_document_item =
   ; languageId: string
   ; version: int
   }
+  <ocaml field_prefix="text_document_item_">
 
 type text_document_identifier =
   { uri: string
   }
+  <ocaml field_prefix="text_document_identifier_">
 
 type versioned_text_document_identifier =
   { inherit text_document_identifier
   ; ?version: int nullable
   }
+  <ocaml field_prefix="versioned_text_document_identifier_">
 
 (*
 type client_capabilities =

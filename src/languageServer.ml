@@ -13,8 +13,8 @@ let send out =
 
 let show_message msg =
   let params = `WindowShowMessage (Lsp_t.
-      { type_ = 3
-      ; message = msg
+      { window_show_message_params_type_ = 3
+      ; window_show_message_params_message = msg
       }) in
   let notification = Lsp.notification params in
   send (Lsp_j.string_of_notification_message notification)
@@ -45,7 +45,7 @@ let start () =
     (* Request messages *)
 
     | (Some id, `Initialize params) ->
-        (match params.Lsp_t.trace with
+        (match params.Lsp_t.initialize_params_trace with
         | Some trace -> (match trace with
                         | `Off -> log_to_file "trace" "Off"
                         | `Messages -> log_to_file "trace" "Messages"
@@ -54,9 +54,9 @@ let start () =
         | None -> log_to_file "trace" "null"
         );
         let result = `Initialize (Lsp_t.
-          { capabilities =
-              { textDocumentSync = 1
-              ; hoverProvider = Some true
+          { initialize_result_capabilities =
+              { server_capabilities_textDocumentSync = 1
+              ; server_capabilities_hoverProvider = Some true
               }
           }) in
         let response = Lsp.response_result_message id result in
@@ -67,16 +67,17 @@ let start () =
         let position = params.Lsp_t.text_document_position_params_position in
         let textDocument = params.Lsp_t.text_document_position_params_textDocument in
         let result = `TextDocumentHoverResponse (Lsp_t. {
-          hover_result_contents = "hovered over: " ^ textDocument.uri
-            ^ " " ^ string_of_int position.line
-            ^ ", " ^ string_of_int position.character
+          hover_result_contents = "hovered over: " ^ textDocument.text_document_identifier_uri
+            ^ " " ^ string_of_int position.position_line
+            ^ ", " ^ string_of_int position.position_character
         }) in
         let response = Lsp.response_result_message id result in
         send (Lsp_j.string_of_response_message response);
 
     | (_, `TextDocumentDidSave params) ->
        let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
-       (match Base.String.chop_prefix ~prefix:"file://" textDocumentIdent.Lsp_t.uri with
+       let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
+       (match Base.String.chop_prefix ~prefix:"file://" uri with
         | Some file_name -> begin
            let result = Pipeline.compile_files
              Pipeline.DfinityMode
@@ -95,7 +96,7 @@ let start () =
         | None ->
            log_to_file
              "error"
-             ("Failed to strip filename from: " ^ textDocumentIdent.Lsp_t.uri));
+             ("Failed to strip filename from: " ^ uri));
     (* Notification messages *)
 
     | (None, `Initialized _) ->
