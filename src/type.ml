@@ -704,8 +704,8 @@ and lub' lubs glbs t1 t2 =
   | Any, _ -> Any
   | _, Non -> t1
   | Non, _ -> t2
-  | Shared, t2' when sub t2' Shared -> Shared
-  | t1', Shared when sub t1' Shared -> Shared
+  | Shared, _ when sub t2 Shared -> Shared
+  | _, Shared when sub t1 Shared -> Shared
   | Prim Nat, (Prim Int as t)
   | (Prim Int as t), Prim Nat -> t
   | Opt t1', Opt t2' ->
@@ -714,10 +714,10 @@ and lub' lubs glbs t1 t2 =
   | Opt t', Prim Null -> t1
   | Variant t1', Variant t2' ->
     Variant (lub_tags lubs glbs t1' t2')
-  | Array t1', (Obj _ as t2') -> lub' lubs glbs (array_obj t1') t2'
-  | (Obj _ as t1'), Array t2' -> lub' lubs glbs t1' (array_obj t2')
-  | Prim Text, (Obj _ as t2') -> lub' lubs glbs text_obj t2'
-  | (Obj _ as t1'), Prim Text -> lub' lubs glbs t1' text_obj
+  | Array t1', Obj _ -> lub' lubs glbs (array_obj t1') t2
+  | Obj _, Array t2' -> lub' lubs glbs t1 (array_obj t2')
+  | Prim Text, Obj _ -> lub' lubs glbs text_obj t2
+  | Obj _, Prim Text -> lub' lubs glbs t1 text_obj
   | Prim Text, Array t2' -> lub' lubs glbs text_obj (array_obj t2')
   | Array t1', Prim Text -> lub' lubs glbs (array_obj t1') text_obj
   | Array t1', Array t2' ->
@@ -741,8 +741,8 @@ and lub' lubs glbs t1 t2 =
     let inner = lub' lubs glbs (normalize t1) (normalize t2) in
     set_kind c (Def ([], inner));
     inner
-  | t1', t2' when eq t1' t2' -> t1
-  | t1', t2' when sub t1' Shared && sub t2' Shared -> Shared
+  | _ when eq t1 t2 -> t1
+  | _ when sub t1 Shared && sub t2 Shared -> Shared
   | _ -> Any
 
 and lub_fields lubs glbs fs1 fs2 = match fs1, fs2 with
@@ -774,8 +774,8 @@ and glb' lubs glbs t1 t2 =
   | Any, _ -> t2
   | _, Non -> Non
   | Non, _ -> Non
-  | Shared, t2' when sub t2' Shared -> t2
-  | t1', Shared when sub t1' Shared -> t1
+  | Shared, _ when sub t2 Shared -> t2
+  | _, Shared when sub t1 Shared -> t1
   | (Prim Nat as t), Prim Int
   | Prim Int, (Prim Nat as t) -> t
   | Opt t1', Opt t2' ->
@@ -784,10 +784,10 @@ and glb' lubs glbs t1 t2 =
     Variant (glb_tags lubs glbs t1' t2')
   | Prim Null, Opt _
   | Opt _, Prim Null -> Prim Null
-  | Array t1', (Obj _ as t2') when sub (array_obj t1') t2' -> t1
-  | (Obj _ as t1'), Array t2' when sub (array_obj t2') t1' -> t2
-  | Prim Text, (Obj _ as t2') when sub text_obj t2' -> t1
-  | (Obj _ as t1'), Prim Text when sub text_obj t1' -> t2
+  | Array t1', Obj _ when sub (array_obj t1') t2 -> t1
+  | Obj _, Array t2' when sub (array_obj t2') t1 -> t2
+  | Prim Text, Obj _ when sub text_obj t2 -> t1
+  | Obj _, Prim Text when sub text_obj t1 -> t2
 
   | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
     Tup (List.map2 (glb' lubs glbs) ts1 ts2)
@@ -810,7 +810,7 @@ and glb' lubs glbs t1 t2 =
     let inner = glb' lubs glbs (normalize t1) (normalize t2) in
     set_kind c (Def ([], inner));
     inner
-  | t1', t2' when eq t1' t2' -> t1
+  | _ when eq t1 t2 -> t1
   | _ -> Non
 
 and glb_fields lubs glbs fs1 fs2 = match fs1, fs2 with
