@@ -545,15 +545,18 @@ vec <datatype> <:P vec <datatype'>
 ```
 Furthermore, an option type can be specialised to either `null` or to its constituent type:
 ```
-
------------------------
+not (null <:P <datatype>)
+-------------------------
 null <:P opt <datatype>
 
+not (null <:P <datatype>)
 <datatype> <:P <datatype'>
 ------------------------------
 <datatype> <:P opt <datatype'>
 ```
-Note: By these rules, e.g., both `opt nat` and `opt opt nat` are subtypes of `opt opt int`.
+The premise means that the rule does not apply when the constituent type is itself `null` or an option. That restriction is necessary so that there is no ambiguity. For example, there would be two ways to interpret `null` when going from `opt nat` to `opt opt nat`, either as `null` or as `?null`.
+
+Q: The negated nature of this premise isn't really compatible with parametric polymorphism. Is that a problem? We could always introduce a supertype of all non-nullable types and rephrase it with that.
 
 
 #### Records
@@ -591,10 +594,12 @@ record { <fieldtype>;* } <:- record { <nat> : opt <datatype>; <fieldtype'>;* }
 Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
 ```
 type T = {};
+actor { f : T -> T };
 ```
 can safely be upgraded to
 ```
 type T' = {x : opt text};
+actor { f : T' -> T' };
 ```
 for all first-order uses of `T`, because both of the following hold:
 ```
@@ -605,6 +610,15 @@ And hence:
 ```
 (T' -> T')  <:+  (T -> T)
 ```
+Moreover, this extends to the higher-order case, where e.g. a function of the above type is expected as a parameter:
+```
+actor { g : (h : T -> T) -> ()}
+```
+Upgrading `T` as above contra-variantly requires
+```
+(T -> T)  <:-  (T' -> T')
+```
+which also holds.
 
 Note: The separation into polarities ensures that subtyping is still transitive in the presence of the last two rules. Without the distinction, we would have
 ```
