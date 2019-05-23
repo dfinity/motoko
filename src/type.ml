@@ -787,8 +787,8 @@ and glb' lubs glbs t1 t2 =
       Variant (glb_tags lubs glbs t1' t2')
     | Prim Null, Opt _
     | Opt _, Prim Null -> Prim Null
-    | Array t1', Obj _ when sub (array_obj t1') t2 -> t1
-    | Obj _, Array t2' when sub (array_obj t2') t1 -> t2
+    | Array t1', Obj _ when sub (array_obj t1') t2 -> t1 (* TODO(gabor): payload should be glb'd *)
+    | Obj _, Array t2' when sub (array_obj t2') t1 -> t2 (* TODO(gabor): payload should be glb'd *)
     | Prim Text, Obj _ when sub text_obj t2 -> t1
     | Obj _, Prim Text when sub text_obj t1 -> t2
     | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
