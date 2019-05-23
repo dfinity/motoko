@@ -695,55 +695,56 @@ and glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
 and lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
-  if M.mem (t1, t2) !lubs then M.find (t1, t2) !lubs else
-  if M.mem (t2, t1) !lubs then M.find (t2, t1) !lubs else
-  match t1, t2 with
-  | _, Pre
-  | Pre, _ -> assert false
-  | _, Any
-  | Any, _ -> Any
-  | _, Non -> t1
-  | Non, _ -> t2
-  | Shared, _ when sub t2 Shared -> Shared
-  | _, Shared when sub t1 Shared -> Shared
-  | Prim Nat, (Prim Int as t)
-  | (Prim Int as t), Prim Nat -> t
-  | Opt t1', Opt t2' ->
-    Opt (lub' lubs glbs t1' t2')
-  | Prim Null, Opt t' -> t2
-  | Opt t', Prim Null -> t1
-  | Variant t1', Variant t2' ->
-    Variant (lub_tags lubs glbs t1' t2')
-  | Array t1', Obj _ -> lub' lubs glbs (array_obj t1') t2
-  | Obj _, Array t2' -> lub' lubs glbs t1 (array_obj t2')
-  | Prim Text, Obj _ -> lub' lubs glbs text_obj t2
-  | Obj _, Prim Text -> lub' lubs glbs t1 text_obj
-  | Prim Text, Array t2' -> lub' lubs glbs text_obj (array_obj t2')
-  | Array t1', Prim Text -> lub' lubs glbs (array_obj t1') text_obj
-  | Array t1', Array t2' ->
-    Array (lub' lubs glbs t1' t2')
-  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
-    Tup (List.map2 (lub' lubs glbs) ts1 ts2)
-  | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
-    Obj (s1, lub_fields lubs glbs tf1 tf2)
-  | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-    when s1 = s2 && c1 = c2 && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
-      List.(length args1 = length args2 && length res1 = length res2) ->
-    Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
-  | Async t1', Async t2' ->
-    Async (lub' lubs glbs t1' t2')
-  | Con _, _
-  | _, Con _ ->
-    let s1, s2 = !str t1, !str t2 in
-    if s1 = s2 then t1 else
-    let c = Con.fresh (Printf.sprintf "@lub (%s, %s)" s1 s2) (Abs ([], Pre)) in
-    lubs := M.add (t1, t2) (Con (c, [])) !lubs;
-    let inner = lub' lubs glbs (normalize t1) (normalize t2) in
-    set_kind c (Def ([], inner));
-    inner
-  | _ when eq t1 t2 -> t1
-  | _ when sub t1 Shared && sub t2 Shared -> Shared
-  | _ -> Any
+  match M.find_opt (t1, t2) !lubs, M.find_opt (t2, t1) !lubs with
+  | Some t, _ | _, Some t -> t
+  | _ ->
+    match t1, t2 with
+    | _, Pre
+    | Pre, _ -> assert false
+    | _, Any
+    | Any, _ -> Any
+    | _, Non -> t1
+    | Non, _ -> t2
+    | Shared, _ when sub t2 Shared -> Shared
+    | _, Shared when sub t1 Shared -> Shared
+    | Prim Nat, (Prim Int as t)
+    | (Prim Int as t), Prim Nat -> t
+    | Opt t1', Opt t2' ->
+      Opt (lub' lubs glbs t1' t2')
+    | Prim Null, Opt t' -> t2
+    | Opt t', Prim Null -> t1
+    | Variant t1', Variant t2' ->
+      Variant (lub_tags lubs glbs t1' t2')
+    | Array t1', Obj _ -> lub' lubs glbs (array_obj t1') t2
+    | Obj _, Array t2' -> lub' lubs glbs t1 (array_obj t2')
+    | Prim Text, Obj _ -> lub' lubs glbs text_obj t2
+    | Obj _, Prim Text -> lub' lubs glbs t1 text_obj
+    | Prim Text, Array t2' -> lub' lubs glbs text_obj (array_obj t2')
+    | Array t1', Prim Text -> lub' lubs glbs (array_obj t1') text_obj
+    | Array t1', Array t2' ->
+      Array (lub' lubs glbs t1' t2')
+    | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
+      Tup (List.map2 (lub' lubs glbs) ts1 ts2)
+    | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
+      Obj (s1, lub_fields lubs glbs tf1 tf2)
+    | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
+        when s1 = s2 && c1 = c2 && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
+          List.(length args1 = length args2 && length res1 = length res2) ->
+      Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
+    | Async t1', Async t2' ->
+      Async (lub' lubs glbs t1' t2')
+    | Con _, _
+    | _, Con _ ->
+      let s1, s2 = !str t1, !str t2 in
+      if s1 = s2 then t1 else
+        let c = Con.fresh (Printf.sprintf "@lub (%s, %s)" s1 s2) (Abs ([], Pre)) in
+        lubs := M.add (t1, t2) (Con (c, [])) !lubs;
+        let inner = lub' lubs glbs (normalize t1) (normalize t2) in
+        set_kind c (Def ([], inner));
+        inner
+    | _ when eq t1 t2 -> t1
+    | _ when sub t1 Shared && sub t2 Shared -> Shared
+    | _ -> Any
 
 and lub_fields lubs glbs fs1 fs2 = match fs1, fs2 with
   | _, [] -> []
@@ -765,53 +766,53 @@ and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
 
 and glb' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
-  if M.mem (t1, t2) !glbs then M.find (t1, t2) !glbs else
-  if M.mem (t2, t1) !glbs then M.find (t2, t1) !glbs else
-  match t1, t2 with
-  | _, Pre
-  | Pre, _ -> assert false
-  | _, Any -> t1
-  | Any, _ -> t2
-  | _, Non -> Non
-  | Non, _ -> Non
-  | Shared, _ when sub t2 Shared -> t2
-  | _, Shared when sub t1 Shared -> t1
-  | (Prim Nat as t), Prim Int
-  | Prim Int, (Prim Nat as t) -> t
-  | Opt t1', Opt t2' ->
-    Opt (glb' lubs glbs t1' t2')
-  | Variant t1', Variant t2' ->
-    Variant (glb_tags lubs glbs t1' t2')
-  | Prim Null, Opt _
-  | Opt _, Prim Null -> Prim Null
-  | Array t1', Obj _ when sub (array_obj t1') t2 -> t1
-  | Obj _, Array t2' when sub (array_obj t2') t1 -> t2
-  | Prim Text, Obj _ when sub text_obj t2 -> t1
-  | Obj _, Prim Text when sub text_obj t1 -> t2
-
-  | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
-    Tup (List.map2 (glb' lubs glbs) ts1 ts2)
-  | Array t1', Array t2' ->
-    Array (glb' lubs glbs t1' t2')
-  | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
-    Obj (s1, glb_fields lubs glbs tf1 tf2)
-  | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-    when s1 = s2 && c1 = c2 && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
-      List.(length args1 = length args2 && length res1 = length res2) ->
-    Func (s1, c1, bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
-  | Async t1', Async t2' ->
-    Async (glb' lubs glbs t1' t2')
-  | Con _, _
-  | _, Con _ ->
-    let s1, s2 = !str t1, !str t2 in
-    if s1 = s2 then t1 else
-    let c = Con.fresh (Printf.sprintf "@glb (%s, %s)" s1 s2) (Abs ([], Pre)) in
-    glbs := M.add (t1, t2) (Con (c, [])) !glbs;
-    let inner = glb' lubs glbs (normalize t1) (normalize t2) in
-    set_kind c (Def ([], inner));
-    inner
-  | _ when eq t1 t2 -> t1
-  | _ -> Non
+  match M.find_opt (t1, t2) !glbs, M.find_opt (t2, t1) !glbs with
+  | Some t, _ | _, Some t -> t
+  | _ ->
+    match t1, t2 with
+    | _, Pre
+    | Pre, _ -> assert false
+    | _, Any -> t1
+    | Any, _ -> t2
+    | _, Non -> Non
+    | Non, _ -> Non
+    | Shared, _ when sub t2 Shared -> t2
+    | _, Shared when sub t1 Shared -> t1
+    | (Prim Nat as t), Prim Int
+    | Prim Int, (Prim Nat as t) -> t
+    | Opt t1', Opt t2' ->
+      Opt (glb' lubs glbs t1' t2')
+    | Variant t1', Variant t2' ->
+      Variant (glb_tags lubs glbs t1' t2')
+    | Prim Null, Opt _
+    | Opt _, Prim Null -> Prim Null
+    | Array t1', Obj _ when sub (array_obj t1') t2 -> t1
+    | Obj _, Array t2' when sub (array_obj t2') t1 -> t2
+    | Prim Text, Obj _ when sub text_obj t2 -> t1
+    | Obj _, Prim Text when sub text_obj t1 -> t2
+    | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
+      Tup (List.map2 (glb' lubs glbs) ts1 ts2)
+    | Array t1', Array t2' ->
+      Array (glb' lubs glbs t1' t2')
+    | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
+      Obj (s1, glb_fields lubs glbs tf1 tf2)
+    | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
+        when s1 = s2 && c1 = c2 && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
+          List.(length args1 = length args2 && length res1 = length res2) ->
+      Func (s1, c1, bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
+    | Async t1', Async t2' ->
+      Async (glb' lubs glbs t1' t2')
+    | Con _, _
+    | _, Con _ ->
+      let s1, s2 = !str t1, !str t2 in
+      if s1 = s2 then t1 else
+        let c = Con.fresh (Printf.sprintf "@glb (%s, %s)" s1 s2) (Abs ([], Pre)) in
+        glbs := M.add (t1, t2) (Con (c, [])) !glbs;
+        let inner = glb' lubs glbs (normalize t1) (normalize t2) in
+        set_kind c (Def ([], inner));
+        inner
+    | _ when eq t1 t2 -> t1
+    | _ -> Non
 
 and glb_fields lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
