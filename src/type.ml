@@ -695,8 +695,8 @@ and glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
 and lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
-  match M.find_opt (t1, t2) !lubs, M.find_opt (t2, t1) !lubs with
-  | Some t, _ | _, Some t -> t
+  match M.find_opt (t1, t2) !lubs with
+  | Some t -> t
   | _ ->
     match t1, t2 with
     | _, Pre
@@ -738,7 +738,8 @@ and lub' lubs glbs t1 t2 =
       let s1, s2 = !str t1, !str t2 in
       if s1 = s2 then t1 else
         let c = Con.fresh (Printf.sprintf "@lub (%s, %s)" s1 s2) (Abs ([], Pre)) in
-        lubs := M.add (t1, t2) (Con (c, [])) !lubs;
+        let t = Con (c, []) in
+        lubs := M.add (t2, t1) t (M.add (t1, t2) t !lubs);
         let inner = lub' lubs glbs (normalize t1) (normalize t2) in
         set_kind c (Def ([], inner));
         inner
@@ -766,8 +767,8 @@ and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
 
 and glb' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
-  match M.find_opt (t1, t2) !glbs, M.find_opt (t2, t1) !glbs with
-  | Some t, _ | _, Some t -> t
+  match M.find_opt (t1, t2) !glbs with
+  | Some t -> t
   | _ ->
     match t1, t2 with
     | _, Pre
@@ -807,7 +808,8 @@ and glb' lubs glbs t1 t2 =
       let s1, s2 = !str t1, !str t2 in
       if s1 = s2 then t1 else
         let c = Con.fresh (Printf.sprintf "@glb (%s, %s)" s1 s2) (Abs ([], Pre)) in
-        glbs := M.add (t1, t2) (Con (c, [])) !glbs;
+        let t = Con (c, []) in
+        glbs := M.add (t2, t1) t (M.add (t1, t2) t !glbs);
         let inner = glb' lubs glbs (normalize t1) (normalize t2) in
         set_kind c (Def ([], inner));
         inner
