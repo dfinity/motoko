@@ -42,6 +42,11 @@ let diagnostics_of_message msg = Lsp_t.
   ; diagnostic_relatedInformation = None
   }
 
+let for_option (m: 'a option) (f: 'a -> unit): unit =
+  match m with
+  | Some x -> f x
+  | None -> ()
+
 let publish_diagnostics uri diags =
   let params = `PublishDiagnostics (Lsp_t.
     { publish_diagnostics_params_uri = uri
@@ -113,14 +118,13 @@ let start () =
            (match result with
             | Ok _ -> show_message "Compilation successful"
             | Error msgs ->
-               (match !client_capabilities with
-               | Some capabilities ->
+               (for_option !client_capabilities (fun capabilities ->
                    (* TODO: determine if the client accepts diagnostics with related info *)
                    (* let textDocument = capabilities.client_capabilities_textDocument in
                     * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
                    let diags = List.map diagnostics_of_message msgs in
                    publish_diagnostics uri diags;
-               | None -> ());
+                  ));
 
                (* TODO: remove *)
                show_message
