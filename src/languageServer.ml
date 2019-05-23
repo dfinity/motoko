@@ -3,13 +3,16 @@ let log_to_file lbl txt =
     Printf.fprintf oc "[%s] %s\n" lbl txt;
     flush oc
 
-let send out =
+let send label out =
   let cl = "Content-Length: " ^ string_of_int (String.length out) ^ "\r\n\r\n" in
   print_string cl;
   print_string out;
   flush stdout;
-  log_to_file "response_length" cl;
-  log_to_file "response" out
+  log_to_file (label ^ "_length") cl;
+  log_to_file label out
+
+let send_response = send "response"
+let send_notification = send "notification"
 
 let show_message msg =
   let params = `WindowShowMessage (Lsp_t.
@@ -17,7 +20,7 @@ let show_message msg =
       ; window_show_message_params_message = msg
       }) in
   let notification = Lsp.notification params in
-  send (Lsp_j.string_of_notification_message notification)
+  send_notification (Lsp_j.string_of_notification_message notification)
 
 let start () =
   let rec loop () =
@@ -53,7 +56,7 @@ let start () =
           }) in
         let response = Lsp.response_result_message id result in
         log_to_file "response" (Lsp_j.string_of_response_message response);
-        send (Lsp_j.string_of_response_message response);
+        send_response (Lsp_j.string_of_response_message response);
 
     | (Some id, `TextDocumentHover params) ->
         let position = params.Lsp_t.text_document_position_params_position in
@@ -64,7 +67,7 @@ let start () =
             ^ ", " ^ string_of_int position.position_character
         }) in
         let response = Lsp.response_result_message id result in
-        send (Lsp_j.string_of_response_message response);
+        send_response (Lsp_j.string_of_response_message response);
 
     | (_, `TextDocumentDidSave params) ->
        let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
