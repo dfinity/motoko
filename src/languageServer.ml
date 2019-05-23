@@ -55,7 +55,6 @@ let start () =
               }
           }) in
         let response = Lsp.response_result_message id result in
-        log_to_file "response" (Lsp_j.string_of_response_message response);
         send_response (Lsp_j.string_of_response_message response);
 
     | (Some id, `TextDocumentHover params) ->
