@@ -665,6 +665,117 @@ actor { <methtype>;* } <:P actor { <methtype'>;* }
 actor { <name> : <functype>; <methtype>;* } <:P actor { <name> : <functype'>; <methtype'>;* }
 ```
 
+### Elaboration
+
+To define the actual coercion function, we extend the subtyping relation to a ternary *elaboration* relation `T <: T' ~> f`, where `f` is a suitable coercion function of type `T -> T'`.
+
+
+#### Primitive Types
+
+```
+
+---------------------------------
+<primtype> <:P <primtype> ~> \x.x
+
+
+-------------------
+Nat <:P Int ~> \x.x
+
+
+-------------------------------
+<datatype> <:P reserved ~> \x.x
+```
+
+#### Options and Vectors
+
+```
+<datatype> <:P <datatype'> ~> f
+----------------------------------------------------
+opt <datatype> <:P opt <datatype'> ~> \x.map_opt f x
+
+<datatype> <:P <datatype'> ~> f
+----------------------------------------------------
+vec <datatype> <:P vec <datatype'> ~> \x.map_vec f x
+
+not (null <:P <datatype>)
+----------------------------------
+null <:P opt <datatype> ~> \x.null
+
+not (null <:P <datatype>)
+<datatype> <:P <datatype'> ~> f
+-------------------------------------------
+<datatype> <:P opt <datatype'> ~> \x.?(f x)
+```
+
+
+#### Records
+
+```
+
+----------------------------------
+record { } <:P record { } ~> \x.{}
+
+<datatype> <:P <datatype'> ~> f1
+record { <fieldtype>;* } <:P record { <fieldtype'>;* } ~> f2
+-----------------------------------------------------------------------------------------------
+record { <nat> : <datatype>; <fieldtype>;* } <:P record { <nat> : <datatype'>; <fieldtype'>;* }
+  ~> \x.{f2 x with <nat> = f1 x.<nat>}
+
+
+-------------------------------------------------
+record { <fieldtype'>;* } <:+ record { } ~> \x.{}
+
+record { <fieldtype>;* } <:- record { <fieldtype'>;* } ~> f
+--------------------------------------------------------------------
+record { <fieldtype>;* } <:- record { <nat> : null; <fieldtype'>;* }
+  ~> \x.{f x; <nat> = null}
+
+record { <fieldtype>;* } <:- record { <fieldtype'>;* } ~> f
+------------------------------------------------------------------------------
+record { <fieldtype>;* } <:- record { <nat> : opt <datatype>; <fieldtype'>;* }
+  ~> \x.{f x; <nat> = null}
+```
+
+
+#### Variants
+
+```
+
+--------------------------------------------------
+variant { } <:P variant { <fieldtype'>;* } ~> \x.x
+
+<datatype> <:P <datatype'> ~> f1
+variant { <fieldtype>;* } <:P variant { <fieldtype'>;* } ~> f2
+-------------------------------------------------------------------------------------------------
+variant { <nat> : <datatype>; <fieldtype>;* } <:P variant { <nat> : <datatype'>; <fieldtype'>;* }
+  ~> \x.case x of <nat> y => <nat> (f1 y) | _ => f2 x
+```
+
+#### Functions
+
+```
+record { <fieldtype1'>;* } <:~P record { <fieldtype1>;* } ~> f1
+record { <fieldtype2>;* } <:P record { <fieldtype2'>;* } ~> f2
+------------------------------------------------------------------------------------------------------------------------
+func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <:P func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
+  ~> \x.\y.f2 (x (f1 y))
+```
+
+#### Actors
+
+```
+
+----------------------------------------------
+actor { <methtype'>;* } <:P actor { } ~> \x.{}
+
+<functype> <:P <functype'> ~> f1
+actor { <methtype>;* } <:P actor { <methtype'>;* } ~> f2
+---------------------------------------------------------------------------------------------
+actor { <name> : <functype>; <methtype>;* } <:P actor { <name> : <functype'>; <methtype'>;* }
+  ~> \x.{f1 x; <name> = f2 x.<name>}
+```
+
+
 ## Example Development Flow
 
 We take the produce exchange app as an example to illustrate how a developer would use IDL in their development flow.
