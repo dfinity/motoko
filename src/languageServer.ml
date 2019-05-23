@@ -113,15 +113,18 @@ let start () =
            show_message ("Compiling file: " ^ file_name);
            (* TODO: let msgs = match result with | Error msgs -> msgs | Ok (_, msgs) -> in *)
            (match result with
-            | Ok _ -> show_message "Compilation successful"
+            | Ok _ ->
+               (* It's our responsibility to clear any existing diagnostics *)
+               publish_diagnostics uri [];
+               show_message "Compilation successful"
             | Error msgs ->
                (Base.Option.iter !client_capabilities ~f:(fun capabilities ->
                    (* TODO: determine if the client accepts diagnostics with related info *)
                    (* let textDocument = capabilities.client_capabilities_textDocument in
                     * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
-                   let diags = List.map diagnostics_of_message msgs in
-                   publish_diagnostics uri diags;
-                  ));
+                    let diags = List.map diagnostics_of_message msgs in
+                    publish_diagnostics uri diags;
+               ));
                show_message
                  ("Compilation failed with " ^
                     String.concat
