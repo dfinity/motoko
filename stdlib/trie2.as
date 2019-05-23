@@ -286,53 +286,44 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     rec(0, tl, tr)
   };
 
-
-
-/*
- /**
+  /**
    `diff`
    ------
    The key-value pairs of the final trie consists of those pairs of
    the left trie whose keys are not present in the right trie; the
    values of the right trie are irrelevant.
    */
-  func diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, k_eq:(K,K)->Bool) : Trie<K,V> {
+  func diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, k_eq:(K,K)->Bool): Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
-    func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,V> {
+    func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,V> {
       switch (tl, tr) {
-      case (null, _) { return makeEmpty<K,V>() };
-      case (_, null) { return tl };
-      case (?nl,?nr) {
-             switch (isBin<K,V>(tl),
-	                   isBin<K,W>(tr)) {
-             case (true, true) {
-	                  let t0 = rec(nl.left, nr.left);
-	                  let t1 = rec(nl.right, nr.right);
-	                  makeBin<K,V>(t0, t1)
-	                };
-             case (false, true) {
-	                  assert false;
-	                  // XXX impossible, until we lift uniform depth assumption
-	                  tl
-	                };
-             case (true, false) {
-	                  assert false;
-	                  // XXX impossible, until we lift uniform depth assumption
-	                  tl
-	                };
-             case (false, false) {
-                    assert(isLeaf<K,V>(tl));
-	                  assert(isLeaf<K,W>(tr));
-                    makeLeaf<K,V>(
-                      AssocList.diff<Key<K>,V,W>(nl.keyvals, nr.keyvals, key_eq)
-                    )
-	                };
-	           }
-           };
-      }};
-    rec(tl, tr)
+        case (#empty, _) { return #empty };
+        case (_, #empty) { return tl };
+        case (#leaf as, #leaf bs) { 
+               #leaf(
+                 AssocList.diff<Key<K>,V,W>(
+                   as, bs,
+                   key_eq,
+                 )
+               )
+             };
+        case (#leaf al, _) {
+               let (l,r) = splitAssocList<K,V>(al, bitpos);
+               rec(bitpos, #branch(#leaf l, #leaf r), tr)
+             };
+        case (_, #leaf al) {
+               let (l,r) = splitAssocList<K,W>(al, bitpos);
+               rec(bitpos, tl, #branch(#leaf l, #leaf r))
+             };
+        case (#branch (ll, lr), #branch(rl, rr)) {
+               #branch(rec(bitpos + 1, ll, rl), 
+                       rec(bitpos + 1, lr, rr))
+             };
+      }
+    };
+    rec(0, tl, tr)
   };
-*/
+
 
 /*
   /**
