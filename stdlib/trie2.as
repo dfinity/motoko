@@ -325,7 +325,6 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   };
 
 
-/*
   /**
    `disj`
    --------
@@ -349,68 +348,59 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    - [`prod`](#prod)
 
    */
-  func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
-			               k_eq:(K,K)->Bool, vbin:(?V,?W)->X)
+  func disj<K,V,W,X>(
+    tl   : Trie<K,V>, 
+    tr   : Trie<K,W>,
+		k_eq : (K,K)->Bool, 
+    vbin : (?V,?W)->X
+  )
     : Trie<K,X>
   {
     let key_eq = keyEq<K>(k_eq);
     func recL(t:Trie<K,V>) : Trie<K,X> {
       switch t {
-	    case (null) null;
-	    case (? n) {
-	           switch (matchLeaf<K,V>(t)) {
-	           case (?_) { makeLeaf<K,X>(AssocList.disj<Key<K>,V,W,X>(n.keyvals, null, key_eq, vbin)) };
-	           case _ { makeBin<K,X>(recL(n.left), recL(n.right)) }
-	           }
+	    case (#empty) #empty;
+	    case (#leaf as) {
+             #leaf(AssocList.disj<Key<K>,V,W,X>(as, null, key_eq, vbin))
            };
-      }};
+      case (#branch(l,r)) { #branch(recL(l),recL(r)) };
+      }
+    };
     func recR(t:Trie<K,W>) : Trie<K,X> {
       switch t {
-	    case (null) null;
-	    case (? n) {
-	           switch (matchLeaf<K,W>(t)) {
-	           case (?_) { makeLeaf<K,X>(AssocList.disj<Key<K>,V,W,X>(null, n.keyvals, key_eq, vbin)) };
-	           case _ { makeBin<K,X>(recR(n.left), recR(n.right)) }
-	           }
+	    case (#empty) #empty;
+	    case (#leaf as) {
+             #leaf(AssocList.disj<Key<K>,V,W,X>(null, as, key_eq, vbin))
            };
-      }};
-    func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
+      case (#branch(l,r)) { #branch(recR(l),recR(r)) };
+      }
+    };
+    func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
       switch (tl, tr) {
-        // empty-empty terminates early, all other cases do not.
-      case (null, null) { makeEmpty<K,X>() };
-      case (null, _   ) { recR(tr) };
-      case (_,    null) { recL(tl) };
-      case (? nl, ? nr) {
-             switch (isBin<K,V>(tl),
-	                   isBin<K,W>(tr)) {
-             case (true, true) {
-	                  let t0 = rec(nl.left, nr.left);
-	                  let t1 = rec(nl.right, nr.right);
-	                  makeBin<K,X>(t0, t1)
-	                };
-             case (false, true) {
-	                  assert false;
-	                  // XXX impossible, until we lift uniform depth assumption
-	                  makeEmpty<K,X>()
-	                };
-             case (true, false) {
-	                  assert false;
-	                  // XXX impossible, until we lift uniform depth assumption
-	                  makeEmpty<K,X>()
-	                };
-             case (false, false) {
-	                  assert(isLeaf<K,V>(tl));
-	                  assert(isLeaf<K,W>(tr));
-                    makeLeaf<K,X>(
-                      AssocList.disj<Key<K>,V,W,X>(nl.keyvals, nr.keyvals, key_eq, vbin)
-                    )
-                  };
-	           }
+      case (#empty, #empty) { #empty };
+      case (#empty, _   )   { recR(tr) };
+      case (_,    #empty)   { recL(tl) };
+      case (#leaf as, #leaf bs) {
+             #leaf(AssocList.disj<Key<K>,V,W,X>(as, bs, key_eq, vbin))
            };
-      }};
-    rec(tl, tr)
+      case (#leaf al, _) {
+             let (l,r) = splitAssocList<K,V>(al, bitpos);
+             rec(bitpos, #branch(#leaf l, #leaf r), tr)
+           };
+      case (_, #leaf al) {
+             let (l,r) = splitAssocList<K,W>(al, bitpos);
+             rec(bitpos, tl, #branch(#leaf l, #leaf r))
+           };
+      case (#branch (ll, lr), #branch(rl, rr)) {
+             #branch(rec(bitpos + 1, ll, rl), 
+                     rec(bitpos + 1, lr, rr))
+           };
+      }
+    };
+    rec(0, tl, tr)
   };
-*/
+  
+
 
 /*
   /**
