@@ -39,7 +39,7 @@ let diagnostics_of_message (msg: Diag.message): Lsp_t.diagnostic = Lsp_t.
   { diagnostic_range = range_of_region msg.Diag.at
   ; diagnostic_severity = Some (match msg.Diag.sev with Diag.Error -> 1 | Diag.Warning -> 2)
   ; diagnostic_code = None
-  ; diagnostic_source = Some "actorscript"
+  ; diagnostic_source = Some "ActorScript"
   ; diagnostic_message = msg.Diag.text
   ; diagnostic_relatedInformation = None
   }
