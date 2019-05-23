@@ -1,9 +1,9 @@
-let oc = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"
-let log_to_file lbl txt =
+let oc: out_channel = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"
+let log_to_file (lbl: string) (txt: string): unit =
     Printf.fprintf oc "[%s] %s\n" lbl txt;
     flush oc
 
-let send label out =
+let send (label: string) (out: string): unit =
   let cl = "Content-Length: " ^ string_of_int (String.length out) ^ "\r\n\r\n" in
   print_string cl;
   print_string out;
@@ -11,29 +11,31 @@ let send label out =
   log_to_file (label ^ "_length") cl;
   log_to_file label out
 
-let send_response = send "response"
-let send_notification = send "notification"
+let send_response: string -> unit = send "response"
+let send_notification: string -> unit = send "notification"
 
-let show_message msg =
-  let params = `WindowShowMessage (Lsp_t.
-      { window_show_message_params_type_ = 3
-      ; window_show_message_params_message = msg
-      }) in
+let show_message (msg: string): unit =
+  let params =
+    `WindowShowMessage
+      (Lsp_t.
+        { window_show_message_params_type_ = 3
+        ; window_show_message_params_message = msg
+        }) in
   let notification = Lsp.notification params in
   send_notification (Lsp_j.string_of_notification_message notification)
 
-let position_of_pos pos = Lsp_t.
+let position_of_pos (pos: Source.pos): Lsp_t.position = Lsp_t.
   (* The LSP spec requires zero-based positions *)
   { position_line = if pos.Source.line > 0 then pos.Source.line - 1 else 0
   ; position_character = pos.Source.column
   }
 
-let range_of_region at = Lsp_t.
+let range_of_region (at: Source.region): Lsp_t.range = Lsp_t.
   { range_start = position_of_pos at.Source.left
   ; range_end_ = position_of_pos at.Source.right
   }
 
-let diagnostics_of_message msg = Lsp_t.
+let diagnostics_of_message (msg: Diag.message): Lsp_t.diagnostic = Lsp_t.
   { diagnostic_range = range_of_region msg.Diag.at
   ; diagnostic_severity = Some (match msg.Diag.sev with Diag.Error -> 1 | Diag.Warning -> 2)
   ; diagnostic_code = None
@@ -47,7 +49,7 @@ let for_option (m: 'a option) (f: 'a -> unit): unit =
   | Some x -> f x
   | None -> ()
 
-let publish_diagnostics uri diags =
+let publish_diagnostics (uri: Lsp_t.document_uri) (diags: Lsp_t.diagnostic list): unit =
   let params = `PublishDiagnostics (Lsp_t.
     { publish_diagnostics_params_uri = uri
     ; publish_diagnostics_params_diagnostics = diags
