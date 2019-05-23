@@ -49,7 +49,6 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-
 (* Constructors *)
 
 let set_kind c k =
@@ -60,6 +59,7 @@ let set_kind c k =
 module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
 module ConSet = ConEnv.Dom
 
+let _ = Printexc.record_backtrace true
 
 (* Short-hands *)
 
@@ -116,6 +116,70 @@ let text_obj =
     ] in
   Obj (Object Local, List.sort compare_field immut)
 
+let rec cons t cs =
+  match t with
+  | Var _ ->  cs
+  | (Prim _ | Any | Non | Shared | Pre) -> cs
+  | Con (c, ts) ->
+    List.fold_right cons ts (ConSet.add c cs)
+  | (Opt t | Async t | Mut t | Serialized t | Array t) ->
+    cons t cs
+  | Tup ts -> List.fold_right cons ts cs
+  | Func (s, c, tbs, ts1, ts2) ->
+    let cs = List.fold_right cons_bind tbs  cs in
+    let cs = List.fold_right cons ts1 cs in
+    List.fold_right cons ts2 cs
+  | (Obj (_, fs) | Variant fs) ->
+    List.fold_right cons_field fs cs
+  | Typ c -> ConSet.add c cs
+
+and cons_bind {var; bound} cs =
+  cons bound cs
+
+and cons_field {lab; typ} cs =
+  cons typ cs
+
+let cons_kind k =
+  match k with
+  | Def (tbs, t)
+  | Abs (tbs, t) ->
+    cons t (List.fold_right cons_bind tbs ConSet.empty)
+
+let rec is_closed i t =
+   match t with
+  | Prim _ -> true
+  | Var (_, j) ->  j < i
+  | Con (c, ts) -> List.for_all (is_closed i) ts
+  | Array t -> is_closed i t
+  | Tup ts -> List.for_all (is_closed i) ts
+  | Func (s, c, tbs, ts1, ts2) ->
+    let i' = i + List.length tbs in
+    List.for_all (is_closed i') ts1 &&
+    List.for_all (is_closed i') ts2
+  | Opt t -> is_closed i t
+  | Async t -> is_closed i t
+  | Obj (s, fs) -> List.for_all (fun {typ;_} -> is_closed i typ) fs
+  | Variant fs -> List.for_all (fun {typ;_} -> is_closed i typ) fs
+  | Mut t -> is_closed i t
+  | Shared -> true
+  | Serialized t -> is_closed i t
+  | Any -> true
+  | Non -> true
+  | Pre -> true
+  | Typ c -> is_closed_con i c
+and is_closed_con i c =
+  is_closed_kind i (Con.kind c)
+
+and is_closed_kind i k =
+  match k with
+  | Abs (tbs,t)  
+  | Def (tbs,t) ->
+    let i' = i + List.length tbs in
+    List.for_all (fun {var;bound} -> is_closed i' bound) tbs &&
+    is_closed i' t
+
+
+type subst = TypS of typ | ConS of con
 
 (* Shifting *)
 
@@ -139,7 +203,8 @@ let rec shift i n t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c -> Typ c
+  | Typ c ->
+    Typ (clone c (fun k' -> shift_kind i n k'))
 
 and shift_bind i n {var; bound} =
   {var; bound = shift i n bound}
@@ -147,7 +212,6 @@ and shift_bind i n {var; bound} =
 and shift_field i n {lab; typ} =
   {lab; typ = shift i n typ}
 
-(*
 and shift_kind i n k =
   match k with
   | Def (tbs, t) ->
@@ -156,25 +220,32 @@ and shift_kind i n k =
   | Abs (tbs, t) ->
     let i' = i + List.length tbs in
     Abs (List.map (shift_bind i' n) tbs, shift i' n t)
- *)
-
 
 (* First-order substitution *)
 
-let rec subst sigma t =
+and shift_subst i n s =
+  match s with
+  | TypS typ -> TypS (shift i n typ)
+  | ConS c ->
+    if is_closed_con i c then s else
+   (*    Printf.printf "\n shift_subst %i %i %s" i n (Con.to_string c); *)
+    ConS (clone c (fun k' -> (shift_kind i n k')))
+
+and subst sigma t =
   if sigma = ConEnv.empty then t else
   match t with
   | Prim _
   | Var _ -> t
   | Con (c, ts) ->
     (match ConEnv.find_opt c sigma with
-    | Some t -> assert (List.length ts = 0); t
-    | None -> Con (c, List.map (subst sigma) ts)
+    | Some (TypS t) -> assert (List.length ts = 0); t
+    | Some (ConS c') -> Con(c', List.map (subst sigma) ts)
+    | None -> Con(subst_con sigma c, List.map (subst sigma) ts)
     )
   | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
   | Func (s, c, tbs, ts1, ts2) ->
-    let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
+    let sigma' = ConEnv.map (shift_subst 0 (List.length tbs)) sigma in
     Func (s, c, List.map (subst_bind sigma') tbs,
           List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
@@ -187,12 +258,31 @@ let rec subst sigma t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c -> Typ c (* NB: this is incorrect unless we ensure dom(sigma) \cap FV(c.kind) = {}
-                      For now, we could do this by ensuring all type definitions are closed,
-                      in particular, type components defined within the scope of an enclosing
-                      type parameter cannot mention that parameter
-                      (but can mention other (closed) type constructors).
-                   *)
+  | Typ c ->
+    (match ConEnv.find_opt c sigma with
+     | Some (TypS t) -> assert false
+     | Some (ConS c') -> Typ c'
+     | None -> Typ (subst_con sigma c)
+    )
+
+and subst_con sigma c =
+  let cons = cons_kind (Con.kind c) in
+  if List.exists (fun c -> ConSet.mem c cons) (ConEnv.keys sigma) then
+    clone c (fun k -> subst_kind sigma k)
+  else c
+
+and clone c f =
+  let k = Con.kind c in
+  match k with
+  | Abs(tbs,t) -> c
+  | Def(tbs,t) ->
+  Con.unsafe_set_kind c (Abs(tbs,Pre));
+  let c' = Con.fresh (Con.name c) (Con.kind c) in
+  let k' = subst_kind (ConEnv.add c (ConS c') ConEnv.empty) k in
+  let k'' = f k' in
+  Con.unsafe_set_kind c k;
+  Con.unsafe_set_kind c' k'';
+  c'
 
 and subst_bind sigma {var; bound} =
   {var; bound = subst sigma bound}
@@ -200,22 +290,20 @@ and subst_bind sigma {var; bound} =
 and subst_field sigma {lab; typ} =
   {lab; typ = subst sigma typ}
 
-(*
-and subst_kind sigma k =
+and subst_kind sigma (k:kind) =
   match k with
   | Def (tbs, t) ->
-    let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
+    let sigma' = ConEnv.map (shift_subst 0 (List.length tbs)) sigma in
     Def (List.map (subst_bind sigma') tbs, subst sigma' t)
   | Abs (tbs, t) ->
-    let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
+    let sigma' = ConEnv.map (shift_subst 0 (List.length tbs)) sigma in
     Abs (List.map (subst_bind sigma') tbs, subst sigma' t)
- *)
 
 (* Handling binders *)
 
 let close cs t =
   if cs = [] then t else
-  let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
+  let ts = List.mapi (fun i c -> TypS (Var (Con.name c, i))) cs in
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst sigma t
 
@@ -223,12 +311,11 @@ let close_binds cs tbs =
   if cs = [] then tbs else
   List.map (fun {var; bound} -> {var; bound = close cs bound}) tbs
 
-
 let rec open' i ts t =
   match t with
   | Prim _ -> t
   | Var (_, j) -> if j < i then t else List.nth ts (j - i)
-  | Con (c, ts') -> Con (c, List.map (open' i ts) ts')
+  | Con (c, ts') -> Con (open_con i ts c, List.map (open' i ts) ts')
   | Array t -> Array (open' i ts t)
   | Tup ts' -> Tup (List.map (open' i ts) ts')
   | Func (s, c, tbs, ts1, ts2) ->
@@ -244,7 +331,12 @@ let rec open' i ts t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c -> Typ c
+  | Typ c -> Typ (open_con i ts c)
+
+and open_con i ts c =
+  if is_closed_con i c then c
+  else
+  clone c (fun k -> open_kind i ts k)
 
 and open_bind i ts {var; bound} =
   {var; bound = open' i ts bound}
@@ -252,7 +344,7 @@ and open_bind i ts {var; bound} =
 and open_field i ts {lab; typ} =
   {lab; typ = open' i ts typ}
 
-(*
+
 and open_kind i ts k =
   match k with
   | Def (tbs, t) ->
@@ -261,7 +353,6 @@ and open_kind i ts k =
   | Abs (tbs, t) ->
     let i' = i + List.length tbs in
     Abs (List.map (open_bind i' ts) tbs, open' i' ts t)
-*)
 
 let open_ ts t =
   if ts = [] then t else
@@ -472,37 +563,6 @@ let avoid cons t =
 
 (* Checking for concrete types *)
 
-let rec cons t cs =
-  match t with
-  | Var _ ->  cs
-  | (Prim _ | Any | Non | Shared | Pre) -> cs
-  | Con (c, ts) ->
-    List.fold_right cons ts (ConSet.add c cs)
-  | (Opt t | Async t | Mut t | Serialized t | Array t) ->
-    cons t cs
-  | Tup ts -> List.fold_right cons ts cs
-  | Func (s, c, tbs, ts1, ts2) ->
-    let cs = List.fold_right cons_bind tbs  cs in
-    let cs = List.fold_right cons ts1 cs in
-    List.fold_right cons ts2 cs
-  | (Obj (_, fs) | Variant fs) ->
-    List.fold_right cons_field fs cs
-  | Typ c -> ConSet.add c cs
-
-and cons_bind {var; bound} cs =
-  cons bound cs
-
-and cons_field {lab; typ} cs =
-  cons typ cs
-
-let cons_kind k =
-  match k with
-  | Def (tbs, t)
-  | Abs (tbs, t) ->
-    cons t (List.fold_right cons_bind tbs ConSet.empty)
-
-(* Checking for concrete types *)
-
 module TS = Set.Make (struct type t = typ let compare = compare end)
 
 (*
@@ -562,6 +622,7 @@ let rec rel_typ rel eq t1 t2 =
   | Non, _ when rel != eq ->
     true
   | Con (con1, ts1), Con (con2, ts2) ->
+    (*    Printf.printf "\n rel_typ %s %s" (Con.to_string con1) (Con.to_string con2); *)
     (match Con.kind con1, Con.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
@@ -645,7 +706,7 @@ let rec rel_typ rel eq t1 t2 =
   | Serialized t1', Serialized t2' ->
     eq_typ rel eq t1' t2' (* TBR: eq or sub? Does it matter? *)
   | Typ c1, Typ c2 ->
-    Con.eq c1 c2 
+    eq_kind rel eq (Con.kind c1) (Con.kind c2)
   | _, _ -> false
   end
 
@@ -694,16 +755,7 @@ and rel_binds rel eq tbs1 tbs2 =
 and rel_bind ts rel eq tb1 tb2 =
   rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
-and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
-
-and eq t1 t2 : bool =
-  let eq = ref S.empty in eq_typ eq eq t1 t2
-
-and sub t1 t2 : bool =
-  rel_typ (ref S.empty) (ref S.empty) t1 t2
-
-and eq_kind k1 k2 : bool =
-  let eq = ref S.empty in
+and eq_kind rel eq k1 k2 =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
@@ -712,6 +764,18 @@ and eq_kind k1 k2 : bool =
     | None -> false
   end
   | _ -> false
+
+and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
+
+and eq t1 t2 : bool =
+  let eq = ref S.empty in eq_typ eq eq t1 t2
+
+and sub t1 t2 : bool =
+  rel_typ (ref S.empty) (ref S.empty) t1 t2
+
+let eq_kind k1 k2 : bool =
+  let eq = ref S.empty in
+  eq_kind eq eq k1 k2
 
 (* Least upper bound and greatest lower bound *)
 
@@ -808,7 +872,7 @@ let rec string_of_typ_nullary vs = function
   | Non -> "Non"
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
-  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
+  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> "???")
   | Con (c, []) -> string_of_con' vs c
   | Con (c, ts) ->
     sprintf "%s<%s>" (string_of_con' vs c)
@@ -827,7 +891,7 @@ let rec string_of_typ_nullary vs = function
   | Variant fs ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_tag vs) fs))
   | Typ c ->
-    sprintf "= {%s}" (string_of_kind (Con.kind c))
+    sprintf "= {%s}" (string_of_kind' vs (Con.kind c))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
 and string_of_dom vs ts =
@@ -871,7 +935,7 @@ and string_of_typ' vs t =
   | Obj (Module, fs) ->
     sprintf "module %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Typ c ->
-    sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind (Con.kind c))
+    sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind' vs (Con.kind c))
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
   | Serialized t ->
@@ -881,7 +945,7 @@ and string_of_typ' vs t =
 and string_of_field vs {lab; typ} =
   match typ with
   | Typ c ->
-    let op, sbs, st = strings_of_kind (Con.kind c) in
+    let op, sbs, st = strings_of_kind' vs (Con.kind c) in
     sprintf "type %s%s %s %s" lab sbs op st
   | _ ->
     sprintf "%s : %s" lab (string_of_typ' vs typ)
@@ -907,22 +971,24 @@ and string_of_binds vs vs' = function
   | [] -> ""
   | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
 
-
-and strings_of_kind k =
+and strings_of_kind' vs k =
   let op, tbs, t =
     match k with
     | Def (tbs, t) -> "=", tbs, t
     | Abs (tbs, t) -> "<:", tbs, t
   in
-  let vs = vars_of_binds [] tbs in
-  op, string_of_binds vs vs tbs, string_of_typ' vs t
+  let vs' = vars_of_binds vs tbs in
+  let vs'vs = vs' @ vs in
+  op, string_of_binds vs'vs vs' tbs, string_of_typ' vs'vs t
 
-and string_of_kind k =
-  let op, sbs, st = strings_of_kind k in
+and string_of_kind' vs k =
+  let op, sbs, st = strings_of_kind' vs k in
   sprintf "%s %s%s" op sbs st
 
 let string_of_con = string_of_con' []
 let string_of_typ = string_of_typ' []
+let string_of_kind = string_of_kind' []
+let strings_of_kind = strings_of_kind' []
 
 let rec string_of_typ_expand t =
   let s = string_of_typ t in

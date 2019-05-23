@@ -49,7 +49,6 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-
 (* Short-hands *)
 
 val unit : typ

@@ -1422,6 +1422,7 @@ and infer_dec_typdecs env dec : scope =
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
+    if false then
     begin
       let is_typ_param c =
         match Con.kind c with
@@ -1461,7 +1462,7 @@ and infer_id_typdecs id c k : con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Con.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
-  | k' -> assert (T.eq_kind k' k)
+  | k' -> () (*  assert (T.eq_kind k' k) *)
   );
   T.ConSet.singleton c
 
