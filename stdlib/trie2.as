@@ -137,6 +137,15 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
  };
 
  /**
+  `insert`
+  ------------
+  insert the given key's value in the trie; return the new trie, and the previous value associated with the key, if any
+  */
+ func insert<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : (Trie<K,V>, ?V) {
+   replace<K,V>(t, k, k_eq, ?v)
+ };
+
+ /**
   `find`
   ---------
   find the given key's value in the trie, or return null if nonexistent
@@ -399,10 +408,8 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     };
     rec(0, tl, tr)
   };
-  
+ 
 
-
-/*
   /**
    `join`
    ---------
@@ -425,46 +432,58 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     : Trie<K,X>
   {
     let key_eq = keyEq<K>(k_eq);
-    func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
+    func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
       switch (tl, tr) {
-	    case (null, null) { return makeEmpty<K,X>() };
-	    case (null, ? nr) { return makeEmpty<K,X>() };
-	    case (? nl, null) { return makeEmpty<K,X>() };
-	    case (? nl, ? nr) {
-	           switch (isBin<K,V>(tl),
-		                 isBin<K,W>(tr)) {
-	           case (true, true) {
-	                  let t0 = rec(nl.left, nr.left);
-	                  let t1 = rec(nl.right, nr.right);
-	                  makeBin<K,X>(t0, t1)
-	                };
-	           case (false, true) {
-	                  assert false;
-	                  // XXX impossible, until we lift uniform depth assumption
-	                  makeEmpty<K,X>()
-	                };
-	           case (true, false) {
-	                  assert false;
-	                  // XXX impossible, until we lift uniform depth assumption
-	                  makeEmpty<K,X>()
-	                };
-	           case (false, false) {
-	                  assert(isLeaf<K,V>(tl));
-	                  assert(isLeaf<K,W>(tr));
-                    makeLeaf<K,X>(
-                      AssocList.join<Key<K>,V,W,X>(nl.keyvals, nr.keyvals, key_eq, vbin)
-                    )
-	                };
-	           }
-	         }
-      }};
-    rec(tl, tr)
+	    case (#empty, _) { #empty };
+	    case (_, #empty) { #empty };
+	    case (#leaf as, #leaf bs) { 
+             #leaf(AssocList.join<Key<K>,V,W,X>(as, bs, key_eq, vbin))
+           };
+      case (#leaf al, _) {
+             let (l,r) = splitAssocList<K,V>(al, bitpos);
+             rec(bitpos, #branch(#leaf l, #leaf r), tr)
+           };
+      case (_, #leaf al) {
+             let (l,r) = splitAssocList<K,W>(al, bitpos);
+             rec(bitpos, tl, #branch(#leaf l, #leaf r))
+           };
+      case (#branch (ll, lr), #branch(rl, rr)) {
+             #branch(rec(bitpos + 1, ll, rl), 
+                     rec(bitpos + 1, lr, rr))
+           };
+      }
+    };
+    rec(0, tl, tr)
   };
-*/
 
-/*
+
   /**
+   `foldUp`
+   ------------
+   This operation gives a recursor for the internal structure of
+   tries.  Many common operations are instantiations of this function,
+   either as clients, or as hand-specialized versions (e.g., see map,
+   mapFilter, exists and forAll below).
+   */
+  func foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
+    func rec(t:Trie<K,V>) : X {
+      switch t {
+      case (#empty) { empty };
+	    case (#leaf al) {
+             AssocList.fold<Key<K>,V,X>(
+               al, empty,
+               func (k:Key<K>, v:V, x:X):X =
+                 bin(leaf(k.key,v),x)
+             )
+           };
+	    case (#branch(l,r)) { bin(rec(l), rec(r)) };
+      }
+    };
+    rec(t)
+  };
 
+
+  /**
    `prod`
    ---------
 
@@ -504,45 +523,15 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
           tr, merge,
           func (k2:K2, v2:V2) : Trie<K3, V3> {
             switch (op(k1, v1, k2, v2)) {
-              case null null;
-              case (?(k3, v3)) { (insert<K3, V3>(null, k3, k3_eq, v3)).0 };
+            case null #empty;
+            case (?(k3, v3)) { (insert<K3, V3>(#empty, k3, k3_eq, v3)).0 };
             }
           },
-          null
+          #empty
         )
       },
-      null
+      #empty
     )
-  };
-*/
-
-/*
-  /**
-   `foldUp`
-   ------------
-   This operation gives a recursor for the internal structure of
-   tries.  Many common operations are instantiations of this function,
-   either as clients, or as hand-specialized versions (e.g., see map,
-   mapFilter, exists and forAll below).
-   */
-  func foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
-    func rec(t:Trie<K,V>) : X {
-      switch t {
-      case (null) { empty };
-      case (?n) {
-	           switch (matchLeaf<K,V>(t)) {
-	           case (?kvs) {
-                    AssocList.fold<Key<K>,V,X>(
-                      kvs, empty,
-                      func (k:Key<K>, v:V, x:X):X =
-                        bin(leaf(k.key,v),x)
-                    )
-                  };
-	           case null { bin(rec(n.left), rec(n.right)) };
-	           }
-           };
-      }};
-    rec(t)
   };
 
   /**
@@ -554,21 +543,19 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   func fold<K,V,X>(t:Trie<K,V>, f:(K,V,X)->X, x:X) : X {
     func rec(t:Trie<K,V>, x:X) : X {
       switch t {
-      case (null) x;
-      case (?n) {
-	           switch (matchLeaf<K,V>(t)) {
-	           case (?kvs) {
-                    AssocList.fold<Key<K>,V,X>(
-                      kvs, x,
-                      func (k:Key<K>, v:V, x:X):X = f(k.key,v,x)
-                    )
-                  };
-	           case null { rec(n.left,rec(n.right,x)) };
-	           }
+      case (#empty) x;
+	    case (#leaf al) {
+             AssocList.fold<Key<K>,V,X>(
+               al, x,
+               func (k:Key<K>, v:V, x:X):X = f(k.key,v,x)
+             )
            };
-      }};
+	    case (#branch(l,r)) { rec(l,rec(r,x)) };
+      };
+    };
     rec(t, x)
   };
+
 
   /**
    `exists`
@@ -578,21 +565,17 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   func exists<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
     func rec(t:Trie<K,V>) : Bool {
       switch t {
-      case (null) { false };
-      case (?n) {
-	           switch (matchLeaf<K,V>(t)) {
-	           case (?kvs) {
-                    List.exists<(Key<K>,V)>(
-                      kvs, func ((k:Key<K>,v:V)):Bool=f(k.key,v)
-                    )
-                  };
-	           case null { rec(n.left) or rec(n.right) };
-	           }
+      case (#empty) { false };
+	    case (#leaf al) {
+             List.exists<(Key<K>,V)>(
+               al, func ((k:Key<K>,v:V)):Bool=f(k.key,v)
+             )
            };
-      }};
+	    case (#branch(l,r)) { rec(l) or rec(r) };
+      };
+    };
     rec(t)
   };
-
 
   /**
    `forAll`
@@ -602,18 +585,15 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   func forAll<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
     func rec(t:Trie<K,V>) : Bool {
       switch t {
-      case (null) { true };
-      case (?n) {
-	           switch (matchLeaf<K,V>(t)) {
-	           case (?kvs) {
-                    List.all<(Key<K>,V)>(
-                      kvs, func ((k:Key<K>,v:V)):Bool=f(k.key,v)
-                    )
-                  };
-	           case null { rec(n.left) and rec(n.right) };
-	           }
+      case (#empty) { true };
+	    case (#leaf al) {
+             List.all<(Key<K>,V)>(
+               al, func ((k:Key<K>,v:V)):Bool=f(k.key,v)
+             )
            };
-      }};
+	    case (#branch(l,r)) { rec(l) and rec(r) };
+      };
+    };
     rec(t)
   };
 
@@ -669,17 +649,14 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   func isEmpty<K,V>(t:Trie<K,V>) : Bool {
     func rec(t:Trie<K,V>) : Bool {
       switch t {
-      case (null) { true };
-      case (?n) {
-	           switch (matchLeaf<K,V>(t)) {
-	           case (?kvs) { List.isNil<(Key<K>,V)>(kvs) };
-	           case null { rec(n.left) and rec(n.right) };
-	           }
-	         };
-      }
+      case (#empty) { true };
+	    case (#leaf al) { List.isNil<(Key<K>,V)>(al) };
+	    case (#branch(l,r)) { rec(l) and rec(r) };
+	    };
     };
     rec(t)
   };
+
 
   /**
    `filter`
@@ -689,27 +666,21 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   func filter<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
     func rec(t:Trie<K,V>) : Trie<K,V> {
       switch t {
-      case (null) { null };
-      case (?n) {
-	           switch (matchLeaf<K,V>(t)) {
-	           case (?kvs) {
-                    makeLeaf<K,V>(
-                      List.filter<(Key<K>,V)>(kvs, func ((k:Key<K>,v:V)):Bool = f(k.key,v))
-                    )
-		              };
-	           case null {
-		                let l = rec(n.left);
-		                let r = rec(n.right);
-		                switch (isEmpty<K,V>(l),
-			                      isEmpty<K,V>(r)) {
-		                case (true,  true)  null;
-		                case (false, true)  r;
-		                case (true,  false) l;
-		                case (false, false) makeBin<K,V>(l, r);
-		                }
-		              };
-	           }
-	         };
+      case (#empty) { #empty };
+	    case (#leaf al) {
+             #leaf(List.filter<(Key<K>,V)>(al, func ((k:Key<K>,v:V)):Bool = f(k.key,v)))
+           };
+	    case (#branch(l,r)) {
+		         let fl = rec(l);
+		         let fr = rec(r);
+		         switch (isEmpty<K,V>(fl),
+			               isEmpty<K,V>(fr)) {
+		         case (true,  true)  #empty;
+		         case (false, true)  fr;
+		         case (true,  false) fl;
+		         case (false, false) #branch(fl, fr);
+		         };
+	         }
       }
     };
     rec(t)
@@ -718,39 +689,35 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   /**
    `mapFilter`
    -----------
-   map and filter the key-value pairs by a given partial mapping function.
+   map and filter the key-value pairs by a given predicate.
    */
   func mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?W) : Trie<K,W> {
     func rec(t:Trie<K,V>) : Trie<K,W> {
       switch t {
-      case (null) { null };
-      case (?n) {
-	           switch (matchLeaf<K,V>(t)) {
-	           case (?kvs) {
-                    makeLeaf<K,W>(
-                      List.mapFilter<(Key<K>,V),(Key<K>,W)>
-                    (kvs,
+      case (#empty) { #empty };
+	    case (#leaf al) {
+             #leaf(List.mapFilter<(Key<K>,V),(Key<K>,W)>(
+                     al, 
                      // retain key and hash, but update key's value using f:
                      func ((k:Key<K>,v:V)):?(Key<K>,W) = {
                        switch (f(k.key,v)) {
                          case (null) null;
                          case (?w) (?(new {key=k.key; hash=k.hash}, w));
                        }}
-                    ))
-                  };
-	           case null {
-		                let l = rec(n.left);
-		                let r = rec(n.right);
-		                switch (isEmpty<K,W>(l),
-			                      isEmpty<K,W>(r)) {
-		                case (true,  true)  null;
-		                case (false, true)  r;
-		                case (true,  false) l;
-		                case (false, false) makeBin<K,W>(l, r);
-		                }
-		              };
-	           }
-	         };
+                   )
+             )
+           };
+	    case (#branch(l,r)) {
+		         let fl = rec(l);
+		         let fr = rec(r);
+		         switch (isEmpty<K,W>(fl),
+			               isEmpty<K,W>(fr)) {
+		         case (true,  true)  #empty;
+		         case (false, true)  fr;
+		         case (true,  false) fl;
+		         case (false, false) #branch(fl, fr);
+		         };
+	         }
       }
     };
     rec(t)
@@ -776,40 +743,24 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   ) : Bool {
     func rec(tl:Trie<K,V>, tr:Trie<K,V>) : Bool {
       switch (tl, tr) {
-      case (null, null) { true };
-      case (_,    null) { false };
-      case (null, _)    { false };
-      case (?nl, ?nr) {
-	           switch (matchLeaf<K,V>(tl),
-		                 matchLeaf<K,V>(tr)) {
-	           case (null,  null)  {
-                    rec(nl.left, nr.left)
-					          and rec(nl.right, nr.right)
-                  };
-	           case (null,  _) { false };
-	           case (_, null)  { false };
-	           case (?kvs1, ?kvs2) {
-                    List.isEq<(Key<K>,V)>
-                    (kvs1, kvs2,
-                     func ((k1:Key<K>, v1:V), (k2:Key<K>, v2:V)) : Bool =
-                       keq(k1.key, k2.key) and veq(v1,v2)
-                    )
-                  };
-	           }
+      case (#empty, #empty) { true };
+      case (#leaf as, #leaf bs) {
+             List.isEq<(Key<K>,V)>
+             (as, bs,
+              func ((k1:Key<K>, v1:V), (k2:Key<K>, v2:V)) : Bool =
+                keq(k1.key, k2.key) and veq(v1,v2)
+             )
            };
-      }};
-    rec(tl, tr)
+      case (#branch(ll,lr),#branch(rl,rr)) {
+             rec(ll,rl) and rec(lr,rr)
+           };
+      case _ { false };
+      }
+    };
+    rec(tl,tr)
   };
 
-
-
-
- 
-
   /**
-
-  -------------------------------------------------------------------------------------------------
-
    `replaceThen`
    ------------
    replace the given key's value in the trie,
@@ -826,15 +777,6 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
       case (null) { /* no prior value; failure to remove */ fail() };
       case (?v1) { success(t2, v1) };
     }
-  };
-
-  /**
-   `insert`
-   ------------
-   insert the given key's value in the trie; return the new trie, and the previous value associated with the key, if any
-   */
-  func insert<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : (Trie<K,V>, ?V) {
-    replace<K,V>(t, k, k_eq, ?v)
   };
 
   /**
@@ -864,7 +806,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   {
     let inner = find<K1,Trie<K2,V>>(t, k1, k1_eq);
     let (updated_inner, _) = switch inner {
-    case (null)   { insert<K2,V>(null, k2, k2_eq, v) };
+    case (null)   { insert<K2,V>(#empty, k2, k2_eq, v) };
     case (?inner) { insert<K2,V>(inner, k2, k2_eq, v) };
     };
     let (updated_outer, _) = { insert<K1,Trie<K2,V>>(t, k1, k1_eq, updated_inner) };
@@ -889,14 +831,14 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     let (updated_inner1, _) = switch inner1 {
     case (null)   {
            insert<K2,Trie<K3,V>>(
-             null, k2, k2_eq,
-             (insert<K3,V>(null, k3, k3_eq, v)).0
+             #empty, k2, k2_eq,
+             (insert<K3,V>(#empty, k3, k3_eq, v)).0
            )
          };
     case (?inner1) {
            let inner2 = find<K2,Trie<K3,V>>(inner1, k2, k2_eq);
            let (updated_inner2, _) = switch inner2 {
-           case (null) { insert<K3,V>(null, k3, k3_eq, v) };
+           case (null) { insert<K3,V>(#empty, k3, k3_eq, v) };
            case (?inner2) { insert<K3,V>(inner2, k3, k3_eq, v) };
            };
            insert<K2,Trie<K3,V>>( inner1, k2, k2_eq, updated_inner2 )
@@ -1006,189 +948,16 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     ( t,
       func (t1:Trie<K2,V>, t2:Trie<K2,V>):Trie<K2,V> {  mergeDisjoint<K2,V>(t1, t2, k2_eq) },
       func (_:K1, t:Trie<K2,V>): Trie<K2,V> { t },
-      null )
-  };
-
-  // Equality function for two `Key<K>`s, in terms of equaltiy of `K`'s.
-  func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) = {
-    func (key1:Key<K>, key2:Key<K>) : Bool =
-      label profile_trie_keyEq : Bool
-      (Hash.hashEq(key1.hash, key2.hash) and keq(key1.key, key2.key))
-  };
-
-  /**
-   Helpers for missing variants
-   ==============================
-   Until ActorScript has variant types, we need various helper functions here.  They are uninteresting.
-   */
-  // @Omit:
-
-  // XXX: until AST-42:
-  func isNull<X>(x : ?X) : Bool {
-    switch x {
-    case null { true  };
-    case (?_) { false };
-    };
-  };
-
-  // XXX: until AST-42:
-  func assertIsNull<X>(x : ?X) {
-    label profile_trie_assertIsNull
-    switch x {
-    case null { assert(true)  };
-    case (?_) { assert(false) };
-    };
-  };
-
-  // XXX: until AST-42:
-  func makeEmpty<K,V>() : Trie<K,V>
-    = null;
-
-   // XXX: until AST-42:
-  func assertIsEmpty<K,V>(t : Trie<K,V>) {
-    switch t {
-    case null { assert(true)  };
-    case (?_) { assert(false) };
-    };
-  };
-
-  // XXX: until AST-42:
-  func makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  {
-    ?(new {left=l; right=r; keyvals=null; })
-  };
-
-  // XXX: until AST-42:
-  func isBin<K,V>(t:Trie<K,V>) : Bool {
-    switch t {
-    case null { false };
-    case (?t_) {
-	         switch (t_.keyvals) {
-	         case null { true };
-	         case _ { false };
-	         };
-	       };
-    }
-  };
-
-  // XXX: until AST-42:
-  func makeLeaf<K,V>(kvs:AssocList<Key<K>,V>) : Trie<K,V> {
-    ?(new {left=null; right=null; keyvals=kvs })
-  };
-
-  // XXX: until AST-42:
-  func matchLeaf<K,V>(t:Trie<K,V>) : ?AssocList<Key<K>,V> {
-    switch t {
-    case null { null };
-    case (?t_) {
-	         switch (t_.keyvals) {
-	         case (?keyvals) ?(?(keyvals));
-	         case (_) null;
-	         }
-	       };
-    }
-  };
-
-  // XXX: until AST-42:
-  func isLeaf<K,V>(t:Trie<K,V>) : Bool {
-    switch t {
-    case null { false };
-    case (?t_) {
-	         switch (t_.keyvals) {
-	         case null { false };
-	         case _ { true };
-	         }
-	       };
-    }
-  };
-  // XXX: until AST-42:
-  func assertIsBin<K,V>(t : Trie<K,V>) {
-    switch t {
-    case null { assert(false) };
-    case (?n) {
-	         assertIsNull<((Key<K>,V),AssocList<Key<K>,V>)>(n.keyvals);
-         };
-    }
-  };
-
-  // XXX: until AST-42:
-  func getLeafKey<K,V>(t : Node<K,V>) : Key<K> {
-    assertIsNull<Node<K,V>>(t.left);
-    assertIsNull<Node<K,V>>(t.right);
-    switch (t.keyvals) {
-    case (?((k,v),_)) { k };
-    case (null) { /* ERROR */ getLeafKey<K,V>(t) };
-    }
-  };
-
-  // XXX: this helper is an ugly hack; we need real sum types to avoid it, I think:
-  func getLeafVal<K,V>(t : Node<K,V>) : V {
-    assertIsNull<Node<K,V>>(t.left);
-    assertIsNull<Node<K,V>>(t.right);
-    switch (t.keyvals) {
-    case (?((k,v),_)) { v };
-    case null { /* ERROR */ getLeafVal<K,V>(t) };
-    }
+      #empty )
   };
 
 
-  /**
-   More helpers
-   ==============================
-   */
-
-
-  /**
-   `buildNewPath`
-   ---------------
-   helper function for constructing new paths of uniform length
-   */
-
-  func buildNewPath<K,V>(bitpos:Nat, k:Key<K>, ov:?V) : Trie<K,V> {
-    func rec(bitpos:Nat) : Trie<K,V> {
-      if ( bitpos < HASH_BITS ) {
-	      // create new bin node for this bit of the hash
-	      let path = rec(bitpos+1);
-	      let bit = Hash.getHashBit(k.hash, bitpos);
-	      if (not bit) {
-	        ?(new {left=path; right=null; keyvals=null})
-	      }
-	      else {
-	        ?(new {left=null; right=path; keyvals=null})
-	      }
-      } else {
-	      // create new leaf for (k,v) pair, if the value is non-null:
-        switch ov {
-          case null { ?(new {left=null; right=null; keyvals=null }) };
-          case (?v) { ?(new {left=null; right=null; keyvals=?((k,v),null) }) };
-        }
-      }
-    };
-    rec(bitpos)
-  };
-
-//};
 
 
 /**
 
 Future work
 =============
-
-Tests
----------
-more regression tests for everything documented in the [module interface](#module-interface).
-
-
-Variant types
-------------------------
-See [AST-42]() (sum types); we want this type definition instead:
-
- ```
- // Use a sum type (AST-42)
- type Trie<K,V>     = { #leaf : LeafNode<K,V>; #bin : BinNode<K,V>; #empty };
- type BinNode<K,V>  = { left:Trie<K,V>; right:Trie<K,V> };
- type LeafNode<K,V> = { key:K; val:V };
- ```
 
 Adaptive path lengths
 ----------------------
@@ -1203,5 +972,4 @@ Iterator objects
 -------------------
 for use in 'for ... in ...' patterns
 
-*/
 */
