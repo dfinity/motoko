@@ -150,14 +150,8 @@ rec {
     name = "asc-bin";
 
     src = sourceByRegex ./. [
-      "src/"
+      "src\/(lsp)?(.*\.(atd|ml|mli|mll|mlpack|mly))?$"
       "src/Makefile.*"
-      "src/.*.atd"
-      "src/.*.ml"
-      "src/.*.mli"
-      "src/.*.mly"
-      "src/.*.mll"
-      "src/.*.mlpack"
       "src/_tags"
       "test/"
       "test/node-test.js"
