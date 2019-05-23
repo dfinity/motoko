@@ -79,7 +79,7 @@ type hover_result =
 (* Outgoing notifications *)
 
 type notification_message_params =
-  [ PublishDiagnostics <json name="publishDiagnostics"> of publish_diagnostics_params
+  [ PublishDiagnostics <json name="textDocument/publishDiagnostics"> of publish_diagnostics_params
   | WindowShowMessage <json name ="window/showMessage"> of window_show_message_params
   ]
 
