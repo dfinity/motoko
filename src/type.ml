@@ -693,41 +693,11 @@ and eq_kind k1 k2 : bool =
 and lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
 and glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
-and is_recursive_con = function
-  | Con _ as t ->
-    begin match normalize t with
-    | Any | Non | Pre | Shared | Prim _ | Serialized _ | Var _ -> false
-    | t' -> has_loop t t'
-    end
-  | _ -> false
-
-(* for a Con that normalises to t, figure out whether the Con itself
-   appears among the types transitively referenced by t *)
-and has_loop con t =
-  let rec has_con followers =
-    List.memq con followers
-    || List.length followers > 0 && has_con List.(flatten (map references followers))
-  and references = function
-    | Tup ts -> ts
-    | Opt t | Array t | Async t | Mut t -> [t]
-    | Obj (_, fts) -> let ts = List.map (fun {lab; typ} -> typ) fts in ts
-    | Variant vts -> let ts = List.map (fun {lab; typ} -> typ) vts in ts
-    | Func (s, c, bs, args, res) -> args @ res (* todo(gabor) bs bounds*)
-    | _ -> [] in
-  has_con (references t)
-
 and lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
   if M.mem (t1, t2) !lubs then M.find (t1, t2) !lubs else
   if M.mem (t2, t1) !lubs then M.find (t2, t1) !lubs else
-  if is_recursive_con t1 || is_recursive_con t2 then
-    let c = Con.fresh (Printf.sprintf "@lub (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
-    lubs := M.add (t1, t2) (Con (c, [])) !lubs;
-    let inner = lub' lubs glbs (normalize t1) (normalize t2) in
-    set_kind c (Def ([], inner));
-    inner
-  else
-  match normalize t1, normalize t2 with
+  match t1, t2 with
   | _, Pre
   | Pre, _ -> assert false
   | _, Any
@@ -736,9 +706,8 @@ and lub' lubs glbs t1 t2 =
   | Non, _ -> t2
   | Shared, t2' when sub t2' Shared -> Shared
   | t1', Shared when sub t1' Shared -> Shared
-  | Prim Nat, Prim Int
-  | Prim Int, Prim Nat -> Prim Int
-  | t1', t2' when eq t1' t2' -> t1
+  | Prim Nat, (Prim Int as t)
+  | (Prim Int as t), Prim Nat -> t
   | Opt t1', Opt t2' ->
     Opt (lub' lubs glbs t1' t2')
   | Prim Null, Opt t' -> t2
@@ -763,6 +732,14 @@ and lub' lubs glbs t1 t2 =
     Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
   | Async t1', Async t2' ->
     Async (lub' lubs glbs t1' t2')
+  | Con _, _
+  | _, Con _ ->
+    let c = Con.fresh (Printf.sprintf "@lub (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
+    lubs := M.add (t1, t2) (Con (c, [])) !lubs;
+    let inner = lub' lubs glbs (normalize t1) (normalize t2) in
+    set_kind c (Def ([], inner));
+    inner
+  | t1', t2' when eq t1' t2' -> t1
   | t1', t2' when sub t1' Shared && sub t2' Shared -> Shared
   | _ -> Any
 
@@ -788,14 +765,7 @@ and glb' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
   if M.mem (t1, t2) !glbs then M.find (t1, t2) !glbs else
   if M.mem (t2, t1) !glbs then M.find (t2, t1) !glbs else
-  if is_recursive_con t1 || is_recursive_con t2 then
-    let c = Con.fresh (Printf.sprintf "@glb (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
-    glbs := M.add (t1, t2) (Con (c, [])) !glbs;
-    let inner = glb' lubs glbs (normalize t1) (normalize t2) in
-    set_kind c (Def ([], inner));
-    inner
-  else
-  match normalize t1, normalize t2 with
+  match t1, t2 with
   | _, Pre
   | Pre, _ -> assert false
   | _, Any -> t1
@@ -806,7 +776,6 @@ and glb' lubs glbs t1 t2 =
   | t1', Shared when sub t1' Shared -> t1
   | Prim Nat, Prim Int
   | Prim Int, Prim Nat -> Prim Nat
-  | t1', t2' when eq t1' t2' -> t1
   | Opt t1', Opt t2' ->
     Opt (glb' lubs glbs t1' t2')
   | Variant t1', Variant t2' ->
@@ -830,6 +799,14 @@ and glb' lubs glbs t1 t2 =
     Func (s1, c1, bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
   | Async t1', Async t2' ->
     Async (glb' lubs glbs t1' t2')
+  | Con _, _
+  | _, Con _ ->
+    let c = Con.fresh (Printf.sprintf "@glb (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
+    glbs := M.add (t1, t2) (Con (c, [])) !glbs;
+    let inner = glb' lubs glbs (normalize t1) (normalize t2) in
+    set_kind c (Def ([], inner));
+    inner
+  | t1', t2' when eq t1' t2' -> t1
   | _ -> Non
 
 and glb_fields lubs glbs fs1 fs2 = match fs1, fs2 with
