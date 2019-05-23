@@ -22,7 +22,37 @@ let show_message msg =
   let notification = Lsp.notification params in
   send_notification (Lsp_j.string_of_notification_message notification)
 
+let position_of_pos pos = Lsp_t.
+  (* The LSP spec requires zero-based positions *)
+  { position_line = if pos.Source.line > 0 then pos.Source.line - 1 else 0
+  ; position_character = pos.Source.column
+  }
+
+let range_of_region at = Lsp_t.
+  { range_start = position_of_pos at.Source.left
+  ; range_end_ = position_of_pos at.Source.right
+  }
+
+let diagnostics_of_message msg = Lsp_t.
+  { diagnostic_range = range_of_region msg.Diag.at
+  ; diagnostic_severity = Some (match msg.Diag.sev with Diag.Error -> 1 | Diag.Warning -> 2)
+  ; diagnostic_code = None
+  ; diagnostic_source = Some "actorscript"
+  ; diagnostic_message = msg.Diag.text
+  ; diagnostic_relatedInformation = None
+  }
+
+let publish_diagnostics uri diags =
+  let params = `PublishDiagnostics (Lsp_t.
+    { publish_diagnostics_params_uri = uri
+    ; publish_diagnostics_params_diagnostics = diags
+    }) in
+  let notification = Lsp.notification params in
+  send_notification (Lsp_j.string_of_notification_message notification)
+
 let start () =
+  let client_capabilities = ref None in
+
   let rec loop () =
     let clength = read_line () in
     log_to_file "content-length" clength;
@@ -48,6 +78,7 @@ let start () =
     (* Request messages *)
 
     | (Some id, `Initialize params) ->
+        client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
         let result = `Initialize (Lsp_t.
           { initialize_result_capabilities =
               { server_capabilities_textDocumentSync = 1
@@ -78,15 +109,25 @@ let start () =
              false
              [file_name] in
            show_message ("Compiling file: " ^ file_name);
+           (* TODO: let msgs = match result with | Error msgs -> msgs | Ok (_, msgs) -> in *)
            (match result with
             | Ok _ -> show_message "Compilation successful"
-            | Error diag ->
-               (* TODO: publish diagnostics, if capable *)
+            | Error msgs ->
+               (match !client_capabilities with
+               | Some capabilities ->
+                   (* TODO: determine if the client accepts diagnostics with related info *)
+                   (* let textDocument = capabilities.client_capabilities_textDocument in
+                    * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
+                   let diags = List.map diagnostics_of_message msgs in
+                   publish_diagnostics uri diags;
+               | None -> ());
+
+               (* TODO: remove *)
                show_message
                  ("Compilation failed with " ^
                     String.concat
                       " "
-                      (List.map Diag.string_of_message diag)))
+                      (List.map Diag.string_of_message msgs)))
           end
         | None ->
            log_to_file
