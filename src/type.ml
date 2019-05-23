@@ -734,7 +734,9 @@ and lub' lubs glbs t1 t2 =
     Async (lub' lubs glbs t1' t2')
   | Con _, _
   | _, Con _ ->
-    let c = Con.fresh (Printf.sprintf "@lub (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
+    let s1, s2 = !str t1, !str t2 in
+    if s1 = s2 then t1 else
+    let c = Con.fresh (Printf.sprintf "@lub (%s, %s)" s1 s2) (Abs ([], Pre)) in
     lubs := M.add (t1, t2) (Con (c, [])) !lubs;
     let inner = lub' lubs glbs (normalize t1) (normalize t2) in
     set_kind c (Def ([], inner));
@@ -774,8 +776,8 @@ and glb' lubs glbs t1 t2 =
   | Non, _ -> Non
   | Shared, t2' when sub t2' Shared -> t2
   | t1', Shared when sub t1' Shared -> t1
-  | Prim Nat, Prim Int
-  | Prim Int, Prim Nat -> Prim Nat
+  | (Prim Nat as t), Prim Int
+  | Prim Int, (Prim Nat as t) -> t
   | Opt t1', Opt t2' ->
     Opt (glb' lubs glbs t1' t2')
   | Variant t1', Variant t2' ->
@@ -801,7 +803,9 @@ and glb' lubs glbs t1 t2 =
     Async (glb' lubs glbs t1' t2')
   | Con _, _
   | _, Con _ ->
-    let c = Con.fresh (Printf.sprintf "@glb (%s, %s)" (!str t1) (!str t2)) (Abs ([], Pre)) in
+    let s1, s2 = !str t1, !str t2 in
+    if s1 = s2 then t1 else
+    let c = Con.fresh (Printf.sprintf "@glb (%s, %s)" s1 s2) (Abs ([], Pre)) in
     glbs := M.add (t1, t2) (Con (c, [])) !glbs;
     let inner = glb' lubs glbs (normalize t1) (normalize t2) in
     set_kind c (Def ([], inner));
