@@ -2,6 +2,11 @@ type my_type = nat;
 type B = my_type;
 type C = E;
 type E = opt C;
+type node = record {head:nat; tail:list};
+type list = opt node;
+//type X = Y;
+//type Y = X;
+
 type enum = variant {red; blue; green;};
 type message = record { 
   name : text;
@@ -20,6 +25,8 @@ type tree = variant {
   leaf : int;
   branch : record { left : tree; val : int; right : tree };
 };
+type s = service { f : t };
+type t = func (server : s) -> ();
 type broker = service {
   find : (name : text) -> 
     (service {up:() -> (); current:() -> (nat)});

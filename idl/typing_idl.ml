@@ -28,11 +28,13 @@ let empty_scope : scope = Env.empty;
 type env =
   { typs : typ_env;
     msgs : Diag.msg_store;
+    pre_phase: bool;
   }
 
 let env_of_scope msgs scope =
   { typs = scope;
     msgs;
+    pre_phase = true;
   }
 
 (* Error bookkeeping *)
@@ -70,22 +72,42 @@ let find_type env id =
   | Some t -> t
 let rec is_func env t =
   match t.it with
-  | FuncT _ -> true
+  | FuncT _ -> true, t
   | VarT id -> is_func env (find_type env id)
-  | _ -> false
+  | _ -> false, t
+let is_func env t = if env.pre_phase then true, t else is_func env t
+                  
 let rec is_serv env t =
   match t.it with
   | ServT _ -> true, t
   | VarT id -> is_serv env (find_type env id)
   | _ -> false, t
-
+let is_serv env t = if env.pre_phase then true, t else is_serv env t
+       
+let check_cycle env =
+  Env.iter (fun x t ->
+      let rec has_cycle seen t =
+        match t.it with
+        | VarT id ->
+           TS.mem id.it seen ||
+             begin
+               let seen = TS.add id.it seen in
+               let t' = find_type env id in
+               has_cycle seen t'
+             end
+        | _ -> false
+      in
+      if has_cycle TS.empty t then error env t.at "%s has a cyclic type definition" x
+    ) env.typs
+       
 let rec check_typ env t =
   match t.it with
   | PrimT prim -> t
   | VarT id ->
      (match Env.find_opt id.it env.typs with
       | None -> error env id.at "unbound type identifier %s" id.it
-      | Some _ -> t)
+      | Some t' -> t
+     )
   | FuncT (ms, t1, t2) ->
      let t1' = check_fields env t1 in
      let t2' = check_fields env t2 in
@@ -101,7 +123,7 @@ let rec check_typ env t =
   | ServT meths ->
      let ms' = check_meths env meths in
      ServT (List.sort compare_meth ms') @@ t.at
-  | PreT -> assert false
+  | PreT -> if env.pre_phase then t else assert false
 
 and check_fields env fs =
   let _, fields =
@@ -118,9 +140,11 @@ and check_fields env fs =
 
 and check_meth env meth =
   let t' = check_typ env meth.it.meth in
-  if not (is_func env t') then
-    error env meth.it.meth.at "%s is a non-function type\n %s" meth.it.var.it (string_of_typ t');
-  {var=meth.it.var; meth=t'} @@ meth.at
+  match is_func env t' with
+  | false, t' ->
+     error env meth.it.meth.at "%s is a non-function type\n %s" meth.it.var.it (string_of_typ t');
+  | true, _ ->
+     {var=meth.it.var; meth=t'} @@ meth.at
 
 and check_meths env meths =
   let _, meths =
@@ -151,7 +175,7 @@ and check_actor env actor_opt =
       | true, {it=ServT meths; _} ->
          let meths' = check_meths env meths in
          Env.singleton id.it (ServT (List.sort compare_meth meths') @@ at)
-      | _ -> assert false
+      | true, _ -> assert false
      )
      
 and check_defs env decs =
@@ -184,6 +208,9 @@ let check_prog scope prog : scope Diag.result =
           let init_scope = gather_decs env prog.it.decs in
           let env = adjoin env init_scope in
           let te = check_defs env prog.it.decs in
+          let env = env_of_scope msgs te in
+          let _ = check_cycle env in
+          let te = check_defs {env with pre_phase = false} prog.it.decs in
           let _ = check_actor (env_of_scope msgs te) prog.it.actor in
           te
         )
