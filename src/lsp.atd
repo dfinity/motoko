@@ -136,6 +136,18 @@ type position =
   }
   <ocaml field_prefix="position_">
 
+type range =
+  { start : position
+  ; end_ <json name="end"> : position
+  }
+  <ocaml field_prefix="range_">
+
+type location =
+  { uri : document_uri
+  ; range : range
+  }
+  <ocaml field_prefix="location_">
+
 type text_document_item =
   { uri: document_uri
   ; text: string
@@ -223,6 +235,38 @@ type server_capabilities =
 
 type initialized_params = empty_record
 
+
+(* "publishDiagnostics" notification *)
+
+type publish_diagnostics_params =
+  { uri : document_uri
+  ; diagnostics : diagnostic list
+  }
+  <ocaml field_prefix="publish_diagnostics_params_">
+
+type diagnostic =
+  { range : range
+  ; ?severity : int nullable (* diagnostic_severity *)
+  ; ?code : int nullable
+  ; ?source : string nullable
+  ; message : string
+  ; ?relatedInformation : (diagnostic_related_information list) nullable
+  }
+  <ocaml field_prefix="diagnostic_">
+
+(* TODO: figure out how to map these to 1, 2, 3, 4 *)
+type diagnostic_severity =
+  [ Error
+  | Warning
+  | Information
+  | Hint
+  ]
+
+type diagnostic_related_information =
+  { location : location
+  ; message : string
+  }
+  <ocaml field_prefix="diagnostic_related_information_">
 
 (* "window/showMessage" notification *)
 
