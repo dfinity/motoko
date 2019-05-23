@@ -4,7 +4,6 @@
 *.byte
 *.opt
 *.unopt
-*.mlpack
 as
 asc
 asc.js
