@@ -448,7 +448,7 @@ let load_as_rts () =
   CustomModuleDecode.decode "rts.wasm" wasm
 
 type compile_mode = Compile.mode = WasmMode | DfinityMode
-type compile_result = ((CustomModule.extended_module * Diag.messages), Diag.messages) result
+type compile_result = CustomModule.extended_module Diag.result
 
 let name_progs progs =
   if progs = []
