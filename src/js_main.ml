@@ -15,7 +15,7 @@ let range_of_region at =
     val _end = position_of_pos at.right
   end
 
-let diagnostics_of_error (msg : Diag.message) =
+let diagnostics_of_msg (msg : Diag.message) =
   Diag.(object%js
     val source = Js.string "actorscript"
     val severity = match msg.sev with Diag.Error -> 1 | Diag.Warning -> 2
@@ -23,8 +23,8 @@ let diagnostics_of_error (msg : Diag.message) =
     val message = Js.string msg.text
   end)
 
-let diagnostics_of_errors (msgs : Diag.message list) =
-  Array.of_list (List.map diagnostics_of_error msgs)
+let diagnostics_of_msgs (msgs : Diag.message list) =
+  Array.of_list (List.map diagnostics_of_msg msgs)
 
 let js_check source =
   let msgs = match
@@ -32,7 +32,7 @@ let js_check source =
     | Error msgs -> msgs
     | Ok (_,  msgs) -> msgs in
   object%js
-    val diagnostics = Js.array (diagnostics_of_errors msgs)
+    val diagnostics = Js.array (diagnostics_of_msgs msgs)
     val code = Js.null
   end
 
@@ -47,13 +47,13 @@ let js_compile_with mode_string source_map source convert =
   | Ok (module_, msgs) ->
     let (code, map) = convert module_ in
     object%js
-      val diagnostics = Js.array (diagnostics_of_errors msgs)
+      val diagnostics = Js.array (diagnostics_of_msgs msgs)
       val code = Js.some code
       val map = Js.some map
     end
   | Error msgs ->
     object%js
-      val diagnostics = Js.array (Array.of_list (List.map diagnostics_of_error msgs))
+      val diagnostics = Js.array (Array.of_list (List.map diagnostics_of_msg msgs))
       val code = Js.null
       val map = Js.null
     end
