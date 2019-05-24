@@ -125,7 +125,8 @@ let rec check_typ env typ : unit =
   | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
   | T.Con (c, typs) ->
-    check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
+    if false then
+      check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
     (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
       check_typ_bounds env tbs typs no_region
     )
@@ -185,7 +186,8 @@ let rec check_typ env typ : unit =
     check_typ env typ;
     check_sub env no_region typ T.Shared
   | T.Typ c ->
-    check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
+    if false then
+      check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
 
 (*
 and check_kind env k =

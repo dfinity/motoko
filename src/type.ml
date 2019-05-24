@@ -149,7 +149,7 @@ let rec is_closed i t =
    match t with
   | Prim _ -> true
   | Var (_, j) ->  j < i
-  | Con (c, ts) -> List.for_all (is_closed i) ts
+  | Con (c, ts) -> is_closed_con i c && List.for_all (is_closed i) ts
   | Array t -> is_closed i t
   | Tup ts -> List.for_all (is_closed i) ts
   | Func (s, c, tbs, ts1, ts2) ->
@@ -168,11 +168,15 @@ let rec is_closed i t =
   | Pre -> true
   | Typ c -> is_closed_con i c
 and is_closed_con i c =
-  is_closed_kind i (Con.kind c)
+  let k = Con.kind c in
+  Con.unsafe_set_kind c (Abs([],Pre));
+  let r = is_closed_kind i k in
+  Con.unsafe_set_kind c k;
+  r
 
 and is_closed_kind i k =
   match k with
-  | Abs (tbs,t)  
+  | Abs (tbs,t) 
   | Def (tbs,t) ->
     let i' = i + List.length tbs in
     List.for_all (fun {var;bound} -> is_closed i' bound) tbs &&
@@ -187,7 +191,7 @@ let rec shift i n t =
   match t with
   | Prim _ -> t
   | Var (s, j) -> Var (s, if j < i then j else j + n)
-  | Con (c, ts) -> Con (c, List.map (shift i n) ts)
+  | Con (c, ts) -> Con (shift_con i n c, List.map (shift i n) ts)
   | Array t -> Array (shift i n t)
   | Tup ts -> Tup (List.map (shift i n) ts)
   | Func (s, c, tbs, ts1, ts2) ->
@@ -204,8 +208,11 @@ let rec shift i n t =
   | Non -> Non
   | Pre -> Pre
   | Typ c ->
-    Typ (clone c (fun k' -> shift_kind i n k'))
+    Typ (shift_con i n c)
 
+and shift_con i n c =
+  if is_closed_con i c then c else
+   clone c (fun k' -> shift_kind i n k')
 and shift_bind i n {var; bound} =
   {var; bound = shift i n bound}
 
@@ -622,7 +629,7 @@ let rec rel_typ rel eq t1 t2 =
   | Non, _ when rel != eq ->
     true
   | Con (con1, ts1), Con (con2, ts2) ->
-    (*    Printf.printf "\n rel_typ %s %s" (Con.to_string con1) (Con.to_string con2); *)
+     Printf.printf "\n rel_typ %s %s" (Con.to_string con1) (Con.to_string con2); 
     (match Con.kind con1, Con.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2

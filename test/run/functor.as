@@ -7,7 +7,6 @@ class List<T> () {
 
 
 func B() : List<Bool> = List<Bool>();
-
 func I() : List<Int> = List<Int>();
 
 
