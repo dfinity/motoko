@@ -130,7 +130,8 @@ let start () =
     | (_, `TextDocumentDidSave params) ->
        let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
-       (match Base.String.chop_prefix ~prefix:"file://" uri with
+       let prefix = "file://" ^ Sys.getcwd () ^ "/" in
+       (match Base.String.chop_prefix ~prefix:prefix uri with
         | Some file_name -> begin
            let result = Pipeline.compile_files
              Pipeline.DfinityMode
