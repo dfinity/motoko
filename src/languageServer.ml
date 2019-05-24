@@ -34,11 +34,12 @@ let send (label: string) (out: string): unit =
 let send_response: string -> unit = send "response"
 let send_notification: string -> unit = send "notification"
 
-let show_message (msg: string): unit =
+(* TODO: pass type, use a variant *)
+let show_message (typ : Lsp.MessageType.t) (msg: string): unit =
   let params =
     `WindowShowMessage
       (Lsp_t.
-        { window_show_message_params_type_ = 3
+        { window_show_message_params_type_ = typ
         ; window_show_message_params_message = msg
         }) in
   let notification = notification params in
@@ -135,7 +136,7 @@ let start () =
              Pipeline.DfinityMode
              false
              [file_name] in
-           show_message ("Compiling file: " ^ file_name);
+           show_message Lsp.MessageType.Info ("Compiling file: " ^ file_name);
            (* TODO: it appears that warning messages should also be included in
               the OK case, since warnings are not reported if there are no
               errors.
@@ -145,7 +146,7 @@ let start () =
             | Ok _ ->
                (* It's our responsibility to clear any existing diagnostics *)
                publish_diagnostics uri [];
-               show_message "Compilation successful"
+               show_message Lsp.MessageType.Info "Compilation successful"
             | Error msgs ->
                (Base.Option.iter !client_capabilities ~f:(fun capabilities ->
                    (* TODO: determine if the client accepts diagnostics with related info *)
@@ -154,7 +155,7 @@ let start () =
                     let diags = List.map diagnostics_of_message msgs in
                     publish_diagnostics uri diags;
                ));
-               show_message
+               show_message Lsp.MessageType.Error
                  ("Compilation failed with " ^
                     String.concat
                       " "
@@ -168,7 +169,7 @@ let start () =
     (* Notification messages *)
 
     | (None, `Initialized _) ->
-       show_message "Language server initialized"
+       show_message Lsp.MessageType.Info "Language server initialized"
 
     (* Unhandled messages *)
 

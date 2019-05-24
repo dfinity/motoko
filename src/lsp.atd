@@ -266,10 +266,12 @@ type diagnostic_related_information =
 (* "window/showMessage" notification *)
 
 type window_show_message_params =
-  { type_ <json name="type"> : int
+  { type_ <json name="type"> : message_type
   ; message : string
   }
   <ocaml field_prefix="window_show_message_params_">
+
+type message_type = int wrap <ocaml module="Lsp.MessageType">
 
 
 (* Helpers *)
