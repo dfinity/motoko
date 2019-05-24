@@ -745,20 +745,19 @@ and lub' lubs glbs t1 t2 =
         when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) && (* TBR: bounds *)
           List.(length args1 = length args2 && length res1 = length res2) ->
       begin
-        let bs2' = List.map2 (fun {var; bound = _} {var = _; bound} -> {var; bound}) bs1 bs2 in
-        let t2' = Func (s2, c2, bs2', args2, res2) in
         let ts1 = open_binds bs1 in
-        match open_ ts1 t1, open_ ts1 t2' with
-        | (Func (_, _, bs1', args1', res1') as ff1), (Func (_, _, bs2', args2', res2') as ff2) ->
-          let get_con = function | Con (c, []) -> c | _ -> assert false in
-          close (List.map get_con ts1)  (
+        let op = List.map (open_ ts1) in
+        let get_con = function | Con (c, []) -> c | _ -> assert false in
+        let cs = List.map get_con ts1 in
+        let cl = List.map (close cs) in
+        let f = close (List.map get_con ts1) (
 
+                    Func (s1, c1, bs1(*TODO*),
+                          cl (List.map2 (glb' lubs glbs) (op args1) (op args2)),
+                          cl (List.map2 (lub' lubs glbs) (op res1) (op res2)))
 
-Printf.printf "FUNC lub (%s, %s)\n" (!str ff1) (!str ff2); 
+                  ) in       (*      Printf.printf "LUB (%s)\n" (!str f);*) f
 
-
-              Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1' args2', List.map2 (lub' lubs glbs) res1' res2'))
-        | _ -> assert false
       end
     | Async t1', Async t2' ->
       Async (lub' lubs glbs t1' t2')
@@ -857,7 +856,7 @@ and glb' lubs glbs t1 t2 =
         set_kind c (Def ([], inner));
         inner
     | _ when eq t1 t2 -> t1
-    | _ -> Printf.printf "UNHAPPY glb (%s, %s)\n" (!str t1) (!str t2); Non
+    | _ -> Non
 
 and glb_fields lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1

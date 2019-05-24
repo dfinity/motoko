@@ -20,7 +20,7 @@ ActorScript 0.1 interpreter
 > [func, func] : [(<A>[Nat] -> Int)]
 > 3 : Int
 > -42 : Int
-> [func, func] : [(<A, B>([Non], Non) -> Any)]
+> [func, func] : [(<A, B>([A], B) -> A)]
 > [func, func] : [([Int] -> Nat)]
 > 13 : Nat
 > 3 : Nat
