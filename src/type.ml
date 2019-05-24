@@ -747,7 +747,7 @@ and lub' lubs glbs t1 t2 =
       begin
         let ts1 = open_binds bs1 in
         match open_ ts1 t1, open_ ts1 t2 with
-        | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) ->
+        | Func (s1, c1, bs1', args1, res1), Func (s2, c2, bs2, args2, res2) ->
           let get_con = function | Con (c, []) -> c | _ -> assert false in
           close (List.map get_con ts1)  (Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2))
         | _ -> assert false

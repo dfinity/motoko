@@ -25,6 +25,10 @@ let poly_funcs2 = [ func<A> (a : [Int]) : Nat = a.len()
                   , func<B> (a : [Nat]) : Int = -42
                   ];
 
+let poly_funcs3 = [ func<A, B> (as : [A], b : B) : A = as[0]
+                  , func<B, A> (bs : [B], a : A/*Int: CRASH*/) : B = bs[0]
+                  ];
+
 let funcs = [ func (a : [Int]) : Nat = a.len()
             , func (a : [Nat]) : Int = -42
             ];

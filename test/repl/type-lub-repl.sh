@@ -22,6 +22,7 @@ poly_funcs[1]<Char>([1, 2, 3]);
 poly_funcs2;
 poly_funcs2[0]<Int>([1, 2, 3]);
 poly_funcs2[1]<Char>([1, 2, 3]);
+poly_funcs3;
 obj_arr_funcs;
 obj_arr_funcs[0]([1, 2, 3]);
 obj_arr_funcs[1]([1, 2, 3]);
