@@ -254,3 +254,10 @@ struct
   let value_opt p = !p
   let value p = match !p with Some x -> x | None -> raise Promise
 end
+
+module Result =
+struct
+  let map f = function
+    | Ok x -> Ok (f x)
+    | Error x -> Error x
+end
