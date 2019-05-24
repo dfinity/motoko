@@ -471,7 +471,7 @@ let compile_prog mode do_link lib_env libraries progs : compile_result =
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   let module_ = Compile.compile mode name rts prelude_ir [prog_ir] in
-  Ok (module_, [])
+  Diag.return module_
 
 let compile_files mode do_link files : compile_result =
   match load_progs (parse_files files) initial_stat_env with
