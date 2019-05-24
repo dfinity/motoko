@@ -270,16 +270,21 @@ let open_binds tbs =
   List.iter2 set_kind cs ks;
   ts
 
-(* Precondition: same length *)
+(* Precondition: same length 
 let open_binds2 tbs1 tbs2 =
-  if tbs1 = [] then [] else
-  let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
-  let ts = List.map (fun c -> Con (c, [])) cs in
-  let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
-  List.iter2 set_kind cs ks;
-  ts
-
-
+  let ts1, ts2 = open_binds tbs1, open_binds tbs2 in
+  let get_con = function | Con (c, []) -> c | _ -> assert false in
+  let sigma = List.fold_right2 ConEnv.add (List.map get_con ts2) ts1 ConEnv.empty in
+  ts1, List.map (subst sigma) ts2
+*)(*
+let with_open_funcs f1 f2 comb = match f1 with
+  | Func (_, _, bs1, args1, res1) ->
+    let ts1 = open_binds bs1 in
+    let f = comb (open_ ts1 f1) (open_ ts1 f2) in
+    let get_con = function | Con (c, []) -> c | _ -> assert false in
+    close (List.map get_con ts1) f
+  | _ -> assert false
+ *)
 (* Normalization and Classification *)
 
 let reduce tbs t ts =
@@ -511,7 +516,7 @@ let is_concrete t =
     end
   in go t
 
-let is_loop_breaker = function
+let is_loop_breaker = function |_-> true(*
   | Con (c, []) ->
     begin match Con.kind c with
     | Def ([], _) ->
@@ -519,7 +524,7 @@ let is_loop_breaker = function
       name.[0] = '@'
     | _ -> false
     end
-  | _ -> false
+  | _ -> false*)
 
 
 module M = Map.Make (struct type t = typ * typ let compare = compare end)
@@ -737,9 +742,18 @@ and lub' lubs glbs t1 t2 =
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
       Obj (s1, lub_fields lubs glbs tf1 tf2)
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-        when s1 = s2 && c1 = c2 && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
-          List.(length args1 = length args2 && length res1 = length res2) ->
-      Func (s1, c1, glb_binds lubs glbs bs1 bs2, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
+        when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) (*&& List.for_all2 eq_bind bs1 bs2*) && (* TBR: alpha-equivalence, bounds *)
+               List.(length args1 = length args2 && length res1 = length res2) ->
+      begin
+        let ts1 = open_binds bs1 in
+        match open_ ts1 t1, open_ ts1 t2 with
+        | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) ->
+          let get_con = function | Con (c, []) -> c | _ -> assert false in
+          close (List.map get_con ts1)  (Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2))
+        | _ -> assert false
+
+    (*Func (s1, c1, glb_binds lubs glbs bs1 bs2, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)*)
+      end
     | Async t1', Async t2' ->
       Async (lub' lubs glbs t1' t2')
     | Con _, _
@@ -773,12 +787,14 @@ and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     | -1 -> f1 :: lub_tags lubs glbs fs1' fs2
     | +1 -> f2 :: lub_tags lubs glbs fs1 fs2'
     | _ -> {f1 with typ = lub' lubs glbs f1.typ f2.typ} :: lub_tags lubs glbs fs1' fs2'
-
+(*
 and lub_binds lubs glbs tbs1 tbs2 =
-  let ts1, ts2 = open_binds tbs1, open_binds tbs2 in
+  let ts1, ts2 = open_binds2 tbs1 tbs2 in
   let upd b t = {b with bound = t} in
-  List.map2 upd tbs1(*FIXME*) (List.map2 (lub' lubs glbs) ts1 ts2)
-
+  let tbs1' = List.map2 upd tbs1 (List.map2 (lub' lubs glbs) ts1 ts2) in
+  (*let get_con = function | Con (c, []) -> c | _ -> assert false in
+  close_binds (List.map get_con ts1) *) tbs1'
+ *)
 and glb' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
   match M.find_opt (t1, t2) !glbs with
@@ -812,9 +828,11 @@ and glb' lubs glbs t1 t2 =
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
       Obj (s1, glb_fields lubs glbs tf1 tf2)
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-        when s1 = s2 && c1 = c2 && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
-          List.(length args1 = length args2 && length res1 = length res2) ->
-      Func (s1, c1, lub_binds lubs glbs bs1 bs2, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
+        when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
+               List.(length args1 = length args2 && length res1 = length res2) ->
+      begin 
+        Func (s1, c1, (*lub_binds lubs glbs bs1 bs2*)bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
+      end
     | Async t1', Async t2' ->
       Async (glb' lubs glbs t1' t2')
     | Con _, _
@@ -847,12 +865,14 @@ and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     | -1 -> glb_tags lubs glbs fs1' fs2
     | +1 -> glb_tags lubs glbs fs1 fs2'
     | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_tags lubs glbs fs1' fs2'
-
+(*
 and glb_binds lubs glbs tbs1 tbs2 =
-  let ts1, ts2 = open_binds tbs1, open_binds tbs2 in
+  let ts1, ts2 = open_binds2 tbs1 tbs2 in
   let upd b t = {b with bound = t} in
-  List.map2 upd tbs1(*FIXME*) (List.map2 (glb' lubs glbs) ts1 ts2)
-
+  let tbs1' = List.map2 upd tbs1 (List.map2 (glb' lubs glbs) ts1 ts2) in
+  (*let get_con = function | Con (c, []) -> c | _ -> assert false in
+  close_binds (List.map get_con ts1)*) tbs1'
+ *)
 and eq_bind {var=v1; bound=b1} {var=v2; bound=b2} = v1 = v2 && eq b1 b2
 
 (* Pretty printing *)
