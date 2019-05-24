@@ -28,13 +28,13 @@ let empty_scope : scope = Env.empty;
 type env =
   { typs : typ_env;
     msgs : Diag.msg_store;
-    pre_phase: bool;
+    pre: bool;
   }
 
 let env_of_scope msgs scope =
   { typs = scope;
     msgs;
-    pre_phase = true;
+    pre = false;
   }
 
 (* Error bookkeeping *)
@@ -56,8 +56,6 @@ let adjoin env scope =
     typs = Env.adjoin env.typs scope;
   }
 
-let adjoin_typs env te = {env with typs = Env.adjoin env.typs te}
-
 let disjoint_union env at fmt env1 env2 =
   try Env.disjoint_union env1 env2
   with Env.Clash k -> error env at fmt k
@@ -75,14 +73,12 @@ let rec is_func env t =
   | FuncT _ -> true, t
   | VarT id -> is_func env (find_type env id)
   | _ -> false, t
-let is_func env t = if env.pre_phase then true, t else is_func env t
-                  
+
 let rec is_serv env t =
   match t.it with
   | ServT _ -> true, t
   | VarT id -> is_serv env (find_type env id)
   | _ -> false, t
-let is_serv env t = if env.pre_phase then true, t else is_serv env t
        
 let check_cycle env =
   Env.iter (fun x t ->
@@ -99,15 +95,12 @@ let check_cycle env =
       in
       if has_cycle TS.empty t then error env t.at "%s has a cyclic type definition" x
     ) env.typs
-       
+
 let rec check_typ env t =
   match t.it with
   | PrimT prim -> t
   | VarT id ->
-     (match Env.find_opt id.it env.typs with
-      | None -> error env id.at "unbound type identifier %s" id.it
-      | Some t' -> t
-     )
+     let _ = find_type env id in t
   | FuncT (ms, t1, t2) ->
      let t1' = check_fields env t1 in
      let t2' = check_fields env t2 in
@@ -123,7 +116,7 @@ let rec check_typ env t =
   | ServT meths ->
      let ms' = check_meths env meths in
      ServT (List.sort compare_meth ms') @@ t.at
-  | PreT -> if env.pre_phase then t else assert false
+  | PreT -> assert false
 
 and check_fields env fs =
   let _, fields =
@@ -140,11 +133,14 @@ and check_fields env fs =
 
 and check_meth env meth =
   let t' = check_typ env meth.it.meth in
-  match is_func env t' with
-  | false, t' ->
-     error env meth.it.meth.at "%s is a non-function type\n %s" meth.it.var.it (string_of_typ t');
-  | true, _ ->
-     {var=meth.it.var; meth=t'} @@ meth.at
+  if env.pre then {var=meth.it.var; meth=t'} @@ meth.at
+  else
+    match is_func env t' with
+    | false, t' ->
+       error env meth.it.meth.at "%s is a non-function type\n %s" meth.it.var.it (string_of_typ t');
+    | true, {it=FuncT _; _} ->
+       {var=meth.it.var; meth=t'} @@ meth.at
+    | true, _ -> assert false
 
 and check_meths env meths =
   let _, meths =
@@ -165,27 +161,22 @@ and check_def env dec =
      let t' = check_typ env t in
      Env.singleton id.it t'
 
-and check_actor env actor_opt =
-  match actor_opt with
-  | None -> Env.empty
-  | Some {it=ActorD (id, t); at; _} ->
-     (match is_serv env t with
-      | false, t' ->
-         error env at "%s is a non-service reference type\n %s" (string_of_typ t) (string_of_typ t')
-      | true, {it=ServT meths; _} ->
-         let meths' = check_meths env meths in
-         Env.singleton id.it (ServT (List.sort compare_meth meths') @@ at)
-      | true, _ -> assert false
-     )
-     
 and check_defs env decs =
   let _, te =
     List.fold_left (fun (env, te) dec ->
         let te' = check_def env dec in
-        adjoin_typs env te', Env.adjoin te te'
+        adjoin env te', Env.adjoin te te'
       ) (env, Env.empty) decs
   in te
 
+and check_decs env decs =
+  let pre_env = adjoin env (gather_decs env decs) in
+  let te = check_defs {pre_env with pre = true} decs in
+  let env = env_of_scope env.msgs te in
+  let _ = check_cycle env in
+  let te = check_defs {env with pre = false} decs in
+  te
+    
 and gather_id dec =
   match dec.it with
   | TypD (id, _) -> id
@@ -197,6 +188,21 @@ and gather_decs env decs =
       disjoint_union env id.at "duplicate binding for %s in type definitions" te te'
     ) env.typs decs
 
+(* Actor *)
+  
+let check_actor env actor_opt =
+  match actor_opt with
+  | None -> Env.empty
+  | Some {it=ActorD (id, t); at; _} ->
+     (match is_serv env t with
+      | false, t' ->
+         error env at "%s is a non-service reference type\n %s" (string_of_typ t) (string_of_typ t')
+      | true, {it=ServT meths; _} ->
+         let meths' = check_meths env meths in
+         Env.singleton id.it (ServT (List.sort compare_meth meths') @@ at)
+      | true, _ -> assert false
+     )
+  
 (* Programs *)
 
 let check_prog scope prog : scope Diag.result =
@@ -204,13 +210,8 @@ let check_prog scope prog : scope Diag.result =
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env = env_of_scope msgs scope in          
-          let init_scope = gather_decs env prog.it.decs in
-          let env = adjoin env init_scope in
-          let te = check_defs env prog.it.decs in
-          let env = env_of_scope msgs te in
-          let _ = check_cycle env in
-          let te = check_defs {env with pre_phase = false} prog.it.decs in
+          let env = env_of_scope msgs scope in
+          let te = check_decs env prog.it.decs in
           let _ = check_actor (env_of_scope msgs te) prog.it.actor in
           te
         )
