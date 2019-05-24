@@ -23,6 +23,8 @@ let diagnostics_of_error (msg : Diag.message) =
     val message = Js.string msg.text
   end)
 
+let diagnostics_of_errors (msgs : Diag.message list) =
+  Array.of_list (List.map diagnostics_of_error msgs)
 
 let js_check source =
   let msgs = match
@@ -30,7 +32,7 @@ let js_check source =
     | Error msgs -> msgs
     | Ok (_,  msgs) -> msgs in
   object%js
-    val diagnostics = Js.array (Array.of_list (List.map diagnostics_of_error msgs))
+    val diagnostics = Js.array (diagnostics_of_errors msgs)
     val code = Js.null
   end
 
@@ -42,17 +44,16 @@ let js_compile_with mode_string source_map source convert =
     | _ -> Pipeline.WasmMode
   in
   match Pipeline.compile_string mode (Js.to_string source) "js-input" with
-  | Ok module_ ->
+  | Ok (module_, msgs) ->
     let (code, map) = convert module_ in
     object%js
-      val diagnostics = Js.array [||]
+      val diagnostics = Js.array (diagnostics_of_errors msgs)
       val code = Js.some code
       val map = Js.some map
     end
-  | Error es ->
+  | Error msgs ->
     object%js
-      val diagnostics =
-        Js.array (Array.of_list (List.map diagnostics_of_error es))
+      val diagnostics = Js.array (Array.of_list (List.map diagnostics_of_error msgs))
       val code = Js.null
       val map = Js.null
     end
