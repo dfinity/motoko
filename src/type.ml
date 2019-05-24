@@ -744,21 +744,14 @@ and lub' lubs glbs t1 t2 =
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
         when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) && (* TBR: bounds *)
           List.(length args1 = length args2 && length res1 = length res2) ->
-      begin
-        let ts1 = open_binds bs1 in
-        let op = List.map (open_ ts1) in
-        let get_con = function | Con (c, []) -> c | _ -> assert false in
-        let cs = List.map get_con ts1 in
-        let cl = List.map (close cs) in
-        let f = close (List.map get_con ts1) (
-
-                    Func (s1, c1, bs1(*TODO*),
-                          cl (List.map2 (glb' lubs glbs) (op args1) (op args2)),
-                          cl (List.map2 (lub' lubs glbs) (op res1) (op res2)))
-
-                  ) in       (*      Printf.printf "LUB (%s)\n" (!str f);*) f
-
-      end
+      let ts1 = open_binds bs1 in
+      let op = List.map (open_ ts1) in
+      let get_con = function | Con (c, []) -> c | _ -> assert false in
+      let cs = List.map get_con ts1 in
+      let cl = List.map (close cs) in
+      Func (s1, c1, bs1(*TODO*),
+            cl (List.map2 (glb' lubs glbs) (op args1) (op args2)),
+            cl (List.map2 (lub' lubs glbs) (op res1) (op res2)))
     | Async t1', Async t2' ->
       Async (lub' lubs glbs t1' t2')
     | Con _, _
@@ -835,14 +828,14 @@ and glb' lubs glbs t1 t2 =
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
         when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) && (* TBR: bounds *)
           List.(length args1 = length args2 && length res1 = length res2) ->
-      begin 
-        let ts1 = open_binds bs1 in
-        match open_ ts1 t1, open_ ts1 t2 with
-        | Func (_, _, bs1', args1, res1), Func (_, _, bs2', args2, res2) ->
-          let get_con = function | Con (c, []) -> c | _ -> assert false in
-          close (List.map get_con ts1)  (Func (s1, c1, bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2))
-        | _ -> assert false
-      end
+      let ts1 = open_binds bs1 in
+      let op = List.map (open_ ts1) in
+      let get_con = function | Con (c, []) -> c | _ -> assert false in
+      let cs = List.map get_con ts1 in
+      let cl = List.map (close cs) in
+      Func (s1, c1, bs1(*TODO*),
+            cl (List.map2 (lub' lubs glbs) (op args1) (op args2)),
+            cl (List.map2 (glb' lubs glbs) (op res1) (op res2)))
     | Async t1', Async t2' ->
       Async (glb' lubs glbs t1' t2')
     | Con _, _
@@ -919,7 +912,7 @@ let rec string_of_typ_nullary vs = function
   | Non -> "Non"
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
-  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> "<DEBRUIJN>" ^ s)
+  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
   | Con (c, []) -> string_of_con vs c
   | Con (c, ts) ->
     sprintf "%s<%s>" (string_of_con vs c)
