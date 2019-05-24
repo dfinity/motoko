@@ -21,6 +21,10 @@ let poly_funcs = [ func<A> (a : [Int]) : Nat = a.len()
                  , func<A> (a : [Nat]) : Int = -42
                  ];
 
+let poly_funcs2 = [ func<A> (a : [Int]) : Nat = a.len()
+                  , func<B> (a : [Nat]) : Int = -42
+                  ];
+
 let funcs = [ func (a : [Int]) : Nat = a.len()
             , func (a : [Nat]) : Int = -42
             ];
@@ -45,8 +49,6 @@ let variant_funcs = [ func (a : {#foo; #bar}) { switch a { case (#foo) (); case 
 let mut_arrs = [[var 42], [var 25], [77]]; // boring
 
 // TODO(gabor), mutable fields, see fail/type-inference.as:13
-
-// TODO(gabor), Shared
 
 let sh : Shared = 42;
 let shareds = [sh, 77, [1, 2, 3]];

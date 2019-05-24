@@ -267,7 +267,16 @@ let open_binds tbs =
   let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
   let ts = List.map (fun c -> Con (c, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
-  List.iter2 (fun c k -> set_kind c k) cs ks;
+  List.iter2 set_kind cs ks;
+  ts
+
+(* Precondition: same length *)
+let open_binds2 tbs1 tbs2 =
+  if tbs1 = [] then [] else
+  let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
+  let ts = List.map (fun c -> Con (c, [])) cs in
+  let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
+  List.iter2 set_kind cs ks;
   ts
 
 
@@ -730,7 +739,7 @@ and lub' lubs glbs t1 t2 =
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
         when s1 = s2 && c1 = c2 && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
           List.(length args1 = length args2 && length res1 = length res2) ->
-      Func (s1, c1, bs1, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
+      Func (s1, c1, glb_binds lubs glbs bs1 bs2, List.map2 (glb' lubs glbs) args1 args2, List.map2 (lub' lubs glbs) res1 res2)
     | Async t1', Async t2' ->
       Async (lub' lubs glbs t1' t2')
     | Con _, _
@@ -764,6 +773,11 @@ and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     | -1 -> f1 :: lub_tags lubs glbs fs1' fs2
     | +1 -> f2 :: lub_tags lubs glbs fs1 fs2'
     | _ -> {f1 with typ = lub' lubs glbs f1.typ f2.typ} :: lub_tags lubs glbs fs1' fs2'
+
+and lub_binds lubs glbs tbs1 tbs2 =
+  let ts1, ts2 = open_binds tbs1, open_binds tbs2 in
+  let upd b t = {b with bound = t} in
+  List.map2 upd tbs1(*FIXME*) (List.map2 (lub' lubs glbs) ts1 ts2)
 
 and glb' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
@@ -800,7 +814,7 @@ and glb' lubs glbs t1 t2 =
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
         when s1 = s2 && c1 = c2 && List.for_all2 eq_bind bs1 bs2 && (* TBR: alpha-equivalence, bounds *)
           List.(length args1 = length args2 && length res1 = length res2) ->
-      Func (s1, c1, bs1, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
+      Func (s1, c1, lub_binds lubs glbs bs1 bs2, List.map2 (lub' lubs glbs) args1 args2, List.map2 (glb' lubs glbs) res1 res2)
     | Async t1', Async t2' ->
       Async (glb' lubs glbs t1' t2')
     | Con _, _
@@ -833,6 +847,11 @@ and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     | -1 -> glb_tags lubs glbs fs1' fs2
     | +1 -> glb_tags lubs glbs fs1 fs2'
     | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_tags lubs glbs fs1' fs2'
+
+and glb_binds lubs glbs tbs1 tbs2 =
+  let ts1, ts2 = open_binds tbs1, open_binds tbs2 in
+  let upd b t = {b with bound = t} in
+  List.map2 upd tbs1(*FIXME*) (List.map2 (glb' lubs glbs) ts1 ts2)
 
 and eq_bind {var=v1; bound=b1} {var=v2; bound=b2} = v1 = v2 && eq b1 b2
 
