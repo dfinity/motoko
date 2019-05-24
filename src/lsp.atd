@@ -247,7 +247,7 @@ type publish_diagnostics_params =
 
 type diagnostic =
   { range : range
-  ; ?severity : int nullable (* diagnostic_severity *)
+  ; ?severity : diagnostic_severity nullable
   ; ?code : int nullable
   ; ?source : string nullable
   ; message : string

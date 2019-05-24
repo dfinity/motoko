@@ -55,9 +55,14 @@ let range_of_region (at: Source.region): Lsp_t.range = Lsp_t.
   ; range_end_ = position_of_pos at.Source.right
   }
 
+let severity_of_sev : Diag.severity -> Lsp.DiagnosticSeverity.t =
+  function
+  | Diag.Error -> Lsp.DiagnosticSeverity.Error
+  | Diag.Warning -> Lsp.DiagnosticSeverity.Warning
+
 let diagnostics_of_message (msg: Diag.message): Lsp_t.diagnostic = Lsp_t.
   { diagnostic_range = range_of_region msg.Diag.at
-  ; diagnostic_severity = Some (match msg.Diag.sev with Diag.Error -> 1 | Diag.Warning -> 2)
+  ; diagnostic_severity = Some (severity_of_sev msg.Diag.sev)
   ; diagnostic_code = None
   ; diagnostic_source = Some "ActorScript"
   ; diagnostic_message = msg.Diag.text
