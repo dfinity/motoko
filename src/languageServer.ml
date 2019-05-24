@@ -137,29 +137,16 @@ let start () =
              false
              [file_name] in
            show_message Lsp.MessageType.Info ("Compiling file: " ^ file_name);
-           (* TODO: it appears that warning messages should also be included in
-              the OK case, since warnings are not reported if there are no
-              errors.
-           *)
-           (* TODO: let msgs = match result with | Error msgs -> msgs | Ok (_, msgs) -> in *)
-           (match result with
-            | Ok _ ->
-               (* It's our responsibility to clear any existing diagnostics *)
-               publish_diagnostics uri [];
-               show_message Lsp.MessageType.Info "Compilation successful"
-            | Error msgs ->
-               (Base.Option.iter !client_capabilities ~f:(fun capabilities ->
-                   (* TODO: determine if the client accepts diagnostics with related info *)
-                   (* let textDocument = capabilities.client_capabilities_textDocument in
-                    * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
-                    let diags = List.map diagnostics_of_message msgs in
-                    publish_diagnostics uri diags;
-               ));
-               show_message Lsp.MessageType.Error
-                 ("Compilation failed with " ^
-                    String.concat
-                      " "
-                      (List.map Diag.string_of_message msgs)))
+          let msgs = match result with
+            | Error msgs' -> msgs'
+            | Ok (_, msgs') -> msgs' in
+          Base.Option.iter !client_capabilities ~f:(fun capabilities ->
+            (* TODO: determine if the client accepts diagnostics with related info *)
+            (* let textDocument = capabilities.client_capabilities_textDocument in
+            * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
+            let diags = List.map diagnostics_of_message msgs in
+            publish_diagnostics uri diags;
+          );
           end
         | None ->
            log_to_file
