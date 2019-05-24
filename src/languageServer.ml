@@ -136,6 +136,10 @@ let start () =
              false
              [file_name] in
            show_message ("Compiling file: " ^ file_name);
+           (* TODO: it appears that warning messages should also be included in
+              the OK case, since warnings are not reported if there are no
+              errors.
+           *)
            (* TODO: let msgs = match result with | Error msgs -> msgs | Ok (_, msgs) -> in *)
            (match result with
             | Ok _ ->
