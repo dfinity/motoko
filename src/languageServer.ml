@@ -78,6 +78,8 @@ let publish_diagnostics (uri: Lsp_t.document_uri) (diags: Lsp_t.diagnostic list)
   let notification = notification params in
   send_notification (Lsp_j.string_of_notification_message notification)
 
+let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
+
 let start () =
   let client_capabilities = ref None in
 
@@ -130,8 +132,7 @@ let start () =
     | (_, `TextDocumentDidSave params) ->
        let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
-       let prefix = "file://" ^ Sys.getcwd () ^ "/" in
-       (match Base.String.chop_prefix ~prefix:prefix uri with
+       (match Base.String.chop_prefix ~prefix:file_uri_prefix uri with
         | Some file_name -> begin
            let result = Pipeline.compile_files
              Pipeline.DfinityMode
