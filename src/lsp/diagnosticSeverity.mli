@@ -3,7 +3,7 @@ type t
   | Warning
   | Information
   | Hint
-  | Unknown
+  | Unknown of int
 
 val wrap : int -> t
 val unwrap : t -> int

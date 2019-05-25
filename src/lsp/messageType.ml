@@ -3,7 +3,7 @@ type t
   | Warning
   | Info
   | Log
-  | Unknown
+  | Unknown of int
 
 let wrap : int -> t =
 function
@@ -11,12 +11,12 @@ function
 | 2 -> Warning
 | 3 -> Info
 | 4 -> Log
-| _ -> Unknown
+| x -> Unknown x
 
 let unwrap : t -> int =
 function
-| Unknown -> 0
 | Error -> 1
 | Warning -> 2
 | Info -> 3
 | Log -> 4
+| Unknown x -> x
