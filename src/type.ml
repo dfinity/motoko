@@ -566,6 +566,8 @@ let is_loop_breaker = function |_-> true(*
 
 
 module M = Map.Make (struct type t = typ * typ let compare = compare end)
+(* Forward declare *)
+let str = ref (fun _ -> failwith "")
 
 (* Equivalence & Subtyping *)
 
@@ -1064,6 +1066,7 @@ and string_of_kind k =
 
 let string_of_con = string_of_con' []
 let string_of_typ = string_of_typ' []
+let _ = str := string_of_typ
 
 let rec string_of_typ_expand t =
   let s = string_of_typ t in
