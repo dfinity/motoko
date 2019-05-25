@@ -554,7 +554,7 @@ let is_concrete t =
     end
   in go t
 
-let is_loop_breaker = function |_-> true(*
+let is_loop_breaker = function
   | Con (c, []) ->
     begin match Con.kind c with
     | Def ([], _) ->
@@ -562,7 +562,7 @@ let is_loop_breaker = function |_-> true(*
       name.[0] = '@'
     | _ -> false
     end
-  | _ -> false*)
+  | _ -> false
 
 
 module M = Map.Make (struct type t = typ * typ let compare = compare end)
