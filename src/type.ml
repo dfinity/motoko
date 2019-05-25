@@ -788,7 +788,7 @@ and lub' lubs glbs t1 t2 =
       let get_con = function | Con (c, []) -> c | _ -> assert false in
       let cs = List.map get_con ts1 in
       let cl = List.map (close cs) in
-      Func (s1, c1, bs1(*TODO*),
+      Func (s1, c1, glb_binds lubs glbs bs1 bs2,
             cl (List.map2 (glb' lubs glbs) (op args1) (op args2)),
             cl (List.map2 (lub' lubs glbs) (op res1) (op res2)))
     | Async t1', Async t2' ->
@@ -824,14 +824,10 @@ and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     | -1 -> f1 :: lub_tags lubs glbs fs1' fs2
     | +1 -> f2 :: lub_tags lubs glbs fs1 fs2'
     | _ -> {f1 with typ = lub' lubs glbs f1.typ f2.typ} :: lub_tags lubs glbs fs1' fs2'
-(*
+
 and lub_binds lubs glbs tbs1 tbs2 =
-  let ts1, ts2 = open_binds2 tbs1 tbs2 in
-  let upd b t = {b with bound = t} in
-  let tbs1' = List.map2 upd tbs1 (List.map2 (lub' lubs glbs) ts1 ts2) in
-  (*let get_con = function | Con (c, []) -> c | _ -> assert false in
-  close_binds (List.map get_con ts1) *) tbs1'
- *)
+  List.map2 (fun b1 b2 -> {b1 with bound = lub' lubs glbs b1.bound b2.bound}) tbs1 tbs2
+
 and glb' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
   match M.find_opt (t1, t2) !glbs with
@@ -872,7 +868,7 @@ and glb' lubs glbs t1 t2 =
       let get_con = function | Con (c, []) -> c | _ -> assert false in
       let cs = List.map get_con ts1 in
       let cl = List.map (close cs) in
-      Func (s1, c1, bs1(*TODO*),
+      Func (s1, c1, lub_binds lubs glbs bs1 bs2,
             cl (List.map2 (lub' lubs glbs) (op args1) (op args2)),
             cl (List.map2 (glb' lubs glbs) (op res1) (op res2)))
     | Async t1', Async t2' ->
@@ -907,15 +903,9 @@ and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     | -1 -> glb_tags lubs glbs fs1' fs2
     | +1 -> glb_tags lubs glbs fs1 fs2'
     | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_tags lubs glbs fs1' fs2'
-(*
+
 and glb_binds lubs glbs tbs1 tbs2 =
-  let ts1, ts2 = open_binds2 tbs1 tbs2 in
-  let upd b t = {b with bound = t} in
-  let tbs1' = List.map2 upd tbs1 (List.map2 (glb' lubs glbs) ts1 ts2) in
-  (*let get_con = function | Con (c, []) -> c | _ -> assert false in
-  close_binds (List.map get_con ts1)*) tbs1'
-and eq_bind {var=v1; bound=b1} {var=v2; bound=b2} = v1 = v2 && eq b1 b2
- *)
+  List.map2 (fun b1 b2 -> {b1 with bound = glb' lubs glbs b1.bound b2.bound}) tbs1 tbs2
 
 (* Pretty printing *)
 

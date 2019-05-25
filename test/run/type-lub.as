@@ -29,6 +29,10 @@ let poly_funcs3 = [ func<A, B> (as : [A], b : B) : A = as[0]
                   , func<B, A> (bs : [B], a : A) : B = bs[0]
                   ];
 
+let poly_funcs4 = [ func<A <: Int, B <: Nat> (as : [A], b : B) : A = as[0]
+                  , func<B <: Nat, A <: Int> (bs : [B], a : A) : B = bs[0]
+                  ];
+
 let funcs = [ func (a : [Int]) : Nat = a.len()
             , func (a : [Nat]) : Int = -42
             ];
