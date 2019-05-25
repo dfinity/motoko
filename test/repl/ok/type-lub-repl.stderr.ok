@@ -1,24 +1,24 @@
-stdin:32.18-32.26: type error, expression of type
+stdin:34.18-34.26: type error, expression of type
   {get : Nat -> Int; keys : () -> {next : () -> ?Nat}; len : () -> Nat; vals : () -> {next : () -> ?Int}}
 cannot produce expected type
   [Int]
-stdin:32.1-32.27: type error, expression of type
+stdin:34.1-34.27: type error, expression of type
   Nat
 cannot produce expected type
   ()
-stdin:33.18-33.26: type error, expression of type
+stdin:35.18-35.26: type error, expression of type
   {get : Nat -> Int; keys : () -> {next : () -> ?Nat}; len : () -> Nat; vals : () -> {next : () -> ?Int}}
 cannot produce expected type
   [Int]
-stdin:33.1-33.27: type error, expression of type
+stdin:35.1-35.27: type error, expression of type
   Nat
 cannot produce expected type
   ()
-stdin:40.19-40.26: type error, literal of type
+stdin:42.19-42.26: type error, literal of type
   Text
 does not have expected type
   Non
-stdin:41.19-41.44: type error, expression of type
+stdin:43.19-43.44: type error, expression of type
   [Char]
 cannot produce expected type
   Non
