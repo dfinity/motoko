@@ -75,6 +75,7 @@ val is_func : typ -> bool
 val is_async : typ -> bool
 val is_mut : typ -> bool
 val is_serialized : typ -> bool
+val is_typ : typ -> bool
 
 val as_prim : prim -> typ -> unit
 val as_obj : typ -> obj_sort * field list
@@ -89,6 +90,7 @@ val as_async : typ -> typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
 val as_serialized : typ -> typ
+val as_typ : typ -> con
 
 val as_prim_sub : prim -> typ -> unit
 val as_obj_sub : string -> typ -> obj_sort * field list
@@ -130,11 +132,17 @@ val promote : typ -> typ
 
 exception Unavoidable of con
 val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
+val avoid_cons : ConSet.t -> ConSet.t -> unit (* raise Unavoidable *)
 
 val is_concrete : typ -> bool
 val is_loop_breaker : typ -> bool
 
 val span : typ -> int option
+
+
+(* Cons occuring in kind *)
+
+val cons_kind : kind -> ConSet.t
 
 
 (* Equivalence and Subtyping *)
@@ -164,6 +172,7 @@ module Env : Env.S with type key = string
 
 (* Pretty printing *)
 
+val string_of_con : con -> string
 val string_of_prim : prim -> string
 val string_of_sharing: sharing -> string
 val string_of_typ : typ -> string
