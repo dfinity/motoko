@@ -464,31 +464,23 @@ let lower_prog senv lib_env libraries progs name =
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir
 
-let compile_prog mode do_link lib_env libraries progs : compile_result =
+let compile_prog mode do_link lib_env libraries progs : CustomModule.extended_module =
   let prelude_ir = Desugar.transform prelude in
   let name = name_progs progs in
   let prog_ir = lower_prog initial_stat_env lib_env libraries progs name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
-  let module_ = Compile.compile mode name rts prelude_ir [prog_ir] in
-  Diag.return module_
+  Compile.compile mode name rts prelude_ir [prog_ir]
 
 let compile_files mode do_link files : compile_result =
-  match load_progs (parse_files files) initial_stat_env with
-  | Error msgs -> Error msgs
-  | Ok ((libraries, progs, senv), msgs) ->
-    Diag.print_messages msgs;
-    let result = compile_prog mode do_link senv.Typing.lib_env libraries progs in
-    Lib.Result.map (fun (module_, _) -> (module_, msgs)) result
+  Diag.bind (load_progs (parse_files files) initial_stat_env)
+    (fun (libraries, progs, senv) ->
+    Diag.return (compile_prog mode do_link senv.Typing.lib_env libraries progs))
 
 let compile_string mode s name : compile_result =
-  match load_decl (parse_string s name) initial_stat_env with
-  | Error msgs -> Error msgs
-  | Ok ((libraries, prog, senv, _t, _sscope), msgs) ->
-    Diag.print_messages msgs;
-    let result = compile_prog mode false senv.Typing.lib_env libraries [prog] in
-    Lib.Result.map (fun (module_, _) -> (module_, msgs)) result
-
+  Diag.bind (load_decl (parse_string s name) initial_stat_env)
+    (fun (libraries, prog, senv, _t, _sscope) ->
+    Diag.return (compile_prog mode false senv.Typing.lib_env libraries [prog]))
 
 (* Interpretation (IR) *)
 

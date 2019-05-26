@@ -31,6 +31,8 @@ val ignore : 'a result -> unit result
 val traverse: ('a -> 'b result) -> 'a list -> 'b list result
 val traverse_: ('a -> unit result) -> 'a list -> unit result
 val flush_messages : 'a result -> 'a result
+val run : 'a result -> 'a (* Prints messages, and exits upon failure *)
+
 
 (*
 An impure, but more more convenient interface.

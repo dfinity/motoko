@@ -62,8 +62,10 @@ let with_message_store f =
   | Some x when not (has_errors msgs) -> Ok (x, msgs)
   | _ -> Error msgs
 
-
 let flush_messages : 'a result -> 'a result = function
   | Pervasives.Error msgs -> print_messages msgs; Pervasives.Error []
   | Ok (x, msgs) -> print_messages msgs; Ok (x, [])
 
+let run = function
+  | Ok (x, warns) -> print_messages warns; x
+  | Error errs -> print_messages errs; exit 1

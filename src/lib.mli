@@ -100,8 +100,3 @@ sig
   val breakup : string -> int -> string list
   val find_from_opt : (char -> bool) -> string -> int -> int option
 end
-
-module Result :
-sig
-  val map : ('a -> 'c) -> ('a, 'b) result -> ('c, 'b) result
-end
