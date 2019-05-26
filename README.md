@@ -27,6 +27,12 @@ within this shell you can run
  * `make` in `rts/` to build the ActorScript runtime
  * `make` in `test/` to run the test suite.
 
+### Merlin
+
+> For Merlin to be able to give you the type of identifiers or to offer completion from other file of your projects, it needs to know where to find the cmi files of the other modules of your project. 
+
+To do this, run `make -C src asc` within a nix shell.
+
 ## Development without Nix
 
 You can get a development environment that is independent of nix (although

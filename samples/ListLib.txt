@@ -1,7 +1,4 @@
 -- Parsing ListLib.as:
 -- Checking ListLib.as:
-type List<T> = ?(T, List<T>)
-let cons : <T>(T, List<T>) -> List<T>
-let nil : <T>() -> List<T>
 -- Definedness ListLib.as:
 -- Interpreting ListLib.as:
