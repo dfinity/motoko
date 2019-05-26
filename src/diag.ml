@@ -11,13 +11,9 @@ type 'a result = ('a * messages, messages) Pervasives.result
 
 let return x = Ok (x, [])
 
-let map_result f = function
+let map f = function
   | Pervasives.Error msgs -> Pervasives.Error msgs
   | Ok (x, msgs) -> Ok (f x, msgs)
-
-let ignore = function
-  | Pervasives.Error msgs -> Pervasives.Error msgs
-  | Ok (_, msgs) -> Ok ((), msgs)
 
 let bind x f = match x with
   | Pervasives.Error msgs -> Pervasives.Error msgs
@@ -27,7 +23,7 @@ let bind x f = match x with
 
 let rec traverse : ('a -> 'b result) -> 'a list -> 'b list result = fun f -> function
   | [] -> return []
-  | x :: xs -> bind (f x) (fun y -> map_result (fun ys -> y :: ys) (traverse f xs))
+  | x :: xs -> bind (f x) (fun y -> map (fun ys -> y :: ys) (traverse f xs))
 
 let rec traverse_ : ('a -> unit result) -> 'a list -> unit result = fun f -> function
   | [] -> return ()
@@ -62,10 +58,10 @@ let with_message_store f =
   | Some x when not (has_errors msgs) -> Ok (x, msgs)
   | _ -> Error msgs
 
-let flush_messages : 'a result -> 'a result = function
-  | Pervasives.Error msgs -> print_messages msgs; Pervasives.Error []
-  | Ok (x, msgs) -> print_messages msgs; Ok (x, [])
+let flush_messages : 'a result -> 'a option = function
+  | Pervasives.Error msgs -> print_messages msgs; None
+  | Ok (x, msgs) -> print_messages msgs; Some x
 
-let run = function
-  | Ok (x, warns) -> print_messages warns; x
-  | Error errs -> print_messages errs; exit 1
+let run r = match flush_messages r with
+  | None -> exit 1
+  | Some x -> x

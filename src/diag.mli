@@ -26,11 +26,10 @@ type 'a result = ('a * messages, messages) Pervasives.result
 
 val return : 'a -> 'a result
 val bind : 'a result -> ('a -> 'b result) -> 'b result
-val map_result : ('a -> 'b) -> 'a result -> 'b result
-val ignore : 'a result -> unit result
+val map : ('a -> 'b) -> 'a result -> 'b result
 val traverse: ('a -> 'b result) -> 'a list -> 'b list result
 val traverse_: ('a -> unit result) -> 'a list -> unit result
-val flush_messages : 'a result -> 'a result
+val flush_messages : 'a result -> 'a option
 val run : 'a result -> 'a (* Prints messages, and exits upon failure *)
 
 
@@ -49,3 +48,4 @@ type msg_store
 val add_msg : msg_store -> message -> unit
 val add_msgs : msg_store -> messages -> unit
 val with_message_store : (msg_store -> 'a option) -> 'a result
+

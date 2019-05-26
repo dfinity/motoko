@@ -1,9 +1,9 @@
 val check_files  : string list -> unit Diag.result
 val check_string : string -> string -> unit Diag.result
 
-val run_files           : string list -> unit Diag.result
-val interpret_ir_files  : string list -> unit Diag.result
-val run_files_and_stdin : string list -> unit Diag.result
+val run_files           : string list -> unit option
+val interpret_ir_files  : string list -> unit option
+val run_files_and_stdin : string list -> unit option
 
 type compile_mode = WasmMode | DfinityMode
 type compile_result = CustomModule.extended_module Diag.result

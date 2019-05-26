@@ -56,17 +56,21 @@ let argspec = Arg.align
 
 (* Main *)
 
+let exit_on_none = function
+  | None -> exit 1
+  | Some x -> x
+
 let process_files files : unit =
   match !mode with
   | Default ->
     assert false
   | Run ->
     if !Flags.interpret_ir
-    then Diag.run (Pipeline.interpret_ir_files files)
-    else Diag.run (Pipeline.run_files files)
+    then exit_on_none (Pipeline.interpret_ir_files files)
+    else exit_on_none (Pipeline.run_files files)
   | Interact ->
     printf "%s\n" banner;
-    Diag.run (Pipeline.run_files_and_stdin files)
+    exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
     Diag.run (Pipeline.check_files files)
   | Compile ->

@@ -100,7 +100,7 @@ let parse_files =
 type resolve_result = (Syntax.prog * Resolve_import.S.t) Diag.result
 
 let resolve_prog (prog, base) : resolve_result =
-  Diag.map_result
+  Diag.map
     (fun libraries -> (prog, libraries))
     (Resolve_import.resolve prog base)
 
@@ -206,7 +206,7 @@ let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result 
     end
     and go_set todo = Diag.traverse_ go (elements todo)
   in
-  Diag.map_result (fun () -> (List.rev !libraries, !senv)) (go_set imports)
+  Diag.map (fun () -> (List.rev !libraries, !senv)) (go_set imports)
 
 let load_progs parse senv : load_result =
   Diag.bind parse (fun parsed ->
@@ -256,15 +256,15 @@ let rec interpret_progs denv progs : Interpret.scope option =
       interpret_progs denv' ps
     | None -> None
 
-let interpret_files (senv0, denv0) files : (Typing.scope * Interpret.scope) Diag.result =
-  Diag.bind (Diag.flush_messages
-    (load_progs (parse_files files) senv0))
+let interpret_files (senv0, denv0) files : (Typing.scope * Interpret.scope) option =
+  Lib.Option.bind
+    (Diag.flush_messages (load_progs (parse_files files) senv0))
     (fun (libraries, progs, senv1) ->
-  let denv1 = interpret_libraries denv0 libraries in
-  match interpret_progs denv1 progs with
-  | None -> Error []
-  | Some denv2 -> Diag.return (senv1, denv2)
-  )
+      let denv1 = interpret_libraries denv0 libraries in
+      match interpret_progs denv1 progs with
+      | None -> None
+      | Some denv2 -> Some (senv1, denv2)
+    )
 
 
 (* Prelude *)
@@ -307,16 +307,16 @@ let initial_env = (initial_stat_env, initial_dyn_env)
 type check_result = unit Diag.result
 
 let check_files files : check_result =
-  Diag.ignore (load_progs (parse_files files) initial_stat_env)
+  Diag.map ignore (load_progs (parse_files files) initial_stat_env)
 
 let check_string s name : check_result =
-  Diag.ignore (load_decl (parse_string s name) initial_stat_env)
+  Diag.map ignore (load_decl (parse_string s name) initial_stat_env)
 
 
 (* Running *)
 
-let run_files files : unit Diag.result =
-  Diag.ignore (interpret_files initial_env files)
+let run_files files : unit option =
+  Lib.Option.map ignore (interpret_files initial_env files)
 
 
 (* Interactively *)
@@ -380,11 +380,11 @@ let run_stdin lexer (senv, denv) : env option =
 
 let run_files_and_stdin files =
   let lexer = Lexing.from_function lexer_stdin in
-  Diag.bind (interpret_files initial_env files) (fun env ->
+  Lib.Option.bind (interpret_files initial_env files) (fun env ->
     let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
     try loop env with End_of_file ->
       printf "\n%!";
-      Diag.return ()
+      Some ()
   )
 
 
@@ -496,9 +496,6 @@ let interpret_ir_prog inp_env libraries progs =
   ()
 
 let interpret_ir_files files =
-  match load_progs (parse_files files) initial_stat_env with
-  | Error msgs -> Error msgs
-  | Ok ((libraries, progs, senv), msgs) ->
-    Diag.print_messages msgs;
-    interpret_ir_prog senv.Typing.lib_env libraries progs;
-    Diag.return ()
+  Lib.Option.map
+    (fun (libraries, progs, senv) -> interpret_ir_prog senv.Typing.lib_env libraries progs)
+    (Diag.flush_messages (load_progs (parse_files files) initial_stat_env))

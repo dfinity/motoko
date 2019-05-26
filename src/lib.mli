@@ -72,6 +72,7 @@ sig
   val value : 'a option -> 'a
   val map : ('a -> 'b) -> 'a option -> 'b option
   val app : ('a -> unit) -> 'a option -> unit
+  val bind : 'a option -> ('a -> 'b option) -> 'b option
 end
 
 module Promise :
