@@ -1677,7 +1677,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           begin
             get_res64 ^^
             compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-            Num.from_word64 env
+            Num.from_word64(*FIXME: signed*) env
           end
       end
       begin
@@ -1723,7 +1723,63 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let compile_unsigned_div = try_unbox2 (adjust true true true BoxedWord.compile_unsigned_div) Num.compile_unsigned_div
   let compile_unsigned_rem = try_unbox2 BoxedWord.compile_unsigned_rem Num.compile_unsigned_rem
   let compile_unsigned_sub = try_unbox2 BoxedWord.compile_unsigned_sub Num.compile_unsigned_sub
-  let compile_unsigned_pow = try_unbox2 (adjust true true true BoxedWord.compile_unsigned_pow(*FIXME: OVERFLOWS FAST*)) Num.compile_unsigned_pow
+
+  let compile_unsigned_pow env =
+    let set_a, get_a = new_local env "a" in
+    let set_b, get_b = new_local env "b" in
+    let set_res, get_res = new_local env "res" in
+    let set_a64, get_a64 = new_local64 env "a64" in
+    let set_b64, get_b64 = new_local64 env "b64" in
+    let set_res64, get_res64 = new_local64 env "res64" in
+    set_b ^^ set_a ^^
+    get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+      begin
+        get_a ^^ extend64 ^^ set_a64 ^^ compile_const_64 64L ^^
+        get_a64 ^^ get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
+        G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+        get_b ^^ extend64 ^^ set_b64 ^^ get_b64 ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
+        compile_const_64 128L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+        G.if_ (ValBlockType (Some I32Type))
+          begin
+            get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+            get_b64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+            BoxedWord.compile_unsigned_pow env ^^
+            compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^ set_res64 ^^
+            get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
+            G.if_ (ValBlockType (Some I32Type))
+              (get_res64 ^^ compress64)
+              begin
+                get_res64 ^^
+                compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+                Num.from_word64(*FIXME: signed*) env
+              end
+          end
+          begin
+            get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env ^^
+            get_b64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env ^^
+            Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
+            fits_in_vanilla env ^^
+            G.if_ (ValBlockType (Some I32Type))
+              (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+              get_res
+          end
+      end
+      begin
+        get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
+          get_a ^^
+        get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
+          get_b ^^
+        Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
+        fits_in_vanilla env ^^
+        G.if_ (ValBlockType (Some I32Type))
+          (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+          get_res
+      end
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
@@ -4759,7 +4815,7 @@ let rec compile_binop env t op =
      let (set_exp, get_exp) = new_local env "exp" in
      set_exp ^^ set_n ^^
      get_exp ^^ BigNum.compile_is_negative env ^^
-     E.then_trap_with env "negative power" ^^
+     E.then_trap_with env "negative exponent" ^^
      get_n ^^ get_exp ^^ pow
   | Type.(Prim Word64),                       PowOp -> BoxedWord.compile_unsigned_pow env
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
