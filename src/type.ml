@@ -275,21 +275,6 @@ let open_binds tbs =
   List.iter2 set_kind cs ks;
   ts
 
-(* Precondition: same length 
-let open_binds2 tbs1 tbs2 =
-  let ts1, ts2 = open_binds tbs1, open_binds tbs2 in
-  let get_con = function | Con (c, []) -> c | _ -> assert false in
-  let sigma = List.fold_right2 ConEnv.add (List.map get_con ts2) ts1 ConEnv.empty in
-  ts1, List.map (subst sigma) ts2
-*)(*
-let with_open_funcs f1 f2 comb = match f1 with
-  | Func (_, _, bs1, args1, res1) ->
-    let ts1 = open_binds bs1 in
-    let f = comb (open_ ts1 f1) (open_ ts1 f2) in
-    let get_con = function | Con (c, []) -> c | _ -> assert false in
-    close (List.map get_con ts1) f
-  | _ -> assert false
- *)
 (* Normalization and Classification *)
 
 let reduce tbs t ts =
