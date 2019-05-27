@@ -36,6 +36,7 @@ func testNat(a : Nat, b : Nat) : [Nat] {
 verify<Nat>([8, 2, 15, 1, 2, 125], testNat(5, 3), natCompare);
 verify<Nat>([41, 21, 310, 3, 1, 819628286980801], testNat(31, 10), natCompare);
 verify<Nat>([42, 20, 341, 2, 9, 25408476896404831], testNat(31, 11), natCompare);
+verify<Nat>([1500000002, 1499999998, 3000000000, 750000000, 0, 2250000000000000000], testNat(1500000000, 2), natCompare);
 
 func testInt(a : Int, b : Int) : [Int] {
   let pos1 = + a;
