@@ -4238,6 +4238,10 @@ module AllocHow = struct
     then is_static env how0 (Freevars.exp exp)
     else false
 
+  let is_local_mut _ = function
+    | LocalMut -> true
+    | _ -> false
+
   let dec_local env (seen, how0) dec =
     let (f,d) = Freevars.dec dec in
     let captured = Freevars.captured_vars f in
@@ -4265,9 +4269,7 @@ module AllocHow = struct
 
     (* Do we capture anything else?
        For local blocks, mutable things must be heap allocated.
-       On the top-level, all captured non-static things must be heap allocated.
     *)
-    let is_local_mut _ h = h = LocalMut in
     let how3 =
       map_of_set StoreHeap
         (S.inter (set_of_map (M.filter is_local_mut how0)) captured) in
@@ -4276,10 +4278,13 @@ module AllocHow = struct
     let seen' = S.union seen d
     in (seen', how)
 
-  let decs_local env decs : allocHow =
+  let decs_local env decs captured_in_body : allocHow =
     let rec go how =
       let _seen, how1 = List.fold_left (dec_local env) (S.empty, how) decs in
-      if M.equal (=) how how1 then how else go how1 in
+      let how2 = map_of_set StoreHeap
+        (S.inter (set_of_map (M.filter is_local_mut how1)) captured_in_body) in
+      let how' = join how1 how2 in
+      if M.equal (=) how how' then how else go how' in
     go M.empty
 
   let decs_top_lvl env decs captured_in_body : allocHow =
@@ -4304,7 +4309,7 @@ module AllocHow = struct
 
   let decs env lvl decs captured_in_body : allocHow = match lvl with
     | TopLvl -> decs_top_lvl env decs captured_in_body
-    | NotTopLvl -> decs_local env decs
+    | NotTopLvl -> decs_local env decs captured_in_body
 
   (* Functions to extend the environment (and possibly allocate memory)
      based on how we want to store them. *)
