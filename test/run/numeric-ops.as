@@ -59,6 +59,9 @@ func testInt(a : Int, b : Int) : [Int] {
 };
 
 verify<Int>([3, -3, 8, -2, 15, 0, 3, 243], testInt(3, 5), intCompare);
+verify<Int>([-31, 31, -21, -41, -310, -3, -1, 819628286980801], testInt(-31, 10), intCompare);
+verify<Int>([-31, 31, -20, -42, -341, -2, -9, -25408476896404831], testInt(-31, 11), intCompare);
+verify<Int>([-1500000000, 1500000000, -1499999998, -1500000002, -3000000000, -750000000, 0, 2250000000000000000], testInt(-1500000000, 2), intCompare);
 
 func testIntAbs(a : Int) : [Int] {
   let abs1 = abs a;
