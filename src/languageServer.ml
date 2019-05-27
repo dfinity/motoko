@@ -24,8 +24,9 @@ let log_to_file (lbl: string) (txt: string): unit =
     flush oc
 
 let send (label: string) (out: string): unit =
-  let cl = "Content-Length: " ^ string_of_int (String.length out) ^ "\r\n\r\n" in
+  let cl = "Content-Length: " ^ string_of_int (String.length out) in
   print_string cl;
+  print_string "\r\n\r\n";
   print_string out;
   flush stdout;
   log_to_file (label ^ "_length") cl;
