@@ -749,7 +749,7 @@ and glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 and lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
   match M.find_opt (t1, t2) !lubs with
-  | Some t -> t
+  | Some t -> if eq t t1 then t1 else if eq t t2 then t2 else t
   | _ ->
     match t1, t2 with
     | _, Pre
@@ -781,7 +781,7 @@ and lub' lubs glbs t1 t2 =
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
       Obj (s1, lub_fields lubs glbs tf1 tf2)
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-        when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) && (* TBR: bounds *)
+        when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
           List.(length args1 = length args2 && length res1 = length res2) ->
       let ts1 = open_binds bs1 in
       let op = List.map (open_ ts1) in
@@ -797,7 +797,7 @@ and lub' lubs glbs t1 t2 =
     | _, Con _ ->
       let s1, s2 = !str t1, !str t2 in
       if s1 = s2 then t1 else
-        let c = Con.fresh (Printf.sprintf "@lub (%s, %s)" s1 s2) (Abs ([], Pre)) in
+        let c = Con.fresh (Printf.sprintf "@lub(%s, %s)" s1 s2) (Abs ([], Pre)) in
         let t = Con (c, []) in
         lubs := M.add (t2, t1) t (M.add (t1, t2) t !lubs);
         let inner = lub' lubs glbs (normalize t1) (normalize t2) in
@@ -831,7 +831,7 @@ and lub_binds lubs glbs tbs1 tbs2 =
 and glb' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
   match M.find_opt (t1, t2) !glbs with
-  | Some t -> t
+  | Some t -> if eq t t1 then t1 else if eq t t2 then t2 else t
   | _ ->
     match t1, t2 with
     | _, Pre
@@ -861,7 +861,7 @@ and glb' lubs glbs t1 t2 =
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
       Obj (s1, glb_fields lubs glbs tf1 tf2)
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-        when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) && (* TBR: bounds *)
+        when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
           List.(length args1 = length args2 && length res1 = length res2) ->
       let ts1 = open_binds bs1 in
       let op = List.map (open_ ts1) in
@@ -877,7 +877,7 @@ and glb' lubs glbs t1 t2 =
     | _, Con _ ->
       let s1, s2 = !str t1, !str t2 in
       if s1 = s2 then t1 else
-        let c = Con.fresh (Printf.sprintf "@glb (%s, %s)" s1 s2) (Abs ([], Pre)) in
+        let c = Con.fresh (Printf.sprintf "@glb(%s, %s)" s1 s2) (Abs ([], Pre)) in
         let t = Con (c, []) in
         glbs := M.add (t2, t1) t (M.add (t1, t2) t !glbs);
         let inner = glb' lubs glbs (normalize t1) (normalize t2) in
