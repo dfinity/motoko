@@ -118,7 +118,9 @@ and build_field {Type.lab; Type.typ} =
 and build_fields obj_typ =
     match obj_typ with
     | Type.Obj (_, fields) ->
-      List.map build_field fields
+      (* TBR: do we need to sort val_fields?*)
+      let val_fields = List.filter (fun {Type.lab;Type.typ} -> not (Type.is_typ typ)) fields in
+      List.map build_field val_fields
     | _ -> assert false
 
 and build_actor at self_id es obj_typ =
@@ -161,8 +163,6 @@ and block force_unit ds =
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
     (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
-  | false, S.ModuleD (x, _) ->
-    (extra @ List.map dec ds, idE x last.note.S.note_typ)
   | _, _ ->
     (extra @ List.map dec ds, tupE [])
 
@@ -224,24 +224,6 @@ and dec' at n d = match d with
       note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
     } in
     I.LetD (varPat, fn)
-  | S.ModuleD(id, ds) ->
-    (build_module id ds (n.S.note_typ)).it
-
-
-and field_typ_to_obj_entry (f: T.field) =
-  match f.T.typ with
-  | T.Typ _ -> []
-  | _ -> [ build_field f ]
-
-and build_module id ds typ =
-  let self = idE id typ in
-  let (s, fs) = T.as_obj typ in
-  letD self
-    (blockE
-       (decs ds)
-       (newObjE T.Module
-          (List.concat (List.map field_typ_to_obj_entry fs)) typ));
-          (* ^^^^ TBR: do these need to be sorted? *)
 
 and cases cs = List.map case cs
 
@@ -340,31 +322,50 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
   let t = Type.Env.find f imp_env in
   let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
   match prog.it with
-  |  [{it = Syntax.ExpD _;_}] ->
-     { it = Syntax.LetD
-              (
+  |  [{it = Syntax.ExpD e;_}] ->
+     { it = Syntax.LetD (
                 { it = Syntax.VarP (id_of_full_path f)
                 ; at = no_region
                 ; note = t
                 }
-              , { it = Syntax.BlockE prog.it
-                ; at = no_region
-                ; note = typ_note
-                }
+              , e
               )
      ; at = no_region
      ; note = typ_note
      }
-  (* HACK: to be removed once we support module expressions *)
+  (* HACK: to be removed once we restrict programs to expressions *)
   |  ds ->
-     { it = Syntax.ModuleD
-              (  id_of_full_path f
-               , ds
-              )
+     Diag.(
+       print_message
+         { sev = Warning
+         ; at = prog.at
+         ; cat = "import"
+         ; text = Printf.sprintf
+                    "imported declarations `...` from file %s as a module; \
+                     please rewrite library %s as `module { ... }` instead." f f
+         }
+     );
+     { it =
+         Syntax.LetD
+           (
+             { it = Syntax.VarP (id_of_full_path f)
+             ; at = no_region
+             ; note = t
+             }
+           , { it = Syntax.ObjE
+                      (Type.Module @@ no_region,
+                       List.map
+                         (fun d ->
+                           { Syntax.dec=d; vis=Syntax.Public @@ no_region }
+                              @@ d.at)
+                         prog.it)
+             ; at = no_region
+             ; note = typ_note
+             }
+           )
      ; at = no_region
      ; note = typ_note
      }
-
 
 let combine_files imp_env libraries progs : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)
