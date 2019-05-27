@@ -4282,7 +4282,7 @@ module AllocHow = struct
       if M.equal (=) how how1 then how else go how1 in
     go M.empty
 
-  let decs_top_lvl env decs : allocHow =
+  let decs_top_lvl env decs captured_in_body : allocHow =
     let how0 = M.empty in
     (* All non-function are at least locals *)
     let how1 =
@@ -4293,16 +4293,17 @@ module AllocHow = struct
           | _ -> join how (map_of_set LocalMut d) in
       List.fold_left go how0 decs in
     (* All captured non-functions are heap allocated *)
-    let how2 =
+    let how2 = join how1 (map_of_set StoreStatic (S.inter (set_of_map how1) captured_in_body)) in
+    let how3 =
       let go how dec =
         let (f,d) = Freevars.dec dec in
         let captured = Freevars.captured_vars f in
         join how (map_of_set StoreStatic (S.inter (set_of_map how1) captured)) in
-      List.fold_left go how1 decs in
-    how2
+      List.fold_left go how2 decs in
+    how3
 
-  let decs env lvl decs : allocHow = match lvl with
-    | TopLvl -> decs_top_lvl env decs
+  let decs env lvl decs captured_in_body : allocHow = match lvl with
+    | TopLvl -> decs_top_lvl env decs captured_in_body
     | NotTopLvl -> decs_local env decs
 
   (* Functions to extend the environment (and possibly allocate memory)
@@ -4781,7 +4782,8 @@ and compile_exp (env : E.t) ae exp =
       (code1 ^^ StackRep.adjust env sr1 sr)
       (code2 ^^ StackRep.adjust env sr2 sr)
   | BlockE (decs, exp) ->
-    let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs in
+    let captured = Freevars.captured_vars (Freevars.exp exp) in
+    let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs captured in
     let (sr, code2) = compile_exp env ae' exp in
     (sr, code1 ^^ code2)
   | LabelE (name, _ty, e) ->
@@ -4908,7 +4910,8 @@ and compile_exp_as env ae sr_out e =
         compile_exp_as env ae SR.UnboxedReference e
       ) es
     | _ , BlockE (decs, exp) ->
-      let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs in
+      let captured = Freevars.captured_vars (Freevars.exp exp) in
+      let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs captured in
       let code2 = compile_exp_as env ae' sr_out exp in
       code1 ^^ code2
     (* Fallback to whatever stackrep compile_exp chooses *)
@@ -5131,8 +5134,8 @@ and compile_dec env pre_ae how dec : ASEnv.t * G.t * (ASEnv.t -> G.t) =
         Var.set_val env ae name.it
       )
 
-and compile_decs env ae lvl decs : ASEnv.t * G.t =
-  let how = AllocHow.decs ae lvl decs in
+and compile_decs env ae lvl decs captured_in_body : ASEnv.t * G.t =
+  let how = AllocHow.decs ae lvl decs captured_in_body in
   let rec go pre_ae decs = match decs with
     | []          -> (pre_ae, G.nop, fun _ -> G.nop)
     | [dec]       -> compile_dec env pre_ae how dec
@@ -5151,7 +5154,8 @@ and compile_decs env ae lvl decs : ASEnv.t * G.t =
 
 and compile_top_lvl_expr env ae e = match e.it with
   | BlockE (decs, exp) ->
-    let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs in
+    let captured = Freevars.captured_vars (Freevars.exp e) in
+    let (ae', code1) = compile_decs env ae AllocHow.TopLvl decs captured in
     let code2 = compile_top_lvl_expr env ae' exp in
     code1 ^^ code2
   | _ ->
@@ -5159,13 +5163,19 @@ and compile_top_lvl_expr env ae e = match e.it with
     code ^^ StackRep.drop env sr
 
 and compile_prog env ae (ds, e) =
-    let (ae', code1) = compile_decs env ae AllocHow.TopLvl ds in
+    let captured = Freevars.captured_vars (Freevars.exp e) in
+    let (ae', code1) = compile_decs env ae AllocHow.TopLvl ds captured in
     let code2 = compile_top_lvl_expr env ae' e in
     (ae', code1 ^^ code2)
 
 and compile_static_exp env pre_ae how exp = match exp.it with
   | FuncE (name, cc, typ_binds, args, _rt, e) ->
-      let mk_body env ae = compile_exp_as env ae (StackRep.of_arity cc.Value.n_res) e in
+      let mk_body env ae =
+        assert begin (* Is this really closed? *)
+          List.for_all (fun v -> ASEnv.NameEnv.mem v ae.ASEnv.vars)
+            (Freevars.M.keys (Freevars.exp e))
+        end;
+        compile_exp_as env ae (StackRep.of_arity cc.Value.n_res) e in
       FuncDec.closed env cc name args mk_body exp.at
   | _ -> assert false
 
@@ -5265,7 +5275,7 @@ and actor_lit outer_env this ds fs at =
       let ae2 = ASEnv.add_local_deferred_vanilla ae1 this.it Dfinity.get_self_reference in
 
       (* Compile the declarations *)
-      let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds in
+      let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds Freevars.S.empty in
 
       (* Export the public functions *)
       List.iter (export_actor_field env ae3) fs;
@@ -5290,7 +5300,7 @@ and main_actor env ae1 this ds fs =
   let ae2 = ASEnv.add_local_deferred_vanilla ae1 this.it Dfinity.get_self_reference in
 
   (* Compile the declarations *)
-  let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds in
+  let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds Freevars.S.empty in
 
   (* Export the public functions *)
   List.iter (export_actor_field env ae3) fs;
