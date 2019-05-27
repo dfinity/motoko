@@ -153,8 +153,12 @@ struct
   let neg = minus_big_int
   let add = add_big_int
   let mul = mult_big_int
-  let div = div_big_int
-  let rem = mod_big_int (* Is rem and mod the same here? *)
+  let div a b =
+    let q, m = quomod_big_int a b in
+    if sign_big_int q < 0 && sign_big_int m > 0 then succ_big_int q else q
+  let rem a b =
+    let q, m = quomod_big_int a b in
+    if sign_big_int q < 0 && sign_big_int m > 0 then sub_big_int m b else m
   let eq = eq_big_int
   let ne x y = not (eq x y)
   let lt = lt_big_int
