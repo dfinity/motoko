@@ -134,10 +134,7 @@ let start () =
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
        (match Base.String.chop_prefix ~prefix:file_uri_prefix uri with
         | Some file_name -> begin
-           let result = Pipeline.compile_files
-             Pipeline.DfinityMode
-             false
-             [file_name] in
+           let result = Pipeline.check_files [file_name] in
            show_message Lsp.MessageType.Info ("Compiling file: " ^ file_name);
           let msgs = match result with
             | Error msgs' -> msgs'
