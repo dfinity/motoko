@@ -13,6 +13,7 @@ func verify<T>(etalon : [T], results : [T], cmp : (T, T) -> Bool) {
 };
 
 func intCompare (a : Int, b : Int) : Bool = a == b;
+func natCompare (a : Nat, b : Nat) : Bool = a == b;
 
 // Numeric operators
 
@@ -32,7 +33,8 @@ func testNat(a : Nat, b : Nat) : [Nat] {
   [sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
 };
 
-verify<Nat>([8, 2, 15, 1, 2, 125], testNat(5, 3), func (a : Nat, b : Nat) : Bool = a == b);
+verify<Nat>([8, 2, 15, 1, 2, 125], testNat(5, 3), natCompare);
+verify<Nat>([42, 20, 341, 2, 9, 25408476896404831], testNat(31, 11), natCompare);
 
 func testInt(a : Int, b : Int) : [Int] {
   let pos1 = + a;
