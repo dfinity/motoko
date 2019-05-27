@@ -516,9 +516,15 @@ module RTS = struct
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_to_word32" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word32_trap" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word32_signed_trap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
-    E.add_func_import env "rts" "bigint_to_word64" [I32Type] [I64Type];
+    E.add_func_import env "rts" "bigint_of_word64_signed" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_to_word64_wrap" [I32Type] [I64Type];
+    E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
+    E.add_func_import env "rts" "bigint_to_word64_signed_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_isneg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_count_bits" [I32Type] [I32Type];
@@ -529,8 +535,9 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_add" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sub" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_mul" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_mod" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_rem" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_div" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_pow" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_neg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lsh" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type]
@@ -1220,6 +1227,7 @@ module BoxedWord = struct
 
 end (* BoxedWord *)
 
+
 module BoxedSmallWord = struct
   (* We store proper 32bit Word32 in immutable boxed 32bit heap objects.
 
@@ -1473,6 +1481,7 @@ sig
   val _fits_unsigned_bits : E.t -> int -> G.t
 end
 
+[@@@warning "-60"] (* Do not warn about unused module *)
 module BigNum64 : BigNumType = struct
   include BoxedWord
 
@@ -1582,11 +1591,100 @@ module BigNum64 : BigNumType = struct
   let compile_eq = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 I64Op.Eq)))
   let compile_relop env relop = with_comp_unboxed (G.i (Compare (Wasm.Values.I64 (i64op_from_relop relop)))) env
   let compile_is_negative env = unbox env ^^ compile_const_64 0L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LtS))
-
 end
+[@@@warning "+60"]
 
+module BigNumLibtommmath : BigNumType = struct
 
-module BigNum = BigNum64
+  let to_word32 env = E.call_import env "rts" "bigint_to_word32_trap"
+  let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
+
+  let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
+  let _truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
+
+  let from_word32 env = E.call_import env "rts" "bigint_of_word32"
+  let from_word64 env = E.call_import env "rts" "bigint_of_word64"
+  let from_signed_word32 env = E.call_import env "rts" "bigint_of_word32_signed"
+  let _from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
+
+  (* TODO: Actually change binary encoding *)
+  let compile_data_size env = G.i Drop ^^ compile_unboxed_const 8l
+  let compile_store_to_data_buf env =
+    _truncate_to_word64 env ^^
+    G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
+    compile_unboxed_const 8l (* 64 bit for now *)
+  let compile_load_from_data_buf env =
+    G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
+    from_word64 env ^^
+    compile_unboxed_const 8l (* 64 bit for now *)
+
+  let compile_lit env n =
+    let limb_size = 31 in
+    let twoto = Big_int.power_int_positive_int 2 limb_size in
+
+    compile_unboxed_const 0l ^^
+    E.call_import env "rts" "bigint_of_word32" ^^
+
+    let rec go n =
+      if Big_int.sign_big_int n = 0
+      then G.nop
+      else
+        let (a, b) = Big_int.quomod_big_int n twoto in
+        go a ^^
+        compile_unboxed_const (Int32.of_int limb_size) ^^
+        E.call_import env "rts" "bigint_lsh" ^^
+        compile_unboxed_const (Big_int.int32_of_big_int b) ^^
+        E.call_import env "rts" "bigint_of_word32" ^^
+        E.call_import env "rts" "bigint_add" in
+
+    go (Big_int.abs_big_int n) ^^
+
+    if Big_int.sign_big_int n < 0
+      then E.call_import env "rts" "bigint_neg"
+      else G.nop
+
+  let assert_nonneg env =
+    Func.share_code1 env "assert_nonneg" ("n", I32Type) [I32Type] (fun env get_n ->
+      get_n ^^
+      E.call_import env "rts" "bigint_isneg" ^^
+      E.then_trap_with env "Natural subtraction underflow" ^^
+      get_n
+    )
+
+  let compile_abs env = E.call_import env "rts" "bigint_abs"
+  let compile_neg env = E.call_import env "rts" "bigint_neg"
+  let compile_add env = E.call_import env "rts" "bigint_add"
+  let compile_mul env = E.call_import env "rts" "bigint_mul"
+  let compile_signed_sub env = E.call_import env "rts" "bigint_sub"
+  let compile_signed_div env = E.call_import env "rts" "bigint_div"
+  let compile_signed_mod env = E.call_import env "rts" "bigint_rem"
+  let compile_unsigned_sub env = E.call_import env "rts" "bigint_sub" ^^ assert_nonneg env
+  let compile_unsigned_rem env = E.call_import env "rts" "bigint_rem"
+  let compile_unsigned_div env = E.call_import env "rts" "bigint_div"
+  let compile_unsigned_pow env = E.call_import env "rts" "bigint_pow"
+
+  let compile_eq env = E.call_import env "rts" "bigint_eq"
+  let compile_is_negative env = E.call_import env "rts" "bigint_isneg"
+  let compile_relop env op =
+    let fn = match op with
+      | Lt -> "rts_bigint_lt"
+      | Le -> "rts_bigint_le"
+      | Ge -> "rts_bigint_ge"
+      | Gt -> "rts_bigint_gt" in
+    G.i (Call (nr (E.built_in env fn)))
+
+  let _fits_signed_bits env bits =
+    G.i (Call (nr (E.built_in env ("rts_bigint_count_bits")))) ^^
+    compile_unboxed_const (Int32.of_int (bits - 1)) ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LeU))
+  let _fits_unsigned_bits env bits =
+    G.i (Call (nr (E.built_in env ("rts_bigint_count_bits")))) ^^
+    compile_unboxed_const (Int32.of_int bits) ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LeU))
+
+end (* BigNumLibtommmath *)
+
+module BigNum = BigNumLibtommmath
 
 (* Primitive functions *)
 module Prim = struct
@@ -4290,8 +4388,6 @@ let compile_unop env t op =
     (* NB: Must not use todo_trap_SR here, as the SR.t here is also passed to
        `compile_exp_as`, which does not take SR.Unreachable. *)
     todo "compile_unop" (Arrange.unop op) (SR.Vanilla, E.trap_with env "TODO: compile_unop")
-
-
 
 (* This returns a single StackRep, to be used for both arguments and the
    result. One could imagine operators that require or produce different StackReps,
