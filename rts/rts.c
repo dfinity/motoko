@@ -304,7 +304,7 @@ export as_ptr bigint_pow(as_ptr a, as_ptr b) {
   as_ptr r = bigint_alloc();
   // Replace with mp_expt_long once available,
   // see https://github.com/libtom/libtommath/issues/243
-  CHECK(mp_expt_d(BIGINT_PAYLOAD(a), exp, BIGINT_PAYLOAD(r)));
+  CHECK(mp_expt_d_ex(BIGINT_PAYLOAD(a), exp, BIGINT_PAYLOAD(r), 1));
   return r;
 }
 
