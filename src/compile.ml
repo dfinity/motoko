@@ -3503,8 +3503,8 @@ module VarLoc = struct
    *)
 
   type deferred_loc =
-    { materialize : E.t -> (SR.t * G.t)
-    ; materialize_vanilla : E.t -> G.t
+    { stack_rep : SR.t
+    ; materialize : E.t -> G.t
     ; is_local : bool (* Only valid within the current function *)
     }
 
@@ -3520,8 +3520,8 @@ module VarLoc = struct
     | HeapInd of (int32 * int32)
     (* A static mutable memory location (static address of a MutBox field) *)
     | Static of int32
-    (* Dynamic code to allocate the expression, valid in the current module
-       (need not be captured) *)
+    (* Dynamic code to put the value on the heap.
+       May be local to the current function or module (see is_local) *)
     | Deferred of deferred_loc
 
   let is_non_local : varloc -> bool = function
@@ -3627,13 +3627,6 @@ module StackRep = struct
     | StaticMessage fi ->
       Dfinity.static_message_funcref env fi ^^
       Dfinity.box_reference env
-
-  let deferred_of_static_thing env s =
-    let open VarLoc in
-    { materialize = (fun env -> (StaticThing s, G.nop))
-    ; materialize_vanilla = (fun env -> materialize env s)
-    ; is_local = false
-    }
 
   let unbox_reference_n env n = match n with
     | 0 -> G.nop
@@ -3744,17 +3737,10 @@ module ASEnv = struct
   let add_local_static (ae : t) name ptr =
       { ae with vars = NameEnv.add name (VarLoc.Static ptr) ae.vars }
 
-  let add_local_deferred (ae : t) name d =
-      { ae with vars = NameEnv.add name (VarLoc.Deferred d) ae.vars }
-
-  let add_local_deferred_vanilla (ae : t) name materialize =
+  let add_local_deferred (ae : t) name stack_rep materialize is_local =
       let open VarLoc in
-      let d = {
-        materialize = (fun env -> (SR.Vanilla, materialize env));
-        materialize_vanilla = materialize;
-        is_local = false
-      } in
-      add_local_deferred ae name d
+      let d = {stack_rep; materialize; is_local} in
+      { ae with vars = NameEnv.add name (VarLoc.Deferred d) ae.vars }
 
   let add_direct_local env (ae : t) name =
       let i = E.add_anon_local env I32Type in
@@ -3799,18 +3785,22 @@ module Var = struct
     | Some (Deferred d) -> assert false
     | None   -> assert false
 
-  (* Returns the payload (vanilla representation) *)
-  let get_val_vanilla (env : E.t) (ae : ASEnv.t) var = match ASEnv.lookup_var ae var with
-    | Some (Local i) -> G.i (LocalGet (nr i))
-    | Some (HeapInd (i, off)) -> G.i (LocalGet (nr i)) ^^ Heap.load_field off
-    | Some (Static i) -> compile_unboxed_const i ^^ Heap.load_field 1l
-    | Some (Deferred d) -> d.materialize_vanilla env
-    | None -> assert false
-
   (* Returns the payload (optimized representation) *)
   let get_val (env : E.t) (ae : ASEnv.t) var = match ASEnv.lookup_var ae var with
-    | Some (Deferred d) -> d.materialize env
-    | _ -> SR.Vanilla, get_val_vanilla env ae var
+    | Some (Local i) ->
+      SR.Vanilla, G.i (LocalGet (nr i))
+    | Some (HeapInd (i, off)) ->
+      SR.Vanilla, G.i (LocalGet (nr i)) ^^ Heap.load_field off
+    | Some (Static i) ->
+      SR.Vanilla, compile_unboxed_const i ^^ Heap.load_field 1l
+    | Some (Deferred d) ->
+      d.stack_rep, d.materialize env
+    | None -> assert false
+
+  (* Returns the payload (vanilla representation) *)
+  let get_val_vanilla (env : E.t) (ae : ASEnv.t) var =
+    let sr, code = get_val env ae var in
+    code ^^ StackRep.adjust env sr SR.Vanilla
 
   (* Returns the value to put in the closure,
      and code to restore it, including adding to the environment
@@ -3833,7 +3823,8 @@ module Var = struct
       )
     | Some (Deferred d) ->
       assert d.is_local;
-      ( d.materialize_vanilla old_env
+      ( d.materialize old_env ^^
+        StackRep.adjust old_env d.stack_rep SR.Vanilla
       , fun new_env ae1 ->
         let (ae2, j) = ASEnv.add_direct_local new_env ae1 var in
         let restore_code = G.i (LocalSet (nr j))
@@ -3912,12 +3903,7 @@ module FuncDec = struct
 
       (* Add arguments to the environment *)
       let ae2 = bind_args ae1 1 args (fun env a get ->
-        let open VarLoc in
-        ASEnv.add_local_deferred env a.it
-          { materialize = (fun env -> SR.Vanilla, get)
-          ; materialize_vanilla = (fun _ -> get)
-          ; is_local = true
-          }
+        ASEnv.add_local_deferred env a.it SR.Vanilla (fun _ -> get) true
       ) in
 
       closure_code ^^
@@ -3950,13 +3936,7 @@ module FuncDec = struct
 
       (* Add arguments to the environment, as unboxed references *)
       let ae2 = bind_args ae1 1 args (fun ae a get ->
-        let open VarLoc in
-        ASEnv.add_local_deferred ae a.it
-          { materialize = (fun env -> SR.UnboxedReference, get)
-          ; materialize_vanilla = (fun env ->
-               get ^^ StackRep.adjust env SR.UnboxedReference SR.Vanilla)
-          ; is_local = true
-          }
+        ASEnv.add_local_deferred ae a.it SR.UnboxedReference (fun _ -> get) true
       ) in
 
       closure_code ^^
@@ -3980,13 +3960,7 @@ module FuncDec = struct
 
       (* Add arguments to the environment, as unboxed references *)
       let ae1 = bind_args ae0 0 args (fun ae a get ->
-        let open VarLoc in
-        ASEnv.add_local_deferred ae a.it
-          { materialize = (fun env -> SR.UnboxedReference, get)
-          ; materialize_vanilla = (fun env ->
-               get ^^ StackRep.adjust env SR.UnboxedReference SR.Vanilla)
-          ; is_local = true
-          }
+        ASEnv.add_local_deferred ae a.it SR.UnboxedReference (fun _ -> get) true
       ) in
 
       mk_body env ae1 ^^
@@ -5111,8 +5085,8 @@ and compile_dec env pre_ae how dec : ASEnv.t * G.t * (ASEnv.t -> G.t) =
   (* A special case for static expressions *)
   | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v.it how) ->
     let (static_thing, fill) = compile_static_exp env pre_ae how e in
-    let d = StackRep.deferred_of_static_thing env static_thing in
-    let pre_ae1 = ASEnv.add_local_deferred pre_ae v.it d in
+    let pre_ae1 = ASEnv.add_local_deferred pre_ae v.it
+      (SR.StaticThing static_thing) (fun _ -> G.nop) false in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
@@ -5262,7 +5236,7 @@ and actor_lit outer_env this ds fs at =
       let (ae1, prelude_code) = compile_prelude env ae0 in
 
       (* Add this pointer *)
-      let ae2 = ASEnv.add_local_deferred_vanilla ae1 this.it Dfinity.get_self_reference in
+      let ae2 = ASEnv.add_local_deferred ae1 this.it SR.Vanilla Dfinity.get_self_reference false in
 
       (* Compile the declarations *)
       let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds in
@@ -5287,7 +5261,7 @@ and actor_lit outer_env this ds fs at =
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 this ds fs =
   (* Add this pointer *)
-  let ae2 = ASEnv.add_local_deferred_vanilla ae1 this.it Dfinity.get_self_reference in
+  let ae2 = ASEnv.add_local_deferred ae1 this.it SR.Vanilla Dfinity.get_self_reference false in
 
   (* Compile the declarations *)
   let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds in
