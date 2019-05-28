@@ -53,7 +53,7 @@ let js_compile_with mode_string source_map source convert =
     end
   | Error msgs ->
     object%js
-      val diagnostics = Js.array (Array.of_list (List.map diagnostics_of_msg msgs))
+      val diagnostics = Js.array (diagnostics_of_msgs msgs)
       val code = Js.null
       val map = Js.null
     end
