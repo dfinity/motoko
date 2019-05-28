@@ -394,7 +394,7 @@ let transform transform_name trans env prog name =
   phase transform_name name;
   let prog_ir' : Ir.prog = trans env prog in
   dump_ir Flags.dump_lowering prog_ir';
-  Check_ir.check_prog env transform_name prog_ir';
+  if !Flags.check_ir then Check_ir.check_prog env transform_name prog_ir';
   prog_ir'
 
 let transform_if transform_name trans flag env prog name =
@@ -405,7 +405,7 @@ let desugar env lib_env libraries progs name =
   phase "Desugaring" name;
   let prog_ir' : Ir.prog = Desugar.transform_graph lib_env libraries progs in
   dump_ir Flags.dump_lowering prog_ir';
-  Check_ir.check_prog env "Desugaring" prog_ir';
+  if !Flags.check_ir then Check_ir.check_prog env "Desugaring" prog_ir';
   prog_ir'
 
 let await_lowering =
