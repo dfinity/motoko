@@ -337,8 +337,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
                error env exp.at "tuple projection %n is out of bounds for type\n  %s"
                  n (T.string_of_typ_expand t1) in
     tn <: t
-  | ActorDotE(exp1,{it = Name n;_})
-  | DotE (exp1, {it = Name n;_}) ->
+  | ActorDotE(exp1, n)
+  | DotE (exp1, n) ->
     begin
       check_exp env exp1;
       let t1 = typ exp1 in
@@ -639,7 +639,7 @@ and check_pats at env pats ve : val_env =
 and check_pat_fields env t = List.iter (check_pat_field env t)
 
 and check_pat_field env t (pf : pat_field) =
-  let Name lab = pf.it.name.it in
+  let lab = pf.it.name in
   let tf = T.{lab; typ=pf.it.pat.note} in
   let s, tfs = T.as_obj_sub lab t in
   let (<:) = check_sub env pf.it.pat.at in
@@ -658,7 +658,7 @@ and type_exp_fields env s fs : T.field list =
   List.sort T.compare_field tfs
 
 and type_exp_field env s f : T.field =
-  let {name = {it = Name name; _}; var} = f.it in
+  let {name; var} = f.it in
   let t = try T.Env.find var.it env.vals with
           | Not_found -> error env f.at "field typing for %s not found" name
   in

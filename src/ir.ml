@@ -14,9 +14,6 @@ type relop = Syntax.relop
 type mut = Syntax.mut
 type vis = Syntax.vis
 
-type name = name' Source.phrase
-and name' = Name of string
-
 type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =
   | WildP                                      (* wildcard *)
@@ -29,7 +26,7 @@ and pat' =
   | AltP of pat * pat                          (* disjunctive *)
 
 and pat_field = pat_field' Source.phrase
-and pat_field' = {name : name; pat : pat}
+and pat_field' = {name : Type.lab; pat : pat}
 
 (* Like id, but with a type attached *)
 type arg = (string, Type.typ) Source.annotated_phrase
@@ -49,8 +46,8 @@ and exp' =
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | TagE of id * exp                           (* variant injection *)
-  | DotE of exp * name                         (* object projection *)
-  | ActorDotE of exp * name                    (* actor field access *)
+  | DotE of exp * Type.lab                     (* object projection *)
+  | ActorDotE of exp * Type.lab                (* actor field access *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * Type.typ * exp list        (* array *)
   | IdxE of exp * exp                          (* array indexing *)
@@ -74,7 +71,7 @@ and exp' =
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
 
 and field = (field', Type.typ) Source.annotated_phrase
-and field' = {name : name; var : id} (* the var is by reference, not by value *)
+and field' = {name : Type.lab; var : id} (* the var is by reference, not by value *)
 
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}

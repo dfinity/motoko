@@ -57,7 +57,7 @@ and exp' at note = function
     obj at s None es note.S.note_typ
   | S.TagE (c, e) -> I.TagE (c, exp e)
   | S.DotE (e, x) ->
-    let n = {x with it = I.Name x.it} in
+    let n = x.it in
     begin match T.as_obj_sub x.it e.note.S.note_typ with
     | Type.Actor, _ -> I.ActorDotE (exp e, n)
     | _ -> I.DotE (exp e, n)
@@ -108,7 +108,7 @@ and obj at s self_id es obj_typ =
   | Type.Actor -> build_actor at self_id es obj_typ
 
 and build_field {Type.lab; Type.typ} =
-  { it = { I.name = I.Name lab @@ no_region
+  { it = { I.name = lab
          ; I.var = lab @@ no_region
          }
   ; at = no_region
@@ -251,7 +251,7 @@ and pat' = function
 
 and pat_fields pfs = List.map pat_field pfs
 
-and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=phrase (fun s -> Name s) id; pat=pat p}) pf
+and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
 
 and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
   match p.it with
