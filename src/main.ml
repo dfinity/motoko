@@ -50,25 +50,16 @@ let argspec = Arg.align
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
   "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
+  "-no-check-ir", Arg.Clear Flags.check_ir, " do not check intermediate code";
   "--disable-prelude", Arg.Clear Flags.prelude, " disable prelude";
 ]
 
 
 (* Main *)
 
-let exit_on_failure = function
-  | Ok x -> x
-  | Error errs ->
-    Diag.print_messages errs;
-    exit 1
-
-let run_diag = function
-  | Ok ((), warns) ->
-    Diag.print_messages warns;
-    exit 0
-  | Error errs ->
-    Diag.print_messages errs;
-    exit 1
+let exit_on_none = function
+  | None -> exit 1
+  | Some x -> x
 
 let process_files files : unit =
   match !mode with
@@ -76,22 +67,20 @@ let process_files files : unit =
     assert false
   | Run ->
     if !Flags.interpret_ir
-    then run_diag (Pipeline.interpret_ir_files files)
-    else run_diag (Pipeline.run_files files)
+    then exit_on_none (Pipeline.interpret_ir_files files)
+    else exit_on_none (Pipeline.run_files files)
   | Interact ->
     printf "%s\n" banner;
-    run_diag (Pipeline.run_files_and_stdin files)
+    exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
-    let ((), msgs) = exit_on_failure (Pipeline.check_files files) in
-    Diag.print_messages msgs
+    Diag.run (Pipeline.check_files files)
   | Compile ->
     if !out_file = "" then begin
       match files with
       | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
-    let module_ = exit_on_failure
-      Pipeline.(compile_files !compile_mode !(Flags.link) files) in
+    let module_ = Diag.run Pipeline.(compile_files !compile_mode !(Flags.link) files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;

@@ -1,2 +1,2 @@
-W, hypervisor: calling start failed with trap message: Uncaught RuntimeError: unreachable
+hypervisor: calling start failed with trap message: Uncaught RuntimeError: unreachable
 TODO: non-closed actor
