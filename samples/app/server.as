@@ -1,3 +1,6 @@
+import L "list.as";
+import T "types.as";
+
 type ClientData = {
   id : Nat;
   client : shared Text -> ();
@@ -6,7 +9,7 @@ type ClientData = {
 
 actor class Server() = {
   private var nextId : Nat = 0;
-  private var clients : List<ClientData> = null;
+  private var clients : L.List<ClientData> = null;
 
   private broadcast(id : Nat, message : Text) {
     var next = clients;
@@ -21,7 +24,7 @@ actor class Server() = {
     };
   };
 
-  subscribe(aclient : shared Text -> ()) : async Subscription {
+  subscribe(aclient : shared Text -> ()) : async T.Subscription {
     let c = new {id = nextId; client = aclient; var revoked = false};
     nextId += 1;
     let cs = new {head = c; var tail = clients};
@@ -35,7 +38,7 @@ actor class Server() = {
   };
 
   private unsubscribe(id : Nat) {
-    var prev : List<ClientData> = null;
+    var prev : L.List<ClientData> = null;
     var next = clients;
     loop {
       switch next {
