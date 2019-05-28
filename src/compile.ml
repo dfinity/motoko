@@ -5182,14 +5182,22 @@ and find_prelude_names env =
 
 
 and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
-  let find_last_actor (ds1,e) = match ds1, e.it with
-    | _, ActorE (i, ds2, fs, _) -> Some (i, ds1 @ ds2, fs)
-    | [], _ -> None
+  let find_last_expr ds e =
+    if ds = [] then [], e.it else
+    match Lib.List.split_last ds, e.it with
+    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), TupE [] ->
+      ds1', e'.it
+    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), VarE i2 when i1 = i2 ->
+      ds1', e'.it
+    | _ -> ds, e.it in
+
+  let find_last_actor (ds,e) = match find_last_expr ds e with
+    | ds1, ActorE (i, ds2, fs, _) ->
+      Some (i, ds1 @ ds2, fs)
+    | ds1, FuncE (_name, _cc, [], [], _, {it = ActorE (i, ds2, fs, _);_}) ->
+      Some (i, ds1 @ ds2, fs)
     | _, _ ->
-      match Lib.List.split_last ds1, e.it with
-      | (ds1', {it = LetD ({it = VarP i1; _}, {it = ActorE (i2, ds2, fs, _); _}); _})
-        , VarE i3 when i1 = i2 && i2 = i3 -> Some (i2, ds1' @ ds2, fs)
-      | _ -> None
+      None
   in
 
   Func.of_body mod_env [] [] (fun env ->
