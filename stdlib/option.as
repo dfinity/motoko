@@ -1,3 +1,4 @@
+module {
 /**
 
 Functions for Option types.
@@ -151,3 +152,5 @@ func printOpInt(x : ?Int) =
     case null  { print "null" };
     case (?x_) { print "?"; printInt x_ };
   };
+
+}
