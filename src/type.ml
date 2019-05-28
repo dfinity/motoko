@@ -823,7 +823,7 @@ and glb' lubs glbs t1 t2 =
     | Pre, _ -> assert false
     | _, Any -> t1
     | Any, _ -> t2
-    | _, Non -> Non
+    | _, Non
     | Non, _ -> Non
     | Shared, _ when sub t2 Shared -> t2
     | _, Shared when sub t1 Shared -> t1
