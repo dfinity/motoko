@@ -5164,6 +5164,10 @@ and compile_prelude env ae =
   let (ae1, code) = compile_prog env ae decs in
   (ae1, code)
 
+and compile_main_prog env ae prog =
+  let (_ae, code) = compile_prog env ae prog in
+  code
+
 (*
 This is a horrible hack
 When determining whether an actor is closed, we disregard the prelude, because
@@ -5181,7 +5185,7 @@ and find_prelude_names env =
   ASEnv.in_scope_set env2
 
 
-and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
+and compile_start_func mod_env (prog, _flavor) : E.func_with_names =
   let find_last_expr ds e =
     if ds = [] then [], e.it else
     match Lib.List.split_last ds, e.it with
@@ -5201,22 +5205,16 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
   in
 
   Func.of_body mod_env [] [] (fun env ->
-    let rec go ae = function
-      | [] -> G.nop
-      (* If the last program ends with an actor, then consider this the current actor  *)
-      | [(prog, _flavor)] ->
-        begin match find_last_actor prog with
-        | Some (i, ds, fs) -> main_actor env ae i ds fs
-        | None ->
-          let (_ae, code) = compile_prog env ae prog in
-          code
-        end
-      | ((prog, _flavor) :: progs) ->
-        let (ae1, code1) = compile_prog env ae prog in
-        let code2 = go ae1 progs in
-        code1 ^^ code2 in
-    go ASEnv.empty_ae progs
-    )
+    let ae0 = ASEnv.empty_ae in
+    let (ae1, prelude_code) = compile_prelude env ae0 in
+    match find_last_actor prog with
+    | Some (i, ds, fs) ->
+      prelude_code ^^
+      main_actor env ae1 i ds fs
+    | None ->
+      prelude_code ^^
+      compile_main_prog env ae1 prog
+  )
 
 and export_actor_field env  ae (f : Ir.field) =
   let Name name = f.it.name.it in
@@ -5408,14 +5406,14 @@ and conclude_module env module_name start_fi_o =
   | None -> emodule
   | Some rts -> LinkModule.link emodule "rts" rts
 
-let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : CustomModule.extended_module =
+let compile mode module_name rts (prelude : Ir.prog) (prog : Ir.prog) : CustomModule.extended_module =
   let env = E.mk_global mode rts prelude Dfinity.trap_with ClosureTable.table_end in
 
   if E.mode env = DfinityMode then Dfinity.system_imports env;
   RTS.system_imports env;
   RTS.system_exports env;
 
-  let start_fun = compile_start_func env (prelude :: progs) in
+  let start_fun = compile_start_func env prog in
   let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o =
     if E.mode env = DfinityMode

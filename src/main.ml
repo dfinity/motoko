@@ -27,7 +27,7 @@ let argspec = Arg.align
 [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
-  "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
+  "-i", Arg.Unit (set_mode Interact), " load file and run interactive REPL";
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
@@ -66,30 +66,40 @@ let process_files files : unit =
   | Default ->
     assert false
   | Run ->
-    if !Flags.interpret_ir
-    then exit_on_none (Pipeline.interpret_ir_files files)
-    else exit_on_none (Pipeline.run_files files)
+    let runner =
+      if !Flags.interpret_ir
+      then Pipeline.interpret_ir_file
+      else Pipeline.run_file in
+    List.iter (fun file -> exit_on_none (runner file)) files
   | Interact ->
     printf "%s\n" banner;
-    exit_on_none (Pipeline.run_files_and_stdin files)
+    let file = match files with
+      | [] ->  None
+      | [file] -> Some file
+      | _ -> eprintf "asc: -i cannot load more than one file"; exit 1 in
+    exit_on_none (Pipeline.run_file_and_stdin file)
   | Check ->
-    Diag.run (Pipeline.check_files files)
+    List.iter (fun file -> Diag.run (Pipeline.check_file file)) files
   | Compile ->
-    if !out_file = "" then begin
-      match files with
-      | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
-      | ns -> eprintf "asc: no output file specified"; exit 1
-    end;
-    let module_ = Diag.run Pipeline.(compile_files !compile_mode !(Flags.link) files) in
-    let oc = open_out !out_file in
-    let (source_map, wasm) = CustomModuleEncode.encode module_ in
-    output_string oc wasm; close_out oc;
+    if files = [] then begin eprintf "asc: no input files specified"; exit 1 end;
+    if !out_file != "" && List.length files > 1
+    then begin eprintf "asc: cannot use -o together with multiple input files"; exit 1 end;
+    List.iter (fun file ->
+      let out_filename =
+        if !out_file != ""
+        then !out_file
+        else Filename.remove_extension (Filename.basename file) ^ ".wasm" in
+      let module_ = Diag.run Pipeline.(compile_file !compile_mode !Flags.link file) in
+      let oc = open_out out_filename in
+      let (source_map, wasm) = CustomModuleEncode.encode module_ in
+      output_string oc wasm; close_out oc;
 
-    if !Flags.source_map then begin
-      let source_map_file = !out_file ^ ".map" in
-      let oc_ = open_out source_map_file in
-      output_string oc_ source_map; close_out oc_
-    end
+      if !Flags.source_map then begin
+        let source_map_file = out_filename ^ ".map" in
+        let oc_ = open_out source_map_file in
+        output_string oc_ source_map; close_out oc_
+      end
+    ) files
 
 let () =
   (*

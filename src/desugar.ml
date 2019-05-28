@@ -367,19 +367,16 @@ let declare_import imp_env (f, (prog:Syntax.prog))  =
      ; note = typ_note
      }
 
-let combine_files imp_env libraries progs : Syntax.prog =
+let combine_files imp_env libraries prog : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
-  { it = List.map (declare_import imp_env) libraries
-         @ List.concat (List.map (fun p -> p.it) progs)
+  { it = List.map (declare_import imp_env) libraries @ prog.Source.it
   ; at = no_region
-  ; note = match progs with
-           | [prog] -> prog.Source.note
-           | _ -> "all"
+  ; note = prog.Source.note
   }
 
 let transform p = prog p
 
-let transform_graph imp_env libraries progs =
-  prog (combine_files imp_env libraries progs)
+let transform_graph imp_env libraries p =
+  prog (combine_files imp_env libraries p)
 
