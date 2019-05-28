@@ -68,17 +68,17 @@ let find_type env id =
   match Env.find_opt id.it env.typs with
   | None -> error env id.at "unbound type identifier %s" id.it
   | Some t -> t
-let rec is_func env t =
+let rec as_func env t =
   match t.it with
-  | FuncT _ -> true, t
-  | VarT id -> is_func env (find_type env id)
-  | _ -> false, t
+  | FuncT _ -> Some t
+  | VarT id -> as_func env (find_type env id)
+  | _ -> None
 
-let rec is_serv env t =
+let rec as_serv env t =
   match t.it with
-  | ServT _ -> true, t
-  | VarT id -> is_serv env (find_type env id)
-  | _ -> false, t
+  | ServT _ -> Some t
+  | VarT id -> as_serv env (find_type env id)
+  | _ -> None
        
 let check_cycle env =
   Env.iter (fun x t ->
@@ -99,8 +99,7 @@ let check_cycle env =
 let rec check_typ env t =
   match t.it with
   | PrimT prim -> t
-  | VarT id ->
-     let _ = find_type env id in t
+  | VarT id -> ignore (find_type env id); t
   | FuncT (ms, t1, t2) ->
      let t1' = check_fields env t1 in
      let t2' = check_fields env t2 in
@@ -135,12 +134,10 @@ and check_meth env meth =
   let t' = check_typ env meth.it.meth in
   if env.pre then {var=meth.it.var; meth=t'} @@ meth.at
   else
-    match is_func env t' with
-    | false, t' ->
+    match as_func env t' with
+    | None ->
        error env meth.it.meth.at "%s is a non-function type\n %s" meth.it.var.it (string_of_typ t');
-    | true, {it=FuncT _; _} ->
-       {var=meth.it.var; meth=t'} @@ meth.at
-    | true, _ -> assert false
+    | Some _ -> {var=meth.it.var; meth=t'} @@ meth.at
 
 and check_meths env meths =
   let _, meths =
@@ -173,9 +170,8 @@ and check_decs env decs =
   let pre_env = adjoin env (gather_decs env decs) in
   let te = check_defs {pre_env with pre = true} decs in
   let env = env_of_scope env.msgs te in
-  let _ = check_cycle env in
-  let te = check_defs {env with pre = false} decs in
-  te
+  check_cycle env;
+  check_defs {env with pre = false} decs
     
 and gather_id dec =
   match dec.it with
@@ -194,13 +190,13 @@ let check_actor env actor_opt =
   match actor_opt with
   | None -> Env.empty
   | Some {it=ActorD (id, t); at; _} ->
-     (match is_serv env t with
-      | false, t' ->
-         error env at "%s is a non-service reference type\n %s" (string_of_typ t) (string_of_typ t')
-      | true, {it=ServT meths; _} ->
+     (match as_serv env t with
+      | None ->
+         error env at "%s is a non-service type\n %s" (string_of_typ t) (string_of_typ t)
+      | Some {it=ServT meths; _} ->
          let meths' = check_meths env meths in
          Env.singleton id.it (ServT (List.sort compare_meth meths') @@ at)
-      | true, _ -> assert false
+      | Some _ -> assert false
      )
   
 (* Programs *)
@@ -212,7 +208,7 @@ let check_prog scope prog : scope Diag.result =
         (fun prog ->
           let env = env_of_scope msgs scope in
           let te = check_decs env prog.it.decs in
-          let _ = check_actor (env_of_scope msgs te) prog.it.actor in
+          ignore (check_actor (env_of_scope msgs te) prog.it.actor);
           te
         )
         prog

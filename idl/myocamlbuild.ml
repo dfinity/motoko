@@ -8,7 +8,7 @@ let ocamlfind_query pkg =
     )
 
 let () = dispatch begin function
-                    | After_rules ->
-                        ocaml_lib ~extern:true ~dir:(ocamlfind_query "js_of_ocaml-compiler") "js_of_ocaml_compiler";
+                    | After_rules -> ()
+                    (* ocaml_lib ~extern:true ~dir:(ocamlfind_query "js_of_ocaml-compiler") "js_of_ocaml_compiler";*)
                     | _ -> ()
            end

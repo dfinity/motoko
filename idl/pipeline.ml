@@ -66,7 +66,7 @@ let check_prog check senv name prog
   let r = check senv prog in
   (match r with
    | Ok (scope, _) ->
-      print_stat_ve scope;
+      if !Flags.verbose then print_stat_ve scope;
    | Error _ -> ());
   r
 

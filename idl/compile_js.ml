@@ -7,6 +7,7 @@ let str ppf s = pp_print_string ppf s; pp_print_cut ppf ()
 let id ppf s = str ppf s.it; pp_print_cut ppf ()
 let space = pp_print_space             
 let kwd ppf s = str ppf s; space ppf ()
+let field_name ppf s = str ppf "'"; str ppf s.it; str ppf "'"; pp_print_cut ppf ()                
                 
 let rec concat ppf f env sep list =
   match list with
@@ -48,7 +49,7 @@ and pp_fields ppf env fs =
   
 and pp_field ppf env tf =
   pp_open_box ppf 1;
-  id ppf tf.it.name; kwd ppf ":"; pp_typ ppf env tf.it.typ;
+  field_name ppf tf.it.name; kwd ppf ":"; pp_typ ppf env tf.it.typ;
   pp_close_box ppf ()
 
 and pp_meth ppf env meth =

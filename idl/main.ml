@@ -8,7 +8,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | Compile | Run | Interact
+type mode = Default | Check | Compile
 
 let mode = ref Default
 let args = ref []
@@ -20,14 +20,11 @@ let set_mode m () =
   end;
   mode := m
 
-(*let compile_mode = ref Pipeline.WasmMode*)
 let out_file = ref ""
 
 let argspec = Arg.align
 [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
-  "-r", Arg.Unit (set_mode Run), " interpret programs";
-  "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
@@ -54,22 +51,12 @@ let process_files files : unit =
   | Default ->
      assert false
   | Check ->
-     let out = exit_on_failure (Pipeline.(compile_js_file (List.hd files))) in
-     Buffer.contents out |> print_endline
-  | _ -> assert false
-       (*
+     Flags.verbose := true;
+     let (_, msgs) = exit_on_failure (Pipeline.(check_file (List.hd files))) in
+     Diag.print_messages msgs
   | Compile ->
-    if !out_file = "" then begin
-      match files with
-      | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".js"
-      | ns -> eprintf "idl: no output file specified"; exit 1
-    end;
-    let module_name = Filename.remove_extension (Filename.basename !out_file) in
-    let module_ = exit_on_failure Pipeline.(compile_js_file files module_name) in
-    let oc = open_out !out_file in
-    let (source_map, wasm) = CustomModule.encode module_ in
-    output_string oc wasm; close_out oc;
-        *)
+     let out = exit_on_failure (Pipeline.(compile_js_file (List.hd files))) in
+     Buffer.contents out |> print_endline     
 
 let print_exn exn =
   Printf.printf "%!";
@@ -85,7 +72,7 @@ let () =
   Printexc.record_backtrace true;
   try
     Arg.parse argspec add_arg usage;
-    if !mode = Default then mode := (if !args = [] then Interact else Check);
+    if !mode = Default then mode := Compile;
     process_files !args
   with exn ->
     print_exn exn
