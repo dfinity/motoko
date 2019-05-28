@@ -773,14 +773,7 @@ and lub' lubs glbs t1 t2 =
       Async (lub' lubs glbs t1' t2')
     | Con _, _
     | _, Con _ ->
-      let s1, s2 = !str t1, !str t2 in
-      if s1 = s2 then t1 else
-        let c = Con.fresh (Printf.sprintf "@lub(%s, %s)" s1 s2) (Abs ([], Pre)) in
-        let t = Con (c, []) in
-        lubs := M.add (t2, t1) t (M.add (t1, t2) t !lubs);
-        let inner = lub' lubs glbs (normalize t1) (normalize t2) in
-        set_kind c (Def ([], inner));
-        inner
+      combine_con_parts t1 t2 "lub" lubs (lub' lubs glbs)
     | _ when eq t1 t2 -> t1
     | _ when sub t1 Shared && sub t2 Shared -> Shared
     | _ -> Any
@@ -843,14 +836,7 @@ and glb' lubs glbs t1 t2 =
       Async (glb' lubs glbs t1' t2')
     | Con _, _
     | _, Con _ ->
-      let s1, s2 = !str t1, !str t2 in
-      if s1 = s2 then t1 else
-        let c = Con.fresh (Printf.sprintf "@glb(%s, %s)" s1 s2) (Abs ([], Pre)) in
-        let t = Con (c, []) in
-        glbs := M.add (t2, t1) t (M.add (t1, t2) t !glbs);
-        let inner = glb' lubs glbs (normalize t1) (normalize t2) in
-        set_kind c (Def ([], inner));
-        inner
+      combine_con_parts t1 t2 "glb" glbs (glb' lubs glbs)
     | _ when eq t1 t2 -> t1
     | _ -> Non
 
@@ -873,17 +859,28 @@ and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_tags lubs glbs fs1' fs2'
 
 and combine_func_parts s c bs1 args1 res1 bs2 args2 res2 lubs glbs contra co =
-      let ts1 = open_binds bs1 in
-      let op = List.map (open_ ts1) in
-      let get_con = function | Con (c, []) -> c | _ -> assert false in
-      let cs = List.map get_con ts1 in
-      let cl = List.map (close cs) in
-      let combine_binds how =
-        List.map2 (fun b1 b2 -> {b1 with bound = how lubs glbs b1.bound b2.bound}) in
-      Func
-        (s, c, combine_binds contra bs1 bs2,
-         cl (List.map2 (contra lubs glbs) (op args1) (op args2)),
-         cl (List.map2 (co lubs glbs) (op res1) (op res2)))
+  let open List in
+  let ts1 = open_binds bs1 in
+  let op = map (open_ ts1) in
+  let get_con = function | Con (c, []) -> c | _ -> assert false in
+  let cs = map get_con ts1 in
+  let cl = map (close cs) in
+  let combine_binds =
+    map2 (fun b1 b2 -> {b1 with bound = contra lubs glbs b1.bound b2.bound}) in
+  Func
+    (s, c, combine_binds bs1 bs2,
+     cl (map2 (contra lubs glbs) (op args1) (op args2)),
+     cl (map2 (co lubs glbs) (op res1) (op res2)))
+
+and combine_con_parts t1 t2 naming re how =
+  let s1, s2 = !str t1, !str t2 in
+  if s1 = s2 then t1 else
+  let c = Con.fresh (Printf.sprintf "@%s(%s, %s)" naming s1 s2) (Abs ([], Pre)) in
+  let t = Con (c, []) in
+  re := M.add (t2, t1) t (M.add (t1, t2) t !re);
+  let inner = how (normalize t1) (normalize t2) in
+  set_kind c (Def ([], inner));
+  inner
 
 (* Pretty printing *)
 
