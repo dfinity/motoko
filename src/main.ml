@@ -50,6 +50,7 @@ let argspec = Arg.align
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
   "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
+  "-no-check-ir", Arg.Clear Flags.check_ir, " do not check intermediate code";
   "--disable-prelude", Arg.Clear Flags.prelude, " disable prelude";
 ]
 
