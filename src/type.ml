@@ -768,14 +768,7 @@ and lub' lubs glbs t1 t2 =
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
         when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
           List.(length args1 = length args2 && length res1 = length res2) ->
-      let ts1 = open_binds bs1 in
-      let op = List.map (open_ ts1) in
-      let get_con = function | Con (c, []) -> c | _ -> assert false in
-      let cs = List.map get_con ts1 in
-      let cl = List.map (close cs) in
-      Func (s1, c1, glb_binds lubs glbs bs1 bs2,
-            cl (List.map2 (glb' lubs glbs) (op args1) (op args2)),
-            cl (List.map2 (lub' lubs glbs) (op res1) (op res2)))
+      combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
     | Async t1', Async t2' ->
       Async (lub' lubs glbs t1' t2')
     | Con _, _
@@ -809,9 +802,6 @@ and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     | -1 -> f1 :: lub_tags lubs glbs fs1' fs2
     | +1 -> f2 :: lub_tags lubs glbs fs1 fs2'
     | _ -> {f1 with typ = lub' lubs glbs f1.typ f2.typ} :: lub_tags lubs glbs fs1' fs2'
-
-and lub_binds lubs glbs tbs1 tbs2 =
-  List.map2 (fun b1 b2 -> {b1 with bound = lub' lubs glbs b1.bound b2.bound}) tbs1 tbs2
 
 and glb' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
@@ -848,14 +838,7 @@ and glb' lubs glbs t1 t2 =
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
         when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
           List.(length args1 = length args2 && length res1 = length res2) ->
-      let ts1 = open_binds bs1 in
-      let op = List.map (open_ ts1) in
-      let get_con = function | Con (c, []) -> c | _ -> assert false in
-      let cs = List.map get_con ts1 in
-      let cl = List.map (close cs) in
-      Func (s1, c1, lub_binds lubs glbs bs1 bs2,
-            cl (List.map2 (lub' lubs glbs) (op args1) (op args2)),
-            cl (List.map2 (glb' lubs glbs) (op res1) (op res2)))
+      combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
     | Async t1', Async t2' ->
       Async (glb' lubs glbs t1' t2')
     | Con _, _
@@ -889,8 +872,18 @@ and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     | +1 -> glb_tags lubs glbs fs1 fs2'
     | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_tags lubs glbs fs1' fs2'
 
-and glb_binds lubs glbs tbs1 tbs2 =
-  List.map2 (fun b1 b2 -> {b1 with bound = glb' lubs glbs b1.bound b2.bound}) tbs1 tbs2
+and combine_func_parts s c bs1 args1 res1 bs2 args2 res2 lubs glbs contra co =
+      let ts1 = open_binds bs1 in
+      let op = List.map (open_ ts1) in
+      let get_con = function | Con (c, []) -> c | _ -> assert false in
+      let cs = List.map get_con ts1 in
+      let cl = List.map (close cs) in
+      let combine_binds how =
+        List.map2 (fun b1 b2 -> {b1 with bound = how lubs glbs b1.bound b2.bound}) in
+      Func
+        (s, c, combine_binds contra bs1 bs2,
+         cl (List.map2 (contra lubs glbs) (op args1) (op args2)),
+         cl (List.map2 (co lubs glbs) (op res1) (op res2)))
 
 (* Pretty printing *)
 
