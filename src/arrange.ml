@@ -98,6 +98,7 @@ and binop bo = match bo with
   | XorOp  -> Atom "XorOp"
   | ShLOp  -> Atom "ShiftLOp"
   | ShROp  -> Atom "ShiftROp"
+  | AShROp -> Atom "ArithmeticShiftROp"
   | RotLOp -> Atom "RotLOp"
   | RotROp -> Atom "RotROp"
   | CatOp  -> Atom "CatOp"

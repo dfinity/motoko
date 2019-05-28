@@ -66,7 +66,8 @@ let binop t op =
     | OrOp  -> word_binop Word8.or_ Word16.or_ Word32.or_ Word64.or_ p
     | XorOp -> word_binop Word8.xor Word16.xor Word32.xor Word64.xor p
     | ShLOp -> word_binop Word8.shl Word16.shl Word32.shl Word64.shl p
-    | ShROp -> word_binop Word8.shr_s Word16.shr_s Word32.shr_s Word64.shr_s p
+    | ShROp -> word_binop Word8.shr_u Word16.shr_u Word32.shr_u Word64.shr_u p
+    | AShROp -> word_binop Word8.shr_s Word16.shr_s Word32.shr_s Word64.shr_s p
     | RotLOp -> word_binop Word8.rotl Word16.rotl Word32.rotl Word64.rotl p
     | RotROp -> word_binop Word8.rotr Word16.rotr Word32.rotr Word64.rotr p
     | CatOp -> text_binop (^) p

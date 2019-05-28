@@ -87,6 +87,7 @@ type binop =
   | XorOp
   | ShLOp
   | ShROp
+  | AShROp
   | RotLOp
   | RotROp
   | CatOp                                       (* concatenation *)
