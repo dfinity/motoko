@@ -5,7 +5,7 @@
 * Define the semantics of imports
 * Allow separate compilation and (potentially) dynamic linking
 * Resolve [issue #400](https://github.com/dfinity-lab/actorscript/issues/400)
-
+* Refine [existing import design](https://dfinity.atlassian.net/wiki/spaces/AST/pages/147357892/ActorScript+library+import)
 
 ## Overview
 
