@@ -1,3 +1,4 @@
+module {
 /**
 
  Server language
@@ -145,3 +146,4 @@ type UpdateReq = {
   #inventory   : T.InventoryInfo ;
   #route       : T.RouteInfo ;
 } ;
+}

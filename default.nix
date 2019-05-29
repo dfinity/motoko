@@ -55,6 +55,7 @@ let commonBuildInputs = [
   nixpkgs.ocamlPackages.findlib
   nixpkgs.ocamlPackages.ocamlbuild
   nixpkgs.ocamlPackages.num
+  nixpkgs.ocamlPackages.stdint
   ocaml_wasm
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
@@ -69,15 +70,16 @@ let
     "test/"
     "test/.*Makefile.*"
     "test/quick.mk"
-    "test/(fail|run|run-dfinity|repl|ld)/"
-    "test/(fail|run|run-dfinity|repl|ld)/lib/"
-    "test/(fail|run|run-dfinity|repl|ld)/lib/dir/"
-    "test/(fail|run|run-dfinity|repl|ld)/.*.as"
-    "test/(fail|run|run-dfinity|repl|ld)/.*.sh"
-    "test/(fail|run|run-dfinity|repl|ld)/[^/]*.wat"
-    "test/(fail|run|run-dfinity|repl|ld)/[^/]*.c"
-    "test/(fail|run|run-dfinity|repl|ld)/ok/"
-    "test/(fail|run|run-dfinity|repl|ld)/ok/.*.ok"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/lib/"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/lib/dir/"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.as"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.sh"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.didl"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.wat"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.c"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/ok/"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/ok/.*.ok"
     "test/.*.sh"
   ];
   samples_files = [
@@ -149,30 +151,26 @@ rec {
   asc-bin = stdenv.mkDerivation {
     name = "asc-bin";
 
-    src = sourceByRegex ./. [
-      "src\/(lsp)?(.*\.(atd|ml|mli|mll|mlpack|mly))?$"
-      "src/Makefile.*"
-      "src/_tags"
-      "test/"
-      "test/node-test.js"
+    src = sourceByRegex ./src [
+      "Makefile.*"
+      "(lsp/)?(.*\.(atd|ml|mli|mll|mlpack|mly))?"
+      "_tags"
       ];
-
-    nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make -C src BUILD=native asc as-ld
+      make BUILD=native asc as-ld
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp src/asc $out/bin
-      cp src/as-ld $out/bin
+      cp asc $out/bin
+      cp as-ld $out/bin
     '';
   };
 
-  native = nixpkgs.symlinkJoin {
+  asc = nixpkgs.symlinkJoin {
     name = "asc";
     paths = [ asc-bin rts ];
     buildInputs = [ nixpkgs.makeWrapper ];
@@ -182,8 +180,8 @@ rec {
     '';
   };
 
-  native_test = stdenv.mkDerivation {
-    name = "native.test";
+  tests = stdenv.mkDerivation {
+    name = "tests";
 
     src = sourceByRegex ./. (
       test_files ++
@@ -191,7 +189,8 @@ rec {
     );
 
     buildInputs =
-      [ native
+      [ asc
+        idlc
         ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
@@ -206,6 +205,7 @@ rec {
         ${llvmEnv}
         export ASC=asc
         export AS_LD=as-ld
+        export IDLC=idlc
         asc --version
         make -C samples all
       '' +
@@ -227,11 +227,12 @@ rec {
       oldAttrs.buildPhase;
     installPhase =
       oldAttrs.installPhase + ''
-      mv src/ $out/src
+      # The coverage report needs access to sources, including _build/parser.ml
+      cp -r . $out/src
       '';
   });
 
-  native-coverage = nixpkgs.symlinkJoin {
+  asc-coverage = nixpkgs.symlinkJoin {
     name = "asc-covergage";
     paths = [ asc-bin-coverage rts ];
     buildInputs = [ nixpkgs.makeWrapper ];
@@ -250,7 +251,7 @@ rec {
     );
 
     buildInputs =
-      [ native-coverage
+      [ asc-coverage
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -264,7 +265,7 @@ rec {
       ${llvmEnv}
       export ASC=asc
       export AS_LD=as-ld
-      ln -vs ${native-coverage}/src src
+      ln -vs ${asc-coverage}/src src
       make -C test coverage
       '';
 
@@ -288,22 +289,47 @@ rec {
     ];
 
     buildPhase = ''
-      make -C src asc.js
+      make asc.js
     '';
 
     installPhase = ''
       mkdir -p $out
-      cp -v src/asc.js $out
+      cp -v asc.js $out
       cp -vr ${rts}/rts $out
     '';
 
     doInstallCheck = true;
 
     installCheckPhase = ''
-      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
+      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv ${./test/node-test.js}
     '';
 
   });
+
+  idlc = stdenv.mkDerivation {
+    name = "idlc";
+
+    src = sourceByRegex ./idl [
+      "Makefile.*"
+      ".*.ml"
+      ".*.mli"
+      ".*.mly"
+      ".*.mll"
+      ".*.mlpack"
+      "_tags"
+      ];
+
+    buildInputs = commonBuildInputs;
+
+    buildPhase = ''
+      make BUILD=native idlc
+    '';
+
+    installPhase = ''
+      mkdir -p $out/bin
+      cp idlc $out/bin
+    '';
+  };
 
   wasm = ocaml_wasm;
   dvm = real-dvm;
@@ -384,7 +410,7 @@ rec {
     );
 
     buildInputs = [
-      native
+      asc
     ];
 
     doCheck = true;
@@ -403,9 +429,10 @@ rec {
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
-      native
+      asc
       js
-      native_test
+      idlc
+      tests
       coverage-report
       rts
       stdlib-reference
@@ -425,10 +452,11 @@ rec {
     # https://github.com/NixOS/nix/issues/955
     #
 
-    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != native) (
+    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != idlc) (
       asc-bin.buildInputs ++
       rts.buildInputs ++
-      native_test.buildInputs ++
+      idlc.buildInputs ++
+      tests.buildInputs ++
       users-guide.buildInputs ++
       [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
     ));

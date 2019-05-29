@@ -4,6 +4,7 @@ all:
 	$(MAKE) -C run-dfinity
 	$(MAKE) -C repl
 	$(MAKE) -C ld
+	$(MAKE) -C idl
 
 MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPROCESSORS_ONLN) --keep-going
 
@@ -12,6 +13,7 @@ quick:
 	$(MAKE_PAR) -C run quick
 	$(MAKE_PAR) -C repl quick
 	$(MAKE_PAR) -C ld quick
+	$(MAKE_PAR) -C idl quick
 
 parallel: quick
 	$(MAKE_PAR) -C run-dfinity quick
@@ -29,14 +31,13 @@ coverage:
 	bisect-ppx-report -I ../src/_build/ -html coverage/ _coverage/bisect*.out
 	rm -rf _coverage
 
-
-
 accept:
 	$(MAKE) -C fail accept
 	$(MAKE) -C run accept
 	$(MAKE) -C run-dfinity accept
 	$(MAKE) -C repl accept
 	$(MAKE) -C ld accept
+	$(MAKE) -C idl accept
 
 clean:
 	$(MAKE) -C fail clean
@@ -44,5 +45,6 @@ clean:
 	$(MAKE) -C run-dfinity clean
 	$(MAKE) -C repl clean
 	$(MAKE) -C ld clean
+	$(MAKE) -C idl clean
 
 .PHONY: coverage
