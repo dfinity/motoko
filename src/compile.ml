@@ -1339,12 +1339,6 @@ module UnboxedSmallWord = struct
     G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
     msb_adjust ty
 
-  (* Kernel for arithmetic (signed) shift, according to the word invariant. *)
-  let shrs_kernel ty =
-    lsb_adjust ty ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-    sanitize_word_result ty
-
   (* Kernel for testing a bit position, according to the word invariant. *)
   let btst_kernel env ty =
     let (set_b, get_b) = new_local env "b"
@@ -1448,7 +1442,7 @@ sig
   (* literals *)
   val compile_lit : E.t -> Big_int.big_int -> G.t
 
-  (* arithmetics *)
+  (* arithmetic *)
   val compile_abs : E.t -> G.t
   val compile_neg : E.t -> G.t
   val compile_add : E.t -> G.t
@@ -4436,10 +4430,15 @@ let rec compile_binop env t op =
   | Type.(Prim (Word8|Word16|Word32 as ty)),  ShLOp -> UnboxedSmallWord.(
      lsb_adjust ty ^^ clamp_shift_amount ty ^^
      G.i (Binary (Wasm.Values.I32 I32Op.Shl)))
-  | Type.(Prim Word64),                       ShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrU))
-  | Type.(Prim (Word8|Word16|Word32 as ty)),  ShROp -> UnboxedSmallWord.(
+  | Type.(Prim Word64),                       UShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrU))
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  UShROp -> UnboxedSmallWord.(
      lsb_adjust ty ^^ clamp_shift_amount ty ^^
      G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+     sanitize_word_result ty)
+  | Type.(Prim Word64),                       SShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrS))
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  SShROp -> UnboxedSmallWord.(
+     lsb_adjust ty ^^ clamp_shift_amount ty ^^
+     G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
      sanitize_word_result ty)
   | Type.(Prim Word64),                       RotLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
   | Type.Prim Type.                  Word32,  RotLOp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
@@ -4701,10 +4700,6 @@ and compile_exp (env : E.t) ae exp =
            in match p with
              | "Array.init" -> compile_kernel_as SR.Vanilla (Arr.init env)
              | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Arr.tabulate env)
-             | "shrs8" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.shrs_kernel Type.Word8)
-             | "shrs16" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.shrs_kernel Type.Word16)
-             | "shrs" -> compile_kernel_as SR.UnboxedWord32 (G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
-             | "shrs64" -> compile_kernel_as SR.UnboxedWord64 (G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
              | "btst8" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word8)
              | "btst16" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word16)
              | "btst" -> compile_kernel_as SR.UnboxedWord32 (UnboxedSmallWord.btst_kernel env Type.Word32)
