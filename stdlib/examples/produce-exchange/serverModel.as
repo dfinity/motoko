@@ -1,4 +1,4 @@
-
+module {
 /**
 
 [Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
@@ -1974,3 +1974,4 @@ than the MVP goals, however.
   };
 
 };
+}

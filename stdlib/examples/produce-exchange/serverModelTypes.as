@@ -1,3 +1,4 @@
+module {
 /**
 
 [Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
@@ -337,3 +338,4 @@ type ReservedRouteDoc = {
 type ReservedRouteTable = DocTable<T.ReservedRouteId, ReservedRouteDoc, T.ReservedRouteInfo>;
 
 type ReservedRouteMap = Map<T.ReservedRouteId, ReservedRouteDoc>;
+}
