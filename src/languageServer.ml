@@ -35,7 +35,6 @@ let send (label: string) (out: string): unit =
 let send_response: string -> unit = send "response"
 let send_notification: string -> unit = send "notification"
 
-(* TODO: pass type, use a variant *)
 let show_message (typ : Lsp.MessageType.t) (msg: string): unit =
   let params =
     `WindowShowMessage
