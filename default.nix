@@ -51,6 +51,7 @@ let commonBuildInputs = [
   nixpkgs.ocamlPackages.findlib
   nixpkgs.ocamlPackages.ocamlbuild
   nixpkgs.ocamlPackages.num
+  nixpkgs.ocamlPackages.stdint
   ocaml_wasm
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
@@ -144,31 +145,26 @@ rec {
   asc-bin = stdenv.mkDerivation {
     name = "asc-bin";
 
-    src = sourceByRegex ./. [
-      "src/"
-      "src/Makefile.*"
-      "src/.*.ml"
-      "src/.*.mli"
-      "src/.*.mly"
-      "src/.*.mll"
-      "src/.*.mlpack"
-      "src/_tags"
-      "test/"
-      "test/node-test.js"
+    src = sourceByRegex ./src [
+      "Makefile.*"
+      ".*.ml"
+      ".*.mli"
+      ".*.mly"
+      ".*.mll"
+      ".*.mlpack"
+      "_tags"
       ];
-
-    nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make -C src BUILD=native asc as-ld
+      make BUILD=native asc as-ld
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp src/asc $out/bin
-      cp src/as-ld $out/bin
+      cp asc $out/bin
+      cp as-ld $out/bin
     '';
   };
 
@@ -288,22 +284,47 @@ rec {
     ];
 
     buildPhase = ''
-      make -C src asc.js
+      make asc.js
     '';
 
     installPhase = ''
       mkdir -p $out
-      cp -v src/asc.js $out
+      cp -v asc.js $out
       cp -vr ${rts}/rts $out
     '';
 
     doInstallCheck = true;
 
     installCheckPhase = ''
-      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
+      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv ${./test/node-test.js}
     '';
 
   });
+
+  idlc = stdenv.mkDerivation {
+    name = "idlc";
+
+    src = sourceByRegex ./idl [
+      "Makefile.*"
+      ".*.ml"
+      ".*.mli"
+      ".*.mly"
+      ".*.mll"
+      ".*.mlpack"
+      "_tags"
+      ];
+
+    buildInputs = commonBuildInputs;
+
+    buildPhase = ''
+      make BUILD=native idlc
+    '';
+
+    installPhase = ''
+      mkdir -p $out/bin
+      cp idlc $out/bin
+    '';
+  };
 
   wasm = ocaml_wasm;
   dvm = real-dvm;
@@ -405,6 +426,7 @@ rec {
     constituents = [
       native
       js
+      idlc
       native_test
       coverage-report
       rts
