@@ -527,7 +527,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_to_word64_signed_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_isneg" [I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_count_bits" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_2complement_bits" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lt" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_gt" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_le" [I32Type; I32Type] [I32Type];
@@ -540,7 +540,10 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_pow" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_neg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lsh" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type]
+    E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_sleb128_size" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type]
 
   let system_exports env =
     E.add_export env (nr {
@@ -1601,16 +1604,23 @@ module BigNumLibtommmath : BigNumType = struct
   let from_signed_word32 env = E.call_import env "rts" "bigint_of_word32_signed"
   let _from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
 
-  (* TODO: Actually change binary encoding *)
-  let compile_data_size env = G.i Drop ^^ compile_unboxed_const 8l
+  let compile_data_size env =
+    E.call_import env "rts" "bigint_sleb128_size"
+
   let compile_store_to_data_buf env =
-    _truncate_to_word64 env ^^
-    G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
-    compile_unboxed_const 8l (* 64 bit for now *)
+    let (set_buf, get_buf) = new_local env "buf" in
+    let (set_n, get_n) = new_local env "n" in
+    set_n ^^ set_buf ^^
+
+    get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
+    get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
+
   let compile_load_from_data_buf env =
-    G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
-    from_word64 env ^^
-    compile_unboxed_const 8l (* 64 bit for now *)
+    E.call_import env "rts" "bigint_sleb128_decode" ^^
+    let (set_n, get_n) = new_local env "n" in
+    set_n ^^
+    get_n ^^
+    get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
 
   let compile_lit env n =
     let limb_size = 31 in
@@ -1668,7 +1678,7 @@ module BigNumLibtommmath : BigNumType = struct
     G.i (Call (nr (E.built_in env fn)))
 
   let _fits_signed_bits env bits =
-    G.i (Call (nr (E.built_in env ("rts_bigint_count_bits")))) ^^
+    G.i (Call (nr (E.built_in env ("rts_bigint_2complement_bits")))) ^^
     compile_unboxed_const (Int32.of_int (bits - 1)) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU))
   let _fits_unsigned_bits env bits =
@@ -2847,7 +2857,7 @@ module Serialization = struct
         Opt.is_some env ^^
         G.if_ (ValBlockType None) (get_x ^^ Opt.project ^^ size env t) G.nop
       | Variant vs ->
-        inc_data_size (compile_unboxed_const 4l) ^^ (* one word tag *)
+        inc_data_size (compile_unboxed_const Heap.word_size) ^^ (* one word tag *)
         List.fold_right (fun {lab = l; typ = t} continue ->
             get_x ^^
             Variant.test_is env l ^^

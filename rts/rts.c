@@ -349,3 +349,80 @@ export as_ptr bigint_lsh(as_ptr a, int b) {
 export int bigint_count_bits(as_ptr a) {
   return mp_count_bits(BIGINT_PAYLOAD(a));
 }
+
+/* SLEB128 Encoding-decoding */
+export int bigint_2complement_bits(as_ptr n) {
+  if (mp_isneg(BIGINT_PAYLOAD(n))) {
+    mp_int tmp;
+    CHECK(mp_init_copy(&tmp,BIGINT_PAYLOAD(n)));
+    CHECK(mp_incr(&tmp));
+    return 1 + mp_count_bits(&tmp);
+  } else {
+    return 1 + mp_count_bits(BIGINT_PAYLOAD(n));
+  }
+}
+
+export int bigint_sleb128_size(as_ptr n) {
+  int x = bigint_2complement_bits(n);
+  return ((x + 6) / 7); // divide by 7, round up
+}
+
+export void bigint_sleb128_encode(as_ptr n, unsigned char *buf) {
+  mp_int tmp;
+  CHECK(mp_init_copy(&tmp,BIGINT_PAYLOAD(n)));
+
+  if (mp_isneg(&tmp)) {
+    // turn negative numbers into the two's complement of the right size
+    int bytes = bigint_sleb128_size(n);
+    mp_int big;
+    CHECK(mp_init(&big));
+    CHECK(mp_2expt(&big, 7*bytes));
+    CHECK(mp_add(&tmp, &big, &tmp));
+  }
+
+  // now the number should be positive
+  while (true) {
+    buf[0] = (char)(mp_get_int(&tmp)); // get low bits
+    CHECK(mp_div_2d(&tmp, 7, &tmp, NULL));
+    if (mp_iszero(&tmp)) {
+      // we are done. high bit should be cleared anyways
+      return;
+    } else {
+      // more bytes to come, set high bit and continue
+      buf[0] |= 1<<7;
+      buf++;
+    }
+  }
+}
+
+export as_ptr bigint_sleb128_decode(unsigned char *buf) {
+  int i = 0;
+  // zoom to the end
+  while (buf[i] & (1<<7)) i++;
+  int bytes = i+1;
+
+  // do not accept overlong encodings
+  if (buf[i] == 1<<7) bigint_trap();
+
+  as_ptr r = bigint_alloc();
+  CHECK(mp_init(BIGINT_PAYLOAD(r)));
+  while (true) {
+    CHECK(mp_add_d(BIGINT_PAYLOAD(r), buf[i] & ((1<<7)-1), BIGINT_PAYLOAD(r)));
+    if (i > 0) {
+      CHECK(mp_mul_2d(BIGINT_PAYLOAD(r), 7, BIGINT_PAYLOAD(r)));
+      i--;
+    } else {
+      break;
+    }
+  }
+  // Now adjust sign if necessary
+  if (buf[bytes-1] & (1<<6)) {
+    // negative number
+    mp_int big;
+    CHECK(mp_init(&big));
+    CHECK(mp_2expt(&big, 7*bytes));
+    CHECK(mp_sub(BIGINT_PAYLOAD(r), &big, BIGINT_PAYLOAD(r)));
+  }
+
+  return r;
+}
