@@ -32,7 +32,9 @@ This has two advantages over both of these:
 
 * It allows actor unit source files to play the dual role as a library module for import into a test program.
 
-The proposal also has some flavour of C, in that imports now have a special status and can prefix the definition of the actor in an actor unit. (Like with B vs C, we could also extend this proposal further to allow static declarations in an actor unit. But for now I suggest to remain conservative and forbid that.)
+The proposal also has some flavour of C, in that imports now have a special status and can prefix the definition of the actor in an actor unit.
+As a consequence, unlike with B, it is possible to name parameter types of an actor class, as long as they are imported from a library.
+(Like with B vs C, we could also extend this proposal further to allow static declarations in an actor unit. But for now I suggest to remain conservative and forbid that.)
 
 
 ## Syntax and Semantics
@@ -85,35 +87,75 @@ An actor unit must contain exactly one field declaration, which is either a mani
 
 The actor or actor class may be named or given as an anonymous expression. It may also be either public or private. Writing it as a public named declaration allows the same unit source file to be viewed and compiled as a library module, e.g., for the purpose of importing it into a unit test.
 
-Even if named, an actor class defining an actor unit is not allowed to refer to itself recursively. (If necessary, this restriction may be lifted later.)
+Even if named, an actor class defining an actor unit is not allowed to refer to its own class recursively.
+The defined actor can still bind and refer to a self variable for the resulting actor.
+Similarly, the actor short-hand can be recursive.
+(That is, `actor class C() = this {...this...}` and `actor this {...this...}` are allowed, but `actor class C() = {...C...}` is not. If needs be, this restriction may be lifted later.)
 
 
 ## Compilation
 
-All units are compiled to Wasm modules.
+The compilation scheme uses the natural mechanisms in Wasm to express units as modules.
+That enables the best possible integration and interoperation with the wider Wasm eco system and existing tools.
+(However, it does not automatically enable functional interoperability with other languages, since AS types typically have a representation that cannot directly be interpreted externally. For this, additional interop support would be needed, which is beyond the scope of this proposal.)
+
+Consequently, all units are compiled to Wasm modules.
 Their public fields become Wasm exports.
 These are either Wasm functions, for public fields of function type,
 or Wasm globals, for all others.
 Compiling arbitrary closures into exported Wasm functions may require eta-expanding the closure and storing its environment into an internal global.
 
-Imports expect the import URL to resolve to a Wasm module and link its exports accordingly.
+A Wasm module compiled from AS contains a Dfinity-relevant custom section as well as an AS-specific custom section describing the AS type of the module or actor.
+
+Imports expect the import URL to resolve to a Wasm module compiled from AS and link its exports accordingly.
 An import that is not destructured via a module pattern is reified into a module object at the import site.
 
 Programs and libraries are compiled exactly the same.
-The above scheme is all that is needed.
+That is, both create dynlib sections.
 
 Actors are different.
 Their exported functions are wrapped into methods de/serialising their arguments and results according to the IDL epcification.
 Furthermore, they are complemented with system exports for initialising the actor (given the actor class'es arguments) and for in/externalising the actor's state for upgrades (details TBD).
 
-We may want to mark the difference between libraries and actors in a custom section.
+(For release 0.5, we do not yet intend to support separate compilation, and imports will resolve to source files compiled in a whole program manner instead.)
 
 
 ### Compiler
 
 We need two compilation modes, one for programs/libraries, the other for actors. We could differentiate based on file extensions, but that would get in the way of dual-using an actor source file as a library.
 
-Hence we will need different compiler mode flags, e.g.:
+Hence we will need different compiler mode flags, e.g. strawman:
 
 * `-c`: compile as program or library
 * `-a`: compile as actor
+
+
+### Execution and Dynamic Linking
+
+A compiled program is executed by instantiating its module in a suitable engine.
+In general, it will import other library modules, which in turn may import modules.
+They are instantiated and linked in some topological order.
+Fortunately, the specific order is not observable and does not matter, due to the requirement that libraries be static.
+
+A deployed actor, when instantiated on the platform, proceeds similarly, except that the libraries would come from either the same canister or potentially an on-chain library repository.
+
+(For release 1.0, we do not yet intend to support dynamic linking of library modules. Instead, programs or actors must be linked statically.)
+
+
+### Static Linking
+
+Compiled modules following the platform conventions can also be linked *statically*, by merging multiple modules, wiring up export/import edges between them, and creating a single module from them.
+Libraries imported multiple times will only be included once.
+
+Details TBD. This may work only for linking libraries into programs or actors. Ideally, the linking tool would be language-agnostic.
+
+
+## Roadmap
+
+Possible roadmap sketch:
+
+* v0.5: support unit and import syntax; support whole-program compilation via loading imports from source; no separate compilation, no linking
+
+* v1.0: support AS type custom section; support incremental compilation and static linking of libraries; no dynamic linking
+
+* v1.5: support dynamic linking?
