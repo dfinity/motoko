@@ -17,33 +17,41 @@ let response_result_message (id : int) (result : Lsp_t.response_result) : Lsp_t.
 
 (* let response_error_message (id : int) (error : Lsp_t.response_error) : Lsp_t.response_message = *)
 
-
-let oc: out_channel = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"
-let log_to_file (lbl: string) (txt: string): unit =
+module Channel = struct
+  let log_to_file (oc : out_channel) (lbl : string) (txt : string) : unit =
     Printf.fprintf oc "[%s] %s\n" lbl txt;
     flush oc
 
-let send (label: string) (out: string): unit =
-  let cl = "Content-Length: " ^ string_of_int (String.length out) in
-  print_string cl;
-  print_string "\r\n\r\n";
-  print_string out;
-  flush stdout;
-  log_to_file (label ^ "_length") cl;
-  log_to_file label out
+  let send (oc : out_channel) (label : string) (out : string) : unit =
+    let cl = "Content-Length: " ^ string_of_int (String.length out) in
+    print_string cl;
+    print_string "\r\n\r\n";
+    print_string out;
+    flush stdout;
+    log_to_file oc (label ^ "_length") cl;
+    log_to_file oc label out
 
-let send_response: string -> unit = send "response"
-let send_notification: string -> unit = send "notification"
+  let send_response (oc : out_channel) : string -> unit = send oc "response"
+  let send_notification (oc : out_channel) : string -> unit = send oc "notification"
 
-let show_message (typ : Lsp.MessageType.t) (msg: string): unit =
-  let params =
-    `WindowShowMessage
-      (Lsp_t.
-        { window_show_message_params_type_ = typ
-        ; window_show_message_params_message = msg
-        }) in
-  let notification = notification params in
-  send_notification (Lsp_j.string_of_notification_message notification)
+  let show_message (oc : out_channel) (typ : Lsp.MessageType.t) (msg: string): unit =
+    let params =
+      `WindowShowMessage
+        (Lsp_t.
+          { window_show_message_params_type_ = typ
+          ; window_show_message_params_message = msg
+          }) in
+    let notification = notification params in
+    send_notification oc (Lsp_j.string_of_notification_message notification)
+
+  let publish_diagnostics (oc : out_channel) (uri: Lsp_t.document_uri) (diags: Lsp_t.diagnostic list): unit =
+    let params = `PublishDiagnostics (Lsp_t.
+      { publish_diagnostics_params_uri = uri
+      ; publish_diagnostics_params_diagnostics = diags
+      }) in
+    let notification = notification params in
+    send_notification oc (Lsp_j.string_of_notification_message notification)
+end
 
 let position_of_pos (pos: Source.pos): Lsp_t.position = Lsp_t.
   (* The LSP spec requires zero-based positions *)
@@ -70,17 +78,16 @@ let diagnostics_of_message (msg: Diag.message): Lsp_t.diagnostic = Lsp_t.
   ; diagnostic_relatedInformation = None
   }
 
-let publish_diagnostics (uri: Lsp_t.document_uri) (diags: Lsp_t.diagnostic list): unit =
-  let params = `PublishDiagnostics (Lsp_t.
-    { publish_diagnostics_params_uri = uri
-    ; publish_diagnostics_params_diagnostics = diags
-    }) in
-  let notification = notification params in
-  send_notification (Lsp_j.string_of_notification_message notification)
-
 let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
 
 let start () =
+  let oc: out_channel = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"; in
+
+  let log_to_file = Channel.log_to_file oc in
+  let publish_diagnostics = Channel.publish_diagnostics oc in
+  let send_response = Channel.send_response oc in
+  let show_message = Channel.show_message oc in
+
   let client_capabilities = ref None in
 
   let rec loop () =
