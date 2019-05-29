@@ -1195,7 +1195,8 @@ module BoxedWord = struct
 
   (* from/to SR.UnboxedWord64 *)
   let to_word64 env = G.nop
-  let from_word64 env = G.nop
+  let from_word64 env = G.nop (* TODO trap if negative *)
+  let from_signed_word64 env = G.nop
   let to_word32 env = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
   let from_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   let from_signed_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
@@ -1420,6 +1421,7 @@ sig
   val from_word64 : E.t -> G.t
 
   (* signed word to SR.Vanilla *)
+  val from_signed_word64 : E.t -> G.t
   val from_signed_word32 : E.t -> G.t
 
   (* buffers *)
@@ -1602,7 +1604,7 @@ module BigNumLibtommmath : BigNumType = struct
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
   let from_signed_word32 env = E.call_import env "rts" "bigint_of_word32_signed"
-  let _from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
+  let from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
 
   let compile_data_size env =
     E.call_import env "rts" "bigint_sleb128_size"
@@ -4653,11 +4655,15 @@ and compile_exp (env : E.t) ae exp =
          compile_exp_as env ae SR.UnboxedWord32 e ^^
          Prim.prim_word32toInt env
 
-       | "Word64->Nat"
-       | "Word64->Int" ->
+       | "Word64->Nat" ->
          SR.Vanilla,
          compile_exp_as env ae SR.UnboxedWord64 e ^^
          BigNum.from_word64 env
+
+       | "Word64->Int" ->
+         SR.Vanilla,
+         compile_exp_as env ae SR.UnboxedWord64 e ^^
+         BigNum.from_signed_word64 env
 
        | "Word32->Char" ->
          SR.Vanilla,
