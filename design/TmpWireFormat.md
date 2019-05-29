@@ -40,10 +40,12 @@ General argument format (without references)
 
 Arguments with a type that does not mention any reference types (no actors, no
 shared functions), are represented as a `databuf`. This `databuf` is generated
-by an in-order traversal of the data type.  All numbers are fixed-width and in
-little endian format.
+by an in-order traversal of the data type.  All numbers are in little endian
+format.
 
- * A `Nat`, `Int` or `Word64` is represented by 8 bytes.
+ * A `Nat` or `Int` is represented as a [SLEB128-encoded number] (in the
+   shortest possible form).
+ * A `Word64` is represented by 8 bytes.
  * A `Word32` is represented by 4 bytes.
  * A `Word16` is represented by 2 bytes.
  * A `Word8` is represented by 1 byte.
@@ -73,6 +75,8 @@ is represented as
 ```
 00 01 04 00 00 00 00 00 00 00 01 21
 ```
+
+[SLEB128-encoded number](https://en.wikipedia.org/wiki/LEB128)
 
 General argument format (with references)
 -----------------------------------------
