@@ -48,6 +48,8 @@ The syntax of a unit -- and therefore an AS source file -- is a sequence of *imp
 <field>  ::= public? <dec>
 ```
 
+Imports are no longer allowed anywhere else.
+
 Each import binds the identifiers in its *import pattern*. If the pattern is a plain `<id>` then the contents of the imported unit is reified as a module object bound to that id. If the pattern is a *destructuring* import pattern then the respective public fields of the unit are bound to the respective label identifiers.
 
 As a crucial restriction, a unit that has at least one public field must be *static*, see below.
