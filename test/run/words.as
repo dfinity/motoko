@@ -50,8 +50,8 @@ func checkpointJuliett() {};
     printW64ln(a << b);
     printW64ln(a >> b);
     printW64ln(-5225319197819536385 >> 4); // 0b1011011101111011111011111101111111011111111011111111101111111111L == -5225319197819536385L --> 826339054743125951L
-    printW64ln(d >>> 3);
-    printW64ln(-5225319197819536385 >>> 4); // 0b1011011101111011111011111101111111011111111011111111101111111111L == -5225319197819536385L --> -326582449863721025L
+    printW64ln(d +>> 3);
+    printW64ln(-5225319197819536385 +>> 4); // 0b1011011101111011111011111101111111011111111011111111101111111111L == -5225319197819536385L --> -326582449863721025L
     printW64ln(c <<> b);
     printW64ln(c <>> b);
     printW64ln(popcntWord64 d); // -15 = 0xfffffffffffffff1 = 0b1111_..._1111_1111_0001 (population = 61)
@@ -106,8 +106,8 @@ func checkpointJuliett() {};
     printW32ln(a << b);
     printW32ln(a >> b);
     printW32ln(-1216614433 >> 4); // 0b10110111011110111110111111011111l == -1216614433l --> 192397053l
-    printW32ln(d >>> 3);
-    printW32ln(-1216614433 >>> 4); // 0b10110111011110111110111111011111l == -1216614433l --> -76038403
+    printW32ln(d +>> 3);
+    printW32ln(-1216614433 +>> 4); // 0b10110111011110111110111111011111l == -1216614433l --> -76038403
     printW32ln(c <<> b);
     printW32ln(c <>> b);
     printW32ln(popcntWord32 d); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
@@ -174,7 +174,7 @@ func checkpointJuliett() {};
 // CHECK-NEXT: call $printW16ln
     printW16ln(a >> b);
     printW16ln(d >> 3); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (shifted = 0b0001_1111_1111_1110 = 8190)
-    printW16ln(d >>> 3); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (shifted = 0b1111_1111_1111_1110 = -2)
+    printW16ln(d +>> 3); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (shifted = 0b1111_1111_1111_1110 = -2)
 
 // CHECK: call $checkpointFoxtrot
    checkpointFoxtrot();
@@ -252,7 +252,7 @@ func checkpointJuliett() {};
 // CHECK-NEXT: call $printW8ln
     printW8ln(a >> b);
     printW8ln(d >> 3); // -15 = 0xf1 = 0b1111_0001 (shifted = 0b0001_1110 = 30)
-    printW8ln(d >>> 3); // -15 = 0xf1 = 0b1111_0001 (shifted = 0b1111_1110 = -2)
+    printW8ln(d +>> 3); // -15 = 0xf1 = 0b1111_0001 (shifted = 0b1111_1110 = -2)
 
 // CHECK: call $checkpointJuliett
     checkpointJuliett();
