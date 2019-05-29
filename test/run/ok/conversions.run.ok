@@ -8,3 +8,68 @@
 -2147483648
 -2
 -1
+prelude:72.75-72.76: internal error, Failure("int_of_big_int")
+
+Last environment:
+@new_async = func
+@text_of_Bool = func
+@text_of_Int = func
+@text_of_Nat = func
+@text_of_Text = func
+@text_of_array = func
+@text_of_array_mut = func
+@text_of_option = func
+@text_of_variant = func
+Array_init = func
+Array_tabulate = func
+abs = func
+btstWord16 = func
+btstWord32 = func
+btstWord64 = func
+btstWord8 = func
+charToText = func
+charToWord32 = func
+clzWord16 = func
+clzWord32 = func
+clzWord64 = func
+clzWord8 = func
+ctzWord16 = func
+ctzWord32 = func
+ctzWord64 = func
+ctzWord8 = func
+decodeUTF8 = func
+hashInt = func
+ignore = func
+intToWord16 = func
+intToWord32 = func
+intToWord64 = func
+intToWord8 = func
+n = 9_223_372_036_854_775_807
+natToWord16 = func
+natToWord32 = func
+natToWord64 = func
+natToWord8 = func
+popcntWord16 = func
+popcntWord32 = func
+popcntWord64 = func
+popcntWord8 = func
+print = func
+printChar = func
+printInt = func
+range = func
+revrange = func
+rts_version = func
+shrsWord16 = func
+shrsWord32 = func
+shrsWord64 = func
+shrsWord8 = func
+word16ToInt = func
+word16ToNat = func
+word32ToChar = func
+word32ToInt = func
+word32ToNat = func
+word64ToInt = func
+word64ToNat = func
+word8ToInt = func
+word8ToNat = func
+
