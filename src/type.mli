@@ -27,9 +27,9 @@ and typ =
   | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
+  | Variant of field list                     (* variant *)
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
-  | Variant of (lab * typ) list               (* variant *)
   | Tup of typ list                           (* tuple *)
   | Func of sharing * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)
@@ -48,7 +48,6 @@ and con = kind Con.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
-
 
 
 (* Short-hands *)
@@ -76,10 +75,11 @@ val is_func : typ -> bool
 val is_async : typ -> bool
 val is_mut : typ -> bool
 val is_serialized : typ -> bool
+val is_typ : typ -> bool
 
 val as_prim : prim -> typ -> unit
 val as_obj : typ -> obj_sort * field list
-val as_variant : typ -> (lab * typ) list
+val as_variant : typ -> field list
 val as_array : typ -> typ
 val as_opt : typ -> typ
 val as_tup : typ -> typ list
@@ -90,6 +90,7 @@ val as_async : typ -> typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
 val as_serialized : typ -> typ
+val as_typ : typ -> con
 
 val as_prim_sub : prim -> typ -> unit
 val as_obj_sub : string -> typ -> obj_sort * field list
@@ -102,28 +103,19 @@ val as_func_sub : sharing -> int -> typ -> sharing * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : typ -> typ
 
-(* N-ary argument/result sequences *)
+
+(* Argument/result sequences *)
 
 val seq : typ list -> typ
 val as_seq : typ -> typ list
-val inst_func_type : typ -> sharing -> typ list -> (typ * typ)
 
-(* Field lookup, namespace sensitive *)
 
+(* Fields *)
+
+val lookup_val_field : string -> field list -> typ option
 val lookup_typ_field : string -> field list -> con option
 
-val lookup_field : string -> field list -> typ option
-
-(* Field ordering *)
-
 val compare_field : field -> field -> int
-
-val map_constr_typ : (typ -> typ) -> (lab * typ) list -> (lab * typ) list
-val compare_summand : (lab * typ) -> (lab * typ) -> int
-
-val span : typ -> int option
-
-
 
 
 (* Constructors *)
@@ -132,6 +124,7 @@ val set_kind : con -> kind -> unit
 
 module ConSet : Dom.S with type elt = con
 
+
 (* Normalization and Classification *)
 
 val normalize : typ -> typ
@@ -139,8 +132,17 @@ val promote : typ -> typ
 
 exception Unavoidable of con
 val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
+val avoid_cons : ConSet.t -> ConSet.t -> unit (* raise Unavoidable *)
 
 val is_concrete : typ -> bool
+
+val span : typ -> int option
+
+
+(* Cons occuring in kind *)
+
+val cons_kind : kind -> ConSet.t
+
 
 (* Equivalence and Subtyping *)
 
@@ -169,6 +171,7 @@ module Env : Env.S with type key = string
 
 (* Pretty printing *)
 
+val string_of_con : con -> string
 val string_of_prim : prim -> string
 val string_of_sharing: sharing -> string
 val string_of_typ : typ -> string

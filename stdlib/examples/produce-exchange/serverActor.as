@@ -4,16 +4,16 @@
  --------------------
 */
 
-let P = (import "../../prelude.as");
-let Option = (import "../../option.as");
-let T = (import "serverTypes.as");
-let L = (import "serverLang.as");
-let Model = (import "serverModel.as");
-let Result = (import "../../result.as");
+import P = "../../prelude.as";
+import Option = "../../option.as";
+import T = "serverTypes.as";
+import L = "serverLang.as";
+import Model = "serverModel.as";
+import Result = "../../result.as";
 
 type Result<Ok,Err> = Result.Result<Ok,Err>;
 
-actor server {
+actor class Server () {
 
 /**
  Server Actor
@@ -50,6 +50,7 @@ actor server {
  - `Retailer`, or
  - `Transporter`.
 */
+
 
 /**
 
@@ -798,6 +799,16 @@ actor server {
   allRouteInfo() : async [T.RouteInfo] {
     getModel()
       .routeTable.allInfo()
+  };
+
+  /**
+   `allReservedRouteInfo`
+   ---------------------------
+   Get the information for all reserved routes.
+   */
+  allReservedRouteInfo() : async [T.ReservedRouteInfo] {
+    getModel()
+      .reservedRouteTable.allInfo()
   };
 
   /**

@@ -39,7 +39,20 @@ func print(x : Text) { (prim "print" : Text -> ()) x };
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
 
 // Hashing
-func hashInt(n : Int) : Word32 = (prim "Int~hash" : Int -> Word32) n;
+func hashInt(x : Int) : Word32 {
+  var n = x;
+  var hash : Word32 = 0;
+  if (n < 0) {
+    hash := ^hash;
+    n := abs n;
+  };
+  let base = 2**32;
+  while (n > 0) {
+    hash ^= intToWord32(n % base);
+    n /= base;
+  };
+  return hash;
+};
 
 // Conversions
 func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
@@ -67,25 +80,21 @@ func word32ToChar(w : Word32) : Char = (prim "Word32->Char" : Word32 -> Char) w;
 func decodeUTF8(s : Text) : (Word32, Char) = (prim "decodeUTF8" : Text -> (Word32, Char)) s;
 
 // Exotic bitwise operations
-func shrsWord8(w : Word8, amount : Word8) : Word8 = (prim "shrs8" : (Word8, Word8) -> Word8) (w, amount);
 func popcntWord8(w : Word8) : Word8 = (prim "popcnt8" : Word8 -> Word8) w;
 func clzWord8(w : Word8) : Word8 = (prim "clz8" : Word8 -> Word8) w;
 func ctzWord8(w : Word8) : Word8 = (prim "ctz8" : Word8 -> Word8) w;
 func btstWord8(w : Word8, amount : Word8) : Bool = (prim "btst8" : (Word8, Word8) -> Word8) (w, amount) != (0 : Word8);
 
-func shrsWord16(w : Word16, amount : Word16) : Word16 = (prim "shrs16" : (Word16, Word16) -> Word16) (w, amount);
 func popcntWord16(w : Word16) : Word16 = (prim "popcnt16" : Word16 -> Word16) w;
 func clzWord16(w : Word16) : Word16 = (prim "clz16" : Word16 -> Word16) w;
 func ctzWord16(w : Word16) : Word16 = (prim "ctz16" : Word16 -> Word16) w;
 func btstWord16(w : Word16, amount : Word16) : Bool = (prim "btst16" : (Word16, Word16) -> Word16) (w, amount) != (0 : Word16);
 
-func shrsWord32(w : Word32, amount : Word32) : Word32 = (prim "shrs" : (Word32, Word32) -> Word32) (w, amount);
 func popcntWord32(w : Word32) : Word32 = (prim "popcnt" : Word32 -> Word32) w;
 func clzWord32(w : Word32) : Word32 = (prim "clz" : Word32 -> Word32) w;
 func ctzWord32(w : Word32) : Word32 = (prim "ctz" : Word32 -> Word32) w;
 func btstWord32(w : Word32, amount : Word32) : Bool = (prim "btst" : (Word32, Word32) -> Word32) (w, amount) != (0 : Word32);
 
-func shrsWord64(w : Word64, amount : Word64) : Word64 = (prim "shrs64" : (Word64, Word64) -> Word64) (w, amount);
 func popcntWord64(w : Word64) : Word64 = (prim "popcnt64" : Word64 -> Word64) w;
 func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
 func ctzWord64(w : Word64) : Word64 = (prim "ctz64" : Word64 -> Word64) w;
@@ -103,6 +112,12 @@ func @text_of_Nat(x : Nat) : Text {
   var n = x;
   let base = 10;
   let digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+  assert(n >= 0);
+
+  if (n == 0) {
+    return "0";
+  };
 
   while (n > 0) {
     let rem = n % base;
@@ -229,10 +244,6 @@ end (* Conv *)
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
 
-  | "Int~hash" -> fun v k ->
-                  let i = Word64.of_int_s (Big_int.int_of_big_int (as_int v)) in
-                  let j = Word64.(and_ 0xFFFFFFFFL (xor (shr_u i 32L) i))
-                  in k (Word32 (Word32.of_int_u (Int64.to_int j)))
   | "Nat->Word8" -> fun v k ->
                     let i = Big_int.int_of_big_int (as_int v)
                     in k (Word8 (Word8.of_int_u i))
@@ -287,16 +298,6 @@ let prim = function
   | "Word32->Char" -> fun v k ->
                       let i = Conv.of_signed_Word32 (as_word32 v)
                       in k (Char i)
-
-  | "shrs8" | "shrs16" | "shrs" | "shrs64" ->
-     fun v k ->
-     let w, a = as_pair v
-     in k (match w with
-           | Word8  y -> Word8  (Word8 .shr_s y  (as_word8  a))
-           | Word16 y -> Word16 (Word16.shr_s y  (as_word16 a))
-           | Word32 y -> Word32 (Word32.shr_s y  (as_word32 a))
-           | Word64 y -> Word64 (Word64.shr_s y  (as_word64 a))
-           | _ -> failwith "shrs")
 
   | "popcnt8" | "popcnt16" | "popcnt" | "popcnt64" ->
      fun v k ->

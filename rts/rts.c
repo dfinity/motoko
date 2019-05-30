@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 export void as_memcpy(char *str1, const char *str2, size_t n) {
   for (size_t i = 0; i < n; i++) {
@@ -170,12 +171,79 @@ as_ptr bigint_alloc() {
 
 export as_ptr bigint_of_word32(unsigned long b) {
   as_ptr r = bigint_alloc();
-  CHECK(mp_set_int(BIGINT_PAYLOAD(r), b));
+  CHECK(mp_set_long(BIGINT_PAYLOAD(r), b));
   return r;
 }
 
-export unsigned long bigint_to_word32(as_ptr a) {
-  return mp_get_int(BIGINT_PAYLOAD(a));
+export as_ptr bigint_of_word32_signed(signed long b) {
+  as_ptr r = bigint_alloc();
+  mp_int *n = BIGINT_PAYLOAD(r);
+  CHECK(mp_set_long(n, b));
+  if (b < 0) {
+    mp_int sub;
+    CHECK(mp_init(&sub));
+    CHECK(mp_2expt(&sub, 32));
+    CHECK(mp_sub(n,&sub,n));
+  }
+  return r;
+}
+
+export unsigned long bigint_to_word32_wrap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n))
+    return - mp_get_long(n);
+  else
+    return mp_get_long(n);
+}
+
+export unsigned long bigint_to_word32_trap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n)) bigint_trap();
+  if (mp_count_bits(n) > 32) bigint_trap();
+  return mp_get_long(n);
+}
+
+export signed long bigint_to_word32_signed_trap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_count_bits(n) > 32) bigint_trap();
+  if (mp_isneg(n)) {
+    long x = - (signed long)(mp_get_long(n));
+    if (x >= 0) bigint_trap();
+    return x;
+  } else {
+    long x = (signed long)(mp_get_long(n));
+    if (x < 0) bigint_trap();
+    return x;
+  }
+}
+
+export unsigned long long bigint_to_word64_wrap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n))
+    return - mp_get_long_long(n);
+  else
+    return mp_get_long_long(n);
+}
+
+export unsigned long long bigint_to_word64_trap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_isneg(n)) bigint_trap();
+  if (mp_count_bits(n) > 64) bigint_trap();
+  return mp_get_long_long(n);
+}
+
+export signed long long bigint_to_word64_signed_trap(as_ptr a) {
+  mp_int *n = BIGINT_PAYLOAD(a);
+  if (mp_count_bits(n) > 64) bigint_trap();
+  if (mp_isneg(n)) {
+    long long x = - (signed long long)(mp_get_long_long(n));
+    if (x >= 0) bigint_trap();
+    return x;
+  } else {
+    long long x = (signed long long)(mp_get_long_long(n));
+    if (x < 0) bigint_trap();
+    return x;
+  }
 }
 
 export as_ptr bigint_of_word64(unsigned long long b) {
@@ -184,23 +252,32 @@ export as_ptr bigint_of_word64(unsigned long long b) {
   return r;
 }
 
-export unsigned long long bigint_to_word64(as_ptr a) {
-  return mp_get_long_long(BIGINT_PAYLOAD(a));
+export as_ptr bigint_of_word64_signed(signed long long b) {
+  as_ptr r = bigint_alloc();
+  mp_int *n = BIGINT_PAYLOAD(r);
+  CHECK(mp_set_long_long(n, b));
+  if (b < 0) {
+    mp_int sub;
+    CHECK(mp_init(&sub));
+    CHECK(mp_2expt(&sub, 64));
+    CHECK(mp_sub(n,&sub,n));
+  }
+  return r;
 }
 
-export int bigint_eq(as_ptr a, as_ptr b) {
+export bool bigint_eq(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) == 0;
 }
-export int bigint_lt(as_ptr a, as_ptr b) {
+export bool bigint_lt(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) < 0;
 }
-export int bigint_gt(as_ptr a, as_ptr b) {
+export bool bigint_gt(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) > 0;
 }
-export int bigint_le(as_ptr a, as_ptr b) {
+export bool bigint_le(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) <= 0;
 }
-export int bigint_ge(as_ptr a, as_ptr b) {
+export bool bigint_ge(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) >= 0;
 }
 
@@ -222,9 +299,28 @@ export as_ptr bigint_mul(as_ptr a, as_ptr b) {
   return r;
 }
 
-export as_ptr bigint_mod(as_ptr a, as_ptr b) {
+export as_ptr bigint_pow(as_ptr a, as_ptr b) {
+  unsigned long exp = bigint_to_word32_trap(b);
   as_ptr r = bigint_alloc();
-  CHECK(mp_mod(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r)));
+  // Replace with mp_expt_long once available,
+  // see https://github.com/libtom/libtommath/issues/243
+  CHECK(mp_expt_d_ex(BIGINT_PAYLOAD(a), exp, BIGINT_PAYLOAD(r), 1));
+  return r;
+}
+
+export as_ptr bigint_div(as_ptr a, as_ptr b) {
+  as_ptr r = bigint_alloc();
+  mp_int rem;
+  CHECK(mp_init(&rem));
+  CHECK(mp_div(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r), &rem));
+  return r;
+}
+
+export as_ptr bigint_rem(as_ptr a, as_ptr b) {
+  as_ptr r = bigint_alloc();
+  mp_int quot;
+  CHECK(mp_init(&quot));
+  CHECK(mp_div(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), &quot, BIGINT_PAYLOAD(r)));
   return r;
 }
 
@@ -240,18 +336,16 @@ export as_ptr bigint_abs(as_ptr a) {
   return r;
 }
 
-export as_ptr bigint_lshd(as_ptr a, int b) {
+export bool bigint_isneg(as_ptr a) {
+  return mp_isneg(BIGINT_PAYLOAD(a));
+}
+
+export as_ptr bigint_lsh(as_ptr a, int b) {
   as_ptr r = bigint_alloc();
-  CHECK(mp_copy(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(r)));
-  CHECK(mp_lshd(BIGINT_PAYLOAD(a), b));
+  CHECK(mp_mul_2d(BIGINT_PAYLOAD(a), b, BIGINT_PAYLOAD(r)));
   return r;
 }
 
-export as_ptr bigint_div(as_ptr a, as_ptr b) {
-  as_ptr r = bigint_alloc();
-  mp_int rem;
-  CHECK(mp_init(&rem));
-  CHECK(mp_div(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b), BIGINT_PAYLOAD(r), &rem));
-  return r;
+export int bigint_count_bits(as_ptr a) {
+  return mp_count_bits(BIGINT_PAYLOAD(a));
 }
-

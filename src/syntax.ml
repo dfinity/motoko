@@ -31,7 +31,7 @@ and typ' =
   | ObjT of obj_sort * typ_field list              (* object *)
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
-  | VariantT of (id * typ) list                    (* variant *)
+  | VariantT of typ_tag list                       (* variant *)
   | TupT of typ list                               (* tuple *)
   | FuncT of sharing * typ_bind list * typ * typ   (* function *)
   | AsyncT of typ                                  (* future *)
@@ -43,6 +43,9 @@ and typ' =
 
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
+
+and typ_tag = typ_tag' Source.phrase
+and typ_tag' = {tag : id; typ : typ}
 
 and typ_bind = (typ_bind', Type.con option) Source.annotated_phrase
 and typ_bind' = {var : id; bound : typ}
@@ -83,7 +86,8 @@ type binop =
   | OrOp
   | XorOp
   | ShLOp
-  | ShROp
+  | UShROp
+  | SShROp
   | RotLOp
   | RotROp
   | CatOp                                       (* concatenation *)
@@ -108,7 +112,7 @@ and pat' =
   | TupP of pat list                           (* tuple *)
   | ObjP of pat_field list                     (* object *)
   | OptP of pat                                (* option *)
-  | VariantP of id * pat                       (* tagged variant *)
+  | TagP of id * pat                           (* tagged variant *)
   | AltP of pat * pat                          (* disjunctive *)
   | AnnotP of pat * typ                        (* type annotation *)
   | ParP of pat                                (* parenthesis *)
@@ -140,7 +144,7 @@ and exp' =
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | ObjE of obj_sort * exp_field list          (* object *)
-  | VariantE of id * exp                       (* variant *)
+  | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
@@ -188,7 +192,6 @@ and dec' =
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
       typ_id * typ_bind list * obj_sort * pat * id * exp_field list
-  | ModuleD of id * dec list
 
 (* Program *)
 

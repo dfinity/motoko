@@ -7,7 +7,7 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Compile with --dfinity, use dvm to run
+#    -d: Compile without -no-dfinity-api, uses dvm to run
 #    -s: Be silent in sunny-day execution
 #
 
@@ -21,6 +21,7 @@ DFINITY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
+IDLC=${IDLC:-$(realpath $(dirname $0)/../idl/idlc)}
 export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
@@ -33,13 +34,17 @@ while getopts "ads" o; do
             ;;
         d)
             DFINITY=yes
-            EXTRA_ASC_FLAGS=--dfinity
             ;;
         s)
             ECHO=true
             ;;
     esac
 done
+
+if [ $DFINITY = "no" ]
+then
+    EXTRA_ASC_FLAGS=-no-dfinity-api
+fi
 
 shift $((OPTIND-1))
 
@@ -51,7 +56,7 @@ function normalize () {
     grep -a -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $1 |
     sed 's/\x00//g' |
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
-    sed 's/^.*W, hypervisor:/W, hypervisor:/g' |
+    sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
     sed 's/^.*run-dfinity\/\.\.\/dvm.sh: line/dvm.sh: line/g' |
     sed 's/ *[0-9]* Illegal instruction.*dvm/ Illegal instruction dvm/g' |
@@ -76,8 +81,10 @@ do
   then base=$(basename $file .sh)
   elif [ ${file: -4} == ".wat" ]
   then base=$(basename $file .wat)
+  elif [ ${file: -5} == ".didl" ]
+  then base=$(basename $file .didl)
   else
-    echo "Unknown file extension in $file, expected .as, .sh or .wat"; exit 1
+    echo "Unknown file extension in $file, expected .as, .sh, .wat or .didl"; exit 1
     failures=yes
     continue
   fi
@@ -187,7 +194,8 @@ do
     $ECHO -n " [out]"
     ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"
-  else
+  elif [ ${file: -4} == ".wat" ]
+  then
     # The file is a .wat file, so we are expected to test linking
     $ECHO -n " [as-ld]"
     rm -f $out/$base.{base,lib,linked}.{wasm,wat,o}
@@ -202,6 +210,11 @@ do
         diff_files="$diff_files $base.linked.wat $base.linked.wat.stderr"
     fi
 
+  else
+    # The file is a .didl file, so we are expected to test the idl
+    $ECHO -n " [idlc]"
+    $IDLC $base.didl > $out/$base.idlc 2>&1
+    diff_files="$diff_files $base.idlc"
   fi
   $ECHO ""
 

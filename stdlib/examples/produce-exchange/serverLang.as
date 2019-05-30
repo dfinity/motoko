@@ -1,3 +1,4 @@
+module {
 /**
 
  Server language
@@ -7,9 +8,10 @@
 
 */
 
-let Result = (import "../../result.as");
+import Result = "../../result.as";
+import T = "serverTypes.as";
+
 type Result<Ok,Err> = Result.Result<Ok,Err>;
-let T = import "serverTypes.as";
 
 /**
  `Req`
@@ -144,3 +146,4 @@ type UpdateReq = {
   #inventory   : T.InventoryInfo ;
   #route       : T.RouteInfo ;
 } ;
+}

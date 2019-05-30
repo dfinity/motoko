@@ -1,3 +1,4 @@
+module {
 /**
 
 Stdlib prelude
@@ -39,3 +40,4 @@ func xxx() : None =
 
 */
 func unreachable() : None = { assert false ; loop { } };
+}

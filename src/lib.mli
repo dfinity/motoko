@@ -25,6 +25,8 @@ sig
   val map_filter : ('a -> 'b option) -> 'a list -> 'b list
 
   val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
+  val is_ordered : ('a -> 'a -> int) -> 'a list -> bool
+  val is_strictly_ordered : ('a -> 'a -> int) -> 'a list -> bool
 end
 
 module List32 :
@@ -70,6 +72,7 @@ sig
   val value : 'a option -> 'a
   val map : ('a -> 'b) -> 'a option -> 'b option
   val app : ('a -> unit) -> 'a option -> unit
+  val bind : 'a option -> ('a -> 'b option) -> 'b option
 end
 
 module Promise :

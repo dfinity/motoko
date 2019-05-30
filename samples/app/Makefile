@@ -12,10 +12,10 @@ LIB=list.as types.as server.as client.as
 SAMPLES:= test
 
 all:
-	$(ASC) -r -t -v $(LIB) main.as >main.txt 2>&1
+	$(ASC) -r -t -v main.as >main.txt 2>&1
 
 dvm:
-	$(ASC) --dfinity -o $(OUT) $(LIB) main.as
+	$(ASC) -o $(OUT) main.as
 	$(DVM) $(OUT)
 
 clean:

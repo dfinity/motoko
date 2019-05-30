@@ -78,6 +78,8 @@ and t_exp' env = function
   | TupE exps -> TupE (t_exps env exps)
   | OptE exp1 ->
     OptE (t_exp env exp1)
+  | TagE (l, exp1) ->
+    TagE (l, t_exp env exp1)
   | ProjE (exp1, n) ->
     ProjE (t_exp env exp1, n)
   | ActorE (id, ds, fields, typ) ->
@@ -124,8 +126,6 @@ and t_exp' env = function
     DefineE (id, mut, t_exp env exp1)
   | NewObjE (sort, ids, t) ->
     NewObjE (sort, ids, t)
-  | VariantE (l, exp1) ->
-    VariantE (l, t_exp env exp1)
 
 and t_dec env dec = { dec with it = t_dec' env dec.it }
 
@@ -339,19 +339,19 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
       )
     ),
     List.map (fun f -> T.as_immut (T.normalize (f.Type.typ))) fs
-  | T.Variant cts ->
+  | T.Variant fs ->
     define_show t (
       switch_variantE
         (argE t)
-        (List.map (fun (l, t') ->
+        (List.map (fun {T.lab = l; typ = t'} ->
           let t' = T.normalize t' in
           l @@ no_region,
           (varP (argE t')), (* Shadowing, but that's fine *)
           (invoke_text_of_variant t' (show_var_for t') l (argE t'))
-        ) cts)
+        ) fs)
         (T.Prim T.Text)
     ),
-    List.map (fun (_l, t') -> T.normalize t') cts
+    List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | _ -> assert false (* Should be prevented by can_show *)
 
 (* Synthesizing the types recursively. Hopefully well-founded. *)
@@ -385,7 +385,7 @@ let rec can_show t =
   | T.Obj (T.Object _, fs) ->
     List.for_all (fun f -> can_show (T.as_immut f.T.typ)) fs
   | T.Variant cts ->
-    List.for_all (fun (l,t) -> can_show t) cts
+    List.for_all (fun f -> can_show f.T.typ) cts
   | _ -> false
 
 (* Entry point for the interpreter (reference implementation) *)
@@ -412,10 +412,10 @@ let rec show_val t v =
       (String.concat ", " (List.map (show_val t') (Array.to_list a)))
   | T.Obj (_, fts), Value.Obj fs ->
     Printf.sprintf "{%s}" (String.concat "; " (List.map (show_field fs) fts))
-  | T.Variant cts, Value.Variant (l, v) ->
-    begin match List.find_opt (fun (l',t) -> l = l') cts with
-    | Some (_, T.Tup []) -> Printf.sprintf "(#%s)" l
-    | Some (_, t') -> Printf.sprintf "(#%s %s)" l (show_val t' v)
+  | T.Variant fs, Value.Variant (l, v) ->
+    begin match List.find_opt (fun {T.lab = l'; _} -> l = l') fs with
+    | Some {T.typ = T.Tup []; _} -> Printf.sprintf "(#%s)" l
+    | Some {T.typ = t'; _} -> Printf.sprintf "(#%s %s)" l (show_val t' v)
     | _ -> assert false
     end
   | _ ->

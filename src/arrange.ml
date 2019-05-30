@@ -50,7 +50,7 @@ let rec exp e = match e.it with
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
   | OptE e              -> "OptE"    $$ [exp e]
-  | VariantE (i, e)     -> "VariantE" $$ [id i; exp e]
+  | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | ImportE (f, fp)     -> "ImportE" $$ [Atom (if !fp = "" then f else !fp)]
 
@@ -63,7 +63,7 @@ and pat p = match p.it with
   | LitP l          -> "LitP"       $$ [lit !l]
   | SignP (uo, l)   -> "SignP"      $$ [unop uo ; lit !l]
   | OptP p          -> "OptP"       $$ [pat p]
-  | VariantP (i, p) -> "VariantP"   $$ [tag i; pat p]
+  | TagP (i, p)     -> "TagP"       $$ [tag i; pat p]
   | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
   | ParP p          -> "ParP"       $$ [pat p]
 
@@ -97,7 +97,8 @@ and binop bo = match bo with
   | OrOp   -> Atom "OrOp"
   | XorOp  -> Atom "XorOp"
   | ShLOp  -> Atom "ShiftLOp"
-  | ShROp  -> Atom "ShiftROp"
+  | UShROp -> Atom "UnsignedShiftROp"
+  | SShROp -> Atom "SignedShiftROp"
   | RotLOp -> Atom "RotLOp"
   | RotROp -> Atom "RotROp"
   | CatOp  -> Atom "CatOp"
@@ -143,8 +144,8 @@ and vis v = match v.it with
 and typ_field (tf : typ_field)
   = tf.it.id.it $$ [typ tf.it.typ; mut tf.it.mut]
 
-and typ_tag (c, t)
-  = c.it $$ [typ t]
+and typ_tag (tt : typ_tag)
+  = tt.it.tag.it $$ [typ tt.it.typ]
 
 and typ_bind (tb : typ_bind)
   = tb.it.var.it $$ [typ tb.it.bound]
@@ -178,7 +179,5 @@ and dec d = match d.it with
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
   | ClassD (x, tp, s, p, i', efs) ->
     "ClassD" $$ id x :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
-  | ModuleD (i,ds) ->
-    "ModuleD" $$  [id i] @ List.map dec ds
 
 and prog prog = "BlockE"  $$ List.map dec prog.it
