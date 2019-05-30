@@ -554,7 +554,7 @@ and infer_exp'' env exp : T.typ =
   | ArrayE (mut, exps) ->
     let ts = List.map (infer_exp env) exps in
     let t1 = List.fold_left T.lub T.Non ts in
-    if t1 = T.Any && List.for_all (fun t -> T.promote t <> T.Any) ts then
+    if not env.pre && t1 = T.Any && List.for_all (fun t -> T.promote t <> T.Any) ts then
       warn env exp.at
         "this array has type %s because elements have inconsistent types"
         (T.string_of_typ (T.Array t1));
@@ -670,7 +670,7 @@ and infer_exp'' env exp : T.typ =
     let t2 = infer_exp env exp2 in
     let t3 = infer_exp env exp3 in
     let t = T.lub t2 t3 in
-    if t = T.Any && T.promote t2 <> T.Any && T.promote t3 <> T.Any then
+    if not env.pre && t = T.Any && T.promote t2 <> T.Any && T.promote t3 <> T.Any then
       warn env exp.at
         "this if has type %s because branches have inconsistent types,\ntrue produces\n  %s\nfalse produces\n  %s"
         (T.string_of_typ t)
@@ -834,9 +834,10 @@ and check_exp' env t exp : T.typ =
   | SwitchE (exp1, cases), _ ->
     let t1 = infer_exp_promote env exp1 in
     check_cases env t1 t cases;
-    if not (Coverage.check_cases cases t1) then
-      warn env exp.at
-        "the cases in this switch do not cover all possible values";
+    if not env.pre then
+      if not (Coverage.check_cases cases t1) then
+        warn env exp.at
+          "the cases in this switch do not cover all possible values";
     t
   | _ ->
     let t' = infer_exp env exp in
@@ -857,7 +858,7 @@ and infer_case env t_pat t {it = {pat; exp}; at; _} =
   let ve = check_pat env t_pat pat in
   let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
   let t'' = T.lub t t' in
-  if t'' = T.Any && T.promote t <> T.Any && T.promote t' <> T.Any then
+  if not env.pre && t'' = T.Any && T.promote t <> T.Any && T.promote t' <> T.Any then
     warn env at "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
       (T.string_of_typ t'')
       (T.string_of_typ_expand t)
