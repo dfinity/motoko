@@ -47,6 +47,8 @@ See the full details in the definitions below:
 
 */
 
+let MAX_LEAF_COUNT = 32;
+
 let P = (import "prelude.as");
 
 let Option = import "option.as";
@@ -163,13 +165,27 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   `leaf`
   --------
   Construct a leaf node, computing the count stored there.
+
+  This helper function automatically enforces the MAX_LEAF_COUNT
+  by constructing branches as necessary; to do so, it also needs the bitpos
+  of the leaf.
+
   */
- func leaf<K,V>(al:AssocList<Key<K>,V>) : Trie<K,V> {
-   #leaf(
-     new{
-       count=List.len<(Key<K>,V)>(al);
-       keyvals=al
-     })
+ func leaf<K,V>(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> {
+   func rec(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> {
+     let len = List.len<(Key<K>,V)>(kvs);
+     if ( len < MAX_LEAF_COUNT ) {
+       #leaf(
+         new{
+           count=len;
+           keyvals=kvs
+         })
+     } else {
+       let (l, r) = splitAssocList<K,V>(kvs, bitpos);
+       branch<K,V>(rec(l, bitpos + 1), rec(r, bitpos + 1))
+     }
+   };
+   rec(kvs, bitpos)
  };
 
   // /**
@@ -203,7 +219,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 	   switch t {
 	   case (#empty) {
             let (kvs, _) = AssocList.replace<Key<K>,V>(null, k, key_eq, v);
-            ((leaf<K,V>(kvs)), null)
+            (leaf<K,V>(kvs, bitpos), null)
           };
 	   case (#branch b) {
 	          let bit = Hash.getHashBit(k.hash, bitpos);
@@ -220,7 +236,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
      case (#leaf l) {
             let (kvs2, old_val) =
               AssocList.replace<Key<K>,V>(l.keyvals, k, key_eq, v);
-	          (leaf<K,V>(kvs2), old_val)
+            (leaf<K,V>(kvs2, bitpos), old_val)
           };
      }
    };
@@ -302,8 +318,8 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
     func br(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> = branch<K,V>(l,r);
-    func lf(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs);
     func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
+      func lf(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs, bitpos);
       switch (tl, tr) {
         case (#empty, _) { return tr };
         case (_, #empty) { return tl };
@@ -348,8 +364,8 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   func mergeDisjoint<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
     func br(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> = branch<K,V>(l,r);
-    func lf(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs);
     func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
+      func lf(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs, bitpos);
       switch (tl, tr) {
         case (#empty, _) { return tr };
         case (_, #empty) { return tl };
@@ -404,12 +420,12 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     let key_eq = keyEq<K>(k_eq);
 
     func br1(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> = branch<K,V>(l,r);
-    func lf1(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs);
-
     func br2(l:Trie<K,W>, r:Trie<K,W>) : Trie<K,W> = branch<K,W>(l,r);
-    func lf2(kvs:AssocList<Key<K>,W>) : Trie<K,W> = leaf<K,W>(kvs);
 
     func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,V> {
+      func lf1(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs, bitpos);
+      func lf2(kvs:AssocList<Key<K>,W>) : Trie<K,W> = leaf<K,W>(kvs, bitpos);
+
       switch (tl, tr) {
         case (#empty, _) { return #empty };
         case (_, #empty) { return tl };
@@ -472,43 +488,42 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     let key_eq = keyEq<K>(k_eq);
 
     func br1(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> = branch<K,V>(l,r);
-    func lf1(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs);
-
     func br2(l:Trie<K,W>, r:Trie<K,W>) : Trie<K,W> = branch<K,W>(l,r);
-    func lf2(kvs:AssocList<Key<K>,W>) : Trie<K,W> = leaf<K,W>(kvs);
 
     func br3(l:Trie<K,X>, r:Trie<K,X>) : Trie<K,X> = branch<K,X>(l,r);
-    func lf3(kvs:AssocList<Key<K>,X>) : Trie<K,X> = leaf<K,X>(kvs);
+    func lf3(kvs:AssocList<Key<K>,X>, bitpos:Nat) : Trie<K,X> = leaf<K,X>(kvs, bitpos);
 
     /** empty right case; build from left only: */
-    func recL(t:Trie<K,V>) : Trie<K,X> {
+    func recL(t:Trie<K,V>, bitpos:Nat) : Trie<K,X> {
       switch t {
 	    case (#empty) #empty;
 	    case (#leaf l) {
-             lf3(AssocList.disj<Key<K>,V,W,X>(l.keyvals, null, key_eq, vbin))
+             lf3(AssocList.disj<Key<K>,V,W,X>(l.keyvals, null, key_eq, vbin), bitpos)
            };
-      case (#branch(b)) { br3(recL(b.left),recL(b.right)) };
+      case (#branch(b)) { br3(recL(b.left,bitpos+1),recL(b.right,bitpos+1)) };
       }
     };
     /** empty left case; build from right only: */
-    func recR(t:Trie<K,W>) : Trie<K,X> {
+    func recR(t:Trie<K,W>, bitpos:Nat) : Trie<K,X> {
       switch t {
 	    case (#empty) #empty;
 	    case (#leaf l) {
-             lf3(AssocList.disj<Key<K>,V,W,X>(null, l.keyvals, key_eq, vbin))
+             lf3(AssocList.disj<Key<K>,V,W,X>(null, l.keyvals, key_eq, vbin), bitpos)
            };
-      case (#branch(b)) { br3(recR(b.left),recR(b.right)) };
+      case (#branch(b)) { br3(recR(b.left,bitpos+1),recR(b.right,bitpos+1)) };
       }
     };
 
     /** main recursion */
     func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
+      func lf1(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs, bitpos);
+      func lf2(kvs:AssocList<Key<K>,W>) : Trie<K,W> = leaf<K,W>(kvs, bitpos);
       switch (tl, tr) {
       case (#empty, #empty) { #empty };
-      case (#empty, _   )   { recR(tr) };
-      case (_,    #empty)   { recL(tl) };
+      case (#empty, _   )   { recR(tr, bitpos) };
+      case (_,    #empty)   { recL(tl, bitpos) };
       case (#leaf l1, #leaf l2) {
-             lf3(AssocList.disj<Key<K>,V,W,X>(l1.keyvals, l2.keyvals, key_eq, vbin))
+             lf3(AssocList.disj<Key<K>,V,W,X>(l1.keyvals, l2.keyvals, key_eq, vbin), bitpos)
            };
       case (#leaf l, _) {
              let (ll, lr) = splitAssocList<K,V>(l.keyvals, bitpos);
@@ -553,15 +568,14 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     let key_eq = keyEq<K>(k_eq);
 
     func br1(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> = branch<K,V>(l,r);
-    func lf1(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs);
-
     func br2(l:Trie<K,W>, r:Trie<K,W>) : Trie<K,W> = branch<K,W>(l,r);
-    func lf2(kvs:AssocList<Key<K>,W>) : Trie<K,W> = leaf<K,W>(kvs);
-
     func br3(l:Trie<K,X>, r:Trie<K,X>) : Trie<K,X> = branch<K,X>(l,r);
-    func lf3(kvs:AssocList<Key<K>,X>) : Trie<K,X> = leaf<K,X>(kvs);
 
     func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
+      func lf1(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs, bitpos);
+      func lf2(kvs:AssocList<Key<K>,W>) : Trie<K,W> = leaf<K,W>(kvs, bitpos);
+      func lf3(kvs:AssocList<Key<K>,X>) : Trie<K,X> = leaf<K,X>(kvs, bitpos);
+
       switch (tl, tr) {
 	    case (#empty, _) { #empty };
 	    case (_, #empty) { #empty };
@@ -809,19 +823,21 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    filter the key-value pairs by a given predicate.
    */
   func filter<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
-    func rec(t:Trie<K,V>) : Trie<K,V> {
+    func rec(t:Trie<K,V>, bitpos:Nat) : Trie<K,V> {
       switch t {
       case (#empty) { #empty };
 	    case (#leaf l) {
              leaf<K,V>(
                List.filter<(Key<K>,V)>(
                  l.keyvals,
-                 func ((k:Key<K>,v:V)):Bool = f(k.key,v))
+                 func ((k:Key<K>,v:V)):Bool = f(k.key,v)
+               ),
+               bitpos
              )
            };
 	    case (#branch(b)) {
-		         let fl = rec(b.left);
-		         let fr = rec(b.right);
+		         let fl = rec(b.left, bitpos+1);
+		         let fr = rec(b.right, bitpos+1);
 		         switch (isEmpty<K,V>(fl),
 			               isEmpty<K,V>(fr)) {
 		         case (true,  true)  #empty;
@@ -832,7 +848,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 	         }
       }
     };
-    rec(t)
+    rec(t, 0)
   };
 
   /**
@@ -841,7 +857,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    map and filter the key-value pairs by a given predicate.
    */
   func mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?W) : Trie<K,W> {
-    func rec(t:Trie<K,V>) : Trie<K,W> {
+    func rec(t:Trie<K,V>, bitpos:Nat) : Trie<K,W> {
       switch t {
       case (#empty) { #empty };
 	    case (#leaf l) {
@@ -854,12 +870,13 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
                    case (null) null;
                    case (?w) (?(new {key=k.key; hash=k.hash}, w));
                    }}
-               )
+               ),
+               bitpos
              )
            };
 	    case (#branch(b)) {
-		         let fl = rec(b.left);
-		         let fr = rec(b.right);
+		         let fl = rec(b.left, bitpos + 1);
+		         let fr = rec(b.right, bitpos + 1);
 		         switch (isEmpty<K,W>(fl),
 			               isEmpty<K,W>(fr)) {
 		         case (true,  true)  #empty;
@@ -870,7 +887,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 	         }
       }
     };
-    rec(t)
+    rec(t, 0)
   };
 
   /**
