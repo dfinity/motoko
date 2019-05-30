@@ -1134,15 +1134,6 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 Future work
 =============
 
-Adaptive path lengths
-----------------------
-
-Currently we assume a uniform path length.  This can be inefficient,
-and requires careful tuning.  In the future, we could adapt the path
-length of each subtree to its cardinality; this wouild avoid
-needlessly long paths, or paths that are too short for their subtree's
-size.
-
 Iterator objects
 -------------------
 for use in 'for ... in ...' patterns
