@@ -26,15 +26,36 @@ these trees never do).
 Representation
 =====================
 
-Below, we define the types used in the representation:
+A hash trie is a binary trie, where each (internal) branch node
+represents having distinguished its key-value pairs on a single bit of
+the keys.
 
- - **`Key<K>`**, parameterized by a hashable type `K`
+By following paths in the trie, we determine an increasingly smaller
+and smaller subset of the keys.
 
+Each leaf node consists of an association list of key-value pairs.
 
+We say that a leaf is valid if it contains no more than MAX_LEAF_COUNT
+key-value pairs.
 
- ### Cached counts
+Each non-empty trie node stores a count; we discuss that more below.
 
- At each branch and leaf, we use a stored count to support a
+### Adaptive depth
+
+For small mappings, this "trie" structure just consists of a single
+leaf, which contains up to MAX_LEAF_COUNT key-value pairs.
+
+By construction, the algorithms below enforce the invariant that no
+leaf ever contains more than MAX_LEAF_COUNT key-value pairs: the
+function `leaf` accepts a list, but subdivides it with branches until
+it can actually construct valid leaves.  Once distinguished, subsets
+of keys tend to remain distinguished by the presence of these branches.
+
+To do: Collapse branches whose count is less than MAX_LEAF_COUNT.
+
+### Cached counts
+
+At each branch and leaf, we use a stored count to support a
 memory-efficient `toArray` function, which itself relies on
 per-element projection via `nth`; in turn, `nth` directly uses the
 O(1)-time function `count` for achieving an acceptable level of
@@ -43,7 +64,9 @@ key-value pairs, and we do not store a count for each Cons cell in the
 list.
 
 
-See the full details in the definitions below:
+### Details
+
+Below, we define the types used in the representation:
 
 */
 
@@ -187,19 +210,6 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    };
    rec(kvs, bitpos)
  };
-
-  // /**
-  //  `count`
-  //  --------
-  //  Count the number of entries in the trie.
-  //  */
-  // func count<K,V>(t:Trie<K,V>):Nat{
-  //   foldUp<K,V,Nat>
-  //   (t,
-  //    func(n:Nat,m:Nat):Nat{n+m},
-  //    func(_:K,_:V):Nat{1},
-  //    0)
-  // };
 
  /**
   `copy`
