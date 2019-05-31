@@ -2130,6 +2130,13 @@ module Text = struct
       end ^^
     get_utf8
 
+  (* We also use Text heap objects for byte arrays
+     (really should rename Text to Bytes) *)
+  let dyn_alloc_scratch env =
+    compile_add_const (Int32.mul Heap.word_size header_size) ^^
+    Heap.dyn_alloc_bytes env ^^
+    payload_ptr_unskewed
+
 end (* Text *)
 
 module Arr = struct
@@ -2699,9 +2706,8 @@ module Serialization = struct
     The general serialization strategy is as follows:
     * We traverse the data to calculate the size needed for the data buffer and the
       reference buffer.
-    * We remember the current heap pointer, and use the space after as scratch space.
-    * The scratch space is separated into two regions:
-      One for references, and one for raw data.
+    * We allocate memory for the data buffer and the reference buffer
+      (this memory area is not referenced, so will be dead with the next GC)
     * We traverse the data, in a type-driven way, and copy it to the scratch space.
       We thread through pointers to the current free space of the two scratch spaces.
       This is type driven, and we use the `share_code` machinery and names that
@@ -2709,7 +2715,6 @@ module Serialization = struct
     * We externalize all that new data space into a databuf, and add this reference
       to the reference space.
     * We externalize the reference space into a elembuf
-    * We reset the heap pointer and table pointer, to garbage collect the scratch space.
 
     TODO: Cycles are not detected.
 
@@ -3149,20 +3154,14 @@ module Serialization = struct
         let (set_data_start, get_data_start) = new_local env "data_start" in
         let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-        Heap.get_heap_ptr ^^
+        get_data_size ^^
+        Text.dyn_alloc_scratch env ^^
         set_data_start ^^
 
-        Heap.get_heap_ptr ^^
-        get_data_size ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        set_refs_start ^^
-
-        (* Allocate space, if needed *)
-        get_refs_start ^^
         get_refs_size ^^
-        compile_divU_const Heap.word_size ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        Heap.grow_memory env ^^
+        compile_mul_const Heap.word_size ^^
+        Text.dyn_alloc_scratch env ^^
+        set_refs_start ^^
 
         (* Serialize x into the buffer *)
         get_x ^^
