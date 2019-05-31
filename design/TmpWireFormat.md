@@ -92,11 +92,9 @@ are represented as an `elembuf`:
 
 The above format is thus extended with the following case:
 
- * A reference (`actor`, `shared func`) is represented as a 32-bit number (4
-   bytes). Thus number is an index into the surrounding `elembuf`.
+ * A reference (`actor`, `shared func`) is represented as zero bytes in the data
+   buffer, and writing the reference into the next position in `elembuf`.
 
-   NB: The index is never never `0`, as the first entry in the `elembuf` is the
-   `databuf` with the actual data.
 
 *Example:* The ActorScript value
 ```
@@ -104,5 +102,5 @@ The above format is thus extended with the following case:
 ```
 is represented as
 ```
-elembuf [databuf [00 01 01 00 00 00], console]
+elembuf [databuf [00 01], console]
 ```

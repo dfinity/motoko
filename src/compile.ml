@@ -2900,7 +2900,6 @@ module Serialization = struct
           ( List.mapi (fun i f -> (i,f)) vs )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | (Func _ | Obj (Actor, _)) ->
-        inc_data_size (compile_unboxed_const Heap.word_size) ^^
         inc_ref_size 1l
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
@@ -2915,18 +2914,17 @@ module Serialization = struct
     let open Type in
     let t = normalize t in
     let name = "@serialize_go<" ^ typ_id t ^ ">" in
-    Func.share_code4 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_base", I32Type), ("ref_count" , I32Type)) [I32Type; I32Type]
-    (fun env get_x get_data_buf get_ref_base get_ref_count ->
+    Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
+    (fun env get_x get_data_buf get_ref_buf ->
       let set_data_buf = G.i (LocalSet (nr 1l)) in
-      let set_ref_count = G.i (LocalSet (nr 3l)) in
+      let set_ref_buf = G.i (LocalSet (nr 2l)) in
 
       (* Some combinators for writing values *)
 
       let advance_data_buf =
         get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_data_buf in
-      let allocate_ref =
-        get_ref_count ^^
-        get_ref_count ^^ compile_add_const 1l ^^ set_ref_count in
+      let advance_ref_buf =
+        get_ref_buf ^^ compile_add_const Heap.word_size ^^ set_ref_buf in
 
       let write_word code =
         (* See TODO (leb128 for i32) *)
@@ -2934,12 +2932,6 @@ module Serialization = struct
         code ^^ BigNum.from_word32 env ^^
         BigNum.compile_store_to_data_buf_unsigned env ^^
         advance_data_buf
-      in
-
-      let write_word_legacy code =
-        (* To be removed when we switch from reference table to reference array *)
-        get_data_buf ^^ code ^^ store_unskewed_ptr ^^
-        compile_unboxed_const Heap.word_size ^^ advance_data_buf
       in
 
       let write_byte code =
@@ -2950,10 +2942,9 @@ module Serialization = struct
 
       let write env t =
         get_data_buf ^^
-        get_ref_base ^^
-        get_ref_count ^^
+        get_ref_buf ^^
         serialize_go env t ^^
-        set_ref_count ^^
+        set_ref_buf ^^
         set_data_buf
       in
 
@@ -3044,34 +3035,32 @@ module Serialization = struct
         Heap.memcpy env ^^
         get_len ^^ advance_data_buf
       | (Func _ | Obj (Actor, _)) ->
-        get_ref_base ^^
-        get_ref_count ^^ compile_mul_const Heap.word_size ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        get_ref_buf ^^
         get_x ^^ Dfinity.unbox_reference env ^^
         store_unskewed_ptr ^^
-        write_word_legacy allocate_ref
+        advance_ref_buf
       | Non ->
         E.trap_with env "serializing value of type None"
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
       get_data_buf ^^
-      get_ref_count
+      get_ref_buf
     )
 
   let rec deserialize_go env t =
     let open Type in
     let t = normalize t in
     let name = "@deserialize_go<" ^ typ_id t ^ ">" in
-    Func.share_code2 env name (("data_buffer", I32Type), ("ref_base", I32Type)) [I32Type; I32Type]
-    (fun env get_data_buf get_ref_base ->
+    Func.share_code2 env name (("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type; I32Type]
+    (fun env get_data_buf get_ref_buf ->
       let set_data_buf = G.i (LocalSet (nr 0l)) in
+      let set_ref_buf = G.i (LocalSet (nr 1l)) in
 
       (* Some combinators for reading values *)
       let advance_data_buf =
-        get_data_buf ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        set_data_buf
-      in
+        get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_data_buf in
+      let advance_ref_buf =
+        get_ref_buf ^^ compile_add_const Heap.word_size ^^ set_ref_buf in
 
       let read_byte =
         get_data_buf ^^
@@ -3087,16 +3076,11 @@ module Serialization = struct
         BigNum.to_word32 env
       in
 
-      let read_word_legacy =
-        (* To be removed when we switch from reference table to reference array *)
-        get_data_buf ^^ load_unskewed_ptr ^^
-        compile_unboxed_const Heap.word_size ^^ advance_data_buf
-      in
-
       let read env t =
         get_data_buf ^^
-        get_ref_base ^^
+        get_ref_buf ^^
         deserialize_go env t ^^
+        set_ref_buf ^^
         set_data_buf
       in
 
@@ -3190,16 +3174,16 @@ module Serialization = struct
 
         get_x
       | (Func _ | Obj (Actor, _)) ->
-        get_ref_base ^^
-        read_word_legacy ^^ compile_mul_const Heap.word_size ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+        get_ref_buf ^^
         load_unskewed_ptr ^^
-        Dfinity.box_reference env
+        Dfinity.box_reference env ^^
+        advance_ref_buf
       | Non ->
         E.trap_with env "deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
       end ^^
-      get_data_buf
+      get_data_buf ^^
+      get_ref_buf
     )
 
   let serialize env t =
@@ -3216,30 +3200,25 @@ module Serialization = struct
         (* Get object sizes *)
         get_x ^^
         buffer_size env t ^^
+        compile_add_const 1l ^^ (* Leave space for databuf *)
+        compile_mul_const Heap.word_size ^^
         set_refs_size ^^
         set_data_size ^^
 
         let (set_data_start, get_data_start) = new_local env "data_start" in
         let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-        get_data_size ^^
-        Text.dyn_alloc_scratch env ^^
-        set_data_start ^^
-
-        get_refs_size ^^
-        compile_mul_const Heap.word_size ^^
-        Text.dyn_alloc_scratch env ^^
-        set_refs_start ^^
+        get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
+        get_refs_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
 
         (* Serialize x into the buffer *)
         get_x ^^
         get_data_start ^^
-        get_refs_start ^^
-        compile_unboxed_const 1l ^^ (* Leave space for databuf *)
+        get_refs_start ^^ compile_add_const Heap.word_size ^^ (* Leave space for databuf *)
         serialize_go env t ^^
 
         (* Sanity check: Did we fill exactly the buffer *)
-        get_refs_size ^^ compile_add_const 1l ^^
+        get_refs_start ^^ get_refs_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
         E.else_trap_with env "reference buffer not filled " ^^
 
@@ -3258,7 +3237,8 @@ module Serialization = struct
         then
           (* Sanity check: Really no references *)
           get_refs_size ^^
-          G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+          compile_unboxed_const Heap.word_size ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           E.else_trap_with env "has_no_references wrong" ^^
           (* If there are no references, just return the databuf *)
           get_refs_start ^^
@@ -3266,7 +3246,7 @@ module Serialization = struct
         else
           (* Finally, create elembuf *)
           get_refs_start ^^
-          get_refs_size ^^ compile_add_const 1l ^^
+          get_refs_size ^^ compile_divU_const Heap.word_size ^^
           Dfinity.system_call env "elem_externalize"
     )
 
@@ -3358,8 +3338,9 @@ module Serialization = struct
 
         (* Go! *)
         get_data_start ^^
-        get_refs_start ^^
+        get_refs_start ^^ compile_add_const Heap.word_size ^^
         deserialize_go env t ^^
+        G.i Drop ^^
         G.i Drop
     )
 
