@@ -40,20 +40,22 @@ General argument format (without references)
 
 Arguments with a type that does not mention any reference types (no actors, no
 shared functions), are represented as a `databuf`. This `databuf` is generated
-by an in-order traversal of the data type.  All numbers are in little endian
+by an in-order traversal of the data type. All numbers are in little endian
 format.
 
- * A `Nat` or `Int` is represented as a [SLEB128-encoded number] (in the
-   shortest possible form).
+ * A `Nat` is represented by its shortest [LEB128 encoding]
+ * An `Int` is represented by its shortest [SLEB128 encoding]
  * A `Word64` is represented by 8 bytes.
  * A `Word32` is represented by 4 bytes.
  * A `Word16` is represented by 2 bytes.
  * A `Word8` is represented by 1 byte.
  * A `Bool` is represented by 1 byte that is `0` for `false` and `1` for `true`.
- * A `Text` is represented by 4 bytes indicating the length of the following
-   payload, followed by the payload as a utf8-encoded string (no trailing `\0`).
- * An `Array` is represented by 4 bytes indicating the number of entries,
-   followed by the concatenation of the representation of these entries.
+ * A `Text` is represented by a LEB128-encoded number indicating the length of
+   the following payload, followed by the payload as a utf8-encoded string (no
+   trailing `\0`).
+ * An `Array` is represented by a LEB128-encoded number indicating the number
+   of entries, followed by the concatenation of the representation of these
+   entries.
  * A `Tuple` is represented by the concatenation of the representation of its
    entries. (No need for a length field, as it can be statically determined.)
  * An `Object` is represented by the concatenation of the representation of its
@@ -64,7 +66,7 @@ format.
  * An empty tuple, the type `Null` and the type `Shared` are represented by
    zero bytes.
  * A `Variant` with `n` constructors sorted by constructor name is represented
-   by a single 32-bit word indicating the constructor as a number `0..n-1`, followed
+   by a LEB128-encoded number the constructor as a number `0..n-1`, followed
    by the payload of the constructor. (Yes, obviously no subtyping here.)
 
 *Example:* The ActorScript value
@@ -76,7 +78,7 @@ is represented as
 00 01 04 00 00 00 00 00 00 00 01 21
 ```
 
-[SLEB128-encoded number](https://en.wikipedia.org/wiki/LEB128)
+[LEB128 encoding](https://en.wikipedia.org/wiki/LEB128)
 
 General argument format (with references)
 -----------------------------------------
