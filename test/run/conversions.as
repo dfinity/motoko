@@ -33,6 +33,8 @@ assert(word32ToNat 4294967295 == 4294967295); // 2**32 - 1
     roundtrip 10000000;
     roundtrip 100000000;
     roundtrip 1000000000;
+    roundtrip 0x7FFFFFFF;
+    roundtrip 0xFFFFFFFF;
 };
 
 {
@@ -47,6 +49,8 @@ assert(word32ToNat 4294967295 == 4294967295); // 2**32 - 1
     roundtrip 10000000;
     roundtrip 100000000;
     roundtrip 1000000000;
+    roundtrip 0x7FFFFFFF;
+    roundtrip 0xFFFFFFFF;
 };
 
 
@@ -99,6 +103,7 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
     roundtrip 10000000;
     roundtrip 100000000;
     roundtrip 1000000000;
+    roundtrip 0x7FFFFFFF;
 
     roundtrip (-10);
     roundtrip (-100);
@@ -109,6 +114,7 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
     roundtrip (-10000000);
     roundtrip (-100000000);
     roundtrip (-1000000000);
+    roundtrip (-2147483648);
 };
 
 {
@@ -123,6 +129,8 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
     roundtrip 10000000;
     roundtrip 100000000;
     roundtrip 1000000000;
+    roundtrip 0x7FFFFFFF;
+    roundtrip 0xFFFFFFFF;
 
     /*!*/
     roundtrip (-10);
