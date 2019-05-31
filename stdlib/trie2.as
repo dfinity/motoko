@@ -51,8 +51,6 @@ function `leaf` accepts a list, but subdivides it with branches until
 it can actually construct valid leaves.  Once distinguished, subsets
 of keys tend to remain distinguished by the presence of these branches.
 
-To do: Collapse branches whose count is less than MAX_LEAF_COUNT.
-
 ### Cached counts
 
 At each branch and leaf, we use a stored count to support a
