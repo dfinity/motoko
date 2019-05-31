@@ -541,6 +541,9 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_neg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lsh" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_leb128_size" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_leb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "bigint_leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type]
@@ -1428,21 +1431,24 @@ sig
   (* given a numeric object on stack (vanilla),
      push the number (i32) of bytes necessary
      to externalize the numeric object *)
-  val compile_data_size : E.t -> G.t
+  val compile_data_size_signed : E.t -> G.t
+  val compile_data_size_unsigned : E.t -> G.t
   (* given on stack
      - numeric object (vanilla, TOS)
      - data buffer
     store the binary representation of the numeric object into the data buffer,
     and push the number (i32) of bytes stored onto the stack
    *)
-  val compile_store_to_data_buf : E.t -> G.t
+  val compile_store_to_data_buf_signed : E.t -> G.t
+  val compile_store_to_data_buf_unsigned : E.t -> G.t
   (* given a data buffer on stack, consume bytes from it,
      deserializing to a numeric object
      and leave two words on stack:
      - number of consumed bytes (i32, TOS)
      - numeric object (vanilla)
    *)
-  val compile_load_from_data_buf : E.t -> G.t
+  val compile_load_from_data_buf_signed : E.t -> G.t
+  val compile_load_from_data_buf_unsigned : E.t -> G.t
 
   (* literals *)
   val compile_lit : E.t -> Big_int.big_int -> G.t
@@ -1528,17 +1534,20 @@ module BigNum64 : BigNumType = struct
 
   let compile_lit env n = compile_const_64 (Big_int.int64_of_big_int n) ^^ box env
 
-  let compile_data_size env = G.i Drop ^^ compile_unboxed_const 8l (* 64 bit for now *)
+  let compile_data_size_signed env = G.i Drop ^^ compile_unboxed_const 8l (* 64 bit for now *)
+  let compile_data_size_unsigned = compile_data_size_signed
 
-  let compile_store_to_data_buf env =
+  let compile_store_to_data_buf_unsigned env =
     unbox env ^^
     G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
     compile_unboxed_const 8l (* 64 bit for now *)
+  let compile_store_to_data_buf_signed = compile_store_to_data_buf_unsigned
 
-  let compile_load_from_data_buf env =
+  let compile_load_from_data_buf_signed env =
     G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
     box env ^^
     compile_unboxed_const 8l (* 64 bit for now *)
+  let compile_load_from_data_buf_unsigned = compile_load_from_data_buf_signed
 
   let compile_abs env =
     let (set_i, get_i) = new_local env "abs_param" in
@@ -1606,18 +1615,29 @@ module BigNumLibtommmath : BigNumType = struct
   let from_signed_word32 env = E.call_import env "rts" "bigint_of_word32_signed"
   let from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
 
-  let compile_data_size env =
-    E.call_import env "rts" "bigint_sleb128_size"
+  let compile_data_size_unsigned env = E.call_import env "rts" "bigint_leb128_size"
+  let compile_data_size_signed env = E.call_import env "rts" "bigint_sleb128_size"
 
-  let compile_store_to_data_buf env =
+  let compile_store_to_data_buf_unsigned env =
     let (set_buf, get_buf) = new_local env "buf" in
     let (set_n, get_n) = new_local env "n" in
     set_n ^^ set_buf ^^
-
+    get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_leb128_encode" ^^
+    get_n ^^ E.call_import env "rts" "bigint_leb128_size"
+  let compile_store_to_data_buf_signed env =
+    let (set_buf, get_buf) = new_local env "buf" in
+    let (set_n, get_n) = new_local env "n" in
+    set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
 
-  let compile_load_from_data_buf env =
+  let compile_load_from_data_buf_unsigned env =
+    E.call_import env "rts" "bigint_leb128_decode" ^^
+    let (set_n, get_n) = new_local env "n" in
+    set_n ^^
+    get_n ^^
+    get_n ^^ E.call_import env "rts" "bigint_leb128_size"
+  let compile_load_from_data_buf_signed env =
     E.call_import env "rts" "bigint_sleb128_decode" ^^
     let (set_n, get_n) = new_local env "n" in
     set_n ^^
@@ -2788,6 +2808,15 @@ module Serialization = struct
       end
     in go t
 
+  (* TODO (leb128 for i32):
+     All leb128 currently goes through bignum. This is of course
+     absurdly expensive and round-about, but I want _one_ implementation
+     first that I can test, until we properly exercise this code (i.e. there
+     is also the JS-side of things and we know it is bug-free).
+     Writing a Wasm-native implementation of this will then be done separately.
+  *)
+
+
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
     let open Type in
@@ -2811,6 +2840,11 @@ module Serialization = struct
         get_ref_size ^^ compile_add_const i ^^ set_ref_size
       in
 
+      (* See TODO (leb128 for i32) *)
+      let size_word env code =
+        inc_data_size (code ^^ BigNum.from_word32 env ^^ BigNum.compile_data_size_unsigned env)
+      in
+
       let size env t =
         buffer_size env t ^^
         get_ref_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ref_size ^^
@@ -2819,7 +2853,8 @@ module Serialization = struct
 
       (* Now the actual type-dependent code *)
       begin match t with
-      | Prim (Nat|Int) -> inc_data_size (get_x ^^ BigNum.compile_data_size env)
+      | Prim Nat -> inc_data_size (get_x ^^ BigNum.compile_data_size_unsigned env)
+      | Prim Int -> inc_data_size (get_x ^^ BigNum.compile_data_size_signed env)
       | Prim Word64 -> inc_data_size (compile_unboxed_const 8l) (* 64 bit *)
       | Prim Word8 -> inc_data_size (compile_unboxed_const 1l)
       | Prim Word16 -> inc_data_size (compile_unboxed_const 2l)
@@ -2839,35 +2874,30 @@ module Serialization = struct
           size env f.typ
         ) fs
       | Array t ->
-        inc_data_size (compile_unboxed_const Heap.word_size) ^^ (* 32 bit length field *)
-        get_x ^^
-        Heap.load_field Arr.len_field ^^
+        size_word env (get_x ^^ Heap.load_field Arr.len_field) ^^
+        get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
         )
       | Prim Text ->
-        inc_data_size (
-          compile_unboxed_const Heap.word_size ^^ (* 32 bit length field *)
-          get_x ^^ Heap.load_field Text.len_field ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add))
-        )
+        size_word env (get_x ^^ Heap.load_field Text.len_field) ^^
+        inc_data_size (get_x ^^ Heap.load_field Text.len_field)
       | (Prim Null | Shared) -> G.nop
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
-        get_x ^^
-        Opt.is_some env ^^
+        get_x ^^ Opt.is_some env ^^
         G.if_ (ValBlockType None) (get_x ^^ Opt.project ^^ size env t) G.nop
       | Variant vs ->
-        inc_data_size (compile_unboxed_const Heap.word_size) ^^ (* one word tag *)
-        List.fold_right (fun {lab = l; typ = t} continue ->
+        List.fold_right (fun (i, {lab = l; typ = t}) continue ->
             get_x ^^
             Variant.test_is env l ^^
             G.if_ (ValBlockType None)
-              ( get_x ^^ Variant.project ^^ size env t)
-              continue
+              ( size_word env (compile_unboxed_const (Int32.of_int i)) ^^
+                get_x ^^ Variant.project ^^ size env t
+              ) continue
           )
-          vs
+          ( List.mapi (fun i f -> (i,f)) vs )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | (Func _ | Obj (Actor, _)) ->
         inc_data_size (compile_unboxed_const Heap.word_size) ^^
@@ -2899,6 +2929,15 @@ module Serialization = struct
         get_ref_count ^^ compile_add_const 1l ^^ set_ref_count in
 
       let write_word code =
+        (* See TODO (leb128 for i32) *)
+        get_data_buf ^^
+        code ^^ BigNum.from_word32 env ^^
+        BigNum.compile_store_to_data_buf_unsigned env ^^
+        advance_data_buf
+      in
+
+      let write_word_legacy code =
+        (* To be removed when we switch from reference table to reference array *)
         get_data_buf ^^ code ^^ store_unskewed_ptr ^^
         compile_unboxed_const Heap.word_size ^^ advance_data_buf
       in
@@ -2921,10 +2960,15 @@ module Serialization = struct
       (* Now the actual serialization *)
 
       begin match t with
-      | Prim (Nat | Int) ->
+      | Prim Nat ->
         get_data_buf ^^
         get_x ^^
-        BigNum.compile_store_to_data_buf env ^^
+        BigNum.compile_store_to_data_buf_unsigned env ^^
+        advance_data_buf
+      | Prim Int ->
+        get_data_buf ^^
+        get_x ^^
+        BigNum.compile_store_to_data_buf_signed env ^^
         advance_data_buf
       | Prim Word64 ->
         get_data_buf ^^
@@ -2991,12 +3035,11 @@ module Serialization = struct
           ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Text ->
         let (set_len, get_len) = new_local env "len" in
-        get_x ^^ Heap.load_field Text.len_field ^^
-        compile_add_const Heap.word_size ^^
-        set_len ^^
+        get_x ^^ Heap.load_field Text.len_field ^^ set_len ^^
+
+        write_word get_len ^^
         get_data_buf ^^
-        get_x ^^ compile_add_const (Int32.mul Tagged.header_size Heap.word_size) ^^
-        compile_add_const ptr_unskew ^^
+        get_x ^^ Text.payload_ptr_unskewed ^^
         get_len ^^
         Heap.memcpy env ^^
         get_len ^^ advance_data_buf
@@ -3006,7 +3049,7 @@ module Serialization = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         get_x ^^ Dfinity.unbox_reference env ^^
         store_unskewed_ptr ^^
-        write_word allocate_ref
+        write_word_legacy allocate_ref
       | Non ->
         E.trap_with env "serializing value of type None"
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
@@ -3037,6 +3080,15 @@ module Serialization = struct
       in
 
       let read_word =
+        (* See TODO (leb128 for i32) *)
+        get_data_buf ^^
+        BigNum.compile_load_from_data_buf_unsigned env ^^
+        advance_data_buf ^^
+        BigNum.to_word32 env
+      in
+
+      let read_word_legacy =
+        (* To be removed when we switch from reference table to reference array *)
         get_data_buf ^^ load_unskewed_ptr ^^
         compile_unboxed_const Heap.word_size ^^ advance_data_buf
       in
@@ -3050,9 +3102,13 @@ module Serialization = struct
 
       (* Now the actual deserialization *)
       begin match t with
-      | Prim (Nat | Int) ->
+      | Prim Nat ->
         get_data_buf ^^
-        BigNum.compile_load_from_data_buf env ^^
+        BigNum.compile_load_from_data_buf_unsigned env ^^
+        advance_data_buf
+      | Prim Int ->
+        get_data_buf ^^
+        BigNum.compile_load_from_data_buf_signed env ^^
         advance_data_buf
       | Prim Word64 ->
         get_data_buf ^^
@@ -3135,7 +3191,7 @@ module Serialization = struct
         get_x
       | (Func _ | Obj (Actor, _)) ->
         get_ref_base ^^
-        read_word ^^ compile_mul_const Heap.word_size ^^
+        read_word_legacy ^^ compile_mul_const Heap.word_size ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         load_unskewed_ptr ^^
         Dfinity.box_reference env
