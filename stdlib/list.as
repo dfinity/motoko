@@ -169,6 +169,22 @@ type List<T> = ?(T, List<T>);
   };
 
   /**
+   `split`
+   ----------
+   split the list elements; non-tail recursive
+   */
+  func split<T>(l : List<T>, f:T -> Bool) : (List<T>, List<T>) = {
+    func rec(l : List<T>) : (List<T>, List<T>) {
+      switch l {
+	    case null     { (null, null) };
+	    case (?(h,t)) { let (l,r) = rec(t) ;
+                      if (f(h)){ (?(h,l), r) } else { (l, ?(h,r)) } };
+      }
+    };
+    rec(l)
+  };
+
+  /**
    `mapFilter`
    --------------
    map and filter the list elements; non-tail recursive
