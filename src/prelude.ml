@@ -245,9 +245,13 @@ module Conv = struct
   let of_signed_Word32 w = to_int (logand 0xFFFFFFFFn (of_int32 w))
 
   let two = big_int_of_int 2
-  let maximal_int = pred_big_int (power_big_int_positive_int two 62)
+  let twoRaised62 = power_big_int_positive_int two 62
+  let maximal_int = pred_big_int twoRaised62
   let word_maximal_int = Word64.of_int_u (int_of_big_int maximal_int)
+  let minimal_int = minus_big_int twoRaised62
+  let word_minimal_int = Word64.of_int_u (int_of_big_int minimal_int)
   let twoRaised64 = power_big_int_positive_int two 64
+
   let rec word64_of_nat_big_int i =
     if is_int_big_int i
     then Word64.of_int_u (int_of_big_int i) else
@@ -260,6 +264,32 @@ module Conv = struct
           else Word64.add (word64_of_nat_big_int (sub_big_int wrapped maximal_int)) word_maximal_int
         end
       | _ -> assert false
+
+  let rec word64_of_big_int i =
+    if is_int_big_int i
+    then Word64.of_int_s (int_of_big_int i) else
+      match sign_big_int i with
+      | 1 ->
+        begin
+          let wrapped = mod_big_int i twoRaised64 in
+          if le_big_int wrapped maximal_int
+          then word64_of_nat_big_int wrapped
+          else Word64.add (word64_of_big_int (sub_big_int wrapped maximal_int)) word_maximal_int
+        end
+      | _ ->
+        begin
+          let wrapped = mod_big_int i twoRaised64 in
+          if ge_big_int wrapped minimal_int
+          then word64_of_nat_big_int wrapped
+          else Word64.add (word64_of_big_int (sub_big_int wrapped minimal_int)) word_minimal_int
+        end
+
+  let big_int_of_unsigned_word64 w =
+    let open Big_int in
+    let i = big_int_of_int64 w in
+    if sign_big_int i > -1 then i
+    else add_big_int i twoRaised64
+
 end (* Conv *)
 
 
@@ -286,9 +316,7 @@ let prim = function
                      in k (Word32 (Word32.of_int_s i))
 
   | "Nat->Word64" -> fun v k -> k (Word64 (Conv.word64_of_nat_big_int (as_int v)))
-  | "Int->Word64" -> fun v k ->
-                     let i = Big_int.int_of_big_int (as_int v)
-                     in k (Word64 (Word64.of_int_s i))
+  | "Int->Word64" -> fun v k -> k (Word64 (Conv.word64_of_big_int (as_int v)))
 
   | "Word8->Nat" -> fun v k ->
                     let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
@@ -308,8 +336,8 @@ let prim = function
   | "Word32->Int" -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
 
   | "Word64->Nat" -> fun v k ->
-                     let i = Int64.to_int (as_word64 v) (* ! *)
-                     in k (Int (Big_int.big_int_of_int i))
+                     let i = Conv.big_int_of_unsigned_word64 (as_word64 v)
+                     in k (Int i)
   | "Word64->Int" -> fun v k -> k (Int (Big_int.big_int_of_int64 (as_word64 v)))
 
   | "Char->Word32" -> fun v k ->
