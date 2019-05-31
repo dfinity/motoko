@@ -8,7 +8,7 @@ A simple language for writing Dfinity actors.
 To install the `asc` binary into your nix environment, use
 
 ```
-$ nix-env -i -f . -A native
+$ nix-env -i -f . -A asc
 ```
 
 ## Development using Nix
@@ -26,6 +26,12 @@ within this shell you can run
  * `make asc` in `src/` to build the `asc` binary,
  * `make` in `rts/` to build the ActorScript runtime
  * `make` in `test/` to run the test suite.
+
+### Merlin
+
+> For Merlin to be able to give you the type of identifiers or to offer completion from other file of your projects, it needs to know where to find the cmi files of the other modules of your project. 
+
+To do this, run `make -C src asc` within a nix shell.
 
 ## Development without Nix
 
@@ -89,7 +95,7 @@ Three ways of obtaining the coverage report:
    ```
 2. Run `asc` as normal, e.g.
    ```
-   ./src/asc --dfinity -c foo.as -o foo.wasm
+   ./src/asc -c foo.as -o foo.wasm
    ```
    this should dump a `gmon.out` file in the current directory.
 3. Create the report, e.g. using

@@ -1,4 +1,4 @@
-
+module {
 /**
 
 [Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
@@ -22,11 +22,11 @@ uses are is not.
 */
 
 
-let P = (import "../../prelude.as");
+import P = "../../prelude.as";
 
-let T = (import "serverTypes.as");
-let L = (import "serverLang.as");
-let M = (import "serverModelTypes.as");
+import T = "serverTypes.as";
+import L = "serverLang.as";
+import M = "serverModelTypes.as";
 
 let List = (import "../../list.as");
 type List<T> = List.List<T>;
@@ -34,23 +34,23 @@ type List<T> = List.List<T>;
 let Hash = (import "../../hash.as").BitVec;
 type Hash = Hash.t;
 
-let Option = (import "../../option.as");
-let Trie = (import "../../trie.as");
+import Option = "../../option.as";
+import Trie = "../../trie.as";
 
 type Trie<K,V> = Trie.Trie<K,V>;
 type Key<K> = Trie.Key<K>;
 
 type Table<K,V> = Trie.Trie<K,V>;
-let Table = (import "../../trie.as");
+let Table = Trie;
 
 type Map<K,V> = Trie.Trie<K,V>;
-let Map = (import "../../trie.as");
+let Map = Trie;
 
-let DT = (import "../../docTable.as");
+import DT = "../../docTable.as";
 let DocTable = DT.DocTable;
 type DocTable<X,Y,Z> = DT.DocTable<X,Y,Z>;
 
-let Result = (import "../../result.as");
+import Result = "../../result.as";
 type Result<Ok,Err> = Result.Result<Ok,Err>;
 
 type RouteInventoryMap = Trie<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
@@ -989,8 +989,18 @@ secondary maps.
     idHash,
     func(doc:M.ReservedInventoryDoc):T.ReservedInventoryInfo = shared {
       id=doc.id;
-      item=doc.item.id;
-      retailer=doc.retailer
+      retailer=doc.retailer;
+      item=shared {
+        id=doc.item.id;
+        produce=doc.item.produce.id;
+        producer=doc.item.producer;
+        quantity=doc.item.quantity;
+        weight=doc.item.weight;
+        ppu=doc.item.ppu;
+        start_date=doc.item.start_date;
+        end_date=doc.item.end_date;
+        comments=doc.item.comments;
+      };
     },
     func(info:T.ReservedInventoryInfo):?M.ReservedInventoryDoc = {
       // validate the info's item id
@@ -1022,8 +1032,24 @@ secondary maps.
     idHash,
     func(doc:M.ReservedRouteDoc):T.ReservedRouteInfo = shared {
       id=doc.id;
-      route=doc.route.id;
-      retailer=doc.retailer
+      retailer=doc.retailer;
+      route=shared {
+        id=doc.route.id;
+        transporter=doc.route.transporter;
+        truck_type=shared {
+          id=doc.route.truck_type.id;
+          short_name=doc.route.truck_type.short_name;
+          description=doc.route.truck_type.description;
+          capacity=doc.route.truck_type.capacity;
+          isFridge=doc.route.truck_type.isFridge;
+          isFreezer=doc.route.truck_type.isFreezer;
+        };
+        start_region=doc.route.start_region.id;
+        end_region=doc.route.end_region.id;
+        start_date=doc.route.start_date;
+        end_date=doc.route.end_date;
+        cost=doc.route.cost;
+      }
     },
     func(info:T.ReservedRouteInfo):?M.ReservedRouteDoc = {
       // validate the info's item id
@@ -2260,3 +2286,4 @@ than the MVP goals, however.
   };
 
 };
+}

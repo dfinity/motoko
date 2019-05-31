@@ -1,0 +1,2 @@
+modexp3.as:1.1-7.2: type error, local class type U is contained in object or actor type
+  module {type T = U}

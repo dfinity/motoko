@@ -100,7 +100,7 @@ let parse_files =
 type resolve_result = (Syntax.prog * Resolve_import.S.t) Diag.result
 
 let resolve_prog (prog, base) : resolve_result =
-  Diag.map_result
+  Diag.map
     (fun libraries -> (prog, libraries))
     (Resolve_import.resolve prog base)
 
@@ -206,7 +206,7 @@ let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result 
     end
     and go_set todo = Diag.traverse_ go (elements todo)
   in
-  Diag.map_result (fun () -> (List.rev !libraries, !senv)) (go_set imports)
+  Diag.map (fun () -> (List.rev !libraries, !senv)) (go_set imports)
 
 let load_progs parse senv : load_result =
   Diag.bind parse (fun parsed ->
@@ -270,15 +270,15 @@ let rec interpret_progs denv progs : Interpret.scope option =
       interpret_progs denv' ps
     | None -> None
 
-let interpret_files (senv0, denv0) files : (Typing.scope * Interpret.scope) Diag.result =
-  Diag.bind (Diag.flush_messages
-    (load_progs (parse_files files) senv0))
+let interpret_files (senv0, denv0) files : (Typing.scope * Interpret.scope) option =
+  Lib.Option.bind
+    (Diag.flush_messages (load_progs (parse_files files) senv0))
     (fun (libraries, progs, senv1) ->
-  let denv1 = interpret_libraries denv0 libraries in
-  match interpret_progs denv1 progs with
-  | None -> Error []
-  | Some denv2 -> Diag.return (senv1, denv2)
-  )
+      let denv1 = interpret_libraries denv0 libraries in
+      match interpret_progs denv1 progs with
+      | None -> None
+      | Some denv2 -> Some (senv1, denv2)
+    )
 
 
 (* Prelude *)
@@ -321,16 +321,16 @@ let initial_env = (initial_stat_env, initial_dyn_env)
 type check_result = unit Diag.result
 
 let check_files files : check_result =
-  Diag.ignore (load_progs (parse_files files) initial_stat_env)
+  Diag.map ignore (load_progs (parse_files files) initial_stat_env)
 
 let check_string s name : check_result =
-  Diag.ignore (load_decl (parse_string s name) initial_stat_env)
+  Diag.map ignore (load_decl (parse_string s name) initial_stat_env)
 
 
 (* Running *)
 
-let run_files files : unit Diag.result =
-  Diag.ignore (interpret_files initial_env files)
+let run_files files : unit option =
+  Lib.Option.map ignore (interpret_files initial_env files)
 
 (* Interactively *)
 
@@ -393,11 +393,11 @@ let run_stdin lexer (senv, denv) : env option =
 
 let run_files_and_stdin files =
   let lexer = Lexing.from_function lexer_stdin in
-  Diag.bind (interpret_files initial_env files) (fun env ->
+  Lib.Option.bind (interpret_files initial_env files) (fun env ->
     let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
     try loop env with End_of_file ->
       printf "\n%!";
-      Diag.return ()
+      Some ()
   )
 
 
@@ -407,7 +407,7 @@ let transform transform_name trans env prog name =
   phase transform_name name;
   let prog_ir' : Ir.prog = trans env prog in
   dump_ir Flags.dump_lowering prog_ir';
-  Check_ir.check_prog env transform_name prog_ir';
+  if !Flags.check_ir then Check_ir.check_prog env transform_name prog_ir';
   prog_ir'
 
 let transform_if transform_name trans flag env prog name =
@@ -418,7 +418,7 @@ let desugar env lib_env libraries progs name =
   phase "Desugaring" name;
   let prog_ir' : Ir.prog = Desugar.transform_graph lib_env libraries progs in
   dump_ir Flags.dump_lowering prog_ir';
-  Check_ir.check_prog env "Desugaring" prog_ir';
+  if !Flags.check_ir then Check_ir.check_prog env "Desugaring" prog_ir';
   prog_ir'
 
 let await_lowering =
@@ -461,7 +461,7 @@ let load_as_rts () =
   CustomModuleDecode.decode "rts.wasm" wasm
 
 type compile_mode = Compile.mode = WasmMode | DfinityMode
-type compile_result = (CustomModule.extended_module, Diag.messages) result
+type compile_result = CustomModule.extended_module Diag.result
 
 let name_progs progs =
   if progs = []
@@ -477,29 +477,23 @@ let lower_prog senv lib_env libraries progs name =
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir
 
-let compile_prog mode do_link lib_env libraries progs : compile_result =
+let compile_prog mode do_link lib_env libraries progs : CustomModule.extended_module =
   let prelude_ir = Desugar.transform prelude in
   let name = name_progs progs in
   let prog_ir = lower_prog initial_stat_env lib_env libraries progs name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
-  let module_ = Compile.compile mode name rts prelude_ir [prog_ir] in
-  Ok module_
+  Compile.compile mode name rts prelude_ir [prog_ir]
 
 let compile_files mode do_link files : compile_result =
-  match load_progs (parse_files files) initial_stat_env with
-  | Error msgs -> Error msgs
-  | Ok ((libraries, progs, senv), msgs) ->
-    Diag.print_messages msgs;
-    compile_prog mode do_link senv.Typing.lib_env libraries progs
+  Diag.bind (load_progs (parse_files files) initial_stat_env)
+    (fun (libraries, progs, senv) ->
+    Diag.return (compile_prog mode do_link senv.Typing.lib_env libraries progs))
 
 let compile_string mode s name : compile_result =
-  match load_decl (parse_string s name) initial_stat_env with
-  | Error msgs -> Error msgs
-  | Ok ((libraries, prog, senv, _t, _sscope), msgs) ->
-    Diag.print_messages msgs;
-    compile_prog mode false senv.Typing.lib_env libraries [prog]
-
+  Diag.bind (load_decl (parse_string s name) initial_stat_env)
+    (fun (libraries, prog, senv, _t, _sscope) ->
+    Diag.return (compile_prog mode false senv.Typing.lib_env libraries [prog]))
 
 (* Interpretation (IR) *)
 
@@ -515,9 +509,6 @@ let interpret_ir_prog inp_env libraries progs =
   ()
 
 let interpret_ir_files files =
-  match load_progs (parse_files files) initial_stat_env with
-  | Error msgs -> Error msgs
-  | Ok ((libraries, progs, senv), msgs) ->
-    Diag.print_messages msgs;
-    interpret_ir_prog senv.Typing.lib_env libraries progs;
-    Diag.return ()
+  Lib.Option.map
+    (fun (libraries, progs, senv) -> interpret_ir_prog senv.Typing.lib_env libraries progs)
+    (Diag.flush_messages (load_progs (parse_files files) initial_stat_env))

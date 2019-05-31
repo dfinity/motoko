@@ -1,4 +1,4 @@
-
+module {
 /**
 
 Document Table
@@ -366,4 +366,5 @@ class DocTable<Id,Doc,Info>(
 
 /** The end */
 
+}
 }

@@ -1,0 +1,3 @@
+Type mismatch when linking rts.exported:
+import type: [i32] -> []
+export type: [] -> [i32]

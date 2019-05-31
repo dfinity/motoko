@@ -1,3 +1,4 @@
+module {
 /**
 
 [Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
@@ -200,17 +201,6 @@ type ProducerInfo = shared {
 };
 
 /**
-`ReservedInventoryInfo`
------------------------------
-*/
-
-type ReservedInventoryInfo = shared {
-  id : ReservedInventoryId;
-  retailer : RetailerId;
-  item : InventoryId;
-};
-
-/**
 `InventoryInfo`
 -----------------
 */
@@ -225,6 +215,17 @@ type InventoryInfo = shared {
   start_date : Date;
   end_date : Date;
   comments : Text;
+};
+
+/**
+`ReservedInventoryInfo`
+-----------------------------
+*/
+
+type ReservedInventoryInfo = shared {
+  id : ReservedInventoryId;
+  retailer : RetailerId;
+  item : InventoryInfo;
 };
 
 /**
@@ -279,17 +280,6 @@ type TransporterInfo = shared {
 };
 
 /**
-`ReservedRouteInfo`
------------------
-*/
-
-type ReservedRouteInfo = shared {
-  id : ReservedRouteId;
-  retailer : RetailerId;
-  route : RouteId;
-};
-
-/**
 `RouteInfo`
 -----------------
 */
@@ -303,6 +293,17 @@ type RouteInfo = shared {
   start_date : Date;
   end_date : Date;
   cost : Price;
+};
+
+/**
+`ReservedRouteInfo`
+-----------------
+*/
+
+type ReservedRouteInfo = shared {
+  id : ReservedRouteId;
+  retailer : RetailerId;
+  route : RouteInfo;
 };
 
 /**
@@ -401,3 +402,5 @@ type WorkloadParams = shared {
   retailer_count:Nat;
   region_count:Nat;
 };
+
+}

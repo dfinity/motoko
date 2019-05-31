@@ -194,6 +194,33 @@ $(DOCDIR)/examples/produce-exchange/README.md: examples/produce-exchange/README.
 	@echo "" >> $@
 	$(MDofMD) $< >> $@
 
+PRODUCE_EXCHANGE_SRC=\
+	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as result.as \
+	examples/produce-exchange/serverTypes.as \
+	examples/produce-exchange/serverLang.as \
+	examples/produce-exchange/serverModelTypes.as \
+	examples/produce-exchange/serverModel.as \
+	examples/produce-exchange/serverActor.as \
+
+$(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/test/simpleSetupAndQuery.as > $@
+
+$(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/test/retailerReserveMany.as > $@
+
+$(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/producerRemInventory.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/test/producerRemInventory.as > $@
+
+$(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
+	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
+	$(ASC) -r examples/produce-exchange/test/evalBulk.as > $@
+
+$(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
+	$(ASC) -c -o $@ examples/produce-exchange/serverActor.as
+
 $(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@
 	@echo "" >> $@

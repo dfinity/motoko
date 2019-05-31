@@ -35,7 +35,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | ShowE (_, exp1)
   | ProjE (exp1, _)
   | OptE exp1
-  | VariantE (_, exp1)
+  | TagE (_, exp1)
   | DotE (exp1, _)
   | NotE exp1
   | AssertE exp1
@@ -104,10 +104,6 @@ and infer_effect_dec dec =
   | TypD _
   | ClassD _ ->
     T.Triv
-  | ModuleD (_,decs) ->
-    let es = List.map effect_dec decs in
-    List.fold_left max_eff Type.Triv es
-
 
 (* effect inference on Ir *)
 
@@ -132,7 +128,7 @@ module Ir =
       | ShowE (_, exp1)
       | ProjE (exp1, _)
       | OptE exp1
-      | VariantE (_, exp1)
+      | TagE (_, exp1)
       | DotE (exp1, _)
       | ActorDotE (exp1, _)
       | AssertE exp1

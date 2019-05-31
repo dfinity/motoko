@@ -1,3 +1,4 @@
+module {
 /**
 
 Hash values
@@ -203,3 +204,4 @@ module BitList {
 
 type Hash = BitVec;
 let Hash = BitVec;
+}

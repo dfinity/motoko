@@ -62,7 +62,7 @@ and exp' rho e  = match e with
   | AwaitE e            -> AwaitE (exp rho e)
   | AssertE e           -> AssertE (exp rho e)
   | OptE e              -> OptE (exp rho e)
-  | VariantE (i, e)     -> VariantE (i, exp rho e)
+  | TagE (i, e)         -> TagE (i, exp rho e)
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
@@ -102,8 +102,8 @@ and pat' rho p = match p with
   | LitP l        -> (p, rho)
   | OptP p        -> let (p', rho') = pat rho p in
                      (OptP p', rho')
-  | VariantP (i, p) -> let (p', rho') = pat rho p in
-                       (VariantP (i, p'), rho')
+  | TagP (i, p)   -> let (p', rho') = pat rho p in
+                     (TagP (i, p'), rho')
   | AltP (p1, p2) -> assert(Freevars.S.is_empty (snd (Freevars.pat p1)));
                      assert(Freevars.S.is_empty (snd (Freevars.pat p2)));
                      let (p1', _) = pat rho p1 in
