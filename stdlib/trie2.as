@@ -85,32 +85,38 @@ type List<T> = List.List<T>;
 let AssocList = import "assocList.as";
 type AssocList<K,V> = AssocList.AssocList<K,V>;
 
+/** A `Key` for the trie has an associated hash value */
 type Key<K> = {
-  // hash field: permits fast inequality checks, permits collisions;
-  // (eventually: permits incremental growth of deeper trie paths)
+  /** `hash` permits fast inequality checks, and permits collisions */
   hash: Hash;
-  // key field: for conservative equality checks, after equal hashes.
+  /** `key` permits percise equality checks, but only used after equal hashes. */
   key: K;
 };
 
-// Equality function for two `Key<K>`s, in terms of equaltiy of `K`'s.
+/** Equality function for two `Key<K>`s, in terms of equaltiy of `K`'s. */
 func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) = {
   func (key1:Key<K>, key2:Key<K>) : Bool =
     label profile_trie_keyEq : Bool
   (Hash.hashEq(key1.hash, key2.hash) and keq(key1.key, key2.key))
 };
 
+/** leaf nodes of trie consist of key-value pairs as a list. */
 type Leaf<K,V> = {
   count   : Nat ;
   keyvals : AssocList<Key<K>,V> ;
 };
 
+/** branch nodes of the trie discriminate on a bit position of the keys' hashes.
+ we never store this bitpos; rather,
+ we enforce a style where this position is always known from context.
+*/
 type Branch<K,V> = {
   count : Nat ;
   left  : Trie<K,V> ;
   right : Trie<K,V> ;
 };
 
+/** binary hash tries: either empty, a leaf node, or a branch node */
 type Trie<K,V> = {
   #empty  ;
   #leaf   : Leaf<K,V> ;
@@ -143,7 +149,8 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   --------
   An empty trie.
   */
- func empty<K,V>() : Trie<K,V> = #empty;
+ func empty<K,V>() : Trie<K,V> =
+   #empty;
 
  /**
   `count`
@@ -169,19 +176,36 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   `branch`
   --------
   Construct a branch node, computing the count stored there.
+
+  ### edge case: 0 or 1 elements:
+
+  if the left and right in sum have fewer than 2 key-value pairs,
+  then a leaf or empty node suffices, so do not make a branch.
+
+  otherwise, we make a branch normally, regardless of the sizes:
+  our rationale is that the l-vs-r keys have already been distinguished,
+  so let's memorialize that work with a branch, regardless of how small.
   */
  func branch<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> {
-   // note: need to rename the `count` function, because otherwise AS
-   // is confused by what looks like a recursive definition below for
-   // the field `count`.
    func c(t:Trie<K,V>) : Nat = count<K,V>(t);
-   #branch(
-     new{
-       count=c(l) + c(r);
-       left=l;
-       right=r
+   let sum = c(l) + c(r);
+   /** handle edge case: */
+   if ( sum < 2 ) {
+     switch (nth<K,V>(l,0), nth<K,V>(r,0)) {
+       case (null, null) { #empty                  };
+       case (?kv,  null) { leaf<K,V>(?(kv,null),0) };
+       case (null, ?kv ) { leaf<K,V>(?(kv,null),0) };
+       case (?kv1, ?kv2) { P.unreachable()         };
      }
-   )
+   } else {
+     #branch(
+       new{
+         count=sum;
+         left=l;
+         right=r
+       }
+     )
+   }
  };
 
  /**
