@@ -245,47 +245,24 @@ module Conv = struct
   let of_signed_Word32 w = to_int (logand 0xFFFFFFFFn (of_int32 w))
 
   let two = big_int_of_int 2
-  let twoRaised62 = power_big_int_positive_int two 62
-  let maximal_int = pred_big_int twoRaised62
-  let word_maximal_int = Word64.of_int_u (int_of_big_int maximal_int)
-  let minimal_int = minus_big_int twoRaised62
-  let word_minimal_int = Word64.of_int_u (int_of_big_int minimal_int)
+  let twoRaised63 = power_big_int_positive_int two 63
+  let word_twoRaised63 = Word64.(pow 2L 63L)
   let twoRaised64 = power_big_int_positive_int two 64
 
-  let rec word64_of_nat_big_int i =
-    if is_int_big_int i
-    then Word64.of_int_u (int_of_big_int i) else
-      match sign_big_int i with
-      | 1 ->
-        begin
-          let wrapped = mod_big_int i twoRaised64 in
-          if le_big_int wrapped maximal_int
-          then word64_of_nat_big_int wrapped
-          else Word64.add (word64_of_nat_big_int (sub_big_int wrapped maximal_int)) word_maximal_int
-        end
-      | _ -> assert false
+  let word64_of_nat_big_int i =
+    assert (sign_big_int i > -1);
+    let wrapped = mod_big_int i twoRaised64 in
+    match int64_of_big_int_opt wrapped with
+    | Some n -> n
+    | _ -> Word64.add (int64_of_big_int (sub_big_int wrapped twoRaised63)) word_twoRaised63
 
-  let rec word64_of_big_int i =
-    if is_int_big_int i
-    then Word64.of_int_s (int_of_big_int i) else
-      match sign_big_int i with
-      | 1 ->
-        begin
-          let wrapped = mod_big_int i twoRaised64 in
-          if le_big_int wrapped maximal_int
-          then word64_of_nat_big_int wrapped
-          else Word64.add (word64_of_big_int (sub_big_int wrapped maximal_int)) word_maximal_int
-        end
-      | _ ->
-        begin
-          let wrapped = mod_big_int i twoRaised64 in
-          if ge_big_int wrapped minimal_int
-          then word64_of_nat_big_int wrapped
-          else Word64.add (word64_of_big_int (sub_big_int wrapped minimal_int)) word_minimal_int
-        end
+  let word64_of_big_int i =
+    let wrapped = mod_big_int i twoRaised64 in
+    match int64_of_big_int_opt wrapped with
+    | Some n -> n
+    | _ -> Word64.sub (int64_of_big_int (sub_big_int wrapped twoRaised63)) word_twoRaised63
 
   let big_int_of_unsigned_word64 w =
-    let open Big_int in
     let i = big_int_of_int64 w in
     if sign_big_int i > -1 then i
     else add_big_int i twoRaised64
