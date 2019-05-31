@@ -241,7 +241,25 @@ open Value
 
 module Conv = struct
   open Nativeint
+  open Big_int
   let of_signed_Word32 w = to_int (logand 0xFFFFFFFFn (of_int32 w))
+
+  let two = big_int_of_int 2
+  let maximal_int = pred_big_int (power_big_int_positive_int two 62)
+  let word_maximal_int = Word64.of_int_u (int_of_big_int maximal_int)
+  let twoRaised64 = power_big_int_positive_int two 64
+  let rec word64_of_nat_big_int i =
+    if is_int_big_int i
+    then Word64.of_int_u (int_of_big_int i) else
+      match sign_big_int i with
+      | 1 ->
+        begin
+          let wrapped = mod_big_int i twoRaised64 in
+          if le_big_int wrapped maximal_int
+          then word64_of_nat_big_int wrapped
+          else Word64.add (word64_of_nat_big_int (sub_big_int wrapped maximal_int)) word_maximal_int
+        end
+      | _ -> assert false
 end (* Conv *)
 
 
@@ -267,9 +285,7 @@ let prim = function
                      let i = Big_int.int_of_big_int (as_int v)
                      in k (Word32 (Word32.of_int_s i))
 
-  | "Nat->Word64" -> fun v k ->
-                     let i = Big_int.int_of_big_int (as_int v)
-                     in k (Word64 (Word64.of_int_u i))
+  | "Nat->Word64" -> fun v k -> k (Word64 (Conv.word64_of_nat_big_int (as_int v)))
   | "Int->Word64" -> fun v k ->
                      let i = Big_int.int_of_big_int (as_int v)
                      in k (Word64 (Word64.of_int_s i))
