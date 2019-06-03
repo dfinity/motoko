@@ -1,0 +1,40 @@
+const my_type = IDL.nat
+const B = my_type
+const C = E
+const E = IDL.Opt(C)
+const node = IDL.Obj({'head': IDL.nat, 'tail': list})
+const list = IDL.Opt(node)
+const enum =
+ IDL.Variant({'red': IDL.null, 'blue': IDL.null, 'green': IDL.null})
+const message = IDL.Obj({'name': IDL.text, '25': C, '26': IDL.reserved})
+const test =
+ IDL.Obj({'0': IDL.nat, '1': IDL.nat, '2': IDL.nat, '99': IDL.nat,
+  '100': IDL.nat, 'named_field': IDL.nat, '108546619': IDL.nat,
+  '108546620': IDL.nat, '108546621': IDL.nat})
+const nest_record =
+ IDL.Obj({'0': IDL.nat, '1': IDL.nat, '2': IDL.nat,
+  '3': IDL.Obj({'0': IDL.nat, '1': IDL.nat, '2': IDL.nat}), '4': IDL.nat,
+  '5': IDL.nat, '6': IDL.nat})
+const tree =
+ IDL.Variant({'leaf': IDL.int,
+  'branch': IDL.Obj({'left': tree, 'val': IDL.int, 'right': tree})})
+const s = IDL.ActorInterface({f: t})
+const t = IDL.message(IDL.Obj({'server': s}), IDL.Obj({}))
+const broker =
+ IDL.ActorInterface({
+  find:
+   IDL.message(IDL.Obj({'name': IDL.text}),
+    IDL.Obj({
+     '0':
+      IDL.ActorInterface({up: IDL.message(IDL.Obj({}), IDL.Obj({})),
+       current: IDL.message(IDL.Obj({}), IDL.Obj({'0': IDL.nat}))})
+     }))
+    })
+const stream =
+ IDL.Opt(
+  IDL.Obj({'head': IDL.nat,
+   'next': IDL.message(IDL.Obj({}), IDL.Obj({'0': stream}))}))
+  
+const user = new IDL.ActorInterface({
+ addUser: IDL.message(IDL.Obj({'0': IDL.nat}), IDL.Obj({'0': my_type})),
+ userName: IDL.message(IDL.Obj({'0': IDL.nat}), IDL.Obj({'0': stream}))})

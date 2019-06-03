@@ -6,6 +6,7 @@ let Collections : module {List : module {type List<T> = ?(T, List<T>); cons : <T
 let List : module {type List<T> = ?(T, List<T>); cons : <T>(T, List<T>) -> List<T>; nil : <T>() -> List<T>}
 let empty : ?(Int, List<Int>)
 let push : (Int, Stack) -> Stack
+-- Definedness modules.as:
 -- Interpreting modules.as:
 nil()
   <= null

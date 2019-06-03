@@ -1,4 +1,5 @@
-let P = (import "prelude.as");
+module {
+private let P = (import "prelude.as");
 
 /**
 
@@ -97,6 +98,21 @@ func bind<R1,R2,Error>(
   }
 };
 
+
+/**
+ `mapOk`
+ -------
+ map the `Ok` type/value, leaving any `Error` type/value unchanged.
+*/
+func mapOk<Ok1,Ok2,Error>(
+  x:Result<Ok1,Error>,
+  y:Ok1 -> Ok2) : Result<Ok2,Error> {
+  switch x {
+  case (#err e) (#err e);
+  case (#ok r) (#ok (y r));
+  }
+};
+
 /**
  `fromOption`
  --------------
@@ -105,6 +121,18 @@ func bind<R1,R2,Error>(
 func fromOption<R,E>(x:?R, err:E):Result<R,E> {
   switch x {
     case (? x) {#ok x};
+    case null {#err err};
+  }
+};
+
+/**
+ `fromSomeMap`
+ --------------
+ map the `Ok` type/value from the optional value, or else use the given error value.
+*/
+func fromSomeMap<R1,R2,E>(x:?R1, f:R1->R2, err:E):Result<R2,E> {
+  switch x {
+    case (? x) {#ok (f x)};
     case null {#err err};
   }
 };
@@ -137,3 +165,4 @@ func joinArrayIfOk<R,E>(x:[Result<R,E>]) : Result<[R],E> {
   /**- all of the results are Ok; tabulate them. */
   #ok(Array_tabulate<R>(x.len(), func (i:Nat):R { assertUnwrap<R,E>(x[i]) }))
 };
+}

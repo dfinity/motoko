@@ -4,14 +4,16 @@
  --------------------
 */
 
-let P = (import "../../prelude.as");
-let T = (import "serverTypes.as");
-let Model = (import "serverModel.as");
-let Result = (import "../../result.as");
+import P = "../../prelude.as";
+import Option = "../../option.as";
+import T = "serverTypes.as";
+import L = "serverLang.as";
+import Model = "serverModel.as";
+import Result = "../../result.as";
 
 type Result<Ok,Err> = Result.Result<Ok,Err>;
 
-actor server {
+actor class Server () {
 
 /**
  Server Actor
@@ -47,9 +49,12 @@ actor server {
  - `Producer`,
  - `Retailer`, or
  - `Transporter`.
+*/
 
 
- `User`
+/**
+
+ `-User`
  =========
  Messages about users.
 
@@ -797,6 +802,16 @@ actor server {
   };
 
   /**
+   `allReservedRouteInfo`
+   ---------------------------
+   Get the information for all reserved routes.
+   */
+  allReservedRouteInfo() : async [T.ReservedRouteInfo] {
+    getModel()
+      .reservedRouteTable.allInfo()
+  };
+
+  /**
    `getRouteInfo`
    ---------------------
 
@@ -1009,6 +1024,17 @@ been processed
 
   devViewRetailers() : async [T.RetailerInfo] {
     getModel().retailerTable.allInfo()
+  };
+
+
+  /**
+   `evalBulk`
+   -------------------
+   evaluate a collection of API calls (a "bulk request"), represented as an AS datatype.
+   */
+
+  evalBulkArray(reqs:[L.BulkReq]) : async [L.BulkResp] {
+    getModel().evalBulkArray(reqs)
   };
 
 

@@ -20,7 +20,7 @@ let set_mode m () =
   end;
   mode := m
 
-let compile_mode = ref Pipeline.WasmMode
+let compile_mode = ref Pipeline.DfinityMode
 let out_file = ref ""
 
 let argspec = Arg.align
@@ -35,9 +35,6 @@ let argspec = Arg.align
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
-  "--dfinity",
-    Arg.Unit (fun () -> compile_mode := Pipeline.DfinityMode),
-      " compile for dfinity";
   "--map", Arg.Set Flags.source_map, " output source map";
 
   "-t", Arg.Set Flags.trace, " activate tracing";
@@ -45,28 +42,24 @@ let argspec = Arg.align
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
 
+  "-no-link", Arg.Clear Flags.link, " do not statically link-in runtime";
+  "-no-dfinity-api",
+    Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
+      " do not import the DFINITY system API";
+
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
   "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
+  "-no-check-ir", Arg.Clear Flags.check_ir, " do not check intermediate code";
   "--disable-prelude", Arg.Clear Flags.prelude, " disable prelude";
 ]
 
 
 (* Main *)
 
-let exit_on_failure = function
-  | Ok x -> x
-  | Error errs ->
-    Diag.print_messages errs;
-    exit 1
-
-let run_diag = function
-  | Ok ((), warns) ->
-    Diag.print_messages warns;
-    exit 0
-  | Error errs ->
-    Diag.print_messages errs;
-    exit 1
+let exit_on_none = function
+  | None -> exit 1
+  | Some x -> x
 
 let process_files files : unit =
   match !mode with
@@ -74,23 +67,22 @@ let process_files files : unit =
     assert false
   | Run ->
     if !Flags.interpret_ir
-    then run_diag (Pipeline.interpret_ir_files files)
-    else run_diag (Pipeline.run_files files)
+    then exit_on_none (Pipeline.interpret_ir_files files)
+    else exit_on_none (Pipeline.run_files files)
   | Interact ->
     printf "%s\n" banner;
-    run_diag (Pipeline.run_files_and_stdin files)
+    exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
-    let ((), msgs) = exit_on_failure (Pipeline.check_files files) in
-    Diag.print_messages msgs
+    Diag.run (Pipeline.check_files files)
   | Compile ->
     if !out_file = "" then begin
       match files with
       | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
-    let module_ = exit_on_failure Pipeline.(compile_files !compile_mode files) in
+    let module_ = Diag.run Pipeline.(compile_files !compile_mode !(Flags.link) files) in
     let oc = open_out !out_file in
-    let (source_map, wasm) = CustomModule.encode module_ in
+    let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
 
     if !Flags.source_map then begin

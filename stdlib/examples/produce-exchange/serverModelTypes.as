@@ -1,3 +1,4 @@
+module {
 /**
 
 [Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
@@ -32,9 +33,9 @@ Representation
 
 */
 
-let T = (import "serverTypes.as");
+import T = "serverTypes.as";
 
-let Trie = (import "../../trie.as");
+import Trie = "../../trie.as";
 type Trie<K,V> = Trie.Trie<K,V>;
 
 type Map<X, Y> = Trie<X, Y>;
@@ -337,3 +338,4 @@ type ReservedRouteDoc = {
 type ReservedRouteTable = DocTable<T.ReservedRouteId, ReservedRouteDoc, T.ReservedRouteInfo>;
 
 type ReservedRouteMap = Map<T.ReservedRouteId, ReservedRouteDoc>;
+}

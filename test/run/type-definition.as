@@ -18,3 +18,6 @@ class E<Y>(x : U<Y>) {r = x.f};
 // This is an expected forward reference error
 //class F(x : FF) {r = x.a};
 //type FF = {a : Int};
+
+type AA = shared {b : BB};
+type BB = shared {a : ?AA};

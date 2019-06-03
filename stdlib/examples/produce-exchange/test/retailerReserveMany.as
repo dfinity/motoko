@@ -1,5 +1,5 @@
 let T = (import "../serverTypes.as");
-//let A = (import "../serverActor.as");
+let A = (import "../serverActor.as");
 let Result = (import "../../../result.as");
 let Option = (import "../../../option.as");
 
@@ -19,8 +19,7 @@ actor class Test() = this {
   go() {
     ignore(async
     {
-      //let s = A.Server();
-      let s = server;
+      let s = A.Server();
 
       print "\nExchange setup: Begin...\n====================================\n";
 
@@ -100,19 +99,20 @@ actor class Test() = this {
 
       print "\nExchange setup: Done.\n====================================\n";
 
-      //await debugDumpAll(s);
-      await debugDumpAll();
+      let inventoryCount1 = await debugDumpInventory(s, pka, 0);
+      let routeCount1 = await debugDumpRoutes(s, pka, 0);
+      await debugDumpAll(s);
 
       //////////////////////////////////////////////////////////////////
 
       print "\nRetailer queries\n====================================\n";
 
       // do some queries
-      await retailerQueryAll(pka, ? Result.assertUnwrapAny<T.UserId>(uida));
-      await retailerQueryAll(pkb, ? Result.assertUnwrapAny<T.UserId>(uidb));
-      await retailerQueryAll(pkc, ? Result.assertUnwrapAny<T.UserId>(uidc));
-      await retailerQueryAll(pkd, ? Result.assertUnwrapAny<T.UserId>(uidd));
-      await retailerQueryAll(pke, ? Result.assertUnwrapAny<T.UserId>(uide));
+      await retailerQueryAll(s, pka, ? Result.assertUnwrapAny<T.UserId>(uida));
+      await retailerQueryAll(s, pkb, ? Result.assertUnwrapAny<T.UserId>(uidb));
+      await retailerQueryAll(s, pkc, ? Result.assertUnwrapAny<T.UserId>(uidc));
+      await retailerQueryAll(s, pkd, ? Result.assertUnwrapAny<T.UserId>(uidd));
+      await retailerQueryAll(s, pke, ? Result.assertUnwrapAny<T.UserId>(uide));
 
       print "\nQuery counts\n----------------\n";
       let counts = await s.getCounts();
@@ -123,6 +123,7 @@ actor class Test() = this {
 
       print "\nRetailer reservations\n====================================\n";
 
+
       print "\nRetailer reservations: begin...\n------------------------\n";
 
       let rrm =
@@ -132,7 +133,7 @@ actor class Test() = this {
                                      (0, 1)]);
 
 
-      let urrm = Result.assertUnwrapAny<[Result<(T.ReservedInventoryId, T.ReservedRouteId), T.ServerErr>]>(rrm);
+      let urrm = Result.assertUnwrapAny<[Result.Result<(T.ReservedInventoryId, T.ReservedRouteId), T.ServerErr>]>(rrm);
 
       print "\nRetailer reservations: results:\n---------------------------------\n";
 
@@ -169,13 +170,51 @@ actor class Test() = this {
 
       print "\nRetailer reservations: done.\n---------------------------------\n";
 
+      print "\nExchange interactions: Done.\n====================================\n";
+
+      let inventoryCount2 = await debugDumpInventory(s, pka, 0);
+      let routeCount2 = await debugDumpRoutes(s, pka, 0);
+      assert (inventoryCount2 == 0);
+      assert (routeCount2 == 1);
+
+      await debugDumpAll(s);
     })
   };
 };
 
+func debugDumpInventory(server:A.Server, pk:T.PublicKey, p:T.ProducerId) : async Nat {
+  print "\nProducer ";
+  printInt p;
+  print "'s inventory:\n--------------------------------\n";
+  let res = await server.producerAllInventoryInfo(pk, p);
+  let items = Result.assertUnwrapAny<[T.InventoryInfo]>(res);
+  for (i in items.keys()) {
+    printInt i;
+    print ". ";
+    print (debug_show (items[i]));
+    print "\n";
+  };
+  print "(list end)\n";
+  items.len()
+};
 
-//func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
-func retailerQueryAll(pk:Text, r:?T.UserId) : async () {
+func debugDumpRoutes(server:A.Server, pk:T.PublicKey, t:T.TransporterId) : async Nat {
+  print "\nTransporter ";
+  printInt t;
+  print "'s routes:\n--------------------------------\n";
+  let res = await server.transporterAllRouteInfo(pk, t);
+  let items = Result.assertUnwrapAny<[T.RouteInfo]>(res);
+  for (i in items.keys()) {
+    printInt i;
+    print ". ";
+    print (debug_show (items[i]));
+    print "\n";
+  };
+  print "(list end)\n";
+  items.len()
+};
+
+func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
 
   print "\nRetailer ";
   let retailerId: T.UserId = Option.unwrap<T.UserId>(r);
@@ -199,8 +238,7 @@ func retailerQueryAll(pk:Text, r:?T.UserId) : async () {
   }
 };
 
-//func debugDumpAll(server:A.Server) : async () {
-func debugDumpAll() : async () {
+func debugDumpAll(server:A.Server) : async () {
 
   print "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {

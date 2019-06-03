@@ -153,8 +153,12 @@ struct
   let neg = minus_big_int
   let add = add_big_int
   let mul = mult_big_int
-  let div = div_big_int
-  let rem = mod_big_int (* Is rem and mod the same here? *)
+  let div a b =
+    let q, m = quomod_big_int a b in
+    if sign_big_int q < 0 && sign_big_int m > 0 then succ_big_int q else q
+  let rem a b =
+    let q, m = quomod_big_int a b in
+    if sign_big_int q < 0 && sign_big_int m > 0 then sub_big_int m b else m
   let eq = eq_big_int
   let ne x y = not (eq x y)
   let lt = lt_big_int
@@ -257,7 +261,7 @@ let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_opt = function Opt v -> v | _ -> invalid "as_opt"
-let as_variant = function | Variant (i, v) -> i, v | _ -> invalid "as_variant"
+let as_variant = function Variant (i, v) -> i, v | _ -> invalid "as_variant"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
@@ -337,6 +341,11 @@ let rec compare x1 x2 =
   | Tup vs1, Tup vs2 -> Lib.List.compare compare vs1 vs2
   | Array a1, Array a2 -> Lib.Array.compare compare a1 a2
   | Obj fs1, Obj fs2 -> Env.compare compare fs1 fs2
+  | Variant (l1, v1), Variant (l2, v2) ->
+    (match String.compare l1 l2 with
+    | 0 -> compare v1 v2
+    | i -> i
+    )
   | Mut r1, Mut r2 -> compare !r1 !r2
   | Async _, Async _ -> raise (Invalid_argument "Value.compare")
   | _ -> generic_compare x1 x2

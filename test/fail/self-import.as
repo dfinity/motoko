@@ -1,1 +1,1 @@
-import "self-import.as" : ()
+import "self-import.as";

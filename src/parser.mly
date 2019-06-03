@@ -67,7 +67,7 @@ let share_typ t =
     { t with it = FuncT ({s with it = Type.Sharable}, tbs, t1, t2)}
   | _ -> t
 
-let share_typfield tf =
+let share_typfield (tf : typ_field) =
   {tf with it = {tf.it with typ = share_typ tf.it.typ}}
 
 let share_exp e =
@@ -102,12 +102,12 @@ let share_expfield (ef : exp_field) =
 %token DEBUG_SHOW
 %token ASSERT
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
-%token ANDOP OROP XOROP SHLOP SHROP ROTLOP ROTROP
+%token ANDOP OROP XOROP SHLOP USHROP SSHROP ROTLOP ROTROP
 %token EQOP NEQOP LEOP LTOP GTOP GEOP
 %token CATOP
 %token EQ LT GT
 %token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN
-%token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
+%token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN USHRASSIGN SSHRASSIGN ROTLASSIGN ROTRASSIGN
 %token NULL
 %token<string> DOT_NUM
 %token<string> NAT
@@ -115,7 +115,7 @@ let share_expfield (ef : exp_field) =
 %token<Value.unicode> CHAR
 %token<bool> BOOL
 %token<string> ID
-%token<string> VARIANT_TAG
+%token<string> TAG
 %token<string> TEXT
 %token PRIM
 %token UNDERSCORE
@@ -123,7 +123,7 @@ let share_expfield (ef : exp_field) =
 %nonassoc IF_NO_ELSE LOOP_NO_WHILE
 %nonassoc ELSE WHILE
 
-%right ASSIGN PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN SHRASSIGN ROTLASSIGN ROTRASSIGN
+%right ASSIGN PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN USHRASSIGN SSHRASSIGN ROTLASSIGN ROTRASSIGN
 %left COLON
 %left OR
 %left AND
@@ -133,7 +133,7 @@ let share_expfield (ef : exp_field) =
 %left OROP
 %left ANDOP
 %left XOROP
-%nonassoc SHLOP SHROP ROTLOP ROTROP
+%nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
 %left POWOP
 
 %type<Syntax.exp> exp exp_nullary
@@ -159,8 +159,8 @@ seplist(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
-%inline variant_tag :
-  | variant_tag=VARIANT_TAG { variant_tag @@ at $sloc }
+%inline tag :
+  | id=TAG { id @@ at $sloc }
 
 %inline typ_id :
   | id=ID { id @= at $sloc }
@@ -182,6 +182,7 @@ seplist(X, SEP) :
   | OBJECT { Type.Object Type.Local @@ at $sloc }
   | SHARED { Type.Object Type.Sharable @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
+  | MODULE { Type.Module @@ at $sloc }
 
 %inline obj_sort_opt :
   | (* empty *) { Type.Object Type.Local @@ no_region }
@@ -212,24 +213,22 @@ typ_obj :
 typ_variant :
   | LCURLY CATOP RCURLY
     { [] }
-  | LCURLY ct=typ_tag RCURLY
-    { [ct] }
-  | LCURLY ct=typ_tag semicolon cts=seplist(typ_tag, semicolon) RCURLY
-    { ct :: cts }
+  | LCURLY tf=typ_tag RCURLY
+    { [tf] }
+  | LCURLY tf=typ_tag semicolon tfs=seplist(typ_tag, semicolon) RCURLY
+    { tf::tfs }
 
 typ_nullary :
   | LPAR ts=seplist(typ_item, COMMA) RPAR
     { (match ts with [t] -> ParT(t) | _ -> TupT(ts)) @! at $sloc }
-  | x=id tso=typ_args?
-    { VarT(x, Lib.Option.get tso []) @! at $sloc }
-  | p=path DOT x=id tso=typ_args?
-    { PathT(p, x, Lib.Option.get tso []) @! at $sloc }
+  | p=path tso=typ_args?
+    { PathT(p, Lib.Option.get tso []) @! at $sloc }
   | LBRACKET m=var_opt t=typ RBRACKET
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj
     { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @! at $sloc }
-  | cts=typ_variant
-    { VariantT cts @! at $sloc }
+  | tfs=typ_variant
+    { VariantT tfs @! at $sloc }
 
 typ_un :
   | t=typ_nullary
@@ -246,7 +245,7 @@ typ_pre :
     { AsyncT(t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
-        if s.it = Type.Object Type.Local
+        if s.it = Type.Object Type.Local || s.it = Type.Module
         then tfs
         else List.map share_typfield tfs
       in ObjT(s, tfs') @! at $sloc }
@@ -277,8 +276,8 @@ typ_field :
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
 typ_tag :
-  | i=variant_tag t=return_typ_nullary?
-    { (i, Lib.Option.get t (TupT [] @! at $sloc)) }
+  | x=tag t=return_typ_nullary?
+    { {tag = x; typ = Lib.Option.get t (TupT [] @! at $sloc)} @@ at $sloc }
 
 typ_bind :
   | x=id SUB t=typ
@@ -314,7 +313,8 @@ lit :
   | OROP  { OrOp }
   | XOROP { XorOp }
   | SHLOP { ShLOp }
-  | SHROP { ShROp }
+  | USHROP { UShROp }
+  | SSHROP { SShROp }
   | ROTLOP { RotLOp }
   | ROTROP { RotROp }
   | CATOP { CatOp }
@@ -343,7 +343,8 @@ lit :
   | ORASSIGN { OrOp }
   | XORASSIGN { XorOp }
   | SHLASSIGN { ShLOp }
-  | SHRASSIGN { ShROp }
+  | USHRASSIGN { UShROp }
+  | SSHRASSIGN { SShROp }
   | ROTLASSIGN { RotLOp }
   | ROTRASSIGN { RotROp }
   | CATASSIGN { CatOp }
@@ -383,8 +384,10 @@ exp_post :
 exp_un :
   | e=exp_post
     { e }
-  | i=variant_tag
-    { VariantE (i, TupE([]) @? at $sloc) @? at $sloc }
+  | x=tag
+    { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
+  | x=tag e=exp_nullary
+    { TagE (x, e) @? at $sloc }
   | QUEST e=exp_un
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un
@@ -393,10 +396,6 @@ exp_un :
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
   | NOT e=exp_un
     { NotE e @? at $sloc }
-  | IMPORT f=TEXT
-    { ImportE (f, ref "") @? at $sloc }
-  | i=variant_tag e=exp_nullary
-    { VariantE (i, e) @? at $sloc }
   | DEBUG_SHOW e=exp_un
     { ShowE (ref Type.Pre, e) @? at $sloc }
 
@@ -469,13 +468,13 @@ exp_nonvar :
   | e=exp_nondec
     { e }
   | d=dec_nonvar
-    { BlockE([d]) @? at $sloc }
+    { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 exp :
   | e=exp_nonvar
     { e }
   | d=dec_var
-    { BlockE([d]) @? at $sloc }
+    { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 
 case :
@@ -523,14 +522,14 @@ pat_nullary :
 pat_un :
   | p=pat_nullary
     { p }
-  | i=variant_tag
-    { VariantP(i, TupP [] @! at $sloc) @! at $sloc }
+  | x=tag
+    { TagP(x, TupP [] @! at $sloc) @! at $sloc }
+  | x=tag p=pat_nullary
+    { TagP(x, p) @! at $sloc }
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }
   | op=unop l=lit
     { SignP(op, ref l) @! at $sloc }
-  | i=variant_tag p=pat_nullary
-    { VariantP(i, p) @! at $sloc }
 
 pat_bin :
   | p=pat_un
@@ -579,7 +578,7 @@ dec_nonvar :
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
       let efs' =
-        if s.it = Type.Object Type.Local
+        if s.it = Type.Object Type.Local || s.it = Type.Module
         then efs
         else List.map share_expfield efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
@@ -589,13 +588,13 @@ dec_nonvar :
   | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_argument xefs=class_body
     { let x, efs = xefs in
       let efs' =
-        if s.it = Type.Object Type.Local
+        if s.it = Type.Object Type.Local || s.it = Type.Module
         then efs
         else List.map share_expfield efs
       in ClassD(xf "class" $sloc, tps, s, p, x, efs') @? at $sloc }
-  | MODULE xf=id_opt EQ? LCURLY ds=seplist(dec, semicolon) RCURLY
-    { let _named, id = xf "module" $sloc in
-      ModuleD(id, ds) @? at $sloc }
+  | IMPORT xf=id_opt EQ? f=TEXT
+    { let named, x = xf "import" $sloc in
+      let_or_exp named x (ImportE (f, ref "")) (at $sloc) }
 
 dec :
   | d=dec_var

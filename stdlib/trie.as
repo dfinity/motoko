@@ -1,3 +1,4 @@
+module {
 /**
 
 Hash tries
@@ -1263,3 +1264,4 @@ Iterator objects
 for use in 'for ... in ...' patterns
 
 */
+}

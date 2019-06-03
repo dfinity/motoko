@@ -9,3 +9,5 @@ let dump_lowering = ref false
 let interpret_ir = ref false
 let source_map = ref false
 let prelude = ref true
+let link = ref true
+let check_ir = ref true

@@ -1,3 +1,4 @@
+module {
 /**
 
 [Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
@@ -79,9 +80,11 @@ type RouteId       = Nat;
 type ReservedRouteId = Nat;
 
 /**
- EntId
- -------------------------------------------------------------------
- An entity's ID; the optional payload of an `#idErr` error message
+ `EntId`
+ ----------------
+ An entity's ID, distinguished (by tag) from other kinds of entities with the same ID.
+
+ The optional payload of an `#idErr` error message.
 */
 type EntId = {
   #user        : UserId ;
@@ -97,21 +100,30 @@ type EntId = {
 
 /**
  Errors
- -----------
+ ===============
 */
 
+/** Optional entity ID */
 type OpEntId = ?EntId;
 
+/**
+ `IdErr`
+ ---------
+ An ID error consists only of the `#idErr` case, which carries an optional ID.
+*/
 type IdErr = {
-  // optional for now, to avoid a huge refactoring
   #idErr: OpEntId;
 };
 
+/**
+ `ServerErr`
+ ------------
+ A Server error occurs when the client either has access control issues (e.g., `#publicKeyErr`) or provides invalid parameters (e.g., `#idErr`).
+ */
 type ServerErr = {
   #idErr: OpEntId;
   #publicKeyErr;
 };
-
 
 
 /**
@@ -189,17 +201,6 @@ type ProducerInfo = shared {
 };
 
 /**
-`ReservedInventoryInfo`
------------------------------
-*/
-
-type ReservedInventoryInfo = shared {
-  id : ReservedInventoryId;
-  retailer : RetailerId;
-  item : InventoryId;
-};
-
-/**
 `InventoryInfo`
 -----------------
 */
@@ -214,6 +215,17 @@ type InventoryInfo = shared {
   start_date : Date;
   end_date : Date;
   comments : Text;
+};
+
+/**
+`ReservedInventoryInfo`
+-----------------------------
+*/
+
+type ReservedInventoryInfo = shared {
+  id : ReservedInventoryId;
+  retailer : RetailerId;
+  item : InventoryInfo;
 };
 
 /**
@@ -268,17 +280,6 @@ type TransporterInfo = shared {
 };
 
 /**
-`ReservedRouteInfo`
------------------
-*/
-
-type ReservedRouteInfo = shared {
-  id : ReservedRouteId;
-  retailer : RetailerId;
-  route : RouteId;
-};
-
-/**
 `RouteInfo`
 -----------------
 */
@@ -292,6 +293,17 @@ type RouteInfo = shared {
   start_date : Date;
   end_date : Date;
   cost : Price;
+};
+
+/**
+`ReservedRouteInfo`
+-----------------
+*/
+
+type ReservedRouteInfo = shared {
+  id : ReservedRouteId;
+  retailer : RetailerId;
+  route : RouteInfo;
 };
 
 /**
@@ -371,3 +383,4 @@ the 2019.03.12 ActorScript Team meeting.
 */
 
 type QueryAllResults = [QueryAllResult];
+}

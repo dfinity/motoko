@@ -8,7 +8,7 @@ A simple language for writing Dfinity actors.
 To install the `asc` binary into your nix environment, use
 
 ```
-$ nix-env -i -f . -A native
+$ nix-env -i -f . -A asc
 ```
 
 ## Development using Nix
@@ -19,23 +19,19 @@ $ nix-build
 ```
 
 To enter a shell with the necessary dependencies, you can use
-
 ```
 $ nix-shell
 ```
-within this shell you can run `make asc` in `src/` to build the `asc` binary,
-and use the test suite in `src/test`.
+within this shell you can run
+ * `make asc` in `src/` to build the `asc` binary,
+ * `make` in `rts/` to build the ActorScript runtime
+ * `make` in `test/` to run the test suite.
 
+### Merlin
 
-To build `asc.js`, the JavaScript library, use
-```
-nix-build -A js
-```
+> For Merlin to be able to give you the type of identifiers or to offer completion from other file of your projects, it needs to know where to find the cmi files of the other modules of your project. 
 
-
-By default, `dvm` is built using the V8 engine. To build with the Haskell
-engine, pass `--arg v8 false` to any of the above `nix-*` commands.
-
+To do this, run `make -C src asc` within a nix shell.
 
 ## Development without Nix
 
@@ -63,6 +59,11 @@ installing all required tools without nix is out of scope).
    nix-env -i -f . -A wabt
    nix-env -i -f . -A dvm
    ```
+ * Building the ActorScript runtime without nix is tricky. But you can run
+   ```
+   nix-shell --run 'make -C rts'
+   ```
+   to get `rts/as-rts.wasm`.
 
 
 ## Create a coverage report
@@ -94,7 +95,7 @@ Three ways of obtaining the coverage report:
    ```
 2. Run `asc` as normal, e.g.
    ```
-   ./src/asc --dfinity -c foo.as -o foo.wasm
+   ./src/asc -c foo.as -o foo.wasm
    ```
    this should dump a `gmon.out` file in the current directory.
 3. Create the report, e.g. using
