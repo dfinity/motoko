@@ -302,27 +302,35 @@ The id is described as a simple unsigned integer that has to fit the 64 bit valu
 ```
 An id value must be smaller than 2^32 and no id may occur twice in the same record type.
 
-
-
 ##### Shorthand: Symbolic Field Ids
 
-An id can also be given as a *name*, which is a shorthand for a numeric id that is the hash of that name wrt a specified hash function, e.g. SHA-256 mod 64.
+An id can also be given as a *name*, which is a shorthand for a numeric id that is the hash of that name:
 ```
 <fieldtype> ::= ...
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
 ```
-This expansion implies that a hash collision between field names within a single record is disallowed. However, the chosen hash function makes such a collision highly unlikely in practice.
 
-**Note:** For example, the following hash function [Jacques Garrigue, "Programming with Polymorphic Variants", ML 1998],
+The hash function is specified as
 ```
-hash(id) = ( Sum_(i=0..|id|) id[i] * 223^(|id|-1) ) mod 2^64
+hash(id)
+  = n             if id == "field"<n>  where n is a unsigned integer in decimal notation.
+  = f(utf8(id))   otherwise
+  
+f(id) = ( Sum_(i=0..k) id[i] * 223^(k-i) ) mod 2^32 where k = |id|-1
 ```
-guarantees that no hash collision occurs for regular identifiers of length up to 8, and that the overall likelihood of a collision for a variant with n cases is lower than
-```
-p(n) = Sum_(i=1..n-1) i/2^64
-```
-That is, the likelihood p(100) of a collision for a variant with 100 cases is less than 2.74 * 10^(-16).
 
+This expansion implies that a hash collision between field names within a single record is disallowed.
+
+This hash function has the the following useful properties:
+
+ * For each hash value there a human-readable key. This is important to be able to importing an IDL that does _not_ use symbolic field names into a host language where records always have identifiers or strings as keys: It can treat `{42 : Text}` as `{field42 : Text}` and use `"field42"` as a string key that has hash 42.
+ 
+ * Likewise, the human-readable inversion is useful even if there is a symbolic key, if it is not a valid record key in the host language (e.g. length restrictions, reserved keyword, invalid characters).
+ 
+ * Collisions are sufficiently rare. It has [no collisions for names up to length 4](https://caml.inria.fr/pub/papers/garrigue-polymorphic_variants-ml98.pdf).
+ 
+ * It is rather simple to implement, compared to, say, a cryptographic hash function (which provides guarantees we do not need).
+ 
 ##### Shorthand: Tuple Fields
 
 Field ids can also be omitted entirely, which is just a shorthand for picking either 0 (for the first field) or N+1 when the previous field has id N.
