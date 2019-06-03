@@ -1192,7 +1192,8 @@ module BoxedWord = struct
 
   (* from/to SR.UnboxedWord64 *)
   let to_word64 env = G.nop
-  let from_word64 env = G.nop
+  let from_word64 env = G.nop (* FIXME: needs to trap when MSB is set *)
+  let from_signed_word64 env = G.nop
   let to_word32 env = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
   let from_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   let from_signed_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
@@ -1428,7 +1429,7 @@ sig
 
   (* signed word to SR.Vanilla *)
   val from_signed_word32 : E.t -> G.t
-  (* val from_signed_word64 : E.t -> G.t *)
+  val from_signed_word64 : E.t -> G.t
 
   (* buffers *)
   (* given a numeric object on stack (vanilla),
@@ -1534,6 +1535,7 @@ module BigNum64 : BigNumType = struct
   let from_signed_word32 env = BoxedWord.from_signed_word32 env ^^ box env
   let to_word64 env = unbox env ^^ BoxedWord.to_word64 env
   let from_word64 env = BoxedWord.from_word64 env ^^ box env
+  let from_signed_word64 env = BoxedWord.from_signed_word64 env ^^ box env
 
   let truncate_to_word32 env = unbox env ^^ BoxedWord.to_word32 env
   let _truncate_to_word64 env = unbox env ^^ BoxedWord.to_word64 env
@@ -1671,15 +1673,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           begin
             get_res64 ^^
             compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-            Num.from_word64(*FIXME: signed*) env
+            Num.from_signed_word64 env
           end
       end
       begin
         get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
+          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
           get_a ^^
         get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
+          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
           get_b ^^
         slow env ^^ set_res ^^ get_res ^^
         fits_in_vanilla env ^^
@@ -1690,7 +1692,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let compile_add = try_unbox2 BoxedWord.compile_add Num.compile_add
 
-  let adjust a1 a2 r code env = (* FIXME *)
+  let adjust a1 a2 r code env = (* FIXME: do we need all cases? *)
     begin
       if a1 then
         let set_n, get_n = new_local64 env "n" in
@@ -1748,12 +1750,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
               begin
                 get_res64 ^^
                 compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-                Num.from_word64(*FIXME: signed*) env
+                Num.from_signed_word64 env
               end
           end
           begin
-            get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env ^^
-            get_b64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env ^^
+            get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env ^^
+            get_b64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env ^^
             Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
             fits_in_vanilla env ^^
             G.if_ (ValBlockType (Some I32Type))
@@ -1763,10 +1765,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       end
       begin
         get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
+          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
           get_a ^^
         get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
+          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
           get_b ^^
         Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
         fits_in_vanilla env ^^
@@ -1810,10 +1812,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       end
       begin
         get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
+          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
           get_a ^^
         get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_word64(*FIXME: signed*) env)
+          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
           get_b ^^
         slow env
       end
@@ -1907,15 +1909,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.if_ (ValBlockType (Some I32Type))
       (get_a ^^ compress)
       (get_a ^^ Num.from_signed_word32 env)
-(*
+
   let from_signed_word64 env =
     let set_a, get_a = new_local64 env "a" in
     set_a ^^ get_a ^^ get_a ^^
     speculate_compact64 31 ^^
     G.if_ (ValBlockType (Some I32Type))
       (get_a ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^ compress64)
-      (get_a ^^ Num._from_signed_word64 env)
- *)
+      (get_a ^^ Num.from_signed_word64 env)
+
   let from_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
@@ -1970,7 +1972,7 @@ module BigNumLibtommmath : BigNumType = struct
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
   let from_signed_word32 env = E.call_import env "rts" "bigint_of_word32_signed"
-  let _from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
+  let from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
 
   (* TODO: Actually change binary encoding *)
   let compile_data_size env = G.i Drop ^^ compile_unboxed_const 8l
