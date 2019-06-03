@@ -4,7 +4,7 @@ To document, discover, and interact with actors on the platform, we need an inte
 
 #### Goals:
 
-* Language-independent description of actor interfaces and the data they 
+* Language-independent description of actor interfaces and the data they
 exchange (names, parameter and result formats of actor methods)
 * Simple and canonical constructs (C-like; algebraically: sums, products, exponentials)
 * Extensible, backwards-compatible
@@ -170,7 +170,7 @@ service {
 
 **Note:** The IDL is in fact agnostic to the question whether communication via functions is synchronous (like RPCs) or asynchronous (like messaging with callbacks as response continuations). However, it assumes that all invocations have the same semantics, i.e., there is no need to distinguish between both.
 
-**Note:** In a synchronous interpretation of functions, invocation of a oneway function would return immediately, without waiting for completion of the service-side invocation of the function. In an asynchronous interpretation of functions, the invocation of a `oneway` function does not accept a callback (to invoke on completion.)
+**Note:** In a synchronous interpretation of functions, invocation of a oneway function would return immediately, without waiting for completion of the service-side invocation of the function. In an asynchronous interpretation of functions, the invocation of a `oneway` function does not accept a callback (to invoke on completion).
 
 #### Structure
 
@@ -596,9 +596,9 @@ For a specialised function, any parameter type can be generalised and any result
 ```
 record { <fieldtype1'>;* } <: record { <fieldtype1>;* }
 record { <fieldtype2>;* } <: record { <fieldtype2'>;* }
-{ a | a in <funcannot1>* } = { a | a in <funcannot2>* }
+{ a | a in <funcann1>* } = { a | a in <funcann2>* }
 ------------------------------------------------------------------------------------------------
-func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcannot1>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcannot2>*
+func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann1>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann2>*
 ```
 
 Viewed as sets, the annotations on the functions must be equal.
