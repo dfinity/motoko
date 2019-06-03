@@ -78,7 +78,7 @@ e(actor { <typ-field>^N }) = service { em*(<typ-field>^N) }
 e( () ) = null
 e( ( <typ>, ) ) = e(<typ>) // avoid exporting singleton tuples
 e( ( <typ>^N ) ) = record { e*(<typ^N>) } if N > 1 // NB: unnamed field shorthand
-e(None) = unavailable // TBR: Do we want a bottom element in the IDL types?
+e(None) = variant {}
 
 ef : <typ-field> -> <fieldtype>
 ef (<id> : <typ>) = <id> : e(<typ>)
