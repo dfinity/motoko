@@ -1,24 +1,27 @@
 /*
-import Data.Bits
-import Data.Word
+This can be read as literate Haskell (temporarily `ln ../test/run/small-pow.as ../test/run/small-pow.lhs`)
 
-effbits :: FiniteBits a => a -> Int
-effbits a = finiteBitSize a - countLeadingZeros (a `xor` (a `shiftL` 1))
+> import Data.Bits
+> import Data.Word
+>
+> effbits :: FiniteBits a => a -> Int
+> effbits a = finiteBitSize a - countLeadingZeros (a `xor` (a `shiftL` 1))
+>
+> extremal :: FiniteBits a => Int -> [a]
+> extremal 0 = [zeroBits]
+> extremal 1 = [complement zeroBits]
+> extremal n = [complement zeroBits `shiftL` pred n, let max = complement zeroBits `shiftR` (finiteBitSize max - pred n) in max]
+>
+> asBigNum :: (Integral a, FiniteBits a) => a -> Integer
+> asBigNum a | a `testBit` 63 = - fromIntegral (complement a) - 1
+> asBigNum a = fromIntegral a
+>
+> showBig = show . asBigNum
+>
+> main = sequence_ [ putStrLn ("assert (" ++ showBig n ++ " ** " ++ show e ++ " == " ++ show n' ++ ");")
+>                  | b <- [0 .. 31], e <- [0 .. 31], b * e <= 65, n <- extremal b :: [Word64]
+>                  , let n' = asBigNum n ^ fromIntegral e ]
 
-extremal :: FiniteBits a => Int -> [a]
-extremal 0 = [zeroBits]
-extremal 1 = [complement zeroBits]
-extremal n = [complement zeroBits `shiftL` pred n, let max = complement zeroBits `shiftR` (finiteBitSize max - pred n) in max]
-
-asBigNum :: (Integral a, FiniteBits a) => a -> Integer
-asBigNum a | a `testBit` 63 = - fromIntegral (complement a) - 1
-asBigNum a = fromIntegral a
-
-showBig = show . asBigNum
-
-main = sequence_ [ putStrLn ("assert (" ++ showBig n ++ " ** " ++ showBig e ++ " == " ++ show n' ++ ");")
-                 | b <- [0 .. 31], e <- [0 .. 31], b * e <= 65, n <- extremal b :: [Word64]
-                 , let n' = asBigNum n ^ asBigNum  e ]
 */
 
 assert (0 ** 0 == 1);
