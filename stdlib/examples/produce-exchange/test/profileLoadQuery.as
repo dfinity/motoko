@@ -8,6 +8,7 @@ func scaledParams(region_count_:Nat, factor:Nat) : T.WorkloadParams = {
     retailer_count      = region_count * factor:Nat;
   }
 };
+let server = Server();
 let _ = server.loadWorkload(scaledParams(region_count, scale_factor));
 let _ = server.retailerQueryAll("", 0, null, null);
 server.getCounts()

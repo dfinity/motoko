@@ -11,7 +11,7 @@ import L = "serverLang.as";
 import Model = "serverModel.as";
 import Result = "../../result.as";
 
-let Trie = (import "../../trie.as");
+let Trie = (import "../../trie2.as");
 
 let List = (import "../../list.as");
 type List<T> = List.List<T>;
@@ -922,7 +922,7 @@ actor class Server () {
   getCounts() : async T.ProduceExchangeCounts {
     let m = getModel();
     shared {
-      hash_bit_length          = Trie.HASH_BITS;
+      hash_bit_length          = 0;
       truck_type_count         = m.truckTypeTable.count();
       region_count             = m.regionTable.count();
       produce_count            = m.produceTable.count();

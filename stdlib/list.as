@@ -94,6 +94,30 @@ type List<T> = ?(T, List<T>);
   };
 
   /**
+   `lenIsLessThan`
+  --------
+   test length against a maximum value; tail recursive
+   */
+  func lenIsEqLessThan<T>(l : List<T>, i : Nat) : Bool =
+    label profile_list_lenIsEqLessThan_begin : Bool {
+    func rec(l : List<T>, i : Nat) : Bool = label profile_list_lenIsEqLessThan_rec : Bool {
+      switch l {
+	    case null label profile_list_lenIsEqLessThan_end_true : Bool true;
+	    case (?(_, t)) {
+             if ( i == 0 ) {
+               label profile_list_lenIsEqLessThan_end_false : Bool
+               false
+             }
+             else {
+               rec(t, i - 1)
+             }
+           };
+      }
+    };
+    rec(l, i)
+  };
+
+  /**
    `nth`
    ---------
    array-like list access, but in linear time; tail recursive
@@ -174,13 +198,15 @@ type List<T> = ?(T, List<T>);
    split the list elements; non-tail recursive
    */
   func split<T>(l : List<T>, f:T -> Bool) : (List<T>, List<T>) = {
-    func rec(l : List<T>) : (List<T>, List<T>) {
+    func rec(l : List<T>) : (List<T>, List<T>) =
+      label profile_list_split_rec : (List<T>, List<T>) {
       switch l {
 	    case null     { (null, null) };
 	    case (?(h,t)) { let (l,r) = rec(t) ;
                       if (f(h)){ (?(h,l), r) } else { (l, ?(h,r)) } };
       }
     };
+    label profile_list_split_begin : (List<T>, List<T>)
     rec(l)
   };
 
@@ -343,7 +369,7 @@ type List<T> = ?(T, List<T>);
     func rec(l:List<T>) : Bool {
       switch l {
 	    case null     { true };
-	    case (?(h,t)) { if (f(h)) { false } else { rec(t) } };
+	    case (?(h,t)) { if (not f(h)) { false } else { rec(t) } };
       }
     };
     rec(l)

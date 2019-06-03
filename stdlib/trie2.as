@@ -48,7 +48,7 @@ leaf, which contains up to MAX_LEAF_COUNT key-value pairs.
 By construction, the algorithms below enforce the invariant that no
 leaf ever contains more than MAX_LEAF_COUNT key-value pairs: the
 function `leaf` accepts a list, but subdivides it with branches until
-it can actually construct valid leaves.  Once distinguished, subsets
+it can actually construct valid leaves.  Ongce distinguished, subsets
 of keys tend to remain distinguished by the presence of these branches.
 
 ### Cached counts
@@ -68,7 +68,9 @@ Below, we define the types used in the representation:
 
 */
 
-let MAX_LEAF_COUNT = 32;
+//let MAX_LEAF_COUNT = 32;
+let MAX_LEAF_COUNT = 16; // <-- beats both 32 and 8, for me.
+//let MAX_LEAF_COUNT = 8;
 
 let P = (import "prelude.as");
 
@@ -121,6 +123,60 @@ type Trie<K,V> = {
   #branch : Branch<K,V> ;
 };
 
+func isValid<K,V> (t:Trie<K,V>, enforceNormal:Bool) : Bool {
+  func rec(t:Trie<K,V>, bitpos:?Hash, bits:Hash, mask:Hash) : Bool {
+    switch t {
+    case (#empty) {
+           switch bitpos {
+             case null true;
+             case (?_) not enforceNormal;
+           }
+         };
+    case (#leaf l) {
+           let len = List.len<(Key<K>,V)>(l.keyvals);
+           ((len <= MAX_LEAF_COUNT) or (not enforceNormal))
+           and
+           len == l.count
+           and
+           ( List.all<(Key<K>,V)>(
+               l.keyvals,
+               func ((k:Key<K>,v:V)):Bool{
+                 //{ print "testing hash..."; true }
+                 //and
+                 ((k.hash & mask) == bits)
+                 or
+                 { print "\nmalformed hash!:\n";
+                   printInt (word32ToNat(k.hash));
+                   print "\n (key hash) != (path bits): \n";
+                   printInt (word32ToNat(bits));
+                   print "\nmask  : "; printInt (word32ToNat(mask));
+                   print "\n";
+                   false }
+               }
+             ) or
+           { print "one or more hashes are malformed"; false }
+           )
+         };
+    case (#branch b) {
+           let bitpos1 = switch bitpos {
+           case null  (natToWord32(0));
+           case (?bp) (natToWord32(word32ToNat(bp) + 1))
+           };
+           let mask1 = mask | (natToWord32(1) << bitpos1);
+           let bits1 = bits | (natToWord32(1) << bitpos1);
+           let sum = count<K,V>(b.left) + count<K,V>(b.right);
+           (b.count == sum or { print "malformed count"; false })
+           and
+           rec(b.left,  ?bitpos1, bits,  mask1)
+           and
+           rec(b.right, ?bitpos1, bits1, mask1)
+         };
+    }
+  };
+  rec(t, null, 0, 0)
+};
+
+
 /**
  Two-dimensional trie
  ---------------------
@@ -169,41 +225,20 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    }
  };
 
-
  /**
   `branch`
   --------
   Construct a branch node, computing the count stored there.
-
-  ### edge case: 0 or 1 elements:
-
-  if the left and right in sum have fewer than 2 key-value pairs,
-  then a leaf or empty node suffices, so do not make a branch.
-
-  otherwise, we make a branch normally, regardless of the sizes:
-  our rationale is that the l-vs-r keys have already been distinguished,
-  so let's memorialize that work with a branch, regardless of how small.
   */
  func branch<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> {
-   func c(t:Trie<K,V>) : Nat = count<K,V>(t);
-   let sum = c(l) + c(r);
-   /** handle edge case: */
-   if ( sum < 2 ) {
-     switch (nth<K,V>(l,0), nth<K,V>(r,0)) {
-       case (null, null) { #empty                  };
-       case (?kv,  null) { leaf<K,V>(?(kv,null),0) };
-       case (null, ?kv ) { leaf<K,V>(?(kv,null),0) };
-       case (?kv1, ?kv2) { P.unreachable()         };
+   let sum = count<K,V>(l) + count<K,V>(r);
+   #branch(
+     new{
+       count=sum;
+       left=l;
+       right=r
      }
-   } else {
-     #branch(
-       new{
-         count=sum;
-         left=l;
-         right=r
-       }
-     )
-   }
+   );
  };
 
  /**
@@ -216,22 +251,36 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   of the leaf.
 
   */
- func leaf<K,V>(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> {
+ func leaf<K,V>(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> =
+   fromList<K,V>(kvs, bitpos);
+
+
+ func fromList<K,V>(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> =
+   label profile_trie_fromList_begin : (Trie<K,V>) {
    func rec(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> {
-     let len = List.len<(Key<K>,V)>(kvs);
-     if ( len < MAX_LEAF_COUNT ) {
-       #leaf(
-         new{
-           count=len;
-           keyvals=kvs
-         })
-     } else {
+     if ( List.isNil<(Key<K>,V)>(kvs) )
+     label profile_trie_fromList_end_empty : (Trie<K,V>) {
+       #empty
+     }
+     else if ( List.lenIsEqLessThan<(Key<K>,V)>(kvs, MAX_LEAF_COUNT - 1) )
+     label profile_trie_fromList_end_validleaf : (Trie<K,V>) {
+       let len = List.len<(Key<K>,V)>(kvs);
+       #leaf(new{count=len;keyvals=kvs})
+     }
+     else if ( bitpos >= 31 )
+     label profile_trie_fromList_end_bitposIs31 : (Trie<K,V>) {
+       let len = List.len<(Key<K>,V)>(kvs);
+       #leaf(new{count=len;keyvals=kvs})
+     }
+     else /* too many keys for a leaf, so introduce a branch */
+     label profile_trie_fromList_branch : (Trie<K,V>) {
        let (l, r) = splitAssocList<K,V>(kvs, bitpos);
        branch<K,V>(rec(l, bitpos + 1), rec(r, bitpos + 1))
      }
    };
    rec(kvs, bitpos)
  };
+
 
  /**
   `copy`
@@ -245,8 +294,10 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   ---------
   replace the given key's value option with the given one, returning the previous one
   */
- func replace<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:?V) : (Trie<K,V>, ?V) {
+ func replace<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:?V) : (Trie<K,V>, ?V) =
+   label profile_trie_replace : (Trie<K,V>, ?V) {
    let key_eq = keyEq<K>(k_eq);
+
    func rec(t : Trie<K,V>, bitpos:Nat) : (Trie<K,V>, ?V) {
 	   switch t {
 	   case (#empty) {
@@ -272,7 +323,9 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
           };
      }
    };
-   rec(t, 0)
+   let (to, vo) = rec(t, 0);
+   //assert(isValid<K,V>(to, false));
+   (to, vo)
  };
 
  /**
@@ -280,7 +333,8 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   ------------
   insert the given key's value in the trie; return the new trie, and the previous value associated with the key, if any
   */
- func insert<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : (Trie<K,V>, ?V) {
+ func insert<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : (Trie<K,V>, ?V) =
+   label profile_trie_insert : (Trie<K,V>, ?V) {
    replace<K,V>(t, k, k_eq, ?v)
  };
 
@@ -326,8 +380,8 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
  {
    List.split<(Key<K>,V)>(
      al,
-     func ((k : Key<K>, v : V)) : Bool{
-       Hash.getHashBit(k.hash, bitpos)
+     func ((k : Key<K>, v : V)) : Bool {
+       not Hash.getHashBit(k.hash, bitpos)
      }
    )
  };
@@ -432,8 +486,10 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
                rec(bitpos, tl, br(lf ll, lf lr))
              };
         case (#branch b1, #branch b2) {
-               br(rec(bitpos + 1, b1.left, b2.left),
-                  rec(bitpos + 1, b1.right, b2.right))
+               branch<K,V>(
+                 rec(bitpos + 1, b1.left, b2.left),
+                 rec(bitpos + 1, b1.right, b2.right)
+               )
              };
 
       }
@@ -785,7 +841,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   func nth<K,V>(t:Trie<K,V>, i:Nat) : ?(Key<K>, V) {
     func rec(t:Trie<K,V>, i:Nat) : ?(Key<K>, V) {
       switch t {
-      case (#empty) null;
+      case (#empty) P.unreachable();
       case (#leaf l) List.nth<(Key<K>,V)>(l.keyvals, i);
       case (#branch b) {
              let count_left = count<K,V>(b.left);
@@ -794,7 +850,9 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
            }
       }
     };
-    assert (i < count<K,V>(t));
+    if (i >= count<K,V>(t)) {
+      return null
+    };
     rec(t, i)
   };
 

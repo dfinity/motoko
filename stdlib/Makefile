@@ -103,25 +103,6 @@ PRODUCE_EXCHANGE_SRC=\
 	examples/produce-exchange/serverModel.as \
 	examples/produce-exchange/serverActor.as \
 
-$(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/simpleSetupAndQuery.as > $@
-
-$(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/retailerReserveMany.as > $@
-
-$(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/producerRemInventory.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/producerRemInventory.as > $@
-
-$(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/serverActor.as examples/produce-exchange/test/evalBulk.as > $@
-
-$(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/serverActor.as
-
 #########################################################################################################33
 
 ##
@@ -404,43 +385,43 @@ profile-wasm:\
 
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-1.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-1.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-2.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-2.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-3.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-3.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-4.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-4.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-5.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-5.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-6.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-6.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-7.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-7.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-8.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-8.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-9.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-9.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-10.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-10.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-20.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-20.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-50.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-50.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c --dfinity -o $@ examples/produce-exchange/test/params-5-100.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-100.as examples/produce-exchange/profileActor.as
 
 
 $(OUTDIR)/time: time.c

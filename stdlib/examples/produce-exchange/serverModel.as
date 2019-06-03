@@ -35,7 +35,7 @@ let Hash = (import "../../hash.as").BitVec;
 type Hash = Hash.t;
 
 import Option = "../../option.as";
-import Trie = "../../trie.as";
+import Trie = "../../trie2.as";
 
 type Trie<K,V> = Trie.Trie<K,V>;
 type Key<K> = Trie.Key<K>;
@@ -142,10 +142,20 @@ class Model() {
            reservedRouteTable.reset();
 
            /**- 2. clear secondary indices: */
-           usersByUserName := null;
-           routesByDstSrcRegions := null;
-           inventoryByRegion := null;
-           reservationsByProduceByRegion := null;
+           usersByUserName
+             := Map.empty<T.UserName, T.UserId>();
+
+           routesByDstSrcRegions
+             := Map.empty<T.RegionId, M.ByRegionRouteMap>();
+
+           inventoryByRegion
+             := Map.empty<T.RegionId, M.ByProducerInventoryMap>();
+
+           reservationsByProduceByRegion
+             := Map.empty<T.ProduceId,
+                          Map<T.RegionId,
+                              Map<T.ReservedInventoryId,
+                                  M.ReservedInventoryDoc>>>();
 
            /**- 3. reset counters: */
            joinCount := 0;
@@ -923,7 +933,7 @@ secondary maps.
             short_name=info.short_name;
             description=info.description;
             region=regionDoc;
-            reserved=null;
+            reserved=Map.empty<T.ReservedInventoryId, (M.ReservedInventoryDoc, M.ReservedRouteDoc)>();
           }
         )
       );
@@ -1074,7 +1084,7 @@ secondary maps.
    */
 
   private var usersByUserName
-    : M.UserNameMap = null;
+    : M.UserNameMap = Map.empty<T.UserName, T.UserId>();
 
   /**
 
@@ -1101,7 +1111,8 @@ secondary maps.
 
    */
 
-  private var routesByDstSrcRegions : M.ByRegionPairRouteMap = null;
+  private var routesByDstSrcRegions : M.ByRegionPairRouteMap
+    = Map.empty<T.RegionId, M.ByRegionRouteMap>();
 
   /**
    Inventory by region
@@ -1114,7 +1125,8 @@ secondary maps.
 
   */
 
-  private var inventoryByRegion : M.ByRegionInventoryMap = null;
+  private var inventoryByRegion : M.ByRegionInventoryMap
+    = Map.empty<T.RegionId, M.ByProducerInventoryMap>();
 
   /**
 
@@ -1144,8 +1156,11 @@ than the MVP goals, however.
 
    */
   private var reservationsByProduceByRegion
-    : M.ByProduceByRegionInventoryReservationMap = null;
-
+    : M.ByProduceByRegionInventoryReservationMap
+    = Map.empty<T.ProduceId,
+                Map<T.RegionId,
+                    Map<T.ReservedInventoryId,
+                        M.ReservedInventoryDoc>>>();
 
   /**
 
@@ -1324,8 +1339,8 @@ than the MVP goals, however.
 
     ?Map.toArray<T.InventoryId,M.InventoryDoc,T.InventoryInfo>(
       doc.inventory,
-      func (_:T.InventoryId,doc:M.InventoryDoc):[T.InventoryInfo] =
-        [inventoryTable.getInfoOfDoc()(doc)]
+      func (_:T.InventoryId,doc:M.InventoryDoc):T.InventoryInfo =
+        inventoryTable.getInfoOfDoc()(doc)
     )
   };
 
@@ -1540,9 +1555,9 @@ than the MVP goals, however.
       doc.reserved,
       func (_:T.ReservedInventoryId,
             doc:M.ReservedInventoryDoc):
-        [T.ReservedInventoryInfo]
+        T.ReservedInventoryInfo
         =
-        [reservedInventoryTable.getInfoOfDoc()(doc)]
+        reservedInventoryTable.getInfoOfDoc()(doc)
     )
   };
 
@@ -1756,9 +1771,9 @@ than the MVP goals, however.
       doc.routes,
       func (_:T.RouteId,
             doc:M.RouteDoc):
-        [T.RouteInfo]
+        T.RouteInfo
         =
-        [routeTable.getInfoOfDoc()(doc)]
+        routeTable.getInfoOfDoc()(doc)
     )
   };
 
@@ -1779,9 +1794,9 @@ than the MVP goals, however.
       doc.reserved,
       func (_:T.ReservedRouteId,
             doc:M.ReservedRouteDoc):
-        [T.ReservedRouteInfo]
+        T.ReservedRouteInfo
         =
-        [reservedRouteTable.getInfoOfDoc()(doc)]
+        reservedRouteTable.getInfoOfDoc()(doc)
     )
   };
 
@@ -2035,8 +2050,8 @@ than the MVP goals, however.
                    T.ReservationInfo>(
         queryResultsMerged,
         func (_:(T.RouteId,T.InventoryId), (r:M.RouteDoc, i:M.InventoryDoc))
-          : [ T.ReservationInfo ] {
-            [ makeReservationInfo(i, r) ]
+          : T.ReservationInfo {
+            makeReservationInfo(i, r)
           });
 
     ?arr
@@ -2064,11 +2079,11 @@ than the MVP goals, however.
             ((idoc:M.ReservedInventoryDoc),
              (rdoc:M.ReservedRouteDoc)))
             :
-            [(T.ReservedInventoryInfo,
-              T.ReservedRouteInfo)]
+            ((T.ReservedInventoryInfo,
+              T.ReservedRouteInfo))
         =
-        [(reservedInventoryTable.getInfoOfDoc()(idoc),
-          reservedRouteTable.getInfoOfDoc()(rdoc))]
+        ( (reservedInventoryTable.getInfoOfDoc()(idoc),
+           reservedRouteTable.getInfoOfDoc()(rdoc)) )
     )
   };
 

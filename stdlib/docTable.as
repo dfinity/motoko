@@ -46,7 +46,8 @@ type information.
 let Hash = import "hash.as";
 type Hash = Hash.Hash;
 
-let Trie = import "trie.as";
+//let Trie = import "trie.as";
+let Trie = import "trie2.as";
 type Trie<K,V> = Trie.Trie<K,V>;
 type Key<K> = Trie.Key<K>;
 
@@ -128,7 +129,7 @@ class DocTable<Id,Doc,Info>(
    */
   reset() {
     idNext := idFirst;
-    table := null;
+    table := Table.empty<Id,Doc>();
   };
 
   /**
@@ -319,7 +320,7 @@ class DocTable<Id,Doc,Info>(
 
   allDoc() : [Doc] {
     Table.toArray<Id, Doc, Doc>
-    (table, func (id:Id, doc:Doc):[Doc] = [doc] )
+    (table, func (id:Id, doc:Doc):Doc = doc )
   };
 
   /**
@@ -331,7 +332,7 @@ class DocTable<Id,Doc,Info>(
 
   allInfo() : [Info] {
     Table.toArray<Id, Doc, Info>
-    (table, func (id:Id, doc:Doc):[Info] = [infoOfDoc(doc)] )
+    (table, func (id:Id, doc:Doc):Info = infoOfDoc(doc) )
   };
 
 
@@ -356,7 +357,7 @@ class DocTable<Id,Doc,Info>(
 
   private var idNext:Id = idFirst;
 
-  private var table : Table<Id,Doc> = null;
+  private var table : Table<Id,Doc> = Table.empty<Id,Doc>();
 
 /**
  Helpers
