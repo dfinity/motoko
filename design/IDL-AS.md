@@ -147,8 +147,8 @@ i(func <functype>) = ift<functype>
 i(service { <methtype>^N }) = actor { im*(<methtype>^N) }
 
 if : <fieldtype> -> <typ>
-if(<name> : <datatype>) = <name> : i(<datatype>) if <name> is a valid ActorScript field named
-if(<nat> : <datatype>) = field<nat> : i(<datatype>)
+if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
+if(<nat> : <datatype>) = "field_" <nat> "_": i(<datatype>)
 
 ift : <functype> -> <typ>
 ift(a:(<fieldtype>^N) -> () oneway pure?) = shared ia(a) -> ()
@@ -159,6 +159,12 @@ ia() = ()
 ia(<datatype>) = i(<datatype>)
 ia(<datatype>^N) = ( i*(<datatype>^N) ) // import as tuple
 ia(<fieldtype>^N) = shared { if*(<fieldtype>^N) }
+
+name : <name> -> <name>
+name <name> = <name> "_"  if <name> is a reserved identifer in ActorScript
+name <name> = <name> "_"  if <name> ends with "_"
+name <name> = "field_" hash(<name>) "_"  if <name> is not a valid ActorScript <id>
+name <name> = <name>   otherwise
 ```
 
 Notes:
@@ -172,8 +178,9 @@ Notes:
  * This mapping assumes that the string field short-hand is visible in the input
    grammar, and tries to use the field name.
 
-   In non-tuples, if the field is a <nat> or a string that is not a valid ActorScript
-   field name, the generic string `"field<n>"` (with hash `n`) is used.
+   A simple encoding is used for reserved names. Since IDL field labels can be
+   arbitrary strings, if they contain invalid characters, we fall back to encoding
+   the actual IDL number.
 
  * Singleton tuples are not imported.
 
