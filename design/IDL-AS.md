@@ -190,8 +190,58 @@ IDL value of type `t` should be straight-foward. Some notes:
 
  * When converting a `Float` into a `float32`, the value is rounded.
 
+## Worksflows
 
-### Future extensions
+The mapping specified here can be used to support the following use-cases. The
+user interfaces (e.g. flag names, or whether `asc`, `idlc`, `dfx` is used) are
+just suggestions.
+
+* Generating IDL from ActorScript
+
+  If `foo.as` is an ActorScript `actor` compilation unit, then
+
+      asc --generate-idl foo.as -o foo.didl
+
+  will type-check `foo.as` as `t = actor { … }` and produce a textual IDL file
+  `foo.didl` that ends with a `service n : ti` where `n` is the name of the
+  actor class, actor, or basename of the source file, and `service ti = (t)`.
+
+* Checking ActorScript against a given IDL
+
+  If `foo.as` is an ActorScript `actor` compilation unit and `foo.didl` a
+  textual IDL file, then
+
+      asc --check-idl foo.didl foo.as -o foo.wasm
+
+  will import the type service specified in `foo.didl`, using the mapping `i`,
+  as ActorScript type `t1`; type-check `foo.as` as `t2 = actor { … }` and check
+  that `t1 <: t1` (as ActorScript types).
+
+* Converting IDL types to Actorscript types
+
+  If `foo.didl` a textual IDL file, then
+
+      idlc foo.didl -o foo.as
+
+  will create an ActorScript library unit `foo.as` that consists of type
+  definitions.
+  All `<def>`s and the final `<actor>` from `foo.didl` is turned into a `type`
+  declaration in ActorScript, according to `i`.
+  Imported IDL files are recursively inlined.
+
+  Variant: Imported IDL files are translated separately and included via
+  `import` in ActorScript.
+
+* Importing IDL types from the ActorScript compilero
+
+  If `path/to/foo.didl` a textual IDL file, then a declaration
+
+      import Foo "path/to/foo"
+
+  is treated by `asc` by reading `foo.didl` as if  the developer had
+  run `idcc path/to/foo.didl -o path/to/foo.as`.
+
+## Future extensions
 
 * Besides exporting and importing ActorScript types, it might also be useful to
   define a compatibility _relation_ between them. This is useful if the
