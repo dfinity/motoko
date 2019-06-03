@@ -869,8 +869,8 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    Performance Profiling shows that it is important that this be
    memory efficient, and reasonably time efficient, at large scales.
 
-   To do so, we use a single array allocation: The returned array.  To do so, we
-   sacrifice some efficiency in reading the input trie, and use function `nth` to
+   To do so, we use a single array allocation (for the returned array) and we
+   sacrifice some efficiency in reading the input trie, and instead use function `nth` to
    project each element with an independent trie traversal.
 
    This approach is somewhat forced on us by the type signature of
