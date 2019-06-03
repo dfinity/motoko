@@ -1603,21 +1603,55 @@ end
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
+  (* Compact BigNums are a representation of signed 31-bit bignums (of the
+     underlying boxed representation `Num`), that fit into an i32.
+     The bits are encoded as
+
+       ┌──────────┬───┬──────┐
+       │ mantissa │ 0 │ sign │  = i32
+       └──────────┴───┴──────┘
+     The 2nd LSB makes unboxed bignums distinguishable from boxed ones,
+     which are always skewed pointers.
+
+     By a left rotation one obtains the signed (right-zero-padded) representation
+     which is usable for arithmetic (e.g. addition-like operators). For some
+     operations (e.g. multiplication) the second argument needs to be furthermore
+     right-shifted. Similarly for division the result must be left-shifted.
+
+     Generally all operations begin with checking whether both arguments are
+     already in unboxed form. If so, the arithmetic can be performed (fast path).
+     Otherwise one or both arguments need boxing and the arithmetic needs to
+     be carried out on the underlying boxed representation (slow path).
+
+     The result appears as a boxed number in the latter case, so a check is
+     performed for possible compactification of the result. Conversely in the
+     former case the 64-bit result is either compactable or needs to be boxed.
+
+     Manipulation of the result is unnecessary for the boolean comparison predicates.
+
+     For the `pow` operation the check that both arguments are unboxed is not
+     sufficient. Here we count and multiply effective bitwidths to figure out
+     whether the operation will overflow 64 bit, and if so, we fall back to the
+     slow path.
+   *)
+
   (* examine the skewed pointer and determine if number fits into 31 bits *)
   let fits_in_vanilla env = Num.fits_signed_bits env 31
 
-  (* right-padded with 0 *)
+  (* input right-padded with 0 *)
   let extend =
     compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
 
-  (* right-padded with 0 *)
+  (* input right-padded with 0 *)
   let extend64 =
     extend ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
-  (* bits should be 31 for right-aligned
-     and 32 for right-0-padded *)
+  (* predicate for i64 signed value, checking whether
+     the compact representation is viable
+     bits should be 31 for right-aligned
+     and 32 for right-0-padded values *)
   let speculate_compact64 bits =
     compile_const_64 1L ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
@@ -1649,6 +1683,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
 
+  (* creates a boxed bignum from a right-0-padded signed i64 *)
+  let box64 env = compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env
+
+  (* creates a boxed bignum from an unboxed 31-bit signed (and rotated) value *)
+  let extend_and_box64 env = extend64 ^^ box64 env
+
   (* check if both arguments are compact (i.e. unboxed),
      if so, promote to signed i64 (with right bit (i.e. LSB) zero) and perform the fast path.
      Otherwise make sure that both arguments are in heap representation,
@@ -1672,16 +1712,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           (get_res64 ^^ compress64)
           begin
             get_res64 ^^
-            compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-            Num.from_signed_word64 env
+            box64 env
           end
       end
       begin
         get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
+          (get_a ^^ extend_and_box64 env)
           get_a ^^
         get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
+          (get_b ^^ extend_and_box64 env)
           get_b ^^
         slow env ^^ set_res ^^ get_res ^^
         fits_in_vanilla env ^^
@@ -1710,13 +1749,18 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           compile_const_64 1L ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Shl))
         else G.nop
+    else if r then
+      code env ^^
+      compile_const_64 1L ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Shl))
     else code env
+
 
   let compile_mul = try_unbox2 (adjust false true false BoxedWord.compile_mul) Num.compile_mul
   let compile_signed_sub = try_unbox2 BoxedWord.compile_signed_sub Num.compile_signed_sub
-  let compile_signed_div = try_unbox2 (adjust true true true BoxedWord.compile_signed_div) Num.compile_signed_div
+  let compile_signed_div = try_unbox2 (adjust false false true BoxedWord.compile_signed_div) Num.compile_signed_div
   let compile_signed_mod = try_unbox2 BoxedWord.compile_signed_mod Num.compile_signed_mod
-  let compile_unsigned_div = try_unbox2 (adjust true true true BoxedWord.compile_unsigned_div) Num.compile_unsigned_div
+  let compile_unsigned_div = try_unbox2 (adjust false false true BoxedWord.compile_unsigned_div) Num.compile_unsigned_div
   let compile_unsigned_rem = try_unbox2 BoxedWord.compile_unsigned_rem Num.compile_unsigned_rem
   let compile_unsigned_sub = try_unbox2 BoxedWord.compile_unsigned_sub Num.compile_unsigned_sub
 
@@ -1751,13 +1795,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
               (get_res64 ^^ compress64)
               begin
                 get_res64 ^^
-                compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-                Num.from_signed_word64 env
+                box64 env
               end
           end
           begin
-            get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env ^^
-            get_b64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env ^^
+            get_a64 ^^ box64 env ^^
+            get_b64 ^^ box64 env ^^
             Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
             fits_in_vanilla env ^^
             G.if_ (ValBlockType (Some I32Type))
@@ -1767,10 +1810,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       end
       begin
         get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
+          (get_a ^^ extend_and_box64 env)
           get_a ^^
         get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
+          (get_b ^^ extend_and_box64 env)
           get_b ^^
         Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
         fits_in_vanilla env ^^
@@ -1814,10 +1857,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       end
       begin
         get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
+          (get_a ^^ extend_and_box64 env)
           get_a ^^
         get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env)
+          (get_b ^^ extend_and_box64 env)
           get_b ^^
         slow env
       end
