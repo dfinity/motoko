@@ -312,25 +312,19 @@ An id can also be given as a *name*, which is a shorthand for a numeric id that 
 
 The hash function is specified as
 ```
-hash(id)
-  = n             if id == "field"<n>  where n is a unsigned integer in decimal notation.
-  = f(utf8(id))   otherwise
-  
-f(id) = ( Sum_(i=0..k) id[i] * 223^(k-i) ) mod 2^32 where k = |id|-1
+hash(id) = ( Sum_(i=0..k) id[i] * 223^(k-i) ) mod 2^32 where k = |id|-1
 ```
 
 This expansion implies that a hash collision between field names within a single record is disallowed.
 
 This hash function has the the following useful properties:
 
- * For each hash value there a human-readable key. This is important to be able to importing an IDL that does _not_ use symbolic field names into a host language where records always have identifiers or strings as keys: It can treat `{42 : Text}` as `{field42 : Text}` and use `"field42"` as a string key that has hash 42.
- 
- * Likewise, the human-readable inversion is useful even if there is a symbolic key, if it is not a valid record key in the host language (e.g. length restrictions, reserved keyword, invalid characters).
- 
  * Collisions are sufficiently rare. It has [no collisions for names up to length 4](https://caml.inria.fr/pub/papers/garrigue-polymorphic_variants-ml98.pdf).
- 
- * It is rather simple to implement, compared to, say, a cryptographic hash function (which provides guarantees we do not need).
- 
+
+ * It is rather simple to implement, compared to, say, a cryptographic hash function (we do not need resistence against collision attacks).
+
+The hash function does not have the property that every numeric value can be turned into a human-readable preimage. Host languages that cannot support numeric field names will have to come up with a suitable encoding textual encoding of numeric field names, as well as of field names that are not valid in the host langauge.
+
 ##### Shorthand: Tuple Fields
 
 Field ids can also be omitted entirely, which is just a shorthand for picking either 0 (for the first field) or N+1 when the previous field has id N.
