@@ -1635,8 +1635,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
      slow path.
    *)
 
-  (* TODO: there is some unnecessary result shifting when the div result needs
+  (* TODO: There is some unnecessary result shifting when the div result needs
      to be boxed. Is this possible at all to happen? With (/-1) maybe! *)
+
+  (* TODO: Does the result of the rem/mod fast path ever need boxing? *)
 
   (* examine the skewed pointer and determine if number fits into 31 bits *)
   let fits_in_vanilla env = Num.fits_signed_bits env 31
