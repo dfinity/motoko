@@ -24,7 +24,7 @@ type prim =
 type t = typ
 and typ =
   | Var of var * int                          (* variable *)
-  | Con of con * typ list                     (* constructor *)
+  | Con of con * int * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
   | Variant of field list                     (* variant *)
@@ -38,7 +38,7 @@ and typ =
   | Serialized of typ                         (* a serialized value *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
-  | Typ of con                                (* type (field of module) *)
+  | Typ of con * int                                (* type (field of module) *)
   | Pre                                       (* pre-type *)
 
 and bind = {var : var; bound : typ}

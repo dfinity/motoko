@@ -24,7 +24,7 @@ type prim =
 type t = typ
 and typ =
   | Var of var * int                          (* variable *)
-  | Con of con * typ list                     (* constructor *)
+  | Con of con * int * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
   | Variant of field list                     (* variant *)
@@ -38,7 +38,7 @@ and typ =
   | Serialized of typ                         (* a serialized value *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
-  | Typ of con                                (* type (field of module) *)
+  | Typ of con * int                          (* type (field of module) *)
   | Pre                                       (* pre-type *)
 
 and bind = {var : var; bound : typ}
@@ -120,7 +120,7 @@ let rec cons t cs =
   match t with
   | Var _ ->  cs
   | (Prim _ | Any | Non | Shared | Pre) -> cs
-  | Con (c, ts) ->
+  | Con (c, _, ts) ->
     List.fold_right cons ts (ConSet.add c cs)
   | (Opt t | Async t | Mut t | Serialized t | Array t) ->
     cons t cs
@@ -131,7 +131,7 @@ let rec cons t cs =
     List.fold_right cons ts2 cs
   | (Obj (_, fs) | Variant fs) ->
     List.fold_right cons_field fs cs
-  | Typ c -> ConSet.add c cs
+  | Typ (c, _) -> ConSet.add c cs
 
 and cons_bind {var; bound} cs =
   cons bound cs
@@ -149,7 +149,7 @@ let rec is_closed i t =
    match t with
   | Prim _ -> true
   | Var (_, j) ->  j < i
-  | Con (c, ts) -> is_closed_con i c && List.for_all (is_closed i) ts
+  | Con (c, i, ts) -> is_closed_con i c && List.for_all (is_closed i) ts
   | Array t -> is_closed i t
   | Tup ts -> List.for_all (is_closed i) ts
   | Func (s, c, tbs, ts1, ts2) ->
@@ -166,8 +166,9 @@ let rec is_closed i t =
   | Any -> true
   | Non -> true
   | Pre -> true
-  | Typ c -> is_closed_con i c
+  | Typ (c, i) -> is_closed_con i c
 and is_closed_con i c =
+  false ||
   let k = Con.kind c in
   Con.unsafe_set_kind c (Abs([],Pre));
   let r = is_closed_kind i k in
@@ -183,7 +184,7 @@ and is_closed_kind i k =
     is_closed i' t
 
 
-type subst = TypS of typ | ConS of con
+type subst = TypS of typ | ConS of con * int
 
 (* Shifting *)
 
@@ -191,7 +192,7 @@ let rec shift i n t =
   match t with
   | Prim _ -> t
   | Var (s, j) -> Var (s, if j < i then j else j + n)
-  | Con (c, ts) -> Con (shift_con i n c, List.map (shift i n) ts)
+  | Con (c, j, ts) -> Con ((if j < i then c else shift_con j n c), (if j < i then j else j + n), List.map (shift i n) ts)
   | Array t -> Array (shift i n t)
   | Tup ts -> Tup (List.map (shift i n) ts)
   | Func (s, c, tbs, ts1, ts2) ->
@@ -207,12 +208,13 @@ let rec shift i n t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c ->
-    Typ (shift_con i n c)
+  | Typ (c, j) ->
+    Typ ((if j < i then c else shift_con j n c), if j < i then j else j + n)
 
 and shift_con i n c =
   if is_closed_con i c then c else
-   clone c (fun k' -> shift_kind i n k')
+   clone c (i+n) (fun k' -> shift_kind i n k')
+
 and shift_bind i n {var; bound} =
   {var; bound = shift i n bound}
 
@@ -228,26 +230,24 @@ and shift_kind i n k =
     let i' = i + List.length tbs in
     Abs (List.map (shift_bind i' n) tbs, shift i' n t)
 
+
 (* First-order substitution *)
 
 and shift_subst i n s =
   match s with
   | TypS typ -> TypS (shift i n typ)
-  | ConS c ->
-    if is_closed_con i c then s else
-   (*    Printf.printf "\n shift_subst %i %i %s" i n (Con.to_string c); *)
-    ConS (clone c (fun k' -> (shift_kind i n k')))
+  | ConS (c, j) -> ConS (c,if j < i then j else (j + n) )
 
 and subst sigma t =
   if sigma = ConEnv.empty then t else
   match t with
   | Prim _
   | Var _ -> t
-  | Con (c, ts) ->
+  | Con (c, i, ts) ->
     (match ConEnv.find_opt c sigma with
     | Some (TypS t) -> assert (List.length ts = 0); t
-    | Some (ConS c') -> Con(c', List.map (subst sigma) ts)
-    | None -> Con(subst_con sigma c, List.map (subst sigma) ts)
+    | Some (ConS (c',j)) -> Con(c', j,  List.map (subst sigma) ts)
+    | None -> Con(subst_con sigma c i, i, List.map (subst sigma) ts)
     )
   | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
@@ -265,27 +265,27 @@ and subst sigma t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c ->
+  | Typ (c, j) ->
     (match ConEnv.find_opt c sigma with
      | Some (TypS t) -> assert false
-     | Some (ConS c') -> Typ c'
-     | None -> Typ (subst_con sigma c)
+     | Some (ConS (c',j')) -> Typ (c', j')
+     | None -> Typ (subst_con sigma c j, j)
     )
 
-and subst_con sigma c =
+and subst_con sigma c j =
   let cons = cons_kind (Con.kind c) in
   if List.exists (fun c -> ConSet.mem c cons) (ConEnv.keys sigma) then
-    clone c (fun k -> subst_kind sigma k)
+    clone c j (fun k -> subst_kind sigma k)
   else c
 
-and clone c f =
+and clone c j f =
   let k = Con.kind c in
   match k with
   | Abs(tbs,t) -> c
   | Def(tbs,t) ->
   Con.unsafe_set_kind c (Abs(tbs,Pre));
   let c' = Con.fresh (Con.name c) (Con.kind c) in
-  let k' = subst_kind (ConEnv.add c (ConS c') ConEnv.empty) k in
+  let k' = subst_kind (ConEnv.add c (ConS (c', j)) ConEnv.empty) k in
   let k'' = f k' in
   Con.unsafe_set_kind c k;
   Con.unsafe_set_kind c' k'';
@@ -322,7 +322,7 @@ let rec open' i ts t =
   match t with
   | Prim _ -> t
   | Var (_, j) -> if j < i then t else List.nth ts (j - i)
-  | Con (c, ts') -> Con (open_con i ts c, List.map (open' i ts) ts')
+  | Con (c, j, ts') -> Con ((if j < i then c else open_con j ts c (j-i)), (if j < i then j else j - i), List.map (open' i ts) ts')
   | Array t -> Array (open' i ts t)
   | Tup ts' -> Tup (List.map (open' i ts) ts')
   | Func (s, c, tbs, ts1, ts2) ->
@@ -338,12 +338,12 @@ let rec open' i ts t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c -> Typ (open_con i ts c)
+  | Typ (c,j) -> Typ ((if j < i then c else open_con j ts c (j-i)), if j < i then j else j - i);
 
-and open_con i ts c =
+and open_con i ts c j =
   if is_closed_con i c then c
   else
-  clone c (fun k -> open_kind i ts k)
+  clone c j (fun k -> open_kind i ts k)
 
 and open_bind i ts {var; bound} =
   {var; bound = open' i ts bound}
@@ -368,7 +368,7 @@ let open_ ts t =
 let open_binds tbs =
   if tbs = [] then [] else
   let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
-  let ts = List.map (fun c -> Con (c, [])) cs in
+  let ts = List.map (fun c -> Con (c, 0, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
   List.iter2 (fun c k -> set_kind c k) cs ks;
   ts
@@ -381,7 +381,8 @@ let reduce tbs t ts =
   open_ ts t
 
 let rec normalize = function
-  | Con (con, ts) as t ->
+  | Con (con, i, ts) as t ->
+    assert (i = 0);
     (match Con.kind con with
     | Def (tbs, t) -> normalize (reduce tbs t ts)
     | _ -> t
@@ -390,7 +391,8 @@ let rec normalize = function
   | t -> t
 
 let rec promote = function
-  | Con (con, ts) ->
+  | Con (con, i, ts) ->
+    assert (i = 0);
     let Def (tbs, t) | Abs (tbs, t) = Con.kind con
     in promote (reduce tbs t ts)
   | t -> t
@@ -428,7 +430,7 @@ let as_async = function Async t -> t | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_serialized = function Serialized t -> t | _ -> invalid "as_serialized"
-let as_typ = function Typ c -> c | _ -> invalid "as_typ"
+let as_typ = function Typ (c,_) -> c | _ -> invalid "as_typ"
 
 let as_seq = function Tup ts -> ts | t -> [t]
 
@@ -484,7 +486,7 @@ let lookup_val_field l tfs =
 let lookup_typ_field l tfs =
   let is_lab = function {typ = Typ _; lab} -> lab = l | _ -> false in
   match List.find_opt is_lab tfs with
-  | Some {typ = Typ c; _} -> Some c
+  | Some {typ = Typ (c,_); _} -> Some c
   | Some _ -> assert false
   | None -> None
 
@@ -516,7 +518,7 @@ exception Unavoidable of con
 
 let rec avoid' cons seen = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
-  | Con (c, ts) ->
+  | Con (c, i, ts) ->
     if ConSet.mem c seen then raise (Unavoidable c) else
     if ConSet.mem c cons
     then match Con.kind c with
@@ -524,7 +526,7 @@ let rec avoid' cons seen = function
       | Def (tbs, t) -> avoid' cons (ConSet.add c seen) (reduce tbs t ts)
     else
       begin try
-        Con (c, List.map (avoid' cons seen) ts)
+        Con (c, i, List.map (avoid' cons seen) ts)
       with Unavoidable d ->
         match Con.kind c with
         | Def (tbs, t) -> avoid' cons seen (reduce tbs t ts)
@@ -543,8 +545,8 @@ let rec avoid' cons seen = function
   | Variant fs -> Variant (List.map (avoid_field cons seen) fs)
   | Mut t -> Mut (avoid' cons seen t)
   | Serialized t -> Serialized (avoid' cons seen t)
-  | Typ c ->  if ConSet.mem c cons then raise (Unavoidable c)
-              else Typ c (* TBR *)
+  | Typ (c,i) ->  if ConSet.mem c cons then raise (Unavoidable c)
+              else Typ (c,i) (* TBR *)
 
 and avoid_bind cons seen {var; bound} =
   {var; bound = avoid' cons seen bound}
@@ -586,7 +588,7 @@ let is_concrete t =
       match t with
       | Var _ -> assert false
       | (Prim _ | Any | Non | Shared | Pre) -> true
-      | Con (c, ts) ->
+      | Con (c, _,  ts) ->
         begin match Con.kind c with
         | Abs _ -> false
         | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)
@@ -602,7 +604,7 @@ let is_concrete t =
       | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Mut t -> go t
-      | Typ c -> assert false (* TBR *)
+      | Typ (c,_) -> assert false (* TBR *)
       | Serialized t -> go t
     end
   in go t
@@ -628,8 +630,8 @@ let rec rel_typ rel eq t1 t2 =
     true
   | Non, _ when rel != eq ->
     true
-  | Con (con1, ts1), Con (con2, ts2) ->
-     Printf.printf "\n rel_typ %s %s" (Con.to_string con1) (Con.to_string con2); 
+  | Con (con1, j1, ts1), Con (con2, j2, ts2) ->
+    Printf.printf "\n rel_typ %s %s" (Con.to_string con1) (Con.to_string con2);  
     (match Con.kind con1, Con.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
@@ -642,7 +644,7 @@ let rec rel_typ rel eq t1 t2 =
     | _ ->
       false
     )
-  | Con (con1, ts1), t2 ->
+  | Con (con1, j1, ts1), t2 ->
     (match Con.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
@@ -650,7 +652,7 @@ let rec rel_typ rel eq t1 t2 =
       rel_typ rel eq (open_ ts1 t) t2
     | _ -> false
     )
-  | t1, Con (con2, ts2) ->
+  | t1, Con (con2, j2, ts2) ->
     (match Con.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ rel eq t1 (open_ ts2 t)
@@ -712,7 +714,7 @@ let rec rel_typ rel eq t1 t2 =
     eq_typ rel eq t1' t2'
   | Serialized t1', Serialized t2' ->
     eq_typ rel eq t1' t2' (* TBR: eq or sub? Does it matter? *)
-  | Typ c1, Typ c2 ->
+  | Typ (c1,_), Typ (c2,_) ->
     eq_kind rel eq (Con.kind c1) (Con.kind c2)
   | _, _ -> false
   end
@@ -880,10 +882,21 @@ let rec string_of_typ_nullary vs = function
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
   | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> "???")
-  | Con (c, []) -> string_of_con' vs c
-  | Con (c, ts) ->
-    sprintf "%s<%s>" (string_of_con' vs c)
+  (*  | Con (c, _, []) -> string_of_con' vs c *)
+  | Con (c, _, ts) ->
+    (match Con.kind c with
+    | Abs _ ->
+      sprintf "%s<%s> " (string_of_con' vs c)
       (String.concat ", " (List.map (string_of_typ' vs) ts))
+    | Def _ ->
+    let k = Con.kind c in
+    Con.unsafe_set_kind c (Abs([],Pre));
+    let s = sprintf "%s<%s> (%s)" (string_of_con' vs c)
+      (String.concat ", " (List.map (string_of_typ' vs) ts))
+      (string_of_kind' vs k) in
+    Con.unsafe_set_kind c k;
+    s
+    )
   | Tup ts ->
     sprintf "(%s%s)"
       (String.concat ", " (List.map (string_of_typ' vs) ts))
@@ -897,7 +910,7 @@ let rec string_of_typ_nullary vs = function
   | Variant [] -> "{#}"
   | Variant fs ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_tag vs) fs))
-  | Typ c ->
+  | Typ (c,_) ->
     sprintf "= {%s}" (string_of_kind' vs (Con.kind c))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
@@ -941,7 +954,7 @@ and string_of_typ' vs t =
     sprintf "actor %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Obj (Module, fs) ->
     sprintf "module %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
-  | Typ c ->
+  | Typ (c,_) ->
     sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind' vs (Con.kind c))
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
@@ -951,7 +964,7 @@ and string_of_typ' vs t =
 
 and string_of_field vs {lab; typ} =
   match typ with
-  | Typ c ->
+  | Typ (c,_) ->
     let op, sbs, st = strings_of_kind' vs (Con.kind c) in
     sprintf "type %s%s %s %s" lab sbs op st
   | _ ->
@@ -1000,7 +1013,7 @@ let strings_of_kind = strings_of_kind' []
 let rec string_of_typ_expand t =
   let s = string_of_typ t in
   match t with
-  | Con (c, ts) ->
+  | Con (c,_,ts) ->
     (match Con.kind c with
     | Abs _ -> s
     | Def _ ->

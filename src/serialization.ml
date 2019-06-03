@@ -74,8 +74,8 @@ module Transform() = struct
     | T.Pre
     | T.Var _ -> t
 
-    | T.Con (c, ts) ->
-      T.Con (t_con c, List.map t_typ ts)
+    | T.Con (c, j, ts) ->
+      T.Con (t_con c, j, List.map t_typ ts)
     | T.Array t -> T.Array (t_typ t)
     | T.Tup ts -> T.Tup (List.map t_typ ts)
     | T.Func (T.Sharable, c, tbs, t1, t2) ->
@@ -88,7 +88,7 @@ module Transform() = struct
     | T.Variant fs -> T.(Variant (List.map t_field fs))
     | T.Obj (s, fs) -> T.Obj (s, List.map t_field fs)
     | T.Mut t -> T.Mut (t_typ t)
-    | T.Typ c -> T.Typ (t_con c) (* TBR *)
+    | T.Typ (c, j) -> T.Typ (t_con c, j) (* TBR *)
     | T.Serialized t -> assert false (* This transformation should only run once *)
     | T.Async t -> assert false (* Should happen after async-translation *)
 

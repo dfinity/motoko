@@ -135,8 +135,8 @@ module Transform() = struct
     match t with
     | T.Prim _
       | Var _ -> t
-    | Con (c, ts) ->
-      Con (t_con c, List.map t_typ ts)
+    | Con (c, j, ts) ->
+      Con (t_con c, j, List.map t_typ ts)
     | Array t -> Array (t_typ t)
     | Tup ts -> Tup (List.map t_typ ts)
     | Func (s, c, tbs, t1, t2) ->
@@ -167,7 +167,7 @@ module Transform() = struct
     | Any -> Any
     | Non -> Non
     | Pre -> Pre
-    | Typ c -> Typ (t_con c)
+    | Typ (c,j) -> Typ (t_con c, j)
 
   and t_bind {var; bound} =
     {var; bound = t_typ bound}

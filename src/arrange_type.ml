@@ -36,7 +36,7 @@ let con c = Atom (Con.to_string c)
 
 let rec typ (t:Type.typ) = match t with
   | Var (s, i)             -> "Var" $$ [Atom s; Atom (string_of_int i)]
-  | Con (c, ts)            -> "Con" $$ (con c::List.map typ ts)
+  | Con (c, _, ts)         -> "Con" $$ (con c::List.map typ ts)
   | Prim p                 -> "Prim" $$ [prim p]
   | Obj (s, tfs)           -> "Obj" $$ [obj_sort s] @ List.map typ_field tfs
   | Array t                -> "Array" $$ [typ t]
@@ -51,7 +51,7 @@ let rec typ (t:Type.typ) = match t with
   | Any                   -> Atom "Any"
   | Non                   -> Atom "Non"
   | Pre                   -> Atom "Pre"
-  | Typ c                 -> "Typ" $$ [con c]
+  | Typ (c,_)                 -> "Typ" $$ [con c]
 
 and typ_bind (tb : Type.bind) =
   tb.var $$ [typ tb.bound]

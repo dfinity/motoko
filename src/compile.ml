@@ -2656,7 +2656,7 @@ module Serialization = struct
         match t with
         | Var _ -> assert false
         | (Prim _ | Any | Non | Shared | Pre) -> true
-        | Con (c, ts) ->
+        | Con (c, _,ts) ->
           begin match Con.kind c with
           | Abs _ -> assert false
           | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)

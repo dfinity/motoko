@@ -67,7 +67,7 @@ let bind env i (info:func_info option) : env =
 let are_generic_insts (tbs : typ_bind list) insts =
   List.for_all2 (fun (tb : typ_bind) inst ->
       match inst with
-      | Con(c2,[]) -> Con.eq tb.it.con c2 (* conservative, but safe *)
+      | Con(c2, _, []) -> Con.eq tb.it.con c2 (* conservative, but safe *)
       |  _ -> false
       ) tbs insts
 
@@ -202,7 +202,7 @@ and dec' env d =
       in
       let env3 = args env2 as_ in (* shadow id if necessary *)
       let exp0' = tailexp env3 exp0 in
-      let cs = List.map (fun (tb : typ_bind) -> Con (tb.it.con, [])) tbs in
+      let cs = List.map (fun (tb : typ_bind) -> Con (tb.it.con, 0, [])) tbs in
       if !tail_called then
         let ids = match typ funexp with
           | Func( _, _, _, dom, _) ->

@@ -186,7 +186,7 @@ and check_obj_path' env path : T.typ =
 
 let rec check_typ_path env path : T.con =
   let c = check_typ_path' env path in
-  path.note <- T.Typ c;
+  path.note <- T.Typ (c,0);
   c
 
 and check_typ_path' env path : T.con =
@@ -215,7 +215,7 @@ and check_typ' env typ : T.typ =
     let c = check_typ_path env path in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
     let ts = check_typ_bounds env tbs typs typ.at in
-    T.Con (c, ts)
+    T.Con (c, 0, ts)
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
   | PrimT "Shared" -> T.Shared
@@ -1120,7 +1120,7 @@ and gather_typ con_env t =
 
 and gather_typ_field T.{lab; typ} con_env =
   match typ with
-  | T.Typ  c -> T.ConSet.add c con_env
+  | T.Typ (c,_) -> T.ConSet.add c con_env
   | t -> gather_typ con_env t
 
 (* TODO: remove by merging conenv and valenv or by separating typ_fields *)
@@ -1131,7 +1131,7 @@ and object_of_scope env sort fields scope at =
     T.Env.fold
       (fun id con flds ->
        if T.Env.mem id pub_typ then
-         { T.lab = id; T.typ = T.Typ con }::flds
+         { T.lab = id; T.typ = T.Typ (con,0) }::flds
        else flds) scope.typ_env  []
   in
   let fields =
@@ -1225,7 +1225,7 @@ and infer_dec env dec : T.typ =
       let cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive env' pat in
-      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
+      let self_typ = T.Con (c, 0, List.map (fun c -> T.Con (c, 0, [])) cs) in
       let env'' =
         { (add_val (adjoin_vals env' ve) self_id.it self_typ) with
           labs = T.Env.empty;
@@ -1448,7 +1448,7 @@ and infer_dec_typdecs env dec : scope =
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
     let _, ve = infer_pat env' pat in
-    let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
+    let self_typ = T.Con (c, 0, List.map (fun c -> T.Con (c, 0, [])) cs) in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' sort.it fields dec.at in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
@@ -1515,7 +1515,7 @@ and infer_dec_valdecs env dec : scope =
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
-    let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
+    let t2 = T.Con (c, 0, List.map (fun c -> T.Con (c, 0, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
     { empty_scope with

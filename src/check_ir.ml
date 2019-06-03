@@ -124,7 +124,7 @@ let rec check_typ env typ : unit =
     error env no_region "illegal T.Pre type"
   | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
-  | T.Con (c, typs) ->
+  | T.Con (c, j, typs) ->
     if false then
       check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
     (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
@@ -141,7 +141,7 @@ let rec check_typ env typ : unit =
   | T.Func (sort, control, binds, ts1, ts2) ->
     let cs, ce = check_typ_binds env binds in
     let env' = adjoin_cons env  ce in
-    let ts = List.map (fun c -> T.Con (c, [])) cs in
+    let ts = List.map (fun c -> T.Con (c, 0, [])) cs in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
@@ -185,7 +185,7 @@ let rec check_typ env typ : unit =
       "Serialized in non-serialized flavor";
     check_typ env typ;
     check_sub env no_region typ T.Shared
-  | T.Typ c ->
+  | T.Typ (c, _) ->
     if false then
       check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
 
@@ -216,7 +216,7 @@ and check_typ_field env s typ_field : unit =
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
-  let cs = List.map (function T.Con (c, []) ->  c | _ -> assert false) ts in
+  let cs = List.map (function T.Con (c, _, []) ->  c | _ -> assert false) ts in
   let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
@@ -710,7 +710,7 @@ and check_dec env dec  =
       | T.Def (binds, typ) -> (binds, typ)
     in
     let cs, ce = check_typ_binds env binds in
-    let ts = List.map (fun c -> T.Con (c, [])) cs in
+    let ts = List.map (fun c -> T.Con (c, 0, [])) cs in
     let env' = adjoin_cons env ce in
     check_typ env' (T.open_ ts  typ)
 
@@ -744,7 +744,7 @@ and gather_typ env ce typ =
    | T.Obj(_, fs) ->
      List.fold_right (fun {T.lab;T.typ = typ1} ce ->
          match typ1 with
-         | T.Typ c -> T.ConSet.add c ce
+         | T.Typ (c,_) -> T.ConSet.add c ce
          | _ -> gather_typ env ce typ1
        ) fs ce
    | _ -> ce
