@@ -33,6 +33,8 @@ assert(word32ToNat 4294967295 == 4294967295); // 2**32 - 1
     roundtrip 10000000;
     roundtrip 100000000;
     roundtrip 1000000000;
+    roundtrip 0x7FFFFFFF;
+    roundtrip 0xFFFFFFFF;
 };
 
 {
@@ -47,6 +49,8 @@ assert(word32ToNat 4294967295 == 4294967295); // 2**32 - 1
     roundtrip 10000000;
     roundtrip 100000000;
     roundtrip 1000000000;
+    roundtrip 0x7FFFFFFF;
+    roundtrip 0xFFFFFFFF;
 };
 
 
@@ -99,6 +103,7 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
     roundtrip 10000000;
     roundtrip 100000000;
     roundtrip 1000000000;
+    roundtrip 0x7FFFFFFF;
 
     roundtrip (-10);
     roundtrip (-100);
@@ -109,6 +114,7 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
     roundtrip (-10000000);
     roundtrip (-100000000);
     roundtrip (-1000000000);
+    roundtrip (-2147483648);
 };
 
 {
@@ -123,6 +129,8 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
     roundtrip 10000000;
     roundtrip 100000000;
     roundtrip 1000000000;
+    roundtrip 0x7FFFFFFF;
+    roundtrip 0xFFFFFFFF;
 
     /*!*/
     roundtrip (-10);
@@ -165,3 +173,144 @@ assert(charToWord32 '\u{10ffff}' == (0x10FFFF : Word32));
 assert(charToText 'П' == "П");
 func snd((a : Word32, b : Char)) : Char = b;
 assert(snd (decodeUTF8 "П") =='П');
+
+// Nat <--> Word64
+
+assert(natToWord64 0x0000000000000000 == (0x0000000000000000 : Word64));
+assert(natToWord64 0x0000000000000001 == (0x0000000000000001 : Word64));
+assert(natToWord64 0x7FFFFFFFFFFFFFFF == (0x7FFFFFFFFFFFFFFF : Word64));
+assert(natToWord64 0x8000000000000000 == (0x8000000000000000 : Word64));
+assert(natToWord64 0x8000000000000001 == (0x8000000000000001 : Word64));
+assert(natToWord64 0xFFFFFFFFFFFFFFFF == (0xFFFFFFFFFFFFFFFF : Word64));
+
+assert(word64ToNat 0x0000000000000000 == (0x0000000000000000 : Nat));
+assert(word64ToNat 0x0000000000000001 == (0x0000000000000001 : Nat));
+assert(word64ToNat 0x7FFFFFFFFFFFFFFF == (0x7FFFFFFFFFFFFFFF : Nat));
+assert(word64ToNat 0x8000000000000000 == (0x8000000000000000 : Nat));
+assert(word64ToNat 0x8000000000000001 == (0x8000000000000001 : Nat));
+assert(word64ToNat 0xFFFFFFFFFFFFFFFF == (0xFFFFFFFFFFFFFFFF : Nat));
+
+// Int <--> Word64
+
+assert(intToWord64   0x0000000000000000 ==  (0x0000000000000000 : Word64));
+assert(intToWord64   0x0000000000000001 ==  (0x0000000000000001 : Word64));
+assert(intToWord64   0x7FFFFFFFFFFFFFFF ==  (0x7FFFFFFFFFFFFFFF : Word64));
+assert(intToWord64 (-0x8000000000000000) == (0x8000000000000000 : Word64));
+assert(intToWord64 (-0x7FFFFFFFFFFFFFFF) == (0x8000000000000001 : Word64));
+assert(intToWord64 (-0x7FFFFFFFFFFFFFFE) == (0x8000000000000002 : Word64));
+assert(intToWord64 (-0x0000000000000001) == (0xFFFFFFFFFFFFFFFF : Word64));
+
+assert(word64ToInt (0x0000000000000000 : Word64) ==  0x0000000000000000);
+assert(word64ToInt (0x0000000000000001 : Word64) ==  0x0000000000000001);
+assert(word64ToInt (0x7FFFFFFFFFFFFFFF : Word64) ==  0x7FFFFFFFFFFFFFFF);
+assert(word64ToInt (0x8000000000000000 : Word64) == -0x8000000000000000);
+assert(word64ToInt (0x8000000000000001 : Word64) == -0x7FFFFFFFFFFFFFFF);
+assert(word64ToInt (0x8000000000000002 : Word64) == -0x7FFFFFFFFFFFFFFE);
+assert(word64ToInt (0xFFFFFFFFFFFFFFFF : Word64) == -0x0000000000000001);
+
+// Below conversions mainly test the interpreter's bignum arithmetics
+
+// Int <--> Word8
+
+assert(intToWord8 (2 ** 62) == (0 : Word8));
+assert(intToWord8 (2 ** 62 + 1) == (1 : Word8));
+assert(intToWord8 (2 ** 62 - 1) == (255 : Word8));
+assert(intToWord8 (- 2 ** 62) == (0 : Word8));
+assert(intToWord8 (- 2 ** 62 + 1) == (1 : Word8));
+assert(intToWord8 (- 2 ** 62 - 1) == (255 : Word8));
+
+assert(intToWord8 (2 ** 63) == (0 : Word8));
+assert(intToWord8 (2 ** 63 + 1) == (1 : Word8));
+assert(intToWord8 (2 ** 63 - 1) == (255 : Word8));
+assert(intToWord8 (- 2 ** 63) == (0 : Word8));
+assert(intToWord8 (- 2 ** 63 + 1) == (1 : Word8));
+assert(intToWord8 (- 2 ** 63 - 1) == (255 : Word8));
+
+assert(intToWord8 (2 ** 64) == (0 : Word8));
+assert(intToWord8 (2 ** 64 + 1) == (1 : Word8));
+assert(intToWord8 (2 ** 64 - 1) == (255 : Word8));
+assert(intToWord8 (- 2 ** 64) == (0 : Word8));
+assert(intToWord8 (- 2 ** 64 + 1) == (1 : Word8));
+assert(intToWord8 (- 2 ** 64 - 1) == (255 : Word8));
+
+
+// Nat <--> Word8
+
+assert(natToWord8 (2 ** 64) == (0 : Word8));
+assert(natToWord8 (2 ** 64 + 1) == (1 : Word8));
+assert(natToWord8 (2 ** 64 - 1) == (255 : Word8));
+
+// Int <--> Word16
+
+assert(intToWord16 (2 ** 62) == (0 : Word16));
+assert(intToWord16 (2 ** 62 + 1) == (1 : Word16));
+assert(intToWord16 (2 ** 62 - 1) == (65535 : Word16));
+assert(intToWord16 (- 2 ** 62) == (0 : Word16));
+assert(intToWord16 (- 2 ** 62 + 1) == (1 : Word16));
+assert(intToWord16 (- 2 ** 62 - 1) == (65535 : Word16));
+
+assert(intToWord16 (2 ** 63) == (0 : Word16));
+assert(intToWord16 (2 ** 63 + 1) == (1 : Word16));
+assert(intToWord16 (2 ** 63 - 1) == (65535 : Word16));
+assert(intToWord16 (- 2 ** 63) == (0 : Word16));
+assert(intToWord16 (- 2 ** 63 + 1) == (1 : Word16));
+assert(intToWord16 (- 2 ** 63 - 1) == (65535 : Word16));
+
+assert(intToWord16 (2 ** 64) == (0 : Word16));
+assert(intToWord16 (2 ** 64 + 1) == (1 : Word16));
+assert(intToWord16 (2 ** 64 - 1) == (65535 : Word16));
+assert(intToWord16 (- 2 ** 64) == (0 : Word16));
+assert(intToWord16 (- 2 ** 64 + 1) == (1 : Word16));
+assert(intToWord16 (- 2 ** 64 - 1) == (65535 : Word16));
+
+// Nat <--> Word16
+
+assert(natToWord16 (2 ** 62) == (0 : Word16));
+assert(natToWord16 (2 ** 62 + 1) == (1 : Word16));
+assert(natToWord16 (2 ** 62 - 1) == (65535 : Word16));
+
+assert(natToWord16 (2 ** 63) == (0 : Word16));
+assert(natToWord16 (2 ** 63 + 1) == (1 : Word16));
+assert(natToWord16 (2 ** 63 - 1) == (65535 : Word16));
+
+assert(natToWord16 (2 ** 64) == (0 : Word16));
+assert(natToWord16 (2 ** 64 + 1) == (1 : Word16));
+assert(natToWord16 (2 ** 64 - 1) == (65535 : Word16));
+
+// Int <--> Word32
+
+assert(intToWord32 (2 ** 62) == (0 : Word32));
+assert(intToWord32 (2 ** 62 + 1) == (1 : Word32));
+assert(intToWord32 (2 ** 62 - 1) == (4294967295 : Word32));
+assert(intToWord32 (- 2 ** 62) == (0 : Word32));
+assert(intToWord32 (- 2 ** 62 + 1) == (1 : Word32));
+assert(intToWord32 (- 2 ** 62 - 1) == (4294967295 : Word32));
+
+assert(intToWord32 (2 ** 63) == (0 : Word32));
+assert(intToWord32 (2 ** 63 + 1) == (1 : Word32));
+assert(intToWord32 (2 ** 63 - 1) == (4294967295 : Word32));
+assert(intToWord32 (- 2 ** 63) == (0 : Word32));
+assert(intToWord32 (- 2 ** 63 + 1) == (1 : Word32));
+assert(intToWord32 (- 2 ** 63 - 1) == (4294967295 : Word32));
+
+assert(intToWord32 (2 ** 64) == (0 : Word32));
+assert(intToWord32 (2 ** 64 + 1) == (1 : Word32));
+assert(intToWord32 (2 ** 64 - 1) == (4294967295 : Word32));
+assert(intToWord32 (- 2 ** 64) == (0 : Word32));
+assert(intToWord32 (- 2 ** 64 + 1) == (1 : Word32));
+assert(intToWord32 (- 2 ** 64 - 1) == (4294967295 : Word32));
+
+// Nat <--> Word32
+
+assert(natToWord32 (2 ** 62) == (0 : Word32));
+assert(natToWord32 (2 ** 62 + 1) == (1 : Word32));
+assert(natToWord32 (2 ** 62 - 1) == (4294967295 : Word32));
+
+assert(natToWord32 (2 ** 63) == (0 : Word32));
+assert(natToWord32 (2 ** 63 + 1) == (1 : Word32));
+assert(natToWord32 (2 ** 63 - 1) == (4294967295 : Word32));
+
+assert(natToWord32 (2 ** 64) == (0 : Word32));
+assert(natToWord32 (2 ** 64 + 1) == (1 : Word32));
+assert(natToWord32 (2 ** 64 - 1) == (4294967295 : Word32));
+

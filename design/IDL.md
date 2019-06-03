@@ -4,7 +4,7 @@ To document, discover, and interact with actors on the platform, we need an inte
 
 #### Goals:
 
-* Language-independent description of actor interfaces and the data they 
+* Language-independent description of actor interfaces and the data they
 exchange (names, parameter and result formats of actor methods)
 * Simple and canonical constructs (C-like; algebraically: sums, products, exponentials)
 * Extensible, backwards-compatible
@@ -65,7 +65,7 @@ This is a summary of the grammar proposed:
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
 <functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
-<funcann>   ::= pure
+<funcann>   ::= oneway | pure
 <paramtype> ::= <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 
@@ -159,16 +159,18 @@ service {
   addUser : (name : text, age : nat8) -> (id : nat64);
   userName : (id : nat64) -> (text) pure;
   userAge : (id : nat64) -> (nat8) pure;
+  deleteUser : (id : nat64) -> () oneway;
 }
 ```
 
 
 ### Functions
 
-*Functions* are endpoints for communication. A function invocation is a bidirectional communication, with *parameters* and *results*, a.k.a. request and response.
+*Functions* are endpoints for communication.   A typical function invocation is a bidirectional communication, with *parameters* and *results*, a.k.a. request and response. A `oneway` function invocation is a uni-directional communication with zero or more parameters but no results, intended for fire-and-forget scenarios.
 
 **Note:** The IDL is in fact agnostic to the question whether communication via functions is synchronous (like RPCs) or asynchronous (like messaging with callbacks as response continuations). However, it assumes that all invocations have the same semantics, i.e., there is no need to distinguish between both.
 
+**Note:** In a synchronous interpretation of functions, invocation of a oneway function would return immediately, without waiting for completion of the service-side invocation of the function. In an asynchronous interpretation of functions, the invocation of a `oneway` function does not accept a callback (to invoke on completion).
 
 #### Structure
 
@@ -176,11 +178,12 @@ A function type describes the list of parameters and results and their respectiv
 
 ```
 <functype> ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
-<funcann>  ::= pure
+<funcann>  ::= oneway | pure
 ```
 
 The parameter and result lists are essentially treated as records, see below. That is, they are named, not positional.
 The list of parameters must be shorter than 2^32 values and no name/id may occur twice in it. The same restrictions apply to the result list.
+The result list of a `oneway` function must be empty.
 
 #### Example
 ```
@@ -593,9 +596,12 @@ For a specialised function, any parameter type can be generalised and any result
 ```
 record { <fieldtype1'>;* } <: record { <fieldtype1>;* }
 record { <fieldtype2>;* } <: record { <fieldtype2'>;* }
+{ a | a in <funcann1>* } = { a | a in <funcann2>* }
 ------------------------------------------------------------------------------------------------
-func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* )
+func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann1>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann2>*
 ```
+
+Viewed as sets, the annotations on the functions must be equal.
 
 #### Actors
 
