@@ -160,11 +160,11 @@ ia(<datatype>) = i(<datatype>)
 ia(<datatype>^N) = ( i*(<datatype>^N) ) // import as tuple
 ia(<fieldtype>^N) = shared { if*(<fieldtype>^N) }
 
-name : <name> -> <name>
-name <name> = <name> "_"  if <name> is a reserved identifer in ActorScript
-name <name> = <name> "_"  if <name> ends with "_"
-name <name> = "field_" hash(<name>) "_"  if <name> is not a valid ActorScript <id>
-name <name> = <name>   otherwise
+escape : <name> -> <id>
+escape <name> = <name> "_"  if <name> is a reserved identifer in ActorScript
+escape <name> = <name> "_"  if <name> ends with "_"
+escape <name> = "field_" hash(<name>) "_"  if <name> is not a valid ActorScript <id>
+escape <name> = <name>   otherwise
 ```
 
 Notes:
