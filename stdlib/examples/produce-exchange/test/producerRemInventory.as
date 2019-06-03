@@ -1,5 +1,5 @@
 let T = (import "../serverTypes.as");
-//let A = (import "../serverActor.as");
+let A = (import "../serverActor.as");
 let Result = (import "../../../result.as");
 let Option = (import "../../../option.as");
 
@@ -19,8 +19,7 @@ actor class Test() = this {
   go() {
     ignore(async
     {
-      //let s = A.Server();
-      let s = server;
+      let s = A.Server();
 
       print "\nExchange setup: Begin...\n====================================\n";
 
@@ -122,8 +121,8 @@ actor class Test() = this {
 
       //////////////////////
 
-      await debugDumpInventory(pka, 0);
-      await debugDumpAll();
+      await debugDumpInventory(s, pka, 0);
+      await debugDumpAll(s);
       
       print "\n First time: Producer remove query\n====================================\n";
       
@@ -132,8 +131,8 @@ actor class Test() = this {
       print (debug_show rem0);
       print "\n";
 
-      await debugDumpInventory(pka, 0);
-      await debugDumpAll();
+      await debugDumpInventory(s, pka, 0);
+      await debugDumpAll(s);
 
       print "\n Second time: Producer remove query\n====================================\n";
 
@@ -142,13 +141,13 @@ actor class Test() = this {
       print (debug_show rem0b);
       print "\n";
 
-      await debugDumpInventory(pka, 0);
-      await debugDumpAll();
+      await debugDumpInventory(s, pka, 0);
+      await debugDumpAll(s);
     })
   };
 };
 
-func debugDumpInventory(pk:T.PublicKey, p:T.ProducerId) : async () {
+func debugDumpInventory(server:A.Server, pk:T.PublicKey, p:T.ProducerId) : async () {
   print "\nProducer ";
   printInt p;
   print "'s inventory:\n--------------------------------\n";
@@ -162,8 +161,7 @@ func debugDumpInventory(pk:T.PublicKey, p:T.ProducerId) : async () {
   }
 };
 
-//func debugDumpAll(server:A.Server) : async () {
-func debugDumpAll() : async () {
+func debugDumpAll(server:A.Server) : async () {
 
   print "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {

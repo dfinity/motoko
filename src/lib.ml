@@ -239,6 +239,10 @@ struct
   let app f = function
     | Some x -> f x
     | None -> ()
+
+  let bind x f = match x with
+    | Some x -> f x
+    | None -> None
 end
 
 module Promise =
