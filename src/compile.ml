@@ -1635,6 +1635,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
      slow path.
    *)
 
+  (* TODO: there is some unnecessary result shifting when the div result needs
+     to be boxed. Is this possible at all to happen? With (/-1) maybe! *)
+
   (* examine the skewed pointer and determine if number fits into 31 bits *)
   let fits_in_vanilla env = Num.fits_signed_bits env 31
 
@@ -1649,7 +1652,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
   (* predicate for i64 signed value, checking whether
-     the compact representation is viable
+     the compact representation is viable;
      bits should be 31 for right-aligned
      and 32 for right-0-padded values *)
   let speculate_compact64 bits =
@@ -1665,7 +1668,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     compile_unboxed_one ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
 
-  (* input is right-padded with 0 *)
+  (* input is right-padded with 0
+     precondition: upper 32 bits must be same as 32-bit sign,
+     i.e. speculate_compact64 is valid
+   *)
   let compress64 =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     compress32
@@ -1710,10 +1716,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
         G.if_ (ValBlockType (Some I32Type))
           (get_res64 ^^ compress64)
-          begin
-            get_res64 ^^
-            box64 env
-          end
+          (get_res64 ^^ box64 env)
       end
       begin
         get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
@@ -1793,10 +1796,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
             G.if_ (ValBlockType (Some I32Type))
               (get_res64 ^^ compress64)
-              begin
-                get_res64 ^^
-                box64 env
-              end
+              (get_res64 ^^ box64 env)
           end
           begin
             get_a64 ^^ box64 env ^^
