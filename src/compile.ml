@@ -1705,12 +1705,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     if a2 then
       compile_const_64 1L ^^
       G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-      code env ^^ if r then
-                     compile_const_64 1L ^^
-                     G.i (Binary (Wasm.Values.I64 I64Op.Shl))
-                   else G.nop
-    else
-      code env
+        code env ^^
+        if r then
+          compile_const_64 1L ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.Shl))
+        else G.nop
+    else code env
 
   let compile_mul = try_unbox2 (adjust false true false BoxedWord.compile_mul) Num.compile_mul
   let compile_signed_sub = try_unbox2 BoxedWord.compile_signed_sub Num.compile_signed_sub
@@ -1731,13 +1731,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
     BitTagged.if_unboxed env (ValBlockType (Some I32Type))
       begin
+        (* estimate bitcount of result: `bits(a) * b <= 65` guarantees
+           the absence of overflow in 64-bit arithmetic *)
         get_a ^^ extend64 ^^ set_a64 ^^ compile_const_64 64L ^^
         get_a64 ^^ get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
         G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
         get_b ^^ extend64 ^^ set_b64 ^^ get_b64 ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
-        compile_const_64 128L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+        compile_const_64 130L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
         G.if_ (ValBlockType (Some I32Type))
           begin
             get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
