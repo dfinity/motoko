@@ -8,6 +8,7 @@ Productions marked * probably deferred to later versions.
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
   (shared|actor)? { <typ-field>;* }             object
+  variant { <variant-field>;* }                 variant
   [ var? <typ> ]                                array
   ? <typ>                                       option
   shared <typ-params>? <typ> -> <typ>  function
@@ -22,6 +23,10 @@ Productions marked * probably deferred to later versions.
   <id> : <typ>                                  immutable
   var <id> : <typ>                              mutable
   <id> <typ-params>? <params> : <typ>           function (short-hand)
+
+<variant-field> ::=                           variant type fields
+  #<id> : <typ>                                 immutable
+  #<id>                                         of type () (short-hand)
 
 <typ-args> ::=                                type arguments
   < <typ>,* >
@@ -77,11 +82,12 @@ Productions marked * probably deferred to later versions.
   <dec>                                          declaration (scopes to block)
 * throw <exp>                                    raise exception
 * try <exp> (catch <pat> <exp>)+ (<finally> <exp>)?  try
-* # <id>                                             atom
 
 <exp-field> ::=                                object expression fields
   private? dec                                   field
   private? <id> = <exp>                          short-hand
+  #<id> = <exp>                                  variant field
+  #<id>                                          variant field with value () (short-hand)
 ```
 
 ## Patterns
