@@ -222,7 +222,7 @@ just suggestions.
 
   will import the type service specified in `foo.didl`, using the mapping `i`,
   as ActorScript type `t1`; type-check `foo.as` as `t2 = actor { … }` and check
-  that `t1 <: t1` (as ActorScript types).
+  that `t2 <: t1` (as ActorScript types).
 
 * Converting IDL types to Actorscript types
 
