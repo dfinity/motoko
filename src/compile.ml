@@ -379,6 +379,12 @@ let compile_eq_const i =
   compile_unboxed_const i ^^
   G.i (Compare (Wasm.Values.I32 I32Op.Eq))
 
+let compile_op64_const op i =
+    compile_const_64 i ^^
+    G.i (Binary (Wasm.Values.I64 op))
+let compile_shl64_const = function
+  | 0L -> G.nop | n -> compile_op64_const I64Op.Shl n
+
 (* more random utilities *)
 
 let bytes_of_int32 (i : int32) : string =
@@ -881,8 +887,7 @@ module BitTagged = struct
 
   let tag =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compile_unboxed_const scalar_shift ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Shl))
+    compile_shl_const scalar_shift
 
   (* The untag_i32 and tag_i32 functions expect 32 bit numbers *)
   let untag_i32 env =
@@ -1312,9 +1317,7 @@ module UnboxedSmallWord = struct
     | Type.Word32 -> G.nop
     | ty -> compile_bitand_const (bitwidth_mask_of_type ty)
 
-  let shift_leftWordNtoI32 b =
-    compile_unboxed_const b ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Shl))
+  let shift_leftWordNtoI32 = compile_shl_const
 
   (* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
   let lsb_adjust = function
@@ -1515,8 +1518,7 @@ module BigNum64 : BigNumType = struct
     | n ->
       let set_num, get_num = new_local64 env "num" in
       unbox env ^^ set_num ^^ get_num ^^ get_num ^^
-      compile_const_64 1L ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+      compile_shl64_const 1L ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
       compile_const_64 Int64.(shift_left minus_one n) ^^
       G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
@@ -1658,8 +1660,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
      bits should be 31 for right-aligned
      and 32 for right-0-padded values *)
   let speculate_compact64 bits =
-    compile_const_64 1L ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+    compile_shl64_const 1L ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
     compile_const_64 Int64.(shift_left minus_one bits) ^^
     G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
@@ -1679,8 +1680,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     compress32
 
   let speculate_compact =
-    compile_unboxed_one ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+    compile_shl_const 1l ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
     compile_unboxed_const Int32.(shift_left minus_one 31) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
@@ -1751,13 +1751,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
         code env ^^
         if r then
-          compile_const_64 1L ^^
-          G.i (Binary (Wasm.Values.I64 I64Op.Shl))
+          compile_shl64_const 1L
         else G.nop
     else if r then
       code env ^^
-      compile_const_64 1L ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.Shl))
+      compile_shl64_const 1L
     else code env
 
 
@@ -1794,7 +1792,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
             get_b64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
             BoxedWord.compile_unsigned_pow env ^^
-            compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^ set_res64 ^^
+            compile_shl64_const 1L ^^ set_res64 ^^
             get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
             G.if_ (ValBlockType (Some I32Type))
               (get_res64 ^^ compress64)
@@ -1962,7 +1960,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     set_a ^^ get_a ^^ get_a ^^
     speculate_compact64 31 ^^
     G.if_ (ValBlockType (Some I32Type))
-      (get_a ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^ compress64)
+      (get_a ^^ compile_shl64_const 1L ^^ compress64)
       (get_a ^^ Num.from_signed_word64 env)
 
   let from_word32 env =
