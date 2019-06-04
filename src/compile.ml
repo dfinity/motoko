@@ -4387,7 +4387,8 @@ let rec compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> UnboxedSmallWord.lsb_adjust ty ^^
                                                        G.i (Binary (Wasm.Values.I32 I32Op.Mul))
-  | Type.Prim Type.(Word8 | Word16 | Word32), DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU))
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
+                                                       UnboxedSmallWord.msb_adjust ty
   | Type.Prim Type.(Word8 | Word16 | Word32), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp ->
      let rec pow () = Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
