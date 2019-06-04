@@ -1888,7 +1888,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             compile_unboxed_one ^^ (* i.e. -1073741824 *)
             G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
             G.if_ (ValBlockType (Some I32Type))
-              (compile_const_64 1073741824L ^^ Num.from_word64 env) (* is non-representable *)
+              (compile_unboxed_const 1073741824l ^^ Num.from_word32 env) (* is non-representable *)
               begin
                 get_a ^^
                 compile_unboxed_const Int32.minus_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
