@@ -1745,32 +1745,14 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let compile_add = try_unbox2 BoxedWord.compile_add Num.compile_add
 
-  let adjust a1 a2 r code env = (* FIXME: do we need all cases? *)
-    begin
-      if a1 then
-        let set_n, get_n = new_local64 env "n" in
-        set_n ^^
-        compile_shrS64_const 1L ^^
-        get_n
-      else G.nop
-    end ^^
-    if a2 then
-      compile_shrS64_const 1L ^^
-      code env ^^
-      if r then
-        compile_shl64_const 1L
-      else G.nop
-    else if r then
-      code env ^^
-      compile_shl64_const 1L
-    else code env
+  let adjust_arg2 code env = compile_shrS64_const 1L ^^ code env
+  let adjust_result code env = code env ^^ compile_shl64_const 1L
 
-
-  let compile_mul = try_unbox2 (adjust false true false BoxedWord.compile_mul) Num.compile_mul
+  let compile_mul = try_unbox2 (adjust_arg2 BoxedWord.compile_mul) Num.compile_mul
   let compile_signed_sub = try_unbox2 BoxedWord.compile_signed_sub Num.compile_signed_sub
-  let compile_signed_div = try_unbox2 (adjust false false true BoxedWord.compile_signed_div) Num.compile_signed_div
+  let compile_signed_div = try_unbox2 (adjust_result BoxedWord.compile_signed_div) Num.compile_signed_div
   let compile_signed_mod = try_unbox2 BoxedWord.compile_signed_mod Num.compile_signed_mod
-  let compile_unsigned_div = try_unbox2 (adjust false false true BoxedWord.compile_unsigned_div) Num.compile_unsigned_div
+  let compile_unsigned_div = try_unbox2 (adjust_result BoxedWord.compile_unsigned_div) Num.compile_unsigned_div
   let compile_unsigned_rem = try_unbox2 BoxedWord.compile_unsigned_rem Num.compile_unsigned_rem
   let compile_unsigned_sub = try_unbox2 BoxedWord.compile_unsigned_sub Num.compile_unsigned_sub
 
