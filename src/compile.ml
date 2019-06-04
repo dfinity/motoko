@@ -1613,10 +1613,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
      The 2nd LSB makes unboxed bignums distinguishable from boxed ones,
      which are always skewed pointers.
 
-     By a left rotation one obtains the signed (right-zero-padded) representation
+     By a right rotation one obtains the signed (right-zero-padded) representation,
      which is usable for arithmetic (e.g. addition-like operators). For some
      operations (e.g. multiplication) the second argument needs to be furthermore
-     right-shifted. Similarly for division the result must be left-shifted.
+     right-shifted. Similarly, for division the result must be left-shifted.
 
      Generally all operations begin with checking whether both arguments are
      already in unboxed form. If so, the arithmetic can be performed (fast path).
@@ -1631,7 +1631,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
      For the `pow` operation the check that both arguments are unboxed is not
      sufficient. Here we count and multiply effective bitwidths to figure out
-     whether the operation will overflow 64 bit, and if so, we fall back to the
+     whether the operation will overflow 64 bits, and if so, we fall back to the
      slow path.
    *)
 
