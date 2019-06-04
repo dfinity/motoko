@@ -1743,7 +1743,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_res
       end
 
-  let compile_add = try_unbox2 BoxedWord.compile_add Num.compile_add
+  let share_try_unbox2 fast slow env =
+    Func.share_code2 env "op" (("a", I32Type), ("b", I32Type)) [I32Type]
+      (fun env get_a get_b -> get_a ^^ get_b ^^ try_unbox2 fast slow env)
+
+  let compile_add = share_try_unbox2 BoxedWord.compile_add Num.compile_add
 
   let adjust_arg2 code env = compile_shrS64_const 1L ^^ code env
   let adjust_result code env = code env ^^ compile_shl64_const 1L
