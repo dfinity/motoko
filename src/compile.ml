@@ -384,6 +384,8 @@ let compile_op64_const op i =
     G.i (Binary (Wasm.Values.I64 op))
 let compile_shl64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.Shl n
+let compile_shrS64_const = function
+  | 0L -> G.nop | n -> compile_op64_const I64Op.ShrS n
 
 (* more random utilities *)
 
@@ -1699,7 +1701,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
 
   (* creates a boxed bignum from a right-0-padded signed i64 *)
-  let box64 env = compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^ Num.from_signed_word64 env
+  let box64 env = compile_shrS64_const 1L ^^ Num.from_signed_word64 env
 
   (* creates a boxed bignum from an unboxed 31-bit signed (and rotated) value *)
   let extend_and_box64 env = extend64 ^^ box64 env
@@ -1748,18 +1750,16 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       if a1 then
         let set_n, get_n = new_local64 env "n" in
         set_n ^^
-        compile_const_64 1L ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+        compile_shrS64_const 1L ^^
         get_n
       else G.nop
     end ^^
     if a2 then
-      compile_const_64 1L ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-        code env ^^
-        if r then
-          compile_shl64_const 1L
-        else G.nop
+      compile_shrS64_const 1L ^^
+      code env ^^
+      if r then
+        compile_shl64_const 1L
+      else G.nop
     else if r then
       code env ^^
       compile_shl64_const 1L
@@ -1788,7 +1788,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         (* estimate bitcount of result: `bits(a) * b <= 65` guarantees
            the absence of overflow in 64-bit arithmetic *)
         get_a ^^ extend64 ^^ set_a64 ^^ compile_const_64 64L ^^
-        get_a64 ^^ get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+        get_a64 ^^ get_a64 ^^ compile_shrS64_const 1L ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
         G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
         get_b ^^ extend64 ^^ set_b64 ^^ get_b64 ^^
@@ -1796,8 +1796,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         compile_const_64 130L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
         G.if_ (ValBlockType (Some I32Type))
           begin
-            get_a64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
-            get_b64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+            get_a64 ^^ compile_shrS64_const 1L ^^
+            get_b64 ^^ compile_shrS64_const 1L ^^
             BoxedWord.compile_unsigned_pow env ^^
             compile_shl64_const 1L ^^ set_res64 ^^
             get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
@@ -1941,7 +1941,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.i Drop ^^
         get_buf ^^
         get_x ^^
-        extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)) ^^
+        extend64 ^^ compile_shrS64_const 1L ^^
         G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 8l (* 64 bit for now *)
       )
@@ -2002,7 +2002,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_unboxed env (ValBlockType (Some I64Type))
-      (get_a ^^ extend64 ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrS)))
+      (get_a ^^ extend64 ^^ compile_shrS64_const 1L)
       (get_a ^^ Num.to_word64 env)
   let to_word32 env =
     let set_a, get_a = new_local env "a" in
