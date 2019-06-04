@@ -30,14 +30,10 @@ The following should be true:
 
 The following are not necessary true:
 
- * It is not necessary true that round-tripping an ActorScript _type_ (i.e.
-   exporting as IDL and importing it again) preserves any relation. For
-   example, round-tripping a record with particular field names may result in a
-   tuple, or the other way around.
-
- * It is not necessary true that all ActorScript types can be exported (e.g.
-   mutable arrays), nor that every IDL type is the export of some ActorScript
-   type (e.g. `int8`).
+ * The type export mapping is not total (there are ActorScript type that cannot
+   be exported, such as mutable arrays), not surjective (there are IDL types
+   that cannot be reached, such as `int8`) and not injective (there are different
+   ActorScript types that map to the same IDL type, e.g. tuples and objects).
 
  * When exporting an ActorScript type to an IDL type, not all IDL values may
    be accepted. (e.g. `Char` is exported as `text`, but not all `text` values
@@ -99,7 +95,8 @@ Notes:
 
  * Tuples are represented using the unnamed field short-hand; this allows
    consumers of the generated description to recognize tuples.
- * Singleton tuples are not exported to the IDL.
+ * This mapping does not produce singleton IDL tuples, but rather flattens
+   them.
  * Functions with type parameters are not in the domain of this function.
  * Abstract types are not in the domain of this function.
 
@@ -109,8 +106,8 @@ to an IDL value of type `e(t)` should be straight-foward. Some notes:
 
  * Characters (of type `Char`) are mapped to singleton strings.
 
-For each ActorScript type `t`, the mapping of an ActorScript value of type `t`
-to an IDL value of type `e(t)` should be straight-foward. Some notes:
+For each ActorScript type `t`, the mapping of an IDL value of type `e(t)`
+to an ActorScript value of type `t` should be straight-foward. Some notes:
 
  * Decoding a `text` that is not a singleton as `Char` traps.
 
@@ -136,9 +133,10 @@ i(int<n>) = Word<n> for n = 8, 16, 32, 64
 i(float32) = Float
 i(float64) = Float
 i(text) = Text
-i(unavailable) = Any
+i(reserved) = Any
 i(opt <datatype>) = ? i(<datatype>)
 i(vec <datatype>) = [ i(<datatype>) ]
+i(record {}) = ()
 i(record { <datatype> }) = i(<datatype>)
 i(record { <datatype>^N }) = ( i(<datatype>)^N ) if N > 1 // import as tuple
 i(record { <fieldtype>^N }) = shared { if*(<fieldtype>^N) }
@@ -148,7 +146,7 @@ i(service { <methtype>^N }) = actor { im*(<methtype>^N) }
 
 if : <fieldtype> -> <typ>
 if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
-if(<nat> : <datatype>) = "field_" <nat> "_": i(<datatype>)
+if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>)
 
 ift : <functype> -> <typ>
 ift(a:(<fieldtype>^N) -> () oneway pure?) = shared ia(a) -> ()
@@ -163,7 +161,7 @@ ia(<fieldtype>^N) = shared { if*(<fieldtype>^N) }
 escape : <name> -> <id>
 escape <name> = <name> "_"  if <name> is a reserved identifer in ActorScript
 escape <name> = <name> "_"  if <name> ends with "_"
-escape <name> = "field_" hash(<name>) "_"  if <name> is not a valid ActorScript <id>
+escape <name> = "_" hash(<name>) "_"  if <name> is not a valid ActorScript <id>
 escape <name> = <name>   otherwise
 ```
 
@@ -182,7 +180,8 @@ Notes:
    arbitrary strings, if they contain invalid characters, we fall back to encoding
    the actual IDL number.
 
- * Singleton tuples are not imported.
+ * This mapping does not produce singleton ActorScript tuples, but rather flattens
+   them.
 
 
 For each IDL type `t`, the mapping of an IS value of type `t` to an ActorScript
@@ -209,9 +208,11 @@ just suggestions.
 
       asc --generate-idl foo.as -o foo.didl
 
-  will type-check `foo.as` as `t = actor { … }` and produce a textual IDL file
-  `foo.didl` that ends with a `service n : ti` where `n` is the name of the
-  actor class, actor, or basename of the source file, and `service ti = (t)`.
+  will type-check `foo.as` as `t = actor { … }`, map the ActorScript type `t`
+  to an IDL type `i(t)` of the form `service <actortype>`, and and produce a
+  textual IDL file `foo.didl` that ends with a `service n : <actortype>`.
+  where `n` is the name of the actor class, actor, or basename of the source
+  file.
 
 * Checking ActorScript against a given IDL
 
@@ -224,7 +225,7 @@ just suggestions.
   as ActorScript type `t1`; type-check `foo.as` as `t2 = actor { … }` and check
   that `t2 <: t1` (as ActorScript types).
 
-* Converting IDL types to Actorscript types
+* Converting IDL types to ActorScript types
 
   If `foo.didl` a textual IDL file, then
 
