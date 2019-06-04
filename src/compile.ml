@@ -1197,7 +1197,7 @@ module BoxedWord = struct
 
   (* from/to SR.UnboxedWord64 *)
   let to_word64 env = G.nop
-  let from_word64 env = G.nop (* FIXME: needs to trap when MSB is set *)
+  let from_word64 env = G.nop
   let from_signed_word64 env = G.nop
   let to_word32 env = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
   let from_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
@@ -1536,7 +1536,14 @@ module BigNum64 : BigNumType = struct
   let from_word32 env = BoxedWord.from_word32 env ^^ box env
   let from_signed_word32 env = BoxedWord.from_signed_word32 env ^^ box env
   let to_word64 env = unbox env ^^ BoxedWord.to_word64 env
-  let from_word64 env = BoxedWord.from_word64 env ^^ box env
+  let from_word64 env =
+    let set_n, get_n = new_local64 env "n" in
+    set_n ^^ get_n ^^
+    compile_const_64 0L ^^
+    G.i (Compare (Wasm.Values.I64 I64Op.GeS)) ^^
+    E.else_trap_with env "Integer overflow" ^^
+    get_n ^^ BoxedWord.from_word64 env ^^ box env
+
   let from_signed_word64 env = BoxedWord.from_signed_word64 env ^^ box env
 
   let truncate_to_word32 env = unbox env ^^ BoxedWord.to_word32 env
@@ -1640,7 +1647,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   (* TODO: There is some unnecessary result shifting when the div result needs
      to be boxed. Is this possible at all to happen? With (/-1) maybe! *)
 
-  (* TODO: Does the result of the rem/mod fast path ever need boxing? *)
+  (* TODO: Does the result of the rem/mod fast path ever needs boxing? *)
 
   (* examine the skewed pointer and determine if number fits into 31 bits *)
   let fits_in_vanilla env = Num.fits_signed_bits env 31
