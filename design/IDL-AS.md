@@ -246,7 +246,7 @@ just suggestions.
       import Foo "path/to/foo"
 
   is treated by `asc` by reading `foo.didl` as if  the developer had
-  run `idcc path/to/foo.didl -o path/to/foo.as`.
+  run `idlc path/to/foo.didl -o path/to/foo.as`.
 
 ## Future extensions
 
