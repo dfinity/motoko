@@ -1743,17 +1743,17 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_res
       end
 
-  let share_try_unbox2 fast slow env =
-    Func.share_code2 env "op" (("a", I32Type), ("b", I32Type)) [I32Type]
+  let share_try_unbox2 name fast slow env =
+    Func.share_code2 env name (("a", I32Type), ("b", I32Type)) [I32Type]
       (fun env get_a get_b -> get_a ^^ get_b ^^ try_unbox2 fast slow env)
 
-  let compile_add = share_try_unbox2 BoxedWord.compile_add Num.compile_add
+  let compile_add = share_try_unbox2 "B_add" BoxedWord.compile_add Num.compile_add
 
   let adjust_arg2 code env = compile_shrS64_const 1L ^^ code env
   let adjust_result code env = code env ^^ compile_shl64_const 1L
 
-  let compile_mul = try_unbox2 (adjust_arg2 BoxedWord.compile_mul) Num.compile_mul
-  let compile_signed_sub = try_unbox2 BoxedWord.compile_signed_sub Num.compile_signed_sub
+  let compile_mul = share_try_unbox2 "B_mul" (adjust_arg2 BoxedWord.compile_mul) Num.compile_mul
+  let compile_signed_sub = share_try_unbox2 "B_sub" BoxedWord.compile_signed_sub Num.compile_signed_sub
   let compile_signed_div = try_unbox2 (adjust_result BoxedWord.compile_signed_div) Num.compile_signed_div
   let compile_signed_mod = try_unbox2 BoxedWord.compile_signed_mod Num.compile_signed_mod
   let compile_unsigned_div = try_unbox2 (adjust_result BoxedWord.compile_unsigned_div) Num.compile_unsigned_div
