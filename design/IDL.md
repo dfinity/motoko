@@ -66,7 +66,7 @@ This is a summary of the grammar proposed:
 <methtype>  ::= <name> : (<functype> | <id>)
 <functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
 <funcann>   ::= oneway | pure
-<paramtype> ::= <datatype>
+<fieldtype> ::= <nat> : <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 
 <primtype>  ::=
@@ -104,9 +104,6 @@ In addition to this basic grammar, a few syntactic shorthands are supported that
 ```
 <constype> ::= ...
   | blob                   :=  vec nat8
-
-<paramtype> ::= ...
-  | <name> : <datatype>    :=  <datatype>
 
 <fieldtype> ::= ...
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
