@@ -28,7 +28,7 @@ function build_ref_to {
   if [ -z "$1" ]
   then
     echo "Building $2 asc from working copy.."
-    chronic nix-build -E '((import ./..) {}).native' \
+    chronic nix-build -E '((import ./..) {}).asc' \
       --option binary-caches '' \
       -o $2-asc/
   else
@@ -42,7 +42,7 @@ function build_ref_to {
       let nixpkg = import (../nix/nixpkgs.nix).nixpkgs {}; in
       let checkout = (builtins.fetchGit {url = path; ref = ref; rev = rev; name = "old-asc";}).outPath; in
       builtins.trace checkout (
-      ((import checkout) {}).native)' \
+      ((import checkout) {}).asc)' \
       --option binary-caches '' \
       -o $2-asc/
   fi

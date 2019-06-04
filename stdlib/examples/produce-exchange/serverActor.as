@@ -13,7 +13,7 @@ import Result = "../../result.as";
 
 type Result<Ok,Err> = Result.Result<Ok,Err>;
 
-actor server {
+actor class Server () {
 
 /**
  Server Actor
@@ -50,6 +50,7 @@ actor server {
  - `Retailer`, or
  - `Transporter`.
 */
+
 
 /**
 
