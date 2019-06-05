@@ -900,7 +900,7 @@ and infer_pat' env pat : T.typ * val_env =
   | SignP (op, lit) ->
     let t1 = T.Prim (infer_lit env lit pat.at) in
     (* Special case for subtyping *)
-    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
+    let t = T.(if op = NegOp && t1 = Prim Nat then Prim Int else t1) in
     if not (Operator.has_unop t op) then
       local_error env pat.at "operator is not defined for operand type\n  %s"
         (T.string_of_typ_expand t);
