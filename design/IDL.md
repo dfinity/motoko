@@ -66,7 +66,7 @@ This is a summary of the grammar proposed:
 <methtype>  ::= <name> : (<functype> | <id>)
 <functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
 <funcann>   ::= oneway | pure
-<paramtype> ::= <datatype>
+<fieldtype> ::= <nat> : <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 
 <primtype>  ::=
@@ -104,9 +104,6 @@ In addition to this basic grammar, a few syntactic shorthands are supported that
 ```
 <constype> ::= ...
   | blob                   :=  vec nat8
-
-<paramtype> ::= ...
-  | <name> : <datatype>    :=  <datatype>
 
 <fieldtype> ::= ...
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
@@ -305,26 +302,28 @@ The id is described as a simple unsigned integer that has to fit the 64 bit valu
 ```
 An id value must be smaller than 2^32 and no id may occur twice in the same record type.
 
-
-
 ##### Shorthand: Symbolic Field Ids
 
-An id can also be given as a *name*, which is a shorthand for a numeric id that is the hash of that name wrt a specified hash function, e.g. SHA-256 mod 64.
+An id can also be given as a *name*, which is a shorthand for a numeric id that is the hash of that name:
 ```
 <fieldtype> ::= ...
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
 ```
-This expansion implies that a hash collision between field names within a single record is disallowed. However, the chosen hash function makes such a collision highly unlikely in practice.
 
-**Note:** For example, the following hash function [Jacques Garrigue, "Programming with Polymorphic Variants", ML 1998],
+The hash function is specified as
 ```
-hash(id) = ( Sum_(i=0..|id|) id[i] * 223^(|id|-1) ) mod 2^64
+hash(id) = ( Sum_(i=0..k) id[i] * 223^(k-i) ) mod 2^32 where k = |id|-1
 ```
-guarantees that no hash collision occurs for regular identifiers of length up to 8, and that the overall likelihood of a collision for a variant with n cases is lower than
-```
-p(n) = Sum_(i=1..n-1) i/2^64
-```
-That is, the likelihood p(100) of a collision for a variant with 100 cases is less than 2.74 * 10^(-16).
+
+This expansion implies that a hash collision between field names within a single record is disallowed.
+
+This hash function has the the following useful properties:
+
+ * Collisions are sufficiently rare. It has [no collisions for names up to length 4](https://caml.inria.fr/pub/papers/garrigue-polymorphic_variants-ml98.pdf).
+
+ * It is rather simple to implement, compared to, say, a cryptographic hash function (we do not need resistence against collision attacks).
+
+The hash function does not have the property that every numeric value can be turned into a human-readable preimage. Host languages that cannot support numeric field names will have to come up with a suitable encoding textual encoding of numeric field names, as well as of field names that are not valid in the host langauge.
 
 ##### Shorthand: Tuple Fields
 
