@@ -14,7 +14,6 @@ this keeps documentation close to the code (a lesson learned from Simon PJ).
 open Wasm.Ast
 open Wasm.Types
 open Source
-open Ir
 (* Re-shadow Source.(@@), to get Pervasives.(@@) *)
 let (@@) = Pervasives.(@@)
 
@@ -33,8 +32,6 @@ let ptr_unskew = 1l
 
 (* Helper functions to produce annotated terms (Wasm.AST) *)
 let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
-(* Dito, for the Source AST  *)
-let nr_ x = { it = x; at = no_region; note = () }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
@@ -138,7 +135,7 @@ module E = struct
     (* Global fields *)
     (* Static *)
     mode : mode;
-    prelude : prog; (* The prelude. Re-used when compiling actors *)
+    prelude : Ir.prog; (* The prelude. Re-used when compiling actors *)
     rts : CustomModule.extended_module option; (* The rts. Re-used when compiling actors *)
     trap_with : t -> string -> G.t;
       (* Trap with message; in the env for dependency injection *)
@@ -1733,7 +1730,7 @@ module Object = struct
   let size_field = Int32.add Tagged.header_size 0l
 
   (* We use the same hashing function as Ocaml would *)
-  let hash_field_name ({it = Name s; _}) =
+  let hash_field_name s =
     Int32.of_int (Hashtbl.hash s)
 
   module FieldEnv = Env.Make(String)
@@ -1747,7 +1744,7 @@ module Object = struct
          then we need to allocate separate boxes for the non-public ones:
          List.filter (fun (_, vis, f) -> vis.it = Public) |>
       *)
-      List.map (fun ({it = Name s;_} as n,_) -> (hash_field_name n, s)) |>
+      List.map (fun (n,_) -> (hash_field_name n, n)) |>
       List.sort compare |>
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -1768,10 +1765,10 @@ module Object = struct
      compile_unboxed_const sz ^^
      Heap.store_field size_field ^^
 
-     let hash_position env {it = Name n; _} =
+     let hash_position env n =
          let i = FieldEnv.find n name_pos_map in
          Int32.add header_size (Int32.mul 2l i) in
-     let field_position env {it = Name n; _} =
+     let field_position env n =
          let i = FieldEnv.find n name_pos_map in
          Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
 
@@ -1833,7 +1830,7 @@ module Object = struct
     else idx_hash_raw env
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
-  let is_mut_field env obj_type ({it = Name s; _}) =
+  let is_mut_field env obj_type s =
     let _, fields = Type.as_obj_sub "" obj_type in
     Type.is_mut (Lib.Option.value (Type.lookup_val_field s fields))
 
@@ -1917,7 +1914,7 @@ module Iterators = struct
           set_ni ^^
 
           Object.lit_raw env
-            [ nr_ (Name "next"), fun _ -> get_ni ]
+            [ "next", fun _ -> get_ni ]
         )
       ) in
 
@@ -2129,6 +2126,13 @@ module Text = struct
           end
       end ^^
     get_utf8
+
+  (* We also use Text heap objects for byte arrays
+     (really should rename Text to Bytes) *)
+  let dyn_alloc_scratch env =
+    compile_add_const (Int32.mul Heap.word_size header_size) ^^
+    Heap.dyn_alloc_bytes env ^^
+    payload_ptr_unskewed
 
 end (* Text *)
 
@@ -2699,9 +2703,8 @@ module Serialization = struct
     The general serialization strategy is as follows:
     * We traverse the data to calculate the size needed for the data buffer and the
       reference buffer.
-    * We remember the current heap pointer, and use the space after as scratch space.
-    * The scratch space is separated into two regions:
-      One for references, and one for raw data.
+    * We allocate memory for the data buffer and the reference buffer
+      (this memory area is not referenced, so will be dead with the next GC)
     * We traverse the data, in a type-driven way, and copy it to the scratch space.
       We thread through pointers to the current free space of the two scratch spaces.
       This is type driven, and we use the `share_code` machinery and names that
@@ -2709,7 +2712,6 @@ module Serialization = struct
     * We externalize all that new data space into a databuf, and add this reference
       to the reference space.
     * We externalize the reference space into a elembuf
-    * We reset the heap pointer and table pointer, to garbage collect the scratch space.
 
     TODO: Cycles are not detected.
 
@@ -2817,8 +2819,7 @@ module Serialization = struct
         (* Disregarding all subtyping, and assuming sorted fields, we can just
            treat this like a tuple *)
         G.concat_mapi (fun i f ->
-          let n = { it = Name f.Type.lab; at = no_region; note = () } in
-          get_x ^^ Object.load_idx env t n ^^
+          get_x ^^ Object.load_idx env t f.Type.lab ^^
           size env f.typ
         ) fs
       | Array t ->
@@ -2943,8 +2944,7 @@ module Serialization = struct
         (* Disregarding all subtyping, and assuming sorted fields, we can just
            treat this like a tuple *)
         G.concat_mapi (fun i f ->
-          let n = { it = Name f.Type.lab; at = no_region; note = () } in
-          get_x ^^ Object.load_idx env t n ^^
+          get_x ^^ Object.load_idx env t f.Type.lab ^^
           write env f.typ
         ) fs
       | Array t ->
@@ -3068,8 +3068,7 @@ module Serialization = struct
         (* Disregarding all subtyping, and assuming sorted fields, we can just
            treat this like a tuple *)
         Object.lit_raw env (List.map (fun f ->
-          let n = { it = Name f.Type.lab; at = no_region; note = () } in
-          n, fun () -> read env f.typ
+          f.Type.lab, fun () -> read env f.typ
         ) fs)
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -3149,20 +3148,14 @@ module Serialization = struct
         let (set_data_start, get_data_start) = new_local env "data_start" in
         let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-        Heap.get_heap_ptr ^^
+        get_data_size ^^
+        Text.dyn_alloc_scratch env ^^
         set_data_start ^^
 
-        Heap.get_heap_ptr ^^
-        get_data_size ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        set_refs_start ^^
-
-        (* Allocate space, if needed *)
-        get_refs_start ^^
         get_refs_size ^^
-        compile_divU_const Heap.word_size ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        Heap.grow_memory env ^^
+        compile_mul_const Heap.word_size ^^
+        Text.dyn_alloc_scratch env ^^
+        set_refs_start ^^
 
         (* Serialize x into the buffer *)
         get_x ^^
@@ -4137,6 +4130,11 @@ module PatCode = struct
 end (* PatCode *)
 open PatCode
 
+
+(* All the code above is independent of the IR *)
+open Ir
+
+
 module AllocHow = struct
   (*
   When compiling a (recursive) block, we need to do a dependency analysis, to
@@ -4388,7 +4386,8 @@ let rec compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> UnboxedSmallWord.lsb_adjust ty ^^
                                                        G.i (Binary (Wasm.Values.I32 I32Op.Mul))
-  | Type.Prim Type.(Word8 | Word16 | Word32), DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU))
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
+                                                       UnboxedSmallWord.msb_adjust ty
   | Type.Prim Type.(Word8 | Word16 | Word32), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp ->
      let rec pow () = Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
@@ -4501,10 +4500,10 @@ let compile_relop env t op =
    we currently have for arrays and text.
    It goes through branch_typed_with, which does a dynamic check of the
    heap object type *)
-let compile_load_field env typ ({it=(Name n); _} as name) =
+let compile_load_field env typ name =
   let branches =
     ( Tagged.Object, Object.load_idx env typ name ) ::
-    match n with
+    match name with
     | "len" ->
       [ Tagged.Array, Arr.partial_len env
       ; Tagged.Text, Text.partial_len env ]
@@ -4557,10 +4556,10 @@ and compile_exp (env : E.t) ae exp =
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
     compile_load_field env e.note.note_typ name
-  | ActorDotE (e, ({it = Name n;_} as name)) ->
+  | ActorDotE (e, name) ->
     SR.UnboxedReference,
     compile_exp_as env ae SR.UnboxedReference e ^^
-    actor_fake_object_idx env {name with it = n}
+    actor_fake_object_idx env name
   (* We only allow prims of certain shapes, as they occur in the prelude *)
   | CallE (_, ({ it = PrimE p; _} as pe), typ_args, e) ->
     begin
@@ -5214,7 +5213,6 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
     )
 
 and export_actor_field env  ae (f : Ir.field) =
-  let Name name = f.it.name.it in
   let sr, code = Var.get_val env ae f.it.var.it in
   (* A public actor field is guaranteed to be compiled as a StaticMessage *)
   let fi = match sr with
@@ -5229,7 +5227,7 @@ and export_actor_field env  ae (f : Ir.field) =
     ) ts
   );
   E.add_export env (nr {
-    name = Wasm.Utf8.decode name;
+    name = Wasm.Utf8.decode f.it.name;
     edesc = nr (FuncExport (nr fi))
   })
 
@@ -5290,7 +5288,7 @@ and main_actor env ae1 this ds fs =
   decls_code
 
 and actor_fake_object_idx env name =
-    Dfinity.compile_databuf_of_bytes env (name.it) ^^
+    Dfinity.compile_databuf_of_bytes env name ^^
     Dfinity.system_call env "actor_export"
 
 and conclude_module env module_name start_fi_o =
