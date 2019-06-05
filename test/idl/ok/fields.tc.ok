@@ -1,6 +1,0 @@
--- Parsing fields.didl:
--- Checking fields.didl:
-var A : {0 : nat; 1 : nat; 2 : nat}
-var B : {0 : vec nat8; 35 : vec nat8; 36 : nat; 37 : nat; named_files : reserved; 653352244 : nat; 653352245 : nat}
-var C : variant {1 : null; 2 : null; 3 : null; 4 : null; 10 : null; C : null; red : null; A : null; B : null; reserved : null; green : null; blue : null}
-var nest_record : {0 : nat; 1 : nat; 2 : nat; 3 : {0 : nat; 1 : nat; 2 : nat}; 4 : nat; 5 : nat; 6 : nat; 7 : var A; 8 : var B; 9 : var C; 10 : nat}

@@ -1,14 +1,14 @@
-const A = IDL.Obj({'0': IDL.nat, '1': IDL.nat, '2': IDL.nat})
+const A = IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat})
 const B =
- IDL.Obj({'0': IDL.Arr(IDL.nat8), '35': IDL.Arr(IDL.nat8), '36': IDL.nat,
-  '37': IDL.nat, 'named_files': IDL.reserved, '653352244': IDL.nat,
-  '653352245': IDL.nat})
+ IDL.Obj({'0': IDL.Arr(IDL.Nat), '35': IDL.Arr(IDL.Nat), '36': IDL.Nat,
+  '37': IDL.Nat, 'named_files': IDL.None, '653352244': IDL.Nat,
+  '653352245': IDL.Nat})
 const C =
- IDL.Variant({'red': IDL.null, '4': IDL.null, '3': IDL.null, '2': IDL.null,
-  '1': IDL.null, 'reserved': IDL.null, '10': IDL.null, 'green': IDL.null,
-  'blue': IDL.null, 'A': IDL.null, 'B': IDL.null, 'C': IDL.null})
+ IDL.Variant({'red': IDL.Unit, '4': IDL.Unit, '3': IDL.Unit, '2': IDL.Unit,
+  '1': IDL.Unit, 'reserved': IDL.Unit, '10': IDL.Unit, 'green': IDL.Unit,
+  'blue': IDL.Unit, 'A': IDL.Unit, 'B': IDL.Unit, 'C': IDL.Unit})
 const nest_record =
- IDL.Obj({'0': IDL.nat, '1': IDL.nat, '2': IDL.nat,
-  '3': IDL.Obj({'0': IDL.nat, '1': IDL.nat, '2': IDL.nat}), '4': IDL.nat,
-  '5': IDL.nat, '6': IDL.nat, '7': A, '8': B, '9': C, '10': IDL.nat})
+ IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat,
+  '3': IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat}), '4': IDL.Nat,
+  '5': IDL.Nat, '6': IDL.Nat, '7': A, '8': B, '9': C, '10': IDL.Nat})
 

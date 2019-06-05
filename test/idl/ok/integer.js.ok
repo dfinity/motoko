@@ -1,0 +1,4 @@
+const num = new IDL.ActorInterface({
+ 'f': IDL.message(IDL.Obj({'0': IDL.Nat}), IDL.Obj({'0': IDL.Int})),
+ 'g': IDL.message(IDL.Obj({'0': IDL.Nat}), IDL.Obj({'0': IDL.Int})),
+ 'h': IDL.message(IDL.Obj({'0': IDL.Int}), IDL.Obj({'0': IDL.Nat}))})

@@ -1,6 +1,0 @@
--- Parsing test.didl:
--- Checking test.didl:
-var B : var my_type
-var broker : service {find : (name : text) -> (0 : service {up : () -> () ; current : () -> (0 : nat) }) }
-var message : {25 : var B; 26 : reserved; name : text}
-var my_type : nat

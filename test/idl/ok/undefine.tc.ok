@@ -1,3 +1,1 @@
--- Parsing undefine.didl:
--- Checking undefine.didl:
-undefine.didl:4.14-4.15: type error, unbound type identifier a
+undefine.did:4.14-4.15: type error, unbound type identifier a

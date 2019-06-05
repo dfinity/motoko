@@ -1,3 +1,0 @@
--- Parsing actor.didl:
--- Checking actor.didl:
-var f : (0 : nat) -> (0 : nat) pure

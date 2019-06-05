@@ -51,7 +51,6 @@ let process_files files : unit =
   | Default ->
      assert false
   | Check ->
-     Flags.verbose := true;
      let (_, msgs) = exit_on_failure (Pipeline.(check_file (List.hd files))) in
      Diag.print_messages msgs
   | Js ->

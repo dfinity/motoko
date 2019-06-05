@@ -1,4 +1,0 @@
--- Parsing unicode.didl:
--- Checking unicode.didl:
-var A : {字 段 名2 : nat; 字段名 : nat; 📦🍦 : nat}
-var B : variant { : null; 空的 : null; 1⃣️2⃣️3⃣️ : null;   空的   : null}

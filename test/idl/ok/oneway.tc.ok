@@ -1,3 +1,1 @@
--- Parsing oneway.didl:
--- Checking oneway.didl:
-oneway.didl:2.15-2.41: type error, oneway function has non-unit return type
+oneway.did:2.15-2.41: type error, oneway function has non-unit return type
