@@ -6,53 +6,72 @@ The IDL-ActorScript integration
 This document specifies the integration of the IDL with the ActorScript
 language, in particular:
 
- * How to translate between an ActorScrpit `actor` type and an IDL `service`
+ * How to translate between an ActorScript `actor` type and an IDL `service`
    description in both ways (i.e. _exporting_ IDL from ActorScript, and _importing_
    IDL into ActorScript), and how to translate between the values of these types.
 
  * The supported work-flows, including a sketch of the involved tools.
 
-The following should be true:
+We try to achieve the following goals (but do not achieve them completely)
 
  * We can round-trip all ActorScript values. More precisely:
 
-   When exporting an ActorScript type `ta` into an IDL type `ti`, then round-tripping
-   a value `va : ta` through `ti` yields a value that is indistinguishable from
-   `va` at type `ta`.
+   When exporting an ActorScript type `ta` into an IDL type `ti`, then
+   round-tripping a value `va : ta` through `ti` yields a value that is
+   indistinguishable from `va` at type `ta`.
 
- * ActorScript can receive all IDL types: The type import function is total.
+ * ActorScript can receive all IDL types: The type export has an inverse, the
+   type import mapping, which is injective (up-to IDL type equivalence via
+   shorthands).
 
  * ActorScript can receive all IDL values when importing an IDL:
 
    When importing an IDL type `ti` into `ta`, then every IDL value `vi : ti`
    will successfully translated to an ActorScript value of type `ta`.
 
-
 The following are not necessary true:
 
- * The type export mapping is not total (there are ActorScript type that cannot
-   be exported, such as mutable arrays), not surjective (there are IDL types
-   that cannot be reached, such as `int8`) and not injective (there are different
-   ActorScript types that map to the same IDL type, e.g. tuples and objects).
+ * The type export mapping is not total: there are ActorScript type that cannot
+   be exported, such as mutable arrays.
 
- * When exporting an ActorScript type to an IDL type, not all IDL values may
-   be accepted. (e.g. `Char` is exported as `text`, but not all `text` values
-   can be read as `char`)
+ * The type export mapping is not injective: there may be different
+   ActorScript types that map to the same IDL type, e.g. `Char`, `Word32` and
+   `Nat32`.
+
+   This implies that round-tripping an ActorScript type via the IDL can yield
+   different types.
+
+ * For some types, not all IDL values may be accepted: for example, `Char` is
+   may be exported as `nat32`, but not all `nat32` values can be read as
+   `Char`. This can only be the case for types not in the image of the type
+   import mapping.
 
 NB: These properties (and non-properties) are not specific to ActorScript, and
-we expect that they will hold for every interface to a type language. In this
-sense, this document serves as a blueprint.
+we expect that they will hold similarly for interfaces to other typed languages
+with seamless serialization (e.g. built-in, macro or type class based
+integration). In this sense, this document serves as a blueprint. Untyped
+languages or languages with a code-generation workflow may have a different
+story.
 
-## Exporting ActorScript types
+## The type mappings
 
-We define a partial function `e` from ActorScript types to IDL types. Types
-that are not in the domain of `e` cannot be exported.
+We define
+ * a partial function `e` from ActorScript types to IDL types.
+   Types that are not in the domain of `e` cannot be exported.
+ * a partial function `i` from IDL types to ActorScript types.
+   Types that are not in the domain of `i` cannot be imported.
 
-This definition treats ActorScript types and IDL types as structural and
+These definition treats ActorScript types and IDL types as structural and
 infinite; a concrete implementation will have to look through type constructors
 in ActorScript and introduce type definitions in the IDL as necessary.
 
+It assumes that the IDL short-hands (e.g. named or anonymous fields)
+are part of the grammar of types, and that `i` is allowed to make difference
+choices for types that are short-hands.
+
 The function is defined with regard to the grammars in [IDL.md](IDL.md) and [Syntax.md](Syntax.md).
+
+### Type export
 
 ```
 e : <typ> -> <datatype>
@@ -60,9 +79,11 @@ e(Null) = null
 e(Bool) = bool
 e(Nat) = nat
 e(Int) = int
+e(Nat<n>) = nat<n> for n = 8, 16, 32, 64
+e(Int<n>) = int<n> for n = 8, 16, 32, 64
 e(Word<n>) = nat<n> for n = 8, 16, 32, 64
 e(Float) = float64
-e(Char) = text
+e(Char) = nat32
 e(Text) = text
 e(shared { <typ-field>^N }) = record { ef*(<typ-field>^N) }
 e(variant { <typ-field>^N }) = variant { ef*(<typ-field>^N) }
@@ -71,56 +92,28 @@ e(? <typ>) = opt (e(<typ>))
 e(shared <a:typ> -> async <r:typ>) = func (ea(<a:typ>) -> ea(<r:typ>))
 e(shared <a:typ> -> ()) = func (ea(<a:typ>) -> ()) oneway
 e(actor { <typ-field>^N }) = service { em*(<typ-field>^N) }
-e( () ) = null
-e( ( <typ>, ) ) = e(<typ>) // avoid exporting singleton tuples
-e( ( <typ>^N ) ) = record { e*(<typ^N>) } if N > 1 // NB: unnamed field shorthand
+e( ( <typ>^N ) ) = record { e*(<typ^N>) }
 e(None) = variant {}
 
 ef : <typ-field> -> <fieldtype>
-ef (<id> : <typ>) = <id> : e(<typ>)
+ef (<id> : <typ>) = unescape(<id>) : e(<typ>)
 
 em : <typ-field> -> <methtype>
-em(<id> : shared <a:typ> -> async <r:typ>) = <id> : ea(<a:typ>) -> ea(<r:typ>)
-em(<id> : shared <a:typ> -> ()) = <id> : ea(<a:typ>) -> () oneway
+em(<id> : shared <a:typ> -> async <r:typ>) = unescape(<id>) : ea(<a:typ>) -> ea(<r:typ>)
+em(<id> : shared <a:typ> -> ()) = unescape(<id>) : ea(<a:typ>) -> () oneway
 
 ea : <typ> -> <fieldtype>,* // function arguments
 ea(shared { <type-field>^N }) = ef*(<typ-field>^N)
-ea( () ) = . // NB: empty list of field types
-ea( ( <typ>, ) ) = ea(<typ>)
-ea( ( <typ>^N ) ) = e*(<typ^N>)  if N > 1
+ea( ( <typ>^N ) ) = e*(<typ^N>)
 ea(<typ>) = e(<typ>)  if no earlier clause matches // NB: unnamed field shorthand
+
+unescape : <id> -> <nat>|<name>
+unescape("_" <nat> "_") = <nat>
+unescape(<id> "_") = <id>
+unescape(<id>) = <id>
 ```
 
-Notes:
-
- * Tuples are represented using the unnamed field short-hand; this allows
-   consumers of the generated description to recognize tuples.
- * This mapping does not produce singleton IDL tuples, but rather flattens
-   them.
- * Functions with type parameters are not in the domain of this function.
- * Abstract types are not in the domain of this function.
-
-
-For each ActorScript type `t`, the mapping of an ActorScript value of type `t`
-to an IDL value of type `e(t)` should be straight-foward. Some notes:
-
- * Characters (of type `Char`) are mapped to singleton strings.
-
-For each ActorScript type `t`, the mapping of an IDL value of type `e(t)`
-to an ActorScript value of type `t` should be straight-foward. Some notes:
-
- * Decoding a `text` that is not a singleton as `Char` traps.
-
-## Importing IDL types
-
-We define a total function `i` from IDL types to ActorScript types
-
-This definition treats ActorScript types and IDL types as structural and
-infinite; a concrete implementation will have to look through imports, type
-definitions in the IDL, and introduce type constructors in ActorScript as
-necessary.
-
-The function is defined with regard to the grammars in [IDL.md](IDL.md) and [Syntax.md](Syntax.md).
+### Type import
 
 ```
 i : <datatype> -> <typ>
@@ -128,75 +121,115 @@ i(null) = Null
 i(bool) = Bool
 i(nat) = Nat
 i(int) = Int
-i(nat<n>) = Word<n> for n = 8, 16, 32, 64
-i(int<n>) = Word<n> for n = 8, 16, 32, 64
-i(float32) = Float
+i(nat<n>) = Nat<n> for n = 8, 16, 32, 64
+i(int<n>) = Int<n> for n = 8, 16, 32, 64
+// i(float32) not defined
 i(float64) = Float
 i(text) = Text
 i(reserved) = Any
 i(opt <datatype>) = ? i(<datatype>)
 i(vec <datatype>) = [ i(<datatype>) ]
-i(record {}) = ()
-i(record { <datatype> }) = i(<datatype>)
-i(record { <datatype>^N }) = ( i(<datatype>)^N ) if N > 1 // import as tuple
+i(blob) = [ word8 ] // if ActorScript had a bytes type, it would show up here
+i(record { <datatype>^N }) = ( i(<datatype>)^N, )
 i(record { <fieldtype>^N }) = shared { if*(<fieldtype>^N) }
 i(variant { <fieldtype>^N }) = variant { if*(<typ-field>^N) }
-i(func <functype>) = ift<functype>
+i(func <functype>) = ifn<functype>
 i(service { <methtype>^N }) = actor { im*(<methtype>^N) }
 
 if : <fieldtype> -> <typ>
 if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
-if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>)
+if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
 
-ift : <functype> -> <typ>
-ift(a:(<fieldtype>^N) -> () oneway pure?) = shared ia(a) -> ()
-ift(a:(<fieldtype>^N) -> r:<fieldtype>^N pure?) = shared ia(a) -> ia(r)
+ifn : <functype> -> <typ>
+ifn(a:(<fieldtype>^N) -> () oneway pure?) = shared ia(a) -> ()
+ifn(a:(<fieldtype>^N) -> r:<fieldtype>^N pure?) = shared ia(a) -> ia(r)
 
 ia : <fieldtype>^N -> <typ>
-ia() = ()
-ia(<datatype>) = i(<datatype>)
-ia(<datatype>^N) = ( i*(<datatype>^N) ) // import as tuple
+ia(<datatype>^N) = ( i*(<datatype>^N), ) // import as tuple
 ia(<fieldtype>^N) = shared { if*(<fieldtype>^N) }
 
+im : <methtype> -> <typ>
+im(<name> : <functype>) = escape(<name>) : ifn(<functype>)
+
 escape : <name> -> <id>
-escape <name> = <name> "_"  if <name> is a reserved identifer in ActorScript
-escape <name> = <name> "_"  if <name> ends with "_"
-escape <name> = "_" hash(<name>) "_"  if <name> is not a valid ActorScript <id>
-escape <name> = <name>   otherwise
+escape <name> = <name> "_"  if <name> is a reserved identifier in ActorScript
+escape <name> = <name> "_"  if <name> ends with "_" but does not start with "_"
+escape <name> = <name>  if <name> is a valid ActorScript <id> not ending in "_"
+escape <name> = "_" hash(<name>) "_"  otherwise
 ```
 
-Notes:
+### Notes:
 
- * This mapping assumes that the tuple shorthand (i.e. record with unnamed fields)
-   is visible in the input grammar, and imports these as tuples.
+ * Up-to short-hands, `i` is injective and the right-inverse of `e`.
 
-   One can also read the lines marked with `import as tuple` to match precisely those
-   records with field ids `0,1,…`.
+   Formally: For all IDL types `t`, we have that `e(i(t))` is equivalent to
+   `t`, i.e. either they are the same types, or short-hands of each other.
 
- * This mapping assumes that the string field short-hand is visible in the input
-   grammar, and tries to use the field name.
+ * Tuples are exported using the unnamed field short-hand, which is how tuples
+   are idiomatically expressed in the IDL:
+   ```
+   e(()) = record {}
+   e((Int, )) = record {int}
+   e((Int, Nat)) = record {int;nat}
+   e(shared {i:Int, n:Nat)) = record {i:int; n:nat}
+   e(shared {_0_:Int, _1_:Nat)) = record {0:int; 1:nat}
+   ```
 
-   A simple encoding is used for reserved names. Since IDL field labels can be
-   arbitrary strings, if they contain invalid characters, we fall back to encoding
-   the actual IDL number.
+ * The mapping `i` tries to detect types that can be expressed as tuples in
+   ActorScript.
+   ```
+   i(record {int;nat}) = (Int, Nat)
+   i(record {int; nat; foo:text}) = shared {_0_:Int; _1_:Nat; foo:Text}
+   i(record {0:Int, 1:Nat)) = shared {_0_:int; _1_:nat}
+   ```
 
- * This mapping does not produce singleton ActorScript tuples, but rather flattens
-   them.
+ * The `escape` and `unescape` functions allow round-tripping of IDL field
+   names that are not valid ActorScript names (fake hash values):
+   ```
+   i(record {int; if:text; foobar_:nat; "_0_":bool})
+     = shared (_0_:Int; if_:Text; _1234_:Nat; _4321_:Bool)
+   ```
+   This is another source of partiality for `e`:
+   ```
+   e(shared {clash_ : Nat; clash : Int})
+   ```
+   is undefined, because `unescape(clash_) = unescape(clash)`.
 
+ * ActorScript functions with type parameters are not in the domain of `e`.
 
-For each IDL type `t`, the mapping of an IS value of type `t` to an ActorScript
-value of type `i(t)` should be straight-foward. Some notes:
+ * Abstract ActorScript types are not in the domain of `e`
 
- * Negative values in `int<n>` are mapped to their two's complement
-   representation in `Word<n>`.
+ * It should be convenient and obvious how to define ActorScript functions that take,
+   after translation through `e`, named arguments, i.e.
+   ```
+   e(shared {a:Int; b:Nat} -> ()) = func (a : int, b : nat) -> () oneway
+   i(func (a : int, b : nat) -> () oneway) = shared {a:Int; b:Nat} -> ()
+   ```
+   This is the motivation for the `ea` function.
 
+ * The soundness of the ActorScript type system, when it comes to higher-order
+   use of actor and function references, relies on
+   ```
+   ∀ t1 t2 : dom(e), t1 <: t2 ⟹ e(t1) <: e(t2)
+   ```
+   On other words: ActorScript subtyping must be contained in IDL subtyping.
 
-For each IDL type `t`, the mapping of an ActorScript value of type `i(t)` to an
-IDL value of type `t` should be straight-foward. Some notes:
+ * There is no way to produce `float32` or functions with a `pure` annotation.
+   Importing interfaces that contain these types fails.
 
- * When converting a `Float` into a `float32`, the value is rounded.
+## The value mappings
 
-## Worksflows
+For each ActorScript type `t` in the domain of `e`, we need mapping from
+ActorScript value of type `t` to an IDL value of type `e(t)`, and vice-versa.
+
+Note that decoding may only fail for those `t` that are not in the range of `i`.
+
+These mappings should be straight-forward, given the following clarifications:
+
+* Characters (of type `Char`) are mapped to their Unicode scalar as a `nat32`.
+  Decoding a `nat32` that is not a valid Unicode scalar fails.
+
+## Works flows
 
 The mapping specified here can be used to support the following use-cases. The
 user interfaces (e.g. flag names, or whether `asc`, `idlc`, `dfx` is used) are
@@ -209,8 +242,8 @@ just suggestions.
       asc --generate-idl foo.as -o foo.didl
 
   will type-check `foo.as` as `t = actor { … }`, map the ActorScript type `t`
-  to an IDL type `i(t)` of the form `service <actortype>`, and and produce a
-  textual IDL file `foo.didl` that ends with a `service n : <actortype>`.
+  to an IDL type `e(t)` of the form `service <actortype>`, and produce a
+  textual IDL file `foo.didl` that ends with a `service n : <actortype>`,
   where `n` is the name of the actor class, actor, or basename of the source
   file.
 
@@ -221,9 +254,9 @@ just suggestions.
 
       asc --check-idl foo.didl foo.as -o foo.wasm
 
-  will import the type service specified in `foo.didl`, using the mapping `i`,
-  as ActorScript type `t1`; type-check `foo.as` as `t2 = actor { … }` and check
-  that `t2 <: t1` (as ActorScript types).
+  will import the type service `t_spec` specified in `foo.didl`, using the
+  mapping `i`, will generate an IDL type `e(t)` as in the previous point, and
+  and check that `e(t) <: t_spec` (using IDL subtyping).
 
 * Converting IDL types to ActorScript types
 
@@ -240,7 +273,7 @@ just suggestions.
   Variant: Imported IDL files are translated separately and included via
   `import` in ActorScript.
 
-* Importing IDL types from the ActorScript compilero
+* Importing IDL types from the ActorScript compiler
 
   If `path/to/foo.didl` a textual IDL file, then a declaration
 
@@ -248,19 +281,3 @@ just suggestions.
 
   is treated by `asc` by reading `foo.didl` as if  the developer had
   run `idlc path/to/foo.didl -o path/to/foo.as`.
-
-## Future extensions
-
-* Besides exporting and importing ActorScript types, it might also be useful to
-  define a compatibility _relation_ between them. This is useful if the
-  developer has a specific IDL interface to provide, but want to use
-  _different_ ActorScript types than the import mapping would give him.
-
-  In this workflow, the developer would specify both the IDL description _and_
-  the ActorScript types, the compiler would check that they are compatible, and
-  generate the appropriate serialization/deserialization code.
-
-  Importing/exporting IDL would become a special case of this workflow, where
-  the developer may omit one or the other.
-
-
