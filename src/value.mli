@@ -131,6 +131,14 @@ val async_func : int -> func -> value
 val as_null : value -> unit
 val as_bool : value -> bool
 val as_int : value -> Int.t
+val as_int8 : value -> Int_8.t
+val as_int16 : value -> Int_16.t
+val as_int32 : value -> Int_32.t
+val as_int64 : value -> Int_64.t
+val as_nat8 : value -> Nat8.t
+val as_nat16 : value -> Nat16.t
+val as_nat32 : value -> Nat32.t
+val as_nat64 : value -> Nat64.t
 val as_word8 : value -> Word8.t
 val as_word16 : value -> Word16.t
 val as_word32 : value -> Word32.t

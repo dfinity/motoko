@@ -66,7 +66,7 @@ func hashInt(x : Int) : Word32 {
 
 
 func int64ToInt(n : Int64) : Int = (prim "Int64->Int" : Int64 -> Int) n;
-func word64ToInt64(n : Int) : Int64 = (prim "Int->Int64" : Int -> Int64) n;
+func intToInt64(n : Int) : Int64 = (prim "Int->Int64" : Int -> Int64) n;
 func int64ToWord64(n : Int64) : Word64 = (prim "Int64->Word64" : Int64 -> Word64) n;
 func word64ToInt64(n : Word64) : Int64 = (prim "Word64->Int64" : Word64 -> Int64) n;
 

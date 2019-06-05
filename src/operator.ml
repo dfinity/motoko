@@ -8,26 +8,43 @@ let impossible _ = raise (Invalid_argument "impossible")
 
 
 (* Unary operators *)
+let invalid_unop _ = raise (Invalid_argument "unop")
 
-let word_unop fword8 fword16 fword32 fword64 = function
+let word_unop (fword8, fword16, fword32, fword64) = function
   | T.Word8 -> fun v -> Word8 (fword8 (as_word8 v))
   | T.Word16 -> fun v -> Word16 (fword16 (as_word16 v))
   | T.Word32 -> fun v -> Word32 (fword32 (as_word32 v))
   | T.Word64 -> fun v -> Word64 (fword64 (as_word64 v))
   | _ -> raise (Invalid_argument "unop")
 
-let num_unop fint fword8 fword16 fword32 fword64 ffloat = function
+let num_unop fint (fint8, fint16, fint32, fint64) (fnat8, fnat16, fnat32, fnat64) wordops ffloat = function
   | T.Int -> fun v -> Int (fint (as_int v))
+  | T.Int8 -> fun v -> Int8 (fint8 (as_int8 v))
+  | T.Int16 -> fun v -> Int16 (fint16 (as_int16 v))
+  | T.Int32 -> fun v -> Int32 (fint32 (as_int32 v))
+  | T.Int64 -> fun v -> Int64 (fint64 (as_int64 v))
+  | T.Nat -> fun v -> Int (fint (as_int v))
+  | T.Nat8 -> fun v -> Nat8 (fnat8 (as_nat8 v))
+  | T.Nat16 -> fun v -> Nat16 (fnat16 (as_nat16 v))
+  | T.Nat32 -> fun v -> Nat32 (fnat32 (as_nat32 v))
+  | T.Nat64 -> fun v -> Nat64 (fnat64 (as_nat64 v))
   | T.Float -> fun v -> Float (ffloat (as_float v))
-  | t -> word_unop fword8 fword16 fword32 fword64 t
+  | t -> word_unop wordops t
 
 let unop t op =
   match t with
   | T.Prim p ->
     (match op with
-    | PosOp -> let id v = v in num_unop id id id id id id p
-    | NegOp -> num_unop Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
-    | NotOp -> word_unop Word8.not Word16.not Word32.not Word64.not p
+    | PosOp -> let id v = v in num_unop id (id, id, id, id) (id, id, id, id) (id, id, id, id) id p
+    | NegOp ->
+      num_unop
+        Int.neg
+        (Int_8.neg, Int_16.neg, Int_32.neg, Int_64.neg)
+        (invalid_unop, invalid_unop, invalid_unop, invalid_unop)
+        (Word8.neg, Word16.neg, Word32.neg, Word64.neg)
+        Float.neg
+        p
+    | NotOp -> word_unop (Word8.not, Word16.not, Word32.not, Word64.not) p
     )
   | T.Non -> impossible
   | _ -> raise (Invalid_argument "unop")

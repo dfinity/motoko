@@ -195,7 +195,9 @@ struct
   let mul a b = let res = Rep.mul a b in assert (Range.is_range res); res
   let div a b = let res = Rep.div a b in assert (Range.is_range res); res
   let pow a b = let res = Rep.pow a b in assert (Range.is_range res); res
-  (* TODO(gabor) abs, neg, of_int, of_string *)
+  let of_int i = let res = Rep.of_int i in assert (Range.is_range res); res
+  let of_string s = let res = Rep.of_string s in assert (Range.is_range res); res
+  (* TODO(gabor) abs, neg *)
 end
 
 module NatRange(Limit : sig val upper : Big_int.big_int end) =
@@ -207,7 +209,7 @@ end
 module Nat8 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x100 end))
 module Nat16 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x10000 end))
 module Nat32 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x100000000 end))
-module Nat64 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.power_int_positive_int 0x100000000 2 end))
+module Nat64 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.power_int_positive_int 2 64 end))
 
 module IntRange(Limit : sig val upper : Big_int.big_int end) =
 struct
@@ -215,10 +217,10 @@ struct
   let is_range n = ge_big_int n (minus_big_int Limit.upper) && lt_big_int n Limit.upper
 end
 
-module Int_8 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x100 end))
-module Int_16 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x10000 end))
-module Int_32 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x100000000 end))
-module Int_64 = RangeLimited(Int)(IntRange(struct let upper = Big_int.power_int_positive_int 0x100000000 2 end))
+module Int_8 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x80 end))
+module Int_16 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x8000 end))
+module Int_32 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x80000000 end))
+module Int_64 = RangeLimited(Int)(IntRange(struct let upper = Big_int.power_int_positive_int 2 63 end))
 
 (* Types *)
 
@@ -291,6 +293,14 @@ let invalid s = raise (Invalid_argument ("Value." ^ s))
 let as_null = function Null -> () | _ -> invalid "as_null"
 let as_bool = function Bool b -> b | _ -> invalid "as_bool"
 let as_int = function Int n -> n | _ -> invalid "as_int"
+let as_int8 = function Int8 w -> w | _ -> invalid "as_int8"
+let as_int16 = function Int16 w -> w | _ -> invalid "as_int16"
+let as_int32 = function Int32 w -> w | _ -> invalid "as_int32"
+let as_int64 = function Int64 w -> w | _ -> invalid "as_int64"
+let as_nat8 = function Nat8 w -> w | _ -> invalid "as_nat8"
+let as_nat16 = function Nat16 w -> w | _ -> invalid "as_nat16"
+let as_nat32 = function Nat32 w -> w | _ -> invalid "as_nat32"
+let as_nat64 = function Nat64 w -> w | _ -> invalid "as_nat64"
 let as_word8 = function Word8 w -> w | _ -> invalid "as_word8"
 let as_word16 = function Word16 w -> w | _ -> invalid "as_word16"
 let as_word32 = function Word32 w -> w | _ -> invalid "as_word32"
@@ -414,6 +424,14 @@ let rec string_of_val_nullary d = function
   | Null -> "null"
   | Bool b -> if b then "true" else "false"
   | Int i -> Int.to_string i
+  | Int8 w -> Int_8.to_string w
+  | Int16 w -> Int_16.to_string w
+  | Int32 w -> Int_32.to_string w
+  | Int64 w -> Int_64.to_string w
+  | Nat8 w -> Nat8.to_string w
+  | Nat16 w -> Nat16.to_string w
+  | Nat32 w -> Nat32.to_string w
+  | Nat64 w -> Nat64.to_string w
   | Word8 w -> Word8.to_string w
   | Word16 w -> Word16.to_string w
   | Word32 w -> Word32.to_string w
