@@ -199,7 +199,15 @@ let interpret_lit env lit : V.value =
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
   | NatLit n -> V.Int n
+  | Nat8Lit n -> V.Nat8 n
+  | Nat16Lit n -> V.Nat16 n
+  | Nat32Lit n -> V.Nat32 n
+  | Nat64Lit n -> V.Nat64 n
   | IntLit i -> V.Int i
+  | Int8Lit i -> V.Int8 i
+  | Int16Lit i -> V.Int16 i
+  | Int32Lit i -> V.Int32 i
+  | Int64Lit i -> V.Int64 i
   | Word8Lit w -> V.Word8 w
   | Word16Lit w -> V.Word16 w
   | Word32Lit w -> V.Word32 w
@@ -519,7 +527,15 @@ and match_lit lit v : bool =
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
   | NatLit n, V.Int n' -> V.Int.eq n n'
+  | Nat8Lit n, V.Nat8 n' -> V.Nat8.eq n n'
+  | Nat16Lit n, V.Nat16 n' -> V.Nat16.eq n n'
+  | Nat32Lit n, V.Nat32 n' -> V.Nat32.eq n n'
+  | Nat64Lit n, V.Nat64 n' -> V.Nat64.eq n n'
   | IntLit i, V.Int i' -> V.Int.eq i i'
+  | Int8Lit i, V.Int8 i' -> V.Int_8.eq i i'
+  | Int16Lit i, V.Int16 i' -> V.Int_16.eq i i'
+  | Int32Lit i, V.Int32 i' -> V.Int_32.eq i i'
+  | Int64Lit i, V.Int64 i' -> V.Int_64.eq i i'
   | Word8Lit w, V.Word8 w' -> w = w'
   | Word16Lit w, V.Word16 w' -> w = w'
   | Word32Lit w, V.Word32 w' -> w = w'

@@ -6,7 +6,15 @@ type Shared = prim "Shared";
 type Null = prim "Null";
 type Bool = prim "Bool";
 type Nat = prim "Nat";
+type Nat8 = prim "Nat8";
+type Nat16 = prim "Nat16";
+type Nat32 = prim "Nat32";
+type Nat64 = prim "Nat64";
 type Int = prim "Int";
+type Int8 = prim "Int8";
+type Int16 = prim "Int16";
+type Int32 = prim "Int32";
+type Int64 = prim "Int64";
 type Word8 = prim "Word8";
 type Word16 = prim "Word16";
 type Word32 = prim "Word32";
@@ -55,6 +63,14 @@ func hashInt(x : Int) : Word32 {
 };
 
 // Conversions
+
+
+func int64ToInt(n : Int64) : Int = (prim "Int64->Int" : Int64 -> Int) n;
+func word64ToInt64(n : Int) : Int64 = (prim "Int->Int64" : Int -> Int64) n;
+func int64ToWord64(n : Int64) : Word64 = (prim "Int64->Word64" : Int64 -> Word64) n;
+func word64ToInt64(n : Word64) : Int64 = (prim "Word64->Int64" : Word64 -> Int64) n;
+
+
 func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
 func word8ToNat(n : Word8) : Nat = (prim "Word8->Nat" : Word8 -> Nat) n;
 func intToWord8(n : Int) : Word8 = (prim "Int->Word8" : Int -> Word8) n;

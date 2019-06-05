@@ -344,7 +344,15 @@ let check_lit_val env t of_string at s =
       (T.string_of_typ (T.Prim t))
 
 let check_nat env = check_lit_val env T.Nat Value.Nat.of_string
+let check_nat8 env = check_lit_val env T.Nat8 Value.Nat8.of_string
+let check_nat16 env = check_lit_val env T.Nat16 Value.Nat16.of_string
+let check_nat32 env = check_lit_val env T.Nat32 Value.Nat32.of_string
+let check_nat64 env = check_lit_val env T.Nat64 Value.Nat64.of_string
 let check_int env = check_lit_val env T.Int Value.Int.of_string
+let check_int8 env = check_lit_val env T.Int8 Value.Int_8.of_string
+let check_int16 env = check_lit_val env T.Int16 Value.Int_16.of_string
+let check_int32 env = check_lit_val env T.Int32 Value.Int_32.of_string
+let check_int64 env = check_lit_val env T.Int64 Value.Int_64.of_string
 let check_word8 env = check_lit_val env T.Word8 Value.Word8.of_string_u
 let check_word16 env = check_lit_val env T.Word16 Value.Word16.of_string_u
 let check_word32 env = check_lit_val env T.Word32 Value.Word32.of_string_u
@@ -357,7 +365,15 @@ let infer_lit env lit at : T.prim =
   | NullLit -> T.Null
   | BoolLit _ -> T.Bool
   | NatLit _ -> T.Nat
+  | Nat8Lit _ -> T.Nat8
+  | Nat16Lit _ -> T.Nat16
+  | Nat32Lit _ -> T.Nat32
+  | Nat64Lit _ -> T.Nat64
   | IntLit _ -> T.Int
+  | Int8Lit _ -> T.Int8
+  | Int16Lit _ -> T.Int16
+  | Int32Lit _ -> T.Int32
+  | Int64Lit _ -> T.Int64
   | Word8Lit _ -> T.Word8
   | Word16Lit _ -> T.Word16
   | Word32Lit _ -> T.Word32
@@ -382,8 +398,24 @@ let check_lit env t lit at =
   | T.Opt _, NullLit -> ()
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
     lit := NatLit (check_nat env at s)
+  | T.Prim T.Nat8, PreLit (s, T.Nat) ->
+    lit := Nat8Lit (check_nat8 env at s)
+  | T.Prim T.Nat16, PreLit (s, T.Nat) ->
+    lit := Nat16Lit (check_nat16 env at s)
+  | T.Prim T.Nat32, PreLit (s, T.Nat) ->
+    lit := Nat32Lit (check_nat32 env at s)
+  | T.Prim T.Nat64, PreLit (s, T.Nat) ->
+    lit := Nat64Lit (check_nat64 env at s)
   | T.Prim T.Int, PreLit (s, (T.Nat | T.Int)) ->
     lit := IntLit (check_int env at s)
+  | T.Prim T.Int8, PreLit (s, (T.Nat | T.Int)) ->
+    lit := Int8Lit (check_int8 env at s)
+  | T.Prim T.Int16, PreLit (s, (T.Nat | T.Int)) ->
+    lit := Int16Lit (check_int16 env at s)
+  | T.Prim T.Int32, PreLit (s, (T.Nat | T.Int)) ->
+    lit := Int32Lit (check_int32 env at s)
+  | T.Prim T.Int64, PreLit (s, (T.Nat | T.Int)) ->
+    lit := Int64Lit (check_int64 env at s)
   | T.Prim T.Word8, PreLit (s, (T.Nat | T.Int)) ->
     lit := Word8Lit (check_word8 env at s)
   | T.Prim T.Word16, PreLit (s, (T.Nat | T.Int)) ->

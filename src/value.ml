@@ -188,6 +188,37 @@ struct
     if ge z zero then z else raise (Invalid_argument "Nat.sub")
 end
 
+module RangeLimited(Rep : NumType)(Range : sig val is_range : Rep.t -> bool end) : NumType =
+struct
+  include Rep
+  let add a b = let res = Rep.add a b in assert (Range.is_range res); res
+  let mul a b = let res = Rep.mul a b in assert (Range.is_range res); res
+  let div a b = let res = Rep.div a b in assert (Range.is_range res); res
+  let pow a b = let res = Rep.pow a b in assert (Range.is_range res); res
+  (* TODO(gabor) abs, neg, of_int, of_string *)
+end
+
+module NatRange(Limit : sig val upper : Big_int.big_int end) =
+struct
+  open Big_int
+  let is_range n = ge_big_int n zero_big_int && lt_big_int n Limit.upper
+end
+
+module Nat8 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x100 end))
+module Nat16 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x10000 end))
+module Nat32 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x100000000 end))
+module Nat64 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.power_int_positive_int 0x100000000 2 end))
+
+module IntRange(Limit : sig val upper : Big_int.big_int end) =
+struct
+  open Big_int
+  let is_range n = ge_big_int n (minus_big_int Limit.upper) && lt_big_int n Limit.upper
+end
+
+module Int_8 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x100 end))
+module Int_16 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x10000 end))
+module Int_32 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x100000000 end))
+module Int_64 = RangeLimited(Int)(IntRange(struct let upper = Big_int.power_int_positive_int 0x100000000 2 end))
 
 (* Types *)
 
@@ -212,6 +243,14 @@ and value =
   | Null
   | Bool of bool
   | Int of Int.t
+  | Int8 of Int_8.t
+  | Int16 of Int_16.t
+  | Int32 of Int_32.t
+  | Int64 of Int_64.t
+  | Nat8 of Nat8.t
+  | Nat16 of Nat16.t
+  | Nat32 of Nat32.t
+  | Nat64 of Nat64.t
   | Word8 of Word8.t
   | Word16 of Word16.t
   | Word32 of Word32.t

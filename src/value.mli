@@ -48,6 +48,14 @@ module Float : FloatType with type bits = int64 and type t = Wasm.F64.t
 
 module Nat : NumType with type t = Big_int.big_int
 module Int : NumType with type t = Big_int.big_int
+module Int_8 : NumType
+module Int_16 : NumType
+module Int_32 : NumType
+module Int_64 : NumType
+module Nat8 : NumType
+module Nat16 : NumType
+module Nat32 : NumType
+module Nat64 : NumType
 
 
 (* Environment *)
@@ -73,6 +81,14 @@ and value =
   | Null
   | Bool of bool
   | Int of Int.t
+  | Int8 of Int_8.t
+  | Int16 of Int_16.t
+  | Int32 of Int_32.t
+  | Int64 of Int_64.t
+  | Nat8 of Nat8.t
+  | Nat16 of Nat16.t
+  | Nat32 of Nat32.t
+  | Nat64 of Nat64.t
   | Word8 of Word8.t
   | Word16 of Word16.t
   | Word32 of Word32.t
