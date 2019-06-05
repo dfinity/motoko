@@ -15,9 +15,9 @@ let constM = S.Const @@ no_region
 
 (* Field names *)
 
-let nameN s = Name s @@ no_region
+let nameN s = s
 
-let nextN = nameN "next"
+let nextN = "next"
 
 (* Identifiers *)
 
