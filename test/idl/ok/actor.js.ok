@@ -1,0 +1,3 @@
+const f = IDL.message(IDL.Obj({'0': IDL.nat}), IDL.Obj({'0': IDL.nat}))
+const A = new IDL.ActorInterface({
+ 'f': IDL.message(IDL.Obj({'0': IDL.nat}), IDL.Obj({})), 'g': f})

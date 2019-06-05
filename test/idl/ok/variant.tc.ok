@@ -1,0 +1,3 @@
+-- Parsing variant.didl:
+-- Checking variant.didl:
+variant.didl:2.23-2.26: type error, field name nat hash collision with field nat

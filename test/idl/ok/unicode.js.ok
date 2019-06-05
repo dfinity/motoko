@@ -1,0 +1,11 @@
+const A =
+ IDL.Obj({'字段名': IDL.nat, '字 段 名2': IDL.nat, '📦🍦': IDL.nat
+  })
+const B =
+ IDL.Variant({'': IDL.null, '空的': IDL.null, '  空的  ': IDL.null,
+  '1⃣️2⃣️3⃣️': IDL.null})
+const C = new IDL.ActorInterface({
+ '函数名': IDL.message(IDL.Obj({'0': A}), IDL.Obj({'0': B})),
+ '': IDL.message(IDL.Obj({'0': IDL.nat}), IDL.Obj({'0': IDL.nat})),
+ '👀': IDL.message(IDL.Obj({'0': IDL.nat}), IDL.Obj({'0': IDL.nat})),
+ '✈️  🚗 ⛱️ ': IDL.message(IDL.Obj({}), IDL.Obj({}))})

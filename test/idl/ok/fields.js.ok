@@ -1,0 +1,14 @@
+const A = IDL.Obj({'0': IDL.nat, '1': IDL.nat, '2': IDL.nat})
+const B =
+ IDL.Obj({'0': IDL.Arr(IDL.nat8), '35': IDL.Arr(IDL.nat8), '36': IDL.nat,
+  '37': IDL.nat, 'named_files': IDL.reserved, '653352244': IDL.nat,
+  '653352245': IDL.nat})
+const C =
+ IDL.Variant({'red': IDL.null, '4': IDL.null, '3': IDL.null, '2': IDL.null,
+  '1': IDL.null, 'reserved': IDL.null, '10': IDL.null, 'green': IDL.null,
+  'blue': IDL.null, 'A': IDL.null, 'B': IDL.null, 'C': IDL.null})
+const nest_record =
+ IDL.Obj({'0': IDL.nat, '1': IDL.nat, '2': IDL.nat,
+  '3': IDL.Obj({'0': IDL.nat, '1': IDL.nat, '2': IDL.nat}), '4': IDL.nat,
+  '5': IDL.nat, '6': IDL.nat, '7': A, '8': B, '9': C, '10': IDL.nat})
+

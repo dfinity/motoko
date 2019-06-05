@@ -1,0 +1,21 @@
+const my_type = IDL.nat
+const B = my_type
+const message = IDL.Obj({'name': IDL.text, '25': B, '26': IDL.reserved})
+const broker =
+ IDL.ActorInterface({
+  'find':
+   IDL.message(IDL.Obj({'name': IDL.text}),
+    IDL.Obj({
+     '0':
+      IDL.ActorInterface({'up': IDL.message(IDL.Obj({}), IDL.Obj({})),
+       'current': IDL.message(IDL.Obj({}), IDL.Obj({'0': IDL.nat}))})
+     }))
+    })
+const server = new IDL.ActorInterface({
+ 'addUser':
+  IDL.message(IDL.Obj({'name': IDL.text, 'age': IDL.nat8}),
+   IDL.Obj({'id': IDL.nat64})),
+ 'userName':
+  IDL.message(IDL.Obj({'id': IDL.nat64}), IDL.Obj({'0': IDL.text})),
+ 'userAge': IDL.message(IDL.Obj({'id': IDL.nat64}), IDL.Obj({'0': IDL.nat8})),
+  'deleteUser': IDL.message(IDL.Obj({'id': IDL.nat64}), IDL.Obj({}))})

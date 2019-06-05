@@ -12,5 +12,5 @@ const OpEntId = IDL.Opt(EntId)
 const IdErr = IDL.Obj({'idErr': OpEntId})
 const Inventory = IDL.Obj({'produce_id': IDL.nat, 'quantity': IDL.nat})
 const ProduceExchange = new IDL.ActorInterface({
- getInventory:
+ 'getInventory':
   IDL.message(IDL.Obj({'producer_id': IDL.nat}), IDL.Obj({'0': Inventory}))})

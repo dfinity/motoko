@@ -1,0 +1,3 @@
+type g = func (nat) -> () oneway pure;
+type f = func (nat) -> (nat) pure oneway;
+

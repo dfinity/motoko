@@ -54,7 +54,7 @@ and pp_field ppf env tf =
 
 and pp_meth ppf env meth =
   pp_open_box ppf 1;
-  id ppf meth.it.var;
+  field_name ppf meth.it.var;
   kwd ppf ":";
   pp_typ ppf env meth.it.meth;
   pp_close_box ppf ()
@@ -74,19 +74,19 @@ let pp_dec ppf env dec =
 
 let pp_actor ppf env actor_opt =
   pp_open_hovbox ppf 1;
-  kwd ppf "const";
   (match actor_opt with
-    None -> ()
-  | Some actor ->
-     (match actor.it with
-     | ActorD (x, {it=ServT tp; _}) ->
-        id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
-        str ppf "IDL.ActorInterface({";
-        concat ppf pp_meth env "," tp;
-        str ppf "})"
-     | ActorD (x, {it=VarT var; _}) -> id ppf x; space ppf (); kwd ppf "="; id ppf var
-     | ActorD (x, _) -> ()
-     )
+     None -> ()
+   | Some actor ->
+      kwd ppf "const";
+      (match actor.it with
+       | ActorD (x, {it=ServT tp; _}) ->
+          id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
+          str ppf "IDL.ActorInterface({";
+          concat ppf pp_meth env "," tp;
+          str ppf "})"
+       | ActorD (x, {it=VarT var; _}) -> id ppf x; space ppf (); kwd ppf "="; id ppf var
+       | ActorD (x, _) -> ()
+      )
   );
   pp_close_box ppf ()
 

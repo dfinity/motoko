@@ -1,0 +1,3 @@
+-- Parsing cyclic.didl:
+-- Checking cyclic.didl:
+cyclic.didl:9.10-9.11: type error, D has a cyclic type definition

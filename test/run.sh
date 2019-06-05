@@ -212,9 +212,20 @@ do
 
   else
     # The file is a .didl file, so we are expected to test the idl
-    $ECHO -n " [idlc]"
-    $IDLC $base.didl > $out/$base.idlc 2>&1
-    diff_files="$diff_files $base.idlc"
+    # Typecheck
+    $ECHO -n " [tc]"
+    $IDLC --check $base.didl > $out/$base.tc 2>&1
+    tc_succeeded=$?
+    normalize $out/$base.tc    
+    diff_files="$diff_files $base.tc"
+
+    if [ "$tc_succeeded" -eq 0 ];
+    then
+      $ECHO -n " [js]"
+      $IDLC --js $base.didl > $out/$base.js 2>&1
+      diff_files="$diff_files $base.js"
+    fi
+      
   fi
   $ECHO ""
 

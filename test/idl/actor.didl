@@ -1,0 +1,5 @@
+type f = func (nat) -> (nat) pure;
+service A {
+  f : (nat) -> ();
+  g : f;
+}

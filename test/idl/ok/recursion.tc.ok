@@ -1,0 +1,10 @@
+-- Parsing recursion.didl:
+-- Checking recursion.didl:
+var A : var B
+var B : opt var A
+var list : opt var node
+var node : {head : nat; tail : var list}
+var s : service {f : var t}
+var stream : opt {head : nat; next : () -> (0 : var stream) pure}
+var t : (server : var s) -> () 
+var tree : variant {branch : {right : var tree; val : int; left : var tree}; leaf : int}
