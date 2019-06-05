@@ -17,6 +17,8 @@ func intCompare (a : Int, b : Int) : Bool = a == b;
 // Numeric operators
 
 func testNat(a : Nat, b : Nat) : [Nat] {
+  let pos1 = + a;
+  let pos2 = (+ a) : Nat;
   let sum1 = a + b;
   let sum2 = (a + b) : Nat;
   let diff1 = a - b;
@@ -29,10 +31,10 @@ func testNat(a : Nat, b : Nat) : [Nat] {
   let mod2 = (a % b) : Nat;
   let pow1 = a ** b;
   let pow2 = (a ** b) : Nat;
-  [sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
+  [pos1, pos2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
 };
 
-verify<Nat>([8, 2, 15, 1, 2, 125], testNat(5, 3), func (a : Nat, b : Nat) : Bool = a == b);
+verify<Nat>([5, 8, 2, 15, 1, 2, 125], testNat(5, 3), func (a : Nat, b : Nat) : Bool = a == b);
 
 func testInt(a : Int, b : Int) : [Int] {
   let pos1 = + a;

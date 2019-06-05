@@ -453,7 +453,7 @@ and infer_exp'' env exp : T.typ =
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     (* Special case for subtyping *)
-    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
+    let t = T.(if op = NegOp && t1 = Prim Nat then Prim Int else t1) in
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_unop t op) then

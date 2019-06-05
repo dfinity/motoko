@@ -8,16 +8,18 @@ let impossible _ = raise (Invalid_argument "impossible")
 
 
 (* Unary operators *)
+let invalid_unop _ = raise (Invalid_argument "unop")
 
 let word_unop fword8 fword16 fword32 fword64 = function
   | T.Word8 -> fun v -> Word8 (fword8 (as_word8 v))
   | T.Word16 -> fun v -> Word16 (fword16 (as_word16 v))
   | T.Word32 -> fun v -> Word32 (fword32 (as_word32 v))
   | T.Word64 -> fun v -> Word64 (fword64 (as_word64 v))
-  | _ -> raise (Invalid_argument "unop")
+  | t -> invalid_unop t
 
-let num_unop fint fword8 fword16 fword32 fword64 ffloat = function
+let num_unop fnat fint fword8 fword16 fword32 fword64 ffloat = function
   | T.Int -> fun v -> Int (fint (as_int v))
+  | T.Nat -> fun v -> Int (fnat (as_int v))
   | T.Float -> fun v -> Float (ffloat (as_float v))
   | t -> word_unop fword8 fword16 fword32 fword64 t
 
@@ -25,12 +27,12 @@ let unop t op =
   match t with
   | T.Prim p ->
     (match op with
-    | PosOp -> let id v = v in num_unop id id id id id id p
-    | NegOp -> num_unop Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
+    | PosOp -> let id v = v in num_unop id id id id id id id p
+    | NegOp -> num_unop invalid_unop Int.neg Word8.neg Word16.neg Word32.neg Word64.neg Float.neg p
     | NotOp -> word_unop Word8.not Word16.not Word32.not Word64.not p
     )
   | T.Non -> impossible
-  | _ -> raise (Invalid_argument "unop")
+  | t -> invalid_unop t
 
 
 (* Binary operators *)

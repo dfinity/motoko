@@ -1,5 +1,7 @@
 let n : Nat = 0;
+let _ = +3 : Nat;
 let i : Int = 0;
+let i0 = -3 : Int;
 let i1 : Int = -1;
 let i2 : Int = 0xfff;
 let byte : Word8 = 0xFF : Word8;
