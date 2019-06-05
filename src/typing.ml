@@ -299,7 +299,10 @@ and check_typ_tag env typ_tag =
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
-  let cs = List.map (fun n -> Con.fresh n (T.Abs ([], T.Pre))) xs in
+  let cs = List.map2 (fun x tb ->
+               match tb.note with
+               | Some c -> c
+               | None -> Con.fresh x (T.Abs ([], T.Pre))) xs typ_binds in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -309,7 +312,11 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
   let pre_env' = add_typs {env with pre = true} xs cs  in
   let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
-  List.iter2 T.set_kind cs ks;
+  List.iter2 (fun c k ->
+    match Con.kind c with
+    | T.Abs(_,T.Pre) -> T.set_kind c k
+    | k' -> assert (T.eq_kind k k')
+    ) cs ks;
   let env' = add_typs env xs cs in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
@@ -1462,7 +1469,7 @@ and infer_id_typdecs id c k : con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Con.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
-  | k' -> () (*  assert (T.eq_kind k' k) *)
+  | k' -> assert (T.eq_kind k' k)
   );
   T.ConSet.singleton c
 

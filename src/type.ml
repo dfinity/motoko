@@ -629,7 +629,7 @@ let rec rel_typ rel eq t1 t2 =
   | Non, _ when rel != eq ->
     true
   | Con (con1, ts1), Con (con2, ts2) ->
-     Printf.printf "\n rel_typ %s %s" (Con.to_string con1) (Con.to_string con2); 
+    (*     Printf.printf "\n rel_typ %s %s" (Con.to_string con1) (Con.to_string con2); *) 
     (match Con.kind con1, Con.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
