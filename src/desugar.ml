@@ -70,7 +70,8 @@ and exp' at note = function
   | S.FuncE (name, s, tbs, p, ty, e) ->
     let cc = Value.call_conv_of_typ note.S.note_typ in
     let args, wrap = to_args cc p in
-    I.FuncE (name, cc, typ_binds tbs, args, Type.as_seq ty.note, wrap (exp e))
+    let tys = if cc.Value.n_res = 1 then [ty.note] else Type.as_seq ty.note in
+    I.FuncE (name, cc, typ_binds tbs, args, tys, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in
     if Type.is_non t
