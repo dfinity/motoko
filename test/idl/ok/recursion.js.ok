@@ -5,7 +5,7 @@ const list = IDL.Opt(node)
 const tree =
  IDL.Variant({'leaf': IDL.Int,
   'branch': IDL.Obj({'left': tree, 'val': IDL.Int, 'right': tree})})
-const s = IDL.ActorInterface({'f': t})
+const s = new IDL.ActorInterface({'f': t})
 const t = IDL.message(IDL.Obj({'server': s}), IDL.Obj({}))
 const stream =
  IDL.Opt(

@@ -1,8 +1,8 @@
-NAME = idlc
+NAME = didc
 BUILD = byte
 MAIN = main
 
-IDLC = `pwd`/$(NAME)
+DIDC = `pwd`/$(NAME)
 
 OPAM_PACKAGES = wasm stdint num vlq yojson
 
@@ -32,5 +32,5 @@ clean:
 	$(MAKE) -C ../test/idl clean
 
 test: $(NAME)
-	$(MAKE) -C ../test/idl IDLC=$(IDLC) all
+	$(MAKE) -C ../test/idl DIDC=$(DIDC) all
 

@@ -2,12 +2,12 @@ const my_type = IDL.Nat
 const B = my_type
 const message = IDL.Obj({'name': IDL.Text, '25': B, '26': IDL.None})
 const broker =
- IDL.ActorInterface({
+ new IDL.ActorInterface({
   'find':
    IDL.message(IDL.Obj({'name': IDL.Text}),
     IDL.Obj({
      '0':
-      IDL.ActorInterface({'up': IDL.message(IDL.Obj({}), IDL.Obj({})),
+      new IDL.ActorInterface({'up': IDL.message(IDL.Obj({}), IDL.Obj({})),
        'current': IDL.message(IDL.Obj({}), IDL.Obj({'0': IDL.Nat}))})
      }))
     })

@@ -21,7 +21,7 @@ DFINITY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
-IDLC=${IDLC:-$(realpath $(dirname $0)/../idl/idlc)}
+DIDC=${IDLC:-$(realpath $(dirname $0)/../idl/didc)}
 export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
@@ -214,7 +214,7 @@ do
     # The file is a .did file, so we are expected to test the idl
     # Typecheck
     $ECHO -n " [tc]"
-    $IDLC --check $base.did > $out/$base.tc 2>&1
+    $DIDC --check $base.did > $out/$base.tc 2>&1
     tc_succeeded=$?
     normalize $out/$base.tc    
     diff_files="$diff_files $base.tc"
@@ -222,7 +222,7 @@ do
     if [ "$tc_succeeded" -eq 0 ];
     then
       $ECHO -n " [js]"
-      $IDLC --js $base.did > $out/$base.js 2>&1
+      $DIDC --js $base.did > $out/$base.js 2>&1
       diff_files="$diff_files $base.js"
     fi
       

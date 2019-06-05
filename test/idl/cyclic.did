@@ -1,6 +1,6 @@
 type A = opt B;
-type B = opt C;
 type C = A;
+type B = opt C;
 
 type X = Y;
 type Y = Z;

@@ -51,6 +51,7 @@ let rec pp_typ ppf env t =
      str ppf ")";
   | ServT ts ->
      pp_open_hovbox ppf 1;
+     kwd ppf "new";
      str ppf "IDL.ActorInterface({";
      concat ppf pp_meth env "," ts;
      str ppf "})";
