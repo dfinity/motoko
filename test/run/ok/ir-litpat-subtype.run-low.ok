@@ -1,2 +1,0 @@
-ir-litpat-subtype.as:3.4-3.22: warning, this case is never reached
-ir-litpat-subtype.as:1.22-4.2: warning, the cases in this switch do not cover all possible values
