@@ -1,4 +1,4 @@
 func bar (a : Nat) = switch a {
    case 25 ();
-   case (25 : Int) ();   // OK: accepted by type checker, rejected by IR checker.
+   case (25 : Int) ();   // OK: pattern of supertype accepted
 }
