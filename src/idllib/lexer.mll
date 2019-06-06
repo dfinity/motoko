@@ -49,7 +49,7 @@ let codepoint lexbuf s i =
       int_of_string ("0x" ^ String.make 1 h ^ String.make 1 s.[!i])
   in incr i; u
 
-let char lexbuf s =
+let _char lexbuf s =
   codepoint lexbuf s (ref 1)
 
 let text lexbuf s =

@@ -1,3 +1,4 @@
+open Aslib
 open Printf
 
 let name = "as-ld"

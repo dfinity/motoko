@@ -1,67 +1,43 @@
-NAME = asc
-BUILD = byte
-MAIN = main
-JS_MAIN = js_main
+# This Makefile is not really a
+# dependency tracking makefile, it just
+# calls `dune`
 
-ASC = `pwd`/$(NAME)
+AS_LD_TARGET = _build/default/exes/as_ld.exe
+ASC_TARGET = _build/default/exes/asc.exe
+DIDC_TARGET = _build/default/exes/didc.exe
+ASC_JS_TARGET = _build/default/exes/as_js.bc.js
 
-OPAM_PACKAGES = wasm num vlq yojson bisect_ppx-ocamlbuild
-JS_OPAM_PACKAGES = js_of_ocaml js_of_ocaml-ppx
+DUNE_OPTS ?=
 
-MENHIR = menhir
-MENHIR_FLAGS = --infer --dump --explain --strict
+ALL_TARGETS = $(AS_LD_TARGET) $(ASC_TARGET) $(ASC_JS_TARGET) $(DIDC_TARGET)
 
-OCAML_FLAGS = -cflags '-w +a-4-27-30-42-44-45-58 -warn-error +a'
-OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
- -use-ocamlfind \
- -plugin-tag 'package(bisect_ppx-ocamlbuild)' \
- -use-menhir -menhir "$(MENHIR) $(MENHIR_FLAGS)" \
- -I src \
- -I lib \
- $(OPAM_PACKAGES:%=-pkg %) \
- -tags debug
+.PHONY: all clean asc as-ld asc.js didc
 
-.PHONY: all parallel quick clean test test-parallel test-quick
+# This targets is spelled out so that `make`
+# only invokes `dune` once, much faster
+all:
+	dune build $(DUNE_OPTS) $(ALL_TARGETS)
+	@ln -fs $(ASC_TARGET) asc
+	@ln -fs $(AS_LD_TARGET) as-ld
+	@ln -fs $(ASC_JS_TARGET) asc.js
+	@ln -fs $(DIDC_TARGET) didc
 
-all: $(NAME) as-ld test
+asc:
+	dune build $(DUNE_OPTS) $(ASC_TARGET)
+	@ln -fs $(ASC_TARGET) asc
 
-parallel: $(NAME) test-parallel
-quick: $(NAME) test-quick
+as-ld:
+	dune build $(DUNE_OPTS) $(AS_LD_TARGET)
+	@ln -fs $(AS_LD_TARGET) as-ld
 
-$(NAME): $(MAIN).$(BUILD)
-	mv $< $@
+asc.js:
+	dune build $(DUNE_OPTS) $(ASC_JS_TARGET)
+	@ln -fs $(ASC_JS_TARGET) asc.js
 
-as-ld: ld_main.$(BUILD)
-	mv $< $@
-
-$(NAME).js: $(JS_MAIN).byte
-	js_of_ocaml +nat.js $< -o $@
-
-%.$(BUILD): sanity
-	$(OCAMLBUILD) $@
-
-$(JS_MAIN).byte: $(JS_MAIN).ml sanity
-	$(OCAMLBUILD) $(JS_OPAM_PACKAGES:%=-pkg %) $@
-
-
-sanity:
-	ocamlfind query $(OPAM_PACKAGES)
+didc:
+	dune build $(DUNE_OPTS) $(DIDC_TARGET)
+	@ln -fs $(DIDC_TARGET) didc
 
 clean:
-	rm -f *~ .*~
-	$(OCAMLBUILD) -clean
-	$(MAKE) -C ../test clean
-
-test: $(NAME)
-	$(MAKE) -C ../stdlib ASC=$(ASC) all
-	$(MAKE) -C ../test ASC=$(ASC) all
-	$(MAKE) -C ../samples ASC=$(ASC) all
-
-accept: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) accept
-
-test-parallel: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) parallel
-
-test-quick: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) quick
+	rm -f asc as-ld asc.js didc
+	dune clean

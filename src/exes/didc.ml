@@ -1,3 +1,4 @@
+open Idllib
 open Printf
 
 let name = "idlc"
@@ -35,10 +36,6 @@ let argspec = Arg.align
 
 
 (* Main *)
-
-let exit_on_none = function
-  | Some x -> x
-  | None -> exit 1
 
 let exit_on_failure = function
   | Ok x -> x

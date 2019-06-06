@@ -13,8 +13,8 @@ exception Recover
 
 let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
-let recover f y = recover_with () f y
-  
+let _recover f y = recover_with () f y
+
 (* Scopes *)
 
 type typ_env = typ Env.t
@@ -42,11 +42,11 @@ let env_of_scope msgs scope =
 let type_error at text : Diag.message = Diag.{sev = Diag.Error; at; cat = "type"; text}
 let type_warning at text : Diag.message = Diag.{sev = Diag.Warning; at; cat = "type"; text}
 
-let local_error env at fmt =
+let _local_error env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
 let error env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
-let warn env at fmt =
+let _warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
 
 (* Context extension *)

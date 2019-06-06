@@ -1,3 +1,5 @@
+open Aslib
+
 open Printf
 
 let name = "asc"

@@ -47,9 +47,9 @@ let real-dvm =
 
 let commonBuildInputs = [
   nixpkgs.ocaml
-  nixpkgs.ocamlPackages.menhir
+  nixpkgs.dune
   nixpkgs.ocamlPackages.findlib
-  nixpkgs.ocamlPackages.ocamlbuild
+  nixpkgs.ocamlPackages.menhir
   nixpkgs.ocamlPackages.num
   nixpkgs.ocamlPackages.stdint
   ocaml_wasm
@@ -58,6 +58,8 @@ let commonBuildInputs = [
   nixpkgs.ocamlPackages.yojson
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
+  nixpkgs.ocamlPackages.ocaml-migrate-parsetree
+  nixpkgs.ocamlPackages.ppx_tools_versioned
 ]; in
 
 let
@@ -147,25 +149,25 @@ rec {
     name = "asc-bin";
 
     src = sourceByRegex ./src [
-      "Makefile.*"
+      "Makefile"
+      "dune-project"
+      "dune"
+      "[a-z].*/"
       ".*.ml"
-      ".*.mli"
       ".*.mly"
       ".*.mll"
-      ".*.mlpack"
-      "_tags"
+      ".*/dune"
       ];
 
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make BUILD=native asc as-ld
+      make DUNE_OPTS="--display=short --profile release" asc as-ld
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp asc $out/bin
-      cp as-ld $out/bin
+      cp --verbose --dereference asc as-ld $out/bin
     '';
   };
 
@@ -219,64 +221,6 @@ rec {
     '';
   };
 
-  asc-bin-coverage = asc-bin.overrideAttrs (oldAttrs: {
-    name = "asc-bin-coverage";
-    buildPhase =
-      "export BISECT_COVERAGE=YES;" +
-      oldAttrs.buildPhase;
-    installPhase =
-      oldAttrs.installPhase + ''
-      # The coverage report needs access to sources, including _build/parser.ml
-      cp -r . $out/src
-      '';
-  });
-
-  asc-coverage = nixpkgs.symlinkJoin {
-    name = "asc-covergage";
-    paths = [ asc-bin-coverage rts ];
-    buildInputs = [ nixpkgs.makeWrapper ];
-    postBuild = ''
-      wrapProgram $out/bin/asc \
-        --set-default ASC_RTS "$out/rts/as-rts.wasm"
-    '';
-  };
-
-  coverage-report = stdenv.mkDerivation {
-    name = "coverage-report";
-
-    src = sourceByRegex ./. (
-      test_files ++
-      samples_files
-    );
-
-    buildInputs =
-      [ asc-coverage
-        nixpkgs.wabt
-        nixpkgs.bash
-        nixpkgs.perl
-        ocaml_bisect_ppx
-      ] ++
-      (if test-dvm then [ real-dvm ] else []) ++
-      llvmBuildInputs;
-
-    buildPhase = ''
-      patchShebangs .
-      ${llvmEnv}
-      export ASC=asc
-      export AS_LD=as-ld
-      ln -vs ${asc-coverage}/src src
-      make -C test coverage
-      '';
-
-    installPhase = ''
-      mkdir -p $out
-      mv test/coverage/ $out/
-      mkdir -p $out/nix-support
-      echo "report coverage $out/coverage index.html" >> $out/nix-support/hydra-build-products
-    '';
-  };
-
-
   js = asc-bin.overrideAttrs (oldAttrs: {
     name = "asc.js";
 
@@ -306,27 +250,28 @@ rec {
   });
 
   idlc = stdenv.mkDerivation {
-    name = "idlc";
+    name = "didc";
 
-    src = sourceByRegex ./idl [
-      "Makefile.*"
+    src = sourceByRegex ./src [
+      "Makefile"
+      "dune-project"
+      "dune"
+      "[a-z].*/"
       ".*.ml"
-      ".*.mli"
       ".*.mly"
       ".*.mll"
-      ".*.mlpack"
-      "_tags"
+      ".*/dune"
       ];
 
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make BUILD=native idlc
+      make DUNE_OPTS="--display=short --profile release" didc
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp idlc $out/bin
+      cp --verbose --dereference didc $out/bin
     '';
   };
 
@@ -432,7 +377,6 @@ rec {
       js
       idlc
       tests
-      coverage-report
       rts
       stdlib-reference
       produce-exchange

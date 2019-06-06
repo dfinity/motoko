@@ -21,7 +21,7 @@ DFINITY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
-IDLC=${IDLC:-$(realpath $(dirname $0)/../idl/idlc)}
+DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
@@ -212,9 +212,9 @@ do
 
   else
     # The file is a .didl file, so we are expected to test the idl
-    $ECHO -n " [idlc]"
-    $IDLC $base.didl > $out/$base.idlc 2>&1
-    diff_files="$diff_files $base.idlc"
+    $ECHO -n " [didc]"
+    $DIDC $base.didl > $out/$base.didc 2>&1
+    diff_files="$diff_files $base.didc"
   fi
   $ECHO ""
 
