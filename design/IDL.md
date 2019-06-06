@@ -499,9 +499,14 @@ That is, outbound message results can only be replaced with a subtype (more fiel
 
 Subtyping applies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
 
-To make these constraints as flexible as possible, a special rule allows *adding* records fields in a supertype as long as it is optional. To make this sound (i.e., not break transitivity), the subtyping rules on records are different for co- and contra-variant occurrences. To that end, the subtyping relation is indexed by a *polarity* parameter `P` that controls which rules apply. In the co-variant `+` polarity, records can have fields added in a subtype as usual, while the `-` polarity instead allows having optional fields removed (see the discussion of upgrading below).
+**TODO: unsound, fix**
 
-That way, a field of option (or null) type can always be added to a record type, no matter whether in co- or contra-variant position. If an optional field is added to an inbound record, and he client did not provide it, the service will read it as if its value was null.
+To make these constraints as flexible as possible, two special rules apply:
+
+ * An absent record field is considered equivalent to a present field with value `null`. Moreover, a record field of type `null` is a subtype of a field with type `opt <datatype>`. That way,	That way, a field of option (or null) type can always be added to a record type, no matter whether in co- or contra-variant position. If an optional field is added to an inbound record, and he client did not provide it, the service will read it as if its value was null.
+
+   - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;	
+  - in an inbound record, a field of option (or null) type can also be added, in which case the service will read it as if its value was null.	
 
 Future extensions: defaults, including for variants?
 
@@ -513,46 +518,46 @@ Future extensions: defaults, including for variants?
 Most primitive types cannot be changed in an upgrade.
 ```
 
--------------------------
-<primtype> <:P <primtype>
+------------------------
+<primtype> <: <primtype>
 ```
 
 An exception are integers, which can be specialised to natural numbers:
 ```
 
------------
-Nat <:P Int
+----------
+Nat <: Int
 ```
 
 An additional rule applies to `reserved`, which makes it a top type, i.e., a supertype of every type.
 ```
 
------------------------
-<datatype> <:P reserved
+----------------------
+<datatype> <: reserved
 ```
 
 #### Options and Vectors
 
 An option or vector type can be specialised via its constituent type.
 ```
-<datatype> <:P <datatype'>
-----------------------------------
-opt <datatype> <:P opt <datatype'>
+<datatype> <: <datatype'>
+---------------------------------
+opt <datatype> <: opt <datatype'>
 
-<datatype> <:P <datatype'>
-----------------------------------
-vec <datatype> <:P vec <datatype'>
+<datatype> <: <datatype'>
+---------------------------------
+vec <datatype> <: vec <datatype'>
 ```
 Furthermore, an option type can be specialised to either `null` or to its constituent type:
 ```
-not (null <:P <datatype>)
--------------------------
-null <:P opt <datatype>
+not (null <: <datatype>)
+------------------------
+null <: opt <datatype>
 
-not (null <:P <datatype>)
-<datatype> <:P <datatype'>
-------------------------------
-<datatype> <:P opt <datatype'>
+not (null <: <datatype>)
+<datatype> <: <datatype'>
+-----------------------------
+<datatype> <: opt <datatype'>
 ```
 The premise means that the rule does not apply when the constituent type is itself `null` or an option. That restriction is necessary so that there is no ambiguity. For example, there would be two ways to interpret `null` when going from `opt nat` to `opt opt nat`, either as `null` or as `?null`.
 
@@ -561,37 +566,31 @@ Q: The negated nature of this premise isn't really compatible with parametric po
 
 #### Records
 
-In a specialised record type, the type of a record field can be specialised,
-and an undirected record can be turned into a directed one:
+In a specialised record type, the type of a record field can be specialised, or a field can be added.
 ```
 
--------------------------
-record { } <:P record { }
+---------------------------------------
+record { <fieldtype'>;* } <: record { }
 
-<datatype> <:P <datatype'>
-record { <fieldtype>;* } <:P record { <fieldtype'>;* }
------------------------------------------------------------------------------------------------
-record { <nat> : <datatype>; <fieldtype>;* } <:P record { <nat> : <datatype'>; <fieldtype'>;* }
+<datatype> <: <datatype'>
+record { <fieldtype>;* } <: record { <fieldtype'>;* }
+----------------------------------------------------------------------------------------------
+record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
 ```
 
-With `+` polarity, record fields can be added:
-```
+**TODO: Rules below are unsound as is, need fixing!**
 
-----------------------------------------
-record { <fieldtype'>;* } <:+ record { }
+In addition, record fields of `null` or option type can be removed, treating the absent field as having value `null`.
 ```
+record { <fieldtype>;* } <: record { <fieldtype'>;* }
+-------------------------------------------------------------------
+record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
 
-With `-` polarity, record fields of `null` or option type can be removed, treating the absent field as having value `null`.
+record { <fieldtype>;* } <: record { <fieldtype'>;* }
+-----------------------------------------------------------------------------
+record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
 ```
-record { <fieldtype>;* } <:- record { <fieldtype'>;* }
---------------------------------------------------------------------
-record { <fieldtype>;* } <:- record { <nat> : null; <fieldtype'>;* }
-
-record { <fieldtype>;* } <:- record { <fieldtype'>;* }
-------------------------------------------------------------------------------
-record { <fieldtype>;* } <:- record { <nat> : opt <datatype>; <fieldtype'>;* }
-```
-Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
+TODO: What we want to achieve: Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
 ```
 type T = {};
 actor { f : T -> T };
@@ -603,28 +602,29 @@ actor { f : T' -> T' };
 ```
 for all first-order uses of `T`, because both of the following hold:
 ```
-T' <:+ T
-T <:- T'
+upgrade T' <: T
+upgrade T <: T'
 ```
 And hence:
 ```
-(T' -> T')  <:+  (T -> T)
+upgrade (T' -> T')  <:  (T -> T)
 ```
+for some version of a type `upgrade T`.
 Moreover, this extends to the higher-order case, where e.g. a function of the above type is expected as a parameter:
 ```
 actor { g : (h : T -> T) -> ()}
 ```
 Upgrading `T` as above contra-variantly requires
 ```
-(T -> T)  <:-  (T' -> T')
+upgrade (T -> T)  <:  (T' -> T')
 ```
 which also holds.
 
-Note: The separation into polarities ensures that subtyping is still transitive in the presence of the last two rules. Without the distinction, we would have
+Note: Subtyping still needs to be transitive . We must not allow:
 ```
 record {x : opt text} <: record {} <: record {x : opt nat}
 ```
-but clearly, the left type is incompatible with the right one.
+**TODO: Sanity continues from here.**
 
 
 #### Variants
@@ -632,23 +632,23 @@ but clearly, the left type is incompatible with the right one.
 For a specialised variants, the type of a tag can be specialised, or a tag can be removed.
 ```
 
-------------------------------------------
-variant { } <:P variant { <fieldtype'>;* }
+-----------------------------------------
+variant { } <: variant { <fieldtype'>;* }
 
-<datatype> <:P <datatype'>
-variant { <fieldtype>;* } <:P variant { <fieldtype'>;* }
--------------------------------------------------------------------------------------------------
-variant { <nat> : <datatype>; <fieldtype>;* } <:P variant { <nat> : <datatype'>; <fieldtype'>;* }
+<datatype> <: <datatype'>
+variant { <fieldtype>;* } <: variant { <fieldtype'>;* }
+------------------------------------------------------------------------------------------------
+variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; <fieldtype'>;* }
 ```
 
 #### Functions
 
 For a specialised function, any parameter type can be generalised and any result type specialised. Moreover, arguments can be dropped while results can be added. That is, the rules mirror those of records.
 ```
-record { <fieldtype1'>;* } <:~P record { <fieldtype1>;* }
-record { <fieldtype2>;* } <:P record { <fieldtype2'>;* }
-------------------------------------------------------------------------------------------------------------------------
-func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <:P func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
+record { <fieldtype1'>;* } <: record { <fieldtype1>;* }
+record { <fieldtype2>;* } <: record { <fieldtype2'>;* }
+-----------------------------------------------------------------------------------------------------------------------
+func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
 ```
 
 #### Actors
@@ -656,13 +656,13 @@ func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <:P func ( <fieldtype1'
 For an actor, a method can be specialised (by specialising its function type), or a method added. Essentially, they are treated like records of functions.
 ```
 
--------------------------------------
-actor { <methtype'>;* } <:P actor { }
+----------------------------------------
+service { <methtype'>;* } <: service { }
 
-<functype> <:P <functype'>
-actor { <methtype>;* } <:P actor { <methtype'>;* }
----------------------------------------------------------------------------------------------
-actor { <name> : <functype>; <methtype>;* } <:P actor { <name> : <functype'>; <methtype'>;* }
+<functype> <: <functype'>
+service { <methtype>;* } <: service { <methtype'>;* }
+------------------------------------------------------------------------------------------------
+service { <name> : <functype>; <methtype>;* } <: service { <name> : <functype'>; <methtype'>;* }
 ```
 
 ### Elaboration
@@ -674,37 +674,37 @@ To define the actual coercion function, we extend the subtyping relation to a te
 
 ```
 
----------------------------------
-<primtype> <:P <primtype> ~> \x.x
+--------------------------------
+<primtype> <: <primtype> ~> \x.x
 
 
--------------------
-Nat <:P Int ~> \x.x
+------------------
+Nat <: Int ~> \x.x
 
 
--------------------------------
-<datatype> <:P reserved ~> \x.x
+------------------------------
+<datatype> <: reserved ~> \x.x
 ```
 
 #### Options and Vectors
 
 ```
-<datatype> <:P <datatype'> ~> f
-----------------------------------------------------
-opt <datatype> <:P opt <datatype'> ~> \x.map_opt f x
+<datatype> <: <datatype'> ~> f
+---------------------------------------------------
+opt <datatype> <: opt <datatype'> ~> \x.map_opt f x
 
-<datatype> <:P <datatype'> ~> f
-----------------------------------------------------
-vec <datatype> <:P vec <datatype'> ~> \x.map_vec f x
+<datatype> <: <datatype'> ~> f
+---------------------------------------------------
+vec <datatype> <: vec <datatype'> ~> \x.map_vec f x
 
-not (null <:P <datatype>)
-----------------------------------
-null <:P opt <datatype> ~> \x.null
+not (null <: <datatype>)
+---------------------------------
+null <: opt <datatype> ~> \x.null
 
-not (null <:P <datatype>)
-<datatype> <:P <datatype'> ~> f
--------------------------------------------
-<datatype> <:P opt <datatype'> ~> \x.?(f x)
+not (null <: <datatype>)
+<datatype> <: <datatype'> ~> f
+------------------------------------------
+<datatype> <: opt <datatype'> ~> \x.?(f x)
 ```
 
 
@@ -712,27 +712,26 @@ not (null <:P <datatype>)
 
 ```
 
-----------------------------------
-record { } <:P record { } ~> \x.{}
+------------------------------------------------
+record { <fieldtype'>;* } <: record { } ~> \x.{}
 
-<datatype> <:P <datatype'> ~> f1
-record { <fieldtype>;* } <:P record { <fieldtype'>;* } ~> f2
------------------------------------------------------------------------------------------------
-record { <nat> : <datatype>; <fieldtype>;* } <:P record { <nat> : <datatype'>; <fieldtype'>;* }
+<datatype> <: <datatype'> ~> f1
+record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f2
+----------------------------------------------------------------------------------------------
+record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
   ~> \x.{f2 x with <nat> = f1 x.<nat>}
+```
 
-
--------------------------------------------------
-record { <fieldtype'>;* } <:+ record { } ~> \x.{}
-
-record { <fieldtype>;* } <:- record { <fieldtype'>;* } ~> f
---------------------------------------------------------------------
-record { <fieldtype>;* } <:- record { <nat> : null; <fieldtype'>;* }
+TODO: Fix
+```
+record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
+-------------------------------------------------------------------
+record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
   ~> \x.{f x; <nat> = null}
 
-record { <fieldtype>;* } <:- record { <fieldtype'>;* } ~> f
-------------------------------------------------------------------------------
-record { <fieldtype>;* } <:- record { <nat> : opt <datatype>; <fieldtype'>;* }
+record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
+-----------------------------------------------------------------------------
+record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
   ~> \x.{f x; <nat> = null}
 ```
 
@@ -741,23 +740,23 @@ record { <fieldtype>;* } <:- record { <nat> : opt <datatype>; <fieldtype'>;* }
 
 ```
 
---------------------------------------------------
-variant { } <:P variant { <fieldtype'>;* } ~> \x.x
+-------------------------------------------------
+variant { } <: variant { <fieldtype'>;* } ~> \x.x
 
-<datatype> <:P <datatype'> ~> f1
-variant { <fieldtype>;* } <:P variant { <fieldtype'>;* } ~> f2
--------------------------------------------------------------------------------------------------
-variant { <nat> : <datatype>; <fieldtype>;* } <:P variant { <nat> : <datatype'>; <fieldtype'>;* }
+<datatype> <: <datatype'> ~> f1
+variant { <fieldtype>;* } <: variant { <fieldtype'>;* } ~> f2
+------------------------------------------------------------------------------------------------
+variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; <fieldtype'>;* }
   ~> \x.case x of <nat> y => <nat> (f1 y) | _ => f2 x
 ```
 
 #### Functions
 
 ```
-record { <fieldtype1'>;* } <:~P record { <fieldtype1>;* } ~> f1
-record { <fieldtype2>;* } <:P record { <fieldtype2'>;* } ~> f2
-------------------------------------------------------------------------------------------------------------------------
-func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <:P func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
+record { <fieldtype1'>;* } <: record { <fieldtype1>;* } ~> f1
+record { <fieldtype2>;* } <: record { <fieldtype2'>;* } ~> f2
+----------------------------------------------------------------------------------------------------------------------
+func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
   ~> \x.\y.f2 (x (f1 y))
 ```
 
@@ -765,13 +764,13 @@ func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <:P func ( <fieldtype1'
 
 ```
 
-----------------------------------------------
-actor { <methtype'>;* } <:P actor { } ~> \x.{}
+-------------------------------------------------
+service { <methtype'>;* } <: service { } ~> \x.{}
 
-<functype> <:P <functype'> ~> f1
-actor { <methtype>;* } <:P actor { <methtype'>;* } ~> f2
----------------------------------------------------------------------------------------------
-actor { <name> : <functype>; <methtype>;* } <:P actor { <name> : <functype'>; <methtype'>;* }
+<functype> <: <functype'> ~> f1
+service { <methtype>;* } <: service { <methtype'>;* } ~> f2
+------------------------------------------------------------------------------------------------
+service { <name> : <functype>; <methtype>;* } <: service { <name> : <functype'>; <methtype'>;* }
   ~> \x.{f1 x; <name> = f2 x.<name>}
 ```
 
