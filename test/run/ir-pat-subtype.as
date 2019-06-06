@@ -82,3 +82,4 @@ func a(l:object { a : Int }):U = switch l {
 };
 
 let {} = a(object {a = 2});
+
