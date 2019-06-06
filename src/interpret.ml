@@ -492,7 +492,9 @@ and define_pat env pat v =
     else ()
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
-  | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
+  | ObjP pfs ->
+    (try define_pat_fields env pfs (V.as_obj v) with
+    _ -> trap pat.at "value %s does not match pattern" (V.string_of_val v))
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1
@@ -500,7 +502,11 @@ and define_pat env pat v =
       trap pat.at "value %s does not match pattern" (V.string_of_val v)
     | _ -> assert false
     )
-  | TagP (_, pat1)
+  | TagP (i, pat1) ->
+    let lab, v1 = V.as_variant v in
+    if lab = i.it
+    then define_pat env pat1 v1
+    else trap pat.at "value %s does not match pattern" (V.string_of_val v)
   | AnnotP (pat1, _)
   | ParP pat1 -> define_pat env pat1 v
 
