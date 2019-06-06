@@ -77,6 +77,7 @@ This is a summary of the grammar proposed:
   | text
   | null
   | unavailable
+  | absent
 
 <constype>  ::=
   | opt <datatype>
@@ -258,6 +259,12 @@ The type `unavailable` is a type with unknown content that ought to be ignored. 
 ```
 **Note:** This type has a similar role as *reserved fields* in proto buffers.
 
+#### Absent
+
+The type `absent` is the type of values that are not present. Its purpose is to mark variants that are not actually there, or -- as argument types of function reference -- indicate that they will not be called.
+```
+<primtype> ::= ... | absent
+```
 
 ### Constructed Data
 
@@ -524,11 +531,15 @@ A primitive type cannot be changed in an upgrade.
 <primtype> <: <primtype>
 ```
 
-An additional rule applies to `unavailable`, which makes it a top type, i.e., a supertype of every type.
+Additional rules apply to `absent` and `unavailable`, which makes these a bottom resp. top type:
 ```
 
 -------------------------
 <datatype> <: unavailable
+
+
+--------------------
+absent <: <datatype>
 ```
 
 #### Options and Vectors
@@ -714,12 +725,13 @@ T(int<N>)   = sleb128(-9 - log2(N/8))
 T(float<N>) = sleb128(-13 - log2(N/32))
 T(text)     = sleb128(-15)
 T(unavailable) = sleb128(-16)
+T(absent)   = sleb128(-17)
 
 T : <constype> -> i8*
-T(opt <datatype>) = sleb128(-17) I(<datatype>)
-T(vec <datatype>) = sleb128(-18) I(<datatype>)
-T(record {<fieldtype>^N}) = sleb128(-19) T*(<fieldtype>^N)
-T(variant {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
+T(opt <datatype>) = sleb128(-18) I(<datatype>)
+T(vec <datatype>) = sleb128(-19) I(<datatype>)
+T(record {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
+T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
 
 T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
@@ -779,6 +791,7 @@ M(b : bool)     = i8(if b then 1 else 0)
 M(t : text)     = leb128(|utf8(t)|) i8*(utf8(t))
 M(_ : null)     = .
 M(_ : unavailable) = .
+// NB: M(_ : absent) will never be called
 
 M : <val> -> <constype> -> i8*
 M(null : opt <datatype>) = i8(0)
