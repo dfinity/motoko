@@ -17,8 +17,8 @@ let rec exp e = match e.it with
   | ShowE (t, e)        -> "ShowE"   $$ [typ t; exp e]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
-  | DotE (e, n)         -> "DotE"    $$ [exp e; Atom (name n)]
-  | ActorDotE (e, n)    -> "ActorDotE" $$ [exp e; Atom (name n)]
+  | DotE (e, n)         -> "DotE"    $$ [exp e; Atom n]
+  | ActorDotE (e, n)    -> "ActorDotE" $$ [exp e; Atom n]
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, t, es)   -> "ArrayE"  $$ [Arrange.mut m; typ t] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
@@ -43,7 +43,7 @@ let rec exp e = match e.it with
   | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange.obj_sort' s :: fields fs @ [typ t])
 
-and fields fs = List.fold_left (fun flds (f : field) -> (name f.it.name $$ [ id f.it.var ]):: flds) [] fs
+and fields fs = List.fold_left (fun flds (f : field) -> (f.it.name $$ [ id f.it.var ]):: flds) [] fs
 
 and args = function
  | [] -> []
@@ -61,12 +61,9 @@ and pat p = match p.it with
   | TagP (i, p)     -> "TagP"       $$ [ id i; pat p ]
   | AltP (p1,p2)    -> "AltP"       $$ [ pat p1; pat p2 ]
 
-and pat_field pf = name pf.it.name $$ [pat pf.it.pat]
+and pat_field pf = pf.it.name $$ [pat pf.it.pat]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
-
-and name n = match n.it with
-  | Name l -> l
 
 and call_conv cc = Atom (Value.string_of_call_conv cc)
 
