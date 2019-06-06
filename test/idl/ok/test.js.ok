@@ -13,8 +13,9 @@ const broker =
     })
 const server = new IDL.ActorInterface({
  'addUser':
-  IDL.message(IDL.Obj({'name': IDL.Text, 'age': IDL.Nat}),
-   IDL.Obj({'id': IDL.Nat})),
- 'userName': IDL.message(IDL.Obj({'id': IDL.Nat}), IDL.Obj({'0': IDL.Text})),
- 'userAge': IDL.message(IDL.Obj({'id': IDL.Nat}), IDL.Obj({'0': IDL.Nat})),
- 'deleteUser': IDL.message(IDL.Obj({'id': IDL.Nat}), IDL.Obj({}))})
+  IDL.message(IDL.Obj({'name': IDL.Text, 'age': IDL.Nat8}),
+   IDL.Obj({'id': IDL.Nat64})),
+ 'userName':
+  IDL.message(IDL.Obj({'id': IDL.Nat64}), IDL.Obj({'0': IDL.Text})),
+ 'userAge': IDL.message(IDL.Obj({'id': IDL.Nat64}), IDL.Obj({'0': IDL.Nat8})),
+  'deleteUser': IDL.message(IDL.Obj({'id': IDL.Nat64}), IDL.Obj({}))})

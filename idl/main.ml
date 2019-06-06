@@ -71,7 +71,7 @@ let () =
   Printexc.record_backtrace true;
   try
     Arg.parse argspec add_arg usage;
-    if !mode = Default then mode := Js;
+    if !mode = Default then mode := Check;
     process_files !args
   with exn ->
     print_exn exn

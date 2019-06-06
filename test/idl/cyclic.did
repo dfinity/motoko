@@ -6,8 +6,3 @@ type X = Y;
 type Y = Z;
 type Z = A;
 
-type D = E;
-type E = F;
-type F = G;
-type G = D;
-

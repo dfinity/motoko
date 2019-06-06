@@ -1,4 +1,4 @@
 const num = new IDL.ActorInterface({
- 'f': IDL.message(IDL.Obj({'0': IDL.Nat}), IDL.Obj({'0': IDL.Int})),
- 'g': IDL.message(IDL.Obj({'0': IDL.Nat}), IDL.Obj({'0': IDL.Int})),
- 'h': IDL.message(IDL.Obj({'0': IDL.Int}), IDL.Obj({'0': IDL.Nat}))})
+ 'f': IDL.message(IDL.Obj({'0': IDL.Nat8}), IDL.Obj({'0': IDL.Int16})),
+ 'g': IDL.message(IDL.Obj({'0': IDL.Nat64}), IDL.Obj({'0': IDL.Int64})),
+ 'h': IDL.message(IDL.Obj({'0': IDL.Int8}), IDL.Obj({'0': IDL.Nat}))})

@@ -1,6 +1,6 @@
 const A = IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat})
 const B =
- IDL.Obj({'0': IDL.Arr(IDL.Nat), '35': IDL.Arr(IDL.Nat), '36': IDL.Nat,
+ IDL.Obj({'0': IDL.Arr(IDL.Nat8), '35': IDL.Arr(IDL.Nat8), '36': IDL.Nat,
   '37': IDL.Nat, 'named_files': IDL.None, '653352244': IDL.Nat,
   '653352245': IDL.Nat})
 const C =

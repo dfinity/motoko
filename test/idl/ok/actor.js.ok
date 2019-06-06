@@ -1,4 +1,4 @@
-const f = IDL.message(IDL.Obj({'0': IDL.Int}), IDL.Obj({'0': IDL.Int}))
+const f = IDL.message(IDL.Obj({'0': IDL.Int8}), IDL.Obj({'0': IDL.Int8}))
 const g = f
 const h = IDL.message(IDL.Obj({'0': f}), IDL.Obj({'0': f}))
 const o = IDL.Opt(o)
