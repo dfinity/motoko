@@ -598,9 +598,12 @@ and check_pat env pat : val_env =
   match pat.it with
   | WildP -> T.Env.empty
   | VarP id -> T.Env.singleton id.it pat.note
+  | LitP Syntax.NullLit ->
+    T.Prim T.Null <: t;
+    T.Env.empty
   | LitP lit ->
     let t1 = T.Prim (type_lit env lit pat.at) in
-    t1 <: t;
+    t <: t1;
     T.Env.empty
   | TupP pats ->
     let ve = check_pats pat.at env pats T.Env.empty in
@@ -613,7 +616,7 @@ and check_pat env pat : val_env =
     ve
   | OptP pat1 ->
     let ve = check_pat env pat1 in
-    T.Opt pat1.note <: t;
+    t <: T.Opt pat1.note;
     ve
   | TagP (i, pat1) ->
     let ve = check_pat env pat1 in
@@ -622,8 +625,8 @@ and check_pat env pat : val_env =
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in
     let ve2 = check_pat env pat2 in
-    pat1.note <: t;
-    pat2.note <: t;
+    t <: pat1.note;
+    t <: pat2.note;
     check env pat.at (T.Env.is_empty ve1 && T.Env.is_empty ve2)
       "variables are not allowed in pattern alternatives";
     T.Env.empty
