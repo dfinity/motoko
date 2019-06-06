@@ -492,9 +492,7 @@ and define_pat env pat v =
     else ()
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
-  | ObjP pfs ->
-    (try define_pat_fields env pfs (V.as_obj v) with
-    _ -> trap pat.at "value %s does not match pattern" (V.string_of_val v))
+  | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1
