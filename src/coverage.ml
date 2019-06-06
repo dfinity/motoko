@@ -69,8 +69,11 @@ let rec match_pat ctxt desc pat t sets =
   | LitP lit ->
     match_lit ctxt desc (value_of_lit !lit) t sets
   | SignP (op, lit) ->
-    (try let f = Operator.unop pat.note op in
-    match_lit ctxt desc (f (value_of_lit !lit)) t sets with Invalid_argument _ -> false)
+    begin try
+      let f = Operator.unop pat.note op in
+      match_lit ctxt desc (f (value_of_lit !lit)) t sets
+      with Invalid_argument _ -> false
+    end
   | TupP pats ->
     let ts = Type.as_tup (Type.promote t) in
     let descs =
