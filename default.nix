@@ -70,7 +70,7 @@ let
     "test/(fail|run|run-dfinity|repl|ld|idl)/lib/dir/"
     "test/(fail|run|run-dfinity|repl|ld|idl)/.*.as"
     "test/(fail|run|run-dfinity|repl|ld|idl)/.*.sh"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.didl"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.did"
     "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.wat"
     "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.c"
     "test/(fail|run|run-dfinity|repl|ld|idl)/ok/"
@@ -189,7 +189,7 @@ rec {
 
     buildInputs =
       [ asc
-        idlc
+        didc
         ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
@@ -204,7 +204,7 @@ rec {
         ${llvmEnv}
         export ASC=asc
         export AS_LD=as-ld
-        export IDLC=idlc
+        export DIDC=didc
         asc --version
         make -C samples all
       '' +
@@ -305,8 +305,8 @@ rec {
 
   });
 
-  idlc = stdenv.mkDerivation {
-    name = "idlc";
+  didc = stdenv.mkDerivation {
+    name = "didc";
 
     src = sourceByRegex ./idl [
       "Makefile.*"
@@ -321,12 +321,12 @@ rec {
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make BUILD=native idlc
+      make BUILD=native didc
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp idlc $out/bin
+      cp didc $out/bin
     '';
   };
 
@@ -430,7 +430,7 @@ rec {
     constituents = [
       asc
       js
-      idlc
+      didc
       tests
       coverage-report
       rts
@@ -451,10 +451,10 @@ rec {
     # https://github.com/NixOS/nix/issues/955
     #
 
-    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != idlc) (
+    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != didc) (
       asc-bin.buildInputs ++
       rts.buildInputs ++
-      idlc.buildInputs ++
+      didc.buildInputs ++
       tests.buildInputs ++
       users-guide.buildInputs ++
       [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]

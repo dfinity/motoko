@@ -1,0 +1,3 @@
+type A = record  {nat;nat;nat;};
+type B = variant {nat;nat;nat;};
+

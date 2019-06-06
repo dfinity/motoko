@@ -1,8 +1,8 @@
-NAME = idlc
+NAME = didc
 BUILD = byte
 MAIN = main
 
-IDL = `pwd`/$(NAME)
+DIDC = `pwd`/$(NAME)
 
 OPAM_PACKAGES = wasm stdint num vlq yojson
 
@@ -29,4 +29,8 @@ sanity:
 clean:
 	rm -f *~ .*~
 	$(OCAMLBUILD) -clean
+	$(MAKE) -C ../test/idl clean
+
+test: $(NAME)
+	$(MAKE) -C ../test/idl DIDC=$(DIDC) all
 

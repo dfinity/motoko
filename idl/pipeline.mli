@@ -10,7 +10,5 @@ val parse_file   : string -> parse_result
 type check_result = (Syntax_idl.prog * Typing_idl.scope) Diag.result
 val check_file   : string -> check_result
 
-type compile_result = (Buffer.t, Diag.messages) result
-val compile_js_file   : string -> compile_result
-
-
+type compile_js_result = (Buffer.t, Diag.messages) result
+val compile_js_file   : string -> compile_js_result
