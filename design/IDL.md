@@ -518,11 +518,19 @@ Future extensions: defaults, including for variants?
 
 #### Primitive Types
 
-A primitive type cannot be changed in an upgrade.
+Most primitive types cannot be changed in an upgrade.
 ```
 
 ------------------------
 <primtype> <: <primtype>
+```
+
+An exception are integers, which can be specialised to natural numbers:
+
+```
+
+-----------
+nat <: int
 ```
 
 An additional rule applies to `unavailable`, which makes it a top type, i.e., a supertype of every type.
