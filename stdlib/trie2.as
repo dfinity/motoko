@@ -68,9 +68,10 @@ Below, we define the types used in the representation:
 
 */
 
+//let MAX_LEAF_COUNT = 4; // worse than 8, slightly
+let MAX_LEAF_COUNT = 8; // <-- beats both 4 and 16 for me, now
+//let MAX_LEAF_COUNT = 16;
 //let MAX_LEAF_COUNT = 32;
-let MAX_LEAF_COUNT = 16; // <-- beats both 32 and 8, for me.
-//let MAX_LEAF_COUNT = 8;
 
 let P = (import "prelude.as");
 
@@ -217,7 +218,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   acceptable level of algorithmic efficiently.
 
   */
- func count<K,V>(t: Trie<K,V>) : Nat {
+ func count<K,V>(t: Trie<K,V>) : Nat = label profile_trie_count : Nat {
    switch t {
      case (#empty) 0;
      case (#leaf l) l.count;
@@ -230,7 +231,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   --------
   Construct a branch node, computing the count stored there.
   */
- func branch<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> {
+ func branch<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> = label profile_trie_branch : Trie<K,V> {
    let sum = count<K,V>(l) + count<K,V>(r);
    #branch(
      new{
@@ -251,9 +252,9 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   of the leaf.
 
   */
- func leaf<K,V>(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> =
-   fromList<K,V>(kvs, bitpos);
-
+ func leaf<K,V>(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> = label trie_leaf : Trie<K,V> {
+   fromSizedList<K,V>(null, kvs, bitpos)
+ };
 
  func fromList<K,V>(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> =
    label profile_trie_fromList_begin : (Trie<K,V>) {
@@ -282,6 +283,42 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
  };
 
 
+ func fromSizedList<K,V>(kvc:?Nat, kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> =
+   label profile_trie_fromList_begin : (Trie<K,V>) {
+   func rec(kvc:?Nat, kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> {
+     switch kvc {
+     case null {
+            switch (List.lenClamp<(Key<K>,V)>(kvs, MAX_LEAF_COUNT)) {
+              case null () /* fall through to branch case. */;
+              case (?len) {
+                     return #leaf(new{count=len; keyvals=kvs})
+                   };
+            }
+          };
+     case (?c) {
+       if ( c == 0 ) {
+         return #empty
+       } else if ( c <= MAX_LEAF_COUNT ) {
+         return #leaf(new{count=c; keyvals=kvs})
+       } else {
+         /* fall through to branch case */
+       }
+     };
+     };
+     let (ls, l, rs, r) = splitSizedList<K,V>(kvs, bitpos);
+     if ( ls == 0 and rs == 0 ) {
+       #empty
+     } else if (rs == 0 and ls <= MAX_LEAF_COUNT) {
+       #leaf(new{count=ls; keyvals=l})
+     } else if (ls == 0 and rs <= MAX_LEAF_COUNT) {
+       #leaf(new{count=rs; keyvals=r})
+     } else {
+       branch<K,V>(rec(?ls, l, bitpos + 1), rec(?rs, r, bitpos + 1))
+     }
+   };
+   rec(kvc, kvs, bitpos)
+ };
+
  /**
   `copy`
   ---------
@@ -298,13 +335,14 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    label profile_trie_replace : (Trie<K,V>, ?V) {
    let key_eq = keyEq<K>(k_eq);
 
-   func rec(t : Trie<K,V>, bitpos:Nat) : (Trie<K,V>, ?V) {
+   func rec(t : Trie<K,V>, bitpos:Nat) : (Trie<K,V>, ?V) =
+     label profile_trie_replace_rec : (Trie<K,V>, ?V) {
 	   switch t {
-	   case (#empty) {
+	   case (#empty) label profile_trie_replace_rec_empty : (Trie<K,V>, ?V) {
             let (kvs, _) = AssocList.replace<Key<K>,V>(null, k, key_eq, v);
             (leaf<K,V>(kvs, bitpos), null)
           };
-	   case (#branch b) {
+	   case (#branch b) label profile_trie_replace_rec_branch : (Trie<K,V>, ?V) {
 	          let bit = Hash.getHashBit(k.hash, bitpos);
 	          // rebuild either the left or right path with the inserted (k,v) pair
 	          if (not bit) {
@@ -316,7 +354,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 	            (branch<K,V>(b.left, r), v_)
 	          }
 	        };
-     case (#leaf l) {
+     case (#leaf l) label profile_trie_replace_rec_leaf : (Trie<K,V>, ?V) {
             let (kvs2, old_val) =
               AssocList.replace<Key<K>,V>(l.keyvals, k, key_eq, v);
             (leaf<K,V>(kvs2, bitpos), old_val)
@@ -343,7 +381,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   ---------
   find the given key's value in the trie, or return null if nonexistent
   */
- func find<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K) -> Bool) : ?V {
+ func find<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K) -> Bool) : ?V = label profile_trie_find : (?V) {
    let key_eq = keyEq<K>(k_eq);
    func rec(t : Trie<K,V>, bitpos:Nat) : ?V = label profile_trie_find_rec : (?V) {
      switch t {
@@ -368,7 +406,6 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
              };
      }
    };
-   label profile_trie_find_begin : (?V)
    rec(t, 0)
  };
 
@@ -376,7 +413,8 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
 
  func splitAssocList<K,V>(al:AssocList<Key<K>,V>, bitpos:Nat)
-   : (AssocList<Key<K>,V>, AssocList<Key<K>,V>)
+   : (AssocList<Key<K>,V>, AssocList<Key<K>,V>) =
+   label profile_trie_splitAssocList : (AssocList<Key<K>,V>, AssocList<Key<K>,V>)
  {
    List.split<(Key<K>,V)>(
      al,
@@ -384,6 +422,27 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
        not Hash.getHashBit(k.hash, bitpos)
      }
    )
+ };
+
+ func splitSizedList<K,V>(l:AssocList<Key<K>,V>, bitpos:Nat)
+   : (Nat, AssocList<Key<K>,V>, Nat, AssocList<Key<K>,V>) =
+   label profile_trie_splitSizedList : (Nat, AssocList<Key<K>,V>, Nat, AssocList<Key<K>,V>)
+ {
+   func rec(l : AssocList<Key<K>,V>) : (Nat, AssocList<Key<K>,V>, Nat, AssocList<Key<K>,V>) =
+     label profile_trie_sized_split_rec : (Nat, AssocList<Key<K>,V>, Nat, AssocList<Key<K>,V>) {
+     switch l {
+	   case null { (0, null, 0, null) };
+	   case (?((k,v),t)) {
+            let (cl, l, cr, r) = rec(t) ;
+            if (not Hash.getHashBit(k.hash, bitpos)){
+              (cl + 1, ?((k,v),l), cr, r)
+            } else {
+              (cl, l, cr + 1, ?((k,v),r))
+            }
+          };
+     }
+   };
+   rec(l)
  };
 
   /**
@@ -401,7 +460,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    - [`prod`](#prod)
 
    */
-  func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
+  func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool) : Trie<K,V> = label profile_trie_merge : Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
     func br(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> = branch<K,V>(l,r);
     func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
@@ -447,15 +506,16 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    dynamic error if there are collisions in common keys between the
    left and right inputs.
    */
-  func mergeDisjoint<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
+  func mergeDisjoint<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> =
+    label profile_trie_mergeDisjoint : Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
     func br(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> = branch<K,V>(l,r);
-    func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
+    func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> = label profile_trie_mergeDisjoint_rec : Trie<K,V> {
       func lf(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs, bitpos);
       switch (tl, tr) {
-        case (#empty, _) { return tr };
-        case (_, #empty) { return tl };
-        case (#leaf l1, #leaf l2) {
+        case (#empty, _) label profile_trie_mergeDisjoint_rec_emptyL : Trie<K,V> { return tr };
+        case (_, #empty) label profile_trie_mergeDisjoint_rec_emptyR : Trie<K,V> { return tl };
+        case (#leaf l1, #leaf l2) label profile_trie_mergeDisjoint_rec_leafPair : Trie<K,V> {
                lf(
                  AssocList.disjDisjoint<Key<K>,V,V,V>(
                    l1.keyvals, l2.keyvals,
@@ -469,15 +529,15 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
                  )
                )
              };
-        case (#leaf l, _) {
+        case (#leaf l, _) label profile_trie_mergeDisjoint_rec_splitLeafL : Trie<K,V> {
                let (ll, lr) = splitAssocList<K,V>(l.keyvals, bitpos);
                rec(bitpos, br(lf ll, lf lr), tr)
              };
-        case (_, #leaf l) {
+        case (_, #leaf l) label profile_trie_mergeDisjoint_rec_splitLeafR : Trie<K,V> {
                let (ll, lr) = splitAssocList<K,V>(l.keyvals, bitpos);
                rec(bitpos, tl, br(lf ll, lf lr))
              };
-        case (#branch b1, #branch b2) {
+        case (#branch b1, #branch b2) label profile_trie_mergeDisjoint_rec_branchPair : Trie<K,V> {
                branch<K,V>(
                  rec(bitpos + 1, b1.left, b2.left),
                  rec(bitpos + 1, b1.right, b2.right)
@@ -643,7 +703,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    */
   func join<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 		                 k_eq:(K,K)->Bool, vbin:(V,W)->X)
-    : Trie<K,X>
+    : Trie<K,X> = label profile_trie_join : Trie<K,X>
   {
     let key_eq = keyEq<K>(k_eq);
 
@@ -651,7 +711,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     func br2(l:Trie<K,W>, r:Trie<K,W>) : Trie<K,W> = branch<K,W>(l,r);
     func br3(l:Trie<K,X>, r:Trie<K,X>) : Trie<K,X> = branch<K,X>(l,r);
 
-    func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> {
+    func rec(bitpos:Nat, tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,X> = label profile_trie_join_rec : Trie<K,X> {
       func lf1(kvs:AssocList<Key<K>,V>) : Trie<K,V> = leaf<K,V>(kvs, bitpos);
       func lf2(kvs:AssocList<Key<K>,W>) : Trie<K,W> = leaf<K,W>(kvs, bitpos);
       func lf3(kvs:AssocList<Key<K>,X>) : Trie<K,X> = leaf<K,X>(kvs, bitpos);
@@ -830,7 +890,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    can inject tries into arrays given the Array_tabulate interface for
    doing so.
    */
-  func nth<K,V>(t:Trie<K,V>, i:Nat) : ?(Key<K>, V) {
+  func nth<K,V>(t:Trie<K,V>, i:Nat) : ?(Key<K>, V) = label profile_trie_nth : (?(Key<K>, V)) {
     func rec(t:Trie<K,V>, i:Nat) : ?(Key<K>, V) {
       switch t {
       case (#empty) P.unreachable();

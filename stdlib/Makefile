@@ -343,7 +343,7 @@ profile-wasm-success: profile-fast-counts $(OUTDIR) \
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm.csv \
 
 # wasm binaries and time measurements for various-sized PX workloads
-profile-wasm: profile-fast-counts $(OUTDIR) \
+profile-wasm: $(OUTDIR) profile-fast-counts \
 	\
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm \
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv \

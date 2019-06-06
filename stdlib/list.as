@@ -118,6 +118,30 @@ type List<T> = ?(T, List<T>);
   };
 
   /**
+   `lenClamp`
+  --------
+   get the length, unless greater than a maximum value, in which return null; tail recursive
+   */
+  func lenClamp<T>(l : List<T>, i0 : Nat) : ?Nat =
+    label profile_list_lenClamp : (?Nat) {
+    func rec(l : List<T>, i : Nat) : ?Nat = label profile_list_lenClamp_rec : (?Nat) {
+      switch l {
+	    case null { label profile_list_lenClamp_end_some : (?Nat) ?(i0 - i) };
+	    case (?(_, t)) {
+             if ( i == 0 ) {
+               label profile_list_lenClamp_end_null : (?Nat)
+               null
+             }
+             else {
+               rec(t, i - 1)
+             }
+           };
+      }
+    };
+    rec(l, i0)
+  };
+
+  /**
    `nth`
    ---------
    array-like list access, but in linear time; tail recursive

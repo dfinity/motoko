@@ -112,10 +112,10 @@ type AssocList<K,V> = List.List<(K,V)>;
   func mapAppend<K,V,W,X>(al1:AssocList<K,V>,
                           al2:AssocList<K,W>,
                           vbin:(?V,?W)->X)
-    : AssocList<K,X>
+    : AssocList<K,X> = label profile_assocList_mapAppend : AssocList<K,X>
   {
     func rec(al1:AssocList<K,V>,
-             al2:AssocList<K,W>) : AssocList<K,X> {
+             al2:AssocList<K,W>) : AssocList<K,X> = label profile_assocList_mapAppend_rec : AssocList<K,X> {
       switch (al1, al2) {
         case (null, null)          null;
         case (?((k,v),al1_), _   ) ?((k, vbin(?v, null)), rec(al1_, al2 ));
@@ -128,7 +128,7 @@ type AssocList<K,V> = List.List<(K,V)>;
   func disjDisjoint<K,V,W,X>(al1:AssocList<K,V>,
                              al2:AssocList<K,W>,
                              vbin:(?V,?W)->X)
-    : AssocList<K,X>
+    : AssocList<K,X> = label profile_assocList_disjDisjoint : AssocList<K,X>
   {
     mapAppend<K,V,W,X>(al1, al2, vbin)
   };
