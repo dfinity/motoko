@@ -1,23 +1,10 @@
 bad-unops.as:1.9-1.11: type error, operator is not defined for operand type
-  Int
+  Nat
 bad-unops.as:2.9-2.12: type error, operator is not defined for operand type
   Int
-bad-unops.as:3.15-3.17: type error, expression of type
-  Int
-cannot produce expected type
-  Nat
-bad-unops.as:4.15-4.17: type error, expression of type
-  Int
-cannot produce expected type
-  Nat
 bad-unops.as:6.28-6.30: type error, operator cannot consume expected type
   Nat
 bad-unops.as:6.9-6.55: warning, the cases in this switch do not cover all possible values
-bad-unops.as:7.28-7.30: type error, operator cannot consume expected type
-  Nat
-bad-unops.as:7.9-7.55: warning, the cases in this switch do not cover all possible values
-bad-unops.as:8.28-8.30: type error, operator cannot consume expected type
-  Nat
 bad-unops.as:8.9-8.55: warning, the cases in this switch do not cover all possible values
 bad-unops.as:10.29-10.31: type error, operator cannot consume expected type
   Int
