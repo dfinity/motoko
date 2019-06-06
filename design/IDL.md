@@ -4,7 +4,7 @@ To document, discover, and interact with actors on the platform, we need an inte
 
 #### Goals:
 
-* Language-independent description of actor interfaces and the data they 
+* Language-independent description of actor interfaces and the data they
 exchange (names, parameter and result formats of actor methods)
 * Simple and canonical constructs (C-like; algebraically: sums, products, exponentials)
 * Extensible, backwards-compatible
@@ -65,8 +65,8 @@ This is a summary of the grammar proposed:
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
 <functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
-<funcann>   ::= pure
-<paramtype> ::= <datatype>
+<funcann>   ::= oneway | pure
+<fieldtype> ::= <nat> : <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 
 <primtype>  ::=
@@ -77,6 +77,7 @@ This is a summary of the grammar proposed:
   | text
   | null
   | reserved
+  | empty
 
 <constype>  ::=
   | opt <datatype>
@@ -104,9 +105,6 @@ In addition to this basic grammar, a few syntactic shorthands are supported that
 ```
 <constype> ::= ...
   | blob                   :=  vec nat8
-
-<paramtype> ::= ...
-  | <name> : <datatype>    :=  <datatype>
 
 <fieldtype> ::= ...
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
@@ -159,16 +157,18 @@ service {
   addUser : (name : text, age : nat8) -> (id : nat64);
   userName : (id : nat64) -> (text) pure;
   userAge : (id : nat64) -> (nat8) pure;
+  deleteUser : (id : nat64) -> () oneway;
 }
 ```
 
 
 ### Functions
 
-*Functions* are endpoints for communication. A function invocation is a bidirectional communication, with *parameters* and *results*, a.k.a. request and response.
+*Functions* are endpoints for communication.   A typical function invocation is a bidirectional communication, with *parameters* and *results*, a.k.a. request and response. A `oneway` function invocation is a uni-directional communication with zero or more parameters but no results, intended for fire-and-forget scenarios.
 
 **Note:** The IDL is in fact agnostic to the question whether communication via functions is synchronous (like RPCs) or asynchronous (like messaging with callbacks as response continuations). However, it assumes that all invocations have the same semantics, i.e., there is no need to distinguish between both.
 
+**Note:** In a synchronous interpretation of functions, invocation of a oneway function would return immediately, without waiting for completion of the service-side invocation of the function. In an asynchronous interpretation of functions, the invocation of a `oneway` function does not accept a callback (to invoke on completion).
 
 #### Structure
 
@@ -176,11 +176,12 @@ A function type describes the list of parameters and results and their respectiv
 
 ```
 <functype> ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
-<funcann>  ::= pure
+<funcann>  ::= oneway | pure
 ```
 
 The parameter and result lists are essentially treated as records, see below. That is, they are named, not positional.
 The list of parameters must be shorter than 2^32 values and no name/id may occur twice in it. The same restrictions apply to the result list.
+The result list of a `oneway` function must be empty.
 
 #### Example
 ```
@@ -258,6 +259,12 @@ The type `reserved` is a type with unknown content that ought to be ignored. Its
 ```
 **Note:** This type has a similar role as *reserved fields* in proto buffers.
 
+#### Empty
+
+The type `empty` is the type of values that are not present. Its purpose is to mark variants that are not actually there, or -- as argument types of function reference -- indicate that they will not be called.
+```
+<primtype> ::= ... | empty
+```
 
 ### Constructed Data
 
@@ -305,24 +312,28 @@ An id value must be smaller than 2^32 and no id may occur twice in the same reco
 
 ##### Shorthand: Symbolic Field Ids
 
-An id can also be given as a *name*, which is a shorthand for a numeric id that is the hash of that name wrt a specified hash function, e.g. SHA-256 mod 64.
+An id can also be given as a *name*, which is a shorthand for a numeric id that is the hash of that name:
 ```
 <fieldtype> ::= ...
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
 ```
-This expansion implies that a hash collision between field names within a single record is disallowed. However, the chosen hash function makes such a collision highly unlikely in practice.
 
 The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by an IDL function: a new version of an IDL can safely *add* fields to an out record as long as their id has not been used before. See the discussion on upgrading below for more details.
 
-**Note:** For example, the following hash function [Jacques Garrigue, "Programming with Polymorphic Variants", ML 1998],
+The hash function is specified as
 ```
-hash(id) = ( Sum_(i=0..|id|) id[i] * 223^(|id|-1) ) mod 2^64
+hash(id) = ( Sum_(i=0..k) id[i] * 223^(k-i) ) mod 2^32 where k = |id|-1
 ```
-guarantees that no hash collision occurs for regular identifiers of length up to 8, and that the overall likelihood of a collision for a variant with n cases is lower than
-```
-p(n) = Sum_(i=1..n-1) i/2^64
-```
-That is, the likelihood p(100) of a collision for a variant with 100 cases is less than 2.74 * 10^(-16).
+
+This expansion implies that a hash collision between field names within a single record is disallowed.
+
+This hash function has the the following useful properties:
+
+ * Collisions are sufficiently rare. It has [no collisions for names up to length 4](https://caml.inria.fr/pub/papers/garrigue-polymorphic_variants-ml98.pdf).
+
+ * It is rather simple to implement, compared to, say, a cryptographic hash function (we do not need resistence against collision attacks).
+
+The hash function does not have the property that every numeric value can be turned into a human-readable preimage. Host languages that cannot support numeric field names will have to come up with a suitable encoding textual encoding of numeric field names, as well as of field names that are not valid in the host langauge.
 
 
 ##### Shorthand: Tuple Fields
@@ -341,6 +352,7 @@ record {
   num : nat;
   city : text;
   zip : nat;
+  state : reserved;  // removed since no longer needed
 }
 
 record { nat; nat }
@@ -523,17 +535,22 @@ Most primitive types cannot be changed in an upgrade.
 ```
 
 An exception are integers, which can be specialised to natural numbers:
+
 ```
 
-----------
-Nat <: Int
+-----------
+nat <: int
 ```
 
-An additional rule applies to `reserved`, which makes it a top type, i.e., a supertype of every type.
+Additional rules apply to `empty` and `reserved`, which makes these a bottom resp. top type:
 ```
 
-----------------------
+-------------------------
 <datatype> <: reserved
+
+
+--------------------
+empty <: <datatype>
 ```
 
 #### Options and Vectors
@@ -651,6 +668,8 @@ record { <fieldtype2>;* } <: record { <fieldtype2'>;* }
 func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
 ```
 
+Viewed as sets, the annotations on the functions must be equal.
+
 #### Actors
 
 For an actor, a method can be specialised (by specialising its function type), or a method added. Essentially, they are treated like records of functions.
@@ -684,6 +703,10 @@ Nat <: Int ~> \x.x
 
 ------------------------------
 <datatype> <: reserved ~> \x.x
+
+
+------------------------------
+empty <: <datatype> ~> \_.unreachable
 ```
 
 #### Options and Vectors
@@ -873,12 +896,13 @@ T(int<N>)   = sleb128(-9 - log2(N/8))
 T(float<N>) = sleb128(-13 - log2(N/32))
 T(text)     = sleb128(-15)
 T(reserved) = sleb128(-16)
+T(empty)    = sleb128(-17)
 
 T : <constype> -> i8*
-T(opt <datatype>) = sleb128(-17) I(<datatype>)
-T(vec <datatype>) = sleb128(-18) I(<datatype>)
-T(record {<fieldtype>^N}) = sleb128(-19) T*(<fieldtype>^N)
-T(variant {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
+T(opt <datatype>) = sleb128(-18) I(<datatype>)
+T(vec <datatype>) = sleb128(-19) I(<datatype>)
+T(record {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
+T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
 
 T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
@@ -938,6 +962,7 @@ M(b : bool)     = i8(if b then 1 else 0)
 M(t : text)     = leb128(|utf8(t)|) i8*(utf8(t))
 M(_ : null)     = .
 M(_ : reserved) = .
+// NB: M(_ : empty) will never be called
 
 M : <val> -> <constype> -> i8*
 M(null : opt <datatype>) = i8(0)

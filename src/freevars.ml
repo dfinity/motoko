@@ -8,9 +8,7 @@ open Ir
 *)
 type usage_info = { captured : bool }
 
-let join u1 u2 =
-  { captured = u1.captured || u2.captured 
-  }
+let join u1 u2 = { captured = u1.captured || u2.captured }
 
 module M = Env.Make(String)
 module S = Set.Make(String)

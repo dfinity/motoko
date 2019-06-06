@@ -1,0 +1,8 @@
+*.cmo
+*.cmx
+*.native
+*.byte
+*.opt
+*.unopt
+*.mlpack
+idlc

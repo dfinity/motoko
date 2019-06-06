@@ -329,7 +329,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
           catE
             (textE (f.Type.lab ^ " = "))
             (invoke_generated_show t'
-              { it = DotE (argE t, Ir.Name f.Type.lab @@ no_region )
+              { it = DotE (argE t, f.Type.lab)
               ; at = no_region
               ; note = { note_typ = t'; note_eff = T.Triv }
               }
