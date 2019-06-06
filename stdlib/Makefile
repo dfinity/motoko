@@ -314,7 +314,7 @@ $(OUTDIR)/profileLoadQuery.05-100.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QU
 # wasm binaries and time measurements for various-sized PX workloads
 #
 # these sizes all run without memory limitation issues; bigger sizes complain about growing memory
-profile-wasm-success:\
+profile-wasm-success: profile-fast-counts $(OUTDIR) \
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm \
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv \
 	\
@@ -343,7 +343,8 @@ profile-wasm-success:\
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm.csv \
 
 # wasm binaries and time measurements for various-sized PX workloads
-profile-wasm:\
+profile-wasm: profile-fast-counts $(OUTDIR) \
+	\
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm \
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv \
 	\

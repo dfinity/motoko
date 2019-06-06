@@ -1,11 +1,11 @@
 module {
 /**
 
-Association Lists 
+Association Lists
 ==================
- 
+
 Association Lists, a la functional programming, in ActorScript.
- 
+
 Implements the same interface as `Trie`, but as a linked-list of key-value pairs.
 
 */
@@ -106,17 +106,45 @@ type AssocList<K,V> = List.List<(K,V)>;
   };
 
   /**
+   `mapAppend`
+   --------
+  */
+  func mapAppend<K,V,W,X>(al1:AssocList<K,V>,
+                          al2:AssocList<K,W>,
+                          vbin:(?V,?W)->X)
+    : AssocList<K,X>
+  {
+    func rec(al1:AssocList<K,V>,
+             al2:AssocList<K,W>) : AssocList<K,X> {
+      switch (al1, al2) {
+        case (null, null)          null;
+        case (?((k,v),al1_), _   ) ?((k, vbin(?v, null)), rec(al1_, al2 ));
+        case (null, ?((k,v),al2_)) ?((k, vbin(null, ?v)), rec(null, al2_));
+      }
+    };
+    rec(al1, al2)
+  };
+
+  func disjDisjoint<K,V,W,X>(al1:AssocList<K,V>,
+                             al2:AssocList<K,W>,
+                             vbin:(?V,?W)->X)
+    : AssocList<K,X>
+  {
+    mapAppend<K,V,W,X>(al1, al2, vbin)
+  };
+
+  /**
    `disj`
    --------
    This operation generalizes the notion of "set union" to finite maps.
    Produces a "disjunctive image" of the two lists, where the values of
    matching keys are combined with the given binary operator.
-  
+
    For unmatched key-value pairs, the operator is still applied to
    create the value in the image.  To accomodate these various
    situations, the operator accepts optional values, but is never
    applied to (null, null).
-  
+
   */
   func disj<K,V,W,X>(al1:AssocList<K,V>,
                      al2:AssocList<K,W>,
@@ -158,7 +186,7 @@ type AssocList<K,V> = List.List<(K,V)>;
    finite maps.  Produces a "conjuctive image" of the two lists, where
    the values of matching keys are combined with the given binary
    operator, and unmatched key-value pairs are not present in the output.
-  
+
   */
   func join<K,V,W,X>(al1 : AssocList<K,V>,
                      al2:AssocList<K,W>,

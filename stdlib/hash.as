@@ -49,20 +49,51 @@ module BitVec {
 
   type t = BitVec;
 
+  // Jenkin's one at a time:
+  // https://en.wikipedia.org/wiki/Jenkins_hash_function#one_at_a_time
+  //
+  // The input type should actually be [Word8].
+  // Note: Be sure to explode each Word8 of a Word32 into its own Word32, and to shift into lower 8 bits.
+  func hashWord8s(key:[BitVec]) : BitVec = label profile_hash_hashWord8s : BitVec {
+    var hash = natToWord32(0);
+    for (wordOfKey in key.vals()) { label profile_hash_hashWord8s_forLoop : ()
+      hash := hash + wordOfKey;
+      hash := hash + hash << 10;
+      hash := hash ^ (hash >> 6);
+    };
+    hash := hash + hash << 3;
+    hash := hash ^ (hash >> 11);
+    hash := hash + hash << 15;
+    return hash;
+  };
+
   func length() : Nat =
     label profile_hash_length : Nat
     31;
 
-  func hashOfInt(i:Int) : BitVec {
-    hashInt(i)
+  func hashOfInt(i:Int) : BitVec = label profile_hash_hashOfInt : BitVec {
+    //hashInt(i)
+    let j = intToWord32(i);
+    hashWord8s(
+      [j & (255 << 0),
+       j & (255 << 8),
+       j & (255 << 16),
+       j & (255 << 24)
+      ]);
   };
 
-  func hashOfIntAcc(h1:BitVec, i:Int) : BitVec {
-    let h2 = hashInt(i);
-    h2 ^ (h1 << 10) ^ (h2 << 20);
+  func hashOfIntAcc(h1:BitVec, i:Int) : BitVec = label profile_hash_hashOfIntAcc : BitVec {
+    let j = intToWord32(i);
+    hashWord8s(
+      [h1,
+       j & (255 << 0),
+       j & (255 << 8),
+       j & (255 << 16),
+       j & (255 << 24)
+      ]);
   };
 
-  func hashOfText(t:Text) : BitVec {
+  func hashOfText(t:Text) : BitVec  = label profile_hash_hashOfText : BitVec {
     var x = 0 : Word32;
     for (c in t.chars()) {
       x := x ^ charToWord32(c);
@@ -71,8 +102,7 @@ module BitVec {
   };
 
   /** Project a given bit from the bit vector. */
-  func getHashBit(h:BitVec, pos:Nat) : Bool =
-    label profile_getHashBit : Bool {
+  func getHashBit(h:BitVec, pos:Nat) : Bool = label profile_getHashBit : Bool {
     assert (pos <= length());
     if ((h & (natToWord32(1) << natToWord32(pos))) != natToWord32(0))
     { label profile_getHashBit_true : Bool

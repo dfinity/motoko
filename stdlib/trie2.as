@@ -457,23 +457,15 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
         case (_, #empty) { return tl };
         case (#leaf l1, #leaf l2) {
                lf(
-                 AssocList.disj<Key<K>,V,V,V>(
+                 AssocList.disjDisjoint<Key<K>,V,V,V>(
                    l1.keyvals, l2.keyvals,
-                   key_eq,
                    func (x:?V, y:?V):V = {
                      switch (x, y) {
-                     case (null, null) {
-                            /* IMPOSSIBLE case. */
-                            P.unreachable()
-                          };
-                     case (?_, ?_) {
-                            /* INVALID case: left and right defined for the same key */
-                            assert false;
-                            P.unreachable()
-                          };
                      case (null, ?v) v;
                      case (?v, null) v;
-                     }}
+                     case (_, _) P.unreachable();
+                     }
+                   }
                  )
                )
              };

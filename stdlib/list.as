@@ -83,8 +83,8 @@ type List<T> = ?(T, List<T>);
   --------
    length; tail recursive
    */
-  func len<T>(l : List<T>) : Nat = {
-    func rec(l : List<T>, n : Nat) : Nat {
+  func len<T>(l : List<T>) : Nat = label profile_list_len : Nat {
+    func rec(l : List<T>, n : Nat) : Nat = label profile_list_len_rec : Nat {
       switch l {
 	    case null     { n };
 	    case (?(_,t)) { rec(t,n+1) };
