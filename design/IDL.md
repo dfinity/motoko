@@ -76,7 +76,7 @@ This is a summary of the grammar proposed:
   | bool
   | text
   | null
-  | unavailable
+  | reserved
 
 <constype>  ::=
   | opt <datatype>
@@ -250,11 +250,11 @@ The type `null` has exactly one value (the *null* value) and therefor carries no
 <primtype> ::= ... | null | ...
 ```
 
-#### Unavailable
+#### Reserved
 
-The type `unavailable` is a type with unknown content that ought to be ignored. Its purpose is to occupy field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record types below.
+The type `reserved` is a type with unknown content that ought to be ignored. Its purpose is to occupy field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record types below.
 ```
-<primtype> ::= ... | unavailable
+<primtype> ::= ... | reserved
 ```
 **Note:** This type has a similar role as *reserved fields* in proto buffers.
 
@@ -345,13 +345,14 @@ record {
   num : nat;
   city : text;
   zip : nat;
-  state : unavailable;  // removed since no longer needed
+  state : reserved;  // removed since no longer needed
 }
 
 record { nat; nat }
 record { 0 : nat; 1 : nat }
 ```
 The latter two records are equivalent.
+
 
 #### Variants
 
@@ -634,12 +635,12 @@ type TruckTypeId = nat;
 type Weight = float32;
 
 type TruckTypeInfo = record {
- id : TruckTypeId;
- short_name : Text;
- description : Text;
- capacity : opt Weight;
- isFridge : opt bool;
- isFreezer : opt bool;
+  id : TruckTypeId;
+  short_name : Text;
+  description : Text;
+  capacity : opt Weight;
+  isFridge : opt bool;
+  isFreezer : opt bool;
 };
 
 service Server : {
@@ -651,9 +652,9 @@ service Server : {
 Note:
 * `TruckTypeId` and `nat` are used interchangeably.
 
-With this IDL file, the server actor code will be:
+With this IDL file, the server code in ActorScript could be:
 ```
-actor server = {
+actor Server {
   registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
     getModel().truckTypeTable.AddInfoGetId(
       func (id_ : TruckTypeId) : TruckTypeInfo = shared {
@@ -721,7 +722,7 @@ T(nat<N>)   = sleb128(-5 - log2(N/8))
 T(int<N>)   = sleb128(-9 - log2(N/8))
 T(float<N>) = sleb128(-13 - log2(N/32))
 T(text)     = sleb128(-15)
-T(unavailable) = sleb128(-16)
+T(reserved) = sleb128(-16)
 
 T : <constype> -> i8*
 T(opt <datatype>) = sleb128(-17) I(<datatype>)
@@ -786,7 +787,7 @@ M(z : float<N>) = f<N>(z)
 M(b : bool)     = i8(if b then 1 else 0)
 M(t : text)     = leb128(|utf8(t)|) i8*(utf8(t))
 M(_ : null)     = .
-M(_ : unavailable) = .
+M(_ : reserved) = .
 
 M : <val> -> <constype> -> i8*
 M(null : opt <datatype>) = i8(0)
