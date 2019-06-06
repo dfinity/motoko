@@ -18,8 +18,8 @@ val constM : mut
 
 (* Field names *)
 
-val nameN : string -> name
-val nextN : name
+val nameN : string -> Type.lab
+val nextN : Type.lab
 
 (* Identifiers *)
 
@@ -55,7 +55,7 @@ val boolE : bool -> exp
 val callE : exp -> typ list -> exp -> exp
 
 val ifE : exp -> exp -> exp -> typ -> exp
-val dotE : exp -> name -> typ -> exp
+val dotE : exp -> Type.lab -> typ -> exp
 val switch_optE : exp -> exp -> pat -> exp -> typ -> exp
 val switch_variantE : exp -> (id * pat * exp) list -> typ -> exp
 val tupE : exp list -> exp

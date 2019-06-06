@@ -76,7 +76,8 @@ This is a summary of the grammar proposed:
   | bool
   | text
   | null
-  | unavailable
+  | reserved
+  | empty
 
 <constype>  ::=
   | opt <datatype>
@@ -250,14 +251,20 @@ The type `null` has exactly one value (the *null* value) and therefor carries no
 <primtype> ::= ... | null | ...
 ```
 
-#### Unavailable
+#### Reserved
 
-The type `unavailable` is a type with unknown content that ought to be ignored. Its purpose is to occupy field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record types below.
+The type `reserved` is a type with unknown content that ought to be ignored. Its purpose is to occupy field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record types below.
 ```
-<primtype> ::= ... | unavailable
+<primtype> ::= ... | reserved
 ```
 **Note:** This type has a similar role as *reserved fields* in proto buffers.
 
+#### Empty
+
+The type `empty` is the type of values that are not present. Its purpose is to mark variants that are not actually there, or -- as argument types of function reference -- indicate that they will not be called.
+```
+<primtype> ::= ... | empty
+```
 
 ### Constructed Data
 
@@ -345,13 +352,14 @@ record {
   num : nat;
   city : text;
   zip : nat;
-  state : unavailable;  // removed since no longer needed
+  state : reserved;  // removed since no longer needed
 }
 
 record { nat; nat }
 record { 0 : nat; 1 : nat }
 ```
 The latter two records are equivalent.
+
 
 #### Variants
 
@@ -517,18 +525,30 @@ Future extensions: defaults, including for variants?
 
 #### Primitive Types
 
-A primitive type cannot be changed in an upgrade.
+Most primitive types cannot be changed in an upgrade.
 ```
 
 ------------------------
 <primtype> <: <primtype>
 ```
 
-An additional rule applies to `unavailable`, which makes it a top type, i.e., a supertype of every type.
+An exception are integers, which can be specialised to natural numbers:
+
+```
+
+-----------
+nat <: int
+```
+
+Additional rules apply to `empty` and `reserved`, which makes these a bottom resp. top type:
 ```
 
 -------------------------
-<datatype> <: unavailable
+<datatype> <: reserved
+
+
+--------------------
+empty <: <datatype>
 ```
 
 #### Options and Vectors
@@ -626,12 +646,12 @@ type TruckTypeId = nat;
 type Weight = float32;
 
 type TruckTypeInfo = record {
- id : TruckTypeId;
- short_name : Text;
- description : Text;
- capacity : opt Weight;
- isFridge : opt bool;
- isFreezer : opt bool;
+  id : TruckTypeId;
+  short_name : Text;
+  description : Text;
+  capacity : opt Weight;
+  isFridge : opt bool;
+  isFreezer : opt bool;
 };
 
 service Server : {
@@ -643,9 +663,9 @@ service Server : {
 Note:
 * `TruckTypeId` and `nat` are used interchangeably.
 
-With this IDL file, the server actor code will be:
+With this IDL file, the server code in ActorScript could be:
 ```
-actor server = {
+actor Server {
   registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
     getModel().truckTypeTable.AddInfoGetId(
       func (id_ : TruckTypeId) : TruckTypeInfo = shared {
@@ -713,13 +733,14 @@ T(nat<N>)   = sleb128(-5 - log2(N/8))
 T(int<N>)   = sleb128(-9 - log2(N/8))
 T(float<N>) = sleb128(-13 - log2(N/32))
 T(text)     = sleb128(-15)
-T(unavailable) = sleb128(-16)
+T(reserved) = sleb128(-16)
+T(empty)    = sleb128(-17)
 
 T : <constype> -> i8*
-T(opt <datatype>) = sleb128(-17) I(<datatype>)
-T(vec <datatype>) = sleb128(-18) I(<datatype>)
-T(record {<fieldtype>^N}) = sleb128(-19) T*(<fieldtype>^N)
-T(variant {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
+T(opt <datatype>) = sleb128(-18) I(<datatype>)
+T(vec <datatype>) = sleb128(-19) I(<datatype>)
+T(record {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
+T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
 
 T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
@@ -778,7 +799,8 @@ M(z : float<N>) = f<N>(z)
 M(b : bool)     = i8(if b then 1 else 0)
 M(t : text)     = leb128(|utf8(t)|) i8*(utf8(t))
 M(_ : null)     = .
-M(_ : unavailable) = .
+M(_ : reserved) = .
+// NB: M(_ : empty) will never be called
 
 M : <val> -> <constype> -> i8*
 M(null : opt <datatype>) = i8(0)

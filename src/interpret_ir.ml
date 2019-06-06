@@ -304,8 +304,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | DotE (exp1, {it = Name n; _})
-  | ActorDotE (exp1, {it = Name n; _}) ->
+  | DotE (exp1, n)
+  | ActorDotE (exp1, n) ->
     interpret_exp env exp1 (fun v1 ->
       let fs = V.as_obj v1 in
       k (try find n fs with _ -> assert false)
@@ -424,8 +424,7 @@ and interpret_fields env fs =
     let ve =
       List.fold_left
         (fun ve (f : field) ->
-          let Name name = f.it.name.it in
-          V.Env.disjoint_add name (Lib.Promise.value (find f.it.var.it env.vals)) ve
+          V.Env.disjoint_add f.it.name (Lib.Promise.value (find f.it.var.it env.vals)) ve
         ) V.Env.empty fs in
     V.Obj ve
 
@@ -513,8 +512,7 @@ and define_pats env pats vs =
 
 and define_field_pats env pfs vs =
   let define_field (pf : pat_field) =
-    let Name key = pf.it.name.it in
-    define_pat env pf.it.pat (V.Env.find key vs) in
+    define_pat env pf.it.pat (V.Env.find pf.it.name vs) in
   List.iter define_field pfs
 
 
@@ -582,8 +580,7 @@ and match_pat_fields pfs vs ve : val_env option =
   | [] -> Some ve
   | pf::pfs' ->
     begin
-      let Name key = pf.it.name.it in
-      match match_pat pf.it.pat (V.Env.find key vs) with
+      match match_pat pf.it.pat (V.Env.find pf.it.name vs) with
       | Some ve' -> match_pat_fields pfs' vs (V.Env.adjoin ve ve')
       | None -> None
     end
