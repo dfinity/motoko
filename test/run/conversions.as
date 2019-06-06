@@ -31,6 +31,20 @@ func forall<T> (f : T -> (), l : [T]) = for (e in l.vals()) { f e };
 {
     func roundtrip(w : Word32) = assert (natToWord32 (word32ToNat w) == w);
     forall<Word32>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
+
+
+    func roundtripNat32(w : Word32) = assert (nat32ToWord32 (word32ToNat32 w) == w);
+    forall<Word32>(roundtripNat32, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF/*, 0xFFFFFFFF*/]);
+    // BUG roundtripNat32 0xFFFFFFFF;
+
+    func roundtripInt32(w : Word32) = assert (int32ToWord32 (word32ToInt32 w) == w);
+    forall<Word32>(roundtripInt32, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF/*, 0xFFFFFFFF*/]);
+    // BUG roundtripInt32 0xFFFFFFFF;
+
+    func roundtripInt(w : Int) = assert (int32ToInt (intToInt32 w) == w);
+    forall<Int>(roundtripInt, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF]);
+    forall<Int>(roundtripInt, [-10, -100, -1000, -10000, -100000, -1000000, -10000000, -100000000, -1000000000, -2147483648]);
+    // overflows!! roundtripInt 0xFFFFFFFF;
 };
 
 
@@ -75,7 +89,7 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
     func roundtrip(i : Int) = assert (word32ToInt (intToWord32 i) == i);
     forall<Int>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF]);
 
-    forall<Int>(roundtrip, [(-10), (-100), (-1000), (-10000), (-100000), (-1000000), (-10000000), (-100000000), (-1000000000), (-2147483648)]);
+    forall<Int>(roundtrip, [-10, -100, -1000, -10000, -100000, -1000000, -10000000, -100000000, -1000000000, -2147483648]);
 };
 
 {

@@ -285,11 +285,10 @@ module Conv = struct
   open Big_int
   let of_signed_Word32 w = to_int (logand 0xFFFFFFFFn (of_int32 w))
 
-  let two = big_int_of_int 2
-  let twoRaised62 = power_big_int_positive_int two 62
-  let twoRaised63 = power_big_int_positive_int two 63
+  let twoRaised62 = power_int_positive_int 2 62
+  let twoRaised63 = power_int_positive_int 2 63
   let word_twoRaised63 = Word64.(pow 2L 63L)
-  let twoRaised64 = power_big_int_positive_int two 64
+  let twoRaised64 = power_int_positive_int 2 64
 
   let word64_of_nat_big_int i =
     assert (sign_big_int i > -1);
@@ -313,6 +312,10 @@ module Conv = struct
     match int_of_big_int_opt i with
     | Some n -> n
     | _ -> int_of_big_int (mod_big_int i twoRaised62)
+
+  (* for q in {0, -1} return i + q * offs *)
+  let to_neg i q offs = if Big_int.sign_big_int q = 0 then i else i - offs
+
 end (* Conv *)
 
 
@@ -349,12 +352,22 @@ let prim = function
   | "Nat->Word32" -> fun v k ->
                      let i = Conv.wrapped_int_of_big_int (as_int v)
                      in k (Word32 (Word32.of_int_u i))
+  | "Nat->Nat32" -> fun v k ->
+                    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 32) in
+                    let i = Big_int.int_of_big_int r
+                    in Big_int.(if eq_big_int q zero_big_int then k (Nat32 (Nat32.of_int i)) else assert false)
   | "Int32->Word32" -> fun v k ->
                        let i = Int_32.to_int (as_int32 v)
                        in k (Word32 (Word32.of_int_s i))
   | "Int->Word32" -> fun v k ->
                      let i = Conv.wrapped_int_of_big_int (as_int v)
                      in k (Word32 (Word32.of_int_s i))
+  | "Int->Int32" -> fun v k ->
+                    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 31) in
+                    let i = Big_int.int_of_big_int r in
+                    Big_int.
+                       (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
+                        then k (Int32 (Int_32.of_int (Conv.to_neg i q 0x80000000))) else assert false)
 
   | "Nat64->Word64" -> fun v k -> k (Word64 (Word64.of_string (Nat64.to_string (as_nat64 v))))
   | "Nat->Word64" -> fun v k -> k (Word64 (Conv.word64_of_nat_big_int (as_int v)))
