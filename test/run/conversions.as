@@ -21,36 +21,16 @@ assert(word32ToNat 42 == 42);
 assert(word32ToNat 2147483647 == 2147483647); // 2**31 - 1
 assert(word32ToNat 4294967295 == 4294967295); // 2**32 - 1
 
+func forall<T> (f : T -> (), l : [T]) = for (e in l.vals()) { f e };
+
 {
     func roundtrip(n : Nat) = assert (word32ToNat (natToWord32 n) == n);
-    roundtrip 0;
-    roundtrip 10;
-    roundtrip 100;
-    roundtrip 1000;
-    roundtrip 10000;
-    roundtrip 100000;
-    roundtrip 1000000;
-    roundtrip 10000000;
-    roundtrip 100000000;
-    roundtrip 1000000000;
-    roundtrip 0x7FFFFFFF;
-    roundtrip 0xFFFFFFFF;
+    forall<Nat>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
 };
 
 {
     func roundtrip(w : Word32) = assert (natToWord32 (word32ToNat w) == w);
-    roundtrip 0;
-    roundtrip 10;
-    roundtrip 100;
-    roundtrip 1000;
-    roundtrip 10000;
-    roundtrip 100000;
-    roundtrip 1000000;
-    roundtrip 10000000;
-    roundtrip 100000000;
-    roundtrip 1000000000;
-    roundtrip 0x7FFFFFFF;
-    roundtrip 0xFFFFFFFF;
+    forall<Word32>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
 };
 
 
@@ -93,55 +73,17 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
 
 {
     func roundtrip(i : Int) = assert (word32ToInt (intToWord32 i) == i);
-    roundtrip 0;
-    roundtrip 10;
-    roundtrip 100;
-    roundtrip 1000;
-    roundtrip 10000;
-    roundtrip 100000;
-    roundtrip 1000000;
-    roundtrip 10000000;
-    roundtrip 100000000;
-    roundtrip 1000000000;
-    roundtrip 0x7FFFFFFF;
+    forall<Int>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF]);
 
-    roundtrip (-10);
-    roundtrip (-100);
-    roundtrip (-1000);
-    roundtrip (-10000);
-    roundtrip (-100000);
-    roundtrip (-1000000);
-    roundtrip (-10000000);
-    roundtrip (-100000000);
-    roundtrip (-1000000000);
-    roundtrip (-2147483648);
+    forall<Int>(roundtrip, [(-10), (-100), (-1000), (-10000), (-100000), (-1000000), (-10000000), (-100000000), (-1000000000), (-2147483648)]);
 };
 
 {
     func roundtrip(w : Word32) = assert (intToWord32 (word32ToInt w) == w);
-    roundtrip 0;
-    roundtrip 10;
-    roundtrip 100;
-    roundtrip 1000;
-    roundtrip 10000;
-    roundtrip 100000;
-    roundtrip 1000000;
-    roundtrip 10000000;
-    roundtrip 100000000;
-    roundtrip 1000000000;
-    roundtrip 0x7FFFFFFF;
-    roundtrip 0xFFFFFFFF;
+    forall<Word32>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
 
     /*!*/
-    roundtrip (-10);
-    roundtrip (-100);
-    roundtrip (-1000);
-    roundtrip (-10000);
-    roundtrip (-100000);
-    roundtrip (-1000000);
-    roundtrip (-10000000);
-    roundtrip (-100000000);
-    roundtrip (-1000000000);
+    forall<Word32>(roundtrip, [(-10), (-100), (-1000), (-10000), (-100000), (-1000000), (-10000000), (-100000000), (-1000000000)]);
 };
 
 
@@ -157,14 +99,7 @@ assert(charToWord32 '\u{10ffff}' == (0x10FFFF : Word32));
 
 {
     func roundtrip(w : Word32) = assert (charToWord32 (word32ToChar w) == w);
-    roundtrip 0;
-    roundtrip 10;
-    roundtrip 100;
-    roundtrip 1000;
-    roundtrip 10000;
-    roundtrip 100000;
-    roundtrip 1000000;
-    roundtrip 0x10FFFF;  // largest code point
+    forall<Word32>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 0x10FFFF]);  // largest code point
 };
 
 
