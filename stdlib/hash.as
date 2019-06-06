@@ -57,10 +57,9 @@ module BitVec {
     hashInt(i)
   };
 
-  func hashOfIntAcc(h:BitVec, i:Int) : BitVec {
-    //hashIntAcc(h, i)
-    // xxx use the value h
-    hashInt(i)
+  func hashOfIntAcc(h1:BitVec, i:Int) : BitVec {
+    let h2 = hashInt(i);
+    h2 ^ (h1 << 10) ^ (h2 << 20);
   };
 
   func hashOfText(t:Text) : BitVec {
