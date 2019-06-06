@@ -364,25 +364,43 @@ let prim = function
   | "Word8->Nat" -> fun v k ->
                     let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
                     in k (Int (Big_int.big_int_of_int i))
+  | "Word8->Nat8" -> fun v k ->
+                     let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
+                     in k (Nat8 (Nat8.of_int i))
   | "Int8->Int" -> fun v k -> k (Int (Int.of_int (Int_8.to_int (as_int8 v))))
   | "Nat8->Nat" -> fun v k -> k (Int (Nat.of_int (Nat8.to_int (as_nat8 v))))
   | "Word8->Int" -> fun v k ->
                     let i = Int32.to_int (Int32.shift_right (Word8.to_bits (as_word8 v)) 24)
                     in k (Int (Big_int.big_int_of_int i))
+  | "Word8->Int8" -> fun v k ->
+                    let i = Int32.to_int (Int32.shift_right (Word8.to_bits (as_word8 v)) 24)
+                    in k (Int8 (Int_8.of_int i))
   | "Word16->Nat" -> fun v k ->
                      let i = Int32.to_int (Int32.shift_right_logical (Word16.to_bits (as_word16 v)) 16)
                      in k (Int (Big_int.big_int_of_int i))
+  | "Word16->Nat16" -> fun v k ->
+                       let i = Int32.to_int (Int32.shift_right_logical (Word16.to_bits (as_word16 v)) 16)
+                       in k (Nat16 (Nat16.of_int i))
   | "Int16->Int" -> fun v k -> k (Int (Int.of_int (Int_16.to_int (as_int16 v))))
   | "Nat16->Nat" -> fun v k -> k (Int (Nat.of_int (Nat16.to_int (as_nat16 v))))
   | "Word16->Int" -> fun v k ->
                      let i = Int32.to_int (Int32.shift_right (Word16.to_bits (as_word16 v)) 16)
                      in k (Int (Big_int.big_int_of_int i))
+  | "Word16->Int16" -> fun v k ->
+                       let i = Int32.to_int (Int32.shift_right (Word16.to_bits (as_word16 v)) 16)
+                       in k (Int16 (Int_16.of_int i))
   | "Int32->Int" -> fun v k -> k (Int (Int.of_int (Int_32.to_int (as_int32 v))))
   | "Nat32->Nat" -> fun v k -> k (Int (Nat.of_int (Nat32.to_int (as_nat32 v))))
   | "Word32->Nat" -> fun v k ->
                      let i = Conv.of_signed_Word32 (as_word32 v)
                      in k (Int (Big_int.big_int_of_int i))
   | "Word32->Int" -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
+  | "Word32->Int32" -> fun v k ->
+                       let i = Big_int.(int_of_big_int (big_int_of_int32 (as_word32 v))) in
+                       k (Int32 (Int_32.of_int i))
+  | "Word32->Nat32" -> fun v k ->
+                       let i = Big_int.(int_of_big_int (big_int_of_int32 (as_word32 v))) in
+                       k (Nat32 (Nat32.of_int i))
 
   | "Int64->Int" -> fun v k -> k (Int (Int.of_string (Int_64.to_string (as_int64 v))))
   | "Nat64->Nat" -> fun v k -> k (Int (Nat.of_string (Nat64.to_string (as_nat64 v))))
