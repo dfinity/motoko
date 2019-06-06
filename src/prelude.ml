@@ -69,6 +69,35 @@ func int64ToInt(n : Int64) : Int = (prim "Int64->Int" : Int64 -> Int) n;
 func intToInt64(n : Int) : Int64 = (prim "Int->Int64" : Int -> Int64) n;
 func int64ToWord64(n : Int64) : Word64 = (prim "Int64->Word64" : Int64 -> Word64) n;
 func word64ToInt64(n : Word64) : Int64 = (prim "Word64->Int64" : Word64 -> Int64) n;
+func int32ToInt(n : Int32) : Int = (prim "Int32->Int" : Int32 -> Int) n;
+func intToInt32(n : Int) : Int32 = (prim "Int->Int32" : Int -> Int32) n;
+func int32ToWord32(n : Int32) : Word32 = (prim "Int32->Word32" : Int32 -> Word32) n;
+func word32ToInt32(n : Word32) : Int32 = (prim "Word32->Int32" : Word32 -> Int32) n;
+func int16ToInt(n : Int16) : Int = (prim "Int16->Int" : Int16 -> Int) n;
+func intToInt16(n : Int) : Int16 = (prim "Int->Int16" : Int -> Int16) n;
+func int16ToWord16(n : Int16) : Word16 = (prim "Int16->Word16" : Int16 -> Word16) n;
+func word16ToInt16(n : Word16) : Int16 = (prim "Word16->Int16" : Word16 -> Int16) n;
+func int8ToInt(n : Int8) : Int = (prim "Int8->Int" : Int8 -> Int) n;
+func intToInt8(n : Int) : Int8 = (prim "Int->Int8" : Int -> Int8) n;
+func int8ToWord8(n : Int8) : Word8 = (prim "Int8->Word8" : Int8 -> Word8) n;
+func word8ToInt8(n : Word8) : Int8 = (prim "Word8->Int8" : Word8 -> Int8) n;
+
+func nat64ToNat(n : Nat64) : Nat = (prim "Nat64->Nat" : Nat64 -> Nat) n;
+func natToNat64(n : Nat) : Nat64 = (prim "Nat->Nat64" : Nat -> Nat64) n;
+func nat64ToWord64(n : Nat64) : Word64 = (prim "Nat64->Word64" : Nat64 -> Word64) n;
+func word64ToNat64(n : Word64) : Nat64 = (prim "Word64->Nat64" : Word64 -> Nat64) n;
+func nat32ToNat(n : Nat32) : Nat = (prim "Nat32->Nat" : Nat32 -> Nat) n;
+func natToNat32(n : Nat) : Nat32 = (prim "Nat->Nat32" : Nat -> Nat32) n;
+func nat32ToWord32(n : Nat32) : Word32 = (prim "Nat32->Word32" : Nat32 -> Word32) n;
+func word32ToNat32(n : Word32) : Nat32 = (prim "Word32->Nat32" : Word32 -> Nat32) n;
+func nat16ToNat(n : Nat16) : Nat = (prim "Nat16->Nat" : Nat16 -> Nat) n;
+func natToNat16(n : Nat) : Nat16 = (prim "Nat->Nat16" : Nat -> Nat16) n;
+func nat16ToWord16(n : Nat16) : Word16 = (prim "Nat16->Word16" : Nat16 -> Word16) n;
+func word16ToNat16(n : Word16) : Nat16 = (prim "Word16->Nat16" : Word16 -> Nat16) n;
+func nat8ToNat(n : Nat8) : Nat = (prim "Nat8->Nat" : Nat8 -> Nat) n;
+func natToNat8(n : Nat) : Nat8 = (prim "Nat->Nat8" : Nat -> Nat8) n;
+func nat8ToWord8(n : Nat8) : Word8 = (prim "Nat8->Word8" : Nat8 -> Word8) n;
+func word8ToNat8(n : Word8) : Nat8 = (prim "Word8->Nat8" : Word8 -> Nat8) n;
 
 
 func natToWord8(n : Nat) : Word8 = (prim "Nat->Word8" : Nat -> Word8) n;
@@ -290,49 +319,83 @@ end (* Conv *)
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
 
+  | "Nat8->Word8" -> fun v k ->
+                     let i = Nat8.to_int (as_nat8 v)
+                     in k (Word8 (Word8.of_int_u i))
   | "Nat->Word8" -> fun v k ->
                     let i = Conv.wrapped_int_of_big_int (as_int v)
                     in k (Word8 (Word8.of_int_u i))
+  | "Int8->Word8" -> fun v k ->
+                     let i = Int_8.to_int (as_int8 v)
+                     in k (Word8 (Word8.of_int_s i))
   | "Int->Word8" -> fun v k ->
                     let i = Conv.wrapped_int_of_big_int (as_int v)
                     in k (Word8 (Word8.of_int_s i))
+  | "Nat16->Word16" -> fun v k ->
+                       let i = Nat16.to_int (as_nat16 v)
+                       in k (Word16 (Word16.of_int_u i))
   | "Nat->Word16" -> fun v k ->
                      let i = Conv.wrapped_int_of_big_int (as_int v)
                      in k (Word16 (Word16.of_int_u i))
+  | "Int16->Word16" -> fun v k ->
+                       let i = Int_16.to_int (as_int16 v)
+                       in k (Word16 (Word16.of_int_s i))
   | "Int->Word16" -> fun v k ->
                      let i = Conv.wrapped_int_of_big_int (as_int v)
                      in k (Word16 (Word16.of_int_s i))
+  | "Nat32->Word32" -> fun v k ->
+                       let i = Nat32.to_int (as_nat32 v)
+                       in k (Word32 (Word32.of_int_u i))
   | "Nat->Word32" -> fun v k ->
                      let i = Conv.wrapped_int_of_big_int (as_int v)
                      in k (Word32 (Word32.of_int_u i))
+  | "Int32->Word32" -> fun v k ->
+                       let i = Int_32.to_int (as_int32 v)
+                       in k (Word32 (Word32.of_int_s i))
   | "Int->Word32" -> fun v k ->
                      let i = Conv.wrapped_int_of_big_int (as_int v)
                      in k (Word32 (Word32.of_int_s i))
 
+  | "Nat64->Word64" -> fun v k -> k (Word64 (Word64.of_string (Nat64.to_string (as_nat64 v))))
   | "Nat->Word64" -> fun v k -> k (Word64 (Conv.word64_of_nat_big_int (as_int v)))
+  | "Int64->Word64" -> fun v k -> k (Word64 (Word64.of_string (Int_64.to_string (as_int64 v))))
   | "Int->Word64" -> fun v k -> k (Word64 (Conv.word64_of_big_int (as_int v)))
 
   | "Word8->Nat" -> fun v k ->
                     let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
                     in k (Int (Big_int.big_int_of_int i))
+  | "Int8->Int" -> fun v k -> k (Int (Int.of_int (Int_8.to_int (as_int8 v))))
+  | "Nat8->Nat" -> fun v k -> k (Int (Nat.of_int (Nat8.to_int (as_nat8 v))))
   | "Word8->Int" -> fun v k ->
                     let i = Int32.to_int (Int32.shift_right (Word8.to_bits (as_word8 v)) 24)
                     in k (Int (Big_int.big_int_of_int i))
   | "Word16->Nat" -> fun v k ->
                      let i = Int32.to_int (Int32.shift_right_logical (Word16.to_bits (as_word16 v)) 16)
                      in k (Int (Big_int.big_int_of_int i))
+  | "Int16->Int" -> fun v k -> k (Int (Int.of_int (Int_16.to_int (as_int16 v))))
+  | "Nat16->Nat" -> fun v k -> k (Int (Nat.of_int (Nat16.to_int (as_nat16 v))))
   | "Word16->Int" -> fun v k ->
                      let i = Int32.to_int (Int32.shift_right (Word16.to_bits (as_word16 v)) 16)
                      in k (Int (Big_int.big_int_of_int i))
+  | "Int32->Int" -> fun v k -> k (Int (Int.of_int (Int_32.to_int (as_int32 v))))
+  | "Nat32->Nat" -> fun v k -> k (Int (Nat.of_int (Nat32.to_int (as_nat32 v))))
   | "Word32->Nat" -> fun v k ->
                      let i = Conv.of_signed_Word32 (as_word32 v)
                      in k (Int (Big_int.big_int_of_int i))
   | "Word32->Int" -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
 
+  | "Int64->Int" -> fun v k -> k (Int (Int.of_string (Int_64.to_string (as_int64 v))))
+  | "Nat64->Nat" -> fun v k -> k (Int (Nat.of_string (Nat64.to_string (as_nat64 v))))
   | "Word64->Nat" -> fun v k ->
                      let i = Conv.big_int_of_unsigned_word64 (as_word64 v)
                      in k (Int i)
+  | "Word64->Nat64" -> fun v k ->
+                       let i = Conv.big_int_of_unsigned_word64 (as_word64 v)
+                       in k (Nat64 (Nat64.of_string (Big_int.string_of_big_int i)))
   | "Word64->Int" -> fun v k -> k (Int (Big_int.big_int_of_int64 (as_word64 v)))
+  | "Word64->Int64" -> fun v k ->
+                       let i = Conv.big_int_of_unsigned_word64 (as_word64 v)
+                       in k (Int64 (Int_64.of_string (Big_int.string_of_big_int i)))
 
   | "Char->Word32" -> fun v k ->
                       let i = as_char v

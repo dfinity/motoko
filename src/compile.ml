@@ -4616,58 +4616,95 @@ and compile_exp (env : E.t) ae exp =
        | "Nat64->Word64"
        | "Int64->Word64"
        | "Word64->Nat64"
-       | "Word64->Int64" ->
-         SR.UnboxedWord64,
-         compile_exp_as env ae SR.UnboxedWord64 e ^^
-         G.nop
-
-       | "Int64->Int" ->
+       | "Word64->Int64"
+       | "Nat32->Word32"
+       | "Int32->Word32"
+       | "Word32->Nat32"
+       | "Word32->Int32"
+       | "Nat16->Word16"
+       | "Int16->Word16"
+       | "Word16->Nat16"
+       | "Word16->Int16"
+       | "Nat8->Word8"
+       | "Int8->Word8"
+       | "Word8->Nat8"
+       | "Word8->Int8" ->
          SR.Vanilla,
-         compile_exp_as env ae SR.UnboxedWord64 e ^^
-         BigNum.from_signed_word64 env
+         compile_exp_vanilla env ae e ^^
+         G.nop
 
        | "Int->Int64" ->
          SR.UnboxedWord64,
          compile_exp_vanilla env ae e ^^
          BigNum.truncate_to_word64 env (* FIXME: trap if it doesn't fit *)
 
+       | "Int->Int32"
+       | "Int->Int16"
+       | "Int->Int8" ->
+         SR.Vanilla,
+         compile_exp_vanilla env ae e ^^
+         BigNum.truncate_to_word32 env (* FIXME: trap if it doesn't fit 3x! BOX!!! *)
+
+       | "Nat->Nat64" ->
+         SR.UnboxedWord64,
+         compile_exp_vanilla env ae e ^^
+         BigNum.truncate_to_word64 env (* FIXME: trap if it doesn't fit *)
+
+       | "Nat->Nat32"
+       | "Nat->Nat16"
+       | "Nat->Nat8" ->
+         SR.Vanilla,
+         compile_exp_vanilla env ae e ^^
+         BigNum.truncate_to_word32 env (* FIXME: trap if it doesn't fit 3x! BOX!!! *)
+
        | "Char->Word32" ->
          SR.UnboxedWord32,
          compile_exp_vanilla env ae e ^^
          UnboxedSmallWord.unbox_codepoint
 
+       | "Nat8->Nat"
        | "Word8->Nat" ->
          SR.Vanilla,
          compile_exp_vanilla env ae e ^^
          Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word8)
+       | "Int8->Int"
        | "Word8->Int" ->
          SR.Vanilla,
          compile_exp_vanilla env ae e ^^
          Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word8)
 
+       | "Nat16->Nat"
        | "Word16->Nat" ->
          SR.Vanilla,
          compile_exp_vanilla env ae e ^^
          Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word16)
+       | "Int16->Int"
        | "Word16->Int" ->
          SR.Vanilla,
          compile_exp_vanilla env ae e ^^
          Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word16)
 
+       | "Nat32->Nat"
        | "Word32->Nat" ->
          SR.Vanilla,
          compile_exp_as env ae SR.UnboxedWord32 e ^^
          Prim.prim_word32toNat env
+       | "Int32->Int"
        | "Word32->Int" ->
          SR.Vanilla,
          compile_exp_as env ae SR.UnboxedWord32 e ^^
          Prim.prim_word32toInt env
 
-       | "Word64->Nat"
-       | "Word64->Int" ->
+       | "Nat64->Nat"
+       | "Word64->Nat" ->
          SR.Vanilla,
          compile_exp_as env ae SR.UnboxedWord64 e ^^
          BigNum.from_word64 env
+       | "Int64->Int"
+       | "Word64->Int" ->
+         SR.Vanilla,
+         compile_exp_as env ae SR.UnboxedWord64 e ^^
+         BigNum.from_signed_word64 env
 
        | "Word32->Char" ->
          SR.Vanilla,
