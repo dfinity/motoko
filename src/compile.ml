@@ -1410,7 +1410,7 @@ sig
 
   (* word from SR.Vanilla, lossy, raw bits *)
   val truncate_to_word32 : E.t -> G.t
-  val _truncate_to_word64 : E.t -> G.t
+  val truncate_to_word64 : E.t -> G.t
 
   (* unsigned word to SR.Vanilla *)
   val from_word32 : E.t -> G.t
@@ -1418,6 +1418,7 @@ sig
 
   (* signed word to SR.Vanilla *)
   val from_signed_word32 : E.t -> G.t
+  val from_signed_word64 : E.t -> G.t
 
   (* buffers *)
   (* given a numeric object on stack (vanilla),
@@ -1515,11 +1516,12 @@ module BigNum64 : BigNumType = struct
 
   let from_word32 env = BoxedWord.from_word32 env ^^ box env
   let from_signed_word32 env = BoxedWord.from_signed_word32 env ^^ box env
+  let from_signed_word64 env = G.i Unreachable (* FIXME *)
   let to_word64 env = unbox env ^^ BoxedWord.to_word64 env
   let from_word64 env = BoxedWord.from_word64 env ^^ box env
 
   let truncate_to_word32 env = unbox env ^^ BoxedWord.to_word32 env
-  let _truncate_to_word64 env = unbox env ^^ BoxedWord.to_word64 env
+  let truncate_to_word64 env = unbox env ^^ BoxedWord.to_word64 env
 
   let compile_lit env n = compile_const_64 (Big_int.int64_of_big_int n) ^^ box env
 
@@ -1594,17 +1596,17 @@ module BigNumLibtommmath : BigNumType = struct
   let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
 
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
-  let _truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
+  let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
 
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
   let from_signed_word32 env = E.call_import env "rts" "bigint_of_word32_signed"
-  let _from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
+  let from_signed_word64 env = E.call_import env "rts" "bigint_of_word64_signed"
 
   (* TODO: Actually change binary encoding *)
   let compile_data_size env = G.i Drop ^^ compile_unboxed_const 8l
   let compile_store_to_data_buf env =
-    _truncate_to_word64 env ^^
+    truncate_to_word64 env ^^
     G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
     compile_unboxed_const 8l (* 64 bit for now *)
   let compile_load_from_data_buf env =
@@ -3546,11 +3548,10 @@ module StackRep = struct
   (* The stack rel of a primitive type, i.e. what the binary operators expect *)
   let of_type : Type.typ -> t = function
     | Type.Prim Type.Bool -> bool
-    | Type.Prim Type.Nat
-    | Type.Prim Type.Int -> Vanilla
-    | Type.Prim Type.Word64 -> UnboxedWord64
-    | Type.Prim Type.Word32 -> UnboxedWord32
-    | Type.Prim Type.(Word8 | Word16 | Char) -> Vanilla
+    | Type.(Prim (Nat | Int)) -> Vanilla
+    | Type.(Prim (Nat64 | Int64 | Word64)) -> UnboxedWord64
+    | Type.(Prim (Nat32 | Int32 | Word32)) -> UnboxedWord32
+    | Type.(Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char)) -> Vanilla
     | Type.Prim Type.Text -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
@@ -4611,6 +4612,24 @@ and compile_exp (env : E.t) ae exp =
          SR.UnboxedWord64,
          compile_exp_vanilla env ae e ^^
          BigNum.to_word64 env
+
+       | "Nat64->Word64"
+       | "Int64->Word64"
+       | "Word64->Nat64"
+       | "Word64->Int64" ->
+         SR.UnboxedWord64,
+         compile_exp_as env ae SR.UnboxedWord64 e ^^
+         G.nop
+
+       | "Int64->Int" ->
+         SR.Vanilla,
+         compile_exp_as env ae SR.UnboxedWord64 e ^^
+         BigNum.from_signed_word64 env
+
+       | "Int->Int64" ->
+         SR.UnboxedWord64,
+         compile_exp_vanilla env ae e ^^
+         BigNum.truncate_to_word64 env (* FIXME: trap if it doesn't fit *)
 
        | "Char->Word32" ->
          SR.UnboxedWord32,
