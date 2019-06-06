@@ -34,7 +34,7 @@ let argspec = Arg.align
   "-o", Arg.Set_string out_file, " output file";
 
   "--version",
-    Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";
+    Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
   "--map", Arg.Set Flags.source_map, " output source map";
 
   "-t", Arg.Set Flags.trace, " activate tracing";
@@ -70,7 +70,7 @@ let process_files files : unit =
     then exit_on_none (Pipeline.interpret_ir_files files)
     else exit_on_none (Pipeline.run_files files)
   | Interact ->
-    printf "%s\n" banner;
+    printf "%s\n%!" banner;
     exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
     Diag.run (Pipeline.check_files files)
