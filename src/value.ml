@@ -190,13 +190,17 @@ end
 
 module RangeLimited(Rep : NumType)(Range : sig val is_range : Rep.t -> bool end) : NumType =
 struct
+  let check i =
+    if Range.is_range i then i
+    else raise (Invalid_argument "value out of bounds")
+
   include Rep
-  let add a b = let res = Rep.add a b in assert (Range.is_range res); res
-  let mul a b = let res = Rep.mul a b in assert (Range.is_range res); res
-  let div a b = let res = Rep.div a b in assert (Range.is_range res); res
-  let pow a b = let res = Rep.pow a b in assert (Range.is_range res); res
-  let of_int i = let res = Rep.of_int i in assert (Range.is_range res); res
-  let of_string s = let res = Rep.of_string s in assert (Range.is_range res); res
+  let add a b = let res = Rep.add a b in check res
+  let mul a b = let res = Rep.mul a b in check res
+  let div a b = let res = Rep.div a b in check res
+  let pow a b = let res = Rep.pow a b in check res
+  let of_int i = let res = Rep.of_int i in check res
+  let of_string s = let res = Rep.of_string s in check res
   (* TODO(gabor) abs, neg *)
 end
 
