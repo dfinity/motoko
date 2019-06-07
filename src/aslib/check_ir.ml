@@ -752,7 +752,7 @@ and gather_typ env ce typ =
 
 (* Programs *)
 
-let check_prog scope phase (((ds, exp), flavor) as prog) : unit =
+let check_prog verbose scope phase (((ds, exp), flavor) as prog) : unit =
   let env = env_of_scope scope flavor in
   try
     let scope = gather_block_decs env ds in
@@ -761,7 +761,7 @@ let check_prog scope phase (((ds, exp), flavor) as prog) : unit =
     check_exp env' exp;
   with CheckFailed s ->
     let bt = Printexc.get_backtrace () in
-    if !Flags.verbose
+    if verbose
     then begin
       Printf.eprintf "Ill-typed intermediate code after %s:\n" phase;
       Printf.eprintf "%s" (Wasm.Sexpr.to_string 80 (Arrange_ir.prog prog));
