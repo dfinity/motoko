@@ -385,18 +385,16 @@ rec {
   };
 
   shell = if export-shell then nixpkgs.mkShell {
-
     #
-    # Since building asc, and testing it, are two different derivation in default.nix
-    # we have to create a fake derivation for shell.nix that commons up the build dependencies
-    # of the two to provide a build environment that offers both
-    #
-    # Would not be necessary if nix-shell would take more than one `-A` flag, see
-    # https://github.com/NixOS/nix/issues/955
+    # Since building asc, and testing it, are two different derivations in we
+    # have to create a fake derivation for `nix-shell` that commons up the
+    # build dependencies of the two to provide a build environment that offers
+    # both.
     #
 
     buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != idlc) (
       asc-bin.buildInputs ++
+      js.buildInputs ++
       rts.buildInputs ++
       idlc.buildInputs ++
       tests.buildInputs ++
