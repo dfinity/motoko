@@ -13,9 +13,13 @@ type ret_env = V.value V.cont option
 
 type scope = val_env
 
+type flags = {
+  trace : bool;
+  print_depth : int
+}
+
 type env =
-  { trace : bool;
-    print_depth : int;
+  { flags : flags;
     flavor : Ir.flavor;
     vals : val_env;
     labs : lab_env;
@@ -28,9 +32,8 @@ let adjoin_vals c ve = {c with vals = adjoin_scope c.vals ve}
 
 let empty_scope = V.Env.empty
 
-let env_of_scope trace print_depth flavor ve =
-  { trace;
-    print_depth;
+let env_of_scope flags flavor ve =
+  { flags;
     flavor;
     vals = ve;
     labs = V.Env.empty;
@@ -59,7 +62,8 @@ let trace fmt =
     Printf.printf "%s%s\n%!" (String.make (2 * !trace_depth) ' ') s
   ) fmt
 
-let string_of_val env = V.string_of_val env.print_depth
+let string_of_val env = V.string_of_val env.flags.print_depth
+let string_of_def flags = V.string_of_def flags.print_depth
 let string_of_arg env = function
   | V.Tup _ as v -> string_of_val env v
   | v -> "(" ^ string_of_val env v ^ ")"
@@ -67,16 +71,16 @@ let string_of_arg env = function
 
 (* Debugging aids *)
 
-let last_env = ref (env_of_scope false 2 Ir.full_flavor empty_scope)
+let last_env = ref (env_of_scope { trace = false; print_depth = 2} Ir.full_flavor empty_scope)
 let last_region = ref Source.no_region
 
-let print_exn print_depth exn =
+let print_exn flags exn =
   Printf.printf "%!";
   let at = Source.string_of_region !last_region in
   Printf.eprintf "%s: internal error, %s\n" at (Printexc.to_string exn);
   Printf.eprintf "\nLast environment:\n";
   Value.Env.iter
-    (fun x d -> Printf.eprintf "%s = %s\n" x (V.string_of_def print_depth d))
+    (fun x d -> Printf.eprintf "%s = %s\n" x (string_of_def flags d))
     !last_env.vals;
   Printf.eprintf "\n";
   Printexc.print_backtrace stderr;
@@ -122,23 +126,23 @@ let async env at (f: (V.value V.cont) -> unit) (k : V.value V.cont) =
     let async = make_async () in
     (*    let k' = fun v1 -> set_async async v1 in *)
     let k' = fun v1 -> fulfill async v1 in
-    if env.trace then trace "-> async %s" (string_of_region at);
+    if env.flags.trace then trace "-> async %s" (string_of_region at);
     Scheduler.queue (fun () ->
-      if env.trace then trace "<- async %s" (string_of_region at);
+      if env.flags.trace then trace "<- async %s" (string_of_region at);
       incr trace_depth;
       f (fun v ->
-        if env.trace then trace "<= %s" (string_of_val env v);
+        if env.flags.trace then trace "<= %s" (string_of_val env v);
         decr trace_depth;
         k' v)
     );
     k (V.Async async)
 
 let await env at async k =
-  if env.trace then trace "=> await %s" (string_of_region at);
+  if env.flags.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
       Scheduler.queue (fun () ->
-          if env.trace then
+          if env.flags.trace then
             trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
           incr trace_depth;
           k v
@@ -147,9 +151,9 @@ let await env at async k =
 (*;  Scheduler.yield () *)
 
 let actor_msg env id f v (k : V.value V.cont) =
-  if env.trace then trace "-> message %s%s" id (string_of_arg env v);
+  if env.flags.trace then trace "-> message %s%s" id (string_of_arg env v);
   Scheduler.queue (fun () ->
-    if env.trace then trace "<- message %s%s" id (string_of_arg env v);
+    if env.flags.trace then trace "<- message %s%s" id (string_of_arg env v);
     incr trace_depth;
     f v k
   )
@@ -632,11 +636,11 @@ and interpret_decs env decs (k : unit V.cont) =
   | d::ds -> interpret_dec env d (fun () -> interpret_decs env ds k)
 
 and interpret_func env at x args f v (k : V.value V.cont) =
-  if env.trace then trace "%s%s" x (string_of_arg env v);
+  if env.flags.trace then trace "%s%s" x (string_of_arg env v);
   let ve = match_args at args v in
   incr trace_depth;
   let k' = fun v' ->
-    if env.trace then trace "<= %s" (string_of_val env v');
+    if env.flags.trace then trace "<= %s" (string_of_val env v');
     decr trace_depth;
     k v'
   in
@@ -652,8 +656,8 @@ and interpret_func env at x args f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog trace print_depth scope ((ds, exp), flavor) : scope =
-  let env = env_of_scope trace print_depth flavor scope in
+let interpret_prog flags scope ((ds, exp), flavor) : scope =
+  let env = env_of_scope flags flavor scope in
   trace_depth := 0;
   let ve = ref V.Env.empty in
   try
@@ -662,5 +666,5 @@ let interpret_prog trace print_depth scope ((ds, exp), flavor) : scope =
     );
     Scheduler.run ();
     !ve
-  with exn -> print_exn print_depth exn; !ve
+  with exn -> print_exn flags exn; !ve
 

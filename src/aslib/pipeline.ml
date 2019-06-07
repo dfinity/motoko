@@ -234,16 +234,20 @@ let load_decl parse_one senv : load_decl_result =
 (* Interpretation (Source) *)
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
+  let open Interpret in
   phase "Interpreting" prog.Source.note;
-  Interpret.interpret_prog !Flags.trace !Flags.print_depth denv prog
+  let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
+  interpret_prog flags denv prog
 
 let rec interpret_libraries denv libraries : Interpret.scope =
+  let open Interpret in
   match libraries with
   | [] -> denv
   | (f, p)::libs ->
     phase "Interpreting" p.Source.note;
-    let dscope = Interpret.interpret_library !Flags.trace !Flags.print_depth denv (f, p) in
-    let denv' = Interpret.adjoin_scope denv dscope in
+    let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
+    let dscope = interpret_library flags denv (f, p) in
+    let denv' = adjoin_scope denv dscope in
     interpret_libraries denv' libs
 
 let rec interpret_progs denv progs : Interpret.scope option =
@@ -489,10 +493,12 @@ let interpret_ir_prog inp_env libraries progs =
   let name = name_progs progs in
   let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
-  let denv0 = Interpret_ir.empty_scope in
-  let dscope = Interpret_ir.interpret_prog !Flags.trace !Flags.print_depth denv0 prelude_ir in
-  let denv1 = Interpret_ir.adjoin_scope denv0 dscope in
-  let _ = Interpret_ir.interpret_prog !Flags.trace !Flags.print_depth denv1 prog_ir in
+  let open Interpret_ir in
+  let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
+  let denv0 = empty_scope in
+  let dscope = interpret_prog flags denv0 prelude_ir in
+  let denv1 = adjoin_scope denv0 dscope in
+  let _ = interpret_prog flags denv1 prog_ir in
   ()
 
 let interpret_ir_files files =
