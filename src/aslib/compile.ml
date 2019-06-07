@@ -2769,6 +2769,19 @@ module Serialization = struct
   let typ_id : Type.typ -> string = Type.string_of_typ
 
 
+  (* IDL field hashes *)
+  let lab_hash : Type.lab -> int32 = fun s ->
+    let open Int32 in
+    List.fold_left
+      (fun s c -> add (mul s 223l) (of_int (Char.code c)))
+      0l
+      (* TODO: also unescape the string, once #465 is approved *)
+      (Lib.String.explode s)
+
+  let sort_by_hash fs =
+    List.sort
+      (fun (h1,_) (h2,_) -> compare h1 h2)
+      (List.map (fun f -> (lab_hash f.Type.lab, f)) fs)
 
   (* Checks whether the serialization of a given type could contain references *)
   module TS = Set.Make (struct type t = Type.typ let compare = compare end)
@@ -2863,12 +2876,10 @@ module Serialization = struct
           size env t
         ) ts
       | Obj (Object Sharable, fs) ->
-        (* Disregarding all subtyping, and assuming sorted fields, we can just
-           treat this like a tuple *)
-        G.concat_mapi (fun i f ->
+        G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
           size env f.typ
-        ) fs
+        ) (sort_by_hash fs)
       | Array t ->
         size_word env (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
@@ -2893,7 +2904,7 @@ module Serialization = struct
                 get_x ^^ Variant.project ^^ size env t
               ) continue
           )
-          ( List.mapi (fun i f -> (i,f)) vs )
+          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | (Func _ | Obj (Actor, _)) ->
         inc_ref_size 1l
@@ -2988,12 +2999,10 @@ module Serialization = struct
           write env t
         ) ts
       | Obj (Object Sharable, fs) ->
-        (* Disregarding all subtyping, and assuming sorted fields, we can just
-           treat this like a tuple *)
-        G.concat_mapi (fun i f ->
+        G.concat_map (fun (_h,f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
           write env f.typ
-        ) fs
+        ) (sort_by_hash fs)
       | Array t ->
         write_word (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
@@ -3017,7 +3026,7 @@ module Serialization = struct
                 get_x ^^ Variant.project ^^ write env t)
               continue
           )
-          ( List.mapi (fun i f -> (i,f)) vs )
+          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Text ->
         let (set_len, get_len) = new_local env "len" in
@@ -3117,11 +3126,9 @@ module Serialization = struct
         G.concat_map (fun t -> read env t) ts ^^
         Tuple.from_stack env (List.length ts)
       | Obj (Object Sharable, fs) ->
-        (* Disregarding all subtyping, and assuming sorted fields, we can just
-           treat this like a tuple *)
-        Object.lit_raw env (List.map (fun f ->
+        Object.lit_raw env (List.map (fun (_h,f) ->
           f.Type.lab, fun () -> read env f.typ
-        ) fs)
+        ) (sort_by_hash fs))
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
@@ -3150,7 +3157,7 @@ module Serialization = struct
               ( Variant.inject env l (read env t) )
               continue
           )
-          ( List.mapi (fun i f -> (i,f)) vs )
+          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "deserialize_go: unexpected variant tag" )
       | Prim Text ->
         let (set_len, get_len) = new_local env "len" in

@@ -59,15 +59,15 @@ format.
  * A `Tuple` is represented by the concatenation of the representation of its
    entries. (No need for a length field, as it can be statically determined.)
  * An `Object` is represented by the concatenation of the representation of its
-   fields, sorted by field name. (The field names are not serialized, as they
-   are statically known.)
+   fields, sorted by IDL hash of the field name.
+   (The field names are not serialized, as they are statically known.)
  * An `Option` is represented by a single byte `0` if it is `null`, or
    otherwise by a single byte `1` followed by the representation of the value
  * An empty tuple, the type `Null` and the type `Shared` are represented by
    zero bytes.
- * A `Variant` with `n` constructors sorted by constructor name is represented
-   by a LEB128-encoded number the constructor as a number `0..n-1`, followed
-   by the payload of the constructor. (Yes, obviously no subtyping here.)
+ * A `Variant` with `n` constructors sorted by IDL hash of the constructor name
+   is represented by a LEB128-encoded number the constructor as a number
+   `0..n-1`, followed by the payload of the constructor.
 
 *Example:* The ActorScript value
 ```
