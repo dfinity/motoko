@@ -11,27 +11,95 @@ directory are part of the library.
 Within a library `lib`, modules are accessed using `Foo`; outside via
 `Lib.Foo`. Unless there is `lib/libml`, then this is the entry point.
 
-Executables
+
+Libraries
 ---------
+
+We split the files into the following subdirectories, topologically sorted. One
+goal of the structure is to make it clear which parts operate on AS Source, AS
+IR or Wasm, respectively.
+
+In parenthesis: which end-product is using these file, and which libraries this
+is may depend on (omitting transitive dependencies):
+
+ * `lib/` (all)
+
+   Stuff that could be in the Ocaml standard library.
+
+ * `lang-utils/` (asc, didc; using `lib/`)
+
+   General PL-related utility-functions, useful for AS Source, AS IR, the IDL
+   AST: Environments, diagnostic error messages, source locations.
+
+ * `as-types/` (asc; using `lang-utils/`)
+
+   The ActorScript type definition, as used by both Source and IR. Includes
+   pretty-printer. Also includes the value definitions.
+
+ * `as-syntax/` (asc; using `lang-utils/`)
+
+   The ActorScript Source AST, including parser and type inference.
+
+ * `as-ir/` (asc; using `lang-utils/`)
+
+   The ActorScript IR AST, including type checker and pretty-printer.
+
+ * `desugar/` (asc; using `as-syntax/` and `as-ir/`)
+
+   The IR to Source pass.
+
+ * `passes/` (asc; using `as-ir/`)
+
+   The various IR to IR passes.
+
+ * `wasm-exts/` (asc, as-ld; using `lib/`)
+
+   Extensions to the wasm library: Support for additional custom sections,
+   including serialization and de-serialization.
+
+ * `linking/` (asc, as-ld; using `wasm-exts/`)
+
+   Wasm linking code
+
+ * `codegen/` (asc; using `as-ir/`, `linking/`)
+
+   The backend, including the instruction list generator.
+
+ * `interpreter/` (asc; using `as-syntax/`)
+
+   Source interpreter.
+
+ * `ir-interpreter/` (asc; using `as-ir/`)
+
+   IR interpreter.
+
+ * `toplevel/` (asc; using `as-syntax/`, `desugar/`, `passes/`, `codegen/`, `interpreter/`, `interpreter-ir/`)
+
+   The pipeline and flags
+
+ * `idl/`
+
+   Kitchen-sink of `didc` related files. Yet to be split up.
+
+Executables
+-----------
 
 All exectuables are in the directory `exe/`, and should be kept rather small;
 essentially only the command line parsing should be there, so that
 actual functionality is easily shared.
 
+ * `asc` (using `toplevel/`)
 
-Libraries
----------
+   The ActorScript compiler
 
-We split the files into the following subdirectories
+ * `as.js` (using `toplevel/`)
 
- * `lib/`
+   The ActorScript compiler, as a JS library
 
-   Stuff that could be in the Ocaml standard library.
+ * `as-ld` (using `linking/`)
 
- * `aslib/`
+   The stand-alone Wasm linker
 
-   Kitchen-sink of `asc` and `as-ld` related files. Will be split soon.
+ * `didc` (using `idl/`)
 
- * `idllib/`
-
-   Kitchen-sink of `didc` related files. Will likely be split soon.
+   The IDL compiler
