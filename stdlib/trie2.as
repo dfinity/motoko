@@ -846,7 +846,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
      but where global memory consists of a single (anonymous) global trie */
     type TrieBuild<K,V> = {
       #skip ;
-      #insert : (Key<K>, V) ;
+      #insert : (K, ?Hash, V) ;
       #seq : {
         count : Nat ;
         left  : TrieBuild<K,V> ;
@@ -858,7 +858,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
       label profile_trie_buildCount : Nat {
       switch tb {
       case (#skip) 0;
-      case (#insert(_, _)) 1;
+      case (#insert(_, _, _)) 1;
       case (#seq(seq)) seq.count;
       }
     };
@@ -885,7 +885,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     func prodBuild<K1,V1,K2,V2,K3,V3>(
       tl    :Trie<K1,V1>,
       tr    :Trie<K2,V2>,
-      op    :(K1,V1,K2,V2) -> ?(Key<K3>,V3),
+      op    :(K1,V1,K2,V2) -> ?(K3,V3),
       k3_eq :(K3,K3) -> Bool
     )
       : TrieBuild<K3,V3>
@@ -913,7 +913,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
             func (k2:K2, v2:V2) : TrieBuild<K3, V3> {
               switch (op(k1, v1, k2, v2)) {
               case null #skip;
-              case (?(k3, v3)) { #insert(k3, v3) };
+              case (?(k3, v3)) { #insert(k3, null, v3) };
               }
             },
             #skip

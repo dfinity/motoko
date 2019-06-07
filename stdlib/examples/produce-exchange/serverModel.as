@@ -2012,12 +2012,8 @@ than the MVP goals, however.
           /** - Consider the constraints of the retailer-route-item combination: */
           if (isFeasibleReservation(retailer, item, route, queryProduce, queryDate)) {
             label profile_retailerQueryAll_candidate_check_true :
-              ( ?(Key<(T.RouteId, T.InventoryId)>,
-                  (M.RouteDoc, M.InventoryDoc)) )
-
-            ?( keyOfIdPair(route_id, item_id),
-               (route, item)
-            )
+              ( ?((T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)) )
+            ?( (route_id, item_id), (route, item) )
           } else {
             label profile_retailerQueryAll_candidate_check_false :
               ( ?(Key<(T.RouteId, T.InventoryId)>,
