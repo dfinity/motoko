@@ -5,14 +5,14 @@
 let jsonrpc_version : string = "2.0"
 
 let notification (params : Lsp_t.notification_message_params) : Lsp_t.notification_message = Lsp_t.
-  { notification_message_jsonrpc = jsonrpc_version
-  ; notification_message_params = params
+  { notification_message_jsonrpc = jsonrpc_version;
+    notification_message_params = params;
   }
 
 let response_result_message (id : int) (result : Lsp_t.response_result) : Lsp_t.response_message = Lsp_t.
-  { response_message_jsonrpc = jsonrpc_version
-  ; response_message_id = id
-  ; response_message_result = Some result
+  { response_message_jsonrpc = jsonrpc_version;
+    response_message_id = id;
+    response_message_result = Some result;
   }
 
 (* let response_error_message (id : int) (error : Lsp_t.response_error) : Lsp_t.response_message = *)
@@ -38,16 +38,16 @@ module Channel = struct
     let params =
       `WindowShowMessage
         (Lsp_t.
-          { window_show_message_params_type_ = typ
-          ; window_show_message_params_message = msg
+          { window_show_message_params_type_ = typ;
+            window_show_message_params_message = msg;
           }) in
     let notification = notification params in
     send_notification oc (Lsp_j.string_of_notification_message notification)
 
   let publish_diagnostics (oc : out_channel) (uri : Lsp_t.document_uri) (diags : Lsp_t.diagnostic list): unit =
     let params = `PublishDiagnostics (Lsp_t.
-      { publish_diagnostics_params_uri = uri
-      ; publish_diagnostics_params_diagnostics = diags
+      { publish_diagnostics_params_uri = uri;
+        publish_diagnostics_params_diagnostics = diags;
       }) in
     let notification = notification params in
     send_notification oc (Lsp_j.string_of_notification_message notification)
@@ -55,27 +55,26 @@ end
 
 let position_of_pos (pos : Source.pos) : Lsp_t.position = Lsp_t.
   (* The LSP spec requires zero-based positions *)
-  { position_line = if pos.Source.line > 0 then pos.Source.line - 1 else 0
-  ; position_character = pos.Source.column
+  { position_line = if pos.Source.line > 0 then pos.Source.line - 1 else 0;
+    position_character = pos.Source.column;
   }
 
 let range_of_region (at : Source.region) : Lsp_t.range = Lsp_t.
-  { range_start = position_of_pos at.Source.left
-  ; range_end_ = position_of_pos at.Source.right
+  { range_start = position_of_pos at.Source.left;
+    range_end_ = position_of_pos at.Source.right;
   }
 
-let severity_of_sev : Diag.severity -> Lsp.DiagnosticSeverity.t =
-  function
+let severity_of_sev : Diag.severity -> Lsp.DiagnosticSeverity.t = function
   | Diag.Error -> Lsp.DiagnosticSeverity.Error
   | Diag.Warning -> Lsp.DiagnosticSeverity.Warning
 
 let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
-  { diagnostic_range = range_of_region msg.Diag.at
-  ; diagnostic_severity = Some (severity_of_sev msg.Diag.sev)
-  ; diagnostic_code = None
-  ; diagnostic_source = Some "ActorScript"
-  ; diagnostic_message = msg.Diag.text
-  ; diagnostic_relatedInformation = None
+  { diagnostic_range = range_of_region msg.Diag.at;
+    diagnostic_severity = Some (severity_of_sev msg.Diag.sev);
+    diagnostic_code = None;
+    diagnostic_source = Some "ActorScript";
+    diagnostic_message = msg.Diag.text;
+    diagnostic_relatedInformation = None;
   }
 
 let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
@@ -116,12 +115,12 @@ let start () =
 
     | (Some id, `Initialize params) ->
         client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
-        let result = `Initialize (Lsp_t.
-          { initialize_result_capabilities =
-              { server_capabilities_textDocumentSync = 1
-              ; server_capabilities_hoverProvider = Some true
-              }
-          }) in
+        let result = `Initialize (Lsp_t.{
+          initialize_result_capabilities = {
+            server_capabilities_textDocumentSync = 1;
+            server_capabilities_hoverProvider = Some true;
+          }
+        }) in
         let response = response_result_message id result in
         send_response (Lsp_j.string_of_response_message response);
 
