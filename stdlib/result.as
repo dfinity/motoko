@@ -1,4 +1,5 @@
-let P = (import "prelude.as");
+module {
+private let P = (import "prelude.as");
 
 /**
 
@@ -164,3 +165,4 @@ func joinArrayIfOk<R,E>(x:[Result<R,E>]) : Result<[R],E> {
   /**- all of the results are Ok; tabulate them. */
   #ok(Array_tabulate<R>(x.len(), func (i:Nat):R { assertUnwrap<R,E>(x[i]) }))
 };
+}

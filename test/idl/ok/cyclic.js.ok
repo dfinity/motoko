@@ -1,0 +1,7 @@
+const A = IDL.Opt(B)
+const C = A
+const B = IDL.Opt(C)
+const X = Y
+const Y = Z
+const Z = A
+

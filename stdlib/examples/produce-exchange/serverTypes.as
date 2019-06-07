@@ -1,3 +1,4 @@
+module {
 /**
 
 [Background]($DOCURL/examples/produce-exchange#Produce-Exchange-Standards-Specification)
@@ -382,3 +383,4 @@ the 2019.03.12 ActorScript Team meeting.
 */
 
 type QueryAllResults = [QueryAllResult];
+}

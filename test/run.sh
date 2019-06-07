@@ -21,6 +21,7 @@ DFINITY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
+DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
@@ -80,8 +81,10 @@ do
   then base=$(basename $file .sh)
   elif [ ${file: -4} == ".wat" ]
   then base=$(basename $file .wat)
+  elif [ ${file: -4} == ".did" ]
+  then base=$(basename $file .did)
   else
-    echo "Unknown file extension in $file, expected .as, .sh or .wat"; exit 1
+    echo "Unknown file extension in $file, expected .as, .sh, .wat or .did"; exit 1
     failures=yes
     continue
   fi
@@ -191,7 +194,8 @@ do
     $ECHO -n " [out]"
     ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"
-  else
+  elif [ ${file: -4} == ".wat" ]
+  then
     # The file is a .wat file, so we are expected to test linking
     $ECHO -n " [as-ld]"
     rm -f $out/$base.{base,lib,linked}.{wasm,wat,o}
@@ -206,6 +210,21 @@ do
         diff_files="$diff_files $base.linked.wat $base.linked.wat.stderr"
     fi
 
+  else
+    # The file is a .did file, so we are expected to test the idl
+    # Typecheck
+    $ECHO -n " [tc]"
+    $DIDC --check $base.did > $out/$base.tc 2>&1
+    tc_succeeded=$?
+    normalize $out/$base.tc
+    diff_files="$diff_files $base.tc"
+
+    if [ "$tc_succeeded" -eq 0 ];
+    then
+      $ECHO -n " [js]"
+      $DIDC --js $base.did > $out/$base.js 2>&1
+      diff_files="$diff_files $base.js"
+    fi
   fi
   $ECHO ""
 

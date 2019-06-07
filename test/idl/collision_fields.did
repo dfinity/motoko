@@ -1,0 +1,6 @@
+type D = record {
+ reserved; nat; nat; nat;
+ 2:nat;
+ nat;
+};
+
