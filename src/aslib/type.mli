@@ -168,21 +168,6 @@ val open_binds : bind list -> typ list
 
 module Env : Env.S with type key = string
 
-(* Calling convention *)
-
-type call_conv = {
-  sort: sharing;
-  control : control;
-  n_args : int;
-  n_res : int;
-}
-
-val local_cc : int -> int -> call_conv
-val message_cc : int -> call_conv
-val async_cc : int -> call_conv
-
-val call_conv_of_typ : typ -> call_conv
-
 (* Pretty printing *)
 
 val string_of_con : con -> string
@@ -192,4 +177,3 @@ val string_of_typ : typ -> string
 val string_of_kind : kind -> string
 val strings_of_kind : kind -> string * string * string
 val string_of_typ_expand : typ -> string
-val string_of_call_conv : call_conv -> string

@@ -68,7 +68,7 @@ and t_exp' env = function
     let t' = T.normalize ot in
     add_type env t';
     let f = idE (show_name_for t' @@ no_region) (show_fun_typ_for t') in
-    CallE (T.local_cc 1 1, f, [], t_exp env exp1)
+    CallE (Call_conv.local_cc 1 1, f, [], t_exp env exp1)
   | UnE (ot, op, exp1) ->
     UnE (ot, op, t_exp env exp1)
   | BinE (ot, exp1, op, exp2) ->
@@ -159,12 +159,12 @@ let text_exp : Ir.exp' -> Ir.exp = fun e ->
   }
 
 let invoke_generated_show : T.typ -> Ir.exp -> Ir.exp = fun t e ->
-  text_exp (CallE (T.local_cc 1 1, show_var_for t, [], e))
+  text_exp (CallE (Call_conv.local_cc 1 1, show_var_for t, [], e))
 
 let invoke_prelude_show : string -> T.typ -> Ir.exp -> Ir.exp = fun n t e ->
   let fun_typ = T.Func (T.Local, T.Returns, [], [t], [T.Prim T.Text]) in
   text_exp (CallE
-    ( T.local_cc 1 1
+    ( Call_conv.local_cc 1 1
     , { it = VarE (n @@ no_region)
       ; at = no_region
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
@@ -178,7 +178,7 @@ let invoke_text_of_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.Prim T.Text]) in
   text_exp (CallE
-    ( T.local_cc 2 1
+    ( Call_conv.local_cc 2 1
     , { it = VarE ("@text_of_option" @@ no_region)
       ; at = no_region
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
@@ -195,7 +195,7 @@ let invoke_text_of_variant : T.typ -> Ir.exp -> T.lab -> Ir.exp -> Ir.exp = fun 
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [T.Prim T.Text; show_fun_typ_for (T.Var ("T",0)); T.Var ("T",0)], [T.Prim T.Text]) in
   text_exp (CallE
-    ( T.local_cc 3 1
+    ( Call_conv.local_cc 3 1
     , { it = VarE ("@text_of_variant" @@ no_region)
       ; at = no_region
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
@@ -212,7 +212,7 @@ let invoke_text_of_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.Prim T.Text]) in
   text_exp (CallE
-    ( T.local_cc 2 1
+    ( Call_conv.local_cc 2 1
     , { it = VarE ("@text_of_array" @@ no_region)
       ; at = no_region
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
@@ -229,7 +229,7 @@ let invoke_text_of_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e -
   let fun_typ =
     T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.Prim T.Text]) in
   text_exp (CallE
-    ( T.local_cc 2 1
+    ( Call_conv.local_cc 2 1
     , { it = VarE ("@text_of_array_mut" @@ no_region)
       ; at = no_region
       ; note = { note_typ = fun_typ; note_eff = T.Triv }

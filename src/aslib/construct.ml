@@ -153,8 +153,8 @@ let boolE b =
 
 let callE exp1 ts exp2 =
   let fun_ty = typ exp1 in
-  let cc = T.call_conv_of_typ fun_ty in
-  let _, _, _, ret_ty = T.as_func_sub cc.T.sort (List.length ts) fun_ty in
+  let cc = Call_conv.call_conv_of_typ fun_ty in
+  let _, _, _, ret_ty = T.as_func_sub cc.Call_conv.sort (List.length ts) fun_ty in
   { it = CallE (cc, exp1, ts, exp2);
     at = no_region;
     note = { S.note_typ = T.open_ ts ret_ty;
@@ -322,9 +322,9 @@ let funcE name t x exp =
   let arg_tys, retty = match t with
     | T.Func(_, _, _, ts1, ts2) -> ts1, ts2
     | _ -> assert false in
-  let cc = T.call_conv_of_typ t in
+  let cc = Call_conv.call_conv_of_typ t in
   let args, exp' =
-    if cc.T.n_args = 1;
+    if cc.Call_conv.n_args = 1;
     then
       [ arg_of_exp x ], exp
     else
@@ -349,8 +349,8 @@ let nary_funcE name t xs exp =
   let retty = match t with
     | T.Func(_, _, _, _, ts2) -> ts2
     | _ -> assert false in
-  let cc = T.call_conv_of_typ t in
-  assert (cc.T.n_args = List.length xs);
+  let cc = Call_conv.call_conv_of_typ t in
+  assert (cc.Call_conv.n_args = List.length xs);
   ({it = FuncE
       ( name,
         cc,
@@ -425,7 +425,7 @@ let (-@>*) xs exp  =
 let ( -*- ) exp1 exp2 =
   match typ exp1 with
   | T.Func (_, _, [], ts1, ts2) ->
-    let cc = T.call_conv_of_typ (typ exp1) in
+    let cc = Call_conv.call_conv_of_typ (typ exp1) in
     { it = CallE (cc, exp1, [], exp2);
       at = no_region;
       note = {S.note_typ = T.seq ts2;

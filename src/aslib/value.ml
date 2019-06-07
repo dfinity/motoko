@@ -210,7 +210,7 @@ and value =
   | Variant of string * value
   | Array of value array
   | Obj of value Env.t
-  | Func of Type.call_conv * func
+  | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
   | Serialized of value
@@ -222,9 +222,9 @@ and 'a cont = 'a -> unit
 
 (* Smart constructors *)
 
-let local_func n m f = Func (Type.local_cc n m, f)
-let message_func n f = Func (Type.message_cc n, f)
-let async_func n f = Func (Type.async_cc n, f)
+let local_func n m f = Func (Call_conv.local_cc n m, f)
+let message_func n f = Func (Call_conv.message_cc n, f)
+let async_func n f = Func (Call_conv.async_cc n, f)
 
 
 (* Projections *)

@@ -65,7 +65,7 @@ and pat_field pf = pf.it.name $$ [pat pf.it.pat]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
-and call_conv cc = Atom (Type.string_of_call_conv cc)
+and call_conv cc = Atom (Call_conv.string_of_call_conv cc)
 
 and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
