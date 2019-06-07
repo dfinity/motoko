@@ -445,7 +445,8 @@ let prim = function
                        k (Int32 (Int_32.of_int i))
   | "Word32->Nat32" -> fun v k ->
                        let i = Big_int.(int_of_big_int (big_int_of_int32 (as_word32 v))) in
-                       k (Nat32 (Nat32.of_int i))
+                       let i' = if i < 0 then i + 0x100000000 else i in
+                       k (Nat32 (Nat32.of_int i'))
 
   | "Int64->Int" -> fun v k -> k (Int (Int.of_string (Int_64.to_string (as_int64 v))))
   | "Nat64->Nat" -> fun v k -> k (Int (Nat.of_string (Nat64.to_string (as_nat64 v))))
