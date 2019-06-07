@@ -1,7 +1,7 @@
 open Idllib
 open Printf
 
-let name = "idlc"
+let name = "didc"
 let version = "0.1"
 let banner = "Interface Description Language (IDL) " ^ version ^ " interpreter"
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
