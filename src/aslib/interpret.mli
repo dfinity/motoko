@@ -11,5 +11,5 @@ val adjoin_scope : scope -> scope -> scope
 
 exception Trap of Source.region * string
 
-val interpret_prog : bool -> scope -> Syntax.prog -> (V.value * scope) option
-val interpret_library : bool -> scope -> Syntax.library -> scope
+val interpret_prog : bool -> int -> scope -> Syntax.prog -> (V.value * scope) option
+val interpret_library : bool -> int -> scope -> Syntax.library -> scope

@@ -32,7 +32,7 @@ let print_dyn_ve scope =
     let t' = Type.as_immut t in
     printf "%s %s : %s = %s\n"
       (if t == t' then "let" else "var") x
-      (Type.string_of_typ t') (Value.string_of_def d)
+      (Type.string_of_typ t') (Value.string_of_def !Flags.print_depth d)
   )
 
 let print_scope senv scope dve =
@@ -40,7 +40,7 @@ let print_scope senv scope dve =
   print_dyn_ve senv dve
 
 let print_val _senv v t =
-  printf "%s : %s\n" (Value.string_of_val v) (Type.string_of_typ t)
+  printf "%s : %s\n" (Value.string_of_val !Flags.print_depth v) (Type.string_of_typ t)
 
 (* Dumping *)
 
@@ -235,14 +235,14 @@ let load_decl parse_one senv : load_decl_result =
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   phase "Interpreting" prog.Source.note;
-  Interpret.interpret_prog !Flags.trace denv prog
+  Interpret.interpret_prog !Flags.trace !Flags.print_depth denv prog
 
 let rec interpret_libraries denv libraries : Interpret.scope =
   match libraries with
   | [] -> denv
   | (f, p)::libs ->
     phase "Interpreting" p.Source.note;
-    let dscope = Interpret.interpret_library !Flags.trace denv (f, p) in
+    let dscope = Interpret.interpret_library !Flags.trace !Flags.print_depth denv (f, p) in
     let denv' = Interpret.adjoin_scope denv dscope in
     interpret_libraries denv' libs
 
@@ -490,9 +490,9 @@ let interpret_ir_prog inp_env libraries progs =
   let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
   let denv0 = Interpret_ir.empty_scope in
-  let dscope = Interpret_ir.interpret_prog !Flags.trace denv0 prelude_ir in
+  let dscope = Interpret_ir.interpret_prog !Flags.trace !Flags.print_depth denv0 prelude_ir in
   let denv1 = Interpret_ir.adjoin_scope denv0 dscope in
-  let _ = Interpret_ir.interpret_prog !Flags.trace denv1 prog_ir in
+  let _ = Interpret_ir.interpret_prog !Flags.trace !Flags.print_depth denv1 prog_ir in
   ()
 
 let interpret_ir_files files =
