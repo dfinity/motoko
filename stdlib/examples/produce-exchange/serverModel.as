@@ -2050,7 +2050,7 @@ than the MVP goals, however.
 
     /** - Prepare reservation information for client, as an array; see also [`makeReservationInfo`](#makereservationinfo) */
     let arr =
-      Trie.Build.buildToArray
+      Trie.Build.buildToArray2
     <(T.RouteId, T.InventoryId),
      (M.RouteDoc, M.InventoryDoc),
      T.ReservationInfo>(

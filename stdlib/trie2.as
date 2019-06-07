@@ -987,6 +987,28 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
       a
     };
 
+    /**
+     `buildToArray2`
+     --------
+     Gather the collection of key-value pairs into an array of a (possibly-distinct) type.
+
+     (Same semantics as `buildToArray`, but faster in practice.)
+     */
+    func buildToArray2<K,V,W>(tb:TrieBuild<K,V>,f:(K,V)->W):[W] {
+      let c = buildCount<K,V>(tb);
+      let a = Array_init<?W>(c, null);
+      var i = 0;
+      func rec(tb:TrieBuild<K,V>) {
+        switch tb {
+          case (#skip) ();
+          case (#insert(k,v)) { a[i] := ?f(k.key,v); i := i + 1 };
+          case (#seq(s)) { rec(s.left); rec(s.right) };
+        }
+      };
+      rec(tb);
+      Array_tabulate<W>(c, func(i:Nat) : W = Option.unwrap<W>(a[i]))
+    };
+
   };
 
   /**
