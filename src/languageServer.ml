@@ -44,7 +44,7 @@ module Channel = struct
     let notification = notification params in
     send_notification oc (Lsp_j.string_of_notification_message notification)
 
-  let publish_diagnostics (oc : out_channel) (uri: Lsp_t.document_uri) (diags: Lsp_t.diagnostic list): unit =
+  let publish_diagnostics (oc : out_channel) (uri : Lsp_t.document_uri) (diags : Lsp_t.diagnostic list): unit =
     let params = `PublishDiagnostics (Lsp_t.
       { publish_diagnostics_params_uri = uri
       ; publish_diagnostics_params_diagnostics = diags
@@ -53,13 +53,13 @@ module Channel = struct
     send_notification oc (Lsp_j.string_of_notification_message notification)
 end
 
-let position_of_pos (pos: Source.pos): Lsp_t.position = Lsp_t.
+let position_of_pos (pos : Source.pos) : Lsp_t.position = Lsp_t.
   (* The LSP spec requires zero-based positions *)
   { position_line = if pos.Source.line > 0 then pos.Source.line - 1 else 0
   ; position_character = pos.Source.column
   }
 
-let range_of_region (at: Source.region): Lsp_t.range = Lsp_t.
+let range_of_region (at : Source.region) : Lsp_t.range = Lsp_t.
   { range_start = position_of_pos at.Source.left
   ; range_end_ = position_of_pos at.Source.right
   }
@@ -69,7 +69,7 @@ let severity_of_sev : Diag.severity -> Lsp.DiagnosticSeverity.t =
   | Diag.Error -> Lsp.DiagnosticSeverity.Error
   | Diag.Warning -> Lsp.DiagnosticSeverity.Warning
 
-let diagnostics_of_message (msg: Diag.message): Lsp_t.diagnostic = Lsp_t.
+let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
   { diagnostic_range = range_of_region msg.Diag.at
   ; diagnostic_severity = Some (severity_of_sev msg.Diag.sev)
   ; diagnostic_code = None
