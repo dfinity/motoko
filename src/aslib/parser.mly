@@ -104,7 +104,7 @@ let share_expfield (ef : exp_field) =
 %token ADDOP SUBOP MULOP DIVOP MODOP POWOP
 %token ANDOP OROP XOROP SHLOP USHROP SSHROP ROTLOP ROTROP
 %token EQOP NEQOP LEOP LTOP GTOP GEOP
-%token CATOP
+%token HASH
 %token EQ LT GT
 %token PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN
 %token ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN USHRASSIGN SSHRASSIGN ROTLASSIGN ROTRASSIGN
@@ -115,7 +115,6 @@ let share_expfield (ef : exp_field) =
 %token<Value.unicode> CHAR
 %token<bool> BOOL
 %token<string> ID
-%token<string> TAG
 %token<string> TEXT
 %token PRIM
 %token UNDERSCORE
@@ -128,7 +127,7 @@ let share_expfield (ef : exp_field) =
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
-%left ADDOP SUBOP CATOP
+%left ADDOP SUBOP HASH
 %left MULOP DIVOP MODOP
 %left OROP
 %left ANDOP
@@ -160,7 +159,7 @@ seplist(X, SEP) :
   | id=ID { id @@ at $sloc }
 
 %inline tag :
-  | id=TAG { id @@ at $sloc }
+  | HASH id=ID { id @@ at $sloc }
 
 %inline typ_id :
   | id=ID { id @= at $sloc }
@@ -211,7 +210,7 @@ typ_obj :
     { tfs }
 
 typ_variant :
-  | LCURLY CATOP RCURLY
+  | LCURLY HASH RCURLY
     { [] }
   | LCURLY tf=typ_tag RCURLY
     { [tf] }
@@ -317,7 +316,7 @@ lit :
   | SSHROP { SShROp }
   | ROTLOP { RotLOp }
   | ROTROP { RotROp }
-  | CATOP { CatOp }
+  | HASH { CatOp }
 
 %inline relop :
   | EQOP  { EqOp }

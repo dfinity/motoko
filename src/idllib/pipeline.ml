@@ -79,15 +79,15 @@ let check_with parse check senv name : check_result =
 let check_file' senv name = check_with parse_file Typing.check_prog senv name
 let check_file name = check_file' initial_stat_env name
 
-(* Compilation *)
+(* JS Compilation *)
 
-type compile_result = (Buffer.t, Diag.messages) result
+type compile_js_result = (Buffer.t, Diag.messages) result
 
-let compile_js_file name : compile_result =
+let compile_js_file name : compile_js_result =
   match check_file name with
   | Error msgs -> Error msgs
   | Ok ((prog, scope), msgs) ->
      Diag.print_messages msgs;
-     phase "Compiling" name;
+     phase "JS Compiling" name;
      let buf = Compile_js.compile scope prog in
      Ok buf    

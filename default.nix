@@ -72,7 +72,7 @@ let
     "test/(fail|run|run-dfinity|repl|ld|idl)/lib/dir/"
     "test/(fail|run|run-dfinity|repl|ld|idl)/.*.as"
     "test/(fail|run|run-dfinity|repl|ld|idl)/.*.sh"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.didl"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.did"
     "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.wat"
     "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.c"
     "test/(fail|run|run-dfinity|repl|ld|idl)/ok/"
@@ -191,7 +191,7 @@ rec {
 
     buildInputs =
       [ asc
-        idlc
+        didc
         ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
@@ -206,7 +206,7 @@ rec {
         ${llvmEnv}
         export ASC=asc
         export AS_LD=as-ld
-        export IDLC=idlc
+        export DIDC=didc
         asc --version
         make -C samples all
       '' +
@@ -249,7 +249,7 @@ rec {
 
   });
 
-  idlc = stdenv.mkDerivation {
+  didc = stdenv.mkDerivation {
     name = "didc";
 
     src = sourceByRegex ./src [
@@ -375,7 +375,7 @@ rec {
     constituents = [
       asc
       js
-      idlc
+      didc
       tests
       rts
       stdlib-reference
@@ -392,11 +392,11 @@ rec {
     # both.
     #
 
-    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != idlc) (
+    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != didc) (
       asc-bin.buildInputs ++
       js.buildInputs ++
       rts.buildInputs ++
-      idlc.buildInputs ++
+      didc.buildInputs ++
       tests.buildInputs ++
       users-guide.buildInputs ++
       [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]

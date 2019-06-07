@@ -8,7 +8,26 @@ let id ppf s = str ppf s.it; pp_print_cut ppf ()
 let space = pp_print_space             
 let kwd ppf s = str ppf s; space ppf ()
 let field_name ppf s = str ppf "'"; str ppf s.it; str ppf "'"; pp_print_cut ppf ()                
-                
+
+let pp_prim p =
+  match p with
+  | Nat -> "Nat"
+  | Nat8 -> "Nat8"
+  | Nat16 -> "Nat16"
+  | Nat32 -> "Nat32"
+  | Nat64 -> "Nat64"
+  | Int -> "Int"
+  | Int8 -> "Int8"
+  | Int16 -> "Int16"
+  | Int32 -> "Int32"
+  | Int64 -> "Int64"
+  | Float32 -> "Float"
+  | Float64 -> "Float"
+  | Bool -> "Bool"
+  | Text -> "Text"
+  | Null -> "Unit"
+  | Reserved -> "None"
+                       
 let rec concat ppf f env sep list =
   match list with
   | [] -> ()
@@ -18,8 +37,8 @@ let rec concat ppf f env sep list =
 let rec pp_typ ppf env t =
   pp_open_box ppf 1;
   (match t.it with
-  | VarT s -> id ppf s  (*pp_print_string ppf s.it; str ppf "()"*)
-  | PrimT p -> str ppf ("IDL."^(Arrange_idl.string_of_prim p))
+  | VarT s -> id ppf s
+  | PrimT p -> str ppf ("IDL."^(pp_prim p))
   | RecordT ts -> pp_fields ppf env ts
   | VecT t -> str ppf "IDL.Arr("; pp_typ ppf env t; str ppf ")";
   | OptT t -> str ppf "IDL.Opt("; pp_typ ppf env t; str ppf ")";
@@ -32,6 +51,7 @@ let rec pp_typ ppf env t =
      str ppf ")";
   | ServT ts ->
      pp_open_hovbox ppf 1;
+     kwd ppf "new";
      str ppf "IDL.ActorInterface({";
      concat ppf pp_meth env "," ts;
      str ppf "})";
@@ -54,7 +74,7 @@ and pp_field ppf env tf =
 
 and pp_meth ppf env meth =
   pp_open_box ppf 1;
-  id ppf meth.it.var;
+  field_name ppf meth.it.var;
   kwd ppf ":";
   pp_typ ppf env meth.it.meth;
   pp_close_box ppf ()
@@ -66,7 +86,6 @@ let pp_dec ppf env dec =
    | TypD (x, t) ->
       kwd ppf x.it;
       kwd ppf "=";
-      (*kwd ppf "()"; kwd ppf "=>";*)
       pp_typ ppf env t
   );
   pp_close_box ppf ();
@@ -74,19 +93,19 @@ let pp_dec ppf env dec =
 
 let pp_actor ppf env actor_opt =
   pp_open_hovbox ppf 1;
-  kwd ppf "const";
   (match actor_opt with
-    None -> ()
-  | Some actor ->
-     (match actor.it with
-     | ActorD (x, {it=ServT tp; _}) ->
-        id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
-        str ppf "IDL.ActorInterface({";
-        concat ppf pp_meth env "," tp;
-        str ppf "})"
-     | ActorD (x, {it=VarT var; _}) -> id ppf x; space ppf (); kwd ppf "="; id ppf var
-     | ActorD (x, _) -> ()
-     )
+     None -> ()
+   | Some actor ->
+      kwd ppf "const";
+      (match actor.it with
+       | ActorD (x, {it=ServT tp; _}) ->
+          id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
+          str ppf "IDL.ActorInterface({";
+          concat ppf pp_meth env "," tp;
+          str ppf "})"
+       | ActorD (x, {it=VarT var; _}) -> id ppf x; space ppf (); kwd ppf "="; id ppf var
+       | ActorD (x, _) -> ()
+      )
   );
   pp_close_box ppf ()
 

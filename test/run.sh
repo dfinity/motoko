@@ -81,10 +81,10 @@ do
   then base=$(basename $file .sh)
   elif [ ${file: -4} == ".wat" ]
   then base=$(basename $file .wat)
-  elif [ ${file: -5} == ".didl" ]
-  then base=$(basename $file .didl)
+  elif [ ${file: -4} == ".did" ]
+  then base=$(basename $file .did)
   else
-    echo "Unknown file extension in $file, expected .as, .sh, .wat or .didl"; exit 1
+    echo "Unknown file extension in $file, expected .as, .sh, .wat or .did"; exit 1
     failures=yes
     continue
   fi
@@ -211,10 +211,20 @@ do
     fi
 
   else
-    # The file is a .didl file, so we are expected to test the idl
-    $ECHO -n " [didc]"
-    $DIDC $base.didl > $out/$base.didc 2>&1
-    diff_files="$diff_files $base.didc"
+    # The file is a .did file, so we are expected to test the idl
+    # Typecheck
+    $ECHO -n " [tc]"
+    $DIDC --check $base.did > $out/$base.tc 2>&1
+    tc_succeeded=$?
+    normalize $out/$base.tc
+    diff_files="$diff_files $base.tc"
+
+    if [ "$tc_succeeded" -eq 0 ];
+    then
+      $ECHO -n " [js]"
+      $DIDC --js $base.did > $out/$base.js 2>&1
+      diff_files="$diff_files $base.js"
+    fi
   fi
   $ECHO ""
 
