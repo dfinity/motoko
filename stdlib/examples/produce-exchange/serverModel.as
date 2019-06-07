@@ -38,6 +38,7 @@ import Option = "../../option.as";
 import Trie = "../../trie2.as";
 
 type Trie<K,V> = Trie.Trie<K,V>;
+type TrieBuild<K,V> = Trie.Build.TrieBuild<K,V>;
 type Key<K> = Trie.Key<K>;
 
 type Table<K,V> = Trie.Trie<K,V>;
@@ -54,6 +55,7 @@ import Result = "../../result.as";
 type Result<Ok,Err> = Result.Result<Ok,Err>;
 
 type RouteInventoryMap = Trie<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
+type QueryResult = TrieBuild<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
 
 type RoleId = {
   #user        : T.UserId;
@@ -1969,26 +1971,27 @@ than the MVP goals, however.
     debugOff " production regions.\n";
 
     /** - Join: For each production region, consider all routes and inventory: */
-    let queryResults : Trie<T.RegionId, RouteInventoryMap> = {
+    let queryResults : Trie<T.RegionId, QueryResult> = {
       retailerJoinCount += 1;
       Trie.join<T.RegionId,
                 M.RouteMap,
                 M.ByProducerInventoryMap,
-                RouteInventoryMap>(
+                QueryResult>(
         retailerRoutes,
         inventoryByRegion,
         idIsEq,
         func (routes:M.RouteMap,
-              inventory:M.ByProducerInventoryMap) : RouteInventoryMap
+              inventory:M.ByProducerInventoryMap) : QueryResult
           =
-          label profile_retailerQueryAll_product_region : RouteInventoryMap
+          label profile_retailerQueryAll_product_region : QueryResult
       {
 
         /** - Within this production region, consider every route-item pairing: */
-        let product = Trie.prod<T.RouteId, M.RouteDoc,
-                                T.InventoryId, M.InventoryDoc,
-                                (T.RouteId, T.InventoryId),
-                                (M.RouteDoc, M.InventoryDoc)>(
+        let product = Trie.Build.prodBuild
+        <T.RouteId, M.RouteDoc,
+         T.InventoryId, M.InventoryDoc,
+         (T.RouteId, T.InventoryId),
+         (M.RouteDoc, M.InventoryDoc)>(
           routes,
           /** - (To perform this Cartesian product, use a 1D inventory map:) */
           Trie.mergeDisjoint2D<T.ProducerId, T.InventoryId, M.InventoryDoc>(
@@ -2030,13 +2033,15 @@ than the MVP goals, however.
       )};
 
     /** - The results are still organized by producer region; merge all such regions: */
-    let queryResultsMerged : RouteInventoryMap =
-      Trie.mergeDisjoint2D<T.RegionId, (T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>(
-        queryResults, idIsEq, idPairIsEq);
+    let queryResult : QueryResult =
+      Trie.Build.projectInnerBuild
+    <T.RegionId, (T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>
+    (queryResults);
 
     debugOff "- query result count: ";
-    let size = Trie.count<(T.RouteId, T.InventoryId),
-                          (M.RouteDoc, M.InventoryDoc)>(queryResultsMerged);
+    let size = Trie.Build.buildCount
+    <(T.RouteId, T.InventoryId),
+     (M.RouteDoc, M.InventoryDoc)>(queryResult);
     if ( size > retailerQuerySizeMax ) {
       retailerQuerySizeMax := size;
     };
@@ -2045,10 +2050,11 @@ than the MVP goals, however.
 
     /** - Prepare reservation information for client, as an array; see also [`makeReservationInfo`](#makereservationinfo) */
     let arr =
-      Trie.toArray<(T.RouteId, T.InventoryId),
-                   (M.RouteDoc, M.InventoryDoc),
-                   T.ReservationInfo>(
-        queryResultsMerged,
+      Trie.Build.buildToArray
+    <(T.RouteId, T.InventoryId),
+     (M.RouteDoc, M.InventoryDoc),
+     T.ReservationInfo>(
+        queryResult,
         func (_:(T.RouteId,T.InventoryId), (r:M.RouteDoc, i:M.InventoryDoc))
           : T.ReservationInfo {
             makeReservationInfo(i, r)

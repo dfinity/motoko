@@ -86,7 +86,7 @@ let dump (c:t) (ve: Value.value Value.Env.t) =
     in
     let sorted_counts =
       List.sort (
-          (* Final ordering: 
+          (* Final ordering:
              - counts; bigger first; this is the main ordering constraint.
              - labels; labeled expressions before unlabeled
              - regions; earlier/outer regions before later/enclosed ones
@@ -118,12 +118,23 @@ let dump (c:t) (ve: Value.value Value.Env.t) =
     Printf.fprintf file "# column: source region count\n" ;
     List.iter (fun fld -> Printf.fprintf file "# column: --profile-field: %s\n" fld)
       (List.rev flds) ;
+    let lab_total = ref 0 in
+    let unlab_total = ref 0 in
+    List.iter (fun ((region, labop), region_count) ->
+        assert (dump_count = 0);
+        (match labop with
+           None   -> unlab_total := !unlab_total + region_count
+         | Some x -> lab_total := !lab_total + region_count
+        );
+      ) sorted_counts;
+    Printf.fprintf file "# count total (unlabeled): %d\n" !unlab_total ;
+    Printf.fprintf file "# ...             labeled: %d\n" !lab_total ;
     List.iter (fun ((region, labop), region_count) ->
         assert (dump_count = 0);
         Printf.fprintf file "%s\"%s\", %s, %d%s\n"
           (!Flags.profile_line_prefix)
           (string_of_region region)
-          (match labop with 
+          (match labop with
              None   -> "null"
            | Some x -> Printf.sprintf "?\"%s\"" x
           )

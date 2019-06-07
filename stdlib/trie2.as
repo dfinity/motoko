@@ -798,7 +798,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     func merge (a:Trie<K3,V3>, b:Trie<K3,V3>) : Trie<K3,V3> =
       mergeDisjoint<K3,V3>(a, b, k3_eq);
 
-    /**- `foldUp` "squared"; something like "`foldUp^2((tl, tr), merge, (insert null <?< op))`", but real: */
+    /**- "`foldUp` squared" (imagine two nested loops): */
     foldUp<K1, V1, Trie<K3, V3>>(
       tl, merge,
       func (k1:K1, v1:V1) : Trie<K3,V3> {
@@ -817,6 +817,177 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     )
   };
 
+
+  /**
+   Build: An ADT for "Trie Builds"
+   ========================================
+
+   This module provides optimized variants of normal tries, for
+   (much!) more efficient PX retailer queries.
+
+   The central insight is that for (unmaterialized) query results, we
+   do not need to actually build any resulting trie of the resulting
+   data, but rather, just need a collection of what would be in that
+   trie.  Since query results can be large (quadratic in the DB size!),
+   avoiding the construction of this trie provides a considerable savings.
+
+   To get this savings, we use an ADT for the operations that _would_ build this trie,
+   if evaluated. This structure specializes a rope: a balanced tree representing a
+   sequence.  It is only as balanced as the tries from which we generate
+   these build ASTs.  They have no intrinsic balance properties of their
+   own.
+
+   */
+  module Build {
+
+    /** Commands for building tries.
+
+     For PL academics: Imagine commands for the IMP imperative language,
+     but where global memory consists of a single (anonymous) global trie */
+    type TrieBuild<K,V> = {
+      #skip ;
+      #insert : (Key<K>, V) ;
+      #seq : {
+        count : Nat ;
+        left  : TrieBuild<K,V> ;
+        right : TrieBuild<K,V> ;
+      } ;
+    };
+
+    func buildCount<K,V>(tb:TrieBuild<K,V>) : Nat =
+      label profile_trie_buildCount : Nat {
+      switch tb {
+      case (#skip) 0;
+      case (#insert(_, _)) 1;
+      case (#seq(seq)) seq.count;
+      }
+    };
+
+    func buildSeq<K,V>(l:TrieBuild<K,V>, r:TrieBuild<K,V>) : TrieBuild<K,V> =
+      label profile_trie_buildSeq : TrieBuild<K,V> {
+      let sum = buildCount<K,V>(l) + buildCount<K,V>(r);
+      #seq(new { count = sum; left = l; right = r })
+    };
+
+    /**
+     `prodBuild`
+     ---------------
+
+     Like `prod`, except do not actually do the insert calls, just
+     record them, as a (binary tree) data structure, isomorphic to the
+     recursion of this function (which is balanced, in expectation).
+
+     See also:
+
+     - [`prod`](#prod)
+
+     */
+    func prodBuild<K1,V1,K2,V2,K3,V3>(
+      tl    :Trie<K1,V1>,
+      tr    :Trie<K2,V2>,
+      op    :(K1,V1,K2,V2) -> ?(Key<K3>,V3),
+      k3_eq :(K3,K3) -> Bool
+    )
+      : TrieBuild<K3,V3>
+    {
+      func outer_bin (a:TrieBuild<K3,V3>,
+                b:TrieBuild<K3,V3>)
+        : TrieBuild<K3,V3> =
+        label profile_trie_prodBuild_outer_seqOfBranch : TrieBuild<K3,V3> {
+        buildSeq<K3, V3>(a, b)
+      };
+
+      func inner_bin (a:TrieBuild<K3,V3>,
+                b:TrieBuild<K3,V3>)
+        : TrieBuild<K3,V3> =
+        label profile_trie_prodBuild_inner_seqOfBranch : TrieBuild<K3,V3> {
+        buildSeq<K3, V3>(a, b)
+      };
+
+      /**- "`foldUp` squared" (imagine two nested loops): */
+      foldUp<K1, V1, TrieBuild<K3, V3>>(
+        tl, outer_bin,
+        func (k1:K1, v1:V1) : TrieBuild<K3,V3> {
+          foldUp<K2, V2, TrieBuild<K3, V3>>(
+            tr, inner_bin,
+            func (k2:K2, v2:V2) : TrieBuild<K3, V3> {
+              switch (op(k1, v1, k2, v2)) {
+              case null #skip;
+              case (?(k3, v3)) { #insert(k3, v3) };
+              }
+            },
+            #skip
+          )
+        },
+        #skip
+      )
+    };
+
+    /**
+     `buildNth`
+     --------
+     Project the nth key-value pair from the trie build.
+
+     This position is meaningful only when the build contains multiple uses of one or more keys, otherwise it is not.
+     */
+    func buildNth<K,V>(tb:TrieBuild<K,V>, i:Nat) : ?(Key<K>, V) = label profile_triebuild_nth : (?(Key<K>, V)) {
+      func rec(tb:TrieBuild<K,V>, i:Nat) : ?(Key<K>, V) = label profile_triebuild_nth_rec : (?(Key<K>, V)) {
+        switch tb {
+        case (#skip) P.unreachable();
+        case (#insert (k,v)) label profile_trie_buildNth_rec_end : (?(Key<K>, V)) {
+               assert(i == 0);
+               ?(k,v)
+             };
+        case (#seq s) label profile_trie_buildNth_rec_seq : (?(Key<K>, V)) {
+               let count_left = buildCount<K,V>(s.left);
+               if (i < count_left) { rec(s.left,  i) }
+               else                { rec(s.right, i - count_left) }
+             };
+        }
+      };
+      if (i >= buildCount<K,V>(tb)) {
+        return null
+      };
+      rec(tb, i)
+    };
+
+    /**
+     `projectInnerBuild`
+     --------------
+
+     Like [`mergeDisjoint`](#mergedisjoint), except that it avoids the
+     work of actually merging any tries; rather, just record the work for
+     latter (if ever).
+     */
+    func projectInnerBuild<K1,K2,V>(t : Trie<K1,TrieBuild<K2,V>>)
+      : TrieBuild<K2,V>
+    {
+      foldUp<K1, TrieBuild<K2,V>, TrieBuild<K2,V>>
+      ( t,
+        func (t1:TrieBuild<K2,V>, t2:TrieBuild<K2,V>):TrieBuild<K2,V> {  buildSeq<K2,V>(t1, t2) },
+        func (_:K1, t:TrieBuild<K2,V>): TrieBuild<K2,V> { t },
+        #skip )
+    };
+
+    /**
+     `buildToArray`
+     --------
+     Gather the collection of key-value pairs into an array of a (possibly-distinct) type.
+     */
+    func buildToArray<K,V,W>(tb:TrieBuild<K,V>,f:(K,V)->W):[W] =
+      label profile_triebuild_toArray_begin : [W] {
+      let a = Array_tabulate<W> (
+        buildCount<K,V>(tb),
+        func (i:Nat) : W = label profile_triebuild_toArray_nth : W {
+          let (k,v) = Option.unwrap<(Key<K>,V)>(buildNth<K,V>(tb, i));
+          f(k.key, v)
+        }
+      );
+      label profile_triebuild_toArray_end : [W]
+      a
+    };
+
+  };
 
   /**
    `fold`
@@ -891,7 +1062,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    doing so.
    */
   func nth<K,V>(t:Trie<K,V>, i:Nat) : ?(Key<K>, V) = label profile_trie_nth : (?(Key<K>, V)) {
-    func rec(t:Trie<K,V>, i:Nat) : ?(Key<K>, V) {
+    func rec(t:Trie<K,V>, i:Nat) : ?(Key<K>, V) = label profile_trie_nth_rec : (?(Key<K>, V)) {
       switch t {
       case (#empty) P.unreachable();
       case (#leaf l) List.nth<(Key<K>,V)>(l.keyvals, i);
@@ -907,6 +1078,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     };
     rec(t, i)
   };
+
 
   /**
    `toArray`
