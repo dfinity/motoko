@@ -161,19 +161,19 @@ let actor_msg id f v (k : V.value V.cont) =
 let make_unit_message id v =
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {V.sort = T.Sharable; V.n_res = 0; _} ->
-    Value.message_func call_conv.V.n_args (fun v k ->
+  | {T.sort = T.Sharable; T.n_res = 0; _} ->
+    Value.message_func call_conv.T.n_args (fun v k ->
       actor_msg id f v (fun _ -> ());
       k V.unit
     )
   | _ -> (* assert false *)
-    failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
+    failwith ("unexpected call_conv " ^ (T.string_of_call_conv call_conv))
 
 let make_async_message id v =
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {V.sort = T.Sharable; V.control = T.Promises; V.n_res = 1; _} ->
-    Value.async_func call_conv.V.n_args (fun v k ->
+  | {T.sort = T.Sharable; T.control = T.Promises; T.n_res = 1; _} ->
+    Value.async_func call_conv.T.n_args (fun v k ->
       let async = make_async () in
       actor_msg id f v (fun v_async ->
         get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
@@ -181,7 +181,7 @@ let make_async_message id v =
       k (V.Async async)
     )
   | _ -> (* assert false *)
-    failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
+    failwith ("unexpected call_conv " ^ (T.string_of_call_conv call_conv))
 
 
 let make_message name t v : V.value =
@@ -213,31 +213,31 @@ let interpret_lit env lit : V.value =
 (* Expressions *)
 
 let check_call_conv exp call_conv =
-  let exp_call_conv = V.call_conv_of_typ exp.note.note_typ in
+  let exp_call_conv = T.call_conv_of_typ exp.note.note_typ in
   if not (exp_call_conv = call_conv) then
     failwith (Printf.sprintf
       "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
       (T.string_of_typ exp.note.note_typ)
-      (V.string_of_call_conv exp_call_conv)
-      (V.string_of_call_conv call_conv)
+      (T.string_of_call_conv exp_call_conv)
+      (T.string_of_call_conv call_conv)
     )
 
 let check_call_conv_arg exp v call_conv =
-  if call_conv.V.n_args <> 1 then
+  if call_conv.T.n_args <> 1 then
   let es = try V.as_tup v with Invalid_argument _ ->
     failwith (Printf.sprintf
       "call %s: calling convention %s cannot handle non-tuple value %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
-      (V.string_of_call_conv call_conv)
+      (T.string_of_call_conv call_conv)
       (V.string_of_val v)
     )
   in
-  if List.length es <> call_conv.V.n_args then
+  if List.length es <> call_conv.T.n_args then
     failwith (Printf.sprintf
       "call %s: calling convention %s got tuple of wrong length %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
-      (V.string_of_call_conv call_conv)
+      (T.string_of_call_conv call_conv)
       (V.string_of_val v)
     )
 
@@ -250,7 +250,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   match exp.it with
   | PrimE s ->
-    k (V.Func (V.call_conv_of_typ exp.note.note_typ, Prelude.prim s))
+    k (V.Func (T.call_conv_of_typ exp.note.note_typ, Prelude.prim s))
   | VarE id ->
     begin match Lib.Promise.value_opt (find id.it env.vals) with
     | Some v -> k v
@@ -318,7 +318,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | FuncE (name, _sort, _typbinds, pat, _typ, exp2) ->
     let f = interpret_func env name pat (fun env' -> interpret_exp env' exp2) in
-    let v = V.Func (V.call_conv_of_typ exp.note.note_typ, f) in
+    let v = V.Func (T.call_conv_of_typ exp.note.note_typ, f) in
     let v' =
       match _sort.it with
       | T.Sharable -> make_message name exp.note.note_typ v
@@ -660,7 +660,7 @@ and interpret_dec env dec (k : V.value V.cont) =
         k' v'
       )
     ) in
-    let v = V.Func (V.call_conv_of_typ dec.note.note_typ, f) in
+    let v = V.Func (T.call_conv_of_typ dec.note.note_typ, f) in
     define_id env {id with note = ()} v;
     k v
 

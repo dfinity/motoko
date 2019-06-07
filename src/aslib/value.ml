@@ -1,5 +1,4 @@
 open Printf
-module T = Type
 
 (* Environments *)
 
@@ -193,19 +192,6 @@ end
 
 type unicode = int
 
-type call_conv = {
-  sort: Type.sharing;
-  control : Type.control;
-  n_args : int;
-  n_res : int;
-}
-
-let call_conv_of_typ typ =
-  match typ with
-  | Type.Func(sort, control, tbds, dom, res) ->
-    { sort; control; n_args = List.length dom; n_res = List.length res }
-  | _ -> raise (Invalid_argument ("call_conv_of_typ " ^ T.string_of_typ typ))
-
 type func =
   (value -> value cont -> unit)
 and value =
@@ -224,7 +210,7 @@ and value =
   | Variant of string * value
   | Array of value array
   | Obj of value Env.t
-  | Func of call_conv * func
+  | Func of Type.call_conv * func
   | Async of async
   | Mut of value ref
   | Serialized of value
@@ -236,13 +222,9 @@ and 'a cont = 'a -> unit
 
 (* Smart constructors *)
 
-let local_cc n m = { sort = T.Local; control = T.Returns; n_args = n; n_res = m}
-let message_cc n = { sort = T.Sharable; control = T.Returns; n_args = n; n_res = 0}
-let async_cc n = { sort = T.Sharable; control = T.Promises; n_args = n; n_res = 1}
-
-let local_func n m f = Func (local_cc n m, f)
-let message_func n f = Func (message_cc n, f)
-let async_func n f = Func (async_cc n, f)
+let local_func n m f = Func (Type.local_cc n m, f)
+let message_func n f = Func (Type.message_cc n, f)
+let async_func n f = Func (Type.async_cc n, f)
 
 
 (* Projections *)
@@ -422,12 +404,3 @@ and string_of_def' d def =
 
 let string_of_val v = string_of_val' !Flags.print_depth v
 let string_of_def d = string_of_def' !Flags.print_depth d
-
-let string_of_call_conv {sort;control;n_args;n_res} =
-  sprintf "(%s %i %s %i)"
-    (T.string_of_sharing sort)
-    n_args
-    (match control with
-     | T.Returns -> "->"
-     | T.Promises -> "@>")
-    n_res
