@@ -1,6 +1,7 @@
+open Idllib
 open Printf
 
-let name = "idlc"
+let name = "didc"
 let version = "0.1"
 let banner = "Interface Description Language (IDL) " ^ version ^ " interpreter"
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
@@ -35,10 +36,6 @@ let argspec = Arg.align
 
 
 (* Main *)
-
-let exit_on_none = function
-  | Some x -> x
-  | None -> exit 1
 
 let exit_on_failure = function
   | Ok x -> x

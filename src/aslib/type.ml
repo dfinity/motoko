@@ -921,8 +921,8 @@ and string_of_kind k =
   let op, sbs, st = strings_of_kind k in
   sprintf "%s %s%s" op sbs st
 
-let string_of_con = string_of_con' []
-let string_of_typ = string_of_typ' []
+let string_of_con : con -> string = string_of_con' []
+let string_of_typ : typ -> string = string_of_typ' []
 
 let rec string_of_typ_expand t =
   let s = string_of_typ t in

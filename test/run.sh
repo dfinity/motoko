@@ -21,7 +21,7 @@ DFINITY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
-DIDC=${IDLC:-$(realpath $(dirname $0)/../idl/didc)}
+DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
@@ -216,7 +216,7 @@ do
     $ECHO -n " [tc]"
     $DIDC --check $base.did > $out/$base.tc 2>&1
     tc_succeeded=$?
-    normalize $out/$base.tc    
+    normalize $out/$base.tc
     diff_files="$diff_files $base.tc"
 
     if [ "$tc_succeeded" -eq 0 ];
@@ -225,7 +225,6 @@ do
       $DIDC --js $base.did > $out/$base.js 2>&1
       diff_files="$diff_files $base.js"
     fi
-      
   fi
   $ECHO ""
 
