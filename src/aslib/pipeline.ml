@@ -235,14 +235,14 @@ let load_decl parse_one senv : load_decl_result =
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   phase "Interpreting" prog.Source.note;
-  Interpret.interpret_prog denv prog
+  Interpret.interpret_prog !Flags.trace denv prog
 
 let rec interpret_libraries denv libraries : Interpret.scope =
   match libraries with
   | [] -> denv
   | (f, p)::libs ->
     phase "Interpreting" p.Source.note;
-    let dscope = Interpret.interpret_library denv (f, p) in
+    let dscope = Interpret.interpret_library !Flags.trace denv (f, p) in
     let denv' = Interpret.adjoin_scope denv dscope in
     interpret_libraries denv' libs
 
@@ -490,9 +490,9 @@ let interpret_ir_prog inp_env libraries progs =
   let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
   let denv0 = Interpret_ir.empty_scope in
-  let dscope = Interpret_ir.interpret_prog denv0 prelude_ir in
+  let dscope = Interpret_ir.interpret_prog !Flags.trace denv0 prelude_ir in
   let denv1 = Interpret_ir.adjoin_scope denv0 dscope in
-  let _ = Interpret_ir.interpret_prog denv1 prog_ir in
+  let _ = Interpret_ir.interpret_prog !Flags.trace denv1 prog_ir in
   ()
 
 let interpret_ir_files files =

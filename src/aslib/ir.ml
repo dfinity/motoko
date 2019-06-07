@@ -103,6 +103,14 @@ type flavor = {
   serialized : bool; (* Shared function arguments are serialized *)
 }
 
+let full_flavor : flavor = {
+  has_await = true;
+  has_async_typ = true;
+  has_show = true;
+  serialized = false;
+}
+
+
 
 (* Program *)
 

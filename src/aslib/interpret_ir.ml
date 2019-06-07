@@ -14,7 +14,9 @@ type ret_env = V.value V.cont option
 type scope = val_env
 
 type env =
-  { vals : val_env;
+  { trace : bool;
+    flavor : Ir.flavor;
+    vals : val_env;
     labs : lab_env;
     rets : ret_env;
     async : bool
@@ -25,8 +27,10 @@ let adjoin_vals c ve = {c with vals = adjoin_scope c.vals ve}
 
 let empty_scope = V.Env.empty
 
-let env_of_scope ve =
-  { vals = ve;
+let env_of_scope trace flavor ve =
+  { trace;
+    flavor;
+    vals = ve;
     labs = V.Env.empty;
     rets = None;
     async = false;
@@ -60,7 +64,7 @@ let string_of_arg = function
 
 (* Debugging aids *)
 
-let last_env = ref (env_of_scope empty_scope)
+let last_env = ref (env_of_scope false Ir.full_flavor empty_scope)
 let last_region = ref Source.no_region
 
 let print_exn exn =
@@ -110,27 +114,27 @@ let fulfill async v =
   Scheduler.queue (fun () -> set_async async v)
 
 
-let async at (f: (V.value V.cont) -> unit) (k : V.value V.cont) =
+let async env at (f: (V.value V.cont) -> unit) (k : V.value V.cont) =
     let async = make_async () in
     (*    let k' = fun v1 -> set_async async v1 in *)
     let k' = fun v1 -> fulfill async v1 in
-    if !Flags.trace then trace "-> async %s" (string_of_region at);
+    if env.trace then trace "-> async %s" (string_of_region at);
     Scheduler.queue (fun () ->
-      if !Flags.trace then trace "<- async %s" (string_of_region at);
+      if env.trace then trace "<- async %s" (string_of_region at);
       incr trace_depth;
       f (fun v ->
-        if !Flags.trace then trace "<= %s" (V.string_of_val v);
+        if env.trace then trace "<= %s" (V.string_of_val v);
         decr trace_depth;
         k' v)
     );
     k (V.Async async)
 
-let await at async k =
-  if !Flags.trace then trace "=> await %s" (string_of_region at);
+let await env at async k =
+  if env.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
       Scheduler.queue (fun () ->
-          if !Flags.trace then
+          if env.trace then
             trace "<- await %s%s" (string_of_region at) (string_of_arg v);
           incr trace_depth;
           k v
@@ -138,34 +142,34 @@ let await at async k =
     )
 (*;  Scheduler.yield () *)
 
-let actor_msg id f v (k : V.value V.cont) =
-  if !Flags.trace then trace "-> message %s%s" id (string_of_arg v);
+let actor_msg env id f v (k : V.value V.cont) =
+  if env.trace then trace "-> message %s%s" id (string_of_arg v);
   Scheduler.queue (fun () ->
-    if !Flags.trace then trace "<- message %s%s" id (string_of_arg v);
+    if env.trace then trace "<- message %s%s" id (string_of_arg v);
     incr trace_depth;
     f v k
   )
 
-let make_unit_message id v =
+let make_unit_message env id v =
   let call_conv, f = V.as_func v in
   match call_conv with
   | {V.sort = T.Sharable; V.n_res = 0; _} ->
     Value.message_func call_conv.V.n_args (fun v k ->
-      actor_msg id f v (fun _ -> ());
+      actor_msg env id f v (fun _ -> ());
       k V.unit
     )
   | _ ->
     failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
 (* assert (false) *)
 
-let make_async_message id v =
-  assert (not !Flags.async_lowering);
+let make_async_message env id v =
+  assert env.flavor.has_async_typ;
   let call_conv, f = V.as_func v in
   match call_conv with
   | {V.sort = T.Sharable; V.control = T.Promises; V.n_res = 1; _} ->
     Value.async_func call_conv.V.n_args (fun v k ->
       let async = make_async () in
-      actor_msg id f v (fun v_async ->
+      actor_msg env id f v (fun v_async ->
         get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
       );
       k (V.Async async)
@@ -175,25 +179,22 @@ let make_async_message id v =
     (* assert (false) *)
 
 
-let make_message x cc v : V.value =
+let make_message env x cc v : V.value =
   match cc.V.control with
-  | T.Returns ->
-    make_unit_message x v
-  | T.Promises ->
-    assert (not !Flags.async_lowering);
-    make_async_message x v
+  | T.Returns -> make_unit_message env x v
+  | T.Promises -> make_async_message env x v
 
 
-let extended_prim s typ at =
+let extended_prim env s typ at =
   match s with
   | "@async" ->
-    assert (!Flags.await_lowering && not !Flags.async_lowering);
+    assert (not env.flavor.has_await && env.flavor.has_async_typ);
     (fun v k ->
       let (_, f) = V.as_func v in
       match typ with
       | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _)], _) ->
         let call_conv = Value.call_conv_of_typ f_dom in
-        async at
+        async env at
           (fun k' ->
             let k' = Value.Func (call_conv, fun v _ -> k' v) in
             f k' V.as_unit
@@ -201,12 +202,12 @@ let extended_prim s typ at =
       | _ -> assert false
     )
   | "@await" ->
-    assert(!Flags.await_lowering && not !Flags.async_lowering);
+    assert (not env.flavor.has_await && env.flavor.has_async_typ);
     fun v k ->
       (match V.as_tup v with
       | [async; w] ->
         let (_, f) = V.as_func w in
-        await at (V.as_async async) (fun v -> f v k)
+        await env at (V.as_async async) (fun v -> f v k)
       | _ -> assert false
       )
   | _ -> Prelude.prim s
@@ -268,7 +269,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let at = exp.at in
     let t = exp.note.Syntax.note_typ in
     let cc = V.call_conv_of_typ t in
-    k (V.Func (cc, extended_prim s t at))
+    k (V.Func (cc, extended_prim env s t at))
   | VarE id ->
     (match Lib.Promise.value_opt (find id.it env.vals) with
     | Some v -> k v
@@ -369,8 +370,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | AsyncE exp1 ->
-    assert(not(!Flags.await_lowering));
-    async
+    assert env.flavor.has_await;
+    async env
       exp.at
       (fun k' ->
         let env' = {env with labs = V.Env.empty; rets = Some k'; async = true}
@@ -378,9 +379,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       k
 
   | AwaitE exp1 ->
-    assert(not(!Flags.await_lowering));
+    assert env.flavor.has_await;
     interpret_exp env exp1
-      (fun v1 -> await exp.at (V.as_async v1) k)
+      (fun v1 -> await env exp.at (V.as_async v1) k)
   | AssertE exp1 ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v
@@ -406,7 +407,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let v = V.Func (cc, f) in
     let v =
       match cc.Value.sort with
-      | T.Sharable -> make_message x cc v
+      | T.Sharable -> make_message env x cc v
       | _-> v
     in
     k v
@@ -627,16 +628,17 @@ and interpret_decs env decs (k : unit V.cont) =
   | d::ds -> interpret_dec env d (fun () -> interpret_decs env ds k)
 
 and interpret_func env at x args f v (k : V.value V.cont) =
-  if !Flags.trace then trace "%s%s" x (string_of_arg v);
+  if env.trace then trace "%s%s" x (string_of_arg v);
   let ve = match_args at args v in
   incr trace_depth;
   let k' = fun v' ->
-    if !Flags.trace then trace "<= %s" (V.string_of_val v');
+    if env.trace then trace "<= %s" (V.string_of_val v');
     decr trace_depth;
     k v'
   in
   let env' =
-    { vals = V.Env.adjoin env.vals ve;
+    { env with
+      vals = V.Env.adjoin env.vals ve;
       labs = V.Env.empty;
       rets = Some k';
       async = false
@@ -646,8 +648,8 @@ and interpret_func env at x args f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog scope ((ds, exp), _flavor) : scope =
-  let env = env_of_scope scope in
+let interpret_prog trace scope ((ds, exp), flavor) : scope =
+  let env = env_of_scope trace flavor scope in
   trace_depth := 0;
   let ve = ref V.Env.empty in
   try
