@@ -2001,11 +2001,11 @@ than the MVP goals, however.
                 route   :M.RouteDoc,
                 item_id :T.InventoryId,
                 item    :M.InventoryDoc) :
-            ?(Key<(T.RouteId, T.InventoryId)>,
+            ?((T.RouteId, T.InventoryId),
               (M.RouteDoc, M.InventoryDoc))
             =
             label profile_retailerQueryAll_candidate_check :
-            ( ?(Key<(T.RouteId, T.InventoryId)>,
+            ( ?((T.RouteId, T.InventoryId),
                 (M.RouteDoc, M.InventoryDoc)) )
         {
           retailerQueryCost += 1;
@@ -2016,7 +2016,7 @@ than the MVP goals, however.
             ?( (route_id, item_id), (route, item) )
           } else {
             label profile_retailerQueryAll_candidate_check_false :
-              ( ?(Key<(T.RouteId, T.InventoryId)>,
+              ( ?((T.RouteId, T.InventoryId),
                   (M.RouteDoc, M.InventoryDoc)) )
 
             null

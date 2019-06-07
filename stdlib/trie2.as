@@ -930,15 +930,15 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
      This position is meaningful only when the build contains multiple uses of one or more keys, otherwise it is not.
      */
-    func buildNth<K,V>(tb:TrieBuild<K,V>, i:Nat) : ?(Key<K>, V) = label profile_triebuild_nth : (?(Key<K>, V)) {
-      func rec(tb:TrieBuild<K,V>, i:Nat) : ?(Key<K>, V) = label profile_triebuild_nth_rec : (?(Key<K>, V)) {
+    func buildNth<K,V>(tb:TrieBuild<K,V>, i:Nat) : ?(K, ?Hash, V) = label profile_triebuild_nth : (?(K, ?Hash, V)) {
+      func rec(tb:TrieBuild<K,V>, i:Nat) : ?(K, ?Hash, V) = label profile_triebuild_nth_rec : (?(K, ?Hash, V)) {
         switch tb {
         case (#skip) P.unreachable();
-        case (#insert (k,v)) label profile_trie_buildNth_rec_end : (?(Key<K>, V)) {
+        case (#insert (k,h,v)) label profile_trie_buildNth_rec_end : (?(K, ?Hash, V)) {
                assert(i == 0);
-               ?(k,v)
+               ?(k,h,v)
              };
-        case (#seq s) label profile_trie_buildNth_rec_seq : (?(Key<K>, V)) {
+        case (#seq s) label profile_trie_buildNth_rec_seq : (?(K, ?Hash, V)) {
                let count_left = buildCount<K,V>(s.left);
                if (i < count_left) { rec(s.left,  i) }
                else                { rec(s.right, i - count_left) }
@@ -979,8 +979,8 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
       let a = Array_tabulate<W> (
         buildCount<K,V>(tb),
         func (i:Nat) : W = label profile_triebuild_toArray_nth : W {
-          let (k,v) = Option.unwrap<(Key<K>,V)>(buildNth<K,V>(tb, i));
-          f(k.key, v)
+          let (k,_,v) = Option.unwrap<(K,?Hash,V)>(buildNth<K,V>(tb, i));
+          f(k, v)
         }
       );
       label profile_triebuild_toArray_end : [W]
@@ -1001,7 +1001,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
       func rec(tb:TrieBuild<K,V>) {
         switch tb {
           case (#skip) ();
-          case (#insert(k,v)) { a[i] := ?f(k.key,v); i := i + 1 };
+          case (#insert(k,_,v)) { a[i] := ?f(k,v); i := i + 1 };
           case (#seq(s)) { rec(s.left); rec(s.right) };
         }
       };
