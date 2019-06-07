@@ -458,7 +458,7 @@ let prim = function
                        in k (Nat64 (Nat64.of_string (Big_int.string_of_big_int i)))
   | "Word64->Int" -> fun v k -> k (Int (Big_int.big_int_of_int64 (as_word64 v)))
   | "Word64->Int64" -> fun v k ->
-                       let i = Conv.big_int_of_unsigned_word64 (as_word64 v)
+                       let i = Big_int.big_int_of_int64 (as_word64 v)
                        in k (Int64 (Int_64.of_string (Big_int.string_of_big_int i)))
 
   | "Char->Word32" -> fun v k ->

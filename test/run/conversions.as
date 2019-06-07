@@ -38,8 +38,7 @@ func forall<T> (f : T -> (), l : [T]) = for (e in l.vals()) { f e };
     forall<Word64>(roundtripNat64, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF]);
 
     func roundtripInt64(w : Word64) = assert (int64ToWord64 (word64ToInt64 w) == w);
-    forall<Word64>(roundtripInt64, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF/*, 0xFFFFFFFFFFFFFFFF*/]);
-    // BUG: roundtripInt64 0xFFFFFFFFFFFFFFFF;
+    forall<Word64>(roundtripInt64, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF]);
 
     func roundtrip64i(w : Int) = assert (int64ToInt (intToInt64 w) == w);
     forall<Int>(roundtrip64i, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0x7FFFFFFFFFFFFFFF]);
