@@ -394,8 +394,8 @@ let rec show_val t v =
   let t = T.normalize t in
   match t, v with
   | T.Prim T.Bool, Value.Bool b -> if b then "true" else "false"
-  | T.Prim T.Nat, Value.Int i -> Value.Int.to_string i
-  | T.Prim T.Int, Value.Int i -> Value.Int.to_string i
+  | T.Prim T.Nat, Value.Int i -> Value.Int.to_ungrouped_string i
+  | T.Prim T.Int, Value.Int i -> Value.Int.to_ungrouped_string i
   | T.Prim T.Text, Value.Text s -> "\"" ^ s ^ "\""
   | T.Prim T.Null, Value.Null -> "null"
   | T.Opt _, Value.Null -> "null"
