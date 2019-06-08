@@ -1,7 +1,7 @@
 (executable
  (name asc)
  (modules asc)
- (libraries aslib)
+ (libraries aslib languageServer)
 )
 (executable
  (name as_ld)

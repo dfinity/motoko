@@ -1,0 +1,16 @@
+(library
+  (name lsp)
+  (libraries atdgen)
+)
+
+(rule
+  (targets lsp_j.ml lsp_j.mli)
+  (deps lsp.atd)
+  (action (run atdgen -j -j-std %{deps}))
+)
+
+(rule
+  (targets lsp_t.ml lsp_t.mli)
+  (deps lsp.atd)
+  (action (run atdgen -t %{deps}))
+)

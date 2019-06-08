@@ -35,3 +35,12 @@ We split the files into the following subdirectories
  * `idllib/`
 
    Kitchen-sink of `didc` related files. Will likely be split soon.
+
+ * `lsp/`
+
+   Language Server Protocol JSON mapping.
+
+ * `languageServer/`
+
+   The language server functionality itself.
+

@@ -30,8 +30,6 @@ let ocaml_vlq = import ./nix/ocaml-vlq.nix {
 let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
 let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
 
-let ocamlbuild-atdgen = import ./nix/ocamlbuild-atdgen.nix nixpkgs; in
-
 # Include dvm
 let real-dvm =
   if dvm == null
@@ -49,9 +47,9 @@ let real-dvm =
 
 let commonBuildInputs = [
   nixpkgs.ocaml
+  nixpkgs.dune
   nixpkgs.ocamlPackages.atdgen
   nixpkgs.ocamlPackages.base
-  nixpkgs.ocamlPackages.dune
   nixpkgs.ocamlPackages.findlib
   nixpkgs.ocamlPackages.menhir
   nixpkgs.ocamlPackages.num
@@ -157,6 +155,7 @@ rec {
       "dune-project"
       "dune"
       "[a-z].*/"
+      ".*.atd"
       ".*.ml"
       ".*.mly"
       ".*.mll"
