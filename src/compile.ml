@@ -1568,7 +1568,7 @@ module BigNum64 : BigNumType = struct
   let compile_unsigned_pow env = with_both_unboxed (BoxedWord.compile_unsigned_pow env) env
 
   let compile_neg env =
-    Func.share_code1 env "negInt" ("n", I32Type) [I32Type] (fun env get_n ->
+    Func.share_code1 env "neg<Int>" ("n", I32Type) [I32Type] (fun env get_n ->
       compile_lit env (Big_int.big_int_of_int 0) ^^
       get_n ^^
       compile_signed_sub env
@@ -2810,10 +2810,10 @@ module Serialization = struct
       (* Now the actual type-dependent code *)
       begin match t with
       | Prim (Nat|Int) -> inc_data_size (get_x ^^ BigNum.compile_data_size env)
-      | Prim Word64 -> inc_data_size (compile_unboxed_const 8l) (* 64 bit *)
-      | Prim Word8 -> inc_data_size (compile_unboxed_const 1l)
-      | Prim Word16 -> inc_data_size (compile_unboxed_const 2l)
-      | Prim Word32 -> inc_data_size (compile_unboxed_const 4l)
+      | Prim (Int8|Nat8|Word8) -> inc_data_size (compile_unboxed_const 1l)
+      | Prim (Int16|Nat16|Word16) -> inc_data_size (compile_unboxed_const 2l)
+      | Prim (Int32|Nat32|Word32) -> inc_data_size (compile_unboxed_const 4l)
+      | Prim (Int64|Nat64|Word64) -> inc_data_size (compile_unboxed_const 8l) (* 64 bit *)
       | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
       | Tup ts ->
         G.concat_mapi (fun i t ->
@@ -2916,22 +2916,22 @@ module Serialization = struct
         get_x ^^
         BigNum.compile_store_to_data_buf env ^^
         advance_data_buf
-      | Prim Word64 ->
+      | Prim (Int64|Nat64|Word64) ->
         get_data_buf ^^
         get_x ^^ BoxedWord.unbox env ^^
         G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 8l ^^ advance_data_buf
-      | Prim Word32 ->
+      | Prim (Int32|Nat32|Word32) ->
         get_data_buf ^^
         get_x ^^ BoxedSmallWord.unbox env ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 4l ^^ advance_data_buf
-      | Prim Word16 ->
+      | Prim (Int16|Nat16|Word16) ->
         get_data_buf ^^
         get_x ^^ UnboxedSmallWord.lsb_adjust Word16 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack16}) ^^
         compile_unboxed_const 2l ^^ advance_data_buf
-      | Prim Word8 ->
+      | Prim (Int8|Nat8|Word8) ->
         get_data_buf ^^
         get_x ^^ UnboxedSmallWord.lsb_adjust Word16 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
@@ -3044,22 +3044,22 @@ module Serialization = struct
         get_data_buf ^^
         BigNum.compile_load_from_data_buf env ^^
         advance_data_buf
-      | Prim Word64 ->
+      | Prim (Int64|Nat64|Word64) ->
         get_data_buf ^^
         G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
         BoxedWord.box env ^^
         compile_unboxed_const 8l ^^ advance_data_buf (* 64 bit *)
-      | Prim Word32 ->
+      | Prim (Int32|Nat32|Word32) ->
         get_data_buf ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
         BoxedSmallWord.box env ^^
         compile_unboxed_const 4l ^^ advance_data_buf
-      | Prim Word16 ->
+      | Prim (Int16|Nat16|Word16) ->
         get_data_buf ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack16, Wasm.Memory.ZX)}) ^^
         UnboxedSmallWord.msb_adjust Word16 ^^
         compile_unboxed_const 2l ^^ advance_data_buf
-      | Prim Word8 ->
+      | Prim (Int8|Nat8|Word8) ->
         get_data_buf ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
         UnboxedSmallWord.msb_adjust Word8 ^^
