@@ -8,6 +8,8 @@ Productions marked * probably deferred to later versions.
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
   (shared|actor)? { <typ-field>;* }             object
+  { <typ-tag>;* }                               variant
+  { # }                                         empty variant
   [ var? <typ> ]                                array
   ? <typ>                                       option
   shared <typ-params>? <typ> -> <typ>  function
@@ -15,13 +17,15 @@ Productions marked * probably deferred to later versions.
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
-* <typ> | <typ>                                 union
-* # <id>                                        atom
 
 <typ-field> ::=                               object type fields
   <id> : <typ>                                  immutable
   var <id> : <typ>                              mutable
   <id> <typ-params>? <params> : <typ>           function (short-hand)
+
+<typ-tag> ::=                                 variant type fields
+  # <id> : <typ>                                tag
+  # <id>                                        unit tag (short-hand)
 
 <typ-args> ::=                                type arguments
   < <typ>,* >
@@ -51,6 +55,7 @@ Productions marked * probably deferred to later versions.
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
   <exp> . <id>                                   object projection
+  # <id> <exp>?                                  variant injection
   <exp> := <exp>                                 assignment
   <unop>= <exp>                                  unary update
   <exp> <binop>= <exp>                           binary update
@@ -77,7 +82,6 @@ Productions marked * probably deferred to later versions.
   <dec>                                          declaration (scopes to block)
 * throw <exp>                                    raise exception
 * try <exp> (catch <pat> <exp>)+ (<finally> <exp>)?  try
-* # <id>                                             atom
 
 <exp-field> ::=                                object expression fields
   private? dec                                   field
@@ -91,15 +95,16 @@ Productions marked * probably deferred to later versions.
   <id>                                           variable
   <unop>? <lit>                                  literal
   ( <pat>,* )                                    tuple or brackets
+  { <pat-field>;* }                              object pattern
+  # <id> <pat>?                                  variant pattern
   ? <pat>                                        option
   <pat> : <typ>                                  type annotation
   <pat> or <pat>                                 disjunctive pattern
 * <pat> and <pat>                                conjunctive pattern
-* { <pat-field>;* }                              object pattern
 * async <pat>                                    asynchronous
 
 <pat-field> ::=                                object pattern fields
-* <id> = <pat>                                   field
+  <id> = <pat>                                   field
 ```
 
 ## Declarations

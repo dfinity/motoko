@@ -1,0 +1,4 @@
+(library
+ (name lib)
+ (preprocess (pps bisect_ppx -conditional))
+)
