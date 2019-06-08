@@ -2768,20 +2768,10 @@ module Serialization = struct
   *)
   let typ_id : Type.typ -> string = Type.string_of_typ
 
-
-  (* IDL field hashes *)
-  let lab_hash : Type.lab -> int32 = fun s ->
-    let open Int32 in
-    List.fold_left
-      (fun s c -> add (mul s 223l) (of_int (Char.code c)))
-      0l
-      (* TODO: also unescape the string, once #465 is approved *)
-      (Lib.String.explode s)
-
   let sort_by_hash fs =
     List.sort
       (fun (h1,_) (h2,_) -> compare h1 h2)
-      (List.map (fun f -> (lab_hash f.Type.lab, f)) fs)
+      (List.map (fun f -> (IdlHash.idl_hash f.Type.lab, f)) fs)
 
   (* Checks whether the serialization of a given type could contain references *)
   module TS = Set.Make (struct type t = Type.typ let compare = compare end)
@@ -4642,6 +4632,10 @@ and compile_exp (env : E.t) ae exp =
          SR.Vanilla,
          compile_exp_as env ae SR.unit e ^^
          E.call_import env "rts" "version"
+
+       | "idlHash" ->
+         SR.Vanilla,
+         E.trap_with env "idlHash only implemented in interpreter "
 
        | "Nat->Word8"
        | "Int->Word8" ->
