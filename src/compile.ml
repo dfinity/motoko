@@ -3546,13 +3546,14 @@ module StackRep = struct
     if n = 1 then UnboxedReference else UnboxedRefTuple n
 
   (* The stack rel of a primitive type, i.e. what the binary operators expect *)
-  let of_type : Type.typ -> t = function
-    | Type.Prim Type.Bool -> bool
-    | Type.(Prim (Nat | Int)) -> Vanilla
-    | Type.(Prim (Nat64 | Int64 | Word64)) -> UnboxedWord64
-    | Type.(Prim (Nat32 | Int32 | Word32)) -> UnboxedWord32
-    | Type.(Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char)) -> Vanilla
-    | Type.Prim Type.Text -> Vanilla
+  let rec of_type : Type.typ -> t = let open Type in function
+    | Prim Bool -> SR.bool
+    | Prim (Nat | Int) -> Vanilla
+    | Prim (Nat64 | Int64 | Word64) -> UnboxedWord64
+    | Prim (Nat32 | Int32 | Word32) -> UnboxedWord32
+    | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
+    | Prim Text -> Vanilla
+    | Con _ as t -> of_type (normalize t)
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
@@ -4318,14 +4319,14 @@ let compile_lit env lit =
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
     | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
     | Word64Lit n   -> SR.UnboxedWord64, compile_const_64 n
-    | Int8Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_8.to_int n)) 24) (* FIXME:Sign? *)
-    | Nat8Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat8.to_int n)) 24)
+    | Int8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_8.to_int n)) 24) (* FIXME:Sign? *)
+    | Nat8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat8.to_int n)) 24)
     | Int16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_16.to_int n)) 16) (* FIXME:Sign? *)
     | Nat16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat16.to_int n)) 16)
-    | Int32Lit n    -> SR.Vanilla, compile_unboxed_const (Int32.of_int (Value.Int_32.to_int n))
-    | Nat32Lit n    -> SR.Vanilla, compile_unboxed_const (Int32.of_int (Value.Nat32.to_int n)) (* FIXME:Sign? *)
-    | Int64Lit n    -> SR.Vanilla, compile_const_64 (Int64.of_int (Value.Int_64.to_int n)) (* FIXME:Bitwidth? *)
-    | Nat64Lit n    -> SR.Vanilla, compile_const_64 (Int64.of_int (Value.Nat64.to_int n)) (* FIXME:Sign? *)
+    | Int32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Int_32.to_int n))
+    | Nat32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Nat32.to_int n)) (* FIXME:Sign? *)
+    | Int64Lit n    -> SR.UnboxedWord64, compile_const_64 (Int64.of_int (Value.Int_64.to_int n)) (* FIXME:Bitwidth? *)
+    | Nat64Lit n    -> SR.UnboxedWord64, compile_const_64 (Int64.of_int (Value.Nat64.to_int n)) (* FIXME:Sign? *)
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
     | TextLit t     -> SR.Vanilla, Text.lit env t
@@ -4654,11 +4655,11 @@ and compile_exp (env : E.t) ae exp =
        | "Int->Int32"
        | "Int->Int16"
        | "Int->Int8" ->
-         SR.Vanilla,
-         let ty = typ_of_prim_typ exp.note.note_typ in
+         let ty = exp.note.note_typ in
+         StackRep.of_type ty,
          compile_exp_vanilla env ae e ^^
-         BigNum.truncate_to_word32 env ^^ (* FIXME: trap if it doesn't fit 3x! BOX!!! *)
-         UnboxedSmallWord.msb_adjust ty
+         BigNum.truncate_to_word32 env ^^ (* FIXME: trap if it doesn't fit 3x! *)
+         UnboxedSmallWord.msb_adjust (typ_of_prim_typ ty)
 
        | "Nat->Nat64" ->
          SR.UnboxedWord64,
@@ -4668,11 +4669,11 @@ and compile_exp (env : E.t) ae exp =
        | "Nat->Nat32"
        | "Nat->Nat16"
        | "Nat->Nat8" ->
-         SR.Vanilla,
-         let ty = typ_of_prim_typ exp.note.note_typ in
+         let ty = exp.note.note_typ in
+         StackRep.of_type ty,
          compile_exp_vanilla env ae e ^^
-         BigNum.truncate_to_word32 env ^^ (* FIXME: trap if it doesn't fit 3x! BOX!!! *)
-         UnboxedSmallWord.msb_adjust ty
+         BigNum.truncate_to_word32 env ^^ (* FIXME: trap if it doesn't fit 3x! *)
+         UnboxedSmallWord.msb_adjust (typ_of_prim_typ ty)
 
        | "Char->Word32" ->
          SR.UnboxedWord32,
