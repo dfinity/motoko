@@ -110,9 +110,11 @@ let w32 = actor {
     printInt(word32ToInt(c));
     print("\n");
   };
-  increcord(a : shared { x : Word32; y : Word32 }) : () {
+  increcord(a : shared { x : Word32; y : Word32; i : Int32; n : Nat32 }) : () {
     c += a.x;
     c += a.y;
+    c += int32ToWord32 (a.i);
+    c += nat32ToWord32 (a.n);
     printInt(word32ToInt(c));
     print("\n");
   };
@@ -144,8 +146,8 @@ w32.incnested(7,(8,9));
 w32.incarray([10,11,12,13]);
 w32.incopt(null);
 w32.incopt(?14);
-w32.increcord(shared {x = 15 : Word32; y = 16 : Word32});
-w32.increcord(shared {x = 17 : Word32; y = 18 : Word32; z = 19 : Word32});
+w32.increcord(shared {x = 15 : Word32; y = 16 : Word32; i = 20 : Int32; n = 21 : Nat32});
+w32.increcord(shared {x = 17 : Word32; y = 18 : Word32; z = 19 : Word32; i = intToInt32 (-41); n = 41 : Nat32});
 w32.printCounter();
 w32.printLabeled("Foo1: ");
 w32.printLabeledOpt(?"Foo2: ");
@@ -182,9 +184,11 @@ let w16 = actor {
     printInt(word16ToInt(c));
     print("\n");
   };
-  increcord(a : shared { x : Word16; y : Word16 }) : () {
+  increcord(a : shared { x : Word16; y : Word16; i : Int16; n : Nat16 }) : () {
     c += a.x;
     c += a.y;
+    c += int16ToWord16 (a.i);
+    c += nat16ToWord16 (a.n);
     printInt(word16ToInt(c));
     print("\n");
   };
@@ -216,8 +220,8 @@ w16.incnested(7,(8,9));
 w16.incarray([10,11,12,13]);
 w16.incopt(null);
 w16.incopt(?14);
-w16.increcord(shared {x = 15 : Word16; y = 16 : Word16});
-w16.increcord(shared {x = 17 : Word16; y = 18 : Word16; z = 19 : Word16});
+w16.increcord(shared {x = 15 : Word16; y = 16 : Word16; i = 20 : Int16; n = 21 : Nat16});
+w16.increcord(shared {x = 17 : Word16; y = 18 : Word16; z = 19 : Word16; i = intToInt16 (-41); n = 41 : Nat16});
 w16.printCounter();
 w16.printLabeled("Foo1: ");
 w16.printLabeledOpt(?"Foo2: ");
