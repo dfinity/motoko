@@ -1277,8 +1277,8 @@ module UnboxedSmallWord = struct
      over those. *)
 
   let shift_of_type = function
-    | Type.Word8 -> 24l
-    | Type.Word16 -> 16l
+    | Type.(Int8|Nat8|Word8) -> 24l
+    | Type.(Int16|Nat16|Word16) -> 16l
     | _ -> 0l
 
   let bitwidth_mask_of_type = function
@@ -1307,12 +1307,12 @@ module UnboxedSmallWord = struct
 
   (* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
   let lsb_adjust = function
-    | Type.Word32 -> G.nop
+    | Type.(Int32|Nat32|Word32) -> G.nop
     | ty -> compile_shrU_const (shift_of_type ty)
 
   (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
   let msb_adjust = function
-    | Type.Word32 -> G.nop
+    | Type.(Int32|Nat32|Word32) -> G.nop
     | ty -> shift_leftWordNtoI32 (shift_of_type ty)
 
   (* Makes sure that the word representation invariant is restored. *)
@@ -4318,6 +4318,14 @@ let compile_lit env lit =
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
     | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
     | Word64Lit n   -> SR.UnboxedWord64, compile_const_64 n
+    | Int8Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_8.to_int n)) 24) (* FIXME:Sign? *)
+    | Nat8Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat8.to_int n)) 24)
+    | Int16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_16.to_int n)) 16) (* FIXME:Sign? *)
+    | Nat16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat16.to_int n)) 16)
+    | Int32Lit n    -> SR.Vanilla, compile_unboxed_const (Int32.of_int (Value.Int_32.to_int n))
+    | Nat32Lit n    -> SR.Vanilla, compile_unboxed_const (Int32.of_int (Value.Nat32.to_int n)) (* FIXME:Sign? *)
+    | Int64Lit n    -> SR.Vanilla, compile_const_64 (Int64.of_int (Value.Int_64.to_int n)) (* FIXME:Bitwidth? *)
+    | Nat64Lit n    -> SR.Vanilla, compile_const_64 (Int64.of_int (Value.Nat64.to_int n)) (* FIXME:Sign? *)
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
     | TextLit t     -> SR.Vanilla, Text.lit env t
@@ -4330,6 +4338,11 @@ let compile_lit env lit =
 let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
   code ^^ StackRep.adjust env sr_in sr_out
+
+let rec typ_of_prim_typ = function
+  | Type.Prim ty -> ty
+  | Type.Con _ as ty -> typ_of_prim_typ (Type.normalize ty)
+  | t -> assert false
 
 let compile_unop env t op =
   let open Syntax in
@@ -4642,8 +4655,10 @@ and compile_exp (env : E.t) ae exp =
        | "Int->Int16"
        | "Int->Int8" ->
          SR.Vanilla,
+         let ty = typ_of_prim_typ exp.note.note_typ in
          compile_exp_vanilla env ae e ^^
-         BigNum.truncate_to_word32 env (* FIXME: trap if it doesn't fit 3x! BOX!!! *)
+         BigNum.truncate_to_word32 env ^^ (* FIXME: trap if it doesn't fit 3x! BOX!!! *)
+         UnboxedSmallWord.msb_adjust ty
 
        | "Nat->Nat64" ->
          SR.UnboxedWord64,
@@ -4654,8 +4669,10 @@ and compile_exp (env : E.t) ae exp =
        | "Nat->Nat16"
        | "Nat->Nat8" ->
          SR.Vanilla,
+         let ty = typ_of_prim_typ exp.note.note_typ in
          compile_exp_vanilla env ae e ^^
-         BigNum.truncate_to_word32 env (* FIXME: trap if it doesn't fit 3x! BOX!!! *)
+         BigNum.truncate_to_word32 env ^^ (* FIXME: trap if it doesn't fit 3x! BOX!!! *)
+         UnboxedSmallWord.msb_adjust ty
 
        | "Char->Word32" ->
          SR.UnboxedWord32,
