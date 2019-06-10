@@ -1473,7 +1473,7 @@ sig
      leaves boolean result on the stack
      N must be 1..64
    *)
-  val _fits_unsigned_bits : E.t -> int -> G.t
+  val fits_unsigned_bits : E.t -> int -> G.t
 end
 
 [@@@warning "-60"] (* Do not warn about unused module *)
@@ -1482,7 +1482,7 @@ module BigNum64 : BigNumType = struct
 
   (* examine the skewed pointer and determine if the unsigned number
      it points to fits into N bits *)
-  let _fits_unsigned_bits env = function
+  let fits_unsigned_bits env = function
     | 64 -> G.i Drop ^^ compile_unboxed_one
     | n when n > 64 || n < 1 -> assert false
     | n ->
@@ -1508,7 +1508,7 @@ module BigNum64 : BigNumType = struct
   let to_word32 env =
     let (set_num, get_num) = new_local env "num" in
     set_num ^^ get_num ^^
-    _fits_unsigned_bits env 32 ^^
+    fits_unsigned_bits env 32 ^^
     E.else_trap_with env "Losing precision" ^^
     get_num ^^
     unbox env ^^
@@ -1673,7 +1673,7 @@ module BigNumLibtommmath : BigNumType = struct
     G.i (Call (nr (E.built_in env ("rts_bigint_count_bits")))) ^^
     compile_unboxed_const (Int32.of_int (bits - 1)) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU))
-  let _fits_unsigned_bits env bits =
+  let fits_unsigned_bits env bits =
     G.i (Call (nr (E.built_in env ("rts_bigint_count_bits")))) ^^
     compile_unboxed_const (Int32.of_int bits) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU))
@@ -4671,9 +4671,15 @@ and compile_exp (env : E.t) ae exp =
        | "Nat->Nat8" ->
          let ty = exp.note.note_typ in
          StackRep.of_type ty,
+         let (set_num, get_num) = new_local env "num" in
+         let pty = typ_of_prim_typ ty in
          compile_exp_vanilla env ae e ^^
-         BigNum.truncate_to_word32 env ^^ (* FIXME: trap if it doesn't fit 3x! *)
-         UnboxedSmallWord.msb_adjust (typ_of_prim_typ ty)
+         set_num ^^ get_num ^^
+         BigNum.fits_unsigned_bits env Int32.(to_int (sub 32l (UnboxedSmallWord.shift_of_type pty))) ^^
+         E.else_trap_with env "Losing precision" ^^
+         get_num ^^
+         BigNum.truncate_to_word32 env ^^
+         UnboxedSmallWord.msb_adjust pty
 
        | "Char->Word32" ->
          SR.UnboxedWord32,
