@@ -24,7 +24,8 @@ type prim =
 type t = typ
 and typ =
   | Var of var * int                          (* variable *)
-  | Con of con * typ list                     (* constructor *)
+  | Free of con                               (* constructor *)
+  | Con of typ * typ list                     (* construction *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
   | Variant of field list                     (* variant *)

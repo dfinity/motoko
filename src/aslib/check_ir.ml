@@ -124,12 +124,15 @@ let rec check_typ env typ : unit =
     error env no_region "illegal T.Pre type"
   | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
-  | T.Con (c, typs) ->
+  | T.Free c ->
     if false then
       check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
+  | T.Con (T.Free c, typs) ->
     (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
       check_typ_bounds env tbs typs no_region
     )
+  | T.Con (_, _) ->
+    error env no_region "ill-formed constructed type %s" (T.string_of_typ typ)
   | T.Any -> ()
   | T.Non -> ()
   | T.Shared -> ()
@@ -141,7 +144,7 @@ let rec check_typ env typ : unit =
   | T.Func (sort, control, binds, ts1, ts2) ->
     let cs, ce = check_typ_binds env binds in
     let env' = adjoin_cons env  ce in
-    let ts = List.map (fun c -> T.Con (c, [])) cs in
+    let ts = List.map (fun c -> T.Con (T.Free c, [])) cs in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
@@ -216,7 +219,7 @@ and check_typ_field env s typ_field : unit =
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
-  let cs = List.map (function T.Con (c, []) ->  c | _ -> assert false) ts in
+  let cs = List.map (function T.Con (T.Free c, []) ->  c | _ -> assert false) ts in
   let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
@@ -707,15 +710,19 @@ and check_dec env dec  =
     typ exp <: T.as_immut t0
   | TypD c ->
     check (T.ConSet.mem c env.cons) "free type constructor";
-    let (binds, typ) =
+    let (binds, typ, open_) =
       match Con.kind c with
-      | T.Abs (binds, typ)
-      | T.Def (binds, typ) -> (binds, typ)
+      | T.Abs (binds, typ) -> (binds, typ, T.open_)
+      | T.Def (binds, typ) ->
+        let open_c = T.open_ [T.Free c] in
+        (List.map (fun {T.var;T.bound} -> {T.var;bound=open_c bound}) binds,
+         typ,
+         fun ts -> T.open_ (T.Free c::ts))
     in
     let cs, ce = check_typ_binds env binds in
-    let ts = List.map (fun c -> T.Con (c, [])) cs in
+    let ts = List.map (fun c -> T.Con (T.Free c, [])) cs in
     let env' = adjoin_cons env ce in
-    check_typ env' (T.open_ ts  typ)
+    check_typ env' (open_ ts typ)
 
 and check_decs env decs  =
   List.iter (check_dec env) decs;

@@ -993,21 +993,21 @@ module Tagged = struct
     match (tag : tag) with
     | Array ->
       begin match normalize ty with
-      | (Con _ | Shared | Any) -> true
+      | (Free _ | Con _ | Shared | Any) -> true
       | (Array _ | Tup _ | Obj _) -> true
       | (Prim _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Text ->
       begin match normalize ty with
-      | (Con _ | Shared | Any) -> true
+      | (Free _ | Con _ | Shared | Any) -> true
       | (Prim Text | Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Object ->
       begin match normalize ty with
-      | (Con _ | Shared | Any) -> true
+      | (Free _ | Con _ | Shared | Any) -> true
       | (Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
@@ -2750,11 +2750,13 @@ module Serialization = struct
         match t with
         | Var _ -> assert false
         | (Prim _ | Any | Non | Shared | Pre) -> true
-        | Con (c, ts) ->
+        | Free c -> go (Con (Free c, []))
+        | Con (Free c, ts) ->
           begin match Con.kind c with
           | Abs _ -> assert false
-          | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)
+          | Def (tbs,t) -> go (open_ (Free c::ts) t) (* TBR this may fail to terminate *)
           end
+        | Con (_, _) -> assert false
         | Array t -> go t
         | Tup ts -> List.for_all go ts
         | Func (Sharable, c, tbs, ts1, ts2) -> false

@@ -135,8 +135,9 @@ module Transform() = struct
     match t with
     | T.Prim _
       | Var _ -> t
-    | Con (c, ts) ->
-      Con (t_con c, List.map t_typ ts)
+    | Free c -> Free (t_con c)
+    | Con (t, ts) ->
+      Con (t_typ t, List.map t_typ ts)
     | Array t -> Array (t_typ t)
     | Tup ts -> Tup (List.map t_typ ts)
     | Func (s, c, tbs, t1, t2) ->
