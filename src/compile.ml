@@ -1281,6 +1281,8 @@ module UnboxedSmallWord = struct
     | Type.(Int16|Nat16|Word16) -> 16l
     | _ -> 0l
 
+  let bits_of_typ ty = Int32.(to_int (sub 32l (shift_of_type ty)))
+
   let bitwidth_mask_of_type = function
     | Type.Word8 -> 0b111l
     | Type.Word16 -> 0b1111l
@@ -1467,7 +1469,7 @@ sig
      leaves boolean result on the stack
      N must be 2..63
    *)
-  val _fits_signed_bits : E.t -> int -> G.t
+  val fits_signed_bits : E.t -> int -> G.t
   (* given a numeric object on the stack as skewed pointer, check whether
      it can be faithfully stored in N unsigned bits
      leaves boolean result on the stack
@@ -1493,7 +1495,7 @@ module BigNum64 : BigNumType = struct
 
   (* examine the skewed pointer and determine if the signed number
      it points to fits into N bits *)
-  let _fits_signed_bits env = function
+  let fits_signed_bits env = function
     | n when n > 63 || n < 2 -> assert false
     | n ->
       let set_num, get_num = new_local64 env "num" in
@@ -1669,7 +1671,7 @@ module BigNumLibtommmath : BigNumType = struct
       | Gt -> "rts_bigint_gt" in
     G.i (Call (nr (E.built_in env fn)))
 
-  let _fits_signed_bits env bits =
+  let fits_signed_bits env bits =
     G.i (Call (nr (E.built_in env ("rts_bigint_count_bits")))) ^^
     compile_unboxed_const (Int32.of_int (bits - 1)) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU))
@@ -4657,8 +4659,14 @@ and compile_exp (env : E.t) ae exp =
        | "Int->Int8" ->
          let ty = exp.note.note_typ in
          StackRep.of_type ty,
+         let (set_num, get_num) = new_local env "num" in
+         let pty = typ_of_prim_typ ty in
          compile_exp_vanilla env ae e ^^
-         BigNum.truncate_to_word32 env ^^ (* FIXME: trap if it doesn't fit 3x! *)
+         set_num ^^ get_num ^^
+         BigNum.fits_signed_bits env (UnboxedSmallWord.bits_of_typ pty) ^^
+         E.else_trap_with env "Losing precision" ^^
+         get_num ^^
+         BigNum.truncate_to_word32 env ^^
          UnboxedSmallWord.msb_adjust (typ_of_prim_typ ty)
 
        | "Nat->Nat64" ->
@@ -4675,7 +4683,7 @@ and compile_exp (env : E.t) ae exp =
          let pty = typ_of_prim_typ ty in
          compile_exp_vanilla env ae e ^^
          set_num ^^ get_num ^^
-         BigNum.fits_unsigned_bits env Int32.(to_int (sub 32l (UnboxedSmallWord.shift_of_type pty))) ^^
+         BigNum.fits_unsigned_bits env (UnboxedSmallWord.bits_of_typ pty) ^^
          E.else_trap_with env "Losing precision" ^^
          get_num ^^
          BigNum.truncate_to_word32 env ^^
