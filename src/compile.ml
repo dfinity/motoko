@@ -4671,7 +4671,12 @@ and compile_exp (env : E.t) ae exp =
 
        | "Nat->Nat64" ->
          SR.UnboxedWord64,
+         let (set_num, get_num) = new_local env "num" in
          compile_exp_vanilla env ae e ^^
+         set_num ^^ get_num ^^
+         BigNum.fits_unsigned_bits env 64 ^^
+         E.else_trap_with env "Losing precision" ^^
+         get_num ^^
          BigNum.truncate_to_word64 env (* FIXME: trap if it doesn't fit *)
 
        | "Nat->Nat32"
