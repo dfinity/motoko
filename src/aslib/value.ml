@@ -74,8 +74,8 @@ sig
   val neg : t -> t
   val not : t -> t
   val pow : t -> t -> t
-  val to_ungrouped_string : t -> string
   val to_string : t -> string
+  val to_pretty_string : t -> string
 end
 
 module MakeWord(WasmInt : Wasm.Int.S) =
@@ -91,8 +91,8 @@ struct
       pow (mul x x) (shr_u y one)
     else
       mul x (pow x (sub y one))
-  let to_ungrouped_string w = WasmInt.to_string_u w
-  let to_string w = group_num (WasmInt.to_string_u w)
+  let to_string w = WasmInt.to_string_u w
+  let to_pretty_string w = group_num (WasmInt.to_string_u w)
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
@@ -108,13 +108,14 @@ module type FloatType =
 sig
   include Wasm.Float.S
   val pow : t -> t -> t
+  val to_pretty_string : t -> string
 end
 
 module MakeFloat(WasmFloat : Wasm.Float.S) =
 struct
   include WasmFloat
   let pow x y = of_float (to_float x ** to_float y)
-  let to_string w = group_num (WasmFloat.to_string w)
+  let to_pretty_string w = group_num (WasmFloat.to_string w)
 end
 
 module Float = MakeFloat(Wasm.F64)
@@ -142,8 +143,8 @@ sig
   val to_int : t -> int
   val of_int : int -> t
   val of_string : string -> t
-  val to_ungrouped_string : t -> string
   val to_string : t -> string
+  val to_pretty_string : t -> string
 end
 
 module Int : NumType with type t = Big_int.big_int =
@@ -171,8 +172,8 @@ struct
   let compare = compare_big_int
   let to_int = int_of_big_int
   let of_int = big_int_of_int
-  let to_ungrouped_string i = string_of_big_int i
-  let to_string i = group_num (string_of_big_int i)
+  let to_string i = string_of_big_int i
+  let to_pretty_string i = group_num (string_of_big_int i)
   let of_string s =
     big_int_of_string (String.concat "" (String.split_on_char '_' s))
 
@@ -378,12 +379,12 @@ let string_of_string lsep s rsep =
 let rec string_of_val_nullary d = function
   | Null -> "null"
   | Bool b -> if b then "true" else "false"
-  | Int i -> Int.to_string i
-  | Word8 w -> Word8.to_string w
-  | Word16 w -> Word16.to_string w
-  | Word32 w -> Word32.to_string w
-  | Word64 w -> Word64.to_string w
-  | Float f -> Float.to_string f
+  | Int i -> Int.to_pretty_string i
+  | Word8 w -> Word8.to_pretty_string w
+  | Word16 w -> Word16.to_pretty_string w
+  | Word32 w -> Word32.to_pretty_string w
+  | Word64 w -> Word64.to_pretty_string w
+  | Float f -> Float.to_pretty_string f
   | Char c -> string_of_string '\'' [c] '\''
   | Text t -> string_of_string '\"' (Wasm.Utf8.decode t) '\"'
   | Tup vs ->
