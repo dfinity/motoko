@@ -74,7 +74,6 @@ sig
   val neg : t -> t
   val not : t -> t
   val pow : t -> t -> t
-  val to_ungrouped_string : t -> string
   val to_string : t -> string
 end
 
@@ -91,7 +90,6 @@ struct
       pow (mul x x) (shr_u y one)
     else
       mul x (pow x (sub y one))
-  let to_ungrouped_string w = WasmInt.to_string_u w
   let to_string w = group_num (WasmInt.to_string_u w)
 end
 
@@ -142,7 +140,6 @@ sig
   val to_int : t -> int
   val of_int : int -> t
   val of_string : string -> t
-  val to_ungrouped_string : t -> string
   val to_string : t -> string
 end
 
@@ -171,7 +168,6 @@ struct
   let compare = compare_big_int
   let to_int = int_of_big_int
   let of_int = big_int_of_int
-  let to_ungrouped_string i = string_of_big_int i
   let to_string i = group_num (string_of_big_int i)
   let of_string s =
     big_int_of_string (String.concat "" (String.split_on_char '_' s))
