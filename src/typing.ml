@@ -468,6 +468,11 @@ and infer_exp' f env exp : T.typ =
   end;
   t'
 
+and special_unop_typing = let open T in
+  function
+  | Prim Nat -> Prim Int
+  | t -> t
+
 and infer_exp'' env exp : T.typ =
   match exp.it with
   | PrimE _ ->
@@ -485,7 +490,7 @@ and infer_exp'' env exp : T.typ =
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     (* Special case for subtyping *)
-    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
+    let t = special_unop_typing t1 in
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_unop t op) then
@@ -932,7 +937,7 @@ and infer_pat' env pat : T.typ * val_env =
   | SignP (op, lit) ->
     let t1 = T.Prim (infer_lit env lit pat.at) in
     (* Special case for subtyping *)
-    let t = if t1 = T.Prim T.Nat then T.Prim T.Int else t1 in
+    let t = special_unop_typing t1 in
     if not (Operator.has_unop t op) then
       local_error env pat.at "operator is not defined for operand type\n  %s"
         (T.string_of_typ_expand t);
