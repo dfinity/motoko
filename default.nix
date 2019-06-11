@@ -47,16 +47,19 @@ let real-dvm =
 
 let commonBuildInputs = [
   nixpkgs.ocaml
-  nixpkgs.ocamlPackages.menhir
+  nixpkgs.dune
   nixpkgs.ocamlPackages.findlib
-  nixpkgs.ocamlPackages.ocamlbuild
+  nixpkgs.ocamlPackages.menhir
   nixpkgs.ocamlPackages.num
+  nixpkgs.ocamlPackages.stdint
   ocaml_wasm
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
   nixpkgs.ocamlPackages.yojson
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
+  nixpkgs.ocamlPackages.ocaml-migrate-parsetree
+  nixpkgs.ocamlPackages.ppx_tools_versioned
 ]; in
 
 let
@@ -64,15 +67,16 @@ let
     "test/"
     "test/.*Makefile.*"
     "test/quick.mk"
-    "test/(fail|run|run-dfinity|repl|ld)/"
-    "test/(fail|run|run-dfinity|repl|ld)/lib/"
-    "test/(fail|run|run-dfinity|repl|ld)/lib/dir/"
-    "test/(fail|run|run-dfinity|repl|ld)/.*.as"
-    "test/(fail|run|run-dfinity|repl|ld)/.*.sh"
-    "test/(fail|run|run-dfinity|repl|ld)/[^/]*.wat"
-    "test/(fail|run|run-dfinity|repl|ld)/[^/]*.c"
-    "test/(fail|run|run-dfinity|repl|ld)/ok/"
-    "test/(fail|run|run-dfinity|repl|ld)/ok/.*.ok"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/lib/"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/lib/dir/"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.as"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.sh"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.did"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.wat"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.c"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/ok/"
+    "test/(fail|run|run-dfinity|repl|ld|idl)/ok/.*.ok"
     "test/.*.sh"
   ];
   samples_files = [
@@ -144,35 +148,30 @@ rec {
   asc-bin = stdenv.mkDerivation {
     name = "asc-bin";
 
-    src = sourceByRegex ./. [
-      "src/"
-      "src/Makefile.*"
-      "src/.*.ml"
-      "src/.*.mli"
-      "src/.*.mly"
-      "src/.*.mll"
-      "src/.*.mlpack"
-      "src/_tags"
-      "test/"
-      "test/node-test.js"
+    src = sourceByRegex ./src [
+      "Makefile"
+      "dune-project"
+      "dune"
+      "[a-z].*/"
+      ".*.ml"
+      ".*.mly"
+      ".*.mll"
+      ".*/dune"
       ];
-
-    nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make -C src BUILD=native asc as-ld
+      make DUNE_OPTS="--display=short --profile release" asc as-ld
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp src/asc $out/bin
-      cp src/as-ld $out/bin
+      cp --verbose --dereference asc as-ld $out/bin
     '';
   };
 
-  native = nixpkgs.symlinkJoin {
+  asc = nixpkgs.symlinkJoin {
     name = "asc";
     paths = [ asc-bin rts ];
     buildInputs = [ nixpkgs.makeWrapper ];
@@ -182,8 +181,8 @@ rec {
     '';
   };
 
-  native_test = stdenv.mkDerivation {
-    name = "native.test";
+  tests = stdenv.mkDerivation {
+    name = "tests";
 
     src = sourceByRegex ./. (
       test_files ++
@@ -191,7 +190,8 @@ rec {
     );
 
     buildInputs =
-      [ native
+      [ asc
+        didc
         ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
@@ -206,6 +206,7 @@ rec {
         ${llvmEnv}
         export ASC=asc
         export AS_LD=as-ld
+        export DIDC=didc
         asc --version
         make -C samples all
       '' +
@@ -220,63 +221,6 @@ rec {
     '';
   };
 
-  asc-bin-coverage = asc-bin.overrideAttrs (oldAttrs: {
-    name = "asc-bin-coverage";
-    buildPhase =
-      "export BISECT_COVERAGE=YES;" +
-      oldAttrs.buildPhase;
-    installPhase =
-      oldAttrs.installPhase + ''
-      mv src/ $out/src
-      '';
-  });
-
-  native-coverage = nixpkgs.symlinkJoin {
-    name = "asc-covergage";
-    paths = [ asc-bin-coverage rts ];
-    buildInputs = [ nixpkgs.makeWrapper ];
-    postBuild = ''
-      wrapProgram $out/bin/asc \
-        --set-default ASC_RTS "$out/rts/as-rts.wasm"
-    '';
-  };
-
-  coverage-report = stdenv.mkDerivation {
-    name = "coverage-report";
-
-    src = sourceByRegex ./. (
-      test_files ++
-      samples_files
-    );
-
-    buildInputs =
-      [ native-coverage
-        nixpkgs.wabt
-        nixpkgs.bash
-        nixpkgs.perl
-        ocaml_bisect_ppx
-      ] ++
-      (if test-dvm then [ real-dvm ] else []) ++
-      llvmBuildInputs;
-
-    buildPhase = ''
-      patchShebangs .
-      ${llvmEnv}
-      export ASC=asc
-      export AS_LD=as-ld
-      ln -vs ${native-coverage}/src src
-      make -C test coverage
-      '';
-
-    installPhase = ''
-      mkdir -p $out
-      mv test/coverage/ $out/
-      mkdir -p $out/nix-support
-      echo "report coverage $out/coverage index.html" >> $out/nix-support/hydra-build-products
-    '';
-  };
-
-
   js = asc-bin.overrideAttrs (oldAttrs: {
     name = "asc.js";
 
@@ -288,22 +232,48 @@ rec {
     ];
 
     buildPhase = ''
-      make -C src asc.js
+      make asc.js
     '';
 
     installPhase = ''
       mkdir -p $out
-      cp -v src/asc.js $out
+      cp -v asc.js $out
       cp -vr ${rts}/rts $out
     '';
 
     doInstallCheck = true;
 
     installCheckPhase = ''
-      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv test/node-test.js
+      NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv ${./test/node-test.js}
     '';
 
   });
+
+  didc = stdenv.mkDerivation {
+    name = "didc";
+
+    src = sourceByRegex ./src [
+      "Makefile"
+      "dune-project"
+      "dune"
+      "[a-z].*/"
+      ".*.ml"
+      ".*.mly"
+      ".*.mll"
+      ".*/dune"
+      ];
+
+    buildInputs = commonBuildInputs;
+
+    buildPhase = ''
+      make DUNE_OPTS="--display=short --profile release" didc
+    '';
+
+    installPhase = ''
+      mkdir -p $out/bin
+      cp --verbose --dereference didc $out/bin
+    '';
+  };
 
   wasm = ocaml_wasm;
   dvm = real-dvm;
@@ -384,7 +354,7 @@ rec {
     );
 
     buildInputs = [
-      native
+      asc
     ];
 
     doCheck = true;
@@ -403,10 +373,10 @@ rec {
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
-      native
+      asc
       js
-      native_test
-      coverage-report
+      didc
+      tests
       rts
       stdlib-reference
       produce-exchange
@@ -415,20 +385,19 @@ rec {
   };
 
   shell = if export-shell then nixpkgs.mkShell {
-
     #
-    # Since building asc, and testing it, are two different derivation in default.nix
-    # we have to create a fake derivation for shell.nix that commons up the build dependencies
-    # of the two to provide a build environment that offers both
-    #
-    # Would not be necessary if nix-shell would take more than one `-A` flag, see
-    # https://github.com/NixOS/nix/issues/955
+    # Since building asc, and testing it, are two different derivations in we
+    # have to create a fake derivation for `nix-shell` that commons up the
+    # build dependencies of the two to provide a build environment that offers
+    # both.
     #
 
-    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != native) (
+    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != didc) (
       asc-bin.buildInputs ++
+      js.buildInputs ++
       rts.buildInputs ++
-      native_test.buildInputs ++
+      didc.buildInputs ++
+      tests.buildInputs ++
       users-guide.buildInputs ++
       [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
     ));
