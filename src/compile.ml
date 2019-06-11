@@ -1467,7 +1467,7 @@ sig
   (* given a numeric object on the stack as skewed pointer, check whether
      it can be faithfully stored in N bits, including a leading sign bit
      leaves boolean result on the stack
-     N must be 2..63
+     N must be 2..64
    *)
   val fits_signed_bits : E.t -> int -> G.t
   (* given a numeric object on the stack as skewed pointer, check whether
@@ -1496,7 +1496,8 @@ module BigNum64 : BigNumType = struct
   (* examine the skewed pointer and determine if the signed number
      it points to fits into N bits *)
   let fits_signed_bits env = function
-    | n when n > 63 || n < 2 -> assert false
+    | n when n > 64 || n < 2 -> assert false
+    | 64 -> Bool.lit true
     | n ->
       let set_num, get_num = new_local64 env "num" in
       unbox env ^^ set_num ^^ get_num ^^ get_num ^^
@@ -4651,8 +4652,13 @@ and compile_exp (env : E.t) ae exp =
 
        | "Int->Int64" ->
          SR.UnboxedWord64,
+         let (set_num, get_num) = new_local env "num" in
          compile_exp_vanilla env ae e ^^
-         BigNum.truncate_to_word64 env (* FIXME: trap if it doesn't fit *)
+         set_num ^^ get_num ^^
+         BigNum.fits_signed_bits env 64 ^^
+         E.else_trap_with env "Losing precision" ^^
+         get_num ^^
+         BigNum.truncate_to_word64 env
 
        | "Int->Int32"
        | "Int->Int16"

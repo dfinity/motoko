@@ -1,0 +1,10 @@
+--- outrange-int64upper.run
++++ outrange-int64upper.run-ir
+@@ -1,6 +1,7 @@
+ prelude:68.71-68.72: internal error, File "prelude.ml", line 407, characters 28-34: Assertion failed
+ 
+ Last environment:
++$param/8 = 9_223_372_036_854_775_808
+ @new_async = func
+ @text_of_Bool = func
+ @text_of_Int = func
