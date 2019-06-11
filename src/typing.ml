@@ -471,6 +471,10 @@ and infer_exp' f env exp : T.typ =
 and special_unop_typing = let open T in
   function
   | Prim Nat -> Prim Int
+  | Prim Nat8 -> Prim Int8
+  | Prim Nat16 -> Prim Int16
+  | Prim Nat32 -> Prim Int32
+  | Prim Nat64 -> Prim Int64
   | t -> t
 
 and infer_exp'' env exp : T.typ =
