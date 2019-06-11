@@ -23,7 +23,12 @@ let dump_prog flag prog =
     if flag then
       Wasm.Sexpr.print 80 (Arrange_idl.prog prog)
     else ()
-    
+(*
+let dump_ir flag ir =
+    if flag then
+      Wasm.Sexpr.print 80 (Arrange_ir.prog ir)
+    else ()
+ *)  
 (* Parsing *)
 
 type parse_result = Syntax_idl.prog Diag.result
@@ -79,6 +84,21 @@ let check_with parse check senv name : check_result =
 let check_file' senv name = check_with parse_file Typing.check_prog senv name
 let check_file name = check_file' initial_stat_env name
 
+(* IR Transformation *)
+
+type ir_result = (Buffer.t, Diag.messages) result
+
+let compile_file name : ir_result =
+  match check_file name with
+  | Error msgs -> Error msgs
+  | Ok ((prog, scope), msgs) ->
+     Diag.print_messages msgs;
+     phase "Transformation" name;
+     let prog_ir = Compile.transform scope prog in
+     let buf = Ir_to_js.compile prog_ir in
+     (*dump_ir true prog_ir;*)
+     Ok buf
+
 (* JS Compilation *)
 
 type compile_js_result = (Buffer.t, Diag.messages) result
@@ -90,4 +110,4 @@ let compile_js_file name : compile_js_result =
      Diag.print_messages msgs;
      phase "JS Compiling" name;
      let buf = Compile_js.compile scope prog in
-     Ok buf    
+     Ok buf         

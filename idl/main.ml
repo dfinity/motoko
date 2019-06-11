@@ -8,7 +8,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | Js
+type mode = Default | Check | Js | Ir
 
 let mode = ref Default
 let args = ref []
@@ -25,6 +25,7 @@ let out_file = ref ""
 let argspec = Arg.align
 [
   "--js", Arg.Unit (set_mode Js), " output Javascript binding";
+  "--ir", Arg.Unit (set_mode Ir), " transform IR";
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
@@ -56,6 +57,9 @@ let process_files files : unit =
   | Js ->
      let out = exit_on_failure (Pipeline.(compile_js_file (List.hd files))) in
      Buffer.contents out |> print_endline
+  | Ir ->
+     let out = exit_on_failure (Pipeline.(compile_file (List.hd files))) in
+     Buffer.contents out |> print_endline
      
 let print_exn exn =
   Printf.printf "%!";
@@ -71,7 +75,7 @@ let () =
   Printexc.record_backtrace true;
   try
     Arg.parse argspec add_arg usage;
-    if !mode = Default then mode := Check;
+    if !mode = Default then mode := Ir;
     process_files !args
   with exn ->
     print_exn exn
