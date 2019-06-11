@@ -31,6 +31,9 @@ class revrange(x : Nat, y : Nat) {
   next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
 };
 
+// for testing
+func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
+
 func charToText(c : Char) : Text = (prim "Char->Text" : Char -> Text) c;
 
 func printInt(x : Int) { print (@text_of_Int x) };
@@ -368,6 +371,7 @@ let prim = function
                                in k (Text str)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "rts_version" -> fun v k -> as_unit v; k (Text "0.1")
+  | "idlHash" -> fun v k -> let s = as_text v in k (Word32 (IdlHash.idl_hash s))
   | "decodeUTF8" -> fun v k ->
                     let s = as_text v in
                     let open Int32 in
