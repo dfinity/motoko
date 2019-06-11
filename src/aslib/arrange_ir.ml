@@ -6,7 +6,6 @@ open Wasm.Sexpr
 (* for concision, we shadow the imported definition of [Arrange_type.typ] and pretty print types instead *)
 
 let typ t = Atom (Type.string_of_typ t)
-let kind k = Atom (Type.string_of_kind k)
 
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
@@ -70,7 +69,7 @@ and call_conv cc = Atom (Value.string_of_call_conv cc)
 and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
-  | TypD c -> "TypD" $$ [con c; kind (Con.kind c)]
+  | TypD c -> "TypD" $$ [con c]
 
 and typ_bind (tb : typ_bind) =
   Con.to_string tb.it.con $$ [typ tb.it.bound]

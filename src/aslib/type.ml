@@ -189,8 +189,6 @@ and is_closed_kind i k =
     is_closed i' t
 
 
-type subst = TypS of typ | ConS of con
-
 (* Shifting *)
 
 let rec shift i n t =
@@ -237,15 +235,6 @@ and shift_kind i n k =
 
 (* First-order substitution *)
 
-and shift_subst i n s =
-  match s with
-  | TypS typ -> TypS (shift i n typ)
-  | ConS c ->
-    if true then assert false;
-    if is_closed_con i c then s else
-   (*    Printf.printf "\n shift_subst %i %i %s" i n (Con.to_string c); *)
-    ConS (clone c (fun k' -> (shift_kind i n k')))
-
 and subst sigma t =
   if sigma = ConEnv.empty then t else
   match t with
@@ -253,25 +242,22 @@ and subst sigma t =
   | Var _ -> t
   | Free c ->
     (match ConEnv.find_opt c sigma with
-     | Some (TypS t) -> t
-     | Some (ConS c') ->
-       if true then assert false;Free c'
+     | Some t' -> t'
      | None -> Free (subst_con sigma c))
   | Con (Free c, ts) ->
     (match ConEnv.find_opt c sigma with
-     | Some (TypS t') ->
+     | Some t' ->
        if ts = [] then
          t'
        else
          Con(t', List.map (subst sigma) ts)
-     | Some (ConS _) -> assert false
      | None -> Con(Free (subst_con sigma c), List.map (subst sigma) ts))
   | Con (t', ts) ->
     Con (subst sigma t', List.map (subst sigma) ts)
   | Array t -> Array (subst sigma t)
   | Tup ts -> Tup (List.map (subst sigma) ts)
   | Func (s, c, tbs, ts1, ts2) ->
-    let sigma' = ConEnv.map (shift_subst 0 (List.length tbs)) sigma in
+    let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
     Func (s, c, List.map (subst_bind sigma') tbs,
           List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
@@ -286,8 +272,7 @@ and subst sigma t =
   | Pre -> Pre
   | Typ c ->
     (match ConEnv.find_opt c sigma with
-     | Some (TypS t) -> assert false
-     | Some (ConS c') -> Typ c'
+     | Some t -> assert false
      | None -> Typ (subst_con sigma c)
     )
 
@@ -331,18 +316,18 @@ and subst_field sigma {lab; typ} =
 and subst_kind sigma (k:kind) =
   match k with
   | Def (tbs, t) ->
-    let sigma' = ConEnv.map (shift_subst 0 (1 + List.length tbs)) sigma in
+    let sigma' = ConEnv.map (shift 0 (1 + List.length tbs)) sigma in
                                            (* ^ for recursive reference *)
     Def (List.map (subst_bind sigma') tbs, subst sigma' t)
   | Abs (tbs, t) ->
-    let sigma' = ConEnv.map (shift_subst 0 (List.length tbs)) sigma in
+    let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
     Abs (List.map (subst_bind sigma') tbs, subst sigma' t)
 
 (* Handling binders *)
 
 let close cs t =
   if cs = [] then t else
-  let ts = List.mapi (fun i c -> TypS (Var (Con.name c, i))) cs in
+  let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst sigma t
 
@@ -406,6 +391,15 @@ let open_binds tbs =
   List.iter2 (fun c k -> set_kind c k) cs ks;
   ts
 
+(* kind of c, unfolded if necessary *)
+let kind c =
+  match Con.kind c with
+  | Def (tbs, t) ->
+    let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
+    let ts = List.map (fun c -> (Con (Free c,[]))) cs in (* TBR *)
+    Def (List.map (fun tb -> {var = tb.var; bound =  close cs (open_ (Free c::ts) tb.bound)}) tbs, close cs (open_ (Free c::ts) t))
+  | Abs (tbs, t) as k ->
+    k
 
 (* Normalization and Classification *)
 
@@ -830,8 +824,8 @@ and eq_kind rel eq k1 k2 =
   | Def (tbs1, t1), Def (tbs2, t2) ->
     let c1 = Con.fresh "anon" k1 in
     let c2 = Con.fresh "anon" k2 in
-    let tbs1' = List.map (open_bind 0 [Free c1]) tbs1 in
-    let tbs2' = List.map (open_bind 0 [Free c2]) tbs2 in
+    let tbs1' = List.map (open_bind 0 [Free c1]) tbs1 in (* FIX ME *)
+    let tbs2' = List.map (open_bind 0 [Free c2]) tbs2 in (* FIX ME *)
     begin match rel_binds eq eq tbs1' tbs2' with
     | Some ts -> eq_typ eq eq  (open_ (Free c1::ts) t1) (open_ (Free c2::ts) t2)
     | None -> false
@@ -846,8 +840,8 @@ and eq_kind rel eq k1 k2 =
 and eq_con rel eq c1 c2 =
   match Con.kind c1, Con.kind c2 with
   | Def (tbs1, t1), Def (tbs2, t2) ->
-  let tbs1' = List.map (open_bind 0 [Free c1]) tbs1 in
-  let tbs2' = List.map (open_bind 0 [Free c2]) tbs2 in
+  let tbs1' = List.map (open_bind 0 [Free c1]) tbs1 in (* FIX ME *)
+  let tbs2' = List.map (open_bind 0 [Free c2]) tbs2 in (* FIX ME *)
   begin match rel_binds eq eq tbs1' tbs2' with
     | Some ts -> eq_typ eq eq  (open_ (Free c1::ts) t1) (open_ (Free c2::ts) t2)
     | None -> false
@@ -972,8 +966,8 @@ let rec string_of_typ_nullary vs = function
   | Non -> "Non"
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
-  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> "???")
-  | Free c -> string_of_con' vs c 
+  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> "!!!") (* FIX ME *)
+  | Free c -> string_of_con' vs c
   | Con (t, []) ->
     string_of_typ_nullary vs t
   | Con (t, ts) ->
@@ -993,7 +987,7 @@ let rec string_of_typ_nullary vs = function
   | Variant fs ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_tag vs) fs))
   | Typ c ->
-    sprintf "= {%s}" (string_of_kind' vs (Con.kind c))
+    sprintf "= {%s}" (string_of_con' vs c)
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
 and string_of_dom vs ts =
@@ -1037,7 +1031,8 @@ and string_of_typ' vs t =
   | Obj (Module, fs) ->
     sprintf "module %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Typ c ->
-    sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind' vs (Con.kind c))
+    let op, sbs, st = strings_of_con' vs c in
+    sprintf "typ %s %s %s" sbs op st
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
   | Serialized t ->
@@ -1047,7 +1042,7 @@ and string_of_typ' vs t =
 and string_of_field vs {lab; typ} =
   match typ with
   | Typ c ->
-    let op, sbs, st = strings_of_kind' vs (Con.kind c) in
+    let op, sbs, st = strings_of_con' vs c in
     sprintf "type %s%s %s %s" lab sbs op st
   | _ ->
     sprintf "%s : %s" lab (string_of_typ' vs typ)
@@ -1073,25 +1068,20 @@ and string_of_binds vs vs' = function
   | [] -> ""
   | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
 
-and strings_of_kind' vs k =
-  let op, tbs, t =
+and strings_of_con' vs c =
+  let k = Con.kind c in
+  let op, tbs, t, cs =
     match k with
-    | Def (tbs, t) -> "=", tbs, t
-    | Abs (tbs, t) -> "<:", tbs, t
+    | Def (tbs, t) -> "=", tbs, t, [(string_of_con' vs c,0)]
+    | Abs (tbs, t) -> "<:", tbs, t, []
   in
   let vs' = vars_of_binds vs tbs in
-  let vs'vs = vs' @ vs in
-  op, string_of_binds vs'vs vs' tbs, string_of_typ' vs'vs t
-
-and string_of_kind' vs k =
-  let op, sbs, st = strings_of_kind' vs k in
-  sprintf "%s %s%s" op sbs st
-
+  let vs'csv = cs @ vs' @ vs in
+  op, string_of_binds vs'csv vs' tbs, string_of_typ' vs'csv t
 
 let string_of_con : con -> string = string_of_con' []
 let string_of_typ : typ -> string = string_of_typ' []
-let string_of_kind : kind -> string = string_of_kind' []
-let strings_of_kind : kind -> (string * string * string) = strings_of_kind' []
+let strings_of_con : con -> (string * string * string) = strings_of_con' []
 
 let rec string_of_typ_expand t =
   let s = string_of_typ t in

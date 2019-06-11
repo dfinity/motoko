@@ -213,8 +213,10 @@ and check_typ' env typ : T.typ =
   match typ.it with
   | PathT (path, typs) ->
     let c = check_typ_path env path in
-    let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
-    let ts = check_typ_bounds env tbs typs typ.at in
+    let ts = List.map (check_typ env) typs in
+    let (T.Def(tbs,_) | T.Abs(tbs, _)) = Type.kind c in
+    let tbs = List.map (fun {T.var;T.bound} -> {T.var;bound = T.open_ ts bound}) tbs in
+    check_typ_bounds env tbs typs typ.at;
     T.Con (T.Free c, ts)
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
@@ -298,6 +300,7 @@ and check_typ_tag env typ_tag =
   T.{lab = tag.it; typ = t}
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
+  (* TODO: rule out cyclic bounds *)
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs = List.map2 (fun x tb ->
                match tb.note with
@@ -322,26 +325,35 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
   cs, ts, te, T.ConSet.of_list cs
 
-and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
-  match tbs, typs with
-  | tb::tbs', typ::typs' ->
-    let t = check_typ env typ in
-    if not env.pre then begin
-      if not (T.sub t tb.T.bound) then
-        local_error env typ.at
-          "type argument\n  %s\ndoes not match parameter bound\n  %s"
-          (T.string_of_typ_expand t)
-          (T.string_of_typ_expand tb.T.bound)
-    end;
-    let ts' = check_typ_bounds env tbs' typs' at in
-    t::ts'
-  | [], [] -> []
-  | [], _ -> local_error env at "too many type arguments"; []
-  | _, [] -> error env at "too few type arguments"
+and check_typ_bounds env (tbs : T.bind list) (typs:typ list) at : unit =
+  let pars = List.length tbs in
+  let args = List.length typs in
+  if pars > args then
+    error env at "too few type arguments";
+  let ts = List.map (fun typ -> typ.note) (Lib.List.take pars typs) in
+  let rec go tbs typs  =
+    match tbs, typs with
+    | tb::tbs', typ::typs' ->
+      let t = typ.note in
+      if not env.pre then begin
+        let u = T.open_ ts tb.T.bound in
+        if not (T.sub t u) then
+          local_error env typ.at
+            "type argument\n  %s\ndoes not match parameter bound\n  %s"
+            (T.string_of_typ_expand typ.note)
+            (T.string_of_typ_expand u)
+      end;
+      go tbs' typs'
+    | [], [] -> ()
+    | [], _ -> local_error env at "too many type arguments"
+    | _ -> assert false
+  in
+  go tbs typs
 
 and check_inst_bounds env tbs typs at =
-  let tys = check_typ_bounds env tbs typs at  in
-  tys
+  let ts = List.map (check_typ env) typs in
+  check_typ_bounds env tbs typs at;
+  ts
 
 (* Literals *)
 
@@ -631,7 +643,7 @@ and infer_exp'' env exp : T.typ =
         error env exp1.at
           "expected function type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
-      in
+    in
     let ts = check_inst_bounds env tbs insts exp.at in
     let t_arg = T.open_ ts t_arg in
     let t_ret = T.open_ ts t_ret in
@@ -1430,23 +1442,6 @@ and infer_dec_typdecs env dec : scope =
     let t = check_typ env' typ in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close (c::cs) t}) cs ts in
     let k = T.Def (tbs, T.close (c::cs) t) in
-    if false then
-    begin
-      let is_typ_param c =
-        match Con.kind c with
-        | T.Def _ -> false
-        | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
-        | T.Abs( _, _) -> true in
-      let typ_params = T.ConSet.filter is_typ_param env.cons in
-      let cs_k = T.cons_kind k in
-      let free_params = T.ConSet.inter typ_params cs_k in
-      if not (T.ConSet.is_empty free_params) then
-        error env dec.at
-          "type definition %s %s references type parameter(s) %s from an outer scope"
-          con_id.it
-          (T.string_of_kind k)
-          (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
-    end;
     { empty_scope with
       typ_env = T.Env.singleton con_id.it c;
       con_env = infer_id_typdecs con_id c k;

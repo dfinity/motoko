@@ -125,12 +125,11 @@ let rec check_typ env typ : unit =
   | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
   | T.Free c ->
-    if false then
-      check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
+    check_typ env (T.Con (typ, []))
   | T.Con (T.Free c, typs) ->
-    (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
-      check_typ_bounds env tbs typs no_region
-    )
+    List.iter (check_typ env) typs;
+    let (T.Def (tbs,_) | T.Abs (tbs, _)) = T.kind c in
+    check_typ_bounds env tbs typs no_region
   | T.Con (_, _) ->
     error env no_region "ill-formed constructed type %s" (T.string_of_typ typ)
   | T.Any -> ()
@@ -189,21 +188,14 @@ let rec check_typ env typ : unit =
     check_typ env typ;
     check_sub env no_region typ T.Shared
   | T.Typ c ->
-    if false then
-      check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
+    check_con env c
 
-(*
-and check_kind env k =
-  let (binds,typ) =
-    match k with
-    | T.Abs(binds,typ)
-      | T.Def(binds,typ) -> (binds,typ)
-  in
-  let cs,ce = check_typ_binds env binds in
-  let ts = List.map (fun c -> T.Con(c,[])) cs in
+and check_con env c =
+  let (T.Abs (binds,typ) | T.Def (binds, typ)) = Type.kind c in
+  let cs, ce = check_typ_binds env binds in
+  let ts = List.map (fun c -> T.Con (T.Free c, [])) cs in
   let env' = adjoin_cons env ce in
-  check_typ env' (T.open_ ts  typ);
-*)
+  check_typ env' (T.open_ ts typ)
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
@@ -230,17 +222,25 @@ and check_typ_binds env typ_binds : T.con list * con_env =
   cs, T.ConSet.of_list cs
 
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =
-  match tbs, typs with
-  | tb::tbs', typ::typs' ->
-    check_typ env typ;
-    check env at (T.sub typ tb.T.bound)
-      "type argument does not match parameter bound";
-    check_typ_bounds env tbs' typs' at
-  | [], [] -> ()
-  | [], _ -> error env at "too many type arguments"
-  | _, [] -> error env at "too few type arguments"
+  let pars = List.length tbs in
+  let args = List.length typs in
+  if pars < args then
+    error env at "too many type arguments";
+  if pars > args then
+    error env at "too few type arguments";
+  let rec go tbs typs =
+    match tbs, typs with
+    | tb::tbs', typ::typs' ->
+      check env at (T.sub typ (T.open_ typs tb.T.bound))
+        "type argument does not match parameter bound";
+      go tbs' typs'
+    | [], [] -> ()
+    | _ -> assert false
+  in
+  go tbs typs
 
 and check_inst_bounds env tbs typs at =
+  List.iter (check_typ env) typs;
   check_typ_bounds env tbs typs at
 
 (* Literals *)
@@ -710,19 +710,7 @@ and check_dec env dec  =
     typ exp <: T.as_immut t0
   | TypD c ->
     check (T.ConSet.mem c env.cons) "free type constructor";
-    let (binds, typ, open_) =
-      match Con.kind c with
-      | T.Abs (binds, typ) -> (binds, typ, T.open_)
-      | T.Def (binds, typ) ->
-        let open_c = T.open_ [T.Free c] in
-        (List.map (fun {T.var;T.bound} -> {T.var;bound=open_c bound}) binds,
-         typ,
-         fun ts -> T.open_ (T.Free c::ts))
-    in
-    let cs, ce = check_typ_binds env binds in
-    let ts = List.map (fun c -> T.Con (T.Free c, [])) cs in
-    let env' = adjoin_cons env ce in
-    check_typ env' (open_ ts typ)
+    check_con env c
 
 and check_decs env decs  =
   List.iter (check_dec env) decs;
