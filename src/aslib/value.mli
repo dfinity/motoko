@@ -6,6 +6,7 @@ sig
   val neg : t -> t
   val not : t -> t
   val pow : t -> t -> t
+  val to_ungrouped_string : t -> string
   val to_string : t -> string
 end
 
@@ -31,6 +32,7 @@ sig
   val to_int : t -> int
   val of_int : int -> t
   val of_string : string -> t
+  val to_ungrouped_string : t -> string
   val to_string : t -> string
 end
 
