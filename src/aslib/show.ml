@@ -419,7 +419,7 @@ let rec show_val t v =
     | _ -> assert false
     end
   | _ ->
-    Printf.eprintf "show_val: %s : %s\n" (Value.string_of_val v) (T.string_of_typ t);
+    Printf.eprintf "show_val: %s : %s\n" (Value.string_of_val 2 v) (T.string_of_typ t);
     assert false
 
 and show_field fs ft =
