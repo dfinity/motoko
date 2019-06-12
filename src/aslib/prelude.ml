@@ -398,15 +398,15 @@ let prim = function
                     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 64) in
                     Big_int.
                       (if eq_big_int q zero_big_int
-                       then k (Nat64 (Nat64.of_string (string_of_big_int r)))
+                       then k (Nat64 (Nat64.of_big_int r))
                        else assert false)
-  | "Int64->Word64" -> fun v k -> k (Word64 (Word64.of_string (Int_64.to_string (as_int64 v))))
+  | "Int64->Word64" -> fun v k -> k (Word64 (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
   | "Int->Word64" -> fun v k -> k (Word64 (Conv.word64_of_big_int (as_int v)))
   | "Int->Int64" -> fun v k ->
                     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 63) in
                     Big_int.
                       (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-                       then k (Int64 (Int_64.of_string (string_of_big_int (Conv.to_signed_big_int r q (power_int_positive_int 2 63)))))
+                       then k (Int64 (Int_64.of_big_int (Conv.to_signed_big_int r q (power_int_positive_int 2 63))))
                        else assert false)
 
   | "Word8->Nat" -> fun v k ->
@@ -451,18 +451,18 @@ let prim = function
                        let i' = if i < 0 then i + 0x100000000 else i in
                        k (Nat32 (Nat32.of_int i'))
 
-  | "Int64->Int" -> fun v k -> k (Int (Int.of_string (Int_64.to_string (as_int64 v))))
-  | "Nat64->Nat" -> fun v k -> k (Int (Nat.of_string (Nat64.to_string (as_nat64 v))))
+  | "Int64->Int" -> fun v k -> k (Int (Int_64.to_big_int (as_int64 v)))
+  | "Nat64->Nat" -> fun v k -> k (Int (Nat64.to_big_int (as_nat64 v)))
   | "Word64->Nat" -> fun v k ->
                      let i = Conv.big_int_of_unsigned_word64 (as_word64 v)
                      in k (Int i)
   | "Word64->Nat64" -> fun v k ->
                        let i = Conv.big_int_of_unsigned_word64 (as_word64 v)
-                       in k (Nat64 (Nat64.of_string (Big_int.string_of_big_int i)))
+                       in k (Nat64 (Nat64.of_big_int i))
   | "Word64->Int" -> fun v k -> k (Int (Big_int.big_int_of_int64 (as_word64 v)))
   | "Word64->Int64" -> fun v k ->
                        let i = Big_int.big_int_of_int64 (as_word64 v)
-                       in k (Int64 (Int_64.of_string (Big_int.string_of_big_int i)))
+                       in k (Int64 (Int_64.of_big_int i))
 
   | "Char->Word32" -> fun v k ->
                       let i = as_char v

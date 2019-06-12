@@ -30,6 +30,8 @@ sig
   val compare : t -> t -> int
   val to_int : t -> int
   val of_int : int -> t
+  val to_big_int : t -> Big_int.big_int
+  val of_big_int : Big_int.big_int -> t
   val of_string : string -> t
   val to_string : t -> string
 end

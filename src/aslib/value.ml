@@ -139,6 +139,8 @@ sig
   val compare : t -> t -> int
   val to_int : t -> int
   val of_int : int -> t
+  val to_big_int : t -> Big_int.big_int
+  val of_big_int : Big_int.big_int -> t
   val of_string : string -> t
   val to_string : t -> string
 end
@@ -168,6 +170,8 @@ struct
   let compare = compare_big_int
   let to_int = int_of_big_int
   let of_int = big_int_of_int
+  let of_big_int i = i
+  let to_big_int i = i
   let to_string i = group_num (string_of_big_int i)
   let of_string s =
     big_int_of_string (String.concat "" (String.split_on_char '_' s))
@@ -200,6 +204,7 @@ struct
   let div a b = let res = Rep.div a b in check res
   let pow a b = let res = Rep.pow a b in check res
   let of_int i = let res = Rep.of_int i in check res
+  let of_big_int i = let res = Rep.of_big_int i in check res
   let of_string s = let res = Rep.of_string s in check res
   (* TODO(gabor) abs, neg *)
 end
