@@ -36,7 +36,7 @@ is may depend on (omitting transitive dependencies):
    The ActorScript type definition, as used by both Source and IR. Includes
    pretty-printer. Also includes the value definitions.
 
- * `as-frontent/` (asc; using `lang-utils/`)
+ * `as-frontend/` (asc; using `lang-utils/`)
 
    The ActorScript Source AST, including parser and type inference.
 
