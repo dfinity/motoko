@@ -394,7 +394,7 @@ let prim = function
 
   | "Nat64->Word64" -> fun v k ->
                        let q, r = Big_int.quomod_big_int (Nat64.to_big_int (as_nat64 v)) Conv.twoRaised63 in
-                       let i = Conv.to_signed_big_int r q Conv.twoRaised63 in
+                       let i = Conv.(to_signed_big_int r q twoRaised63) in
                        k (Word64 (Big_int.int64_of_big_int i))
   | "Nat->Word64" -> fun v k -> k (Word64 (Conv.word64_of_nat_big_int (as_int v)))
   | "Nat->Nat64" -> fun v k ->
