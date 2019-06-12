@@ -1,4 +1,4 @@
-prelude:88.71-88.72: internal error, File "aslib/prelude.ml", line 402, characters 28-34: Assertion failed
+prelude:88.71-88.72: internal error, File "aslib/prelude.ml", line 405, characters 28-34: Assertion failed
 
 Last environment:
 @new_async = func

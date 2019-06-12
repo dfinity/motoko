@@ -392,10 +392,13 @@ let prim = function
                        (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
                         then k (Int32 (Int_32.of_int (Conv.to_signed i q 0x80000000))) else assert false)
 
-  | "Nat64->Word64" -> fun v k -> k (Word64 (Big_int.int64_of_big_int (Nat64.to_big_int (as_nat64 v))))
+  | "Nat64->Word64" -> fun v k ->
+                       let q, r = Big_int.quomod_big_int (Nat64.to_big_int (as_nat64 v)) Conv.twoRaised63 in
+                       let i = Conv.to_signed_big_int r q Conv.twoRaised63 in
+                       k (Word64 (Big_int.int64_of_big_int i))
   | "Nat->Word64" -> fun v k -> k (Word64 (Conv.word64_of_nat_big_int (as_int v)))
   | "Nat->Nat64" -> fun v k ->
-                    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 64) in
+                    let q, r = Big_int.quomod_big_int (as_int v) Conv.twoRaised64 in
                     Big_int.
                       (if eq_big_int q zero_big_int
                        then k (Nat64 (Nat64.of_big_int r))
@@ -403,10 +406,10 @@ let prim = function
   | "Int64->Word64" -> fun v k -> k (Word64 (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
   | "Int->Word64" -> fun v k -> k (Word64 (Conv.word64_of_big_int (as_int v)))
   | "Int->Int64" -> fun v k ->
-                    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 63) in
+                    let q, r = Big_int.quomod_big_int (as_int v) Conv.twoRaised63 in
                     Big_int.
                       (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-                       then k (Int64 (Int_64.of_big_int (Conv.to_signed_big_int r q (power_int_positive_int 2 63))))
+                       then k (Int64 (Int_64.of_big_int Conv.(to_signed_big_int r q twoRaised63)))
                        else assert false)
 
   | "Word8->Nat" -> fun v k ->
