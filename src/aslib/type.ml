@@ -551,7 +551,8 @@ let is_loop_breaker = function
 
 
 module M = Map.Make (struct type t = typ * typ let compare = compare end)
-(* Forward declare *)
+(* Forward declare
+   TODO: haul string_of_typ before the lub/glb business, if possible *)
 let str = ref (fun _ -> failwith "")
 
 (* Equivalence & Subtyping *)
@@ -728,10 +729,8 @@ and eq_kind k1 k2 : bool =
   | _ -> false
 
 (* Least upper bound and greatest lower bound *)
-and lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
-and glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
-and lub' lubs glbs t1 t2 =
+let rec lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
   match M.find_opt (t1, t2) !lubs with
   | Some t -> if eq t t1 then t1 else if eq t t2 then t2 else t
@@ -881,6 +880,9 @@ and combine_con_parts t1 t2 naming re how =
   let inner = how (normalize t1) (normalize t2) in
   set_kind c (Def ([], inner));
   inner
+
+let lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
+let glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
 (* Pretty printing *)
 
