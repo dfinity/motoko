@@ -18,7 +18,9 @@ To enter a shell with the necessary dependencies, you can use
 $ nix-shell
 ```
 within this shell you can run
- * `make asc` in `src/` to build the `asc` binary,
+ * `make` in `src/` to build all binaries,
+ * `make asc` in `src/` to build just the `asc` binary,
+ * `make DUNE_OPTS=--watch asc` to keep rebuilding as source files are changing
  * `make` in `rts/` to build the ActorScript runtime
  * `make` in `test/` to run the test suite.
 

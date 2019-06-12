@@ -1,1 +1,1 @@
-val check_prog : Typing.scope -> string -> Ir.prog -> unit
+val check_prog : bool -> Typing.scope -> string -> Ir.prog -> unit

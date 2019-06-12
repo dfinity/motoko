@@ -12,13 +12,19 @@ type lib_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 
+type flags = {
+  trace : bool;
+  print_depth : int
+}
+
 type scope = {
   val_env: V.def V.Env.t;
   lib_env: V.value V.Env.t;
 }
 
 type env =
-  { vals : val_env;
+  { flags : flags;
+    vals : val_env;
     labs : lab_env;
     libs : lib_env;
     rets : ret_env;
@@ -37,8 +43,9 @@ let empty_scope = { val_env = V.Env.empty; lib_env = V.Env.empty }
 let library_scope f v scope : scope =
   { scope with lib_env = V.Env.add f v scope.lib_env }
 
-let env_of_scope scope =
-  { vals = scope.val_env;
+let env_of_scope flags scope =
+  { flags;
+    vals = scope.val_env;
     libs = scope.lib_env;
     labs = V.Env.empty;
     rets = None;
@@ -66,23 +73,25 @@ let trace fmt =
     Printf.printf "%s%s\n%!" (String.make (2 * !trace_depth) ' ') s
   ) fmt
 
-let string_of_arg = function
-  | V.Tup _ as v -> V.string_of_val v
-  | v -> "(" ^ V.string_of_val v ^ ")"
+let string_of_val env = V.string_of_val env.flags.print_depth
+let string_of_def flags = V.string_of_def flags.print_depth
+let string_of_arg env = function
+  | V.Tup _ as v -> string_of_val env v
+  | v -> "(" ^ string_of_val env v ^ ")"
 
 
 (* Debugging aids *)
 
-let last_env = ref (env_of_scope empty_scope)
+let last_env = ref (env_of_scope {trace = false; print_depth = 2} empty_scope)
 let last_region = ref Source.no_region
 
-let print_exn exn =
+let print_exn flags exn =
   Printf.printf "%!";
   let at = Source.string_of_region !last_region in
   Printf.eprintf "%s: internal error, %s\n" at (Printexc.to_string exn);
   Printf.eprintf "\nLast environment:\n";
-  Value.Env.iter (fun x d -> Printf.eprintf "%s = %s\n" x (Value.string_of_def d))
-    (!last_env.vals);
+  Value.Env.iter (fun x d -> Printf.eprintf "%s = %s\n" x (string_of_def flags d))
+    !last_env.vals;
   Printf.eprintf "\n";
   Printexc.print_backtrace stderr;
   Printf.eprintf "%!"
@@ -123,59 +132,59 @@ let fulfill async v =
   Scheduler.queue (fun () -> set_async async v)
 
 
-let async at (f: (V.value V.cont) -> unit) (k : V.value V.cont) =
+let async env at (f: (V.value V.cont) -> unit) (k : V.value V.cont) =
     let async = make_async () in
     (*    let k' = fun v1 -> set_async async v1 in *)
     let k' = fun v1 -> fulfill async v1 in
-    if !Flags.trace then trace "-> async %s" (string_of_region at);
+    if env.flags.trace then trace "-> async %s" (string_of_region at);
     Scheduler.queue (fun () ->
-      if !Flags.trace then trace "<- async %s" (string_of_region at);
+      if env.flags.trace then trace "<- async %s" (string_of_region at);
       incr trace_depth;
       f (fun v ->
-        if !Flags.trace then trace "<= %s" (V.string_of_val v);
+        if env.flags.trace then trace "<= %s" (string_of_val env v);
         decr trace_depth;
         k' v)
     );
     k (V.Async async)
 
-let await at async k =
-  if !Flags.trace then trace "=> await %s" (string_of_region at);
+let await env at async k =
+  if env.flags.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
     Scheduler.queue (fun () ->
-      if !Flags.trace then
-        trace "<- await %s%s" (string_of_region at) (string_of_arg v);
+      if env.flags.trace then
+        trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
       incr trace_depth;
       k v
       )
     )
 
-let actor_msg id f v (k : V.value V.cont) =
-  if !Flags.trace then trace "-> message %s%s" id (string_of_arg v);
+let actor_msg env id f v (k : V.value V.cont) =
+  if env.flags.trace then trace "-> message %s%s" id (string_of_arg env v);
   Scheduler.queue (fun () ->
-    if !Flags.trace then trace "<- message %s%s" id (string_of_arg v);
+    if env.flags.trace then trace "<- message %s%s" id (string_of_arg env v);
     incr trace_depth;
     f v k
   )
 
-let make_unit_message id v =
+let make_unit_message env id v =
   let call_conv, f = V.as_func v in
   match call_conv with
   | {V.sort = T.Sharable; V.n_res = 0; _} ->
     Value.message_func call_conv.V.n_args (fun v k ->
-      actor_msg id f v (fun _ -> ());
+      actor_msg env id f v (fun _ -> ());
       k V.unit
     )
   | _ -> (* assert false *)
     failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
 
-let make_async_message id v =
+let make_async_message env id v =
   let call_conv, f = V.as_func v in
   match call_conv with
   | {V.sort = T.Sharable; V.control = T.Promises; V.n_res = 1; _} ->
     Value.async_func call_conv.V.n_args (fun v k ->
       let async = make_async () in
-      actor_msg id f v (fun v_async ->
+      actor_msg env id f v (fun v_async ->
         get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
       );
       k (V.Async async)
@@ -184,10 +193,10 @@ let make_async_message id v =
     failwith ("unexpected call_conv " ^ (V.string_of_call_conv call_conv))
 
 
-let make_message name t v : V.value =
+let make_message env name t v : V.value =
   match t with
-  | T.Func (_, _, _, _, []) -> make_unit_message name v
-  | T.Func (_, _, _, _, [T.Async _]) -> make_async_message name v
+  | T.Func (_, _, _, _, []) -> make_unit_message env name v
+  | T.Func (_, _, _, _, [T.Async _]) -> make_async_message env name v
   | _ -> (* assert false *)
     failwith (Printf.sprintf "actorfield: %s %s" name (T.string_of_typ t))
 
@@ -223,14 +232,14 @@ let check_call_conv exp call_conv =
       (V.string_of_call_conv call_conv)
     )
 
-let check_call_conv_arg exp v call_conv =
+let check_call_conv_arg env exp v call_conv =
   if call_conv.V.n_args <> 1 then
   let es = try V.as_tup v with Invalid_argument _ ->
     failwith (Printf.sprintf
       "call %s: calling convention %s cannot handle non-tuple value %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
       (V.string_of_call_conv call_conv)
-      (V.string_of_val v)
+      (string_of_val env v)
     )
   in
   if List.length es <> call_conv.V.n_args then
@@ -238,7 +247,7 @@ let check_call_conv_arg exp v call_conv =
       "call %s: calling convention %s got tuple of wrong length %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
       (V.string_of_call_conv call_conv)
-      (V.string_of_val v)
+      (string_of_val env v)
     )
 
 
@@ -321,7 +330,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let v = V.Func (V.call_conv_of_typ exp.note.note_typ, f) in
     let v' =
       match _sort.it with
-      | T.Sharable -> make_message name exp.note.note_typ v
+      | T.Sharable -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
   | CallE (exp1, typs, exp2) ->
@@ -329,7 +338,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       interpret_exp env exp2 (fun v2 ->
         let call_conv, f = V.as_func v1 in
         check_call_conv exp1 call_conv;
-        check_call_conv_arg exp v2 call_conv;
+        check_call_conv_arg env exp v2 call_conv;
         f v2 k
 (*
         try
@@ -394,7 +403,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | V.Opt v1 ->
             (match match_pat pat v1 with
             | None ->
-              trap pat.at "value %s does not match pattern" (V.string_of_val v')
+              trap pat.at "value %s does not match pattern" (string_of_val env v')
             | Some ve ->
               interpret_exp (adjoin_vals env ve) exp2 k_continue
             )
@@ -411,7 +420,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | AsyncE exp1 ->
-    async
+    async env
       exp.at
       (fun k' ->
         let env' = {env with labs = V.Env.empty; rets = Some k'; async = true}
@@ -420,7 +429,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 
   | AwaitE exp1 ->
     interpret_exp env exp1
-      (fun v1 -> await exp.at (V.as_async v1) k)
+      (fun v1 -> await env exp.at (V.as_async v1) k)
   | AssertE exp1 ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v
@@ -442,7 +451,7 @@ and interpret_exps env exps vs (k : V.value list V.cont) =
 and interpret_cases env cases at v (k : V.value V.cont) =
   match cases with
   | [] ->
-    trap at "switch value %s does not match any case" (V.string_of_val v)
+    trap at "switch value %s does not match any case" (string_of_val env v)
   | {it = {pat; exp}; at; _}::cases' ->
     match match_pat pat v with
     | Some ve -> interpret_exp (adjoin_vals env ve) exp k
@@ -484,11 +493,12 @@ and define_id env id v =
   Lib.Promise.fulfill (find id.it env.vals) v
 
 and define_pat env pat v =
+  let err () = trap pat.at "value %s does not match pattern" (string_of_val env v) in
   match pat.it with
   | WildP -> ()
   | LitP _ | SignP _ | AltP _ ->
     if match_pat pat v = None
-    then trap pat.at "value %s does not match pattern" (V.string_of_val v)
+    then err ()
     else ()
   | VarP id -> define_id env id v
   | TupP pats -> define_pats env pats (V.as_tup v)
@@ -496,15 +506,14 @@ and define_pat env pat v =
   | OptP pat1 ->
     (match v with
     | V.Opt v1 -> define_pat env pat1 v1
-    | V.Null ->
-      trap pat.at "value %s does not match pattern" (V.string_of_val v)
+    | V.Null -> err ()
     | _ -> assert false
     )
   | TagP (i, pat1) ->
     let lab, v1 = V.as_variant v in
     if lab = i.it
     then define_pat env pat1 v1
-    else trap pat.at "value %s does not match pattern" (V.string_of_val v)
+    else err ()
   | AnnotP (pat1, _)
   | ParP pat1 -> define_pat env pat1 v
 
@@ -673,20 +682,20 @@ and interpret_decs env decs (k : V.value V.cont) =
 
 
 and interpret_func env name pat f v (k : V.value V.cont) =
-  if !Flags.trace then trace "%s%s" name (string_of_arg v);
+  if env.flags.trace then trace "%s%s" name (string_of_arg env v);
   match match_pat pat v with
   | None ->
-    trap pat.at "argument value %s does not match parameter list"
-      (V.string_of_val v)
+    trap pat.at "argument value %s does not match parameter list" (string_of_val env v)
   | Some ve ->
     incr trace_depth;
     let k' = fun v' ->
-      if !Flags.trace then trace "<= %s" (V.string_of_val v');
+      if env.flags.trace then trace "<= %s" (string_of_val env v');
       decr trace_depth;
       k v'
     in
     let env' =
-      { vals = V.Env.adjoin env.vals ve;
+      { env with
+        vals = V.Env.adjoin env.vals ve;
         libs = env.libs;
         labs = V.Env.empty;
         rets = Some k';
@@ -697,9 +706,9 @@ and interpret_func env name pat f v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog scope p : (V.value * scope) option =
+let interpret_prog flags scope p : (V.value * scope) option =
   try
-    let env = env_of_scope scope in
+    let env = env_of_scope flags scope in
     trace_depth := 0;
     let vo = ref None in
     let ve = ref V.Env.empty in
@@ -713,12 +722,12 @@ let interpret_prog scope p : (V.value * scope) option =
     | None -> None
   with exn ->
     (* For debugging, should never happen. *)
-    print_exn exn;
+    print_exn flags exn;
     None
 
 
-let interpret_library scope (filename, p) : scope =
-  let env = env_of_scope scope in
+let interpret_library flags scope (filename, p) : scope =
+  let env = env_of_scope flags scope in
   trace_depth := 0;
   let vo = ref None in
   let ve = ref V.Env.empty in

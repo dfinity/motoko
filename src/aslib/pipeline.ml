@@ -32,7 +32,7 @@ let print_dyn_ve scope =
     let t' = Type.as_immut t in
     printf "%s %s : %s = %s\n"
       (if t == t' then "let" else "var") x
-      (Type.string_of_typ t') (Value.string_of_def d)
+      (Type.string_of_typ t') (Value.string_of_def !Flags.print_depth d)
   )
 
 let print_scope senv scope dve =
@@ -40,7 +40,7 @@ let print_scope senv scope dve =
   print_dyn_ve senv dve
 
 let print_val _senv v t =
-  printf "%s : %s\n" (Value.string_of_val v) (Type.string_of_typ t)
+  printf "%s : %s\n" (Value.string_of_val !Flags.print_depth v) (Type.string_of_typ t)
 
 (* Dumping *)
 
@@ -234,16 +234,20 @@ let load_decl parse_one senv : load_decl_result =
 (* Interpretation (Source) *)
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
+  let open Interpret in
   phase "Interpreting" prog.Source.note;
-  Interpret.interpret_prog denv prog
+  let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
+  interpret_prog flags denv prog
 
 let rec interpret_libraries denv libraries : Interpret.scope =
+  let open Interpret in
   match libraries with
   | [] -> denv
   | (f, p)::libs ->
     phase "Interpreting" p.Source.note;
-    let dscope = Interpret.interpret_library denv (f, p) in
-    let denv' = Interpret.adjoin_scope denv dscope in
+    let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
+    let dscope = interpret_library flags denv (f, p) in
+    let denv' = adjoin_scope denv dscope in
     interpret_libraries denv' libs
 
 let rec interpret_progs denv progs : Interpret.scope option =
@@ -394,7 +398,8 @@ let transform transform_name trans env prog name =
   phase transform_name name;
   let prog_ir' : Ir.prog = trans env prog in
   dump_ir Flags.dump_lowering prog_ir';
-  if !Flags.check_ir then Check_ir.check_prog env transform_name prog_ir';
+  if !Flags.check_ir
+  then Check_ir.check_prog !Flags.verbose env transform_name prog_ir';
   prog_ir'
 
 let transform_if transform_name trans flag env prog name =
@@ -405,7 +410,8 @@ let desugar env lib_env libraries progs name =
   phase "Desugaring" name;
   let prog_ir' : Ir.prog = Desugar.transform_graph lib_env libraries progs in
   dump_ir Flags.dump_lowering prog_ir';
-  if !Flags.check_ir then Check_ir.check_prog env "Desugaring" prog_ir';
+  if !Flags.check_ir
+  then Check_ir.check_prog !Flags.verbose env "Desugaring" prog_ir';
   prog_ir'
 
 let await_lowering =
@@ -489,10 +495,12 @@ let interpret_ir_prog inp_env libraries progs =
   let name = name_progs progs in
   let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
-  let denv0 = Interpret_ir.empty_scope in
-  let dscope = Interpret_ir.interpret_prog denv0 prelude_ir in
-  let denv1 = Interpret_ir.adjoin_scope denv0 dscope in
-  let _ = Interpret_ir.interpret_prog denv1 prog_ir in
+  let open Interpret_ir in
+  let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
+  let denv0 = empty_scope in
+  let dscope = interpret_prog flags denv0 prelude_ir in
+  let denv1 = adjoin_scope denv0 dscope in
+  let _ = interpret_prog flags denv1 prog_ir in
   ()
 
 let interpret_ir_files files =
