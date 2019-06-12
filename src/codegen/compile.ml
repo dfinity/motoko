@@ -527,6 +527,7 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_to_word64_signed_trap" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_isneg" [I32Type] [I32Type];
+    E.add_func_import env "rts" "bigint_count_bits" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_2complement_bits" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_lt" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_gt" [I32Type; I32Type] [I32Type];
