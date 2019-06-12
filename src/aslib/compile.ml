@@ -4361,6 +4361,12 @@ end (* AllocHow *)
 
 (* The actual compiler code that looks at the AST *)
 
+let nat64_to_int64 n =
+  let open Big_int in
+  let twoRaised63 = power_int_positive_int 2 63 in
+  let q, r = quomod_big_int n twoRaised63 in
+  if sign_big_int q = 0 then r else sub_big_int r twoRaised63
+
 let compile_lit env lit =
   try Syntax.(match lit with
     (* Booleans are directly in Vanilla representation *)
@@ -4380,7 +4386,7 @@ let compile_lit env lit =
     | Int32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Int_32.to_int n))
     | Nat32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Nat32.to_int n)) (* FIXME:Sign? *)
     | Int64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
-    | Nat64Lit n    -> SR.UnboxedWord64, compile_const_64 (Int64.of_int (Value.Nat64.to_int n)) (* FIXME:Sign? *) (* FIXME:Bitwidth? *)
+    | Nat64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (nat64_to_int64 (Value.Nat64.to_big_int n)))
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
     | TextLit t     -> SR.Vanilla, Text.lit env t
