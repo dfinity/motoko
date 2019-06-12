@@ -4379,8 +4379,8 @@ let compile_lit env lit =
     | Nat16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat16.to_int n)) 16)
     | Int32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Int_32.to_int n))
     | Nat32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Nat32.to_int n)) (* FIXME:Sign? *)
-    | Int64Lit n    -> SR.UnboxedWord64, compile_const_64 (Int64.of_int (Value.Int_64.to_int n)) (* FIXME:Bitwidth? *)
-    | Nat64Lit n    -> SR.UnboxedWord64, compile_const_64 (Int64.of_int (Value.Nat64.to_int n)) (* FIXME:Sign? *)
+    | Int64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
+    | Nat64Lit n    -> SR.UnboxedWord64, compile_const_64 (Int64.of_int (Value.Nat64.to_int n)) (* FIXME:Sign? *) (* FIXME:Bitwidth? *)
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
     | TextLit t     -> SR.Vanilla, Text.lit env t

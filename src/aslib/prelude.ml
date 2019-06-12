@@ -392,7 +392,7 @@ let prim = function
                        (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
                         then k (Int32 (Int_32.of_int (Conv.to_signed i q 0x80000000))) else assert false)
 
-  | "Nat64->Word64" -> fun v k -> k (Word64 (Word64.of_string (Nat64.to_string (as_nat64 v))))
+  | "Nat64->Word64" -> fun v k -> k (Word64 (Big_int.int64_of_big_int (Nat64.to_big_int (as_nat64 v))))
   | "Nat->Word64" -> fun v k -> k (Word64 (Conv.word64_of_nat_big_int (as_int v)))
   | "Nat->Nat64" -> fun v k ->
                     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 64) in
