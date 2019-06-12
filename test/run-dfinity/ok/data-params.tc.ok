@@ -1,3 +1,1 @@
-data-params.as:54.18-54.28: warning, this pattern does not cover all possible values
-data-params.as:130.18-130.28: warning, this pattern does not cover all possible values
-data-params.as:204.18-204.28: warning, this pattern does not cover all possible values
+data-params.as:80.3-80.10: type error, duplicate definition for incnats in block

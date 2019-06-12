@@ -1,5 +1,10 @@
 let a = actor {
-  private var c = 0;
+  private var c : Int = 0;
+  inci(n : Int) : () {
+    c += n;
+    printInt(c);
+    print("\n");
+  };
   incn(n : Nat) : () {
     c += n;
     printInt(c);
@@ -56,6 +61,30 @@ let a = actor {
     printInt(c);
     print("\n");
   };
+  incwords(w8 : Word8, w16 : Word16, w32 : Word32, w64 : Word64) : () {
+    c += word8ToInt(w8);
+    c += word16ToInt(w16);
+    c += word32ToInt(w32);
+    c += word64ToInt(w64);
+    printInt(c);
+    print("\n");
+  };
+  incnats(n8 : Nat8, n16 : Nat16, n32 : Nat32, n64 : Nat64) : () {
+    c += nat8ToNat(n8);
+    c += nat16ToNat(n16);
+    c += nat32ToNat(n32);
+    c += nat64ToNat(n64);
+    printInt(c);
+    print("\n");
+  };
+  incnats(i8 : Int8, i16 : Int16, i32 : Int32, i64 : Int64) : () {
+    c += int8ToInt(i8);
+    c += int6ToInt(i16);
+    c += int32ToInt(i32);
+    c += int64ToInt(i64);
+    printInt(c);
+    print("\n");
+  };
 };
 
 
@@ -78,150 +107,12 @@ a.printCounter();
 a.printLabeled("Foo1: ");
 a.printLabeledOpt(?"Foo2: ");
 a.incn(10000000000000);
-
-
-let w32 = actor {
-  private var c : Word32 = 0;
-  incn(n : Word32) : () {
-    c += n;
-    printInt(word32ToInt(c));
-    print("\n");
-  };
-  incnn(n1 : Word32, n2 : Word32) : () {
-    c += n1 + n2;
-    printInt(word32ToInt(c));
-    print("\n");
-  };
-  incnested(n1 : Word32, (n2 : Word32, n3 : Word32)) : () {
-    c += n1 + n2 + n3;
-    printInt(word32ToInt(c));
-    print("\n");
-  };
-  incarray(a : [Word32]) : () {
-    for (i in a.vals()) { c += i };
-    printInt(word32ToInt(c));
-    print("\n");
-  };
-  incopt(a : ?Word32) : () {
-    switch a {
-      case null { c += 1000000 };
-      case (?a) { c += a };
-    };
-    printInt(word32ToInt(c));
-    print("\n");
-  };
-  increcord(a : shared { x : Word32; y : Word32; i : Int32; n : Nat32 }) : () {
-    c += a.x;
-    c += a.y;
-    c += int32ToWord32 (a.i);
-    c += nat32ToWord32 (a.n);
-    printInt(word32ToInt(c));
-    print("\n");
-  };
-  printCounter() {
-    printInt(word32ToInt(c));
-    print("\n");
-  };
-  printLabeled(l:Text) {
-    print l;
-    printInt(word32ToInt(c));
-    print("\n");
-  };
-  printLabeledOpt(?l:?Text) {
-    print l;
-    printInt(word32ToInt(c));
-    print("\n");
-  };
-};
-
-
-w32.incn(1);
-w32.incn(2);
-w32.incn(3);
-w32.incn(4);
-w32.incn(1000);
-w32.incnn(5,6);
-w32.incnn(2000,3000);
-w32.incnested(7,(8,9));
-w32.incarray([10,11,12,13]);
-w32.incopt(null);
-w32.incopt(?14);
-w32.increcord(shared {x = 15 : Word32; y = 16 : Word32; i = 20 : Int32; n = 21 : Nat32});
-w32.increcord(shared {x = 17 : Word32; y = 18 : Word32; z = 19 : Word32; i = intToInt32 (-41); n = 41 : Nat32});
-w32.printCounter();
-w32.printLabeled("Foo1: ");
-w32.printLabeledOpt(?"Foo2: ");
-
-
-
-let w16 = actor {
-  private var c : Word16 = 0;
-  incn(n : Word16) : () {
-    c += n;
-    printInt(word16ToInt(c));
-    print("\n");
-  };
-  incnn(n1 : Word16, n2 : Word16) : () {
-    c += n1 + n2;
-    printInt(word16ToInt(c));
-    print("\n");
-  };
-  incnested(n1 : Word16, (n2 : Word16, n3 : Word16)) : () {
-    c += n1 + n2 + n3;
-    printInt(word16ToInt(c));
-    print("\n");
-  };
-  incarray(a : [Word16]) : () {
-    for (i in a.vals()) { c += i };
-    printInt(word16ToInt(c));
-    print("\n");
-  };
-  incopt(a : ?Word16) : () {
-    switch a {
-      case null { c += 10000 };
-      case (?a) { c += a };
-    };
-    printInt(word16ToInt(c));
-    print("\n");
-  };
-  increcord(a : shared { x : Word16; y : Word16; i : Int16; n : Nat16 }) : () {
-    c += a.x;
-    c += a.y;
-    c += int16ToWord16 (a.i);
-    c += nat16ToWord16 (a.n);
-    printInt(word16ToInt(c));
-    print("\n");
-  };
-  printCounter() {
-    printInt(word16ToInt(c));
-    print("\n");
-  };
-  printLabeled(l:Text) {
-    print l;
-    printInt(word16ToInt(c));
-    print("\n");
-  };
-  printLabeledOpt(?l:?Text) {
-    print l;
-    printInt(word16ToInt(c));
-    print("\n");
-  };
-};
-
-
-w16.incn(1);
-w16.incn(2);
-w16.incn(3);
-w16.incn(4);
-w16.incn(1000);
-w16.incnn(5,6);
-w16.incnn(2000,3000);
-w16.incnested(7,(8,9));
-w16.incarray([10,11,12,13]);
-w16.incopt(null);
-w16.incopt(?14);
-w16.increcord(shared {x = 15 : Word16; y = 16 : Word16; i = 20 : Int16; n = 21 : Nat16});
-w16.increcord(shared {x = 17 : Word16; y = 18 : Word16; z = 19 : Word16; i = intToInt16 (-41); n = 41 : Nat16});
-w16.printCounter();
-w16.printLabeled("Foo1: ");
-w16.printLabeledOpt(?"Foo2: ");
+a.inci(10000000000000);
+a.inci(-20000000000000);
+a.incwords(1,2,3,4);
+a.incwords(-1,-2,-3,-4);
+a.incnats(1,2,3,4);
+a.incints(1,2,3,4);//(-1,-2,-3,-4);
+a.incn(2**100);
+a.inci(2**100);
+a.inci(-(2**101));
