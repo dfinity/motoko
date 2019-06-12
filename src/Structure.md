@@ -20,7 +20,8 @@ goal of the structure is to make it clear which parts operate on AS Source, AS
 IR or Wasm, respectively.
 
 In parenthesis: which end-product is using these file, and which libraries this
-is may depend on (omitting transitive dependencies):
+is should depend on, omitting transitive dependencies. See the `*/dune` files
+for the real deal; some shortcuts had to be taken.
 
  * `lib/` (all)
 
@@ -35,6 +36,11 @@ is may depend on (omitting transitive dependencies):
 
    The ActorScript type definition, as used by both Source and IR. Includes
    pretty-printer. Also includes the value definitions.
+
+ * `as-values/` (asc; using `lang-utils/`)
+
+   Value definitions, as used for literals, interpreter. Also includes
+   operations on values and primitive operations.
 
  * `as-frontend/` (asc; using `lang-utils/`)
 
@@ -75,9 +81,9 @@ is may depend on (omitting transitive dependencies):
 
  * `pipeline/` (asc; using `as-frontend/`, `lowering/`, `ir-passes/`, `codegen/`, `interpreter/`, `interpreter-ir/`)
 
-   The pipeline and flags
+   The pipeline, prelude text and flags
 
- * `idl/`
+ * `idllib/`
 
    Kitchen-sink of `didc` related files. Yet to be split up.
 
