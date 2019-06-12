@@ -1,4 +1,4 @@
-prelude:80.67-80.68: internal error, File "prelude.ml", line 346, characters 80-86: Assertion failed
+prelude:83.67-83.68: internal error, File "aslib/prelude.ml", line 349, characters 80-86: Assertion failed
 
 Last environment:
 @new_async = func
@@ -29,6 +29,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -91,8 +92,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:80.67-80.68: internal error, File "prelude.ml", line 346, characters 80-86: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:83.67-83.68: internal error, File "aslib/prelude.ml", line 349, characters 80-86: Assertion failed
 
 Last environment:
 @new_async = func
@@ -123,6 +124,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -185,8 +187,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:76.71-76.72: internal error, File "prelude.ml", line 368, characters 87-93: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:79.71-79.72: internal error, File "aslib/prelude.ml", line 371, characters 87-93: Assertion failed
 
 Last environment:
 @new_async = func
@@ -217,6 +219,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -279,8 +282,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:76.71-76.72: internal error, File "prelude.ml", line 368, characters 87-93: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:79.71-79.72: internal error, File "aslib/prelude.ml", line 371, characters 87-93: Assertion failed
 
 Last environment:
 @new_async = func
@@ -311,6 +314,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -373,8 +377,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:72.71-72.72: internal error, File "prelude.ml", line 390, characters 92-98: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:75.71-75.72: internal error, File "aslib/prelude.ml", line 393, characters 92-98: Assertion failed
 
 Last environment:
 @new_async = func
@@ -405,6 +409,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -467,8 +472,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:72.71-72.72: internal error, File "prelude.ml", line 390, characters 92-98: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:75.71-75.72: internal error, File "aslib/prelude.ml", line 393, characters 92-98: Assertion failed
 
 Last environment:
 @new_async = func
@@ -499,6 +504,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -561,8 +567,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:68.71-68.72: internal error, File "prelude.ml", line 407, characters 28-34: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:71.71-71.72: internal error, File "aslib/prelude.ml", line 410, characters 28-34: Assertion failed
 
 Last environment:
 @new_async = func
@@ -593,6 +599,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -655,8 +662,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:68.71-68.72: internal error, File "prelude.ml", line 407, characters 28-34: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:71.71-71.72: internal error, File "aslib/prelude.ml", line 410, characters 28-34: Assertion failed
 
 Last environment:
 @new_async = func
@@ -687,6 +694,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -749,8 +757,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:97.67-97.68: internal error, File "prelude.ml", line 334, characters 95-101: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:100.67-100.68: internal error, File "aslib/prelude.ml", line 337, characters 95-101: Assertion failed
 
 Last environment:
 @new_async = func
@@ -781,6 +789,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -843,8 +852,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:93.71-93.72: internal error, File "prelude.ml", line 356, characters 98-104: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:96.71-96.72: internal error, File "aslib/prelude.ml", line 359, characters 98-104: Assertion failed
 
 Last environment:
 @new_async = func
@@ -875,6 +884,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -937,8 +947,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:89.71-89.72: internal error, File "prelude.ml", line 378, characters 98-104: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:92.71-92.72: internal error, File "aslib/prelude.ml", line 381, characters 98-104: Assertion failed
 
 Last environment:
 @new_async = func
@@ -969,6 +979,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -1031,8 +1042,8 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
-prelude:85.71-85.72: internal error, File "prelude.ml", line 399, characters 28-34: Assertion failed
+Raised at file "nat.ml", line 524, characters 49-59
+prelude:88.71-88.72: internal error, File "aslib/prelude.ml", line 402, characters 28-34: Assertion failed
 
 Last environment:
 @new_async = func
@@ -1063,6 +1074,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -1125,7 +1137,7 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "nat.ml", line 524, characters 55-59
+Raised at file "nat.ml", line 524, characters 49-59
 stdin:35.17-35.27: internal error, Invalid_argument("unop")
 
 Last environment:
@@ -1157,6 +1169,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
@@ -1218,10 +1231,9 @@ word8ToInt8 = func
 word8ToNat = func
 word8ToNat8 = func
 
-Raised at file "operator.ml", line 11, characters 27-52
-Called from file "operator.ml", line 29, characters 30-51
-Called from file "interpret.ml", line 272, characters 40-65
-Called from file "interpret.ml", line 99, characters 8-23
-Re-raised at file "interpret.ml", line 96, characters 19-35
-Called from file "interpret.ml", line 103, characters 36-44
-Called from file "interpret.ml", line 721, characters 4-20
+Raised at file "aslib/operator.ml", line 11, characters 21-52
+Called from file "aslib/operator.ml", line 29, characters 30-51
+Called from file "aslib/interpret.ml", line 281, characters 40-65
+Called from file "aslib/interpret.ml", line 108, characters 8-23
+Called from file "aslib/interpret.ml", line 112, characters 36-44
+Called from file "aslib/interpret.ml", line 734, characters 4-20

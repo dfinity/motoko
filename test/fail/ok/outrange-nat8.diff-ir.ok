@@ -1,10 +1,10 @@
 --- outrange-nat8.run
 +++ outrange-nat8.run-ir
 @@ -1,6 +1,7 @@
- prelude:97.67-97.68: internal error, File "prelude.ml", line 334, characters 95-101: Assertion failed
+ prelude:100.67-100.68: internal error, File "aslib/prelude.ml", line 337, characters 95-101: Assertion failed
  
  Last environment:
-+$param/36 = 256
++$param/37 = 256
  @new_async = func
  @text_of_Bool = func
  @text_of_Int = func

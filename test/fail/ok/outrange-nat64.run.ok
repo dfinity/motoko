@@ -1,4 +1,4 @@
-prelude:85.71-85.72: internal error, File "prelude.ml", line 399, characters 28-34: Assertion failed
+prelude:88.71-88.72: internal error, File "aslib/prelude.ml", line 402, characters 28-34: Assertion failed
 
 Last environment:
 @new_async = func
@@ -29,6 +29,7 @@ ctzWord64 = func
 ctzWord8 = func
 decodeUTF8 = func
 hashInt = func
+idlHash = func
 ignore = func
 int16ToInt = func
 int16ToWord16 = func
