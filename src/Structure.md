@@ -36,7 +36,7 @@ is may depend on (omitting transitive dependencies):
    The ActorScript type definition, as used by both Source and IR. Includes
    pretty-printer. Also includes the value definitions.
 
- * `as-syntax/` (asc; using `lang-utils/`)
+ * `as-frontent/` (asc; using `lang-utils/`)
 
    The ActorScript Source AST, including parser and type inference.
 
@@ -44,11 +44,11 @@ is may depend on (omitting transitive dependencies):
 
    The ActorScript IR AST, including type checker and pretty-printer.
 
- * `desugar/` (asc; using `as-syntax/` and `as-ir/`)
+ * `lowering/` (asc; using `as-frontent/` and `as-ir/`)
 
    The IR to Source pass.
 
- * `passes/` (asc; using `as-ir/`)
+ * `ir-passes/` (asc; using `as-ir/`)
 
    The various IR to IR passes.
 
@@ -65,7 +65,7 @@ is may depend on (omitting transitive dependencies):
 
    The backend, including the instruction list generator.
 
- * `interpreter/` (asc; using `as-syntax/`)
+ * `interpreter/` (asc; using `as-frontend/`)
 
    Source interpreter.
 
@@ -73,7 +73,7 @@ is may depend on (omitting transitive dependencies):
 
    IR interpreter.
 
- * `toplevel/` (asc; using `as-syntax/`, `desugar/`, `passes/`, `codegen/`, `interpreter/`, `interpreter-ir/`)
+ * `pipeline/` (asc; using `as-frontend/`, `lowering/`, `ir-passes/`, `codegen/`, `interpreter/`, `interpreter-ir/`)
 
    The pipeline and flags
 
@@ -88,11 +88,11 @@ All exectuables are in the directory `exe/`, and should be kept rather small;
 essentially only the command line parsing should be there, so that
 actual functionality is easily shared.
 
- * `asc` (using `toplevel/`)
+ * `asc` (using `pipeline/`)
 
    The ActorScript compiler
 
- * `as.js` (using `toplevel/`)
+ * `as.js` (using `pipeline/`)
 
    The ActorScript compiler, as a JS library
 
