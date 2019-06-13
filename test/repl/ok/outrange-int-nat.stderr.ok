@@ -1,11 +1,23 @@
-prelude:83.67-83.68: internal error, File "aslib/prelude.ml", line 349, characters 80-86: Assertion failed
+prelude:83.67-83.68: internal error, File "aslib/prelude.ml", line 363, characters 80-86: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -93,14 +105,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:83.67-83.68: internal error, File "aslib/prelude.ml", line 349, characters 80-86: Assertion failed
+prelude:83.67-83.68: internal error, File "aslib/prelude.ml", line 363, characters 80-86: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -188,14 +212,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:79.71-79.72: internal error, File "aslib/prelude.ml", line 371, characters 87-93: Assertion failed
+prelude:79.71-79.72: internal error, File "aslib/prelude.ml", line 385, characters 87-93: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -283,14 +319,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:79.71-79.72: internal error, File "aslib/prelude.ml", line 371, characters 87-93: Assertion failed
+prelude:79.71-79.72: internal error, File "aslib/prelude.ml", line 385, characters 87-93: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -378,14 +426,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:75.71-75.72: internal error, File "aslib/prelude.ml", line 393, characters 92-98: Assertion failed
+prelude:75.71-75.72: internal error, File "aslib/prelude.ml", line 407, characters 92-98: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -473,14 +533,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:75.71-75.72: internal error, File "aslib/prelude.ml", line 393, characters 92-98: Assertion failed
+prelude:75.71-75.72: internal error, File "aslib/prelude.ml", line 407, characters 92-98: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -568,14 +640,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:71.71-71.72: internal error, File "aslib/prelude.ml", line 413, characters 28-34: Assertion failed
+prelude:71.71-71.72: internal error, File "aslib/prelude.ml", line 427, characters 28-34: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -663,14 +747,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:71.71-71.72: internal error, File "aslib/prelude.ml", line 413, characters 28-34: Assertion failed
+prelude:71.71-71.72: internal error, File "aslib/prelude.ml", line 427, characters 28-34: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -758,14 +854,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:100.67-100.68: internal error, File "aslib/prelude.ml", line 337, characters 95-101: Assertion failed
+prelude:100.67-100.68: internal error, File "aslib/prelude.ml", line 351, characters 95-101: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -853,14 +961,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:96.71-96.72: internal error, File "aslib/prelude.ml", line 359, characters 98-104: Assertion failed
+prelude:96.71-96.72: internal error, File "aslib/prelude.ml", line 373, characters 98-104: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -948,14 +1068,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:92.71-92.72: internal error, File "aslib/prelude.ml", line 381, characters 98-104: Assertion failed
+prelude:92.71-92.72: internal error, File "aslib/prelude.ml", line 395, characters 98-104: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -1043,14 +1175,26 @@ word8ToNat = func
 word8ToNat8 = func
 
 Raised at file "nat.ml", line 524, characters 49-59
-prelude:88.71-88.72: internal error, File "aslib/prelude.ml", line 405, characters 28-34: Assertion failed
+prelude:88.71-88.72: internal error, File "aslib/prelude.ml", line 419, characters 28-34: Assertion failed
 
 Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
@@ -1144,8 +1288,20 @@ Last environment:
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func
