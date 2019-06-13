@@ -1,4 +1,5 @@
-open Aslib
+open Linking
+open Wasm_exts
 open Printf
 
 let name = "as-ld"
