@@ -274,6 +274,42 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.Prim T.Int ->
     define_show t (invoke_prelude_show "@text_of_Int" t (argE t)),
     []
+  | T.(Prim Nat8) ->
+    define_show t (invoke_prelude_show "@text_of_Nat8" t (argE t)),
+    []
+  | T.(Prim Nat16) ->
+    define_show t (invoke_prelude_show "@text_of_Nat16" t (argE t)),
+    []
+  | T.(Prim Nat32) ->
+    define_show t (invoke_prelude_show "@text_of_Nat32" t (argE t)),
+    []
+  | T.(Prim Nat64) ->
+    define_show t (invoke_prelude_show "@text_of_Nat64" t (argE t)),
+    []
+  | T.(Prim Int8) ->
+    define_show t (invoke_prelude_show "@text_of_Int8" t (argE t)),
+    []
+  | T.(Prim Int16) ->
+    define_show t (invoke_prelude_show "@text_of_Int16" t (argE t)),
+    []
+  | T.(Prim Int32) ->
+    define_show t (invoke_prelude_show "@text_of_Int32" t (argE t)),
+    []
+  | T.(Prim Int64) ->
+    define_show t (invoke_prelude_show "@text_of_Int64" t (argE t)),
+    []
+  | T.(Prim Word8) ->
+    define_show t (invoke_prelude_show "@text_of_Word8" t (argE t)),
+    []
+  | T.(Prim Word16) ->
+    define_show t (invoke_prelude_show "@text_of_Word16" t (argE t)),
+    []
+  | T.(Prim Word32) ->
+    define_show t (invoke_prelude_show "@text_of_Word32" t (argE t)),
+    []
+  | T.(Prim Word64) ->
+    define_show t (invoke_prelude_show "@text_of_Word64" t (argE t)),
+    []
   | T.Prim T.Text ->
     define_show t (invoke_prelude_show "@text_of_Text" t (argE t)),
     []
@@ -372,20 +408,21 @@ let show_decls : T.typ M.t -> Ir.dec list = fun roots ->
 (* Entry point for type checking: *)
 
 let rec can_show t =
-  let t = T.normalize t in
+  let open T in
+  let t = normalize t in
   match t with
-  | T.Prim T.Bool
-  | T.Prim T.Nat
-  | T.Prim T.Int
-  | T.Prim T.Text
-  | T.Prim T.Null -> true
-  | T.Tup ts' -> List.for_all can_show ts'
-  | T.Opt t' -> can_show t'
-  | T.Array t' -> can_show (T.as_immut t')
-  | T.Obj (T.Object _, fs) ->
-    List.for_all (fun f -> can_show (T.as_immut f.T.typ)) fs
-  | T.Variant cts ->
-    List.for_all (fun f -> can_show f.T.typ) cts
+  | Prim (Bool|Nat|Int|Text|Null) -> true
+  | Prim (Nat8|Int8|Word8) -> true
+  | Prim (Nat16|Int16|Word16) -> true
+  | Prim (Nat32|Int32|Word32) -> true
+  | Prim (Nat64|Int64|Word64) -> true
+  | Tup ts' -> List.for_all can_show ts'
+  | Opt t' -> can_show t'
+  | Array t' -> can_show (as_immut t')
+  | Obj (Object _, fs) ->
+    List.for_all (fun f -> can_show (as_immut f.typ)) fs
+  | Variant cts ->
+    List.for_all (fun f -> can_show f.typ) cts
   | _ -> false
 
 (* Entry point for the interpreter (reference implementation) *)
@@ -394,8 +431,19 @@ let rec show_val t v =
   let t = T.normalize t in
   match t, v with
   | T.Prim T.Bool, Value.Bool b -> if b then "true" else "false"
-  | T.Prim T.Nat, Value.Int i -> Value.Int.to_string i
-  | T.Prim T.Int, Value.Int i -> Value.Int.to_string i
+  | T.(Prim (Nat|Int)), Value.Int i -> Value.Int.to_string i
+  | T.(Prim Nat8), Value.Nat8 i -> Value.Nat8.to_string i
+  | T.(Prim Nat16), Value.Nat16 i -> Value.Nat16.to_string i
+  | T.(Prim Nat32), Value.Nat32 i -> Value.Nat32.to_string i
+  | T.(Prim Nat64), Value.Nat64 i -> Value.Nat64.to_string i
+  | T.(Prim Int8), Value.Int8 i -> Value.Int_8.to_string i
+  | T.(Prim Int16), Value.Int16 i -> Value.Int_16.to_string i
+  | T.(Prim Int32), Value.Int32 i -> Value.Int_32.to_string i
+  | T.(Prim Int64), Value.Int64 i -> Value.Int_64.to_string i
+  | T.(Prim Word8), Value.Word8 i -> Value.Word8.to_string i
+  | T.(Prim Word16), Value.Word16 i -> Value.Word16.to_string i
+  | T.(Prim Word32), Value.Word32 i -> Value.Word32.to_string i
+  | T.(Prim Word64), Value.Word64 i -> Value.Word64.to_string i
   | T.Prim T.Text, Value.Text s -> "\"" ^ s ^ "\""
   | T.Prim T.Null, Value.Null -> "null"
   | T.Opt _, Value.Null -> "null"

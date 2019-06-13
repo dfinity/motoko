@@ -15,3 +15,7 @@ printLn(debug_show (Foo()));
 printLn(debug_show (#foo ()));
 printLn(debug_show (#bar 42));
 printLn(debug_show ((#foo 42): {#foo : Int; #bar : Text}));
+printLn(debug_show (42 : Word16));
+printLn(debug_show (42 : Nat8));
+printLn(debug_show (42 : Int32));
+printLn(debug_show (intToInt64 (-42)));
