@@ -44,7 +44,7 @@ let make_sets () =
   }
 
 
-let value_of_lit = function
+let value_of_lit = let open Lit in function
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
   | NatLit n -> V.Int n

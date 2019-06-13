@@ -209,6 +209,7 @@ let make_message env name t v : V.value =
 (* Literals *)
 
 let interpret_lit env lit : V.value =
+  let open Lit in
   match !lit with
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
@@ -535,6 +536,7 @@ and define_pat_field env vs pf =
   define_pat env pf.it.pat v
 
 and match_lit lit v : bool =
+  let open Lit in
   match !lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'

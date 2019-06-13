@@ -312,6 +312,7 @@ let check_float env = check_lit_val env T.Float Value.Float.of_string
 
 
 let infer_lit env lit at : T.prim =
+  let open Lit in
   match !lit with
   | NullLit -> T.Null
   | BoolLit _ -> T.Bool
@@ -337,6 +338,7 @@ let infer_lit env lit at : T.prim =
     assert false
 
 let check_lit env t lit at =
+  let open Lit in
   match T.normalize t, !lit with
   | T.Opt _, NullLit -> ()
   | T.Prim T.Nat, PreLit (s, T.Nat) ->

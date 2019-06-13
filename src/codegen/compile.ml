@@ -4361,7 +4361,8 @@ end (* AllocHow *)
 (* The actual compiler code that looks at the AST *)
 
 let compile_lit env lit =
-  try As_frontend.Syntax.(match lit with
+  let open Lit in
+  try match lit with
     (* Booleans are directly in Vanilla representation *)
     | BoolLit false -> SR.bool, Bool.lit false
     | BoolLit true ->  SR.bool, Bool.lit true
@@ -4375,8 +4376,7 @@ let compile_lit env lit =
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
     | TextLit t     -> SR.Vanilla, Text.lit env t
-    | _ -> todo_trap_SR env "compile_lit" (As_frontend.Arrange.lit lit)
-    )
+    | _ -> todo_trap_SR env "compile_lit" (Arrange_lit.lit lit)
   with Failure _ ->
     Printf.eprintf "compile_lit: Overflow in literal %s\n" (As_frontend.Syntax.string_of_lit lit);
     SR.Unreachable, E.trap_with env "static literal overflow"
@@ -5002,7 +5002,7 @@ enabled mutual recursion.
 
 
 and compile_lit_pat env l =
-  let open As_frontend.Syntax in
+  let open Lit in
   match l with
   | NullLit ->
     compile_lit_as env SR.Vanilla l ^^
@@ -5018,7 +5018,7 @@ and compile_lit_pat env l =
   | (TextLit t) ->
     Text.lit env t ^^
     Text.compare env
-  | _ -> todo_trap env "compile_lit_pat" (As_frontend.Arrange.lit l)
+  | _ -> todo_trap env "compile_lit_pat" (Arrange_lit.lit l)
 
 and fill_pat env ae pat : patternCode =
   PatCode.with_region pat.at @@

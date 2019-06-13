@@ -1,6 +1,7 @@
 %{
 open As_types
 open As_values.Operator
+open As_values.Lit
 open Syntax
 open Source
 

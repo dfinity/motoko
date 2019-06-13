@@ -232,7 +232,7 @@ let extended_prim env s typ at =
 (* Literals *)
 
 let interpret_lit env lit : V.value =
-  let open Syntax in
+  let open Lit in
   match lit with
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
@@ -537,7 +537,7 @@ and define_field_pats env pfs vs =
 
 
 and match_lit lit v : bool =
-  let open Syntax in
+  let open Lit in
   match lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'

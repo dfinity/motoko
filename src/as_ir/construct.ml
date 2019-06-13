@@ -1,5 +1,6 @@
 open As_frontend
 open As_types
+open As_values
 
 (* WIP translation of syntaxops to use IR in place of Source *)
 open Source
@@ -133,7 +134,7 @@ let blockE decs exp =
     }
 
 let textE s =
-  { it = LitE (S.TextLit s);
+  { it = LitE (Lit.TextLit s);
     at = no_region;
     note = { S.note_typ = T.Prim T.Text;
              S.note_eff = T.Triv }
@@ -148,7 +149,7 @@ let unitE =
   }
 
 let boolE b =
-  { it = LitE (S.BoolLit b);
+  { it = LitE (Lit.BoolLit b);
     at = no_region;
     note = { S.note_typ = T.bool;
              S.note_eff = T.Triv}
@@ -183,7 +184,7 @@ let switch_optE exp1 exp2 pat exp3 typ1  =
   { it =
       SwitchE
         (exp1,
-         [{ it = {pat = {it = LitP S.NullLit;
+         [{ it = {pat = {it = LitP Lit.NullLit;
                          at = no_region;
                          note = typ exp1};
                   exp = exp2};

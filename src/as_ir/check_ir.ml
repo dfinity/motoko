@@ -1,6 +1,6 @@
 open As_types
-open As_frontend
 open As_values
+open As_frontend
 
 open Source
 module T = Type
@@ -245,7 +245,7 @@ and check_inst_bounds env tbs typs at =
 (* Literals *)
 
 let type_lit env lit at : T.prim =
-  let open Syntax in
+  let open Lit in
   match lit with
   | NullLit -> T.Null
   | BoolLit _ -> T.Bool
@@ -602,7 +602,7 @@ and check_pat env pat : val_env =
   match pat.it with
   | WildP -> T.Env.empty
   | VarP id -> T.Env.singleton id.it pat.note
-  | LitP Syntax.NullLit ->
+  | LitP Lit.NullLit ->
     T.Prim T.Null <: t;
     T.Env.empty
   | LitP lit ->

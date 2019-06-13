@@ -13,7 +13,7 @@ and tag i = Atom ("#" ^ i.it)
 
 let rec exp e = match e.it with
   | VarE x              -> "VarE"    $$ [id x]
-  | LitE l              -> "LitE"    $$ [lit !l]
+  | LitE l              -> "LitE"    $$ [Arrange_lit.lit !l]
   | UnE (ot, uo, e)     -> "UnE"     $$ [operator_type !ot; unop uo; exp e]
   | BinE (ot, e1, bo, e2) -> "BinE"  $$ [operator_type !ot; exp e1; binop bo; exp e2]
   | RelE (ot, e1, ro, e2) -> "RelE"  $$ [operator_type !ot; exp e1; relop ro; exp e2]
@@ -64,27 +64,12 @@ and pat p = match p.it with
   | TupP ps         -> "TupP"       $$ List.map pat ps
   | ObjP ps         -> "ObjP"       $$ List.map pat_field ps
   | AnnotP (p, t)   -> "AnnotP"     $$ [pat p; typ t]
-  | LitP l          -> "LitP"       $$ [lit !l]
-  | SignP (uo, l)   -> "SignP"      $$ [unop uo ; lit !l]
+  | LitP l          -> "LitP"       $$ [Arrange_lit.lit !l]
+  | SignP (uo, l)   -> "SignP"      $$ [unop uo ; Arrange_lit.lit !l]
   | OptP p          -> "OptP"       $$ [pat p]
   | TagP (i, p)     -> "TagP"       $$ [tag i; pat p]
   | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
   | ParP p          -> "ParP"       $$ [pat p]
-
-and lit (l:lit) = match l with
-  | NullLit       -> Atom "NullLit"
-  | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
-  | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
-  | NatLit n      -> "NatLit"    $$ [ Atom (Value.Nat.to_string n) ]
-  | IntLit i      -> "IntLit"    $$ [ Atom (Value.Int.to_string i) ]
-  | Word8Lit w    -> "Word8Lit"  $$ [ Atom (Value.Word8.to_string_u w) ]
-  | Word16Lit w   -> "Word16Lit" $$ [ Atom (Value.Word16.to_string_u w) ]
-  | Word32Lit w   -> "Word32Lit" $$ [ Atom (Value.Word32.to_string_u w) ]
-  | Word64Lit w   -> "Word64Lit" $$ [ Atom (Value.Word64.to_string_u w) ]
-  | FloatLit f    -> "FloatLit"  $$ [ Atom (Value.Float.to_string f) ]
-  | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
-  | TextLit t     -> "TextLit"   $$ [ Atom t ]
-  | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; Arrange_type.prim p ]
 
 and unop uo = match uo with
   | PosOp -> Atom "PosOp"

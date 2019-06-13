@@ -1,5 +1,6 @@
 open As_frontend
 open As_types
+open As_values
 open Source
 open Arrange_type
 open Ir
@@ -12,7 +13,7 @@ let kind k = Atom (Type.string_of_kind k)
 
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
-  | LitE l              -> "LitE"    $$ [Arrange.lit l]
+  | LitE l              -> "LitE"    $$ [Arrange_lit.lit l]
   | UnE (t, uo, e)      -> "UnE"     $$ [typ t; Arrange.unop uo; exp e]
   | BinE (t, e1, bo, e2)-> "BinE"    $$ [typ t; exp e1; Arrange.binop bo; exp e2]
   | RelE (t, e1, ro, e2)-> "RelE"    $$ [typ t; exp e1; Arrange.relop ro; exp e2]
@@ -58,7 +59,7 @@ and pat p = match p.it with
   | VarP i          -> "VarP"       $$ [ id i ]
   | TupP ps         -> "TupP"       $$ List.map pat ps
   | ObjP pfs        -> "ObjP"       $$ List.map pat_field pfs
-  | LitP l          -> "LitP"       $$ [ Arrange.lit l ]
+  | LitP l          -> "LitP"       $$ [ Arrange_lit.lit l ]
   | OptP p          -> "OptP"       $$ [ pat p ]
   | TagP (i, p)     -> "TagP"       $$ [ id i; pat p ]
   | AltP (p1,p2)    -> "AltP"       $$ [ pat p1; pat p2 ]

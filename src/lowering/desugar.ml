@@ -25,12 +25,13 @@ let id_of_full_path (fp : string) : Syntax.id =
 let trueE : Ir.exp = boolE true
 let falseE : Ir.exp = boolE false
 
-let apply_sign op l = Syntax.(match op, l with
+let apply_sign op l =
+  let open Lit in
+  match op, l with
   | PosOp, l -> l
   | NegOp, NatLit n -> NatLit (Value.Nat.sub Value.Nat.zero n)
   | NegOp, IntLit n -> IntLit (Value.Int.sub Value.Int.zero n)
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
-  )
 
 let phrase f x =  { x with it = f x.it }
 
