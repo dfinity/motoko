@@ -1,10 +1,7 @@
-open Source
 open Type
 open Wasm.Sexpr
 
 let ($$) head inner = Node (head, inner)
-
-let id i = Atom i.it
 
 let sharing sh = match sh with
   | Type.Local -> "Local"

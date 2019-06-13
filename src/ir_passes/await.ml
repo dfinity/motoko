@@ -104,11 +104,11 @@ and t_exp' context exp' =
   | LoopE exp1 ->
     LoopE (t_exp context exp1)
   | LabelE (id, _typ, exp1) ->
-    let context' = LabelEnv.add id.it Label context in
+    let context' = LabelEnv.add id Label context in
     LabelE (id, _typ, t_exp context' exp1)
   | BreakE (id, exp1) ->
     begin
-      match LabelEnv.find_opt id.it context with
+      match LabelEnv.find_opt id context with
       | Some (Cont k) -> RetE (k -@- (t_exp context exp1))
       | Some Label -> BreakE (id, t_exp context exp1)
       | None -> assert false
@@ -297,11 +297,11 @@ and c_exp' context exp k =
   | LabelE (id, _typ, exp1) ->
      letcont k
        (fun k ->
-         let context' = LabelEnv.add id.it (Cont (ContVar k)) context in
+         let context' = LabelEnv.add id (Cont (ContVar k)) context in
          c_exp context' exp1 (ContVar k)) (* TODO optimize me, if possible *)
   | BreakE (id, exp1) ->
     begin
-      match LabelEnv.find_opt id.it context with
+      match LabelEnv.find_opt id context with
       | Some (Cont k') ->
          c_exp context exp1 k'
       | Some Label -> assert false
@@ -431,7 +431,7 @@ and rename_pat' pat =
   | LitP _ -> (PatEnv.empty, pat.it)
   | VarP id ->
     let v = fresh_var "v" pat.note in
-    (PatEnv.singleton id.it v,
+    (PatEnv.singleton id v,
      VarP (id_of_exp v))
   | TupP pats ->
     let (patenv,pats') = rename_pats pats in
@@ -465,7 +465,7 @@ and define_pat patenv pat : dec list =
   | LitP _ ->
     []
   | VarP id ->
-    [ expD (define_idE id constM (PatEnv.find id.it patenv)) ]
+    [ expD (define_idE id constM (PatEnv.find id patenv)) ]
   | TupP pats -> define_pats patenv pats
   | ObjP pfs -> define_pats patenv (pats_of_obj_pat pfs)
   | OptP pat1

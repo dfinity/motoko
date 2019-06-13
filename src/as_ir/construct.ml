@@ -38,28 +38,28 @@ let id_of_exp x =
 
 let arg_of_exp x =
   match x.it with
-  | VarE i -> { i with note = x.note.note_typ }
+  | VarE i -> { it = i; at = x.at; note = x.note.note_typ }
   | _ -> failwith "Impossible: arg_of_exp"
 
-let exp_of_arg a = idE {a with note = () } a.note
+let exp_of_arg a =
+  idE a.it a.note
 
 (* Fresh id generation *)
 
 module Stamps = Map.Make(String)
 let id_stamps = ref Stamps.empty
 
-let fresh name_base () =
+let fresh name_base () : string =
   let n = Lib.Option.get (Stamps.find_opt name_base !id_stamps) 0 in
   id_stamps := Stamps.add name_base (n + 1) !id_stamps;
   Printf.sprintf "$%s/%i" name_base n
 
-let fresh_id name_base () =
-  let name = fresh name_base () in
-  name @@ no_region
+let fresh_id name_base () : id =
+  fresh name_base ()
 
-let fresh_var name_base typ =
+let fresh_var name_base typ : exp =
   let name = fresh name_base () in
-  idE (name @@ no_region) typ
+  idE name typ
 
 let fresh_vars name_base ts =
   List.mapi (fun i t -> fresh_var (Printf.sprintf "%s%i" name_base i) t) ts
@@ -133,7 +133,7 @@ let blockE decs exp =
     }
 
 let textE s =
-  { it = LitE (S.TextLit s);
+  { it = LitE (TextLit s);
     at = no_region;
     note = { S.note_typ = T.Prim T.Text;
              S.note_eff = T.Triv }
@@ -148,7 +148,7 @@ let unitE =
   }
 
 let boolE b =
-  { it = LitE (S.BoolLit b);
+  { it = LitE (BoolLit b);
     at = no_region;
     note = { S.note_typ = T.bool;
              S.note_eff = T.Triv}
@@ -183,7 +183,7 @@ let switch_optE exp1 exp2 pat exp3 typ1  =
   { it =
       SwitchE
         (exp1,
-         [{ it = {pat = {it = LitP S.NullLit;
+         [{ it = {pat = {it = LitP NullLit;
                          at = no_region;
                          note = typ exp1};
                   exp = exp2};
@@ -370,14 +370,14 @@ let nary_funcE name t xs exp =
 let funcD f x exp =
   match f.it, x.it with
   | VarE _, VarE _ ->
-    letD f (funcE (id_of_exp f).it (typ f) x exp)
+    letD f (funcE (id_of_exp f) (typ f) x exp)
   | _ -> failwith "Impossible: funcD"
 
 (* Mono-morphic, n-ary function declaration *)
 let nary_funcD f xs exp =
   match f.it with
   | VarE _ ->
-    letD f (nary_funcE (id_of_exp f).it (typ f) xs exp)
+    letD f (nary_funcE (id_of_exp f) (typ f) xs exp)
   | _ -> failwith "Impossible: funcD"
 
 

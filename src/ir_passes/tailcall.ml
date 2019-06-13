@@ -61,9 +61,11 @@ let bind env i (info:func_info option) : env =
     { env with info = info; }
   | None ->
     match env.info with
-    | Some { func; _}  when i.it = func.it ->
+    | Some { func; _} when i = func ->
       { env with info = None } (* remove shadowed func info *)
     | _ -> env (* preserve existing, non-shadowed info *)
+
+let bind_arg env a info = bind env a.it info
 
 
 let are_generic_insts (tbs : typ_bind list) insts =
@@ -109,7 +111,7 @@ and exp' env e  : exp' = match e.it with
       match e1.it, env with
       | VarE f1, { tail_pos = true;
                    info = Some { func; typ_binds; temps; label; tail_called } }
-           when f1.it = func.it && are_generic_insts typ_binds insts  ->
+           when f1 = func && are_generic_insts typ_binds insts  ->
         tail_called := true;
         (blockE (assignEs temps (exp env e2))
                  (breakE label (tupE []))).it
@@ -143,7 +145,7 @@ and exp' env e  : exp' = match e.it with
 and exps env es  = List.map (exp env) es
 
 and args env as_ =
-  List.fold_left (fun env a -> bind env a None) env as_
+  List.fold_left (fun env a -> bind_arg env a None) env as_
 
 and pat env p =
   let env = pat' env p.it in

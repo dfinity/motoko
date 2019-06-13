@@ -62,7 +62,7 @@ module Transform() = struct
       )
 
   let new_asyncE =
-    idE ("@new_async"@@no_region) new_asyncT
+    idE "@new_async" new_asyncT
 
   let new_async t1 =
     let call_new_async = callE new_asyncE [t1] (tupE []) in

@@ -1,18 +1,20 @@
 open As_frontend
 open As_types
+open As_values
 open Source
-open Arrange_type
 open Ir
 open Wasm.Sexpr
 
-(* for concision, we shadow the imported definition of [Arrange_type.typ] and pretty print types instead *)
+let ($$) head inner = Node (head, inner)
+
+let id i = Atom i
 
 let typ t = Atom (Type.string_of_typ t)
 let kind k = Atom (Type.string_of_kind k)
 
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
-  | LitE l              -> "LitE"    $$ [Arrange.lit l]
+  | LitE l              -> "LitE"    $$ [lit l]
   | UnE (t, uo, e)      -> "UnE"     $$ [typ t; Arrange.unop uo; exp e]
   | BinE (t, e1, bo, e2)-> "BinE"    $$ [typ t; exp e1; Arrange.binop bo; exp e2]
   | RelE (t, e1, ro, e2)-> "RelE"    $$ [typ t; exp e1; Arrange.relop ro; exp e2]
@@ -58,10 +60,24 @@ and pat p = match p.it with
   | VarP i          -> "VarP"       $$ [ id i ]
   | TupP ps         -> "TupP"       $$ List.map pat ps
   | ObjP pfs        -> "ObjP"       $$ List.map pat_field pfs
-  | LitP l          -> "LitP"       $$ [ Arrange.lit l ]
+  | LitP l          -> "LitP"       $$ [ lit l ]
   | OptP p          -> "OptP"       $$ [ pat p ]
   | TagP (i, p)     -> "TagP"       $$ [ id i; pat p ]
   | AltP (p1,p2)    -> "AltP"       $$ [ pat p1; pat p2 ]
+
+and lit (l:lit) = match l with
+  | NullLit       -> Atom "NullLit"
+  | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
+  | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
+  | NatLit n      -> "NatLit"    $$ [ Atom (Value.Nat.to_string n) ]
+  | IntLit i      -> "IntLit"    $$ [ Atom (Value.Int.to_string i) ]
+  | Word8Lit w    -> "Word8Lit"  $$ [ Atom (Value.Word8.to_string_u w) ]
+  | Word16Lit w   -> "Word16Lit" $$ [ Atom (Value.Word16.to_string_u w) ]
+  | Word32Lit w   -> "Word32Lit" $$ [ Atom (Value.Word32.to_string_u w) ]
+  | Word64Lit w   -> "Word64Lit" $$ [ Atom (Value.Word64.to_string_u w) ]
+  | FloatLit f    -> "FloatLit"  $$ [ Atom (Value.Float.to_string f) ]
+  | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
+  | TextLit t     -> "TextLit"   $$ [ Atom t ]
 
 and pat_field pf = pf.it.name $$ [pat pf.it.pat]
 
@@ -72,7 +88,7 @@ and call_conv cc = Atom (Call_conv.string_of_call_conv cc)
 and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
-  | TypD c -> "TypD" $$ [con c; kind (Con.kind c)]
+  | TypD c -> "TypD" $$ [Arrange_type.con c; kind (Con.kind c)]
 
 and typ_bind (tb : typ_bind) =
   Con.to_string tb.it.con $$ [typ tb.it.bound]
