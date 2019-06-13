@@ -61,15 +61,6 @@ module Env : Env.S with type key = string
 
 type unicode = int
 
-type call_conv = {
-  sort: Type.sharing;
-  control : Type.control;
-  n_args : int;
-  n_res : int;
-}
-
-val call_conv_of_typ : Type.typ -> call_conv
-
 type func = value -> value cont -> unit
 and value =
   | Null
@@ -87,7 +78,7 @@ and value =
   | Variant of string * value
   | Array of value array
   | Obj of value Env.t
-  | Func of call_conv * func
+  | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
   | Serialized of value
@@ -103,10 +94,6 @@ val unit : value
 
 
 (* Smart constructors *)
-
-val local_cc : int -> int -> call_conv
-val message_cc : int -> call_conv
-val async_cc : int -> call_conv
 
 val local_func : int -> int -> func -> value
 val message_func : int -> func -> value
@@ -131,7 +118,7 @@ val as_pair : value -> value * value
 val as_opt : value -> value
 val as_obj : value -> value Env.t
 val as_variant : value -> string * value
-val as_func : value -> call_conv * func
+val as_func : value -> Call_conv.t * func
 val as_async : value -> async
 val as_mut : value -> value ref
 val as_serialized : value -> value
@@ -147,4 +134,4 @@ val compare : value -> value -> int
 
 val string_of_val : int -> value -> string
 val string_of_def : int -> def -> string
-val string_of_call_conv : call_conv -> string
+

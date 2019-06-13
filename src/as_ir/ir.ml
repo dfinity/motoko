@@ -56,7 +56,7 @@ and exp' =
   | ArrayE of mut * Type.typ * exp list        (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of                                   (* function call *)
-      Value.call_conv * exp * Type.typ list * exp
+      Call_conv.t * exp * Type.typ list * exp
   | BlockE of (dec list * exp)                 (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
@@ -70,7 +70,7 @@ and exp' =
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
-      string * Value.call_conv * typ_bind list * arg list * Type.typ list * exp
+      string * Call_conv.t * typ_bind list * arg list * Type.typ list * exp
   | ActorE of id * dec list * field list * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
 
