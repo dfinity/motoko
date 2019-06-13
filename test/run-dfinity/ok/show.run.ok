@@ -9,7 +9,6 @@ false
 [1, 2, 3]
 [var 1, 2, 3]
 {bar = true; foo = 42}
-{bar = true; foo = 42}
 (#foo)
 (#bar 42)
 (#foo 42)
