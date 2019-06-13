@@ -9,6 +9,7 @@ sig
   val not : t -> t
   val pow : t -> t -> t
   val to_string : t -> string
+  val to_pretty_string : t -> string
 end
 
 module type NumType =
@@ -34,12 +35,14 @@ sig
   val of_int : int -> t
   val of_string : string -> t
   val to_string : t -> string
+  val to_pretty_string : t -> string
 end
 
 module type FloatType =
 sig
   include Wasm.Float.S
   val pow : t -> t -> t
+  val to_pretty_string : t -> string
 end
 
 module Word8 : WordType with type bits = int32

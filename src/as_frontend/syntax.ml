@@ -195,14 +195,14 @@ let string_of_lit = function
   | BoolLit false -> "false"
   | BoolLit true  ->  "true"
   | IntLit n
-  | NatLit n      -> Value.Int.to_string n
-  | Word8Lit n    -> Value.Word8.to_string n
-  | Word16Lit n   -> Value.Word16.to_string n
-  | Word32Lit n   -> Value.Word32.to_string n
-  | Word64Lit n   -> Value.Word64.to_string n
+  | NatLit n      -> Value.Int.to_pretty_string n
+  | Word8Lit n    -> Value.Word8.to_pretty_string n
+  | Word16Lit n   -> Value.Word16.to_pretty_string n
+  | Word32Lit n   -> Value.Word32.to_pretty_string n
+  | Word64Lit n   -> Value.Word64.to_pretty_string n
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
-  | FloatLit f    -> Value.Float.to_string f
+  | FloatLit f    -> Value.Float.to_pretty_string f
   | PreLit _      -> assert false
 
