@@ -1,2 +1,1 @@
-open As_frontend
-val check_prog : bool -> Typing.scope -> string -> Ir.prog -> unit
+val check_prog : bool -> As_types.Scope.scope -> string -> Ir.prog -> unit

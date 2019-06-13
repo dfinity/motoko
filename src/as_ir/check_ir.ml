@@ -57,8 +57,8 @@ type env =
 
 let env_of_scope scope flavor : env =
   { flavor;
-    vals = scope.Typing.val_env;
-    cons = scope.Typing.con_env;
+    vals = scope.Scope.val_env;
+    cons = scope.Scope.con_env;
     labs = T.Env.empty;
     rets = None;
     async = false;
