@@ -15,8 +15,8 @@ type lit = Syntax.lit
 type unop = Operator.unop
 type binop = Operator.binop
 type relop = Operator.relop
-type mut = Syntax.mut
-type vis = Syntax.vis
+
+type mut = Const | Var
 
 type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =

@@ -71,7 +71,7 @@ and exp' at note = function
   | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
   | S.ArrayE (m, es) ->
     let t = T.as_array note.S.note_typ in
-    I.ArrayE (m, T.as_immut t, exps es)
+    I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, s, tbs, p, ty, e) ->
     let cc = Call_conv.call_conv_of_typ note.S.note_typ in
@@ -108,6 +108,10 @@ and exp' at note = function
   | S.ImportE (f, fp) ->
     if !fp = "" then assert false; (* unresolved import *)
     I.VarE (id_of_full_path !fp)
+
+and mut m = match m.it with
+  | S.Const -> Ir.Const
+  | S.Var -> Ir.Var
 
 and obj at s self_id es obj_typ =
   match s.it with

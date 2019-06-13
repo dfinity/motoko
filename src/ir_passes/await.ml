@@ -371,11 +371,11 @@ and c_dec context dec (k:kont) =
     begin
       match eff exp with
       | T.Triv ->
-        k -@- define_idE id varM (t_exp context exp)
+        k -@- define_idE id Var (t_exp context exp)
       | T.Await ->
         c_exp context exp
           (meta (typ exp)
-             (fun v -> k -@- define_idE id varM v))
+             (fun v -> k -@- define_idE id Var v))
     end
 
 
@@ -465,7 +465,7 @@ and define_pat patenv pat : dec list =
   | LitP _ ->
     []
   | VarP id ->
-    [ expD (define_idE id constM (PatEnv.find id.it patenv)) ]
+    [ expD (define_idE id Const (PatEnv.find id.it patenv)) ]
   | TupP pats -> define_pats patenv pats
   | ObjP pfs -> define_pats patenv (pats_of_obj_pat pfs)
   | OptP pat1

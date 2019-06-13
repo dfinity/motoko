@@ -11,11 +11,6 @@ module T = As_types.Type
 
 type var = exp
 
-(* Mutabilities *)
-
-let varM = S.Var @@ no_region
-let constM = S.Const @@ no_region
-
 (* Field names *)
 
 let nameN s = s
