@@ -75,7 +75,7 @@ and lit (l:lit) = match l with
   | NullLit       -> Atom "NullLit"
   | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
   | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
-  | NatLit n      -> "NatLit"    $$ [ Atom (Value.Nat.to_string n) ]
+  | NatLit n      -> "NatLit"    $$ [ Atom (Value.Nat.to_pretty_string n) ]
   | Nat8Lit n     -> "Nat8Lit"   $$ [ Atom (Value.Nat8.to_pretty_string n) ]
   | Nat16Lit n    -> "Nat16Lit"  $$ [ Atom (Value.Nat16.to_pretty_string n) ]
   | Nat32Lit n    -> "Nat32Lit"  $$ [ Atom (Value.Nat32.to_pretty_string n) ]
