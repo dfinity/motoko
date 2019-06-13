@@ -5,7 +5,7 @@ open As_ir
 open Interpreter
 open Printf
 
-type stat_env = Scope.scope
+type stat_env = Scope.t
 type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
 
@@ -134,7 +134,7 @@ let rec typecheck_progs senv progs : Scope.scope Diag.result =
   | [] -> Diag.return senv
   | p::ps ->
     Diag.bind (infer_prog senv p) (fun (_t, sscope) ->
-      let senv' = Scope.adjoin_scope senv sscope in
+      let senv' = Scope.adjoin senv sscope in
       typecheck_progs senv' ps
     )
 
@@ -204,7 +204,7 @@ let chase_imports senv0 imports : (Syntax.libraries * Scope.scope) Diag.result =
       Diag.bind (typecheck_library !senv f prog) (fun sscope ->
       Diag.bind (defindeness_prog prog) (fun () ->
       libraries := (f, prog) :: !libraries; (* NB: Conceptually an append *)
-      senv := Scope.adjoin_scope !senv sscope;
+      senv := Scope.adjoin !senv sscope;
       pending := remove f !pending;
       Diag.return ()
       ))))))
@@ -231,7 +231,7 @@ let load_decl parse_one senv : load_decl_result =
   Diag.bind (resolve_prog parsed) (fun (prog, libraries) ->
   Diag.bind (chase_imports senv libraries) (fun (libraries, senv') ->
   Diag.bind (infer_prog senv' prog) (fun (t, sscope) ->
-  let senv'' = Scope.adjoin_scope senv' sscope in
+  let senv'' = Scope.adjoin senv' sscope in
   Diag.return (libraries, prog, senv'', t, sscope)
   ))))
 
@@ -291,11 +291,11 @@ let typecheck_prelude () : Syntax.prog * stat_env =
   match parse_with Lexer.Privileged lexer parse prelude_name with
   | Error e -> prelude_error "parsing" [e]
   | Ok prog ->
-    let senv0 = Scope.empty_scope  in
+    let senv0 = Scope.empty in
     match infer_prog senv0 prog with
     | Error es -> prelude_error "checking" es
     | Ok ((_t, sscope), msgs) ->
-      let senv1 = Scope.adjoin_scope senv0 sscope in
+      let senv1 = Scope.adjoin senv0 sscope in
       prog, senv1
 
 let prelude, initial_stat_env = typecheck_prelude ()

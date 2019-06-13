@@ -3,7 +3,6 @@ open Source
 open As_types
 open As_values
 
-open Scope
 module T = Type
 module A = Effect
 
@@ -21,11 +20,11 @@ type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
 
 type env =
-  { vals : val_env;
-    libs : lib_env;
-    typs : typ_env;
-    cons : con_env;
-    objs : obj_env;
+  { vals : Scope.val_env;
+    libs : Scope.lib_env;
+    typs : Scope.typ_env;
+    cons : Scope.con_env;
+    objs : Scope.obj_env;
     labs : lab_env;
     rets : ret_env;
     async : bool;
@@ -34,10 +33,10 @@ type env =
   }
 
 let env_of_scope msgs scope =
-  { vals = scope.val_env;
-    libs = scope.lib_env;
-    typs = scope.typ_env;
-    cons = scope.con_env;
+  { vals = scope.Scope.val_env;
+    libs = scope.Scope.lib_env;
+    typs = scope.Scope.typ_env;
+    cons = scope.Scope.con_env;
     objs = T.Env.empty;
     labs = T.Env.empty;
     rets = None;
@@ -77,11 +76,11 @@ let add_typs env xs cs =
 
 let adjoin env scope =
   { env with
-    vals = T.Env.adjoin env.vals scope.val_env;
-    libs = T.Env.adjoin env.libs scope.lib_env;
-    typs = T.Env.adjoin env.typs scope.typ_env;
-    cons = T.ConSet.union env.cons scope.con_env;
-    objs = T.Env.adjoin env.objs scope.obj_env;
+    vals = T.Env.adjoin env.vals scope.Scope.val_env;
+    libs = T.Env.adjoin env.libs scope.Scope.lib_env;
+    typs = T.Env.adjoin env.typs scope.Scope.typ_env;
+    cons = T.ConSet.union env.cons scope.Scope.con_env;
+    objs = T.Env.adjoin env.objs scope.Scope.obj_env;
   }
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals ve}
@@ -256,7 +255,7 @@ and check_typ_tag env typ_tag =
   let t = check_typ env typ in
   T.{lab = tag.it; typ = t}
 
-and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env =
+and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Scope.con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs = List.map (fun n -> Con.fresh n (T.Abs ([], T.Pre))) xs in
   let te = List.fold_left2 (fun te typ_bind c ->
@@ -603,7 +602,7 @@ and infer_exp'' env exp : T.typ =
     t_ret
   | BlockE decs ->
     let t, scope = infer_block env decs exp.at in
-    (try T.avoid scope.con_env t with T.Unavoidable c ->
+    (try T.avoid scope.Scope.con_env t with T.Unavoidable c ->
       error env exp.at
         "local class type %s is contained in inferred block type\n  %s"
         (Con.to_string c)
@@ -834,21 +833,21 @@ and check_case env t_pat t {it = {pat; exp}; _} =
 
 (* Patterns *)
 
-and infer_pat_exhaustive env pat : T.typ * val_env =
+and infer_pat_exhaustive env pat : T.typ * Scope.val_env =
   let t, ve = infer_pat env pat in
   if not env.pre then
     if not (Coverage.check_pat pat t) then
       warn env pat.at "this pattern does not cover all possible values";
   t, ve
 
-and infer_pat env pat : T.typ * val_env =
+and infer_pat env pat : T.typ * Scope.val_env =
   assert (pat.note = T.Pre);
   let t, ve = infer_pat' env pat in
   if not env.pre then
     pat.note <- T.normalize t;
   t, ve
 
-and infer_pat' env pat : T.typ * val_env =
+and infer_pat' env pat : T.typ * Scope.val_env =
   match pat.it with
   | WildP ->
     error env pat.at "cannot infer type of wildcard"
@@ -889,7 +888,7 @@ and infer_pat' env pat : T.typ * val_env =
   | ParP pat1 ->
     infer_pat env pat1
 
-and infer_pats at env pats ts ve : T.typ list * val_env =
+and infer_pats at env pats ts ve : T.typ list * Scope.val_env =
   match pats with
   | [] -> List.rev ts, ve
   | pat::pats' ->
@@ -897,7 +896,7 @@ and infer_pats at env pats ts ve : T.typ list * val_env =
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pats at env pats' (t::ts) ve'
 
-and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * val_env =
+and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_env =
   match pfs with
   | [] -> (T.(Object Local), List.rev ts), ve
   | pf::pfs' ->
@@ -905,14 +904,14 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * val_env =
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
 
-and check_pat_exhaustive env t pat : val_env =
+and check_pat_exhaustive env t pat : Scope.val_env =
   let ve = check_pat env t pat in
   if not env.pre then
     if not (Coverage.check_pat pat t) then
       warn env pat.at "this pattern does not cover all possible values";
   ve
 
-and check_pat env t pat : val_env =
+and check_pat env t pat : Scope.val_env =
   assert (pat.note = T.Pre);
   if t = T.Pre then snd (infer_pat env pat) else
   let t' = T.normalize t in
@@ -920,7 +919,7 @@ and check_pat env t pat : val_env =
   if not env.pre then pat.note <- t';
   ve
 
-and check_pat' env t pat : val_env =
+and check_pat' env t pat : Scope.val_env =
   assert (t <> T.Pre);
   match pat.it with
   | WildP ->
@@ -988,7 +987,7 @@ and check_pat' env t pat : val_env =
         (T.string_of_typ_expand t);
     ve
 
-and check_pats env ts pats ve at : val_env =
+and check_pats env ts pats ve at : Scope.val_env =
   match pats, ts with
   | [], [] -> ve
   | pat::pats', t::ts' ->
@@ -1002,7 +1001,7 @@ and check_pats env ts pats ve at : val_env =
     error env at "tuple pattern has %i more components than expected type"
       (List.length ts)
 
-and check_pat_fields env tfs pfs ve at : val_env =
+and check_pat_fields env tfs pfs ve at : Scope.val_env =
   let repeated l = function
     | [] -> None
     | (pf : pat_field)::_ -> if l = pf.it.id.it then Some pf.at else None
@@ -1092,18 +1091,18 @@ and object_of_scope env sort fields scope at =
       (fun id con flds ->
        if T.Env.mem id pub_typ then
          { T.lab = id; T.typ = T.Typ con }::flds
-       else flds) scope.typ_env  []
+       else flds) scope.Scope.typ_env  []
   in
   let fields =
     T.Env.fold
       (fun id typ flds ->
         if T.Env.mem id pub_val then
           { T.lab = id; T.typ = typ }::flds
-        else flds) scope.val_env typ_fields
+        else flds) scope.Scope.val_env typ_fields
   in
   let t = T.Obj (sort, List.sort T.compare_field fields) in
   let accessible_cons = gather_typ T.ConSet.empty t in
-  let inaccessible_cons = T.ConSet.diff scope.con_env accessible_cons in
+  let inaccessible_cons = T.ConSet.diff scope.Scope.con_env accessible_cons in
   try
     T.avoid_cons inaccessible_cons accessible_cons;
     T.avoid inaccessible_cons t
@@ -1146,12 +1145,12 @@ and infer_obj env s fields at : T.typ =
 
 (* Blocks and Declarations *)
 
-and infer_block env decs at : T.typ * scope =
+and infer_block env decs at : T.typ * Scope.scope =
   let scope = infer_block_decs env decs in
   let t = infer_block_exps (adjoin env scope) decs in
   t, scope
 
-and infer_block_decs env decs : scope =
+and infer_block_decs env decs : Scope.t =
   let scope = gather_block_decs env decs in
   let env' = adjoin {env with pre = true} scope in
   let scope_ce = infer_block_typdecs env' decs in
@@ -1203,7 +1202,7 @@ and infer_dec env dec : T.typ =
   t
 
 
-and check_block env t decs at : scope =
+and check_block env t decs at : Scope.t =
   let scope = infer_block_decs env decs in
   check_block_exps (adjoin env scope) t decs at;
   scope
@@ -1278,10 +1277,10 @@ and infer_val_path env exp : T.typ option =
    * object identifiers and their fields (if known) (recursively)
    * other value identifiers at type T.Pre
 *)
-and gather_block_decs env decs : scope =
-  List.fold_left (gather_dec env) empty_scope decs
+and gather_block_decs env decs : Scope.t =
+  List.fold_left (gather_dec env) Scope.empty decs
 
-and gather_dec env scope dec : scope =
+and gather_dec env scope dec : Scope.t =
   match dec.it with
   | ExpD _ -> scope
   (* TODO: generalize beyond let <id> = <obje> *)
@@ -1290,6 +1289,7 @@ and gather_dec env scope dec : scope =
       {it = ObjE ({it = sort; _}, fields); at; _}
     ) ->
     let decs = List.map (fun ef -> ef.it.dec) fields in
+    let open Scope in
     if T.Env.mem id.it scope.val_env then
       error env dec.at "duplicate definition for value %s in block" id.it;
     let scope' = gather_block_decs env decs in
@@ -1300,9 +1300,10 @@ and gather_dec env scope dec : scope =
      lib_env = scope.lib_env;
      con_env = scope.con_env;
      obj_env = obj_env }
-  | LetD (pat, _) -> adjoin_val_env scope (gather_pat env scope.val_env pat)
-  | VarD (id, _) -> adjoin_val_env scope (gather_id env scope.val_env id)
+  | LetD (pat, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
+  | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id)
   | TypD (id, binds, _) | ClassD (id, binds, _, _, _, _) ->
+    let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" id.it;
     let pre_tbs = List.map (fun bind -> {T.var = bind.it.var.it; bound = T.Pre}) binds in
@@ -1322,7 +1323,7 @@ and gather_dec env scope dec : scope =
       obj_env = scope.obj_env;
     }
 
-and gather_pat env ve pat : val_env =
+and gather_pat env ve pat : Scope.val_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> ve
   | VarP id -> gather_id env ve id
@@ -1331,24 +1332,24 @@ and gather_pat env ve pat : val_env =
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
   | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
 
-and gather_pat_field env ve pf : val_env =
+and gather_pat_field env ve pf : Scope.val_env =
   gather_pat env ve pf.it.pat
 
-and gather_id env ve id : val_env =
+and gather_id env ve id : Scope.val_env =
   if T.Env.find_opt id.it ve <> None then
     error env id.at "duplicate definition for %s in block" id.it;
   T.Env.add id.it T.Pre ve
 
 (* Pass 2 and 3: infer type definitions *)
-and infer_block_typdecs env decs : scope =
+and infer_block_typdecs env decs : Scope.t =
   let _env', scope =
     List.fold_left (fun (env, scope) dec ->
       let scope' = infer_dec_typdecs env dec in
-      adjoin env scope', adjoin_scope scope scope'
-    ) (env, empty_scope) decs
+      adjoin env scope', Scope.adjoin scope scope'
+    ) (env, Scope.empty) decs
   in scope
 
-and infer_dec_typdecs env dec : scope =
+and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
@@ -1359,7 +1360,7 @@ and infer_dec_typdecs env dec : scope =
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
     let obj_scope = infer_block_typdecs env' decs in
-    { empty_scope with
+    Scope.{ empty with
       con_env = obj_scope.con_env;
       val_env = T.Env.singleton id.it (object_of_scope env sort fields obj_scope at);
       obj_env = T.Env.singleton id.it obj_scope
@@ -1367,14 +1368,15 @@ and infer_dec_typdecs env dec : scope =
   (* TODO: generalize beyond let <id> = <valpath> *)
   | LetD ({it = VarP id; _}, exp) ->
     (match infer_val_path env exp with
-     | None -> empty_scope
+     | None -> Scope.empty
      | Some t ->
+       let open Scope in
        match T.promote t with
-       | T.Obj (_, _) as t' -> { empty_scope with val_env = T.Env.singleton id.it t' }
-       | _ -> { empty_scope with val_env = T.Env.singleton id.it T.Pre }
+       | T.Obj (_, _) as t' -> { Scope.empty with val_env = T.Env.singleton id.it t' }
+       | _ -> { Scope.empty with val_env = T.Env.singleton id.it T.Pre }
     )
   | LetD _ | ExpD _ | VarD _ ->
-    empty_scope
+    Scope.empty
   | TypD (con_id, binds, typ) ->
     let c = T.Env.find con_id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
@@ -1398,7 +1400,7 @@ and infer_dec_typdecs env dec : scope =
           (T.string_of_kind k)
           (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
     end;
-    { empty_scope with
+    Scope.{ empty with
       typ_env = T.Env.singleton con_id.it c;
       con_env = infer_id_typdecs con_id c k;
     }
@@ -1412,12 +1414,12 @@ and infer_dec_typdecs env dec : scope =
     let t = infer_obj env'' sort.it fields dec.at in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
-    { empty_scope with
+    Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
     }
 
-and infer_id_typdecs id c k : con_env =
+and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Con.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
@@ -1426,18 +1428,18 @@ and infer_id_typdecs id c k : con_env =
   T.ConSet.singleton c
 
 (* Pass 4: infer value types *)
-and infer_block_valdecs env decs scope : scope =
+and infer_block_valdecs env decs scope : Scope.t =
   let _, scope' =
     List.fold_left (fun (env, scope) dec ->
       let scope' = infer_dec_valdecs env dec in
-      adjoin env scope', adjoin_scope scope scope'
+      adjoin env scope', Scope.adjoin scope scope'
     ) (env, scope) decs
   in scope'
 
-and infer_dec_valdecs env dec : scope =
+and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
   | ExpD _ ->
-    empty_scope
+    Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
@@ -1448,23 +1450,23 @@ and infer_dec_valdecs env dec : scope =
     let obj_scope' =
       infer_block_valdecs
         (adjoin {env with pre = true} obj_scope)
-        decs empty_scope
+        decs Scope.empty
     in
     let obj_typ = object_of_scope env sort fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
-    { empty_scope with
+    Scope.{ Scope.empty with
       val_env = T.Env.singleton id.it obj_typ }
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
     let ve' = check_pat_exhaustive env t pat in
-    { empty_scope with val_env = ve' }
+    Scope.{ Scope.empty with val_env = ve' }
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    { empty_scope with val_env = T.Env.singleton id.it (T.Mut t) }
+    Scope.{ Scope.empty with val_env = T.Env.singleton id.it (T.Mut t) }
   | TypD (con_id, binds, typ) ->
     let c = match con_id.note with
       | Some c -> c | _ -> assert false in
-    { empty_scope with
+    Scope.{ Scope.empty with
       typ_env = T.Env.singleton con_id.it c;
       con_env = T.ConSet.singleton c ;
     }
@@ -1477,7 +1479,7 @@ and infer_dec_valdecs env dec : scope =
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
-    { empty_scope with
+    Scope.{ Scope.empty with
       val_env = T.Env.singleton id.it t;
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
@@ -1485,7 +1487,7 @@ and infer_dec_valdecs env dec : scope =
 
 (* Programs *)
 
-let infer_prog scope prog : (T.typ * scope) Diag.result =
+let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
   Diag.with_message_store
     (fun msgs ->
        recover_opt
@@ -1506,14 +1508,14 @@ let infer_library env prog at =
   |  ds ->
      object_of_scope env T.Module (List.map (fun d -> { vis = Public @@ no_region ; dec = d } @@ no_region) ds) scope at
 
-let check_library scope (filename, prog) : scope Diag.result =
+let check_library scope (filename, prog) : Scope.t Diag.result =
   Diag.with_message_store
     (fun msgs ->
     recover_opt
       (fun prog ->
         let env = env_of_scope msgs scope in
         let typ = infer_library env prog.it prog.at in
-        library_scope filename typ
+        Scope.library filename typ
       )
       prog
     )

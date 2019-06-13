@@ -14,9 +14,10 @@ and scope =
     con_env : con_env;
     obj_env : obj_env;
   }
+and t = scope
 
-val empty_scope : scope
-val adjoin_scope : scope -> scope -> scope
+val empty : scope
+val adjoin : scope -> scope -> scope
 
 val adjoin_val_env : scope -> val_env -> scope
-val library_scope : string -> typ -> scope
+val library : string -> typ -> scope

@@ -16,8 +16,9 @@ and scope =
     con_env : con_env;
     obj_env : obj_env;
   }
+and t = scope
 
-let empty_scope : scope =
+let empty : scope =
   { val_env = T.Env.empty;
     lib_env = T.Env.empty;
     typ_env = T.Env.empty;
@@ -25,7 +26,7 @@ let empty_scope : scope =
     obj_env = T.Env.empty;
   }
 
-let adjoin_scope scope1 scope2 =
+let adjoin scope1 scope2 =
   { val_env = T.Env.adjoin scope1.val_env scope2.val_env;
     lib_env = T.Env.adjoin scope1.lib_env scope2.lib_env;
     typ_env = T.Env.adjoin scope1.typ_env scope2.typ_env;
@@ -36,5 +37,5 @@ let adjoin_scope scope1 scope2 =
 
 let adjoin_val_env scope ve = {scope with val_env = T.Env.adjoin scope.val_env ve}
 
-let library_scope f t =
-  { empty_scope with lib_env = T.Env.add f t empty_scope.lib_env }
+let library f t =
+  { empty with lib_env = T.Env.add f t empty.lib_env }
