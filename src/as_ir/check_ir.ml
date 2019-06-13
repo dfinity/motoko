@@ -57,8 +57,8 @@ type env =
 
 let env_of_scope scope flavor : env =
   { flavor;
-    vals = scope.Typing.val_env;
-    cons = scope.Typing.con_env;
+    vals = scope.Scope.val_env;
+    cons = scope.Scope.con_env;
     labs = T.Env.empty;
     rets = None;
     async = false;
@@ -393,7 +393,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     (* TODO: check call_conv (assuming there's something to check) *)
     let t1 = T.promote (typ exp1) in
     let _, tbs, t2, t3 =
-      try T.as_func_sub call_conv.Value.sort (List.length insts) t1 with
+      try T.as_func_sub call_conv.Call_conv.sort (List.length insts) t1 with
       |  Invalid_argument _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
@@ -402,7 +402,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     let t_arg = T.open_ insts t2 in
     let t_ret = T.open_ insts t3 in
-    if (call_conv.Value.sort = T.Sharable) then begin
+    if (call_conv.Call_conv.sort = T.Sharable) then begin
       check_concrete env exp.at t_arg;
       check_concrete env exp.at t_ret;
     end;
@@ -510,19 +510,19 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
-    check ((cc.Value.sort = T.Sharable && Type.is_async (T.seq ret_tys))
+    check ((cc.Call_conv.sort = T.Sharable && Type.is_async (T.seq ret_tys))
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
-    if (cc.Value.sort = T.Sharable) then List.iter (check_concrete env exp.at) ret_tys;
+    if (cc.Call_conv.sort = T.Sharable) then List.iter (check_concrete env exp.at) ret_tys;
     let env'' =
       {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) (T.seq ret_tys);
     (* Now construct the function type and compare with the annotation *)
     let ts1 = List.map (fun a -> a.note) args in
-    if (cc.Value.sort = T.Sharable) then List.iter (check_concrete env exp.at) ts1;
+    if (cc.Call_conv.sort = T.Sharable) then List.iter (check_concrete env exp.at) ts1;
     let fun_ty = T.Func
-      ( cc.Value.sort, cc.Value.control
+      ( cc.Call_conv.sort, cc.Call_conv.control
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t

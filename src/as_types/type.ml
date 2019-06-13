@@ -773,6 +773,9 @@ and glb_tags fs1 fs2 = match fs1, fs2 with
     | +1 -> glb_tags fs1 fs2'
     | _ -> {f1 with typ = glb f1.typ f2.typ}::glb_tags fs1' fs2'
 
+(* Environments *)
+
+module Env = Env.Make(String)
 
 (* Pretty printing *)
 
@@ -936,8 +939,3 @@ let rec string_of_typ_expand t =
       | t' -> s ^ " = " ^ string_of_typ_expand t'
     )
   | _ -> s
-
-
-(* Environments *)
-
-module Env = Env.Make(String)

@@ -1,7 +1,5 @@
-open As_frontend
 open As_ir
 open As_types
-open As_values
 open Source
 open Ir
 module T = Type
@@ -131,20 +129,20 @@ module Transform() = struct
     let exp' = exp.it in
     match exp' with
     | CallE (cc, exp1, typs, exp2)  ->
-      begin match cc.Value.sort with
+      begin match cc.Call_conv.sort with
       | T.Local ->
         CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
       | T.Sharable ->
         (* We should take the type to serialize at from the function, not the
            argument, as the latter could be a subtype *)
         let fun_ty = exp1.note.note_typ in
-        let _, _, t_arg, t_ret = T.as_func_sub cc.Value.sort (List.length typs) fun_ty in
+        let _, _, t_arg, t_ret = T.as_func_sub cc.Call_conv.sort (List.length typs) fun_ty in
         assert (T.is_unit t_ret);
-        let exp2' = map_tuple cc.Value.n_args serialize (t_exp exp2) (t_typ (T.open_ typs t_arg)) in
+        let exp2' = map_tuple cc.Call_conv.n_args serialize (t_exp exp2) (t_typ (T.open_ typs t_arg)) in
         CallE (cc, t_exp exp1, [], exp2')
       end
     | FuncE (x, cc, typbinds, args, ret_tys, exp) ->
-      begin match cc.Value.sort with
+      begin match cc.Call_conv.sort with
       | T.Local ->
         FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
       | T.Sharable ->
@@ -277,5 +275,5 @@ let transform env prog =
   Eventually, pipeline will allow us to pass the con_renaming to downstream program
   fragments, then we would simply start with an empty con_renaming and the prelude.
   *)
-  Type.ConSet.iter (fun c -> T.con_renaming := T.ConRenaming.add c c (!T.con_renaming)) env.Typing.con_env;
+  Type.ConSet.iter (fun c -> T.con_renaming := T.ConRenaming.add c c (!T.con_renaming)) env.Scope.con_env;
   T.t_prog prog

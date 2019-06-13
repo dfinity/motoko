@@ -1,7 +1,5 @@
 open As_types
 open As_ir
-open As_values
-open As_frontend
 module E = Env
 open Source
 module Ir = Ir
@@ -318,7 +316,7 @@ module Transform() = struct
     | DefineE (id, mut ,exp1) ->
       DefineE (id, mut, t_exp exp1)
     | FuncE (x, cc, typbinds, args, typT, exp) ->
-      let s = cc.Value.sort in
+      let s = cc.Call_conv.sort in
       begin
         match s with
         | T.Local  ->
@@ -329,7 +327,7 @@ module Transform() = struct
             | T.Tup [] ->
               FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
             | T.Async res_typ ->
-              let cc' = Value.message_cc (cc.Value.n_args + 1) in
+              let cc' = Call_conv.message_cc (cc.Call_conv.n_args + 1) in
               let res_typ = t_typ res_typ in
               let reply_typ = replyT nary res_typ in
               let k = fresh_var "k" reply_typ in
@@ -415,5 +413,5 @@ let transform env prog =
   Eventually, pipeline will allow us to pass the con_renaming to downstream program
   fragments, then we would simply start with an empty con_renaming and the prelude.
   *)
-  Type.ConSet.iter (fun c -> T.con_renaming := T.ConRenaming.add c c (!T.con_renaming)) env.Typing.con_env;
+  Type.ConSet.iter (fun c -> T.con_renaming := T.ConRenaming.add c c (!T.con_renaming)) env.Scope.con_env;
   T.t_prog prog

@@ -1,6 +1,5 @@
 open As_ir
 open As_types
-open As_values
 
 open Source
 open Ir
@@ -190,7 +189,7 @@ and dec' env d =
   (* A local let bound function, this is what we are looking for *)
   (* TODO: Do we need to detect more? A tuple of functions? *)
   | LetD (({it = VarP id;_} as id_pat),
-          ({it = FuncE (x, ({ Value.sort = Local; _} as cc), tbs, as_, typT, exp0);_} as funexp)) ->
+          ({it = FuncE (x, ({ Call_conv.sort = Local; _} as cc), tbs, as_, typT, exp0);_} as funexp)) ->
     let env = bind env id None in
     begin fun env1 ->
       let temps = fresh_vars "temp" (List.map (fun a -> Mut a.note) as_) in

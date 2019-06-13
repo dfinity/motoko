@@ -168,7 +168,6 @@ val open_binds : bind list -> typ list
 
 module Env : Env.S with type key = string
 
-
 (* Pretty printing *)
 
 val string_of_con : con -> string
@@ -177,5 +176,4 @@ val string_of_sharing: sharing -> string
 val string_of_typ : typ -> string
 val string_of_kind : kind -> string
 val strings_of_kind : kind -> string * string * string
-
 val string_of_typ_expand : typ -> string

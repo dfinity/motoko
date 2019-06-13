@@ -1,5 +1,6 @@
 open As_ir
 open As_frontend
+open As_types
 open As_values
 
 open Source
@@ -73,16 +74,16 @@ and exp' at note = function
     I.ArrayE (m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, s, tbs, p, ty, e) ->
-    let cc = Value.call_conv_of_typ note.S.note_typ in
+    let cc = Call_conv.call_conv_of_typ note.S.note_typ in
     let args, wrap = to_args cc p in
-    let tys = if cc.Value.n_res = 1 then [ty.note] else T.as_seq ty.note in
+    let tys = if cc.Call_conv.n_res = 1 then [ty.note] else T.as_seq ty.note in
     I.FuncE (name, cc, typ_binds tbs, args, tys, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in
     if T.is_non t
     then unreachableE.it
     else
-      let cc = Value.call_conv_of_typ t in
+      let cc = Call_conv.call_conv_of_typ t in
       let inst = List.map (fun t -> t.Source.note) inst in
       I.CallE (cc, exp e1, inst, exp e2)
   | S.BlockE [] -> I.TupE []
@@ -204,7 +205,7 @@ and dec' at n d = match d with
     I.TypD c
   | S.ClassD (id, tbs, s, p, self_id, es) ->
     let id' = {id with note = ()} in
-    let cc = Value.call_conv_of_typ n.S.note_typ in
+    let cc = Call_conv.call_conv_of_typ n.S.note_typ in
     let inst = List.map
                  (fun tb ->
                    match tb.note with
@@ -276,7 +277,7 @@ and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
 
 
 and to_args cc p : (Ir.arg list * (Ir.exp -> Ir.exp)) =
-  let n = cc.Value.n_args in
+  let n = cc.Call_conv.n_args in
   let tys = if n = 1 then [p.note] else T.as_seq p.note in
 
   let args, wrap =
@@ -303,7 +304,7 @@ and to_args cc p : (Ir.arg list * (Ir.exp -> Ir.exp)) =
   in
 
   let wrap_under_async e =
-    if cc.Value.sort = T.Sharable && cc.Value.control = T.Promises
+    if cc.Call_conv.sort = T.Sharable && cc.Call_conv.control = T.Promises
     then match e.it with
       | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
       | _ -> assert false

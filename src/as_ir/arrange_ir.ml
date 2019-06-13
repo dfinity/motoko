@@ -1,6 +1,5 @@
 open As_frontend
 open As_types
-open As_values
 open Source
 open Arrange_type
 open Ir
@@ -68,7 +67,7 @@ and pat_field pf = pf.it.name $$ [pat pf.it.pat]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
-and call_conv cc = Atom (Value.string_of_call_conv cc)
+and call_conv cc = Atom (Call_conv.string_of_call_conv cc)
 
 and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
