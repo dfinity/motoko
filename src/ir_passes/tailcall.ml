@@ -7,7 +7,6 @@ open Ir
 open Ir_effect
 open Type
 open Construct
-module S = As_frontend.Syntax
 
 (* Optimize (self) tail calls to jumps, avoiding stack overflow
    in a single linear pass *)
@@ -45,10 +44,10 @@ TODO: optimize for multiple arguments using multiple temps (not a tuple).
 
 *)
 
-type func_info = { func: S.id;
+type func_info = { func: id;
                    typ_binds: typ_bind list;
                    temps: var list;
-                   label: S.id;
+                   label: id;
                    tail_called: bool ref;
                  }
 

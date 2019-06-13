@@ -1,6 +1,5 @@
 open As_ir
 open Source
-module S = As_frontend.Syntax
 open Ir
 
 module Renaming = Map.Make(String)
