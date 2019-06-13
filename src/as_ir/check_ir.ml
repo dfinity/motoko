@@ -1,5 +1,4 @@
 open As_types
-open As_frontend
 open As_values
 
 open Source
@@ -372,7 +371,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | ArrayE (mut, t0, exps) ->
     List.iter (check_exp env) exps;
     List.iter (fun e -> typ e <: t0) exps;
-    let t1 = T.Array (match mut.it with Syntax.Const -> t0 | Syntax.Var -> T.Mut t0) in
+    let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
     t1 <: t
   | IdxE (exp1, exp2) ->
     check_exp env exp1;
@@ -492,10 +491,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       match T.Env.find_opt id env.vals with
       | None -> error env exp.at "unbound variable %s" id
       | Some t0 ->
-        match mut.it with
-        | Syntax.Const ->
+        match mut with
+        | Const ->
           typ exp1 <: t0
-        | Syntax.Var ->
+        | Var ->
           let t0 = try T.as_mut t0 with
                    | Invalid_argument _ ->
                      error env exp.at "expected mutable %s" (T.string_of_typ t0)

@@ -30,7 +30,8 @@ type typ_bind = typ_bind' Source.phrase
 type unop = Operator.unop
 type binop = Operator.binop
 type relop = Operator.relop
-type mut = Syntax.mut
+
+type mut = Const | Var
 
 type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =
