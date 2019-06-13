@@ -1,12 +1,12 @@
 (executable
  (name asc)
  (modules asc)
- (libraries aslib)
+ (libraries pipeline)
 )
 (executable
  (name as_ld)
  (modules as_ld)
- (libraries aslib)
+ (libraries wasm_exts linking)
 )
 (executable
  (name didc)
@@ -16,7 +16,7 @@
 (executable
  (name as_js)
  (modules as_js)
- (libraries aslib)
+ (libraries pipeline)
  (preprocess (pps js_of_ocaml-ppx))
  (js_of_ocaml (flags :standard "+nat.js") )
 )
