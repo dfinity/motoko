@@ -35,6 +35,27 @@ natToNat64 0xFFFFFFFFFFFFFFFF;
 natToNat64 0x10000000000000000;
 
 
-nat32ToWord32 (-0x80000000);
+// these would yield Int*, but are out of bounds
+
+-(255 : Nat8);
+-(65535 : Nat16);
+-(4294967295 : Nat32);
+-(18446744073709551615 : Nat64);
+
+// these should work
+
+-(127 : Nat8);
+-(32767 : Nat16);
+-(2147483647 : Nat32);
+-(9223372036854775807 : Nat64);
+
+-127 : Int8;
+-0x7F : Int8;
+-32767 : Int16;
+-0x7FFF : Int16;
+-2147483647 : Int32;
+-0x7FFFFFFF : Int32;
+-9223372036854775807 : Int64;
+-0x7FFFFFFFFFFFFFFF : Int64;
 
 __END__
