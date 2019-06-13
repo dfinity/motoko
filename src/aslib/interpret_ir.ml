@@ -294,7 +294,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LitE lit ->
     k (interpret_lit env lit)
   | UnE (ot, op, exp1) ->
-    interpret_exp env exp1 (fun v1 -> k (Operator.unop ot op v1))
+    interpret_exp env exp1 (fun v1 -> k (try Operator.unop ot op v1 with Invalid_argument s -> trap exp.at "%s" s))
   | ShowE (ot, exp1) ->
     interpret_exp env exp1 (fun v ->
       if Show.can_show ot
@@ -350,18 +350,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | CallE (_cc, exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
-        interpret_exp env exp2 (fun v2 ->
-            let call_conv, f = V.as_func v1 in
-            check_call_conv exp1 call_conv;
-            check_call_conv_arg env exp v2 call_conv;
-            f v2 k
-
-(*
-        try
-          let _, f = V.as_func v1 in f v2 k
-        with Invalid_argument s ->
-          trap exp.at "%s" s
-*)
+      interpret_exp env exp2 (fun v2 ->
+        let call_conv, f = V.as_func v1 in
+        check_call_conv exp1 call_conv;
+        check_call_conv_arg env exp v2 call_conv;
+        last_region := exp.at; (* in case the following throws *)
+        f v2 k
       )
     )
   | BlockE (decs, exp1) ->
@@ -678,7 +672,8 @@ let interpret_prog flags scope ((ds, exp), flavor) : scope =
   let ve = ref V.Env.empty in
   try
     Scheduler.queue (fun () ->
-      interpret_block env (Some ve) ds exp  (fun v -> ())
+      try interpret_block env (Some ve) ds exp  (fun v -> ())
+      with Invalid_argument s -> trap !last_region "%s" s
     );
     Scheduler.run ();
     !ve

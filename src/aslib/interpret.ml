@@ -278,7 +278,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LitE lit ->
     k (interpret_lit env lit)
   | UnE (ot, op, exp1) ->
-    interpret_exp env exp1 (fun v1 -> k (Operator.unop !ot op v1))
+    interpret_exp env exp1
+      (fun v1 ->
+        k (try Operator.unop !ot op v1 with Invalid_argument s -> trap exp.at "%s" s))
   | BinE (ot, exp1, op, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
@@ -347,13 +349,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let call_conv, f = V.as_func v1 in
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
+        last_region := exp.at; (* in case the following throws *)
         f v2 k
-(*
-        try
-          let _, f = V.as_func v1 in f v2 k
-        with Invalid_argument s ->
-          trap exp.at "%s" s
-*)
       )
     )
   | BlockE decs ->
@@ -729,7 +726,8 @@ let interpret_prog flags scope p : (V.value * scope) option =
     let vo = ref None in
     let ve = ref V.Env.empty in
     Scheduler.queue (fun () ->
-      interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+      try interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+      with Invalid_argument s -> trap !last_region "%s" s
     );
     Scheduler.run ();
     let scope = { val_env = !ve; lib_env = scope.lib_env } in
@@ -754,7 +752,7 @@ let interpret_library flags scope (filename, p) : scope =
   let v = match p.it with
     | [ { it = ExpD _ ; _ } ] ->
       Lib.Option.value !vo
-    (* HACK: to be remove once we restrict libraries to expressions *)
+    (* HACK: to be removed once we restrict libraries to expressions *)
     | ds ->
       V.Obj (V.Env.map Lib.Promise.value (!ve))
   in

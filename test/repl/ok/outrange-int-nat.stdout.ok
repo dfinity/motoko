@@ -1,14 +1,27 @@
 ActorScript 0.1 interpreter
 > 127 : Int8
-> > -128 : Int8
-> >   32_767 : Int16
-> > -32_768 : Int16
-> >   2_147_483_647 : Int32
-> > -2_147_483_648 : Int32
-> >   9_223_372_036_854_775_807 : Int64
-> > -9_223_372_036_854_775_808 : Int64
-> >     255 : Nat8
-> >   65_535 : Nat16
-> >   4_294_967_295 : Nat32
-> >   18_446_744_073_709_551_615 : Nat64
-> >     >   
+> prelude:83.34-83.68: execution error, numeric overflow
+> -128 : Int8
+> prelude:83.34-83.68: execution error, numeric overflow
+>   32_767 : Int16
+> prelude:79.36-79.72: execution error, numeric overflow
+> -32_768 : Int16
+> prelude:79.36-79.72: execution error, numeric overflow
+>   2_147_483_647 : Int32
+> prelude:75.36-75.72: execution error, numeric overflow
+> -2_147_483_648 : Int32
+> prelude:75.36-75.72: execution error, numeric overflow
+>   9_223_372_036_854_775_807 : Int64
+> prelude:71.36-71.72: execution error, numeric overflow
+> -9_223_372_036_854_775_808 : Int64
+> prelude:71.36-71.72: execution error, numeric overflow
+>     255 : Nat8
+> prelude:100.34-100.68: execution error, numeric overflow
+>   65_535 : Nat16
+> prelude:96.36-96.72: execution error, numeric overflow
+>   4_294_967_295 : Nat32
+> prelude:92.36-92.72: execution error, numeric overflow
+>   18_446_744_073_709_551_615 : Nat64
+> prelude:88.36-88.72: execution error, numeric overflow
+>     stdin:35.16-35.27: execution error, unop
+>   

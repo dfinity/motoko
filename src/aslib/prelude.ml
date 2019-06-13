@@ -335,6 +335,7 @@ module Conv = struct
   let to_signed_big_int i q offs = Big_int.(if sign_big_int q = 0 then i else sub_big_int i offs)
 end (* Conv *)
 
+let range_violation () = raise (Invalid_argument "numeric overflow")
 
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
@@ -348,7 +349,7 @@ let prim = function
   | "Nat->Nat8" -> fun v k ->
                    let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 8) in
                    let i = Big_int.int_of_big_int r
-                   in Big_int.(if eq_big_int q zero_big_int then k (Nat8 (Nat8.of_int i)) else assert false)
+                   in Big_int.(if eq_big_int q zero_big_int then k (Nat8 (Nat8.of_int i)) else range_violation ())
   | "Int8->Word8" -> fun v k ->
                      let i = Int_8.to_int (as_int8 v)
                      in k (Word8 (Word8.of_int_s i))
@@ -360,7 +361,7 @@ let prim = function
                    let i = Big_int.int_of_big_int r in
                    Big_int.
                     (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-                     then k (Int8(Int_8.of_int (Conv.to_signed i q 0x80))) else assert false)
+                     then k (Int8(Int_8.of_int (Conv.to_signed i q 0x80))) else range_violation ())
   | "Nat16->Word16" -> fun v k ->
                        let i = Nat16.to_int (as_nat16 v)
                        in k (Word16 (Word16.of_int_u i))
@@ -370,7 +371,7 @@ let prim = function
   | "Nat->Nat16" -> fun v k ->
                     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 16) in
                     let i = Big_int.int_of_big_int r
-                    in Big_int.(if eq_big_int q zero_big_int then k (Nat16 (Nat16.of_int i)) else assert false)
+                    in Big_int.(if eq_big_int q zero_big_int then k (Nat16 (Nat16.of_int i)) else range_violation ())
   | "Int16->Word16" -> fun v k ->
                        let i = Int_16.to_int (as_int16 v)
                        in k (Word16 (Word16.of_int_s i))
@@ -382,7 +383,7 @@ let prim = function
                     let i = Big_int.int_of_big_int r in
                     Big_int.
                        (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-                        then k (Int16(Int_16.of_int (Conv.to_signed i q 0x8000))) else assert false)
+                        then k (Int16(Int_16.of_int (Conv.to_signed i q 0x8000))) else range_violation ())
   | "Nat32->Word32" -> fun v k ->
                        let i = Nat32.to_int (as_nat32 v)
                        in k (Word32 (Word32.of_int_u i))
@@ -392,7 +393,7 @@ let prim = function
   | "Nat->Nat32" -> fun v k ->
                     let q, r = Big_int.quomod_big_int (as_int v) (Big_int.power_int_positive_int 2 32) in
                     let i = Big_int.int_of_big_int r
-                    in Big_int.(if eq_big_int q zero_big_int then k (Nat32 (Nat32.of_int i)) else assert false)
+                    in Big_int.(if eq_big_int q zero_big_int then k (Nat32 (Nat32.of_int i)) else range_violation ())
   | "Int32->Word32" -> fun v k ->
                        let i = Int_32.to_int (as_int32 v)
                        in k (Word32 (Word32.of_int_s i))
@@ -404,7 +405,7 @@ let prim = function
                     let i = Big_int.int_of_big_int r in
                     Big_int.
                        (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
-                        then k (Int32 (Int_32.of_int (Conv.to_signed i q 0x80000000))) else assert false)
+                        then k (Int32 (Int_32.of_int (Conv.to_signed i q 0x80000000))) else range_violation ())
 
   | "Nat64->Word64" -> fun v k ->
                        let q, r = Big_int.quomod_big_int (Nat64.to_big_int (as_nat64 v)) Conv.twoRaised63 in
@@ -416,7 +417,7 @@ let prim = function
                     Big_int.
                       (if eq_big_int q zero_big_int
                        then k (Nat64 (Nat64.of_big_int r))
-                       else assert false)
+                       else range_violation ())
   | "Int64->Word64" -> fun v k -> k (Word64 (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
   | "Int->Word64" -> fun v k -> k (Word64 (Conv.word64_of_big_int (as_int v)))
   | "Int->Int64" -> fun v k ->
@@ -424,7 +425,7 @@ let prim = function
                     Big_int.
                       (if eq_big_int q zero_big_int || eq_big_int q (pred_big_int zero_big_int)
                        then k (Int64 (Int_64.of_big_int Conv.(to_signed_big_int r q twoRaised63)))
-                       else assert false)
+                       else range_violation ())
 
   | "Word8->Nat" -> fun v k ->
                     let i = Int32.to_int (Int32.shift_right_logical (Word8.to_bits (as_word8 v)) 24)
