@@ -4,7 +4,6 @@ open As_ir
 
 open Ir
 open Source
-open As_frontend
 
 module V = Value
 module T = Type
@@ -249,11 +248,11 @@ let interpret_lit env lit : V.value =
 
 let check_call_conv exp call_conv =
   let open Call_conv in
-  let exp_call_conv = call_conv_of_typ exp.note.Syntax.note_typ in
+  let exp_call_conv = call_conv_of_typ exp.note.note_typ in
   if not (exp_call_conv = call_conv) then
     failwith (Printf.sprintf "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
-      (T.string_of_typ exp.note.Syntax.note_typ)
+      (T.string_of_typ exp.note.note_typ)
       (string_of_call_conv exp_call_conv)
       (string_of_call_conv call_conv))
 
@@ -283,7 +282,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   match exp.it with
   | PrimE s ->
     let at = exp.at in
-    let t = exp.note.Syntax.note_typ in
+    let t = exp.note.note_typ in
     let cc = call_conv_of_typ t in
     k (V.Func (cc, extended_prim env s t at))
   | VarE id ->

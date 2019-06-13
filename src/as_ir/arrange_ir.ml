@@ -1,4 +1,3 @@
-open As_frontend
 open As_types
 open As_values
 open Source
@@ -15,9 +14,9 @@ let kind k = Atom (Type.string_of_kind k)
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
   | LitE l              -> "LitE"    $$ [lit l]
-  | UnE (t, uo, e)      -> "UnE"     $$ [typ t; Arrange.unop uo; exp e]
-  | BinE (t, e1, bo, e2)-> "BinE"    $$ [typ t; exp e1; Arrange.binop bo; exp e2]
-  | RelE (t, e1, ro, e2)-> "RelE"    $$ [typ t; exp e1; Arrange.relop ro; exp e2]
+  | UnE (t, uo, e)      -> "UnE"     $$ [typ t; Arrange_ops.unop uo; exp e]
+  | BinE (t, e1, bo, e2)-> "BinE"    $$ [typ t; exp e1; Arrange_ops.binop bo; exp e2]
+  | RelE (t, e1, ro, e2)-> "RelE"    $$ [typ t; exp e1; Arrange_ops.relop ro; exp e2]
   | ShowE (t, e)        -> "ShowE"   $$ [typ t; exp e]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
@@ -45,7 +44,7 @@ let rec exp e = match e.it with
   | FuncE (x, cc, tp, as_, ts, e) ->
     "FuncE" $$ [Atom x; call_conv cc] @ List.map typ_bind tp @ args as_@ [ typ (Type.seq ts); exp e]
   | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
-  | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange.obj_sort' s :: fields fs @ [typ t])
+  | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
 
 and fields fs = List.fold_left (fun flds (f : field) -> (f.it.name $$ [ id f.it.var ]):: flds) [] fs
 

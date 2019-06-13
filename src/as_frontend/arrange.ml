@@ -1,6 +1,5 @@
 open As_types
 open As_values
-open As_values.Operator
 
 open Source
 open Syntax
@@ -14,9 +13,9 @@ and tag i = Atom ("#" ^ i.it)
 let rec exp e = match e.it with
   | VarE x              -> "VarE"    $$ [id x]
   | LitE l              -> "LitE"    $$ [lit !l]
-  | UnE (ot, uo, e)     -> "UnE"     $$ [operator_type !ot; unop uo; exp e]
-  | BinE (ot, e1, bo, e2) -> "BinE"  $$ [operator_type !ot; exp e1; binop bo; exp e2]
-  | RelE (ot, e1, ro, e2) -> "RelE"  $$ [operator_type !ot; exp e1; relop ro; exp e2]
+  | UnE (ot, uo, e)     -> "UnE"     $$ [operator_type !ot; Arrange_ops.unop uo; exp e]
+  | BinE (ot, e1, bo, e2) -> "BinE"  $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
+  | RelE (ot, e1, ro, e2) -> "RelE"  $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
   | ShowE (ot, e)       -> "ShowE"   $$ [operator_type !ot; exp e]
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
@@ -28,7 +27,7 @@ let rec exp e = match e.it with
   | FuncE (x, s, tp, p, t, e') ->
     "FuncE" $$ [
       Atom (Type.string_of_typ e.note.note_typ);
-      Atom (sharing s.it);
+      Atom (Arrange_type.sharing s.it);
       Atom x] @
       List.map typ_bind tp @ [
       pat p;
@@ -65,7 +64,7 @@ and pat p = match p.it with
   | ObjP ps         -> "ObjP"       $$ List.map pat_field ps
   | AnnotP (p, t)   -> "AnnotP"     $$ [pat p; typ t]
   | LitP l          -> "LitP"       $$ [lit !l]
-  | SignP (uo, l)   -> "SignP"      $$ [unop uo ; lit !l]
+  | SignP (uo, l)   -> "SignP"      $$ [Arrange_ops.unop uo ; lit !l]
   | OptP p          -> "OptP"       $$ [pat p]
   | TagP (i, p)     -> "TagP"       $$ [tag i; pat p]
   | AltP (p1,p2)    -> "AltP"       $$ [pat p1; pat p2]
@@ -86,54 +85,11 @@ and lit (l:lit) = match l with
   | TextLit t     -> "TextLit"   $$ [ Atom t ]
   | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; Arrange_type.prim p ]
 
-and unop uo = match uo with
-  | PosOp -> Atom "PosOp"
-  | NegOp -> Atom "NegOp"
-  | NotOp -> Atom "NotOp"
-
-and binop bo = match bo with
-  | AddOp  -> Atom "AddOp"
-  | SubOp  -> Atom "SubOp"
-  | MulOp  -> Atom "MulOp"
-  | DivOp  -> Atom "DivOp"
-  | ModOp  -> Atom "ModOp"
-  | AndOp  -> Atom "AndOp"
-  | OrOp   -> Atom "OrOp"
-  | XorOp  -> Atom "XorOp"
-  | ShLOp  -> Atom "ShiftLOp"
-  | UShROp -> Atom "UnsignedShiftROp"
-  | SShROp -> Atom "SignedShiftROp"
-  | RotLOp -> Atom "RotLOp"
-  | RotROp -> Atom "RotROp"
-  | CatOp  -> Atom "CatOp"
-  | PowOp  -> Atom "PowOp"
-
-and relop ro = match ro with
-  | EqOp  -> Atom "EqOp"
-  | NeqOp -> Atom "NeqOp"
-  | LtOp  -> Atom "LtOp"
-  | GtOp  -> Atom "GtOp"
-  | LeOp  -> Atom "LeOp"
-  | GeOp  -> Atom "GeOp"
-
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
 and pat_field pf = pf.it.id.it $$ [pat pf.it.pat]
 
-and sharing sh = match sh with
-  | Type.Local -> "Local"
-  | Type.Sharable -> "Sharable"
-
-and control c = match c with
-  | Type.Returns -> "Returns"
-  | Type.Promises -> "Promises"
-
-and obj_sort' s = match s with
-  | Type.Object sh -> Atom ("Object " ^ sharing sh)
-  | Type.Actor -> Atom "Actor"
-  | Type.Module -> Atom "Module"
-
-and obj_sort s = obj_sort' s.it
+and obj_sort s = Arrange_type.obj_sort s.it
 
 and mut m = match m.it with
   | Const -> Atom "Const"
@@ -169,7 +125,7 @@ and typ t = match t.it with
   | OptT t              -> "OptT" $$ [typ t]
   | VariantT cts        -> "VariantT" $$ List.map typ_tag cts
   | TupT ts             -> "TupT" $$ List.map typ ts
-  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [Atom (sharing s.it)] @ List.map typ_bind tbs @ [ typ at; typ rt]
+  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [Atom (Arrange_type.sharing s.it)] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
   | ParT t              -> "ParT" $$ [typ t]
 

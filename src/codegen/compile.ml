@@ -4414,7 +4414,7 @@ let compile_unop env t op =
   | _ ->
     (* NB: Must not use todo_trap_SR here, as the SR.t here is also passed to
        `compile_exp_as`, which does not take SR.Unreachable. *)
-    todo "compile_unop" (As_frontend.Arrange.unop op) (SR.Vanilla, E.trap_with env "TODO: compile_unop")
+    todo "compile_unop" (Arrange_ops.unop op) (SR.Vanilla, E.trap_with env "TODO: compile_unop")
 
 (* This returns a single StackRep, to be used for both arguments and the
    result. One could imagine operators that require or produce different StackReps,
@@ -4513,7 +4513,7 @@ let rec compile_binop env t op =
       sanitize_word_result ty))
 
   | Type.Prim Type.Text, CatOp -> Text.concat env
-  | _ -> todo_trap env "compile_binop" (As_frontend.Arrange.binop op)
+  | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
   )
 
 let compile_eq env t = match t with
@@ -4522,7 +4522,7 @@ let compile_eq env t = match t with
   | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
   | Type.(Prim Word64) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   | Type.(Prim (Word8 | Word16 | Word32 | Char)) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | _ -> todo_trap env "compile_eq" (As_frontend.Arrange.relop Operator.EqOp)
+  | _ -> todo_trap env "compile_eq" (Arrange_ops.relop Operator.EqOp)
 
 let get_relops = Operator.(function
   | GeOp -> Ge, I64Op.GeU, I32Op.GeU, I32Op.GeS
@@ -4549,7 +4549,7 @@ let compile_relop env t op =
      G.if_ (StackRep.to_block_type env SR.bool) (Bool.lit false) (Bool.lit true)
   | Type.Prim Type.(Nat | Int | Word8 | Word16 | Word32 | Word64 | Char as t1), op1 ->
      compile_comparison env t1 op1
-  | _ -> todo_trap env "compile_relop" (As_frontend.Arrange.relop op)
+  | _ -> todo_trap env "compile_relop" (Arrange_ops.relop op)
 
 (* compile_load_field implements the various “virtual fields”, which
    we currently have for arrays and text.

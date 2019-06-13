@@ -4,17 +4,17 @@ open Wasm.Sexpr
 let ($$) head inner = Node (head, inner)
 
 let sharing sh = match sh with
-  | Type.Local -> "Local"
-  | Type.Sharable -> "Sharable"
+  | Local -> "Local"
+  | Sharable -> "Sharable"
 
 let control c = match c with
-  | Type.Returns -> "Returns"
-  | Type.Promises -> "Promises"
+  | Returns -> "Returns"
+  | Promises -> "Promises"
 
 let obj_sort s = match s with
-  | Type.Object sh -> Atom ("Object " ^ sharing sh)
-  | Type.Actor -> Atom "Actor"
-  | Type.Module -> Atom "Module"
+  | Object sh -> Atom ("Object " ^ sharing sh)
+  | Actor -> Atom "Actor"
+  | Module -> Atom "Module"
 
 let prim p = match p with
   | Null -> Atom "Null"

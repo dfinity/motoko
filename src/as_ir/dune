@@ -1,4 +1,4 @@
 (library
   (name as_ir)
-  (libraries lib as_types as_values as_frontend)
+  (libraries lib as_types as_values)
 )
