@@ -5,7 +5,7 @@ open As_ir
 open Interpreter
 open Printf
 
-type stat_env = Typing.scope
+type stat_env = Scope.scope
 type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
 
@@ -33,7 +33,7 @@ let print_stat_ve =
 
 let print_dyn_ve scope =
   Value.Env.iter (fun x d ->
-    let t = Type.Env.find x scope.Typing.val_env in
+    let t = Type.Env.find x scope.Scope.val_env in
     let t' = Type.as_immut t in
     printf "%s %s : %s = %s\n"
       (if t == t' then "let" else "var") x
@@ -41,7 +41,7 @@ let print_dyn_ve scope =
   )
 
 let print_scope senv scope dve =
-  print_ce scope.Typing.con_env;
+  print_ce scope.Scope.con_env;
   print_dyn_ve senv dve
 
 let print_val _senv v t =
@@ -116,29 +116,29 @@ let resolve_progs =
 (* Typechecking *)
 
 let infer_prog senv prog
-  : (Type.typ * Typing.scope) Diag.result =
+  : (Type.typ * Scope.scope) Diag.result =
   phase "Checking" prog.Source.note;
   let r = Typing.infer_prog senv prog in
   if !Flags.trace && !Flags.verbose then begin
     match r with
     | Ok ((_, scope), _) ->
-      print_ce scope.Typing.con_env;
-      print_stat_ve scope.Typing.val_env;
+      print_ce scope.Scope.con_env;
+      print_stat_ve scope.Scope.val_env;
       dump_prog Flags.dump_tc prog;
     | Error _ -> ()
   end;
   r
 
-let rec typecheck_progs senv progs : Typing.scope Diag.result =
+let rec typecheck_progs senv progs : Scope.scope Diag.result =
   match progs with
   | [] -> Diag.return senv
   | p::ps ->
     Diag.bind (infer_prog senv p) (fun (_t, sscope) ->
-      let senv' = Typing.adjoin_scope senv sscope in
+      let senv' = Scope.adjoin_scope senv sscope in
       typecheck_progs senv' ps
     )
 
-let typecheck_library senv filename prog : Typing.scope Diag.result =
+let typecheck_library senv filename prog : Scope.scope Diag.result =
   phase "Checking" prog.Source.note;
   Typing.check_library senv (filename, prog)
 
@@ -163,12 +163,12 @@ and the newly added scopes, so these are returned separately.
 *)
 
 type load_result =
-  (Syntax.libraries * Syntax.prog list * Typing.scope) Diag.result
+  (Syntax.libraries * Syntax.prog list * Scope.scope) Diag.result
 
 type load_decl_result =
-  (Syntax.libraries * Syntax.prog * Typing.scope * Type.typ * Typing.scope) Diag.result
+  (Syntax.libraries * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
 
-let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result =
+let chase_imports senv0 imports : (Syntax.libraries * Scope.scope) Diag.result =
   (*
   This function loads and type-checkes the files given in `imports`,
   including any further dependencies.
@@ -188,7 +188,7 @@ let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result 
   let libraries = ref [] in
 
   let rec go f =
-    if Type.Env.mem f !senv.Typing.lib_env then
+    if Type.Env.mem f !senv.Scope.lib_env then
       Diag.return ()
     else if mem f !pending then
       Error [{
@@ -204,7 +204,7 @@ let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result 
       Diag.bind (typecheck_library !senv f prog) (fun sscope ->
       Diag.bind (defindeness_prog prog) (fun () ->
       libraries := (f, prog) :: !libraries; (* NB: Conceptually an append *)
-      senv := Typing.adjoin_scope !senv sscope;
+      senv := Scope.adjoin_scope !senv sscope;
       pending := remove f !pending;
       Diag.return ()
       ))))))
@@ -231,7 +231,7 @@ let load_decl parse_one senv : load_decl_result =
   Diag.bind (resolve_prog parsed) (fun (prog, libraries) ->
   Diag.bind (chase_imports senv libraries) (fun (libraries, senv') ->
   Diag.bind (infer_prog senv' prog) (fun (t, sscope) ->
-  let senv'' = Typing.adjoin_scope senv' sscope in
+  let senv'' = Scope.adjoin_scope senv' sscope in
   Diag.return (libraries, prog, senv'', t, sscope)
   ))))
 
@@ -265,7 +265,7 @@ let rec interpret_progs denv progs : Interpret.scope option =
       interpret_progs denv' ps
     | None -> None
 
-let interpret_files (senv0, denv0) files : (Typing.scope * Interpret.scope) option =
+let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) option =
   Lib.Option.bind
     (Diag.flush_messages (load_progs (parse_files files) senv0))
     (fun (libraries, progs, senv1) ->
@@ -291,11 +291,11 @@ let typecheck_prelude () : Syntax.prog * stat_env =
   match parse_with Lexer.Privileged lexer parse prelude_name with
   | Error e -> prelude_error "parsing" [e]
   | Ok prog ->
-    let senv0 = Typing.empty_scope  in
+    let senv0 = Scope.empty_scope  in
     match infer_prog senv0 prog with
     | Error es -> prelude_error "checking" es
     | Ok ((_t, sscope), msgs) ->
-      let senv1 = Typing.adjoin_scope senv0 sscope in
+      let senv1 = Scope.adjoin_scope senv0 sscope in
       prog, senv1
 
 let prelude, initial_stat_env = typecheck_prelude ()
@@ -486,12 +486,12 @@ let compile_prog mode do_link lib_env libraries progs : Wasm_exts.CustomModule.e
 let compile_files mode do_link files : compile_result =
   Diag.bind (load_progs (parse_files files) initial_stat_env)
     (fun (libraries, progs, senv) ->
-    Diag.return (compile_prog mode do_link senv.Typing.lib_env libraries progs))
+    Diag.return (compile_prog mode do_link senv.Scope.lib_env libraries progs))
 
 let compile_string mode s name : compile_result =
   Diag.bind (load_decl (parse_string s name) initial_stat_env)
     (fun (libraries, prog, senv, _t, _sscope) ->
-    Diag.return (compile_prog mode false senv.Typing.lib_env libraries [prog]))
+    Diag.return (compile_prog mode false senv.Scope.lib_env libraries [prog]))
 
 (* Interpretation (IR) *)
 
@@ -510,5 +510,5 @@ let interpret_ir_prog inp_env libraries progs =
 
 let interpret_ir_files files =
   Lib.Option.map
-    (fun (libraries, progs, senv) -> interpret_ir_prog senv.Typing.lib_env libraries progs)
+    (fun (libraries, progs, senv) -> interpret_ir_prog senv.Scope.lib_env libraries progs)
     (Diag.flush_messages (load_progs (parse_files files) initial_stat_env))

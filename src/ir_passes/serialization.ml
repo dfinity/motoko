@@ -1,4 +1,3 @@
-open As_frontend
 open As_ir
 open As_types
 open As_values
@@ -277,5 +276,5 @@ let transform env prog =
   Eventually, pipeline will allow us to pass the con_renaming to downstream program
   fragments, then we would simply start with an empty con_renaming and the prelude.
   *)
-  Type.ConSet.iter (fun c -> T.con_renaming := T.ConRenaming.add c c (!T.con_renaming)) env.Typing.con_env;
+  Type.ConSet.iter (fun c -> T.con_renaming := T.ConRenaming.add c c (!T.con_renaming)) env.Scope.con_env;
   T.t_prog prog
