@@ -232,7 +232,6 @@ let extended_prim env s typ at =
 (* Literals *)
 
 let interpret_lit env lit : V.value =
-  let open Syntax in
   match lit with
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
@@ -245,8 +244,6 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
-  | PreLit _ -> assert false
-
 
 (* Expressions *)
 
@@ -290,7 +287,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let cc = call_conv_of_typ t in
     k (V.Func (cc, extended_prim env s t at))
   | VarE id ->
-    (match Lib.Promise.value_opt (find id.it env.vals) with
+    (match Lib.Promise.value_opt (find id env.vals) with
     | Some v -> k v
     | None -> trap exp.at "accessing identifier before its definition"
     )
@@ -321,7 +318,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | OptE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | TagE (i, exp1) ->
-    interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
+    interpret_exp env exp1 (fun v1 -> k (V.Variant (i, v1)))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | DotE (exp1, n)
@@ -382,10 +379,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LoopE exp1 ->
     interpret_exp env exp1 (fun v -> V.as_unit v; interpret_exp env exp k)
   | LabelE (id, _typ, exp1) ->
-    let env' = {env with labs = V.Env.add id.it k env.labs} in
+    let env' = {env with labs = V.Env.add id k env.labs} in
     interpret_exp env' exp1 k
   | BreakE (id, exp1) ->
-    interpret_exp env exp1 (find id.it env.labs)
+    interpret_exp env exp1 (find id env.labs)
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | AsyncE exp1 ->
@@ -444,7 +441,7 @@ and interpret_fields env fs =
     let ve =
       List.fold_left
         (fun ve (f : field) ->
-          V.Env.disjoint_add f.it.name (Lib.Promise.value (find f.it.var.it env.vals)) ve
+          V.Env.disjoint_add f.it.name (Lib.Promise.value (find f.it.var env.vals)) ve
         ) V.Env.empty fs in
     V.Obj ve
 
@@ -481,7 +478,7 @@ and match_args at args v : val_env =
 (* Patterns *)
 
 and declare_id id =
-  V.Env.singleton id.it (Lib.Promise.make ())
+  V.Env.singleton id (Lib.Promise.make ())
 
 and declare_pat pat : val_env =
   match pat.it with
@@ -502,7 +499,7 @@ and declare_pats pats ve : val_env =
 
 
 and define_id env id v =
-  Lib.Promise.fulfill (find id.it env.vals) v
+  Lib.Promise.fulfill (find id env.vals) v
 
 and define_pat env pat v =
   let err () = trap pat.at "value %s does not match pattern" (string_of_val env v) in
@@ -523,7 +520,7 @@ and define_pat env pat v =
     )
   | TagP (i, pat1) ->
     let lab, v1 = V.as_variant v in
-    if lab = i.it
+    if lab = i
     then define_pat env pat1 v1
     else err ()
 
@@ -537,7 +534,6 @@ and define_field_pats env pfs vs =
 
 
 and match_lit lit v : bool =
-  let open Syntax in
   match lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
@@ -550,11 +546,10 @@ and match_lit lit v : bool =
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
-  | PreLit _, _ -> assert false
   | _ -> false
 
 and match_id id v : val_env =
-  V.Env.singleton id.it (Lib.Promise.make_fulfilled v)
+  V.Env.singleton id (Lib.Promise.make_fulfilled v)
 
 and match_pat pat v : val_env option =
   match pat.it with
@@ -576,7 +571,7 @@ and match_pat pat v : val_env option =
     )
   | TagP (i, pat1) ->
     let tag, v1 = V.as_variant v in
-    if i.it = tag
+    if i = tag
     then match_pat pat1 v1
     else None
   | AltP (pat1, pat2) ->
