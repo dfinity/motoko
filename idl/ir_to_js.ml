@@ -3,7 +3,8 @@ open Format
 open Ir
 
 let str ppf s = pp_print_string ppf s
-let space = pp_print_space             
+let space = pp_print_space
+let newline = pp_print_cut          
 let kwd ppf s = str ppf s; space ppf ()
 let field_name ppf s = str ppf "'"; str ppf s; str ppf "'"
 
@@ -16,10 +17,9 @@ let rec concat ppf f sep list =
 let pp_prim ppf p =
   pp_open_box ppf 1;
   (match p with
-  | Null -> ()
-  | ReadLEB x -> str ppf "leb.readBn("; str ppf x; str ppf ").toNumber()"
+  | ReadLEB -> str ppf "leb.readBn(b).toNumber()"
   | WriteLEB x -> str ppf "stream.append(leb.encode("; str ppf x; str ppf "))"
-  | ReadByte (encoding,x) -> str ppf "b.read("; str ppf x; str ppf ").toString("; str ppf encoding; str ppf ")"
+  | ReadByte (encoding,x) -> str ppf "b.read("; str ppf x; str ppf ").toString('"; str ppf encoding; str ppf "')"
   | WriteByte x -> str ppf "stream.append(write("; str ppf x; str ppf "))"
   );
   pp_close_box ppf ()
@@ -27,19 +27,44 @@ let pp_prim ppf p =
 let rec pp_data ppf d =
   pp_open_box ppf 1;
   (match d with
-   | Length x -> str ppf x; str ppf ".length"
+   | StrLength x -> str ppf x; str ppf ".length"
+   | VecLength x -> str ppf x; str ppf ".length"
    | NewRecord -> str ppf "{}"
    | GetField (x, k) -> str ppf x; str ppf "["; field_name ppf k; str ppf "]"
-   | SetField (x, k, v) -> str ppf x; str ppf "["; field_name ppf k; str ppf "] = "; pp_exp ppf v
+   | SetField (x, k, v) -> str ppf x; str ppf "["; field_name ppf k; str ppf "] = "; str ppf v
+   | Null -> str ppf "null"
+   | GetItem (vec, id, e) ->
+      str ppf vec; kwd ppf ".forEach("; kwd ppf id; str ppf "=> {";
+      pp_open_vbox ppf 1; newline ppf ();
+      pp_exp ppf e; pp_close_box ppf ();
+      str ppf "})"; newline ppf ()
+   | NewVec (vec, len, e) ->
+      kwd ppf "const"; kwd ppf vec; str ppf "= [];"; newline ppf ();
+      kwd ppf "while ("; str ppf len; str ppf "--) {";
+      pp_open_vbox ppf 1; newline ppf ();
+      pp_exp ppf e; pp_close_box ppf ();
+      str ppf "}"; newline ppf ();
+   | PushItem (vec, x) -> str ppf vec; str ppf ".push("; str ppf x; str ppf ")";
+      
   );
   pp_close_box ppf ()
 
+and pp_binop ppf op =
+  match op with
+  | Eq -> str ppf "==="
+  
 and pp_exp ppf e =
   pp_open_hovbox ppf 1;
   (match e with
   | Prim p -> pp_prim ppf p
   | Data d -> pp_data ppf d
   | Var x -> str ppf x
+  | BinOp (op, e1, e2) ->
+     pp_exp ppf e1; pp_binop ppf op; pp_exp ppf e2
+  | If (cond, e1, e2) ->
+     str ppf "if ("; pp_exp ppf cond; kwd ppf ")"; str ppf "{"; newline ppf ();
+     pp_exp ppf e1; str ppf "} else {"; newline ppf ();
+     pp_exp ppf e2; str ppf "}"; newline ppf ();
   | Let (x, e) ->
      pp_open_hovbox ppf 1;
      kwd ppf "const";
@@ -49,7 +74,7 @@ and pp_exp ppf e =
      pp_close_box ppf ()
   | Fun (x, e) ->
      pp_open_box ppf 1;
-     str ppf "("; str ppf x; kwd ppf ")"; kwd ppf "=>";
+     kwd ppf x; kwd ppf "=>";
      pp_exp ppf e;
      pp_close_box ppf ()
   | App (e1, e2) ->
@@ -58,6 +83,13 @@ and pp_exp ppf e =
   | Seq es ->
      pp_open_vbox ppf 0;
      concat ppf pp_exp ";" es;
+     pp_close_box ppf ()
+  | Block (x, e) ->
+     pp_open_vbox ppf 0;
+     kwd ppf "class"; kwd ppf x; str ppf "{";
+     pp_open_vbox ppf 1; newline ppf ();
+     pp_exp ppf e; pp_close_box ppf ();
+     str ppf "}"; newline ppf ();
      pp_close_box ppf ()
   );
   pp_close_box ppf ()
