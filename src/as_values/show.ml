@@ -4,12 +4,11 @@ module T = As_types.Type
 
 let rec can_show t =
   let open T in
-  let t = normalize t in
-  match t with
+  match normalize t with
   | Prim (Bool|Nat|Int|Text|Null) -> true
-  | Prim (Nat8|Int8|Word8) -> true
-  | Prim (Nat16|Int16|Word16) -> true
-  | Prim (Nat32|Int32|Word32) -> true
+  | Prim (Nat8|Int8|Word8)
+  | Prim (Nat16|Int16|Word16)
+  | Prim (Nat32|Int32|Word32)
   | Prim (Nat64|Int64|Word64) -> true
   | Tup ts' -> List.for_all can_show ts'
   | Opt t' -> can_show t'
