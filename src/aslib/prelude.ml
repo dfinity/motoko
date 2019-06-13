@@ -186,6 +186,20 @@ func @text_of_Int(x : Int) : Text {
   }
 };
 
+func @text_of_Nat8(x : Nat8) : Text = @text_of_Nat (nat8ToNat x);
+func @text_of_Nat16(x : Nat16) : Text = @text_of_Nat (nat16ToNat x);
+func @text_of_Nat32(x : Nat32) : Text = @text_of_Nat (nat32ToNat x);
+func @text_of_Nat64(x : Nat64) : Text = @text_of_Nat (nat64ToNat x);
+func @text_of_Int8(x : Int8) : Text = @text_of_Int (int8ToInt x);
+func @text_of_Int16(x : Int16) : Text = @text_of_Int (int16ToInt x);
+func @text_of_Int32(x : Int32) : Text = @text_of_Int (int32ToInt x);
+func @text_of_Int64(x : Int64) : Text = @text_of_Int (int64ToInt x);
+func @text_of_Word8(x : Word8) : Text = @text_of_Nat (word8ToNat x);
+func @text_of_Word16(x : Word16) : Text = @text_of_Nat (word16ToNat x);
+func @text_of_Word32(x : Word32) : Text = @text_of_Nat (word32ToNat x);
+func @text_of_Word64(x : Word64) : Text = @text_of_Nat (word64ToNat x);
+
+
 func @text_of_Bool(b : Bool) : Text {
   if (b) "true" else "false"
 };
