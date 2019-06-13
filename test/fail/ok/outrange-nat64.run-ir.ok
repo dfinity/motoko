@@ -1,12 +1,24 @@
-prelude:88.71-88.72: internal error, File "aslib/prelude.ml", line 405, characters 28-34: Assertion failed
+prelude:88.71-88.72: internal error, File "aslib/prelude.ml", line 419, characters 28-34: Assertion failed
 
 Last environment:
 $param/25 = 18_446_744_073_709_551_616
 @new_async = func
 @text_of_Bool = func
 @text_of_Int = func
+@text_of_Int16 = func
+@text_of_Int32 = func
+@text_of_Int64 = func
+@text_of_Int8 = func
 @text_of_Nat = func
+@text_of_Nat16 = func
+@text_of_Nat32 = func
+@text_of_Nat64 = func
+@text_of_Nat8 = func
 @text_of_Text = func
+@text_of_Word16 = func
+@text_of_Word32 = func
+@text_of_Word64 = func
+@text_of_Word8 = func
 @text_of_array = func
 @text_of_array_mut = func
 @text_of_option = func

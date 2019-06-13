@@ -77,9 +77,9 @@ let a = actor {
     printInt(c);
     print("\n");
   };
-  incnats(i8 : Int8, i16 : Int16, i32 : Int32, i64 : Int64) : () {
+  incints(i8 : Int8, i16 : Int16, i32 : Int32, i64 : Int64) : () {
     c += int8ToInt(i8);
-    c += int6ToInt(i16);
+    c += int16ToInt(i16);
     c += int32ToInt(i32);
     c += int64ToInt(i64);
     printInt(c);

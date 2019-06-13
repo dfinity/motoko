@@ -1,7 +1,7 @@
 --- outrange-nat8.run
 +++ outrange-nat8.run-ir
 @@ -1,6 +1,7 @@
- prelude:100.67-100.68: internal error, File "aslib/prelude.ml", line 337, characters 95-101: Assertion failed
+ prelude:100.67-100.68: internal error, File "aslib/prelude.ml", line 351, characters 95-101: Assertion failed
  
  Last environment:
 +$param/37 = 256
