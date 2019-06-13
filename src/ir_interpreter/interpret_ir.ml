@@ -336,9 +336,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ArrayE (mut, _, exps) ->
     interpret_exps env exps [] (fun vs ->
       let vs' =
-        match mut.it with
-        | Syntax.Var -> List.map (fun v -> V.Mut (ref v)) vs
-        | Syntax.Const -> vs
+        match mut with
+        | Var -> List.map (fun v -> V.Mut (ref v)) vs
+        | Const -> vs
       in k (V.Array (Array.of_list vs'))
     )
   | IdxE (exp1, exp2) ->
@@ -410,9 +410,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | DefineE (id, mut, exp1) ->
     interpret_exp env exp1 (fun v ->
       let v' =
-        match mut.it with
-        | Syntax.Const -> v
-        | Syntax.Var -> V.Mut (ref v)
+        match mut with
+        | Const -> v
+        | Var -> V.Mut (ref v)
       in
       define_id env id v';
       k V.unit

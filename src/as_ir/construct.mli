@@ -13,11 +13,6 @@ open Type
 
 type var = exp
 
-(* Mutabilities *)
-
-val varM : mut
-val constM : mut
-
 (* Field names *)
 
 val nameN : string -> Type.lab
