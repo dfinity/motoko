@@ -36,31 +36,59 @@ let
     in
     p: t: hasAttr (toString p) whitelist_set;
 
-  has_git_dir = builtins.pathExists (toString ./.. + "/.git/index");
-
-  nixpkgs = (import ./nixpkgs.nix).nixpkgs {};
-
-  pruned_git_dir = path {
-    name = "git-dir";
-    path = ../.git;
-    filter = filter_from_list ../.git
-      ["index" "refs" "objects" "HEAD" "config"];
-  };
-
-  whitelist_file =
-    nixpkgs.runCommand "git-ls-files" {envVariable = true;} ''
-      ${nixpkgs.git}/bin/git --git-dir ${pruned_git_dir} ls-files > $out
-    '';
+  has_prefix = prefix: s:
+    prefix == builtins.substring 0 (builtins.stringLength prefix) s;
+  remove_prefix = prefix: s:
+    builtins.substring
+      (builtins.stringLength prefix)
+      (builtins.stringLength s - builtins.stringLength prefix)
+      s;
 
   lines = s: filter (x : x != [] && x != "") (split "\n" s);
-
-  whitelist = lines (readFile (whitelist_file.out));
-
-  in_whitelist = filter_from_list ../. whitelist;
 in
 
-subdir: path {
-  name = baseNameOf (toString subdir);
-  path = if isString subdir then (../. + "/${subdir}") else subdir;
-  filter = if has_git_dir then in_whitelist else (p: t: true);
-}
+if builtins.pathExists ../.git
+then
+  let
+    nixpkgs = (import ./nixpkgs.nix).nixpkgs {};
+
+    git_dir =
+      if builtins.pathExists ../.git/index
+      then ../.git
+      else # likely a git worktree, so follow the indirection
+        let
+          git_content = lines (readFile ./../.git);
+          first_line = head git_content;
+          prefix = "gitdir: ";
+          ok = length git_content == 1 && has_prefix prefix first_line;
+        in
+          if ok
+          then /. + remove_prefix prefix first_line
+          else abort "gitSource.nix: Cannot parse ${toString ./../.git}";
+
+    whitelist_file =
+      nixpkgs.runCommand "git-ls-files" {envVariable = true;} ''
+        cp -v ${git_dir + "/index"} index
+        echo "ref: refs/heads/master" > HEAD
+        mkdir objects refs
+        ${nixpkgs.git}/bin/git --git-dir . ls-files > $out
+      '';
+
+    whitelist = lines (readFile (whitelist_file.out));
+
+    filter = filter_from_list ../. whitelist;
+  in
+    subdir: path {
+      name = baseNameOf (toString subdir);
+      path = if isString subdir then (../. + "/${subdir}") else subdir;
+      filter = filter;
+    }
+
+else
+  trace "gitSource.nix: ${toString ../.} does not seem to be a git repository,\nassuming it is a clean checkout." (
+    subdir: path {
+      name = baseNameOf (toString subdir);
+      path = if isString subdir then (../. + "/${subdir}") else subdir;
+    }
+  )
+
