@@ -1,6 +1,5 @@
-open As_frontend
-open Syntax
 open Source
+open Ir
 open As_types.Type
 
 val max_eff : eff -> eff -> eff

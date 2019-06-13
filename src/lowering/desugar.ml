@@ -32,9 +32,17 @@ let apply_sign op l = Syntax.(match op, l with
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 
-let phrase f x =  { x with it = f x.it }
+let phrase f x = { x with it = f x.it }
 
-let phrase' f x = { x with it = f x.at x.note x.it }
+let typ_note : S.typ_note -> I.typ_note =
+  fun {S.note_typ;S.note_eff} -> {I.note_typ;I.note_eff}
+
+let phrase' f x =
+  { x with it = f x.at x.note x.it }
+
+let typed_phrase' f x =
+  let n' = typ_note x.note in
+  { x with it = f x.at n' x.it; note = n' }
 
 let rec exps es = List.map exp es
 
@@ -42,7 +50,7 @@ and exp e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
     match e.it with
     | S.AnnotE (e,_) -> exp e
-    | _ -> phrase' exp' e
+    | _ -> typed_phrase' exp' e
 
 and exp' at note = function
   | S.PrimE p -> I.PrimE p
@@ -60,7 +68,7 @@ and exp' at note = function
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, es) ->
-    obj at s None es note.S.note_typ
+    obj at s None es note.I.note_typ
   | S.TagE (c, e) -> I.TagE (c.it, exp e)
   | S.DotE (e, x) ->
     let n = x.it in
@@ -70,11 +78,11 @@ and exp' at note = function
     end
   | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
   | S.ArrayE (m, es) ->
-    let t = T.as_array note.S.note_typ in
+    let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, s, tbs, p, ty, e) ->
-    let cc = Call_conv.call_conv_of_typ note.S.note_typ in
+    let cc = Call_conv.call_conv_of_typ note.I.note_typ in
     let args, wrap = to_args cc p in
     let tys = if cc.Call_conv.n_res = 1 then [ty.note] else T.as_seq ty.note in
     I.FuncE (name, cc, typ_binds tbs, args, tys, wrap (exp e))
@@ -88,7 +96,7 @@ and exp' at note = function
       I.CallE (cc, exp e1, inst, exp e2)
   | S.BlockE [] -> I.TupE []
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
-  | S.BlockE ds -> I.BlockE (block (T.is_unit note.S.note_typ) ds)
+  | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
@@ -230,9 +238,9 @@ and dec' at n d = match d with
       it = I.FuncE (id.it, cc, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
            at = at;
-           note = { S.note_typ = obj_typ; S.note_eff = T.Triv } });
+           note = { I.note_typ = obj_typ; I.note_eff = T.Triv } });
       at = at;
-      note = { S.note_typ = fun_typ; S.note_eff = T.Triv }
+      note = { I.note_typ = fun_typ; I.note_eff = T.Triv }
     } in
     I.LetD (varPat, fn)
 
