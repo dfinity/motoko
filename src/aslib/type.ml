@@ -148,7 +148,7 @@ let cons_kind k =
     cons t (List.fold_right cons_bind tbs ConSet.empty)
 
 let rec is_closed i t =
-   match t with
+  match t with
   | Prim _ -> true
   | Var (_, j) ->  j < i
   | Free c -> is_closed_con i c
@@ -157,6 +157,7 @@ let rec is_closed i t =
   | Tup ts -> List.for_all (is_closed i) ts
   | Func (s, c, tbs, ts1, ts2) ->
     let i' = i + List.length tbs in
+    List.for_all (fun {var;bound} -> is_closed i' bound) tbs &&
     List.for_all (is_closed i') ts1 &&
     List.for_all (is_closed i') ts2
   | Opt t -> is_closed i t
@@ -171,6 +172,7 @@ let rec is_closed i t =
   | Pre -> true
   | Typ c -> is_closed_con i c
 and is_closed_con i c =
+  (* TODO use a seen set *)
   let k = Con.kind c in
   Con.unsafe_set_kind c (Abs([],Pre));
   let r = is_closed_kind i k in
@@ -179,15 +181,13 @@ and is_closed_con i c =
 
 and is_closed_kind i k =
   match k with
-  | Abs (tbs,t) ->
-    let i' = i + List.length tbs in
-    List.for_all (fun {var;bound} -> is_closed i' bound) tbs &&
-    is_closed i' t
+  | Abs (tbs,t) -> (* TBR *)
+    assert (List.for_all (fun {var;bound} -> is_closed 0 bound) tbs && is_closed 0 t);
+    true
   | Def (tbs,t) ->
     let i' = i + 1 + List.length tbs in
     List.for_all (fun {var;bound} -> is_closed i' bound) tbs &&
     is_closed i' t
-
 
 (* Shifting *)
 
@@ -216,8 +216,9 @@ let rec shift i n t =
     Typ (shift_con i n c)
 
 and shift_con i n c =
-  if is_closed_con i c then c else
-   clone c (fun k' -> shift_kind i n k')
+  if is_closed_con i c
+  then c
+  else clone c (fun k' -> shift_kind i n k')
 and shift_bind i n {var; bound} =
   {var; bound = shift i n bound}
 
@@ -278,33 +279,16 @@ and subst sigma t =
 
 and subst_con sigma c =
   let cons = cons_kind (Con.kind c) in
-  if List.exists (fun c -> ConSet.mem c cons) (ConEnv.keys sigma) then
-    clone c (fun k -> subst_kind sigma k)
+  if List.exists (fun c -> ConSet.mem c cons) (ConEnv.keys sigma)
+  then clone c (fun k -> subst_kind sigma k)
   else c
 
-(*  
 and clone c f =
   let k = Con.kind c in
   match k with
   | Abs(tbs,t) -> c
   | Def(tbs,t) ->
-  Con.unsafe_set_kind c (Abs(tbs,Pre));
-  let c' = Con.fresh (Con.name c) (Con.kind c) in
-  let k' = subst_kind (ConEnv.add c (ConS c') ConEnv.empty) k in
-  let k'' = f k' in
-  Con.unsafe_set_kind c k;
-  Con.unsafe_set_kind c' k'';
-  c'
- *)
-
-and clone c f =
-  let k = Con.kind c in
-  match k with
-  | Abs(tbs,t) -> c
-  | Def(tbs,t) ->
-  (*  Con.unsafe_set_kind c (Abs(tbs,Pre));    *)
   let c' = Con.fresh (Con.name c) (f k) in
-  (*  Con.unsafe_set_kind c k; *)
   c'
 
 and subst_bind sigma {var; bound} =
@@ -359,9 +343,9 @@ let rec open' i ts t =
   | Typ c -> Typ (open_con i ts c)
 
 and open_con i ts c =
-  if is_closed_con i c then c
-  else
-  clone c (fun k -> open_kind i ts k)
+  if is_closed_con i c
+  then c
+  else clone c (fun k -> open_kind i ts k)
 
 and open_bind i ts {var; bound} =
   {var; bound = open' i ts bound}
@@ -652,22 +636,37 @@ let is_concrete t =
 
 module S = Set.Make (struct type t = typ * typ let compare = compare end)
 
-let dump : (typ -> string) ref = ref (fun (_:typ) -> "")
+(* debugging rel_typ *)
+
+let debug = true (* true, to debug *)
+let max_depth = 40
+let string_of_typ_ref : (typ -> string) ref = ref (fun (_:typ) -> "")
+
+let debug_string_of_typ t =
+  match t with
+  | Free c
+  | Con (Free c, _) when match Con.kind c with Def _ -> true | _ -> false ->
+     Printf.sprintf "%s where %s" (!string_of_typ_ref t) (!string_of_typ_ref (Typ c))
+  | _ -> (!string_of_typ_ref t)
+
+let trace_rel_typ rel eq t1 t2 =
+  let n = S.cardinal (!rel) in
+  if n > max_depth then ()
+  else
+    let indent = String.make n ' ' in
+    if n = max_depth then
+      Printf.printf "\n %s rel_type %s%!" indent "..."
+    else
+    begin
+      Printf.printf "\n %s rel_typ %s%!" indent (debug_string_of_typ t1);
+      Printf.printf "\n %s         %s%!" indent (debug_string_of_typ t2)
+    end
 
 let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
 
-
-let indent = ref ""
 let rec rel_typ rel eq t1 t2 =
-(*  indent := (!indent) ^ " ";
-  if String.length (!indent) < 40 then 
-    Printf.printf "\n %s rel_typ %s\n %s         %s%!" (!indent) ((!dump) t1) (!indent) ((!dump) t2)
-  else
-    if String.length (!indent) = 40
-    then Printf.printf "\n %s rel_type %s%!" (!indent) "..."
-    else ();
- *)
+  if debug then trace_rel_typ rel eq t1 t2 else ();
   t1 == t2 || S.mem (t1, t2) !rel || begin
   rel := S.add (t1, t2) !rel;
   match t1, t2 with
@@ -682,11 +681,10 @@ let rec rel_typ rel eq t1 t2 =
   | Non, _ when rel != eq ->
     true
   | Free con1, _ ->
-    rel_typ rel eq (Con (Free con1, [])) t2
+    rel_typ rel eq (Con (t1, []))  t2
   | _, Free con2 ->
-    rel_typ rel eq t1 (Con (Free con2, []))
+    rel_typ rel eq t1 (Con (t2, []))
   | Con (Free con1, ts1), Con (Free con2, ts2) ->
-    (*    Printf.printf "\n rel_cons %s %s" (Con.to_string con1) (Con.to_string con2); *)
     (match Con.kind con1, Con.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ (Free con1::ts1) t) t2
@@ -854,10 +852,6 @@ and eq_con rel eq c1 c2 =
   | _ -> false
 
 and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
-
-let rel_typ rel  eq t1 t2 =
-  indent := "";
-  rel_typ rel eq t1 t2
 
 let eq t1 t2 : bool =
   let eq = ref S.empty in eq_typ eq eq t1 t2
@@ -1032,7 +1026,7 @@ and string_of_typ' vs t =
     sprintf "module %s" (string_of_typ_nullary vs (Obj (Object Local, fs)))
   | Typ c ->
     let op, sbs, st = strings_of_con' vs c in
-    sprintf "typ %s %s %s" sbs op st
+    sprintf "typ %s%s %s %s" (Con.to_string c) sbs op st
   | Mut t ->
     sprintf "var %s" (string_of_typ' vs t)
   | Serialized t ->
@@ -1076,8 +1070,8 @@ and strings_of_con' vs c =
     | Abs (tbs, t) -> "<:", tbs, t, []
   in
   let vs' = vars_of_binds vs tbs in
-  let vs'csv = cs @ vs' @ vs in
-  op, string_of_binds vs'csv vs' tbs, string_of_typ' vs'csv t
+  let csvs'v = cs @ vs' @ vs in
+  op, string_of_binds csvs'v vs' tbs, string_of_typ' csvs'v t
 
 let string_of_con : con -> string = string_of_con' []
 let string_of_typ : typ -> string = string_of_typ' []
@@ -1101,4 +1095,4 @@ let rec string_of_typ_expand t =
 
 module Env = Env.Make(String)
 
-let _ = dump := string_of_typ
+let _ = string_of_typ_ref := string_of_typ
