@@ -8,14 +8,7 @@ let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
-let sourceByRegex = src: regexes: builtins.path
-  { name = "actorscript";
-    path = src;
-    filter = path: type:
-      let relPath = nixpkgs.lib.removePrefix (toString src + "/") (toString path); in
-      let match = builtins.match (nixpkgs.lib.strings.concatStringsSep "|" regexes); in
-      ( type == "directory"  &&  match (relPath + "/") != null || match relPath != null);
-  }; in
+let subpath = p: import ./nix/gitSource.nix p; in
 
 let ocaml_wasm = import ./nix/ocaml-wasm.nix {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
@@ -65,43 +58,6 @@ let commonBuildInputs = [
 ]; in
 
 let
-  test_files = [
-    "test/"
-    "test/.*Makefile.*"
-    "test/quick.mk"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/lib/"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/lib/dir/"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.as"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.sh"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.did"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.wat"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.c"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/ok/"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/ok/.*.ok"
-    "test/.*.sh"
-  ];
-  samples_files = [
-    "samples/"
-    "samples/.*"
-  ];
-  stdlib_files = [
-    "stdlib/"
-    "stdlib/.*Makefile.*"
-    "stdlib/.*.as"
-    "stdlib/examples/"
-    "stdlib/examples/.*.as"
-    "stdlib/examples/produce-exchange/"
-    "stdlib/examples/produce-exchange/.*.as"
-    "stdlib/examples/produce-exchange/test/"
-    "stdlib/examples/produce-exchange/test/.*.as"
-  ];
-  stdlib_doc_files = [
-    "stdlib/.*\.py"
-    "stdlib/README.md"
-    "stdlib/examples/produce-exchange/README.md"
-  ];
-
   libtommath = nixpkgs.fetchFromGitHub {
     owner = "libtom";
     repo = "libtommath";
@@ -125,13 +81,7 @@ rec {
   rts = stdenv.mkDerivation {
     name = "asc-rts";
 
-    src = sourceByRegex ./rts [
-      "rts.c"
-      "Makefile"
-      "includes/"
-      "includes/.*.h"
-      ];
-
+    src = subpath ./rts;
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
     buildInputs = llvmBuildInputs;
@@ -150,17 +100,7 @@ rec {
   asc-bin = stdenv.mkDerivation {
     name = "asc-bin";
 
-    src = sourceByRegex ./src [
-      "Makefile"
-      "dune-project"
-      "dune"
-      "[a-z].*/"
-      ".*.atd"
-      ".*.ml"
-      ".*.mly"
-      ".*.mll"
-      ".*/dune"
-      ];
+    src = subpath ./src;
 
     buildInputs = commonBuildInputs;
 
@@ -186,12 +126,7 @@ rec {
 
   tests = stdenv.mkDerivation {
     name = "tests";
-
-    src = sourceByRegex ./. (
-      test_files ++
-      samples_files
-    );
-
+    src = subpath ./test;
     buildInputs =
       [ asc
         didc
@@ -211,16 +146,40 @@ rec {
         export AS_LD=as-ld
         export DIDC=didc
         asc --version
-        make -C samples all
       '' +
       (if test-dvm then ''
-        make -C test parallel
+        make parallel
       '' else ''
-        make -C test quick
+        make quick
       '');
 
     installPhase = ''
-      mkdir -p $out
+      touch $out
+    '';
+  };
+
+  samples = stdenv.mkDerivation {
+    name = "samples";
+    src = subpath ./samples;
+    buildInputs =
+      [ asc
+        didc
+        ocaml_wasm
+        nixpkgs.wabt
+        nixpkgs.bash
+        nixpkgs.perl
+        filecheck
+      ] ++
+      (if test-dvm then [ real-dvm ] else []) ++
+      llvmBuildInputs;
+
+    buildPhase = ''
+        patchShebangs .
+        export ASC=asc
+        make all
+      '';
+    installPhase = ''
+      touch $out
     '';
   };
 
@@ -254,24 +213,11 @@ rec {
 
   didc = stdenv.mkDerivation {
     name = "didc";
-
-    src = sourceByRegex ./src [
-      "Makefile"
-      "dune-project"
-      "dune"
-      "[a-z].*/"
-      ".*.ml"
-      ".*.mly"
-      ".*.mll"
-      ".*/dune"
-      ];
-
+    src = subpath ./src;
     buildInputs = commonBuildInputs;
-
     buildPhase = ''
       make DUNE_OPTS="--display=short --profile release" didc
     '';
-
     installPhase = ''
       mkdir -p $out/bin
       cp --verbose --dereference didc $out/bin
@@ -287,17 +233,7 @@ rec {
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";
-
-    src = sourceByRegex ./. [
-      "design/"
-      "design/guide.md"
-      "guide/"
-      "guide/Makefile"
-      "guide/.*css"
-      "guide/.*md"
-      "guide/.*png"
-      ];
-
+    src = subpath ./guide;
     buildInputs =
       with nixpkgs;
       let tex = texlive.combine {
@@ -311,13 +247,13 @@ rec {
 
     buildPhase = ''
       patchShebangs .
-      make -C guide
+      make
     '';
 
     installPhase = ''
       mkdir -p $out
-      mv guide $out/
-      rm $out/guide/Makefile
+      mv * $out/
+      rm $out/Makefile
       mkdir -p $out/nix-support
       echo "report guide $out/guide index.html" >> $out/nix-support/hydra-build-products
     '';
@@ -326,50 +262,39 @@ rec {
 
   stdlib-reference = stdenv.mkDerivation {
     name = "stdlib-reference";
-
-    src = sourceByRegex ./. (
-      stdlib_files ++
-      stdlib_doc_files
-    ) + "/stdlib";
-
+    src = subpath ./stdlib;
     buildInputs = with nixpkgs;
       [ pandoc bash python ];
-
     buildPhase = ''
       patchShebangs .
       make alldoc
     '';
-
     installPhase = ''
       mkdir -p $out
       mv doc $out/
       mkdir -p $out/nix-support
       echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
     '';
-
     forceShare = ["man"];
   };
 
   produce-exchange = stdenv.mkDerivation {
     name = "produce-exchange";
-    src = sourceByRegex ./. (
-      stdlib_files
-    );
-
+    src = subpath ./stdlib;
     buildInputs = [
       asc
     ];
 
     doCheck = true;
     buildPhase = ''
-      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange.wasm
+      make ASC=asc OUTDIR=_out _out/ProduceExchange.wasm
     '';
     checkPhase = ''
-      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange.out
+      make ASC=asc OUTDIR=_out _out/ProduceExchange.out
     '';
     installPhase = ''
       mkdir -p $out
-      cp stdlib/_out/ProduceExchange.wasm $out
+      cp _out/ProduceExchange.wasm $out
     '';
   };
 
@@ -380,6 +305,7 @@ rec {
       js
       didc
       tests
+      samples
       rts
       stdlib-reference
       produce-exchange

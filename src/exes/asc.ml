@@ -1,4 +1,4 @@
-open Aslib
+open Wasm_exts
 
 open Printf
 

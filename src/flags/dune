@@ -1,0 +1,4 @@
+(library
+  (name flags)
+  (wrapped false)
+)
