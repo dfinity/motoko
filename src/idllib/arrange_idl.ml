@@ -1,5 +1,5 @@
 open Source
-open Syntax_idl
+open Syntax
 open Wasm.Sexpr
 
 let string_of_prim p =

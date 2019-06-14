@@ -1,6 +1,6 @@
 
 open Format
-open Syntax_idl
+open Syntax
 open Source
 
 let str ppf s = pp_print_string ppf s; pp_print_cut ppf ()
@@ -115,7 +115,7 @@ let pp_prog ppf env prog =
   pp_actor ppf env prog.it.actor;
   pp_close_box ppf ()
    
-let compile (scope : Typing_idl.scope) (prog : Syntax_idl.prog) =
+let compile (scope : Typing.scope) (prog : Syntax.prog) =
   let buf = Buffer.create 100 in
   let ppf = formatter_of_buffer buf in
   pp_prog ppf scope prog;

@@ -1,10 +1,10 @@
-open Syntax_idl
+open Syntax
 open Source
 open Arrange_idl
 
 (* Environments *)
-module FieldEnv = Env_idl.Make(struct type t = Stdint.uint64 let compare = Stdint.Uint64.compare end)   
-module Env = Env_idl.Make(String)
+module FieldEnv = Env.Make(struct type t = Stdint.uint64 let compare = Stdint.Uint64.compare end)   
+module Env = Env.Make(String)
 module TS = Set.Make(String)           
            
 (* Error recovery *)
