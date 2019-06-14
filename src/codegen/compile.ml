@@ -4541,27 +4541,30 @@ let rec compile_binop env t op =
   )
 
 let compile_eq env t = match t with
-  | Type.Prim Type.Text -> Text.compare env
-  | Type.Prim Type.Bool -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | Type.(Prim Text) -> Text.compare env
+  | Type.(Prim Bool) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
-  | Type.(Prim Word64) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-  | Type.(Prim (Word8 | Word16 | Word32 | Char)) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
+  | Type.(Prim (Int8 | Nat8 | Word8 | Int16 | Nat16 | Word16 | Int32 | Nat32 | Word32 | Char)) ->
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | _ -> todo_trap env "compile_eq" (As_frontend.Arrange.relop Operator.EqOp)
 
 let get_relops = Operator.(function
-  | GeOp -> Ge, I64Op.GeU, I32Op.GeU, I32Op.GeS
-  | GtOp -> Gt, I64Op.GtU, I32Op.GtU, I32Op.GtS
-  | LeOp -> Le, I64Op.LeU, I32Op.LeU, I32Op.LeS
-  | LtOp -> Lt, I64Op.LtU, I32Op.LtU, I32Op.LtS
+  | GeOp -> Ge, I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
+  | GtOp -> Gt, I64Op.GtU, I64Op.GtS, I32Op.GtU, I32Op.GtS
+  | LeOp -> Le, I64Op.LeU, I64Op.LeS, I32Op.LeU, I32Op.LeS
+  | LtOp -> Lt, I64Op.LtU, I64Op.LtS, I32Op.LtU, I32Op.LtS
   | _ -> failwith "uncovered relop")
 
 let compile_comparison env t op =
-  let bigintop, u64op, u32op, s32op = get_relops op in
+  let bigintop, u64op, s64op, u32op, s32op = get_relops op in
   let open Type in
   match t with
     | Nat | Int -> BigNum.compile_relop env bigintop
-    | Word64 -> G.i (Compare (Wasm.Values.I64 u64op))
-    | Word8 | Word16 | Word32 | Char -> G.i (Compare (Wasm.Values.I32 u32op))
+    | Nat64 | Word64 -> G.i (Compare (Wasm.Values.I64 u64op))
+    | Nat8 | Word8 | Nat16 | Word16 | Nat32 | Word32 | Char -> G.i (Compare (Wasm.Values.I32 u32op))
+    | Int64 -> G.i (Compare (Wasm.Values.I64 s64op))
+    | Int8 | Int16 | Int32 -> G.i (Compare (Wasm.Values.I32 s32op))
     | _ -> todo_trap env "compile_comparison" (Arrange_type.prim t)
 
 let compile_relop env t op =
@@ -4570,7 +4573,7 @@ let compile_relop env t op =
   match t, op with
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
-     G.if_ (StackRep.to_block_type env SR.bool) (Bool.lit false) (Bool.lit true)
+     G.if_ (StackRep.to_block_type env SR.bool) (Bool.lit false) (Bool.lit true) (* TODO: (`xor` 1) or (!= 0) *)
   | Type.Prim Type.(Nat | Int | Word8 | Word16 | Word32 | Word64 | Char as t1), op1 ->
      compile_comparison env t1 op1
   | _ -> todo_trap env "compile_relop" (As_frontend.Arrange.relop op)

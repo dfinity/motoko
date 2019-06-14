@@ -208,3 +208,27 @@ func testWord64(a : Word64, b : Word64) : [Word64] {
 
 verify<Word64>([3, 18_446_744_073_709_551_613, 8, 18_446_744_073_709_551_614, 15, 0, 3, 243], testWord64(3, 5),
                func (a : Word64, b : Word64) : Bool = a == b);
+
+
+func testInt64(a : Int64, b : Int64) : [Int64] {
+  let pos1 = + a;
+  let pos2 = (+ a) : Int64;
+  let neg1 = - a;
+  let neg2 = (- a) : Int64;
+  /*let sum1 = a + b;
+  let sum2 = (a + b) : Int64;
+  let diff1 = a - b;
+  let diff2 = (a - b) : Int64;
+  let prod1 = a * b;
+  let prod2 = (a * b) : Int64;
+  let rat1 = a / b;
+  let rat2 = (a / b) : Int64;
+  let mod1 = a % b;
+  let mod2 = (a % b) : Int64;
+  let pow1 = a ** b;
+  let pow2 = (a ** b) : Int64;*/
+  [pos1, pos2, neg1, neg2, /*sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2*/]
+};
+
+verify<Int64>([3, -3/*, 8, 18_446_744_073_709_551_614, 15, 0, 3, 243*/], testInt64(3, 5),
+               func (a : Int64, b : Int64) : Bool = a == b);
