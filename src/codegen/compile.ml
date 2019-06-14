@@ -1200,7 +1200,7 @@ module BoxedWord = struct
   (* from/to SR.UnboxedWord64 *)
   let to_word64 env = G.nop
   let from_word64 env = G.nop (* TODO trap if negative *)
-  let from_signed_word64 env = G.nop
+  let _from_signed_word64 env = G.nop
   let to_word32 env = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
   let from_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   let from_signed_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
@@ -4427,7 +4427,7 @@ let compile_unop env t op =
         get_n ^^
         compile_const_64 0x8000000000000000L ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-        G.i (Test (I64 I64Op.Eqz)) ^^
+        G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
         E.then_trap_with env "arithmetic overflow" ^^
         compile_const_64 0L ^^
         get_n ^^
@@ -4596,7 +4596,7 @@ let compile_relop env t op =
   match t, op with
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
-     G.i (Test (Wasm.Values.I32 Eqz))
+     G.i (Test (Wasm.Values.I32 I32Op.Eqz))
   | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Word8 | Word16 | Word32 | Word64 | Char as t1)), op1 ->
     compile_comparison env t1 op1
   | _ -> todo_trap env "compile_relop" (As_frontend.Arrange.relop op)
