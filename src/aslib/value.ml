@@ -384,21 +384,21 @@ let rec string_of_val_nullary d = function
   | Text t -> string_of_string '\"' (Wasm.Utf8.decode t) '\"'
   | Tup vs ->
     sprintf "(%s%s)"
-      (String.concat ", " (List.map (string_of_val' d) vs))
+      (String.concat ", " (List.map (string_of_val d) vs))
       (if List.length vs = 1 then "," else "")
   | Opt v ->
     sprintf "?%s" (string_of_val_nullary d v)
   | Obj ve ->
     if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
-      sprintf "%s = %s" x (string_of_val' (d - 1) v)) (Env.bindings ve)))
+      sprintf "%s = %s" x (string_of_val (d - 1) v)) (Env.bindings ve)))
   | Array a ->
     sprintf "[%s]" (String.concat ", "
-      (List.map (string_of_val' d) (Array.to_list a)))
+      (List.map (string_of_val d) (Array.to_list a)))
   | Func (_, _) -> "func"
-  | v -> "(" ^ string_of_val' d v ^ ")"
+  | v -> "(" ^ string_of_val d v ^ ")"
 
-and string_of_val' d = function
+and string_of_val d = function
   | Async {result; waiters = []} ->
     sprintf "async %s" (string_of_def_nullary d result)
   | Async {result; waiters} ->
@@ -407,7 +407,7 @@ and string_of_val' d = function
   | Variant (l, Tup []) -> sprintf "#%s" l
   | Variant (l, v) when v <> unit ->
     sprintf "#%s %s" l (string_of_val_nullary d v)
-  | Mut r -> sprintf "%s" (string_of_val' d !r)
+  | Mut r -> sprintf "%s" (string_of_val d !r)
   | v -> string_of_val_nullary d v
 
 and string_of_def_nullary d def =
@@ -415,13 +415,10 @@ and string_of_def_nullary d def =
   | Some v -> string_of_val_nullary d v
   | None -> "_"
 
-and string_of_def' d def =
+and string_of_def d def =
   match Lib.Promise.value_opt def with
-  | Some v -> string_of_val' d v
+  | Some v -> string_of_val d v
   | None -> "_"
-
-let string_of_val v = string_of_val' !Flags.print_depth v
-let string_of_def d = string_of_def' !Flags.print_depth d
 
 let string_of_call_conv {sort;control;n_args;n_res} =
   sprintf "(%s %i %s %i)"

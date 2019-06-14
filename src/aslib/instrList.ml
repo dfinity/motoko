@@ -29,6 +29,13 @@ let optimize : instr list -> instr list = fun is ->
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: _ ->
       List.rev (i::l)
+    (* `If` blocks after pushed constants are simplifiable *)
+    | { it = Const {it = Wasm.Values.I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
+      go l' ({i with it = Block (res, else_)} :: r')
+    | { it = Const {it = Wasm.Values.I32 _; _}; _} :: l', ({it = If (res,then_,_); _} as i) :: r' ->
+      go l' ({i with it = Block (res, then_)} :: r')
+    (* Empty block is redundant *)
+    | l', ({ it = Block (_, []); _ }) :: r' -> go l' r'
     (* Look further *)
     | _, i::r' -> go (i::l) r'
     (* Done looking *)

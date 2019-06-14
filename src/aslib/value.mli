@@ -143,6 +143,6 @@ val compare : value -> value -> int
 
 (* Pretty Printing *)
 
-val string_of_val : value -> string
-val string_of_def : def -> string
+val string_of_val : int -> value -> string
+val string_of_def : int -> def -> string
 val string_of_call_conv : call_conv -> string
