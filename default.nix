@@ -158,6 +158,23 @@ rec {
     '';
   };
 
+  as-ide = stdenv.mkDerivation {
+    name = "as-ide";
+
+    src = subpath ./src;
+
+    buildInputs = commonBuildInputs;
+
+    buildPhase = ''
+      make DUNE_OPTS="--display=short --profile release" as-ide
+    '';
+
+    installPhase = ''
+      mkdir -p $out/bin
+      cp --verbose --dereference as-ide $out/bin
+    '';
+  };
+
   samples = stdenv.mkDerivation {
     name = "samples";
     src = subpath ./samples;

@@ -106,6 +106,10 @@ actual functionality is easily shared.
 
    The ActorScript compiler
 
+ * `as-ide` (using `languageServer/`)
+
+   The ActorScript language server
+
  * `as.js` (using `pipeline/`)
 
    The ActorScript compiler, as a JS library

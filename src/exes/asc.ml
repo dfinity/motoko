@@ -54,8 +54,6 @@ let argspec = Arg.align
   "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
   "-no-check-ir", Arg.Clear Flags.check_ir, " do not check intermediate code";
   "--disable-prelude", Arg.Clear Flags.prelude, " disable prelude";
-
-  "-ide", Arg.Unit (fun () -> ignore (LanguageServer.start ()); ()), " start the language server"
 ]
 
 
