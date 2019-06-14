@@ -147,47 +147,45 @@ let cons_kind k =
   | Abs (tbs, t) ->
     cons t (List.fold_right cons_bind tbs ConSet.empty)
 
-let rec is_closed i t =
+let rec is_closed seen i t =
   match t with
   | Prim _ -> true
   | Var (_, j) ->  j < i
-  | Free c -> is_closed_con i c
-  | Con (t', ts) -> is_closed i t' && List.for_all (is_closed i) ts
-  | Array t -> is_closed i t
-  | Tup ts -> List.for_all (is_closed i) ts
+  | Free c -> is_closed_con seen i c
+  | Con (t', ts) -> is_closed seen i t' && List.for_all (is_closed seen i) ts
+  | Array t -> is_closed seen i t
+  | Tup ts -> List.for_all (is_closed seen i) ts
   | Func (s, c, tbs, ts1, ts2) ->
     let i' = i + List.length tbs in
-    List.for_all (fun {var;bound} -> is_closed i' bound) tbs &&
-    List.for_all (is_closed i') ts1 &&
-    List.for_all (is_closed i') ts2
-  | Opt t -> is_closed i t
-  | Async t -> is_closed i t
-  | Obj (s, fs) -> List.for_all (fun {typ;_} -> is_closed i typ) fs
-  | Variant fs -> List.for_all (fun {typ;_} -> is_closed i typ) fs
-  | Mut t -> is_closed i t
+    List.for_all (fun {var;bound} -> is_closed seen i' bound) tbs &&
+    List.for_all (is_closed seen i') ts1 &&
+    List.for_all (is_closed seen i') ts2
+  | Opt t -> is_closed seen i t
+  | Async t -> is_closed seen i t
+  | Obj (s, fs) -> List.for_all (fun {typ;_} -> is_closed seen i typ) fs
+  | Variant fs -> List.for_all (fun {typ;_} -> is_closed seen i typ) fs
+  | Mut t -> is_closed seen i t
   | Shared -> true
-  | Serialized t -> is_closed i t
+  | Serialized t -> is_closed seen i t
   | Any -> true
   | Non -> true
   | Pre -> true
-  | Typ c -> is_closed_con i c
-and is_closed_con i c =
-  (* TODO use a seen set *)
-  let k = Con.kind c in
-  Con.unsafe_set_kind c (Abs([],Pre));
-  let r = is_closed_kind i k in
-  Con.unsafe_set_kind c k;
-  r
-
-and is_closed_kind i k =
+  | Typ c -> is_closed_con seen i c
+and is_closed_kind seen i k =
   match k with
   | Abs (tbs,t) -> (* TBR *)
-    assert (List.for_all (fun {var;bound} -> is_closed 0 bound) tbs && is_closed 0 t);
+    assert (List.for_all (fun {var;bound} -> is_closed seen 0 (*!*) bound) tbs &&
+              is_closed seen 0 (*!*) t);
     true
   | Def (tbs,t) ->
     let i' = i + 1 + List.length tbs in
-    List.for_all (fun {var;bound} -> is_closed i' bound) tbs &&
-    is_closed i' t
+    List.for_all (fun {var;bound} -> is_closed seen i' bound) tbs &&
+    is_closed seen i' t
+and is_closed_con seen i c =
+  let k = Con.kind c in
+  ConSet.mem c seen || is_closed_kind (ConSet.add c seen) i k
+
+let is_closed_con i c = is_closed_con ConSet.empty i c
 
 (* Shifting *)
 
@@ -638,7 +636,7 @@ module S = Set.Make (struct type t = typ * typ let compare = compare end)
 
 (* debugging rel_typ *)
 
-let debug = true (* true, to debug *)
+let debug = false (* true, to debug *)
 let max_depth = 40
 let string_of_typ_ref : (typ -> string) ref = ref (fun (_:typ) -> "")
 
