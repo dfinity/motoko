@@ -204,6 +204,8 @@ struct
     else raise (Invalid_argument "value out of bounds")
 
   include Rep
+  let neg a = let res = Rep.neg a in check res
+  let abs a = let res = Rep.abs a in check res
   let add a b = let res = Rep.add a b in check res
   let mul a b = let res = Rep.mul a b in check res
   let div a b = let res = Rep.div a b in check res
@@ -211,7 +213,6 @@ struct
   let of_int i = let res = Rep.of_int i in check res
   let of_big_int i = let res = Rep.of_big_int i in check res
   let of_string s = let res = Rep.of_string s in check res
-  (* TODO(gabor) abs, neg *)
 end
 
 module NatRange(Limit : sig val upper : Big_int.big_int end) =
