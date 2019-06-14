@@ -318,7 +318,7 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * typ_env * con_env 
   List.iter2 (fun c k ->
     match Con.kind c with
     | T.Abs(_,T.Pre) -> T.set_kind c k
-    | k' -> (* assert (T.eq_kind k k') *) ()
+    | k' -> assert (T.eq_kind k k')
     ) cs ks;
   let env' = add_typs env xs cs in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
@@ -332,7 +332,7 @@ and check_typ_bounds env (tbs : T.bind list) (typs:typ list) at : unit =
     error env at "too few type arguments";
   if pars < args then
     error env at "too many type arguments";
-  let ts = List.map (fun typ -> typ.note) (Lib.List.take pars typs) in
+  let ts = List.map (fun typ -> typ.note) typs in
   List.iter2
     (fun tb typ ->
       let t = typ.note in
@@ -1460,7 +1460,7 @@ and infer_id_typdecs id c k : con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Con.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
-  | k' ->  (* assert (T.eq_kind k' k) *) ()
+  | k' -> assert (T.eq_kind k' k)
   );
   T.ConSet.singleton c
 
