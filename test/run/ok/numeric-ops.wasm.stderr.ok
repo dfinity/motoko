@@ -20,6 +20,3 @@ compile_binop: PowOp
 of_type: Float
 compile_binop: PowOp
 of_type: Float
-compile_unop: NegOp
-compile_unop: NegOp
-compile_unop: NegOp

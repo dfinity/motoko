@@ -4421,9 +4421,32 @@ let compile_unop env t op =
         get_n ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Sub))
       )
-  | NegOp, Type.Prim Type.(Word8 | Word16 | Word32) ->
+  | NegOp, Type.(Prim Int64) ->
+      SR.UnboxedWord64,
+      Func.share_code1 env "neg_trap" ("n", I64Type) [I64Type] (fun env get_n ->
+        get_n ^^
+        compile_const_64 0x8000000000000000L ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
+        G.i (Test (I64 I64Op.Eqz)) ^^
+        E.then_trap_with env "arithmetic overflow" ^^
+        compile_const_64 0L ^^
+        get_n ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+      )
+  | NegOp, Type.(Prim (Word8 | Word16 | Word32)) ->
       StackRep.of_type t,
       Func.share_code1 env "neg32" ("n", I32Type) [I32Type] (fun env get_n ->
+        compile_unboxed_zero ^^
+        get_n ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+      )
+  | NegOp, Type.(Prim (Int8 | Int16 | Int32)) ->
+      StackRep.of_type t,
+      Func.share_code1 env "neg32trap" ("n", I32Type) [I32Type] (fun env get_n ->
+        get_n ^^
+        compile_unboxed_const 0x80000000l ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+        E.else_trap_with env "arithmetic overflow" ^^
         compile_unboxed_zero ^^
         get_n ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub))
@@ -4573,9 +4596,9 @@ let compile_relop env t op =
   match t, op with
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
-     G.if_ (StackRep.to_block_type env SR.bool) (Bool.lit false) (Bool.lit true) (* TODO: (`xor` 1) or (!= 0) *)
-  | Type.Prim Type.(Nat | Int | Word8 | Word16 | Word32 | Word64 | Char as t1), op1 ->
-     compile_comparison env t1 op1
+     G.i (Test (Wasm.Values.I32 Eqz))
+  | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Word8 | Word16 | Word32 | Word64 | Char as t1)), op1 ->
+    compile_comparison env t1 op1
   | _ -> todo_trap env "compile_relop" (As_frontend.Arrange.relop op)
 
 (* compile_load_field implements the various “virtual fields”, which
