@@ -1,6 +1,6 @@
 %{
 
-open Syntax_idl
+open Syntax
 open Source
 
 (* Position handling *)
@@ -55,7 +55,7 @@ let record_fields fs =
 %token<string> ID
 %token<string> TEXT
 
-%start<Syntax_idl.prog> parse_prog
+%start<Syntax.prog> parse_prog
 
 %%
 
