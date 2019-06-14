@@ -204,7 +204,7 @@ and dec' at n d = match d with
                  (fun tb ->
                    match tb.note with
                    | None -> assert false
-                   | Some c -> T.Con (Free c, []))
+                   | Some c -> T.Free c)
                  tbs in
     let fun_typ = n.S.note_typ in
     let obj_typ =

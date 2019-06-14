@@ -143,7 +143,7 @@ let rec check_typ env typ : unit =
   | T.Func (sort, control, binds, ts1, ts2) ->
     let cs, ce = check_typ_binds env binds in
     let env' = adjoin_cons env  ce in
-    let ts = List.map (fun c -> T.Con (T.Free c, [])) cs in
+    let ts = List.map (fun c -> T.Free c) cs in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
@@ -193,7 +193,7 @@ let rec check_typ env typ : unit =
 and check_con env c =
   let (T.Abs (binds,typ) | T.Def (binds, typ)) = Type.kind c in
   let cs, ce = check_typ_binds env binds in
-  let ts = List.map (fun c -> T.Con (T.Free c, [])) cs in
+  let ts = List.map (fun c -> T.Free c) cs in
   let env' = adjoin_cons env ce in
   check_typ env' (T.open_ ts typ)
 
@@ -211,7 +211,7 @@ and check_typ_field env s typ_field : unit =
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
-  let cs = List.map (function T.Con (T.Free c, []) ->  c | _ -> assert false) ts in
+  let cs = List.map (function T.Free c ->  c | _ -> assert false) ts in
   let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
@@ -228,16 +228,12 @@ and check_typ_bounds env (tbs : T.bind list) typs at : unit =
     error env at "too many type arguments";
   if pars > args then
     error env at "too few type arguments";
-  let rec go tbs typs =
-    match tbs, typs with
-    | tb::tbs', typ::typs' ->
+  List.iter2
+    (fun tb typ ->
       check env at (T.sub typ (T.open_ typs tb.T.bound))
-        "type argument does not match parameter bound";
-      go tbs' typs'
-    | [], [] -> ()
-    | _ -> assert false
-  in
-  go tbs typs
+        "type argument does not match parameter bound")
+    tbs typs
+
 
 and check_inst_bounds env tbs typs at =
   List.iter (check_typ env) typs;

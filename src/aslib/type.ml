@@ -250,7 +250,7 @@ and subst sigma t =
          t'
        else
          Con(t', List.map (subst sigma) ts)
-     | None -> Con(Free (subst_con sigma c), List.map (subst sigma) ts))
+     | None -> Con (Free (subst_con sigma c), List.map (subst sigma) ts))
   | Con (t', ts) ->
     Con (subst sigma t', List.map (subst sigma) ts)
   | Array t -> Array (subst sigma t)
@@ -368,17 +368,24 @@ let open_ ts t =
 let open_binds tbs =
   if tbs = [] then [] else
   let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
-  let ts = List.map (fun c -> (Con (Free c,[]))) cs in (* TBR *)
+  let ts = List.map (fun c -> Free c) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
   List.iter2 (fun c k -> set_kind c k) cs ks;
   ts
+
+let unfold_binds c tbs =
+  if tbs = [] then [] else
+  let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
+  let ts = List.map (fun c -> Free c) cs in
+  let tbs1 = List.map (fun {var;bound} -> {var;bound=open_ ((Free c)::ts) bound}) tbs in
+  close_binds cs tbs1
 
 (* kind of c, unfolded if necessary *)
 let kind c =
   match Con.kind c with
   | Def (tbs, t) ->
     let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
-    let ts = List.map (fun c -> (Con (Free c,[]))) cs in (* TBR *)
+    let ts = List.map (fun c -> Free c) cs in
     Def (List.map (fun tb -> {var = tb.var; bound =  close cs (open_ (Free c::ts) tb.bound)}) tbs, close cs (open_ (Free c::ts) t))
   | Abs (tbs, t) as k ->
     k
@@ -563,8 +570,9 @@ let rec avoid' cons seen = function
   | Variant fs -> Variant (List.map (avoid_field cons seen) fs)
   | Mut t -> Mut (avoid' cons seen t)
   | Serialized t -> Serialized (avoid' cons seen t)
-  | Typ c ->  if ConSet.mem c cons then raise (Unavoidable c)
-              else Typ c (* TBR *)
+  | Typ c ->
+    if ConSet.mem c seen then raise (Unavoidable c)
+    else Typ (clone c (avoid_kind cons seen)) (* TBR *)
 
 and avoid_bind cons seen {var; bound} =
   {var; bound = avoid' cons seen bound}
@@ -606,7 +614,7 @@ let is_concrete t =
       match t with
       | Var _ -> assert false
       | (Prim _ | Any | Non | Shared | Pre) -> true
-      | Free c -> go (Con(Free c, [])) (* TBR*)
+      | Free c -> go (Con (Free c, [])) (* TBR*)
       | Con (Free c, ts) ->
         begin match Con.kind c with
         | Abs _ -> false
@@ -820,8 +828,8 @@ and eq_kind rel eq k1 k2 =
   | Def (tbs1, t1), Def (tbs2, t2) ->
     let c1 = Con.fresh "anon" k1 in
     let c2 = Con.fresh "anon" k2 in
-    let tbs1' = List.map (open_bind 0 [Free c1]) tbs1 in (* FIX ME *)
-    let tbs2' = List.map (open_bind 0 [Free c2]) tbs2 in (* FIX ME *)
+    let tbs1' = unfold_binds c1 tbs1 in
+    let tbs2' = unfold_binds c2 tbs2 in
     begin match rel_binds eq eq tbs1' tbs2' with
     | Some ts -> eq_typ eq eq  (open_ (Free c1::ts) t1) (open_ (Free c2::ts) t2)
     | None -> false
@@ -836,17 +844,17 @@ and eq_kind rel eq k1 k2 =
 and eq_con rel eq c1 c2 =
   match Con.kind c1, Con.kind c2 with
   | Def (tbs1, t1), Def (tbs2, t2) ->
-  let tbs1' = List.map (open_bind 0 [Free c1]) tbs1 in (* FIX ME *)
-  let tbs2' = List.map (open_bind 0 [Free c2]) tbs2 in (* FIX ME *)
-  begin match rel_binds eq eq tbs1' tbs2' with
+    let tbs1' = unfold_binds c1 tbs1 in
+    let tbs2' = unfold_binds c2 tbs2 in
+    begin match rel_binds eq eq tbs1' tbs2' with
     | Some ts -> eq_typ eq eq  (open_ (Free c1::ts) t1) (open_ (Free c2::ts) t2)
     | None -> false
-  end
+    end
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
-  begin match rel_binds eq eq tbs1 tbs2 with
+    begin match rel_binds eq eq tbs1 tbs2 with
     | Some ts -> eq_typ eq eq  (open_ ts t1) (open_ ts t2)
     | None -> false
-  end
+    end
   | _ -> false
 
 and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
@@ -958,7 +966,7 @@ let rec string_of_typ_nullary vs = function
   | Non -> "Non"
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
-  | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> "!!!") (* FIX ME *)
+  | Var (s, i) -> string_of_var (List.nth vs i)
   | Free c -> string_of_con' vs c
   | Con (t, []) ->
     string_of_typ_nullary vs t
