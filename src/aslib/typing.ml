@@ -1435,7 +1435,7 @@ and infer_dec_typdecs env dec : scope =
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs env te ce in
     let t = check_typ env' typ in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close (c::cs) t}) cs ts in
+    let tbs = List.map2 (fun c' t -> {T.var = Con.name c'; bound = T.close (c::cs) t}) cs ts in
     let k = T.Def (tbs, T.close (c::cs) t) in
     { empty_scope with
       typ_env = T.Env.singleton con_id.it c;
