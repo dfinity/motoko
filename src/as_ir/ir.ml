@@ -1,22 +1,44 @@
 open As_types
 open As_values
-open As_frontend (* TODO *)
+
+type id = string
+
+(* Literals *)
+
+type lit =
+  | NullLit
+  | BoolLit of bool
+  | NatLit of Value.Nat.t
+  | Nat8Lit of Value.Nat8.t
+  | Nat16Lit of Value.Nat16.t
+  | Nat32Lit of Value.Nat32.t
+  | Nat64Lit of Value.Nat64.t
+  | IntLit of Value.Int.t
+  | Int8Lit of Value.Int_8.t
+  | Int16Lit of Value.Int_16.t
+  | Int32Lit of Value.Int_32.t
+  | Int64Lit of Value.Int_64.t
+  | Word8Lit of Value.Word8.t
+  | Word16Lit of Value.Word16.t
+  | Word32Lit of Value.Word32.t
+  | Word64Lit of Value.Word64.t
+  | FloatLit of Value.Float.t
+  | CharLit of Value.unicode
+  | TextLit of string
 
 (* Patterns *)
-type type_note = Syntax.typ_note = {note_typ : Type.typ; note_eff : Type.eff}
+type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
-type 'a phrase = ('a, Syntax.typ_note) Source.annotated_phrase
+type 'a phrase = ('a, typ_note) Source.annotated_phrase
 
 type typ_bind' = {con : Type.con; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
 
-type id = Syntax.id
-type lit = Syntax.lit
 type unop = Operator.unop
 type binop = Operator.binop
 type relop = Operator.relop
-type mut = Syntax.mut
-type vis = Syntax.vis
+
+type mut = Const | Var
 
 type pat = (pat', Type.typ) Source.annotated_phrase
 and pat' =
@@ -89,6 +111,29 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of Type.con                           (* type *)
 
+(* Literals *)
+
+let string_of_lit = function
+  | BoolLit false -> "false"
+  | BoolLit true  ->  "true"
+  | IntLit n
+  | NatLit n      -> Value.Int.to_pretty_string n
+  | Int8Lit n     -> Value.Int_8.to_pretty_string n
+  | Int16Lit n    -> Value.Int_16.to_pretty_string n
+  | Int32Lit n    -> Value.Int_32.to_pretty_string n
+  | Int64Lit n    -> Value.Int_64.to_pretty_string n
+  | Nat8Lit n     -> Value.Nat8.to_pretty_string n
+  | Nat16Lit n    -> Value.Nat16.to_pretty_string n
+  | Nat32Lit n    -> Value.Nat32.to_pretty_string n
+  | Nat64Lit n    -> Value.Nat64.to_pretty_string n
+  | Word8Lit n    -> Value.Word8.to_pretty_string n
+  | Word16Lit n   -> Value.Word16.to_pretty_string n
+  | Word32Lit n   -> Value.Word32.to_pretty_string n
+  | Word64Lit n   -> Value.Word64.to_pretty_string n
+  | CharLit c     -> string_of_int c
+  | NullLit       -> "null"
+  | TextLit t     -> t
+  | FloatLit f    -> Value.Float.to_pretty_string f
 
 (* Flavor *)
 

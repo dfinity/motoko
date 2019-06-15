@@ -1,4 +1,3 @@
-open As_frontend
 open As_types
 
 (* WIP translation of syntaxops to use IR in place of Source *)
@@ -6,15 +5,9 @@ open Source
 open Ir
 open Ir_effect
 
-module S = Syntax
 module T = As_types.Type
 
 type var = exp
-
-(* Mutabilities *)
-
-let varM = S.Var @@ no_region
-let constM = S.Const @@ no_region
 
 (* Field names *)
 
@@ -27,8 +20,7 @@ let nextN = "next"
 let idE id typ =
   { it = VarE id;
     at = no_region;
-    note = { S.note_typ = typ;
-             S.note_eff = T.Triv }
+    note = { note_typ = typ; note_eff = T.Triv }
   }
 
 let id_of_exp x =
@@ -38,28 +30,28 @@ let id_of_exp x =
 
 let arg_of_exp x =
   match x.it with
-  | VarE i -> { i with note = x.note.note_typ }
+  | VarE i -> { it = i; at = x.at; note = x.note.note_typ }
   | _ -> failwith "Impossible: arg_of_exp"
 
-let exp_of_arg a = idE {a with note = () } a.note
+let exp_of_arg a =
+  idE a.it a.note
 
 (* Fresh id generation *)
 
 module Stamps = Map.Make(String)
 let id_stamps = ref Stamps.empty
 
-let fresh name_base () =
+let fresh name_base () : string =
   let n = Lib.Option.get (Stamps.find_opt name_base !id_stamps) 0 in
   id_stamps := Stamps.add name_base (n + 1) !id_stamps;
   Printf.sprintf "$%s/%i" name_base n
 
-let fresh_id name_base () =
-  let name = fresh name_base () in
-  name @@ no_region
+let fresh_id name_base () : id =
+  fresh name_base ()
 
-let fresh_var name_base typ =
+let fresh_var name_base typ : exp =
   let name = fresh name_base () in
-  idE (name @@ no_region) typ
+  idE name typ
 
 let fresh_vars name_base ts =
   List.mapi (fun i t -> fresh_var (Printf.sprintf "%s%i" name_base i) t) ts
@@ -70,7 +62,7 @@ let fresh_vars name_base ts =
 let varP x =
   { it = VarP (id_of_exp x);
     at = x.at;
-    note = x.note.S.note_typ
+    note = x.note.note_typ
   }
 
 let tupP pats =
@@ -93,8 +85,7 @@ let as_seqP p =
 let primE name typ =
   { it = PrimE name;
     at = no_region;
-    note = { S.note_typ = typ;
-             S.note_eff = T.Triv }
+    note = { note_typ = typ; note_eff = T.Triv }
   }
 
 (* tuples *)
@@ -103,8 +94,7 @@ let projE e n =
   match typ e with
   | T.Tup ts ->
      { it = ProjE (e, n);
-       note = { S.note_typ = List.nth ts n;
-                S.note_eff = eff e };
+       note = { note_typ = List.nth ts n; note_eff = eff e };
        at = no_region;
      }
   | _ -> failwith "projE"
@@ -128,30 +118,26 @@ let blockE decs exp =
     let e =  List.fold_left max_eff (eff exp) es in
     { it = BlockE (decs', exp);
       at = no_region;
-      note = {S.note_typ = typ;
-              S.note_eff = e }
+      note = {note_typ = typ; note_eff = e }
     }
 
 let textE s =
-  { it = LitE (S.TextLit s);
+  { it = LitE (TextLit s);
     at = no_region;
-    note = { S.note_typ = T.Prim T.Text;
-             S.note_eff = T.Triv }
+    note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
   }
 
 
 let unitE =
   { it = TupE [];
     at = no_region;
-    note = { S.note_typ = T.Tup [];
-             S.note_eff = T.Triv }
+    note = { note_typ = T.Tup []; note_eff = T.Triv }
   }
 
 let boolE b =
-  { it = LitE (S.BoolLit b);
+  { it = LitE (BoolLit b);
     at = no_region;
-    note = { S.note_typ = T.bool;
-             S.note_eff = T.Triv}
+    note = { note_typ = T.bool; note_eff = T.Triv}
   }
 
 let callE exp1 ts exp2 =
@@ -160,30 +146,35 @@ let callE exp1 ts exp2 =
   let _, _, _, ret_ty = T.as_func_sub cc.Call_conv.sort (List.length ts) fun_ty in
   { it = CallE (cc, exp1, ts, exp2);
     at = no_region;
-    note = { S.note_typ = T.open_ ts ret_ty;
-             S.note_eff = max_eff (eff exp1) (eff exp2) }
+    note = {
+      note_typ = T.open_ ts ret_ty;
+      note_eff = max_eff (eff exp1) (eff exp2)
+    }
   }
 
 let ifE exp1 exp2 exp3 typ =
   { it = IfE (exp1, exp2, exp3);
     at = no_region;
-    note = { S.note_typ = typ;
-             S.note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
-           }
+    note = {
+      note_typ = typ;
+      note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
+    }
   }
 
 let dotE exp name typ =
   { it = DotE (exp, name);
     at = no_region;
-    note = { S.note_typ = typ;
-             S.note_eff = eff exp }
+    note = {
+      note_typ = typ;
+      note_eff = eff exp
+    }
   }
 
 let switch_optE exp1 exp2 pat exp3 typ1  =
   { it =
       SwitchE
         (exp1,
-         [{ it = {pat = {it = LitP S.NullLit;
+         [{ it = {pat = {it = LitP NullLit;
                          at = no_region;
                          note = typ exp1};
                   exp = exp2};
@@ -197,9 +188,10 @@ let switch_optE exp1 exp2 pat exp3 typ1  =
             note = () }]
         );
     at = no_region;
-    note = { S.note_typ = typ1;
-             S.note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
-           }
+    note = {
+      note_typ = typ1;
+      note_eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
+    }
   }
 
 let switch_variantE exp1 cases typ1 =
@@ -216,9 +208,10 @@ let switch_variantE exp1 cases typ1 =
           cases
       );
     at = no_region;
-    note = { S.note_typ = typ1;
-             S.note_eff = List.fold_left max_eff (eff exp1) (List.map (fun (l,p,e) -> eff e) cases)
-           }
+    note = {
+      note_typ = typ1;
+      note_eff = List.fold_left max_eff (eff exp1) (List.map (fun (l,p,e) -> eff e) cases)
+    }
   }
 
 let tupE exps =
@@ -226,28 +219,32 @@ let tupE exps =
   let eff = List.fold_left max_eff T.Triv effs in
   { it = TupE exps;
     at = no_region;
-    note = { S.note_typ = T.Tup (List.map typ exps);
-             S.note_eff = eff }
+    note = {
+      note_typ = T.Tup (List.map typ exps);
+      note_eff = eff
+    }
   }
 
 let breakE l exp =
   { it = BreakE (l, exp);
     at = no_region;
-    note = { S.note_eff = eff exp;
-             S.note_typ = T.Non }
+    note = {
+      note_eff = eff exp;
+      note_typ = T.Non
+    }
   }
 
 let retE exp =
   { it = RetE exp;
     at = no_region;
-    note = { S.note_eff = eff exp;
-             S.note_typ = T.Non }
+    note = { note_eff = eff exp;
+             note_typ = T.Non }
   }
 
 let immuteE e =
   { e with
-    note = { S.note_eff = eff e;
-             S.note_typ = T.as_immut (typ e) }
+    note = { note_eff = eff e;
+             note_typ = T.as_immut (typ e) }
   }
 
 
@@ -255,23 +252,23 @@ let assignE exp1 exp2 =
   assert (T.is_mut (typ exp1));
   { it = AssignE (exp1, exp2);
     at = no_region;
-    note = { S.note_eff = Effect.max_eff (eff exp1) (eff exp2);
-             S.note_typ = T.unit }
+    note = { note_eff = Ir_effect.max_eff (eff exp1) (eff exp2);
+             note_typ = T.unit }
   }
 
 let labelE l typ exp =
   { it = LabelE (l, typ, exp);
     at = no_region;
-    note = { S.note_eff = eff exp;
-             S.note_typ = typ }
+    note = { note_eff = eff exp;
+             note_typ = typ }
   }
 
 (* Used to desugar for loops, while loops and loop-while loops. *)
 let loopE exp =
   { it = LoopE exp;
     at = no_region;
-    note = { S.note_eff = eff exp ;
-             S.note_typ = T.Non }
+    note = { note_eff = eff exp ;
+             note_typ = T.Non }
   }
 
 let declare_idE x typ exp1 =
@@ -283,15 +280,15 @@ let declare_idE x typ exp1 =
 let define_idE x mut exp1 =
   { it = DefineE (x, mut, exp1);
     at = no_region;
-    note = { S.note_typ = T.unit;
-             S.note_eff = T.Triv}
+    note = { note_typ = T.unit;
+             note_eff = T.Triv}
   }
 
 let newObjE sort ids typ =
   { it = NewObjE (sort, ids, typ);
     at = no_region;
-    note = { S.note_typ = typ;
-             S.note_eff = T.Triv }
+    note = { note_typ = typ;
+             note_eff = T.Triv }
   }
 
 
@@ -345,7 +342,7 @@ let funcE name t x exp =
        exp'
      );
     at = no_region;
-    note = { S.note_eff = T.Triv; S.note_typ = t }
+    note = { note_eff = T.Triv; note_typ = t }
    })
 
 let nary_funcE name t xs exp =
@@ -363,21 +360,21 @@ let nary_funcE name t xs exp =
         exp
       );
     at = no_region;
-    note = { S.note_eff = T.Triv; S.note_typ = t }
+    note = { note_eff = T.Triv; note_typ = t }
   })
 
 (* Mono-morphic function declaration, sharing inferred from f's type *)
 let funcD f x exp =
   match f.it, x.it with
   | VarE _, VarE _ ->
-    letD f (funcE (id_of_exp f).it (typ f) x exp)
+    letD f (funcE (id_of_exp f) (typ f) x exp)
   | _ -> failwith "Impossible: funcD"
 
 (* Mono-morphic, n-ary function declaration *)
 let nary_funcD f xs exp =
   match f.it with
   | VarE _ ->
-    letD f (nary_funcE (id_of_exp f).it (typ f) xs exp)
+    letD f (nary_funcE (id_of_exp f) (typ f) xs exp)
   | _ -> failwith "Impossible: funcD"
 
 
@@ -431,8 +428,8 @@ let ( -*- ) exp1 exp2 =
     let cc = Call_conv.call_conv_of_typ (typ exp1) in
     { it = CallE (cc, exp1, [], exp2);
       at = no_region;
-      note = {S.note_typ = T.seq ts2;
-              S.note_eff = max_eff (eff exp1) (eff exp2)}
+      note = {note_typ = T.seq ts2;
+              note_eff = max_eff (eff exp1) (eff exp2)}
     }
   | typ1 -> failwith
            (Printf.sprintf "Impossible: \n func: %s \n : %s arg: \n %s"
@@ -499,7 +496,7 @@ let forE pat exp1 exp2 =
        }
      } *)
   let lab = fresh_id "done" () in
-  let ty1 = exp1.note.S.note_typ in
+  let ty1 = exp1.note.note_typ in
   let _, tfs = T.as_obj_sub "next" ty1 in
   let tnxt = Lib.Option.value (T.lookup_val_field "next" tfs) in
   let nxt = fresh_var "nxt" tnxt in

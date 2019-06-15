@@ -1,5 +1,4 @@
 open As_types
-open As_frontend
 open As_values
 
 open Source
@@ -244,8 +243,9 @@ and check_inst_bounds env tbs typs at =
 
 (* Literals *)
 
+open Ir
+
 let type_lit env lit at : T.prim =
-  let open Syntax in
   match lit with
   | NullLit -> T.Null
   | BoolLit _ -> T.Bool
@@ -266,10 +266,7 @@ let type_lit env lit at : T.prim =
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
-  | PreLit (s, p) ->
-    error env at "unresolved literal %s of type\n %s" s (T.string_of_prim p)
 
-open Ir
 
 (* Expressions *)
 
@@ -297,8 +294,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
   match exp.it with
   | PrimE _ -> ()
   | VarE id ->
-    let t0 = try T.Env.find id.it env.vals with
-             |  Not_found -> error env id.at "unbound variable %s" id.it
+    let t0 = try T.Env.find id env.vals with
+             |  Not_found -> error env exp.at "unbound variable %s" id
     in
       t0 <~ t
   | LitE lit ->
@@ -336,7 +333,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.Opt (typ exp1) <: t
   | TagE (i, exp1) ->
     check_exp env exp1;
-    T.Variant [{T.lab = i.it; typ = typ exp1}] <: t
+    T.Variant [{T.lab = i; typ = typ exp1}] <: t
   | ProjE (exp1, n) ->
     check_exp env exp1;
     let t1 = T.promote (immute_typ exp1) in
@@ -382,7 +379,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | ArrayE (mut, t0, exps) ->
     List.iter (check_exp env) exps;
     List.iter (fun e -> typ e <: t0) exps;
-    let t1 = T.Array (match mut.it with Syntax.Const -> t0 | Syntax.Var -> T.Mut t0) in
+    let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
     t1 <: t
   | IdxE (exp1, exp2) ->
     check_exp env exp1;
@@ -444,14 +441,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | LabelE (id, t0, exp1) ->
     assert (t0 <> T.Pre);
     check_typ env t0;
-    check_exp (add_lab env id.it t0) exp1;
+    check_exp (add_lab env id t0) exp1;
     typ exp1 <: t0;
     t0 <: t
   | BreakE (id, exp1) ->
     begin
-      match T.Env.find_opt id.it env.labs with
+      match T.Env.find_opt id env.labs with
       | None ->
-        error env id.at "unbound label %s" id.it
+        error env exp.at "unbound label %s" id
       | Some t1 ->
         check_exp env exp1;
         typ exp1 <: t1;
@@ -493,19 +490,19 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.unit <: t
   | DeclareE (id, t0, exp1) ->
     check_typ env t0;
-    let env' = adjoin_vals env (T.Env.singleton id.it t0) in
+    let env' = adjoin_vals env (T.Env.singleton id t0) in
     check_exp env' exp1;
     (typ exp1) <: t
   | DefineE (id, mut, exp1) ->
     check_exp env exp1;
     begin
-      match T.Env.find_opt id.it env.vals with
-      | None -> error env id.at "unbound variable %s" id.it
+      match T.Env.find_opt id env.vals with
+      | None -> error env exp.at "unbound variable %s" id
       | Some t0 ->
-        match mut.it with
-        | Syntax.Const ->
+        match mut with
+        | Const ->
           typ exp1 <: t0
-        | Syntax.Var ->
+        | Var ->
           let t0 = try T.as_mut t0 with
                    | Invalid_argument _ ->
                      error env exp.at "expected mutable %s" (T.string_of_typ t0)
@@ -536,7 +533,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     fun_ty <: t
   | ActorE (id, ds, fs, t0) ->
     let env' = { env with async = false } in
-    let ve0 = T.Env.singleton id.it t0 in
+    let ve0 = T.Env.singleton id t0 in
     let scope0 = { empty_scope with val_env = ve0 } in
     let scope1 = List.fold_left (gather_dec env') scope0 ds in
     let env'' = adjoin env' scope1 in
@@ -584,9 +581,9 @@ and gather_pat env ve0 pat : val_env =
     | LitP _ ->
       ve
     | VarP id ->
-      check env id.at (not (T.Env.mem id.it ve0))
-        "duplicate binding for %s in block" id.it;
-      T.Env.add id.it pat.note ve (*TBR*)
+      check env pat.at (not (T.Env.mem id ve0))
+        "duplicate binding for %s in block" id;
+      T.Env.add id pat.note ve (*TBR*)
     | TupP pats ->
       List.fold_left go ve pats
     | ObjP pfs ->
@@ -609,8 +606,8 @@ and check_pat env pat : val_env =
   let t = pat.note in
   match pat.it with
   | WildP -> T.Env.empty
-  | VarP id -> T.Env.singleton id.it pat.note
-  | LitP Syntax.NullLit ->
+  | VarP id -> T.Env.singleton id pat.note
+  | LitP NullLit ->
     T.Prim T.Null <: t;
     T.Env.empty
   | LitP lit ->
@@ -632,7 +629,7 @@ and check_pat env pat : val_env =
     ve
   | TagP (i, pat1) ->
     let ve = check_pat env pat1 in
-    T.Variant [{T.lab = i.it; typ = pat1.note}] <: t;
+    T.Variant [{T.lab = i; typ = pat1.note}] <: t;
     ve
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in
@@ -674,7 +671,7 @@ and type_exp_fields env s fs : T.field list =
 
 and type_exp_field env s f : T.field =
   let {name; var} = f.it in
-  let t = try T.Env.find var.it env.vals with
+  let t = try T.Env.find var env.vals with
           | Not_found -> error env f.at "field typing for %s not found" name
   in
   assert (t <> T.Pre);
@@ -709,8 +706,8 @@ and check_dec env dec  =
     check_exp env exp;
     typ exp <: pat.note
   | VarD (id, exp) ->
-    let t0 = try T.Env.find id.it env.vals with
-             |  Not_found -> error env id.at "unbound variable %s" id.it
+    let t0 = try T.Env.find id env.vals with
+             |  Not_found -> error env dec.at "unbound variable %s" id
     in
     check (T.is_mut t0) "variable in VarD is not immutable";
     check_exp env exp;
@@ -741,9 +738,9 @@ and gather_dec env scope dec : scope =
     { val_env = ve; con_env = ce'}
   | VarD (id, exp) ->
     check env dec.at
-      (not (T.Env.mem id.it scope.val_env))
+      (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
-    let ve =  T.Env.add id.it (T.Mut (typ exp)) scope.val_env in
+    let ve =  T.Env.add id (T.Mut (typ exp)) scope.val_env in
     { scope with val_env = ve}
   | TypD c ->
     check env dec.at

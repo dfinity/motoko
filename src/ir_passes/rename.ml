@@ -10,21 +10,21 @@ module Stamps = Map.Make(String)
 let stamps = ref Stamps.empty
 
 let fresh_id id =
-  let n = Lib.Option.get (Stamps.find_opt id.it !stamps) 0 in
-  stamps := Stamps.add id.it (n + 1) !stamps;
-  Printf.sprintf "%s/%i" id.it n
+  let n = Lib.Option.get (Stamps.find_opt id !stamps) 0 in
+  stamps := Stamps.add id (n + 1) !stamps;
+  Printf.sprintf "%s/%i" id n
 
 let id rho i =
-  try {i with it = Renaming.find i.it rho}
+  try Renaming.find i rho
   with Not_found -> i
 
 let id_bind rho i =
   let i' = fresh_id i in
-  ({i with it = i'}, Renaming.add i.it i' rho)
+  (i', Renaming.add i i' rho)
 
-let arg_bind rho i =
-  let i' = fresh_id i in
-  ({i with it = i'}, Renaming.add i.it i' rho)
+let arg_bind rho a =
+  let i' = fresh_id a.it in
+  ({a with it = i'}, Renaming.add a.it i' rho)
 
 let rec exp rho e  =
     {e with it = exp' rho e.it}

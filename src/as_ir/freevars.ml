@@ -57,7 +57,7 @@ let close (f,d) = diff f d
 (* One traversal for each syntactic category, named by that category *)
 
 let rec exp e : f = match e.it with
-  | VarE i              -> M.singleton i.it {captured = false}
+  | VarE i              -> M.singleton i {captured = false}
   | LitE l              -> M.empty
   | PrimE _             -> M.empty
   | UnE (_, uo, e)      -> exp e
@@ -84,10 +84,10 @@ let rec exp e : f = match e.it with
   | AssertE e           -> exp e
   | OptE e              -> exp e
   | TagE (_, e)         -> exp e
-  | DeclareE (i, t, e)  -> exp e  // i.it
+  | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, cc, tp, as_, t, e) -> under_lambda (exp e /// args as_)
-  | ActorE (i, ds, fs, _) -> close (decs ds +++ fields fs) // i.it
+  | ActorE (i, ds, fs, _) -> close (decs ds +++ fields fs) // i
   | NewObjE (_, fs, _)  -> fields fs
 
 and fields fs = unions (fun f -> id f.it.var) fs
@@ -100,7 +100,7 @@ and args as_ : fd = union_binders arg as_
 
 and pat p : fd = match p.it with
   | WildP           -> (M.empty, S.empty)
-  | VarP i          -> (M.empty, S.singleton i.it)
+  | VarP i          -> (M.empty, S.singleton i)
   | TupP ps         -> pats ps
   | ObjP pfs        -> pats (pats_of_obj_pat pfs)
   | LitP l          -> (M.empty, S.empty)
@@ -114,11 +114,11 @@ and case (c : case) = exp c.it.exp /// pat c.it.pat
 
 and cases cs : f = unions case cs
 
-and id i = M.singleton i.it {captured = false}
+and id i = M.singleton i {captured = false}
 
 and dec d = match d.it with
   | LetD (p, e) -> pat p +++ exp e
-  | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp e
+  | VarD (i, e) -> (M.empty, S.singleton i) +++ exp e
   | TypD c -> (M.empty, S.empty)
 
 (* The variables captured by a function. May include the function itself! *)

@@ -1,5 +1,4 @@
 open Printf
-module Typing = Typing_idl
 
 type stat_env = Typing.scope
 type env = stat_env              
@@ -26,7 +25,7 @@ let dump_prog flag prog =
     
 (* Parsing *)
 
-type parse_result = Syntax_idl.prog Diag.result
+type parse_result = Syntax.prog Diag.result
 
 let parse_with lexer parser name =
   try
@@ -58,7 +57,7 @@ let initial_env = initial_stat_env
    
 (* Checking *)
 
-type check_result = (Syntax_idl.prog * Typing.scope) Diag.result
+type check_result = (Syntax.prog * Typing.scope) Diag.result
 
 let check_prog check senv name prog
   : Typing.scope Diag.result =

@@ -2989,7 +2989,7 @@ module Serialization = struct
         compile_unboxed_const 2l ^^ advance_data_buf
       | Prim (Int8|Nat8|Word8) ->
         get_data_buf ^^
-        get_x ^^ UnboxedSmallWord.lsb_adjust Word16 ^^
+        get_x ^^ UnboxedSmallWord.lsb_adjust Word8 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
         compile_unboxed_const 1l ^^ advance_data_buf
       | Prim Bool ->
@@ -3798,12 +3798,12 @@ module ASEnv = struct
     NameEnv.fold (fun k _ -> Freevars.S.add k) ae.vars Freevars.S.empty
 
   let add_label (ae : t) name (d : G.depth) =
-      { ae with labels = NameEnv.add name.it d ae.labels }
+      { ae with labels = NameEnv.add name d ae.labels }
 
   let get_label_depth (ae : t) name : G.depth  =
-    match NameEnv.find_opt name.it ae.labels with
+    match NameEnv.find_opt name ae.labels with
       | Some d -> d
-      | None   -> Printf.eprintf "Could not find %s\n" name.it; raise Not_found
+      | None   -> Printf.eprintf "Could not find %s\n" name; raise Not_found
 
 end (* ASEnv *)
 
@@ -4371,7 +4371,7 @@ let nat64_to_int64 n =
   if sign_big_int q = 0 then r else sub_big_int r twoRaised63
 
 let compile_lit env lit =
-  try As_frontend.Syntax.(match lit with
+  try match lit with
     (* Booleans are directly in Vanilla representation *)
     | BoolLit false -> SR.bool, Bool.lit false
     | BoolLit true ->  SR.bool, Bool.lit true
@@ -4393,10 +4393,9 @@ let compile_lit env lit =
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
     | TextLit t     -> SR.Vanilla, Text.lit env t
-    | _ -> todo_trap_SR env "compile_lit" (As_frontend.Arrange.lit lit)
-    )
+    | _ -> todo_trap_SR env "compile_lit" (Arrange_ir.lit lit)
   with Failure _ ->
-    Printf.eprintf "compile_lit: Overflow in literal %s\n" (As_frontend.Syntax.string_of_lit lit);
+    Printf.eprintf "compile_lit: Overflow in literal %s\n" (string_of_lit lit);
     SR.Unreachable, E.trap_with env "static literal overflow"
 
 let compile_lit_as env sr_out lit =
@@ -4461,7 +4460,7 @@ let compile_unop env t op =
   | _ ->
     (* NB: Must not use todo_trap_SR here, as the SR.t here is also passed to
        `compile_exp_as`, which does not take SR.Unreachable. *)
-    todo "compile_unop" (As_frontend.Arrange.unop op) (SR.Vanilla, E.trap_with env "TODO: compile_unop")
+    todo "compile_unop" (Arrange_ops.unop op) (SR.Vanilla, E.trap_with env "TODO: compile_unop")
 
 (* This returns a single StackRep, to be used for both arguments and the
    result. One could imagine operators that require or produce different StackReps,
@@ -4560,7 +4559,7 @@ let rec compile_binop env t op =
       sanitize_word_result ty))
 
   | Type.Prim Type.Text, CatOp -> Text.concat env
-  | _ -> todo_trap env "compile_binop" (As_frontend.Arrange.binop op)
+  | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
   )
 
 let compile_eq env t = match t with
@@ -4570,7 +4569,7 @@ let compile_eq env t = match t with
   | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   | Type.(Prim (Int8 | Nat8 | Word8 | Int16 | Nat16 | Word16 | Int32 | Nat32 | Word32 | Char)) ->
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
-  | _ -> todo_trap env "compile_eq" (As_frontend.Arrange.relop Operator.EqOp)
+  | _ -> todo_trap env "compile_eq" (Arrange_ops.relop Operator.EqOp)
 
 let get_relops = Operator.(function
   | GeOp -> Ge, I64Op.GeU, I64Op.GeS, I32Op.GeU, I32Op.GeS
@@ -4596,10 +4595,10 @@ let compile_relop env t op =
   match t, op with
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
-     G.i (Test (Wasm.Values.I32 I32Op.Eqz))
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz))
   | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Word8 | Word16 | Word32 | Word64 | Char as t1)), op1 ->
     compile_comparison env t1 op1
-  | _ -> todo_trap env "compile_relop" (As_frontend.Arrange.relop op)
+  | _ -> todo_trap env "compile_relop" (Arrange_ops.relop op)
 
 (* compile_load_field implements the various “virtual fields”, which
    we currently have for arrays and text.
@@ -4633,7 +4632,7 @@ let rec compile_lexp (env : E.t) ae exp =
   match exp.it with
   | VarE var ->
      G.nop,
-     Var.set_val env ae var.it
+     Var.set_val env ae var
   | IdxE (e1,e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
@@ -4903,7 +4902,7 @@ and compile_exp (env : E.t) ae exp =
         end
     end
   | VarE var ->
-    Var.get_val env ae var.it
+    Var.get_val env ae var
   | AssignE (e1,e2) ->
     SR.unit,
     let (prepare_code, store_code) = compile_lexp env ae e1 in
@@ -4981,7 +4980,7 @@ and compile_exp (env : E.t) ae exp =
     Opt.inject env (compile_exp_vanilla env ae e)
   | TagE (l, e) ->
     SR.Vanilla,
-    Variant.inject env l.it (compile_exp_vanilla env ae e)
+    Variant.inject env l (compile_exp_vanilla env ae e)
   | TupE es ->
     SR.UnboxedTuple (List.length es),
     G.concat_map (compile_exp_vanilla env ae) es
@@ -5033,7 +5032,7 @@ and compile_exp (env : E.t) ae exp =
       code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
-    let (ae1, i) = ASEnv.add_local_with_offset env ae name.it 1l in
+    let (ae1, i) = ASEnv.add_local_with_offset env ae name 1l in
     let sr, code = compile_exp env ae1 e in
     sr,
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
@@ -5042,7 +5041,7 @@ and compile_exp (env : E.t) ae exp =
   | DefineE (name, _, e) ->
     SR.unit,
     compile_exp_vanilla env ae e ^^
-    Var.set_val env ae name.it
+    Var.set_val env ae name
   | FuncE (x, cc, typ_binds, args, _rt, e) ->
     let captured = Freevars.captured exp in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity cc.Call_conv.n_res) e in
@@ -5059,8 +5058,8 @@ and compile_exp (env : E.t) ae exp =
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
         if Object.is_mut_field env exp.note.note_typ f.it.name
-        then Var.get_val_ptr env ae f.it.var.it
-        else Var.get_val_vanilla env ae f.it.var.it)) in
+        then Var.get_val_ptr env ae f.it.var
+        else Var.get_val_vanilla env ae f.it.var)) in
     Object.lit_raw env fs'
   | _ -> SR.unit, todo_trap env "compile_exp" (Arrange_ir.exp exp)
 
@@ -5128,7 +5127,6 @@ enabled mutual recursion.
 
 
 and compile_lit_pat env l =
-  let open As_frontend.Syntax in
   match l with
   | NullLit ->
     compile_lit_as env SR.Vanilla l ^^
@@ -5144,7 +5142,7 @@ and compile_lit_pat env l =
   | (TextLit t) ->
     Text.lit env t ^^
     Text.compare env
-  | _ -> todo_trap env "compile_lit_pat" (As_frontend.Arrange.lit l)
+  | _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
 
 and fill_pat env ae pat : patternCode =
   PatCode.with_region pat.at @@
@@ -5168,7 +5166,7 @@ and fill_pat env ae pat : patternCode =
       CanFail (fun fail_code ->
         set_x ^^
         get_x ^^
-        Variant.test_is env l.it ^^
+        Variant.test_is env l ^^
         G.if_ (ValBlockType None)
           ( get_x ^^
             Variant.project ^^
@@ -5181,7 +5179,7 @@ and fill_pat env ae pat : patternCode =
         compile_lit_pat env l ^^
         G.if_ (ValBlockType None) G.nop fail_code)
   | VarP name ->
-      CannotFail (Var.set_val env ae name.it)
+      CannotFail (Var.set_val env ae name)
   | TupP ps ->
       let (set_i, get_i) = new_local env "tup_scrut" in
       let rec go i = function
@@ -5276,9 +5274,9 @@ and compile_dec env pre_ae how dec : ASEnv.t * G.t * (ASEnv.t -> G.t) =
   | TypD _ ->
     (pre_ae, G.nop, fun _ -> G.nop)
   (* A special case for static expressions *)
-  | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v.it how) ->
+  | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v how) ->
     let (static_thing, fill) = compile_static_exp env pre_ae how e in
-    let pre_ae1 = ASEnv.add_local_deferred pre_ae v.it
+    let pre_ae1 = ASEnv.add_local_deferred pre_ae v
       (SR.StaticThing static_thing) (fun _ -> G.nop) false in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
   | LetD (p, e) ->
@@ -5288,14 +5286,14 @@ and compile_dec env pre_ae how dec : ASEnv.t * G.t * (ASEnv.t -> G.t) =
       fill_code
     )
   | VarD (name, e) ->
-      assert (AllocHow.M.find_opt name.it how = Some AllocHow.LocalMut ||
-              AllocHow.M.find_opt name.it how = Some AllocHow.StoreHeap ||
-              AllocHow.M.find_opt name.it how = Some AllocHow.StoreStatic);
-      let (pre_ae1, alloc_code) = AllocHow.add_local env pre_ae how name.it in
+      assert (AllocHow.M.find_opt name how = Some AllocHow.LocalMut ||
+              AllocHow.M.find_opt name how = Some AllocHow.StoreHeap ||
+              AllocHow.M.find_opt name how = Some AllocHow.StoreStatic);
+      let (pre_ae1, alloc_code) = AllocHow.add_local env pre_ae how name in
 
       ( pre_ae1, alloc_code, fun ae ->
         compile_exp_vanilla env ae e ^^
-        Var.set_val env ae name.it
+        Var.set_val env ae name
       )
 
 and compile_decs env ae lvl decs captured_in_body : ASEnv.t * G.t =
@@ -5404,7 +5402,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
     )
 
 and export_actor_field env  ae (f : Ir.field) =
-  let sr, code = Var.get_val env ae f.it.var.it in
+  let sr, code = Var.get_val env ae f.it.var in
   (* A public actor field is guaranteed to be compiled as a StaticMessage *)
   let fi = match sr with
     | SR.StaticThing (SR.StaticMessage fi) -> fi
@@ -5443,7 +5441,7 @@ and actor_lit outer_env this ds fs at =
       let (ae1, prelude_code) = compile_prelude env ae0 in
 
       (* Add this pointer *)
-      let ae2 = ASEnv.add_local_deferred ae1 this.it SR.Vanilla Dfinity.get_self_reference false in
+      let ae2 = ASEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
 
       (* Compile the declarations *)
       let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds Freevars.S.empty in
@@ -5456,7 +5454,7 @@ and actor_lit outer_env this ds fs at =
 
     OrthogonalPersistence.register mod_env start_fi;
 
-    let m = conclude_module mod_env this.it None in
+    let m = conclude_module mod_env this None in
     let (_map, wasm_binary) = Wasm_exts.CustomModuleEncode.encode m in
     wasm_binary in
 
@@ -5468,7 +5466,7 @@ and actor_lit outer_env this ds fs at =
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 this ds fs =
   (* Add this pointer *)
-  let ae2 = ASEnv.add_local_deferred ae1 this.it SR.Vanilla Dfinity.get_self_reference false in
+  let ae2 = ASEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
 
   (* Compile the declarations *)
   let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds Freevars.S.empty in
