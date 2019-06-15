@@ -2985,7 +2985,7 @@ module Serialization = struct
         compile_unboxed_const 2l ^^ advance_data_buf
       | Prim Word8 ->
         get_data_buf ^^
-        get_x ^^ UnboxedSmallWord.lsb_adjust Word16 ^^
+        get_x ^^ UnboxedSmallWord.lsb_adjust Word8 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
         compile_unboxed_const 1l ^^ advance_data_buf
       | Prim Bool ->
