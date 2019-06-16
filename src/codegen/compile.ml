@@ -4741,53 +4741,53 @@ and compile_exp (env : E.t) ae exp =
 
        | "Int->Int64" ->
          SR.UnboxedWord64,
-         let (set_num, get_num) = new_local env "num" in
          compile_exp_vanilla env ae e ^^
-         set_num ^^ get_num ^^
-         BigNum.fits_signed_bits env 64 ^^
-         E.else_trap_with env "losing precision" ^^
-         get_num ^^
-         BigNum.truncate_to_word64 env
+         Func.share_code1 env "Int->Int64" ("n", I32Type) [I64Type] (fun env get_n ->
+           get_n ^^
+           BigNum.fits_signed_bits env 64 ^^
+           E.else_trap_with env "losing precision" ^^
+           get_n ^^
+           BigNum.truncate_to_word64 env)
 
        | "Int->Int32"
        | "Int->Int16"
        | "Int->Int8" ->
          let ty = exp.note.note_typ in
          StackRep.of_type ty,
-         let (set_num, get_num) = new_local env "num" in
          let pty = typ_of_prim_typ ty in
          compile_exp_vanilla env ae e ^^
-         set_num ^^ get_num ^^
-         BigNum.fits_signed_bits env (UnboxedSmallWord.bits_of_typ pty) ^^
-         E.else_trap_with env "losing precision" ^^
-         get_num ^^
-         BigNum.truncate_to_word32 env ^^
-         UnboxedSmallWord.msb_adjust (typ_of_prim_typ ty)
+         Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Int->") ("n", I32Type) [I32Type] (fun env get_n ->
+           get_n ^^
+           BigNum.fits_signed_bits env (UnboxedSmallWord.bits_of_typ pty) ^^
+           E.else_trap_with env "losing precision" ^^
+           get_n ^^
+           BigNum.truncate_to_word32 env ^^
+           UnboxedSmallWord.msb_adjust pty)
 
        | "Nat->Nat64" ->
          SR.UnboxedWord64,
-         let (set_num, get_num) = new_local env "num" in
          compile_exp_vanilla env ae e ^^
-         set_num ^^ get_num ^^
-         BigNum.fits_unsigned_bits env 64 ^^
-         E.else_trap_with env "losing precision" ^^
-         get_num ^^
-         BigNum.truncate_to_word64 env
+         Func.share_code1 env "Nat->Nat64" ("n", I32Type) [I64Type] (fun env get_n ->
+           get_n ^^
+           BigNum.fits_unsigned_bits env 64 ^^
+           E.else_trap_with env "losing precision" ^^
+           get_n ^^
+           BigNum.truncate_to_word64 env)
 
        | "Nat->Nat32"
        | "Nat->Nat16"
        | "Nat->Nat8" ->
          let ty = exp.note.note_typ in
          StackRep.of_type ty,
-         let (set_num, get_num) = new_local env "num" in
          let pty = typ_of_prim_typ ty in
          compile_exp_vanilla env ae e ^^
-         set_num ^^ get_num ^^
-         BigNum.fits_unsigned_bits env (UnboxedSmallWord.bits_of_typ pty) ^^
-         E.else_trap_with env "losing precision" ^^
-         get_num ^^
-         BigNum.truncate_to_word32 env ^^
-         UnboxedSmallWord.msb_adjust pty
+         Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Nat->") ("n", I32Type) [I32Type] (fun env get_n ->
+           get_n ^^
+           BigNum.fits_unsigned_bits env (UnboxedSmallWord.bits_of_typ pty) ^^
+           E.else_trap_with env "losing precision" ^^
+           get_n ^^
+           BigNum.truncate_to_word32 env ^^
+           UnboxedSmallWord.msb_adjust pty)
 
        | "Char->Word32" ->
          SR.UnboxedWord32,
