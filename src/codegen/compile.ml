@@ -1523,7 +1523,7 @@ module BigNum64 : BigNumType = struct
     let (set_num, get_num) = new_local env "num" in
     set_num ^^ get_num ^^
     fits_unsigned_bits env 32 ^^
-    E.else_trap_with env "Losing precision" ^^
+    E.else_trap_with env "losing precision" ^^
     get_num ^^
     unbox env ^^
     BoxedWord.to_word32 env
@@ -4745,7 +4745,7 @@ and compile_exp (env : E.t) ae exp =
          compile_exp_vanilla env ae e ^^
          set_num ^^ get_num ^^
          BigNum.fits_signed_bits env 64 ^^
-         E.else_trap_with env "Losing precision" ^^
+         E.else_trap_with env "losing precision" ^^
          get_num ^^
          BigNum.truncate_to_word64 env
 
@@ -4759,7 +4759,7 @@ and compile_exp (env : E.t) ae exp =
          compile_exp_vanilla env ae e ^^
          set_num ^^ get_num ^^
          BigNum.fits_signed_bits env (UnboxedSmallWord.bits_of_typ pty) ^^
-         E.else_trap_with env "Losing precision" ^^
+         E.else_trap_with env "losing precision" ^^
          get_num ^^
          BigNum.truncate_to_word32 env ^^
          UnboxedSmallWord.msb_adjust (typ_of_prim_typ ty)
@@ -4770,7 +4770,7 @@ and compile_exp (env : E.t) ae exp =
          compile_exp_vanilla env ae e ^^
          set_num ^^ get_num ^^
          BigNum.fits_unsigned_bits env 64 ^^
-         E.else_trap_with env "Losing precision" ^^
+         E.else_trap_with env "losing precision" ^^
          get_num ^^
          BigNum.truncate_to_word64 env
 
@@ -4784,7 +4784,7 @@ and compile_exp (env : E.t) ae exp =
          compile_exp_vanilla env ae e ^^
          set_num ^^ get_num ^^
          BigNum.fits_unsigned_bits env (UnboxedSmallWord.bits_of_typ pty) ^^
-         E.else_trap_with env "Losing precision" ^^
+         E.else_trap_with env "losing precision" ^^
          get_num ^^
          BigNum.truncate_to_word32 env ^^
          UnboxedSmallWord.msb_adjust pty
