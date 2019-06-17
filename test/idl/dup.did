@@ -1,0 +1,4 @@
+type A = B;
+type B = opt A;
+type A = opt B;
+

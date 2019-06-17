@@ -151,7 +151,10 @@ func testWord8(a : Word8, b : Word8) : [Word8] {
   [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
 };
 
-verify<Word8>([3, 253, 8, 254, 15, 0, 3, 243], testWord8(3, 5), func (a : Word8, b : Word8) : Bool = a == b);
+func word8Compare(a : Word8, b : Word8) : Bool = a == b;
+verify<Word8>([3, 253, 8, 254, 15, 0, 3, 243], testWord8(3, 5), word8Compare);
+
+verify<Word8>([25, 231, 30, 20, 125, 5, 0, 249], testWord8(25, 5), word8Compare);
 
 func testWord16(a : Word16, b : Word16) : [Word16] {
   let pos1 = + a;
@@ -173,7 +176,9 @@ func testWord16(a : Word16, b : Word16) : [Word16] {
   [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
 };
 
-verify<Word16>([3, 65533, 8, 65534, 15, 0, 3, 243], testWord16(3, 5), func (a : Word16, b : Word16) : Bool = a == b);
+func word16Compare(a : Word16, b : Word16) : Bool = a == b;
+verify<Word16>([3, 65533, 8, 65534, 15, 0, 3, 243], testWord16(3, 5), word16Compare);
+verify<Word16>([25, 65511, 30, 20, 125, 5, 0, 761], testWord16(25, 5), word16Compare);
 
 func testWord32(a : Word32, b : Word32) : [Word32] {
   let pos1 = + a;
@@ -195,8 +200,9 @@ func testWord32(a : Word32, b : Word32) : [Word32] {
   [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
 };
 
-verify<Word32>([3, 4_294_967_293, 8, 4_294_967_294, 15, 0, 3, 243], testWord32(3, 5),
-               func (a : Word32, b : Word32) : Bool = a == b);
+func word32Compare(a : Word32, b : Word32) : Bool = a == b;
+verify<Word32>([3, 4_294_967_293, 8, 4_294_967_294, 15, 0, 3, 243], testWord32(3, 5), word32Compare);
+verify<Word32>([25, 4_294_967_271, 30, 20, 125, 5, 0, 9765625], testWord32(25, 5), word32Compare);
 
 func testWord64(a : Word64, b : Word64) : [Word64] {
   let pos1 = + a;

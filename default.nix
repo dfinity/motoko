@@ -8,14 +8,7 @@ let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
-let sourceByRegex = src: regexes: builtins.path
-  { name = "actorscript";
-    path = src;
-    filter = path: type:
-      let relPath = nixpkgs.lib.removePrefix (toString src + "/") (toString path); in
-      let match = builtins.match (nixpkgs.lib.strings.concatStringsSep "|" regexes); in
-      ( type == "directory"  &&  match (relPath + "/") != null || match relPath != null);
-  }; in
+let subpath = p: import ./nix/gitSource.nix p; in
 
 let ocaml_wasm = import ./nix/ocaml-wasm.nix {
   inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
@@ -47,9 +40,9 @@ let real-dvm =
 
 let commonBuildInputs = [
   nixpkgs.ocaml
-  nixpkgs.ocamlPackages.menhir
+  nixpkgs.dune
   nixpkgs.ocamlPackages.findlib
-  nixpkgs.ocamlPackages.ocamlbuild
+  nixpkgs.ocamlPackages.menhir
   nixpkgs.ocamlPackages.num
   nixpkgs.ocamlPackages.stdint
   ocaml_wasm
@@ -58,46 +51,11 @@ let commonBuildInputs = [
   nixpkgs.ocamlPackages.yojson
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
+  nixpkgs.ocamlPackages.ocaml-migrate-parsetree
+  nixpkgs.ocamlPackages.ppx_tools_versioned
 ]; in
 
 let
-  test_files = [
-    "test/"
-    "test/.*Makefile.*"
-    "test/quick.mk"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/lib/"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/lib/dir/"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.as"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.sh"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/.*.didl"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.wat"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/[^/]*.c"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/ok/"
-    "test/(fail|run|run-dfinity|repl|ld|idl)/ok/.*.ok"
-    "test/.*.sh"
-  ];
-  samples_files = [
-    "samples/"
-    "samples/.*"
-  ];
-  stdlib_files = [
-    "stdlib/"
-    "stdlib/.*Makefile.*"
-    "stdlib/.*.as"
-    "stdlib/examples/"
-    "stdlib/examples/.*.as"
-    "stdlib/examples/produce-exchange/"
-    "stdlib/examples/produce-exchange/.*.as"
-    "stdlib/examples/produce-exchange/test/"
-    "stdlib/examples/produce-exchange/test/.*.as"
-  ];
-  stdlib_doc_files = [
-    "stdlib/.*\.py"
-    "stdlib/README.md"
-    "stdlib/examples/produce-exchange/README.md"
-  ];
-
   libtommath = nixpkgs.fetchFromGitHub {
     owner = "libtom";
     repo = "libtommath";
@@ -121,13 +79,7 @@ rec {
   rts = stdenv.mkDerivation {
     name = "asc-rts";
 
-    src = sourceByRegex ./rts [
-      "rts.c"
-      "Makefile"
-      "includes/"
-      "includes/.*.h"
-      ];
-
+    src = subpath ./rts;
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
 
     buildInputs = llvmBuildInputs;
@@ -146,26 +98,17 @@ rec {
   asc-bin = stdenv.mkDerivation {
     name = "asc-bin";
 
-    src = sourceByRegex ./src [
-      "Makefile.*"
-      ".*.ml"
-      ".*.mli"
-      ".*.mly"
-      ".*.mll"
-      ".*.mlpack"
-      "_tags"
-      ];
+    src = subpath ./src;
 
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make BUILD=native asc as-ld
+      make DUNE_OPTS="--display=short --profile release" asc as-ld
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp asc $out/bin
-      cp as-ld $out/bin
+      cp --verbose --dereference asc as-ld $out/bin
     '';
   };
 
@@ -181,15 +124,10 @@ rec {
 
   tests = stdenv.mkDerivation {
     name = "tests";
-
-    src = sourceByRegex ./. (
-      test_files ++
-      samples_files
-    );
-
+    src = subpath ./test;
     buildInputs =
       [ asc
-        idlc
+        didc
         ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
@@ -204,78 +142,44 @@ rec {
         ${llvmEnv}
         export ASC=asc
         export AS_LD=as-ld
-        export IDLC=idlc
+        export DIDC=didc
         asc --version
-        make -C samples all
       '' +
       (if test-dvm then ''
-        make -C test parallel
+        make parallel
       '' else ''
-        make -C test quick
+        make quick
       '');
 
     installPhase = ''
-      mkdir -p $out
+      touch $out
     '';
   };
 
-  asc-bin-coverage = asc-bin.overrideAttrs (oldAttrs: {
-    name = "asc-bin-coverage";
-    buildPhase =
-      "export BISECT_COVERAGE=YES;" +
-      oldAttrs.buildPhase;
-    installPhase =
-      oldAttrs.installPhase + ''
-      # The coverage report needs access to sources, including _build/parser.ml
-      cp -r . $out/src
-      '';
-  });
-
-  asc-coverage = nixpkgs.symlinkJoin {
-    name = "asc-covergage";
-    paths = [ asc-bin-coverage rts ];
-    buildInputs = [ nixpkgs.makeWrapper ];
-    postBuild = ''
-      wrapProgram $out/bin/asc \
-        --set-default ASC_RTS "$out/rts/as-rts.wasm"
-    '';
-  };
-
-  coverage-report = stdenv.mkDerivation {
-    name = "coverage-report";
-
-    src = sourceByRegex ./. (
-      test_files ++
-      samples_files
-    );
-
+  samples = stdenv.mkDerivation {
+    name = "samples";
+    src = subpath ./samples;
     buildInputs =
-      [ asc-coverage
+      [ asc
+        didc
+        ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
-        ocaml_bisect_ppx
+        filecheck
       ] ++
       (if test-dvm then [ real-dvm ] else []) ++
       llvmBuildInputs;
 
     buildPhase = ''
-      patchShebangs .
-      ${llvmEnv}
-      export ASC=asc
-      export AS_LD=as-ld
-      ln -vs ${asc-coverage}/src src
-      make -C test coverage
+        patchShebangs .
+        export ASC=asc
+        make all
       '';
-
     installPhase = ''
-      mkdir -p $out
-      mv test/coverage/ $out/
-      mkdir -p $out/nix-support
-      echo "report coverage $out/coverage index.html" >> $out/nix-support/hydra-build-products
+      touch $out
     '';
   };
-
 
   js = asc-bin.overrideAttrs (oldAttrs: {
     name = "asc.js";
@@ -305,28 +209,16 @@ rec {
 
   });
 
-  idlc = stdenv.mkDerivation {
-    name = "idlc";
-
-    src = sourceByRegex ./idl [
-      "Makefile.*"
-      ".*.ml"
-      ".*.mli"
-      ".*.mly"
-      ".*.mll"
-      ".*.mlpack"
-      "_tags"
-      ];
-
+  didc = stdenv.mkDerivation {
+    name = "didc";
+    src = subpath ./src;
     buildInputs = commonBuildInputs;
-
     buildPhase = ''
-      make BUILD=native idlc
+      make DUNE_OPTS="--display=short --profile release" didc
     '';
-
     installPhase = ''
       mkdir -p $out/bin
-      cp idlc $out/bin
+      cp --verbose --dereference didc $out/bin
     '';
   };
 
@@ -339,17 +231,7 @@ rec {
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";
-
-    src = sourceByRegex ./. [
-      "design/"
-      "design/guide.md"
-      "guide/"
-      "guide/Makefile"
-      "guide/.*css"
-      "guide/.*md"
-      "guide/.*png"
-      ];
-
+    src = subpath ./guide;
     buildInputs =
       with nixpkgs;
       let tex = texlive.combine {
@@ -363,13 +245,13 @@ rec {
 
     buildPhase = ''
       patchShebangs .
-      make -C guide
+      make
     '';
 
     installPhase = ''
       mkdir -p $out
-      mv guide $out/
-      rm $out/guide/Makefile
+      mv * $out/
+      rm $out/Makefile
       mkdir -p $out/nix-support
       echo "report guide $out/guide index.html" >> $out/nix-support/hydra-build-products
     '';
@@ -378,50 +260,39 @@ rec {
 
   stdlib-reference = stdenv.mkDerivation {
     name = "stdlib-reference";
-
-    src = sourceByRegex ./. (
-      stdlib_files ++
-      stdlib_doc_files
-    ) + "/stdlib";
-
+    src = subpath ./stdlib;
     buildInputs = with nixpkgs;
       [ pandoc bash python ];
-
     buildPhase = ''
       patchShebangs .
       make alldoc
     '';
-
     installPhase = ''
       mkdir -p $out
       mv doc $out/
       mkdir -p $out/nix-support
       echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
     '';
-
     forceShare = ["man"];
   };
 
   produce-exchange = stdenv.mkDerivation {
     name = "produce-exchange";
-    src = sourceByRegex ./. (
-      stdlib_files
-    );
-
+    src = subpath ./stdlib;
     buildInputs = [
       asc
     ];
 
     doCheck = true;
     buildPhase = ''
-      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange.wasm
+      make ASC=asc OUTDIR=_out _out/ProduceExchange.wasm
     '';
     checkPhase = ''
-      make -C stdlib ASC=asc OUTDIR=_out _out/ProduceExchange.out
+      make ASC=asc OUTDIR=_out _out/ProduceExchange.out
     '';
     installPhase = ''
       mkdir -p $out
-      cp stdlib/_out/ProduceExchange.wasm $out
+      cp _out/ProduceExchange.wasm $out
     '';
   };
 
@@ -430,9 +301,9 @@ rec {
     constituents = [
       asc
       js
-      idlc
+      didc
       tests
-      coverage-report
+      samples
       rts
       stdlib-reference
       produce-exchange
@@ -441,20 +312,18 @@ rec {
   };
 
   shell = if export-shell then nixpkgs.mkShell {
-
     #
-    # Since building asc, and testing it, are two different derivation in default.nix
-    # we have to create a fake derivation for shell.nix that commons up the build dependencies
-    # of the two to provide a build environment that offers both
-    #
-    # Would not be necessary if nix-shell would take more than one `-A` flag, see
-    # https://github.com/NixOS/nix/issues/955
+    # Since building asc, and testing it, are two different derivations in we
+    # have to create a fake derivation for `nix-shell` that commons up the
+    # build dependencies of the two to provide a build environment that offers
+    # both.
     #
 
-    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != idlc) (
+    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != didc) (
       asc-bin.buildInputs ++
+      js.buildInputs ++
       rts.buildInputs ++
-      idlc.buildInputs ++
+      didc.buildInputs ++
       tests.buildInputs ++
       users-guide.buildInputs ++
       [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]

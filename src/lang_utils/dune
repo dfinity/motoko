@@ -1,0 +1,5 @@
+(library
+  (name lang_utils)
+  (libraries lib)
+  (wrapped false)
+)

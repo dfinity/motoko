@@ -40,30 +40,34 @@ General argument format (without references)
 
 Arguments with a type that does not mention any reference types (no actors, no
 shared functions), are represented as a `databuf`. This `databuf` is generated
-by an in-order traversal of the data type.  All numbers are fixed-width and in
-little endian format.
+by an in-order traversal of the data type. All numbers are in little endian
+format.
 
- * A `Nat`, `Int` or `Word64` is represented by 8 bytes.
+ * A `Nat` is represented by its shortest [LEB128 encoding]
+ * An `Int` is represented by its shortest [SLEB128 encoding]
+ * A `Word64` is represented by 8 bytes.
  * A `Word32` is represented by 4 bytes.
  * A `Word16` is represented by 2 bytes.
  * A `Word8` is represented by 1 byte.
  * A `Bool` is represented by 1 byte that is `0` for `false` and `1` for `true`.
- * A `Text` is represented by 4 bytes indicating the length of the following
-   payload, followed by the payload as a utf8-encoded string (no trailing `\0`).
- * An `Array` is represented by 4 bytes indicating the number of entries,
-   followed by the concatenation of the representation of these entries.
+ * A `Text` is represented by a LEB128-encoded number indicating the length of
+   the following payload, followed by the payload as a utf8-encoded string (no
+   trailing `\0`).
+ * An `Array` is represented by a LEB128-encoded number indicating the number
+   of entries, followed by the concatenation of the representation of these
+   entries.
  * A `Tuple` is represented by the concatenation of the representation of its
    entries. (No need for a length field, as it can be statically determined.)
  * An `Object` is represented by the concatenation of the representation of its
-   fields, sorted by field name. (The field names are not serialized, as they
-   are statically known.)
+   fields, sorted by IDL hash of the field name.
+   (The field names are not serialized, as they are statically known.)
  * An `Option` is represented by a single byte `0` if it is `null`, or
    otherwise by a single byte `1` followed by the representation of the value
  * An empty tuple, the type `Null` and the type `Shared` are represented by
    zero bytes.
- * A `Variant` with `n` constructors sorted by constructor name is represented
-   by a single 32-bit word indicating the constructor as a number `0..n-1`, followed
-   by the payload of the constructor. (Yes, obviously no subtyping here.)
+ * A `Variant` with `n` constructors sorted by IDL hash of the constructor name
+   is represented by a LEB128-encoded number the constructor as a number
+   `0..n-1`, followed by the payload of the constructor.
 
 *Example:* The ActorScript value
 ```
@@ -73,6 +77,8 @@ is represented as
 ```
 00 01 04 00 00 00 00 00 00 00 01 21
 ```
+
+[LEB128 encoding](https://en.wikipedia.org/wiki/LEB128)
 
 General argument format (with references)
 -----------------------------------------
@@ -86,11 +92,9 @@ are represented as an `elembuf`:
 
 The above format is thus extended with the following case:
 
- * A reference (`actor`, `shared func`) is represented as a 32-bit number (4
-   bytes). Thus number is an index into the surrounding `elembuf`.
+ * A reference (`actor`, `shared func`) is represented as zero bytes in the data
+   buffer, and writing the reference into the next position in `elembuf`.
 
-   NB: The index is never never `0`, as the first entry in the `elembuf` is the
-   `databuf` with the actual data.
 
 *Example:* The ActorScript value
 ```
@@ -98,5 +102,5 @@ The above format is thus extended with the following case:
 ```
 is represented as
 ```
-elembuf [databuf [00 01 01 00 00 00], console]
+elembuf [databuf [00 01], console]
 ```
