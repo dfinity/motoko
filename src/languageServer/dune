@@ -1,0 +1,4 @@
+(library
+  (name languageServer)
+  (libraries base lang_utils lsp pipeline)
+)

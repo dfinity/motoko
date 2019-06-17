@@ -1,0 +1,4 @@
+(library
+  (name profiler)
+  (libraries lib lang_utils flags as_values)
+)

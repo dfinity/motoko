@@ -1,0 +1,4 @@
+(library
+  (name as_types)
+  (libraries wasm lib lang_utils)
+)

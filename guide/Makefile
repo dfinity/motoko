@@ -2,7 +2,7 @@ all: index.html actorscript-guide.pdf as-slides.html
 
 SHELL=bash
 
-index.html: ../design/guide.md pandoc.css  inline-code.css
+index.html: guide.md pandoc.css  inline-code.css
 	pandoc \
 	  --toc \
 	  --toc-depth 2 \
@@ -36,7 +36,7 @@ TEX_OPTIONS=\
   --include-in-header=<(echo '\newunicodechar{█}{\textrm{\textfallback{█}}}') \
   --include-in-header=<(echo '\newunicodechar{ツ}{\textrm{\textfallback{ツ}}}') \
 
-actorscript-guide.pdf: ../design/guide.md
+actorscript-guide.pdf: guide.md
 	if [ -n "$$NIX_FONTCONFIG_FILE" ]; then export FONTCONFIG_FILE="$$NIX_FONTCONFIG_FILE"; fi; \
 	pandoc \
 	  --toc \
