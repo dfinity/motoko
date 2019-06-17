@@ -87,6 +87,14 @@ for the real deal; some shortcuts had to be taken.
 
    Kitchen-sink of `didc` related files. Yet to be split up.
 
+ * `lsp/`
+
+   Language Server Protocol JSON mapping.
+
+ * `languageServer/`
+
+   The language server functionality itself.
+
 Executables
 -----------
 
@@ -97,6 +105,10 @@ actual functionality is easily shared.
  * `asc` (using `pipeline/`)
 
    The ActorScript compiler
+
+ * `as-ide` (using `languageServer/`)
+
+   The ActorScript language server
 
  * `as.js` (using `pipeline/`)
 

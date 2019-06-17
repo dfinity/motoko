@@ -4,6 +4,11 @@
  (libraries pipeline)
 )
 (executable
+ (name as_ide)
+ (modules as_ide)
+ (libraries languageServer)
+)
+(executable
  (name as_ld)
  (modules as_ld)
  (libraries wasm_exts linking)
