@@ -4425,8 +4425,7 @@ let compile_unop env t op =
       Func.share_code1 env "neg_trap" ("n", I64Type) [I64Type] (fun env get_n ->
         get_n ^^
         compile_const_64 0x8000000000000000L ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-        G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+        G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
         E.then_trap_with env "arithmetic overflow" ^^
         compile_const_64 0L ^^
         get_n ^^
@@ -4441,11 +4440,10 @@ let compile_unop env t op =
       )
   | NegOp, Type.(Prim (Int8 | Int16 | Int32)) ->
       StackRep.of_type t,
-      Func.share_code1 env "neg32trap" ("n", I32Type) [I32Type] (fun env get_n ->
+      Func.share_code1 env "neg32_trap" ("n", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
-        compile_unboxed_const 0x80000000l ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-        E.else_trap_with env "arithmetic overflow" ^^
+        compile_eq_const 0x80000000l ^^
+        E.then_trap_with env "arithmetic overflow" ^^
         compile_unboxed_zero ^^
         get_n ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub))
