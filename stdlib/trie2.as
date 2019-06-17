@@ -998,7 +998,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
       let c = buildCount<K,V>(tb);
       let a = Array_init<?W>(c, null);
       var i = 0;
-      func rec(tb:TrieBuild<K,V>) {
+      func rec(tb:TrieBuild<K,V>) = label profile_triebuild_toArray2_rec {
         switch tb {
           case (#skip) ();
           case (#insert(k,_,v)) { a[i] := ?f(k,v); i := i + 1 };
