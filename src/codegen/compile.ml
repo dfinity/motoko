@@ -1284,12 +1284,12 @@ module UnboxedSmallWord = struct
      there are certain differences that are type based. This module provides helpers to abstract
      over those. *)
 
-  let shift_of_type = function
-    | Type.(Int8|Nat8|Word8) -> 24l
-    | Type.(Int16|Nat16|Word16) -> 16l
-    | _ -> 0l
+  let bits_of_type = function
+    | Type.(Int8|Nat8|Word8) -> 8
+    | Type.(Int16|Nat16|Word16) -> 16
+    | _ -> 32
 
-  let bits_of_typ ty = Int32.(to_int (sub 32l (shift_of_type ty)))
+  let shift_of_type ty = Int32.of_int (32 - (bits_of_type ty))
 
   let bitwidth_mask_of_type = function
     | Type.Word8 -> 0b111l
@@ -4369,7 +4369,7 @@ end (* AllocHow *)
 let nat64_to_int64 n =
   let open Big_int in
   let twoRaised63 = power_int_positive_int 2 63 in
-  let q, r = quomod_big_int n twoRaised63 in
+  let q, r = quomod_big_int (Value.Nat64.to_big_int n) twoRaised63 in
   if sign_big_int q = 0 then r else sub_big_int r twoRaised63
 
 let compile_lit env lit =
@@ -4384,14 +4384,14 @@ let compile_lit env lit =
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
     | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
     | Word64Lit n   -> SR.UnboxedWord64, compile_const_64 n
-    | Int8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_8.to_int n)) 24) (* FIXME:Sign? *)
-    | Nat8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat8.to_int n)) 24)
-    | Int16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_16.to_int n)) 16) (* FIXME:Sign? *)
-    | Nat16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat16.to_int n)) 16)
+    | Int8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_8.to_int n)) (shift_of_type Type.Int8)) (* FIXME:Sign? *)
+    | Nat8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat8.to_int n)) (shift_of_type Type.Nat8))
+    | Int16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_16.to_int n)) (shift_of_type Type.Int16)) (* FIXME:Sign? *)
+    | Nat16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat16.to_int n)) (shift_of_type Type.Nat16))
     | Int32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Int_32.to_int n))
     | Nat32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Nat32.to_int n)) (* FIXME:Sign? *)
     | Int64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
-    | Nat64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (nat64_to_int64 (Value.Nat64.to_big_int n)))
+    | Nat64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (nat64_to_int64 n))
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
     | TextLit t     -> SR.Vanilla, Text.lit env t
@@ -4757,7 +4757,7 @@ and compile_exp (env : E.t) ae exp =
          compile_exp_vanilla env ae e ^^
          Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Int->") ("n", I32Type) [I32Type] (fun env get_n ->
            get_n ^^
-           BigNum.fits_signed_bits env (UnboxedSmallWord.bits_of_typ pty) ^^
+           BigNum.fits_signed_bits env (UnboxedSmallWord.bits_of_type pty) ^^
            E.else_trap_with env "losing precision" ^^
            get_n ^^
            BigNum.truncate_to_word32 env ^^
@@ -4782,7 +4782,7 @@ and compile_exp (env : E.t) ae exp =
          compile_exp_vanilla env ae e ^^
          Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Nat->") ("n", I32Type) [I32Type] (fun env get_n ->
            get_n ^^
-           BigNum.fits_unsigned_bits env (UnboxedSmallWord.bits_of_typ pty) ^^
+           BigNum.fits_unsigned_bits env (UnboxedSmallWord.bits_of_type pty) ^^
            E.else_trap_with env "losing precision" ^^
            get_n ^^
            BigNum.truncate_to_word32 env ^^
