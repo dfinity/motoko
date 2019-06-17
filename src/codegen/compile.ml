@@ -1318,7 +1318,8 @@ module UnboxedSmallWord = struct
   (* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
   let lsb_adjust = function
     | Type.(Int32|Nat32|Word32) -> G.nop
-    | ty -> compile_shrU_const (shift_of_type ty)
+    | Type.(Int8|Nat8|Word8|Int16|Nat16|Word16) as ty -> compile_shrU_const (shift_of_type ty)
+    | _ -> assert false
 
   (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
   let msb_adjust = function
@@ -3598,14 +3599,15 @@ module StackRep = struct
     if n = 1 then UnboxedReference else UnboxedRefTuple n
 
   (* The stack rel of a primitive type, i.e. what the binary operators expect *)
-  let rec of_type : Type.typ -> t = let open Type in function
+  let of_type t =
+    let open Type in
+    match normalize t with
     | Prim Bool -> SR.bool
     | Prim (Nat | Int) -> Vanilla
     | Prim (Nat64 | Int64 | Word64) -> UnboxedWord64
     | Prim (Nat32 | Int32 | Word32) -> UnboxedWord32
     | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
     | Prim Text -> Vanilla
-    | Con _ as t -> of_type (normalize t)
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
@@ -4402,10 +4404,9 @@ let compile_lit_as env sr_out lit =
   let sr_in, code = compile_lit env lit in
   code ^^ StackRep.adjust env sr_in sr_out
 
-let rec typ_of_prim_typ = function
+let prim_of_typ ty = match Type.normalize ty with
   | Type.Prim ty -> ty
-  | Type.Con _ as ty -> typ_of_prim_typ (Type.normalize ty)
-  | t -> assert false
+  | _ -> assert false
 
 let compile_unop env t op =
   let open Operator in
@@ -4752,7 +4753,7 @@ and compile_exp (env : E.t) ae exp =
        | "Int->Int8" ->
          let ty = exp.note.note_typ in
          StackRep.of_type ty,
-         let pty = typ_of_prim_typ ty in
+         let pty = prim_of_typ ty in
          compile_exp_vanilla env ae e ^^
          Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Int->") ("n", I32Type) [I32Type] (fun env get_n ->
            get_n ^^
@@ -4777,7 +4778,7 @@ and compile_exp (env : E.t) ae exp =
        | "Nat->Nat8" ->
          let ty = exp.note.note_typ in
          StackRep.of_type ty,
-         let pty = typ_of_prim_typ ty in
+         let pty = prim_of_typ ty in
          compile_exp_vanilla env ae e ^^
          Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Nat->") ("n", I32Type) [I32Type] (fun env get_n ->
            get_n ^^
