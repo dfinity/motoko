@@ -3,7 +3,7 @@ open Source
 open Arrange_idl
 
 (* Environments *)
-module FieldEnv = Env.Make(struct type t = Stdint.uint64 let compare = Stdint.Uint64.compare end)   
+module FieldEnv = Env.Make(Int32)
 module Env = Env.Make(String)
 module TS = Set.Make(String)           
            

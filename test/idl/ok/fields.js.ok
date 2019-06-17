@@ -1,8 +1,8 @@
 const A = IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat})
 const B =
  IDL.Obj({'0': IDL.Arr(IDL.Nat8), '35': IDL.Arr(IDL.Nat8), '36': IDL.Nat,
-  '37': IDL.Nat, 'named_files': IDL.None, '653352244': IDL.Nat,
-  '653352245': IDL.Nat})
+  '37': IDL.Nat, 'named_files': IDL.None, '-665008590': IDL.Nat,
+  '-665008589': IDL.Nat})
 const C =
  IDL.Variant({'red': IDL.Unit, '4': IDL.Unit, '3': IDL.Unit, '2': IDL.Unit,
   '1': IDL.Unit, 'reserved': IDL.Unit, '10': IDL.Unit, 'green': IDL.Unit,
