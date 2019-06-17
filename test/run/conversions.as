@@ -136,8 +136,8 @@ println(word32ToInt 4294967295); // == (-1) // 2**32 - 1
     func roundtrip(w : Word32) = assert (intToWord32 (word32ToInt w) == w);
     forall<Word32>(roundtrip, [0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0x7FFFFFFF, 0xFFFFFFFF]);
 
-    /*!*/
-    forall<Word32>(roundtrip, [(-10), (-100), (-1000), (-10000), (-100000), (-1000000), (-10000000), (-100000000), (-1000000000)]);
+    /* non-canonical range for Word32 */
+    forall<Word32>(roundtrip, [-10, -100, -1000, -10000, -100000, -1000000, -10000000, -100000000, -1000000000]);
 };
 
 
