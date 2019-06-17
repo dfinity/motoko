@@ -48,6 +48,7 @@ class OrdList<W <: Ord<T>, T>(w : W) = this {
 };
 
 
+
 assert(equal<Ord<Int>,Int>(ordInt, 0, 0));
 
 assert(not (equal<Ord<Int>,Int>(ordInt, -1, 0)));
