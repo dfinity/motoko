@@ -1706,7 +1706,7 @@ module BigNumLibtommmath : BigNumType = struct
 
   let fits_signed_bits env bits =
     G.i (Call (nr (E.built_in env ("rts_bigint_2complement_bits")))) ^^
-    compile_unboxed_const (Int32.of_int (bits - 1)) ^^
+    compile_unboxed_const (Int32.of_int bits) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU))
   let fits_unsigned_bits env bits =
     G.i (Call (nr (E.built_in env ("rts_bigint_count_bits")))) ^^
