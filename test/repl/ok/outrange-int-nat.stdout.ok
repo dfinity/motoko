@@ -23,15 +23,7 @@ ActorScript 0.1 interpreter
 > prelude:92.36-92.72: execution error, numeric overflow
 >   18_446_744_073_709_551_615 : Nat64
 > prelude:88.36-88.72: execution error, numeric overflow
->         stdin:37.1-37.14: execution error, value out of bounds
-> stdin:38.1-38.17: execution error, value out of bounds
-> stdin:39.1-39.22: execution error, value out of bounds
-> stdin:40.1-40.32: execution error, value out of bounds
->       -127 : Int8
-> -32_767 : Int16
-> -2_147_483_647 : Int32
-> -9_223_372_036_854_775_807 : Int64
->   -127 : Int8
+>     -127 : Int8
 > -127 : Int8
 > -32_767 : Int16
 > -32_767 : Int16
