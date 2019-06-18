@@ -48,7 +48,15 @@ let value_of_lit = function
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
   | NatLit n -> V.Int n
+  | Nat8Lit w -> V.Nat8 w
+  | Nat16Lit w -> V.Nat16 w
+  | Nat32Lit w -> V.Nat32 w
+  | Nat64Lit w -> V.Nat64 w
   | IntLit i -> V.Int i
+  | Int8Lit w -> V.Int8 w
+  | Int16Lit w -> V.Int16 w
+  | Int32Lit w -> V.Int32 w
+  | Int64Lit w -> V.Int64 w
   | Word8Lit w -> V.Word8 w
   | Word16Lit w -> V.Word16 w
   | Word32Lit w -> V.Word32 w
