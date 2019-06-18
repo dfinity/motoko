@@ -60,7 +60,3 @@ and actor' =
 type prog = (prog', string) Source.annotated_phrase
 and prog' = { decs : dec list; actor : actor option }
 
-(* Libraries *)
-          
-type library = string * prog
-type libraries = library list                          

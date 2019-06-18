@@ -73,7 +73,7 @@ let check_prog senv prog
 
 type load_result = (Syntax.prog * Typing.scope) Diag.result
 
-let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result =
+let chase_imports senv0 imports : Typing.scope Diag.result =
   let open Resolve_import.S in
   let pending = ref empty in
   let senv = ref senv0 in
@@ -99,12 +99,12 @@ let chase_imports senv0 imports : (Syntax.libraries * Typing.scope) Diag.result 
           ))))
       end
   and go_set todo = Diag.traverse_ go (elements todo)
-  in Diag.map (fun () -> (List.rev !libraries, !senv)) (go_set imports)
+  in Diag.map (fun () -> !senv) (go_set imports)
 
 let load_prog parse senv : load_result =
   Diag.bind parse (fun parsed ->
       Diag.bind (resolve_prog parsed) (fun (prog, libraries) ->
-          Diag.bind (chase_imports senv libraries) (fun (libraries, senv') ->
+          Diag.bind (chase_imports senv libraries) (fun senv' ->
               Diag.bind (check_prog senv' prog) (fun senv'' ->
                   Diag.return (prog, senv'')
     ))))
