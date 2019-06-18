@@ -1404,6 +1404,9 @@ module UnboxedSmallWord = struct
              set_res ^^
              compile_unboxed_const 4l)))
 
+  let lit env ty v =
+    compile_unboxed_const Int32.(shift_left (of_int v) (to_int (shift_of_type ty)))
+
 end (* UnboxedSmallWord *)
 
 type comparator = Lt | Le | Ge | Gt
@@ -4378,10 +4381,10 @@ let compile_lit env lit =
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
     | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
     | Word64Lit n   -> SR.UnboxedWord64, compile_const_64 n
-    | Int8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_8.to_int n)) (Int32.to_int (UnboxedSmallWord.shift_of_type Type.Int8)))
-    | Nat8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat8.to_int n)) (Int32.to_int (UnboxedSmallWord.shift_of_type Type.Nat8)))
-    | Int16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_16.to_int n)) (Int32.to_int (UnboxedSmallWord.shift_of_type Type.Int16)))
-    | Nat16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat16.to_int n)) (Int32.to_int (UnboxedSmallWord.shift_of_type Type.Nat16)))
+    | Int8Lit n     -> SR.Vanilla, UnboxedSmallWord.lit env Type.Int8 (Value.Int_8.to_int n)
+    | Nat8Lit n     -> SR.Vanilla, UnboxedSmallWord.lit env Type.Nat8 (Value.Nat8.to_int n)
+    | Int16Lit n    -> SR.Vanilla, UnboxedSmallWord.lit env Type.Int16 (Value.Int_16.to_int n)
+    | Nat16Lit n    -> SR.Vanilla, UnboxedSmallWord.lit env Type.Nat16 (Value.Nat16.to_int n)
     | Int32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Int_32.to_int n))
     | Nat32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Nat32.to_int n))
     | Int64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
