@@ -1,0 +1,7 @@
+import "px.did";
+import "recursion.did";
+
+service S {
+  f: (tree) -> (list, IdErr);
+  getInventory: (producer_id: nat) -> (Inventory) pure;
+}

@@ -122,4 +122,5 @@ type compile_result = Buffer.t Diag.result
 let compile_js_file file : compile_result =
   Diag.bind (load_prog (parse_file file) initial_stat_env)
     (fun (prog, senv) ->
+      phase "JS Compiling" file;
       Diag.return (Compile_js.compile senv prog))
