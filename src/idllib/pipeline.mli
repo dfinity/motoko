@@ -1,13 +1,13 @@
-type stat_env = Typing_idl.scope
+type stat_env = Typing.scope
 type env = stat_env
 
 val initial_stat_env : stat_env
 val initial_env      : env
 
-type parse_result = Syntax_idl.prog Diag.result
+type parse_result = Syntax.prog Diag.result
 val parse_file   : string -> parse_result
 
-type check_result = (Syntax_idl.prog * Typing_idl.scope) Diag.result
+type check_result = (Syntax.prog * Typing.scope) Diag.result
 val check_file   : string -> check_result
 
 type compile_js_result = (Buffer.t, Diag.messages) result

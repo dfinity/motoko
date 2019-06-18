@@ -1,6 +1,6 @@
 (library
   (name idllib)
-  (libraries wasm stdint)
+  (libraries wasm lang_utils)
 )
 
 (menhir
