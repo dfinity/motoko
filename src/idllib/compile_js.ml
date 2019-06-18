@@ -87,6 +87,7 @@ let pp_dec ppf env dec =
       kwd ppf x.it;
       kwd ppf "=";
       pp_typ ppf env t
+   | ImportD _ -> ()
   );
   pp_close_box ppf ();
   pp_print_cut ppf ()

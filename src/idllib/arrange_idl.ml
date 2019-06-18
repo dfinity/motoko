@@ -55,7 +55,9 @@ and typ t = match t.it with
                         
 and dec d = match d.it with
   | TypD (x, t) ->
-    "TypD" $$ [id x] @ [typ t]
+     "TypD" $$ [id x] @ [typ t]
+  | ImportD (f, fp) ->
+     "ImportD" $$ [Atom (if !fp = "" then f else !fp)]
 
 and actor a = match a with
   | None -> Atom "NoActor"

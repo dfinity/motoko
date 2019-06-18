@@ -48,14 +48,14 @@ let record_fields fs =
 
 %token LPAR RPAR LCURLY RCURLY
 %token ARROW
-%token FUNC TYPE SERVICE
+%token FUNC TYPE SERVICE IMPORT
 %token SEMICOLON COMMA COLON EQ
 %token OPT VEC RECORD VARIANT BLOB
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
 
-%start<Syntax.prog> parse_prog
+%start<string -> Syntax.prog> parse_prog
 
 %%
 
@@ -155,6 +155,8 @@ actor_typ :
 def :
   | TYPE x=id EQ t=data_typ
     { TypD(x, t) @@ at $sloc }
+  | IMPORT file=TEXT
+    { ImportD (file, ref "") @@ at $sloc }
 
 actor :
   | (* empty *) { None }
@@ -166,6 +168,7 @@ actor :
 (* Programs *)
 
 parse_prog :
-  | ds=seplist(def, SEMICOLON) actor=actor EOF { {decs=ds; actor=actor} @@ at $sloc }
+  | ds=seplist(def, SEMICOLON) actor=actor EOF
+    { fun filename -> { it = {decs=ds; actor=actor}; at = at $sloc; note = filename} }
 
 %%
