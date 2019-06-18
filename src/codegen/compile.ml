@@ -1149,7 +1149,7 @@ end (* Closure *)
 
 
 module BoxedWord = struct
-  (* We store large nats and ints in immutable boxed 64bit heap objects.
+  (* We store large word64s, nat64s and int64s in immutable boxed 64bit heap objects.
 
      Small values (just <2^5 for now, so that both code paths are well-tested)
      are stored unboxed, tagged, see BitTagged.
@@ -1160,11 +1160,6 @@ module BoxedWord = struct
        │ tag │    i64    │
        └─────┴─────┴─────┘
 
-     Note, that due to the equivalence of in-memory and on-stack
-     representations, the 64-bit word type is also represented in this
-     way. As we get proper bigints, the memory representations should
-     be disambiguated and stack representations adapted. (Renaming
-     those will point out where the backend needs adjustments.)
   *)
 
   let payload_field = Tagged.header_size
@@ -1289,7 +1284,7 @@ module UnboxedSmallWord = struct
     | Type.(Int16|Nat16|Word16) -> 16
     | _ -> 32
 
-  let shift_of_type ty = Int32.of_int (32 - (bits_of_type ty))
+  let shift_of_type ty = Int32.of_int (32 - bits_of_type ty)
 
   let bitwidth_mask_of_type = function
     | Type.Word8 -> 0b111l
@@ -4377,7 +4372,7 @@ let compile_lit env lit =
     (* Booleans are directly in Vanilla representation *)
     | BoolLit false -> SR.bool, Bool.lit false
     | BoolLit true ->  SR.bool, Bool.lit true
-    (* This maps int to int32, instead of a proper arbitrary precision library *)
+    (* This maps int to a proper arbitrary precision library *)
     | IntLit n
     | NatLit n      -> SR.Vanilla, BigNum.compile_lit env n
     | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
@@ -4561,7 +4556,7 @@ let rec compile_binop env t op =
   | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
   )
 
-let compile_eq env t = match t with
+let compile_eq env = function
   | Type.(Prim Text) -> Text.compare env
   | Type.(Prim Bool) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
@@ -5133,8 +5128,7 @@ and compile_lit_pat env l =
   | BoolLit true ->
     G.nop
   | BoolLit false ->
-    Bool.lit false ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz))
   | (NatLit _ | IntLit _) ->
     compile_lit_as env SR.Vanilla l ^^
     BigNum.compile_eq env
