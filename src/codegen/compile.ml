@@ -4379,10 +4379,10 @@ let compile_lit env lit =
     | Word16Lit n   -> SR.Vanilla, compile_unboxed_const (Value.Word16.to_bits n)
     | Word32Lit n   -> SR.UnboxedWord32, compile_unboxed_const n
     | Word64Lit n   -> SR.UnboxedWord64, compile_const_64 n
-    | Int8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_8.to_int n)) (shift_of_type Type.Int8)) (* FIXME:Sign? *)
-    | Nat8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat8.to_int n)) (shift_of_type Type.Nat8))
-    | Int16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_16.to_int n)) (shift_of_type Type.Int16)) (* FIXME:Sign? *)
-    | Nat16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat16.to_int n)) (shift_of_type Type.Nat16))
+    | Int8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_8.to_int n)) (Int32.to_int (UnboxedSmallWord.shift_of_type Type.Int8))) (* FIXME:Sign? *)
+    | Nat8Lit n     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat8.to_int n)) (Int32.to_int (UnboxedSmallWord.shift_of_type Type.Nat8)))
+    | Int16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Int_16.to_int n)) (Int32.to_int (UnboxedSmallWord.shift_of_type Type.Int16))) (* FIXME:Sign? *)
+    | Nat16Lit n    -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int (Value.Nat16.to_int n)) (Int32.to_int (UnboxedSmallWord.shift_of_type Type.Nat16)))
     | Int32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Int_32.to_int n))
     | Nat32Lit n    -> SR.UnboxedWord32, compile_unboxed_const (Int32.of_int (Value.Nat32.to_int n)) (* FIXME:Sign? *)
     | Int64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (Value.Int_64.to_big_int n))
