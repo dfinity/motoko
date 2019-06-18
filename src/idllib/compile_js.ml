@@ -80,17 +80,16 @@ and pp_meth ppf env meth =
   pp_close_box ppf ()
   
 let pp_dec ppf env dec =
-  pp_open_hovbox ppf 1;
-  kwd ppf "const";
-  (match dec.it with
-   | TypD (x, t) ->
-      kwd ppf x.it;
-      kwd ppf "=";
-      pp_typ ppf env t
-   | ImportD _ -> ()
-  );
-  pp_close_box ppf ();
-  pp_print_cut ppf ()
+  match dec.it with
+  | TypD (x, t) ->
+     pp_open_hovbox ppf 1;
+     kwd ppf "const";      
+     kwd ppf x.it;
+     kwd ppf "=";
+     pp_typ ppf env t;
+     pp_close_box ppf ();
+     pp_print_cut ppf ()
+  | ImportD _ -> ()
 
 let pp_actor ppf env actor_opt =
   pp_open_hovbox ppf 1;
