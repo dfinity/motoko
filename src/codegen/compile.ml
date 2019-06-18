@@ -1148,13 +1148,13 @@ module Closure = struct
 end (* Closure *)
 
 
-module BoxedWord = struct
+module BoxedWord64 = struct
   (* We store large word64s, nat64s and int64s in immutable boxed 64bit heap objects.
 
      Small values (just <2^5 for now, so that both code paths are well-tested)
      are stored unboxed, tagged, see BitTagged.
 
-     The heap layout of a BoxedWord is:
+     The heap layout of a BoxedWord64 is:
 
        ┌─────┬─────┬─────┐
        │ tag │    i64    │
@@ -1228,7 +1228,7 @@ module BoxedWord = struct
                  G.i (Binary (Wasm.Values.I64 I64Op.Mul)))))
     in pow ()
 
-end (* BoxedWord *)
+end (* BoxedWord64 *)
 
 
 module BoxedSmallWord = struct
@@ -1487,7 +1487,7 @@ end
 
 [@@@warning "-60"] (* Do not warn about unused module *)
 module BigNum64 : BigNumType = struct
-  include BoxedWord
+  include BoxedWord64
 
   (* examine the skewed pointer and determine if the unsigned number
      it points to fits into N bits *)
@@ -1522,16 +1522,16 @@ module BigNum64 : BigNumType = struct
     E.else_trap_with env "losing precision" ^^
     get_num ^^
     unbox env ^^
-    BoxedWord.to_word32 env
+    BoxedWord64.to_word32 env
 
-  let from_word32 env = BoxedWord.from_word32 env ^^ box env
-  let from_signed_word32 env = BoxedWord.from_signed_word32 env ^^ box env
+  let from_word32 env = BoxedWord64.from_word32 env ^^ box env
+  let from_signed_word32 env = BoxedWord64.from_signed_word32 env ^^ box env
   let from_signed_word64 env = G.i Unreachable (* FIXME *)
-  let to_word64 env = unbox env ^^ BoxedWord.to_word64 env
-  let from_word64 env = BoxedWord.from_word64 env ^^ box env
+  let to_word64 env = unbox env ^^ BoxedWord64.to_word64 env
+  let from_word64 env = BoxedWord64.from_word64 env ^^ box env
 
-  let truncate_to_word32 env = unbox env ^^ BoxedWord.to_word32 env
-  let truncate_to_word64 env = unbox env ^^ BoxedWord.to_word64 env
+  let truncate_to_word32 env = unbox env ^^ BoxedWord64.to_word32 env
+  let truncate_to_word64 env = unbox env ^^ BoxedWord64.to_word64 env
 
   let compile_lit env n = compile_const_64 (Big_int.int64_of_big_int n) ^^ box env
 
@@ -1577,8 +1577,8 @@ module BigNum64 : BigNumType = struct
   let compile_signed_mod = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.RemS)))
   let compile_unsigned_div = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.DivU)))
   let compile_unsigned_rem = with_both_unboxed (G.i (Binary (Wasm.Values.I64 I64Op.RemU)))
-  let compile_unsigned_sub env = with_both_unboxed (BoxedWord.compile_unsigned_sub env) env
-  let compile_unsigned_pow env = with_both_unboxed (BoxedWord.compile_unsigned_pow env) env
+  let compile_unsigned_sub env = with_both_unboxed (BoxedWord64.compile_unsigned_sub env) env
+  let compile_unsigned_pow env = with_both_unboxed (BoxedWord64.compile_unsigned_pow env) env
 
   let compile_neg env =
     Func.share_code1 env "neg<Int>" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -2970,7 +2970,7 @@ module Serialization = struct
         advance_data_buf
       | Prim (Int64|Nat64|Word64) ->
         get_data_buf ^^
-        get_x ^^ BoxedWord.unbox env ^^
+        get_x ^^ BoxedWord64.unbox env ^^
         G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 8l ^^ advance_data_buf
       | Prim (Int32|Nat32|Word32) ->
@@ -3101,7 +3101,7 @@ module Serialization = struct
       | Prim (Int64|Nat64|Word64) ->
         get_data_buf ^^
         G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
-        BoxedWord.box env ^^
+        BoxedWord64.box env ^^
         compile_unboxed_const 8l ^^ advance_data_buf (* 64 bit *)
       | Prim (Int32|Nat32|Word32) ->
         get_data_buf ^^
@@ -3717,8 +3717,8 @@ module StackRep = struct
       adjust env sr (UnboxedTuple n) ^^ unbox_reference_n env n
 
 
-    | UnboxedWord64, Vanilla -> BoxedWord.box env
-    | Vanilla, UnboxedWord64 -> BoxedWord.unbox env
+    | UnboxedWord64, Vanilla -> BoxedWord64.box env
+    | Vanilla, UnboxedWord64 -> BoxedWord64.unbox env
 
     | UnboxedWord32, Vanilla -> BoxedSmallWord.box env
     | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env
@@ -4372,7 +4372,6 @@ let compile_lit env lit =
     (* Booleans are directly in Vanilla representation *)
     | BoolLit false -> SR.bool, Bool.lit false
     | BoolLit true ->  SR.bool, Bool.lit true
-    (* This maps int to a proper arbitrary precision library *)
     | IntLit n
     | NatLit n      -> SR.Vanilla, BigNum.compile_lit env n
     | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
@@ -4512,7 +4511,7 @@ let rec compile_binop env t op =
      get_exp ^^ BigNum.compile_is_negative env ^^
      E.then_trap_with env "negative power" ^^
      get_n ^^ get_exp ^^ pow
-  | Type.(Prim Word64),                       PowOp -> BoxedWord.compile_unsigned_pow env
+  | Type.(Prim Word64),                       PowOp -> BoxedWord64.compile_unsigned_pow env
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
@@ -5143,7 +5142,7 @@ and compile_lit_pat env l =
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Nat32)
   | Nat64Lit _ ->
-    BoxedWord.unbox env ^^
+    BoxedWord64.unbox env ^^
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Nat64)
   | Int8Lit _ ->
@@ -5157,7 +5156,7 @@ and compile_lit_pat env l =
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Int32)
   | Int64Lit _ ->
-    BoxedWord.unbox env ^^
+    BoxedWord64.unbox env ^^
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Int64)
   | Word8Lit _ ->
@@ -5171,7 +5170,7 @@ and compile_lit_pat env l =
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Word32)
   | Word64Lit _ ->
-    BoxedWord.unbox env ^^
+    BoxedWord64.unbox env ^^
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Word64)
   | (TextLit t) ->
