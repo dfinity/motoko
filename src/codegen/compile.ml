@@ -5132,6 +5132,48 @@ and compile_lit_pat env l =
   | (NatLit _ | IntLit _) ->
     compile_lit_as env SR.Vanilla l ^^
     BigNum.compile_eq env
+  | Nat8Lit _ ->
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Nat8)
+  | Nat16Lit _ ->
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Nat16)
+  | Nat32Lit _ ->
+    BoxedSmallWord.unbox env ^^
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Nat32)
+  | Nat64Lit _ ->
+    BoxedWord.unbox env ^^
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Nat64)
+  | Int8Lit _ ->
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Int8)
+  | Int16Lit _ ->
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Int16)
+  | Int32Lit _ ->
+    BoxedSmallWord.unbox env ^^
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Int32)
+  | Int64Lit _ ->
+    BoxedWord.unbox env ^^
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Int64)
+  | Word8Lit _ ->
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Word8)
+  | Word16Lit _ ->
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Word16)
+  | Word32Lit _ ->
+    BoxedSmallWord.unbox env ^^
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Word32)
+  | Word64Lit _ ->
+    BoxedWord.unbox env ^^
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Word64)
   | (TextLit t) ->
     Text.lit env t ^^
     Text.compare env
