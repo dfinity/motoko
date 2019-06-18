@@ -384,6 +384,14 @@ let rec compare x1 x2 =
   if x1 == x2 then 0 else
   match x1, x2 with
   | Int n1, Int n2 -> Int.compare n1 n2
+  | Int8 n1, Int8 n2 -> Int_8.compare n1 n2
+  | Int16 n1, Int16 n2 -> Int_16.compare n1 n2
+  | Int32 n1, Int32 n2 -> Int_32.compare n1 n2
+  | Int64 n1, Int64 n2 -> Int_64.compare n1 n2
+  | Nat8 n1, Nat8 n2 -> Nat8.compare n1 n2
+  | Nat16 n1, Nat16 n2 -> Nat16.compare n1 n2
+  | Nat32 n1, Nat32 n2 -> Nat32.compare n1 n2
+  | Nat64 n1, Nat64 n2 -> Nat64.compare n1 n2
   | Opt v1, Opt v2 -> compare v1 v2
   | Tup vs1, Tup vs2 -> Lib.List.compare compare vs1 vs2
   | Array a1, Array a2 -> Lib.Array.compare compare a1 a2
