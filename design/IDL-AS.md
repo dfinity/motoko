@@ -31,7 +31,7 @@ We try to achieve the following goals (but do not achieve them completely)
 
 The following are not necessary true:
 
- * The type export mapping is not total: there are ActorScript type that cannot
+ * The type export mapping is not total: there are ActorScript types that cannot
    be exported, such as mutable arrays.
 
  * The type export mapping is not injective: there may be different
@@ -153,7 +153,7 @@ im(<name> : <functype>) = escape(<name>) : ifn(<functype>)
 
 escape : <name> -> <id>
 escape <name> = <name> "_"  if <name> is a reserved identifier in ActorScript
-escape <name> = <name> "_"  if <name> ends with "_" but does not start with "_"
+escape <name> = <name> "_"  if <name> ends with "_"
 escape <name> = <name>  if <name> is a valid ActorScript <id> not ending in "_"
 escape <name> = "_" hash(<name>) "_"  otherwise
 ```
@@ -162,7 +162,7 @@ escape <name> = "_" hash(<name>) "_"  otherwise
 
  * Up-to short-hands, `i` is injective and the right-inverse of `e`.
 
-   Formally: For all IDL types `t`, we have that `e(i(t))` is equivalent to
+   Formally: For all IDL types `t ∈ dom i`, we have that `e(i(t))` is equivalent to
    `t`, i.e. either they are the same types, or short-hands of each other.
 
  * Tuples are exported using the unnamed field short-hand, which is how tuples
@@ -212,7 +212,7 @@ escape <name> = "_" hash(<name>) "_"  otherwise
    ```
    ∀ t1 t2 : dom(e), t1 <: t2 ⟹ e(t1) <: e(t2)
    ```
-   On other words: ActorScript subtyping must be contained in IDL subtyping.
+   In other words: ActorScript subtyping must be contained in IDL subtyping.
 
  * There is no way to produce `float32` or functions with a `pure` annotation.
    Importing interfaces that contain these types fails.
