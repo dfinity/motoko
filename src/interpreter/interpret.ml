@@ -6,7 +6,6 @@ open Source
 module V = As_values.Value
 module T = As_types.Type
 module CC = As_types.Call_conv
-module Counters = Profiler.Counters
 
 (* Context *)
 
@@ -87,7 +86,6 @@ let string_of_arg env = function
 
 let last_env = ref (env_of_scope {trace = false; print_depth = 2} empty_scope)
 let last_region = ref Source.no_region
-let profile_counters : Counters.t = Counters.zeros ()
 
 let print_exn flags exn =
   Printf.printf "%!";
@@ -265,7 +263,7 @@ let rec interpret_exp env exp (k : V.value V.cont) =
 and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
   last_env := env;
-  Counters.bump_region profile_counters exp.at ;
+  Profiler.bump_region exp.at ;
   match exp.it with
   | PrimE s ->
     k (V.Func (CC.call_conv_of_typ exp.note.note_typ, Prim.prim s))
@@ -423,7 +421,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id.it k env.labs} in
-    Counters.bump_label profile_counters id.at id.it ;
+    Profiler.bump_label id.at id.it ;
     interpret_exp env' exp1 k
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id.it env.labs)
@@ -754,6 +752,3 @@ let interpret_library flags scope (filename, p) : scope =
   in
   library_scope filename v scope
 
-
-let dump_profile (results: Value.value Value.Env.t) =
-  Counters.dump profile_counters results

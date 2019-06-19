@@ -24,13 +24,13 @@ let zeros () = {
   }
 
 let bump_region c reg =
-  if !Flags.profile then
+  if !ProfilerFlags.profile then
     match Hashtbl.find_opt c.region reg with
       Some n -> Hashtbl.replace c.region reg (n + 1)
     | None   -> Hashtbl.replace c.region reg 1
 
 let bump_label c reg lab =
-  if !Flags.profile then
+  if !ProfilerFlags.profile then
     match Hashtbl.find_opt c.label (reg, lab) with
       Some n -> Hashtbl.replace c.label (reg, lab) (n + 1)
     | None   -> Hashtbl.replace c.label (reg, lab) 1
@@ -55,8 +55,8 @@ let label_order laba labb =
   compare laba labb
 
 let dump (c:t) (ve: Value.value Value.Env.t) =
-  if !Flags.profile then
-    if !Flags.profile_verbose then (
+  if !ProfilerFlags.profile then
+    if !ProfilerFlags.profile_verbose then (
       Printf.printf "{\n" ;
       Value.Env.iter (fun fn fv ->
           Printf.printf " %s = %s;\n"
@@ -105,7 +105,7 @@ let dump (c:t) (ve: Value.value Value.Env.t) =
             | (None, None) -> region_order rega regb
         ) all_region_counts
     in
-    let file = open_out (!Flags.profile_file) in
+    let file = open_out (!ProfilerFlags.profile_file) in
     let (suffix, flds) =
       (* the suffix of the line consists of field values for each field in `profile_field_names`: *)
       List.fold_right
@@ -113,7 +113,7 @@ let dump (c:t) (ve: Value.value Value.Env.t) =
           match Value.Env.find_opt var ve with
             None   -> (Printf.sprintf "%s, #err" line, (var :: flds))
           | Some v -> (Printf.sprintf "%s, %s" line (Value.string_of_val 0 v), var :: flds)
-        ) !Flags.profile_field_names ("", [])
+        ) !ProfilerFlags.profile_field_names ("", [])
     in
     Printf.fprintf file "# column: source region\n" ;
     Printf.fprintf file "# column: source region count\n" ;
@@ -133,7 +133,7 @@ let dump (c:t) (ve: Value.value Value.Env.t) =
     List.iter (fun ((region, labop), region_count) ->
         assert (dump_count = 0);
         Printf.fprintf file "%s\"%s\", %s, %d%s\n"
-          (!Flags.profile_line_prefix)
+          (!ProfilerFlags.profile_line_prefix)
           (string_of_region region)
           (match labop with
              None   -> "null"

@@ -243,19 +243,7 @@ let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   phase "Interpreting" prog.Source.note;
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
   let result = Interpret.interpret_prog flags denv prog in
-  begin
-    if !Flags.profile then
-      try
-        match result with
-          Some(Value.Async a,_) -> begin
-            match Lib.Promise.value_opt a.Value.result with
-            | Some v -> Interpret.dump_profile (Value.as_obj v)
-            | None   -> ()
-          end
-        | _  -> ()
-      with
-      | Invalid_argument _ -> () ;
-  end ;
+  Profiler.process_prog_result result ;
   result
 
 let rec interpret_libraries denv libraries : Interpret.scope =

@@ -8,7 +8,6 @@ open Source
 module V = Value
 module T = Type
 module CC = As_types.Call_conv
-module Counters = Profiler.Counters
 
 (* Context *)
 
@@ -78,7 +77,6 @@ let string_of_arg env = function
 
 let last_env = ref (env_of_scope { trace = false; print_depth = 2} Ir.full_flavor empty_scope)
 let last_region = ref Source.no_region
-let profile_counters : Counters.t = Counters.zeros ()
 
 let print_exn flags exn =
   Printf.printf "%!";
@@ -280,7 +278,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   let open Call_conv in
   last_region := exp.at;
   last_env := env;
-  Counters.bump_region profile_counters exp.at ;
+  Profiler.bump_region exp.at ;
   match exp.it with
   | PrimE s ->
     let at = exp.at in

@@ -105,11 +105,11 @@ let process_files files : unit =
    https://github.com/dfinity-lab/actorscript/pull/405#issuecomment-503326551
 *)
 let process_profiler_flags () =
-  Profiler.Flags.profile             := !Flags.profile ;
-  Profiler.Flags.profile_verbose     := !Flags.profile_verbose ;
-  Profiler.Flags.profile_file        := !Flags.profile_file ;
-  Profiler.Flags.profile_line_prefix := !Flags.profile_line_prefix ;
-  Profiler.Flags.profile_field_names := !Flags.profile_field_names ;
+  ProfilerFlags.profile             := !Flags.profile ;
+  ProfilerFlags.profile_verbose     := !Flags.profile_verbose ;
+  ProfilerFlags.profile_file        := !Flags.profile_file ;
+  ProfilerFlags.profile_line_prefix := !Flags.profile_line_prefix ;
+  ProfilerFlags.profile_field_names := !Flags.profile_field_names ;
   ()
 
 let () =
