@@ -643,4 +643,4 @@ let encode (em : extended_module) =
     ("mappings", `String (String.sub mappings 0 n) )
   ] in
 
-  ((if !Flags.source_map then Yojson.Basic.to_string json else ""), to_string s)
+  (Yojson.Basic.to_string json, to_string s)
