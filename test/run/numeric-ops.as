@@ -215,9 +215,9 @@ func testInt64(a : Int64, b : Int64) : [Int64] {
   let pos2 = (+ a) : Int64;
   let neg1 = - a;
   let neg2 = (- a) : Int64;
-  /*let sum1 = a + b;
+  let sum1 = a + b;
   let sum2 = (a + b) : Int64;
-  let diff1 = a - b;
+  /*let diff1 = a - b;
   let diff2 = (a - b) : Int64;
   let prod1 = a * b;
   let prod2 = (a * b) : Int64;
@@ -256,3 +256,23 @@ func testInt8(a : Int8, b : Int8) : [Int8] {
 
 verify<Int8>([3, -3/*, 8, -2, 15, 0, 3, 243*/], testInt8(3, 5),
              func (a : Int8, b : Int8) : Bool = a == b);
+
+
+func testNat8(a : Nat8, b : Nat8) : [Nat8] {
+  /*let sum1 = a + b;
+  let sum2 = (a + b) : Nat8;
+  let diff1 = a - b;
+  let diff2 = (a - b) : Nat8;
+  let prod1 = a * b;
+  let prod2 = (a * b) : Nat8;
+  let rat1 = a / b;
+  let rat2 = (a / b) : Nat8;
+  let mod1 = a % b;
+  let mod2 = (a % b) : Nat8;
+  let pow1 = a ** b;
+  let pow2 = (a ** b) : Nat8;*/
+  [/*sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2*/]
+};
+
+verify<Nat8>([/*, 8, -2, 15, 0, 3, 243*/], testNat8(5, 3),
+             func (a : Nat8, b : Nat8) : Bool = a == b);
