@@ -8,9 +8,6 @@ sig
   val dump_parse : bool ref
   val dump_tc : bool ref
   val dump_lowering : bool ref
-  val interpret_ir : bool ref
-  val source_map : bool ref
-  val link : bool ref
   val check_ir : bool ref
 end
 

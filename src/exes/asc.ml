@@ -24,6 +24,9 @@ let set_mode m () =
 
 let compile_mode = ref Pipeline.DfinityMode
 let out_file = ref ""
+let link = ref true
+let interpret_ir = ref false
+let gen_source_map = ref false
 
 let argspec = Arg.align
 [
@@ -37,14 +40,14 @@ let argspec = Arg.align
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
-  "--map", Arg.Set Pipeline.Flags.source_map, " output source map";
+  "--map", Arg.Set gen_source_map, " output source map";
 
   "-t", Arg.Set Pipeline.Flags.trace, " activate tracing";
-  "-iR", Arg.Set Pipeline.Flags.interpret_ir, " interpret the lowered code";
+  "-iR", Arg.Set interpret_ir, " interpret the lowered code";
   "-no-await", Arg.Clear Pipeline.Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Pipeline.Flags.async_lowering, " no async-lowering (with -iR)";
 
-  "-no-link", Arg.Clear Pipeline.Flags.link, " do not statically link-in runtime";
+  "-no-link", Arg.Clear link, " do not statically link-in runtime";
   "-no-dfinity-api",
     Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
       " do not import the DFINITY system API";
@@ -67,7 +70,7 @@ let process_files files : unit =
   | Default ->
     assert false
   | Run ->
-    if !Pipeline.Flags.interpret_ir
+    if !interpret_ir
     then exit_on_none (Pipeline.interpret_ir_files files)
     else exit_on_none (Pipeline.run_files files)
   | Interact ->
@@ -81,12 +84,12 @@ let process_files files : unit =
       | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
-    let module_ = Diag.run Pipeline.(compile_files !compile_mode !(Pipeline.Flags.link) files) in
+    let module_ = Diag.run Pipeline.(compile_files !compile_mode !link files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
 
-    if !Pipeline.Flags.source_map then begin
+    if !gen_source_map then begin
       let source_map_file = !out_file ^ ".map" in
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
