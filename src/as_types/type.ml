@@ -739,7 +739,7 @@ and eq_kind k1 k2 : bool =
 let rec lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
   match M.find_opt (t1, t2) !lubs with
-  | Some t -> if eq t t1 then t1 else if eq t t2 then t2 else t
+  | Some t -> t
   | _ ->
     match t1, t2 with
     | _, Pre
@@ -804,7 +804,7 @@ and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
 and glb' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
   match M.find_opt (t1, t2) !glbs with
-  | Some t -> if eq t t1 then t1 else if eq t t2 then t2 else t
+  | Some t -> t
   | _ ->
     match t1, t2 with
     | _, Pre
@@ -885,7 +885,12 @@ and combine_con_parts t1 t2 naming re how =
   re := M.add (t2, t1) t (M.add (t1, t2) t !re);
   let inner = how (normalize t1) (normalize t2) in
   set_kind c (Def ([], inner));
-  inner
+  (* check for short-circuiting opportunities *)
+  if eq inner t1
+  then (re := M.add (t2, t1) t1 (M.add (t1, t2) t1 !re); t1)
+  else if eq inner t2
+  then (re := M.add (t2, t1) t2 (M.add (t1, t2) t2 !re); t2)
+  else inner
 
 let lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
 let glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
