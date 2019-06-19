@@ -1,4 +1,5 @@
 (library
   (name profiler)
-  (libraries lib lang_utils flags as_values)
+  (modules flags counters)
+  (libraries lang_utils as_values)
 )

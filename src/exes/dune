@@ -1,7 +1,7 @@
 (executable
  (name asc)
  (modules asc)
- (libraries pipeline)
+ (libraries profiler pipeline)
 )
 (executable
  (name as_ide)

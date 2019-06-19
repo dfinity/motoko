@@ -99,6 +99,19 @@ let process_files files : unit =
       output_string oc_ source_map; close_out oc_
     end
 
+(* Copy relevant flags into the profiler library's (global) settings.
+   This indirection affords the profiler library an independence from the (hacky) Flags library.
+   See also, this discussion:
+   https://github.com/dfinity-lab/actorscript/pull/405#issuecomment-503326551
+*)
+let process_profiler_flags () =
+  Profiler.Flags.profile             := !Flags.profile ;
+  Profiler.Flags.profile_verbose     := !Flags.profile_verbose ;
+  Profiler.Flags.profile_file        := !Flags.profile_file ;
+  Profiler.Flags.profile_line_prefix := !Flags.profile_line_prefix ;
+  Profiler.Flags.profile_field_names := !Flags.profile_field_names ;
+  ()
+
 let () =
   (*
   Sys.catch_break true; - enable to get stacktrace on interrupt
@@ -107,4 +120,5 @@ let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
+  process_profiler_flags () ;
   process_files !args
