@@ -68,7 +68,7 @@ then
 
     whitelist_file =
       nixpkgs.runCommand "git-ls-files" {envVariable = true;} ''
-        cp -v ${git_dir + "/index"} index
+        cp ${git_dir + "/index"} index
         echo "ref: refs/heads/master" > HEAD
         mkdir objects refs
         ${nixpkgs.git}/bin/git --git-dir . ls-files > $out
