@@ -19,6 +19,11 @@ module Flags = struct
   let dump_tc = ref false
   let dump_lowering = ref false
   let check_ir = ref true
+  let profile = ref false
+  let profile_verbose = ref false
+  let profile_file = ref "profiling-counters.csv"
+  let profile_line_prefix = ref ""
+  let profile_field_names : string list ref = ref []
 end (* Flags *)
 
 
@@ -254,7 +259,9 @@ let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   let open Interpret in
   phase "Interpreting" prog.Source.note;
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-  interpret_prog flags denv prog
+  let result = Interpret.interpret_prog flags denv prog in
+  Profiler.process_prog_result result ;
+  result
 
 let rec interpret_libraries denv libraries : Interpret.scope =
   let open Interpret in
@@ -338,7 +345,6 @@ let check_string s name : check_result =
 
 let run_files files : unit option =
   Lib.Option.map ignore (interpret_files initial_env files)
-
 
 (* Interactively *)
 

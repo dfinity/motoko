@@ -35,7 +35,7 @@ Representation
 
 import T = "serverTypes.as";
 
-import Trie = "../../trie.as";
+import Trie = "../../trie2.as";
 type Trie<K,V> = Trie.Trie<K,V>;
 
 type Map<X, Y> = Trie<X, Y>;

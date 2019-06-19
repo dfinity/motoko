@@ -339,6 +339,7 @@ type ReservationInfo = shared {
 
 */
 type ProduceExchangeCounts = shared {
+  hash_bit_length : Nat;
   truck_type_count : Nat;
   region_count : Nat;
   produce_count : Nat;
@@ -349,6 +350,7 @@ type ProduceExchangeCounts = shared {
   route_count : Nat;
   reserved_route_count : Nat;
   retailer_count : Nat;
+  retailer_query_size_max : Nat;
   retailer_query_count : Nat;
   retailer_query_cost : Nat;
   retailer_join_count : Nat;
@@ -383,4 +385,22 @@ the 2019.03.12 ActorScript Team meeting.
 */
 
 type QueryAllResults = [QueryAllResult];
+
+
+/**
+ Synthetic workloads
+ =======================
+
+ The server can generate synthetic workloads given a small set of parameters.
+ */
+
+type WorkloadParams = shared {
+  day_count:Nat;
+  max_route_duration:Nat;
+  producer_count:Nat;
+  transporter_count:Nat;
+  retailer_count:Nat;
+  region_count:Nat;
+};
+
 }

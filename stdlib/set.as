@@ -18,7 +18,7 @@
 
 */
 
-let Trie = import "trie.as";
+let Trie = import "trie2.as";
 let Hash = import "hash.as";
 
 type Hash = Hash.Hash;

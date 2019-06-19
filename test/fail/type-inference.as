@@ -8,6 +8,7 @@ let y = f(func x = x + 1);
 // Branch warnings.
 
 let _ = if true true else 5;
+let _ = if true true else [var 5];
 let _ = if true 5 else 5.1;
 let _ = if true {} else (new {});
 let _ = if true (new {x = 5}) else (new {var x = 5});
@@ -15,9 +16,14 @@ let _ = if true 1 else (-1);  // ok
 let _ = if true true else (5 : Any);  // ok
 
 let _ = switch 0 { case 0 true; case _ 5 };
+let _ = switch 0 { case 0 true; case _ [var 5] };
 let _ = switch 0 { case 0 2; case 2 (-5); case 3 "text"; case _ () };
 let _ = switch 0 { case 0 true; case _ (() : Any); };  // ok
 
+// Array warnings.
+
+let _ = [true, 5];
+let _ = [true, [var 5]];
 
 // Local types (not) escaping.
 

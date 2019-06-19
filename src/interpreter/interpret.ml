@@ -7,7 +7,6 @@ module V = As_values.Value
 module T = As_types.Type
 module CC = As_types.Call_conv
 
-
 (* Context *)
 
 type val_env = V.def V.Env.t
@@ -272,6 +271,7 @@ let rec interpret_exp env exp (k : V.value V.cont) =
 and interpret_exp_mut env exp (k : V.value V.cont) =
   last_region := exp.at;
   last_env := env;
+  Profiler.bump_region exp.at ;
   match exp.it with
   | PrimE s ->
     k (V.Func (CC.call_conv_of_typ exp.note.note_typ, Prim.prim s))
@@ -426,6 +426,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id.it k env.labs} in
+    Profiler.bump_label id.at id.it ;
     interpret_exp env' exp1 k
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id.it env.labs)

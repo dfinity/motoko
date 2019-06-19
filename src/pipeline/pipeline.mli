@@ -9,6 +9,11 @@ sig
   val dump_tc : bool ref
   val dump_lowering : bool ref
   val check_ir : bool ref
+  val profile : bool ref
+  val profile_verbose : bool ref
+  val profile_file : string ref
+  val profile_line_prefix : string ref
+  val profile_field_names : string list ref
 end
 
 val check_files  : string list -> unit Diag.result
