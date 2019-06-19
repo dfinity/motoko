@@ -31,28 +31,28 @@ let argspec = Arg.align
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
-  "-v", Arg.Set Flags.verbose, " verbose output";
-  "-p", Arg.Set_int Flags.print_depth, " set print depth";
+  "-v", Arg.Set Pipeline.Flags.verbose, " verbose output";
+  "-p", Arg.Set_int Pipeline.Flags.print_depth, " set print depth";
   "-o", Arg.Set_string out_file, " output file";
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
-  "--map", Arg.Set Flags.source_map, " output source map";
+  "--map", Arg.Set Pipeline.Flags.source_map, " output source map";
 
-  "-t", Arg.Set Flags.trace, " activate tracing";
-  "-iR", Arg.Set Flags.interpret_ir, " interpret the lowered code";
-  "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
-  "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
+  "-t", Arg.Set Pipeline.Flags.trace, " activate tracing";
+  "-iR", Arg.Set Pipeline.Flags.interpret_ir, " interpret the lowered code";
+  "-no-await", Arg.Clear Pipeline.Flags.await_lowering, " no await-lowering (with -iR)";
+  "-no-async", Arg.Clear Pipeline.Flags.async_lowering, " no async-lowering (with -iR)";
 
-  "-no-link", Arg.Clear Flags.link, " do not statically link-in runtime";
+  "-no-link", Arg.Clear Pipeline.Flags.link, " do not statically link-in runtime";
   "-no-dfinity-api",
     Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
       " do not import the DFINITY system API";
 
-  "-dp", Arg.Set Flags.dump_parse, " dump parse";
-  "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
-  "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
-  "-no-check-ir", Arg.Clear Flags.check_ir, " do not check intermediate code";
+  "-dp", Arg.Set Pipeline.Flags.dump_parse, " dump parse";
+  "-dt", Arg.Set Pipeline.Flags.dump_tc, " dump type-checked AST";
+  "-dl", Arg.Set Pipeline.Flags.dump_lowering, " dump intermediate representation ";
+  "-no-check-ir", Arg.Clear Pipeline.Flags.check_ir, " do not check intermediate code";
 ]
 
 
@@ -67,7 +67,7 @@ let process_files files : unit =
   | Default ->
     assert false
   | Run ->
-    if !Flags.interpret_ir
+    if !Pipeline.Flags.interpret_ir
     then exit_on_none (Pipeline.interpret_ir_files files)
     else exit_on_none (Pipeline.run_files files)
   | Interact ->
@@ -81,12 +81,12 @@ let process_files files : unit =
       | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
-    let module_ = Diag.run Pipeline.(compile_files !compile_mode !(Flags.link) files) in
+    let module_ = Diag.run Pipeline.(compile_files !compile_mode !(Pipeline.Flags.link) files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
 
-    if !Flags.source_map then begin
+    if !Pipeline.Flags.source_map then begin
       let source_map_file = !out_file ^ ".map" in
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_

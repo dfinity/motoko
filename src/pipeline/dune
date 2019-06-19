@@ -13,6 +13,5 @@
     lowering
     ir_passes
     codegen
-    flags
   )
 )

@@ -9,6 +9,7 @@ type stat_env = Scope.t
 type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
 
+module Flags = Flags
 
 (* Diagnostics *)
 
