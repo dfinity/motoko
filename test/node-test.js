@@ -6,8 +6,8 @@ const assert = require('assert').strict;
 const m = require('asc.js');
 
 // Compile the empty module in plain and dfinity mode
-const empty_wasm_plain = m.ActorScript.compileWasm('wasm', false, '');
-const empty_wasm_dfinity = m.ActorScript.compileWasm('dfinity', false, '');
+const empty_wasm_plain = m.ActorScript.compileWasm('wasm', '');
+const empty_wasm_dfinity = m.ActorScript.compileWasm('dfinity', '');
 
 // For the plain module...
 // Check that the code looks like a WebAssembly binary
@@ -33,7 +33,7 @@ WebAssembly.compile(Buffer.from(empty_wasm_dfinity.code, 'ascii'));
 assert.notEqual(empty_wasm_plain.code, empty_wasm_dfinity.code);
 
 // Check if error messages are correctly returned
-const bad_result = m.ActorScript.compileWasm('dfinity', false, '1+');
+const bad_result = m.ActorScript.compileWasm('dfinity', '1+');
 // Uncomment to see what to paste below
 // console.log(JSON.stringify(bad_result, null, 2));
 assert.deepStrictEqual(bad_result, {
@@ -86,7 +86,7 @@ assert.deepStrictEqual(m.ActorScript.check('1+'), {
 });
 
 // Create a source map, and check some of its structure
-const with_map = m.ActorScript.compileWasm('dfinity', true, '');
+const with_map = m.ActorScript.compileWasm('dfinity', '');
 assert.equal(typeof(with_map.map), 'string')
 let map
 assert.doesNotThrow(() => map = JSON.parse(with_map.map), SyntaxError)
@@ -94,5 +94,3 @@ assert.ok(Array.isArray(map.sources))
 assert.ok(Array.isArray(map.sourcesContent))
 assert.equal(typeof(map.mappings), 'string')
 assert.equal(typeof(map.version), 'number')
-
-assert.equal(empty_wasm_dfinity.map, '')
