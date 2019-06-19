@@ -28,13 +28,17 @@ import T = "serverTypes.as";
 import L = "serverLang.as";
 import M = "serverModelTypes.as";
 
+let List = (import "../../list.as");
+type List<T> = List.List<T>;
+
 let Hash = (import "../../hash.as").BitVec;
 type Hash = Hash.t;
 
 import Option = "../../option.as";
-import Trie = "../../trie.as";
+import Trie = "../../trie2.as";
 
 type Trie<K,V> = Trie.Trie<K,V>;
+type TrieBuild<K,V> = Trie.Build.TrieBuild<K,V>;
 type Key<K> = Trie.Key<K>;
 
 type Table<K,V> = Trie.Trie<K,V>;
@@ -51,6 +55,7 @@ import Result = "../../result.as";
 type Result<Ok,Err> = Result.Result<Ok,Err>;
 
 type RouteInventoryMap = Trie<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
+type QueryResult = TrieBuild<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
 
 type RoleId = {
   #user        : T.UserId;
@@ -66,6 +71,38 @@ class Model() {
    ===================================================================================================
    Evaluation semantics for the PX server language
    */
+
+  /**
+   `loadWorkload`
+   ----------------
+   clear existing server state, and replace with a synthetic workload, based on the given parameters.
+   */
+
+  loadWorkload(params:T.WorkloadParams) : () {
+    func db(s:Text) = if false {print "Model::loadWorkload: "; print s; print "\n"};
+
+    /**- generate add requests for these params: */
+    db "generate requests for workload...";
+    let addreqs : List<L.AddReq> = genAddReqs(
+      params.day_count,
+      params.max_route_duration,
+      params.producer_count,
+      params.transporter_count,
+      params.retailer_count,
+      params.region_count
+    );
+
+    /**- reset to initial state before adding this new workload: */
+    let reqs : List<L.Req> =
+      ?(#reset, List.map<L.AddReq,L.Req>(addreqs, func (r:L.AddReq):L.Req = #add r));
+
+    /**- evaluate each request: */
+    db "evaluate requests for workload...";
+    let resps = evalReqList(reqs);
+
+    /**- assert that everything worked; a sanity check. */
+    // to do
+  };
 
 
   /**
@@ -90,7 +127,47 @@ class Model() {
 
    */
   evalReq(req:L.Req) : Result<L.Resp, T.IdErr> {
+    if false {print "Model::evalReq: "; print (debug_show req); print "\n"; };
     switch req {
+    case (#reset) {
+           /**- 1. reset each entity table: */
+           userTable.reset();
+           truckTypeTable.reset();
+           regionTable.reset();
+           produceTable.reset();
+           producerTable.reset();
+           inventoryTable.reset();
+           transporterTable.reset();
+           retailerTable.reset();
+           routeTable.reset();
+           reservedInventoryTable.reset();
+           reservedRouteTable.reset();
+
+           /**- 2. clear secondary indices: */
+           usersByUserName
+             := Map.empty<T.UserName, T.UserId>();
+
+           routesByDstSrcRegions
+             := Map.empty<T.RegionId, M.ByRegionRouteMap>();
+
+           inventoryByRegion
+             := Map.empty<T.RegionId, M.ByProducerInventoryMap>();
+
+           reservationsByProduceByRegion
+             := Map.empty<T.ProduceId,
+                          Map<T.RegionId,
+                              Map<T.ReservedInventoryId,
+                                  M.ReservedInventoryDoc>>>();
+
+           /**- 3. reset counters: */
+           joinCount := 0;
+           retailerQueryCount := 0;
+           retailerQueryCost := 0;
+           retailerJoinCount := 0;
+           retailerQuerySizeMax := 0;
+
+           #ok(#reset)
+         };
     case (#add (#truckType info)) Result.fromSomeMap<T.TruckTypeId,L.Resp,T.IdErr>(
            truckTypeTable.addInfoGetId(
              func (id_:T.TruckTypeId) : T.TruckTypeInfo =
@@ -169,6 +246,22 @@ class Model() {
            #idErr null
          );
 
+    case (#add (#retailer info)) Result.fromSomeMap<T.RetailerId,L.Resp,T.IdErr>(
+           retailerTable.addInfoGetId(
+             func(id_:T.RetailerId):T.RetailerInfo {
+               shared {
+                 id=id_;
+                 public_key=info.public_key;
+                 short_name=info.short_name;
+                 description=info.description;
+                 region=info.region;
+               }
+             }
+           ),
+           func (id:T.RetailerId):L.Resp = #add(#retailer(id)),
+           #idErr null
+         );
+
     case (#add (#route info)) Result.mapOk<T.RouteId,L.Resp,T.IdErr>(
            transporterAddRoute(
              null,
@@ -213,11 +306,18 @@ class Model() {
            #idErr null
          );
 
-    case (#add _) P.unreachable();
+    //case (#add _) P.unreachable();
 
     case _ P.nyi();
     }
   };
+
+  /**
+   `evalReqList`
+   ----------
+   */
+  evalReqList(reqs:List<L.Req>) : List<L.ResultResp> =
+    List.map<L.Req, L.ResultResp>(reqs, evalReq);
 
   /**
    `evalBulk`
@@ -264,6 +364,199 @@ class Model() {
     )
   };
 
+  /**
+   `countAddReqs`
+   -------------
+   xxx
+   */
+  countAddReqs(
+    day_count:Nat,
+    max_route_duration:Nat,
+    producer_count:Nat,
+    transporter_count:Nat,
+    retailer_count:Nat,
+    region_count:Nat
+  ) : (Nat, Nat) {
+    var inventoryCount : Nat = 0;
+    var routeCount : Nat = 0;
+
+    assert(region_count > 0);
+    func min(x:Nat, y:Nat) : Nat = if (x < y) { x } else { y };
+
+    /**- add routes and inventory, across time and space: */
+    for (start_day in range(0, day_count-1)) {
+
+      let max_end_day =
+        min( start_day + max_route_duration,
+             day_count - 1 );
+
+      for (end_day in range(start_day, max_end_day)) {
+
+        /**- consider all pairs of start and end region: */
+        for (start_reg in range(0, region_count - 1)) {
+          for (end_reg in range(0, region_count - 1)) {
+
+            /**- for each producer we choose,
+             add inventory that will be ready on "start_day", but not beforehand.
+             It will remain ready until the end of the day count. */
+
+            for (p in range(0, producer_count - 1)) {
+              /**- choose this producer iff they are located in the start region: */
+              if ((p % region_count) == start_reg) {
+                inventoryCount := inventoryCount + 1;
+              };
+            };
+
+            /**- for each transporter we choose,
+             add a route that will start and end on the current values
+             of `start_day`, `end_day`, `start_reg`, `end_reg`, respectively: */
+
+            for (t in range(0, transporter_count - 1)) {
+              /**- choose this transporter iff their id matches the id of the region, modulo the number of regions: */
+              if ((t % region_count) == start_reg) {
+                routeCount := routeCount + 1;
+              }
+            }
+          };
+        };
+      };
+    };
+
+    return (inventoryCount, routeCount)
+  };
+
+  /**
+   `genAddReqs`
+   -------------
+   generate a list of add requests, based on a set of parameters,
+   and a simple, deterministic strategy, with predictable combinatoric properties.
+
+   Used for seeding unit tests with predictable properties,
+   and for profiling performance properties of the produce exchange,
+   e.g., average response time for a retailer query.
+   */
+  genAddReqs(
+    day_count:Nat,
+    max_route_duration:Nat,
+    producer_count:Nat,
+    transporter_count:Nat,
+    retailer_count:Nat,
+    region_count:Nat
+  ) : List<L.AddReq> {
+    assert(region_count > 0);
+    func min(x:Nat, y:Nat) : Nat = if (x < y) { x } else { y };
+    /**- `reqs` accumulates the add requests that we form below: */
+    var reqs : List<L.AddReq> = null;
+    /**- add truck types; for now, just 2. */
+    for (i in range(0, 1)) {
+      reqs := ?(
+        #truckType (
+          shared {
+            id=i; short_name=""; description="";
+            capacity=i * 50;
+            isFridge=true; isFreezer=true
+          }
+        ), reqs);
+    };
+    /**- add regions */
+    for (i in range(0, region_count - 1)) {
+      reqs := ?(#region (shared {
+                           id=i; short_name=""; description=""
+                         }), reqs);
+    };
+    /**- add produce types, one per region. */
+    for (i in range(0, region_count - 1)) {
+      reqs := ?(#produce (shared {
+                           id=i; short_name=""; description=""; grade=1;
+                         }), reqs);
+    };
+    /**- add producers  */
+    for (i in range(0, producer_count - 1)) {
+      reqs := ?(#producer (shared {
+                             id=i; public_key=""; short_name=""; description="";
+                             region=(i % region_count);
+                             inventory=[]; reserved=[];
+                           }), reqs);
+    };
+    /**- add transporters  */
+    for (i in range(0, producer_count - 1)) {
+      reqs := ?(#transporter (shared {
+                                id=i; public_key=""; short_name=""; description="";
+                                routes=[]; reserved=[];
+                              }), reqs);
+    };
+    /**- add retailers  */
+    for (i in range(0, retailer_count - 1)) {
+      reqs := ?(#retailer (shared {
+                             id=i; public_key=""; short_name=""; description="";
+                             region=(i % region_count);
+                           }), reqs);
+    };
+    /**- add routes and inventory, across time and space: */
+    for (start_day in range(0, day_count-1)) {
+
+      let max_end_day =
+        min( start_day + max_route_duration,
+             day_count - 1 );
+
+      for (end_day in range(start_day, max_end_day)) {
+
+        /**- consider all pairs of start and end region: */
+        for (start_reg in range(0, region_count - 1)) {
+          for (end_reg in range(0, region_count - 1)) {
+
+            /**- for each producer we choose,
+             add inventory that will be ready on "start_day", but not beforehand.
+             It will remain ready until the end of the day count. */
+
+            for (p in range(0, producer_count)) {
+              /**- choose this producer iff they are located in the start region: */
+              if ((p % region_count) == start_reg) {
+                reqs := ?(#inventory
+                (shared {
+                   id=666;
+                   producer   = p;
+                   produce    = start_reg;
+                   start_date = start_day;
+                   end_date   = day_count-1;
+                   quantity   = 33;
+                   weight     = 66;
+                   ppu        = 22;
+                   comments   = "";
+                 }), reqs);
+              }
+            };
+
+            /**- for each transporter we choose,
+             add a route that will start and end on the current values
+             of `start_day`, `end_day`, `start_reg`, `end_reg`, respectively: */
+
+            for (t in range(0, transporter_count - 1)) {
+              /**- choose this transporter iff their id matches the id of the region, modulo the number of regions: */
+              if ((t % region_count) == start_reg) {
+                reqs := ?(#route
+                (shared {
+                   id=666;
+                   transporter  = t;
+                   start_region = start_reg;
+                   end_region   = end_reg;
+                   // there are two truck types; just choose one based on the "produce type", which is based on the region:
+                   truck_type   = (start_reg % 2);
+                   start_date   = start_day;
+                   end_date     = end_day;
+                   // cost is inversely proportional to route duration: slower is cheaper.
+                   // this example cost formula is "linear in duration, with a fixed base cost":
+                   cost         = 100 + ((end_day - start_day) * 20);
+                 }), reqs);
+              }
+            };
+          };
+        };
+      };
+    };
+    /**- use "chronological order" for adds above: */
+    List.rev<L.AddReq>(reqs)
+  };
 
   /**
    Access control
@@ -313,6 +606,7 @@ class Model() {
 
   private debugOff (t:Text)   {  };
   private debugIntOff (i:Int) {  };
+  private debugOffInt (i:Int) {  };
 
   private idIsEq(x:Nat,y:Nat):Bool { x == y };
 
@@ -342,6 +636,7 @@ class Model() {
    */
 
   var joinCount = 0;
+  var retailerQuerySizeMax = 0;
 
 
 /**
@@ -640,7 +935,7 @@ secondary maps.
             short_name=info.short_name;
             description=info.description;
             region=regionDoc;
-            reserved=null;
+            reserved=Map.empty<T.ReservedInventoryId, (M.ReservedInventoryDoc, M.ReservedRouteDoc)>();
           }
         )
       );
@@ -791,7 +1086,7 @@ secondary maps.
    */
 
   private var usersByUserName
-    : M.UserNameMap = null;
+    : M.UserNameMap = Map.empty<T.UserName, T.UserId>();
 
   /**
 
@@ -818,7 +1113,8 @@ secondary maps.
 
    */
 
-  private var routesByDstSrcRegions : M.ByRegionPairRouteMap = null;
+  private var routesByDstSrcRegions : M.ByRegionPairRouteMap
+    = Map.empty<T.RegionId, M.ByRegionRouteMap>();
 
   /**
    Inventory by region
@@ -831,7 +1127,8 @@ secondary maps.
 
   */
 
-  private var inventoryByRegion : M.ByRegionInventoryMap = null;
+  private var inventoryByRegion : M.ByRegionInventoryMap
+    = Map.empty<T.RegionId, M.ByProducerInventoryMap>();
 
   /**
 
@@ -861,8 +1158,11 @@ than the MVP goals, however.
 
    */
   private var reservationsByProduceByRegion
-    : M.ByProduceByRegionInventoryReservationMap = null;
-
+    : M.ByProduceByRegionInventoryReservationMap
+    = Map.empty<T.ProduceId,
+                Map<T.RegionId,
+                    Map<T.ReservedInventoryId,
+                        M.ReservedInventoryDoc>>>();
 
   /**
 
@@ -1041,8 +1341,8 @@ than the MVP goals, however.
 
     ?Map.toArray<T.InventoryId,M.InventoryDoc,T.InventoryInfo>(
       doc.inventory,
-      func (_:T.InventoryId,doc:M.InventoryDoc):[T.InventoryInfo] =
-        [inventoryTable.getInfoOfDoc()(doc)]
+      func (_:T.InventoryId,doc:M.InventoryDoc):T.InventoryInfo =
+        inventoryTable.getInfoOfDoc()(doc)
     )
   };
 
@@ -1257,9 +1557,9 @@ than the MVP goals, however.
       doc.reserved,
       func (_:T.ReservedInventoryId,
             doc:M.ReservedInventoryDoc):
-        [T.ReservedInventoryInfo]
+        T.ReservedInventoryInfo
         =
-        [reservedInventoryTable.getInfoOfDoc()(doc)]
+        reservedInventoryTable.getInfoOfDoc()(doc)
     )
   };
 
@@ -1473,9 +1773,9 @@ than the MVP goals, however.
       doc.routes,
       func (_:T.RouteId,
             doc:M.RouteDoc):
-        [T.RouteInfo]
+        T.RouteInfo
         =
-        [routeTable.getInfoOfDoc()(doc)]
+        routeTable.getInfoOfDoc()(doc)
     )
   };
 
@@ -1496,9 +1796,9 @@ than the MVP goals, however.
       doc.reserved,
       func (_:T.ReservedRouteId,
             doc:M.ReservedRouteDoc):
-        [T.ReservedRouteInfo]
+        T.ReservedRouteInfo
         =
-        [reservedRouteTable.getInfoOfDoc()(doc)]
+        reservedRouteTable.getInfoOfDoc()(doc)
     )
   };
 
@@ -1567,6 +1867,8 @@ than the MVP goals, however.
     queryProduce:?T.ProduceId,
     queryDate:?T.Date)
     : Bool
+    =
+    label profile_isFeasibleReservation_begin : Bool
   {
 
     switch queryProduce {
@@ -1574,6 +1876,7 @@ than the MVP goals, however.
       case (?qp) {
              if (item.produce.id != qp) {
                debugOff "nope: wrong produce kind\n";
+               label profile_isFeasibleReservation_false_wrong_product_kind
                return false
              };
            };
@@ -1583,26 +1886,31 @@ than the MVP goals, however.
       case (?qd) {
              if (route.end_date > qd ) {
                debugOff "nope: route arrives too late\n";
+               label profile_isFeasibleReservation_false_arrives_too_late
                return false
              }
            }
     };
     /** - window start: check that the route begins after the inventory window begins */
-    if (item.start_date > route.start_date) {
+    if (not (item.start_date <= route.start_date)) {
       debugOff "nope: item start after route start\n";
+      label profile_isFeasibleReservation_false_item_start_ater_route_start
       return false
     };
     /** - window end: check that the route ends before the inventory window ends */
-    if (route.end_date > item.end_date) {
+    if (not (route.end_date <= item.end_date)) {
       debugOff "nope: route ends after item ends\n";
+      label profile_isFeasibleReservation_false_item_route_ends_after_item_ends
       return false
     };
     /** - check that truck can carry the given produce */
     if (not isCompatibleTruckType(route.truck_type, item.produce)) {
       debugOff "nope: truck is not compatible\n";
+      label profile_isFeasibleReservation_false_truck_is_not_compatible
       return false
     };
     /** - all checks pass: */
+    label profile_isFeasibleReservation_true : Bool
     true
   };
 
@@ -1629,7 +1937,8 @@ than the MVP goals, however.
     id:T.RetailerId,
     queryProduce:?T.ProduceId,
     queryDate:?T.Date
-  ) : ?T.QueryAllResults
+  ) : ?T.QueryAllResults =
+    label profile_retailerQueryAll_begin : (?T.QueryAllResults)
   {
     retailerQueryCount += 1;
 
@@ -1639,14 +1948,14 @@ than the MVP goals, however.
       case (null) { return null };
       case (?x) { x }};
 
-    debug "- user_name: ";
-    debug (retailer.short_name);
-    debug "\n";
+    debugOff "- user_name: ";
+    debugOff (retailer.short_name);
+    debugOff "\n";
 
     /** - Temp: */
-    debug "- retailer is located in region ";
-    debugInt (retailer.region.id);
-    debug ", and\n- is accessible via routes from ";
+    debugOff "- retailer is located in region ";
+    debugOffInt (retailer.region.id);
+    debugOff ", and\n- is accessible via routes from ";
 
     /** - Find all routes whose the destination region is the retailer's region: */
     let retailerRoutes =
@@ -1658,28 +1967,31 @@ than the MVP goals, however.
       case (null) { return ?[] };
       case (?x) { x }};
 
-    debugInt(Trie.count<T.RegionId, M.RouteMap>(retailerRoutes));
-    debug " production regions.\n";
+    debugOffInt(Trie.count<T.RegionId, M.RouteMap>(retailerRoutes));
+    debugOff " production regions.\n";
 
     /** - Join: For each production region, consider all routes and inventory: */
-    let queryResults : Trie<T.RegionId, RouteInventoryMap> = {
+    let queryResults : Trie<T.RegionId, QueryResult> = {
       retailerJoinCount += 1;
       Trie.join<T.RegionId,
                 M.RouteMap,
                 M.ByProducerInventoryMap,
-                RouteInventoryMap>(
+                QueryResult>(
         retailerRoutes,
         inventoryByRegion,
         idIsEq,
         func (routes:M.RouteMap,
-              inventory:M.ByProducerInventoryMap) : RouteInventoryMap
+              inventory:M.ByProducerInventoryMap) : QueryResult
+          =
+          label profile_retailerQueryAll_product_region : QueryResult
       {
 
         /** - Within this production region, consider every route-item pairing: */
-        let product = Trie.prod<T.RouteId, M.RouteDoc,
-                                T.InventoryId, M.InventoryDoc,
-                                (T.RouteId, T.InventoryId),
-                                (M.RouteDoc, M.InventoryDoc)>(
+        let product = Trie.Build.prodBuild
+        <T.RouteId, M.RouteDoc,
+         T.InventoryId, M.InventoryDoc,
+         (T.RouteId, T.InventoryId),
+         (M.RouteDoc, M.InventoryDoc)>(
           routes,
           /** - (To perform this Cartesian product, use a 1D inventory map:) */
           Trie.mergeDisjoint2D<T.ProducerId, T.InventoryId, M.InventoryDoc>(
@@ -1689,16 +2001,26 @@ than the MVP goals, however.
                 route   :M.RouteDoc,
                 item_id :T.InventoryId,
                 item    :M.InventoryDoc) :
-            ?(Key<(T.RouteId, T.InventoryId)>,
+            ?((T.RouteId, T.InventoryId),
               (M.RouteDoc, M.InventoryDoc))
+            =
+            label profile_retailerQueryAll_candidate_check :
+            ( ?((T.RouteId, T.InventoryId),
+                (M.RouteDoc, M.InventoryDoc)) )
         {
           retailerQueryCost += 1;
           /** - Consider the constraints of the retailer-route-item combination: */
           if (isFeasibleReservation(retailer, item, route, queryProduce, queryDate)) {
-            ?( keyOfIdPair(route_id, item_id),
-               (route, item)
-            )
-          } else { null }
+            label profile_retailerQueryAll_candidate_check_true :
+              ( ?((T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)) )
+            ?( (route_id, item_id), (route, item) )
+          } else {
+            label profile_retailerQueryAll_candidate_check_false :
+              ( ?((T.RouteId, T.InventoryId),
+                  (M.RouteDoc, M.InventoryDoc)) )
+
+            null
+          }
         },
         idPairIsEq
         );
@@ -1707,24 +2029,31 @@ than the MVP goals, however.
       )};
 
     /** - The results are still organized by producer region; merge all such regions: */
-    let queryResultsMerged : RouteInventoryMap =
-      Trie.mergeDisjoint2D<T.RegionId, (T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>(
-        queryResults, idIsEq, idPairIsEq);
+    let queryResult : QueryResult =
+      Trie.Build.projectInnerBuild
+    <T.RegionId, (T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>
+    (queryResults);
 
-    debug "- query result count: ";
-    debugInt(Trie.count<(T.RouteId, T.InventoryId),
-                        (M.RouteDoc, M.InventoryDoc)>(queryResultsMerged));
-    debug " (count of feasible route-item pairs).\n";
+    debugOff "- query result count: ";
+    let size = Trie.Build.buildCount
+    <(T.RouteId, T.InventoryId),
+     (M.RouteDoc, M.InventoryDoc)>(queryResult);
+    if ( size > retailerQuerySizeMax ) {
+      retailerQuerySizeMax := size;
+    };
+    debugOffInt(size);
+    debugOff " (count of feasible route-item pairs).\n";
 
     /** - Prepare reservation information for client, as an array; see also [`makeReservationInfo`](#makereservationinfo) */
     let arr =
-      Trie.toArray<(T.RouteId, T.InventoryId),
-                   (M.RouteDoc, M.InventoryDoc),
-                   T.ReservationInfo>(
-        queryResultsMerged,
+      Trie.Build.buildToArray2
+    <(T.RouteId, T.InventoryId),
+     (M.RouteDoc, M.InventoryDoc),
+     T.ReservationInfo>(
+        queryResult,
         func (_:(T.RouteId,T.InventoryId), (r:M.RouteDoc, i:M.InventoryDoc))
-          : [ T.ReservationInfo ] {
-            [ makeReservationInfo(i, r) ]
+          : T.ReservationInfo {
+            makeReservationInfo(i, r)
           });
 
     ?arr
@@ -1752,11 +2081,11 @@ than the MVP goals, however.
             ((idoc:M.ReservedInventoryDoc),
              (rdoc:M.ReservedRouteDoc)))
             :
-            [(T.ReservedInventoryInfo,
-              T.ReservedRouteInfo)]
+            ((T.ReservedInventoryInfo,
+              T.ReservedRouteInfo))
         =
-        [(reservedInventoryTable.getInfoOfDoc()(idoc),
-          reservedRouteTable.getInfoOfDoc()(rdoc))]
+        ( (reservedInventoryTable.getInfoOfDoc()(idoc),
+           reservedRouteTable.getInfoOfDoc()(rdoc)) )
     )
   };
 

@@ -9,7 +9,6 @@ module V = Value
 module T = Type
 module CC = As_types.Call_conv
 
-
 (* Context *)
 
 type val_env = V.def V.Env.t
@@ -20,7 +19,7 @@ type scope = val_env
 
 type flags = {
   trace : bool;
-  print_depth : int
+  print_depth : int;
 }
 
 type env =
@@ -287,6 +286,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   let open Call_conv in
   last_region := exp.at;
   last_env := env;
+  Profiler.bump_region exp.at ;
   match exp.it with
   | PrimE s ->
     let at = exp.at in

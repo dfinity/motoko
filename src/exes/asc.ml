@@ -40,6 +40,12 @@ let argspec = Arg.align
   "--map", Arg.Set Flags.source_map, " output source map";
 
   "-t", Arg.Set Flags.trace, " activate tracing";
+  "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
+  "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
+  "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, " prefix each profile line with the given string ";
+  "--profile-field",
+  Arg.String (fun n -> Flags.profile_field_names := n :: !Flags.profile_field_names),
+  " profile file includes the given field from the program result ";
   "-iR", Arg.Set Flags.interpret_ir, " interpret the lowered code";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
@@ -92,6 +98,19 @@ let process_files files : unit =
       output_string oc_ source_map; close_out oc_
     end
 
+(* Copy relevant flags into the profiler library's (global) settings.
+   This indirection affords the profiler library an independence from the (hacky) Flags library.
+   See also, this discussion:
+   https://github.com/dfinity-lab/actorscript/pull/405#issuecomment-503326551
+*)
+let process_profiler_flags () =
+  ProfilerFlags.profile             := !Flags.profile ;
+  ProfilerFlags.profile_verbose     := !Flags.profile_verbose ;
+  ProfilerFlags.profile_file        := !Flags.profile_file ;
+  ProfilerFlags.profile_line_prefix := !Flags.profile_line_prefix ;
+  ProfilerFlags.profile_field_names := !Flags.profile_field_names ;
+  ()
+
 let () =
   (*
   Sys.catch_break true; - enable to get stacktrace on interrupt
@@ -100,4 +119,5 @@ let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
+  process_profiler_flags () ;
   process_files !args
