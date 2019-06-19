@@ -128,8 +128,9 @@ let rec check_typ env typ : unit =
   | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
   | T.Con (c, typs) ->
-    if not (T.is_loop_breaker typ)
-    then check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
+    (*check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
+      TODO(gabor): re-add above check when it is understood how to deal with mu-types
+      originating from lub/glb *)
     (match Con.kind c with | T.Def (tbs, t) | T.Abs (tbs, t)  ->
       check_typ_bounds env tbs typs no_region
     )

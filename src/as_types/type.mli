@@ -143,7 +143,6 @@ val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
 val avoid_cons : ConSet.t -> ConSet.t -> unit (* raise Unavoidable *)
 
 val is_concrete : typ -> bool
-val is_loop_breaker : typ -> bool
 
 val span : typ -> int option
 
