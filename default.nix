@@ -41,6 +41,8 @@ let real-dvm =
 let commonBuildInputs = [
   nixpkgs.ocaml
   nixpkgs.dune
+  nixpkgs.ocamlPackages.atdgen
+  nixpkgs.ocamlPackages.base
   nixpkgs.ocamlPackages.findlib
   nixpkgs.ocamlPackages.menhir
   nixpkgs.ocamlPackages.num
@@ -153,6 +155,23 @@ rec {
 
     installPhase = ''
       touch $out
+    '';
+  };
+
+  as-ide = stdenv.mkDerivation {
+    name = "as-ide";
+
+    src = subpath ./src;
+
+    buildInputs = commonBuildInputs;
+
+    buildPhase = ''
+      make DUNE_OPTS="--display=short --profile release" as-ide
+    '';
+
+    installPhase = ''
+      mkdir -p $out/bin
+      cp --verbose --dereference as-ide $out/bin
     '';
   };
 

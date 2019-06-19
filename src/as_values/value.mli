@@ -33,6 +33,8 @@ sig
   val compare : t -> t -> int
   val to_int : t -> int
   val of_int : int -> t
+  val to_big_int : t -> Big_int.big_int
+  val of_big_int : Big_int.big_int -> t
   val of_string : string -> t
   val to_string : t -> string
   val to_pretty_string : t -> string
@@ -53,6 +55,14 @@ module Float : FloatType with type bits = int64 and type t = Wasm.F64.t
 
 module Nat : NumType with type t = Big_int.big_int
 module Int : NumType with type t = Big_int.big_int
+module Int_8 : NumType
+module Int_16 : NumType
+module Int_32 : NumType
+module Int_64 : NumType
+module Nat8 : NumType
+module Nat16 : NumType
+module Nat32 : NumType
+module Nat64 : NumType
 
 
 (* Environment *)
@@ -69,6 +79,14 @@ and value =
   | Null
   | Bool of bool
   | Int of Int.t
+  | Int8 of Int_8.t
+  | Int16 of Int_16.t
+  | Int32 of Int_32.t
+  | Int64 of Int_64.t
+  | Nat8 of Nat8.t
+  | Nat16 of Nat16.t
+  | Nat32 of Nat32.t
+  | Nat64 of Nat64.t
   | Word8 of Word8.t
   | Word16 of Word16.t
   | Word32 of Word32.t
@@ -107,6 +125,14 @@ val async_func : int -> func -> value
 val as_null : value -> unit
 val as_bool : value -> bool
 val as_int : value -> Int.t
+val as_int8 : value -> Int_8.t
+val as_int16 : value -> Int_16.t
+val as_int32 : value -> Int_32.t
+val as_int64 : value -> Int_64.t
+val as_nat8 : value -> Nat8.t
+val as_nat16 : value -> Nat16.t
+val as_nat32 : value -> Nat32.t
+val as_nat64 : value -> Nat64.t
 val as_word8 : value -> Word8.t
 val as_word16 : value -> Word16.t
 val as_word32 : value -> Word32.t

@@ -251,7 +251,15 @@ let type_lit env lit at : T.prim =
   | NullLit -> T.Null
   | BoolLit _ -> T.Bool
   | NatLit _ -> T.Nat
+  | Nat8Lit _ -> T.Nat8
+  | Nat16Lit _ -> T.Nat16
+  | Nat32Lit _ -> T.Nat32
+  | Nat64Lit _ -> T.Nat64
   | IntLit _ -> T.Int
+  | Int8Lit _ -> T.Int8
+  | Int16Lit _ -> T.Int16
+  | Int32Lit _ -> T.Int32
+  | Int64Lit _ -> T.Int64
   | Word8Lit _ -> T.Word8
   | Word16Lit _ -> T.Word16
   | Word32Lit _ -> T.Word32

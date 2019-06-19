@@ -29,6 +29,10 @@ let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
   | NegOp, NatLit n -> NatLit (Value.Nat.sub Value.Nat.zero n)
   | NegOp, IntLit n -> IntLit (Value.Int.sub Value.Int.zero n)
+  | NegOp, Int8Lit n -> Int8Lit (Value.Int_8.sub Value.Int_8.zero n)
+  | NegOp, Int16Lit n -> Int16Lit (Value.Int_16.sub Value.Int_16.zero n)
+  | NegOp, Int32Lit n -> Int32Lit (Value.Int_32.sub Value.Int_32.zero n)
+  | NegOp, Int64Lit n -> Int64Lit (Value.Int_64.sub Value.Int_64.zero n)
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 
@@ -272,7 +276,15 @@ and lit l = match l with
   | S.NullLit -> I.NullLit
   | S.BoolLit x -> I.BoolLit x
   | S.NatLit x -> I.NatLit x
+  | S.Nat8Lit x -> I.Nat8Lit x
+  | S.Nat16Lit x -> I.Nat16Lit x
+  | S.Nat32Lit x -> I.Nat32Lit x
+  | S.Nat64Lit x -> I.Nat64Lit x
   | S.IntLit x -> I.IntLit x
+  | S.Int8Lit x -> I.Int8Lit x
+  | S.Int16Lit x -> I.Int16Lit x
+  | S.Int32Lit x -> I.Int32Lit x
+  | S.Int64Lit x -> I.Int64Lit x
   | S.Word8Lit x -> I.Word8Lit x
   | S.Word16Lit x -> I.Word16Lit x
   | S.Word32Lit x -> I.Word32Lit x

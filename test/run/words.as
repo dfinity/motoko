@@ -276,3 +276,17 @@ func checkpointJuliett() {};
     assert (3 : Word8 ** (4 : Word8) == (81 : Word8));
     assert (3 : Word8 ** (5 : Word8) == (243 : Word8));
 };
+
+
+// check whether patterns work
+
+func w8 (n : Word8) = assert (switch n { case 0 false; case 1 false; case 42 true; case _ false });
+func w16 (n : Word16) = assert (switch n { case 0 false; case 1 false; case 65000 true; case _ false });
+func w32 (n : Word32) = assert (switch n { case 0 false; case 1 false; case 4_294_967_295 true; case _ false });
+func w64 (n : Word64) = assert (switch n { case 0 false; case 1 false; case 42 true; case _ false });
+
+
+w8 42;
+w16 65000;
+w32 4_294_967_295;
+w64 42;
