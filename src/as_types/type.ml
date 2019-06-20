@@ -60,8 +60,6 @@ let set_kind c k =
 module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
 module ConSet = ConEnv.Dom
 
-let _ = Printexc.record_backtrace true
-
 (* Short-hands *)
 
 let unit = Tup []
@@ -171,6 +169,7 @@ let rec is_closed seen i t =
   | Non -> true
   | Pre -> true
   | Typ c -> is_closed_con seen i c
+
 and is_closed_kind seen i k =
   match k with
   | Abs (tbs,t) -> (* TBR *)
@@ -181,6 +180,7 @@ and is_closed_kind seen i k =
     let i' = i + 1 + List.length tbs in
     List.for_all (fun {var;bound} -> is_closed seen i' bound) tbs &&
     is_closed seen i' t
+
 and is_closed_con seen i c =
   let k = Con.kind c in
   ConSet.mem c seen || is_closed_kind (ConSet.add c seen) i k
@@ -194,7 +194,7 @@ let rec shift i n t =
   | Prim _ -> t
   | Var (s, j) -> Var (s, if j < i then j else j + n)
   | Free c -> Free (shift_con i n c)
-  | Con (c, ts) -> Con (shift i n c, List.map (shift i n) ts)
+  | Con (t, ts) -> Con (shift i n t, List.map (shift i n) ts)
   | Array t -> Array (shift i n t)
   | Tup ts -> Tup (List.map (shift i n) ts)
   | Func (s, c, tbs, ts1, ts2) ->
@@ -377,7 +377,11 @@ let unfold_binds c tbs =
   if tbs = [] then [] else
   let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
   let ts = List.map (fun c -> Free c) cs in
-  let tbs1 = List.map (fun {var;bound} -> {var;bound=open_ ((Free c)::ts) bound}) tbs in
+  let tbs1 =
+    List.map
+      (fun {var; bound} -> {var; bound = open_ ((Free c)::ts) bound})
+      tbs
+  in
   close_binds cs tbs1
 
 (* kind of c, unfolded if necessary *)
@@ -386,7 +390,13 @@ let kind c =
   | Def (tbs, t) ->
     let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
     let ts = List.map (fun c -> Free c) cs in
-    Def (List.map (fun tb -> {var = tb.var; bound =  close cs (open_ (Free c::ts) tb.bound)}) tbs, close cs (open_ (Free c::ts) t))
+    let tbs' =
+      List.map
+        (fun tb ->
+          {var = tb.var; bound = close cs (open_ (Free c::ts) tb.bound)})
+        tbs
+    in
+    Def (tbs', close cs (open_ (Free c::ts) t))
   | Abs (tbs, t) as k ->
     k
 
@@ -642,39 +652,42 @@ let is_concrete t =
 
 module S = Set.Make (struct type t = typ * typ let compare = compare end)
 
-(* debugging rel_typ *)
+(* Debugging rel_typ *)
 
 let debug = false (* true, to debug *)
+
 let max_depth = 40
 
 (* TODO: remove this hack by declaring pretty printers earlier, enabling more printf debugging *)
-let string_of_typ_ref : (typ -> string) ref = ref (fun (_:typ) -> "")
+
+let string_of_typ_ref : (typ -> string) ref = ref (fun (_ : typ) -> "")
 
 let debug_string_of_typ t =
   match t with
   | Free c
   | Con (Free c, _) when match Con.kind c with Def _ -> true | _ -> false ->
-     Printf.sprintf "%s where %s" (!string_of_typ_ref t) (!string_of_typ_ref (Typ c))
-  | _ -> (!string_of_typ_ref t)
+    Printf.sprintf "%s where %s" (!string_of_typ_ref t) (!string_of_typ_ref (Typ c))
+  | _ -> !string_of_typ_ref t
 
 let trace_rel_typ rel eq t1 t2 =
   let n = S.cardinal (!rel) in
-  if n > max_depth then ()
-  else
+  match compare n max_depth with
+  | -1 ->
     let indent = String.make n ' ' in
-    if n = max_depth then
-      Printf.printf "\n %s rel_type %s%!" indent "..."
-    else
     begin
       Printf.printf "\n %s rel_typ %s%!" indent (debug_string_of_typ t1);
       Printf.printf "\n %s         %s%!" indent (debug_string_of_typ t2)
     end
+  | 0 ->
+    let indent = String.make n ' ' in
+    Printf.printf "\n %s rel_type %s%!" indent "..."
+  | _ -> ()
 
 let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let rec rel_typ rel eq t1 t2 =
-  if debug then trace_rel_typ rel eq t1 t2 else ();
+  if debug then trace_rel_typ rel eq t1 t2;
   t1 == t2 || S.mem (t1, t2) !rel || begin
   rel := S.add (t1, t2) !rel;
   match t1, t2 with

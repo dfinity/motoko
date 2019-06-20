@@ -131,8 +131,18 @@ let rec check_typ env typ : unit =
     check_typ env (T.Con (typ, []))
   | T.Con (T.Free c, typs) ->
     List.iter (check_typ env) typs;
-    let (T.Def (tbs,_) | T.Abs (tbs, _)) = T.kind c in
-    check_typ_bounds env tbs typs no_region
+    begin
+      match T.kind c with
+      | T.Def (tbs,_) ->
+        if not (T.ConSet.mem c env.cons) then
+          (* an anonymous recursive type, check its def but beware recursion
+             future: use a visited set *)
+          check_con {env with cons = T.ConSet.add c env.cons} c;
+        check_typ_bounds env tbs typs no_region
+      | T.Abs (tbs, _) ->
+        check env no_region (T.ConSet.mem c env.cons) "free type constructor";
+        check_typ_bounds env tbs typs no_region
+    end
   | T.Con (_, _) ->
     error env no_region "ill-formed constructed type %s" (T.string_of_typ typ)
   | T.Any -> ()
