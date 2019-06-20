@@ -9,7 +9,6 @@ module V = Value
 module T = Type
 module CC = As_types.Call_conv
 
-
 (* Context *)
 
 type val_env = V.def V.Env.t
@@ -20,7 +19,7 @@ type scope = val_env
 
 type flags = {
   trace : bool;
-  print_depth : int
+  print_depth : int;
 }
 
 type env =
@@ -235,7 +234,15 @@ let interpret_lit env lit : V.value =
   | NullLit -> V.Null
   | BoolLit b -> V.Bool b
   | NatLit n -> V.Int n
+  | Nat8Lit n -> V.Nat8 n
+  | Nat16Lit n -> V.Nat16 n
+  | Nat32Lit n -> V.Nat32 n
+  | Nat64Lit n -> V.Nat64 n
   | IntLit i -> V.Int i
+  | Int8Lit i -> V.Int8 i
+  | Int16Lit i -> V.Int16 i
+  | Int32Lit i -> V.Int32 i
+  | Int64Lit i -> V.Int64 i
   | Word8Lit w -> V.Word8 w
   | Word16Lit w -> V.Word16 w
   | Word32Lit w -> V.Word32 w
@@ -279,6 +286,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   let open Call_conv in
   last_region := exp.at;
   last_env := env;
+  Profiler.bump_region exp.at ;
   match exp.it with
   | PrimE s ->
     let at = exp.at in
@@ -293,7 +301,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LitE lit ->
     k (interpret_lit env lit)
   | UnE (ot, op, exp1) ->
-    interpret_exp env exp1 (fun v1 -> k (Operator.unop ot op v1))
+    interpret_exp env exp1 (fun v1 -> k (try Operator.unop ot op v1 with Invalid_argument s -> trap exp.at "%s" s))
   | ShowE (ot, exp1) ->
     interpret_exp env exp1 (fun v ->
       if Show.can_show ot
@@ -349,18 +357,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | CallE (_cc, exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
-        interpret_exp env exp2 (fun v2 ->
-            let call_conv, f = V.as_func v1 in
-            check_call_conv exp1 call_conv;
-            check_call_conv_arg env exp v2 call_conv;
-            f v2 k
-
-(*
-        try
-          let _, f = V.as_func v1 in f v2 k
-        with Invalid_argument s ->
-          trap exp.at "%s" s
-*)
+      interpret_exp env exp2 (fun v2 ->
+        let call_conv, f = V.as_func v1 in
+        check_call_conv exp1 call_conv;
+        check_call_conv_arg env exp v2 call_conv;
+        last_region := exp.at; (* in case the following throws *)
+        f v2 k
       )
     )
   | BlockE (decs, exp1) ->
@@ -537,7 +539,15 @@ and match_lit lit v : bool =
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
   | NatLit n, V.Int n' -> V.Int.eq n n'
+  | Nat8Lit n, V.Nat8 n' -> V.Nat8.eq n n'
+  | Nat16Lit n, V.Nat16 n' -> V.Nat16.eq n n'
+  | Nat32Lit n, V.Nat32 n' -> V.Nat32.eq n n'
+  | Nat64Lit n, V.Nat64 n' -> V.Nat64.eq n n'
   | IntLit i, V.Int i' -> V.Int.eq i i'
+  | Int8Lit i, V.Int8 i' -> V.Int_8.eq i i'
+  | Int16Lit i, V.Int16 i' -> V.Int_16.eq i i'
+  | Int32Lit i, V.Int32 i' -> V.Int_32.eq i i'
+  | Int64Lit i, V.Int64 i' -> V.Int_64.eq i i'
   | Word8Lit w, V.Word8 w' -> w = w'
   | Word16Lit w, V.Word16 w' -> w = w'
   | Word32Lit w, V.Word32 w' -> w = w'
@@ -667,7 +677,8 @@ let interpret_prog flags scope ((ds, exp), flavor) : scope =
   let ve = ref V.Env.empty in
   try
     Scheduler.queue (fun () ->
-      interpret_block env (Some ve) ds exp  (fun v -> ())
+      try interpret_block env (Some ve) ds exp  (fun v -> ())
+      with Invalid_argument s -> trap !last_region "%s" s
     );
     Scheduler.run ();
     !ve

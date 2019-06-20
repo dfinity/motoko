@@ -12,7 +12,15 @@ type prim =
   | Null
   | Bool
   | Nat
+  | Nat8
+  | Nat16
+  | Nat32
+  | Nat64
   | Int
+  | Int8
+  | Int16
+  | Int32
+  | Int64
   | Word8
   | Word16
   | Word32
@@ -71,7 +79,15 @@ let prim = function
   | "Null" -> Null
   | "Bool" -> Bool
   | "Nat" -> Nat
+  | "Nat8" -> Nat8
+  | "Nat16" -> Nat16
+  | "Nat32" -> Nat32
+  | "Nat64" -> Nat64
   | "Int" -> Int
+  | "Int8" -> Int8
+  | "Int16" -> Int16
+  | "Int32" -> Int32
+  | "Int64" -> Int64
   | "Word8" -> Word8
   | "Word16" -> Word16
   | "Word32" -> Word32
@@ -370,8 +386,9 @@ let open_binds tbs =
   let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
   let ts = List.map (fun c -> Free c) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
-  List.iter2 (fun c k -> set_kind c k) cs ks;
+  List.iter2 set_kind cs ks;
   ts
+
 
 let unfold_binds c tbs =
   if tbs = [] then [] else
@@ -412,11 +429,14 @@ let reduce c ts =
     open_ ts t
 
 let rec normalize = function
-  | Free c ->
-    normalize (Con (Free c,[]))
-  | Con (Free con, ts) as t ->
-    (match Con.kind con with
-    | Def (tbs, t) -> normalize (reduce con ts)
+  | Free c as t ->
+    (match Con.kind c with
+    | Def (tbs, _) -> normalize (reduce c [])
+    | _ -> t
+    )
+  | Con (Free c, ts) as t ->
+    (match Con.kind c with
+    | Def (tbs, _) -> normalize (reduce c ts)
     | _ -> t
     )
   | Mut t -> Mut (normalize t)
@@ -532,9 +552,9 @@ let rec span = function
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
   | Prim (Nat | Int | Float | Text) -> None
-  | Prim Word8 -> Some 0x100
-  | Prim Word16 -> Some 0x10000
-  | Prim (Word32 | Word64 | Char) -> None  (* for all practical purpuses *)
+  | Prim (Nat8 | Int8 | Word8) -> Some 0x100
+  | Prim (Nat16 | Int16 | Word16) -> Some 0x10000
+  | Prim (Nat32 | Int32 | Word32 | Nat64 | Int64 | Word64 | Char) -> None  (* for all practical purposes *)
   | Obj _ | Tup _ | Async _ -> Some 1
   | Variant fs -> Some (List.length fs)
   | Array _ | Func _ | Shared | Any -> None
@@ -648,6 +668,12 @@ let is_concrete t =
     end
   in go t
 
+
+module M = Map.Make (struct type t = typ * typ let compare = compare end)
+(* Forward declare
+   TODO: haul string_of_typ before the lub/glb business, if possible *)
+let str = ref (fun _ -> failwith "")
+
 (* Equivalence & Subtyping *)
 
 module S = Set.Make (struct type t = typ * typ let compare = compare end)
@@ -658,16 +684,12 @@ let debug = false (* true, to debug *)
 
 let max_depth = 40
 
-(* TODO: remove this hack by declaring pretty printers earlier, enabling more printf debugging *)
-
-let string_of_typ_ref : (typ -> string) ref = ref (fun (_ : typ) -> "")
-
 let debug_string_of_typ t =
   match t with
   | Free c
   | Con (Free c, _) when match Con.kind c with Def _ -> true | _ -> false ->
-    Printf.sprintf "%s where %s" (!string_of_typ_ref t) (!string_of_typ_ref (Typ c))
-  | _ -> !string_of_typ_ref t
+    Printf.sprintf "%s where %s" (!str t) (!str (Typ c))
+  | _ -> !str t
 
 let trace_rel_typ rel eq t1 t2 =
   let n = S.cardinal (!rel) in
@@ -888,63 +910,174 @@ let eq_kind k1 k2 : bool =
 
 (* Least upper bound and greatest lower bound *)
 
-let rec lub t1 t2 =
+let rec lub' lubs glbs t1 t2 =
+  Printf.printf "\n lub %s %s" (debug_string_of_typ t1) (debug_string_of_typ t2);
   if t1 == t2 then t1 else
-  (* TBR: this is just a quick hack *)
-  match normalize t1, normalize t2 with
-  | _, Pre
-  | Pre, _ -> Pre
-  | _, Any
-  | Any, _ -> Any
-  | _, Non -> t1
-  | Non, _ -> t2
-  | Prim Nat, Prim Int
-  | Prim Int, Prim Nat -> Prim Int
-  | Opt t1', Opt t2' -> Opt (lub t1' t2')
-  | Variant t1', Variant t2' -> Variant (lub_tags t1' t2')
-  | Prim Null, Opt t'
-  | Opt t', Prim Null -> Opt t'
-  | Array t1', (Obj _ as t2) -> lub (array_obj t1') t2
-  | (Obj _ as t1), Array t2' -> lub t1 (array_obj t2')
-  | t1', t2' when eq t1' t2' -> t1
-  | _ -> Any
+  match M.find_opt (t1, t2) !lubs with
+  | Some t -> t
+  | _ ->
+    match t1, t2 with
+    | _, Pre
+    | Pre, _ -> assert false
+    | _, Any
+    | Any, _ -> Any
+    | _, Non -> t1
+    | Non, _ -> t2
+    | Shared, _ when sub t2 Shared -> Shared
+    | _, Shared when sub t1 Shared -> Shared
+    | Prim Nat, (Prim Int as t)
+    | (Prim Int as t), Prim Nat -> t
+    | Opt t1', Opt t2' ->
+      Opt (lub' lubs glbs t1' t2')
+    | Prim Null, Opt t' -> t2
+    | Opt t', Prim Null -> t1
+    | Variant t1', Variant t2' ->
+      Variant (lub_tags lubs glbs t1' t2')
+    | Array t1', Obj _ -> lub' lubs glbs (array_obj t1') t2
+    | Obj _, Array t2' -> lub' lubs glbs t1 (array_obj t2')
+    | Prim Text, Obj _ -> lub' lubs glbs text_obj t2
+    | Obj _, Prim Text -> lub' lubs glbs t1 text_obj
+    | Prim Text, Array t2' -> lub' lubs glbs text_obj (array_obj t2')
+    | Array t1', Prim Text -> lub' lubs glbs (array_obj t1') text_obj
+    | Array t1', Array t2' ->
+      Array (lub' lubs glbs t1' t2')
+    | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
+      Tup (List.map2 (lub' lubs glbs) ts1 ts2)
+    | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
+      Obj (s1, lub_fields lubs glbs tf1 tf2)
+    | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
+        when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
+          List.(length args1 = length args2 && length res1 = length res2) ->
+      combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
+    | Async t1', Async t2' ->
+      Async (lub' lubs glbs t1' t2')
+    | _, Free _ ->
+      lub' lubs glbs t1 (Con (t2, []))
+    | Free _, _ ->
+      lub' lubs glbs (Con (t1, [])) t2
+    | Con _, _
+    | _, Con _ ->
+      combine_con_parts t1 t2 "lub" lubs (lub' lubs glbs)
+    | _ when eq t1 t2 -> t1
+    | _ when sub t1 Shared && sub t2 Shared -> Shared
+    | _ -> Any
 
-and lub_tags fs1 fs2 = match fs1, fs2 with
+and lub_fields lubs glbs fs1 fs2 = match fs1, fs2 with
+  | _, [] -> []
+  | [], _ -> []
+  | f1::fs1', f2::fs2' ->
+    match compare_field f1 f2 with
+    | -1 -> lub_fields lubs glbs fs1' fs2
+    | +1 -> lub_fields lubs glbs fs1 fs2'
+    | _ -> {f1 with typ = lub' lubs glbs f1.typ f2.typ}::lub_fields lubs glbs fs1' fs2'
+
+and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
   | [], fs2 -> fs2
   | f1::fs1', f2::fs2' ->
     match compare_field f1 f2 with
-    | -1 -> f1 :: lub_tags fs1' fs2
-    | +1 -> f2 :: lub_tags fs1 fs2'
-    | _ -> {f1 with typ = lub f1.typ f2.typ} :: lub_tags fs1' fs2'
+    | -1 -> f1 :: lub_tags lubs glbs fs1' fs2
+    | +1 -> f2 :: lub_tags lubs glbs fs1 fs2'
+    | _ -> {f1 with typ = lub' lubs glbs f1.typ f2.typ} :: lub_tags lubs glbs fs1' fs2'
 
-let rec glb t1 t2 =
+and glb' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
-  (* TBR: this is just a quick hack *)
-  match normalize t1, normalize t2 with
-  | _, Pre
-  | Pre, _ -> Pre
-  | _, Any -> t1
-  | Any, _ -> t2
-  | _, Non -> Non
-  | Non, _ -> Non
-  | Prim Nat, Prim Int
-  | Prim Int, Prim Nat -> Prim Nat
-  | Opt t1', Opt t2' -> Opt (glb t1' t2')
-  | Variant t1', Variant t2' -> Variant (glb_tags t1' t2')
-  | Prim Null, Opt _
-  | Opt _, Prim Null -> Prim Null
-  | t1', t2' when eq t1' t2' -> t1
-  | _ -> Non
+  match M.find_opt (t1, t2) !glbs with
+  | Some t -> t
+  | _ ->
+    match t1, t2 with
+    | _, Pre
+    | Pre, _ -> assert false
+    | _, Any -> t1
+    | Any, _ -> t2
+    | _, Non
+    | Non, _ -> Non
+    | Shared, _ when sub t2 Shared -> t2
+    | _, Shared when sub t1 Shared -> t1
+    | (Prim Nat as t), Prim Int
+    | Prim Int, (Prim Nat as t) -> t
+    | Opt t1', Opt t2' ->
+      Opt (glb' lubs glbs t1' t2')
+    | Variant t1', Variant t2' ->
+      Variant (glb_tags lubs glbs t1' t2')
+    | Prim Null, Opt _
+    | Opt _, Prim Null -> Prim Null
+    | Array t1', Obj _ when sub (array_obj t1') t2 -> t1 (* TODO(gabor): payload should be glb'd *)
+    | Obj _, Array t2' when sub (array_obj t2') t1 -> t2 (* TODO(gabor): payload should be glb'd *)
+    | Prim Text, Obj _ when sub text_obj t2 -> t1
+    | Obj _, Prim Text when sub text_obj t1 -> t2
+    | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
+      Tup (List.map2 (glb' lubs glbs) ts1 ts2)
+    | Array t1', Array t2' ->
+      Array (glb' lubs glbs t1' t2')
+    | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
+      Obj (s1, glb_fields lubs glbs tf1 tf2)
+    | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
+        when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
+          List.(length args1 = length args2 && length res1 = length res2) ->
+      combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
+    | Async t1', Async t2' ->
+      Async (glb' lubs glbs t1' t2')
+    | _, Free _ ->
+      glb' lubs glbs t1 (Con (t2, []))
+    | Free _, _ ->
+      glb' lubs glbs (Con (t1, [])) t2
+    | Con _, _
+    | _, Con _ ->
+      combine_con_parts t1 t2 "glb" glbs (glb' lubs glbs)
+    | _ when eq t1 t2 -> t1
+    | _ -> Non
 
-and glb_tags fs1 fs2 = match fs1, fs2 with
+and glb_fields lubs glbs fs1 fs2 = match fs1, fs2 with
+  | fs1, [] -> fs1
+  | [], fs2 -> fs2
+  | f1::fs1', f2::fs2' ->
+    match compare_field f1 f2 with
+    | +1 -> f2::glb_fields lubs glbs fs1 fs2'
+    | -1 -> f1::glb_fields lubs glbs fs1' fs2
+    | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_fields lubs glbs fs1' fs2'
+
+and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> []
   | [], fs2 -> []
   | f1::fs1', f2::fs2' ->
     match compare_field f1 f2 with
-    | -1 -> glb_tags fs1' fs2
-    | +1 -> glb_tags fs1 fs2'
-    | _ -> {f1 with typ = glb f1.typ f2.typ}::glb_tags fs1' fs2'
+    | -1 -> glb_tags lubs glbs fs1' fs2
+    | +1 -> glb_tags lubs glbs fs1 fs2'
+    | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_tags lubs glbs fs1' fs2'
+
+and combine_func_parts s c bs1 args1 res1 bs2 args2 res2 lubs glbs contra co =
+  let open List in
+  let ts1 = open_binds bs1 in
+  let op = map (open_ ts1) in
+  let get_con = function | Free c -> c | _ -> assert false in
+  let cs = map get_con ts1 in
+  let cl = map (close cs) in
+  let combine_binds =
+    map2 (fun b1 b2 -> {b1 with bound = contra lubs glbs b1.bound b2.bound}) in
+  Func
+    (s, c, combine_binds bs1 bs2,
+     cl (map2 (contra lubs glbs) (op args1) (op args2)),
+     cl (map2 (co lubs glbs) (op res1) (op res2)))
+
+and combine_con_parts t1 t2 naming re how =
+  let s1, s2 = !str t1, !str t2 in
+  if s1 = s2 then t1 else
+  let c = Con.fresh (Printf.sprintf "@%s(%s, %s)" naming s1 s2) (Abs ([], Pre)) in
+  Printf.printf "\n combine con parts %s %s %s" naming (debug_string_of_typ t1) (debug_string_of_typ t2);
+  let t = Con (Free c, []) in
+  re := M.add (t2, t1) t (M.add (t1, t2) t !re);
+  let inner = how (normalize t1) (normalize t2) in
+  set_kind c (Def ([], inner));
+  (* check for short-circuiting opportunities *)
+  if eq inner t1
+  then (re := M.add (t2, t1) t1 (M.add (t1, t2) t1 !re); t1)
+  else if eq inner t2
+  then (re := M.add (t2, t1) t2 (M.add (t1, t2) t2 !re); t2)
+  else inner
+
+let lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
+let glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
 (* Environments *)
 
@@ -958,7 +1091,15 @@ let string_of_prim = function
   | Null -> "Null"
   | Bool -> "Bool"
   | Nat -> "Nat"
+  | Nat8 -> "Nat8"
+  | Nat16 -> "Nat16"
+  | Nat32 -> "Nat32"
+  | Nat64 -> "Nat64"
   | Int -> "Int"
+  | Int8 -> "Int8"
+  | Int16 -> "Int16"
+  | Int32 -> "Int32"
+  | Int64 -> "Int64"
   | Float -> "Float"
   | Word8 -> "Word8"
   | Word16 -> "Word16"
@@ -1098,9 +1239,11 @@ and strings_of_con' vs c =
   op, string_of_binds csvs'v vs' tbs, string_of_typ' csvs'v t
 
 let string_of_con : con -> string = string_of_con' []
+
 let strings_of_con : con -> (string * string * string) = strings_of_con' []
 
 let string_of_typ : typ -> string = string_of_typ' []
+
 let rec string_of_typ_expand t =
   let s = string_of_typ t in
   match t with
@@ -1114,4 +1257,4 @@ let rec string_of_typ_expand t =
     )
   | _ -> s
 
-let _ = string_of_typ_ref := string_of_typ
+let _ = str := string_of_typ

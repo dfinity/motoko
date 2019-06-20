@@ -71,6 +71,7 @@ let AssocList = import "assocList.as";
 type AssocList<K,V> = AssocList.AssocList<K,V>;
 
 let HASH_BITS = 4;
+//let HASH_BITS = 16;
 
 type Key<K> = {
   // hash field: permits fast inequality checks, permits collisions;
@@ -384,10 +385,12 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   func find<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K) -> Bool) : ?V {
     let key_eq = keyEq<K>(k_eq);
     // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
-    func rec(t : Trie<K,V>, bitpos:Nat) : ?V {
+    func rec(t : Trie<K,V>, bitpos:Nat) : ?V { label profile_trie_find_rec : (?V)
       if ( bitpos < HASH_BITS ) {
+        label profile_trie_find_bitpos_lt_hash_bits : (?V)
 	      switch t {
 	      case null {
+               label profile_trie_find_end_null : (?V)
 	             // the trie may be "sparse" along paths leading to no keys, and may end early.
 	             null
 	           };
@@ -399,16 +402,19 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 	           };
 	      }
       } else {
+        label profile_trie_find_bitpos_gte_hash_bits : (?V)
 	      // No more walking; we should be at a leaf now, by construction invariants.
 	      switch t {
 	      case null { null };
 	      case (?l) {
+               label profile_trie_find_end_assocList_find : (?V)
 	             // Permit hash collisions by walking a list/array of KV pairs in each leaf:
                AssocList.find<Key<K>,V>(l.keyvals, k, key_eq)
 	           };
 	      }
       }
     };
+    label profile_trie_find_begin : (?V)
     rec(t, 0)
   };
 
@@ -911,21 +917,25 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
    To do: make this more efficient, using a single array allocation.
    */
-  func toArray<K,V,W>(t:Trie<K,V>,f:(K,V)->[W]):[W]{
+  func toArray<K,V,W>(t:Trie<K,V>,f:(K,V)->[W]):[W] =
+    label profile_trie_toArray_begin : [W] {
     func arrayAppend(x:[W],y:[W]):[W] {
+      label profile_trie_toArray_arrayAppend : [W]
       Array_tabulate<W> (
         x.len() + y.len(),
-        func (i:Nat) : W {
+        func (i:Nat) : W = label profile_trie_toArray_arrayAppend_projelm : W {
           if (i >= x.len()) { y[i - x.len()] }
           else { x[i] }
         }
       )
     };
-    foldUp<K,V,[W]>
+    let result = foldUp<K,V,[W]>
     (t,
      arrayAppend,
      func(k:K, v:V):[W]{f(k,v)},
-     [])
+     []);
+    label profile_trie_toArray_end : [W]
+    result
   };
 
   /**
@@ -1074,6 +1084,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   // Equality function for two `Key<K>`s, in terms of equaltiy of `K`'s.
   func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) = {
     func (key1:Key<K>, key2:Key<K>) : Bool =
+      label profile_trie_keyEq : Bool
       (Hash.hashEq(key1.hash, key2.hash) and keq(key1.key, key2.key))
   };
 
@@ -1094,6 +1105,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
   // XXX: until AST-42:
   func assertIsNull<X>(x : ?X) {
+    label profile_trie_assertIsNull
     switch x {
     case null { assert(true)  };
     case (?_) { assert(false) };

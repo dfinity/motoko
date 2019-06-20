@@ -1,5 +1,5 @@
-issue442.as:1.11-1.24: warning, this array has type [Any] because elements have inconsistent types
-issue442.as:2.11-2.29: warning, this if has type Any because branches have inconsistent types,
+issue442.as:1.11-1.24: warning, this array has type [Shared] because elements have inconsistent types
+issue442.as:2.11-2.29: warning, this if has type Shared because branches have inconsistent types,
 true produces
   Nat
 false produces
