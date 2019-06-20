@@ -129,7 +129,8 @@ let rec check_typ env typ : unit =
     error env no_region "free type variable %s, index %i" s  i
   | T.Con (c, typs) ->
     begin match Con.kind c with
-     | T.Def (tbs, _) -> check_typ_bounds env tbs typs no_region
+     | T.Def (tbs, _) -> check_typ_bounds env tbs typs no_region (* TODO(Claudio):
+       check bodies of anonymous T.Defs since they won't get checked elsewhere *)
      | T.Abs (tbs, _) ->
        check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
        check_typ_bounds env tbs typs no_region
@@ -144,7 +145,7 @@ let rec check_typ env typ : unit =
     List.iter (check_typ env) typs
   | T.Func (sort, control, binds, ts1, ts2) ->
     let cs, ce = check_typ_binds env binds in
-    let env' = adjoin_cons env  ce in
+    let env' = adjoin_cons env ce in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
