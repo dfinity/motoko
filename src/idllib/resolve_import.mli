@@ -1,3 +1,3 @@
-module S : Set.S with type elt = String.t
+module Set : Set.S with type elt = String.t
 
-val resolve : Syntax.prog -> string -> S.t Diag.result                                   
+val resolve : Syntax.prog -> string -> string list Diag.result                                   

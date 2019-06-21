@@ -1,0 +1,7 @@
+type t = blob;
+
+import "px.did";
+
+type t1 = t;
+type t2 = UserId;
+

@@ -6,7 +6,7 @@ let phase heading name =
   if !Flags.verbose then printf "-- %s %s:\n%!" heading name
 
 let error at cat text =
-  Error { Diag.sev = Diag.Error; at; cat; text }
+  Error [{ Diag.sev = Diag.Error; at; cat; text }]
 
 let print_stat_ve =
   Typing.Env.iter (fun x t ->
@@ -48,14 +48,7 @@ let parse_file filename : parse_result =
   close_in ic;
   match result with
   | Ok prog -> Diag.return (prog, filename)
-  | Error e -> Error [e]
-
-(* import file name resolution *)
-
-type resolve_result = (Syntax.prog * Resolve_import.S.t) Diag.result
-
-let resolve_prog (prog, base) : resolve_result =
-  Diag.map (fun libraries -> (prog, libraries)) (Resolve_import.resolve prog base)
+  | Error e -> Error e
 
 (* Type checking *)
 
@@ -73,54 +66,62 @@ let check_prog senv prog
 
 type load_result = (Syntax.prog * Typing.scope) Diag.result
 
-let chase_imports senv0 imports : Typing.scope Diag.result =
-  let open Resolve_import.S in
-  let pending = ref empty in
-  let senv = ref senv0 in
-  let libraries = ref [] in
-  let rec go f =
-    if Typing.Env.mem f !senv then
-      Diag.return ()
-    else if mem f !pending then
-      Error [{
-                Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
-                text = sprintf "file %s must not depend on itself" f
-        }]
-    else begin
-        pending := add f !pending;
-        Diag.bind (parse_file f) (fun (prog, base) ->
-            Diag.bind (Resolve_import.resolve prog base) (fun more_imports ->
-                Diag.bind (go_set more_imports) (fun () ->
-                    Diag.bind (check_prog !senv prog) (fun scope ->
-                        libraries := (f, prog) :: !libraries;
-                        senv := Typing.Env.adjoin !senv scope;
-                        pending := remove f !pending;
-                        Diag.return ()
-          ))))
-      end
-  and go_set todo = Diag.traverse_ go (elements todo)
-  in Diag.map (fun () -> !senv) (go_set imports)
-
-let load_prog parse senv : load_result =
-  Diag.bind parse (fun parsed ->
-      Diag.bind (resolve_prog parsed) (fun (prog, libraries) ->
-          Diag.bind (chase_imports senv libraries) (fun senv' ->
-              Diag.bind (check_prog senv' prog) (fun senv'' ->
-                  Diag.return (prog, senv'')
-    ))))
-  
-(* Only type checking *)
-
 let initial_stat_env = Typing.empty_scope
 
-let check_file file : load_result = load_prog (parse_file file) initial_stat_env  
+module LibEnv = Env.Make(String)
+
+let merge_env imports init_env lib_env =
+  let disjoint_union env1 env2 : Typing.typ_env Diag.result =
+    try Diag.return (Typing.Env.union (fun k v1 v2 ->
+        if v1 = v2 then Some v1 else raise (Typing.Env.Clash k)
+      ) env1 env2)
+    with Typing.Env.Clash k ->
+      error Source.no_region "import" (sprintf "conflict type definition for %s" k) in
+  let env_list = List.map (fun import -> LibEnv.find import lib_env) imports in
+  Diag.fold disjoint_union init_env env_list
+
+let chase_imports senv imports =
+  let module S = Resolve_import.Set in
+  let pending = ref S.empty in
+  let lib_env = ref LibEnv.empty in
+  let rec go file =
+    if S.mem file !pending then
+      error Source.no_region "import" (sprintf "file %s must not depend on itself" file)
+    else if LibEnv.mem file !lib_env then
+      Diag.return ()
+    else begin
+        pending := S.add file !pending;
+        Diag.bind (parse_file file) (fun (prog, base) ->
+            Diag.bind (Resolve_import.resolve prog base) (fun imports ->
+                Diag.bind (go_set imports) (fun () ->
+                    Diag.bind (merge_env imports senv !lib_env) (fun base_env ->
+                        Diag.bind (check_prog base_env prog) (fun scope ->
+                            lib_env := LibEnv.add file scope !lib_env;
+                            pending := S.remove file !pending;
+                            Diag.return ()
+          )))))
+      end
+  and go_set todo = Diag.traverse_ go todo
+  in Diag.map (fun () -> !lib_env) (go_set imports)
+
+let load_prog parse senv =
+  Diag.bind parse (fun (prog, base) ->
+      Diag.bind (Resolve_import.resolve prog base) (fun imports ->
+          Diag.bind (chase_imports senv imports) (fun lib_env ->
+              Diag.bind (merge_env imports senv lib_env) (fun base_env ->
+                  Diag.bind (check_prog base_env prog) (fun scope ->
+                      Diag.return (prog, scope))))))
+   
+(* Only type checking *)
+
+let check_file file : load_result = load_prog (parse_file file) initial_stat_env
   
 (* JS Compilation *)
 
 type compile_result = Buffer.t Diag.result
                     
 let compile_js_file file : compile_result =
-  Diag.bind (load_prog (parse_file file) initial_stat_env)
+  Diag.bind (check_file file)
     (fun (prog, senv) ->
       phase "JS Compiling" file;
       Diag.return (Compile_js.compile senv prog))

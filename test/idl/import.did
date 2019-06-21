@@ -1,7 +1,9 @@
+type list = vec nat;
+
 import "px.did";
-import "recursion.did";
+import "import1.did";
 
 service S {
-  f: (tree) -> (list, IdErr);
+  f: (t, t1, t2) -> (list, IdErr);
   getInventory: (producer_id: nat) -> (Inventory) pure;
 }

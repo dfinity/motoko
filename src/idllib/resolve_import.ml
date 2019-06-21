@@ -1,11 +1,11 @@
 type filepath = string
 
-module S = Set.Make(String)
+module Set = Set.Make(String)
 
 type env = {
   msgs : Diag.msg_store;
   base : filepath;
-  imported : S.t ref;
+  imported : Set.t ref;
 }
 
 open Syntax
@@ -21,7 +21,7 @@ and dec env d = match d.it with
      if Sys.file_exists f && not (Sys.is_directory f)
      then begin
          fp := f;
-         env.imported := S.add f !(env.imported)
+         env.imported := Set.add f !(env.imported)
      end else
        let open Diag in
        add_msg env.msgs {
@@ -33,12 +33,12 @@ and dec env d = match d.it with
          
 let prog env p = decs env p.it.decs
    
-let resolve : Syntax.prog -> filepath -> S.t Diag.result = fun p base ->
+let resolve : Syntax.prog -> filepath -> filepath list Diag.result = fun p base ->
   Diag.with_message_store (fun msgs ->
       let base = if Sys.is_directory base then base else Filename.dirname base in
-      let env = { msgs; base; imported = ref S.empty } in
+      let env = { msgs; base; imported = ref Set.empty } in
       prog env p;
-      Some !(env.imported)
+      Some (Set.elements !(env.imported))
     )
     
        

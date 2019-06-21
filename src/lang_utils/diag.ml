@@ -29,6 +29,10 @@ let rec traverse_ : ('a -> unit result) -> 'a list -> unit result = fun f -> fun
   | [] -> return ()
   | x :: xs -> bind (f x) (fun () -> traverse_ f xs)
 
+let rec fold : ('a -> 'b -> 'a result) -> 'a -> 'b list -> 'a result = fun f acc -> function
+  | [] -> return acc
+  | x :: xs -> bind (f acc x) (fun y -> fold f y xs)
+             
 type msg_store = messages ref
 let add_msg s m = s := m :: !s
 let add_msgs s ms = s := List.rev ms @ !s
