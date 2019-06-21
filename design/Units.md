@@ -120,7 +120,7 @@ A custom section `as-type` in the Wasm module is used by the compiler to include
 A custom section `as-interface` in the Wasm module may be used by the compiler to include any other information needed by the code generator, such as specialized calling conventions.
 
 
-## Natural and separate compilation
+### Natural and separate compilation
 
 This extension to the former scheme explicitly uses _natural mechanisms_ in Wasm to express units as modules.
 That enables the best possible integration and interoperation with the wider Wasm eco system and existing tools.
