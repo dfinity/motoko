@@ -287,7 +287,7 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      cp -r $src $out/
+      cp -r $src $out/stdlib
       mkdir -p $out/nix-support
       echo "report stdlib $out/stdlib" >> $out/nix-support/hydra-build-products
     '';
