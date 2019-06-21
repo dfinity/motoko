@@ -14,7 +14,7 @@ int main(int argc, char** args) {
 
   gettimeofday(&tv_0,0);
   //
-  // first argument is the command to run and time:
+  // first argument is the shell command to run and whose running time we measure:
   //
   system(args[1]);
   gettimeofday(&tv_1,0);
