@@ -52,6 +52,8 @@ The syntax of a unit -- and therefore an AS source file -- is a sequence of *imp
 
 Imports are no longer allowed anywhere else.
 
+The `<text>` of the `import` statement is an URL. The precise interpretation is implementation dependant (see below in section Compilation). It at least support local paths relative to the source file. URLs do _not_ include a file ending, such as `.as`, `.dll` or `.wasm`, to allow for different compilation schemes.
+
 Each import binds the identifiers in its *import pattern*. If the pattern is a plain `<id>` then the contents of the imported unit is reified as a module object bound to that id. If the pattern is a *destructuring* import pattern then the respective public fields of the unit are bound to the respective label identifiers.
 
 As a crucial restriction, a unit that has at least one public field must be *static*, see below.
@@ -92,33 +94,54 @@ The defined actor can still bind and refer to a self variable for the resulting 
 Similarly, the actor short-hand can be recursive.
 (That is, `actor class C() = this {...this...}` and `actor this {...this...}` are allowed, but `actor class C() = {...C...}` is not. If needs be, this restriction may be lifted later.)
 
+## Compilation schemes
 
-## Compilation
+The source language semantics can be implemented in various ways of increasing sophistication.
 
-The compilation scheme uses the natural mechanisms in Wasm to express units as modules.
+### Source imports
+
+There are no build artifacts.
+
+Imports are resolved to ActorScript source files by appending `.as` to the impot path, and read before or during type-checking of the importing file.
+
+This compilation scheme is suitable for the interpreter, and for early versions of the compiler.
+
+
+### Incremental compilation
+
+This compilation scheme expresses units as dynamically linkable Wasm modules (according to the [dynamic linking spec](https://github.com/WebAssembly/tool-conventions/blob/master/DynamicLinking.md).
+
+Imports are resolved to Wasm modules by appending `.wasm` to the impot path.
+
+The exported module is mapped to Wasm exports (functions and globals) in an implementation-defined way that may vary between compiler versions.
+
+A custom section `as-type` in the Wasm module is used by the compiler to include the type of the unit.
+
+A custom section `as-interface` in the Wasm module may be used by the compiler to include any other information needed by the code generator, such as specialized calling conventions.
+
+
+## Natural and separate compilation
+
+This extension to the former scheme explicitly uses _natural mechanisms_ in Wasm to express units as modules.
 That enables the best possible integration and interoperation with the wider Wasm eco system and existing tools.
 (However, it does not automatically enable functional interoperability with other languages, since AS types typically have a representation that cannot directly be interpreted externally. For this, additional interop support would be needed, which is beyond the scope of this proposal.)
 
-Consequently, all units are compiled to Wasm modules.
-Their public fields become Wasm exports.
+Consequently, every public field of a unit becomes a a Wasm exports.
 These are either Wasm functions, for public fields of function type,
 or Wasm globals, for all others.
-Compiling arbitrary closures into exported Wasm functions may require eta-expanding the closure and storing its environment into an internal global.
 
-A Wasm module compiled from AS contains a Dfinity-relevant custom section as well as an AS-specific custom section describing the AS type of the module or actor.
+No `as-interface` custom section may be present; the interface must be determined by the type alone. This allows true separate compliation.
 
-Imports expect the import URL to resolve to a Wasm module compiled from AS and link its exports accordingly.
+It also implies that compiling arbitrary closures into exported Wasm functions may require eta-expanding the closure and storing its environment into an internal global.
+
 An import that is not destructured via a module pattern is reified into a module object at the import site.
 
 Programs and libraries are compiled exactly the same.
 That is, both create dynlib sections.
 
 Actors are different.
-Their exported functions are wrapped into methods de/serialising their arguments and results according to the IDL epcification.
+Their exported functions are wrapped into methods de/serialising their arguments and results according to the IDL sepcification.
 Furthermore, they are complemented with system exports for initialising the actor (given the actor class'es arguments) and for in/externalising the actor's state for upgrades (details TBD).
-
-(For release 0.5, we do not yet intend to support separate compilation, and imports will resolve to source files compiled in a whole program manner instead.)
-
 
 ### Compiler
 
