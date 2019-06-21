@@ -287,9 +287,9 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      cp -r $src $out/stdlib
+      tar -rf $out/stdlib.tar $src
       mkdir -p $out/nix-support
-      echo "report stdlib $out/stdlib" >> $out/nix-support/hydra-build-products
+      echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
     '';
     forceShare = ["man"];
   };
