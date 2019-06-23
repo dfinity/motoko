@@ -77,7 +77,7 @@ module Transform() = struct
     | T.Var _ -> t
     | T.Free c -> T.Free (t_con c)
     | T.Con (c, ts) ->
-      T.Con (t_typ c, List.map t_typ ts)
+      T.Con (t_con c, List.map t_typ ts)
     | T.Array t -> T.Array (t_typ t)
     | T.Tup ts -> T.Tup (List.map t_typ ts)
     | T.Func (T.Sharable, c, tbs, t1, t2) ->

@@ -2798,11 +2798,11 @@ module Serialization = struct
         match t with
         | Var _ -> assert false
         | (Prim _ | Any | Non | Shared | Pre) -> true
-        | Free c -> go (Con (Free c, []))
-        | Con (Free c, ts) ->
+        | Free c -> go (Con (c, []))
+        | Con (c, ts) ->
           begin match Con.kind c with
           | Abs _ -> assert false
-          | Def (tbs,t) -> go (open_ (Free c::ts) t) (* TBR this may fail to terminate *)
+          | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)
           end
         | Con (_, _) -> assert false
         | Array t -> go t

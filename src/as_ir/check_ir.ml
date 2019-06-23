@@ -128,8 +128,8 @@ let rec check_typ env typ : unit =
   | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
   | T.Free c ->
-    check_typ env (T.Con (typ, []))
-  | T.Con (T.Free c, typs) ->
+    check_typ env (T.Con (c, []))
+  | T.Con (c, typs) ->
     List.iter (check_typ env) typs;
     begin
       match T.kind c with
