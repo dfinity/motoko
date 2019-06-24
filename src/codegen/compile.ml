@@ -2829,6 +2829,139 @@ module Serialization = struct
      Writing a Wasm-native implementation of this will then be done separately.
   *)
 
+  (* The IDL serialization prefaces the data with a type description.
+     We can statically create the type description in Ocaml code,
+     store it in the program, and just copy it to the beginning of the message.
+
+     At some point this can be factored into a function from AS type to IDL type,
+     and a function like this for IDL types. But due to recursion handling
+     it is easier to start like this.
+  *)
+  module TM = Map.Make (struct type t = Type.typ let compare = compare end)
+  let type_desc t : string =
+    let open Type in
+
+    let to_idl_prim = function
+      | Prim Null -> Some 1
+      | Prim Bool -> Some 2
+      | Prim Nat -> Some 3
+      | Prim Int -> Some 4
+      | Prim (Nat8|Word8) -> Some 5
+      | Prim (Nat16|Word16) -> Some 6
+      | Prim (Nat32|Word32) -> Some 7
+      | Prim (Nat64|Word64) -> Some 8
+      | Prim Int8 -> Some 9
+      | Prim Int16 -> Some 10
+      | Prim Int32 -> Some 11
+      | Prim Int64 -> Some 12
+      | Prim Float -> Some 14
+      | Prim Text -> Some 15
+      | Shared -> Some 16
+      | Non -> Some 17
+      | _ -> None
+    in
+
+    (* Type traversal *)
+    (* We do a first traversal to find out the indices of types *)
+    let (typs, idx) =
+      let typs = ref [] in
+      let idx = ref TM.empty in
+      let rec go t =
+        let t = normalize t in
+        if to_idl_prim t <> None then () else
+        if TM.mem t !idx then () else begin
+          idx := TM.add t (List.length !typs) !idx;
+          typs := !typs @ [ t ];
+          match t with
+          | Tup ts -> List.iter go ts
+          | Obj ((Object Sharable | Actor), fs) ->
+            List.iter (fun f -> go f.typ) fs
+          | Array t -> go t
+          | Opt t -> go t
+          | Variant vs -> List.iter (fun f -> go f.typ) vs
+          | Func (s, c, tbs, ts1, ts2) ->
+            List.iter go ts1; List.iter go ts2
+          | _ ->
+            Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
+            assert false
+        end
+      in
+      go t;
+      (!typs, !idx)
+    in
+
+    (* buffer utilities *)
+    let buf = Buffer.create 16 in
+
+    let add_u8 i =
+      Buffer.add_char buf (Char.chr (i land 0xff)) in
+
+    let rec add_leb128 i =
+      assert (i >= 0);
+      let b = i land 0x7f in
+      if 0 <= i && i < 128
+      then add_u8 b
+      else begin
+        add_u8 (b lor 0x80);
+        add_leb128 (i lsr 7)
+      end in
+
+    let rec add_sleb128 i =
+      let b = i land 0x7f in
+      if -64 <= i && i < 64
+      then add_u8 b
+      else begin
+        add_u8 (b lor 0x80);
+        add_sleb128 (i asr 7)
+      end in
+
+    (* Actual binary data *)
+
+    let add_idx t =
+      let t = normalize t in
+      match to_idl_prim t with
+      | Some i -> add_sleb128 (-i)
+      | None -> add_leb128 (TM.find (normalize t) idx) in
+
+    let add_typ t =
+      match t with
+      | Prim _ | Shared | Non -> assert false
+      | Tup ts ->
+        add_sleb128 (-20);
+        add_leb128 (List.length ts);
+        List.iteri (fun i t ->
+          add_leb128 i;
+          add_idx t;
+        ) ts
+      | Obj (Object Sharable, fs) ->
+        add_sleb128 (-20);
+        add_leb128 (List.length fs);
+        List.iter (fun (h, f) ->
+          add_leb128 (Int32.to_int h);
+          add_idx f.typ
+        ) (sort_by_hash fs)
+      | Obj (Actor, fs) ->
+        assert false (* TODO *)
+      | Array t ->
+        add_sleb128 (-19); add_idx t
+      | Opt t ->
+        add_sleb128 (-18); add_idx t
+      | Variant vs ->
+        add_sleb128 (-21);
+        add_leb128 (List.length vs);
+        List.iter (fun (h, f) ->
+          add_leb128 (Int32.to_int h);
+          add_idx f.typ
+        ) (sort_by_hash vs)
+      | Func (s, c, tbs, ts1, ts2) ->
+        assert false (* TODO *)
+      | _ -> assert false in
+
+    Buffer.add_string buf "DIDL";
+    add_leb128 (List.length typs);
+    List.iter add_typ typs;
+    add_idx (normalize t);
+    Buffer.contents buf
 
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
@@ -3194,12 +3327,17 @@ module Serialization = struct
     let name = "@serialize<" ^ typ_id t ^ ">" in
     Func.share_code1 env name ("x", I32Type) [I32Type] (fun env get_x ->
       match Type.normalize t with
+      (* Special-cased formats for scaffolding *)
       | Type.Prim Type.Text -> get_x ^^ Dfinity.compile_databuf_of_text env
       | Type.Obj (Type.Actor, _)
       | Type.Func (Type.Sharable, _, _, _, _) -> get_x ^^ Dfinity.unbox_reference env
+      (* normal format *)
       | _ ->
         let (set_data_size, get_data_size) = new_local env "data_size" in
         let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+
+        let tydesc = type_desc t in
+        let tydesc_len = Int32.of_int (String.length tydesc) in
 
         (* Get object sizes *)
         get_x ^^
@@ -3207,6 +3345,8 @@ module Serialization = struct
         compile_add_const 1l ^^ (* Leave space for databuf *)
         compile_mul_const Heap.word_size ^^
         set_refs_size ^^
+
+        compile_add_const tydesc_len  ^^
         set_data_size ^^
 
         let (set_data_start, get_data_start) = new_local env "data_start" in
@@ -3215,9 +3355,15 @@ module Serialization = struct
         get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
         get_refs_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
 
+        (* Write ty desc *)
+        get_data_start ^^
+        Text.lit env tydesc ^^ Text.payload_ptr_unskewed ^^
+        compile_unboxed_const tydesc_len ^^
+        Heap.memcpy env ^^
+
         (* Serialize x into the buffer *)
         get_x ^^
-        get_data_start ^^
+        get_data_start ^^ compile_add_const tydesc_len ^^
         get_refs_start ^^ compile_add_const Heap.word_size ^^ (* Leave space for databuf *)
         serialize_go env t ^^
 
