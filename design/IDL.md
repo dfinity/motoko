@@ -64,8 +64,9 @@ This is a summary of the grammar proposed:
 
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
-<functype>  ::= ( <datatype>,* ) -> ( <datatype>,* ) <funcann>*
+<functype>  ::= ( <argtype>,* ) -> ( <argtype>,* ) <funcann>*
 <funcann>   ::= oneway | pure
+<argtype>   ::= <datatype>
 <fieldtype> ::= <nat> : <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 
@@ -103,7 +104,8 @@ A `<char>` is a *Unicode scalar value* (i.e., a codepoint that is not a surrogat
 In addition to this basic grammar, a few syntactic shorthands are supported that can be reduced to the basic forms:
 
 ```
-<functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
+<argtype>  ::= ...
+  | <name> : <datatype>    := <datatype>
 
 <constype> ::= ...
   | blob                   :=  vec nat8
@@ -179,8 +181,9 @@ service {
 A function type describes the list of parameters and results and their respective types. It can optionally be annotated to be *pure*, which indicates that it does not modify any state and can potentially be executed more efficiently (e.g., on cached state). (Other annotations may be added in the future.)
 
 ```
-<functype> ::= ( <datatype>,* ) -> ( <datatype>,* ) <funcann>*
+<functype> ::= ( <argtype>,* ) -> ( <argtype>,* ) <funcann>*
 <funcann>  ::= oneway | pure
+<argtype>  ::= <datatype>
 ```
 We identify `<funcann>` lists in a function type up to reordering.
 
@@ -193,14 +196,10 @@ The result list of a `oneway` function must be empty.
 
 As a "shorthand", the types of parameters and results in a function type may be prefixed by a name:
 ```
-<functype> ::= ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>*
-  := ( <datatype1>,* ) -> ( <datatype2>,* ) <funcann>*
-     where <fieldtypeN>* = (<natN> : <datatypeN>)*
+<argtype> ::= <name> : <datatype>   := <datatype>
 ```
-The above expansion applies after any shorthand for the field types themselves has already been applied.
-Because `<fieldtype>` does itself allow omitting a name, this implies that  parameter or result can be named or unnamed on an individual basis.
-
 The chosen names only serve documentation purposes and have no semantic significance.
+However, duplicate names are not allowed.
 
 
 #### Example
@@ -687,7 +686,7 @@ variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; 
 
 #### Functions
 
-For a specialised function, any parameter type can be generalised and any result type specialised. Moreover, arguments can be dropped while results can be added. That is, the rules mirror those of records, but only of those encoding tuples, i.e., they are ordered and can only be extended at the end.
+For a specialised function, any parameter type can be generalised and any result type specialised. Moreover, arguments can be dropped while results can be added. That is, the rules mirror those of tuple-like records, i.e., they are ordered and can only be extended at the end.
 ```
 record { (N1' : <datatype1'>);* } <: record { (N1 : <datatype1>);* }
 record { (N2 : <datatype2>);* } <: record { N2' : <datatype2'>);* }
