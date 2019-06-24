@@ -929,6 +929,9 @@ Every nested type is encoded as either a primitive type or an index into a list 
 I : <datatype> -> i8*
 I(<primtype>) = T(<primtype>)
 I(<datatype>) = sleb128(i)  where type definition i defines T(<datatype>)
+
+I* : <X>* -> i8*
+I*(<X>^N) = leb128(N) I(<X>)^N
 ```
 
 Type definitions themselves are represented as a list of serialised data types:
@@ -1030,7 +1033,7 @@ A(kv* : <fieldtype>*) = ( B(kv* : <fieldtype>*), R(kv* : <fieldtype>*) )
 B(kv* : <fieldtype>*) =
   i8('D') i8('I') i8('D') i8('L')      magic number
   T*(<datatype>*)                      type definition table
-  T*(<fieldtype>*)                     type of argument list
+  I*(<fieldtype>*)                     type of argument list
   M(kv* : <fieldtype>*)                values of argument list
 ```
 The `<datatype>` vector contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the `<fieldtype>` vector.
