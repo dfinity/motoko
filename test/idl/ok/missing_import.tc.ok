@@ -1,1 +1,1 @@
-missing_import.did:1.1-1.12: import error, File "./ok" does not exist
+(unknown location): file error, cannot open "./ok"

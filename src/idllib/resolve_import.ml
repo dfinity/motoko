@@ -18,18 +18,8 @@ and dec env d = match d.it with
      let f = if Filename.is_relative f
              then Filename.concat env.base f
              else f in
-     if Sys.file_exists f && not (Sys.is_directory f)
-     then begin
-         fp := f;
-         env.imported := Set.add f !(env.imported)
-     end else
-       let open Diag in
-       add_msg env.msgs {
-           sev = Error;
-           at = d.at;
-           cat = "import";
-           text = Printf.sprintf "File \"%s\" does not exist" f
-       }
+     fp := f;
+     env.imported := Set.add f !(env.imported)
          
 let prog env p = decs env p.it.decs
    

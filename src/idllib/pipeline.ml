@@ -50,6 +50,11 @@ let parse_file filename : parse_result =
   | Ok prog -> Diag.return (prog, filename)
   | Error e -> Error e
 
+let parse_file filename : parse_result =
+  try parse_file filename
+  with Sys_error s ->
+    error Source.no_region "file" (sprintf "cannot open \"%s\"" filename)
+             
 (* Type checking *)
 
 let check_prog senv prog
@@ -66,13 +71,12 @@ let check_prog senv prog
 
 type load_result = (Syntax.prog * Typing.scope) Diag.result
 
-let initial_stat_env = Typing.empty_scope
-
 module LibEnv = Env.Make(String)
 
 let merge_env imports init_env lib_env =
   let disjoint_union env1 env2 : Typing.typ_env Diag.result =
     try Diag.return (Typing.Env.union (fun k v1 v2 ->
+        (* TODO Add proper type equivalence check for env *)
         if v1 = v2 then Some v1 else raise (Typing.Env.Clash k)
       ) env1 env2)
     with Typing.Env.Clash k ->
@@ -113,6 +117,8 @@ let load_prog parse senv =
                       Diag.return (prog, scope))))))
    
 (* Only type checking *)
+
+let initial_stat_env = Typing.empty_scope
 
 let check_file file : load_result = load_prog (parse_file file) initial_stat_env
   
