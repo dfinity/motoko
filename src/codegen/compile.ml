@@ -4494,8 +4494,8 @@ let rec compile_binop env t op =
   | Type.(Prim Int),                          SubOp -> BigNum.compile_signed_sub env
   | Type.(Prim (Nat | Int)),                  MulOp -> BigNum.compile_mul env
   | Type.(Prim Word64),                       MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-  | Type.(Prim Word64),                       DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
-  | Type.(Prim Word64),                       ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  | Type.(Prim (Nat64|Word64)),               DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
+  | Type.(Prim (Nat64|Word64)),               ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
   | Type.(Prim Nat),                          DivOp -> BigNum.compile_unsigned_div env
   | Type.(Prim Nat),                          ModOp -> BigNum.compile_unsigned_rem env
   | Type.(Prim Word64),                       SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
@@ -4556,9 +4556,10 @@ let rec compile_binop env t op =
   | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> UnboxedSmallWord.lsb_adjust ty ^^
                                                        G.i (Binary (Wasm.Values.I32 I32Op.Mul))
-  | Type.(Prim (Word8|Word16|Word32 as ty)),  DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
-                                                       UnboxedSmallWord.msb_adjust ty
-  | Type.Prim Type.(Word8 | Word16 | Word32), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
+  | Type.(Prim (Nat8|Nat16|Nat32|Word8|Word16|Word32 as ty)), DivOp ->
+    G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
+    UnboxedSmallWord.msb_adjust ty
+  | Type.(Prim (Nat8|Nat16|Nat32|Word8|Word16|Word32)), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp ->
      let rec pow () = Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
                         (("n", I32Type), ("exp", I32Type)) [I32Type]

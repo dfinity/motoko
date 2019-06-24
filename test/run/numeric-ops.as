@@ -312,17 +312,19 @@ func testNat64(a : Nat64, b : Nat64) : [Nat64] {
   /*let diff1 = a - b;
   let diff2 = (a - b) : Nat64;
   let prod1 = a * b;
-  let prod2 = (a * b) : Nat64;
+  let prod2 = (a * b) : Nat64;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Nat64;
   let mod1 = a % b;
   let mod2 = (a % b) : Nat64;
-  let pow1 = a ** b;
+  /*let pow1 = a ** b;
   let pow2 = (a ** b) : Nat64;*/
-  [sum1, sum2/*, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2*/]
+  [sum1, sum2/*, diff1, diff2, prod1, prod2*/, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Nat64>([8/*, 18_446_744_073_709_551_614, 15, 0, 3, 243*/], testNat64(3, 5),
+verify<Nat64>([8/*, ??, 15*/, 0, 3/*, 243*/], testNat64(3, 5),
+               func (a : Nat64, b : Nat64) : Bool = a == b);
+verify<Nat64>([18/*, ??, 15*/, 2, 3/*, ??*/], testNat64(13, 5),
                func (a : Nat64, b : Nat64) : Bool = a == b);
 
 
@@ -332,17 +334,19 @@ func testNat32(a : Nat32, b : Nat32) : [Nat32] {
   /*let diff1 = a - b;
   let diff2 = (a - b) : Nat32;
   let prod1 = a * b;
-  let prod2 = (a * b) : Nat32;
+  let prod2 = (a * b) : Nat32;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Nat32;
   let mod1 = a % b;
   let mod2 = (a % b) : Nat32;
-  let pow1 = a ** b;
+  /*let pow1 = a ** b;
   let pow2 = (a ** b) : Nat32;*/
-  [sum1, sum2/*, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2*/]
+  [sum1, sum2/*, diff1, diff2, prod1, prod2*/, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Nat32>([8/*, -2, 15, 0, 3, 243*/], testNat32(5, 3),
+verify<Nat32>([8/*, -2, 15*/, 1, 2/*, 243*/], testNat32(5, 3),
+             func (a : Nat32, b : Nat32) : Bool = a == b);
+verify<Nat32>([18/*, -2, 15*/, 5, 0/*, 243*/], testNat32(15, 3),
              func (a : Nat32, b : Nat32) : Bool = a == b);
 
 
@@ -352,17 +356,19 @@ func testNat16(a : Nat16, b : Nat16) : [Nat16] {
   /*let diff1 = a - b;
   let diff2 = (a - b) : Nat16;
   let prod1 = a * b;
-  let prod2 = (a * b) : Nat16;
+  let prod2 = (a * b) : Nat16;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Nat16;
   let mod1 = a % b;
   let mod2 = (a % b) : Nat16;
-  let pow1 = a ** b;
+  /*let pow1 = a ** b;
   let pow2 = (a ** b) : Nat16;*/
-  [sum1, sum2/*, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2*/]
+  [sum1, sum2/*, diff1, diff2, prod1, prod2*/, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Nat16>([8/*, -2, 15, 0, 3, 243*/], testNat16(5, 3),
+verify<Nat16>([8/*, -2, 15*/, 1, 2/*, 243*/], testNat16(5, 3),
+             func (a : Nat16, b : Nat16) : Bool = a == b);
+verify<Nat16>([18/*, -2, 15*/, 5, 0/*, 243*/], testNat16(15, 3),
              func (a : Nat16, b : Nat16) : Bool = a == b);
 
 
@@ -372,15 +378,17 @@ func testNat8(a : Nat8, b : Nat8) : [Nat8] {
   /*let diff1 = a - b;
   let diff2 = (a - b) : Nat8;
   let prod1 = a * b;
-  let prod2 = (a * b) : Nat8;
+  let prod2 = (a * b) : Nat8;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Nat8;
   let mod1 = a % b;
   let mod2 = (a % b) : Nat8;
-  let pow1 = a ** b;
+  /*let pow1 = a ** b;
   let pow2 = (a ** b) : Nat8;*/
-  [sum1, sum2/*, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2*/]
+  [sum1, sum2/*, diff1, diff2, prod1, prod2*/, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Nat8>([8/*, -2, 15, 0, 3, 243*/], testNat8(5, 3),
+verify<Nat8>([8/*, -2, 15*/, 1, 2/*, 243*/], testNat8(5, 3),
+             func (a : Nat8, b : Nat8) : Bool = a == b);
+verify<Nat8>([18/*, -2, 15*/, 5, 0/*, 243*/], testNat8(15, 3),
              func (a : Nat8, b : Nat8) : Bool = a == b);
