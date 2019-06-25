@@ -155,6 +155,7 @@ actor_typ :
 def :
   | TYPE x=id EQ t=data_typ
     { TypD(x, t) @@ at $sloc }
+  (* TODO enforce all imports to go first in the type definitions  *)
   | IMPORT file=TEXT
     { ImportD (file, ref "") @@ at $sloc }
 
