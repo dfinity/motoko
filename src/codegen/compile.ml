@@ -4563,7 +4563,8 @@ let rec compile_binop env t op =
     G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
     UnboxedSmallWord.msb_adjust ty
   | Type.(Prim (Nat8|Nat16|Nat32|Word8|Word16|Word32)), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
-  | Type.(Prim (Int8|Int16|Int32 as ty)),     DivOp ->
+  | Type.(Prim Int32),                        DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivS))
+  | Type.(Prim (Int8|Int16 as ty)),           DivOp ->
     Func.share_code2 env (UnboxedSmallWord.name_of_type ty "div")
       (("a", I32Type), ("b", I32Type)) [I32Type]
       (fun env get_a get_b ->
