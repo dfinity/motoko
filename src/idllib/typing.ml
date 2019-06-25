@@ -159,14 +159,15 @@ and check_def env dec =
   | TypD (id, t) ->
      let t' = check_typ env t in
      Env.singleton id.it t'
+  | ImportD _ -> Env.empty
 
 and check_defs env decs =
-  let _, te =
-    List.fold_left (fun (env, te) dec ->
+  let env' =
+    List.fold_left (fun env dec ->
         let te' = check_def env dec in
-        adjoin env te', Env.adjoin te te'
-      ) (env, Env.empty) decs
-  in te
+        adjoin env te'
+      ) env decs
+  in env'.typs
 
 and check_decs env decs =
   let pre_env = adjoin env (gather_decs env decs) in
@@ -175,15 +176,13 @@ and check_decs env decs =
   check_cycle env;
   check_defs {env with pre = false} decs
     
-and gather_id dec =
-  match dec.it with
-  | TypD (id, _) -> id
-
 and gather_decs env decs =
   List.fold_left (fun te dec ->
-      let id = gather_id dec in
-      let te' = Env.singleton id.it (PreT @@ id.at) in
-      disjoint_union env id.at "duplicate binding for %s in type definitions" te te'
+      match dec.it with
+      | TypD (id, _) ->
+         let te' = Env.singleton id.it (PreT @@ id.at) in
+         disjoint_union env id.at "duplicate binding for %s in type definitions" te te'
+      | ImportD _ -> te
     ) env.typs decs
 
 (* Actor *)

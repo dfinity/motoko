@@ -78,19 +78,16 @@ and pp_meth ppf env meth =
   kwd ppf ":";
   pp_typ ppf env meth.it.meth;
   pp_close_box ppf ()
-  
-let pp_dec ppf env dec =
+
+let pp_dec ppf env x t =
   pp_open_hovbox ppf 1;
   kwd ppf "const";
-  (match dec.it with
-   | TypD (x, t) ->
-      kwd ppf x.it;
-      kwd ppf "=";
-      pp_typ ppf env t
-  );
+  kwd ppf x;
+  kwd ppf "=";
+  pp_typ ppf env t;
   pp_close_box ppf ();
   pp_print_cut ppf ()
-
+               
 let pp_actor ppf env actor_opt =
   pp_open_hovbox ppf 1;
   (match actor_opt with
@@ -111,7 +108,10 @@ let pp_actor ppf env actor_opt =
 
 let pp_prog ppf env prog =
   pp_open_vbox ppf 0;
-  List.iter (pp_dec ppf env) prog.it.decs;
+  (* TODO: This is just a quick fix. 
+   * The right way is to trace the used definitions from the actor 
+   * and sort them in topoloical order. *)
+  Typing.Env.iter (pp_dec ppf env) env;
   pp_actor ppf env prog.it.actor;
   pp_close_box ppf ()
    
