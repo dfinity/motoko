@@ -515,6 +515,7 @@ module RTS = struct
   let system_imports env =
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "version" [] [I32Type];
+    E.add_func_import env "rts" "skip_idl_header" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
@@ -562,6 +563,15 @@ module RTS = struct
     E.add_export env (nr {
       name = Wasm.Utf8.decode "bigint_trap";
       edesc = nr (FuncExport (nr bigint_trap_fi))
+    });
+    let idl_trap_fi = E.add_fun env "idl_trap" (
+      Func.of_body env [] [] (fun env ->
+        E.trap_with env "idl function error"
+      )
+    ) in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "idl_trap";
+      edesc = nr (FuncExport (nr idl_trap_fi))
     })
 
 end (* RTS *)
@@ -3500,7 +3510,7 @@ module Serialization = struct
         Dfinity.system_call env "data_internalize" ^^
 
         (* Go! *)
-        get_data_start ^^
+        get_data_start ^^ E.call_import env "rts" "skip_idl_header" ^^
         get_refs_start ^^ compile_add_const Heap.word_size ^^
         deserialize_go env t ^^
         G.i Drop ^^

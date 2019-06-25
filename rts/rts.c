@@ -84,6 +84,84 @@ as_ptr (*version_getter)() = &get_version;
 
 export as_ptr version() { return (*version_getter)(); }
 
+/* IDL code */
+from_rts __attribute__ ((noreturn)) void idl_trap();
+
+// Initially, we just want to be able to zoom past the type description
+// TODO: Defensive programming (by not going past the size of the message)
+int read_leb128(char **ptr) {
+  int r = 0;
+  int p = 1;
+  while (**ptr & (char)0x80) {
+    r += p * (**ptr & (char)0x7f);
+    (*ptr)++;
+    p = p << 7;
+  }
+  r += p * **ptr;
+  (*ptr)++;
+  return r;
+}
+int read_sleb128(char **ptr) {
+  int r = *(*ptr)++;
+  if (r < 0) idl_trap();
+  if (r >= 64) r -= 128;
+  return r;
+}
+
+export char *skip_idl_header(char *ptr) {
+  // Magic bytes
+  if (!(*ptr++ == 'D')) idl_trap();
+  if (!(*ptr++ == 'I')) idl_trap();
+  if (!(*ptr++ == 'D')) idl_trap();
+  if (!(*ptr++ == 'L')) idl_trap();
+  // Size of type list
+  for (int count = read_leb128(&ptr); count > 0; count --) {
+    int ty = read_sleb128(&ptr);
+    if (ty >= -17) {
+      idl_trap(); // illegal
+    } else if (ty == -18) { // opt
+      read_sleb128(&ptr);
+    }
+    else if (ty == -19) { // vec
+      read_sleb128(&ptr);
+    } else if (ty == -20) {  // record
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        read_leb128(&ptr);
+        read_sleb128(&ptr);
+      }
+    } else if (ty == -21) {  // variant
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        read_leb128(&ptr);
+        read_sleb128(&ptr);
+      }
+    } else if (ty == -22) {  // func
+      // arg types
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        read_sleb128(&ptr);
+      }
+      // ret types
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        read_sleb128(&ptr);
+      }
+      // annotations
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        ptr++;
+      }
+    } else if (ty == -23) {  // func
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        // name
+        ptr += read_leb128(&ptr);
+        // type
+        read_sleb128(&ptr);
+      }
+    } else {
+      idl_trap();
+    }
+  }
+  read_sleb128(&ptr); // index
+  return ptr;
+}
+
 /* Memory management for libtommath */
 
 /*
