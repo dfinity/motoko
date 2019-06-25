@@ -705,8 +705,24 @@ let trace_rel_typ rel eq t1 t2 =
     Printf.printf "\n %s rel_type %s%!" indent "..."
   | _ -> ()
 
+module O = Map.Make (struct type t = typ list * typ let compare = compare end)
+
+let rels () =
+
+let seen = ref O.empty in
+
+let open_  ts t  =
+    match O.find_opt (ts,t) !seen with
+    | Some t' -> t'
+    | None  ->
+      let t' = open_ ts t in
+      seen := O.add (ts,t) t' !seen;
+      t'
+in
+
 let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
+in
 
 let rec rel_typ rel eq t1 t2 =
   if debug then trace_rel_typ rel eq t1 t2;
@@ -894,15 +910,22 @@ and eq_con rel eq c1 c2 =
     end
   | _ -> false
 
-and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
+and eq_typ rel eq t1 t2 =
+  rel_typ eq eq t1 t2
+
+in
+  (rel_typ, eq_typ, eq_kind)
 
 let eq t1 t2 : bool =
+  let (rel_typ, eq_typ, eq_kind) = rels() in
   let eq = ref S.empty in eq_typ eq eq t1 t2
 
 let sub t1 t2 : bool =
+  let (rel_typ, eq_typ, eq_kind) = rels() in
   rel_typ (ref S.empty) (ref S.empty) t1 t2
 
 let eq_kind k1 k2 : bool =
+  let (rel_typ, eq_typ, eq_kind) = rels() in
   let eq = ref S.empty in
   eq_kind eq eq k1 k2
 
@@ -910,8 +933,22 @@ let eq_kind k1 k2 : bool =
 
 (* Least upper bound and greatest lower bound *)
 
+module N = Map.Make (struct type t = typ let compare = compare end)
+
+let lubglb () =
+
+let seen = ref N.empty in
+let normalize t =
+  match N.find_opt t !seen with
+  | Some t' -> t'
+  | None ->
+    let t' = normalize t in
+    seen := N.add t t' !seen;
+    t'
+in
+
 let rec lub' lubs glbs t1 t2 =
-  Printf.printf "\n lub %s %s" (debug_string_of_typ t1) (debug_string_of_typ t2);
+  (*  Printf.printf "\n lub %s %s" (debug_string_of_typ t1) (debug_string_of_typ t2); *)
   if t1 == t2 then t1 else
   match M.find_opt (t1, t2) !lubs with
   | Some t -> t
@@ -1064,7 +1101,7 @@ and combine_con_parts t1 t2 naming re how =
   let s1, s2 = !str t1, !str t2 in
   if s1 = s2 then t1 else
   let c = Con.fresh (Printf.sprintf "@%s(%s, %s)" naming s1 s2) (Abs ([], Pre)) in
-  Printf.printf "\n combine con parts %s %s %s" naming (debug_string_of_typ t1) (debug_string_of_typ t2);
+  (*  Printf.printf "\n combine con parts %s %s %s" naming (debug_string_of_typ t1) (debug_string_of_typ t2); *)
   let t = Con (Free c, []) in
   re := M.add (t2, t1) t (M.add (t1, t2) t !re);
   let inner = how (normalize t1) (normalize t2) in
@@ -1075,9 +1112,15 @@ and combine_con_parts t1 t2 naming re how =
   else if eq inner t2
   then (re := M.add (t2, t1) t2 (M.add (t1, t2) t2 !re); t2)
   else inner
+in
+ (lub',glb')
 
-let lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
-let glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
+let lub t1 t2 =
+  let (lub',glb') = lubglb() in
+  lub' (ref M.empty) (ref M.empty) t1 t2
+let glb t1 t2 =
+  let (lub',glb') = lubglb() in
+  glb' (ref M.empty) (ref M.empty) t1 t2
 
 (* Environments *)
 
