@@ -2837,7 +2837,9 @@ module Serialization = struct
      and a function like this for IDL types. But due to recursion handling
      it is easier to start like this.
   *)
+
   module TM = Map.Make (struct type t = Type.typ let compare = compare end)
+
   let type_desc t : string =
     let open Type in
 
@@ -2941,7 +2943,13 @@ module Serialization = struct
           add_idx f.typ
         ) (sort_by_hash fs)
       | Obj (Actor, fs) ->
-        assert false (* TODO *)
+        add_sleb128 (-23);
+        add_leb128 (List.length fs);
+        List.iter (fun f ->
+          add_leb128 (String.length f.lab);
+          Buffer.add_string buf f.lab;
+          add_idx f.typ
+        ) fs
       | Array t ->
         add_sleb128 (-19); add_idx t
       | Opt t ->
@@ -2954,7 +2962,12 @@ module Serialization = struct
           add_idx f.typ
         ) (sort_by_hash vs)
       | Func (s, c, tbs, ts1, ts2) ->
-        assert false (* TODO *)
+        add_sleb128 (-22);
+        add_leb128 (List.length ts1);
+        List.iter add_idx ts1;
+        add_leb128 (List.length ts2);
+        List.iter add_idx ts2;
+        add_leb128 0 (* no annotations *)
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";
