@@ -4569,7 +4569,7 @@ let rec compile_binop env t op =
       (("a", I32Type), ("b", I32Type)) [I32Type]
       (fun env get_a get_b ->
         let (set_res, get_res) = new_local env "res" in
-        get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
+        get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.DivS)) ^^
         UnboxedSmallWord.msb_adjust ty ^^ set_res ^^
         get_a ^^ compile_eq_const 0x80000000l ^^
         G.if_ (StackRep.to_block_type env SR.UnboxedWord32)
