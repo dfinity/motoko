@@ -168,11 +168,12 @@ val glb : typ -> typ -> typ
 (* First-order substitution *)
 
 val close : con list -> typ -> typ
-val close_binds : con list -> bind list -> bind list
+val close_typ : ConSet.t -> con list -> typ -> typ
+val close_binds : ConSet.t -> con list -> bind list -> bind list
 
 val open_ : typ list -> typ -> typ
 val open_binds : bind list -> typ list
-
+val open_typ : ConSet.t -> typ list -> typ -> typ
 
 (* Environments *)
 

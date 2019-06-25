@@ -157,8 +157,8 @@ let rec check_typ env typ : unit =
     let cs, ce = check_typ_binds env binds in
     let env' = adjoin_cons env  ce in
     let ts = List.map (fun c -> T.Free c) cs in
-    let ts1 = List.map (T.open_ ts) ts1 in
-    let ts2 = List.map (T.open_ ts) ts2 in
+    let ts1 = List.map (T.open_typ env'.cons ts) ts1 in
+    let ts2 = List.map (T.open_typ env'.cons ts) ts2 in
     List.iter (check_typ env') ts1;
     List.iter (check_typ env') ts2;
     if control = T.Promises then begin
@@ -204,11 +204,12 @@ let rec check_typ env typ : unit =
     check_con env c
 
 and check_con env c =
+  let env = { env with cons = T.ConSet.add c env.cons } in
   let (T.Abs (binds,typ) | T.Def (binds, typ)) = Type.kind c in
   let cs, ce = check_typ_binds env binds in
   let ts = List.map (fun c -> T.Free c) cs in
   let env' = adjoin_cons env ce in
-  check_typ env' (T.open_ ts typ)
+  check_typ env' (T.open_typ env'.cons ts typ)
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
@@ -228,7 +229,7 @@ and check_typ_binds env typ_binds : T.con list * con_env =
   let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
-              let bd = T.open_ ts typ_bind.T.bound  in
+              let bd = T.open_typ env'.cons ts typ_bind.T.bound  in
               check_typ env' bd)
             typ_binds
   in
@@ -243,7 +244,7 @@ and check_typ_bounds env (tbs : T.bind list) typs at : unit =
     error env at "too few type arguments";
   List.iter2
     (fun tb typ ->
-      check env at (T.sub typ (T.open_ typs tb.T.bound))
+      check env at (T.sub typ (T.open_typ env.cons typs tb.T.bound))
         "type argument does not match parameter bound")
     tbs typs
 
@@ -416,8 +417,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     in
     check_inst_bounds env tbs insts exp.at;
     check_exp env exp2;
-    let t_arg = T.open_ insts t2 in
-    let t_ret = T.open_ insts t3 in
+    let t_arg = T.open_typ env.cons insts t2 in
+    let t_ret = T.open_typ env.cons insts t3 in
     if (call_conv.Call_conv.sort = T.Sharable) then begin
       check_concrete env exp.at t_arg;
       check_concrete env exp.at t_ret;

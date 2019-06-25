@@ -344,9 +344,17 @@ let close cs t =
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst seen sigma t
 
-let close_binds cs tbs =
-  if cs = [] then tbs else
-  List.map (fun {var; bound} -> {var; bound = close cs bound}) tbs
+let close_typ cons cs t =
+  if cs = [] then t else
+  let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
+  let cons_seen = ref (ConSet.fold (fun c seen -> ConEnv.add c c seen) cons ConEnv.empty) in
+  let seen = (cons_seen, ref ShiftEnv.empty) in
+  let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
+  subst seen sigma t
+
+let close_binds cons cs tbs =
+  if cs = [] then tbs else (* TODO: optimise me *)
+  List.map (fun {var; bound} -> {var; bound = close_typ cons cs bound}) tbs
 
 let rec open' seen i ts t =
   match t with
@@ -411,6 +419,11 @@ let open_binds tbs =
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
   List.iter2 set_kind cs ks;
   ts
+
+let open_typ cons ts t =
+  if ts = [] then t else
+  let seen = ref (ConSet.fold (fun c seen -> ConEnv.add c c seen) cons ConEnv.empty) in
+  open' seen 0 ts t
 
 
 (* kind of c, unfolded if necessary *)
@@ -677,7 +690,7 @@ module S = Set.Make (struct type t = typ * typ let compare = compare end)
 
 (* Debugging rel_typ *)
 
-let debug = true (* true, to debug *)
+let debug = false (* true, to debug *)
 
 let max_depth = 40
 
@@ -702,192 +715,217 @@ let trace_rel_typ rel eq t1 t2 =
     Printf.printf "\n %s rel_type %s%!" indent "..."
   | _ -> ()
 
-let rel_list p rel eq xs1 xs2 =
-  try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
+module OpenEnv = Env.Make (struct type t = typ list * typ let compare = compare end)
 
-let rec rel_typ rel eq t1 t2 =
-  if debug then trace_rel_typ rel eq t1 t2;
-  t1 == t2 || S.mem (t1, t2) !rel || begin
-  rel := S.add (t1, t2) !rel;
-  match t1, t2 with
-  | Pre, _ | _, Pre ->
-    assert false
-  | Any, Any ->
-    true
-  | _, Any when rel != eq ->
-    true
-  | Non, Non ->
-    true
-  | Non, _ when rel != eq ->
-    true
-  | Free con1, _ ->
-    rel_typ rel eq (Con (con1, []))  t2
-  | _, Free con2 ->
-    rel_typ rel eq t1 (Con (con2, []))
-  | Con (con1, ts1), Con (con2, ts2) ->
-    (match Con.kind con1, Con.kind con2 with
-    | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ rel eq (open_ ts1 t) t2
-    | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ rel eq t1 (open_ ts2 t)
-    | _ when Con.eq con1 con2 ->
-      rel_list eq_typ rel eq ts1 ts2
-    | Abs (tbs, t), _ when rel != eq ->
-      rel_typ rel eq (open_ ts1 t) t2
-    | _ ->
-      false
-    )
-  | Con (con1, ts1), t2 ->
-    (match Con.kind con1, t2 with
-    | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ rel eq (open_ ts1 t) t2
-    | Abs (tbs, t), _ when rel != eq ->
-      rel_typ rel eq (open_ ts1 t) t2
-    | _ -> false
-    )
-  | t1, Con (con2, ts2) ->
-    (match Con.kind con2 with
-    | Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ rel eq t1 (open_ ts2 t)
-    | _ -> false
-    )
-  | Prim p1, Prim p2 when p1 = p2 ->
-    true
-  | Prim p1, Prim p2 when rel != eq ->
-    p1 = Nat && p2 = Int
-  | Prim p1, Shared when rel != eq ->
-    true
-  | Prim Text, Obj _ when rel != eq ->
-    rel_typ rel eq text_obj t2
-  | Obj (s1, tfs1), Obj (s2, tfs2) ->
-    s1 = s2 &&
-    rel_fields rel eq tfs1 tfs2
-  | Obj (s, _), Shared when rel != eq ->
-    s <> Object Local
-  | Array t1', Array t2' ->
-    rel_typ rel eq t1' t2'
-  | Array t1', Obj _ when rel != eq ->
-    rel_typ rel eq (array_obj t1') t2
-  | Array t, Shared when rel != eq ->
-    rel_typ rel eq t Shared
-  | Opt t1', Opt t2' ->
-    rel_typ rel eq t1' t2'
-  | Opt t1', Shared ->
-    rel_typ rel eq t1' Shared
-  | Variant fs1, Variant fs2 ->
-    rel_tags rel eq fs1 fs2
-  | Variant fs1, Shared ->
-    rel_tags rel eq fs1 (List.map (fun f -> {f with typ = Shared}) fs1)
-  | Prim Null, Opt t2' when rel != eq ->
-    true
-  | Tup ts1, Tup ts2 ->
-    rel_list rel_typ rel eq ts1 ts2
-  | Tup ts1, Shared ->
-    rel_list rel_typ rel eq ts1 (List.map (fun _ -> Shared) ts1)
-  | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    c1 = c2 && s1 = s2 &&
-    (* subtyping on shared functions needs to imply subtyping of the serialized
-       arguments, i.e. the IDL. Until we have a real IDL, we are conservative
-       here and assume no subtyping in the IDL. This makes shared functions invariant. *)
-    let rel_param =
-      if s1 = Sharable then eq_typ else rel_typ in
-    (match rel_binds rel eq tbs1 tbs2 with
-    | Some ts ->
-      rel_list rel_param rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
-      rel_list rel_param rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
-    | None -> false
-    )
-  | Func (Sharable, _,  _, _, _), Shared when rel != eq ->
-    true
-  | Shared, Shared ->
-    true
-  | Async t1', Async t2' ->
-    rel_typ rel eq t1' t2'
-  | Mut t1', Mut t2' ->
-    eq_typ rel eq t1' t2'
-  | Serialized t1', Serialized t2' ->
-    eq_typ rel eq t1' t2' (* TBR: eq or sub? Does it matter? *)
-  | Typ c1, Typ c2 ->
-    eq_con rel eq c1 c2
-  | _, _ -> false
-  end
+let rels () =
+  let opened = ref OpenEnv.empty in
+  let seen = ref ConEnv.empty in
+  let open_ ts t =
+    match OpenEnv.find_opt (ts,t) !opened with
+    | Some t' -> t'
+    | None ->
+      let t' = open' seen 0 ts t in
+      opened := OpenEnv.add (ts,t) t' !opened;
+      t'
+  in
 
-and rel_fields rel eq tfs1 tfs2 =
-  (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], [] ->
-    true
-  | _, [] when rel != eq ->
-    true
-  | tf1::tfs1', tf2::tfs2' ->
-    (match compare_field tf1 tf2 with
-    | 0 ->
-      rel_typ rel eq tf1.typ tf2.typ &&
-      rel_fields rel eq tfs1' tfs2'
-    | -1 when rel != eq ->
-      rel_fields rel eq tfs1' tfs2
-    | _ -> false
-    )
-  | _, _ -> false
+  let rel_list p rel eq xs1 xs2 =
+  try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false in
 
-and rel_tags rel eq tfs1 tfs2 =
-  (* Assume that tfs1 and tfs2 are sorted. *)
-  match tfs1, tfs2 with
-  | [], [] ->
-    true
-  | [], _ when rel != eq ->
-    true
-  | tf1::tfs1', tf2::tfs2' ->
-    (match compare_field tf1 tf2 with
-    | 0 ->
-      rel_typ rel eq tf1.typ tf2.typ &&
-      rel_tags rel eq tfs1' tfs2'
-    | 1 when rel != eq ->
-      rel_tags rel eq tfs1 tfs2'
-    | _ -> false
-    )
-  | _, _ -> false
-
-and rel_binds rel eq tbs1 tbs2 =
-  let ts = open_binds tbs2 in
-  if rel_list (rel_bind ts) rel eq tbs2 tbs1
-  then Some ts
-  else None
-
-and rel_bind ts rel eq tb1 tb2 =
-  rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
-
-and eq_kind rel eq k1 k2 =
-  match k1, k2 with
-  | Def (tbs1, t1), Def (tbs2, t2)
-  | Abs (tbs1, t1), Abs (tbs2, t2) ->
-    begin match rel_binds eq eq tbs1 tbs2 with
-    | Some ts -> eq_typ eq eq  (open_ ts t1) (open_ ts t2)
-    | None -> false
+  let rec rel_typ rel eq t1 t2 =
+    if debug then trace_rel_typ rel eq t1 t2;
+    t1 == t2 || S.mem (t1, t2) !rel || begin
+    rel := S.add (t1, t2) !rel;
+    match t1, t2 with
+    | Pre, _ | _, Pre ->
+      assert false
+    | Any, Any ->
+      true
+    | _, Any when rel != eq ->
+      true
+    | Non, Non ->
+      true
+    | Non, _ when rel != eq ->
+      true
+    | Free con1, _ ->
+      rel_typ rel eq (Con (con1, []))  t2
+    | _, Free con2 ->
+      rel_typ rel eq t1 (Con (con2, []))
+    | Con (con1, ts1), Con (con2, ts2) ->
+      (match Con.kind con1, Con.kind con2 with
+       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
+        seen := ConEnv.add con1 con1 !seen;
+        rel_typ rel eq (open_ ts1 t) t2
+       | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
+        seen := ConEnv.add con2 con2 !seen;
+        rel_typ rel eq t1 (open_ ts2 t)
+      | _ when Con.eq con1 con2 ->
+        rel_list eq_typ rel eq ts1 ts2
+      | Abs (tbs, t), _ when rel != eq ->
+        rel_typ rel eq (open_ ts1 t) t2
+      | _ ->
+        false
+      )
+    | Con (con1, ts1), t2 ->
+      (match Con.kind con1, t2 with
+       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
+        seen := ConEnv.add con1 con1 !seen;
+        rel_typ rel eq (open_ ts1 t) t2
+      | Abs (tbs, t), _ when rel != eq ->
+        rel_typ rel eq (open_ ts1 t) t2
+      | _ -> false
+      )
+    | t1, Con (con2, ts2) ->
+      (match Con.kind con2 with
+       | Def (tbs, t) -> (* TBR this may fail to terminate *)
+        seen := ConEnv.add con2 con2 !seen;
+        rel_typ rel eq t1 (open_ ts2 t)
+      | _ -> false
+      )
+    | Prim p1, Prim p2 when p1 = p2 ->
+      true
+    | Prim p1, Prim p2 when rel != eq ->
+      p1 = Nat && p2 = Int
+    | Prim p1, Shared when rel != eq ->
+      true
+    | Prim Text, Obj _ when rel != eq ->
+      rel_typ rel eq text_obj t2
+    | Obj (s1, tfs1), Obj (s2, tfs2) ->
+      s1 = s2 &&
+      rel_fields rel eq tfs1 tfs2
+    | Obj (s, _), Shared when rel != eq ->
+      s <> Object Local
+    | Array t1', Array t2' ->
+      rel_typ rel eq t1' t2'
+    | Array t1', Obj _ when rel != eq ->
+      rel_typ rel eq (array_obj t1') t2
+    | Array t, Shared when rel != eq ->
+      rel_typ rel eq t Shared
+    | Opt t1', Opt t2' ->
+      rel_typ rel eq t1' t2'
+    | Opt t1', Shared ->
+      rel_typ rel eq t1' Shared
+    | Variant fs1, Variant fs2 ->
+      rel_tags rel eq fs1 fs2
+    | Variant fs1, Shared ->
+      rel_tags rel eq fs1 (List.map (fun f -> {f with typ = Shared}) fs1)
+    | Prim Null, Opt t2' when rel != eq ->
+      true
+    | Tup ts1, Tup ts2 ->
+      rel_list rel_typ rel eq ts1 ts2
+    | Tup ts1, Shared ->
+      rel_list rel_typ rel eq ts1 (List.map (fun _ -> Shared) ts1)
+    | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
+      c1 = c2 && s1 = s2 &&
+      (* subtyping on shared functions needs to imply subtyping of the serialized
+         arguments, i.e. the IDL. Until we have a real IDL, we are conservative
+         here and assume no subtyping in the IDL. This makes shared functions invariant. *)
+      let rel_param =
+        if s1 = Sharable then eq_typ else rel_typ in
+      (match rel_binds rel eq tbs1 tbs2 with
+      | Some ts ->
+        rel_list rel_param rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
+        rel_list rel_param rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+      | None -> false
+      )
+    | Func (Sharable, _,  _, _, _), Shared when rel != eq ->
+      true
+    | Shared, Shared ->
+      true
+    | Async t1', Async t2' ->
+      rel_typ rel eq t1' t2'
+    | Mut t1', Mut t2' ->
+      eq_typ rel eq t1' t2'
+    | Serialized t1', Serialized t2' ->
+      eq_typ rel eq t1' t2' (* TBR: eq or sub? Does it matter? *)
+    | Typ c1, Typ c2 ->
+      eq_con rel eq c1 c2
+    | _, _ -> false
     end
-  | _ -> false
+  and rel_fields rel eq tfs1 tfs2 =
+    (* Assume that tfs1 and tfs2 are sorted. *)
+    match tfs1, tfs2 with
+    | [], [] ->
+      true
+    | _, [] when rel != eq ->
+      true
+    | tf1::tfs1', tf2::tfs2' ->
+      (match compare_field tf1 tf2 with
+      | 0 ->
+        rel_typ rel eq tf1.typ tf2.typ &&
+        rel_fields rel eq tfs1' tfs2'
+      | -1 when rel != eq ->
+        rel_fields rel eq tfs1' tfs2
+      | _ -> false
+      )
+    | _, _ -> false
 
-and eq_con rel eq c1 c2 =
-  match Con.kind c1, Con.kind c2 with
-  | Def (tbs1, t1), Def (tbs2, t2)
-  | Abs (tbs1, t1), Abs (tbs2, t2) ->
-    begin match rel_binds eq eq tbs1 tbs2 with
-    | Some ts -> eq_typ eq eq  (open_ ts t1) (open_ ts t2)
-    | None -> false
-    end
-  | _ -> false
+  and rel_tags rel eq tfs1 tfs2 =
+    (* Assume that tfs1 and tfs2 are sorted. *)
+    match tfs1, tfs2 with
+    | [], [] ->
+      true
+    | [], _ when rel != eq ->
+      true
+    | tf1::tfs1', tf2::tfs2' ->
+      (match compare_field tf1 tf2 with
+      | 0 ->
+        rel_typ rel eq tf1.typ tf2.typ &&
+        rel_tags rel eq tfs1' tfs2'
+      | 1 when rel != eq ->
+        rel_tags rel eq tfs1 tfs2'
+      | _ -> false
+      )
+    | _, _ -> false
 
-and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
+  and rel_binds rel eq tbs1 tbs2 =
+    let ts = open_binds tbs2 in
+    if rel_list (rel_bind ts) rel eq tbs2 tbs1
+    then Some ts
+    else None
 
-let eq t1 t2 : bool =
-  let eq = ref S.empty in eq_typ eq eq t1 t2
+  and rel_bind ts rel eq tb1 tb2 =
+    rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
+
+  and eq_kind eq k1 k2 =
+    match k1, k2 with
+    | Def (tbs1, t1), Def (tbs2, t2)
+    | Abs (tbs1, t1), Abs (tbs2, t2) ->
+      begin match rel_binds eq eq tbs1 tbs2 with
+      | Some ts -> eq_typ eq eq  (open_ ts t1) (open_ ts t2)
+      | None -> false
+      end
+    | _ -> false
+
+  and eq_con rel eq c1 c2 =
+    match Con.kind c1, Con.kind c2 with
+    | Def (tbs1, t1), Def (tbs2, t2)
+    | Abs (tbs1, t1), Abs (tbs2, t2) ->
+      begin match rel_binds eq eq tbs1 tbs2 with
+      | Some ts -> eq_typ eq eq  (open_ ts t1) (open_ ts t2)
+      | None -> false
+      end
+    | _ -> false
+
+  and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
+  in
+    (rel_typ,
+     eq_typ,
+     eq_kind)
+
 
 let sub t1 t2 : bool =
+  let (rel_typ, _, _) = rels () in
   rel_typ (ref S.empty) (ref S.empty) t1 t2
 
+let eq t1 t2 : bool =
+  let (_, eq_typ, _) = rels () in
+  let eq = ref S.empty in eq_typ eq eq t1 t2
+
 let eq_kind k1 k2 : bool =
+  let (_, _, eq_kind) = rels () in
   let eq = ref S.empty in
-  eq_kind eq eq k1 k2
+  eq_kind eq k1 k2
 
 
 
@@ -1110,8 +1148,8 @@ let rec string_of_typ_nullary vs = function
   | Prim p -> string_of_prim p
   | Var (s, i) -> string_of_var (List.nth vs i)
   | Free c -> string_of_con' vs c
-(*  | Con (c, []) ->
-    string_of_con' vs c *)
+  | Con (c, []) ->
+    string_of_con' vs c
   | Con (c, ts) ->
     sprintf "%s<%s>" (string_of_con' vs c)
       (String.concat ", " (List.map (string_of_typ' vs) ts))
@@ -1218,8 +1256,8 @@ and strings_of_con' vs c =
     | Abs (tbs, t) -> "<:", tbs, t, []
   in
   let vs' = vars_of_binds vs tbs in
-  let csvs'v = cs @ vs' @ vs in
-  op, string_of_binds csvs'v vs' tbs, string_of_typ' csvs'v t
+  let vs'v = vs' @ vs in
+  op, string_of_binds vs'v vs' tbs, string_of_typ' vs'v t
 
 let string_of_con : con -> string = string_of_con' []
 
