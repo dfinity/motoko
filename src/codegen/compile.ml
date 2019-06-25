@@ -2880,6 +2880,8 @@ module Serialization = struct
       let idx = ref TM.empty in
       let rec go t =
         let t = normalize t in
+        let t = match t with Serialized t -> t | _ -> t in
+        let t = normalize t in
         if to_idl_prim t <> None then () else
         if TM.mem t !idx then () else begin
           idx := TM.add t (List.length !typs) !idx;
@@ -2918,6 +2920,15 @@ module Serialization = struct
         add_leb128 (i lsr 7)
       end in
 
+    let rec add_leb128_32 (i : int32) =
+      let b = Int32.logand i 0x7fl in
+      if 0l <= i && i < 128l
+      then add_u8 (Int32.to_int b)
+      else begin
+        add_u8 (Int32.to_int (Int32.logor b 0x80l));
+        add_leb128_32 (Int32.shift_right_logical i 7)
+      end in
+
     let rec add_sleb128 i =
       let b = i land 0x7f in
       if -64 <= i && i < 64
@@ -2930,6 +2941,8 @@ module Serialization = struct
     (* Actual binary data *)
 
     let add_idx t =
+      let t = normalize t in
+      let t = match t with Serialized t -> t | _ -> t in
       let t = normalize t in
       match to_idl_prim t with
       | Some i -> add_sleb128 (-i)
@@ -2949,7 +2962,7 @@ module Serialization = struct
         add_sleb128 (-20);
         add_leb128 (List.length fs);
         List.iter (fun (h, f) ->
-          add_leb128 (Int32.to_int h);
+          add_leb128_32 h;
           add_idx f.typ
         ) (sort_by_hash fs)
       | Obj (Actor, fs) ->
@@ -2968,7 +2981,7 @@ module Serialization = struct
         add_sleb128 (-21);
         add_leb128 (List.length vs);
         List.iter (fun (h, f) ->
-          add_leb128 (Int32.to_int h);
+          add_leb128_32 h;
           add_idx f.typ
         ) (sort_by_hash vs)
       | Func (s, c, tbs, ts1, ts2) ->
