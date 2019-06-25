@@ -172,7 +172,7 @@ and check_typ' env typ : T.typ =
   | PathT (path, typs) ->
     let c = check_typ_path env path in
     let ts = List.map (check_typ env) typs in
-    let (T.Def(tbs,_) | T.Abs(tbs, _)) = Type.kind c in
+    let (T.Def(tbs,_) | T.Abs(tbs, _)) = Con.kind c in
     let tbs = List.map (fun {T.var;T.bound} -> {T.var;bound = T.open_typ env.cons ts bound}) tbs in
     check_typ_bounds env tbs typs typ.at;
 (*    (match Type.kind c with

@@ -132,7 +132,7 @@ let rec check_typ env typ : unit =
   | T.Con (c, typs) ->
     List.iter (check_typ env) typs;
     begin
-      match T.kind c with
+      match Con.kind c with
       | T.Def (tbs,_) ->
         if not (T.ConSet.mem c env.cons) then
           (* an anonymous recursive type, check its def but beware recursion
@@ -205,7 +205,7 @@ let rec check_typ env typ : unit =
 
 and check_con env c =
   let env = { env with cons = T.ConSet.add c env.cons } in
-  let (T.Abs (binds,typ) | T.Def (binds, typ)) = Type.kind c in
+  let (T.Abs (binds,typ) | T.Def (binds, typ)) = Con.kind c in
   let cs, ce = check_typ_binds env binds in
   let ts = List.map (fun c -> T.Free c) cs in
   let env' = adjoin_cons env ce in

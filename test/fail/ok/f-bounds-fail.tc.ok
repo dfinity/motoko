@@ -13,7 +13,7 @@ does not match parameter bound
 f-bounds-fail.as:3.38-3.41: type error, type argument
   Int
 does not match parameter bound
-  Nat/15
+  Nat
 f-bounds-fail.as:9.53-9.54: type error, expression of type
   A/6
 cannot produce expected type

@@ -130,7 +130,6 @@ val compare_field : field -> field -> int
 
 val set_kind : con -> kind -> unit
 
-val kind : con -> kind
 
 module ConSet : Dom.S with type elt = con
 

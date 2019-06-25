@@ -426,8 +426,13 @@ let open_typ cons ts t =
   open' seen 0 ts t
 
 
-(* kind of c, unfolded if necessary *)
-let kind c = Con.kind c
+let open_typ_binds cons tbs =
+  if tbs = [] then [] else
+  let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
+  let ts = List.map (fun c -> Free c) cs in
+  let ks = List.map (fun {bound; _} -> Abs ([], open_typ cons ts bound)) tbs in
+  List.iter2 set_kind cs ks;
+  ts
 
 (* Normalization and Classification *)
 
@@ -715,17 +720,26 @@ let trace_rel_typ rel eq t1 t2 =
     Printf.printf "\n %s rel_type %s%!" indent "..."
   | _ -> ()
 
-module OpenEnv = Env.Make (struct type t = typ list * typ let compare = compare end)
+module OpenEnv = Env.Make (struct type t = con * typ list let compare = compare end)
 
 let rels () =
+
   let opened = ref OpenEnv.empty in
-  let seen = ref ConEnv.empty in
-  let open_ ts t =
-    match OpenEnv.find_opt (ts,t) !opened with
+
+  let seen = ref ConSet.empty in
+
+  let open_seen ts t = open_typ !seen ts t in
+
+  let unfold c ts =
+    match Con.kind c with
+    | Abs _ -> assert false
+    | Def (tbs,t) ->
+    seen := ConSet.add c !seen;
+    match OpenEnv.find_opt (c,ts) !opened with
     | Some t' -> t'
     | None ->
-      let t' = open' seen 0 ts t in
-      opened := OpenEnv.add (ts,t) t' !opened;
+      let t' = open_seen ts t in
+      opened := OpenEnv.add (c,ts) t' !opened;
       t'
   in
 
@@ -753,33 +767,29 @@ let rels () =
       rel_typ rel eq t1 (Con (con2, []))
     | Con (con1, ts1), Con (con2, ts2) ->
       (match Con.kind con1, Con.kind con2 with
-       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-        seen := ConEnv.add con1 con1 !seen;
-        rel_typ rel eq (open_ ts1 t) t2
-       | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-        seen := ConEnv.add con2 con2 !seen;
-        rel_typ rel eq t1 (open_ ts2 t)
+       | Def _, _ -> (* TBR this may fail to terminate *)
+        rel_typ rel eq (unfold con1 ts1) t2
+       | _, Def _ -> (* TBR this may fail to terminate *)
+        rel_typ rel eq t1 (unfold con2 ts2)
       | _ when Con.eq con1 con2 ->
         rel_list eq_typ rel eq ts1 ts2
       | Abs (tbs, t), _ when rel != eq ->
-        rel_typ rel eq (open_ ts1 t) t2
+        rel_typ rel eq (open_seen ts1 t) t2
       | _ ->
         false
       )
     | Con (con1, ts1), t2 ->
       (match Con.kind con1, t2 with
-       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-        seen := ConEnv.add con1 con1 !seen;
-        rel_typ rel eq (open_ ts1 t) t2
+       | Def _, _ -> (* TBR this may fail to terminate *)
+        rel_typ rel eq (unfold con1 ts1) t2
       | Abs (tbs, t), _ when rel != eq ->
-        rel_typ rel eq (open_ ts1 t) t2
+        rel_typ rel eq (open_seen ts1 t) t2
       | _ -> false
       )
     | t1, Con (con2, ts2) ->
       (match Con.kind con2 with
-       | Def (tbs, t) -> (* TBR this may fail to terminate *)
-        seen := ConEnv.add con2 con2 !seen;
-        rel_typ rel eq t1 (open_ ts2 t)
+       | Def _ -> (* TBR this may fail to terminate *)
+        rel_typ rel eq t1 (unfold con2 ts2)
       | _ -> false
       )
     | Prim p1, Prim p2 when p1 = p2 ->
@@ -824,8 +834,8 @@ let rels () =
         if s1 = Sharable then eq_typ else rel_typ in
       (match rel_binds rel eq tbs1 tbs2 with
       | Some ts ->
-        rel_list rel_param rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
-        rel_list rel_param rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+        rel_list rel_param rel eq (List.map (open_seen ts) t21) (List.map (open_seen ts) t11) &&
+        rel_list rel_param rel eq (List.map (open_seen ts) t12) (List.map (open_seen ts) t22)
       | None -> false
       )
     | Func (Sharable, _,  _, _, _), Shared when rel != eq ->
@@ -879,20 +889,20 @@ let rels () =
     | _, _ -> false
 
   and rel_binds rel eq tbs1 tbs2 =
-    let ts = open_binds tbs2 in
+    let ts = open_typ_binds (!seen) tbs2 in
     if rel_list (rel_bind ts) rel eq tbs2 tbs1
     then Some ts
     else None
 
   and rel_bind ts rel eq tb1 tb2 =
-    rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
+    rel_typ rel eq (open_seen ts tb1.bound) (open_seen ts tb2.bound)
 
   and eq_kind eq k1 k2 =
     match k1, k2 with
     | Def (tbs1, t1), Def (tbs2, t2)
     | Abs (tbs1, t1), Abs (tbs2, t2) ->
       begin match rel_binds eq eq tbs1 tbs2 with
-      | Some ts -> eq_typ eq eq  (open_ ts t1) (open_ ts t2)
+      | Some ts -> eq_typ eq eq  (open_seen ts t1) (open_seen ts t2)
       | None -> false
       end
     | _ -> false
@@ -902,7 +912,7 @@ let rels () =
     | Def (tbs1, t1), Def (tbs2, t2)
     | Abs (tbs1, t1), Abs (tbs2, t2) ->
       begin match rel_binds eq eq tbs1 tbs2 with
-      | Some ts -> eq_typ eq eq  (open_ ts t1) (open_ ts t2)
+      | Some ts -> eq_typ eq eq  (open_seen ts t1) (open_seen ts t2)
       | None -> false
       end
     | _ -> false
