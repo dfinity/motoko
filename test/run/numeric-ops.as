@@ -234,6 +234,8 @@ verify<Int64>([3, -3, 8/*, 18_446_744_073_709_551_614, 15*/, 0, 3/*, 243*/], tes
                func (a : Int64, b : Int64) : Bool = a == b);
 verify<Int64>([13, -13, 18/*, 18_446_744_073_709_551_614, 15*/, 2, 3/*, 243*/], testInt64(13, 5),
                func (a : Int64, b : Int64) : Bool = a == b);
+verify<Int64>([-13, 13, -18/*, 18_446_744_073_709_551_614, 15*/, 2, -3/*, 243*/], testInt64(-13, -5),
+               func (a : Int64, b : Int64) : Bool = a == b);
 
 
 func testInt32(a : Int32, b : Int32) : [Int32] {
@@ -260,6 +262,8 @@ verify<Int32>([3, -3, 8/*, -2, 15*/, 0, 3/*, 243*/], testInt32(3, 5),
              func (a : Int32, b : Int32) : Bool = a == b);
 verify<Int32>([13, -13, 18/*, -2, 15*/, 2, 3/*, 243*/], testInt32(13, 5),
              func (a : Int32, b : Int32) : Bool = a == b);
+verify<Int32>([-13, 13, -18/*, -2, 15*/, 2, -3/*, 243*/], testInt32(-13, -5),
+             func (a : Int32, b : Int32) : Bool = a == b);
 
 
 func testInt16(a : Int16, b : Int16) : [Int16] {
@@ -285,6 +289,8 @@ func testInt16(a : Int16, b : Int16) : [Int16] {
 verify<Int16>([3, -3, 8/*, -2, 15, 0, 3, 243*/], testInt16(3, 5),
              func (a : Int16, b : Int16) : Bool = a == b);
 verify<Int16>([13, -13, 18/*, -2, 15*/, 2, 3/*, 243*/], testInt16(13, 5),
+             func (a : Int16, b : Int16) : Bool = a == b);
+verify<Int16>([-13, 13, -18/*, -2, 15*/, 2, -3/*, 243*/], testInt16(-13, -5),
              func (a : Int16, b : Int16) : Bool = a == b);
 
 
@@ -316,8 +322,8 @@ verify<Int8>([13, -13, 18/*, -2, 15*/, 2, 3/*, 243*/], testInt8(13, 5),
 //             func (a : Int8, b : Int8) : Bool = a == b);
 //verify<Int8>([13, -13, 8/*, -2, 15*/, 0, 3/*, 243*/], testInt8(13, -5),
 //             func (a : Int8, b : Int8) : Bool = a == b);
-//verify<Int8>([-13, 13, -18/*, -2, 15*/, 0, 3/*, 243*/], testInt8(-13, -5),
-//             func (a : Int8, b : Int8) : Bool = a == b);
+verify<Int8>([-13, 13, -18/*, -2, 15*/, 2, -3/*, 243*/], testInt8(-13, -5),
+             func (a : Int8, b : Int8) : Bool = a == b);
 
 
 func testNat64(a : Nat64, b : Nat64) : [Nat64] {
