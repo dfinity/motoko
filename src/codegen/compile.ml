@@ -4496,6 +4496,8 @@ let rec compile_binop env t op =
   | Type.(Prim Word64),                       MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
   | Type.(Prim (Nat64|Word64)),               DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
   | Type.(Prim (Nat64|Word64)),               ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
+  | Type.(Prim Int64),                        DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivS)) (* TODO: check for min/-1 *)
+  | Type.(Prim Int64),                        ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemS))
   | Type.(Prim Nat),                          DivOp -> BigNum.compile_unsigned_div env
   | Type.(Prim Nat),                          ModOp -> BigNum.compile_unsigned_rem env
   | Type.(Prim Word64),                       SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
@@ -4560,6 +4562,17 @@ let rec compile_binop env t op =
     G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
     UnboxedSmallWord.msb_adjust ty
   | Type.(Prim (Nat8|Nat16|Nat32|Word8|Word16|Word32)), ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
+
+
+  | Type.(Prim (Int8|Int16|Int32 as ty)), DivOp ->
+     Func.share_code2 env (UnboxedSmallWord.name_of_type ty "div")
+       (("a", I32Type), ("b", I32Type)) [I32Type]
+       (fun env get_a get_b ->
+         let (set_res, get_res) = new_local env "res" in
+         get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
+         UnboxedSmallWord.msb_adjust ty ^^ set_res ^^
+         get_res) (* TODO: check for min/-1 *)
+  | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemS))
   | Type.(Prim (Word8|Word16|Word32 as ty)),  PowOp ->
      let rec pow () = Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
                         (("n", I32Type), ("exp", I32Type)) [I32Type]

@@ -220,17 +220,19 @@ func testInt64(a : Int64, b : Int64) : [Int64] {
   /*let diff1 = a - b;
   let diff2 = (a - b) : Int64;
   let prod1 = a * b;
-  let prod2 = (a * b) : Int64;
+  let prod2 = (a * b) : Int64;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Int64;
   let mod1 = a % b;
   let mod2 = (a % b) : Int64;
-  let pow1 = a ** b;
+  /*let pow1 = a ** b;
   let pow2 = (a ** b) : Int64;*/
-  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2*/]
+  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, prod1, prod2, */rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Int64>([3, -3, 8/*, 18_446_744_073_709_551_614, 15, 0, 3, 243*/], testInt64(3, 5),
+verify<Int64>([3, -3, 8/*, 18_446_744_073_709_551_614, 15*/, 0, 3/*, 243*/], testInt64(3, 5),
+               func (a : Int64, b : Int64) : Bool = a == b);
+verify<Int64>([13, -13, 18/*, 18_446_744_073_709_551_614, 15*/, 2, 3/*, 243*/], testInt64(13, 5),
                func (a : Int64, b : Int64) : Bool = a == b);
 
 
@@ -244,17 +246,19 @@ func testInt32(a : Int32, b : Int32) : [Int32] {
   /*let diff1 = a - b;
   let diff2 = (a - b) : Int32;
   let prod1 = a * b;
-  let prod2 = (a * b) : Int32;
+  let prod2 = (a * b) : Int32;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Int32;
   let mod1 = a % b;
   let mod2 = (a % b) : Int32;
-  let pow1 = a ** b;
+  /*let pow1 = a ** b;
   let pow2 = (a ** b) : Int32;*/
-  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2*/]
+  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, prod1, prod2, */rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Int32>([3, -3, 8/*, -2, 15, 0, 3, 243*/], testInt32(3, 5),
+verify<Int32>([3, -3, 8/*, -2, 15*/, 0, 3/*, 243*/], testInt32(3, 5),
+             func (a : Int32, b : Int32) : Bool = a == b);
+verify<Int32>([13, -13, 18/*, -2, 15*/, 2, 3/*, 243*/], testInt32(13, 5),
              func (a : Int32, b : Int32) : Bool = a == b);
 
 
@@ -268,17 +272,19 @@ func testInt16(a : Int16, b : Int16) : [Int16] {
   /*let diff1 = a - b;
   let diff2 = (a - b) : Int16;
   let prod1 = a * b;
-  let prod2 = (a * b) : Int16;
+  let prod2 = (a * b) : Int16;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Int16;
   let mod1 = a % b;
   let mod2 = (a % b) : Int16;
-  let pow1 = a ** b;
+  /*let pow1 = a ** b;
   let pow2 = (a ** b) : Int16;*/
-  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2*/]
+  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, prod1, prod2, */rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
 verify<Int16>([3, -3, 8/*, -2, 15, 0, 3, 243*/], testInt16(3, 5),
+             func (a : Int16, b : Int16) : Bool = a == b);
+verify<Int16>([13, -13, 18/*, -2, 15*/, 2, 3/*, 243*/], testInt16(13, 5),
              func (a : Int16, b : Int16) : Bool = a == b);
 
 
@@ -292,18 +298,26 @@ func testInt8(a : Int8, b : Int8) : [Int8] {
   /*let diff1 = a - b;
   let diff2 = (a - b) : Int8;
   let prod1 = a * b;
-  let prod2 = (a * b) : Int8;
+  let prod2 = (a * b) : Int8;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Int8;
   let mod1 = a % b;
   let mod2 = (a % b) : Int8;
-  let pow1 = a ** b;
+  /*let pow1 = a ** b;
   let pow2 = (a ** b) : Int8;*/
-  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2*/]
+  [pos1, pos2, neg1, neg2, sum1, sum2/*, diff1, diff2, prod1, prod2*/, rat1, rat2, mod1, mod2, /*pow1, pow2*/]
 };
 
-verify<Int8>([3, -3, 8/*, -2, 15, 0, 3, 243*/], testInt8(3, 5),
+verify<Int8>([3, -3, 8/*, -2, 15*/, 0, 3/*, 243*/], testInt8(3, 5),
              func (a : Int8, b : Int8) : Bool = a == b);
+verify<Int8>([13, -13, 18/*, -2, 15*/, 2, 3/*, 243*/], testInt8(13, 5),
+             func (a : Int8, b : Int8) : Bool = a == b);
+//verify<Int8>([3, -3, -2/*, -2, 15*/, 0, 3/*, 243*/], testInt8(3, -5),
+//             func (a : Int8, b : Int8) : Bool = a == b);
+//verify<Int8>([13, -13, 8/*, -2, 15*/, 0, 3/*, 243*/], testInt8(13, -5),
+//             func (a : Int8, b : Int8) : Bool = a == b);
+//verify<Int8>([-13, 13, -18/*, -2, 15*/, 0, 3/*, 243*/], testInt8(-13, -5),
+//             func (a : Int8, b : Int8) : Bool = a == b);
 
 
 func testNat64(a : Nat64, b : Nat64) : [Nat64] {
