@@ -367,7 +367,6 @@ and open_bind i ts {var; bound} =
 and open_field i ts {lab; typ} =
   {lab; typ = open' i ts typ}
 
-
 and open_kind i ts k =
   match k with
   | Def (tbs, t) ->
