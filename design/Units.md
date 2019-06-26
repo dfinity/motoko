@@ -111,7 +111,7 @@ This compilation scheme is suitable for the interpreter, and for early versions 
 
 This compilation scheme expresses units as dynamically linkable Wasm modules (according to the [dynamic linking spec](https://github.com/WebAssembly/tool-conventions/blob/master/DynamicLinking.md).
 
-Imports are resolved to Wasm modules by appending `.wasm` to the impot path.
+Imports are resolved to Wasm modules by appending `.wasm` to the import path.
 
 The exported module is mapped to Wasm exports (functions and globals) in an implementation-defined way that may vary between compiler versions.
 
