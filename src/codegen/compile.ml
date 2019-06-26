@@ -2946,7 +2946,7 @@ module Serialization = struct
       let t = normalize t in
       match to_idl_prim t with
       | Some i -> add_sleb128 (-i)
-      | None -> add_leb128 (TM.find (normalize t) idx) in
+      | None -> add_sleb128 (TM.find (normalize t) idx) in
 
     let add_typ t =
       match t with
