@@ -280,8 +280,8 @@ and shift_kind seen i n k =
 module SubstEnv = Env.Make(struct type t = typ ConEnv.t * con
                                   let compare = compare end) (* TBR *)
 
-let rec subst ((cons,ce,se) as seen) sigma t =
-  Printf.printf "\nsubst %s%!" (try debug_string_of_typ t  with _ -> "???");
+let rec subst ((cons, re, ce,se) as seen) sigma t =
+  (*  Printf.printf "\nsubst %s%!" (try debug_string_of_typ t  with _ -> "???"); *)
   if sigma = ConEnv.empty then t else
   match t with
   | Prim _
@@ -316,20 +316,24 @@ let rec subst ((cons,ce,se) as seen) sigma t =
      | None -> Typ (subst_con seen sigma c)
     )
 
-and subst_con ((cons,ce,se) as seen) sigma c =
+and subst_con ((cons,re,ce,se) as seen) sigma c =
   match Con.kind c with
   | Abs _ -> c
-  | Def _ ->
+  | Def (tbs,t) ->
     match SubstEnv.find_opt (sigma, c) (!ce) with
-  | Some c' -> c'
-  | None ->
-    if ConSet.mem c cons then
-      c
-    else
-    let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
-    ce := SubstEnv.add (sigma, c) c' (!ce);
-    Con.unsafe_set_kind c' (subst_kind (ConSet.add c cons, ce,se) sigma (Con.kind c));
-    c'
+    | Some c' -> c'
+    | None ->
+      match ConEnv.find_opt c re with
+      | Some c' -> c'
+      | None ->
+        if ConSet.mem c cons then
+          c
+        else
+          let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
+          ce := SubstEnv.add (sigma, c) c' (!ce);
+          let seen' = (cons,ConEnv.add c c' re, ce, se) in
+          Con.unsafe_set_kind c' (subst_kind seen' sigma (Con.kind c));
+          c'
 
 (* TBD *)
 and clone c f =
@@ -346,7 +350,7 @@ and subst_bind seen sigma {var; bound} =
 and subst_field seen sigma {lab; typ} =
   {lab; typ = subst seen sigma typ}
 
-and subst_kind ((cons,ce,se) as seen) sigma (k:kind) =
+and subst_kind ((cons,re,ce,se) as seen) sigma (k:kind) =
   match k with
   | Def (tbs, t) ->
     let sigma' = ConEnv.map (shift se 0 (List.length tbs)) sigma in
@@ -360,14 +364,14 @@ and subst_kind ((cons,ce,se) as seen) sigma (k:kind) =
 let close cs t =
   if cs = [] then t else
   let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
-  let seen = (ConSet.empty, ref SubstEnv.empty, ref ShiftEnv.empty) in
+  let seen = (ConSet.empty, ConEnv.empty, ref SubstEnv.empty, ref ShiftEnv.empty) in
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst seen sigma t
 
 let close_typ cons cs t =
   if cs = [] then t else
   let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
-  let seen = (cons, ref SubstEnv.empty, ref ShiftEnv.empty) in
+  let seen = (cons, ConEnv.empty, ref SubstEnv.empty, ref ShiftEnv.empty) in
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst seen sigma t
 
@@ -403,19 +407,22 @@ let rec open' seen i ts t =
   | Pre -> Pre
   | Typ c -> Typ (open_con seen i ts c)
 
-and open_con (cons,seen) i ts c =
+and open_con (cons, re, seen) i ts c =
   match Con.kind c with
   | Abs _ -> c
   | Def _ ->
   match OpenEnv.find_opt (i, ts, c) (!seen) with
   | Some c' -> c'
   | None ->
+    match ConEnv.find_opt c re with
+    | Some c' -> c'
+    | None ->
     if ConSet.mem c cons then
       c
     else
       let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
       seen := OpenEnv.add (i, ts, c) c' (!seen);
-      Con.unsafe_set_kind c' (open_kind (cons, seen) i ts (Con.kind c));
+      Con.unsafe_set_kind c' (open_kind (cons, ConEnv.add c c' re, seen) i ts (Con.kind c));
       c'
 
 and open_bind seen i ts {var; bound} =
@@ -436,7 +443,7 @@ and open_kind seen i ts k =
 
 let open_ ts t =
   if ts = [] then t else
-  let seen = (ConSet.empty, ref OpenEnv.empty) in
+  let seen = (ConSet.empty, ConEnv.empty, ref OpenEnv.empty) in
   open' seen 0 ts t
 
 let open_binds tbs =
@@ -449,7 +456,7 @@ let open_binds tbs =
 
 let open_typ cons ts t =
   if ts = [] then t else
-  let seen = (cons, ref OpenEnv.empty) in
+  let seen = (cons, ConEnv.empty, ref OpenEnv.empty) in
   open' seen 0 ts t
 
 
@@ -1314,7 +1321,8 @@ let string_of_typ : typ -> string = string_of_typ' []
 let rec string_of_typ_expand t =
   let s = string_of_typ t in
   match t with
-  | Con (c, ts) ->
+  | Free c
+  | Con (c, _) ->
     (match Con.kind c with
     | Abs _ -> s
     | Def _ ->
