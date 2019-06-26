@@ -66,7 +66,7 @@ Notes:
 
 An import statement addresses the unit to be imported via an `<url>`. The following URL forms are specfied as of now:
 
-* Relative URLs, such as `import "utils"`, `import "./utils"` or `import ./more/utils`.
+* Relative URLs, such as `import "utils"`, `import "more/utils"`, `import "./utils"` or `import ./more/utils`.
 
   These relative URLs are interpreted as relative to the directory that contains the file that contains the `import` statement.
 
