@@ -1054,15 +1054,15 @@ These measures allow the serialisation format to be extended with new types in t
 We assume that the argument values are sorted by increasing id.
 
 ```
-A(kv* : <fieldtype>*) = ( B(kv* : <fieldtype>*), R(kv* : <fieldtype>*) )
+A(kv* : <datatype>*) = ( B(kv* : <datatype>*), R(kv* : <datatype>*) )
 
-B(kv* : <fieldtype>*) =
+B(kv* : <datatype>*) =
   i8('D') i8('I') i8('D') i8('L')      magic number
   T*(<datatype>*)                      type definition table
-  T*(<fieldtype>*)                     type of argument list
-  M(kv* : <fieldtype>*)                values of argument list
+  I*(<datatype>*)                      type of argument list
+  M(kv* : <datatype>*)                 values of argument list
 ```
-The `<datatype>` vector contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the `<fieldtype>` vector.
+The vector `T*(<datatype>*)` contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the other `<datatype>` vector.
 
 The same representation is used for function results.
 
