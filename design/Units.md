@@ -130,7 +130,7 @@ Consequently, every public field of a unit becomes a Wasm exports.
 These are either Wasm functions, for public fields of function type,
 or Wasm globals, for all others.
 
-The `as-interface` custom section must not be present; the interface must be determined by the type alone. This allows true separate compliation.
+The `as-interface` custom section must not be present; the interface must be determined by the type alone. This allows true separate compilation.
 
 It also implies that compiling arbitrary closures into exported Wasm functions may require eta-expanding the closure and storing its environment into an internal global.
 
