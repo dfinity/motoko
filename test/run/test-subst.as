@@ -3,7 +3,7 @@
 // t is applied at different binding depths, requiring care in open and close to only
 // share definitions at the same binding depth.
 
-class C<A>(){
+class D<A>(){
   type t<B> = (A,B);
   func f<B>(x:t<B>) :
            <C>(x:t<C>)->t<B>
