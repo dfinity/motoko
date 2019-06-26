@@ -126,7 +126,7 @@ This extension to the former scheme explicitly uses _natural mechanisms_ in Wasm
 That enables the best possible integration and interoperation with the wider Wasm eco system and existing tools.
 (However, it does not automatically enable functional interoperability with other languages, since AS types typically have a representation that cannot directly be interpreted externally. For this, additional interop support would be needed, which is beyond the scope of this proposal.)
 
-Consequently, every public field of a unit becomes a a Wasm exports.
+Consequently, every public field of a unit becomes a Wasm exports.
 These are either Wasm functions, for public fields of function type,
 or Wasm globals, for all others.
 
