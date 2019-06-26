@@ -120,10 +120,10 @@ int read_sleb128(char **ptr) {
 
 export char *skip_idl_header(char *ptr) {
   // Magic bytes
-  if (!(*ptr++ == 'D')) idl_trap();
-  if (!(*ptr++ == 'I')) idl_trap();
-  if (!(*ptr++ == 'D')) idl_trap();
-  if (!(*ptr++ == 'L')) idl_trap();
+  if (*ptr++ != 'D') idl_trap();
+  if (*ptr++ != 'I') idl_trap();
+  if (*ptr++ != 'D') idl_trap();
+  if (*ptr++ != 'L') idl_trap();
   // Size of type list
   for (int count = read_leb128(&ptr); count > 0; count --) {
     int ty = read_sleb128(&ptr);
@@ -157,7 +157,7 @@ export char *skip_idl_header(char *ptr) {
       for (int n = read_leb128(&ptr); n > 0; n--) {
         ptr++;
       }
-    } else if (ty == -23) {  // func
+    } else if (ty == -23) {  // service
       for (int n = read_leb128(&ptr); n > 0; n--) {
         // name
         ptr += read_leb128(&ptr);
@@ -165,6 +165,7 @@ export char *skip_idl_header(char *ptr) {
         read_sleb128(&ptr);
       }
     } else {
+      // no support for future types yet
       idl_trap();
     }
   }
