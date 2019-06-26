@@ -52,7 +52,7 @@ The syntax of a unit -- and therefore an AS source file -- is a sequence of *imp
 
 Imports are no longer allowed anywhere else.
 
-The `<text>` of the `import` statement is an URL. The precise interpretation is implementation dependant (see below in section Compilation). It at least supports local paths relative to the source file. URLs do _not_ include a file ending, such as `.as`, `.dll` or `.wasm`, to allow for different compilation schemes.
+The `<text>` of the `import` statement is a URL. The precise interpretation is implementation dependant (see below in section Compilation). It at least supports local paths relative to the source file. URLs do _not_ include a file ending, such as `.as`, `.dll` or `.wasm`, to allow for different compilation schemes.
 
 Each import binds the identifiers in its *import pattern*. If the pattern is a plain `<id>` then the contents of the imported unit is reified as a module object bound to that id. If the pattern is a *destructuring* import pattern then the respective public fields of the unit are bound to the respective label identifiers.
 
