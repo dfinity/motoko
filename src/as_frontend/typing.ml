@@ -6,6 +6,7 @@ open As_values
 module T = Type
 module A = Effect
 
+
 (* Error recovery *)
 
 exception Recover
@@ -13,6 +14,7 @@ exception Recover
 let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
+
 
 (* Contexts  *)
 
@@ -44,6 +46,7 @@ let env_of_scope msgs scope =
     pre = false;
     msgs;
   }
+
 
 (* Error bookkeeping *)
 
@@ -110,6 +113,7 @@ let infer_mut mut : T.typ -> T.typ =
   match mut.it with
   | Const -> fun t -> t
   | Var -> fun t -> T.Mut t
+
 
 (* Paths *)
 
@@ -521,20 +525,22 @@ and infer_exp'' env exp : T.typ =
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
-    (try
-      let s, tfs = T.as_obj_sub id.it t1 in
-      match T.lookup_val_field id.it tfs with
-      | Some T.Pre ->
-        error env exp.at "cannot infer type of forward field reference %s"
-          id.it
-      | Some t -> t
-      | None ->
-        error env exp1.at "field %s does not exist in type\n  %s"
-           id.it (T.string_of_typ_expand t1)
-     with Invalid_argument _ ->
-       error env exp1.at
-         "expected object type, but expression produces type\n  %s"
-         (T.string_of_typ_expand t1)
+    let _s, tfs =
+      try T.as_obj_sub id.it t1 with Invalid_argument _ ->
+      try T.array_obj (T.as_array_sub t1) with Invalid_argument _ ->
+      try T.text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
+        error env exp1.at
+          "expected object type, but expression produces type\n  %s"
+          (T.string_of_typ_expand t1)
+    in
+    (match T.lookup_val_field id.it tfs with
+    | Some T.Pre ->
+      error env exp.at "cannot infer type of forward field reference %s"
+        id.it
+    | Some t -> t
+    | None ->
+      error env exp1.at "field %s does not exist in type\n  %s"
+        id.it (T.string_of_typ_expand t1)
     )
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
@@ -1051,21 +1057,25 @@ and check_pat_fields env tfs pfs ve at : Scope.val_env =
   | pf::pfs', T.{ lab; typ }::tfs' ->
     (match compare pf.it.id.it lab with
     | 0 ->
-      if T.is_mut typ then error env pf.at "cannot pattern match mutable field %s" lab;
+      if T.is_mut typ then
+        error env pf.at "cannot pattern match mutable field %s" lab;
       let ve1 = check_pat env typ pf.it.pat in
-      let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
-      begin match repeated lab pfs' with
+      let ve' =
+        disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
+      (match repeated lab pfs' with
       | None -> check_pat_fields env tfs' pfs' ve' at
-      | Some at -> error env at "cannot pattern match repeated field %s" lab
-      end
+      | Some at -> error env at "duplicate field %s in object pattern" lab
+      )
     | c when c > 0 ->
       check_pat_fields env tfs' pfs ve at
     | _ ->
-      error env pf.at "object pattern field %s is not contained in expected type" pf.it.id.it
+      error env pf.at
+        "object pattern field %s is not contained in expected type" pf.it.id.it
     )
   | [], _ -> ve
   | pf::_, [] ->
-    error env pf.at "object pattern field %s is not contained in expected type" pf.it.id.it
+    error env pf.at
+      "object pattern field %s is not contained in expected type" pf.it.id.it
 
 and compare_pat_field {it={id = l1; pat; _};_} {it={id = l2; pat; _};_} = compare l1.it l2.it
 
