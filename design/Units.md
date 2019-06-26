@@ -70,7 +70,7 @@ An import statement addresses the unit to be imported via an `<url>`. The follow
 
   These relative URLs are interpreted as relative to the directory that contains the file that contains the `import` statement.
 
-* Package urls, using the scheme `as:`, such as `import "std/list"` or `import "pkg/module"`.
+* Package urls, using the scheme `as:`, such as `import "as:std/list"` or `import "as:pkg/module"`.
 
   The first path component specifies a _package name_, while the remainig paths are relative to the directory where this package is stored.
 
