@@ -280,9 +280,9 @@ func testInt16(a : Int16, b : Int16) : [Int16] {
   let neg2 = (- a) : Int16;
   let sum1 = a + b;
   let sum2 = (a + b) : Int16;
-  /*let diff1 = a - b;
+  let diff1 = a - b;
   let diff2 = (a - b) : Int16;
-  let prod1 = a * b;
+  /*let prod1 = a * b;
   let prod2 = (a * b) : Int16;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Int16;
@@ -290,14 +290,14 @@ func testInt16(a : Int16, b : Int16) : [Int16] {
   let mod2 = (a % b) : Int16;
   /*let pow1 = a ** b;
   let pow2 = (a ** b) : Int16;*/
-  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, prod1, prod2, */rat1, rat2, mod1, mod2/*, pow1, pow2*/]
+  [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, /*prod1, prod2, */rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Int16>([3, -3, 8/*, -2, 15, 0, 3, 243*/], testInt16(3, 5),
+verify<Int16>([3, -3, 8, -2/*, 15, 0, 3, 243*/], testInt16(3, 5),
              func (a : Int16, b : Int16) : Bool = a == b);
-verify<Int16>([13, -13, 18/*, -2, 15*/, 2, 3/*, 243*/], testInt16(13, 5),
+verify<Int16>([13, -13, 18, 8/*, 15*/, 2, 3/*, 243*/], testInt16(13, 5),
              func (a : Int16, b : Int16) : Bool = a == b);
-verify<Int16>([-13, 13, -18/*, -2, 15*/, 2, -3/*, 243*/], testInt16(-13, -5),
+verify<Int16>([-13, 13, -18, -8/*, 15*/, 2, -3/*, 243*/], testInt16(-13, -5),
              func (a : Int16, b : Int16) : Bool = a == b);
 
 
@@ -308,9 +308,9 @@ func testInt8(a : Int8, b : Int8) : [Int8] {
   let neg2 = (- a) : Int8;
   let sum1 = a + b;
   let sum2 = (a + b) : Int8;
-  /*let diff1 = a - b;
+  let diff1 = a - b;
   let diff2 = (a - b) : Int8;
-  let prod1 = a * b;
+  /*let prod1 = a * b;
   let prod2 = (a * b) : Int8;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Int8;
@@ -318,18 +318,18 @@ func testInt8(a : Int8, b : Int8) : [Int8] {
   let mod2 = (a % b) : Int8;
   /*let pow1 = a ** b;
   let pow2 = (a ** b) : Int8;*/
-  [pos1, pos2, neg1, neg2, sum1, sum2/*, diff1, diff2, prod1, prod2*/, rat1, rat2, mod1, mod2, /*pow1, pow2*/]
+  [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2/*, prod1, prod2*/, rat1, rat2, mod1, mod2, /*pow1, pow2*/]
 };
 
-verify<Int8>([3, -3, 8/*, -2, 15*/, 0, 3/*, 243*/], testInt8(3, 5),
+verify<Int8>([3, -3, 8, -2/*, 15*/, 0, 3/*, 243*/], testInt8(3, 5),
              func (a : Int8, b : Int8) : Bool = a == b);
-verify<Int8>([13, -13, 18/*, -2, 15*/, 2, 3/*, 243*/], testInt8(13, 5),
+verify<Int8>([13, -13, 18, 8/*, 15*/, 2, 3/*, 243*/], testInt8(13, 5),
              func (a : Int8, b : Int8) : Bool = a == b);
-//verify<Int8>([3, -3, -2/*, -2, 15*/, 0, 3/*, 243*/], testInt8(3, -5),
+//verify<Int8>([3, -3, -2, 8/*, 15*/, 0, 3/*, 243*/], testInt8(3, -5),
 //             func (a : Int8, b : Int8) : Bool = a == b);
-//verify<Int8>([13, -13, 8/*, -2, 15*/, 0, 3/*, 243*/], testInt8(13, -5),
+//verify<Int8>([13, -13, 8, 18/*, 15*/, 0, 3/*, 243*/], testInt8(13, -5),
 //             func (a : Int8, b : Int8) : Bool = a == b);
-verify<Int8>([-13, 13, -18/*, -2, 15*/, 2, -3/*, 243*/], testInt8(-13, -5),
+verify<Int8>([-13, 13, -18, -8/*, 15*/, 2, -3/*, 243*/], testInt8(-13, -5),
              func (a : Int8, b : Int8) : Bool = a == b);
 
 
@@ -380,9 +380,9 @@ verify<Nat32>([18/*, -2, 15*/, 5, 0/*, 243*/], testNat32(15, 3),
 func testNat16(a : Nat16, b : Nat16) : [Nat16] {
   let sum1 = a + b;
   let sum2 = (a + b) : Nat16;
-  /*let diff1 = a - b;
+  let diff1 = a - b;
   let diff2 = (a - b) : Nat16;
-  let prod1 = a * b;
+  /*let prod1 = a * b;
   let prod2 = (a * b) : Nat16;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Nat16;
@@ -390,21 +390,21 @@ func testNat16(a : Nat16, b : Nat16) : [Nat16] {
   let mod2 = (a % b) : Nat16;
   /*let pow1 = a ** b;
   let pow2 = (a ** b) : Nat16;*/
-  [sum1, sum2/*, diff1, diff2, prod1, prod2*/, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
+  [sum1, sum2, diff1, diff2/*, prod1, prod2*/, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Nat16>([8/*, -2, 15*/, 1, 2/*, 243*/], testNat16(5, 3),
+verify<Nat16>([8, 2/*, 15*/, 1, 2/*, 243*/], testNat16(5, 3),
              func (a : Nat16, b : Nat16) : Bool = a == b);
-verify<Nat16>([18/*, -2, 15*/, 5, 0/*, 243*/], testNat16(15, 3),
+verify<Nat16>([18, 12/*, 15*/, 5, 0/*, 243*/], testNat16(15, 3),
              func (a : Nat16, b : Nat16) : Bool = a == b);
 
 
 func testNat8(a : Nat8, b : Nat8) : [Nat8] {
   let sum1 = a + b;
   let sum2 = (a + b) : Nat8;
-  /*let diff1 = a - b;
+  let diff1 = a - b;
   let diff2 = (a - b) : Nat8;
-  let prod1 = a * b;
+  /*let prod1 = a * b;
   let prod2 = (a * b) : Nat8;*/
   let rat1 = a / b;
   let rat2 = (a / b) : Nat8;
@@ -412,10 +412,10 @@ func testNat8(a : Nat8, b : Nat8) : [Nat8] {
   let mod2 = (a % b) : Nat8;
   /*let pow1 = a ** b;
   let pow2 = (a ** b) : Nat8;*/
-  [sum1, sum2/*, diff1, diff2, prod1, prod2*/, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
+  [sum1, sum2, diff1, diff2/*, prod1, prod2*/, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Nat8>([8/*, -2, 15*/, 1, 2/*, 243*/], testNat8(5, 3),
+verify<Nat8>([8, 2/*, 15*/, 1, 2/*, 243*/], testNat8(5, 3),
              func (a : Nat8, b : Nat8) : Bool = a == b);
-verify<Nat8>([18/*, -2, 15*/, 5, 0/*, 243*/], testNat8(15, 3),
+verify<Nat8>([18, 12/*, 15*/, 5, 0/*, 243*/], testNat8(15, 3),
              func (a : Nat8, b : Nat8) : Bool = a == b);
