@@ -4656,16 +4656,21 @@ let rec compile_binop env t op =
                  mul)))
      in pow ()
   | Type.(Prim Int),                          PowOp ->
-     let pow = BigNum.compile_unsigned_pow env in
-     let (set_n, get_n) = new_local env "n" in
-     let (set_exp, get_exp) = new_local env "exp" in
-     set_exp ^^ set_n ^^
-     get_exp ^^ BigNum.compile_is_negative env ^^
-     E.then_trap_with env "negative power" ^^
-     get_n ^^ get_exp ^^ pow
+    let pow = BigNum.compile_unsigned_pow env in
+    let (set_n, get_n) = new_local env "n" in
+    let (set_exp, get_exp) = new_local env "exp" in
+    set_exp ^^ set_n ^^
+    get_exp ^^ BigNum.compile_is_negative env ^^
+    E.then_trap_with env "negative power" ^^
+    get_n ^^ get_exp ^^ pow
   | Type.(Prim Word64),                       PowOp -> BoxedWord64.compile_unsigned_pow env
-  | Type.(Prim Int64),                        PowOp -> (* TODO(gabor) check negative exponent *)
-    compile_Int64_kernel env "pow" BigNum.compile_unsigned_pow
+  | Type.(Prim Int64),                        PowOp ->
+    let (set_exp, get_exp) = new_local64 env "exp" in
+    set_exp ^^ get_exp ^^
+    compile_const_64 0L ^^
+    G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+    E.then_trap_with env "negative power" ^^
+    get_exp ^^ compile_Int64_kernel env "pow" BigNum.compile_unsigned_pow
   | Type.(Prim Nat64),                        PowOp -> compile_Nat64_kernel env "pow" BigNum.compile_unsigned_pow
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
