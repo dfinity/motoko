@@ -88,23 +88,33 @@ export as_ptr version() { return (*version_getter)(); }
 from_rts __attribute__ ((noreturn)) void idl_trap();
 
 // Initially, we just want to be able to zoom past the type description
-// TODO: Defensive programming (by not going past the size of the message)
+// TODO: Defensive programming
+// (not going past the size of the message, trapping if leb128 does not fit in int)
+
 int read_leb128(char **ptr) {
   int r = 0;
-  int p = 1;
-  while (**ptr & (char)0x80) {
-    r += p * (**ptr & (char)0x7f);
-    (*ptr)++;
-    p = p << 7;
-  }
-  r += p * **ptr;
-  (*ptr)++;
+  int s = 0;
+  char b;
+  do {
+    b = *(*ptr)++;
+    r += (b & (char)0x7f) << s;
+    s += 7;
+  } while (b & (char)0x80);
   return r;
 }
 int read_sleb128(char **ptr) {
-  int r = *(*ptr)++;
-  if (r < 0) idl_trap();
-  if (r >= 64) r -= 128;
+  int r = 0;
+  int s = 0;
+  char b;
+  do {
+    b = *(*ptr)++;
+    r += (b & (char)0x7f) << s;
+    s += 7;
+  } while (b & (char)0x80);
+  // sign extend
+  if (b & (char)0x40) {
+    r |= (~0 << s);
+  }
   return r;
 }
 
