@@ -253,23 +253,23 @@ func testInt32(a : Int32, b : Int32) : [Int32] {
   let sum1 = a + b;
   let sum2 = (a + b) : Int32;
   /*let diff1 = a - b;
-  let diff2 = (a - b) : Int32;
+  let diff2 = (a - b) : Int32;*/
   let prod1 = a * b;
-  let prod2 = (a * b) : Int32;*/
+  let prod2 = (a * b) : Int32;
   let rat1 = a / b;
   let rat2 = (a / b) : Int32;
   let mod1 = a % b;
   let mod2 = (a % b) : Int32;
   /*let pow1 = a ** b;
   let pow2 = (a ** b) : Int32;*/
-  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, prod1, prod2, */rat1, rat2, mod1, mod2/*, pow1, pow2*/]
+  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, */prod1, prod2, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Int32>([3, -3, 8/*, -2, 15*/, 0, 3/*, 243*/], testInt32(3, 5),
+verify<Int32>([3, -3, 8/*, -2*/, 15, 0, 3/*, 243*/], testInt32(3, 5),
              func (a : Int32, b : Int32) : Bool = a == b);
-verify<Int32>([13, -13, 18/*, -2, 15*/, 2, 3/*, 243*/], testInt32(13, 5),
+verify<Int32>([13, -13, 18/*, -2*/, 65, 2, 3/*, 243*/], testInt32(13, 5),
              func (a : Int32, b : Int32) : Bool = a == b);
-verify<Int32>([-13, 13, -18/*, -2, 15*/, 2, -3/*, 243*/], testInt32(-13, -5),
+verify<Int32>([-13, 13, -18/*, -2*/, 65, 2, -3/*, 243*/], testInt32(-13, -5),
              func (a : Int32, b : Int32) : Bool = a == b);
 
 
@@ -325,10 +325,10 @@ verify<Int8>([3, -3, 8, -2, 15, 0, 3/*, 243*/], testInt8(3, 5),
              func (a : Int8, b : Int8) : Bool = a == b);
 verify<Int8>([13, -13, 18, 8, 65, 2, 3/*, 243*/], testInt8(13, 5),
              func (a : Int8, b : Int8) : Bool = a == b);
-//verify<Int8>([3, -3, -2, 8, -65, 0, 3/*, 243*/], testInt8(3, -5),
-//             func (a : Int8, b : Int8) : Bool = a == b);
-//verify<Int8>([13, -13, 8, 18, -65, 0, 3/*, 243*/], testInt8(13, -5),
-//             func (a : Int8, b : Int8) : Bool = a == b);
+verify<Int8>([3, -3, -2, 8, -15, 0, 3/*, 243*/], testInt8(3, -5),
+             func (a : Int8, b : Int8) : Bool = a == b);
+verify<Int8>([13, -13, 8, 18, -65, -2, 3/*, 243*/], testInt8(13, -5),
+             func (a : Int8, b : Int8) : Bool = a == b);
 verify<Int8>([-13, 13, -18, -8, 65, 2, -3/*, 243*/], testInt8(-13, -5),
              func (a : Int8, b : Int8) : Bool = a == b);
 
@@ -359,21 +359,21 @@ func testNat32(a : Nat32, b : Nat32) : [Nat32] {
   let sum1 = a + b;
   let sum2 = (a + b) : Nat32;
   /*let diff1 = a - b;
-  let diff2 = (a - b) : Nat32;
+  let diff2 = (a - b) : Nat32;*/
   let prod1 = a * b;
-  let prod2 = (a * b) : Nat32;*/
+  let prod2 = (a * b) : Nat32;
   let rat1 = a / b;
   let rat2 = (a / b) : Nat32;
   let mod1 = a % b;
   let mod2 = (a % b) : Nat32;
   /*let pow1 = a ** b;
   let pow2 = (a ** b) : Nat32;*/
-  [sum1, sum2/*, diff1, diff2, prod1, prod2*/, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
+  [sum1, sum2/*, diff1, diff2*/, prod1, prod2, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Nat32>([8/*, -2, 15*/, 1, 2/*, 243*/], testNat32(5, 3),
+verify<Nat32>([8/*, -2*/, 15, 1, 2/*, 243*/], testNat32(5, 3),
              func (a : Nat32, b : Nat32) : Bool = a == b);
-verify<Nat32>([18/*, -2, 15*/, 5, 0/*, 243*/], testNat32(15, 3),
+verify<Nat32>([18/*, -2*/, 45, 5, 0/*, 243*/], testNat32(15, 3),
              func (a : Nat32, b : Nat32) : Bool = a == b);
 
 
