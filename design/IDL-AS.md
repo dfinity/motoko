@@ -14,7 +14,7 @@ language, in particular:
 
 We try to achieve the following goals (but do not achieve them completely)
 
- * We can round-trip all ActorScript values. More precisely:
+ * We can round-trip all ActorScript values of sharable type. More precisely:
 
    When exporting an ActorScript type `ta` into an IDL type `ti`, then
    round-tripping a value `va : ta` through `ti` yields a value that is
