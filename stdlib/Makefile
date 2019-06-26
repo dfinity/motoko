@@ -2,19 +2,35 @@ ASC=../src/asc
 DVM=dvm
 OUTDIR=_out
 DOCDIR=doc
-MDofAS=./markdown-of-actorscript.py
-MDofMD=./markdown-of-markdown.py
+STOPWATCH_C=./tools/stopwatch.c
+MDofAS=./tools/markdown-of-actorscript.py
+MDofMD=./tools/markdown-of-markdown.py
 PANDOC=pandoc
+STOPWATCH=$(OUTDIR)/stopwatch
 
-WASM=\
-  ProduceExchange\
-	loadWorkloadAndQueryBig\
+WASM=ProduceExchange
+
+TESTS=\
+	Option \
+	Result \
+	Hash \
+	List \
+	ListTest \
+	AssocList \
+	Trie \
+	Trie2 \
+	Set \
+	DocTable \
+	ProduceExchange \
+	producerRemInventory \
+	retailerReserveMany \
+	evalBulk \
 
 OUTFILES=$(addsuffix .out, $(TESTS)) $(addsuffix .wasm, $(WASM))
 
 OUTPATHS=$(addprefix $(OUTDIR)/, $(OUTFILES))
 
-.PHONY: default all clean alltests alldoc docMd docHtml profile-wasm profile-wasm-success profile-interp profile-interp-small
+.PHONY: default all clean alltests alldoc docMd docHtml profile-wasm profile-interp
 
 default: all
 
@@ -24,37 +40,13 @@ docmsg:
 
 alltests: $(OUTDIR) $(OUTPATHS)
 
-all: alltests alldoc profile-wasm-success profile-interp-small
+all: alldoc alltests profile-wasm profile-interp
 
 clean:
 	rm -rf $(OUTDIR) $(DOCDIR)
 
 $(OUTDIR):
 	@mkdir $@
-
-#########################################################################################################33
-
-##
-## Unit tests
-##
-
-# Add new module targets here:
-TESTS=\
-	Option \
-	Result \
-	Hash \
-	List \
-	ListTest \
-	AssocList \
-	Trie \
-	DocTable \
-	Set \
-	SetDb \
-	SetDbTest \
-	ProduceExchange \
-	producerRemInventory \
-	retailerReserveMany \
-	evalBulk \
 
 $(OUTDIR)/Hash.out: hash.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
@@ -77,17 +69,15 @@ $(OUTDIR)/AssocList.out: assocList.as | $(OUTDIR)
 $(OUTDIR)/Trie.out: trie.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/DocTable.out: docTable.as | $(OUTDIR)
+$(OUTDIR)/Trie2.out:trie2.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Set.out: set.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/SetDb.out: setDb.as | $(OUTDIR)
+$(OUTDIR)/DocTable.out: docTable.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/SetDbTest.out: setDbTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
 #########################################################################################################33
 
@@ -96,7 +86,7 @@ $(OUTDIR)/SetDbTest.out: setDbTest.as | $(OUTDIR)
 ##
 
 PRODUCE_EXCHANGE_SRC=\
-	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as result.as \
+	prelude.as option.as hash.as list.as assocList.as trie.as trie2.as docTable.as result.as \
 	examples/produce-exchange/serverTypes.as \
 	examples/produce-exchange/serverLang.as \
 	examples/produce-exchange/serverModelTypes.as \
@@ -121,10 +111,9 @@ docMd: \
 	$(DOCDIR)/list.md \
 	$(DOCDIR)/assocList.md \
 	$(DOCDIR)/trie.md \
-	$(DOCDIR)/docTable.md \
+	$(DOCDIR)/trie2.md \
 	$(DOCDIR)/set.md \
-	$(DOCDIR)/setDb.md \
-	$(DOCDIR)/setDbTest.md \
+	$(DOCDIR)/docTable.md \
 	$(DOCDIR)/examples/produce-exchange/README.md \
 	$(DOCDIR)/examples/produce-exchange/serverTypes.md \
 	$(DOCDIR)/examples/produce-exchange/serverLang.md \
@@ -145,10 +134,9 @@ docHtml: \
 	$(DOCDIR)/list.html \
 	$(DOCDIR)/assocList.html \
 	$(DOCDIR)/trie.html \
+	$(DOCDIR)/trie2.html \
 	$(DOCDIR)/docTable.html \
 	$(DOCDIR)/set.html \
-	$(DOCDIR)/setDb.html \
-	$(DOCDIR)/setDbTest.html \
 	$(DOCDIR)/examples/produce-exchange/README.html \
 	$(DOCDIR)/examples/produce-exchange/serverTypes.html \
 	$(DOCDIR)/examples/produce-exchange/serverLang.html \
@@ -176,7 +164,7 @@ $(DOCDIR)/examples/produce-exchange/README.md: examples/produce-exchange/README.
 	$(MDofMD) $< >> $@
 
 PRODUCE_EXCHANGE_SRC=\
-	prelude.as option.as hash.as list.as assocList.as trie.as docTable.as result.as \
+	prelude.as option.as hash.as list.as assocList.as trie2.as docTable.as result.as \
 	examples/produce-exchange/serverTypes.as \
 	examples/produce-exchange/serverLang.as \
 	examples/produce-exchange/serverModelTypes.as \
@@ -248,12 +236,6 @@ profile-fast-counts: \
 $(OUTDIR)/profileFastCounts.csv: examples/produce-exchange/test/profileFastCounts.as
 	$(ASC) -r examples/produce-exchange/test/profileFastCounts.as > $@
 
-
-profile-interp-small: \
-	$(OUTDIR)/profileLoadQuery.05-01.csv \
-	$(OUTDIR)/profileLoadQuery.05-02.csv \
-	$(OUTDIR)/profileLoadQuery.05-03.csv \
-
 profile-interp: \
 	$(OUTDIR)/profileLoadQuery.05-01.csv \
 	$(OUTDIR)/profileLoadQuery.05-02.csv \
@@ -312,37 +294,6 @@ $(OUTDIR)/profileLoadQuery.05-100.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QU
 	time $(ASC) -r --profile examples/produce-exchange/test/params-5-100.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 # wasm binaries and time measurements for various-sized PX workloads
-#
-# these sizes all run without memory limitation issues; bigger sizes complain about growing memory
-profile-wasm-success: profile-fast-counts $(OUTDIR) \
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm \
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv \
-	\
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm \
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm.csv \
-	\
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm \
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm.csv \
-	\
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm \
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm.csv \
-	\
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm \
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm.csv \
-	\
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm \
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm.csv \
-	\
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm \
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm.csv \
-	\
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm \
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm.csv \
-	\
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm \
-	$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm.csv \
-
-# wasm binaries and time measurements for various-sized PX workloads
 profile-wasm: $(OUTDIR) profile-fast-counts \
 	\
 	$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm \
@@ -386,135 +337,135 @@ profile-wasm: $(OUTDIR) profile-fast-counts \
 
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-1.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-1.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-2.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-2.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-3.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-3.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-4.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-4.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-5.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-5.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-6.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-6.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-7.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-7.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-8.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-8.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-9.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-9.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-10.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-10.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-20.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-20.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-50.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-50.as examples/produce-exchange/profileActor.as
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/test/params-5-100.as examples/produce-exchange/profileActor.as
+	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-100.as examples/produce-exchange/profileActor.as
 
 
-$(OUTDIR)/time: time.c
-	gcc time.c -o $@
+$(STOPWATCH): $(STOPWATCH_C)
+	gcc $< -o $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 1, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 1, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 2, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 2, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 3, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 3, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 4, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 4, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 5, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 5, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 6, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 6, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 7, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 7, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 8, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 8, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 9, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 9, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 10, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 10, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 20, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 20, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 50, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 50, " > $@
 	cat $@
 
-$(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm $(OUTDIR)/time
+$(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm $(STOPWATCH)
 	rm -rf ./.dvm
 	$(DVM) reset
 	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm
-	$(OUTDIR)/time "$(DVM) run 1 start " "5, 100, " > $@
+	$(STOPWATCH) "$(DVM) run 1 start " "5, 100, " > $@
 	cat $@

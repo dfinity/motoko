@@ -161,10 +161,15 @@ struct
   let mul = mult_big_int
   let div a b =
     let q, m = quomod_big_int a b in
-    if sign_big_int q < 0 && sign_big_int m > 0 then succ_big_int q else q
+    if sign_big_int m * sign_big_int a >= 0 then q
+    else if sign_big_int q = 1 then pred_big_int q else succ_big_int q
   let rem a b =
     let q, m = quomod_big_int a b in
-    if sign_big_int q < 0 && sign_big_int m > 0 then sub_big_int m b else m
+    let sign_m = sign_big_int m in
+    if sign_m * sign_big_int a >= 0 then m
+    else
+    let abs_b = abs_big_int b in
+    if sign_m = 1 then sub_big_int m abs_b else add_big_int m abs_b
   let eq = eq_big_int
   let ne x y = not (eq x y)
   let lt = lt_big_int
