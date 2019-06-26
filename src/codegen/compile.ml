@@ -2910,24 +2910,19 @@ module Serialization = struct
     let add_u8 i =
       Buffer.add_char buf (Char.chr (i land 0xff)) in
 
-    let rec add_leb128 i =
-      assert (i >= 0);
-      let b = i land 0x7f in
-      if 0 <= i && i < 128
-      then add_u8 b
+    let rec add_leb128_32 (i : int32) =
+      let open Int32 in
+      let b = logand i 0x7fl in
+      if 0l <= i && i < 128l
+      then add_u8 (to_int b)
       else begin
-        add_u8 (b lor 0x80);
-        add_leb128 (i lsr 7)
+        add_u8 (to_int (logor b 0x80l));
+        add_leb128_32 (shift_right_logical i 7)
       end in
 
-    let rec add_leb128_32 (i : int32) =
-      let b = Int32.logand i 0x7fl in
-      if 0l <= i && i < 128l
-      then add_u8 (Int32.to_int b)
-      else begin
-        add_u8 (Int32.to_int (Int32.logor b 0x80l));
-        add_leb128_32 (Int32.shift_right_logical i 7)
-      end in
+    let add_leb128 i =
+      assert (i >= 0);
+      add_leb128_32 (Int32.of_int i) in
 
     let rec add_sleb128 i =
       let b = i land 0x7f in
