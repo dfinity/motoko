@@ -87,7 +87,7 @@ After interpreting the path `foo` relative to the current directory resp. the pa
 
 It is an error if 1+3, 1+4, 2+3 or 3+4 exist. Otherwise, the compiler picks the first existing file in this list.
 
-If the import URL ends with a slash (e.g. `import "foo/"`), then only locations 3. and 4. are considered.
+If the import URL ends with a slash (e.g. `import "foo/"`), then only locations 2. and 4. are considered.
 
 ### Programs
 
