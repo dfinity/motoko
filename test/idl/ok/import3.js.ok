@@ -13,4 +13,4 @@ const tree =
  IDL.Variant({
   'branch': IDL.Obj({'right': tree, 'val': IDL.Int, 'left': tree}),
   'leaf': IDL.Int})
-const A = s
+const S = s

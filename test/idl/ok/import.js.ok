@@ -11,6 +11,13 @@ const UserInfo =
  IDL.Obj({'id': UserId, 'region': RegionId, 'user_name': IDL.Text,
   'public_key': IDL.Text, 'description': IDL.Text,
   'produceId': IDL.Opt(ProducerId)})
-const ProduceExchange = new IDL.ActorInterface({
+const list = IDL.Arr(IDL.Nat)
+const t = IDL.Arr(IDL.Nat8)
+const t1 = t
+const t2 = UserId
+const S = new IDL.ActorInterface({
+ 'f':
+  IDL.message(IDL.Obj({'0': t, '1': t1, '2': t2}),
+   IDL.Obj({'0': list, '1': IdErr})),
  'getInventory':
   IDL.message(IDL.Obj({'producer_id': IDL.Nat}), IDL.Obj({'0': Inventory}))})

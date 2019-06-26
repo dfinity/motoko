@@ -1,0 +1,3 @@
+const t = IDL.Nat
+const t3 = IDL.Opt(t)
+
