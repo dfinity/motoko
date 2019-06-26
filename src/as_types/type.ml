@@ -58,6 +58,17 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+(* Forward declare
+   TODO: haul string_of_typ before the lub/glb business, if possible *)
+let str = ref (fun _ -> failwith "")
+
+let debug_string_of_typ t =
+  match t with
+  | Free c
+  | Con (c, _) when match Con.kind c with Def _ -> true | _ -> false ->
+    Printf.sprintf "%s where %s" (!str t) (!str (Typ c))
+  | _ -> !str t
+        
 (* Constructors *)
 
 let set_kind c k =
@@ -205,9 +216,10 @@ let is_closed_con i c = is_closed_con ConSet.empty i c
 
 (* Shifting *)
 
+let is_abs c = match Con.kind c with Abs _ -> true | Def _ -> false
+
 module ShiftEnv = Env.Make(struct type t = (int * int * con)
                                   let compare = compare end) (* TBR *)
-
 let rec shift seen i n t =
   match t with
   | Prim _ -> t
@@ -264,9 +276,12 @@ and shift_kind seen i n k =
 
 (* First-order substitution *)
 
-and is_abs c = match Con.kind c with Abs _ -> true | Def _ -> false
 
-and subst ((ce,se) as seen) sigma t =
+module SubstEnv = Env.Make(struct type t = typ ConEnv.t * con
+                                  let compare = compare end) (* TBR *)
+
+let rec subst ((cons,ce,se) as seen) sigma t =
+  Printf.printf "\nsubst %s%!" (try debug_string_of_typ t  with _ -> "???");
   if sigma = ConEnv.empty then t else
   match t with
   | Prim _
@@ -275,8 +290,9 @@ and subst ((ce,se) as seen) sigma t =
   | Con(c,[]) when is_abs c ->
     (match ConEnv.find_opt c sigma with
      | Some t' -> t'
-     | None -> Free c)
+     | None -> t)
   | Con (c, ts) ->
+    (*    assert (not (is_abs c)); *)
     Con (subst_con seen sigma c, List.map (subst seen sigma) ts)
   | Array t -> Array (subst seen sigma t)
   | Tup ts -> Tup (List.map (subst seen sigma) ts)
@@ -300,18 +316,22 @@ and subst ((ce,se) as seen) sigma t =
      | None -> Typ (subst_con seen sigma c)
     )
 
-and subst_con ((ce,se) as seen) sigma c =
+and subst_con ((cons,ce,se) as seen) sigma c =
   match Con.kind c with
   | Abs _ -> c
   | Def _ ->
-  match ConEnv.find_opt c (!ce) with
+    match SubstEnv.find_opt (sigma, c) (!ce) with
   | Some c' -> c'
   | None ->
+    if ConSet.mem c cons then
+      c
+    else
     let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
-    ce := ConEnv.add c c' (!ce);
-    Con.unsafe_set_kind c' (subst_kind seen sigma (Con.kind c));
+    ce := SubstEnv.add (sigma, c) c' (!ce);
+    Con.unsafe_set_kind c' (subst_kind (ConSet.add c cons, ce,se) sigma (Con.kind c));
     c'
 
+(* TBD *)
 and clone c f =
   let k = Con.kind c in
   match k with
@@ -326,7 +346,7 @@ and subst_bind seen sigma {var; bound} =
 and subst_field seen sigma {lab; typ} =
   {lab; typ = subst seen sigma typ}
 
-and subst_kind ((ce,se) as seen) sigma (k:kind) =
+and subst_kind ((cons,ce,se) as seen) sigma (k:kind) =
   match k with
   | Def (tbs, t) ->
     let sigma' = ConEnv.map (shift se 0 (List.length tbs)) sigma in
@@ -340,15 +360,14 @@ and subst_kind ((ce,se) as seen) sigma (k:kind) =
 let close cs t =
   if cs = [] then t else
   let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
-  let seen = (ref ConEnv.empty, ref ShiftEnv.empty) in
+  let seen = (ConSet.empty, ref SubstEnv.empty, ref ShiftEnv.empty) in
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst seen sigma t
 
 let close_typ cons cs t =
   if cs = [] then t else
   let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
-  let cons_seen = ref (ConSet.fold (fun c seen -> ConEnv.add c c seen) cons ConEnv.empty) in
-  let seen = (cons_seen, ref ShiftEnv.empty) in
+  let seen = (cons, ref SubstEnv.empty, ref ShiftEnv.empty) in
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst seen sigma t
 
@@ -356,11 +375,16 @@ let close_binds cons cs tbs =
   if cs = [] then tbs else (* TODO: optimise me *)
   List.map (fun {var; bound} -> {var; bound = close_typ cons cs bound}) tbs
 
+module OpenEnv = Env.Make(struct type t = (int * typ list * con)
+                                 let compare = compare end) (* TBR *)
+
 let rec open' seen i ts t =
   match t with
   | Prim _ -> t
   | Var (_, j) -> if j < i then t else List.nth ts (j - i)
-  | Free c -> Free c
+  | Free c ->
+    assert (is_abs c);
+    Free c
   | Con (c, ts') -> Con (open_con seen i ts c, List.map (open' seen i ts) ts')
   | Array t -> Array (open' seen i ts t)
   | Tup ts' -> Tup (List.map (open' seen i ts) ts')
@@ -379,17 +403,20 @@ let rec open' seen i ts t =
   | Pre -> Pre
   | Typ c -> Typ (open_con seen i ts c)
 
-and open_con seen i ts c =
+and open_con (cons,seen) i ts c =
   match Con.kind c with
   | Abs _ -> c
   | Def _ ->
-  match ConEnv.find_opt c (!seen) with
+  match OpenEnv.find_opt (i, ts, c) (!seen) with
   | Some c' -> c'
   | None ->
-    let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
-    seen := ConEnv.add c c' (!seen);
-    Con.unsafe_set_kind c' (open_kind seen i ts (Con.kind c));
-    c'
+    if ConSet.mem c cons then
+      c
+    else
+      let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
+      seen := OpenEnv.add (i, ts, c) c' (!seen);
+      Con.unsafe_set_kind c' (open_kind (cons, seen) i ts (Con.kind c));
+      c'
 
 and open_bind seen i ts {var; bound} =
   {var; bound = open' seen i ts bound}
@@ -409,7 +436,7 @@ and open_kind seen i ts k =
 
 let open_ ts t =
   if ts = [] then t else
-  let seen = ref ConEnv.empty in
+  let seen = (ConSet.empty, ref OpenEnv.empty) in
   open' seen 0 ts t
 
 let open_binds tbs =
@@ -422,7 +449,7 @@ let open_binds tbs =
 
 let open_typ cons ts t =
   if ts = [] then t else
-  let seen = ref (ConSet.fold (fun c seen -> ConEnv.add c c seen) cons ConEnv.empty) in
+  let seen = (cons, ref OpenEnv.empty) in
   open' seen 0 ts t
 
 
@@ -685,9 +712,7 @@ let is_concrete t =
 
 
 module M = Map.Make (struct type t = typ * typ let compare = compare end)
-(* Forward declare
-   TODO: haul string_of_typ before the lub/glb business, if possible *)
-let str = ref (fun _ -> failwith "")
+
 
 (* Equivalence & Subtyping *)
 
@@ -698,13 +723,6 @@ module S = Set.Make (struct type t = typ * typ let compare = compare end)
 let debug = false (* true, to debug *)
 
 let max_depth = 40
-
-let debug_string_of_typ t =
-  match t with
-  | Free c
-  | Con (c, _) when match Con.kind c with Def _ -> true | _ -> false ->
-    Printf.sprintf "%s where %s" (!str t) (!str (Typ c))
-  | _ -> !str t
 
 let trace_rel_typ rel eq t1 t2 =
   let n = S.cardinal (!rel) in
@@ -720,11 +738,12 @@ let trace_rel_typ rel eq t1 t2 =
     Printf.printf "\n %s rel_type %s%!" indent "..."
   | _ -> ()
 
-module OpenEnv = Env.Make (struct type t = con * typ list let compare = compare end)
+
+module OpenedEnv = Env.Make (struct type t = con * typ list let compare = compare end)
 
 let rels () =
 
-  let opened = ref OpenEnv.empty in
+  let opened = ref OpenedEnv.empty in
 
   let seen = ref ConSet.empty in
 
@@ -735,11 +754,11 @@ let rels () =
     | Abs _ -> assert false
     | Def (tbs,t) ->
     seen := ConSet.add c !seen;
-    match OpenEnv.find_opt (c,ts) !opened with
+    match OpenedEnv.find_opt (c,ts) !opened with
     | Some t' -> t'
     | None ->
       let t' = open_seen ts t in
-      opened := OpenEnv.add (c,ts) t' !opened;
+      opened := OpenedEnv.add (c,ts) t' !opened;
       t'
   in
 
@@ -1118,6 +1137,8 @@ module Env = Env.Make(String)
 
 open Printf
 
+let debug_con = false
+
 let string_of_prim = function
   | Null -> "Null"
   | Bool -> "Bool"
@@ -1156,13 +1177,28 @@ let rec string_of_typ_nullary vs = function
   | Non -> "Non"
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
-  | Var (s, i) -> string_of_var (List.nth vs i)
+  | Var (s, i) ->
+    if debug_con then
+      Printf.sprintf "%s[%i]" (try string_of_var (List.nth vs i) with _ -> s^"?") i
+    else
+     (try string_of_var (List.nth vs i) with _ -> s^"?")
   | Free c -> string_of_con' vs c
   | Con (c, []) ->
-    string_of_con' vs c
+    if debug_con then
+      Printf.sprintf "%s where %s"
+        (string_of_con' vs c)
+        (string_of_typ' vs (Typ c))
+    else
+      string_of_con' vs c
   | Con (c, ts) ->
-    sprintf "%s<%s>" (string_of_con' vs c)
-      (String.concat ", " (List.map (string_of_typ' vs) ts))
+    if debug_con then
+      sprintf "%s<%s> where %s"
+        (string_of_con' vs c)
+        (String.concat ", " (List.map (string_of_typ' vs) ts))
+        (string_of_typ' vs (Typ c))
+    else
+      sprintf "%s<%s>" (string_of_con' vs c)
+        (String.concat ", " (List.map (string_of_typ' vs) ts))
   | Tup ts ->
     sprintf "(%s%s)"
       (String.concat ", " (List.map (string_of_typ' vs) ts))
