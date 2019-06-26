@@ -4574,11 +4574,35 @@ let rec compile_binop env t op =
          E.else_trap_with env "arithmetic overflow" ^^
          get_res ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)))
   | Type.Prim Type.(Word8 | Word16 | Word32), SubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
-  | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> UnboxedSmallWord.lsb_adjust ty ^^
-                                                       G.i (Binary (Wasm.Values.I32 I32Op.Mul))
   | Type.(Prim (Int8|Int16 as ty)),           SubOp -> compile_smallInt_kernel env ty "sub" (G.i (Binary (Wasm.Values.I32 I32Op.Sub)))
   | Type.(Prim (Nat8|Nat16 as ty)),           SubOp -> compile_smallNat_kernel env ty "sub" (G.i (Binary (Wasm.Values.I32 I32Op.Sub)))
-
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> UnboxedSmallWord.lsb_adjust ty ^^
+                                                       G.i (Binary (Wasm.Values.I32 I32Op.Mul))
+  | Type.(Prim Int16),                        MulOp -> compile_smallInt_kernel env Type.Int16 "mul" (G.i (Binary (Wasm.Values.I32 I32Op.Mul)))
+  | Type.(Prim Int8),                         MulOp ->
+    Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Int8 "mul")
+      (("a", I32Type), ("b", I32Type)) [I32Type]
+      (fun env get_a get_b ->
+        let (set_res, get_res) = new_local env "res" in
+        get_a ^^ compile_shrS_const 24l ^^
+        get_b ^^ compile_shrS_const 24l ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
+        set_res ^^ get_res ^^ get_res ^^ compile_shl_const 1l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+        compile_bitand_const 0xFFFFFF00l ^^
+        E.then_trap_with env "arithmetic overflow" ^^
+        get_res ^^ compile_shl_const 24l)
+  | Type.(Prim Nat16),                        MulOp -> compile_smallNat_kernel env Type.Nat16 "mul" (G.i (Binary (Wasm.Values.I32 I32Op.Mul)))
+  | Type.(Prim Nat8),                         MulOp ->
+    Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Nat8 "mul")
+      (("a", I32Type), ("b", I32Type)) [I32Type]
+      (fun env get_a get_b ->
+        let (set_res, get_res) = new_local env "res" in
+        get_a ^^ compile_shrU_const 24l ^^
+        get_b ^^ compile_shrU_const 24l ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
+        set_res ^^ get_res ^^ compile_bitand_const 0xFFFFFF00l ^^
+        E.then_trap_with env "arithmetic overflow" ^^
+        get_res ^^ compile_shl_const 24l)
 
   | Type.(Prim (Nat8|Nat16|Nat32|Word8|Word16|Word32 as ty)), DivOp ->
     G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
