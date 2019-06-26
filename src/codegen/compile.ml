@@ -4495,6 +4495,30 @@ let rec compile_binop env t op =
   | Type.(Prim Int),                          SubOp -> BigNum.compile_signed_sub env
   | Type.(Prim (Nat | Int)),                  MulOp -> BigNum.compile_mul env
   | Type.(Prim Word64),                       MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
+  | Type.(Prim Int64),                        MulOp ->
+    Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Int64 "mul")
+      (("a", I64Type), ("b", I64Type)) [I64Type]
+      BigNum.(fun env get_a get_b ->
+        let (set_res, get_res) = new_local env "res" in
+        get_a ^^ from_signed_word64 env ^^
+        get_b ^^ from_signed_word64 env ^^
+        compile_mul env ^^
+        set_res ^^ get_res ^^
+        fits_signed_bits env 64 ^^
+        E.else_trap_with env "arithmetic overflow" ^^
+        get_res ^^ BigNum.truncate_to_word64 env)
+  | Type.(Prim Nat64),                        MulOp ->
+    Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Nat64 "mul")
+      (("a", I64Type), ("b", I64Type)) [I64Type]
+      BigNum.(fun env get_a get_b ->
+        let (set_res, get_res) = new_local env "res" in
+        get_a ^^ from_word64 env ^^
+        get_b ^^ from_word64 env ^^
+        compile_mul env ^^
+        set_res ^^ get_res ^^
+        fits_unsigned_bits env 64 ^^
+        E.else_trap_with env "arithmetic overflow" ^^
+        get_res ^^ BigNum.truncate_to_word64 env)
   | Type.(Prim (Nat64|Word64)),               DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
   | Type.(Prim (Nat64|Word64)),               ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
   | Type.(Prim Int64),                        DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivS))
@@ -4502,6 +4526,30 @@ let rec compile_binop env t op =
   | Type.(Prim Nat),                          DivOp -> BigNum.compile_unsigned_div env
   | Type.(Prim Nat),                          ModOp -> BigNum.compile_unsigned_rem env
   | Type.(Prim Word64),                       SubOp -> G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+  | Type.(Prim Int64),                        SubOp ->
+    Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Int64 "sub")
+      (("a", I64Type), ("b", I64Type)) [I64Type]
+      BigNum.(fun env get_a get_b ->
+        let (set_res, get_res) = new_local env "res" in
+        get_a ^^ from_signed_word64 env ^^
+        get_b ^^ from_signed_word64 env ^^
+        compile_signed_sub env ^^
+        set_res ^^ get_res ^^
+        fits_signed_bits env 64 ^^
+        E.else_trap_with env "arithmetic overflow" ^^
+        get_res ^^ BigNum.truncate_to_word64 env)
+  | Type.(Prim Nat64),                        SubOp ->
+    Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Nat64 "sub")
+      (("a", I64Type), ("b", I64Type)) [I64Type]
+      BigNum.(fun env get_a get_b ->
+        let (set_res, get_res) = new_local env "res" in
+        get_a ^^ from_word64 env ^^
+        get_b ^^ from_word64 env ^^
+        compile_unsigned_sub env ^^
+        set_res ^^ get_res ^^
+        fits_unsigned_bits env 64 ^^
+        E.else_trap_with env "arithmetic overflow" ^^
+        get_res ^^ BigNum.truncate_to_word64 env)
   | Type.(Prim Int),                          DivOp -> BigNum.compile_signed_div env
   | Type.(Prim Int),                          ModOp -> BigNum.compile_signed_mod env
 

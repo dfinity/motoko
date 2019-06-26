@@ -217,24 +217,24 @@ func testInt64(a : Int64, b : Int64) : [Int64] {
   let neg2 = (- a) : Int64;
   let sum1 = a + b;
   let sum2 = (a + b) : Int64;
-  /*let diff1 = a - b;
+  let diff1 = a - b;
   let diff2 = (a - b) : Int64;
   let prod1 = a * b;
-  let prod2 = (a * b) : Int64;*/
+  let prod2 = (a * b) : Int64;
   let rat1 = a / b;
   let rat2 = (a / b) : Int64;
   let mod1 = a % b;
   let mod2 = (a % b) : Int64;
   /*let pow1 = a ** b;
   let pow2 = (a ** b) : Int64;*/
-  [pos1, pos2, neg1, neg2, sum1, sum2, /*diff1, diff2, prod1, prod2, */rat1, rat2, mod1, mod2/*, pow1, pow2*/]
+  [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Int64>([3, -3, 8/*, 18_446_744_073_709_551_614, 15*/, 0, 3/*, 243*/], testInt64(3, 5),
+verify<Int64>([3, -3, 8, -2, 15, 0, 3/*, 243*/], testInt64(3, 5),
                func (a : Int64, b : Int64) : Bool = a == b);
-verify<Int64>([13, -13, 18/*, 18_446_744_073_709_551_614, 15*/, 2, 3/*, 243*/], testInt64(13, 5),
+verify<Int64>([13, -13, 18, 8, 65, 2, 3/*, 243*/], testInt64(13, 5),
                func (a : Int64, b : Int64) : Bool = a == b);
-verify<Int64>([-13, 13, -18/*, 18_446_744_073_709_551_614, 15*/, 2, -3/*, 243*/], testInt64(-13, -5),
+verify<Int64>([-13, 13, -18, -8, 65, 2, -3/*, 243*/], testInt64(-13, -5),
                func (a : Int64, b : Int64) : Bool = a == b);
 
 
@@ -329,22 +329,22 @@ verify<Int8>([-13, 13, -18/*, -2, 15*/, 2, -3/*, 243*/], testInt8(-13, -5),
 func testNat64(a : Nat64, b : Nat64) : [Nat64] {
   let sum1 = a + b;
   let sum2 = (a + b) : Nat64;
-  /*let diff1 = a - b;
+  let diff1 = a - b;
   let diff2 = (a - b) : Nat64;
   let prod1 = a * b;
-  let prod2 = (a * b) : Nat64;*/
+  let prod2 = (a * b) : Nat64;
   let rat1 = a / b;
   let rat2 = (a / b) : Nat64;
   let mod1 = a % b;
   let mod2 = (a % b) : Nat64;
   /*let pow1 = a ** b;
   let pow2 = (a ** b) : Nat64;*/
-  [sum1, sum2/*, diff1, diff2, prod1, prod2*/, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
+  [sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
-verify<Nat64>([8/*, ??, 15*/, 0, 3/*, 243*/], testNat64(3, 5),
+verify<Nat64>([8, 2, 15, 1, 2/*, 243*/], testNat64(5, 3),
                func (a : Nat64, b : Nat64) : Bool = a == b);
-verify<Nat64>([18/*, ??, 15*/, 2, 3/*, ??*/], testNat64(13, 5),
+verify<Nat64>([18, 8, 65, 2, 3/*, ??*/], testNat64(13, 5),
                func (a : Nat64, b : Nat64) : Bool = a == b);
 
 
