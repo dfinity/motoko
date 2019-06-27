@@ -340,12 +340,6 @@ let check_files files : check_result =
 let check_string s name : check_result =
   Diag.map ignore (load_decl (parse_string s name) initial_stat_env)
 
-(* Loading libraries *)
-
-let load_libraries synthetic_parse =
-  load_progs synthetic_parse initial_stat_env
-  |> Diag.map (fun (libs, _, _) -> libs)
-
 (* Running *)
 
 let run_files files : unit option =

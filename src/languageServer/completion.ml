@@ -14,42 +14,6 @@ let lib_files (_: unit) : string list =
   |> List.filter (fun file -> String.equal (Filename.extension file) ".as")
   |> List.map (fun file -> Filename.concat lib_dir file)
 
-(* We create a synthetic module containing imports for all known
-   library modules.
-
-   This way when we run the frontend on that module we end up with a
-   library environment containing all available library definitions *)
-let synthetic_module (): Syntax.prog =
-  let empty_note x =
-    Source.{ it = x; at = no_region; note = Syntax.empty_typ_note } in
-  let empty_region x =
-    Source.{ it = x; at = no_region; note = () } in
-  let empty_var x =
-    Source.{ it = Syntax.VarP(empty_region x)
-           ; at = no_region
-           ; note = Type.Pre } in
-  let make_import ix path: Syntax.dec =
-    empty_note (Syntax.LetD
-                  ( empty_var ("I" ^ string_of_int ix)
-                  , empty_note (Syntax.ImportE(path, ref "")))) in
-  let module_wrapper (fields: Syntax.dec list): Syntax.dec =
-    empty_note
-      (Syntax.ExpD
-         (empty_note
-            (Syntax.ObjE
-               (empty_region Type.Module,
-                (List.map
-                   (fun dec ->
-                     empty_region
-                       (Syntax.{ dec = dec
-                               ; vis = empty_region Syntax.Private}))
-                   fields))))) in
-  let imports =
-    lib_files ()
-    |> List.mapi make_import
-    |> module_wrapper in
-  Source.{ it = [imports]; at = no_region; note = "" }
-
 let read_single_module_lib ({Source.it = prog;_}: Syntax.prog)
     : Syntax.exp_field list option =
   match prog with
@@ -81,8 +45,11 @@ let string_of_exp_field ({Source.it = exp_field;_}: Syntax.exp_field): string =
   string_of_vis exp_field.Syntax.vis ^ " " ^ name_of_decl exp_field.Syntax.dec
 
 let libraries () =
-  let synthetic_parse = Diag.return [(synthetic_module (), ".")] in
-  let libraries = Diag.run (Pipeline.load_libraries synthetic_parse) in
+  let (libraries, _) =
+    Diag.run
+      (Pipeline.chase_imports
+         Scope.empty
+         (Pipeline__.Resolve_import.S.of_list (lib_files ()))) in
   libraries
   |> string_of_list
        (fun (path, prog) ->

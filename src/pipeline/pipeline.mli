@@ -16,12 +16,17 @@ sig
   val profile_field_names : string list ref
 end
 
+val parse_files
+  : string list
+  -> (As_frontend.Syntax.prog * string) list Diag.result
+
 val check_files  : string list -> unit Diag.result
 val check_string : string -> string -> unit Diag.result
 
-val load_libraries
-  : (As_frontend.Syntax.prog * string) list Diag.result
-  -> As_frontend.Syntax.libraries Diag.result
+val chase_imports
+    : As_types.Scope.scope
+  -> Resolve_import.S.t
+  -> (As_frontend.Syntax.libraries * As_types.Scope.scope) Diag.result
 
 val run_files           : string list -> unit option
 val interpret_ir_files  : string list -> unit option
