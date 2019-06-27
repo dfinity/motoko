@@ -10,6 +10,22 @@ features are
 open Wasm.Ast
 open Wasm.Source
 
+let shift_like = function
+  | Wasm.Values.I32 I32Op.Shl, Wasm.Values.I32 I32Op.Shl
+  | Wasm.Values.I32 I32Op.ShrS, Wasm.Values.I32 I32Op.ShrS
+  | Wasm.Values.I32 I32Op.ShrU, Wasm.Values.I32 I32Op.ShrU -> true
+  | _ -> false
+
+let combine_shifts = function
+  | Wasm.Values.I32 I32Op.Shl, ({it = Wasm.Values.I32 l; _} as cl), Wasm.Values.I32 I32Op.Shl, {it = Wasm.Values.I32 r; _} ->
+    Some (Wasm.Values.I32 I32Op.Shl, {cl with it = Wasm.Values.I32 (Int32.add l r)})
+  | Wasm.Values.I32 I32Op.ShrS, ({it = Wasm.Values.I32 l; _} as cl), Wasm.Values.I32 I32Op.ShrS, {it = Wasm.Values.I32 r; _} ->
+    Some (Wasm.Values.I32 I32Op.ShrS, {cl with it = Wasm.Values.I32 (Int32.add l r)})
+  | Wasm.Values.I32 I32Op.ShrU, ({it = Wasm.Values.I32 l; _} as cl), Wasm.Values.I32 I32Op.ShrU, {it = Wasm.Values.I32 r; _} ->
+    Some (Wasm.Values.I32 I32Op.ShrU, {cl with it = Wasm.Values.I32 (Int32.add l r)})
+  | _ -> assert false
+
+
 (* Some simple peephole optimizations, to make the output code look less stupid *)
 (* This uses a zipper.*)
 let optimize : instr list -> instr list = fun is ->
@@ -36,6 +52,13 @@ let optimize : instr list -> instr list = fun is ->
       go l' ({i with it = Block (res, then_)} :: r')
     (* Empty block is redundant *)
     | l', ({ it = Block (_, []); _ }) :: r' -> go l' r'
+    (* Constant shifts can be combined *)
+    | ({ it = Binary opl; _ } as op) :: ({ it = Const cl; _} as const) :: l', { it = Const cr; _ } :: { it = Binary opr; _ } :: r'
+        when shift_like (opl, opr) ->
+      begin match combine_shifts (opl, cl, opr, cr) with
+      | Some (sh, n) ->  go l' ({ const with it = Const n } :: { op with it = Binary sh } :: r')
+      | None -> go l' r'
+      end
     (* Look further *)
     | _, i::r' -> go (i::l) r'
     (* Done looking *)
