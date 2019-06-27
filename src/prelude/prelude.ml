@@ -44,15 +44,15 @@ class revrange(x : Nat, y : Nat) {
 // (Some optimizations in the backend might be feasible.)
 
 func @immut_array_get<A>(xs : [A]) : (Nat -> A) =
-  (func (n : Nat) : A = (prim "array_get" : ([A],Nat) -> A) (xs, n));
+  (func (n : Nat) : A = xs[n]);
 func @mut_array_get<A>(xs : [var A]) : (Nat -> A) =
-  (func (n : Nat) : A = (prim "array_get" : ([var A],Nat) -> A) (xs, n));
+  (func (n : Nat) : A = xs[n]);
 func @immut_array_len<A>(xs : [A]) : (() -> Nat) =
   (func () : Nat = (prim "array_len" : ([A]) -> Nat) xs);
 func @mut_array_len<A>(xs : [var A]) : (() -> Nat) =
   (func () : Nat = (prim "array_len" : ([var A]) -> Nat) xs);
 func @mut_array_set<A>(xs : [var A]) : ((Nat, A) -> ()) =
-  (func (n : Nat, x : A) = (prim "array_set" : ([var A],Nat,A) -> ()) (xs, n, x));
+  (func (n : Nat, x : A) = (xs[n] := x));
 func @immut_array_keys<A>(xs : [A]) : (() -> Iter<Nat>) =
   (func () : Iter<Nat> = range(0,xs.len()));
 func @mut_array_keys<A>(xs : [var A]) : (() -> Iter<Nat>) =
