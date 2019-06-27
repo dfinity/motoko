@@ -1961,6 +1961,56 @@ module Iterators = struct
       Closure.fixed_closure env iter_funid [ get_x ]
     )
 
+  let create_direct outer_env name mk_stop mk_next =
+    Func.share_code1 outer_env name ("x", I32Type) [I32Type] (fun env get_x ->
+      (* Register functions as needed *)
+      let next_funid = E.add_fun env (name ^ "_next") (
+        Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
+          let (set_n, get_n) = new_local env "n" in
+          let (set_x, get_x) = new_local env "x" in
+          let (set_ret, get_ret) = new_local env "ret" in
+
+          (* Get pointer to counter from closure *)
+          Closure.get ^^ Closure.load_data 0l ^^
+          MutBox.load ^^ BoxedSmallWord.unbox env ^^ set_n ^^
+
+          (* Get pointer to object in closure *)
+          Closure.get ^^ Closure.load_data 1l ^^ set_x ^^
+
+          get_n ^^
+          (* Get counter end *)
+          mk_stop env get_x ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
+          G.if_ (ValBlockType (Some I32Type))
+            (* Then *)
+            Opt.null
+            (* Else *)
+            begin (* Return stuff *)
+              Opt.inject env (
+                (* Put address of conter on the stack, for the store *)
+                Closure.get ^^ Closure.load_data 0l ^^
+                (* Get value and increase *)
+                mk_next env get_n get_x ^^
+                set_ret ^^ (* put return value aside *)
+                (* Advance counter *)
+                get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+                BoxedSmallWord.box env ^^ MutBox.store ^^
+                (* Return new value *)
+                get_ret)
+            end
+        )
+      ) in
+
+      let (set_ni, get_ni) = new_local env "next" in
+      Closure.fixed_closure env next_funid
+        [ Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
+        ;  Closure.get ^^ Closure.load_data 0l
+        ] ^^
+      set_ni ^^
+
+      Object.lit_raw env [ "next", fun _ -> get_ni ]
+    )
+
 end (* Iterators *)
 
 module Text = struct
@@ -2077,6 +2127,17 @@ module Text = struct
         UnboxedSmallWord.len_UTF8_head env set_res ^^
         BoxedSmallWord.box env ^^
         get_res ^^ UnboxedSmallWord.box_codepoint
+      )
+
+  let text_chars_direct env =
+    Iterators.create_direct env "text_chars"
+      (fun env get_x -> get_x ^^ Heap.load_field len_field)
+      (fun env get_i get_x ->
+          let (set_char, get_char) = new_local env "char" in
+          get_x ^^ payload_ptr_unskewed ^^
+          get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          UnboxedSmallWord.len_UTF8_head env set_char ^^
+          get_char ^^ UnboxedSmallWord.box_codepoint
       )
 
   let text_chars env =
@@ -4665,6 +4726,23 @@ and compile_exp (env : E.t) ae exp =
     begin
       (* First check for all unary prims. *)
       match p with
+        | "array_len" ->
+          SR.Vanilla,
+          compile_exp_vanilla env ae e ^^
+          Heap.load_field Arr.len_field ^^
+          BigNum.from_word32 env
+
+        | "text_len" ->
+          SR.Vanilla,
+          compile_exp_vanilla env ae e ^^
+          Heap.load_field Text.len_field ^^
+          BigNum.from_word32 env
+
+        | "text_chars" ->
+          SR.Vanilla,
+          compile_exp_vanilla env ae e ^^
+          Text.text_chars_direct env
+
        | "@serialize" ->
          SR.UnboxedReference,
          let t = match typ_args with [t] -> t | _ -> assert false in
