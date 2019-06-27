@@ -126,6 +126,12 @@ val lookup_typ_field : string -> field list -> con option
 val compare_field : field -> field -> int
 
 
+(* Corercions *)
+
+val array_obj : typ -> obj_sort * field list
+val text_obj : unit -> obj_sort * field list
+
+
 (* Constructors *)
 
 val set_kind : con -> kind -> unit
