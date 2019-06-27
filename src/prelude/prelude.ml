@@ -54,20 +54,28 @@ func @mut_array_len<A>(xs : [var A]) : (() -> Nat) =
 func @mut_array_set<A>(xs : [var A]) : ((Nat, A) -> ()) =
   (func (n : Nat, x : A) = (xs[n] := x));
 func @immut_array_keys<A>(xs : [A]) : (() -> Iter<Nat>) =
-  (func () : Iter<Nat> = range(0,xs.len()));
+  (func () : Iter<Nat> = new {
+    private var i = 0;
+    private l = xs.len();
+    next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  });
 func @mut_array_keys<A>(xs : [var A]) : (() -> Iter<Nat>) =
-  (func () : Iter<Nat> = range(0,xs.len()));
+  (func () : Iter<Nat> = new {
+    private var i = 0;
+    private l = xs.len();
+    next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  });
 func @immut_array_vals<A>(xs : [A]) : (() -> Iter<A>) =
   (func () : Iter<A> = new {
     private var i = 0;
     private l = xs.len();
-    next() : ?A { if (i > l) null else {let j = i; i += 1; ?xs[j]} };
+    next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   });
 func @mut_array_vals<A>(xs : [var A]) : (() -> Iter<A>) =
   (func () : Iter<A> = new {
     private var i = 0;
     private l = xs.len();
-    next() : ?A { if (i > l) null else {let j = i; i += 1; ?xs[j]} };
+    next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   });
 func @text_len(xs : Text) : (() -> Nat) =
   (func () : Nat = (prim "text_len" : Text -> Nat) xs);
