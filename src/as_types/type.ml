@@ -32,8 +32,7 @@ type prim =
 type t = typ
 and typ =
   | Var of var * int                          (* variable *)
-  | Free of con                               (* constructor *)
-  | Con of con * typ list                     (* application *)
+  | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
   | Variant of field list                     (* variant *)
@@ -64,7 +63,6 @@ let str = ref (fun _ -> failwith "")
 
 let debug_string_of_typ t =
   match t with
-  | Free c
   | Con (c, _) when match Con.kind c with Def _ -> true | _ -> false ->
     Printf.sprintf "%s where %s" (!str t) (!str (Typ c))
   | _ -> !str t
@@ -146,7 +144,6 @@ let rec cons t cs =
   match t with
   | Var _ ->  cs
   | (Prim _ | Any | Non | Shared | Pre) -> cs
-  | Free c -> ConSet.add c cs
   | Con (c, ts) ->
     List.fold_right cons ts  (ConSet.add c cs)
   | (Opt t | Async t | Mut t | Serialized t | Array t) ->
@@ -176,7 +173,6 @@ let rec is_closed seen i t =
   match t with
   | Prim _ -> true
   | Var (_, j) ->  j < i
-  | Free c -> is_closed_con seen i c
   | Con (c, ts) -> is_closed_con seen i c && List.for_all (is_closed seen i) ts
   | Array t -> is_closed seen i t
   | Tup ts -> List.for_all (is_closed seen i) ts
@@ -212,7 +208,8 @@ and is_closed_con seen i c =
   let k = Con.kind c in
   ConSet.mem c seen || is_closed_kind (ConSet.add c seen) i k
 
-let is_closed_con i c = is_closed_con ConSet.empty i c
+let is_closed_con c = is_closed_con ConSet.empty 0 c
+let is_closed_typ t = is_closed ConSet.empty 0 t
 
 (* Shifting *)
 
@@ -224,10 +221,6 @@ let rec shift seen i n t =
   match t with
   | Prim _ -> t
   | Var (s, j) -> Var (s, if j < i then j else j + n)
-  | Free c
-    | Con(c,[]) when is_abs c ->
-    (* REMOVE THiS HACK*)
-    Free c
   | Con (c, ts) -> Con (shift_con seen i n c, List.map (shift seen i n) ts)
   | Array t -> Array (shift seen i n t)
   | Tup ts -> Tup (List.map (shift seen i n) ts)
@@ -286,7 +279,6 @@ let rec subst ((cons, re, ce,se) as seen) sigma t =
   match t with
   | Prim _
     | Var _ -> t
-  | Free c
   | Con(c,[]) when is_abs c ->
     (match ConEnv.find_opt c sigma with
      | Some t' -> t'
@@ -316,7 +308,7 @@ let rec subst ((cons, re, ce,se) as seen) sigma t =
      | None -> Typ (subst_con seen sigma c)
     )
 
-and subst_con ((cons,re,ce,se) as seen) sigma c =
+and subst_con (cons,re,ce,se) sigma c =
   match Con.kind c with
   | Abs _ -> c
   | Def (tbs,t) ->
@@ -386,9 +378,6 @@ let rec open' seen i ts t =
   match t with
   | Prim _ -> t
   | Var (_, j) -> if j < i then t else List.nth ts (j - i)
-  | Free c ->
-    assert (is_abs c);
-    Free c
   | Con (c, ts') -> Con (open_con seen i ts c, List.map (open' seen i ts) ts')
   | Array t -> Array (open' seen i ts t)
   | Tup ts' -> Tup (List.map (open' seen i ts) ts')
@@ -449,7 +438,7 @@ let open_ ts t =
 let open_binds tbs =
   if tbs = [] then [] else
   let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
-  let ts = List.map (fun c -> Free c) cs in
+  let ts = List.map (fun c -> Con(c, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
   List.iter2 set_kind cs ks;
   ts
@@ -463,41 +452,30 @@ let open_typ cons ts t =
 let open_typ_binds cons tbs =
   if tbs = [] then [] else
   let cs = List.map (fun {var; _} -> Con.fresh var (Abs ([], Pre))) tbs in
-  let ts = List.map (fun c -> Free c) cs in
+  let ts = List.map (fun c -> Con(c, [])) cs in
   let ks = List.map (fun {bound; _} -> Abs ([], open_typ cons ts bound)) tbs in
   List.iter2 set_kind cs ks;
   ts
 
 (* Normalization and Classification *)
 
-let reduce c ts =
-  match Con.kind c with
-  | Def (tbs,t)  ->
-    assert (List.length ts = List.length tbs);
-    open_ ts t
-  | Abs (tbs,t)  -> (* FIX ME *)
+let reduce tbs t ts =
     assert (List.length ts = List.length tbs);
     open_ ts t
 
 let rec normalize = function
-  | Free c as t ->
-    (match Con.kind c with
-    | Def (tbs, _) -> normalize (reduce c [])
-    | _ -> t
-    )
   | Con (c, ts) as t ->
     (match Con.kind c with
-    | Def (tbs, _) -> normalize (reduce c ts)
+    | Def (tbs, t') -> reduce tbs t' ts
     | _ -> t
     )
   | Mut t -> Mut (normalize t)
   | t -> t
 
 let rec promote = function
-  | Free c ->
-    promote (reduce c [])
   | Con (c, ts) ->
-    promote (reduce c ts)
+    let Def (tbs, t) | Abs (tbs, t) = Con.kind c
+    in promote (reduce tbs t ts)
   | t -> t
 
 
@@ -598,7 +576,6 @@ let lookup_typ_field l tfs =
 
 let rec span = function
   | Var _ | Pre -> assert false
-  | Free c -> span (Con (c,[])) (* TBR *)
   | Con _ as t -> span (promote t)
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
@@ -622,22 +599,20 @@ exception Unavoidable of con
 
 let rec avoid' cons seen = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t
-  | Free c -> avoid' cons seen (Con (c,[])) (* TBR *)
   | Con (c, ts) ->
     if ConSet.mem c seen then raise (Unavoidable c) else
     if ConSet.mem c cons
     then match Con.kind c with
       | Abs _ -> raise (Unavoidable c)
-      | Def (tbs, t) -> avoid' cons (ConSet.add c seen) (reduce c ts)
+      | Def (tbs, t) -> avoid' cons (ConSet.add c seen) (reduce tbs t ts)
     else
       begin try
         Con (c, List.map (avoid' cons seen) ts)
       with Unavoidable d ->
         match Con.kind c with
-        | Def (tbs, t) -> avoid' cons seen (reduce c ts)
+        | Def (tbs, t) -> avoid' cons seen (reduce tbs t ts)
         | Abs _ -> raise (Unavoidable d)
       end
-  | Con (t',ts) -> Con(t', List.map (avoid' cons seen) ts)
   | Array t -> Array (avoid' cons seen t)
   | Tup ts -> Tup (List.map (avoid' cons seen) ts)
   | Func (s, c, tbs, ts1, ts2) ->
@@ -675,7 +650,7 @@ and avoid_cons cons1 cons2 =
 
 let avoid cons t =
   if cons = ConSet.empty then t else
-   avoid' cons ConSet.empty t
+  avoid' cons ConSet.empty t
 
 (* Checking for concrete types *)
 
@@ -695,7 +670,6 @@ let is_concrete t =
       match t with
       | Var _ -> assert false
       | (Prim _ | Any | Non | Shared | Pre) -> true
-      | Free c -> go (Con (c, [])) (* TBR*)
       | Con (c, ts) ->
         begin match Con.kind c with
         | Abs _ -> false
@@ -717,9 +691,7 @@ let is_concrete t =
     end
   in go t
 
-
 module M = Map.Make (struct type t = typ * typ let compare = compare end)
-
 
 (* Equivalence & Subtyping *)
 
@@ -787,10 +759,6 @@ let rels () =
       true
     | Non, _ when rel != eq ->
       true
-    | Free con1, _ ->
-      rel_typ rel eq (Con (con1, []))  t2
-    | _, Free con2 ->
-      rel_typ rel eq t1 (Con (con2, []))
     | Con (con1, ts1), Con (con2, ts2) ->
       (match Con.kind con1, Con.kind con2 with
        | Def _, _ -> (* TBR this may fail to terminate *)
@@ -1008,10 +976,6 @@ let rec lub' lubs glbs t1 t2 =
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
     | Async t1', Async t2' ->
       Async (lub' lubs glbs t1' t2')
-    | _, Free c2 ->
-      lub' lubs glbs t1 (Con (c2, []))
-    | Free c1, _ ->
-      lub' lubs glbs (Con (c1, [])) t2
     | Con _, _
     | _, Con _ ->
       combine_con_parts t1 t2 "lub" lubs (lub' lubs glbs)
@@ -1075,10 +1039,6 @@ and glb' lubs glbs t1 t2 =
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
     | Async t1', Async t2' ->
       Async (glb' lubs glbs t1' t2')
-    | _, Free c2 ->
-      glb' lubs glbs t1 (Con (c2, []))
-    | Free c1, _ ->
-      glb' lubs glbs (Con (c1, [])) t2
     | Con _, _
     | _, Con _ ->
       combine_con_parts t1 t2 "glb" glbs (glb' lubs glbs)
@@ -1107,7 +1067,7 @@ and combine_func_parts s c bs1 args1 res1 bs2 args2 res2 lubs glbs contra co =
   let open List in
   let ts1 = open_binds bs1 in
   let op = map (open_ ts1) in
-  let get_con = function | Free c -> c | _ -> assert false in
+  let get_con = function | Con(c, []) -> c | _ -> assert false in
   let cs = map get_con ts1 in
   let cl = map (close cs) in
   let combine_binds =
@@ -1189,7 +1149,6 @@ let rec string_of_typ_nullary vs = function
       Printf.sprintf "%s[%i]" (try string_of_var (List.nth vs i) with _ -> s^"?") i
     else
      (try string_of_var (List.nth vs i) with _ -> s^"?")
-  | Free c -> string_of_con' vs c
   | Con (c, []) ->
     if debug_con then
       Printf.sprintf "%s where %s"
@@ -1321,7 +1280,6 @@ let string_of_typ : typ -> string = string_of_typ' []
 let rec string_of_typ_expand t =
   let s = string_of_typ t in
   match t with
-  | Free c
   | Con (c, _) ->
     (match Con.kind c with
     | Abs _ -> s

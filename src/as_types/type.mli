@@ -32,8 +32,7 @@ type prim =
 type t = typ
 and typ =
   | Var of var * int                          (* variable *)
-  | Free of con                               (* constructor *)
-  | Con of con * typ list                     (* construction *)
+  | Con of con * typ list                     (* constructor *)
   | Prim of prim                              (* primitive *)
   | Obj of obj_sort * field list              (* object *)
   | Variant of field list                     (* variant *)
@@ -152,6 +151,8 @@ val span : typ -> int option
 
 val cons_kind : kind -> ConSet.t
 
+val is_closed_con: con -> bool
+val is_closed_typ: typ -> bool
 
 (* Equivalence and Subtyping *)
 
@@ -172,7 +173,8 @@ val close_binds : ConSet.t -> con list -> bind list -> bind list
 
 val open_ : typ list -> typ -> typ
 val open_binds : bind list -> typ list
-val open_typ : ConSet.t -> typ list -> typ -> typ
+(* assuming cons in ConSet are closed *)
+val open_typ : ConSet.t -> typ list -> typ -> typ 
 
 (* Environments *)
 

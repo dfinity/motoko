@@ -136,8 +136,7 @@ module Transform() = struct
   let rec t_typ (t:T.typ) =
     match t with
     | T.Prim _
-      | Var _ -> t
-    | Free c -> Free (t_con c)
+    | Var _ -> t
     | Con (c, ts) ->
       Con (t_con c, List.map t_typ ts)
     | Array t -> Array (t_typ t)

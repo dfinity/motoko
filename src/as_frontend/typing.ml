@@ -1242,7 +1242,7 @@ and infer_dec env dec : T.typ =
       let cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive env' pat in
-      let self_typ = T.Con (c, List.map (fun c -> T.Free c) cs) in
+      let self_typ = T.Con (c, List.map (fun c -> T.Con(c, [])) cs) in
       let env'' =
         { (add_val (adjoin_vals env' ve) self_id.it self_typ) with
           labs = T.Env.empty;
@@ -1451,7 +1451,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
     let _, ve = infer_pat env' pat in
-    let self_typ = T.Con (c, List.map (fun c -> T.Free c) cs) in
+    let self_typ = T.Con (c, List.map (fun c -> T.Con(c, [])) cs) in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' sort.it fields dec.at in
     let tbs = List.map2 (fun c' t -> {T.var = Con.name c'; bound = T.close_typ env.cons cs t}) cs ts in
@@ -1518,7 +1518,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
-    let t2 = T.Con (c, List.map (fun c -> T.Free c) cs) in
+    let t2 = T.Con (c, List.map (fun c -> T.Con(c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
     Scope.{ Scope.empty with

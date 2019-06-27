@@ -41,7 +41,6 @@ let con c = Atom (Type.string_of_con c)
 
 let rec typ (t:Type.typ) = match t with
   | Var (s, i)             -> "Var" $$ [Atom s; Atom (string_of_int i)]
-  | Free c                 -> "Free" $$ [con c]
   | Con (c, ts)           -> "Con" $$ (con c::List.map typ ts)
   | Prim p                 -> "Prim" $$ [prim p]
   | Obj (s, tfs)           -> "Obj" $$ [obj_sort s] @ List.map typ_field tfs

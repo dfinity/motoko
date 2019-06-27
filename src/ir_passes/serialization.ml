@@ -75,7 +75,6 @@ module Transform() = struct
     | T.Non
     | T.Pre
     | T.Var _ -> t
-    | T.Free c -> T.Free (t_con c)
     | T.Con (c, ts) ->
       T.Con (t_con c, List.map t_typ ts)
     | T.Array t -> T.Array (t_typ t)

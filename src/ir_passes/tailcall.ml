@@ -206,7 +206,7 @@ and dec' env d =
       in
       let env3 = args env2 as_ in (* shadow id if necessary *)
       let exp0' = tailexp env3 exp0 in
-      let cs = List.map (fun (tb : typ_bind) -> Free tb.it.con) tbs in
+      let cs = List.map (fun (tb : typ_bind) -> Con(tb.it.con, [])) tbs in
       if !tail_called then
         let ids = match typ funexp with
           | Func( _, _, _, dom, _) ->

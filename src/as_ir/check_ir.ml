@@ -127,8 +127,6 @@ let rec check_typ env typ : unit =
     error env no_region "illegal T.Pre type"
   | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
-  | T.Free c ->
-    check_typ env (T.Con (c, []))
   | T.Con (c, typs) ->
     List.iter (check_typ env) typs;
     begin
@@ -143,8 +141,6 @@ let rec check_typ env typ : unit =
         check env no_region (T.ConSet.mem c env.cons) "free type constructor";
         check_typ_bounds env tbs typs no_region
     end
-  | T.Con (_, _) ->
-    error env no_region "ill-formed constructed type %s" (T.string_of_typ typ)
   | T.Any -> ()
   | T.Non -> ()
   | T.Shared -> ()
@@ -156,7 +152,7 @@ let rec check_typ env typ : unit =
   | T.Func (sort, control, binds, ts1, ts2) ->
     let cs, ce = check_typ_binds env binds in
     let env' = adjoin_cons env  ce in
-    let ts = List.map (fun c -> T.Free c) cs in
+    let ts = List.map (fun c -> T.Con(c, [])) cs in
     let ts1 = List.map (T.open_typ env'.cons ts) ts1 in
     let ts2 = List.map (T.open_typ env'.cons ts) ts2 in
     List.iter (check_typ env') ts1;
@@ -207,7 +203,7 @@ and check_con env c =
   let env = { env with cons = T.ConSet.add c env.cons } in
   let (T.Abs (binds,typ) | T.Def (binds, typ)) = Con.kind c in
   let cs, ce = check_typ_binds env binds in
-  let ts = List.map (fun c -> T.Free c) cs in
+  let ts = List.map (fun c -> T.Con(c, [])) cs in
   let env' = adjoin_cons env ce in
   check_typ env' (T.open_typ env'.cons ts typ)
 
@@ -225,7 +221,7 @@ and check_typ_field env s typ_field : unit =
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
-  let cs = List.map (function T.Free c ->  c | _ -> assert false) ts in
+  let cs = List.map (function T.Con(c, []) -> c | _ -> assert false) ts in
   let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
