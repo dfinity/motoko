@@ -66,7 +66,7 @@ let debug_string_of_typ t =
   | Con (c, _) when match Con.kind c with Def _ -> true | _ -> false ->
     Printf.sprintf "%s where %s" (!str t) (!str (Typ c))
   | _ -> !str t
-        
+
 (* Constructors *)
 
 let set_kind c k =
@@ -1068,7 +1068,7 @@ and combine_func_parts s c bs1 args1 res1 bs2 args2 res2 lubs glbs contra co =
   let open List in
   let ts1 = open_binds bs1 in
   let op = map (open_ ts1) in
-  let get_con = function | Con(c, []) -> c | _ -> assert false in
+  let get_con = function | Con (c, []) -> c | _ -> assert false in
   let cs = map get_con ts1 in
   let cl = map (close cs) in
   let combine_binds =
