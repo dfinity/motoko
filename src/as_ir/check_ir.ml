@@ -304,12 +304,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
   | UnE (ot, op, exp1) ->
-    check (Operator.has_unop ot op) "unary operator is not defined for operand type";
+    check (Operator.has_unop op ot) "unary operator is not defined for operand type";
     check_exp env exp1;
     typ exp1 <: ot;
     ot <: t
   | BinE (ot, exp1, op, exp2) ->
-    check (Operator.has_binop ot op) "binary operator is not defined for operand type";
+    check (Operator.has_binop op ot) "binary operator is not defined for operand type";
     check_exp env exp1;
     check_exp env exp2;
     typ exp1 <: ot;
@@ -322,7 +322,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp1 <: ot;
     T.Prim T.Text <: t
   | RelE (ot, exp1, op, exp2) ->
-    check (Operator.has_relop ot op) "relational operator is not defined for operand type";
+    check (Operator.has_relop op ot) "relational operator is not defined for operand type";
     check_exp env exp1;
     check_exp env exp2;
     typ exp1 <: ot;

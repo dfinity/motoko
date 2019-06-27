@@ -430,11 +430,6 @@ and infer_exp' f env exp : T.typ =
   end;
   t'
 
-and special_unop_typing = let open T in
-  function
-  | Prim Nat -> Prim Int
-  | t -> t
-
 and infer_exp'' env exp : T.typ =
   match exp.it with
   | PrimE _ ->
@@ -451,16 +446,43 @@ and infer_exp'' env exp : T.typ =
     T.Prim (infer_lit env lit exp.at)
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
-    (* Special case for subtyping *)
-    let t = special_unop_typing t1 in
+    let t = Operator.type_unop op t1 in
     if not env.pre then begin
       assert (!ot = Type.Pre);
-      if not (Operator.has_unop t op) then
+      if not (Operator.has_unop op t) then
         error env exp.at "operator is not defined for operand type\n  %s"
           (T.string_of_typ_expand t);
       ot := t;
     end;
     t
+  | BinE (ot, exp1, op, exp2) ->
+    let t1 = infer_exp_promote env exp1 in
+    let t2 = infer_exp_promote env exp2 in
+    let t = Operator.type_binop op (T.lub t1 t2) in
+    if not env.pre then begin
+      assert (!ot = Type.Pre);
+      if not (Operator.has_binop op t) then
+        error env exp.at
+          "operator not defined for operand types\n  %s\nand\n  %s"
+          (T.string_of_typ_expand t1)
+          (T.string_of_typ_expand t2);
+      ot := t
+    end;
+    t
+  | RelE (ot, exp1, op, exp2) ->
+    let t1 = infer_exp_promote env exp1 in
+    let t2 = infer_exp_promote env exp2 in
+    let t = Operator.type_relop op (T.lub t1 t2) in
+    if not env.pre then begin
+      assert (!ot = Type.Pre);
+      if not (Operator.has_relop op t) then
+        error env exp.at
+          "operator not defined for operand types\n  %s\nand\n  %s"
+          (T.string_of_typ_expand t1)
+          (T.string_of_typ_expand t2);
+      ot := t;
+    end;
+    T.bool
   | ShowE (ot, exp1) ->
     let t = infer_exp_promote env exp1 in
     if not env.pre then begin
@@ -470,34 +492,6 @@ and infer_exp'' env exp : T.typ =
       ot := t
     end;
     T.Prim T.Text
-  | BinE (ot, exp1, op, exp2) ->
-    let t1 = infer_exp_promote env exp1 in
-    let t2 = infer_exp_promote env exp2 in
-    let t = T.lub t1 t2 in
-    if not env.pre then begin
-      assert (!ot = Type.Pre);
-      if not (Operator.has_binop t op) then
-        error env exp.at
-          "operator not defined for operand types\n  %s and\n  %s"
-          (T.string_of_typ_expand t1)
-          (T.string_of_typ_expand t2);
-      ot := t
-    end;
-    t
-  | RelE (ot, exp1, op, exp2) ->
-    let t1 = infer_exp_promote env exp1 in
-    let t2 = infer_exp_promote env exp2 in
-    let t = T.lub t1 t2 in
-    if not env.pre then begin
-      assert (!ot = Type.Pre);
-      if not (Operator.has_relop t op) then
-        error env exp.at
-          "operator not defined for operand types\n  %s and\n  %s"
-          (T.string_of_typ_expand t1)
-          (T.string_of_typ_expand t2);
-      ot := t;
-    end;
-    T.bool
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
@@ -797,11 +791,11 @@ and check_exp' env t exp : T.typ =
   | LitE lit, _ ->
     check_lit env t lit exp.at;
     t
-  | UnE (ot, op, exp1), _ when Operator.has_unop t op ->
+  | UnE (ot, op, exp1), _ when Operator.has_unop op t ->
     ot := t;
     check_exp env t exp1;
     t
-  | BinE (ot, exp1, op, exp2), _ when Operator.has_binop t op ->
+  | BinE (ot, exp1, op, exp2), _ when Operator.has_binop op t ->
     ot := t;
     check_exp env t exp1;
     check_exp env t exp2;
@@ -903,9 +897,8 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     T.Prim (infer_lit env lit pat.at), T.Env.empty
   | SignP (op, lit) ->
     let t1 = T.Prim (infer_lit env lit pat.at) in
-    (* Special case for subtyping *)
-    let t = special_unop_typing t1 in
-    if not (Operator.has_unop t op) then
+    let t = Operator.type_unop op t1 in
+    if not (Operator.has_unop op t) then
       local_error env pat.at "operator is not defined for operand type\n  %s"
         (T.string_of_typ_expand t);
     t, T.Env.empty
@@ -977,8 +970,8 @@ and check_pat' env t pat : Scope.val_env =
     T.Env.empty
   | SignP (op, lit) ->
     if not env.pre then begin
-      let t' = T.normalize t in
-      if not (Operator.has_unop t op) then
+      let t' = Operator.type_unop op (T.normalize t) in
+      if not (Operator.has_unop op t') then
         local_error env pat.at "operator cannot consume expected type\n  %s"
           (T.string_of_typ_expand t');
       check_lit env t' lit pat.at
@@ -994,26 +987,26 @@ and check_pat' env t pat : Scope.val_env =
     )
   | ObjP pfs ->
     (try
-       let s, tfs = T.as_obj_sub "" t in
-       if s = T.Actor then error env pat.at "object pattern cannot destructure actors";
-       check_pat_fields env tfs (List.stable_sort compare_pat_field pfs) T.Env.empty pat.at
-     with Invalid_argument _ ->
-       error env pat.at "object pattern cannot consume expected type\n  %s"
-         (T.string_of_typ_expand t)
+      let s, tfs = T.as_obj_sub "" t in
+      if s = T.Actor then error env pat.at "object pattern cannot destructure actors";
+      check_pat_fields env tfs (List.stable_sort compare_pat_field pfs) T.Env.empty pat.at
+    with Invalid_argument _ ->
+      error env pat.at "object pattern cannot consume expected type\n  %s"
+        (T.string_of_typ_expand t)
     )
   | OptP pat1 ->
     (try
-       let t1 = T.as_opt t in
-       check_pat env t1 pat1
-     with Invalid_argument _ ->
-       error env pat.at "option pattern cannot consume expected type\n  %s"
-         (T.string_of_typ_expand t)
+      let t1 = T.as_opt t in
+      check_pat env t1 pat1
+    with Invalid_argument _ ->
+      error env pat.at "option pattern cannot consume expected type\n  %s"
+        (T.string_of_typ_expand t)
     )
   | TagP (id, pat1) ->
     (try
       let t1 = Lib.Option.value (T.lookup_val_field id.it (T.as_variant t)) in
       check_pat env t1 pat1
-     with Invalid_argument _ | Not_found ->
+    with Invalid_argument _ | Not_found ->
        error env pat.at "variant pattern cannot consume expected type\n  %s"
          (T.string_of_typ_expand t)
     )

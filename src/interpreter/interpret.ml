@@ -287,11 +287,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | UnE (ot, op, exp1) ->
     interpret_exp env exp1
       (fun v1 ->
-        k (try Operator.unop !ot op v1 with Invalid_argument s -> trap exp.at "%s" s))
+        k (try Operator.unop op !ot v1 with Invalid_argument s -> trap exp.at "%s" s))
   | BinE (ot, exp1, op, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (try Operator.binop !ot op v1 v2 with _ ->
+        k (try Operator.binop op !ot v1 v2 with _ ->
           trap exp.at "arithmetic overflow")
       )
     )
@@ -303,7 +303,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | RelE (ot, exp1, op, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (Operator.relop !ot op v1 v2)
+        k (Operator.relop op !ot v1 v2)
       )
     )
   | TupE exps ->
@@ -574,7 +574,7 @@ and match_pat pat v : val_env option =
     else None
   | SignP (op, lit) ->
     let t = T.as_immut pat.note in
-    match_pat {pat with it = LitP lit} (Operator.unop t op v)
+    match_pat {pat with it = LitP lit} (Operator.unop op t v)
   | TupP pats ->
     match_pats pats (V.as_tup v) V.Env.empty
   | ObjP pfs ->
