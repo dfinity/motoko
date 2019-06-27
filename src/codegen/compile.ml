@@ -4408,6 +4408,10 @@ let prim_of_typ ty = match Type.normalize ty with
   | Type.Prim ty -> ty
   | _ -> assert false
 
+(* helper, traps with message *)
+let then_arithmetic_overflow env =
+  E.then_trap_with env "arithmetic overflow"
+
 let compile_unop env t op =
   let open Operator in
   match op, t with
@@ -4427,7 +4431,7 @@ let compile_unop env t op =
         get_n ^^
         compile_const_64 0x8000000000000000L ^^
         G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
-        E.then_trap_with env "arithmetic overflow" ^^
+        then_arithmetic_overflow env ^^
         compile_const_64 0L ^^
         get_n ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Sub))
@@ -4444,7 +4448,7 @@ let compile_unop env t op =
       Func.share_code1 env "neg32_trap" ("n", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
         compile_eq_const 0x80000000l ^^
-        E.then_trap_with env "arithmetic overflow" ^^
+        then_arithmetic_overflow env ^^
         compile_unboxed_zero ^^
         get_n ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub))
@@ -4465,6 +4469,10 @@ let compile_unop env t op =
    consing a lot, but compact bignums will get back efficiency as soon as
    they are merged. *)
 
+(* helper, traps with message *)
+let else_arithmetic_overflow env =
+  E.else_trap_with env "arithmetic overflow"
+
 let compile_Int64_kernel env name op =
   Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Int64 name)
     (("a", I64Type), ("b", I64Type)) [I64Type]
@@ -4475,7 +4483,7 @@ let compile_Int64_kernel env name op =
     op env ^^
     set_res ^^ get_res ^^
     fits_signed_bits env 64 ^^
-    E.else_trap_with env "arithmetic overflow" ^^
+    else_arithmetic_overflow env ^^
     get_res ^^ BigNum.truncate_to_word64 env)
 
 let compile_Nat64_kernel env name op =
@@ -4488,10 +4496,24 @@ let compile_Nat64_kernel env name op =
     op env ^^
     set_res ^^ get_res ^^
     fits_unsigned_bits env 64 ^^
-    E.else_trap_with env "arithmetic overflow" ^^
+    else_arithmetic_overflow env ^^
     get_res ^^ BigNum.truncate_to_word64 env)
 
 (* Compiling Int/Nat32 ops by conversion to/from i64. *)
+
+(* helper, expects i64 on stack *)
+let enforce_32_unsigned_bits env =
+  compile_const_64 0xFFFFFFFF00000000L ^^
+  G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+  G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+  else_arithmetic_overflow env
+
+(* helper, expects two identical i64s on stack *)
+let enforce_32_signed_bits env =
+  compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+  G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
+  enforce_32_unsigned_bits env
+
 let compile_Int32_kernel env name op =
      Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Int32 name)
        (("a", I32Type), ("b", I32Type)) [I32Type]
@@ -4501,12 +4523,7 @@ let compile_Int32_kernel env name op =
          get_b ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
          G.i (Binary (Wasm.Values.I64 op)) ^^
          set_res ^^ get_res ^^ get_res ^^
-         compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-         G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-         compile_const_64 0xFFFFFFFF00000000L ^^
-         G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
-         G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-         E.else_trap_with env "arithmetic overflow" ^^
+         enforce_32_signed_bits env ^^
          get_res ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)))
 
 let compile_Nat32_kernel env name op =
@@ -4517,11 +4534,22 @@ let compile_Nat32_kernel env name op =
          get_a ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
          get_b ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
          G.i (Binary (Wasm.Values.I64 op)) ^^
-         set_res ^^ get_res ^^ compile_const_64 0xFFFFFFFF00000000L ^^ G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
-         G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^ E.else_trap_with env "arithmetic overflow" ^^
+         set_res ^^ get_res ^^
+         enforce_32_unsigned_bits env ^^
          get_res ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)))
 
 (* Customisable kernels for 8/16bit arithmetic via 32 bits. *)
+
+(* helper, expects i32 on stack *)
+let enforce_16_unsigned_bits env =
+  compile_bitand_const 0xFFFF0000l ^^
+  then_arithmetic_overflow env
+
+(* helper, expects two identical i32s on stack *)
+let enforce_16_signed_bits env =
+  compile_shl_const 1l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+  enforce_16_unsigned_bits env
+
 let compile_smallInt_kernel env ty name op =
   Func.share_code2 env (UnboxedSmallWord.name_of_type ty name)
     (("a", I32Type), ("b", I32Type)) [I32Type]
@@ -4530,9 +4558,8 @@ let compile_smallInt_kernel env ty name op =
       get_a ^^ compile_shrS_const 16l ^^
       get_b ^^ compile_shrS_const 16l ^^
       G.i (Binary (Wasm.Values.I32 op)) ^^
-      set_res ^^ get_res ^^ get_res ^^ compile_shl_const 1l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-      compile_bitand_const 0xFFFF0000l ^^
-      E.then_trap_with env "arithmetic overflow" ^^
+      set_res ^^ get_res ^^ get_res ^^
+      enforce_16_signed_bits env ^^
       get_res ^^ compile_shl_const 16l)
 
 let compile_smallNat_kernel env ty name op =
@@ -4543,8 +4570,8 @@ let compile_smallNat_kernel env ty name op =
       get_a ^^ compile_shrU_const 16l ^^
       get_b ^^ compile_shrU_const 16l ^^
       G.i (Binary (Wasm.Values.I32 op)) ^^
-      set_res ^^ get_res ^^ compile_bitand_const 0xFFFF0000l ^^
-      E.then_trap_with env "arithmetic overflow" ^^
+      set_res ^^ get_res ^^
+      enforce_16_unsigned_bits env ^^
       get_res ^^ compile_shl_const 16l)
 
 (* This returns a single StackRep, to be used for both arguments and the
@@ -4600,7 +4627,7 @@ let rec compile_binop env t op =
         G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
         set_res ^^ get_res ^^ get_res ^^ compile_shl_const 1l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
         compile_bitand_const 0xFFFFFF00l ^^
-        E.then_trap_with env "arithmetic overflow" ^^
+        then_arithmetic_overflow env ^^
         get_res ^^ compile_shl_const 24l)
   | Type.(Prim Nat32),                        MulOp -> compile_Nat32_kernel env "mul" I64Op.Mul
   | Type.(Prim Nat16),                        MulOp -> compile_smallNat_kernel env Type.Nat16 "mul" I32Op.Mul
@@ -4613,7 +4640,7 @@ let rec compile_binop env t op =
         get_b ^^ compile_shrU_const 24l ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
         set_res ^^ get_res ^^ compile_bitand_const 0xFFFFFF00l ^^
-        E.then_trap_with env "arithmetic overflow" ^^
+        then_arithmetic_overflow env ^^
         get_res ^^ compile_shl_const 24l)
 
   | Type.(Prim (Nat8|Nat16|Nat32|Word8|Word16|Word32 as ty)), DivOp ->
