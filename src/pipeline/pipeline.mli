@@ -19,6 +19,14 @@ end
 val check_files  : string list -> unit Diag.result
 val check_string : string -> string -> unit Diag.result
 
+type load_result =
+  (As_frontend.Syntax.libraries
+   * As_frontend.Syntax.prog list
+   * As_types.Scope.scope)
+    Diag.result
+
+val load_libraries : (As_frontend.Syntax.prog * string) list Diag.result -> load_result
+
 val run_files           : string list -> unit option
 val interpret_ir_files  : string list -> unit option
 val run_files_and_stdin : string list -> unit option
