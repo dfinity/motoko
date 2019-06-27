@@ -1,6 +1,5 @@
 open As_frontend
 open As_types
-open As_values
 open Printf
 
 let string_of_list f xs =
@@ -15,18 +14,41 @@ let lib_files (_: unit) : string list =
   |> List.filter (fun file -> String.equal (Filename.extension file) ".as")
   |> List.map (fun file -> Filename.concat lib_dir file)
 
-(* We create a synthetic module containing only imports for all
-   known library modules.
+(* We create a synthetic module containing imports for all known
+   library modules.
 
    This way when we run the frontend on that module we end up with a
    library environment containing all available library definitions *)
 let synthetic_module (): Syntax.prog =
   let empty_note x =
     Source.{ it = x; at = no_region; note = Syntax.empty_typ_note } in
-  let make_import path: Syntax.dec =
-    empty_note (Syntax.ExpD (empty_note (Syntax.ImportE (path, ref "")))) in
-  let imports = lib_files () |> List.map make_import in
-  Source.{ it = imports; at = no_region; note = "" }
+  let empty_region x =
+    Source.{ it = x; at = no_region; note = () } in
+  let empty_var x =
+    Source.{ it = Syntax.VarP(empty_region x)
+           ; at = no_region
+           ; note = Type.Pre } in
+  let make_import ix path: Syntax.dec =
+    empty_note (Syntax.LetD
+                  ( empty_var ("I" ^ string_of_int ix)
+                  , empty_note (Syntax.ImportE(path, ref "")))) in
+  let module_wrapper (fields: Syntax.dec list): Syntax.dec =
+    empty_note
+      (Syntax.ExpD
+         (empty_note
+            (Syntax.ObjE
+               (empty_region Type.Module,
+                (List.map
+                   (fun dec ->
+                     empty_region
+                       (Syntax.{ dec = dec
+                               ; vis = empty_region Syntax.Private}))
+                   fields))))) in
+  let imports =
+    lib_files ()
+    |> List.mapi make_import
+    |> module_wrapper in
+  Source.{ it = [imports]; at = no_region; note = "" }
 
 let read_single_module_lib ({Source.it = prog;_}: Syntax.prog)
     : Syntax.exp_field list option =
@@ -43,7 +65,8 @@ let name_of_decl dec =
   (* | ExpD of exp                                (\* plain expression *\) *)
   | Syntax.LetD(Source.{ it = Syntax.VarP Source.{it = name;_};_}, _) ->
      name
-  (* | VarD of id * exp                           (\* mutable *\) *)
+  | Syntax.VarD(Source.{ it = name;_}, _) ->
+     name
   | Syntax.TypD(Source.{ it = name;_}, _, _) -> name
   | _ -> "unknown"
   (* | ClassD of                                  (\* class *\)
