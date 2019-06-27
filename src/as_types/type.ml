@@ -75,6 +75,8 @@ let unit = Tup []
 let bool = Prim Bool
 let nat = Prim Nat
 let int = Prim Int
+let text = Prim Text
+let char = Prim Char
 
 let prim = function
   | "Null" -> Null

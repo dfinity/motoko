@@ -64,6 +64,9 @@ val unit : typ
 val bool : typ
 val nat : typ
 val int : typ
+val text : typ
+val char : typ
+val iter_obj : typ -> typ
 
 val prim : string -> prim
 

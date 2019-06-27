@@ -69,9 +69,9 @@ func @mut_array_vals<A>(xs : [var A]) : (() -> Iter<A>) =
     private l = xs.len();
     next() : ?A { if (i > l) null else {let j = i; i += 1; ?xs[j]} };
   });
-func @text_len<A>(xs : Text) : (() -> Nat) =
+func @text_len(xs : Text) : (() -> Nat) =
   (func () : Nat = (prim "text_len" : Text -> Nat) xs);
-func @text_chars<A>(xs : Text) : (() -> Iter<Char>) =
+func @text_chars(xs : Text) : (() -> Iter<Char>) =
   (func () : Iter<Char> = (prim "text_chars" : Text -> Iter<Char>) xs);
 
 // for testing
