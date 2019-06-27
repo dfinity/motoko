@@ -344,6 +344,7 @@ let check_string s name : check_result =
 
 let load_libraries synthetic_parse =
   load_progs synthetic_parse initial_stat_env
+  |> Diag.map (fun (libs, _, _) -> libs)
 
 (* Running *)
 

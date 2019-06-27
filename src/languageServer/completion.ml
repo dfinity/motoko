@@ -82,14 +82,16 @@ let string_of_exp_field ({Source.it = exp_field;_}: Syntax.exp_field): string =
 
 let libraries () =
   let synthetic_parse = Diag.return [(synthetic_module (), ".")] in
-  let (libraries, _, _) = Diag.run (Pipeline.load_libraries synthetic_parse) in
-  libraries |> string_of_list (fun (path, prog) ->
-                   path
-                   ^ ": "
-                   ^ Base.Option.value_map
-                       (read_single_module_lib prog)
-                       ~f:(string_of_list string_of_exp_field)
-                       ~default: "")
+  let libraries = Diag.run (Pipeline.load_libraries synthetic_parse) in
+  libraries
+  |> string_of_list
+       (fun (path, prog) ->
+         path
+         ^ ": "
+         ^ Base.Option.value_map
+             (read_single_module_lib prog)
+             ~f:(string_of_list string_of_exp_field)
+             ~default: "")
 
 let complete () =
   libraries ()
