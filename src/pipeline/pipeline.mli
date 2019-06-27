@@ -16,10 +16,6 @@ sig
   val profile_field_names : string list ref
 end
 
-val parse_files
-  : string list
-  -> (As_frontend.Syntax.prog * string) list Diag.result
-
 val check_files  : string list -> unit Diag.result
 val check_string : string -> string -> unit Diag.result
 

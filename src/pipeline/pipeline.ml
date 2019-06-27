@@ -340,6 +340,7 @@ let check_files files : check_result =
 let check_string s name : check_result =
   Diag.map ignore (load_decl (parse_string s name) initial_stat_env)
 
+
 (* Running *)
 
 let run_files files : unit option =
