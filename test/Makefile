@@ -41,6 +41,7 @@ accept:
 	$(MAKE) -C ld accept
 	$(MAKE) -C idl accept
 	$(MAKE) -C trap accept
+	$(MAKE) -C trap check
 
 clean:
 	$(MAKE) -C fail clean
