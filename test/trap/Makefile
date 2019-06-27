@@ -11,7 +11,7 @@ clean:
 
 include ../*.mk
 
-.PHONY: check
+.PHONY: check _out/%.checked
 check: $(patsubst %.as,_out/%.checked,$(wildcard *.as))
 
 ## for each %.as test there should be 4 ok/%.*.ok files with defined contents
