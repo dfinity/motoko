@@ -212,6 +212,7 @@ struct
   let neg a = let res = Rep.neg a in check res
   let abs a = let res = Rep.abs a in check res
   let add a b = let res = Rep.add a b in check res
+  let sub a b = let res = Rep.sub a b in check res
   let mul a b = let res = Rep.mul a b in check res
   let div a b = let res = Rep.div a b in check res
   let pow a b = let res = Rep.pow a b in check res
