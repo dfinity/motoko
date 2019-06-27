@@ -175,9 +175,6 @@ and check_typ' env typ : T.typ =
     let (T.Def(tbs,_) | T.Abs(tbs, _)) = Con.kind c in
     let tbs = List.map (fun {T.var;T.bound} -> {T.var;bound = T.open_typ env.cons ts bound}) tbs in
     check_typ_bounds env tbs typs typ.at;
-(*    (match Type.kind c with
-    | T.Abs _ -> T.Free c
-    | T.Def _ -> T.Con (c, ts)) *)
     T.Con (c, ts)
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
@@ -262,7 +259,6 @@ and check_typ_tag env typ_tag =
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Scope.con_env =
   (* TODO: rule out cyclic bounds *)
-
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs = List.map2 (fun x tb ->
                match tb.note with
@@ -279,7 +275,7 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Sc
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
   List.iter2 (fun c k ->
     match Con.kind c with
-    | T.Abs(_,T.Pre) -> T.set_kind c k
+    | T.Abs(_, T.Pre) -> T.set_kind c k
     | k' -> assert (T.eq_kind k k')
     ) cs ks;
   let env' = add_typs env xs cs in
@@ -1465,7 +1461,7 @@ and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Con.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
-  | k' -> () (* assert (T.eq_kind k' k) *) (* TBR*)
+  | k' -> () (* assert (T.eq_kind k' k) *)
   );
   T.ConSet.singleton c
 

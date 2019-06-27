@@ -216,7 +216,10 @@ let is_closed_typ t = is_closed ConSet.empty 0 t
 let is_abs c = match Con.kind c with Abs _ -> true | Def _ -> false
 
 module ShiftEnv = Env.Make(struct type t = (int * int * con)
-                                  let compare = compare end) (* TBR *)
+                                  (* future: remove n from key, it's invariant *)
+                                  let compare = compare
+                           end)
+(* TODO: optimize shifts for n = 0 *)
 let rec shift seen i n t =
   match t with
   | Prim _ -> t
@@ -271,20 +274,19 @@ and shift_kind seen i n k =
 
 
 module SubstEnv = Env.Make(struct type t = typ ConEnv.t * con
-                                  let compare = compare end) (* TBR *)
+                                  (* future: remove sigma from key, replace by cummulative shift *)
+                                  let compare = compare end)
 
-let rec subst ((cons, re, ce,se) as seen) sigma t =
+let rec subst ((cons, re, ce, se) as seen) sigma t =
   (*  Printf.printf "\nsubst %s%!" (try debug_string_of_typ t  with _ -> "???"); *)
   if sigma = ConEnv.empty then t else
   match t with
-  | Prim _
-    | Var _ -> t
-  | Con(c,[]) when is_abs c ->
+  | (Prim _ | Var _) -> t
+  | Con(c, []) when is_abs c ->
     (match ConEnv.find_opt c sigma with
      | Some t' -> t'
      | None -> t)
   | Con (c, ts) ->
-    (*    assert (not (is_abs c)); *)
     Con (subst_con seen sigma c, List.map (subst seen sigma) ts)
   | Array t -> Array (subst seen sigma t)
   | Tup ts -> Tup (List.map (subst seen sigma) ts)
@@ -308,7 +310,7 @@ let rec subst ((cons, re, ce,se) as seen) sigma t =
      | None -> Typ (subst_con seen sigma c)
     )
 
-and subst_con (cons,re,ce,se) sigma c =
+and subst_con (cons, re, ce, se) sigma c =
   match Con.kind c with
   | Abs _ -> c
   | Def (tbs,t) ->
@@ -326,15 +328,6 @@ and subst_con (cons,re,ce,se) sigma c =
           let seen' = (cons,ConEnv.add c c' re, ce, se) in
           Con.unsafe_set_kind c' (subst_kind seen' sigma (Con.kind c));
           c'
-
-(* TBD *)
-and clone c f =
-  let k = Con.kind c in
-  match k with
-  | Abs(tbs,t) -> c
-  | Def(tbs,t) ->
-  let c' = Con.fresh (Con.name c) (f k) in
-  c'
 
 and subst_bind seen sigma {var; bound} =
   {var; bound = subst seen sigma bound}
@@ -368,12 +361,13 @@ let close_typ cons cs t =
   subst seen sigma t
 
 let close_binds cons cs tbs =
-  if cs = [] then tbs else (* TODO: optimise me *)
+  if cs = [] then tbs else
   List.map (fun {var; bound} -> {var; bound = close_typ cons cs bound}) tbs
 
 module OpenEnv = Env.Make(struct type t = (int * typ list * con)
-                                 let compare = compare end) (* TBR *)
-
+                                 (* future: remove ts from key, it's invariant *)
+                                 let compare = compare
+                          end)
 let rec open' seen i ts t =
   match t with
   | Prim _ -> t
@@ -447,7 +441,6 @@ let open_typ cons ts t =
   if ts = [] then t else
   let seen = (cons, ConEnv.empty, ref OpenEnv.empty) in
   open' seen 0 ts t
-
 
 let open_typ_binds cons tbs =
   if tbs = [] then [] else
@@ -596,6 +589,14 @@ let rec span = function
 (* Avoiding local constructors *)
 
 exception Unavoidable of con
+
+let clone c f =
+  let k = Con.kind c in
+  match k with
+  | Abs(tbs,t) -> c
+  | Def(tbs,t) ->
+    let c' = Con.fresh (Con.name c) (f k) in
+    c'
 
 let rec avoid' cons seen = function
   | (Prim _ | Var _ | Any | Non | Shared | Pre) as t -> t

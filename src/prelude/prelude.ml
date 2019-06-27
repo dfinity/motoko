@@ -1,5 +1,4 @@
 let prelude =
-  (* if true then "" else  *)
 {|
 type Any = prim "Any";
 type None = prim "None";

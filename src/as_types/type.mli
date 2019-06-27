@@ -174,7 +174,7 @@ val close_binds : ConSet.t -> con list -> bind list -> bind list
 val open_ : typ list -> typ -> typ
 val open_binds : bind list -> typ list
 (* assuming cons in ConSet are closed *)
-val open_typ : ConSet.t -> typ list -> typ -> typ 
+val open_typ : ConSet.t -> typ list -> typ -> typ
 
 (* Environments *)
 
