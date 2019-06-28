@@ -2004,7 +2004,7 @@ module Iterators = struct
       let (set_ni, get_ni) = new_local env "next" in
       Closure.fixed_closure env next_funid
         [ Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
-        ;  Closure.get ^^ Closure.load_data 0l
+        ; get_x
         ] ^^
       set_ni ^^
 
@@ -2130,7 +2130,7 @@ module Text = struct
       )
 
   let text_chars_direct env =
-    Iterators.create_direct env "text_chars"
+    Iterators.create_direct env "text_chars_direct"
       (fun env get_x -> get_x ^^ Heap.load_field len_field)
       (fun env get_i get_x ->
           let (set_char, get_char) = new_local env "char" in
@@ -2151,27 +2151,32 @@ module Text = struct
           get_char ^^ UnboxedSmallWord.box_codepoint
       )
 
+  let len env =
+    Func.share_code1 env "text_len" ("x", I32Type) [I32Type] (fun env get_x ->
+      let (set_max, get_max) = new_local env "max" in
+      let (set_n, get_n) = new_local env "n" in
+      let (set_len, get_len) = new_local env "len" in
+      compile_unboxed_zero ^^ set_n ^^
+      compile_unboxed_zero ^^ set_len ^^
+      get_x ^^ Heap.load_field len_field ^^ set_max ^^
+      compile_while
+        (get_n ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
+        begin
+          get_x ^^ payload_ptr_unskewed ^^ get_n ^^
+            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          UnboxedSmallWord.len_UTF8_head env (G.i Drop) ^^
+          get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
+          get_len ^^ compile_add_const 1l ^^ set_len
+        end ^^
+      get_len ^^
+      BigNum.from_word32 env
+    )
+
   let partial_len env =
     Func.share_code1 env "text_len_partial" ("x", I32Type) [I32Type] (fun env get_x ->
-      let funid = E.add_fun env "text_len" (Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
-        let get_text_object = Closure.get ^^ Closure.load_data 0l in
-        let (set_max, get_max) = new_local env "max" in
-        let (set_n, get_n) = new_local env "n" in
-        let (set_len, get_len) = new_local env "len" in
-        compile_unboxed_zero ^^ set_n ^^
-        compile_unboxed_zero ^^ set_len ^^
-        get_text_object ^^ Heap.load_field len_field ^^ set_max ^^
-        compile_while
-          (get_n ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
-          begin
-            get_text_object ^^ payload_ptr_unskewed ^^ get_n ^^
-              G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            UnboxedSmallWord.len_UTF8_head env (G.i Drop) ^^
-            get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
-            get_len ^^ compile_add_const 1l ^^ set_len
-          end ^^
-        get_len ^^
-        BigNum.from_word32 env
+      let funid = E.add_fun env "text_len_clos" (Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
+        Closure.get ^^ Closure.load_data 0l ^^
+        len env
       )) in
       Closure.fixed_closure env funid [ get_x ]
     )
@@ -4735,8 +4740,7 @@ and compile_exp (env : E.t) ae exp =
         | "text_len" ->
           SR.Vanilla,
           compile_exp_vanilla env ae e ^^
-          Heap.load_field Text.len_field ^^
-          BigNum.from_word32 env
+          Text.len env
 
         | "text_chars" ->
           SR.Vanilla,

@@ -209,8 +209,8 @@ and text_dotE proj e =
     let f = idE name (fun_ty [T.text] [fun_ty t1 t2]) in
     callE f [] e in
   match proj with
-    | "len"   -> call "@text_len"       [] [T.nat]
-    | "chars" -> call "@mut_array_vals" [] [T.iter_obj T.char]
+    | "len"   -> call "@text_len"   [] [T.nat]
+    | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
     |  _ -> assert false
 
 and block force_unit ds =
