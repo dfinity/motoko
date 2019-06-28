@@ -151,8 +151,8 @@ let rec check_typ env typ : unit =
     List.iter (check_typ env) typs
   | T.Func (sort, control, binds, ts1, ts2) ->
     let cs, ce = check_typ_binds env binds in
-    let env' = adjoin_cons env  ce in
-    let ts = List.map (fun c -> T.Con(c, [])) cs in
+    let env' = adjoin_cons env ce in
+    let ts = List.map (fun c -> T.Con (c, [])) cs in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
@@ -360,8 +360,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env exp1;
       let t1 = typ exp1 in
       let sort, tfs =
-        try T.as_obj_sub n t1 with
-        | Invalid_argument _ ->
+        (* TODO: separate array and text accessors *)
+        try T.as_obj_sub n t1 with Invalid_argument _ ->
+        try T.array_obj (T.as_array_sub t1) with Invalid_argument _ ->
+        try T.text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
           error env exp1.at "expected object type, but expression produces type\n  %s"
             (T.string_of_typ_expand t1)
       in

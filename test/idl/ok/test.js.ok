@@ -1,6 +1,4 @@
-const my_type = IDL.Nat
 const B = my_type
-const message = IDL.Obj({'name': IDL.Text, '25': B, '26': IDL.None})
 const broker =
  new IDL.ActorInterface({
   'find':
@@ -11,6 +9,8 @@ const broker =
        'current': IDL.message(IDL.Obj({}), IDL.Obj({'0': IDL.Nat}))})
      }))
     })
+const message = IDL.Obj({'25': B, '26': IDL.None, 'name': IDL.Text})
+const my_type = IDL.Nat
 const server = new IDL.ActorInterface({
  'addUser':
   IDL.message(IDL.Obj({'name': IDL.Text, 'age': IDL.Nat8}),

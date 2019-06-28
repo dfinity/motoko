@@ -64,8 +64,9 @@ This is a summary of the grammar proposed:
 
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
-<functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
+<functype>  ::= ( <argtype>,* ) -> ( <argtype>,* ) <funcann>*
 <funcann>   ::= oneway | pure
+<argtype>   ::= <datatype>
 <fieldtype> ::= <nat> : <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 
@@ -103,6 +104,9 @@ A `<char>` is a *Unicode scalar value* (i.e., a codepoint that is not a surrogat
 In addition to this basic grammar, a few syntactic shorthands are supported that can be reduced to the basic forms:
 
 ```
+<argtype>  ::= ...
+  | <name> : <datatype>    := <datatype>
+
 <constype> ::= ...
   | blob                   :=  vec nat8
 
@@ -139,6 +143,8 @@ A service's signature is described by an *actor type*, which defines the list of
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
 ```
+We identify `<methtype>` lists in an actor type up to reordering.
+
 
 #### Names
 
@@ -175,18 +181,34 @@ service {
 A function type describes the list of parameters and results and their respective types. It can optionally be annotated to be *pure*, which indicates that it does not modify any state and can potentially be executed more efficiently (e.g., on cached state). (Other annotations may be added in the future.)
 
 ```
-<functype> ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
+<functype> ::= ( <argtype>,* ) -> ( <argtype>,* ) <funcann>*
 <funcann>  ::= oneway | pure
+<argtype>  ::= <datatype>
 ```
+We identify `<funcann>` lists in a function type up to reordering.
 
-The parameter and result lists are essentially treated as records, see below. That is, they are named, not positional.
-The list of parameters must be shorter than 2^32 values and no name/id may occur twice in it. The same restrictions apply to the result list.
+The list of parameters must be shorter than 2^32 values;
+the same restriction apply to the result list.
 The result list of a `oneway` function must be empty.
+
+
+##### Shorthand: Named Parameters and Results
+
+As a "shorthand", the types of parameters and results in a function type may be prefixed by a name:
+```
+<argtype> ::= <name> : <datatype>   := <datatype>
+```
+The chosen names only serve documentation purposes and have no semantic significance.
+However, duplicate names are not allowed.
+
 
 #### Example
 ```
+(text, text, nat16) -> (text, nat64)
+(name : text, address : text, nat16) -> (text, id : nat64)
 (name : text, address : text, nr : nat16) -> (nick : text, id : nat64)
 ```
+All three types are equivalent.
 
 
 ### Data
@@ -244,6 +266,7 @@ Text strings are represented by the type `text` and consist of a sequence of Uni
 ```
 **Note:** The `text` type is distinguished from `vec nat8` (a UTF-8 string) or `vec nat32` (a sequence of code points) in order to allow bindings to map it to a suitable string type, and enable the binary format to select an efficient internal representation independently.
 
+
 #### Null
 
 The type `null` has exactly one value (the *null* value) and therefor carries no information. It can e.g. be used as a placeholder for optional fields that ought to be added to a record in future upgrades, or for *variant cases* that do not need any value, see below.
@@ -258,6 +281,7 @@ The type `reserved` is a type with unknown content that ought to be ignored. Its
 <primtype> ::= ... | reserved
 ```
 **Note:** This type has a similar role as *reserved fields* in proto buffers.
+
 
 #### Empty
 
@@ -301,6 +325,7 @@ A *record* is a *heterogeneous* sequence of values of different data types. Each
 <constype>  ::= ... | record { <fieldtype>;* } | ...
 <fieldtype> ::= <nat> : <datatype>
 ```
+We identify `<fieldtype>` lists in a record type up to reordering.
 
 The id is described as a simple unsigned integer that has to fit the 64 bit value range. It can be given in either decimal or hexadecimal notation:
 
@@ -367,6 +392,8 @@ A *variant* is a tagged union of different possible data types. The tag is given
 ```
 <constype>  ::= ... | variant { <fieldtype>;* } | ...
 ```
+We identify `<fieldtype>` lists in a variant type up to reordering.
+
 A field id must be smaller than 2^32 and no id may occur twice in the same variant type.
 
 
@@ -659,15 +686,17 @@ variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; 
 
 #### Functions
 
-For a specialised function, any parameter type can be generalised and any result type specialised. Moreover, arguments can be dropped while results can be added. That is, the rules mirror those of records.
+For a specialised function, any parameter type can be generalised and any result type specialised. Moreover, arguments can be dropped while results can be added. That is, the rules mirror those of tuple-like records, i.e., they are ordered and can only be extended at the end.
 ```
-record { <fieldtype1'>;* } <: record { <fieldtype1>;* }
-record { <fieldtype2>;* } <: record { <fieldtype2'>;* }
------------------------------------------------------------------------------------------------------------------------
-func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
+record { (N1' : <datatype1'>);* } <: record { (N1 : <datatype1>);* }
+record { (N2 : <datatype2>);* } <: record { N2' : <datatype2'>);* }
+-------------------------------------------------------------------------------------------------------------------
+func ( <datatype1>,* ) -> ( <datatype2>,* ) <funcann>* <: func ( <datatype1'>,* ) -> ( <datatype2'>,* ) <funcann>*
 ```
+where `NI*` is the `<nat>` sequence `1`..`|<datatypeNI>*|`, respectively.
 
 Viewed as sets, the annotations on the functions must be equal.
+
 
 #### Actors
 
@@ -775,10 +804,10 @@ variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; 
 #### Functions
 
 ```
-record { <fieldtype1'>;* } <: record { <fieldtype1>;* } ~> f1
-record { <fieldtype2>;* } <: record { <fieldtype2'>;* } ~> f2
-----------------------------------------------------------------------------------------------------------------------
-func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann>*
+record { N1':<datatype1'>;* } <: record { N1:<datatype1>;* } ~> f1
+record { N2:<datatype2>;* } <: record { N2':<datatype2'>;* } ~> f2
+------------------------------------------------------------------------------------------------------------------
+func ( <datatype1>,* ) -> ( <datatype2>,* ) <funcann>* <: func ( <datatype1'>,* ) -> ( <datatype2'>,* ) <funcann>*
   ~> \x.\y.f2 (x (f1 y))
 ```
 
@@ -908,9 +937,9 @@ T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
 T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
-  sleb128(-21) T*(<fieldtype2>*) T*(<fieldtype2>*) T*(<funcann>*)
+  sleb128(-22) T*(<fieldtype2>*) T*(<fieldtype2>*) T*(<funcann>*)
 T(service {<methtype>*}) =
-  sleb128(-22) T*(<methtype>*)
+  sleb128(-23) T*(<methtype>*)
 
 T : <methtype> -> i8*
 T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
@@ -1025,15 +1054,15 @@ These measures allow the serialisation format to be extended with new types in t
 We assume that the argument values are sorted by increasing id.
 
 ```
-A(kv* : <fieldtype>*) = ( B(kv* : <fieldtype>*), R(kv* : <fieldtype>*) )
+A(kv* : <datatype>*) = ( B(kv* : <datatype>*), R(kv* : <datatype>*) )
 
-B(kv* : <fieldtype>*) =
+B(kv* : <datatype>*) =
   i8('D') i8('I') i8('D') i8('L')      magic number
   T*(<datatype>*)                      type definition table
-  T*(<fieldtype>*)                     type of argument list
-  M(kv* : <fieldtype>*)                values of argument list
+  I*(<datatype>*)                      type of argument list
+  M(kv* : <datatype>*)                 values of argument list
 ```
-The `<datatype>` vector contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the `<fieldtype>` vector.
+The vector `T*(<datatype>*)` contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the other `<datatype>` vector.
 
 The same representation is used for function results.
 

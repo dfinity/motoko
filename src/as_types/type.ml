@@ -116,6 +116,11 @@ let compare_field f1 f2 =
   | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
   | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
 
+
+(* Coercions *)
+
+(* TODO: Move to typing once we have separated accessors in IR. *)
+
 let iter_obj t =
   Obj (Object Local,
     [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t])}])
@@ -129,16 +134,14 @@ let array_obj t =
     ] in
   let mut t = immut t @
     [ {lab = "set"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
-  match t with
-  | Mut t' -> Obj (Object Local, List.sort compare_field (mut t'))
-  | t -> Obj (Object Local, List.sort compare_field (immut t))
+  Object Local,
+  List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
-let text_obj =
-  let immut =
-    [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
-      {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
-    ] in
-  Obj (Object Local, List.sort compare_field immut)
+let text_obj () =
+  Object Local,
+  [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
+    {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+  ]
 
 (* Cons occurring in typs *)
 
@@ -504,10 +507,8 @@ let as_prim_sub p t = match promote t with
   | Prim p' when p = p' -> ()
   | Non -> ()
   | _ -> invalid "as_prim_sub"
-let rec as_obj_sub lab t = match promote t with
+let as_obj_sub lab t = match promote t with
   | Obj (s, tfs) -> s, tfs
-  | Array t -> as_obj_sub lab (array_obj t)
-  | Prim Text -> as_obj_sub lab text_obj
   | Non -> Object Sharable, [{lab; typ = Non}]
   | _ -> invalid "as_obj_sub"
 let as_array_sub t = match promote t with
@@ -782,8 +783,6 @@ let rec rel_typ rel eq t1 t2 =
     p1 = Nat && p2 = Int
   | Prim p1, Shared when rel != eq ->
     true
-  | Prim Text, Obj _ when rel != eq ->
-    rel_typ rel eq text_obj t2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     s1 = s2 &&
     rel_fields rel eq tfs1 tfs2
@@ -791,8 +790,6 @@ let rec rel_typ rel eq t1 t2 =
     s <> Object Local
   | Array t1', Array t2' ->
     rel_typ rel eq t1' t2'
-  | Array t1', Obj _ when rel != eq ->
-    rel_typ rel eq (array_obj t1') t2
   | Array t, Shared when rel != eq ->
     rel_typ rel eq t Shared
   | Opt t1', Opt t2' ->
@@ -923,7 +920,6 @@ let eq_kind k1 k2 : bool =
   eq_kind eq k1 k2
 
 
-
 (* Least upper bound and greatest lower bound *)
 
 let rec lub' lubs glbs t1 t2 =
@@ -949,26 +945,21 @@ let rec lub' lubs glbs t1 t2 =
     | Opt t', Prim Null -> t1
     | Variant t1', Variant t2' ->
       Variant (lub_tags lubs glbs t1' t2')
-    | Array t1', Obj _ -> lub' lubs glbs (array_obj t1') t2
-    | Obj _, Array t2' -> lub' lubs glbs t1 (array_obj t2')
-    | Prim Text, Obj _ -> lub' lubs glbs text_obj t2
-    | Obj _, Prim Text -> lub' lubs glbs t1 text_obj
-    | Prim Text, Array t2' -> lub' lubs glbs text_obj (array_obj t2')
-    | Array t1', Prim Text -> lub' lubs glbs (array_obj t1') text_obj
     | Array t1', Array t2' ->
       Array (lub' lubs glbs t1' t2')
     | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
       Tup (List.map2 (lub' lubs glbs) ts1 ts2)
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
       Obj (s1, lub_fields lubs glbs tf1 tf2)
-    | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-        when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
-          List.(length args1 = length args2 && length res1 = length res2) ->
+    | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
+        s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
+        List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
     | Async t1', Async t2' ->
       Async (lub' lubs glbs t1' t2')
     | Con _, _
     | _, Con _ ->
+      (* TODO(rossberg): fix handling of bounds *)
       combine_con_parts t1 t2 "lub" lubs (lub' lubs glbs)
     | _ when eq t1 t2 -> t1
     | _ when sub t1 Shared && sub t2 Shared -> Shared
@@ -1014,24 +1005,21 @@ and glb' lubs glbs t1 t2 =
       Variant (glb_tags lubs glbs t1' t2')
     | Prim Null, Opt _
     | Opt _, Prim Null -> Prim Null
-    | Array t1', Obj _ when sub (array_obj t1') t2 -> t1 (* TODO(gabor): payload should be glb'd *)
-    | Obj _, Array t2' when sub (array_obj t2') t1 -> t2 (* TODO(gabor): payload should be glb'd *)
-    | Prim Text, Obj _ when sub text_obj t2 -> t1
-    | Obj _, Prim Text when sub text_obj t1 -> t2
     | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
       Tup (List.map2 (glb' lubs glbs) ts1 ts2)
     | Array t1', Array t2' ->
       Array (glb' lubs glbs t1' t2')
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
       Obj (s1, glb_fields lubs glbs tf1 tf2)
-    | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2)
-        when s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
-          List.(length args1 = length args2 && length res1 = length res2) ->
+    | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
+        s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
+        List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
     | Async t1', Async t2' ->
       Async (glb' lubs glbs t1' t2')
     | Con _, _
     | _, Con _ ->
+      (* TODO(rossberg): fix handling of bounds *)
       combine_con_parts t1 t2 "glb" glbs (glb' lubs glbs)
     | _ when eq t1 t2 -> t1
     | _ -> Non
@@ -1041,8 +1029,8 @@ and glb_fields lubs glbs fs1 fs2 = match fs1, fs2 with
   | [], fs2 -> fs2
   | f1::fs1', f2::fs2' ->
     match compare_field f1 f2 with
-    | +1 -> f2::glb_fields lubs glbs fs1 fs2'
     | -1 -> f1::glb_fields lubs glbs fs1' fs2
+    | +1 -> f2::glb_fields lubs glbs fs1 fs2'
     | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_fields lubs glbs fs1' fs2'
 
 and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
@@ -1087,9 +1075,11 @@ and combine_con_parts t1 t2 naming re how =
 let lub t1 t2 = lub' (ref M.empty) (ref M.empty) t1 t2
 let glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
+
 (* Environments *)
 
 module Env = Env.Make(String)
+
 
 (* Pretty printing *)
 

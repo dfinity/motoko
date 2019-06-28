@@ -277,6 +277,23 @@ rec {
   };
 
 
+  stdlib = stdenv.mkDerivation {
+    name = "stdlib";
+    src = subpath ./stdlib;
+    buildInputs = with nixpkgs;
+      [ bash ];
+    buildPhase = ''
+      patchShebangs .
+    '';
+    installPhase = ''
+      mkdir -p $out
+      tar -rf $out/stdlib.tar $src
+      mkdir -p $out/nix-support
+      echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
+    '';
+    forceShare = ["man"];
+  };
+
   stdlib-reference = stdenv.mkDerivation {
     name = "stdlib-reference";
     src = subpath ./stdlib;

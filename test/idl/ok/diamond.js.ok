@@ -1,0 +1,6 @@
+const t = IDL.Nat
+const t1 = IDL.Obj({'0': t2, '1': t3, '2': t})
+const t2 = IDL.Arr(t)
+const t3 = IDL.Opt(t)
+const S = new IDL.ActorInterface({
+ 'f': IDL.message(IDL.Obj({'0': t, '1': t2, '2': t3}), IDL.Obj({'0': t1}))})
