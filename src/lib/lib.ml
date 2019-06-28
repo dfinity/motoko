@@ -34,6 +34,8 @@ struct
   let one = Int32.one
   let of_int = Int32.of_int
   let to_int = Int32.to_int
+  let of_int32 x = x
+  let to_int32 x = x
   let compare i1 i2 =
     if i1 < 0l && i2 >= 0l then 1
     else if i1 >= 0l && i2 < 0l then -1

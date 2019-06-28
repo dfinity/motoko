@@ -237,7 +237,7 @@ let prim = function
                                in k (Text str)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "rts_version" -> fun v k -> as_unit v; k (Text "0.1")
-  | "idlHash" -> fun v k -> let s = as_text v in k (Word32 (Idllib.IdlHash.idl_hash s))
+  | "idlHash" -> fun v k -> let s = as_text v in k (Word32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))
   | "decodeUTF8" -> fun v k ->
                     let s = as_text v in
                     let open Int32 in
