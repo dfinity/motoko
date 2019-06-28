@@ -222,7 +222,7 @@ and is_closed_con seen i c =
 
 let is_abs c = match Con.kind c with Abs _ -> true | Def _ -> false
 
-module ShiftEnv = Env.Make(struct type t = (int * int * con)
+module ShiftEnv = Env.Make(struct type t = int * int * con (* (i, n, c) *)
                                   let compare = compare
                            end)
 (* TODO: optimize shifts for n = 0 *)
@@ -279,12 +279,11 @@ and shift_kind seen i n k =
 (* First-order substitution *)
 
 
-module SubstEnv = Env.Make(struct type t = int * con
+module SubstEnv = Env.Make(struct type t = int * con (* (m, c) - m is cummulative shift *)
                                   let compare = compare
                            end)
 
-let rec subst ((re, ce, se, shifts) as seen) sigma t =
-  (*  Printf.printf "\nsubst %s%!" (try debug_string_of_typ t  with _ -> "???"); *)
+let rec subst ((dom, self, ce, se, m) as seen) sigma t =
   if sigma = ConEnv.empty then t else
   match t with
   | (Prim _ | Var _) -> t
@@ -299,7 +298,7 @@ let rec subst ((re, ce, se, shifts) as seen) sigma t =
   | Func (s, c, tbs, ts1, ts2) ->
     let n = List.length tbs in
     let sigma' = ConEnv.map (shift se 0 n) sigma in
-    let seen' = (re, ce, se, shifts + n) in
+    let seen' = (dom, self, ce, se, m + n) in
     Func (s, c, List.map (subst_bind seen' sigma') tbs,
           List.map (subst seen' sigma') ts1, List.map (subst seen' sigma') ts2)
   | Opt t -> Opt (subst seen sigma t)
@@ -318,7 +317,7 @@ let rec subst ((re, ce, se, shifts) as seen) sigma t =
      | None -> Typ (subst_con seen sigma c)
     )
 
-and subst_con (self, ce, se, m) sigma c =
+and subst_con (dom, self, ce, se, m) sigma c =
   match Con.kind c with
   | Abs _ -> c
   | Def (tbs,t) ->
@@ -328,13 +327,13 @@ and subst_con (self, ce, se, m) sigma c =
       match self with
       | Some (c_self,c') when Con.eq c c_self -> c'
       | _ ->
-        if ConSet.is_empty (ConSet.inter (ConEnv.dom sigma) (cons_con c ConSet.empty)) then
+        if ConSet.is_empty (ConSet.inter dom (cons_con c ConSet.empty)) then
           (ce := SubstEnv.add (m, c) c (!ce);
            c)
         else
           let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
           ce := SubstEnv.add (m, c) c' (!ce);
-          let seen' = (Some (c,c'), ce, se, m) in
+          let seen' = (dom, Some (c,c'), ce, se, m) in
           Con.unsafe_set_kind c' (subst_kind seen' sigma (Con.kind c));
           c'
 
@@ -344,17 +343,17 @@ and subst_bind seen sigma {var; bound} =
 and subst_field seen sigma {lab; typ} =
   {lab; typ = subst seen sigma typ}
 
-and subst_kind (self, ce, se, m) sigma (k:kind) =
+and subst_kind (dom, self, ce, se, m) sigma (k:kind) =
   match k with
   | Def (tbs, t) ->
     let n = List.length tbs in
     let sigma' = ConEnv.map (shift se 0 n) sigma in
-    let seen' = (self, ce, se, m + n) in
+    let seen' = (dom, self, ce, se, m + n) in
     Def (List.map (subst_bind seen' sigma') tbs, subst seen' sigma' t)
   | Abs (tbs, t) ->
     let n = List.length tbs in
     let sigma' = ConEnv.map (shift se 0 n) sigma in
-    let seen' = (self, ce, se, m + n) in
+    let seen' = (dom, self, ce, se, m + n) in
     Abs (List.map (subst_bind seen' sigma') tbs, subst seen' sigma' t)
 
 (* Handling binders *)
@@ -362,15 +361,15 @@ and subst_kind (self, ce, se, m) sigma (k:kind) =
 let close cs t =
   if cs = [] then t else
   let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
-  let seen = (None, ref SubstEnv.empty, ref ShiftEnv.empty, 0) in
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
+  let seen = (ConEnv.dom sigma, None, ref SubstEnv.empty, ref ShiftEnv.empty, 0) in
   subst seen sigma t
 
 let close_binds cs tbs =
   if cs = [] then tbs else
   List.map (fun {var; bound} -> {var; bound = close cs bound}) tbs
 
-module OpenEnv = Env.Make(struct type t = int * con
+module OpenEnv = Env.Make(struct type t = int * con (* (i,c) *)
                                  let compare = compare
                           end)
 
@@ -837,6 +836,7 @@ let rels () =
       eq_con rel eq c1 c2
     | _, _ -> false
     end
+
   and rel_fields rel eq tfs1 tfs2 =
     (* Assume that tfs1 and tfs2 are sorted. *)
     match tfs1, tfs2 with
