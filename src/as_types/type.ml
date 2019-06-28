@@ -140,7 +140,8 @@ let text_obj =
     ] in
   Obj (Object Local, List.sort compare_field immut)
 
-(* TODO: add seen and descend into cons *)
+(* Cons occurring in typs *)
+
 let rec cons t cs =
   match t with
   | Var _ ->  cs
@@ -279,7 +280,8 @@ and shift_kind seen i n k =
 
 
 module SubstEnv = Env.Make(struct type t = int * con
-                                  let compare = compare end)
+                                  let compare = compare
+                           end)
 
 let rec subst ((re, ce, se, shifts) as seen) sigma t =
   (*  Printf.printf "\nsubst %s%!" (try debug_string_of_typ t  with _ -> "???"); *)
@@ -316,24 +318,23 @@ let rec subst ((re, ce, se, shifts) as seen) sigma t =
      | None -> Typ (subst_con seen sigma c)
     )
 
-
-and subst_con (re, ce, se, shifts) sigma c =
+and subst_con (self, ce, se, m) sigma c =
   match Con.kind c with
   | Abs _ -> c
   | Def (tbs,t) ->
-    match SubstEnv.find_opt (shifts, c) (!ce) with
+    match SubstEnv.find_opt (m, c) (!ce) with
     | Some c' -> c'
     | None ->
-      match ConEnv.find_opt c re with
-      | Some c' -> c'
-      | None ->
+      match self with
+      | Some (c_self,c') when Con.eq c c_self -> c'
+      | _ ->
         if ConSet.is_empty (ConSet.inter (ConEnv.dom sigma) (cons_con c ConSet.empty)) then
-          (ce := SubstEnv.add (shifts, c) c (!ce);
+          (ce := SubstEnv.add (m, c) c (!ce);
            c)
         else
           let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
-          ce := SubstEnv.add (shifts, c) c' (!ce);
-          let seen' = (ConEnv.add c c' re, ce, se, shifts) in
+          ce := SubstEnv.add (m, c) c' (!ce);
+          let seen' = (Some (c,c'), ce, se, m) in
           Con.unsafe_set_kind c' (subst_kind seen' sigma (Con.kind c));
           c'
 
@@ -343,17 +344,17 @@ and subst_bind seen sigma {var; bound} =
 and subst_field seen sigma {lab; typ} =
   {lab; typ = subst seen sigma typ}
 
-and subst_kind (re,ce,se,shifts) sigma (k:kind) =
+and subst_kind (self, ce, se, m) sigma (k:kind) =
   match k with
   | Def (tbs, t) ->
     let n = List.length tbs in
     let sigma' = ConEnv.map (shift se 0 n) sigma in
-    let seen' = (re, ce, se, shifts + n) in
+    let seen' = (self, ce, se, m + n) in
     Def (List.map (subst_bind seen' sigma') tbs, subst seen' sigma' t)
   | Abs (tbs, t) ->
     let n = List.length tbs in
     let sigma' = ConEnv.map (shift se 0 n) sigma in
-    let seen' = (re, ce, se, shifts + n) in
+    let seen' = (self, ce, se, m + n) in
     Abs (List.map (subst_bind seen' sigma') tbs, subst seen' sigma' t)
 
 (* Handling binders *)
@@ -361,7 +362,7 @@ and subst_kind (re,ce,se,shifts) sigma (k:kind) =
 let close cs t =
   if cs = [] then t else
   let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
-  let seen = (ConEnv.empty, ref SubstEnv.empty, ref ShiftEnv.empty, 0) in
+  let seen = (None, ref SubstEnv.empty, ref ShiftEnv.empty, 0) in
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst seen sigma t
 
@@ -369,7 +370,7 @@ let close_binds cs tbs =
   if cs = [] then tbs else
   List.map (fun {var; bound} -> {var; bound = close cs bound}) tbs
 
-module OpenEnv = Env.Make(struct type t = (int * con)
+module OpenEnv = Env.Make(struct type t = int * con
                                  let compare = compare
                           end)
 
@@ -395,23 +396,23 @@ let rec open' seen i ts t =
   | Pre -> Pre
   | Typ c -> Typ (open_con seen i ts c)
 
-and open_con (re, seen) i ts c =
+and open_con (self, seen) i ts c =
   match Con.kind c with
   | Abs _ -> c
   | Def _ ->
   match OpenEnv.find_opt (i, c) (!seen) with
   | Some c' -> c'
   | None ->
-    match ConEnv.find_opt c re with
-    | Some c' -> c'
-    | None ->
+    match self with
+    | Some (c_, c') when Con.eq c c_ -> c'
+    | _ ->
       if is_closed_con ConSet.empty i c then
         (seen := OpenEnv.add (i, c) c (!seen);
          c)
       else
         let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
         seen := OpenEnv.add (i, c) c' (!seen);
-        Con.unsafe_set_kind c' (open_kind (ConEnv.add c c' re, seen) i ts (Con.kind c));
+        Con.unsafe_set_kind c' (open_kind (Some (c,c'), seen) i ts (Con.kind c));
         c'
 
 and open_bind seen i ts {var; bound} =
@@ -419,7 +420,6 @@ and open_bind seen i ts {var; bound} =
 
 and open_field seen i ts {lab; typ} =
   {lab; typ = open' seen i ts typ}
-
 
 and open_kind seen i ts k =
   match k with
@@ -432,7 +432,7 @@ and open_kind seen i ts k =
 
 let open_ ts t =
   if ts = [] then t else
-  let seen = (ConEnv.empty, ref OpenEnv.empty) in
+  let seen = (None, ref OpenEnv.empty) in
   open' seen 0 ts t
 
 let open_binds tbs =
@@ -712,7 +712,9 @@ let trace_rel_typ rel eq t1 t2 =
   | _ -> ()
 
 
-module RelEnv = Env.Make (struct type t = con * typ list let compare = compare end)
+module RelEnv = Env.Make(struct type t = con * typ list
+                                let compare = compare
+                         end)
 
 let rels () =
 
