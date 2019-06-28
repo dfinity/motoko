@@ -9,20 +9,28 @@ features are
 
 open Wasm.Ast
 open Wasm.Source
+open Wasm.Values
 
-let shift_like = function
-  | Wasm.Values.I32 I32Op.Shl, Wasm.Values.I32 I32Op.Shl
-  | Wasm.Values.I32 I32Op.ShrS, Wasm.Values.I32 I32Op.ShrS
-  | Wasm.Values.I32 I32Op.ShrU, Wasm.Values.I32 I32Op.ShrU -> true
+let shift_combinable cl cr =
+  function
+  | I32 I32Op.Shl, I32 I32Op.Shl
+  | I32 I32Op.ShrS, I32 I32Op.ShrS
+  | I32 I32Op.ShrU, I32 I32Op.ShrU ->
+    begin match cl, cr with
+    | I32 cl, I32 cr ->
+      let l, r = Int32.(to_int cl, to_int cr) in
+      l >= 0 && l < 32 && r >= 0 && r < 32 && l + r < 32
+    | _ -> assert false
+    end
   | _ -> false
 
-let combine_shifts = function
-  | Wasm.Values.I32 I32Op.Shl, ({it = Wasm.Values.I32 l; _} as cl), Wasm.Values.I32 I32Op.Shl, {it = Wasm.Values.I32 r; _} ->
-    Some (Wasm.Values.I32 I32Op.Shl, {cl with it = Wasm.Values.I32 (Int32.add l r)})
-  | Wasm.Values.I32 I32Op.ShrS, ({it = Wasm.Values.I32 l; _} as cl), Wasm.Values.I32 I32Op.ShrS, {it = Wasm.Values.I32 r; _} ->
-    Some (Wasm.Values.I32 I32Op.ShrS, {cl with it = Wasm.Values.I32 (Int32.add l r)})
-  | Wasm.Values.I32 I32Op.ShrU, ({it = Wasm.Values.I32 l; _} as cl), Wasm.Values.I32 I32Op.ShrU, {it = Wasm.Values.I32 r; _} ->
-    Some (Wasm.Values.I32 I32Op.ShrU, {cl with it = Wasm.Values.I32 (Int32.add l r)})
+let combine_shifts op const = function
+  | I32 I32Op.Shl, ({it = I32 l; _} as cl), I32 I32Op.Shl, I32 r ->
+    Some (I32 I32Op.Shl, {cl with it = I32 (Int32.add l r)})
+  | I32 I32Op.ShrS, ({it = I32 l; _} as cl), I32 I32Op.ShrS, I32 r ->
+    Some (I32 I32Op.ShrS, {cl with it = I32 (Int32.add l r)})
+  | I32 I32Op.ShrU, ({it = I32 l; _} as cl), I32 I32Op.ShrU, I32 r ->
+    Some (I32 I32Op.ShrU, {cl with it = I32 (Int32.add l r)})
   | _ -> assert false
 
 
@@ -31,8 +39,7 @@ let combine_shifts = function
 let optimize : instr list -> instr list = fun is ->
   let rec go l r = match l, r with
     (* Loading and dropping is pointless *)
-    | { it = Const _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
-    | { it = LocalGet _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
+    | { it = Const _ | LocalGet _; _} :: l', { it = Drop; _ } :: r' -> go l' r'
     (* The following is not semantics preserving for general Wasm (due to out-of-memory)
        but should be fine for the code that we create *)
     | { it = Load _; _} :: l', { it = Drop; _ } :: _ -> go l' r
@@ -46,16 +53,17 @@ let optimize : instr list -> instr list = fun is ->
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: _ ->
       List.rev (i::l)
     (* `If` blocks after pushed constants are simplifiable *)
-    | { it = Const {it = Wasm.Values.I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
+    | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
-    | { it = Const {it = Wasm.Values.I32 _; _}; _} :: l', ({it = If (res,then_,_); _} as i) :: r' ->
+    | { it = Const {it = I32 _; _}; _} :: l', ({it = If (res,then_,_); _} as i) :: r' ->
       go l' ({i with it = Block (res, then_)} :: r')
     (* Empty block is redundant *)
     | l', ({ it = Block (_, []); _ }) :: r' -> go l' r'
     (* Constant shifts can be combined *)
-    | ({ it = Binary opl; _ } as op) :: ({ it = Const cl; _} as const) :: l', { it = Const cr; _ } :: { it = Binary opr; _ } :: r'
-        when shift_like (opl, opr) ->
-      begin match combine_shifts (opl, cl, opr, cr) with
+    | { it = Binary (I32 I32Op.(Shl|ShrS|ShrU) as opl); _ } :: { it = Const cl; _} :: l',
+      ({ it = Const cr; _ } as const) :: ({ it = Binary opr; _ } as op) :: r'
+        when shift_combinable cl.it cr.it (opl, opr) ->
+      begin match combine_shifts op const (opl, cl, opr, cr.it) with
       | Some (sh, n) ->  go l' ({ const with it = Const n } :: { op with it = Binary sh } :: r')
       | None -> go l' r'
       end
