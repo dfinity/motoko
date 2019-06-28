@@ -299,14 +299,11 @@ func testInt16(a : Int16, b : Int16) : [Int16] {
   let rat2 = (a / b) : Int16;
   let mod1 = a % b;
   let mod2 = (a % b) : Int16;
-  switch (b >= (0 : Int16), a < (10 : Int16)) {
-  case (true, true) {
+  if (b >= (0 : Int16) and a < (10 : Int16)) {
     let pow1 = a ** b;
     let pow2 = (a ** b) : Int16;
     [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
-  };
-  case _ { [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2] }
-  }
+  } else { [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2] }
 };
 
 func int16Compare(a : Int16, b : Int16) : Bool = a == b;
@@ -334,14 +331,11 @@ func testInt8(a : Int8, b : Int8) : [Int8] {
   let rat2 = (a / b) : Int8;
   let mod1 = a % b;
   let mod2 = (a % b) : Int8;
-  switch (b >= (0 : Int8), b < (5 : Int8)) {
-  case (true, true) {
+  if (b >= (0 : Int8) and b < (5 : Int8)) {
     let pow1 = a ** b;
     let pow2 = (a ** b) : Int8;
     [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
-  };
-  case _ { [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2] }
-  }
+  } else { [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2] }
 };
 
 func int8Compare(a : Int8, b : Int8) : Bool = a == b;
@@ -443,14 +437,11 @@ func testNat8(a : Nat8, b : Nat8) : [Nat8] {
   let rat2 = (a / b) : Nat8;
   let mod1 = a % b;
   let mod2 = (a % b) : Nat8;
-  switch (b >= (0 : Nat8), a < (10 : Nat8)) {
-  case (true, true) {
+  if (b >= (0 : Nat8) and a < (10 : Nat8)) {
     let pow1 = a ** b;
     let pow2 = (a ** b) : Nat8;
     [sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
-  };
-  case _ { [sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2] }
-  }
+  } else { [sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2] }
 };
 
 func nat8Compare(a : Nat8, b : Nat8) : Bool = a == b;
