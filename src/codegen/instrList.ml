@@ -29,7 +29,6 @@ let combine_shifts const op = function
     [{const with it = Const {cl with it = I32 (Int32.add l r)}}; {op with it = Binary (I32 opl)}]
   | _ -> assert false
 
-
 (* Some simple peephole optimizations, to make the output code look less stupid *)
 (* This uses a zipper.*)
 let optimize : instr list -> instr list = fun is ->
