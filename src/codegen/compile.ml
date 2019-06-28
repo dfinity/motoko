@@ -4668,6 +4668,15 @@ let rec compile_binop env t op =
                  square_recurse_with_shifted (UnboxedSmallWord.sanitize_word_result ty) ^^
                  mul)))
      in pow ()
+  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)),  PowOp -> (* todo: sign exp, dynamics check, fallback Bignum? *)
+    Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
+      (("n", I32Type), ("exp", I32Type)) [I32Type]
+      (fun env get_n get_exp ->
+        get_n ^^ UnboxedSmallWord.lsb_adjust ty ^^
+        get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^
+        snd (compile_binop env Type.(Prim Word32) PowOp) ^^
+        UnboxedSmallWord.msb_adjust ty)
+
   | Type.(Prim Int),                          PowOp ->
     let pow = BigNum.compile_unsigned_pow env in
     let (set_n, get_n) = new_local env "n" in

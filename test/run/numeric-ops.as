@@ -292,18 +292,23 @@ func testInt16(a : Int16, b : Int16) : [Int16] {
   let rat2 = (a / b) : Int16;
   let mod1 = a % b;
   let mod2 = (a % b) : Int16;
-  /*let pow1 = a ** b;
-  let pow2 = (a ** b) : Int16;*/
-  [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
+  switch (b >= (0 : Int16), a < (10 : Int16)) {
+  case (true, true) {
+    let pow1 = a ** b;
+    let pow2 = (a ** b) : Int16;
+    [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
+  };
+  case _ { [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2] }
+  }
 };
 
 func int16Compare(a : Int16, b : Int16) : Bool = a == b;
 
-verify<Int16>([3, -3, 8, -2, 15, 0, 3/*, 243*/], testInt16(3, 5),
+verify<Int16>([3, -3, 8, -2, 15, 0, 3, 243], testInt16(3, 5),
              int16Compare);
-verify<Int16>([13, -13, 18, 8, 65, 2, 3/*, 243*/], testInt16(13, 5),
+verify<Int16>([13, -13, 18, 8, 65, 2, 3], testInt16(13, 5),
              int16Compare);
-verify<Int16>([-13, 13, -18, -8, 65, 2, -3/*, 243*/], testInt16(-13, -5),
+verify<Int16>([-13, 13, -18, -8, 65, 2, -3], testInt16(-13, -5),
              int16Compare);
 
 
