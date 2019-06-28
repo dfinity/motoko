@@ -262,18 +262,25 @@ func testInt32(a : Int32, b : Int32) : [Int32] {
   let rat2 = (a / b) : Int32;
   let mod1 = a % b;
   let mod2 = (a % b) : Int32;
-  /*let pow1 = a ** b;
-  let pow2 = (a ** b) : Int32;*/
-  [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
+  if (b >= (0 : Int32))
+  {
+    let pow1 = a ** b;
+    let pow2 = (a ** b) : Int32;
+    [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
+  }
+  else
+  {
+    [pos1, pos2, neg1, neg2, sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2]
+  }
 };
 
 func int32Compare(a : Int32, b : Int32) : Bool = a == b;
 
-verify<Int32>([3, -3, 8, -2, 15, 0, 3/*, 243*/], testInt32(3, 5),
+verify<Int32>([3, -3, 8, -2, 15, 0, 3, 243], testInt32(3, 5),
              int32Compare);
-verify<Int32>([13, -13, 18, 8, 65, 2, 3/*, 243*/], testInt32(13, 5),
+verify<Int32>([13, -13, 18, 8, 65, 2, 3, 371293], testInt32(13, 5),
              int32Compare);
-verify<Int32>([-13, 13, -18, -8, 65, 2, -3/*, 243*/], testInt32(-13, -5),
+verify<Int32>([-13, 13, -18, -8, 65, 2, -3], testInt32(-13, -5),
              int32Compare);
 
 
