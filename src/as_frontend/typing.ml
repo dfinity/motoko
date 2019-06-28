@@ -395,6 +395,28 @@ let check_lit env t lit at =
         "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand t)
 
+(* Coercions *)
+
+let array_obj t =
+  let open T in
+  let immut t =
+    [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t])};
+      {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+      {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)])};
+      {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t])};
+    ] in
+  let mut t = immut t @
+    [ {lab = "set"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
+  Object Local,
+  List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
+
+let text_obj () =
+  let open T in
+  Object Local,
+  [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
+    {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+  ]
+
 
 (* Expressions *)
 
@@ -527,8 +549,8 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp_promote env exp1 in
     let _s, tfs =
       try T.as_obj_sub id.it t1 with Invalid_argument _ ->
-      try T.array_obj (T.as_array_sub t1) with Invalid_argument _ ->
-      try T.text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
+      try array_obj (T.as_array_sub t1) with Invalid_argument _ ->
+      try text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
         error env exp1.at
           "expected object type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
