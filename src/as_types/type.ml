@@ -171,12 +171,11 @@ and cons_field {lab; typ} cs =
 
 and cons_kind k cs =
   match k with
-  | Def (tbs, t)
+  | Def (tbs, t) ->
     cons t (List.fold_right cons_bind tbs cs)
-  | Abs (tbs, t) -> K
+  | Abs (tbs, t) ->
     (* ignore the bound *)
     cs
-
 
 let rec is_closed seen i t =
   match t with
@@ -713,21 +712,21 @@ let trace_rel_typ rel eq t1 t2 =
   | _ -> ()
 
 
-module OpenedEnv = Env.Make (struct type t = con * typ list let compare = compare end)
+module RelEnv = Env.Make (struct type t = con * typ list let compare = compare end)
 
 let rels () =
 
-  let opened = ref OpenedEnv.empty in
+  let opened = ref RelEnv.empty in
 
   let unfold c ts =
     match Con.kind c with
     | Abs _ -> assert false
     | Def (tbs,t) ->
-    match OpenedEnv.find_opt (c,ts) !opened with
+    match RelEnv.find_opt (c,ts) !opened with
     | Some t' -> t'
     | None ->
       let t' = open_ ts t in
-      opened := OpenedEnv.add (c,ts) t' !opened;
+      opened := RelEnv.add (c,ts) t' !opened;
       t'
   in
 
