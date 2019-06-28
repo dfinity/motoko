@@ -25,12 +25,9 @@ let shift_combinable cl cr =
   | _ -> false
 
 let combine_shifts op const = function
-  | I32 I32Op.Shl, ({it = I32 l; _} as cl), I32 I32Op.Shl, I32 r ->
-    Some (I32 I32Op.Shl, {cl with it = I32 (Int32.add l r)})
-  | I32 I32Op.ShrS, ({it = I32 l; _} as cl), I32 I32Op.ShrS, I32 r ->
-    Some (I32 I32Op.ShrS, {cl with it = I32 (Int32.add l r)})
-  | I32 I32Op.ShrU, ({it = I32 l; _} as cl), I32 I32Op.ShrU, I32 r ->
-    Some (I32 I32Op.ShrU, {cl with it = I32 (Int32.add l r)})
+  | I32 opl, ({it = I32 l; _} as cl), I32 opr, I32 r  when opl = opr ->
+    let amount = Int32.add l r in
+    Some (I32 opl, {cl with it = I32 amount})
   | _ -> assert false
 
 
