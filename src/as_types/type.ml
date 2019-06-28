@@ -454,7 +454,7 @@ let reduce tbs t ts =
 let rec normalize = function
   | Con (c, ts) as t ->
     (match Con.kind c with
-    | Def (tbs, t') -> reduce tbs t' ts
+    | Def (tbs, t') -> normalize (reduce tbs t' ts)
     | _ -> t
     )
   | Mut t -> Mut (normalize t)
