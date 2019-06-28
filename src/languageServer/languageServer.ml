@@ -167,7 +167,14 @@ let start () =
        show_message Lsp.MessageType.Info "Language server initialized"
 
     (* Unhandled messages *)
-
+    | (Some id, `CompletionRequest params) ->
+       let position = params.Lsp_t.text_document_position_params_position in
+       let textDocument = params.Lsp_t.text_document_position_params_textDocument in
+       let msg =
+         "Completion requested at: "
+         ^ string_of_int position.Lsp_t.position_line
+         ^ string_of_int position.Lsp_t.position_character in
+       show_message Lsp.MessageType.Info msg
     | _ ->
       log_to_file "unhandled message" raw;
     );
