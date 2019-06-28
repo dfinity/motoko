@@ -24,10 +24,11 @@ let shift_combinable cl cr =
     end
   | _ -> false
 
-let combine_shifts op const = function
-  | I32 opl, ({it = I32 l; _} as cl), I32 opr, I32 r  when opl = opr ->
+let combine_shifts const op = function
+  | I32 opl, ({it = I32 l; _} as cl), I32 opr, I32 r when opl = opr ->
     let amount = Int32.add l r in
-    Some (I32 opl, {cl with it = I32 amount})
+    if Int32.(compare zero amount) = 0 then assert false
+    else [{const with it = Const {cl with it = I32 amount}}; {op with it = Binary (I32 opl)}]
   | _ -> assert false
 
 
@@ -57,13 +58,10 @@ let optimize : instr list -> instr list = fun is ->
     (* Empty block is redundant *)
     | l', ({ it = Block (_, []); _ }) :: r' -> go l' r'
     (* Constant shifts can be combined *)
-    | { it = Binary (I32 I32Op.(Shl|ShrS|ShrU) as opl); _ } :: { it = Const cl; _} :: l',
-      ({ it = Const cr; _ } as const) :: ({ it = Binary opr; _ } as op) :: r'
+    | {it = Binary (I32 I32Op.(Shl|ShrS|ShrU) as opl); _} :: {it = Const cl; _} :: l',
+      ({it = Const cr; _} as const) :: ({it = Binary opr; _} as op) :: r'
         when shift_combinable cl.it cr.it (opl, opr) ->
-      begin match combine_shifts op const (opl, cl, opr, cr.it) with
-      | Some (sh, n) ->  go l' ({ const with it = Const n } :: { op with it = Binary sh } :: r')
-      | None -> go l' r'
-      end
+      go l' (combine_shifts const op (opl, cl, opr, cr.it) @ r')
     (* Look further *)
     | _, i::r' -> go (i::l) r'
     (* Done looking *)
