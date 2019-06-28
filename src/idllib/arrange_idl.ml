@@ -32,7 +32,7 @@ and id i = Atom i.it
 and tag i = Atom ("#" ^ i.it)
 
 let field_tag (tf : typ_field)
-  = tf.it.name.it ^ "(" ^ Int32.to_string tf.it.id ^ ")"
+  = tf.it.name.it ^ "(" ^ Lib.Uint32.to_string tf.it.id ^ ")"
 
 let rec typ_field (tf : typ_field)
   = field_tag tf $$ [typ tf.it.typ]

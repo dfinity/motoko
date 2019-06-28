@@ -2778,15 +2778,9 @@ module Serialization = struct
   *)
   let typ_id : Type.typ -> string = Type.string_of_typ
 
-  let unsigned_compare i1 i2 =
-    (* int32 is signed, but we want unsigned comparision *)
-    if i1 < 0l && i2 >= 0l then 1
-    else if i1 >= 0l && i2 < 0l then -1
-    else compare i1 i2
-
   let sort_by_hash fs =
     List.sort
-      (fun (h1,_) (h2,_) -> unsigned_compare h1 h2)
+      (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
       (List.map (fun f -> (Idllib.IdlHash.idl_hash f.Type.lab, f)) fs)
 
   (* Checks whether the serialization of a given type could contain references *)

@@ -39,7 +39,7 @@ and typ' =
   | PreT   (* pre-type *)
 
 and typ_field = typ_field' Source.phrase
-and typ_field' = { id : int32; name : id; typ : typ }
+and typ_field' = { id : Lib.Uint32.t; name : id; typ : typ }
 
 and typ_meth = typ_meth' Source.phrase
 and typ_meth' = {var : id; meth : typ}
