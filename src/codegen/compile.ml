@@ -368,12 +368,9 @@ let compile_add_const = compile_op_const I32Op.Add
 let compile_sub_const = compile_op_const I32Op.Sub
 let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
-let compile_shrU_const = function
-  | 0l -> G.nop | n -> compile_op_const I32Op.ShrU n
-let compile_shrS_const = function
-  | 0l -> G.nop | n -> compile_op_const I32Op.ShrS n
-let compile_shl_const = function
-  | 0l -> G.nop | n -> compile_op_const I32Op.Shl n
+let compile_shrU_const = compile_op_const I32Op.ShrU
+let compile_shrS_const = compile_op_const I32Op.ShrS
+let compile_shl_const = compile_op_const I32Op.Shl
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
   | 0l -> G.nop | n -> compile_op_const I32Op.Or n
@@ -4550,29 +4547,35 @@ let enforce_16_signed_bits env =
   compile_shl_const 1l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
   enforce_16_unsigned_bits env
 
-let compile_smallInt_kernel env ty name op =
+let compile_smallInt_kernel' env ty name op =
   Func.share_code2 env (UnboxedSmallWord.name_of_type ty name)
     (("a", I32Type), ("b", I32Type)) [I32Type]
     (fun env get_a get_b ->
       let (set_res, get_res) = new_local env "res" in
       get_a ^^ compile_shrS_const 16l ^^
       get_b ^^ compile_shrS_const 16l ^^
-      G.i (Binary (Wasm.Values.I32 op)) ^^
+      op ^^
       set_res ^^ get_res ^^ get_res ^^
       enforce_16_signed_bits env ^^
       get_res ^^ compile_shl_const 16l)
 
-let compile_smallNat_kernel env ty name op =
+let compile_smallInt_kernel env ty name op =
+  compile_smallInt_kernel' env ty name (G.i (Binary (Wasm.Values.I32 op)))
+
+let compile_smallNat_kernel' env ty name op =
   Func.share_code2 env (UnboxedSmallWord.name_of_type ty name)
     (("a", I32Type), ("b", I32Type)) [I32Type]
     (fun env get_a get_b ->
       let (set_res, get_res) = new_local env "res" in
       get_a ^^ compile_shrU_const 16l ^^
       get_b ^^ compile_shrU_const 16l ^^
-      G.i (Binary (Wasm.Values.I32 op)) ^^
+      op ^^
       set_res ^^ get_res ^^
       enforce_16_unsigned_bits env ^^
       get_res ^^ compile_shl_const 16l)
+
+let compile_smallNat_kernel env ty name op =
+  compile_smallNat_kernel' env ty name (G.i (Binary (Wasm.Values.I32 op)))
 
 (* This returns a single StackRep, to be used for both arguments and the
    result. One could imagine operators that require or produce different StackReps,
@@ -4617,32 +4620,12 @@ let rec compile_binop env t op =
                                                        G.i (Binary (Wasm.Values.I32 I32Op.Mul))
   | Type.(Prim Int32),                        MulOp -> compile_Int32_kernel env "mul" I64Op.Mul
   | Type.(Prim Int16),                        MulOp -> compile_smallInt_kernel env Type.Int16 "mul" I32Op.Mul
-  | Type.(Prim Int8),                         MulOp ->
-    Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Int8 "mul")
-      (("a", I32Type), ("b", I32Type)) [I32Type]
-      (fun env get_a get_b ->
-        let (set_res, get_res) = new_local env "res" in
-        get_a ^^ compile_shrS_const 24l ^^
-        get_b ^^ compile_shrS_const 24l ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
-        set_res ^^ get_res ^^ get_res ^^ compile_shl_const 1l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-        compile_bitand_const 0xFFFFFF00l ^^
-        then_arithmetic_overflow env ^^
-        get_res ^^ compile_shl_const 24l)
+  | Type.(Prim Int8),                         MulOp -> compile_smallInt_kernel' env Type.Int8 "mul"
+                                                         (compile_shrS_const 8l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)))
   | Type.(Prim Nat32),                        MulOp -> compile_Nat32_kernel env "mul" I64Op.Mul
   | Type.(Prim Nat16),                        MulOp -> compile_smallNat_kernel env Type.Nat16 "mul" I32Op.Mul
-  | Type.(Prim Nat8),                         MulOp ->
-    Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Nat8 "mul")
-      (("a", I32Type), ("b", I32Type)) [I32Type]
-      (fun env get_a get_b ->
-        let (set_res, get_res) = new_local env "res" in
-        get_a ^^ compile_shrU_const 24l ^^
-        get_b ^^ compile_shrU_const 24l ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
-        set_res ^^ get_res ^^ compile_bitand_const 0xFFFFFF00l ^^
-        then_arithmetic_overflow env ^^
-        get_res ^^ compile_shl_const 24l)
-
+  | Type.(Prim Nat8),                         MulOp -> compile_smallNat_kernel' env Type.Nat8 "mul"
+                                                         (compile_shrU_const 8l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)))
   | Type.(Prim (Nat8|Nat16|Nat32|Word8|Word16|Word32 as ty)), DivOp ->
     G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
     UnboxedSmallWord.msb_adjust ty
