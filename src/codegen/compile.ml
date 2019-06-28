@@ -1027,7 +1027,7 @@ module Tagged = struct
     | _ -> true
 
   (* like branch_with but with type information to statically skip some branches *)
-  let branch_typed_with env ty retty branches =
+  let _branch_typed_with env ty retty branches =
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
   let obj env tag element_instructions : G.t =
@@ -1903,68 +1903,9 @@ module Iterators = struct
     get_x: The thing to put in the closure, and pass to mk_next
 
   Return code that takes the object (array or text) on the stack and puts a
-  closure onto the stack.
+  the iterator onto the stack.
   *)
   let create outer_env name mk_stop mk_next =
-    Func.share_code1 outer_env name ("x", I32Type) [I32Type] (fun env get_x ->
-      (* Register functions as needed *)
-      let next_funid = E.add_fun env (name ^ "_next") (
-        Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
-          let (set_n, get_n) = new_local env "n" in
-          let (set_x, get_x) = new_local env "x" in
-          let (set_ret, get_ret) = new_local env "ret" in
-
-          (* Get pointer to counter from closure *)
-          Closure.get ^^ Closure.load_data 0l ^^
-          MutBox.load ^^ BoxedSmallWord.unbox env ^^ set_n ^^
-
-          (* Get pointer to object in closure *)
-          Closure.get ^^ Closure.load_data 1l ^^ set_x ^^
-
-          get_n ^^
-          (* Get counter end *)
-          mk_stop env get_x ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
-          G.if_ (ValBlockType (Some I32Type))
-            (* Then *)
-            Opt.null
-            (* Else *)
-            begin (* Return stuff *)
-              Opt.inject env (
-                (* Put address of conter on the stack, for the store *)
-                Closure.get ^^ Closure.load_data 0l ^^
-                (* Get value and increase *)
-                mk_next env get_n get_x ^^
-                set_ret ^^ (* put return value aside *)
-                (* Advance counter *)
-                get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-                BoxedSmallWord.box env ^^ MutBox.store ^^
-                (* Return new value *)
-                get_ret)
-            end
-        )
-      ) in
-
-      let iter_funid = E.add_fun env (name ^ "_iter") (
-        Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
-          (* closure for the function *)
-          let (set_ni, get_ni) = new_local env "next" in
-          Closure.fixed_closure env next_funid
-            [ Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
-            ;  Closure.get ^^ Closure.load_data 0l
-            ] ^^
-          set_ni ^^
-
-          Object.lit_raw env
-            [ "next", fun _ -> get_ni ]
-        )
-      ) in
-
-      (* Now build the closure *)
-      Closure.fixed_closure env iter_funid [ get_x ]
-    )
-
-  let create_direct outer_env name mk_stop mk_next =
     Func.share_code1 outer_env name ("x", I32Type) [I32Type] (fun env get_x ->
       (* Register functions as needed *)
       let next_funid = E.add_fun env (name ^ "_next") (
@@ -2133,18 +2074,7 @@ module Text = struct
       )
 
   let text_chars_direct env =
-    Iterators.create_direct env "text_chars_direct"
-      (fun env get_x -> get_x ^^ Heap.load_field len_field)
-      (fun env get_i get_x ->
-          let (set_char, get_char) = new_local env "char" in
-          get_x ^^ payload_ptr_unskewed ^^
-          get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          UnboxedSmallWord.len_UTF8_head env set_char ^^
-          get_char ^^ UnboxedSmallWord.box_codepoint
-      )
-
-  let text_chars env =
-    Iterators.create env "text_chars"
+    Iterators.create env "text_chars_direct"
       (fun env get_x -> get_x ^^ Heap.load_field len_field)
       (fun env get_i get_x ->
           let (set_char, get_char) = new_local env "char" in
@@ -2173,15 +2103,6 @@ module Text = struct
         end ^^
       get_len ^^
       BigNum.from_word32 env
-    )
-
-  let partial_len env =
-    Func.share_code1 env "text_len_partial" ("x", I32Type) [I32Type] (fun env get_x ->
-      let funid = E.add_fun env "text_len_clos" (Func.of_body env ["clos", I32Type] [I32Type] (fun env ->
-        Closure.get ^^ Closure.load_data 0l ^^
-        len env
-      )) in
-      Closure.fixed_closure env funid [ get_x ]
     )
 
   let prim_showChar env =
@@ -2276,63 +2197,11 @@ module Arr = struct
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
-  let partial_get env =
-    Func.share_code1 env "array_get_partial" ("x", I32Type) [I32Type] (fun env get_x ->
-      let funid = E.add_fun env "array_get" (Func.of_body env ["clos", I32Type; "idx", I32Type] [I32Type] (fun env1 ->
-        let get_idx = G.i (LocalGet (nr 1l)) in
-        Closure.get ^^ Closure.load_data 0l ^^
-        get_idx ^^ BigNum.to_word32 env1 ^^
-        idx env1 ^^
-        load_ptr
-      )) in
-      Closure.fixed_closure env funid [ get_x ]
-    )
-
-  let partial_set env =
-    Func.share_code1 env "array_set_partial" ("x", I32Type) [I32Type] (fun env get_x ->
-      let funid = E.add_fun env "array_set" (Func.of_body env ["clos", I32Type; "idx", I32Type; "val", I32Type] [] (fun env1 ->
-        let get_idx = G.i (LocalGet (nr 1l)) in
-        let get_val = G.i (LocalGet (nr 2l)) in
-        Closure.get ^^ Closure.load_data 0l ^^
-        get_idx ^^ BigNum.to_word32 env1 ^^
-        idx env1 ^^
-        get_val ^^
-        store_ptr
-      )) in
-      Closure.fixed_closure env funid [ get_x ]
-    )
-
-  let partial_len env =
-    Func.share_code1 env "array_len_partial" ("x", I32Type) [I32Type] (fun env get_x ->
-      let funid = E.add_fun env "array_len" (Func.of_body env ["clos", I32Type] [I32Type] (fun env1 ->
-        Closure.get ^^ Closure.load_data 0l ^^
-        Heap.load_field len_field ^^
-        BigNum.from_word32 env1
-      )) in
-      Closure.fixed_closure env funid [ get_x ]
-    )
-
   (* Compile an array literal. *)
   let lit env element_instructions =
     Tagged.obj env Tagged.Array
      ([ compile_unboxed_const (Wasm.I32.of_int_u (List.length element_instructions))
       ] @ element_instructions)
-
-  let keys_iter env =
-    Iterators.create env "array_keys"
-      (fun env get_x -> get_x ^^ Heap.load_field len_field)
-      (fun env get_i get_x ->
-        compile_unboxed_const 1l ^^ (* advance by one *)
-        get_i ^^ BigNum.from_word32 env (* return the boxed index *)
-      )
-
-  let vals_iter env =
-    Iterators.create env "array_vals"
-      (fun env get_x -> get_x ^^ Heap.load_field len_field)
-      (fun env get_i get_x ->
-        compile_unboxed_const 1l ^^ (* advance by one *)
-        get_x ^^ get_i ^^ idx env ^^ load_ptr (* return the element *)
-      )
 
   (* Does not initialize the fields! *)
   let alloc env =
@@ -4849,30 +4718,8 @@ let compile_relop env t op =
     compile_comparison env t1 op1
   | _ -> todo_trap env "compile_relop" (Arrange_ops.relop op)
 
-(* compile_load_field implements the various “virtual fields”, which
-   we currently have for arrays and text.
-   It goes through branch_typed_with, which does a dynamic check of the
-   heap object type *)
 let compile_load_field env typ name =
-  let branches =
-    ( Tagged.Object, Object.load_idx env typ name ) ::
-    match name with
-    | "len" ->
-      [ Tagged.Array, Arr.partial_len env
-      ; Tagged.Text, Text.partial_len env ]
-    | "get" ->
-      [ Tagged.Array, Arr.partial_get env ]
-    | "set" ->
-      [ Tagged.Array, Arr.partial_set env ]
-    | "keys" ->
-      [ Tagged.Array, Arr.keys_iter env ]
-    | "vals" ->
-      [ Tagged.Array, Arr.vals_iter env ]
-    | "chars" ->
-      [ Tagged.Text, Text.text_chars env ]
-    | _ -> []
-    in
-  Tagged.branch_typed_with env typ (ValBlockType (Some I32Type)) branches
+  Object.load_idx env typ name
 
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
@@ -4908,7 +4755,7 @@ and compile_exp (env : E.t) ae exp =
   | DotE (e, name) ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
-    compile_load_field env e.note.note_typ name
+    Object.load_idx env e.note.note_typ name
   | ActorDotE (e, name) ->
     SR.UnboxedReference,
     compile_exp_as env ae SR.UnboxedReference e ^^
