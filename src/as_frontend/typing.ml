@@ -174,7 +174,7 @@ and check_typ' env typ : T.typ =
     let ts = List.map (check_typ env) typs in
     let (T.Def(tbs,_) | T.Abs(tbs, _)) = Con.kind c in
     let tbs = List.map (fun {T.var;T.bound} -> {T.var;bound = T.open_ ts bound}) tbs in
-    check_typ_bounds env tbs typs typ.at;
+    check_typ_bounds env tbs ts typs typ.at;
     T.Con (c, ts)
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
@@ -283,29 +283,31 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Sc
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
   cs, ts, te, T.ConSet.of_list cs
 
-and check_typ_bounds env (tbs : T.bind list) (typs:typ list) at : unit =
+and check_typ_bounds env (tbs : T.bind list) (ts: T.typ list) typs at: unit =
   let pars = List.length tbs in
-  let args = List.length typs in
+  let args = List.length ts in
   if pars > args then
     error env at "too few type arguments";
   if pars < args then
     error env at "too many type arguments";
-  let ts = List.map (fun typ -> typ.note) typs in
-  List.iter2
-    (fun tb typ ->
-      let t = typ.note in
+  let rec go tbs' ts' typ' =
+    match tbs', ts', typ' with
+    | tb::tbs', t::ts', typ::typs' ->
       if not env.pre then
         let u = T.open_ ts tb.T.bound in
         if not (T.sub t u) then
           local_error env typ.at
             "type argument\n  %s\ndoes not match parameter bound\n  %s"
-            (T.string_of_typ_expand typ.note)
-            (T.string_of_typ_expand u)
-    ) tbs typs
+            (T.string_of_typ_expand t)
+            (T.string_of_typ_expand u);
+        go tbs' ts' typs'
+    | [],[],[] -> ()
+    | _  -> assert false
+  in go tbs ts typs
 
 and check_inst_bounds env tbs typs at =
   let ts = List.map (check_typ env) typs in
-  check_typ_bounds env tbs typs at;
+  check_typ_bounds env tbs ts typs at;
   ts
 
 (* Literals *)
