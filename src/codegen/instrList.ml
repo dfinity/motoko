@@ -11,23 +11,18 @@ open Wasm.Ast
 open Wasm.Source
 open Wasm.Values
 
-let shift_combinable cl cr =
-  function
-  | I32 I32Op.Shl, I32 I32Op.Shl
-  | I32 I32Op.ShrS, I32 I32Op.ShrS
-  | I32 I32Op.ShrU, I32 I32Op.ShrU ->
-    begin match cl, cr with
-    | I32 cl, I32 cr ->
-      let l, r = Int32.(to_int cl, to_int cr) in
-      l >= 0 && l < 32 && r >= 0 && r < 32 && l + r < 32
-    | _ -> assert false
-    end
-  | _ -> false
-
 let combine_shifts const op = function
-  | I32 opl, ({it = I32 l; _} as cl), I32 opr, I32 r when opl = opr ->
-    [{const with it = Const {cl with it = I32 (Int32.add l r)}}; {op with it = Binary (I32 opl)}]
-  | _ -> assert false
+  | I32 opl, ({it = I32 l'; _} as cl), I32 opr, I32 r' when opl = opr ->
+    let l, r = Int32.(to_int l', to_int r') in
+    if (l >= 0 && l < 32 && r >= 0 && r < 32 && l + r < 32) then
+      Some [{const with it = Const {cl with it = I32 (Int32.add l' r')}}; {op with it = Binary (I32 opl)}]
+    else None
+  | _ -> None
+
+module Option = struct
+  let is_some = function None -> false | _ -> true
+  let get = function None -> assert false | Some x -> x
+end
 
 (* Some simple peephole optimizations, to make the output code look less stupid *)
 (* This uses a zipper.*)
@@ -57,8 +52,8 @@ let optimize : instr list -> instr list = fun is ->
     (* Constant shifts can be combined *)
     | {it = Binary (I32 I32Op.(Shl|ShrS|ShrU) as opl); _} :: {it = Const cl; _} :: l',
       ({it = Const cr; _} as const) :: ({it = Binary opr; _} as op) :: r'
-        when shift_combinable cl.it cr.it (opl, opr) ->
-      go l' (combine_shifts const op (opl, cl, opr, cr.it) @ r')
+        when Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
+      go l' (Option.get (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
       go l' r'
