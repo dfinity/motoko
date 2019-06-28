@@ -26,9 +26,7 @@ let shift_combinable cl cr =
 
 let combine_shifts const op = function
   | I32 opl, ({it = I32 l; _} as cl), I32 opr, I32 r when opl = opr ->
-    let amount = Int32.add l r in
-    if Int32.(compare zero amount) = 0 then assert false
-    else [{const with it = Const {cl with it = I32 amount}}; {op with it = Binary (I32 opl)}]
+    [{const with it = Const {cl with it = I32 (Int32.add l r)}}; {op with it = Binary (I32 opl)}]
   | _ -> assert false
 
 
@@ -62,6 +60,9 @@ let optimize : instr list -> instr list = fun is ->
       ({it = Const cr; _} as const) :: ({it = Binary opr; _} as op) :: r'
         when shift_combinable cl.it cr.it (opl, opr) ->
       go l' (combine_shifts const op (opl, cl, opr, cr.it) @ r')
+    (* Null shifts can be eliminated *)
+    | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
+      go l' r'
     (* Look further *)
     | _, i::r' -> go (i::l) r'
     (* Done looking *)

@@ -368,12 +368,9 @@ let compile_add_const = compile_op_const I32Op.Add
 let compile_sub_const = compile_op_const I32Op.Sub
 let compile_mul_const = compile_op_const I32Op.Mul
 let compile_divU_const = compile_op_const I32Op.DivU
-let compile_shrU_const = function
-  | 0l -> G.nop | n -> compile_op_const I32Op.ShrU n
-let compile_shrS_const = function
-  | 0l -> G.nop | n -> compile_op_const I32Op.ShrS n
-let compile_shl_const = function
-  | 0l -> G.nop | n -> compile_op_const I32Op.Shl n
+let compile_shrU_const = compile_op_const I32Op.ShrU
+let compile_shrS_const = compile_op_const I32Op.ShrS
+let compile_shl_const = compile_op_const I32Op.Shl
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
   | 0l -> G.nop | n -> compile_op_const I32Op.Or n
