@@ -80,7 +80,13 @@ and exp' at note = function
     (text_dotE  x.it (exp e)).it
   | S.DotE (e, x) ->
     let n = x.it in
-    begin match T.as_obj_sub x.it e.note.S.note_typ with
+    begin match
+      (* TODO: separate array and text accessors *)
+      try T.as_obj_sub x.it e.note.S.note_typ with Invalid_argument _ ->
+      try T.array_obj (T.as_array_sub e.note.S.note_typ) with Invalid_argument _ ->
+      try T.text_obj (T.as_prim_sub T.Text e.note.S.note_typ) with Invalid_argument _ ->
+        assert false
+    with
     | T.Actor, _ -> I.ActorDotE (exp e, n)
     | _ -> I.DotE (exp e, n)
     end

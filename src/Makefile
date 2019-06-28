@@ -47,3 +47,11 @@ didc:
 clean:
 	rm -f asc as-ide as-ld asc.js didc
 	dune clean
+
+test: $(NAME)
+	make -C ../test ASC=$(ASC) all
+	make -C ../stdlib ASC=$(ASC) all
+	make -C ../samples ASC=$(ASC) all
+
+test-quick: $(NAME)
+	make -C ../test ASC=$(ASC) quick
