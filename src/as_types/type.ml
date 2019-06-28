@@ -919,7 +919,6 @@ let eq_kind k1 k2 : bool =
   let eq = ref S.empty in
   eq_kind eq k1 k2
 
-
 (* Least upper bound and greatest lower bound *)
 
 let rec lub' lubs glbs t1 t2 =
