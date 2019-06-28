@@ -117,11 +117,16 @@ let start () =
     (* Request messages *)
 
     | (Some id, `Initialize params) ->
-        client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
+       client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
+       let completion_options =
+         Lsp_t.{ completion_options_resolveProvider = Some(false);
+                 completion_options_triggerCharacters = Some(["."])
+         } in
         let result = `Initialize (Lsp_t.{
           initialize_result_capabilities = {
             server_capabilities_textDocumentSync = 1;
             server_capabilities_hoverProvider = Some true;
+            server_capabilities_completionProvider = Some completion_options;
           }
         }) in
         let response = response_result_message id result in
@@ -166,15 +171,14 @@ let start () =
     | (None, `Initialized _) ->
        show_message Lsp.MessageType.Info "Language server initialized"
 
-    (* Unhandled messages *)
     | (Some id, `CompletionRequest params) ->
        let position = params.Lsp_t.text_document_position_params_position in
        let textDocument = params.Lsp_t.text_document_position_params_textDocument in
-       let msg =
-         "Completion requested at: "
-         ^ string_of_int position.Lsp_t.position_line
-         ^ string_of_int position.Lsp_t.position_character in
-       show_message Lsp.MessageType.Info msg
+       let completion_item lbl = Lsp_t.{ completion_item_label = lbl } in
+       let result = `CompletionResponse [ completion_item "hello" ] in
+       let response = response_result_message id result in
+       send_response (Lsp_j.string_of_response_message response);
+    (* Unhandled messages *)
     | _ ->
       log_to_file "unhandled message" raw;
     );

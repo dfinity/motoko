@@ -70,6 +70,7 @@ type response_message = {
 type response_result = [
     Initialize <json name="initialize"> of initialize_result
   | TextDocumentHoverResponse <json name="textDocument/hover"> of hover_result
+  | CompletionResponse <json name="textDocument/completion"> of completion_item list
 ]
 
 type hover_result = {
@@ -77,6 +78,8 @@ type hover_result = {
 }
 <ocaml field_prefix="hover_result_">
 
+type completion_item = { label : string; }
+<ocaml field_prefix="completion_item_">
 
 (* Outgoing notifications *)
 
@@ -224,10 +227,17 @@ type initialize_result = {
 }
 <ocaml field_prefix="initialize_result_">
 
+type completion_options = {
+  ?resolveProvider : bool nullable;
+  ?triggerCharacters : string list nullable;
+}
+<ocaml field_prefix="completion_options_">
+
 (* FIXME: incomplete *)
 type server_capabilities = {
   textDocumentSync : int;
   ?hoverProvider : bool nullable;
+  ?completionProvider : completion_options nullable;
 }
 <ocaml field_prefix="server_capabilities_">
 
