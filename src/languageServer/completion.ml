@@ -1,6 +1,6 @@
-open As_frontend
 open As_types
-open Printf
+open As_frontend
+module Lsp_t = Lsp.Lsp_t
 
 module Index = Map.Make(String)
 type completion_index = (string list) Index.t
@@ -49,10 +49,10 @@ let string_of_index index =
          ^ string_of_list Base.Fn.id decls
          ^ "\n")
 
-(* Given a filepath, parse figure out under what names what modules
-   have been imported. Normalizes the imported modules filepaths
-   relative to the project root *)
-let find_imported_modules path =
+(* Given the source of a module, figure out under what names what
+   modules have been imported. Normalizes the imported modules
+   filepaths relative to the project root *)
+let find_imported_modules file =
   [("List", "lib/ListLib.as")]
 
 (* Given a source file and a cursor position in that file, figure out
@@ -63,25 +63,37 @@ let find_imported_modules path =
 let find_completion_prefix path position =
   "List."
 
-let completions (* index *) path position =
+(* TODO(Christoph): Don't recompute the index whenever completions are
+   requested *)
+let completions (* index *) logger file line column =
   let index = make_index () in
-  let imported = find_imported_modules path in
-  let prefix = find_completion_prefix path position in
-  let module_name =
-    prefix
-    |> Base.String.chop_suffix ~suffix:"."
-    |> Base.Option.value ~default:prefix in
-  let module_path = imported |> List.find_opt (fun (mn, _) -> String.equal mn module_name) in
-  let index_keys =
-    Index.bindings index
-    |> List.map fst
-    |> string_of_list Base.Fn.id in
-  match module_path with
-  | Some mp ->
-     (match Index.find_opt (snd mp) index with
-      | Some decls -> decls
-      | None -> ["ERROR: Couldn't find module in index: " ^ index_keys])
-  | None -> [ "ERROR: Couldnt' find module for prefix: " ^ module_name ]
+  let imported = find_imported_modules file in
+  match find_completion_prefix logger file line column with
+  | None -> [ "ERROR: Couldn't determine completion prefix "]
+  | Some prefix ->
+     let module_path =
+       imported
+       |> List.find_opt (fun (mn, _) -> String.equal mn prefix) in
+     let index_keys =
+       Index.bindings index
+       |> List.map fst
+       |> string_of_list Base.Fn.id in
+     match module_path with
+     | Some mp ->
+        (match Index.find_opt (snd mp) index with
+         | Some decls ->
+            decls
+         | None ->
+            [ "ERROR: Couldn't find module in index: " ^ index_keys ])
+     | None ->
+        [ "ERROR: Couldn't find module for prefix: " ^ prefix ]
+
+let completion_handler logger file position =
+  let line = position.Lsp_t.position_line in
+  let column = position.Lsp_t.position_character in
+  let completion_item lbl = Lsp_t.{ completion_item_label = lbl } in
+  `CompletionResponse
+    (List.map completion_item (completions logger file line column))
 
 let complete_test () =
-  make_index () |> string_of_index |> printf "%s\n"
+  make_index () |> string_of_index |> Printf.printf "%s\n"
