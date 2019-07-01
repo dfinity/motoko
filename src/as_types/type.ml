@@ -1010,7 +1010,7 @@ let string_of_sharing = function
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
   | Any -> "Any"
-  | Non -> "Non"
+  | Non -> "None"
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
   | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)

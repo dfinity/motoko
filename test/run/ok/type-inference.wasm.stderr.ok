@@ -1,8 +1,4 @@
 compile_lit: (FloatLit 5.1)
-compile_binop: AddOp
-of_type: Non
-compile_binop: MulOp
-of_type: Non
 type-inference.as:10.9-10.28: warning, this if has type Shared because branches have inconsistent types,
 true produces
   Bool
