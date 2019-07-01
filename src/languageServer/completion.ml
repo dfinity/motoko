@@ -58,10 +58,35 @@ let find_imported_modules file =
 (* Given a source file and a cursor position in that file, figure out
    the prefix relevant to searching completions. For example, given:
 
-   List.| (where | is the cursor) return `List.`
- *)
-let find_completion_prefix path position =
-  "List."
+   List.| (where | is the cursor) return `List.` *)
+let find_completion_prefix logger file line column =
+  let lexbuf = Lexing.from_string file in
+  let next () = Lexer.token Lexer.Normal lexbuf in
+  let rec loop = function
+    | Parser.ID ident ->
+        (match next () with
+        | Parser.DOT ->
+            (match next () with
+            | Parser.EOF -> Some ident
+            | tkn ->
+               let position = (Lexer.region lexbuf).Source.left in
+               let _ =
+                 logger
+                   "completion_prefix"
+                   (Printf.sprintf
+                      "%d:%d::%s\n"
+                      position.Source.line
+                      position.Source.column
+                      ident) in
+               if position.Source.line > line
+                  || (position.Source.line = line
+                      && position.Source.column >= column)
+               then Some ident
+               else loop tkn)
+        | tkn -> loop tkn)
+    | Parser.EOF -> None
+    | _ -> loop (next ()) in
+  loop (next ())
 
 (* TODO(Christoph): Don't recompute the index whenever completions are
    requested *)
