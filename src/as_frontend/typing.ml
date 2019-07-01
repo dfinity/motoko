@@ -357,7 +357,6 @@ let infer_lit env lit at : T.prim =
 
 let check_lit env t lit at =
   match T.normalize t, !lit with
-  | T.Opt _, NullLit -> ()
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
     lit := NatLit (check_nat env at s)
   | T.Prim T.Nat8, PreLit (s, T.Nat) ->
