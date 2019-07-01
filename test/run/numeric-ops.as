@@ -1,3 +1,16 @@
+assert ((3 : Nat8) ** (5 : Nat8) == (243 : Nat8));
+assert ((3 : Nat8) ** (0 : Nat8) == (1 : Nat8));
+assert ((1 : Nat8) ** (255 : Nat8) == (1 : Nat8));
+
+//printInt (102 ** 127); print "\n";
+//assert false;
+
+for (n in range(0, 255)) {
+    for (exp in range(0, 255)) {
+    }
+};
+//assert false;
+
 // Testing utility
 
 // expects 2 elements in results for each one in etalon

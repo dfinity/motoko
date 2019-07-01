@@ -4686,6 +4686,7 @@ let rec compile_binop env t op =
     Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
       (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
+        let (set_res, get_res) = new_local env "res" in
         get_exp ^^
         G.if_ (ValBlockType (Some I32Type))
           begin
@@ -4699,7 +4700,9 @@ let rec compile_binop env t op =
                 get_n ^^ UnboxedSmallWord.lsb_adjust ty ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^
                 snd (compile_binop env Type.(Prim Word32) PowOp) ^^
-                UnboxedSmallWord.msb_adjust ty
+                set_res ^^ get_res ^^
+                compile_bitand_const 0xFFFFFF00l ^^ then_arithmetic_overflow env ^^
+                get_res ^^ UnboxedSmallWord.msb_adjust ty
               end
               get_n (* n@{0,1} ** (1+exp) == n *)
           end
