@@ -81,6 +81,12 @@ let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
   }
 
 let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
+let file_from_uri logger uri =
+  match Base.String.chop_prefix ~prefix:file_uri_prefix uri with
+   | Some file -> file
+   | None ->
+      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
+      uri
 
 let start () =
   let oc: out_channel = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"; in
@@ -151,25 +157,19 @@ let start () =
     | (_, `TextDocumentDidSave params) ->
        let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
-       (match Base.String.chop_prefix ~prefix:file_uri_prefix uri with
-        | Some file_name -> begin
-           let result = Pipeline.check_files [file_name] in
-           show_message Lsp.MessageType.Info ("Compiling file: " ^ file_name);
-          let msgs = match result with
-            | Error msgs' -> msgs'
-            | Ok (_, msgs') -> msgs' in
-          Base.Option.iter !client_capabilities ~f:(fun capabilities ->
-            (* TODO: determine if the client accepts diagnostics with related info *)
-            (* let textDocument = capabilities.client_capabilities_textDocument in
-            * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
-            let diags = List.map diagnostics_of_message msgs in
-            publish_diagnostics uri diags;
-          );
-          end
-        | None ->
-           log_to_file
-             "error"
-             ("Failed to strip filename from: " ^ uri));
+       let file_name = file_from_uri log_to_file uri in
+       let result = Pipeline.check_files [file_name] in
+       show_message Lsp.MessageType.Info ("Compiling file: " ^ file_name);
+       let msgs = match result with
+         | Error msgs' -> msgs'
+         | Ok (_, msgs') -> msgs' in
+       Base.Option.iter !client_capabilities ~f:(fun _ ->
+           (* TODO: determine if the client accepts diagnostics with related info *)
+           (* let textDocument = capabilities.client_capabilities_textDocument in
+           * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
+           let diags = List.map diagnostics_of_message msgs in
+           publish_diagnostics uri diags;
+         );
 
     (* Notification messages *)
 
