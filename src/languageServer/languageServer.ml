@@ -92,6 +92,8 @@ let start () =
 
   let client_capabilities = ref None in
 
+  let vfs = ref Vfs.empty in
+
   let rec loop () =
     let clength = read_line () in
     log_to_file "content-length" clength;
@@ -142,7 +144,10 @@ let start () =
         }) in
         let response = response_result_message id result in
         send_response (Lsp_j.string_of_response_message response);
-
+    | (_, `TextDocumentDidOpen params) ->
+       vfs := Vfs.open_file params !vfs
+    | (_, `TextDocumentDidChange params) ->
+       vfs := Vfs.update_file params !vfs
     | (_, `TextDocumentDidSave params) ->
        let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in

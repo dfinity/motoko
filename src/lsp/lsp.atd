@@ -112,8 +112,16 @@ type text_document_did_open_params = {
 
 type text_document_did_change_params = {
   textDocument : versioned_text_document_identifier;
+  contentChanges : text_document_content_change_event list
 }
 <ocaml field_prefix="text_document_did_change_params_">
+
+type text_document_content_change_event = {
+  ?range: range option;
+  ?rangeLength: int option;
+  text: string;
+}
+<ocaml field_prefix="text_document_content_change_event_">
 
 type text_document_did_close_params = {
   textDocument : text_document_identifier;
