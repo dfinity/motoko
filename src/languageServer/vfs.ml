@@ -10,10 +10,6 @@ type uri = string
 
 let empty = VfsStore.empty
 
-let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
-let file_from_uri uri =
-  Base.String.chop_prefix ~prefix:file_uri_prefix uri
-
 let open_file did_open_params vfs =
   let text_document_item =
     did_open_params
@@ -41,8 +37,12 @@ let update_file did_change_params =
   let uri =
     did_change_params
       .Lsp_t.text_document_did_change_params_textDocument
-      .Lsp_t.versioned_text_document_identifier_uri
-  in
+      .Lsp_t.versioned_text_document_identifier_uri in
   VfsStore.add uri new_content
 
-let close_file uri = VfsStore.remove uri
+let close_file did_close_params =
+  let uri =
+    did_close_params
+      .Lsp_t.text_document_did_close_params_textDocument
+      .Lsp_t.text_document_identifier_uri in
+  VfsStore.remove uri

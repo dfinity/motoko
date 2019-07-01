@@ -19,4 +19,4 @@ val read_file: uri -> t -> virtual_file option
 val update_file: Lsp_t.text_document_did_change_params -> t -> t
 
 (** Removes a file from the vfs *)
-val close_file: uri -> t -> t
+val close_file: Lsp_t.text_document_did_close_params -> t -> t

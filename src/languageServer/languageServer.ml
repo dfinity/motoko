@@ -154,6 +154,8 @@ let start () =
        vfs := Vfs.open_file params !vfs
     | (_, `TextDocumentDidChange params) ->
        vfs := Vfs.update_file params !vfs
+    | (_, `TextDocumentDidClose params) ->
+       vfs := Vfs.close_file params !vfs
     | (_, `TextDocumentDidSave params) ->
        let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
