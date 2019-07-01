@@ -35,5 +35,3 @@ the previous produce type
   Text
 type-inference.as:25.9-25.18: warning, this array has type [Shared] because elements have inconsistent types
 type-inference.as:26.9-26.24: warning, this array has type [Any] because elements have inconsistent types
-type-inference.as:84.13-84.16: type error, expected iterable type, but expression has type
-  Non

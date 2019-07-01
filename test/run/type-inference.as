@@ -62,13 +62,13 @@ let a =
 
 type Top = Any;
 func top(top : Top) {
-  switch top {
-    case 1 ();
-    case true ();
-    case null ();
-    case _ ();
-  };
+  let _ = [1, top];
+  let _ = [true, top];
+  let _ = [null, top];
+  let _ = ["", top];
+  let _ = [top, top];
 };
+
 
 // Bottom Type
 {

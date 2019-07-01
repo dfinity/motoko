@@ -118,7 +118,7 @@ let check_shared env at t =
     "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
 
 let check_concrete env at t =
-  check env at (T.is_concrete t)
+  check env at (T.concrete t)
     "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
 
 let rec check_typ env typ : unit =
@@ -356,7 +356,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       let t1 = typ exp1 in
       let sort, tfs =
         (* TODO: separate array and text accessors *)
-        try T.as_obj_sub n t1 with Invalid_argument _ ->
+        try T.as_obj_sub [n] t1 with Invalid_argument _ ->
         try T.array_obj (T.as_array_sub t1) with Invalid_argument _ ->
         try T.text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
           error env exp1.at "expected object type, but expression produces type\n  %s"
@@ -561,7 +561,7 @@ and check_cases env t_pat t cases =
 
 and check_case env t_pat t {it = {pat; exp}; _} =
   let ve = check_pat env pat in
-  check_sub env pat.at pat.note t_pat;
+  check_sub env pat.at t_pat pat.note;
   check_exp (adjoin_vals env ve) exp;
   check env pat.at (T.sub (typ exp) t) "bad case"
 
@@ -613,7 +613,7 @@ and check_pat env pat : val_env =
   | WildP -> T.Env.empty
   | VarP id -> T.Env.singleton id pat.note
   | LitP NullLit ->
-    T.Prim T.Null <: t;
+    t <: T.Opt T.Any;
     T.Env.empty
   | LitP lit ->
     let t1 = T.Prim (type_lit env lit pat.at) in
@@ -632,9 +632,9 @@ and check_pat env pat : val_env =
     let ve = check_pat env pat1 in
     t <: T.Opt pat1.note;
     ve
-  | TagP (i, pat1) ->
+  | TagP (l, pat1) ->
     let ve = check_pat env pat1 in
-    T.Variant [{T.lab = i; typ = pat1.note}] <: t;
+    check_pat_tag env t l pat1;
     ve
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in
@@ -658,11 +658,15 @@ and check_pat_fields env t = List.iter (check_pat_field env t)
 and check_pat_field env t (pf : pat_field) =
   let lab = pf.it.name in
   let tf = T.{lab; typ=pf.it.pat.note} in
-  let s, tfs = T.as_obj_sub lab t in
+  let s, tfs = T.as_obj_sub [lab] t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
   if T.is_mut (Lib.Option.value (T.lookup_val_field lab tfs)) then
     error env pf.it.pat.at "cannot match mutable field %s" lab
+
+and check_pat_tag env t l pat =
+  let (<:) = check_sub env pat.at in
+  Lib.Option.value (T.lookup_val_field l (T.as_variant_sub l t)) <: pat.note
 
 (* Objects *)
 

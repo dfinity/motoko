@@ -27,8 +27,7 @@ let falseE : Ir.exp = boolE false
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
-  | NegOp, NatLit n -> NatLit (Value.Nat.sub Value.Nat.zero n)
-  | NegOp, IntLit n -> IntLit (Value.Int.sub Value.Int.zero n)
+  | NegOp, (NatLit n | IntLit n) -> IntLit (Value.Int.sub Value.Int.zero n)
   | NegOp, Int8Lit n -> Int8Lit (Value.Int_8.sub Value.Int_8.zero n)
   | NegOp, Int16Lit n -> Int16Lit (Value.Int_16.sub Value.Int_16.zero n)
   | NegOp, Int32Lit n -> Int32Lit (Value.Int_32.sub Value.Int_32.zero n)
@@ -78,7 +77,7 @@ and exp' at note = function
     let n = x.it in
     begin match
       (* TODO: separate array and text accessors *)
-      try T.as_obj_sub x.it e.note.S.note_typ with Invalid_argument _ ->
+      try T.as_obj_sub [x.it] e.note.S.note_typ with Invalid_argument _ ->
       try T.array_obj (T.as_array_sub e.note.S.note_typ) with Invalid_argument _ ->
       try T.text_obj (T.as_prim_sub T.Text e.note.S.note_typ) with Invalid_argument _ ->
         assert false

@@ -67,6 +67,8 @@ let value_of_lit = function
   | PreLit _ -> assert false
 
 
+let (&&&) = (&&) (* No short-cutting *)
+
 let skip_pat pat sets =
   sets.alts <- AtSet.add pat.at sets.alts;
   true
@@ -79,7 +81,7 @@ let rec match_pat ctxt desc pat t sets =
   | LitP lit ->
     match_lit ctxt desc (value_of_lit !lit) t sets
   | SignP (op, lit) ->
-    let f = Operator.unop op pat.note in
+    let f = Operator.unop op (Operator.type_unop op pat.note) in
     match_lit ctxt desc (f (value_of_lit !lit)) t sets
   | TupP pats ->
     let ts = Type.as_tup (Type.promote t) in
@@ -90,19 +92,13 @@ let rec match_pat ctxt desc pat t sets =
       | _ -> assert false
     in match_tup ctxt [] descs pats ts sets
   | ObjP pfs ->
-    let t' = Type.promote t in
-    let sensible (pf : pat_field) =
-      List.exists (fun {Type.lab; _} -> pf.it.id.it = lab) (snd (Type.as_obj_sub pf.it.id.it t')) in
-    let pfs' = List.filter sensible pfs in
-    let tf_of_pf (pf : pat_field) =
-      List.find (fun {Type.lab; _} -> pf.it.id.it = lab) (snd (Type.as_obj_sub pf.it.id.it t')) in
-    let tfs' = List.map tf_of_pf pfs' in
+    let _, tfs = Type.as_obj (Type.promote t) in
     let descs =
       match desc with
       | Obj descs -> descs
-      | Any -> List.map (fun _ -> Any) pfs'
+      | Any -> List.map (fun _ -> Any) pfs
       | _ -> assert false
-    in match_obj ctxt [] descs pfs' tfs' sets
+    in match_obj ctxt [] descs pfs tfs sets
   | OptP pat1 ->
     let t' = Type.as_opt (Type.promote t) in
     (match desc with
@@ -113,7 +109,7 @@ let rec match_pat ctxt desc pat t sets =
     | Opt desc' ->
       match_pat (InOpt ctxt) desc' pat1 t' sets
     | Any ->
-      fail ctxt (Val Value.Null) sets &&
+      fail ctxt (Val Value.Null) sets &&&
       match_pat (InOpt ctxt) Any pat1 t' sets
     | _ -> assert false
     )
@@ -127,15 +123,19 @@ let rec match_pat ctxt desc pat t sets =
       else if Type.span t = Some (TagSet.cardinal ls + 1) then
         match_pat (InTag (ctxt, id.it)) Any pat1 t' sets
       else
-        fail ctxt (NotTag (TagSet.add id.it ls)) sets &&
+        fail ctxt (NotTag (TagSet.add id.it ls)) sets &&&
         match_pat (InTag (ctxt, id.it)) Any pat1 t' sets
     | Tag (desc', l) ->
-      if id.it <> l
-      then fail ctxt desc sets
-      else match_pat (InTag (ctxt, l)) desc' pat1 t' sets
+      if id.it = l then
+        match_pat (InTag (ctxt, l)) desc' pat1 t' sets
+      else
+        fail ctxt desc sets
     | Any ->
-      fail ctxt (NotTag (TagSet.singleton id.it)) sets &&
-      match_pat (InTag (ctxt, id.it)) Any pat1 t' sets
+      if Type.span t = Some 1 then
+        match_pat (InTag (ctxt, id.it)) Any pat1 t' sets
+      else
+        fail ctxt (NotTag (TagSet.singleton id.it)) sets &&&
+        match_pat (InTag (ctxt, id.it)) Any pat1 t' sets
     | _ -> assert false
     )
   | AltP (pat1, pat2) ->
@@ -153,19 +153,21 @@ and match_lit ctxt desc v t sets =
     if Type.span t = Some 1 then
       succeed ctxt desc_succ sets
     else
-      succeed ctxt desc_succ sets &&
-      fail ctxt (desc_fail ValSet.empty) sets
+      fail ctxt (desc_fail ValSet.empty) sets &&&
+      succeed ctxt desc_succ sets
   | Val v' ->
-    if Value.equal v v'
-    then succeed ctxt desc sets
-    else fail ctxt desc sets
+    if Value.equal v v' then
+      succeed ctxt desc sets
+    else
+      fail ctxt desc sets
   | NotVal vs ->
     if ValSet.mem v vs then
       fail ctxt desc sets
     else if Type.span t = Some (ValSet.cardinal vs + 1) then
       succeed ctxt desc_succ sets
     else
-      succeed ctxt desc_succ sets && fail ctxt (desc_fail vs) sets
+      fail ctxt (desc_fail vs) sets &&&
+      succeed ctxt desc_succ sets
   | Opt _ ->
     fail ctxt desc sets
   | _ ->
@@ -181,11 +183,13 @@ and match_tup ctxt descs_r descs pats ts sets =
     assert false
     
 and match_obj ctxt descs_r descs (pfs : pat_field list) tfs sets =
-  match descs, pfs, tfs with
-  | [], [], [] ->
+  match descs, pfs with
+  | [], [] ->
     succeed ctxt (Obj (List.rev descs_r)) sets
-  | desc::descs', pf::pfs', Type.{lab; typ}::tfs' ->
-    match_pat (InObj (ctxt, descs_r, descs', pfs', tfs')) desc pf.it.pat typ sets
+  | desc::descs', pf::pfs' ->
+    let tf = List.find (fun tf -> tf.Type.lab = pf.it.id.it) tfs in
+    match_pat (InObj (ctxt, descs_r, descs', pfs', tfs))
+      desc pf.it.pat tf.Type.typ sets
   | _ ->
     assert false
 
@@ -225,7 +229,7 @@ and fail ctxt desc sets : bool =
     fail ctxt' (Tag (desc, l)) sets
   | InTup (ctxt', descs', descs, pats, _ts) ->
     fail ctxt' (Tup (List.rev descs' @ [desc] @ descs)) sets
-  | InObj (ctxt', descs', descs, pats, _ts) ->
+  | InObj (ctxt', descs', descs, pats, _tfs) ->
     fail ctxt' (Obj (List.rev descs' @ [desc] @ descs)) sets
   | InAlt1 (ctxt', at1, pat2, t) ->
     match_pat (InAlt2 (ctxt', pat2.at)) desc pat2 t sets

@@ -1,0 +1,42 @@
+compile_lit: (FloatLit 5.1)
+compile_binop: AddOp
+of_type: Non
+compile_binop: MulOp
+of_type: Non
+type-inference.as:10.9-10.28: warning, this if has type Shared because branches have inconsistent types,
+true produces
+  Bool
+false produces
+  Nat
+type-inference.as:11.9-11.34: warning, this if has type Any because branches have inconsistent types,
+true produces
+  Bool
+false produces
+  [var Nat]
+type-inference.as:12.9-12.27: warning, this if has type Shared because branches have inconsistent types,
+true produces
+  Nat
+false produces
+  Float
+type-inference.as:13.9-13.33: warning, this if has type Any because branches have inconsistent types,
+true produces
+  ()
+false produces
+  {}
+type-inference.as:18.33-18.41: warning, the switch has type Shared because branches have inconsistent types,
+this case produces type
+  Bool
+the previous produce type
+  Nat
+type-inference.as:19.33-19.47: warning, the switch has type Any because branches have inconsistent types,
+this case produces type
+  Bool
+the previous produce type
+  [var Nat]
+type-inference.as:20.43-20.56: warning, the switch has type Shared because branches have inconsistent types,
+this case produces type
+  Int
+the previous produce type
+  Text
+type-inference.as:25.9-25.18: warning, this array has type [Shared] because elements have inconsistent types
+type-inference.as:26.9-26.24: warning, this array has type [Any] because elements have inconsistent types

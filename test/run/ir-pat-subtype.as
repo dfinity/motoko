@@ -66,14 +66,13 @@ func v1(vl : { #a : L }) : {#a:U} = switch vl {
     case (vu : { #a : U }) vu;
 };
 
-let (#a {} or _)= v1(#a l);
+let (#a {})= v1(#a l);
 
 func v2(vl : { #a : L }) : { #a : U } = switch vl {
     case (#a u) #a u;
-    case _ vl;
 };
 
-let (#a {} or _) = v2(#a l);
+let (#a {}) = v2(#a l);
 
 // alternative patterns
 

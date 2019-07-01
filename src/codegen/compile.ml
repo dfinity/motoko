@@ -975,7 +975,7 @@ module Tagged = struct
 
   (* like branch_default but the tag is known statically *)
   let branch env retty = function
-    | [] -> failwith "branch"
+    | [] -> G.i Unreachable
     | [_, code] -> G.i Drop ^^ code
     | (_, code) :: cases -> branch_default env retty code cases
 
@@ -988,7 +988,7 @@ module Tagged = struct
 
   (* like branch_default_with but the tag is known statically *)
   let branch_with env retty = function
-    | [] -> failwith "branch_with"
+    | [] -> G.i Unreachable
     | [_, code] -> code
     | (_, code) :: cases ->
        let (set_o, get_o) = new_local env "o" in
@@ -1872,7 +1872,7 @@ module Object = struct
   let is_mut_field env obj_type s =
     (* TODO: remove try once array and text accessors are separated *)
     try
-      let _, fields = Type.as_obj_sub "" obj_type in
+      let _, fields = Type.as_obj_sub [s] obj_type in
       Type.is_mut (Lib.Option.value (Type.lookup_val_field s fields))
     with Invalid_argument _ -> false
 
