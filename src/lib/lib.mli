@@ -109,6 +109,9 @@ sig
   val zero : t
   val one : t
   val compare : t -> t -> int
+  val logand : t -> t -> t
+  val logor : t -> t -> t
+  val shift_right_logical : t -> int -> t
 end
      
 module String :

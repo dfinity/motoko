@@ -34,6 +34,9 @@ struct
   let one = Int32.one
   let of_int = Int32.of_int
   let to_int = Int32.to_int
+  let logand = Int32.logand
+  let logor = Int32.logor
+  let shift_right_logical = Int32.shift_right_logical
   let of_int32 x = x
   let to_int32 x = x
   let compare i1 i2 =
