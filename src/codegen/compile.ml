@@ -4682,18 +4682,19 @@ let rec compile_binop env t op =
                  square_recurse_with_shifted (UnboxedSmallWord.sanitize_word_result ty) ^^
                  mul)))
      in pow ()
-  | Type.(Prim (Nat8 as ty)),                 PowOp ->
+  | Type.(Prim ((Nat8|Nat16) as ty)),         PowOp ->
     Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
       (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
         let (set_res, get_res) = new_local env "res" in
+        let bits = UnboxedSmallWord.bits_of_type ty in
         get_exp ^^
         G.if_ (ValBlockType (Some I32Type))
           begin
-            get_n ^^ compile_shrU_const 25l ^^
+            get_n ^^ compile_shrU_const Int32.(sub 33l (of_int bits)) ^^
             G.if_ (ValBlockType (Some I32Type))
               begin
-                get_n ^^ unsigned_dynamics ^^ compile_sub_const 8l ^^
+                get_n ^^ unsigned_dynamics ^^ compile_sub_const (Int32.of_int bits) ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
                 compile_unboxed_const (-30l) ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
@@ -4701,14 +4702,15 @@ let rec compile_binop env t op =
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^
                 snd (compile_binop env Type.(Prim Word32) PowOp) ^^
                 set_res ^^ get_res ^^
-                compile_bitand_const 0xFFFFFF00l ^^ then_arithmetic_overflow env ^^
+                compile_bitand_const Int32.(shift_left minus_one bits) ^^
+                then_arithmetic_overflow env ^^
                 get_res ^^ UnboxedSmallWord.msb_adjust ty
               end
               get_n (* n@{0,1} ** (1+exp) == n *)
           end
           (compile_unboxed_one ^^ UnboxedSmallWord.msb_adjust ty(*FIXME*))) (* x ** 0 == 1 *)
 
-  | Type.(Prim (Nat16|Nat32|Int8|Int16|Int32 as ty)),  PowOp -> (* todo: sign exp, dynamics check, fallback Bignum? *)
+  | Type.(Prim (Nat32|Int8|Int16|Int32 as ty)), PowOp -> (* todo: sign exp, dynamics check, fallback Bignum? *)
     Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
       (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
