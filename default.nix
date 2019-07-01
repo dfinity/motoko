@@ -324,7 +324,7 @@ rec {
       mkdir -p $out
       tar -rf $out/stdlib-doc.tar doc
       mkdir -p $out/nix-support
-      echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
+      echo "report stdlib-doc $out/stdlib-doc.tar" >> $out/nix-support/hydra-build-products
     '';
     forceShare = ["man"];
   };
