@@ -175,7 +175,7 @@ let start () =
        let position = params.Lsp_t.text_document_position_params_position in
        let textDocument = params.Lsp_t.text_document_position_params_textDocument in
        let completion_item lbl = Lsp_t.{ completion_item_label = lbl } in
-       let result = `CompletionResponse [ completion_item "hello" ] in
+       let result = `CompletionResponse (List.map completion_item (Completion.completions 0 0)) in
        let response = response_result_message id result in
        send_response (Lsp_j.string_of_response_message response);
     (* Unhandled messages *)
