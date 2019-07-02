@@ -35,7 +35,7 @@ let%test "it picks the qualified closest to the cursor" =
 let%test "it handles immediately following single character tokens" =
   prefix_test_case "List.|<" (Some "List")
 
-let%test "TODO: it doesn't handle qualifier + partial identifierf" =
+let%test "TODO(Christoph): it doesn't handle qualifier + partial identifierf" =
   prefix_test_case "Stack.so|" (None)
 
 let%test "it handles multiline files" =
