@@ -46,7 +46,7 @@ type incoming_message_params = [
   | TextDocumentDidChange <json name="textDocument/didChange"> of text_document_did_change_params
   | TextDocumentDidSave <json name="textDocument/didSave"> of text_document_did_save_params
   | TextDocumentHover <json name="textDocument/hover"> of text_document_position_params
-  (* TODO(Christoph) There are more parameters than just text_document_position on the completion request *)
+  (* NOTE(Christoph) There are more parameters than just text_document_position on the completion request *)
   | CompletionRequest <json name="textDocument/completion"> of text_document_position_params
   | CancelRequest <json name="$/cancelRequest"> of unit
 ]
