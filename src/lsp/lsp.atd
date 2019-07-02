@@ -84,7 +84,10 @@ type hover_result = {
 }
 <ocaml field_prefix="hover_result_">
 
-type completion_item = { label : string; }
+type completion_item = {
+  label : string;
+  ?detail: string nullable;
+}
 <ocaml field_prefix="completion_item_">
 
 (* Outgoing notifications *)
