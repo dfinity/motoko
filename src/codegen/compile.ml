@@ -4552,14 +4552,18 @@ let compile_Nat32_kernel env name op =
 (* Customisable kernels for 8/16bit arithmetic via 32 bits. *)
 
 (* helper, expects i32 on stack *)
-let enforce_16_unsigned_bits env =
-  compile_bitand_const 0xFFFF0000l ^^
+let enforce_unsigned_bits env n =
+  compile_bitand_const Int32.(shift_left minus_one n) ^^
   then_arithmetic_overflow env
 
+let enforce_16_unsigned_bits env = enforce_unsigned_bits env 16
+
 (* helper, expects two identical i32s on stack *)
-let enforce_16_signed_bits env =
+let enforce_signed_bits env n =
   compile_shl_const 1l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-  enforce_16_unsigned_bits env
+  enforce_unsigned_bits env n
+
+let enforce_16_signed_bits env = enforce_signed_bits env 16
 
 let compile_smallInt_kernel' env ty name op =
   Func.share_code2 env (UnboxedSmallWord.name_of_type ty name)
@@ -4701,9 +4705,7 @@ let rec compile_binop env t op =
                 get_n ^^ UnboxedSmallWord.lsb_adjust ty ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^
                 snd (compile_binop env Type.(Prim Word32) PowOp) ^^
-                set_res ^^ get_res ^^
-                compile_bitand_const Int32.(shift_left minus_one bits) ^^
-                then_arithmetic_overflow env ^^
+                set_res ^^ get_res ^^ enforce_unsigned_bits env bits ^^
                 get_res ^^ UnboxedSmallWord.msb_adjust ty
               end
               get_n (* n@{0,1} ** (1+exp) == n *)
@@ -4737,7 +4739,33 @@ let rec compile_binop env t op =
           end
           compile_unboxed_one) (* x ** 0 == 1 *)
 
-  | Type.(Prim (Int8|Int16|Int32 as ty)),     PowOp -> (* todo: sign exp, dynamics check, fallback Bignum? *)
+  | Type.(Prim ((Int8|Int16) as ty)),         PowOp ->
+    Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
+      (("n", I32Type), ("exp", I32Type)) [I32Type]
+      (fun env get_n get_exp ->
+        let (set_res, get_res) = new_local env "res" in
+        let bits = UnboxedSmallWord.bits_of_type ty in
+        get_exp ^^
+        G.if_ (ValBlockType (Some I32Type)) (* todo: sign exp *)
+          begin
+            get_n ^^ compile_shrU_const Int32.(sub 33l (of_int bits)) ^^
+            G.if_ (ValBlockType (Some I32Type))
+              begin
+                get_n ^^ get_n ^^ signed_dynamics ^^ compile_sub_const (Int32.of_int bits) ^^
+                get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
+                compile_unboxed_const (-30l) ^^
+                G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
+                get_n ^^ UnboxedSmallWord.lsb_adjust ty ^^
+                get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^
+                snd (compile_binop env Type.(Prim Word32) PowOp) ^^
+                set_res ^^ get_res ^^ get_res ^^ enforce_signed_bits env bits ^^
+                get_res ^^ UnboxedSmallWord.msb_adjust ty
+              end
+              get_n (* n@{0,1} ** (1+exp) == n *)
+          end
+          (compile_unboxed_one ^^ UnboxedSmallWord.msb_adjust ty(*FIXME*))) (* x ** 0 == 1 *)
+
+  | Type.(Prim (Int32 as ty)),     PowOp -> (* todo: sign exp, dynamics check, fallback Bignum? *)
     Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
       (("n", I32Type), ("exp", I32Type)) [I32Type]
       (fun env get_n get_exp ->
