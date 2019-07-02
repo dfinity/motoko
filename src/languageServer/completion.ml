@@ -60,6 +60,8 @@ let find_imported_modules file =
 
    List.| (where | is the cursor) return `List.` *)
 let find_completion_prefix logger file line column =
+  (* The LSP sends 0 based line numbers *)
+  let line = line + 1 in
   let lexbuf = Lexing.from_string file in
   let next () = Lexer.token Lexer.Normal lexbuf in
   let rec loop = function

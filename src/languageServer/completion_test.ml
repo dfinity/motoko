@@ -5,7 +5,7 @@ let extract_cursor input =
        (fun line_num line ->
          match String.index_opt line '|' with
          | Some column_num ->
-            cursor_pos := (line_num + 1, column_num);
+            cursor_pos := (line_num, column_num);
             line
             |> String.split_on_char '|'
             |> String.concat ""
@@ -31,6 +31,9 @@ let%test "it doesn't find non-qualified idents" =
 
 let%test "it picks the qualified closest to the cursor" =
   prefix_test_case "Stack.some List.|" (Some "List")
+
+let%test "it handles immediately following single character tokens" =
+  prefix_test_case "List.|<" (Some "List")
 
 let%test "TODO: it doesn't handle qualifier + partial identifierf" =
   prefix_test_case "Stack.so|" (None)
