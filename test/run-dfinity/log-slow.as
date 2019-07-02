@@ -110,5 +110,7 @@ while (n < -1) {
     };
     n += 1
 }
-}
+};
 
+
+assert (intToInt32 (-2) ** intToInt32 31 == intToInt32 (-2_147_483_648)); // highest exponent
