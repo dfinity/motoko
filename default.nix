@@ -51,6 +51,8 @@ let commonBuildInputs = [
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
   nixpkgs.ocamlPackages.yojson
+  nixpkgs.ocamlPackages.ppxlib
+  nixpkgs.ocamlPackages.ppx_inline_test
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
   nixpkgs.ocamlPackages.ocaml-migrate-parsetree
@@ -163,10 +165,7 @@ rec {
 
     src = subpath ./src;
 
-    buildInputs = commonBuildInputs ++ [
-      nixpkgs.ocamlPackages.ppxlib
-      nixpkgs.ocamlPackages.ppx_inline_test
-    ];
+    buildInputs = commonBuildInputs;
 
     buildPhase = ''
       make DUNE_OPTS="--display=short" unit-tests
@@ -382,7 +381,6 @@ rec {
       rts.buildInputs ++
       didc.buildInputs ++
       tests.buildInputs ++
-      unit-tests.buildInputs ++
       users-guide.buildInputs ++
       [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
     ));
