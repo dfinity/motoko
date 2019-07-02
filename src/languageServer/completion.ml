@@ -143,6 +143,3 @@ let completion_handler logger file position =
           ; completion_item_detail = detail } in
   `CompletionResponse
     (List.map completion_item (completions logger file line column))
-
-let complete_test () =
-  make_index () |> string_of_index |> Printf.printf "%s\n"
