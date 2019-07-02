@@ -158,6 +158,25 @@ rec {
     '';
   };
 
+  unit-tests = stdenv.mkDerivation {
+    name = "unit-tests";
+
+    src = subpath ./src;
+
+    buildInputs = commonBuildInputs ++ [
+      nixpkgs.ocamlPackages.ppxlib
+      nixpkgs.ocamlPackages.ppx_inline_test
+    ];
+
+    buildPhase = ''
+      make DUNE_OPTS="--display=short" unit-tests
+    '';
+
+    installPhase = ''
+      touch $out
+    '';
+  };
+
   as-ide = stdenv.mkDerivation {
     name = "as-ide";
 
@@ -336,9 +355,11 @@ rec {
     name = "all-systems-go";
     constituents = [
       asc
+      as-ide
       js
       didc
       tests
+      unit-tests
       samples
       rts
       stdlib-reference
@@ -361,6 +382,7 @@ rec {
       rts.buildInputs ++
       didc.buildInputs ++
       tests.buildInputs ++
+      unit-tests.buildInputs ++
       users-guide.buildInputs ++
       [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
     ));

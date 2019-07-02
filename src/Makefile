@@ -12,7 +12,7 @@ DUNE_OPTS ?=
 
 ALL_TARGETS = $(AS_IDE_TARGET) $(AS_LD_TARGET) $(ASC_TARGET) $(ASC_JS_TARGET) $(DIDC_TARGET)
 
-.PHONY: all clean asc as-ide as-ld asc.js didc
+.PHONY: all clean asc as-ide as-ld asc.js didc unit-tests
 
 # This targets is spelled out so that `make`
 # only invokes `dune` once, much faster
@@ -43,6 +43,9 @@ asc.js:
 didc:
 	dune build $(DUNE_OPTS) $(DIDC_TARGET)
 	@ln -fs $(DIDC_TARGET) didc
+
+unit-tests:
+	dune runtest $(DUNE_OPTS)
 
 clean:
 	rm -f asc as-ide as-ld asc.js didc
