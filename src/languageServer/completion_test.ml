@@ -54,4 +54,17 @@ let%test "it handles a full module" =
 
   func doubleton<T>(x: T): List.List<T> =
     List.cons<T>(x, List.cons<T>(x, List.nil<T>()));
-}|} (Some "Test")
+ }|} (Some "Test")
+
+let%test "it doesn't fall through to the next valid prefix" =
+  prefix_test_case
+{|module {
+private import List = "lib/ListLib.as"; // private, so we don't re-export List
+private import ListFns = "lib/ListFuncs.as"; // private, so we don't re-export List
+type Stack = List.List<Int>;
+func push(x : Int, s : Stack) : Stack = List.cons<Int>(x, s);
+func empty():Stack = List.nil<Int>();
+func singleton(x : Int) : Stack =
+  List.we|
+  ListFns.singleton<Int>(x);
+}|} None

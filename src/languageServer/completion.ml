@@ -66,25 +66,27 @@ let find_completion_prefix logger file line column =
   let line = line + 1 in
   let lexbuf = Lexing.from_string file in
   let next () = Lexer.token Lexer.Normal lexbuf in
+  let pos_past_cursor pos =
+    pos.Source.line > line
+    || (pos.Source.line = line && pos.Source.column >= column) in
   let rec loop = function
+    | _ when (pos_past_cursor (Lexer.region lexbuf).Source.right) -> None
     | Parser.ID ident ->
         (match next () with
         | Parser.DOT ->
             (match next () with
             | Parser.EOF -> Some ident
             | tkn ->
-               let position = (Lexer.region lexbuf).Source.left in
+               let next_token_start = (Lexer.region lexbuf).Source.left in
                let _ =
                  logger
                    "completion_prefix"
                    (Printf.sprintf
                       "%d:%d::%s\n"
-                      position.Source.line
-                      position.Source.column
+                      next_token_start.Source.line
+                      next_token_start.Source.column
                       ident) in
-               if position.Source.line > line
-                  || (position.Source.line = line
-                      && position.Source.column >= column)
+               if pos_past_cursor next_token_start
                then Some ident
                else loop tkn)
         | tkn -> loop tkn)
