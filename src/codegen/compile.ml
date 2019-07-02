@@ -4745,8 +4745,10 @@ let rec compile_binop env t op =
       (fun env get_n get_exp ->
         let (set_res, get_res) = new_local env "res" in
         let bits = UnboxedSmallWord.bits_of_type ty in
+        get_exp ^^ compile_unboxed_zero ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ E.then_trap_with env "negative power" ^^
         get_exp ^^
-        G.if_ (ValBlockType (Some I32Type)) (* todo: sign exp *)
+        G.if_ (ValBlockType (Some I32Type))
           begin
             get_n ^^ compile_shrU_const Int32.(sub 33l (of_int bits)) ^^
             G.if_ (ValBlockType (Some I32Type))
