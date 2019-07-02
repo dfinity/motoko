@@ -4710,7 +4710,7 @@ let rec compile_binop env t op =
               end
               get_n (* n@{0,1} ** (1+exp) == n *)
           end
-          (compile_unboxed_one ^^ UnboxedSmallWord.msb_adjust ty(*FIXME*))) (* x ** 0 == 1 *)
+          (compile_unboxed_const (UnboxedSmallWord.shift_of_type ty))) (* x ** 0 == 1 *)
   | Type.(Prim Nat32),                        PowOp ->
     Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Nat32 "pow")
       (("n", I32Type), ("exp", I32Type)) [I32Type]
@@ -4763,7 +4763,7 @@ let rec compile_binop env t op =
               end
               get_n (* n@{0,1} ** (1+exp) == n *)
           end
-          (compile_unboxed_one ^^ UnboxedSmallWord.msb_adjust ty(*FIXME*))) (* x ** 0 == 1 *)
+          (compile_unboxed_const (UnboxedSmallWord.shift_of_type ty))) (* x ** 0 == 1 *)
   | Type.(Prim Int32),                        PowOp ->
     Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Int32 "pow")
       (("n", I32Type), ("exp", I32Type)) [I32Type]
