@@ -16,6 +16,14 @@ let response_result_message (id : int) (result : Lsp_t.response_result) : Lsp_t.
   { response_message_jsonrpc = jsonrpc_version;
     response_message_id = id;
     response_message_result = Some result;
+    response_message_error = None;
+  }
+
+let response_error_message (id : int) (error : Lsp_t.response_error) : Lsp_t.response_message = Lsp_t.
+  { response_message_jsonrpc = jsonrpc_version;
+    response_message_id = id;
+    response_message_result = None;
+    response_message_error = Some error;
   }
 
 (* let response_error_message (id : int) (error : Lsp_t.response_error) : Lsp_t.response_message = *)
@@ -185,11 +193,16 @@ let start () =
            .Lsp_t.text_document_identifier_uri in
        let position =
          params.Lsp_t.text_document_position_params_position in
-       let file_content =
-         (* TODO(Christoph): Handle this gracefully *)
-         Base.Option.value_exn (Vfs.read_file uri !vfs) in
-       Completion.completion_handler log_to_file file_content position
-       |> response_result_message id
+       let response = match Vfs.read_file uri !vfs with
+         | None ->
+            response_error_message
+              id
+              Lsp_t.{ code = 1
+                    ; message = "Tried to find completions for a file that hadn't been opened yet"}
+         | Some file_content ->
+            Completion.completion_handler log_to_file file_content position
+            |> response_result_message id in
+       response
        |> Lsp_j.string_of_response_message
        |> send_response
     (* Unhandled messages *)
