@@ -116,7 +116,9 @@ let completions (* index *) logger file line column =
   let index = make_index () in
   let imported = find_imported_modules file in
   match find_completion_prefix logger file line column with
-  | None -> [ ("ERROR: Couldn't determine completion prefix", None)]
+  | None ->
+     imported
+     |> List.map (fun (alias, _) -> alias, None)
   | Some prefix ->
      let module_path =
        imported
