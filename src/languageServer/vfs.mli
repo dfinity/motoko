@@ -3,7 +3,7 @@ module Lsp_t = Lsp.Lsp_t
 type t
 
 type uri = string
-(* TODO(Christoph): Track file version *)
+(* NOTE(Christoph): Track file version *)
 type virtual_file = string
 
 (** Creates a new virtual file system *)
