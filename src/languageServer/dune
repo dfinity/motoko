@@ -3,4 +3,5 @@
   (libraries base lang_utils lsp pipeline)
   (inline_tests)
   (preprocess (pps ppx_inline_test))
+  (flags (:standard -w -48))
 )
