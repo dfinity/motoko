@@ -53,7 +53,9 @@ let string_of_index index =
    modules have been imported. Normalizes the imported modules
    filepaths relative to the project root *)
 let find_imported_modules file =
-  [("List", "lib/ListLib.as")]
+  [ ("List", "lib/ListLib.as")
+  ; ("ListFns", "lib/ListFuncs.as")
+  ]
 
 (* Given a source file and a cursor position in that file, figure out
    the prefix relevant to searching completions. For example, given:
