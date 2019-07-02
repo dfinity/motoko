@@ -52,6 +52,8 @@ for (n in range(0, 255)) {
 
 // Int*
 
+assert (intToInt8 2 ** intToInt8 6 == intToInt8 64); // highest exponent
+
 for (n in range(0, 127)) {
     for (exp in range(0, 127)) {
         if (n <= 1 or exp <= 1 or (n <= 16 and exp <= 9)) {
@@ -61,5 +63,52 @@ for (n in range(0, 127)) {
     }
 };
 
-assert (intToInt8 2 ** intToInt8 6 == intToInt8 64); // highest exponent
+
 assert (intToInt8 (-2) ** intToInt8 7 == intToInt8 (-128)); // highest exponent
+
+{
+var n = -128;
+while (n < -1) {
+    for (exp in range(0, 127)) {
+        if (n == -1 or exp <= 1 or (n >= -17 and exp <= 9)) {
+            let res = n ** exp;
+            if (res >= -128 and res <= 127) {
+                assert (intToInt8 n ** intToInt8 exp == intToInt8 res)
+            }
+        }
+    };
+    n += 1
+}
+};
+
+
+
+assert (intToInt16 2 ** intToInt16 14 == intToInt16 16384); // highest exponent
+
+for (n in range(0, 127)) {
+    for (exp in range(0, 127)) {
+        if (n <= 1 or exp <= 1 or (n <= 256 and exp <= 14)) {
+            let res = n ** exp;
+            if (res <= 32767) { assert (intToInt16 n ** intToInt16 exp == intToInt16 res) }
+        }
+    }
+};
+
+
+assert (intToInt16 (-2) ** intToInt16 15 == intToInt16 (-32768)); // highest exponent
+
+{
+var n = -128;
+while (n < -1) {
+    for (exp in range(0, 127)) {
+        if (n == -1 or exp <= 1 or (n >= -257 and exp <= 15)) {
+            let res = n ** exp;
+            if (res >= -32768 and res <= 32767) {
+                assert (intToInt16 n ** intToInt16 exp == intToInt16 res)
+            }
+        }
+    };
+    n += 1
+}
+}
+

@@ -4750,10 +4750,10 @@ let rec compile_binop env t op =
         get_exp ^^
         G.if_ (ValBlockType (Some I32Type))
           begin
-            get_n ^^ compile_shrU_const Int32.(sub 33l (of_int bits)) ^^
+            get_n ^^ compile_shrS_const Int32.(sub 33l (of_int bits)) ^^
             G.if_ (ValBlockType (Some I32Type))
               begin
-                get_n ^^ get_n ^^ signed_dynamics ^^ compile_sub_const (Int32.of_int bits) ^^
+                get_n ^^ get_n ^^ signed_dynamics ^^ compile_sub_const (Int32.of_int (bits - 1)) ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
                 compile_unboxed_const (-30l) ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
