@@ -79,13 +79,9 @@ and exp' at note = function
   | S.DotE (e, x) when T.is_prim T.Text e.note.S.note_typ ->
     (text_dotE  x.it (exp e)).it
   | S.DotE (e, x) ->
-    let n = x.it in
-    begin match
-      try T.as_obj_sub x.it e.note.S.note_typ
-      with Invalid_argument _ -> assert false
-    with
-    | T.Actor, _ -> I.ActorDotE (exp e, n)
-    | _ -> I.DotE (exp e, n)
+    begin match T.as_obj_sub x.it e.note.S.note_typ with
+    | T.Actor, _ -> I.ActorDotE (exp e, x.it)
+    | _ -> I.DotE (exp e, x.it)
     end
   | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
   | S.ArrayE (m, es) ->
