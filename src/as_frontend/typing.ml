@@ -593,7 +593,12 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | FuncE (_, sort, typ_binds, pat, typ, exp) ->
+  | FuncE (_, sort, typ_binds, pat, typ_opt, exp) ->
+    let typ = 
+      match typ_opt with
+      | Some typ -> typ
+      | None -> {it = TupT []; at = no_region; note = T.Pre}
+    in
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let t1, ve = infer_pat_exhaustive env' pat in
@@ -630,7 +635,7 @@ and infer_exp'' env exp : T.typ =
             (T.string_of_typ_expand t2)
       end
     end;
-    let ts1 = match pat.it with TupP ps -> T.as_seq t1 | _ -> [t1] in
+    let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
     let c =
       match sort.it, typ.it with
@@ -862,10 +867,13 @@ and check_exp' env t exp : T.typ =
         warn env exp.at
           "the cases in this switch do not cover all possible values";
     t
-  | FuncE (_, s', [], pat, typ, exp), T.Func (s, _, [], ts1, ts2) ->
+  | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
-    let t2 = check_typ env typ in
-    (* TBR: infer return type *)
+    let t2 =
+      match typ_opt with
+      | None -> T.seq ts2
+      | Some typ -> check_typ env typ
+    in
     if s'.it <> s then
       error env exp.at
         "%sshared function does not match expected %sshared function type"

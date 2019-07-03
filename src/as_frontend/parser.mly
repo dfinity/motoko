@@ -605,16 +605,15 @@ dec :
     { ExpD e @? at $sloc }
 
 func_exp :
-  | tps=typ_params_opt p=pat_argument rt=return_typ? fb=func_body
-    { let t = Lib.Option.get rt (TupT([]) @! no_region) in
-      (* This is a hack to support local func declarations that return a computed async.
+  | tps=typ_params_opt p=pat_argument t=return_typ? fb=func_body
+    { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
       let e = match fb with
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
-          match t.it with
-          | AsyncT _ -> AsyncE(e) @? e.at
+          match t with
+          | Some {it = AsyncT _; _} -> AsyncE(e) @? e.at
           | _ -> e
       in fun s x -> FuncE(x, s, tps, p, t, e) @? at $sloc }
 

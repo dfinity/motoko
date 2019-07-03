@@ -88,10 +88,11 @@ and exp' at note = function
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
-  | S.FuncE (name, s, tbs, p, ty, e) ->
+  | S.FuncE (name, s, tbs, p, ty_opt, e) ->
     let cc = Call_conv.call_conv_of_typ note.I.note_typ in
     let args, wrap = to_args cc p in
-    let tys = if cc.Call_conv.n_res = 1 then [ty.note] else T.as_seq ty.note in
+    let ty = match ty_opt with Some ty -> ty.note | None -> T.Tup [] in
+    let tys = if cc.Call_conv.n_res = 1 then [ty] else T.as_seq ty in
     I.FuncE (name, cc, typ_binds tbs, args, tys, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in

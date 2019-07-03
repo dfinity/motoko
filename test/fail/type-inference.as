@@ -98,7 +98,46 @@ func bot(bot : Bot) {
 
 // Function types.
 
-func f(g : Int -> Int) : Int = g 5;
+func f(h : Int -> Int) : Int = h 5;
+func g(h : (Int, Int) -> Int) : Int = h(5, 6);
+func k(h : {#A; #B : Int} -> Int) : Int = h(#B 9);
+
+let _ = f(func x = x);
+let _ = f(func x = x + 1);
+let _ = f(func x = abs(x + 1));
+let _ = f(func x = -1);
+let _ = g(func p = abs(p.0));
+let _ = g(func(x, y) = x + y);
+let _ = g(func(x, y) = abs x);
+let _ = k(func(#A or #B _) = 0);
 
 let _ = f(func x : Int = x);
 let _ = f(func x : Int = x + 1);
+let _ = f(func x : Nat = abs(x + 1));
+let _ = f(func x : Int = 0);
+let _ = g(func p : Nat = abs(p.0));
+let _ = g(func(x, y) : Int = x + y);
+let _ = g(func(x, _) : Nat = abs x);
+let _ = k(func(#A or #B _) : Nat = 0);
+
+let _ = f(func(x : Int) : Int = x);
+let _ = f(func(x : Int) : Int = x + 1);
+let _ = f(func(x : Int) : Nat = abs(x + 1));
+let _ = f(func(x : Any) : Int = 0);
+let _ = g(func(p : (Int, Any)) : Nat = abs(p.0));
+let _ = g(func(x : Int, y : Int) : Int = x + y);
+let _ = g(func(x : Int, _ : Any) : Nat = abs x);
+let _ = g(func((x, _) : (Int, Any)) : Nat = abs x);
+let _ = k(func(#A or #B (_ : Any)) : Nat = 0);
+let _ = k(func((#A or #B _) : {#A; #B : Any}) : Nat = 0);
+
+let _ = f(func<>(x : Int) : Int = x);
+let _ = f(func<>(x : Int) : Int = x + 1);
+let _ = f(func<>(x : Int) : Nat = abs(x + 1));
+let _ = f(func<>(x : Any) : Int = 0);
+let _ = g(func<>(p : (Int, Any)) : Nat = abs(p.0));
+let _ = g(func<>(x : Int, y : Int) : Int = x + y);
+let _ = g(func<>(x : Int, y : Any) : Nat = abs x);
+let _ = g(func<>((x, _) : (Int, Any)) : Nat = abs x);
+let _ = k(func<>(#A or #B (_ : Any)) : Nat = 0);
+let _ = k(func<>((#A or #B _) : {#A; #B : Any}) : Nat = 0);
