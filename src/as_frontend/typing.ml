@@ -287,7 +287,7 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Sc
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
   cs, ts, te, T.ConSet.of_list cs
 
-and check_typ_bounds env (tbs : T.bind list) (ts: T.typ list) typs at: unit =
+and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) typs at =
   let pars = List.length tbs in
   let args = List.length ts in
   if pars > args then
