@@ -109,18 +109,43 @@ while (n < -1) {
 }
 };
 
-// TOO LONG assert (intToInt32 1 ** intToInt32 2_147_483_647 == intToInt32 0);
 assert (intToInt32 3 ** intToInt32 19 == intToInt32 1_162_261_467);
 assert (intToInt32 2 ** intToInt32 30 == intToInt32 1_073_741_824); // highest exponent
-//WRONG test      assert (intToInt32 (-2) ** intToInt32 31 == intToInt32 (-2_147_483_648)); // highest exponent
+assert (intToInt32 (-2) ** intToInt32 31 == intToInt32 (-2_147_483_648)); // highest exponent
 assert (intToInt32 (-3) ** intToInt32 19 == intToInt32 (-1_162_261_467));
+
+assert (intToInt32 1 ** intToInt32 19 == intToInt32 1);
+assert (intToInt32 1 ** intToInt32 100 == intToInt32 1);
+assert (intToInt32 1 ** intToInt32 101 == intToInt32 1);
 
 assert (intToInt32 0 ** intToInt32 19 == intToInt32 0);
 assert (intToInt32 0 ** intToInt32 100 == intToInt32 0);
 assert (intToInt32 0 ** intToInt32 101 == intToInt32 0);
-// TOO LONG assert (intToInt32 0 ** intToInt32 2_147_483_647 == intToInt32 0);
 
 assert (intToInt32 (-1) ** intToInt32 19 == intToInt32 (-1));
 assert (intToInt32 (-1) ** intToInt32 100 == intToInt32 1);
 assert (intToInt32 (-1) ** intToInt32 101 == intToInt32 (-1));
-// TOO LONG assert (intToInt32 (-1) ** intToInt32 2_147_483_647 == intToInt32 (-1));
+
+for (n in range(0, 127)) {
+    for (exp in range(0, 127)) {
+        if (n <= 1 or exp <= 1 or exp <= 30) {
+            let res = n ** exp;
+            if (res <= 2_147_483_647) { assert (intToInt32 n ** intToInt32 exp == intToInt32 res) }
+        }
+    }
+};
+
+{
+var n = -128;
+while (n < -1) {
+    for (exp in range(0, 127)) {
+        if (n == -1 or exp <= 1 or exp <= 31) {
+            let res = n ** exp;
+            if (res >= -2_147_483_648 and res <= 2_147_483_647) {
+                assert (intToInt32 n ** intToInt32 exp == intToInt32 res)
+            }
+        }
+    };
+    n += 1
+}
+};
