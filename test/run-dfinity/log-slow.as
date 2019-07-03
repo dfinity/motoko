@@ -1,7 +1,4 @@
-assert (natToNat32 2 ** natToNat32 31 == natToNat32 2_147_483_648); // highest exponent
-
-
-
+// These are rather lon-running tests, not advisable for wasm-run!
 
 // Nat*
 
@@ -113,7 +110,18 @@ while (n < -1) {
 };
 
 
-assert (intToInt32 3 ** intToInt32 19 == intToInt32 1_162_261_467);
+/*assert (intToInt32 3 ** intToInt32 19 == intToInt32 1_162_261_467);
 assert (intToInt32 2 ** intToInt32 30 == intToInt32 1_073_741_824); // highest exponent
 assert (intToInt32 (-2) ** intToInt32 31 == intToInt32 (-2_147_483_648)); // highest exponent
 assert (intToInt32 (-3) ** intToInt32 19 == intToInt32 (-1_162_261_467));
+
+assert (intToInt32 0 ** intToInt32 19 == intToInt32 (-1));
+assert (intToInt32 0 ** intToInt32 100 == intToInt32 (1));
+assert (intToInt32 0 ** intToInt32 101 == intToInt32 (1));
+assert (intToInt32 0 ** intToInt32 2_147_483_647 == intToInt32 (-1));
+
+assert (intToInt32 (-1) ** intToInt32 19 == intToInt32 (-1));
+assert (intToInt32 (-1) ** intToInt32 100 == intToInt32 (1));
+assert (intToInt32 (-1) ** intToInt32 101 == intToInt32 (1));
+//assert (intToInt32 (-1) ** intToInt32 2_147_483_647 == intToInt32 (-1));
+*/
