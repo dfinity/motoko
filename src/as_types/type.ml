@@ -223,7 +223,7 @@ and is_closed_con seen i c =
 
 let is_abs c = match Con.kind c with Abs _ -> true | Def _ -> false
 
-module ShiftEnv = Env.Make
+module ShiftMap = Map.Make
   (struct type t = int * int * con (* (i, n, c) *)
           let compare (i1, n1, c1) (i2, n2, c2) =
             (match compare i1 i2 with
@@ -234,60 +234,62 @@ module ShiftEnv = Env.Make
              | i -> i)
    end)
 
-let rec shift seen i n t =
+type shift_env = con ShiftMap.t ref
+
+let rec shift (shift_env : shift_env) i n t =
   if n = 0 then t else
   match t with
   | Prim _ -> t
   | Var (s, j) -> Var (s, if j < i then j else j + n)
-  | Con (c, ts) -> Con (shift_con seen i n c, List.map (shift seen i n) ts)
-  | Array t -> Array (shift seen i n t)
-  | Tup ts -> Tup (List.map (shift seen i n) ts)
+  | Con (c, ts) -> Con (shift_con shift_env i n c, List.map (shift shift_env i n) ts)
+  | Array t -> Array (shift shift_env i n t)
+  | Tup ts -> Tup (List.map (shift shift_env i n) ts)
   | Func (s, c, tbs, ts1, ts2) ->
     let i' = i + List.length tbs in
-    Func (s, c, List.map (shift_bind seen i' n) tbs, List.map (shift seen i' n) ts1, List.map (shift seen i' n) ts2)
-  | Opt t -> Opt (shift seen i n t)
-  | Async t -> Async (shift seen i n t)
-  | Obj (s, fs) -> Obj (s, List.map (shift_field seen n i) fs)
-  | Variant fs -> Variant (List.map (shift_field seen n i) fs)
-  | Mut t -> Mut (shift seen i n t)
+    Func (s, c, List.map (shift_bind shift_env i' n) tbs, List.map (shift shift_env i' n) ts1, List.map (shift shift_env i' n) ts2)
+  | Opt t -> Opt (shift shift_env i n t)
+  | Async t -> Async (shift shift_env i n t)
+  | Obj (s, fs) -> Obj (s, List.map (shift_field shift_env n i) fs)
+  | Variant fs -> Variant (List.map (shift_field shift_env n i) fs)
+  | Mut t -> Mut (shift shift_env i n t)
   | Shared -> Shared
-  | Serialized t -> Serialized (shift seen i n t)
+  | Serialized t -> Serialized (shift shift_env i n t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c -> Typ (shift_con seen i n c)
+  | Typ c -> Typ (shift_con shift_env i n c)
 
-and shift_con seen i n c =
+and shift_con shift_env i n c =
   match Con.kind c with
   | Abs _ -> c
   | Def _ ->
-  match ShiftEnv.find_opt (i, n, c) !seen with
+  match ShiftMap.find_opt (i, n, c) !shift_env with
   | Some c' -> c'
   | None ->
     let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
-    seen := ShiftEnv.add (i, n, c) c' !seen;
-    Con.unsafe_set_kind c' (shift_kind seen i n (Con.kind c));
+    shift_env := ShiftMap.add (i, n, c) c' !shift_env;
+    Con.unsafe_set_kind c' (shift_kind shift_env i n (Con.kind c));
     c'
 
-and shift_bind seen i n {var; bound} =
-  {var; bound = shift seen i n bound}
+and shift_bind shift_env i n {var; bound} =
+  {var; bound = shift shift_env i n bound}
 
-and shift_field seen i n {lab; typ} =
-  {lab; typ = shift seen i n typ}
+and shift_field shift_env i n {lab; typ} =
+  {lab; typ = shift shift_env i n typ}
 
-and shift_kind seen i n k =
+and shift_kind shift_env i n k =
   match k with
   | Def (tbs, t) ->
     let i' = i + List.length tbs in
-    Def (List.map (shift_bind seen i' n) tbs, shift seen i' n t)
+    Def (List.map (shift_bind shift_env i' n) tbs, shift shift_env i' n t)
   | Abs (tbs, t) ->
     let i' = i + List.length tbs in
-    Abs (List.map (shift_bind seen i' n) tbs, shift seen i' n t)
+    Abs (List.map (shift_bind shift_env i' n) tbs, shift shift_env i' n t)
 
 (* First-order substitution *)
 
 
-module SubstEnv = Env.Make
+module SubstMap = Map.Make
   (struct
     type t = int * con (* (m, c) where m is cumulative shift *)
     let compare (m1, c1) (m2, c2) =
@@ -296,7 +298,15 @@ module SubstEnv = Env.Make
        | i -> i)
    end)
 
-let rec subst ((dom, self, ce, se, m) as seen) sigma t =
+type subst_env = {
+  dom : ConSet.t;                 (* domain of the substitution (sigma) *)
+  self : (con * con) option;      (* renaming of nearest enclosing constructor, if any *)
+  shifts : int;                   (* cumulative shifts (of sigma) *)
+  subst_map : con SubstMap.t ref; (* map of substituted cons, indexed by (shifts, c), ie. (cumulative shift,con) *)
+  shift_env : con ShiftMap.t ref; (* map of shifted cons, indexed by (i, n, c) ie. (depth, shift, con) *)
+}
+
+let rec subst subst_env sigma t =
   if sigma = ConEnv.empty then t else
   match t with
   | Prim _ | Var _ -> t
@@ -305,70 +315,70 @@ let rec subst ((dom, self, ce, se, m) as seen) sigma t =
      | Some t' -> t'
      | None -> t)
   | Con (c, ts) ->
-    Con (subst_con seen sigma c, List.map (subst seen sigma) ts)
-  | Array t -> Array (subst seen sigma t)
-  | Tup ts -> Tup (List.map (subst seen sigma) ts)
+    Con (subst_con subst_env sigma c, List.map (subst subst_env sigma) ts)
+  | Array t -> Array (subst subst_env sigma t)
+  | Tup ts -> Tup (List.map (subst subst_env sigma) ts)
   | Func (s, c, tbs, ts1, ts2) ->
     let n = List.length tbs in
     let sigma' =
       if n = 0 then sigma else
-      ConEnv.map (shift se 0 n) sigma in
-    let seen' = (dom, self, ce, se, m + n) in
+      ConEnv.map (shift subst_env.shift_env 0 n) sigma in
+    let subst_env' = {subst_env with shifts = subst_env.shifts + n} in
     Func (s, c,
-      List.map (subst_bind seen' sigma') tbs,
-      List.map (subst seen' sigma') ts1, List.map (subst seen' sigma') ts2)
-  | Opt t -> Opt (subst seen sigma t)
-  | Async t -> Async (subst seen sigma t)
-  | Obj (s, fs) -> Obj (s, List.map (subst_field seen sigma) fs)
-  | Variant fs -> Variant (List.map (subst_field seen sigma) fs)
-  | Mut t -> Mut (subst seen sigma t)
+      List.map (subst_bind subst_env' sigma') tbs,
+      List.map (subst subst_env' sigma') ts1, List.map (subst subst_env' sigma') ts2)
+  | Opt t -> Opt (subst subst_env sigma t)
+  | Async t -> Async (subst subst_env sigma t)
+  | Obj (s, fs) -> Obj (s, List.map (subst_field subst_env sigma) fs)
+  | Variant fs -> Variant (List.map (subst_field subst_env sigma) fs)
+  | Mut t -> Mut (subst subst_env sigma t)
   | Shared -> Shared
-  | Serialized t -> Serialized (subst seen sigma t)
+  | Serialized t -> Serialized (subst subst_env sigma t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
   | Typ c ->
-    (assert (not (ConSet.mem c dom));
-     Typ (subst_con seen sigma c))
+    (assert (not (ConSet.mem c subst_env.dom));
+     Typ (subst_con subst_env sigma c))
 
-and subst_con (dom, self, ce, se, m) sigma c =
+and subst_con ({dom; self; subst_map; shift_env; shifts} as subst_env) sigma c =
   match Con.kind c with
   | Abs _ -> c
   | Def (tbs, t) ->
-    match SubstEnv.find_opt (m, c) (!ce) with
+    match SubstMap.find_opt (shifts, c) (!subst_map) with
     | Some c' -> c'
     | None ->
       match self with
       | Some (c_self, c') when Con.eq c c_self -> c'
       | _ ->
         if ConSet.is_empty (ConSet.inter dom (cons_con c ConSet.empty)) then
-          (ce := SubstEnv.add (m, c) c !ce;
+          (subst_map := SubstMap.add (shifts, c) c !subst_map;
            c)
         else
           let c' = Con.fresh (Con.name c) (Abs ([], Pre)) in
-          ce := SubstEnv.add (m, c) c' !ce;
-          let seen' = (dom, Some (c, c'), ce, se, m) in
-          Con.unsafe_set_kind c' (subst_kind seen' sigma (Con.kind c));
+          subst_map := SubstMap.add (shifts, c) c' !subst_map;
+          let subst_env' = { subst_env with self = Some (c, c') } in
+          Con.unsafe_set_kind c' (subst_kind subst_env' sigma (Con.kind c));
           c'
 
-and subst_bind seen sigma {var; bound} =
-  {var; bound = subst seen sigma bound}
+and subst_bind subst_env sigma {var; bound} =
+  {var; bound = subst subst_env sigma bound}
 
-and subst_field seen sigma {lab; typ} =
-  {lab; typ = subst seen sigma typ}
+and subst_field subst_env sigma {lab; typ} =
+  {lab; typ = subst subst_env sigma typ}
 
-and subst_kind (dom, self, ce, se, m) sigma (k:kind) =
+and subst_kind subst_env sigma (k:kind) =
   match k with
   | Def (tbs, t) ->
     let n = List.length tbs in
-    let sigma' = ConEnv.map (shift se 0 n) sigma in
-    let seen' = (dom, self, ce, se, m + n) in
-    Def (List.map (subst_bind seen' sigma') tbs, subst seen' sigma' t)
+    let sigma' = ConEnv.map (shift (subst_env.shift_env) 0 n) sigma in
+    let subst_env' = { subst_env with shifts = subst_env.shifts + n } in
+    Def (List.map (subst_bind subst_env' sigma') tbs, subst subst_env' sigma' t)
   | Abs (tbs, t) ->
     let n = List.length tbs in
-    let sigma' = ConEnv.map (shift se 0 n) sigma in
-    let seen' = (dom, self, ce, se, m + n) in
-    Abs (List.map (subst_bind seen' sigma') tbs, subst seen' sigma' t)
+    let sigma' = ConEnv.map (shift (subst_env.shift_env) 0 n) sigma in
+    let subst_env' = { subst_env with shifts = subst_env.shifts + n } in
+    Abs (List.map (subst_bind subst_env' sigma') tbs, subst subst_env' sigma' t)
 
 (* Handling binders *)
 
@@ -376,14 +386,20 @@ let close cs t =
   if cs = [] then t else
   let ts = List.mapi (fun i c -> Var (Con.name c, i)) cs in
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
-  let seen = (ConEnv.dom sigma, None, ref SubstEnv.empty, ref ShiftEnv.empty, 0) in
-  subst seen sigma t
+  let subst_env = {
+      dom = ConEnv.dom sigma;
+      self = None;
+      subst_map = ref SubstMap.empty;
+      shift_env = ref ShiftMap.empty;
+      shifts = 0
+  } in
+  subst subst_env sigma t
 
 let close_binds cs tbs =
   if cs = [] then tbs else
   List.map (fun {var; bound} -> {var; bound = close cs bound}) tbs
 
-module OpenEnv = Env.Make
+module OpenMap = Map.Make
   (struct type t = int * con (* (i, c) *)
     let compare (i1, c1) (i2, c2) =
       (match compare i1 i2 with
@@ -391,66 +407,71 @@ module OpenEnv = Env.Make
        | i -> i)
    end)
 
-let rec open' seen i ts t =
+type open_env = {
+    self : (con * con) option;    (* renaming of nearest enclosing constructor, if any *)
+    open_map : con OpenMap.t ref  (* map of opened constructors, indexed by (i,c) *)
+  }
+
+let rec open' open_env i ts t =
   match t with
   | Prim _ -> t
   | Var (_, j) -> if j < i then t else List.nth ts (j - i)
-  | Con (c, ts') -> Con (open_con seen i ts c, List.map (open' seen i ts) ts')
-  | Array t -> Array (open' seen i ts t)
-  | Tup ts' -> Tup (List.map (open' seen i ts) ts')
+  | Con (c, ts') -> Con (open_con open_env i ts c, List.map (open' open_env i ts) ts')
+  | Array t -> Array (open' open_env i ts t)
+  | Tup ts' -> Tup (List.map (open' open_env i ts) ts')
   | Func (s, c, tbs, ts1, ts2) ->
     let i' = i + List.length tbs in
-    Func (s, c, List.map (open_bind seen i' ts) tbs, List.map (open' seen i' ts) ts1, List.map (open' seen i' ts) ts2)
-  | Opt t -> Opt (open' seen i ts t)
-  | Async t -> Async (open' seen i ts t)
-  | Obj (s, fs) -> Obj (s, List.map (open_field seen i ts) fs)
-  | Variant fs -> Variant (List.map (open_field seen i ts) fs)
-  | Mut t -> Mut (open' seen i ts t)
+    Func (s, c, List.map (open_bind open_env i' ts) tbs, List.map (open' open_env i' ts) ts1, List.map (open' open_env i' ts) ts2)
+  | Opt t -> Opt (open' open_env i ts t)
+  | Async t -> Async (open' open_env i ts t)
+  | Obj (s, fs) -> Obj (s, List.map (open_field open_env i ts) fs)
+  | Variant fs -> Variant (List.map (open_field open_env i ts) fs)
+  | Mut t -> Mut (open' open_env i ts t)
   | Shared -> Shared
-  | Serialized t -> Serialized (open' seen i ts t)
+  | Serialized t -> Serialized (open' open_env i ts t)
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c -> Typ (open_con seen i ts c)
+  | Typ c -> Typ (open_con open_env i ts c)
 
-and open_con (self, seen) i ts c =
+and open_con ({self; open_map} as open_env) i ts c =
   match Con.kind c with
   | Abs _ -> c
   | Def _ ->
-  match OpenEnv.find_opt (i, c) (!seen) with
+  match OpenMap.find_opt (i, c) (!open_map) with
   | Some c' -> c'
   | None ->
     match self with
     | Some (c_, c') when Con.eq c c_ -> c'
     | _ ->
       if is_closed_con ConSet.empty i c then
-        (seen := OpenEnv.add (i, c) c !seen;
+        (open_map := OpenMap.add (i, c) c !open_map;
          c)
       else
         let c' = Con.fresh (Con.name c) (Abs([], Pre)) in
-        seen := OpenEnv.add (i, c) c' !seen;
-        Con.unsafe_set_kind c' (open_kind (Some (c, c'), seen) i ts (Con.kind c));
+        open_map := OpenMap.add (i, c) c' !open_map;
+        Con.unsafe_set_kind c' (open_kind {open_env with self = Some (c, c') } i ts (Con.kind c));
         c'
 
-and open_bind seen i ts {var; bound} =
-  {var; bound = open' seen i ts bound}
+and open_bind open_env i ts {var; bound} =
+  {var; bound = open' open_env i ts bound}
 
-and open_field seen i ts {lab; typ} =
-  {lab; typ = open' seen i ts typ}
+and open_field open_env i ts {lab; typ} =
+  {lab; typ = open' open_env i ts typ}
 
-and open_kind seen i ts k =
+and open_kind open_env i ts k =
   match k with
   | Def (tbs, t) ->
     let i' = i + List.length tbs in
-    Def (List.map (open_bind seen i' ts) tbs, open' seen i' ts t)
+    Def (List.map (open_bind open_env i' ts) tbs, open' open_env i' ts t)
   | Abs (tbs, t) ->
     let i' = i + List.length tbs in
-    Abs (List.map (open_bind seen i' ts) tbs, open' seen i' ts t)
+    Abs (List.map (open_bind open_env i' ts) tbs, open' open_env i' ts t)
 
 let open_ ts t =
   if ts = [] then t else
-  let seen = (None, ref OpenEnv.empty) in
-  open' seen 0 ts t
+  let open_env = { self = None; open_map = ref OpenMap.empty } in
+  open' open_env 0 ts t
 
 let open_binds tbs =
   if tbs = [] then [] else
