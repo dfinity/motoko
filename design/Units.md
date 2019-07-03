@@ -44,7 +44,7 @@ The syntax of a unit -- and therefore an AS source file -- is a sequence of *imp
 ```
 <unit>   ::= <imp>;* <field>;*
 
-<imp>    ::= import <imppat> =? <text>
+<imp>    ::= import <imppat> =? "<url>"
 <imppat> ::= <id> | { <id>;* }
 
 <field>  ::= public? <dec>
@@ -62,6 +62,32 @@ Notes:
 * The optional `=` in an import may be removed as a more general syntax cleanup.
 * There are various ways in which we might extend the syntax of import patterns, e.g., allowing type annotations or allowing field patterns of the form `<id> = <id>` to support renaming. This is just the most basic form.
 
+### Import URLs
+
+An import statement addresses the unit to be imported via an `<url>`. The following URL forms are specfied as of now:
+
+* Relative URLs, such as `import "utils"`, `import "more/utils"`, `import "./utils"` or `import ./more/utils`.
+
+  These relative URLs are interpreted as relative to the directory that contains the file that contains the `import` statement.
+
+* Package urls, using the scheme `as:`, such as `import "as:std/list"` or `import "as:pkg/module"`.
+
+  The first path component specifies a _package name_, while the remainig paths are relative to the directory where this package is stored.
+
+  The compiler maintains a mapping from package names to directories. It is an implementation detail of the compiler how this mapping is maintained: It could read this mapping from the command line (e.g. -package foo=/usr/share/dmt/packages/foo), environment variables or an `.asc-env` file, or (for early releases) have a hard-coded a mapping containing only the `std` package.
+
+Using URLs for the imports allows for future extensions (e.g. via additional schemes, or by allowing and giving meaning to the authority, query or fragment part of an URL).
+
+After interpreting the path `foo` relative to the current directory resp. the package directory, the compiler resolves it to a file by considering the following file locations:
+
+1. `foo.wasm`
+2. `foo/lib.wasm`
+3. `foo.as`
+4. `foo/lib.as`
+
+It is an error there is any doubt about whether the file or directory resolution is used (i.e. it is an error if 1+2, 1+4, 3+2 or 3+4 exist). Otherwise, the compiler picks the first existing file in this list, prefering `.wasm` over `.as`.
+
+If the import URL ends with a slash (e.g. `import "foo/"`), then only locations 2. and 4. are considered.
 
 ### Programs
 
