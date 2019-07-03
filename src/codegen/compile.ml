@@ -4552,8 +4552,17 @@ let compile_Nat32_kernel env name op =
 (* Customisable kernels for 8/16bit arithmetic via 32 bits. *)
 
 (* helper, expects i32 on stack *)
+let overflows_unsigned_bits env n =
+  compile_bitand_const Int32.(shift_left minus_one n)
+
+(* helper, expects two identical i32s on stack *)
+let overflows_signed_bits env n =
+  compile_shl_const 1l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+  overflows_unsigned_bits env n
+
+(* helper, expects i32 on stack *)
 let enforce_unsigned_bits env n =
-  compile_bitand_const Int32.(shift_left minus_one n) ^^
+  overflows_unsigned_bits env n ^^
   then_arithmetic_overflow env
 
 let enforce_16_unsigned_bits env = enforce_unsigned_bits env 16
@@ -4776,7 +4785,7 @@ let rec compile_binop env t op =
         get_exp ^^
         G.if_ (ValBlockType (Some I32Type))
           begin
-            get_n ^^ compile_shrS_const 1l ^^ (* FIXME: ^-1 *)
+            get_n ^^ get_n ^^ overflows_signed_bits env 2 ^^ (* FIXME: -1^ *)
             G.if_ (ValBlockType (Some I32Type))
               begin
                 get_exp ^^ compile_unboxed_const 32l ^^
