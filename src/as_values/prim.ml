@@ -255,6 +255,19 @@ let prim = function
                     k (Tup [Word32 (of_int (length nobbles)); Char (to_int code)])
   | "@serialize" -> fun v k -> k (Serialized v)
   | "@deserialize" -> fun v k -> k (as_serialized v)
+
+  | "array_len" -> fun v k ->
+    k (Int (Int.of_int (Array.length (Value.as_array v))))
+  | "text_len" -> fun v k ->
+    k (Int (Nat.of_int (List.length (Wasm.Utf8.decode (Value.as_text v)))))
+  | "text_chars" -> fun v k ->
+    let i = ref 0 in
+    let s = Wasm.Utf8.decode (Value.as_text v) in
+    let next = local_func 0 1 @@ fun v k' ->
+        if !i = List.length s then k' Null else
+          let v = Opt (Char (List.nth s !i)) in incr i; k' v
+    in k (Obj (Env.singleton "next" next))
+
   | "Array.init" -> fun v k ->
     (match Value.as_tup v with
     | [len; x] ->
