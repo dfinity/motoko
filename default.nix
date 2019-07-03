@@ -276,7 +276,6 @@ rec {
     '';
   };
 
-
   stdlib = stdenv.mkDerivation {
     name = "stdlib";
     src = subpath ./stdlib;
@@ -294,8 +293,8 @@ rec {
     forceShare = ["man"];
   };
 
-  stdlib-reference = stdenv.mkDerivation {
-    name = "stdlib-reference";
+  stdlib-doc-live = stdenv.mkDerivation {
+    name = "stdlib-doc-live";
     src = subpath ./stdlib;
     buildInputs = with nixpkgs;
       [ pandoc bash python ];
@@ -308,6 +307,24 @@ rec {
       mv doc $out/
       mkdir -p $out/nix-support
       echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
+    '';
+    forceShare = ["man"];
+  };
+
+  stdlib-doc = stdenv.mkDerivation {
+    name = "stdlib-doc";
+    src = subpath ./stdlib;
+    buildInputs = with nixpkgs;
+      [ pandoc bash python ];
+    buildPhase = ''
+      patchShebangs .
+      make alldoc
+    '';
+    installPhase = ''
+      mkdir -p $out
+      tar -rf $out/stdlib-doc.tar doc
+      mkdir -p $out/nix-support
+      echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
     '';
     forceShare = ["man"];
   };
@@ -341,7 +358,9 @@ rec {
       tests
       samples
       rts
-      stdlib-reference
+      stdlib
+      stdlib-doc
+      stdlib-doc-live
       produce-exchange
       users-guide
     ];

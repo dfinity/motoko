@@ -1,7 +1,7 @@
 const EntId =
  IDL.Obj({'region': RegionId, 'user': UserId, 'truckType': TruckTypeId})
 const IdErr = IDL.Obj({'idErr': OpEntId})
-const Inventory = IDL.Obj({'quantity': IDL.Nat, 'produce_id': IDL.Nat})
+const Inventory = IDL.Obj({'produce_id': IDL.Nat, 'quantity': IDL.Nat})
 const OpEntId = IDL.Opt(EntId)
 const ProducerId = IDL.Nat
 const RegionId = IDL.Nat

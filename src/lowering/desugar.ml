@@ -74,27 +74,25 @@ and exp' at note = function
   | S.ObjE (s, es) ->
     obj at s None es note.I.note_typ
   | S.TagE (c, e) -> I.TagE (c.it, exp e)
+  | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
+    (array_dotE e.note.S.note_typ x.it (exp e)).it
+  | S.DotE (e, x) when T.is_prim T.Text e.note.S.note_typ ->
+    (text_dotE  x.it (exp e)).it
   | S.DotE (e, x) ->
-    let n = x.it in
-    begin match
-      (* TODO: separate array and text accessors *)
-      try T.as_obj_sub x.it e.note.S.note_typ with Invalid_argument _ ->
-      try T.array_obj (T.as_array_sub e.note.S.note_typ) with Invalid_argument _ ->
-      try T.text_obj (T.as_prim_sub T.Text e.note.S.note_typ) with Invalid_argument _ ->
-        assert false
-    with
-    | T.Actor, _ -> I.ActorDotE (exp e, n)
-    | _ -> I.DotE (exp e, n)
+    begin match T.as_obj_sub x.it e.note.S.note_typ with
+    | T.Actor, _ -> I.ActorDotE (exp e, x.it)
+    | _ -> I.DotE (exp e, x.it)
     end
   | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
   | S.ArrayE (m, es) ->
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
-  | S.FuncE (name, s, tbs, p, ty, e) ->
+  | S.FuncE (name, s, tbs, p, ty_opt, e) ->
     let cc = Call_conv.call_conv_of_typ note.I.note_typ in
     let args, wrap = to_args cc p in
-    let tys = if cc.Call_conv.n_res = 1 then [ty.note] else T.as_seq ty.note in
+    let ty = match ty_opt with Some ty -> ty.note | None -> T.Tup [] in
+    let tys = if cc.Call_conv.n_res = 1 then [ty] else T.as_seq ty in
     I.FuncE (name, cc, typ_binds tbs, args, tys, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in
@@ -180,6 +178,40 @@ and typ_bind tb =
   ; at = tb.at
   ; note = ()
   }
+
+and array_dotE array_ty proj e =
+  let fun_ty bs t1 t2 = T.Func (T.Local, T.Returns, bs, t1, t2) in
+  let varA = T.Var ("A", 0) in
+  let element_ty = T.as_immut (T.as_array array_ty) in
+  let call name t1 t2 =
+    let poly_array_ty =
+      if T.is_mut (T.as_array array_ty)
+      then T.Array (T.Mut varA)
+      else T.Array varA in
+    let ty_param = {T.var = "A"; T.bound = T.Any} in
+    let f = idE name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
+    callE f [element_ty] e in
+  match T.is_mut (T.as_array array_ty), proj with
+    | true,  "len"  -> call "@mut_array_len"    [] [T.nat]
+    | false, "len"  -> call "@immut_array_len"  [] [T.nat]
+    | true,  "get"  -> call "@mut_array_get"    [T.nat] [varA]
+    | false, "get"  -> call "@immut_array_get"  [T.nat] [varA]
+    | true,  "set"  -> call "@mut_array_set"    [T.nat; varA] []
+    | true,  "keys" -> call "@mut_array_keys"   [] [T.iter_obj T.nat]
+    | false, "keys" -> call "@immut_array_keys" [] [T.iter_obj T.nat]
+    | true,  "vals" -> call "@mut_array_vals"   [] [T.iter_obj varA]
+    | false, "vals" -> call "@immut_array_vals" [] [T.iter_obj varA]
+    | _, _ -> assert false
+
+and text_dotE proj e =
+  let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
+  let call name t1 t2 =
+    let f = idE name (fun_ty [T.text] [fun_ty t1 t2]) in
+    callE f [] e in
+  match proj with
+    | "len"   -> call "@text_len"   [] [T.nat]
+    | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
+    |  _ -> assert false
 
 and block force_unit ds =
   let extra = extra_typDs ds in
