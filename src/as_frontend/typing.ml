@@ -862,6 +862,23 @@ and check_exp' env t exp : T.typ =
         warn env exp.at
           "the cases in this switch do not cover all possible values";
     t
+  | FuncE (_, s', [], pat, typ, exp), T.Func (s, _, [], ts1, ts2) ->
+    let ve = check_pat_exhaustive env (T.seq ts1) pat in
+    let t2 = check_typ env typ in
+    (* TBR: infer return type *)
+    if s'.it <> s then
+      error env exp.at
+        "%sshared function does not match expected %sshared function type"
+        (if s'.it = T.Local then "non-" else "")
+        (if s = T.Local then "non-" else "");
+    if not (T.sub t2 (T.seq ts2)) then
+      error env exp.at
+        "function return type\n  %s\ndoes not match expected return type\n  %s"
+        (T.string_of_typ_expand t2) (T.string_of_typ_expand (T.seq ts2));
+    let env' =
+      {env with labs = T.Env.empty; rets = Some t2; async = false} in
+    check_exp (adjoin_vals env' ve) t2 exp;
+    t
   | _ ->
     let t' = infer_exp env exp in
     if not (T.sub t' t) then
@@ -1296,29 +1313,6 @@ and check_dec env t dec =
   | ExpD exp ->
     check_exp env t exp;
     dec.note <- exp.note
-(* TBR: push in external type annotation;
-   unfortunately, this isn't enough, because of the earlier recursive phases
-  | FuncD (id, [], pat, typ, exp) ->
-    (* TBR: special-case unit? *)
-    if T.eq env.cons t T.unit then
-      ignore (infer_dec env dec)
-    else
-    (match T.nonopt env.cons t with
-    | T.Func ([], t1, t2)->
-      let ve = check_pat env t1 pat in
-      let t2' = check_typ env typ in
-      (* TBR: infer return type *)
-      if not (T.eq env.cons t2 t2') then
-        error dec.at "expected return type %s but found %s"
-          (T.string_of_typ t2) (T.string_of_typ t2');
-      let env' =
-        {env with labs = T.Env.empty; rets = Some t2; async = false} in
-      check_exp (adjoin_vals env' ve) t2 exp
-    | _ ->
-      error exp.at "function expression cannot produce expected type %s"
-        (T.string_of_typ t)
-    )
-*)
   | _ ->
     let t' = infer_dec env dec in
     if not (T.eq t T.unit || T.sub t' t) then

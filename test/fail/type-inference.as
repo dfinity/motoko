@@ -1,10 +1,3 @@
-func f(g : Int -> Int) : Int = g 5;
-/* TBR
-let x = f(func x = x);
-let y = f(func x = x + 1);
-*/
-
-
 // Branch warnings.
 
 let _ = if true true else 5;
@@ -20,10 +13,12 @@ let _ = switch 0 { case 0 true; case _ [var 5] };
 let _ = switch 0 { case 0 2; case 2 (-5); case 3 "text"; case _ () };
 let _ = switch 0 { case 0 true; case _ (() : Any); };  // ok
 
+
 // Array warnings.
 
 let _ = [true, 5];
 let _ = [true, [var 5]];
+
 
 // Local types (not) escaping.
 
@@ -70,7 +65,9 @@ func top(top : Top) {
   };
 };
 
+
 // Bottom Type
+
 {
 type Bot = None;
 func bot(bot : Bot) {
@@ -97,3 +94,11 @@ func bot(bot : Bot) {
     o;
   };
 };
+
+
+// Function types.
+
+func f(g : Int -> Int) : Int = g 5;
+
+let _ = f(func x : Int = x);
+let _ = f(func x : Int = x + 1);

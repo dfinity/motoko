@@ -40,10 +40,6 @@ and typ' =
   | FuncT of sharing * typ_bind list * typ * typ   (* function *)
   | AsyncT of typ                                  (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
-(*
-  | UnionT of type * typ                           (* union *)
-  | AtomT of string                                (* atom *)
-*)
 
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
