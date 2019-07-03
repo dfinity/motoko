@@ -4785,8 +4785,24 @@ let rec compile_binop env t op =
         get_exp ^^
         G.if_ (ValBlockType (Some I32Type))
           begin
-            get_n ^^ get_n ^^ overflows_signed_bits env 2 ^^ (* FIXME: -1^ *)
+            get_n ^^ get_n ^^ overflows_signed_bits env 2 ^^
+            G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^ (* negated *)
+            get_n ^^ compile_unboxed_const (-2l) ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
+            G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
             G.if_ (ValBlockType (Some I32Type))
+              begin
+                get_n ^^ compile_unboxed_zero ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+                G.if_ (ValBlockType (Some I32Type))
+                  begin
+                    (* -1 ** (1+exp) == if even (1+exp) then 1 else -1 *)
+                    get_exp ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+                    G.if_ (ValBlockType (Some I32Type))
+                      get_n
+                      compile_unboxed_one
+                  end
+                  get_n (* n@{0,1} ** (1+exp) == n *)
+              end
               begin
                 get_exp ^^ compile_unboxed_const 32l ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^ then_arithmetic_overflow env ^^
@@ -4800,7 +4816,6 @@ let rec compile_binop env t op =
                 set_res ^^ get_res ^^ get_res ^^ enforce_32_signed_bits env ^^
                 get_res ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
               end
-              get_n (* n@{0,1} ** (1+exp) == n *)
           end
           compile_unboxed_one) (* x ** 0 == 1 *)
   | Type.(Prim Int),                          PowOp ->
