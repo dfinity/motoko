@@ -1,5 +1,8 @@
 (* Representation *)
 
+(* TODO: revisit all uses of polymorphic comparison involving typ(e)s
+         & replace by custom comparison *)
+
 type lab = string
 type var = string
 
@@ -164,8 +167,8 @@ let rec cons t cs =
   | Typ c -> ConSet.add c cs
 
 and cons_con c cs =
-  if ConSet.mem c cs then
-    cs
+  if ConSet.mem c cs
+  then cs
   else cons_kind (Con.kind c) (ConSet.add c cs)
 
 and cons_bind {var; bound} cs =
@@ -184,33 +187,27 @@ and cons_kind k cs =
 
 let rec is_closed seen i t =
   match t with
-  | Prim _ -> true
   | Var (_, j) ->  j < i
   | Con (c, ts) -> is_closed_con seen i c && List.for_all (is_closed seen i) ts
-  | Array t -> is_closed seen i t
   | Tup ts -> List.for_all (is_closed seen i) ts
   | Func (s, c, tbs, ts1, ts2) ->
     let i' = i + List.length tbs in
     List.for_all (fun {var;bound} -> is_closed seen i' bound) tbs &&
     List.for_all (is_closed seen i') ts1 &&
     List.for_all (is_closed seen i') ts2
-  | Opt t -> is_closed seen i t
-  | Async t -> is_closed seen i t
-  | Obj (s, fs) -> List.for_all (fun {typ;_} -> is_closed seen i typ) fs
+  | Obj (_, fs)
   | Variant fs -> List.for_all (fun {typ;_} -> is_closed seen i typ) fs
-  | Mut t -> is_closed seen i t
-  | Shared -> true
-  | Serialized t -> is_closed seen i t
-  | Any -> true
-  | Non -> true
-  | Pre -> true
+  | Array t | Opt t | Async t | Mut t | Serialized t -> is_closed seen i t
+  | Prim _ | Shared | Any | Non -> true
+  | Pre -> assert false
   | Typ c -> is_closed_con seen i c
 
 and is_closed_kind seen i k =
   match k with
   | Abs (tbs, t) -> (* TBR *)
-    assert (List.for_all (fun {var; bound} -> is_closed seen 0 (*!*) bound) tbs &&
-              is_closed seen 0 (*!*) t);
+    assert
+      (List.for_all (fun {var; bound} -> is_closed seen 0 (*!*) bound) tbs &&
+         is_closed seen 0 (*!*) t);
     true
   | Def (tbs, t) ->
     let i' = i + List.length tbs in
@@ -226,11 +223,19 @@ and is_closed_con seen i c =
 
 let is_abs c = match Con.kind c with Abs _ -> true | Def _ -> false
 
-module ShiftEnv = Env.Make(struct type t = int * int * con (* (i, n, c) *)
-                                  let compare = compare
-                           end)
-(* TODO: optimize shifts for n = 0 *)
+module ShiftEnv = Env.Make
+  (struct type t = int * int * con (* (i, n, c) *)
+          let compare (i1, n1, c1) (i2, n2, c2) =
+            (match compare i1 i2 with
+             | 0 ->
+               (match compare n1 n2 with
+                | 0 -> Con.compare c1 c2
+                | j -> j)
+             | i -> i)
+   end)
+
 let rec shift seen i n t =
+  if n = 0 then t else
   match t with
   | Prim _ -> t
   | Var (s, j) -> Var (s, if j < i then j else j + n)
@@ -250,8 +255,7 @@ let rec shift seen i n t =
   | Any -> Any
   | Non -> Non
   | Pre -> Pre
-  | Typ c ->
-    Typ (shift_con seen i n c)
+  | Typ c -> Typ (shift_con seen i n c)
 
 and shift_con seen i n c =
   match Con.kind c with
@@ -283,9 +287,14 @@ and shift_kind seen i n k =
 (* First-order substitution *)
 
 
-module SubstEnv = Env.Make(struct type t = int * con (* (m, c) - m is cummulative shift *)
-                                  let compare = compare
-                           end)
+module SubstEnv = Env.Make
+  (struct
+    type t = int * con (* (m, c) where m is cumulative shift *)
+    let compare (m1, c1) (m2, c2) =
+      (match compare m1 m2 with
+       | 0 -> Con.compare c1 c2
+       | i -> i)
+   end)
 
 let rec subst ((dom, self, ce, se, m) as seen) sigma t =
   if sigma = ConEnv.empty then t else
@@ -301,10 +310,13 @@ let rec subst ((dom, self, ce, se, m) as seen) sigma t =
   | Tup ts -> Tup (List.map (subst seen sigma) ts)
   | Func (s, c, tbs, ts1, ts2) ->
     let n = List.length tbs in
-    let sigma' = ConEnv.map (shift se 0 n) sigma in
+    let sigma' =
+      if n = 0 then sigma else
+      ConEnv.map (shift se 0 n) sigma in
     let seen' = (dom, self, ce, se, m + n) in
-    Func (s, c, List.map (subst_bind seen' sigma') tbs,
-          List.map (subst seen' sigma') ts1, List.map (subst seen' sigma') ts2)
+    Func (s, c,
+      List.map (subst_bind seen' sigma') tbs,
+      List.map (subst seen' sigma') ts1, List.map (subst seen' sigma') ts2)
   | Opt t -> Opt (subst seen sigma t)
   | Async t -> Async (subst seen sigma t)
   | Obj (s, fs) -> Obj (s, List.map (subst_field seen sigma) fs)
@@ -316,10 +328,8 @@ let rec subst ((dom, self, ce, se, m) as seen) sigma t =
   | Non -> Non
   | Pre -> Pre
   | Typ c ->
-    (match ConEnv.find_opt c sigma with
-     | Some t -> assert false
-     | None -> Typ (subst_con seen sigma c)
-    )
+    (assert (not (ConSet.mem c dom));
+     Typ (subst_con seen sigma c))
 
 and subst_con (dom, self, ce, se, m) sigma c =
   match Con.kind c with
@@ -329,7 +339,7 @@ and subst_con (dom, self, ce, se, m) sigma c =
     | Some c' -> c'
     | None ->
       match self with
-      | Some (c_self,c') when Con.eq c c_self -> c'
+      | Some (c_self, c') when Con.eq c c_self -> c'
       | _ ->
         if ConSet.is_empty (ConSet.inter dom (cons_con c ConSet.empty)) then
           (ce := SubstEnv.add (m, c) c !ce;
@@ -373,9 +383,13 @@ let close_binds cs tbs =
   if cs = [] then tbs else
   List.map (fun {var; bound} -> {var; bound = close cs bound}) tbs
 
-module OpenEnv = Env.Make(struct type t = int * con (* (i,c) *)
-                                 let compare = compare
-                          end)
+module OpenEnv = Env.Make
+  (struct type t = int * con (* (i, c) *)
+    let compare (i1, c1) (i2, c2) =
+      (match compare i1 i2 with
+       | 0 -> Con.compare c1 c2
+       | i -> i)
+   end)
 
 let rec open' seen i ts t =
   match t with
@@ -449,7 +463,7 @@ let open_binds tbs =
 (* Normalization and Classification *)
 
 let reduce tbs t ts =
-    assert (List.length ts = List.length tbs);
+  assert (List.length ts = List.length tbs);
   open_ ts t
 
 let rec normalize = function
@@ -1242,9 +1256,8 @@ and string_of_binds vs vs' = function
   | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
 
 and strings_of_con' vs c =
-  let k = Con.kind c in
   let op, tbs, t, cs =
-    match k with
+    match Con.kind c with
     | Def (tbs, t) -> "=", tbs, t, [(string_of_con' vs c, 0)]
     | Abs (tbs, t) -> "<:", tbs, t, []
   in

@@ -177,8 +177,8 @@ and check_typ' env typ : T.typ =
     let c = check_typ_path env path in
     let ts = List.map (check_typ env) typs in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
-    let tbs = List.map (fun {T.var;T.bound} -> {T.var;bound = T.open_ ts bound}) tbs in
-    check_typ_bounds env tbs ts typs typ.at;
+    let tbs' = List.map (fun {T.var; T.bound} -> {T.var; bound = T.open_ ts bound}) tbs in
+    check_typ_bounds env tbs' ts typs typ.at;
     T.Con (c, ts)
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
@@ -264,10 +264,11 @@ and check_typ_tag env typ_tag =
 and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Scope.con_env =
   (* TODO: rule out cyclic bounds *)
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
-  let cs = List.map2 (fun x tb ->
-               match tb.note with
-               | Some c -> c
-               | None -> Con.fresh x (T.Abs ([], T.Pre))) xs typ_binds in
+  let cs =
+    List.map2 (fun x tb ->
+      match tb.note with
+      | Some c -> c
+      | None -> Con.fresh x (T.Abs ([], T.Pre))) xs typ_binds in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -294,8 +295,8 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) typs at =
     error env at "too few type arguments";
   if pars < args then
     error env at "too many type arguments";
-  let rec go tbs' ts' typ' =
-    match tbs', ts', typ' with
+  let rec go tbs' ts' typs' =
+    match tbs', ts', typs' with
     | tb::tbs', t::ts', typ::typs' ->
       if not env.pre then
         let u = T.open_ ts tb.T.bound in
@@ -1250,7 +1251,7 @@ and infer_dec env dec : T.typ =
       let cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive env' pat in
-      let self_typ = T.Con (c, List.map (fun c -> T.Con(c, [])) cs) in
+      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
       let env'' =
         { (add_val (adjoin_vals env' ve) self_id.it self_typ) with
           labs = T.Env.empty;
@@ -1473,7 +1474,7 @@ and infer_id_typdecs id c k : Scope.con_env =
   assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
   (match Con.kind c with
   | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
-  | k' -> () (* assert (T.eq_kind k' k) *)
+  | k' -> assert (T.eq_kind k' k)
   );
   T.ConSet.singleton c
 
