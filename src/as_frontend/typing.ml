@@ -1071,27 +1071,29 @@ Alternative: pass in two types?
 
 
 and check_pats env ts pats ve at : Scope.val_env =
-  match pats, ts with
+  match ts, pats with
   | [], [] -> ve
-  | pat::pats', t::ts' ->
+  | t::ts', pat::pats' ->
     let ve1 = check_pat env t pat in
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     check_pats env ts' pats' ve' at
-  | [], ts ->
+  | ts, [] ->
     local_error env at "tuple pattern has %i fewer components than expected type"
       (List.length ts); ve
-  | ts, [] ->
+  | [], ts ->
     error env at "tuple pattern has %i more components than expected type"
       (List.length ts)
 
 and check_pat_fields env s tfs pfs ve at : Scope.val_env =
-  match pfs, tfs with
-  | [], _ -> ve
-  | pf::_, [] ->
+  match tfs, pfs with
+  | _, [] -> ve
+  | [], pf::_ ->
     error env pf.at
       "object field %s is not contained in expected type\n  %s"
       pf.it.id.it (T.string_of_typ (T.Obj (s, tfs)))
-  | pf::pfs', T.{lab; typ}::tfs' ->
+  | T.{lab; typ = Typ _}::tfs', _ ->  (* TODO: remove the namespace hack *)
+    check_pat_fields env s tfs' pfs ve at
+  | T.{lab; typ}::tfs', pf::pfs' ->
     match compare pf.it.id.it lab with
     | -1 -> check_pat_fields env s [] pfs ve at
     | +1 -> check_pat_fields env s tfs' pfs ve at
