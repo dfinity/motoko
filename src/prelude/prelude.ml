@@ -39,6 +39,49 @@ class revrange(x : Nat, y : Nat) {
   next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
 };
 
+// Implementations for overloaded dot operations
+// Note that these return functions!
+// (Some optimizations in the backend might be feasible.)
+
+func @immut_array_get<A>(xs : [A]) : (Nat -> A) =
+  (func (n : Nat) : A = xs[n]);
+func @mut_array_get<A>(xs : [var A]) : (Nat -> A) =
+  (func (n : Nat) : A = xs[n]);
+func @immut_array_len<A>(xs : [A]) : (() -> Nat) =
+  (func () : Nat = (prim "array_len" : ([A]) -> Nat) xs);
+func @mut_array_len<A>(xs : [var A]) : (() -> Nat) =
+  (func () : Nat = (prim "array_len" : ([var A]) -> Nat) xs);
+func @mut_array_set<A>(xs : [var A]) : ((Nat, A) -> ()) =
+  (func (n : Nat, x : A) = (xs[n] := x));
+func @immut_array_keys<A>(xs : [A]) : (() -> Iter<Nat>) =
+  (func () : Iter<Nat> = new {
+    private var i = 0;
+    private l = xs.len();
+    next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  });
+func @mut_array_keys<A>(xs : [var A]) : (() -> Iter<Nat>) =
+  (func () : Iter<Nat> = new {
+    private var i = 0;
+    private l = xs.len();
+    next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  });
+func @immut_array_vals<A>(xs : [A]) : (() -> Iter<A>) =
+  (func () : Iter<A> = new {
+    private var i = 0;
+    private l = xs.len();
+    next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
+  });
+func @mut_array_vals<A>(xs : [var A]) : (() -> Iter<A>) =
+  (func () : Iter<A> = new {
+    private var i = 0;
+    private l = xs.len();
+    next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
+  });
+func @text_len(xs : Text) : (() -> Nat) =
+  (func () : Nat = (prim "text_len" : Text -> Nat) xs);
+func @text_chars(xs : Text) : (() -> Iter<Char>) =
+  (func () : Iter<Char> = (prim "text_chars" : Text -> Iter<Char>) xs);
+
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
 

@@ -355,10 +355,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env exp1;
       let t1 = typ exp1 in
       let sort, tfs =
-        (* TODO: separate array and text accessors *)
         try T.as_obj_sub n t1 with Invalid_argument _ ->
-        try T.array_obj (T.as_array_sub t1) with Invalid_argument _ ->
-        try T.text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
           error env exp1.at "expected object type, but expression produces type\n  %s"
             (T.string_of_typ_expand t1)
       in

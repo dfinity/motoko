@@ -3,7 +3,7 @@ open Source
 open Arrange_idl
 
 (* Environments *)
-module FieldEnv = Env.Make(Int32)
+module FieldEnv = Env.Make(Lib.Uint32)
 module Env = Env.Make(String)
 module TS = Set.Make(String)           
            
@@ -61,8 +61,7 @@ let disjoint_union env at fmt env1 env2 =
   with Env.Clash k -> error env at fmt k
 
 (* Types *)
-
-let compare_field (f1: typ_field) (f2: typ_field) = compare f1.it.id f2.it.id
+let compare_field (f1: typ_field) (f2: typ_field) = Lib.Uint32.compare f1.it.id f2.it.id
 let compare_meth (m1: typ_meth) (m2: typ_meth) = compare m1.it.var m2.it.var
 let find_type env id =
   match Env.find_opt id.it env.typs with

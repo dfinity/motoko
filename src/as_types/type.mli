@@ -64,6 +64,9 @@ val unit : typ
 val bool : typ
 val nat : typ
 val int : typ
+val text : typ
+val char : typ
+val iter_obj : typ -> typ
 
 val prim : string -> prim
 
@@ -124,12 +127,6 @@ val lookup_val_field : string -> field list -> typ option
 val lookup_typ_field : string -> field list -> con option
 
 val compare_field : field -> field -> int
-
-
-(* Corercions *)
-
-val array_obj : typ -> obj_sort * field list
-val text_obj : unit -> obj_sort * field list
 
 
 (* Constructors *)
