@@ -374,18 +374,21 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_obj env sort fields k
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
-  | DotE (exp1, x) when T.is_array exp1.note.note_typ && x.it = "len"->
-    interpret_exp env exp1 (fun v -> k (array_len (V.as_array v)))
-  | DotE (exp1, x) when T.is_array exp1.note.note_typ && x.it = "get"->
-    interpret_exp env exp1 (fun v -> k (array_get (V.as_array v)))
-  | DotE (exp1, x) when T.is_array exp1.note.note_typ && x.it = "set"->
-    interpret_exp env exp1 (fun v -> k (array_set (V.as_array v)))
-  | DotE (exp1, x) when T.is_array exp1.note.note_typ && x.it = "keys"->
-    interpret_exp env exp1 (fun v -> k (array_keys (V.as_array v)))
-  | DotE (exp1, x) when T.is_array exp1.note.note_typ && x.it = "vals"->
-    interpret_exp env exp1 (fun v -> k (array_vals (V.as_array v)))
-  | DotE (exp1, x) when T.is_prim T.Text exp1.note.note_typ && x.it = "len"->
-    interpret_exp env exp1 (fun v -> k (text_len (V.as_text v)))
+  | DotE (exp1, x) when T.is_array exp1.note.note_typ ->
+    let f = match x.it with
+      | "len" -> array_len
+      | "get" -> array_get
+      | "set" -> array_set
+      | "keys" -> array_keys
+      | "vals" -> array_vals
+      | _ -> assert false in
+    interpret_exp env exp1 (fun v -> k (f (V.as_array v)))
+  | DotE (exp1, x) when T.is_prim T.Text exp1.note.note_typ ->
+    let f = match x.it with
+      | "len" -> text_len
+      | "chars" -> text_chars
+      | _ -> assert false in
+    interpret_exp env exp1 (fun v -> k (f (V.as_text v)))
   | DotE (exp1, x) when T.is_prim T.Text exp1.note.note_typ && x.it = "chars"->
     interpret_exp env exp1 (fun v -> k (text_chars (V.as_text v)))
   | DotE (exp1, id) ->
