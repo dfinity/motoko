@@ -66,7 +66,7 @@ Notes:
 
 An import statement addresses the unit to be imported via an `<url>`. The following URL forms are specfied as of now:
 
-* Relative URLs, such as `import "utils.as"`, `import "more/utils.as"`, `import "more/utils/"`, `import "./utils.as"`, `import ./more/utils.as` or `import "more/utils/"`.
+* Relative URLs, such as `import "utils"`, `import "more/utils"`, `import "more/utils/"`, `import "./utils"`, `import ./more/utils` or `import "more/utils/"`.
 
   These relative URLs are interpreted as relative to the directory that contains the file that contains the `import` statement.
 
@@ -78,9 +78,9 @@ An import statement addresses the unit to be imported via an `<url>`. The follow
 
 Using URLs for the imports allows for future extensions (e.g. via additional schemes, or by allowing and giving meaning to the authority, query or fragment part of an URL).
 
-After interpreting the path `foo` relative to the current directory resp. the package directory, the compiler resolves paths that end in a slash to a file called `lib.as` inside that directory and treats other paths verbatim.
+After interpreting the path `foo` relative to the current directory resp. the package directory, the compiler resolves paths that end in a slash to a file location `lib` inside that directory.
 
-For example `lib/foo/` resolves to `lib/foo/lib.as`, and `lib/foo.as` resolves to exactly that path.
+For example `lib/foo/` resolves to `lib/foo/lib`, and `lib/foo` resolves to `lib/foo`. File extensions like `.as` or `.wasm` will be determined by the compilation scheme and run/compilation time.
 
 ### Programs
 
