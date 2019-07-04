@@ -51,6 +51,8 @@ let commonBuildInputs = [
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
   nixpkgs.ocamlPackages.yojson
+  nixpkgs.ocamlPackages.ppxlib
+  nixpkgs.ocamlPackages.ppx_inline_test
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
   nixpkgs.ocamlPackages.ocaml-migrate-parsetree
@@ -152,6 +154,22 @@ rec {
       '' else ''
         make quick
       '');
+
+    installPhase = ''
+      touch $out
+    '';
+  };
+
+  unit-tests = stdenv.mkDerivation {
+    name = "unit-tests";
+
+    src = subpath ./src;
+
+    buildInputs = commonBuildInputs;
+
+    buildPhase = ''
+      make DUNE_OPTS="--display=short" unit-tests
+    '';
 
     installPhase = ''
       touch $out
@@ -353,9 +371,11 @@ rec {
     name = "all-systems-go";
     constituents = [
       asc
+      as-ide
       js
       didc
       tests
+      unit-tests
       samples
       rts
       stdlib

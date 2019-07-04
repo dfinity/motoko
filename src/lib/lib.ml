@@ -264,6 +264,8 @@ struct
     | Some x -> f x
     | None -> ()
 
+  let some x = Some x
+
   let bind x f = match x with
     | Some x -> f x
     | None -> None

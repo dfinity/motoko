@@ -217,4 +217,3 @@ let string_of_lit = function
   | TextLit t     -> t
   | FloatLit f    -> Value.Float.to_pretty_string f
   | PreLit _      -> assert false
-
