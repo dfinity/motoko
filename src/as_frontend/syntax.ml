@@ -108,10 +108,6 @@ and pat_field' = {id : id; pat : pat}
 type vis = vis' Source.phrase
 and vis' = Public | Private
 
-let string_of_vis v = match v with
-  | Public -> "public"
-  | Private -> "private"
-
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
 type exp = (exp', typ_note) Source.annotated_phrase
