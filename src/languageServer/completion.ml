@@ -17,13 +17,13 @@ let string_of_list f xs =
 let item_of_ide_decl = function
   | ValueDecl(lbl, ty) ->
      (lbl, Some(Type.string_of_typ ty))
-  | TypeDecl(lbl, ty) ->
+  | TypeDecl (lbl, ty) ->
      (lbl, Some(Type.string_of_typ ty))
 
 let string_of_ide_decl = function
-  | ValueDecl(lbl, ty) ->
+  | ValueDecl (lbl, ty) ->
      "ValueDecl(" ^ String.escaped lbl ^ ", " ^ Type.string_of_typ ty ^ ")"
-  | TypeDecl(lbl, ty) ->
+  | TypeDecl (lbl, ty) ->
      "TypeDecl(" ^ String.escaped lbl ^ ", " ^ Type.string_of_typ ty ^ ")"
 
 let lib_files () : string list =
