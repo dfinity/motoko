@@ -4616,6 +4616,57 @@ let compile_Nat64_kernel env name op =
     else_arithmetic_overflow env ^^
     get_res ^^ BigNum.truncate_to_word64 env)
 
+
+
+
+
+
+
+
+let powNat64_shortcut fast env get_a get_b slow =
+  get_b ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+  G.if_ (ValBlockType (Some I64Type))
+    (compile_const_64 1L) (* ^0 *)
+    begin (* ^(1+n) *)
+      get_a ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+      G.if_ (ValBlockType (Some I64Type))
+        get_a (* {0,1}^(1+n) *)
+        begin
+          get_b ^^ compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
+          get_a ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^ compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+          G.if_ (ValBlockType (Some I64Type))
+            (get_a ^^ get_b ^^ fast)
+            slow
+        end
+    end
+
+
+let compile_Nat64_kernel' env name op shortcut =
+  Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Nat64 name)
+    (("a", I64Type), ("b", I64Type)) [I64Type]
+    BigNum.(fun env get_a get_b ->
+    shortcut
+      env
+      get_a
+      get_b
+      begin
+        let (set_res, get_res) = new_local env "res" in
+        get_a ^^ from_word64 env ^^
+        get_b ^^ from_word64 env ^^
+        op env ^^
+        set_res ^^ get_res ^^
+        fits_unsigned_bits env 64 ^^
+        else_arithmetic_overflow env ^^
+        get_res ^^ BigNum.truncate_to_word64 env
+      end)
+
+
+
+
+
+
+
 (* Compiling Int/Nat32 ops by conversion to/from i64. *)
 
 (* helper, expects i64 on stack *)
