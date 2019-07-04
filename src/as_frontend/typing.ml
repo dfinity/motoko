@@ -1,7 +1,9 @@
-open Syntax
-open Source
+open As_def
 open As_types
 open As_values
+
+open Syntax
+open Source
 
 module T = Type
 module A = Effect

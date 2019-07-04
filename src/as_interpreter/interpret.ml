@@ -1,11 +1,13 @@
+open As_def
 open As_values
-open As_frontend
+open As_types
+
 open Syntax
 open Source
 
-module V = As_values.Value
-module T = As_types.Type
-module CC = As_types.Call_conv
+module V = Value
+module T = Type
+module CC = Call_conv
 
 (* Context *)
 

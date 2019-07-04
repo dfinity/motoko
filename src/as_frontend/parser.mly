@@ -1,8 +1,12 @@
 %{
+open As_def
 open As_types
-open As_values.Operator
+open As_values
+
 open Syntax
 open Source
+open Operator
+
 
 (* Position handling *)
 
@@ -137,8 +141,8 @@ let share_expfield (ef : exp_field) =
 %left POWOP
 
 %type<Syntax.exp> exp exp_nullary
-%start<string -> Syntax.prog> parse_prog
-%start<string -> Syntax.prog> parse_prog_interactive
+%start<string -> As_def.Syntax.prog> parse_prog
+%start<string -> As_def.Syntax.prog> parse_prog_interactive
 
 %%
 

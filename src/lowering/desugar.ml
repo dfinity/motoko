@@ -1,5 +1,5 @@
-open As_ir
-open As_frontend
+open Ir_def
+open As_def
 open As_types
 open As_values
 
@@ -7,7 +7,7 @@ open Source
 open Operator
 module S = Syntax
 module I = Ir
-module T = As_types.Type
+module T = Type
 open Construct
 
 (*
