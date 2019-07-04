@@ -4619,8 +4619,14 @@ let compile_Nat64_kernel env name op =
 
 
 
-
-
+let mulNat64_shortcut fast env get_a get_b slow =
+  get_a ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^
+  get_b ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^
+  G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+  compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
+  G.if_ (ValBlockType (Some I64Type))
+    (get_a ^^ get_b ^^ fast)
+    slow
 
 
 let powNat64_shortcut fast env get_a get_b slow =
@@ -4769,7 +4775,7 @@ let rec compile_binop env t op =
   | Type.(Prim (Nat | Int)),                  MulOp -> BigNum.compile_mul env
   | Type.(Prim Word64),                       MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
   | Type.(Prim Int64),                        MulOp -> compile_Int64_kernel env "mul" BigNum.compile_mul
-  | Type.(Prim Nat64),                        MulOp -> compile_Nat64_kernel env "mul" BigNum.compile_mul
+  | Type.(Prim Nat64),                        MulOp -> compile_Nat64_kernel' env "mul" BigNum.compile_mul (mulNat64_shortcut (G.i (Binary (Wasm.Values.I64 I64Op.Mul))))
   | Type.(Prim (Nat64|Word64)),               DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivU))
   | Type.(Prim (Nat64|Word64)),               ModOp -> G.i (Binary (Wasm.Values.I64 I64Op.RemU))
   | Type.(Prim Int64),                        DivOp -> G.i (Binary (Wasm.Values.I64 I64Op.DivS))
