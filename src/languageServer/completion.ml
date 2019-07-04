@@ -38,7 +38,7 @@ let read_single_module_lib (ty: Type.typ): ide_decl list option =
   | Type.Obj (Type.Module, fields) ->
      fields
      |> List.map (fun Type.{ lab = lab; typ = typ } -> ValueDecl (lab, typ))
-     |> Lib.Option.pure
+     |> Lib.Option.some
   | _ -> None
 
 let make_index (): completion_index =
