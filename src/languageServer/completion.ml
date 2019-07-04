@@ -3,8 +3,8 @@ open As_frontend
 module Lsp_t = Lsp.Lsp_t
 
 type ide_decl =
-  | ValueDecl of (string * Type.typ)
-  | TypeDecl of (string * Type.typ)
+  | ValueDecl of string * Type.typ
+  | TypeDecl of string * Type.typ
 
 module Index = Map.Make(String)
 type completion_index = (ide_decl list) Index.t
@@ -15,7 +15,7 @@ let string_of_list f xs =
   |> fun x -> "[ " ^ x ^ " ]"
 
 let item_of_ide_decl = function
-  | ValueDecl(lbl, ty) ->
+  | ValueDecl (lbl, ty) ->
      (lbl, Some(Type.string_of_typ ty))
   | TypeDecl (lbl, ty) ->
      (lbl, Some(Type.string_of_typ ty))
@@ -37,7 +37,7 @@ let read_single_module_lib (ty: Type.typ): ide_decl list option =
   match ty with
   | Type.Obj (Type.Module, fields) ->
      fields
-     |> List.map (fun Type.{ lab = lab; typ = typ } -> ValueDecl(lab, typ))
+     |> List.map (fun Type.{ lab = lab; typ = typ } -> ValueDecl (lab, typ))
      |> Lib.Option.pure
   | _ -> None
 
