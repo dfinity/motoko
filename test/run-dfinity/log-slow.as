@@ -47,6 +47,22 @@ for (n in range(0, 255)) {
 };
 
 
+assert (natToNat64 2 ** natToNat64 63 == natToNat64 9223372036854775808); // highest exponent
+assert (natToNat64 2642245 ** natToNat64 3 == natToNat64 18_446_724_184_312_856_125);
+
+for (n in range(0, 255)) {
+    for (exp in range(0, 255)) {
+        if (n <= 1 or exp <= 106) { // see #537
+            let res = n ** exp;
+            if (res <= 18446744073709551615)
+            {
+                assert (natToNat64 n ** natToNat64 exp == natToNat64 res)
+            }
+        }
+    }
+};
+
+
 // Int*
 
 assert (intToInt8 2 ** intToInt8 6 == intToInt8 64); // highest exponent

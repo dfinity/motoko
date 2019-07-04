@@ -4980,7 +4980,10 @@ let rec compile_binop env t op =
     G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
     E.then_trap_with env "negative power" ^^
     get_exp ^^ compile_Int64_kernel env "pow" BigNum.compile_unsigned_pow
-  | Type.(Prim Nat64),                        PowOp -> compile_Nat64_kernel env "pow" BigNum.compile_unsigned_pow
+  | Type.(Prim Nat64),                        PowOp ->
+    compile_Nat64_kernel' env "pow"
+      BigNum.compile_unsigned_pow
+      (powNat64_shortcut (snd (compile_binop env Type.(Prim Word64) PowOp)))
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
