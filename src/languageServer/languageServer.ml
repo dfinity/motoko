@@ -135,8 +135,8 @@ let start () =
     | (Some id, `Initialize params) ->
        client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
        let completion_options =
-         Lsp_t.{ completion_options_resolveProvider = Some(false);
-                 completion_options_triggerCharacters = Some(["."])
+         Lsp_t.{ completion_options_resolveProvider = Some false;
+                 completion_options_triggerCharacters = Some ["."]
          } in
         let result = `Initialize (Lsp_t.{
           initialize_result_capabilities = {

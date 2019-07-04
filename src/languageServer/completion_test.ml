@@ -1,5 +1,5 @@
 let extract_cursor input =
-  let cursor_pos = ref (0,0) in
+  let cursor_pos = ref (0, 0) in
   Base.String.split_lines input
   |> List.mapi
        (fun line_num line ->
