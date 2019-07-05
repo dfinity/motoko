@@ -1,9 +1,11 @@
-open Syntax
-open Source
+open As_def
 open As_types
 open As_values
 
-module V = As_values.Value
+open Syntax
+open Source
+
+module V = Value
 
 module ValSet = Set.Make(struct type t = V.value let compare = V.compare end)
 module TagSet = Set.Make(struct type t = string let compare = compare end)

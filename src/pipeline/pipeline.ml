@@ -1,8 +1,12 @@
+open As_def
 open As_frontend
 open As_types
 open As_values
-open As_ir
-open Interpreter
+open As_interpreter
+open Ir_def
+open Ir_interpreter
+open Ir_passes
+
 open Printf
 
 type stat_env = Scope.t
@@ -438,19 +442,19 @@ let desugar env lib_env libraries progs name =
   prog_ir'
 
 let await_lowering =
-  transform_if "Await Lowering" (fun _ -> Ir_passes.Await.transform)
+  transform_if "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering =
-  transform_if "Async Lowering" Ir_passes.Async.transform
+  transform_if "Async Lowering" Async.transform
 
 let serialization =
-  transform_if "Synthesizing serialization code" Ir_passes.Serialization.transform
+  transform_if "Synthesizing serialization code" Serialization.transform
 
 let tailcall_optimization =
-  transform_if "Tailcall optimization" (fun _ -> Ir_passes.Tailcall.transform)
+  transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
 
 let show_translation =
-  transform_if "Translate show" Ir_passes.Show.transform
+  transform_if "Translate show" Show.transform
 
 
 (* Compilation *)
@@ -518,7 +522,7 @@ let interpret_ir_prog inp_env libraries progs =
   let name = name_progs progs in
   let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
-  let open Ir_interpreter.Interpret_ir in
+  let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
   let denv0 = empty_scope in
   let dscope = interpret_prog flags denv0 prelude_ir in

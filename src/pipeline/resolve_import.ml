@@ -1,4 +1,4 @@
-open As_frontend
+open As_def
 
 (*
 This module traverses the syntax tree. For each `import` statement, it looks

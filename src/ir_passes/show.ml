@@ -1,4 +1,4 @@
-open As_ir
+open Ir_def
 open As_types
 open As_values
 (* Translates away calls to `show`. *)
