@@ -63,6 +63,18 @@ let%test "it makes a file path relative to a path" =
     "/home/project/main.as"
     (Some "main.as")
 
+let%test "it preserves trailing slashes" =
+  relative_to_test_case
+    "/home/project/"
+    "/home/project/src/"
+    (Some "src/")
+
+let%test "it handles directory traversals" =
+  relative_to_test_case
+    "/home/project"
+    "/home/project/src/../lib/"
+    (Some "lib/")
+
 let%test "it fails to make disjoint paths relative to one another" =
   relative_to_test_case
     "/home/project"

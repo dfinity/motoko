@@ -45,5 +45,9 @@ Failure modes:
 
 let relative_to base path =
   if Filename.is_relative base || Filename.is_relative path
-  then None
-  else Base.String.chop_prefix ~prefix:(normalise (base ^ "/")) path
+  then
+    None
+  else
+    Base.String.chop_prefix
+      ~prefix:(normalise (base ^ "/"))
+      (normalise path)
