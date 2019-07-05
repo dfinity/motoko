@@ -151,7 +151,7 @@ val avoid_cons : ConSet.t -> ConSet.t -> unit (* raise Unavoidable *)
 
 val opaque : typ -> bool
 val concrete : typ -> bool
-
+val inhabited : typ -> bool
 val span : typ -> int option
 
 

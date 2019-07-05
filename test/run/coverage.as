@@ -48,9 +48,20 @@ func f() {
   switch (#a 6 : {#a : Nat; #b : Nat}) { case (#b _) {} };
   switch (#a 5) { case (#a _) {} };
 
-  func empty() : {#} = empty();
+  func empty() : None = empty();
   switch (empty()) {};
+  switch (empty() : {#}) {};
+  switch (empty() : {a : Nat; b : None}) {};
+  switch (empty() : {a : Nat; b : {#}}) {};
+  switch (empty() : {#a : None}) {};
+  switch (empty() : {#a : {#}}) {};
+
   switch (empty()) { case _ {} };
+  switch (empty() : {#}) { case _ {} };
+  switch (empty() : {a : Nat; b : None}) { case _ {} };
+  switch (empty() : {a : Nat; b : {#}}) { case _ {} };
+  switch (empty() : {#a : None}) { case _ {} };
+  switch (empty() : {#a : {#}}) { case _ {} };
 };
 
 

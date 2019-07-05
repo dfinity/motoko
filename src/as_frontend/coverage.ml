@@ -78,7 +78,10 @@ let rec match_pat ctxt desc pat t sets =
   Type.span t = Some 0 && skip_pat pat sets ||
   match pat.it with
   | WildP | VarP _ ->
-    succeed ctxt desc sets
+    if Type.inhabited t then
+      succeed ctxt desc sets
+    else
+      skip_pat pat sets
   | LitP lit ->
     match_lit ctxt desc (value_of_lit !lit) t sets
   | SignP (op, lit) ->
@@ -238,7 +241,7 @@ and fail ctxt desc sets : bool =
   | InAlt2 (ctxt', at2) ->
     fail ctxt' desc sets
   | InCase (at, [], t) ->
-    Type.span t = Some 0
+    Type.span t = Some 0 || not (Type.inhabited t)
   | InCase (at, case::cases, t) ->
     Type.span t = Some 0 && skip (case::cases) sets ||
     match_pat (InCase (case.at, cases, t)) desc case.it.pat t sets

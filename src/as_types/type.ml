@@ -526,7 +526,7 @@ let cons_kind k =
 
 (* Checking for concrete types *)
 
-module TS = Set.Make (struct type t = typ let compare = compare end)
+module S = Set.Make (struct type t = typ let compare = compare end)
 
 (*
 This check is a stop-gap measure until we have an IDL strategy that
@@ -534,11 +534,11 @@ allows polymorphic types, see #250. It is not what we desire for ActorScript.
 *)
 
 let concrete t =
-  let seen = ref TS.empty in (* break the cycles *)
+  let seen = ref S.empty in (* break the cycles *)
   let rec go t =
-    TS.mem t !seen ||
+    S.mem t !seen ||
     begin
-      seen := TS.add t !seen;
+      seen := S.add t !seen;
       match t with
       | Var _ -> assert false
       | Prim _ | Any | Non | Shared -> true
@@ -567,14 +567,14 @@ let concrete t =
 
 (* Equivalence & Subtyping *)
 
-module S = Set.Make (struct type t = typ * typ let compare = compare end)
+module SS = Set.Make (struct type t = typ * typ let compare = compare end)
 
 let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let rec rel_typ rel eq t1 t2 =
-  t1 == t2 || S.mem (t1, t2) !rel || begin
-  rel := S.add (t1, t2) !rel;
+  t1 == t2 || SS.mem (t1, t2) !rel || begin
+  rel := SS.add (t1, t2) !rel;
   match t1, t2 with
   | Pre, _ | _, Pre ->
     assert false
@@ -718,13 +718,13 @@ and rel_bind ts rel eq tb1 tb2 =
 and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
 
 and eq t1 t2 : bool =
-  let eq = ref S.empty in eq_typ eq eq t1 t2
+  let eq = ref SS.empty in eq_typ eq eq t1 t2
 
 and sub t1 t2 : bool =
-  rel_typ (ref S.empty) (ref S.empty) t1 t2
+  rel_typ (ref SS.empty) (ref SS.empty) t1 t2
 
 and eq_kind k1 k2 : bool =
-  let eq = ref S.empty in
+  let eq = ref SS.empty in
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
@@ -741,8 +741,8 @@ let compatible_list p co xs1 xs2 =
   try List.for_all2 (p co) xs1 xs2 with Invalid_argument _ -> false
 
 let rec compatible_typ co t1 t2 =
-  t1 == t2 || S.mem (t1, t2) !co || begin
-  co := S.add (t1, t2) !co;
+  t1 == t2 || SS.mem (t1, t2) !co || begin
+  co := SS.add (t1, t2) !co;
   match promote t1, promote t2 with
   | (Pre | Serialized _), _ | _, (Pre | Serialized _) ->
     assert false
@@ -767,8 +767,8 @@ let rec compatible_typ co t1 t2 =
     compatible_typ co t1' t2'
   | Prim Null, Opt _ | Opt _, Prim Null  ->
     true
-  | Variant fs1, Variant fs2 ->
-    compatible_tags co fs1 fs2
+  | Variant tfs1, Variant tfs2 ->
+    compatible_tags co tfs1 tfs2
   | Async t1', Async t2' ->
     compatible_typ co t1' t2'
   | Func _, Func _ ->
@@ -800,10 +800,37 @@ and compatible_tags co tfs1 tfs2 =
     | _ -> compatible_typ co tf1.typ tf2.typ && compatible_tags co tfs1' tfs2'
 
 and compatible t1 t2 : bool =
-  let co = ref S.empty in compatible_typ co t1 t2
+  compatible_typ (ref SS.empty) t1 t2
 
 
 let opaque t = compatible t Any
+
+
+(* Inhabitance *)
+
+let rec inhabited_typ co t =
+  S.mem t !co || begin
+  co := S.add t !co;
+  match promote t with
+  | Pre | Serialized _ -> assert false
+  | Non -> false
+  | Any | Shared | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> true
+  | Mut t' -> inhabited_typ co t'
+  | Tup ts -> List.for_all (inhabited_typ co) ts
+  | Obj (_, tfs) -> List.for_all (inhabited_field co) tfs
+  | Variant tfs -> List.exists (inhabited_field co) tfs
+  | Var _ -> true  (* TODO(rossberg): consider bound *)
+  | Con (c, ts) ->
+    match Con.kind c with
+    | Def (tbs, t') -> (* TBR this may fail to terminate *)
+      inhabited_typ co (open_ ts t')
+    | Abs (tbs, t') ->
+      inhabited_typ co t'
+  end
+
+and inhabited_field co tf = inhabited_typ co tf.typ
+
+and inhabited t : bool = inhabited_typ (ref S.empty) t
 
 
 (* Least upper bound and greatest lower bound *)
