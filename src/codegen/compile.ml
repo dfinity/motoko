@@ -4626,6 +4626,15 @@ let additiveInt64_shortcut fast env get_a get_b slow =
     (get_a ^^ get_b ^^ fast)
     slow
 
+let mulInt64_shortcut fast env get_a get_b slow =
+  get_a ^^ get_a ^^ compile_shl64_const 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^
+  get_b ^^ get_b ^^ compile_shl64_const 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^
+  G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+  compile_const_64 65L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
+  G.if_ (ValBlockType (Some I64Type))
+    (get_a ^^ get_b ^^ fast)
+    slow
+
 
 let compile_Int64_kernel' env name op shortcut =
   Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Int64 name)
@@ -4833,7 +4842,9 @@ let rec compile_binop env t op =
   | Type.(Prim Int),                          SubOp -> BigNum.compile_signed_sub env
   | Type.(Prim (Nat | Int)),                  MulOp -> BigNum.compile_mul env
   | Type.(Prim Word64),                       MulOp -> G.i (Binary (Wasm.Values.I64 I64Op.Mul))
-  | Type.(Prim Int64),                        MulOp -> compile_Int64_kernel env "mul" BigNum.compile_mul
+  | Type.(Prim Int64),                        MulOp ->
+    compile_Int64_kernel' env "mul" BigNum.compile_mul
+      (mulInt64_shortcut (G.i (Binary (Wasm.Values.I64 I64Op.Mul))))
   | Type.(Prim Nat64),                        MulOp ->
     compile_Nat64_kernel' env "mul" BigNum.compile_mul
       (mulNat64_shortcut (G.i (Binary (Wasm.Values.I64 I64Op.Mul))))
