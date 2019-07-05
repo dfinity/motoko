@@ -21,6 +21,30 @@ struct
     n <> 0 && n land (n - 1) = 0
 end
 
+module Uint32 =
+struct
+  type t = int32
+  let of_string = Int32.of_string
+  let to_string n = Printf.sprintf "%lu" n
+  let add = Int32.add
+  let sub = Int32.sub
+  let mul = Int32.mul
+  let succ = Int32.succ
+  let zero = Int32.zero
+  let one = Int32.one
+  let of_int = Int32.of_int
+  let to_int = Int32.to_int
+  let logand = Int32.logand
+  let logor = Int32.logor
+  let shift_right_logical = Int32.shift_right_logical
+  let of_int32 x = x
+  let to_int32 x = x
+  let compare i1 i2 =
+    if i1 < 0l && i2 >= 0l then 1
+    else if i1 >= 0l && i2 < 0l then -1
+    else Int32.compare i1 i2
+end
+  
 module String =
 struct
   let implode cs =
@@ -239,6 +263,8 @@ struct
   let app f = function
     | Some x -> f x
     | None -> ()
+
+  let some x = Some x
 
   let bind x f = match x with
     | Some x -> f x

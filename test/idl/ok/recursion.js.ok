@@ -11,6 +11,6 @@ const stream =
 const t = IDL.message(IDL.Obj({'server': s}), IDL.Obj({}))
 const tree =
  IDL.Variant({
-  'branch': IDL.Obj({'right': tree, 'val': IDL.Int, 'left': tree}),
+  'branch': IDL.Obj({'val': IDL.Int, 'left': tree, 'right': tree}),
   'leaf': IDL.Int})
 const A = s

@@ -31,7 +31,7 @@ let rec exp e = match e.it with
       Atom x] @
       List.map typ_bind tp @ [
       pat p;
-      typ t;
+      (match t with None -> Atom "_" | Some t -> typ t);
       exp e'
     ]
   | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map typ ts @ [exp e2]

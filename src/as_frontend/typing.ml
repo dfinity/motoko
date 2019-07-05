@@ -412,6 +412,28 @@ let check_lit env t lit at =
         "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand t)
 
+(* Coercions *)
+
+let array_obj t =
+  let open T in
+  let immut t =
+    [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t])};
+      {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+      {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)])};
+      {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t])};
+    ] in
+  let mut t = immut t @
+    [ {lab = "set"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
+  Object Local,
+  List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
+
+let text_obj () =
+  let open T in
+  Object Local,
+  [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
+    {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+  ]
+
 
 (* Expressions *)
 
@@ -544,8 +566,8 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp_promote env exp1 in
     let _s, tfs =
       try T.as_obj_sub id.it t1 with Invalid_argument _ ->
-      try T.array_obj (T.as_array_sub t1) with Invalid_argument _ ->
-      try T.text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
+      try array_obj (T.as_array_sub t1) with Invalid_argument _ ->
+      try text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
         error env exp1.at
           "expected object type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
@@ -588,7 +610,12 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | FuncE (_, sort, typ_binds, pat, typ, exp) ->
+  | FuncE (_, sort, typ_binds, pat, typ_opt, exp) ->
+    let typ = 
+      match typ_opt with
+      | Some typ -> typ
+      | None -> {it = TupT []; at = no_region; note = T.Pre}
+    in
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let t1, ve = infer_pat_exhaustive env' pat in
@@ -625,7 +652,7 @@ and infer_exp'' env exp : T.typ =
             (T.string_of_typ_expand t2)
       end
     end;
-    let ts1 = match pat.it with TupP ps -> T.as_seq t1 | _ -> [t1] in
+    let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
     let c =
       match sort.it, typ.it with
@@ -856,6 +883,26 @@ and check_exp' env t exp : T.typ =
       if not (Coverage.check_cases cases t1) then
         warn env exp.at
           "the cases in this switch do not cover all possible values";
+    t
+  | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
+    let ve = check_pat_exhaustive env (T.seq ts1) pat in
+    let t2 =
+      match typ_opt with
+      | None -> T.seq ts2
+      | Some typ -> check_typ env typ
+    in
+    if s'.it <> s then
+      error env exp.at
+        "%sshared function does not match expected %sshared function type"
+        (if s'.it = T.Local then "non-" else "")
+        (if s = T.Local then "non-" else "");
+    if not (T.sub t2 (T.seq ts2)) then
+      error env exp.at
+        "function return type\n  %s\ndoes not match expected return type\n  %s"
+        (T.string_of_typ_expand t2) (T.string_of_typ_expand (T.seq ts2));
+    let env' =
+      {env with labs = T.Env.empty; rets = Some t2; async = false} in
+    check_exp (adjoin_vals env' ve) t2 exp;
     t
   | _ ->
     let t' = infer_exp env exp in
@@ -1291,29 +1338,6 @@ and check_dec env t dec =
   | ExpD exp ->
     check_exp env t exp;
     dec.note <- exp.note
-(* TBR: push in external type annotation;
-   unfortunately, this isn't enough, because of the earlier recursive phases
-  | FuncD (id, [], pat, typ, exp) ->
-    (* TBR: special-case unit? *)
-    if T.eq env.cons t T.unit then
-      ignore (infer_dec env dec)
-    else
-    (match T.nonopt env.cons t with
-    | T.Func ([], t1, t2)->
-      let ve = check_pat env t1 pat in
-      let t2' = check_typ env typ in
-      (* TBR: infer return type *)
-      if not (T.eq env.cons t2 t2') then
-        error dec.at "expected return type %s but found %s"
-          (T.string_of_typ t2) (T.string_of_typ t2');
-      let env' =
-        {env with labs = T.Env.empty; rets = Some t2; async = false} in
-      check_exp (adjoin_vals env' ve) t2 exp
-    | _ ->
-      error exp.at "function expression cannot produce expected type %s"
-        (T.string_of_typ t)
-    )
-*)
   | _ ->
     let t' = infer_dec env dec in
     if not (T.eq t T.unit || T.sub t' t) then

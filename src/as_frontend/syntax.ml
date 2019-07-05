@@ -40,10 +40,6 @@ and typ' =
   | FuncT of sharing * typ_bind list * typ * typ   (* function *)
   | AsyncT of typ                                  (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
-(*
-  | UnionT of type * typ                           (* union *)
-  | AtomT of string                                (* atom *)
-*)
 
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
@@ -128,7 +124,7 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | FuncE of string * sharing * typ_bind list * pat * typ * exp  (* function *)
+  | FuncE of string * sharing * typ_bind list * pat * typ option * exp  (* function *)
   | CallE of exp * typ list * exp              (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
@@ -221,4 +217,3 @@ let string_of_lit = function
   | TextLit t     -> t
   | FloatLit f    -> Value.Float.to_pretty_string f
   | PreLit _      -> assert false
-

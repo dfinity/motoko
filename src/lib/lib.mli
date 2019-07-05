@@ -71,6 +71,7 @@ sig
   val get : 'a option -> 'a -> 'a
   val value : 'a option -> 'a
   val map : ('a -> 'b) -> 'a option -> 'b option
+  val some : 'a -> 'a option
   val app : ('a -> unit) -> 'a option -> unit
   val bind : 'a option -> ('a -> 'b option) -> 'b option
 end
@@ -93,6 +94,27 @@ sig
   val is_power_of_two : int -> bool
 end
 
+module Uint32 :
+sig
+  type t
+  val to_string : t -> string
+  val of_string : string -> t
+  val of_int : int -> t
+  val to_int : t -> int
+  val of_int32 : int32 -> t
+  val to_int32 : t -> int32
+  val add : t -> t -> t
+  val sub : t -> t -> t
+  val mul : t -> t -> t
+  val succ : t -> t
+  val zero : t
+  val one : t
+  val compare : t -> t -> int
+  val logand : t -> t -> t
+  val logor : t -> t -> t
+  val shift_right_logical : t -> int -> t
+end
+     
 module String :
 sig
   val implode : char list -> string

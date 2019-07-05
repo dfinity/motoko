@@ -86,6 +86,8 @@ let unit = Tup []
 let bool = Prim Bool
 let nat = Prim Nat
 let int = Prim Int
+let text = Prim Text
+let char = Prim Char
 
 let prim = function
   | "Null" -> Null
@@ -119,32 +121,11 @@ let compare_field f1 f2 =
   | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
   | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
 
-
 (* Coercions *)
-
-(* TODO: Move to typing once we have separated accessors in IR. *)
 
 let iter_obj t =
   Obj (Object Local,
     [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t])}])
-
-let array_obj t =
-  let immut t =
-    [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t])};
-      {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
-      {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)])};
-      {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t])};
-    ] in
-  let mut t = immut t @
-    [ {lab = "set"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
-  Object Local,
-  List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
-
-let text_obj () =
-  Object Local,
-  [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
-    {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
-  ]
 
 (* Cons occurring in typs *)
 
@@ -217,7 +198,6 @@ and is_closed_kind seen i k =
 and is_closed_con seen i c =
   let k = Con.kind c in
   ConSet.mem c seen || is_closed_kind (ConSet.add c seen) i k
-
 
 (* Shifting *)
 

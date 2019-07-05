@@ -1,13 +1,13 @@
 f-bounds-fail.as:13.42-13.43: type error, type argument
-  A/1
+  A/10
 does not match parameter bound
   C
 f-bounds-fail.as:14.43-14.44: type error, type argument
-  A/2
+  A/11
 does not match parameter bound
   C/1
 f-bounds-fail.as:15.42-15.43: type error, type argument
-  A/3
+  A/12
 does not match parameter bound
   C/2
 f-bounds-fail.as:3.38-3.41: type error, type argument
@@ -15,15 +15,15 @@ f-bounds-fail.as:3.38-3.41: type error, type argument
 does not match parameter bound
   Nat
 f-bounds-fail.as:9.53-9.54: type error, expression of type
-  A/10
+  A/19
 cannot produce expected type
   C/6
 f-bounds-fail.as:10.52-10.53: type error, expression of type
-  A/11
+  A/20
 cannot produce expected type
   C/7
 f-bounds-fail.as:11.53-11.54: type error, expression of type
-  A/12
+  A/21
 cannot produce expected type
   C/8
 f-bounds-fail.as:23.15-23.16: type error, type argument
@@ -39,7 +39,7 @@ f-bounds-fail.as:39.19-39.20: type error, type argument
 does not match parameter bound
   C/9
 f-bounds-fail.as:44.27-44.28: type error, expression of type
-  A/13
+  A/22
 cannot produce expected type
   C/9
 f-bounds-fail.as:45.27-45.28: type error, expression of type
@@ -47,7 +47,7 @@ f-bounds-fail.as:45.27-45.28: type error, expression of type
 cannot produce expected type
   C/9
 f-bounds-fail.as:48.27-48.28: type error, expression of type
-  A/13
+  A/22
 cannot produce expected type
   C/9
 f-bounds-fail.as:49.27-49.28: type error, expression of type
@@ -59,23 +59,23 @@ f-bounds-fail.as:51.27-51.28: type error, expression of type
 cannot produce expected type
   C/9
 f-bounds-fail.as:54.23-54.24: type error, expression of type
-  A/13
+  A/22
 cannot produce expected type
   C/9
 f-bounds-fail.as:54.25-54.26: type error, expression of type
-  A/13
+  A/22
 cannot produce expected type
   C/9
 f-bounds-fail.as:54.27-54.28: type error, expression of type
-  A/13
+  A/22
 cannot produce expected type
   C/9
 f-bounds-fail.as:55.23-55.24: type error, expression of type
-  A/13
+  A/22
 cannot produce expected type
   C/9
 f-bounds-fail.as:55.25-55.26: type error, expression of type
-  A/13
+  A/22
 cannot produce expected type
   C/9
 f-bounds-fail.as:55.27-55.28: type error, expression of type
@@ -83,7 +83,7 @@ f-bounds-fail.as:55.27-55.28: type error, expression of type
 cannot produce expected type
   C/9
 f-bounds-fail.as:56.24-56.25: type error, expression of type
-  A/13
+  A/22
 cannot produce expected type
   C/9
 f-bounds-fail.as:56.26-56.27: type error, expression of type
