@@ -76,7 +76,7 @@ func size(t : Tree) : Nat {
   }
 };
 
-// tThe following is fully covered
+// The following is fully covered
 func size1(t : Tree) : Nat {
   switch t {
     case (#leaf 3) 1;
