@@ -46,6 +46,9 @@ type incoming_message_params = [
   | TextDocumentDidChange <json name="textDocument/didChange"> of text_document_did_change_params
   | TextDocumentDidSave <json name="textDocument/didSave"> of text_document_did_save_params
   | TextDocumentHover <json name="textDocument/hover"> of text_document_position_params
+  (* NOTE(Christoph) There are more parameters than just text_document_position on the completion request *)
+  | CompletionRequest <json name="textDocument/completion"> of text_document_position_params
+  | CancelRequest <json name="$/cancelRequest"> of unit
 ]
 
 (*
@@ -60,7 +63,7 @@ type response_message = {
   inherit message;
   id : int;
   ?result : response_result nullable;
-  (* ?error : response_error nullable; *)
+  ?error : response_error nullable;
 }
 <json adapter.ocaml="AtdAdapters.Response_message_adapter">
 <ocaml field_prefix="response_message_">
@@ -68,13 +71,25 @@ type response_message = {
 type response_result = [
     Initialize <json name="initialize"> of initialize_result
   | TextDocumentHoverResponse <json name="textDocument/hover"> of hover_result
+  | CompletionResponse <json name="textDocument/completion"> of completion_item list
 ]
+
+type response_error = {
+  code : int;
+  message : string;
+  (* ?data : json; *)
+}
 
 type hover_result = {
   contents : string;
 }
 <ocaml field_prefix="hover_result_">
 
+type completion_item = {
+  label : string;
+  ?detail: string nullable;
+}
+<ocaml field_prefix="completion_item_">
 
 (* Outgoing notifications *)
 
@@ -107,8 +122,16 @@ type text_document_did_open_params = {
 
 type text_document_did_change_params = {
   textDocument : versioned_text_document_identifier;
+  contentChanges : text_document_content_change_event list
 }
 <ocaml field_prefix="text_document_did_change_params_">
+
+type text_document_content_change_event = {
+  ?range: range nullable;
+  ?rangeLength: int nullable;
+  text: string;
+}
+<ocaml field_prefix="text_document_content_change_event_">
 
 type text_document_did_close_params = {
   textDocument : text_document_identifier;
@@ -222,10 +245,17 @@ type initialize_result = {
 }
 <ocaml field_prefix="initialize_result_">
 
+type completion_options = {
+  ?resolveProvider : bool nullable;
+  ?triggerCharacters : string list nullable;
+}
+<ocaml field_prefix="completion_options_">
+
 (* FIXME: incomplete *)
 type server_capabilities = {
   textDocumentSync : int;
   ?hoverProvider : bool nullable;
+  ?completionProvider : completion_options nullable;
 }
 <ocaml field_prefix="server_capabilities_">
 

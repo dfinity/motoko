@@ -14,15 +14,15 @@ type lib_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 
-type flags = {
-  trace : bool;
-  print_depth : int
-}
+type flags =
+  { trace : bool;
+    print_depth : int
+  }
 
-type scope = {
-  val_env: V.def V.Env.t;
-  lib_env: V.value V.Env.t;
-}
+type scope =
+  { val_env: V.def V.Env.t;
+    lib_env: V.value V.Env.t;
+  }
 
 type env =
   { flags : flags;
@@ -231,6 +231,78 @@ let interpret_lit env lit : V.value =
   | PreLit _ -> assert false
 
 
+(* Overloaded dot implementations *)
+
+let array_get a at =
+  V.local_func 1 1 (fun v k ->
+    let n = V.as_int v in
+    if V.Nat.lt n (V.Nat.of_int (Array.length a))
+    then k (a.(V.Nat.to_int n))
+    else trap at "array index out of bounds"
+  )
+
+let array_set a at =
+  V.local_func 2 0 (fun v k ->
+    let v1, v2 = V.as_pair v in
+    let n = V.as_int v1 in
+    if V.Nat.lt n (V.Nat.of_int (Array.length a))
+    then k (a.(V.Nat.to_int n) <- v2; V.Tup [])
+    else trap at "array index out of bounds"
+  )
+
+let array_len a at =
+  V.local_func 0 1 (fun v k ->
+    V.as_unit v;
+    k (V.Int (V.Nat.of_int (Array.length a)))
+  )
+
+let array_keys a at =
+  V.local_func 0 1 (fun v k ->
+    V.as_unit v;
+    let i = ref 0 in
+    let next =
+      V.local_func 0 1 (fun v k' ->
+        if !i = Array.length a
+        then k' V.Null
+        else let v = V.Opt (V.Int (V.Nat.of_int !i)) in incr i; k' v
+      )
+    in k (V.Obj (V.Env.singleton "next" next))
+  )
+
+let array_vals a at =
+  V.local_func 0 1 (fun v k ->
+    V.as_unit v;
+    let i = ref 0 in
+    let next =
+      V.local_func 0 1 (fun v k' ->
+        if !i = Array.length a
+        then k' V.Null
+        else let v = V.Opt a.(!i) in incr i; k' v
+      )
+    in k (V.Obj (V.Env.singleton "next" next))
+  )
+
+let text_chars t at =
+  V.local_func 0 1 (fun v k ->
+    V.as_unit v;
+    let i = ref 0 in
+    let s = Wasm.Utf8.decode t in
+    let next =
+      V.local_func 0 1 (fun v k' ->
+        if !i = List.length s
+        then k' V.Null
+        else let v = V.Opt (V.Char (List.nth s !i)) in incr i; k' v
+      )
+    in k (V.Obj (V.Env.singleton "next" next))
+  )
+
+let text_len t at =
+  V.local_func 0 1 (fun v k ->
+    V.as_unit v;
+    k (V.Int (V.Nat.of_int (List.length (Wasm.Utf8.decode t))))
+  )
+
+
 (* Expressions *)
 
 let check_call_conv exp call_conv =
@@ -318,8 +390,25 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
-      let fs = V.as_obj v1 in
-      k (try find id.it fs with _ -> assert false)
+      match v1 with
+      | V.Obj fs ->
+        k (find id.it fs)
+      | V.Array vs ->
+        let f = match id.it with
+          | "len" -> array_len
+          | "get" -> array_get
+          | "set" -> array_set
+          | "keys" -> array_keys
+          | "vals" -> array_vals
+          | _ -> assert false
+        in k (f vs exp.at)
+      | V.Text s ->
+        let f = match id.it with
+          | "len" -> text_len
+          | "chars" -> text_chars
+          | _ -> assert false
+        in k (f s exp.at)
+      | _ -> assert false
     )
   | AssignE (exp1, exp2) ->
     interpret_exp_mut env exp1 (fun v1 ->

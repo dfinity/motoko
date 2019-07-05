@@ -58,6 +58,7 @@ function normalize () {
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
+    sed 's/prelude:[^:]*:/prelude:___:/g' |
     sed 's/^.*run-dfinity\/\.\.\/dvm.sh: line/dvm.sh: line/g' |
     sed 's/ *[0-9]* Illegal instruction.*dvm/ Illegal instruction dvm/g' |
     sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
@@ -193,6 +194,8 @@ do
     # The file is a shell script, just run it
     $ECHO -n " [out]"
     ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
+    normalize $out/$base.stdout
+    normalize $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"
   elif [ ${file: -4} == ".wat" ]
   then
