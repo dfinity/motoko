@@ -11,14 +11,17 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
+# pick OCaml version here
+let ocamlPackages = nixpkgs.ocaml-ng.ocamlPackages_4_07; in
+
 let ocaml_wasm = import ./nix/ocaml-wasm.nix {
-  inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
-  inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
+  inherit (nixpkgs) stdenv fetchFromGitHub;
+  inherit (ocamlPackages) findlib ocamlbuild ocaml;
 }; in
 
 let ocaml_vlq = import ./nix/ocaml-vlq.nix {
-  inherit (nixpkgs) stdenv fetchFromGitHub ocaml dune;
-  inherit (nixpkgs.ocamlPackages) findlib;
+  inherit (nixpkgs) stdenv fetchFromGitHub dune;
+  inherit (ocamlPackages) findlib ocaml;
 }; in
 
 let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
@@ -155,23 +158,24 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 
 let commonBuildInputs = [
-  nixpkgs.ocaml
+  ocamlPackages.ocaml
   nixpkgs.dune
-  nixpkgs.ocamlPackages.atdgen
-  nixpkgs.ocamlPackages.findlib
-  nixpkgs.ocamlPackages.menhir
-  nixpkgs.ocamlPackages.num
-  nixpkgs.ocamlPackages.stdint
+  ocamlPackages.atdgen
+  ocamlPackages.base
+  ocamlPackages.findlib
+  ocamlPackages.menhir
+  ocamlPackages.num
+  ocamlPackages.stdint
   ocaml_wasm
   ocaml_vlq
-  nixpkgs.ocamlPackages.zarith
-  nixpkgs.ocamlPackages.yojson
-  nixpkgs.ocamlPackages.ppxlib
-  nixpkgs.ocamlPackages.ppx_inline_test
+  ocamlPackages.zarith
+  ocamlPackages.yojson
+  ocamlPackages.ppxlib
+  ocamlPackages.ppx_inline_test
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
-  nixpkgs.ocamlPackages.ocaml-migrate-parsetree
-  nixpkgs.ocamlPackages.ppx_tools_versioned
+  ocamlPackages.ocaml-migrate-parsetree
+  ocamlPackages.ppx_tools_versioned
 ]; in
 
 let
@@ -374,9 +378,9 @@ rec {
     name = "asc.js";
 
     buildInputs = commonBuildInputs ++ [
-      nixpkgs.ocamlPackages.js_of_ocaml
-      nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
-      nixpkgs.ocamlPackages.js_of_ocaml-ppx
+      ocamlPackages.js_of_ocaml
+      ocamlPackages.js_of_ocaml-ocamlbuild
+      ocamlPackages.js_of_ocaml-ppx
       nixpkgs.nodejs-10_x
     ];
 
@@ -579,7 +583,7 @@ rec {
         deser.buildInputs ++
         tests.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
+        [ nixpkgs.ncurses ocamlPackages.merlin ]
       ));
 
     shellHook = llvmEnv;
