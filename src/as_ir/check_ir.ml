@@ -5,20 +5,21 @@ open Source
 module T = Type
 module E = Ir_effect
 
-(* TODO: remove DecE from syntax, replace by BlockE [dec] *)
-(* TODO: check constraint matching supports recursive bounds *)
-
 (* TODO: make note immutable, perhaps just using type abstraction *)
 
 (* TODO:
-   dereferencing is still implicit in the IR (see immut_typ below) - consider making it explicit as part of desugaring.
- *)
+   dereferencing is still implicit in the IR (see immut_typ below);
+   consider making it explicit as part of desugaring.
+*)
 
 (* TODO: enforce second-class nature of T.Mut? in check_typ *)
+
 (* TODO: check escape of free mutables via actors *)
 
-(* helpers *)
+(* Helpers *)
+
 let (==>) p q = not p || q
+
 let typ = E.typ
 
 let immute_typ p =
@@ -203,7 +204,7 @@ and check_con env c =
   let env = { env with cons = T.ConSet.add c env.cons } in
   let (T.Abs (binds,typ) | T.Def (binds, typ)) = Con.kind c in
   let cs, ce = check_typ_binds env binds in
-  let ts = List.map (fun c -> T.Con(c, [])) cs in
+  let ts = List.map (fun c -> T.Con (c, [])) cs in
   let env' = adjoin_cons env ce in
   check_typ env' (T.open_ ts typ)
 
@@ -221,7 +222,7 @@ and check_typ_field env s typ_field : unit =
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
-  let cs = List.map (function T.Con(c, []) -> c | _ -> assert false) ts in
+  let cs = List.map (function T.Con (c, []) -> c | _ -> assert false) ts in
   let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
