@@ -1,11 +1,11 @@
 let normalise_test_case input expected =
-  let actual = Normalise.normalise input in
+  let actual = File_path.normalise input in
     if String.equal actual expected
     then true
     else (Printf.printf "\nExpected: %s\nActual: %s\n" expected actual; false)
 
 let relative_to_test_case root contained expected =
-  let actual = Normalise.relative_to root contained in
+  let actual = File_path.relative_to root contained in
   let show = function
     | None -> "None"
     | Some s -> "Some " ^ s in
