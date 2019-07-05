@@ -24,8 +24,8 @@ let ocaml_vlq = import ./nix/ocaml-vlq.nix {
   inherit (ocamlPackages) findlib ocaml;
 }; in
 
-let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
-let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
+let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs ocamlPackages; in
+let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs ocamlPackages; in
 
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";

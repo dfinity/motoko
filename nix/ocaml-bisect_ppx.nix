@@ -1,4 +1,4 @@
-pkgs:
+pkgs: ocamlPackages:
 
 let version = "1.4.0"; in
 
@@ -13,11 +13,11 @@ pkgs.stdenv.mkDerivation {
   };
 
   buildInputs = [
-    pkgs.ocaml
+    ocamlPackages.ocaml
     pkgs.dune
-    pkgs.ocamlPackages.findlib
-    pkgs.ocamlPackages.ocaml-migrate-parsetree
-    pkgs.ocamlPackages.ppx_tools_versioned
+    ocamlPackages.findlib
+    ocamlPackages.ocaml-migrate-parsetree
+    ocamlPackages.ppx_tools_versioned
   ];
 
   buildPhase = "dune build -p bisect_ppx";
