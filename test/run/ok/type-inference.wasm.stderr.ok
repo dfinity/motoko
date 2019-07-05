@@ -1,3 +1,4 @@
+compile_lit: (FloatLit 5.1)
 type-inference.as:3.9-3.28: warning, this if has type Shared because branches have inconsistent types,
 true produces
   Bool
@@ -35,5 +36,3 @@ the previous produce type
   Text
 type-inference.as:19.9-19.18: warning, this array has type [Shared] because elements have inconsistent types
 type-inference.as:20.9-20.24: warning, this array has type [Any] because elements have inconsistent types
-type-inference.as:81.13-81.16: type error, expected iterable type, but expression has type
-  Non

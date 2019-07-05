@@ -84,7 +84,7 @@ func f() {
   switch 0 { case 0 {}; case _ {}; };
   switch (return) {};
   switch (0, return) { case _ {} };
-  switch (0, return) { case (0, _) {} };
+  switch (0, return) {};
 };
 
 func g(_ : None) {};

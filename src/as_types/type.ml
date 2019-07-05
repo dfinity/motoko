@@ -336,16 +336,21 @@ let as_prim_sub p t = match promote t with
   | Prim p' when p = p' -> ()
   | Non -> ()
   | _ -> invalid "as_prim_sub"
-let as_obj_sub lab t = match promote t with
+let as_obj_sub ls t = match promote t with
   | Obj (s, tfs) -> s, tfs
-  | Non -> Object Sharable, [{lab; typ = Non}]
+  | Non -> Object Sharable, List.map (fun l -> {lab = l; typ = Non}) ls
   | _ -> invalid "as_obj_sub"
+let as_variant_sub l t = match promote t with
+  | Variant tfs -> tfs
+  | Non -> [{lab = l; typ = Non}]
+  | _ -> invalid "as_variant_sub"
 let as_array_sub t = match promote t with
   | Array t -> t
   | Non -> Non
   | _ -> invalid "as_array_sub"
 let as_opt_sub t = match promote t with
   | Opt t -> t
+  | Non -> Non
   | _ -> invalid "as_opt_sub"
 let as_tup_sub n t = match promote t with
   | Tup ts -> ts
@@ -466,7 +471,8 @@ let avoid cons t =
   if cons = ConSet.empty then t else
    avoid' cons ConSet.empty t
 
-(* Checking for concrete types *)
+
+(* Collecting type constructors *)
 
 let rec cons t cs =
   match t with
@@ -497,29 +503,30 @@ let cons_kind k =
   | Abs (tbs, t) ->
     cons t (List.fold_right cons_bind tbs ConSet.empty)
 
+
 (* Checking for concrete types *)
 
-module TS = Set.Make (struct type t = typ let compare = compare end)
+module S = Set.Make (struct type t = typ let compare = compare end)
 
 (*
 This check is a stop-gap measure until we have an IDL strategy that
 allows polymorphic types, see #250. It is not what we desire for ActorScript.
 *)
 
-let is_concrete t =
-  let seen = ref TS.empty in (* break the cycles *)
+let concrete t =
+  let seen = ref S.empty in (* break the cycles *)
   let rec go t =
-    TS.mem t !seen ||
+    S.mem t !seen ||
     begin
-      seen := TS.add t !seen;
+      seen := S.add t !seen;
       match t with
       | Var _ -> assert false
-      | (Prim _ | Any | Non | Shared | Pre) -> true
+      | Prim _ | Any | Non | Shared -> true
       | Con (c, ts) ->
-        begin match Con.kind c with
+        (match Con.kind c with
         | Abs _ -> false
         | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)
-        end
+        )
       | Array t -> go t
       | Tup ts -> List.for_all go ts
       | Func (s, c, tbs, ts1, ts2) ->
@@ -533,25 +540,21 @@ let is_concrete t =
       | Mut t -> go t
       | Typ c -> assert false (* TBR *)
       | Serialized t -> go t
+      | Pre -> assert false
     end
   in go t
 
 
-module M = Map.Make (struct type t = typ * typ let compare = compare end)
-(* Forward declare
-   TODO: haul string_of_typ before the lub/glb business, if possible *)
-let str = ref (fun _ -> failwith "")
-
 (* Equivalence & Subtyping *)
 
-module S = Set.Make (struct type t = typ * typ let compare = compare end)
+module SS = Set.Make (struct type t = typ * typ let compare = compare end)
 
 let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let rec rel_typ rel eq t1 t2 =
-  t1 == t2 || S.mem (t1, t2) !rel || begin
-  rel := S.add (t1, t2) !rel;
+  t1 == t2 || SS.mem (t1, t2) !rel || begin
+  rel := SS.add (t1, t2) !rel;
   match t1, t2 with
   | Pre, _ | _, Pre ->
     assert false
@@ -609,12 +612,12 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t1' t2'
   | Opt t1', Shared ->
     rel_typ rel eq t1' Shared
+  | Prim Null, Opt t2' when rel != eq ->
+    true
   | Variant fs1, Variant fs2 ->
     rel_tags rel eq fs1 fs2
   | Variant fs1, Shared ->
     rel_tags rel eq fs1 (List.map (fun f -> {f with typ = Shared}) fs1)
-  | Prim Null, Opt t2' when rel != eq ->
-    true
   | Tup ts1, Tup ts2 ->
     rel_list rel_typ rel eq ts1 ts2
   | Tup ts1, Shared ->
@@ -643,7 +646,7 @@ let rec rel_typ rel eq t1 t2 =
   | Serialized t1', Serialized t2' ->
     eq_typ rel eq t1' t2' (* TBR: eq or sub? Does it matter? *)
   | Typ c1, Typ c2 ->
-    Con.eq c1 c2 
+    Con.eq c1 c2
   | _, _ -> false
   end
 
@@ -677,7 +680,7 @@ and rel_tags rel eq tfs1 tfs2 =
     | 0 ->
       rel_typ rel eq tf1.typ tf2.typ &&
       rel_tags rel eq tfs1' tfs2'
-    | 1 when rel != eq ->
+    | +1 when rel != eq ->
       rel_tags rel eq tfs1 tfs2'
     | _ -> false
     )
@@ -695,13 +698,13 @@ and rel_bind ts rel eq tb1 tb2 =
 and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
 
 and eq t1 t2 : bool =
-  let eq = ref S.empty in eq_typ eq eq t1 t2
+  let eq = ref SS.empty in eq_typ eq eq t1 t2
 
 and sub t1 t2 : bool =
-  rel_typ (ref S.empty) (ref S.empty) t1 t2
+  rel_typ (ref SS.empty) (ref SS.empty) t1 t2
 
 and eq_kind k1 k2 : bool =
-  let eq = ref S.empty in
+  let eq = ref SS.empty in
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
@@ -712,7 +715,111 @@ and eq_kind k1 k2 : bool =
   | _ -> false
 
 
+(* Compatibility *)
+
+let compatible_list p co xs1 xs2 =
+  try List.for_all2 (p co) xs1 xs2 with Invalid_argument _ -> false
+
+let rec compatible_typ co t1 t2 =
+  t1 == t2 || SS.mem (t1, t2) !co || begin
+  co := SS.add (t1, t2) !co;
+  match promote t1, promote t2 with
+  | (Pre | Serialized _), _ | _, (Pre | Serialized _) ->
+    assert false
+  | (Any | Shared), (Any | Shared) ->
+    true
+  | Non, (Any | Shared) | (Any | Shared), Non ->
+    false
+  | Non, _ | _, Non ->
+    true
+  | Prim p1, Prim p2 when p1 = p2 ->
+    true
+  | Prim (Nat | Int), Prim (Nat | Int) ->
+    true
+  | Array t1', Array t2' ->
+    compatible_typ co t1' t2'
+  | Tup ts1, Tup ts2 ->
+    compatible_list compatible_typ co ts1 ts2
+  | Obj (s1, tfs1), Obj (s2, tfs2) ->
+    s1 = s2 &&
+    compatible_fields co tfs1 tfs2
+  | Opt t1', Opt t2' ->
+    compatible_typ co t1' t2'
+  | Prim Null, Opt _ | Opt _, Prim Null  ->
+    true
+  | Variant tfs1, Variant tfs2 ->
+    compatible_tags co tfs1 tfs2
+  | Async t1', Async t2' ->
+    compatible_typ co t1' t2'
+  | Func _, Func _ ->
+    true
+  | Typ _, Typ _ ->
+    true
+  | Mut t1', Mut t2' ->
+    compatible_typ co t1' t2'
+  | _, _ -> false
+  end
+
+and compatible_fields co tfs1 tfs2 =
+  (* Assume that tfs1 and tfs2 are sorted. *)
+  match tfs1, tfs2 with
+  | [], [] -> true
+  | tf1::tfs1', tf2::tfs2' ->
+    tf1.lab = tf2.lab && compatible_typ co tf1.typ tf2.typ &&
+    compatible_fields co tfs1' tfs2'
+  | _, _ -> false
+
+and compatible_tags co tfs1 tfs2 =
+  (* Assume that tfs1 and tfs2 are sorted. *)
+  match tfs1, tfs2 with
+  | [], _ | _, [] -> true
+  | tf1::tfs1', tf2::tfs2' ->
+    match compare_field tf1 tf2 with
+    | -1 -> compatible_tags co tfs1' tfs2
+    | +1 -> compatible_tags co tfs1 tfs2'
+    | _ -> compatible_typ co tf1.typ tf2.typ && compatible_tags co tfs1' tfs2'
+
+and compatible t1 t2 : bool =
+  compatible_typ (ref SS.empty) t1 t2
+
+
+let opaque t = compatible t Any
+
+
+(* Inhabitance *)
+
+let rec inhabited_typ co t =
+  S.mem t !co || begin
+  co := S.add t !co;
+  match promote t with
+  | Pre | Serialized _ -> assert false
+  | Non -> false
+  | Any | Shared | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> true
+  | Mut t' -> inhabited_typ co t'
+  | Tup ts -> List.for_all (inhabited_typ co) ts
+  | Obj (_, tfs) -> List.for_all (inhabited_field co) tfs
+  | Variant tfs -> List.exists (inhabited_field co) tfs
+  | Var _ -> true  (* TODO(rossberg): consider bound *)
+  | Con (c, ts) ->
+    match Con.kind c with
+    | Def (tbs, t') -> (* TBR this may fail to terminate *)
+      inhabited_typ co (open_ ts t')
+    | Abs (tbs, t') ->
+      inhabited_typ co t'
+  end
+
+and inhabited_field co tf = inhabited_typ co tf.typ
+
+and inhabited t : bool = inhabited_typ (ref S.empty) t
+
+
 (* Least upper bound and greatest lower bound *)
+
+module M = Map.Make (struct type t = typ * typ let compare = compare end)
+
+(* Forward declare
+   TODO: haul string_of_typ before the lub/glb business, if possible *)
+let str = ref (fun _ -> failwith "")
 
 let rec lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
@@ -910,7 +1017,7 @@ let string_of_sharing = function
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
   | Any -> "Any"
-  | Non -> "Non"
+  | Non -> "None"
   | Shared -> "Shared"
   | Prim p -> string_of_prim p
   | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
@@ -1038,7 +1145,7 @@ let rec string_of_typ_expand t =
     | Abs _ -> s
     | Def _ ->
       match normalize t with
-      | Prim _ | Any | Non -> s
+      | Prim _ | Any | Non | Shared -> s
       | t' -> s ^ " = " ^ string_of_typ_expand t'
     )
   | _ -> s
