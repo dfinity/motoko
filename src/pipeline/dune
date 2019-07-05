@@ -2,6 +2,7 @@
   (name pipeline)
   (libraries
     lib
+    base
     lang_utils
     as_types
     as_values
@@ -14,4 +15,6 @@
     ir_passes
     codegen
   )
+  (inline_tests)
+  (preprocess (pps ppx_inline_test))
 )
