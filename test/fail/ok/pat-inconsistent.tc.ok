@@ -1,91 +1,114 @@
 pat-inconsistent.as:6.31-6.44: warning, this pattern is never matched
 pat-inconsistent.as:7.34-7.50: warning, this pattern is never matched
+pat-inconsistent.as:9.20-9.22: warning, this pattern is never matched
+pat-inconsistent.as:10.20-10.24: warning, this pattern is never matched
+pat-inconsistent.as:11.20-11.30: warning, this pattern is never matched
 pat-inconsistent.as:2.13-2.21: warning, this pattern does not cover all possible values
 pat-inconsistent.as:3.13-3.22: warning, this pattern does not cover all possible values
 pat-inconsistent.as:5.13-5.29: warning, this pattern does not cover all possible values
 pat-inconsistent.as:8.13-8.33: warning, this pattern does not cover all possible values
-pat-inconsistent.as:11.16-11.24: type error, pattern branches have incompatible types,
+pat-inconsistent.as:16.16-16.24: type error, pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   Float
-pat-inconsistent.as:12.16-12.23: type error, pattern branches have incompatible types,
+pat-inconsistent.as:17.16-17.23: type error, pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   Text
-pat-inconsistent.as:13.16-13.26: type error, pattern branches have incompatible types,
+pat-inconsistent.as:18.16-18.26: type error, pattern branches have incompatible types,
 left consumes
   Bool
 right consumes
   Text
-pat-inconsistent.as:14.16-14.23: type error, pattern branches have incompatible types,
+pat-inconsistent.as:19.16-19.23: type error, pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   ()
-pat-inconsistent.as:15.16-15.23: type error, pattern branches have incompatible types,
+pat-inconsistent.as:20.16-20.23: type error, pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   {}
-pat-inconsistent.as:16.16-16.31: type error, pattern branches have incompatible types,
+pat-inconsistent.as:21.16-21.31: type error, pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   Text
-pat-inconsistent.as:17.16-17.46: type error, pattern branches have incompatible types,
+pat-inconsistent.as:22.16-22.46: type error, pattern branches have incompatible types,
 left consumes
   {a : Int}
 right consumes
   {b : Nat}
-pat-inconsistent.as:18.16-18.40: type error, pattern branches have incompatible types,
+pat-inconsistent.as:23.16-23.40: type error, pattern branches have incompatible types,
 left consumes
   Int8
 right consumes
   Nat8
-pat-inconsistent.as:19.16-19.36: type error, pattern branches have incompatible types,
+pat-inconsistent.as:24.16-24.36: type error, pattern branches have incompatible types,
 left consumes
   (Text, Nat)
 right consumes
   (Text, Float)
-pat-inconsistent.as:20.16-20.50: type error, pattern branches have incompatible types,
+pat-inconsistent.as:25.16-25.50: type error, pattern branches have incompatible types,
 left consumes
   (Int16, Text)
 right consumes
   (Nat16, Text)
-pat-inconsistent.as:22.16-22.30: type error, pattern branches have incompatible types,
+pat-inconsistent.as:26.16-26.28: type error, pattern branches have incompatible types,
+left consumes
+  {#A}
+right consumes
+  {#A : Text}
+pat-inconsistent.as:27.16-27.31: type error, pattern branches have incompatible types,
+left consumes
+  {#A : Nat}
+right consumes
+  {#A : Text}
+pat-inconsistent.as:29.16-29.30: type error, pattern branches have incompatible types,
 left consumes
   Nat
 right consumes
   Any
-pat-inconsistent.as:23.16-23.35: type error, pattern branches have incompatible types,
+pat-inconsistent.as:30.16-30.35: type error, pattern branches have incompatible types,
 left consumes
-  Shared = Shared
+  Shared
 right consumes
   Float
-pat-inconsistent.as:24.16-24.31: type error, pattern branches have incompatible types,
+pat-inconsistent.as:31.16-31.31: type error, pattern branches have incompatible types,
 left consumes
   ()
 right consumes
   Any
-pat-inconsistent.as:25.19-25.32: type error, pattern branches have incompatible types,
+pat-inconsistent.as:32.19-32.32: type error, pattern branches have incompatible types,
 left consumes
   Text
 right consumes
   A
-pat-inconsistent.as:26.16-26.40: type error, pattern branches have incompatible types,
+pat-inconsistent.as:33.16-33.40: type error, pattern branches have incompatible types,
 left consumes
   Any
 right consumes
   [Nat]
-pat-inconsistent.as:27.16-27.43: type error, pattern branches have incompatible types,
+pat-inconsistent.as:34.16-34.43: type error, pattern branches have incompatible types,
 left consumes
   Any
 right consumes
   () -> ()
-pat-inconsistent.as:28.16-28.40: type error, pattern branches have incompatible types,
+pat-inconsistent.as:35.16-35.40: type error, pattern branches have incompatible types,
 left consumes
   (Text, Nat)
 right consumes
   (Text, Any)
+pat-inconsistent.as:36.16-36.33: type error, pattern branches have incompatible types,
+left consumes
+  {#A}
+right consumes
+  {#A : Any}
+pat-inconsistent.as:37.16-37.36: type error, pattern branches have incompatible types,
+left consumes
+  {#A : Nat}
+right consumes
+  {#A : Any}

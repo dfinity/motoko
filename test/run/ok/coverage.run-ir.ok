@@ -13,8 +13,14 @@ coverage.as:31.25-31.34: warning, this case is never reached
 coverage.as:32.43-32.44: warning, this pattern is never matched
 coverage.as:33.35-33.49: warning, this case is never reached
 coverage.as:34.42-34.51: warning, this case is never reached
-coverage.as:47.3-47.53: warning, this case is never reached
-coverage.as:79.3-79.52: warning, this case is never reached
+coverage.as:37.60-37.82: warning, this case is never reached
+coverage.as:38.48-38.63: warning, this case is never reached
+coverage.as:39.65-39.74: warning, this case is never reached
+coverage.as:40.58-40.67: warning, this case is never reached
+coverage.as:46.58-46.72: warning, this case is never reached
+coverage.as:53.22-53.31: warning, this case is never reached
+coverage.as:64.5-64.55: warning, this case is never reached
+coverage.as:96.3-96.52: warning, this case is never reached
 coverage.as:4.7-4.8: warning, this pattern does not cover all possible values
 coverage.as:5.7-5.15: warning, this pattern does not cover all possible values
 coverage.as:9.7-9.9: warning, this pattern does not cover all possible values
@@ -26,4 +32,8 @@ coverage.as:23.3-23.25: warning, the cases in this switch do not cover all possi
 coverage.as:24.3-24.36: warning, the cases in this switch do not cover all possible values
 coverage.as:32.3-32.50: warning, the cases in this switch do not cover all possible values
 coverage.as:35.3-35.51: warning, the cases in this switch do not cover all possible values
-coverage.as:44.3-48.4: warning, the cases in this switch do not cover all possible values
+coverage.as:41.3-41.70: warning, the cases in this switch do not cover all possible values
+coverage.as:45.3-45.74: warning, the cases in this switch do not cover all possible values
+coverage.as:47.3-47.58: warning, the cases in this switch do not cover all possible values
+coverage.as:48.3-48.58: warning, the cases in this switch do not cover all possible values
+coverage.as:61.3-65.4: warning, the cases in this switch do not cover all possible values

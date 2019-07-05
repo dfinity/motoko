@@ -794,7 +794,7 @@ and compatible_tags co tfs1 tfs2 =
   match tfs1, tfs2 with
   | [], _ | _, [] -> true
   | tf1::tfs1', tf2::tfs2' ->
-    match compare tf1.lab tf2.lab with
+    match compare_field tf1 tf2 with
     | -1 -> compatible_tags co tfs1' tfs2
     | +1 -> compatible_tags co tfs1 tfs2'
     | _ -> compatible_typ co tf1.typ tf2.typ && compatible_tags co tfs1' tfs2'
@@ -1138,7 +1138,7 @@ let rec string_of_typ_expand t =
     | Abs _ -> s
     | Def _ ->
       match normalize t with
-      | Prim _ | Any | Non -> s
+      | Prim _ | Any | Non | Shared -> s
       | t' -> s ^ " = " ^ string_of_typ_expand t'
     )
   | _ -> s

@@ -7,6 +7,7 @@ module V = As_values.Value
 
 module ValSet = Set.Make(struct type t = V.value let compare = V.compare end)
 module TagSet = Set.Make(struct type t = string let compare = compare end)
+module LabMap = Map.Make(struct type t = string let compare = compare end)
 module AtSet = Set.Make(struct type t = Source.region let compare = compare end)
 
 type desc =
@@ -14,7 +15,7 @@ type desc =
   | Val of V.value
   | NotVal of ValSet.t
   | Tup of desc list
-  | Obj of desc list
+  | Obj of desc LabMap.t
   | Opt of desc
   | Tag of desc * string
   | NotTag of TagSet.t
@@ -23,7 +24,7 @@ type ctxt =
   | InOpt of ctxt
   | InTag of ctxt * string
   | InTup of ctxt * desc list * desc list * pat list * Type.typ list
-  | InObj of ctxt * desc list * desc list * pat_field list * Type.field list
+  | InObj of ctxt * desc LabMap.t * string * pat_field list * Type.field list
   | InAlt1 of ctxt * Source.region * pat * Type.typ
   | InAlt2 of ctxt * Source.region
   | InCase of Source.region * case list * Type.typ
@@ -91,14 +92,16 @@ let rec match_pat ctxt desc pat t sets =
       | Any -> List.map (fun _ -> Any) pats
       | _ -> assert false
     in match_tup ctxt [] descs pats ts sets
-  | ObjP pfs ->
+  | ObjP pat_fields ->
     let _, tfs = Type.as_obj (Type.promote t) in
-    let descs =
+    let ldescs =
       match desc with
-      | Obj descs -> descs
-      | Any -> List.map (fun _ -> Any) pfs
+      | Obj ldescs -> ldescs
+      | Any ->
+        LabMap.(List.fold_left
+          (fun m (tf : Type.field) -> add tf.Type.lab Any m) empty tfs)
       | _ -> assert false
-    in match_obj ctxt [] descs pfs tfs sets
+    in match_obj ctxt ldescs pat_fields tfs sets
   | OptP pat1 ->
     let t' = Type.as_opt (Type.promote t) in
     (match desc with
@@ -182,16 +185,15 @@ and match_tup ctxt descs_r descs pats ts sets =
   | _ ->
     assert false
     
-and match_obj ctxt descs_r descs (pfs : pat_field list) tfs sets =
-  match descs, pfs with
-  | [], [] ->
-    succeed ctxt (Obj (List.rev descs_r)) sets
-  | desc::descs', pf::pfs' ->
-    let tf = List.find (fun tf -> tf.Type.lab = pf.it.id.it) tfs in
-    match_pat (InObj (ctxt, descs_r, descs', pfs', tfs))
-      desc pf.it.pat tf.Type.typ sets
-  | _ ->
-    assert false
+and match_obj ctxt ldescs (pat_fields : pat_field list) tfs sets =
+  match pat_fields with
+  | [] -> succeed ctxt (Obj ldescs) sets
+  | pat_field::pat_fields' ->
+    let l = pat_field.it.id.it in
+    let tf = List.find (fun tf -> tf.Type.lab = l) tfs in
+    let desc = LabMap.find l ldescs in
+    match_pat (InObj (ctxt, ldescs, l, pat_fields', tfs))
+      desc pat_field.it.pat tf.Type.typ sets
 
 and succeed ctxt desc sets : bool =
   match ctxt with
@@ -201,8 +203,8 @@ and succeed ctxt desc sets : bool =
     succeed ctxt' (Tag (desc, l)) sets
   | InTup (ctxt', descs_r, descs, pats, ts) ->
     match_tup ctxt' (desc::descs_r) descs pats ts sets
-  | InObj (ctxt', descs_r, descs, pfs, tfs) ->
-    match_obj ctxt' (desc::descs_r) descs pfs tfs sets
+  | InObj (ctxt', ldescs, l, pfs, tfs) ->
+    match_obj ctxt' (LabMap.add l desc ldescs) pfs tfs sets
   | InAlt1 (ctxt', at1, _pat2, _t) ->
     sets.reached_alts <- AtSet.add at1 sets.reached_alts;
     succeed ctxt' desc sets
@@ -229,8 +231,8 @@ and fail ctxt desc sets : bool =
     fail ctxt' (Tag (desc, l)) sets
   | InTup (ctxt', descs', descs, pats, _ts) ->
     fail ctxt' (Tup (List.rev descs' @ [desc] @ descs)) sets
-  | InObj (ctxt', descs', descs, pats, _tfs) ->
-    fail ctxt' (Obj (List.rev descs' @ [desc] @ descs)) sets
+  | InObj (ctxt', ldescs, l, pats, _tfs) ->
+    fail ctxt' (Obj (LabMap.add l desc ldescs)) sets
   | InAlt1 (ctxt', at1, pat2, t) ->
     match_pat (InAlt2 (ctxt', pat2.at)) desc pat2 t sets
   | InAlt2 (ctxt', at2) ->
