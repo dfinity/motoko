@@ -12,7 +12,7 @@ let stdenv = nixpkgs.stdenv; in
 let subpath = p: import ./nix/gitSource.nix p; in
 
 # pick OCaml version here
-let ocamlPackages = nixpkgs.ocaml-ng.ocamlPackages_4_07; in
+let ocamlPackages = nixpkgs.ocaml-ng.ocamlPackages_4_08; in
 
 let ocaml_wasm = import ./nix/ocaml-wasm.nix {
   inherit (nixpkgs) stdenv fetchFromGitHub;
@@ -166,7 +166,6 @@ let commonBuildInputs = [
   ocamlPackages.stdint
   ocaml_wasm
   ocaml_vlq
-  ocamlPackages.zarith
   ocamlPackages.yojson
   ocamlPackages.ppxlib
   ocamlPackages.ppx_inline_test
