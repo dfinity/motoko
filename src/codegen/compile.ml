@@ -381,18 +381,18 @@ let compile_eq_const i =
 let compile_op64_const op i =
     compile_const_64 i ^^
     G.i (Binary (Wasm.Values.I64 op))
-let compile_add64_const = compile_op64_const I64Op.Add
+let _compile_add64_const = compile_op64_const I64Op.Add
 let compile_sub64_const = compile_op64_const I64Op.Sub
-let compile_mul64_const = compile_op64_const I64Op.Mul
-let compile_divU64_const = compile_op64_const I64Op.DivU
+let _compile_mul64_const = compile_op64_const I64Op.Mul
+let _compile_divU64_const = compile_op64_const I64Op.DivU
 let compile_shrU64_const = compile_op64_const I64Op.ShrU
-let compile_shrS64_const = compile_op64_const I64Op.ShrS
+let _compile_shrS64_const = compile_op64_const I64Op.ShrS
 let compile_shl64_const = compile_op64_const I64Op.Shl
 let compile_bitand64_const = compile_op64_const I64Op.And
-let compile_bitor64_const = function
+let _compile_bitor64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.Or n
 let compile_eq64_const i =
-  compile_unboxed_const i ^^
+  compile_const_64 i ^^
   G.i (Compare (Wasm.Values.I64 I64Op.Eq))
 
 (* more random utilities *)
@@ -1526,8 +1526,7 @@ module BigNum64 : BigNumType = struct
     | n when n > 64 || n < 1 -> assert false
     | n ->
       unbox env ^^
-      compile_const_64 Int64.(shift_left minus_one n) ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+      compile_bitand64_const Int64.(shift_left minus_one n) ^^
       G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
   (* examine the skewed pointer and determine if the signed number
@@ -1538,11 +1537,9 @@ module BigNum64 : BigNumType = struct
     | n ->
       let set_num, get_num = new_local64 env "num" in
       unbox env ^^ set_num ^^ get_num ^^ get_num ^^
-      compile_const_64 1L ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+      compile_shl64_const 1L ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-      compile_const_64 Int64.(shift_left minus_one n) ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+      compile_bitand64_const Int64.(shift_left minus_one n) ^^
       G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
   let to_word32 env =
@@ -4549,8 +4546,7 @@ let compile_unop env t op =
       SR.UnboxedWord64,
       Func.share_code1 env "neg_trap" ("n", I64Type) [I64Type] (fun env get_n ->
         get_n ^^
-        compile_const_64 0x8000000000000000L ^^
-        G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
+        compile_eq64_const 0x8000000000000000L ^^
         then_arithmetic_overflow env ^^
         compile_const_64 0L ^^
         get_n ^^
@@ -4658,13 +4654,13 @@ let powNat64_shortcut fast env get_a get_b slow =
   G.if_ (ValBlockType (Some I64Type))
     (compile_const_64 1L) (* ^0 *)
     begin (* ^(1+n) *)
-      get_a ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
+      get_a ^^ compile_shrU64_const 1L ^^
       G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
       G.if_ (ValBlockType (Some I64Type))
         get_a (* {0,1}^(1+n) *)
         begin
           get_b ^^ compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
-          get_a ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ compile_const_64 64L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+          get_a ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ compile_sub64_const 64L ^^
           get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^ compile_const_64 (-64L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeS)) ^^
           G.if_ (ValBlockType (Some I64Type))
             (get_a ^^ get_b ^^ fast)
@@ -4702,14 +4698,13 @@ let compile_Nat64_kernel' env name op shortcut =
 
 (* helper, expects i64 on stack *)
 let enforce_32_unsigned_bits env =
-  compile_const_64 0xFFFFFFFF00000000L ^^
-  G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+  compile_bitand64_const 0xFFFFFFFF00000000L ^^
   G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
   else_arithmetic_overflow env
 
 (* helper, expects two identical i64s on stack *)
 let enforce_32_signed_bits env =
-  compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+  compile_shl64_const 1L ^^
   G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
   enforce_32_unsigned_bits env
 
