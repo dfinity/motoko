@@ -1,3 +1,4 @@
+compile_lit: (FloatLit 5.1)
 type-inference.as:3.9-3.28: warning, this if has type Shared because branches have inconsistent types,
 true produces
   Bool
