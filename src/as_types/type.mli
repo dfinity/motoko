@@ -104,7 +104,8 @@ val as_serialized : typ -> typ
 val as_typ : typ -> con
 
 val as_prim_sub : prim -> typ -> unit
-val as_obj_sub : string -> typ -> obj_sort * field list
+val as_obj_sub : string list -> typ -> obj_sort * field list
+val as_variant_sub : string -> typ -> field list
 val as_array_sub : typ -> typ
 val as_opt_sub : typ -> typ
 val as_tup_sub : int -> typ -> typ list
@@ -145,8 +146,9 @@ exception Unavoidable of con
 val avoid : ConSet.t -> typ -> typ (* raise Unavoidable *)
 val avoid_cons : ConSet.t -> ConSet.t -> unit (* raise Unavoidable *)
 
-val is_concrete : typ -> bool
-
+val opaque : typ -> bool
+val concrete : typ -> bool
+val inhabited : typ -> bool
 val span : typ -> int option
 
 
@@ -161,6 +163,7 @@ val eq : typ -> typ -> bool
 val eq_kind : kind -> kind -> bool
 
 val sub : typ -> typ -> bool
+val compatible : typ -> typ -> bool
 
 val lub : typ -> typ -> typ
 val glb : typ -> typ -> typ

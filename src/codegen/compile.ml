@@ -984,7 +984,7 @@ module Tagged = struct
 
   (* like branch_default but the tag is known statically *)
   let branch env retty = function
-    | [] -> failwith "branch"
+    | [] -> G.i Unreachable
     | [_, code] -> G.i Drop ^^ code
     | (_, code) :: cases -> branch_default env retty code cases
 
@@ -997,7 +997,7 @@ module Tagged = struct
 
   (* like branch_default_with but the tag is known statically *)
   let branch_with env retty = function
-    | [] -> failwith "branch_with"
+    | [] -> G.i Unreachable
     | [_, code] -> code
     | (_, code) :: cases ->
        let (set_o, get_o) = new_local env "o" in
@@ -1879,7 +1879,7 @@ module Object = struct
   let is_mut_field env obj_type s =
     (* TODO: remove try once array and text accessors are separated *)
     try
-      let _, fields = Type.as_obj_sub "" obj_type in
+      let _, fields = Type.as_obj_sub [s] obj_type in
       Type.is_mut (Lib.Option.value (Type.lookup_val_field s fields))
     with Invalid_argument _ -> false
 
@@ -3712,6 +3712,7 @@ module StackRep = struct
     | Prim (Nat32 | Int32 | Word32) -> UnboxedWord32
     | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
     | Prim Text -> Vanilla
+    | Non -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
@@ -4563,6 +4564,8 @@ let compile_unop env t op =
   | NotOp, Type.Prim Type.(Word8 | Word16 | Word32 as ty) ->
       StackRep.of_type t, compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
                           G.i (Binary (Wasm.Values.I32 I32Op.Xor))
+  | _, Type.Non ->
+    SR.Vanilla, G.i Unreachable
   | _ ->
     (* NB: Must not use todo_trap_SR here, as the SR.t here is also passed to
        `compile_exp_as`, which does not take SR.Unreachable. *)
@@ -4970,6 +4973,7 @@ let rec compile_binop env t op =
       sanitize_word_result ty))
 
   | Type.Prim Type.Text, CatOp -> Text.concat env
+  | Type.Non, _ -> G.i Unreachable
   | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
   )
 
@@ -4980,6 +4984,7 @@ let compile_eq env = function
   | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   | Type.(Prim (Int8 | Nat8 | Word8 | Int16 | Nat16 | Word16 | Int32 | Nat32 | Word32 | Char)) ->
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | Type.Non -> G.i Unreachable
   | _ -> todo_trap env "compile_eq" (Arrange_ops.relop Operator.EqOp)
 
 let get_relops = Operator.(function
@@ -5009,6 +5014,7 @@ let compile_relop env t op =
     G.i (Test (Wasm.Values.I32 I32Op.Eqz))
   | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Word8 | Word16 | Word32 | Word64 | Char as t1)), op1 ->
     compile_comparison env t1 op1
+  | Type.Non, _ -> G.i Unreachable
   | _ -> todo_trap env "compile_relop" (Arrange_ops.relop op)
 
 let compile_load_field env typ name =

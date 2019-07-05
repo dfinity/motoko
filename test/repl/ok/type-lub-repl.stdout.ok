@@ -6,7 +6,7 @@ ActorScript 0.1 interpreter
 > [(12, -1), (-42, 25)] : [(Int, Int)]
 > [-1, 25] : [Int]
 > [[-42], [25]] : [[Int]]
-> [func, func] : [(Non -> Int)]
+> [func, func] : [(None -> Int)]
 > [func, func] : [([Nat] -> Int)]
 > 3 : Int
 > -42 : Int

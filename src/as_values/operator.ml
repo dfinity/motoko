@@ -34,7 +34,7 @@ type relop =
   | LeOp                                        (* x<=y *)
   | GeOp                                        (* x>=y *)
 
-let impossible _ = raise (Invalid_argument "impossible")
+let impossible _ = raise (Invalid_argument "operator called for None")
 
 
 (* Unary operators *)
@@ -55,7 +55,7 @@ let num_unop fint (fint8, fint16, fint32, fint64) wordops ffloat = function
   | T.Float -> fun v -> Float (ffloat (as_float v))
   | t -> word_unop wordops t
 
-let unop t op =
+let unop op t =
   match t with
   | T.Prim p ->
     (match op with
@@ -100,7 +100,7 @@ let num_binop fnat (fnat8, fnat16, fnat32, fnat64) fint (fint8, fint16, fint32, 
   | T.Float -> fun v1 v2 -> Float (ffloat (as_float v1) (as_float v2))
   | t -> word_binop fwords t
 
-let binop t op =
+let binop op t =
   match t with
   | T.Prim p ->
     (match op with
@@ -157,7 +157,7 @@ let eq_relop fnat fnats fint fints fwords ffloat fchar ftext fnull fbool = funct
   | T.Bool -> fun v1 v2 -> Bool (fbool (as_bool v1) (as_bool v2))
   | t -> ord_relop fnat fnats fint fints fwords ffloat fchar ftext t
 
-let relop t op =
+let relop op t =
   match t with
   | T.Prim p -> 
     (match op with
@@ -172,7 +172,11 @@ let relop t op =
   | _ -> raise (Invalid_argument "relop")
 
 
-let has f t op = try ignore (f t op); true with Invalid_argument _ -> false
-let has_unop t op = has unop t op
-let has_binop t op = has binop t op
-let has_relop t op = has relop t op
+let has f op t = try ignore (f op t); true with Invalid_argument _ -> false
+let has_unop op t = has unop op t
+let has_binop op t = has binop op t
+let has_relop op t = has relop op t
+
+let type_unop op t = if t = T.Prim T.Nat then T.Prim T.Int else t
+let type_binop op t = t
+let type_relop op t = t
