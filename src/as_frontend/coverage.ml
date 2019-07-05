@@ -57,7 +57,7 @@ let pick_nat (type t) (module Num : V.NumType with type t = t) to_val vs =
   while ValSet.mem (to_val !x) vs do
     x := Num.add (Num.of_int 1) !x
   done;
-  Some (to_val !x)
+  Val (to_val !x)
 
 let pick_int (type t) (module Num : V.NumType with type t = t) to_val vs =
   let x = ref Num.zero in
@@ -65,19 +65,25 @@ let pick_int (type t) (module Num : V.NumType with type t = t) to_val vs =
     x := Num.neg !x;
     if Num.ge !x Num.zero then x := Num.add (Num.of_int 1) !x
   done;
-  Some (to_val !x)
+  Val (to_val !x)
 
 let pick_word (type t) (module Word : V.WordType with type t = t) to_val vs =
   let x = ref Word.zero in
   while ValSet.mem (to_val !x) vs do
     x := Word.add (Word.of_int_u 1) !x
   done;
-  Some (to_val !x)
+  Val (to_val !x)
 
-let pick_val t vs : V.value option =
-  match t with
+let pick_char vs =
+  let x = ref 0 in
+  while ValSet.mem (V.Char !x) vs do
+    x := !x + 1
+  done;
+  Val (V.Char !x)
+
+let pick_val vs = function
   | T.Null -> assert false
-  | T.Bool -> Some (V.Bool (ValSet.mem (V.Bool false) vs))
+  | T.Bool -> Val (V.Bool (ValSet.mem (V.Bool false) vs))
   | T.Nat -> pick_nat (module V.Nat) (fun x -> V.Int x) vs
   | T.Nat8 -> pick_nat (module V.Nat8) (fun x -> V.Nat8 x) vs
   | T.Nat16 -> pick_nat (module V.Nat16) (fun x -> V.Nat16 x) vs
@@ -92,24 +98,23 @@ let pick_val t vs : V.value option =
   | T.Word16 -> pick_word (module V.Word16) (fun x -> V.Word16 x) vs
   | T.Word32 -> pick_word (module V.Word32) (fun x -> V.Word32 x) vs
   | T.Word64 -> pick_word (module V.Word64) (fun x -> V.Word64 x) vs
-  | T.Float
-  | T.Char
-  | T.Text -> None
+  | T.Char -> pick_char vs
+  | T.Text
+  | T.Float -> Any
 
 let rec expand_notval t n vs : desc list =
-  if T.sub t (T.Opt T.Any) then
-    [Opt Any]
-  else if T.span t = Some (ValSet.cardinal vs) then
+  if T.span t = Some (ValSet.cardinal vs) then
     []
-  else if n = max_expand then
+  else if n = max_expand && Lib.Option.get (T.span t) max_int - ValSet.cardinal vs > 1 then
     [Any]
   else
     match t with
     | T.Prim t' ->
-      (match pick_val t' vs with
-      | None -> [Any]
-      | Some v -> Val v :: expand_notval t (n + 1) (ValSet.add v vs)
+      (match pick_val vs t' with
+      | Val v -> Val v :: expand_notval t (n + 1) (ValSet.add v vs)
+      | _ -> [Any]
       )
+    | T.Opt _ -> [Opt Any]
     | _ -> [Any]
 
 
