@@ -175,8 +175,10 @@ and check_typ' env typ : T.typ =
   match typ.it with
   | PathT (path, typs) ->
     let c = check_typ_path env path in
+    let ts = List.map (check_typ env) typs in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
-    let ts = check_typ_bounds env tbs typs typ.at in
+    let tbs' = List.map (fun {T.var; T.bound} -> {T.var; bound = T.open_ ts bound}) tbs in
+    check_typ_bounds env tbs' ts typs typ.at;
     T.Con (c, ts)
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
@@ -260,8 +262,13 @@ and check_typ_tag env typ_tag =
   T.{lab = tag.it; typ = t}
 
 and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Scope.con_env =
+  (* TODO: rule out cyclic bounds *)
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
-  let cs = List.map (fun n -> Con.fresh n (T.Abs ([], T.Pre))) xs in
+  let cs =
+    List.map2 (fun x tb ->
+      match tb.note with
+      | Some c -> c
+      | None -> Con.fresh x (T.Abs ([], T.Pre))) xs typ_binds in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -271,32 +278,42 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Sc
   let pre_env' = add_typs {env with pre = true} xs cs  in
   let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
-  List.iter2 T.set_kind cs ks;
+  List.iter2 (fun c k ->
+    match Con.kind c with
+    | T.Abs(_, T.Pre) -> T.set_kind c k
+    | k' -> assert (T.eq_kind k k')
+    ) cs ks;
   let env' = add_typs env xs cs in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
   cs, ts, te, T.ConSet.of_list cs
 
-and check_typ_bounds env (tbs : T.bind list) typs at : T.typ list =
-  match tbs, typs with
-  | tb::tbs', typ::typs' ->
-    let t = check_typ env typ in
-    if not env.pre then begin
-      if not (T.sub t tb.T.bound) then
-        local_error env typ.at
-          "type argument\n  %s\ndoes not match parameter bound\n  %s"
-          (T.string_of_typ_expand t)
-          (T.string_of_typ_expand tb.T.bound)
-    end;
-    let ts' = check_typ_bounds env tbs' typs' at in
-    t::ts'
-  | [], [] -> []
-  | [], _ -> local_error env at "too many type arguments"; []
-  | _, [] -> error env at "too few type arguments"
+and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) typs at =
+  let pars = List.length tbs in
+  let args = List.length ts in
+  if pars > args then
+    error env at "too few type arguments";
+  if pars < args then
+    error env at "too many type arguments";
+  let rec go tbs' ts' typs' =
+    match tbs', ts', typs' with
+    | tb::tbs', t::ts', typ::typs' ->
+      if not env.pre then
+        let u = T.open_ ts tb.T.bound in
+        if not (T.sub t u) then
+          local_error env typ.at
+            "type argument\n  %s\ndoes not match parameter bound\n  %s"
+            (T.string_of_typ_expand t)
+            (T.string_of_typ_expand u);
+        go tbs' ts' typs'
+    | [], [], [] -> ()
+    | _  -> assert false
+  in go tbs ts typs
 
 and check_inst_bounds env tbs typs at =
-  let tys = check_typ_bounds env tbs typs at  in
-  tys
+  let ts = List.map (check_typ env) typs in
+  check_typ_bounds env tbs ts typs at;
+  ts
 
 (* Literals *)
 
@@ -652,7 +669,7 @@ and infer_exp'' env exp : T.typ =
         error env exp1.at
           "expected function type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
-      in
+    in
     let ts = check_inst_bounds env tbs insts exp.at in
     let t_arg = T.open_ ts t_arg in
     let t_ret = T.open_ ts t_ret in
@@ -1456,7 +1473,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs env te ce in
     let t = check_typ env' typ in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    let tbs = List.map2 (fun c' t -> {T.var = Con.name c'; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
     begin
       let is_typ_param c =
@@ -1486,7 +1503,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' sort.it fields dec.at in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
+    let tbs = List.map2 (fun c' t -> {T.var = Con.name c'; bound = T.close cs t}) cs ts in
     let k = T.Def (tbs, T.close cs t) in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
