@@ -24,9 +24,6 @@ let ocaml_vlq = import ./nix/ocaml-vlq.nix {
   inherit (ocamlPackages) findlib ocaml;
 }; in
 
-let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs ocamlPackages; in
-let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs ocamlPackages; in
-
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   # ref = "master";
@@ -50,6 +47,7 @@ let esm = builtins.fetchTarball {
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
 
+# Include dvm
 let real-dvm =
   if dvm == null
   then dev.dvm
@@ -172,8 +170,8 @@ let commonBuildInputs = [
   ocamlPackages.yojson
   ocamlPackages.ppxlib
   ocamlPackages.ppx_inline_test
-  ocaml_bisect_ppx
-  ocaml_bisect_ppx-ocamlbuild
+  ocamlPackages.bisect_ppx
+  ocamlPackages.bisect_ppx-ocamlbuild
   ocamlPackages.ocaml-migrate-parsetree
   ocamlPackages.ppx_tools_versioned
 ]; in
