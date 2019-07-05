@@ -381,15 +381,14 @@ let as_async_sub t = match promote t with
 let lookup_val_field l tfs =
   let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
   match List.find_opt is_lab tfs with
-  | Some tf -> Some tf.typ
-  | None -> None
+  | Some tf -> tf.typ
+  | None -> invalid "lookup_val_field"
 
 let lookup_typ_field l tfs =
   let is_lab = function {typ = Typ _; lab} -> lab = l | _ -> false in
   match List.find_opt is_lab tfs with
-  | Some {typ = Typ c; _} -> Some c
-  | Some _ -> assert false
-  | None -> None
+  | Some {typ = Typ c; _} -> c
+  | _ -> invalid "lookup_typ_field"
 
 
 (* Span *)

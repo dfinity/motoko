@@ -124,8 +124,8 @@ val as_seq : typ -> typ list
 
 (* Fields *)
 
-val lookup_val_field : string -> field list -> typ option
-val lookup_typ_field : string -> field list -> con option
+val lookup_val_field : string -> field list -> typ
+val lookup_typ_field : string -> field list -> con
 
 val compare_field : field -> field -> int
 

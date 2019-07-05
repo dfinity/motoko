@@ -139,10 +139,10 @@ and check_obj_path' env path : T.typ =
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
     match T.lookup_val_field id.it fs with
-    | Some T.Pre ->
+    | T.Pre ->
       error env id.at "cannot infer type of forward field reference %s" id.it
-    | Some t -> t
-    | None ->
+    | t -> t
+    | exception Invalid_argument _ ->
       error env id.at "field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand (T.Obj (s, fs)))
 
@@ -160,9 +160,7 @@ and check_typ_path' env path : T.con =
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
-    match T.lookup_typ_field id.it fs with
-    | Some t -> t
-    | None ->
+    try T.lookup_typ_field id.it fs with Invalid_argument _ ->
       error env id.at "type field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand (T.Obj (s, fs)))
 
@@ -549,11 +547,11 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t1)
     in
     (match T.lookup_val_field id.it tfs with
-    | Some T.Pre ->
+    | T.Pre ->
       error env exp.at "cannot infer type of forward field reference %s"
         id.it
-    | Some t -> t
-    | None ->
+    | t -> t
+    | exception Invalid_argument _ ->
       error env exp1.at "field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand t1)
     )
@@ -701,10 +699,15 @@ and infer_exp'' env exp : T.typ =
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp_promote env exp1 in
     let t = infer_cases env t1 T.Non cases in
-    if not env.pre then
-      if not (Coverage.check_cases cases t1) then
+    if not env.pre then begin
+      match Coverage.check_cases cases t1 with
+      | [] -> ()
+      | ss ->
         warn env exp.at
-          "the cases in this switch do not cover all possible values";
+          "the cases in this switch over type\n  %s\ndo not cover value\n  %s"
+          (Type.string_of_typ_expand t1)
+          (String.concat " or\n  " ss)
+    end;
     t
   | WhileE (exp1, exp2) ->
     if not env.pre then begin
@@ -728,7 +731,7 @@ and infer_exp'' env exp : T.typ =
       let t1 = infer_exp_promote env exp1 in
       (try
         let _, tfs = T.as_obj_sub ["next"] t1 in
-        let t = Lib.Option.value (T.lookup_val_field "next" tfs) in
+        let t = T.lookup_val_field "next" tfs in
         let t1, t2 = T.as_mono_func_sub t in
         if not (T.sub T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub t2 in
@@ -855,10 +858,15 @@ and check_exp' env t exp : T.typ =
   | SwitchE (exp1, cases), _ ->
     let t1 = infer_exp_promote env exp1 in
     check_cases env t1 t cases;
-    if not env.pre then
-      if not (Coverage.check_cases cases t1) then
+    if not env.pre then begin
+      match Coverage.check_cases cases t1 with
+      | [] -> ()
+      | ss ->
         warn env exp.at
-          "the cases in this switch do not cover all possible values";
+          "the cases in this switch over type\n  %s\ndo not cover value\n  %s"
+          (Type.string_of_typ_expand t1)
+          (String.concat " or\n  " ss)
+    end;
     t
   | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
@@ -921,9 +929,15 @@ and inconsistent t ts =
 
 and infer_pat_exhaustive env pat : T.typ * Scope.val_env =
   let t, ve = infer_pat env pat in
-  if not env.pre then
-    if not (Coverage.check_pat pat t) then
-      warn env pat.at "this pattern does not cover all possible values";
+  if not env.pre then begin
+    match Coverage.check_pat pat t with
+    | [] -> ()
+    | ss ->
+      warn env pat.at
+        "this pattern consuming type\n  %s\ndoes not cover value\n  %s"
+        (Type.string_of_typ_expand t)
+        (String.concat " or\n  " ss)
+  end;
   t, ve
 
 and infer_pat env pat : T.typ * Scope.val_env =
@@ -996,9 +1010,15 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
 
 and check_pat_exhaustive env t pat : Scope.val_env =
   let ve = check_pat env t pat in
-  if not env.pre then
-    if not (Coverage.check_pat pat t) then
-      warn env pat.at "this pattern does not cover all possible values";
+  if not env.pre then begin
+    match Coverage.check_pat pat t with
+    | [] -> ()
+    | ss ->
+      warn env pat.at
+        "this pattern consuming type\n  %s\ndoes not cover value\n  %s"
+        (Type.string_of_typ_expand t)
+        (String.concat " or\n  " ss)
+  end;
   ve
 
 and check_pat env t pat : Scope.val_env =
@@ -1060,8 +1080,7 @@ and check_pat' env t pat : Scope.val_env =
     in check_pat env t1 pat1
   | TagP (id, pat1) ->
     let t1 =
-      try
-        Lib.Option.value (T.lookup_val_field id.it (T.as_variant_sub id.it t))
+      try T.lookup_val_field id.it (T.as_variant_sub id.it t)
       with Invalid_argument _ | Not_found ->
         error env pat.at "variant pattern cannot consume expected type\n  %s"
           (T.string_of_typ_expand t)
@@ -1371,7 +1390,9 @@ and infer_val_path env exp : T.typ option =
      | None -> None
      | Some t ->
        match T.promote t with
-       | T.Obj ( _, flds) -> T.lookup_val_field id.it flds
+       | T.Obj ( _, flds) ->
+         (try Some (T.lookup_val_field id.it flds)
+         with Invalid_argument _ -> None)
        | _ -> None
     )
   | _ -> None
