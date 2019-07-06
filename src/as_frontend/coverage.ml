@@ -103,19 +103,17 @@ let pick_val vs = function
   | T.Float -> Any
 
 let rec expand_notval t n vs : desc list =
-  if T.span t = Some (ValSet.cardinal vs) then
-    []
-  else if n = max_expand && Lib.Option.get (T.span t) max_int - ValSet.cardinal vs > 1 then
-    [Any]
-  else
-    match t with
-    | T.Prim t' ->
-      (match pick_val vs t' with
-      | Val v -> Val v :: expand_notval t (n + 1) (ValSet.add v vs)
-      | _ -> [Any]
-      )
-    | T.Opt _ -> [Opt Any]
+  let missing = Lib.Option.get (T.span t) max_int - ValSet.cardinal vs in
+  if missing = 0 then [] else
+  if n = max_expand && missing > 1 then [Any] else
+  match t with
+  | T.Prim t' ->
+    (match pick_val vs t' with
+    | Val v -> Val v :: expand_notval t (n + 1) (ValSet.add v vs)
     | _ -> [Any]
+    )
+  | T.Opt _ -> [Opt Any]
+  | _ -> [Any]
 
 
 let rec pick_tag ls = function
@@ -124,13 +122,11 @@ let rec pick_tag ls = function
   | tf::_ -> tf.T.lab
 
 let rec expand_nottag tfs n ls : desc list =
-  if List.length tfs = TagSet.cardinal ls then
-    []
-  else if n = max_expand && List.length tfs - TagSet.cardinal ls > 1 then
-    [Any]
-  else
-    let l = pick_tag ls tfs in
-    Tag (Any, l) :: expand_nottag tfs (n + 1) (TagSet.add l ls)
+  let missing = List.length tfs - TagSet.cardinal ls in
+  if missing = 0 then [] else
+  if n = max_expand && missing > 1 then [Any] else
+  let l = pick_tag ls tfs in
+  Tag (Any, l) :: expand_nottag tfs (n + 1) (TagSet.add l ls)
 
 
 let rec string_of_desc t = function
@@ -160,6 +156,7 @@ and string_of_ldesc tfs (l, desc) =
   l ^ " = " ^ string_of_desc (T.lookup_val_field l tfs) desc
 
 and string_of_descs t descs =
+  assert (descs <> []);
   String.concat " or " (List.map (string_of_desc t) descs)
 
 
