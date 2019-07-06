@@ -6,7 +6,7 @@ AS_IDE_TARGET = _build/default/exes/as_ide.exe
 AS_LD_TARGET = _build/default/exes/as_ld.exe
 ASC_TARGET = _build/default/exes/asc.exe
 DIDC_TARGET = _build/default/exes/didc.exe
-ASC_JS_TARGET = _build/default/exes/as_js.bc.js
+ASC_JS_TARGET = _build/default/js/as_js.bc.js
 
 DUNE_OPTS ?=
 
