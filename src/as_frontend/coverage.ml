@@ -131,7 +131,7 @@ let rec expand_nottag tfs n ls : desc list =
 
 let rec string_of_desc t = function
   | Any -> "_"
-  | Val v -> Value.string_of_val 100 v
+  | Val v -> V.string_of_val 100 v
   | NotVal vs -> string_of_descs t (expand_notval (T.promote t) 0 vs)
   | Tup descs ->
     let ts = T.as_tup_sub (List.length descs) t in
@@ -225,20 +225,25 @@ let rec match_pat ctxt desc pat t sets =
   | OptP pat1 ->
     let t' = T.as_opt (T.promote t) in
     (match desc with
-    | Val Value.Null ->
-      fail ctxt desc sets
-    | NotVal vs when ValSet.mem Value.Null vs ->
-      match_pat (InOpt ctxt) Any pat1 t' sets
     | Opt desc' ->
       match_pat (InOpt ctxt) desc' pat1 t' sets
+    | Val V.Null ->
+      fail ctxt desc sets
+    | NotVal vs when ValSet.mem V.Null vs ->
+      match_pat (InOpt ctxt) Any pat1 t' sets
     | Any ->
-      fail ctxt (Val Value.Null) sets &&&
+      fail ctxt (Val V.Null) sets &&&
       match_pat (InOpt ctxt) Any pat1 t' sets
     | _ -> assert false
     )
   | TagP (id, pat1) ->
     let t' = T.lookup_val_field id.it (T.as_variant (T.promote t)) in
     (match desc with
+    | Tag (desc', l) ->
+      if id.it = l then
+        match_pat (InTag (ctxt, l)) desc' pat1 t' sets
+      else
+        fail ctxt desc sets
     | NotTag ls ->
       if TagSet.mem id.it ls then
         fail ctxt desc sets
@@ -247,17 +252,8 @@ let rec match_pat ctxt desc pat t sets =
       else
         fail ctxt (NotTag (TagSet.add id.it ls)) sets &&&
         match_pat (InTag (ctxt, id.it)) Any pat1 t' sets
-    | Tag (desc', l) ->
-      if id.it = l then
-        match_pat (InTag (ctxt, l)) desc' pat1 t' sets
-      else
-        fail ctxt desc sets
     | Any ->
-      if T.span t = Some 1 then
-        match_pat (InTag (ctxt, id.it)) Any pat1 t' sets
-      else
-        fail ctxt (NotTag (TagSet.singleton id.it)) sets &&&
-        match_pat (InTag (ctxt, id.it)) Any pat1 t' sets
+      match_pat ctxt (NotTag TagSet.empty) pat t sets
     | _ -> assert false
     )
   | AltP (pat1, pat2) ->
@@ -268,17 +264,9 @@ let rec match_pat ctxt desc pat t sets =
     match_pat ctxt desc pat1 t sets
 
 and match_lit ctxt desc v t sets =
-  let desc_succ = Val v in
-  let desc_fail vs = NotVal (ValSet.add v vs) in
   match desc with
-  | Any ->
-    if T.span t = Some 1 then
-      succeed ctxt desc_succ sets
-    else
-      fail ctxt (desc_fail ValSet.empty) sets &&&
-      succeed ctxt desc_succ sets
   | Val v' ->
-    if Value.equal v v' then
+    if V.equal v v' then
       succeed ctxt desc sets
     else
       fail ctxt desc sets
@@ -286,12 +274,14 @@ and match_lit ctxt desc v t sets =
     if ValSet.mem v vs then
       fail ctxt desc sets
     else if T.span t = Some (ValSet.cardinal vs + 1) then
-      succeed ctxt desc_succ sets
+      succeed ctxt (Val v) sets
     else
-      fail ctxt (desc_fail vs) sets &&&
-      succeed ctxt desc_succ sets
+      fail ctxt (NotVal (ValSet.add v vs)) sets &&&
+      succeed ctxt (Val v) sets
   | Opt _ ->
     fail ctxt desc sets
+  | Any ->
+    match_lit ctxt (NotVal ValSet.empty) v t sets
   | _ ->
     assert false
 
