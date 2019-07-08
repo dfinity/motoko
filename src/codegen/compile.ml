@@ -4643,10 +4643,11 @@ let powInt64_shortcut fast env get_a get_b slow =
       get_a ^^ compile_const_64 (-1L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
       G.if_ (ValBlockType (Some I64Type))
         begin (* (-1)^(1+n)  *)
-          get_a ^^ compile_const_64 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
+          get_a ^^ compile_const_64 1L ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
           G.if_ (ValBlockType (Some I64Type))
-            (compile_const_64 (-1L))
             (compile_const_64 1L)
+            (compile_const_64 (-1L))
         end
         begin
           get_a ^^ compile_shrU64_const 1L ^^
@@ -4654,12 +4655,13 @@ let powInt64_shortcut fast env get_a get_b slow =
           G.if_ (ValBlockType (Some I64Type))
             get_a (* {0,1}^(1+n) *)
             begin
-              get_b ^^ compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
+              get_b ^^ compile_const_64 64L ^^
+              G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
               get_a ^^ get_a ^^ compile_shl64_const 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
               G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ compile_sub64_const 65L ^^
               get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^ compile_const_64 (-63L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeS)) ^^
               G.if_ (ValBlockType (Some I64Type))
-                (get_a ^^ get_b ^^ fast ^^ G.i Unreachable)
+                (get_a ^^ get_b ^^ fast)
                 slow
             end
         end
