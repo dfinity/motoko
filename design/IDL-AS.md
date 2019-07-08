@@ -89,8 +89,8 @@ e(shared { <typ-field>^N }) = record { ef*(<typ-field>^N) }
 e(variant { <typ-field>^N }) = variant { ef*(<typ-field>^N) }
 e([<typ>]) = vec (e(<typ>))
 e(? <typ>) = opt (e(<typ>))
-e(shared <a:typ> -> async <r:typ>) = func (ea(<a:typ>) -> ea(<r:typ>))
-e(shared <a:typ> -> ()) = func (ea(<a:typ>) -> ()) oneway
+e(shared <a:typ> -> async <r:typ>) = func (e(<a:typ>) -> e(<r:typ>))
+e(shared <a:typ> -> ()) = func (a(<a:typ>) -> ()) oneway
 e(actor { <typ-field>^N }) = service { em*(<typ-field>^N) }
 e( ( <typ>^N ) ) = record { e*(<typ^N>) }
 e(None) = variant {}
@@ -99,13 +99,8 @@ ef : <typ-field> -> <fieldtype>
 ef (<id> : <typ>) = unescape(<id>) : e(<typ>)
 
 em : <typ-field> -> <methtype>
-em(<id> : shared <a:typ> -> async <r:typ>) = unescape(<id>) : ea(<a:typ>) -> ea(<r:typ>)
-em(<id> : shared <a:typ> -> ()) = unescape(<id>) : ea(<a:typ>) -> () oneway
-
-ea : <typ> -> <fieldtype>,* // function arguments
-ea(shared { <type-field>^N }) = ef*(<typ-field>^N)
-ea( ( <typ>^N ) ) = e*(<typ^N>)
-ea(<typ>) = e(<typ>)  if no earlier clause matches // NB: unnamed field shorthand
+em(<id> : shared <a:typ> -> async <r:typ>) = unescape(<id>) : a(<a:typ>) -> a(<r:typ>)
+em(<id> : shared <a:typ> -> ()) = unescape(<id>) : a(<a:typ>) -> () oneway
 
 unescape : <id> -> <nat>|<name>
 unescape("_" <nat> "_") = <nat>
@@ -130,10 +125,10 @@ i(reserved) = Any
 i(opt <datatype>) = ? i(<datatype>)
 i(vec <datatype>) = [ i(<datatype>) ]
 i(blob) = [ word8 ] // if ActorScript had a bytes type, it would show up here
-i(record { <datatype>^N }) = ( i(<datatype>)^N, )
+i(record { <datatype>^N }) = ( i(<datatype>)^N, ) // matches tuple short-hand
 i(record { <fieldtype>^N }) = shared { if*(<fieldtype>^N) }
 i(variant { <fieldtype>^N }) = variant { if*(<typ-field>^N) }
-i(func <functype>) = ifn<functype>
+i(func <functype>) = ifn(<functype>)
 i(service { <methtype>^N }) = actor { im*(<methtype>^N) }
 
 if : <fieldtype> -> <typ>
@@ -141,12 +136,8 @@ if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
 if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
 
 ifn : <functype> -> <typ>
-ifn(a:(<fieldtype>^N) -> () oneway pure?) = shared ia(a) -> ()
-ifn(a:(<fieldtype>^N) -> r:<fieldtype>^N pure?) = shared ia(a) -> ia(r)
-
-ia : <fieldtype>^N -> <typ>
-ia(<datatype>^N) = ( i*(<datatype>^N), ) // import as tuple
-ia(<fieldtype>^N) = shared { if*(<fieldtype>^N) }
+ifn(a:(<datatype>^N) -> () oneway pure?) = shared (i*(a),) -> ()
+ifn(a:(<datatype>^N) -> r:<datatype>^N pure?) = shared (i*(a),) -> (i*(r),)
 
 im : <methtype> -> <typ>
 im(<name> : <functype>) = escape(<name>) : ifn(<functype>)
@@ -199,13 +190,15 @@ escape <name> = "_" hash(<name>) "_"  otherwise
 
  * Abstract ActorScript types are not in the domain of `e`
 
- * It should be convenient and obvious how to define ActorScript functions that take,
-   after translation through `e`, named arguments, i.e.
-   ```
-   e(shared {a:Int; b:Nat} -> ()) = func (a : int, b : nat) -> () oneway
-   i(func (a : int, b : nat) -> () oneway) = shared {a:Int; b:Nat} -> ()
-   ```
-   This is the motivation for the `ea` function.
+ * The translation produces IDL functions without parameter names.  But both
+   the IDL and ActorScript conveniently support non-significant  names in
+   parameter lists. These are essentially comments, and do not affect, for
+   example, the type section in a message, so it is not necessary to specify
+   them here.
+
+   But tooling (e.g. `asc` exporting an IDL from an ActorScript type) is of
+   course free to use any annotations in the ActorScript type (or even names
+   from pattern in function definitions) also in the exported IDL.
 
  * The soundness of the ActorScript type system, when it comes to higher-order
    use of actor and function references, relies on
