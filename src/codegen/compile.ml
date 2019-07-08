@@ -386,7 +386,7 @@ let compile_sub64_const = compile_op64_const I64Op.Sub
 let _compile_mul64_const = compile_op64_const I64Op.Mul
 let _compile_divU64_const = compile_op64_const I64Op.DivU
 let compile_shrU64_const = compile_op64_const I64Op.ShrU
-let _compile_shrS64_const = compile_op64_const I64Op.ShrS
+let compile_shrS64_const = compile_op64_const I64Op.ShrS
 let compile_shl64_const = compile_op64_const I64Op.Shl
 let compile_bitand64_const = compile_op64_const I64Op.And
 let _compile_bitor64_const = function
@@ -4650,7 +4650,7 @@ let powInt64_shortcut fast env get_a get_b slow =
             (compile_const_64 (-1L))
         end
         begin
-          get_a ^^ compile_shrU64_const 1L ^^
+          get_a ^^ compile_shrS64_const 1L ^^
           G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
           G.if_ (ValBlockType (Some I64Type))
             get_a (* {0,1}^(1+n) *)
