@@ -4642,12 +4642,12 @@ let powInt64_shortcut fast env get_a get_b slow =
     begin (* ^(1+n) *)
       get_a ^^ compile_const_64 (-1L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
       G.if_ (ValBlockType (Some I64Type))
-        begin (* (-1)^(1+n)  *)
-          get_a ^^ compile_const_64 1L ^^
+        begin (* -1 ** (1+exp) == if even (1+exp) then 1 else -1 *)
+          get_b ^^ compile_const_64 1L ^^
           G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
           G.if_ (ValBlockType (Some I64Type))
             (compile_const_64 1L)
-            (compile_const_64 (-1L))
+            get_a
         end
         begin
           get_a ^^ compile_shrS64_const 1L ^^
