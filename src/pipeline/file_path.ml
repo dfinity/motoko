@@ -20,23 +20,7 @@ let normalise file_path =
      then result
      else Base.String.chop_suffix_exn ~suffix:"/" result)
 
-(**
-
-project_root = /home/project/
-module_path = /home/project/src/file.as
-dependency = lib/List.as
-
-result = "src/lib/List.as"
-
-Failure modes:
-  1. module path wasn't within project root
- *)
-
 let relative_to base path =
-  if Filename.is_relative base || Filename.is_relative path
-  then
-    None
-  else
-    Base.String.chop_prefix
-      ~prefix:(normalise (base ^ "/"))
-      (normalise path)
+  Base.String.chop_prefix
+    ~prefix:(normalise (base ^ "/"))
+    (normalise path)
