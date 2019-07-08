@@ -1,5 +1,5 @@
-open As_ir
-open As_frontend
+open Ir_def
+open As_def
 open As_types
 open As_values
 
@@ -7,7 +7,7 @@ open Source
 open Operator
 module S = Syntax
 module I = Ir
-module T = As_types.Type
+module T = Type
 open Construct
 
 (*
@@ -27,8 +27,7 @@ let falseE : Ir.exp = boolE false
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
-  | NegOp, NatLit n -> NatLit (Value.Nat.sub Value.Nat.zero n)
-  | NegOp, IntLit n -> IntLit (Value.Int.sub Value.Int.zero n)
+  | NegOp, (NatLit n | IntLit n) -> IntLit (Value.Int.sub Value.Int.zero n)
   | NegOp, Int8Lit n -> Int8Lit (Value.Int_8.sub Value.Int_8.zero n)
   | NegOp, Int16Lit n -> Int16Lit (Value.Int_16.sub Value.Int_16.zero n)
   | NegOp, Int32Lit n -> Int32Lit (Value.Int_32.sub Value.Int_32.zero n)
@@ -79,7 +78,7 @@ and exp' at note = function
   | S.DotE (e, x) when T.is_prim T.Text e.note.S.note_typ ->
     (text_dotE  x.it (exp e)).it
   | S.DotE (e, x) ->
-    begin match T.as_obj_sub x.it e.note.S.note_typ with
+    begin match T.as_obj_sub [x.it] e.note.S.note_typ with
     | T.Actor, _ -> I.ActorDotE (exp e, x.it)
     | _ -> I.DotE (exp e, x.it)
     end
@@ -91,9 +90,12 @@ and exp' at note = function
   | S.FuncE (name, s, tbs, p, ty_opt, e) ->
     let cc = Call_conv.call_conv_of_typ note.I.note_typ in
     let args, wrap = to_args cc p in
-    let ty = match ty_opt with Some ty -> ty.note | None -> T.Tup [] in
+    let _, _, _, ty = T.as_func_sub s.it (List.length tbs) note.I.note_typ in
+    let tbs' = typ_binds tbs in
+    let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
+    let ty = T.open_ vars ty in
     let tys = if cc.Call_conv.n_res = 1 then [ty] else T.as_seq ty in
-    I.FuncE (name, cc, typ_binds tbs, args, tys, wrap (exp e))
+    I.FuncE (name, cc, tbs', args, tys, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in
     if T.is_non t

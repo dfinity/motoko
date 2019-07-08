@@ -1,9 +1,11 @@
-open As_ir
+open Ir_def
+open As_types
+
 open Source
 open Ir
 open Ir_effect
 module R = Rename
-module T = As_types.Type
+module T = Type
 open Construct
 
 (* continuations, syntactic and meta-level *)

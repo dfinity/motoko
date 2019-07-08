@@ -1,6 +1,6 @@
 open As_types
 open As_values
-open As_ir
+open Ir_def
 
 open Ir
 open Source
@@ -301,7 +301,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LitE lit ->
     k (interpret_lit env lit)
   | UnE (ot, op, exp1) ->
-    interpret_exp env exp1 (fun v1 -> k (try Operator.unop ot op v1 with Invalid_argument s -> trap exp.at "%s" s))
+    interpret_exp env exp1 (fun v1 -> k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s))
   | ShowE (ot, exp1) ->
     interpret_exp env exp1 (fun v ->
       if Show.can_show ot
@@ -310,14 +310,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | BinE (ot, exp1, op, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (try Operator.binop ot op v1 v2 with _ ->
+        k (try Operator.binop op ot v1 v2 with _ ->
           trap exp.at "arithmetic overflow")
       )
     )
   | RelE (ot, exp1, op, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (Operator.relop ot op v1 v2)
+        k (Operator.relop op ot v1 v2)
       )
     )
   | TupE exps ->

@@ -1,6 +1,10 @@
+open As_def
+open As_types
+
 open Syntax
 open Source
-module T = As_types.Type
+
+module T = Type
 
 (* a simple effect analysis to annote expressions as Triv(ial) (await-free) or Await (containing unprotected awaits) *)
 

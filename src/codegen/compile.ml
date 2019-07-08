@@ -10,7 +10,7 @@ grouping. Every module has a high-level prose comment explaining the concept;
 this keeps documentation close to the code (a lesson learned from Simon PJ).
 *)
 
-open As_ir
+open Ir_def
 open As_values
 open As_types
 
@@ -1001,7 +1001,7 @@ module Tagged = struct
 
   (* like branch_default but the tag is known statically *)
   let branch env retty = function
-    | [] -> failwith "branch"
+    | [] -> G.i Unreachable
     | [_, code] -> G.i Drop ^^ code
     | (_, code) :: cases -> branch_default env retty code cases
 
@@ -1014,7 +1014,7 @@ module Tagged = struct
 
   (* like branch_default_with but the tag is known statically *)
   let branch_with env retty = function
-    | [] -> failwith "branch_with"
+    | [] -> G.i Unreachable
     | [_, code] -> code
     | (_, code) :: cases ->
        let (set_o, get_o) = new_local env "o" in
@@ -1893,7 +1893,7 @@ module Object = struct
   let is_mut_field env obj_type s =
     (* TODO: remove try once array and text accessors are separated *)
     try
-      let _, fields = Type.as_obj_sub "" obj_type in
+      let _, fields = Type.as_obj_sub [s] obj_type in
       Type.is_mut (Lib.Option.value (Type.lookup_val_field s fields))
     with Invalid_argument _ -> false
 
@@ -4529,21 +4529,24 @@ let prim_of_typ ty = match Type.normalize ty with
 let then_arithmetic_overflow env =
   E.then_trap_with env "arithmetic overflow"
 
+(* The first returned StackRep is for the arguments (expected), the second for the results (produced) *)
 let compile_unop env t op =
   let open Operator in
   match op, t with
+  | _, Type.Non ->
+    SR.Vanilla, SR.Unreachable, G.i Unreachable
   | NegOp, Type.(Prim Int) ->
-      SR.Vanilla,
-      BigNum.compile_neg env
+    SR.Vanilla, SR.Vanilla,
+    BigNum.compile_neg env
   | NegOp, Type.(Prim Word64) ->
-      SR.UnboxedWord64,
-      Func.share_code1 env "neg" ("n", I64Type) [I64Type] (fun env get_n ->
-        compile_const_64 0L ^^
-        get_n ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Sub))
-      )
+    SR.UnboxedWord64, SR.UnboxedWord64,
+    Func.share_code1 env "neg" ("n", I64Type) [I64Type] (fun env get_n ->
+      compile_const_64 0L ^^
+      get_n ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Sub))
+    )
   | NegOp, Type.(Prim Int64) ->
-      SR.UnboxedWord64,
+      SR.UnboxedWord64, SR.UnboxedWord64,
       Func.share_code1 env "neg_trap" ("n", I64Type) [I64Type] (fun env get_n ->
         get_n ^^
         compile_eq64_const 0x8000000000000000L ^^
@@ -4553,33 +4556,33 @@ let compile_unop env t op =
         G.i (Binary (Wasm.Values.I64 I64Op.Sub))
       )
   | NegOp, Type.(Prim (Word8 | Word16 | Word32)) ->
-      StackRep.of_type t,
-      Func.share_code1 env "neg32" ("n", I32Type) [I32Type] (fun env get_n ->
-        compile_unboxed_zero ^^
-        get_n ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Sub))
-      )
+    StackRep.of_type t, StackRep.of_type t,
+    Func.share_code1 env "neg32" ("n", I32Type) [I32Type] (fun env get_n ->
+      compile_unboxed_zero ^^
+      get_n ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+    )
   | NegOp, Type.(Prim (Int8 | Int16 | Int32)) ->
-      StackRep.of_type t,
-      Func.share_code1 env "neg32_trap" ("n", I32Type) [I32Type] (fun env get_n ->
-        get_n ^^
-        compile_eq_const 0x80000000l ^^
-        then_arithmetic_overflow env ^^
-        compile_unboxed_zero ^^
-        get_n ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Sub))
-      )
+    StackRep.of_type t, StackRep.of_type t,
+    Func.share_code1 env "neg32_trap" ("n", I32Type) [I32Type] (fun env get_n ->
+      get_n ^^
+      compile_eq_const 0x80000000l ^^
+      then_arithmetic_overflow env ^^
+      compile_unboxed_zero ^^
+      get_n ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+    )
   | NotOp, Type.(Prim Word64) ->
-     SR.UnboxedWord64,
+     SR.UnboxedWord64, SR.UnboxedWord64,
      compile_const_64 (-1L) ^^
      G.i (Binary (Wasm.Values.I64 I64Op.Xor))
   | NotOp, Type.Prim Type.(Word8 | Word16 | Word32 as ty) ->
-      StackRep.of_type t, compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
-                          G.i (Binary (Wasm.Values.I32 I32Op.Xor))
+     StackRep.of_type t, StackRep.of_type t,
+     compile_unboxed_const (UnboxedSmallWord.mask_of_type ty) ^^
+     G.i (Binary (Wasm.Values.I32 I32Op.Xor))
   | _ ->
-    (* NB: Must not use todo_trap_SR here, as the SR.t here is also passed to
-       `compile_exp_as`, which does not take SR.Unreachable. *)
-    todo "compile_unop" (Arrange_ops.unop op) (SR.Vanilla, E.trap_with env "TODO: compile_unop")
+    todo "compile_unop" (Arrange_ops.unop op)
+      (SR.Vanilla, SR.Unreachable, E.trap_with env "TODO: compile_unop")
 
 (* Logarithmic helpers for deciding whether we can carry out operations in constant bitwidth *)
 
@@ -4821,11 +4824,10 @@ let compile_smallNat_kernel' env ty name op =
 let compile_smallNat_kernel env ty name op =
   compile_smallNat_kernel' env ty name (G.i (Binary (Wasm.Values.I32 op)))
 
-(* This returns a single StackRep, to be used for both arguments and the
-   result. One could imagine operators that require or produce different StackReps,
-   but none of these do, so a single value is fine.
-*)
+(* The first returned StackRep is for the arguments (expected), the second for the results (produced) *)
 let rec compile_binop env t op =
+  if t = Type.Non then SR.Vanilla, SR.Unreachable, G.i Unreachable else
+  StackRep.of_type t,
   StackRep.of_type t,
   Operator.(match t, op with
   | Type.(Prim (Nat | Int)),                  AddOp -> BigNum.compile_add env
@@ -4915,7 +4917,7 @@ let rec compile_binop env t op =
                         Wasm.Values.(fun env get_n get_exp ->
          let one = compile_unboxed_const (UnboxedSmallWord.const_of_type ty 1l) in
          let (set_res, get_res) = new_local env "res" in
-         let mul = snd (compile_binop env t MulOp) in
+         let _,_,mul = compile_binop env t MulOp in
          let square_recurse_with_shifted sanitize =
            get_n ^^ get_exp ^^ compile_shrU_const 1l ^^ sanitize ^^
            pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
@@ -4947,7 +4949,7 @@ let rec compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ UnboxedSmallWord.lsb_adjust ty ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^
-                snd (compile_binop env Type.(Prim Word32) PowOp) ^^
+                let _,_,pow = compile_binop env Type.(Prim Word32) PowOp in pow ^^
                 set_res ^^ get_res ^^ enforce_unsigned_bits env bits ^^
                 get_res ^^ UnboxedSmallWord.msb_adjust ty
               end
@@ -4974,7 +4976,7 @@ let rec compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
                 get_exp ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-                snd (compile_binop env Type.(Prim Word64) PowOp) ^^
+                let _,_,pow = compile_binop env Type.(Prim Word64) PowOp in pow ^^
                 set_res ^^ get_res ^^ enforce_32_unsigned_bits env ^^
                 get_res ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
               end
@@ -5001,7 +5003,7 @@ let rec compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ UnboxedSmallWord.lsb_adjust ty ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^
-                snd (compile_binop env Type.(Prim Word32) PowOp) ^^
+                (let _,_,pow = compile_binop env Type.(Prim Word32) PowOp in pow) ^^
                 set_res ^^ get_res ^^ get_res ^^ enforce_signed_bits env bits ^^
                 get_res ^^ UnboxedSmallWord.msb_adjust ty
               end
@@ -5044,7 +5046,7 @@ let rec compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
                 get_exp ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
-                snd (compile_binop env Type.(Prim Word64) PowOp) ^^
+                (let _,_,pow = compile_binop env Type.(Prim Word64) PowOp in pow) ^^
                 set_res ^^ get_res ^^ get_res ^^ enforce_32_signed_bits env ^^
                 get_res ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
               end
@@ -5068,11 +5070,11 @@ let rec compile_binop env t op =
     get_exp ^^
     compile_Int64_kernel
       env "pow" BigNum.compile_unsigned_pow
-      (powInt64_shortcut (snd (compile_binop env Type.(Prim Word64) PowOp)))
+      (powInt64_shortcut (let _,_,pow = compile_binop env Type.(Prim Word64) PowOp in pow))
   | Type.(Prim Nat64),                        PowOp ->
     compile_Nat64_kernel env "pow"
       BigNum.compile_unsigned_pow
-      (powNat64_shortcut (snd (compile_binop env Type.(Prim Word64) PowOp)))
+      (powNat64_shortcut (let _,_,pow = compile_binop env Type.(Prim Word64) PowOp in pow))
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
   | Type.(Prim Word64),                       AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.Prim Type.(Word8 | Word16 | Word32), AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
@@ -5113,6 +5115,7 @@ let rec compile_binop env t op =
       sanitize_word_result ty))
 
   | Type.Prim Type.Text, CatOp -> Text.concat env
+  | Type.Non, _ -> G.i Unreachable
   | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
   )
 
@@ -5123,6 +5126,7 @@ let compile_eq env = function
   | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   | Type.(Prim (Int8 | Nat8 | Word8 | Int16 | Nat16 | Word16 | Int32 | Nat32 | Word32 | Char)) ->
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  | Type.Non -> G.i Unreachable
   | _ -> todo_trap env "compile_eq" (Arrange_ops.relop Operator.EqOp)
 
 let get_relops = Operator.(function
@@ -5144,6 +5148,7 @@ let compile_comparison env t op =
     | _ -> todo_trap env "compile_comparison" (Arrange_type.prim t)
 
 let compile_relop env t op =
+  if t = Type.Non then SR.Vanilla, G.i Unreachable else
   StackRep.of_type t,
   let open Operator in
   match t, op with
@@ -5465,15 +5470,15 @@ and compile_exp (env : E.t) ae exp =
     G.if_ (ValBlockType None) G.nop (G.i Unreachable)
   | UnE (_, Operator.PosOp, e1) -> compile_exp env ae e1
   | UnE (t, op, e1) ->
-    let sr, code = compile_unop env t op in
-    sr,
-    compile_exp_as env ae sr e1 ^^
+    let sr_in, sr_out, code = compile_unop env t op in
+    sr_out,
+    compile_exp_as env ae sr_in e1 ^^
     code
   | BinE (t, e1, op, e2) ->
-    let sr, code = compile_binop env t op in
-    sr,
-    compile_exp_as env ae sr e1 ^^
-    compile_exp_as env ae sr e2 ^^
+    let sr_in, sr_out, code = compile_binop env t op in
+    sr_out,
+    compile_exp_as env ae sr_in e1 ^^
+    compile_exp_as env ae sr_in e2 ^^
     code
   | RelE (t, e1, op, e2) ->
     let sr, code = compile_relop env t op in

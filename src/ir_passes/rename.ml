@@ -1,4 +1,5 @@
-open As_ir
+open Ir_def
+
 open Source
 open Ir
 
