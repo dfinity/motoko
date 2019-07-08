@@ -80,3 +80,9 @@ let%test "it fails to make disjoint paths relative to one another" =
     "/home/project"
     "/home/main.as"
     None
+
+let%test "it handles relative paths" =
+  relative_to_test_case
+    "project/src"
+    "project/src/Main.as"
+    (Some "Main.as")
