@@ -84,6 +84,95 @@ as_ptr (*version_getter)() = &get_version;
 
 export as_ptr version() { return (*version_getter)(); }
 
+/* IDL code */
+from_rts __attribute__ ((noreturn)) void idl_trap();
+
+// Initially, we just want to be able to zoom past the type description
+// TODO: Defensive programming
+// (not going past the size of the message, trapping if leb128 does not fit in int)
+
+int read_leb128(char **ptr) {
+  int r = 0;
+  int s = 0;
+  char b;
+  do {
+    b = *(*ptr)++;
+    r += (b & (char)0x7f) << s;
+    s += 7;
+  } while (b & (char)0x80);
+  return r;
+}
+int read_sleb128(char **ptr) {
+  int r = 0;
+  int s = 0;
+  char b;
+  do {
+    b = *(*ptr)++;
+    r += (b & (char)0x7f) << s;
+    s += 7;
+  } while (b & (char)0x80);
+  // sign extend
+  if (b & (char)0x40) {
+    r |= (~0 << s);
+  }
+  return r;
+}
+
+export char *skip_idl_header(char *ptr) {
+  // Magic bytes
+  if (*ptr++ != 'D') idl_trap();
+  if (*ptr++ != 'I') idl_trap();
+  if (*ptr++ != 'D') idl_trap();
+  if (*ptr++ != 'L') idl_trap();
+  // Size of type list
+  for (int count = read_leb128(&ptr); count > 0; count --) {
+    int ty = read_sleb128(&ptr);
+    if (ty >= -17) {
+      idl_trap(); // illegal
+    } else if (ty == -18) { // opt
+      read_sleb128(&ptr);
+    }
+    else if (ty == -19) { // vec
+      read_sleb128(&ptr);
+    } else if (ty == -20) {  // record
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        read_leb128(&ptr);
+        read_sleb128(&ptr);
+      }
+    } else if (ty == -21) {  // variant
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        read_leb128(&ptr);
+        read_sleb128(&ptr);
+      }
+    } else if (ty == -22) {  // func
+      // arg types
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        read_sleb128(&ptr);
+      }
+      // ret types
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        read_sleb128(&ptr);
+      }
+      // annotations
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        ptr++;
+      }
+    } else if (ty == -23) {  // service
+      for (int n = read_leb128(&ptr); n > 0; n--) {
+        // name
+        ptr += read_leb128(&ptr);
+        // type
+        read_sleb128(&ptr);
+      }
+    } else {
+      // no support for future types yet
+      idl_trap();
+    }
+  }
+  read_sleb128(&ptr); // index
+  return ptr;
+}
+
 /* Memory management for libtommath */
 
 /*
@@ -348,4 +437,116 @@ export as_ptr bigint_lsh(as_ptr a, int b) {
 
 export int bigint_count_bits(as_ptr a) {
   return mp_count_bits(BIGINT_PAYLOAD(a));
+}
+
+/* LEB128 Encoding-decoding */
+export int bigint_leb128_size(as_ptr n) {
+  if (mp_iszero(BIGINT_PAYLOAD(n))) return 1;
+  int x = bigint_count_bits(n);
+  return ((x + 6) / 7); // divide by 7, round up
+}
+
+void leb128_encode_go(mp_int *tmp, unsigned char *buf) {
+  // now the number should be positive
+  if (mp_isneg(tmp)) bigint_trap();
+  while (true) {
+    buf[0] = (char)(mp_get_int(tmp)); // get low bits
+    CHECK(mp_div_2d(tmp, 7, tmp, NULL));
+    if (mp_iszero(tmp)) {
+      // we are done. high bit should be cleared anyways
+      return;
+    } else {
+      // more bytes to come, set high bit and continue
+      buf[0] |= 1<<7;
+      buf++;
+    }
+  }
+}
+
+export void bigint_leb128_encode(as_ptr n, unsigned char *buf) {
+  mp_int tmp;
+  CHECK(mp_init_copy(&tmp, BIGINT_PAYLOAD(n)));
+  leb128_encode_go(&tmp, buf);
+}
+
+
+int leb128_encoding_size(unsigned char *buf) {
+  // zoom to the end
+  int i = 0;
+  while (buf[i] & (1<<7)) i++;
+  return i+1;
+}
+
+as_ptr leb128_decode_go(unsigned char *buf, int bytes) {
+  // do not accept overlong encodings
+  if (buf[bytes-1] == 1<<7) bigint_trap();
+
+  as_ptr r = bigint_alloc();
+  CHECK(mp_init(BIGINT_PAYLOAD(r)));
+  int i = bytes-1;
+  while (true) {
+    CHECK(mp_add_d(BIGINT_PAYLOAD(r), buf[i] & ((1<<7)-1), BIGINT_PAYLOAD(r)));
+    if (i > 0) {
+      CHECK(mp_mul_2d(BIGINT_PAYLOAD(r), 7, BIGINT_PAYLOAD(r)));
+      i--;
+    } else {
+      break;
+    }
+  }
+  return r;
+}
+
+export as_ptr bigint_leb128_decode(unsigned char *buf) {
+  int bytes = leb128_encoding_size(buf);
+  return leb128_decode_go(buf, bytes);
+}
+
+/* SLEB128 Encoding-decoding */
+export int bigint_2complement_bits(as_ptr n) {
+  if (mp_isneg(BIGINT_PAYLOAD(n))) {
+    mp_int tmp;
+    CHECK(mp_init_copy(&tmp, BIGINT_PAYLOAD(n)));
+    CHECK(mp_incr(&tmp));
+    return 1 + mp_count_bits(&tmp);
+  } else {
+    return 1 + mp_count_bits(BIGINT_PAYLOAD(n));
+  }
+}
+
+export int bigint_sleb128_size(as_ptr n) {
+  int x = bigint_2complement_bits(n);
+  return ((x + 6) / 7); // divide by 7, round up
+}
+
+export void bigint_sleb128_encode(as_ptr n, unsigned char *buf) {
+  mp_int tmp;
+  CHECK(mp_init_copy(&tmp, BIGINT_PAYLOAD(n)));
+
+  if (mp_isneg(&tmp)) {
+    // turn negative numbers into the two's complement of the right size
+    int bytes = bigint_sleb128_size(n);
+    mp_int big;
+    CHECK(mp_init(&big));
+    CHECK(mp_2expt(&big, 7*bytes));
+    CHECK(mp_add(&tmp, &big, &tmp));
+  }
+
+  leb128_encode_go(&tmp, buf);
+}
+
+export as_ptr bigint_sleb128_decode(unsigned char *buf) {
+  int bytes = leb128_encoding_size(buf);
+
+  as_ptr r = leb128_decode_go(buf, bytes);
+
+  // Now adjust sign if necessary
+  if (buf[bytes-1] & (1<<6)) {
+    // negative number
+    mp_int big;
+    CHECK(mp_init(&big));
+    CHECK(mp_2expt(&big, 7*bytes));
+    CHECK(mp_sub(BIGINT_PAYLOAD(r), &big, BIGINT_PAYLOAD(r)));
+  }
+
+  return r;
 }

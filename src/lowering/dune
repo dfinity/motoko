@@ -1,0 +1,4 @@
+(library
+  (name lowering)
+  (libraries lib as_def ir_def)
+)

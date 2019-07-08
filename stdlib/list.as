@@ -83,14 +83,62 @@ type List<T> = ?(T, List<T>);
   --------
    length; tail recursive
    */
-  func len<T>(l : List<T>) : Nat = {
-    func rec(l : List<T>, n : Nat) : Nat {
+  func len<T>(l : List<T>) : Nat = label profile_list_len : Nat {
+    func rec(l : List<T>, n : Nat) : Nat = label profile_list_len_rec : Nat {
       switch l {
 	    case null     { n };
 	    case (?(_,t)) { rec(t,n+1) };
       }
     };
     rec(l,0)
+  };
+
+  /**
+   `lenIsLessThan`
+  --------
+   test length against a maximum value; tail recursive
+   */
+  func lenIsEqLessThan<T>(l : List<T>, i : Nat) : Bool =
+    label profile_list_lenIsEqLessThan_begin : Bool {
+    func rec(l : List<T>, i : Nat) : Bool = label profile_list_lenIsEqLessThan_rec : Bool {
+      switch l {
+	    case null label profile_list_lenIsEqLessThan_end_true : Bool true;
+	    case (?(_, t)) {
+             if ( i == 0 ) {
+               label profile_list_lenIsEqLessThan_end_false : Bool
+               false
+             }
+             else {
+               rec(t, i - 1)
+             }
+           };
+      }
+    };
+    rec(l, i)
+  };
+
+  /**
+   `lenClamp`
+  --------
+   get the length, unless greater than a maximum value, in which return null; tail recursive
+   */
+  func lenClamp<T>(l : List<T>, i0 : Nat) : ?Nat =
+    label profile_list_lenClamp : (?Nat) {
+    func rec(l : List<T>, i : Nat) : ?Nat = label profile_list_lenClamp_rec : (?Nat) {
+      switch l {
+	    case null { label profile_list_lenClamp_end_some : (?Nat) ?(i0 - i) };
+	    case (?(_, t)) {
+             if ( i == 0 ) {
+               label profile_list_lenClamp_end_null : (?Nat)
+               null
+             }
+             else {
+               rec(t, i - 1)
+             }
+           };
+      }
+    };
+    rec(l, i0)
   };
 
   /**
@@ -165,6 +213,24 @@ type List<T> = ?(T, List<T>);
 	    case (?(h,t)) { if (f(h)){ ?(h,rec(t)) } else { rec(t) } };
       }
     };
+    rec(l)
+  };
+
+  /**
+   `split`
+   ----------
+   split the list elements; non-tail recursive
+   */
+  func split<T>(l : List<T>, f:T -> Bool) : (List<T>, List<T>) = {
+    func rec(l : List<T>) : (List<T>, List<T>) =
+      label profile_list_split_rec : (List<T>, List<T>) {
+      switch l {
+	    case null     { (null, null) };
+	    case (?(h,t)) { let (l,r) = rec(t) ;
+                      if (f(h)){ (?(h,l), r) } else { (l, ?(h,r)) } };
+      }
+    };
+    label profile_list_split_begin : (List<T>, List<T>)
     rec(l)
   };
 
@@ -327,7 +393,7 @@ type List<T> = ?(T, List<T>);
     func rec(l:List<T>) : Bool {
       switch l {
 	    case null     { true };
-	    case (?(h,t)) { if (f(h)) { false } else { rec(t) } };
+	    case (?(h,t)) { if (not f(h)) { false } else { rec(t) } };
       }
     };
     rec(l)

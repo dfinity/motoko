@@ -1,0 +1,18 @@
+(library
+  (name pipeline)
+  (libraries
+    lib
+    lang_utils
+    as_def
+    as_types
+    as_values
+    as_frontend
+    as_interpreter
+    lowering
+    wasm_exts
+    ir_def
+    ir_interpreter
+    ir_passes
+    codegen
+  )
+)

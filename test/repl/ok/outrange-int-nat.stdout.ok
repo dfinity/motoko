@@ -1,0 +1,34 @@
+ActorScript 0.1 interpreter
+> 127 : Int8
+> prelude:___: execution error, numeric overflow
+> -128 : Int8
+> prelude:___: execution error, numeric overflow
+>   32_767 : Int16
+> prelude:___: execution error, numeric overflow
+> -32_768 : Int16
+> prelude:___: execution error, numeric overflow
+>   2_147_483_647 : Int32
+> prelude:___: execution error, numeric overflow
+> -2_147_483_648 : Int32
+> prelude:___: execution error, numeric overflow
+>   9_223_372_036_854_775_807 : Int64
+> prelude:___: execution error, numeric overflow
+> -9_223_372_036_854_775_808 : Int64
+> prelude:___: execution error, numeric overflow
+>     255 : Nat8
+> prelude:___: execution error, numeric overflow
+>   65_535 : Nat16
+> prelude:___: execution error, numeric overflow
+>   4_294_967_295 : Nat32
+> prelude:___: execution error, numeric overflow
+>   18_446_744_073_709_551_615 : Nat64
+> prelude:___: execution error, numeric overflow
+>     -127 : Int8
+> -127 : Int8
+> -32_767 : Int16
+> -32_767 : Int16
+> -2_147_483_647 : Int32
+> -2_147_483_647 : Int32
+> -9_223_372_036_854_775_807 : Int64
+> -9_223_372_036_854_775_807 : Int64
+>   

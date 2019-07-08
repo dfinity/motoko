@@ -1,0 +1,4 @@
+(library
+  (name ir_passes)
+  (libraries lib ir_def)
+)

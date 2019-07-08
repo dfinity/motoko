@@ -1,0 +1,8 @@
+type A = opt B;
+type C = A;
+type B = opt C;
+
+type X = Y;
+type Y = Z;
+type Z = A;
+

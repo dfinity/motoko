@@ -1,0 +1,8 @@
+(executable
+ (name as_js)
+ (modules as_js)
+ (libraries pipeline)
+ (preprocess (pps js_of_ocaml-ppx))
+ (js_of_ocaml (flags :standard "+nat.js") )
+)
+

@@ -64,8 +64,9 @@ This is a summary of the grammar proposed:
 
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
-<functype>  ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
+<functype>  ::= ( <argtype>,* ) -> ( <argtype>,* ) <funcann>*
 <funcann>   ::= oneway | pure
+<argtype>   ::= <datatype>
 <fieldtype> ::= <nat> : <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 
@@ -76,7 +77,8 @@ This is a summary of the grammar proposed:
   | bool
   | text
   | null
-  | unavailable
+  | reserved
+  | empty
 
 <constype>  ::=
   | opt <datatype>
@@ -102,6 +104,9 @@ A `<char>` is a *Unicode scalar value* (i.e., a codepoint that is not a surrogat
 In addition to this basic grammar, a few syntactic shorthands are supported that can be reduced to the basic forms:
 
 ```
+<argtype>  ::= ...
+  | <name> : <datatype>    := <datatype>
+
 <constype> ::= ...
   | blob                   :=  vec nat8
 
@@ -138,6 +143,8 @@ A service's signature is described by an *actor type*, which defines the list of
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
 ```
+We identify `<methtype>` lists in an actor type up to reordering.
+
 
 #### Names
 
@@ -174,18 +181,34 @@ service {
 A function type describes the list of parameters and results and their respective types. It can optionally be annotated to be *pure*, which indicates that it does not modify any state and can potentially be executed more efficiently (e.g., on cached state). (Other annotations may be added in the future.)
 
 ```
-<functype> ::= ( <fieldtype>,* ) -> ( <fieldtype>,* ) <funcann>*
+<functype> ::= ( <argtype>,* ) -> ( <argtype>,* ) <funcann>*
 <funcann>  ::= oneway | pure
+<argtype>  ::= <datatype>
 ```
+We identify `<funcann>` lists in a function type up to reordering.
 
-The parameter and result lists are essentially treated as records, see below. That is, they are named, not positional.
-The list of parameters must be shorter than 2^32 values and no name/id may occur twice in it. The same restrictions apply to the result list.
+The list of parameters must be shorter than 2^32 values;
+the same restriction apply to the result list.
 The result list of a `oneway` function must be empty.
+
+
+##### Shorthand: Named Parameters and Results
+
+As a "shorthand", the types of parameters and results in a function type may be prefixed by a name:
+```
+<argtype> ::= <name> : <datatype>   := <datatype>
+```
+The chosen names only serve documentation purposes and have no semantic significance.
+However, duplicate names are not allowed.
+
 
 #### Example
 ```
+(text, text, nat16) -> (text, nat64)
+(name : text, address : text, nat16) -> (text, id : nat64)
 (name : text, address : text, nr : nat16) -> (nick : text, id : nat64)
 ```
+All three types are equivalent.
 
 
 ### Data
@@ -243,6 +266,7 @@ Text strings are represented by the type `text` and consist of a sequence of Uni
 ```
 **Note:** The `text` type is distinguished from `vec nat8` (a UTF-8 string) or `vec nat32` (a sequence of code points) in order to allow bindings to map it to a suitable string type, and enable the binary format to select an efficient internal representation independently.
 
+
 #### Null
 
 The type `null` has exactly one value (the *null* value) and therefor carries no information. It can e.g. be used as a placeholder for optional fields that ought to be added to a record in future upgrades, or for *variant cases* that do not need any value, see below.
@@ -250,14 +274,21 @@ The type `null` has exactly one value (the *null* value) and therefor carries no
 <primtype> ::= ... | null | ...
 ```
 
-#### Unavailable
+#### Reserved
 
-The type `unavailable` is a type with unknown content that ought to be ignored. Its purpose is to occupy field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record types below.
+The type `reserved` is a type with unknown content that ought to be ignored. Its purpose is to occupy field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record types below.
 ```
-<primtype> ::= ... | unavailable
+<primtype> ::= ... | reserved
 ```
 **Note:** This type has a similar role as *reserved fields* in proto buffers.
 
+
+#### Empty
+
+The type `empty` is the type of values that are not present. Its purpose is to mark variants that are not actually there, or -- as argument types of function reference -- indicate that they will not be called.
+```
+<primtype> ::= ... | empty
+```
 
 ### Constructed Data
 
@@ -294,6 +325,7 @@ A *record* is a *heterogeneous* sequence of values of different data types. Each
 <constype>  ::= ... | record { <fieldtype>;* } | ...
 <fieldtype> ::= <nat> : <datatype>
 ```
+We identify `<fieldtype>` lists in a record type up to reordering.
 
 The id is described as a simple unsigned integer that has to fit the 64 bit value range. It can be given in either decimal or hexadecimal notation:
 
@@ -302,6 +334,7 @@ The id is described as a simple unsigned integer that has to fit the 64 bit valu
 ```
 An id value must be smaller than 2^32 and no id may occur twice in the same record type.
 
+
 ##### Shorthand: Symbolic Field Ids
 
 An id can also be given as a *name*, which is a shorthand for a numeric id that is the hash of that name:
@@ -309,6 +342,8 @@ An id can also be given as a *name*, which is a shorthand for a numeric id that 
 <fieldtype> ::= ...
   | <name> : <datatype>    :=  <hash(name)> : <datatype>
 ```
+
+The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by an IDL function: a new version of an IDL can safely *add* fields to an out record as long as their id has not been used before. See the discussion on upgrading below for more details.
 
 The hash function is specified as
 ```
@@ -325,6 +360,7 @@ This hash function has the the following useful properties:
 
 The hash function does not have the property that every numeric value can be turned into a human-readable preimage. Host languages that cannot support numeric field names will have to come up with a suitable encoding textual encoding of numeric field names, as well as of field names that are not valid in the host langauge.
 
+
 ##### Shorthand: Tuple Fields
 
 Field ids can also be omitted entirely, which is just a shorthand for picking either 0 (for the first field) or N+1 when the previous field has id N.
@@ -332,10 +368,6 @@ Field ids can also be omitted entirely, which is just a shorthand for picking ei
 <fieldtype> ::= ...
   | <datatype>    :=  N : <datatype>
 ```
-
-##### Upgrading
-
-The purpose of identifying fields by unique (numeric or textual) ids is to support safe upgrading of the record type returned by an IDL function: a new version of an IDL can safely *add* fields to a record as long as their id has not been used before. See below for more details.
 
 ##### Examples
 ```
@@ -345,13 +377,13 @@ record {
   num : nat;
   city : text;
   zip : nat;
-  state : unavailable;  // removed since no longer needed
 }
 
 record { nat; nat }
 record { 0 : nat; 1 : nat }
 ```
 The latter two records are equivalent.
+
 
 #### Variants
 
@@ -360,6 +392,8 @@ A *variant* is a tagged union of different possible data types. The tag is given
 ```
 <constype>  ::= ... | variant { <fieldtype>;* } | ...
 ```
+We identify `<fieldtype>` lists in a variant type up to reordering.
+
 A field id must be smaller than 2^32 and no id may occur twice in the same variant type.
 
 
@@ -501,13 +535,15 @@ For upgrading data structures passed between service and client, it is important
 
 That is, outbound message results can only be replaced with a subtype (more fields) in an upgrade, while inbound message parameters can only be replaced with a supertype (fewer fields). This corresponds to the notions of co-variance and contra-variance in type systems.
 
-Subtyping replies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
+Subtyping applies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
+
+**TODO: unsound, fix**
 
 To make these constraints as flexible as possible, two special rules apply:
 
-* An absent record field is considered equivalent to a present field with value `null`. Moreover, a record field of type `null` is a subtype of a field with type `opt <datatype>`. That way,
+ * An absent record field is considered equivalent to a present field with value `null`. Moreover, a record field of type `null` is a subtype of a field with type `opt <datatype>`. That way,	That way, a field of option (or null) type can always be added to a record type, no matter whether in co- or contra-variant position. If an optional field is added to an inbound record, and he client did not provide it, the service will read it as if its value was null.
 
-  - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;
+  - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;	
   - in an inbound record, a field of option (or null) type can also be added, in which case the service will read it as if its value was null.
 
 Future extensions: defaults, including for variants?
@@ -517,18 +553,30 @@ Future extensions: defaults, including for variants?
 
 #### Primitive Types
 
-A primitive type cannot be changed in an upgrade.
+Most primitive types cannot be changed in an upgrade.
 ```
 
 ------------------------
 <primtype> <: <primtype>
 ```
 
-An additional rule applies to `unavailable`, which makes it a top type, i.e., a supertype of every type.
+An exception are integers, which can be specialised to natural numbers:
+
+```
+
+-----------
+nat <: int
+```
+
+Additional rules apply to `empty` and `reserved`, which makes these a bottom resp. top type:
 ```
 
 -------------------------
-<datatype> <: unavailable
+<datatype> <: reserved
+
+
+--------------------
+empty <: <datatype>
 ```
 
 #### Options and Vectors
@@ -543,11 +591,25 @@ opt <datatype> <: opt <datatype'>
 ---------------------------------
 vec <datatype> <: vec <datatype'>
 ```
-More flexible rules apply to option types used as record field types, see below.
+Furthermore, an option type can be specialised to either `null` or to its constituent type:
+```
+not (null <: <datatype>)
+------------------------
+null <: opt <datatype>
+
+not (null <: <datatype>)
+<datatype> <: <datatype'>
+-----------------------------
+<datatype> <: opt <datatype'>
+```
+The premise means that the rule does not apply when the constituent type is itself `null` or an option. That restriction is necessary so that there is no ambiguity. For example, there would be two ways to interpret `null` when going from `opt nat` to `opt opt nat`, either as `null` or as `?null`.
+
+Q: The negated nature of this premise isn't really compatible with parametric polymorphism. Is that a problem? We could always introduce a supertype of all non-nullable types and rephrase it with that.
+
 
 #### Records
 
-In a specialised record type, the type of a record field can be specialised,  or a field can be added.
+In a specialised record type, the type of a record field can be specialised, or a field can be added.
 ```
 
 ---------------------------------------
@@ -561,19 +623,52 @@ record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <f
 
 **TODO: Rules below are unsound as is, need fixing!**
 
-In addition, special rules apply to fields of `null` or option type, which makes an absent field interchangeable with a field of value `null`. Moreover, an optional field can be specialised to non-optional if the constituent type is not itself `null` or an option (this restriction is necessary to avoid confusing the different null values in an `opt (opt T)` type).
+In addition, record fields of `null` or option type can be removed, treating the absent field as having value `null`.
 ```
-<datatype> = null \/ <datatype> = opt <datatype'>
+record { <fieldtype>;* } <: record { <fieldtype'>;* }
+-------------------------------------------------------------------
+record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
+
 record { <fieldtype>;* } <: record { <fieldtype'>;* }
 -----------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : <datatype>; <fieldtype'>;* }
-
-<datatype> <> null /\ <datatype> <> opt <datatype''>
-<datatype> <: <datatype'>
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
---------------------------------------------------------------------------------------------------
-record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : opt <datatype'>; <fieldtype'>;* }
+record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
 ```
+TODO: What we want to achieve: Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
+```
+type T = {};
+actor { f : T -> T };
+```
+can safely be upgraded to
+```
+type T' = {x : opt text};
+actor { f : T' -> T' };
+```
+for all first-order uses of `T`, because both of the following hold:
+```
+upgrade T' <: T
+upgrade T <: T'
+```
+And hence:
+```
+upgrade (T' -> T')  <:  (T -> T)
+```
+for some version of a type `upgrade T`.
+Moreover, this extends to the higher-order case, where e.g. a function of the above type is expected as a parameter:
+```
+actor { g : (h : T -> T) -> ()}
+```
+Upgrading `T` as above contra-variantly requires
+```
+upgrade (T -> T)  <:  (T' -> T')
+```
+which also holds.
+
+Note: Subtyping still needs to be transitive . We must not allow:
+```
+record {x : opt text} <: record {} <: record {x : opt nat}
+```
+**TODO: Sanity continues from here.**
+
 
 #### Variants
 
@@ -591,30 +686,145 @@ variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; 
 
 #### Functions
 
-For a specialised function, any parameter type can be generalised and any result type specialised. Moreover, arguments can be dropped while results can be added. That is, the rules mirror those of records.
+For a specialised function, any parameter type can be generalised and any result type specialised. Moreover, arguments can be dropped while results can be added. That is, the rules mirror those of tuple-like records, i.e., they are ordered and can only be extended at the end.
 ```
-record { <fieldtype1'>;* } <: record { <fieldtype1>;* }
-record { <fieldtype2>;* } <: record { <fieldtype2'>;* }
-{ a | a in <funcann1>* } = { a | a in <funcann2>* }
-------------------------------------------------------------------------------------------------
-func ( <fieldtype1>,* ) -> ( <fieldtype2>,* ) <funcann1>* <: func ( <fieldtype1'>,* ) -> ( <fieldtype2'>,* ) <funcann2>*
+record { (N1' : <datatype1'>);* } <: record { (N1 : <datatype1>);* }
+record { (N2 : <datatype2>);* } <: record { N2' : <datatype2'>);* }
+-------------------------------------------------------------------------------------------------------------------
+func ( <datatype1>,* ) -> ( <datatype2>,* ) <funcann>* <: func ( <datatype1'>,* ) -> ( <datatype2'>,* ) <funcann>*
 ```
+where `NI*` is the `<nat>` sequence `1`..`|<datatypeNI>*|`, respectively.
 
 Viewed as sets, the annotations on the functions must be equal.
 
+
 #### Actors
 
-For an actor, a method can be specialised (by specialising its function type), or a method added. Essentially, they are treated exactly like records of functions.
+For an actor, a method can be specialised (by specialising its function type), or a method added. Essentially, they are treated like records of functions.
 ```
 
-------------------------------------
-actor { <methtype'>;* } <: actor { }
+----------------------------------------
+service { <methtype'>;* } <: service { }
 
 <functype> <: <functype'>
-actor { <methtype>;* } <: actor { <methtype'>;* }
---------------------------------------------------------------------------------------------
-actor { <name> : <functype>; <methtype>;* } <: actor { <name> : <functype'>; <methtype'>;* }
+service { <methtype>;* } <: service { <methtype'>;* }
+------------------------------------------------------------------------------------------------
+service { <name> : <functype>; <methtype>;* } <: service { <name> : <functype'>; <methtype'>;* }
 ```
+
+### Elaboration
+
+To define the actual coercion function, we extend the subtyping relation to a ternary *elaboration* relation `T <: T' ~> f`, where `f` is a suitable coercion function of type `T -> T'`.
+
+
+#### Primitive Types
+
+```
+
+--------------------------------
+<primtype> <: <primtype> ~> \x.x
+
+
+------------------
+Nat <: Int ~> \x.x
+
+
+------------------------------
+<datatype> <: reserved ~> \x.x
+
+
+------------------------------
+empty <: <datatype> ~> \_.unreachable
+```
+
+#### Options and Vectors
+
+```
+<datatype> <: <datatype'> ~> f
+---------------------------------------------------
+opt <datatype> <: opt <datatype'> ~> \x.map_opt f x
+
+<datatype> <: <datatype'> ~> f
+---------------------------------------------------
+vec <datatype> <: vec <datatype'> ~> \x.map_vec f x
+
+not (null <: <datatype>)
+---------------------------------
+null <: opt <datatype> ~> \x.null
+
+not (null <: <datatype>)
+<datatype> <: <datatype'> ~> f
+------------------------------------------
+<datatype> <: opt <datatype'> ~> \x.?(f x)
+```
+
+
+#### Records
+
+```
+
+------------------------------------------------
+record { <fieldtype'>;* } <: record { } ~> \x.{}
+
+<datatype> <: <datatype'> ~> f1
+record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f2
+----------------------------------------------------------------------------------------------
+record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
+  ~> \x.{f2 x with <nat> = f1 x.<nat>}
+```
+
+TODO: Fix
+```
+record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
+-------------------------------------------------------------------
+record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
+  ~> \x.{f x; <nat> = null}
+
+record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
+-----------------------------------------------------------------------------
+record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
+  ~> \x.{f x; <nat> = null}
+```
+
+
+#### Variants
+
+```
+
+-------------------------------------------------
+variant { } <: variant { <fieldtype'>;* } ~> \x.x
+
+<datatype> <: <datatype'> ~> f1
+variant { <fieldtype>;* } <: variant { <fieldtype'>;* } ~> f2
+------------------------------------------------------------------------------------------------
+variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; <fieldtype'>;* }
+  ~> \x.case x of <nat> y => <nat> (f1 y) | _ => f2 x
+```
+
+#### Functions
+
+```
+record { N1':<datatype1'>;* } <: record { N1:<datatype1>;* } ~> f1
+record { N2:<datatype2>;* } <: record { N2':<datatype2'>;* } ~> f2
+------------------------------------------------------------------------------------------------------------------
+func ( <datatype1>,* ) -> ( <datatype2>,* ) <funcann>* <: func ( <datatype1'>,* ) -> ( <datatype2'>,* ) <funcann>*
+  ~> \x.\y.f2 (x (f1 y))
+```
+
+#### Actors
+
+```
+
+-------------------------------------------------
+service { <methtype'>;* } <: service { } ~> \x.{}
+
+<functype> <: <functype'> ~> f1
+service { <methtype>;* } <: service { <methtype'>;* } ~> f2
+------------------------------------------------------------------------------------------------
+service { <name> : <functype>; <methtype>;* } <: service { <name> : <functype'>; <methtype'>;* }
+  ~> \x.{f1 x; <name> = f2 x.<name>}
+```
+
 
 ## Example Development Flow
 
@@ -626,12 +836,12 @@ type TruckTypeId = nat;
 type Weight = float32;
 
 type TruckTypeInfo = record {
- id : TruckTypeId;
- short_name : Text;
- description : Text;
- capacity : opt Weight;
- isFridge : opt bool;
- isFreezer : opt bool;
+  id : TruckTypeId;
+  short_name : Text;
+  description : Text;
+  capacity : opt Weight;
+  isFridge : opt bool;
+  isFreezer : opt bool;
 };
 
 service Server : {
@@ -643,9 +853,9 @@ service Server : {
 Note:
 * `TruckTypeId` and `nat` are used interchangeably.
 
-With this IDL file, the server actor code will be:
+With this IDL file, the server code in ActorScript could be:
 ```
-actor server = {
+actor Server {
   registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
     getModel().truckTypeTable.AddInfoGetId(
       func (id_ : TruckTypeId) : TruckTypeInfo = shared {
@@ -713,22 +923,23 @@ T(nat<N>)   = sleb128(-5 - log2(N/8))
 T(int<N>)   = sleb128(-9 - log2(N/8))
 T(float<N>) = sleb128(-13 - log2(N/32))
 T(text)     = sleb128(-15)
-T(unavailable) = sleb128(-16)
+T(reserved) = sleb128(-16)
+T(empty)    = sleb128(-17)
 
 T : <constype> -> i8*
-T(opt <datatype>) = sleb128(-17) I(<datatype>)
-T(vec <datatype>) = sleb128(-18) I(<datatype>)
-T(record {<fieldtype>^N}) = sleb128(-19) T*(<fieldtype>^N)
-T(variant {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
+T(opt <datatype>) = sleb128(-18) I(<datatype>)
+T(vec <datatype>) = sleb128(-19) I(<datatype>)
+T(record {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
+T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
 
 T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
 T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
-  sleb128(-21) T*(<fieldtype2>*) T*(<fieldtype2>*) T*(<funcann>*)
+  sleb128(-22) T*(<fieldtype2>*) T*(<fieldtype2>*) T*(<funcann>*)
 T(service {<methtype>*}) =
-  sleb128(-22) T*(<methtype>*)
+  sleb128(-23) T*(<methtype>*)
 
 T : <methtype> -> i8*
 T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
@@ -778,7 +989,8 @@ M(z : float<N>) = f<N>(z)
 M(b : bool)     = i8(if b then 1 else 0)
 M(t : text)     = leb128(|utf8(t)|) i8*(utf8(t))
 M(_ : null)     = .
-M(_ : unavailable) = .
+M(_ : reserved) = .
+// NB: M(_ : empty) will never be called
 
 M : <val> -> <constype> -> i8*
 M(null : opt <datatype>) = i8(0)
@@ -842,15 +1054,15 @@ These measures allow the serialisation format to be extended with new types in t
 We assume that the argument values are sorted by increasing id.
 
 ```
-A(kv* : <fieldtype>*) = ( B(kv* : <fieldtype>*), R(kv* : <fieldtype>*) )
+A(kv* : <datatype>*) = ( B(kv* : <datatype>*), R(kv* : <datatype>*) )
 
-B(kv* : <fieldtype>*) =
+B(kv* : <datatype>*) =
   i8('D') i8('I') i8('D') i8('L')      magic number
   T*(<datatype>*)                      type definition table
-  T*(<fieldtype>*)                     type of argument list
-  M(kv* : <fieldtype>*)                values of argument list
+  I*(<datatype>*)                      type of argument list
+  M(kv* : <datatype>*)                 values of argument list
 ```
-The `<datatype>` vector contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the `<fieldtype>` vector.
+The vector `T*(<datatype>*)` contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the other `<datatype>` vector.
 
 The same representation is used for function results.
 

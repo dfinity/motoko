@@ -21,7 +21,7 @@ DFINITY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
-IDLC=${IDLC:-$(realpath $(dirname $0)/../idl/idlc)}
+DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
@@ -58,6 +58,7 @@ function normalize () {
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
+    sed 's/prelude:[^:]*:/prelude:___:/g' |
     sed 's/^.*run-dfinity\/\.\.\/dvm.sh: line/dvm.sh: line/g' |
     sed 's/ *[0-9]* Illegal instruction.*dvm/ Illegal instruction dvm/g' |
     sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
@@ -81,10 +82,10 @@ do
   then base=$(basename $file .sh)
   elif [ ${file: -4} == ".wat" ]
   then base=$(basename $file .wat)
-  elif [ ${file: -5} == ".didl" ]
-  then base=$(basename $file .didl)
+  elif [ ${file: -4} == ".did" ]
+  then base=$(basename $file .did)
   else
-    echo "Unknown file extension in $file, expected .as, .sh, .wat or .didl"; exit 1
+    echo "Unknown file extension in $file, expected .as, .sh, .wat or .did"; exit 1
     failures=yes
     continue
   fi
@@ -193,6 +194,8 @@ do
     # The file is a shell script, just run it
     $ECHO -n " [out]"
     ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
+    normalize $out/$base.stdout
+    normalize $out/$base.stderr
     diff_files="$diff_files $base.stdout $base.stderr"
   elif [ ${file: -4} == ".wat" ]
   then
@@ -211,10 +214,20 @@ do
     fi
 
   else
-    # The file is a .didl file, so we are expected to test the idl
-    $ECHO -n " [idlc]"
-    $IDLC $base.didl > $out/$base.idlc 2>&1
-    diff_files="$diff_files $base.idlc"
+    # The file is a .did file, so we are expected to test the idl
+    # Typecheck
+    $ECHO -n " [tc]"
+    $DIDC --check $base.did > $out/$base.tc 2>&1
+    tc_succeeded=$?
+    normalize $out/$base.tc
+    diff_files="$diff_files $base.tc"
+
+    if [ "$tc_succeeded" -eq 0 ];
+    then
+      $ECHO -n " [js]"
+      $DIDC --js $base.did > $out/$base.js 2>&1
+      diff_files="$diff_files $base.js"
+    fi
   fi
   $ECHO ""
 

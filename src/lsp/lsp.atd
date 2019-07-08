@@ -1,0 +1,316 @@
+(* https://microsoft.github.io/language-server-protocol/specification *)
+
+
+(* Abstract message *)
+
+type message = {
+  jsonrpc : string;
+}
+<ocaml field_prefix="message_">
+
+
+(* Notification message *)
+
+type notification_message = {
+  inherit message;
+  params : notification_message_params;
+}
+<json adapter.ocaml="AtdAdapters.Message_adapter">
+<ocaml field_prefix="notification_message_">
+
+
+(*
+   Incoming messages
+
+   Incoming messages may be either request or notification messages.
+
+   Notification messages are a subtype of response messages (notification
+   messages omit the `id` field) so both are represented by the
+   `incoming_message` type to allow them to be decoded in a single pass.
+*)
+
+type incoming_message = {
+  inherit message;
+  ?id : int nullable;
+  params : incoming_message_params;
+}
+<json adapter.ocaml="AtdAdapters.Message_adapter">
+<ocaml field_prefix="incoming_message_">
+
+(* All tags must also provide params, even if they are an `empty_record` *)
+type incoming_message_params = [
+    Initialize <json name="initialize"> of initialize_params
+  | Initialized <json name="initialized"> of initialized_params
+  | TextDocumentDidOpen <json name="textDocument/didOpen"> of text_document_did_open_params
+  | TextDocumentDidClose <json name="textDocument/didClose"> of text_document_did_close_params
+  | TextDocumentDidChange <json name="textDocument/didChange"> of text_document_did_change_params
+  | TextDocumentDidSave <json name="textDocument/didSave"> of text_document_did_save_params
+  | TextDocumentHover <json name="textDocument/hover"> of text_document_position_params
+  (* NOTE(Christoph) There are more parameters than just text_document_position on the completion request *)
+  | CompletionRequest <json name="textDocument/completion"> of text_document_position_params
+  | CancelRequest <json name="$/cancelRequest"> of unit
+]
+
+(*
+   Outgoing messages
+
+   Outgoing messages may be either response or notification messages.
+*)
+
+(* Response message *)
+
+type response_message = {
+  inherit message;
+  id : int;
+  ?result : response_result nullable;
+  ?error : response_error nullable;
+}
+<json adapter.ocaml="AtdAdapters.Response_message_adapter">
+<ocaml field_prefix="response_message_">
+
+type response_result = [
+    Initialize <json name="initialize"> of initialize_result
+  | TextDocumentHoverResponse <json name="textDocument/hover"> of hover_result
+  | CompletionResponse <json name="textDocument/completion"> of completion_item list
+]
+
+type response_error = {
+  code : int;
+  message : string;
+  (* ?data : json; *)
+}
+
+type hover_result = {
+  contents : string;
+}
+<ocaml field_prefix="hover_result_">
+
+type completion_item = {
+  label : string;
+  ?detail: string nullable;
+}
+<ocaml field_prefix="completion_item_">
+
+(* Outgoing notifications *)
+
+type notification_message_params = [
+    PublishDiagnostics <json name="textDocument/publishDiagnostics"> of publish_diagnostics_params
+  | WindowShowMessage <json name ="window/showMessage"> of window_show_message_params
+]
+
+
+type document_uri = string
+
+
+(* "initialize" request *)
+
+type initialize_params = {
+  ?processId : int nullable;
+  ?rootPath : string nullable;
+  (* rootUri : document_uri nullable; *)
+  (* ?initializationOptions : any; *)
+  capabilities : client_capabilities;
+  ?trace : trace nullable;
+  (* ?workspaceFolders : (workspace_folder list) nullable; *)
+}
+<ocaml field_prefix="initialize_params_">
+
+type text_document_did_open_params = {
+  textDocument : text_document_item;
+}
+<ocaml field_prefix="text_document_did_open_params_">
+
+type text_document_did_change_params = {
+  textDocument : versioned_text_document_identifier;
+  contentChanges : text_document_content_change_event list
+}
+<ocaml field_prefix="text_document_did_change_params_">
+
+type text_document_content_change_event = {
+  ?range: range nullable;
+  ?rangeLength: int nullable;
+  text: string;
+}
+<ocaml field_prefix="text_document_content_change_event_">
+
+type text_document_did_close_params = {
+  textDocument : text_document_identifier;
+}
+<ocaml field_prefix="text_document_did_close_params_">
+
+type text_document_did_save_params = {
+  textDocument : text_document_identifier;
+}
+<ocaml field_prefix="text_document_did_save_params_">
+
+type text_document_position_params = {
+  textDocument : text_document_identifier;
+  position : position;
+}
+<ocaml field_prefix="text_document_position_params_">
+
+(* See https://microsoft.github.io/language-server-protocol/specification#position
+
+   We'll have to do some work to make sure we can split text
+   efficiently regardless of what line endings are being used
+*)
+type position = {
+  line : int;
+  character : int;
+}
+<ocaml field_prefix="position_">
+
+type range = {
+  start : position;
+  end_ <json name="end"> : position;
+}
+<ocaml field_prefix="range_">
+
+type location = {
+  uri : document_uri;
+  range : range;
+}
+<ocaml field_prefix="location_">
+
+type text_document_item = {
+  uri: document_uri;
+  text: string;
+  languageId: string;
+  version: int;
+}
+<ocaml field_prefix="text_document_item_">
+
+type text_document_identifier = {
+  uri: document_uri;
+}
+<ocaml field_prefix="text_document_identifier_">
+
+type versioned_text_document_identifier = {
+  inherit text_document_identifier;
+  ?version: int nullable;
+}
+<ocaml field_prefix="versioned_text_document_identifier_">
+
+type client_capabilities = {
+  (* ?workspace : workspace_client_capabilities; *)
+  ?textDocument : text_document_client_capabilities nullable;
+  (* ?experimental : any; *)
+}
+<ocaml field_prefix="client_capabilities_">
+
+type text_document_client_capabilities = {
+  (* ?synchronization : TODO; *)
+  (* ?completion : TODO; *)
+  (* ?hover : TODO; *)
+  (* ?signatureHelp : TODO; *)
+  (* ?references : TODO; *)
+  (* ?documentHighlight : TODO; *)
+  (* ?documentSymbol : TODO; *)
+  (* ?formatting : TODO; *)
+  (* ?rangeFormatting : TODO; *)
+  (* ?onTypeFormatting : TODO; *)
+  (* ?declaration : TODO; *)
+  (* ?definition : TODO; *)
+  (* ?typeDefinition : TODO; *)
+  (* ?implementation : TODO; *)
+  (* ?codeAction : TODO; *)
+  (* ?codeLens : TODO; *)
+  (* ?documentLink : TODO; *)
+  (* ?colorProvider : TODO; *)
+  (* ?rename : TODO; *)
+  ?publishDiagnostics : publish_diagnostics_field_type nullable;
+  (* ?foldingRange : TODO; *)
+}
+<ocaml field_prefix="text_document_client_capabilities_">
+
+(* Defining this inline in `text_document_client_capabilities` resulted in
+   a syntax error in the generated `lsp_t.mli` file.
+*)
+type publish_diagnostics_field_type = {
+  ?relatedInformation : bool nullable;
+}
+
+
+type trace = [
+    Off <json name="off">
+  | Messages <json name="messages">
+  | Verbose <json name="verbose">
+]
+
+
+(* "initialize" response *)
+
+type initialize_result = {
+  capabilities : server_capabilities;
+}
+<ocaml field_prefix="initialize_result_">
+
+type completion_options = {
+  ?resolveProvider : bool nullable;
+  ?triggerCharacters : string list nullable;
+}
+<ocaml field_prefix="completion_options_">
+
+(* FIXME: incomplete *)
+type server_capabilities = {
+  textDocumentSync : int;
+  ?hoverProvider : bool nullable;
+  ?completionProvider : completion_options nullable;
+}
+<ocaml field_prefix="server_capabilities_">
+
+(* TODO: see LSP spec for InitializeError *)
+(*type initialize_error = *)
+
+
+(* "initialized" notification *)
+
+type initialized_params = empty_record
+
+
+(* "publishDiagnostics" notification *)
+
+type publish_diagnostics_params = {
+  uri : document_uri;
+  diagnostics : diagnostic list;
+}
+<ocaml field_prefix="publish_diagnostics_params_">
+
+type diagnostic = {
+  range : range;
+  ?severity : diagnostic_severity nullable;
+  ?code : int nullable;
+  ?source : string nullable;
+  message : string;
+  ?relatedInformation : (diagnostic_related_information list) nullable;
+}
+<ocaml field_prefix="diagnostic_">
+
+type diagnostic_severity = int wrap <ocaml module="DiagnosticSeverity">
+
+type diagnostic_related_information = {
+  location : location;
+  message : string;
+}
+<ocaml field_prefix="diagnostic_related_information_">
+
+(* "window/showMessage" notification *)
+
+type window_show_message_params = {
+  type_ <json name="type"> : message_type;
+  message : string;
+}
+<ocaml field_prefix="window_show_message_params_">
+
+type message_type = int wrap <ocaml module="MessageType">
+
+
+(* Helpers *)
+
+(* Empty records aren't valid in OCaml but some notifications send them in the
+   `params` field. Work around that by defining a record with a field that is
+   never expected to be provided. *)
+type empty_record = {
+  ?omitted : int nullable
+}
+<ocaml field_prefix="empty_record_">
