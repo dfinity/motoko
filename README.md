@@ -38,15 +38,13 @@ A simple language for writing Dfinity actors.
 
 * Gas-related features?
 
-* Richer destructuring and pattern matching (done?)
-
 * Exception handling
 
 * Tail calls
 
 * Mixin composition for inheritance
 
-* Fancier types (generic bounds, co/contra-variance?)
+* Fancier types (co/contra-variance annotations?)
 
 * Linear types?
 
