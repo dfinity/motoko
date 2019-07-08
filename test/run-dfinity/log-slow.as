@@ -190,7 +190,7 @@ assert (intToInt64 (-1) ** intToInt64 101 == intToInt64 (-1));
 
 for (n in range(0, 127)) {
     for (exp in range(0, 127)) {
-        if (n <= 1 or exp <= 1 or exp <= 30) {
+        if (n <= 1 or exp <= 1 or exp <= 63) {
             let res = n ** exp;
             if (res <= 9_223_372_036_854_775_807) { assert (intToInt64 n ** intToInt64 exp == intToInt64 res) }
         }
@@ -201,7 +201,7 @@ for (n in range(0, 127)) {
 var n = -128;
 while (n < -1) {
     for (exp in range(0, 127)) {
-        if (n == -1 or exp <= 1 or exp <= 31) {
+        if (n == -1 or exp <= 1 or exp <= 63) {
             let res = n ** exp;
             if (res >= -9_223_372_036_854_775_808 and res <= 9_223_372_036_854_775_807) {
                 assert (intToInt64 n ** intToInt64 exp == intToInt64 res)
