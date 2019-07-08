@@ -167,10 +167,15 @@ while (n < -1) {
 };
 
 
+assert (intToInt64 3 ** intToInt64 31 == intToInt64 617_673_396_283_947); // still on fast path
+
 assert (intToInt64 3 ** intToInt64 39 == intToInt64 4_052_555_153_018_976_267);
 assert (intToInt64 2 ** intToInt64 62 == intToInt64 4_611_686_018_427_387_904); // highest exponent
 assert (intToInt64 (-2) ** intToInt64 63 == intToInt64 (-9_223_372_036_854_775_808)); // highest exponent
 assert (intToInt64 (-3) ** intToInt64 39 == intToInt64 (-4_052_555_153_018_976_267));
+
+assert (intToInt64 (-3) ** intToInt64 31 == intToInt64 (-617_673_396_283_947)); // still on fast path
+
 assert (intToInt64 1 ** intToInt64 39 == intToInt64 1);
 assert (intToInt64 1 ** intToInt64 100 == intToInt64 1);
 assert (intToInt64 1 ** intToInt64 101 == intToInt64 1);

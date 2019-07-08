@@ -4658,7 +4658,7 @@ let powInt64_shortcut fast env get_a get_b slow =
               get_b ^^ compile_const_64 64L ^^
               G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
               get_a ^^ get_a ^^ compile_shl64_const 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^
-              G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ compile_sub64_const 65L ^^
+              G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ compile_sub64_const 63L ^^
               get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
               compile_const_64 (-63L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeS)) ^^
               G.if_ (ValBlockType (Some I64Type))
