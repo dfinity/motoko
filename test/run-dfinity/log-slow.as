@@ -165,3 +165,44 @@ while (n < -1) {
     n += 1
 }
 };
+
+
+assert (intToInt64 3 ** intToInt64 39 == intToInt64 4_052_555_153_018_976_267);
+assert (intToInt64 2 ** intToInt64 62 == intToInt64 4_611_686_018_427_387_904); // highest exponent
+assert (intToInt64 (-2) ** intToInt64 63 == intToInt64 (-9_223_372_036_854_775_808)); // highest exponent
+assert (intToInt64 (-3) ** intToInt64 39 == intToInt64 (-4_052_555_153_018_976_267));
+assert (intToInt64 1 ** intToInt64 39 == intToInt64 1);
+assert (intToInt64 1 ** intToInt64 100 == intToInt64 1);
+assert (intToInt64 1 ** intToInt64 101 == intToInt64 1);
+
+assert (intToInt64 0 ** intToInt64 39 == intToInt64 0);
+assert (intToInt64 0 ** intToInt64 100 == intToInt64 0);
+assert (intToInt64 0 ** intToInt64 101 == intToInt64 0);
+
+assert (intToInt64 (-1) ** intToInt64 39 == intToInt64 (-1));
+assert (intToInt64 (-1) ** intToInt64 100 == intToInt64 1);
+assert (intToInt64 (-1) ** intToInt64 101 == intToInt64 (-1));
+
+for (n in range(0, 127)) {
+    for (exp in range(0, 127)) {
+        if (n <= 1 or exp <= 1 or exp <= 30) {
+            let res = n ** exp;
+            if (res <= 9_223_372_036_854_775_807) { assert (intToInt64 n ** intToInt64 exp == intToInt64 res) }
+        }
+    }
+};
+
+{
+var n = -128;
+while (n < -1) {
+    for (exp in range(0, 127)) {
+        if (n == -1 or exp <= 1 or exp <= 31) {
+            let res = n ** exp;
+            if (res >= -9_223_372_036_854_775_808 and res <= 9_223_372_036_854_775_807) {
+                assert (intToInt64 n ** intToInt64 exp == intToInt64 res)
+            }
+        }
+    };
+    n += 1
+}
+};
