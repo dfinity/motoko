@@ -43,11 +43,11 @@ type information.
 
  */
 
-let Hash = import "hash.as";
+private import Hash "hash.as";
 type Hash = Hash.Hash;
 
-//let Trie = import "trie.as";
-let Trie = import "trie2.as";
+//import Trie "trie.as";
+private import Trie "trie2.as";
 type Trie<K,V> = Trie.Trie<K,V>;
 type Key<K> = Trie.Key<K>;
 
