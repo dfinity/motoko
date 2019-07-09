@@ -1,3 +1,4 @@
 (* lower uses of async and await to continuation passing style *)
-open As_ir
+open Ir_def
+
 val transform : Ir.prog -> Ir.prog

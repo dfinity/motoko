@@ -95,6 +95,12 @@ let file_from_uri logger uri =
    | None ->
       let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
       uri
+let abs_file_from_uri logger uri =
+  match Base.String.chop_prefix ~prefix:"file://" uri with
+   | Some file -> file
+   | None ->
+      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
+      uri
 
 let start () =
   let oc: out_channel = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"; in
@@ -105,6 +111,7 @@ let start () =
   let show_message = Channel.show_message oc in
 
   let client_capabilities = ref None in
+  let project_root = Sys.getcwd () in
 
   let vfs = ref Vfs.empty in
 
@@ -200,7 +207,12 @@ let start () =
               Lsp_t.{ code = 1
                     ; message = "Tried to find completions for a file that hadn't been opened yet"}
          | Some file_content ->
-            Completion.completion_handler log_to_file file_content position
+            Completion.completion_handler
+              log_to_file
+              project_root
+              (abs_file_from_uri log_to_file uri)
+              file_content
+              position
             |> response_result_message id in
        response
        |> Lsp_j.string_of_response_message

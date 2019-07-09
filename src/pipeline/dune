@@ -2,16 +2,20 @@
   (name pipeline)
   (libraries
     lib
+    base
     lang_utils
+    as_def
     as_types
     as_values
     as_frontend
-    as_ir
-    wasm_exts
-    interpreter
-    ir_interpreter
+    as_interpreter
     lowering
+    wasm_exts
+    ir_def
+    ir_interpreter
     ir_passes
     codegen
   )
+  (inline_tests)
+  (preprocess (pps ppx_inline_test))
 )

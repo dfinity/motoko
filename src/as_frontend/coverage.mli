@@ -1,3 +1,4 @@
+open As_def
 open As_types
 
 val check_pat : Syntax.pat -> Type.typ -> string list

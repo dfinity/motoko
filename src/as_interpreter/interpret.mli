@@ -1,6 +1,9 @@
-open As_frontend
-module V = As_values.Value
-module T = As_types.Type
+open As_def
+open As_values
+open As_types
+
+module V = Value
+module T = Type
 
 type flags =
   { trace : bool;
