@@ -44,10 +44,10 @@ let parse_module_header_test_case project_root current_file file expected =
       current_file file in
   let display_result (alias, path) = Printf.sprintf "%s => \"%s\"" alias path in
   let result = Base.List.equal
-    (fun (x, y) (x', y') ->
-      String.equal x x' && String.equal y y' )
     actual
-    expected in
+    expected
+    ~equal:(fun (x, y) (x', y') ->
+      String.equal x x' && String.equal y y' ) in
   if not result then
     Printf.printf
       "\nExpected: %s\nActual:   %s"
