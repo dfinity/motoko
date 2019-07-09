@@ -32,7 +32,7 @@ let import_relative_test_case root module_path import expected =
     then true
     else
       (Printf.printf
-         "\nExpected: %s\nActual: %s\n"
+         "\nExpected: %s\nActual:   %s\n"
          (show expected)
          (show actual);
        false)
@@ -50,7 +50,7 @@ let parse_module_header_test_case project_root current_file file expected =
       String.equal x x' && String.equal y y' ) in
   if not result then
     Printf.printf
-      "\nExpected: %s\nActual: %s"
+      "\nExpected: %s\nActual:   %s"
       (Completion.string_of_list display_result expected)
       (Completion.string_of_list display_result actual) else ();
   result
@@ -129,3 +129,29 @@ let%test "it parses a simple module header" =
     "/project/src/Main.as"
     "import P \"lib/prelude.as\""
     ["P", "src/lib/prelude.as"]
+
+let%test "it parses a simple module header" =
+  parse_module_header_test_case
+    "/project"
+    "/project/Main.as"
+    {|
+module {
+
+private import List "lib/ListLib.as";
+private import ListFuncs "lib/ListFuncs.as";
+
+type Stack = List.List<Int>;
+
+func push(x: Int, s: Stack): Stack =
+  List.cons<Int>(x, s);
+
+func empty(): Stack =
+  List.nil<Int>();
+
+func singleton(x: Int): Stack =
+  ListFuncs.doubleton<Int>(x, x);
+}
+|}
+    [ ("List", "lib/ListLib.as")
+    ; ("ListFuncs", "lib/ListFuncs.as")
+    ]

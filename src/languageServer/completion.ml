@@ -65,14 +65,6 @@ let string_of_index index =
          ^ string_of_list string_of_ide_decl decls
          ^ "\n")
 
-(* Given the source of a module, figure out under what names what
-   modules have been imported. Normalizes the imported modules
-   filepaths relative to the project root *)
-let find_imported_modules file =
-  [ ("List", "lib/ListLib.as")
-  ; ("ListFns", "lib/ListFuncs.as")
-  ]
-
 let import_relative_to_project_root root module_path dependency =
   match Pipeline__.File_path.relative_to root module_path with
   | None -> None
@@ -83,6 +75,9 @@ let import_relative_to_project_root root module_path dependency =
      |> Pipeline__.File_path.normalise
      |> Lib.Option.some
 
+(* Given the source of a module, figure out under what names what
+   modules have been imported. Normalizes the imported modules
+   filepaths relative to the project root *)
 let parse_module_header project_root current_file_path file =
   let lexbuf = Lexing.from_string file in
   let next () = Lexer.token Lexer.Normal lexbuf in
@@ -100,12 +95,13 @@ let parse_module_header project_root current_file_path file =
                    path in
                (match path with
                 | Some path -> res := (alias, path) :: !res
-                | None -> ())
+                | None -> ());
+               loop (next ())
             | tkn -> loop tkn)
         | tkn -> loop tkn)
-    | tkn -> loop tkn in
-  loop (next ());
-  !res
+    | Parser.EOF -> List.rev !res
+    | tkn -> loop (next ()) in
+  loop (next ())
 
 (* Given a source file and a cursor position in that file, figure out
    the prefix relevant to searching completions. For example, given:
@@ -128,14 +124,6 @@ let find_completion_prefix logger file line column =
             | Parser.EOF -> Some ident
             | tkn ->
                let next_token_start = (Lexer.region lexbuf).Source.left in
-               let _ =
-                 logger
-                   "completion_prefix"
-                   (Printf.sprintf
-                      "%d:%d::%s\n"
-                      next_token_start.Source.line
-                      next_token_start.Source.column
-                      ident) in
                if pos_past_cursor next_token_start
                then Some ident
                else loop tkn)
@@ -146,10 +134,10 @@ let find_completion_prefix logger file line column =
 
 (* TODO(Christoph): Don't recompute the index whenever completions are
    requested *)
-let completions (* index *) logger file line column =
+let completions (* index *) logger project_root file_path file_contents line column =
   let index = make_index () in
-  let imported = find_imported_modules file in
-  match find_completion_prefix logger file line column with
+  let imported = parse_module_header project_root file_path file_contents in
+  match find_completion_prefix logger file_contents line column with
   | None ->
      imported
      |> List.map (fun (alias, _) -> alias, None)
@@ -171,14 +159,15 @@ let completions (* index *) logger file line column =
      | None ->
         [ (("ERROR: Couldn't find module for prefix: " ^ prefix), None) ]
 
-let completion_handler logger file position =
+let completion_handler logger project_root file_path file_contents position =
   let line = position.Lsp_t.position_line in
   let column = position.Lsp_t.position_character in
   let completion_item (lbl, detail) =
     Lsp_t.{ completion_item_label = lbl
           ; completion_item_detail = detail } in
   `CompletionResponse
-    (List.map completion_item (completions logger file line column))
+    (List.map completion_item
+       (completions logger project_root file_path file_contents line column))
 
 let test_completion () =
   Printf.printf "%s\n" (string_of_index (make_index ()))
