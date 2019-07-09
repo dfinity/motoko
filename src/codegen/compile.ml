@@ -2021,7 +2021,16 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^ compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Rotl)))
       (get_a ^^ Num.from_word64 env)
 
-  let truncate_to_word64 env = assert false
+  let truncate_to_word64 env =
+    let set_a, get_a = new_local env "a" in
+    set_a ^^ get_a ^^
+    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+      begin
+        get_a ^^ extend ^^ compile_unboxed_one ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+      end
+      (get_a ^^ Num.truncate_to_word64 env)
   let truncate_to_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
