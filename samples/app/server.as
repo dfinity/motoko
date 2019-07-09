@@ -29,7 +29,7 @@ actor class Server() = {
     nextId += 1;
     let cs = new {head = c; var tail = clients};
     clients := ?cs;
-    return (shared {
+    return (new {
       post = shared func(message : Text) {
         if (not c.revoked) broadcast(c.id, message);
       };

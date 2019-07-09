@@ -27,7 +27,7 @@ let _ = func(#A or #B(_ : Nat)) {};
 { let _ = func(#A(0) or #A("")) {}; };
 
 { let _ = func(1 or (_ : Any)) {} };
-{ let _ = func((_ : Shared) or 1.4) {} };
+{ let _ = func((_ : Any) or 1.4) {} };
 { let _ = func(() or (_ : Any)) {} };
 { let _ = func<A>("" or (_ : A)) {} };
 { let _ = func((_ : Any) or (_ : [Nat])) {} };

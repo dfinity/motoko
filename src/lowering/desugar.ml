@@ -133,7 +133,7 @@ and mut m = match m.it with
 
 and obj at s self_id es obj_typ =
   match s.it with
-  | T.Object _ | T.Module -> build_obj at s self_id es obj_typ
+  | T.Object | T.Module -> build_obj at s self_id es obj_typ
   | T.Actor -> build_actor at self_id es obj_typ
 
 and build_field {T.lab; T.typ} =
@@ -382,7 +382,7 @@ and to_args cc p : (Ir.arg list * (Ir.exp -> Ir.exp)) =
   in
 
   let wrap_under_async e =
-    if cc.Call_conv.sort = T.Sharable && cc.Call_conv.control = T.Promises
+    if cc.Call_conv.sort = T.Shared && cc.Call_conv.control = T.Promises
     then match e.it with
       | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
       | _ -> assert false
