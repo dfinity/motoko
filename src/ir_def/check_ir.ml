@@ -363,10 +363,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
              | ActorDotE _ -> sort = T.Actor
              | DotE _ -> sort <> T.Actor
              | _ -> false) "sort mismatch";
-      match T.lookup_val_field n tfs with
-      | Some tn ->
-        tn <~ t
-      | None ->
+      try T.lookup_val_field n tfs <~ t with Invalid_argument _ ->
         error env exp1.at "field name %s does not exist in type\n  %s"
           n (T.string_of_typ_expand t1)
     end
@@ -658,12 +655,12 @@ and check_pat_field env t (pf : pat_field) =
   let s, tfs = T.as_obj_sub [lab] t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
-  if T.is_mut (Lib.Option.value (T.lookup_val_field lab tfs)) then
+  if T.is_mut (T.lookup_val_field lab tfs) then
     error env pf.it.pat.at "cannot match mutable field %s" lab
 
 and check_pat_tag env t l pat =
   let (<:) = check_sub env pat.at in
-  Lib.Option.value (T.lookup_val_field l (T.as_variant_sub l t)) <: pat.note
+  T.lookup_val_field l (T.as_variant_sub l t) <: pat.note
 
 (* Objects *)
 
