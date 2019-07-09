@@ -10,7 +10,15 @@ in the second, mutable field of the ImportE statement.
 
 It returns a list of all imported file names.
 
-At some point, SEARCH_PATH functionality would be added here.
+
+SEARCH_PATH functionality
+--------------------------
+- Uses `--package` CLI option
+- See Jira Ticket: https://dfinity.atlassian.net/browse/SDK-269
+- See also: `Pipeline.Flags.package_urls`, of type `(string * string) list ref`;
+    - Each key-value pair gives a package-name, package-URL pairing
+    - the URL can be interpreted as a filesystem path, for now.
+
 *)
 
 (* written as a functor so we can allocate some temporary shared state without making it global *)
@@ -18,39 +26,74 @@ At some point, SEARCH_PATH functionality would be added here.
 type filepath = string
 
 module S = Set.Make(String)
+module M = Map.Make(String)
+
+(* type packages maps package names to package URLs (filenames):
+   e.g., packages("std") = "/Users/home/username/.dfinity-sdk/src/as-stdlib"
+*)
+type package_map = string M.t
 
 type env = {
   msgs : Diag.msg_store;
   base : filepath;
+  packages : package_map;
   imported : S.t ref;
 }
 
 open Syntax
 open Source
 
-let rec
-  exp env (e : exp) = match e.it with
-  | ImportE (f, fp) ->
-    let f =
-      if Filename.is_relative f
-      then Filename.concat env.base f
-      else f in
-    let f =
-      if Sys.file_exists f && Sys.is_directory f
-      then Filename.concat f "lib.as"
-      else f in
-    if Sys.file_exists f
-    then begin
+
+let resolve_import_string env region (f: string) (fp: string ref) =
+  let f =
+    if Filename.is_relative f
+    then Filename.concat env.base f
+    else f in
+  let f =
+    if Sys.file_exists f && Sys.is_directory f
+    then Filename.concat f "lib.as"
+    else f in
+  if Sys.file_exists f
+  then begin
       fp := f;
       env.imported := S.add f !(env.imported)
     end else
-      let open Diag in
-      add_msg env.msgs {
+    let open Diag in
+    add_msg env.msgs {
         sev = Error;
-        at = e.at;
+        at = region;
         cat = "import";
         text = Printf.sprintf "File \"%s\" does not exist" f
       }
+
+(* compare to the `resolve_import_string`'s filesystem semantics;
+   the two resolution semantics agree for now,
+   but other API details and usage are distinct.
+ *)
+let resolve_package_url (msgs:Diag.msg_store) (base:filepath) (pname:string) (f: string) : string option =
+  let f =
+    if Filename.is_relative f
+    then Filename.concat base f
+    else f in
+  let f =
+    if Sys.file_exists f && Sys.is_directory f
+    then Filename.concat f "lib.as"
+    else f in
+  if Sys.file_exists f then
+    Some f
+  else
+    let open Diag in
+    add_msg msgs {
+        sev = Error;
+        at = no_region;
+        cat = "package";
+        text = Printf.sprintf "File \"%s\" (for package `%s`) does not exist" f pname
+      };
+    None
+
+let rec
+  exp env (e : exp) = match e.it with
+  | ImportE (f, fp) -> resolve_import_string env e.at f fp
   (* The rest is just a boring syntax traversal *)
   | (PrimE _ | VarE _ | LitE _) -> ()
   | UnE (_, _, exp1)
@@ -109,10 +152,36 @@ and dec env d = match d.it with
 
 let prog env p = decs env p.it
 
-let resolve : Syntax.prog -> filepath -> S.t Diag.result = fun p base ->
-  Diag.with_message_store (fun msgs ->
-    let base = if Sys.is_directory base then base else Filename.dirname base in
-    let env = { msgs; base; imported = ref S.empty } in
-    prog env p;
-    Some !(env.imported)
-  )
+type package_urls = (string * string) list
+
+let resolve_packages : package_urls -> filepath -> package_map Diag.result = fun purls base ->
+  Diag.fold (fun package_map (package_name, package_url) ->
+      if M.mem package_name package_map then
+        Diag.with_message_store (fun msgs ->
+            let open Diag in
+            Diag.add_msg msgs {
+                sev = Error;
+                at = no_region;
+                cat = "--package";
+                text = Printf.sprintf "Package name \"%s\" already defined" package_name;
+              };
+            None
+          )
+      else
+        Diag.with_message_store (fun msgs ->
+            match resolve_package_url msgs base package_name package_url with
+            | None              -> None
+            | Some resolved_url -> Some (M.add package_name resolved_url package_map)
+          )
+    )
+    M.empty purls
+
+let resolve : package_urls -> Syntax.prog -> filepath -> S.t Diag.result = fun purls p base ->
+  Diag.bind (resolve_packages purls base) (fun (packages:package_map) ->
+      Diag.with_message_store (fun msgs ->
+          let base = if Sys.is_directory base then base else Filename.dirname base in
+          let env = { msgs; base; imported = ref S.empty; packages } in
+          prog env p;
+          Some !(env.imported)
+        )
+    )
