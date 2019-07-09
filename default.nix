@@ -393,6 +393,25 @@ rec {
     '';
   };
 
+  rx = stdenv.mkDerivation {
+    name = "rx-actorscript";
+    src = subpath ./rx;
+    buildInputs = [
+      asc
+    ];
+    buildPhase = ''
+      make ASC=asc OUTDIR=_out _out/Rx.wasm
+    '';
+    doCheck = true;
+    checkPhase = ''
+      make ASC=asc OUTDIR=_out _out/RxTest.out
+    '';
+    installPhase = ''
+      mkdir -p $out
+      cp _out/Rx.wasm $out
+    '';
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
@@ -404,6 +423,7 @@ rec {
       unit-tests
       samples
       rts
+      rx
       stdlib
       stdlib-doc
       stdlib-doc-live
