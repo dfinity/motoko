@@ -160,7 +160,7 @@ and string_of_descs t descs =
   String.concat " or " (List.map (string_of_desc t) descs)
 
 
-(* Abstract interpretaton *)
+(* Abstract interpretation *)
 
 let value_of_lit = function
   | NullLit -> V.Null
