@@ -73,6 +73,40 @@ let find_imported_modules file =
   ; ("ListFns", "lib/ListFuncs.as")
   ]
 
+let import_relative_to_project_root root module_path dependency =
+  match Pipeline__.File_path.relative_to root module_path with
+  | None -> None
+  | Some root_to_module ->
+     root_to_module
+     |> Filename.dirname
+     |> Base.Fn.flip Filename.concat dependency
+     |> Pipeline__.File_path.normalise
+     |> Lib.Option.some
+
+let parse_module_header project_root current_file_path file =
+  let lexbuf = Lexing.from_string file in
+  let next () = Lexer.token Lexer.Normal lexbuf in
+  let res = ref [] in
+  let rec loop = function
+    | Parser.IMPORT ->
+       (match next () with
+        | Parser.ID alias ->
+           (match next () with
+            | Parser.TEXT path ->
+               let path =
+                 import_relative_to_project_root
+                   project_root
+                   current_file_path
+                   path in
+               (match path with
+                | Some path -> res := (alias, path) :: !res
+                | None -> ())
+            | tkn -> loop tkn)
+        | tkn -> loop tkn)
+    | tkn -> loop tkn in
+  loop (next ());
+  !res
+
 (* Given a source file and a cursor position in that file, figure out
    the prefix relevant to searching completions. For example, given:
 
@@ -145,3 +179,6 @@ let completion_handler logger file position =
           ; completion_item_detail = detail } in
   `CompletionResponse
     (List.map completion_item (completions logger file line column))
+
+let test_completion () =
+  Printf.printf "%s\n" (string_of_index (make_index ()))
