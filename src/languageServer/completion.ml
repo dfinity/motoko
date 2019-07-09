@@ -45,7 +45,7 @@ let make_index (): completion_index =
   let (libraries, scope) =
     Diag.run
       (Pipeline.chase_imports
-         Scope.empty
+         Pipeline.initial_stat_env
          (Pipeline__.Resolve_import.S.of_list (lib_files ()))) in
   Type.Env.fold
     (fun path ty acc ->

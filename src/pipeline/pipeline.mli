@@ -22,6 +22,7 @@ end
 val check_files  : string list -> unit Diag.result
 val check_string : string -> string -> unit Diag.result
 
+val initial_stat_env : Scope.scope
 val chase_imports : Scope.scope -> Resolve_import.S.t ->
   (Syntax.libraries * Scope.scope) Diag.result
 
