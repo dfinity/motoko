@@ -1,5 +1,5 @@
-open As_ir
-open As_frontend
+open Ir_def
+open As_def
 open As_types
 open As_values
 
@@ -7,7 +7,7 @@ open Source
 open Operator
 module S = Syntax
 module I = Ir
-module T = As_types.Type
+module T = Type
 open Construct
 
 (*
@@ -27,8 +27,11 @@ let falseE : Ir.exp = boolE false
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
-  | NegOp, NatLit n -> NatLit (Value.Nat.sub Value.Nat.zero n)
-  | NegOp, IntLit n -> IntLit (Value.Int.sub Value.Int.zero n)
+  | NegOp, (NatLit n | IntLit n) -> IntLit (Value.Int.sub Value.Int.zero n)
+  | NegOp, Int8Lit n -> Int8Lit (Value.Int_8.sub Value.Int_8.zero n)
+  | NegOp, Int16Lit n -> Int16Lit (Value.Int_16.sub Value.Int_16.zero n)
+  | NegOp, Int32Lit n -> Int32Lit (Value.Int_32.sub Value.Int_32.zero n)
+  | NegOp, Int64Lit n -> Int64Lit (Value.Int_64.sub Value.Int_64.zero n)
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 
@@ -70,22 +73,29 @@ and exp' at note = function
   | S.ObjE (s, es) ->
     obj at s None es note.I.note_typ
   | S.TagE (c, e) -> I.TagE (c.it, exp e)
+  | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
+    (array_dotE e.note.S.note_typ x.it (exp e)).it
+  | S.DotE (e, x) when T.is_prim T.Text e.note.S.note_typ ->
+    (text_dotE  x.it (exp e)).it
   | S.DotE (e, x) ->
-    let n = x.it in
-    begin match T.as_obj_sub x.it e.note.S.note_typ with
-    | T.Actor, _ -> I.ActorDotE (exp e, n)
-    | _ -> I.DotE (exp e, n)
+    begin match T.as_obj_sub [x.it] e.note.S.note_typ with
+    | T.Actor, _ -> I.ActorDotE (exp e, x.it)
+    | _ -> I.DotE (exp e, x.it)
     end
   | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
   | S.ArrayE (m, es) ->
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
-  | S.FuncE (name, s, tbs, p, ty, e) ->
+  | S.FuncE (name, s, tbs, p, ty_opt, e) ->
     let cc = Call_conv.call_conv_of_typ note.I.note_typ in
     let args, wrap = to_args cc p in
-    let tys = if cc.Call_conv.n_res = 1 then [ty.note] else T.as_seq ty.note in
-    I.FuncE (name, cc, typ_binds tbs, args, tys, wrap (exp e))
+    let _, _, _, ty = T.as_func_sub s.it (List.length tbs) note.I.note_typ in
+    let tbs' = typ_binds tbs in
+    let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
+    let ty = T.open_ vars ty in
+    let tys = if cc.Call_conv.n_res = 1 then [ty] else T.as_seq ty in
+    I.FuncE (name, cc, tbs', args, tys, wrap (exp e))
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in
     if T.is_non t
@@ -170,6 +180,40 @@ and typ_bind tb =
   ; at = tb.at
   ; note = ()
   }
+
+and array_dotE array_ty proj e =
+  let fun_ty bs t1 t2 = T.Func (T.Local, T.Returns, bs, t1, t2) in
+  let varA = T.Var ("A", 0) in
+  let element_ty = T.as_immut (T.as_array array_ty) in
+  let call name t1 t2 =
+    let poly_array_ty =
+      if T.is_mut (T.as_array array_ty)
+      then T.Array (T.Mut varA)
+      else T.Array varA in
+    let ty_param = {T.var = "A"; T.bound = T.Any} in
+    let f = idE name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
+    callE f [element_ty] e in
+  match T.is_mut (T.as_array array_ty), proj with
+    | true,  "len"  -> call "@mut_array_len"    [] [T.nat]
+    | false, "len"  -> call "@immut_array_len"  [] [T.nat]
+    | true,  "get"  -> call "@mut_array_get"    [T.nat] [varA]
+    | false, "get"  -> call "@immut_array_get"  [T.nat] [varA]
+    | true,  "set"  -> call "@mut_array_set"    [T.nat; varA] []
+    | true,  "keys" -> call "@mut_array_keys"   [] [T.iter_obj T.nat]
+    | false, "keys" -> call "@immut_array_keys" [] [T.iter_obj T.nat]
+    | true,  "vals" -> call "@mut_array_vals"   [] [T.iter_obj varA]
+    | false, "vals" -> call "@immut_array_vals" [] [T.iter_obj varA]
+    | _, _ -> assert false
+
+and text_dotE proj e =
+  let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
+  let call name t1 t2 =
+    let f = idE name (fun_ty [T.text] [fun_ty t1 t2]) in
+    callE f [] e in
+  match proj with
+    | "len"   -> call "@text_len"   [] [T.nat]
+    | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
+    |  _ -> assert false
 
 and block force_unit ds =
   let extra = extra_typDs ds in
@@ -272,7 +316,15 @@ and lit l = match l with
   | S.NullLit -> I.NullLit
   | S.BoolLit x -> I.BoolLit x
   | S.NatLit x -> I.NatLit x
+  | S.Nat8Lit x -> I.Nat8Lit x
+  | S.Nat16Lit x -> I.Nat16Lit x
+  | S.Nat32Lit x -> I.Nat32Lit x
+  | S.Nat64Lit x -> I.Nat64Lit x
   | S.IntLit x -> I.IntLit x
+  | S.Int8Lit x -> I.Int8Lit x
+  | S.Int16Lit x -> I.Int16Lit x
+  | S.Int32Lit x -> I.Int32Lit x
+  | S.Int64Lit x -> I.Int64Lit x
   | S.Word8Lit x -> I.Word8Lit x
   | S.Word16Lit x -> I.Word16Lit x
   | S.Word32Lit x -> I.Word32Lit x

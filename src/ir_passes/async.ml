@@ -1,5 +1,6 @@
 open As_types
-open As_ir
+open Ir_def
+
 module E = Env
 open Source
 module Ir = Ir

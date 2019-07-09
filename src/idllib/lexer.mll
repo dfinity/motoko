@@ -121,6 +121,7 @@ rule token = parse
   | '"'character*'\\'_
     { error_nest (Lexing.lexeme_end_p lexbuf) lexbuf "illegal escape" }
 
+  | "import" { IMPORT }
   | "service" { SERVICE }
   | "func" { FUNC }
   | "type" { TYPE }

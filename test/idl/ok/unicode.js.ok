@@ -1,5 +1,5 @@
 const A =
- IDL.Obj({'字段名': IDL.Nat, '字 段 名2': IDL.Nat, '📦🍦': IDL.Nat
+ IDL.Obj({'📦🍦': IDL.Nat, '字段名': IDL.Nat, '字 段 名2': IDL.Nat
   })
 const B =
  IDL.Variant({'': IDL.Unit, '空的': IDL.Unit, '  空的  ': IDL.Unit,

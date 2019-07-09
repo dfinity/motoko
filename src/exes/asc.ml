@@ -24,6 +24,9 @@ let set_mode m () =
 
 let compile_mode = ref Pipeline.DfinityMode
 let out_file = ref ""
+let link = ref true
+let interpret_ir = ref false
+let gen_source_map = ref false
 
 let argspec = Arg.align
 [
@@ -31,29 +34,34 @@ let argspec = Arg.align
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
-  "-v", Arg.Set Flags.verbose, " verbose output";
-  "-p", Arg.Set_int Flags.print_depth, " set print depth";
+  "-v", Arg.Set Pipeline.Flags.verbose, " verbose output";
+  "-p", Arg.Set_int Pipeline.Flags.print_depth, " set print depth";
   "-o", Arg.Set_string out_file, " output file";
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
-  "--map", Arg.Set Flags.source_map, " output source map";
+  "--map", Arg.Set gen_source_map, " output source map";
 
-  "-t", Arg.Set Flags.trace, " activate tracing";
-  "-iR", Arg.Set Flags.interpret_ir, " interpret the lowered code";
-  "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
-  "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
+  "-t", Arg.Set Pipeline.Flags.trace, " activate tracing";
+  "--profile", Arg.Set Pipeline.Flags.profile, " activate profiling counters in interpreters ";
+  "--profile-file", Arg.Set_string Pipeline.Flags.profile_file, " set profiling output file ";
+  "--profile-line-prefix", Arg.Set_string Pipeline.Flags.profile_line_prefix, " prefix each profile line with the given string ";
+  "--profile-field",
+  Arg.String (fun n -> Pipeline.Flags.(profile_field_names := n :: !profile_field_names)),
+  " profile file includes the given field from the program result ";
+  "-iR", Arg.Set interpret_ir, " interpret the lowered code";
+  "-no-await", Arg.Clear Pipeline.Flags.await_lowering, " no await-lowering (with -iR)";
+  "-no-async", Arg.Clear Pipeline.Flags.async_lowering, " no async-lowering (with -iR)";
 
-  "-no-link", Arg.Clear Flags.link, " do not statically link-in runtime";
+  "-no-link", Arg.Clear link, " do not statically link-in runtime";
   "-no-dfinity-api",
     Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
       " do not import the DFINITY system API";
 
-  "-dp", Arg.Set Flags.dump_parse, " dump parse";
-  "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
-  "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
-  "-no-check-ir", Arg.Clear Flags.check_ir, " do not check intermediate code";
-  "--disable-prelude", Arg.Clear Flags.prelude, " disable prelude";
+  "-dp", Arg.Set Pipeline.Flags.dump_parse, " dump parse";
+  "-dt", Arg.Set Pipeline.Flags.dump_tc, " dump type-checked AST";
+  "-dl", Arg.Set Pipeline.Flags.dump_lowering, " dump intermediate representation ";
+  "-no-check-ir", Arg.Clear Pipeline.Flags.check_ir, " do not check intermediate code";
 ]
 
 
@@ -68,7 +76,7 @@ let process_files files : unit =
   | Default ->
     assert false
   | Run ->
-    if !Flags.interpret_ir
+    if !interpret_ir
     then exit_on_none (Pipeline.interpret_ir_files files)
     else exit_on_none (Pipeline.run_files files)
   | Interact ->
@@ -82,16 +90,29 @@ let process_files files : unit =
       | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
       | ns -> eprintf "asc: no output file specified"; exit 1
     end;
-    let module_ = Diag.run Pipeline.(compile_files !compile_mode !(Flags.link) files) in
+    let module_ = Diag.run Pipeline.(compile_files !compile_mode !link files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
 
-    if !Flags.source_map then begin
+    if !gen_source_map then begin
       let source_map_file = !out_file ^ ".map" in
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
     end
+
+(* Copy relevant flags into the profiler library's (global) settings.
+   This indirection affords the profiler library an independence from the (hacky) Flags library.
+   See also, this discussion:
+   https://github.com/dfinity-lab/actorscript/pull/405#issuecomment-503326551
+*)
+let process_profiler_flags () =
+  ProfilerFlags.profile             := !Pipeline.Flags.profile;
+  ProfilerFlags.profile_verbose     := !Pipeline.Flags.profile_verbose;
+  ProfilerFlags.profile_file        := !Pipeline.Flags.profile_file;
+  ProfilerFlags.profile_line_prefix := !Pipeline.Flags.profile_line_prefix;
+  ProfilerFlags.profile_field_names := !Pipeline.Flags.profile_field_names;
+  ()
 
 let () =
   (*
@@ -101,4 +122,5 @@ let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
+  process_profiler_flags () ;
   process_files !args

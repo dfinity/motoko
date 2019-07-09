@@ -1,0 +1,32 @@
+ActorScript 0.1 interpreter
+> [null, ?42, ?-25] : [(?Int)]
+> [null, null] : [Null]
+> [{a = 42}, {b = 42}] : [{}]
+> [{a = 42}, {a = 1; b = 42}, {a = -25}] : [{a : Int}]
+> [(12, -1), (-42, 25)] : [(Int, Int)]
+> [-1, 25] : [Int]
+> [[-42], [25]] : [[Int]]
+> [func, func] : [(None -> Int)]
+> [func, func] : [([Nat] -> Int)]
+> 3 : Int
+> -42 : Int
+> [func, func] : [(<A>[Nat] -> Int)]
+> 3 : Int
+> -42 : Int
+> [func, func] : [(<A>[Nat] -> Int)]
+> 3 : Int
+> -42 : Int
+> [func, func] : [(<A, B>([A], B) -> A)]
+> [func, func] : [(<A <: Nat, B <: Nat>([A], B) -> A)]
+> 1 : Nat
+> 11 : Nat
+>   [func, func] : [({#bar} -> ())]
+> > >   [[42], [25], [77]] : [[Any]]
+>   [42, 77, [1, 2, 3]] : [Shared]
+> [77, [1, 2, 3], 42] : [Shared]
+> [func, func] : [(Int -> Int)]
+> 25 : Int
+> 42 : Int
+>   func : (C, D) -> [C]
+> [async ?4, async ?-42] : [(async (?Int))]
+> 

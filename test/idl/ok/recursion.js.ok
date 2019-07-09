@@ -1,15 +1,16 @@
 const A = B
 const B = IDL.Opt(A)
-const node = IDL.Obj({'head': IDL.Nat, 'tail': list})
 const list = IDL.Opt(node)
-const tree =
- IDL.Variant({'leaf': IDL.Int,
-  'branch': IDL.Obj({'left': tree, 'val': IDL.Int, 'right': tree})})
+const node = IDL.Obj({'head': IDL.Nat, 'tail': list})
 const s = new IDL.ActorInterface({'f': t})
-const t = IDL.message(IDL.Obj({'server': s}), IDL.Obj({}))
 const stream =
  IDL.Opt(
   IDL.Obj({'head': IDL.Nat,
    'next': IDL.message(IDL.Obj({}), IDL.Obj({'0': stream}))}))
   
+const t = IDL.message(IDL.Obj({'server': s}), IDL.Obj({}))
+const tree =
+ IDL.Variant({
+  'branch': IDL.Obj({'val': IDL.Int, 'left': tree, 'right': tree}),
+  'leaf': IDL.Int})
 const A = s

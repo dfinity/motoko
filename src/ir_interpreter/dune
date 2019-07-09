@@ -1,4 +1,4 @@
 (library
   (name ir_interpreter)
-  (libraries lib as_types as_values as_ir)
+  (libraries lib as_types as_values ir_def profiler)
 )

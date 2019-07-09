@@ -1,7 +1,12 @@
 (executable
  (name asc)
  (modules asc)
- (libraries pipeline)
+ (libraries profiler pipeline)
+)
+(executable
+ (name as_ide)
+ (modules as_ide)
+ (libraries languageServer)
 )
 (executable
  (name as_ld)
@@ -13,11 +18,3 @@
  (modules didc)
  (libraries idllib)
 )
-(executable
- (name as_js)
- (modules as_js)
- (libraries pipeline)
- (preprocess (pps js_of_ocaml-ppx))
- (js_of_ocaml (flags :standard "+nat.js") )
-)
-

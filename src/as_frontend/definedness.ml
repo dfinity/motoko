@@ -10,6 +10,8 @@ We keep it still separate, because we are doing much more interesting things
 here in for blocks (function decs).
 *)
 
+open As_def
+
 open Source
 open Syntax
 

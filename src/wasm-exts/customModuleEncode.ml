@@ -66,10 +66,8 @@ let encode (em : extended_module) =
     | h :: t -> if x = h then 0 else 1 + (add_source x t)
   in
 
-  if !Flags.prelude then begin
-    sources := !sources @ [ "prelude" ];
-    sourcesContent := !sourcesContent @ [ Prelude.prelude ]
-  end;
+  sources := !sources @ [ "prelude" ];
+  sourcesContent := !sourcesContent @ [ Prelude.prelude ];
 
   let add_to_map file il ic ol oc =
     let il = il - 1 in
@@ -643,4 +641,4 @@ let encode (em : extended_module) =
     ("mappings", `String (String.sub mappings 0 n) )
   ] in
 
-  ((if !Flags.source_map then Yojson.Basic.to_string json else ""), to_string s)
+  (Yojson.Basic.to_string json, to_string s)

@@ -11,6 +11,11 @@ import L = "serverLang.as";
 import Model = "serverModel.as";
 import Result = "../../result.as";
 
+let Trie = (import "../../trie2.as");
+
+let List = (import "../../list.as");
+type List<T> = List.List<T>;
+
 type Result<Ok,Err> = Result.Result<Ok,Err>;
 
 actor class Server () {
@@ -917,6 +922,7 @@ actor class Server () {
   getCounts() : async T.ProduceExchangeCounts {
     let m = getModel();
     shared {
+      hash_bit_length          = 0;
       truck_type_count         = m.truckTypeTable.count();
       region_count             = m.regionTable.count();
       produce_count            = m.produceTable.count();
@@ -928,6 +934,7 @@ actor class Server () {
       route_count              = m.routeTable.count();
       reserved_route_count     = m.reservedRouteTable.count();
 
+      retailer_query_size_max  = m.retailerQuerySizeMax;
       retailer_query_count     = m.retailerQueryCount;
       retailer_query_cost      = m.retailerQueryCost;
       retailer_join_count      = m.retailerJoinCount;
@@ -1038,23 +1045,55 @@ been processed
   };
 
 
+  loadWorkload(params:T.WorkloadParams) : () {
+    func db(s:Text) = if false {print "Model::loadWorkload: "; print s; print "\n"};
+    getModel().loadWorkload(params)
+  };
+
+  /**
+   Standard workloads
+   =========================
+   */
+
+  devTestLoadQuery (region_count:Nat, scale_factor:Nat) {
+    func scaledParams(region_count_:Nat, factor:Nat) : T.WorkloadParams = {
+      shared {
+        region_count        = region_count_:Nat;
+        day_count           = 3:Nat;
+        max_route_duration  = 1:Nat;
+        producer_count      = region_count * factor:Nat;
+        transporter_count   = region_count * factor:Nat;
+        retailer_count      = region_count * factor:Nat;
+      }
+    };
+    let m = Model.Model();
+    let _ = m.loadWorkload(scaledParams(5, 2));
+    let _ = m.retailerQueryAll(0, null, null);
+  };
+
   ///////////////////////////////////////////////////////////////////////////
-  // @Omit:
 
   // See `serverModel.as` for the Model class's implementation
 
   // Matthew-Says:
   // There are two initialization options for the model field:
-  // 1. Call Model() directly; using this option now.
+  // 1. Call Model() directly
   // 2. Call Model() later, when we try to access the model field.
+  //
+  // Option 1 is simpler, but option 2 permits a "static" class or actor definition,
+  // which is needed in some contexts.
 
-  private var model : ?Model.Model = null;
+  //private var model : ?Model.Model = null;
+
+
+  private var model : ?Model.Model = ?(Model.Model());
 
   private getModel() : Model.Model {
     switch model {
     case (null) {
            let m = Model.Model();
-           model := ?m; m
+           model := ?m;
+           m
          };
     case (?m) m;
     }

@@ -1,4 +1,4 @@
-open As_frontend
+open As_def
 
 (*
 This module traverses the syntax tree. For each `import` statement, it looks
@@ -39,6 +39,7 @@ let rec
       if Sys.file_exists f && Sys.is_directory f
       then Filename.concat f "lib.as"
       else f in
+    let f = File_path.normalise f in
     if Sys.file_exists f
     then begin
       fp := f;

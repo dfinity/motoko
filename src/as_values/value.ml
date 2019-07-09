@@ -142,6 +142,8 @@ sig
   val compare : t -> t -> int
   val to_int : t -> int
   val of_int : int -> t
+  val to_big_int : t -> Big_int.big_int
+  val of_big_int : Big_int.big_int -> t
   val of_string : string -> t
   val to_string : t -> string
   val to_pretty_string : t -> string
@@ -159,10 +161,15 @@ struct
   let mul = mult_big_int
   let div a b =
     let q, m = quomod_big_int a b in
-    if sign_big_int q < 0 && sign_big_int m > 0 then succ_big_int q else q
+    if sign_big_int m * sign_big_int a >= 0 then q
+    else if sign_big_int q = 1 then pred_big_int q else succ_big_int q
   let rem a b =
     let q, m = quomod_big_int a b in
-    if sign_big_int q < 0 && sign_big_int m > 0 then sub_big_int m b else m
+    let sign_m = sign_big_int m in
+    if sign_m * sign_big_int a >= 0 then m
+    else
+    let abs_b = abs_big_int b in
+    if sign_m = 1 then sub_big_int m abs_b else add_big_int m abs_b
   let eq = eq_big_int
   let ne x y = not (eq x y)
   let lt = lt_big_int
@@ -172,6 +179,8 @@ struct
   let compare = compare_big_int
   let to_int = int_of_big_int
   let of_int = big_int_of_int
+  let of_big_int i = i
+  let to_big_int i = i
   let to_string i = string_of_big_int i
   let to_pretty_string i = group_num (string_of_big_int i)
   let of_string s =
@@ -193,6 +202,46 @@ struct
     if ge z zero then z else raise (Invalid_argument "Nat.sub")
 end
 
+module RangeLimited(Rep : NumType)(Range : sig val is_range : Rep.t -> bool end) : NumType =
+struct
+  let check i =
+    if Range.is_range i then i
+    else raise (Invalid_argument "value out of bounds")
+
+  include Rep
+  let neg a = let res = Rep.neg a in check res
+  let abs a = let res = Rep.abs a in check res
+  let add a b = let res = Rep.add a b in check res
+  let sub a b = let res = Rep.sub a b in check res
+  let mul a b = let res = Rep.mul a b in check res
+  let div a b = let res = Rep.div a b in check res
+  let pow a b = let res = Rep.pow a b in check res
+  let of_int i = let res = Rep.of_int i in check res
+  let of_big_int i = let res = Rep.of_big_int i in check res
+  let of_string s = let res = Rep.of_string s in check res
+end
+
+module NatRange(Limit : sig val upper : Big_int.big_int end) =
+struct
+  open Big_int
+  let is_range n = ge_big_int n zero_big_int && lt_big_int n Limit.upper
+end
+
+module Nat8 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x100 end))
+module Nat16 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x10000 end))
+module Nat32 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x100000000 end))
+module Nat64 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.power_int_positive_int 2 64 end))
+
+module IntRange(Limit : sig val upper : Big_int.big_int end) =
+struct
+  open Big_int
+  let is_range n = ge_big_int n (minus_big_int Limit.upper) && lt_big_int n Limit.upper
+end
+
+module Int_8 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x80 end))
+module Int_16 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x8000 end))
+module Int_32 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x80000000 end))
+module Int_64 = RangeLimited(Int)(IntRange(struct let upper = Big_int.power_int_positive_int 2 63 end))
 
 (* Types *)
 
@@ -204,6 +253,14 @@ and value =
   | Null
   | Bool of bool
   | Int of Int.t
+  | Int8 of Int_8.t
+  | Int16 of Int_16.t
+  | Int32 of Int_32.t
+  | Int64 of Int_64.t
+  | Nat8 of Nat8.t
+  | Nat16 of Nat16.t
+  | Nat32 of Nat32.t
+  | Nat64 of Nat64.t
   | Word8 of Word8.t
   | Word16 of Word16.t
   | Word32 of Word32.t
@@ -240,6 +297,14 @@ let invalid s = raise (Invalid_argument ("Value." ^ s))
 let as_null = function Null -> () | _ -> invalid "as_null"
 let as_bool = function Bool b -> b | _ -> invalid "as_bool"
 let as_int = function Int n -> n | _ -> invalid "as_int"
+let as_int8 = function Int8 w -> w | _ -> invalid "as_int8"
+let as_int16 = function Int16 w -> w | _ -> invalid "as_int16"
+let as_int32 = function Int32 w -> w | _ -> invalid "as_int32"
+let as_int64 = function Int64 w -> w | _ -> invalid "as_int64"
+let as_nat8 = function Nat8 w -> w | _ -> invalid "as_nat8"
+let as_nat16 = function Nat16 w -> w | _ -> invalid "as_nat16"
+let as_nat32 = function Nat32 w -> w | _ -> invalid "as_nat32"
+let as_nat64 = function Nat64 w -> w | _ -> invalid "as_nat64"
 let as_word8 = function Word8 w -> w | _ -> invalid "as_word8"
 let as_word16 = function Word16 w -> w | _ -> invalid "as_word16"
 let as_word32 = function Word32 w -> w | _ -> invalid "as_word32"
@@ -254,59 +319,7 @@ let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
 let as_serialized = function Serialized v -> v | _ -> invalid "as_serialized"
-
-let obj_of_array a =
-  let get = local_func 1 1 @@ fun v k ->
-    let n = as_int v in
-    if Nat.lt n (Nat.of_int (Array.length a)) then
-      k (a.(Nat.to_int n))
-    else
-      raise (Invalid_argument "array index out of bounds") in
-
-  let set = local_func 2 0 @@ fun v k ->
-    let v1, v2 = as_pair v in
-    let n = as_int v1 in
-    if Nat.lt n (Nat.of_int (Array.length a)) then
-      k (a.(Nat.to_int n) <- v2; Tup [])
-    else
-      raise (Invalid_argument "array index out of bounds") in
-
-  let len = local_func 0 1 @@ fun v k ->
-    as_unit v; k (Int (Nat.of_int (Array.length a))) in
-
-  let keys = local_func 0 1 @@ fun v k ->
-    as_unit v;
-    let i = ref 0 in
-    let next = local_func 0 1 @@ fun v k' ->
-        if !i = Array.length a then k' Null else
-          let v = Opt (Int (Nat.of_int !i)) in incr i; k' v
-    in k (Obj (Env.singleton "next" next)) in
-
-  let vals = local_func 0 1 @@ fun v k ->
-    as_unit v;
-    let i = ref 0 in
-    let next = local_func 0 1 @@ fun v k' ->
-        if !i = Array.length a then k' Null else
-          let v = Opt (a.(!i)) in incr i; k' v
-    in k (Obj (Env.singleton "next" next)) in
-
-  Env.from_list ["get", get; "set", set; "len", len; "keys", keys; "vals", vals]
-
-let obj_of_text t =
-  let chars = local_func 0 1 @@ fun v k ->
-    as_unit v;
-    let i = ref 0 in
-    let s = Wasm.Utf8.decode t in
-    let next = local_func 0 1 @@ fun v k' ->
-        if !i = List.length s then k' Null else
-          let v = Opt (Char (List.nth s !i)) in incr i; k' v
-    in k (Obj (Env.singleton "next" next)) in
-  let len = local_func 0 1 @@ fun v k ->
-    as_unit v; k (Int (Nat.of_int (List.length (Wasm.Utf8.decode t)))) in
-
-  Env.from_list ["chars", chars; "len", len]
-
-let as_obj = function Obj ve -> ve | Array a -> obj_of_array a | Text t -> obj_of_text t | _ -> invalid "as_obj"
+let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
@@ -325,6 +338,14 @@ let rec compare x1 x2 =
   if x1 == x2 then 0 else
   match x1, x2 with
   | Int n1, Int n2 -> Int.compare n1 n2
+  | Int8 n1, Int8 n2 -> Int_8.compare n1 n2
+  | Int16 n1, Int16 n2 -> Int_16.compare n1 n2
+  | Int32 n1, Int32 n2 -> Int_32.compare n1 n2
+  | Int64 n1, Int64 n2 -> Int_64.compare n1 n2
+  | Nat8 n1, Nat8 n2 -> Nat8.compare n1 n2
+  | Nat16 n1, Nat16 n2 -> Nat16.compare n1 n2
+  | Nat32 n1, Nat32 n2 -> Nat32.compare n1 n2
+  | Nat64 n1, Nat64 n2 -> Nat64.compare n1 n2
   | Opt v1, Opt v2 -> compare v1 v2
   | Tup vs1, Tup vs2 -> Lib.List.compare compare vs1 vs2
   | Array a1, Array a2 -> Lib.Array.compare compare a1 a2
@@ -363,6 +384,14 @@ let rec string_of_val_nullary d = function
   | Null -> "null"
   | Bool b -> if b then "true" else "false"
   | Int i -> Int.to_pretty_string i
+  | Int8 w -> Int_8.to_pretty_string w
+  | Int16 w -> Int_16.to_pretty_string w
+  | Int32 w -> Int_32.to_pretty_string w
+  | Int64 w -> Int_64.to_pretty_string w
+  | Nat8 w -> Nat8.to_pretty_string w
+  | Nat16 w -> Nat16.to_pretty_string w
+  | Nat32 w -> Nat32.to_pretty_string w
+  | Nat64 w -> Nat64.to_pretty_string w
   | Word8 w -> Word8.to_pretty_string w
   | Word16 w -> Word16.to_pretty_string w
   | Word32 w -> Word32.to_pretty_string w

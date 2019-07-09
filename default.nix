@@ -41,6 +41,8 @@ let real-dvm =
 let commonBuildInputs = [
   nixpkgs.ocaml
   nixpkgs.dune
+  nixpkgs.ocamlPackages.atdgen
+  nixpkgs.ocamlPackages.base
   nixpkgs.ocamlPackages.findlib
   nixpkgs.ocamlPackages.menhir
   nixpkgs.ocamlPackages.num
@@ -49,6 +51,8 @@ let commonBuildInputs = [
   ocaml_vlq
   nixpkgs.ocamlPackages.zarith
   nixpkgs.ocamlPackages.yojson
+  nixpkgs.ocamlPackages.ppxlib
+  nixpkgs.ocamlPackages.ppx_inline_test
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
   nixpkgs.ocamlPackages.ocaml-migrate-parsetree
@@ -156,6 +160,39 @@ rec {
     '';
   };
 
+  unit-tests = stdenv.mkDerivation {
+    name = "unit-tests";
+
+    src = subpath ./src;
+
+    buildInputs = commonBuildInputs;
+
+    buildPhase = ''
+      make DUNE_OPTS="--display=short" unit-tests
+    '';
+
+    installPhase = ''
+      touch $out
+    '';
+  };
+
+  as-ide = stdenv.mkDerivation {
+    name = "as-ide";
+
+    src = subpath ./src;
+
+    buildInputs = commonBuildInputs;
+
+    buildPhase = ''
+      make DUNE_OPTS="--display=short --profile release" as-ide
+    '';
+
+    installPhase = ''
+      mkdir -p $out/bin
+      cp --verbose --dereference as-ide $out/bin
+    '';
+  };
+
   samples = stdenv.mkDerivation {
     name = "samples";
     src = subpath ./samples;
@@ -257,9 +294,25 @@ rec {
     '';
   };
 
+  stdlib = stdenv.mkDerivation {
+    name = "stdlib";
+    src = subpath ./stdlib;
+    buildInputs = with nixpkgs;
+      [ bash ];
+    buildPhase = ''
+      patchShebangs .
+    '';
+    installPhase = ''
+      mkdir -p $out
+      tar -rf $out/stdlib.tar $src
+      mkdir -p $out/nix-support
+      echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
+    '';
+    forceShare = ["man"];
+  };
 
-  stdlib-reference = stdenv.mkDerivation {
-    name = "stdlib-reference";
+  stdlib-doc-live = stdenv.mkDerivation {
+    name = "stdlib-doc-live";
     src = subpath ./stdlib;
     buildInputs = with nixpkgs;
       [ pandoc bash python ];
@@ -272,6 +325,24 @@ rec {
       mv doc $out/
       mkdir -p $out/nix-support
       echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
+    '';
+    forceShare = ["man"];
+  };
+
+  stdlib-doc = stdenv.mkDerivation {
+    name = "stdlib-doc";
+    src = subpath ./stdlib;
+    buildInputs = with nixpkgs;
+      [ pandoc bash python ];
+    buildPhase = ''
+      patchShebangs .
+      make alldoc
+    '';
+    installPhase = ''
+      mkdir -p $out
+      tar -rf $out/stdlib-doc.tar doc
+      mkdir -p $out/nix-support
+      echo "report stdlib-doc $out/stdlib-doc.tar" >> $out/nix-support/hydra-build-products
     '';
     forceShare = ["man"];
   };
@@ -300,12 +371,16 @@ rec {
     name = "all-systems-go";
     constituents = [
       asc
+      as-ide
       js
       didc
       tests
+      unit-tests
       samples
       rts
-      stdlib-reference
+      stdlib
+      stdlib-doc
+      stdlib-doc-live
       produce-exchange
       users-guide
     ];

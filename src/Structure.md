@@ -27,65 +27,77 @@ for the real deal; some shortcuts had to be taken.
 
    Stuff that could be in the Ocaml standard library.
 
- * `lang-utils/` (asc, didc; using `lib/`)
+ * `lang_utils/` (asc, didc; using `lib/`)
 
    General PL-related utility-functions, useful for AS Source, AS IR, the IDL
    AST: Environments, diagnostic error messages, source locations.
 
- * `as-types/` (asc; using `lang-utils/`)
+ * `as_def/` (asc; using `lang_utils/`)
+
+   The ActorScript AST and pretty-printer.
+
+ * `as_types/` (asc; using `lang_utils/`)
 
    The ActorScript type definition, as used by both Source and IR. Includes
-   pretty-printer. Also includes the value definitions.
+   pretty-printer.
 
- * `as-values/` (asc; using `lang-utils/`)
+ * `as_values/` (asc; using `lang_utils/`)
 
    Value definitions, as used for literals, interpreter. Also includes
    operations on values and primitive operations.
 
- * `as-frontend/` (asc; using `lang-utils/`)
+ * `as_frontend/` (asc; using `lang_utils/` and `as_def`)
 
-   The ActorScript Source AST, including parser and type inference.
+   The ActorScript parser and type checker.
 
- * `as-ir/` (asc; using `lang-utils/`)
+ * `ir_def/` (asc; using `lang_utils/`)
 
    The ActorScript IR AST, including type checker and pretty-printer.
 
- * `lowering/` (asc; using `as-frontent/` and `as-ir/`)
+ * `lowering/` (asc; using `as_def/` and `ir_def/`)
 
    The IR to Source pass.
 
- * `ir-passes/` (asc; using `as-ir/`)
+ * `ir_passes/` (asc; using `as_def/`)
 
    The various IR to IR passes.
 
- * `wasm-exts/` (asc, as-ld; using `lib/`)
+ * `wasm_exts/` (asc, as-ld; using `lib/`)
 
    Extensions to the wasm library: Support for additional custom sections,
    including serialization and de-serialization.
 
- * `linking/` (asc, as-ld; using `wasm-exts/`)
+ * `linking/` (asc, as-ld; using `wasm_exts/`)
 
    Wasm linking code
 
- * `codegen/` (asc; using `as-ir/`, `linking/`)
+ * `codegen/` (asc; using `ir_def/`, `linking/`)
 
    The backend, including the instruction list generator.
 
- * `interpreter/` (asc; using `as-frontend/`)
+ * `interpreter/` (asc; using `as_def/`)
 
    Source interpreter.
 
- * `ir-interpreter/` (asc; using `as-ir/`)
+ * `ir_interpreter/` (asc; using `ir_def/`)
 
    IR interpreter.
 
- * `pipeline/` (asc; using `as-frontend/`, `lowering/`, `ir-passes/`, `codegen/`, `interpreter/`, `interpreter-ir/`)
+ * `pipeline/` (asc; using `as_frontend/`, `lowering/`, `ir_passes/`, `codegen/`, `as_interpreter/`, `ir_interpreter/`)
 
    The pipeline, prelude text and flags
 
  * `idllib/`
 
    Kitchen-sink of `didc` related files. Yet to be split up.
+
+ * `lsp/`
+
+   Language Server Protocol JSON mapping.
+
+ * `languageServer/`
+
+   The language server functionality itself.
 
 Executables
 -----------
@@ -97,6 +109,10 @@ actual functionality is easily shared.
  * `asc` (using `pipeline/`)
 
    The ActorScript compiler
+
+ * `as-ide` (using `languageServer/`)
+
+   The ActorScript language server
 
  * `as.js` (using `pipeline/`)
 

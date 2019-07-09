@@ -1,4 +1,4 @@
-open As_frontend
+open As_def
 
 module S : Set.S with type elt = String.t
 
