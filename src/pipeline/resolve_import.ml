@@ -43,8 +43,41 @@ type env = {
 open Syntax
 open Source
 
+let get_package_name_and_path (f: string) : (string * string) option =
+  (* loop recursively until we get to a 'self-loop', indicated by dirname '.' ;
+     in each iteration, we use function pair (dirname, basename)
+     to decompose the filename.
+   *)
+  let rec loop (f: string) (path_accum:string) : (string * string) option =
+    let (dir, base) = (Filename.dirname f, Filename.basename f) in
+    match dir with
+    | "." -> Some (f, path_accum)
+    | _   -> begin
+        assert ((Filename.concat dir base) = f) ;
+        loop dir (Filename.concat base path_accum)
+      end
+  in
+  loop f ""
+
+(* using env, resolve import strings of the form "package-name/mod1/mod2/item"
+   into the triple ("package-name", "package-url", "mod1/mod2/item") when the package name is defined.
+   Does not validate the package url or path.
+ *)
+let resolve_package env (f: string) : (string * string * string) option =
+  match get_package_name_and_path f with
+  | None -> None
+  | Some (name, path) ->
+    if M.mem name env.packages then
+      Some (name, M.find name env.packages, path)
+    else
+      None
 
 let resolve_import_string env region (f: string) (fp: string ref) =
+  let f =
+    match resolve_package env f with
+    | None -> f
+    | Some (_, url, path) -> Filename.concat url path
+  in
   let f =
     if Filename.is_relative f
     then Filename.concat env.base f
@@ -67,7 +100,7 @@ let resolve_import_string env region (f: string) (fp: string ref) =
       }
 
 (* compare to the `resolve_import_string`'s filesystem semantics;
-   the two resolution semantics agree for now,
+   the two import-string to filesystem-path resolution semantics agree for now,
    but other API details and usage are distinct.
  *)
 let resolve_package_url (msgs:Diag.msg_store) (base:filepath) (pname:string) (f: string) : string option =
