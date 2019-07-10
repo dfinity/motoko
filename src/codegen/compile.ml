@@ -1897,8 +1897,19 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ fast env)
       (get_a ^^ slow env)
 
-  let fits_unsigned_bits env _ = G.i Drop ^^ Bool.lit true
-  let fits_signed_bits env _ = G.i Drop ^^ Bool.lit true
+  let fits_unsigned_bits env n =
+    try_unbox I32Type
+      (fun _ -> match n with
+                | _ when n >= 31 -> G.i Drop ^^ Bool.lit true
+                | 30 -> compile_bitand_const 1l ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz))
+                | _ ->
+                  compile_bitand_const
+                    Int32.(logor 1l (shift_left minus_one (n + 2))) ^^
+                  G.i (Test (Wasm.Values.I32 I32Op.Eqz))^^G.i Unreachable)
+      (fun env -> Num.fits_unsigned_bits env n)
+      env
+
+  let fits_signed_bits env _ = G.i Drop ^^ Bool.lit true (*FIXME*)
 
   let compile_abs env =
     try_unbox I32Type
