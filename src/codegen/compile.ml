@@ -1897,8 +1897,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ fast env)
       (get_a ^^ slow env)
 
-  let fits_unsigned_bits env = assert false
-  let fits_signed_bits env = assert false
+  let fits_unsigned_bits env _ = G.i Drop ^^ Bool.lit true
+  let fits_signed_bits env _ = G.i Drop ^^ Bool.lit true
 
   let compile_abs env =
     try_unbox I32Type
