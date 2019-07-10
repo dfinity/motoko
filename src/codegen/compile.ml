@@ -371,6 +371,7 @@ let compile_divU_const = compile_op_const I32Op.DivU
 let compile_shrU_const = compile_op_const I32Op.ShrU
 let compile_shrS_const = compile_op_const I32Op.ShrS
 let compile_shl_const = compile_op_const I32Op.Shl
+let compile_rotr_const = compile_op_const I32Op.Rotr
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
   | 0l -> G.nop | n -> compile_op_const I32Op.Or n
@@ -1365,8 +1366,7 @@ module UnboxedSmallWord = struct
   (* Kernel for counting trailing zeros, according to the word invariant. *)
   let ctz_kernel ty =
     compile_word_padding ty ^^
-    compile_unboxed_const (shift_of_type ty) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Rotr)) ^^
+    compile_rotr_const (shift_of_type ty) ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
     msb_adjust ty
 
@@ -1681,8 +1681,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (* input right-padded with 0 *)
   let extend =
-    compile_unboxed_one ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Rotr))
+    compile_rotr_const 1l
 
   (* input right-padded with 0 *)
   let extend64 =
