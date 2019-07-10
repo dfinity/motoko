@@ -54,14 +54,15 @@ let match_package_name (f: string) : (string * string) option =
         loop dir (Filename.concat base path_accum)
       end
   in
-  let (prefix, suffix) = (
-      String.sub f 0 3,
-      String.sub f 3 ((String.length f) - 3)
-    )
-  in
-  match prefix with
-  | "as:" -> loop suffix ""
-  | _     -> None
+  if String.length f < 3 then None else
+    let (prefix, suffix) = (
+        String.sub f 0 3,
+        String.sub f 3 ((String.length f) - 3)
+      )
+    in
+    match prefix with
+    | "as:" -> loop suffix ""
+    | _     -> None
 
 (* using env, resolve import strings of the form "as:package-name/mod1/mod2/item"
    into the triple ("package-name", "package-url", "mod1/mod2/item") when the package name is defined.
