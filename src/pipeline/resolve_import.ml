@@ -38,7 +38,7 @@ type env = {
 open Syntax
 open Source
 
-(* match `f` against the URL pattern 'as:package-name/path',
+(* match `f` against the URL pattern 'as://package-name/path',
    optionally returning the package-name and path components as a pair of strings. *)
 let match_package_name (f: string) : (string * string) option =
   let rec loop (f: string) (path_accum:string) : (string * string) option =
@@ -54,15 +54,15 @@ let match_package_name (f: string) : (string * string) option =
         loop dir (Filename.concat base path_accum)
       end
   in
-  if String.length f < 3 then None else
+  if String.length f < 5 then None else
     let (prefix, suffix) = (
-        String.sub f 0 3,
-        String.sub f 3 ((String.length f) - 3)
+        String.sub f 0 5,
+        String.sub f 5 ((String.length f) - 5)
       )
     in
     match prefix with
-    | "as:" -> loop suffix ""
-    | _     -> None
+    | "as://" -> loop suffix ""
+    | _       -> None
 
 (* using env, resolve import strings of the form "as:package-name/mod1/mod2/item"
    into the triple ("package-name", "package-url", "mod1/mod2/item") when the package name is defined.
