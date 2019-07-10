@@ -6,6 +6,12 @@ open Source
 module Env = Typing.Env
 module TS = Set.Make(String)           
 
+type typ_info = {
+    var : string;
+    typ : typ;
+    is_rec : bool;
+  }
+          
 (* Gather type definitions from actor and sort the definitions in topological order *)              
 let chase_env env actor =
   let new_env = ref [] in
@@ -18,7 +24,7 @@ let chase_env env actor =
          seen := TS.add id.it !seen;
          let t = Env.find id.it env in
          chase t;
-         new_env := (id.it, t) :: !new_env;
+         new_env := {var = id.it; typ = t; is_rec = false} :: !new_env;
          end
     | ServT ms -> List.iter (fun m -> chase m.it.meth) ms
     | OptT t -> chase t
@@ -57,7 +63,7 @@ let infer_rec env_list =
   and go_fields fs =
     List.iter (fun (f:typ_field) -> go f.it.typ) fs
   in
-  List.iter (fun (x,t) -> go t; seen := TS.add x !seen) env_list;
+  List.iter (fun {var;typ;_} -> go typ; seen := TS.add var !seen) env_list;
   !recs
   
 let str ppf s = pp_print_string ppf s; pp_print_cut ppf ()
@@ -136,12 +142,20 @@ and pp_meth ppf meth =
   pp_typ ppf meth.it.meth;
   pp_close_box ppf ()
 
-let pp_dec ppf (x,t) =
+let pp_dec ppf {var;typ;is_rec} =
   pp_open_hovbox ppf 1;
-  kwd ppf "const";
-  kwd ppf x;
-  kwd ppf "=";
-  pp_typ ppf t;
+  if is_rec then begin
+      str ppf var;
+      str ppf ".fill(";
+      pp_typ ppf typ;
+      str ppf ")";
+    end
+  else begin
+      kwd ppf "const";
+      kwd ppf var;
+      kwd ppf "=";
+      pp_typ ppf typ;
+    end;
   pp_close_box ppf ();
   pp_print_cut ppf ()
 
@@ -174,6 +188,10 @@ let pp_prog ppf env prog =
   | Some actor ->
      let env_list = chase_env env actor in
      let recs = infer_rec env_list in
+     let env_list =
+       List.map (fun (e:typ_info) ->
+           if TS.mem e.var recs then {e with is_rec = true} else e)
+         env_list in
      pp_open_vbox ppf 0;
      TS.iter (pp_rec ppf) recs;
      List.iter (pp_dec ppf) env_list;

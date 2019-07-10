@@ -1,7 +1,7 @@
 const A = IDL.Rec()
 const C = A
 const B = IDL.Opt(C)
-const A = IDL.Opt(B)
+A.fill(IDL.Opt(B))
 const Z = A
 const Y = Z
 const X = Y
