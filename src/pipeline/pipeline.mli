@@ -12,7 +12,6 @@ sig
   val dump_tc : bool ref
   val dump_lowering : bool ref
   val check_ir : bool ref
-  val package_name_temp : string ref
   val package_urls : (string * string) list ref
   val profile : bool ref
   val profile_verbose : bool ref

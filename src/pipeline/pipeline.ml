@@ -24,7 +24,6 @@ module Flags = struct
   let dump_lowering = ref false
   let check_ir = ref true
   let package_urls : (string * string) list ref = ref []
-  let package_name_temp : string ref = ref "DEADBEEF"
   let profile = ref false
   let profile_verbose = ref false
   let profile_file = ref "profiling-counters.csv"
