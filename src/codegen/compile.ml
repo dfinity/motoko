@@ -2024,7 +2024,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let truncate_to_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
-    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+    BitTagged.if_unboxed env (ValBlockType (Some I64Type))
       begin
         get_a ^^ extend ^^ compile_unboxed_one ^^
         G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
