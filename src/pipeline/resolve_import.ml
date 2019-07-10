@@ -10,15 +10,6 @@ in the second, mutable field of the ImportE statement.
 
 It returns a list of all imported file names.
 
-
-SEARCH_PATH functionality
---------------------------
-- Uses `--package` CLI option
-- See Jira Ticket: https://dfinity.atlassian.net/browse/SDK-269
-- See also: `Pipeline.Flags.package_urls`, of type `(string * string) list ref`;
-    - Each key-value pair gives a package-name, package-URL pairing
-    - the URL can be interpreted as a filesystem path, for now.
-
 *)
 
 (* written as a functor so we can allocate some temporary shared state without making it global *)
@@ -28,8 +19,12 @@ type filepath = string
 module S = Set.Make(String)
 module M = Map.Make(String)
 
-(* type packages maps package names to package URLs (filenames):
-   e.g., packages("std") = "/Users/home/username/.dfinity-sdk/src/as-stdlib"
+(* a map of type package_map will map each package name to a(n optional) package URL,
+   which for now is just a filesystem path:
+
+   e.g.,
+   packages("std") = "/Users/home/username/.dfinity-sdk/src/as-stdlib/0.1.0/"
+   packages("foo") = "/Users/home/username/fooPackage/1.2.3/src"
 *)
 type package_map = string M.t
 
@@ -43,12 +38,14 @@ type env = {
 open Syntax
 open Source
 
-let get_package_name_and_path (f: string) : (string * string) option =
-  (* loop recursively until we get to a 'self-loop', indicated by dirname '.' ;
-     in each iteration, we use function pair (dirname, basename)
-     to decompose the filename.
-   *)
+(* match `f` against the URL pattern 'as:package-name/path',
+   optionally returning the package-name and path components as a pair of strings. *)
+let match_package_name (f: string) : (string * string) option =
   let rec loop (f: string) (path_accum:string) : (string * string) option =
+    (* loop recursively until we get to a 'self-loop', indicated by dirname '.' ;
+       in each iteration, we use function pair (dirname, basename)
+       to decompose the filename.
+     *)
     let (dir, base) = (Filename.dirname f, Filename.basename f) in
     match dir with
     | "." -> Some (f, path_accum)
@@ -57,14 +54,21 @@ let get_package_name_and_path (f: string) : (string * string) option =
         loop dir (Filename.concat base path_accum)
       end
   in
-  loop f ""
+  let (prefix, suffix) = (
+      String.sub f 0 3,
+      String.sub f 3 ((String.length f) - 3)
+    )
+  in
+  match prefix with
+  | "as:" -> loop suffix ""
+  | _     -> None
 
-(* using env, resolve import strings of the form "package-name/mod1/mod2/item"
+(* using env, resolve import strings of the form "as:package-name/mod1/mod2/item"
    into the triple ("package-name", "package-url", "mod1/mod2/item") when the package name is defined.
    Does not validate the package url or path.
  *)
 let resolve_package env (f: string) : (string * string * string) option =
-  match get_package_name_and_path f with
+  match match_package_name f with
   | None -> None
   | Some (name, path) ->
     if M.mem name env.packages then
@@ -99,7 +103,7 @@ let resolve_import_string env region (f: string) (fp: string ref) =
         text = Printf.sprintf "File \"%s\" does not exist" f
       }
 
-(* compare to the `resolve_import_string`'s filesystem semantics;
+(* compare to the filesystem semantics of function `resolve_import_string`:
    the two import-string to filesystem-path resolution semantics agree for now,
    but other API details and usage are distinct.
  *)

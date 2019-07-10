@@ -48,6 +48,5 @@ the reported messages contain an error.
 type msg_store
 val add_msg : msg_store -> message -> unit
 val add_msgs : msg_store -> messages -> unit
-val get_msgs : msg_store -> messages
 val with_message_store : (msg_store -> 'a option) -> 'a result
 
