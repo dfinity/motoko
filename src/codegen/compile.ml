@@ -1971,7 +1971,27 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
       env
 
-  let compile_store_to_data_buf_signed env = assert false
+  let compile_store_to_data_buf_signed env =
+    let set_x, get_x = new_local env "x" in
+    let set_buf, get_buf = new_local env "buf" in
+    set_x ^^ set_buf ^^
+    get_x ^^
+    try_unbox I32Type
+      (fun env ->
+        (* POSSIBLY sometime when we externalise SLEB128
+        extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 4l
+         *)
+        G.i Drop ^^
+        get_buf ^^
+        get_x ^^
+        extend64 ^^ compile_shrS64_const 1L ^^
+        G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 8l (* 64 bit for now *)
+      )
+      (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
+      env
 
   let compile_data_size_unsigned env =
     try_unbox I32Type
