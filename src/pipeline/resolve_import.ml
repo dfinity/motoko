@@ -91,6 +91,7 @@ let resolve_import_string env region (f: string) (fp: string ref) =
     if Sys.file_exists f && Sys.is_directory f
     then Filename.concat f "lib.as"
     else f in
+  let f = File_path.normalise f in
   if Sys.file_exists f
   then begin
       fp := f;
@@ -117,6 +118,7 @@ let resolve_package_url (msgs:Diag.msg_store) (base:filepath) (pname:string) (f:
     if Sys.file_exists f && Sys.is_directory f
     then Filename.concat f "lib.as"
     else f in
+  let f = File_path.normalise f in
   if Sys.file_exists f then
     Some f
   else

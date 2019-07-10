@@ -1,5 +1,5 @@
 module {
-private let P = (import "prelude.as");
+private import P "prelude.as";
 
 /**
 
