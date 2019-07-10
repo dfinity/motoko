@@ -1,7 +1,11 @@
-const A = IDL.Opt(B)
-const B = IDL.Opt(C)
+const A = IDL.Rec()
 const C = A
-const X = Y
-const Y = Z
+const B = IDL.Opt(C)
+const A = IDL.Opt(B)
 const Z = A
-
+const Y = Z
+const X = Y
+const S = new IDL.ActorInterface({
+ 'f':
+  IDL.message(IDL.Obj({'0': A, '1': B, '2': C, '3': X, '4': Y, '5': Z}),
+   IDL.Obj({}))})
