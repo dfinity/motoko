@@ -1,6 +1,7 @@
 module Fun =
 struct
   let id x = x
+  let flip f x y = f y x
 
   let curry f x y = f (x, y)
   let uncurry f (x, y) = f x y
@@ -44,7 +45,7 @@ struct
     else if i1 >= 0l && i2 < 0l then -1
     else Int32.compare i1 i2
 end
-  
+
 module String =
 struct
   let implode cs =
@@ -82,6 +83,10 @@ end
 
 module List =
 struct
+  let equal p xs ys =
+    List.length xs == List.length ys
+    || List.for_all2 p xs ys
+
   let rec make n x = make' n x []
   and make' n x xs =
     if n = 0 then xs else make' (n - 1) x (x::xs)
@@ -247,6 +252,12 @@ end
 
 module Option =
 struct
+  let equal p x y =
+    match x, y with
+    | Some x', Some y' -> p x' y'
+    | None, None -> true
+    | _, _ -> false
+
   let get o x =
     match o with
     | Some y -> y
@@ -259,6 +270,10 @@ struct
   let map f = function
     | Some x -> Some (f x)
     | None -> None
+
+  let iter f = function
+    | Some x -> f x
+    | None -> ()
 
   let app f = function
     | Some x -> f x

@@ -3,6 +3,7 @@
 module Fun :
 sig
   val id : 'a -> 'a
+  val flip : ('a -> 'b -> 'c) -> 'b -> 'a -> 'c
 
   val curry : ('a * 'b -> 'c) -> ('a -> 'b -> 'c)
   val uncurry : ('a -> 'b -> 'c) -> ('a * 'b -> 'c)
@@ -12,6 +13,7 @@ end
 
 module List :
 sig
+  val equal : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
   val make : int -> 'a -> 'a list
   val table : int -> (int -> 'a) -> 'a list
   val take : int -> 'a list -> 'a list (* raises Failure *)
@@ -68,10 +70,12 @@ end
 
 module Option :
 sig
+  val equal : ('a -> 'a -> bool) -> 'a option -> 'a option -> bool
   val get : 'a option -> 'a -> 'a
   val value : 'a option -> 'a
   val map : ('a -> 'b) -> 'a option -> 'b option
   val some : 'a -> 'a option
+  val iter : ('a -> unit) -> 'a option -> unit
   val app : ('a -> unit) -> 'a option -> unit
   val bind : 'a option -> ('a -> 'b option) -> 'b option
 end

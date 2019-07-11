@@ -180,7 +180,7 @@ let start () =
        let msgs = match result with
          | Error msgs' -> msgs'
          | Ok (_, msgs') -> msgs' in
-       Base.Option.iter !client_capabilities ~f:(fun _ ->
+       Lib.Fun.flip Lib.Option.iter !client_capabilities (fun _ ->
            (* TODO: determine if the client accepts diagnostics with related info *)
            (* let textDocument = capabilities.client_capabilities_textDocument in
            * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
