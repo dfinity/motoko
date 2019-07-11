@@ -84,7 +84,7 @@ end
 module List =
 struct
   let equal p xs ys =
-    List.length xs == List.length ys && List.for_all2 p xs ys
+    try List.for_all2 p xs ys with _ -> false
 
   let rec make n x = make' n x []
   and make' n x xs =
