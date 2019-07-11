@@ -557,8 +557,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_sleb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
-    E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [](*;
-    E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] []*)
+    E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] []
 
   let system_exports env =
     E.add_export env (nr {
@@ -1985,9 +1985,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        extend ^^ compile_shrU_const 1l ^^ set_x ^^ get_x ^^
+        extend ^^ compile_shrS_const 1l ^^ set_x ^^ get_x ^^
         get_buf ^^ E.call_import env "rts" "leb128_encode" ^^
-        compile_unboxed_const 26l ^^ get_x ^^
+        compile_unboxed_const 38l ^^ get_x ^^
         G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
         compile_divU_const 7l
@@ -2002,9 +2002,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        extend ^^ compile_shrU_const 1l ^^ set_x ^^ get_x ^^
-        get_buf ^^ E.call_import env "rts" "leb128_encode" ^^
-        compile_unboxed_const 26l ^^ get_x ^^
+        extend ^^ compile_shrS_const 1l ^^ set_x ^^ get_x ^^
+        get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
+        compile_unboxed_const 38l ^^ get_x ^^ (* TODO(gabor) use signed_dynamics *)
+        get_x ^^ compile_shl_const 1l ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
         G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
         compile_divU_const 7l
@@ -2013,10 +2015,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       env
 
   let compile_data_size_unsigned env =
-    let set_x, get_x = new_local env "x" in
     try_unbox I32Type
       (fun _ ->
-        set_x ^^ compile_unboxed_const 26l ^^ get_x ^^
+        let set_x, get_x = new_local env "x" in
+        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        compile_unboxed_const 38l ^^ get_x ^^
         G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
         compile_divU_const 7l
@@ -2025,10 +2028,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       env
 
   let compile_data_size_signed env =
-    let set_x, get_x = new_local env "x" in
     try_unbox I32Type
       (fun _ ->
-        set_x ^^ compile_unboxed_const 26l ^^ get_x ^^
+        let set_x, get_x = new_local env "x" in
+        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        compile_unboxed_const 38l ^^ get_x ^^ (* TODO(gabor) use signed_dynamics *)
+        get_x ^^ compile_shl_const 1l ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
         G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
         compile_divU_const 7l
