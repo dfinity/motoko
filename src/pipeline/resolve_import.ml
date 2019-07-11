@@ -39,20 +39,31 @@ open Syntax
 open Source
 
 (* match `f` against the URL pattern 'as://package-name/path',
-   optionally returning the package-name and path components as a pair of strings. *)
+   optionally returning the package-name and path components as a pair of strings.
+
+   e.g.,
+   match_package_name "as:std/list"    = Some("std", "list")
+   match_package_name "as:std/foo/bar" = Some("std", "foo/bar")
+   match_package_name "as:foo/bar"     = Some("foo", "bar")
+
+   match_package_name "as:"            = None
+   match_package_name "as:std"         = None
+   match_package_name "std/foo"        = None
+   match_package_name "std/foo/bar"    = None
+
+*)
 let match_package_name (f: string) : (string * string) option =
   let rec loop (f: string) (path_accum:string) : (string * string) option =
-    (* loop recursively until we get to a 'self-loop', indicated by dirname '.' ;
-       in each iteration, we use function pair (dirname, basename)
-       to decompose the filename.
-     *)
     let (dir, base) = (Filename.dirname f, Filename.basename f) in
     match dir with
-    | "." -> Some (f, path_accum)
-    | _   -> begin
-        assert ((Filename.concat dir base) = f) ;
-        loop dir (Filename.concat base path_accum)
-      end
+    | "." -> if path_accum = "" then None else Some (f, path_accum)
+    | _   ->
+      let path_accum =
+        match path_accum with
+        | "" -> base
+        | _  -> Filename.concat base path_accum
+      in
+      loop dir path_accum
   in
   if String.length f < 3 then None else
     let (prefix, suffix) = (
@@ -81,7 +92,7 @@ let resolve_import_string env region (f: string) (fp: string ref) =
   let f =
     match resolve_package env f with
     | None -> f
-    | Some (_, url, path) -> Filename.concat url path
+    | Some (_pname, url, path) -> Filename.concat url path
   in
   let f =
     if Filename.is_relative f
