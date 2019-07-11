@@ -1,5 +1,5 @@
 /**
- 
+
  Sets
  ========
 
@@ -17,9 +17,9 @@
    in the future, we might avoid this via https://dfinity.atlassian.net/browse/AST-32
 
 */
-
-let Trie = import "trie2.as";
-let Hash = import "hash.as";
+module {
+private import Trie "trie2.as";
+private import Hash "hash.as";
 
 type Hash = Hash.Hash;
 type Set<T> = Trie.Trie<T,()>;
@@ -75,3 +75,4 @@ type Set<T> = Trie.Trie<T,()>;
   };
 
   func unitEq (_:(),_:()):Bool{ true };
+}

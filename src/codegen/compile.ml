@@ -2376,7 +2376,7 @@ module Object = struct
     (* TODO: remove try once array and text accessors are separated *)
     try
       let _, fields = Type.as_obj_sub [s] obj_type in
-      Type.is_mut (Lib.Option.value (Type.lookup_val_field s fields))
+      Type.is_mut (Type.lookup_val_field s fields)
     with Invalid_argument _ -> false
 
   let idx env obj_type name =
