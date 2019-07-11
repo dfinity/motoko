@@ -1978,6 +1978,16 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     end ^^
     get_size
  
+  let compile_leb128_size get_x =
+    get_x ^^ G.if_ (ValBlockType (Some I32Type))
+      begin
+        compile_unboxed_const 38l ^^ get_x ^^
+        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+        compile_divU_const 7l
+      end
+      compile_unboxed_one
+
   let compile_store_to_data_buf_unsigned env =
     let set_x, get_x = new_local env "x" in
     let set_buf, get_buf = new_local env "buf" in
@@ -1987,10 +1997,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env ->
         extend ^^ compile_shrS_const 1l ^^ set_x ^^ get_x ^^
         get_buf ^^ E.call_import env "rts" "leb128_encode" ^^
-        compile_unboxed_const 38l ^^ get_x ^^
-        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-        compile_divU_const 7l
+        compile_leb128_size get_x
       )
       (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
       env
@@ -2019,10 +2026,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun _ ->
         let set_x, get_x = new_local env "x" in
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
-        compile_unboxed_const 38l ^^ get_x ^^
-        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-        compile_divU_const 7l
+        compile_leb128_size get_x
       )
       (fun env -> Num.compile_data_size_unsigned env)
       env
