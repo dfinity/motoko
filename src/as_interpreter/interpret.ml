@@ -737,7 +737,7 @@ and interpret_exp_fields env s fields ve (k : V.value V.cont) =
 
 and interpret_block env decs ro (k : V.value V.cont) =
   let ve = declare_decs decs V.Env.empty in
-  Lib.Option.app (fun r -> r := ve) ro;
+  Lib.Option.iter (fun r -> r := ve) ro;
   interpret_decs (adjoin_vals env ve) decs k
 
 

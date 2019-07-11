@@ -76,7 +76,6 @@ sig
   val map : ('a -> 'b) -> 'a option -> 'b option
   val some : 'a -> 'a option
   val iter : ('a -> unit) -> 'a option -> unit
-  val app : ('a -> unit) -> 'a option -> unit
   val bind : 'a option -> ('a -> 'b option) -> 'b option
 end
 

@@ -613,7 +613,7 @@ and match_pat_fields pfs vs ve : val_env option =
 
 and interpret_block env ro decs exp k =
   let ve = declare_decs decs V.Env.empty in
-  Lib.Option.app (fun r -> r := ve) ro;
+  Lib.Option.iter (fun r -> r := ve) ro;
   let env' = adjoin_vals env ve in
   interpret_decs env' decs (fun _ -> interpret_exp env' exp k)
 

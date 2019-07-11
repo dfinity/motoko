@@ -84,8 +84,7 @@ end
 module List =
 struct
   let equal p xs ys =
-    List.length xs == List.length ys
-    || List.for_all2 p xs ys
+    List.length xs == List.length ys && List.for_all2 p xs ys
 
   let rec make n x = make' n x []
   and make' n x xs =
@@ -272,10 +271,6 @@ struct
     | None -> None
 
   let iter f = function
-    | Some x -> f x
-    | None -> ()
-
-  let app f = function
     | Some x -> f x
     | None -> ()
 
