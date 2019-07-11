@@ -2004,10 +2004,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env ->
         extend ^^ compile_shrS_const 1l ^^ set_x ^^ get_x ^^
         get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
-        compile_unboxed_const 38l ^^ get_x ^^ (* TODO(gabor) use signed_dynamics *)
-        get_x ^^ compile_shl_const 1l ^^
+        compile_unboxed_const 38l ^^
+        get_x ^^ get_x ^^ compile_shl_const 1l ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^ (* TODO(gabor) use signed_dynamics *)
         G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
         compile_divU_const 7l
       )
@@ -2032,10 +2032,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun _ ->
         let set_x, get_x = new_local env "x" in
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
-        compile_unboxed_const 38l ^^ get_x ^^ (* TODO(gabor) use signed_dynamics *)
-        get_x ^^ compile_shl_const 1l ^^
+        compile_unboxed_const 38l ^^
+        get_x ^^ get_x ^^ compile_shl_const 1l ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^ (* TODO(gabor) use signed_dynamics *)
         G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
         compile_divU_const 7l
       )
@@ -2220,7 +2220,7 @@ end (* BigNumLibtommmath *)
 [@@@warning "+60"]
 
 (*module BigNum = BigNumLibtommmath*)
-module BigNum = MakeCompact(BigNum64)
+module BigNum = MakeCompact(BigNumLibtommmath)
 
 (* Primitive functions *)
 module Prim = struct
