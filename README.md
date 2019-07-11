@@ -205,7 +205,7 @@ A simple language for writing Dfinity actors.
 ## Example
 
 ```
-import List "as:list";
+import List "as:std/list";
 
 type Post = shared Text -> ();
 
