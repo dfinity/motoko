@@ -54,15 +54,15 @@ let match_package_name (f: string) : (string * string) option =
         loop dir (Filename.concat base path_accum)
       end
   in
-  if String.length f < 5 then None else
+  if String.length f < 3 then None else
     let (prefix, suffix) = (
-        String.sub f 0 5,
-        String.sub f 5 ((String.length f) - 5)
+        String.sub f 0 3,
+        String.sub f 3 ((String.length f) - 3)
       )
     in
     match prefix with
-    | "as://" -> loop suffix ""
-    | _       -> None
+    | "as:" -> loop suffix ""
+    | _     -> None
 
 (* using env, resolve import strings of the form "as:package-name/mod1/mod2/item"
    into the triple ("package-name", "package-url", "mod1/mod2/item") when the package name is defined.
@@ -106,17 +106,12 @@ let resolve_import_string env region (f: string) (fp: string ref) =
       }
 
 (* compare to the filesystem semantics of function `resolve_import_string`:
-   the two import-string to filesystem-path resolution semantics agree for now,
-   but other API details and usage are distinct.
+   the import-string to filesystem-path resolution semantics are related, but distinct.
  *)
 let resolve_package_url (msgs:Diag.msg_store) (base:filepath) (pname:string) (f: string) : string option =
   let f =
     if Filename.is_relative f
     then Filename.concat base f
-    else f in
-  let f =
-    if Sys.file_exists f && Sys.is_directory f
-    then Filename.concat f "lib.as"
     else f in
   let f = File_path.normalise f in
   if Sys.file_exists f then
