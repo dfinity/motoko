@@ -210,7 +210,7 @@ import List "as:std/list";
 type Post = shared Text -> ();
 
 actor class Server() = {
-  private var clients : List<Client> = null;
+  private var clients : List<Client> = List.empty<Client>();
 
   private func broadcast(msg : Text) {
     for (client in List.iter(clients)) {
