@@ -556,7 +556,9 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type]
+    E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
+    E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [](*;
+    E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] []*)
 
   let system_exports env =
     E.add_export env (nr {
@@ -1983,17 +1985,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        (* POSSIBLY sometime when we externalise LEB128
-        extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 4l
-         *)
-        G.i Drop ^^
-        get_buf ^^
-        get_x ^^
-        extend64 ^^ compile_shrS64_const 1L ^^
-        G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 8l (* 64 bit for now *)
+        extend ^^ compile_shrU_const 1l ^^ set_x ^^ get_x ^^
+        get_buf ^^ E.call_import env "rts" "leb128_encode" ^^
+        compile_unboxed_const 26l ^^ get_x ^^
+        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+        compile_divU_const 7l
       )
       (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
       env
@@ -2005,30 +2002,37 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        (* POSSIBLY sometime when we externalise SLEB128
-        extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 4l
-         *)
-        G.i Drop ^^
-        get_buf ^^
-        get_x ^^
-        extend64 ^^ compile_shrS64_const 1L ^^
-        G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
-        compile_unboxed_const 8l (* 64 bit for now *)
+        extend ^^ compile_shrU_const 1l ^^ set_x ^^ get_x ^^
+        get_buf ^^ E.call_import env "rts" "leb128_encode" ^^
+        compile_unboxed_const 26l ^^ get_x ^^
+        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+        compile_divU_const 7l
       )
       (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
 
   let compile_data_size_unsigned env =
+    let set_x, get_x = new_local env "x" in
     try_unbox I32Type
-      (fun _ -> G.i Drop ^^ compile_unboxed_const 8l) (* FIXME: this is a lie *)
+      (fun _ ->
+        set_x ^^ compile_unboxed_const 26l ^^ get_x ^^
+        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+        compile_divU_const 7l
+      )
       (fun env -> Num.compile_data_size_unsigned env)
       env
 
   let compile_data_size_signed env =
+    let set_x, get_x = new_local env "x" in
     try_unbox I32Type
-      (fun _ -> G.i Drop ^^ compile_unboxed_const 8l) (* FIXME: this is a lie *)
+      (fun _ ->
+        set_x ^^ compile_unboxed_const 26l ^^ get_x ^^
+        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+        compile_divU_const 7l
+      )
       (fun env -> Num.compile_data_size_unsigned env)
       env
 

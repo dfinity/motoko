@@ -450,7 +450,7 @@ void leb128_encode_go(mp_int *tmp, unsigned char *buf) {
   // now the number should be positive
   if (mp_isneg(tmp)) bigint_trap();
   while (true) {
-    buf[0] = (char)(mp_get_int(tmp)); // get low bits
+    buf[0] = (unsigned char)(mp_get_int(tmp)); // get low bits
     CHECK(mp_div_2d(tmp, 7, tmp, NULL));
     if (mp_iszero(tmp)) {
       // we are done. high bit should be cleared anyways
@@ -459,6 +459,20 @@ void leb128_encode_go(mp_int *tmp, unsigned char *buf) {
       // more bytes to come, set high bit and continue
       buf[0] |= 1<<7;
       buf++;
+    }
+  }
+}
+
+export void leb128_encode(unsigned n, unsigned char *buf) {
+  while (true) {
+    buf[0] = (unsigned char)n; // get low bits
+    if (n >>= 7) {
+      // more bytes to come, set high bit and continue
+      buf[0] |= 1<<7;
+      buf++;
+    } else {
+      // we are done. high bit should be cleared anyway
+      return;
     }
   }
 }
