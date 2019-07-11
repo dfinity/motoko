@@ -212,7 +212,7 @@ type Post = shared Text -> ();
 actor class Server() = {
   private var clients : List<Client> = null;
 
-  private shared broadcast(msg : Text) {
+  private func broadcast(msg : Text) {
     for (client in List.iter(clients)) {
       client.send(msg);
     };
