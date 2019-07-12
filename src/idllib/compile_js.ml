@@ -107,7 +107,7 @@ let rec pp_typ ppf t =
   | OptT t -> str ppf "IDL.Opt("; pp_typ ppf t; str ppf ")";
   | VariantT ts -> str ppf "IDL.Variant({"; concat ppf pp_field "," ts; str ppf "})";
   | FuncT (ms, t1, t2) ->
-     str ppf "IDL.message(";
+     str ppf "IDL.Message(";
      pp_fields ppf t1;
      kwd ppf ",";
      pp_fields ppf t2;
@@ -182,6 +182,11 @@ let pp_actor ppf actor =
   );
   pp_close_box ppf ()
 
+let pp_header ppf () =
+  pp_open_vbox ppf 0;
+  str ppf "const IDL = require('./IDL')";
+  pp_close_box ppf ()
+  
 let pp_prog ppf env prog =
   match prog.it.actor with
   | None -> ()
@@ -192,6 +197,7 @@ let pp_prog ppf env prog =
        List.map (fun (e:typ_info) ->
            if TS.mem e.var recs then {e with is_rec = true} else e)
          env_list in
+     pp_header ppf ();
      pp_open_vbox ppf 0;
      TS.iter (pp_rec ppf) recs;
      List.iter (pp_dec ppf) env_list;
