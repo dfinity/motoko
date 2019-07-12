@@ -1926,7 +1926,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
                        compile_bitand_const
                          Int32.(shift_left minus_one n) ^^
                        G.i (Test (Wasm.Values.I32 I32Op.Eqz)))
-      (fun env -> Num.fits_unsigned_bits env n)
+      (fun env -> Num.fits_signed_bits env n)
       env
 
   let compile_abs env =
