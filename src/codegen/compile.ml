@@ -901,6 +901,14 @@ module BitTagged = struct
     ) ^^
     G.if_ retty is1 is2
 
+  (* With two bit-tagged pointers on the stack, decide
+     whether both are scalars and invoke is1 (the fast path)
+     if so, and otherwise is2 (the slow path).
+  *)
+  let if_both_unboxed env retty is1 is2 =
+    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    if_unboxed env retty is1 is2
+
   (* The untag_scalar and tag functions expect 64 bit numbers *)
   let untag_scalar env =
     compile_shrU_const scalar_shift ^^
@@ -1648,7 +1656,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
        ┌──────────┬───┬──────┐
        │ mantissa │ 0 │ sign │  = i32
        └──────────┴───┴──────┘
-     The 2nd LSB makes unboxed bignums distinguishable from boxed ones,
+     The 2nd LSBit makes unboxed bignums distinguishable from boxed ones,
      which are always skewed pointers.
 
      By a right rotation one obtains the signed (right-zero-padded) representation,
@@ -1744,8 +1752,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_res, get_res = new_local env "res" in
     let set_res64, get_res64 = new_local64 env "res64" in
     set_b ^^ set_a ^^
-    get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+    get_a ^^ get_b ^^
+    BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
       begin
         get_a ^^ extend64 ^^
         get_b ^^ extend64 ^^
@@ -1794,8 +1802,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_b64, get_b64 = new_local64 env "b64" in
     let set_res64, get_res64 = new_local64 env "res64" in
     set_b ^^ set_a ^^
-    get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+    get_a ^^ get_b ^^
+    BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
       begin
         (* estimate bitcount of result: `bits(a) * b <= 65` guarantees
            the absence of overflow in 64-bit arithmetic *)
@@ -1867,8 +1875,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     let set_b, get_b = new_local env "b" in
     set_b ^^ set_a ^^
-    get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+    get_a ^^ get_b ^^
+    BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
       begin
         get_a ^^ extend64 ^^
         get_b ^^ extend64 ^^
