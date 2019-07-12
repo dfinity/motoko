@@ -79,6 +79,26 @@ struct
       Some i
     else
       find_from_opt f s (i + 1)
+
+  let chop_prefix prefix s =
+    let prefix_len = String.length prefix in
+    let s_len = String.length s in
+    if s_len < prefix_len then
+      None
+    else if String.sub s 0 prefix_len = prefix then
+      Some (String.sub s prefix_len (s_len - prefix_len))
+    else
+      None
+
+  let chop_suffix suffix s =
+    let suffix_len = String.length suffix in
+    let s_len = String.length s in
+    if s_len < suffix_len then
+      None
+    else if String.sub s (s_len - suffix_len) suffix_len = suffix then
+      Some (String.sub s 0 (s_len - suffix_len))
+    else
+      None
 end
 
 module List =
@@ -279,6 +299,12 @@ struct
   let bind x f = match x with
     | Some x -> f x
     | None -> None
+
+  let is_some = function
+    | Some _ -> true
+    | None -> false
+
+  let is_none x = not (is_some x)
 end
 
 module Promise =

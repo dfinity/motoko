@@ -90,13 +90,13 @@ let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
 
 let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
 let file_from_uri logger uri =
-  match Base.String.chop_prefix ~prefix:file_uri_prefix uri with
+  match Lib.String.chop_prefix file_uri_prefix uri with
    | Some file -> file
    | None ->
       let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
       uri
 let abs_file_from_uri logger uri =
-  match Base.String.chop_prefix ~prefix:"file://" uri with
+  match Lib.String.chop_prefix "file://" uri with
    | Some file -> file
    | None ->
       let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
