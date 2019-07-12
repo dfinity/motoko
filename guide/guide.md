@@ -328,7 +328,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
 ```
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
-  (shared|actor)? { <typ-field>;* }             object
+  actor? { <typ-field>;* }                      object
   [ var? <typ> ]                                array
   Null                                          null type
   ? <typ>                                       option
@@ -436,15 +436,11 @@ representation is applied.
 
 ## Object types
 
-`(shared|actor)? { <typ-field>;* }` specifies an object type by listing its zero or more named *type fields*.
+`actor? { <typ-field>;* }` specifies an object type by listing its zero or more named *type fields*.
 
 Within an object type, the names of fields must be distinct.
 
 Object types that differ only in the ordering of the fields are equivalent.
-
-The optional qualifier `shared` constrains the object's field to have *sharable* type.
-
-Messages (see below) always requires arguments of *sharable* (think *serializable*) type.
 
 The optional qualifier `actor` constrains the object's fields to be *shared* functions (i.e. messages).
 
@@ -495,10 +491,6 @@ Type `None` is the *bottom* type, a subtype of all other types.
 No value has type `None`.
 
 As an empty type, `None` can be used to specify the impossible return value of an infinite loop or unconditional trap.
-
-## Shared type
-
-Type `Shared`  is the super-type of all types that can be transmitted between actors (i.e. sent or received) as the arguments or return values of `shared` functions.
 
 
 ## Parenthesised type
@@ -569,16 +561,15 @@ type parameter.
 
 ## Well-formed types
 
-A type `T` is well-formed only if (recursively) its constituent types are well-formed,and:
+A type `T` is well-formed only if (recursively) its constituent types are well-formed, and:
 
-* if `T` is `async U` then `U <: Shared`, and
-* if `T` is `shared < ... > V -> W` then `...` is empty, `U <: Shared` and
-  `W == ()` or `W == async W`, and
+* if `T` is `async U` then `U` is shared, and
+* if `T` is `shared < ... > V -> W` then `...` is empty, `U` is shared and
+  `W == ()` or `W == async W'`, and
 * if `T` is `C<T0, ..., TN>` where:
   * a declaration `type C<X0 <: U0, Xn <: Un>  = ...` is in scope, and
   * `Ti <: Ui[ T0/X0, ..., Tn/Xn ]`, for each `0 <= i <= n`.
 * if `T` is `actor { ... }` then all fields in `...` are immutable and have `shared` function type.
-* if `T` is `shared { ... }` then all fields in `...` are immutable and have a type that subtypes `Shared`.
 
 ## Subtyping
 
@@ -631,16 +622,19 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 * For some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
-* `U` is type `Shared` and `T` is equivalent to:
-  * a `shared` function type, or
-  * a `shared` object type, or
-  * a `actor` object type, or
-  * a scalar primitive type, or
-  * the type `Text`, or
-  * an immutable array type `[V]` with `V <: Shared`, or
-  * the type `Null`, or
-  * an option type `? V` with `V <: Shared`, or
-  * a tuple type `(T0, ..., Tn)` where, for each `0 <= i <= n`, `Ti <: Shared`.
+## Sharablitiy
+
+A type `T` is *shared* if it is
+* a `shared` function type, or
+* an object type where all fields are non-`var` and have shared type, or
+* an `actor` object type, or
+* a scalar primitive type, or
+* the type `Text`, or
+* an immutable array type `[V]` where `V` is shared, or
+* the type `Null`, or
+* an option type `? V` where `V` is shared, or
+* a tuple type `(T0, ..., Tn)` where, for each `0 <= i <= n`, `Ti` is shared.
+
 
 # Literals
 
@@ -980,7 +974,7 @@ Otherwise, `r2` is false and the result is `()`.
 
 The for expression `for ( <pat> in <exp1> ) <exp2>` has type `()` provided:
 
-* `<exp1>` has type `(object|shared) { Next : () -> ?T; }`;
+* `<exp1>` has type `{ next : () -> ?T; }`;
 * pattern `<pat>` has type `U`; and,
 * expression `<exp2>` has type `()` (in the environment extended with `<pat>`'s bindings).
 
@@ -990,19 +984,18 @@ The `for`-expression is syntactic sugar for
 for ( <pat> in <exp1> ) <exp2> :=
   {
     let x = <exp1>;
-    label l
-    loop {
-      switch (x.Next()) {
+    label l loop {
+      switch (x.next()) {
         case (? <pat>) <exp2>;
         case (null) break l;
-      };
-    };
-  };
+      }
+    }
+  }
 ```
 
 where `x` is fresh identifier.
 
-In particular, the `for` loops will trap if evaluation of `<exp1>` traps; as soon as some value of `x.Next()` traps or the value of `x.Next()` does not match pattern `<pat>`.
+In particular, the `for` loops will trap if evaluation of `<exp1>` traps; as soon as some value of `x.next()` traps or the value of `x.next()` does not match pattern `<pat>`.
 
 
 _TBR: do we want this semantics? We could, instead, skip values that don't match `<pat>`?_
@@ -1066,7 +1059,7 @@ TBR async traps?
 The async expression `async <exp>` has type `async T` provided:
 
 * `<exp>` has type `T`;
-* `T <: Shared`.
+* `T` is shared.
 
 Any control-flow label in scope for `async <exp>` is not in scope for `<exp>` (that `<exp>` may declare its own, local, labels.
 
@@ -1082,8 +1075,8 @@ Evaluation of `async <exp>` queues a message to evaluate `<exp>` in the nearest 
 The `await` expression `await <exp>` has type `T` provided:
 
 * `<exp>` has type `async T`,
-* `T <: Shared`.
-* the `await` is explicitly enclosed by an `async`-expression or its nearest enclosing function is `shared`.
+* `T` is shared,
+* the `await` is explicitly enclosed by an `async`-expression.
 
 `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r1` is a promise. If the promise is complete with value `v`, then `await <exp>` evaluates to value `v`. If the `promise` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `promise`. Execution of the suspension is resumed once the promise is completed (if ever).
 
@@ -1193,7 +1186,7 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
   <exp>                                                           expression
   let <pat> = <exp>                                               immutable
   var <id> (: <typ>)? = <exp>                                     mutable
-  (new|object|actor|shared) <id>? =? { <exp-field>;* }            object
+  (new|object|actor) <id>? =? { <exp-field>;* }                   object
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>      function
   type <id> <typ-params>? = <typ>                                 type
   obj_sort? class <id> <typ-params>? <pat> =?  { <exp-field>;* }` class
@@ -1257,9 +1250,9 @@ In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-
 
 ## Object Declaration
 
-Declaration `(new|object|actor|shared) <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp_field>;*`.
+Declaration `(new|object|actor) <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp_field>;*`.
 
-The qualifier `new|object|actor|shared` specifies the *sort* of the object's type (`new` is equivalent to `object`). The sort imposes restrictions on the types of the non-private object fields and the sharability of the object itself.
+The qualifier `new|object|actor` specifies the *sort* of the object's type (`new` is equivalent to `object`). The sort imposes restrictions on the types of the non-private object fields.
 
 Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
 Let `<dec>;*` be the sequence of declarations in `<exp_field>;*`.
@@ -1276,11 +1269,8 @@ Note that requirement 1. imposes further constraints on the fields type of `T`.
 In particular:
 
 * if the sort is `actor` then all non-private fields must be non-`var` (immutable)     `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
-* if the sort is `shared` then all non-private field must be non-`var` (immutable)     and of a type that is sharable (`T(idi) <: Shared`). Shared objects can be sent
-  as arguments to `shared` functions or returned as the result of a `shared`
-  function (wrapped in a promise).
 
-Evaluation of `(new|object|actor|shared) <id>? =? { <exp-field>;* }` proceeds by
+Evaluation of `(new|object|actor) <id>? =? { <exp-field>;* }` proceeds by
 evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
 Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`.
 let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`.
@@ -1322,7 +1312,7 @@ where:
 * `<typ-field>;*` is the set of non-`private` field types inferred from `<exp_field;*>`.
 * `<id_this>?` is the optional `this` parameter of the object instance.
 
-_TBR can we delete `new'?_
+_TBR can we delete `new`?_
 
 ## Expression Fields
 
