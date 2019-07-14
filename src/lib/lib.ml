@@ -300,11 +300,9 @@ struct
     | Some x -> f x
     | None -> None
 
-  let is_some = function
-    | Some _ -> true
-    | None -> false
+  let is_some x = x <> None
 
-  let is_none x = not (is_some x)
+  let is_none x = x = None
 end
 
 module Promise =
