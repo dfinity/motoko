@@ -98,7 +98,7 @@ let share_expfield (ef : exp_field) =
 %token AWAIT ASYNC BREAK CASE CONTINUE LABEL
 %token IF IN ELSE SWITCH LOOP WHILE FOR RETURN
 %token ARROW ASSIGN
-%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC SHARED NEW
+%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED NEW
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
 %token IMPORT MODULE
@@ -478,10 +478,6 @@ case :
   | CASE p=pat_nullary e=exp
     { {pat = p; exp = e} @@ at $sloc }
 
-%inline public_opt :
-  | (* empty *) { Private @@ no_region }
-  | PUBLIC { Public @@ no_region }
-
 exp_field :
   | x=id EQ e=exp_nonvar
     { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
@@ -491,8 +487,13 @@ exp_field :
       {dec = d; vis = Public @@ x.at} @@ at $sloc }
 
 dec_field :
-  | v=public_opt d=dec
+  | v=vis d=dec
     { {dec = d; vis = v} @@ at $sloc }
+
+vis :
+  | (* empty *) { Private @@ no_region }
+  | PRIVATE { Private @@ at $sloc }
+  | PUBLIC { Public @@ at $sloc }
 
 
 (* Patterns *)

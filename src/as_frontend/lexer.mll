@@ -209,6 +209,7 @@ rule token mode = parse
   | "or" { OR }
   | "let" { LET }
   | "loop" { LOOP }
+  | "private" { PRIVATE }
   | "public" { PUBLIC }
   | "return" { RETURN }
   | "shared" { SHARED }

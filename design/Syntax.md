@@ -121,7 +121,7 @@ Productions marked * probably deferred to later versions.
   import <id>? =? <text>                                      import
 
 <dec-field> ::=                                          object declaration fields
-  public? dec                                                 field
+  (public|private)? dec                                       field
 ```
 
 ## Programs
