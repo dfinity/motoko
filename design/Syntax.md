@@ -86,7 +86,6 @@ Productions marked * probably deferred to later versions.
 
 <exp-field> ::=                                object expression fields
   var? <id> = <exp>                              field
-  <id> <typ-params>? <pat> (: <typ>)? =? <exp>   short-hand
 ```
 
 ## Patterns

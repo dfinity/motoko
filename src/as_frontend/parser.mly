@@ -489,9 +489,6 @@ exp_field :
   | VAR x=id EQ e=exp_nonvar
     { let d = VarD(x, e) @? at $sloc in
       {dec = d; vis = Public @@ x.at} @@ at $sloc }
-  | s=func_sort_opt x=id fe=func_exp
-    { let d = LetD(VarP(x) @! x.at, fe s x.it) @? at $sloc in
-      {dec = d; vis = Public @@ x.at} @@ at $sloc }
 
 dec_field :
   | v=public_opt d=dec
