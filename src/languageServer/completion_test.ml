@@ -1,6 +1,6 @@
 let extract_cursor input =
   let cursor_pos = ref (0, 0) in
-  Base.String.split_lines input
+  String.split_on_char '\n' input
   |> List.mapi
        (fun line_num line ->
          match String.index_opt line '|' with
@@ -20,7 +20,7 @@ let prefix_test_case file expected =
   let (file, (line, column)) = extract_cursor file in
   let prefix =
     Completion.find_completion_prefix dummy_logger file line column in
-  Base.Option.equal String.equal prefix expected
+  Lib.Option.equal String.equal prefix expected
 
 let import_relative_test_case root module_path import expected =
   let actual =
@@ -28,14 +28,12 @@ let import_relative_test_case root module_path import expected =
   let show = function
     | None -> "None"
     | Some s -> "Some " ^ s in
-    if Base.Option.equal Base.String.equal actual expected
-    then true
-    else
-      (Printf.printf
-         "\nExpected: %s\nActual:   %s\n"
-         (show expected)
-         (show actual);
-       false)
+  Lib.Option.equal String.equal actual expected ||
+    (Printf.printf
+       "\nExpected: %s\nActual:   %s\n"
+       (show expected)
+       (show actual);
+     false)
 
 let parse_module_header_test_case project_root current_file file expected =
   let actual =
@@ -43,11 +41,11 @@ let parse_module_header_test_case project_root current_file file expected =
       project_root
       current_file file in
   let display_result (alias, path) = Printf.sprintf "%s => \"%s\"" alias path in
-  let result = Base.List.equal
+  let result = Lib.List.equal
+    (fun (x, y) (x', y') ->
+      String.equal x x' && String.equal y y')
     actual
-    expected
-    ~equal:(fun (x, y) (x', y') ->
-      String.equal x x' && String.equal y y' ) in
+    expected in
   if not result then
     Printf.printf
       "\nExpected: %s\nActual:   %s"

@@ -31,7 +31,7 @@ let update_file did_change_params =
     did_change_params.Lsp_t.text_document_did_change_params_contentChanges
     |> (* TODO(Christoph): This needs to change once we allow
           incremental file updates*)
-      Base.Fn.flip List.nth 0
+      Lib.Fun.flip List.nth 0
   in
   let new_content = change_event.Lsp_t.text_document_content_change_event_text in
   let uri =
