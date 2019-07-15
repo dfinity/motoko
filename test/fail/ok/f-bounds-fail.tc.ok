@@ -2,7 +2,7 @@ f-bounds-fail.as:13.42-13.43: type error, type argument
   A/10
 does not match parameter bound
   C
-f-bounds-fail.as:14.43-14.44: type error, type argument
+f-bounds-fail.as:14.42-14.43: type error, type argument
   A/11
 does not match parameter bound
   C/1
@@ -22,7 +22,7 @@ f-bounds-fail.as:10.52-10.53: type error, expression of type
   A/20
 cannot produce expected type
   C/7
-f-bounds-fail.as:11.53-11.54: type error, expression of type
+f-bounds-fail.as:11.52-11.53: type error, expression of type
   A/21
 cannot produce expected type
   C/8
