@@ -4658,7 +4658,7 @@ let powInt64_shortcut fast env get_a get_b slow =
     end
 
 
-(* kernel for Intt64 arithmetic, invokes estimator for fast path *)
+(* kernel for Int64 arithmetic, invokes estimator for fast path *)
 let compile_Int64_kernel env name op shortcut =
   Func.share_code2 env (UnboxedSmallWord.name_of_type Type.Int64 name)
     (("a", I64Type), ("b", I64Type)) [I64Type]
