@@ -84,7 +84,7 @@ type BulkResp = {
 } ;
 
 
-type UserAddReq = shared {
+type UserAddReq = new {
   user_name: Text;
   public_key: Text;
   description: Text;
@@ -100,7 +100,7 @@ type UserAddReq = shared {
  ----------------
  Note: The `RouteInfo` type contains too much information about truck types to use here in place of this type.
  */
-type RouteAddReq = shared {
+type RouteAddReq = new {
   id : T.RouteId;
   transporter : T.TransporterId;
   truck_type : T.TruckTypeId;

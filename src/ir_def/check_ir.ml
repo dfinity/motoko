@@ -114,7 +114,7 @@ let check_shared env at t =
   if env.flavor.Ir.serialized
   then check env at (T.is_serialized t)
     "message argument is not serialized:\n  %s" (T.string_of_typ_expand t)
-  else check env at (T.sub t T.Shared)
+  else check env at (T.shared t)
     "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
 
 let check_concrete env at t =
@@ -137,7 +137,6 @@ let rec check_typ env typ : unit =
     end
   | T.Any -> ()
   | T.Non -> ()
-  | T.Shared -> ()
   | T.Prim _ -> ()
   | T.Array typ ->
     check_typ env typ
@@ -159,12 +158,13 @@ let rec check_typ env typ : unit =
         error env no_region "promising function with non-async result type \n  %s"
           (T.string_of_typ_expand t2)
     end;
-    if sort = T.Sharable then begin
+    if sort = T.Shared then begin
       List.iter (fun t -> check_shared env no_region t) ts1;
       match ts2 with
       | [] -> ()
       | [T.Async t2] ->
-        check_sub env' no_region t2 T.Shared;
+        check env' no_region (T.shared t2)
+          "message result is not sharable:\n  %s" (T.string_of_typ_expand t2)
       | _ -> error env no_region "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
     end
@@ -189,7 +189,11 @@ let rec check_typ env typ : unit =
     check env no_region env.flavor.Ir.serialized
       "Serialized in non-serialized flavor";
     check_typ env typ;
-    check_sub env no_region typ T.Shared
+    (* TODO: we cannot currently express abstract shared types,
+       so @serialize is a hack *)
+    (*check env no_region (T.shared typ)
+     *  "serialized type is not sharable:\n  %s" (T.string_of_typ_expand typ)
+     *)
   | T.Typ c ->
     check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
 
@@ -214,8 +218,8 @@ and check_typ_field env s typ_field : unit =
       (s <> Some T.Actor || T.is_func (T.promote typ))
       "actor field has non-function type";
     check env no_region
-      ((s <> Some T.Actor && s <> Some (T.Object T.Sharable)) || T.sub typ T.Shared)
-      "shared object or actor field has non-shared type"
+      (s <> Some T.Actor || T.shared typ)
+      "actor field has non-shared type"
   end
 
 and check_typ_binds env typ_binds : T.con list * con_env =
@@ -406,7 +410,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     let t_arg = T.open_ insts t2 in
     let t_ret = T.open_ insts t3 in
-    if (call_conv.Call_conv.sort = T.Sharable) then begin
+    if (call_conv.Call_conv.sort = T.Shared) then begin
       check_concrete env exp.at t_arg;
       check_concrete env exp.at t_ret;
     end;
@@ -470,7 +474,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env' =
       {env with labs = T.Env.empty; rets = Some t1; async = true} in
     check_exp env' exp1;
-    t1 <: T.Shared;
+    t1 <: T.Any;
     T.Async t1 <: t
   | AwaitE exp1 ->
     check env.flavor.has_await "await in non-await flavor";
@@ -514,17 +518,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
-    check ((cc.Call_conv.sort = T.Sharable && Type.is_async (T.seq ret_tys))
+    check ((cc.Call_conv.sort = T.Shared && Type.is_async (T.seq ret_tys))
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
-    if (cc.Call_conv.sort = T.Sharable) then List.iter (check_concrete env exp.at) ret_tys;
+    if (cc.Call_conv.sort = T.Shared) then List.iter (check_concrete env exp.at) ret_tys;
     let env'' =
       {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) (T.seq ret_tys);
     (* Now construct the function type and compare with the annotation *)
     let ts1 = List.map (fun a -> a.note) args in
-    if (cc.Call_conv.sort = T.Sharable) then List.iter (check_concrete env exp.at) ts1;
+    if (cc.Call_conv.sort = T.Shared) then List.iter (check_concrete env exp.at) ts1;
     let fun_ty = T.Func
       ( cc.Call_conv.sort, cc.Call_conv.control
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
@@ -682,8 +686,8 @@ and type_exp_field env s f : T.field =
   if not (T.is_typ t) then begin
     check env f.at ((s = T.Actor) ==> T.is_func t)
       "public actor field is not a function";
-    check env f.at ((s <> T.Object T.Local && s <> T.Module) ==> T.sub t T.Shared)
-      "public shared object or actor field has non-shared type";
+    check env f.at ((s = T.Actor) ==> T.shared t)
+      "public actor field has non-shared type";
   end;
   T.{lab = name; typ = t}
 

@@ -113,7 +113,7 @@ Productions marked * probably deferred to later versions.
   <exp>                                                       expression
   let <pat> = <exp>                                           immutable
   var <id> (: <typ>)? = <exp>                                 mutable
-  (new|object|actor|shared) <id>? =? { <exp-field>;* }        object
+  (new|object|actor) <id>? =? { <exp-field>;* }               object
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>  function
   type <id> <typ-params>? = <typ>                             type
   actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class

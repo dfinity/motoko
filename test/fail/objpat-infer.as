@@ -1,10 +1,10 @@
 // checks
 
-ignore (switch (shared {}) { case {a} 42 });
+ignore (switch (object {}) { case {a} 42 });
 
 // checks
 
-for ({} in [shared {}].vals()) { print "hey" };
+for ({} in [object {}].vals()) { print "hey" };
 
 // infers
 
@@ -12,12 +12,12 @@ func foo ({}) : Int = 42;
 
 // infers
 
-shared func baz ({}) : Int = 42;
+shared func baz (a : actor {}) : async Int { 42 };
 
 // call it
 
 ignore (foo (new {}));
-ignore (foo (shared {}));
+ignore (foo (object {}));
 ignore (foo (actor {}));
 
 let a = actor { bar ({}) : async Nat = async 25 };
@@ -25,9 +25,9 @@ ignore (foo a);
 
 
 ignore (baz (new {}));
-ignore (baz (shared {}));
+ignore (baz (object {}));
 ignore (baz (actor {}));
 
 ignore (a.bar (new {}));
-ignore (a.bar (shared {}));
+ignore (a.bar (object {}));
 ignore (a.bar (actor {}));
