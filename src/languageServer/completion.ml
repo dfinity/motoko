@@ -51,7 +51,9 @@ let make_index (): completion_index =
     (fun path ty acc ->
       Index.add
         path
-        (ty |> read_single_module_lib |> Base.Option.value ~default:[])
+        (ty
+         |> read_single_module_lib
+         |> Lib.Fun.flip Lib.Option.get [])
         acc)
     scope.Scope.lib_env
     Index.empty
@@ -71,7 +73,7 @@ let import_relative_to_project_root root module_path dependency =
   | Some root_to_module ->
      root_to_module
      |> Filename.dirname
-     |> Base.Fn.flip Filename.concat dependency
+     |> Lib.Fun.flip Filename.concat dependency
      |> Pipeline__.File_path.normalise
      |> Lib.Option.some
 
@@ -148,7 +150,7 @@ let completions (* index *) logger project_root file_path file_contents line col
      let index_keys =
        Index.bindings index
        |> List.map fst
-       |> string_of_list Base.Fn.id in
+       |> string_of_list Lib.Fun.id in
      match module_path with
      | Some mp ->
         (match Index.find_opt (snd mp) index with

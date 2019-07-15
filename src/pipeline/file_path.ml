@@ -1,6 +1,6 @@
 let normalise file_path =
   let has_trailing_slash =
-    Base.Option.is_some (Base.String.chop_suffix ~suffix:"/" file_path) in
+    Lib.Option.is_some (Lib.String.chop_suffix "/" file_path) in
   let has_leading_slash = not (Filename.is_relative file_path) in
   let acc = Stack.create () in
   Lib.String.split file_path '/'
@@ -17,9 +17,9 @@ let normalise file_path =
   let prefix = if has_leading_slash then "/" else "" in
   prefix ^ (if has_trailing_slash
     then result
-    else Base.String.chop_suffix_exn ~suffix:"/" result)
+    else Lib.Option.value (Lib.String.chop_suffix "/" result))
 
 let relative_to base path =
-  Base.String.chop_prefix
-    ~prefix:(normalise (base ^ "/"))
+  Lib.String.chop_prefix
+    (normalise (base ^ "/"))
     (normalise path)

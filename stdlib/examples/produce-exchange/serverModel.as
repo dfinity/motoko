@@ -171,7 +171,7 @@ class Model() {
     case (#add (#truckType info)) Result.fromSomeMap<T.TruckTypeId,L.Resp,T.IdErr>(
            truckTypeTable.addInfoGetId(
              func (id_:T.TruckTypeId) : T.TruckTypeInfo =
-               shared {
+               new {
                  id=id_;
                  short_name=info.short_name;
                  description=info.description;
@@ -187,7 +187,7 @@ class Model() {
     case (#add (#region info)) Result.fromSomeMap<T.RegionId,L.Resp,T.IdErr>(
            regionTable.addInfoGetId(
              func (id_:T.RegionId) : T.RegionInfo =
-               shared {
+               new {
                  id = id_;
                  short_name=info.short_name;
                  description=info.description
@@ -200,7 +200,7 @@ class Model() {
     case (#add (#produce info)) Result.fromSomeMap<T.ProduceId,L.Resp,T.IdErr>(
            produceTable.addInfoGetId(
              func (id_:T.ProduceId) : T.ProduceInfo =
-               shared {
+               new {
                  id = id_;
                  short_name=info.short_name;
                  description=info.description;
@@ -214,7 +214,7 @@ class Model() {
     case (#add (#producer info)) Result.fromSomeMap<T.ProducerId,L.Resp,T.IdErr>(
            producerTable.addInfoGetId(
              func(id_:T.ProducerId):T.ProducerInfo {
-               shared {
+               new {
                  id=id_;
                  public_key=info.public_key;
                  short_name=info.short_name;
@@ -232,7 +232,7 @@ class Model() {
     case (#add (#transporter info)) Result.fromSomeMap<T.TransporterId,L.Resp,T.IdErr>(
            transporterTable.addInfoGetId(
              func(id_:T.TransporterId):T.TransporterInfo {
-               shared {
+               new {
                  id=id_;
                  public_key=info.public_key;
                  short_name=info.short_name;
@@ -249,7 +249,7 @@ class Model() {
     case (#add (#retailer info)) Result.fromSomeMap<T.RetailerId,L.Resp,T.IdErr>(
            retailerTable.addInfoGetId(
              func(id_:T.RetailerId):T.RetailerInfo {
-               shared {
+               new {
                  id=id_;
                  public_key=info.public_key;
                  short_name=info.short_name;
@@ -451,7 +451,7 @@ class Model() {
     for (i in range(0, 1)) {
       reqs := ?(
         #truckType (
-          shared {
+          new {
             id=i; short_name=""; description="";
             capacity=i * 50;
             isFridge=true; isFreezer=true
@@ -460,19 +460,19 @@ class Model() {
     };
     /**- add regions */
     for (i in range(0, region_count - 1)) {
-      reqs := ?(#region (shared {
+      reqs := ?(#region (new {
                            id=i; short_name=""; description=""
                          }), reqs);
     };
     /**- add produce types, one per region. */
     for (i in range(0, region_count - 1)) {
-      reqs := ?(#produce (shared {
+      reqs := ?(#produce (new {
                            id=i; short_name=""; description=""; grade=1;
                          }), reqs);
     };
     /**- add producers  */
     for (i in range(0, producer_count - 1)) {
-      reqs := ?(#producer (shared {
+      reqs := ?(#producer (new {
                              id=i; public_key=""; short_name=""; description="";
                              region=(i % region_count);
                              inventory=[]; reserved=[];
@@ -480,14 +480,14 @@ class Model() {
     };
     /**- add transporters  */
     for (i in range(0, producer_count - 1)) {
-      reqs := ?(#transporter (shared {
+      reqs := ?(#transporter (new {
                                 id=i; public_key=""; short_name=""; description="";
                                 routes=[]; reserved=[];
                               }), reqs);
     };
     /**- add retailers  */
     for (i in range(0, retailer_count - 1)) {
-      reqs := ?(#retailer (shared {
+      reqs := ?(#retailer (new {
                              id=i; public_key=""; short_name=""; description="";
                              region=(i % region_count);
                            }), reqs);
@@ -513,7 +513,7 @@ class Model() {
               /**- choose this producer iff they are located in the start region: */
               if ((p % region_count) == start_reg) {
                 reqs := ?(#inventory
-                (shared {
+                (new {
                    id=666;
                    producer   = p;
                    produce    = start_reg;
@@ -535,7 +535,7 @@ class Model() {
               /**- choose this transporter iff their id matches the id of the region, modulo the number of regions: */
               if ((t % region_count) == start_reg) {
                 reqs := ?(#route
-                (shared {
+                (new {
                    id=666;
                    transporter  = t;
                    start_region = start_reg;
@@ -692,7 +692,7 @@ secondary maps.
     func(x:T.UserId):T.UserId{x+1},
     func(x:T.UserId,y:T.UserId):Bool{x==y},
     idHash,
-    func(doc:M.UserDoc):T.UserInfo = shared {
+    func(doc:M.UserDoc):T.UserInfo = new {
       id=doc.id;
       user_name=doc.user_name;
       public_key=doc.public_key;
@@ -728,7 +728,7 @@ secondary maps.
     func(x:T.TruckTypeId):T.TruckTypeId{x+1},
     func(x:T.TruckTypeId,y:T.TruckTypeId):Bool{x==y},
     idHash,
-    func(doc:M.TruckTypeDoc):T.TruckTypeInfo = shared {
+    func(doc:M.TruckTypeDoc):T.TruckTypeInfo = new {
       id=doc.id;
       short_name=doc.short_name;
       description=doc.description;
@@ -757,7 +757,7 @@ secondary maps.
     func(x:T.RegionId):T.RegionId{x+1},
     func(x:T.RegionId,y:T.RegionId):Bool{x==y},
     idHash,
-    func(doc:M.RegionDoc):T.RegionInfo = shared {
+    func(doc:M.RegionDoc):T.RegionInfo = new {
       id=doc.id;
       short_name=doc.short_name;
       description=doc.description;
@@ -780,7 +780,7 @@ secondary maps.
     func(x:T.ProduceId):T.ProduceId{x+1},
     func(x:T.ProduceId,y:T.ProduceId):Bool{x==y},
     idHash,
-    func(doc:M.ProduceDoc):T.ProduceInfo = shared {
+    func(doc:M.ProduceDoc):T.ProduceInfo = new {
       id=doc.id;
       short_name=doc.short_name;
       description=doc.description;
@@ -805,7 +805,7 @@ secondary maps.
     func(x:T.ProducerId):T.ProducerId{x+1},
     func(x:T.ProducerId,y:T.ProducerId):Bool{x==y},
     idHash,
-    func(doc:M.ProducerDoc):T.ProducerInfo = shared {
+    func(doc:M.ProducerDoc):T.ProducerInfo = new {
       id=doc.id;
       public_key=doc.public_key;
       short_name=doc.short_name;
@@ -841,7 +841,7 @@ secondary maps.
     func(x:T.InventoryId):T.InventoryId{x+1},
     func(x:T.InventoryId,y:T.InventoryId):Bool{x==y},
     idHash,
-    func(doc:M.InventoryDoc):T.InventoryInfo = shared {
+    func(doc:M.InventoryDoc):T.InventoryInfo = new {
       id=doc.id;
       produce=doc.produce.id;
       producer=doc.producer;
@@ -887,7 +887,7 @@ secondary maps.
       func(x:T.TransporterId):T.TransporterId{x+1},
       func(x:T.TransporterId,y:T.TransporterId):Bool{x==y},
       idHash,
-      func(doc:M.TransporterDoc):T.TransporterInfo = shared {
+      func(doc:M.TransporterDoc):T.TransporterInfo = new {
         id=doc.id;
         public_key=doc.public_key;
         short_name=doc.short_name;
@@ -917,7 +917,7 @@ secondary maps.
       func(x:T.RetailerId):T.RetailerId{x+1},
       func(x:T.RetailerId,y:T.RetailerId):Bool{x==y},
       idHash,
-      func(doc:M.RetailerDoc):T.RetailerInfo = shared {
+      func(doc:M.RetailerDoc):T.RetailerInfo = new {
         id=doc.id;
         public_key=doc.public_key;
         short_name=doc.short_name;
@@ -955,7 +955,7 @@ secondary maps.
       func(x:T.RouteId):T.RouteId{x+1},
       func(x:T.RouteId,y:T.RouteId):Bool{x==y},
       idHash,
-      func(doc:M.RouteDoc):T.RouteInfo = shared {
+      func(doc:M.RouteDoc):T.RouteInfo = new {
         id=doc.id;
         transporter=doc.transporter;
         truck_type=(truckTypeTable.getInfoOfDoc())(doc.truck_type);
@@ -999,10 +999,10 @@ secondary maps.
     func(x:T.ReservedInventoryId):T.ReservedInventoryId{x+1},
     func(x:T.ReservedInventoryId,y:T.ReservedInventoryId):Bool{x==y},
     idHash,
-    func(doc:M.ReservedInventoryDoc):T.ReservedInventoryInfo = shared {
+    func(doc:M.ReservedInventoryDoc):T.ReservedInventoryInfo = new {
       id=doc.id;
       retailer=doc.retailer;
-      item=shared {
+      item=new {
         id=doc.item.id;
         produce=doc.item.produce.id;
         producer=doc.item.producer;
@@ -1042,13 +1042,13 @@ secondary maps.
     func(x:T.ReservedRouteId):T.ReservedRouteId{x+1},
     func(x:T.ReservedRouteId,y:T.ReservedRouteId):Bool{x==y},
     idHash,
-    func(doc:M.ReservedRouteDoc):T.ReservedRouteInfo = shared {
+    func(doc:M.ReservedRouteDoc):T.ReservedRouteInfo = new {
       id=doc.id;
       retailer=doc.retailer;
-      route=shared {
+      route=new {
         id=doc.route.id;
         transporter=doc.route.transporter;
-        truck_type=shared {
+        truck_type=new {
           id=doc.route.truck_type.id;
           short_name=doc.route.truck_type.short_name;
           description=doc.route.truck_type.description;
@@ -1237,7 +1237,7 @@ than the MVP goals, however.
     /**- Create a producer role for the user: */
     let prId = if isProducer { producerTable.addInfoGetId(
       func(id_:T.ProducerId):T.ProducerInfo {
-        shared {
+        new {
           id=id_:T.ProducerId;
           public_key=public_key_;
           short_name=user_name_;
@@ -1251,7 +1251,7 @@ than the MVP goals, however.
     /**- Create a transporter role for the user: */
     let trId = if isTransporter { transporterTable.addInfoGetId(
       func(id_:T.TransporterId):T.TransporterInfo {
-        shared {
+        new {
           id=id_:T.TransporterId;
           public_key=public_key_;
           short_name=user_name_;
@@ -1264,7 +1264,7 @@ than the MVP goals, however.
     /**- Create a retailer role for the user: */
     let rrId = if isRetailer { retailerTable.addInfoGetId(
       func(id_:T.RetailerId):T.RetailerInfo {
-        shared {
+        new {
           id=id_;
           public_key=public_key_;
           short_name=user_name_;
@@ -1276,7 +1276,7 @@ than the MVP goals, however.
     /**- Record the user information: */
     let id = userTable.addInfoGetId(
       func (id_: T.UserId) : T.UserInfo =
-        shared {
+        new {
           id = id_;
           user_name = user_name_;
           public_key = public_key_;
@@ -1378,7 +1378,7 @@ than the MVP goals, however.
     let (_, item) = {
       switch (inventoryTable.addInfoAs(iid_,
                 func(iid:T.InventoryId):T.InventoryInfo{
-        shared {
+        new {
           id        = iid       :T.InventoryId;
           produce   = produce_id:T.ProduceId;
           producer  = id_       :T.ProducerId;
@@ -1600,7 +1600,7 @@ than the MVP goals, however.
     /**- Create the route item document: */
     let route : M.RouteDoc = {
       switch (routeTable.addInfoAs(rid_, func(routeId:T.RouteId):T.RouteInfo{
-        shared {
+        new {
         id= routeId;
         transporter=transporterId;
         truck_type=truck_type_;
@@ -1816,7 +1816,7 @@ than the MVP goals, however.
   based on the given inventory and route documents.
   */
   makeReservationInfo(item:M.InventoryDoc, route:M.RouteDoc) : T.ReservationInfo {
-    shared {
+    new {
       produce  =item.produce.id :T.ProduceId;
       producer =item.producer   :T.ProducerId;
       quant    =item.quantity   :T.Quantity;

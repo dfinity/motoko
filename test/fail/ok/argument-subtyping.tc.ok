@@ -1,8 +1,4 @@
-argument-subtyping.as:5.57-5.58: type error, expression of type
-  shared Int -> ()
-cannot produce expected type
+argument-subtyping.as:12.58-12.59: type error, expression of type
   shared Nat -> ()
-argument-subtyping.as:9.94-9.95: type error, expression of type
-  shared (shared {}) -> ()
 cannot produce expected type
-  shared (shared {x : Nat}) -> ()
+  shared Text -> ()

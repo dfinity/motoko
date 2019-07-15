@@ -1,1 +1,1 @@
-func call3<C <: Shared>(f : shared () -> C) : C { f (); };
+func call3<C <: Any>(f : shared () -> C) : C { f (); };

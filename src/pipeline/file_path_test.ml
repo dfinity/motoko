@@ -1,22 +1,23 @@
 let normalise_test_case input expected =
   let actual = File_path.normalise input in
-    if String.equal actual expected
-    then true
-    else (Printf.printf "\nExpected: %s\nActual: %s\n" expected actual; false)
+  String.equal actual expected ||
+    (Printf.printf
+       "\nExpected: %s\nActual: %s\n"
+       expected
+       actual;
+     false)
 
 let relative_to_test_case root contained expected =
   let actual = File_path.relative_to root contained in
   let show = function
     | None -> "None"
     | Some s -> "Some " ^ s in
-    if Base.Option.equal Base.String.equal actual expected
-    then true
-    else
-      (Printf.printf
-         "\nExpected: %s\nActual: %s\n"
-         (show expected)
-         (show actual);
-       false)
+  Lib.Option.equal String.equal actual expected ||
+    (Printf.printf
+       "\nExpected: %s\nActual: %s\n"
+       (show expected)
+       (show actual);
+     false)
 
 let%test "it removes leading `./` for relative paths" =
   normalise_test_case "./lib/foo" "lib/foo"
