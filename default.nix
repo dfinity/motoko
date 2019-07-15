@@ -7,6 +7,7 @@
 let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
 let stdenv = nixpkgs.stdenv; in
+let lib = stdenv.lib; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
@@ -38,10 +39,20 @@ let real-dvm =
     else null
   else dvm; in
 
+# Include js-client
+let js-client =
+  let dev = builtins.fetchGit {
+    url = "ssh://git@github.com/dfinity-lab/dev";
+    ref = "master";
+    rev = "a556b011d957d3174b6c4017d76dd510791d8922";
+  }; in
+  (import dev { system = nixpkgs.system; }).js-dfinity-client; in
+
 let commonBuildInputs = [
   nixpkgs.ocaml
   nixpkgs.dune
   nixpkgs.ocamlPackages.atdgen
+  nixpkgs.ocamlPackages.base
   nixpkgs.ocamlPackages.findlib
   nixpkgs.ocamlPackages.menhir
   nixpkgs.ocamlPackages.num
@@ -136,6 +147,7 @@ rec {
         nixpkgs.bash
         nixpkgs.perl
         filecheck
+        js-client
       ] ++
       (if test-dvm then [ real-dvm ] else []) ++
       llvmBuildInputs;
@@ -146,6 +158,7 @@ rec {
         export ASC=asc
         export AS_LD=as-ld
         export DIDC=didc
+        export JSCLIENT=${js-client}
         asc --version
       '' +
       (if test-dvm then ''
@@ -248,7 +261,7 @@ rec {
   didc = stdenv.mkDerivation {
     name = "didc";
     src = subpath ./src;
-    buildInputs = commonBuildInputs;
+    buildInputs = [ commonBuildInputs ];
     buildPhase = ''
       make DUNE_OPTS="--display=short --profile release" didc
     '';
@@ -405,6 +418,7 @@ rec {
 
     shellHook = llvmEnv;
     TOMMATHSRC = libtommath;
+    JSCLIENT = js-client;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
   } else null;
 

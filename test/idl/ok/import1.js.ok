@@ -1,6 +1,7 @@
+const IDL = require('IDL')
 const t = IDL.Arr(IDL.Nat8)
 const t1 = t
 const UserId = IDL.Nat
 const t2 = UserId
-const S = new IDL.ActorInterface({
- 'f': IDL.message(IDL.Obj({'0': t, '1': t1, '2': t2}), IDL.Obj({}))})
+const actor_S = new IDL.ActorInterface({
+ 'f': IDL.Message(IDL.Obj({'0': t, '1': t1, '2': t2}), IDL.Obj({}))})
