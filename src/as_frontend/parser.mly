@@ -479,10 +479,10 @@ case :
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field :
-  | x=id EQ e=exp_nonvar
+  | x=id EQ e=exp
     { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
       {dec = d; vis = Public @@ x.at} @@ at $sloc }
-  | VAR x=id EQ e=exp_nonvar
+  | VAR x=id EQ e=exp
     { let d = VarD(x, e) @? at $sloc in
       {dec = d; vis = Public @@ x.at} @@ at $sloc }
 
