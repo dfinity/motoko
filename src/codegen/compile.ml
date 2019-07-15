@@ -1178,15 +1178,15 @@ module Tagged = struct
     | Array ->
       begin match normalize ty with
       | (Con _ | Any) -> true
-      | (Array _ | Tup _ | Obj _) -> true
-      | (Prim _ | Opt _ | Variant _ | Func _ | Non) -> false
+      | (Array _ | Tup _) -> true
+      | (Prim _ |  Obj _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Text ->
       begin match normalize ty with
       | (Con _ | Any) -> true
-      | (Prim Text | Obj _) -> true
-      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
+      | (Prim Text) -> true
+      | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Object ->
