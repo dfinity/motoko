@@ -280,9 +280,9 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Sc
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
   List.iter2 (fun c k ->
     match Con.kind c with
-    | T.Abs(_, T.Pre) -> T.set_kind c k
+    | T.Abs (_, T.Pre) -> T.set_kind c k
     | k' -> assert (T.eq_kind k k')
-    ) cs ks;
+  ) cs ks;
   let env' = add_typs env xs cs in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;

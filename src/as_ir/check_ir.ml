@@ -201,8 +201,8 @@ let rec check_typ env typ : unit =
     check_con env c
 
 and check_con env c =
-  let env = { env with cons = T.ConSet.add c env.cons } in
-  let (T.Abs (binds,typ) | T.Def (binds, typ)) = Con.kind c in
+  let env = {env with cons = T.ConSet.add c env.cons} in
+  let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
   let cs, ce = check_typ_binds env binds in
   let ts = List.map (fun c -> T.Con (c, [])) cs in
   let env' = adjoin_cons env ce in

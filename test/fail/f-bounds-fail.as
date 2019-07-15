@@ -8,10 +8,10 @@ func f2b< B, A <: B> ( x : A ) : B = x;
 
 func f3a< A <: B, B /* <: C */ , C> ( x : A ) : C = x;
 func f3b< B /* <: C */, A <: B, C> ( x : A ) : C = x;
-func f3c< C,  B /* <: C */, A <: B> ( x : A ) : C = x;
+func f3c< C, B /* <: C */, A <: B> ( x : A ) : C = x;
 
 type T1< A <: B, B /* <: C */, C> = Cast<A,C>;
-type T2<  B /* <: C */, A <: B, C> = Cast<A,C>;
+type T2< B /* <: C */, A <: B, C> = Cast<A,C>;
 type T3< C, B /* <: C */, A <: B> = Cast<A,C>;
 
 func g< A <: B, B /* <: C */ , C> ( a : A, b : B, c: C, n:Int ) : C {
