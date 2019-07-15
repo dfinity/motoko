@@ -19,6 +19,10 @@ let item_of_ide_decl = function
      (lbl, Some(Type.string_of_typ ty))
   | TypeDecl (lbl, ty) ->
      (lbl, Some(Type.string_of_typ ty))
+let lbl_of_ide_decl (d : ide_decl) : string =
+  match d with
+  | ValueDecl (lbl, _) -> lbl
+  | TypeDecl (lbl, _) -> lbl
 
 let string_of_ide_decl = function
   | ValueDecl (lbl, ty) ->
@@ -114,6 +118,8 @@ let find_completion_prefix logger file line column =
   let line = line + 1 in
   let lexbuf = Lexing.from_string file in
   let next () = Lexer.token Lexer.Normal lexbuf in
+  let pos_eq_cursor pos =
+    pos.Source.line = line && pos.Source.column = column in
   let pos_past_cursor pos =
     pos.Source.line > line
     || (pos.Source.line = line && pos.Source.column >= column) in
@@ -123,11 +129,16 @@ let find_completion_prefix logger file line column =
         (match next () with
         | Parser.DOT ->
             (match next () with
-            | Parser.EOF -> Some ident
+            | Parser.EOF -> Some (ident, "")
+            | Parser.ID prefix ->
+               let next_token_end = (Lexer.region lexbuf).Source.right in
+               if pos_eq_cursor next_token_end
+               then Some (ident, prefix)
+               else loop (Parser.ID prefix)
             | tkn ->
                let next_token_start = (Lexer.region lexbuf).Source.left in
                if pos_past_cursor next_token_start
-               then Some ident
+               then Some (ident, "")
                else loop tkn)
         | tkn -> loop tkn)
     | Parser.EOF -> None
@@ -142,11 +153,11 @@ let completions (* index *) logger project_root file_path file_contents line col
   match find_completion_prefix logger file_contents line column with
   | None ->
      imported
-     |> List.map (fun (alias, _) -> alias, None)
-  | Some prefix ->
+     |> List.map (fun (alias, _) -> alias, "", None)
+  | Some (alias, prefix) ->
      let module_path =
        imported
-       |> List.find_opt (fun (mn, _) -> String.equal mn prefix) in
+       |> List.find_opt (fun (mn, _) -> String.equal mn alias) in
      let index_keys =
        Index.bindings index
        |> List.map fst
@@ -155,17 +166,23 @@ let completions (* index *) logger project_root file_path file_contents line col
      | Some mp ->
         (match Index.find_opt (snd mp) index with
          | Some decls ->
-            List.map item_of_ide_decl decls
+            decls
+            |> List.filter (fun d -> d |> lbl_of_ide_decl |> Lib.String.chop_prefix prefix |> Lib.Option.is_some)
+            |> List.map item_of_ide_decl
          | None ->
-            [ (("ERROR: Couldn't find module in index: " ^ index_keys), None) ])
+            [])
+            (* [ (("ERROR: Couldn't find module in index: " ^ index_keys), None) ]) *)
      | None ->
-        [ (("ERROR: Couldn't find module for prefix: " ^ prefix), None) ]
+        []
+        (* [ (("ERROR: Couldn't find module for prefix: " ^ prefix), None) ] *)
 
 let completion_handler logger project_root file_path file_contents position =
   let line = position.Lsp_t.position_line in
   let column = position.Lsp_t.position_character in
-  let completion_item (lbl, detail) =
+  let completion_item (lbl, tmpl, detail) =
     Lsp_t.{ completion_item_label = lbl
+          ; completion_item_insertText = tmpl
+          ; completion_item_insertTextFormat = 2
           ; completion_item_detail = detail } in
   `CompletionResponse
     (List.map completion_item
