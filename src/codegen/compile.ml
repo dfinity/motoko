@@ -4960,8 +4960,8 @@ let rec compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ UnboxedSmallWord.lsb_adjust ty ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^
-                let _,_,pow = compile_binop env Type.(Prim Word32) PowOp in pow ^^
-                set_res ^^ get_res ^^ enforce_unsigned_bits env bits ^^
+                let pow = compile_word_power env Type.Word32 in
+                pow ^^ set_res ^^ get_res ^^ enforce_unsigned_bits env bits ^^
                 get_res ^^ UnboxedSmallWord.msb_adjust ty
               end
               get_n (* n@{0,1} ** (1+exp) == n *)
@@ -5014,7 +5014,7 @@ let rec compile_binop env t op =
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ UnboxedSmallWord.lsb_adjust ty ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^
-                (let _,_,pow = compile_binop env Type.(Prim Word32) PowOp in pow) ^^
+                compile_word_power env Type.Word32 ^^
                 set_res ^^ get_res ^^ get_res ^^ enforce_signed_bits env bits ^^
                 get_res ^^ UnboxedSmallWord.msb_adjust ty
               end
