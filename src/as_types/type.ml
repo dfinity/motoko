@@ -509,7 +509,7 @@ allows polymorphic types, see #250. It is not what we desire for ActorScript.
 *)
 
 let concrete t =
-  let seen = ref S.empty in (* break the cycles *)
+  let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
     begin
@@ -520,7 +520,7 @@ let concrete t =
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
-        | Def (tbs, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
+        | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
       | Array t | Opt t | Async t | Mut t | Serialized t -> go t
       | Tup ts -> List.for_all go ts
@@ -535,7 +535,7 @@ let concrete t =
 
 
 let shared t =
-  let seen = ref S.empty in (* break the cycles *)
+  let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
     begin
@@ -547,7 +547,7 @@ let shared t =
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
-        | Def (tbs, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
+        | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
       | Array t | Opt t | Serialized t -> go t
       | Tup ts -> List.for_all go ts
