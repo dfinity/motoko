@@ -14,15 +14,40 @@ let string_of_list f xs =
   |> String.concat "; "
   |> fun x -> "[ " ^ x ^ " ]"
 
-let item_of_ide_decl = function
+let template_of_ide_decl decl =
+  let supply = ref 0 in
+  let fresh () = supply := !supply + 1; string_of_int !supply in
+  match decl with
   | ValueDecl (lbl, ty) ->
-     (lbl, Some(Type.string_of_typ ty))
+     (match ty with
+      | Type.Func(_, _, binds, ty_list1, ty_list2) ->
+         let ty_args =
+           binds
+           |> List.map (fun Type.{ var = var; bound = bound} ->
+                  Printf.sprintf "${%s:%s}" (fresh ()) var)
+           |> String.concat ", " in
+         let args =
+           ty_list1
+           |> List.map (fun _ -> Printf.sprintf "$%s" (fresh ()))
+           |> String.concat ", " in
+         let ty_args = if ty_args = "" then "" else "<" ^ ty_args ^ ">" in
+         Printf.sprintf "%s%s(%s)" lbl ty_args args
+      | _ -> lbl)
   | TypeDecl (lbl, ty) ->
-     (lbl, Some(Type.string_of_typ ty))
+     lbl
+
 let lbl_of_ide_decl (d : ide_decl) : string =
   match d with
   | ValueDecl (lbl, _) -> lbl
   | TypeDecl (lbl, _) -> lbl
+
+let item_of_ide_decl (d : ide_decl) : (string * string * string option) =
+  let tmpl = template_of_ide_decl d in
+  match d with
+  | ValueDecl (lbl, ty) ->
+     (lbl, tmpl, Some(Type.string_of_typ ty))
+  | TypeDecl (lbl, ty) ->
+     (lbl, tmpl, Some(Type.string_of_typ ty))
 
 let string_of_ide_decl = function
   | ValueDecl (lbl, ty) ->

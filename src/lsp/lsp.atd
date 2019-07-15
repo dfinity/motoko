@@ -87,6 +87,8 @@ type hover_result = {
 
 type completion_item = {
   label : string;
+  insertText : string;
+  insertTextFormat : int;
   ?detail: string nullable;
 }
 <ocaml field_prefix="completion_item_">
