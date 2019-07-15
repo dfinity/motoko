@@ -15,7 +15,7 @@ printLn(debug_show (42,-42,()));
 printLn(debug_show ("Foobar", null, null, ?23));
 printLn(debug_show ([1,2,3]));
 printLn(debug_show ([var 1,2,3]));
-class Foo() { let foo : Int = 42; var bar : Bool = true ; private hidden = [1,2] };
+class Foo() { public let foo : Int = 42; public var bar : Bool = true ; let hidden = [1,2] };
 printLn(debug_show (Foo()));
 printLn(debug_show (#foo ()));
 printLn(debug_show (#bar 42));

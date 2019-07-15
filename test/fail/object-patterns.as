@@ -1,15 +1,13 @@
-
-// subtyping in patterns
+// Subtyping in patterns
 
 let q : {a : Int; b : Nat} = new {a = -42; b = 25};
 
 func get_a () : Int = switch (q) {
   case {a = 25 : Nat} 1;  // NOT OK: Nat cannot consume all Ints
   case {a = 42; b} b;     // OK: 42 is Int by subtyping
-  case
-  {a = a : Int;
-   b = 25 : Int} a;       // OK: Int can consume all Nats
+  case {a = a : Int; b = 25 : Int} a; // OK: Int can consume all Nats
 };
+
 
 // the above is analogous to the simpler:
 

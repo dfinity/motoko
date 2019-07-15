@@ -1,12 +1,12 @@
 actor class Counter(i : Int) {
-  private var j = i;
+  var j = i;
 
-  dec() {
+  public func dec() {
    showCounter(j);
    j -= 1;
   };
 
-  read() : async Int { j };
+  public func read() : async Int { j };
 };
 
 func showCounter(c : Int) {};

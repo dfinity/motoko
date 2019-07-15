@@ -1,11 +1,11 @@
 let a = actor {
-  hello () : async Text {
+  public func hello() : async Text {
     "Hello ";
   };
-  world () : async Text {
+  public func world() : async Text {
     "World!\n"
   };
-  go () : async () {
+  public func go() : async () {
     print((await hello()) # (await world()));
   };
 };
