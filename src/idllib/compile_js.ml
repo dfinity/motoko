@@ -172,9 +172,9 @@ let pp_actor ppf actor =
   pp_open_hovbox ppf 1;
   kwd ppf "const";
   (match actor.it with
-   | ActorD (x, {it=t; _}) ->
+   | ActorD (x, t) ->
       let x = ("actor_" ^ x.it) @@ x.at in
-      match t with
+      match t.it with
       | ServT tp ->
          id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
          str ppf "IDL.ActorInterface({";
