@@ -622,7 +622,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 * For some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
-## Sharablitiy
+## Sharability
 
 A type `T` is *shared* if it is
 * a `shared` function type, or
