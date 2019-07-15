@@ -145,6 +145,7 @@ rec {
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
+        nixpkgs.nodejs-10_x        
         filecheck
         js-client
       ] ++
