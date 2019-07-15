@@ -1434,6 +1434,10 @@ module UnboxedSmallWord = struct
   let lit env ty v =
     compile_unboxed_const Int32.(shift_left (of_int v) (to_int (shift_of_type ty)))
 
+  let compile_word_mul env ty =
+    lsb_adjust ty ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Mul))
+
 end (* UnboxedSmallWord *)
 
 type comparator = Lt | Le | Ge | Gt
@@ -4826,17 +4830,13 @@ let compile_smallNat_kernel env ty name op =
 
 (* Wrapping implementation for multiplication and exponentiation. *)
 
-let compile_word_mul env ty =
-  UnboxedSmallWord.lsb_adjust ty ^^
-  G.i (Binary (Wasm.Values.I32 I32Op.Mul))
-
 let compile_word_power env ty =
   let rec pow () = Func.share_code2 env (UnboxedSmallWord.name_of_type ty "pow")
                      (("n", I32Type), ("exp", I32Type)) [I32Type]
                      Wasm.Values.(fun env get_n get_exp ->
       let one = compile_unboxed_const (UnboxedSmallWord.const_of_type ty 1l) in
       let (set_res, get_res) = new_local env "res" in
-      let mul = compile_word_mul env ty in
+      let mul = UnboxedSmallWord.compile_word_mul env ty in
       let square_recurse_with_shifted sanitize =
         get_n ^^ get_exp ^^ compile_shrU_const 1l ^^ sanitize ^^
         pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
@@ -4906,7 +4906,7 @@ let compile_binop env t op =
   | Type.(Prim (Int8|Int16 as ty)),           SubOp -> compile_smallInt_kernel env ty "sub" I32Op.Sub
   | Type.(Prim Nat32),                        SubOp -> compile_Nat32_kernel env "sub" I64Op.Sub
   | Type.(Prim (Nat8|Nat16 as ty)),           SubOp -> compile_smallNat_kernel env ty "sub" I32Op.Sub
-  | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> compile_word_mul env ty
+  | Type.(Prim (Word8|Word16|Word32 as ty)),  MulOp -> UnboxedSmallWord.compile_word_mul env ty
   | Type.(Prim Int32),                        MulOp -> compile_Int32_kernel env "mul" I64Op.Mul
   | Type.(Prim Int16),                        MulOp -> compile_smallInt_kernel env Type.Int16 "mul" I32Op.Mul
   | Type.(Prim Int8),                         MulOp -> compile_smallInt_kernel' env Type.Int8 "mul"
