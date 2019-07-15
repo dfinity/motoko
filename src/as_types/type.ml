@@ -542,8 +542,8 @@ let shared t =
       seen := S.add t !seen;
       match t with
       | Var _ | Pre -> assert false
-      | Any | Async _ | Mut _ -> false
-      | Non | Prim _ | Typ _ -> true
+      | Any | Non | Prim _ | Typ _ -> true
+      | Async _ | Mut _ -> false
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false

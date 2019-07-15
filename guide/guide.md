@@ -444,6 +444,9 @@ Object types that differ only in the ordering of the fields are equivalent.
 
 The optional qualifier `actor` constrains the object's fields to be *shared* functions (i.e. messages).
 
+## Variant types
+
+TODO
 
 ## Array types
 
@@ -625,15 +628,14 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 ## Sharability
 
 A type `T` is *shared* if it is
-* a `shared` function type, or
-* an object type where all fields are non-`var` and have shared type, or
-* an `actor` object type, or
-* a scalar primitive type, or
-* the type `Text`, or
-* an immutable array type `[V]` where `V` is shared, or
-* the type `Null`, or
+* `Any` or `None`, or
+* a primitive type, or
 * an option type `? V` where `V` is shared, or
-* a tuple type `(T0, ..., Tn)` where, for each `0 <= i <= n`, `Ti` is shared.
+* a tuple type `(T0, ..., Tn)` where all `Ti` are shared, or
+* an immutable array type `[V]` where `V` is shared, or
+* an object type where all fields are immutable and have shared type, or
+* a variant type where all tags have shared type, or
+* a `shared` function type.
 
 
 # Literals
