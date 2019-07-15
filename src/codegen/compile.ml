@@ -2797,6 +2797,7 @@ module Serialization = struct
       | Prim Int64 -> Some 12
       | Prim Float -> Some 14
       | Prim Text -> Some 15
+      | Any -> Some 16
       | Non -> Some 17
       | _ -> None
     in
