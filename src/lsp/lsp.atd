@@ -70,7 +70,7 @@ type response_message = {
 
 type response_result = [
     Initialize <json name="initialize"> of initialize_result
-  | TextDocumentHoverResponse <json name="textDocument/hover"> of hover_result
+  | TextDocumentHoverResponse <json name="textDocument/hover"> of hover_result nullable
   | CompletionResponse <json name="textDocument/completion"> of completion_item list
 ]
 
