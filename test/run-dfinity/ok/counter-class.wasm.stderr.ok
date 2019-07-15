@@ -9,7 +9,10 @@ non-closed actor: (ActorE
       ()
       (BlockE
         (LetD WildP (CallE (1 -> 0) (VarE showCounter) (VarE j)))
-        (AssignE (VarE j) (BinE Int (VarE j) SubOp (LitE (IntLit 1))))
+        (AssignE
+          (VarE j)
+          (PrimE (BinPrim Int SubOp) (VarE j) (LitE (IntLit 1)))
+        )
       )
     )
   )
@@ -24,10 +27,8 @@ non-closed actor: (ActorE
         (LetD
           (TupP (VarP $k/0))
           (TupE
-            (CallE
-              (1 -> 1)
-              (PrimE @deserialize)
-              shared (serialized Int) -> ()
+            (PrimE
+              (DeserializePrim shared (serialized Int) -> ())
               (VarE $k/0/raw)
             )
           )
@@ -49,7 +50,7 @@ non-closed actor: (ActorE
             (CallE
               (shared 1 -> 0)
               (VarE $k/0)
-              (CallE (1 -> 1) (PrimE @serialize) Int (VarE $y/0))
+              (PrimE (SerializePrim Int) (VarE $y/0))
             )
           )
         )

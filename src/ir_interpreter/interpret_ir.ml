@@ -288,11 +288,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   Profiler.bump_region exp.at ;
   match exp.it with
-  | PrimE s ->
-    let at = exp.at in
-    let t = exp.note.note_typ in
-    let cc = call_conv_of_typ t in
-    k (V.Func (cc, extended_prim env s t at))
   | VarE id ->
     (match Lib.Promise.value_opt (find id env.vals) with
     | Some v -> k v
@@ -300,26 +295,43 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | LitE lit ->
     k (interpret_lit env lit)
-  | UnE (ot, op, exp1) ->
-    interpret_exp env exp1 (fun v1 -> k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s))
-  | ShowE (ot, exp1) ->
-    interpret_exp env exp1 (fun v ->
-      if Show.can_show ot
-      then k (Value.Text (Show.show_val ot v))
-      else raise (Invalid_argument "debug_show"))
-  | BinE (ot, exp1, op, exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-        k (try Operator.binop op ot v1 v2 with _ ->
-          trap exp.at "arithmetic overflow")
+  | PrimE (p, es) ->
+    begin match p, es with
+    | UnPrim (ot, op), [exp1] ->
+      interpret_exp env exp1 (fun v1 -> k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s))
+    | BinPrim (ot, op), [exp1; exp2] ->
+      interpret_exp env exp1 (fun v1 ->
+        interpret_exp env exp2 (fun v2 ->
+          k (try Operator.binop op ot v1 v2 with _ ->
+            trap exp.at "arithmetic overflow")
+        )
       )
-    )
-  | RelE (ot, exp1, op, exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-        k (Operator.relop op ot v1 v2)
+    | RelPrim (ot, op), [exp1; exp2] ->
+      interpret_exp env exp1 (fun v1 ->
+        interpret_exp env exp2 (fun v2 ->
+          k (Operator.relop op ot v1 v2)
+        )
       )
-    )
+    | ShowPrim ot, [exp1] ->
+      interpret_exp env exp1 (fun v ->
+        if Show.can_show ot
+        then k (Value.Text (Show.show_val ot v))
+        else raise (Invalid_argument "debug_show"))
+    | SerializePrim t, [exp1] ->
+      interpret_exp env exp1 (fun v -> k (V.Serialized v))
+    | DeserializePrim t, [exp1] ->
+      interpret_exp env exp1 (fun v -> k (V.as_serialized v))
+    | OtherPrim s, exps ->
+      interpret_exps env exps [] (fun vs ->
+        let at = exp.at in
+        let t = exp.note.note_typ in
+        let arg = match vs with [v] -> v | _ -> V.Tup vs in
+        extended_prim env s t at arg k
+      )
+    | _ ->
+      trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
+        (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
+    end
   | TupE exps ->
     interpret_exps env exps [] (fun vs -> k (V.Tup vs))
   | OptE exp1 ->

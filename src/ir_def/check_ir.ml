@@ -189,11 +189,8 @@ let rec check_typ env typ : unit =
     check env no_region env.flavor.Ir.serialized
       "Serialized in non-serialized flavor";
     check_typ env typ;
-    (* TODO: we cannot currently express abstract shared types,
-       so @serialize is a hack *)
-    (*check env no_region (T.shared typ)
-     *  "serialized type is not sharable:\n  %s" (T.string_of_typ_expand typ)
-     *)
+    check env no_region (T.shared typ)
+       "serialized type is not sharable:\n  %s" (T.string_of_typ_expand typ)
   | T.Typ c ->
     check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
 
@@ -279,12 +276,10 @@ let type_lit env lit at : T.prim =
 
 let isAsyncE exp =
   match exp.it with
-  | AsyncE _ -> (* pre await transformation *)
-    true
-  | CallE(_,{it=PrimE("@async");_}, _, cps) -> (* post await transformation *)
-    true
-  | _ ->
-    false
+  | AsyncE _ (* pre await transformation *)
+  | PrimE(OtherPrim "@async", [_]) (* post await transformation *)
+    -> true
+  | _ -> false
 
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
@@ -299,7 +294,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     "inferred effect not a subtype of expected effect";
   (* check typing *)
   match exp.it with
-  | PrimE _ -> ()
   | VarE id ->
     let t0 = try T.Env.find id env.vals with
              |  Not_found -> error env exp.at "unbound variable %s" id
@@ -307,31 +301,49 @@ let rec check_exp env (exp:Ir.exp) : unit =
       t0 <~ t
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
-  | UnE (ot, op, exp1) ->
-    check (Operator.has_unop op ot) "unary operator is not defined for operand type";
-    check_exp env exp1;
-    typ exp1 <: ot;
-    ot <: t
-  | BinE (ot, exp1, op, exp2) ->
-    check (Operator.has_binop op ot) "binary operator is not defined for operand type";
-    check_exp env exp1;
-    check_exp env exp2;
-    typ exp1 <: ot;
-    typ exp2 <: ot;
-    ot <: t
-  | ShowE (ot, exp1) ->
-    check env.flavor.has_show "show expression in non-show flavor";
-    check (Show.can_show ot) "show is not defined for operand type";
-    check_exp env exp1;
-    typ exp1 <: ot;
-    T.Prim T.Text <: t
-  | RelE (ot, exp1, op, exp2) ->
-    check (Operator.has_relop op ot) "relational operator is not defined for operand type";
-    check_exp env exp1;
-    check_exp env exp2;
-    typ exp1 <: ot;
-    typ exp2 <: ot;
-    T.bool <: t
+  | PrimE (p, es) ->
+    begin match p, es with
+    | UnPrim (ot, op), [exp1] ->
+      check (Operator.has_unop op ot) "unary operator is not defined for operand type";
+      check_exp env exp1;
+      typ exp1 <: ot;
+      ot <: t
+    | BinPrim (ot, op), [exp1; exp2] ->
+      check (Operator.has_binop op ot) "binary operator is not defined for operand type";
+      check_exp env exp1;
+      check_exp env exp2;
+      typ exp1 <: ot;
+      typ exp2 <: ot;
+      ot <: t
+    | RelPrim (ot, op), [exp1; exp2] ->
+      check (Operator.has_relop op ot) "relational operator is not defined for operand type";
+      check_exp env exp1;
+      check_exp env exp2;
+      typ exp1 <: ot;
+      typ exp2 <: ot;
+      T.bool <: t
+    | ShowPrim ot, [exp1] ->
+      check env.flavor.has_show "show expression in non-show flavor";
+      check (Show.can_show ot) "show is not defined for operand type";
+      check_exp env exp1;
+      typ exp1 <: ot;
+      T.Prim T.Text <: t
+    | SerializePrim ot, [exp1] ->
+      check env.flavor.serialized "Serialized expression in wrong flavor";
+      check (T.shared ot) "argument to SerializePrim not shared";
+      check_exp env exp1;
+      typ exp1 <: ot;
+      T.Serialized ot <: t
+    | DeserializePrim ot, [exp1] ->
+      check env.flavor.serialized "Serialized expression in wrong flavor";
+      check (T.shared ot) "argument to SerializePrim not shared";
+      check_exp env exp1;
+      typ exp1 <: T.Serialized ot;
+      ot <: t
+    | OtherPrim _, _ -> ()
+    | _ ->
+      error env exp.at "PrimE with wrong number of arguments"
+    end
   | TupE exps ->
     List.iter (check_exp env) exps;
     T.Tup (List.map typ exps) <: t

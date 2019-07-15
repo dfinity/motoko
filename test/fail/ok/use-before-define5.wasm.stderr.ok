@@ -6,7 +6,7 @@ non-closed actor: (ActorE
       foo
       (shared 0 -> 0)
       ()
-      (AssertE (RelE Nat (VarE x) EqOp (LitE (NatLit 1))))
+      (AssertE (PrimE (RelPrim Nat EqOp) (VarE x) (LitE (NatLit 1))))
     )
   )
   (foo foo)
