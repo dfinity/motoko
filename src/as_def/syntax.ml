@@ -19,8 +19,8 @@ type typ_id = (string, Type.con option) Source.annotated_phrase
 
 (* Types *)
 
-type sharing = Type.sharing Source.phrase
 type obj_sort = Type.obj_sort Source.phrase
+type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
@@ -39,7 +39,7 @@ and typ' =
   | OptT of typ                                    (* option *)
   | VariantT of typ_tag list                       (* variant *)
   | TupT of typ list                               (* tuple *)
-  | FuncT of sharing * typ_bind list * typ * typ   (* function *)
+  | FuncT of func_sort * typ_bind list * typ * typ (* function *)
   | AsyncT of typ                                  (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
 
@@ -126,7 +126,7 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | FuncE of string * sharing * typ_bind list * pat * typ option * exp  (* function *)
+  | FuncE of string * func_sort * typ_bind list * pat * typ option * exp  (* function *)
   | CallE of exp * typ list * exp              (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)

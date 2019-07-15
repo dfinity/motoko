@@ -126,7 +126,7 @@ let rec check_obj_path env path : T.obj_sort * (T.field list) =
     (s, fs)
   | t ->
     error env path.at
-      "expected actor, object or module type, but path expression produces type\n  %s"
+      "expected module, object, or actor type, but path expression produces type\n  %s"
       (T.string_of_typ_expand t)
 
 and check_obj_path' env path : T.typ =
@@ -141,10 +141,10 @@ and check_obj_path' env path : T.typ =
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
     match T.lookup_val_field id.it fs with
-    | Some T.Pre ->
+    | T.Pre ->
       error env id.at "cannot infer type of forward field reference %s" id.it
-    | Some t -> t
-    | None ->
+    | t -> t
+    | exception Invalid_argument _ ->
       error env id.at "field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand (T.Obj (s, fs)))
 
@@ -162,9 +162,7 @@ and check_typ_path' env path : T.con =
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
-    match T.lookup_typ_field id.it fs with
-    | Some t -> t
-    | None ->
+    try T.lookup_typ_field id.it fs with Invalid_argument _ ->
       error env id.at "type field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand (T.Obj (s, fs)))
 
@@ -182,7 +180,6 @@ and check_typ' env typ : T.typ =
     T.Con (c, ts)
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
-  | PrimT "Shared" -> T.Shared
   | PrimT s ->
     (try T.Prim (T.prim s) with Invalid_argument _ ->
       error env typ.at "unknown primitive type"
@@ -200,20 +197,15 @@ and check_typ' env typ : T.typ =
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     let c = match typs2 with [{it = AsyncT _; _}] -> T.Promises | _ -> T.Returns in
-    if sort.it = T.Sharable then
+    if sort.it = T.Shared then
     if not env.pre then begin
       let t1 = T.seq ts1 in
-      if not (T.sub t1 T.Shared) then
+      if not (T.shared t1) then
         error env typ1.at
           "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand t1);
       match ts2 with
-      | [] -> ()
-      | [T.Async t2] ->
-        if not (T.sub t2 T.Shared) then
-          error env typ2.at
-            "shared function has non-shared result type\n  %s"
-            (T.string_of_typ_expand t2);
+      | [] | [T.Async _] -> ()
       | _ ->
         error env typ2.at
           "shared function has non-async result type\n  %s"
@@ -230,8 +222,8 @@ and check_typ' env typ : T.typ =
     T.Variant (List.sort T.compare_field fs)
   | AsyncT typ ->
     let t = check_typ env typ in
-    if not env.pre && not (T.sub t T.Shared) then
-      error env typ.at "async type has non-shared parameter type\n  %s"
+    if not env.pre && not (T.shared t) then
+      error env typ.at "async has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
     T.Async t
   | ObjT (sort, fields) ->
@@ -245,13 +237,12 @@ and check_typ' env typ : T.typ =
 and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ env typ) in
-  if not env.pre then begin
-    if s = T.Actor && not (T.is_func (T.promote t)) then
+  if not env.pre && s = T.Actor then begin
+    if not (T.is_func (T.promote t)) then
       error env typ.at "actor field %s has non-function type\n  %s"
         id.it (T.string_of_typ_expand t);
-    if s <> T.Object T.Local && not (T.sub t T.Shared) then
-      error env typ.at
-        "shared object or actor field %s has non-shared type\n  %s"
+    if not (T.shared t) then
+      error env typ.at "actor field %s has non-shared type\n  %s"
         id.it (T.string_of_typ_expand t)
   end;
   T.{lab = id.it; typ = t}
@@ -408,12 +399,12 @@ let array_obj t =
     ] in
   let mut t = immut t @
     [ {lab = "set"; typ = Func (Local, Returns, [], [Prim Nat; t], [])} ] in
-  Object Local,
+  Object,
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let text_obj () =
   let open T in
-  Object Local,
+  Object,
   [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)])};
     {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
   ]
@@ -551,11 +542,11 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t1)
     in
     (match T.lookup_val_field id.it tfs with
-    | Some T.Pre ->
+    | T.Pre ->
       error env exp.at "cannot infer type of forward field reference %s"
         id.it
-    | Some t -> t
-    | None ->
+    | t -> t
+    | exception Invalid_argument _ ->
       error env exp1.at "field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand t1)
     )
@@ -602,29 +593,17 @@ and infer_exp'' env exp : T.typ =
       let env'' =
         {env' with labs = T.Env.empty; rets = Some t2; async = false} in
       check_exp (adjoin_vals env'' ve) t2 exp;
-      if sort.it = T.Sharable then begin
-        if not (T.sub t1 T.Shared) then
+      if sort.it = T.Shared then begin
+        if not (T.shared t1) then
           error env pat.at
             "shared function has non-shared parameter type\n  %s"
             (T.string_of_typ_expand t1);
-        if not (T.concrete t1) then
-          error env pat.at
-            "shared function parameter contains abstract type\n  %s"
-            (T.string_of_typ_expand t1);
         match t2 with
         | T.Tup [] -> ()
-        | T.Async t2 ->
-          if not (T.sub t2 T.Shared) then
-            error env typ.at
-              "shared function has non-shared result type\n  %s"
-              (T.string_of_typ_expand t2);
-          if not (T.concrete t2) then
-            error env typ.at
-              "shared function result contains abstract type\n  %s"
-              (T.string_of_typ_expand t2);
+        | T.Async _ ->
           if not (isAsyncE exp) then
             error env exp.at
-              "shared function with async type has non-async body"
+              "shared function with async result type has non-async body"
         | _ ->
           error env typ.at "shared function has non-async result type\n  %s"
             (T.string_of_typ_expand t2)
@@ -634,7 +613,7 @@ and infer_exp'' env exp : T.typ =
     let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
     let c =
       match sort.it, typ.it with
-      | T.Sharable, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
+      | T.Shared, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
       | _ -> T.Returns
     in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
@@ -653,7 +632,7 @@ and infer_exp'' env exp : T.typ =
     let t_ret = T.open_ ts t_ret in
     if not env.pre then begin
       check_exp env t_arg exp2;
-      if sort = T.Sharable then begin
+      if sort = T.Shared then begin
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
@@ -703,10 +682,15 @@ and infer_exp'' env exp : T.typ =
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp_promote env exp1 in
     let t = infer_cases env t1 T.Non cases in
-    if not env.pre then
-      if not (Coverage.check_cases cases t1) then
+    if not env.pre then begin
+      match Coverage.check_cases cases t1 with
+      | [] -> ()
+      | ss ->
         warn env exp.at
-          "the cases in this switch do not cover all possible values";
+          "the cases in this switch over type\n  %s\ndo not cover value\n  %s"
+          (Type.string_of_typ_expand t1)
+          (String.concat " or\n  " ss)
+    end;
     t
   | WhileE (exp1, exp2) ->
     if not env.pre then begin
@@ -730,7 +714,7 @@ and infer_exp'' env exp : T.typ =
       let t1 = infer_exp_promote env exp1 in
       (try
         let _, tfs = T.as_obj_sub ["next"] t1 in
-        let t = Lib.Option.value (T.lookup_val_field "next" tfs) in
+        let t = T.lookup_val_field "next" tfs in
         let t1, t2 = T.as_mono_func_sub t in
         if not (T.sub T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub t2 in
@@ -774,8 +758,8 @@ and infer_exp'' env exp : T.typ =
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
-    if not (T.sub t T.Shared) then
-      error env exp1.at "async type has non-shared parameter type\n  %s"
+    if not (T.shared t) then
+      error env exp1.at "async type has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
     T.Async t
   | AwaitE exp1 ->
@@ -857,10 +841,15 @@ and check_exp' env t exp : T.typ =
   | SwitchE (exp1, cases), _ ->
     let t1 = infer_exp_promote env exp1 in
     check_cases env t1 t cases;
-    if not env.pre then
-      if not (Coverage.check_cases cases t1) then
+    if not env.pre then begin
+      match Coverage.check_cases cases t1 with
+      | [] -> ()
+      | ss ->
         warn env exp.at
-          "the cases in this switch do not cover all possible values";
+          "the cases in this switch over type\n  %s\ndo not cover value\n  %s"
+          (Type.string_of_typ_expand t1)
+          (String.concat " or\n  " ss)
+    end;
     t
   | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
@@ -923,9 +912,15 @@ and inconsistent t ts =
 
 and infer_pat_exhaustive env pat : T.typ * Scope.val_env =
   let t, ve = infer_pat env pat in
-  if not env.pre then
-    if not (Coverage.check_pat pat t) then
-      warn env pat.at "this pattern does not cover all possible values";
+  if not env.pre then begin
+    match Coverage.check_pat pat t with
+    | [] -> ()
+    | ss ->
+      warn env pat.at
+        "this pattern consuming type\n  %s\ndoes not cover value\n  %s"
+        (Type.string_of_typ_expand t)
+        (String.concat " or\n  " ss)
+  end;
   t, ve
 
 and infer_pat env pat : T.typ * Scope.val_env =
@@ -990,7 +985,7 @@ and infer_pats at env pats ts ve : T.typ list * Scope.val_env =
 
 and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_env =
   match pfs with
-  | [] -> (T.(Object Local), List.rev ts), ve
+  | [] -> (T.Object, List.rev ts), ve
   | pf::pfs' ->
     let typ, ve1 = infer_pat env pf.it.pat in
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
@@ -998,9 +993,15 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
 
 and check_pat_exhaustive env t pat : Scope.val_env =
   let ve = check_pat env t pat in
-  if not env.pre then
-    if not (Coverage.check_pat pat t) then
-      warn env pat.at "this pattern does not cover all possible values";
+  if not env.pre then begin
+    match Coverage.check_pat pat t with
+    | [] -> ()
+    | ss ->
+      warn env pat.at
+        "this pattern consuming type\n  %s\ndoes not cover value\n  %s"
+        (Type.string_of_typ_expand t)
+        (String.concat " or\n  " ss)
+  end;
   ve
 
 and check_pat env t pat : Scope.val_env =
@@ -1062,8 +1063,7 @@ and check_pat' env t pat : Scope.val_env =
     in check_pat env t1 pat1
   | TagP (id, pat1) ->
     let t1 =
-      try
-        Lib.Option.value (T.lookup_val_field id.it (T.as_variant_sub id.it t))
+      try T.lookup_val_field id.it (T.as_variant_sub id.it t)
       with Invalid_argument _ | Not_found ->
         error env pat.at "variant pattern cannot consume expected type\n  %s"
           (T.string_of_typ_expand t)
@@ -1256,19 +1256,20 @@ and infer_obj env s fields at : T.typ =
   let t = object_of_scope env s fields scope at in
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
-    if s = T.Object T.Sharable || s = T.Actor then
+    if s = T.Actor then
       List.iter (fun T.{lab; typ} ->
-          if  (not (T.is_typ typ)) && not (T.sub typ T.Shared) then
-            let _, pub_val = pub_fields fields in
-            error env (T.Env.find lab pub_val)
-              "public shared object or actor field %s has non-shared type\n  %s"
-              lab (T.string_of_typ_expand typ)
-        ) tfs;
+        if not (T.is_typ typ) && not (T.shared typ) then
+          let _, pub_val = pub_fields fields in
+          error env (T.Env.find lab pub_val)
+            "public actor field %s has non-shared type\n  %s"
+            lab (T.string_of_typ_expand typ)
+      ) tfs;
     if s = T.Actor then
       List.iter (fun ef ->
-          if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) && not (is_typ_dec ef.it.dec) then
-            local_error env ef.it.dec.at "public actor field needs to be a manifest function"
-        ) fields;
+        if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) && not (is_typ_dec ef.it.dec) then
+          local_error env ef.it.dec.at
+            "public actor field needs to be a manifest function"
+      ) fields;
     if s = T.Module then Static.fields env.msgs fields
   end;
   t
@@ -1373,7 +1374,9 @@ and infer_val_path env exp : T.typ option =
      | None -> None
      | Some t ->
        match T.promote t with
-       | T.Obj ( _, flds) -> T.lookup_val_field id.it flds
+       | T.Obj ( _, flds) ->
+         (try Some (T.lookup_val_field id.it flds)
+         with Invalid_argument _ -> None)
        | _ -> None
     )
   | _ -> None

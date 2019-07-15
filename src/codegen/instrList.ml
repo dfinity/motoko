@@ -19,10 +19,6 @@ let combine_shifts const op = function
     else None
   | _ -> None
 
-module Option = struct
-  let is_some = function None -> false | _ -> true
-end
-
 (* Some simple peephole optimizations, to make the output code look less stupid *)
 (* This uses a zipper.*)
 let optimize : instr list -> instr list = fun is ->
@@ -51,7 +47,7 @@ let optimize : instr list -> instr list = fun is ->
     (* Constant shifts can be combined *)
     | {it = Binary (I32 I32Op.(Shl|ShrS|ShrU) as opl); _} :: {it = Const cl; _} :: l',
       ({it = Const cr; _} as const) :: ({it = Binary opr; _} as op) :: r'
-        when Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
+        when Lib.Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
       go l' (Lib.Option.value (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->

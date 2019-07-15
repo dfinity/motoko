@@ -136,7 +136,7 @@ Public info associated with Ids
 -------------
 */
 
-type UserInfo = shared {
+type UserInfo = new {
   id: UserId;
   public_key: Text;
   user_name: Text;
@@ -153,7 +153,7 @@ type UserInfo = shared {
 `TruckTypeInfo`
 -----------------
 */
-type TruckTypeInfo = shared {
+type TruckTypeInfo = new {
   id : TruckTypeId;
   short_name : Text;
   description : Text;
@@ -167,7 +167,7 @@ type TruckTypeInfo = shared {
 `RegionInfo`
 -----------------
 */
-type RegionInfo = shared {
+type RegionInfo = new {
   id : RegionId;
   short_name : Text;
   description : Text;
@@ -178,7 +178,7 @@ type RegionInfo = shared {
 -----------------
 */
 
-type ProduceInfo = shared {
+type ProduceInfo = new {
   id : ProduceId;
   short_name : Text;
   description : Text;
@@ -190,7 +190,7 @@ type ProduceInfo = shared {
 -----------------
 */
 
-type ProducerInfo = shared {
+type ProducerInfo = new {
   id : ProducerId;
   public_key: Text;
   short_name : Text;
@@ -205,7 +205,7 @@ type ProducerInfo = shared {
 -----------------
 */
 
-type InventoryInfo = shared {
+type InventoryInfo = new {
   id : InventoryId;
   produce : ProduceId;
   producer : ProducerId;
@@ -222,7 +222,7 @@ type InventoryInfo = shared {
 -----------------------------
 */
 
-type ReservedInventoryInfo = shared {
+type ReservedInventoryInfo = new {
   id : ReservedInventoryId;
   retailer : RetailerId;
   item : InventoryInfo;
@@ -234,7 +234,7 @@ type ReservedInventoryInfo = shared {
 */
 
 // for now, this is the same as a ReservationInfo
-type ProduceMarketInfo = shared {
+type ProduceMarketInfo = new {
   produce:     ProduceId;
   producer:    ProducerId;
   quant:       Quantity;
@@ -255,7 +255,7 @@ type ProduceMarketInfo = shared {
 -----------------
 */
 
-type RetailerInfo = shared {
+type RetailerInfo = new {
   id : RetailerId;
   public_key: Text;
   short_name : Text;
@@ -268,7 +268,7 @@ type RetailerInfo = shared {
 -----------------
 */
 
-type TransporterInfo = shared {
+type TransporterInfo = new {
   id : TransporterId;
   public_key: Text;
   // no region; the transporters are the supply of routes, not "end
@@ -284,7 +284,7 @@ type TransporterInfo = shared {
 -----------------
 */
 
-type RouteInfo = shared {
+type RouteInfo = new {
   id : RouteId;
   transporter : TransporterId;
   truck_type : TruckTypeInfo;
@@ -300,7 +300,7 @@ type RouteInfo = shared {
 -----------------
 */
 
-type ReservedRouteInfo = shared {
+type ReservedRouteInfo = new {
   id : ReservedRouteId;
   retailer : RetailerId;
   route : RouteInfo;
@@ -311,7 +311,7 @@ type ReservedRouteInfo = shared {
 -----------------
 */
 
-type ReservationInfo = shared {
+type ReservationInfo = new {
   produce:     ProduceId;
   producer:    ProducerId;
   quant:       Quantity;
@@ -338,7 +338,7 @@ type ReservationInfo = shared {
  Developer-level, counter-based information about the exchange, including counts of each kind of entity.
 
 */
-type ProduceExchangeCounts = shared {
+type ProduceExchangeCounts = new {
   hash_bit_length : Nat;
   truck_type_count : Nat;
   region_count : Nat;
@@ -394,7 +394,7 @@ type QueryAllResults = [QueryAllResult];
  The server can generate synthetic workloads given a small set of parameters.
  */
 
-type WorkloadParams = shared {
+type WorkloadParams = new {
   day_count:Nat;
   max_route_duration:Nat;
   producer_count:Nat;

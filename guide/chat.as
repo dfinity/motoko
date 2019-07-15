@@ -5,7 +5,7 @@ type Post = shared Text -> ();
 actor Server = {
   private var clients : List<Client> = null;
 
-  private shared broadcast(message : Text) {
+  private shared func broadcast(message : Text) {
     var next = clients;
     loop {
       switch next {
@@ -18,7 +18,7 @@ actor Server = {
     };
   };
 
-  subscribe(client : Client) : async Post {
+  func subscribe(client : Client) : async Post {
     let cs = new {head = client; var tail = clients};
     clients := ?cs;
     return broadcast;

@@ -33,7 +33,7 @@ let a = actor {
     printInt(c);
     print("\n");
   };
-  increcord(a : shared { x : Nat; y : Nat }) : () {
+  increcord(a : { x : Nat; y : Nat }) : () {
     c += a.x;
     c += a.y;
     printInt(c);
@@ -99,8 +99,8 @@ a.incnested(7,(8,9));
 a.incarray([10,11,12,13]);
 a.incopt(null);
 a.incopt(?14);
-a.increcord(shared {x = 15; y = 16});
-a.increcord(shared {x = 17; y = 18; z = 19});
+a.increcord(new {x = 15; y = 16});
+a.increcord(new {x = 17; y = 18; z = 19});
 a.incVariant(#foo 20);
 a.incVariant(#bar 20);
 a.printCounter();
@@ -112,7 +112,8 @@ a.inci(-20000000000000);
 a.incwords(1,2,3,4);
 a.incwords(-1,-2,-3,-4);
 a.incnats(1,2,3,4);
-a.incints(1,2,3,4);//(-1,-2,-3,-4);
+a.incints(1,2,3,4);
+a.incints(-1,-2,-3,-4);
 a.incn(2**100);
 a.inci(2**100);
 a.inci(-(2**101));

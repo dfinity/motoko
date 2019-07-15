@@ -2,7 +2,6 @@ let prelude =
 {|
 type Any = prim "Any";
 type None = prim "None";
-type Shared = prim "Shared";
 type Null = prim "Null";
 type Bool = prim "Bool";
 type Nat = prim "Nat";
@@ -305,15 +304,16 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
 
-type Cont<T <: Shared> = T -> () ;
-type Async<T <: Shared> = Cont<T> -> ();
+type Cont<T> = T -> () ;
+type Async<T> = Cont<T> -> ();
 
-func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
-  let empty = func k (t:T) = ();
+func @new_async<T <: Any>() : (Async<T>, Cont<T>) {
+  let empty = func(t : T) {};
   var result : ?T = null;
   var ks : T -> () = empty;
-  func fulfill(t:T):() {
-    switch(result) {
+
+  func fulfill(t : T) {
+    switch result {
       case null {
         result := ?t;
         let ks_ = ks;
@@ -321,17 +321,19 @@ func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
         ks_(t);
       };
       case (?t) (assert(false));
-      };
     };
-  func enqueue(k:Cont<T>):() {
-    switch(result) {
+  };
+
+  func enqueue(k : Cont<T>) {
+    switch result {
       case null {
         let ks_ = ks;
-        ks := (func (t:T) {ks_(t);k(t);});
+        ks := (func(t : T) { ks_(t); k(t) });
       };
       case (?t) (k(t));
     };
   };
-  (enqueue,fulfill)
+
+  (enqueue, fulfill)
 };
 |}

@@ -1029,21 +1029,21 @@ module Tagged = struct
     match (tag : tag) with
     | Array ->
       begin match normalize ty with
-      | (Con _ | Shared | Any) -> true
+      | (Con _ | Any) -> true
       | (Array _ | Tup _ | Obj _) -> true
       | (Prim _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Text ->
       begin match normalize ty with
-      | (Con _ | Shared | Any) -> true
+      | (Con _ | Any) -> true
       | (Prim Text | Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Object ->
       begin match normalize ty with
-      | (Con _ | Shared | Any) -> true
+      | (Con _ | Any) -> true
       | (Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
@@ -1894,7 +1894,7 @@ module Object = struct
     (* TODO: remove try once array and text accessors are separated *)
     try
       let _, fields = Type.as_obj_sub [s] obj_type in
-      Type.is_mut (Lib.Option.value (Type.lookup_val_field s fields))
+      Type.is_mut (Type.lookup_val_field s fields)
     with Invalid_argument _ -> false
 
   let idx env obj_type name =
@@ -2750,7 +2750,7 @@ module Serialization = struct
         seen := TS.add t !seen;
         match t with
         | Var _ -> assert false
-        | (Prim _ | Any | Non | Shared | Pre) -> true
+        | (Prim _ | Any | Non | Pre) -> true
         | Con (c, ts) ->
           begin match Con.kind c with
           | Abs _ -> assert false
@@ -2758,7 +2758,7 @@ module Serialization = struct
           end
         | Array t -> go t
         | Tup ts -> List.for_all go ts
-        | Func (Sharable, c, tbs, ts1, ts2) -> false
+        | Func (Shared, c, tbs, ts1, ts2) -> false
         | Func (s, c, tbs, ts1, ts2) ->
           let ts = open_binds tbs in
           List.for_all go (List.map (open_ ts) ts1) &&
@@ -2811,7 +2811,6 @@ module Serialization = struct
       | Prim Int64 -> Some 12
       | Prim Float -> Some 14
       | Prim Text -> Some 15
-      | Shared -> Some 16
       | Non -> Some 17
       | _ -> None
     in
@@ -2831,7 +2830,7 @@ module Serialization = struct
           typs := !typs @ [ t ];
           match t with
           | Tup ts -> List.iter go ts
-          | Obj ((Object Sharable | Actor), fs) ->
+          | Obj (_, fs) ->
             List.iter (fun f -> go f.typ) fs
           | Array t -> go t
           | Opt t -> go t
@@ -2888,7 +2887,7 @@ module Serialization = struct
 
     let add_typ t =
       match t with
-      | Prim _ | Shared | Non -> assert false
+      | Prim _ | Non -> assert false
       | Tup ts ->
         add_sleb128 (-20);
         add_leb128 (List.length ts);
@@ -2896,7 +2895,7 @@ module Serialization = struct
           add_leb128 i;
           add_idx t;
         ) ts
-      | Obj (Object Sharable, fs) ->
+      | Obj (Object, fs) ->
         add_sleb128 (-20);
         add_leb128 (List.length fs);
         List.iter (fun (h, f) ->
@@ -2985,7 +2984,7 @@ module Serialization = struct
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
           size env t
         ) ts
-      | Obj (Object Sharable, fs) ->
+      | Obj (Object, fs) ->
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
           size env f.typ
@@ -3000,7 +2999,7 @@ module Serialization = struct
       | Prim Text ->
         size_word env (get_x ^^ Heap.load_field Text.len_field) ^^
         inc_data_size (get_x ^^ Heap.load_field Text.len_field)
-      | (Prim Null | Shared) -> G.nop
+      | Prim Null -> G.nop
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
@@ -3108,7 +3107,7 @@ module Serialization = struct
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
           write env t
         ) ts
-      | Obj (Object Sharable, fs) ->
+      | Obj (Object, fs) ->
         G.concat_map (fun (_h,f) ->
           get_x ^^ Object.load_idx env t f.Type.lab ^^
           write env f.typ
@@ -3120,7 +3119,7 @@ module Serialization = struct
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           write env t
         )
-      | (Prim Null | Shared) -> G.nop
+      | Prim Null -> G.nop
       | Opt t ->
         get_x ^^
         Opt.is_some env ^^
@@ -3235,7 +3234,7 @@ module Serialization = struct
       | Tup ts ->
         G.concat_map (fun t -> read env t) ts ^^
         Tuple.from_stack env (List.length ts)
-      | Obj (Object Sharable, fs) ->
+      | Obj (Object, fs) ->
         Object.lit_raw env (List.map (fun (_h,f) ->
           f.Type.lab, fun () -> read env f.typ
         ) (sort_by_hash fs))
@@ -3250,7 +3249,7 @@ module Serialization = struct
           read env t ^^ store_ptr
         ) ^^
         get_x
-      | (Prim Null | Shared) -> Opt.null
+      | Prim Null -> Opt.null
       | Opt t ->
         read_byte ^^
         compile_eq_const 0l ^^
@@ -3304,7 +3303,7 @@ module Serialization = struct
       (* Special-cased formats for scaffolding *)
       | Type.Prim Type.Text -> get_x ^^ Dfinity.compile_databuf_of_text env
       | Type.Obj (Type.Actor, _)
-      | Type.Func (Type.Sharable, _, _, _, _) -> get_x ^^ Dfinity.unbox_reference env
+      | Type.Func (Type.Shared, _, _, _, _) -> get_x ^^ Dfinity.unbox_reference env
       (* normal format *)
       | _ ->
         let (set_data_size, get_data_size) = new_local env "data_size" in
@@ -3401,7 +3400,7 @@ module Serialization = struct
       match Type.normalize t with
       | Type.Prim Type.Text -> deserialize_text env get_elembuf
       | Type.Obj (Type.Actor, _)
-      | Type.Func (Type.Sharable, _, _, _, _) -> get_elembuf ^^ Dfinity.box_reference env
+      | Type.Func (Type.Shared, _, _, _, _) -> get_elembuf ^^ Dfinity.box_reference env
       | _ ->
         let (set_data_size, get_data_size) = new_local env "data_size" in
         let (set_refs_size, get_refs_size) = new_local env "refs_size" in
@@ -3474,7 +3473,7 @@ module Serialization = struct
       match normalize t with
       | Prim Text -> DataBuf
       | Obj (Actor, _) -> ActorRef
-      | Func (Sharable, _, _, _, _) -> FuncRef
+      | Func (Shared, _, _, _, _) -> FuncRef
       | t' when has_no_references t' -> DataBuf
       | _ -> ElemBuf
 
@@ -4150,7 +4149,7 @@ module FuncDec = struct
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env cc name args mk_body at =
     let (fi, fill) = E.reserve_fun pre_env name in
-    if cc.Call_conv.sort = Type.Sharable
+    if cc.Call_conv.sort = Type.Shared
     then begin
       declare_dfinity_type pre_env false fi args;
       ( SR.StaticMessage fi, fun env ae ->
@@ -4164,7 +4163,7 @@ module FuncDec = struct
 
   (* Compile a closure declaration (captures local variables) *)
   let closure env ae cc name captured args mk_body at =
-      let is_local = cc.Call_conv.sort <> Type.Sharable in
+      let is_local = cc.Call_conv.sort <> Type.Shared in
 
       let (set_clos, get_clos) = new_local env (name ^ "_clos") in
 
@@ -5560,7 +5559,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae (StackRep.of_arity cc.Call_conv.n_args) e2 ^^
         get_clos ^^
         Closure.call_closure env cc
-     | _, Type.Sharable ->
+     | _, Type.Shared ->
         let (set_funcref, get_funcref) = new_local env "funcref" in
         code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
         set_funcref ^^
@@ -5606,7 +5605,7 @@ and compile_exp (env : E.t) ae exp =
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
     then actor_lit env i ds fs exp.at
     else todo_trap env "non-closed actor" (Arrange_ir.exp exp)
-  | NewObjE ((Type.Object _ (*sharing*) | Type.Module), fs, _) ->
+  | NewObjE ((Type.Object | Type.Module), fs, _) ->
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->

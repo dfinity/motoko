@@ -3,10 +3,24 @@ pat-inconsistent.as:7.34-7.50: warning, this pattern is never matched
 pat-inconsistent.as:9.20-9.22: warning, this pattern is never matched
 pat-inconsistent.as:10.20-10.24: warning, this pattern is never matched
 pat-inconsistent.as:11.20-11.30: warning, this pattern is never matched
-pat-inconsistent.as:2.13-2.21: warning, this pattern does not cover all possible values
-pat-inconsistent.as:3.13-3.22: warning, this pattern does not cover all possible values
-pat-inconsistent.as:5.13-5.29: warning, this pattern does not cover all possible values
-pat-inconsistent.as:8.13-8.33: warning, this pattern does not cover all possible values
+pat-inconsistent.as:2.13-2.21: warning, this pattern consuming type
+  Nat
+does not cover value
+  0 or 3 or _
+pat-inconsistent.as:3.13-3.22: warning, this pattern consuming type
+  Int
+does not cover value
+  0 or 2 or _
+pat-inconsistent.as:5.13-5.29: warning, this pattern consuming type
+  Int
+does not cover value
+  0 or -1 or _
+pat-inconsistent.as:8.13-8.33: warning, this pattern consuming type
+  (Int, Int)
+does not cover value
+  (-1, 0 or 1 or _) or
+  (2, 0 or 1 or _) or
+  (0 or 1 or _, _)
 pat-inconsistent.as:16.16-16.24: type error, pattern branches have incompatible types,
 left consumes
   Nat
@@ -72,9 +86,9 @@ left consumes
   Nat
 right consumes
   Any
-pat-inconsistent.as:30.16-30.35: type error, pattern branches have incompatible types,
+pat-inconsistent.as:30.16-30.32: type error, pattern branches have incompatible types,
 left consumes
-  Shared
+  Any
 right consumes
   Float
 pat-inconsistent.as:31.16-31.31: type error, pattern branches have incompatible types,
