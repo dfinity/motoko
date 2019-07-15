@@ -30,12 +30,10 @@ CLANG_FLAGS = \
    --target=wasm32-unknown-unknown-wasm -fvisibility=hidden \
    -fno-builtin -ffreestanding \
    --optimize=3 \
-   -Iincludes \
    -fvisibility=hidden \
 
-HEADER_STUBS = $(wildcard includes/*.h)
 
-_build/tommath_%.o: $(TOMMATHSRC)/bn_%.c $(HEADER_STUBS) | _build
+_build/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build
 	$(CLANG) $(CLANG_FLAGS) $(MP_FLAGS)$< --output $@
 
 all: as-rts.wasm

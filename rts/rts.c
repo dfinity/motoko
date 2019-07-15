@@ -4,7 +4,7 @@
 #define from_rts __attribute__ ((import_module("env"))) extern
 
 #include <stdint.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include <stdbool.h>
 
 export void as_memcpy(char *str1, const char *str2, size_t n) {
