@@ -515,27 +515,21 @@ let concrete t =
     begin
       seen := S.add t !seen;
       match t with
-      | Var _ -> assert false
+      | Var _ | Pre -> assert false
       | Prim _ | Any | Non -> true
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
         | Def (tbs, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
-      | Array t -> go t
+      | Array t | Opt t | Async t | Mut t | Serialized t -> go t
       | Tup ts -> List.for_all go ts
+      | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         let ts = open_binds tbs in
         List.for_all go (List.map (open_ ts) ts1) &&
         List.for_all go (List.map (open_ ts) ts2)
-      | Opt t -> go t
-      | Async t -> go t
-      | Obj (s, fs) -> List.for_all (fun f -> go f.typ) fs
-      | Variant fs -> List.for_all (fun f -> go f.typ) fs
-      | Mut t -> go t
       | Typ c -> assert false (* TBR *)
-      | Serialized t -> go t
-      | Pre -> assert false
     end
   in go t
 
@@ -547,25 +541,19 @@ let shared t =
     begin
       seen := S.add t !seen;
       match t with
-      | Var _ -> assert false
-      | Any -> false
-      | Prim _ | Non -> true
+      | Var _ | Pre -> assert false
+      | Any | Async _ | Mut _ -> false
+      | Non | Prim _ | Typ _ -> true
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
         | Def (tbs, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
-      | Array t -> go t
+      | Array t | Opt t | Serialized t -> go t
       | Tup ts -> List.for_all go ts
-      | Func (s, c, tbs, ts1, ts2) -> s = Shared
-      | Opt t -> go t
-      | Async t -> false
       | Obj (s, fs) -> s = Actor || List.for_all (fun f -> go f.typ) fs
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
-      | Mut t -> false
-      | Typ c -> true
-      | Serialized t -> go t
-      | Pre -> assert false
+      | Func (s, c, tbs, ts1, ts2) -> s = Shared
     end
   in go t
 
