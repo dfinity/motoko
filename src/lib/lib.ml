@@ -1,6 +1,7 @@
 module Fun =
 struct
   let id x = x
+  let flip f x y = f y x
 
   let curry f x y = f (x, y)
   let uncurry f (x, y) = f x y
@@ -44,7 +45,7 @@ struct
     else if i1 >= 0l && i2 < 0l then -1
     else Int32.compare i1 i2
 end
-  
+
 module String =
 struct
   let implode cs =
@@ -78,10 +79,33 @@ struct
       Some i
     else
       find_from_opt f s (i + 1)
+
+  let chop_prefix prefix s =
+    let prefix_len = String.length prefix in
+    let s_len = String.length s in
+    if s_len < prefix_len then
+      None
+    else if String.sub s 0 prefix_len = prefix then
+      Some (String.sub s prefix_len (s_len - prefix_len))
+    else
+      None
+
+  let chop_suffix suffix s =
+    let suffix_len = String.length suffix in
+    let s_len = String.length s in
+    if s_len < suffix_len then
+      None
+    else if String.sub s (s_len - suffix_len) suffix_len = suffix then
+      Some (String.sub s 0 (s_len - suffix_len))
+    else
+      None
 end
 
 module List =
 struct
+  let equal p xs ys =
+    try List.for_all2 p xs ys with _ -> false
+
   let rec make n x = make' n x []
   and make' n x xs =
     if n = 0 then xs else make' (n - 1) x (x::xs)
@@ -247,6 +271,12 @@ end
 
 module Option =
 struct
+  let equal p x y =
+    match x, y with
+    | Some x', Some y' -> p x' y'
+    | None, None -> true
+    | _, _ -> false
+
   let get o x =
     match o with
     | Some y -> y
@@ -260,7 +290,7 @@ struct
     | Some x -> Some (f x)
     | None -> None
 
-  let app f = function
+  let iter f = function
     | Some x -> f x
     | None -> ()
 
@@ -269,6 +299,10 @@ struct
   let bind x f = match x with
     | Some x -> f x
     | None -> None
+
+  let is_some x = x <> None
+
+  let is_none x = x = None
 end
 
 module Promise =

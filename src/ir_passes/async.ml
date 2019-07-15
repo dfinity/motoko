@@ -1,5 +1,6 @@
 open As_types
-open As_ir
+open Ir_def
+
 module E = Env
 open Source
 module Ir = Ir
@@ -43,7 +44,7 @@ module Transform() = struct
 
   let nary typ = T.as_seq typ
 
-  let replyT as_seq typ = T.Func(T.Sharable, T.Returns, [], as_seq typ, [])
+  let replyT as_seq typ = T.Func(T.Shared, T.Returns, [], as_seq typ, [])
 
   let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
@@ -56,7 +57,7 @@ module Transform() = struct
     T.Func (
         T.Local,
         T.Returns,
-        [ { var = "T"; bound = T.Shared } ],
+        [ { var = "T"; bound = T.Any } ],
         [],
         new_async_ret unary (T.Var ("T", 0))
       )
@@ -110,7 +111,7 @@ module Transform() = struct
 
   let isAwaitableFunc exp =
     match typ exp with
-    | T.Func (T.Sharable,T.Promises,_,_,[T.Async _]) -> true
+    | T.Func (T.Shared,T.Promises,_,_,[T.Async _]) -> true
     | _ -> false
 
   let extendTup ts t2 = ts @ [t2]
@@ -144,7 +145,7 @@ module Transform() = struct
     | Func (s, c, tbs, t1, t2) ->
       begin
         match s with
-        |  T.Sharable ->
+        | T.Shared ->
            begin
              match t2 with
              | [] ->
@@ -156,7 +157,7 @@ module Transform() = struct
                      extendTup (List.map t_typ t1) (replyT nary (t_typ t2)), [])
              | _ -> assert false
            end
-        | _ ->
+        | T.Local ->
           Func (s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
       end
     | Opt t -> Opt (t_typ t)
@@ -164,7 +165,6 @@ module Transform() = struct
     | Async t -> t_async nary (t_typ t)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
-    | Shared -> Shared
     | Serialized t -> Serialized (t_typ t)
     | Any -> Any
     | Non -> Non
@@ -256,7 +256,7 @@ module Transform() = struct
         | t -> assert false in
       let k = fresh_var "k" contT in
       let v1 = fresh_var "v" t1 in
-      let post = fresh_var "post" (T.Func(T.Sharable,T.Returns,[],[],[])) in
+      let post = fresh_var "post" (T.Func(T.Shared,T.Returns,[],[],[])) in
       let u = fresh_var "u" T.unit in
       let ((nary_async,nary_reply),def) = new_nary_async_reply t1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
@@ -268,7 +268,7 @@ module Transform() = struct
     | CallE (cc,exp1, typs, exp2) when isAwaitableFunc exp1 ->
       let ts1,t2 =
         match typ exp1 with
-        | T.Func (T.Sharable,T.Promises,tbs,ts1,[T.Async t2]) ->
+        | T.Func (T.Shared,T.Promises,tbs,ts1,[T.Async t2]) ->
           List.map t_typ ts1, t_typ t2
         | _ -> assert(false)
       in
@@ -321,7 +321,7 @@ module Transform() = struct
         match s with
         | T.Local  ->
           FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
-        | T.Sharable ->
+        | T.Shared ->
           begin
             match typ exp with
             | T.Tup [] ->

@@ -159,7 +159,7 @@ actor class Server () {
           //    but two other sources exist for each type: the type of `insert` is known, and hence, this record has a known type,
           //    and, the type of each of these `variables` is known, as well.
 
-          shared {
+          new {
             id=id_ :T.TruckTypeId;
             short_name=short_name_:Text;
             description=description_:Text;
@@ -229,7 +229,7 @@ actor class Server () {
     Result.fromSome<T.RegionId>(
       getModel().regionTable.addInfoGetId(
         func (id_:T.RegionId) : T.RegionInfo =
-          shared {
+          new {
             id = id_:T.RegionId;
             short_name=short_name_:Text;
             description=description_:Text
@@ -306,7 +306,7 @@ actor class Server () {
     Result.fromSome<T.ProduceId>(
       getModel().produceTable.addInfoGetId(
         func (id_:T.ProduceId) : T.ProduceInfo =
-          shared {
+          new {
             id = id_:T.ProduceId;
             short_name=short_name_:Text;
             description=description_:Text;
@@ -378,7 +378,7 @@ actor class Server () {
     Result.fromOption<T.ProduceId,T.IdErr>(
       getModel().producerTable.addInfoGetId(
         func(id_:T.ProducerId):T.ProducerInfo {
-          shared {
+          new {
             id=id_:T.ProducerId;
             public_key=producer_public_key;
             short_name=short_name_:Text;
@@ -455,7 +455,7 @@ actor class Server () {
     Result.fromOption<T.RetailerId,T.IdErr>(
       getModel().retailerTable.addInfoGetId(
         func(id_:T.RetailerId):T.RetailerInfo {
-          shared {
+          new {
             id=id_:T.RetailerId;
             public_key=retailer_public_key;
             short_name=short_name_:Text;
@@ -526,7 +526,7 @@ actor class Server () {
     Result.fromOption<T.TransporterId,()>(
       getModel().transporterTable.addInfoGetId(
         func(id_:T.TransporterId):T.TransporterInfo {
-          shared {
+          new {
             id=id_:T.TransporterId;
             public_key=transporter_public_key;
             short_name=short_name_:Text;
@@ -921,7 +921,7 @@ actor class Server () {
 
   getCounts() : async T.ProduceExchangeCounts {
     let m = getModel();
-    shared {
+    new {
       hash_bit_length          = 0;
       truck_type_count         = m.truckTypeTable.count();
       region_count             = m.regionTable.count();
@@ -1057,7 +1057,7 @@ been processed
 
   devTestLoadQuery (region_count:Nat, scale_factor:Nat) {
     func scaledParams(region_count_:Nat, factor:Nat) : T.WorkloadParams = {
-      shared {
+      new {
         region_count        = region_count_:Nat;
         day_count           = 3:Nat;
         max_route_duration  = 1:Nat;

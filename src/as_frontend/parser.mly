@@ -1,8 +1,12 @@
 %{
+open As_def
 open As_types
-open As_values.Operator
+open As_values
+
 open Syntax
 open Source
+open Operator
+
 
 (* Position handling *)
 
@@ -62,10 +66,8 @@ let let_or_exp named x e' at =
 
 let share_typ t =
   match t.it with
-  | ObjT ({it = Type.Object Type.Local; _} as s, tfs) ->
-    { t with it = ObjT ({s with it = Type.Object Type.Sharable}, tfs)}
   | FuncT ({it = Type.Local; _} as s, tbs, t1, t2) ->
-    { t with it = FuncT ({s with it = Type.Sharable}, tbs, t1, t2)}
+    { t with it = FuncT ({s with it = Type.Shared}, tbs, t1, t2)}
   | _ -> t
 
 let share_typfield (tf : typ_field) =
@@ -74,7 +76,7 @@ let share_typfield (tf : typ_field) =
 let share_exp e =
   match e.it with
   | FuncE (x, ({it = Type.Local; _} as s), tbs, p, t, e) ->
-    FuncE (x, {s with it = Type.Sharable}, tbs, p, t, e) @? e.at
+    FuncE (x, {s with it = Type.Shared}, tbs, p, t, e) @? e.at
   | _ -> e
 
 let share_dec d =
@@ -137,8 +139,8 @@ let share_expfield (ef : exp_field) =
 %left POWOP
 
 %type<Syntax.exp> exp exp_nullary
-%start<string -> Syntax.prog> parse_prog
-%start<string -> Syntax.prog> parse_prog_interactive
+%start<string -> As_def.Syntax.prog> parse_prog
+%start<string -> As_def.Syntax.prog> parse_prog_interactive
 
 %%
 
@@ -178,23 +180,18 @@ seplist(X, SEP) :
   | VAR { Var @@ at $sloc }
 
 %inline obj_sort :
-  | NEW { Type.Object Type.Local @@ at $sloc }
-  | OBJECT { Type.Object Type.Local @@ at $sloc }
-  | SHARED { Type.Object Type.Sharable @@ at $sloc }
+  | NEW { Type.Object @@ at $sloc }
+  | OBJECT { Type.Object @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
   | MODULE { Type.Module @@ at $sloc }
 
 %inline obj_sort_opt :
-  | (* empty *) { Type.Object Type.Local @@ no_region }
+  | (* empty *) { Type.Object @@ no_region }
   | s=obj_sort { s }
-
-%inline shared_opt :
-  | (* empty *) { Type.Local @@ no_region }
-  | SHARED { Type.Sharable @@ at $sloc }
 
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED { Type.Sharable @@ at $sloc }
+  | SHARED { Type.Shared @@ at $sloc }
 
 (* paths *)
 
@@ -226,7 +223,7 @@ typ_nullary :
   | LBRACKET m=var_opt t=typ RBRACKET
     { ArrayT(m, t) @! at $sloc }
   | tfs=typ_obj
-    { ObjT(Type.Object Type.Local @@ at $sloc, tfs) @! at $sloc }
+    { ObjT(Type.Object @@ at $sloc, tfs) @! at $sloc }
   | tfs=typ_variant
     { VariantT tfs @! at $sloc }
 
@@ -245,9 +242,7 @@ typ_pre :
     { AsyncT(t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
-        if s.it = Type.Object Type.Local || s.it = Type.Module
-        then tfs
-        else List.map share_typfield tfs
+        if s.it = Type.Actor then List.map share_typfield tfs else tfs
       in ObjT(s, tfs') @! at $sloc }
 
 typ :
@@ -491,7 +486,7 @@ exp_field :
   | v=private_opt x=id EQ e=exp
     { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
       {dec = d; vis = v} @@ at $sloc }
-  | v=private_opt s=shared_opt x=id fe=func_exp
+  | v=private_opt s=func_sort_opt x=id fe=func_exp
     { let d = LetD(VarP(x) @! x.at, fe s x.it) @? at $sloc in
       {dec = d; vis = v} @@ at $sloc }
   (* TODO(andreas): allow any dec *)
@@ -578,19 +573,15 @@ dec_nonvar :
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
       let efs' =
-        if s.it = Type.Object Type.Local || s.it = Type.Module
-        then efs
-        else List.map share_expfield efs
+        if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
-  | s=shared_opt FUNC xf=id_opt fe=func_exp
+  | s=func_sort_opt FUNC xf=id_opt fe=func_exp
     { let named, x = xf "func" $sloc in
       let_or_exp named x (fe s x.it).it (at $sloc) }
   | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_argument xefs=class_body
     { let x, efs = xefs in
       let efs' =
-        if s.it = Type.Object Type.Local || s.it = Type.Module
-        then efs
-        else List.map share_expfield efs
+        if s.it = Type.Actor then List.map share_expfield efs else efs
       in ClassD(xf "class" $sloc, tps, s, p, x, efs') @? at $sloc }
   | IMPORT xf=id_opt EQ? f=TEXT
     { let named, x = xf "import" $sloc in

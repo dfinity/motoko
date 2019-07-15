@@ -73,17 +73,18 @@ let MAX_LEAF_COUNT = 8; // <-- beats both 4 and 16 for me, now
 //let MAX_LEAF_COUNT = 16;
 //let MAX_LEAF_COUNT = 32;
 
-let P = (import "prelude.as");
+private import P "prelude.as";
 
-let Option = import "option.as";
+private import Option "option.as";
 
-let Hash = (import "hash.as").BitVec;
+private import H "hash.as";
+let Hash = H.BitVec;
 type Hash = Hash.t;
 
-let List = import "list.as";
+private import List "list.as";
 type List<T> = List.List<T>;
 
-let AssocList = import "assocList.as";
+private import AssocList "assocList.as";
 type AssocList<K,V> = AssocList.AssocList<K,V>;
 
 /** A `Key` for the trie has an associated hash value */

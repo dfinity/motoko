@@ -19,5 +19,5 @@ class E<Y>(x : U<Y>) {r = x.f};
 //class F(x : FF) {r = x.a};
 //type FF = {a : Int};
 
-type AA = shared {b : BB};
-type BB = shared {a : ?AA};
+type AA = {b : BB};
+type BB = {a : ?AA};

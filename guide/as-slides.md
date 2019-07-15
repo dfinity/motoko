@@ -108,9 +108,9 @@ structural record types, JS-like, fields can be mutable
 
 * `{var x : Int; color : Color}`
 
-* `shared {x : Int; color: Color}`
+* `{x : Int; color: Color}`
 
-shared (think serializable) objects have immutable fields of sharable types.
+objects with immutable fields of sharable types are sharable.
 
 ### Actor types
 
@@ -188,7 +188,7 @@ AS distinguishes sharable types:
 
   - all primitive types are sharable (scalars + text)
   - any `shared` function type is sharable
-  - any `shared` object type is sharable
+  - an object type is sharable if it's fields are sharable and immutable
   - any `actor` type is sharable
   - `[T]` and `?T`  are sharable if `T` is sharable.
   - `(T1,...,Tn)` is sharable if `T1`,..., `Tn` all sharable.
@@ -197,8 +197,7 @@ AS distinguishes sharable types:
 
 ### ... Sharability
 
- * `shared` functions must have sharable arguments and return `()` or async `T`, where `T` sharable
-* `shared` object must have sharable fields
+* `shared` functions must have sharable arguments and return `()` or async `T`, where `T` sharable
 * actor fields must re `shared` functions
 
 (actors \& shared functions serialized by *reference*, other types serialzed by *value*)
@@ -224,12 +223,12 @@ AS distinguishes sharable types:
 * Unary & binary, arithmetic & logical operators
   - `- x`, `not b`, `a + b`, `a & b` ...
 
-### (Shared) Objects
+### (Sharable) Objects
 
-* `shared` (think serializable) objects have immutable fields of sharable type:
+* sharable (think serializable) objects have immutable fields of sharable type:
 
   ```
-  shared { x = 0; color = Colors.Red }
+  { x = 0; color = Colors.Red }
   ```
 
 * full `object`s can be mutable, stateful

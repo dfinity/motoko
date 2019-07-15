@@ -5,7 +5,7 @@ Functions for Option types.
 
 */
 
-let P = (import "prelude.as");
+private import P "prelude.as";
 
 type t<A> = ?A;
 

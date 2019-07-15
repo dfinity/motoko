@@ -1,4 +1,4 @@
-open As_ir
+open Ir_def
 open As_types
 open As_values
 (* Translates away calls to `show`. *)
@@ -359,7 +359,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
       define_show t (invoke_text_of_array t' (show_var_for t') (argE t)),
       [t']
     end
-  | T.Obj (T.Object _, fs) ->
+  | T.Obj (T.Object, fs) ->
     define_show t (
       cat_list (list_build
         (textE "{") (textE "; ") (textE "}")
