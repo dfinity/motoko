@@ -149,8 +149,8 @@ let parse_module_header project_root current_file_path file =
 (* Given a source file and a cursor position in that file, figure out
    the prefix relevant to searching completions. For example, given:
 
-   List.| (where | is the cursor) return `List.` *)
-let find_completion_prefix logger file line column =
+   List.fi| (where | is the cursor) return `Some ("List", "fi")` *)
+let find_completion_prefix logger file line column: (string * string) option =
   (* The LSP sends 0 based line numbers *)
   let line = line + 1 in
   let lexbuf = Lexing.from_string file in
@@ -163,9 +163,9 @@ let find_completion_prefix logger file line column =
   let rec loop = function
     | _ when (pos_past_cursor (Lexer.region lexbuf).Source.right) -> None
     | Parser.ID ident ->
-        (match next () with
+       (match next () with
         | Parser.DOT ->
-            (match next () with
+           (match next () with
             | Parser.EOF -> Some (ident, "")
             | Parser.ID prefix ->
                let next_token_end = (Lexer.region lexbuf).Source.right in
