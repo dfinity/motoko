@@ -11,7 +11,7 @@ module {
 import Result = "../../result.as";
 import T = "serverTypes.as";
 
-type Result<Ok,Err> = Result.Result<Ok,Err>;
+public type Result<Ok,Err> = Result.Result<Ok,Err>;
 
 /**
  `Req`
@@ -22,7 +22,7 @@ type Result<Ok,Err> = Result.Result<Ok,Err>;
  - [resp](#resp)
  - [bulk request](#bulkreq)
 */
-type Req = {
+public type Req = {
   #reset  : () ;
   #add    : AddReq ;
   #update : UpdateReq ;
@@ -41,7 +41,7 @@ type Req = {
  - [request](#req)
  - [bulk response](#bulkresp)
 */
-type Resp = {
+public type Resp = {
   #reset;
   #add    : T.EntId;
   #update : ();
@@ -53,7 +53,7 @@ type Resp = {
  --------------------------------------
  A `Result` whose OK type is `Resp`.
 */
-type ResultResp = Result<Resp, T.ServerErr>;
+public type ResultResp = Result<Resp, T.ServerErr>;
 
 /**
  `BulkReq`
@@ -64,7 +64,7 @@ type ResultResp = Result<Resp, T.ServerErr>;
  - [bulk response](#bulkresp)
  - [response](#resp)
 */
-type BulkReq = {
+public type BulkReq = {
   #add    : [ AddReq    ] ;
   #update : [ UpdateReq ] ;
   #rem    : [ T.EntId     ] ;
@@ -77,14 +77,14 @@ type BulkReq = {
 
  See also: [bulk request](#bulkreq).
 */
-type BulkResp = {
+public type BulkResp = {
   #add    : [ Result<T.EntId, T.IdErr> ] ;
   #update : [ Result<(), T.IdErr> ] ;
   #rem    : [ Result<(), T.IdErr> ] ;
 } ;
 
 
-type UserAddReq = new {
+public type UserAddReq = {
   user_name: Text;
   public_key: Text;
   description: Text;
@@ -100,7 +100,7 @@ type UserAddReq = new {
  ----------------
  Note: The `RouteInfo` type contains too much information about truck types to use here in place of this type.
  */
-type RouteAddReq = new {
+public type RouteAddReq = {
   id : T.RouteId;
   transporter : T.TransporterId;
   truck_type : T.TruckTypeId;
@@ -120,7 +120,7 @@ type RouteAddReq = new {
  etc.), the identifier is ignored; the request, if successful, will
  generate a fresh identifier for the new entity.
 */
-type AddReq = {
+public type AddReq = {
   #user        : UserAddReq ;
   #truckType   : T.TruckTypeInfo ;
   #region      : T.RegionInfo ;
@@ -137,7 +137,7 @@ type AddReq = {
  --------------------------------------
  a server `Update` request, as an AS datatype
 */
-type UpdateReq = {
+public type UpdateReq = {
   #user        : T.UserInfo ;
   #truckType   : T.TruckTypeInfo ;
   #region      : T.RegionInfo ;
