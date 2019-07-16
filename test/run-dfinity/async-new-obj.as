@@ -30,8 +30,8 @@ let c = async {
   let o = object {
     let a = await (async "ca") ;
     let b = await (async "cb");
-	  public func get_a() : Text { a };
-	  public func get_b() : Text { b };
+    public func get_a() : Text { a };
+    public func get_b() : Text { b };
   };
   let (a, b) = (o.get_a(), o.get_b());
   print a;
@@ -44,7 +44,7 @@ let d = async {
     let a = "da";
     let b = await (async "db");
     public func get_a() : Text { a };
-	  public func get_b() : Text { b };
+    public func get_b() : Text { b };
   };
   let (a, b) = (o.get_a(), o.get_b());
   print a;

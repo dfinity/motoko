@@ -7,7 +7,7 @@ Productions marked * probably deferred to later versions.
 ```
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
-  actor? { <typ-field>;* }                      object
+  (actor|module|object)? { <typ-field>;* }                      actor / module / object (default)
   { <typ-tag>;* }                               variant
   { # }                                         empty variant
   [ var? <typ> ]                                array
@@ -113,11 +113,10 @@ Productions marked * probably deferred to later versions.
   <exp>                                                       expression
   let <pat> = <exp>                                           immutable
   var <id> (: <typ>)? = <exp>                                 mutable
-  (object|actor) <id>? =? { <dec-field>;* }                   object
+  (actor|module|object) <id>? =? { <dec-field>;* }                   object
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>  function
   actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
   type <id> <typ-params>? = <typ>                             type
-  module <id>? =? { <dec>* }                                  module
   import <id>? =? <text>                                      import
 
 <dec-field> ::=                                          object declaration fields
