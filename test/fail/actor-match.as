@@ -1,9 +1,9 @@
 let a : actor {f : () -> (); g : () -> ()} = actor {
-  f () {};
-  g () {}
+  public func f() {};
+  public func g() {}
 };
 
-func foo () = switch a {
+func foo() = switch a {
   case {f; g} { f() }
 };
 

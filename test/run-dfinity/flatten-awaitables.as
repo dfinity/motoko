@@ -1,33 +1,33 @@
 // test flattening of awaitable, shared function arguments
 
 let a = actor {
-    m0():async() {};
-    m1(x:Int):async Int {return x;};
-    m2(x:Int,y:Bool):async(Int,Bool) {return (x,y);};
-    m3(x:Int,y:Bool,z:Text):async(Int,Bool,Text) {return (x,y,z);};
+    public func m0():async() {};
+    public func m1(x:Int):async Int {return x;};
+    public func m2(x:Int,y:Bool):async(Int,Bool) {return (x,y);};
+    public func m3(x:Int,y:Bool,z:Text):async(Int,Bool,Text) {return (x,y,z);};
 
-    n0(u:()):async() {return u};
-    n1(x:Int):async Int {return x;};
-    n2(xy:(Int,Bool)):async(Int,Bool) {return xy;};
-    n3(xyz:(Int,Bool,Text)):async(Int,Bool,Text) {return xyz;};
+    public func n0(u:()):async() {return u};
+    public func n1(x:Int):async Int {return x;};
+    public func n2(xy:(Int,Bool)):async(Int,Bool) {return xy;};
+    public func n3(xyz:(Int,Bool,Text)):async(Int,Bool,Text) {return xyz;};
 
     // higher-order cases
-    h0 (f0:shared () -> async (),u:()) : async ()
+    public func h0 (f0:shared () -> async (),u:()) : async ()
        { await f0 u;};
-    h1 (f1:shared (Int) -> async Int,x:Int)  : async Int
+    public func h1 (f1:shared (Int) -> async Int,x:Int)  : async Int
        { await f1 x;};
-    h2 (f2:shared (Int,Bool) -> async (Int,Bool), xy:(Int,Bool)) : async (Int,Bool)
+    public func h2 (f2:shared (Int,Bool) -> async (Int,Bool), xy:(Int,Bool)) : async (Int,Bool)
        { await f2 xy; };
-    h3 (f3:shared (Int,Bool,Text) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
+    public func h3 (f3:shared (Int,Bool,Text) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
        { await f3 xyz; };
 
-    g0 (f0:shared (()) -> async (),u:()) : async ()
+    public func g0 (f0:shared (()) -> async (),u:()) : async ()
        { await f0 u;};
-    g1 (f1:shared (Int) -> async Int,x:Int)  : async Int
+    public func g1 (f1:shared (Int) -> async Int,x:Int)  : async Int
        { await f1 x;};
-    g2 (f2:shared ((Int,Bool)) -> async (Int,Bool), xy:(Int,Bool)) : async (Int,Bool)
+    public func g2 (f2:shared ((Int,Bool)) -> async (Int,Bool), xy:(Int,Bool)) : async (Int,Bool)
        { await f2 xy; };
-    g3 (f3:shared ((Int,Bool,Text)) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
+    public func g3 (f3:shared ((Int,Bool,Text)) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
        { await f3 xyz; };
 
 };

@@ -1,7 +1,7 @@
 (* Calling convention *)
 
 type call_conv = {
-  sort: Type.sharing;
+  sort: Type.func_sort;
   control : Type.control;
   n_args : int;
   n_res : int;

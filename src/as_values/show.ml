@@ -13,7 +13,7 @@ let rec can_show t =
   | Tup ts' -> List.for_all can_show ts'
   | Opt t' -> can_show t'
   | Array t' -> can_show (as_immut t')
-  | Obj (Object _, fs) ->
+  | Obj (Object, fs) ->
     List.for_all (fun f -> can_show (as_immut f.typ)) fs
   | Variant cts ->
     List.for_all (fun f -> can_show f.typ) cts

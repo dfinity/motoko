@@ -32,7 +32,7 @@ let real-dvm =
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
         ref = "master";
-        rev = "65c295edfc4164ca89c129d501a403fa246d3d36";
+        rev = "a556b011d957d3174b6c4017d76dd510791d8922";
       }; in
       (import dev { system = nixpkgs.system; }).dvm
     else null
@@ -42,7 +42,6 @@ let commonBuildInputs = [
   nixpkgs.ocaml
   nixpkgs.dune
   nixpkgs.ocamlPackages.atdgen
-  nixpkgs.ocamlPackages.base
   nixpkgs.ocamlPackages.findlib
   nixpkgs.ocamlPackages.menhir
   nixpkgs.ocamlPackages.num

@@ -27,7 +27,7 @@ let rec exp e = match e.it with
   | FuncE (x, s, tp, p, t, e') ->
     "FuncE" $$ [
       Atom (Type.string_of_typ e.note.note_typ);
-      Atom (Arrange_type.sharing s.it);
+      func_sort s;
       Atom x] @
       List.map typ_bind tp @ [
       pat p;
@@ -97,7 +97,14 @@ and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
 and pat_field pf = pf.it.id.it $$ [pat pf.it.pat]
 
-and obj_sort s = Arrange_type.obj_sort s.it
+and obj_sort s = match s.it with
+  | Type.Object -> Atom "Object"
+  | Type.Actor -> Atom "Actor"
+  | Type.Module -> Atom "Module"
+
+and func_sort s = match s.it with
+  | Type.Local -> Atom "Local"
+  | Type.Shared -> Atom "Shared"
 
 and mut m = match m.it with
   | Const -> Atom "Const"
@@ -133,7 +140,7 @@ and typ t = match t.it with
   | OptT t              -> "OptT" $$ [typ t]
   | VariantT cts        -> "VariantT" $$ List.map typ_tag cts
   | TupT ts             -> "TupT" $$ List.map typ ts
-  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [Atom (Arrange_type.sharing s.it)] @ List.map typ_bind tbs @ [ typ at; typ rt]
+  | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
   | AsyncT t            -> "AsyncT" $$ [typ t]
   | ParT t              -> "ParT" $$ [typ t]
 

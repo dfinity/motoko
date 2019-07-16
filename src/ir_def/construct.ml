@@ -416,7 +416,7 @@ let (-->*) xs exp =
 
 (* n-ary shared lambda *)
 let (-@>*) xs exp  =
-  let fun_ty = T.Func (T.Sharable, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
+  let fun_ty = T.Func (T.Shared, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
   nary_funcE "$lambda" fun_ty xs exp
 
 
