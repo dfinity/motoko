@@ -1,1 +1,1 @@
-nested-class-rec-fail.as:8.13-8.16: type error, cannot infer type of forward variable Foo
+nested-class-rec-fail.as:7.13-7.16: type error, cannot infer type of forward variable Foo

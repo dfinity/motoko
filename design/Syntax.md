@@ -7,12 +7,12 @@ Productions marked * probably deferred to later versions.
 ```
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
-  (shared|actor)? { <typ-field>;* }             object
+  (actor|module|object)? { <typ-field>;* }                      actor / module / object (default)
   { <typ-tag>;* }                               variant
   { # }                                         empty variant
   [ var? <typ> ]                                array
   ? <typ>                                       option
-  shared <typ-params>? <typ> -> <typ>  function
+  shared? <typ-params>? <typ> -> <typ>          function
   async <typ>                                   future
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
@@ -54,6 +54,7 @@ Productions marked * probably deferred to later versions.
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
+  new { <exp-field>;* }                          object
   <exp> . <id>                                   object projection
   # <id> <exp>?                                  variant injection
   <exp> := <exp>                                 assignment
@@ -84,8 +85,7 @@ Productions marked * probably deferred to later versions.
 * try <exp> (catch <pat> <exp>)+ (<finally> <exp>)?  try
 
 <exp-field> ::=                                object expression fields
-  private? dec                                   field
-  private? <id> = <exp>                          short-hand
+  var? <id> = <exp>                              field
 ```
 
 ## Patterns
@@ -113,12 +113,14 @@ Productions marked * probably deferred to later versions.
   <exp>                                                       expression
   let <pat> = <exp>                                           immutable
   var <id> (: <typ>)? = <exp>                                 mutable
-  (new|object|actor) <id>? =? { <exp-field>;* }               object
+  (actor|module|object) <id>? =? { <dec-field>;* }                   object
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>  function
-  type <id> <typ-params>? = <typ>                             type
   actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
-  module <id>? =? { <dec>* }                                  module
+  type <id> <typ-params>? = <typ>                             type
   import <id>? =? <text>                                      import
+
+<dec-field> ::=                                          object declaration fields
+  (public|private)? dec                                       field
 ```
 
 ## Programs

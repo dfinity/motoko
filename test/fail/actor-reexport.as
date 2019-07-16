@@ -1,13 +1,13 @@
 actor test {
-  exported() {
+  public func exported() {
     print("exported()\n");
   };
-  let exported_too = exported;
+  public let exported_too = exported;
 };
 
 actor test2 {
-  let exported_three = test.exported_too;
-  let (exported_four, exported_five) =
+  public let exported_three = test.exported_too;
+  public let (exported_four, exported_five) =
     if (true)
       (test.exported_too, test.exported_too)
     else

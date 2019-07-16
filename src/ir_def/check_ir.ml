@@ -5,20 +5,21 @@ open Source
 module T = Type
 module E = Ir_effect
 
-(* TODO: remove DecE from syntax, replace by BlockE [dec] *)
-(* TODO: check constraint matching supports recursive bounds *)
-
 (* TODO: make note immutable, perhaps just using type abstraction *)
 
 (* TODO:
-   dereferencing is still implicit in the IR (see immut_typ below) - consider making it explicit as part of desugaring.
- *)
+   dereferencing is still implicit in the IR (see immut_typ below);
+   consider making it explicit as part of desugaring.
+*)
 
 (* TODO: enforce second-class nature of T.Mut? in check_typ *)
+
 (* TODO: check escape of free mutables via actors *)
 
-(* helpers *)
+(* Helpers *)
+
 let (==>) p q = not p || q
+
 let typ = E.typ
 
 let immute_typ p =
@@ -128,12 +129,18 @@ let rec check_typ env typ : unit =
   | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
   | T.Con (c, typs) ->
-    begin match Con.kind c with
-     | T.Def (tbs, _) -> check_typ_bounds env tbs typs no_region (* TODO(Claudio):
-       check bodies of anonymous T.Defs since they won't get checked elsewhere *)
-     | T.Abs (tbs, _) ->
-       check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
-       check_typ_bounds env tbs typs no_region
+    List.iter (check_typ env) typs;
+    begin
+      match Con.kind c with
+      | T.Def (tbs,_) ->
+        if not (T.ConSet.mem c env.cons) then
+          (* an anonymous recursive type, check its def but beware recursion
+             future: use a visited set *)
+          check_con {env with cons = T.ConSet.add c env.cons} c;
+        check_typ_bounds env tbs typs no_region
+      | T.Abs (tbs, _) ->
+        check env no_region (T.ConSet.mem c env.cons) "free type constructor";
+        check_typ_bounds env tbs typs no_region
     end
   | T.Any -> ()
   | T.Non -> ()
@@ -195,20 +202,15 @@ let rec check_typ env typ : unit =
      *  "serialized type is not sharable:\n  %s" (T.string_of_typ_expand typ)
      *)
   | T.Typ c ->
-    check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
+    check_con env c
 
-(*
-and check_kind env k =
-  let (binds,typ) =
-    match k with
-    | T.Abs(binds,typ)
-      | T.Def(binds,typ) -> (binds,typ)
-  in
-  let cs,ce = check_typ_binds env binds in
-  let ts = List.map (fun c -> T.Con(c,[])) cs in
+and check_con env c =
+  let env = {env with cons = T.ConSet.add c env.cons} in
+  let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+  let cs, ce = check_typ_binds env binds in
+  let ts = List.map (fun c -> T.Con (c, [])) cs in
   let env' = adjoin_cons env ce in
-  check_typ env' (T.open_ ts  typ);
-*)
+  check_typ env' (T.open_ ts typ)
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
@@ -224,7 +226,7 @@ and check_typ_field env s typ_field : unit =
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
-  let cs = List.map (function T.Con (c, []) ->  c | _ -> assert false) ts in
+  let cs = List.map (function T.Con (c, []) -> c | _ -> assert false) ts in
   let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
@@ -235,17 +237,21 @@ and check_typ_binds env typ_binds : T.con list * con_env =
   cs, T.ConSet.of_list cs
 
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =
-  match tbs, typs with
-  | tb::tbs', typ::typs' ->
-    check_typ env typ;
-    check env at (T.sub typ tb.T.bound)
-      "type argument does not match parameter bound";
-    check_typ_bounds env tbs' typs' at
-  | [], [] -> ()
-  | [], _ -> error env at "too many type arguments"
-  | _, [] -> error env at "too few type arguments"
+  let pars = List.length tbs in
+  let args = List.length typs in
+  if pars < args then
+    error env at "too many type arguments";
+  if pars > args then
+    error env at "too few type arguments";
+  List.iter2
+    (fun tb typ ->
+      check env at (T.sub typ (T.open_ typs tb.T.bound))
+        "type argument does not match parameter bound")
+    tbs typs
+
 
 and check_inst_bounds env tbs typs at =
+  List.iter (check_typ env) typs;
   check_typ_bounds env tbs typs at
 
 (* Literals *)
@@ -721,15 +727,7 @@ and check_dec env dec  =
     typ exp <: T.as_immut t0
   | TypD c ->
     check (T.ConSet.mem c env.cons) "free type constructor";
-    let (binds, typ) =
-      match Con.kind c with
-      | T.Abs (binds, typ)
-      | T.Def (binds, typ) -> (binds, typ)
-    in
-    let cs, ce = check_typ_binds env binds in
-    let ts = List.map (fun c -> T.Con (c, [])) cs in
-    let env' = adjoin_cons env ce in
-    check_typ env' (T.open_ ts  typ)
+    check_con env c
 
 and check_decs env decs  =
   List.iter (check_dec env) decs;

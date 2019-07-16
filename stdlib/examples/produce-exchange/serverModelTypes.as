@@ -36,10 +36,10 @@ Representation
 import T = "serverTypes.as";
 
 import Trie = "../../trie2.as";
-type Trie<K,V> = Trie.Trie<K,V>;
+public type Trie<K,V> = Trie.Trie<K,V>;
 
-type Map<X, Y> = Trie<X, Y>;
-let Map = Trie;
+public type Map<X, Y> = Trie<X, Y>;
+public let Map = Trie;
 
 
 /**
@@ -97,8 +97,8 @@ internal sharing:
 
 */
 
-let DocTable = (import "../../docTable.as");
-type DocTable<X,Y,Z> = DocTable.DocTable<X,Y,Z>;
+public let DocTable = (import "../../docTable.as");
+public type DocTable<X,Y,Z> = DocTable.DocTable<X,Y,Z>;
 
 /**
 `UserDoc`
@@ -106,7 +106,7 @@ type DocTable<X,Y,Z> = DocTable.DocTable<X,Y,Z>;
 User documents.
 */
 
-type UserDoc = {
+public type UserDoc = {
   id: T.UserId;
   user_name: Text;
   public_key: Text;
@@ -118,10 +118,10 @@ type UserDoc = {
   isDeveloper: Bool;
 };
 
-type UserTable =
+public type UserTable =
   DocTable<T.UserId, UserDoc, T.UserInfo>;
 
-type UserNameMap =
+public type UserNameMap =
   Map<T.UserName, T.UserId>;
 
 /**
@@ -132,7 +132,7 @@ type UserNameMap =
  - See also [`DocTable`]().
  */
 
-type TruckTypeDoc = {
+public type TruckTypeDoc = {
   id : T.TruckTypeId;
   short_name : Text;
   description : Text;
@@ -142,7 +142,7 @@ type TruckTypeDoc = {
   isFreezer : Bool;
 };
 
-type TruckTypeTable =
+public type TruckTypeTable =
   DocTable<T.TruckTypeId, TruckTypeDoc, T.TruckTypeInfo>;
 
 /**
@@ -150,13 +150,13 @@ type TruckTypeTable =
  ==========================
  */
 
-type RegionDoc = {
+public type RegionDoc = {
   id : T.RegionId;
   short_name : Text;
   description : Text;
 };
 
-type RegionTable =
+public type RegionTable =
   DocTable<T.RegionId, RegionDoc, T.RegionInfo>;
 
 /**
@@ -164,14 +164,14 @@ type RegionTable =
  ==================
  */
 
-type ProduceDoc = {
+public type ProduceDoc = {
   id : T.ProduceId;
   short_name : Text;
   description : Text;
   grade : T.Grade;
 };
 
-type ProduceTable =
+public type ProduceTable =
   DocTable<T.ProduceId, ProduceDoc, T.ProduceInfo>;
 
 /**
@@ -179,7 +179,7 @@ type ProduceTable =
  =======================
  */
 
-type ProducerDoc = {
+public type ProducerDoc = {
   id : T.ProducerId;
   public_key: Text;
   short_name : Text;
@@ -189,7 +189,7 @@ type ProducerDoc = {
   reserved : ReservedInventoryMap;
 };
 
-type ProducerTable =
+public type ProducerTable =
   DocTable<T.ProducerId, ProducerDoc, T.ProducerInfo>;
 
 /**
@@ -197,7 +197,7 @@ type ProducerTable =
  ========================
  */
 
-type InventoryDoc = {
+public type InventoryDoc = {
   id : T.InventoryId;
   produce : ProduceDoc;
   producer : T.ProducerId;
@@ -209,27 +209,27 @@ type InventoryDoc = {
   comments : Text;
 };
 
-type InventoryTable =
+public type InventoryTable =
   DocTable<T.InventoryId, InventoryDoc, T.InventoryInfo>;
 
-type InventoryMap =
+public type InventoryMap =
   Map<T.InventoryId, InventoryDoc>;
 
-type ByProducerInventoryMap =
+public type ByProducerInventoryMap =
   Map<T.ProducerId, Map<T.InventoryId, InventoryDoc>>;
 
 /**
  By-region inventory indexing
  -----------------------------
 */
-type ByRegionInventoryMap = Map<T.RegionId, ByProducerInventoryMap>;
+public type ByRegionInventoryMap = Map<T.RegionId, ByProducerInventoryMap>;
 
 /**
  `ReservedInventory` documents
  ==================================
 */
 
-type ReservedInventoryDoc= {
+public type ReservedInventoryDoc= {
   id : T.ReservedInventoryId;
   retailer : T.RetailerId;
   item : InventoryDoc;
@@ -240,10 +240,10 @@ type ReservedInventoryDoc= {
  -----------------------------
 */
 
-type ReservedInventoryTable =
+public type ReservedInventoryTable =
   DocTable<T.ReservedInventoryId, ReservedInventoryDoc, T.ReservedInventoryInfo>;
 
-type ReservedInventoryMap =
+public type ReservedInventoryMap =
   Map<T.ReservedInventoryId, ReservedInventoryDoc>;
 
 /**
@@ -251,7 +251,7 @@ type ReservedInventoryMap =
  ==================
  */
 
-type RetailerDoc = {
+public type RetailerDoc = {
   id : T.RetailerId;
   public_key: Text;
   short_name : Text;
@@ -260,13 +260,13 @@ type RetailerDoc = {
   reserved : ReservedInventoryRouteMap;
 };
 
-type RetailerTable =
+public type RetailerTable =
   DocTable<T.RetailerId, RetailerDoc, T.RetailerInfo>;
 
-type ReservedInventoryRouteMap =
+public type ReservedInventoryRouteMap =
   Map<T.ReservedInventoryId, (ReservedInventoryDoc, ReservedRouteDoc)>;
 
-type ByProduceByRegionInventoryReservationMap =
+public type ByProduceByRegionInventoryReservationMap =
   Map<T.ProduceId, Map<T.RegionId, Map<T.ReservedInventoryId, ReservedInventoryDoc>>>;
 
 /**
@@ -274,7 +274,7 @@ type ByProduceByRegionInventoryReservationMap =
  ==================
  */
 
-type TransporterDoc = {
+public type TransporterDoc = {
   id : T.TransporterId;
   public_key: Text;
   // no region; the transporters are the supply of routes, not "end
@@ -285,7 +285,7 @@ type TransporterDoc = {
   reserved : ReservedRouteMap;
 };
 
-type TransporterTable =
+public type TransporterTable =
   DocTable<T.TransporterId, TransporterDoc, T.TransporterInfo>;
 
 /**
@@ -293,7 +293,7 @@ type TransporterTable =
  ==================
  */
 
-type RouteDoc = {
+public type RouteDoc = {
   id : T.RouteId;
   transporter : T.TransporterId;
   truck_type : TruckTypeDoc;
@@ -305,11 +305,11 @@ type RouteDoc = {
   // ... more?
 };
 
-type RouteTable =
+public type RouteTable =
   DocTable<T.RouteId, RouteDoc, T.RouteInfo>;
 
 
-type RouteMap =
+public type RouteMap =
   Map<T.RouteId, RouteDoc>;
 
 /**
@@ -318,10 +318,10 @@ type RouteMap =
 */
 
 // A possibly-sparse 2D table mapping each region-routeid pair to zero or one routes.
-type ByRegionRouteMap = Map<T.RegionId, RouteMap>;
+public type ByRegionRouteMap = Map<T.RegionId, RouteMap>;
 
 // A possibly-sparse 3D table mapping each region-region-routeid triple to zero or one routes.
-type ByRegionPairRouteMap = Map<T.RegionId, ByRegionRouteMap>;
+public type ByRegionPairRouteMap = Map<T.RegionId, ByRegionRouteMap>;
 
 
 /**
@@ -329,13 +329,13 @@ type ByRegionPairRouteMap = Map<T.RegionId, ByRegionRouteMap>;
  -----------------------------
 */
 
-type ReservedRouteDoc = {
+public type ReservedRouteDoc = {
   id : T.ReservedRouteId;
   retailer : T.RetailerId;
   route : RouteDoc;
 };
 
-type ReservedRouteTable = DocTable<T.ReservedRouteId, ReservedRouteDoc, T.ReservedRouteInfo>;
+public type ReservedRouteTable = DocTable<T.ReservedRouteId, ReservedRouteDoc, T.ReservedRouteInfo>;
 
-type ReservedRouteMap = Map<T.ReservedRouteId, ReservedRouteDoc>;
+public type ReservedRouteMap = Map<T.ReservedRouteId, ReservedRouteDoc>;
 }

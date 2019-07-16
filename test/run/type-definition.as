@@ -10,10 +10,10 @@ type None = ();  // shadowing prelude
 // Test printing of shadowed type constructors
 class C() {};
 type T<X> = {f : <C> X -> C};
-class D(x : T<C>) {r = x.f};
+class D(x : T<C>) {let r = x.f};
 
 type U<X> = {f : <Y> X -> Y};
-class E<Y>(x : U<Y>) {r = x.f};
+class E<Y>(x : U<Y>) {let r = x.f};
 
 // This is an expected forward reference error
 //class F(x : FF) {r = x.a};

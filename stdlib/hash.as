@@ -32,10 +32,10 @@ going forward.
 */
 
 /** A "bit string" as a linked list of bits: */
-type BitList = ?(Bool, BitList);
+public type BitList = ?(Bool, BitList);
 
 /** A "bit vector" is a bounded-length bit string packed into a single word: */
-type BitVec = Word32;
+public type BitVec = Word32;
 
 /**
 
@@ -45,16 +45,16 @@ type BitVec = Word32;
 
  */
 
-module BitVec {
+public module BitVec {
 
-  type t = BitVec;
+  public type t = BitVec;
 
   // Jenkin's one at a time:
   // https://en.wikipedia.org/wiki/Jenkins_hash_function#one_at_a_time
   //
   // The input type should actually be [Word8].
   // Note: Be sure to explode each Word8 of a Word32 into its own Word32, and to shift into lower 8 bits.
-  func hashWord8s(key:[BitVec]) : BitVec = label profile_hash_hashWord8s : BitVec {
+  public func hashWord8s(key:[BitVec]) : BitVec = label profile_hash_hashWord8s : BitVec {
     var hash = natToWord32(0);
     for (wordOfKey in key.vals()) { label profile_hash_hashWord8s_forLoop : ()
       hash := hash + wordOfKey;
@@ -67,11 +67,11 @@ module BitVec {
     return hash;
   };
 
-  func length() : Nat =
+  public func length() : Nat =
     label profile_hash_length : Nat
     31;
 
-  func hashOfInt(i:Int) : BitVec = label profile_hash_hashOfInt : BitVec {
+  public func hashOfInt(i:Int) : BitVec = label profile_hash_hashOfInt : BitVec {
     //hashInt(i)
     let j = intToWord32(i);
     hashWord8s(
@@ -82,7 +82,7 @@ module BitVec {
       ]);
   };
 
-  func hashOfIntAcc(h1:BitVec, i:Int) : BitVec = label profile_hash_hashOfIntAcc : BitVec {
+  public func hashOfIntAcc(h1:BitVec, i:Int) : BitVec = label profile_hash_hashOfIntAcc : BitVec {
     let j = intToWord32(i);
     hashWord8s(
       [h1,
@@ -93,7 +93,7 @@ module BitVec {
       ]);
   };
 
-  func hashOfText(t:Text) : BitVec  = label profile_hash_hashOfText : BitVec {
+  public func hashOfText(t:Text) : BitVec  = label profile_hash_hashOfText : BitVec {
     var x = 0 : Word32;
     for (c in t.chars()) {
       x := x ^ charToWord32(c);
@@ -102,7 +102,7 @@ module BitVec {
   };
 
   /** Project a given bit from the bit vector. */
-  func getHashBit(h:BitVec, pos:Nat) : Bool = label profile_getHashBit : Bool {
+  public func getHashBit(h:BitVec, pos:Nat) : Bool = label profile_getHashBit : Bool {
     assert (pos <= length());
     if ((h & (natToWord32(1) << natToWord32(pos))) != natToWord32(0))
     { label profile_getHashBit_true : Bool
@@ -115,12 +115,12 @@ module BitVec {
   };
 
   /** Test if two lists of bits are equal. */
-  func hashEq(ha:BitVec, hb:BitVec) : Bool {
+  public func hashEq(ha:BitVec, hb:BitVec) : Bool {
     label profile_hashEq : Bool
     ha == hb
   };
 
-  func bitsPrintRev(bits:BitVec) {
+  public func bitsPrintRev(bits:BitVec) {
     for (j in range(0, length() - 1)) {
       if (getHashBit(bits, j)) {
         print "1"
@@ -130,7 +130,7 @@ module BitVec {
     }
   };
 
-  func hashPrintRev(bits:BitVec) {
+  public func hashPrintRev(bits:BitVec) {
     for (j in range(length() - 1, 0)) {
       if (getHashBit(bits, j)) {
         print "1"
@@ -140,7 +140,7 @@ module BitVec {
     }
   };
 
-  func toList(v:BitVec) : BitList {
+  public func toList(v:BitVec) : BitList {
     func rec(pos:Nat) : BitList {
       if (pos >= length()) { null }
       else {
@@ -163,16 +163,16 @@ module BitVec {
 
  TODO: Replace with bitwise operations on Words, for greater efficiency.
 */
-module BitList {
+public module BitList {
 
-  type t = BitList;
+  public type t = BitList;
 
-  func hashOfInt(i:Int) : BitList {
+  public func hashOfInt(i:Int) : BitList {
     BitVec.toList(BitVec.hashOfInt(i))
   };
 
   /** Test if two lists of bits are equal. */
-  func getHashBit(h:BitList, pos:Nat) : Bool {
+  public func getHashBit(h:BitList, pos:Nat) : Bool {
     switch h {
     case null {
 	         // XXX: Should be an error case; it shouldn't happen in our tests if we set them up right.
@@ -186,7 +186,7 @@ module BitList {
   };
 
   /** Test if two lists of bits are equal. */
-  func hashEq(ha:BitList, hb:BitList) : Bool {
+  public func hashEq(ha:BitList, hb:BitList) : Bool {
     switch (ha, hb) {
     case (null, null) true;
     case (null, _) false;
@@ -198,7 +198,7 @@ module BitList {
     }
   };
 
-  func bitsPrintRev(bits:BitList) {
+  public func bitsPrintRev(bits:BitList) {
 	  switch bits {
 	  case null { print "" };
 	  case (?(bit,bits_)) {
@@ -209,7 +209,7 @@ module BitList {
 	  }
   };
 
-  func hashPrintRev(bits:BitList) {
+  public func hashPrintRev(bits:BitList) {
 	  switch bits {
 	  case null { print "" };
 	  case (?(bit,bits_)) {
@@ -231,6 +231,6 @@ module BitList {
  the standard library to use:
 */
 
-type Hash = BitVec;
-let Hash = BitVec;
+public type Hash = BitVec;
+public let Hash = BitVec;
 }

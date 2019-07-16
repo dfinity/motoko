@@ -5,7 +5,7 @@
 type Array<T> = [var T];
 
 class QS<T>(cmp : (T, T) -> Int) {
-  quicksort(a : Array<T>, lo : Nat, hi : Nat) {
+  public func quicksort(a : Array<T>, lo : Nat, hi : Nat) {
    	if (lo < hi) {
       let p = partition(a, lo, hi);
 	    quicksort(a, lo, p);
@@ -13,15 +13,15 @@ class QS<T>(cmp : (T, T) -> Int) {
 	  }
   };
 
-  private swap(a : Array<T>, i : Nat, j : Nat) {
+  func swap(a : Array<T>, i : Nat, j : Nat) {
     let temp = a[i];
     a[i] := a[j];
     a[j] := temp;
   };
 
-  private trace<T>(v : T) {};
+  func trace<T>(v : T) {};
    
-  private partition(a : Array<T>, lo : Nat, hi : Nat) : Nat {
+  func partition(a : Array<T>, lo : Nat, hi : Nat) : Nat {
     trace<Array<T>>(a);
     let pivot = a[lo];
     var i = lo;
