@@ -41,13 +41,25 @@ let lbl_of_ide_decl (d : ide_decl) : string =
   | ValueDecl (lbl, _) -> lbl
   | TypeDecl (lbl, _) -> lbl
 
-let item_of_ide_decl (d : ide_decl) : (string * string * string option) =
+let item_of_ide_decl (d : ide_decl) : Lsp_t.completion_item =
   let tmpl = template_of_ide_decl d in
   match d with
   | ValueDecl (lbl, ty) ->
-     (lbl, tmpl, Some(Type.string_of_typ ty))
+     Lsp_t.{
+        completion_item_label = lbl;
+        completion_item_kind = 3;
+        completion_item_insertText = tmpl;
+        completion_item_insertTextFormat = 2;
+        completion_item_detail = Some(Type.string_of_typ ty);
+     }
   | TypeDecl (lbl, ty) ->
-     (lbl, tmpl, Some(Type.string_of_typ ty))
+     Lsp_t.{
+        completion_item_label = lbl;
+        completion_item_kind = 7;
+        completion_item_insertText = tmpl;
+        completion_item_insertTextFormat = 2;
+        completion_item_detail = Some(Type.string_of_typ ty);
+     }
 
 let string_of_ide_decl = function
   | ValueDecl (lbl, ty) ->
@@ -175,18 +187,24 @@ let find_completion_prefix logger file line column =
 let completions (* index *) logger project_root file_path file_contents line column =
   let index = make_index () in
   let imported = parse_module_header project_root file_path file_contents in
+  let module_alias_completion_item alias =
+    Lsp_t.{
+        completion_item_label = alias;
+        completion_item_kind = 9;
+        completion_item_insertText = alias;
+        completion_item_insertTextFormat = 1;
+        completion_item_detail = None;
+    } in
   match find_completion_prefix logger file_contents line column with
   | None ->
+     (* If we don't have any prefix to work with, just suggest the
+        imported module aliases *)
      imported
-     |> List.map (fun (alias, _) -> alias, "", None)
+     |> List.map (fun (alias, _) -> module_alias_completion_item alias)
   | Some (alias, prefix) ->
      let module_path =
        imported
        |> List.find_opt (fun (mn, _) -> String.equal mn alias) in
-     let index_keys =
-       Index.bindings index
-       |> List.map fst
-       |> string_of_list Lib.Fun.id in
      match module_path with
      | Some mp ->
         (match Index.find_opt (snd mp) index with
@@ -195,23 +213,17 @@ let completions (* index *) logger project_root file_path file_contents line col
             |> List.filter (fun d -> d |> lbl_of_ide_decl |> Lib.String.chop_prefix prefix |> Lib.Option.is_some)
             |> List.map item_of_ide_decl
          | None ->
+            (* The matching import references a module we haven't loaded *)
             [])
-            (* [ (("ERROR: Couldn't find module in index: " ^ index_keys), None) ]) *)
      | None ->
+        (* No module with the given prefix was found *)
         []
-        (* [ (("ERROR: Couldn't find module for prefix: " ^ prefix), None) ] *)
 
 let completion_handler logger project_root file_path file_contents position =
   let line = position.Lsp_t.position_line in
   let column = position.Lsp_t.position_character in
-  let completion_item (lbl, tmpl, detail) =
-    Lsp_t.{ completion_item_label = lbl
-          ; completion_item_insertText = tmpl
-          ; completion_item_insertTextFormat = 2
-          ; completion_item_detail = detail } in
   `CompletionResponse
-    (List.map completion_item
-       (completions logger project_root file_path file_contents line column))
+    (completions logger project_root file_path file_contents line column)
 
 let test_completion () =
   Printf.printf "%s\n" (string_of_index (make_index ()))

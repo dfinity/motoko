@@ -87,6 +87,7 @@ type hover_result = {
 
 type completion_item = {
   label : string;
+  kind : int;
   insertText : string;
   insertTextFormat : int;
   ?detail: string nullable;
