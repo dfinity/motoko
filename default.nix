@@ -7,7 +7,6 @@
 let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
 let stdenv = nixpkgs.stdenv; in
-let lib = stdenv.lib; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
@@ -27,7 +26,7 @@ let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix n
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   ref = "master";
-  rev = "65c295edfc4164ca89c129d501a403fa246d3d36";
+  rev = "fcd387ce757fcc1ee697a19665ada9bc3f453adc";
 }) { system = nixpkgs.system; }; in
 
 # Include dvm
@@ -138,6 +137,7 @@ rec {
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
+        nixpkgs.getconf
         nixpkgs.nodejs-10_x
         filecheck
         js-client
