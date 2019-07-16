@@ -142,12 +142,22 @@ let start () =
     | (Some id, `Initialize params) ->
        client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
        let completion_options =
-         Lsp_t.{ completion_options_resolveProvider = Some false;
-                 completion_options_triggerCharacters = Some ["."]
+         Lsp_t.{
+             completion_options_resolveProvider = Some false;
+             completion_options_triggerCharacters = Some ["."] } in
+       let text_document_sync_options =
+         Lsp_t.{
+             text_document_sync_options_openClose = Some true;
+             text_document_sync_options_change = Some 1;
+             text_document_sync_options_willSave = Some false;
+             text_document_sync_options_willSaveWaitUntil = Some false;
+             text_document_sync_options_save = Some {
+                 save_options_includeText = Some true
+               }
          } in
         let result = `Initialize (Lsp_t.{
           initialize_result_capabilities = {
-            server_capabilities_textDocumentSync = 1;
+            server_capabilities_textDocumentSync = text_document_sync_options;
             server_capabilities_hoverProvider = Some false;
             server_capabilities_completionProvider = Some completion_options;
           }

@@ -248,6 +248,20 @@ type initialize_result = {
 }
 <ocaml field_prefix="initialize_result_">
 
+type text_document_sync_options = {
+  ?openClose : bool nullable;
+  ?change : int nullable;
+  ?willSave : bool nullable;
+  ?willSaveWaitUntil : bool nullable;
+  ?save : save_options nullable;
+}
+<ocaml field_prefix="text_document_sync_options_">
+
+type save_options = {
+  ?includeText: bool nullable;
+}
+<ocaml field_prefix="save_options_">
+
 type completion_options = {
   ?resolveProvider : bool nullable;
   ?triggerCharacters : string list nullable;
@@ -256,7 +270,7 @@ type completion_options = {
 
 (* FIXME: incomplete *)
 type server_capabilities = {
-  textDocumentSync : int;
+  textDocumentSync : text_document_sync_options;
   ?hoverProvider : bool nullable;
   ?completionProvider : completion_options nullable;
 }
