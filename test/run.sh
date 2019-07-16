@@ -233,7 +233,7 @@ do
       if [ -e $out/$base.js ]
       then
         $ECHO -n " [node]"
-        export NODE_PATH=$NODE_PATH:$JSCLIENT/node_modules:$JSCLIENT/src
+        export NODE_PATH=$NODE_PATH:$JSCLIENT:$JSCLIENT/src
         $NODE $out/$base.js > $out/$base.err 2>&1
         diff_files="$diff_files $base.err"
       fi
