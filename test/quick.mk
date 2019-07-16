@@ -22,4 +22,4 @@ _out/%.done: %.sh $(wildcard ../../src/asc) ../run.sh  | _out
 _out/%.done: %.wat $(wildcard ../../src/asc) ../run.sh  | _out
 	@+ (../run.sh $(RUNFLAGS) $< > $@.tmp && mv $@.tmp $@) || (cat $@.tmp; rm -f $@.tmp; false)
 _out/%.done: %.did $(wildcard ../../src/didc) ../run.sh  | _out
-	@+ (../run.sh $(RUNFLAGS) $< > $@.tmp && mv $@.tmp $@) || (cat $@.tmp; rm -f $@.tmp; false)
+	@+ (../run.sh -n $(RUNFLAGS) $< > $@.tmp && mv $@.tmp $@) || (cat $@.tmp; rm -f $@.tmp; false)
