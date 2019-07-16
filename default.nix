@@ -24,29 +24,22 @@ let ocaml_vlq = import ./nix/ocaml-vlq.nix {
 let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
 let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
 
+let dev = import (builtins.fetchGit {
+  url = "ssh://git@github.com/dfinity-lab/dev";
+  ref = "master";
+  rev = "65c295edfc4164ca89c129d501a403fa246d3d36";
+}) { system = nixpkgs.system; }; in
+
 # Include dvm
 let real-dvm =
   if dvm == null
-  then
-    if test-dvm
-    then
-      let dev = builtins.fetchGit {
-        url = "ssh://git@github.com/dfinity-lab/dev";
-        ref = "master";
-        rev = "65c295edfc4164ca89c129d501a403fa246d3d36";
-      }; in
-      (import dev { system = nixpkgs.system; }).dvm
+  then if test-dvm
+    then dev.dvm
     else null
   else dvm; in
 
 # Include js-client
-let js-client =
-  let dev = builtins.fetchGit {
-    url = "ssh://git@github.com/dfinity-lab/dev";
-    ref = "master";
-    rev = "a556b011d957d3174b6c4017d76dd510791d8922";
-  }; in
-  (import dev { system = nixpkgs.system; }).js-dfinity-client; in
+let js-client = dev.js-dfinity-client; in
 
 let commonBuildInputs = [
   nixpkgs.ocaml
@@ -145,7 +138,7 @@ rec {
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
-        nixpkgs.nodejs-10_x        
+        nixpkgs.nodejs-10_x
         filecheck
         js-client
       ] ++
