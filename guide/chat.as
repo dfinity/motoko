@@ -18,7 +18,7 @@ actor Server = {
     };
   };
 
-  func subscribe(client : Client) : async Post {
+  public func subscribe(client : Client) : async Post {
     let cs = new {head = client; var tail = clients};
     clients := ?cs;
     return broadcast;
@@ -29,7 +29,8 @@ type Server = actor { subscribe : Client -> async Post; };
 
 actor class Client() = this {
   private var name : Text = "";
-  start(n : Text , s : Server) {
+
+  public func start(n : Text , s : Server) {
     name := n;
     let _ = async {
        let post = await s.subscribe(this);
@@ -37,7 +38,8 @@ actor class Client() = this {
        post("goodbye from " # name);
     }
   };
-  send(msg : Text) {
+
+  public func send(msg : Text) {
     print(name # " received " # msg # "\n");
   };
 };

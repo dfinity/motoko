@@ -8,10 +8,10 @@ type ClientData = {
 };
 
 actor class Server() = {
-  private var nextId : Nat = 0;
-  private var clients : L.List<ClientData> = null;
+  var nextId : Nat = 0;
+  var clients : L.List<ClientData> = null;
 
-  private broadcast(id : Nat, message : Text) {
+  func broadcast(id : Nat, message : Text) {
     var next = clients;
     label sends loop {
       switch next {
@@ -24,20 +24,20 @@ actor class Server() = {
     };
   };
 
-  subscribe(aclient : shared Text -> ()) : async T.Subscription {
+  public func subscribe(aclient : shared Text -> ()) : async T.Subscription {
     let c = new {id = nextId; client = aclient; var revoked = false};
     nextId += 1;
     let cs = new {head = c; var tail = clients};
     clients := ?cs;
-    return (new {
-      post = shared func(message : Text) {
+    return object {
+      public shared func post(message : Text) {
         if (not c.revoked) broadcast(c.id, message);
       };
-      cancel = shared func() { unsubscribe(c.id) };
-    });
+      public shared func cancel() { unsubscribe(c.id) };
+    };
   };
 
-  private unsubscribe(id : Nat) {
+  func unsubscribe(id : Nat) {
     var prev : L.List<ClientData> = null;
     var next = clients;
     loop {

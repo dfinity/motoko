@@ -1,16 +1,16 @@
 // A simple Counter actor.
 
 actor class Counter(i : Int) {
-  private var c = i;    
+  var c = i;
 
   // Decrement counter
-  dec() {
-   show("dec", c);
-   c -= 1;
+  public func dec() {
+    show("dec", c);
+    c -= 1;
   };
 
   // Read counter, asynchronous
-  read() : async Int { c };
+  public func read() : async Int { c };
 };
 
 // Dummy functions to show intermediate value in trace.

@@ -1,16 +1,16 @@
 let a = actor {
-  private aa = actor {
-    private var c = 1;
-    inc() {
+  let aa = actor {
+    var c = 1;
+    public func inc() {
       c += 1;
       printInt(c)
     };
-    print () {
+    public func print() {
       printInt(c)
     };
   };
-  inc() { aa.inc() };
-  print() { aa.print() };
+  public func inc() { aa.inc() };
+  public func print() { aa.print() };
 };
 
 a.inc();
