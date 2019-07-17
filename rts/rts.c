@@ -221,7 +221,7 @@ export void* mp_realloc(void *ptr, size_t old_size, size_t new_size) {
 
   if (new_size > FIELD(r, 1)) {
     void *newptr = mp_alloc(new_size);
-    if (old_size > new_size) bigint_trap();
+    if (old_size != FIELD(r, 1)) bigint_trap();
     as_memcpy(newptr, ptr, old_size);
     return newptr;
   } else {
