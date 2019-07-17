@@ -373,7 +373,7 @@ export as_ptr bigint_mul(as_ptr a, as_ptr b) {
 export as_ptr bigint_pow(as_ptr a, as_ptr b) {
   uint32_t exp = bigint_to_word32_trap(b);
   as_ptr r = bigint_alloc();
-  CHECK(mp_expt_d(BIGINT_PAYLOAD(a), exp, BIGINT_PAYLOAD(r)));
+  CHECK(mp_expt_u32(BIGINT_PAYLOAD(a), exp, BIGINT_PAYLOAD(r)));
   return r;
 }
 
