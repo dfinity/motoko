@@ -57,6 +57,9 @@ Brain dump for an approach to structured payments.
   - payment is implicitly accepted if the receiving method doesn't trap
   - rejected otherwise
 
+* Implementation
+  - the runtime representation of `pay T` is no different from `T`, all the magic is in the serialisation (see API/IDL discussion below)
+
 * Open Questions
   - how exactly to deal with (multiple) currencies
   - syntax for funds
