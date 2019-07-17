@@ -15,7 +15,9 @@ type T2< B /* <: C */, A <: B, C> = Cast<A,C>;
 type T3< C, B /* <: C */, A <: B> = Cast<A,C>;
 
 func g< A <: B, B /* <: C */ , C> ( a : A, b : B, c: C, n:Int ) : C {
- /* TODO: restore these tests once open type defintions are supported
+
+ /* test type formation using open type definitions */
+
  type U0 = T1<A,A,A>;
  type U1 = T1<A,A,B>;
  type U2 = T1<A,B,B>;
@@ -39,7 +41,6 @@ func g< A <: B, B /* <: C */ , C> ( a : A, b : B, c: C, n:Int ) : C {
  type W4 = T3<C,B,B>;
  type W5 = T3<C,C,B>;
  type W6 = T3<C,C,C>;
- */
 
  /* test type formation involving f-bounds */
  let u0 : T1<A,A,A> = ();
