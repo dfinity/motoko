@@ -189,7 +189,7 @@ pointer to a data array.
    _payload_ in the `mp_digit* dp` field of the struct. This way, things look all nice
    and dandy from libtommath’s point of view.
 
-   Our gargabe collector has special knowledge about the dp field of the struct
+   Our garbage collector has special knowledge about the dp field of the struct
    and understands that this pointer points inside the TAG_TEXT heap object. But
    we can still move them around in the GC without issues.
 
@@ -212,10 +212,16 @@ export void* mp_calloc(size_t n, size_t size) {
   return payload;
 }
 
+from_rts __attribute__ ((noreturn)) void bigint_trap();
+
 export void* mp_realloc(void *ptr, size_t old_size, size_t new_size) {
-  as_ptr r = (as_ptr)(((char *)ptr) - (2 * sizeof(void*) - 1));
+  as_ptr r = (as_ptr)(((char *)ptr) - (2 * sizeof(void*) + 1));
+
+  if (FIELD(r, 0) != TAG_TEXT) bigint_trap(); // assert block type
+
   if (new_size > FIELD(r, 1)) {
     void *newptr = mp_alloc(new_size);
+    if (old_size > new_size) bigint_trap();
     as_memcpy(newptr, ptr, old_size);
     return newptr;
   } else {
@@ -249,7 +255,6 @@ we call a trap function provided by the Wasm part of the runtime.
 */
 
 #define CHECK(e) ((e == 0)?0:bigint_trap())
-from_rts __attribute__ ((noreturn)) void bigint_trap();
 
 as_ptr bigint_alloc() {
   as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
