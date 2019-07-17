@@ -63,7 +63,7 @@ let
     owner = "libtom";
     repo = "libtommath";
     rev = "5190ae6cf37ab008e863d1374fa2c1fc3abbe2cb";
-    sha256 = "1gyci4ml9zxxn0pn2nakrqiy5baiy37900bj4rjqvs6xycf9qp9d";
+    sha256 = "1yryvwn2v5rpijvsvkjrmx18csd3sh859z17s17kc31lz9vmn83h";
   };
 
   llvmBuildInputs = [
