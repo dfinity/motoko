@@ -59,11 +59,7 @@ let close (f,d) = diff f d
 let rec exp e : f = match e.it with
   | VarE i              -> M.singleton i {captured = false}
   | LitE l              -> M.empty
-  | PrimE _             -> M.empty
-  | UnE (_, uo, e)      -> exp e
-  | BinE (_, e1, bo, e2) -> exps [e1; e2]
-  | RelE (_, e1, ro, e2) -> exps [e1; e2]
-  | ShowE (_, e)        -> exp e
+  | PrimE (_, es)       -> exps es
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
   | DotE (e, i)         -> exp e
