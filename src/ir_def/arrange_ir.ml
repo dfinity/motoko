@@ -14,10 +14,7 @@ let kind k = Atom (Type.string_of_kind k)
 let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
   | LitE l              -> "LitE"    $$ [lit l]
-  | UnE (t, uo, e)      -> "UnE"     $$ [typ t; Arrange_ops.unop uo; exp e]
-  | BinE (t, e1, bo, e2)-> "BinE"    $$ [typ t; exp e1; Arrange_ops.binop bo; exp e2]
-  | RelE (t, e1, ro, e2)-> "RelE"    $$ [typ t; exp e1; Arrange_ops.relop ro; exp e2]
-  | ShowE (t, e)        -> "ShowE"   $$ [typ t; exp e]
+  | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
   | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | DotE (e, n)         -> "DotE"    $$ [exp e; Atom n]
@@ -38,7 +35,6 @@ let rec exp e = match e.it with
   | AssertE e           -> "AssertE" $$ [exp e]
   | OptE e              -> "OptE"    $$ [exp e]
   | TagE (i, e)         -> "TagE" $$ [id i; exp e]
-  | PrimE p             -> "PrimE"   $$ [Atom p]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, cc, tp, as_, ts, e) ->
@@ -53,6 +49,15 @@ and args = function
  | as_ -> ["params" $$ List.map arg as_]
 
 and arg a = Atom a.it
+
+and prim = function
+  | UnPrim (t, uo)    -> "UnPrim"     $$ [typ t; Arrange_ops.unop uo]
+  | BinPrim (t, bo)   -> "BinPrim"    $$ [typ t; Arrange_ops.binop bo]
+  | RelPrim (t, ro)   -> "RelPrim"    $$ [typ t; Arrange_ops.relop ro]
+  | ShowPrim t        -> "ShowPrim"   $$ [typ t]
+  | SerializePrim t   -> "SerializePrim"   $$ [typ t]
+  | DeserializePrim t -> "DeserializePrim"   $$ [typ t]
+  | OtherPrim s ->       Atom s
 
 and mut = function
   | Const -> Atom "Const"

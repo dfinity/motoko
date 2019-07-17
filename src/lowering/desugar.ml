@@ -56,17 +56,16 @@ and exp e =
     | _ -> typed_phrase' exp' e
 
 and exp' at note = function
-  | S.PrimE p -> I.PrimE p
   | S.VarE i -> I.VarE i.it
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
-    I.UnE (!ot, o, exp e)
+    I.PrimE (I.UnPrim (!ot, o), [exp e])
   | S.BinE (ot, e1, o, e2) ->
-    I.BinE (!ot, exp e1, o, exp e2)
+    I.PrimE (I.BinPrim (!ot, o), [exp e1; exp e2])
   | S.RelE (ot, e1, o, e2) ->
-    I.RelE (!ot, exp e1, o, exp e2)
+    I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
-    I.ShowE (!ot, exp e)
+    I.PrimE (I.ShowPrim !ot, [exp e])
   | S.TupE es -> I.TupE (exps es)
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
@@ -96,6 +95,11 @@ and exp' at note = function
     let ty = T.open_ vars ty in
     let tys = if cc.Call_conv.n_res = 1 then [ty] else T.as_seq ty in
     I.FuncE (name, cc, tbs', args, tys, wrap (exp e))
+  (* Primitive functions in the prelude have particular shapes *)
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
+    I.PrimE (I.OtherPrim p, exps es)
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
+    I.PrimE (I.OtherPrim p, [exp e])
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in
     if T.is_non t
@@ -126,6 +130,7 @@ and exp' at note = function
   | S.ImportE (f, fp) ->
     if !fp = "" then assert false; (* unresolved import *)
     I.VarE (id_of_full_path !fp).it
+  | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const

@@ -6,7 +6,7 @@ type tree = variant {
   leaf : int;
   branch : record { left : tree; val : int; right : tree };
 };
-type s = service { f : t };
+type s = service { f : t; g : (list) -> (B,tree,stream); };
 type t = func (server : s) -> ();
 type stream = opt record {head:nat; next:func ()-> (stream) pure};
 

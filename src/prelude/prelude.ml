@@ -29,13 +29,13 @@ func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 func ignore(_ : Any) {};
 
 class range(x : Nat, y : Nat) {
-  private var i = x;
-  next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
+  var i = x;
+  public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
 };
 
 class revrange(x : Nat, y : Nat) {
-  private var i = x + 1;
-  next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
+  var i = x + 1;
+  public func next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
 };
 
 // Implementations for overloaded dot operations
@@ -53,28 +53,28 @@ func @mut_array_len<A>(xs : [var A]) : (() -> Nat) =
 func @mut_array_set<A>(xs : [var A]) : ((Nat, A) -> ()) =
   (func (n : Nat, x : A) = (xs[n] := x));
 func @immut_array_keys<A>(xs : [A]) : (() -> Iter<Nat>) =
-  (func () : Iter<Nat> = new {
-    private var i = 0;
-    private l = xs.len();
-    next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  (func () : Iter<Nat> = object {
+    var i = 0;
+    let l = xs.len();
+    public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
   });
 func @mut_array_keys<A>(xs : [var A]) : (() -> Iter<Nat>) =
-  (func () : Iter<Nat> = new {
-    private var i = 0;
-    private l = xs.len();
-    next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  (func () : Iter<Nat> = object {
+    var i = 0;
+    let l = xs.len();
+    public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
   });
 func @immut_array_vals<A>(xs : [A]) : (() -> Iter<A>) =
-  (func () : Iter<A> = new {
-    private var i = 0;
-    private l = xs.len();
-    next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
+  (func () : Iter<A> = object {
+    var i = 0;
+    let l = xs.len();
+    public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   });
 func @mut_array_vals<A>(xs : [var A]) : (() -> Iter<A>) =
-  (func () : Iter<A> = new {
-    private var i = 0;
-    private l = xs.len();
-    next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
+  (func () : Iter<A> = object {
+    var i = 0;
+    let l = xs.len();
+    public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   });
 func @text_len(xs : Text) : (() -> Nat) =
   (func () : Nat = (prim "text_len" : Text -> Nat) xs);
@@ -107,8 +107,8 @@ func hashInt(x : Int) : Word32 {
   return hash;
 };
 
-// Conversions
 
+// Conversions
 
 func int64ToInt(n : Int64) : Int = (prim "Int64->Int" : Int64 -> Int) n;
 func intToInt64(n : Int) : Int64 = (prim "Int->Int64" : Int -> Int64) n;
@@ -189,6 +189,7 @@ func popcntWord64(w : Word64) : Word64 = (prim "popcnt64" : Word64 -> Word64) w;
 func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
 func ctzWord64(w : Word64) : Word64 = (prim "ctz64" : Word64 -> Word64) w;
 func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, Word64) -> Word64) (w, amount) != (0 : Word64);
+
 
 // Internal helper functions for the show translation
 
@@ -292,6 +293,7 @@ func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
   return text;
 };
 
+
 // Array utilities
 
 // This would be nicer as a objects, but lets do them as functions
@@ -320,7 +322,7 @@ func @new_async<T <: Any>() : (Async<T>, Cont<T>) {
         ks := empty;
         ks_(t);
       };
-      case (?t) (assert(false));
+      case (?t) { assert false };
     };
   };
 
@@ -330,7 +332,7 @@ func @new_async<T <: Any>() : (Async<T>, Cont<T>) {
         let ks_ = ks;
         ks := (func(t : T) { ks_(t); k(t) });
       };
-      case (?t) (k(t));
+      case (?t) { k(t) };
     };
   };
 

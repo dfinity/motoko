@@ -28,43 +28,43 @@ import T = "serverTypes.as";
 import L = "serverLang.as";
 import M = "serverModelTypes.as";
 
-let List = (import "../../list.as");
-type List<T> = List.List<T>;
+public let List = (import "../../list.as");
+public type List<T> = List.List<T>;
 
-let Hash = (import "../../hash.as").BitVec;
-type Hash = Hash.t;
+public let Hash = (import "../../hash.as").BitVec;
+public type Hash = Hash.t;
 
 import Option = "../../option.as";
 import Trie = "../../trie2.as";
 
-type Trie<K,V> = Trie.Trie<K,V>;
-type TrieBuild<K,V> = Trie.Build.TrieBuild<K,V>;
-type Key<K> = Trie.Key<K>;
+public type Trie<K,V> = Trie.Trie<K,V>;
+public type TrieBuild<K,V> = Trie.Build.TrieBuild<K,V>;
+public type Key<K> = Trie.Key<K>;
 
-type Table<K,V> = Trie.Trie<K,V>;
-let Table = Trie;
+public type Table<K,V> = Trie.Trie<K,V>;
+public let Table = Trie;
 
-type Map<K,V> = Trie.Trie<K,V>;
-let Map = Trie;
+public type Map<K,V> = Trie.Trie<K,V>;
+public let Map = Trie;
 
 import DT = "../../docTable.as";
-let DocTable = DT.DocTable;
-type DocTable<X,Y,Z> = DT.DocTable<X,Y,Z>;
+public let DocTable = DT.DocTable;
+public type DocTable<X,Y,Z> = DT.DocTable<X,Y,Z>;
 
 import Result = "../../result.as";
-type Result<Ok,Err> = Result.Result<Ok,Err>;
+public type Result<Ok,Err> = Result.Result<Ok,Err>;
 
-type RouteInventoryMap = Trie<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
-type QueryResult = TrieBuild<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
+public type RouteInventoryMap = Trie<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
+public type QueryResult = TrieBuild<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
 
-type RoleId = {
+public type RoleId = {
   #user        : T.UserId;
   #producer    : T.ProducerId;
   #transporter : T.TransporterId;
   #retailer    : T.RetailerId;
 };
 
-class Model() {
+public class Model() {
 
   /**
    PX server language semantics
@@ -78,7 +78,7 @@ class Model() {
    clear existing server state, and replace with a synthetic workload, based on the given parameters.
    */
 
-  loadWorkload(params:T.WorkloadParams) : () {
+  public func loadWorkload(params:T.WorkloadParams) : () {
     func db(s:Text) = if false {print "Model::loadWorkload: "; print s; print "\n"};
 
     /**- generate add requests for these params: */
@@ -126,7 +126,7 @@ class Model() {
    - update (`#update`) cases
 
    */
-  evalReq(req:L.Req) : Result<L.Resp, T.IdErr> {
+  public func evalReq(req:L.Req) : Result<L.Resp, T.IdErr> {
     if false {print "Model::evalReq: "; print (debug_show req); print "\n"; };
     switch req {
     case (#reset) {
@@ -316,7 +316,7 @@ class Model() {
    `evalReqList`
    ----------
    */
-  evalReqList(reqs:List<L.Req>) : List<L.ResultResp> =
+  public func evalReqList(reqs:List<L.Req>) : List<L.ResultResp> =
     List.map<L.Req, L.ResultResp>(reqs, evalReq);
 
   /**
@@ -325,7 +325,7 @@ class Model() {
    evaluate groups of similar API calls, grouping their results.
    Each bulk request consists of an array of similar requests (adds, updates, or removes).
    */
-  evalBulk(req:L.BulkReq) : L.BulkResp {
+  public func evalBulk(req:L.BulkReq) : L.BulkResp {
     func eatAdd (x:L.Resp) : T.EntId =
       switch x { case (#add i) i; case _ P.unreachable() };
     switch req {
@@ -357,7 +357,7 @@ class Model() {
    - The request is an array of bulk requests, and
    - Each bulk request in this array consists of an array of similar requests (adds, updates, or removes).
    */
-  evalBulkArray(reqs:[L.BulkReq]) : [L.BulkResp] {
+  public func evalBulkArray(reqs:[L.BulkReq]) : [L.BulkResp] {
     Array_tabulate<L.BulkResp>(
       reqs.len(),
       func(i:Nat):L.BulkResp = evalBulk(reqs[i])
@@ -369,7 +369,7 @@ class Model() {
    -------------
    xxx
    */
-  countAddReqs(
+  public func countAddReqs(
     day_count:Nat,
     max_route_duration:Nat,
     producer_count:Nat,
@@ -435,7 +435,7 @@ class Model() {
    and for profiling performance properties of the produce exchange,
    e.g., average response time for a retailer query.
    */
-  genAddReqs(
+  public func genAddReqs(
     day_count:Nat,
     max_route_duration:Nat,
     producer_count:Nat,
@@ -567,7 +567,7 @@ class Model() {
    Match a given public key to that of an identified role, whose public key on record.
 
    */
-  func isValidPublicKey(id:RoleId, public_key:T.PublicKey) : Bool {
+  public func isValidPublicKey(id:RoleId, public_key:T.PublicKey) : Bool {
     switch id {
     case (#user id) {
            switch (userTable.getDoc(id)) {
@@ -601,32 +601,32 @@ class Model() {
    ==================
    */
 
-  private debug (t:Text)   { print t };
-  private debugInt (i:Int) { printInt i };
+  func debug (t:Text)   { print t };
+  func debugInt (i:Int) { printInt i };
 
-  private debugOff (t:Text)   {  };
-  private debugIntOff (i:Int) {  };
-  private debugOffInt (i:Int) {  };
+  func debugOff (t:Text)   {  };
+  func debugIntOff (i:Int) {  };
+  func debugOffInt (i:Int) {  };
 
-  private idIsEq(x:Nat,y:Nat):Bool { x == y };
+  func idIsEq(x:Nat,y:Nat):Bool { x == y };
 
-  private textIsEq(x:Text,y:Text):Bool { x == y };
+  func textIsEq(x:Text,y:Text):Bool { x == y };
 
-  private idPairIsEq(x:(Nat,Nat),y:(Nat,Nat)):Bool { x.0 == y.0 and x.1 == y.1 };
+  func idPairIsEq(x:(Nat,Nat),y:(Nat,Nat)):Bool { x.0 == y.0 and x.1 == y.1 };
 
-  private idHash(x:Nat):Hash { Hash.hashOfInt(x) };
+  func idHash(x:Nat):Hash { Hash.hashOfInt(x) };
 
-  private idPairHash(x:(Nat,Nat)):Hash { Hash.hashOfIntAcc(Hash.hashOfInt(x.0), x.1) };
+  func idPairHash(x:(Nat,Nat)):Hash { Hash.hashOfIntAcc(Hash.hashOfInt(x.0), x.1) };
 
-  private keyOf(x:Nat):Key<Nat> {
+  func keyOf(x:Nat):Key<Nat> {
     new { key = x ; hash = idHash(x) }
   };
 
-  private keyOfIdPair(x:Nat, y:Nat):Key<(Nat,Nat)> {
+  func keyOfIdPair(x:Nat, y:Nat):Key<(Nat,Nat)> {
     new { key = (x,y) ; hash = idPairHash(x,y) }
   };
 
-  private keyOfText(x:Text):Key<Text> {
+  func keyOfText(x:Text):Key<Text> {
     new { key = x ; hash = Hash.hashOfText(x) }
   };
 
@@ -635,8 +635,8 @@ class Model() {
    ==================
    */
 
-  var joinCount = 0;
-  var retailerQuerySizeMax = 0;
+  public var joinCount = 0;
+  public var retailerQuerySizeMax = 0;
 
 
 /**
@@ -686,7 +686,7 @@ secondary maps.
    -----------------
    */
 
-  var userTable : M.UserTable =
+  public var userTable : M.UserTable =
     DocTable<T.UserId, M.UserDoc, T.UserInfo>(
     0,
     func(x:T.UserId):T.UserId{x+1},
@@ -722,7 +722,7 @@ secondary maps.
    -----------------
    */
 
-  var truckTypeTable : M.TruckTypeTable =
+  public var truckTypeTable : M.TruckTypeTable =
     DocTable<T.TruckTypeId, M.TruckTypeDoc, T.TruckTypeInfo>(
     0,
     func(x:T.TruckTypeId):T.TruckTypeId{x+1},
@@ -751,7 +751,7 @@ secondary maps.
    -----------------
    */
 
-  var regionTable : M.RegionTable =
+  public var regionTable : M.RegionTable =
     DocTable<T.RegionId, M.RegionDoc, T.RegionInfo>(
     0,
     func(x:T.RegionId):T.RegionId{x+1},
@@ -774,7 +774,7 @@ secondary maps.
    -----------------
    */
 
-  var produceTable : M.ProduceTable =
+  public var produceTable : M.ProduceTable =
     DocTable<T.ProduceId, M.ProduceDoc, T.ProduceInfo>(
     0,
     func(x:T.ProduceId):T.ProduceId{x+1},
@@ -799,7 +799,7 @@ secondary maps.
    -----------------
    */
 
-  var producerTable : M.ProducerTable =
+  public var producerTable : M.ProducerTable =
     DocTable<T.ProducerId, M.ProducerDoc, T.ProducerInfo>(
     0,
     func(x:T.ProducerId):T.ProducerId{x+1},
@@ -835,7 +835,7 @@ secondary maps.
    ---------------
    */
 
-  var inventoryTable : M.InventoryTable =
+  public var inventoryTable : M.InventoryTable =
     DocTable<T.InventoryId, M.InventoryDoc, T.InventoryInfo>(
     0,
     func(x:T.InventoryId):T.InventoryId{x+1},
@@ -881,7 +881,7 @@ secondary maps.
    -----------------
    */
 
-  var transporterTable : M.TransporterTable =
+  public var transporterTable : M.TransporterTable =
     DocTable<T.TransporterId, M.TransporterDoc, T.TransporterInfo> (
       0,
       func(x:T.TransporterId):T.TransporterId{x+1},
@@ -911,7 +911,7 @@ secondary maps.
    -----------------
    */
 
-  var retailerTable : M.RetailerTable =
+  public var retailerTable : M.RetailerTable =
     DocTable<T.RetailerId, M.RetailerDoc, T.RetailerInfo>(
       0,
       func(x:T.RetailerId):T.RetailerId{x+1},
@@ -940,16 +940,16 @@ secondary maps.
         )
       );
 
-  var retailerQueryCount : Nat = 0;
-  var retailerQueryCost : Nat = 0;
-  var retailerJoinCount : Nat = 0;
+  public var retailerQueryCount : Nat = 0;
+  public var retailerQueryCost : Nat = 0;
+  public var retailerJoinCount : Nat = 0;
 
   /**
    `routeTable`
    ----------------
    */
 
-  var routeTable : M.RouteTable =
+  public var routeTable : M.RouteTable =
     DocTable<T.RouteId, M.RouteDoc, T.RouteInfo> (
       0,
       func(x:T.RouteId):T.RouteId{x+1},
@@ -993,7 +993,7 @@ secondary maps.
    ---------------------------
    */
 
-  var reservedInventoryTable : M.ReservedInventoryTable =
+  public var reservedInventoryTable : M.ReservedInventoryTable =
     DocTable<T.ReservedInventoryId, M.ReservedInventoryDoc, T.ReservedInventoryInfo>(
     0,
     func(x:T.ReservedInventoryId):T.ReservedInventoryId{x+1},
@@ -1036,7 +1036,7 @@ secondary maps.
    ----------------
    */
 
-  var reservedRouteTable : M.ReservedRouteTable =
+  public var reservedRouteTable : M.ReservedRouteTable =
     DocTable<T.ReservedRouteId, M.ReservedRouteDoc, T.ReservedRouteInfo>(
     0,
     func(x:T.ReservedRouteId):T.ReservedRouteId{x+1},
@@ -1085,7 +1085,7 @@ secondary maps.
    =====================================
    */
 
-  private var usersByUserName
+  public var usersByUserName
     : M.UserNameMap = Map.empty<T.UserName, T.UserId>();
 
   /**
@@ -1113,7 +1113,7 @@ secondary maps.
 
    */
 
-  private var routesByDstSrcRegions : M.ByRegionPairRouteMap
+  public var routesByDstSrcRegions : M.ByRegionPairRouteMap
     = Map.empty<T.RegionId, M.ByRegionRouteMap>();
 
   /**
@@ -1127,7 +1127,7 @@ secondary maps.
 
   */
 
-  private var inventoryByRegion : M.ByRegionInventoryMap
+  public var inventoryByRegion : M.ByRegionInventoryMap
     = Map.empty<T.RegionId, M.ByProducerInventoryMap>();
 
   /**
@@ -1157,7 +1157,7 @@ merely forget the older prices.  Doing either of these is more complex
 than the MVP goals, however.
 
    */
-  private var reservationsByProduceByRegion
+  public var reservationsByProduceByRegion
     : M.ByProduceByRegionInventoryReservationMap
     = Map.empty<T.ProduceId,
                 Map<T.RegionId,
@@ -1209,7 +1209,7 @@ than the MVP goals, however.
    The given `user_name` must be unique to the exchange; the operation fails otherwise.
 
    */
-  addUser(
+  public func addUser(
     public_key_: T.PublicKey,
     user_name_: Text,
     description_: Text,
@@ -1313,7 +1313,7 @@ than the MVP goals, however.
    ---------------------------
    The last sales price for produce within a given geographic area; null region id means "all areas."
    */
-  produceMarketInfo(produce_id:T.ProduceId, region_oid:?T.RegionId) : ?[T.ProduceMarketInfo] {
+  public func produceMarketInfo(produce_id:T.ProduceId, region_oid:?T.RegionId) : ?[T.ProduceMarketInfo] {
     // switch (Map.find<ProduceId,Map<RegionId,Map<ReservedInventoryId>>>(
     //           reservationsByProduceByRegion,
     //           produce_id, idIsEq)) {
@@ -1333,7 +1333,7 @@ than the MVP goals, however.
    // `producerAllInventoryInfo`
    // ---------------------------
    */
-  producerAllInventoryInfo(id:T.UserId) : ?[T.InventoryInfo] {
+  public func producerAllInventoryInfo(id:T.UserId) : ?[T.InventoryInfo] {
     let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -1351,7 +1351,7 @@ than the MVP goals, however.
    ---------------------------
 
   */
-  producerAddInventory(
+  public func producerAddInventory(
     iid_       : ?T.InventoryId,
     id_        : T.ProducerId,
     produce_id : T.ProduceId,
@@ -1434,7 +1434,7 @@ than the MVP goals, however.
    ---------------------------
 
   */
-  producerUpdateInventory(
+  public func producerUpdateInventory(
     iid_       : T.InventoryId,
     id_        : T.ProducerId,
     produce_id : T.ProduceId,
@@ -1487,7 +1487,7 @@ than the MVP goals, however.
    Remove the given inventory item from the exchange.
 
    */
-  producerRemInventory(id:T.InventoryId) : Result<(),T.ServerErr> {
+  public func producerRemInventory(id:T.InventoryId) : Result<(),T.ServerErr> {
 
     /**- validate the `id` */
     /// xxx macro for this pattern?
@@ -1545,7 +1545,7 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  producerAllReservationInfo(id:T.ProducerId) : ?[T.ReservedInventoryInfo] {
+  public func producerAllReservationInfo(id:T.ProducerId) : ?[T.ReservedInventoryInfo] {
     let doc = switch (producerTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -1573,7 +1573,7 @@ than the MVP goals, however.
    `transporterAddRoute`
    ---------------------------
   */
-  transporterAddRoute(
+  public func transporterAddRoute(
     rid_:            ?T.RouteId,
     id_:             T.TransporterId,
     start_region_id: T.RegionId,
@@ -1655,7 +1655,7 @@ than the MVP goals, however.
    ---------------------------
    Update the given route with the given field values.
    */
-  transporterUpdateRoute(
+  public func transporterUpdateRoute(
     rid_            : T.RouteId,
     id_             : T.TransporterId,
     start_region_id : T.RegionId,
@@ -1713,7 +1713,7 @@ than the MVP goals, however.
    ---------------------------
    Remove the given route from the exchange.
    */
-  transporterRemRoute(id:T.RouteId) : Result<(),T.IdErr> {
+  public func transporterRemRoute(id:T.RouteId) : Result<(),T.IdErr> {
 
     let doc = switch (routeTable.getDoc(id)) {
       case null { return #err(#idErr null) };
@@ -1761,7 +1761,7 @@ than the MVP goals, however.
    `transporterAllRouteInfo`
    ---------------------------
    */
-  transporterAllRouteInfo(id:T.TransporterId) : ?[T.RouteInfo] {
+  public func transporterAllRouteInfo(id:T.TransporterId) : ?[T.RouteInfo] {
     let doc = switch (transporterTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -1784,7 +1784,7 @@ than the MVP goals, however.
    ---------------------------
 
    */
-  transporterAllReservationInfo(id:T.TransporterId) : ?[T.ReservedRouteInfo] {
+  public func transporterAllReservationInfo(id:T.TransporterId) : ?[T.ReservedRouteInfo] {
     let doc = switch (transporterTable.getDoc(id)) {
       case null { return null };
       case (?doc) { doc };
@@ -1815,7 +1815,7 @@ than the MVP goals, however.
   Prepare reservation information for a server client
   based on the given inventory and route documents.
   */
-  makeReservationInfo(item:M.InventoryDoc, route:M.RouteDoc) : T.ReservationInfo {
+  public func makeReservationInfo(item:M.InventoryDoc, route:M.RouteDoc) : T.ReservationInfo {
     new {
       produce  =item.produce.id :T.ProduceId;
       producer =item.producer   :T.ProducerId;
@@ -1847,7 +1847,7 @@ than the MVP goals, however.
   Check whether the given truck type can accommodate the given produce type.
 
   */
-  isCompatibleTruckType(tt:M.TruckTypeDoc, produce:M.ProduceDoc) : Bool {
+  public func isCompatibleTruckType(tt:M.TruckTypeDoc, produce:M.ProduceDoc) : Bool {
     // todo
     true
   };
@@ -1860,7 +1860,7 @@ than the MVP goals, however.
 
   */
 
-  isFeasibleReservation(
+  public func isFeasibleReservation(
     retailer:M.RetailerDoc,
     item:M.InventoryDoc,
     route:M.RouteDoc,
@@ -1933,7 +1933,7 @@ than the MVP goals, however.
    - [`Trie.prod`]($DOCURL/trie.md#prod): For the catesian product of routes and inventory.
    - [`Trie.mergeDisjoint2D`]($DOCURL/trie.md#mergeDisjoint2D): To flatten 2D mappings into 1D mappings.
   */
-  retailerQueryAll(
+  public func retailerQueryAll(
     id:T.RetailerId,
     queryProduce:?T.ProduceId,
     queryDate:?T.Date
@@ -2064,7 +2064,7 @@ than the MVP goals, however.
    ---------------------------
 
   */
-  retailerAllReservationInfo(id:T.RetailerId) :
+  public func retailerAllReservationInfo(id:T.RetailerId) :
     ?[(T.ReservedInventoryInfo,
        T.ReservedRouteInfo)]
   {
@@ -2101,7 +2101,7 @@ than the MVP goals, however.
    the created reservation documents, each have a valid id, which this operation returns.
 
   */
-  retailerReserve(
+  public func retailerReserve(
     retailer_id:T.RetailerId,
     inventory_id:T.InventoryId,
     route_id:T.RouteId) : Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>
@@ -2279,7 +2279,7 @@ than the MVP goals, however.
    `retailerReserveMany`
    ---------------------------
   */
-  retailerReserveMany(
+  public func retailerReserveMany(
     id:T.RetailerId,
     array:[(T.InventoryId,T.RouteId)])
     : [Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>]

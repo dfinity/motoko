@@ -1,10 +1,10 @@
 let a = actor {
-  private var c = 1;
-  inc() {
+  var c = 1;
+  public func inc() {
     c += 1;
     printInt c; print "\n";
   };
-  printCounter () {
+  public func printCounter () {
     printInt c; print "\n";
   }
 };

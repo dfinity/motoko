@@ -1,8 +1,8 @@
 let a = actor {
-  world () {
+  public func world() {
     print("World!\n");
   };
-  go () {
+  public func go() {
     world();
     print("Hello ");
   };

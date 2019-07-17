@@ -72,7 +72,7 @@ actor class Server () {
 
  */
 
-  registrarAddUser(
+  public func registrarAddUser(
     public_key: T.PublicKey,
     user_name: Text,
     description: Text,
@@ -102,7 +102,7 @@ actor class Server () {
    -------------
    Get info for all users.
    */
-  allUserInfo() : async [T.UserInfo] {
+  public func allUserInfo() : async [T.UserInfo] {
     getModel().userTable.allInfo()
   };
 
@@ -111,7 +111,7 @@ actor class Server () {
    ---------------------------
    Get the information associated with a user, based on its id.
    */
-  getUserInfo(id:T.UserId) : async Result<T.UserInfo, T.IdErr> {
+  public func getUserInfo(id:T.UserId) : async Result<T.UserInfo, T.IdErr> {
     Result.fromOption<T.UserInfo, T.IdErr>(
       getModel().userTable.getInfo(id),
       #idErr null
@@ -123,7 +123,7 @@ actor class Server () {
    ---------------------------
    Returns true if the user id matches the public key.
    */
-  validateUser(public_key: T.PublicKey, id: T.UserId) : async Bool {
+  public func validateUser(public_key: T.PublicKey, id: T.UserId) : async Bool {
     getModel().isValidPublicKey(#user(id), public_key);
   };
 
@@ -140,7 +140,7 @@ actor class Server () {
 
    */
 
-  registrarAddTruckType(
+  public func registrarAddTruckType(
     short_name_:  Text,
     description_: Text,
     capacity_ : T.Weight,
@@ -175,7 +175,7 @@ actor class Server () {
    ---------------------
    */
 
-  registrarRemTruckType(
+  public func registrarRemTruckType(
     id: T.TruckTypeId
   ) : async Result<(),T.ServerErr> {
     Result.fromOption<(),T.IdErr>(
@@ -189,7 +189,7 @@ actor class Server () {
    ---------------------
    */
 
-  getTruckTypeInfo(
+  public func getTruckTypeInfo(
     id: T.TruckTypeId
   ) : async Result<T.TruckTypeInfo,T.IdErr> {
     Result.fromOption<T.TruckTypeInfo,T.IdErr>(
@@ -203,7 +203,7 @@ actor class Server () {
    ---------------------
    */
 
-  allTruckTypeInfo() : async [T.TruckTypeInfo] {
+  public func allTruckTypeInfo() : async [T.TruckTypeInfo] {
     getModel().truckTypeTable.allInfo()
   };
 
@@ -222,7 +222,7 @@ actor class Server () {
    invalid in any way.
    */
 
-  registrarAddRegion(
+  public func registrarAddRegion(
     short_name_:  Text,
     description_: Text,
   ) : async Result<T.RegionId,None> {
@@ -244,7 +244,7 @@ actor class Server () {
    returns `?()` on success, and `null` on failure.
    */
 
-  registrarRemRegion(
+  public func registrarRemRegion(
     id: T.RegionId
   ) : async Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
@@ -261,7 +261,7 @@ actor class Server () {
 
    */
 
-  getRegionInfo(
+  public func getRegionInfo(
     id: T.RegionId
   ) : async Result<T.RegionInfo,T.IdErr> {
     Result.fromOption<T.RegionInfo,T.IdErr>(
@@ -279,7 +279,7 @@ actor class Server () {
 
    */
 
-  allRegionInfo() : async [T.RegionInfo] {
+  public func allRegionInfo() : async [T.RegionInfo] {
     getModel().regionTable.allInfo()
   };
 
@@ -298,7 +298,7 @@ actor class Server () {
    adds the produce to the system; fails if the given information is invalid in any way.
    */
 
-  registrarAddProduce(
+  public func registrarAddProduce(
     short_name_:  Text,
     description_: Text,
     grade_: T.Grade,
@@ -322,7 +322,7 @@ actor class Server () {
    returns `?()` on success, and `null` on failure.
    */
 
-  registrarRemProduce(
+  public func registrarRemProduce(
     id: T.ProduceId
   ) : async Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
@@ -337,7 +337,7 @@ actor class Server () {
    ---------------------
    */
 
-  getProduceInfo(
+  public func getProduceInfo(
     id: T.ProduceId
   ) : async Result<T.ProduceInfo,T.IdErr> {
     Result.fromOption<T.ProduceInfo,T.IdErr>(
@@ -351,7 +351,7 @@ actor class Server () {
    ---------------------
    */
 
-  allProduceInfo() : async [T.ProduceInfo] {
+  public func allProduceInfo() : async [T.ProduceInfo] {
     getModel().produceTable.allInfo()
   };
 
@@ -369,7 +369,7 @@ actor class Server () {
    adds the producer to the system; fails if the given region is non-existent.
    */
 
-  registrarAddProducer(
+  public func registrarAddProducer(
     producer_public_key : T.PublicKey,
     short_name_:  Text,
     description_: Text,
@@ -399,7 +399,7 @@ actor class Server () {
    returns `?()` on success, and `null` on failure.
    */
 
-  registrarRemProducer(
+  public func registrarRemProducer(
     id: T.ProducerId
   ) : async Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
@@ -414,7 +414,7 @@ actor class Server () {
    ---------------------
    */
 
-  getProducerInfo(
+  public func getProducerInfo(
     id: T.ProducerId
   ) : async Result<T.ProducerInfo,T.IdErr> {
     Result.fromOption<T.ProducerInfo,T.IdErr>(
@@ -428,7 +428,7 @@ actor class Server () {
    ---------------------
    */
 
-  allProducerInfo() : async [T.ProducerInfo] {
+  public func allProducerInfo() : async [T.ProducerInfo] {
     getModel().producerTable.allInfo()
   };
 
@@ -446,7 +446,7 @@ actor class Server () {
    adds the producer to the system; fails if the given region is non-existent.
    */
 
-  registrarAddRetailer(
+  public func registrarAddRetailer(
     retailer_public_key : T.PublicKey,
     short_name_:  Text,
     description_: Text,
@@ -474,7 +474,7 @@ actor class Server () {
    returns `?()` on success, and `null` on failure.
    */
 
-  registrarRemRetailer(
+  public func registrarRemRetailer(
     id: T.RetailerId
   ) : async Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
@@ -488,7 +488,7 @@ actor class Server () {
    ---------------------
    */
 
-  getRetailerInfo(
+  public func getRetailerInfo(
     id: T.RetailerId
   ) : async Result<T.RetailerInfo,T.IdErr> {
     Result.fromOption<T.RetailerInfo,T.IdErr>(
@@ -502,7 +502,7 @@ actor class Server () {
    ---------------------
    */
 
-  allRetailerInfo() : async [T.RetailerInfo] {
+  public func allRetailerInfo() : async [T.RetailerInfo] {
     getModel().retailerTable.allInfo()
   };
 
@@ -518,7 +518,7 @@ actor class Server () {
    ---------------------
 
    */
-  registrarAddTransporter(
+  public func registrarAddTransporter(
     transporter_public_key: T.PublicKey,
     short_name_:  Text,
     description_: Text,
@@ -545,7 +545,7 @@ actor class Server () {
 
    */
 
-  registrarRemTransporter(
+  public func registrarRemTransporter(
     id: T.TransporterId
   ) : async Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
@@ -559,7 +559,7 @@ actor class Server () {
    ---------------------
    */
 
-  getTransporterInfo(
+  public func getTransporterInfo(
     id: T.TransporterId
   ) : async Result<T.TransporterInfo,T.IdErr> {
     Result.fromOption<T.TransporterInfo,T.IdErr>(
@@ -574,7 +574,7 @@ actor class Server () {
    ---------------------
    */
 
-  allTransporterInfo() : async [T.TransporterInfo] {
+  public func allTransporterInfo() : async [T.TransporterInfo] {
     getModel().transporterTable.allInfo()
   };
 
@@ -590,7 +590,7 @@ actor class Server () {
 
    See also [Model.producerAddInventory]($DOCURL/stdlib/examples/produce-exchange/serverModel.md#produceraddinventory)
    */
-  producerAddInventory(
+  public func producerAddInventory(
     public_key: T.PublicKey,
     id:   T.ProducerId,
     prod: T.ProduceId,
@@ -614,7 +614,7 @@ actor class Server () {
    ------------------------------------------
 
    */
-  producerUpdateInventory(
+  public func producerUpdateInventory(
     public_key: T.PublicKey,
     iid:  T.InventoryId,
     id:   T.ProducerId,
@@ -638,7 +638,7 @@ actor class Server () {
    `producerRemInventory`
    ---------------------------
    */
-  producerRemInventory(public_key: T.PublicKey, id:T.InventoryId) : async Result<(),T.ServerErr> {
+  public func producerRemInventory(public_key: T.PublicKey, id:T.InventoryId) : async Result<(),T.ServerErr> {
     if (not getModel().isValidPublicKey(#producer(id), public_key)) {
       return (#err(#publicKeyErr))
     };
@@ -649,7 +649,7 @@ actor class Server () {
    `producerAllInventoryInfo`
    ---------------------------
    */
-  producerAllInventoryInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.InventoryInfo],T.IdErr> {
+  public func producerAllInventoryInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.InventoryInfo],T.IdErr> {
     Result.fromOption<[T.InventoryInfo],T.IdErr>(
       getModel()
         .producerAllInventoryInfo(id),
@@ -661,7 +661,7 @@ actor class Server () {
    `producerAllReservationInfo`
    ---------------------------
    */
-  producerReservations(public_key: T.PublicKey, id:T.UserId) : async Result<[T.ReservedInventoryInfo],T.IdErr> {
+  public func producerReservations(public_key: T.PublicKey, id:T.UserId) : async Result<[T.ReservedInventoryInfo],T.IdErr> {
     Result.fromOption<[T.ReservedInventoryInfo],T.IdErr>(
       getModel()
         .producerAllReservationInfo(id),
@@ -682,7 +682,7 @@ actor class Server () {
    ---------------------------
    The last sales price for produce within a given geographic area; null region id means "all areas."
    */
-  produceMarketInfo(public_key: T.PublicKey, id:T.ProduceId, reg:?T.RegionId) : async Result<[T.ProduceMarketInfo],T.IdErr> {
+  public func produceMarketInfo(public_key: T.PublicKey, id:T.ProduceId, reg:?T.RegionId) : async Result<[T.ProduceMarketInfo],T.IdErr> {
     Result.fromOption<[T.ProduceMarketInfo],T.IdErr>(
       getModel()
         .produceMarketInfo(id, reg),
@@ -696,7 +696,7 @@ actor class Server () {
    ---------------------------
    Get the information for all known inventory.
    */
-  allInventoryInfo() : async [T.InventoryInfo] {
+  public func allInventoryInfo() : async [T.InventoryInfo] {
     getModel()
       .inventoryTable.allInfo()
   };
@@ -706,7 +706,7 @@ actor class Server () {
    ---------------------------
    Get the information associated with inventory, based on its id.
    */
-  getInventoryInfo(id:T.InventoryId) : async Result<T.InventoryInfo,T.IdErr> {
+  public func getInventoryInfo(id:T.InventoryId) : async Result<T.InventoryInfo,T.IdErr> {
     Result.fromOption<T.InventoryInfo,T.IdErr>(
       getModel()
         .inventoryTable.getInfo(id),
@@ -724,7 +724,7 @@ actor class Server () {
    `transporterAddRoute`
    ---------------------------
    */
-  transporterAddRoute(
+  public func transporterAddRoute(
     public_key: T.PublicKey,
     id:     T.TransporterId,
     rstart: T.RegionId,
@@ -744,7 +744,7 @@ actor class Server () {
    `transporterUpdateRoute`
    ---------------------------
    */
-  transporterUpdateRoute(
+  public func transporterUpdateRoute(
     public_key: T.PublicKey,
     route:  T.RouteId,
     id:     T.TransporterId,
@@ -765,7 +765,7 @@ actor class Server () {
    `transporterRemRoute`
    ---------------------------
    */
-  transporterRemRoute(public_key: T.PublicKey, id:T.RouteId) : async Result<(),T.ServerErr> {
+  public func transporterRemRoute(public_key: T.PublicKey, id:T.RouteId) : async Result<(),T.ServerErr> {
     if (not getModel().isValidPublicKey(#transporter(id), public_key)) {
       return (#err(#publicKeyErr))
     };
@@ -776,7 +776,7 @@ actor class Server () {
    `transporterAllRouteInfo`
    ---------------------------
    */
-  transporterAllRouteInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.RouteInfo],T.IdErr> {
+  public func transporterAllRouteInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.RouteInfo],T.IdErr> {
     Result.fromOption<[T.RouteInfo],T.IdErr>(
       getModel()
         .transporterAllRouteInfo(id),
@@ -788,7 +788,7 @@ actor class Server () {
    `transporterAllReservationInfo`
    ---------------------------
    */
-  transporterAllReservationInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.ReservedRouteInfo],T.IdErr> {
+  public func transporterAllReservationInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.ReservedRouteInfo],T.IdErr> {
     Result.fromOption<[T.ReservedRouteInfo],T.IdErr>(
       getModel()
         .transporterAllReservationInfo(id),
@@ -801,7 +801,7 @@ actor class Server () {
    ---------------------------
    Get the information for all known routes.
    */
-  allRouteInfo() : async [T.RouteInfo] {
+  public func allRouteInfo() : async [T.RouteInfo] {
     getModel()
       .routeTable.allInfo()
   };
@@ -811,7 +811,7 @@ actor class Server () {
    ---------------------------
    Get the information for all reserved routes.
    */
-  allReservedRouteInfo() : async [T.ReservedRouteInfo] {
+  public func allReservedRouteInfo() : async [T.ReservedRouteInfo] {
     getModel()
       .reservedRouteTable.allInfo()
   };
@@ -824,7 +824,7 @@ actor class Server () {
 
    */
 
-  getRouteInfo(
+  public func getRouteInfo(
     id: T.RouteId
   ) : async Result<T.RouteInfo,T.IdErr> {
     Result.fromOption<T.RouteInfo,T.IdErr>(
@@ -841,9 +841,11 @@ actor class Server () {
    ---------------------------
 
    */
-  retailerQueryAll(public_key: T.PublicKey, id:T.RetailerId,
-                   queryProduce:?T.ProduceId,
-                   queryDate:?T.Date
+  public func retailerQueryAll(
+    public_key: T.PublicKey,
+    id:T.RetailerId,
+    queryProduce:?T.ProduceId,
+    queryDate:?T.Date
   ) : async Result<T.QueryAllResults,T.IdErr> {
     Result.fromOption<T.QueryAllResults,T.IdErr>(
       getModel().
@@ -856,7 +858,7 @@ actor class Server () {
    `retailerReserve`
    ---------------------------
    */
-  retailerReserve(
+  public func retailerReserve(
     public_key: T.PublicKey,
     id:T.RetailerId,
     inventory:T.InventoryId,
@@ -873,7 +875,7 @@ actor class Server () {
    `retailerReserveMany`
    ---------------------------
    */
-  retailerReserveMany(
+  public func retailerReserveMany(
     public_key: T.PublicKey,
     id: T.RetailerId,
     list: [(T.InventoryId, T.RouteId)]
@@ -891,7 +893,7 @@ actor class Server () {
    ---------------------------
 
   */
-  retailerReservations(public_key: T.PublicKey, id:T.RetailerId) :
+  public func retailerReservations(public_key: T.PublicKey, id:T.RetailerId) :
     async Result<[(T.ReservedInventoryInfo,
                    T.ReservedRouteInfo)],T.ServerErr>
   {
@@ -919,7 +921,7 @@ actor class Server () {
    ----------
    */
 
-  getCounts() : async T.ProduceExchangeCounts {
+  public func getCounts() : async T.ProduceExchangeCounts {
     let m = getModel();
     new {
       hash_bit_length          = 0;
@@ -951,7 +953,7 @@ actor class Server () {
 been processed
 */
 
-  devViewGMV() : async ?Nat {
+  public func devViewGMV() : async ?Nat {
     P.nyi()
   };
 
@@ -965,7 +967,7 @@ been processed
 
    */
 
-  devViewQueries() : async ?Nat {
+  public func devViewQueries() : async ?Nat {
     ?getModel().retailerQueryCount;
   };
 
@@ -980,7 +982,7 @@ been processed
 
    */
 
-  devViewReservations() : async Nat {
+  public func devViewReservations() : async Nat {
     getModel().reservedInventoryTable.count()
   };
 
@@ -996,7 +998,7 @@ been processed
 
    */
 
-  devViewProducers() : async [T.ProducerInfo] {
+  public func devViewProducers() : async [T.ProducerInfo] {
     getModel().producerTable.allInfo()
   };
 
@@ -1013,7 +1015,7 @@ been processed
 
    */
 
-  devViewTransporters() : async [T.TransporterInfo] {
+  public func devViewTransporters() : async [T.TransporterInfo] {
     getModel().transporterTable.allInfo()
   };
 
@@ -1029,7 +1031,7 @@ been processed
 
    */
 
-  devViewRetailers() : async [T.RetailerInfo] {
+  public func devViewRetailers() : async [T.RetailerInfo] {
     getModel().retailerTable.allInfo()
   };
 
@@ -1040,12 +1042,12 @@ been processed
    evaluate a collection of API calls (a "bulk request"), represented as an AS datatype.
    */
 
-  evalBulkArray(reqs:[L.BulkReq]) : async [L.BulkResp] {
+  public func evalBulkArray(reqs:[L.BulkReq]) : async [L.BulkResp] {
     getModel().evalBulkArray(reqs)
   };
 
 
-  loadWorkload(params:T.WorkloadParams) : () {
+  public func loadWorkload(params:T.WorkloadParams) : () {
     func db(s:Text) = if false {print "Model::loadWorkload: "; print s; print "\n"};
     getModel().loadWorkload(params)
   };
@@ -1055,7 +1057,7 @@ been processed
    =========================
    */
 
-  devTestLoadQuery (region_count:Nat, scale_factor:Nat) {
+  public func devTestLoadQuery (region_count:Nat, scale_factor:Nat) {
     func scaledParams(region_count_:Nat, factor:Nat) : T.WorkloadParams = {
       new {
         region_count        = region_count_:Nat;
@@ -1086,9 +1088,9 @@ been processed
   //private var model : ?Model.Model = null;
 
 
-  private var model : ?Model.Model = ?(Model.Model());
+  var model : ?Model.Model = ?(Model.Model());
 
-  private getModel() : Model.Model {
+  func getModel() : Model.Model {
     switch model {
     case (null) {
            let m = Model.Model();

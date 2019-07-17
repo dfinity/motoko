@@ -1,6 +1,6 @@
 
-func f(x:C)=();
+func f(x : C) = ();
 
 class C() = this {
-  apply():() = f(this);
+  public func apply() : () = f(this);
 };

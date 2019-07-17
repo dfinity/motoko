@@ -61,20 +61,20 @@ See the full details in the definitions below:
 
 */
 
-private import H "hash.as";
-let Hash = H.BitVec;
-type Hash = Hash.t;
+import H "hash.as";
+public let Hash = H.BitVec;
+public type Hash = Hash.t;
 
-private import List "list.as";
-type List<T> = List.List<T>;
+import List "list.as";
+public type List<T> = List.List<T>;
 
-private import AssocList "assocList.as";
-type AssocList<K,V> = AssocList.AssocList<K,V>;
+import AssocList "assocList.as";
+public type AssocList<K,V> = AssocList.AssocList<K,V>;
 
-let HASH_BITS = 4;
+public let HASH_BITS = 4;
 //let HASH_BITS = 16;
 
-type Key<K> = {
+public type Key<K> = {
   // hash field: permits fast inequality checks, permits collisions;
   // (eventually: permits incremental growth of deeper trie paths)
   hash: Hash;
@@ -83,24 +83,24 @@ type Key<K> = {
 };
 
 // Binary branch nodes
-type Branch<K,V> = {
+public type Branch<K,V> = {
   left:Trie<K,V>;
   right:Trie<K,V>;
 };
 // Leaf nodes are association lists of `Key<K>`s where every key
 // shares a common hash prefix, its (common) trie path.
-type Leaf<K,V> = {
+public type Leaf<K,V> = {
   keyvals:AssocList<Key<K>,V>;
 };
 
 // XXX: See AST-42
-type Node<K,V> = {
+public type Node<K,V> = {
   left:Trie<K,V>;
   right:Trie<K,V>;
   keyvals:AssocList<Key<K>,V>;
 };
 
-type Trie<K,V> = ?Node<K,V>;
+public type Trie<K,V> = ?Node<K,V>;
 
 /**
  Association lists
@@ -116,7 +116,7 @@ type Trie<K,V> = ?Node<K,V>;
  A 2D trie is just a trie that maps dimension-1 keys to another
  layer of tries, each keyed on the dimension-2 keys.
 */
-type Trie2D<K1, K2, V> = Trie<K1, Trie<K2,V> >;
+public type Trie2D<K1, K2, V> = Trie<K1, Trie<K2,V> >;
 
 /**
  Three-dimensional trie
@@ -124,7 +124,7 @@ type Trie2D<K1, K2, V> = Trie<K1, Trie<K2,V> >;
  A 3D trie is just a trie that maps dimension-1 keys to another
  layer of 2D tries, each keyed on the dimension-2 and dimension-3 keys.
 */
-type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
+public type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
 /**
  Module interface
@@ -144,7 +144,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    --------
    An empty trie.
    */
-  func empty<K,V>() : Trie<K,V> = makeEmpty<K,V>();
+  public func empty<K,V>() : Trie<K,V> = makeEmpty<K,V>();
 
   /**
    `copy`
@@ -153,14 +153,14 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
    */
 
-  func copy<K, V>(t : Trie<K, V>) : Trie<K, V> = t;
+  public func copy<K, V>(t : Trie<K, V>) : Trie<K, V> = t;
 
   /**
    `replace`
    ---------
    replace the given key's value option with the given one, returning the previous one
    */
-  func replace<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:?V) : (Trie<K,V>, ?V) {
+  public func replace<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:?V) : (Trie<K,V>, ?V) {
     let key_eq = keyEq<K>(k_eq);
     // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
     func rec(t : Trie<K,V>, bitpos:Nat) : (Trie<K,V>, ?V) {
@@ -205,7 +205,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    and only if successful, do the success continuation,
    otherwise, return the failure value
    */
-  func replaceThen<K,V,X>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v2:V,
+  public func replaceThen<K,V,X>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v2:V,
                          success: (Trie<K,V>, V) -> X,
                          fail: () -> X)
     : X
@@ -222,7 +222,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    ------------
    insert the given key's value in the trie; return the new trie, and the previous value associated with the key, if any
    */
-  func insert<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : (Trie<K,V>, ?V) {
+  public func insert<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : (Trie<K,V>, ?V) {
     replace<K,V>(t, k, k_eq, ?v)
   };
 
@@ -231,7 +231,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    ----------------
    insert the given key's value in the trie; return the new trie; assert that no prior value is associated with the key
    */
-  func insertFresh<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : Trie<K,V> {
+  public func insertFresh<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool, v:V) : Trie<K,V> {
     let (t2, none) = replace<K,V>(t, k, k_eq, ?v);
     switch none {
       case (null) ();
@@ -245,7 +245,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    ---------------
    insert the given key's value in the 2D trie; return the new 2D trie.
    */
-  func insert2D<K1,K2,V>(t : Trie2D<K1,K2,V>,
+  public func insert2D<K1,K2,V>(t : Trie2D<K1,K2,V>,
                               k1:Key<K1>, k1_eq:(K1,K1)->Bool,
                               k2:Key<K2>, k2_eq:(K2,K2)->Bool,
                               v:V)
@@ -265,7 +265,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    ---------------
    insert the given key's value in the trie; return the new trie;
    */
-  func insert3D<K1,K2,K3,V>
+  public func insert3D<K1,K2,K3,V>
     (t : Trie3D<K1,K2,K3,V>,
      k1:Key<K1>, k1_eq:(K1,K1)->Bool,
      k2:Key<K2>, k2_eq:(K2,K2)->Bool,
@@ -300,7 +300,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    -------------
    remove the given key's value in the trie; return the new trie
    */
-  func remove<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool) : (Trie<K,V>, ?V) {
+  public func remove<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool) : (Trie<K,V>, ?V) {
     replace<K,V>(t, k, k_eq, null)
   };
 
@@ -311,7 +311,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    and only if successful, do the success continuation,
    otherwise, return the failure value
    */
-  func removeThen<K,V,X>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool,
+  public func removeThen<K,V,X>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K)->Bool,
                          success: (Trie<K,V>, V) -> X,
                          fail: () -> X)
     : X
@@ -330,7 +330,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    remove the given key-key pair's value in the 2D trie; return the
    new trie, and the prior value, if any.
    */
-  func remove2D<K1,K2,V>(t : Trie2D<K1,K2,V>,
+  public func remove2D<K1,K2,V>(t : Trie2D<K1,K2,V>,
                          k1:Key<K1>, k1_eq:(K1,K1)->Bool,
                          k2:Key<K2>, k2_eq:(K2,K2)->Bool)
     : (Trie2D<K1,K2,V>, ?V)
@@ -355,7 +355,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    remove the given key-key pair's value in the 3D trie; return the
    new trie, and the prior value, if any.
    */
-  func remove3D<K1,K2,K3,V>
+  public func remove3D<K1,K2,K3,V>
     (t : Trie3D<K1,K2,K3,V>,
      k1:Key<K1>, k1_eq:(K1,K1)->Bool,
      k2:Key<K2>, k2_eq:(K2,K2)->Bool,
@@ -383,7 +383,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    ---------
    find the given key's value in the trie, or return null if nonexistent
    */
-  func find<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K) -> Bool) : ?V {
+  public func find<K,V>(t : Trie<K,V>, k:Key<K>, k_eq:(K,K) -> Bool) : ?V {
     let key_eq = keyEq<K>(k_eq);
     // For `bitpos` in 0..HASH_BITS, walk the given trie and locate the given value `x`, if it exists.
     func rec(t : Trie<K,V>, bitpos:Nat) : ?V { label profile_trie_find_rec : (?V)
@@ -434,7 +434,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    - [`prod`](#prod)
 
    */
-  func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
+  public func merge<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
     func rec(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
       switch (tl, tr) {
@@ -486,7 +486,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    dynamic error if there are collisions in common keys between the
    left and right inputs.
    */
-  func mergeDisjoint<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
+  public func mergeDisjoint<K,V>(tl:Trie<K,V>, tr:Trie<K,V>, k_eq:(K,K)->Bool): Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
     func rec(tl:Trie<K,V>, tr:Trie<K,V>) : Trie<K,V> {
       switch (tl, tr) {
@@ -548,7 +548,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    trie.
 
    */
-  func mergeDisjoint2D<K1,K2,V>(t : Trie2D<K1,K2,V>, k1_eq:(K1,K1)->Bool, k2_eq:(K2,K2)->Bool)
+  public func mergeDisjoint2D<K1,K2,V>(t : Trie2D<K1,K2,V>, k1_eq:(K1,K1)->Bool, k2_eq:(K2,K2)->Bool)
     : Trie<K2,V>
   {
     foldUp<K1,Trie<K2,V>, Trie<K2,V>>
@@ -565,7 +565,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    the left trie whose keys are not present in the right trie; the
    values of the right trie are irrelevant.
    */
-  func diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, k_eq:(K,K)->Bool) : Trie<K,V> {
+  public func diff<K,V,W>(tl:Trie<K,V>, tr:Trie<K,W>, k_eq:(K,K)->Bool) : Trie<K,V> {
     let key_eq = keyEq<K>(k_eq);
     func rec(tl:Trie<K,V>, tr:Trie<K,W>) : Trie<K,V> {
       switch (tl, tr) {
@@ -625,7 +625,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    - [`prod`](#prod)
 
    */
-  func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
+  public func disj<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 			               k_eq:(K,K)->Bool, vbin:(?V,?W)->X)
     : Trie<K,X>
   {
@@ -704,7 +704,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    - [`prod`](#prod)
 
    */
-  func join<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
+  public func join<K,V,W,X>(tl:Trie<K,V>, tr:Trie<K,W>,
 		                 k_eq:(K,K)->Bool, vbin:(V,W)->X)
     : Trie<K,X>
   {
@@ -767,7 +767,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    - [`merge`](#merge)
 
    */
-  func prod<K1,V1,K2,V2,K3,V3>(
+  public func prod<K1,V1,K2,V2,K3,V3>(
     tl    :Trie<K1,V1>,
     tr    :Trie<K2,V2>,
     op    :(K1,V1,K2,V2) -> ?(Key<K3>,V3),
@@ -806,7 +806,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    either as clients, or as hand-specialized versions (e.g., see map,
    mapFilter, exists and forAll below).
    */
-  func foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
+  public func foldUp<K,V,X>(t:Trie<K,V>, bin:(X,X)->X, leaf:(K,V)->X, empty:X) : X {
     func rec(t:Trie<K,V>) : X {
       switch t {
       case (null) { empty };
@@ -832,7 +832,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    Fold over the key-value pairs of the trie, using an accumulator.
    The key-value pairs have no reliable or meaningful ordering.
    */
-  func fold<K,V,X>(t:Trie<K,V>, f:(K,V,X)->X, x:X) : X {
+  public func fold<K,V,X>(t:Trie<K,V>, f:(K,V,X)->X, x:X) : X {
     func rec(t:Trie<K,V>, x:X) : X {
       switch t {
       case (null) x;
@@ -856,7 +856,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    --------
    Test whether a given key-value pair is present, or not.
    */
-  func exists<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
+  public func exists<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
     func rec(t:Trie<K,V>) : Bool {
       switch t {
       case (null) { false };
@@ -880,7 +880,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    ---------
    Test whether all key-value pairs have a given property.
    */
-  func forAll<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
+  public func forAll<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Bool {
     func rec(t:Trie<K,V>) : Bool {
       switch t {
       case (null) { true };
@@ -903,7 +903,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    --------
    Count the number of entries in the trie.
    */
-  func count<K,V>(t:Trie<K,V>):Nat{
+  public func count<K,V>(t:Trie<K,V>):Nat{
     foldUp<K,V,Nat>
     (t,
      func(n:Nat,m:Nat):Nat{n+m},
@@ -918,7 +918,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
    To do: make this more efficient, using a single array allocation.
    */
-  func toArray<K,V,W>(t:Trie<K,V>,f:(K,V)->[W]):[W] =
+  public func toArray<K,V,W>(t:Trie<K,V>,f:(K,V)->[W]):[W] =
     label profile_trie_toArray_begin : [W] {
     func arrayAppend(x:[W],y:[W]):[W] {
       label profile_trie_toArray_arrayAppend : [W]
@@ -947,7 +947,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    but no leaves.  These can result from naive filtering operations;
    filter uses this function to avoid creating such subtrees.
    */
-  func isEmpty<K,V>(t:Trie<K,V>) : Bool {
+  public func isEmpty<K,V>(t:Trie<K,V>) : Bool {
     func rec(t:Trie<K,V>) : Bool {
       switch t {
       case (null) { true };
@@ -967,7 +967,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    -----------
    filter the key-value pairs by a given predicate.
    */
-  func filter<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
+  public func filter<K,V>(t:Trie<K,V>, f:(K,V)->Bool) : Trie<K,V> {
     func rec(t:Trie<K,V>) : Trie<K,V> {
       switch t {
       case (null) { null };
@@ -1001,7 +1001,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    -----------
    map and filter the key-value pairs by a given partial mapping function.
    */
-  func mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?W) : Trie<K,W> {
+  public func mapFilter<K,V,W>(t:Trie<K,V>, f:(K,V)->?W) : Trie<K,W> {
     func rec(t:Trie<K,V>) : Trie<K,W> {
       switch t {
       case (null) { null };
@@ -1049,7 +1049,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
      `#empty`.
    We do not observe that equality here.
    */
-  func equalStructure<K,V>(
+  public func equalStructure<K,V>(
     tl:Trie<K,V>,
     tr:Trie<K,V>,
     keq:(K,K)->Bool,
@@ -1083,7 +1083,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   };
 
   // Equality function for two `Key<K>`s, in terms of equaltiy of `K`'s.
-  func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) = {
+  public func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) = {
     func (key1:Key<K>, key2:Key<K>) : Bool =
       label profile_trie_keyEq : Bool
       (Hash.hashEq(key1.hash, key2.hash) and keq(key1.key, key2.key))
@@ -1097,7 +1097,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   // @Omit:
 
   // XXX: until AST-42:
-  func isNull<X>(x : ?X) : Bool {
+  public func isNull<X>(x : ?X) : Bool {
     switch x {
     case null { true  };
     case (?_) { false };
@@ -1105,7 +1105,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   };
 
   // XXX: until AST-42:
-  func assertIsNull<X>(x : ?X) {
+  public func assertIsNull<X>(x : ?X) {
     label profile_trie_assertIsNull
     switch x {
     case null { assert(true)  };
@@ -1114,11 +1114,11 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   };
 
   // XXX: until AST-42:
-  func makeEmpty<K,V>() : Trie<K,V>
+  public func makeEmpty<K,V>() : Trie<K,V>
     = null;
 
    // XXX: until AST-42:
-  func assertIsEmpty<K,V>(t : Trie<K,V>) {
+  public func assertIsEmpty<K,V>(t : Trie<K,V>) {
     switch t {
     case null { assert(true)  };
     case (?_) { assert(false) };
@@ -1126,12 +1126,12 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   };
 
   // XXX: until AST-42:
-  func makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  {
+  public func makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  {
     ?(new {left=l; right=r; keyvals=null; })
   };
 
   // XXX: until AST-42:
-  func isBin<K,V>(t:Trie<K,V>) : Bool {
+  public func isBin<K,V>(t:Trie<K,V>) : Bool {
     switch t {
     case null { false };
     case (?t_) {
@@ -1144,12 +1144,12 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   };
 
   // XXX: until AST-42:
-  func makeLeaf<K,V>(kvs:AssocList<Key<K>,V>) : Trie<K,V> {
+  public func makeLeaf<K,V>(kvs:AssocList<Key<K>,V>) : Trie<K,V> {
     ?(new {left=null; right=null; keyvals=kvs })
   };
 
   // XXX: until AST-42:
-  func matchLeaf<K,V>(t:Trie<K,V>) : ?AssocList<Key<K>,V> {
+  public func matchLeaf<K,V>(t:Trie<K,V>) : ?AssocList<Key<K>,V> {
     switch t {
     case null { null };
     case (?t_) {
@@ -1162,7 +1162,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   };
 
   // XXX: until AST-42:
-  func isLeaf<K,V>(t:Trie<K,V>) : Bool {
+  public func isLeaf<K,V>(t:Trie<K,V>) : Bool {
     switch t {
     case null { false };
     case (?t_) {
@@ -1174,7 +1174,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     }
   };
   // XXX: until AST-42:
-  func assertIsBin<K,V>(t : Trie<K,V>) {
+  public func assertIsBin<K,V>(t : Trie<K,V>) {
     switch t {
     case null { assert(false) };
     case (?n) {
@@ -1184,7 +1184,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   };
 
   // XXX: until AST-42:
-  func getLeafKey<K,V>(t : Node<K,V>) : Key<K> {
+  public func getLeafKey<K,V>(t : Node<K,V>) : Key<K> {
     assertIsNull<Node<K,V>>(t.left);
     assertIsNull<Node<K,V>>(t.right);
     switch (t.keyvals) {
@@ -1194,7 +1194,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
   };
 
   // XXX: this helper is an ugly hack; we need real sum types to avoid it, I think:
-  func getLeafVal<K,V>(t : Node<K,V>) : V {
+  public func getLeafVal<K,V>(t : Node<K,V>) : V {
     assertIsNull<Node<K,V>>(t.left);
     assertIsNull<Node<K,V>>(t.right);
     switch (t.keyvals) {
@@ -1216,7 +1216,7 @@ type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
    helper function for constructing new paths of uniform length
    */
 
-  func buildNewPath<K,V>(bitpos:Nat, k:Key<K>, ov:?V) : Trie<K,V> {
+  public func buildNewPath<K,V>(bitpos:Nat, k:Key<K>, ov:?V) : Trie<K,V> {
     func rec(bitpos:Nat) : Trie<K,V> {
       if ( bitpos < HASH_BITS ) {
 	      // create new bin node for this bit of the hash
