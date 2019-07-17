@@ -17,27 +17,20 @@ Brain dump for an approach to structured payments.
 
 ## ActorScript
 
-* Three new types:
+* Two new types:
   ```
   <typ> ::= ...
-     Currency
-     Funds
+     Dfn
      pay <typ>
   ```
 
-* `Currency` is simply an open enumeration
-  - one of DFN, ETH, ...
-  - intro syntax TBD (could be a tag like `#DFN` etc, but want open set)
-  - no elim form, only equality
-  - stateless
-
-* `Funds` is a pair of an amount and currency unit
-  - amount is `Nat` (or `Int`, or `Float`?)
+* `Dfn` describes an amount of DFN
+  - given as a `Nat` (or `Int`, or `Fixed`?)
   - intro and elim syntax TBD
   - stateless
 
 * `pay T` is a payment of all funds occurring in `T` (expresses *owned* funds)
-  - in the basic form, `T` is `Funds`
+  - in the basic form, `T` is `Dfn`
   - but `pay` is a functorial mapping for other `T`
   - intro syntax `pay <exp>`
   - elim syntax is pattern `pay <pat>`
@@ -45,7 +38,7 @@ Brain dump for an approach to structured payments.
 
 * Static Semantics
   - for `pay T` to be well-formed, `T` must be sharable
-  - all of `Currency`, `Funds`, and `pay T` are sharable
+  - both `Dfn` and `pay T` are sharable
   - a type `T` is *linear* when it contains a value of type `pay U`
   - term variables must not have linear type
   - no other restrictions
@@ -64,7 +57,7 @@ Brain dump for an approach to structured payments.
   - how exactly to deal with (multiple) currencies
   - syntax for funds
   - is more fine-grained control over accepting/rejecting payments needed?
-  - could make `pay T` equivalent to (or subtype of) `T` where all covariant occurrences of `Funds` are replaced with `pay Funds`
+  - could make `pay T` equivalent to (or subtype of) `T` where all covariant occurrences of `Dfn` are replaced with `pay Dfn`
 
 
 ## Examples
@@ -72,22 +65,22 @@ Brain dump for an approach to structured payments.
 Simple receiver:
 ```
 actor A {
-  // Note use of pattern: `x` has type `Funds`, not `pay Funds`!
-  public func deposit(pay x : Funds) { /* received */ }
+  // Note use of pattern: `dfn` has type `Dfn`, not `pay Dfn`!
+  public func deposit(pay dfn : Dfn) { /* received */ }
 }
 ```
 Simple sender:
 ```
 actor B {
-  // Made-up syntax `(#currency amount)` for expressing funds
-  public func f() { A.deposit(pay (#DFN 4)); }
+  // Made-up syntax `$amount` for expressing dfn
+  public func f() { A.deposit(pay $4); }
 }
 ```
 
 Structured payment:
 ```
 type Partner = actor {
-  remunerate : (pay Funds) -> ();
+  remunerate : (pay Dfn) -> ();
 };
 
 actor C {
@@ -97,16 +90,16 @@ actor C {
   public func partners() : async [Name] {
     return partners.keys();
   };
-  public func distribute(pay shares : [(Name, Funds)]) {
-    for ((name, x) in shares.values()) {
-      partners.lookup(name).remunerate(pay x);
+  public func distribute(pay shares : [(Name, Dfn)]) {
+    for ((name, dfn) in shares.values()) {
+      partners.lookup(name).remunerate(pay dfn);
     }
   }
 };
 
 actor D {
   // Assuming we only have DFNs for now
-  public func dividend(pay (#DFN amount) : Funds) : async (pay Funds) {
+  public func dividend(pay $amount : Dfn) : async (pay Dfn) {
     let partners = await C.partners();
     let n = partners.len();
     let share = amount / n;
@@ -119,7 +112,7 @@ actor D {
 ```
 
 
-## API
+## System API
 
 Possible design:
 
@@ -128,11 +121,8 @@ Possible design:
 * Passing payrefs with a message send/reply transfers funds
 
 * Functions:
-  - `pay.create : [i64, currency] -> [payref]`
-  - `pay.amount : [payref] -> [i64]`
-  - `pay.currency : [payref] -> [currency]`
-
-* Unclear how to best represent currencies
+  - `pay.create : i64 -> payref`
+  - `pay.amount : payref -> i64`
 
 Alternative:
 
@@ -141,14 +131,16 @@ Alternative:
 
 ## IDL
 
-* Similar type structure as in AS:
+* In the IDL, there is just one new type:
   ```
   <typ> ::= ...
-     currency
-     funds
-     pay <typ>
+     dfn
   ```
+
+* Maps to `pay Dfn` in AS.
 
 * The `M` mapping treats `pay T` the same as `T`, but with all values of type `funds` ignored.
 
 * The `R` mapping extracts funds from payments.
+
+* (The alternative System API would require a third projection, say `P`.)
