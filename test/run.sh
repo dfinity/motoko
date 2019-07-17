@@ -8,7 +8,6 @@
 #
 #    -a: Update the files in ok/
 #    -d: Compile without -no-dfinity-api, uses dvm to run
-#    -n: Do not check JS binding via node.js
 #    -s: Be silent in sunny-day execution
 #
 
@@ -26,20 +25,16 @@ DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
-NODE=yes
 JSCLIENT=${JSCLIENT:-$(realpath $(dirname $0)/../../dev/experimental/js-dfinity-client)}
 ECHO=echo
 
-while getopts "adns" o; do
+while getopts "ads" o; do
     case "${o}" in
         a)
             ACCEPT=yes
             ;;
         d)
             DFINITY=yes
-            ;;
-        n)
-            NODE=no
             ;;
         s)
             ECHO=true
@@ -234,15 +229,12 @@ do
       $DIDC --js $base.did > $out/$base.js 2>&1
       diff_files="$diff_files $base.js"
 
-      if [ $NODE = 'yes' ]
+      if [ -e $out/$base.js ]
       then
-        if [ -e $out/$base.js ]
-        then
-          $ECHO -n " [node]"
-          export NODE_PATH=$NODE_PATH:$JSCLIENT:$JSCLIENT/src
-          node $out/$base.js > $out/$base.err 2>&1
-          diff_files="$diff_files $base.err"
-        fi
+        $ECHO -n " [node]"
+        export NODE_PATH=$NODE_PATH:$JSCLIENT:$JSCLIENT/src
+        node $out/$base.js > $out/$base.err 2>&1
+        diff_files="$diff_files $base.err"
       fi
     fi
   fi
