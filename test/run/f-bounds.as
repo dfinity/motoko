@@ -15,11 +15,8 @@ type T2< B <: C, A <: B, C> = Any;
 type T3< C, B <: C, A <: B> = Any;
 
 func g< A <: B, B <: C , C> ( a : A, b : B, c: C, n:Int ) : C {
-<<<<<<< HEAD
-=======
 
- /* TODO: restore these tests once open type defintions are supported
->>>>>>> master
+ /* TODO: restore these tests once open type definitions are supported
  type U0 = T1<A,A,A>;
  type U1 = T1<A,A,B>;
  type U2 = T1<A,B,B>;
@@ -43,9 +40,6 @@ func g< A <: B, B <: C , C> ( a : A, b : B, c: C, n:Int ) : C {
  type W4 = T3<C,B,B>;
  type W5 = T3<C,C,B>;
  type W6 = T3<C,C,C>;
-<<<<<<< HEAD
-
-=======
  */
 
  /* test type formation involving f-bounds */
@@ -72,7 +66,6 @@ func g< A <: B, B <: C , C> ( a : A, b : B, c: C, n:Int ) : C {
  let w4 : T3<C,B,B> = ();
  let w5 : T3<C,C,B> = ();
  let w6 : T3<C,C,C> = ();
->>>>>>> master
 
  switch n {
     case 0 { g<A,B,C>(a,a,a,n) };
@@ -92,7 +85,3 @@ func g< A <: B, B <: C , C> ( a : A, b : B, c: C, n:Int ) : C {
     case _  { c };
  }
 };
-<<<<<<< HEAD
-
-=======
->>>>>>> master
