@@ -2,10 +2,10 @@ import S "server.as";
 
 actor class Client() = this {
   // TODO: these should be constructor params once we can compile them
-  private var name : Text = "";
-  private var server : ?S.Server  = null;
+  var name : Text = "";
+  var server : ?S.Server  = null;
 
-  go(n : Text, s : S.Server) {
+  public func go(n : Text, s : S.Server) {
     name := n;
     server := ?s;
     ignore(async {
@@ -16,7 +16,7 @@ actor class Client() = this {
     })
   };
 
-  send(msg : Text) {
+  public func send(msg : Text) {
     print(name # " received " # msg # "\n");
   };
 };

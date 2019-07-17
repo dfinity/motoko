@@ -11,3 +11,6 @@ type nest_record = record {
   A; B; C; nat;
 };
 
+service S {
+  f : (A,B,C,nest_record) -> ();
+}

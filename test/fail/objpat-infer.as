@@ -20,7 +20,7 @@ ignore (foo (new {}));
 ignore (foo (object {}));
 ignore (foo (actor {}));
 
-let a = actor { bar ({}) : async Nat = async 25 };
+let a = actor { public func bar ({}) : async Nat = async 25 };
 ignore (foo a);
 
 

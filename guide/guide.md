@@ -135,7 +135,7 @@ The following keywords are reserved and may not be used as identifiers:
 ```bnf
 actor and async assert await break case class continue else
 false for func if in new not null object or label let loop
-private return shared switch true type var while
+private public return shared switch true type var while
 ```
 
 ## Identifiers
@@ -660,6 +660,7 @@ A type `T` is *shared* if it is
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
+  new { <exp-field>;* }                          object
   <exp> . <id>                                   object projection
   <exp> := <exp>                                 assignment
   <unop>= <exp>                                  unary update
@@ -687,9 +688,6 @@ A type `T` is *shared* if it is
   <exp> : <typ>                                  type annotation
   dec                                            declaration
   ( <exp> )                                      parentheses
-
-<func-exp> ::=                                 function expression
-  <typ-params>? <pat> (: <typ>)? =? <exp>        function body
 ```
 
 ## Identifiers
@@ -757,6 +755,17 @@ The projection `<exp> . <nat>` evaluates `exp` to a result `r`. If `r` is `trap`
 The option expression `? <exp>` has type `? T` provided `<exp>` has type `T`.
 
 The literal `null` has type `Null`. Since `Null <: ? T` for any `T`, literal `null` also has type `? T` and signifies the "missing" value at type `? T`.
+
+## Objects
+
+Objects can be written in literal form `new { <exp-field>;* }`, consisting of a list of expression fields:
+
+```bnf
+<exp-field> ::= var? <id> = <exp>
+```
+Such an object literal is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
+
+_TBR can we delete `new`?_
 
 ## Object projection (Member access)
 
@@ -1188,16 +1197,15 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
   <exp>                                                           expression
   let <pat> = <exp>                                               immutable
   var <id> (: <typ>)? = <exp>                                     mutable
-  (new|object|actor) <id>? =? { <exp-field>;* }                   object
+  (object|module|actor) <id>? =? { <dec-field>;* }                object
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>      function
   type <id> <typ-params>? = <typ>                                 type
   obj_sort? class <id> <typ-params>? <pat> =?  { <exp-field>;* }` class
 ```
 
 ```bnf
-<exp-field> ::=                                object expression fields
-  private? <dec>                                   field
-  private? <id> = <exp>                          short-hand
+<dec-field> ::=                                object declaration fields
+  (public|private)? <dec>                        field
 ```
 
 ## Expression Declaration
@@ -1252,9 +1260,10 @@ In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-
 
 ## Object Declaration
 
-Declaration `(new|object|actor) <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp_field>;*`.
+Declaration `(object|module|actor) <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp_field>;*`.
+Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
-The qualifier `new|object|actor` specifies the *sort* of the object's type (`new` is equivalent to `object`). The sort imposes restrictions on the types of the non-private object fields.
+The qualifier `object|module|actor` specifies the *sort* of the object's type. The sort imposes restrictions on the types of the public object fields.
 
 Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
 Let `<dec>;*` be the sequence of declarations in `<exp_field>;*`.
@@ -1262,7 +1271,7 @@ The object declaration has type `T` provided that:
 
 1. type `T` is well-formed for sort `sort`, and
 2. under the assumption that `<id> : T`,
-   * the sequence of declarations `<dec>;*` has type `Any` and declares the disjoint    sets of private and non-private identifiers, `Id_private` and `Id_public` respectively,
+   * the sequence of declarations `<dec>;*` has type `Any` and declares the disjoint sets of private and public identifiers, `Id_private` and `Id_public` respectively,
      with types `T(id)` for `id` in `Id == Id_private union Id_public`, and
    * `{ id0, ..., idn } == Id_public`, and
    * for all `i in 0 <= i <= n`, `[vari] Ti == T(idi)`.
@@ -1270,7 +1279,7 @@ The object declaration has type `T` provided that:
 Note that requirement 1. imposes further constraints on the fields type of `T`.
 In particular:
 
-* if the sort is `actor` then all non-private fields must be non-`var` (immutable)     `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
+* if the sort is `actor` then all public fields must be non-`var` (immutable)     `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
 
 Evaluation of `(new|object|actor) <id>? =? { <exp-field>;* }` proceeds by
 evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
@@ -1302,50 +1311,32 @@ The declaration `obj_sort? class <id> <typ-params>? <pat> =? <id_this>? { <exp-f
 a type and function declaration:
 
 ```bnf
-obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* } :=
+obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <dec-field>;* } :=
   type <id> <typ-params> = sort { <typ-field>;* };
-  func <id> <typ-params>? <pat> : <id> <typ-args>  = sort <id_this>? { <exp-field>;* }
+  func <id> <typ-params>? <pat> : <id> <typ-args>  = sort <id_this>? { <dec-field>;* }
 ```
 
 where:
 
 * `<sort>` is `object` if `obj_sort?` is absent or `new` and `sort == obj_sort` otherwise.
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
-* `<typ-field>;*` is the set of non-`private` field types inferred from `<exp_field;*>`.
+* `<typ-field>;*` is the set of public field types inferred from `<dec-field;*>`.
 * `<id_this>?` is the optional `this` parameter of the object instance.
 
-_TBR can we delete `new`?_
 
-## Expression Fields
+## Declaration Fields
 
 ```bnf
-<exp-field> ::=                                object expression fields
-  private? <dec>                                   field
-  private? <id> = <exp>                          short-hand
-  private? shared? <id>? <func_exp>              short-hand
+<dec-field> ::=                                object expression fields
+  (public|private)? <dec>                        field
 ```
 
-Expression fields declare the fields of actors and objects.
+Declaration fields declare the fields of actors and objects.
+They are just declarations, prefixed by an optional visibility qualifier `public` or  `private`; if omitted, visibility defaults to `private`.
 
-The expression field `private? dec` is just a declaration, prefixed by an optional visibility qualifier 'private?'.
-
-Any identifier bound by a non-`private` declaration appears in the type of enclosing object and is accessible via the dot notation.
+Any identifier bound by a `public` declaration appears in the type of enclosing object and is accessible via the dot notation.
 
 An identifier bound by a `private` declaration is excluded form the type of the enclosing object and inaccessible via the dot notation.
-
-The field expression `private? <id> = <exp>` is syntactic sugar for a `let` declaration:
-
-```bnf
-private? <id> = <exp> :=
-  private? let <id> = <exp>
-```
-
-The field expression `private? shared? <id>? <func_exp>` is syntactic sugar for a `let`-declared function:
-
-```bnf
-private? private? shared? <id>? <func_exp> :=
-  private? let <id> = shared? <func_exp>
-```
 
 # Sequence of Declarations
 

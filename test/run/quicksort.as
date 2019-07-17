@@ -1,5 +1,5 @@
 class QS<T>(cmp : (T, T) -> Int) {
-  quicksort(a : [var T], lo : Nat, hi : Nat) {
+  public func quicksort(a : [var T], lo : Nat, hi : Nat) {
    	if (lo < hi) {
       let p = partition(a, lo, hi);
 	    quicksort(a, lo, p);
@@ -7,15 +7,15 @@ class QS<T>(cmp : (T, T) -> Int) {
 	  }
   };
 
-  private swap(a : [var T], i : Nat, j : Nat) {
+  func swap(a : [var T], i : Nat, j : Nat) {
     let temp = a[i];
     a[i] := a[j];
     a[j] := temp;
   };
 
-  private trace<T>(v : T) {};
+  func trace<T>(v : T) {};
    
-  private partition(a : [var T], lo : Nat, hi : Nat) : Nat {
+  func partition(a : [var T], lo : Nat, hi : Nat) : Nat {
     trace<[var T]>(a);
     let pivot = a[lo];
     var i = lo;

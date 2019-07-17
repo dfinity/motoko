@@ -1,7 +1,6 @@
-module X = { type t  = Int };
+object X { public type t  = Int };
 
-module Y = {
+object Y {
   let X = 1;
   type t = X.t
 };
-

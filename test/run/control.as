@@ -1,8 +1,8 @@
 actor class Control() {
 
-  private condition() : Bool = false;
+  func condition() : Bool = false;
 
-  testBlock() {
+  public func testBlock() {
     label l1 {
       break l1
     };
@@ -12,44 +12,44 @@ actor class Control() {
     let (x, y, z) = label l3 : (Int, Bool, Text) (break l3(2, true, ""));
   };
 
-  testWhile() {
+  public func testWhile() {
     label l while (condition()) {
       if true break l
       else continue l;
     };
   };
 
-  testLoop() {
+  public func testLoop() {
     label l loop {
       if true break l
       else continue l;
     };
   };
 
-  testLoopWhile() {
+  public func testLoopWhile() {
     label l loop {
       if true break l
       else continue l;
     } while (condition());
   };
 
-  testLoopWhile2() {
+  public func testLoopWhile2() {
     loop { } while (false);
   };
 
-  testLoopWhile3() {
+  public func testLoopWhile3() {
     label l {
       loop { }
       while (false and true)
     };
   };
 
-  testLoopWhile4() {
+  public func testLoopWhile4() {
     label l loop {
     } while (true and false);
   };
 
-  testNestedWhile() {
+  public func testNestedWhile() {
     label l while (condition()) {
       if true break l
       else continue l;

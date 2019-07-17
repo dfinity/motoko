@@ -43,6 +43,17 @@ let argspec = Arg.align
   "--map", Arg.Set gen_source_map, " output source map";
 
   "-t", Arg.Set Pipeline.Flags.trace, " activate tracing";
+  "--package", (let package_name_ref = ref "DEADBEEF" in
+               Arg.Tuple [
+                   Arg.Set_string package_name_ref ;
+                   Arg.String begin fun package_url ->
+                     (* push (package_name, package_url) onto the list. *)
+                     Pipeline.Flags.package_urls := (
+                       !package_name_ref,
+                       package_url
+                     ) :: ! Pipeline.Flags.package_urls
+                     end
+                 ]), "<args> Specify a package-name-package-URL pair, separated by a space" ;
   "--profile", Arg.Set Pipeline.Flags.profile, " activate profiling counters in interpreters ";
   "--profile-file", Arg.Set_string Pipeline.Flags.profile_file, " set profiling output file ";
   "--profile-line-prefix", Arg.Set_string Pipeline.Flags.profile_line_prefix, " prefix each profile line with the given string ";
