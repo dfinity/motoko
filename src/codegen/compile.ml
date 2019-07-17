@@ -5208,258 +5208,284 @@ and compile_exp (env : E.t) ae exp =
     SR.UnboxedReference,
     compile_exp_as env ae SR.UnboxedReference e ^^
     actor_fake_object_idx env name
-  (* We only allow prims of certain shapes, as they occur in the prelude *)
-  | CallE (_, ({ it = PrimE p; _} as pe), typ_args, e) ->
-    begin
-      (* First check for all unary prims. *)
-      match p with
-        | "array_len" ->
-          SR.Vanilla,
-          compile_exp_vanilla env ae e ^^
-          Heap.load_field Arr.len_field ^^
-          BigNum.from_word32 env
+  | PrimE (p, es) ->
 
-        | "text_len" ->
-          SR.Vanilla,
-          compile_exp_vanilla env ae e ^^
-          Text.len env
+    (* for more concise code when all arguments and result use the same sr *)
+    let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
 
-        | "text_chars" ->
-          SR.Vanilla,
-          compile_exp_vanilla env ae e ^^
-          Text.text_chars_direct env
+    begin match p, es with
 
-       | "@serialize" ->
-         SR.UnboxedReference,
-         let t = match typ_args with [t] -> t | _ -> assert false in
-         compile_exp_vanilla env ae e ^^
-         Serialization.serialize env t
+    (* Operators *)
 
-       | "@deserialize" ->
-         SR.Vanilla,
-         let t = match typ_args with [t] -> t | _ -> assert false in
-         compile_exp_as env ae SR.UnboxedReference e ^^
-         Serialization.deserialize env t
+    | UnPrim (_, Operator.PosOp), [e1] -> compile_exp env ae e1
+    | UnPrim (t, op), [e1] ->
+      let sr_in, sr_out, code = compile_unop env t op in
+      sr_out,
+      compile_exp_as env ae sr_in e1 ^^
+      code
+    | BinPrim (t, op), [e1;e2] ->
+      let sr_in, sr_out, code = compile_binop env t op in
+      sr_out,
+      compile_exp_as env ae sr_in e1 ^^
+      compile_exp_as env ae sr_in e2 ^^
+      code
+    | RelPrim (t, op), [e1;e2] ->
+      let sr, code = compile_relop env t op in
+      SR.bool,
+      compile_exp_as env ae sr e1 ^^
+      compile_exp_as env ae sr e2 ^^
+      code
 
-       | "abs" ->
-         SR.Vanilla,
-         compile_exp_vanilla env ae e ^^
-         BigNum.compile_abs env
+    (* Special prims *)
 
-       | "rts_version" ->
-         SR.Vanilla,
-         compile_exp_as env ae SR.unit e ^^
-         E.call_import env "rts" "version"
+    | SerializePrim t, [e] ->
+      SR.UnboxedReference,
+      compile_exp_vanilla env ae e ^^
+      Serialization.serialize env t
 
-       | "idlHash" ->
-         SR.Vanilla,
-         E.trap_with env "idlHash only implemented in interpreter "
+    | DeserializePrim t, [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedReference e ^^
+      Serialization.deserialize env t
 
-       | "Nat->Word8"
-       | "Int->Word8" ->
-         SR.Vanilla,
-         compile_exp_vanilla env ae e ^^
-         Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type Type.Word8)
+    (* Other prims, unary*)
 
-       | "Nat->Word16"
-       | "Int->Word16" ->
-         SR.Vanilla,
-         compile_exp_vanilla env ae e ^^
-         Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type Type.Word16)
+    | OtherPrim "array_len", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Heap.load_field Arr.len_field ^^
+      BigNum.from_word32 env
 
-       | "Nat->Word32"
-       | "Int->Word32" ->
-         SR.UnboxedWord32,
-         compile_exp_vanilla env ae e ^^
-         Prim.prim_intToWord32 env
+    | OtherPrim "text_len", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Text.len env
 
-       | "Nat->Word64"
-       | "Int->Word64" ->
-         SR.UnboxedWord64,
-         compile_exp_vanilla env ae e ^^
-         BigNum.to_word64 env
+    | OtherPrim "text_chars", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Text.text_chars_direct env
 
-       | "Nat64->Word64"
-       | "Int64->Word64"
-       | "Word64->Nat64"
-       | "Word64->Int64"
-       | "Nat32->Word32"
-       | "Int32->Word32"
-       | "Word32->Nat32"
-       | "Word32->Int32"
-       | "Nat16->Word16"
-       | "Int16->Word16"
-       | "Word16->Nat16"
-       | "Word16->Int16"
-       | "Nat8->Word8"
-       | "Int8->Word8"
-       | "Word8->Nat8"
-       | "Word8->Int8" ->
-         SR.Vanilla,
-         compile_exp_vanilla env ae e ^^
-         G.nop
+    | OtherPrim "abs", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      BigNum.compile_abs env
 
-       | "Int->Int64" ->
-         SR.UnboxedWord64,
-         compile_exp_vanilla env ae e ^^
-         Func.share_code1 env "Int->Int64" ("n", I32Type) [I64Type] (fun env get_n ->
-           get_n ^^
-           BigNum.fits_signed_bits env 64 ^^
-           E.else_trap_with env "losing precision" ^^
-           get_n ^^
-           BigNum.truncate_to_word64 env)
+    | OtherPrim "rts_version", [] ->
+      SR.Vanilla,
+      E.call_import env "rts" "version"
 
-       | "Int->Int32"
-       | "Int->Int16"
-       | "Int->Int8" ->
-         let ty = exp.note.note_typ in
-         StackRep.of_type ty,
-         let pty = prim_of_typ ty in
-         compile_exp_vanilla env ae e ^^
-         Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Int->") ("n", I32Type) [I32Type] (fun env get_n ->
-           get_n ^^
-           BigNum.fits_signed_bits env (UnboxedSmallWord.bits_of_type pty) ^^
-           E.else_trap_with env "losing precision" ^^
-           get_n ^^
-           BigNum.truncate_to_word32 env ^^
-           UnboxedSmallWord.msb_adjust pty)
+    | OtherPrim "idlHash", [e] ->
+      SR.Vanilla,
+      E.trap_with env "idlHash only implemented in interpreter "
 
-       | "Nat->Nat64" ->
-         SR.UnboxedWord64,
-         compile_exp_vanilla env ae e ^^
-         Func.share_code1 env "Nat->Nat64" ("n", I32Type) [I64Type] (fun env get_n ->
-           get_n ^^
-           BigNum.fits_unsigned_bits env 64 ^^
-           E.else_trap_with env "losing precision" ^^
-           get_n ^^
-           BigNum.truncate_to_word64 env)
+    | OtherPrim "Nat->Word8", [e]
+    | OtherPrim "Int->Word8", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type Type.Word8)
 
-       | "Nat->Nat32"
-       | "Nat->Nat16"
-       | "Nat->Nat8" ->
-         let ty = exp.note.note_typ in
-         StackRep.of_type ty,
-         let pty = prim_of_typ ty in
-         compile_exp_vanilla env ae e ^^
-         Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Nat->") ("n", I32Type) [I32Type] (fun env get_n ->
-           get_n ^^
-           BigNum.fits_unsigned_bits env (UnboxedSmallWord.bits_of_type pty) ^^
-           E.else_trap_with env "losing precision" ^^
-           get_n ^^
-           BigNum.truncate_to_word32 env ^^
-           UnboxedSmallWord.msb_adjust pty)
+    | OtherPrim "Nat->Word16", [e]
+    | OtherPrim "Int->Word16", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type Type.Word16)
 
-       | "Char->Word32" ->
-         SR.UnboxedWord32,
-         compile_exp_vanilla env ae e ^^
-         UnboxedSmallWord.unbox_codepoint
+    | OtherPrim "Nat->Word32", [e]
+    | OtherPrim "Int->Word32", [e] ->
+      SR.UnboxedWord32,
+      compile_exp_vanilla env ae e ^^
+      Prim.prim_intToWord32 env
 
-       | "Nat8->Nat"
-       | "Word8->Nat" ->
-         SR.Vanilla,
-         compile_exp_vanilla env ae e ^^
-         Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word8)
-       | "Int8->Int"
-       | "Word8->Int" ->
-         SR.Vanilla,
-         compile_exp_vanilla env ae e ^^
-         Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word8)
+    | OtherPrim "Nat->Word64", [e]
+    | OtherPrim "Int->Word64", [e] ->
+      SR.UnboxedWord64,
+      compile_exp_vanilla env ae e ^^
+      BigNum.to_word64 env
 
-       | "Nat16->Nat"
-       | "Word16->Nat" ->
-         SR.Vanilla,
-         compile_exp_vanilla env ae e ^^
-         Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word16)
-       | "Int16->Int"
-       | "Word16->Int" ->
-         SR.Vanilla,
-         compile_exp_vanilla env ae e ^^
-         Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word16)
+    | OtherPrim "Nat64->Word64", [e]
+    | OtherPrim "Int64->Word64", [e]
+    | OtherPrim "Word64->Nat64", [e]
+    | OtherPrim "Word64->Int64", [e]
+    | OtherPrim "Nat32->Word32", [e]
+    | OtherPrim "Int32->Word32", [e]
+    | OtherPrim "Word32->Nat32", [e]
+    | OtherPrim "Word32->Int32", [e]
+    | OtherPrim "Nat16->Word16", [e]
+    | OtherPrim "Int16->Word16", [e]
+    | OtherPrim "Word16->Nat16", [e]
+    | OtherPrim "Word16->Int16", [e]
+    | OtherPrim "Nat8->Word8", [e]
+    | OtherPrim "Int8->Word8", [e]
+    | OtherPrim "Word8->Nat8", [e]
+    | OtherPrim "Word8->Int8", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      G.nop
 
-       | "Nat32->Nat"
-       | "Word32->Nat" ->
-         SR.Vanilla,
-         compile_exp_as env ae SR.UnboxedWord32 e ^^
-         Prim.prim_word32toNat env
-       | "Int32->Int"
-       | "Word32->Int" ->
-         SR.Vanilla,
-         compile_exp_as env ae SR.UnboxedWord32 e ^^
-         Prim.prim_word32toInt env
+    | OtherPrim "Int->Int64", [e] ->
+      SR.UnboxedWord64,
+      compile_exp_vanilla env ae e ^^
+      Func.share_code1 env "Int->Int64" ("n", I32Type) [I64Type] (fun env get_n ->
+        get_n ^^
+        BigNum.fits_signed_bits env 64 ^^
+        E.else_trap_with env "losing precision" ^^
+        get_n ^^
+        BigNum.truncate_to_word64 env)
 
-       | "Nat64->Nat"
-       | "Word64->Nat" ->
-         SR.Vanilla,
-         compile_exp_as env ae SR.UnboxedWord64 e ^^
-         BigNum.from_word64 env
-       | "Int64->Int"
-       | "Word64->Int" ->
-         SR.Vanilla,
-         compile_exp_as env ae SR.UnboxedWord64 e ^^
-         BigNum.from_signed_word64 env
+    | OtherPrim "Int->Int32", [e]
+    | OtherPrim "Int->Int16", [e]
+    | OtherPrim "Int->Int8", [e] ->
+      let ty = exp.note.note_typ in
+      StackRep.of_type ty,
+      let pty = prim_of_typ ty in
+      compile_exp_vanilla env ae e ^^
+      Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Int->") ("n", I32Type) [I32Type] (fun env get_n ->
+        get_n ^^
+        BigNum.fits_signed_bits env (UnboxedSmallWord.bits_of_type pty) ^^
+        E.else_trap_with env "losing precision" ^^
+        get_n ^^
+        BigNum.truncate_to_word32 env ^^
+        UnboxedSmallWord.msb_adjust pty)
 
-       | "Word32->Char" ->
-         SR.Vanilla,
-         compile_exp_as env ae SR.UnboxedWord32 e ^^
-         UnboxedSmallWord.box_codepoint
+    | OtherPrim "Nat->Nat64", [e] ->
+      SR.UnboxedWord64,
+      compile_exp_vanilla env ae e ^^
+      Func.share_code1 env "Nat->Nat64" ("n", I32Type) [I64Type] (fun env get_n ->
+        get_n ^^
+        BigNum.fits_unsigned_bits env 64 ^^
+        E.else_trap_with env "losing precision" ^^
+        get_n ^^
+        BigNum.truncate_to_word64 env)
 
-       | "popcnt" ->
-         SR.UnboxedWord32,
-         compile_exp_as env ae SR.UnboxedWord32 e ^^
-         G.i (Unary (Wasm.Values.I32 I32Op.Popcnt))
-       | "popcnt8"
-       | "popcnt16" ->
-         SR.Vanilla,
-         compile_exp_vanilla env ae e ^^
-         G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-         UnboxedSmallWord.msb_adjust (match p with | "popcnt8" -> Type.Word8 | _ -> Type.Word16)
-       | "popcnt64" ->
-         SR.UnboxedWord64,
-         compile_exp_as env ae SR.UnboxedWord64 e ^^
-         G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
-       | "clz" -> SR.UnboxedWord32, compile_exp_as env ae SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Clz))
-       | "clz8" -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.clz_kernel Type.Word8
-       | "clz16" -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.clz_kernel Type.Word16
-       | "clz64" -> SR.UnboxedWord64, compile_exp_as env ae SR.UnboxedWord64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz))
-       | "ctz" -> SR.UnboxedWord32, compile_exp_as env ae SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
-       | "ctz8" -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.ctz_kernel Type.Word8
-       | "ctz16" -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.ctz_kernel Type.Word16
-       | "ctz64" -> SR.UnboxedWord64, compile_exp_as env ae SR.UnboxedWord64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz))
+    | OtherPrim "Nat->Nat32", [e]
+    | OtherPrim "Nat->Nat16", [e]
+    | OtherPrim "Nat->Nat8", [e] ->
+      let ty = exp.note.note_typ in
+      StackRep.of_type ty,
+      let pty = prim_of_typ ty in
+      compile_exp_vanilla env ae e ^^
+      Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Nat->") ("n", I32Type) [I32Type] (fun env get_n ->
+        get_n ^^
+        BigNum.fits_unsigned_bits env (UnboxedSmallWord.bits_of_type pty) ^^
+        E.else_trap_with env "losing precision" ^^
+        get_n ^^
+        BigNum.truncate_to_word32 env ^^
+        UnboxedSmallWord.msb_adjust pty)
 
-       | "Char->Text" ->
-         SR.Vanilla,
-         compile_exp_vanilla env ae e ^^
-         Text.prim_showChar env
+    | OtherPrim "Char->Word32", [e] ->
+      SR.UnboxedWord32,
+      compile_exp_vanilla env ae e ^^
+      UnboxedSmallWord.unbox_codepoint
 
-       | "print" ->
-         SR.unit,
-         compile_exp_vanilla env ae e ^^
-         Dfinity.prim_print env
-       | "decodeUTF8" ->
-         SR.UnboxedTuple 2,
-         compile_exp_vanilla env ae e ^^
-         Text.prim_decodeUTF8 env
-       | _ ->
-        (* Now try the binary prims, expecting a manifest tuple argument *)
-        begin match e.it with
-        | TupE [e1;e2] ->
-          begin
-           let compile_kernel_as sr inst = sr, compile_exp_as env ae sr e1 ^^ compile_exp_as env ae sr e2 ^^ inst
-           in match p with
-             | "Array.init" -> compile_kernel_as SR.Vanilla (Arr.init env)
-             | "Array.tabulate" -> compile_kernel_as SR.Vanilla (Arr.tabulate env)
-             | "btst8" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word8)
-             | "btst16" -> compile_kernel_as SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word16)
-             | "btst" -> compile_kernel_as SR.UnboxedWord32 (UnboxedSmallWord.btst_kernel env Type.Word32)
-             | "btst64" -> compile_kernel_as SR.UnboxedWord64 (
-                               let (set_b, get_b) = new_local64 env "b"
-                               in set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-                                  G.i (Binary (Wasm.Values.I64 I64Op.And)))
+    | OtherPrim "Nat8->Nat", [e]
+    | OtherPrim "Word8->Nat", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word8)
+    | OtherPrim "Int8->Int", [e]
+    | OtherPrim "Word8->Int", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word8)
 
-             | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp pe)
-          end
-        | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp pe)
-        end
+    | OtherPrim "Nat16->Nat", [e]
+    | OtherPrim "Word16->Nat", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word16)
+    | OtherPrim "Int16->Int", [e]
+    | OtherPrim "Word16->Int", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word16)
+
+    | OtherPrim "Nat32->Nat", [e]
+    | OtherPrim "Word32->Nat", [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      Prim.prim_word32toNat env
+    | OtherPrim "Int32->Int", [e]
+    | OtherPrim "Word32->Int", [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      Prim.prim_word32toInt env
+
+    | OtherPrim "Nat64->Nat", [e]
+    | OtherPrim "Word64->Nat", [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      BigNum.from_word64 env
+    | OtherPrim "Int64->Int", [e]
+    | OtherPrim "Word64->Int", [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      BigNum.from_signed_word64 env
+
+    | OtherPrim "Word32->Char", [e] ->
+      SR.Vanilla,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      UnboxedSmallWord.box_codepoint
+
+    | OtherPrim "popcnt", [e] ->
+      SR.UnboxedWord32,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt))
+    | OtherPrim "popcnt8", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+      UnboxedSmallWord.msb_adjust Type.Word8
+    | OtherPrim "popcnt16", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+      UnboxedSmallWord.msb_adjust Type.Word16
+    | OtherPrim "popcnt64", [e] ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
+    | OtherPrim "clz", [e] -> SR.UnboxedWord32, compile_exp_as env ae SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Clz))
+    | OtherPrim "clz8", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.clz_kernel Type.Word8
+    | OtherPrim "clz16", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.clz_kernel Type.Word16
+    | OtherPrim "clz64", [e] -> SR.UnboxedWord64, compile_exp_as env ae SR.UnboxedWord64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz))
+    | OtherPrim "ctz", [e] -> SR.UnboxedWord32, compile_exp_as env ae SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
+    | OtherPrim "ctz8", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.ctz_kernel Type.Word8
+    | OtherPrim "ctz16", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.ctz_kernel Type.Word16
+    | OtherPrim "ctz64", [e] -> SR.UnboxedWord64, compile_exp_as env ae SR.UnboxedWord64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz))
+
+    | OtherPrim "Char->Text", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Text.prim_showChar env
+
+    | OtherPrim "print", [e] ->
+      SR.unit,
+      compile_exp_vanilla env ae e ^^
+      Dfinity.prim_print env
+    | OtherPrim "decodeUTF8", [e] ->
+      SR.UnboxedTuple 2,
+      compile_exp_vanilla env ae e ^^
+      Text.prim_decodeUTF8 env
+
+    (* Other prims, binary*)
+    | OtherPrim "Array.init", [_;_] ->
+      const_sr SR.Vanilla (Arr.init env)
+    | OtherPrim "Array.tabulate", [_;_] ->
+      const_sr SR.Vanilla (Arr.tabulate env)
+    | OtherPrim "btst8", [_;_] ->
+      const_sr SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word8)
+    | OtherPrim "btst16", [_;_] ->
+      const_sr SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word16)
+    | OtherPrim "btst", [_;_] ->
+      const_sr SR.UnboxedWord32 (UnboxedSmallWord.btst_kernel env Type.Word32)
+    | OtherPrim "btst64", [_;_] ->
+      const_sr SR.UnboxedWord64 (
+        let (set_b, get_b) = new_local64 env "b" in
+        set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.And))
+      )
+    | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
   | VarE var ->
     Var.get_val env ae var
@@ -5475,24 +5501,6 @@ and compile_exp (env : E.t) ae exp =
     SR.unit,
     compile_exp_as env ae SR.bool e1 ^^
     G.if_ (ValBlockType None) G.nop (G.i Unreachable)
-  | UnE (_, Operator.PosOp, e1) -> compile_exp env ae e1
-  | UnE (t, op, e1) ->
-    let sr_in, sr_out, code = compile_unop env t op in
-    sr_out,
-    compile_exp_as env ae sr_in e1 ^^
-    code
-  | BinE (t, e1, op, e2) ->
-    let sr_in, sr_out, code = compile_binop env t op in
-    sr_out,
-    compile_exp_as env ae sr_in e1 ^^
-    compile_exp_as env ae sr_in e2 ^^
-    code
-  | RelE (t, e1, op, e2) ->
-    let sr, code = compile_relop env t op in
-    SR.bool,
-    compile_exp_as env ae sr e1 ^^
-    compile_exp_as env ae sr e2 ^^
-    code
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as env ae SR.bool scrut in
     let sr1, code1 = compile_exp env ae e1 in

@@ -39,7 +39,9 @@ val as_seqP : pat -> pat list
 
 (* Expressions *)
 
-val primE : string -> typ -> exp
+val primE : Ir.prim -> exp list -> exp
+val asyncE : typ -> exp -> exp
+val awaitE : typ -> exp -> exp -> exp
 val projE : exp ->  int -> exp
 val blockE : dec list -> exp -> exp
 val textE : string -> exp
@@ -99,12 +101,3 @@ val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
 val (-@>*) : var list -> exp -> exp (* n-ary shared *)
 val (-*-) : exp -> exp -> exp       (* application *)
-
-
-(* intermediate, cps-based @async and @await primitives,
-   introduced by await(opt).ml to be removed by async.ml *)
-
-val prim_async : typ -> exp
-
-val prim_await : typ -> exp
-

@@ -193,11 +193,14 @@ module Transform() = struct
       Type.set_kind clone (t_kind (Con.kind c));
       clone
 
-  and t_operator_type ot =
-    (* We recreate the reference here. That is ok, because it
-     we run after type inference. Once we move async past desugaring,
-     it will be a pure value anyways. *)
-    t_typ ot
+  and prim = function
+    | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
+    | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
+    | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
+    | ShowPrim ot -> ShowPrim (t_typ ot)
+    | SerializePrim ot -> SerializePrim (t_typ ot)
+    | DeserializePrim ot -> DeserializePrim (t_typ ot)
+    | OtherPrim s -> OtherPrim s
 
   and t_field {lab; typ} =
     { lab; typ = t_typ typ }
@@ -211,17 +214,8 @@ module Transform() = struct
   and t_exp' (exp:exp) =
     let exp' = exp.it in
     match exp' with
-    | PrimE _
-      | LitE _ -> exp'
+    | LitE _ -> exp'
     | VarE id -> exp'
-    | UnE (ot, op, exp1) ->
-      UnE (t_operator_type ot, op, t_exp exp1)
-    | ShowE (ot, exp1) ->
-      ShowE (t_operator_type ot, t_exp exp1)
-    | BinE (ot, exp1, op, exp2) ->
-      BinE (t_operator_type ot, t_exp exp1, op, t_exp exp2)
-    | RelE (ot, exp1, op, exp2) ->
-      RelE (t_operator_type ot, t_exp exp1, op, t_exp exp2)
     | TupE exps ->
       TupE (List.map t_exp exps)
     | OptE exp1 ->
@@ -240,13 +234,9 @@ module Transform() = struct
       ArrayE (mut, t_typ t, List.map t_exp exps)
     | IdxE (exp1, exp2) ->
       IdxE (t_exp exp1, t_exp exp2)
-    | CallE (cc,{it=PrimE "@await";_}, typs, exp2) ->
-      begin
-        match exp2.it with
-        | TupE [a;k] -> ((t_exp a) -*- (t_exp k)).it
-        | _ -> assert false
-      end
-    | CallE (cc,{it=PrimE "@async";_}, typs, exp2) ->
+    | PrimE (OtherPrim "@await", [a;k]) ->
+      ((t_exp a) -*- (t_exp k)).it
+    | PrimE (OtherPrim "@async", [exp2]) ->
       let t1, contT = match typ exp2 with
         | Func(_,_,
                [],
@@ -286,6 +276,8 @@ module Transform() = struct
                )
                nary_async)
         .it
+    | PrimE (p, exps) ->
+      PrimE (prim p, List.map t_exp exps)
     | CallE (cc, exp1, typs, exp2)  ->
       CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
     | BlockE b ->
@@ -336,12 +328,8 @@ module Transform() = struct
               let y = fresh_var "y" res_typ in
               let exp' =
                 match exp.it with
-                | CallE(_, async,_,cps) ->
-                  begin
-                    match async.it with
-                    | PrimE("@async") -> ((t_exp cps) -*- (y --> (k -*- y)))
-                    | _ -> assert false
-                  end
+                | PrimE (OtherPrim "@async", [cps]) ->
+                  (t_exp cps) -*- (y --> (k -*- y))
                 | _ -> assert false
               in
               FuncE (x, cc', typbinds', args', [], exp')

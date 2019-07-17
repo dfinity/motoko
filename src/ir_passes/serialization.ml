@@ -31,23 +31,12 @@ module Transform() = struct
   let con_renaming = ref ConRenaming.empty
 
   (* The primitive serialization functions *)
-  let deserialize_prim =
-    let open Type in
-    let var : var = "A" in
-    primE "@deserialize"
-      (Func (Local, Returns, [{var; bound = Any}], [Serialized (Var (var, 0))], [(Var (var, 0))]))
-  let serialize_prim =
-    let open Type in
-    let var : var = "A" in
-    primE "@serialize"
-      (Func (Local, Returns, [{var; bound = Any}], [Var (var, 0)], [Serialized (Var (var, 0))]))
-
   let deserialize e =
     let t = T.as_serialized e.note.note_typ in
-    callE deserialize_prim [t] e
+    primE (DeserializePrim t) [e]
 
   let serialize e t =
-    callE serialize_prim [t] e
+    primE (SerializePrim t) [e]
 
   let serialized_arg a =
     { it = a.it ^ "/raw"; note = T.Serialized a.note; at = a.at }
@@ -155,17 +144,10 @@ module Transform() = struct
             (t_exp exp) in
         FuncE (x, cc, [], raw_args, [], body')
       end
-    | PrimE _
       | LitE _ -> exp'
     | VarE id -> exp'
-    | UnE (ot, op, exp1) ->
-      UnE (t_typ ot, op, t_exp exp1)
-    | BinE (ot, exp1, op, exp2) ->
-      BinE (t_typ ot, t_exp exp1, op, t_exp exp2)
-    | RelE (ot, exp1, op, exp2) ->
-      RelE (t_typ ot, t_exp exp1, op, t_exp exp2)
-    | ShowE (ot, exp1) ->
-      ShowE (t_typ ot, t_exp exp1)
+    | PrimE (p, exps) ->
+      PrimE (p, List.map t_exp exps)
     | TupE exps ->
       TupE (List.map t_exp exps)
     | OptE exp1 ->

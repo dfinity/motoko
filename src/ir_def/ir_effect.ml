@@ -25,12 +25,9 @@ let effect_exp (exp: exp) : T.eff = eff exp
 (* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
 let rec infer_effect_exp (exp: exp) : T.eff =
   match exp.it with
-  | PrimE _
   | VarE _
   | LitE _ ->
     T.Triv
-  | UnE (_, _, exp1)
-  | ShowE (_, exp1)
   | ProjE (exp1, _)
   | OptE exp1
   | TagE (_, exp1)
@@ -42,14 +39,13 @@ let rec infer_effect_exp (exp: exp) : T.eff =
   | RetE exp1
   | LoopE exp1 ->
     effect_exp exp1
-  | BinE (_, exp1, _, exp2)
   | IdxE (exp1, exp2)
-  | RelE (_, exp1, _, exp2)
   | AssignE (exp1, exp2)
   | CallE (_, exp1, _, exp2) ->
     let t1 = effect_exp exp1 in
     let t2 = effect_exp exp2 in
     max_eff t1 t2
+  | PrimE (_, exps)
   | TupE exps
   | ArrayE (_, _, exps) ->
     let es = List.map effect_exp exps in
