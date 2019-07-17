@@ -18,9 +18,17 @@ let dummy_logger _ _ = ()
 
 let prefix_test_case file expected =
   let (file, (line, column)) = extract_cursor file in
-  let prefix =
+  let show = function
+    | None -> "None"
+    | Some (m, p) -> "Some (" ^ m ^ ", " ^ p ^ ")" in
+  let actual =
     Completion.find_completion_prefix dummy_logger file line column in
-  Lib.Option.equal String.equal prefix expected
+  Lib.Option.equal (=) actual expected ||
+    (Printf.printf
+       "\nExpected: %s\nActual:   %s\n"
+       (show expected)
+       (show actual);
+     false)
 
 let import_relative_test_case root module_path import expected =
   let actual =
@@ -55,25 +63,25 @@ let parse_module_header_test_case project_root current_file file expected =
 
 
 let%test "it finds a simple prefix" =
-  prefix_test_case "List.|" (Some "List")
+  prefix_test_case "List.|" (Some ("List", ""))
 
 let%test "it doesn't find non-qualified idents" =
   prefix_test_case "List.filter we|" None
 
 let%test "it picks the qualified closest to the cursor" =
-  prefix_test_case "Stack.some List.|" (Some "List")
+  prefix_test_case "Stack.some List.|" (Some ("List", ""))
 
 let%test "it handles immediately following single character tokens" =
-  prefix_test_case "List.|<" (Some "List")
+  prefix_test_case "List.|<" (Some ("List", ""))
 
-let%test "TODO(Christoph): it doesn't handle qualifier + partial identifierf" =
-  prefix_test_case "Stack.so|" (None)
+let%test "it handles qualifier + partial identifier" =
+  prefix_test_case "Stack.so|" (Some ("Stack", "so"))
 
 let%test "it handles multiline files" =
   prefix_test_case
 {|Stak.
 List.|
-|} (Some "List")
+|} (Some ("List", ""))
 
 let%test "it handles a full module" =
   prefix_test_case
@@ -85,7 +93,7 @@ let%test "it handles a full module" =
 
   func doubleton<T>(x: T): List.List<T> =
     List.cons<T>(x, List.cons<T>(x, List.nil<T>()));
- }|} (Some "Test")
+ }|} (Some ("Test", ""))
 
 let%test "it doesn't fall through to the next valid prefix" =
   prefix_test_case
@@ -98,7 +106,7 @@ func empty():Stack = List.nil<Int>();
 func singleton(x : Int) : Stack =
   List.we|
   ListFns.singleton<Int>(x);
-}|} None
+}|} (Some ("List", "we"))
 
 let%test "it makes an import relative to the project root" =
   import_relative_test_case
