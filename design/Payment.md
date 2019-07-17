@@ -64,6 +64,7 @@ Brain dump for an approach to structured payments.
   - how exactly to deal with (multiple) currencies
   - syntax for funds
   - is more fine-grained control over accepting/rejecting payments needed?
+  - could make `pay T` equivalent to (or subtype of) `T` where all covariant occurrences of `Funds` are replaced with `pay Funds`
 
 
 ## Examples
