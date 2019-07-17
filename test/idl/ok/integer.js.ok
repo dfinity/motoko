@@ -1,4 +1,5 @@
+const IDL = require('./IDL')
 const num = new IDL.ActorInterface({
- 'f': IDL.message(IDL.Obj({'0': IDL.Nat8}), IDL.Obj({'0': IDL.Int16})),
- 'g': IDL.message(IDL.Obj({'0': IDL.Nat64}), IDL.Obj({'0': IDL.Int64})),
- 'h': IDL.message(IDL.Obj({'0': IDL.Int8}), IDL.Obj({'0': IDL.Nat}))})
+ 'f': IDL.Message(IDL.Obj({'0': IDL.Nat8}), IDL.Obj({'0': IDL.Int16})),
+ 'g': IDL.Message(IDL.Obj({'0': IDL.Nat64}), IDL.Obj({'0': IDL.Int64})),
+ 'h': IDL.Message(IDL.Obj({'0': IDL.Int8}), IDL.Obj({'0': IDL.Nat}))})

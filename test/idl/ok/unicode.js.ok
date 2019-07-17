@@ -1,3 +1,4 @@
+const IDL = require('./IDL')
 const A =
  IDL.Obj({'📦🍦': IDL.Nat, '字段名': IDL.Nat, '字 段 名2': IDL.Nat
   })
@@ -5,7 +6,7 @@ const B =
  IDL.Variant({'': IDL.Unit, '空的': IDL.Unit, '  空的  ': IDL.Unit,
   '1⃣️2⃣️3⃣️': IDL.Unit})
 const C = new IDL.ActorInterface({
- '函数名': IDL.message(IDL.Obj({'0': A}), IDL.Obj({'0': B})),
- '': IDL.message(IDL.Obj({'0': IDL.Nat}), IDL.Obj({'0': IDL.Nat})),
- '👀': IDL.message(IDL.Obj({'0': IDL.Nat}), IDL.Obj({'0': IDL.Nat})),
- '✈️  🚗 ⛱️ ': IDL.message(IDL.Obj({}), IDL.Obj({}))})
+ '函数名': IDL.Message(IDL.Obj({'0': A}), IDL.Obj({'0': B})),
+ '': IDL.Message(IDL.Obj({'0': IDL.Nat}), IDL.Obj({'0': IDL.Nat})),
+ '👀': IDL.Message(IDL.Obj({'0': IDL.Nat}), IDL.Obj({'0': IDL.Nat})),
+ '✈️  🚗 ⛱️ ': IDL.Message(IDL.Obj({}), IDL.Obj({}))})

@@ -1,3 +1,4 @@
+const IDL = require('./IDL')
 const A = IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat})
 const B =
  IDL.Obj({'0': IDL.Arr(IDL.Nat8), '35': IDL.Arr(IDL.Nat8), '36': IDL.Nat,
@@ -14,5 +15,5 @@ const nest_record =
   '5': IDL.Nat, '6': IDL.Nat, '7': A, '8': B, '9': C, '10': IDL.Nat})
 const S = new IDL.ActorInterface({
  'f':
-  IDL.message(IDL.Obj({'0': A, '1': B, '2': C, '3': nest_record}),
+  IDL.Message(IDL.Obj({'0': A, '1': B, '2': C, '3': nest_record}),
    IDL.Obj({}))})

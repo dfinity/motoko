@@ -1,3 +1,4 @@
+const IDL = require('./IDL')
 const t = IDL.Arr(IDL.Nat8)
 const t1 = t
 const UserId = IDL.Nat
@@ -12,7 +13,7 @@ const IdErr = IDL.Obj({'idErr': OpEntId})
 const Inventory = IDL.Obj({'produce_id': IDL.Nat, 'quantity': IDL.Nat})
 const S = new IDL.ActorInterface({
  'f':
-  IDL.message(IDL.Obj({'0': t, '1': t1, '2': t2}),
+  IDL.Message(IDL.Obj({'0': t, '1': t1, '2': t2}),
    IDL.Obj({'0': list, '1': IdErr})),
  'getInventory':
-  IDL.message(IDL.Obj({'producer_id': IDL.Nat}), IDL.Obj({'0': Inventory}))})
+  IDL.Message(IDL.Obj({'producer_id': IDL.Nat}), IDL.Obj({'0': Inventory}))})

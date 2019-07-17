@@ -1,3 +1,4 @@
+const IDL = require('./IDL')
 const UserId = IDL.Nat
 const RegionId = IDL.Nat
 const ProducerId = IDL.Nat
@@ -13,5 +14,5 @@ const OpEntId = IDL.Opt(EntId)
 const IdErr = IDL.Obj({'idErr': OpEntId})
 const ProduceExchange = new IDL.ActorInterface({
  'getInventory':
-  IDL.message(IDL.Obj({'producer_id': IDL.Nat, '3667444713': UserInfo}),
+  IDL.Message(IDL.Obj({'producer_id': IDL.Nat, '3667444713': UserInfo}),
    IDL.Obj({'0': Inventory, '1': IdErr}))})

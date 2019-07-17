@@ -131,7 +131,7 @@ let iter_obj t =
 let rec cons t cs =
   match t with
   | Var _ ->  cs
-  | Prim _ | Any | Non | Shared -> cs
+  | Prim _ | Any | Non -> cs
   | Pre -> assert false
   | Con (c, ts) ->
     List.fold_right cons ts  (cons_con c cs)
@@ -178,7 +178,7 @@ let rec is_closed seen i t =
   | Obj (_, fs)
   | Variant fs -> List.for_all (fun {typ;_} -> is_closed seen i typ) fs
   | Array t | Opt t | Async t | Mut t | Serialized t -> is_closed seen i t
-  | Prim _ | Shared | Any | Non -> true
+  | Prim _ | Any | Non -> true
   | Pre -> assert false
   | Typ c -> is_closed_con seen i c
 
@@ -732,7 +732,7 @@ let debug = false (* true, to debug *)
 let max_depth = 40
 
 let trace_rel_typ rel eq t1 t2 =
-  let n = S.cardinal (!rel) in
+  let n = SS.cardinal (!rel) in
   match compare n max_depth with
   | -1 ->
     let indent = String.make n ' ' in
@@ -892,8 +892,7 @@ and rel_binds rel eq tbs1 tbs2 =
 and rel_bind ts rel eq tb1 tb2 =
   rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
-and eq_kind k1 k2 : bool =
-  let eq = ref SS.empty in
+and eq_kind eq k1 k2 : bool =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
@@ -930,7 +929,7 @@ let eq t1 t2 : bool =
 
 let eq_kind k1 k2 : bool =
   let (_, _, eq_kind) = rels () in
-  let eq = ref S.empty in
+  let eq = ref SS.empty in
   eq_kind eq k1 k2
 
 (* Compatibility *)

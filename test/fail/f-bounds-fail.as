@@ -65,7 +65,6 @@ func g< A <: B, B /* <: C */ , C> ( a : A, b : B, c: C, n:Int ) : C {
  let w4 : T3<C,B,B> = ();
  let w5 : T3<C,C,B> = ();
  let w6 : T3<C,C,C> = ();
->>>>>>> master
 
  switch n {
     case 0 { g<A,B,C>(a,a,a,n) };
