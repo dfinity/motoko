@@ -238,9 +238,9 @@ export void mp_free(void *ptr, size_t size) {
 #define BIGINT_PAYLOAD(p) ((mp_int *)(&FIELD(p,1)))
 
 /*
-Note on libtommmath error handling
+Note on libtommath error handling
 
-Most libtommmath operations return an int to signal error codes.
+Most libtommath operations return an int to signal error codes.
 These are (see tommath.h):
 
    #define MP_OKAY       0   / * ok result * /
