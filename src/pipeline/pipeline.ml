@@ -23,6 +23,7 @@ module Flags = struct
   let dump_tc = ref false
   let dump_lowering = ref false
   let check_ir = ref true
+  let package_urls : (string * string) list ref = ref []
   let profile = ref false
   let profile_verbose = ref false
   let profile_file = ref "profiling-counters.csv"
@@ -128,7 +129,7 @@ type resolve_result = (Syntax.prog * Resolve_import.S.t) Diag.result
 let resolve_prog (prog, base) : resolve_result =
   Diag.map
     (fun libraries -> (prog, libraries))
-    (Resolve_import.resolve prog base)
+    (Resolve_import.resolve !Flags.package_urls prog base)
 
 let resolve_progs =
   Diag.traverse resolve_prog
@@ -220,7 +221,7 @@ let chase_imports senv0 imports : (Syntax.libraries * Scope.scope) Diag.result =
       pending := add f !pending;
       Diag.bind (parse_file f) (fun (prog, base) ->
       Diag.bind (Static.prog prog) (fun () ->
-      Diag.bind (Resolve_import.resolve prog base) (fun more_imports ->
+      Diag.bind (Resolve_import.resolve !Flags.package_urls prog base) (fun more_imports ->
       Diag.bind (go_set more_imports) (fun () ->
       Diag.bind (typecheck_library !senv f prog) (fun sscope ->
       Diag.bind (defindeness_prog prog) (fun () ->

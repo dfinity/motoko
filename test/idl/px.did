@@ -26,6 +26,6 @@ type Inventory = record {
 }
 
 service ProduceExchange {
-  getInventory: (producer_id: nat) -> (Inventory) pure;
+  getInventory: (producer_id: nat, UserInfo) -> (Inventory, IdErr) pure;
 }
 

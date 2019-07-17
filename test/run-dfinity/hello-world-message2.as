@@ -1,5 +1,5 @@
 actor hello_world {
-  hello () {
+  public func hello() {
     print("Hello World!\n");
   }
 }

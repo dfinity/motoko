@@ -253,8 +253,6 @@ let prim = function
                     let nobbles = mapi (fun i f -> f i) (classify_utf8_leader (of_int (Char.code s.[0]))) in
                     let code = fold_left (fun acc nobble -> logor (shift_left acc 6) nobble) 0l nobbles in
                     k (Tup [Word32 (of_int (length nobbles)); Char (to_int code)])
-  | "@serialize" -> fun v k -> k (Serialized v)
-  | "@deserialize" -> fun v k -> k (as_serialized v)
 
   | "array_len" -> fun v k ->
     k (Int (Int.of_int (Array.length (Value.as_array v))))

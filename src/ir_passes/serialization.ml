@@ -31,23 +31,12 @@ module Transform() = struct
   let con_renaming = ref ConRenaming.empty
 
   (* The primitive serialization functions *)
-  let deserialize_prim =
-    let open Type in
-    let var : var = "A" in
-    primE "@deserialize"
-      (Func (Local, Returns, [{var; bound = Shared}], [Serialized (Var (var, 0))], [(Var (var, 0))]))
-  let serialize_prim =
-    let open Type in
-    let var : var = "A" in
-    primE "@serialize"
-      (Func (Local, Returns, [{var; bound = Shared}], [Var (var, 0)], [Serialized (Var (var, 0))]))
-
   let deserialize e =
     let t = T.as_serialized e.note.note_typ in
-    callE deserialize_prim [t] e
+    primE (DeserializePrim t) [e]
 
   let serialize e t =
-    callE serialize_prim [t] e
+    primE (SerializePrim t) [e]
 
   let serialized_arg a =
     { it = a.it ^ "/raw"; note = T.Serialized a.note; at = a.at }
@@ -71,7 +60,6 @@ module Transform() = struct
   let rec t_typ (t:T.typ) =
     match t with
     | T.Prim _
-    | T.Shared
     | T.Any
     | T.Non
     | T.Pre
@@ -81,10 +69,10 @@ module Transform() = struct
       T.Con (t_con c, List.map t_typ ts)
     | T.Array t -> T.Array (t_typ t)
     | T.Tup ts -> T.Tup (List.map t_typ ts)
-    | T.Func (T.Sharable, c, tbs, t1, t2) ->
+    | T.Func (T.Shared, c, tbs, t1, t2) ->
       assert (c = T.Returns);
       assert (t2 = []); (* A returning sharable function has no return values *)
-      T.Func (T.Sharable, T.Returns, tbs, List.map (fun t -> T.Serialized (t_typ t)) t1, [])
+      T.Func (T.Shared, T.Returns, tbs, List.map (fun t -> T.Serialized (t_typ t)) t1, [])
     | T.Func (T.Local, c, tbs, t1, t2) ->
       T.Func (T.Local, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
     | T.Opt t -> T.Opt (t_typ t)
@@ -133,7 +121,7 @@ module Transform() = struct
       begin match cc.Call_conv.sort with
       | T.Local ->
         CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
-      | T.Sharable ->
+      | T.Shared ->
         (* We should take the type to serialize at from the function, not the
            argument, as the latter could be a subtype *)
         let fun_ty = exp1.note.note_typ in
@@ -146,7 +134,7 @@ module Transform() = struct
       begin match cc.Call_conv.sort with
       | T.Local ->
         FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
-      | T.Sharable ->
+      | T.Shared ->
         assert (ret_tys = []);
         let args' = t_args args in
         let raw_args = List.map serialized_arg args' in
@@ -156,17 +144,10 @@ module Transform() = struct
             (t_exp exp) in
         FuncE (x, cc, [], raw_args, [], body')
       end
-    | PrimE _
       | LitE _ -> exp'
     | VarE id -> exp'
-    | UnE (ot, op, exp1) ->
-      UnE (t_typ ot, op, t_exp exp1)
-    | BinE (ot, exp1, op, exp2) ->
-      BinE (t_typ ot, t_exp exp1, op, t_exp exp2)
-    | RelE (ot, exp1, op, exp2) ->
-      RelE (t_typ ot, t_exp exp1, op, t_exp exp2)
-    | ShowE (ot, exp1) ->
-      ShowE (t_typ ot, t_exp exp1)
+    | PrimE (p, exps) ->
+      PrimE (p, List.map t_exp exps)
     | TupE exps ->
       TupE (List.map t_exp exps)
     | OptE exp1 ->

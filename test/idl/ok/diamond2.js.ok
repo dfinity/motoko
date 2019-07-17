@@ -1,3 +1,1 @@
-const t = IDL.Nat
-const t2 = IDL.Arr(t)
 

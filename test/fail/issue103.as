@@ -8,7 +8,7 @@
 // An object with function fields is not sharable
 {
   func invalid2 (f : shared {foo : () -> Nat} -> ()) {
-     f (new { foo() : Nat = 1; })
+     f (object { public func foo() : Nat = 1; })
   };
 };
 
@@ -22,6 +22,6 @@
 // Cannot return an object with function fields in an async
 {
   func invalid4 () : (async ({foo : () -> Nat})) {
-     async { new { foo() : Nat = 1; } }
+     async { object { public func foo() : Nat = 1; } }
   };
 };

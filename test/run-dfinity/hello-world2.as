@@ -1,5 +1,5 @@
 let a = actor {
-  hello () {
+  public func hello() {
     print("Hello World!\n");
   }
 };

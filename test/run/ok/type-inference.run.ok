@@ -1,4 +1,4 @@
-type-inference.as:3.9-3.28: warning, this if has type Shared because branches have inconsistent types,
+type-inference.as:3.9-3.28: warning, this if has type Any because branches have inconsistent types,
 true produces
   Bool
 false produces
@@ -8,7 +8,7 @@ true produces
   Bool
 false produces
   [var Nat]
-type-inference.as:5.9-5.27: warning, this if has type Shared because branches have inconsistent types,
+type-inference.as:5.9-5.27: warning, this if has type Any because branches have inconsistent types,
 true produces
   Nat
 false produces
@@ -18,7 +18,7 @@ true produces
   ()
 false produces
   {}
-type-inference.as:11.33-11.41: warning, the switch has type Shared because branches have inconsistent types,
+type-inference.as:11.33-11.41: warning, the switch has type Any because branches have inconsistent types,
 this case produces type
   Bool
 the previous produce type
@@ -28,10 +28,10 @@ this case produces type
   Bool
 the previous produce type
   [var Nat]
-type-inference.as:13.43-13.56: warning, the switch has type Shared because branches have inconsistent types,
+type-inference.as:13.43-13.56: warning, the switch has type Any because branches have inconsistent types,
 this case produces type
   Int
 the previous produce type
   Text
-type-inference.as:19.9-19.18: warning, this array has type [Shared] because elements have inconsistent types
+type-inference.as:19.9-19.18: warning, this array has type [Any] because elements have inconsistent types
 type-inference.as:20.9-20.24: warning, this array has type [Any] because elements have inconsistent types

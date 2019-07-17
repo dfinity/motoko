@@ -4,6 +4,7 @@
 )
 (menhir
   (modules parser)
+  (flags -v)
   (infer false)
 )
 (ocamllex lexer)

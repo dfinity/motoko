@@ -1,17 +1,17 @@
-let p = new {x = 3; private y = 2; get_y() : Int = y};
+let p = object {public let x = 3; let y = 2; public func get_y() : Int = y};
 assert(p.x == 3);
 assert(p.get_y() == 2);
 
 let o : {a : {}; b : Nat} = new {a = new {x = 0}; b = a.x};
 
 let oo = object {
-  private type T = Int;
-  let x : T = 3;
-  let (y, z) = (3, "");
-  var v = 0;
-  func f() : T { g() + x };
-  func g() : T { f() + y };
-  private class C() {};
+  type T = Int;
+  public let x : T = 3;
+  public let (y, z) = (3, "");
+  public var v = 0;
+  public func f() : T { g() + x };
+  public func g() : T { f() + y };
+  class C() {};
 };
 
 // pattern matching
@@ -38,7 +38,7 @@ assert (get_a () == -42);
 
 // subtyping and tuple patterns for comparison
 
-let row : (Nat, Int, {c : Char; d : Text}) = (100, -42, new {c='C'; d="D"});
+let row : (Nat, Int, {c : Char; d : Text}) = (100, -42, new {c = 'C'; d = "D"});
 
 func foo () : Int = switch row {
   case (a : Int, -42, {c} : {c : Char}) (word32ToNat(charToWord32 c))  // OK

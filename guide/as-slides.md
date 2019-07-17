@@ -108,9 +108,9 @@ structural record types, JS-like, fields can be mutable
 
 * `{var x : Int; color : Color}`
 
-* `shared {x : Int; color: Color}`
+* `{x : Int; color: Color}`
 
-shared (think serializable) objects have immutable fields of sharable types.
+objects with immutable fields of sharable types are sharable.
 
 ### Actor types
 
@@ -188,7 +188,7 @@ AS distinguishes sharable types:
 
   - all primitive types are sharable (scalars + text)
   - any `shared` function type is sharable
-  - any `shared` object type is sharable
+  - an object type is sharable if it's fields are sharable and immutable
   - any `actor` type is sharable
   - `[T]` and `?T`  are sharable if `T` is sharable.
   - `(T1,...,Tn)` is sharable if `T1`,..., `Tn` all sharable.
@@ -197,8 +197,7 @@ AS distinguishes sharable types:
 
 ### ... Sharability
 
- * `shared` functions must have sharable arguments and return `()` or async `T`, where `T` sharable
-* `shared` object must have sharable fields
+* `shared` functions must have sharable arguments and return `()` or async `T`, where `T` sharable
 * actor fields must re `shared` functions
 
 (actors \& shared functions serialized by *reference*, other types serialzed by *value*)
@@ -224,12 +223,12 @@ AS distinguishes sharable types:
 * Unary & binary, arithmetic & logical operators
   - `- x`, `not b`, `a + b`, `a & b` ...
 
-### (Shared) Objects
+### (Sharable) Objects
 
-* `shared` (think serializable) objects have immutable fields of sharable type:
+* sharable (think serializable) objects have immutable fields of sharable type:
 
   ```
-  shared { x = 0; color = Colors.Red }
+  new { x = 0; color = Colors.Red }
   ```
 
 * full `object`s can be mutable, stateful
@@ -237,8 +236,8 @@ AS distinguishes sharable types:
   ``` swift
   object {
     private var c = 0;
-    inc() { c += 1 };
-    get() : Int { c }
+    public func inc() { c += 1 };
+    public func get() : Int { c }
   }
   ```
 
@@ -253,8 +252,8 @@ Actors are restricted objects:
 ```
 actor {
   private var c = 0;
-  inc() { c += 1 };
-  get() : async Int { c }
+  public func inc() { c += 1 };
+  public func get() : async Int { c }
 }
 ```
 
@@ -485,8 +484,8 @@ Classes as functions returning objects:
 ```
  class Counter(init : Int) {
     private var state : Int = init;
-    inc() { state += 1; };
-    get() : Int { state; };
+    public func inc() { state += 1; };
+    public func get() : Int { state; };
   }
 ```
 
@@ -513,9 +512,9 @@ let ? name = d.find(1);
 ### Actor Declarations
 
 ```
-actor Server =  {
+actor Server {
  private shared func broadcast():(){...};
- subscribe(c : Client): async Post {
+ public func subscribe(c : Client): async Post {
    ...
    return broadcast;
  };
@@ -563,7 +562,7 @@ alice.start("Alice", Server); // async send as function call
 ### Chat Server
 
 ```
-actor Server = {
+actor Server {
   private var clients : List<Client> = null;
 
   private shared broadcast(message : Text) {
@@ -577,7 +576,7 @@ actor Server = {
   };
 ```
 ```
-  subscribe(client : Client) : async Post {
+  public func subscribe(client : Client) : async Post {
     let cs = new {head = client; var tail = clients};
     clients := ?cs;
     return broadcast;
@@ -598,7 +597,7 @@ type Server = actor { subscribe : Client -> async Post; };
 
 actor class Client() = this {
   private var name : Text = "";
-  start(n : Text , s : Server) {
+  public func start(n : Text , s : Server) {
     name := n;
     let _ = async {
        let post = await s.subscribe(this);
@@ -608,7 +607,7 @@ actor class Client() = this {
   };
 ```
 ```
-  send(msg : Text) {
+  public func send(msg : Text) {
     print(name # " received " # msg # "\n");
   };
 };
