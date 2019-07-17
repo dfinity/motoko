@@ -10,17 +10,17 @@ Implements the same interface as `Trie`, but as a linked-list of key-value pairs
 
 */
 
-private let List = import "list.as";
+import List "list.as";
 
 // polymorphic association linked lists between keys and values
-type AssocList<K,V> = List.List<(K,V)>;
+public type AssocList<K,V> = List.List<(K,V)>;
 
   /**
    `find`
    --------
    find the value associated with a given key, or null if absent.
   */
-  func find<K,V>(al : AssocList<K,V>,
+  public func find<K,V>(al : AssocList<K,V>,
                  k:K,
                  k_eq:(K,K)->Bool)
     : ?V
@@ -48,7 +48,7 @@ type AssocList<K,V> = List.List<(K,V)>;
    replace the value associated with a given key, or add it, if missing.
    returns old value, or null, if no prior value existed.
   */
-  func replace<K,V>(al : AssocList<K,V>,
+  public func replace<K,V>(al : AssocList<K,V>,
                     k:K,
                     k_eq:(K,K)->Bool,
                     ov: ?V)
@@ -86,7 +86,7 @@ type AssocList<K,V> = List.List<(K,V)>;
    the left list whose keys are not present in the right list; the
    values of the right list are irrelevant.
   */
-  func diff<K,V,W>(al1: AssocList<K,V>,
+  public func diff<K,V,W>(al1: AssocList<K,V>,
                    al2: AssocList<K,W>,
                    keq: (K,K)->Bool)
     : AssocList<K,V>
@@ -109,7 +109,7 @@ type AssocList<K,V> = List.List<(K,V)>;
    `mapAppend`
    --------
   */
-  func mapAppend<K,V,W,X>(al1:AssocList<K,V>,
+  public func mapAppend<K,V,W,X>(al1:AssocList<K,V>,
                           al2:AssocList<K,W>,
                           vbin:(?V,?W)->X)
     : AssocList<K,X> = label profile_assocList_mapAppend : AssocList<K,X>
@@ -125,7 +125,7 @@ type AssocList<K,V> = List.List<(K,V)>;
     rec(al1, al2)
   };
 
-  func disjDisjoint<K,V,W,X>(al1:AssocList<K,V>,
+  public func disjDisjoint<K,V,W,X>(al1:AssocList<K,V>,
                              al2:AssocList<K,W>,
                              vbin:(?V,?W)->X)
     : AssocList<K,X> = label profile_assocList_disjDisjoint : AssocList<K,X>
@@ -146,7 +146,7 @@ type AssocList<K,V> = List.List<(K,V)>;
    applied to (null, null).
 
   */
-  func disj<K,V,W,X>(al1:AssocList<K,V>,
+  public func disj<K,V,W,X>(al1:AssocList<K,V>,
                      al2:AssocList<K,W>,
                      keq:(K,K)->Bool,
                      vbin:(?V,?W)->X)
@@ -188,7 +188,7 @@ type AssocList<K,V> = List.List<(K,V)>;
    operator, and unmatched key-value pairs are not present in the output.
 
   */
-  func join<K,V,W,X>(al1 : AssocList<K,V>,
+  public func join<K,V,W,X>(al1 : AssocList<K,V>,
                      al2:AssocList<K,W>,
                      keq:(K,K)->Bool,
                      vbin:(V,W)->X)
@@ -213,7 +213,7 @@ type AssocList<K,V> = List.List<(K,V)>;
    `fold`
    ---------
    */
-  func fold<K,V,X>(al:AssocList<K,V>,
+  public func fold<K,V,X>(al:AssocList<K,V>,
                    nil:X,
                    cons:(K,V,X)->X)
     : X

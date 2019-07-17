@@ -1,6 +1,6 @@
 open As_types
 open As_values
-open As_ir
+open Ir_def
 
 open Ir
 open Source
@@ -166,7 +166,7 @@ let make_unit_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Sharable; n_res = 0; _} ->
+  | {sort = T.Shared; n_res = 0; _} ->
     Value.message_func call_conv.n_args (fun v k ->
       actor_msg env id f v (fun _ -> ());
       k V.unit
@@ -180,7 +180,7 @@ let make_async_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Sharable; control = T.Promises; n_res = 1; _} ->
+  | {sort = T.Shared; control = T.Promises; n_res = 1; _} ->
     Value.async_func call_conv.n_args (fun v k ->
       let async = make_async () in
       actor_msg env id f v (fun v_async ->
@@ -288,11 +288,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   Profiler.bump_region exp.at ;
   match exp.it with
-  | PrimE s ->
-    let at = exp.at in
-    let t = exp.note.note_typ in
-    let cc = call_conv_of_typ t in
-    k (V.Func (cc, extended_prim env s t at))
   | VarE id ->
     (match Lib.Promise.value_opt (find id env.vals) with
     | Some v -> k v
@@ -300,26 +295,43 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | LitE lit ->
     k (interpret_lit env lit)
-  | UnE (ot, op, exp1) ->
-    interpret_exp env exp1 (fun v1 -> k (try Operator.unop ot op v1 with Invalid_argument s -> trap exp.at "%s" s))
-  | ShowE (ot, exp1) ->
-    interpret_exp env exp1 (fun v ->
-      if Show.can_show ot
-      then k (Value.Text (Show.show_val ot v))
-      else raise (Invalid_argument "debug_show"))
-  | BinE (ot, exp1, op, exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-        k (try Operator.binop ot op v1 v2 with _ ->
-          trap exp.at "arithmetic overflow")
+  | PrimE (p, es) ->
+    begin match p, es with
+    | UnPrim (ot, op), [exp1] ->
+      interpret_exp env exp1 (fun v1 -> k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s))
+    | BinPrim (ot, op), [exp1; exp2] ->
+      interpret_exp env exp1 (fun v1 ->
+        interpret_exp env exp2 (fun v2 ->
+          k (try Operator.binop op ot v1 v2 with _ ->
+            trap exp.at "arithmetic overflow")
+        )
       )
-    )
-  | RelE (ot, exp1, op, exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-        k (Operator.relop ot op v1 v2)
+    | RelPrim (ot, op), [exp1; exp2] ->
+      interpret_exp env exp1 (fun v1 ->
+        interpret_exp env exp2 (fun v2 ->
+          k (Operator.relop op ot v1 v2)
+        )
       )
-    )
+    | ShowPrim ot, [exp1] ->
+      interpret_exp env exp1 (fun v ->
+        if Show.can_show ot
+        then k (Value.Text (Show.show_val ot v))
+        else raise (Invalid_argument "debug_show"))
+    | SerializePrim t, [exp1] ->
+      interpret_exp env exp1 (fun v -> k (V.Serialized v))
+    | DeserializePrim t, [exp1] ->
+      interpret_exp env exp1 (fun v -> k (V.as_serialized v))
+    | OtherPrim s, exps ->
+      interpret_exps env exps [] (fun vs ->
+        let at = exp.at in
+        let t = exp.note.note_typ in
+        let arg = match vs with [v] -> v | _ -> V.Tup vs in
+        extended_prim env s t at arg k
+      )
+    | _ ->
+      trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
+        (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
+    end
   | TupE exps ->
     interpret_exps env exps [] (fun vs -> k (V.Tup vs))
   | OptE exp1 ->
@@ -424,7 +436,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let v = V.Func (cc, f) in
     let v =
       match cc.sort with
-      | T.Sharable -> make_message env x cc v
+      | T.Shared -> make_message env x cc v
       | _-> v
     in
     k v
@@ -613,7 +625,7 @@ and match_pat_fields pfs vs ve : val_env option =
 
 and interpret_block env ro decs exp k =
   let ve = declare_decs decs V.Env.empty in
-  Lib.Option.app (fun r -> r := ve) ro;
+  Lib.Option.iter (fun r -> r := ve) ro;
   let env' = adjoin_vals env ve in
   interpret_decs env' decs (fun _ -> interpret_exp env' exp k)
 

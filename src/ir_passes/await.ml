@@ -1,9 +1,11 @@
-open As_ir
+open Ir_def
+open As_types
+
 open Source
 open Ir
 open Ir_effect
 module R = Rename
-module T = As_types.Type
+module T = Type
 open Construct
 
 (* continuations, syntactic and meta-level *)
@@ -59,17 +61,10 @@ let rec t_exp context exp =
   { exp with it = t_exp' context exp.it }
 and t_exp' context exp' =
   match exp' with
-  | PrimE _
   | VarE _
   | LitE _ -> exp'
-  | UnE (ot, op, exp1) ->
-    UnE (ot, op, t_exp context exp1)
-  | BinE (ot, exp1, op, exp2) ->
-    BinE (ot, t_exp context exp1, op, t_exp context exp2)
-  | RelE (ot, exp1, op, exp2) ->
-    RelE (ot, t_exp context exp1, op, t_exp context exp2)
-  | ShowE (ot, exp1) ->
-    ShowE (ot, t_exp context exp1)
+  | PrimE (p, exps) ->
+    PrimE (p, List.map (t_exp context) exps)
   | TupE exps ->
     TupE (List.map (t_exp context) exps)
   | OptE exp1 ->
@@ -125,8 +120,7 @@ and t_exp' context exp' =
      (* add the implicit return label *)
      let k_ret = fresh_cont (typ exp1) in
      let context' = LabelEnv.add id_ret (Cont (ContVar k_ret)) LabelEnv.empty in
-     (prim_async (typ exp1) -*- (k_ret --> (c_exp context' exp1 (ContVar k_ret))))
-     .it
+     (asyncE (typ exp1) (k_ret --> (c_exp context' exp1 (ContVar k_ret)))).it
   | AwaitE _ -> assert false (* an await never has effect T.Triv *)
   | AssertE exp1 ->
     AssertE (t_exp context exp1)
@@ -233,19 +227,12 @@ and c_exp' context exp k =
   match exp.it with
   | _ when is_triv exp ->
     k -@- (t_exp context exp)
-  | PrimE _
   | VarE _
   | LitE _
   | FuncE _ ->
     assert false
-  | UnE (ot, op, exp1) ->
-    unary context k (fun v1 -> e (UnE (ot, op, v1))) exp1
-  | BinE (ot, exp1, op, exp2) ->
-    binary context k (fun v1 v2 -> e (BinE (ot, v1, op, v2))) exp1 exp2
-  | RelE (ot, exp1, op, exp2) ->
-    binary context k (fun v1 v2 -> e (RelE (ot, v1, op, v2))) exp1 exp2
-  | ShowE (ot, exp1) ->
-    unary context k (fun v1 -> e (ShowE (ot, v1))) exp1
+  | PrimE (p, exps) ->
+    nary context k (fun vs -> e (PrimE (p, vs))) exps
   | TupE exps ->
     nary context k (fun vs -> e (TupE vs)) exps
   | OptE exp1 ->
@@ -319,16 +306,16 @@ and c_exp' context exp k =
      (* add the implicit return label *)
      let k_ret = fresh_cont (typ exp1) in
      let context' = LabelEnv.add id_ret (Cont (ContVar k_ret)) LabelEnv.empty in
-     k -@- (prim_async (typ exp1) -*- (k_ret --> (c_exp context' exp1 (ContVar k_ret))))
+     k -@- (asyncE (typ exp1) (k_ret --> (c_exp context' exp1 (ContVar k_ret))))
   | AwaitE exp1 ->
      letcont k
        (fun k ->
          match eff exp1 with
          | T.Triv ->
-            prim_await (typ exp) -*- (tupE [t_exp context exp1;k])
+            awaitE (typ exp) (t_exp context exp1) k
          | T.Await ->
             c_exp context  exp1
-              (meta (typ exp1) (fun v1 -> (prim_await (typ exp) -*- (tupE [v1;k]))))
+              (meta (typ exp1) (fun v1 -> (awaitE (typ exp) v1 k)))
        )
   | AssertE exp1 ->
     unary context k (fun v1 -> e (AssertE v1)) exp1

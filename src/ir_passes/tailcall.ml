@@ -1,4 +1,4 @@
-open As_ir
+open Ir_def
 open As_types
 
 open Source
@@ -92,13 +92,8 @@ and assignEs vars exp : dec list =
     List.mapi (fun i v -> expD (assignE v (projE v i))) vars
 
 and exp' env e  : exp' = match e.it with
-  | VarE _
-    | LitE _
-    | PrimE _             -> e.it
-  | UnE (ot, uo, e)      -> UnE (ot, uo, exp env e)
-  | BinE (ot, e1, bo, e2)-> BinE (ot, exp env e1, bo, exp env e2)
-  | RelE (ot, e1, ro, e2)-> RelE (ot, exp env e1, ro, exp env e2)
-  | ShowE (ot, e)       -> ShowE (ot, exp env e)
+  | VarE _ | LitE _     -> e.it
+  | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
   | TupE es             -> TupE (List.map (exp env) es)
   | ProjE (e, i)        -> ProjE (exp env e, i)
   | DotE (e, sn)        -> DotE (exp env e, sn)

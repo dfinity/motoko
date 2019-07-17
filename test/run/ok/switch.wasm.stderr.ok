@@ -1,6 +1,17 @@
-switch.as:87.33-87.34: warning, this pattern is never matched
-switch.as:75.11-77.2: warning, the cases in this switch do not cover all possible values
-switch.as:81.3-81.14: warning, the cases in this switch do not cover all possible values
-switch.as:87.3-87.40: warning, the cases in this switch do not cover all possible values
-switch.as:92.11-94.2: warning, the cases in this switch do not cover all possible values
-switch.as:97.11-99.2: warning, the cases in this switch do not cover all possible values
+switch.as:86.29-86.30: warning, this pattern is never matched
+switch.as:75.11-77.2: warning, the cases in this switch over type
+  ?Int
+do not cover value
+  ?(_)
+switch.as:81.3-81.14: warning, the cases in this switch over type
+  Nat
+do not cover value
+  _
+switch.as:92.11-94.2: warning, the cases in this switch over type
+  ?Nat
+do not cover value
+  null
+switch.as:97.11-99.2: warning, the cases in this switch over type
+  ?Nat
+do not cover value
+  ?(_)

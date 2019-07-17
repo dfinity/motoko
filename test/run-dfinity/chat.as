@@ -3,9 +3,9 @@ type List<T> = ?{head : T; var tail : List<T>};
 type Post = shared Text -> ();
 
 actor class Server() = {
-  private var clients : List<Client> = null;
+  var clients : List<Client> = null;
 
-  private shared broadcast(message : Text) {
+  shared func broadcast(message : Text) {
     var next = clients;
     loop {
       switch next {
@@ -18,7 +18,7 @@ actor class Server() = {
     };
   };
 
-  subscribe(client : Client) : async Post {
+  public func subscribe(client : Client) : async Post {
     let cs = new {head = client; var tail = clients};
     clients := ?cs;
     return broadcast;
@@ -28,10 +28,10 @@ actor class Server() = {
 
 actor class Client() = this {
   // TODO: these should be constructor params once we can compile them
-  private var name : Text = "";
-  private var server : ?Server  = null;
+  var name : Text = "";
+  var server : ?Server  = null;
 
-  go(n : Text, s : Server) {
+  public func go(n : Text, s : Server) {
     name := n;
     server := ?s;
     ignore(async {
@@ -41,7 +41,7 @@ actor class Client() = this {
     });
   };
 
-  send(msg : Text) {
+  public func send(msg : Text) {
     print(name # " received " # msg # "\n");
   };
 };

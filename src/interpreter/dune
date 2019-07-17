@@ -1,4 +1,0 @@
-(library
-  (name interpreter)
-  (libraries lib as_types as_values as_frontend profiler)
-)

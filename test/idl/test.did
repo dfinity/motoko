@@ -16,5 +16,6 @@ service server {
   userName : (id : nat64) -> (text) pure;
   userAge : (id : nat64) -> (nat8) pure;
   deleteUser : (id : nat64) -> () oneway;
+  f : (message) -> (broker);
 }
 

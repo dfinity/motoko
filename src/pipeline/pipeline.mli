@@ -1,3 +1,6 @@
+open As_def
+open As_types
+
 module Flags :
 sig
   val trace : bool ref
@@ -9,6 +12,7 @@ sig
   val dump_tc : bool ref
   val dump_lowering : bool ref
   val check_ir : bool ref
+  val package_urls : (string * string) list ref
   val profile : bool ref
   val profile_verbose : bool ref
   val profile_file : string ref
@@ -19,10 +23,9 @@ end
 val check_files  : string list -> unit Diag.result
 val check_string : string -> string -> unit Diag.result
 
-val chase_imports
-    : As_types.Scope.scope
-  -> Resolve_import.S.t
-  -> (As_frontend.Syntax.libraries * As_types.Scope.scope) Diag.result
+val initial_stat_env : Scope.scope
+val chase_imports : Scope.scope -> Resolve_import.S.t ->
+  (Syntax.libraries * Scope.scope) Diag.result
 
 val run_files           : string list -> unit option
 val interpret_ir_files  : string list -> unit option
@@ -30,5 +33,6 @@ val run_files_and_stdin : string list -> unit option
 
 type compile_mode = WasmMode | DfinityMode
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
+
 val compile_string : compile_mode -> string -> string -> compile_result
 val compile_files : compile_mode -> bool -> string list -> compile_result

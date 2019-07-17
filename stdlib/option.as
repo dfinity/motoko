@@ -5,9 +5,9 @@ Functions for Option types.
 
 */
 
-let P = (import "prelude.as");
+import P "prelude.as";
 
-type t<A> = ?A;
+public type t<A> = ?A;
 
 /***
 
@@ -17,13 +17,13 @@ type t<A> = ?A;
  Returns true if the value is not `null`.
 
 */
-func isSomeAny(x: ?Any): Bool =
+public func isSomeAny(x: ?Any): Bool =
   switch x {
     case null false;
     case _ true;
   };
 
-func isSome<A>(x: t<A>): Bool = isSomeAny(x);
+public func isSome<A>(x: t<A>): Bool = isSomeAny(x);
 
 /***
 
@@ -33,9 +33,9 @@ func isSome<A>(x: t<A>): Bool = isSomeAny(x);
  Returns true if the value is `null`.
 
 */
-func isNullAny(x: ?Any): Bool = not isSome<Any>(x);
+public func isNullAny(x: ?Any): Bool = not isSome<Any>(x);
 
-func isNull<A>(x: t<A>): Bool = not isSome<A>(x);
+public func isNull<A>(x: t<A>): Bool = not isSome<A>(x);
 
 /***
 
@@ -45,7 +45,7 @@ func isNull<A>(x: t<A>): Bool = not isSome<A>(x);
  Unwrap an optional value, and fail if it is `null`.
 
 */
-func unwrap<T>(x: ?T): T =
+public func unwrap<T>(x: ?T): T =
   switch x {
     case null { P.unreachable() };
     case (?x_) x_;
@@ -59,7 +59,7 @@ func unwrap<T>(x: ?T): T =
  Unwrap an optional value or a default.
 
 */
-func unwrapOr<T>(x: ?T, d: T): T =
+public func unwrapOr<T>(x: ?T, d: T): T =
   switch x {
     case null { d };
     case (?x_) x_;
@@ -73,7 +73,7 @@ func unwrapOr<T>(x: ?T, d: T): T =
  Unwrap an optional value. If null, return the default, else, apply the function to the unwrapped value.
 
 */
-func option<A, B>(x: ?A, f: A->B, d: B): B =
+public func option<A, B>(x: ?A, f: A->B, d: B): B =
   switch x {
     case null { d };
     case (?x_) f(x_);
@@ -87,7 +87,7 @@ func option<A, B>(x: ?A, f: A->B, d: B): B =
  Apply a function to the wrapped value.
 
 */
-func map<A, B>(x: ?A, f: A->B): ?B =
+public func map<A, B>(x: ?A, f: A->B): ?B =
   switch x {
     case null null;
     case (?x_) ?f(x_);
@@ -101,7 +101,7 @@ func map<A, B>(x: ?A, f: A->B): ?B =
  Apply a function to the wrapped value.
 
 */
-func fmap<A, B>(x: ?A, f: A->?B): ?B =
+public func fmap<A, B>(x: ?A, f: A->?B): ?B =
   switch x {
     case null null;
     case (?x_) f(x_);
@@ -115,13 +115,13 @@ func fmap<A, B>(x: ?A, f: A->?B): ?B =
  Assert that the given value is not `null`; ignore this value and return unit.
 
 */
-func assertSomeAny(x: ?Any) =
+public func assertSomeAny(x: ?Any) =
   switch x {
     case null { P.unreachable() };
     case _ {};
   };
 
-func assertSome<A>(x: ?A) = assertSomeAny(x);
+public func assertSome<A>(x: ?A) = assertSomeAny(x);
 
 /***
 
@@ -131,13 +131,13 @@ func assertSome<A>(x: ?A) = assertSomeAny(x);
  Assert that the given value is `null`; ignore this value and return unit.
 
 */
-func assertNullAny(x: ?Any) =
+public func assertNullAny(x: ?Any) =
   switch x {
     case null { };
     case _ { P.unreachable() };
   };
 
-func assertNull<A>(x: ?A) = assertNullAny(x);
+public func assertNull<A>(x: ?A) = assertNullAny(x);
 
 /***
 
@@ -147,7 +147,7 @@ func assertNull<A>(x: ?A) = assertNullAny(x);
  Print an optional integer.
 
 */
-func printOpInt(x : ?Int) =
+public func printOpInt(x : ?Int) =
   switch x {
     case null  { print "null" };
     case (?x_) { print "?"; printInt x_ };

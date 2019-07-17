@@ -34,10 +34,14 @@ type relop =
   | GeOp                                        (* x>=y *)
 
 
-val unop : typ -> unop -> (value -> value)  (* raise Invalid_argument *)
-val binop : typ -> binop -> (value -> value -> value)  (* raise Invalid_argument *)
-val relop : typ -> relop -> (value -> value -> value)  (* raise Invalid_argument *)
+val unop : unop -> typ -> (value -> value)  (* raise Invalid_argument *)
+val binop : binop -> typ -> (value -> value -> value)  (* raise Invalid_argument *)
+val relop : relop -> typ -> (value -> value -> value)  (* raise Invalid_argument *)
 
-val has_unop : typ -> unop -> bool
-val has_binop : typ -> binop -> bool
-val has_relop : typ -> relop -> bool
+val has_unop : unop -> typ -> bool
+val has_binop : binop -> typ -> bool
+val has_relop : relop -> typ -> bool
+
+val type_unop : unop -> typ -> typ
+val type_binop : binop -> typ -> typ
+val type_relop : relop -> typ -> typ

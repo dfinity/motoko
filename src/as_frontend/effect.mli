@@ -1,6 +1,9 @@
+open As_def
+open As_types
+
 open Source
 open Syntax
-open As_types.Type
+open Type
 
 val max_eff : eff -> eff -> eff
 
