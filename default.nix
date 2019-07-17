@@ -62,8 +62,8 @@ let
   libtommath = nixpkgs.fetchFromGitHub {
     owner = "libtom";
     repo = "libtommath";
-    rev = "5190ae6cf37ab008e863d1374fa2c1fc3abbe2cb";
-    sha256 = "1yryvwn2v5rpijvsvkjrmx18csd3sh859z17s17kc31lz9vmn83h";
+    rev = "584405ff8e357290362671b5e7db6110a959cbaa";
+    sha256 = "1vl606rm8ba7vjhr0rbdqvih5d4r5iqalqlj5mnz6j3bnsn83b2a";
   };
 
   llvmBuildInputs = [
