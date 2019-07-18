@@ -1231,14 +1231,6 @@ module BoxedWord64 = struct
 
   let _lit env n = compile_const_64 n ^^ box env
 
-  (* from/to SR.UnboxedWord64 *)
-  let to_word64 env = G.nop
-  let from_word64 env = G.nop (* TODO trap if negative *)
-  let from_signed_word64 env = G.nop
-  let to_word32 env = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
-  let from_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-  let from_signed_word32 env = G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
-
   let compile_add env = G.i (Binary (Wasm.Values.I64 I64Op.Add))
   let compile_signed_sub env = G.i (Binary (Wasm.Values.I64 I64Op.Sub))
   let compile_mul env = G.i (Binary (Wasm.Values.I64 I64Op.Mul))
