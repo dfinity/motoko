@@ -89,18 +89,22 @@ e(shared { <typ-field>^N }) = record { ef*(<typ-field>^N) }
 e(variant { <typ-field>^N }) = variant { ef*(<typ-field>^N) }
 e([<typ>]) = vec (e(<typ>))
 e(? <typ>) = opt (e(<typ>))
-e(shared <a:typ> -> async <r:typ>) = func (e(<a:typ>) -> e(<r:typ>))
-e(shared <a:typ> -> ()) = func (a(<a:typ>) -> ()) oneway
+e(shared <a:typ> -> async <r:typ>) = func (ea(<a:typ>) -> ea(<r:typ>))
+e(shared <a:typ> -> ()) = func (ea(<a:typ>) -> ()) oneway
 e(actor { <typ-field>^N }) = service { em*(<typ-field>^N) }
 e( ( <typ>^N ) ) = record { e*(<typ^N>) }
 e(None) = variant {}
+
+ea : <typ> -> <fieldtype>,* // function arguments
+ea( ( <typ>^N ) ) = e*(<typ^N>)
+ea(<typ>) = ( e(<typ>) )
 
 ef : <typ-field> -> <fieldtype>
 ef (<id> : <typ>) = unescape(<id>) : e(<typ>)
 
 em : <typ-field> -> <methtype>
-em(<id> : shared <a:typ> -> async <r:typ>) = unescape(<id>) : a(<a:typ>) -> a(<r:typ>)
-em(<id> : shared <a:typ> -> ()) = unescape(<id>) : a(<a:typ>) -> () oneway
+em(<id> : shared <a:typ> -> async <r:typ>) = unescape(<id>) : ea(<a:typ>) -> ea(<r:typ>)
+em(<id> : shared <a:typ> -> ()) = unescape(<id>) : ea(<a:typ>) -> () oneway
 
 unescape : <id> -> <nat>|<name>
 unescape("_" <nat> "_") = <nat>
@@ -136,8 +140,12 @@ if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
 if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
 
 ifn : <functype> -> <typ>
-ifn(a:(<datatype>^N) -> () oneway pure?) = shared (i*(a),) -> ()
-ifn(a:(<datatype>^N) -> r:<datatype>^N pure?) = shared (i*(a),) -> (i*(r),)
+ifn((<as:datatype^N>,) -> () oneway pure?) = shared ia(<as>) -> ()
+ifn((<as:datatype^N>,) -> (<rs:datatype^N>,) pure?) = shared ia(<as>) -> ia(<rs>)
+
+ia : <datatype>^M -> <typ>
+ia (<typ>,) = a(<typ>)
+ia (<as:datatype^N>,) = ( a*(<as>), )
 
 im : <methtype> -> <typ>
 im(<name> : <functype>) = escape(<name>) : ifn(<functype>)
