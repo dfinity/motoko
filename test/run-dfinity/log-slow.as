@@ -1,4 +1,4 @@
-// These are rather lon-running tests, not advisable for wasm-run!
+// These are rather long-running tests, not advisable for wasm-run!
 
 // Nat*
 
