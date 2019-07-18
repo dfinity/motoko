@@ -1684,6 +1684,18 @@ module BigNum64 : BigNumType = struct
 end
 [@@@warning "+60"]
 
+(* helper, measures the dynamics of the unsigned i32, returns (32 - effective bits)
+   expects i32 on stack *)
+let unsigned_dynamics =
+  G.i (Unary (Wasm.Values.I32 I32Op.Clz))
+
+(* helper, measures the dynamics of the signed i32, returns (32 - effective bits)
+   expects two identical i32 copies on stack *)
+let signed_dynamics =
+  compile_shl_const 1l ^^
+  G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+  unsigned_dynamics
+
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (* Compact BigNums are a representation of signed 31-bit bignums (of the
@@ -2027,8 +2039,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let compile_leb128_size get_x =
     get_x ^^ G.if_ (ValBlockType (Some I32Type))
       begin
-        compile_unboxed_const 38l ^^ get_x ^^
-        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+        compile_unboxed_const 38l ^^
+        get_x ^^ unsigned_dynamics ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
         compile_divU_const 7l
       end
@@ -2052,9 +2064,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^ G.if_ (ValBlockType (Some I32Type))
       begin
         compile_unboxed_const 38l ^^
-        get_x ^^ get_x ^^ compile_shl_const 1l ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-        G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^ (* TODO(gabor) use signed_dynamics *)
+        get_x ^^ get_x ^^ signed_dynamics ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
         compile_divU_const 7l
      end
@@ -5118,18 +5128,6 @@ let compile_unop env t op =
       (SR.Vanilla, SR.Unreachable, E.trap_with env "TODO: compile_unop")
 
 (* Logarithmic helpers for deciding whether we can carry out operations in constant bitwidth *)
-
-(* helper, measures the dynamics of the signed i32, returns (32 - effective bits)
-   expects two identical i32 copies on stack *)
-let signed_dynamics =
-  compile_shl_const 1l ^^
-  G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-  G.i (Unary (Wasm.Values.I32 I32Op.Clz))
-
-(* helper, measures the dynamics of the unsigned i32, returns (32 - effective bits)
-   expects i32 on stack *)
-let unsigned_dynamics =
-  G.i (Unary (Wasm.Values.I32 I32Op.Clz))
 
 (* Compiling Int/Nat64 ops by conversion to/from BigNum. This is currently
    consing a lot, but compact bignums will get back efficiency as soon as
