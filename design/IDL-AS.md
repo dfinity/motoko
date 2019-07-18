@@ -85,26 +85,29 @@ e(Word<n>) = nat<n> for n = 8, 16, 32, 64
 e(Float) = float64
 e(Char) = nat32
 e(Text) = text
-e(shared { <typ-field>^N }) = record { ef*(<typ-field>^N) }
-e(variant { <typ-field>^N }) = variant { ef*(<typ-field>^N) }
+e(shared { <typ-field>;* }) = record { ef(<typ-field>);* }
+e(variant { <typ-field>;* }) = variant { ef(<typ-field>);* }
 e([<typ>]) = vec (e(<typ>))
 e(? <typ>) = opt (e(<typ>))
-e(shared <a:typ> -> async <r:typ>) = func (ea(<a:typ>) -> ea(<r:typ>))
-e(shared <a:typ> -> ()) = func (ea(<a:typ>) -> ()) oneway
-e(actor { <typ-field>^N }) = service { em*(<typ-field>^N) }
-e( ( <typ>^N ) ) = record { e*(<typ^N>) }
+e(shared <typ1> -> <typ2>) = func (efn(shared <typ1> -> <typ2>))
+e(actor { <typ-field>;* }) = service { em(<typ-field>);* }
+e( ( <typ>,* ) ) = record { e(<typ>);* }
+e(Any) = record {}
 e(None) = variant {}
-
-ea : <typ> -> <fieldtype>,* // function arguments
-ea( ( <typ>^N ) ) = e*(<typ^N>)
-ea(<typ>) = ( e(<typ>) )
 
 ef : <typ-field> -> <fieldtype>
 ef (<id> : <typ>) = unescape(<id>) : e(<typ>)
 
+efn : <typ> -> <functype>
+efn(shared <typ> -> ()) = ea(<typ>) -> () oneway
+efn(shared <typ1> -> async <typ2>) = ea(<typ1>) -> ea(<typ2>)
+
+ea : <typ> -> <fieldtype>;* // function arguments
+ea( ( <typ>,* ) ) = e(<typ>);*
+ea(<typ>) = ( e(<typ>) )  otherwise
+
 em : <typ-field> -> <methtype>
-em(<id> : shared <a:typ> -> async <r:typ>) = unescape(<id>) : ea(<a:typ>) -> ea(<r:typ>)
-em(<id> : shared <a:typ> -> ()) = unescape(<id>) : ea(<a:typ>) -> () oneway
+em(<id> : <typ>) = unescape(<id>) : efn(<typ>)
 
 unescape : <id> -> <nat>|<name>
 unescape("_" <nat> "_") = <nat>
@@ -129,23 +132,23 @@ i(reserved) = Any
 i(opt <datatype>) = ? i(<datatype>)
 i(vec <datatype>) = [ i(<datatype>) ]
 i(blob) = [ word8 ] // if ActorScript had a bytes type, it would show up here
-i(record { <datatype>^N }) = ( i(<datatype>)^N, ) // matches tuple short-hand
-i(record { <fieldtype>^N }) = shared { if*(<fieldtype>^N) }
-i(variant { <fieldtype>^N }) = variant { if*(<typ-field>^N) }
+i(record { <datatype>;* }) = ( i(<datatype>),* ) // matches tuple short-hand
+i(record { <fieldtype>;* }) = shared { if(<fieldtype>);* }
+i(variant { <fieldtype>;* }) = variant { if(<typ-field>);* }
 i(func <functype>) = ifn(<functype>)
-i(service { <methtype>^N }) = actor { im*(<methtype>^N) }
+i(service { <methtype>;* }) = actor { im(<methtype>);* }
 
 if : <fieldtype> -> <typ>
 if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
 if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
 
 ifn : <functype> -> <typ>
-ifn((<as:datatype^N>,) -> () oneway pure?) = shared ia(<as>) -> ()
-ifn((<as:datatype^N>,) -> (<rs:datatype^N>,) pure?) = shared ia(<as>) -> ia(<rs>)
+ifn((<datatype>,*) -> () oneway pure?) = shared ia(<as>) -> ()
+ifn((<datatype1>,*) -> (<datatype2>,*) pure?) = shared ia(<datatype1>,*) -> ia(<datatype2>,*)
 
-ia : <datatype>^M -> <typ>
-ia (<typ>,) = a(<typ>)
-ia (<as:datatype^N>,) = ( a*(<as>), )
+ia : <datatype>,* -> <typ>
+ia(<datatype>,) = i(<datatype>)
+ia(<datatype>,*) = ( i(<datatype>),* )  otherwise
 
 im : <methtype> -> <typ>
 im(<name> : <functype>) = escape(<name>) : ifn(<functype>)
