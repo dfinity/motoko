@@ -86,9 +86,9 @@ left consumes
   Nat
 right consumes
   Any
-pat-inconsistent.as:30.16-30.35: type error, pattern branches have incompatible types,
+pat-inconsistent.as:30.16-30.32: type error, pattern branches have incompatible types,
 left consumes
-  Shared
+  Any
 right consumes
   Float
 pat-inconsistent.as:31.16-31.31: type error, pattern branches have incompatible types,
@@ -100,7 +100,7 @@ pat-inconsistent.as:32.19-32.32: type error, pattern branches have incompatible 
 left consumes
   Text
 right consumes
-  A/18
+  A/9
 pat-inconsistent.as:33.16-33.40: type error, pattern branches have incompatible types,
 left consumes
   Any

@@ -90,13 +90,13 @@ let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
 
 let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
 let file_from_uri logger uri =
-  match Base.String.chop_prefix ~prefix:file_uri_prefix uri with
+  match Lib.String.chop_prefix file_uri_prefix uri with
    | Some file -> file
    | None ->
       let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
       uri
 let abs_file_from_uri logger uri =
-  match Base.String.chop_prefix ~prefix:"file://" uri with
+  match Lib.String.chop_prefix "file://" uri with
    | Some file -> file
    | None ->
       let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
@@ -142,13 +142,23 @@ let start () =
     | (Some id, `Initialize params) ->
        client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
        let completion_options =
-         Lsp_t.{ completion_options_resolveProvider = Some false;
-                 completion_options_triggerCharacters = Some ["."]
+         Lsp_t.{
+             completion_options_resolveProvider = Some false;
+             completion_options_triggerCharacters = Some ["."] } in
+       let text_document_sync_options =
+         Lsp_t.{
+             text_document_sync_options_openClose = Some true;
+             text_document_sync_options_change = Some 1;
+             text_document_sync_options_willSave = Some false;
+             text_document_sync_options_willSaveWaitUntil = Some false;
+             text_document_sync_options_save = Some {
+                 save_options_includeText = Some true
+               }
          } in
         let result = `Initialize (Lsp_t.{
           initialize_result_capabilities = {
-            server_capabilities_textDocumentSync = 1;
-            server_capabilities_hoverProvider = Some true;
+            server_capabilities_textDocumentSync = text_document_sync_options;
+            server_capabilities_hoverProvider = Some false;
             server_capabilities_completionProvider = Some completion_options;
           }
         }) in
@@ -158,7 +168,7 @@ let start () =
     | (Some id, `TextDocumentHover params) ->
         let position = params.Lsp_t.text_document_position_params_position in
         let textDocument = params.Lsp_t.text_document_position_params_textDocument in
-        let result = `TextDocumentHoverResponse (Lsp_t. {
+        let result = `TextDocumentHoverResponse (Some Lsp_t. {
           hover_result_contents = "hovered over: " ^ textDocument.text_document_identifier_uri
             ^ " " ^ string_of_int position.position_line
             ^ ", " ^ string_of_int position.position_character
@@ -180,7 +190,7 @@ let start () =
        let msgs = match result with
          | Error msgs' -> msgs'
          | Ok (_, msgs') -> msgs' in
-       Base.Option.iter !client_capabilities ~f:(fun _ ->
+       Lib.Fun.flip Lib.Option.iter !client_capabilities (fun _ ->
            (* TODO: determine if the client accepts diagnostics with related info *)
            (* let textDocument = capabilities.client_capabilities_textDocument in
            * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)

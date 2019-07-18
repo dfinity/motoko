@@ -32,7 +32,7 @@ let real-dvm =
       let dev = builtins.fetchGit {
         url = "ssh://git@github.com/dfinity-lab/dev";
         ref = "master";
-        rev = "65c295edfc4164ca89c129d501a403fa246d3d36";
+        rev = "a556b011d957d3174b6c4017d76dd510791d8922";
       }; in
       (import dev { system = nixpkgs.system; }).dvm
     else null
@@ -42,7 +42,6 @@ let commonBuildInputs = [
   nixpkgs.ocaml
   nixpkgs.dune
   nixpkgs.ocamlPackages.atdgen
-  nixpkgs.ocamlPackages.base
   nixpkgs.ocamlPackages.findlib
   nixpkgs.ocamlPackages.menhir
   nixpkgs.ocamlPackages.num
@@ -63,8 +62,8 @@ let
   libtommath = nixpkgs.fetchFromGitHub {
     owner = "libtom";
     repo = "libtommath";
-    rev = "9e1a75cfdc4de614eaf4f88c52d8faf384e54dd0";
-    sha256 = "0qwmzmp3a2rg47pnrsls99jpk5cjj92m75alh1kfhcg104qq6w3d";
+    rev = "584405ff8e357290362671b5e7db6110a959cbaa";
+    sha256 = "1vl606rm8ba7vjhr0rbdqvih5d4r5iqalqlj5mnz6j3bnsn83b2a";
   };
 
   llvmBuildInputs = [

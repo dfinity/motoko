@@ -2,7 +2,6 @@
   (name pipeline)
   (libraries
     lib
-    base
     lang_utils
     as_def
     as_types

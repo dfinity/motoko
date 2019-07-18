@@ -1,1 +1,1 @@
-use-before-define6.as:9.3-9.22: definedness error, cannot use g before g has been defined
+use-before-define6.as:6.3-6.20: definedness error, cannot use g before g has been defined

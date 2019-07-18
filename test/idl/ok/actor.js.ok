@@ -1,7 +1,8 @@
+const o = IDL.Rec()
 const f = IDL.message(IDL.Obj({'0': IDL.Int8}), IDL.Obj({'0': IDL.Int8}))
-const g = f
 const h = IDL.message(IDL.Obj({'0': f}), IDL.Obj({'0': f}))
-const o = IDL.Opt(o)
+const g = f
+o.fill(IDL.Opt(o))
 const g = new IDL.ActorInterface({
- 'f': IDL.message(IDL.Obj({'0': IDL.Nat}), IDL.Obj({})), 'g': f, 'h': g,
- 'o': IDL.message(IDL.Obj({'0': o}), IDL.Obj({'0': o}))})
+ 'f': IDL.message(IDL.Obj({'0': IDL.Nat}), IDL.Obj({'0': h})), 'g': f,
+ 'h': g, 'o': IDL.message(IDL.Obj({'0': o}), IDL.Obj({'0': o}))})

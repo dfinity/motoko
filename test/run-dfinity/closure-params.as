@@ -1,11 +1,11 @@
 let a = actor {
-  private var c = 0;
-  incn(n : Nat) : () {
+  var c = 0;
+  public func incn(n : Nat) : () {
     c += n;
     printInt(c);
     print("\n");
   };
-  readCounter(f : shared Nat -> ()) : () {
+  public func readCounter(f : shared Nat -> ()) : () {
     f(c);
   };
 };

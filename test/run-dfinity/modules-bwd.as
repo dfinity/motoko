@@ -1,9 +1,9 @@
 module X = {
 
 module A = {
-  module B = {
-    type T = ();
-    let v  = ()
+  public module B = {
+    public type T = ();
+    public let v  = ()
   };
 };
 

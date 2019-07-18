@@ -61,13 +61,9 @@ type arg = (string, Type.typ) Source.annotated_phrase
 
 type exp = exp' phrase
 and exp' =
-  | PrimE of string                            (* primitive *)
+  | PrimE of (prim * exp list)                 (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit                                (* literal *)
-  | UnE of Type.typ * unop * exp               (* unary operator *)
-  | BinE of Type.typ * exp * binop * exp       (* binary operator *)
-  | RelE of Type.typ * exp * relop * exp       (* relational operator *)
-  | ShowE of Type.typ * exp                    (* debug show *)
   | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
@@ -102,6 +98,14 @@ and field' = {name : Type.lab; var : id} (* the var is by reference, not by valu
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
 
+and prim =
+  | UnPrim of Type.typ * unop         (* unary operator *)
+  | BinPrim of Type.typ * binop       (* binary operator *)
+  | RelPrim of Type.typ * relop       (* relational operator *)
+  | ShowPrim of Type.typ              (* debug show *)
+  | SerializePrim of Type.typ         (* serialize *)
+  | DeserializePrim of Type.typ       (* deserialize *)
+  | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
 
 (* Declarations *)
 
