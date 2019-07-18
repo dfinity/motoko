@@ -43,6 +43,7 @@ func g< A <: B, B <: C , C> ( a : A, b : B, c: C, n:Int ) : C {
  type W6 = T3<C,C,C>;
 
  /* test type formation involving f-bounds */
+
  let u0 : T1<A,A,A> = ();
  let u1 : T1<A,A,B> = ();
  let u2 : T1<A,B,B> = ();
