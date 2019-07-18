@@ -3323,6 +3323,9 @@ module Serialization = struct
      first that I can test, until we properly exercise this code (i.e. there
      is also the JS-side of things and we know it is bug-free).
      Writing a Wasm-native implementation of this will then be done separately.
+
+     Update as of #469: we have leb128_encode and sleb128_encode in rts now!
+     This is #581.
   *)
 
   (* The IDL serialization prefaces the data with a type description.
