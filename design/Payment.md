@@ -11,7 +11,7 @@ Brain dump for an approach to structured payments.
 
 ## Approach
 
-* Treat payments as linear resources
+* Treat payments as linear (more precisely, affine) resources
 * Apply very simple binding restrictions to ensure linearity
 
 
@@ -34,13 +34,14 @@ Brain dump for an approach to structured payments.
   - but `pay` is a functorial mapping for other `T`
   - intro syntax `pay <exp>`
   - elim syntax is pattern `pay <pat>`
-  - linearly restricted resource; simplest possible implementation: cannot be bound to a variable!
+  - linearly (affinely) restricted resource; simplest possible implementation: cannot be bound to a variable!
 
 * Static Semantics
   - for `pay T` to be well-formed, `T` must be sharable
   - both `Dfn` and `pay T` are sharable
   - a type `T` is *linear* when it contains a value of type `pay U`
   - term variables must not have linear type
+  - type variables cannot abstract linear types
   - no other restrictions
 
 * Dynamic Semantics
@@ -134,7 +135,7 @@ Alternative:
 * In the IDL, there is just one new type:
   ```
   <typ> ::= ...
-     dfn
+     payment
   ```
 
 * Maps to `pay Dfn` in AS.
