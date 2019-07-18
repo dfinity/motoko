@@ -23,20 +23,22 @@ let ocaml_vlq = import ./nix/ocaml-vlq.nix {
 let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
 let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
 
+let dev = import (builtins.fetchGit {
+  url = "ssh://git@github.com/dfinity-lab/dev";
+  ref = "master";
+  rev = "fcd387ce757fcc1ee697a19665ada9bc3f453adc";
+}) { system = nixpkgs.system; }; in
+
 # Include dvm
 let real-dvm =
   if dvm == null
-  then
-    if test-dvm
-    then
-      let dev = builtins.fetchGit {
-        url = "ssh://git@github.com/dfinity-lab/dev";
-        ref = "master";
-        rev = "a556b011d957d3174b6c4017d76dd510791d8922";
-      }; in
-      (import dev { system = nixpkgs.system; }).dvm
+  then if test-dvm
+    then dev.dvm
     else null
   else dvm; in
+
+# Include js-client
+let js-client = dev.js-dfinity-client; in
 
 let commonBuildInputs = [
   nixpkgs.ocaml
@@ -135,7 +137,10 @@ rec {
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
+        nixpkgs.getconf
+        nixpkgs.nodejs-10_x
         filecheck
+        js-client
       ] ++
       (if test-dvm then [ real-dvm ] else []) ++
       llvmBuildInputs;
@@ -146,6 +151,7 @@ rec {
         export ASC=asc
         export AS_LD=as-ld
         export DIDC=didc
+        export JSCLIENT=${js-client}
         asc --version
       '' +
       (if test-dvm then ''
@@ -405,6 +411,7 @@ rec {
 
     shellHook = llvmEnv;
     TOMMATHSRC = libtommath;
+    JSCLIENT = js-client;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
   } else null;
 
