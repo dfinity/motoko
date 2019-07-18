@@ -4,7 +4,7 @@
 #define from_rts __attribute__ ((import_module("env"))) extern
 
 #include <stdint.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include <stdbool.h>
 
 export void as_memcpy(char *str1, const char *str2, size_t n) {
@@ -189,7 +189,7 @@ pointer to a data array.
    _payload_ in the `mp_digit* dp` field of the struct. This way, things look all nice
    and dandy from libtommath’s point of view.
 
-   Our gargabe collector has special knowledge about the dp field of the struct
+   Our garbage collector has special knowledge about the dp field of the struct
    and understands that this pointer points inside the TAG_TEXT heap object. But
    we can still move them around in the GC without issues.
 
@@ -212,10 +212,16 @@ export void* mp_calloc(size_t n, size_t size) {
   return payload;
 }
 
+from_rts __attribute__ ((noreturn)) void bigint_trap();
+
 export void* mp_realloc(void *ptr, size_t old_size, size_t new_size) {
-  as_ptr r = (as_ptr)(((char *)ptr) - (2 * sizeof(void*) - 1));
+  as_ptr r = (as_ptr)(((char *)ptr) - (2 * sizeof(void*) + 1));
+
+  if (FIELD(r, 0) != TAG_TEXT) bigint_trap(); // assert block type
+
   if (new_size > FIELD(r, 1)) {
     void *newptr = mp_alloc(new_size);
+    if (old_size != FIELD(r, 1)) bigint_trap();
     as_memcpy(newptr, ptr, old_size);
     return newptr;
   } else {
@@ -232,9 +238,9 @@ export void mp_free(void *ptr, size_t size) {
 #define BIGINT_PAYLOAD(p) ((mp_int *)(&FIELD(p,1)))
 
 /*
-Note on libtommmath error handling
+Note on libtommath error handling
 
-Most libtommmath operations return an int to signal error codes.
+Most libtommath operations return an int to signal error codes.
 These are (see tommath.h):
 
    #define MP_OKAY       0   / * ok result * /
@@ -249,7 +255,6 @@ we call a trap function provided by the Wasm part of the runtime.
 */
 
 #define CHECK(e) ((e == 0)?0:bigint_trap())
-from_rts __attribute__ ((noreturn)) void bigint_trap();
 
 as_ptr bigint_alloc() {
   as_ptr r = alloc_bytes (1*sizeof(void*) + sizeof(mp_int));
@@ -258,99 +263,81 @@ as_ptr bigint_alloc() {
   return r;
 }
 
-export as_ptr bigint_of_word32(unsigned long b) {
+export as_ptr bigint_of_word32(uint32_t b) {
   as_ptr r = bigint_alloc();
-  CHECK(mp_set_long(BIGINT_PAYLOAD(r), b));
+  mp_set_u32(BIGINT_PAYLOAD(r), b);
   return r;
 }
 
-export as_ptr bigint_of_word32_signed(signed long b) {
+export as_ptr bigint_of_word32_signed(int32_t b) {
   as_ptr r = bigint_alloc();
   mp_int *n = BIGINT_PAYLOAD(r);
-  CHECK(mp_set_long(n, b));
-  if (b < 0) {
-    mp_int sub;
-    CHECK(mp_init(&sub));
-    CHECK(mp_2expt(&sub, 32));
-    CHECK(mp_sub(n,&sub,n));
-  }
+  mp_set_i32(n, b);
   return r;
 }
 
-export unsigned long bigint_to_word32_wrap(as_ptr a) {
+export uint32_t bigint_to_word32_wrap(as_ptr a) {
   mp_int *n = BIGINT_PAYLOAD(a);
-  if (mp_isneg(n))
-    return - mp_get_long(n);
-  else
-    return mp_get_long(n);
+  return mp_get_u32(n);
 }
 
-export unsigned long bigint_to_word32_trap(as_ptr a) {
+export uint32_t bigint_to_word32_trap(as_ptr a) {
   mp_int *n = BIGINT_PAYLOAD(a);
   if (mp_isneg(n)) bigint_trap();
   if (mp_count_bits(n) > 32) bigint_trap();
-  return mp_get_long(n);
+  return mp_get_u32(n);
 }
 
-export signed long bigint_to_word32_signed_trap(as_ptr a) {
+export int32_t bigint_to_word32_signed_trap(as_ptr a) {
   mp_int *n = BIGINT_PAYLOAD(a);
   if (mp_count_bits(n) > 32) bigint_trap();
   if (mp_isneg(n)) {
-    long x = - (signed long)(mp_get_long(n));
+    int32_t x = - (int32_t)(mp_get_mag_u32(n));
     if (x >= 0) bigint_trap();
     return x;
   } else {
-    long x = (signed long)(mp_get_long(n));
+    int32_t x = (int32_t)(mp_get_mag_u32(n));
     if (x < 0) bigint_trap();
     return x;
   }
 }
 
-export unsigned long long bigint_to_word64_wrap(as_ptr a) {
+export uint64_t bigint_to_word64_wrap(as_ptr a) {
   mp_int *n = BIGINT_PAYLOAD(a);
-  if (mp_isneg(n))
-    return - mp_get_long_long(n);
-  else
-    return mp_get_long_long(n);
+  return mp_get_u64(n);
 }
 
-export unsigned long long bigint_to_word64_trap(as_ptr a) {
+export uint64_t bigint_to_word64_trap(as_ptr a) {
   mp_int *n = BIGINT_PAYLOAD(a);
   if (mp_isneg(n)) bigint_trap();
   if (mp_count_bits(n) > 64) bigint_trap();
-  return mp_get_long_long(n);
+  return mp_get_u64(n);
 }
 
-export signed long long bigint_to_word64_signed_trap(as_ptr a) {
+export int64_t bigint_to_word64_signed_trap(as_ptr a) {
   mp_int *n = BIGINT_PAYLOAD(a);
   if (mp_count_bits(n) > 64) bigint_trap();
   if (mp_isneg(n)) {
-    long long x = - (signed long long)(mp_get_long_long(n));
+    int64_t x = - (int64_t)(mp_get_mag_u64(n));
     if (x >= 0) bigint_trap();
     return x;
   } else {
-    long long x = (signed long long)(mp_get_long_long(n));
+    int64_t x = (int64_t)(mp_get_mag_u64(n));
     if (x < 0) bigint_trap();
     return x;
   }
 }
 
-export as_ptr bigint_of_word64(unsigned long long b) {
+export as_ptr bigint_of_word64(uint64_t b) {
   as_ptr r = bigint_alloc();
-  CHECK(mp_set_long_long(BIGINT_PAYLOAD(r), b));
+  mp_set_u64(BIGINT_PAYLOAD(r), b);
   return r;
 }
 
-export as_ptr bigint_of_word64_signed(signed long long b) {
+export as_ptr bigint_of_word64_signed(int64_t b) {
   as_ptr r = bigint_alloc();
   mp_int *n = BIGINT_PAYLOAD(r);
-  CHECK(mp_set_long_long(n, b));
-  if (b < 0) {
-    mp_int sub;
-    CHECK(mp_init(&sub));
-    CHECK(mp_2expt(&sub, 64));
-    CHECK(mp_sub(n,&sub,n));
-  }
+  mp_set_i64(n, b);
   return r;
 }
 
@@ -389,11 +376,9 @@ export as_ptr bigint_mul(as_ptr a, as_ptr b) {
 }
 
 export as_ptr bigint_pow(as_ptr a, as_ptr b) {
-  unsigned long exp = bigint_to_word32_trap(b);
+  uint32_t exp = bigint_to_word32_trap(b);
   as_ptr r = bigint_alloc();
-  // Replace with mp_expt_long once available,
-  // see https://github.com/libtom/libtommath/issues/243
-  CHECK(mp_expt_d_ex(BIGINT_PAYLOAD(a), exp, BIGINT_PAYLOAD(r), 1));
+  CHECK(mp_expt_u32(BIGINT_PAYLOAD(a), exp, BIGINT_PAYLOAD(r)));
   return r;
 }
 
@@ -450,7 +435,7 @@ void leb128_encode_go(mp_int *tmp, unsigned char *buf) {
   // now the number should be positive
   if (mp_isneg(tmp)) bigint_trap();
   while (true) {
-    buf[0] = (unsigned char)(mp_get_int(tmp)); // get low bits
+    buf[0] = (unsigned char)(mp_get_u32(tmp)); // get low bits
     CHECK(mp_div_2d(tmp, 7, tmp, NULL));
     if (mp_iszero(tmp)) {
       // we are done. high bit should be cleared anyways
