@@ -386,7 +386,8 @@ let _compile_add64_const = compile_op64_const I64Op.Add
 let compile_sub64_const = compile_op64_const I64Op.Sub
 let _compile_mul64_const = compile_op64_const I64Op.Mul
 let _compile_divU64_const = compile_op64_const I64Op.DivU
-let compile_shrU64_const = compile_op64_const I64Op.ShrU
+let compile_shrU64_const = function
+  | 0L -> G.nop | n -> compile_op64_const I64Op.ShrU n
 let compile_shrS64_const = function
   | 0L -> G.nop | n -> compile_op64_const I64Op.ShrS n
 let compile_shl64_const = function
