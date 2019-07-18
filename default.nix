@@ -120,9 +120,16 @@ rec {
     paths = [ asc-bin rts ];
     buildInputs = [ nixpkgs.makeWrapper ];
     postBuild = ''
-      tar -chf $out/asc.tar -C $out bin/asc rts/as-rts.wasm
       wrapProgram $out/bin/asc \
         --set-default ASC_RTS "$out/rts/as-rts.wasm"
+    '';
+  };
+
+  asc-tar = nixpkgs.symlinkJoin {
+    name = "asc-tar";
+    paths = [ asc-bin rts ];
+    postBuild = ''
+      tar -chf $out/asc.tar -C $out bin/asc rts/as-rts.wasm
       mkdir -p $out/nix-support
       echo "file bin $out/asc.tar" >> $out/nix-support/hydra-build-products
     '';
