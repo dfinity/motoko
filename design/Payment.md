@@ -21,7 +21,7 @@ Brain dump for an approach to structured payments.
   ```
   <typ> ::= ...
      Dfn
-     pay <typ>
+     payment <typ>
   ```
 
 * `Dfn` describes an amount of DFN
@@ -29,36 +29,36 @@ Brain dump for an approach to structured payments.
   - intro and elim syntax TBD
   - stateless
 
-* `pay T` is a payment of all funds occurring in `T` (expresses *owned* funds)
+* `payment T` is a payment of all funds occurring in `T` (expresses *owned* funds)
   - in the basic form, `T` is `Dfn`
-  - but `pay` is a functorial mapping for other `T`
-  - intro syntax `pay <exp>`
-  - elim syntax is pattern `pay <pat>`
+  - but `payment` is a functorial mapping for other `T`
+  - intro syntax `payment <exp>`
+  - elim syntax is pattern `payment <pat>`
   - linearly (affinely) restricted resource; simplest possible implementation: cannot be bound to a variable!
 
 * Static Semantics
-  - for `pay T` to be well-formed, `T` must be sharable
-  - both `Dfn` and `pay T` are sharable
-  - a type `T` is *linear* when it contains a value of type `pay U`
+  - for `payment T` to be well-formed, `T` must be sharable
+  - both `Dfn` and `payment T` are sharable
+  - a type `T` is *linear* when it contains a value of type `payment U`
   - term variables must not have linear type
   - type variables cannot abstract linear types
   - no other restrictions
 
 * Dynamic Semantics
-  - a value of type `pay T` represents a portion of the canister's account
+  - a value of type `payment T` represents a portion of the canister's account
   - nothing particular happens when creating and passing it around inside a canister
   - but when passed with a message or message result, implies payment via *ownership transfer*
   - payment is implicitly accepted if the receiving method doesn't trap
   - rejected otherwise
 
 * Implementation
-  - the runtime representation of `pay T` is no different from `T`, all the magic is in the serialisation (see API/IDL discussion below)
+  - the runtime representation of `payment T` is no different from `T`, all the magic is in the serialisation (see API/IDL discussion below)
 
 * Open Questions
   - how exactly to deal with (multiple) currencies
   - syntax for funds
   - is more fine-grained control over accepting/rejecting payments needed?
-  - could make `pay T` equivalent to (or subtype of) `T` where all covariant occurrences of `Dfn` are replaced with `pay Dfn`
+  - could make `payment T` equivalent to (or subtype of) `T` where all covariant occurrences of `Dfn` are replaced with `payment Dfn`
 
 
 ## Examples
@@ -66,22 +66,22 @@ Brain dump for an approach to structured payments.
 Simple receiver:
 ```
 actor A {
-  // Note use of pattern: `dfn` has type `Dfn`, not `pay Dfn`!
-  public func deposit(pay dfn : Dfn) { /* received */ }
+  // Note use of pattern: `dfn` has type `Dfn`, not `payment Dfn`!
+  public func deposit(payment dfn : Dfn) { /* received */ }
 }
 ```
 Simple sender:
 ```
 actor B {
   // Made-up syntax `$amount` for expressing dfn
-  public func f() { A.deposit(pay $4); }
+  public func f() { A.deposit(payment $4); }
 }
 ```
 
 Structured payment:
 ```
 type Partner = actor {
-  remunerate : (pay Dfn) -> ();
+  remunerate : (payment Dfn) -> ();
 };
 
 actor C {
@@ -91,23 +91,23 @@ actor C {
   public func partners() : async [Name] {
     return partners.keys();
   };
-  public func distribute(pay shares : [(Name, Dfn)]) {
+  public func distribute(payment shares : [(Name, Dfn)]) {
     for ((name, dfn) in shares.values()) {
-      partners.lookup(name).remunerate(pay dfn);
+      partners.lookup(name).remunerate(payment dfn);
     }
   }
 };
 
 actor D {
   // Assuming we only have DFNs for now
-  public func dividend(pay $amount : Dfn) : async (pay Dfn) {
+  public func dividend(payment $amount : Dfn) : async (payment Dfn) {
     let partners = await C.partners();
     let n = partners.len();
     let share = amount / n;
     let rest = amount % n;
     C.distribute(Array.map<Name, (Name, Funds)>(partners,
-      func name (name, pay share)));
-    return pay rest;
+      func name (name, payment share)));
+    return payment rest;
   }
 }
 ```
@@ -117,13 +117,13 @@ actor D {
 
 Possible design:
 
-* Model individual payment funds as a reference type `payref`
+* Model individual payment funds as a reference type `paymentref`
 
-* Passing payrefs with a message send/reply transfers funds
+* Passing paymentrefs with a message send/reply transfers funds
 
 * Functions:
-  - `pay.create : i64 -> payref`
-  - `pay.amount : payref -> i64`
+  - `payment.create : i64 -> paymentref`
+  - `payment.amount : paymentref -> i64`
 
 Alternative:
 
@@ -138,9 +138,9 @@ Alternative:
      payment
   ```
 
-* Maps to `pay Dfn` in AS.
+* Maps to `payment Dfn` in AS.
 
-* The `M` mapping treats `pay T` the same as `T`, but with all values of type `funds` ignored.
+* The `M` mapping treats `payment T` the same as `T`, but with all values of type `funds` ignored.
 
 * The `R` mapping extracts funds from payments.
 
