@@ -69,6 +69,7 @@ let
   llvmBuildInputs = [
     llvm.clang_9
     llvm.lld_9
+    llvm.stdenv
   ];
 
   llvmEnv = ''
