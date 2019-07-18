@@ -1713,21 +1713,20 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let adjust_result code env = code env ^^ compile_shl64_const 1L
 
   let compile_mul = share_try_unbox2 "B_mul" (adjust_arg2 BoxedWord64.compile_mul) Num.compile_mul
-  let compile_signed_sub = share_try_unbox2 "B_sub" BoxedWord64.compile_signed_sub Num.compile_signed_sub
-  let compile_signed_div = try_unbox2 (adjust_result BoxedWord64.compile_signed_div) Num.compile_signed_div
-  let compile_signed_mod = try_unbox2 BoxedWord64.compile_signed_mod Num.compile_signed_mod
-  let compile_unsigned_div = try_unbox2 (adjust_result BoxedWord64.compile_unsigned_div) Num.compile_unsigned_div
-  let compile_unsigned_rem = try_unbox2 BoxedWord64.compile_unsigned_rem Num.compile_unsigned_rem
-  let compile_unsigned_sub = try_unbox2 BoxedWord64.compile_unsigned_sub Num.compile_unsigned_sub
+  let compile_signed_sub = share_try_unbox2 "B+sub" BoxedWord64.compile_signed_sub Num.compile_signed_sub
+  let compile_signed_div = share_try_unbox2 "B+div" (adjust_result BoxedWord64.compile_signed_div) Num.compile_signed_div
+  let compile_signed_mod = share_try_unbox2 "B_mod" BoxedWord64.compile_signed_mod Num.compile_signed_mod
+  let compile_unsigned_div = share_try_unbox2 "B_div" (adjust_result BoxedWord64.compile_unsigned_div) Num.compile_unsigned_div
+  let compile_unsigned_rem = share_try_unbox2 "B_rem" BoxedWord64.compile_unsigned_rem Num.compile_unsigned_rem
+  let compile_unsigned_sub = share_try_unbox2 "B_sub" BoxedWord64.compile_unsigned_sub Num.compile_unsigned_sub
 
   let compile_unsigned_pow env =
-    let set_a, get_a = new_local env "a" in
-    let set_b, get_b = new_local env "b" in
+    Func.share_code2 env "B_pow" (("a", I32Type), ("b", I32Type)) [I32Type]
+    (fun env get_a get_b ->
     let set_res, get_res = new_local env "res" in
     let set_a64, get_a64 = new_local64 env "a64" in
     let set_b64, get_b64 = new_local64 env "b64" in
     let set_res64, get_res64 = new_local64 env "res64" in
-    set_b ^^ set_a ^^
     get_a ^^ get_b ^^
     BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
       begin
@@ -1773,7 +1772,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.if_ (ValBlockType (Some I32Type))
           (get_res ^^ Num.truncate_to_word32 env ^^ compress)
           get_res
-      end
+      end)
 
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
