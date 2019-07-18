@@ -3,14 +3,10 @@ ActorScript 0.1 interpreter
 > [null, null] : [Null]
 > [{a = 42}, {b = 42}] : [{}]
 > [{a = 42}, {a = 1; b = 42}, {a = -25}] : [{a : Int}]
-> [{len = func}, [1, 2, 3]] : [{len : () -> Nat}]
-> [{len = func}, "hello"] : [{len : () -> Nat}]
-> [[1, 2, 3], "hello"] : [{len : () -> Nat}]
-> [{len = func}, [1, 2, 3], "hello"] : [{len : () -> Nat}]
 > [(12, -1), (-42, 25)] : [(Int, Int)]
 > [-1, 25] : [Int]
 > [[-42], [25]] : [[Int]]
-> [func, func] : [(Non -> Int)]
+> [func, func] : [(None -> Int)]
 > [func, func] : [([Nat] -> Int)]
 > 3 : Int
 > -42 : Int
@@ -24,18 +20,11 @@ ActorScript 0.1 interpreter
 > [func, func] : [(<A <: Nat, B <: Nat>([A], B) -> A)]
 > 1 : Nat
 > 11 : Nat
-> [func, func] : [([Int] -> Nat)]
-> 13 : Nat
-> 3 : Nat
->         let combined : {get : Nat -> Int; keys : () -> {next : () -> ?Nat}; len : () -> Nat; vals : () -> {next : () -> ?Int}} = {get = func; keys = func; len = func; vals = func}
->       > 5 : Nat
-> 5 : Nat
->   [func, func] : [(Non -> Nat)]
-> > >   [func, func] : [({#bar} -> ())]
+>   [func, func] : [({#bar} -> ())]
 > > >   [[42], [25], [77]] : [[Any]]
->   [42, 77, [1, 2, 3]] : [Shared]
-> [77, [1, 2, 3], 42] : [Shared]
-> [func, func] : [(Int -> Int)]
+>   [42, 77, [1, 2, 3]] : [Any]
+> [77, [1, 2, 3], 42] : [Any]
+> [func, func] : [(Nat -> Int)]
 > 25 : Int
 > 42 : Int
 >   func : (C, D) -> [C]

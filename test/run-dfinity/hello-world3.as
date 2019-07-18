@@ -1,12 +1,12 @@
 let a = actor {
-  hello () {
+  public func hello() {
     print("Hello ");
   };
-  go () {
+  public func go() {
     hello();
     world();
   };
-  world () {
+  public func world() {
     print("World!\n");
   };
 };

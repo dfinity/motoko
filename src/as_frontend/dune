@@ -1,9 +1,10 @@
 (library
   (name as_frontend)
-  (libraries lib lang_utils as_types as_values)
+  (libraries lib lang_utils as_def as_types as_values)
 )
 (menhir
   (modules parser)
+  (flags -v)
   (infer false)
 )
 (ocamllex lexer)

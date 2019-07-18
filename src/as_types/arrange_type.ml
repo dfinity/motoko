@@ -3,18 +3,18 @@ open Wasm.Sexpr
 
 let ($$) head inner = Node (head, inner)
 
-let sharing sh = match sh with
-  | Local -> "Local"
-  | Sharable -> "Sharable"
-
 let control c = match c with
   | Returns -> "Returns"
   | Promises -> "Promises"
 
 let obj_sort s = match s with
-  | Object sh -> Atom ("Object " ^ sharing sh)
+  | Object -> Atom "Object"
   | Actor -> Atom "Actor"
   | Module -> Atom "Module"
+
+let func_sort s = match s with
+  | Local -> "Local"
+  | Shared -> "Shared"
 
 let prim p = match p with
   | Null -> Atom "Null"
@@ -49,11 +49,10 @@ let rec typ (t:Type.typ) = match t with
   | Opt t                  -> "Opt" $$ [typ t]
   | Variant tfs            -> "Variant" $$ List.map typ_field tfs
   | Tup ts                 -> "Tup" $$ List.map typ ts
-  | Func (s, c, tbs, at, rt) -> "Func" $$ [Atom (sharing s); Atom (control c)] @ List.map typ_bind tbs @ [ "" $$ (List.map typ at); "" $$ (List.map typ rt)]
+  | Func (s, c, tbs, at, rt) -> "Func" $$ [Atom (func_sort s); Atom (control c)] @ List.map typ_bind tbs @ [ "" $$ (List.map typ at); "" $$ (List.map typ rt)]
   | Async t               -> "Async" $$ [typ t]
   | Mut t                 -> "Mut" $$ [typ t]
   | Serialized t          -> "Serialized" $$ [typ t]
-  | Shared                -> Atom "Shared"
   | Any                   -> Atom "Any"
   | Non                   -> Atom "Non"
   | Pre                   -> Atom "Pre"

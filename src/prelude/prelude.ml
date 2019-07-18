@@ -2,7 +2,6 @@ let prelude =
 {|
 type Any = prim "Any";
 type None = prim "None";
-type Shared = prim "Shared";
 type Null = prim "Null";
 type Bool = prim "Bool";
 type Nat = prim "Nat";
@@ -30,14 +29,57 @@ func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 func ignore(_ : Any) {};
 
 class range(x : Nat, y : Nat) {
-  private var i = x;
-  next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
+  var i = x;
+  public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
 };
 
 class revrange(x : Nat, y : Nat) {
-  private var i = x + 1;
-  next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
+  var i = x + 1;
+  public func next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
 };
+
+// Implementations for overloaded dot operations
+// Note that these return functions!
+// (Some optimizations in the backend might be feasible.)
+
+func @immut_array_get<A>(xs : [A]) : (Nat -> A) =
+  (func (n : Nat) : A = xs[n]);
+func @mut_array_get<A>(xs : [var A]) : (Nat -> A) =
+  (func (n : Nat) : A = xs[n]);
+func @immut_array_len<A>(xs : [A]) : (() -> Nat) =
+  (func () : Nat = (prim "array_len" : ([A]) -> Nat) xs);
+func @mut_array_len<A>(xs : [var A]) : (() -> Nat) =
+  (func () : Nat = (prim "array_len" : ([var A]) -> Nat) xs);
+func @mut_array_set<A>(xs : [var A]) : ((Nat, A) -> ()) =
+  (func (n : Nat, x : A) = (xs[n] := x));
+func @immut_array_keys<A>(xs : [A]) : (() -> Iter<Nat>) =
+  (func () : Iter<Nat> = object {
+    var i = 0;
+    let l = xs.len();
+    public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  });
+func @mut_array_keys<A>(xs : [var A]) : (() -> Iter<Nat>) =
+  (func () : Iter<Nat> = object {
+    var i = 0;
+    let l = xs.len();
+    public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  });
+func @immut_array_vals<A>(xs : [A]) : (() -> Iter<A>) =
+  (func () : Iter<A> = object {
+    var i = 0;
+    let l = xs.len();
+    public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
+  });
+func @mut_array_vals<A>(xs : [var A]) : (() -> Iter<A>) =
+  (func () : Iter<A> = object {
+    var i = 0;
+    let l = xs.len();
+    public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
+  });
+func @text_len(xs : Text) : (() -> Nat) =
+  (func () : Nat = (prim "text_len" : Text -> Nat) xs);
+func @text_chars(xs : Text) : (() -> Iter<Char>) =
+  (func () : Iter<Char> = (prim "text_chars" : Text -> Iter<Char>) xs);
 
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
@@ -65,8 +107,8 @@ func hashInt(x : Int) : Word32 {
   return hash;
 };
 
-// Conversions
 
+// Conversions
 
 func int64ToInt(n : Int64) : Int = (prim "Int64->Int" : Int64 -> Int) n;
 func intToInt64(n : Int) : Int64 = (prim "Int->Int64" : Int -> Int64) n;
@@ -147,6 +189,7 @@ func popcntWord64(w : Word64) : Word64 = (prim "popcnt64" : Word64 -> Word64) w;
 func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
 func ctzWord64(w : Word64) : Word64 = (prim "ctz64" : Word64 -> Word64) w;
 func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, Word64) -> Word64) (w, amount) != (0 : Word64);
+
 
 // Internal helper functions for the show translation
 
@@ -250,6 +293,7 @@ func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
   return text;
 };
 
+
 // Array utilities
 
 // This would be nicer as a objects, but lets do them as functions
@@ -262,33 +306,36 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
 
-type Cont<T <: Shared> = T -> () ;
-type Async<T <: Shared> = Cont<T> -> ();
+type Cont<T> = T -> () ;
+type Async<T> = Cont<T> -> ();
 
-func @new_async<T <: Shared>():(Async<T>, Cont<T>) {
-  let empty = func k (t:T) = ();
+func @new_async<T <: Any>() : (Async<T>, Cont<T>) {
+  let empty = func(t : T) {};
   var result : ?T = null;
   var ks : T -> () = empty;
-  func fulfill(t:T):() {
-    switch(result) {
+
+  func fulfill(t : T) {
+    switch result {
       case null {
         result := ?t;
         let ks_ = ks;
         ks := empty;
         ks_(t);
       };
-      case (?t) (assert(false));
-      };
-    };
-  func enqueue(k:Cont<T>):() {
-    switch(result) {
-      case null {
-        let ks_ = ks;
-        ks := (func (t:T) {ks_(t);k(t);});
-      };
-      case (?t) (k(t));
+      case (?t) { assert false };
     };
   };
-  (enqueue,fulfill)
+
+  func enqueue(k : Cont<T>) {
+    switch result {
+      case null {
+        let ks_ = ks;
+        ks := (func(t : T) { ks_(t); k(t) });
+      };
+      case (?t) { k(t) };
+    };
+  };
+
+  (enqueue, fulfill)
 };
 |}

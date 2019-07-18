@@ -1,11 +1,9 @@
-switch "duplicate field names" {
-  case { len = l; chars; len } {
-    for (x in chars()) { printInt (l()); }
-  }
+let o = new {a = 1; b = 2};
+
+switch o {
+  case {a = x; b; a} {}
 };
 
-switch "duplicate bindings" {
-  case { len; chars = len } {
-    printInt (len())
-  }
+switch o {
+  case {a; b = a} {}
 };

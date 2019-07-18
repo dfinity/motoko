@@ -1,6 +1,6 @@
 open As_types
 open As_values
-open As_ir
+open Ir_def
 
 module V = Value
 module T = Type

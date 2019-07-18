@@ -1,6 +1,6 @@
 type List<T> = ?{head : T; var tail : List<T>};
 
-type Subscription = shared {
+type Subscription = {
   post : shared Text -> ();  // revokable by Server
   cancel : shared () -> ();
 };
@@ -12,10 +12,10 @@ type ClientData = {
 };
 
 actor class Server() = {
-  private var nextId : Nat = 0;
-  private var clients : List<ClientData> = null;
+  var nextId : Nat = 0;
+  var clients : List<ClientData> = null;
 
-  private broadcast(id : Nat, message : Text) {
+  func broadcast(id : Nat, message : Text) {
     var next = clients;
     label sends loop {
       switch next {
@@ -28,20 +28,20 @@ actor class Server() = {
     };
   };
 
-  subscribe(aclient : Client) : async Subscription {
+  public func subscribe(aclient : Client) : async Subscription {
     let c = new {id = nextId; client = aclient; var revoked = false};
     nextId += 1;
     let cs = new {head = c; var tail = clients};
     clients := ?cs;
-    return (shared {
-      post = shared func(message : Text) {
+    return object {
+      public shared func post(message : Text) {
         if (not c.revoked) broadcast(c.id, message);
       };
-      cancel = shared func() { unsubscribe(c.id) };
-    });
+      public shared func cancel() { unsubscribe(c.id) };
+    };
   };
 
-  private unsubscribe(id : Nat) {
+  func unsubscribe(id : Nat) {
     var prev : List<ClientData> = null;
     var next = clients;
     loop {
@@ -66,10 +66,10 @@ actor class Server() = {
 
 actor class Client() = this {
   // TODO: these should be constructor params once we can compile them
-  private var name : Text = "";
-  private var server : ?Server  = null;
+  var name : Text = "";
+  var server : ?Server  = null;
 
-  go(n : Text, s : Server) {
+  public func go(n : Text, s : Server) {
     name := n;
     server := ?s;
     ignore(async {
@@ -80,7 +80,7 @@ actor class Client() = this {
     })
   };
 
-  send(msg : Text) {
+  public func send(msg : Text) {
     print(name # " received " # msg # "\n");
   };
 };

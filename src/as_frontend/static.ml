@@ -10,6 +10,8 @@ some kind of beta-reduction, and can actually cause loops, but are required to
 allow re-exporting names in modules.
 *)
 
+open As_def
+
 open Source
 open Syntax
 

@@ -3,6 +3,8 @@
 open Syntax
 open Source
 
+module Uint32 = Lib.Uint32
+
 (* Position handling *)
 
 let position_to_pos position =
@@ -34,28 +36,29 @@ let get_func_mode m = List.assoc m func_modes
 let hash = IdlHash.idl_hash
 
 let record_fields fs =
+  let open Uint32 in
   let rec go start fs =
     match fs with
     | [] -> []
     | hd :: tl ->
        let field = hd start in
-       let next = Int32.succ field.it.id in
+       let next = succ field.it.id in
        field :: (go next tl)
-  in go 0l fs
+  in go zero fs
 %}
 
 %token EOF
 
 %token LPAR RPAR LCURLY RCURLY
 %token ARROW
-%token FUNC TYPE SERVICE
+%token FUNC TYPE SERVICE IMPORT
 %token SEMICOLON COMMA COLON EQ
 %token OPT VEC RECORD VARIANT BLOB
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
 
-%start<Syntax.prog> parse_prog
+%start<string -> Syntax.prog> parse_prog
 
 %%
 
@@ -89,21 +92,21 @@ ref_typ :
 
 field_typ :
   | n=NAT COLON t=data_typ
-    { { id = Int32.of_string n; name = n @@ at $loc(n); typ = t } @@ at $sloc }
+    { { id = Uint32.of_string n; name = n @@ at $loc(n); typ = t } @@ at $sloc }
   | name=name COLON t=data_typ
     { { id = hash name.it; name = name; typ = t } @@ at $sloc }
 
 record_typ :
   | f=field_typ { fun _ -> f }
   | t=data_typ
-    { fun x -> { id = x; name = Int32.to_string x @@ no_region; typ = t } @@ at $sloc }
+    { fun x -> { id = x; name = Uint32.to_string x @@ no_region; typ = t } @@ at $sloc }
 
 variant_typ :
   | f=field_typ { f }
   | name=name
     { { id = hash name.it; name = name; typ = PrimT Null @@ no_region } @@ at $sloc }
   | n=NAT
-    { { id = Int32.of_string n; name = n @@ at $loc(n); typ = PrimT Null @@ no_region } @@ at $sloc }
+    { { id = Uint32.of_string n; name = n @@ at $loc(n); typ = PrimT Null @@ no_region } @@ at $sloc }
 
 record_typs :
   | LCURLY fs=seplist(record_typ, SEMICOLON) RCURLY
@@ -155,6 +158,9 @@ actor_typ :
 def :
   | TYPE x=id EQ t=data_typ
     { TypD(x, t) @@ at $sloc }
+  (* TODO enforce all imports to go first in the type definitions  *)
+  | IMPORT file=TEXT
+    { ImportD (file, ref "") @@ at $sloc }
 
 actor :
   | (* empty *) { None }
@@ -166,6 +172,7 @@ actor :
 (* Programs *)
 
 parse_prog :
-  | ds=seplist(def, SEMICOLON) actor=actor EOF { {decs=ds; actor=actor} @@ at $sloc }
+  | ds=seplist(def, SEMICOLON) actor=actor EOF
+    { fun filename -> { it = {decs=ds; actor=actor}; at = at $sloc; note = filename} }
 
 %%

@@ -1,4 +1,0 @@
-(library
-  (name as_ir)
-  (libraries lib as_types as_values)
-)

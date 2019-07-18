@@ -1,8 +1,12 @@
+open As_def
 open As_frontend
 open As_types
 open As_values
-open As_ir
-open Interpreter
+open As_interpreter
+open Ir_def
+open Ir_interpreter
+open Ir_passes
+
 open Printf
 
 type stat_env = Scope.t
@@ -19,6 +23,7 @@ module Flags = struct
   let dump_tc = ref false
   let dump_lowering = ref false
   let check_ir = ref true
+  let package_urls : (string * string) list ref = ref []
   let profile = ref false
   let profile_verbose = ref false
   let profile_file = ref "profiling-counters.csv"
@@ -124,7 +129,7 @@ type resolve_result = (Syntax.prog * Resolve_import.S.t) Diag.result
 let resolve_prog (prog, base) : resolve_result =
   Diag.map
     (fun libraries -> (prog, libraries))
-    (Resolve_import.resolve prog base)
+    (Resolve_import.resolve !Flags.package_urls prog base)
 
 let resolve_progs =
   Diag.traverse resolve_prog
@@ -216,7 +221,7 @@ let chase_imports senv0 imports : (Syntax.libraries * Scope.scope) Diag.result =
       pending := add f !pending;
       Diag.bind (parse_file f) (fun (prog, base) ->
       Diag.bind (Static.prog prog) (fun () ->
-      Diag.bind (Resolve_import.resolve prog base) (fun more_imports ->
+      Diag.bind (Resolve_import.resolve !Flags.package_urls prog base) (fun more_imports ->
       Diag.bind (go_set more_imports) (fun () ->
       Diag.bind (typecheck_library !senv f prog) (fun sscope ->
       Diag.bind (defindeness_prog prog) (fun () ->
@@ -438,19 +443,19 @@ let desugar env lib_env libraries progs name =
   prog_ir'
 
 let await_lowering =
-  transform_if "Await Lowering" (fun _ -> Ir_passes.Await.transform)
+  transform_if "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering =
-  transform_if "Async Lowering" Ir_passes.Async.transform
+  transform_if "Async Lowering" Async.transform
 
 let serialization =
-  transform_if "Synthesizing serialization code" Ir_passes.Serialization.transform
+  transform_if "Synthesizing serialization code" Serialization.transform
 
 let tailcall_optimization =
-  transform_if "Tailcall optimization" (fun _ -> Ir_passes.Tailcall.transform)
+  transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
 
 let show_translation =
-  transform_if "Translate show" Ir_passes.Show.transform
+  transform_if "Translate show" Show.transform
 
 
 (* Compilation *)
@@ -518,7 +523,7 @@ let interpret_ir_prog inp_env libraries progs =
   let name = name_progs progs in
   let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
-  let open Ir_interpreter.Interpret_ir in
+  let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
   let denv0 = empty_scope in
   let dscope = interpret_prog flags denv0 prelude_ir in

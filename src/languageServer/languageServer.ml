@@ -16,6 +16,14 @@ let response_result_message (id : int) (result : Lsp_t.response_result) : Lsp_t.
   { response_message_jsonrpc = jsonrpc_version;
     response_message_id = id;
     response_message_result = Some result;
+    response_message_error = None;
+  }
+
+let response_error_message (id : int) (error : Lsp_t.response_error) : Lsp_t.response_message = Lsp_t.
+  { response_message_jsonrpc = jsonrpc_version;
+    response_message_id = id;
+    response_message_result = None;
+    response_message_error = Some error;
   }
 
 (* let response_error_message (id : int) (error : Lsp_t.response_error) : Lsp_t.response_message = *)
@@ -81,6 +89,18 @@ let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
   }
 
 let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
+let file_from_uri logger uri =
+  match Lib.String.chop_prefix file_uri_prefix uri with
+   | Some file -> file
+   | None ->
+      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
+      uri
+let abs_file_from_uri logger uri =
+  match Lib.String.chop_prefix "file://" uri with
+   | Some file -> file
+   | None ->
+      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
+      uri
 
 let start () =
   let oc: out_channel = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"; in
@@ -91,6 +111,9 @@ let start () =
   let show_message = Channel.show_message oc in
 
   let client_capabilities = ref None in
+  let project_root = Sys.getcwd () in
+
+  let vfs = ref Vfs.empty in
 
   let rec loop () =
     let clength = read_line () in
@@ -117,11 +140,26 @@ let start () =
     (* Request messages *)
 
     | (Some id, `Initialize params) ->
-        client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
+       client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
+       let completion_options =
+         Lsp_t.{
+             completion_options_resolveProvider = Some false;
+             completion_options_triggerCharacters = Some ["."] } in
+       let text_document_sync_options =
+         Lsp_t.{
+             text_document_sync_options_openClose = Some true;
+             text_document_sync_options_change = Some 1;
+             text_document_sync_options_willSave = Some false;
+             text_document_sync_options_willSaveWaitUntil = Some false;
+             text_document_sync_options_save = Some {
+                 save_options_includeText = Some true
+               }
+         } in
         let result = `Initialize (Lsp_t.{
           initialize_result_capabilities = {
-            server_capabilities_textDocumentSync = 1;
-            server_capabilities_hoverProvider = Some true;
+            server_capabilities_textDocumentSync = text_document_sync_options;
+            server_capabilities_hoverProvider = Some false;
+            server_capabilities_completionProvider = Some completion_options;
           }
         }) in
         let response = response_result_message id result in
@@ -130,44 +168,66 @@ let start () =
     | (Some id, `TextDocumentHover params) ->
         let position = params.Lsp_t.text_document_position_params_position in
         let textDocument = params.Lsp_t.text_document_position_params_textDocument in
-        let result = `TextDocumentHoverResponse (Lsp_t. {
+        let result = `TextDocumentHoverResponse (Some Lsp_t. {
           hover_result_contents = "hovered over: " ^ textDocument.text_document_identifier_uri
             ^ " " ^ string_of_int position.position_line
             ^ ", " ^ string_of_int position.position_character
         }) in
         let response = response_result_message id result in
         send_response (Lsp_j.string_of_response_message response);
-
+    | (_, `TextDocumentDidOpen params) ->
+       vfs := Vfs.open_file params !vfs
+    | (_, `TextDocumentDidChange params) ->
+       vfs := Vfs.update_file params !vfs
+    | (_, `TextDocumentDidClose params) ->
+       vfs := Vfs.close_file params !vfs
     | (_, `TextDocumentDidSave params) ->
        let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
-       (match Base.String.chop_prefix ~prefix:file_uri_prefix uri with
-        | Some file_name -> begin
-           let result = Pipeline.check_files [file_name] in
-           show_message Lsp.MessageType.Info ("Compiling file: " ^ file_name);
-          let msgs = match result with
-            | Error msgs' -> msgs'
-            | Ok (_, msgs') -> msgs' in
-          Base.Option.iter !client_capabilities ~f:(fun capabilities ->
-            (* TODO: determine if the client accepts diagnostics with related info *)
-            (* let textDocument = capabilities.client_capabilities_textDocument in
-            * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
-            let diags = List.map diagnostics_of_message msgs in
-            publish_diagnostics uri diags;
-          );
-          end
-        | None ->
-           log_to_file
-             "error"
-             ("Failed to strip filename from: " ^ uri));
+       let file_name = file_from_uri log_to_file uri in
+       let result = Pipeline.check_files [file_name] in
+       show_message Lsp.MessageType.Info ("Compiling file: " ^ file_name);
+       let msgs = match result with
+         | Error msgs' -> msgs'
+         | Ok (_, msgs') -> msgs' in
+       Lib.Fun.flip Lib.Option.iter !client_capabilities (fun _ ->
+           (* TODO: determine if the client accepts diagnostics with related info *)
+           (* let textDocument = capabilities.client_capabilities_textDocument in
+           * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
+           let diags = List.map diagnostics_of_message msgs in
+           publish_diagnostics uri diags;
+         );
 
     (* Notification messages *)
 
     | (None, `Initialized _) ->
        show_message Lsp.MessageType.Info "Language server initialized"
 
+    | (Some id, `CompletionRequest params) ->
+       let uri =
+         params
+           .Lsp_t.text_document_position_params_textDocument
+           .Lsp_t.text_document_identifier_uri in
+       let position =
+         params.Lsp_t.text_document_position_params_position in
+       let response = match Vfs.read_file uri !vfs with
+         | None ->
+            response_error_message
+              id
+              Lsp_t.{ code = 1
+                    ; message = "Tried to find completions for a file that hadn't been opened yet"}
+         | Some file_content ->
+            Completion.completion_handler
+              log_to_file
+              project_root
+              (abs_file_from_uri log_to_file uri)
+              file_content
+              position
+            |> response_result_message id in
+       response
+       |> Lsp_j.string_of_response_message
+       |> send_response
     (* Unhandled messages *)
-
     | _ ->
       log_to_file "unhandled message" raw;
     );

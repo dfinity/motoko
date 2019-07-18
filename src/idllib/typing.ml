@@ -3,7 +3,7 @@ open Source
 open Arrange_idl
 
 (* Environments *)
-module FieldEnv = Env.Make(Int32)
+module FieldEnv = Env.Make(Lib.Uint32)
 module Env = Env.Make(String)
 module TS = Set.Make(String)           
            
@@ -61,8 +61,7 @@ let disjoint_union env at fmt env1 env2 =
   with Env.Clash k -> error env at fmt k
 
 (* Types *)
-
-let compare_field (f1: typ_field) (f2: typ_field) = compare f1.it.id f2.it.id
+let compare_field (f1: typ_field) (f2: typ_field) = Lib.Uint32.compare f1.it.id f2.it.id
 let compare_meth (m1: typ_meth) (m2: typ_meth) = compare m1.it.var m2.it.var
 let find_type env id =
   match Env.find_opt id.it env.typs with
@@ -159,14 +158,15 @@ and check_def env dec =
   | TypD (id, t) ->
      let t' = check_typ env t in
      Env.singleton id.it t'
+  | ImportD _ -> Env.empty
 
 and check_defs env decs =
-  let _, te =
-    List.fold_left (fun (env, te) dec ->
+  let env' =
+    List.fold_left (fun env dec ->
         let te' = check_def env dec in
-        adjoin env te', Env.adjoin te te'
-      ) (env, Env.empty) decs
-  in te
+        adjoin env te'
+      ) env decs
+  in env'.typs
 
 and check_decs env decs =
   let pre_env = adjoin env (gather_decs env decs) in
@@ -175,15 +175,13 @@ and check_decs env decs =
   check_cycle env;
   check_defs {env with pre = false} decs
     
-and gather_id dec =
-  match dec.it with
-  | TypD (id, _) -> id
-
 and gather_decs env decs =
   List.fold_left (fun te dec ->
-      let id = gather_id dec in
-      let te' = Env.singleton id.it (PreT @@ id.at) in
-      disjoint_union env id.at "duplicate binding for %s in type definitions" te te'
+      match dec.it with
+      | TypD (id, _) ->
+         let te' = Env.singleton id.it (PreT @@ id.at) in
+         disjoint_union env id.at "duplicate binding for %s in type definitions" te te'
+      | ImportD _ -> te
     ) env.typs decs
 
 (* Actor *)

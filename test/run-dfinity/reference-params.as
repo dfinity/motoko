@@ -1,5 +1,5 @@
 let a = actor {
-  hello() {
+  public func hello() {
     print("Hello World!\n");
   };
 };
@@ -7,7 +7,7 @@ a.hello();
 
 // test passing an actor to an actor
 let b = actor this {
-  say_hi(a : actor { hello : () -> () } ) {
+  public func say_hi(a : actor { hello : () -> () } ) {
     a.hello();
   };
 };
@@ -15,7 +15,7 @@ b.say_hi(a);
 
 // test passing a funcref to an actor
 let c = actor {
-  say_hi(f : shared () -> ()) {
+  public func say_hi(f : shared () -> ()) {
     f();
   };
 };
@@ -23,13 +23,13 @@ c.say_hi(a.hello);
 
 // test passing a own funcref to an actor
 let d = actor {
-  say_hi(f : shared () -> ()) {
+  public func say_hi(f : shared () -> ()) {
     f();
   };
-  hello() {
+  public func hello() {
     print("Hello Universe!\n");
   };
-  go() {
+  public func go() {
     say_hi(hello);
   }
 };
@@ -37,10 +37,10 @@ d.go();
 
 // test passing a self to an actor
 let e = actor this {
-  hello() {
+  public func hello() {
     print("Hello Galaxy!\n");
   };
-  send_to(f : shared (actor { hello : () -> () }) -> ()) {
+  public func send_to(f : shared (actor { hello : () -> () }) -> ()) {
     f(this);
   }
 };

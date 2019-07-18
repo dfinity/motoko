@@ -1,14 +1,18 @@
 const A = IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat})
 const B =
  IDL.Obj({'0': IDL.Arr(IDL.Nat8), '35': IDL.Arr(IDL.Nat8), '36': IDL.Nat,
-  '37': IDL.Nat, 'named_files': IDL.None, '-665008590': IDL.Nat,
-  '-665008589': IDL.Nat})
+  '37': IDL.Nat, 'named_files': IDL.None, '3629958706': IDL.Nat,
+  '3629958707': IDL.Nat})
 const C =
- IDL.Variant({'red': IDL.Unit, '4': IDL.Unit, '3': IDL.Unit, '2': IDL.Unit,
-  '1': IDL.Unit, 'reserved': IDL.Unit, '10': IDL.Unit, 'green': IDL.Unit,
-  'blue': IDL.Unit, 'A': IDL.Unit, 'B': IDL.Unit, 'C': IDL.Unit})
+ IDL.Variant({'1': IDL.Unit, '2': IDL.Unit, '3': IDL.Unit, '4': IDL.Unit,
+  '10': IDL.Unit, 'A': IDL.Unit, 'B': IDL.Unit, 'C': IDL.Unit,
+  'red': IDL.Unit, 'blue': IDL.Unit, 'reserved': IDL.Unit, 'green': IDL.Unit
+  })
 const nest_record =
  IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat,
   '3': IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat}), '4': IDL.Nat,
   '5': IDL.Nat, '6': IDL.Nat, '7': A, '8': B, '9': C, '10': IDL.Nat})
-
+const S = new IDL.ActorInterface({
+ 'f':
+  IDL.message(IDL.Obj({'0': A, '1': B, '2': C, '3': nest_record}),
+   IDL.Obj({}))})

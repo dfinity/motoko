@@ -39,7 +39,7 @@ and typ' =
   | PreT   (* pre-type *)
 
 and typ_field = typ_field' Source.phrase
-and typ_field' = { id : int32; name : id; typ : typ }
+and typ_field' = { id : Lib.Uint32.t; name : id; typ : typ }
 
 and typ_meth = typ_meth' Source.phrase
 and typ_meth' = {var : id; meth : typ}
@@ -49,6 +49,7 @@ and typ_meth' = {var : id; meth : typ}
 and dec = dec' Source.phrase
 and dec' =
   | TypD of id * typ             (* type *)
+  | ImportD of string * string ref  (* import *)
 
 and actor = actor' Source.phrase
 and actor' = 
@@ -56,5 +57,6 @@ and actor' =
                
 (* Program *)
 
-type prog = prog' Source.phrase
+type prog = (prog', string) Source.annotated_phrase
 and prog' = { decs : dec list; actor : actor option }
+

@@ -237,7 +237,7 @@ let prim = function
                                in k (Text str)
   | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
   | "rts_version" -> fun v k -> as_unit v; k (Text "0.1")
-  | "idlHash" -> fun v k -> let s = as_text v in k (Word32 (Idllib.IdlHash.idl_hash s))
+  | "idlHash" -> fun v k -> let s = as_text v in k (Word32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))
   | "decodeUTF8" -> fun v k ->
                     let s = as_text v in
                     let open Int32 in
@@ -253,8 +253,19 @@ let prim = function
                     let nobbles = mapi (fun i f -> f i) (classify_utf8_leader (of_int (Char.code s.[0]))) in
                     let code = fold_left (fun acc nobble -> logor (shift_left acc 6) nobble) 0l nobbles in
                     k (Tup [Word32 (of_int (length nobbles)); Char (to_int code)])
-  | "@serialize" -> fun v k -> k (Serialized v)
-  | "@deserialize" -> fun v k -> k (as_serialized v)
+
+  | "array_len" -> fun v k ->
+    k (Int (Int.of_int (Array.length (Value.as_array v))))
+  | "text_len" -> fun v k ->
+    k (Int (Nat.of_int (List.length (Wasm.Utf8.decode (Value.as_text v)))))
+  | "text_chars" -> fun v k ->
+    let i = ref 0 in
+    let s = Wasm.Utf8.decode (Value.as_text v) in
+    let next = local_func 0 1 @@ fun v k' ->
+        if !i = List.length s then k' Null else
+          let v = Opt (Char (List.nth s !i)) in incr i; k' v
+    in k (Obj (Env.singleton "next" next))
+
   | "Array.init" -> fun v k ->
     (match Value.as_tup v with
     | [len; x] ->

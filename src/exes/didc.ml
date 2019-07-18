@@ -17,7 +17,7 @@ let add_arg source = args := !args @ [source]
 
 let set_mode m () =
   if !mode <> Default then begin
-    eprintf "asc: multiple execution modes specified"; exit 1
+    eprintf "didc: multiple execution modes specified"; exit 1
   end;
   mode := m
 
@@ -37,21 +37,14 @@ let argspec = Arg.align
 
 (* Main *)
 
-let exit_on_failure = function
-  | Ok x -> x
-  | Error errs ->
-    Diag.print_messages errs;
-    exit 1
-
-let process_files files : unit =
+let process_file file : unit =
   match !mode with
   | Default ->
      assert false
   | Check ->
-     let (_, msgs) = exit_on_failure (Pipeline.(check_file (List.hd files))) in
-     Diag.print_messages msgs
+     ignore (Diag.run (Pipeline.check_file file))
   | Js ->
-     let out = exit_on_failure (Pipeline.(compile_js_file (List.hd files))) in
+     let out = Diag.run Pipeline.(compile_js_file file) in
      Buffer.contents out |> print_endline
      
 let print_exn exn =
@@ -68,7 +61,9 @@ let () =
   Printexc.record_backtrace true;
   try
     Arg.parse argspec add_arg usage;
-    if !mode = Default then mode := Check;
-    process_files !args
+    if !mode = Default then mode := Js;
+    match !args with
+    | [file] -> process_file file
+    | _ -> eprintf "didc can only take one .did file\n"; exit 1
   with exn ->
     print_exn exn

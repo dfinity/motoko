@@ -1,4 +1,4 @@
-open As_ir
+open Ir_def
 open As_types
 open As_values
 (* Translates away calls to `show`. *)
@@ -64,20 +64,14 @@ and t_exp env (e : Ir.exp) =
   { e with it = t_exp' env e.it }
 
 and t_exp' env = function
-  | PrimE p -> PrimE p
   | LitE l -> LitE l
   | VarE id -> VarE id
-  | ShowE (ot, exp1) ->
+  | PrimE (ShowPrim ot, [exp1]) ->
     let t' = T.normalize ot in
     add_type env t';
     let f = idE (show_name_for t') (show_fun_typ_for t') in
     CallE (Call_conv.local_cc 1 1, f, [], t_exp env exp1)
-  | UnE (ot, op, exp1) ->
-    UnE (ot, op, t_exp env exp1)
-  | BinE (ot, exp1, op, exp2) ->
-    BinE (ot, t_exp env exp1, op, t_exp env exp2)
-  | RelE (ot, exp1, op, exp2) ->
-    RelE (ot, t_exp env exp1, op, t_exp env exp2)
+  | PrimE (p, es) -> PrimE (p, t_exps env es)
   | TupE exps -> TupE (t_exps env exps)
   | OptE exp1 ->
     OptE (t_exp env exp1)
@@ -253,7 +247,7 @@ let list_build : 'a -> 'a -> 'a -> 'a list -> 'a list = fun pre sep post xs ->
   in [ pre ] @ go xs
 
 let catE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
-  { it = BinE (T.Prim T.Text, e1, Operator.CatOp, e2)
+  { it = PrimE (BinPrim (T.text, Operator.CatOp), [e1; e2])
   ; at = no_region
   ; note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
   }
@@ -359,7 +353,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
       define_show t (invoke_text_of_array t' (show_var_for t') (argE t)),
       [t']
     end
-  | T.Obj (T.Object _, fs) ->
+  | T.Obj (T.Object, fs) ->
     define_show t (
       cat_list (list_build
         (textE "{") (textE "; ") (textE "}")

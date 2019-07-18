@@ -3,6 +3,7 @@
 module Fun :
 sig
   val id : 'a -> 'a
+  val flip : ('a -> 'b -> 'c) -> 'b -> 'a -> 'c
 
   val curry : ('a * 'b -> 'c) -> ('a -> 'b -> 'c)
   val uncurry : ('a -> 'b -> 'c) -> ('a * 'b -> 'c)
@@ -12,6 +13,7 @@ end
 
 module List :
 sig
+  val equal : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
   val make : int -> 'a -> 'a list
   val table : int -> (int -> 'a) -> 'a list
   val take : int -> 'a list -> 'a list (* raises Failure *)
@@ -68,11 +70,15 @@ end
 
 module Option :
 sig
+  val equal : ('a -> 'a -> bool) -> 'a option -> 'a option -> bool
   val get : 'a option -> 'a -> 'a
   val value : 'a option -> 'a
   val map : ('a -> 'b) -> 'a option -> 'b option
-  val app : ('a -> unit) -> 'a option -> unit
+  val some : 'a -> 'a option
+  val iter : ('a -> unit) -> 'a option -> unit
   val bind : 'a option -> ('a -> 'b option) -> 'b option
+  val is_some : 'a option -> bool
+  val is_none : 'a option -> bool
 end
 
 module Promise :
@@ -93,6 +99,27 @@ sig
   val is_power_of_two : int -> bool
 end
 
+module Uint32 :
+sig
+  type t
+  val to_string : t -> string
+  val of_string : string -> t
+  val of_int : int -> t
+  val to_int : t -> int
+  val of_int32 : int32 -> t
+  val to_int32 : t -> int32
+  val add : t -> t -> t
+  val sub : t -> t -> t
+  val mul : t -> t -> t
+  val succ : t -> t
+  val zero : t
+  val one : t
+  val compare : t -> t -> int
+  val logand : t -> t -> t
+  val logor : t -> t -> t
+  val shift_right_logical : t -> int -> t
+end
+     
 module String :
 sig
   val implode : char list -> string
@@ -100,4 +127,6 @@ sig
   val split : string -> char -> string list
   val breakup : string -> int -> string list
   val find_from_opt : (char -> bool) -> string -> int -> int option
+  val chop_prefix : string -> string -> string option
+  val chop_suffix : string -> string -> string option
 end

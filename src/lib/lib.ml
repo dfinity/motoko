@@ -1,6 +1,7 @@
 module Fun =
 struct
   let id x = x
+  let flip f x y = f y x
 
   let curry f x y = f (x, y)
   let uncurry f (x, y) = f x y
@@ -19,6 +20,30 @@ struct
   let is_power_of_two n =
     if n < 0 then failwith "is_power_of_two";
     n <> 0 && n land (n - 1) = 0
+end
+
+module Uint32 =
+struct
+  type t = int32
+  let of_string = Int32.of_string
+  let to_string n = Printf.sprintf "%lu" n
+  let add = Int32.add
+  let sub = Int32.sub
+  let mul = Int32.mul
+  let succ = Int32.succ
+  let zero = Int32.zero
+  let one = Int32.one
+  let of_int = Int32.of_int
+  let to_int = Int32.to_int
+  let logand = Int32.logand
+  let logor = Int32.logor
+  let shift_right_logical = Int32.shift_right_logical
+  let of_int32 x = x
+  let to_int32 x = x
+  let compare i1 i2 =
+    if i1 < 0l && i2 >= 0l then 1
+    else if i1 >= 0l && i2 < 0l then -1
+    else Int32.compare i1 i2
 end
 
 module String =
@@ -54,10 +79,33 @@ struct
       Some i
     else
       find_from_opt f s (i + 1)
+
+  let chop_prefix prefix s =
+    let prefix_len = String.length prefix in
+    let s_len = String.length s in
+    if s_len < prefix_len then
+      None
+    else if String.sub s 0 prefix_len = prefix then
+      Some (String.sub s prefix_len (s_len - prefix_len))
+    else
+      None
+
+  let chop_suffix suffix s =
+    let suffix_len = String.length suffix in
+    let s_len = String.length s in
+    if s_len < suffix_len then
+      None
+    else if String.sub s (s_len - suffix_len) suffix_len = suffix then
+      Some (String.sub s 0 (s_len - suffix_len))
+    else
+      None
 end
 
 module List =
 struct
+  let equal p xs ys =
+    try List.for_all2 p xs ys with _ -> false
+
   let rec make n x = make' n x []
   and make' n x xs =
     if n = 0 then xs else make' (n - 1) x (x::xs)
@@ -223,6 +271,12 @@ end
 
 module Option =
 struct
+  let equal p x y =
+    match x, y with
+    | Some x', Some y' -> p x' y'
+    | None, None -> true
+    | _, _ -> false
+
   let get o x =
     match o with
     | Some y -> y
@@ -236,13 +290,19 @@ struct
     | Some x -> Some (f x)
     | None -> None
 
-  let app f = function
+  let iter f = function
     | Some x -> f x
     | None -> ()
+
+  let some x = Some x
 
   let bind x f = match x with
     | Some x -> f x
     | None -> None
+
+  let is_some x = x <> None
+
+  let is_none x = x = None
 end
 
 module Promise =

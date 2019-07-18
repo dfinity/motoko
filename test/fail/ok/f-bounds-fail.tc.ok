@@ -1,13 +1,13 @@
 f-bounds-fail.as:13.42-13.43: type error, type argument
-  A/1
+  A/10
 does not match parameter bound
   C
-f-bounds-fail.as:14.43-14.44: type error, type argument
-  A/3
+f-bounds-fail.as:14.42-14.43: type error, type argument
+  A/12
 does not match parameter bound
   C/1
 f-bounds-fail.as:15.42-15.43: type error, type argument
-  A/5
+  A/14
 does not match parameter bound
   C/2
 f-bounds-fail.as:3.38-3.41: type error, type argument
@@ -15,78 +15,174 @@ f-bounds-fail.as:3.38-3.41: type error, type argument
 does not match parameter bound
   Nat
 f-bounds-fail.as:9.53-9.54: type error, expression of type
-  A/25
+  A/34
 cannot produce expected type
   C/12
 f-bounds-fail.as:10.52-10.53: type error, expression of type
-  A/26
+  A/35
 cannot produce expected type
   C/13
-f-bounds-fail.as:11.53-11.54: type error, expression of type
-  A/27
+f-bounds-fail.as:11.52-11.53: type error, expression of type
+  A/36
 cannot produce expected type
   C/14
-f-bounds-fail.as:23.15-23.16: type error, type argument
+f-bounds-fail.as:26.15-26.16: type error, type argument
   B/28
 does not match parameter bound
   C/15
-f-bounds-fail.as:31.17-31.18: type error, type argument
+f-bounds-fail.as:34.17-34.18: type error, type argument
   B/28
 does not match parameter bound
   C/15
-f-bounds-fail.as:39.19-39.20: type error, type argument
+f-bounds-fail.as:42.19-42.20: type error, type argument
   B/28
 does not match parameter bound
   C/15
-f-bounds-fail.as:44.27-44.28: type error, expression of type
-  A/28
+f-bounds-fail.as:47.23-47.25: type error, expression of type
+  ()
+cannot produce expected type
+  A/37 -> A/37
+f-bounds-fail.as:48.23-48.25: type error, expression of type
+  ()
+cannot produce expected type
+  A/37 -> B/28
+f-bounds-fail.as:49.23-49.25: type error, expression of type
+  ()
+cannot produce expected type
+  A/37 -> B/28
+f-bounds-fail.as:50.23-50.25: type error, expression of type
+  ()
+cannot produce expected type
+  B/28 -> B/28
+f-bounds-fail.as:51.23-51.25: type error, expression of type
+  ()
+cannot produce expected type
+  B/28 -> C/15
+f-bounds-fail.as:52.14-52.15: type error, type argument
+  B/28
+does not match parameter bound
+  C/15
+f-bounds-fail.as:52.23-52.25: type error, expression of type
+  ()
+cannot produce expected type
+  B/28 -> C/15
+f-bounds-fail.as:53.23-53.25: type error, expression of type
+  ()
+cannot produce expected type
+  C/15 -> C/15
+f-bounds-fail.as:55.23-55.25: type error, expression of type
+  ()
+cannot produce expected type
+  A/37 -> A/37
+f-bounds-fail.as:56.23-56.25: type error, expression of type
+  ()
+cannot produce expected type
+  A/37 -> B/28
+f-bounds-fail.as:57.23-57.25: type error, expression of type
+  ()
+cannot produce expected type
+  A/37 -> B/28
+f-bounds-fail.as:58.23-58.25: type error, expression of type
+  ()
+cannot produce expected type
+  B/28 -> B/28
+f-bounds-fail.as:59.23-59.25: type error, expression of type
+  ()
+cannot produce expected type
+  B/28 -> C/15
+f-bounds-fail.as:60.16-60.17: type error, type argument
+  B/28
+does not match parameter bound
+  C/15
+f-bounds-fail.as:60.23-60.25: type error, expression of type
+  ()
+cannot produce expected type
+  B/28 -> C/15
+f-bounds-fail.as:61.23-61.25: type error, expression of type
+  ()
+cannot produce expected type
+  C/15 -> C/15
+f-bounds-fail.as:63.23-63.25: type error, expression of type
+  ()
+cannot produce expected type
+  A/37 -> A/37
+f-bounds-fail.as:64.23-64.25: type error, expression of type
+  ()
+cannot produce expected type
+  A/37 -> B/28
+f-bounds-fail.as:65.23-65.25: type error, expression of type
+  ()
+cannot produce expected type
+  A/37 -> B/28
+f-bounds-fail.as:66.23-66.25: type error, expression of type
+  ()
+cannot produce expected type
+  B/28 -> B/28
+f-bounds-fail.as:67.23-67.25: type error, expression of type
+  ()
+cannot produce expected type
+  B/28 -> C/15
+f-bounds-fail.as:68.18-68.19: type error, type argument
+  B/28
+does not match parameter bound
+  C/15
+f-bounds-fail.as:68.23-68.25: type error, expression of type
+  ()
+cannot produce expected type
+  B/28 -> C/15
+f-bounds-fail.as:69.23-69.25: type error, expression of type
+  ()
+cannot produce expected type
+  C/15 -> C/15
+f-bounds-fail.as:72.27-72.28: type error, expression of type
+  A/37
 cannot produce expected type
   C/15
-f-bounds-fail.as:45.27-45.28: type error, expression of type
+f-bounds-fail.as:73.27-73.28: type error, expression of type
   B/28
 cannot produce expected type
   C/15
-f-bounds-fail.as:48.27-48.28: type error, expression of type
-  A/28
+f-bounds-fail.as:76.27-76.28: type error, expression of type
+  A/37
 cannot produce expected type
   C/15
-f-bounds-fail.as:49.27-49.28: type error, expression of type
+f-bounds-fail.as:77.27-77.28: type error, expression of type
   B/28
 cannot produce expected type
   C/15
-f-bounds-fail.as:51.27-51.28: type error, expression of type
+f-bounds-fail.as:79.27-79.28: type error, expression of type
   B/28
 cannot produce expected type
   C/15
-f-bounds-fail.as:54.23-54.24: type error, expression of type
-  A/28
+f-bounds-fail.as:82.23-82.24: type error, expression of type
+  A/37
 cannot produce expected type
   C/15
-f-bounds-fail.as:54.25-54.26: type error, expression of type
-  A/28
+f-bounds-fail.as:82.25-82.26: type error, expression of type
+  A/37
 cannot produce expected type
   C/15
-f-bounds-fail.as:54.27-54.28: type error, expression of type
-  A/28
+f-bounds-fail.as:82.27-82.28: type error, expression of type
+  A/37
 cannot produce expected type
   C/15
-f-bounds-fail.as:55.23-55.24: type error, expression of type
-  A/28
+f-bounds-fail.as:83.23-83.24: type error, expression of type
+  A/37
 cannot produce expected type
   C/15
-f-bounds-fail.as:55.25-55.26: type error, expression of type
-  A/28
+f-bounds-fail.as:83.25-83.26: type error, expression of type
+  A/37
 cannot produce expected type
   C/15
-f-bounds-fail.as:55.27-55.28: type error, expression of type
+f-bounds-fail.as:83.27-83.28: type error, expression of type
   B/28
 cannot produce expected type
   C/15
-f-bounds-fail.as:56.24-56.25: type error, expression of type
-  A/28
+f-bounds-fail.as:84.24-84.25: type error, expression of type
+  A/37
 cannot produce expected type
   C/15
-f-bounds-fail.as:56.26-56.27: type error, expression of type
+f-bounds-fail.as:84.26-84.27: type error, expression of type
   B/28
 cannot produce expected type
   C/15

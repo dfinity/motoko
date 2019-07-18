@@ -1,5 +1,5 @@
-open As_ir
-open As_frontend
+open Ir_def
+open As_def
 open As_types
 open As_values
 
@@ -7,7 +7,7 @@ open Source
 open Operator
 module S = Syntax
 module I = Ir
-module T = As_types.Type
+module T = Type
 open Construct
 
 (*
@@ -27,8 +27,7 @@ let falseE : Ir.exp = boolE false
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
-  | NegOp, NatLit n -> NatLit (Value.Nat.sub Value.Nat.zero n)
-  | NegOp, IntLit n -> IntLit (Value.Int.sub Value.Int.zero n)
+  | NegOp, (NatLit n | IntLit n) -> IntLit (Value.Int.sub Value.Int.zero n)
   | NegOp, Int8Lit n -> Int8Lit (Value.Int_8.sub Value.Int_8.zero n)
   | NegOp, Int16Lit n -> Int16Lit (Value.Int_16.sub Value.Int_16.zero n)
   | NegOp, Int32Lit n -> Int32Lit (Value.Int_32.sub Value.Int_32.zero n)
@@ -57,39 +56,50 @@ and exp e =
     | _ -> typed_phrase' exp' e
 
 and exp' at note = function
-  | S.PrimE p -> I.PrimE p
   | S.VarE i -> I.VarE i.it
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
-    I.UnE (!ot, o, exp e)
+    I.PrimE (I.UnPrim (!ot, o), [exp e])
   | S.BinE (ot, e1, o, e2) ->
-    I.BinE (!ot, exp e1, o, exp e2)
+    I.PrimE (I.BinPrim (!ot, o), [exp e1; exp e2])
   | S.RelE (ot, e1, o, e2) ->
-    I.RelE (!ot, exp e1, o, exp e2)
+    I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
-    I.ShowE (!ot, exp e)
+    I.PrimE (I.ShowPrim !ot, [exp e])
   | S.TupE es -> I.TupE (exps es)
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, es) ->
     obj at s None es note.I.note_typ
   | S.TagE (c, e) -> I.TagE (c.it, exp e)
+  | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
+    (array_dotE e.note.S.note_typ x.it (exp e)).it
+  | S.DotE (e, x) when T.is_prim T.Text e.note.S.note_typ ->
+    (text_dotE  x.it (exp e)).it
   | S.DotE (e, x) ->
-    let n = x.it in
-    begin match T.as_obj_sub x.it e.note.S.note_typ with
-    | T.Actor, _ -> I.ActorDotE (exp e, n)
-    | _ -> I.DotE (exp e, n)
+    begin match T.as_obj_sub [x.it] e.note.S.note_typ with
+    | T.Actor, _ -> I.ActorDotE (exp e, x.it)
+    | _ -> I.DotE (exp e, x.it)
     end
   | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
   | S.ArrayE (m, es) ->
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
-  | S.FuncE (name, s, tbs, p, ty, e) ->
+  | S.FuncE (name, s, tbs, p, ty_opt, e) ->
     let cc = Call_conv.call_conv_of_typ note.I.note_typ in
     let args, wrap = to_args cc p in
-    let tys = if cc.Call_conv.n_res = 1 then [ty.note] else T.as_seq ty.note in
-    I.FuncE (name, cc, typ_binds tbs, args, tys, wrap (exp e))
+    let _, _, _, ty = T.as_func_sub s.it (List.length tbs) note.I.note_typ in
+    let tbs' = typ_binds tbs in
+    let vars = List.map (fun (tb : I.typ_bind) -> T.Free tb.it.I.con) tbs' in
+    let ty = T.open_ vars ty in
+    let tys = if cc.Call_conv.n_res = 1 then [ty] else T.as_seq ty in
+    I.FuncE (name, cc, tbs', args, tys, wrap (exp e))
+  (* Primitive functions in the prelude have particular shapes *)
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
+    I.PrimE (I.OtherPrim p, exps es)
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
+    I.PrimE (I.OtherPrim p, [exp e])
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in
     if T.is_non t
@@ -120,6 +130,7 @@ and exp' at note = function
   | S.ImportE (f, fp) ->
     if !fp = "" then assert false; (* unresolved import *)
     I.VarE (id_of_full_path !fp).it
+  | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
@@ -127,7 +138,7 @@ and mut m = match m.it with
 
 and obj at s self_id es obj_typ =
   match s.it with
-  | T.Object _ | T.Module -> build_obj at s self_id es obj_typ
+  | T.Object | T.Module -> build_obj at s self_id es obj_typ
   | T.Actor -> build_actor at self_id es obj_typ
 
 and build_field {T.lab; T.typ} =
@@ -174,6 +185,40 @@ and typ_bind tb =
   ; at = tb.at
   ; note = ()
   }
+
+and array_dotE array_ty proj e =
+  let fun_ty bs t1 t2 = T.Func (T.Local, T.Returns, bs, t1, t2) in
+  let varA = T.Var ("A", 0) in
+  let element_ty = T.as_immut (T.as_array array_ty) in
+  let call name t1 t2 =
+    let poly_array_ty =
+      if T.is_mut (T.as_array array_ty)
+      then T.Array (T.Mut varA)
+      else T.Array varA in
+    let ty_param = {T.var = "A"; T.bound = T.Any} in
+    let f = idE name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
+    callE f [element_ty] e in
+  match T.is_mut (T.as_array array_ty), proj with
+    | true,  "len"  -> call "@mut_array_len"    [] [T.nat]
+    | false, "len"  -> call "@immut_array_len"  [] [T.nat]
+    | true,  "get"  -> call "@mut_array_get"    [T.nat] [varA]
+    | false, "get"  -> call "@immut_array_get"  [T.nat] [varA]
+    | true,  "set"  -> call "@mut_array_set"    [T.nat; varA] []
+    | true,  "keys" -> call "@mut_array_keys"   [] [T.iter_obj T.nat]
+    | false, "keys" -> call "@immut_array_keys" [] [T.iter_obj T.nat]
+    | true,  "vals" -> call "@mut_array_vals"   [] [T.iter_obj varA]
+    | false, "vals" -> call "@immut_array_vals" [] [T.iter_obj varA]
+    | _, _ -> assert false
+
+and text_dotE proj e =
+  let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
+  let call name t1 t2 =
+    let f = idE name (fun_ty [T.text] [fun_ty t1 t2]) in
+    callE f [] e in
+  match proj with
+    | "len"   -> call "@text_len"   [] [T.nat]
+    | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
+    |  _ -> assert false
 
 and block force_unit ds =
   let extra = extra_typDs ds in
@@ -342,7 +387,7 @@ and to_args cc p : (Ir.arg list * (Ir.exp -> Ir.exp)) =
   in
 
   let wrap_under_async e =
-    if cc.Call_conv.sort = T.Sharable && cc.Call_conv.control = T.Promises
+    if cc.Call_conv.sort = T.Shared && cc.Call_conv.control = T.Promises
     then match e.it with
       | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
       | _ -> assert false

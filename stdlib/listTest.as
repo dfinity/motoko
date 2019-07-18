@@ -1,5 +1,5 @@
 type X = Nat;
-let List = import "list.as";
+import List "list.as";
 
   func opnatEq(a : ?Nat, b : ?Nat) : Bool {
     switch (a, b) {
