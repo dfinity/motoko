@@ -218,7 +218,7 @@ actor class Server() = {
     };
   };
 
-  func subscribe(name : Text, client : Client) : async Post {
+  public func subscribe(name : Text, client : Client) : async Post {
     clients := List.cons(client, clients);
     return shared func(msg) { broadcast(name # "> " # msg) };
   };
@@ -226,7 +226,7 @@ actor class Server() = {
 
 
 actor class Client(name : Text, server : Server) = this {
-  func go() {
+  public func go() {
     ignore(async {
       let post = await s.subscribe(name, this);
       post("hello");
@@ -234,7 +234,7 @@ actor class Client(name : Text, server : Server) = this {
     });
   };
 
-  func send(msg : Text) {
+  public func send(msg : Text) {
     print(name # " received " # msg # "\n");
   };
 };
