@@ -463,34 +463,6 @@ void leb128_encode_go(mp_int *tmp, unsigned char *buf) {
   }
 }
 
-export void leb128_encode(unsigned n, unsigned char *buf) {
-  while (true) {
-    buf[0] = (unsigned char)n; // get low bits
-    if (n >>= 7) {
-      // more bytes to come, set high bit and continue
-      buf[0] |= 1<<7;
-      buf++;
-    } else {
-      // we are done. high bit should be cleared anyway
-      return;
-    }
-  }
-}
-
-export void sleb128_encode(signed n, unsigned char *buf) {
-  while (true) {
-    *buf = n & 0x7F; // get low bits
-    if (n >= -64 && n < 64) {
-      // last byte written, high bit is clear
-      return;
-    } else {
-      // more bytes to come, set high bit and continue
-      *buf++ |= 0x80;
-      n >>= 7;
-    }
-  }
-}
-
 export void bigint_leb128_encode(as_ptr n, unsigned char *buf) {
   mp_int tmp;
   CHECK(mp_init_copy(&tmp, BIGINT_PAYLOAD(n)));
@@ -577,4 +549,33 @@ export as_ptr bigint_sleb128_decode(unsigned char *buf) {
   }
 
   return r;
+}
+
+
+export void leb128_encode(unsigned n, unsigned char *buf) {
+  while (true) {
+    buf[0] = (unsigned char)n; // get low bits
+    if (n >>= 7) {
+      // more bytes to come, set high bit and continue
+      buf[0] |= 1<<7;
+      buf++;
+    } else {
+      // we are done. high bit should be cleared anyway
+      return;
+    }
+  }
+}
+
+export void sleb128_encode(signed n, unsigned char *buf) {
+  while (true) {
+    *buf = n & 0x7F; // get low bits
+    if (n >= -64 && n < 64) {
+      // last byte written, high bit is clear
+      return;
+    } else {
+      // more bytes to come, set high bit and continue
+      *buf++ |= 0x80;
+      n >>= 7;
+    }
+  }
 }
