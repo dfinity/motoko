@@ -1212,7 +1212,7 @@ module BoxedWord64 = struct
     get_i
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_const_64 0L(*Int64.of_int (1 lsl 5)*) ^^
+      get_n ^^ compile_const_64 (Int64.of_int (1 lsl 5)) ^^
       G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
       G.if_ (ValBlockType (Some I32Type))
         (get_n ^^ BitTagged.tag)
@@ -1694,7 +1694,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
        │ mantissa │ 0 │ sign │  = i32
        └──────────┴───┴──────┘
      The 2nd LSBit makes unboxed bignums distinguishable from boxed ones,
-     which are always skewed pointers.
+     the latter always being skewed pointers.
 
      By a right rotation one obtains the signed (right-zero-padded) representation,
      which is usable for arithmetic (e.g. addition-like operators). For some
@@ -1702,15 +1702,16 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
      right-shifted. Similarly, for division the result must be left-shifted.
 
      Generally all operations begin with checking whether both arguments are
-     already in unboxed form. If so, the arithmetic can be performed (fast path).
-     Otherwise one or both arguments need boxing and the arithmetic needs to
-     be carried out on the underlying boxed representation (slow path).
+     already in unboxed form. If so, the arithmetic can be performed in machine
+     registers (fast path). Otherwise one or both arguments need boxing and the
+     arithmetic needs to be carried out on the underlying boxed representation
+     (slow path).
 
      The result appears as a boxed number in the latter case, so a check is
      performed for possible compactification of the result. Conversely in the
      former case the 64-bit result is either compactable or needs to be boxed.
 
-     Manipulation of the result is unnecessary for the boolean comparison predicates.
+     Manipulation of the result is unnecessary for the comparison predicates.
 
      For the `pow` operation the check that both arguments are unboxed is not
      sufficient. Here we count and multiply effective bitwidths to figure out
@@ -2022,7 +2023,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       get_res
     end ^^
     get_size
- 
+
   let compile_leb128_size get_x =
     get_x ^^ G.if_ (ValBlockType (Some I32Type))
       begin
@@ -2270,7 +2271,6 @@ module BigNumLibtommmath : BigNumType = struct
 end (* BigNumLibtommmath *)
 [@@@warning "+60"]
 
-(*module BigNum = BigNumLibtommmath*)
 module BigNum = MakeCompact(BigNumLibtommmath)
 
 (* Primitive functions *)
