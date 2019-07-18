@@ -2162,7 +2162,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 end
 
 [@@@warning "-60"] (* Do not warn about unused module *)
-module BigNumLibtommmath : BigNumType = struct
+module BigNumLibtommath : BigNumType = struct
 
   let to_word32 env = E.call_import env "rts" "bigint_to_word32_trap"
   let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
@@ -2268,10 +2268,10 @@ module BigNumLibtommmath : BigNumType = struct
     compile_unboxed_const (Int32.of_int bits) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU))
 
-end (* BigNumLibtommmath *)
+end (* BigNumLibtommath *)
 [@@@warning "+60"]
 
-module BigNum = MakeCompact(BigNumLibtommmath)
+module BigNum = MakeCompact(BigNumLibtommath)
 
 (* Primitive functions *)
 module Prim = struct
