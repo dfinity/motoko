@@ -78,7 +78,6 @@ let
 in
 
 rec {
-
   rts = stdenv.mkDerivation {
     name = "asc-rts";
 
@@ -90,6 +89,10 @@ rec {
     preBuild = ''
       ${llvmEnv}
       export TOMMATHSRC=${libtommath}
+    '';
+
+    checkPhase = ''
+      ./test_rts
     '';
 
     installPhase = ''
