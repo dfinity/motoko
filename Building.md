@@ -10,7 +10,7 @@ $ nix-env -i -f . -A asc
 
 This is the command that should always pass on master is the following, which builds everything:
 ```
-$ nix-build
+$ nix-build --no-out-link
 ```
 
 To enter a shell with the necessary dependencies, you can use
@@ -43,7 +43,8 @@ installing all required tools without nix is out of scope).
    the precise repository and version. You can use `nix` to fetch the correct
    source for you, and run the manual installation inside:
    ```
-   cd $(nix-build -Q -A wasm.src)/interpreter
+   cp -R $(nix-build --no-out-link -Q -A wasm.src)/interpreter /tmp/interpreter
+   cd /tmp/interpreter
    make install
    ```
  * Install various command line tools used by, in particuar, the test suite:
