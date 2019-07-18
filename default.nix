@@ -307,7 +307,7 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib.tar $src
+      tar -rf $out/stdlib.tar -C $src *.as
       mkdir -p $out/nix-support
       echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
     '';
@@ -343,7 +343,7 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib-doc.tar doc
+      tar -rf $out/stdlib-doc.tar -C doc .
       mkdir -p $out/nix-support
       echo "report stdlib-doc $out/stdlib-doc.tar" >> $out/nix-support/hydra-build-products
     '';
