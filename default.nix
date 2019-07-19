@@ -76,7 +76,7 @@ let
 
   # When compiling natively, we want to use `clang` (which is a nixpkgs
   # provided wrapper that sets various include paths etc).
-  # But for some reason it does not handle building for Wasm well, so we
+  # But for some reason it does not handle building for Wasm well, so
   # there we use plain clang-9. There is no stdlib there anyways.
   llvmEnv = ''
     export CLANG="clang"
