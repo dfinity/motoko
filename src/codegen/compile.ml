@@ -1560,6 +1560,12 @@ let i64op_from_relop = function
   | Ge -> I64Op.GeS
   | Gt -> I64Op.GtS
 
+let name_from_relop = function
+  | Lt -> "B_lt"
+  | Le -> "B_le"
+  | Ge -> "B_ge"
+  | Gt -> "B_gt"
+
 (* helper, measures the dynamics of the unsigned i32, returns (32 - effective bits)
    expects i32 on stack *)
 let unsigned_dynamics =
@@ -1672,53 +1678,48 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
      and run the slow path on them.
      In both cases bring the results into normal form.
    *)
-  let try_unbox2 fast slow env =
-    let set_a, get_a = new_local env "a" in
-    let set_b, get_b = new_local env "b" in
-    let set_res, get_res = new_local env "res" in
-    let set_res64, get_res64 = new_local64 env "res64" in
-    set_b ^^ set_a ^^
-    get_a ^^ get_b ^^
-    BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
-      begin
-        get_a ^^ extend64 ^^
-        get_b ^^ extend64 ^^
-        fast env ^^ set_res64 ^^
-        get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
-        G.if_ (ValBlockType (Some I32Type))
-          (get_res64 ^^ compress64)
-          (get_res64 ^^ box64 env)
-      end
-      begin
-        get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend_and_box64 env)
-          get_a ^^
-        get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend_and_box64 env)
-          get_b ^^
-        slow env ^^ set_res ^^ get_res ^^
-        fits_in_vanilla env ^^
-        G.if_ (ValBlockType (Some I32Type))
-          (get_res ^^ Num.truncate_to_word32 env ^^ compress)
-          get_res
-      end
-
-  let share_try_unbox2 name fast slow env =
+  let try_unbox2 name fast slow env =
     Func.share_code2 env name (("a", I32Type), ("b", I32Type)) [I32Type]
-      (fun env get_a get_b -> get_a ^^ get_b ^^ try_unbox2 fast slow env)
+      (fun env get_a get_b ->
+        let set_res, get_res = new_local env "res" in
+        let set_res64, get_res64 = new_local64 env "res64" in
+        get_a ^^ get_b ^^
+        BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
+          begin
+            get_a ^^ extend64 ^^
+            get_b ^^ extend64 ^^
+            fast env ^^ set_res64 ^^
+            get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
+            G.if_ (ValBlockType (Some I32Type))
+              (get_res64 ^^ compress64)
+              (get_res64 ^^ box64 env)
+          end
+          begin
+            get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+              (get_a ^^ extend_and_box64 env)
+              get_a ^^
+            get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+              (get_b ^^ extend_and_box64 env)
+              get_b ^^
+            slow env ^^ set_res ^^ get_res ^^
+            fits_in_vanilla env ^^
+            G.if_ (ValBlockType (Some I32Type))
+              (get_res ^^ Num.truncate_to_word32 env ^^ compress)
+              get_res
+          end)
 
-  let compile_add = share_try_unbox2 "B_add" BoxedWord64.compile_add Num.compile_add
+  let compile_add = try_unbox2 "B_add" BoxedWord64.compile_add Num.compile_add
 
   let adjust_arg2 code env = compile_shrS64_const 1L ^^ code env
   let adjust_result code env = code env ^^ compile_shl64_const 1L
 
-  let compile_mul = share_try_unbox2 "B_mul" (adjust_arg2 BoxedWord64.compile_mul) Num.compile_mul
-  let compile_signed_sub = share_try_unbox2 "B+sub" BoxedWord64.compile_signed_sub Num.compile_signed_sub
-  let compile_signed_div = share_try_unbox2 "B+div" (adjust_result BoxedWord64.compile_signed_div) Num.compile_signed_div
-  let compile_signed_mod = share_try_unbox2 "B_mod" BoxedWord64.compile_signed_mod Num.compile_signed_mod
-  let compile_unsigned_div = share_try_unbox2 "B_div" (adjust_result BoxedWord64.compile_unsigned_div) Num.compile_unsigned_div
-  let compile_unsigned_rem = share_try_unbox2 "B_rem" BoxedWord64.compile_unsigned_rem Num.compile_unsigned_rem
-  let compile_unsigned_sub = share_try_unbox2 "B_sub" BoxedWord64.compile_unsigned_sub Num.compile_unsigned_sub
+  let compile_mul = try_unbox2 "B_mul" (adjust_arg2 BoxedWord64.compile_mul) Num.compile_mul
+  let compile_signed_sub = try_unbox2 "B+sub" BoxedWord64.compile_signed_sub Num.compile_signed_sub
+  let compile_signed_div = try_unbox2 "B+div" (adjust_result BoxedWord64.compile_signed_div) Num.compile_signed_div
+  let compile_signed_mod = try_unbox2 "B_mod" BoxedWord64.compile_signed_mod Num.compile_signed_mod
+  let compile_unsigned_div = try_unbox2 "B_div" (adjust_result BoxedWord64.compile_unsigned_div) Num.compile_unsigned_div
+  let compile_unsigned_rem = try_unbox2 "B_rem" BoxedWord64.compile_unsigned_rem Num.compile_unsigned_rem
+  let compile_unsigned_sub = try_unbox2 "B_sub" BoxedWord64.compile_unsigned_sub Num.compile_unsigned_sub
 
   let compile_unsigned_pow env =
     Func.share_code2 env "B_pow" (("a", I32Type), ("b", I32Type)) [I32Type]
@@ -1790,36 +1791,35 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     | n -> Num.compile_lit env n
 
   let compile_neg env =
-    Func.share_code1 env "negCompInt" ("n", I32Type) [I32Type] (fun env get_n ->
+    Func.share_code1 env "B_neg" ("n", I32Type) [I32Type] (fun env get_n ->
       compile_lit env (Big_int.big_int_of_int 0) ^^
       get_n ^^
       compile_signed_sub env (*TODO(gabor) we can do better*)
     )
 
-  let try_comp_unbox2 fast slow env =
-    let set_a, get_a = new_local env "a" in
-    let set_b, get_b = new_local env "b" in
-    set_b ^^ set_a ^^
-    get_a ^^ get_b ^^
-    BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
-      begin
-        get_a ^^ extend64 ^^
-        get_b ^^ extend64 ^^
-        fast env
-      end
-      begin
-        get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_a ^^ extend_and_box64 env)
-          get_a ^^
-        get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
-          (get_b ^^ extend_and_box64 env)
-          get_b ^^
-        slow env
-      end
+  let try_comp_unbox2 name fast slow env =
+    Func.share_code2 env name (("a", I32Type), ("b", I32Type)) [I32Type]
+      (fun env get_a get_b ->
+        get_a ^^ get_b ^^
+        BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
+          begin
+            get_a ^^ extend64 ^^
+            get_b ^^ extend64 ^^
+            fast env
+          end
+          begin
+            get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+              (get_a ^^ extend_and_box64 env)
+              get_a ^^
+            get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+              (get_b ^^ extend_and_box64 env)
+              get_b ^^
+            slow env
+          end)
 
-  let compile_eq = try_comp_unbox2 BoxedWord64.compile_eq Num.compile_eq
+  let compile_eq = try_comp_unbox2 "B_eq" BoxedWord64.compile_eq Num.compile_eq
   let compile_relop env bigintop =
-    try_comp_unbox2
+    try_comp_unbox2 (name_from_relop bigintop)
       (fun env' -> BoxedWord64.compile_relop env' (i64op_from_relop bigintop))
       (fun env' -> Num.compile_relop env' bigintop)
       env
