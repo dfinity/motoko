@@ -431,7 +431,7 @@ export int bigint_leb128_size(as_ptr n) {
   return ((x + 6) / 7); // divide by 7, round up
 }
 
-void leb128_encode_go(mp_int *tmp, unsigned char *buf) {
+void bigint_leb128_encode_go(mp_int *tmp, unsigned char *buf) {
   // now the number should be positive
   if (mp_isneg(tmp)) bigint_trap();
   while (true) {
@@ -451,7 +451,7 @@ void leb128_encode_go(mp_int *tmp, unsigned char *buf) {
 export void bigint_leb128_encode(as_ptr n, unsigned char *buf) {
   mp_int tmp;
   CHECK(mp_init_copy(&tmp, BIGINT_PAYLOAD(n)));
-  leb128_encode_go(&tmp, buf);
+  bigint_leb128_encode_go(&tmp, buf);
 }
 
 
@@ -516,7 +516,7 @@ export void bigint_sleb128_encode(as_ptr n, unsigned char *buf) {
     CHECK(mp_add(&tmp, &big, &tmp));
   }
 
-  leb128_encode_go(&tmp, buf);
+  bigint_leb128_encode_go(&tmp, buf);
 }
 
 export as_ptr bigint_sleb128_decode(unsigned char *buf) {
