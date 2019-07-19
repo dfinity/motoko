@@ -185,7 +185,7 @@ pointer to a data array.
 
  * The data array is allocated with mp_calloc and mp_realloc. We provide these
    calls, allocate ActorScript arrays (using the TAG_TEXT tag for byte arrays,
-   not TAG_ARRAY for arrays of pointers) and  store the pointer to the
+   not TAG_ARRAY for arrays of pointers) and store the pointer to the
    _payload_ in the `mp_digit* dp` field of the struct. This way, things look all nice
    and dandy from libtommath’s point of view.
 
@@ -193,6 +193,11 @@ pointer to a data array.
    and understands that this pointer points inside the TAG_TEXT heap object. But
    we can still move them around in the GC without issues.
 
+   The length of the byte array is always equal to the allocation asked for by
+   libtommath (no shrinking via mp_realloc supported).
+   This means we can assert that it matches the old_size passed to mp_realloc as
+   an additional check.
+   We can also support shrinking via mp_realloc, but then we have to drop that check.
 */
 
 void* mp_alloc(size_t l) {
@@ -224,8 +229,14 @@ export void* mp_realloc(void *ptr, size_t old_size, size_t new_size) {
     if (old_size != FIELD(r, 1)) bigint_trap();
     as_memcpy(newptr, ptr, old_size);
     return newptr;
-  } else {
+  } else if (new_size == FIELD(r, 1)) {
+    // No need to grow
     return ptr;
+  } else {
+    // libtommath only shrinks on explicit demand via mp_shrink
+    // and we do not use that function
+    // so this should not happen.
+    bigint_trap();
   }
 }
 

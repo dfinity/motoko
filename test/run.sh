@@ -25,6 +25,7 @@ DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
+JSCLIENT=${JSCLIENT:-$(realpath $(dirname $0)/../../dev/experimental/js-dfinity-client)}
 ECHO=echo
 
 while getopts "ads" o; do
@@ -227,6 +228,14 @@ do
       $ECHO -n " [js]"
       $DIDC --js $base.did > $out/$base.js 2>&1
       diff_files="$diff_files $base.js"
+
+      if [ -e $out/$base.js ]
+      then
+        $ECHO -n " [node]"
+        export NODE_PATH=$NODE_PATH:$JSCLIENT:$JSCLIENT/src
+        node $out/$base.js > $out/$base.err 2>&1
+        diff_files="$diff_files $base.err"
+      fi
     fi
   fi
   $ECHO ""
