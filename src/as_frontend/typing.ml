@@ -254,8 +254,29 @@ and check_typ_tag env typ_tag =
   let t = check_typ env typ in
   T.{lab = tag.it; typ = t}
 
+and check_typ_binds_acyclic env typ_bind cs ts  =
+  let n = List.length cs in
+  let ce = List.fold_left2
+    (fun ce c t -> T.ConEnv.add c t ce) T.ConEnv.empty cs ts in
+  let chase typ_bind c =
+    let rec chase i ts c' =
+      if i > n
+      then
+        error env typ_bind.at "type parameter %s has cyclic bounds %s"
+          (T.string_of_con c)
+          (String.concat " <: " (List.map T.string_of_typ ts)) (List.rev ts)
+      else
+        match T.ConEnv.find_opt c' ce with
+        | None -> ()
+        | Some t ->
+          (match t with
+           | T.Con (c'', []) ->
+             chase (i+1) (t::ts) c''
+           | _ -> ())
+    in chase 0 [] c
+  in List.iter2 chase typ_bind cs
+
 and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Scope.con_env =
-  (* TODO: rule out cyclic bounds *)
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs =
     List.map2 (fun x tb ->
@@ -270,6 +291,7 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Sc
     ) T.Env.empty typ_binds cs in
   let pre_env' = add_typs {env with pre = true} xs cs  in
   let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
+  check_typ_binds_acyclic env typ_binds cs ts;
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
   List.iter2 (fun c k ->
     match Con.kind c with
