@@ -1579,6 +1579,19 @@ let signed_dynamics =
   G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
   unsigned_dynamics
 
+let compile_encoding_size dynamics get_x =
+  get_x ^^ G.if_ (ValBlockType (Some I32Type))
+    begin
+      compile_unboxed_const 38l ^^
+      get_x ^^ dynamics ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      compile_divU_const 7l
+    end
+    compile_unboxed_one
+
+let compile_leb128_size = compile_encoding_size unsigned_dynamics
+let compile_sleb128_size get_x = compile_encoding_size (get_x ^^ signed_dynamics) get_x
+
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (* Compact BigNums are a representation of signed 31-bit bignums (of the
@@ -1918,19 +1931,6 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       get_res
     end ^^
     get_size
-
-  let compile_encoding_size dynamics get_x =
-    get_x ^^ G.if_ (ValBlockType (Some I32Type))
-      begin
-        compile_unboxed_const 38l ^^
-        get_x ^^ dynamics ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-        compile_divU_const 7l
-      end
-      compile_unboxed_one
-
-  let compile_leb128_size = compile_encoding_size unsigned_dynamics
-  let compile_sleb128_size get_x = compile_encoding_size (get_x ^^ signed_dynamics) get_x
 
   let compile_store_to_data_buf_unsigned env =
     let set_x, get_x = new_local env "x" in
@@ -3380,9 +3380,9 @@ module Serialization = struct
         get_ref_size ^^ compile_add_const i ^^ set_ref_size
       in
 
-      (* See TODO (leb128 for i32) *)
       let size_word env code =
-        inc_data_size (code ^^ BigNum.from_word32 env ^^ BigNum.compile_data_size_unsigned env)
+        let set_n, get_n = new_local env "n" in
+        inc_data_size (code ^^ set_n ^^ compile_leb128_size get_n)
       in
 
       let size env t =
@@ -3464,10 +3464,10 @@ module Serialization = struct
         get_ref_buf ^^ compile_add_const Heap.word_size ^^ set_ref_buf in
 
       let write_word code =
-        (* See TODO (leb128 for i32) *)
+        let set_n, get_n = new_local env "n" in
         get_data_buf ^^
-        code ^^ BigNum.from_word32 env ^^
-        BigNum.compile_store_to_data_buf_unsigned env ^^
+        code ^^ set_n ^^ get_n ^^ E.call_import env "rts" "leb128_encode" ^^
+        compile_leb128_size get_n ^^
         advance_data_buf
       in
 
