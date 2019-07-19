@@ -372,6 +372,7 @@ let compile_shrU_const = compile_op_const I32Op.ShrU
 let compile_shrS_const = compile_op_const I32Op.ShrS
 let compile_shl_const = compile_op_const I32Op.Shl
 let compile_rotr_const = compile_op_const I32Op.Rotr
+let compile_rotl_const = compile_op_const I32Op.Rotl
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
   | 0l -> G.nop | n -> compile_op_const I32Op.Or n
@@ -1642,9 +1643,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Test (Wasm.Values.I64 I64Op.Eqz))
 
   (* input is right-padded with 0 *)
-  let compress32 =
-    compile_unboxed_one ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
+  let compress32 = compile_rotl_const 1l
 
   (* input is right-padded with 0
      precondition: upper 32 bits must be same as 32-bit sign,
@@ -1662,9 +1661,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Test (Wasm.Values.I32 I32Op.Eqz))
 
   let compress =
-    compile_shl_const 1l ^^
-    compile_unboxed_one ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
+    compile_shl_const 1l ^^ compress32
 
   (* creates a boxed bignum from a right-0-padded signed i64 *)
   let box64 env = compile_shrS64_const 1L ^^ Num.from_signed_word64 env
@@ -1792,9 +1789,20 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let compile_neg env =
     Func.share_code1 env "B_neg" ("n", I32Type) [I32Type] (fun env get_n ->
-      compile_lit env (Big_int.big_int_of_int 0) ^^
-      get_n ^^
-      compile_signed_sub env (*TODO(gabor) we can do better*)
+      get_n ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+        begin
+          get_n ^^ compile_unboxed_one ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          G.if_ (ValBlockType (Some I32Type))
+            (compile_lit env (Big_int.big_int_of_int 0x40000000))
+            begin
+              compile_unboxed_zero ^^
+              get_n ^^ extend ^^ compile_shrS_const 1l ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+              compress
+            end
+        end
+        (get_n ^^ Num.compile_neg env)
     )
 
   let try_comp_unbox2 name fast slow env =
@@ -1995,7 +2003,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
     G.if_ (ValBlockType (Some I32Type))
-      (get_a ^^ compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Rotl)))
+      (get_a ^^ compile_rotl_const 2l)
       (get_a ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ Num.from_word64 env)
 
   let from_word64 env =
@@ -2005,7 +2013,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     G.if_ (ValBlockType (Some I32Type))
-      (get_a ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^ compile_unboxed_const 2l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Rotl)))
+      (get_a ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^ compile_rotl_const 2l)
       (get_a ^^ Num.from_word64 env)
 
   let truncate_to_word64 env =
