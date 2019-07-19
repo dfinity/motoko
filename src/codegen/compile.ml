@@ -1797,9 +1797,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             (compile_lit env (Big_int.big_int_of_int 0x40000000))
             begin
               compile_unboxed_zero ^^
-              get_n ^^ extend ^^ compile_shrS_const 1l ^^
+              get_n ^^ extend ^^
               G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-              compress
+              compress32
             end
         end
         (get_n ^^ Num.compile_neg env)
