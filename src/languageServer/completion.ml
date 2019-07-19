@@ -41,6 +41,11 @@ let lbl_of_ide_decl (d : ide_decl) : string =
   | ValueDecl (lbl, _) -> lbl
   | TypeDecl (lbl, _) -> lbl
 
+let ty_of_ide_decl (d : ide_decl) =
+  match d with
+  | ValueDecl (_, ty) -> ty
+  | TypeDecl (_, ty) -> ty
+
 let item_of_ide_decl (d : ide_decl) : Lsp_t.completion_item =
   let tmpl = template_of_ide_decl d in
   match d with
