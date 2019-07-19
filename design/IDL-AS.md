@@ -92,8 +92,8 @@ e(? <typ>) = opt (e(<typ>))
 e(shared <typ1> -> <typ2>) = func (efn(shared <typ1> -> <typ2>))
 e(actor { <typ-field>;* }) = service { em(<typ-field>);* }
 e( ( <typ>,* ) ) = record { e(<typ>);* }
-e(Any) = record {}
-e(None) = variant {}
+e(Any) = reserved
+e(None) = empty
 
 ef : <typ-field> -> <fieldtype>
 ef (<id> : <typ>) = unescape(<id>) : e(<typ>)
@@ -102,7 +102,7 @@ efn : <typ> -> <functype>
 efn(shared <typ> -> ()) = ea(<typ>) -> () oneway
 efn(shared <typ1> -> async <typ2>) = ea(<typ1>) -> ea(<typ2>)
 
-ea : <typ> -> <fieldtype>;* // function arguments
+ea : <typ> -> <argtype>,*
 ea( ( <typ>,* ) ) = e(<typ>);*
 ea(<typ>) = ( e(<typ>) )  otherwise
 
@@ -146,9 +146,9 @@ ifn : <functype> -> <typ>
 ifn((<datatype>,*) -> () oneway pure?) = shared ia(<as>) -> ()
 ifn((<datatype1>,*) -> (<datatype2>,*) pure?) = shared ia(<datatype1>,*) -> ia(<datatype2>,*)
 
-ia : <datatype>,* -> <typ>
-ia(<datatype>,) = i(<datatype>)
-ia(<datatype>,*) = ( i(<datatype>),* )  otherwise
+ia : <argtype>,* -> <typ>
+ia(<argtype>,) = i(<argtype>)
+ia(<argtype>,*) = ( i(<argtype>),* )  otherwise
 
 im : <methtype> -> <typ>
 im(<name> : <functype>) = escape(<name>) : ifn(<functype>)
