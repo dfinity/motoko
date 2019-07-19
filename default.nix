@@ -72,14 +72,19 @@ let
     llvm.stdenv
   ];
 
+  # When compiling natively, we want to use `clang` (which is a nixpkgs
+  # provided wrapper that sets various include paths etc).
+  # But for some reason it does not handle building for Wasm well, so we
+  # there we use plain clang-9. There is no stdlib there anyways.
   llvmEnv = ''
-    export CLANG="clang-9"
+    export CLANG="clang"
+    export WASM_CLANG="clang-9"
     export WASM_LD=wasm-ld
   '';
 in
 
 rec {
-  rts = stdenv.mkDerivation {
+  rts = llvm.stdenv.mkDerivation {
     name = "asc-rts";
 
     src = subpath ./rts;
@@ -91,6 +96,8 @@ rec {
       ${llvmEnv}
       export TOMMATHSRC=${libtommath}
     '';
+
+    doCheck = true;
 
     checkPhase = ''
       ./test_rts

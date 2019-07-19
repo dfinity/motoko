@@ -1,4 +1,5 @@
 CLANG ?= clang-9
+WASM_CLANG ?= clang-9
 WASM_LD ?= wasm-ld-9
 
 #
@@ -66,22 +67,22 @@ _build/wasm _build/native:
 TOMMATH_WASM_O=$(patsubst %,_build/wasm/tommath_%.o,$(TOMMATHFILES))
 
 _build/wasm/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/wasm
-	$(CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 TOMMATH_NATIVE_O=$(patsubst %,_build/native/tommath_%.o,$(TOMMATHFILES))
 
 _build/native/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 #
 # Our part of the RTS, Wasm and native
 #
 
 _build/wasm/rts.o: rts.c | _build/wasm
-	$(CLANG) $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
+	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
 
 _build/native/rts.o: rts.c | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
+	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
 
 #
 # The actual RTS, a we ship it with the compiler
