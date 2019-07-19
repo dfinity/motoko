@@ -87,7 +87,7 @@ then
 else
   let warn_unless = b: m: x: if b then x else trace m x; in
   # No .git directory found, we should warn the user.
-  # But when this repository is imported using somehting like
+  # But when this repository is imported using something like
   # `builtins.fetchGit` then the source is extracted to /nix/store without a
   # .git directory, but in this case we know that it is clean, so do not warn
   warn_unless
