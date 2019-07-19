@@ -82,11 +82,32 @@ let as_seqP p =
 
 (* Primitives *)
 
-let primE name typ =
-  { it = PrimE name;
+let primE prim es =
+  let ty = match prim with
+    | DeserializePrim t -> t
+    | SerializePrim t -> T.Serialized t
+    | ShowPrim _ -> T.text
+    | _ -> assert false (* implement more as needed *)
+  in
+  let effs = List.map eff es in
+  let e = List.fold_left max_eff T.Triv effs in
+  { it = PrimE (prim, es);
     at = no_region;
-    note = { note_typ = typ; note_eff = T.Triv }
+    note = { note_typ = ty; note_eff = e }
   }
+
+let asyncE typ e =
+  { it = PrimE (OtherPrim "@async", [e]);
+    at = no_region;
+    note = { note_typ = T.Async typ; note_eff = eff e }
+  }
+
+let awaitE typ e1 e2 =
+  { it = PrimE (OtherPrim "@await", [e1; e2]);
+    at = no_region;
+    note = { note_typ = T.unit; note_eff = max_eff (eff e1) (eff e2) }
+  }
+
 
 (* tuples *)
 
@@ -416,7 +437,7 @@ let (-->*) xs exp =
 
 (* n-ary shared lambda *)
 let (-@>*) xs exp  =
-  let fun_ty = T.Func (T.Sharable, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
+  let fun_ty = T.Func (T.Shared, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
   nary_funcE "$lambda" fun_ty xs exp
 
 
@@ -437,16 +458,6 @@ let ( -*- ) exp1 exp2 =
               (T.string_of_typ typ1)
               (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp2)))
 
-
-(* Intermediate, cps-based @async and @await primitives,
-   introduced by await(opt).ml, removed by async.ml
-*)
-
-let prim_async typ =
-  primE "@async" (T.Func (T.Local, T.Returns, [], [cpsT typ], [T.Async typ]))
-
-let prim_await typ =
-  primE "@await" (T.Func (T.Local, T.Returns, [], [T.Async typ; contT typ], []))
 
 (* derived loop forms; each can be expressed as an unconditional loop *)
 
@@ -498,7 +509,7 @@ let forE pat exp1 exp2 =
   let lab = fresh_id "done" () in
   let ty1 = exp1.note.note_typ in
   let _, tfs = T.as_obj_sub ["next"] ty1 in
-  let tnxt = Lib.Option.value (T.lookup_val_field "next" tfs) in
+  let tnxt = T.lookup_val_field "next" tfs in
   let nxt = fresh_var "nxt" tnxt in
   letE nxt (dotE exp1 (nameN "next") tnxt) (
     labelE lab T.unit (

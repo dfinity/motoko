@@ -12,6 +12,7 @@ sig
   val dump_tc : bool ref
   val dump_lowering : bool ref
   val check_ir : bool ref
+  val package_urls : (string * string) list ref
   val profile : bool ref
   val profile_verbose : bool ref
   val profile_file : string ref
@@ -22,6 +23,7 @@ end
 val check_files  : string list -> unit Diag.result
 val check_string : string -> string -> unit Diag.result
 
+val initial_stat_env : Scope.scope
 val chase_imports : Scope.scope -> Resolve_import.S.t ->
   (Syntax.libraries * Scope.scope) Diag.result
 

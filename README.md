@@ -38,17 +38,13 @@ A simple language for writing Dfinity actors.
 
 * Gas-related features?
 
-* Infinite-precision integers
-
-* Richer destructuring and pattern matching
-
 * Exception handling
 
 * Tail calls
 
 * Mixin composition for inheritance
 
-* Fancier types (generic bounds, top type?, union types?, co/contra-variance?)
+* Fancier types (co/contra-variance annotations?)
 
 * Linear types?
 
@@ -64,6 +60,7 @@ A simple language for writing Dfinity actors.
 * Primitive types: integers, naturals, words, floats, characters, (unicode) text, bool, null
   - `Int`, `Nat` (trap on overflow)
   - `Word8`, `Word16`, `Word32`, `Word64` (wrap around)
+  - `Int8`, `Int16`, `Int32`, `Int64`, `Nat8`, `Nat16`, `Nat32`, `Nat64` (trap on over/underflow)
   - `Float`
   - `Char`, `Text`
   - `Bool`, `Null`
@@ -208,62 +205,48 @@ A simple language for writing Dfinity actors.
 ## Example
 
 ```
-type List<T> = ?{head : T; var tail : List<T>};
+import List "as:std/list";
 
 type Post = shared Text -> ();
 
 actor class Server() = {
-  private var clients : List<Client> = null;
+  private var clients : List<Client> = List.empty<Client>();
 
-  private shared broadcast(message : Text) {
-    var next = clients;
-    loop {
-      switch next {
-        case null return;
-        case (?l) {
-          l.head.send(message);
-          next := l.tail;
-        };
-      };
+  private func broadcast(msg : Text) {
+    for (client in List.iter(clients)) {
+      client.send(msg);
     };
   };
 
-  subscribe(client : Client) : async Post {
-    let cs = new {head = client; var tail = clients};
-    clients := ?cs;
-    return broadcast;
+  public func subscribe(name : Text, client : Client) : async Post {
+    clients := List.cons(client, clients);
+    return shared func(msg) { broadcast(name # "> " # msg) };
   };
 };
 
 
-actor class Client() = this {
-  // TODO: these should be constructor params once we can compile them
-  private var name : Text = "";
-  private var server : ?Server  = null;
-
-  go(n : Text, s : Server) {
-    name := n;
-    server := ?s;
+actor class Client(name : Text, server : Server) = this {
+  public func go() {
     ignore(async {
-      let post = await s.subscribe(this);
-      post("hello from " # name);
-      post("goodbye from " # name);
+      let post = await s.subscribe(name, this);
+      post("hello");
+      post("goodbye");
     });
   };
 
-  send(msg : Text) {
+  public func send(msg : Text) {
     print(name # " received " # msg # "\n");
   };
 };
 
 
 let server = Server();
-let bob = Client();
-let alice = Client();
-let charlie = Client();
-bob.go("bob", server);
-alice.go("alice", server);
-charlie.go("charlie", server);
+let bob = Client("bob", server);
+let alice = Client("bob", server);
+let charlie = Client("charlie", server);
+bob.go();
+alice.go();
+charlie.go();
 ```
 
 

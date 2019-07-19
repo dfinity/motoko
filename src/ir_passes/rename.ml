@@ -33,11 +33,7 @@ let rec exp rho e  =
 and exp' rho e  = match e with
   | VarE i              -> VarE (id rho i)
   | LitE l              -> e
-  | PrimE _             -> e
-  | UnE (ot, uo, e)      -> UnE (ot, uo, exp rho e)
-  | BinE (ot, e1, bo, e2)-> BinE (ot, exp rho e1, bo, exp rho e2)
-  | RelE (ot, e1, ro, e2)-> RelE (ot, exp rho e1, ro, exp rho e2)
-  | ShowE (ot, e)       -> ShowE (ot, exp rho e)
+  | PrimE (p, es)       -> PrimE (p, List.map (exp rho) es)
   | TupE es             -> TupE (List.map (exp rho) es)
   | ProjE (e, i)        -> ProjE (exp rho e, i)
   | ActorE (i, ds, fs, t)-> let i',rho' = id_bind rho i in

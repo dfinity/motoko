@@ -90,14 +90,14 @@ func f(x : A) : B = x;
 // Classes
 
 {
-class C<X>() {f(x : X) {}};
+class C<X>() {public func f(x : X) {}};
 type A = C<Int>;
 type B<X> = {f : X -> ()};
 func f(x : A) : B<Int> = x;
 };
 
 {
-class C<X>() {f (x : X) {}};
+class C<X>() {public func f(x : X) {}};
 type A = C<Int>;
 type B<X> = {f : X -> ()};
 func f(x : A) : B<Nat> = x;
@@ -137,21 +137,21 @@ func f(x : A) : B = x;
 };
 
 {
-class C() { x = 0 };
+class C() { public let x = 0 };
 type A = <X <: {x : Int}> X -> X;
 type B = <X <: C> X -> X;
 func f(x : A) : B = x;
 };
 
 {
-class C<X <: Int>() {f() : X { f() }};
+class C<X <: Int>() {public func f() : X { f() }};
 type A = <X, Y <: {f : () -> X}> X -> X;
 type B = <X <: Nat, Y <: C<X>> X -> X;
 func f(x : A) : B = x;
 };
 
 {
-class C<X <: Int>() {f() : X { f() }};
+class C<X <: Int>() {public func f() : X { f() }};
 type A = <X, Y <: {f : () -> Nat}> X -> X;
 type B = <X <: Nat, Y <: C<X>> X -> X;
 func f(x : A) : B = x;

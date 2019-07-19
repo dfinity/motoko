@@ -1,5 +1,5 @@
 actor class C() {
-  m() {};
-  n() {};
-  m() {};  // Illegal!
+  public func m() {};
+  public func n() {};
+  public func m() {};  // Illegal!
 };

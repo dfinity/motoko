@@ -34,18 +34,20 @@ func f() {
   switch (0, 0) { case (_, (6 or _)) {}; case _ {} };
   switch (0, 0) { case (0, _) {}; case (_, 0) {} };
   switch (0, 0) { case (0, _) {}; case (_, 0) {}; case _ {} };
-  switch (object {a = 0; b = 0}) { case {a = _; b = _} {}; case {a = _; b = 6} {} };
-  switch (object {a = 0; b = 0}) { case {} {}; case {b = 6} {} };
-  switch (object {a = 0; b = 0}) { case {a = _; b = 6 or _} {}; case _ {} };
-  switch (object {a = 0; b = 0}) { case {b = 6 or _} {}; case _ {} };
-  switch (object {a = 0; b = 0}) { case {a = 0} {}; case {b = 0} {} };
-  switch (object {a = 0; b = 0}) { case {a = 0} {}; case {b = 0} {}; case {} {} };
-  switch (object {a = true}) { case {a = true} {}; case {a = false} {} };
+  switch (new {a = 0; b = 0}) { case {a = _; b = _} {}; case {a = _; b = 6} {} };
+  switch (new {a = 0; b = 0}) { case {} {}; case {b = 6} {} };
+  switch (new {a = 0; b = 0}) { case {a = _; b = 6 or _} {}; case _ {} };
+  switch (new {a = 0; b = 0}) { case {b = 6 or _} {}; case _ {} };
+  switch (new {a = 0; b = 0}) { case {a = 0} {}; case {b = 0} {} };
+  switch (new {a = 0; b = 0}) { case {a = 0} {}; case {b = 0} {}; case {} {} };
+  switch (new {a = true}) { case {a = true} {}; case {a = false} {} };
   switch (#a 6 : {#a : Nat; #b : Nat}) { case (#a _) {}; case (#b _) {} };
   switch (#a 6 : {#a : Nat; #b : Nat}) { case (#a _) {}; case (#b 6) {} };
   switch (#a 6 : {#a : Nat; #b : Nat}) { case (#a _) {}; case (#a 5) {}; case (#b _) {} };
   switch (#a 6 : {#a : Nat; #b : Nat}) { case (#a _) {} };
   switch (#a 6 : {#a : Nat; #b : Nat}) { case (#b _) {} };
+  switch (#a 6 : {#a : Nat; #b : Nat; #c}) { case (#b _) {} };
+  switch (#a 6 : {#a : Nat; #b : Nat}) {};
   switch (#a 5) { case (#a _) {} };
 
   func empty() : None = empty();

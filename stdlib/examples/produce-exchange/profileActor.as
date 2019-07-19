@@ -6,9 +6,9 @@ actor server {
   //
   // except, we assume that region_count and scale_factor are already defined in the enclosing env
   //
-  private var dummy = {
+  var dummy = {
     func scaledParams(region_count_:Nat, factor:Nat) : T.WorkloadParams = {
-      shared {
+      new {
         region_count        = region_count_:Nat;
         day_count           = 3:Nat;
         max_route_duration  = 1:Nat;

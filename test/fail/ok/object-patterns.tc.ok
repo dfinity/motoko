@@ -1,8 +1,8 @@
-object-patterns.as:7.13-7.21: type error, pattern of type
+object-patterns.as:6.13-6.21: type error, pattern of type
   Nat
 cannot consume expected type
   Int
-object-patterns.as:19.9-19.16: type error, pattern of type
+object-patterns.as:17.9-17.16: type error, pattern of type
   Nat
 cannot consume expected type
   Int

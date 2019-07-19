@@ -43,20 +43,21 @@ type information.
 
  */
 
-let Hash = import "hash.as";
-type Hash = Hash.Hash;
+import Hash "hash.as";
 
-//let Trie = import "trie.as";
-let Trie = import "trie2.as";
-type Trie<K,V> = Trie.Trie<K,V>;
-type Key<K> = Trie.Key<K>;
+//import Trie "trie.as";
+import Trie "trie2.as";
+
+public type Hash = Hash.Hash;
+public type Trie<K,V> = Trie.Trie<K,V>;
+public type Key<K> = Trie.Key<K>;
 
 /**
  We choose to represent each `Table` as a `Trie`:
 */
 
-let Table = Trie;
-type Table<Id, Doc> = Trie<Id, Doc>;
+public let Table = Trie;
+public type Table<Id, Doc> = Trie<Id, Doc>;
 
 /**
 
@@ -95,7 +96,7 @@ below](#public-interface).
  See the types below for details.
 
  */
-class DocTable<Id,Doc,Info>(
+public class DocTable<Id,Doc,Info>(
   idFirst:Id,
   idIncr:Id->Id,
   idIsEq:(Id,Id)->Bool,
@@ -117,7 +118,7 @@ class DocTable<Id,Doc,Info>(
 
    */
 
-  empty() : Table<Id, Doc> {
+  public func empty() : Table<Id, Doc> {
     Table.empty<Id, Doc>()
   };
 
@@ -127,7 +128,7 @@ class DocTable<Id,Doc,Info>(
 
    Reset the document table back to its initial counter, and empty state.
    */
-  reset() {
+  public func reset() {
     idNext := idFirst;
     table := Table.empty<Id,Doc>();
   };
@@ -140,7 +141,7 @@ class DocTable<Id,Doc,Info>(
 
    */
 
-  getTable() : Table<Id, Doc> {
+  public func getTable() : Table<Id, Doc> {
     Table.copy<Id, Doc>(table)
   };
 
@@ -152,7 +153,7 @@ class DocTable<Id,Doc,Info>(
 
    */
 
-  addDoc(doc:Id -> Doc) : (Id, Doc) {
+  public func addDoc(doc:Id -> Doc) : (Id, Doc) {
     let id = idNext;
     idNext := idIncr(idNext);
     let d = doc(id);
@@ -169,7 +170,7 @@ class DocTable<Id,Doc,Info>(
 
    */
 
-  updateDoc(id:Id, doc:Doc) : ?Doc {
+  public func updateDoc(id:Id, doc:Doc) : ?Doc {
     let (updatedTable, oldDoc) = Table.replace<Id, Doc>
     (table, keyOfId(id), idIsEq, ?doc);
     table := updatedTable;
@@ -185,7 +186,7 @@ class DocTable<Id,Doc,Info>(
    This variant of `addInfo` permits the caller to choose the id, but still insists that it be fresh (not currently in use).
 
    */
-  addInfoAs(idChoice:?Id, info:Id -> Info) : ?(Id, Doc) {
+  public func addInfoAs(idChoice:?Id, info:Id -> Info) : ?(Id, Doc) {
     switch idChoice {
       // subcase: No pre-chosen Id, so mint a new fresh one:
       case null {
@@ -223,11 +224,11 @@ class DocTable<Id,Doc,Info>(
    See also [`Table.insertFresh`]($DOCURL/trie.md#insertfresh)
 
    */
-  addInfo(info:Id -> Info) : ?(Id, Doc) {
+  public func addInfo(info:Id -> Info) : ?(Id, Doc) {
     addInfoAs(null, info)
   };
 
-  addInfoGetId(info:Id -> Info) : ?Id {
+  public func addInfoGetId(info:Id -> Info) : ?Id {
     switch (addInfo(info)) {
       case null { null };
       case (?(id, doc)) { ?id }
@@ -242,7 +243,7 @@ class DocTable<Id,Doc,Info>(
 
    */
 
-  rem(id:Id) : ?Doc {
+  public func rem(id:Id) : ?Doc {
     Table.removeThen<Id, Doc, ?Doc>(
       table, keyOfId(id), idIsEq,
       func (t:Table<Id, Doc>, d:Doc) : ?Doc {
@@ -254,7 +255,7 @@ class DocTable<Id,Doc,Info>(
   };
 
 
-  remGetId(id:Id) : ?Id {
+  public func remGetId(id:Id) : ?Id {
     Table.removeThen<Id, Doc, ?Id>(
       table, keyOfId(id), idIsEq,
       func (t:Table<Id, Doc>, d:Doc) : ?Id {
@@ -265,7 +266,7 @@ class DocTable<Id,Doc,Info>(
     )
   };
 
-  remGetUnit(id:Id) : ?() {
+  public func remGetUnit(id:Id) : ?() {
     Table.removeThen<Id, Doc, ?()>(
       table, keyOfId(id), idIsEq,
       func (t:Table<Id, Doc>, d:Doc) : ?() {
@@ -284,7 +285,7 @@ class DocTable<Id,Doc,Info>(
 
    */
 
-  getDoc(id:Id) : ?Doc {
+  public func getDoc(id:Id) : ?Doc {
     Table.find<Id, Doc>(table, keyOfId(id), idIsEq)
   };
 
@@ -293,7 +294,7 @@ class DocTable<Id,Doc,Info>(
    ---------
    */
 
-  getInfo(id:Id) : ?Info {
+  public func getInfo(id:Id) : ?Info {
     switch (getDoc(id)) {
       case null null;
       case (?doc) { ?infoOfDoc(doc) };
@@ -307,7 +308,7 @@ class DocTable<Id,Doc,Info>(
    See also [`Table.count`]($DOCURL/trie.md#count)
   */
 
-  count() : Nat {
+  public func count() : Nat {
     Table.count<Id, Doc>(table)
   };
 
@@ -318,7 +319,7 @@ class DocTable<Id,Doc,Info>(
    See also [`Table.toArray`]($DOCURL/trie.md#toarray)
    */
 
-  allDoc() : [Doc] {
+  public func allDoc() : [Doc] {
     Table.toArray<Id, Doc, Doc>
     (table, func (id:Id, doc:Doc):Doc = doc )
   };
@@ -330,7 +331,7 @@ class DocTable<Id,Doc,Info>(
    See also [`Table.toArray`]($DOCURL/trie.md#toarray)
   */
 
-  allInfo() : [Info] {
+  public func allInfo() : [Info] {
     Table.toArray<Id, Doc, Info>
     (table, func (id:Id, doc:Doc):Info = infoOfDoc(doc) )
   };
@@ -341,13 +342,13 @@ class DocTable<Id,Doc,Info>(
  ===============
  */
 
-  keyOfId(x:Id) : Key<Id>     = new { key = x ; hash = idHash(x) };
+  public func keyOfId(x:Id) : Key<Id>     = new { key = x ; hash = idHash(x) };
 
-  getIdIsEq() :(Id,Id)->Bool  = idIsEq;
-  getIdHash() : Id->Hash      = idHash;
+  public func getIdIsEq() :(Id,Id)->Bool  = idIsEq;
+  public func getIdHash() : Id->Hash      = idHash;
 
-  getInfoOfDoc() : Doc->Info  = infoOfDoc;
-  getDocOfInfo() : Info->?Doc = docOfInfo;
+  public func getInfoOfDoc() : Doc->Info  = infoOfDoc;
+  public func getDocOfInfo() : Info->?Doc = docOfInfo;
 
 
 /**
@@ -355,9 +356,9 @@ class DocTable<Id,Doc,Info>(
  ===============
  */
 
-  private var idNext:Id = idFirst;
+  var idNext:Id = idFirst;
 
-  private var table : Table<Id,Doc> = Table.empty<Id,Doc>();
+  var table : Table<Id,Doc> = Table.empty<Id,Doc>();
 
 /**
  Helpers

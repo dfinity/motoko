@@ -1,7 +1,7 @@
 
-module X = {
-  func f() { g();};
-  private func g() { f();};
+module X {
+  public func f() { g() };
+  func g() { f() };
 };
 
 let ok = X.f;

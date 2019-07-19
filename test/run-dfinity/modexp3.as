@@ -1,10 +1,10 @@
 
-module X = {
-  func f() { g();};
-  private func g() { f();};
-  private type U = Int -> Int;
-  type T = U; // ok export, because U, though private, is avoidable
-  func h():T { h() }; // ditto
+module X {
+  public func f() { g() };
+  func g() { f() };
+  type U = Int -> Int;
+  public type T = U; // ok export, because U, though private, is avoidable
+  public func h() : T { h() }; // ditto
 };
 
 type Ok = X.T;

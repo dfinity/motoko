@@ -1,16 +1,18 @@
-const EntId =
- IDL.Obj({'region': RegionId, 'user': UserId, 'truckType': TruckTypeId})
-const IdErr = IDL.Obj({'idErr': OpEntId})
-const Inventory = IDL.Obj({'produce_id': IDL.Nat, 'quantity': IDL.Nat})
-const OpEntId = IDL.Opt(EntId)
-const ProducerId = IDL.Nat
-const RegionId = IDL.Nat
-const TruckTypeId = IDL.Nat
+const IDL = require('IDL')
 const UserId = IDL.Nat
+const RegionId = IDL.Nat
+const ProducerId = IDL.Nat
 const UserInfo =
  IDL.Obj({'id': UserId, 'region': RegionId, 'user_name': IDL.Text,
   'public_key': IDL.Text, 'description': IDL.Text,
   'produceId': IDL.Opt(ProducerId)})
-const ProduceExchange = new IDL.ActorInterface({
+const Inventory = IDL.Obj({'produce_id': IDL.Nat, 'quantity': IDL.Nat})
+const TruckTypeId = IDL.Nat
+const EntId =
+ IDL.Obj({'region': RegionId, 'user': UserId, 'truckType': TruckTypeId})
+const OpEntId = IDL.Opt(EntId)
+const IdErr = IDL.Obj({'idErr': OpEntId})
+const actor_ProduceExchange = new IDL.ActorInterface({
  'getInventory':
-  IDL.message(IDL.Obj({'producer_id': IDL.Nat}), IDL.Obj({'0': Inventory}))})
+  IDL.Message(IDL.Obj({'producer_id': IDL.Nat, '3667444713': UserInfo}),
+   IDL.Obj({'0': Inventory, '1': IdErr}))})

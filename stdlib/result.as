@@ -1,5 +1,5 @@
 module {
-private let P = (import "prelude.as");
+import P "prelude.as";
 
 /**
 
@@ -14,7 +14,7 @@ private let P = (import "prelude.as");
  
  */
 
-type Result<Ok,Err> = {
+public type Result<Ok,Err> = {
   #ok:Ok;
   #err:Err;
 };
@@ -26,7 +26,7 @@ type Result<Ok,Err> = {
  ---------------
  assert that we can unwrap the result; should only be used in tests, not in canister implementations. This will trap.
 */
-func assertUnwrap<Ok,Error>(r:Result<Ok,Error>):Ok {
+public func assertUnwrap<Ok,Error>(r:Result<Ok,Error>):Ok {
   switch(r) {
     case (#err e) P.unreachable();
     case (#ok r) r;
@@ -37,7 +37,7 @@ func assertUnwrap<Ok,Error>(r:Result<Ok,Error>):Ok {
  `assertUnwrapAny`
  ---------------
  */
-func assertUnwrapAny<Ok>(r:Result<Ok,Any>):Ok {
+public func assertUnwrapAny<Ok>(r:Result<Ok,Any>):Ok {
   switch(r) {
     case (#err e) P.unreachable();
     case (#ok r) r;
@@ -48,7 +48,7 @@ func assertUnwrapAny<Ok>(r:Result<Ok,Any>):Ok {
  `assertOk`
  ---------------
 */
-func assertOk(r:Result<Any,Any>) {
+public func assertOk(r:Result<Any,Any>) {
   switch(r) {
     case (#err _) assert false;
     case (#ok _) ();
@@ -59,7 +59,7 @@ func assertOk(r:Result<Any,Any>) {
  `assertErr`
  ---------------
 */
-func assertErr(r:Result<Any,Any>) {
+public func assertErr(r:Result<Any,Any>) {
   switch(r) {
     case (#err _) ();
     case (#ok _) assert false;
@@ -70,14 +70,14 @@ func assertErr(r:Result<Any,Any>) {
  `assertErrIs`
  ---------------
 */
-func assertErrIs<E>(r:Result<Any,E>, f:E->Bool) : Bool =
+public func assertErrIs<E>(r:Result<Any,E>, f:E->Bool) : Bool =
   assertErrAs<E,Bool>(r, f);
 
 /**
  `assertErrAs`
  ---------------
 */
-func assertErrAs<E,X>(r:Result<Any,E>, f:E->X) : X {
+public func assertErrAs<E,X>(r:Result<Any,E>, f:E->X) : X {
   switch(r) {
     case (#err e) f e;
     case (#ok _) P.unreachable();
@@ -89,7 +89,7 @@ func assertErrAs<E,X>(r:Result<Any,E>, f:E->X) : X {
  -------
  bind operation in result monad.
 */
-func bind<R1,R2,Error>(
+public func bind<R1,R2,Error>(
   x:Result<R1,Error>,
   y:R1 -> Result<R2,Error>) : Result<R2,Error> {
   switch x {
@@ -104,7 +104,7 @@ func bind<R1,R2,Error>(
  -------
  map the `Ok` type/value, leaving any `Error` type/value unchanged.
 */
-func mapOk<Ok1,Ok2,Error>(
+public func mapOk<Ok1,Ok2,Error>(
   x:Result<Ok1,Error>,
   y:Ok1 -> Ok2) : Result<Ok2,Error> {
   switch x {
@@ -118,7 +118,7 @@ func mapOk<Ok1,Ok2,Error>(
  --------------
  create a result from an option, including an error value to handle the `null` case.
 */
-func fromOption<R,E>(x:?R, err:E):Result<R,E> {
+public func fromOption<R,E>(x:?R, err:E):Result<R,E> {
   switch x {
     case (? x) {#ok x};
     case null {#err err};
@@ -130,7 +130,7 @@ func fromOption<R,E>(x:?R, err:E):Result<R,E> {
  --------------
  map the `Ok` type/value from the optional value, or else use the given error value.
 */
-func fromSomeMap<R1,R2,E>(x:?R1, f:R1->R2, err:E):Result<R2,E> {
+public func fromSomeMap<R1,R2,E>(x:?R1, f:R1->R2, err:E):Result<R2,E> {
   switch x {
     case (? x) {#ok (f x)};
     case null {#err err};
@@ -142,7 +142,7 @@ func fromSomeMap<R1,R2,E>(x:?R1, f:R1->R2, err:E):Result<R2,E> {
  ---------------
  asserts that the option is Some(_) form.
 */
-func fromSome<Ok>(o:?Ok):Result<Ok,None> {
+public func fromSome<Ok>(o:?Ok):Result<Ok,None> {
   switch(o) {
     case (?o) (#ok o);
     case _ P.unreachable();
@@ -154,7 +154,7 @@ func fromSome<Ok>(o:?Ok):Result<Ok,None> {
  ---------------
  a result that consists of an array of Ok results from an array of results, or the first error in the result array, if any.
 */
-func joinArrayIfOk<R,E>(x:[Result<R,E>]) : Result<[R],E> {
+public func joinArrayIfOk<R,E>(x:[Result<R,E>]) : Result<[R],E> {
   /**- return early with the first Err result, if any */
   for (i in x.keys()) {
     switch (x[i]) {

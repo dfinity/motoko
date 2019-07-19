@@ -61,7 +61,7 @@ let () =
   Printexc.record_backtrace true;
   try
     Arg.parse argspec add_arg usage;
-    if !mode = Default then mode := Check;
+    if !mode = Default then mode := Js;
     match !args with
     | [file] -> process_file file
     | _ -> eprintf "didc can only take one .did file\n"; exit 1

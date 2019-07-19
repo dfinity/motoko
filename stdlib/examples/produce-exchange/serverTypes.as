@@ -22,23 +22,23 @@ These types standardize representations for many common notions
 
 // import Date
 // xxx Dates, eventually from a standard library:
-type Date = Nat;
+public type Date = Nat;
 
 // xxx standard weight units?
-type Weight = Nat;
+public type Weight = Nat;
 
 // xxx standard price units?
-type Price = Nat;
+public type Price = Nat;
 
-type Unit = Nat; // xxx replace with a variant type
-type Grade = Nat; // xxx replace with a variant type
+public type Unit = Nat; // xxx replace with a variant type
+public type Grade = Nat; // xxx replace with a variant type
 
-type TruckCapacity = Weight;
+public type TruckCapacity = Weight;
 
-type Quantity = Nat;
+public type Quantity = Nat;
 
-type PricePerUnit = Price; // needed to calculate prices
-type PriceTotal = Price;
+public type PricePerUnit = Price; // needed to calculate prices
+public type PriceTotal = Price;
 
 /**
 User Names
@@ -49,7 +49,7 @@ Each user of the exchange chooses a unique _user name_, represented as `Text`.
 In response to this choice, the exchange assigns the user a unique Id (see below); it maintains a mapping from this user name to the (internally-chosen) user Id.
 */
 
-type UserName  = Text;
+public type UserName  = Text;
 
 /**
 Unique Ids
@@ -63,21 +63,21 @@ Internally, each type of Id serves as a "row key" for a table (or two).
 
 */
 
-type UserId        = Nat;
+public type UserId        = Nat;
 
-type PublicKey     = Text;
+public type PublicKey     = Text;
 
-type RegionId      = Nat;
-type TruckTypeId   = Nat;
-type ProduceId     = Nat;
+public type RegionId      = Nat;
+public type TruckTypeId   = Nat;
+public type ProduceId     = Nat;
 
-type ProducerId    = Nat;
-type InventoryId   = Nat;
-type ReservedInventoryId = Nat;
-type RetailerId    = Nat;
-type TransporterId = Nat;
-type RouteId       = Nat;
-type ReservedRouteId = Nat;
+public type ProducerId    = Nat;
+public type InventoryId   = Nat;
+public type ReservedInventoryId = Nat;
+public type RetailerId    = Nat;
+public type TransporterId = Nat;
+public type RouteId       = Nat;
+public type ReservedRouteId = Nat;
 
 /**
  `EntId`
@@ -86,7 +86,7 @@ type ReservedRouteId = Nat;
 
  The optional payload of an `#idErr` error message.
 */
-type EntId = {
+public type EntId = {
   #user        : UserId ;
   #truckType   : TruckTypeId ;
   #region      : RegionId ;
@@ -104,14 +104,14 @@ type EntId = {
 */
 
 /** Optional entity ID */
-type OpEntId = ?EntId;
+public type OpEntId = ?EntId;
 
 /**
  `IdErr`
  ---------
  An ID error consists only of the `#idErr` case, which carries an optional ID.
 */
-type IdErr = {
+public type IdErr = {
   #idErr: OpEntId;
 };
 
@@ -120,7 +120,7 @@ type IdErr = {
  ------------
  A Server error occurs when the client either has access control issues (e.g., `#publicKeyErr`) or provides invalid parameters (e.g., `#idErr`).
  */
-type ServerErr = {
+public type ServerErr = {
   #idErr: OpEntId;
   #publicKeyErr;
 };
@@ -136,7 +136,7 @@ Public info associated with Ids
 -------------
 */
 
-type UserInfo = shared {
+public type UserInfo = {
   id: UserId;
   public_key: Text;
   user_name: Text;
@@ -153,7 +153,7 @@ type UserInfo = shared {
 `TruckTypeInfo`
 -----------------
 */
-type TruckTypeInfo = shared {
+public type TruckTypeInfo = {
   id : TruckTypeId;
   short_name : Text;
   description : Text;
@@ -167,7 +167,7 @@ type TruckTypeInfo = shared {
 `RegionInfo`
 -----------------
 */
-type RegionInfo = shared {
+public type RegionInfo = {
   id : RegionId;
   short_name : Text;
   description : Text;
@@ -178,7 +178,7 @@ type RegionInfo = shared {
 -----------------
 */
 
-type ProduceInfo = shared {
+public type ProduceInfo = {
   id : ProduceId;
   short_name : Text;
   description : Text;
@@ -190,7 +190,7 @@ type ProduceInfo = shared {
 -----------------
 */
 
-type ProducerInfo = shared {
+public type ProducerInfo = {
   id : ProducerId;
   public_key: Text;
   short_name : Text;
@@ -205,7 +205,7 @@ type ProducerInfo = shared {
 -----------------
 */
 
-type InventoryInfo = shared {
+public type InventoryInfo = {
   id : InventoryId;
   produce : ProduceId;
   producer : ProducerId;
@@ -222,7 +222,7 @@ type InventoryInfo = shared {
 -----------------------------
 */
 
-type ReservedInventoryInfo = shared {
+public type ReservedInventoryInfo = {
   id : ReservedInventoryId;
   retailer : RetailerId;
   item : InventoryInfo;
@@ -234,7 +234,7 @@ type ReservedInventoryInfo = shared {
 */
 
 // for now, this is the same as a ReservationInfo
-type ProduceMarketInfo = shared {
+public type ProduceMarketInfo = {
   produce:     ProduceId;
   producer:    ProducerId;
   quant:       Quantity;
@@ -255,7 +255,7 @@ type ProduceMarketInfo = shared {
 -----------------
 */
 
-type RetailerInfo = shared {
+public type RetailerInfo = {
   id : RetailerId;
   public_key: Text;
   short_name : Text;
@@ -268,7 +268,7 @@ type RetailerInfo = shared {
 -----------------
 */
 
-type TransporterInfo = shared {
+public type TransporterInfo = {
   id : TransporterId;
   public_key: Text;
   // no region; the transporters are the supply of routes, not "end
@@ -284,7 +284,7 @@ type TransporterInfo = shared {
 -----------------
 */
 
-type RouteInfo = shared {
+public type RouteInfo = {
   id : RouteId;
   transporter : TransporterId;
   truck_type : TruckTypeInfo;
@@ -300,7 +300,7 @@ type RouteInfo = shared {
 -----------------
 */
 
-type ReservedRouteInfo = shared {
+public type ReservedRouteInfo = {
   id : ReservedRouteId;
   retailer : RetailerId;
   route : RouteInfo;
@@ -311,7 +311,7 @@ type ReservedRouteInfo = shared {
 -----------------
 */
 
-type ReservationInfo = shared {
+public type ReservationInfo = {
   produce:     ProduceId;
   producer:    ProducerId;
   quant:       Quantity;
@@ -338,7 +338,7 @@ type ReservationInfo = shared {
  Developer-level, counter-based information about the exchange, including counts of each kind of entity.
 
 */
-type ProduceExchangeCounts = shared {
+public type ProduceExchangeCounts = {
   hash_bit_length : Nat;
   truck_type_count : Nat;
   region_count : Nat;
@@ -372,7 +372,7 @@ type ProduceExchangeCounts = shared {
 */
 
 // xxx same as a reservation structure; represents a possible reservation to make
-type QueryAllResult = ReservationInfo;
+public type QueryAllResult = ReservationInfo;
 
 /**
 
@@ -384,7 +384,7 @@ the 2019.03.12 ActorScript Team meeting.
 
 */
 
-type QueryAllResults = [QueryAllResult];
+public type QueryAllResults = [QueryAllResult];
 
 
 /**
@@ -394,7 +394,7 @@ type QueryAllResults = [QueryAllResult];
  The server can generate synthetic workloads given a small set of parameters.
  */
 
-type WorkloadParams = shared {
+public type WorkloadParams = {
   day_count:Nat;
   max_route_duration:Nat;
   producer_count:Nat;

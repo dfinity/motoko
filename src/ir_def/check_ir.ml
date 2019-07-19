@@ -5,20 +5,21 @@ open Source
 module T = Type
 module E = Ir_effect
 
-(* TODO: remove DecE from syntax, replace by BlockE [dec] *)
-(* TODO: check constraint matching supports recursive bounds *)
-
 (* TODO: make note immutable, perhaps just using type abstraction *)
 
 (* TODO:
-   dereferencing is still implicit in the IR (see immut_typ below) - consider making it explicit as part of desugaring.
- *)
+   dereferencing is still implicit in the IR (see immut_typ below);
+   consider making it explicit as part of desugaring.
+*)
 
 (* TODO: enforce second-class nature of T.Mut? in check_typ *)
+
 (* TODO: check escape of free mutables via actors *)
 
-(* helpers *)
+(* Helpers *)
+
 let (==>) p q = not p || q
+
 let typ = E.typ
 
 let immute_typ p =
@@ -114,7 +115,7 @@ let check_shared env at t =
   if env.flavor.Ir.serialized
   then check env at (T.is_serialized t)
     "message argument is not serialized:\n  %s" (T.string_of_typ_expand t)
-  else check env at (T.sub t T.Shared)
+  else check env at (T.shared t)
     "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
 
 let check_concrete env at t =
@@ -128,16 +129,21 @@ let rec check_typ env typ : unit =
   | T.Var (s, i) ->
     error env no_region "free type variable %s, index %i" s  i
   | T.Con (c, typs) ->
-    begin match Con.kind c with
-     | T.Def (tbs, _) -> check_typ_bounds env tbs typs no_region (* TODO(Claudio):
-       check bodies of anonymous T.Defs since they won't get checked elsewhere *)
-     | T.Abs (tbs, _) ->
-       check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
-       check_typ_bounds env tbs typs no_region
+    List.iter (check_typ env) typs;
+    begin
+      match Con.kind c with
+      | T.Def (tbs,_) ->
+        if not (T.ConSet.mem c env.cons) then
+          (* an anonymous recursive type, check its def but beware recursion
+             future: use a visited set *)
+          check_con {env with cons = T.ConSet.add c env.cons} c;
+        check_typ_bounds env tbs typs no_region
+      | T.Abs (tbs, _) ->
+        check env no_region (T.ConSet.mem c env.cons) "free type constructor";
+        check_typ_bounds env tbs typs no_region
     end
   | T.Any -> ()
   | T.Non -> ()
-  | T.Shared -> ()
   | T.Prim _ -> ()
   | T.Array typ ->
     check_typ env typ
@@ -159,12 +165,13 @@ let rec check_typ env typ : unit =
         error env no_region "promising function with non-async result type \n  %s"
           (T.string_of_typ_expand t2)
     end;
-    if sort = T.Sharable then begin
+    if sort = T.Shared then begin
       List.iter (fun t -> check_shared env no_region t) ts1;
       match ts2 with
       | [] -> ()
       | [T.Async t2] ->
-        check_sub env' no_region t2 T.Shared;
+        check env' no_region (T.shared t2)
+          "message result is not sharable:\n  %s" (T.string_of_typ_expand t2)
       | _ -> error env no_region "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
     end
@@ -189,22 +196,18 @@ let rec check_typ env typ : unit =
     check env no_region env.flavor.Ir.serialized
       "Serialized in non-serialized flavor";
     check_typ env typ;
-    check_sub env no_region typ T.Shared
+    check env no_region (T.shared typ)
+       "serialized type is not sharable:\n  %s" (T.string_of_typ_expand typ)
   | T.Typ c ->
-    check env no_region (T.ConSet.mem c env.cons) "free type constructor %s" (Con.name c);
+    check_con env c
 
-(*
-and check_kind env k =
-  let (binds,typ) =
-    match k with
-    | T.Abs(binds,typ)
-      | T.Def(binds,typ) -> (binds,typ)
-  in
-  let cs,ce = check_typ_binds env binds in
-  let ts = List.map (fun c -> T.Con(c,[])) cs in
+and check_con env c =
+  let env = {env with cons = T.ConSet.add c env.cons} in
+  let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+  let cs, ce = check_typ_binds env binds in
+  let ts = List.map (fun c -> T.Con (c, [])) cs in
   let env' = adjoin_cons env ce in
-  check_typ env' (T.open_ ts  typ);
-*)
+  check_typ env' (T.open_ ts typ)
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
@@ -214,13 +217,13 @@ and check_typ_field env s typ_field : unit =
       (s <> Some T.Actor || T.is_func (T.promote typ))
       "actor field has non-function type";
     check env no_region
-      ((s <> Some T.Actor && s <> Some (T.Object T.Sharable)) || T.sub typ T.Shared)
-      "shared object or actor field has non-shared type"
+      (s <> Some T.Actor || T.shared typ)
+      "actor field has non-shared type"
   end
 
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
-  let cs = List.map (function T.Con (c, []) ->  c | _ -> assert false) ts in
+  let cs = List.map (function T.Con (c, []) -> c | _ -> assert false) ts in
   let env' = add_typs env cs in
   let _ = List.map
             (fun typ_bind ->
@@ -231,17 +234,21 @@ and check_typ_binds env typ_binds : T.con list * con_env =
   cs, T.ConSet.of_list cs
 
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =
-  match tbs, typs with
-  | tb::tbs', typ::typs' ->
-    check_typ env typ;
-    check env at (T.sub typ tb.T.bound)
-      "type argument does not match parameter bound";
-    check_typ_bounds env tbs' typs' at
-  | [], [] -> ()
-  | [], _ -> error env at "too many type arguments"
-  | _, [] -> error env at "too few type arguments"
+  let pars = List.length tbs in
+  let args = List.length typs in
+  if pars < args then
+    error env at "too many type arguments";
+  if pars > args then
+    error env at "too few type arguments";
+  List.iter2
+    (fun tb typ ->
+      check env at (T.sub typ (T.open_ typs tb.T.bound))
+        "type argument does not match parameter bound")
+    tbs typs
+
 
 and check_inst_bounds env tbs typs at =
+  List.iter (check_typ env) typs;
   check_typ_bounds env tbs typs at
 
 (* Literals *)
@@ -275,12 +282,10 @@ let type_lit env lit at : T.prim =
 
 let isAsyncE exp =
   match exp.it with
-  | AsyncE _ -> (* pre await transformation *)
-    true
-  | CallE(_,{it=PrimE("@async");_}, _, cps) -> (* post await transformation *)
-    true
-  | _ ->
-    false
+  | AsyncE _ (* pre await transformation *)
+  | PrimE(OtherPrim "@async", [_]) (* post await transformation *)
+    -> true
+  | _ -> false
 
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
@@ -295,7 +300,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     "inferred effect not a subtype of expected effect";
   (* check typing *)
   match exp.it with
-  | PrimE _ -> ()
   | VarE id ->
     let t0 = try T.Env.find id env.vals with
              |  Not_found -> error env exp.at "unbound variable %s" id
@@ -303,31 +307,49 @@ let rec check_exp env (exp:Ir.exp) : unit =
       t0 <~ t
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
-  | UnE (ot, op, exp1) ->
-    check (Operator.has_unop op ot) "unary operator is not defined for operand type";
-    check_exp env exp1;
-    typ exp1 <: ot;
-    ot <: t
-  | BinE (ot, exp1, op, exp2) ->
-    check (Operator.has_binop op ot) "binary operator is not defined for operand type";
-    check_exp env exp1;
-    check_exp env exp2;
-    typ exp1 <: ot;
-    typ exp2 <: ot;
-    ot <: t
-  | ShowE (ot, exp1) ->
-    check env.flavor.has_show "show expression in non-show flavor";
-    check (Show.can_show ot) "show is not defined for operand type";
-    check_exp env exp1;
-    typ exp1 <: ot;
-    T.Prim T.Text <: t
-  | RelE (ot, exp1, op, exp2) ->
-    check (Operator.has_relop op ot) "relational operator is not defined for operand type";
-    check_exp env exp1;
-    check_exp env exp2;
-    typ exp1 <: ot;
-    typ exp2 <: ot;
-    T.bool <: t
+  | PrimE (p, es) ->
+    begin match p, es with
+    | UnPrim (ot, op), [exp1] ->
+      check (Operator.has_unop op ot) "unary operator is not defined for operand type";
+      check_exp env exp1;
+      typ exp1 <: ot;
+      ot <: t
+    | BinPrim (ot, op), [exp1; exp2] ->
+      check (Operator.has_binop op ot) "binary operator is not defined for operand type";
+      check_exp env exp1;
+      check_exp env exp2;
+      typ exp1 <: ot;
+      typ exp2 <: ot;
+      ot <: t
+    | RelPrim (ot, op), [exp1; exp2] ->
+      check (Operator.has_relop op ot) "relational operator is not defined for operand type";
+      check_exp env exp1;
+      check_exp env exp2;
+      typ exp1 <: ot;
+      typ exp2 <: ot;
+      T.bool <: t
+    | ShowPrim ot, [exp1] ->
+      check env.flavor.has_show "show expression in non-show flavor";
+      check (Show.can_show ot) "show is not defined for operand type";
+      check_exp env exp1;
+      typ exp1 <: ot;
+      T.Prim T.Text <: t
+    | SerializePrim ot, [exp1] ->
+      check env.flavor.serialized "Serialized expression in wrong flavor";
+      check (T.shared ot) "argument to SerializePrim not shared";
+      check_exp env exp1;
+      typ exp1 <: ot;
+      T.Serialized ot <: t
+    | DeserializePrim ot, [exp1] ->
+      check env.flavor.serialized "Serialized expression in wrong flavor";
+      check (T.shared ot) "argument to SerializePrim not shared";
+      check_exp env exp1;
+      typ exp1 <: T.Serialized ot;
+      ot <: t
+    | OtherPrim _, _ -> ()
+    | _ ->
+      error env exp.at "PrimE with wrong number of arguments"
+    end
   | TupE exps ->
     List.iter (check_exp env) exps;
     T.Tup (List.map typ exps) <: t
@@ -363,10 +385,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
              | ActorDotE _ -> sort = T.Actor
              | DotE _ -> sort <> T.Actor
              | _ -> false) "sort mismatch";
-      match T.lookup_val_field n tfs with
-      | Some tn ->
-        tn <~ t
-      | None ->
+      try T.lookup_val_field n tfs <~ t with Invalid_argument _ ->
         error env exp1.at "field name %s does not exist in type\n  %s"
           n (T.string_of_typ_expand t1)
     end
@@ -409,7 +428,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     let t_arg = T.open_ insts t2 in
     let t_ret = T.open_ insts t3 in
-    if (call_conv.Call_conv.sort = T.Sharable) then begin
+    if (call_conv.Call_conv.sort = T.Shared) then begin
       check_concrete env exp.at t_arg;
       check_concrete env exp.at t_ret;
     end;
@@ -473,7 +492,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env' =
       {env with labs = T.Env.empty; rets = Some t1; async = true} in
     check_exp env' exp1;
-    t1 <: T.Shared;
+    t1 <: T.Any;
     T.Async t1 <: t
   | AwaitE exp1 ->
     check env.flavor.has_await "await in non-await flavor";
@@ -517,17 +536,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
-    check ((cc.Call_conv.sort = T.Sharable && Type.is_async (T.seq ret_tys))
+    check ((cc.Call_conv.sort = T.Shared && Type.is_async (T.seq ret_tys))
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
-    if (cc.Call_conv.sort = T.Sharable) then List.iter (check_concrete env exp.at) ret_tys;
+    if (cc.Call_conv.sort = T.Shared) then List.iter (check_concrete env exp.at) ret_tys;
     let env'' =
       {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) (T.seq ret_tys);
     (* Now construct the function type and compare with the annotation *)
     let ts1 = List.map (fun a -> a.note) args in
-    if (cc.Call_conv.sort = T.Sharable) then List.iter (check_concrete env exp.at) ts1;
+    if (cc.Call_conv.sort = T.Shared) then List.iter (check_concrete env exp.at) ts1;
     let fun_ty = T.Func
       ( cc.Call_conv.sort, cc.Call_conv.control
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
@@ -658,12 +677,12 @@ and check_pat_field env t (pf : pat_field) =
   let s, tfs = T.as_obj_sub [lab] t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
-  if T.is_mut (Lib.Option.value (T.lookup_val_field lab tfs)) then
+  if T.is_mut (T.lookup_val_field lab tfs) then
     error env pf.it.pat.at "cannot match mutable field %s" lab
 
 and check_pat_tag env t l pat =
   let (<:) = check_sub env pat.at in
-  Lib.Option.value (T.lookup_val_field l (T.as_variant_sub l t)) <: pat.note
+  T.lookup_val_field l (T.as_variant_sub l t) <: pat.note
 
 (* Objects *)
 
@@ -685,8 +704,8 @@ and type_exp_field env s f : T.field =
   if not (T.is_typ t) then begin
     check env f.at ((s = T.Actor) ==> T.is_func t)
       "public actor field is not a function";
-    check env f.at ((s <> T.Object T.Local && s <> T.Module) ==> T.sub t T.Shared)
-      "public shared object or actor field has non-shared type";
+    check env f.at ((s = T.Actor) ==> T.shared t)
+      "public actor field has non-shared type";
   end;
   T.{lab = name; typ = t}
 
@@ -720,15 +739,7 @@ and check_dec env dec  =
     typ exp <: T.as_immut t0
   | TypD c ->
     check (T.ConSet.mem c env.cons) "free type constructor";
-    let (binds, typ) =
-      match Con.kind c with
-      | T.Abs (binds, typ)
-      | T.Def (binds, typ) -> (binds, typ)
-    in
-    let cs, ce = check_typ_binds env binds in
-    let ts = List.map (fun c -> T.Con (c, [])) cs in
-    let env' = adjoin_cons env ce in
-    check_typ env' (T.open_ ts  typ)
+    check_con env c
 
 and check_decs env decs  =
   List.iter (check_dec env) decs;
