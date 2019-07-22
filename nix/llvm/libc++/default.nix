@@ -1,10 +1,10 @@
-{ path, lib, stdenv, fetch, cmake, python, libcxxabi, fixDarwinDylibNames, version
+{ lib, stdenv, fetch, cmake, python, libcxxabi, fixDarwinDylibNames, version
 , enableShared ? true }:
 
 stdenv.mkDerivation rec {
   name = "libc++-${version}";
 
-  src = fetch "libcxx" "0sdh1h3xg2c94fgy7yyd0j9y21pivjm6r88i58jza0ksbn8cip1r";
+  src = fetch "libcxx" "1qlx3wlxrnc5cwc1fcfc2vhfsl7j4294hi8y5kxj8hy8wxsjd460";
 
   postUnpack = ''
     unpackFile ${libcxxabi.src}
@@ -24,7 +24,7 @@ stdenv.mkDerivation rec {
     patchShebangs utils/cat_files.py
   '';
   nativeBuildInputs = [ cmake ]
-    ++ stdenv.lib.optional (stdenv.hostPlatform.isMusl) python;
+    ++ stdenv.lib.optional (stdenv.hostPlatform.isMusl || stdenv.hostPlatform.isWasi) python;
 
   buildInputs = [ libcxxabi ] ++ lib.optional stdenv.isDarwin fixDarwinDylibNames;
 
@@ -32,7 +32,7 @@ stdenv.mkDerivation rec {
     "-DLIBCXX_LIBCXXABI_LIB_PATH=${libcxxabi}/lib"
     "-DLIBCXX_LIBCPPABI_VERSION=2"
     "-DLIBCXX_CXX_ABI=libcxxabi"
-  ] ++ stdenv.lib.optional (stdenv.hostPlatform.isMusl) "-DLIBCXX_HAS_MUSL_LIBC=1"
+  ] ++ stdenv.lib.optional (stdenv.hostPlatform.isMusl || stdenv.hostPlatform.isWasi) "-DLIBCXX_HAS_MUSL_LIBC=1"
     ++ stdenv.lib.optional (stdenv.hostPlatform.useLLVM or false) "-DLIBCXX_USE_COMPILER_RT=ON"
     ++ stdenv.lib.optional stdenv.hostPlatform.isWasm [
       "-DLIBCXX_ENABLE_THREADS=OFF"
@@ -45,7 +45,7 @@ stdenv.mkDerivation rec {
   linkCxxAbi = stdenv.isLinux;
 
   setupHooks = [
-    (path + "/pkgs/build-support/setup-hooks/role.bash")
+    ../../../../../build-support/setup-hooks/role.bash
     ./setup-hook.sh
   ];
 
