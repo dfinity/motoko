@@ -3489,7 +3489,7 @@ module Serialization = struct
 
         (* Go! *)
         get_data_start ^^
-        get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         E.call_import env "rts" "skip_idl_header" ^^
         get_refs_start ^^ compile_add_const Heap.word_size ^^
         deserialize_go env t ^^
