@@ -138,6 +138,16 @@ rec {
     '';
   };
 
+  asc-tar = nixpkgs.symlinkJoin {
+    name = "asc-tar";
+    paths = [ asc-bin rts ];
+    postBuild = ''
+      tar -chf $out/asc.tar -C $out bin/asc rts/as-rts.wasm
+      mkdir -p $out/nix-support
+      echo "file bin $out/asc.tar" >> $out/nix-support/hydra-build-products
+    '';
+  };
+
   tests = stdenv.mkDerivation {
     name = "tests";
     src = subpath ./test;
@@ -320,7 +330,7 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib.tar $src
+      tar -rf $out/stdlib.tar -C $src *.as
       mkdir -p $out/nix-support
       echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
     '';
@@ -356,7 +366,7 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib-doc.tar doc
+      tar -rf $out/stdlib-doc.tar -C doc .
       mkdir -p $out/nix-support
       echo "report stdlib-doc $out/stdlib-doc.tar" >> $out/nix-support/hydra-build-products
     '';
