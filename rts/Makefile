@@ -48,7 +48,7 @@ RTS_O=$(patsubst %,_build/%.o,$(RTSFILES))
 
 as-rts.wasm: $(RTS_O) $(TOMMATH_O)
 	$(WASM_LD) --import-memory --shared --no-entry --gc-sections \
-		_build/rts.o $(TOMMATH_O) -o $@ \
+		$^ -o $@ \
 		--export=__wasm_call_ctors
 
 clean:
