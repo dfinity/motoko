@@ -204,4 +204,14 @@ switch (magic () : {#A : Nat; #B}) {
   case _ {};
 };
 
+switch (magic ()) {
+  case true {};
+  case 1 {};
+  case 2.5 {};
+  case "" {};
+  case () {};
+  case {} {};
+  case null {};
+  case (?_) {};
+};
 };

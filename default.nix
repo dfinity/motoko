@@ -26,7 +26,7 @@ let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix n
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   ref = "master";
-  rev = "49627900050b2db1b641cd402e832a165b8d47f5";
+  rev = "ad50bcea8db6d55decf2622ad836435aa36fa33f";
 }) { system = nixpkgs.system; }; in
 
 # Include dvm
@@ -69,18 +69,23 @@ let
   };
 
   llvmBuildInputs = [
-    llvm.clang_9
-    llvm.lld_9
+    nixpkgs.clang # for native building
+    llvm.clang_9 # for wasm building
+    llvm.lld_9 # for wasm building
   ];
 
+  # When compiling natively, we want to use `clang` (which is a nixpkgs
+  # provided wrapper that sets various include paths etc).
+  # But for some reason it does not handle building for Wasm well, so
+  # there we use plain clang-9. There is no stdlib there anyways.
   llvmEnv = ''
-    export CLANG="clang-9"
+    export CLANG="clang"
+    export WASM_CLANG="clang-9"
     export WASM_LD=wasm-ld
   '';
 in
 
 rec {
-
   rts = stdenv.mkDerivation {
     name = "asc-rts";
 
@@ -92,6 +97,12 @@ rec {
     preBuild = ''
       ${llvmEnv}
       export TOMMATHSRC=${libtommath}
+    '';
+
+    doCheck = true;
+
+    checkPhase = ''
+      ./test_rts
     '';
 
     installPhase = ''

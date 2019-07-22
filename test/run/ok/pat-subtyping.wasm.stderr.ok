@@ -31,3 +31,12 @@ pat-subtyping.as:172.3-172.32: warning, this case is never reached
 pat-subtyping.as:182.3-182.49: warning, this case is never reached
 pat-subtyping.as:185.3-185.31: warning, this case is never reached
 pat-subtyping.as:188.3-188.39: warning, this case is never reached
+pat-subtyping.as:208.3-208.15: warning, this case is never reached
+pat-subtyping.as:209.3-209.12: warning, this case is never reached
+pat-subtyping.as:210.3-210.14: warning, this case is never reached
+pat-subtyping.as:211.3-211.13: warning, this case is never reached
+pat-subtyping.as:212.3-212.13: warning, this case is never reached
+pat-subtyping.as:213.3-213.13: warning, this case is never reached
+pat-subtyping.as:214.3-214.15: warning, this case is never reached
+pat-subtyping.as:215.3-215.15: warning, this case is never reached
+compile_lit_pat: (FloatLit 2.5)
