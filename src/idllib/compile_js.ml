@@ -172,19 +172,22 @@ let pp_actor ppf actor =
   pp_open_hovbox ppf 1;
   kwd ppf "const";
   (match actor.it with
-   | ActorD (x, {it=ServT tp; _}) ->
-      id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
-      str ppf "IDL.ActorInterface({";
-      concat ppf pp_meth "," tp;
-      str ppf "})"
-   | ActorD (x, {it=VarT var; _}) -> id ppf x; space ppf (); kwd ppf "="; id ppf var
-   | ActorD (x, _) -> assert false
+   | ActorD (x, t) ->
+      let x = ("actor_" ^ x.it) @@ x.at in
+      match t.it with
+      | ServT tp ->
+         id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
+         str ppf "IDL.ActorInterface({";
+         concat ppf pp_meth "," tp;
+         str ppf "})"
+      | VarT var -> id ppf x; space ppf (); kwd ppf "="; id ppf var
+      | _ -> assert false
   );
   pp_close_box ppf ()
 
 let pp_header ppf () =
   pp_open_vbox ppf 0;
-  str ppf "const IDL = require('./IDL')";
+  str ppf "const IDL = require('IDL')";
   pp_close_box ppf ()
   
 let pp_prog ppf env prog =

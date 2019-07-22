@@ -23,20 +23,22 @@ let ocaml_vlq = import ./nix/ocaml-vlq.nix {
 let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
 let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
 
+let dev = import (builtins.fetchGit {
+  url = "ssh://git@github.com/dfinity-lab/dev";
+  ref = "master";
+  rev = "ad50bcea8db6d55decf2622ad836435aa36fa33f";
+}) { system = nixpkgs.system; }; in
+
 # Include dvm
 let real-dvm =
   if dvm == null
-  then
-    if test-dvm
-    then
-      let dev = builtins.fetchGit {
-        url = "ssh://git@github.com/dfinity-lab/dev";
-        ref = "master";
-        rev = "a556b011d957d3174b6c4017d76dd510791d8922";
-      }; in
-      (import dev { system = nixpkgs.system; }).dvm
+  then if test-dvm
+    then dev.dvm
     else null
   else dvm; in
+
+# Include js-client
+let js-client = dev.js-dfinity-client; in
 
 let commonBuildInputs = [
   nixpkgs.ocaml
@@ -62,23 +64,28 @@ let
   libtommath = nixpkgs.fetchFromGitHub {
     owner = "libtom";
     repo = "libtommath";
-    rev = "9e1a75cfdc4de614eaf4f88c52d8faf384e54dd0";
-    sha256 = "0qwmzmp3a2rg47pnrsls99jpk5cjj92m75alh1kfhcg104qq6w3d";
+    rev = "584405ff8e357290362671b5e7db6110a959cbaa";
+    sha256 = "1vl606rm8ba7vjhr0rbdqvih5d4r5iqalqlj5mnz6j3bnsn83b2a";
   };
 
   llvmBuildInputs = [
-    llvm.clang_9
-    llvm.lld_9
+    nixpkgs.clang # for native building
+    llvm.clang_9 # for wasm building
+    llvm.lld_9 # for wasm building
   ];
 
+  # When compiling natively, we want to use `clang` (which is a nixpkgs
+  # provided wrapper that sets various include paths etc).
+  # But for some reason it does not handle building for Wasm well, so
+  # there we use plain clang-9. There is no stdlib there anyways.
   llvmEnv = ''
-    export CLANG="clang-9"
+    export CLANG="clang"
+    export WASM_CLANG="clang-9"
     export WASM_LD=wasm-ld
   '';
 in
 
 rec {
-
   rts = stdenv.mkDerivation {
     name = "asc-rts";
 
@@ -90,6 +97,12 @@ rec {
     preBuild = ''
       ${llvmEnv}
       export TOMMATHSRC=${libtommath}
+    '';
+
+    doCheck = true;
+
+    checkPhase = ''
+      ./test_rts
     '';
 
     installPhase = ''
@@ -145,7 +158,10 @@ rec {
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
+        nixpkgs.getconf
+        nixpkgs.nodejs-10_x
         filecheck
+        js-client
       ] ++
       (if test-dvm then [ real-dvm ] else []) ++
       llvmBuildInputs;
@@ -156,6 +172,7 @@ rec {
         export ASC=asc
         export AS_LD=as-ld
         export DIDC=didc
+        export JSCLIENT=${js-client}
         asc --version
       '' +
       (if test-dvm then ''
@@ -415,6 +432,7 @@ rec {
 
     shellHook = llvmEnv;
     TOMMATHSRC = libtommath;
+    JSCLIENT = js-client;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
   } else null;
 

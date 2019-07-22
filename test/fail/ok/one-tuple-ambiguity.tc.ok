@@ -2,5 +2,3 @@ one-tuple-ambiguity.as:16.3-16.5: type error, literal of type
   Nat
 does not have expected type
   (Nat, Bool)
-one-tuple-ambiguity.as:16.1-16.5: type error, expected function type, but expression produces type
-  ()

@@ -1,3 +1,5 @@
+pat-subtyping-fail.as:123.3-123.15: warning, this case is never reached
+pat-subtyping-fail.as:124.3-124.12: warning, this case is never reached
 pat-subtyping-fail.as:4.9-4.11: type error, operator cannot consume expected type
   Nat
 pat-subtyping-fail.as:8.9-8.11: type error, operator cannot consume expected type

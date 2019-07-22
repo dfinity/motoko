@@ -9,15 +9,6 @@ module T = Type
 module A = Effect
 
 
-(* Error recovery *)
-
-exception Recover
-
-let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
-let recover_opt f y = recover_with None (fun y -> Some (f y)) y
-let recover f y = recover_with () f y
-
-
 (* Contexts  *)
 
 type lab_env = T.typ T.Env.t
@@ -52,17 +43,23 @@ let env_of_scope msgs scope =
 
 (* Error bookkeeping *)
 
+exception Recover
+
+let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
+let recover_opt f y = recover_with None (fun y -> Some (f y)) y
+let recover f y = recover_with () f y
+
 let type_error at text : Diag.message =
   Diag.{sev = Diag.Error; at; cat = "type"; text}
 let type_warning at text : Diag.message =
   Diag.{sev = Diag.Warning; at; cat = "type"; text}
 
-let local_error env at fmt =
-  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
-
 let error env at fmt =
   Printf.ksprintf
     (fun s -> Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
+
+let local_error env at fmt =
+  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_error at s)) fmt
 
 let warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
@@ -366,7 +363,7 @@ let infer_lit env lit at : T.prim =
     assert false
 
 let check_lit env t lit at =
-  match T.normalize t, !lit with
+  match t, !lit with
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
     lit := NatLit (check_nat env at s)
   | T.Prim T.Nat8, PreLit (s, T.Nat) ->
@@ -400,7 +397,7 @@ let check_lit env t lit at =
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (T.sub t' t) then
-      local_error env at
+      error env at
         "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand t)
 
@@ -858,15 +855,14 @@ and check_exp' env t exp : T.typ =
   | SwitchE (exp1, cases), _ ->
     let t1 = infer_exp_promote env exp1 in
     check_cases env t1 t cases;
-    if not env.pre then begin
-      match Coverage.check_cases cases t1 with
-      | [] -> ()
-      | ss ->
-        warn env exp.at
-          "the cases in this switch over type\n  %s\ndo not cover value\n  %s"
-          (Type.string_of_typ_expand t1)
-          (String.concat " or\n  " ss)
-    end;
+    (match Coverage.check_cases cases t1 with
+    | [] -> ()
+    | ss ->
+      warn env exp.at
+        "the cases in this switch over type\n  %s\ndo not cover value\n  %s"
+        (Type.string_of_typ_expand t1)
+        (String.concat " or\n  " ss)
+    );
     t
   | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
@@ -903,12 +899,14 @@ and check_exp' env t exp : T.typ =
 and infer_cases env t_pat t cases : T.typ =
   List.fold_left (infer_case env t_pat) t cases
 
-and infer_case env t_pat t {it = {pat; exp}; at; _} =
+and infer_case env t_pat t case =
+  let {pat; exp} = case.it in
   let ve = check_pat env t_pat pat in
   let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
   let t'' = T.lub t t' in
   if not env.pre && inconsistent t'' [t; t'] then
-    warn env at "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
+    warn env case.at
+      "the switch has type %s because branches have inconsistent types,\nthis case produces type\n  %s\nthe previous produce type\n  %s"
       (T.string_of_typ t'')
       (T.string_of_typ_expand t)
       (T.string_of_typ_expand t');
@@ -917,7 +915,8 @@ and infer_case env t_pat t {it = {pat; exp}; at; _} =
 and check_cases env t_pat t cases =
   List.iter (check_case env t_pat t) cases
 
-and check_case env t_pat t {it = {pat; exp}; _} =
+and check_case env t_pat t case =
+  let {pat; exp} = case.it in
   let ve = check_pat env t_pat pat in
   recover (check_exp (adjoin_vals env ve) t) exp
 
@@ -959,7 +958,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let t1 = T.Prim (infer_lit env lit pat.at) in
     let t = Operator.type_unop op t1 in
     if not (Operator.has_unop op t) then
-      local_error env pat.at "operator is not defined for operand type\n  %s"
+      error env pat.at "operator is not defined for operand type\n  %s"
         (T.string_of_typ_expand t);
     t, T.Env.empty
   | TupP pats ->
@@ -1049,7 +1048,7 @@ and check_pat' env t pat : Scope.val_env =
   | SignP (op, lit) ->
     if not env.pre then begin
       if not (Operator.has_unop op (T.promote t)) then
-        local_error env pat.at "operator cannot consume expected type\n  %s"
+        error env pat.at "operator cannot consume expected type\n  %s"
           (T.string_of_typ_expand t);
       if T.sub t T.Non
       then ignore (infer_lit env lit pat.at)
