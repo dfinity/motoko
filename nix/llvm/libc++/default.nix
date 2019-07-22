@@ -1,4 +1,4 @@
-{ lib, stdenv, fetch, cmake, python, libcxxabi, fixDarwinDylibNames, version
+{ path, lib, stdenv, fetch, cmake, python, libcxxabi, fixDarwinDylibNames, version
 , enableShared ? true }:
 
 stdenv.mkDerivation rec {
@@ -45,7 +45,7 @@ stdenv.mkDerivation rec {
   linkCxxAbi = stdenv.isLinux;
 
   setupHooks = [
-    ((import ../../../nix/nixpkgs.nix).src + "/pkgs/build-support/setup-hooks/role.bash")
+    (path + "/pkgs/build-support/setup-hooks/role.bash")
     ./setup-hook.sh
   ];
 
