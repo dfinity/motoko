@@ -19,7 +19,6 @@ let pkgs = (import ./nixpkgs-newer.nix) {
 
 {
   pkgs = pkgs;
-  clang_9 = pkgs.llvmPackages_9.clang;
+  clang_9 = pkgs.llvmPackages_9.clang-unwrapped;
   lld_9 = pkgs.llvmPackages_9.lld;
-  stdenv = pkgs.llvmPackages_9.stdenv;
 }

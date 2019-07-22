@@ -69,9 +69,9 @@ let
   };
 
   llvmBuildInputs = [
-    llvm.clang_9
-    llvm.lld_9
-    llvm.stdenv
+    nixpkgs.clang # for native building
+    llvm.clang_9 # for wasm building
+    llvm.lld_9 # for wasm building
   ];
 
   # When compiling natively, we want to use `clang` (which is a nixpkgs
@@ -86,7 +86,7 @@ let
 in
 
 rec {
-  rts = llvm.stdenv.mkDerivation {
+  rts = stdenv.mkDerivation {
     name = "asc-rts";
 
     src = subpath ./rts;
