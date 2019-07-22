@@ -100,6 +100,19 @@ rec {
     '';
   };
 
+  rts-frama-c = stdenv.mkDerivation {
+    name = "asc-rts-frama-c";
+    src = subpath ./rts;
+    buildInputs = [ nixpkgs.framac ];
+    buildPhase = ''
+      patchShebangs .
+      ./run-frama.sh
+    '';
+    installPhase = ''
+      touch $out
+    '';
+  };
+
   asc-bin = stdenv.mkDerivation {
     name = "asc-bin";
 
@@ -383,6 +396,7 @@ rec {
       unit-tests
       samples
       rts
+      rts-frama-c
       stdlib
       stdlib-doc
       stdlib-doc-live
