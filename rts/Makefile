@@ -64,15 +64,16 @@ _build/wasm _build/native:
 # Building the libtommath files, Wasm and native
 #
 
-TOMMATH_WASM_O=$(patsubst %,_build/wasm/tommath_%.o,$(TOMMATHFILES))
 
 _build/wasm/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/wasm
 	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
-TOMMATH_NATIVE_O=$(patsubst %,_build/native/tommath_%.o,$(TOMMATHFILES))
 
 _build/native/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/native
 	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+
+TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
+TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 
 #
 # Our part of the RTS, Wasm and native
