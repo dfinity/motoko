@@ -113,12 +113,10 @@ and 'a cont = 'a -> unit
 
 val unit : value
 
-
-(* Smart constructors *)
-
 val local_func : int -> int -> func -> value
 val message_func : int -> func -> value
 val async_func : int -> func -> value
+
 
 (* Projections *)
 

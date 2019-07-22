@@ -1,6 +1,7 @@
 open As_types
 open Printf
 
+
 (* Environments *)
 
 module Env = Env.Make(String)
@@ -283,7 +284,9 @@ and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
 
-(* Smart constructors *)
+(* Shorthands *)
+
+let unit = Tup []
 
 let local_func n m f = Func (Call_conv.local_cc n m, f)
 let message_func n f = Func (Call_conv.message_cc n, f)
@@ -323,11 +326,6 @@ let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
-
-
-(* Primitives *)
-
-let unit = Tup []
 
 
 (* Ordering *)
