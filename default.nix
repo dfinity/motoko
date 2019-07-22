@@ -285,6 +285,16 @@ rec {
     '';
   };
 
+  didc-tar = nixpkgs.symlinkJoin {
+    name = "didc-tar";
+    paths = didc;
+    postBuild = ''
+      tar -chf $out/didc.tar -C $out bin/didc
+      mkdir -p $out/nix-support
+      echo "file bin $out/didc.tar" >> $out/nix-support/hydra-build-products
+    '';
+  };
+
   wasm = ocaml_wasm;
   dvm = real-dvm;
   filecheck = nixpkgs.linkFarm "FileCheck"
