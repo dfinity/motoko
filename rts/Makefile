@@ -91,7 +91,7 @@ RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
 
 #
-# The actual RTS, a we ship it with the compiler
+# The actual RTS, as shipped with the compiler
 #
 
 as-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O)
