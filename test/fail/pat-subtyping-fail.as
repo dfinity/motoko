@@ -117,3 +117,9 @@ switch (magic () : {#A : Nat; #B}) {
   case (#B : {#B}) {};
   case _ {};
 };
+
+
+switch (magic ()) {
+  case true {};
+  case 1 {};
+};

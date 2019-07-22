@@ -126,3 +126,9 @@ left consumes
   {#A : Nat}
 right consumes
   {#A : Any}
+pat-inconsistent.as:42.9-42.11: type error, variant pattern cannot consume expected type
+  {#A}
+pat-inconsistent.as:49.8-49.9: type error, literal of type
+  Nat
+does not have expected type
+  Bool

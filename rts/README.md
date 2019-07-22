@@ -17,9 +17,10 @@ Compilation
 
 Running `make` should produce `as-rts.wasm`.
 
-If run within `nix-shell`, the environment variables `CLANG` and `WASM_LD`
-should point to suitable binaries. If not present, the `Makefile` will try to
-use `clang-9` and `wasm-ld-9`.
+If run within `nix-shell`, the environment variables `WASM_CLANG` and `WASM_LD`
+should point to suitable binaries (we track a specific unreleased version of
+`llvm`). If not present, the `Makefile` will try to use `clang-9` and
+`wasm-ld-9`.
 
 The runtime compiles and links in [libtommath]. It needs the source, so
 `nix-build` and `nix-shell` will set the environment variable `TOMMATHSRC` to
@@ -44,3 +45,14 @@ libtommath and memory managment
 We have to make libtommath’s memory management (which expects C-like functions
 `alloc`, `calloc` and `realloc`) work with the ActorScript runtime. See the
 comment next to `mp_alloc` in `rts.c` for the techical details.
+
+C tests
+-------
+
+To narrow down issues, or do regression testing on the C level, you can interact
+with the code provided by `rts.c` from `test_rts.c`. With
+
+    make test_rts && ./test_rts
+
+this is executed. This is compiled natively, so may not hide bugs that are tied to
+WebAssembly.

@@ -1,3 +1,6 @@
 as-rts.wasm
-.frama-c
+test_rts
+
 _build
+
+.frama-c
