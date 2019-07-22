@@ -1,2 +1,3 @@
 as-rts.wasm
+.frama-c
 _build

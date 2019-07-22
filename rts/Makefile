@@ -41,10 +41,12 @@ all: as-rts.wasm
 _build:
 	mkdir _build
 
-_build/rts.o: rts.c $(HEADER_STUBS) | _build
+_build/%.o: %.c rts.h | _build
 	$(CLANG) $(CLANG_FLAGS) $(MP_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
+RTSFILES=rts idl bigint
+RTS_O=$(patsubst %,_build/%.o,$(RTSFILES))
 
-as-rts.wasm: _build/rts.o $(TOMMATH_O)
+as-rts.wasm: $(RTS_O) $(TOMMATH_O)
 	$(WASM_LD) --import-memory --shared --no-entry --gc-sections \
 		_build/rts.o $(TOMMATH_O) -o $@ \
 		--export=__wasm_call_ctors
