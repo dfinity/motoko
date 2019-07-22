@@ -86,7 +86,7 @@ _build/wasm/%.o: %.c | _build/wasm
 _build/native/%.o: %.c | _build/native
 	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
 
-RTS_WASM_O=$(patsubst %,_build/wasm/%.o,$(RTSFILES))
+RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
 RTS_NATIVE_O=$(patsubst %,_build/native/%.o,$(RTSFILES))
 
 #
