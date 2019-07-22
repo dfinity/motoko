@@ -140,9 +140,9 @@ rec {
 
   asc-tar = nixpkgs.symlinkJoin {
     name = "asc-tar";
-    paths = [ asc-bin rts ];
+    paths = [ asc-bin rts didc ];
     postBuild = ''
-      tar -chf $out/asc.tar -C $out bin/asc rts/as-rts.wasm
+      tar -chf $out/asc.tar -C $out bin/asc rts/as-rts.wasm bin/didc
       mkdir -p $out/nix-support
       echo "file bin $out/asc.tar" >> $out/nix-support/hydra-build-products
     '';
@@ -282,16 +282,6 @@ rec {
     installPhase = ''
       mkdir -p $out/bin
       cp --verbose --dereference didc $out/bin
-    '';
-  };
-
-  didc-tar = nixpkgs.symlinkJoin {
-    name = "didc-tar";
-    paths = didc;
-    postBuild = ''
-      tar -chf $out/didc.tar -C $out bin/didc
-      mkdir -p $out/nix-support
-      echo "file bin $out/didc.tar" >> $out/nix-support/hydra-build-products
     '';
   };
 
