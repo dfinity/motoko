@@ -531,7 +531,7 @@ module RTS = struct
   let system_imports env =
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "version" [] [I32Type];
-    E.add_func_import env "rts" "skip_idl_header" [I32Type] [I32Type];
+    E.add_func_import env "rts" "skip_idl_header" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
@@ -3488,7 +3488,9 @@ module Serialization = struct
         Dfinity.system_call env "data_internalize" ^^
 
         (* Go! *)
-        get_data_start ^^ E.call_import env "rts" "skip_idl_header" ^^
+        get_data_start ^^
+        get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        E.call_import env "rts" "skip_idl_header" ^^
         get_refs_start ^^ compile_add_const Heap.word_size ^^
         deserialize_go env t ^^
         G.i Drop ^^
