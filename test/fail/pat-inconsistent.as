@@ -35,3 +35,17 @@ let _ = func(#A or #B(_ : Nat)) {};
 { let _ = func(("", 1) or ("", _ : Any)) {} };
 { let _ = func(#A or #A(_ : Any)) {}; };
 { let _ = func(#A(5) or #A(_ : Any)) {}; };
+
+// No coverage check for ill-typed cases
+switch (#A : {#A}) {
+  case (#A) {};
+  case (#B : {#A; #B}) {};
+  case _ {};
+  case _ {};
+};
+
+switch (true : Bool) {
+  case true {};
+  case 1 {};
+  case false {};
+};
