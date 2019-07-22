@@ -12,6 +12,8 @@ linux // {
   darwin = darwin.all-systems-go;
   asc-tar-x86_64-darwin = darwin.asc-tar;
   asc-tar-x86_64-linux = linux.asc-tar;
+  didc-tar-x86_64-darwin = darwin.didc-tar;
+  didc-tar-x86_64-linux = linux.didc-tar;  
   all-systems-go = inject-rev (nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
