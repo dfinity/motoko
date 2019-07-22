@@ -45,7 +45,7 @@ stdenv.mkDerivation rec {
   linkCxxAbi = stdenv.isLinux;
 
   setupHooks = [
-    ../../../../../build-support/setup-hooks/role.bash
+    ((import ../../../nix/nixpkgs.nix).src + "/pkgs/build-support/setup-hooks/role.bash")
     ./setup-hook.sh
   ];
 
