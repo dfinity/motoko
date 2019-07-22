@@ -36,11 +36,8 @@ let%test "it finds an identifier" =
     "f|ilter"
     (Some (Hover.Ident "filter"))
 
-let%test "TODO(Christoph) it ignores hovering over whitespace" =
-  hovered_identifier_test_case
-    "filter |"
-    (* None *)
-    (Some (Hover.Ident "filter"))
+let%test "it ignores hovering over whitespace" =
+  hovered_identifier_test_case "filter |" None
 
 let%test "it finds a qualified identifier" =
   hovered_identifier_test_case
