@@ -103,7 +103,7 @@ as-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O)
 # A simple program to do simple tests of rts.c, using native compilation
 #
 
-test_rts: test_rts.c  $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
+test_rts: test_rts.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
 	$(CLANG) -o $@ \
 		$+
 clean:
