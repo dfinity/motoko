@@ -9,12 +9,12 @@ accept:
 clean:
 	rm -rf _out
 
-CLANG?=clang-9
+WASM_CLANG?=clang-9
 WASM_LD?=wasm-ld-9
 AS_LD?=../../src/as-ld
 
 _out/%.lib.o: %.c | _out
-	$(CLANG) --compile -fpic --std=c11 --target=wasm32-unknown-unknown-wasm -fvisibility=hidden --optimize=3 \
+	$(WASM_CLANG) --compile -fpic --std=c11 --target=wasm32-unknown-unknown-wasm -fvisibility=hidden --optimize=3 \
 		-fno-builtin -Wall \
 		$< --output $@
 
