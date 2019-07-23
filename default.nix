@@ -328,6 +328,14 @@ rec {
     buildPhase = ''
       patchShebangs .
     '';
+    doCheck = true;
+    checkInputs = [
+      asc
+      nixpkgs.python
+    ];
+    checkPhase = ''
+      make ASC=${asc}/bin/asc alltests
+    '';
     installPhase = ''
       mkdir -p $out
       tar -rf $out/stdlib.tar -C $src *.as
