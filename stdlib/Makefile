@@ -13,10 +13,10 @@ WASM=ProduceExchange
 TESTS=\
 	Array \
 	ArrayTest \
-  Int \
-  IntTest \
-  Nat \
-  NatTest \
+	Int \
+	IntTest \
+	Nat \
+	NatTest \
 	Option \
 	OptionTest \
 	Result \
@@ -24,8 +24,8 @@ TESTS=\
 	List \
 	ListTest \
 	AssocList \
-  Text \
-  TextTest \
+	Text \
+	TextTest \
 	Trie \
 	Trie2 \
 	Set \
