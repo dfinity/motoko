@@ -695,7 +695,7 @@ and eq t1 t2 : bool =
 and sub t1 t2 : bool =
   rel_typ (ref SS.empty) (ref SS.empty) t1 t2
 
-and eq_kind eq k1 k2 : bool =
+and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
@@ -707,22 +707,18 @@ and eq_kind eq k1 k2 : bool =
 
 and eq_con eq c1 c2 =
   match Con.kind c1, Con.kind c2 with
-  | Def (tbs1, t1), Def (tbs2, t2) ->
-    eq_kind eq (Con.kind c1) (Con.kind c2)
+  | (Def (tbs1, t1)) as k1, (Def (tbs2, t2) as k2) ->
+    eq_kind' eq k1 k2
   | Abs _, Abs _ ->
     Con.eq c1 c2
-  | Def (tbs1, t1), Abs (tbs2, t2) ->
+  | Def (tbs1, t1), Abs (tbs2, t2)
+  | Abs (tbs2, t2), Def (tbs1, t1) ->
     (match rel_binds eq eq tbs1 tbs2 with
     | Some ts -> eq_typ eq eq (open_ ts t1) (Con (c2, ts))
     | None -> false
     )
-  | Abs (tbs1, t1), Def (tbs2, t2) ->
-    (match rel_binds eq eq tbs1 tbs2 with
-    | Some ts -> eq_typ eq eq (Con (c2, ts)) (open_ ts t2)
-    | None -> false
-    )
 
-let eq_kind k1 k2 : bool = eq_kind (ref SS.empty) k1 k2
+let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
 
 (* Compatibility *)
 
@@ -889,7 +885,7 @@ and lub_fields lubs glbs fs1 fs2 = match fs1, fs2 with
       | Typ _, _
       | _, Typ _ -> assert false
       | _, _ ->
-      {f1 with typ = lub' lubs glbs f1.typ f2.typ}::lub_fields lubs glbs fs1' fs2'
+        {f1 with typ = lub' lubs glbs f1.typ f2.typ}::lub_fields lubs glbs fs1' fs2'
 
 and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
@@ -944,7 +940,10 @@ and glb' lubs glbs t1 t2 =
     | _ -> Non
 
 and glb_fields lubs glbs fs1 fs2 : field list option =
-  let (+?) h t_opt = match t_opt with None -> None | Some t -> Some (h::t) in
+  let (+?) h t_opt = match t_opt with
+    | None -> None
+    | Some t -> Some (h::t)
+  in
   match fs1, fs2 with
   | fs1, [] -> Some fs1
   | [], fs2 -> Some fs2
