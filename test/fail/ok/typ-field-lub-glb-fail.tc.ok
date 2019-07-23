@@ -1,0 +1,10 @@
+typ-field-lub-glb-fail.as:30.26-30.30: type error, expression of type
+  Cx = {x : Nat}
+cannot produce expected type
+  {type T = Int; x : Nat}
+typ-field-lub-glb-fail.as:31.26-31.30: type error, expression of type
+  Ct = {type T = Int}
+cannot produce expected type
+  {type T = Int; x : Nat}
+typ-field-lub-glb-fail.as:41.29-41.30: type error, type field T does not exist in type
+  {x : Nat}
