@@ -638,7 +638,7 @@ let rec rel_typ rel eq t1 t2 =
   | Serialized t1', Serialized t2' ->
     rel_typ rel eq t1' t2'
   | Typ c1, Typ c2 ->
-    Con.eq c1 c2
+    eq_con eq c1 c2
   | _, _ -> false
   end
 
@@ -695,8 +695,7 @@ and eq t1 t2 : bool =
 and sub t1 t2 : bool =
   rel_typ (ref SS.empty) (ref SS.empty) t1 t2
 
-and eq_kind k1 k2 : bool =
-  let eq = ref SS.empty in
+and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
@@ -706,6 +705,20 @@ and eq_kind k1 k2 : bool =
     )
   | _ -> false
 
+and eq_con eq c1 c2 =
+  match Con.kind c1, Con.kind c2 with
+  | (Def (tbs1, t1)) as k1, (Def (tbs2, t2) as k2) ->
+    eq_kind' eq k1 k2
+  | Abs _, Abs _ ->
+    Con.eq c1 c2
+  | Def (tbs1, t1), Abs (tbs2, t2)
+  | Abs (tbs2, t2), Def (tbs1, t1) ->
+    (match rel_binds eq eq tbs1 tbs2 with
+    | Some ts -> eq_typ eq eq (open_ ts t1) (Con (c2, ts))
+    | None -> false
+    )
+
+let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
 
 (* Compatibility *)
 
@@ -850,6 +863,8 @@ let rec lub' lubs glbs t1 t2 =
     | _, Con _ ->
       (* TODO(rossberg): fix handling of bounds *)
       combine_con_parts t1 t2 "lub" lubs (lub' lubs glbs)
+    | Typ _, _
+    | _, Typ _ -> assert false
     | _ when eq t1 t2 -> t1
     | _ -> Any
 
@@ -860,7 +875,17 @@ and lub_fields lubs glbs fs1 fs2 = match fs1, fs2 with
     match compare_field f1 f2 with
     | -1 -> lub_fields lubs glbs fs1' fs2
     | +1 -> lub_fields lubs glbs fs1 fs2'
-    | _ -> {f1 with typ = lub' lubs glbs f1.typ f2.typ}::lub_fields lubs glbs fs1' fs2'
+    | _ ->
+      match f1.typ, f2.typ with
+      | Typ _, Typ _ ->
+        if eq f1.typ f2.typ then
+          f1::lub_fields lubs glbs fs1' fs2'
+        else
+          lub_fields lubs glbs fs1' fs2'
+      | Typ _, _
+      | _, Typ _ -> assert false
+      | _, _ ->
+        {f1 with typ = lub' lubs glbs f1.typ f2.typ}::lub_fields lubs glbs fs1' fs2'
 
 and lub_tags lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> fs1
@@ -896,7 +921,9 @@ and glb' lubs glbs t1 t2 =
     | Array t1', Array t2' ->
       Array (glb' lubs glbs t1' t2')
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
-      Obj (s1, glb_fields lubs glbs tf1 tf2)
+      (match glb_fields lubs glbs tf1 tf2 with
+       | None -> Non
+       | Some fs -> Obj (s1, fs))
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
         s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
         List.(length args1 = length args2 && length res1 = length res2) ->
@@ -907,17 +934,34 @@ and glb' lubs glbs t1 t2 =
     | _, Con _ ->
       (* TODO(rossberg): fix handling of bounds *)
       combine_con_parts t1 t2 "glb" glbs (glb' lubs glbs)
+    | Typ _, _
+    | _, Typ _ -> assert false
     | _ when eq t1 t2 -> t1
     | _ -> Non
 
-and glb_fields lubs glbs fs1 fs2 = match fs1, fs2 with
-  | fs1, [] -> fs1
-  | [], fs2 -> fs2
+and glb_fields lubs glbs fs1 fs2 : field list option =
+  let (+?) h t_opt = match t_opt with
+    | None -> None
+    | Some t -> Some (h::t)
+  in
+  match fs1, fs2 with
+  | fs1, [] -> Some fs1
+  | [], fs2 -> Some fs2
   | f1::fs1', f2::fs2' ->
     match compare_field f1 f2 with
-    | -1 -> f1::glb_fields lubs glbs fs1' fs2
-    | +1 -> f2::glb_fields lubs glbs fs1 fs2'
-    | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_fields lubs glbs fs1' fs2'
+    | -1 -> f1 +? glb_fields lubs glbs fs1' fs2
+    | +1 -> f2 +? glb_fields lubs glbs fs1 fs2'
+    | _ ->
+      match f1.typ, f2.typ with
+      | Typ _, Typ _ ->
+        if eq f1.typ f2.typ then
+          f1 +? glb_fields lubs glbs fs1' fs2'
+        else
+          None
+      | Typ _, _
+      | _, Typ _ -> assert false
+      | _, _ ->
+        {f1 with typ = glb' lubs glbs f1.typ f2.typ} +? glb_fields lubs glbs fs1' fs2'
 
 and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> []
