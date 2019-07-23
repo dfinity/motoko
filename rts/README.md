@@ -56,3 +56,45 @@ with the code provided by `rts.c` from `test_rts.c`. With
 
 this is executed. This is compiled natively, so may not hide bugs that are tied to
 WebAssembly.
+
+Static analysis with Frama-C
+----------------------------
+
+Some of the RTS code is pretty security-critical, as it deals with untrusted
+data (in particular, the IDL parser). So we are experimenting with throwing
+formal verification at it. The most promising tool in terms of power and
+usabilty seems to be Frama-C, which should be installed if you if you
+`nix-shell`; alternatively `opam install frama-c` works nicely.
+
+We currently check that the IDL parser does not access any memory outside the
+array given to it. The way to set this up in Frama-C is:
+
+ * Write a “main” function that embodies a typical incarnation of the idl code.
+   This is in `frama-main.c`.
+
+ * Invoke the EVA (value analysis) plugin of Frama-C with suitable flags. See
+   `run-frama.sh`.
+
+   In particular, since we use pointer comparisons in ways that are not fully
+   specified (or defiend, depending who you ask) we use
+   `-eva-warn-undefined-pointer-comparison`. to allow that.
+
+ * If there is a read from invalid memory, the script will error out
+   (due to `-eva-stop-at-nth-alarm 0`).
+
+   Else, a nice
+   ```
+   [inout] Inputs for function main:
+       test[0..99]
+   ```
+   tells us that everything is right.
+
+Frama-C can also do more sophisticated verification, including complex
+assertions, that we will need to explore.
+
+So far this is an experiment, if it gets in the way, we can ditch it. Or if we
+find a way to implement the RTS in Rust, we may also no longer need this.
+
+
+
+
