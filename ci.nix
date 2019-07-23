@@ -10,6 +10,8 @@ let
 in
 linux // {
   darwin = darwin.all-systems-go;
+  asc-tar-x86_64-darwin = darwin.asc-tar;
+  asc-tar-x86_64-linux = linux.asc-tar;
   all-systems-go = inject-rev (nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
