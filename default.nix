@@ -395,7 +395,11 @@ rec {
 
   rx = stdenv.mkDerivation {
     name = "rx-actorscript";
-    src = subpath ./.; # FIXME: we only want ./rx and ./stdlib
+    src = null;
+    unpackPhase = ''
+      cp -R --no-preserve=mode ${subpath ./rx} rx
+      cp -R --no-preserve=mode ${subpath ./stdlib} stdlib
+    '';
     buildInputs = [
       asc
     ];
@@ -408,7 +412,6 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      # cp _out/Rx.wasm $out
       cp rx/_out/Rx.wasm $out
     '';
   };
