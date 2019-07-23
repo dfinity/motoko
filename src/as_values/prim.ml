@@ -192,7 +192,7 @@ let prim = function
                       in k (Word32 (Word32.of_int_u i))
   | "Word32->Char" -> fun v k ->
                       let i = Conv.of_signed_Word32 (as_word32 v)
-                      in k (Char i)
+                      in if i <= 0x10FFFF then k (Char i) else raise (Invalid_argument "codepoint out of bounds")
 
   | "popcnt8" | "popcnt16" | "popcnt" | "popcnt64" ->
      fun v k ->
