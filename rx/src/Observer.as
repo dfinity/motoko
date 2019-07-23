@@ -1,17 +1,27 @@
 module {
-  private type Params<Value, Error> = {
-    onNext : Value -> ();
-    onError : Error -> ();
-    onCompleted : () -> ();
+  import Event "Event.as";
+
+  public type EventHandler<Value, Error> = Event.Type<Value, Error> -> ();
+
+  public class Type<Value, Error>(handler_ : EventHandler<Value, Error>) {
+    let handler = handler_;
+    var isDone = false;
+
+    public func send(event : Event.Type<Value, Error>) : () {
+      if (isDone) {
+        return;
+      };
+      handler(event);
+      switch (event) {
+        case (#next _) {};
+        case _ {
+          isDone := true;
+        };
+      };
+    }
   };
 
-  class Type<Value, Error>(params : Params<Value, Error>) {
-    let onNext = params.onNext;
-    let onError = params.onError;
-    let onCompleted = params.onCompleted;
-  };
-
-  func init<Value, Error>(params : Params<Value, Error>) : Type<Value, Error> {
-    Type<Value, Error>(params);
+  public func init<Value, Error>(send : EventHandler<Value, Error>) : Type<Value, Error> {
+    Type<Value, Error>(send);
   };
 };

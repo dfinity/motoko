@@ -1,21 +1,17 @@
 module {
-  private type Params = {
-    dispose : () -> ();
+  type Dispose = () -> ();
+
+  public class Type(dispose_ : Dispose) {
+    let dispose = dispose_;
   };
 
-  class Type(params : Params) {
-    let dispose = params.dispose;
-  };
-
-  func init(params : Params) : Type {
-    Type(params);
+  public func init(dispose : Dispose) : Type {
+    Type(dispose);
   };
 
   // NOTE: we wrap this in a function because otherwise the compiler complains
   // with "type error, non-static expression in library or module".
-  func empty() : Type {
-    Type(new {
-      dispose = func () {};
-    });
+  public func empty() : Type {
+    Type(func () {});
   };
 };

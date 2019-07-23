@@ -1,16 +1,14 @@
 module {
-  import Disposable = "Disposable.as";
-  import Observer = "Observer.as";
+  import Disposable "Disposable.as";
+  import Observer "Observer.as";
 
-  private type Params<Value, Error> = {
-    subscribe : Observer.Type<Value, Error> -> Disposable.Type;
+  type Subscriber<Value, Error> = Observer.Type<Value, Error> -> Disposable.Type;
+
+  public class Type<Value, Error>(subscribe_ : Subscriber<Value, Error>) {
+    public let subscribe = subscribe_;
   };
 
-  class Type<Value, Error>(params : Params<Value, Error>) {
-    let subscribe = params.subscribe;
-  };
-
-  func init<Value, Error>(params : Params<Value, Error>) : Type<Value, Error> {
-    Type<Value, Error>(params);
+  public func init<Value, Error>(subscriber : Subscriber<Value, Error>) : Type<Value, Error> {
+    Type<Value, Error>(subscriber);
   };
 };
