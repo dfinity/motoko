@@ -395,11 +395,11 @@ rec {
 
   rx = stdenv.mkDerivation {
     name = "rx-actorscript";
-    src = null;
-    unpackPhase = ''
-      cp -R --no-preserve=mode ${subpath ./rx} rx
-      cp -R --no-preserve=mode ${subpath ./stdlib} stdlib
-    '';
+    sourceRoot = ./.;
+    src = [
+      (subpath ./rx)
+      (subpath ./stdlib)
+    ];
     buildInputs = [
       asc
     ];
