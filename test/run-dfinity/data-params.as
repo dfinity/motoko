@@ -88,6 +88,7 @@ let a = actor {
 };
 
 
+a.incn(0);
 a.incn(1);
 a.incn(2);
 a.incn(3);
@@ -117,3 +118,10 @@ a.incints(-1,-2,-3,-4);
 a.incn(2**100);
 a.inci(2**100);
 a.inci(-(2**101));
+a.inci(-2**30); // lowest compact
+a.inci(2**30 - 1); // highest compact
+a.inci(0);
+a.inci(1);
+a.inci(42);
+a.inci(-42);
+a.incn(2**31 - 1); // highest compact
