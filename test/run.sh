@@ -226,7 +226,8 @@ do
     if [ "$tc_succeeded" -eq 0 ];
     then
       $ECHO -n " [js]"
-      $DIDC --js $base.did > $out/$base.js 2>&1
+      $DIDC --js $base.did -o $out/$base.js 2> $out/$base.js.stderr
+      diff_files="$diff_files $base.js.stderr"
       diff_files="$diff_files $base.js"
 
       if [ -e $out/$base.js ]

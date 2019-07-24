@@ -44,8 +44,13 @@ let process_file file : unit =
   | Check ->
      ignore (Diag.run (Pipeline.check_file file))
   | Js ->
-     let out = Diag.run Pipeline.(compile_js_file file) in
-     Buffer.contents out |> print_endline
+     if !out_file = "" then
+         out_file := Filename.remove_extension (Filename.basename file) ^ ".js";
+     let buf = Diag.run Pipeline.(compile_js_file file) in
+     let oc = open_out !out_file in
+     Buffer.add_string buf "\n";
+     Buffer.output_buffer oc buf;
+     close_out oc
      
 let print_exn exn =
   Printf.printf "%!";
