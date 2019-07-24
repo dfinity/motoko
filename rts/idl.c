@@ -45,6 +45,7 @@ int32_t read_sleb128(char **ptr, char *end) {
 }
 
 export char *skip_idl_header(char *ptr, char *end) {
+  if (ptr + 3 >= end) (idl_trap());
   // Magic bytes
   if (*ptr++ != 'D') idl_trap();
   if (*ptr++ != 'I') idl_trap();

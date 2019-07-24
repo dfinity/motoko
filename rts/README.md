@@ -89,6 +89,10 @@ array given to it. The way to set this up in Frama-C is:
    ```
    tells us that everything is right.
 
+Frama-C doesn’t handle dynamic arrays very well, so we have to `split` the
+execution for various array lengths in `frama-main.c`, as advised in
+https://stackoverflow.com/a/57178643/946226.
+
 Frama-C can also do more sophisticated verification, including complex
 assertions, that we will need to explore.
 
