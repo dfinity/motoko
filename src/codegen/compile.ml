@@ -5808,7 +5808,12 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "Word32->Char", [e] ->
       SR.Vanilla,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
-      UnboxedSmallWord.box_codepoint
+      Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type]
+        (fun env get_n ->
+         get_n ^^ compile_unboxed_const 0x10FFFFl ^^
+         G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+         E.then_trap_with env "codepoint out of range" ^^
+         get_n ^^ UnboxedSmallWord.box_codepoint)
 
     | OtherPrim "popcnt", [e] ->
       SR.UnboxedWord32,
