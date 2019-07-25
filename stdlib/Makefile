@@ -11,12 +11,21 @@ STOPWATCH=$(OUTDIR)/stopwatch
 WASM=ProduceExchange
 
 TESTS=\
+	Array \
+	ArrayTest \
+	Int \
+	IntTest \
+	Nat \
+	NatTest \
 	Option \
+	OptionTest \
 	Result \
 	Hash \
 	List \
 	ListTest \
 	AssocList \
+	Text \
+	TextTest \
 	Trie \
 	Trie2 \
 	Set \
@@ -48,10 +57,31 @@ clean:
 $(OUTDIR):
 	@mkdir $@
 
+$(OUTDIR)/Array.out: array.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/ArrayTest.out: arrayTest.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Int.out: int.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/IntTest.out: intTest.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Nat.out: nat.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/NatTest.out: natTest.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
 $(OUTDIR)/Hash.out: hash.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Option.out: option.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/OptionTest.out: optionTest.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Result.out: result.as | $(OUTDIR)
@@ -65,6 +95,13 @@ $(OUTDIR)/ListTest.out: listTest.as | $(OUTDIR)
 
 $(OUTDIR)/AssocList.out: assocList.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Text.out: text.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/TextTest.out: textTest.as | $(OUTDIR)
+	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+
 
 $(OUTDIR)/Trie.out: trie.as | $(OUTDIR)
 	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
@@ -105,6 +142,7 @@ alldoc: docMd docHtml
 docMd: \
 	$(DOCDIR)/README.md \
 	$(DOCDIR)/prelude.md \
+	$(DOCDIR)/array.md \
 	$(DOCDIR)/option.md \
 	$(DOCDIR)/result.md \
 	$(DOCDIR)/hash.md \
@@ -128,6 +166,7 @@ docMd: \
 docHtml: \
 	$(DOCDIR)/README.html \
 	$(DOCDIR)/prelude.html \
+	$(DOCDIR)/array.html \
 	$(DOCDIR)/option.html \
 	$(DOCDIR)/result.html \
 	$(DOCDIR)/hash.html \
