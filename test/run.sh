@@ -227,7 +227,7 @@ do
     then
       $ECHO -n " [js]"
       $DIDC --js $base.did -o $out/$base.js >& $out/$base.js.out
-      diff_files="$diff_files $base.js.stderr"
+      diff_files="$diff_files $base.js.out"
       diff_files="$diff_files $base.js"
 
       if [ -e $out/$base.js ]
