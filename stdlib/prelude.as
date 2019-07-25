@@ -12,6 +12,18 @@ some further experience and discussion.  Until then, they live here.
 
 /***
 
+  `printLn`
+  ---------
+
+  Print text followed by a newline.
+
+*/
+public func printLn(x : Text) {
+  print(x # "\n");
+};
+
+/***
+
  `nyi`: Not yet implemented
  -----------------------------
 

@@ -16,7 +16,7 @@ func printLabeledCost(lab:Text, cost:Nat) {
 };
 
 actor class Test() = this {
-  go() {
+  public func go() {
     ignore(async
     {
       let s = A.Server();

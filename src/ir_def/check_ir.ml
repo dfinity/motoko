@@ -221,16 +221,33 @@ and check_typ_field env s typ_field : unit =
       "actor field has non-shared type"
   end
 
+and check_typ_binds_acyclic env cs ts  =
+  let n = List.length cs in
+  let ce = List.fold_right2 T.ConEnv.add cs ts T.ConEnv.empty in
+  let chase c =
+    let rec chase i ts c' =
+      if i > n then
+        error env no_region "type parameter %s has cyclic bounds %s"
+          (T.string_of_con c)
+          (String.concat " <: " (List.map T.string_of_typ ts)) (List.rev ts)
+      else
+        match T.ConEnv.find_opt c' ce with
+        | None -> ()
+        | Some t ->
+          (match T.normalize t with
+           | T.Con (c'', []) as t' ->
+             chase (i+1) (t'::ts) c''
+           | _ -> ())
+    in chase 0 [] c
+  in List.iter chase cs
+
 and check_typ_binds env typ_binds : T.con list * con_env =
   let ts = Type.open_binds typ_binds in
   let cs = List.map (function T.Con (c, []) -> c | _ -> assert false) ts in
   let env' = add_typs env cs in
-  let _ = List.map
-            (fun typ_bind ->
-              let bd = T.open_ ts typ_bind.T.bound  in
-              check_typ env' bd)
-            typ_binds
-  in
+  let bds = List.map (fun typ_bind -> T.open_ ts typ_bind.T.bound) typ_binds in
+  check_typ_binds_acyclic env' cs bds;
+  List.iter (check_typ env') bds;
   cs, T.ConSet.of_list cs
 
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =

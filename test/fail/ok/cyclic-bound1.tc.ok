@@ -1,0 +1,1 @@
+cyclic-bound1.as:3.8-3.14: type error, type parameter A/9 has cyclic bounds A/9 <: A/9

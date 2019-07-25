@@ -140,9 +140,9 @@ rec {
 
   asc-tar = nixpkgs.symlinkJoin {
     name = "asc-tar";
-    paths = [ asc-bin rts ];
+    paths = [ asc-bin rts didc ];
     postBuild = ''
-      tar -chf $out/asc.tar -C $out bin/asc rts/as-rts.wasm
+      tar -chf $out/asc.tar -C $out bin/asc rts/as-rts.wasm bin/didc
       mkdir -p $out/nix-support
       echo "file bin $out/asc.tar" >> $out/nix-support/hydra-build-products
     '';
@@ -327,6 +327,14 @@ rec {
       [ bash ];
     buildPhase = ''
       patchShebangs .
+    '';
+    doCheck = true;
+    checkInputs = [
+      asc
+      nixpkgs.python
+    ];
+    checkPhase = ''
+      make ASC=${asc}/bin/asc alltests
     '';
     installPhase = ''
       mkdir -p $out
