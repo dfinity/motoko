@@ -133,6 +133,7 @@ val compare_field : field -> field -> int
 
 val set_kind : con -> kind -> unit
 
+module ConEnv : Env.S with type key = con
 module ConSet : Dom.S with type elt = con
 
 
