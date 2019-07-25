@@ -8,7 +8,9 @@ MDofMD=./tools/markdown-of-markdown.py
 PANDOC=pandoc
 STOPWATCH=$(OUTDIR)/stopwatch
 
-WASM=ProduceExchange
+WASM=\
+	ProduceExchange \
+	Rx \
 
 TESTS=\
 	Array \
@@ -30,10 +32,13 @@ TESTS=\
 	Trie2 \
 	Set \
 	DocTable \
+
 	ProduceExchange \
 	producerRemInventory \
 	retailerReserveMany \
 	evalBulk \
+
+	RxTest \
 
 OUTFILES=$(addsuffix .out, $(TESTS)) $(addsuffix .wasm, $(WASM))
 
@@ -119,20 +124,6 @@ $(OUTDIR)/DocTable.out: docTable.as | $(OUTDIR)
 #########################################################################################################33
 
 ##
-## PX Unit tests
-##
-
-PRODUCE_EXCHANGE_SRC=\
-	prelude.as option.as hash.as list.as assocList.as trie.as trie2.as docTable.as result.as \
-	examples/produce-exchange/serverTypes.as \
-	examples/produce-exchange/serverLang.as \
-	examples/produce-exchange/serverModelTypes.as \
-	examples/produce-exchange/serverModel.as \
-	examples/produce-exchange/serverActor.as \
-
-#########################################################################################################33
-
-##
 ## Documentation
 ##
 
@@ -202,6 +193,12 @@ $(DOCDIR)/examples/produce-exchange/README.md: examples/produce-exchange/README.
 	@echo "" >> $@
 	$(MDofMD) $< >> $@
 
+#########################################################################################################33
+
+##
+## PX Unit tests
+##
+
 PRODUCE_EXCHANGE_SRC=\
 	prelude.as option.as hash.as list.as assocList.as trie2.as docTable.as result.as \
 	examples/produce-exchange/serverTypes.as \
@@ -237,6 +234,24 @@ $(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
 
 $(DOCDIR)/%.html: $(DOCDIR)/%.md
 	$(PANDOC) -f gfm $^ > $@
+
+#########################################################################################################33
+
+##
+## Rx Example
+##
+
+RX_SRC=\
+  array.as \
+	examples/rx/src/Rx.as \
+  examples/rx/test/RxTest.as \
+
+$(OUTDIR)/RxTest.out: $(RX_SRC) \
+	examples/rx/test/RxTest.as | $(OUTDIR)
+	$(ASC) -r examples/rx/test/RxTest.as > $@
+
+$(OUTDIR)/Rx.wasm: $(RX_SRC) | $(OUTDIR)
+	$(ASC) -c -o $@ examples/rx/src/Rx.as
 
 #########################################################################################################33
 
