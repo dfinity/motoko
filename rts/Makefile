@@ -64,31 +64,37 @@ _build/wasm _build/native:
 # Building the libtommath files, Wasm and native
 #
 
-TOMMATH_WASM_O=$(patsubst %,_build/wasm/tommath_%.o,$(TOMMATHFILES))
 
 _build/wasm/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/wasm
 	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
-TOMMATH_NATIVE_O=$(patsubst %,_build/native/tommath_%.o,$(TOMMATHFILES))
 
 _build/native/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/native
 	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+
+TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
+TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 
 #
 # Our part of the RTS, Wasm and native
 #
 
-_build/wasm/rts.o: rts.c | _build/wasm
+RTSFILES=rts idl bigint
+
+_build/wasm/%.o: %.c | _build/wasm
 	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
 
-_build/native/rts.o: rts.c | _build/native
+_build/native/%.o: %.c | _build/native
 	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
+
+RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
+RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
 
 #
 # The actual RTS, a we ship it with the compiler
 #
 
-as-rts.wasm: _build/wasm/rts.o $(TOMMATH_WASM_O)
+as-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
@@ -98,7 +104,7 @@ as-rts.wasm: _build/wasm/rts.o $(TOMMATH_WASM_O)
 # A simple program to do simple tests of rts.c, using native compilation
 #
 
-test_rts: test_rts.c _build/native/rts.o $(TOMMATH_NATIVE_O)
+test_rts: test_rts.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
 	$(CLANG) -o $@ \
 		$+
 clean:
