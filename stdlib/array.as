@@ -17,8 +17,6 @@ module {
   };
 
   public func apply<A, B>(fs : [A -> B], xs : [A]) : [B] {
-    let fsLen = fs.len();
-    let xsLen = xs.len();
     var ys : [B] = [];
     for (f in fs.vals()) {
       ys := append<B>(ys, map<A, B>(f, xs));
