@@ -816,7 +816,6 @@ secondary maps.
     },
     func(info:T.ProducerInfo):?M.ProducerDoc =
       Option.map<M.RegionDoc, M.ProducerDoc>(
-        regionTable.getDoc(info.region),
         func (regionDoc: M.RegionDoc): M.ProducerDoc = new {
           id=info.id;
           public_key=info.public_key;
@@ -825,7 +824,8 @@ secondary maps.
           region=regionDoc;
           inventory=Table.empty<T.InventoryId, M.InventoryDoc>();
           reserved=Table.empty<T.ReservedInventoryId, M.ReservedInventoryDoc>();
-        }
+        },
+        regionTable.getDoc(info.region),
       )
     );
 
@@ -928,7 +928,6 @@ secondary maps.
       },
       func(info:T.RetailerInfo):?M.RetailerDoc =
         Option.map<M.RegionDoc, M.RetailerDoc>(
-          regionTable.getDoc(info.region),
           func (regionDoc: M.RegionDoc): M.RetailerDoc = new {
             id=info.id;
             public_key=info.public_key;
@@ -936,7 +935,8 @@ secondary maps.
             description=info.description;
             region=regionDoc;
             reserved=Map.empty<T.ReservedInventoryId, (M.ReservedInventoryDoc, M.ReservedRouteDoc)>();
-          }
+          },
+          regionTable.getDoc(info.region),
         )
       );
 

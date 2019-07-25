@@ -87,24 +87,10 @@ public func option<A, B>(x: ?A, f: A->B, d: B): B =
  Apply a function to the wrapped value.
 
 */
-public func map<A, B>(x: ?A, f: A->B): ?B =
+public func map<A, B>(f: A->B, x: ?A): ?B =
   switch x {
     case null null;
     case (?x_) ?f(x_);
-  };
-
-/***
-
- `fmap`
- --------------------
-
- Apply a function to the wrapped value.
-
-*/
-public func fmap<A, B>(x: ?A, f: A->?B): ?B =
-  switch x {
-    case null null;
-    case (?x_) f(x_);
   };
 
 /***
@@ -152,5 +138,37 @@ public func printOpInt(x : ?Int) =
     case null  { print "null" };
     case (?x_) { print "?"; printInt x_ };
   };
+
+public func apply<A, B>(f : ?(A -> B), x : ?A) : ?B {
+  switch (f, x) {
+    case (?f_, ?x_) {
+      ?f_(x_);
+    };
+    case (_, _) {
+      null;
+    };
+  };
+};
+
+public func bind<A, B>(x : ?A, f : A -> ?B) : ?B {
+  switch(x) {
+    case (?x_) {
+      f(x_);
+    };
+    case (null) {
+      null;
+    };
+  };
+};
+
+public func join<A>(x : ??A) : ?A {
+  bind<?A, A>(x, func (x_ : ?A) : ?A {
+    x_;
+  });
+};
+
+public func pure<A>(x: A) : ?A {
+  ?x;
+};
 
 }
