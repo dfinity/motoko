@@ -223,12 +223,10 @@ and check_typ_field env s typ_field : unit =
 
 and check_typ_binds_acyclic env cs ts  =
   let n = List.length cs in
-  let ce = List.fold_left2
-    (fun ce c t -> T.ConEnv.add c t ce) T.ConEnv.empty cs ts in
+  let ce = List.fold_right2 T.ConEnv.add cs ts T.ConEnv.empty in
   let chase c =
     let rec chase i ts c' =
-      if i > n
-      then
+      if i > n then
         error env no_region "type parameter %s has cyclic bounds %s"
           (T.string_of_con c)
           (String.concat " <: " (List.map T.string_of_typ ts)) (List.rev ts)
@@ -236,9 +234,9 @@ and check_typ_binds_acyclic env cs ts  =
         match T.ConEnv.find_opt c' ce with
         | None -> ()
         | Some t ->
-          (match t with
-           | T.Con (c'', []) ->
-             chase (i+1) (t::ts) c''
+          (match T.normalize t with
+           | T.Con (c'', []) as t' ->
+             chase (i+1) (t'::ts) c''
            | _ -> ())
     in chase 0 [] c
   in List.iter chase cs
