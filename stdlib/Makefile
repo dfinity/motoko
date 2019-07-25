@@ -15,23 +15,23 @@ WASM=\
 TESTS=\
 	Array \
 	ArrayTest \
+	AssocList \
+	DocTable \
+	Hash \
 	Int \
 	IntTest \
+	List \
+	ListTest \
 	Nat \
 	NatTest \
 	Option \
 	OptionTest \
 	Result \
-	Hash \
-	List \
-	ListTest \
-	AssocList \
+	Set \
 	Text \
 	TextTest \
 	Trie \
 	Trie2 \
-	Set \
-	DocTable \
 
 	ProduceExchange \
 	producerRemInventory \
