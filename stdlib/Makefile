@@ -32,12 +32,10 @@ TESTS=\
 	TextTest \
 	Trie \
 	Trie2 \
-
 	ProduceExchange \
 	producerRemInventory \
 	retailerReserveMany \
 	evalBulk \
-
 	RxTest \
 
 OUTFILES=$(addsuffix .out, $(TESTS)) $(addsuffix .wasm, $(WASM))
