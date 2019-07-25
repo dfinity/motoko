@@ -13,6 +13,7 @@ func verify<T>(etalon : [T], results : [T], cmp : (T, T) -> Bool) {
 };
 
 func intCompare (a : Int, b : Int) : Bool = a == b;
+func natCompare (a : Nat, b : Nat) : Bool = a == b;
 
 // Numeric operators
 
@@ -32,7 +33,10 @@ func testNat(a : Nat, b : Nat) : [Nat] {
   [sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2, pow1, pow2]
 };
 
-verify<Nat>([8, 2, 15, 1, 2, 125], testNat(5, 3), func (a : Nat, b : Nat) : Bool = a == b);
+verify<Nat>([8, 2, 15, 1, 2, 125], testNat(5, 3), natCompare);
+verify<Nat>([41, 21, 310, 3, 1, 819628286980801], testNat(31, 10), natCompare);
+verify<Nat>([42, 20, 341, 2, 9, 25408476896404831], testNat(31, 11), natCompare);
+verify<Nat>([1500000002, 1499999998, 3000000000, 750000000, 0, 2250000000000000000], testNat(1500000000, 2), natCompare);
 
 func testInt(a : Int, b : Int) : [Int] {
   let pos1 = + a;
@@ -55,6 +59,35 @@ func testInt(a : Int, b : Int) : [Int] {
 };
 
 verify<Int>([3, -3, 8, -2, 15, 0, 3, 243], testInt(3, 5), intCompare);
+verify<Int>([-31, 31, -21, -41, -310, -3, -1, 819628286980801], testInt(-31, 10), intCompare);
+verify<Int>([-31, 31, -20, -42, -341, -2, -9, -25408476896404831], testInt(-31, 11), intCompare);
+verify<Int>([-1500000000, 1500000000, -1499999998, -1500000002, -3000000000, -750000000, 0, 2250000000000000000], testInt(-1500000000, 2), intCompare);
+
+func testIntAbs(a : Int) : [Int] {
+  let abs1 = abs a;
+  let abs2 = (abs a) : Int;
+  let abs3 = abs (-a);
+  let abs4 = (abs (-a)) : Int;
+  [abs1, abs2, abs3, abs4]
+};
+
+verify<Int>([4567, 4567], testIntAbs(-4567), intCompare);
+verify<Int>([1073741824, 1073741824], testIntAbs(-1073741824), intCompare);
+
+func testIntNegation(a : Int) : [Int] {
+  let neg1 = -a;
+  let neg2 = (-a) : Int;
+  [neg1, neg2]
+};
+
+verify<Int>([0x80000000], testIntNegation(-0x80000000), intCompare);
+verify<Int>([-0x80000000], testIntNegation(0x80000000), intCompare);
+verify<Int>([0x40000000], testIntNegation(-0x40000000), intCompare);
+verify<Int>([-0x40000000], testIntNegation(0x40000000), intCompare);
+verify<Int>([0x30000000], testIntNegation(-0x30000000), intCompare);
+verify<Int>([-0x30000000], testIntNegation(0x30000000), intCompare);
+verify<Int>([3], testIntNegation(-3), intCompare);
+verify<Int>([-3], testIntNegation(3), intCompare);
 
 func testNatInt(a : Nat, b : Int) : [Int] {
   let pos1 = + a;
