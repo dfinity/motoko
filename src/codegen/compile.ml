@@ -5631,6 +5631,139 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedReference e ^^
       Serialization.deserialize env t
 
+    (* Numeric conversations *)
+    | NumConvPrim (t1, t2), [e] -> begin
+      let open Type in
+      match t1, t2 with
+      | (Nat|Int), (Word8|Word16) ->
+        SR.Vanilla,
+        compile_exp_vanilla env ae e ^^
+        Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type t2)
+
+      | (Nat|Int), Word32 ->
+        SR.UnboxedWord32,
+        compile_exp_vanilla env ae e ^^
+        Prim.prim_intToWord32 env
+
+      | (Nat|Int), Word64 ->
+        SR.UnboxedWord64,
+        compile_exp_vanilla env ae e ^^
+        BigNum.to_word64 env
+
+      | Nat64, Word64
+      | Int64, Word64
+      | Word64, Nat64
+      | Word64, Int64
+      | Nat32, Word32
+      | Int32, Word32
+      | Word32, Nat32
+      | Word32, Int32
+      | Nat16, Word16
+      | Int16, Word16
+      | Word16, Nat16
+      | Word16, Int16
+      | Nat8, Word8
+      | Int8, Word8
+      | Word8, Nat8
+      | Word8, Int8 ->
+        SR.Vanilla,
+        compile_exp_vanilla env ae e ^^
+        G.nop
+
+      | Int, Int64 ->
+        SR.UnboxedWord64,
+        compile_exp_vanilla env ae e ^^
+        Func.share_code1 env "Int->Int64" ("n", I32Type) [I64Type] (fun env get_n ->
+          get_n ^^
+          BigNum.fits_signed_bits env 64 ^^
+          E.else_trap_with env "losing precision" ^^
+          get_n ^^
+          BigNum.truncate_to_word64 env)
+
+      | Int, (Int8|Int16|Int32) ->
+        let ty = exp.note.note_typ in
+        StackRep.of_type ty,
+        let pty = prim_of_typ ty in
+        compile_exp_vanilla env ae e ^^
+        Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Int->") ("n", I32Type) [I32Type] (fun env get_n ->
+          get_n ^^
+          BigNum.fits_signed_bits env (UnboxedSmallWord.bits_of_type pty) ^^
+          E.else_trap_with env "losing precision" ^^
+          get_n ^^
+          BigNum.truncate_to_word32 env ^^
+          UnboxedSmallWord.msb_adjust pty)
+
+      | Nat, Nat64 ->
+        SR.UnboxedWord64,
+        compile_exp_vanilla env ae e ^^
+        Func.share_code1 env "Nat->Nat64" ("n", I32Type) [I64Type] (fun env get_n ->
+          get_n ^^
+          BigNum.fits_unsigned_bits env 64 ^^
+          E.else_trap_with env "losing precision" ^^
+          get_n ^^
+          BigNum.truncate_to_word64 env)
+
+      | Nat, (Nat8|Nat16|Nat32) ->
+        let ty = exp.note.note_typ in
+        StackRep.of_type ty,
+        let pty = prim_of_typ ty in
+        compile_exp_vanilla env ae e ^^
+        Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Nat->") ("n", I32Type) [I32Type] (fun env get_n ->
+          get_n ^^
+          BigNum.fits_unsigned_bits env (UnboxedSmallWord.bits_of_type pty) ^^
+          E.else_trap_with env "losing precision" ^^
+          get_n ^^
+          BigNum.truncate_to_word32 env ^^
+          UnboxedSmallWord.msb_adjust pty)
+
+      | Char, Word32 ->
+        SR.UnboxedWord32,
+        compile_exp_vanilla env ae e ^^
+        UnboxedSmallWord.unbox_codepoint
+
+      | (Nat8|Word8|Nat16|Word16), Nat ->
+        SR.Vanilla,
+        compile_exp_vanilla env ae e ^^
+        Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type t1)
+
+      | (Int8|Word8|Int16|Word16), Int ->
+        SR.Vanilla,
+        compile_exp_vanilla env ae e ^^
+        Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type t1)
+
+      | (Nat32|Word32), Nat ->
+        SR.Vanilla,
+        compile_exp_as env ae SR.UnboxedWord32 e ^^
+        Prim.prim_word32toNat env
+
+      | (Int32|Word32), Int ->
+        SR.Vanilla,
+        compile_exp_as env ae SR.UnboxedWord32 e ^^
+        Prim.prim_word32toInt env
+
+      | (Nat64|Word64), Nat ->
+        SR.Vanilla,
+        compile_exp_as env ae SR.UnboxedWord64 e ^^
+        BigNum.from_word64 env
+
+      | (Int64|Word64), Int ->
+        SR.Vanilla,
+        compile_exp_as env ae SR.UnboxedWord64 e ^^
+        BigNum.from_signed_word64 env
+
+      | Word32, Char ->
+        SR.Vanilla,
+        compile_exp_as env ae SR.UnboxedWord32 e ^^
+        Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type]
+          (fun env get_n ->
+           get_n ^^ compile_unboxed_const 0x10FFFFl ^^
+           G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+           E.then_trap_with env "codepoint out of range" ^^
+           get_n ^^ UnboxedSmallWord.box_codepoint)
+
+      | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
+      end
+
     (* Other prims, unary*)
 
     | OtherPrim "array_len", [e] ->
@@ -5662,158 +5795,6 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       E.trap_with env "idlHash only implemented in interpreter "
 
-    | OtherPrim "Nat->Word8", [e]
-    | OtherPrim "Int->Word8", [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type Type.Word8)
-
-    | OtherPrim "Nat->Word16", [e]
-    | OtherPrim "Int->Word16", [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Prim.prim_shiftToWordN env (UnboxedSmallWord.shift_of_type Type.Word16)
-
-    | OtherPrim "Nat->Word32", [e]
-    | OtherPrim "Int->Word32", [e] ->
-      SR.UnboxedWord32,
-      compile_exp_vanilla env ae e ^^
-      Prim.prim_intToWord32 env
-
-    | OtherPrim "Nat->Word64", [e]
-    | OtherPrim "Int->Word64", [e] ->
-      SR.UnboxedWord64,
-      compile_exp_vanilla env ae e ^^
-      BigNum.to_word64 env
-
-    | OtherPrim "Nat64->Word64", [e]
-    | OtherPrim "Int64->Word64", [e]
-    | OtherPrim "Word64->Nat64", [e]
-    | OtherPrim "Word64->Int64", [e]
-    | OtherPrim "Nat32->Word32", [e]
-    | OtherPrim "Int32->Word32", [e]
-    | OtherPrim "Word32->Nat32", [e]
-    | OtherPrim "Word32->Int32", [e]
-    | OtherPrim "Nat16->Word16", [e]
-    | OtherPrim "Int16->Word16", [e]
-    | OtherPrim "Word16->Nat16", [e]
-    | OtherPrim "Word16->Int16", [e]
-    | OtherPrim "Nat8->Word8", [e]
-    | OtherPrim "Int8->Word8", [e]
-    | OtherPrim "Word8->Nat8", [e]
-    | OtherPrim "Word8->Int8", [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      G.nop
-
-    | OtherPrim "Int->Int64", [e] ->
-      SR.UnboxedWord64,
-      compile_exp_vanilla env ae e ^^
-      Func.share_code1 env "Int->Int64" ("n", I32Type) [I64Type] (fun env get_n ->
-        get_n ^^
-        BigNum.fits_signed_bits env 64 ^^
-        E.else_trap_with env "losing precision" ^^
-        get_n ^^
-        BigNum.truncate_to_word64 env)
-
-    | OtherPrim "Int->Int32", [e]
-    | OtherPrim "Int->Int16", [e]
-    | OtherPrim "Int->Int8", [e] ->
-      let ty = exp.note.note_typ in
-      StackRep.of_type ty,
-      let pty = prim_of_typ ty in
-      compile_exp_vanilla env ae e ^^
-      Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Int->") ("n", I32Type) [I32Type] (fun env get_n ->
-        get_n ^^
-        BigNum.fits_signed_bits env (UnboxedSmallWord.bits_of_type pty) ^^
-        E.else_trap_with env "losing precision" ^^
-        get_n ^^
-        BigNum.truncate_to_word32 env ^^
-        UnboxedSmallWord.msb_adjust pty)
-
-    | OtherPrim "Nat->Nat64", [e] ->
-      SR.UnboxedWord64,
-      compile_exp_vanilla env ae e ^^
-      Func.share_code1 env "Nat->Nat64" ("n", I32Type) [I64Type] (fun env get_n ->
-        get_n ^^
-        BigNum.fits_unsigned_bits env 64 ^^
-        E.else_trap_with env "losing precision" ^^
-        get_n ^^
-        BigNum.truncate_to_word64 env)
-
-    | OtherPrim "Nat->Nat32", [e]
-    | OtherPrim "Nat->Nat16", [e]
-    | OtherPrim "Nat->Nat8", [e] ->
-      let ty = exp.note.note_typ in
-      StackRep.of_type ty,
-      let pty = prim_of_typ ty in
-      compile_exp_vanilla env ae e ^^
-      Func.share_code1 env (UnboxedSmallWord.name_of_type pty "Nat->") ("n", I32Type) [I32Type] (fun env get_n ->
-        get_n ^^
-        BigNum.fits_unsigned_bits env (UnboxedSmallWord.bits_of_type pty) ^^
-        E.else_trap_with env "losing precision" ^^
-        get_n ^^
-        BigNum.truncate_to_word32 env ^^
-        UnboxedSmallWord.msb_adjust pty)
-
-    | OtherPrim "Char->Word32", [e] ->
-      SR.UnboxedWord32,
-      compile_exp_vanilla env ae e ^^
-      UnboxedSmallWord.unbox_codepoint
-
-    | OtherPrim "Nat8->Nat", [e]
-    | OtherPrim "Word8->Nat", [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word8)
-    | OtherPrim "Int8->Int", [e]
-    | OtherPrim "Word8->Int", [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word8)
-
-    | OtherPrim "Nat16->Nat", [e]
-    | OtherPrim "Word16->Nat", [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Prim.prim_shiftWordNtoUnsigned env (UnboxedSmallWord.shift_of_type Type.Word16)
-    | OtherPrim "Int16->Int", [e]
-    | OtherPrim "Word16->Int", [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Prim.prim_shiftWordNtoSigned env (UnboxedSmallWord.shift_of_type Type.Word16)
-
-    | OtherPrim "Nat32->Nat", [e]
-    | OtherPrim "Word32->Nat", [e] ->
-      SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-      Prim.prim_word32toNat env
-    | OtherPrim "Int32->Int", [e]
-    | OtherPrim "Word32->Int", [e] ->
-      SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-      Prim.prim_word32toInt env
-
-    | OtherPrim "Nat64->Nat", [e]
-    | OtherPrim "Word64->Nat", [e] ->
-      SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedWord64 e ^^
-      BigNum.from_word64 env
-    | OtherPrim "Int64->Int", [e]
-    | OtherPrim "Word64->Int", [e] ->
-      SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedWord64 e ^^
-      BigNum.from_signed_word64 env
-
-    | OtherPrim "Word32->Char", [e] ->
-      SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-      Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type]
-        (fun env get_n ->
-         get_n ^^ compile_unboxed_const 0x10FFFFl ^^
-         G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
-         E.then_trap_with env "codepoint out of range" ^^
-         get_n ^^ UnboxedSmallWord.box_codepoint)
 
     | OtherPrim "popcnt", [e] ->
       SR.UnboxedWord32,
