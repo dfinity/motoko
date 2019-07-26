@@ -200,6 +200,7 @@ module Transform() = struct
     | ShowPrim ot -> ShowPrim (t_typ ot)
     | SerializePrim ot -> SerializePrim (t_typ ot)
     | DeserializePrim ot -> DeserializePrim (t_typ ot)
+    | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
     | OtherPrim s -> OtherPrim s
 
   and t_field {lab; typ} =

@@ -97,7 +97,7 @@ let prim = function
   | "Float" -> Float
   | "Char" -> Char
   | "Text" -> Text
-  | _ -> raise (Invalid_argument "Type.prim")
+  | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 
 let seq = function [t] -> t | ts -> Tup ts
 

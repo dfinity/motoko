@@ -105,6 +105,7 @@ and prim =
   | ShowPrim of Type.typ              (* debug show *)
   | SerializePrim of Type.typ         (* serialize *)
   | DeserializePrim of Type.typ       (* deserialize *)
+  | NumConvPrim of Type.prim * Type.prim
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
 
 (* Declarations *)

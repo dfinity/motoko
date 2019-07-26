@@ -328,6 +328,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         extended_prim env s t at arg k
       )
+    | NumConvPrim (t1, t2), exps ->
+      interpret_exps env exps [] (fun vs ->
+        let arg = match vs with [v] -> v | _ -> V.Tup vs in
+        Prim.num_conv_prim t1 t2 arg k
+      )
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))

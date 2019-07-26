@@ -9,6 +9,7 @@ let ($$) head inner = Node (head, inner)
 let id i = Atom i
 
 let typ t = Atom (Type.string_of_typ t)
+let prim_ty p = typ (Type.Prim p)
 let kind k = Atom (Type.string_of_kind k)
 
 let rec exp e = match e.it with
@@ -55,8 +56,9 @@ and prim = function
   | BinPrim (t, bo)   -> "BinPrim"    $$ [typ t; Arrange_ops.binop bo]
   | RelPrim (t, ro)   -> "RelPrim"    $$ [typ t; Arrange_ops.relop ro]
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
-  | SerializePrim t   -> "SerializePrim"   $$ [typ t]
-  | DeserializePrim t -> "DeserializePrim"   $$ [typ t]
+  | SerializePrim t   -> "SerializePrim" $$ [typ t]
+  | DeserializePrim t -> "DeserializePrim" $$ [typ t]
+  | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
   | OtherPrim s ->       Atom s
 
 and mut = function
