@@ -290,8 +290,12 @@ let prim = function
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
-  | s when Str.string_match (Str.regexp "num_conv_\\(.*\\)_\\(.*\\)") s 0 ->
-    let p1 = Type.prim (Str.matched_group 1 s) in
-    let p2 = Type.prim (Str.matched_group 2 s) in
-    num_conv_prim p1 p2
+  | p when Lib.String.chop_prefix "num_conv" p <> None ->
+    begin match String.split_on_char '_' p with
+    | [_;_;s1;s2] ->
+      let p1 = Type.prim s1 in
+      let p2 = Type.prim s2 in
+      num_conv_prim p1 p2
+    | _ -> assert false
+    end
   | s -> raise (Invalid_argument ("Value.prim: " ^ s))

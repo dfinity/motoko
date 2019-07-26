@@ -97,10 +97,14 @@ and exp' at note = function
     I.FuncE (name, cc, tbs', args, tys, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
-    when Str.string_match (Str.regexp "num_conv_\\(.*\\)_\\(.*\\)") p 0 ->
-    let p1 = Type.prim (Str.matched_group 1 p) in
-    let p2 = Type.prim (Str.matched_group 2 p) in
-    I.PrimE (I.NumConvPrim (p1, p2), [exp e])
+    when Lib.String.chop_prefix "num_conv" p <> None ->
+    begin match String.split_on_char '_' p with
+    | [_;_;s1;s2] ->
+      let p1 = Type.prim s1 in
+      let p2 = Type.prim s2 in
+      I.PrimE (I.NumConvPrim (p1, p2), [exp e])
+    | _ -> assert false
+    end
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
