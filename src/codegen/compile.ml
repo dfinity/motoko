@@ -5631,7 +5631,7 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedReference e ^^
       Serialization.deserialize env t
 
-    (* Numeric conversations *)
+    (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
       let open Type in
       match t1, t2 with
