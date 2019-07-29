@@ -8,9 +8,9 @@
 // - Client: Pick a parking spot from a Google Map like interface + time
 // - Server: Register the parking spot for the user
 
-type Car = shared { model : Text; plate : Text };
+type Car = { model : Text; plate : Text };
 type DMV = actor { check : Car -> async CarInfo };
-type CarInfo = shared {
+type CarInfo = {
   model : Text;
   plate : Text;
   isValid : Bool;
@@ -36,8 +36,8 @@ actor class PACars(dmv : DMV) {
     return null;
   };
 
-  type Location = shared { lat : Float; long : Float };
-  type TimeSpan = shared { start : Int; end : Int };
-  type Result = ?(shared { reservationId : Text });
-  type User = shared { name : Text };
+  type Location = { lat : Float; long : Float };
+  type TimeSpan = { start : Int; end : Int };
+  type Result = ?({ reservationId : Text });
+  type User = { name : Text };
 };
