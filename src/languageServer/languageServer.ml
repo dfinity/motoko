@@ -198,7 +198,6 @@ let start () =
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
        let file_name = file_from_uri log_to_file uri in
        let result = Pipeline.check_files [file_name] in
-       show_message Lsp.MessageType.Info ("Compiling file: " ^ file_name);
        let msgs = match result with
          | Error msgs' -> msgs'
          | Ok (_, msgs') -> msgs' in

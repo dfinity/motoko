@@ -1,5 +1,6 @@
 open As_frontend
 open As_types
+open Declaration_index
 module Lsp = Lsp.Lsp_t
 
 type hover_target =
@@ -41,14 +42,14 @@ let hovered_identifier
   loop (next ())
 
 let hover_detail = function
-  | Completion.ValueDecl (lbl, ty) ->
-     lbl ^ " : " ^ Type.string_of_typ ty
-  | Completion.TypeDecl (lbl, ty) ->
-     lbl ^ Type.string_of_typ ty
+  | ValueDecl value ->
+     value.name ^ " : " ^ Type.string_of_typ value.typ
+  | TypeDecl ty ->
+     ty.name ^ Type.string_of_typ ty.typ
 
 let hover_handler (* index *) position file_contents project_root file_path =
   (* TODO(Christoph): Don't rebuild index on every hover *)
-  let index = Completion.make_index () in
+  let index = make_index () in
   let imported =
     Completion.parse_module_header
       project_root
@@ -63,10 +64,10 @@ let hover_handler (* index *) position file_contents project_root file_path =
         | Qualified (qual, ident) ->
            List.find_opt (fun (alias, _) -> alias = qual) imported
            |> Lib.Fun.flip Lib.Option.bind (fun (_, path) ->
-                  Completion.Index.find_opt path index)
+                  Index.find_opt path index)
            |> Lib.Fun.flip Lib.Option.bind (fun decls ->
                 List.find_opt
-                  (fun d -> Completion.lbl_of_ide_decl d = ident)
+                  (fun d -> name_of_ide_decl d = ident)
                   decls)
            |> Lib.Option.map (fun ide_decl ->
                 Lsp.{ hover_result_contents = hover_detail ide_decl })
