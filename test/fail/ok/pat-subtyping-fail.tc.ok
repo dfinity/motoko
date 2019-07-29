@@ -63,11 +63,11 @@ cannot consume expected type
 pat-subtyping-fail.as:86.9-86.31: type error, pattern of type
   {a : Nat; b : Nat}
 cannot consume expected type
-  {}
+  {.}
 pat-subtyping-fail.as:89.9-89.36: type error, pattern of type
   {a : Nat; b : Nat}
 cannot consume expected type
-  {}
+  {.}
 pat-subtyping-fail.as:94.9-94.12: type error, option pattern cannot consume expected type
   Null
 pat-subtyping-fail.as:97.9-97.20: type error, pattern of type

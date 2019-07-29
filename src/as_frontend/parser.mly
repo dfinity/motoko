@@ -209,6 +209,8 @@ path :
 (* Types *)
 
 typ_obj :
+  | LCURLY DOT RCURLY
+    { [] }
   | LCURLY tfs=seplist(typ_field, semicolon) RCURLY
     { tfs }
 
@@ -352,8 +354,14 @@ exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
 
+exp_block_unamb :
+  | LCURLY semicolon? RCURLY
+    { BlockE([]) @? at $sloc }
+  | LCURLY ds=dec_list_unamb RCURLY
+    { BlockE(ds) @? at $sloc }
+
 exp_nullary :
-  | e=exp_block
+  | e=exp_block_unamb
     { e }
   | x=id
     { VarE(x) @? at $sloc }
@@ -361,6 +369,10 @@ exp_nullary :
     { LitE(ref l) @? at $sloc }
   | LPAR es=seplist(exp, COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
+  | LCURLY DOT RCURLY
+    { ObjE(Type.Object @@ at $sloc, []) @? at $sloc }
+  | LCURLY efs=exp_field_list_unamb RCURLY
+    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
 
@@ -418,8 +430,6 @@ exp_bin :
 exp_nondec :
   | e=exp_bin
     { e }
-  | NEW LCURLY efs=seplist(exp_field, semicolon) RCURLY
-    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
   | RETURN %prec RETURN_NO_ARG
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp
@@ -478,13 +488,24 @@ case :
   | CASE p=pat_nullary e=exp
     { {pat = p; exp = e} @@ at $sloc }
 
-exp_field :
+exp_field_nonvar :
   | x=id EQ e=exp
     { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
       {dec = d; vis = Public @@ x.at} @@ at $sloc }
-  | VAR x=id EQ e=exp
-    { let d = VarD(x, e) @? at $sloc in
-      {dec = d; vis = Public @@ x.at} @@ at $sloc }
+
+exp_field :
+  | ef=exp_field_nonvar { ef }
+  | d=dec_var { {dec = d; vis = Public @@ d.at} @@ at $sloc }
+
+exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
+  | ef=exp_field_nonvar
+    { [ef] }
+  | d=dec_var
+    { [{dec = d; vis = Public @@ d.at} @@ at $sloc] }
+  | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
+    { ef::efs }
+  | d=dec_var semicolon efs=exp_field_list_unamb
+    { ({dec = d; vis = Public @@ d.at} @@ at $sloc) :: efs }
 
 dec_field :
   | v=vis d=dec
@@ -498,7 +519,7 @@ vis :
 
 (* Patterns *)
 
-pat_argument :
+pat_param :
   | UNDERSCORE
     { WildP @! at $sloc }
   | x=id
@@ -509,8 +530,10 @@ pat_argument :
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
 
 pat_nullary :
-  | p=pat_argument
+  | p=pat_param
     { p }
+  | LCURLY DOT RCURLY
+    { ObjP([]) @! at $sloc }
   | LCURLY fps=seplist(pat_field, semicolon) RCURLY
     { ObjP(fps) @! at $sloc }
 
@@ -560,6 +583,8 @@ dec_var :
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
       in VarD(x, e') @? at $sloc }
+
+dec_nonvar :
   | LET p=pat EQ e=exp
     { let p', e' =
         match p.it with
@@ -568,8 +593,6 @@ dec_var :
       in LetD (p', e') @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-
-dec_nonvar :
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
       let efs' =
@@ -578,7 +601,7 @@ dec_nonvar :
   | s=func_sort_opt FUNC xf=id_opt fe=func_exp
     { let named, x = xf "func" $sloc in
       let_or_exp named x (fe s x.it).it (at $sloc) }
-  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_argument xefs=class_body
+  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_param xefs=class_body
     { let x, efs = xefs in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
@@ -595,8 +618,20 @@ dec :
   | e=exp_nondec
     { ExpD e @? at $sloc }
 
+dec_list_unamb :  (* does not overlap with exp_field_list_unamb *)
+  | e=exp_nondec
+    { [ExpD e @? e.at] }
+  | d=dec_nonvar
+    { [d] }
+  | e=exp_nondec semicolon ds=seplist(dec, semicolon)
+    { (ExpD e @? e.at) :: ds }
+  | d=dec_nonvar semicolon ds=seplist(dec, semicolon)
+    { d::ds }
+  | d=dec_var semicolon ds=dec_list_unamb
+    { d::ds }
+
 func_exp :
-  | tps=typ_params_opt p=pat_argument t=return_typ? fb=func_body
+  | tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)

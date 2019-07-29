@@ -404,6 +404,7 @@ let rec string_of_val_nullary d = function
   | Opt v ->
     sprintf "?%s" (string_of_val_nullary d v)
   | Obj ve ->
+    if Env.is_empty ve then "{.}" else
     if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
       sprintf "%s = %s" x (string_of_val (d - 1) v)) (Env.bindings ve)))
