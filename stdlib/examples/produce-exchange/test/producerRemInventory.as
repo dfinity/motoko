@@ -32,82 +32,82 @@ actor class Test() = this {
       let bulkResp = s.evalBulkArray(
         [
           #add([
-                 #truckType (new { id=0; short_name="tta"; description=""; capacity=10; isFridge=false; isFreezer=false }),
-                 #truckType (new { id=1; short_name="ttb"; description=""; capacity=20; isFridge=false; isFreezer=false }),
-                 #truckType (new { id=2; short_name="ttc"; description=""; capacity=30; isFridge=true; isFreezer=false }),
-                 #truckType (new { id=3; short_name="ttd"; description=""; capacity=40; isFridge=true; isFreezer=false }),
-                 #truckType (new { id=4; short_name="tte"; description=""; capacity=50; isFridge=true; isFreezer=true }),
+                 #truckType { id=0; short_name="tta"; description=""; capacity=10; isFridge=false; isFreezer=false },
+                 #truckType { id=1; short_name="ttb"; description=""; capacity=20; isFridge=false; isFreezer=false },
+                 #truckType { id=2; short_name="ttc"; description=""; capacity=30; isFridge=true; isFreezer=false },
+                 #truckType { id=3; short_name="ttd"; description=""; capacity=40; isFridge=true; isFreezer=false },
+                 #truckType { id=4; short_name="tte"; description=""; capacity=50; isFridge=true; isFreezer=true },
 
-                 #region (new { id=0; short_name="rega"; description=""; }),
-                 #region (new { id=1; short_name="regb"; description=""; }),
-                 #region (new { id=2; short_name="regc"; description=""; }),
-                 #region (new { id=3; short_name="regd"; description=""; }),
+                 #region { id=0; short_name="rega"; description=""; },
+                 #region { id=1; short_name="regb"; description=""; },
+                 #region { id=2; short_name="regc"; description=""; },
+                 #region { id=3; short_name="regd"; description=""; },
 
-                 #produce (new { id=0; short_name="avocado"; description=""; grade=1}),
-                 #produce (new { id=1; short_name="apple"; description=""; grade=1}),
-                 #produce (new { id=2; short_name="banana"; description=""; grade=1}),
-                 #produce (new { id=3; short_name="grapefruit"; description=""; grade=1}),
+                 #produce { id=0; short_name="avocado"; description=""; grade=1},
+                 #produce { id=1; short_name="apple"; description=""; grade=1},
+                 #produce { id=2; short_name="banana"; description=""; grade=1},
+                 #produce { id=3; short_name="grapefruit"; description=""; grade=1},
 
-                 #user (new { user_name="a"; public_key=pka; description=""; region=0;
-                                 isDeveloper=true; isProducer=true; isRetailer=true; isTransporter=true }),
-                 #user (new { user_name="b"; public_key=pkb; description=""; region=1;
-                                 isDeveloper=true; isProducer=true; isRetailer=true; isTransporter=true }),
-                 #user (new { user_name="c"; public_key=pkc; description=""; region=2;
-                                 isDeveloper=true; isProducer=true; isRetailer=true; isTransporter=true }),
-                 #user (new { user_name="d"; public_key=pkd; description=""; region=3;
-                                 isDeveloper=true; isProducer=true; isRetailer=true; isTransporter=true }),
-                 #user (new { user_name="e"; public_key=pke; description=""; region=0;
-                                 isDeveloper=true; isProducer=true; isRetailer=true; isTransporter=true }),
+                 #user { user_name="a"; public_key=pka; description=""; region=0;
+                                 isDeveloper=true; isProducer=true; isRetailer=true; isTransporter=true },
+                 #user { user_name="b"; public_key=pkb; description=""; region=1;
+                                 isDeveloper=true; isProducer=true; isRetailer=true; isTransporter=true },
+                 #user { user_name="c"; public_key=pkc; description=""; region=2;
+                                 isDeveloper=true; isProducer=true; isRetailer=true; isTransporter=true },
+                 #user { user_name="d"; public_key=pkd; description=""; region=3;
+                                 isDeveloper=true; isProducer=true; isRetailer=true; isTransporter=true },
+                 #user { user_name="e"; public_key=pke; description=""; region=0;
+                                 isDeveloper=true; isProducer=true; isRetailer=true; isTransporter=true },
 
-                 #inventory (new { id=0; produce=0; producer=0; start_date=0; end_date=10; quantity=100; weight=100; ppu=2; comments=""}),
-                 #inventory (new { id=0; produce=1; producer=0; start_date=1; end_date=10; quantity=100; weight=100; ppu=2; comments=""}),
-                 #inventory (new { id=0; produce=2; producer=0; start_date=2; end_date=10; quantity=100; weight=100; ppu=2; comments=""}),
-                 #inventory (new { id=0; produce=3; producer=0; start_date=3; end_date=10; quantity=100; weight=100; ppu=2; comments=""}),
+                 #inventory { id=0; produce=0; producer=0; start_date=0; end_date=10; quantity=100; weight=100; ppu=2; comments=""},
+                 #inventory { id=0; produce=1; producer=0; start_date=1; end_date=10; quantity=100; weight=100; ppu=2; comments=""},
+                 #inventory { id=0; produce=2; producer=0; start_date=2; end_date=10; quantity=100; weight=100; ppu=2; comments=""},
+                 #inventory { id=0; produce=3; producer=0; start_date=3; end_date=10; quantity=100; weight=100; ppu=2; comments=""},
 
-                 #inventory (new { id=0; produce=0; producer=1; start_date=2; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=1; producer=1; start_date=0; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=2; producer=1; start_date=2; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=3; producer=1; start_date=0; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
+                 #inventory { id=0; produce=0; producer=1; start_date=2; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=1; producer=1; start_date=0; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=2; producer=1; start_date=2; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=3; producer=1; start_date=0; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
 
-                 #inventory (new { id=0; produce=0; producer=2; start_date=0; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=1; producer=2; start_date=1; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=2; producer=2; start_date=2; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=3; producer=2; start_date=5; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
+                 #inventory { id=0; produce=0; producer=2; start_date=0; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=1; producer=2; start_date=1; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=2; producer=2; start_date=2; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=3; producer=2; start_date=5; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
 
-                 #inventory (new { id=0; produce=0; producer=3; start_date=2; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=1; producer=3; start_date=1; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=2; producer=3; start_date=2; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=3; producer=3; start_date=1; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
+                 #inventory { id=0; produce=0; producer=3; start_date=2; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=1; producer=3; start_date=1; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=2; producer=3; start_date=2; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=3; producer=3; start_date=1; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
 
-                 #inventory (new { id=0; produce=0; producer=4; start_date=6; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=1; producer=4; start_date=7; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=2; producer=4; start_date=8; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
-                 #inventory (new { id=0; produce=3; producer=4; start_date=9; end_date=10; quantity=100; weight=100; ppu=3; comments=""}),
+                 #inventory { id=0; produce=0; producer=4; start_date=6; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=1; producer=4; start_date=7; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=2; producer=4; start_date=8; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
+                 #inventory { id=0; produce=3; producer=4; start_date=9; end_date=10; quantity=100; weight=100; ppu=3; comments=""},
 
-                 #route (new { id=0; transporter=0; truck_type=0; start_region=0; end_region=1; start_date=0; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=0; truck_type=0; start_region=0; end_region=2; start_date=1; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=0; truck_type=0; start_region=0; end_region=3; start_date=2; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=0; truck_type=0; start_region=0; end_region=4; start_date=3; end_date=10; cost=100 }),
+                 #route { id=0; transporter=0; truck_type=0; start_region=0; end_region=1; start_date=0; end_date=10; cost=100 },
+                 #route { id=0; transporter=0; truck_type=0; start_region=0; end_region=2; start_date=1; end_date=10; cost=100 },
+                 #route { id=0; transporter=0; truck_type=0; start_region=0; end_region=3; start_date=2; end_date=10; cost=100 },
+                 #route { id=0; transporter=0; truck_type=0; start_region=0; end_region=4; start_date=3; end_date=10; cost=100 },
 
-                 #route (new { id=0; transporter=1; truck_type=0; start_region=1; end_region=1; start_date=0; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=1; truck_type=0; start_region=1; end_region=2; start_date=1; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=1; truck_type=0; start_region=1; end_region=3; start_date=2; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=1; truck_type=0; start_region=1; end_region=4; start_date=3; end_date=10; cost=100 }),
+                 #route { id=0; transporter=1; truck_type=0; start_region=1; end_region=1; start_date=0; end_date=10; cost=100 },
+                 #route { id=0; transporter=1; truck_type=0; start_region=1; end_region=2; start_date=1; end_date=10; cost=100 },
+                 #route { id=0; transporter=1; truck_type=0; start_region=1; end_region=3; start_date=2; end_date=10; cost=100 },
+                 #route { id=0; transporter=1; truck_type=0; start_region=1; end_region=4; start_date=3; end_date=10; cost=100 },
 
-                 #route (new { id=0; transporter=2; truck_type=0; start_region=2; end_region=1; start_date=0; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=2; truck_type=0; start_region=2; end_region=2; start_date=1; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=2; truck_type=0; start_region=2; end_region=3; start_date=2; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=2; truck_type=0; start_region=2; end_region=4; start_date=3; end_date=10; cost=100 }),
+                 #route { id=0; transporter=2; truck_type=0; start_region=2; end_region=1; start_date=0; end_date=10; cost=100 },
+                 #route { id=0; transporter=2; truck_type=0; start_region=2; end_region=2; start_date=1; end_date=10; cost=100 },
+                 #route { id=0; transporter=2; truck_type=0; start_region=2; end_region=3; start_date=2; end_date=10; cost=100 },
+                 #route { id=0; transporter=2; truck_type=0; start_region=2; end_region=4; start_date=3; end_date=10; cost=100 },
 
-                 #route (new { id=0; transporter=3; truck_type=0; start_region=3; end_region=1; start_date=0; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=3; truck_type=0; start_region=3; end_region=2; start_date=1; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=3; truck_type=0; start_region=3; end_region=3; start_date=2; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=3; truck_type=0; start_region=3; end_region=4; start_date=3; end_date=10; cost=100 }),
+                 #route { id=0; transporter=3; truck_type=0; start_region=3; end_region=1; start_date=0; end_date=10; cost=100 },
+                 #route { id=0; transporter=3; truck_type=0; start_region=3; end_region=2; start_date=1; end_date=10; cost=100 },
+                 #route { id=0; transporter=3; truck_type=0; start_region=3; end_region=3; start_date=2; end_date=10; cost=100 },
+                 #route { id=0; transporter=3; truck_type=0; start_region=3; end_region=4; start_date=3; end_date=10; cost=100 },
 
-                 #route (new { id=0; transporter=4; truck_type=0; start_region=4; end_region=1; start_date=0; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=4; truck_type=0; start_region=4; end_region=2; start_date=1; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=4; truck_type=0; start_region=4; end_region=3; start_date=2; end_date=10; cost=100 }),
-                 #route (new { id=0; transporter=4; truck_type=0; start_region=4; end_region=4; start_date=3; end_date=10; cost=100 }),
+                 #route { id=0; transporter=4; truck_type=0; start_region=4; end_region=1; start_date=0; end_date=10; cost=100 },
+                 #route { id=0; transporter=4; truck_type=0; start_region=4; end_region=2; start_date=1; end_date=10; cost=100 },
+                 #route { id=0; transporter=4; truck_type=0; start_region=4; end_region=3; start_date=2; end_date=10; cost=100 },
+                 #route { id=0; transporter=4; truck_type=0; start_region=4; end_region=4; start_date=3; end_date=10; cost=100 },
 
                ])
         ]

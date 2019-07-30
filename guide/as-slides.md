@@ -228,7 +228,7 @@ AS distinguishes sharable types:
 * sharable (think serializable) objects have immutable fields of sharable type:
 
   ```
-  new { x = 0; color = Colors.Red }
+  { x = 0; color = Colors.Red }
   ```
 
 * full `object`s can be mutable, stateful
@@ -577,7 +577,7 @@ actor Server {
 ```
 ```
   public func subscribe(client : Client) : async Post {
-    let cs = new {head = client; var tail = clients};
+    let cs = {head = client; var tail = clients};
     clients := ?cs;
     return broadcast;
   };

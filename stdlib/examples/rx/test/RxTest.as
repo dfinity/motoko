@@ -70,7 +70,7 @@ func assertEqualEvent(
     func (observer : Rx.Observer.Type<Nat, Error>) : Rx.Disposable.Type {
       observer.send(#completed);
       observer.send(#next 1);
-      observer.send(#error (new { description = "Error"; }));
+      observer.send(#error { description = "Error"; });
       observer.send(#completed);
       Rx.Disposable.empty();
     }
@@ -93,9 +93,9 @@ func assertEqualEvent(
 
   let sequence = Rx.Observable.init<Nat, Error>(
     func (observer : Rx.Observer.Type<Nat, Error>) : Rx.Disposable.Type {
-      observer.send(#error (new { description = "Error"; }));
+      observer.send(#error { description = "Error"; });
       observer.send(#next 1);
-      observer.send(#error (new { description = "Another error"; }));
+      observer.send(#error { description = "Another error"; });
       observer.send(#completed);
       Rx.Disposable.empty();
     }
@@ -104,5 +104,5 @@ func assertEqualEvent(
   let disposable = sequence.subscribe(observer);
 
   assert (events.len() == 1);
-  assertEqualEvent(events[0], #error (new { description = "Error"; }));
+  assertEqualEvent(events[0], #error { description = "Error"; });
 };

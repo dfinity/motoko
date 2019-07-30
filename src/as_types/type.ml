@@ -1069,7 +1069,6 @@ let rec string_of_typ_nullary vs = function
     sprintf "[var %s]" (string_of_typ_nullary vs t)
   | Array t ->
     sprintf "[%s]" (string_of_typ_nullary vs t)
-  | Obj (Object, []) -> "{.}"
   | Obj (Object, fs) ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
   | Variant [] -> "{#}"
