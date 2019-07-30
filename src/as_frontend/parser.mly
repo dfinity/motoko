@@ -348,17 +348,18 @@ lit :
   | CATASSIGN { CatOp }
 
 
-(* Default {} to object or block, respectively *)
-ob : { ObjE(Type.Object @@ no_region, []) }
-bl : { BlockE([]) }
+(* Default {} to block or object, respectively *)
+bl : { fun ds -> BlockE(ds) }
+ob : { fun ds -> ObjE(Type.Object @@ no_region,
+         List.map (fun d -> {dec = d; vis = Public @@ d.at} @@ d.at) ds) }
 
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
 
 exp_nullary(B) :
-  | LCURLY semicolon? RCURLY e=B
-    { e @? at $sloc }
+  | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
+    { e ds @? at $sloc }
   | LCURLY efs=exp_field_list_unamb RCURLY
     { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
   | LCURLY ds=dec_list_unamb RCURLY
@@ -496,8 +497,6 @@ exp_field :
 exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
   | ef=exp_field_nonvar
     { [ef] }
-  | d=dec_var
-    { [{dec = d; vis = Public @@ d.at} @@ at $sloc] }
   | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
     { ef::efs }
   | d=dec_var semicolon efs=exp_field_list_unamb
