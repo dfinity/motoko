@@ -3612,16 +3612,6 @@ module Serialization = struct
       in
 
       let read env t =
-        get_data_buf ^^
-        get_ref_buf ^^
-        get_typtbl ^^
-        compile_unboxed_const 0l ^^ (* todo *)
-        deserialize_go env t ^^
-        set_ref_buf ^^
-        set_data_buf
-      in
-
-      let read_ env t =
         let (set_idlty, get_idlty) = new_local env "idl_ty" in
         set_idlty ^^
         get_data_buf ^^
@@ -3756,7 +3746,7 @@ module Serialization = struct
           G.concat_map (fun t ->
             read_typ_leb128 get_ptr ^^ G.i Drop ^^
             read_typ_sleb128 get_ptr ^^
-            read_ env t
+            read env t
           ) ts ^^
           Tuple.from_stack env (List.length ts)
         )
@@ -3769,7 +3759,7 @@ module Serialization = struct
               read_typ_leb128 get_ptr ^^
               G.i Drop ^^
               read_typ_sleb128 get_ptr ^^
-              read_ env f.typ
+              read env f.typ
           ) (sort_by_hash fs))
         )
       | Array t ->
@@ -3782,7 +3772,7 @@ module Serialization = struct
           get_len ^^ Arr.alloc env ^^ set_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
             get_x ^^ get_i ^^ Arr.idx env ^^
-            get_idltyp ^^ read_ env t ^^
+            get_idltyp ^^ read env t ^^
             store_ptr
           ) ^^
           get_x
@@ -3796,7 +3786,7 @@ module Serialization = struct
           compile_eq_const 0l ^^
           G.if_ (ValBlockType (Some I32Type))
             ( Opt.null )
-            ( Opt.inject env (get_idltyp ^^ read_ env t) )
+            ( Opt.inject env (get_idltyp ^^ read env t) )
         )
       | Variant vs ->
         with_composite_typ (-21l) (fun get_ptr ->
@@ -3814,7 +3804,7 @@ module Serialization = struct
               get_tag ^^
               compile_eq_const (Int32.of_int i) ^^
               G.if_ (ValBlockType (Some I32Type))
-                ( Variant.inject env l (get_idltyp ^^ read_ env t) )
+                ( Variant.inject env l (get_idltyp ^^ read env t) )
                 continue
             )
             ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
