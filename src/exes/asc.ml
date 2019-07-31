@@ -10,7 +10,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | Compile | Run | Interact
+type mode = Default | Check | Compile | Run | Interact | Idl
 
 let mode = ref Default
 let args = ref []
@@ -34,6 +34,7 @@ let argspec = Arg.align
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
+  "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";  
   "-v", Arg.Set Pipeline.Flags.verbose, " verbose output";
   "-p", Arg.Set_int Pipeline.Flags.print_depth, " set print depth";
   "-o", Arg.Set_string out_file, " output file";
@@ -94,7 +95,10 @@ let process_files files : unit =
     printf "%s\n%!" banner;
     exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
-    Diag.run (Pipeline.check_files files)
+     Diag.run (Pipeline.check_files files)
+  | Idl ->
+     let idl_ast = Diag.run (Pipeline.generate_idl files) in
+     Printf.printf "%s" (Idllib.Arrange_idl.string_of_prog idl_ast)
   | Compile ->
     if !out_file = "" then begin
       match files with

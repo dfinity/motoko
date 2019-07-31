@@ -21,7 +21,8 @@ type prim =
   | Bool
   | Text
   | Null
-  | Reserved        
+  | Reserved
+  | Empty
         
 type func_mode = func_mode' Source.phrase
 and func_mode' = Oneway | Pure
