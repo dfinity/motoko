@@ -54,6 +54,7 @@ So in order to allocate on the ActorScript heap from C, we import
 alloc_bytes from the Actorscript RTS:
 */
 from_rts as_ptr alloc_bytes(size_t n);
+char *alloc(size_t n);
 
 
 /* IDL code */

@@ -1,5 +1,13 @@
 #include "rts.h"
 
+char *alloc(size_t n) {
+  as_ptr r = alloc_bytes (2*sizeof(void*) + n);
+  FIELD(r, 0) = TAG_TEXT;
+  FIELD(r, 1) = n;
+  return (char *)&FIELD(r,2);
+}
+
+
 export void as_memcpy(char *str1, const char *str2, size_t n) {
   for (size_t i = 0; i < n; i++) {
     str1[i] = str2[i];

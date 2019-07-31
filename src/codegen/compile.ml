@@ -536,7 +536,7 @@ module RTS = struct
   let system_imports env =
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "version" [] [I32Type];
-    E.add_func_import env "rts" "skip_idl_header" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
@@ -2430,8 +2430,7 @@ module Text = struct
    )
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
-  let payload_ptr_unskewed =
-    compile_add_const unskewed_payload_offset
+  let payload_ptr_unskewed = compile_add_const unskewed_payload_offset
 
   (* String concatentation. Expects two strings on stack *)
   let concat env = Func.share_code2 env "concat" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
@@ -2596,10 +2595,7 @@ module Text = struct
 
   (* We also use Text heap objects for byte arrays
      (really should rename Text to Bytes) *)
-  let dyn_alloc_scratch env =
-    compile_add_const (Int32.mul Heap.word_size header_size) ^^
-    Heap.dyn_alloc_bytes env ^^
-    payload_ptr_unskewed
+  let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed
 
 end (* Text *)
 
@@ -3865,13 +3861,7 @@ module Serialization = struct
         Dfinity.system_call env "data_length" ^^
         set_data_size ^^
 
-        get_data_size ^^
-        compile_add_const 3l ^^
-        compile_divU_const Heap.word_size ^^
-        Arr.alloc env ^^
-        compile_add_const Arr.header_size ^^
-        compile_add_const ptr_unskew ^^
-        set_data_start ^^
+        get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
 
         (* Copy data *)
         get_data_start ^^
@@ -3880,10 +3870,20 @@ module Serialization = struct
         compile_unboxed_const 0l ^^
         Dfinity.system_call env "data_internalize" ^^
 
+        (* Allocate space for out parameters of parse_idl_header *)
+        let (set_typtbl_ptr, get_typtbl_ptr) = new_local env "typtbl_ptr" in
+        let (set_maintyp_ptr, get_maintyp_ptr) = new_local env "maintyp_ptr" in
+        compile_unboxed_const (Int32.mul 2l Heap.word_size) ^^
+        Text.dyn_alloc_scratch env ^^
+        set_typtbl_ptr ^^
+        get_typtbl_ptr ^^ compile_add_const Heap.word_size ^^ set_maintyp_ptr ^^
+
         (* Go! *)
         get_data_start ^^
         get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        E.call_import env "rts" "skip_idl_header" ^^
+        get_typtbl_ptr ^^
+        get_maintyp_ptr ^^
+        E.call_import env "rts" "parse_idl_header" ^^
         get_refs_start ^^ compile_add_const Heap.word_size ^^
         deserialize_go env t ^^
         G.i Drop ^^
