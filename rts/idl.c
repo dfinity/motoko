@@ -2,7 +2,7 @@
 
 /* Code to read (S)LEB128 to ints (traps if does not fit in return type) */
 
-uint32_t read_leb128(char **ptr, char *end) {
+export uint32_t read_leb128(char **ptr, char *end) {
   uint32_t r = 0;
   unsigned int s = 0;
   uint8_t b;
@@ -20,7 +20,7 @@ uint32_t read_leb128(char **ptr, char *end) {
   return r;
 }
 
-int32_t read_sleb128(char **ptr, char *end) {
+export int32_t read_sleb128(char **ptr, char *end) {
   uint32_t r = 0;
   unsigned int s = 0;
   uint8_t b;
