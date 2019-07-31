@@ -19,8 +19,8 @@ actor Server = {
   };
 
   public func subscribe(client : Client) : async Post {
-    let cs = new {head = client; var tail = clients};
-    clients := ?cs;
+    let cs = {head = client; var tail = clients};
+    clients :=  ?cs;
     return broadcast;
   };
 };

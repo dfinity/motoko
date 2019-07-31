@@ -1127,6 +1127,8 @@ and string_of_field vs {lab; typ} =
   | Typ c ->
     let op, sbs, st = strings_of_kind (Con.kind c) in
     sprintf "type %s%s %s %s" lab sbs op st
+  | Mut t' ->
+    sprintf "var %s : %s" lab (string_of_typ' vs t')
   | _ ->
     sprintf "%s : %s" lab (string_of_typ' vs typ)
 

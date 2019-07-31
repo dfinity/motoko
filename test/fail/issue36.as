@@ -3,8 +3,8 @@
 type Z = { zap : Nat };
 type B = { bar : (Int, Z) };
 
-let inner : Z = new { zap = 42 };
-let foo : B = new { bar = (25, inner) };
+let inner : Z = { zap = 42 };
+let foo : B = { bar = (25, inner) };
 
 assert(foo.bar.0 == 25);
 

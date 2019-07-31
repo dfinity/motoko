@@ -98,7 +98,7 @@ let share_expfield (ef : exp_field) =
 %token AWAIT ASYNC BREAK CASE CONTINUE LABEL
 %token IF IN ELSE SWITCH LOOP WHILE FOR RETURN
 %token ARROW ASSIGN
-%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED NEW
+%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
 %token IMPORT MODULE
@@ -138,7 +138,7 @@ let share_expfield (ef : exp_field) =
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
 %left POWOP
 
-%type<Syntax.exp> exp exp_nullary
+%type<Syntax.exp> exp(ob) exp_nullary(ob)
 %start<string -> As_def.Syntax.prog> parse_prog
 %start<string -> As_def.Syntax.prog> parse_prog_interactive
 
@@ -348,89 +348,96 @@ lit :
   | CATASSIGN { CatOp }
 
 
+(* Default {} to block or object, respectively *)
+bl : { fun ds -> BlockE(ds) }
+ob : { fun ds -> ObjE(Type.Object @@ no_region,
+         List.map (fun d -> {dec = d; vis = Public @@ d.at} @@ d.at) ds) }
+
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
 
-exp_nullary :
-  | e=exp_block
-    { e }
+exp_nullary(B) :
+  | LCURLY ds=seplist(dec_var, semicolon) RCURLY e=B
+    { e ds @? at $sloc }
+  | LCURLY efs=exp_field_list_unamb RCURLY
+    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
+  | LCURLY ds=dec_list_unamb RCURLY
+    { BlockE(ds) @? at $sloc }
   | x=id
     { VarE(x) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
-  | LPAR es=seplist(exp, COMMA) RPAR
+  | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
 
-exp_post :
-  | e=exp_nullary
+exp_post(B) :
+  | e=exp_nullary(B)
     { e }
-  | LBRACKET m=var_opt es=seplist(exp_nonvar, COMMA) RBRACKET
+  | LBRACKET m=var_opt es=seplist(exp_nonvar(ob), COMMA) RBRACKET
     { ArrayE(m, es) @? at $sloc }
-  | e1=exp_post LBRACKET e2=exp RBRACKET
+  | e1=exp_post(ob) LBRACKET e2=exp(ob) RBRACKET
     { IdxE(e1, e2) @? at $sloc }
-  | e=exp_post s=DOT_NUM
+  | e=exp_post(ob) s=DOT_NUM
     { ProjE (e, int_of_string s) @? at $sloc }
-  | e=exp_post DOT x=id
+  | e=exp_post(ob) DOT x=id
     { DotE(e, x) @? at $sloc }
-  | e1=exp_post tso=typ_args? e2=exp_nullary
+  | e1=exp_post(ob) tso=typ_args? e2=exp_nullary(ob)
     { let typ_args = Lib.Option.get tso [] in
       CallE(e1, typ_args, e2) @? at $sloc }
 
-exp_un :
-  | e=exp_post
+exp_un(B) :
+  | e=exp_post(B)
     { e }
   | x=tag
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
-  | x=tag e=exp_nullary
+  | x=tag e=exp_nullary(ob)
     { TagE (x, e) @? at $sloc }
-  | QUEST e=exp_un
+  | QUEST e=exp_un(ob)
     { OptE(e) @? at $sloc }
-  | op=unop e=exp_un
+  | op=unop e=exp_un(ob)
     { UnE(ref Type.Pre, op, e) @? at $sloc }
-  | op=unassign e=exp_un
+  | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
-  | NOT e=exp_un
+  | NOT e=exp_un(ob)
     { NotE e @? at $sloc }
-  | DEBUG_SHOW e=exp_un
+  | DEBUG_SHOW e=exp_un(ob)
     { ShowE (ref Type.Pre, e) @? at $sloc }
 
-exp_bin :
-  | e=exp_un
+exp_bin(B) :
+  | e=exp_un(B)
     { e }
-  | e1=exp_bin op=binop e2=exp_bin
+  | e1=exp_bin(ob) op=binop e2=exp_bin(ob)
     { BinE(ref Type.Pre, e1, op, e2) @? at $sloc }
-  | e1=exp_bin op=relop e2=exp_bin
+  | e1=exp_bin(ob) op=relop e2=exp_bin(ob)
     { RelE(ref Type.Pre, e1, op, e2) @? at $sloc }
-  | e1=exp_bin ASSIGN e2=exp_bin
+  | e1=exp_bin(ob) ASSIGN e2=exp_bin(ob)
     { AssignE(e1, e2) @? at $sloc}
-  | e1=exp_bin op=binassign e2=exp_bin
+  | e1=exp_bin(ob) op=binassign e2=exp_bin(ob)
     { assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
-  | e1=exp_bin AND e2=exp_bin
+  | e1=exp_bin(ob) AND e2=exp_bin(ob)
     { AndE(e1, e2) @? at $sloc }
-  | e1=exp_bin OR e2=exp_bin
+  | e1=exp_bin(ob) OR e2=exp_bin(ob)
     { OrE(e1, e2) @? at $sloc }
-  | e=exp_bin COLON t=typ
+  | e=exp_bin(ob) COLON t=typ
     { AnnotE(e, t) @? at $sloc }
 
-exp_nondec :
-  | e=exp_bin
+exp_nondec(B) :
+  | e=exp_bin(B)
     { e }
-  | NEW LCURLY efs=seplist(exp_field, semicolon) RCURLY
-    { ObjE(Type.Object @@ at $sloc, efs) @? at $sloc }
   | RETURN %prec RETURN_NO_ARG
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
-  | RETURN e=exp
+  | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | ASYNC e=exp
+  | ASYNC e=exp(bl)
     { AsyncE(e) @? at $sloc }
-  | AWAIT e=exp
+  | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
-  | ASSERT e=exp
+  | ASSERT e=exp(bl)
     { AssertE(e) @? at $sloc }
-  | LABEL x=id rt=return_typ_nullary? e=exp
+  | LABEL x=id rt=return_typ_nullary? e=exp(bl)
     { let x' = ("continue " ^ x.it) @@ x.at in
       let t = Lib.Option.get rt (TupT [] @! at $sloc) in
       let e' =
@@ -440,51 +447,60 @@ exp_nondec :
         | ForE (p, e1, e2) -> ForE (p, e1, LabelE (x', t, e2) @? e2.at) @? e.at
         | _ -> e
       in LabelE(x, t, e') @? at $sloc }
-  | BREAK x=id eo=exp_nullary?
+  | BREAK x=id eo=exp_nullary(ob)?
     { let e = Lib.Option.get eo (TupE([]) @? at $sloc) in
       BreakE(x, e) @? at $sloc }
   | CONTINUE x=id
     { let x' = ("continue " ^ x.it) @@ x.at in
       BreakE(x', TupE([]) @? no_region) @? at $sloc }
-  | IF b=exp_nullary e1=exp %prec IF_NO_ELSE
+  | IF b=exp_nullary(ob) e1=exp(bl) %prec IF_NO_ELSE
     { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
-  | IF b=exp_nullary e1=exp ELSE e2=exp
+  | IF b=exp_nullary(ob) e1=exp(bl) ELSE e2=exp(bl)
     { IfE(b, e1, e2) @? at $sloc }
-  | SWITCH e=exp_nullary LCURLY cs=seplist(case, semicolon) RCURLY
+  | SWITCH e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
     { SwitchE(e, cs) @? at $sloc }
-  | WHILE e1=exp_nullary e2=exp
+  | WHILE e1=exp_nullary(ob) e2=exp(bl)
     { WhileE(e1, e2) @? at $sloc }
-  | LOOP e=exp %prec LOOP_NO_WHILE
+  | LOOP e=exp(bl) %prec LOOP_NO_WHILE
     { LoopE(e, None) @? at $sloc }
-  | LOOP e1=exp WHILE e2=exp
+  | LOOP e1=exp(bl) WHILE e2=exp(bl)
     { LoopE(e1, Some e2) @? at $sloc }
-  | FOR LPAR p=pat IN e1=exp RPAR e2=exp
+  | FOR LPAR p=pat IN e1=exp(ob) RPAR e2=exp(bl)
     { ForE(p, e1, e2) @? at $sloc }
 
-exp_nonvar :
-  | e=exp_nondec
+exp_nonvar(B) :
+  | e=exp_nondec(B)
     { e }
   | d=dec_nonvar
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
-exp :
-  | e=exp_nonvar
+exp(B) :
+  | e=exp_nonvar(B)
     { e }
   | d=dec_var
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 
 case :
-  | CASE p=pat_nullary e=exp
+  | CASE p=pat_nullary e=exp(bl)
     { {pat = p; exp = e} @@ at $sloc }
 
-exp_field :
-  | x=id EQ e=exp
+exp_field_nonvar :
+  | x=id EQ e=exp(ob)
     { let d = LetD(VarP(x) @! x.at, e) @? at $sloc in
       {dec = d; vis = Public @@ x.at} @@ at $sloc }
-  | VAR x=id EQ e=exp
-    { let d = VarD(x, e) @? at $sloc in
-      {dec = d; vis = Public @@ x.at} @@ at $sloc }
+
+exp_field :
+  | ef=exp_field_nonvar { ef }
+  | d=dec_var { {dec = d; vis = Public @@ d.at} @@ at $sloc }
+
+exp_field_list_unamb :  (* does not overlap with dec_list_unamb *)
+  | ef=exp_field_nonvar
+    { [ef] }
+  | ef=exp_field_nonvar semicolon efs=seplist(exp_field, semicolon)
+    { ef::efs }
+  | d=dec_var semicolon efs=exp_field_list_unamb
+    { ({dec = d; vis = Public @@ d.at} @@ at $sloc) :: efs }
 
 dec_field :
   | v=vis d=dec
@@ -498,7 +514,7 @@ vis :
 
 (* Patterns *)
 
-pat_argument :
+pat_param :
   | UNDERSCORE
     { WildP @! at $sloc }
   | x=id
@@ -509,7 +525,7 @@ pat_argument :
     { (match ps with [p] -> ParP(p) | _ -> TupP(ps)) @! at $sloc }
 
 pat_nullary :
-  | p=pat_argument
+  | p=pat_param
     { p }
   | LCURLY fps=seplist(pat_field, semicolon) RCURLY
     { ObjP(fps) @! at $sloc }
@@ -554,13 +570,15 @@ pat_field :
 (* Declarations *)
 
 dec_var :
-  | VAR x=id t=return_typ? EQ e=exp
+  | VAR x=id t=return_typ? EQ e=exp(ob)
     { let e' =
         match t with
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
       in VarD(x, e') @? at $sloc }
-  | LET p=pat EQ e=exp
+
+dec_nonvar :
+  | LET p=pat EQ e=exp(ob)
     { let p', e' =
         match p.it with
         | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
@@ -568,8 +586,6 @@ dec_var :
       in LetD (p', e') @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-
-dec_nonvar :
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
       let efs' =
@@ -578,7 +594,7 @@ dec_nonvar :
   | s=func_sort_opt FUNC xf=id_opt fe=func_exp
     { let named, x = xf "func" $sloc in
       let_or_exp named x (fe s x.it).it (at $sloc) }
-  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_argument xefs=class_body
+  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_param xefs=class_body
     { let x, efs = xefs in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
@@ -592,11 +608,23 @@ dec :
     { d }
   | d=dec_nonvar
     { d }
-  | e=exp_nondec
+  | e=exp_nondec(ob)
     { ExpD e @? at $sloc }
 
+dec_list_unamb :  (* does not overlap with exp_field_list_unamb *)
+  | e=exp_nondec(ob)
+    { [ExpD e @? e.at] }
+  | d=dec_nonvar
+    { [d] }
+  | e=exp_nondec(ob) semicolon ds=seplist(dec, semicolon)
+    { (ExpD e @? e.at) :: ds }
+  | d=dec_nonvar semicolon ds=seplist(dec, semicolon)
+    { d::ds }
+  | d=dec_var semicolon ds=dec_list_unamb
+    { d::ds }
+
 func_exp :
-  | tps=typ_params_opt p=pat_argument t=return_typ? fb=func_body
+  | tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
@@ -609,7 +637,7 @@ func_exp :
       in fun s x -> FuncE(x, s, tps, p, t, e) @? at $sloc }
 
 func_body :
-  | EQ e=exp { (false, e) }
+  | EQ e=exp(bl) { (false, e) }
   | e=exp_block { (true, e) }
 
 obj_body :
