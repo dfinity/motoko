@@ -155,7 +155,7 @@ and dec msgs d = match d.it with
   | LetD (p, e) -> pat msgs p +++ exp msgs e
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (i, tp, s, p, i', efs) ->
+  | ClassD (i, tp, p, t, s, i', efs) ->
     (M.empty, S.singleton i.it) +++ delayify (exp_fields msgs efs /// pat msgs p // i'.it)
 
 and decs msgs decs : f =

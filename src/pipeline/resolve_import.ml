@@ -193,7 +193,7 @@ and dec env d = match d.it with
   | VarD (_, e)
   | LetD (_, e) ->
     exp env e
-  | ClassD (_, _, _, _ , _, efs) ->
+  | ClassD (_, _, _, _, _ , _, efs) ->
     List.iter (fun ef -> dec env ef.it.dec) efs
 
 let prog env p = decs env p.it
