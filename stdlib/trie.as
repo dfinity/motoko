@@ -173,11 +173,11 @@ public type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 	             // rebuild either the left or right path with the inserted (k,v) pair
 	             if (not bit) {
 	               let (l, v_) = rec(n.left, bitpos+1);
-	               (?(new {left=l; right=n.right; keyvals=null; }), v_)
+	               (?{left=l; right=n.right; keyvals=null; }, v_)
 	             }
 	             else {
 	               let (r, v_) = rec(n.right, bitpos+1);
-	               (?(new {left=n.left; right=r; keyvals=null; }), v_)
+	               (?{left=n.left; right=r; keyvals=null; }, v_)
 	             }
 	           };
         }
@@ -190,7 +190,7 @@ public type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
                // a list/array of KV pairs in each leaf:
                let (kvs2, old_val) =
                  AssocList.replace<Key<K>,V>(l.keyvals, k, key_eq, v);
-	             (?(new{left=null; right=null; keyvals=kvs2}), old_val)
+	             (?{left=null; right=null; keyvals=kvs2}, old_val)
 	           };
 	      }
       }
@@ -1015,7 +1015,7 @@ public type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
                      func ((k:Key<K>,v:V)):?(Key<K>,W) = {
                        switch (f(k.key,v)) {
                          case (null) null;
-                         case (?w) (?(new {key=k.key; hash=k.hash}, w));
+                         case (?w) (?({key=k.key; hash=k.hash}, w));
                        }}
                     ))
                   };
@@ -1127,7 +1127,7 @@ public type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
   // XXX: until AST-42:
   public func makeBin<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V>  {
-    ?(new {left=l; right=r; keyvals=null; })
+    ?{left=l; right=r; keyvals=null; }
   };
 
   // XXX: until AST-42:
@@ -1145,7 +1145,7 @@ public type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 
   // XXX: until AST-42:
   public func makeLeaf<K,V>(kvs:AssocList<Key<K>,V>) : Trie<K,V> {
-    ?(new {left=null; right=null; keyvals=kvs })
+    ?{left=null; right=null; keyvals=kvs }
   };
 
   // XXX: until AST-42:
@@ -1223,16 +1223,16 @@ public type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
 	      let path = rec(bitpos+1);
 	      let bit = Hash.getHashBit(k.hash, bitpos);
 	      if (not bit) {
-	        ?(new {left=path; right=null; keyvals=null})
+	        ?{left=path; right=null; keyvals=null}
 	      }
 	      else {
-	        ?(new {left=null; right=path; keyvals=null})
+	        ?{left=null; right=path; keyvals=null}
 	      }
       } else {
 	      // create new leaf for (k,v) pair, if the value is non-null:
         switch ov {
-          case null { ?(new {left=null; right=null; keyvals=null }) };
-          case (?v) { ?(new {left=null; right=null; keyvals=?((k,v),null) }) };
+          case null { ?{left=null; right=null; keyvals=null } };
+          case (?v) { ?{left=null; right=null; keyvals=?((k,v),null) } };
         }
       }
     };

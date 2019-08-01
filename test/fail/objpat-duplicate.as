@@ -1,4 +1,4 @@
-let o = new {a = 1; b = 2};
+let o = {a = 1; b = 2};
 
 switch o {
   case {a = x; b; a} {}

@@ -29,12 +29,12 @@ public type Set<T> = Trie.Trie<T,()>;
     Trie.empty<T,()>();
 
   public func insert<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool) : Set<T> = {
-    let (s2, _) = Trie.insert<T,()>(s, new {key=x; hash=xh}, eq, ());
+    let (s2, _) = Trie.insert<T,()>(s, {key=x; hash=xh}, eq, ());
     s2
   };
 
   public func remove<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool) : Set<T> = {
-    let (s2, _) = Trie.remove<T,()>(s, new {key=x; hash=xh}, eq);
+    let (s2, _) = Trie.remove<T,()>(s, {key=x; hash=xh}, eq);
     s2
   };
 
@@ -52,7 +52,7 @@ public type Set<T> = Trie.Trie<T,()>;
   };
 
   public func mem<T>(s:Set<T>, x:T, xh:Hash, eq:(T,T)->Bool):Bool {
-    switch (Trie.find<T,()>(s, new {key=x; hash=xh}, eq)) {
+    switch (Trie.find<T,()>(s, {key=x; hash=xh}, eq)) {
     case null { false };
     case (?_) { true };
     }

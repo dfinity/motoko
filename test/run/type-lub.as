@@ -1,8 +1,8 @@
 let opts = [null, ?42, ?-25];
 let nulls = [null, null];
 
-let incompatible_objs = [new {a = 42}, new {b = 42}];
-let objs = [new {a = 42}, new {b = 42; a = 1}, new {a = -25}];
+let incompatible_objs = [{a = 42}, {b = 42}];
+let objs = [{a = 42}, {b = 42; a = 1}, {a = -25}];
 
 let tups = [(12, -1), (-42, 25)];
 let tup1s = [(-1,), 25];

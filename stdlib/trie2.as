@@ -235,7 +235,7 @@ public func count<K,V>(t: Trie<K,V>) : Nat = label profile_trie_count : Nat {
 public func branch<K,V>(l:Trie<K,V>, r:Trie<K,V>) : Trie<K,V> = label profile_trie_branch : Trie<K,V> {
    let sum = count<K,V>(l) + count<K,V>(r);
    #branch(
-     new{
+     {
        count=sum;
        left=l;
        right=r
@@ -267,12 +267,12 @@ public func fromList<K,V>(kvs:AssocList<Key<K>,V>, bitpos:Nat) : Trie<K,V> =
      else if ( List.lenIsEqLessThan<(Key<K>,V)>(kvs, MAX_LEAF_COUNT - 1) )
      label profile_trie_fromList_end_validleaf : (Trie<K,V>) {
        let len = List.len<(Key<K>,V)>(kvs);
-       #leaf(new{count=len;keyvals=kvs})
+       #leaf{count=len;keyvals=kvs}
      }
      else if ( bitpos >= 31 )
      label profile_trie_fromList_end_bitposIs31 : (Trie<K,V>) {
        let len = List.len<(Key<K>,V)>(kvs);
-       #leaf(new{count=len;keyvals=kvs})
+       #leaf{count=len;keyvals=kvs}
      }
      else /* too many keys for a leaf, so introduce a branch */
      label profile_trie_fromList_branch : (Trie<K,V>) {
@@ -292,7 +292,7 @@ public func fromSizedList<K,V>(kvc:?Nat, kvs:AssocList<Key<K>,V>, bitpos:Nat) : 
             switch (List.lenClamp<(Key<K>,V)>(kvs, MAX_LEAF_COUNT)) {
               case null () /* fall through to branch case. */;
               case (?len) {
-                     return #leaf(new{count=len; keyvals=kvs})
+                     return #leaf{count=len; keyvals=kvs}
                    };
             }
           };
@@ -300,7 +300,7 @@ public func fromSizedList<K,V>(kvc:?Nat, kvs:AssocList<Key<K>,V>, bitpos:Nat) : 
        if ( c == 0 ) {
          return #empty
        } else if ( c <= MAX_LEAF_COUNT ) {
-         return #leaf(new{count=c; keyvals=kvs})
+         return #leaf{count=c; keyvals=kvs}
        } else {
          /* fall through to branch case */
        }
@@ -310,9 +310,9 @@ public func fromSizedList<K,V>(kvc:?Nat, kvs:AssocList<Key<K>,V>, bitpos:Nat) : 
      if ( ls == 0 and rs == 0 ) {
        #empty
      } else if (rs == 0 and ls <= MAX_LEAF_COUNT) {
-       #leaf(new{count=ls; keyvals=l})
+       #leaf{count=ls; keyvals=l}
      } else if (ls == 0 and rs <= MAX_LEAF_COUNT) {
-       #leaf(new{count=rs; keyvals=r})
+       #leaf{count=rs; keyvals=r}
      } else {
        branch<K,V>(rec(?ls, l, bitpos + 1), rec(?rs, r, bitpos + 1))
      }
@@ -867,7 +867,7 @@ public func disj<K,V,W,X>(
     public func buildSeq<K,V>(l:TrieBuild<K,V>, r:TrieBuild<K,V>) : TrieBuild<K,V> =
       label profile_trie_buildSeq : TrieBuild<K,V> {
       let sum = buildCount<K,V>(l) + buildCount<K,V>(r);
-      #seq(new { count = sum; left = l; right = r })
+      #seq { count = sum; left = l; right = r }
     };
 
     /**
@@ -1205,7 +1205,7 @@ public func disj<K,V,W,X>(
                  func ((k:Key<K>,v:V)):?(Key<K>,W) = {
                    switch (f(k.key,v)) {
                    case (null) null;
-                   case (?w) (?(new {key=k.key; hash=k.hash}, w));
+                   case (?w) (?({key=k.key; hash=k.hash}, w));
                    }}
                ),
                bitpos

@@ -64,9 +64,9 @@ Prelude.printLn("Array");
   };
 
   let xs = [
-    new { key = "a"; value = 0; },
-    new { key = "b"; value = 1; },
-    new { key = "c"; value = 2; },
+    { key = "a"; value = 0; },
+    { key = "b"; value = 1; },
+    { key = "c"; value = 2; },
   ];
 
   let b : ?Element = Array.find<Element>(func (x : Element) : Bool {

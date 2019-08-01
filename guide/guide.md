@@ -660,7 +660,7 @@ A type `T` is *shared* if it is
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
-  new { <exp-field>;* }                          object
+  { <exp-field>;* }                              object
   <exp> . <id>                                   object projection
   <exp> := <exp>                                 assignment
   <unop>= <exp>                                  unary update
@@ -758,14 +758,12 @@ The literal `null` has type `Null`. Since `Null <: ? T` for any `T`, literal `nu
 
 ## Objects
 
-Objects can be written in literal form `new { <exp-field>;* }`, consisting of a list of expression fields:
+Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list of expression fields:
 
 ```bnf
 <exp-field> ::= var? <id> = <exp>
 ```
 Such an object literal is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields.
-
-_TBR can we delete `new`?_
 
 ## Object projection (Member access)
 
@@ -1281,7 +1279,7 @@ In particular:
 
 * if the sort is `actor` then all public fields must be non-`var` (immutable)     `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
 
-Evaluation of `(new|object|actor) <id>? =? { <exp-field>;* }` proceeds by
+Evaluation of `(object|actor)? <id>? =? { <exp-field>;* }` proceeds by
 evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration.
 Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`.
 let `v0`, ..., `vn` be the values or locations bound to identifiers `<id0>`, ..., `<idn>`.
@@ -1318,7 +1316,7 @@ obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <dec-field>;
 
 where:
 
-* `<sort>` is `object` if `obj_sort?` is absent or `new` and `sort == obj_sort` otherwise.
+* `<sort>` is `object` if `obj_sort?` is absent or `sort == obj_sort` otherwise.
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
 * `<typ-field>;*` is the set of public field types inferred from `<dec-field;*>`.
 * `<id_this>?` is the optional `this` parameter of the object instance.

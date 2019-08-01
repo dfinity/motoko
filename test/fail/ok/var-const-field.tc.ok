@@ -1,4 +1,4 @@
-var-const-field.as:1.25-1.36: type error, expression of type
+var-const-field.as:1.25-1.32: type error, expression of type
   {x : Nat}
 cannot produce expected type
   {var x : Nat}
