@@ -1252,33 +1252,35 @@ and gather_typ_field T.{lab; typ} con_env =
 
 and object_of_scope env sort fields scope at =
   let pub_typ, pub_val = pub_fields fields in
-  let typ_fields =
+  let tfs =
     T.Env.fold
-      (fun id con flds ->
-       if T.Env.mem id pub_typ then
-         { T.lab = id; T.typ = T.Typ con }::flds
-       else flds) scope.Scope.typ_env  []
+      (fun id c tfs ->
+        if T.Env.mem id pub_typ
+        then T.{lab = id; typ = T.Typ c}::tfs
+        else tfs
+      ) scope.Scope.typ_env  []
   in
-  let fields =
+  let tfs' =
     T.Env.fold
-      (fun id typ flds ->
-        if T.Env.mem id pub_val then
-          { T.lab = id; T.typ = typ }::flds
-        else flds) scope.Scope.val_env typ_fields
+      (fun id t tfs ->
+        if T.Env.mem id pub_val
+        then T.{lab = id; typ = t}::tfs
+        else tfs
+      ) scope.Scope.val_env tfs
   in
-  let t = T.Obj (sort, List.sort T.compare_field fields) in
+  let t = T.Obj (sort, List.sort T.compare_field tfs') in
   let accessible_cons = gather_typ T.ConSet.empty t in
   let inaccessible_cons = T.ConSet.diff scope.Scope.con_env accessible_cons in
   try
     T.avoid_cons inaccessible_cons accessible_cons;
     T.avoid inaccessible_cons t
   with T.Unavoidable c ->
-      error env at "local class type %s is contained in object or actor type\n  %s"
-        (Con.to_string c)
-        (T.string_of_typ_expand t)
+    error env at "local class type %s is contained in object or actor type\n  %s"
+      (Con.to_string c)
+      (T.string_of_typ_expand t)
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({ it = VarP _; _}, {it = FuncE _; _} ) -> true
+  | LetD ({it = VarP _; _}, {it = FuncE _; _}) -> true
   | _ -> false
 
 and is_typ_dec dec : bool = match dec.it with
@@ -1441,11 +1443,12 @@ and gather_dec env scope dec : Scope.t =
     let scope' = gather_block_decs env decs in
     let ve' = T.Env.add id.it (object_of_scope env sort fields scope' at) scope.val_env in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
-    {val_env = ve';
-     typ_env = scope.typ_env;
-     lib_env = scope.lib_env;
-     con_env = scope.con_env;
-     obj_env = obj_env }
+    { val_env = ve';
+      typ_env = scope.typ_env;
+      lib_env = scope.lib_env;
+      con_env = scope.con_env;
+      obj_env = obj_env
+    }
   | LetD (pat, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id)
   | TypD (id, binds, _) | ClassD (id, binds, _, _, _, _) ->
@@ -1523,8 +1526,8 @@ and infer_dec_typdecs env dec : Scope.t =
     )
   | LetD _ | ExpD _ | VarD _ ->
     Scope.empty
-  | TypD (con_id, binds, typ) ->
-    let c = T.Env.find con_id.it env.typs in
+  | TypD (id, binds, typ) ->
+    let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs env te ce in
     let t = check_typ env' typ in
@@ -1542,13 +1545,13 @@ and infer_dec_typdecs env dec : Scope.t =
       if not (T.ConSet.is_empty free_params) then
         error env dec.at
           "type definition %s %s references type parameter(s) %s from an outer scope"
-          con_id.it
+          id.it
           (T.string_of_kind k)
           (String.concat ", " (T.ConSet.fold (fun c cs -> T.string_of_con c::cs) free_params []))
     end;
     Scope.{ empty with
-      typ_env = T.Env.singleton con_id.it c;
-      con_env = infer_id_typdecs con_id c k;
+      typ_env = T.Env.singleton id.it c;
+      con_env = infer_id_typdecs id c k;
     }
   | ClassD (id, binds, sort, pat, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
@@ -1600,20 +1603,18 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     let obj_typ = object_of_scope env sort fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
-    Scope.{ Scope.empty with
-      val_env = T.Env.singleton id.it obj_typ }
+    Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
   | LetD (pat, exp) ->
     let t = infer_exp {env with pre = true} exp in
     let ve' = check_pat_exhaustive env t pat in
-    Scope.{ Scope.empty with val_env = ve' }
+    Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    Scope.{ Scope.empty with val_env = T.Env.singleton id.it (T.Mut t) }
-  | TypD (con_id, binds, typ) ->
-    let c = match con_id.note with
-      | Some c -> c | _ -> assert false in
-    Scope.{ Scope.empty with
-      typ_env = T.Env.singleton con_id.it c;
+    Scope.{empty with val_env = T.Env.singleton id.it (T.Mut t)}
+  | TypD (id, binds, typ) ->
+    let c = Lib.Option.value id.note in
+    Scope.{ empty with
+      typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c ;
     }
   | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
@@ -1625,7 +1626,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
-    Scope.{ Scope.empty with
+    Scope.{ empty with
       val_env = T.Env.singleton id.it t;
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
@@ -1636,32 +1637,32 @@ and infer_dec_valdecs env dec : Scope.t =
 let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
   Diag.with_message_store
     (fun msgs ->
-       recover_opt
-         (fun prog ->
-           let env = env_of_scope msgs scope in
-           let res = infer_block env prog.it prog.at in
-           res
-         )
-         prog
+      recover_opt
+        (fun prog ->
+          let env = env_of_scope msgs scope in
+          let res = infer_block env prog.it prog.at in
+          res
+        ) prog
     )
 
 let infer_library env prog at =
   let typ,scope = infer_block env prog at in
   match prog with
-  |  [{it = Syntax.ExpD _;_}] ->
-     typ
+  | [{it = Syntax.ExpD _;_}] ->
+    typ
   (* HACK: to be removed once we insist on single expression imports *)
-  |  ds ->
-     object_of_scope env T.Module (List.map (fun d -> { vis = Public @@ no_region ; dec = d } @@ no_region) ds) scope at
+  | ds ->
+    object_of_scope env T.Module
+      (List.map (fun d -> {vis = Public @@ no_region; dec = d} @@ no_region) ds)
+      scope at
 
 let check_library scope (filename, prog) : Scope.t Diag.result =
   Diag.with_message_store
     (fun msgs ->
-    recover_opt
-      (fun prog ->
-        let env = env_of_scope msgs scope in
-        let typ = infer_library env prog.it prog.at in
-        Scope.library filename typ
-      )
-      prog
+      recover_opt
+        (fun prog ->
+          let env = env_of_scope msgs scope in
+          let typ = infer_library env prog.it prog.at in
+          Scope.library filename typ
+        ) prog
     )
