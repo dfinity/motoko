@@ -1200,7 +1200,7 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
   (object|module|actor) <id>? =? { <dec-field>;* }                object
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>      function
   type <id> <typ-params>? = <typ>                                 type
-  obj_sort? class <id> <typ-params>? <pat> =?  { <exp-field>;* }` class
+  obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }` class
 ```
 
 ```bnf
@@ -1307,7 +1307,7 @@ Named function definitions are recursive.
 
 ## Class declarations
 
-The declaration `obj_sort? class <id> <typ-params>? <pat> =? <id_this>? { <exp-field>;* }` is sugar for pair of a
+The declaration `obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* }` is sugar for pair of a
 a type and function declaration:
 
 ```bnf

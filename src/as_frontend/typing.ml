@@ -1361,7 +1361,17 @@ and infer_dec env dec : T.typ =
           rets = None;
           async = false
         }
-      in ignore (infer_obj env'' sort.it fields dec.at)
+      in
+      let t' = infer_obj env'' sort.it fields dec.at in
+      match typ_opt with
+      | None -> ()
+      | Some typ ->
+        let t'' = check_typ env'' typ in
+        if not (T.sub t' t'') then
+          local_error env dec.at
+            "class body of type\n  %s\ndoes not match expected type\n  %s"
+            (T.string_of_typ_expand t')
+            (T.string_of_typ_expand t'')
     end;
     t
   | TypD _ ->
@@ -1554,8 +1564,7 @@ and infer_dec_typdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
     }
-  | ClassD (id, binds, pat, typ_opt, sort, self_id, fields) ->
-    (* TODO: typ_opt *)
+  | ClassD (id, binds, pat, _typ_opt, sort, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
@@ -1613,14 +1622,13 @@ and infer_dec_valdecs env dec : Scope.t =
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     Scope.{empty with val_env = T.Env.singleton id.it (T.Mut t)}
-  | TypD (id, binds, typ) ->
+  | TypD (id, _, _) ->
     let c = Lib.Option.value id.note in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c ;
     }
-  | ClassD (id, typ_binds, pat, typ_opt, sort, self_id, fields) ->
-    (* TODO: typ_opt *)
+  | ClassD (id, typ_binds, pat, _, _, _, _) ->
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
