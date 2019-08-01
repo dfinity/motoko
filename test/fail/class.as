@@ -32,6 +32,13 @@ actor class AA() : A {
 };
 
 
+object o { public type T = Nat };
+class E() : {a : o.T} = o {
+  public let a = 0;
+  public type T = Bool;
+};
+
+
 // Incorrect annotations
 class D1() : {x : Int} {};
 class D2() : {x : Nat} {
@@ -40,3 +47,8 @@ class D2() : {x : Nat} {
 
 class D3() : actor {} = {};
 actor class D4() : {} = {};
+
+object x { public type T = Nat };
+class D5(x : {}) : {a : x.T} = {
+  public let a = 0;
+};

@@ -1353,15 +1353,16 @@ and infer_dec env dec : T.typ =
       let cs, _ts, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let _, ve = infer_pat_exhaustive env' pat in
+      let env'' = adjoin_vals env' ve in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
-      let env'' =
-        { (add_val (adjoin_vals env' ve) self_id.it self_typ) with
+      let env''' =
+        { (add_val env'' self_id.it self_typ) with
           labs = T.Env.empty;
           rets = None;
           async = false
         }
       in
-      let t' = infer_obj env'' sort.it fields dec.at in
+      let t' = infer_obj env''' sort.it fields dec.at in
       match typ_opt with
       | None -> ()
       | Some typ ->
