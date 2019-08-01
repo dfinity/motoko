@@ -1347,7 +1347,6 @@ and infer_dec env dec : T.typ =
     if not env.pre then ignore (infer_exp env exp);
     T.unit
   | ClassD (id, typ_binds, pat, typ_opt, sort, self_id, fields) ->
-    (* TODO: typ_opt *)
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
