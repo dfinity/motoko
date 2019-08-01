@@ -1,16 +1,16 @@
-class.as:28.1-28.26: type error, class body of type
+class.as:36.1-36.26: type error, class body of type
   {}
 does not match expected type
   {x : Int}
-class.as:29.1-31.2: type error, class body of type
+class.as:37.1-39.2: type error, class body of type
   {x : Int}
 does not match expected type
   {x : Nat}
-class.as:33.1-33.27: type error, class body of type
+class.as:41.1-41.27: type error, class body of type
   {}
 does not match expected type
   actor {}
-class.as:34.1-34.27: type error, class body of type
+class.as:42.1-42.27: type error, class body of type
   actor {}
 does not match expected type
   {}

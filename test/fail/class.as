@@ -16,6 +16,14 @@ let c = C<Bool>(7);
 let _ = c.x + c.z;
 if (c.f(true)) { c.g() };
 
+class D<A, B>() : C<B> {
+  public let x = 0;
+  public let z = 1;
+  public func f(x : B) : B { x };
+  public func g() {};
+  public func h(x : A) {};
+};
+
 
 type A = actor {m : () -> ()};
 
