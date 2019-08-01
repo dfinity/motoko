@@ -1211,7 +1211,7 @@ and pub_dec dec xs : region T.Env.t * region T.Env.t =
   | ExpD _ -> xs
   | LetD (pat, _) -> pub_pat pat xs
   | VarD (id, _) -> pub_val_id id xs
-  | ClassD (id, _, _, _, _, _) ->
+  | ClassD (id, _, _, _, _, _, _) ->
     pub_val_id {id with note = ()} (pub_typ_id id xs)
   | TypD (id, _, _) -> pub_typ_id id xs
 
@@ -1346,7 +1346,8 @@ and infer_dec env dec : T.typ =
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
+  | ClassD (id, typ_binds, pat, typ_opt, sort, self_id, fields) ->
+    (* TODO: typ_opt *)
     let t = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
@@ -1451,7 +1452,7 @@ and gather_dec env scope dec : Scope.t =
     }
   | LetD (pat, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id)
-  | TypD (id, binds, _) | ClassD (id, binds, _, _, _, _) ->
+  | TypD (id, binds, _) | ClassD (id, binds, _, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" id.it;
@@ -1553,7 +1554,8 @@ and infer_dec_typdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
     }
-  | ClassD (id, binds, sort, pat, self_id, fields) ->
+  | ClassD (id, binds, pat, typ_opt, sort, self_id, fields) ->
+    (* TODO: typ_opt *)
     let c = T.Env.find id.it env.typs in
     let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
@@ -1617,7 +1619,8 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c ;
     }
-  | ClassD (id, typ_binds, sort, pat, self_id, fields) ->
+  | ClassD (id, typ_binds, pat, typ_opt, sort, self_id, fields) ->
+    (* TODO: typ_opt *)
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in

@@ -168,7 +168,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      typ_id * typ_bind list * obj_sort * pat * id * exp_field list
+      typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
 
 (* Program *)
 

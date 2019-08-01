@@ -575,14 +575,26 @@ dec_nonvar :
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
-  | s=func_sort_opt FUNC xf=id_opt fe=func_exp
-    { let named, x = xf "func" $sloc in
-      let_or_exp named x (fe s x.it).it (at $sloc) }
-  | s=obj_sort_opt CLASS xf=typ_id_opt tps=typ_params_opt p=pat_argument xefs=class_body
-    { let x, efs = xefs in
+  | s=func_sort_opt FUNC xf=id_opt
+      tps=typ_params_opt p=pat_argument t=return_typ? fb=func_body
+    { (* This is a hack to support local func declarations that return a computed async.
+         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
+         around bodies declared as blocks *)
+      let e = match fb with
+        | (false, e) -> e (* body declared as EQ e *)
+        | (true, e) -> (* body declared as immediate block *)
+          match t with
+          | Some {it = AsyncT _; _} -> AsyncE(e) @? e.at
+          | _ -> e
+      in
+      let named, x = xf "func" $sloc in
+      let_or_exp named x (FuncE(x.it, s, tps, p, t, e)) (at $sloc) }
+  | s=obj_sort_opt CLASS xf=typ_id_opt
+      tps=typ_params_opt p=pat_argument t=return_typ? cb=class_body
+    { let x, efs = cb in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
-      in ClassD(xf "class" $sloc, tps, s, p, x, efs') @? at $sloc }
+      in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
   | IMPORT xf=id_opt EQ? f=TEXT
     { let named, x = xf "import" $sloc in
       let_or_exp named x (ImportE (f, ref "")) (at $sloc) }
@@ -594,19 +606,6 @@ dec :
     { d }
   | e=exp_nondec
     { ExpD e @? at $sloc }
-
-func_exp :
-  | tps=typ_params_opt p=pat_argument t=return_typ? fb=func_body
-    { (* This is a hack to support local func declarations that return a computed async.
-         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
-         around bodies declared as blocks *)
-      let e = match fb with
-        | (false, e) -> e (* body declared as EQ e *)
-        | (true, e) -> (* body declared as immediate block *)
-          match t with
-          | Some {it = AsyncT _; _} -> AsyncE(e) @? e.at
-          | _ -> e
-      in fun s x -> FuncE(x, s, tps, p, t, e) @? at $sloc }
 
 func_body :
   | EQ e=exp { (false, e) }
