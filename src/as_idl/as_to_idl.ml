@@ -6,8 +6,8 @@ module I = Idllib.Syntax
 
 type label = Nat of Lib.Uint32.t | Id of string
 
-let dec_set = ref ConSet.empty
-                                       
+let dec_env = ref ConEnv.empty            
+(*                                      
 let unescape lab : label =
   let len = String.length lab in
   try if lab.[len-1] = '_' then begin
@@ -19,7 +19,9 @@ let unescape lab : label =
     if len >= 2 && lab.[len-1] = '_'
     then Id (String.sub lab 0 (len-1))
     else Id lab
-       
+ *)
+let unescape lab = Id lab
+            
 let prim p =
   match p with
   | Null -> I.Null
@@ -48,24 +50,28 @@ let rec typ env t =
   | Any -> I.PrimT I.Reserved
   | Non -> I.PrimT I.Empty
   | Prim p -> I.PrimT (prim p)
-  | Var (s, i) -> assert false
+  | Var (s, i) ->
+     printf "VAR %s.%d" s i;
+     assert false
   | Con (c, ts) ->
      (* TODO monomorphization *)
-     let id =
-       (if List.length ts = 0 then string_of_con c
-        else sprintf "%s<%s>" (string_of_con c) (String.concat ", " (List.map string_of_typ ts))) @@ no_region in
-     dec_set := ConSet.add c !dec_set;
+     let id = Con.to_string c @@ no_region in
+     (* TODO(if List.length ts = 0 then string_of_con c
+        else sprintf "%s<%s>" (string_of_con c) (String.concat ", " (List.map string_of_typ ts))) @@ no_region in*)
+     chase_con env c;
      I.VarT id
+  | Typ c -> assert false
+     (*chase_con env c;
+     I.VarT (string_of_con c @@ no_region)*)
   | Tup ts ->
      I.RecordT (tuple env ts)
   | Array t -> I.VecT (typ env t)
   | Obj (Object, fs) ->
      I.RecordT (List.map (field env) fs)
-  | Obj (Actor, fs) -> I.ServT (List.map (meth env) fs)
+  | Obj (Actor, fs) -> I.ServT (meths env fs)
   | Obj (Module, _) -> assert false
   | Variant fs ->
      I.VariantT (List.map (field env) fs)
-  | Typ c -> assert false
   | Func (Shared, c, [], ts1, ts2) ->
      let fs1 = tuple env ts1 in
      (match ts2 with
@@ -93,38 +99,46 @@ and tuple env ts =
       let name = Lib.Uint32.to_string id @@ no_region in
       I.{id = id; name = name; typ = typ env x} @@ no_region
     ) ts
-and meth env {lab; typ=t} =
-  match unescape lab with
-  | Nat nat -> I.{var = Lib.Uint32.to_string nat @@ no_region; meth = typ env t} @@ no_region
-  | Id id -> I.{var = id @@ no_region; meth = typ env t} @@ no_region
+and meths env fs =
+  List.fold_right (fun f list ->
+      match f.typ with
+      | Typ c ->
+         chase_con env c;
+         list
+      | _ ->
+         let meth =
+           match unescape f.lab with
+           | Nat nat ->
+              I.{var = Lib.Uint32.to_string nat @@ no_region;
+                 meth = typ env f.typ} @@ no_region
+           | Id id ->
+              I.{var = id @@ no_region;
+                 meth = typ env f.typ} @@ no_region in
+         meth :: list
+    ) fs []
+and chase_con env c =
+  if not (ConEnv.mem c !dec_env) then
+    (match Con.kind c with
+     | Def ([], t) ->
+        dec_env := ConEnv.add c (I.PreT @@ no_region) !dec_env;
+        let t = typ env t in
+        dec_env := ConEnv.add c t !dec_env
+     | _ -> ())
 
-let actor env =
-  let set =
-    ConSet.filter (fun c ->
-        match Con.kind c with
-        | Def ([], Obj (Actor, fs)) -> true
-        | _ -> false
-      ) env.Scope.con_env in
-  assert (ConSet.cardinal set <= 1);
-  match ConSet.choose_opt set with
-  | None -> None
-  | Some c ->
-     (match Con.kind c with
-      | Def (_, Obj (Actor, fs)) ->
-         let t = I.ServT (List.map (meth env) fs) @@ no_region in
-         Some (I.ActorD (Con.to_string c @@ no_region, t) @@ no_region)
-      | _ -> assert false)
-
-let decs env set =
-  ConSet.fold (fun c list ->
+let chase_decs env =
+  ConSet.iter (fun c ->
       match Con.kind c with
-      | Def ([], t) -> (I.TypD (Con.to_string c @@ no_region, typ env t) @@ no_region) :: list
-      | _ -> list)
-  set []
+      | Def ([], Obj (Actor, fs)) ->
+         chase_con env c;
+      | _ -> ()
+    ) env.Scope.con_env;
+  ConEnv.fold (fun c t list ->
+      let dec = I.TypD (Con.to_string c @@ no_region, t) @@ no_region in
+      dec::list
+    ) !dec_env []
 
 let prog env : I.prog =
-  let actor = actor env in
-  let decs = decs env !dec_set in
-  let it = I.{decs = decs; actor = actor} in
-  {it = it; at = no_region; note = ""}
+  let decs = chase_decs env in
+  let prog = I.{decs = decs; actor = None} in
+  {it = prog; at = no_region; note = ""}
 
