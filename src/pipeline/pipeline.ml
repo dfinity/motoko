@@ -350,8 +350,8 @@ let check_string s name : check_result =
 let generate_idl files : Idllib.Syntax.prog Diag.result =
   Diag.bind (load_progs (parse_files files) initial_stat_env)
     (fun (libraries, progs, senv) ->
-      Diag.return (As_idl.As_to_idl.prog senv))
-
+      Diag.return (As_idl.As_to_idl.prog (progs, senv)))
+  
 (* Running *)
 
 let run_files files : unit option =

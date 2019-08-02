@@ -1,4 +1,4 @@
 (library
   (name as_idl)
-  (libraries lib idllib lang_utils as_types)
+  (libraries lib idllib lang_utils as_types as_def)
 )

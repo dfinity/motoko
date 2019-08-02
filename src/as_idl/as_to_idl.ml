@@ -2,12 +2,13 @@ open As_types
 open As_types.Type
 open Source   
 open Printf
+module E = As_def.Syntax
 module I = Idllib.Syntax
 
 type label = Nat of Lib.Uint32.t | Id of string
 
 let dec_env = ref ConEnv.empty            
-(*                                      
+
 let unescape lab : label =
   let len = String.length lab in
   try if lab.[len-1] = '_' then begin
@@ -19,8 +20,6 @@ let unescape lab : label =
     if len >= 2 && lab.[len-1] = '_'
     then Id (String.sub lab 0 (len-1))
     else Id lab
- *)
-let unescape lab = Id lab
             
 let prim p =
   match p with
@@ -55,14 +54,12 @@ let rec typ env t =
      assert false
   | Con (c, ts) ->
      (* TODO monomorphization *)
-     let id = Con.to_string c @@ no_region in
-     (* TODO(if List.length ts = 0 then string_of_con c
-        else sprintf "%s<%s>" (string_of_con c) (String.concat ", " (List.map string_of_typ ts))) @@ no_region in*)
+     let id = 
+     (if List.length ts = 0 then string_of_con c
+        else sprintf "%s<%s>" (string_of_con c) (String.concat ", " (List.map string_of_typ ts))) @@ no_region in
      chase_con env c;
      I.VarT id
   | Typ c -> assert false
-     (*chase_con env c;
-     I.VarT (string_of_con c @@ no_region)*)
   | Tup ts ->
      I.RecordT (tuple env ts)
   | Array t -> I.VecT (typ env t)
@@ -131,14 +128,43 @@ let chase_decs env =
       | Def ([], Obj (Actor, fs)) ->
          chase_con env c;
       | _ -> ()
-    ) env.Scope.con_env;
+    ) env.Scope.con_env
+  
+let gather_decs env =
   ConEnv.fold (fun c t list ->
       let dec = I.TypD (Con.to_string c @@ no_region, t) @@ no_region in
       dec::list
     ) !dec_env []
 
-let prog env : I.prog =
-  let decs = chase_decs env in
-  let prog = I.{decs = decs; actor = None} in
+let actor env progs =
+  let open E in
+  let find_last_actor (prog : prog) =
+    let anon = "anon_" ^ (Filename.remove_extension prog.note) in
+    List.fold_left
+      (fun actor (d : dec) ->
+        match d.note.note_typ with
+        | Obj (Actor, _) | Con (_, []) as t ->
+           (match d.it with
+            | ExpD _ -> Some (anon, t)
+            | LetD ({it=WildP;_}, _) -> Some (anon, t)                      
+            | LetD ({it=VarP id;_}, _) -> Some (id.it, t)
+            | _ -> actor                                       
+           )
+        | _ -> actor
+      ) None prog.it in
+
+  match progs with
+  | [] -> None
+  | _ ->
+     let prog = Lib.List.last progs in
+     match find_last_actor prog with
+     | None -> None
+     | Some (id, t) -> Some (I.ActorD (id @@ no_region, typ env t) @@ no_region)
+             
+let prog (progs, env) : I.prog =
+  let actor = actor env progs in
+  if actor = None then chase_decs env;
+  let decs = gather_decs env in  
+  let prog = I.{decs = decs; actor = actor} in
   {it = prog; at = no_region; note = ""}
 

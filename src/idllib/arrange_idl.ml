@@ -110,6 +110,7 @@ let string_of_actor a =
   match a with
   | None -> ""
   | Some {it = ActorD (id, {it=ServT ms; _}); _} -> sprintf "service %s {\n%s}" id.it (string_of_list string_of_meth "" ms)
+  | Some {it = ActorD (id, {it=VarT x; _}); _} -> sprintf "service %s : %s" id.it x.it
   | Some _ -> assert false
 
 let string_of_prog prog =
