@@ -5,7 +5,7 @@ all:
 	$(MAKE) -C repl
 	$(MAKE) -C ld
 	$(MAKE) -C idl
-        $(MAKE) -C as-idl
+	$(MAKE) -C as-idl
 	$(MAKE) -C trap
 
 MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPROCESSORS_ONLN) --keep-going
@@ -42,7 +42,7 @@ accept:
 	$(MAKE) -C repl accept
 	$(MAKE) -C ld accept
 	$(MAKE) -C idl accept
-        $(MAKE) -C as-idl accept
+	$(MAKE) -C as-idl accept
 	$(MAKE) -C trap accept
 	$(MAKE) -C trap check
 
@@ -52,7 +52,7 @@ clean:
 	$(MAKE) -C run-dfinity clean
 	$(MAKE) -C repl clean
 	$(MAKE) -C ld clean
-        $(MAKE) -C as-idl clean
+	$(MAKE) -C as-idl clean
 	$(MAKE) -C idl clean
 	$(MAKE) -C trap clean
 
