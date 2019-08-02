@@ -109,9 +109,9 @@ let string_of_dec d =
 let string_of_actor a =
   match a with
   | None -> ""
-  | Some {it = ActorD (id, {it=ServT ms; _}); _} -> sprintf "service %s {\n%s}" id.it (string_of_list string_of_meth "" ms)
-  | Some {it = ActorD (id, {it=VarT x; _}); _} -> sprintf "service %s : %s" id.it x.it
+  | Some {it = ActorD (id, {it=ServT ms; _}); _} -> sprintf "service %s {\n%s}\n" id.it (string_of_list string_of_meth "" ms)
+  | Some {it = ActorD (id, {it=VarT x; _}); _} -> sprintf "service %s : %s\n" id.it x.it
   | Some _ -> assert false
 
 let string_of_prog prog =
-  sprintf "%s%s\n" (string_of_list string_of_dec "" prog.it.decs) (string_of_actor prog.it.actor)
+  sprintf "%s%s" (string_of_list string_of_dec "" prog.it.decs) (string_of_actor prog.it.actor)

@@ -1,0 +1,4 @@
+service a {
+inc : () -> () oneway;
+printCounter : () -> () oneway;
+}

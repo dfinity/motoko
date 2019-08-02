@@ -121,7 +121,8 @@ let load_prog parse senv =
 let initial_stat_env = Typing.empty_scope
 
 let check_file file : load_result = load_prog (parse_file file) initial_stat_env
-  
+let check_prog prog : Typing.scope Diag.result = check_prog initial_stat_env prog
+                                  
 (* JS Compilation *)
 
 type compile_result = Buffer.t Diag.result

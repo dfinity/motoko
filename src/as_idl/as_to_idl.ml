@@ -43,9 +43,8 @@ let prim p =
   | Char -> I.Nat32
   | Text -> I.Text
   
-let rec typ env t =
+let rec typ t =
   (match t with
-  | Pre -> assert false
   | Any -> I.PrimT I.Reserved
   | Non -> I.PrimT I.Empty
   | Prim p -> I.PrimT (prim p)
@@ -57,99 +56,104 @@ let rec typ env t =
      let id = 
      (if List.length ts = 0 then string_of_con c
         else sprintf "%s<%s>" (string_of_con c) (String.concat ", " (List.map string_of_typ ts))) @@ no_region in
-     chase_con env c;
+     chase_con c;
      I.VarT id
   | Typ c -> assert false
   | Tup ts ->
-     I.RecordT (tuple env ts)
-  | Array t -> I.VecT (typ env t)
+     I.RecordT (tuple ts)
+  | Array t -> I.VecT (typ t)
+  | Opt t -> I.OptT (typ t)                 
   | Obj (Object, fs) ->
-     I.RecordT (List.map (field env) fs)
-  | Obj (Actor, fs) -> I.ServT (meths env fs)
+     I.RecordT (List.map field fs)
+  | Obj (Actor, fs) -> I.ServT (meths fs)
   | Obj (Module, _) -> assert false
   | Variant fs ->
-     I.VariantT (List.map (field env) fs)
+     I.VariantT (List.map field fs)
   | Func (Shared, c, [], ts1, ts2) ->
-     let fs1 = tuple env ts1 in
+     let fs1 = tuple ts1 in
      (match ts2 with
      | [] when c = Returns -> I.FuncT ([I.Oneway @@ no_region], fs1, [])
-     | [Async t] when c = Promises -> I.FuncT ([], fs1, tuple env [t])
+     | [Async t] when c = Promises -> I.FuncT ([], fs1, tuple [t])
      | _ -> assert false)
   | Func _ -> assert false
-  | Opt t -> I.OptT (typ env t)
   | Async t -> assert false
   | Mut t -> assert false
   | Serialized t -> assert false
+  | Pre -> assert false                  
   ) @@ no_region
-and field env {lab; typ=t} =
+and field {lab; typ=t} =
   match unescape lab with
   | Nat nat ->
      let name = Lib.Uint32.to_string nat @@ no_region in
-     I.{id = nat; name = name; typ = typ env t} @@ no_region
+     I.{id = nat; name = name; typ = typ t} @@ no_region
   | Id id -> 
      let name = id @@ no_region in
      let id = Idllib.IdlHash.idl_hash id in
-     I.{id = id; name = name; typ = typ env t} @@ no_region
-and tuple env ts =
+     I.{id = id; name = name; typ = typ t} @@ no_region
+and tuple ts =
   List.mapi (fun i x ->
       let id = Lib.Uint32.of_int i in
       let name = Lib.Uint32.to_string id @@ no_region in
-      I.{id = id; name = name; typ = typ env x} @@ no_region
+      I.{id = id; name = name; typ = typ x} @@ no_region
     ) ts
-and meths env fs =
+and meths fs =
   List.fold_right (fun f list ->
       match f.typ with
       | Typ c ->
-         chase_con env c;
+         chase_con c;
          list
       | _ ->
          let meth =
            match unescape f.lab with
            | Nat nat ->
               I.{var = Lib.Uint32.to_string nat @@ no_region;
-                 meth = typ env f.typ} @@ no_region
+                 meth = typ f.typ} @@ no_region
            | Id id ->
               I.{var = id @@ no_region;
-                 meth = typ env f.typ} @@ no_region in
+                 meth = typ f.typ} @@ no_region in
          meth :: list
     ) fs []
-and chase_con env c =
+and chase_con c =
   if not (ConEnv.mem c !dec_env) then
     (match Con.kind c with
      | Def ([], t) ->
         dec_env := ConEnv.add c (I.PreT @@ no_region) !dec_env;
-        let t = typ env t in
+        let t = typ t in
         dec_env := ConEnv.add c t !dec_env
      | _ -> ())
 
+let is_actor_con c =
+  match Con.kind c with
+  | Def ([], Obj (Actor, _)) -> true
+  | _ -> false
+
 let chase_decs env =
   ConSet.iter (fun c ->
-      match Con.kind c with
-      | Def ([], Obj (Actor, fs)) ->
-         chase_con env c;
-      | _ -> ()
+      if is_actor_con c then chase_con c
     ) env.Scope.con_env
   
-let gather_decs env =
+let gather_decs () =
   ConEnv.fold (fun c t list ->
       let dec = I.TypD (Con.to_string c @@ no_region, t) @@ no_region in
       dec::list
     ) !dec_env []
 
-let actor env progs =
+let actor progs =
   let open E in
   let find_last_actor (prog : prog) =
     let anon = "anon_" ^ (Filename.remove_extension prog.note) in
+    let check_dec d t def =
+      match d.it with
+      | ExpD _ -> Some (anon, t)
+      | LetD ({it=WildP;_}, _) -> Some (anon, t)                      
+      | LetD ({it=VarP id;_}, _) -> Some (id.it, t)
+      | _ -> def
+    in
     List.fold_left
       (fun actor (d : dec) ->
         match d.note.note_typ with
-        | Obj (Actor, _) | Con (_, []) as t ->
-           (match d.it with
-            | ExpD _ -> Some (anon, t)
-            | LetD ({it=WildP;_}, _) -> Some (anon, t)                      
-            | LetD ({it=VarP id;_}, _) -> Some (id.it, t)
-            | _ -> actor                                       
-           )
+        | Obj (Actor, _) as t -> check_dec d t actor
+        | Con (c, []) as t when is_actor_con c -> check_dec d t actor
         | _ -> actor
       ) None prog.it in
 
@@ -159,12 +163,13 @@ let actor env progs =
      let prog = Lib.List.last progs in
      match find_last_actor prog with
      | None -> None
-     | Some (id, t) -> Some (I.ActorD (id @@ no_region, typ env t) @@ no_region)
+     | Some (id, t) -> Some (I.ActorD (id @@ no_region, typ t) @@ no_region)
              
 let prog (progs, env) : I.prog =
-  let actor = actor env progs in
+  dec_env := ConEnv.empty;
+  let actor = actor progs in
   if actor = None then chase_decs env;
-  let decs = gather_decs env in  
+  let decs = gather_decs () in  
   let prog = I.{decs = decs; actor = actor} in
   {it = prog; at = no_region; note = ""}
 

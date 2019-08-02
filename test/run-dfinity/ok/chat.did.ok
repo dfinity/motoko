@@ -1,0 +1,10 @@
+type Text = text;
+type Server = service {
+subscribe : (Client) -> (Post);
+};
+type Post = func (Text) -> () oneway;
+type Client = service {
+go : (Text, Server) -> () oneway;
+send : (Text) -> () oneway;
+};
+service charlie : Client

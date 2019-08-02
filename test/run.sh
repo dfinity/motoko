@@ -177,6 +177,11 @@ do
         then
           if [ $DFINITY = 'yes' ]
           then
+            $ECHO -n " [idl]"
+            $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
+            normalize $out/$base.idl.stderr
+            diff_files="$diff_files $base.did $base.idl.stderr"
+            
             $ECHO -n " [dvm]"
             $DVM_WRAPPER $out/$base.wasm $base.as > $out/$base.dvm-run 2>&1
             normalize $out/$base.dvm-run
@@ -227,8 +232,7 @@ do
     then
       $ECHO -n " [js]"
       $DIDC --js $base.did -o $out/$base.js >& $out/$base.js.out
-      diff_files="$diff_files $base.js.out"
-      diff_files="$diff_files $base.js"
+      diff_files="$diff_files $base.js.out $base.js"
 
       if [ -e $out/$base.js ]
       then

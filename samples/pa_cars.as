@@ -7,7 +7,6 @@
 // - Server: Validate car is registered under the given name
 // - Client: Pick a parking spot from a Google Map like interface + time
 // - Server: Register the parking spot for the user
-
 type Car = { model : Text; plate : Text };
 type DMV = actor { check : Car -> async CarInfo };
 type CarInfo = {
@@ -19,7 +18,7 @@ type CarInfo = {
 };
 
 actor class PACars(dmv : DMV) {
-  func verifyCarInformation(user : User, car : Car) : async ?(shared (Location, TimeSpan) -> async Result) {
+  public func verifyCarInformation(user : User, car : Car) : async ?(shared (Location, TimeSpan) -> async Result) {
     let carInfo = await dmv.check(car);
     if (carInfo.isValid and not carInfo.wasStolen) {
       return ?(shared func (location, time) : async Result {
@@ -36,8 +35,8 @@ actor class PACars(dmv : DMV) {
     return null;
   };
 
-  type Location = { lat : Float; long : Float };
-  type TimeSpan = { start : Int; end : Int };
-  type Result = ?({ reservationId : Text });
-  type User = { name : Text };
+  public type Location = { lat : Float; long : Float };
+  public type TimeSpan = { start : Int; end : Int };
+  public type Result = ?({ reservationId : Text });
+  public type User = { name : Text };
 };

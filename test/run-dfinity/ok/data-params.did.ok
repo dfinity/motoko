@@ -1,0 +1,31 @@
+type Word8 = nat8;
+type Word64 = nat64;
+type Word32 = nat32;
+type Word16 = nat16;
+type Text = text;
+type Nat8 = nat8;
+type Nat64 = nat64;
+type Nat32 = nat32;
+type Nat16 = nat16;
+type Nat = nat;
+type Int8 = int8;
+type Int64 = int64;
+type Int32 = int32;
+type Int16 = int16;
+type Int = int;
+service a {
+incVariant : (variant {bar : Nat; foo : Nat}) -> () oneway;
+incarray : (vec Nat) -> () oneway;
+inci : (Int) -> () oneway;
+incints : (Int8, Int16, Int32, Int64) -> () oneway;
+incn : (Nat) -> () oneway;
+incnats : (Nat8, Nat16, Nat32, Nat64) -> () oneway;
+incnested : (Nat, record {Nat; Nat}) -> () oneway;
+incnn : (Nat, Nat) -> () oneway;
+incopt : (opt Nat) -> () oneway;
+increcord : (record {x : Nat; y : Nat}) -> () oneway;
+incwords : (Word8, Word16, Word32, Word64) -> () oneway;
+printCounter : () -> () oneway;
+printLabeled : (Text) -> () oneway;
+printLabeledOpt : (opt Text) -> () oneway;
+}

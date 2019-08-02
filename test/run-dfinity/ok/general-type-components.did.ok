@@ -1,0 +1,5 @@
+type T/14 = Int;
+type Int = int;
+service A {
+f : () -> () oneway;
+}

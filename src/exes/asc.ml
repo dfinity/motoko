@@ -77,6 +77,13 @@ let argspec = Arg.align
 ]
 
 
+let fill_out_file files ext =
+  if !out_file = "" then begin
+    match files with
+    | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ext
+    | ns -> eprintf "asc: no output file specified"; exit 1
+  end
+  
 (* Main *)
 
 let exit_on_none = function
@@ -97,14 +104,18 @@ let process_files files : unit =
   | Check ->
      Diag.run (Pipeline.check_files files)
   | Idl ->
-     let idl_ast = Diag.run (Pipeline.generate_idl files) in
-     Printf.printf "%s" (Idllib.Arrange_idl.string_of_prog idl_ast)
+     let prog = Diag.run (Pipeline.generate_idl files) in
+     let idl_code = Idllib.Arrange_idl.string_of_prog prog in
+     if !out_file = "" then
+       (printf "%s" idl_code;
+        ignore (Diag.run (Idllib.Pipeline.check_prog prog)))
+     else begin
+         ignore (Diag.run (Idllib.Pipeline.check_prog prog));     
+         let oc = open_out !out_file in
+         output_string oc idl_code; close_out oc
+     end
   | Compile ->
-    if !out_file = "" then begin
-      match files with
-      | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
-      | ns -> eprintf "asc: no output file specified"; exit 1
-    end;
+    fill_out_file files ".wasm";
     let module_ = Diag.run Pipeline.(compile_files !compile_mode !link files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
