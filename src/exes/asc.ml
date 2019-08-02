@@ -102,18 +102,18 @@ let process_files files : unit =
     printf "%s\n%!" banner;
     exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
-     Diag.run (Pipeline.check_files files)
+    Diag.run (Pipeline.check_files files)
   | Idl ->
-     let prog = Diag.run (Pipeline.generate_idl files) in
-     let idl_code = Idllib.Arrange_idl.string_of_prog prog in
-     if !out_file = "" then
-       (printf "%s" idl_code;
-        ignore (Diag.run (Idllib.Pipeline.check_prog prog)))
-     else begin
-         ignore (Diag.run (Idllib.Pipeline.check_prog prog));     
-         let oc = open_out !out_file in
-         output_string oc idl_code; close_out oc
-     end
+    let prog = Diag.run (Pipeline.generate_idl files) in
+    let idl_code = Idllib.Arrange_idl.string_of_prog prog in
+    if !out_file = "" then
+      (printf "%s" idl_code;
+       ignore (Diag.run (Idllib.Pipeline.check_prog prog)))
+    else begin
+        ignore (Diag.run (Idllib.Pipeline.check_prog prog));     
+        let oc = open_out !out_file in
+        output_string oc idl_code; close_out oc
+    end
   | Compile ->
     fill_out_file files ".wasm";
     let module_ = Diag.run Pipeline.(compile_files !compile_mode !link files) in

@@ -9,6 +9,7 @@
 #    -a: Update the files in ok/
 #    -d: Compile without -no-dfinity-api, uses dvm to run
 #    -s: Be silent in sunny-day execution
+#    -i: Only check as to idl generation
 #
 
 function realpath() {
@@ -18,6 +19,7 @@ function realpath() {
 
 ACCEPT=no
 DFINITY=no
+CHECK_IDL_ONLY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
@@ -28,7 +30,7 @@ DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 JSCLIENT=${JSCLIENT:-$(realpath $(dirname $0)/../../dev/experimental/js-dfinity-client)}
 ECHO=echo
 
-while getopts "ads" o; do
+while getopts "adsi" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -38,6 +40,9 @@ while getopts "ads" o; do
             ;;
         s)
             ECHO=true
+            ;;
+        i)
+            CHECK_IDL_ONLY=yes
             ;;
     esac
 done
@@ -122,6 +127,15 @@ do
 
     if [ "$tc_succeeded" -eq 0 ];
     then
+      if [ $CHECK_IDL_ONLY = 'yes' ]
+      then
+        $ECHO -n " [idl]"
+        $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
+        normalize $out/$base.did
+        normalize $out/$base.idl.stderr
+        diff_files="$diff_files $base.did $base.idl.stderr"
+      else
+      
       if [ "$SKIP_RUNNING" != yes ]
       then
         # Interpret
@@ -179,9 +193,10 @@ do
           then
             $ECHO -n " [idl]"
             $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
+            normalize $out/$base.did
             normalize $out/$base.idl.stderr
             diff_files="$diff_files $base.did $base.idl.stderr"
-            
+
             $ECHO -n " [dvm]"
             $DVM_WRAPPER $out/$base.wasm $base.as > $out/$base.dvm-run 2>&1
             normalize $out/$base.dvm-run
@@ -193,6 +208,7 @@ do
             diff_files="$diff_files $base.wasm-run"
           fi
         fi
+      fi
       fi
     fi
   elif [ ${file: -3} == ".sh" ]
@@ -232,6 +248,8 @@ do
     then
       $ECHO -n " [js]"
       $DIDC --js $base.did -o $out/$base.js >& $out/$base.js.out
+      normalize $out/$base.js
+      normalize $out/$base.js.out
       diff_files="$diff_files $base.js.out $base.js"
 
       if [ -e $out/$base.js ]
@@ -239,6 +257,7 @@ do
         $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$JSCLIENT:$JSCLIENT/src
         node $out/$base.js > $out/$base.err 2>&1
+        normalize $out/$base.err
         diff_files="$diff_files $base.err"
       fi
     fi
