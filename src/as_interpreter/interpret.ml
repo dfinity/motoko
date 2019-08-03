@@ -747,7 +747,7 @@ and declare_dec dec : val_env =
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
-  | ClassD (id, _, _, _, _, _) -> declare_id {id with note = ()}
+  | ClassD (id, _, _, _, _, _, _) -> declare_id {id with note = ()}
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -773,7 +773,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | ClassD (id, _typbinds, sort, pat, id', fields) ->
+  | ClassD (id, _typbinds, pat, _typ_opt, sort, id', fields) ->
     let f = interpret_func env id.it pat (fun env' k' ->
       let env'' = adjoin_vals env' (declare_id id') in
       interpret_obj env'' sort fields (fun v' ->

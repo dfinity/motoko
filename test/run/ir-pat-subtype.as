@@ -1,7 +1,7 @@
 type L = {a : {}};
 type U = {};
 
-let l = new {a = new {}};
+let l = {a = {}};
 
 func f(l : L) : U = switch l {
     case (u : U) u;
@@ -45,19 +45,19 @@ func r1(rl : {a : L}) : {a : U} = switch rl {
     case (ru : {a : U}) ru;
 };
 
-let {a = {}} : {a : U} = r1(new {a = l});
+let {a = {}} : {a : U} = r1({a = l});
 
 func r2(rl : {a : L}) : {a : U} = switch rl {
-    case ({a = u : U}) (new {a = u});
+    case ({a = u : U}) ({a = u});
 };
 
-let {a = {}} : {a : U} = r2(new {a = l});
+let {a = {}} : {a : U} = r2({a = l});
 
 func r3(rl : {a : L}) : {} = switch rl {
-    case {} (new {});
+    case {} ({});
 };
 
-let {} : {} = r3(new {a = l});
+let {} : {} = r3({a = l});
 
 
 // variants
@@ -80,4 +80,4 @@ func a(l : {a : Int}):U = switch l {
     case (({a = 1} : {a : Int}) or (_ : U) ) l;
 };
 
-let {} = a(new {a = 2});
+let {} = a({a = 2});

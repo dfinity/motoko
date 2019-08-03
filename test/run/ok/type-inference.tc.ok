@@ -13,7 +13,7 @@ true produces
   Nat
 false produces
   Float
-type-inference.as:6.9-6.33: warning, this if has type Any because branches have inconsistent types,
+type-inference.as:6.9-6.29: warning, this if has type Any because branches have inconsistent types,
 true produces
   ()
 false produces

@@ -1,0 +1,18 @@
+class.as:43.1-43.26: type error, class body of type
+  {}
+does not match expected type
+  {x : Int}
+class.as:44.1-46.2: type error, class body of type
+  {x : Int}
+does not match expected type
+  {x : Nat}
+class.as:48.1-48.27: type error, class body of type
+  {}
+does not match expected type
+  actor {}
+class.as:49.1-49.27: type error, class body of type
+  actor {}
+does not match expected type
+  {}
+class.as:52.27-52.28: type error, type field T does not exist in type
+  {}

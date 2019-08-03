@@ -1,6 +1,6 @@
 objpat-infer.as:3.36-3.37: type error, object field a is not contained in expected type
   {}
-objpat-infer.as:21.14-21.22: type error, expression of type
+objpat-infer.as:21.13-21.21: type error, expression of type
   actor {}
 cannot produce expected type
   {}
@@ -8,15 +8,15 @@ objpat-infer.as:24.13-24.14: type error, expression of type
   actor {bar : shared {} -> async Nat}
 cannot produce expected type
   {}
-objpat-infer.as:27.14-27.20: type error, expression of type
+objpat-infer.as:27.13-27.15: type error, expression of type
   {}
 cannot produce expected type
   actor {}
-objpat-infer.as:28.14-28.23: type error, expression of type
+objpat-infer.as:28.13-28.22: type error, expression of type
   {}
 cannot produce expected type
   actor {}
-objpat-infer.as:33.16-33.24: type error, expression of type
+objpat-infer.as:33.15-33.23: type error, expression of type
   actor {}
 cannot produce expected type
   {}

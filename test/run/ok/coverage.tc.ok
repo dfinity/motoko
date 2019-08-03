@@ -13,10 +13,10 @@ coverage.as:31.25-31.34: warning, this case is never reached
 coverage.as:32.43-32.44: warning, this pattern is never matched
 coverage.as:33.35-33.49: warning, this case is never reached
 coverage.as:34.42-34.51: warning, this case is never reached
-coverage.as:37.57-37.79: warning, this case is never reached
-coverage.as:38.45-38.60: warning, this case is never reached
-coverage.as:39.62-39.71: warning, this case is never reached
-coverage.as:40.55-40.64: warning, this case is never reached
+coverage.as:37.51-37.73: warning, this case is never reached
+coverage.as:38.39-38.54: warning, this case is never reached
+coverage.as:39.56-39.65: warning, this case is never reached
+coverage.as:40.49-40.58: warning, this case is never reached
 coverage.as:46.58-46.72: warning, this case is never reached
 coverage.as:61.22-61.31: warning, this case is never reached
 coverage.as:62.28-62.37: warning, this case is never reached
@@ -71,7 +71,7 @@ coverage.as:35.3-35.51: warning, the cases in this switch over type
   (Nat, Nat)
 do not cover value
   (1 or 2 or _, 1 or 2 or _)
-coverage.as:41.3-41.67: warning, the cases in this switch over type
+coverage.as:41.3-41.61: warning, the cases in this switch over type
   {a : Nat; b : Nat}
 do not cover value
   {a = 1 or 2 or _; b = 1 or 2 or _)
