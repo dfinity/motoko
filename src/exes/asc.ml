@@ -69,6 +69,7 @@ let argspec = Arg.align
     Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
       " do not import the DFINITY system API";
   "-no-multi-value", Arg.Clear Codegen.Flags.multi_value, " avoid multi-value extension";
+  "-no-fake-op", Arg.Clear Codegen.Flags.fake_orthgogonal_persistence, " do not fake OP";
 
   "-dp", Arg.Set Pipeline.Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Pipeline.Flags.dump_tc, " dump type-checked AST";
