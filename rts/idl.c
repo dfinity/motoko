@@ -86,6 +86,7 @@ export int32_t read_sleb128(char **ptr, char *end) {
  */
 export char *parse_idl_header(char *ptr, char *end, char ***typtbl_out, int32_t *main_type_out) {
   // Magic bytes
+  if (ptr + 3 >= end) (idl_trap());
   if (*ptr++ != 'D') idl_trap();
   if (*ptr++ != 'I') idl_trap();
   if (*ptr++ != 'D') idl_trap();
@@ -97,6 +98,10 @@ export char *parse_idl_header(char *ptr, char *end, char ***typtbl_out, int32_t 
   // comparisons below work, so lets make sure we did not wrap around in the
   // conversation.
   if (n_types < 0) { idl_trap(); }
+
+
+  // Early sanity check
+  if (&ptr[n_types] >= end) { idl_trap() ; }
 
   // Go through the table
   char **typtbl = (char **)alloc(n_types * sizeof(char*));
