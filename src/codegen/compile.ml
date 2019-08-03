@@ -486,6 +486,7 @@ module Func = struct
   *)
 
   let of_body env params retty mk_body =
+    assert (!Flags.multi_value || List.length retty <= 1);
     let env1 = E.mk_fun_env env (Int32.of_int (List.length params)) (List.length retty) in
     List.iteri (fun i (n,_t) -> E.add_local_name env1 (Int32.of_int i) n) params;
     let ty = FuncType (List.map snd params, retty) in
@@ -496,12 +497,36 @@ module Func = struct
     , E.get_local_names env1)
 
   let define_built_in env name params retty mk_body =
+    assert (!Flags.multi_value || List.length retty <= 1);
     E.define_built_in env name (fun () -> of_body env params retty mk_body)
 
+  let first_multival_global = 6
+
+  let store_tup_in_globals tys =
+      G.concat_mapi (fun i _ ->
+        G.i (GlobalSet (nr (Int32.of_int (first_multival_global + i))))
+      ) tys
+
+  let load_tup_from_globals tys =
+      let n = first_multival_global + List.length tys - 1 in
+      G.concat_mapi (fun i _ ->
+        G.i (GlobalGet (nr (Int32.of_int (n - i))))
+      ) tys
+
   (* (Almost) transparently lift code into a function and call this function. *)
+  (* Also add a hack to support multiple return values *)
   let share_code env name params retty mk_body =
-    define_built_in env name params retty mk_body;
-    G.i (Call (nr (E.built_in env name)))
+    if !Flags.multi_value || List.length retty <= 1 then
+    begin
+      define_built_in env name params retty mk_body;
+      G.i (Call (nr (E.built_in env name)))
+    end else begin
+      let mk_body env = mk_body env ^^ store_tup_in_globals retty in
+      define_built_in env name params [] mk_body;
+      G.i (Call (nr (E.built_in env name))) ^^
+      load_tup_from_globals retty
+    end
+
 
   (* Shorthands for various arities *)
   let _share_code0 env name retty mk_body =
@@ -6535,7 +6560,15 @@ and conclude_module env module_name start_fi_o =
       nr { gtype = GlobalType (I32Type, Mutable);
         value = nr (G.to_instr_list compile_unboxed_zero)
       };
-      ] in
+      ] @
+      (* multi value return emulations *)
+      begin if !Flags.multi_value then [] else
+        Lib.List.table 10 (fun i ->
+        nr { gtype = GlobalType (I32Type, Mutable);
+          value = nr (G.to_instr_list compile_unboxed_zero)
+        })
+      end
+      in
   E.add_export env (nr {
     name = Wasm.Utf8.decode "__stack_pointer";
     edesc = nr (GlobalExport (nr Stack.stack_global))
