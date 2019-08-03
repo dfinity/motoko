@@ -131,9 +131,16 @@ do
       then
         $ECHO -n " [idl]"
         $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
+        idl_succeeded=$?
         normalize $out/$base.did
         normalize $out/$base.idl.stderr
         diff_files="$diff_files $base.did $base.idl.stderr"
+        if [ "$idl_succeeded" -eq 0 ];
+        then
+          $ECHO -n " [didc]"
+          $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
+          diff_files="$diff_files $base.did.tc"
+        fi
       else
       
       if [ "$SKIP_RUNNING" != yes ]
@@ -193,9 +200,16 @@ do
           then
             $ECHO -n " [idl]"
             $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
+            idl_succeeded=$?
             normalize $out/$base.did
             normalize $out/$base.idl.stderr
             diff_files="$diff_files $base.did $base.idl.stderr"
+            if [ "$idl_succeeded" -eq 0 ];
+            then
+              $ECHO -n " [didc]"
+              $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
+              diff_files="$diff_files $base.did.tc"
+            fi            
 
             $ECHO -n " [dvm]"
             $DVM_WRAPPER $out/$base.wasm $base.as > $out/$base.dvm-run 2>&1
