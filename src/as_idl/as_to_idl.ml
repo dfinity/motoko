@@ -9,7 +9,14 @@ type label = Nat of Lib.Uint32.t | Id of string
 
 let dec_env = ref ConEnv.empty            
 
+let normalize str =
+  let illegal_chars = ['-'; '/'] in
+  String.map (fun c -> if List.mem c illegal_chars then '_' else c) str
+
+let string_of_con c = normalize (string_of_con c)
+  
 let unescape lab : label =
+  let lab = normalize lab in
   let len = String.length lab in
   try if lab.[len-1] = '_' then begin
           if lab.[0] = '_' then 
@@ -20,7 +27,7 @@ let unescape lab : label =
     if len >= 2 && lab.[len-1] = '_'
     then Id (String.sub lab 0 (len-1))
     else Id lab
-            
+       
 let prim p =
   match p with
   | Null -> I.Null
@@ -134,14 +141,14 @@ let chase_decs env =
   
 let gather_decs () =
   ConEnv.fold (fun c t list ->
-      let dec = I.TypD (Con.to_string c @@ no_region, t) @@ no_region in
+      let dec = I.TypD (string_of_con c @@ no_region, t) @@ no_region in
       dec::list
     ) !dec_env []
 
 let actor progs =
   let open E in
   let find_last_actor (prog : prog) =
-    let anon = "anon_" ^ (Filename.remove_extension prog.note) in
+    let anon = normalize ("anon_" ^ (Filename.remove_extension prog.note)) in
     let check_dec d t def =
       match d.it with
       | ExpD _ -> Some (anon, t)
