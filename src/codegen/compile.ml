@@ -38,6 +38,8 @@ let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
+let enable_fake_op = false
+
 module SR = struct
   (* This goes with the StackRep module, but we need the types earlier *)
 
@@ -2864,11 +2866,11 @@ module Dfinity = struct
     (* Create an empty message *)
     let empty_f = Func.of_body env [] [] (fun env1 ->
       (* Set up memory *)
-      G.i (Call (nr (E.built_in env1 "restore_mem"))) ^^
+      (if enable_fake_op then G.i (Call (nr (E.built_in env1 "restore_mem"))) else G.nop) ^^
       (* Collect garbage *)
       G.i (Call (nr (E.built_in env1 "collect"))) ^^
       (* Save memory *)
-      G.i (Call (nr (E.built_in env1 "save_mem")))
+      (if enable_fake_op then G.i (Call (nr (E.built_in env1 "save_mem"))) else G.nop)
       ) in
     let fi = E.add_fun env "start_stub" empty_f in
     E.add_export env (nr {
@@ -2987,11 +2989,13 @@ module OrthogonalPersistence = struct
     )
 
   let save_mem env =
+    if not enable_fake_op then G.nop else
     if E.mode env = DfinityMode
     then G.i (Call (nr (E.built_in env "save_mem")))
     else G.i Unreachable
 
   let restore_mem env =
+    if not enable_fake_op then G.nop else
     if E.mode env = DfinityMode
     then G.i (Call (nr (E.built_in env "restore_mem")))
     else G.i Unreachable
