@@ -7,7 +7,7 @@
 /* Uncomment this to define fac_init and fac_Z_facZ_ii instead. */
 /* #define WASM_RT_MODULE_PREFIX fac_ */
 
-#include "wasm.h"
+#include "test.h"
 #include "wasm-rt-impl.h"
 
 typedef u32 ref;
@@ -61,10 +61,7 @@ extern void data_internalize(u32 dst, u32 len, ref dbref, u32 offset){
 void test_print(ref dbref) {
   databuf *db = refs[dbref];
   // printf("test_print: %d bytes\n", db->len);
-  if (memcmp(db->data, "unexpected IDL",strlen("unexpected IDL")) == 0) {
-    ok_to_trap = true;
-  };
-  if (memcmp(db->data, "idl function error",strlen("idl function error")) == 0) {
+  if (memcmp(db->data, "IDL error:",strlen("IDL error:")) == 0) {
     ok_to_trap = true;
   };
   printf("%s", db->data);
