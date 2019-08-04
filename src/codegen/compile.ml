@@ -616,7 +616,7 @@ module RTS = struct
     });
     let idl_trap_fi = E.add_fun env "idl_trap" (
       Func.of_body env [] [] (fun env ->
-        E.trap_with env "idl function error"
+        E.trap_with env "IDL error: Unknown error"
       )
     ) in
     E.add_export env (nr {
@@ -3668,7 +3668,7 @@ module Serialization = struct
 
       let assert_prim_typ () =
         check_prim_typ t ^^
-        E.else_trap_with env ("unexpected IDL typ when parsing " ^ string_of_typ t)
+        E.else_trap_with env ("IDL error: unexpected IDL typ when parsing " ^ string_of_typ t)
       in
 
       (* These read the next (s)leb128, assuming get_ptr is the address of a pointer
@@ -3689,7 +3689,7 @@ module Serialization = struct
         (* make sure index is not negative *)
         get_idltyp ^^
         compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
-        E.else_trap_with env ("expected composite typ when parsing " ^ string_of_typ t) ^^
+        E.else_trap_with env ("IDL error: expected composite typ when parsing " ^ string_of_typ t) ^^
         (* we need a pointer to a int to pass to read_leb128 (for lack of multi-value in C) *)
         let (set_ptr, get_ptr) = new_local env "idl_typ_ptr" in
         compile_unboxed_const Heap.word_size ^^ Text.dyn_alloc_scratch env ^^ set_ptr ^^
@@ -3704,7 +3704,7 @@ module Serialization = struct
         read_typ_sleb128 get_ptr ^^
         (* Check it is the expected value *)
         compile_eq_const idl_tycon_id ^^
-        E.else_trap_with env ("wrong composite typ when parsing " ^ string_of_typ t) ^^
+        E.else_trap_with env ("IDL error: wrong composite typ when parsing " ^ string_of_typ t) ^^
         (* Call f *)
         f get_ptr
       in
@@ -3821,10 +3821,18 @@ module Serialization = struct
         with_composite_typ (-18l) (fun get_ptr ->
           read_typ_sleb128 get_ptr ^^ set_idltyp ^^
           read_byte ^^
+          let (set_b, get_b) = new_local env "b" in
+          set_b ^^
+          get_b ^^
           compile_eq_const 0l ^^
           G.if_ (ValBlockType (Some I32Type))
-            ( Opt.null )
-            ( Opt.inject env (get_idltyp ^^ read env t) )
+          begin
+            Opt.null
+          end begin
+            get_b ^^ compile_eq_const 1l ^^
+            E.else_trap_with env "IDL error: opt tag not 0 or 1 " ^^
+            Opt.inject env (get_idltyp ^^ read env t)
+          end
         )
       | Variant vs ->
         with_composite_typ (-21l) (fun get_ptr ->
@@ -3846,7 +3854,7 @@ module Serialization = struct
                 continue
             )
             ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
-            ( E.trap_with env "deserialize_go: unexpected variant tag" )
+            ( E.trap_with env "IDL error: unexpected variant tag" )
         )
       | (Func _ | Obj (Actor, _)) ->
         get_ref_buf ^^
@@ -3854,7 +3862,7 @@ module Serialization = struct
         Dfinity.box_reference env ^^
         advance_ref_buf
       | Non ->
-        E.trap_with env "deserializing value of type None"
+        E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
       end ^^
       get_data_buf ^^
