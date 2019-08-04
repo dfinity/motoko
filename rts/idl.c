@@ -9,6 +9,10 @@ export uint32_t read_leb128(char **ptr, char *end) {
   do {
     if (*ptr >= end) (idl_trap());
     b = *((*ptr)++);
+    if (s > 0 && b == 0x00) {
+        // The high bytes is all zeroes, this is not a shortest encoding
+        idl_trap();
+    }
     if (s == 28 && !((b & (uint8_t)0xF0) == 0x00)) {
         // the 5th byte needs to be the last, and it must contribute at most 4 bits
         // else we have an int overflow
@@ -24,6 +28,7 @@ export int32_t read_sleb128(char **ptr, char *end) {
   uint32_t r = 0;
   unsigned int s = 0;
   uint8_t b;
+  bool last_sign_bit_set = 0;
   do {
     if (*ptr >= end) (idl_trap());
     b = *((*ptr)++);
@@ -32,11 +37,16 @@ export int32_t read_sleb128(char **ptr, char *end) {
         // else we have an int overflow
         idl_trap();
     }
+    if (s > 0 && (b == 0x00 || (last_sign_bit_set && b == 0x8F))) {
+        // The high bytes is all zeroes or ones, so this is not a shortest encoding
+        idl_trap();
+    }
+    last_sign_bit_set = (b & (uint8_t)0x40);
     r += (b & (uint8_t)0x7f) << s;
     s += 7;
   } while (b & (uint8_t)0x80);
   // sign extend
-  if (s < 32 && (b & (uint8_t)0x40)) {
+  if (s < 32 && last_sign_bit_set) {
     r |= ((~(uint32_t)0) << s);
   }
   return r;
