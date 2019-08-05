@@ -1,3 +1,6 @@
+#ifndef RTS_H
+#define RTS_H
+
 #pragma GCC diagnostic ignored "-Wattributes"
 #pragma GCC diagnostic ignored "-Wincompatible-library-redeclaration"
 #define export __attribute__ ((visibility("default")))
@@ -65,3 +68,4 @@ from_rts __attribute__ ((noreturn)) void bigint_trap();
 /** Functions used in multiple modules of the RTS */
 export void as_memcpy(char *str1, const char *str2, size_t n);
 
+#endif /* RTS_H */
