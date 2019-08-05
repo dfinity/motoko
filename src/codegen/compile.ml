@@ -536,7 +536,7 @@ module RTS = struct
   let system_imports env =
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "version" [] [I32Type];
-    E.add_func_import env "rts" "skip_idl_header" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "skip_idl_header" [I32Type] [];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
@@ -3938,15 +3938,8 @@ module Serialization = struct
           Buf.set_size get_ref_buf (get_refs_size ^^ compile_sub_const 1l ^^ compile_mul_const Heap.word_size) ^^
 
           (* Go! *)
-          Buf.set_ptr get_data_buf (
-            (* Change once skip_idl_header uses the new buffer abstraction *)
-            get_data_start ^^
-            get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-            E.call_import env "rts" "skip_idl_header"
-          ) ^^
-          get_data_buf ^^
-          get_ref_buf ^^
-          deserialize_go env t
+          get_data_buf ^^ E.call_import env "rts" "skip_idl_header" ^^
+          get_data_buf ^^ get_ref_buf ^^ deserialize_go env t
         ))
     )
 
