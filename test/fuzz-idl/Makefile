@@ -1,4 +1,4 @@
-main: main.c test.c
+main: main.c test.c wasm-rt-impl.c
 	AFL_HARDEN=1 afl-gcc -O -o main main.c test.c wasm-rt-impl.c
 
 test.c: test.wasm
