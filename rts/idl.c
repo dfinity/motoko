@@ -59,7 +59,7 @@ export int32_t read_i32_of_sleb128(buf *buf) {
         idl_trap();
     }
     if (s > 0 && (b == 0x00 || (last_sign_bit_set && b == 0x8F))) {
-        // The high bytes is all zeroes or ones, so this is not a shortest encoding
+        // The high bits is all zeros or ones, so this is not a shortest encoding
         idl_trap();
     }
     last_sign_bit_set = (b & (uint8_t)0x40);
@@ -106,7 +106,7 @@ export int32_t read_i32_of_sleb128(buf *buf) {
 
 /*
  * This function parses the IDL magic header and type description. It
- *  * traps i the type description is not well-formed. In particular, it traps if
+ *  * traps if the type description is not well-formed. In particular, it traps if
  *    any index into the type description table is out of bounds, so that
  *    subsequent code can trust these values
  *  * returns a pointer to the first byte after the IDL header (via return)
@@ -123,7 +123,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, int32_t *main_type
   int32_t n_types = read_u32_of_leb128(buf);
   // read_u32_of_leb128 return an uint32_t, we want an int32_t here so that the
   // comparisons below work, so lets make sure we did not wrap around in the
-  // conversation.
+  // conversion.
   if (n_types < 0) { idl_trap(); }
 
 

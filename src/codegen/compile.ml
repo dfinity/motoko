@@ -3606,7 +3606,7 @@ module Serialization = struct
     on the shadow stack): The first is a pointer to the current position of the buffer,
     the second one a pointer to the end (to check out-of-bounds).
 
-    Code that reads from this buffer will update the former, i.e. it is mutuable.
+    Code that reads from this buffer will update the former, i.e. it is mutable.
 
     The format is compatible with C (pointer to a struct) and avoids the need for the
     multi-value extension that we used before to return both parse result _and_
