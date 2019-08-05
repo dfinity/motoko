@@ -186,6 +186,10 @@ rec {
     '';
   };
 
+  tests-no-mv = tests.overrideAttrs (oldAttrs: {
+    ASC_FLAGS = "-no-multi-value";
+  });
+
   unit-tests = stdenv.mkDerivation {
     name = "unit-tests";
 
@@ -409,6 +413,7 @@ rec {
       js
       didc
       tests
+      tests-no-mv
       unit-tests
       samples
       rts
