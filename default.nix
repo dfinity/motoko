@@ -58,11 +58,13 @@ let commonBuildInputs = [
   ocaml_bisect_ppx-ocamlbuild
   nixpkgs.ocamlPackages.ocaml-migrate-parsetree
   nixpkgs.ocamlPackages.ppx_tools_versioned
-  nixpkgs.ghc
-  nixpkgs.haskellPackages.cabal-install
-  nixpkgs.haskellPackages.QuickCheck
-  nixpkgs.haskellPackages.tasty
-  nixpkgs.haskellPackages.turtle
+  # nixpkgs.ghc
+  # nixpkgs.haskellPackages.Cabal
+  # nixpkgs.haskellPackages.cabal-install
+  nixpkgs.haskellPackages.cabal2nix
+  # nixpkgs.haskellPackages.QuickCheck
+  # nixpkgs.haskellPackages.tasty
+  # nixpkgs.haskellPackages.turtle
 ]; in
 
 let
@@ -153,6 +155,8 @@ rec {
     '';
   };
 
+  qc-actorscript = let pkgs = import <nixpkgs> {}; in pkgs.haskellPackages.callPackage ./nix/qc-actorscript.nix { };
+
   tests = stdenv.mkDerivation {
     name = "tests";
     src = subpath ./test;
@@ -167,6 +171,7 @@ rec {
         nixpkgs.nodejs-10_x
         filecheck
         js-client
+        qc-actorscript
       ] ++
       (if test-dvm then [ real-dvm ] else []) ++
       llvmBuildInputs;
@@ -177,6 +182,7 @@ rec {
         export ASC=asc
         export AS_LD=as-ld
         export DIDC=didc
+        export QCAS=qc-actorscript
         export JSCLIENT=${js-client}
         asc --version
       '' +
