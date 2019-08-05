@@ -1,14 +1,36 @@
 #include "rts.h"
 
+/*
+An abstraction for a buffer with and end-pointer.
+
+This mirrors module Serialization.Buf in `compile.ml`
+*/
+
+typedef struct {
+  uint8_t *p;
+  uint8_t *e;
+} buf;
+
+uint8_t read_byte(buf *buf) {
+  if (buf->p >= buf->e) (idl_trap());
+  return ((buf->p)++)[0];
+}
+
+uint32_t read_word(buf *buf) {
+  if (buf->p + sizeof(uint8_t) > buf->e) (idl_trap());
+  uint32_t r = ((uint32_t*)(buf->p))[0];
+  buf->p += sizeof(uint32_t);
+  return r;
+}
+
 /* Code to read (S)LEB128 to ints (traps if does not fit in return type) */
 
-export uint32_t read_leb128(char **ptr, char *end) {
+export uint32_t read_u32_of_leb128(buf *buf) {
   uint32_t r = 0;
   unsigned int s = 0;
   uint8_t b;
   do {
-    if (*ptr >= end) (idl_trap());
-    b = *((*ptr)++);
+    b = read_byte(buf);
     if (s > 0 && b == 0x00) {
         // The high bytes is all zeroes, this is not a shortest encoding
         idl_trap();
@@ -24,14 +46,13 @@ export uint32_t read_leb128(char **ptr, char *end) {
   return r;
 }
 
-export int32_t read_sleb128(char **ptr, char *end) {
+export int32_t read_i32_of_sleb128(buf *buf) {
   uint32_t r = 0;
   unsigned int s = 0;
   uint8_t b;
   bool last_sign_bit_set = 0;
   do {
-    if (*ptr >= end) (idl_trap());
-    b = *((*ptr)++);
+    b = read_byte(buf);
     if (s == 28 && !((b & (uint8_t)0xF0) == 0x00 || (b & (uint8_t)0xF0) == 0x70)) {
         // the 5th byte needs to be the last, and it must contribute at most 4 bits
         // else we have an int overflow
@@ -94,72 +115,68 @@ export int32_t read_sleb128(char **ptr, char *end) {
  *  * returns the type index of the overall value
  *    (again via pointer argument, for lack of multi-value returns in C)
  */
-export char *parse_idl_header(char *ptr, char *end, char ***typtbl_out, int32_t *main_type_out) {
-  // Magic bytes
-  if (ptr + 3 >= end) (idl_trap());
-  if (*ptr++ != 'D') idl_trap();
-  if (*ptr++ != 'I') idl_trap();
-  if (*ptr++ != 'D') idl_trap();
-  if (*ptr++ != 'L') idl_trap();
+export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, int32_t *main_type_out) {
+  // Magic bytes (DIDL)
+  if (read_word(buf) != 0x4C444944) idl_trap();
 
   // Create a table for the type description
-  int32_t n_types = read_leb128(&ptr,end);
-  // read_leb128 return an uint32_t, we want an int32_t here so that the
+  int32_t n_types = read_u32_of_leb128(buf);
+  // read_u32_of_leb128 return an uint32_t, we want an int32_t here so that the
   // comparisons below work, so lets make sure we did not wrap around in the
   // conversation.
   if (n_types < 0) { idl_trap(); }
 
 
   // Early sanity check
-  if (&ptr[n_types] >= end) { idl_trap() ; }
+  if (&buf->p[n_types] >= buf->e) { idl_trap() ; }
 
   // Go through the table
-  char **typtbl = (char **)alloc(n_types * sizeof(char*));
+  uint8_t **typtbl = (uint8_t **)alloc(n_types * sizeof(uint8_t*));
   for (int i = 0; i < n_types; i++) {
-    typtbl[i] = ptr;
-    int ty = read_sleb128(&ptr,end);
+    typtbl[i] = buf->p;
+    int ty = read_i32_of_sleb128(buf);
     if (ty >= IDL_PRIM_lowest) {
       idl_trap(); // illegal
     } else if (ty == IDL_CON_opt) {
-      int32_t t = read_sleb128(&ptr,end);
+      int32_t t = read_i32_of_sleb128(buf);
       if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
     } else if (ty == IDL_CON_vec) {
-      int32_t t = read_sleb128(&ptr,end);
+      int32_t t = read_i32_of_sleb128(buf);
       if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
     } else if (ty == IDL_CON_record) {
-      for (int n = read_leb128(&ptr,end); n > 0; n--) {
-        read_leb128(&ptr,end);
-        int32_t t = read_sleb128(&ptr,end);
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+        read_u32_of_leb128(buf);
+        int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
       }
     } else if (ty == IDL_CON_variant) {
-      for (int n = read_leb128(&ptr,end); n > 0; n--) {
-        read_leb128(&ptr,end);
-        int32_t t = read_sleb128(&ptr,end);
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+        read_u32_of_leb128(buf);
+        int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
       }
     } else if (ty == IDL_CON_func) {
       // arg types
-      for (int n = read_leb128(&ptr,end); n > 0; n--) {
-        int32_t t = read_sleb128(&ptr,end);
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+        int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
       }
       // ret types
-      for (int n = read_leb128(&ptr,end); n > 0; n--) {
-        int32_t t = read_sleb128(&ptr,end);
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+        int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
       }
       // annotations
-      for (int n = read_leb128(&ptr,end); n > 0; n--) {
-        ptr++;
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+        (buf->p)++;
       }
     } else if (ty == IDL_CON_service) {
-      for (int n = read_leb128(&ptr,end); n > 0; n--) {
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
         // name
-        unsigned int size = read_leb128(&ptr,end);
-        ptr += size;
+        unsigned int size = read_u32_of_leb128(buf);
+        (buf->p) += size;
         // type
-        int32_t t = read_sleb128(&ptr,end);
+        int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
       }
     } else {
@@ -168,10 +185,9 @@ export char *parse_idl_header(char *ptr, char *end, char ***typtbl_out, int32_t 
     }
   }
   // Now read the main type
-  int32_t t = read_sleb128(&ptr,end);
+  int32_t t = read_i32_of_sleb128(buf);
   if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
 
   *typtbl_out = typtbl;
   *main_type_out = t;
-  return ptr;
 }
