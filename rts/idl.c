@@ -121,11 +121,11 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, int32_t *main_type
 
   // Create a table for the type description
   int32_t n_types = read_u32_of_leb128(buf);
-  // read_u32_of_leb128 return an uint32_t, we want an int32_t here so that the
+
+  // read_u32_of_leb128 returns an uint32_t, we want an int32_t here so that the
   // comparisons below work, so lets make sure we did not wrap around in the
   // conversion.
   if (n_types < 0) { idl_trap(); }
-
 
   // Early sanity check
   if (&buf->p[n_types] >= buf->e) { idl_trap() ; }
