@@ -58,13 +58,7 @@ let commonBuildInputs = [
   ocaml_bisect_ppx-ocamlbuild
   nixpkgs.ocamlPackages.ocaml-migrate-parsetree
   nixpkgs.ocamlPackages.ppx_tools_versioned
-  # nixpkgs.ghc
-  # nixpkgs.haskellPackages.Cabal
-  # nixpkgs.haskellPackages.cabal-install
   nixpkgs.haskellPackages.cabal2nix
-  # nixpkgs.haskellPackages.QuickCheck
-  # nixpkgs.haskellPackages.tasty
-  # nixpkgs.haskellPackages.turtle
 ]; in
 
 let
