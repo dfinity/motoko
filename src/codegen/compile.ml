@@ -2691,6 +2691,12 @@ module Arr = struct
     let (set_r, get_r) = new_local env "r" in
     set_len ^^
 
+    (* Check size (should not be larger than half the memory space) *)
+    get_len ^^
+    compile_unboxed_const Int32.(shift_left 1l (32-4-1)) ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    E.else_trap_with env "Array allocation too large" ^^
+
     (* Allocate *)
     get_len ^^
     compile_add_const header_size ^^
