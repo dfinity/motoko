@@ -8,7 +8,7 @@ version:             0
 synopsis:            generate numeric tests for ActorScript
 -- description:
 -- bug-reports:
-license:             AllRightsReserved
+license:             MIT
 license-file:        LICENSE
 author:              Gabor Greif
 maintainer:          gabor@dfinity.org
@@ -22,7 +22,7 @@ executable qc-actorscript
   -- other-modules:
   -- other-extensions:
   build-depends:       QuickCheck
-                     , base >=4.12 && <4.13
+                     , base >=4.12 && <5
                      , process
                      , tasty
                      , tasty-quickcheck
