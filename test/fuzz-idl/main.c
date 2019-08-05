@@ -64,6 +64,9 @@ void test_print(ref dbref) {
   if (memcmp(db->data, "IDL error:",strlen("IDL error:")) == 0) {
     ok_to_trap = true;
   };
+  if (memcmp(db->data, "Cannot grow memory",strlen("Cannot grow memory")) == 0) {
+    ok_to_trap = true;
+  };
   printf("%s", db->data);
   return;
 }
