@@ -1649,9 +1649,9 @@ sig
      and leave two words on stack:
      - number of consumed bytes (i32, TOS)
      - numeric object (vanilla)
+     The boolean argument is true if the value to be read is signed.
    *)
-  val compile_load_from_data_buf_signed : E.t -> G.t
-  val compile_load_from_data_buf_unsigned : E.t -> G.t
+  val compile_load_from_data_buf : E.t -> bool -> G.t
 
   (* literals *)
   val compile_lit : E.t -> Big_int.big_int -> G.t
@@ -2029,22 +2029,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       Num.compile_abs
       env
 
-  let compile_load_from_data_buf_unsigned env =
+  let compile_load_from_data_buf env signed =
     let set_res, get_res = new_local env "res" in
     let set_size, get_size = new_local env "size" in
-    Num.compile_load_from_data_buf_unsigned env ^^
-    set_size ^^ set_res ^^ get_res ^^
-    fits_in_vanilla env ^^
-    begin G.if_ (ValBlockType (Some I32Type))
-      (get_res ^^ Num.truncate_to_word32 env ^^ compress)
-      get_res
-    end ^^
-    get_size
-
-  let compile_load_from_data_buf_signed env =
-    let set_res, get_res = new_local env "res" in
-    let set_size, get_size = new_local env "size" in
-    Num.compile_load_from_data_buf_signed env ^^
+    Num.compile_load_from_data_buf env signed ^^
     set_size ^^ set_res ^^ get_res ^^
     fits_in_vanilla env ^^
     begin G.if_ (ValBlockType (Some I32Type))
@@ -2210,18 +2198,19 @@ module BigNumLibtommath : BigNumType = struct
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
 
-  let compile_load_from_data_buf_unsigned env =
-    E.call_import env "rts" "bigint_leb128_decode" ^^
-    let (set_n, get_n) = new_local env "n" in
-    set_n ^^
-    get_n ^^
-    get_n ^^ E.call_import env "rts" "bigint_leb128_size"
-  let compile_load_from_data_buf_signed env =
-    E.call_import env "rts" "bigint_sleb128_decode" ^^
-    let (set_n, get_n) = new_local env "n" in
-    set_n ^^
-    get_n ^^
-    get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
+  let compile_load_from_data_buf env = function
+    | false ->
+      E.call_import env "rts" "bigint_leb128_decode" ^^
+      let (set_n, get_n) = new_local env "n" in
+      set_n ^^
+      get_n ^^
+      get_n ^^ E.call_import env "rts" "bigint_leb128_size"
+    | true ->
+      E.call_import env "rts" "bigint_sleb128_decode" ^^
+      let (set_n, get_n) = new_local env "n" in
+      set_n ^^
+      get_n ^^
+      get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
 
   let compile_lit env n =
     let limb_size = 31 in
@@ -3782,7 +3771,7 @@ module Serialization = struct
       | Prim Nat ->
         assert_prim_typ () ^^
         DynBuf.get_ptr get_data_buf ^^
-        BigNum.compile_load_from_data_buf_unsigned env ^^
+        BigNum.compile_load_from_data_buf env false ^^
         let (set_leb_len, get_leb_len) = new_local env "leb_len" in
         set_leb_len ^^
         DynBuf.advance get_data_buf get_leb_len
@@ -3792,7 +3781,7 @@ module Serialization = struct
         G.if_ (ValBlockType (Some I32Type))
           begin
             DynBuf.get_ptr get_data_buf ^^
-            BigNum.compile_load_from_data_buf_unsigned env ^^
+            BigNum.compile_load_from_data_buf env false ^^
             let (set_leb_len, get_leb_len) = new_local env "leb_len" in
             set_leb_len ^^
             DynBuf.advance get_data_buf get_leb_len
@@ -3800,7 +3789,7 @@ module Serialization = struct
           begin
             assert_prim_typ () ^^
             DynBuf.get_ptr get_data_buf ^^
-            BigNum.compile_load_from_data_buf_signed env ^^
+            BigNum.compile_load_from_data_buf env true ^^
             let (set_leb_len, get_leb_len) = new_local env "leb_len" in
             set_leb_len ^^
             DynBuf.advance get_data_buf get_leb_len
