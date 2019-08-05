@@ -3675,20 +3675,41 @@ module Serialization = struct
     let advance get_buf get_delta =
       set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
 
-    let read_byte get_buf =
-      get_ptr get_buf ^^
-      G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-      advance get_buf (compile_unboxed_const 1l)
-
-    let read_word env get_buf =
-      get_buf ^^ E.call_import env "rts" "read_u32_of_leb128"
-
     let read_leb128 env get_buf =
       get_buf ^^ E.call_import env "rts" "read_u32_of_leb128"
 
     let read_sleb128 env get_buf =
       get_buf ^^ E.call_import env "rts" "read_i32_of_sleb128"
 
+    let check_space env get_buf get_delta =
+      get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      get_end get_buf ^^
+      G.i (Compare (Wasm.Values.I32 I64Op.LeU)) ^^
+      E.else_trap_with env "IDL error: out of bounds read"
+
+    let read_byte env get_buf =
+      check_space env get_buf (compile_unboxed_const 1l) ^^
+      get_ptr get_buf ^^
+      G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+      advance get_buf (compile_unboxed_const 1l)
+
+    let read_word16 env get_buf =
+      check_space env get_buf (compile_unboxed_const 2l) ^^
+      get_ptr get_buf ^^
+      G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack16, Wasm.Memory.ZX)}) ^^
+      advance get_buf (compile_unboxed_const 2l)
+
+    let read_word32 env get_buf =
+      check_space env get_buf (compile_unboxed_const 4l) ^^
+      get_ptr get_buf ^^
+      G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+      advance get_buf (compile_unboxed_const 4l)
+
+    let read_word64 env get_buf =
+      check_space env get_buf (compile_unboxed_const 8l) ^^
+      get_ptr get_buf ^^
+      G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
+      advance get_buf (compile_unboxed_const 8l)
 
   end (* Buf *)
 
@@ -3782,33 +3803,23 @@ module Serialization = struct
           end
       | Prim (Int64|Nat64|Word64) ->
         assert_prim_typ () ^^
-        Buf.get_ptr get_data_buf ^^
-        G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
-        BoxedWord64.box env ^^
-        Buf.advance get_data_buf (compile_unboxed_const 8l)
+        Buf.read_word64 env get_data_buf^^
+        BoxedWord64.box env
       | Prim (Int32|Nat32|Word32) ->
         assert_prim_typ () ^^
-        Buf.get_ptr get_data_buf ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        BoxedSmallWord.box env ^^
-        Buf.advance get_data_buf (compile_unboxed_const 4l)
+        Buf.read_word32 env get_data_buf ^^
+        BoxedSmallWord.box env
       | Prim (Int16|Nat16|Word16) ->
         assert_prim_typ () ^^
-        Buf.get_ptr get_data_buf ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack16, Wasm.Memory.ZX)}) ^^
-        UnboxedSmallWord.msb_adjust Word16 ^^
-        Buf.advance get_data_buf (compile_unboxed_const 2l)
+        Buf.read_word16 env get_data_buf ^^
+        UnboxedSmallWord.msb_adjust Word16
       | Prim (Int8|Nat8|Word8) ->
         assert_prim_typ () ^^
-        Buf.get_ptr get_data_buf ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-        UnboxedSmallWord.msb_adjust Word8 ^^
-        Buf.advance get_data_buf (compile_unboxed_const 1l)
+        Buf.read_byte env get_data_buf ^^
+        UnboxedSmallWord.msb_adjust Word8
       | Prim Bool ->
         assert_prim_typ () ^^
-        Buf.get_ptr get_data_buf ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-        Buf.advance get_data_buf (compile_unboxed_const 1l)
+        Buf.read_byte env get_data_buf
       | Prim Null ->
         assert_prim_typ () ^^
         Opt.null
@@ -3816,7 +3827,7 @@ module Serialization = struct
         assert_prim_typ () ^^
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
-        Buf.read_word env get_data_buf ^^ set_len ^^
+        Buf.read_leb128 env get_data_buf ^^ set_len ^^
 
         get_len ^^ Text.alloc env ^^ set_x ^^
         get_x ^^ Text.payload_ptr_unskewed ^^
@@ -3853,7 +3864,7 @@ module Serialization = struct
         let (set_idltyp, get_idltyp) = new_local env "idltyp" in
         with_composite_typ (-19l) (fun get_typ_buf ->
           Buf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
-          Buf.read_word env get_data_buf ^^ set_len ^^
+          Buf.read_leb128 env get_data_buf ^^ set_len ^^
           get_len ^^ Arr.alloc env ^^ set_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
             get_x ^^ get_i ^^ Arr.idx env ^^
@@ -3867,7 +3878,7 @@ module Serialization = struct
         let (set_idltyp, get_idltyp) = new_local env "idltyp" in
         with_composite_typ (-18l) (fun get_typ_buf ->
           Buf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
-          Buf.read_byte get_data_buf ^^
+          Buf.read_byte env get_data_buf ^^
           let (set_b, get_b) = new_local env "b" in
           set_b ^^
           get_b ^^
@@ -3886,7 +3897,7 @@ module Serialization = struct
           Buf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
 
           let (set_tag, get_tag) = new_local env "tag" in
-          Buf.read_word env get_data_buf ^^ set_tag ^^
+          Buf.read_leb128 env get_data_buf ^^ set_tag ^^
 
           let (set_idltyp, get_idltyp) = new_local env "idltyp" in
           List.fold_right (fun (i, {lab = l; typ = t}) continue ->
