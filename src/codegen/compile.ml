@@ -738,13 +738,35 @@ module Stack = struct
      wasm-l would), this way stack overflow would cause out-of-memory, and not
      just overwrite static data.
 
-     We don’t use the stack space (yet), but we could easily start to use it for
-     scratch space, as long as we don’t need more than 64k.
+     We sometimes use the stack space if we need small amounts of scratch space.
   *)
 
   let stack_global = 2l
 
   let end_of_stack = page_size (* 64k of stack *)
+
+  let get_stack_ptr = G.i (GlobalGet (nr stack_global))
+  let set_stack_ptr = G.i (GlobalSet (nr stack_global))
+
+  let alloc_words env n =
+    get_stack_ptr ^^
+    compile_unboxed_const (Int32.mul n Heap.word_size) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+    set_stack_ptr ^^
+    get_stack_ptr
+
+  let free_words env n =
+    get_stack_ptr ^^
+    compile_unboxed_const (Int32.mul n Heap.word_size) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    set_stack_ptr ^^
+    get_stack_ptr
+
+  let with_words env name n f =
+    let (set_x, get_x) = new_local env name in
+    alloc_words env n ^^ set_x ^^
+    f get_x ^^
+    free_words env n
 
 end (* Stack *)
 
