@@ -1607,6 +1607,14 @@ module DynBuf = struct
     G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
     advance get_buf (compile_unboxed_const 8l)
 
+  let read_blob env get_buf get_len =
+    check_space env get_buf get_len ^^
+    (* Already has destination address on the stack *)
+    get_ptr get_buf ^^
+    get_len ^^
+    Heap.memcpy env ^^
+    advance get_buf get_len
+
 end (* Buf *)
 
 
@@ -3806,10 +3814,8 @@ module Serialization = struct
 
         get_len ^^ Text.alloc env ^^ set_x ^^
         get_x ^^ Text.payload_ptr_unskewed ^^
-        DynBuf.get_ptr get_data_buf ^^
-        get_len ^^
-        Heap.memcpy env ^^
-        DynBuf.advance get_data_buf get_len ^^
+        DynBuf.read_blob env get_data_buf get_len ^^
+        (* TODO: Check validty of utf8 *)
         get_x
 
       (* Composite types *)
