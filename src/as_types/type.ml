@@ -102,18 +102,12 @@ let prim = function
 let seq = function [t] -> t | ts -> Tup ts
 
 
-let compare_field f1 f2 =
-  match f1,f2 with
-  | {lab = l1; typ = Typ _}, {lab = l2; typ = Typ _ } -> compare l1 l2
-  | {lab = l1; typ = Typ _}, {lab = l2; typ = _ } -> -1
-  | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
-  | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
-
 (* Coercions *)
 
 let iter_obj t =
   Obj (Object,
     [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t])}])
+
 
 (* Shifting *)
 
@@ -270,6 +264,7 @@ let open_binds tbs =
   List.iter2 set_kind cs ks;
   ts
 
+
 (* Normalization and Classification *)
 
 let reduce tbs t ts =
@@ -386,6 +381,13 @@ let lookup_typ_field l tfs =
   | Some {typ = Typ c; _} -> c
   | _ -> invalid "lookup_typ_field"
 
+let compare_field f1 f2 =
+  match f1,f2 with
+  | {lab = l1; typ = Typ _}, {lab = l2; typ = Typ _ } -> compare l1 l2
+  | {lab = l1; typ = Typ _}, {lab = l2; typ = _ } -> -1
+  | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
+  | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
+
 
 (* Span *)
 
@@ -405,7 +407,7 @@ let rec span = function
   | Mut t -> span t
   | Serialized t -> None
   | Non -> Some 0
-  | Typ _ -> assert false (* TBR *)
+  | Typ _ -> Some 1
 
 
 (* Avoiding local constructors *)
@@ -416,33 +418,33 @@ let rec avoid' cons seen = function
   | (Prim _ | Var _ | Any | Non | Pre) as t -> t
   | Con (c, ts) ->
     if ConSet.mem c seen then raise (Unavoidable c) else
-    if ConSet.mem c cons
-    then match Con.kind c with
+    if ConSet.mem c cons then
+      match Con.kind c with
       | Abs _ -> raise (Unavoidable c)
       | Def (tbs, t) -> avoid' cons (ConSet.add c seen) (reduce tbs t ts)
     else
-      begin try
-        Con (c, List.map (avoid' cons seen) ts)
-      with Unavoidable d ->
+      (try Con (c, List.map (avoid' cons seen) ts) with Unavoidable d ->
         match Con.kind c with
         | Def (tbs, t) -> avoid' cons seen (reduce tbs t ts)
         | Abs _ -> raise (Unavoidable d)
-      end
+      )
   | Array t -> Array (avoid' cons seen t)
   | Tup ts -> Tup (List.map (avoid' cons seen) ts)
   | Func (s, c, tbs, ts1, ts2) ->
-    Func (s,
-          c,
-          List.map (avoid_bind cons seen) tbs,
-          List.map (avoid' cons seen) ts1, List.map (avoid' cons seen) ts2)
+    Func (
+      s, c,
+      List.map (avoid_bind cons seen) tbs,
+      List.map (avoid' cons seen) ts1,
+      List.map (avoid' cons seen) ts2
+    )
   | Opt t -> Opt (avoid' cons seen t)
   | Async t -> Async (avoid' cons seen t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons seen) fs)
   | Variant fs -> Variant (List.map (avoid_field cons seen) fs)
   | Mut t -> Mut (avoid' cons seen t)
   | Serialized t -> Serialized (avoid' cons seen t)
-  | Typ c ->  if ConSet.mem c cons then raise (Unavoidable c)
-              else Typ c (* TBR *)
+  | Typ c ->
+    if ConSet.mem c cons then raise (Unavoidable c) else Typ c (* TBR *)
 
 and avoid_bind cons seen {var; bound} =
   {var; bound = avoid' cons seen bound}
@@ -922,8 +924,9 @@ and glb' lubs glbs t1 t2 =
       Array (glb' lubs glbs t1' t2')
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
       (match glb_fields lubs glbs tf1 tf2 with
-       | None -> Non
-       | Some fs -> Obj (s1, fs))
+      | None -> Non
+      | Some fs -> Obj (s1, fs)
+      )
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
         s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
         List.(length args1 = length args2 && length res1 = length res2) ->
@@ -954,14 +957,14 @@ and glb_fields lubs glbs fs1 fs2 : field list option =
     | _ ->
       match f1.typ, f2.typ with
       | Typ _, Typ _ ->
-        if eq f1.typ f2.typ then
-          f1 +? glb_fields lubs glbs fs1' fs2'
-        else
-          None
+        if eq f1.typ f2.typ
+        then f1 +? glb_fields lubs glbs fs1' fs2'
+        else None
       | Typ _, _
       | _, Typ _ -> assert false
       | _, _ ->
-        {f1 with typ = glb' lubs glbs f1.typ f2.typ} +? glb_fields lubs glbs fs1' fs2'
+        {f1 with typ = glb' lubs glbs f1.typ f2.typ} +?
+          glb_fields lubs glbs fs1' fs2'
 
 and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
   | fs1, [] -> []
@@ -970,7 +973,9 @@ and glb_tags lubs glbs fs1 fs2 = match fs1, fs2 with
     match compare_field f1 f2 with
     | -1 -> glb_tags lubs glbs fs1' fs2
     | +1 -> glb_tags lubs glbs fs1 fs2'
-    | _ -> {f1 with typ = glb' lubs glbs f1.typ f2.typ}::glb_tags lubs glbs fs1' fs2'
+    | _ ->
+      {f1 with typ = glb' lubs glbs f1.typ f2.typ} ::
+        glb_tags lubs glbs fs1' fs2'
 
 and combine_func_parts s c bs1 args1 res1 bs2 args2 res2 lubs glbs contra co =
   let open List in
@@ -981,10 +986,11 @@ and combine_func_parts s c bs1 args1 res1 bs2 args2 res2 lubs glbs contra co =
   let cl = map (close cs) in
   let combine_binds =
     map2 (fun b1 b2 -> {b1 with bound = contra lubs glbs b1.bound b2.bound}) in
-  Func
-    (s, c, combine_binds bs1 bs2,
-     cl (map2 (contra lubs glbs) (op args1) (op args2)),
-     cl (map2 (co lubs glbs) (op res1) (op res2)))
+  Func (
+    s, c, combine_binds bs1 bs2,
+    cl (map2 (contra lubs glbs) (op args1) (op args2)),
+    cl (map2 (co lubs glbs) (op res1) (op res2))
+  )
 
 and combine_con_parts t1 t2 naming re how =
   let s1, s2 = !str t1, !str t2 in
@@ -1075,7 +1081,7 @@ let rec string_of_typ_nullary vs = function
   | Variant fs ->
     sprintf "{%s}" (String.concat "; " (List.map (string_of_tag vs) fs))
   | Typ c ->
-    sprintf "= {%s}" (string_of_kind (Con.kind c))
+    sprintf "= (type %s)" (string_of_kind (Con.kind c))
   | t -> sprintf "(%s)" (string_of_typ' vs t)
 
 and string_of_dom vs ts =
@@ -1127,6 +1133,8 @@ and string_of_field vs {lab; typ} =
   | Typ c ->
     let op, sbs, st = strings_of_kind (Con.kind c) in
     sprintf "type %s%s %s %s" lab sbs op st
+  | Mut t' ->
+    sprintf "var %s : %s" lab (string_of_typ' vs t')
   | _ ->
     sprintf "%s : %s" lab (string_of_typ' vs typ)
 

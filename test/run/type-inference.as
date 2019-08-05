@@ -3,8 +3,8 @@
 let _ = if true true else 5;
 let _ = if true true else [var 5];
 let _ = if true 5 else 5.1;
-let _ = if true {} else (new {});
-let _ = if true (new {x = 5}) else (new {var x = 5});
+let _ = if true {} else ({});
+let _ = if true ({x = 5}) else ({var x = 5});
 let _ = if true 1 else (-1);  // ok
 let _ = if true true else (5 : Any);  // ok
 
@@ -25,7 +25,7 @@ let _ = [true, [var 5]];
 let x =
 {
   type T = {};
-  let o : T = new {};
+  let o : T = {};
   o;
 };
 

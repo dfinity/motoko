@@ -171,7 +171,7 @@ public class Model() {
     case (#add (#truckType info)) Result.fromSomeMap<T.TruckTypeId,L.Resp,T.IdErr>(
            truckTypeTable.addInfoGetId(
              func (id_:T.TruckTypeId) : T.TruckTypeInfo =
-               new {
+               {
                  id=id_;
                  short_name=info.short_name;
                  description=info.description;
@@ -187,7 +187,7 @@ public class Model() {
     case (#add (#region info)) Result.fromSomeMap<T.RegionId,L.Resp,T.IdErr>(
            regionTable.addInfoGetId(
              func (id_:T.RegionId) : T.RegionInfo =
-               new {
+               {
                  id = id_;
                  short_name=info.short_name;
                  description=info.description
@@ -200,7 +200,7 @@ public class Model() {
     case (#add (#produce info)) Result.fromSomeMap<T.ProduceId,L.Resp,T.IdErr>(
            produceTable.addInfoGetId(
              func (id_:T.ProduceId) : T.ProduceInfo =
-               new {
+               {
                  id = id_;
                  short_name=info.short_name;
                  description=info.description;
@@ -214,7 +214,7 @@ public class Model() {
     case (#add (#producer info)) Result.fromSomeMap<T.ProducerId,L.Resp,T.IdErr>(
            producerTable.addInfoGetId(
              func(id_:T.ProducerId):T.ProducerInfo {
-               new {
+               {
                  id=id_;
                  public_key=info.public_key;
                  short_name=info.short_name;
@@ -232,7 +232,7 @@ public class Model() {
     case (#add (#transporter info)) Result.fromSomeMap<T.TransporterId,L.Resp,T.IdErr>(
            transporterTable.addInfoGetId(
              func(id_:T.TransporterId):T.TransporterInfo {
-               new {
+               {
                  id=id_;
                  public_key=info.public_key;
                  short_name=info.short_name;
@@ -249,7 +249,7 @@ public class Model() {
     case (#add (#retailer info)) Result.fromSomeMap<T.RetailerId,L.Resp,T.IdErr>(
            retailerTable.addInfoGetId(
              func(id_:T.RetailerId):T.RetailerInfo {
-               new {
+               {
                  id=id_;
                  public_key=info.public_key;
                  short_name=info.short_name;
@@ -451,7 +451,7 @@ public class Model() {
     for (i in range(0, 1)) {
       reqs := ?(
         #truckType (
-          new {
+          {
             id=i; short_name=""; description="";
             capacity=i * 50;
             isFridge=true; isFreezer=true
@@ -460,37 +460,37 @@ public class Model() {
     };
     /**- add regions */
     for (i in range(0, region_count - 1)) {
-      reqs := ?(#region (new {
+      reqs := ?(#region {
                            id=i; short_name=""; description=""
-                         }), reqs);
+                        }, reqs);
     };
     /**- add produce types, one per region. */
     for (i in range(0, region_count - 1)) {
-      reqs := ?(#produce (new {
+      reqs := ?(#produce {
                            id=i; short_name=""; description=""; grade=1;
-                         }), reqs);
+                         }, reqs);
     };
     /**- add producers  */
     for (i in range(0, producer_count - 1)) {
-      reqs := ?(#producer (new {
-                             id=i; public_key=""; short_name=""; description="";
-                             region=(i % region_count);
-                             inventory=[]; reserved=[];
-                           }), reqs);
+      reqs := ?(#producer {
+                            id=i; public_key=""; short_name=""; description="";
+                            region=(i % region_count);
+                            inventory=[]; reserved=[];
+                          }, reqs);
     };
     /**- add transporters  */
     for (i in range(0, producer_count - 1)) {
-      reqs := ?(#transporter (new {
+      reqs := ?(#transporter {
                                 id=i; public_key=""; short_name=""; description="";
                                 routes=[]; reserved=[];
-                              }), reqs);
+                             }, reqs);
     };
     /**- add retailers  */
     for (i in range(0, retailer_count - 1)) {
-      reqs := ?(#retailer (new {
-                             id=i; public_key=""; short_name=""; description="";
-                             region=(i % region_count);
-                           }), reqs);
+      reqs := ?(#retailer {
+                            id=i; public_key=""; short_name=""; description="";
+                            region=(i % region_count);
+                          }, reqs);
     };
     /**- add routes and inventory, across time and space: */
     for (start_day in range(0, day_count-1)) {
@@ -513,7 +513,7 @@ public class Model() {
               /**- choose this producer iff they are located in the start region: */
               if ((p % region_count) == start_reg) {
                 reqs := ?(#inventory
-                (new {
+                {
                    id=666;
                    producer   = p;
                    produce    = start_reg;
@@ -523,7 +523,7 @@ public class Model() {
                    weight     = 66;
                    ppu        = 22;
                    comments   = "";
-                 }), reqs);
+                }, reqs);
               }
             };
 
@@ -535,7 +535,7 @@ public class Model() {
               /**- choose this transporter iff their id matches the id of the region, modulo the number of regions: */
               if ((t % region_count) == start_reg) {
                 reqs := ?(#route
-                (new {
+                {
                    id=666;
                    transporter  = t;
                    start_region = start_reg;
@@ -547,7 +547,7 @@ public class Model() {
                    // cost is inversely proportional to route duration: slower is cheaper.
                    // this example cost formula is "linear in duration, with a fixed base cost":
                    cost         = 100 + ((end_day - start_day) * 20);
-                 }), reqs);
+                }, reqs);
               }
             };
           };
@@ -619,15 +619,15 @@ public class Model() {
   func idPairHash(x:(Nat,Nat)):Hash { Hash.hashOfIntAcc(Hash.hashOfInt(x.0), x.1) };
 
   func keyOf(x:Nat):Key<Nat> {
-    new { key = x ; hash = idHash(x) }
+   { key = x ; hash = idHash(x) }
   };
 
   func keyOfIdPair(x:Nat, y:Nat):Key<(Nat,Nat)> {
-    new { key = (x,y) ; hash = idPairHash(x,y) }
+   { key = (x,y) ; hash = idPairHash(x,y) }
   };
 
   func keyOfText(x:Text):Key<Text> {
-    new { key = x ; hash = Hash.hashOfText(x) }
+   { key = x ; hash = Hash.hashOfText(x) }
   };
 
   /**
@@ -692,7 +692,7 @@ secondary maps.
     func(x:T.UserId):T.UserId{x+1},
     func(x:T.UserId,y:T.UserId):Bool{x==y},
     idHash,
-    func(doc:M.UserDoc):T.UserInfo = new {
+    func(doc:M.UserDoc):T.UserInfo = {
       id=doc.id;
       user_name=doc.user_name;
       public_key=doc.public_key;
@@ -703,7 +703,7 @@ secondary maps.
       retailerId=doc.retailerId;
       isDeveloper=doc.isDeveloper;
     },
-    func(info:T.UserInfo):?M.UserDoc = ?(new {
+    func(info:T.UserInfo):?M.UserDoc = ?{
       id=info.id;
       user_name=info.user_name;
       public_key=info.public_key;
@@ -713,7 +713,7 @@ secondary maps.
       transporterId=info.transporterId;
       retailerId=info.retailerId;
       isDeveloper=info.isDeveloper;
-    }),
+    },
   );
 
 
@@ -728,7 +728,7 @@ secondary maps.
     func(x:T.TruckTypeId):T.TruckTypeId{x+1},
     func(x:T.TruckTypeId,y:T.TruckTypeId):Bool{x==y},
     idHash,
-    func(doc:M.TruckTypeDoc):T.TruckTypeInfo = new {
+    func(doc:M.TruckTypeDoc):T.TruckTypeInfo = {
       id=doc.id;
       short_name=doc.short_name;
       description=doc.description;
@@ -736,14 +736,14 @@ secondary maps.
       isFridge=doc.isFridge;
       isFreezer=doc.isFreezer;
     },
-    func(info:T.TruckTypeInfo):?M.TruckTypeDoc = ?(new {
+    func(info:T.TruckTypeInfo):?M.TruckTypeDoc = ?{
       id=info.id;
       short_name=info.short_name;
       description=info.description;
       capacity=info.capacity;
       isFridge=info.isFridge;
       isFreezer=info.isFreezer;
-    }),
+    },
   );
 
   /**
@@ -757,16 +757,16 @@ secondary maps.
     func(x:T.RegionId):T.RegionId{x+1},
     func(x:T.RegionId,y:T.RegionId):Bool{x==y},
     idHash,
-    func(doc:M.RegionDoc):T.RegionInfo = new {
+    func(doc:M.RegionDoc):T.RegionInfo = {
       id=doc.id;
       short_name=doc.short_name;
       description=doc.description;
     },
-    func(info:T.RegionInfo):?M.RegionDoc = ?(new {
+    func(info:T.RegionInfo):?M.RegionDoc = ?{
       id=info.id;
       short_name=info.short_name;
       description=info.description;
-    }),
+    },
   );
 
   /**
@@ -780,18 +780,18 @@ secondary maps.
     func(x:T.ProduceId):T.ProduceId{x+1},
     func(x:T.ProduceId,y:T.ProduceId):Bool{x==y},
     idHash,
-    func(doc:M.ProduceDoc):T.ProduceInfo = new {
+    func(doc:M.ProduceDoc):T.ProduceInfo = {
       id=doc.id;
       short_name=doc.short_name;
       description=doc.description;
       grade=doc.grade;
     },
-    func(info:T.ProduceInfo):?M.ProduceDoc = ?(new {
+    func(info:T.ProduceInfo):?M.ProduceDoc = ?{
       id=info.id;
       short_name=info.short_name;
       description=info.description;
       grade=info.grade;
-    }),
+    },
   );
 
   /**
@@ -805,7 +805,7 @@ secondary maps.
     func(x:T.ProducerId):T.ProducerId{x+1},
     func(x:T.ProducerId,y:T.ProducerId):Bool{x==y},
     idHash,
-    func(doc:M.ProducerDoc):T.ProducerInfo = new {
+    func(doc:M.ProducerDoc):T.ProducerInfo = {
       id=doc.id;
       public_key=doc.public_key;
       short_name=doc.short_name;
@@ -816,7 +816,7 @@ secondary maps.
     },
     func(info:T.ProducerInfo):?M.ProducerDoc =
       Option.map<M.RegionDoc, M.ProducerDoc>(
-        func (regionDoc: M.RegionDoc): M.ProducerDoc = new {
+        func (regionDoc: M.RegionDoc): M.ProducerDoc = {
           id=info.id;
           public_key=info.public_key;
           short_name=info.short_name;
@@ -841,7 +841,7 @@ secondary maps.
     func(x:T.InventoryId):T.InventoryId{x+1},
     func(x:T.InventoryId,y:T.InventoryId):Bool{x==y},
     idHash,
-    func(doc:M.InventoryDoc):T.InventoryInfo = new {
+    func(doc:M.InventoryDoc):T.InventoryInfo = {
       id=doc.id;
       produce=doc.produce.id;
       producer=doc.producer;
@@ -857,7 +857,7 @@ secondary maps.
       switch (producerTable.getDoc(info.producer),
               produceTable.getDoc(info.produce)) {
         case (?producerDoc, ?produceDoc) {
-               ?(new {
+               ?{
                    id=info.id;
                    produce=produceDoc;
                    producer=producerDoc.id;
@@ -867,7 +867,7 @@ secondary maps.
                    start_date=info.start_date;
                    end_date=info.end_date;
                    comments=info.comments;
-                 })
+                 }
              };
         case _ {
                null
@@ -887,7 +887,7 @@ secondary maps.
       func(x:T.TransporterId):T.TransporterId{x+1},
       func(x:T.TransporterId,y:T.TransporterId):Bool{x==y},
       idHash,
-      func(doc:M.TransporterDoc):T.TransporterInfo = new {
+      func(doc:M.TransporterDoc):T.TransporterInfo = {
         id=doc.id;
         public_key=doc.public_key;
         short_name=doc.short_name;
@@ -896,14 +896,14 @@ secondary maps.
         reserved=[];
       },
       func(info:T.TransporterInfo):?M.TransporterDoc =
-        ?(new {
+        ?{
             id=info.id;
             public_key=info.public_key;
             short_name=info.short_name;
             description=info.description;
             routes=Table.empty<T.RouteId, M.RouteDoc>();
             reserved=Table.empty<T.ReservedRouteId, M.ReservedRouteDoc>();
-          })
+          }
     );
 
   /**
@@ -917,7 +917,7 @@ secondary maps.
       func(x:T.RetailerId):T.RetailerId{x+1},
       func(x:T.RetailerId,y:T.RetailerId):Bool{x==y},
       idHash,
-      func(doc:M.RetailerDoc):T.RetailerInfo = new {
+      func(doc:M.RetailerDoc):T.RetailerInfo = {
         id=doc.id;
         public_key=doc.public_key;
         short_name=doc.short_name;
@@ -928,7 +928,7 @@ secondary maps.
       },
       func(info:T.RetailerInfo):?M.RetailerDoc =
         Option.map<M.RegionDoc, M.RetailerDoc>(
-          func (regionDoc: M.RegionDoc): M.RetailerDoc = new {
+          func (regionDoc: M.RegionDoc): M.RetailerDoc = {
             id=info.id;
             public_key=info.public_key;
             short_name=info.short_name;
@@ -955,7 +955,7 @@ secondary maps.
       func(x:T.RouteId):T.RouteId{x+1},
       func(x:T.RouteId,y:T.RouteId):Bool{x==y},
       idHash,
-      func(doc:M.RouteDoc):T.RouteInfo = new {
+      func(doc:M.RouteDoc):T.RouteInfo = {
         id=doc.id;
         transporter=doc.transporter;
         truck_type=(truckTypeTable.getInfoOfDoc())(doc.truck_type);
@@ -972,7 +972,7 @@ secondary maps.
                 regionTable.getDoc(info.end_region))
         {
         case (?_, ?truckType, ?startRegion, ?endRegion) {
-                 ?(new {
+                 ?{
                      id=info.id;
                      transporter=info.transporter;
                      truck_type=truckType;
@@ -981,7 +981,7 @@ secondary maps.
                      start_date=info.start_date;
                      end_date=info.end_date;
                      cost=info.cost;
-                   })
+                   }
                };
           case _ { null }
         }}
@@ -999,10 +999,10 @@ secondary maps.
     func(x:T.ReservedInventoryId):T.ReservedInventoryId{x+1},
     func(x:T.ReservedInventoryId,y:T.ReservedInventoryId):Bool{x==y},
     idHash,
-    func(doc:M.ReservedInventoryDoc):T.ReservedInventoryInfo = new {
+    func(doc:M.ReservedInventoryDoc):T.ReservedInventoryInfo = {
       id=doc.id;
       retailer=doc.retailer;
-      item=new {
+      item={
         id=doc.item.id;
         produce=doc.item.produce.id;
         producer=doc.item.producer;
@@ -1019,11 +1019,11 @@ secondary maps.
       switch (inventoryTable.getDoc(info.id),
               retailerTable.getDoc(info.retailer)) {
         case (?item_, ?_) {
-               ?(new {
+               ?{
                    id=info.id;
                    item=item_:M.InventoryDoc;
                    retailer=info.retailer;
-                 })
+                 }
              };
         case _ {
                null
@@ -1042,13 +1042,13 @@ secondary maps.
     func(x:T.ReservedRouteId):T.ReservedRouteId{x+1},
     func(x:T.ReservedRouteId,y:T.ReservedRouteId):Bool{x==y},
     idHash,
-    func(doc:M.ReservedRouteDoc):T.ReservedRouteInfo = new {
+    func(doc:M.ReservedRouteDoc):T.ReservedRouteInfo = {
       id=doc.id;
       retailer=doc.retailer;
-      route=new {
+      route={
         id=doc.route.id;
         transporter=doc.route.transporter;
-        truck_type=new {
+        truck_type={
           id=doc.route.truck_type.id;
           short_name=doc.route.truck_type.short_name;
           description=doc.route.truck_type.description;
@@ -1068,11 +1068,11 @@ secondary maps.
       switch (routeTable.getDoc(info.id),
               retailerTable.getDoc(info.retailer)) {
         case (?route_, ?_) {
-               ?(new {
+               ?{
                    id=info.id;
                    route=route_:M.RouteDoc;
                    retailer=info.retailer;
-                 })
+                 }
              };
         case _ {
                null
@@ -1237,7 +1237,7 @@ than the MVP goals, however.
     /**- Create a producer role for the user: */
     let prId = if isProducer { producerTable.addInfoGetId(
       func(id_:T.ProducerId):T.ProducerInfo {
-        new {
+        {
           id=id_:T.ProducerId;
           public_key=public_key_;
           short_name=user_name_;
@@ -1251,7 +1251,7 @@ than the MVP goals, however.
     /**- Create a transporter role for the user: */
     let trId = if isTransporter { transporterTable.addInfoGetId(
       func(id_:T.TransporterId):T.TransporterInfo {
-        new {
+        {
           id=id_:T.TransporterId;
           public_key=public_key_;
           short_name=user_name_;
@@ -1264,7 +1264,7 @@ than the MVP goals, however.
     /**- Create a retailer role for the user: */
     let rrId = if isRetailer { retailerTable.addInfoGetId(
       func(id_:T.RetailerId):T.RetailerInfo {
-        new {
+        {
           id=id_;
           public_key=public_key_;
           short_name=user_name_;
@@ -1276,7 +1276,7 @@ than the MVP goals, however.
     /**- Record the user information: */
     let id = userTable.addInfoGetId(
       func (id_: T.UserId) : T.UserInfo =
-        new {
+        {
           id = id_;
           user_name = user_name_;
           public_key = public_key_;
@@ -1378,7 +1378,7 @@ than the MVP goals, however.
     let (_, item) = {
       switch (inventoryTable.addInfoAs(iid_,
                 func(iid:T.InventoryId):T.InventoryInfo{
-        new {
+        {
           id        = iid       :T.InventoryId;
           produce   = produce_id:T.ProduceId;
           producer  = id_       :T.ProducerId;
@@ -1407,7 +1407,7 @@ than the MVP goals, however.
     /**- Update the producer document; xxx more concise syntax for functional record updates would be nice: */
     let _ = producerTable.updateDoc(
       producer_.id,
-      new {
+      {
         id = producer_.id;
         public_key = producer_.public_key;
         short_name = producer_.short_name;
@@ -1510,7 +1510,7 @@ than the MVP goals, however.
         producer.inventory, keyOf(id), idIsEq);
 
     /// xxx syntax for functional record updates?
-    let updatedProducer = new {
+    let updatedProducer = {
       id          = producer.id ;
       public_key  = producer.public_key ;
       short_name  = producer.short_name ;
@@ -1600,7 +1600,7 @@ than the MVP goals, however.
     /**- Create the route item document: */
     let route : M.RouteDoc = {
       switch (routeTable.addInfoAs(rid_, func(routeId:T.RouteId):T.RouteInfo{
-        new {
+        {
         id= routeId;
         transporter=transporterId;
         truck_type=truck_type_;
@@ -1628,7 +1628,7 @@ than the MVP goals, however.
     /**- Update the transporter document; xxx more concise syntax for functional record updates would be nice: */
     let _ = transporterTable.updateDoc(
       transporter.id,
-      new {
+      {
         id = transporter.id;
         public_key = transporter.public_key;
         short_name = transporter.short_name;
@@ -1730,7 +1730,7 @@ than the MVP goals, however.
       Trie.remove<T.RouteId, M.RouteDoc>(
         transporter.routes, keyOf(id), idIsEq);
 
-    let updatedTransporter = new {
+    let updatedTransporter = {
       id          = transporter.id ;
       public_key  = transporter.public_key;
       short_name  = transporter.short_name ;
@@ -1816,7 +1816,7 @@ than the MVP goals, however.
   based on the given inventory and route documents.
   */
   public func makeReservationInfo(item:M.InventoryDoc, route:M.RouteDoc) : T.ReservationInfo {
-    new {
+    {
       produce  =item.produce.id :T.ProduceId;
       producer =item.producer   :T.ProducerId;
       quant    =item.quantity   :T.Quantity;
@@ -2175,7 +2175,7 @@ than the MVP goals, however.
     /**- move route document into reserved route table, and mint an ID. */
     let (_, reservedRouteDoc) = reservedRouteTable.addDoc(
       func (rrid:T.ReservedRouteId):M.ReservedRouteDoc {
-        new {
+        {
           id=rrid;
           retailer=retailerDoc.id;
           route=routeDoc;
@@ -2186,7 +2186,7 @@ than the MVP goals, however.
     /**- move inventory document into reserved inventory table, and mint an ID. */
     let (_, reservedInventoryDoc) = reservedInventoryTable.addDoc(
       func (rrid:T.ReservedInventoryId):M.ReservedInventoryDoc {
-        new {
+        {
           id=rrid;
           retailer=retailerDoc.id;
           item=inventoryDoc;
@@ -2211,7 +2211,7 @@ than the MVP goals, however.
           reservedInventoryDoc);
 
       // xxx -- AS wishlist: better syntax for functional record update:
-      let updatedProducer = new {
+      let updatedProducer = {
         id=producerDoc2.id;
         public_key=producerDoc2.public_key;
         short_name=producerDoc2.short_name;
@@ -2235,7 +2235,7 @@ than the MVP goals, however.
           reservedRouteDoc);
 
       // xxx -- AS wishlist: better syntax for functional record update:
-      let updatedTransporter = new {
+      let updatedTransporter = {
         id=transporterDoc2.id;
         public_key=transporterDoc2.public_key;
         short_name=transporterDoc2.short_name;
@@ -2258,7 +2258,7 @@ than the MVP goals, however.
           (reservedInventoryDoc, reservedRouteDoc));
 
       // xxx -- AS wishlist: better syntax for functional record update:
-      let updatedRetailer = new {
+      let updatedRetailer = {
         id=retailerDoc.id;
         public_key=retailerDoc.public_key;
         short_name=retailerDoc.short_name;

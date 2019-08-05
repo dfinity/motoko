@@ -1,6 +1,6 @@
 // Subtyping in patterns
 
-let q : {a : Int; b : Nat} = new {a = -42; b = 25};
+let q : {a : Int; b : Nat} = {a = -42; b = 25};
 
 func get_a () : Int = switch (q) {
   case {a = 25 : Nat} 1;  // NOT OK: Nat cannot consume all Ints

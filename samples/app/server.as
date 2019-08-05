@@ -25,9 +25,9 @@ actor class Server() = {
   };
 
   public func subscribe(aclient : shared Text -> ()) : async T.Subscription {
-    let c = new {id = nextId; client = aclient; var revoked = false};
+    let c = {id = nextId; client = aclient; var revoked = false};
     nextId += 1;
-    let cs = new {head = c; var tail = clients};
+    let cs = {head = c; var tail = clients};
     clients := ?cs;
     return object {
       public shared func post(message : Text) {

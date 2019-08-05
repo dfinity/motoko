@@ -150,7 +150,11 @@ and dec d = match d.it with
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->
     "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-  | ClassD (x, tp, s, p, i', efs) ->
-    "ClassD" $$ id x :: List.map typ_bind tp @ [obj_sort s; pat p; id i'] @ List.map exp_field efs
+  | ClassD (x, tp, p, rt, s, i', efs) ->
+    "ClassD" $$ id x :: List.map typ_bind tp @ [
+      pat p;
+      (match rt with None -> Atom "_" | Some t -> typ t);
+      obj_sort s; id i'
+    ] @ List.map exp_field efs
 
 and prog prog = "BlockE"  $$ List.map dec prog.it

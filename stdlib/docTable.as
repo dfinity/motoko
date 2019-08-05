@@ -342,7 +342,7 @@ public class DocTable<Id,Doc,Info>(
  ===============
  */
 
-  public func keyOfId(x:Id) : Key<Id>     = new { key = x ; hash = idHash(x) };
+  public func keyOfId(x:Id) : Key<Id>     = { key = x ; hash = idHash(x) };
 
   public func getIdIsEq() :(Id,Id)->Bool  = idIsEq;
   public func getIdHash() : Id->Hash      = idHash;

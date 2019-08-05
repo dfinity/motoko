@@ -1,5 +1,5 @@
 //ignore(3);
-ignore(new {});
+ignore({});
 /*
 assert(abs(-3) == 3);
 
