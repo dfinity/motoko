@@ -26,6 +26,10 @@ bool ok_to_trap = false;
 extern ref data_externalize(u32 offset, u32 len) {
   // printf("data_externalize: %d bytes\n", len);
   databuf *db = malloc(sizeof(databuf));
+  if (len > 0 && db == NULL ) {
+    fprintf(stderr, "data_externalize: OOM!\n");
+    exit(1);
+  }
   db->len = len;
   db->data = malloc(len+1);
   memcpy(db->data, Z_mem->data + offset, len);
@@ -106,6 +110,9 @@ int main(int argc, char** argv) {
   /* Initialize the fac module. Since we didn't define WASM_RT_MODULE_PREFIX,
   the initialization function is called `init`. */
   init();
+  // the whole wasm2c embedding behaves badly when it really runs out of memory
+  // so lets run out of memory earlier
+  Z_mem->max_pages = 10000;
   Z_startZ_vv();
 
   ref db = data_of_string(input, input_size);
