@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,10 +73,21 @@ void test_print(ref dbref) {
     ok_to_trap = true;
   };
   printf("%s", db->data);
+  fflush(stdout);
   return;
 }
 
-void (*Z_testZ_printZ_vi)(u32) = &test_print;;
+u32 test_show_i32(u32 x) {
+  char *tmp;
+  asprintf(&tmp, "%u\n", x);
+  ref db = data_of_string(tmp, strlen(tmp));
+  free(tmp);
+  return db;
+}
+
+
+void (*Z_testZ_printZ_vi)(u32) = &test_print;
+u32 (*Z_testZ_show_i32Z_ii)(u32) = &test_show_i32;
 u32 (*Z_dataZ_externalizeZ_iii)(u32, u32) = &data_externalize;
 u32 (*Z_dataZ_lengthZ_ii)(u32) = &data_length;
 void (*Z_dataZ_internalizeZ_viiii)(u32, u32, u32, u32) = &data_internalize;
