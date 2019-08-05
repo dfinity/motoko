@@ -3884,10 +3884,8 @@ module Serialization = struct
             ( E.trap_with env "IDL error: unexpected variant tag" )
         )
       | (Func _ | Obj (Actor, _)) ->
-        DynBuf.get_ptr get_ref_buf ^^
-        load_unskewed_ptr ^^
-        Dfinity.box_reference env ^^
-        DynBuf.advance get_ref_buf (compile_unboxed_const Heap.word_size)
+        DynBuf.read_word32 env get_ref_buf ^^
+        Dfinity.box_reference env
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
