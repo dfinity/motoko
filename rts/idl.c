@@ -18,7 +18,7 @@ uint8_t read_byte(buf *buf) {
 
 /* Code to read (S)LEB128 to ints (traps if does not fit in return type) */
 
-uint32_t read_leb128(buf *buf) {
+export uint32_t read_u32_of_leb128(buf *buf) {
   uint32_t r = 0;
   unsigned int s = 0;
   uint8_t b;
@@ -35,7 +35,7 @@ uint32_t read_leb128(buf *buf) {
   return r;
 }
 
-int32_t read_sleb128(buf *buf) {
+export int32_t read_i32_of_sleb128(buf *buf) {
   uint32_t r = 0;
   unsigned int s = 0;
   uint8_t b;
@@ -106,8 +106,8 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, int32_t *main_type
   if (read_byte(buf) != 'L') idl_trap();
 
   // Create a table for the type description
-  int32_t n_types = read_leb128(buf);
-  // read_leb128 return an uint32_t, we want an int32_t here so that the
+  int32_t n_types = read_u32_of_leb128(buf);
+  // read_u32_of_leb128 return an uint32_t, we want an int32_t here so that the
   // comparisons below work, so lets make sure we did not wrap around in the
   // conversation.
   if (n_types < 0) { idl_trap(); }
@@ -116,49 +116,49 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, int32_t *main_type
   uint8_t **typtbl = (uint8_t **)alloc(n_types * sizeof(uint8_t*));
   for (int i = 0; i < n_types; i++) {
     typtbl[i] = buf->p;
-    int ty = read_sleb128(buf);
+    int ty = read_i32_of_sleb128(buf);
     if (ty >= IDL_PRIM_lowest) {
       idl_trap(); // illegal
     } else if (ty == IDL_CON_opt) {
-      int32_t t = read_sleb128(buf);
+      int32_t t = read_i32_of_sleb128(buf);
       if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
     } else if (ty == IDL_CON_vec) {
-      int32_t t = read_sleb128(buf);
+      int32_t t = read_i32_of_sleb128(buf);
       if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
     } else if (ty == IDL_CON_record) {
-      for (int n = read_leb128(buf); n > 0; n--) {
-        read_leb128(buf);
-        int32_t t = read_sleb128(buf);
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+        read_u32_of_leb128(buf);
+        int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
       }
     } else if (ty == IDL_CON_variant) {
-      for (int n = read_leb128(buf); n > 0; n--) {
-        read_leb128(buf);
-        int32_t t = read_sleb128(buf);
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+        read_u32_of_leb128(buf);
+        int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
       }
     } else if (ty == IDL_CON_func) {
       // arg types
-      for (int n = read_leb128(buf); n > 0; n--) {
-        int32_t t = read_sleb128(buf);
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+        int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
       }
       // ret types
-      for (int n = read_leb128(buf); n > 0; n--) {
-        int32_t t = read_sleb128(buf);
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+        int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
       }
       // annotations
-      for (int n = read_leb128(buf); n > 0; n--) {
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
         (buf->p)++;
       }
     } else if (ty == IDL_CON_service) {
-      for (int n = read_leb128(buf); n > 0; n--) {
+      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
         // name
-        unsigned int size = read_leb128(buf);
+        unsigned int size = read_u32_of_leb128(buf);
         (buf->p) += size;
         // type
-        int32_t t = read_sleb128(buf);
+        int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
       }
     } else {
@@ -167,7 +167,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, int32_t *main_type
     }
   }
   // Now read the main type
-  int32_t t = read_sleb128(buf);
+  int32_t t = read_i32_of_sleb128(buf);
   if (t < IDL_PRIM_lowest || t >= n_types) idl_trap();
 
   *typtbl_out = typtbl;

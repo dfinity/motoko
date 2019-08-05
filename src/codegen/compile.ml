@@ -537,6 +537,7 @@ module RTS = struct
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "read_u32_of_leb128" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
@@ -3638,13 +3639,8 @@ module Serialization = struct
       advance get_buf (compile_unboxed_const 1l)
 
     let read_word env get_buf =
-      (* See TODO (leb128 for i32) *)
-      get_ptr get_buf ^^
-      BigNum.compile_load_from_data_buf_unsigned env ^^
-      let (set_leb_len, get_leb_len) = new_local env "leb_len" in
-      set_leb_len ^^
-      advance get_buf get_leb_len ^^
-      BigNum.to_word32 env
+      get_buf ^^
+      E.call_import env "rts" "read_u32_of_leb128"
 
 
   end (* Buf *)
