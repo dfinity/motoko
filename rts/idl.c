@@ -16,6 +16,13 @@ uint8_t read_byte(buf *buf) {
   return ((buf->p)++)[0];
 }
 
+uint32_t read_word(buf *buf) {
+  if (buf->p + sizeof(uint8_t) > buf->e) (idl_trap());
+  uint32_t r = ((uint32_t*)(buf->p))[0];
+  buf->p += sizeof(uint32_t);
+  return r;
+}
+
 /* Code to read (S)LEB128 to ints (traps if does not fit in return type) */
 
 export uint32_t read_u32_of_leb128(buf *buf) {
@@ -99,11 +106,8 @@ export int32_t read_i32_of_sleb128(buf *buf) {
  *    (again via pointer argument, for lack of multi-value returns in C)
  */
 export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, int32_t *main_type_out) {
-  // Magic bytes
-  if (read_byte(buf) != 'D') idl_trap();
-  if (read_byte(buf) != 'I') idl_trap();
-  if (read_byte(buf) != 'D') idl_trap();
-  if (read_byte(buf) != 'L') idl_trap();
+  // Magic bytes (DIDL)
+  if (read_word(buf) != 0x4C444944) idl_trap();
 
   // Create a table for the type description
   int32_t n_types = read_u32_of_leb128(buf);
