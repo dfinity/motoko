@@ -3,7 +3,7 @@
 /*
 An abstraction for a buffer with and end-pointer.
 
-This mirrors module Serialization.Buf in `compile.ml`
+This mirrors module DynBuf in `compile.ml`
 */
 
 typedef struct {
