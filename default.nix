@@ -155,7 +155,7 @@ rec {
     '';
   };
 
-  qc-actorscript = let pkgs = import <nixpkgs> {}; in pkgs.haskellPackages.callPackage ./nix/qc-actorscript.nix { };
+  qc-actorscript = nixpkgs.haskellPackages.callPackage ./nix/qc-actorscript.nix { };
 
   tests = stdenv.mkDerivation {
     name = "tests";
