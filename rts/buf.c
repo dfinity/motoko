@@ -1,6 +1,8 @@
 #include "rts.h"
 #include "buf.h"
 
+// See comments in buf.h
+
 uint8_t read_byte(buf *buf) {
   if (buf->p >= buf->e) (idl_trap());
   return ((buf->p)++)[0];
