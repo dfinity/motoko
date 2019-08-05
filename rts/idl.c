@@ -31,6 +31,10 @@ export uint32_t read_u32_of_leb128(buf *buf) {
   uint8_t b;
   do {
     b = read_byte(buf);
+    if (s > 0 && b == 0x00) {
+        // The high bytes is all zeroes, this is not a shortest encoding
+        idl_trap();
+    }
     if (s == 28 && !((b & (uint8_t)0xF0) == 0x00)) {
         // the 5th byte needs to be the last, and it must contribute at most 4 bits
         // else we have an int overflow
@@ -46,6 +50,7 @@ export int32_t read_i32_of_sleb128(buf *buf) {
   uint32_t r = 0;
   unsigned int s = 0;
   uint8_t b;
+  bool last_sign_bit_set = 0;
   do {
     b = read_byte(buf);
     if (s == 28 && !((b & (uint8_t)0xF0) == 0x00 || (b & (uint8_t)0xF0) == 0x70)) {
@@ -53,11 +58,16 @@ export int32_t read_i32_of_sleb128(buf *buf) {
         // else we have an int overflow
         idl_trap();
     }
+    if (s > 0 && (b == 0x00 || (last_sign_bit_set && b == 0x8F))) {
+        // The high bytes is all zeroes or ones, so this is not a shortest encoding
+        idl_trap();
+    }
+    last_sign_bit_set = (b & (uint8_t)0x40);
     r += (b & (uint8_t)0x7f) << s;
     s += 7;
   } while (b & (uint8_t)0x80);
   // sign extend
-  if (s < 32 && (b & (uint8_t)0x40)) {
+  if (s < 32 && last_sign_bit_set) {
     r |= ((~(uint32_t)0) << s);
   }
   return r;
@@ -115,6 +125,10 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, int32_t *main_type
   // comparisons below work, so lets make sure we did not wrap around in the
   // conversation.
   if (n_types < 0) { idl_trap(); }
+
+
+  // Early sanity check
+  if (&buf->p[n_types] >= buf->e) { idl_trap() ; }
 
   // Go through the table
   uint8_t **typtbl = (uint8_t **)alloc(n_types * sizeof(uint8_t*));
