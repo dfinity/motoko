@@ -6,7 +6,6 @@ all:
 	$(MAKE) -C ld
 	$(MAKE) -C idl
 	$(MAKE) -C trap
-	(cd random && $(QCAS))
 
 MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPROCESSORS_ONLN) --keep-going
 
@@ -18,7 +17,6 @@ quick:
 	$(MAKE_PAR) -C idl quick
 
 parallel: quick
-	(cd random && $(QCAS))
 	$(MAKE_PAR) -C run-dfinity quick
 	$(MAKE_PAR) -C trap quick
 
@@ -53,6 +51,5 @@ clean:
 	$(MAKE) -C ld clean
 	$(MAKE) -C idl clean
 	$(MAKE) -C trap clean
-#	(cd random && cabal v2-clean)
 
 .PHONY: coverage

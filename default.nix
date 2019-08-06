@@ -164,9 +164,8 @@ rec {
         nixpkgs.nodejs-10_x
         filecheck
         js-client
-        qc-actorscript
       ] ++
-      (if test-dvm then [ real-dvm ] else []) ++
+      (if test-dvm then [ real-dvm qc-actorscript ] else []) ++
       llvmBuildInputs;
 
     buildPhase = ''
@@ -175,12 +174,12 @@ rec {
         export ASC=asc
         export AS_LD=as-ld
         export DIDC=didc
-        export QCAS=qc-actorscript
         export JSCLIENT=${js-client}
         asc --version
       '' +
       (if test-dvm then ''
         make parallel
+        qc-actorscript
       '' else ''
         make quick
       '');
