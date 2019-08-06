@@ -38,6 +38,15 @@ qcProps = testGroup "(checked by QuickCheck)"
   , QC.testProperty "expected successes" $ prop_verifies
   ]
 
+
+
+assertSuccessNoFuzz (exitCode, out, err) = do
+  let fuzzErr = not $ Data.Text.null err
+  when fuzzErr (monitor (counterexample "STDERR:") >> monitor (counterexample . Data.Text.unpack $ err))
+  let fuzzOut = not $ Data.Text.null out
+  when fuzzOut (monitor (counterexample "STDOUT:") >> monitor (counterexample . Data.Text.unpack $ out))
+  assert . not $ ExitSuccess /= exitCode || fuzzOut || fuzzErr
+
 newtype Failing a = Failing a deriving Show
 
 instance Arbitrary (Failing String) where
@@ -51,12 +60,8 @@ prop_rejects (Failing testCase) = monadicIO $ do
                   if ExitSuccess == exitCode
                   then procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
                   else pure res
-  (exitCode, out, err) <- run $ script
-  let fuzzErr = not $ Data.Text.null err
-  when fuzzErr (monitor (counterexample "STDERR:") >> monitor (counterexample . Data.Text.unpack $ err))
-  let fuzzOut = not $ Data.Text.null out
-  when fuzzOut (monitor (counterexample "STDOUT:") >> monitor (counterexample . Data.Text.unpack $ out))
-  assert . not $ ExitSuccess /= exitCode || fuzzOut || fuzzErr
+  run script >>= assertSuccessNoFuzz
+
 
 halve [] = ([], [])
 halve a@[_] = (a, [])
@@ -73,23 +78,19 @@ instance Arbitrary TestCase where
 
 
 
---prop_verifies :: TestCase -> Property
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
-  let --script :: [Shell Line] -> IO (ExitCode, Text)
-      script cases = do Turtle.output "tests.as" $ msum cases
+  let script cases = do Turtle.output "tests.as" $ msum cases
                         res@(exitCode, _, _) <- procStrictWithErr "asc"
                                  ["-no-dfinity-api", "-no-check-ir", "tests.as"] empty
                         if ExitSuccess == exitCode
                         then procStrictWithErr "wasm-interp" ["--enable-multi", "tests.wasm"] empty
                         else pure res
-  (exitCode, out, err) <- run $ script testCase
-  assert (ExitSuccess == exitCode)
-  let --bisect :: ([Shell Line], [Shell Line]) -> IO Text
-      bisect (clowns, jokers) = do
+  res@(exitCode, out, err) <- run $ script testCase
+  pre (ExitSuccess == exitCode)
+  let bisect (clowns, jokers) = do
         (cExitCode, cOut, _) <- script clowns
         (jExitCode, jOut, _) <- script jokers
         case (Data.Text.null cOut, Data.Text.null jOut) of
-             --(True, True) -> pure () -- strangeness: problem resolved itself?
              (False, _) -> if length clowns == 1
                               then do it <- reduce (Fold (<>) empty linesToText) $ sequence clowns
                                       pure it
@@ -97,10 +98,7 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
              (_, False) -> bisect $ halve jokers
   let good = Data.Text.null out
   unless good $ (run . bisect $ halve testCase) >>= monitor . (counterexample . Data.Text.unpack $)
-  assert good
-  let fuzz = not $ Data.Text.null err
-  when fuzz (monitor (counterexample . Data.Text.unpack $ err))
-  assert (not fuzz)
+  assertSuccessNoFuzz res
 
 
 data Off = TwoLess | OneLess | OneMore | TwoMore
