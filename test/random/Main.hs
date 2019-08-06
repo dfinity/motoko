@@ -46,12 +46,17 @@ instance Arbitrary (Failing String) where
 
 prop_rejects (Failing testCase) = monadicIO $ do
   let script = do Turtle.output "fails.as" $ fromString testCase
-                  proc "asc"
+                  res@(exitCode, _, _) <- procStrictWithErr "asc"
                            ["-no-dfinity-api", "-no-check-ir", "fails.as"] empty
-                  procStrict "wasm-interp" ["--enable-multi", "fails.wasm"] empty
-  (exitCode, out) <- run $ script
-  pre (ExitSuccess == exitCode)
-  assert . not $ Data.Text.null out
+                  if ExitSuccess == exitCode
+                  then procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
+                  else pure res
+  (exitCode, out, err) <- run $ script
+  let fuzzErr = not $ Data.Text.null err
+  when fuzzErr (monitor (counterexample "STDERR:") >> monitor (counterexample . Data.Text.unpack $ err))
+  let fuzzOut = not $ Data.Text.null out
+  when fuzzOut (monitor (counterexample "STDOUT:") >> monitor (counterexample . Data.Text.unpack $ out))
+  assert . not $ ExitSuccess /= exitCode || fuzzOut || fuzzErr
 
 halve [] = ([], [])
 halve a@[_] = (a, [])
@@ -72,13 +77,13 @@ instance Arbitrary TestCase where
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
   let --script :: [Shell Line] -> IO (ExitCode, Text)
       script cases = do Turtle.output "tests.as" $ msum cases
-                        res@(exitCode, out, err) <- procStrictWithErr "asc"
+                        res@(exitCode, _, _) <- procStrictWithErr "asc"
                                  ["-no-dfinity-api", "-no-check-ir", "tests.as"] empty
                         if ExitSuccess == exitCode
                         then procStrictWithErr "wasm-interp" ["--enable-multi", "tests.wasm"] empty
                         else pure res
   (exitCode, out, err) <- run $ script testCase
-  pre (ExitSuccess == exitCode)
+  assert (ExitSuccess == exitCode)
   let --bisect :: ([Shell Line], [Shell Line]) -> IO Text
       bisect (clowns, jokers) = do
         (cExitCode, cOut, _) <- script clowns
