@@ -4,7 +4,7 @@ type Result<Ok,Err> = {
 };
 type Result2<Ok> = {
   #ok:Ok;
-  #err:Result<Text,Ok>;
+  #err:Result<Ok,Text>;
 };
 type Result3<Ok> = {
   #ok:Ok;
@@ -17,7 +17,7 @@ actor {
     case null {#err "error"};
   }
  };
- public func g(x:Result3<Text>):async Result2<Int> {
+ public func g(x:Result3<()>):async Result2<Nat> {
   #ok(1);
  };
 }

@@ -1,18 +1,42 @@
 open As_types
 open As_types.Type
-open Source   
+open Source
+open Printf
 module E = As_def.Syntax
 module I = Idllib.Syntax
 
 type label = Nat of Lib.Uint32.t | Id of string
 
-let dec_env = ref ConEnv.empty            
-
+let env = ref Env.empty
+(* For monomorphization *)
+let stamp = ref Env.empty
+let type_map = ref Env.empty
+           
 let normalize str =
-  let illegal_chars = ['-'; '/'] in
+  let illegal_chars = ['-'; '/';] in
   String.map (fun c -> if List.mem c illegal_chars then '_' else c) str
 
-let string_of_con c = normalize (string_of_con c)
+let string_of_con vs c =
+  let name = string_of_con c in
+  match Con.kind c with
+  | Def ([], _) -> normalize name
+  | Def (tbs, _) ->
+     let id = sprintf "%s<%s>" name (String.concat "," (List.map string_of_typ vs)) in
+     let n =
+       match Env.find_opt id !type_map with
+       | None ->
+          (match Env.find_opt name !stamp with
+           | None -> 
+              stamp := Env.add name 1 !stamp;
+              type_map := Env.add id 1 !type_map;
+              1
+           | Some n ->
+              stamp := Env.add name (n+1) !stamp;
+              type_map := Env.add id (n+1) !type_map;
+              n+1)
+       | Some n -> n
+     in Printf.sprintf "%s_%d" (normalize name) n
+  | _ -> assert false
   
 let unescape lab : label =
   let lab = normalize lab in
@@ -54,12 +78,10 @@ let rec typ vs t =
   | Any -> I.PrimT I.Reserved
   | Non -> I.PrimT I.Empty
   | Prim p -> I.PrimT (prim p)
-  | Var (s, i) ->
-     (try (typ vs (List.nth vs i)).it
-      with _ -> assert false)
+  | Var (s, i) -> (typ vs (List.nth vs i)).it
   | Con (c, []) ->
      chase_con vs c;
-     I.VarT (string_of_con c @@ no_region)
+     I.VarT (string_of_con vs c @@ no_region)
   | Con (c, ts) ->
      let ts =
        List.map (fun t ->
@@ -69,8 +91,8 @@ let rec typ vs t =
          ) ts in
      (match Con.kind c with
       | Def (tbs, t) ->
-         assert (List.length tbs = List.length ts);
-         (typ ts t).it
+         chase_con ts c;
+         I.VarT (string_of_con ts c @@ no_region)
       | _ -> assert false)
   | Typ c -> assert false
   | Tup ts ->
@@ -128,12 +150,13 @@ and meths vs fs =
          meth :: list
     ) fs []
 and chase_con vs c =
-  if not (ConEnv.mem c !dec_env) then
+  let id = string_of_con vs c in
+  if not (Env.mem id !env) then
     (match Con.kind c with
-     | Def ([], t) ->
-        dec_env := ConEnv.add c (I.PreT @@ no_region) !dec_env;
-        let t = typ vs t in
-        dec_env := ConEnv.add c t !dec_env
+     | Def (_, t) ->
+         env := Env.add id (I.PreT @@ no_region) !env;
+         let t = typ vs t in
+         env := Env.add id t !env
      | _ -> assert false)
 
 let is_actor_con c =
@@ -147,10 +170,10 @@ let chase_decs env =
     ) env.Scope.con_env
   
 let gather_decs () =
-  ConEnv.fold (fun c t list ->
-      let dec = I.TypD (string_of_con c @@ no_region, t) @@ no_region in
+  Env.fold (fun id t list ->
+      let dec = I.TypD (id @@ no_region, t) @@ no_region in
       dec::list
-    ) !dec_env []
+    ) !env []
 
 let actor progs =
   let open E in
@@ -185,10 +208,10 @@ let actor progs =
      | None -> None
      | Some (id, t) -> Some (I.ActorD (id @@ no_region, typ [] t) @@ no_region)
              
-let prog (progs, env) : I.prog =
-  dec_env := ConEnv.empty;
+let prog (progs, senv) : I.prog =
+  env := Env.empty;
   let actor = actor progs in
-  if actor = None then chase_decs env;
+  if actor = None then chase_decs senv;
   let decs = gather_decs () in  
   let prog = I.{decs = decs; actor = actor} in
   {it = prog; at = no_region; note = ""}
