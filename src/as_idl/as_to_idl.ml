@@ -1,7 +1,6 @@
 open As_types
 open As_types.Type
 open Source   
-open Printf
 module E = As_def.Syntax
 module I = Idllib.Syntax
 
@@ -27,13 +26,6 @@ let unescape lab : label =
     if len >= 2 && lab.[len-1] = '_'
     then Id (String.sub lab 0 (len-1))
     else Id lab
-
-let vars_of_binds vs (tbs : bind list) =
-  let rec name_of_var vs v =
-    match vs with
-    | [] -> v
-    | v'::vs' -> name_of_var vs' (if v = v' then (fst v, snd v + 1) else v) in
-  List.map (fun b -> name_of_var vs (b.var, 0)) tbs
 
 let prim p =
   match p with
