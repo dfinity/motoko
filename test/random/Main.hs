@@ -779,8 +779,6 @@ showWord p a = "(word" <> bitWidth p <> "ToNat(" <> showAS a <> "))" -- TODO we 
 
 
 -- TODOs:
---   - relational operations (Bools)
---   - logical operations (Bools)
 --   - wordToInt
 --   - Pow for Int8
 --   - bitwise ops (btst?)
