@@ -58,7 +58,6 @@ let commonBuildInputs = [
   ocaml_bisect_ppx-ocamlbuild
   nixpkgs.ocamlPackages.ocaml-migrate-parsetree
   nixpkgs.ocamlPackages.ppx_tools_versioned
-  nixpkgs.haskellPackages.cabal2nix
 ]; in
 
 let
@@ -149,7 +148,7 @@ rec {
     '';
   };
 
-  qc-actorscript = nixpkgs.haskellPackages.callPackage ./nix/qc-actorscript.nix { };
+  qc-actorscript = nixpkgs.haskellPackages.callCabal2nix "qc-actorscript" test/random { };
 
   tests = stdenv.mkDerivation {
     name = "tests";
