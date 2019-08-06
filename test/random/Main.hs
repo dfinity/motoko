@@ -2,7 +2,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE GADTs, MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs, MultiParamTypeClasses, TupleSections #-}
 {-# language UndecidableInstances, FlexibleContexts, FlexibleInstances, OverloadedStrings, ViewPatterns, TypeApplications, TypeOperators, ScopedTypeVariables, TypeFamilies #-}
 {-# options_ghc -Wno-missing-methods #-}
 
@@ -40,12 +40,16 @@ qcProps = testGroup "(checked by QuickCheck)"
 
 
 
-assertSuccessNoFuzz (exitCode, out, err) = do
+assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
   when fuzzErr (monitor (counterexample "STDERR:") >> monitor (counterexample . Data.Text.unpack $ err))
   let fuzzOut = not $ Data.Text.null out
-  when fuzzOut (monitor (counterexample "STDOUT:") >> monitor (counterexample . Data.Text.unpack $ out))
-  assert . not $ ExitSuccess /= exitCode || fuzzOut || fuzzErr
+  let fuzzOutRelevant = relevant fuzzOut
+  when (fuzzOut && fuzzOutRelevant)
+           (monitor (counterexample "STDOUT:") >> monitor (counterexample . Data.Text.unpack $ out))
+  assert (if compiled
+          then not $ ExitSuccess /= exitCode || fuzzOutRelevant || fuzzErr
+          else not $ ExitSuccess /= exitCode || fuzzOut || fuzzErr)
 
 newtype Failing a = Failing a deriving Show
 
@@ -58,9 +62,9 @@ prop_rejects (Failing testCase) = monadicIO $ do
                   res@(exitCode, _, _) <- procStrictWithErr "asc"
                            ["-no-dfinity-api", "-no-check-ir", "fails.as"] empty
                   if ExitSuccess == exitCode
-                  then procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
-                  else pure res
-  run script >>= assertSuccessNoFuzz
+                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
+                  else pure (False, res)
+  run script >>= assertSuccessNoFuzz not
 
 
 halve [] = ([], [])
@@ -83,22 +87,23 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
                         res@(exitCode, _, _) <- procStrictWithErr "asc"
                                  ["-no-dfinity-api", "-no-check-ir", "tests.as"] empty
                         if ExitSuccess == exitCode
-                        then procStrictWithErr "wasm-interp" ["--enable-multi", "tests.wasm"] empty
-                        else pure res
-  res@(exitCode, out, err) <- run $ script testCase
-  pre (ExitSuccess == exitCode)
-  let bisect (clowns, jokers) = do
-        (cExitCode, cOut, _) <- script clowns
-        (jExitCode, jOut, _) <- script jokers
-        case (Data.Text.null cOut, Data.Text.null jOut) of
-             (False, _) -> if length clowns == 1
-                              then do it <- reduce (Fold (<>) empty linesToText) $ sequence clowns
-                                      pure it
-                              else bisect $ halve clowns
-             (_, False) -> bisect $ halve jokers
-  let good = Data.Text.null out
-  unless good $ (run . bisect $ halve testCase) >>= monitor . (counterexample . Data.Text.unpack $)
-  assertSuccessNoFuzz res
+                        then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "tests.wasm"] empty
+                        else pure (False, res)
+  res@(compiled, (exitCode, out, err)) <- run $ script testCase
+  when compiled $ do
+    pre (ExitSuccess == exitCode)
+    let bisect (clowns, jokers) =
+            do (True, (cExitCode, cOut, _)) <- script clowns
+               (True, (jExitCode, jOut, _)) <- script jokers
+               case (Data.Text.null cOut, Data.Text.null jOut) of
+                 (False, _) -> if length clowns == 1
+                               then do it <- reduce (Fold (<>) empty linesToText) $ sequence clowns
+                                       pure it
+                               else bisect $ halve clowns
+                 (_, False) -> bisect $ halve jokers
+    let good = Data.Text.null out
+    unless good $ (run . bisect $ halve testCase) >>= monitor . (counterexample . Data.Text.unpack $)
+  assertSuccessNoFuzz id res
 
 
 data Off = TwoLess | OneLess | OneMore | TwoMore
