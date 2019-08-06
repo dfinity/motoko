@@ -27,7 +27,14 @@ let unescape lab : label =
     if len >= 2 && lab.[len-1] = '_'
     then Id (String.sub lab 0 (len-1))
     else Id lab
-       
+
+let vars_of_binds vs (tbs : bind list) =
+  let rec name_of_var vs v =
+    match vs with
+    | [] -> v
+    | v'::vs' -> name_of_var vs' (if v = v' then (fst v, snd v + 1) else v) in
+  List.map (fun b -> name_of_var vs (b.var, 0)) tbs
+
 let prim p =
   match p with
   | Null -> I.Null
@@ -50,37 +57,45 @@ let prim p =
   | Char -> I.Nat32
   | Text -> I.Text
   
-let rec typ t =
+let rec typ vs t =
   (match t with
   | Any -> I.PrimT I.Reserved
   | Non -> I.PrimT I.Empty
   | Prim p -> I.PrimT (prim p)
   | Var (s, i) ->
-     printf "VAR %s.%d" s i;
-     assert false
+     (try (typ vs (List.nth vs i)).it
+      with _ -> assert false)
+  | Con (c, []) ->
+     chase_con vs c;
+     I.VarT (string_of_con c @@ no_region)
   | Con (c, ts) ->
-     (* TODO monomorphization *)
-     let id = 
-     (if List.length ts = 0 then string_of_con c
-        else sprintf "%s<%s>" (string_of_con c) (String.concat ", " (List.map string_of_typ ts))) @@ no_region in
-     chase_con c;
-     I.VarT id
+     let ts =
+       List.map (fun t ->
+           match t with
+           | Var (s, i) -> List.nth vs i
+           | _ -> t
+         ) ts in
+     (match Con.kind c with
+      | Def (tbs, t) ->
+         assert (List.length tbs = List.length ts);
+         (typ ts t).it
+      | _ -> assert false)
   | Typ c -> assert false
   | Tup ts ->
-     I.RecordT (tuple ts)
-  | Array t -> I.VecT (typ t)
-  | Opt t -> I.OptT (typ t)                 
+     I.RecordT (tuple vs ts)
+  | Array t -> I.VecT (typ vs t)
+  | Opt t -> I.OptT (typ vs t)                 
   | Obj (Object, fs) ->
-     I.RecordT (List.map field fs)
-  | Obj (Actor, fs) -> I.ServT (meths fs)
+     I.RecordT (List.map (field vs) fs)
+  | Obj (Actor, fs) -> I.ServT (meths vs fs)
   | Obj (Module, _) -> assert false
   | Variant fs ->
-     I.VariantT (List.map field fs)
+     I.VariantT (List.map (field vs) fs)
   | Func (Shared, c, [], ts1, ts2) ->
-     let fs1 = tuple ts1 in
+     let fs1 = tuple vs ts1 in
      (match ts2 with
      | [] when c = Returns -> I.FuncT ([I.Oneway @@ no_region], fs1, [])
-     | [Async t] when c = Promises -> I.FuncT ([], fs1, tuple [t])
+     | [Async t] when c = Promises -> I.FuncT ([], fs1, tuple vs [t])
      | _ -> assert false)
   | Func _ -> assert false
   | Async t -> assert false
@@ -88,46 +103,46 @@ let rec typ t =
   | Serialized t -> assert false
   | Pre -> assert false                  
   ) @@ no_region
-and field {lab; typ=t} =
+and field vs {lab; typ=t} =
   match unescape lab with
   | Nat nat ->
      let name = Lib.Uint32.to_string nat @@ no_region in
-     I.{id = nat; name = name; typ = typ t} @@ no_region
+     I.{id = nat; name = name; typ = typ vs t} @@ no_region
   | Id id -> 
      let name = id @@ no_region in
      let id = Idllib.IdlHash.idl_hash id in
-     I.{id = id; name = name; typ = typ t} @@ no_region
-and tuple ts =
+     I.{id = id; name = name; typ = typ vs t} @@ no_region
+and tuple vs ts =
   List.mapi (fun i x ->
       let id = Lib.Uint32.of_int i in
       let name = Lib.Uint32.to_string id @@ no_region in
-      I.{id = id; name = name; typ = typ x} @@ no_region
+      I.{id = id; name = name; typ = typ vs x} @@ no_region
     ) ts
-and meths fs =
+and meths vs fs =
   List.fold_right (fun f list ->
       match f.typ with
       | Typ c ->
-         chase_con c;
+         chase_con vs c;
          list
       | _ ->
          let meth =
            match unescape f.lab with
            | Nat nat ->
               I.{var = Lib.Uint32.to_string nat @@ no_region;
-                 meth = typ f.typ} @@ no_region
+                 meth = typ vs f.typ} @@ no_region
            | Id id ->
               I.{var = id @@ no_region;
-                 meth = typ f.typ} @@ no_region in
+                 meth = typ vs f.typ} @@ no_region in
          meth :: list
     ) fs []
-and chase_con c =
+and chase_con vs c =
   if not (ConEnv.mem c !dec_env) then
     (match Con.kind c with
      | Def ([], t) ->
         dec_env := ConEnv.add c (I.PreT @@ no_region) !dec_env;
-        let t = typ t in
+        let t = typ vs t in
         dec_env := ConEnv.add c t !dec_env
-     | _ -> ())
+     | _ -> assert false)
 
 let is_actor_con c =
   match Con.kind c with
@@ -136,7 +151,7 @@ let is_actor_con c =
 
 let chase_decs env =
   ConSet.iter (fun c ->
-      if is_actor_con c then chase_con c
+      if is_actor_con c then chase_con [] c
     ) env.Scope.con_env
   
 let gather_decs () =
@@ -150,10 +165,16 @@ let actor progs =
   let find_last_actor (prog : prog) =
     let anon = normalize ("anon_" ^ (Filename.remove_extension prog.note)) in
     let check_dec d t def =
+      let rec check_pat p =
+        match p.it with
+        | WildP -> Some (anon, t)
+        | VarP id -> Some (id.it, t)
+        | ParP p -> check_pat p
+        | _ -> def
+      in
       match d.it with
       | ExpD _ -> Some (anon, t)
-      | LetD ({it=WildP;_}, _) -> Some (anon, t)                      
-      | LetD ({it=VarP id;_}, _) -> Some (id.it, t)
+      | LetD (pat, _) -> check_pat pat
       | _ -> def
     in
     List.fold_left
@@ -170,7 +191,7 @@ let actor progs =
      let prog = Lib.List.last progs in
      match find_last_actor prog with
      | None -> None
-     | Some (id, t) -> Some (I.ActorD (id @@ no_region, typ t) @@ no_region)
+     | Some (id, t) -> Some (I.ActorD (id @@ no_region, typ [] t) @@ no_region)
              
 let prog (progs, env) : I.prog =
   dec_env := ConEnv.empty;

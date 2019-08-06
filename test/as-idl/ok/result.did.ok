@@ -1,0 +1,7 @@
+type Text = text;
+type Nat = nat;
+type Int = int;
+service anon_result {
+f : (opt Nat) -> (variant {err : Text; ok : Nat});
+g : (variant {err : variant {err : variant {err : Text; ok : Text}; ok : Text}; ok : Text}) -> (variant {err : variant {err : Int; ok : Text}; ok : Int});
+}
