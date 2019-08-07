@@ -25,6 +25,7 @@ e = x
   | return e
 ```
 
+
 The aim of game is to remove async and await by a source-to-source translation, leaving as much code as possible in direct-style.
 
 Terms have effect `T` (trivial) or `A` (await) with `T` < `A`. A term has effect `A` if any subterm not enclosed by `async` is `await`.
