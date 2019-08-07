@@ -160,7 +160,6 @@ instance Arbitrary (Neuralgic Int64) where
 
 
 
-
 instance Arbitrary (Neuralgic Word8) where
   arbitrary = fmap WordN <$> trapWord 8 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 5, AroundNeg 8, AroundPos 3, AroundPos 5, AroundPos 8]
 
@@ -172,6 +171,7 @@ instance Arbitrary (Neuralgic Word32) where
 
 instance Arbitrary (Neuralgic Word64) where
   arbitrary = fmap WordN <$> trapWord 64 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 11, AroundNeg 21, AroundNeg 31, AroundNeg 42, AroundNeg 64, AroundPos 6, AroundPos 14, AroundPos 27, AroundPos 43, AroundPos 57, AroundPos 64]
+
 
 data ActorScriptTerm a
   = About a
@@ -200,7 +200,6 @@ data ActorScriptTerm a
   | forall n . KnownNat n => ConvertNat (ActorScriptTerm (Neuralgic (BitLimited n Natural)))
   | forall n . KnownNat n => ConvertInt (ActorScriptTerm (Neuralgic (BitLimited n Integer)))
   | forall n . WordLike n => ConvertWord (ActorScriptTerm (Neuralgic (BitLimited n Word)))
-  -- | ActorScriptTerm a `Rel` ActorScriptTerm a
   | Rel (ActorScriptTyped Bool)
   | IfThenElse (ActorScriptTerm a) (ActorScriptTerm a) (ActorScriptTyped Bool) -- cond is last!
 
@@ -218,7 +217,7 @@ deriving instance Show (ActorScriptTyped t)
 
 subTerm :: Arbitrary (ActorScriptTerm t) => Int -> Bool -> [(Int, Gen (ActorScriptTerm t))]
 subTerm n fullPow =
-    [(1, resize (n `div` 5) $ Pow <$> arbitrary <*> arbitrary) | fullPow] ++
+    [ (1, resize (n `div` 5) $ Pow <$> arbitrary <*> arbitrary) | fullPow] ++
     [ (n, resize (n `div` 3) $ Add <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Sub <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Mul <$> arbitrary <*> arbitrary)
@@ -258,67 +257,52 @@ bitwiseTerm n =
     , (n `div` 5, Ctz <$> arbitrary)
     ]
 
+-- generate reasonably formed trees from subterms
+--
+reasonablyShaped :: Arbitrary a
+                 => (Int -> [(Int, Gen (ActorScriptTerm a))])
+                 -> Gen (ActorScriptTerm a)
+reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
+                       (30 `div` n, About <$> arbitrary)
+                       : if n > 1 then sub n else []
+
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat8)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTerm n True else []
+  arbitrary = reasonablyShaped $ \n -> subTerm n True{-TODO: EVALUATOR can up to 5 only!-}
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat16)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTermPow n (`Mod` Five) else []
+  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five)
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat32)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTermPow n (`Mod` Five) else []
+  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five)
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat64)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTermPow n (`Mod` Five) else []
+  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five)
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int8)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTerm n False{-TODO-} else []
+  arbitrary = reasonablyShaped $ \n -> subTerm n False{-TODO-}
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int16)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTermPow5 n else []
+  arbitrary = reasonablyShaped $ \n -> subTermPow5 n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int32)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTermPow5 n else []
+  arbitrary = reasonablyShaped $ \n -> subTermPow5 n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int64)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTermPow5 n else []
+  arbitrary = reasonablyShaped $ \n -> subTermPow5 n
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word8)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTerm n True <> bitwiseTerm n else []
+  arbitrary = reasonablyShaped $ \n -> subTerm n True{-TODO: EVALUATOR can up to 5 only!-} <> bitwiseTerm n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word16)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTermPow n (`Mod` Five) <> bitwiseTerm n else []
+  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five) <> bitwiseTerm n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word32)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTermPow n (`Mod` Five) <> bitwiseTerm n else []
+  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five) <> bitwiseTerm n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word64)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    subTermPow n (`Mod` Five) <> bitwiseTerm n else []
+  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five) <> bitwiseTerm n
 
 
 instance Arbitrary (ActorScriptTyped Bool) where
@@ -331,23 +315,21 @@ instance Arbitrary (ActorScriptTyped Bool) where
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Natural)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
-    [ (n, resize (n `div` 3) $ Add <$> arbitrary <*> arbitrary)
+  arbitrary = reasonablyShaped $ \n ->
+    [ (n, resize (n `div` 3) $ Add <$> arbitrary <*> arbitrary) -- TODO: use subTerm or similar
     , (n, resize (n `div` 3) $ Sub <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Mul <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Div <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Mod <$> arbitrary <*> arbitrary)
-    , (n, resize (n `div` 5) $ Pow <$> arbitrary <*> (reasonable <$> arbitrary))] else []
+    , (n, resize (n `div` 5) $ Pow <$> arbitrary <*> (reasonable <$> arbitrary))]
       where reasonable x = Abs x `Mod` Five
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Integer)) where
-  arbitrary = sized $ \(succ -> n) -> frequency $
-    (30 `div` n, About <$> arbitrary) : if n > 1 then
+  arbitrary = reasonablyShaped $ \n ->
     [ (n, resize (n `div` 2) $ Pos <$> arbitrary)
     , (n, resize (n `div` 2) $ Neg <$> arbitrary)
     , (n, resize (n `div` 2) $ Abs <$> arbitrary)
-    , (n, resize (n `div` 3) $ Add <$> arbitrary <*> arbitrary)
+    , (n, resize (n `div` 3) $ Add <$> arbitrary <*> arbitrary) -- TODO: use subTerm or similar
     , (n, resize (n `div` 3) $ Sub <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Mul <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Div <$> arbitrary <*> arbitrary)
@@ -366,7 +348,7 @@ instance Arbitrary (ActorScriptTerm (Neuralgic Integer)) where
     , (n `div` 3, ConvertInt <$> (arbitrary :: Gen (ActorScriptTerm (Neuralgic Int16))))
     , (n `div` 3, ConvertInt <$> (arbitrary :: Gen (ActorScriptTerm (Neuralgic Int32))))
     , (n `div` 3, ConvertInt <$> (arbitrary :: Gen (ActorScriptTerm (Neuralgic Int64))))
-    ] else []
+    ]
       where reasonable x = Abs x `Mod` Five
 
 instance Num a => Num (Maybe a) where
