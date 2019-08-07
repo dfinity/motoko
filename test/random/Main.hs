@@ -215,8 +215,8 @@ data ActorScriptTyped :: * -> * where
   Bool :: Bool -> ActorScriptTyped Bool
 deriving instance Show (ActorScriptTyped t)
 
-subTerm :: Arbitrary (ActorScriptTerm t) => Int -> Bool -> [(Int, Gen (ActorScriptTerm t))]
-subTerm n fullPow =
+subTerm :: Arbitrary (ActorScriptTerm t) => Bool -> Int -> [(Int, Gen (ActorScriptTerm t))]
+subTerm fullPow n =
     [ (1, resize (n `div` 5) $ Pow <$> arbitrary <*> arbitrary) | fullPow] ++
     [ (n, resize (n `div` 3) $ Add <$> arbitrary <*> arbitrary)
     , (n, resize (n `div` 3) $ Sub <$> arbitrary <*> arbitrary)
@@ -226,9 +226,9 @@ subTerm n fullPow =
     , (n, resize (n `div` 4) $ IfThenElse <$> arbitrary <*> arbitrary <*> arbitrary)
     ]
 
-subTermPow :: Arbitrary (ActorScriptTerm t) => Int -> (ActorScriptTerm t -> ActorScriptTerm t) -> [(Int, Gen (ActorScriptTerm t))]
-subTermPow n mod = (n, resize (n `div` 5) $ Pow <$> arbitrary <*> (mod <$> arbitrary))
-                   : subTerm n False
+subTermPow :: Arbitrary (ActorScriptTerm t) => (ActorScriptTerm t -> ActorScriptTerm t) -> Int -> [(Int, Gen (ActorScriptTerm t))]
+subTermPow mod n = (n, resize (n `div` 5) $ Pow <$> arbitrary <*> (mod <$> arbitrary))
+                   : subTerm False n
 
 subTermPow5 :: Arbitrary (ActorScriptTerm (Neuralgic t))
                => Int -> [(Int, Gen (ActorScriptTerm (Neuralgic t)))]
@@ -240,7 +240,7 @@ subTermPow5 n = (n, resize (n `div` 5)
                                                     , AroundPos 1 `Offset` OneMore
                                                     , AroundPos 2
                                                     ]))
-                : subTerm n False
+                : subTerm False n
 
 bitwiseTerm :: Arbitrary (ActorScriptTerm t) => Int -> [(Int, Gen (ActorScriptTerm t))]
 bitwiseTerm n =
@@ -267,42 +267,42 @@ reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
                        : if n > 1 then sub n else []
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat8)) where
-  arbitrary = reasonablyShaped $ \n -> subTerm n True{-TODO: EVALUATOR can up to 5 only!-}
+  arbitrary = reasonablyShaped $ \n -> subTerm True{-TODO: EVALUATOR can up to 5 only!-} n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat16)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five)
+  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat32)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five)
+  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat64)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five)
+  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int8)) where
-  arbitrary = reasonablyShaped $ \n -> subTerm n False{-TODO-}
+  arbitrary = reasonablyShaped $ \n -> subTerm False{-TODO-} n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int16)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow5 n
+  arbitrary = reasonablyShaped subTermPow5
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int32)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow5 n
+  arbitrary = reasonablyShaped subTermPow5
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int64)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow5 n
+  arbitrary = reasonablyShaped subTermPow5
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word8)) where
-  arbitrary = reasonablyShaped $ \n -> subTerm n True{-TODO: EVALUATOR can up to 5 only!-} <> bitwiseTerm n
+  arbitrary = reasonablyShaped $ \n -> subTerm True{-TODO: EVALUATOR can up to 5 only!-} n <> bitwiseTerm n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word16)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five) <> bitwiseTerm n
+  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n <> bitwiseTerm n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word32)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five) <> bitwiseTerm n
+  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n <> bitwiseTerm n
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word64)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow n (`Mod` Five) <> bitwiseTerm n
+  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n <> bitwiseTerm n
 
 
 instance Arbitrary (ActorScriptTyped Bool) where
