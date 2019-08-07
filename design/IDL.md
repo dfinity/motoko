@@ -130,7 +130,7 @@ We also support polymorphic type definitions as syntactic shorthands that will b
 <typ-args>   ::= < <typ>,* >
 ```
 
-Polymorphism is only allowed in the type definitions. `<reftype>` and `<actor>` is always monomorphic. Type definitions are duplicated (monomorphized) to the basic forms according to the different instantiations of `<typ-args>`. For example, the following code
+Polymorphism is only allowed in the type definitions. `<reftype>` and `<actor>` are always monomorphic. Type definitions are duplicated (monomorphized) to the basic forms according to the different instantiations of `<typ-args>`. For example, the following code
 
 ```
 type List<A> = record { head : A; tail : List<A> };
