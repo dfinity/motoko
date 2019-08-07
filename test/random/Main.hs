@@ -293,16 +293,16 @@ instance Arbitrary (ActorScriptTerm (Neuralgic Int64)) where
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word8)) where
-  arbitrary = reasonablyShaped $ \n -> subTerm True{-TODO: EVALUATOR can up to 5 only!-} n <> bitwiseTerm n
+  arbitrary = reasonablyShaped $ (<>) <$> subTerm True{-TODO: EVALUATOR can up to 5 only!-} <*> bitwiseTerm
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word16)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n <> bitwiseTerm n
+  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word32)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n <> bitwiseTerm n
+  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word64)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n <> bitwiseTerm n
+  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
 
 
 instance Arbitrary (ActorScriptTyped Bool) where
