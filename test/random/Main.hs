@@ -397,6 +397,8 @@ guardedEvalN g (g . evalN -> res) = res
 
 class Restricted a where
   substractable :: Maybe a -> Maybe a -> Bool
+  exponentiable :: (Num a, Ord a) => a -> Maybe ()
+  exponentiable b = guard $ b >= 0 && b < 5
 
 instance Restricted Integer where substractable _ _ = True
 instance Restricted Natural where substractable a b = isJust $ do m <- a; n <- b; guard $ m >= n
@@ -609,9 +611,9 @@ eval ((eval -> a) `Sub` (eval -> b)) = do guard $ substractable a b; a - b
 eval (a `Mul` b) = eval a * eval b
 eval (a `Div` b) = eval a `quot` eval b
 eval (a `Mod` b) = eval a `rem` eval b
-eval (a `Pow` b) = do b <- eval b
-                      guard $ b >= 0 && b < 5
-                      (^) <$> eval a <*> pure b
+eval (a `Pow` (eval -> b)) = do b' <- b
+                                exponentiable b'
+                                (^) <$> eval a <*> b
 eval (ConvertNatural t) = fromIntegral <$> evaluate t
 eval (ConvertNat t) = fromIntegral <$> evaluate t
 eval (ConvertInt t) = fromIntegral <$> evaluate t
