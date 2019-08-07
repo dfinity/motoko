@@ -1,9 +1,8 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE GADTs, MultiParamTypeClasses, TupleSections #-}
-{-# language UndecidableInstances, FlexibleContexts, FlexibleInstances, OverloadedStrings, ViewPatterns, TypeApplications, TypeOperators, ScopedTypeVariables, TypeFamilies #-}
+{-# language ConstraintKinds, DataKinds, FlexibleContexts, FlexibleInstances, GADTs
+           , KindSignatures, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving
+           , TypeApplications, TypeOperators, TypeFamilies, TupleSections
+           , UndecidableInstances, ViewPatterns #-}
+
 {-# options_ghc -Wno-missing-methods #-}
 
 module Main where
