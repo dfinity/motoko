@@ -60,7 +60,7 @@ This is a summary of the grammar proposed:
 ```
 <prog>  ::= <def>;* <actor>;?
 <def>   ::= type <id> = <datatype> | import <text>
-<actor> ::= service <id> : (<actortype> | <id>)
+<actor> ::= service <id> (<actortype> | : <id>)
 
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
@@ -115,6 +115,34 @@ In addition to this basic grammar, a few syntactic shorthands are supported that
   | <datatype>             :=  N : <datatype>  where N is either 0 or previous + 1  (only in records)
   | <nat>                  :=  <nat> : null   (only in variants)
   | <name>                 :=  <name> : null  (only in variants)
+```
+
+We also support polymorphic type definitions as syntactic shorthands that will be compiled to the basic forms:
+
+```
+<def> ::= ... 
+  | type <id> <typ-params> = <datatype>
+
+<datatype> ::= ...
+  | <id> <typ-args>
+  
+<typ-params> ::= < <id>,* >
+<typ-args>   ::= < <typ>,* >
+```
+
+Polymorphism is only allowed in the type definitions. `<reftype>` and `<actor>` is always monomorphic. Type definitions are duplicated (monomorphized) to the basic forms according to the different instantiations of `<typ-args>`. For example, the following code
+
+```
+type List<A> = record { head : A; tail : List<A> };
+type f = func (List<Nat>) -> (List<Int>);
+```
+
+will be translated to the following IDL definitions:
+
+```
+type List_1 = record { head : Nat; tail : List_1 };
+type List_2 = record { head : Int; tail : List_2 };
+type f = func (List_1) -> (List_2);
 ```
 
 #### Comments
