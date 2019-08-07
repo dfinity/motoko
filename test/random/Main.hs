@@ -684,26 +684,29 @@ instance KnownNat bits => Literal (BitLimited bits Word) where
 instance Literal Bool where
   literal _ = undefined
 
+inParens :: (a -> String) -> String -> a -> a -> String
+inParens to op lhs rhs = "(" <> to lhs <> " " <> op <> " " <> to rhs <> ")"
+
 showAS :: (Annot a, Literal a) => ActorScriptTerm (Neuralgic a) -> String
 showAS f@Five = annot f "5"
 showAS a@(About n) = annot a $ literal n
 showAS (Pos n) = "(+" <> showAS n <> ")"
 showAS (Neg n) = "(-" <> showAS n <> ")"
 showAS (Abs n) = "(abs " <> showAS n <> ")"
-showAS (a `Add` b) = "(" <> showAS a <> " + " <> showAS b <> ")"
-showAS (a `Sub` b) = annot a $ "(" <> showAS a <> " - " <> showAS b <> ")"
-showAS (a `Mul` b) = "(" <> showAS a <> " * " <> showAS b <> ")"
-showAS (a `Div` b) = "(" <> showAS a <> " / " <> showAS b <> ")"
-showAS (a `Mod` b) = "(" <> showAS a <> " % " <> showAS b <> ")"
-showAS (a `Pow` b) = "(" <> showAS a <> " ** " <> showAS b <> ")"
-showAS (a `Or` b) = "(" <> showAS a <> " | " <> showAS b <> ")"
-showAS (a `And` b) = "(" <> showAS a <> " & " <> showAS b <> ")"
-showAS (a `Xor` b) = "(" <> showAS a <> " ^ " <> showAS b <> ")"
-showAS (a `RotL` b) = "(" <> showAS a <> " <<> " <> showAS b <> ")"
-showAS (a `RotR` b) = "(" <> showAS a <> " <>> " <> showAS b <> ")"
-showAS (a `ShiftL` b) = "(" <> showAS a <> " << " <> showAS b <> ")"
-showAS (a `ShiftR` b) = "(" <> showAS a <> " >> " <> showAS b <> ")"
-showAS (a `ShiftRSigned` b) = "(" <> showAS a <> " +>> " <> showAS b <> ")"
+showAS (a `Add` b) = inParens showAS "+" a b
+showAS (a `Sub` b) = annot a $ inParens showAS "-" a b
+showAS (a `Mul` b) = inParens showAS "*" a b
+showAS (a `Div` b) = inParens showAS "/" a b
+showAS (a `Mod` b) = inParens showAS "%" a b
+showAS (a `Pow` b) = inParens showAS "**" a b
+showAS (a `Or` b) = inParens showAS "|" a b
+showAS (a `And` b) = inParens showAS "&" a b
+showAS (a `Xor` b) = inParens showAS "^" a b
+showAS (a `RotL` b) = inParens showAS "<<>" a b
+showAS (a `RotR` b) = inParens showAS "<>>" a b
+showAS (a `ShiftL` b) = inParens showAS "<<" a b
+showAS (a `ShiftR` b) = inParens showAS ">>" a b
+showAS (a `ShiftRSigned` b) = inParens showAS "+>>" a b
 showAS (PopCnt n) = sizeSuffix n "(popcntWord" <> " " <> showAS n <> ")"
 showAS (Clz n) = sizeSuffix n "(clzWord" <> " " <> showAS n <> ")"
 showAS (Ctz n) = sizeSuffix n "(ctzWord" <> " " <> showAS n <> ")"
@@ -715,15 +718,15 @@ showAS (Rel r) = showBool r
 showAS (IfThenElse a b c) = "(if (" <> showBool c <> ") " <> showAS a <> " else " <> showAS b <> ")"
 
 showBool :: ActorScriptTyped Bool -> String
-showBool (a `NotEqual` b) = "(" <> showAS a <> " != " <> showAS b <> ")" -- for now!
-showBool (a `Equals` b) = "(" <> showAS a <> " == " <> showAS b <> ")" -- for now!
-showBool (a `GreaterEqual` b) = "(" <> showAS a <> " >= " <> showAS b <> ")" -- for now!
-showBool (a `Greater` b) = "(" <> showAS a <> " > " <> showAS b <> ")" -- for now!
-showBool (a `LessEqual` b) = "(" <> showAS a <> " <= " <> showAS b <> ")" -- for now!
-showBool (a `Less` b) = "(" <> showAS a <> " < " <> showAS b <> ")" -- for now!
-showBool (a `ShortAnd` b) = "(" <> showBool a <> " and " <> showBool b <> ")" -- for now!
-showBool (a `ShortOr` b) = "(" <> showBool a <> " or " <> showBool b <> ")" -- for now!
-showBool (Not a) = "(not " <> showBool a <> ")" -- for now!
+showBool (a `NotEqual` b) = inParens showAS "!=" a b
+showBool (a `Equals` b) = inParens showAS "==" a b
+showBool (a `GreaterEqual` b) = inParens showAS ">=" a b
+showBool (a `Greater` b) = inParens showAS ">" a b
+showBool (a `LessEqual` b) = inParens showAS "<=" a b
+showBool (a `Less` b) = inParens showAS "<" a b
+showBool (a `ShortAnd` b) = inParens showBool "and" a b
+showBool (a `ShortOr` b) = inParens showBool "or" a b
+showBool (Not a) = "(not " <> showBool a <> ")"
 showBool (Bool False) = "false"
 showBool (Bool True) = "true"
 
