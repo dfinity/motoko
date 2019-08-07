@@ -122,55 +122,41 @@ instance Arbitrary (Neuralgic Integer) where
   arbitrary = frequency [ (5, elements [LargeNeg, AroundNeg 63, AroundNeg 30, Around0, AroundPos 30, AroundPos 63, LargePos])
                         , (8, Offset <$> arbitrary <*> arbitrary)]
 
+
+pred `guardedFrom` set = frequency [ (5, elements set)
+                                   , (3, Offset <$> arbitrary <*> arbitrary)]
+                         `suchThat` (isJust . guardedEvalN pred)
+infix 1 `guardedFrom`
+
 instance Arbitrary (Neuralgic Natural) where
-  arbitrary = frequency [ (5, elements [Around0, AroundPos 30, AroundPos 63, LargePos])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
-              `suchThat` (isJust . guardedEvalN (\n -> if n >= 0 then pure (fromIntegral n) else Nothing))
+  arbitrary =  (\n -> if n >= 0 then pure (fromIntegral n) else Nothing)
+               `guardedFrom` [Around0, AroundPos 30, AroundPos 63, LargePos]
 
 instance Arbitrary (Neuralgic Nat8) where
-  arbitrary = frequency [ (5, elements [Around0, AroundPos 3, AroundPos 5, AroundPos 8])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
-              `suchThat` (isJust . guardedEvalN (fmap NatN <$> trapNat 8))
+  arbitrary = fmap NatN <$> trapNat 8 `guardedFrom` [Around0, AroundPos 3, AroundPos 5, AroundPos 8]
 
 instance Arbitrary (Neuralgic Nat16) where
-  arbitrary = frequency [ (5, elements [Around0, AroundPos 3, AroundPos 5, AroundPos 8, AroundPos 13, AroundPos 16])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
-              `suchThat` (isJust . guardedEvalN (fmap NatN <$> trapNat 16))
+  arbitrary = fmap NatN <$> trapNat 16 `guardedFrom` [Around0, AroundPos 3, AroundPos 5, AroundPos 8, AroundPos 13, AroundPos 16]
 
 instance Arbitrary (Neuralgic Nat32) where
-  arbitrary = frequency [ (5, elements [Around0, AroundPos 8, AroundPos 13, AroundPos 16, AroundPos 23, AroundPos 32])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
-              `suchThat` (isJust . guardedEvalN (fmap NatN <$> trapNat 32))
+  arbitrary = fmap NatN <$> trapNat 32 `guardedFrom` [Around0, AroundPos 8, AroundPos 13, AroundPos 16, AroundPos 23, AroundPos 32]
 
 instance Arbitrary (Neuralgic Nat64) where
-  arbitrary = frequency [ (5, elements [Around0, AroundPos 8, AroundPos 13, AroundPos 23, AroundPos 31, AroundPos 47, AroundPos 64])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
-              `suchThat` (isJust . guardedEvalN (fmap NatN <$> trapNat 64))
-
-
+  arbitrary = fmap NatN <$> trapNat 64 `guardedFrom` [Around0, AroundPos 8, AroundPos 13, AroundPos 23, AroundPos 31, AroundPos 47, AroundPos 64]
 
 
 
 instance Arbitrary (Neuralgic Int8) where
-  arbitrary = frequency [ (5, elements [Around0, AroundNeg 3, AroundNeg 5, AroundNeg 7, AroundPos 3, AroundPos 5, AroundPos 7])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
-              `suchThat` (isJust . guardedEvalN (fmap IntN <$> trapInt 8))
-
+  arbitrary = fmap IntN <$> trapInt 8 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 5, AroundNeg 7, AroundPos 3, AroundPos 5, AroundPos 7]
 
 instance Arbitrary (Neuralgic Int16) where
-  arbitrary = frequency [ (5, elements [Around0, AroundNeg 3, AroundNeg 7, AroundNeg 10, AroundNeg 15, AroundPos 3, AroundPos 8, AroundPos 10, AroundPos 15])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
-              `suchThat` (isJust . guardedEvalN (fmap IntN <$> trapInt 16))
+  arbitrary = fmap IntN <$> trapInt 16 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 7, AroundNeg 10, AroundNeg 15, AroundPos 3, AroundPos 8, AroundPos 10, AroundPos 15]
 
 instance Arbitrary (Neuralgic Int32) where
-  arbitrary = frequency [ (5, elements [Around0, AroundNeg 3, AroundNeg 17, AroundNeg 27, AroundNeg 31, AroundPos 3, AroundPos 18, AroundPos 25, AroundPos 31])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
-              `suchThat` (isJust . guardedEvalN (fmap IntN <$> trapInt 32))
+  arbitrary = fmap IntN <$> trapInt 32 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 17, AroundNeg 27, AroundNeg 31, AroundPos 3, AroundPos 18, AroundPos 25, AroundPos 31]
 
 instance Arbitrary (Neuralgic Int64) where
-  arbitrary = frequency [ (5, elements [Around0, AroundNeg 9, AroundNeg 27, AroundNeg 51, AroundNeg 63, AroundPos 10, AroundPos 28, AroundPos 55, AroundPos 63])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
-              `suchThat` (isJust . guardedEvalN (fmap IntN <$> trapInt 64))
+  arbitrary = fmap IntN <$> trapInt 64 `guardedFrom` [Around0, AroundNeg 9, AroundNeg 27, AroundNeg 51, AroundNeg 63, AroundPos 10, AroundPos 28, AroundPos 55, AroundPos 63]
 
 
 
