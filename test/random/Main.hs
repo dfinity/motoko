@@ -267,20 +267,20 @@ reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
                        : if n > 1 then sub n else []
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat8)) where
-  arbitrary = reasonablyShaped $ \n -> subTerm True{-TODO: EVALUATOR can up to 5 only!-} n
+  arbitrary = reasonablyShaped $ subTerm True{-TODO: EVALUATOR can up to 5 only!-}
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat16)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n
+  arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat32)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n
+  arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat64)) where
-  arbitrary = reasonablyShaped $ \n -> subTermPow (`Mod` Five) n
+  arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int8)) where
-  arbitrary = reasonablyShaped $ \n -> subTerm False{-TODO-} n
+  arbitrary = reasonablyShaped $ subTerm False{-TODO-}
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int16)) where
   arbitrary = reasonablyShaped subTermPow5
