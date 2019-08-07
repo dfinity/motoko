@@ -46,9 +46,7 @@ assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzOutRelevant = relevant fuzzOut
   when (fuzzOut && fuzzOutRelevant)
            (monitor (counterexample "STDOUT:") >> monitor (counterexample . Data.Text.unpack $ out))
-  assert (if compiled
-          then not $ ExitSuccess /= exitCode || fuzzOutRelevant || fuzzErr
-          else not $ ExitSuccess /= exitCode || fuzzOut || fuzzErr)
+  assert (not $ ExitSuccess /= exitCode || (if compiled then fuzzOutRelevant else fuzzOut) || fuzzErr)
 
 newtype Failing a = Failing a deriving Show
 
