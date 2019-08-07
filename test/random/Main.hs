@@ -415,13 +415,8 @@ evalN (Offset (evalN -> n) (evalO -> o)) = o n
 
 
 guardedEvalN :: Integral a => (Integer -> Maybe a) -> Neuralgic a -> Maybe a
-guardedEvalN g LargeNeg = g $ toInteger (minBound :: Int) - 111
-guardedEvalN g (AroundNeg n) = g $ - 2 ^ n
-guardedEvalN g Around0 = g 0
-guardedEvalN g (AroundPos n) = g $ 2 ^ n - 1
-guardedEvalN g LargePos = g $ fromIntegral (maxBound :: Int) + 333
 guardedEvalN g (Offset (guardedEvalN g -> n) (evalO -> o)) = g =<< (o . toInteger) <$> n
-
+guardedEvalN g (g . evalN -> res) = res
 
 class Restricted a where
   substractable :: Maybe a -> Maybe a -> Bool
