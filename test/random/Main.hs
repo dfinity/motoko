@@ -162,21 +162,16 @@ instance Arbitrary (Neuralgic Int64) where
 
 
 instance Arbitrary (Neuralgic Word8) where
-  arbitrary = frequency [ (5, elements [Around0, AroundNeg 3, AroundNeg 5, AroundNeg 8, AroundPos 3, AroundPos 5, AroundPos 8])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
-        --      `suchThat` (isJust . guardedEvalN ((fmap WordN <$> trapWord 8) . traceShowId .error "SHIT"))  -- why is this never filtered?
+  arbitrary = fmap WordN <$> trapWord 8 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 5, AroundNeg 8, AroundPos 3, AroundPos 5, AroundPos 8]
 
 instance Arbitrary (Neuralgic Word16) where
-  arbitrary = frequency [ (5, elements [Around0, AroundNeg 3, AroundNeg 12, AroundNeg 16, AroundPos 6, AroundPos 13, AroundPos 16])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
+  arbitrary = fmap WordN <$> trapWord 16 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 12, AroundNeg 16, AroundPos 6, AroundPos 13, AroundPos 16]
 
 instance Arbitrary (Neuralgic Word32) where
-  arbitrary = frequency [ (5, elements [Around0, AroundNeg 3, AroundNeg 12, AroundNeg 23, AroundNeg 32, AroundPos 6, AroundPos 15, AroundPos 26, AroundPos 32])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
+  arbitrary = fmap WordN <$> trapWord 32 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 12, AroundNeg 23, AroundNeg 32, AroundPos 6, AroundPos 15, AroundPos 26, AroundPos 32]
 
 instance Arbitrary (Neuralgic Word64) where
-  arbitrary = frequency [ (5, elements [Around0, AroundNeg 3, AroundNeg 11, AroundNeg 21, AroundNeg 31, AroundNeg 42, AroundNeg 64, AroundPos 6, AroundPos 14, AroundPos 27, AroundPos 43, AroundPos 57, AroundPos 64])
-                        , (3, Offset <$> arbitrary <*> arbitrary)]
+  arbitrary = fmap WordN <$> trapWord 64 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 11, AroundNeg 21, AroundNeg 31, AroundNeg 42, AroundNeg 64, AroundPos 6, AroundPos 14, AroundPos 27, AroundPos 43, AroundPos 57, AroundPos 64]
 
 data ActorScriptTerm a
   = About a
@@ -766,5 +761,4 @@ showWord p a = "(word" <> bitWidth p <> "ToNat(" <> showAS a <> "))" -- TODO we 
 --   - Pow for Int8
 --   - bitwise ops (btst?)
 --   - bitwise not, a.k.a unary (^)
---   - understand this: suchThat not called above?
 --   - pattern matches (over numeric, bool)
