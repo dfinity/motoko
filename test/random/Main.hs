@@ -51,7 +51,7 @@ assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
 newtype Failing a = Failing a deriving Show
 
 instance Arbitrary (Failing String) where
-  arbitrary = do let failed as = "let _ = " ++ showAS as ++ ";"
+  arbitrary = do let failed as = "let _ = " ++ unparseAS as ++ ";"
                  Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @ Integer -> res) -> null res)
 
 prop_rejects (Failing testCase) = monadicIO $ do
@@ -73,7 +73,7 @@ newtype TestCase = TestCase [String] deriving Show
 instance Arbitrary TestCase where
   arbitrary = do tests <- infiniteListOf arbitrary
                  let expected = evaluate @ Integer <$> tests
-                 let paired as = fmap (\res -> "assert (" ++ showAS as ++ " == " ++ show res ++ ");")
+                 let paired as = fmap (\res -> "assert (" ++ unparseAS as ++ " == " ++ show res ++ ");")
                  pure . TestCase . take 100 . catMaybes $ zipWith paired tests expected
 
 
@@ -687,57 +687,57 @@ instance Literal Bool where
 inParens :: (a -> String) -> String -> a -> a -> String
 inParens to op lhs rhs = "(" <> to lhs <> " " <> op <> " " <> to rhs <> ")"
 
-showAS :: (Annot a, Literal a) => ActorScriptTerm (Neuralgic a) -> String
-showAS f@Five = annot f "5"
-showAS a@(About n) = annot a $ literal n
-showAS (Pos n) = "(+" <> showAS n <> ")"
-showAS (Neg n) = "(-" <> showAS n <> ")"
-showAS (Abs n) = "(abs " <> showAS n <> ")"
-showAS (a `Add` b) = inParens showAS "+" a b
-showAS (a `Sub` b) = annot a $ inParens showAS "-" a b
-showAS (a `Mul` b) = inParens showAS "*" a b
-showAS (a `Div` b) = inParens showAS "/" a b
-showAS (a `Mod` b) = inParens showAS "%" a b
-showAS (a `Pow` b) = inParens showAS "**" a b
-showAS (a `Or` b) = inParens showAS "|" a b
-showAS (a `And` b) = inParens showAS "&" a b
-showAS (a `Xor` b) = inParens showAS "^" a b
-showAS (a `RotL` b) = inParens showAS "<<>" a b
-showAS (a `RotR` b) = inParens showAS "<>>" a b
-showAS (a `ShiftL` b) = inParens showAS "<<" a b
-showAS (a `ShiftR` b) = inParens showAS ">>" a b
-showAS (a `ShiftRSigned` b) = inParens showAS "+>>" a b
-showAS (PopCnt n) = sizeSuffix n "(popcntWord" <> " " <> showAS n <> ")"
-showAS (Clz n) = sizeSuffix n "(clzWord" <> " " <> showAS n <> ")"
-showAS (Ctz n) = sizeSuffix n "(ctzWord" <> " " <> showAS n <> ")"
-showAS (ConvertNatural a) = "(++++(" <> showAS a <> "))"
-showAS (ConvertNat a) = showNat Proxy a
-showAS (ConvertInt a) = showInt Proxy a
-showAS (ConvertWord a) = showWord Proxy a
-showAS (Rel r) = showBool r
-showAS (IfThenElse a b c) = "(if (" <> showBool c <> ") " <> showAS a <> " else " <> showAS b <> ")"
+unparseAS :: (Annot a, Literal a) => ActorScriptTerm (Neuralgic a) -> String
+unparseAS f@Five = annot f "5"
+unparseAS a@(About n) = annot a $ literal n
+unparseAS (Pos n) = "(+" <> unparseAS n <> ")"
+unparseAS (Neg n) = "(-" <> unparseAS n <> ")"
+unparseAS (Abs n) = "(abs " <> unparseAS n <> ")"
+unparseAS (a `Add` b) = inParens unparseAS "+" a b
+unparseAS (a `Sub` b) = annot a $ inParens unparseAS "-" a b
+unparseAS (a `Mul` b) = inParens unparseAS "*" a b
+unparseAS (a `Div` b) = inParens unparseAS "/" a b
+unparseAS (a `Mod` b) = inParens unparseAS "%" a b
+unparseAS (a `Pow` b) = inParens unparseAS "**" a b
+unparseAS (a `Or` b) = inParens unparseAS "|" a b
+unparseAS (a `And` b) = inParens unparseAS "&" a b
+unparseAS (a `Xor` b) = inParens unparseAS "^" a b
+unparseAS (a `RotL` b) = inParens unparseAS "<<>" a b
+unparseAS (a `RotR` b) = inParens unparseAS "<>>" a b
+unparseAS (a `ShiftL` b) = inParens unparseAS "<<" a b
+unparseAS (a `ShiftR` b) = inParens unparseAS ">>" a b
+unparseAS (a `ShiftRSigned` b) = inParens unparseAS "+>>" a b
+unparseAS (PopCnt n) = sizeSuffix n "(popcntWord" <> " " <> unparseAS n <> ")"
+unparseAS (Clz n) = sizeSuffix n "(clzWord" <> " " <> unparseAS n <> ")"
+unparseAS (Ctz n) = sizeSuffix n "(ctzWord" <> " " <> unparseAS n <> ")"
+unparseAS (ConvertNatural a) = "(++++(" <> unparseAS a <> "))"
+unparseAS (ConvertNat a) = unparseNat Proxy a
+unparseAS (ConvertInt a) = unparseInt Proxy a
+unparseAS (ConvertWord a) = unparseWord Proxy a
+unparseAS (Rel r) = unparseBool r
+unparseAS (IfThenElse a b c) = "(if (" <> unparseBool c <> ") " <> unparseAS a <> " else " <> unparseAS b <> ")"
 
-showBool :: ActorScriptTyped Bool -> String
-showBool (a `NotEqual` b) = inParens showAS "!=" a b
-showBool (a `Equals` b) = inParens showAS "==" a b
-showBool (a `GreaterEqual` b) = inParens showAS ">=" a b
-showBool (a `Greater` b) = inParens showAS ">" a b
-showBool (a `LessEqual` b) = inParens showAS "<=" a b
-showBool (a `Less` b) = inParens showAS "<" a b
-showBool (a `ShortAnd` b) = inParens showBool "and" a b
-showBool (a `ShortOr` b) = inParens showBool "or" a b
-showBool (Not a) = "(not " <> showBool a <> ")"
-showBool (Bool False) = "false"
-showBool (Bool True) = "true"
+unparseBool :: ActorScriptTyped Bool -> String
+unparseBool (a `NotEqual` b) = inParens unparseAS "!=" a b
+unparseBool (a `Equals` b) = inParens unparseAS "==" a b
+unparseBool (a `GreaterEqual` b) = inParens unparseAS ">=" a b
+unparseBool (a `Greater` b) = inParens unparseAS ">" a b
+unparseBool (a `LessEqual` b) = inParens unparseAS "<=" a b
+unparseBool (a `Less` b) = inParens unparseAS "<" a b
+unparseBool (a `ShortAnd` b) = inParens unparseBool "and" a b
+unparseBool (a `ShortOr` b) = inParens unparseBool "or" a b
+unparseBool (Not a) = "(not " <> unparseBool a <> ")"
+unparseBool (Bool False) = "false"
+unparseBool (Bool True) = "true"
 
-showNat :: KnownNat n => Proxy n -> ActorScriptTerm (Neuralgic (BitLimited n Natural)) -> String
-showNat p a = "(nat" <> bitWidth p <> "ToNat(" <> showAS a <> "))"
+unparseNat :: KnownNat n => Proxy n -> ActorScriptTerm (Neuralgic (BitLimited n Natural)) -> String
+unparseNat p a = "(nat" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))"
 
-showInt :: KnownNat n => Proxy n -> ActorScriptTerm (Neuralgic (BitLimited n Integer)) -> String
-showInt p a = "(int" <> bitWidth p <> "ToInt(" <> showAS a <> "))"
+unparseInt :: KnownNat n => Proxy n -> ActorScriptTerm (Neuralgic (BitLimited n Integer)) -> String
+unparseInt p a = "(int" <> bitWidth p <> "ToInt(" <> unparseAS a <> "))"
 
-showWord :: KnownNat n => Proxy n -> ActorScriptTerm (Neuralgic (BitLimited n Word)) -> String
-showWord p a = "(word" <> bitWidth p <> "ToNat(" <> showAS a <> "))" -- TODO we want signed too: wordToInt
+unparseWord :: KnownNat n => Proxy n -> ActorScriptTerm (Neuralgic (BitLimited n Word)) -> String
+unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TODO we want signed too: wordToInt
 
 
 
