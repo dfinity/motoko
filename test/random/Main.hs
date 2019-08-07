@@ -122,13 +122,10 @@ instance Arbitrary (Neuralgic Integer) where
   arbitrary = frequency [ (5, elements [LargeNeg, AroundNeg 63, AroundNeg 30, Around0, AroundPos 30, AroundPos 63, LargePos])
                         , (8, Offset <$> arbitrary <*> arbitrary)]
 
-absN TwoLess = TwoMore
-absN OneLess = OneMore
-absN o = o
-
 instance Arbitrary (Neuralgic Natural) where
   arbitrary = frequency [ (5, elements [Around0, AroundPos 30, AroundPos 63, LargePos])
-                        , (3, Offset <$> arbitrary <*> (absN <$> arbitrary))]
+                        , (3, Offset <$> arbitrary <*> arbitrary)]
+              `suchThat` (isJust . guardedEvalN (\n -> if n >= 0 then pure (fromIntegral n) else Nothing))
 
 instance Arbitrary (Neuralgic Nat8) where
   arbitrary = frequency [ (5, elements [Around0, AroundPos 3, AroundPos 5, AroundPos 8])
