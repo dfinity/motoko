@@ -41,11 +41,14 @@ qcProps = testGroup "(checked by QuickCheck)"
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
-  when fuzzErr (monitor (counterexample "STDERR:") >> monitor (counterexample . Data.Text.unpack $ err))
+  when fuzzErr $ do
+    monitor (counterexample "STDERR:")
+    monitor (counterexample . Data.Text.unpack $ err)
   let fuzzOut = not $ Data.Text.null out
   let fuzzOutRelevant = relevant fuzzOut
-  when (fuzzOut && fuzzOutRelevant)
-           (monitor (counterexample "STDOUT:") >> monitor (counterexample . Data.Text.unpack $ out))
+  when (fuzzOut && fuzzOutRelevant) $ do
+    monitor (counterexample "STDOUT:")
+    monitor (counterexample . Data.Text.unpack $ out)
   assert (not $ ExitSuccess /= exitCode || (if compiled then fuzzOutRelevant else fuzzOut) || fuzzErr)
 
 newtype Failing a = Failing a deriving Show
