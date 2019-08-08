@@ -94,8 +94,7 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
                (True, (jExitCode, jOut, _)) <- script jokers
                case (Data.Text.null cOut, Data.Text.null jOut) of
                  (False, _) -> if length clowns == 1
-                               then do it <- reduce (Fold (<>) empty linesToText) $ sequence clowns
-                                       pure it
+                               then reduce (Fold (<>) empty linesToText) $ sequence clowns
                                else bisect $ halve clowns
                  (_, False) -> bisect $ halve jokers
     let good = Data.Text.null out
@@ -395,15 +394,20 @@ guardedEvalN :: Integral a => (Integer -> Maybe a) -> Neuralgic a -> Maybe a
 guardedEvalN g (Offset (guardedEvalN g -> n) (evalO -> o)) = g =<< (o . toInteger) <$> n
 guardedEvalN g (g . evalN -> res) = res
 
+defaultExponentRestriction :: (Ord a, Num a) => a -> Maybe ()
+defaultExponentRestriction = guard . ((&&) <$> (>= 0) <*> (< 5))
+
 class Restricted a where
   substractable :: Maybe a -> Maybe a -> Bool
   exponentiable :: (Num a, Ord a) => a -> Maybe ()
-  exponentiable b = guard $ b >= 0 && b < 5
+  exponentiable = defaultExponentRestriction -- guard $ b >= 0 && b < 5
 
 instance Restricted Integer where substractable _ _ = True
 instance Restricted Natural where substractable a b = isJust $ do m <- a; n <- b; guard $ m >= n
-instance Restricted Nat8 where substractable a b = isJust $ do NatN m <- a; NatN n <- b; guard $ m >= n
-
+instance Restricted (BitLimited n Natural) where substractable a b = isJust $ do NatN m <- a; NatN n <- b; guard $ m >= n
+instance KnownNat n => Restricted (BitLimited n Integer) where
+  exponentiable = if natVal (Proxy @n) <= 8 then const (Just ()) else defaultExponentRestriction
+instance Restricted (BitLimited n Word)
 
 class Integral a => Evaluatable a where
   evaluate :: ActorScriptTerm (Neuralgic a) -> Maybe a
@@ -539,7 +543,7 @@ instance KnownNat bits => Evaluatable (BitLimited bits Natural) where
         a `Div` b -> go quot a b
         _ `Mod` (evaluate -> Just 0) -> Nothing
         a `Mod` b -> go rem a b
-        a `Pow` b -> go (^) a b
+        a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
         IfThenElse a b c -> do c <- evalR c
                                if c then evaluate a else evaluate b
         _ -> error $ show ab
@@ -557,7 +561,7 @@ instance KnownNat bits => Evaluatable (BitLimited bits Integer) where
         a `Div` b -> go quot a b
         _ `Mod` (evaluate -> Just 0) -> Nothing
         a `Mod` b -> go rem a b
-        a `Pow` b -> go (^) a b
+        a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
         IfThenElse a b c -> do c <- evalR c
                                if c then evaluate a else evaluate b
         _ -> error $ show ab
@@ -575,7 +579,7 @@ instance WordLike bits => Evaluatable (BitLimited bits Word) where
         a `Div` b -> go quot a b
         _ `Mod` (evaluate -> Just 0) -> Nothing
         a `Mod` b -> go rem a b
-        a `Pow` b -> go (^) a b
+        a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
         a `Or` b -> log (.|.) a b
         a `And` b -> log (.&.) a b
         a `Xor` b -> log xor a b
@@ -611,9 +615,7 @@ eval ((eval -> a) `Sub` (eval -> b)) = do guard $ substractable a b; a - b
 eval (a `Mul` b) = eval a * eval b
 eval (a `Div` b) = eval a `quot` eval b
 eval (a `Mod` b) = eval a `rem` eval b
-eval (a `Pow` (eval -> b)) = do b' <- b
-                                exponentiable b'
-                                (^) <$> eval a <*> b
+eval (a `Pow` (eval -> b)) = do b' <- b; exponentiable b'; (^) <$> eval a <*> b
 eval (ConvertNatural t) = fromIntegral <$> evaluate t
 eval (ConvertNat t) = fromIntegral <$> evaluate t
 eval (ConvertInt t) = fromIntegral <$> evaluate t
@@ -745,7 +747,6 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 
 -- TODOs:
 --   - wordToInt
---   - Pow for Int8
 --   - bitwise ops (btst?)
 --   - bitwise not, a.k.a unary (^)
 --   - pattern matches (over numeric, bool)
