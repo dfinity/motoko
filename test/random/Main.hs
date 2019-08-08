@@ -108,6 +108,14 @@ data Off = TwoLess | OneLess | OneMore | TwoMore
 instance Arbitrary Off where
   arbitrary = elements [TwoLess .. TwoMore]
 
+-- Below data structure tries to focus test case generation of
+-- numeric values to *neuralgic points* of the numeric line, namely
+-- areas where (from our white-box knowledge of ActorScript's inner
+-- workings) representation changes are expected to happen. These
+-- are mostly at a power-of-two boundary and around it, e.g. we have
+-- signed 30 bit numbers (`Int` and `Nat`) that have a compact representation
+-- and out of this range the number gets heap-allocated.
+--
 data Neuralgic t
   = LargeNeg
   | AroundNeg Integer
