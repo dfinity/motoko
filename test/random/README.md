@@ -4,6 +4,11 @@ This tool generates ActorScript AST fragments and executes them,
 checking for the same outcome as the Haskell (here: reference)
 implementation.
 
+In order to compile and test it expects following tools to be in the
+`PATH`:
+- `asc` (the ActorScript compiler)
+- `wasm-interp` (part of `nixpkgs.wabt`)
+
 ## How to spot failures
 
 `qc-actorscript` is run from the CI infrastructure on each commit. On failures, something like
@@ -33,19 +38,19 @@ directory:
 $ nix-build -A tests --arg replay 232458
 ```
 
-## Running in `asc` and `wasm-intrp`
+## Running in `asc` and `wasm-interp`
 
 Of course you can dump the failing test case into a file, compile it
-to WASM, and execute it in (e.g.) 
+to WASM, and execute it in (e.g.) `wasm-interp`:
 
 ``` shell
 $ asc -no-dfinity-api snippet.as
 $ wasm-interp --enable-multi snippet.wasm
 ```
 
-In tests under *expected failures*, this should trap. For *expected
-successes* it should execute without errors.
+In tests under category *expected failures*, this should trap.
+For *expected successes* it should execute without errors.
 
 ## 0 -- 2019-08-08
 
-* First version. Released on an unsuspecting world. See also [GitHub issue 609](https://github.com/dfinity-lab/actorscript/pull/609).
+* First version. Released on a suspecting world. See also [GitHub issue 609](https://github.com/dfinity-lab/actorscript/pull/609).
