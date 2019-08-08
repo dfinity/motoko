@@ -618,7 +618,7 @@ eval (ConvertNat t) = fromIntegral <$> evaluate t
 eval (ConvertInt t) = fromIntegral <$> evaluate t
 eval (ConvertWord t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evalR c
-                             if c then eval a else eval b
+                             eval $ if c then a else b
 eval (Rel r) = bool 0 1 <$> evalR r
 --eval _ = Nothing
 
