@@ -51,6 +51,13 @@ $ wasm-interp --enable-multi snippet.wasm
 In tests under category *expected failures*, this should trap.
 For *expected successes* it should execute without errors.
 
+## Troubleshooting
+
+When something doesn't build like expected, check for a file called (approximately)
+`test/random/.ghc.environment.x86_64-darwin-8.6.4`. This usually trips
+up `nix-build`'s ability to build `qc-actorscript` locally, and should
+be deleted.
+
 ## 0 -- 2019-08-08
 
 * First version. Released on a suspecting world. See also [GitHub issue 609](https://github.com/dfinity-lab/actorscript/pull/609).
