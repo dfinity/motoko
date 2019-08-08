@@ -314,14 +314,7 @@ instance Arbitrary (ActorScriptTyped Bool) where
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Natural)) where
-  arbitrary = reasonablyShaped $ \n ->
-    [ (n, resize (n `div` 3) $ Add <$> arbitrary <*> arbitrary) -- TODO: use subTerm or similar
-    , (n, resize (n `div` 3) $ Sub <$> arbitrary <*> arbitrary)
-    , (n, resize (n `div` 3) $ Mul <$> arbitrary <*> arbitrary)
-    , (n, resize (n `div` 3) $ Div <$> arbitrary <*> arbitrary)
-    , (n, resize (n `div` 3) $ Mod <$> arbitrary <*> arbitrary)
-    , (n, resize (n `div` 5) $ Pow <$> arbitrary <*> (reasonable <$> arbitrary))]
-      where reasonable x = Abs x `Mod` Five
+  arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Integer)) where
   arbitrary = reasonablyShaped $ \n ->
