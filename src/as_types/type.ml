@@ -76,6 +76,7 @@ let nat = Prim Nat
 let int = Prim Int
 let text = Prim Text
 let char = Prim Char
+let error = Variant [{ lab = "error"; typ = Tup [] }]
 
 let prim = function
   | "Null" -> Null

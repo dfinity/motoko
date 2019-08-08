@@ -191,6 +191,7 @@ rule token mode = parse
   | "await" { AWAIT }
   | "break" { BREAK }
   | "case" { CASE }
+  | "catch" { CATCH }
   | "class" { CLASS }
   | "continue" { CONTINUE }
   | "label" { LABEL }
@@ -212,6 +213,8 @@ rule token mode = parse
   | "public" { PUBLIC }
   | "return" { RETURN }
   | "shared" { SHARED }
+  | "try" { TRY }
+  | "try" { THROW }
   | "debug_show" { DEBUG_SHOW }
   | "switch" { SWITCH }
   | "true" { BOOL true }

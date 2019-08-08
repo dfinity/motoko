@@ -726,6 +726,20 @@ and infer_exp'' env exp : T.typ =
           (String.concat " or\n  " ss)
     end;
     t
+  | TryE (exp1, cases) ->
+    if not env.async then
+      error env exp.at "misplaced try";
+    let t1 = infer_exp env exp1 in
+    let t2 = infer_cases env T.error T.Non cases in
+    if not env.pre then begin
+      match Coverage.check_cases cases T.error with
+      | [] -> ()
+      | ss ->
+        warn env exp.at
+          "the catches in this try do not cover error value\n  %s"
+          (String.concat " or\n  " ss)
+    end;
+    T.lub t1 t2
   | WhileE (exp1, exp2) ->
     if not env.pre then begin
       check_exp env T.bool exp1;
@@ -787,6 +801,11 @@ and infer_exp'' env exp : T.typ =
       | None ->
         local_error env exp.at "misplaced return"
     end;
+    T.Non
+  | ThrowE exp1 ->
+    if not env.async then
+      error env exp.at "misplaced throw";
+    if not env.pre then check_exp env T.error exp1;
     T.Non
   | AsyncE exp1 ->
     let env' =
@@ -881,6 +900,19 @@ and check_exp' env t exp : T.typ =
       warn env exp.at
         "the cases in this switch over type\n  %s\ndo not cover value\n  %s"
         (Type.string_of_typ_expand t1)
+        (String.concat " or\n  " ss)
+    );
+    t
+  | TryE (exp1, cases), _ ->
+    if not env.async then
+      error env exp.at "misplaced try";
+    check_exp env t exp1;
+    check_cases env T.error t cases;
+    (match Coverage.check_cases cases T.error with
+    | [] -> ()
+    | ss ->
+      warn env exp.at
+        "the catches in this try do not cover value\n  %s"
         (String.concat " or\n  " ss)
     );
     t

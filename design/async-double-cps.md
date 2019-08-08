@@ -222,3 +222,12 @@ async {
   break l (await {2})
 }
 ```
+
+
+AS syntax
+
+```
+<exp> ::=
+  throw <exp>
+  try <exp> (catch <pat> <exp>)+
+```
