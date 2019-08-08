@@ -4,8 +4,6 @@ name:                qc-actorscript
 version:             0
 synopsis:            generate randomised tests for ActorScript
 -- description:
-license:             MIT
-license-file:        LICENSE
 author:              Gabor Greif
 maintainer:          gabor@dfinity.org
 -- copyright:
