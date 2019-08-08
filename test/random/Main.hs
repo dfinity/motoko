@@ -266,7 +266,7 @@ reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
                        : if n > 1 then sub n else []
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat8)) where
-  arbitrary = reasonablyShaped $ subTerm True{-TODO: EVALUATOR can up to 5 only!-}
+  arbitrary = reasonablyShaped $ subTerm True
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Nat16)) where
   arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
@@ -279,7 +279,7 @@ instance Arbitrary (ActorScriptTerm (Neuralgic Nat64)) where
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int8)) where
-  arbitrary = reasonablyShaped $ subTerm False{-TODO-}
+  arbitrary = reasonablyShaped $ subTerm True
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Int16)) where
   arbitrary = reasonablyShaped subTermPow5
@@ -292,7 +292,7 @@ instance Arbitrary (ActorScriptTerm (Neuralgic Int64)) where
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word8)) where
-  arbitrary = reasonablyShaped $ (<>) <$> subTerm True{-TODO: EVALUATOR can up to 5 only!-} <*> bitwiseTerm
+  arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word16)) where
   arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
@@ -394,20 +394,31 @@ guardedEvalN :: Integral a => (Integer -> Maybe a) -> Neuralgic a -> Maybe a
 guardedEvalN g (Offset (guardedEvalN g -> n) (evalO -> o)) = g =<< (o . toInteger) <$> n
 guardedEvalN g (g . evalN -> res) = res
 
-defaultExponentRestriction :: (Ord a, Num a) => a -> Maybe ()
+noExponentRestriction, nonNegativeExponentRestriction, defaultExponentRestriction :: (Ord a, Num a) => a -> Maybe ()
+noExponentRestriction _ = pure ()
+nonNegativeExponentRestriction = guard . (>= 0)
 defaultExponentRestriction = guard . ((&&) <$> (>= 0) <*> (< 5))
 
 class Restricted a where
   substractable :: Maybe a -> Maybe a -> Bool
   exponentiable :: (Num a, Ord a) => a -> Maybe ()
-  exponentiable = defaultExponentRestriction -- guard $ b >= 0 && b < 5
+  exponentiable = defaultExponentRestriction
 
 instance Restricted Integer where substractable _ _ = True
 instance Restricted Natural where substractable a b = isJust $ do m <- a; n <- b; guard $ m >= n
-instance Restricted (BitLimited n Natural) where substractable a b = isJust $ do NatN m <- a; NatN n <- b; guard $ m >= n
+instance KnownNat n => Restricted (BitLimited n Natural) where
+  substractable a b = isJust $ do NatN m <- a; NatN n <- b; guard $ m >= n
+  exponentiable = if natVal (Proxy @n) <= 8
+                  then noExponentRestriction
+                  else defaultExponentRestriction
 instance KnownNat n => Restricted (BitLimited n Integer) where
-  exponentiable = if natVal (Proxy @n) <= 8 then const (Just ()) else defaultExponentRestriction
-instance Restricted (BitLimited n Word)
+  exponentiable = if natVal (Proxy @n) <= 8
+                  then nonNegativeExponentRestriction
+                  else defaultExponentRestriction
+instance KnownNat n => Restricted (BitLimited n Word) where
+  exponentiable = if natVal (Proxy @n) <= 8
+                  then noExponentRestriction
+                  else defaultExponentRestriction
 
 class Integral a => Evaluatable a where
   evaluate :: ActorScriptTerm (Neuralgic a) -> Maybe a
@@ -545,7 +556,7 @@ instance KnownNat bits => Evaluatable (BitLimited bits Natural) where
         a `Mod` b -> go rem a b
         a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
         IfThenElse a b c -> do c <- evalR c
-                               if c then evaluate a else evaluate b
+                               evaluate $ if c then a else b
         _ -> error $ show ab
     where go op a b = do NatN a <- evaluate a; NatN b <- evaluate b; NatN <$> trapNat (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
 
@@ -563,7 +574,7 @@ instance KnownNat bits => Evaluatable (BitLimited bits Integer) where
         a `Mod` b -> go rem a b
         a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
         IfThenElse a b c -> do c <- evalR c
-                               if c then evaluate a else evaluate b
+                               evaluate $ if c then a else b
         _ -> error $ show ab
     where go op a b = do IntN a <- evaluate a; IntN b <- evaluate b; IntN <$> trapInt (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
 
@@ -592,7 +603,7 @@ instance WordLike bits => Evaluatable (BitLimited bits Word) where
         Clz (evaluate -> a) -> fromIntegral . countLeadingZeros <$> a
         Ctz (evaluate -> a) -> fromIntegral . countTrailingZeros <$> a
         IfThenElse a b c -> do c <- evalR c
-                               if c then evaluate a else evaluate b
+                               evaluate $ if c then a else b
         _ -> error $ show ab
     where go op a b = do WordN a <- evaluate a; WordN b <- evaluate b; WordN <$> trapWord bitcount (toInteger a `op` toInteger b)
           log op a b = op <$> evaluate a <*> evaluate b
