@@ -91,6 +91,9 @@ let rec typ vs t =
          ) ts in
      (match Con.kind c with
       | Def (tbs, t) ->
+         (* use this for inlining defs, doesn't work with recursion
+         (typ ts t).it
+          *)
          chase_con ts c;
          I.VarT (string_of_con ts c @@ no_region)
       | _ -> assert false)
