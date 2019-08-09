@@ -30,11 +30,11 @@
 
 ;; Change this to point to the directory where you cloned the
 ;; actorscript repo
-(setq as/installation-directory "~/code/actorscript/emacs")
+(setq as/installation-directory "~/code/actorscript")
 
 ;; Change nil to t if you want to use vim bindings for editing and
 ;; navigation
-(setq as/use-evil t)
+(setq as/use-evil nil)
 ;;============================
 
 (require 'package)
@@ -59,7 +59,7 @@
 (use-package swift-mode :ensure t)
 (eval-and-compile
   (defun as/as-mode-load-path ()
-    as/installation-directory))
+    (format "%s/emacs" as/installation-directory)))
 (use-package actorscript-mode
   :load-path (lambda () (list (as/as-mode-load-path)))
   :config
