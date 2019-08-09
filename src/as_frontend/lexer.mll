@@ -214,7 +214,7 @@ rule token mode = parse
   | "return" { RETURN }
   | "shared" { SHARED }
   | "try" { TRY }
-  | "try" { THROW }
+  | "throw" { THROW }
   | "debug_show" { DEBUG_SHOW }
   | "switch" { SWITCH }
   | "true" { BOOL true }
