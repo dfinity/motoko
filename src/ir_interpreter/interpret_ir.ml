@@ -112,6 +112,8 @@ end
 
 (* Async auxiliary functions *)
 
+(* Are these just duplicated of the corresponding functions in interpret.ml? If so, refactor *)
+
 let make_async () : V.async =
   {V.result = Lib.Promise.make (); waiters = []}
 
@@ -221,11 +223,23 @@ let extended_prim env s typ at =
       | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _)], _) ->
         let call_conv = CC.call_conv_of_typ f_dom in
         async env at
-          (fun k' ->
+          (fun k' r ->
             let k' = Value.Func (call_conv, fun v _ -> k' v) in
             f k' V.as_unit
           )
           k
+(* TBC: One await/async.ml are done, this should become something like
+      | T.Func(_, _, _, [T.Func(_, _, _, [f_dom,r_dom], _)], _) ->
+        let call_conv = CC.call_conv_of_typ f_dom in
+        let call_conv_r = CC.call_conv_of_typ r_dom in
+        async env at
+          (fun k' r ->
+            let k' = Value.Func (call_conv, fun v _ -> k' v) in
+            let r' = Value.Func (call_conv_r, fun v _ -> r' v) in
+            f (V.Tup(k',r')) V.as_unit
+          )
+          k
+*)
       | _ -> assert false
     )
   | "@await" ->
