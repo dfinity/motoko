@@ -12,6 +12,8 @@ import Control.Monad
 import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
+import Test.QuickCheck.Unicode
+import Test.QuickCheck.Utf8
 import qualified Data.Text (null, unpack)
 import Data.Maybe
 import Data.Bool (bool)
@@ -20,6 +22,7 @@ import GHC.Natural
 import GHC.TypeLits
 import qualified Data.Word
 import Data.Bits (Bits(..), FiniteBits(..))
+import qualified Data.ByteString.UTF8
 
 import System.Process hiding (proc)
 import Turtle
@@ -30,14 +33,37 @@ main = defaultMain tests
         tests = testGroup "Arithmetic-logic operations" [properties]
 
 properties :: TestTree
-properties = testGroup "Properties" [qcProps]
+properties = testGroup "Properties" [qcProps, utf8Props]
 
-qcProps = testGroup "(checked by QuickCheck)"
+qcProps = testGroup "Arithmetic"
   [ QC.testProperty "expected failures" $ prop_rejects
   , QC.testProperty "expected successes" $ prop_verifies
   ]
 
 
+utf8Props = testGroup "UTF-8 coding"
+  [ QC.testProperty "expected successes" $ prop_UTF8
+  ]
+prop_UTF8 = prop_rejects
+-- genValidUtf8, genValidUtf81
+-- decode :: ByteString -> Maybe (Char, Int)
+
+{-
+newtype UTF8 a = UTF8 a deriving Show
+
+instance Arbitrary (UTF8 ByteString) where
+  arbitrary = do let failed as = "let _ = " ++ unparseAS as ++ ";"
+                 Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @ Integer -> res) -> null res)
+
+prop_UTF8 :: (UTF8 testCase) = monadicIO $ do
+  let script = do Turtle.output "UTF-8.as" $ fromString testCase
+                  res@(exitCode, _, _) <- procStrictWithErr "asc"
+                           ["-no-dfinity-api", "-no-check-ir", "UTF-8.as"] empty
+                  if ExitSuccess == exitCode
+                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
+                  else pure (False, res)
+  run script >>= assertSuccessNoFuzz not
+-}
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
