@@ -14,6 +14,7 @@ module CC = As_types.Call_conv
 type val_env = V.def V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
+type throw_env = V.value V.cont option
 
 type scope = val_env
 
@@ -28,6 +29,7 @@ type env =
     vals : val_env;
     labs : lab_env;
     rets : ret_env;
+    throws : throw_env;
     async : bool
   }
 
@@ -42,6 +44,7 @@ let env_of_scope flags flavor ve =
     vals = ve;
     labs = V.Env.empty;
     rets = None;
+    throws = None;
     async = false;
   }
 
@@ -112,24 +115,32 @@ end
 let make_async () : V.async =
   {V.result = Lib.Promise.make (); waiters = []}
 
-let get_async async (k : V.value V.cont) =
+let get_async async (k : V.value V.cont) (r : V.value V.cont) =
   match Lib.Promise.value_opt async.V.result with
   | Some v -> k v
-  | None -> async.V.waiters <- k::async.V.waiters
+  | None -> async.V.waiters <- (k,r)::async.V.waiters
 
 let set_async async v =
-  List.iter (fun k -> Scheduler.queue (fun () -> k v)) async.V.waiters;
+  List.iter (fun (k,_) -> Scheduler.queue (fun () -> k v)) async.V.waiters;
+  Lib.Promise.fulfill async.V.result v;
+  async.V.waiters <- []
+
+let reject_async async v =
+  List.iter (fun (_,r) -> Scheduler.queue (fun () -> r v)) async.V.waiters;
   Lib.Promise.fulfill async.V.result v;
   async.V.waiters <- []
 
 let fulfill async v =
   Scheduler.queue (fun () -> set_async async v)
 
+let reject async v =
+  Scheduler.queue (fun () -> reject_async async v)
 
-let async env at (f: (V.value V.cont) -> unit) (k : V.value V.cont) =
+let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
     let async = make_async () in
     (*    let k' = fun v1 -> set_async async v1 in *)
-    let k' = fun v1 -> fulfill async v1 in
+    let k' = fulfill async in
+    let r = reject async in
     if env.flags.trace then trace "-> async %s" (string_of_region at);
     Scheduler.queue (fun () ->
       if env.flags.trace then trace "<- async %s" (string_of_region at);
@@ -138,6 +149,7 @@ let async env at (f: (V.value V.cont) -> unit) (k : V.value V.cont) =
         if env.flags.trace then trace "<= %s" (string_of_val env v);
         decr trace_depth;
         k' v)
+        r
     );
     k (V.Async async)
 
@@ -184,7 +196,7 @@ let make_async_message env id v =
     Value.async_func call_conv.n_args (fun v k ->
       let async = make_async () in
       actor_msg env id f v (fun v_async ->
-        get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
+        get_async (V.as_async v_async) (set_async async) (reject_async async)
       );
       k (V.Async async)
     )
@@ -212,7 +224,8 @@ let extended_prim env s typ at =
           (fun k' ->
             let k' = Value.Func (call_conv, fun v _ -> k' v) in
             f k' V.as_unit
-          ) k
+          )
+          k
       | _ -> assert false
     )
   | "@await" ->
@@ -221,7 +234,7 @@ let extended_prim env s typ at =
       (match V.as_tup v with
       | [async; w] ->
         let (_, f) = V.as_func w in
-        await env at (V.as_async async) (fun v -> f v k)
+        await env at (V.as_async async) (fun v -> f v k) (Lib.Option.value env.throws)
       | _ -> assert false
       )
   | _ -> Prim.prim s
@@ -407,15 +420,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     assert env.flavor.has_await;
     async env
       exp.at
-      (fun k' ->
-        let env' = {env with labs = V.Env.empty; rets = Some k'; async = true}
+      (fun k' r ->
+        let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r; async = true}
         in interpret_exp env' exp1 k')
       k
 
   | AwaitE exp1 ->
     assert env.flavor.has_await;
     interpret_exp env exp1
-      (fun v1 -> await env exp.at (V.as_async v1) k)
+      (fun v1 -> await env exp.at (V.as_async v1) k (Lib.Option.value env.throws))
   | AssertE exp1 ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v

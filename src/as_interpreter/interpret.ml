@@ -15,6 +15,7 @@ type val_env = V.def V.Env.t
 type lib_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
+type throw_env = V.value V.cont option
 
 type flags =
   { trace : bool;
@@ -32,6 +33,7 @@ type env =
     labs : lab_env;
     libs : lib_env;
     rets : ret_env;
+    throws : throw_env;
     async : bool
   }
 
@@ -53,6 +55,7 @@ let env_of_scope flags scope =
     libs = scope.lib_env;
     labs = V.Env.empty;
     rets = None;
+    throws = None;
     async = false;
   }
 
@@ -122,24 +125,33 @@ end
 let make_async () : V.async =
   {V.result = Lib.Promise.make (); waiters = []}
 
-let get_async async (k : V.value V.cont) =
+let get_async async (k : V.value V.cont) (r : V.value V.cont) =
   match Lib.Promise.value_opt async.V.result with
   | Some v -> k v
-  | None -> async.V.waiters <- k::async.V.waiters
+  | None -> async.V.waiters <- (k,r)::async.V.waiters
 
 let set_async async v =
-  List.iter (fun k -> Scheduler.queue (fun () -> k v)) async.V.waiters;
+  List.iter (fun (k,_) -> Scheduler.queue (fun () -> k v)) async.V.waiters;
   Lib.Promise.fulfill async.V.result v;
   async.V.waiters <- []
+
+let reject_async async v =
+  List.iter (fun (_,k) -> Scheduler.queue (fun () -> k v)) async.V.waiters;
+  Lib.Promise.fulfill async.V.result v;
+  async.V.waiters <- []
+
 
 let fulfill async v =
   Scheduler.queue (fun () -> set_async async v)
 
+let reject async v =
+  Scheduler.queue (fun () -> reject_async async v)
 
-let async env at (f: (V.value V.cont) -> unit) (k : V.value V.cont) =
+let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
     let async = make_async () in
     (*    let k' = fun v1 -> set_async async v1 in *)
-    let k' = fun v1 -> fulfill async v1 in
+    let k' = fulfill async in
+    let r  = reject async in
     if env.flags.trace then trace "-> async %s" (string_of_region at);
     Scheduler.queue (fun () ->
       if env.flags.trace then trace "<- async %s" (string_of_region at);
@@ -148,6 +160,7 @@ let async env at (f: (V.value V.cont) -> unit) (k : V.value V.cont) =
         if env.flags.trace then trace "<= %s" (string_of_val env v);
         decr trace_depth;
         k' v)
+        r
     );
     k (V.Async async)
 
@@ -162,6 +175,16 @@ let await env at async k =
       k v
       )
     )
+    (let r = Lib.Option.value (env.throws) in
+     fun v ->
+       Scheduler.queue (fun () ->
+           if env.flags.trace then
+             trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
+           incr trace_depth;
+           r v
+         ))
+    
+
 
 let actor_msg env id f v (k : V.value V.cont) =
   if env.flags.trace then trace "-> message %s%s" id (string_of_arg env v);
@@ -191,7 +214,7 @@ let make_async_message env id v =
     Value.async_func call_conv.n_args (fun v k ->
       let async = make_async () in
       actor_msg env id f v (fun v_async ->
-        get_async (V.as_async v_async) (fun v_r -> set_async async v_r)
+        get_async (V.as_async v_async) (set_async async) (reject_async async)
       );
       k (V.Async async)
     )
@@ -476,7 +499,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | SwitchE (exp1, cases) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_cases env cases exp.at v1 k
-    )
+      )
+
+  | TryE (exp1, cases) ->
+    let k' = fun v1 -> interpret_cases env cases exp.at v1 k in
+    let env' = { env with throws = Some k' } in
+    interpret_exp env' exp1 k
+
   | WhileE (exp1, exp2) ->
     let k_continue = fun v -> V.as_unit v; interpret_exp env exp k in
     interpret_exp env exp1 (fun v1 ->
@@ -523,11 +552,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (find id.it env.labs)
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
+  | ThrowE exp1 ->
+    interpret_exp env exp1 (Lib.Option.value env.throws)
   | AsyncE exp1 ->
     async env
       exp.at
-      (fun k' ->
-        let env' = {env with labs = V.Env.empty; rets = Some k'; async = true}
+      (fun k' r ->
+        let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r; async = true}
         in interpret_exp env' exp1 k')
       k
 

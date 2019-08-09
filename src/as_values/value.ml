@@ -279,7 +279,7 @@ and value =
   | Mut of value ref
   | Serialized of value
 
-and async = {result : def; mutable waiters : value cont list}
+and async = {result : def; mutable waiters : (value cont * value cont) list}
 and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
