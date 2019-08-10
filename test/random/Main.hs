@@ -12,7 +12,7 @@ import Control.Monad
 import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
-import Test.QuickCheck.Unicode
+import Test.QuickCheck.Unicode hiding (string1) -- buggy in lib!
 import Test.QuickCheck.Utf8
 import qualified Data.Text (null, unpack)
 import Data.Maybe
@@ -30,12 +30,9 @@ import Debug.Trace (traceShowId)
 
 main = defaultMain tests
   where tests :: TestTree
-        tests = testGroup "Arithmetic-logic operations" [properties]
+        tests = testGroup "ActorScript tests" [arithProps, utf8Props]
 
-properties :: TestTree
-properties = testGroup "Properties" [qcProps, utf8Props]
-
-qcProps = testGroup "Arithmetic"
+arithProps = testGroup "Arithmetic"
   [ QC.testProperty "expected failures" $ prop_rejects
   , QC.testProperty "expected successes" $ prop_verifies
   ]
@@ -44,16 +41,20 @@ qcProps = testGroup "Arithmetic"
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "expected successes" $ prop_UTF8
   ]
-prop_UTF8 = prop_rejects
+
+string1 = list1 Test.QuickCheck.Unicode.char
+prop_UTF8 (UTF8 str) = isJust tryDecode ==> c == head str
+    where utf8 = Data.ByteString.UTF8.fromString str
+          tryDecode = Data.ByteString.UTF8.decode utf8
+          Just (c, _) = tryDecode
 -- genValidUtf8, genValidUtf81
 -- decode :: ByteString -> Maybe (Char, Int)
 
-{-
 newtype UTF8 a = UTF8 a deriving Show
 
-instance Arbitrary (UTF8 ByteString) where
-  arbitrary = do let failed as = "let _ = " ++ unparseAS as ++ ";"
-                 Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @ Integer -> res) -> null res)
+instance Arbitrary (UTF8 String) where
+  arbitrary = UTF8 <$> string1
+{-
 
 prop_UTF8 :: (UTF8 testCase) = monadicIO $ do
   let script = do Turtle.output "UTF-8.as" $ fromString testCase
