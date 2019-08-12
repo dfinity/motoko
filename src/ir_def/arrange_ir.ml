@@ -42,6 +42,8 @@ let rec exp e = match e.it with
     "FuncE" $$ [Atom x; call_conv cc] @ List.map typ_bind tp @ args as_@ [ typ (Type.seq ts); exp e]
   | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
+  | ThrowE e             -> "ThrowE"    $$ [exp e]
+  | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
 
 and fields fs = List.fold_left (fun flds (f : field) -> (f.it.name $$ [ id f.it.var ]):: flds) [] fs
 

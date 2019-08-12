@@ -472,6 +472,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
         warn env exp.at "the cases in this switch do not cover all possible values";
  *)
     check_cases env t1 t cases
+  | TryE (exp1, cases) ->
+    check env.flavor.has_await "try in non-await flavor";
+    check env.async "misplaced try";
+    check_exp env exp1;
+    typ exp1 <: t;
+    check_cases env T.catch t cases;
   | LoopE exp1 ->
     check_exp env exp1;
     typ exp1 <: T.unit;
@@ -502,6 +508,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
         check_exp env exp1;
         typ exp1 <: t0;
     end;
+    T.Non <: t (* vacuously true *)
+  | ThrowE exp1 ->
+    check env.flavor.has_await "throw in non-await flavor";
+    check env.async "misplaced throw";
+    check_exp env exp1;
+    typ exp1 <: T.throw;
     T.Non <: t (* vacuously true *)
   | AsyncE exp1 ->
     check env.flavor.has_await "async expression in non-await flavor";

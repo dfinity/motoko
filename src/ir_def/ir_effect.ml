@@ -64,7 +64,9 @@ let rec infer_effect_exp (exp: exp) : T.eff =
     max_eff e1 e2
   | AsyncE exp1 ->
     T.Triv
-  | AwaitE exp1 ->
+  | ThrowE _
+  | TryE _
+  | AwaitE _ ->
     T.Await
   | DeclareE (_, _, exp1) ->
     effect_exp exp1

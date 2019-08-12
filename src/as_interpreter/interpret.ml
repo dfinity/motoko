@@ -500,12 +500,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 ->
       interpret_cases env cases exp.at v1 k
       )
-
   | TryE (exp1, cases) ->
     let k' = fun v1 -> interpret_cases env cases exp.at v1 k in
     let env' = { env with throws = Some k' } in
     interpret_exp env' exp1 k
-
   | WhileE (exp1, exp2) ->
     let k_continue = fun v -> V.as_unit v; interpret_exp env exp k in
     interpret_exp env exp1 (fun v1 ->
