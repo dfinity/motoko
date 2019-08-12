@@ -57,7 +57,7 @@ prop_explodeConcat (UTF8 str) = monadicIO $ do
                   else pure (False, res)
   run script >>= assertSuccessNoFuzz not
 
--- TODO: why can't we use Test.QuickCheck.Unicode.Unicode?
+-- TODO: why can't we use Test.QuickCheck.Unicode.Unicode? (see https://github.com/bos/quickcheck-unicode/issues/5)
 newtype UTF8 a = UTF8 a deriving Show
 
 instance Arbitrary (UTF8 String) where
