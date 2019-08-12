@@ -32,7 +32,7 @@ main = defaultMain tests
   where tests :: TestTree
         tests = testGroup "ActorScript tests" [arithProps, utf8Props]
 
-arithProps = testGroup "Arithmetic"
+arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
   , QC.testProperty "expected successes" $ prop_verifies
   ]
