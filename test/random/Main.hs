@@ -47,29 +47,24 @@ utf8Props = testGroup "UTF-8 coding"
 runScriptNoFuzz name testCase = do
   let as = name <.> "as"
       wasm = name <.> "wasm"
+      fileArg = fromString . encodeString
       script = do Turtle.output as $ fromString testCase
                   res@(exitCode, _, _) <- procStrictWithErr "asc"
-                           ["-no-dfinity-api", "-no-check-ir", repr as] empty
+                           ["-no-dfinity-api", "-no-check-ir", fileArg as] empty
                   if ExitSuccess == exitCode
-                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", repr wasm] empty
+                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
                   else pure (False, res)
   run script >>= assertSuccessNoFuzz not
 
 
 prop_explodeConcat :: UTF8 String -> Property
-prop_explodeConcat (UTF8 str) = monadicIO $ do
+prop_explodeConcat (UTF8 str) = not (null str) ==> monadicIO $ do
   let testCase :: String
-      testCase = "{ var str = \"\"; for (c in \""
+      testCase = traceShowId $ "{ var str = \"\"; for (c in \""
                  <> s <> "\".chars()) { str #= charToText c }; assert (str == \"" <> s <> "\") }"
 
       s = concatMap escape str
-      script = do Turtle.output "explodeConcat.as" $ fromString testCase
-                  res@(exitCode, _, _) <- procStrictWithErr "asc"
-                           ["-no-dfinity-api", "-no-check-ir", "explodeConcat.as"] empty
-                  if ExitSuccess == exitCode
-                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "explodeConcat.wasm"] empty
-                  else pure (False, res)
-  run script >>= assertSuccessNoFuzz not
+  runScriptNoFuzz "explodeConcat" testCase
 
 -- TODO: why can't we use Test.QuickCheck.Unicode.Unicode? (see https://github.com/bos/quickcheck-unicode/issues/5)
 newtype UTF8 a = UTF8 a deriving Show
@@ -93,13 +88,7 @@ prop_charToText (UTF8 char) = monadicIO $ do
 
       c = escape char
       Just (_, octets) = Data.ByteString.UTF8.decode (Data.ByteString.UTF8.fromString $ pure char)
-      script = do Turtle.output "charToText.as" $ fromString testCase
-                  res@(exitCode, _, _) <- procStrictWithErr "asc"
-                           ["-no-dfinity-api", "-no-check-ir", "charToText.as"] empty
-                  if ExitSuccess == exitCode
-                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "charToText.wasm"] empty
-                  else pure (False, res)
-  run script >>= assertSuccessNoFuzz not
+  runScriptNoFuzz "charToText" testCase
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
@@ -119,15 +108,7 @@ instance Arbitrary (Failing String) where
   arbitrary = do let failed as = "let _ = " ++ unparseAS as ++ ";"
                  Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @ Integer -> res) -> null res)
 
-prop_rejects (Failing testCase) = monadicIO $ do
-  let script = do Turtle.output "fails.as" $ fromString testCase
-                  res@(exitCode, _, _) <- procStrictWithErr "asc"
-                           ["-no-dfinity-api", "-no-check-ir", "fails.as"] empty
-                  if ExitSuccess == exitCode
-                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
-                  else pure (False, res)
-  run script >>= assertSuccessNoFuzz not
-
+prop_rejects (Failing testCase) = monadicIO $ runScriptNoFuzz "fails" testCase
 
 halve [] = ([], [])
 halve a@[_] = (a, [])
