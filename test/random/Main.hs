@@ -13,11 +13,9 @@ import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
 import Test.QuickCheck.Unicode
-import Test.QuickCheck.Utf8
 import qualified Data.Text (null, unpack)
 import Data.Maybe
 import Data.Bool (bool)
-import Data.Char (isPrint)
 import Data.Proxy
 import GHC.Natural
 import GHC.TypeLits
@@ -40,11 +38,10 @@ arithProps = testGroup "Arithmetic"
 
 
 utf8Props = testGroup "UTF-8 coding"
-  [ QC.testProperty "explode >>> concat" $ prop_explodeConcat
+  [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
   , QC.testProperty "charToText >>> decodeUTF8 roundtrips" $ prop_charToText
   ]
 
---{ var str = ""; for (c in "abc".chars()) { str #= charToText c }; assert (str == "abc"); };
 prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
   let testCase :: String
