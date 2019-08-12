@@ -12,7 +12,7 @@ import Control.Monad
 import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
-import Test.QuickCheck.Unicode hiding (string1) -- buggy in lib!
+import Test.QuickCheck.Unicode
 import Test.QuickCheck.Utf8
 import qualified Data.Text (null, unpack)
 import Data.Maybe
@@ -40,22 +40,28 @@ arithProps = testGroup "Arithmetic"
 
 
 utf8Props = testGroup "UTF-8 coding"
-  [ QC.testProperty "expected successes" $ prop_UTF8
+  [ QC.testProperty "explode >>> concat" $ prop_explodeConcat
   , QC.testProperty "charToText >>> decodeUTF8 roundtrips" $ prop_charToText
   ]
 
-string1 = list1 Test.QuickCheck.Unicode.char
-prop_UTF8 (UTF8 str) = isJust tryDecode ==> c == head str
-    where utf8 = Data.ByteString.UTF8.fromString str
-          tryDecode = Data.ByteString.UTF8.decode utf8
-          Just (c, _) = tryDecode
--- genValidUtf8, genValidUtf81
--- decode :: ByteString -> Maybe (Char, Int)
+--{ var str = ""; for (c in "abc".chars()) { str #= charToText c }; assert (str == "abc"); };
+prop_explodeConcat :: UTF8 String -> Property
+prop_explodeConcat (UTF8 str) = monadicIO $ do
+  let testCase :: String
+      testCase = "{ var str = \"\"; for (c in \""
+                 <> s <> "\".chars()) { str #= charToText c }; assert (str == \"" <> s <> "\") }"
+
+      s = concatMap escape str
+      script = do Turtle.output "explodeConcat.as" $ fromString testCase
+                  res@(exitCode, _, _) <- procStrictWithErr "asc"
+                           ["-no-dfinity-api", "-no-check-ir", "explodeConcat.as"] empty
+                  if ExitSuccess == exitCode
+                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
+                  else pure (False, res)
+  run script >>= assertSuccessNoFuzz not
 
 -- TODO: why can't we use Test.QuickCheck.Unicode.Unicode?
 newtype UTF8 a = UTF8 a deriving Show
-
---assert (switch (decodeUTF8 "ll") { case (1, 'l') true; case _ false });
 
 instance Arbitrary (UTF8 String) where
   arbitrary = UTF8 <$> string1
