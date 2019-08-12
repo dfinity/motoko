@@ -44,31 +44,18 @@ utf8Props = testGroup "UTF-8 coding"
   ]
 
 
-runScriptNoFuzz name testCase = do
-  let as = name <.> "as"
-      wasm = name <.> "wasm"
-      fileArg = fromString . encodeString
-      script = do Turtle.output as $ fromString testCase
-                  res@(exitCode, _, _) <- procStrictWithErr "asc"
-                           ["-no-dfinity-api", "-no-check-ir", fileArg as] empty
-                  if ExitSuccess == exitCode
-                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
-                  else pure (False, res)
-  run script >>= assertSuccessNoFuzz id
-
-
-runScriptWantFuzz name testCase = do
-  let as = name <.> "as"
-      wasm = name <.> "wasm"
-      fileArg = fromString . encodeString
-      script = do Turtle.output as $ fromString testCase
-                  res@(exitCode, _, _) <- procStrictWithErr "asc"
-                           ["-no-dfinity-api", "-no-check-ir", fileArg as] empty
-                  if ExitSuccess == exitCode
-                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
-                  else pure (False, res)
-  run script >>= assertSuccessNoFuzz not
-
+(runScriptNoFuzz, runScriptWantFuzz) = (runner id, runner not)
+    where runner relevant name testCase = 
+            let as = name <.> "as"
+                wasm = name <.> "wasm"
+                fileArg = fromString . encodeString
+                script = do Turtle.output as $ fromString testCase
+                            res@(exitCode, _, _) <- procStrictWithErr "asc"
+                                ["-no-dfinity-api", "-no-check-ir", fileArg as] empty
+                            if ExitSuccess == exitCode
+                            then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
+                            else pure (False, res)
+            in run script >>= assertSuccessNoFuzz relevant
 
 prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
