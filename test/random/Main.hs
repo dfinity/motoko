@@ -65,15 +65,20 @@ instance Arbitrary (UTF8 Char) where
 
 hex :: Int -> String
 hex 0 = "0"
-hex ((`quotRem` 16) -> (q, r)) = hex q <> pure ("0123456789ABCDEF" !! r)
+hex ((`quotRem` 16) -> (q, r)) = simpl (hex q) <> pure ("0123456789ABCDEF" !! r)
+  where simpl ('0' : rest) = rest
+        simpl cs = cs
 
-escape ch | isPrint ch = pure ch
-escape ch = "\\u{" <> hex (fromEnum ch) <> "}"
+escape ch | '\\' `elem` show ch = "\\u{" <> hex (fromEnum ch) <> "}"
+escape '"' = "\\\""
+escape ch = pure ch
 
 prop_charToText (UTF8 char) = monadicIO $ do
-  let testCase = traceShowId $ "assert (switch (decodeUTF8 (charToText '" <> c <> "')) { case (_, '" <> c <> "') true; case _ false })"
+  let testCase = "assert (switch (decodeUTF8 (charToText '"
+                 <> c <> "')) { case (" <> show octets <> ", '" <> c <> "') true; case _ false })"
 
       c = escape char
+      Just (_, octets) = Data.ByteString.UTF8.decode (Data.ByteString.UTF8.fromString $ pure char)
       script = do Turtle.output "charToText.as" $ fromString testCase
                   res@(exitCode, _, _) <- procStrictWithErr "asc"
                            ["-no-dfinity-api", "-no-check-ir", "charToText.as"] empty
