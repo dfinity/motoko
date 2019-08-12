@@ -43,6 +43,19 @@ utf8Props = testGroup "UTF-8 coding"
   , QC.testProperty "charToText >>> decodeUTF8 roundtrips" $ prop_charToText
   ]
 
+
+runScriptNoFuzz name testCase = do
+  let as = name <.> "as"
+      wasm = name <.> "wasm"
+      script = do Turtle.output as $ fromString testCase
+                  res@(exitCode, _, _) <- procStrictWithErr "asc"
+                           ["-no-dfinity-api", "-no-check-ir", repr as] empty
+                  if ExitSuccess == exitCode
+                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", repr wasm] empty
+                  else pure (False, res)
+  run script >>= assertSuccessNoFuzz not
+
+
 prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
   let testCase :: String
@@ -54,7 +67,7 @@ prop_explodeConcat (UTF8 str) = monadicIO $ do
                   res@(exitCode, _, _) <- procStrictWithErr "asc"
                            ["-no-dfinity-api", "-no-check-ir", "explodeConcat.as"] empty
                   if ExitSuccess == exitCode
-                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
+                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "explodeConcat.wasm"] empty
                   else pure (False, res)
   run script >>= assertSuccessNoFuzz not
 
@@ -84,7 +97,7 @@ prop_charToText (UTF8 char) = monadicIO $ do
                   res@(exitCode, _, _) <- procStrictWithErr "asc"
                            ["-no-dfinity-api", "-no-check-ir", "charToText.as"] empty
                   if ExitSuccess == exitCode
-                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
+                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "charToText.wasm"] empty
                   else pure (False, res)
   run script >>= assertSuccessNoFuzz not
 
