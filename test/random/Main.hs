@@ -54,13 +54,26 @@ runScriptNoFuzz name testCase = do
                   if ExitSuccess == exitCode
                   then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
                   else pure (False, res)
+  run script >>= assertSuccessNoFuzz id
+
+
+runScriptWantFuzz name testCase = do
+  let as = name <.> "as"
+      wasm = name <.> "wasm"
+      fileArg = fromString . encodeString
+      script = do Turtle.output as $ fromString testCase
+                  res@(exitCode, _, _) <- procStrictWithErr "asc"
+                           ["-no-dfinity-api", "-no-check-ir", fileArg as] empty
+                  if ExitSuccess == exitCode
+                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
+                  else pure (False, res)
   run script >>= assertSuccessNoFuzz not
 
 
 prop_explodeConcat :: UTF8 String -> Property
-prop_explodeConcat (UTF8 str) = not (null str) ==> monadicIO $ do
+prop_explodeConcat (UTF8 str) = monadicIO $ do
   let testCase :: String
-      testCase = traceShowId $ "{ var str = \"\"; for (c in \""
+      testCase = "{ var str = \"\"; for (c in \""
                  <> s <> "\".chars()) { str #= charToText c }; assert (str == \"" <> s <> "\") }"
 
       s = concatMap escape str
@@ -108,7 +121,7 @@ instance Arbitrary (Failing String) where
   arbitrary = do let failed as = "let _ = " ++ unparseAS as ++ ";"
                  Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @ Integer -> res) -> null res)
 
-prop_rejects (Failing testCase) = monadicIO $ runScriptNoFuzz "fails" testCase
+prop_rejects (Failing testCase) = monadicIO $ runScriptWantFuzz "fails" testCase
 
 halve [] = ([], [])
 halve a@[_] = (a, [])
