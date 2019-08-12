@@ -17,6 +17,7 @@ import Test.QuickCheck.Utf8
 import qualified Data.Text (null, unpack)
 import Data.Maybe
 import Data.Bool (bool)
+import Data.Char (isPrint)
 import Data.Proxy
 import GHC.Natural
 import GHC.TypeLits
@@ -40,6 +41,7 @@ arithProps = testGroup "Arithmetic"
 
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "expected successes" $ prop_UTF8
+  , QC.testProperty "charToText >>> decodeUTF8 roundtrips" $ prop_charToText
   ]
 
 string1 = list1 Test.QuickCheck.Unicode.char
@@ -50,21 +52,35 @@ prop_UTF8 (UTF8 str) = isJust tryDecode ==> c == head str
 -- genValidUtf8, genValidUtf81
 -- decode :: ByteString -> Maybe (Char, Int)
 
+-- TODO: why can't we use Test.QuickCheck.Unicode.Unicode?
 newtype UTF8 a = UTF8 a deriving Show
+
+--assert (switch (decodeUTF8 "ll") { case (1, 'l') true; case _ false });
 
 instance Arbitrary (UTF8 String) where
   arbitrary = UTF8 <$> string1
-{-
 
-prop_UTF8 :: (UTF8 testCase) = monadicIO $ do
-  let script = do Turtle.output "UTF-8.as" $ fromString testCase
+instance Arbitrary (UTF8 Char) where
+  arbitrary = UTF8 <$> Test.QuickCheck.Unicode.char
+
+hex :: Int -> String
+hex 0 = "0"
+hex ((`quotRem` 16) -> (q, r)) = hex q <> pure ("0123456789ABCDEF" !! r)
+
+escape ch | isPrint ch = pure ch
+escape ch = "\\u{" <> hex (fromEnum ch) <> "}"
+
+prop_charToText (UTF8 char) = monadicIO $ do
+  let testCase = traceShowId $ "assert (switch (decodeUTF8 (charToText '" <> c <> "')) { case (_, '" <> c <> "') true; case _ false })"
+
+      c = escape char
+      script = do Turtle.output "charToText.as" $ fromString testCase
                   res@(exitCode, _, _) <- procStrictWithErr "asc"
-                           ["-no-dfinity-api", "-no-check-ir", "UTF-8.as"] empty
+                           ["-no-dfinity-api", "-no-check-ir", "charToText.as"] empty
                   if ExitSuccess == exitCode
                   then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
                   else pure (False, res)
   run script >>= assertSuccessNoFuzz not
--}
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
