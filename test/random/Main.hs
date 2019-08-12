@@ -22,6 +22,7 @@ import GHC.TypeLits
 import qualified Data.Word
 import Data.Bits (Bits(..), FiniteBits(..))
 import qualified Data.ByteString.UTF8
+import Numeric
 
 import System.Process hiding (proc)
 import Turtle
@@ -67,10 +68,7 @@ instance Arbitrary (UTF8 Char) where
   arbitrary = UTF8 <$> Test.QuickCheck.Unicode.char
 
 hex :: Int -> String
-hex 0 = "0"
-hex ((`quotRem` 16) -> (q, r)) = simpl (hex q) <> pure ("0123456789ABCDEF" !! r)
-  where simpl ('0' : rest) = rest
-        simpl cs = cs
+hex = (`showHex` "")
 
 escape ch | '\\' `elem` show ch = "\\u{" <> hex (fromEnum ch) <> "}"
 escape '"' = "\\\""
