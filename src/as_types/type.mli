@@ -65,7 +65,9 @@ val nat : typ
 val int : typ
 val text : typ
 val char : typ
-val error : typ
+val throw : typ
+val catch : typ
+
 
 val iter_obj : typ -> typ
 

@@ -68,6 +68,13 @@ module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
 module ConSet = ConEnv.Dom
 
 
+let compare_field f1 f2 =
+  match f1,f2 with
+  | {lab = l1; typ = Typ _}, {lab = l2; typ = Typ _ } -> compare l1 l2
+  | {lab = l1; typ = Typ _}, {lab = l2; typ = _ } -> -1
+  | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
+  | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
+
 (* Short-hands *)
 
 let unit = Tup []
@@ -76,7 +83,19 @@ let nat = Prim Nat
 let int = Prim Int
 let text = Prim Text
 let char = Prim Char
-let error = Variant [{ lab = "error"; typ = Tup [] }]
+
+let throwErrorCodes = List.sort compare_field [
+  { lab = "error"; typ = unit }
+]
+
+let catchErrorCodes = List.sort compare_field (
+  throwErrorCodes @ [
+    { lab = "system"; typ = unit}
+      (* TBC *)
+  ])
+
+let throw = Tup [Variant throwErrorCodes; text]
+let catch = Tup [Variant catchErrorCodes; text]
 
 let prim = function
   | "Null" -> Null
@@ -381,13 +400,6 @@ let lookup_typ_field l tfs =
   match List.find_opt is_lab tfs with
   | Some {typ = Typ c; _} -> c
   | _ -> invalid "lookup_typ_field"
-
-let compare_field f1 f2 =
-  match f1,f2 with
-  | {lab = l1; typ = Typ _}, {lab = l2; typ = Typ _ } -> compare l1 l2
-  | {lab = l1; typ = Typ _}, {lab = l2; typ = _ } -> -1
-  | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
-  | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
 
 
 (* Span *)

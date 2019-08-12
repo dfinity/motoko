@@ -730,9 +730,9 @@ and infer_exp'' env exp : T.typ =
     if not env.async then
       error env exp.at "misplaced try";
     let t1 = infer_exp env exp1 in
-    let t2 = infer_cases env T.error T.Non cases in
+    let t2 = infer_cases env T.catch T.Non cases in
     if not env.pre then begin
-      match Coverage.check_cases cases T.error with
+      match Coverage.check_cases cases T.catch with
       | [] -> ()
       | ss ->
         warn env exp.at
@@ -805,7 +805,7 @@ and infer_exp'' env exp : T.typ =
   | ThrowE exp1 ->
     if not env.async then
       error env exp.at "misplaced throw";
-    if not env.pre then check_exp env T.error exp1;
+    if not env.pre then check_exp env T.throw exp1;
     T.Non
   | AsyncE exp1 ->
     let env' =
@@ -907,8 +907,8 @@ and check_exp' env t exp : T.typ =
     if not env.async then
       error env exp.at "misplaced try";
     check_exp env t exp1;
-    check_cases env T.error t cases;
-    (match Coverage.check_cases cases T.error with
+    check_cases env T.catch t cases;
+    (match Coverage.check_cases cases T.catch with
     | [] -> ()
     | ss ->
       warn env exp.at
