@@ -12,6 +12,7 @@ import Control.Monad
 import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
+import Test.QuickCheck.Unicode
 import qualified Data.Text (null, unpack)
 import Data.Maybe
 import Data.Bool (bool)
@@ -20,24 +21,74 @@ import GHC.Natural
 import GHC.TypeLits
 import qualified Data.Word
 import Data.Bits (Bits(..), FiniteBits(..))
+import qualified Data.ByteString.UTF8
+import Numeric
 
 import System.Process hiding (proc)
 import Turtle
-import Debug.Trace (traceShowId)
+-- import Debug.Trace (traceShowId)
 
 main = defaultMain tests
   where tests :: TestTree
-        tests = testGroup "Arithmetic-logic operations" [properties]
+        tests = testGroup "ActorScript tests" [arithProps, utf8Props]
 
-properties :: TestTree
-properties = testGroup "Properties" [qcProps]
-
-qcProps = testGroup "(checked by QuickCheck)"
+arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
   , QC.testProperty "expected successes" $ prop_verifies
   ]
 
 
+utf8Props = testGroup "UTF-8 coding"
+  [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
+  , QC.testProperty "charToText >>> decodeUTF8 roundtrips" $ prop_charToText
+  ]
+
+
+(runScriptNoFuzz, runScriptWantFuzz) = (runner id, runner not)
+    where runner relevant name testCase = 
+            let as = name <.> "as"
+                wasm = name <.> "wasm"
+                fileArg = fromString . encodeString
+                script = do Turtle.output as $ fromString testCase
+                            res@(exitCode, _, _) <- procStrictWithErr "asc"
+                                ["-no-dfinity-api", "-no-check-ir", fileArg as] empty
+                            if ExitSuccess == exitCode
+                            then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
+                            else pure (False, res)
+            in run script >>= assertSuccessNoFuzz relevant
+
+prop_explodeConcat :: UTF8 String -> Property
+prop_explodeConcat (UTF8 str) = monadicIO $ do
+  let testCase :: String
+      testCase = "{ var str = \"\"; for (c in \""
+                 <> s <> "\".chars()) { str #= charToText c }; assert (str == \"" <> s <> "\") }"
+
+      s = concatMap escape str
+  runScriptNoFuzz "explodeConcat" testCase
+
+-- TODO: why can't we use Test.QuickCheck.Unicode.Unicode? (see https://github.com/bos/quickcheck-unicode/issues/5)
+newtype UTF8 a = UTF8 a deriving Show
+
+instance Arbitrary (UTF8 String) where
+  arbitrary = UTF8 <$> string1
+
+instance Arbitrary (UTF8 Char) where
+  arbitrary = UTF8 <$> Test.QuickCheck.Unicode.char
+
+hex :: Int -> String
+hex = (`showHex` "")
+
+escape ch | '\\' `elem` show ch = "\\u{" <> hex (fromEnum ch) <> "}"
+escape '"' = "\\\""
+escape ch = pure ch
+
+prop_charToText (UTF8 char) = monadicIO $ do
+  let testCase = "assert (switch (decodeUTF8 (charToText '"
+                 <> c <> "')) { case (" <> show octets <> ", '" <> c <> "') true; case _ false })"
+
+      c = escape char
+      Just (_, octets) = Data.ByteString.UTF8.decode (Data.ByteString.UTF8.fromString $ pure char)
+  runScriptNoFuzz "charToText" testCase
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
@@ -57,15 +108,7 @@ instance Arbitrary (Failing String) where
   arbitrary = do let failed as = "let _ = " ++ unparseAS as ++ ";"
                  Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @ Integer -> res) -> null res)
 
-prop_rejects (Failing testCase) = monadicIO $ do
-  let script = do Turtle.output "fails.as" $ fromString testCase
-                  res@(exitCode, _, _) <- procStrictWithErr "asc"
-                           ["-no-dfinity-api", "-no-check-ir", "fails.as"] empty
-                  if ExitSuccess == exitCode
-                  then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "fails.wasm"] empty
-                  else pure (False, res)
-  run script >>= assertSuccessNoFuzz not
-
+prop_rejects (Failing testCase) = monadicIO $ runScriptWantFuzz "fails" testCase
 
 halve [] = ([], [])
 halve a@[_] = (a, [])
