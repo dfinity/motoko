@@ -501,7 +501,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       interpret_cases env cases exp.at v1 k
       )
   | TryE (exp1, cases) ->
-    let k' = fun v1 -> interpret_cases env cases exp.at v1 k in
+    let k' = fun v1 -> interpret_catches env cases exp.at v1 k in
     let env' = { env with throws = Some k' } in
     interpret_exp env' exp1 k
   | WhileE (exp1, exp2) ->
@@ -578,7 +578,6 @@ and interpret_exps env exps vs (k : V.value list V.cont) =
   | exp::exps' ->
     interpret_exp env exp (fun v -> interpret_exps env exps' (v::vs) k)
 
-
 (* Cases *)
 
 and interpret_cases env cases at v (k : V.value V.cont) =
@@ -590,6 +589,16 @@ and interpret_cases env cases at v (k : V.value V.cont) =
     | Some ve -> interpret_exp (adjoin_vals env ve) exp k
     | None -> interpret_cases env cases' at v k
 
+(* Catches *)
+
+and interpret_catches env cases at v (k : V.value V.cont) =
+  match cases with
+  | [] ->
+    Lib.Option.value (env.throws) v (* re-throw v *)
+  | {it = {pat; exp}; at; _}::cases' ->
+    match match_pat pat v with
+    | Some ve -> interpret_exp (adjoin_vals env ve) exp k
+    | None -> interpret_catches env cases' at v k
 
 (* Patterns *)
 
