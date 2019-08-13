@@ -68,12 +68,15 @@ module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
 module ConSet = ConEnv.Dom
 
 
+(* Field ordering *)
+
 let compare_field f1 f2 =
   match f1,f2 with
   | {lab = l1; typ = Typ _}, {lab = l2; typ = Typ _ } -> compare l1 l2
   | {lab = l1; typ = Typ _}, {lab = l2; typ = _ } -> -1
   | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
   | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
+
 
 (* Short-hands *)
 

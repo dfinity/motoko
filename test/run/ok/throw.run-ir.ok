@@ -1,3 +1,8 @@
 throw.as:55.5-60.6: warning, the catches in this try do not cover value
   (#error, _)
-Fatal error: exception "Match_failure ir_passes/tailcall.ml:94:25"
+
+ t1 ok
+ t2 ok
+ t3 ok
+ t4 ok
+ t5 ok
