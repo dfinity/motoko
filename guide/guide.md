@@ -906,7 +906,7 @@ Otherwise, the expression returns the result of evaluating `<exp2>`.
 
 The or expression `<exp1> or <exp2>` has type `Bool` provided `<exp1>` and `<exp2>` have type `Bool`.
 switch
-The expression `<exp1> and <exp2>` evaluates `exp1` to a switchresult `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a Boolean value `v`.
+The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a Boolean value `v`.
 If `v == true` the expression returns the value `true` (without evaluating `<exp2>`).
 Otherwise, the expression returns the result of evaluating `<exp2>`.
 
