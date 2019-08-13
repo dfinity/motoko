@@ -1,0 +1,2 @@
+throw.as:55.5-60.6: warning, the catches in this try do not cover value
+  (#error, _)
