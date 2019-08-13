@@ -228,7 +228,7 @@ let extended_prim env s typ at =
             f k' V.as_unit
           )
           k
-(* TBC: One await/async.ml are done, this should become something like
+(* TODO(crusso): One await/async.ml are done, this should become something like
       | T.Func(_, _, _, [T.Func(_, _, _, [f_dom,r_dom], _)], _) ->
         let call_conv = CC.call_conv_of_typ f_dom in
         let call_conv_r = CC.call_conv_of_typ r_dom in
