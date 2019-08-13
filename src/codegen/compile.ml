@@ -6222,11 +6222,14 @@ and compile_lit_pat env l =
     BoxedSmallWord.unbox env ^^
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Word32)
+  | CharLit _ ->
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Char)
   | Word64Lit _ ->
     BoxedWord64.unbox env ^^
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Word64)
-  | (TextLit t) ->
+  | TextLit t ->
     Text.lit env t ^^
     Text.compare env
   | _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
