@@ -94,18 +94,18 @@ C r [ while e1 do e2 ] =
     l@()
 C r [ label l e ] = \\l. C r [e] @ l                 // we use label l to name the success continuation
 C r [ break l e ] = \\k. C r [e] @ l                 // discard k, continue from l
-C (reply,_) [ return e ] = \\k. C r [e] @ reply      // discard (k,r), exit via reply
-C (reply,reject) [ try e1 with x -> e2 ] =
-  let reply' = \\x. C r [e2] @ k in
+C ((reply,_) as r) [ return e ] = \\k. C r [e] @ reply      // discard (k,r), exit via reply
+C ((reply,reject) as r) [ try e1 with x -> e2 ] =
+  let reject' = \\x. C r [e2] @ k in
   \\k. C (reply,reject') [e1] @ k
-C (_,reject) [ throw e] = \\k. C r [e] @ reject      // discard k, exit async or try via reject
+C ((_,reject) as r) [ throw e] = \\k. C r [e] @ reject      // discard k, exit async or try via reject
 ```
 
 The translation of trivial terms, `T[ _ ]`, is  homomorpic on all terms but `async _`, at which point we switch to the `CPS[-]` translation.
 Note `T[await _]`, `T[throw _]` and `T[try _ with _ -> _]`, are (deliberately) undefined.
 
 ```JS
-T[ async e ] = spawn (\t.CPS(e) @ ((\v.complete(t,v),(\v.reject(t,e))))
+T[ async e ] = spawn (\t.CPS[e] @ ((\v.complete(t,v)),(\v.reject(t,e)))
 T[ x ]= x
 T[ c ] = c
 T[ \x.t ] = \x.T[t]
