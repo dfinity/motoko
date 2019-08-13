@@ -201,7 +201,7 @@ C env (reply,reject) [ return e ] =
 
 T env [ async e ] =
   let env' = [l_ret->Cont] in
-  spawn (\t.CPS env' [e] @ ((\v.complete(t,v),(\e.reject(t,e))))
+  spawn (\t.CPS env' [e] @ ((\v.complete(t,v)),(\e.reject(t,e)))
 
 T env [\x.t] =
   let env' = [l_ret->Label]
