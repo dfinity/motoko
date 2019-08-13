@@ -56,7 +56,7 @@ the translation by not threading two continuations throughout.
 
 
 ```JS
-CPS[ e ] = \\(reply,reject).C (reply,reject) [e] k
+CPS[ e ] = \\(reply,reject).C (reply,reject) [e] @ reply
 
 where
 
