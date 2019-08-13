@@ -218,7 +218,7 @@ T env [ label l t ] =
 
 T env [ return t ] =
   match env[l_ret] with
-  | Cont ->  l_ret@(T env [t])
+  | Cont ->  l_ret @ (T env [t])
   | Label -> return (T env [t])
 ```
 
