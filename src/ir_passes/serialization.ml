@@ -171,12 +171,21 @@ module Transform() = struct
     | IfE (exp1, exp2, exp3) ->
       IfE (t_exp exp1, t_exp exp2, t_exp exp3)
     | SwitchE (exp1, cases) ->
-      let cases' = List.map
-                     (fun {it = {pat;exp}; at; note} ->
-                       {it = {pat = t_pat pat ;exp = t_exp exp}; at; note})
-                     cases
+      let cases' =
+        List.map
+          (fun {it = {pat;exp}; at; note} ->
+            {it = {pat = t_pat pat; exp = t_exp exp}; at; note})
+          cases
       in
       SwitchE (t_exp exp1, cases')
+    | TryE (exp1, cases) ->
+      let cases' =
+        List.map
+          (fun {it = {pat;exp}; at; note} ->
+            {it = {pat = t_pat pat; exp = t_exp exp}; at; note})
+          cases
+      in
+      TryE (t_exp exp1, cases')
     | LoopE exp1 ->
       LoopE (t_exp exp1)
     | LabelE (id, typ, exp1) ->
@@ -185,6 +194,8 @@ module Transform() = struct
       BreakE (id, t_exp exp1)
     | RetE exp1 ->
       RetE (t_exp exp1)
+    | ThrowE exp1 ->
+      ThrowE (t_exp exp1)
     | AsyncE _ -> assert false
     | AwaitE _ -> assert false
     | AssertE exp1 ->

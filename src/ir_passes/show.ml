@@ -99,12 +99,21 @@ and t_exp' env = function
   | IfE (exp1, exp2, exp3) ->
     IfE (t_exp env exp1, t_exp env exp2, t_exp env exp3)
   | SwitchE (exp1, cases) ->
-    let cases' = List.map
-                  (fun {it = {pat;exp}; at; note} ->
-                    {it = {pat = pat; exp = t_exp env exp}; at; note})
-                  cases
+    let cases' =
+      List.map
+        (fun {it = {pat;exp}; at; note} ->
+          {it = {pat = pat; exp = t_exp env exp}; at; note})
+        cases
     in
     SwitchE (t_exp env exp1, cases')
+  | TryE (exp1, cases) ->
+    let cases' =
+      List.map
+        (fun {it = {pat;exp}; at; note} ->
+          {it = {pat = pat; exp = t_exp env exp}; at; note})
+        cases
+    in
+    TryE (t_exp env exp1, cases')
   | LoopE exp1 ->
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->
@@ -113,6 +122,8 @@ and t_exp' env = function
     BreakE (id, t_exp env exp1)
   | RetE exp1 ->
     RetE (t_exp env exp1)
+  | ThrowE exp1 ->
+    ThrowE (t_exp env exp1)
   | AsyncE e -> AsyncE (t_exp env e)
   | AwaitE e -> AwaitE (t_exp env e)
   | AssertE exp1 ->
