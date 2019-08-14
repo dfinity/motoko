@@ -264,6 +264,8 @@ data ActorScriptTyped :: * -> * where
     :: ActorScriptTyped Bool -> ActorScriptTyped Bool -> ActorScriptTyped Bool
   Not :: ActorScriptTyped Bool -> ActorScriptTyped Bool
   Bool :: Bool -> ActorScriptTyped Bool
+  Embed :: Evaluatable a => ActorScriptTerm (Neuralgic a) -> ActorScriptTyped a
+  Complement :: WordLike n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
 deriving instance Show (ActorScriptTyped t)
 
 subTerm :: Arbitrary (ActorScriptTerm t) => Bool -> Int -> [(Int, Gen (ActorScriptTerm t))]
@@ -362,6 +364,16 @@ instance Arbitrary (ActorScriptTyped Bool) where
     [ resize (n `div` 3) $ elements [NotEqual @Integer, Equals, GreaterEqual, Greater, LessEqual, Less] <*> arbitrary <*> arbitrary
     , resize (n `div` 5) $ elements [ShortAnd, ShortOr] <*> arbitrary <*> arbitrary
     , resize (n `div` 2) $ Not <$> arbitrary
+    ]
+
+instance Arbitrary (ActorScriptTyped Word8) where
+  arbitrary = sized $ \(succ -> n) -> -- TODO: use frequency?
+    oneof $ (Embed <$> arbitrary)
+   {-       : (Embed <$> arbitrary @(ActorScriptTerm (Neuralgic Word16)))
+          : (Embed <$> arbitrary @(ActorScriptTerm (Neuralgic Word32)))
+          : (Embed <$> arbitrary @(ActorScriptTerm (Neuralgic Word64))) -}
+          : if n <= 1 then [] else
+    [ resize (n `div` 2) $ Complement <$> arbitrary
     ]
 
 
@@ -685,6 +697,8 @@ evalR (a `ShortAnd` b) = evalR a >>= bool (pure False) (evalR b)
 evalR (a `ShortOr` b) = evalR a >>= bool (evalR b) (pure True)
 evalR (Not a) = not <$> evalR a
 evalR (Bool b) = pure b
+evalR (Embed a) = evaluate a
+evalR (Complement a) = complement <$> evalR a
 
 
 class Annot t where

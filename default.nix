@@ -59,6 +59,9 @@ let commonBuildInputs = [
   ocaml_bisect_ppx-ocamlbuild
   nixpkgs.ocamlPackages.ocaml-migrate-parsetree
   nixpkgs.ocamlPackages.ppx_tools_versioned
+  nixpkgs.ghc
+  nixpkgs.haskellPackages.cabal-install
+  nixpkgs.haskellPackages.ghcid
 ]; in
 
 let
@@ -181,7 +184,6 @@ rec {
         asc --version
       '' +
       (if test-dvm then ''
-        make parallel
         qc-actorscript${replay-option}
       '' else ''
         make quick
