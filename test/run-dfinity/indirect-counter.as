@@ -3,10 +3,10 @@ let a = actor {
     var c = 1;
     public func inc() {
       c += 1;
-      printInt(c)
+      printNat(c)
     };
     public func print() {
-      printInt(c)
+      printNat(c)
     };
   };
   public func inc() { aa.inc() };

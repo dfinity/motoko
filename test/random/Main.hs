@@ -40,7 +40,6 @@ arithProps = testGroup "Arithmetic/logic"
 
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
-  , QC.testProperty "charToText >>> decodeUTF8 roundtrips" $ prop_charToText
   ]
 
 
@@ -81,14 +80,6 @@ hex = (`showHex` "")
 escape ch | '\\' `elem` show ch = "\\u{" <> hex (fromEnum ch) <> "}"
 escape '"' = "\\\""
 escape ch = pure ch
-
-prop_charToText (UTF8 char) = monadicIO $ do
-  let testCase = "assert (switch (decodeUTF8 (charToText '"
-                 <> c <> "')) { case (" <> show octets <> ", '" <> c <> "') true; case _ false })"
-
-      c = escape char
-      Just (_, octets) = Data.ByteString.UTF8.decode (Data.ByteString.UTF8.fromString $ pure char)
-  runScriptNoFuzz "charToText" testCase
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err

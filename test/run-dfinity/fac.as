@@ -3,4 +3,4 @@ func fac(n : Nat) : Nat {
   n * fac (n-1);
 };
 
-printInt(fac 5);
+printNat(fac 5);

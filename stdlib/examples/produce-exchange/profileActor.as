@@ -8,7 +8,7 @@ actor server {
   //
   var dummy = {
     func scaledParams(region_count_:Nat, factor:Nat) : T.WorkloadParams = {
-      new {
+      {
         region_count        = region_count_:Nat;
         day_count           = 3:Nat;
         max_route_duration  = 1:Nat;
