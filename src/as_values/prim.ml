@@ -192,8 +192,7 @@ let num_conv_prim t1 t2 =
     in k (Word32 (Word32.of_int_u i))
   | T.Word32, T.Char -> fun v k ->
     let i = Conv.int_of_word32_u (as_word32 v)
-    in if i < 0x110000 then k (Char i) else raise (Invalid_argument "character value out of bounds")
-
+    in if i < 0xD800 || i >= 0xE000 && i < 0x110000 then k (Char i) else raise (Invalid_argument "codepoint out of bounds")
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
 let prim = function

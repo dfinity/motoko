@@ -5863,8 +5863,14 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type]
           (fun env get_n ->
+           get_n ^^ compile_unboxed_const 0xD800l ^^
+           G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
+           get_n ^^ compile_unboxed_const 0xE000l ^^
+           G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+           G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
            get_n ^^ compile_unboxed_const 0x10FFFFl ^^
            G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+           G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
            E.then_trap_with env "codepoint out of range" ^^
            get_n ^^ UnboxedSmallWord.box_codepoint)
 
