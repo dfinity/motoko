@@ -1,1 +1,1 @@
-printInt(42);
+printNat(42);

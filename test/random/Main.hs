@@ -21,7 +21,6 @@ import GHC.Natural
 import GHC.TypeLits
 import qualified Data.Word
 import Data.Bits (Bits(..), FiniteBits(..))
-import qualified Data.ByteString.UTF8
 import Numeric
 
 import System.Process hiding (proc)
@@ -40,7 +39,7 @@ arithProps = testGroup "Arithmetic/logic"
 
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
-  , QC.testProperty "charToText >>> decodeUTF8 roundtrips" $ prop_charToText
+  , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
   ]
 
 
@@ -83,11 +82,10 @@ escape '"' = "\\\""
 escape ch = pure ch
 
 prop_charToText (UTF8 char) = monadicIO $ do
-  let testCase = "assert (switch (decodeUTF8 (charToText '"
-                 <> c <> "')) { case (" <> show octets <> ", '" <> c <> "') true; case _ false })"
+  let testCase = "assert (switch ((charToText '"
+                 <> c <> "').chars().next()) { case (?'" <> c <> "') true; case _ false })"
 
       c = escape char
-      Just (_, octets) = Data.ByteString.UTF8.decode (Data.ByteString.UTF8.fromString $ pure char)
   runScriptNoFuzz "charToText" testCase
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do

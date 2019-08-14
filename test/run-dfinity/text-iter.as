@@ -14,7 +14,7 @@ print "via iteration and `printChar`: #2\n";
 var x = 0;
 for (a in s.chars()) {
   x += 1;
-  printInt x;
+  printNat x;
   print ":";
   printChar '\'';
   printChar a;
@@ -30,7 +30,7 @@ print "via iteration and `printChar` (Unicode): #3\n";
 x := 0;
 for (a in russian.chars()) {
   x += 1;
-  printInt x;
+  printNat x;
   print ":";
   printChar '\'';
   printChar a;
@@ -47,7 +47,7 @@ print "via iteration and `printChar` (Unicode): #4\n";
 x := 0;
 for (a in emojis.chars()) {
   x += 1;
-  printInt x;
+  printNat x;
   print ":";
   printChar '\'';
   printChar a;
@@ -57,16 +57,13 @@ for (a in emojis.chars()) {
 print "\n";
 assert(x == 3);
 
-{
-    let (len, c) = decodeUTF8 russian;
-    print russian; print "\n";
-    printInt (word32ToInt len); print "\n";
-    printChar c; print "\n";
+print russian; print "\n";
+switch (russian.chars().next()) {
+  case (?c) { printChar c; print "\n" };
+  case _ {};
 };
 
-{
-    let (len, c) = decodeUTF8 emojis;
-    assert ((len == (4 : Word32)) and (c == '\u{1f648}'));
-    printInt (word32ToInt len); print "\n";
-    printChar c; print "\n";
+switch (emojis.chars().next()) {
+  case (?c) { assert (c == '\u{1f648}'); printChar c; print "\n" };
+  case _ {};
 };

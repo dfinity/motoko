@@ -4,29 +4,28 @@ open As_types
 open Value
 
 module Conv = struct
-  open Nativeint
   open Big_int
-  let of_signed_Word32 w = to_int (logand 0xFFFFFFFFn (of_int32 w))
+  let int_of_word32_u w = Int32.to_int w land 0xffff_ffff
 
   let twoRaised62 = power_int_positive_int 2 62
   let twoRaised63 = power_int_positive_int 2 63
-  let word_twoRaised63 = Word64.(pow 2L 63L)
   let twoRaised64 = power_int_positive_int 2 64
+  let word_twoRaised63 = Word64.(pow 2L 63L)
 
-  let word64_of_nat_big_int i =
+  let word64_of_big_int_u i =
     assert (sign_big_int i > -1);
     let wrapped = mod_big_int i twoRaised64 in
     match int64_of_big_int_opt wrapped with
     | Some n -> n
     | _ -> Word64.add (int64_of_big_int (sub_big_int wrapped twoRaised63)) word_twoRaised63
 
-  let word64_of_big_int i =
+  let word64_of_big_int_s i =
     let wrapped = mod_big_int i twoRaised64 in
     match int64_of_big_int_opt wrapped with
     | Some n -> n
     | _ -> Word64.sub (int64_of_big_int (sub_big_int wrapped twoRaised63)) word_twoRaised63
 
-  let big_int_of_unsigned_word64 w =
+  let big_int_of_word64_u w =
     let i = big_int_of_int64 w in
     if sign_big_int i > -1 then i
     else add_big_int i twoRaised64
@@ -117,7 +116,7 @@ let num_conv_prim t1 t2 =
     let q, r = Big_int.quomod_big_int (Nat64.to_big_int (as_nat64 v)) Conv.twoRaised63 in
     let i = Conv.(to_signed_big_int r q twoRaised63) in
     k (Word64 (Big_int.int64_of_big_int i))
-  | T.Nat, T.Word64 -> fun v k -> k (Word64 (Conv.word64_of_nat_big_int (as_int v)))
+  | T.Nat, T.Word64 -> fun v k -> k (Word64 (Conv.word64_of_big_int_u (as_int v)))
   | T.Nat, T.Nat64 -> fun v k ->
     let q, r = Big_int.quomod_big_int (as_int v) Conv.twoRaised64 in
     Big_int.
@@ -125,7 +124,7 @@ let num_conv_prim t1 t2 =
     then k (Nat64 (Nat64.of_big_int r))
     else range_violation ())
   | T.Int64, T.Word64 -> fun v k -> k (Word64 (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
-  | T.Int, T.Word64 -> fun v k -> k (Word64 (Conv.word64_of_big_int (as_int v)))
+  | T.Int, T.Word64 -> fun v k -> k (Word64 (Conv.word64_of_big_int_s (as_int v)))
   | T.Int, T.Int64 -> fun v k ->
     let q, r = Big_int.quomod_big_int (as_int v) Conv.twoRaised63 in
     Big_int.
@@ -164,7 +163,7 @@ let num_conv_prim t1 t2 =
   | T.Int32, T.Int -> fun v k -> k (Int (Int.of_int (Int_32.to_int (as_int32 v))))
   | T.Nat32, T.Nat -> fun v k -> k (Int (Nat.of_int (Nat32.to_int (as_nat32 v))))
   | T.Word32, T.Nat -> fun v k ->
-    let i = Conv.of_signed_Word32 (as_word32 v)
+    let i = Conv.int_of_word32_u (as_word32 v)
     in k (Int (Big_int.big_int_of_int i))
   | T.Word32, T.Int -> fun v k -> k (Int (Big_int.big_int_of_int32 (as_word32 v)))
   | T.Word32, T.Int32 -> fun v k ->
@@ -178,10 +177,10 @@ let num_conv_prim t1 t2 =
   | T.Int64, T.Int -> fun v k -> k (Int (Int_64.to_big_int (as_int64 v)))
   | T.Nat64, T.Nat -> fun v k -> k (Int (Nat64.to_big_int (as_nat64 v)))
   | T.Word64, T.Nat -> fun v k ->
-    let i = Conv.big_int_of_unsigned_word64 (as_word64 v)
+    let i = Conv.big_int_of_word64_u (as_word64 v)
     in k (Int i)
   | T.Word64, T.Nat64 -> fun v k ->
-    let i = Conv.big_int_of_unsigned_word64 (as_word64 v)
+    let i = Conv.big_int_of_word64_u (as_word64 v)
     in k (Nat64 (Nat64.of_big_int i))
   | T.Word64, T.Int -> fun v k -> k (Int (Big_int.big_int_of_int64 (as_word64 v)))
   | T.Word64, T.Int64 -> fun v k ->
@@ -192,15 +191,15 @@ let num_conv_prim t1 t2 =
     let i = as_char v
     in k (Word32 (Word32.of_int_u i))
   | T.Word32, T.Char -> fun v k ->
-    let i = Conv.of_signed_Word32 (as_word32 v)
-    in if i <= 0xD7FF || i >= 0xE000 && i <= 0x10FFFF then k (Char i) else raise (Invalid_argument "codepoint out of bounds")
+    let i = Conv.int_of_word32_u (as_word32 v)
+    in if i < 0xD800 || i >= 0xE000 && i < 0x110000 then k (Char i) else raise (Invalid_argument "character value out of bounds")
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
 let prim = function
   | "abs" -> fun v k -> k (Int (Nat.abs (as_int v)))
 
 
-  | "popcnt8" | "popcnt16" | "popcnt" | "popcnt64" ->
+  | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun v k ->
      k (match v with
         | Word8  w -> Word8  (Word8. popcnt w)
@@ -209,7 +208,7 @@ let prim = function
         | Word64 w -> Word64 (Word64.popcnt w)
         | _ -> failwith "popcnt")
 
-  | "clz8" | "clz16" | "clz" | "clz64" ->
+  | "clz8" | "clz16" | "clz32" | "clz64" ->
      fun v k ->
      k (match v with
         | Word8  w -> Word8  (Word8. clz w)
@@ -218,7 +217,7 @@ let prim = function
         | Word64 w -> Word64 (Word64.clz w)
         | _ -> failwith "clz")
 
-  | "ctz8" | "ctz16" | "ctz" | "ctz64" ->
+  | "ctz8" | "ctz16" | "ctz32" | "ctz64" ->
      fun v k ->
      k (match v with
         | Word8  w -> Word8  (Word8. ctz w)
@@ -227,7 +226,7 @@ let prim = function
         | Word64 w -> Word64 (Word64.ctz w)
         | _ -> failwith "ctz")
 
-  | "btst8" | "btst16" | "btst" | "btst64" ->
+  | "btst8" | "btst16" | "btst32" | "btst64" ->
      fun v k ->
      let w, a = as_pair v
      in k (match w with
@@ -237,7 +236,7 @@ let prim = function
            | Word64 y -> Word64 Word64.(and_ y (shl 1L (as_word64 a)))
            | _ -> failwith "btst")
 
-  | "Char->Text" -> fun v k -> let str = match as_char v with
+  | "conv_Char_Text" -> fun v k -> let str = match as_char v with
                                           | c when c <= 0o177 -> String.make 1 (Char.chr c)
                                           | code -> Wasm.Utf8.encode [code]
                                in k (Text str)

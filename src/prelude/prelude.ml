@@ -84,8 +84,7 @@ func @text_chars(xs : Text) : (() -> Iter<Char>) =
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
 
-func charToText(c : Char) : Text = (prim "Char->Text" : Char -> Text) c;
-
+func printNat(x : Nat) { print (@text_of_Nat x) };
 func printInt(x : Int) { print (@text_of_Int x) };
 func printChar(x : Char) { print (charToText x) };
 func print(x : Text) { (prim "print" : Text -> ()) x };
@@ -168,7 +167,7 @@ func word64ToInt(n : Word64) : Int = (prim "num_conv_Word64_Int" : Word64 -> Int
 func charToWord32(c : Char) : Word32 = (prim "num_conv_Char_Word32" : Char -> Word32) c;
 func word32ToChar(w : Word32) : Char = (prim "num_conv_Word32_Char" : Word32 -> Char) w;
 
-func decodeUTF8(s : Text) : (Word32, Char) = (prim "decodeUTF8" : Text -> (Word32, Char)) s;
+func charToText(c : Char) : Text = (prim "conv_Char_Text" : Char -> Text) c;
 
 // Exotic bitwise operations
 func popcntWord8(w : Word8) : Word8 = (prim "popcnt8" : Word8 -> Word8) w;
@@ -181,10 +180,10 @@ func clzWord16(w : Word16) : Word16 = (prim "clz16" : Word16 -> Word16) w;
 func ctzWord16(w : Word16) : Word16 = (prim "ctz16" : Word16 -> Word16) w;
 func btstWord16(w : Word16, amount : Word16) : Bool = (prim "btst16" : (Word16, Word16) -> Word16) (w, amount) != (0 : Word16);
 
-func popcntWord32(w : Word32) : Word32 = (prim "popcnt" : Word32 -> Word32) w;
-func clzWord32(w : Word32) : Word32 = (prim "clz" : Word32 -> Word32) w;
-func ctzWord32(w : Word32) : Word32 = (prim "ctz" : Word32 -> Word32) w;
-func btstWord32(w : Word32, amount : Word32) : Bool = (prim "btst" : (Word32, Word32) -> Word32) (w, amount) != (0 : Word32);
+func popcntWord32(w : Word32) : Word32 = (prim "popcnt32" : Word32 -> Word32) w;
+func clzWord32(w : Word32) : Word32 = (prim "clz32" : Word32 -> Word32) w;
+func ctzWord32(w : Word32) : Word32 = (prim "ctz32" : Word32 -> Word32) w;
+func btstWord32(w : Word32, amount : Word32) : Bool = (prim "btst32" : (Word32, Word32) -> Word32) (w, amount) != (0 : Word32);
 
 func popcntWord64(w : Word64) : Word64 = (prim "popcnt64" : Word64 -> Word64) w;
 func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
@@ -199,35 +198,37 @@ func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, 
 // The text_of functions do not need to be exposed; the user can just use
 // the show above.
 
-func @text_of_Nat(x : Nat) : Text {
+func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : [Text]) : Text {
   var text = "";
   var n = x;
-  let base = 10;
-  let digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
-  assert(n >= 0);
+  if (n == 0) return "0";
 
-  if (n == 0) {
-    return "0";
-  };
-
+  var i = 0;
   while (n > 0) {
     let rem = n % base;
+    if (i == sep) { text := "_" # text; i := 0 };
     text := digits[rem] # text;
     n := n / base;
+    i += 1;
   };
   return text;
 };
 
+let @decdigits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+func @text_of_Nat(x : Nat) : Text {
+  @text_of_num(x, 10, 3, @decdigits);
+};
+
 func @text_of_Int(x : Int) : Text {
-  if (x == 0) {
-    return "0";
-  };
-  if (x < 0) {
-    "-" # @text_of_Nat(abs x)
-  } else {
-    @text_of_Nat(abs x)
-  }
+  if (x == 0) "0" else (if (x < 0) "-" else "+") # @text_of_Nat(abs x)
+};
+
+let @hexdigits =
+  [ "0", "1", "2", "3", "4", "5", "6", "7",
+    "8", "9", "A", "B", "C", "D", "E", "F" ];
+func @text_of_Word(x : Nat) : Text {
+  return "0x" # @text_of_num(x, 16, 4, @hexdigits);
 };
 
 func @text_of_Nat8(x : Nat8) : Text = @text_of_Nat (nat8ToNat x);
@@ -238,10 +239,10 @@ func @text_of_Int8(x : Int8) : Text = @text_of_Int (int8ToInt x);
 func @text_of_Int16(x : Int16) : Text = @text_of_Int (int16ToInt x);
 func @text_of_Int32(x : Int32) : Text = @text_of_Int (int32ToInt x);
 func @text_of_Int64(x : Int64) : Text = @text_of_Int (int64ToInt x);
-func @text_of_Word8(x : Word8) : Text = @text_of_Nat (word8ToNat x);
-func @text_of_Word16(x : Word16) : Text = @text_of_Nat (word16ToNat x);
-func @text_of_Word32(x : Word32) : Text = @text_of_Nat (word32ToNat x);
-func @text_of_Word64(x : Word64) : Text = @text_of_Nat (word64ToNat x);
+func @text_of_Word8(x : Word8) : Text = @text_of_Word (word8ToNat x);
+func @text_of_Word16(x : Word16) : Text = @text_of_Word (word16ToNat x);
+func @text_of_Word32(x : Word32) : Text = @text_of_Word (word32ToNat x);
+func @text_of_Word64(x : Word64) : Text = @text_of_Word (word64ToNat x);
 
 
 func @text_of_Bool(b : Bool) : Text {
@@ -253,51 +254,73 @@ func @text_of_Text(t : Text) : Text {
   "\"" # t # "\"";
 };
 
+func @text_has_parens(t : Text) : Bool {
+  switch (t.chars().next()) {
+    case (?'(') true;
+    case _ false;
+  }
+};
+
+func @text_needs_parens(t : Text) : Bool {
+  switch (t.chars().next()) {
+    case (?('+' or '-' or '?' or '#')) true;
+    case _ false;
+  }
+};
+
 func @text_of_option<T>(f : T -> Text, x : ?T) : Text {
   switch (x) {
-    case (?y) {"?(" # f y # ")"};
+    case (?y) {
+      let fy = f y;
+      if (@text_needs_parens(fy)) "?(" # fy # ")"
+      else "?" # fy
+    };
     case null {"null"};
   }
 };
 
 func @text_of_variant<T>(l : Text, f : T -> Text, x : T) : Text {
   let fx = f x;
-  if (fx == "()") "(#" # l # ")"
-  else "(#" # l # " " # fx # ")"
+  if (fx == "()") "#" # l
+  else if (@text_has_parens(fx)) "#" # l # fx
+  else "#" # l # "(" # fx # ")"
 };
 
 func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
-  var text = "";
+  var text = "[";
+  var first = true;
   for (x in xs.vals()) {
-    if (text == "") {
-      text := text # "[";
+    if first {
+      first := false;
     } else {
-      text := text # ", ";
+      text #= ", ";
     };
-    text := text # f x;
+    text #= f x;
   };
-  text := text # "]";
+  text #= "]";
   return text;
 };
 
 func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
-  var text = "";
+  var text = "[var";
+  var first = true;
   for (x in xs.vals()) {
-    if (text == "") {
-      text := text # "[var ";
+    if first {
+      first := false;
+      text #= " ";
     } else {
-      text := text # ", ";
+      text #= ", ";
     };
-    text := text # f x;
+    text #= f x;
   };
-  text := text # "]";
+  text #= "]";
   return text;
 };
 
 
 // Array utilities
 
-// This would be nicer as a objects, but lets do them as functions
+// TODO: These would be nicer as a objects, but lets do them as functions
 // until the compiler has a concept of “static objects”
 func Array_init<T>(len : Nat,  x : T) : [var T] {
   (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
