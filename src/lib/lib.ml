@@ -131,7 +131,7 @@ struct
     | _ -> None
 
   let rec last = function
-    | x::[] -> x
+    | [x] -> x
     | _::xs -> last xs
     | [] -> failwith "last"
 
