@@ -369,7 +369,7 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
   bool last_sign_bit_set = 0;
   do {
     b = read_byte(buf);
-    if (s > 0 && ((!last_sign_bit_set && b == 0x00) || (last_sign_bit_set && b == 0x8F))) {
+    if (s > 0 && ((!last_sign_bit_set && b == 0x00) || (last_sign_bit_set && b == 0x7F))) {
         // The high 8 bits are all zeros or ones, so this is not a shortest encoding
         idl_trap();
     }
