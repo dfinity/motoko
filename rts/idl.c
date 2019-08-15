@@ -37,7 +37,7 @@ export int32_t read_i32_of_sleb128(buf *buf) {
         idl_trap();
     }
     if (s > 0 && (b == 0x00 || (last_sign_bit_set && b == 0x8F))) {
-        // The high bits is all zeros or ones, so this is not a shortest encoding
+        // The high bits are all zeros or ones, so this is not a shortest encoding
         idl_trap();
     }
     last_sign_bit_set = (b & (uint8_t)0x40);
