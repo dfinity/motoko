@@ -474,7 +474,7 @@ instance KnownNat n => Restricted (BitLimited n Word) where
                   then noExponentRestriction
                   else defaultExponentRestriction
 
-class Integral a => Evaluatable a where
+class Ord a => Evaluatable a where
   evaluate :: ActorScriptTerm (Neuralgic a) -> Maybe a
   --evaluate = evaluateTyped . Embed
   evaluateTyped :: ActorScriptTyped a -> Maybe a
@@ -698,17 +698,20 @@ eval (Rel r) = bool 0 1 <$> evalR r
 eval (Typed t) = evaluateTyped t
 --eval _ = Nothing
 
-evalR :: ActorScriptTyped a -> Maybe a
-evalR (a `NotEqual` b) = (/=) <$> evaluate a <*> evaluate b
-evalR (a `Equals` b) = (==) <$> evaluate a <*> evaluate b
-evalR (a `GreaterEqual` b) = (>=) <$> evaluate a <*> evaluate b
-evalR (a `Greater` b) = (>) <$> evaluate a <*> evaluate b
-evalR (a `LessEqual` b) = (<=) <$> evaluate a <*> evaluate b
-evalR (a `Less` b) = (<) <$> evaluate a <*> evaluate b
-evalR (a `ShortAnd` b) = evalR a >>= bool (pure False) (evalR b)
-evalR (a `ShortOr` b) = evalR a >>= bool (evalR b) (pure True)
-evalR (Not a) = not <$> evalR a
-evalR (Bool b) = pure b
+evalR = evaluateTyped
+
+instance Evaluatable Bool where
+  -- evaluateTyped :: ActorScriptTyped a -> Maybe a
+  evaluateTyped (a `NotEqual` b) = (/=) <$> evaluate a <*> evaluate b
+  evaluateTyped (a `Equals` b) = (==) <$> evaluate a <*> evaluate b
+  evaluateTyped (a `GreaterEqual` b) = (>=) <$> evaluate a <*> evaluate b
+  evaluateTyped (a `Greater` b) = (>) <$> evaluate a <*> evaluate b
+  evaluateTyped (a `LessEqual` b) = (<=) <$> evaluate a <*> evaluate b
+  evaluateTyped (a `Less` b) = (<) <$> evaluate a <*> evaluate b
+  evaluateTyped (a `ShortAnd` b) = evaluateTyped a >>= bool (pure False) (evaluateTyped b)
+  evaluateTyped (a `ShortOr` b) = evaluateTyped a >>= bool (evaluateTyped b) (pure True)
+  evaluateTyped (Not a) = not <$> evaluateTyped a
+  evaluateTyped (Bool b) = pure b
 --evalR (Embed a) = evaluate a
 --evalR (Complement a) = complement <$> evaluateTyped a
 
