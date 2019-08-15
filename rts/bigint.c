@@ -344,7 +344,7 @@ export as_ptr bigint_leb128_decode(buf *buf) {
   do {
     b = read_byte(buf);
     if (s > 0 && b == 0x00) {
-        // The high bytes is all zeroes, this is not a shortest encoding
+        // The high byte is all zeroes, this is not a shortest encoding
         idl_trap();
     }
     if (s + 7 < s) {
