@@ -160,6 +160,7 @@ let start () =
             server_capabilities_textDocumentSync = text_document_sync_options;
             server_capabilities_hoverProvider = Some true;
             server_capabilities_completionProvider = Some completion_options;
+            server_capabilities_definitionProvider = Some true;
           }
         }) in
         let response = response_result_message id result in
@@ -181,6 +182,28 @@ let start () =
          | Some file_content ->
             let result =
               Hover.hover_handler
+                position
+                file_content
+                project_root
+                (abs_file_from_uri log_to_file uri) in
+            response_result_message id result in
+       send_response (Lsp_j.string_of_response_message response);
+    | (Some id, `TextDocumentDefinition params) ->
+       let uri =
+         params
+           .Lsp_t.text_document_position_params_textDocument
+           .Lsp_t.text_document_identifier_uri in
+       let position =
+         params.Lsp_t.text_document_position_params_position in
+       let response = match Vfs.read_file uri !vfs with
+         | None ->
+            response_error_message
+              id
+              Lsp_t.{ code = 1
+                    ; message = "Tried to find a definition in a file that hadn't been opened yet"}
+         | Some file_content ->
+            let result =
+              Definition.definition_handler
                 position
                 file_content
                 project_root
