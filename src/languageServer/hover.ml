@@ -6,7 +6,7 @@ let hover_detail = function
   | ValueDecl value ->
      value.name ^ " : " ^ Type.string_of_typ value.typ
   | TypeDecl ty ->
-     ty.name ^ Type.string_of_typ ty.typ
+     ty.name ^ " : " ^ Type.string_of_con ty.typ
 
 let hover_handler (* index *) position file_contents project_root file_path =
   (* TODO(Christoph): Don't rebuild index on every hover *)

@@ -47,7 +47,7 @@ let item_of_ide_decl (d : ide_decl) : Lsp_t.completion_item =
         completion_item_kind = 7;
         completion_item_insertText = tmpl;
         completion_item_insertTextFormat = 2;
-        completion_item_detail = Some(Type.string_of_typ ty.typ);
+        completion_item_detail = Some(Type.string_of_con ty.typ);
      }
 
 let import_relative_to_project_root root module_path dependency =

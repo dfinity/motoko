@@ -8,9 +8,10 @@ type value_decl = {
     typ: Type.typ;
     definition: region option;
   }
+
 type type_decl = {
     name : string;
-    typ: Type.typ;
+    typ: Type.con;
     definition: region option;
   }
 
@@ -35,7 +36,7 @@ let string_of_ide_decl = function
      "TypeDecl{ name = "
        ^ String.escaped ty.name
        ^ ", typ = "
-       ^ Type.string_of_typ ty.typ
+       ^ Type.string_of_con ty.typ
        ^ Lib.Option.get
            (Lib.Option.map
               (fun pos -> ", definition = " ^ string_of_region pos)
@@ -94,7 +95,7 @@ let read_single_module_lib (ty: Type.typ): ide_decl list option =
      |> List.map
           (fun Type.{ lab = name; typ } ->
             (match typ with
-             | Type.Typ con -> TypeDecl { name; typ; definition = None }
+             | Type.Typ con -> TypeDecl { name; typ = con; definition = None }
              | typ -> ValueDecl { name; typ; definition = None }
             )
           )
