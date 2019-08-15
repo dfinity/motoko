@@ -2,14 +2,14 @@ Hash for :
 Expected: 0
 Actual:   0
 Hash for id:
-Expected: 23515
-Actual:   23515
+Expected: 23_515
+Actual:   23_515
 Hash for description:
-Expected: 1595738364
-Actual:   1595738364
+Expected: 1_595_738_364
+Actual:   1_595_738_364
 Hash for short_name:
-Expected: 3261810734
-Actual:   3261810734
+Expected: 3_261_810_734
+Actual:   3_261_810_734
 Hash for Hi ☃:
-Expected: 1419229646
-Actual:   1419229646
+Expected: 1_419_229_646
+Actual:   1_419_229_646

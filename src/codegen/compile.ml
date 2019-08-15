@@ -5962,8 +5962,14 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type]
           (fun env get_n ->
+           get_n ^^ compile_unboxed_const 0xD800l ^^
+           G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
+           get_n ^^ compile_unboxed_const 0xE000l ^^
+           G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+           G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
            get_n ^^ compile_unboxed_const 0x10FFFFl ^^
            G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+           G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
            E.then_trap_with env "codepoint out of range" ^^
            get_n ^^ UnboxedSmallWord.box_codepoint)
 
@@ -6002,10 +6008,6 @@ and compile_exp (env : E.t) ae exp =
       E.trap_with env "idlHash only implemented in interpreter "
 
 
-    | OtherPrim "popcnt", [e] ->
-      SR.UnboxedWord32,
-      compile_exp_as env ae SR.UnboxedWord32 e ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt))
     | OtherPrim "popcnt8", [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
@@ -6016,20 +6018,24 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e ^^
       G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
       UnboxedSmallWord.msb_adjust Type.Word16
+    | OtherPrim "popcnt32", [e] ->
+      SR.UnboxedWord32,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt))
     | OtherPrim "popcnt64", [e] ->
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord64 e ^^
       G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
-    | OtherPrim "clz", [e] -> SR.UnboxedWord32, compile_exp_as env ae SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Clz))
     | OtherPrim "clz8", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.clz_kernel Type.Word8
     | OtherPrim "clz16", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.clz_kernel Type.Word16
+    | OtherPrim "clz32", [e] -> SR.UnboxedWord32, compile_exp_as env ae SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Clz))
     | OtherPrim "clz64", [e] -> SR.UnboxedWord64, compile_exp_as env ae SR.UnboxedWord64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz))
-    | OtherPrim "ctz", [e] -> SR.UnboxedWord32, compile_exp_as env ae SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
     | OtherPrim "ctz8", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.ctz_kernel Type.Word8
     | OtherPrim "ctz16", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ UnboxedSmallWord.ctz_kernel Type.Word16
+    | OtherPrim "ctz32", [e] -> SR.UnboxedWord32, compile_exp_as env ae SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
     | OtherPrim "ctz64", [e] -> SR.UnboxedWord64, compile_exp_as env ae SR.UnboxedWord64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz))
 
-    | OtherPrim "Char->Text", [e] ->
+    | OtherPrim "conv_Char_Text", [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       Text.prim_showChar env
@@ -6052,7 +6058,7 @@ and compile_exp (env : E.t) ae exp =
       const_sr SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word8)
     | OtherPrim "btst16", [_;_] ->
       const_sr SR.Vanilla (UnboxedSmallWord.btst_kernel env Type.Word16)
-    | OtherPrim "btst", [_;_] ->
+    | OtherPrim "btst32", [_;_] ->
       const_sr SR.UnboxedWord32 (UnboxedSmallWord.btst_kernel env Type.Word32)
     | OtherPrim "btst64", [_;_] ->
       const_sr SR.UnboxedWord64 (
@@ -6321,11 +6327,14 @@ and compile_lit_pat env l =
     BoxedSmallWord.unbox env ^^
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Word32)
+  | CharLit _ ->
+    snd (compile_lit env l) ^^
+    compile_eq env Type.(Prim Char)
   | Word64Lit _ ->
     BoxedWord64.unbox env ^^
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Word64)
-  | (TextLit t) ->
+  | TextLit t ->
     Text.lit env t ^^
     Text.compare env
   | _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
