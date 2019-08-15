@@ -313,7 +313,7 @@ and c_exp' context exp k =
     begin
     match eff exp1 with
     | T.Triv ->
-       t_exp context exp1
+      k -*- (t_exp context exp1)
     | T.Await ->
       blockE
         [funcD throw v1 { it = SwitchE (v1, cases');

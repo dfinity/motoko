@@ -127,17 +127,18 @@ let make_async () : V.async =
 
 let get_async async (k : V.value V.cont) (r : V.value V.cont) =
   match Lib.Promise.value_opt async.V.result with
-  | Some v -> k v
+  | Some (V.Ok v) -> k v
+  | Some (V.Error v) -> r v
   | None -> async.V.waiters <- (k,r)::async.V.waiters
 
 let set_async async v =
   List.iter (fun (k,_) -> Scheduler.queue (fun () -> k v)) async.V.waiters;
-  Lib.Promise.fulfill async.V.result v;
+  Lib.Promise.fulfill async.V.result (V.Ok v);
   async.V.waiters <- []
 
 let reject_async async v =
   List.iter (fun (_,k) -> Scheduler.queue (fun () -> k v)) async.V.waiters;
-  Lib.Promise.fulfill async.V.result v;
+  Lib.Promise.fulfill async.V.result (V.Error v);
   async.V.waiters <- []
 
 
