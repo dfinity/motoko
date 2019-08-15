@@ -106,7 +106,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, int32_t *main_type
   if (n_types < 0) { idl_trap(); }
 
   // Early sanity check
-  if (&buf->p[n_types] >= buf->e) { idl_trap() ; }
+  if (&buf->p[n_types] >= buf->e) { idl_trap(); }
 
   // Go through the table
   uint8_t **typtbl = (uint8_t **)alloc(n_types * sizeof(uint8_t*));
