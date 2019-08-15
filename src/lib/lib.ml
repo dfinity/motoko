@@ -126,7 +126,7 @@ struct
     | n, _::xs' when n > 0 -> drop (n - 1) xs'
     | _ -> failwith "drop"
 
-  let head = function
+  let hd_opt = function
     | x :: _ -> Some x
     | _ -> None
 
@@ -135,15 +135,15 @@ struct
     | _::xs -> last xs
     | [] -> failwith "last"
 
-  let rec first f = function
+  let rec first_opt f = function
     | [] -> None
     | x::xs ->
        match f x with
-       | Some y -> Some y
-       | None -> first f xs
+       | None -> first_opt f xs
+       | some -> some
 
   let rec split_last = function
-    | x::[] -> [], x
+    | [x] -> [], x
     | x::xs -> let ys, y = split_last xs in x::ys, y
     | [] -> failwith "split_last"
 

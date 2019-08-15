@@ -31,7 +31,7 @@ let definition_handler
           Index.find_opt resolved.Source_file.path index
           |> Lib.Fun.flip Lib.Option.bind (fun decls ->
                  decls
-                 |> Lib.List.first (function
+                 |> Lib.List.first_opt (function
                      | ValueDecl value ->
                         if String.equal value.name resolved.Source_file.ident
                         then

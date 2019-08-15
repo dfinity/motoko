@@ -139,7 +139,7 @@ let populate_definitions
        let type_definition =
          fields
          |> Lib.List.map_filter is_type_def
-         |> Lib.List.first (fun ty_id ->
+         |> Lib.List.first_opt (fun ty_id ->
                 if ty_id.it = typ.name
                 then Some ty_id.at
                 else None)
