@@ -136,7 +136,7 @@ let populate_definitions
        ValueDecl { value with definition = positioned_binder }
     | TypeDecl typ ->
        let fields = Lib.Option.get (unwrap_module_ast prog) [] in
-       let positioned_binder =
+       let type_definition =
          fields
          |> Lib.List.map_filter is_type_def
          |> Lib.List.first (fun ty_id ->
@@ -144,7 +144,7 @@ let populate_definitions
                 then Some ty_id.at
                 else None)
        in
-       TypeDecl { typ with definition = positioned_binder } in
+       TypeDecl { typ with definition = type_definition } in
   let opt_lib =
     List.find_opt
       (fun (path', _) -> String.equal path path')
