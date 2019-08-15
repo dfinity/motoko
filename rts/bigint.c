@@ -370,7 +370,7 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
   do {
     b = read_byte(buf);
     if (s > 0 && (b == 0x00 || (last_sign_bit_set && b == 0x8F))) {
-        // The high bits is all zeros or ones, so this is not a shortest encoding
+        // The high bits are all zeros or ones, so this is not a shortest encoding
         idl_trap();
     }
     if (s + 7 < s) {
