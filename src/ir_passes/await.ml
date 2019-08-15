@@ -32,7 +32,8 @@ let letcont k scope =
             (scope k')
 
 (* The empty identifier names the implicit return label *)
-let id_ret = ""
+
+type label = Return | Throw | Named of string
 
 let ( -@- ) k exp2 =
   match k with
@@ -47,7 +48,7 @@ let ( -@- ) k exp2 =
 
 (* Label environments *)
 
-module LabelEnv = Env.Make(String)
+module LabelEnv = Env.Make(struct type t = label let compare = compare end)
 
 module PatEnv = Env.Make(String)
 
@@ -99,29 +100,38 @@ and t_exp' context exp' =
   | LoopE exp1 ->
     LoopE (t_exp context exp1)
   | LabelE (id, _typ, exp1) ->
-    let context' = LabelEnv.add id Label context in
+    let context' = LabelEnv.add (Named id) Label context in
     LabelE (id, _typ, t_exp context' exp1)
   | BreakE (id, exp1) ->
     begin
-      match LabelEnv.find_opt id context with
+      match LabelEnv.find_opt (Named id) context with
       | Some (Cont k) -> RetE (k -@- (t_exp context exp1))
       | Some Label -> BreakE (id, t_exp context exp1)
       | None -> assert false
     end
   | RetE exp1 ->
     begin
-      match LabelEnv.find_opt id_ret context with
+      match LabelEnv.find_opt Return context with
       | Some (Cont k) -> RetE (k -@- (t_exp context exp1))
       | Some Label -> RetE (t_exp context exp1)
       | None -> assert false
     end
   | AsyncE exp1 ->
      let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
-     (* add the implicit return label *)
+     (* add the implicit return/throw label *)
      let k_ret = fresh_cont (typ exp1) in
-     let context' = LabelEnv.add id_ret (Cont (ContVar k_ret)) LabelEnv.empty in
-     (asyncE (typ exp1) (k_ret --> (c_exp context' exp1 (ContVar k_ret)))).it
-  | AwaitE _ -> assert false (* an await never has effect T.Triv *)
+     let k_fail = fresh_cont T.catch in
+     let context' =
+       LabelEnv.add Return (Cont (ContVar k_ret))
+         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+     in
+     (* TODO: bind k_fail *)
+     (asyncE (typ exp1) (k_ret -->
+                           (blockE [funcD k_fail (fresh_var "e" T.catch) (assertE (boolE false))]
+                              (c_exp context' exp1 (ContVar k_ret))))).it
+  | TryE _
+  | ThrowE _
+  | AwaitE _ -> assert false (* these never have effect T.Triv *)
   | AssertE exp1 ->
     AssertE (t_exp context exp1)
   | DeclareE (id, typ, exp1) ->
@@ -129,7 +139,7 @@ and t_exp' context exp' =
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
   | FuncE (x, s, typbinds, pat, typ, exp) ->
-    let context' = LabelEnv.add id_ret Label LabelEnv.empty in
+    let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, typbinds, pat, typ,t_exp context' exp)
   | ActorE (id, ds, ids, t) ->
     ActorE (id, t_decs context ds, ids, t)
@@ -205,7 +215,7 @@ and c_if context k e1 e2 e3 =
   | T.Triv ->
     ifE (t_exp context e1) e2 e3 answerT
   | T.Await ->
-     c_exp context e1 (meta (typ e1) (fun v1 -> ifE v1 e2 e3 answerT))
+    c_exp context e1 (meta (typ e1) (fun v1 -> ifE v1 e2 e3 answerT))
   )
 
 and c_loop context k e1 =
@@ -279,16 +289,50 @@ and c_exp' context exp k =
          (meta (typ exp1)
             (fun v1 -> {exp with it = SwitchE(v1,cases')}))
     end)
+  | TryE (exp1, cases) ->
+    (* TODO: do we need to reify f? *)
+    let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
+    letcont f (fun f ->
+    letcont k (fun k ->
+    let cases' = List.map
+                   (fun {it = {pat;exp}; at; note} ->
+                     let exp' = match eff exp with
+                       | T.Triv -> k -*- (t_exp context exp)
+                       | T.Await -> c_exp context exp (ContVar k)
+                     in
+                     {it = {pat;exp = exp' }; at; note})
+                   cases
+    in
+    let error = fresh_var "v" T.catch  in
+    let cases' = cases' @ [{it = {pat = varP error; exp = f -*- error};
+                            at = no_region;
+                            note = ()}] in
+    let throw = fresh_cont T.catch in
+    let v1 =  fresh_var "e" T.catch in
+    let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+    begin
+    match eff exp1 with
+    | T.Triv ->
+       t_exp context exp1
+    | T.Await ->
+      blockE
+        [funcD throw v1 { it = SwitchE (v1, cases');
+                          at = exp.at;
+                          note = {note_eff = T.Await; (* shouldn't matter *)
+                                  note_typ = T.unit}
+        }]
+        (c_exp context' exp1 (ContVar k))
+    end))
   | LoopE exp1 ->
     c_loop context k exp1
   | LabelE (id, _typ, exp1) ->
      letcont k
        (fun k ->
-         let context' = LabelEnv.add id (Cont (ContVar k)) context in
+         let context' = LabelEnv.add (Named id) (Cont (ContVar k)) context in
          c_exp context' exp1 (ContVar k)) (* TODO optimize me, if possible *)
   | BreakE (id, exp1) ->
     begin
-      match LabelEnv.find_opt id context with
+      match LabelEnv.find_opt (Named id) context with
       | Some (Cont k') ->
          c_exp context exp1 k'
       | Some Label -> assert false
@@ -296,17 +340,31 @@ and c_exp' context exp k =
     end
   | RetE exp1 ->
     begin
-      match LabelEnv.find_opt id_ret context with
+      match LabelEnv.find_opt Return context with
       | Some (Cont k') ->
          c_exp context exp1 k'
       | Some Label -> assert false
       | None -> assert false
     end
+  | ThrowE exp1 ->
+    begin
+      match LabelEnv.find_opt Throw context with
+      | Some (Cont k') -> c_exp context exp1 k'
+      | Some Label
+      | None -> assert false
+    end
   | AsyncE exp1 ->
      (* add the implicit return label *)
-     let k_ret = fresh_cont (typ exp1) in
-     let context' = LabelEnv.add id_ret (Cont (ContVar k_ret)) LabelEnv.empty in
-     k -@- (asyncE (typ exp1) (k_ret --> (c_exp context' exp1 (ContVar k_ret))))
+    let k_ret = fresh_cont (typ exp1) in
+    let k_fail = fresh_cont T.catch in
+    let context' =
+      LabelEnv.add Return (Cont (ContVar k_ret))
+        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+    in
+    (* TODO: bind k_fail *)
+    k -@- (asyncE (typ exp1) (k_ret -->
+                                (blockE [funcD k_fail (fresh_var "e" T.catch) (assertE (boolE false))]
+                                   (c_exp context' exp1 (ContVar k_ret)))))
   | AwaitE exp1 ->
      letcont k
        (fun k ->

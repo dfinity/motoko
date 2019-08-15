@@ -102,6 +102,12 @@ let asyncE typ e =
     note = { note_typ = T.Async typ; note_eff = eff e }
   }
 
+let assertE e =
+  { it = AssertE e;
+    at = no_region;
+    note = { note_typ = T.unit; note_eff = eff e}
+  }
+ 
 let awaitE typ e1 e2 =
   { it = PrimE (OtherPrim "@await", [e1; e2]);
     at = no_region;
@@ -147,7 +153,6 @@ let textE s =
     at = no_region;
     note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
   }
-
 
 let unitE =
   { it = TupE [];
@@ -524,3 +529,4 @@ let forE pat exp1 exp2 =
 let unreachableE =
   (* Do we want UnreachableE in the AST *)
   loopE unitE
+

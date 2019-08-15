@@ -300,8 +300,10 @@ module Transform() = struct
       BreakE (id, t_exp exp1)
     | RetE exp1 ->
       RetE (t_exp exp1)
-    | AsyncE _ -> assert false
-    | AwaitE _ -> assert false
+    | AsyncE _
+    | AwaitE _
+    | TryE _
+    | ThrowE _ -> assert false
     | AssertE exp1 ->
       AssertE (t_exp exp1)
     | DeclareE (id, typ, exp1) ->
