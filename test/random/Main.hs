@@ -25,7 +25,7 @@ import Numeric
 
 import System.Process hiding (proc)
 import Turtle
--- import Debug.Trace (traceShowId)
+import Debug.Trace (traceShowId)
 
 main = defaultMain tests
   where tests :: TestTree
@@ -253,6 +253,7 @@ data ActorScriptTerm a
   | forall n . WordLike n => ConvertWord (ActorScriptTerm (Neuralgic (BitLimited n Word)))
   | Rel (ActorScriptTyped Bool)
   | IfThenElse (ActorScriptTerm a) (ActorScriptTerm a) (ActorScriptTyped Bool) -- cond is last!
+  | forall a' . (Neuralgic a' ~ a, Evaluatable a') => Typed (ActorScriptTyped a')
 
 deriving instance Show a => Show (ActorScriptTerm a)
 
@@ -264,7 +265,7 @@ data ActorScriptTyped :: * -> * where
     :: ActorScriptTyped Bool -> ActorScriptTyped Bool -> ActorScriptTyped Bool
   Not :: ActorScriptTyped Bool -> ActorScriptTyped Bool
   Bool :: Bool -> ActorScriptTyped Bool
-  Embed :: Evaluatable a => ActorScriptTerm (Neuralgic a) -> ActorScriptTyped a
+  Embed :: (Literal a, Annot a, Evaluatable a) => ActorScriptTerm (Neuralgic a) -> ActorScriptTyped a
   Complement :: WordLike n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
 deriving instance Show (ActorScriptTyped t)
 
@@ -346,7 +347,10 @@ instance Arbitrary (ActorScriptTerm (Neuralgic Int64)) where
 
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word8)) where
-  arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
+  --arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
+  arbitrary = oneof [classic, gadt]
+    where classic = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
+          gadt = Typed <$> arbitrary
 
 instance Arbitrary (ActorScriptTerm (Neuralgic Word16)) where
   arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
@@ -472,6 +476,8 @@ instance KnownNat n => Restricted (BitLimited n Word) where
 
 class Integral a => Evaluatable a where
   evaluate :: ActorScriptTerm (Neuralgic a) -> Maybe a
+  --evaluate = evaluateTyped . Embed
+  evaluateTyped :: ActorScriptTyped a -> Maybe a
 
 
 data BitLimited (n :: Nat) (a :: *) where
@@ -628,7 +634,11 @@ instance KnownNat bits => Evaluatable (BitLimited bits Integer) where
         _ -> error $ show ab
     where go op a b = do IntN a <- evaluate a; IntN b <- evaluate b; IntN <$> trapInt (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
 
+
 instance WordLike bits => Evaluatable (BitLimited bits Word) where
+  evaluateTyped (Embed a) = evaluate a
+  evaluateTyped (Complement a) =  traceShowId . complement <$> evaluateTyped a
+
   evaluate Five = pure $ WordN 5
   evaluate (About n) = WordN <$> trapWord (natVal (Proxy @bits)) (evalN n)
   evaluate ab =
@@ -654,6 +664,7 @@ instance WordLike bits => Evaluatable (BitLimited bits Word) where
         Ctz (evaluate -> a) -> fromIntegral . countTrailingZeros <$> a
         IfThenElse a b c -> do c <- evalR c
                                evaluate $ if c then a else b
+        Typed t -> evaluateTyped t
         _ -> error $ show ab
     where go op a b = do WordN a <- evaluate a; WordN b <- evaluate b; WordN <$> trapWord bitcount (toInteger a `op` toInteger b)
           log op a b = op <$> evaluate a <*> evaluate b
@@ -684,6 +695,7 @@ eval (ConvertWord t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evalR c
                              eval $ if c then a else b
 eval (Rel r) = bool 0 1 <$> evalR r
+eval (Typed t) = evaluateTyped t
 --eval _ = Nothing
 
 evalR :: ActorScriptTyped a -> Maybe a
@@ -697,8 +709,8 @@ evalR (a `ShortAnd` b) = evalR a >>= bool (pure False) (evalR b)
 evalR (a `ShortOr` b) = evalR a >>= bool (evalR b) (pure True)
 evalR (Not a) = not <$> evalR a
 evalR (Bool b) = pure b
-evalR (Embed a) = evaluate a
-evalR (Complement a) = complement <$> evalR a
+--evalR (Embed a) = evaluate a
+--evalR (Complement a) = complement <$> evaluateTyped a
 
 
 class Annot t where
@@ -783,6 +795,7 @@ unparseAS (ConvertInt a) = unparseInt Proxy a
 unparseAS (ConvertWord a) = unparseWord Proxy a
 unparseAS (Rel r) = unparseBool r
 unparseAS (IfThenElse a b c) = "(if (" <> unparseBool c <> ") " <> unparseAS a <> " else " <> unparseAS b <> ")"
+unparseAS (Typed t) = unparseTyped t
 
 unparseBool :: ActorScriptTyped Bool -> String
 unparseBool (a `NotEqual` b) = inParens unparseAS "!=" a b
@@ -806,7 +819,16 @@ unparseInt p a = "(int" <> bitWidth p <> "ToInt(" <> unparseAS a <> "))"
 unparseWord :: KnownNat n => Proxy n -> ActorScriptTerm (Neuralgic (BitLimited n Word)) -> String
 unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TODO we want signed too: wordToInt
 
+unparseTyped :: ActorScriptTyped a -> String
+unparseTyped (Embed a) = unparseAS a
+unparseTyped (Complement a) = "(^ " <> unparseTyped a <> ")"
+{-
+class Unparsable a where
+  unparse = ActorScriptTyped a -> String
 
+instance KnownNat n => Unparsable (BitLimited n Word) where
+  unparse = 
+-}
 
 -- TODOs:
 --   - wordToInt
