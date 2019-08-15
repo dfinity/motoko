@@ -10,7 +10,7 @@ export uint32_t read_u32_of_leb128(buf *buf) {
   do {
     b = read_byte(buf);
     if (s > 0 && b == 0x00) {
-        // The high byte is all zeroes, this is not a shortest encoding
+        // The high 7 bits is all zeros, this is not a shortest encoding
         idl_trap();
     }
     if (s == 28 && !((b & (uint8_t)0xF0) == 0x00)) {
@@ -36,8 +36,8 @@ export int32_t read_i32_of_sleb128(buf *buf) {
         // else we have an int overflow
         idl_trap();
     }
-    if (s > 0 && (b == 0x00 || (last_sign_bit_set && b == 0x8F))) {
-        // The high bits are all zeros or ones, so this is not a shortest encoding
+    if (s > 0 && ((!last_sign_bit_set && b == 0x00) || (last_sign_bit_set && b == 0x8F))) {
+        // The high 8 bits are all zeros or ones, so this is not a shortest encoding
         idl_trap();
     }
     last_sign_bit_set = (b & (uint8_t)0x40);

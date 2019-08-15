@@ -344,7 +344,7 @@ export as_ptr bigint_leb128_decode(buf *buf) {
   do {
     b = read_byte(buf);
     if (s > 0 && b == 0x00) {
-        // The high byte is all zeroes, this is not a shortest encoding
+        // The high 7 bits are all zeros, this is not a shortest encoding
         idl_trap();
     }
     if (s + 7 < s) {
@@ -369,8 +369,8 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
   bool last_sign_bit_set = 0;
   do {
     b = read_byte(buf);
-    if (s > 0 && (b == 0x00 || (last_sign_bit_set && b == 0x8F))) {
-        // The high bits are all zeros or ones, so this is not a shortest encoding
+    if (s > 0 && ((!last_sign_bit_set && b == 0x00) || (last_sign_bit_set && b == 0x8F))) {
+        // The high 8 bits are all zeros or ones, so this is not a shortest encoding
         idl_trap();
     }
     if (s + 7 < s) {
