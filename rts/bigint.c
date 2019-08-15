@@ -1,4 +1,5 @@
 #include "rts.h"
+#include "buf.h"
 
 /* Memory management for libtommath */
 
@@ -260,7 +261,7 @@ export int bigint_count_bits(as_ptr a) {
   return mp_count_bits(BIGINT_PAYLOAD(a));
 }
 
-/* LEB128 Encoding-decoding */
+/* (S)LEB128 Encoding */
 export int bigint_leb128_size(as_ptr n) {
   if (mp_iszero(BIGINT_PAYLOAD(n))) return 1;
   int x = bigint_count_bits(n);
@@ -298,31 +299,7 @@ int leb128_encoding_size(unsigned char *buf) {
   return i+1;
 }
 
-as_ptr leb128_decode_go(unsigned char *buf, int bytes) {
-  // do not accept overlong encodings
-  if (buf[bytes-1] == 1<<7) bigint_trap();
 
-  as_ptr r = bigint_alloc();
-  CHECK(mp_init(BIGINT_PAYLOAD(r)));
-  int i = bytes-1;
-  while (true) {
-    CHECK(mp_add_d(BIGINT_PAYLOAD(r), buf[i] & ((1<<7)-1), BIGINT_PAYLOAD(r)));
-    if (i > 0) {
-      CHECK(mp_mul_2d(BIGINT_PAYLOAD(r), 7, BIGINT_PAYLOAD(r)));
-      i--;
-    } else {
-      break;
-    }
-  }
-  return r;
-}
-
-export as_ptr bigint_leb128_decode(unsigned char *buf) {
-  int bytes = leb128_encoding_size(buf);
-  return leb128_decode_go(buf, bytes);
-}
-
-/* SLEB128 Encoding-decoding */
 export int bigint_2complement_bits(as_ptr n) {
   if (mp_isneg(BIGINT_PAYLOAD(n))) {
     mp_int tmp;
@@ -355,47 +332,66 @@ export void bigint_sleb128_encode(as_ptr n, unsigned char *buf) {
   bigint_leb128_encode_go(&tmp, buf);
 }
 
-export as_ptr bigint_sleb128_decode(unsigned char *buf) {
-  int bytes = leb128_encoding_size(buf);
+/* (S)LEB128 Decoding */
 
-  as_ptr r = leb128_decode_go(buf, bytes);
+export as_ptr bigint_leb128_decode(buf *buf) {
+  as_ptr r = bigint_alloc();
+  mp_zero(BIGINT_PAYLOAD(r));
+  mp_int tmp;
+  CHECK(mp_init(&tmp));
+  unsigned int s = 0;
+  uint8_t b;
+  do {
+    b = read_byte(buf);
+    if (s > 0 && b == 0x00) {
+        // The high 7 bits are all zeros, this is not a shortest encoding
+        idl_trap();
+    }
+    if (s + 7 < s) {
+        // shift overflow. number is absurdly large anyways
+        idl_trap();
+    }
+    mp_set_u32(&tmp, (b & (uint8_t)0x7f));
+    CHECK(mp_mul_2d(&tmp, s, &tmp));
+    CHECK(mp_add(BIGINT_PAYLOAD(r), &tmp, BIGINT_PAYLOAD(r)));
+    s += 7;
+  } while (b & (uint8_t)0x80);
+  return r;
+}
 
-  // Now adjust sign if necessary
-  if (buf[bytes-1] & (1<<6)) {
-    // negative number
+export as_ptr bigint_sleb128_decode(buf *buf) {
+  as_ptr r = bigint_alloc();
+  mp_zero(BIGINT_PAYLOAD(r));
+  mp_int tmp;
+  CHECK(mp_init(&tmp));
+  unsigned int s = 0;
+  uint8_t b;
+  bool last_sign_bit_set = 0;
+  do {
+    b = read_byte(buf);
+    if (s > 0 && ((!last_sign_bit_set && b == 0x00) || (last_sign_bit_set && b == 0x8F))) {
+        // The high 8 bits are all zeros or ones, so this is not a shortest encoding
+        idl_trap();
+    }
+    if (s + 7 < s) {
+        // shift overflow. number is absurdly large anyways
+        idl_trap();
+    }
+    mp_set_u32(&tmp, (b & (uint8_t)0x7f));
+    CHECK(mp_mul_2d(&tmp, s, &tmp));
+    CHECK(mp_add(BIGINT_PAYLOAD(r), &tmp, BIGINT_PAYLOAD(r)));
+    last_sign_bit_set = (b & (uint8_t)0x40);
+    s += 7;
+  } while (b & (uint8_t)0x80);
+
+  if (last_sign_bit_set) {
+    // negative number, un-2-complement it
     mp_int big;
     CHECK(mp_init(&big));
-    CHECK(mp_2expt(&big, 7*bytes));
+    CHECK(mp_2expt(&big, s));
     CHECK(mp_sub(BIGINT_PAYLOAD(r), &big, BIGINT_PAYLOAD(r)));
   }
 
   return r;
 }
 
-export void leb128_encode(unsigned n, unsigned char *buf) {
-  while (true) {
-    buf[0] = (unsigned char)n; // get low bits
-    if (n >>= 7) {
-      // more bytes to come, set high bit and continue
-      buf[0] |= 1<<7;
-      buf++;
-    } else {
-      // we are done. high bit should be cleared anyway
-      return;
-    }
-  }
-}
-
-export void sleb128_encode(signed n, unsigned char *buf) {
-  while (true) {
-    *buf = n & 0x7F; // get low bits
-    if (n >= -64 && n < 64) {
-      // last byte written, high bit is clear
-      return;
-    } else {
-      // more bytes to come, set high bit and continue
-      *buf++ |= 0x80;
-      n >>= 7;
-    }
-  }
-}

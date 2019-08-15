@@ -572,7 +572,9 @@ module RTS = struct
   let system_imports env =
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "version" [] [I32Type];
-    E.add_func_import env "rts" "skip_idl_header" [I32Type] [];
+    E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "read_u32_of_leb128" [I32Type] [I32Type];
+    E.add_func_import env "rts" "read_i32_of_sleb128" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32_signed" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
@@ -625,7 +627,7 @@ module RTS = struct
     });
     let idl_trap_fi = E.add_fun env "idl_trap" (
       Func.of_body env [] [] (fun env ->
-        E.trap_with env "idl function error"
+        E.trap_with env "IDL error: Unknown error"
       )
     ) in
     E.add_export env (nr {
@@ -1532,6 +1534,90 @@ module UnboxedSmallWord = struct
 
 end (* UnboxedSmallWord *)
 
+module ReadBuf = struct
+  (*
+  Combinators to safely read from a dynamic buffer.
+
+  We represent a buffer by a pointer to two words in memory (usually allocated
+  on the shadow stack): The first is a pointer to the current position of the buffer,
+  the second one a pointer to the end (to check out-of-bounds).
+
+  Code that reads from this buffer will update the former, i.e. it is mutable.
+
+  The format is compatible with C (pointer to a struct) and avoids the need for the
+  multi-value extension that we used before to return both parse result _and_
+  updated pointer.
+
+  All pointers here are unskewed!
+
+  This module is mostly for serialization, but because there are bits of
+  serialization code in the BigNumType implementations, we put it here.
+  *)
+
+  let get_ptr get_buf =
+    get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
+  let get_end get_buf =
+    get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = Heap.word_size; sz = None})
+  let set_ptr get_buf new_val =
+    get_buf ^^ new_val ^^ G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
+  let set_end get_buf new_val =
+    get_buf ^^ new_val ^^ G.i (Store {ty = I32Type; align = 2; offset = Heap.word_size; sz = None})
+  let set_size get_buf get_size =
+    set_end get_buf
+      (get_ptr get_buf ^^ get_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
+
+  let alloc env f = Stack.with_words env "buf" 2l f
+
+  let advance get_buf get_delta =
+    set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
+
+  let read_leb128 env get_buf =
+    get_buf ^^ E.call_import env "rts" "read_u32_of_leb128"
+
+  let read_sleb128 env get_buf =
+    get_buf ^^ E.call_import env "rts" "read_i32_of_sleb128"
+
+  let check_space env get_buf get_delta =
+    get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    get_end get_buf ^^
+    G.i (Compare (Wasm.Values.I32 I64Op.LeU)) ^^
+    E.else_trap_with env "IDL error: out of bounds read"
+
+  let read_byte env get_buf =
+    check_space env get_buf (compile_unboxed_const 1l) ^^
+    get_ptr get_buf ^^
+    G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+    advance get_buf (compile_unboxed_const 1l)
+
+  let read_word16 env get_buf =
+    check_space env get_buf (compile_unboxed_const 2l) ^^
+    get_ptr get_buf ^^
+    G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack16, Wasm.Memory.ZX)}) ^^
+    advance get_buf (compile_unboxed_const 2l)
+
+  let read_word32 env get_buf =
+    check_space env get_buf (compile_unboxed_const 4l) ^^
+    get_ptr get_buf ^^
+    G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+    advance get_buf (compile_unboxed_const 4l)
+
+  let read_word64 env get_buf =
+    check_space env get_buf (compile_unboxed_const 8l) ^^
+    get_ptr get_buf ^^
+    G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
+    advance get_buf (compile_unboxed_const 8l)
+
+  let read_blob env get_buf get_len =
+    check_space env get_buf get_len ^^
+    (* Already has destination address on the stack *)
+    get_ptr get_buf ^^
+    get_len ^^
+    Heap.memcpy env ^^
+    advance get_buf get_len
+
+end (* Buf *)
+
+
 type comparator = Lt | Le | Ge | Gt
 
 module type BigNumType =
@@ -1566,14 +1652,12 @@ sig
    *)
   val compile_store_to_data_buf_signed : E.t -> G.t
   val compile_store_to_data_buf_unsigned : E.t -> G.t
-  (* given a data buffer on stack, consume bytes from it,
+  (* given a ReadBuf on stack, consume bytes from it,
      deserializing to a numeric object
-     and leave two words on stack:
-     - number of consumed bytes (i32, TOS)
-     - numeric object (vanilla)
+     and leave it on the stack (vanilla).
+     The boolean argument is true if the value to be read is signed.
    *)
-  val compile_load_from_data_buf_signed : E.t -> G.t
-  val compile_load_from_data_buf_unsigned : E.t -> G.t
+  val compile_load_from_data_buf : E.t -> bool -> G.t
 
   (* literals *)
   val compile_lit : E.t -> Big_int.big_int -> G.t
@@ -1951,29 +2035,14 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       Num.compile_abs
       env
 
-  let compile_load_from_data_buf_unsigned env =
+  let compile_load_from_data_buf env signed =
     let set_res, get_res = new_local env "res" in
-    let set_size, get_size = new_local env "size" in
-    Num.compile_load_from_data_buf_unsigned env ^^
-    set_size ^^ set_res ^^ get_res ^^
-    fits_in_vanilla env ^^
-    begin G.if_ (ValBlockType (Some I32Type))
+    Num.compile_load_from_data_buf env signed ^^
+    set_res ^^
+    get_res ^^ fits_in_vanilla env ^^
+    G.if_ (ValBlockType (Some I32Type))
       (get_res ^^ Num.truncate_to_word32 env ^^ compress)
       get_res
-    end ^^
-    get_size
-
-  let compile_load_from_data_buf_signed env =
-    let set_res, get_res = new_local env "res" in
-    let set_size, get_size = new_local env "size" in
-    Num.compile_load_from_data_buf_signed env ^^
-    set_size ^^ set_res ^^ get_res ^^
-    fits_in_vanilla env ^^
-    begin G.if_ (ValBlockType (Some I32Type))
-      (get_res ^^ Num.truncate_to_word32 env ^^ compress)
-      get_res
-    end ^^
-    get_size
 
   let compile_encoding_size dynamics get_x =
     get_x ^^ G.if_ (ValBlockType (Some I32Type))
@@ -2132,18 +2201,9 @@ module BigNumLibtommath : BigNumType = struct
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
 
-  let compile_load_from_data_buf_unsigned env =
-    E.call_import env "rts" "bigint_leb128_decode" ^^
-    let (set_n, get_n) = new_local env "n" in
-    set_n ^^
-    get_n ^^
-    get_n ^^ E.call_import env "rts" "bigint_leb128_size"
-  let compile_load_from_data_buf_signed env =
-    E.call_import env "rts" "bigint_sleb128_decode" ^^
-    let (set_n, get_n) = new_local env "n" in
-    set_n ^^
-    get_n ^^
-    get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
+  let compile_load_from_data_buf env = function
+    | false -> E.call_import env "rts" "bigint_leb128_decode"
+    | true -> E.call_import env "rts" "bigint_sleb128_decode"
 
   let compile_lit env n =
     let limb_size = 31 in
@@ -2486,8 +2546,7 @@ module Text = struct
    )
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
-  let payload_ptr_unskewed =
-    compile_add_const unskewed_payload_offset
+  let payload_ptr_unskewed = compile_add_const unskewed_payload_offset
 
   (* String concatentation. Expects two strings on stack *)
   let concat env = Func.share_code2 env "concat" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
@@ -2652,10 +2711,7 @@ module Text = struct
 
   (* We also use Text heap objects for byte arrays
      (really should rename Text to Bytes) *)
-  let dyn_alloc_scratch env =
-    compile_add_const (Int32.mul Heap.word_size header_size) ^^
-    Heap.dyn_alloc_bytes env ^^
-    payload_ptr_unskewed
+  let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed
 
 end (* Text *)
 
@@ -2702,6 +2758,12 @@ module Arr = struct
     let (set_len, get_len) = new_local env "len" in
     let (set_r, get_r) = new_local env "r" in
     set_len ^^
+
+    (* Check size (should not be larger than half the memory space) *)
+    get_len ^^
+    compile_unboxed_const Int32.(shift_left 1l (32-4-1)) ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    E.else_trap_with env "Array allocation too large" ^^
 
     (* Allocate *)
     get_len ^^
@@ -3276,29 +3338,27 @@ module Serialization = struct
   *)
 
   module TM = Map.Make (struct type t = Type.typ let compare = compare end)
+  let to_idl_prim = let open Type in function
+    | Prim Null -> Some 1
+    | Prim Bool -> Some 2
+    | Prim Nat -> Some 3
+    | Prim Int -> Some 4
+    | Prim (Nat8|Word8) -> Some 5
+    | Prim (Nat16|Word16) -> Some 6
+    | Prim (Nat32|Word32) -> Some 7
+    | Prim (Nat64|Word64) -> Some 8
+    | Prim Int8 -> Some 9
+    | Prim Int16 -> Some 10
+    | Prim Int32 -> Some 11
+    | Prim Int64 -> Some 12
+    | Prim Float -> Some 14
+    | Prim Text -> Some 15
+    | Any -> Some 16
+    | Non -> Some 17
+    | _ -> None
 
   let type_desc t : string =
     let open Type in
-
-    let to_idl_prim = function
-      | Prim Null -> Some 1
-      | Prim Bool -> Some 2
-      | Prim Nat -> Some 3
-      | Prim Int -> Some 4
-      | Prim (Nat8|Word8) -> Some 5
-      | Prim (Nat16|Word16) -> Some 6
-      | Prim (Nat32|Word32) -> Some 7
-      | Prim (Nat64|Word64) -> Some 8
-      | Prim Int8 -> Some 9
-      | Prim Int16 -> Some 10
-      | Prim Int32 -> Some 11
-      | Prim Int64 -> Some 12
-      | Prim Float -> Some 14
-      | Prim Text -> Some 15
-      | Any -> Some 16
-      | Non -> Some 17
-      | _ -> None
-    in
 
     (* Type traversal *)
     (* We do a first traversal to find out the indices of types *)
@@ -3645,167 +3705,201 @@ module Serialization = struct
       get_ref_buf
     )
 
-  module Buf = struct
-    (*
-    Combinators to safely read from a dynamic buffer.
-
-    We represent a buffer by a pointer to two words in memory (usually allocated
-    on the shadow stack): The first is a pointer to the current position of the buffer,
-    the second one a pointer to the end (to check out-of-bounds).
-
-    Code that reads from this buffer will update the former, i.e. it is mutuable.
-
-    The format is compatible with C (pointer to a struct) and avoids the need for the
-    multi-value extension that we used before to return both parse result _and_
-    updated pointer.
-
-    All pointers here are unskewed!
-    *)
-
-    let get_ptr get_buf =
-      get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
-    let _get_end get_buf =
-      get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = Heap.word_size; sz = None})
-    let set_ptr get_buf new_val =
-      get_buf ^^ new_val ^^ G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
-    let set_end get_buf new_val =
-      get_buf ^^ new_val ^^ G.i (Store {ty = I32Type; align = 2; offset = Heap.word_size; sz = None})
-    let set_size get_buf get_size =
-      set_end get_buf
-        (get_ptr get_buf ^^ get_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
-
-    let alloc env f = Stack.with_words env "buf" 2l f
-
-    let advance get_buf get_delta =
-      set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
-
-    let read_byte get_buf =
-      get_ptr get_buf ^^
-      G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-      advance get_buf (compile_unboxed_const 1l)
-
-    let read_word env get_buf =
-      (* See TODO (leb128 for i32) *)
-      get_ptr get_buf ^^
-      BigNum.compile_load_from_data_buf_unsigned env ^^
-      let (set_leb_len, get_leb_len) = new_local env "leb_len" in
-      set_leb_len ^^
-      advance get_buf get_leb_len ^^
-      BigNum.to_word32 env
-
-
-  end (* Buf *)
-
   let rec deserialize_go env t =
     let open Type in
     let t = normalize t in
     let name = "@deserialize_go<" ^ typ_id t ^ ">" in
-    Func.share_code2 env name (("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type]
-    (fun env get_data_buf get_ref_buf ->
+    Func.share_code4 env name
+      (("data_buffer", I32Type),
+       ("ref_buffer", I32Type),
+       ("typtbl", I32Type),
+       ("idltyp", I32Type)
+      ) [I32Type]
+    (fun env get_data_buf get_ref_buf get_typtbl get_idltyp ->
 
       let go env t =
+        let (set_idlty, get_idlty) = new_local env "idl_ty" in
+        set_idlty ^^
         get_data_buf ^^
         get_ref_buf ^^
+        get_typtbl ^^
+        get_idlty ^^
         deserialize_go env t
       in
 
+      let check_prim_typ t =
+        get_idltyp ^^
+        compile_eq_const (Int32.of_int (- (Lib.Option.value (to_idl_prim t))))
+      in
+
+      let assert_prim_typ () =
+        check_prim_typ t ^^
+        E.else_trap_with env ("IDL error: unexpected IDL typ when parsing " ^ string_of_typ t)
+      in
+
+
+      (* checks that idltyp is positive, looks it up in the table, updates the typ_buf,
+         reads the type constructor index and traps if it is the wrong one.
+         typ_buf left in place to read the type constructor arguments *)
+      let with_composite_typ idl_tycon_id f =
+        (* make sure index is not negative *)
+        get_idltyp ^^
+        compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
+        E.else_trap_with env ("IDL error: expected composite typ when parsing " ^ string_of_typ t) ^^
+        ReadBuf.alloc env (fun get_typ_buf ->
+          (* Update typ_buf *)
+          ReadBuf.set_ptr get_typ_buf (
+            get_typtbl ^^
+            get_idltyp ^^ compile_mul_const Heap.word_size ^^
+            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+            load_unskewed_ptr
+          ) ^^
+          ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
+          (* read sleb128 *)
+          ReadBuf.read_sleb128 env get_typ_buf ^^
+          (* Check it is the expected value *)
+          compile_eq_const idl_tycon_id ^^
+          E.else_trap_with env ("IDL error: wrong composite typ when parsing " ^ string_of_typ t) ^^
+          (* to the work *)
+          f get_typ_buf
+        ) in
+
       (* Now the actual deserialization *)
       begin match t with
+      (* Primitive types *)
       | Prim Nat ->
-        Buf.get_ptr get_data_buf ^^
-        BigNum.compile_load_from_data_buf_unsigned env ^^
-        let (set_leb_len, get_leb_len) = new_local env "leb_len" in
-        set_leb_len ^^
-        Buf.advance get_data_buf get_leb_len
+        assert_prim_typ () ^^
+        get_data_buf ^^
+        BigNum.compile_load_from_data_buf env false
       | Prim Int ->
-        Buf.get_ptr get_data_buf ^^
-        BigNum.compile_load_from_data_buf_signed env ^^
-        let (set_leb_len, get_leb_len) = new_local env "leb_len" in
-        set_leb_len ^^
-        Buf.advance get_data_buf get_leb_len
+        (* Subtyping with nat *)
+        check_prim_typ (Prim Nat) ^^
+        G.if_ (ValBlockType (Some I32Type))
+          begin
+            get_data_buf ^^
+            BigNum.compile_load_from_data_buf env false
+          end
+          begin
+            assert_prim_typ () ^^
+            get_data_buf ^^
+            BigNum.compile_load_from_data_buf env true
+          end
       | Prim (Int64|Nat64|Word64) ->
-        Buf.get_ptr get_data_buf ^^
-        G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None}) ^^
-        BoxedWord64.box env ^^
-        Buf.advance get_data_buf (compile_unboxed_const 8l)
+        assert_prim_typ () ^^
+        ReadBuf.read_word64 env get_data_buf^^
+        BoxedWord64.box env
       | Prim (Int32|Nat32|Word32) ->
-        Buf.get_ptr get_data_buf ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-        BoxedSmallWord.box env ^^
-        Buf.advance get_data_buf (compile_unboxed_const 4l)
+        assert_prim_typ () ^^
+        ReadBuf.read_word32 env get_data_buf ^^
+        BoxedSmallWord.box env
       | Prim (Int16|Nat16|Word16) ->
-        Buf.get_ptr get_data_buf ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack16, Wasm.Memory.ZX)}) ^^
-        UnboxedSmallWord.msb_adjust Word16 ^^
-        Buf.advance get_data_buf (compile_unboxed_const 2l)
+        assert_prim_typ () ^^
+        ReadBuf.read_word16 env get_data_buf ^^
+        UnboxedSmallWord.msb_adjust Word16
       | Prim (Int8|Nat8|Word8) ->
-        Buf.get_ptr get_data_buf ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-        UnboxedSmallWord.msb_adjust Word8 ^^
-        Buf.advance get_data_buf (compile_unboxed_const 1l)
+        assert_prim_typ () ^^
+        ReadBuf.read_byte env get_data_buf ^^
+        UnboxedSmallWord.msb_adjust Word8
       | Prim Bool ->
-        Buf.get_ptr get_data_buf ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
-        Buf.advance get_data_buf (compile_unboxed_const 1l)
+        assert_prim_typ () ^^
+        ReadBuf.read_byte env get_data_buf
+      | Prim Null ->
+        assert_prim_typ () ^^
+        Opt.null
+      | Prim Text ->
+        assert_prim_typ () ^^
+        let (set_len, get_len) = new_local env "len" in
+        let (set_x, get_x) = new_local env "x" in
+        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+
+        get_len ^^ Text.alloc env ^^ set_x ^^
+        get_x ^^ Text.payload_ptr_unskewed ^^
+        ReadBuf.read_blob env get_data_buf get_len ^^
+        (* TODO: Check validty of utf8 *)
+        get_x
+
+      (* Composite types *)
       | Tup ts ->
-        G.concat_map (fun t -> go env t) ts ^^
-        Tuple.from_stack env (List.length ts)
+        with_composite_typ (-20l) (fun get_typ_buf ->
+          ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
+          G.concat_map (fun t ->
+            ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
+            ReadBuf.read_sleb128 env get_typ_buf ^^
+            go env t
+          ) ts ^^
+          Tuple.from_stack env (List.length ts)
+        )
       | Obj (Object, fs) ->
-        Object.lit_raw env (List.map (fun (_h,f) ->
-          f.Type.lab, fun () -> go env f.typ
-        ) (sort_by_hash fs))
+        with_composite_typ (-20l) (fun get_typ_buf ->
+          ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
+          Object.lit_raw env (List.map (fun (_h,f) ->
+            f.Type.lab, fun () ->
+              ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
+              ReadBuf.read_sleb128 env get_typ_buf ^^
+              go env f.typ
+          ) (sort_by_hash fs))
+        )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
-
-        Buf.read_word env get_data_buf ^^ set_len ^^
-        get_len ^^ Arr.alloc env ^^ set_x ^^
-        get_len ^^ from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^
-          go env t ^^ store_ptr
-        ) ^^
-        get_x
-      | Prim Null -> Opt.null
+        let (set_idltyp, get_idltyp) = new_local env "idltyp" in
+        with_composite_typ (-19l) (fun get_typ_buf ->
+          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
+          ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+          get_len ^^ Arr.alloc env ^^ set_x ^^
+          get_len ^^ from_0_to_n env (fun get_i ->
+            get_x ^^ get_i ^^ Arr.idx env ^^
+            get_idltyp ^^ go env t ^^
+            store_ptr
+          ) ^^
+          get_x
+        )
       | Opt t ->
-        Buf.read_byte get_data_buf ^^
-        compile_eq_const 0l ^^
-        G.if_ (ValBlockType (Some I32Type))
-          ( Opt.null )
-          ( Opt.inject env (go env t) )
+        (* TODO: Subtyping with primitive null *)
+        let (set_idltyp, get_idltyp) = new_local env "idltyp" in
+        with_composite_typ (-18l) (fun get_typ_buf ->
+          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
+          ReadBuf.read_byte env get_data_buf ^^
+          let (set_b, get_b) = new_local env "b" in
+          set_b ^^
+          get_b ^^
+          compile_eq_const 0l ^^
+          G.if_ (ValBlockType (Some I32Type))
+          begin
+            Opt.null
+          end begin
+            get_b ^^ compile_eq_const 1l ^^
+            E.else_trap_with env "IDL error: opt tag not 0 or 1 " ^^
+            Opt.inject env (get_idltyp ^^ go env t)
+          end
+        )
       | Variant vs ->
-        let (set_tag, get_tag) = new_local env "tag" in
-        Buf.read_word env get_data_buf ^^ set_tag ^^
-        List.fold_right (fun (i, {lab = l; typ = t}) continue ->
-            get_tag ^^
-            compile_eq_const (Int32.of_int i) ^^
-            G.if_ (ValBlockType (Some I32Type))
-              ( Variant.inject env l (go env t) )
-              continue
-          )
-          ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
-          ( E.trap_with env "deserialize_go: unexpected variant tag" )
-      | Prim Text ->
-        let (set_len, get_len) = new_local env "len" in
-        let (set_x, get_x) = new_local env "x" in
-        Buf.read_word env get_data_buf ^^ set_len ^^
+        with_composite_typ (-21l) (fun get_typ_buf ->
+          ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
 
-        get_len ^^ Text.alloc env ^^ set_x ^^
+          let (set_tag, get_tag) = new_local env "tag" in
+          ReadBuf.read_leb128 env get_data_buf ^^ set_tag ^^
 
-        get_x ^^ Text.payload_ptr_unskewed ^^
-        Buf.get_ptr get_data_buf ^^
-        get_len ^^
-        Heap.memcpy env ^^
+          let (set_idltyp, get_idltyp) = new_local env "idltyp" in
+          List.fold_right (fun (i, {lab = l; typ = t}) continue ->
+              (* type desc for this variant *)
+              ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
+              ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
 
-        Buf.advance get_data_buf get_len ^^
-
-        get_x
+              get_tag ^^
+              compile_eq_const (Int32.of_int i) ^^
+              G.if_ (ValBlockType (Some I32Type))
+                ( Variant.inject env l (get_idltyp ^^ go env t) )
+                continue
+            )
+            ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
+            ( E.trap_with env "IDL error: unexpected variant tag" )
+        )
       | (Func _ | Obj (Actor, _)) ->
-        Buf.get_ptr get_ref_buf ^^
-        load_unskewed_ptr ^^
-        Dfinity.box_reference env ^^
-        Buf.advance get_ref_buf (compile_unboxed_const Heap.word_size)
+        ReadBuf.read_word32 env get_ref_buf ^^
+        Dfinity.box_reference env
       | Non ->
-        E.trap_with env "deserializing value of type None"
+        E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
       end
     )
@@ -3958,13 +4052,7 @@ module Serialization = struct
         Dfinity.system_call env "data_length" ^^
         set_data_size ^^
 
-        get_data_size ^^
-        compile_add_const 3l ^^
-        compile_divU_const Heap.word_size ^^
-        Arr.alloc env ^^
-        compile_add_const Arr.header_size ^^
-        compile_add_const ptr_unskew ^^
-        set_data_start ^^
+        get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
 
         (* Copy data *)
         get_data_start ^^
@@ -3973,17 +4061,28 @@ module Serialization = struct
         compile_unboxed_const 0l ^^
         Dfinity.system_call env "data_internalize" ^^
 
-        (* Set up read buffers *)
-        Buf.alloc env (fun get_data_buf -> Buf.alloc env (fun get_ref_buf ->
-          Buf.set_ptr get_data_buf get_data_start ^^
-          Buf.set_size get_data_buf get_data_size ^^
-          Buf.set_ptr get_ref_buf (get_refs_start ^^ compile_add_const Heap.word_size) ^^
-          Buf.set_size get_ref_buf (get_refs_size ^^ compile_sub_const 1l ^^ compile_mul_const Heap.word_size) ^^
+        (* Allocate space for out parameters of parse_idl_header *)
+        Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
+        Stack.with_words env "get_maintyp_ptr" 1l (fun get_maintyp_ptr ->
 
-          (* Go! *)
-          get_data_buf ^^ E.call_import env "rts" "skip_idl_header" ^^
-          get_data_buf ^^ get_ref_buf ^^ deserialize_go env t
-        ))
+
+        (* Set up read buffers *)
+        ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
+
+        ReadBuf.set_ptr get_data_buf get_data_start ^^
+        ReadBuf.set_size get_data_buf get_data_size ^^
+        ReadBuf.set_ptr get_ref_buf (get_refs_start ^^ compile_add_const Heap.word_size) ^^
+        ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_sub_const 1l ^^ compile_mul_const Heap.word_size) ^^
+
+        (* Go! *)
+        get_data_buf ^^ get_typtbl_ptr ^^ get_maintyp_ptr ^^
+        E.call_import env "rts" "parse_idl_header" ^^
+
+        get_data_buf ^^ get_ref_buf ^^
+        get_typtbl_ptr ^^ load_unskewed_ptr ^^
+        get_maintyp_ptr ^^ load_unskewed_ptr ^^
+        deserialize_go env t
+        ))))
     )
 
     let dfinity_type t =
