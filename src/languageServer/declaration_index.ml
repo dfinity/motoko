@@ -51,11 +51,6 @@ let name_of_ide_decl (d : ide_decl) : string =
 module Index = Map.Make(String)
 type declaration_index = (ide_decl list) Index.t
 
-let string_of_index (index : declaration_index) : string =
-  let go k v acc =
-    k ^ " =>\n" ^ List.fold_left (fun a b -> a ^ "\n" ^ string_of_ide_decl b) "" v in
-  Index.fold go index ""
-
 module PatternMap = Map.Make(String)
 type pattern_map = Source.region PatternMap.t
 
@@ -98,7 +93,11 @@ let read_single_module_lib (ty: Type.typ): ide_decl list option =
      fields
      |> List.map
           (fun Type.{ lab = name; typ } ->
-            ValueDecl { name; typ; definition = None })
+            (match typ with
+             | Type.Typ con -> TypeDecl { name; typ; definition = None }
+             | typ -> ValueDecl { name; typ; definition = None }
+            )
+          )
      |> Lib.Option.some
   | _ -> None
 
@@ -124,12 +123,9 @@ let populate_definitions
     | Syntax.TypD (typ_id, _, _) ->
        Some typ_id
     | _ -> None in
-  let extract_binders env (pat : Syntax.pat) =
-    gather_pat env pat
-  in
+  let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
   let find_def (prog : Syntax.dec list) def = match def with
     | ValueDecl value ->
-       Printf.eprintf "[val] %s\n" value.name; flush stderr;
        let fields = Lib.Option.get (unwrap_module_ast prog) [] in
        let positioned_binder =
          fields
@@ -140,17 +136,6 @@ let populate_definitions
        ValueDecl { value with definition = positioned_binder }
     | TypeDecl typ ->
        let fields = Lib.Option.get (unwrap_module_ast prog) [] in
-       Printf.eprintf "[ty] %s\n" typ.name; flush stderr;
-       if typ.name = "List"
-       then List.iter
-              (fun field ->
-                Printf.eprintf
-                  "%s"
-                  (Wasm.Sexpr.to_string 80 (Arrange.exp_field field));
-                flush stderr; ()
-              )
-              fields
-       else ();
        let positioned_binder =
          fields
          |> Lib.List.map_filter is_type_def

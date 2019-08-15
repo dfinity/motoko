@@ -48,8 +48,7 @@ let definition_handler
                         else None))
        | Source_file.Alias _ -> None
        | Source_file.Unresolved _ -> None
-       | Source_file.Ident _ -> None
-      ) in
+       | Source_file.Ident _ -> None) in
   let location =
     Lib.Option.map (fun (path, region) ->
         Lsp.
