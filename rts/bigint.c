@@ -374,7 +374,7 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
         idl_trap();
     }
     if (s + 7 < s) {
-	// shift overflow. number is absurdly large anyways
+        // shift overflow. number is absurdly large anyways
         idl_trap();
     }
     mp_set_u32(&tmp, (b & (uint8_t)0x7f));
