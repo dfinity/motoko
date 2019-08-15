@@ -1,5 +1,4 @@
 open As_frontend
-open As_types
 module Lsp = Lsp.Lsp_t
 
 type cursor_target =
