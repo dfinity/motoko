@@ -126,10 +126,21 @@ struct
     | n, _::xs' when n > 0 -> drop (n - 1) xs'
     | _ -> failwith "drop"
 
+  let head = function
+    | x :: _ -> Some x
+    | _ -> None
+
   let rec last = function
     | x::[] -> x
     | _::xs -> last xs
     | [] -> failwith "last"
+
+  let rec first f = function
+    | [] -> None
+    | x::xs ->
+       match f x with
+       | Some y -> Some y
+       | None -> first f xs
 
   let rec split_last = function
     | x::[] -> [], x
