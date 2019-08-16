@@ -331,13 +331,10 @@ instance Arbitrary (ASTerm Int32) where
 instance Arbitrary (ASTerm Int64) where
   arbitrary = reasonablyShaped subTermPow5
 
+
 instance Arbitrary (ASTerm Word8) where
   arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
-{-
-restrictedPowWords :: (Arbitrary (ASTerm (BitLimited n Word)), WordLike n, forall n. WordLike n => Arbitrary (Neuralgic (BitLimited n Word))) => Gen (ASTerm (BitLimited n Word))
---restrictedPowWords :: _
-restrictedPowWords = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
--}
+
 instance Arbitrary (ASTerm Word16) where
   arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
 
@@ -398,12 +395,6 @@ instance (Enum (Maybe a), Eq a, Integral a) => Integral (Maybe a) where
                     Just (pure -> x, pure -> y) -> (x, y)
                     _ -> (Nothing, Nothing)
 
-
-{-
-instance (Eq a, Fractional a) => Fractional (Maybe a) where
-  _ / Just 0 = Nothing
-  a / b = liftA2 (/) a b
--}
 
 evalO TwoLess = \n -> n - 2
 evalO OneLess = \n -> n - 1
