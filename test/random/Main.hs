@@ -787,3 +787,5 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 --   - wordToInt
 --   - bitwise ops (btst?)
 --   - pattern matches (over numeric, bool)
+--   - trapping flavour-preserving conversions Nat -> NatN
+--   - bitsize-preserving conversions
