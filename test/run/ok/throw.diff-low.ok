@@ -9,4 +9,4 @@
 - t3 ok
 - t4 ok
 - t5 ok
-+Fatal error: exception "Match_failure ir_passes/await.ml:227:2"
++(unknown location): execution error, assertion failure

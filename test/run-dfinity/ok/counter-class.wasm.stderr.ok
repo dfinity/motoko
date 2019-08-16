@@ -40,7 +40,22 @@ non-closed actor: (ActorE
             (1 -> 0)
             (params $cont/0)
             ()
-            (CallE (1 -> 0) (VarE $cont/0) (VarE j))
+            (BlockE
+              (LetD
+                (VarP $cont/1)
+                (FuncE
+                  $cont/1
+                  (2 -> 0)
+                  (params $param0/0 $param1/0)
+                  ()
+                  (BlockE
+                    (LetD (VarP $e/0) (TupE (VarE $param0/0) (VarE $param1/0)))
+                    (AssertE (LitE (BoolLit false)))
+                  )
+                )
+              )
+              (CallE (1 -> 0) (VarE $cont/0) (VarE j))
+            )
           )
           (FuncE
             $lambda
