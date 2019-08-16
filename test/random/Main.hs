@@ -223,12 +223,38 @@ instance Arbitrary (Neuralgic Word32) where
 instance Arbitrary (Neuralgic Word64) where
   arbitrary = fmap WordN <$> trapWord 64 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 11, AroundNeg 21, AroundNeg 31, AroundNeg 42, AroundNeg 64, AroundPos 6, AroundPos 14, AroundPos 27, AroundPos 43, AroundPos 57, AroundPos 64]
 
-
+{-
 data ActorScriptTerm a
-  = About a
+  = ConvertNatural (ActorScriptTerm (Neuralgic Natural))
+  | forall n . KnownNat n => ConvertNat (ActorScriptTerm (Neuralgic (BitLimited n Natural)))
+  | forall n . KnownNat n => ConvertInt (ActorScriptTerm (Neuralgic (BitLimited n Integer)))
+  | forall n . WordLike n => ConvertWord (ActorScriptTerm (Neuralgic (BitLimited n Word)))
+  | Rel (ActorScriptTyped Bool)
+  | forall a' . (Neuralgic a' ~ a, Evaluatable a') => Typed (ActorScriptTyped a')
+
+deriving instance Show a => Show (ActorScriptTerm a)
+-}
+
+data ActorScriptTyped :: * -> * where
+  NotEqual, Equals, GreaterEqual, Greater, LessEqual, Less
+    :: (Show (Neuralgic a), Annot a, Literal a, Evaluatable a) => ActorScriptTyped a -> ActorScriptTyped a -> ActorScriptTyped Bool
+  ShortAnd, ShortOr
+    :: ActorScriptTyped Bool -> ActorScriptTyped Bool -> ActorScriptTyped Bool
+  Not :: ActorScriptTyped Bool -> ActorScriptTyped Bool
+  Bool :: Bool -> ActorScriptTyped Bool
+  --Embed :: (Literal a, Annot a, Evaluatable a) => ActorScriptTyped a -> ActorScriptTyped a
+  Complement :: WordLike n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
+  Or, And, Xor, RotL, RotR, ShiftL, ShiftR, ShiftRSigned :: ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
+  PopCnt, Clz, Ctz :: KnownNat n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
+  Pos, Neg, Abs :: ActorScriptTyped a -> ActorScriptTyped a
+{-
   | Pos (ActorScriptTerm a)
   | Neg (ActorScriptTerm a)
   | Abs (ActorScriptTerm a)
+-}
+
+  Add, Sub, Mul, Div, Mod, Pow :: ActorScriptTyped a -> ActorScriptTyped a -> ActorScriptTyped a
+{-About a
   | ActorScriptTerm a `Add` ActorScriptTerm a
   | ActorScriptTerm a `Sub` ActorScriptTerm a
   | ActorScriptTerm a `Mul` ActorScriptTerm a
@@ -236,32 +262,31 @@ data ActorScriptTerm a
   | ActorScriptTerm a `Mod` ActorScriptTerm a
   | ActorScriptTerm a `Pow` ActorScriptTerm a
   | Five
-  | ConvertNatural (ActorScriptTerm (Neuralgic Natural))
+  | -}
+  About :: Neuralgic a -> ActorScriptTyped a
+  Five :: ActorScriptTyped a
+  IfThenElse :: ActorScriptTyped a -> ActorScriptTyped a -> ActorScriptTyped Bool -> ActorScriptTyped a
+
+
+--  | IfThenElse (ActorScriptTerm a) (ActorScriptTerm a) (ActorScriptTyped Bool) -- cond is last!
+
+  ConvertNatural :: ActorScriptTyped Natural -> ActorScriptTyped Integer
+  ConvertNat :: KnownNat n => ActorScriptTyped (BitLimited n Natural) -> ActorScriptTyped Integer
+  ConvertInt :: KnownNat n => ActorScriptTyped (BitLimited n Integer) -> ActorScriptTyped Integer
+  ConvertWord :: WordLike n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped Integer
+  -- Rel :: ActorScriptTyped Bool 
+{-
+ConvertNatural (ActorScriptTerm (Neuralgic Natural))
   | forall n . KnownNat n => ConvertNat (ActorScriptTerm (Neuralgic (BitLimited n Natural)))
   | forall n . KnownNat n => ConvertInt (ActorScriptTerm (Neuralgic (BitLimited n Integer)))
   | forall n . WordLike n => ConvertWord (ActorScriptTerm (Neuralgic (BitLimited n Word)))
   | Rel (ActorScriptTyped Bool)
-  | IfThenElse (ActorScriptTerm a) (ActorScriptTerm a) (ActorScriptTyped Bool) -- cond is last!
-  | forall a' . (Neuralgic a' ~ a, Evaluatable a') => Typed (ActorScriptTyped a')
-
-deriving instance Show a => Show (ActorScriptTerm a)
-
-
-data ActorScriptTyped :: * -> * where
-  NotEqual, Equals, GreaterEqual, Greater, LessEqual, Less
-    :: (Show (Neuralgic a), Annot a, Literal a, Evaluatable a) => ActorScriptTerm (Neuralgic a) -> ActorScriptTerm (Neuralgic a) -> ActorScriptTyped Bool
-  ShortAnd, ShortOr
-    :: ActorScriptTyped Bool -> ActorScriptTyped Bool -> ActorScriptTyped Bool
-  Not :: ActorScriptTyped Bool -> ActorScriptTyped Bool
-  Bool :: Bool -> ActorScriptTyped Bool
-  Embed :: (Literal a, Annot a, Evaluatable a) => ActorScriptTerm (Neuralgic a) -> ActorScriptTyped a
-  Complement :: WordLike n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
-  Or, And, Xor, RotL, RotR, ShiftL, ShiftR, ShiftRSigned :: ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
-  PopCnt, Clz, Ctz :: KnownNat n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
+  | 
+-}
 
 deriving instance Show (ActorScriptTyped t)
 
-subTerm :: Arbitrary (ActorScriptTerm t) => Bool -> Int -> [(Int, Gen (ActorScriptTerm t))]
+subTerm :: Arbitrary (ActorScriptTyped t) => Bool -> Int -> [(Int, Gen (ActorScriptTyped t))]
 subTerm fullPow n =
     [ (1, resize (n `div` 5) $ Pow <$> arbitrary <*> arbitrary) | fullPow] ++
     [ (n, resize (n `div` 3) $ Add <$> arbitrary <*> arbitrary)
@@ -272,12 +297,12 @@ subTerm fullPow n =
     , (n, resize (n `div` 4) $ IfThenElse <$> arbitrary <*> arbitrary <*> arbitrary)
     ]
 
-subTermPow :: Arbitrary (ActorScriptTerm t) => (ActorScriptTerm t -> ActorScriptTerm t) -> Int -> [(Int, Gen (ActorScriptTerm t))]
+subTermPow :: Arbitrary (ActorScriptTyped t) => (ActorScriptTyped t -> ActorScriptTyped t) -> Int -> [(Int, Gen (ActorScriptTyped t))]
 subTermPow mod n = (n, resize (n `div` 5) $ Pow <$> arbitrary <*> (mod <$> arbitrary))
                    : subTerm False n
 
-subTermPow5 :: Arbitrary (ActorScriptTerm (Neuralgic t))
-               => Int -> [(Int, Gen (ActorScriptTerm (Neuralgic t)))]
+subTermPow5 :: Arbitrary (ActorScriptTyped t)
+               => Int -> [(Int, Gen (ActorScriptTyped t))]
 subTermPow5 n = (n, resize (n `div` 5)
                       $ Pow <$> arbitrary
                             <*> (About <$> elements [ Around0
@@ -304,51 +329,57 @@ bitwiseTerm n =
     , (n `div` 5, Complement <$> arbitrary)
     ]
 
--- generate reasonably formed trees from subterms
+-- generate reasonably formed trees from smaller subterms
 --
+{-
 reasonablyShaped :: Arbitrary a
                  => (Int -> [(Int, Gen (ActorScriptTerm a))])
                  -> Gen (ActorScriptTerm a)
 reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
                        (30 `div` n, About <$> arbitrary)
                        : if n > 1 then sub n else []
-
+-}
+reasonablyShaped :: (Arbitrary (Neuralgic a), Annot a, Evaluatable a, Literal a)
+                 => (Int -> [(Int, Gen (ActorScriptTyped a))])
+                 -> Gen (ActorScriptTyped a)
+reasonablyShaped = reasonablyShapedT
 reasonablyShapedT :: (Arbitrary (Neuralgic a), Annot a, Evaluatable a, Literal a)
                  => (Int -> [(Int, Gen (ActorScriptTyped a))])
                  -> Gen (ActorScriptTyped a)
 reasonablyShapedT sub = sized $ \(succ -> n) -> frequency $
-                       (30 `div` n, Embed . About <$> arbitrary)
+                       (30 `div` n, About <$> arbitrary)
                        : if n > 1 then sub n else []
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Nat8)) where
+instance Arbitrary (ActorScriptTyped Nat8) where
   arbitrary = reasonablyShaped $ subTerm True
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Nat16)) where
+instance Arbitrary (ActorScriptTyped Nat16) where
   arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Nat32)) where
+instance Arbitrary (ActorScriptTyped Nat32) where
   arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Nat64)) where
+instance Arbitrary (ActorScriptTyped Nat64) where
   arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
 
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Int8)) where
+instance Arbitrary (ActorScriptTyped Int8) where
   arbitrary = reasonablyShaped $ subTerm True
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Int16)) where
+instance Arbitrary (ActorScriptTyped Int16) where
   arbitrary = reasonablyShaped subTermPow5
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Int32)) where
+instance Arbitrary (ActorScriptTyped Int32) where
   arbitrary = reasonablyShaped subTermPow5
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Int64)) where
+instance Arbitrary (ActorScriptTyped Int64) where
   arbitrary = reasonablyShaped subTermPow5
-
+{-
 instance (Arbitrary (Neuralgic (BitLimited n Word)), WordLike n) => Arbitrary (ActorScriptTyped (BitLimited n Word)) where
   arbitrary = oneof [{-classic, -}bitwise]
     where -- classic = Embed <$> (reasonablyShaped $ subTerm True) -- TODO
           bitwise = reasonablyShapedT bitwiseTerm
+-}
 {-
 instance Arbitrary (ActorScriptTyped Word8) where
   arbitrary = sized $ \(succ -> n) -> -- TODO: use frequency?
@@ -362,21 +393,23 @@ instance Arbitrary (ActorScriptTyped Word8) where
 -}
 
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Word8)) where
-  --arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
+instance Arbitrary (ActorScriptTyped Word8) where
+  arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
+              {-
   arbitrary = oneof [classic, gadt]
     where classic = reasonablyShaped $ subTerm True
           gadt = Typed <$> arbitrary
-{-
-instance Arbitrary (ActorScriptTerm (Neuralgic Word16)) where
-  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
-
-instance Arbitrary (ActorScriptTerm (Neuralgic Word32)) where
-  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
-
-instance Arbitrary (ActorScriptTerm (Neuralgic Word64)) where
-  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
 -}
+
+instance Arbitrary (ActorScriptTyped Word16) where
+  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
+
+instance Arbitrary (ActorScriptTyped Word32) where
+  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
+
+instance Arbitrary (ActorScriptTyped Word64) where
+  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
+
 
 instance Arbitrary (ActorScriptTyped Bool) where
   arbitrary = sized $ \(succ -> n) -> -- TODO: use frequency?
@@ -386,27 +419,27 @@ instance Arbitrary (ActorScriptTyped Bool) where
     , resize (n `div` 2) $ Not <$> arbitrary
     ]
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Natural)) where
+instance Arbitrary (ActorScriptTyped Natural) where
   arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
 
-instance Arbitrary (ActorScriptTerm (Neuralgic Integer)) where
+instance Arbitrary (ActorScriptTyped Integer) where
   arbitrary = reasonablyShaped $ \n ->
     [ (n, resize (n `div` 2) $ Pos <$> arbitrary)
     , (n, resize (n `div` 2) $ Neg <$> arbitrary)
     , (n, resize (n `div` 2) $ Abs <$> arbitrary)
     , (n, ConvertNatural <$> arbitrary)
-    , (n `div` 2, ConvertNat <$> (arbitrary @(ActorScriptTerm (Neuralgic Nat8))))
-    , (n `div` 2, ConvertNat <$> (arbitrary @(ActorScriptTerm (Neuralgic Nat16))))
-    , (n `div` 2, ConvertNat <$> (arbitrary @(ActorScriptTerm (Neuralgic Nat32))))
-    , (n `div` 2, ConvertNat <$> (arbitrary @(ActorScriptTerm (Neuralgic Nat64))))
-    , (n `div` 3, ConvertWord <$> (arbitrary @(ActorScriptTerm (Neuralgic Word8))))
---    , (n `div` 3, ConvertWord <$> (arbitrary @(ActorScriptTerm (Neuralgic Word16))))
---    , (n `div` 3, ConvertWord <$> (arbitrary @(ActorScriptTerm (Neuralgic Word32))))
---    , (n `div` 3, ConvertWord <$> (arbitrary @(ActorScriptTerm (Neuralgic Word64))))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(ActorScriptTerm (Neuralgic Int8))))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(ActorScriptTerm (Neuralgic Int16))))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(ActorScriptTerm (Neuralgic Int32))))
-    , (n `div` 3, ConvertInt <$> (arbitrary @(ActorScriptTerm (Neuralgic Int64))))
+    , (n `div` 2, ConvertNat <$> (arbitrary @(ActorScriptTyped Nat8)))
+    , (n `div` 2, ConvertNat <$> (arbitrary @(ActorScriptTyped Nat16)))
+    , (n `div` 2, ConvertNat <$> (arbitrary @(ActorScriptTyped Nat32)))
+    , (n `div` 2, ConvertNat <$> (arbitrary @(ActorScriptTyped Nat64)))
+    , (n `div` 3, ConvertWord <$> (arbitrary @(ActorScriptTyped Word8)))
+    , (n `div` 3, ConvertWord <$> (arbitrary @(ActorScriptTyped Word16)))
+    , (n `div` 3, ConvertWord <$> (arbitrary @(ActorScriptTyped Word32)))
+    , (n `div` 3, ConvertWord <$> (arbitrary @(ActorScriptTyped Word64)))
+    , (n `div` 3, ConvertInt <$> (arbitrary @(ActorScriptTyped Int8)))
+    , (n `div` 3, ConvertInt <$> (arbitrary @(ActorScriptTyped Int16)))
+    , (n `div` 3, ConvertInt <$> (arbitrary @(ActorScriptTyped Int32)))
+    , (n `div` 3, ConvertInt <$> (arbitrary @(ActorScriptTyped Int64)))
     ] <> subTermPow ((`Mod` Five) . Abs) n
 
 instance Num a => Num (Maybe a) where
@@ -480,7 +513,7 @@ instance KnownNat n => Restricted (BitLimited n Word) where
                   else defaultExponentRestriction
 
 class Ord a => Evaluatable a where
-  evaluate :: ActorScriptTerm (Neuralgic a) -> Maybe a
+  evaluate :: ActorScriptTyped a -> Maybe a
   --evaluate = evaluateTyped . Embed
   evaluateTyped :: ActorScriptTyped a -> Maybe a
 
@@ -641,7 +674,7 @@ instance KnownNat bits => Evaluatable (BitLimited bits Integer) where
 
 
 instance WordLike bits => Evaluatable (BitLimited bits Word) where
-  evaluateTyped (Embed a) = evaluate a
+  --evaluateTyped (Embed a) = evaluate a
   evaluateTyped (Complement a) =  traceShowId . complement <$> evaluateTyped a
   evaluateTyped ab =
       case ab of
@@ -675,7 +708,7 @@ instance WordLike bits => Evaluatable (BitLimited bits Word) where
         a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
         IfThenElse a b c -> do c <- evaluateTyped c
                                evaluate $ if c then a else b
-        Typed t -> evaluateTyped t
+        --Typed t -> evaluateTyped t
         _ -> error $ show ab
     where go op a b = do WordN a <- evaluate a; WordN b <- evaluate b; WordN <$> trapWord bitcount (toInteger a `op` toInteger b)
           bitcount = natVal (Proxy @bits)
@@ -684,7 +717,7 @@ instance Evaluatable Integer where
 instance Evaluatable Natural where
   evaluate = eval
 
-eval :: (Restricted a, Integral a) => ActorScriptTerm (Neuralgic a) -> Maybe a
+eval :: (Restricted a, Integral a) => ActorScriptTyped a -> Maybe a
 eval Five = pure 5
 eval (About n) = evalN n
 eval (Pos n) = eval n
@@ -702,8 +735,8 @@ eval (ConvertInt t) = fromIntegral <$> evaluate t
 eval (ConvertWord t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evaluateTyped c
                              eval $ if c then a else b
-eval (Rel r) = bool 0 1 <$> evaluateTyped r
-eval (Typed t) = evaluateTyped t
+--eval (Rel r) = bool 0 1 <$> evaluateTyped r
+--eval (Typed t) = evaluateTyped t
 --eval _ = Nothing
 
 
@@ -724,12 +757,12 @@ instance Evaluatable Bool where
 
 
 class Annot t where
-  annot :: ActorScriptTerm (Neuralgic t) -> String -> String
-  sizeSuffix :: ActorScriptTerm (Neuralgic t) -> String -> String -- TODO: unneeded
+  annot :: ActorScriptTyped t -> String -> String
+  sizeSuffix :: ActorScriptTyped t -> String -> String -- TODO: unneeded
   sizeSuffix _ = id
   sizeSuffixT :: ActorScriptTyped t -> String -> String
   sizeSuffixT t = sizeSuffix (dummy t)
-    where dummy :: ActorScriptTyped t -> ActorScriptTerm (Neuralgic t)
+    where dummy :: ActorScriptTyped t -> ActorScriptTyped t
           dummy _ = undefined
 
 instance Annot Integer where
@@ -780,7 +813,7 @@ instance Literal Bool where
 inParens :: (a -> String) -> String -> a -> a -> String
 inParens to op lhs rhs = "(" <> to lhs <> " " <> op <> " " <> to rhs <> ")"
 
-unparseAS :: (Annot a, Literal a) => ActorScriptTerm (Neuralgic a) -> String
+unparseAS :: (Annot a, Literal a) => ActorScriptTyped a -> String
 unparseAS f@Five = annot f "5"
 unparseAS a@(About n) = annot a $ literal n
 unparseAS (Pos n) = "(+" <> unparseAS n <> ")"
@@ -796,9 +829,10 @@ unparseAS (ConvertNatural a) = "(++++(" <> unparseAS a <> "))"
 unparseAS (ConvertNat a) = unparseNat Proxy a
 unparseAS (ConvertInt a) = unparseInt Proxy a
 unparseAS (ConvertWord a) = unparseWord Proxy a
-unparseAS (Rel r) = unparseBool r
+--unparseAS (Rel r) = unparseBool r
 unparseAS (IfThenElse a b c) = "(if (" <> unparseBool c <> ") " <> unparseAS a <> " else " <> unparseAS b <> ")"
-unparseAS (Typed t) = unparseTyped t
+--unparseAS (Typed t) = unparseTyped t
+
 
 unparseBool :: ActorScriptTyped Bool -> String
 unparseBool (a `NotEqual` b) = inParens unparseAS "!=" a b
@@ -813,17 +847,17 @@ unparseBool (Not a) = "(not " <> unparseBool a <> ")"
 unparseBool (Bool False) = "false"
 unparseBool (Bool True) = "true"
 
-unparseNat :: KnownNat n => Proxy n -> ActorScriptTerm (Neuralgic (BitLimited n Natural)) -> String
+unparseNat :: KnownNat n => Proxy n -> ActorScriptTyped (BitLimited n Natural) -> String
 unparseNat p a = "(nat" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))"
 
-unparseInt :: KnownNat n => Proxy n -> ActorScriptTerm (Neuralgic (BitLimited n Integer)) -> String
+unparseInt :: KnownNat n => Proxy n -> ActorScriptTyped (BitLimited n Integer) -> String
 unparseInt p a = "(int" <> bitWidth p <> "ToInt(" <> unparseAS a <> "))"
 
-unparseWord :: KnownNat n => Proxy n -> ActorScriptTerm (Neuralgic (BitLimited n Word)) -> String
+unparseWord :: KnownNat n => Proxy n -> ActorScriptTyped (BitLimited n Word) -> String
 unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TODO we want signed too: wordToInt
 
 unparseTyped :: ActorScriptTyped a -> String
-unparseTyped (Embed a) = unparseAS a
+--unparseTyped (Embed a) = unparseAS a
 unparseTyped (a `Or` b) = inParens unparseTyped "|" a b
 unparseTyped (a `And` b) = inParens unparseTyped "&" a b
 unparseTyped (a `Xor` b) = inParens unparseTyped "^" a b
