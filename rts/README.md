@@ -60,7 +60,7 @@ WebAssembly.
 AFL tests
 ---------
 
-Some tests are best run by AFL (American Fuzzy Loop), which is a whitebox
+Some tests are best run by AFL (American Fuzzy Lop), which is a whitebox
 fuzzer that instruments the code to get more coverage.
 
 You can install `afl` using `nix-env -i afl`.
