@@ -611,7 +611,7 @@ instance KnownNat bits => Evaluatable (BitLimited bits Natural) where
         _ `Mod` (evaluate -> Just 0) -> Nothing
         a `Mod` b -> go rem a b
         a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
-        IfThenElse a b c -> do c <- evalR c
+        IfThenElse a b c -> do c <- evaluateTyped c
                                evaluate $ if c then a else b
         _ -> error $ show ab
     where go op a b = do NatN a <- evaluate a; NatN b <- evaluate b; NatN <$> trapNat (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
@@ -629,7 +629,7 @@ instance KnownNat bits => Evaluatable (BitLimited bits Integer) where
         _ `Mod` (evaluate -> Just 0) -> Nothing
         a `Mod` b -> go rem a b
         a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
-        IfThenElse a b c -> do c <- evalR c
+        IfThenElse a b c -> do c <- evaluateTyped c
                                evaluate $ if c then a else b
         _ -> error $ show ab
     where go op a b = do IntN a <- evaluate a; IntN b <- evaluate b; IntN <$> trapInt (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
@@ -662,7 +662,7 @@ instance WordLike bits => Evaluatable (BitLimited bits Word) where
         PopCnt (evaluate -> a) -> fromIntegral . popCount <$> a
         Clz (evaluate -> a) -> fromIntegral . countLeadingZeros <$> a
         Ctz (evaluate -> a) -> fromIntegral . countTrailingZeros <$> a
-        IfThenElse a b c -> do c <- evalR c
+        IfThenElse a b c -> do c <- evaluateTyped c
                                evaluate $ if c then a else b
         Typed t -> evaluateTyped t
         _ -> error $ show ab
@@ -692,13 +692,12 @@ eval (ConvertNatural t) = fromIntegral <$> evaluate t
 eval (ConvertNat t) = fromIntegral <$> evaluate t
 eval (ConvertInt t) = fromIntegral <$> evaluate t
 eval (ConvertWord t) = fromIntegral <$> evaluate t
-eval (IfThenElse a b c) = do c <- evalR c
+eval (IfThenElse a b c) = do c <- evaluateTyped c
                              eval $ if c then a else b
-eval (Rel r) = bool 0 1 <$> evalR r
+eval (Rel r) = bool 0 1 <$> evaluateTyped r
 eval (Typed t) = evaluateTyped t
 --eval _ = Nothing
 
-evalR = evaluateTyped
 
 instance Evaluatable Bool where
   -- evaluateTyped :: ActorScriptTyped a -> Maybe a
