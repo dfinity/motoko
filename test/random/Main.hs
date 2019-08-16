@@ -1,3 +1,4 @@
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# language ConstraintKinds, DataKinds, FlexibleContexts, FlexibleInstances, GADTs
            , KindSignatures, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving
            , TypeApplications, TypeOperators, TypeFamilies, TupleSections
@@ -223,18 +224,6 @@ instance Arbitrary (Neuralgic Word32) where
 instance Arbitrary (Neuralgic Word64) where
   arbitrary = fmap WordN <$> trapWord 64 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 11, AroundNeg 21, AroundNeg 31, AroundNeg 42, AroundNeg 64, AroundPos 6, AroundPos 14, AroundPos 27, AroundPos 43, AroundPos 57, AroundPos 64]
 
-{-
-data ActorScriptTerm a
-  = ConvertNatural (ActorScriptTerm (Neuralgic Natural))
-  | forall n . KnownNat n => ConvertNat (ActorScriptTerm (Neuralgic (BitLimited n Natural)))
-  | forall n . KnownNat n => ConvertInt (ActorScriptTerm (Neuralgic (BitLimited n Integer)))
-  | forall n . WordLike n => ConvertWord (ActorScriptTerm (Neuralgic (BitLimited n Word)))
-  | Rel (ActorScriptTyped Bool)
-  | forall a' . (Neuralgic a' ~ a, Evaluatable a') => Typed (ActorScriptTyped a')
-
-deriving instance Show a => Show (ActorScriptTerm a)
--}
-
 data ActorScriptTyped :: * -> * where
   NotEqual, Equals, GreaterEqual, Greater, LessEqual, Less
     :: (Show (Neuralgic a), Annot a, Literal a, Evaluatable a) => ActorScriptTyped a -> ActorScriptTyped a -> ActorScriptTyped Bool
@@ -242,47 +231,19 @@ data ActorScriptTyped :: * -> * where
     :: ActorScriptTyped Bool -> ActorScriptTyped Bool -> ActorScriptTyped Bool
   Not :: ActorScriptTyped Bool -> ActorScriptTyped Bool
   Bool :: Bool -> ActorScriptTyped Bool
-  --Embed :: (Literal a, Annot a, Evaluatable a) => ActorScriptTyped a -> ActorScriptTyped a
   Complement :: WordLike n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
   Or, And, Xor, RotL, RotR, ShiftL, ShiftR, ShiftRSigned :: ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
   PopCnt, Clz, Ctz :: KnownNat n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
   Pos, Neg, Abs :: ActorScriptTyped a -> ActorScriptTyped a
-{-
-  | Pos (ActorScriptTerm a)
-  | Neg (ActorScriptTerm a)
-  | Abs (ActorScriptTerm a)
--}
 
   Add, Sub, Mul, Div, Mod, Pow :: ActorScriptTyped a -> ActorScriptTyped a -> ActorScriptTyped a
-{-About a
-  | ActorScriptTerm a `Add` ActorScriptTerm a
-  | ActorScriptTerm a `Sub` ActorScriptTerm a
-  | ActorScriptTerm a `Mul` ActorScriptTerm a
-  | ActorScriptTerm a `Div` ActorScriptTerm a
-  | ActorScriptTerm a `Mod` ActorScriptTerm a
-  | ActorScriptTerm a `Pow` ActorScriptTerm a
-  | Five
-  | -}
   About :: Neuralgic a -> ActorScriptTyped a
   Five :: ActorScriptTyped a
   IfThenElse :: ActorScriptTyped a -> ActorScriptTyped a -> ActorScriptTyped Bool -> ActorScriptTyped a
-
-
---  | IfThenElse (ActorScriptTerm a) (ActorScriptTerm a) (ActorScriptTyped Bool) -- cond is last!
-
   ConvertNatural :: ActorScriptTyped Natural -> ActorScriptTyped Integer
   ConvertNat :: KnownNat n => ActorScriptTyped (BitLimited n Natural) -> ActorScriptTyped Integer
   ConvertInt :: KnownNat n => ActorScriptTyped (BitLimited n Integer) -> ActorScriptTyped Integer
   ConvertWord :: WordLike n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped Integer
-  -- Rel :: ActorScriptTyped Bool 
-{-
-ConvertNatural (ActorScriptTerm (Neuralgic Natural))
-  | forall n . KnownNat n => ConvertNat (ActorScriptTerm (Neuralgic (BitLimited n Natural)))
-  | forall n . KnownNat n => ConvertInt (ActorScriptTerm (Neuralgic (BitLimited n Integer)))
-  | forall n . WordLike n => ConvertWord (ActorScriptTerm (Neuralgic (BitLimited n Word)))
-  | Rel (ActorScriptTyped Bool)
-  | 
--}
 
 deriving instance Show (ActorScriptTyped t)
 
@@ -331,22 +292,10 @@ bitwiseTerm n =
 
 -- generate reasonably formed trees from smaller subterms
 --
-{-
-reasonablyShaped :: Arbitrary a
-                 => (Int -> [(Int, Gen (ActorScriptTerm a))])
-                 -> Gen (ActorScriptTerm a)
-reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
-                       (30 `div` n, About <$> arbitrary)
-                       : if n > 1 then sub n else []
--}
 reasonablyShaped :: (Arbitrary (Neuralgic a), Annot a, Evaluatable a, Literal a)
                  => (Int -> [(Int, Gen (ActorScriptTyped a))])
                  -> Gen (ActorScriptTyped a)
-reasonablyShaped = reasonablyShapedT
-reasonablyShapedT :: (Arbitrary (Neuralgic a), Annot a, Evaluatable a, Literal a)
-                 => (Int -> [(Int, Gen (ActorScriptTyped a))])
-                 -> Gen (ActorScriptTyped a)
-reasonablyShapedT sub = sized $ \(succ -> n) -> frequency $
+reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
                        (30 `div` n, About <$> arbitrary)
                        : if n > 1 then sub n else []
 
@@ -374,33 +323,14 @@ instance Arbitrary (ActorScriptTyped Int32) where
 
 instance Arbitrary (ActorScriptTyped Int64) where
   arbitrary = reasonablyShaped subTermPow5
-{-
-instance (Arbitrary (Neuralgic (BitLimited n Word)), WordLike n) => Arbitrary (ActorScriptTyped (BitLimited n Word)) where
-  arbitrary = oneof [{-classic, -}bitwise]
-    where -- classic = Embed <$> (reasonablyShaped $ subTerm True) -- TODO
-          bitwise = reasonablyShapedT bitwiseTerm
--}
-{-
-instance Arbitrary (ActorScriptTyped Word8) where
-  arbitrary = sized $ \(succ -> n) -> -- TODO: use frequency?
-    oneof $ (Embed <$> arbitrary)
-   {-       : (Embed <$> arbitrary @(ActorScriptTerm (Neuralgic Word16)))
-          : (Embed <$> arbitrary @(ActorScriptTerm (Neuralgic Word32)))
-          : (Embed <$> arbitrary @(ActorScriptTerm (Neuralgic Word64))) -}
-          : if n <= 1 then [] else
-    [ resize (n `div` 2) $ Complement <$> arbitrary
-    ]
--}
-
 
 instance Arbitrary (ActorScriptTyped Word8) where
   arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
-              {-
-  arbitrary = oneof [classic, gadt]
-    where classic = reasonablyShaped $ subTerm True
-          gadt = Typed <$> arbitrary
+{-
+restrictedPowWords :: (Arbitrary (ActorScriptTyped (BitLimited n Word)), WordLike n, forall n. WordLike n => Arbitrary (Neuralgic (BitLimited n Word))) => Gen (ActorScriptTyped (BitLimited n Word))
+--restrictedPowWords :: _
+restrictedPowWords = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
 -}
-
 instance Arbitrary (ActorScriptTyped Word16) where
   arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
 
@@ -745,12 +675,8 @@ instance Evaluatable Bool where
 
 class Annot t where
   annot :: ActorScriptTyped t -> String -> String
-  sizeSuffix :: ActorScriptTyped t -> String -> String -- TODO: unneeded
+  sizeSuffix :: ActorScriptTyped t -> String -> String
   sizeSuffix _ = id
-  sizeSuffixT :: ActorScriptTyped t -> String -> String
-  sizeSuffixT t = sizeSuffix (dummy t)
-    where dummy :: ActorScriptTyped t -> ActorScriptTyped t
-          dummy _ = undefined
 
 instance Annot Integer where
   annot _ s = "((" <> s <> ") : Int)"
@@ -820,9 +746,9 @@ unparseAS (a `RotR` b) = inParens unparseAS "<>>" a b
 unparseAS (a `ShiftL` b) = inParens unparseAS "<<" a b
 unparseAS (a `ShiftR` b) = inParens unparseAS ">>" a b
 unparseAS (a `ShiftRSigned` b) = inParens unparseAS "+>>" a b
-unparseAS (PopCnt n) = sizeSuffixT n "(popcntWord" <> " " <> unparseAS n <> ")"
-unparseAS (Clz n) = sizeSuffixT n "(clzWord" <> " " <> unparseAS n <> ")"
-unparseAS (Ctz n) = sizeSuffixT n "(ctzWord" <> " " <> unparseAS n <> ")"
+unparseAS (PopCnt n) = sizeSuffix n "(popcntWord" <> " " <> unparseAS n <> ")"
+unparseAS (Clz n) = sizeSuffix n "(clzWord" <> " " <> unparseAS n <> ")"
+unparseAS (Ctz n) = sizeSuffix n "(ctzWord" <> " " <> unparseAS n <> ")"
 unparseAS (Complement a) = "(^ " <> unparseAS a <> ")"
 unparseAS (ConvertNatural a) = "(++++(" <> unparseAS a <> "))"
 unparseAS (ConvertNat a) = unparseNat Proxy a
@@ -853,5 +779,4 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 -- TODOs:
 --   - wordToInt
 --   - bitwise ops (btst?)
---   - bitwise not, a.k.a unary (^)
 --   - pattern matches (over numeric, bool)
