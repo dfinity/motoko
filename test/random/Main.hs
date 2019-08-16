@@ -343,14 +343,17 @@ instance Arbitrary (ASTerm Int64) where
 instance Arbitrary (ASTerm Word8) where
   arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
 
+reasonableWordTerm :: (WordLike n, Arbitrary (ASTerm (BitLimited n Word))) => Gen (ASTerm (BitLimited n Word))
+reasonableWordTerm = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
+
 instance Arbitrary (ASTerm Word16) where
-  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
+  arbitrary = reasonableWordTerm
 
 instance Arbitrary (ASTerm Word32) where
-  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
+  arbitrary = reasonableWordTerm
 
 instance Arbitrary (ASTerm Word64) where
-  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
+  arbitrary = reasonableWordTerm
 
 
 instance Arbitrary (ASTerm Bool) where
