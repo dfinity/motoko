@@ -183,6 +183,15 @@ instance Arbitrary (Neuralgic Natural) where
   arbitrary =  (\n -> if n >= 0 then pure (fromIntegral n) else Nothing)
                `guardedFrom` [Around0, AroundPos 30, AroundPos 63, LargePos]
 
+instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Natural)) where
+  arbitrary = fmap NatN <$> trapNat bits `guardedFrom` menu bits
+    where bits = natVal (Proxy @n)
+          menu 8 = [Around0, AroundPos 3, AroundPos 5, AroundPos 8]
+          menu 16 = [Around0, AroundPos 3, AroundPos 5, AroundPos 8, AroundPos 13, AroundPos 16]
+          menu 32 = [Around0, AroundPos 8, AroundPos 13, AroundPos 16, AroundPos 23, AroundPos 32]
+          menu 64 = [Around0, AroundPos 8, AroundPos 13, AroundPos 23, AroundPos 31, AroundPos 47, AroundPos 64]
+
+{-
 instance Arbitrary (Neuralgic Nat8) where
   arbitrary = fmap NatN <$> trapNat 8 `guardedFrom` [Around0, AroundPos 3, AroundPos 5, AroundPos 8]
 
@@ -194,9 +203,16 @@ instance Arbitrary (Neuralgic Nat32) where
 
 instance Arbitrary (Neuralgic Nat64) where
   arbitrary = fmap NatN <$> trapNat 64 `guardedFrom` [Around0, AroundPos 8, AroundPos 13, AroundPos 23, AroundPos 31, AroundPos 47, AroundPos 64]
+-}
 
-
-
+instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Integer)) where
+  arbitrary = fmap IntN <$> trapInt bits `guardedFrom` menu bits
+    where bits = natVal (Proxy @n)
+          menu 8 = [Around0, AroundNeg 3, AroundNeg 5, AroundNeg 7, AroundPos 3, AroundPos 5, AroundPos 7]
+          menu 16 = [Around0, AroundNeg 3, AroundNeg 7, AroundNeg 10, AroundNeg 15, AroundPos 3, AroundPos 8, AroundPos 10, AroundPos 15]
+          menu 32 = [Around0, AroundNeg 3, AroundNeg 17, AroundNeg 27, AroundNeg 31, AroundPos 3, AroundPos 18, AroundPos 25, AroundPos 31]
+          menu 64 = [Around0, AroundNeg 9, AroundNeg 27, AroundNeg 51, AroundNeg 63, AroundPos 10, AroundPos 28, AroundPos 55, AroundPos 63]
+{-
 instance Arbitrary (Neuralgic Int8) where
   arbitrary = fmap IntN <$> trapInt 8 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 5, AroundNeg 7, AroundPos 3, AroundPos 5, AroundPos 7]
 
@@ -209,7 +225,7 @@ instance Arbitrary (Neuralgic Int32) where
 instance Arbitrary (Neuralgic Int64) where
   arbitrary = fmap IntN <$> trapInt 64 `guardedFrom` [Around0, AroundNeg 9, AroundNeg 27, AroundNeg 51, AroundNeg 63, AroundPos 10, AroundPos 28, AroundPos 55, AroundPos 63]
 
-
+-}
 
 instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Word)) where
   arbitrary = fmap WordN <$> trapWord bits `guardedFrom` menu bits
