@@ -25,7 +25,7 @@ import Numeric
 
 import System.Process hiding (proc)
 import Turtle
-import Debug.Trace (traceShowId)
+-- import Debug.Trace (traceShowId)
 
 main = defaultMain tests
   where tests :: TestTree
