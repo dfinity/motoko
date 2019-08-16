@@ -218,19 +218,8 @@ instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Word)) where
           menu 16 = [Around0, AroundNeg 3, AroundNeg 12, AroundNeg 16, AroundPos 6, AroundPos 13, AroundPos 16]
           menu 32 = [Around0, AroundNeg 3, AroundNeg 12, AroundNeg 23, AroundNeg 32, AroundPos 6, AroundPos 15, AroundPos 26, AroundPos 32]
           menu 64 = [Around0, AroundNeg 3, AroundNeg 11, AroundNeg 21, AroundNeg 31, AroundNeg 42, AroundNeg 64, AroundPos 6, AroundPos 14, AroundPos 27, AroundPos 43, AroundPos 57, AroundPos 64]
-{-
-instance Arbitrary (Neuralgic Word8) where
-  arbitrary = fmap WordN <$> trapWord 8 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 5, AroundNeg 8, AroundPos 3, AroundPos 5, AroundPos 8]
 
-instance Arbitrary (Neuralgic Word16) where
-  arbitrary = fmap WordN <$> trapWord 16 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 12, AroundNeg 16, AroundPos 6, AroundPos 13, AroundPos 16]
 
-instance Arbitrary (Neuralgic Word32) where
-  arbitrary = fmap WordN <$> trapWord 32 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 12, AroundNeg 23, AroundNeg 32, AroundPos 6, AroundPos 15, AroundPos 26, AroundPos 32]
-
-instance Arbitrary (Neuralgic Word64) where
-  arbitrary = fmap WordN <$> trapWord 64 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 11, AroundNeg 21, AroundNeg 31, AroundNeg 42, AroundNeg 64, AroundPos 6, AroundPos 14, AroundPos 27, AroundPos 43, AroundPos 57, AroundPos 64]
--}
 data ASTerm :: * -> * where
   -- Comparisons
   NotEqual, Equals, GreaterEqual, Greater, LessEqual, Less
