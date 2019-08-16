@@ -1,4 +1,3 @@
-{-# LANGUAGE QuantifiedConstraints #-}
 {-# language ConstraintKinds, DataKinds, FlexibleContexts, FlexibleInstances, GADTs
            , KindSignatures, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving
            , TypeApplications, TypeOperators, TypeFamilies, TupleSections
@@ -225,21 +224,29 @@ instance Arbitrary (Neuralgic Word64) where
   arbitrary = fmap WordN <$> trapWord 64 `guardedFrom` [Around0, AroundNeg 3, AroundNeg 11, AroundNeg 21, AroundNeg 31, AroundNeg 42, AroundNeg 64, AroundPos 6, AroundPos 14, AroundPos 27, AroundPos 43, AroundPos 57, AroundPos 64]
 
 data ASTerm :: * -> * where
+  -- Comparisons
   NotEqual, Equals, GreaterEqual, Greater, LessEqual, Less
-    :: (Show (Neuralgic a), Annot a, Literal a, Evaluatable a) => ASTerm a -> ASTerm a -> ASTerm Bool
+    :: (Annot a, Literal a, Evaluatable a) => ASTerm a -> ASTerm a -> ASTerm Bool
+  -- Short-circuit
   ShortAnd, ShortOr
     :: ASTerm Bool -> ASTerm Bool -> ASTerm Bool
+  -- Boolean
   Not :: ASTerm Bool -> ASTerm Bool
   Bool :: Bool -> ASTerm Bool
-  Complement :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word)
-  Or, And, Xor, RotL, RotR, ShiftL, ShiftR, ShiftRSigned :: ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word)
-  PopCnt, Clz, Ctz :: KnownNat n => ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word)
+  -- Bitwise
+  Complement :: ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word)
+  Or, And, Xor, RotL, RotR, ShiftL, ShiftR, ShiftRSigned
+    :: ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word)
+  PopCnt, Clz, Ctz :: ASTerm (BitLimited n Word) -> ASTerm (BitLimited n Word)
+  -- Arithmetic
   Pos, Neg, Abs :: ASTerm a -> ASTerm a
-
   Add, Sub, Mul, Div, Mod, Pow :: ASTerm a -> ASTerm a -> ASTerm a
-  About :: Neuralgic a -> ASTerm a
+  -- Numeric
+  Neuralgic :: Neuralgic a -> ASTerm a
   Five :: ASTerm a
+  -- Conditional
   IfThenElse :: ASTerm a -> ASTerm a -> ASTerm Bool -> ASTerm a
+  -- Conversion
   ConvertNatural :: ASTerm Natural -> ASTerm Integer
   ConvertNat :: KnownNat n => ASTerm (BitLimited n Natural) -> ASTerm Integer
   ConvertInt :: KnownNat n => ASTerm (BitLimited n Integer) -> ASTerm Integer
@@ -266,7 +273,7 @@ subTermPow5 :: Arbitrary (ASTerm t)
                => Int -> [(Int, Gen (ASTerm t))]
 subTermPow5 n = (n, resize (n `div` 5)
                       $ Pow <$> arbitrary
-                            <*> (About <$> elements [ Around0
+                            <*> (Neuralgic <$> elements [ Around0
                                                     , Around0 `Offset` OneMore
                                                     , AroundPos 1
                                                     , AroundPos 1 `Offset` OneMore
@@ -296,7 +303,7 @@ reasonablyShaped :: (Arbitrary (Neuralgic a), Annot a, Evaluatable a, Literal a)
                  => (Int -> [(Int, Gen (ASTerm a))])
                  -> Gen (ASTerm a)
 reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
-                       (30 `div` n, About <$> arbitrary)
+                       (30 `div` n, Neuralgic <$> arbitrary)
                        : if n > 1 then sub n else []
 
 instance Arbitrary (ASTerm Nat8) where
@@ -566,7 +573,7 @@ trapWord n v = pure . fromIntegral $ v `mod` 2 ^ n
 
 instance KnownNat bits => Evaluatable (BitLimited bits Natural) where
   evaluate Five = pure $ NatN 5
-  evaluate (About n) = NatN <$> trapNat (natVal (Proxy @bits)) (evalN n)
+  evaluate (Neuralgic n) = NatN <$> trapNat (natVal (Proxy @bits)) (evalN n)
   evaluate ab =
       case ab of
         a `Add` b -> go (+) a b
@@ -584,7 +591,7 @@ instance KnownNat bits => Evaluatable (BitLimited bits Natural) where
 
 instance KnownNat bits => Evaluatable (BitLimited bits Integer) where
   evaluate Five = pure $ IntN 5
-  evaluate (About n) = IntN <$> trapInt (natVal (Proxy @bits)) (evalN n)
+  evaluate (Neuralgic n) = IntN <$> trapInt (natVal (Proxy @bits)) (evalN n)
   evaluate ab =
       case ab of
         a `Add` b -> go (+) a b
@@ -603,7 +610,7 @@ instance KnownNat bits => Evaluatable (BitLimited bits Integer) where
 
 instance WordLike bits => Evaluatable (BitLimited bits Word) where
   evaluate Five = pure $ WordN 5
-  evaluate (About n) = WordN <$> trapWord (natVal (Proxy @bits)) (evalN n)
+  evaluate (Neuralgic n) = WordN <$> trapWord (natVal (Proxy @bits)) (evalN n)
   evaluate (Complement a) = complement <$> evaluate a
   evaluate ab =
       case ab of
@@ -641,7 +648,7 @@ instance Evaluatable Natural where
 
 eval :: (Restricted a, Integral a) => ASTerm a -> Maybe a
 eval Five = pure 5
-eval (About n) = evalN n
+eval (Neuralgic n) = evalN n
 eval (Pos n) = eval n
 eval (Neg n) = - eval n
 eval (Abs n) = abs $ eval n
@@ -728,7 +735,7 @@ inParens to op lhs rhs = "(" <> to lhs <> " " <> op <> " " <> to rhs <> ")"
 
 unparseAS :: (Annot a, Literal a) => ASTerm a -> String
 unparseAS f@Five = annot f "5"
-unparseAS a@(About n) = annot a $ literal n
+unparseAS a@(Neuralgic n) = annot a $ literal n
 unparseAS (Pos n) = "(+" <> unparseAS n <> ")"
 unparseAS (Neg n) = "(-" <> unparseAS n <> ")"
 unparseAS (Abs n) = "(abs " <> unparseAS n <> ")"
