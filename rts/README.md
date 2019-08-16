@@ -54,5 +54,25 @@ with the code provided by `rts.c` from `test_rts.c`. With
 
     make test_rts && ./test_rts
 
-this is executed. This is compiled natively, so may not hide bugs that are tied to
+this is executed. This is compiled natively, so may not uncover bugs that are tied to
 WebAssembly.
+
+AFL tests
+---------
+
+Some tests are best run by AFL (American Fuzzy Loop), which is a whitebox
+fuzzer that instruments the code to get more coverage.
+
+You can install `afl` using `nix-env -i afl`.
+
+You need to compile the code with instrumentation and then run it using the
+helper script provided:
+
+```
+make clean
+CLANG=afl-gcc make test_leb128
+./run-afl-leb128.sh
+```
+
+
+
