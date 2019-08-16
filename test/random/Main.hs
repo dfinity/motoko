@@ -322,27 +322,33 @@ reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
 instance Arbitrary (ASTerm Nat8) where
   arbitrary = reasonablyShaped $ subTerm True
 
+reasonableNatTerm :: (KnownNat n, Arbitrary (ASTerm (BitLimited n Natural))) => Gen (ASTerm (BitLimited n Natural))
+reasonableNatTerm = reasonablyShaped $ subTermPow (`Mod` Five)
+
 instance Arbitrary (ASTerm Nat16) where
-  arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
+  arbitrary = reasonableNatTerm
 
 instance Arbitrary (ASTerm Nat32) where
-  arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
+  arbitrary = reasonableNatTerm
 
 instance Arbitrary (ASTerm Nat64) where
-  arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
+  arbitrary = reasonableNatTerm
 
 
 instance Arbitrary (ASTerm Int8) where
   arbitrary = reasonablyShaped $ subTerm True
 
+reasonableIntTerm :: (KnownNat n, Arbitrary (ASTerm (BitLimited n Integer))) => Gen (ASTerm (BitLimited n Integer))
+reasonableIntTerm = reasonablyShaped subTermPow5
+
 instance Arbitrary (ASTerm Int16) where
-  arbitrary = reasonablyShaped subTermPow5
+  arbitrary = reasonableIntTerm
 
 instance Arbitrary (ASTerm Int32) where
-  arbitrary = reasonablyShaped subTermPow5
+  arbitrary = reasonableIntTerm
 
 instance Arbitrary (ASTerm Int64) where
-  arbitrary = reasonablyShaped subTermPow5
+  arbitrary = reasonableIntTerm
 
 
 instance Arbitrary (ASTerm Word8) where
