@@ -104,7 +104,7 @@ newtype Failing a = Failing a deriving Show
 
 instance Arbitrary (Failing String) where
   arbitrary = do let failed as = "let _ = " ++ unparseAS as ++ ";"
-                 Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @ Integer -> res) -> null res)
+                 Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluateTyped @ Integer -> res) -> null res)
 
 prop_rejects (Failing testCase) = monadicIO $ runScriptWantFuzz "fails" testCase
 
@@ -116,7 +116,7 @@ newtype TestCase = TestCase [String] deriving Show
 
 instance Arbitrary TestCase where
   arbitrary = do tests <- infiniteListOf arbitrary
-                 let expected = evaluate @ Integer <$> tests
+                 let expected = evaluateTyped @ Integer <$> tests
                  let paired as = fmap (\res -> "assert (" ++ unparseAS as ++ " == " ++ show res ++ ");")
                  pure . TestCase . take 100 . catMaybes $ zipWith paired tests expected
 
@@ -513,8 +513,6 @@ instance KnownNat n => Restricted (BitLimited n Word) where
                   else defaultExponentRestriction
 
 class Ord a => Evaluatable a where
-  evaluate :: ActorScriptTyped a -> Maybe a
-  --evaluate = evaluateTyped . Embed
   evaluateTyped :: ActorScriptTyped a -> Maybe a
 
 
@@ -637,47 +635,58 @@ trapWord n v = pure . fromIntegral $ v `mod` 2 ^ n
 
 
 instance KnownNat bits => Evaluatable (BitLimited bits Natural) where
-  evaluate Five = pure $ NatN 5
-  evaluate (About n) = NatN <$> trapNat (natVal (Proxy @bits)) (evalN n)
-  evaluate ab =
+  evaluateTyped Five = pure $ NatN 5
+  evaluateTyped (About n) = NatN <$> trapNat (natVal (Proxy @bits)) (evalN n)
+  evaluateTyped ab =
       case ab of
         a `Add` b -> go (+) a b
         a `Sub` b -> go (-) a b
         a `Mul` b -> go (*) a b
-        _ `Div` (evaluate -> Just 0) -> Nothing
+        _ `Div` (evaluateTyped -> Just 0) -> Nothing
         a `Div` b -> go quot a b
-        _ `Mod` (evaluate -> Just 0) -> Nothing
+        _ `Mod` (evaluateTyped -> Just 0) -> Nothing
         a `Mod` b -> go rem a b
-        a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
+        a `Pow` b -> do b' <- evaluateTyped b; exponentiable b'; go (^) a b
         IfThenElse a b c -> do c <- evaluateTyped c
-                               evaluate $ if c then a else b
+                               evaluateTyped $ if c then a else b
         _ -> error $ show ab
-    where go op a b = do NatN a <- evaluate a; NatN b <- evaluate b; NatN <$> trapNat (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
+    where go op a b = do NatN a <- evaluateTyped a; NatN b <- evaluateTyped b; NatN <$> trapNat (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
 
 instance KnownNat bits => Evaluatable (BitLimited bits Integer) where
-  evaluate Five = pure $ IntN 5
-  evaluate (About n) = IntN <$> trapInt (natVal (Proxy @bits)) (evalN n)
-  evaluate ab =
+  evaluateTyped Five = pure $ IntN 5
+  evaluateTyped (About n) = IntN <$> trapInt (natVal (Proxy @bits)) (evalN n)
+  evaluateTyped ab =
       case ab of
         a `Add` b -> go (+) a b
         a `Sub` b -> go (-) a b
         a `Mul` b -> go (*) a b
-        _ `Div` (evaluate -> Just 0) -> Nothing
+        _ `Div` (evaluateTyped -> Just 0) -> Nothing
         a `Div` b -> go quot a b
-        _ `Mod` (evaluate -> Just 0) -> Nothing
+        _ `Mod` (evaluateTyped -> Just 0) -> Nothing
         a `Mod` b -> go rem a b
-        a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
+        a `Pow` b -> do b' <- evaluateTyped b; exponentiable b'; go (^) a b
         IfThenElse a b c -> do c <- evaluateTyped c
-                               evaluate $ if c then a else b
+                               evaluateTyped $ if c then a else b
         _ -> error $ show ab
-    where go op a b = do IntN a <- evaluate a; IntN b <- evaluate b; IntN <$> trapInt (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
+    where go op a b = do IntN a <- evaluateTyped a; IntN b <- evaluateTyped b; IntN <$> trapInt (natVal (Proxy @bits)) (toInteger a `op` toInteger b)
 
 
 instance WordLike bits => Evaluatable (BitLimited bits Word) where
-  --evaluateTyped (Embed a) = evaluate a
-  evaluateTyped (Complement a) =  traceShowId . complement <$> evaluateTyped a
+  evaluateTyped Five = pure $ WordN 5
+  evaluateTyped (About n) = WordN <$> trapWord (natVal (Proxy @bits)) (evalN n)
+  evaluateTyped (Complement a) = complement <$> evaluateTyped a
   evaluateTyped ab =
       case ab of
+        a `Add` b -> go (+) a b
+        a `Sub` b -> go (-) a b
+        a `Mul` b -> go (*) a b
+        _ `Div` (evaluateTyped -> Just 0) -> Nothing
+        a `Div` b -> go quot a b
+        _ `Mod` (evaluateTyped -> Just 0) -> Nothing
+        a `Mod` b -> go rem a b
+        a `Pow` b -> do b' <- evaluateTyped b; exponentiable b'; go (^) a b
+        IfThenElse a b c -> do c <- evaluateTyped c
+                               evaluateTyped $ if c then a else b
         a `Or` b -> log (.|.) a b
         a `And` b -> log (.&.) a b
         a `Xor` b -> log xor a b
@@ -693,29 +702,12 @@ instance WordLike bits => Evaluatable (BitLimited bits Word) where
           bitcount = natVal (Proxy @bits)
           signedShiftR a b = fromIntegral $ a' `shiftR` (fromIntegral b `mod` fromIntegral bitcount)
             where a' = toInteger a - (toInteger (((a `rotateL` 1) .&. 1) `rotateR` 1) `shiftL` 1)
+          go op a b = do WordN a <- evaluateTyped a; WordN b <- evaluateTyped b; WordN <$> trapWord bitcount (toInteger a `op` toInteger b)
 
-  evaluate Five = pure $ WordN 5
-  evaluate (About n) = WordN <$> trapWord (natVal (Proxy @bits)) (evalN n)
-  evaluate ab =
-      case ab of
-        a `Add` b -> go (+) a b
-        a `Sub` b -> go (-) a b
-        a `Mul` b -> go (*) a b
-        _ `Div` (evaluate -> Just 0) -> Nothing
-        a `Div` b -> go quot a b
-        _ `Mod` (evaluate -> Just 0) -> Nothing
-        a `Mod` b -> go rem a b
-        a `Pow` b -> do b' <- evaluate b; exponentiable b'; go (^) a b
-        IfThenElse a b c -> do c <- evaluateTyped c
-                               evaluate $ if c then a else b
-        --Typed t -> evaluateTyped t
-        _ -> error $ show ab
-    where go op a b = do WordN a <- evaluate a; WordN b <- evaluate b; WordN <$> trapWord bitcount (toInteger a `op` toInteger b)
-          bitcount = natVal (Proxy @bits)
 instance Evaluatable Integer where
-  evaluate = eval
+  evaluateTyped = eval
 instance Evaluatable Natural where
-  evaluate = eval
+  evaluateTyped = eval
 
 eval :: (Restricted a, Integral a) => ActorScriptTyped a -> Maybe a
 eval Five = pure 5
@@ -729,31 +721,26 @@ eval (a `Mul` b) = eval a * eval b
 eval (a `Div` b) = eval a `quot` eval b
 eval (a `Mod` b) = eval a `rem` eval b
 eval (a `Pow` (eval -> b)) = do b' <- b; exponentiable b'; (^) <$> eval a <*> b
-eval (ConvertNatural t) = fromIntegral <$> evaluate t
-eval (ConvertNat t) = fromIntegral <$> evaluate t
-eval (ConvertInt t) = fromIntegral <$> evaluate t
-eval (ConvertWord t) = fromIntegral <$> evaluate t
+eval (ConvertNatural t) = fromIntegral <$> evaluateTyped t
+eval (ConvertNat t) = fromIntegral <$> evaluateTyped t
+eval (ConvertInt t) = fromIntegral <$> evaluateTyped t
+eval (ConvertWord t) = fromIntegral <$> evaluateTyped t
 eval (IfThenElse a b c) = do c <- evaluateTyped c
                              eval $ if c then a else b
---eval (Rel r) = bool 0 1 <$> evaluateTyped r
---eval (Typed t) = evaluateTyped t
 --eval _ = Nothing
 
 
 instance Evaluatable Bool where
-  -- evaluateTyped :: ActorScriptTyped a -> Maybe a
-  evaluateTyped (a `NotEqual` b) = (/=) <$> evaluate a <*> evaluate b
-  evaluateTyped (a `Equals` b) = (==) <$> evaluate a <*> evaluate b
-  evaluateTyped (a `GreaterEqual` b) = (>=) <$> evaluate a <*> evaluate b
-  evaluateTyped (a `Greater` b) = (>) <$> evaluate a <*> evaluate b
-  evaluateTyped (a `LessEqual` b) = (<=) <$> evaluate a <*> evaluate b
-  evaluateTyped (a `Less` b) = (<) <$> evaluate a <*> evaluate b
+  evaluateTyped (a `NotEqual` b) = (/=) <$> evaluateTyped a <*> evaluateTyped b
+  evaluateTyped (a `Equals` b) = (==) <$> evaluateTyped a <*> evaluateTyped b
+  evaluateTyped (a `GreaterEqual` b) = (>=) <$> evaluateTyped a <*> evaluateTyped b
+  evaluateTyped (a `Greater` b) = (>) <$> evaluateTyped a <*> evaluateTyped b
+  evaluateTyped (a `LessEqual` b) = (<=) <$> evaluateTyped a <*> evaluateTyped b
+  evaluateTyped (a `Less` b) = (<) <$> evaluateTyped a <*> evaluateTyped b
   evaluateTyped (a `ShortAnd` b) = evaluateTyped a >>= bool (pure False) (evaluateTyped b)
   evaluateTyped (a `ShortOr` b) = evaluateTyped a >>= bool (evaluateTyped b) (pure True)
   evaluateTyped (Not a) = not <$> evaluateTyped a
   evaluateTyped (Bool b) = pure b
---evalR (Embed a) = evaluate a
---evalR (Complement a) = complement <$> evaluateTyped a
 
 
 class Annot t where
@@ -825,27 +812,34 @@ unparseAS (a `Mul` b) = inParens unparseAS "*" a b
 unparseAS (a `Div` b) = inParens unparseAS "/" a b
 unparseAS (a `Mod` b) = inParens unparseAS "%" a b
 unparseAS (a `Pow` b) = inParens unparseAS "**" a b
+unparseAS (a `Or` b) = inParens unparseAS "|" a b
+unparseAS (a `And` b) = inParens unparseAS "&" a b
+unparseAS (a `Xor` b) = inParens unparseAS "^" a b
+unparseAS (a `RotL` b) = inParens unparseAS "<<>" a b
+unparseAS (a `RotR` b) = inParens unparseAS "<>>" a b
+unparseAS (a `ShiftL` b) = inParens unparseAS "<<" a b
+unparseAS (a `ShiftR` b) = inParens unparseAS ">>" a b
+unparseAS (a `ShiftRSigned` b) = inParens unparseAS "+>>" a b
+unparseAS (PopCnt n) = sizeSuffixT n "(popcntWord" <> " " <> unparseAS n <> ")"
+unparseAS (Clz n) = sizeSuffixT n "(clzWord" <> " " <> unparseAS n <> ")"
+unparseAS (Ctz n) = sizeSuffixT n "(ctzWord" <> " " <> unparseAS n <> ")"
+unparseAS (Complement a) = "(^ " <> unparseAS a <> ")"
 unparseAS (ConvertNatural a) = "(++++(" <> unparseAS a <> "))"
 unparseAS (ConvertNat a) = unparseNat Proxy a
 unparseAS (ConvertInt a) = unparseInt Proxy a
 unparseAS (ConvertWord a) = unparseWord Proxy a
---unparseAS (Rel r) = unparseBool r
-unparseAS (IfThenElse a b c) = "(if (" <> unparseBool c <> ") " <> unparseAS a <> " else " <> unparseAS b <> ")"
---unparseAS (Typed t) = unparseTyped t
-
-
-unparseBool :: ActorScriptTyped Bool -> String
-unparseBool (a `NotEqual` b) = inParens unparseAS "!=" a b
-unparseBool (a `Equals` b) = inParens unparseAS "==" a b
-unparseBool (a `GreaterEqual` b) = inParens unparseAS ">=" a b
-unparseBool (a `Greater` b) = inParens unparseAS ">" a b
-unparseBool (a `LessEqual` b) = inParens unparseAS "<=" a b
-unparseBool (a `Less` b) = inParens unparseAS "<" a b
-unparseBool (a `ShortAnd` b) = inParens unparseBool "and" a b
-unparseBool (a `ShortOr` b) = inParens unparseBool "or" a b
-unparseBool (Not a) = "(not " <> unparseBool a <> ")"
-unparseBool (Bool False) = "false"
-unparseBool (Bool True) = "true"
+unparseAS (IfThenElse a b c) = "(if (" <> unparseAS c <> ") " <> unparseAS a <> " else " <> unparseAS b <> ")"
+unparseAS (a `NotEqual` b) = inParens unparseAS "!=" a b
+unparseAS (a `Equals` b) = inParens unparseAS "==" a b
+unparseAS (a `GreaterEqual` b) = inParens unparseAS ">=" a b
+unparseAS (a `Greater` b) = inParens unparseAS ">" a b
+unparseAS (a `LessEqual` b) = inParens unparseAS "<=" a b
+unparseAS (a `Less` b) = inParens unparseAS "<" a b
+unparseAS (a `ShortAnd` b) = inParens unparseAS "and" a b
+unparseAS (a `ShortOr` b) = inParens unparseAS "or" a b
+unparseAS (Not a) = "(not " <> unparseAS a <> ")"
+unparseAS (Bool False) = "false"
+unparseAS (Bool True) = "true"
 
 unparseNat :: KnownNat n => Proxy n -> ActorScriptTyped (BitLimited n Natural) -> String
 unparseNat p a = "(nat" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))"
@@ -855,28 +849,6 @@ unparseInt p a = "(int" <> bitWidth p <> "ToInt(" <> unparseAS a <> "))"
 
 unparseWord :: KnownNat n => Proxy n -> ActorScriptTyped (BitLimited n Word) -> String
 unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TODO we want signed too: wordToInt
-
-unparseTyped :: ActorScriptTyped a -> String
---unparseTyped (Embed a) = unparseAS a
-unparseTyped (a `Or` b) = inParens unparseTyped "|" a b
-unparseTyped (a `And` b) = inParens unparseTyped "&" a b
-unparseTyped (a `Xor` b) = inParens unparseTyped "^" a b
-unparseTyped (a `RotL` b) = inParens unparseTyped "<<>" a b
-unparseTyped (a `RotR` b) = inParens unparseTyped "<>>" a b
-unparseTyped (a `ShiftL` b) = inParens unparseTyped "<<" a b
-unparseTyped (a `ShiftR` b) = inParens unparseTyped ">>" a b
-unparseTyped (a `ShiftRSigned` b) = inParens unparseTyped "+>>" a b
-unparseTyped (PopCnt n) = sizeSuffixT n "(popcntWord" <> " " <> unparseTyped n <> ")"
-unparseTyped (Clz n) = sizeSuffixT n "(clzWord" <> " " <> unparseTyped n <> ")"
-unparseTyped (Ctz n) = sizeSuffixT n "(ctzWord" <> " " <> unparseTyped n <> ")"
-unparseTyped (Complement a) = "(^ " <> unparseTyped a <> ")"
-{-
-class Unparsable a where
-  unparse = ActorScriptTyped a -> String
-
-instance KnownNat n => Unparsable (BitLimited n Word) where
-  unparse = 
--}
 
 -- TODOs:
 --   - wordToInt
