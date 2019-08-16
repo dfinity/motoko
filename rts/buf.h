@@ -6,7 +6,7 @@
 /*
 An abstraction for a buffer with and end-pointer.
 
-This mirrors module DynBuf in `compile.ml`
+This mirrors module ReadBuf in `compile.ml`
 */
 
 typedef struct {

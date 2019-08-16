@@ -10,8 +10,8 @@ func size<A>(t : Tree<A>) : Nat {
 let tt1 : Tree<Int> = #branch(#leaf 1, #leaf (-1));
 let tt2 = #leaf ""; // infers type {#leaf : Text} which is a subtype of Tree<Text>
 
-printInt(size<Int>(tt1)); print "\n";
-printInt(size<Text>(tt2)); print "\n";
+printNat(size<Int>(tt1)); print "\n";
+printNat(size<Text>(tt2)); print "\n";
 
 
 // subtyping
@@ -49,7 +49,7 @@ func sayIcelandic (day : Weekday) : Text = switch day {
 
 assert (sayIcelandic (#Wednesday) == "Miðvikudagur");
 
-assert (debug_show (#foo (#bar)) == "(#foo (#bar))");
+assert (debug_show (#foo (#bar)) == "#foo(#bar)");
 
 assert ([#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday].len() == 7);
 

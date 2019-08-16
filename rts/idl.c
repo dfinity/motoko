@@ -10,7 +10,7 @@ export uint32_t read_u32_of_leb128(buf *buf) {
   do {
     b = read_byte(buf);
     if (s > 0 && b == 0x00) {
-        // The high bytes is all zeroes, this is not a shortest encoding
+        // The high 7 bits is all zeros, this is not a shortest encoding
         idl_trap();
     }
     if (s == 28 && !((b & (uint8_t)0xF0) == 0x00)) {
@@ -36,8 +36,8 @@ export int32_t read_i32_of_sleb128(buf *buf) {
         // else we have an int overflow
         idl_trap();
     }
-    if (s > 0 && (b == 0x00 || (last_sign_bit_set && b == 0x8F))) {
-        // The high bits is all zeros or ones, so this is not a shortest encoding
+    if (s > 0 && ((!last_sign_bit_set && b == 0x00) || (last_sign_bit_set && b == 0x7F))) {
+        // The high 8 bits are all zeros or ones, so this is not a shortest encoding
         idl_trap();
     }
     last_sign_bit_set = (b & (uint8_t)0x40);
@@ -101,12 +101,12 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, int32_t *main_type
   int32_t n_types = read_u32_of_leb128(buf);
 
   // read_u32_of_leb128 returns an uint32_t, we want an int32_t here so that the
-  // comparisons below work, so lets make sure we did not wrap around in the
+  // comparisons below work, so let's make sure we did not wrap around in the
   // conversion.
   if (n_types < 0) { idl_trap(); }
 
   // Early sanity check
-  if (&buf->p[n_types] >= buf->e) { idl_trap() ; }
+  if (&buf->p[n_types] >= buf->e) { idl_trap(); }
 
   // Go through the table
   uint8_t **typtbl = (uint8_t **)alloc(n_types * sizeof(uint8_t*));

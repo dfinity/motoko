@@ -58,7 +58,7 @@ A simple language for writing Dfinity actors.
 ### Types
 
 * Primitive types: integers, naturals, words, floats, characters, (unicode) text, bool, null
-  - `Int`, `Nat` (trap on overflow)
+  - `Int`, `Nat` (arbitrary precision)
   - `Word8`, `Word16`, `Word32`, `Word64` (wrap around)
   - `Int8`, `Int16`, `Int32`, `Int64`, `Nat8`, `Nat16`, `Nat32`, `Nat64` (trap on over/underflow)
   - `Float`

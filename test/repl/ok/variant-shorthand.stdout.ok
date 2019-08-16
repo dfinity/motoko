@@ -1,5 +1,5 @@
 ActorScript 0.1 interpreter
 > #bar : {#bar}
-> #foo (#bar) : {#foo : {#bar}}
+> #foo(#bar) : {#foo : {#bar}}
 > [#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday] : [{#Friday; #Monday; #Saturday; #Sunday; #Thursday; #Tuesday; #Wednesday}]
 > 

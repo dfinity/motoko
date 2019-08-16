@@ -16,7 +16,7 @@ func checkpointJuliett() {};
 
 // Word64 operations
 {
-    func printW64ln(w : Word64) { printInt(word64ToNat w);  print " "; printInt(word64ToInt w); print "\n" };
+    func printW64ln(w : Word64) { printNat(word64ToNat w);  print " "; printInt(word64ToInt w); print "\n" };
 
     let a : Word64 = 4567;
     let b : Word64 = 7;
@@ -71,7 +71,7 @@ func checkpointJuliett() {};
 
 // Word32 operations
 {
-    func printW32ln(w : Word32) { printInt(word32ToNat w);  print " "; printInt(word32ToInt w); print "\n" };
+    func printW32ln(w : Word32) { printNat(word32ToNat w);  print " "; printInt(word32ToInt w); print "\n" };
 
     let a : Word32 = 4567;
     let b : Word32 = 7;
@@ -125,7 +125,7 @@ func checkpointJuliett() {};
 
 // Word16 operations
 {
-    func printW16ln(w : Word16) { printInt(word16ToNat w); print " "; printInt(word16ToInt w); print "\n" };
+    func printW16ln(w : Word16) { printNat(word16ToNat w); print " "; printInt(word16ToInt w); print "\n" };
 
     let a : Word16 = 4567;
     let b : Word16 = 7;
@@ -205,7 +205,7 @@ func checkpointJuliett() {};
 
 // Word8 operations
 {
-    func printW8ln(w : Word8) { printInt(word8ToNat w); print " "; printInt(word8ToInt w); print "\n" };
+    func printW8ln(w : Word8) { printNat(word8ToNat w); print " "; printInt(word8ToInt w); print "\n" };
 
     let a : Word8 = 67;
     let b : Word8 = 7;

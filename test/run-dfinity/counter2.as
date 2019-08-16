@@ -2,10 +2,10 @@ actor {
   var c = 1;
   public func inc() {
     c += 1;
-    printInt c; print "\n";
+    printNat c; print "\n";
   };
   public func printCounter () {
-    printInt c; print "\n";
+    printNat c; print "\n";
   }
 }
 //CALL inc
