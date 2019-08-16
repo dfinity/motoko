@@ -257,26 +257,7 @@ data ActorScriptTyped :: * -> * where
   Embed :: (Literal a, Annot a, Evaluatable a) => ActorScriptTerm (Neuralgic a) -> ActorScriptTyped a
   Complement :: WordLike n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
   Or, And, Xor, RotL, RotR, ShiftL, ShiftR, ShiftRSigned :: ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
-
-{-
-  | ActorScriptTerm a `Or` ActorScriptTerm a
-  | ActorScriptTerm a `And` ActorScriptTerm a
-  | ActorScriptTerm a `Xor` ActorScriptTerm a
-  | ActorScriptTerm a `RotL` ActorScriptTerm a
-  | ActorScriptTerm a `RotR` ActorScriptTerm a
-  | ActorScriptTerm a `ShiftL` ActorScriptTerm a
-  | ActorScriptTerm a `ShiftR` ActorScriptTerm a
-  | ActorScriptTerm a `ShiftRSigned` ActorScriptTerm a
--}
-
   PopCnt, Clz, Ctz :: KnownNat n => ActorScriptTyped (BitLimited n Word) -> ActorScriptTyped (BitLimited n Word)
-
-{-
-  | PopCnt (ActorScriptTerm a)
-  | Clz (ActorScriptTerm a)
-  | Ctz (ActorScriptTerm a)
-
--}
 
 deriving instance Show (ActorScriptTyped t)
 
