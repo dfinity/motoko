@@ -306,37 +306,63 @@ func Array_init<T>(len : Nat,  x : T) : [var T] {
 func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
+// these will change
+
+type ErrorCode = {#error; #system};
+
+type Error =  (ErrorCode,Text); // must agree with T.catch
 
 type Cont<T> = T -> () ;
-type Async<T> = Cont<T> -> ();
+type Async<T> = (Cont<T>,Cont<Error>) -> ();
 
-func @new_async<T <: Any>() : (Async<T>, Cont<T>) {
-  let empty = func(t : T) {};
-  var result : ?T = null;
-  var ks : T -> () = empty;
+type Result<T> = {#ok : T; #error : Error};
+
+func @new_async<T <: Any>() : (Async<T>, Cont<T>, Cont<Error>) {
+  let k_null = func(_ : T) {};
+  let r_null = func(_ : Error) {};
+  var result : ?(Result<T>) = null;
+  var ks : Cont<T> = k_null;
+  var rs : Cont<Error> = r_null;
 
   func fulfill(t : T) {
     switch result {
       case null {
-        result := ?t;
+        result := ?(#ok t);
         let ks_ = ks;
-        ks := empty;
+        ks := k_null;
+        rs := r_null;
         ks_(t);
       };
-      case (?t) { assert false };
+      case (? _) { assert false };
     };
   };
 
-  func enqueue(k : Cont<T>) {
+  func fail(e : Error) {
+    switch result {
+      case null {
+        result := ?(#error e);
+        let rs_ = rs;
+        ks := k_null;
+        rs := r_null;
+        rs_(e);
+      };
+      case (? _) { assert false };
+    };
+  };
+
+  func enqueue(k : Cont<T>, r : Cont<Error>) {
     switch result {
       case null {
         let ks_ = ks;
         ks := (func(t : T) { ks_(t); k(t) });
+        let rs_ = rs;
+        rs := (func(e : Error) { rs_(e); r(e) });
       };
-      case (?t) { k(t) };
+      case (? (#ok t)) { k(t) };
+      case (? (#error e)) { r(e) };
     };
   };
 
-  (enqueue, fulfill)
+  (enqueue, fulfill, fail)
 };
 |}

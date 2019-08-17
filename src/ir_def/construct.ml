@@ -107,7 +107,7 @@ let assertE e =
     at = no_region;
     note = { note_typ = T.unit; note_eff = eff e}
   }
- 
+
 let awaitE typ e1 e2 =
   { it = PrimE (OtherPrim "@await", [e1; e2]);
     at = no_region;
@@ -409,7 +409,10 @@ let nary_funcD f xs exp =
 let answerT = T.unit
 
 let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
-let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ], [])
+
+let err_contT =  T.Func (T.Local, T.Returns, [], [T.catch], [])
+
+let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
 
 let fresh_cont typ = fresh_var "cont" (contT typ)
 

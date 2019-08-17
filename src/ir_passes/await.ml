@@ -126,9 +126,8 @@ and t_exp' context exp' =
          (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
      in
      (* TODO: bind k_fail *)
-     (asyncE (typ exp1) (k_ret -->
-                           (blockE [funcD k_fail (fresh_var "e" T.catch) (assertE (boolE false))]
-                              (c_exp context' exp1 (ContVar k_ret))))).it
+     (asyncE (typ exp1) ([k_ret; k_fail] -->*
+                           c_exp context' exp1 (ContVar k_ret))).it
   | TryE _
   | ThrowE _
   | AwaitE _ -> assert false (* these never have effect T.Triv *)
@@ -362,9 +361,8 @@ and c_exp' context exp k =
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
     (* TODO: bind k_fail *)
-    k -@- (asyncE (typ exp1) (k_ret -->
-                                (blockE [funcD k_fail (fresh_var "e" T.catch) (assertE (boolE false))]
-                                   (c_exp context' exp1 (ContVar k_ret)))))
+    k -@- (asyncE (typ exp1) ([k_ret; k_fail] -->*
+                                   (c_exp context' exp1 (ContVar k_ret))))
   | AwaitE exp1 ->
      letcont k
        (fun k ->

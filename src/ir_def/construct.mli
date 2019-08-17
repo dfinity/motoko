@@ -88,6 +88,7 @@ val nary_funcD : var  -> var list -> exp -> dec
 
 val answerT : typ
 val contT : typ -> typ
+val err_contT : typ
 val cpsT : typ -> typ
 val fresh_cont : typ -> var
 
