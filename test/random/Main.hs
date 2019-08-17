@@ -293,52 +293,25 @@ reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
                        (30 `div` n, Neuralgic <$> arbitrary)
                        : if n > 1 then sub n else []
 
-instance Arbitrary (ASTerm Nat8) where
+instance {-# OVERLAPPABLE #-} KnownNat n => Arbitrary (ASTerm (BitLimited n Natural)) where
+  arbitrary = reasonablyShaped $ subTermPow (`Mod` Five)
+
+instance {-# OVERLAPS #-} Arbitrary (ASTerm Nat8) where
   arbitrary = reasonablyShaped $ subTerm True
 
-reasonableNatTerm :: (KnownNat n, Arbitrary (ASTerm (BitLimited n Natural))) => Gen (ASTerm (BitLimited n Natural))
-reasonableNatTerm = reasonablyShaped $ subTermPow (`Mod` Five)
 
-instance Arbitrary (ASTerm Nat16) where
-  arbitrary = reasonableNatTerm
+instance {-# OVERLAPPABLE #-} KnownNat n => Arbitrary (ASTerm (BitLimited n Integer)) where
+  arbitrary = reasonablyShaped subTermPow5
 
-instance Arbitrary (ASTerm Nat32) where
-  arbitrary = reasonableNatTerm
-
-instance Arbitrary (ASTerm Nat64) where
-  arbitrary = reasonableNatTerm
-
-
-instance Arbitrary (ASTerm Int8) where
+instance {-# OVERLAPS #-} Arbitrary (ASTerm Int8) where
   arbitrary = reasonablyShaped $ subTerm True
 
-reasonableIntTerm :: (KnownNat n, Arbitrary (ASTerm (BitLimited n Integer))) => Gen (ASTerm (BitLimited n Integer))
-reasonableIntTerm = reasonablyShaped subTermPow5
 
-instance Arbitrary (ASTerm Int16) where
-  arbitrary = reasonableIntTerm
+instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (ASTerm (BitLimited n Word)) where
+  arbitrary = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
 
-instance Arbitrary (ASTerm Int32) where
-  arbitrary = reasonableIntTerm
-
-instance Arbitrary (ASTerm Int64) where
-  arbitrary = reasonableIntTerm
-
-
-instance Arbitrary (ASTerm Word8) where
+instance {-# OVERLAPS #-} Arbitrary (ASTerm Word8) where
   arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
-
-reasonableWordTerm :: (WordLike n, Arbitrary (ASTerm (BitLimited n Word))) => Gen (ASTerm (BitLimited n Word))
-reasonableWordTerm = reasonablyShaped $ (<>) <$> subTermPow (`Mod` Five) <*> bitwiseTerm
-
-instance Arbitrary (ASTerm Word16) where
-  arbitrary = reasonableWordTerm
-
-instance Arbitrary (ASTerm Word32) where
-  arbitrary = reasonableWordTerm
-
-instance Arbitrary (ASTerm Word64) where
-  arbitrary = reasonableWordTerm
 
 
 instance Arbitrary (ASTerm Bool) where
