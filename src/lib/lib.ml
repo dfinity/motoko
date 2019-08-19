@@ -126,13 +126,24 @@ struct
     | n, _::xs' when n > 0 -> drop (n - 1) xs'
     | _ -> failwith "drop"
 
+  let hd_opt = function
+    | x :: _ -> Some x
+    | _ -> None
+
   let rec last = function
-    | x::[] -> x
+    | [x] -> x
     | _::xs -> last xs
     | [] -> failwith "last"
 
+  let rec first_opt f = function
+    | [] -> None
+    | x::xs ->
+       match f x with
+       | None -> first_opt f xs
+       | some -> some
+
   let rec split_last = function
-    | x::[] -> [], x
+    | [x] -> [], x
     | x::xs -> let ys, y = split_last xs in x::ys, y
     | [] -> failwith "split_last"
 

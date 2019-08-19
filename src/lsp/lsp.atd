@@ -46,6 +46,7 @@ type incoming_message_params = [
   | TextDocumentDidChange <json name="textDocument/didChange"> of text_document_did_change_params
   | TextDocumentDidSave <json name="textDocument/didSave"> of text_document_did_save_params
   | TextDocumentHover <json name="textDocument/hover"> of text_document_position_params
+  | TextDocumentDefinition <json name="textDocument/definition"> of text_document_position_params
   (* NOTE(Christoph) There are more parameters than just text_document_position on the completion request *)
   | CompletionRequest <json name="textDocument/completion"> of text_document_position_params
   | CancelRequest <json name="$/cancelRequest"> of cancel_request_params
@@ -71,6 +72,7 @@ type response_message = {
 type response_result = [
     Initialize <json name="initialize"> of initialize_result
   | TextDocumentHoverResponse <json name="textDocument/hover"> of hover_result nullable
+  | TextDocumentDefinitionResponse <json name="textDocument/definition"> of location nullable
   | CompletionResponse <json name="textDocument/completion"> of completion_item list
 ]
 
@@ -278,6 +280,7 @@ type server_capabilities = {
   textDocumentSync : text_document_sync_options;
   ?hoverProvider : bool nullable;
   ?completionProvider : completion_options nullable;
+  ?definitionProvider : bool nullable;
 }
 <ocaml field_prefix="server_capabilities_">
 
