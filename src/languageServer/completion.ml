@@ -42,13 +42,21 @@ let item_of_ide_decl (d : ide_decl) : Lsp_t.completion_item =
         completion_item_detail = Some(Type.string_of_typ value.typ);
      }
   | TypeDecl ty ->
+     let con = ty.typ in
+     let eq, params, typ = Type.strings_of_kind (Con.kind con) in
      Lsp_t.{
         completion_item_label = ty.name;
         completion_item_kind = 7;
         completion_item_insertText = tmpl;
         completion_item_insertTextFormat = 2;
-        completion_item_detail = Some(Type.string_of_con ty.typ);
+        completion_item_detail =
+          Some
+            (Printf.sprintf
+               "type %s%s"
+               ty.name
+               params);
      }
+
 
 let import_relative_to_project_root root module_path dependency =
   match Pipeline__.File_path.relative_to root module_path with

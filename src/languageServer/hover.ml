@@ -6,7 +6,9 @@ let hover_detail = function
   | ValueDecl value ->
      value.name ^ " : " ^ Type.string_of_typ value.typ
   | TypeDecl ty ->
-     ty.name ^ " : " ^ Type.string_of_con ty.typ
+     let _, params, _ = Type.strings_of_kind (Con.kind ty.typ) in
+     Printf.sprintf "public type %s%s" ty.name params
+
 
 let hover_handler (* index *) position file_contents project_root file_path =
   (* TODO(Christoph): Don't rebuild index on every hover *)
