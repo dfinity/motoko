@@ -26,8 +26,6 @@ let response_error_message (id : int) (error : Lsp_t.response_error) : Lsp_t.res
     response_message_error = Some error;
   }
 
-(* let response_error_message (id : int) (error : Lsp_t.response_error) : Lsp_t.response_message = *)
-
 module Channel = struct
   let log_to_file (oc : out_channel) (lbl : string) (txt : string) : unit =
     Printf.fprintf oc "[%s] %s\n" lbl txt;
