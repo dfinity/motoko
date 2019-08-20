@@ -125,7 +125,7 @@ do
     normalize $out/$base.tc
     diff_files="$diff_files $base.tc"
 
-    if [ "$tc_succeeded" -eq 0 ];
+    if [ "$tc_succeeded" -eq 0 ]
     then
       if [ $CHECK_IDL_ONLY = 'yes' ]
       then
@@ -135,7 +135,7 @@ do
         normalize $out/$base.did
         normalize $out/$base.idl.stderr
         diff_files="$diff_files $base.did $base.idl.stderr"
-        if [ "$idl_succeeded" -eq 0 ];
+        if [ "$idl_succeeded" -eq 0 ]
         then
           $ECHO -n " [didc]"
           $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
@@ -204,7 +204,7 @@ do
             normalize $out/$base.did
             normalize $out/$base.idl.stderr
             diff_files="$diff_files $base.did $base.idl.stderr"
-            if [ "$idl_succeeded" -eq 0 ];
+            if [ "$idl_succeeded" -eq 0 ]
             then
               $ECHO -n " [didc]"
               $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
