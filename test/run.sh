@@ -143,86 +143,86 @@ do
         fi
       else
       
-      if [ "$SKIP_RUNNING" != yes ]
-      then
-        # Interpret
-        $ECHO -n " [run]"
-        $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
-        normalize $out/$base.run
-        diff_files="$diff_files $base.run"
-
-        # Interpret IR without lowering
-        $ECHO -n " [run-ir]"
-        $ASC $ASC_FLAGS -r -iR -no-async -no-await $base.as > $out/$base.run-ir 2>&1
-        normalize $out/$base.run-ir
-        diff_files="$diff_files $base.run-ir"
-
-        # Diff interpretations without/with lowering
-        diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
-        diff_files="$diff_files $base.diff-ir"
-
-        # Interpret IR with lowering
-        $ECHO -n " [run-low]"
-        $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-low 2>&1
-        normalize $out/$base.run-low
-        diff_files="$diff_files $base.run-low"
-
-        # Diff interpretations without/with lowering
-        diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
-        diff_files="$diff_files $base.diff-low"
-
-      fi
-
-      # Compile
-      $ECHO -n " [wasm]"
-      $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as -o $out/$base.wasm 2> $out/$base.wasm.stderr
-      normalize $out/$base.wasm.stderr
-      diff_files="$diff_files $base.wasm.stderr"
-
-      # Check filecheck
-      if [ "$SKIP_RUNNING" != yes ]
-      then
-        if grep -F -q CHECK $base.as
-        then
-          $ECHO -n " [FileCheck]"
-          wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
-          cat $out/$base.wat | FileCheck $base.as > $out/$base.filecheck 2>&1
-          diff_files="$diff_files $base.filecheck"
-        fi
-      fi
-
-      # Run compiled program
-      if [ -e $out/$base.wasm ]
-      then
         if [ "$SKIP_RUNNING" != yes ]
         then
-          if [ $DFINITY = 'yes' ]
-          then
-            $ECHO -n " [idl]"
-            $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
-            idl_succeeded=$?
-            normalize $out/$base.did
-            normalize $out/$base.idl.stderr
-            diff_files="$diff_files $base.did $base.idl.stderr"
-            if [ "$idl_succeeded" -eq 0 ]
-            then
-              $ECHO -n " [didc]"
-              $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
-              diff_files="$diff_files $base.did.tc"
-            fi            
+          # Interpret
+          $ECHO -n " [run]"
+          $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
+          normalize $out/$base.run
+          diff_files="$diff_files $base.run"
 
-            $ECHO -n " [dvm]"
-            $DVM_WRAPPER $out/$base.wasm $base.as > $out/$base.dvm-run 2>&1
-            normalize $out/$base.dvm-run
-            diff_files="$diff_files $base.dvm-run"
-          else
-            $ECHO -n " [wasm-run]"
-            $WASM $out/$base.wasm  > $out/$base.wasm-run 2>&1
-            normalize $out/$base.wasm-run
-            diff_files="$diff_files $base.wasm-run"
+          # Interpret IR without lowering
+          $ECHO -n " [run-ir]"
+          $ASC $ASC_FLAGS -r -iR -no-async -no-await $base.as > $out/$base.run-ir 2>&1
+          normalize $out/$base.run-ir
+          diff_files="$diff_files $base.run-ir"
+
+          # Diff interpretations without/with lowering
+          diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
+          diff_files="$diff_files $base.diff-ir"
+
+          # Interpret IR with lowering
+          $ECHO -n " [run-low]"
+          $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-low 2>&1
+          normalize $out/$base.run-low
+          diff_files="$diff_files $base.run-low"
+
+          # Diff interpretations without/with lowering
+          diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
+          diff_files="$diff_files $base.diff-low"
+
+        fi
+
+        # Compile
+        $ECHO -n " [wasm]"
+        $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as -o $out/$base.wasm 2> $out/$base.wasm.stderr
+        normalize $out/$base.wasm.stderr
+        diff_files="$diff_files $base.wasm.stderr"
+
+        # Check filecheck
+        if [ "$SKIP_RUNNING" != yes ]
+        then
+          if grep -F -q CHECK $base.as
+          then
+            $ECHO -n " [FileCheck]"
+            wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
+            cat $out/$base.wat | FileCheck $base.as > $out/$base.filecheck 2>&1
+            diff_files="$diff_files $base.filecheck"
           fi
         fi
-      fi
+
+        # Run compiled program
+        if [ -e $out/$base.wasm ]
+        then
+          if [ "$SKIP_RUNNING" != yes ]
+          then
+            if [ $DFINITY = 'yes' ]
+            then
+              $ECHO -n " [idl]"
+              $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
+              idl_succeeded=$?
+              normalize $out/$base.did
+              normalize $out/$base.idl.stderr
+              diff_files="$diff_files $base.did $base.idl.stderr"
+              if [ "$idl_succeeded" -eq 0 ]
+              then
+                $ECHO -n " [didc]"
+                $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
+                diff_files="$diff_files $base.did.tc"
+              fi            
+
+              $ECHO -n " [dvm]"
+              $DVM_WRAPPER $out/$base.wasm $base.as > $out/$base.dvm-run 2>&1
+              normalize $out/$base.dvm-run
+              diff_files="$diff_files $base.dvm-run"
+            else
+              $ECHO -n " [wasm-run]"
+              $WASM $out/$base.wasm  > $out/$base.wasm-run 2>&1
+              normalize $out/$base.wasm-run
+              diff_files="$diff_files $base.wasm-run"
+            fi
+          fi
+        fi
       fi
     fi
   elif [ ${file: -3} == ".sh" ]

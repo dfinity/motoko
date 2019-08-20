@@ -77,7 +77,7 @@ let argspec = Arg.align
 ]
 
 
-let fill_out_file files ext =
+let set_out_file files ext =
   if !out_file = "" then begin
     match files with
     | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ext
@@ -104,18 +104,14 @@ let process_files files : unit =
   | Check ->
     Diag.run (Pipeline.check_files files)
   | Idl ->
+    set_out_file files ".did";
     let prog = Diag.run (Pipeline.generate_idl files) in
-    let idl_code = Idllib.Arrange_idl.string_of_prog prog in
-    if !out_file = "" then
-      (printf "%s" idl_code;
-       ignore (Diag.run (Idllib.Pipeline.check_prog prog)))
-    else begin
-        ignore (Diag.run (Idllib.Pipeline.check_prog prog));     
-        let oc = open_out !out_file in
-        output_string oc idl_code; close_out oc
-    end
+    ignore (Diag.run (Idllib.Pipeline.check_prog prog));
+    let oc = open_out !out_file in
+    let idl_code = Idllib.Arrange_idl.string_of_prog prog in    
+    output_string oc idl_code; close_out oc
   | Compile ->
-    fill_out_file files ".wasm";
+    set_out_file files ".wasm";
     let module_ = Diag.run Pipeline.(compile_files !compile_mode !link files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
