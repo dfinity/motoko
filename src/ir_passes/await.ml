@@ -120,7 +120,7 @@ and t_exp' context exp' =
      let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
      (* add the implicit return/throw label *)
      let k_ret = fresh_cont (typ exp1) in
-     let k_fail = fresh_cont T.catch in
+     let k_fail = fresh_err_cont () in
      let context' =
        LabelEnv.add Return (Cont (ContVar k_ret))
          (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
@@ -306,8 +306,8 @@ and c_exp' context exp k =
     let cases' = cases' @ [{it = {pat = varP error; exp = f -*- error};
                             at = no_region;
                             note = ()}] in
-    let throw = fresh_cont T.catch in
-    let v1 =  fresh_var "e" T.catch in
+    let throw = fresh_err_cont () in
+    let e =  fresh_var "e" T.catch in
     let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
     begin
     match eff exp1 with
@@ -315,7 +315,7 @@ and c_exp' context exp k =
       k -*- (t_exp context exp1)
     | T.Await ->
       blockE
-        [funcD throw v1 { it = SwitchE (v1, cases');
+        [funcD throw e { it = SwitchE (e, cases');
                           at = exp.at;
                           note = {note_eff = T.Await; (* shouldn't matter *)
                                   note_typ = T.unit}
@@ -355,7 +355,7 @@ and c_exp' context exp k =
   | AsyncE exp1 ->
      (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) in
-    let k_fail = fresh_cont T.catch in
+    let k_fail = fresh_err_cont () in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
@@ -364,15 +364,24 @@ and c_exp' context exp k =
     k -@- (asyncE (typ exp1) ([k_ret; k_fail] -->*
                                    (c_exp context' exp1 (ContVar k_ret))))
   | AwaitE exp1 ->
+     let r = match LabelEnv.find_opt Throw context with
+     | Some (Cont r) -> r
+     | Some Label
+     | None -> assert false
+     in
+     letcont r
+       (fun r ->
      letcont k
        (fun k ->
+         let kr = tupE [k;r] in
          match eff exp1 with
          | T.Triv ->
-            awaitE (typ exp) (t_exp context exp1) k
+            awaitE (typ exp) (t_exp context exp1) kr
          | T.Await ->
             c_exp context  exp1
-              (meta (typ exp1) (fun v1 -> (awaitE (typ exp) v1 k)))
+              (meta (typ exp1) (fun v1 -> (awaitE (typ exp) v1 kr)))
        )
+     )
   | AssertE exp1 ->
     unary context k (fun v1 -> e (AssertE v1)) exp1
   | DeclareE (id, typ, exp1) ->

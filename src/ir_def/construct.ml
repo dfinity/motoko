@@ -414,7 +414,9 @@ let err_contT =  T.Func (T.Local, T.Returns, [], [T.catch], [])
 
 let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
 
-let fresh_cont typ = fresh_var "cont" (contT typ)
+let fresh_cont typ = fresh_var "k" (contT typ)
+
+let fresh_err_cont ()  = fresh_var "r" (err_contT)
 
 (* Sequence expressions *)
 

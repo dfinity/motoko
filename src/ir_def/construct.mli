@@ -91,6 +91,7 @@ val contT : typ -> typ
 val err_contT : typ
 val cpsT : typ -> typ
 val fresh_cont : typ -> var
+val fresh_err_cont : unit -> var
 
 (* Sequence expressions *)
 

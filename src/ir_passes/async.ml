@@ -81,12 +81,13 @@ module Transform() = struct
     (* construct the n-ary async value, coercing the continuation, if necessary *)
     let nary_async =
       let k' = fresh_var "k" (contT t1) in
+      let r' = fresh_var "r" err_contT in
       match ts1 with
       | [t] ->
         unary_async
       | ts ->
         let seq_of_v' = tupE (List.mapi (fun i _ -> projE v' i) ts) in
-        k' --> (unary_async -*- ([v'] -->* (k' -*- seq_of_v')))
+        [k';r'] -->*  (unary_async -*- (tupE[([v'] -->* (k' -*- seq_of_v'));r']))
     in
     (* construct the n-ary reply message that sends a sequence of values to fulfill the async *)
     let nary_reply =
@@ -350,7 +351,7 @@ module Transform() = struct
                 match exp.it with
                 | PrimE (OtherPrim "@async", [cps]) ->
                   (blockE [funcD r (fresh_var "e" T.catch) (assertE (boolE false))]
-                     (t_exp cps) -*- tupE [(y --> (k -*- y)); ([e] -->* (r -*- e)) ])
+                     ((t_exp cps) -*- tupE [(y --> (k -*- y)); ([e] -->* (r -*- e)) ]))
                 | _ -> assert false
               in
               FuncE (x, cc', typbinds', args', [], exp')
