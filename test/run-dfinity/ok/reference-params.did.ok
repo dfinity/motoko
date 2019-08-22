@@ -1,0 +1,6 @@
+service e {
+hello : () -> () oneway;
+send_to : (func (service {
+hello : () -> () oneway;
+}) -> () oneway) -> () oneway;
+}

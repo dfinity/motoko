@@ -1,0 +1,11 @@
+type Text = text;
+type Result_2 = variant {err : Text; ok : Nat};
+type Result_1 = variant {err : Text; ok : record {}};
+type Result3_1 = variant {err : Result2_1; ok : record {}};
+type Result2_2 = variant {err : Result_2; ok : Nat};
+type Result2_1 = variant {err : Result_1; ok : record {}};
+type Nat = nat;
+service anon_result {
+f : (opt Nat) -> (Result_2);
+g : (Result3_1) -> (Result2_2);
+}
