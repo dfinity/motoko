@@ -8,7 +8,7 @@ $ nix-env -i -f . -A asc
 
 ## Development using Nix
 
-This is the command that should always pass on master is the following, which builds everything:
+The command that should always pass on master is the following; it builds everything:
 ```
 $ nix-build --no-out-link
 ```
