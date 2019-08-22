@@ -14,7 +14,7 @@ let async_cc n = { sort = Shared; control = Promises; n_args = n; n_res = 1}
 
 let call_conv_of_typ typ =
   match typ with
-  | Func(sort, control, tbds, dom, res) ->
+  | Func (sort, control, tbds, dom, res) ->
     { sort; control; n_args = List.length dom; n_res = List.length res }
   | Non ->
     { sort = Local; control = Returns; n_args = 1; n_res = 1 }

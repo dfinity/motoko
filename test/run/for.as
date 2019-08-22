@@ -3,7 +3,7 @@ async {
 
 { var i = 0;
   for (j in range(0, 10)) {
-   printInt(j);
+   printNat(j);
    assert(j == i);
    i += 1;
   };
@@ -14,7 +14,7 @@ async {
   var i = 0;
   i := 0;
   for (j in range(0, 10)) {
-   printInt(j);
+   printNat(j);
    assert(j == i);
    await (async (i += 1));
   };

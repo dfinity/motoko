@@ -1,13 +1,7 @@
 open As_types
 open As_frontend
+open Declaration_index
 module Lsp_t = Lsp.Lsp_t
-
-type ide_decl =
-  | ValueDecl of string * Type.typ
-  | TypeDecl of string * Type.typ
-
-module Index = Map.Make(String)
-type completion_index = (ide_decl list) Index.t
 
 let string_of_list f xs =
   List.map f xs
@@ -18,8 +12,8 @@ let template_of_ide_decl decl =
   let supply = ref 0 in
   let fresh () = supply := !supply + 1; string_of_int !supply in
   match decl with
-  | ValueDecl (lbl, ty) ->
-     (match ty with
+  | ValueDecl value ->
+     (match value.typ with
       | Type.Func(_, _, binds, ty_list1, ty_list2) ->
          let ty_args =
            binds
@@ -31,82 +25,38 @@ let template_of_ide_decl decl =
            |> List.map (fun _ -> Printf.sprintf "$%s" (fresh ()))
            |> String.concat ", " in
          let ty_args = if ty_args = "" then "" else "<" ^ ty_args ^ ">" in
-         Printf.sprintf "%s%s(%s)" lbl ty_args args
-      | _ -> lbl)
-  | TypeDecl (lbl, ty) ->
-     lbl
-
-let lbl_of_ide_decl (d : ide_decl) : string =
-  match d with
-  | ValueDecl (lbl, _) -> lbl
-  | TypeDecl (lbl, _) -> lbl
+         Printf.sprintf "%s%s(%s)" value.name ty_args args
+      | _ -> value.name)
+  | TypeDecl ty ->
+     ty.name
 
 let item_of_ide_decl (d : ide_decl) : Lsp_t.completion_item =
   let tmpl = template_of_ide_decl d in
   match d with
-  | ValueDecl (lbl, ty) ->
+  | ValueDecl value ->
      Lsp_t.{
-        completion_item_label = lbl;
+        completion_item_label = value.name;
         completion_item_kind = 3;
         completion_item_insertText = tmpl;
         completion_item_insertTextFormat = 2;
-        completion_item_detail = Some(Type.string_of_typ ty);
+        completion_item_detail = Some(Type.string_of_typ value.typ);
      }
-  | TypeDecl (lbl, ty) ->
+  | TypeDecl ty ->
+     let con = ty.typ in
+     let eq, params, typ = Type.strings_of_kind (Con.kind con) in
      Lsp_t.{
-        completion_item_label = lbl;
+        completion_item_label = ty.name;
         completion_item_kind = 7;
         completion_item_insertText = tmpl;
         completion_item_insertTextFormat = 2;
-        completion_item_detail = Some(Type.string_of_typ ty);
+        completion_item_detail =
+          Some
+            (Printf.sprintf
+               "type %s%s"
+               ty.name
+               params);
      }
 
-let string_of_ide_decl = function
-  | ValueDecl (lbl, ty) ->
-     "ValueDecl(" ^ String.escaped lbl ^ ", " ^ Type.string_of_typ ty ^ ")"
-  | TypeDecl (lbl, ty) ->
-     "TypeDecl(" ^ String.escaped lbl ^ ", " ^ Type.string_of_typ ty ^ ")"
-
-let lib_files () : string list =
-  let lib_dir = "lib" in
-  Sys.readdir lib_dir
-  |> Array.to_list
-  |> List.filter (fun file -> String.equal (Filename.extension file) ".as")
-  |> List.map (fun file -> Filename.concat lib_dir file)
-
-let read_single_module_lib (ty: Type.typ): ide_decl list option =
-  match ty with
-  | Type.Obj (Type.Module, fields) ->
-     fields
-     |> List.map (fun Type.{ lab = lab; typ = typ } -> ValueDecl (lab, typ))
-     |> Lib.Option.some
-  | _ -> None
-
-let make_index (): completion_index =
-  let (libraries, scope) =
-    Diag.run
-      (Pipeline.chase_imports
-         Pipeline.initial_stat_env
-         (Pipeline__.Resolve_import.S.of_list (lib_files ()))) in
-  Type.Env.fold
-    (fun path ty acc ->
-      Index.add
-        path
-        (ty
-         |> read_single_module_lib
-         |> Lib.Fun.flip Lib.Option.get [])
-        acc)
-    scope.Scope.lib_env
-    Index.empty
-
-let string_of_index index =
-  Index.bindings index
-  |> string_of_list
-       (fun (path, decls) ->
-         path
-         ^ " =>\n    "
-         ^ string_of_list string_of_ide_decl decls
-         ^ "\n")
 
 let import_relative_to_project_root root module_path dependency =
   match Pipeline__.File_path.relative_to root module_path with
@@ -210,7 +160,11 @@ let completions (* index *) logger project_root file_path file_contents line col
         (match Index.find_opt (snd mp) index with
          | Some decls ->
             decls
-            |> List.filter (fun d -> d |> lbl_of_ide_decl |> Lib.String.chop_prefix prefix |> Lib.Option.is_some)
+            |> List.filter
+                 (fun d -> d
+                   |> name_of_ide_decl
+                   |> Lib.String.chop_prefix prefix
+                   |> Lib.Option.is_some)
             |> List.map item_of_ide_decl
          | None ->
             (* The matching import references a module we haven't loaded *)
@@ -224,6 +178,3 @@ let completion_handler logger project_root file_path file_contents position =
   let column = position.Lsp_t.position_character in
   `CompletionResponse
     (completions logger project_root file_path file_contents line column)
-
-let test_completion () =
-  Printf.printf "%s\n" (string_of_index (make_index ()))

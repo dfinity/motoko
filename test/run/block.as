@@ -18,18 +18,18 @@ let c = async {
 
 let d = async {
    var f = 1;
-   printInt (f);
+   printNat (f);
    let (a,b) = await (async ("a4","b4"));
    f += 2;
-   printInt (f);
+   printNat (f);
 };
 
 
 let e = async {
    var f = await (async 5);
-   printInt (f);
+   printNat (f);
    let (a,b) = await (async ("a5","b5"));
    f += 1;
-   printInt (f);
+   printNat (f);
 };
 

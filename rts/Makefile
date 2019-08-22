@@ -55,7 +55,7 @@ WASM_FLAGS = \
 # Build targets
 #
 
-all: as-rts.wasm test_rts
+all: as-rts.wasm test_rts test_leb128
 
 _build/wasm _build/native:
 	mkdir -p $@
@@ -79,12 +79,12 @@ TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 # Our part of the RTS, Wasm and native
 #
 
-RTSFILES=rts idl bigint
+RTSFILES=rts idl bigint buf
 
-_build/wasm/%.o: %.c | _build/wasm
+_build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
 
-_build/native/%.o: %.c | _build/native
+_build/native/%.o: %.c rts.h buf.h | _build/native
 	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
 
 RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
@@ -105,8 +105,11 @@ as-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O)
 #
 
 test_rts: test_rts.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
-	$(CLANG) -o $@ \
-		$+
+	$(CLANG) -o $@ $+
+
+test_leb128: test_leb128.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
+	$(CLANG) -o $@ $+
+
 clean:
-	rm -rf _build as-rts.wasm test_rts
+	rm -rf _build as-rts.wasm test_rts test_leb128
 

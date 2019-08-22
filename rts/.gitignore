@@ -1,3 +1,5 @@
 as-rts.wasm
 test_rts
+test_leb128
+afl_leb128_out
 _build

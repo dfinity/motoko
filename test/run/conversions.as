@@ -161,7 +161,7 @@ assert(charToWord32 '\u{10ffff}' == (0x10FFFF : Word32));
 
 assert(charToText 'П' == "П");
 func snd((a : Word32, b : Char)) : Char = b;
-assert(snd (decodeUTF8 "П") =='П');
+assert(switch ("П".chars().next()) { case (?'П') true; case _ false });
 
 // Nat <--> Word64
 

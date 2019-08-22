@@ -86,7 +86,7 @@ and exp' at note = function
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
-  | S.FuncE (name, s, tbs, p, ty_opt, e) ->
+  | S.FuncE (name, s, tbs, p, _t_opt, e) ->
     let cc = Call_conv.call_conv_of_typ note.I.note_typ in
     let args, wrap = to_args cc p in
     let _, _, _, ty = T.as_func_sub s.it (List.length tbs) note.I.note_typ in
@@ -248,7 +248,7 @@ and extra_typDs ds =
   | [] -> []
   | d::ds ->
     match d.it with
-    | S.ClassD (id, _, _, _, _, _) ->
+    | S.ClassD (id, _, _, _, _, _, _) ->
       let c = Lib.Option.value id.note in
       let typD = I.TypD c @@ d.at in
       typD :: extra_typDs ds
@@ -273,7 +273,7 @@ and dec' at n d = match d with
   | S.TypD (id, typ_bind, t) ->
     let c = Lib.Option.value id.note in
     I.TypD c
-  | S.ClassD (id, tbs, s, p, self_id, es) ->
+  | S.ClassD (id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in
     let cc = Call_conv.call_conv_of_typ n.S.note_typ in
     let inst = List.map
