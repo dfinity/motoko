@@ -9,6 +9,8 @@ PANDOC=pandoc
 STOPWATCH=$(OUTDIR)/stopwatch
 
 WASM=\
+	ActorSpec \
+	ActorSpecDemo \
 	ProduceExchange \
 	Rx \
 
@@ -236,13 +238,33 @@ $(DOCDIR)/%.html: $(DOCDIR)/%.md
 #########################################################################################################33
 
 ##
+## ActorSpec Example
+##
+
+ACTORSPEC_SRC=\
+	array.as \
+	int.as \
+	text.as \
+	examples/actorspec/src/ActorSpec.as \
+	examples/actorspec/demo/Demo.as \
+
+$(OUTDIR)/ActorSpec.wasm: $(ACTORSPEC_SRC) | $(OUTDIR)
+	$(ASC) -c -o $@ examples/actorspec/src/ActorSpec.as
+
+$(OUTDIR)/ActorSpecDemo.wasm: $(ACTORSPEC_SRC) | $(OUTDIR)
+	$(ASC) -c -o $@ examples/actorspec/demo/Demo.as
+
+
+#########################################################################################################33
+
+##
 ## Rx Example
 ##
 
 RX_SRC=\
-  array.as \
+	array.as \
 	examples/rx/src/Rx.as \
-  examples/rx/test/RxTest.as \
+	examples/rx/test/RxTest.as \
 
 $(OUTDIR)/RxTest.out: $(RX_SRC) \
 	examples/rx/test/RxTest.as | $(OUTDIR)
