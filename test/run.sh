@@ -9,6 +9,7 @@
 #    -a: Update the files in ok/
 #    -d: Compile without -no-dfinity-api, uses dvm to run
 #    -s: Be silent in sunny-day execution
+#    -i: Only check as to idl generation
 #
 
 function realpath() {
@@ -18,6 +19,7 @@ function realpath() {
 
 ACCEPT=no
 DFINITY=no
+CHECK_IDL_ONLY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
@@ -28,7 +30,7 @@ DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 JSCLIENT=${JSCLIENT:-$(realpath $(dirname $0)/../../dev/experimental/js-dfinity-client)}
 ECHO=echo
 
-while getopts "ads" o; do
+while getopts "adsi" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -38,6 +40,9 @@ while getopts "ads" o; do
             ;;
         s)
             ECHO=true
+            ;;
+        i)
+            CHECK_IDL_ONLY=yes
             ;;
     esac
 done
@@ -120,72 +125,102 @@ do
     normalize $out/$base.tc
     diff_files="$diff_files $base.tc"
 
-    if [ "$tc_succeeded" -eq 0 ];
+    if [ "$tc_succeeded" -eq 0 ]
     then
-      if [ "$SKIP_RUNNING" != yes ]
+      if [ $CHECK_IDL_ONLY = 'yes' ]
       then
-        # Interpret
-        $ECHO -n " [run]"
-        $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
-        normalize $out/$base.run
-        diff_files="$diff_files $base.run"
-
-        # Interpret IR without lowering
-        $ECHO -n " [run-ir]"
-        $ASC $ASC_FLAGS -r -iR -no-async -no-await $base.as > $out/$base.run-ir 2>&1
-        normalize $out/$base.run-ir
-        diff_files="$diff_files $base.run-ir"
-
-        # Diff interpretations without/with lowering
-        diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
-        diff_files="$diff_files $base.diff-ir"
-
-        # Interpret IR with lowering
-        $ECHO -n " [run-low]"
-        $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-low 2>&1
-        normalize $out/$base.run-low
-        diff_files="$diff_files $base.run-low"
-
-        # Diff interpretations without/with lowering
-        diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
-        diff_files="$diff_files $base.diff-low"
-
-      fi
-
-      # Compile
-      $ECHO -n " [wasm]"
-      $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as -o $out/$base.wasm 2> $out/$base.wasm.stderr
-      normalize $out/$base.wasm.stderr
-      diff_files="$diff_files $base.wasm.stderr"
-
-      # Check filecheck
-      if [ "$SKIP_RUNNING" != yes ]
-      then
-        if grep -F -q CHECK $base.as
+        $ECHO -n " [idl]"
+        $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
+        idl_succeeded=$?
+        normalize $out/$base.did
+        normalize $out/$base.idl.stderr
+        diff_files="$diff_files $base.did $base.idl.stderr"
+        if [ "$idl_succeeded" -eq 0 ]
         then
-          $ECHO -n " [FileCheck]"
-          wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
-          cat $out/$base.wat | FileCheck $base.as > $out/$base.filecheck 2>&1
-          diff_files="$diff_files $base.filecheck"
+          $ECHO -n " [didc]"
+          $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
+          diff_files="$diff_files $base.did.tc"
         fi
-      fi
-
-      # Run compiled program
-      if [ -e $out/$base.wasm ]
-      then
+      else
+      
         if [ "$SKIP_RUNNING" != yes ]
         then
-          if [ $DFINITY = 'yes' ]
+          # Interpret
+          $ECHO -n " [run]"
+          $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
+          normalize $out/$base.run
+          diff_files="$diff_files $base.run"
+
+          # Interpret IR without lowering
+          $ECHO -n " [run-ir]"
+          $ASC $ASC_FLAGS -r -iR -no-async -no-await $base.as > $out/$base.run-ir 2>&1
+          normalize $out/$base.run-ir
+          diff_files="$diff_files $base.run-ir"
+
+          # Diff interpretations without/with lowering
+          diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
+          diff_files="$diff_files $base.diff-ir"
+
+          # Interpret IR with lowering
+          $ECHO -n " [run-low]"
+          $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-low 2>&1
+          normalize $out/$base.run-low
+          diff_files="$diff_files $base.run-low"
+
+          # Diff interpretations without/with lowering
+          diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
+          diff_files="$diff_files $base.diff-low"
+
+        fi
+
+        # Compile
+        $ECHO -n " [wasm]"
+        $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --map -c $base.as -o $out/$base.wasm 2> $out/$base.wasm.stderr
+        normalize $out/$base.wasm.stderr
+        diff_files="$diff_files $base.wasm.stderr"
+
+        # Check filecheck
+        if [ "$SKIP_RUNNING" != yes ]
+        then
+          if grep -F -q CHECK $base.as
           then
-            $ECHO -n " [dvm]"
-            $DVM_WRAPPER $out/$base.wasm $base.as > $out/$base.dvm-run 2>&1
-            normalize $out/$base.dvm-run
-            diff_files="$diff_files $base.dvm-run"
-          else
-            $ECHO -n " [wasm-run]"
-            $WASM $out/$base.wasm  > $out/$base.wasm-run 2>&1
-            normalize $out/$base.wasm-run
-            diff_files="$diff_files $base.wasm-run"
+            $ECHO -n " [FileCheck]"
+            wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
+            cat $out/$base.wat | FileCheck $base.as > $out/$base.filecheck 2>&1
+            diff_files="$diff_files $base.filecheck"
+          fi
+        fi
+
+        # Run compiled program
+        if [ -e $out/$base.wasm ]
+        then
+          if [ "$SKIP_RUNNING" != yes ]
+          then
+            if [ $DFINITY = 'yes' ]
+            then
+              $ECHO -n " [idl]"
+              $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
+              idl_succeeded=$?
+              normalize $out/$base.did
+              normalize $out/$base.idl.stderr
+              diff_files="$diff_files $base.did $base.idl.stderr"
+              if [ "$idl_succeeded" -eq 0 ]
+              then
+                $ECHO -n " [didc]"
+                $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
+                diff_files="$diff_files $base.did.tc"
+              fi            
+
+              $ECHO -n " [dvm]"
+              $DVM_WRAPPER $out/$base.wasm $base.as > $out/$base.dvm-run 2>&1
+              normalize $out/$base.dvm-run
+              diff_files="$diff_files $base.dvm-run"
+            else
+              $ECHO -n " [wasm-run]"
+              $WASM $out/$base.wasm  > $out/$base.wasm-run 2>&1
+              normalize $out/$base.wasm-run
+              diff_files="$diff_files $base.wasm-run"
+            fi
           fi
         fi
       fi
@@ -227,14 +262,16 @@ do
     then
       $ECHO -n " [js]"
       $DIDC --js $base.did -o $out/$base.js >& $out/$base.js.out
-      diff_files="$diff_files $base.js.out"
-      diff_files="$diff_files $base.js"
+      normalize $out/$base.js
+      normalize $out/$base.js.out
+      diff_files="$diff_files $base.js.out $base.js"
 
       if [ -e $out/$base.js ]
       then
         $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$JSCLIENT:$JSCLIENT/src
         node $out/$base.js > $out/$base.err 2>&1
+        normalize $out/$base.err
         diff_files="$diff_files $base.err"
       fi
     fi

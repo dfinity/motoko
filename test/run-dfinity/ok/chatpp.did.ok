@@ -1,0 +1,10 @@
+type Text = text;
+type Subscription = record {cancel : func () -> () oneway; post : func (Text) -> () oneway};
+type Server = service {
+subscribe : (Client) -> (Subscription);
+};
+type Client = service {
+go : (Text, Server) -> () oneway;
+send : (Text) -> () oneway;
+};
+service charlie : Client

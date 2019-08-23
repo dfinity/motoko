@@ -55,7 +55,7 @@ WASM_FLAGS = \
 # Build targets
 #
 
-all: as-rts.wasm test_rts
+all: as-rts.wasm test_rts test_leb128
 
 _build/wasm _build/native:
 	mkdir -p $@
@@ -105,8 +105,11 @@ as-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O)
 #
 
 test_rts: test_rts.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
-	$(CLANG) -o $@ \
-		$+
+	$(CLANG) -o $@ $+
+
+test_leb128: test_leb128.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
+	$(CLANG) -o $@ $+
+
 clean:
-	rm -rf _build as-rts.wasm test_rts
+	rm -rf _build as-rts.wasm test_rts test_leb128
 

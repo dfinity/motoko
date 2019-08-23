@@ -26,8 +26,6 @@ let response_error_message (id : int) (error : Lsp_t.response_error) : Lsp_t.res
     response_message_error = Some error;
   }
 
-(* let response_error_message (id : int) (error : Lsp_t.response_error) : Lsp_t.response_message = *)
-
 module Channel = struct
   let log_to_file (oc : out_channel) (lbl : string) (txt : string) : unit =
     Printf.fprintf oc "[%s] %s\n" lbl txt;
@@ -160,6 +158,7 @@ let start () =
             server_capabilities_textDocumentSync = text_document_sync_options;
             server_capabilities_hoverProvider = Some true;
             server_capabilities_completionProvider = Some completion_options;
+            server_capabilities_definitionProvider = Some true;
           }
         }) in
         let response = response_result_message id result in
@@ -187,6 +186,28 @@ let start () =
                 (abs_file_from_uri log_to_file uri) in
             response_result_message id result in
        send_response (Lsp_j.string_of_response_message response);
+    | (Some id, `TextDocumentDefinition params) ->
+       let uri =
+         params
+           .Lsp_t.text_document_position_params_textDocument
+           .Lsp_t.text_document_identifier_uri in
+       let position =
+         params.Lsp_t.text_document_position_params_position in
+       let response = match Vfs.read_file uri !vfs with
+         | None ->
+            response_error_message
+              id
+              Lsp_t.{ code = 1
+                    ; message = "Tried to find a definition in a file that hadn't been opened yet"}
+         | Some file_content ->
+            let result =
+              Definition.definition_handler
+                position
+                file_content
+                project_root
+                (abs_file_from_uri log_to_file uri) in
+            response_result_message id result in
+       send_response (Lsp_j.string_of_response_message response);
     | (_, `TextDocumentDidOpen params) ->
        vfs := Vfs.open_file params !vfs
     | (_, `TextDocumentDidChange params) ->
@@ -198,7 +219,6 @@ let start () =
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
        let file_name = file_from_uri log_to_file uri in
        let result = Pipeline.check_files [file_name] in
-       show_message Lsp.MessageType.Info ("Compiling file: " ^ file_name);
        let msgs = match result with
          | Error msgs' -> msgs'
          | Ok (_, msgs') -> msgs' in

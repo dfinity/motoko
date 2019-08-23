@@ -1,0 +1,5 @@
+service a {
+go : () -> () oneway;
+hello : () -> () oneway;
+world : () -> () oneway;
+}
