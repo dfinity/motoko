@@ -8,9 +8,6 @@ fi
 
 export LANG=C
 
-if [ -n "$2" ]
-then
-  grep '^//CALL ' $2 | cut -c7- | drun $1 /dev/stdin
-else
-  drun $1 /dev/stdin /dev/null
-fi
+( if [ -n "$2" ]; then grep '^//CALL ' $2 | cut -c8-; fi;
+  echo 'ingress dummy ""'
+) | drun $1 /dev/stdin
