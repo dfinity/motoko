@@ -872,7 +872,7 @@ module ClosureTable = struct
   two reasons:
   - we cannot just bind the address via i32.bind, because that is not stable, due
     to our moving GC, and
-  - we need to remember that these closures are roots (and currenlty never freed!)
+  - we need to remember that these closures are roots (and currently never freed!)
 
   Therefore we maintain a static table from closure index to address of the closure
   on the heap.
@@ -882,7 +882,7 @@ module ClosureTable = struct
   let loc = ElemHeap.table_end
   let table_end = Int32.(add loc (mul max_entries Heap.word_size))
 
-  (* For reasons I do not recall we use the first word of the table as the counter,
+  (* For reasons I do not recall, we use the first word of the table as the counter,
      and not a global.
   *)
   let get_counter = compile_unboxed_const loc ^^ load_unskewed_ptr
