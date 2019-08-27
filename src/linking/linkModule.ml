@@ -72,7 +72,13 @@ let count_imports is_thing m =
 
 let remove_export is_thing name : module_' -> module_' = fun m ->
   let to_remove e =
-    is_thing e.it.edesc.it <> None && e.it.name = Wasm.Utf8.decode name
+    not (is_thing e.it.edesc.it <> None && e.it.name = Wasm.Utf8.decode name)
+  in
+  { m with exports = List.filter to_remove m.exports }
+
+let remove_exports is_thing : module_' -> module_' = fun m ->
+  let to_remove e =
+    not (is_thing e.it.edesc.it <> None)
   in
   { m with exports = List.filter to_remove m.exports }
 
@@ -667,3 +673,4 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     )
   |> add_call_ctors
   |> remove_non_dfinity_exports (* only sane if no additional files get linked in *)
+  |> map_module (remove_exports is_global_export)
