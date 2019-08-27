@@ -422,6 +422,10 @@ deriving instance Show (BitLimited n a)
 deriving instance Eq (BitLimited n a)
 deriving instance Ord (BitLimited n a)
 
+
+-- for a BitLimited n Word, the instances of WordView provide the
+-- change of perspective to the built-in Word types' semantics
+--
 class WordView a where
   type WordType a :: *
   toWord :: a -> WordType a
@@ -432,6 +436,7 @@ class WordView a where
   lift1b f (f . toWord -> res) = res
   lift2 :: (WordType a -> WordType a -> WordType a) -> a -> a -> a
   lift2 f (toWord -> a) (toWord -> b) = fromWord (a `f` b)
+  {-# MINIMAL toWord, fromWord #-}
 
 
 type family WordTypeForBits a where
