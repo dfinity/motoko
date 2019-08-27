@@ -1,6 +1,5 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
-  test-dvm ? true,
-  dvm ? null,
+  drun ? null,
   export-shell ? false,
   replay ? 0
 }:
@@ -30,13 +29,17 @@ let dev = import (builtins.fetchGit {
   rev = "ad50bcea8db6d55decf2622ad836435aa36fa33f";
 }) { system = nixpkgs.system; }; in
 
-# Include dvm
-let real-dvm =
-  if dvm == null
-  then if test-dvm
-    then dev.dvm
-    else null
-  else dvm; in
+let dfinity-repo = import (builtins.fetchGit {
+  url = "ssh://git@github.com/dfinity-lab/dfinity";
+  ref = "joachim/drun-derivation";
+  rev = "6f60476511e75466d56f8e1361f1c9114a9af7a3";
+}) { system = nixpkgs.system; }; in
+
+# Include drun
+let real-drun =
+  if drun == null
+  then dfinity-repo.dfinity.drun
+  else drun; in
 
 # Include js-client
 let js-client = dev.js-dfinity-client; in
@@ -167,8 +170,9 @@ rec {
         nixpkgs.nodejs-10_x
         filecheck
         js-client
+	drun
+	qc-actorscript
       ] ++
-      (if test-dvm then [ real-dvm qc-actorscript ] else []) ++
       llvmBuildInputs;
 
     buildPhase = ''
@@ -179,13 +183,9 @@ rec {
         export DIDC=didc
         export JSCLIENT=${js-client}
         asc --version
-      '' +
-      (if test-dvm then ''
         make parallel
         qc-actorscript${replay-option}
-      '' else ''
-        make quick
-      '');
+      '';
 
     installPhase = ''
       touch $out
@@ -240,8 +240,8 @@ rec {
         nixpkgs.bash
         nixpkgs.perl
         filecheck
+	real-drun
       ] ++
-      (if test-dvm then [ real-dvm ] else []) ++
       llvmBuildInputs;
 
     buildPhase = ''
@@ -296,7 +296,7 @@ rec {
   };
 
   wasm = ocaml_wasm;
-  dvm = real-dvm;
+  drun = real-drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;

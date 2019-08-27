@@ -7,7 +7,7 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Compile without -no-dfinity-api, uses dvm to run
+#    -d: Compile without -no-dfinity-api, uses drun to run
 #    -s: Be silent in sunny-day execution
 #    -i: Only check as to idl generation
 #
@@ -26,7 +26,7 @@ AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export AS_LD
 WASM=${WASM:-wasm}
-DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
+DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 JSCLIENT=${JSCLIENT:-$(realpath $(dirname $0)/../../dev/experimental/js-dfinity-client)}
 ECHO=echo
 
@@ -65,8 +65,6 @@ function normalize () {
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
     sed 's/prelude:[^:]*:/prelude:___:/g' |
-    sed 's/^.*run-dfinity\/\.\.\/dvm.sh: line/dvm.sh: line/g' |
-    sed 's/ *[0-9]* Illegal instruction.*dvm/ Illegal instruction dvm/g' |
     sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
     cat > $1.norm
     mv $1.norm $1
@@ -107,10 +105,10 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,dvm-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat}
+  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,drun-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat}
   if [ $ACCEPT = yes ]
   then
-    rm -f $ok/$base.{tc,wasm,wasm.map,wasm-run,dvm-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat}.ok
+    rm -f $ok/$base.{tc,wasm,wasm.map,wasm-run,drun-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat}.ok
   fi
 
   # First run all the steps, and remember what to diff
@@ -209,12 +207,12 @@ do
                 $ECHO -n " [didc]"
                 $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
                 diff_files="$diff_files $base.did.tc"
-              fi            
+              fi
 
-              $ECHO -n " [dvm]"
-              $DVM_WRAPPER $out/$base.wasm $base.as > $out/$base.dvm-run 2>&1
-              normalize $out/$base.dvm-run
-              diff_files="$diff_files $base.dvm-run"
+              $ECHO -n " [drun]"
+              $DRUN_WRAPPER $out/$base.wasm $base.as > $out/$base.drun-run 2>&1
+              normalize $out/$base.drun-run
+              diff_files="$diff_files $base.drun-run"
             else
               $ECHO -n " [wasm-run]"
               $WASM $out/$base.wasm  > $out/$base.wasm-run 2>&1
