@@ -636,13 +636,8 @@ eval (ConvertWord t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evaluate c
                              eval $ if c then a else b
 
-eval (Pair a b) = do a <- evaluate a
-                     b <- evaluate b
-                     pure (a, b)
-eval (Triple a b c) = do a <- evaluate a
-                         b <- evaluate b
-                         c <- evaluate c
-                         pure (a, b, c)
+eval (Pair a b) = (,) <$> evaluate a <*> evaluate b
+eval (Triple a b c) = (,,) <$> evaluate a <*> evaluate b <*> evaluate c
 eval Null = Nothing
 eval (Some a) = fmap Just $ evaluate a
 --eval _ = Nothing
