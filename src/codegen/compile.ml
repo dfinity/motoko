@@ -293,6 +293,7 @@ module E = struct
         idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
       } in
       let fi = reg env.func_imports (nr i) in
+
       let name = modname ^ "_" ^ funcname in
       assert (not (NameEnv.mem name !(env.built_in_funcs)));
       env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
@@ -2881,6 +2882,8 @@ module Dfinity = struct
 
   let system_imports env =
     begin
+      ()
+      (*
       E.add_func_import env "test" "print" [I32Type] [];
       E.add_func_import env "test" "show_i32" [I32Type] [I32Type];
       E.add_func_import env "data" "externalize" [I32Type; I32Type] [I32Type];
@@ -2896,11 +2899,12 @@ module Dfinity = struct
       E.add_func_import env "func" "internalize" [I32Type; I32Type] [];
       E.add_func_import env "func" "externalize" [I32Type] [I32Type];
       E.add_func_import env "func" "bind_i32" [I32Type; I32Type] [I32Type];
+      *)
     end
 
   let system_call env name =
     if E.mode env = DfinityMode
-    then G.i (Call (nr (E.built_in env name)))
+    then G.i Unreachable (* G.i (Call (nr (E.built_in env name))) *)
     else G.i Unreachable
 
   let compile_databuf_of_text env  =
