@@ -238,6 +238,12 @@ data ASTerm :: * -> * where
   ConvertNat :: KnownNat n => ASTerm (BitLimited n Natural) -> ASTerm Integer
   ConvertInt :: KnownNat n => ASTerm (BitLimited n Integer) -> ASTerm Integer
   ConvertWord :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Integer
+  -- Constructors (intro forms)
+  Pair :: (Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
+  Triple :: (Evaluatable a, Evaluatable b, Evaluatable c) => ASTerm a -> ASTerm b -> ASTerm c -> ASTerm (a, b, c)
+  Array :: ASTerm a -> ASTerm [a] -- not matchable!
+  Null :: ASTerm (Maybe a)
+  Some :: Evaluatable a => ASTerm a -> ASTerm (Maybe a)
 
 deriving instance Show (ASTerm t)
 
@@ -629,6 +635,16 @@ eval (ConvertInt t) = fromIntegral <$> evaluate t
 eval (ConvertWord t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evaluate c
                              eval $ if c then a else b
+
+eval (Pair a b) = do a <- evaluate a
+                     b <- evaluate b
+                     pure (a, b)
+eval (Triple a b c) = do a <- evaluate a
+                         b <- evaluate b
+                         c <- evaluate c
+                         pure (a, b, c)
+eval Null = Nothing
+eval (Some a) = fmap Just $ evaluate a
 --eval _ = Nothing
 
 
