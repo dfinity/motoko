@@ -796,9 +796,9 @@ deriving instance Show Matching
 
 instance Arbitrary Matching where
   arbitrary = oneof [ realise Matching <$> gen @Bool
-                    , realise MatchingPair <$> gen @(Bool, Bool)
-                    , realise MatchingPair <$> gen @(Bool, Integer)
-                    , realise MatchingPair <$> gen @((Bool, Natural), Integer)
+                    , realise Matching <$> gen @(Bool, Bool)
+                    , realise Matching <$> gen @(Bool, Integer)
+                    , realise Matching <$> gen @((Bool, Natural), Integer)
                     ]
     where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
           gen = (do term <- arbitrary
@@ -807,29 +807,40 @@ instance Arbitrary Matching where
           realise f (tm, Just v) = f (tm, v)
 
 prop_matchStructured :: Matching -> Property
---prop_matchStructured (MatchingBool a) = matchStructured a
-prop_matchStructured (MatchingPair a) = matchStructured a
-prop_matchStructured (Matching a) = matchStructured a
+prop_matchStructured (Matching a) = locally a
 
-matchStructured :: (Annot t, Literal t, ASValue t) => (ASTerm t, t) -> Property
-matchStructured (tm, v) = monadicIO $ do
+locally :: (Annot t, Literal t, ASValue t) => (ASTerm t, t) -> Property
+locally (tm, v) = monadicIO $ do
   let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
       eval'd = unparse v
       expr = unparseAS tm
-  runScriptNoFuzz "matchStructured" testCase
+  runScriptNoFuzz "matchLocally" testCase
+
+mobile :: (Annot t, Literal t, ASValue t) => (ASTerm t, t) -> Property
+mobile (tm, v) = monadicIO $ do
+  let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
+
+      eval'd = unparse v
+      expr = unparseAS tm
+  runScriptNoFuzz "matchLocally" testCase
 
 class ASValue a where
+  unparseType :: a -> String
   unparse :: a -> String
 
 instance ASValue Bool where
+  unparseType _ = "Bool"
   unparse = unparseAS . Bool
 
 instance ASValue Integer where
+  unparseType _ = "Int"
   unparse = show
 
 instance ASValue Natural where
+  unparseType _ = "Nat"
   unparse = show
 
 instance (ASValue a, ASValue b) => ASValue (a, b) where
+  unparseType (a, b) = "(" <> unparseType a <> ", " <> unparseType b <> ")"
   unparse (a, b) = "(" <> unparse a <> ", " <> unparse b <> ")"
