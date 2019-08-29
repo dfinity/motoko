@@ -775,13 +775,17 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 newtype Matching a = Matching a deriving Show
 
 
-instance Arbitrary (Matching Bool) where
-  arbitrary = Matching <$> arbitrary
+instance Arbitrary (Matching (ASTerm Bool, Bool)) where
+  arbitrary = realise <$> gen
+    where gen = (do term <- arbitrary
+                    let val = evaluate term
+                    pure (term, val)) `suchThat` (isJust . snd)
+          realise (tm, Just v) = Matching (tm, v)
 
-prop_matchStructured :: Matching Bool -> Property
-prop_matchStructured (Matching b) = monadicIO $ do
+prop_matchStructured :: Matching (ASTerm Bool, Bool) -> Property
+prop_matchStructured (Matching (tm, v)) = monadicIO $ do
   let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
-      eval'd = unparseAS (Bool b)
-      expr = eval'd
+      eval'd = unparseAS (Bool v)
+      expr = unparseAS tm
   runScriptNoFuzz "matchStructured" testCase
