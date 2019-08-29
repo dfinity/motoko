@@ -783,9 +783,22 @@ instance Arbitrary (Matching (ASTerm Bool, Bool)) where
           realise (tm, Just v) = Matching (tm, v)
 
 prop_matchStructured :: Matching (ASTerm Bool, Bool) -> Property
-prop_matchStructured (Matching (tm, v)) = monadicIO $ do
+prop_matchStructured (Matching m@(tm, v)) = monadicIO $ do
   let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
-      eval'd = unparseAS (Bool v)
+      eval'd = unparseValue m
       expr = unparseAS tm
   runScriptNoFuzz "matchStructured" testCase
+
+
+unparseValue :: (ASTerm Bool, Bool) -> String
+unparseValue (NotEqual{}, b) = unparseAS (Bool b)
+unparseValue (Equals{}, b) = unparseAS (Bool b)
+unparseValue (GreaterEqual{}, b) = unparseAS (Bool b)
+unparseValue (Greater{}, b) = unparseAS (Bool b)
+unparseValue (LessEqual{}, b) = unparseAS (Bool b)
+unparseValue (Less{}, b) = unparseAS (Bool b)
+unparseValue (ShortAnd{}, b) = unparseAS (Bool b)
+unparseValue (ShortOr{}, b) = unparseAS (Bool b)
+unparseValue (Not{}, b) = unparseAS (Bool b)
+unparseValue (Bool{}, b) = unparseAS (Bool b)
