@@ -9,5 +9,5 @@ fi
 export LANG=C
 
 ( if [ -n "$2" ]; then grep '^//CALL ' $2 | cut -c8-; fi;
-  echo 'ingress dummy ""'
+  echo 'query dummy ""'
 ) | drun $1 /dev/stdin
