@@ -8,6 +8,4 @@ fi
 
 export LANG=C
 
-( if [ -n "$2" ]; then grep '^//CALL ' $2 | cut -c8-; fi;
-  echo 'query dummy ""'
-) | drun $1 /dev/stdin
+( if [ -n "$2" ]; then grep '^//CALL ' $2 | cut -c8-; fi;) | drun $1 /dev/stdin
