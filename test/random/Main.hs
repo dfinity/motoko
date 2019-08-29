@@ -44,7 +44,7 @@ utf8Props = testGroup "UTF-8 coding"
 
 matchingProps = testGroup "pattern matching"
   [ QC.testProperty "intra-actor" $ prop_matchStructured
-  --, QC.testProperty "inter-actor" $ prop_charToText
+  , QC.testProperty "inter-actor" $ prop_matchInActor
   ]
 
 (runScriptNoFuzz, runScriptWantFuzz) = (runner id, runner not)
@@ -817,13 +817,17 @@ locally (tm, v) = monadicIO $ do
       expr = unparseAS tm
   runScriptNoFuzz "matchLocally" testCase
 
+prop_matchInActor :: Matching -> Property
+prop_matchInActor (Matching a) = mobile a
+
 mobile :: (Annot t, Literal t, ASValue t) => (ASTerm t, t) -> Property
 mobile (tm, v) = monadicIO $ do
-  let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
+  let testCase = "assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false })"
 
       eval'd = unparse v
+      typed = unparseType v
       expr = unparseAS tm
-  runScriptNoFuzz "matchLocally" testCase
+  runScriptNoFuzz "matchMobile" testCase
 
 class ASValue a where
   unparseType :: a -> String
