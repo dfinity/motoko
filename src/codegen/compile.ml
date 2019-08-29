@@ -918,7 +918,7 @@ module ClosureTable = struct
     )
 
   (* Assumes a index into the table on the stack, and replaces it with a ptr to the closure *)
-  let recall_closure env : G.t =
+  let _recall_closure env : G.t =
     Func.share_code1 env "recall_closure" ("closure_idx", I32Type) [I32Type] (fun env get_closure_idx ->
       get_closure_idx ^^
       compile_mul_const Heap.word_size ^^
@@ -3880,27 +3880,6 @@ module Serialization = struct
         (* Copy out the bytes *)
         copy_out env get_data_start get_data_size
     )
-
-  let deserialize_text env get_databuf =
-    let (set_data_size, get_data_size) = new_local env "data_size" in
-    let (set_x, get_x) = new_local env "x" in
-
-    get_databuf ^^
-    Dfinity.system_call env "data" "length" ^^
-    set_data_size ^^
-
-    get_data_size ^^
-    Text.alloc env ^^
-    set_x ^^
-
-    get_x ^^ Text.payload_ptr_unskewed ^^
-    get_data_size ^^
-    get_databuf ^^
-    compile_unboxed_const 0l ^^
-    Dfinity.system_call env "data" "internalize" ^^
-
-    get_x
-
 
   let deserialize env t arg_len arg_copy =
     let name = "@deserialize<" ^ typ_id t ^ ">" in

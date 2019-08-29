@@ -183,12 +183,9 @@ let prepend_to_start fi (em : extended_module)  =
       }
   }
 
-module VarMap = Map.Make(Int32)
-
 let remove_non_dfinity_exports (em : extended_module) : extended_module =
   let is_dfinity_export (exp : export) = Lib.String.chop_prefix "dfn_" (Wasm.Utf8.encode exp.it.name) <> None in
   map_module (fun m -> { m with exports = List.filter is_dfinity_export m.exports }) em
-
 
 (* Generic linking logic *)
 

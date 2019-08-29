@@ -448,6 +448,7 @@ let desugar env lib_env libraries progs name =
   then Check_ir.check_prog !Flags.verbose env "Desugaring" prog_ir';
   prog_ir'
 
+(*
 let await_lowering =
   transform_if "Await Lowering" (fun _ -> Await.transform)
 
@@ -456,6 +457,7 @@ let async_lowering =
 
 let serialization =
   transform_if "Synthesizing serialization code" Serialization.transform
+*)
 
 let tailcall_optimization =
   transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
