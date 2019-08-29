@@ -788,6 +788,7 @@ data Matching where
   MatchingBool :: (ASTerm Bool, Bool) -> Matching
   MatchingInt :: (ASTerm Integer, Integer) -> Matching
   MatchingPair :: (ASValue a, ASValue b, Show (a, b)) => (ASTerm (a, b), (a, b)) -> Matching
+  --Matching :: (Annot t, Literal t, ASValue t, Show t) => (ASTerm t, t) -> Matching
 
 deriving instance Show Matching
 
@@ -805,14 +806,12 @@ instance Arbitrary Matching where
           realise f (tm, Just v) = f (tm, v)
 
 prop_matchStructured :: Matching -> Property
-prop_matchStructured m@(MatchingBool (tm, v)) = monadicIO $ do
-  let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
+prop_matchStructured (MatchingBool a) = matchStructured a
+prop_matchStructured (MatchingPair a) = matchStructured a
+--prop_matchStructured (Matching a) = matchStructured a
 
-      eval'd = unparse v
-      expr = unparseAS tm
-  runScriptNoFuzz "matchStructured" testCase
-
-prop_matchStructured m@(MatchingPair (tm, v)) = monadicIO $ do
+matchStructured :: (Annot t, Literal t, ASValue t) => (ASTerm t, t) -> Property
+matchStructured (tm, v) = monadicIO $ do
   let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
       eval'd = unparse v
