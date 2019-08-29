@@ -186,16 +186,7 @@ let prepend_to_start fi (em : extended_module)  =
 module VarMap = Map.Make(Int32)
 
 let remove_non_dfinity_exports (em : extended_module) : extended_module =
-  (* We assume that every exported function that does not have an entry in the
-   custom types section was only exported for linking, and should not be
-   exported in the final module *)
-  let dfinity_exports = List.fold_left
-    (fun map (fi, _) -> VarMap.add fi () map)
-    VarMap.empty em.types in
-
-  let is_dfinity_export exp = match exp.it.edesc.it with
-      | FuncExport var -> VarMap.mem var.it dfinity_exports
-      | _ -> true in
+  let is_dfinity_export (exp : export) = Lib.String.chop_prefix "dfn_" (Wasm.Utf8.encode exp.it.name) <> None in
   map_module (fun m -> { m with exports = List.filter is_dfinity_export m.exports }) em
 
 
