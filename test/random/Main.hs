@@ -772,18 +772,23 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 --   - bitsize-preserving conversions
 --   - "abü".len();
 
-newtype Matching a = Matching a deriving Show
+data Matching a where
+  MatchingBool :: (ASTerm Bool, Bool) -> Matching Bool
+  MatchingInt :: (ASTerm Integer, Integer) -> Matching Integer
+  --MatchingPair :: (ASTerm (a, b), (a, b)) -> Matching (a, b)
+
+deriving instance Show (Matching Bool)
 
 
-instance Arbitrary (Matching (ASTerm Bool, Bool)) where
+instance Arbitrary (Matching Bool) where
   arbitrary = realise <$> gen
     where gen = (do term <- arbitrary
                     let val = evaluate term
                     pure (term, val)) `suchThat` (isJust . snd)
-          realise (tm, Just v) = Matching (tm, v)
+          realise (tm, Just v) = MatchingBool (tm, v)
 
-prop_matchStructured :: Matching (ASTerm Bool, Bool) -> Property
-prop_matchStructured (Matching m@(tm, v)) = monadicIO $ do
+prop_matchStructured :: Matching Bool -> Property
+prop_matchStructured m@(MatchingBool (tm, v)) = monadicIO $ do
   let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
       eval'd = unparseValue m
@@ -791,14 +796,5 @@ prop_matchStructured (Matching m@(tm, v)) = monadicIO $ do
   runScriptNoFuzz "matchStructured" testCase
 
 
-unparseValue :: (ASTerm Bool, Bool) -> String
-unparseValue (NotEqual{}, b) = unparseAS (Bool b)
-unparseValue (Equals{}, b) = unparseAS (Bool b)
-unparseValue (GreaterEqual{}, b) = unparseAS (Bool b)
-unparseValue (Greater{}, b) = unparseAS (Bool b)
-unparseValue (LessEqual{}, b) = unparseAS (Bool b)
-unparseValue (Less{}, b) = unparseAS (Bool b)
-unparseValue (ShortAnd{}, b) = unparseAS (Bool b)
-unparseValue (ShortOr{}, b) = unparseAS (Bool b)
-unparseValue (Not{}, b) = unparseAS (Bool b)
-unparseValue (Bool{}, b) = unparseAS (Bool b)
+unparseValue :: Matching a -> String
+unparseValue (MatchingBool (_, b)) = unparseAS (Bool b)
