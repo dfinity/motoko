@@ -796,7 +796,7 @@ instance Arbitrary Matching where
   arbitrary = oneof [ realise MatchingBool <$> gen
                     , realise MatchingPair <$> gen @(Bool, Bool)
                     , realise MatchingPair <$> gen @(Bool, Integer)
-                    --, realise MatchingPair <$> gen @((Bool, Natural), Integer)
+                    , realise MatchingPair <$> gen @((Bool, Natural), Integer)
                     ]
     where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
           gen = (do term <- arbitrary
@@ -826,6 +826,9 @@ instance ASValue Bool where
   unparse = unparseAS . Bool
 
 instance ASValue Integer where
+  unparse = show
+
+instance ASValue Natural where
   unparse = show
 
 instance (ASValue a, ASValue b) => ASValue (a, b) where
