@@ -1,0 +1,4 @@
+type Text = text;
+service anon_hello_world_return {
+hello : () -> (Text);
+}
