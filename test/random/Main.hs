@@ -793,7 +793,10 @@ deriving instance Show Matching
 
 
 instance Arbitrary Matching where
-  arbitrary = oneof [realise MatchingBool <$> gen, realise MatchingPair <$> gen @(Bool, Bool)]
+  arbitrary = oneof [ realise MatchingBool <$> gen
+                    , realise MatchingPair <$> gen @(Bool, Bool)
+                    , realise MatchingPair <$> gen @(Bool, Integer)
+                    ]
     where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
           gen = (do term <- arbitrary
                     let val = evaluate term
@@ -821,7 +824,10 @@ class ASValue a where
 instance ASValue Bool where
   unparse = unparseAS . Bool
 
+instance ASValue Integer where
+  unparse = show
+
 unparseValue :: Matching -> String
 unparseValue (MatchingBool (_, b)) = unparse b
-unparseValue (MatchingInt (_, i)) = show i
+unparseValue (MatchingInt (_, i)) = unparse i
 unparseValue (MatchingPair (_, (a, b))) = "(" <> unparse a <> ", " <> unparse b <> ")"
