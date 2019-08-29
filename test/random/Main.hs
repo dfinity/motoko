@@ -29,7 +29,7 @@ import Turtle
 
 main = defaultMain tests
   where tests :: TestTree
-        tests = testGroup "ActorScript tests" [arithProps, utf8Props]
+        tests = testGroup "ActorScript tests" [{-arithProps, utf8Props,-} matchingProps]
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
@@ -42,6 +42,10 @@ utf8Props = testGroup "UTF-8 coding"
   , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
   ]
 
+matchingProps = testGroup "pattern matching"
+  [ QC.testProperty "intra-actor" $ prop_matchStructured
+  --, QC.testProperty "inter-actor" $ prop_charToText
+  ]
 
 (runScriptNoFuzz, runScriptWantFuzz) = (runner id, runner not)
     where runner relevant name testCase = 
@@ -244,6 +248,7 @@ data ASTerm :: * -> * where
   Array :: ASTerm a -> ASTerm [a] -- not matchable!
   Null :: ASTerm (Maybe a)
   Some :: Evaluatable a => ASTerm a -> ASTerm (Maybe a)
+  -- Variants, Objects (TODO)
 
 deriving instance Show (ASTerm t)
 
@@ -762,6 +767,21 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 -- TODOs:
 --   - wordToInt
 --   - bitwise ops (btst?)
---   - pattern matches (over numeric, bool)
+--   - pattern matches (over numeric, bool, structured)
 --   - trapping flavour-preserving conversions Nat -> NatN
 --   - bitsize-preserving conversions
+--   - "abü".len();
+
+newtype Matching a = Matching a deriving Show
+
+
+instance Arbitrary (Matching Bool) where
+  arbitrary = Matching <$> arbitrary
+
+prop_matchStructured :: Matching Bool -> Property
+prop_matchStructured (Matching b) = monadicIO $ do
+  let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
+
+      eval'd = unparseAS (Bool b)
+      expr = eval'd
+  runScriptNoFuzz "matchStructured" testCase
