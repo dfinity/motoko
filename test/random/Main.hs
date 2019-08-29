@@ -324,6 +324,8 @@ instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (ASTerm (BitLimited n Word
 instance {-# OVERLAPS #-} Arbitrary (ASTerm Word8) where
   arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
 
+instance (Annot a, Annot b, Literal a, Literal b, Evaluatable a, Evaluatable b, Arbitrary (ASTerm a), Arbitrary (ASTerm b)) => Arbitrary (ASTerm (a, b)) where
+  arbitrary = Pair <$> arbitrary <*> arbitrary
 
 instance Arbitrary (ASTerm Bool) where
   arbitrary = sized $ \(succ -> n) -> -- TODO: use frequency?
@@ -622,6 +624,9 @@ instance Evaluatable Integer where
 instance Evaluatable Natural where
   evaluate = eval
 
+instance (Evaluatable a, Evaluatable b) => Evaluatable (a, b) where
+  evaluate (Pair a b) = (,) <$> evaluate a <*> evaluate b
+
 eval :: (Restricted a, Integral a) => ASTerm a -> Maybe a
 eval Five = pure 5
 eval (Neuralgic n) = evalN n
@@ -641,10 +646,10 @@ eval (ConvertWord t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evaluate c
                              eval $ if c then a else b
 
-eval (Pair a b) = (,) <$> evaluate a <*> evaluate b
-eval (Triple a b c) = (,,) <$> evaluate a <*> evaluate b <*> evaluate c
-eval Null = Nothing
-eval (Some a) = fmap Just $ evaluate a
+--eval (Pair a b) = (,) <$> evaluate a <*> evaluate b
+--eval (Triple a b c) = (,,) <$> evaluate a <*> evaluate b <*> evaluate c
+--eval Null = Nothing
+--eval (Some a) = fmap Just $ evaluate a
 --eval _ = Nothing
 
 
@@ -782,17 +787,18 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 data Matching where
   MatchingBool :: (ASTerm Bool, Bool) -> Matching
   MatchingInt :: (ASTerm Integer, Integer) -> Matching
-  MatchingPair :: Show (a, b) => (ASTerm (a, b), (a, b)) -> Matching
+  MatchingPair :: (ASValue a, ASValue b, Show (a, b)) => (ASTerm (a, b), (a, b)) -> Matching
 
 deriving instance Show Matching
 
 
 instance Arbitrary Matching where
-  arbitrary = realise <$> gen
-    where gen = (do term <- arbitrary
+  arbitrary = oneof [realise MatchingBool <$> gen, realise MatchingPair <$> gen @(Bool, Bool)]
+    where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
+          gen = (do term <- arbitrary
                     let val = evaluate term
                     pure (term, val)) `suchThat` (isJust . snd)
-          realise (tm, Just v) = MatchingBool (tm, v)
+          realise f (tm, Just v) = f (tm, v)
 
 prop_matchStructured :: Matching -> Property
 prop_matchStructured m@(MatchingBool (tm, v)) = monadicIO $ do
@@ -809,8 +815,13 @@ prop_matchStructured m@(MatchingPair (tm, v)) = monadicIO $ do
       expr = unparseAS tm
   runScriptNoFuzz "matchStructured" testCase
 
+class ASValue a where
+  unparse :: a -> String
+
+instance ASValue Bool where
+  unparse = unparseAS . Bool
 
 unparseValue :: Matching -> String
-unparseValue (MatchingBool (_, b)) = unparseAS (Bool b)
+unparseValue (MatchingBool (_, b)) = unparse b
 unparseValue (MatchingInt (_, i)) = show i
-unparseValue (MatchingPair (_, (a, b))) = show (a, b)
+unparseValue (MatchingPair (_, (a, b))) = "(" <> unparse a <> ", " <> unparse b <> ")"
