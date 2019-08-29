@@ -783,18 +783,19 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 --   - trapping flavour-preserving conversions Nat -> NatN
 --   - bitsize-preserving conversions
 --   - "abü".len();
+--   - cleanup: type AnnotLit a = (Annot t, Literal t)
 
 data Matching where
-  MatchingBool :: (ASTerm Bool, Bool) -> Matching
-  MatchingInt :: (ASTerm Integer, Integer) -> Matching
+  --MatchingBool :: (ASTerm Bool, Bool) -> Matching
+  --MatchingInt :: (ASTerm Integer, Integer) -> Matching
   MatchingPair :: (ASValue a, ASValue b, Show (a, b)) => (ASTerm (a, b), (a, b)) -> Matching
-  --Matching :: (Annot t, Literal t, ASValue t, Show t) => (ASTerm t, t) -> Matching
+  Matching :: (Annot t, Literal t, ASValue t, Show t) => (ASTerm t, t) -> Matching
 
 deriving instance Show Matching
 
 
 instance Arbitrary Matching where
-  arbitrary = oneof [ realise MatchingBool <$> gen
+  arbitrary = oneof [ realise Matching <$> gen @Bool
                     , realise MatchingPair <$> gen @(Bool, Bool)
                     , realise MatchingPair <$> gen @(Bool, Integer)
                     , realise MatchingPair <$> gen @((Bool, Natural), Integer)
@@ -806,9 +807,9 @@ instance Arbitrary Matching where
           realise f (tm, Just v) = f (tm, v)
 
 prop_matchStructured :: Matching -> Property
-prop_matchStructured (MatchingBool a) = matchStructured a
+--prop_matchStructured (MatchingBool a) = matchStructured a
 prop_matchStructured (MatchingPair a) = matchStructured a
---prop_matchStructured (Matching a) = matchStructured a
+prop_matchStructured (Matching a) = matchStructured a
 
 matchStructured :: (Annot t, Literal t, ASValue t) => (ASTerm t, t) -> Property
 matchStructured (tm, v) = monadicIO $ do
