@@ -243,7 +243,7 @@ data ASTerm :: * -> * where
   ConvertInt :: KnownNat n => ASTerm (BitLimited n Integer) -> ASTerm Integer
   ConvertWord :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Integer
   -- Constructors (intro forms)
-  Pair :: (Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
+  Pair :: (Annot a, Annot b, Literal a, Literal b, Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
   Triple :: (Evaluatable a, Evaluatable b, Evaluatable c) => ASTerm a -> ASTerm b -> ASTerm c -> ASTerm (a, b, c)
   Array :: ASTerm a -> ASTerm [a] -- not matchable!
   Null :: ASTerm (Maybe a)
@@ -666,6 +666,9 @@ class Annot t where
   sizeSuffix :: ASTerm t -> String -> String
   sizeSuffix _ = id
 
+instance Annot (a, b) where
+  annot _ = id
+
 instance Annot Integer where
   annot _ s = "((" <> s <> ") : Int)"
 
@@ -693,6 +696,9 @@ class Literal a where
   literal :: Neuralgic a -> String
   literal (evalN -> n) = if n < 0 then "(" <> show n <> ")" else show n
 
+instance Literal (a, b) where
+  literal _ = error "Literal (a, b) makes no sense"
+
 instance Literal Integer
 instance Literal Natural
 instance Literal (BitLimited n Natural)
@@ -709,7 +715,7 @@ instance KnownNat bits => Literal (BitLimited bits Word) where
   literal n = show . fromJust $ trapWord (natVal (Proxy @bits)) (evalN n)
 
 instance Literal Bool where
-  literal _ = undefined
+  literal _ = error "Literal Bool makes no sense"
 
 inParens :: (a -> String) -> String -> a -> a -> String
 inParens to op lhs rhs = "(" <> to lhs <> " " <> op <> " " <> to rhs <> ")"
@@ -754,6 +760,7 @@ unparseAS (a `ShortOr` b) = inParens unparseAS "or" a b
 unparseAS (Not a) = "(not " <> unparseAS a <> ")"
 unparseAS (Bool False) = "false"
 unparseAS (Bool True) = "true"
+unparseAS (a `Pair` b) = "(" <> unparseAS a <> ", " <> unparseAS b <> ")"
 
 unparseNat :: KnownNat n => Proxy n -> ASTerm (BitLimited n Natural) -> String
 unparseNat p a = "(nat" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))"
@@ -772,22 +779,22 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 --   - bitsize-preserving conversions
 --   - "abü".len();
 
-data Matching a where
-  MatchingBool :: (ASTerm Bool, Bool) -> Matching Bool
-  MatchingInt :: (ASTerm Integer, Integer) -> Matching Integer
-  MatchingPair :: Show (a, b) => (ASTerm (a, b), (a, b)) -> Matching (a, b)
+data Matching where
+  MatchingBool :: (ASTerm Bool, Bool) -> Matching
+  MatchingInt :: (ASTerm Integer, Integer) -> Matching
+  MatchingPair :: Show (a, b) => (ASTerm (a, b), (a, b)) -> Matching
 
-deriving instance Show (Matching Bool)
+deriving instance Show Matching
 
 
-instance Arbitrary (Matching Bool) where
+instance Arbitrary Matching where
   arbitrary = realise <$> gen
     where gen = (do term <- arbitrary
                     let val = evaluate term
                     pure (term, val)) `suchThat` (isJust . snd)
           realise (tm, Just v) = MatchingBool (tm, v)
 
-prop_matchStructured :: Matching Bool -> Property
+prop_matchStructured :: Matching -> Property
 prop_matchStructured m@(MatchingBool (tm, v)) = monadicIO $ do
   let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
@@ -795,8 +802,15 @@ prop_matchStructured m@(MatchingBool (tm, v)) = monadicIO $ do
       expr = unparseAS tm
   runScriptNoFuzz "matchStructured" testCase
 
+prop_matchStructured m@(MatchingPair (tm, v)) = monadicIO $ do
+  let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
-unparseValue :: Matching a -> String
+      eval'd = unparseValue m
+      expr = unparseAS tm
+  runScriptNoFuzz "matchStructured" testCase
+
+
+unparseValue :: Matching -> String
 unparseValue (MatchingBool (_, b)) = unparseAS (Bool b)
 unparseValue (MatchingInt (_, i)) = show i
 unparseValue (MatchingPair (_, (a, b))) = show (a, b)
