@@ -653,8 +653,9 @@ module Heap = struct
 
   (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
   let grow_memory env =
-    if false then (* not needed on M1 *)
-    Func.share_code1 env "grow_memory" ("ptr", I32Type) [] (fun env get_ptr ->
+    if E.mode env = DfinityMode
+    then G.i Drop
+    else Func.share_code1 env "grow_memory" ("ptr", I32Type) [] (fun env get_ptr ->
       let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
       get_ptr ^^ compile_divU_const page_size ^^
       compile_add_const 1l ^^
@@ -675,7 +676,6 @@ module Heap = struct
           E.then_trap_with env "Cannot grow memory."
         ) G.nop
       )
-    else G.i Drop
 
   (* Dynamic allocation *)
   let dyn_alloc_words env =
