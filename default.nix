@@ -31,8 +31,8 @@ let dev = import (builtins.fetchGit {
 
 let dfinity-repo = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dfinity";
-  ref = "joachim/drun-derivation";
-  rev = "6f60476511e75466d56f8e1361f1c9114a9af7a3";
+  ref = "master";
+  rev = "3b612083b047ad613fd48cab069bd45c05989cc6";
 }) { system = nixpkgs.system; }; in
 
 # Include drun
