@@ -775,7 +775,7 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 data Matching a where
   MatchingBool :: (ASTerm Bool, Bool) -> Matching Bool
   MatchingInt :: (ASTerm Integer, Integer) -> Matching Integer
-  --MatchingPair :: (ASTerm (a, b), (a, b)) -> Matching (a, b)
+  MatchingPair :: Show (a, b) => (ASTerm (a, b), (a, b)) -> Matching (a, b)
 
 deriving instance Show (Matching Bool)
 
@@ -798,3 +798,5 @@ prop_matchStructured m@(MatchingBool (tm, v)) = monadicIO $ do
 
 unparseValue :: Matching a -> String
 unparseValue (MatchingBool (_, b)) = unparseAS (Bool b)
+unparseValue (MatchingInt (_, i)) = show i
+unparseValue (MatchingPair (_, (a, b))) = show (a, b)
