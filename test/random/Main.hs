@@ -796,6 +796,7 @@ instance Arbitrary Matching where
   arbitrary = oneof [ realise MatchingBool <$> gen
                     , realise MatchingPair <$> gen @(Bool, Bool)
                     , realise MatchingPair <$> gen @(Bool, Integer)
+                    --, realise MatchingPair <$> gen @((Bool, Natural), Integer)
                     ]
     where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
           gen = (do term <- arbitrary
@@ -807,14 +808,14 @@ prop_matchStructured :: Matching -> Property
 prop_matchStructured m@(MatchingBool (tm, v)) = monadicIO $ do
   let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
-      eval'd = unparseValue m
+      eval'd = unparse v
       expr = unparseAS tm
   runScriptNoFuzz "matchStructured" testCase
 
 prop_matchStructured m@(MatchingPair (tm, v)) = monadicIO $ do
   let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
-      eval'd = unparseValue m
+      eval'd = unparse v
       expr = unparseAS tm
   runScriptNoFuzz "matchStructured" testCase
 
@@ -827,7 +828,5 @@ instance ASValue Bool where
 instance ASValue Integer where
   unparse = show
 
-unparseValue :: Matching -> String
-unparseValue (MatchingBool (_, b)) = unparse b
-unparseValue (MatchingInt (_, i)) = unparse i
-unparseValue (MatchingPair (_, (a, b))) = "(" <> unparse a <> ", " <> unparse b <> ")"
+instance (ASValue a, ASValue b) => ASValue (a, b) where
+  unparse (a, b) = "(" <> unparse a <> ", " <> unparse b <> ")"
