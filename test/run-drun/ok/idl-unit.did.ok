@@ -1,0 +1,3 @@
+service anon_idl_unit {
+unit_id : () -> () oneway;
+}

@@ -3814,7 +3814,16 @@ module Serialization = struct
       end
     )
 
+  let serialize_unit env copy_out =
+    Func.share_code0 env "@serialize_unit" [] (fun env ->
+      let data = "DIDL\x00\x00" in
+      copy_out env
+        (Text.lit env data ^^ Text.payload_ptr_unskewed)
+        (compile_unboxed_const (Int32.of_int (String.length data)))
+    )
+
   let serialize env ts copy_out =
+    if ts = [] then serialize_unit env copy_out else
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@serialize<" ^ ts_name ^ ">" in
     assert (List.for_all has_no_references ts);
