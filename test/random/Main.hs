@@ -217,7 +217,7 @@ instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Word)) where
 data ASTerm :: * -> * where
   -- Comparisons
   NotEqual, Equals, GreaterEqual, Greater, LessEqual, Less
-    :: (Annot a, Literal a, Evaluatable a) => ASTerm a -> ASTerm a -> ASTerm Bool
+    :: (AnnotLit a, Evaluatable a) => ASTerm a -> ASTerm a -> ASTerm Bool
   -- Short-circuit
   ShortAnd, ShortOr
     :: ASTerm Bool -> ASTerm Bool -> ASTerm Bool
@@ -243,11 +243,11 @@ data ASTerm :: * -> * where
   ConvertInt :: KnownNat n => ASTerm (BitLimited n Integer) -> ASTerm Integer
   ConvertWord :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Integer
   -- Constructors (intro forms)
-  Pair :: (Annot a, Annot b, Literal a, Literal b, Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
+  Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
   Triple :: (Evaluatable a, Evaluatable b, Evaluatable c) => ASTerm a -> ASTerm b -> ASTerm c -> ASTerm (a, b, c)
   Array :: ASTerm a -> ASTerm [a] -- not matchable!
   Null :: ASTerm (Maybe a)
-  Some :: Evaluatable a => ASTerm a -> ASTerm (Maybe a)
+  Some :: (AnnotLit a, Evaluatable a) => ASTerm a -> ASTerm (Maybe a)
   -- Variants, Objects (TODO)
 
 deriving instance Show (ASTerm t)
@@ -297,7 +297,7 @@ bitwiseTerm n =
 
 -- generate reasonably formed trees from smaller subterms
 --
-reasonablyShaped :: (Arbitrary (Neuralgic a), Annot a, Evaluatable a, Literal a)
+reasonablyShaped :: (Arbitrary (Neuralgic a), AnnotLit a, Evaluatable a)
                  => (Int -> [(Int, Gen (ASTerm a))])
                  -> Gen (ASTerm a)
 reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
@@ -324,8 +324,11 @@ instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (ASTerm (BitLimited n Word
 instance {-# OVERLAPS #-} Arbitrary (ASTerm Word8) where
   arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
 
-instance (Annot a, Annot b, Literal a, Literal b, Evaluatable a, Evaluatable b, Arbitrary (ASTerm a), Arbitrary (ASTerm b)) => Arbitrary (ASTerm (a, b)) where
+instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (ASTerm a), Arbitrary (ASTerm b)) => Arbitrary (ASTerm (a, b)) where
   arbitrary = Pair <$> arbitrary <*> arbitrary
+
+instance (AnnotLit a, Evaluatable a, Arbitrary (ASTerm a)) => Arbitrary (ASTerm (Maybe a)) where
+  arbitrary = frequency [(1, pure Null), (10, Some <$> arbitrary)]
 
 instance Arbitrary (ASTerm Bool) where
   arbitrary = sized $ \(succ -> n) -> -- TODO: use frequency?
@@ -627,6 +630,10 @@ instance Evaluatable Natural where
 instance (Evaluatable a, Evaluatable b) => Evaluatable (a, b) where
   evaluate (Pair a b) = (,) <$> evaluate a <*> evaluate b
 
+instance Evaluatable a => Evaluatable (Maybe a) where
+  evaluate Null = pure Nothing
+  evaluate (Some a) = Just <$> evaluate a
+
 eval :: (Restricted a, Integral a) => ASTerm a -> Maybe a
 eval Five = pure 5
 eval (Neuralgic n) = evalN n
@@ -665,6 +672,7 @@ instance Evaluatable Bool where
   evaluate (Not a) = not <$> evaluate a
   evaluate (Bool b) = pure b
 
+type AnnotLit t = (Annot t, Literal t)
 
 class Annot t where
   annot :: ASTerm t -> String -> String
@@ -672,6 +680,9 @@ class Annot t where
   sizeSuffix _ = id
 
 instance Annot (a, b) where
+  annot _ = id
+
+instance Annot (Maybe a) where
   annot _ = id
 
 instance Annot Integer where
@@ -704,6 +715,9 @@ class Literal a where
 instance Literal (a, b) where
   literal _ = error "Literal (a, b) makes no sense"
 
+instance Literal (Maybe a) where
+  literal _ = error "Literal (Maybe a) makes no sense"
+
 instance Literal Integer
 instance Literal Natural
 instance Literal (BitLimited n Natural)
@@ -725,7 +739,7 @@ instance Literal Bool where
 inParens :: (a -> String) -> String -> a -> a -> String
 inParens to op lhs rhs = "(" <> to lhs <> " " <> op <> " " <> to rhs <> ")"
 
-unparseAS :: (Annot a, Literal a) => ASTerm a -> String
+unparseAS :: AnnotLit a => ASTerm a -> String
 unparseAS f@Five = annot f "5"
 unparseAS a@(Neuralgic n) = annot a $ literal n
 unparseAS (Pos n) = "(+" <> unparseAS n <> ")"
@@ -766,6 +780,8 @@ unparseAS (Not a) = "(not " <> unparseAS a <> ")"
 unparseAS (Bool False) = "false"
 unparseAS (Bool True) = "true"
 unparseAS (a `Pair` b) = "(" <> unparseAS a <> ", " <> unparseAS b <> ")"
+unparseAS Null = "null"
+unparseAS (Some a) = '?' : unparseAS a
 
 unparseNat :: KnownNat n => Proxy n -> ASTerm (BitLimited n Natural) -> String
 unparseNat p a = "(nat" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))"
@@ -783,22 +799,19 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 --   - trapping flavour-preserving conversions Nat -> NatN
 --   - bitsize-preserving conversions
 --   - "abü".len();
---   - cleanup: type AnnotLit a = (Annot t, Literal t)
 
 data Matching where
-  --MatchingBool :: (ASTerm Bool, Bool) -> Matching
-  --MatchingInt :: (ASTerm Integer, Integer) -> Matching
-  MatchingPair :: (ASValue a, ASValue b, Show (a, b)) => (ASTerm (a, b), (a, b)) -> Matching
-  Matching :: (Annot t, Literal t, ASValue t, Show t) => (ASTerm t, t) -> Matching
+  Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
 
 deriving instance Show Matching
 
 
 instance Arbitrary Matching where
   arbitrary = oneof [ realise Matching <$> gen @Bool
-                    , realise Matching <$> gen @(Bool, Bool)
-                    , realise Matching <$> gen @(Bool, Integer)
+                --    , realise Matching <$> gen @(Bool, Bool)
+                --    , realise Matching <$> gen @(Bool, Integer)
                     , realise Matching <$> gen @((Bool, Natural), Integer)
+                    , realise Matching <$> gen @(Maybe Integer)
                     ]
     where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
           gen = (do term <- arbitrary
@@ -809,7 +822,7 @@ instance Arbitrary Matching where
 prop_matchStructured :: Matching -> Property
 prop_matchStructured (Matching a) = locally a
 
-locally :: (Annot t, Literal t, ASValue t) => (ASTerm t, t) -> Property
+locally :: (AnnotLit t, ASValue t) => (ASTerm t, t) -> Property
 locally (tm, v) = monadicIO $ do
   let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
 
@@ -820,7 +833,7 @@ locally (tm, v) = monadicIO $ do
 prop_matchInActor :: Matching -> Property
 prop_matchInActor (Matching a) = mobile a
 
-mobile :: (Annot t, Literal t, ASValue t) => (ASTerm t, t) -> Property
+mobile :: (AnnotLit t, ASValue t) => (ASTerm t, t) -> Property
 mobile (tm, v) = monadicIO $ do
   let testCase = "/*let a = actor { public func match (b : " <> typed <> ") : async Bool = async { true } };*/ assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false })"
 
@@ -848,3 +861,9 @@ instance ASValue Natural where
 instance (ASValue a, ASValue b) => ASValue (a, b) where
   unparseType (a, b) = "(" <> unparseType a <> ", " <> unparseType b <> ")"
   unparse (a, b) = "(" <> unparse a <> ", " <> unparse b <> ")"
+
+instance ASValue a => ASValue (Maybe a) where
+  unparseType Nothing = "Null"
+  unparseType (Just a) = "?" <> unparseType a
+  unparse Nothing = "null"
+  unparse (Just a) = "?" <> unparse a
