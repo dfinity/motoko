@@ -808,8 +808,8 @@ deriving instance Show Matching
 
 instance Arbitrary Matching where
   arbitrary = oneof [ realise Matching <$> gen @Bool
-                --    , realise Matching <$> gen @(Bool, Bool)
-                --    , realise Matching <$> gen @(Bool, Integer)
+                    , realise Matching <$> gen @(Bool, Bool)
+                    , realise Matching <$> gen @(Bool, Integer)
                     , realise Matching <$> gen @((Bool, Natural), Integer)
                     , realise Matching <$> gen @(Maybe Integer)
                     ]
