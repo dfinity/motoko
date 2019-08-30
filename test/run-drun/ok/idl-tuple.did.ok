@@ -1,0 +1,5 @@
+type Text = text;
+type Int = int;
+service anon_idl_tuple {
+len2 : (Text, Text) -> (record {Int; Int});
+}

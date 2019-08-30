@@ -4,4 +4,4 @@ actor {
   }
 }
 
-//CALL query hello "DIDL\x00\x71\x05World"
+//CALL query hello "DIDL\x00\x01\x71\x05World"
