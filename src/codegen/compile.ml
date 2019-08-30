@@ -293,18 +293,17 @@ module E = struct
         idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
       } in
       let fi = reg env.func_imports (nr i) in
-
-      let name = modname ^ "_" ^ funcname in
+      let name = modname ^ "." ^ funcname in
       assert (not (NameEnv.mem name !(env.built_in_funcs)));
       env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
     else assert false (* "add all imports before all functions!" *)
 
   let call_import (env : t) modname funcname =
-    let name = modname ^ "_" ^ funcname in
+    let name = modname ^ "." ^ funcname in
     match NameEnv.find_opt name !(env.built_in_funcs) with
       | Some (Defined fi) -> G.i (Call (nr fi))
       | _ ->
-        Printf.eprintf "Function import not declared: %s.%s\n" modname funcname;
+        Printf.eprintf "Function import not declared: %s\n" name;
         G.i Unreachable
 
   let get_prelude (env : t) = env.prelude
@@ -2253,20 +2252,18 @@ module BigNumLibtommath : BigNumType = struct
 
   let compile_eq env = E.call_import env "rts" "bigint_eq"
   let compile_is_negative env = E.call_import env "rts" "bigint_isneg"
-  let compile_relop env op =
-    let fn = match op with
-      | Lt -> "rts_bigint_lt"
-      | Le -> "rts_bigint_le"
-      | Ge -> "rts_bigint_ge"
-      | Gt -> "rts_bigint_gt" in
-    G.i (Call (nr (E.built_in env fn)))
+  let compile_relop env = function
+      | Lt -> E.call_import env "rts" "bigint_lt"
+      | Le -> E.call_import env "rts" "bigint_le"
+      | Ge -> E.call_import env "rts" "bigint_ge"
+      | Gt -> E.call_import env "rts" "bigint_gt"
 
   let fits_signed_bits env bits =
-    G.i (Call (nr (E.built_in env ("rts_bigint_2complement_bits")))) ^^
+    E.call_import env "rts" "bigint_2complement_bits" ^^
     compile_unboxed_const (Int32.of_int bits) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU))
   let fits_unsigned_bits env bits =
-    G.i (Call (nr (E.built_in env ("rts_bigint_count_bits")))) ^^
+    E.call_import env "rts" "bigint_count_bits" ^^
     compile_unboxed_const (Int32.of_int bits) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU))
 
@@ -6466,6 +6463,7 @@ This function compiles the prelude, just to find out the bound names.
 and find_prelude_names env =
   (* Create a throw-away environment *)
   let env0 = E.mk_global (E.mode env) None (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
+  Dfinity.system_imports env0;
   RTS.system_imports env0;
   let env1 = E.mk_fun_env env0 0l 0 in
   let ae = ASEnv.empty_ae in
