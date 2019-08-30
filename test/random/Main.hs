@@ -29,7 +29,7 @@ import Turtle
 
 main = defaultMain tests
   where tests :: TestTree
-        tests = testGroup "ActorScript tests" [{-arithProps, utf8Props,-} matchingProps]
+        tests = testGroup "ActorScript tests" [{-arithProps, utf8Props,TODO-} matchingProps]
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
@@ -244,7 +244,8 @@ data ASTerm :: * -> * where
   ConvertWord :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Integer
   -- Constructors (intro forms)
   Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
-  Triple :: (Evaluatable a, Evaluatable b, Evaluatable c) => ASTerm a -> ASTerm b -> ASTerm c -> ASTerm (a, b, c)
+  Triple :: (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c)
+         => ASTerm a -> ASTerm b -> ASTerm c -> ASTerm (a, b, c)
   Array :: ASTerm a -> ASTerm [a] -- not matchable!
   Null :: ASTerm (Maybe a)
   Some :: (AnnotLit a, Evaluatable a) => ASTerm a -> ASTerm (Maybe a)
@@ -325,7 +326,11 @@ instance {-# OVERLAPS #-} Arbitrary (ASTerm Word8) where
   arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
 
 instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (ASTerm a), Arbitrary (ASTerm b)) => Arbitrary (ASTerm (a, b)) where
-  arbitrary = Pair <$> arbitrary <*> arbitrary
+  arbitrary = scale (`quot` 2) $ Pair <$> arbitrary <*> arbitrary
+
+instance (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c, Arbitrary (ASTerm a), Arbitrary (ASTerm b), Arbitrary (ASTerm c))
+    => Arbitrary (ASTerm (a, b, c)) where
+  arbitrary = scale (`quot` 3) $ Triple <$> arbitrary <*> arbitrary <*> arbitrary
 
 instance (AnnotLit a, Evaluatable a, Arbitrary (ASTerm a)) => Arbitrary (ASTerm (Maybe a)) where
   arbitrary = frequency [(1, pure Null), (10, Some <$> arbitrary)]
@@ -630,6 +635,9 @@ instance Evaluatable Natural where
 instance (Evaluatable a, Evaluatable b) => Evaluatable (a, b) where
   evaluate (Pair a b) = (,) <$> evaluate a <*> evaluate b
 
+instance (Evaluatable a, Evaluatable b, Evaluatable c) => Evaluatable (a, b, c) where
+  evaluate (Triple a b c) = (,,) <$> evaluate a <*> evaluate b <*> evaluate c
+
 instance Evaluatable a => Evaluatable (Maybe a) where
   evaluate Null = pure Nothing
   evaluate (Some a) = Just <$> evaluate a
@@ -682,6 +690,9 @@ class Annot t where
 instance Annot (a, b) where
   annot _ = id
 
+instance Annot (a, b, c) where
+  annot _ = id
+
 instance Annot (Maybe a) where
   annot _ = id
 
@@ -714,6 +725,9 @@ class Literal a where
 
 instance Literal (a, b) where
   literal _ = error "Literal (a, b) makes no sense"
+
+instance Literal (a, b, c) where
+  literal _ = error "Literal (a, b, c) makes no sense"
 
 instance Literal (Maybe a) where
   literal _ = error "Literal (Maybe a) makes no sense"
@@ -780,6 +794,7 @@ unparseAS (Not a) = "(not " <> unparseAS a <> ")"
 unparseAS (Bool False) = "false"
 unparseAS (Bool True) = "true"
 unparseAS (a `Pair` b) = "(" <> unparseAS a <> ", " <> unparseAS b <> ")"
+unparseAS (Triple a b c) = "(" <> unparseAS a <> ", " <> unparseAS b <> ", " <> unparseAS c <> ")"
 unparseAS Null = "null"
 unparseAS (Some a) = '?' : unparseAS a
 
@@ -811,6 +826,7 @@ instance Arbitrary Matching where
                     , realise Matching <$> gen @(Bool, Bool)
                     , realise Matching <$> gen @(Bool, Integer)
                     , realise Matching <$> gen @((Bool, Natural), Integer)
+                    , realise Matching <$> gen @(BitLimited 8 Natural, BitLimited 8 Integer, BitLimited 8 Word)
                     , realise Matching <$> gen @(Maybe Integer)
                     ]
     where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
@@ -858,9 +874,25 @@ instance ASValue Natural where
   unparseType _ = "Nat"
   unparse = show
 
+instance KnownNat n => ASValue (BitLimited n Natural) where
+  unparseType _ = "Nat" <> bitWidth (Proxy @n)
+  unparse (NatN a) = annot (Five @(BitLimited n Natural)) (show a)
+
+instance KnownNat n => ASValue (BitLimited n Integer) where
+  unparseType _ = "Int" <> bitWidth (Proxy @n)
+  unparse (IntN a) = annot (Five @(BitLimited n Integer)) (show a)
+
+instance KnownNat n => ASValue (BitLimited n Word) where
+  unparseType _ = "Word" <> bitWidth (Proxy @n)
+  unparse (WordN a) = annot (Five @(BitLimited n Word)) (show a)
+
 instance (ASValue a, ASValue b) => ASValue (a, b) where
   unparseType (a, b) = "(" <> unparseType a <> ", " <> unparseType b <> ")"
   unparse (a, b) = "(" <> unparse a <> ", " <> unparse b <> ")"
+
+instance (ASValue a, ASValue b, ASValue c) => ASValue (a, b, c) where
+  unparseType (a, b, c) = "(" <> unparseType a <> ", " <> unparseType b <> ", " <> unparseType c <> ")"
+  unparse (a, b, c) = "(" <> unparse a <> ", " <> unparse b <> ", " <> unparse c <> ")"
 
 instance ASValue a => ASValue (Maybe a) where
   unparseType Nothing = "Null"
