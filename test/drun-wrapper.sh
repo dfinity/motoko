@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+DRUN=${DRUN:-drun}
+
+
 if [ -z "$1" ]
 then
   echo "Usage: $0 <name>.wasm [call-script]"
@@ -8,4 +11,4 @@ fi
 
 export LANG=C
 
-( if [ -n "$2" ]; then grep '^//CALL ' $2 | cut -c8-; fi;) | drun $1 /dev/stdin
+( if [ -n "$2" ]; then grep '^//CALL ' $2 | cut -c8-; fi;) | $DRUN $1 /dev/stdin
