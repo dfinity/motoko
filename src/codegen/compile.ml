@@ -6525,7 +6525,7 @@ and export_actor_field env  ae (f : Ir.field) =
   );
   *)
   E.add_export env (nr {
-    name = Wasm.Utf8.decode ("dfn_msg " ^ f.it.name);
+    name = Wasm.Utf8.decode ("dfn_update " ^ f.it.name);
     edesc = nr (FuncExport (nr fi))
   })
 
