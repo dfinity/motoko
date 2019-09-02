@@ -184,6 +184,7 @@ let start () =
          | Some file_content ->
             let result =
               Hover.hover_handler
+                !decl_index
                 position
                 file_content
                 project_root
@@ -206,6 +207,7 @@ let start () =
          | Some file_content ->
             let result =
               Definition.definition_handler
+                !decl_index
                 position
                 file_content
                 project_root
@@ -257,6 +259,7 @@ let start () =
                     ; message = "Tried to find completions for a file that hadn't been opened yet"}
          | Some file_content ->
             Completion.completion_handler
+              !decl_index
               log_to_file
               project_root
               (abs_file_from_uri log_to_file uri)
