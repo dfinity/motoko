@@ -226,6 +226,9 @@ let start () =
        let msgs = match result with
          | Error msgs' -> msgs'
          | Ok (_, msgs') -> msgs' in
+       (match Declaration_index.make_index () with
+        | Error(err) -> ()
+        | Ok((ix, _)) -> decl_index := ix);
        Lib.Fun.flip Lib.Option.iter !client_capabilities (fun _ ->
            (* TODO: determine if the client accepts diagnostics with related info *)
            (* let textDocument = capabilities.client_capabilities_textDocument in
