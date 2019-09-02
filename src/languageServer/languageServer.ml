@@ -112,7 +112,11 @@ let start () =
   let project_root = Sys.getcwd () in
 
   let vfs = ref Vfs.empty in
-
+  let decl_index =
+    let ix = match Declaration_index.make_index () with
+      | Error(err) -> Declaration_index.Index.empty
+      | Ok((ix, _)) -> ix in
+    ref ix in
   let rec loop () =
     let clength = read_line () in
     log_to_file "content-length" clength;
