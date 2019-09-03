@@ -1,0 +1,49 @@
+{
+  "name": "dfinity-client",
+  "version": "0.0.1",
+  "description": "This libary provides basic functions for creating and validating txs",
+  "main": "index.js",
+  "scripts": {
+    "coveralls": "npm run coverage && nyc report --reporter=text-lcov | coveralls",
+    "coverage": "nyc npm test",
+    "lint": "standard",
+    "lint:fix": "standard --fix",
+    "test": "tape ./tests/unit-tests/*.js ./tests/dvm-tests/*.js",
+    "test:network": "tape ./tests/network-tests/*.js",
+    "test:all": "tape ./tests/**/*.js",
+    "build:docs": "documentation build ./index.js -f html -o ./docs"
+  },
+  "keywords": [
+    "dfinity",
+    "tx"
+  ],
+  "author": "",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "borc": "^2.1.0",
+    "elliptic": "^6.4.1",
+    "isomorphic-fetch": "^2.2.1",
+    "safe-buffer": "^5.1.2",
+    "buffer-pipe": "^0.0.3",
+    "leb128": "^0.0.4",
+    "tmp-promise": "^2.0.1"
+  },
+  "devDependencies": {
+    "coveralls": "^3.0.0",
+    "documentation": "^9.3.1",
+    "nyc": "^13.3.0",
+    "standard": "^11.0.0",
+    "tape": "^4.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dfinity-lab/dev.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dfinity-lab/dev/issues"
+  },
+  "homepage": "https://github.com/dfinity-lab/dev",
+  "engines": {
+    "node": ">=10.0.0"
+  }
+}
