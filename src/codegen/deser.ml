@@ -1,4 +1,5 @@
 open Stdio.In_channel
+open Lazy
 
 (* reading at byte-level *)
 let epsilon : unit -> unit = ignore
@@ -125,11 +126,11 @@ let decode_primitive_type : int -> typ * (unit -> unit) =
 (*let type_table = ref (Array.make 0 (Empty, epsilon))*)
 
 
-let lookup_type_index type_table = Array.get !type_table
+let lookup_type_index type_table indx = lazy (Array.get !type_table indx)
 
-let read_type type_table : typ * (unit -> unit) =
+let read_type type_table : (typ * (unit -> unit)) Lazy.t =
   match read_sleb128 () with
-  | p when p < 0 -> decode_primitive_type p
+  | p when p < 0 -> from_val (decode_primitive_type p)
 (*
 
 T(opt <datatype>) = sleb128(-18) I(<datatype>)
@@ -141,18 +142,23 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
 *)
   | -18 -> begin match read_type_index () with
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             Opt t, begin function () -> match read_byte () with
-                                                         | 0 -> output_nil ()
-                                                         | 1 -> output_some (consumer ())
-                                                         | _ -> failwith "invalid optional"
-                                    end
+                             from_val (Opt t, function () -> match read_byte () with
+                                                             | 0 -> output_nil ()
+                                                             | 1 -> output_some (consumer ())
+                                                             | _ -> failwith "invalid optional"
+                               )
            | p -> lookup_type_index type_table p
            end
   | -19 -> begin match read_type_index () with
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             Vec t, (function () -> read_t_star consumer)
+                             from_val (Vec t, function () -> read_t_star consumer)
            | p -> lookup_type_index type_table p
            end
+(*  | -20 -> begin match read_type_index () with
+           | p when p < 0 -> let t, consumer = decode_primitive_type p in
+                             Vec t, (function () -> read_t_star consumer)
+           | p -> lookup_type_index type_table p
+           end *)
   | _ -> failwith "unrecognised structured type"
 
 
@@ -164,7 +170,7 @@ let read_type_table (t : unit -> typ * (unit -> unit)) : (typ * (unit -> unit)) 
 
 let top_level () : unit =
   read_magic ();
-  let ty, m = read_type (ref (Array.of_list [])) in
+  let lazy (ty, m) = read_type (ref (Array.of_list [])) in
   m ()
   (*type_table := read_type_table read_type*)
 
