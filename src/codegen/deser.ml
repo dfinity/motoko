@@ -66,7 +66,10 @@ let read_t_star (t : unit -> unit) : unit =
   done
 
 
-type typ = Null | Bool | Nat | NatN of int | Int | IntN of int | Reserved | Empty | Opt of typ | Vec of typ
+type typ = Null | Bool | Nat | NatN of int
+           | Int | IntN of int | Reserved | Empty | Opt of typ | Vec of typ
+           | Indexed of (typ * (unit -> unit)) array ref * int
+
 (* type index/ground type (negative) *)
 
 let read_type_index = read_sleb128
@@ -119,12 +122,12 @@ let decode_primitive_type : int -> typ * (unit -> unit) =
   | -17 -> Empty, ignore
   | _ -> failwith "unrecognised primitive type"
 
-let type_table = ref (Array.make 0 (Empty, epsilon))
+(*let type_table = ref (Array.make 0 (Empty, epsilon))*)
 
 
-let lookup_type_index = Array.get !type_table
+let lookup_type_index type_table = Array.get !type_table
 
-let read_type () : typ * (unit -> unit) =
+let read_type type_table : typ * (unit -> unit) =
   match read_sleb128 () with
   | p when p < 0 -> decode_primitive_type p
 (*
@@ -143,12 +146,12 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
                                                          | 1 -> output_some (consumer ())
                                                          | _ -> failwith "invalid optional"
                                     end
-           | p -> lookup_type_index p
+           | p -> lookup_type_index type_table p
            end
   | -19 -> begin match read_type_index () with
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
                              Vec t, (function () -> read_t_star consumer)
-           | p -> lookup_type_index p
+           | p -> lookup_type_index type_table p
            end
   | _ -> failwith "unrecognised structured type"
 
@@ -161,7 +164,9 @@ let read_type_table (t : unit -> typ * (unit -> unit)) : (typ * (unit -> unit)) 
 
 let top_level () : unit =
   read_magic ();
-  type_table := read_type_table read_type
+  let ty, m = read_type (ref (Array.of_list [])) in
+  m ()
+  (*type_table := read_type_table read_type*)
 
 
 
