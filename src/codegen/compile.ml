@@ -3786,7 +3786,7 @@ module Serialization = struct
           end
       | Prim (Int64|Nat64|Word64) ->
         assert_prim_typ () ^^
-        ReadBuf.read_word64 env get_data_buf^^
+        ReadBuf.read_word64 env get_data_buf ^^
         BoxedWord64.box env
       | Prim (Int32|Nat32|Word32) ->
         assert_prim_typ () ^^
@@ -3815,7 +3815,7 @@ module Serialization = struct
         get_len ^^ Text.alloc env ^^ set_x ^^
         get_x ^^ Text.payload_ptr_unskewed ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
-        (* TODO: Check validty of utf8 *)
+        (* TODO: Check validity of utf8 *)
         get_x
 
       (* Composite types *)
