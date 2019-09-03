@@ -11,14 +11,13 @@ open T
 open Construct
 
 (* lower the async type itself
-   - adds a final callback argument to every awaitable shared function, replace
+   - adds a final reply argument to every awaitable shared function, replace
      the result by unit
-   - transforms types, introductions and eliminations awaitable shared
+   - declares a trapping reject callback in every awaitable shared function
+   - transforms types, introductions and eliminations of awaitable shared
      functions only, leaving non-awaitable shared functions unchanged.
    - ensures every call to an awaitable shared function that takes a tuple has
-     a manifest tuple argument.
-
-   (for debugging, the `flattening` function can be used to disable argument flattening and use uniform pairing instead)
+     a manifest tuple argument extended with a final reply continuation.
  *)
 
 (* written as a functor so we can allocate some temporary shared state without making it global *)
@@ -40,20 +39,72 @@ module Transform() = struct
 
   let con_renaming = ref ConRenaming.empty
 
+  (* Configuring the translation for target platform V1 or V2 *)
+
+  type platform =
+    V1  (* legacy, Haskell *)
+  | V2  (* new, Rust *)
+
+  let platform = V1
+
+  let _ = V2 (* suppress warning on unused V2 *)
+
+  (* Lowering options, specific to V1 or V2 *)
+
+  let add_reply_parameter, add_reject_parameter, add_reply_argument, add_reject_argument =
+    match platform with
+    | V1 -> (true, false, true, false)
+    | V2 -> (false, false, true, true)
+
+  (* Helper for selective code generation based on predicated lazy expressions *)
+  let rec select bls =
+    match bls with
+    | [] -> []
+    | (true, l)::bls' ->
+      (Lazy.force l)::select bls'
+    | (false, _)::bls' ->
+      select bls'
+
+  (* Explicit invocation of reply, reject and call System API functions;
+     implemented (as far as possible) for V1;
+     TBC for V2 *)
+
+  let sys_replyE vs =
+    match platform with
+    | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
+    | V2 -> failwith "NYI" (* TODO: call dedicated prim *)
+
+  let sys_rejectE e =
+    match platform with
+    |  V1 -> assertE (boolE false) (* used in V1 to cause traps on non-local throws *)
+    |  V2 -> failwith "NYI" (* TODO: call dedicated prim *)
+
+  let sys_callE v1 typs vs reply reject =
+    match platform with
+    | V1 ->
+          callE v1 typs (seqE (vs @
+                           (select [ add_reply_argument, lazy reply;
+                                     add_reject_argument, lazy reject])))
+    | V2 -> failwith "NYI" (* TODO: call dedicated prim, separating args vs from reply & reject *)
+
+  (* End of configuration *)
+
   let unary typ = [typ]
 
   let nary typ = T.as_seq typ
 
   let replyT as_seq typ = T.Func(T.Shared, T.Returns, [], as_seq typ, [])
+
   let rejectT = T.Func(T.Shared, T.Returns, [], [T.catch], [])
 
   let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
+
   let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
   let t_async as_seq t =
     T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT], [])
 
-  let new_async_ret as_seq t = [t_async as_seq t;fulfillT as_seq t; failT]
+  let new_async_ret as_seq t = [t_async as_seq t; fulfillT as_seq t; failT]
 
   let new_asyncT =
     T.Func (
@@ -72,10 +123,10 @@ module Transform() = struct
     let async = fresh_var "async" (typ (projE call_new_async 0)) in
     let fulfill = fresh_var "fulfill" (typ (projE call_new_async 1)) in
     let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
-    (async,fulfill,fail),call_new_async
+    (async, fulfill, fail), call_new_async
 
   let new_nary_async_reply t1 =
-    let (unary_async,unary_fulfill,fail),call_new_async = new_async t1 in
+    let (unary_async, unary_fulfill, fail), call_new_async = new_async t1 in
     let v' = fresh_var "v" t1 in
     let ts1 = T.as_seq t1 in
     (* construct the n-ary async value, coercing the continuation, if necessary *)
@@ -102,18 +153,18 @@ module Transform() = struct
       in
       vs -@>* (unary_fulfill -*-  seq_of_vs)
     in
-    let reject =
+    let nary_reject =
       let v = fresh_var "err" T.catch in
       [v] -@>* (fail -*- v)
     in
     let async,reply,reject =
       fresh_var "async" (typ nary_async),
       fresh_var "reply" (typ nary_reply),
-      fresh_var "reject" (typ reject)
+      fresh_var "reject" (typ nary_reject)
     in
-      (async,reply,reject),
+      (async, reply, reject),
         blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
-          (tupE [nary_async; nary_reply; reject])
+          (tupE [nary_async; nary_reply; nary_reject])
 
 
   let letEta e scope =
@@ -167,7 +218,11 @@ module Transform() = struct
              | [Async t2] ->
                assert (c = T.Promises);
                Func (s, T.Returns, List.map t_bind tbs,
-                     extendTup (List.map t_typ t1) [replyT nary (t_typ t2); rejectT (* TBR *)], [])
+                     extendTup (List.map t_typ t1)
+                       (select
+                          [ add_reply_parameter, (let t = replyT nary (t_typ t2) in lazy t);
+                            add_reject_parameter, lazy rejectT ]),
+                     [])
              | _ -> assert false
            end
         | T.Local ->
@@ -254,7 +309,7 @@ module Transform() = struct
       let t1, contT = match typ exp2 with
         | Func(_,_,
                [],
-               [Func(_,_,[],ts1,[]) as contT;_],
+               [Func(_, _, [], ts1, []) as contT; _],
                []) -> (* TBR, why isn't this []? *)
           (t_typ (T.seq ts1),t_typ contT)
         | t -> assert false in
@@ -262,17 +317,17 @@ module Transform() = struct
       let v1 = fresh_var "v" t1 in
       let r = fresh_var "r" err_contT in
       let e = fresh_var "e" T.catch in
-      let post = fresh_var "post" (T.Func(T.Shared,T.Returns,[],[],[])) in
+      let post = fresh_var "post" (T.Func(T.Shared, T.Returns, [], [], [])) in
       let u = fresh_var "u" T.unit in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply t1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
                funcD k v1 (nary_reply -*- v1);
                nary_funcD r [e] (reject -*- e);
-               funcD post u (t_exp exp2 -*- (tupE [k;r]));
+               funcD post u ((t_exp exp2) -*- (tupE [k;r]));
                expD (post -*- tupE[])]
                nary_async
       ).it
-    | CallE (cc,exp1, typs, exp2) when isAwaitableFunc exp1 ->
+    | CallE (cc, exp1, typs, exp2) when isAwaitableFunc exp1 ->
       let ts1,t2 =
         match typ exp1 with
         | T.Func (T.Shared,T.Promises,tbs,ts1,[T.Async t2]) ->
@@ -282,28 +337,29 @@ module Transform() = struct
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
       let typs = List.map t_typ typs in
-      let ((nary_async, nary_reply, reject),def) = new_nary_async_reply t2 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply t2 in
       let _ = letEta in
       (blockE ( letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
                 letEta exp1' (fun v1 ->
                   letSeq ts1 exp2' (fun vs ->
-                    [ expD (callE v1 typs (seqE (vs @ [nary_reply; reject]))) ]
+                      [ expD (sys_callE v1 typs vs nary_reply reject) ]
+                    )
                   )
-                 )
-               )
-               nary_async)
+         )
+         nary_async)
         .it
     | PrimE (p, exps) ->
       PrimE (prim p, List.map t_exp exps)
     | CallE (cc, exp1, typs, exp2)  ->
-      CallE(cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
+      assert (not (isAwaitableFunc exp1));
+      CallE (cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
     | BlockE b ->
       BlockE (t_block b)
     | IfE (exp1, exp2, exp3) ->
       IfE (t_exp exp1, t_exp exp2, t_exp exp3)
     | SwitchE (exp1, cases) ->
       let cases' = List.map
-                     (fun {it = {pat;exp}; at; note} ->
+                     (fun {it = {pat; exp}; at; note} ->
                        {it = {pat = t_pat pat ;exp = t_exp exp}; at; note})
                      cases
       in
@@ -343,14 +399,27 @@ module Transform() = struct
               let reply_typ = replyT nary res_typ in
               let k = fresh_var "k" reply_typ in
               let r = fresh_var "r" rejectT in
-              let args' = t_args args @ [ arg_of_exp k ] in
+              let args' = t_args args @
+                            (select [ add_reply_parameter, lazy (arg_of_exp k);
+                                      add_reject_parameter, lazy (arg_of_exp r)])
+              in
               let typbinds' = t_typ_binds typbinds in
               let y = fresh_var "y" res_typ in
               let e = fresh_var "e" T.catch in
               let exp' =
                 match exp.it with
                 | PrimE (OtherPrim "@async", [cps]) ->
-                  (blockE [funcD r (fresh_var "e" T.catch) (assertE (boolE false))]
+                  (blockE
+                     (select
+                        [ (not add_reply_parameter,
+                           lazy (
+                             let vs = List.map (fresh_var "v") (nary res_typ) in
+                             nary_funcD k vs (sys_replyE vs)))
+                          ;
+                          (not add_reject_parameter,
+                           lazy (
+                             let e1 = fresh_var "e1" T.catch in
+                             funcD r e1 (sys_rejectE e1)))])
                      ((t_exp cps) -*- tupE [(y --> (k -*- y)); ([e] -->* (r -*- e)) ]))
                 | _ -> assert false
               in

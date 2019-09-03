@@ -319,7 +319,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | VarE id ->
     (match Lib.Promise.value_opt (find id env.vals) with
     | Some v -> k v
-    | None -> trap exp.at "accessing identifier before its definition"
+    | None -> trap exp.at "accessing identifier %s before its definition" id
     )
   | LitE lit ->
     k (interpret_lit env lit)
@@ -520,7 +520,7 @@ and interpret_cases env cases at v (k : V.value V.cont) =
 and interpret_catches env cases at v (k : V.value V.cont) =
   match cases with
   | [] ->
-    Lib.Option.value (env.throws) v (* re-throw v *)
+    Lib.Option.value env.throws v (* re-throw v *)
   | {it = {pat; exp}; at; _}::cases' ->
     match match_pat pat v with
     | Some ve -> interpret_exp (adjoin_vals env ve) exp k

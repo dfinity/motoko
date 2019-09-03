@@ -21,51 +21,72 @@ non-closed actor: (ActorE
     (FuncE
       read
       (shared 1 -> 0)
-      (params $k/0/raw)
+      (params $k/1/raw)
       ()
       (BlockE
         (LetD
-          (TupP (VarP $k/0))
+          (TupP (VarP $k/1))
           (TupE
             (PrimE
               (DeserializePrim shared (serialized Int) -> ())
-              (VarE $k/0/raw)
+              (VarE $k/1/raw)
             )
           )
         )
-        (CallE
-          (1 -> 0)
-          (FuncE
-            $lambda
-            (1 -> 0)
-            (params $cont/0)
-            ()
-            (BlockE
-              (LetD
-                (VarP $cont/1)
-                (FuncE
-                  $cont/1
-                  (2 -> 0)
-                  (params $param0/0 $param1/0)
-                  ()
-                  (BlockE
-                    (LetD (VarP $e/0) (TupE (VarE $param0/0) (VarE $param1/0)))
-                    (AssertE (LitE (BoolLit false)))
+        (BlockE
+          (LetD
+            (VarP $r/1)
+            (FuncE
+              $r/1
+              (shared 1 -> 0)
+              (params $e1/0/raw)
+              ()
+              (BlockE
+                (LetD
+                  (TupP (VarP $e1/0))
+                  (TupE
+                    (PrimE
+                      (DeserializePrim ({#error; #system}, Text))
+                      (VarE $e1/0/raw)
+                    )
                   )
                 )
+                (AssertE (LitE (BoolLit false)))
               )
-              (CallE (1 -> 0) (VarE $cont/0) (VarE j))
             )
           )
-          (FuncE
-            $lambda
-            (1 -> 0)
-            (params $y/0)
-            ()
-            (CallE
-              (shared 1 -> 0)
-              (VarE $k/0)
-              (PrimE (SerializePrim Int) (VarE $y/0))
+          (CallE
+            (2 -> 0)
+            (FuncE
+              $lambda
+              (2 -> 0)
+              (params $k/0 $r/0)
+              ()
+              (CallE (1 -> 0) (VarE $k/0) (VarE j))
+            )
+            (TupE
+              (FuncE
+                $lambda
+                (1 -> 0)
+                (params $y/0)
+                ()
+                (CallE
+                  (shared 1 -> 0)
+                  (VarE $k/1)
+                  (PrimE (SerializePrim Int) (VarE $y/0))
+                )
+              )
+              (FuncE
+                $lambda
+                (1 -> 0)
+                (params $e/0)
+                ()
+                (CallE
+                  (shared 1 -> 0)
+                  (VarE $r/1)
+                  (PrimE (SerializePrim ({#error; #system}, Text)) (VarE $e/0))
+                )
+              )
             )
           )
         )
