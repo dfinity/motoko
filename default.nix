@@ -32,7 +32,7 @@ let dev = import (builtins.fetchGit {
 let dfinity-repo = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   ref = "joachim/hacks-for-actorscript";
-  rev = "dc57949f2be1344a33c3d67726b3387917273cec";
+  rev = "29ea8b24ba2fad317e7770c17f1b3183613c9bf1";
 }) { system = nixpkgs.system; }; in
 
 # Include drun
