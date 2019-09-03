@@ -79,6 +79,9 @@ type typ = Null | Bool | Nat | NatN of int
 
 let read_type_index = read_sleb128
 
+let read_assoc () = let hash = read_leb128 () in
+                    let tynum = read_type_index () in
+                    hash, tynum
 
 (* outputters *)
 let output_nat int = () (* TODO: output formatted *)
@@ -154,17 +157,22 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
       match read_type_index () with
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
                              from_val (Opt t, reader consumer)
-           | p -> lazy (let lazy (t, consumer) = lookup p in
+           | i -> lazy (let lazy (t, consumer) = lookup i in
                         Opt t, reader consumer)
            end
   | -19 -> begin match read_type_index () with
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
                              from_val (Vec t, function () -> read_t_star_ consumer)
-           | p -> lazy (let lazy (t, consumer) = lookup p in
+           | i -> lazy (let lazy (t, consumer) = lookup i in
                         Vec t, function () -> read_t_star_ consumer)
            end
-(*  | -20 -> let assocs = read_t_star read_assoc in
- *)
+  | -20 -> let assocs = read_t_star read_assoc in
+           let prim_or_lookup = function
+             | p when p < 0 -> decode_primitive_type p
+             | i -> force (lookup i) in
+           lazy (let members = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
+                 let consumers = Array.map (function (_, tynum) -> snd (prim_or_lookup tynum)) assocs in
+                 Record members, function () -> Array.iter (function f -> f ()) consumers)
   | _ -> failwith "unrecognised structured type"
 
 
