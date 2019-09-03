@@ -60,16 +60,20 @@ let read_magic () : unit =
 
 (* Repetition *)
 
-let read_t_star (t : unit -> unit) : unit =
+let read_t_star_ (t : unit -> unit) : unit =
   let rep = read_leb128 () in
   for _ = 1 to rep do
     t ()
   done
 
+let read_t_star (t : unit -> 'a) : 'a array =
+  let rep = read_leb128 () in
+  Array.init rep (function _ -> t ())
+
 
 type typ = Null | Bool | Nat | NatN of int
-           | Int | IntN of int | Reserved | Empty | Opt of typ | Vec of typ
-           | Indexed of (typ * (unit -> unit)) array ref * int
+         | Int | IntN of int | Reserved | Empty
+         | Opt of typ | Vec of typ | Record of (int * typ) array
 
 (* type index/ground type (negative) *)
 
@@ -126,9 +130,9 @@ let decode_primitive_type : int -> typ * (unit -> unit) =
 (*let type_table = ref (Array.make 0 (Empty, epsilon))*)
 
 
-let lookup_type_index type_table indx = lazy (Array.get !type_table indx)
+(*let lookup_type_index type_table indx = lazy (Array.get !type_table indx) *)
 
-let read_type type_table : (typ * (unit -> unit)) Lazy.t =
+let read_type lookup : (typ * (unit -> unit)) Lazy.t =
   match read_sleb128 () with
   | p when p < 0 -> from_val (decode_primitive_type p)
 (*
@@ -140,29 +144,31 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
 
 
 *)
-  | -18 -> begin match read_type_index () with
+  | -18 ->
+    begin
+      let reader consumer () =
+        match read_byte () with
+        | 0 -> output_nil ()
+        | 1 -> output_some (consumer ())
+        | _ -> failwith "invalid optional" in
+      match read_type_index () with
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             from_val (Opt t, function () -> match read_byte () with
-                                                             | 0 -> output_nil ()
-                                                             | 1 -> output_some (consumer ())
-                                                             | _ -> failwith "invalid optional"
-                               )
-           | p -> lookup_type_index type_table p
+                             from_val (Opt t, reader consumer)
+           | p -> lazy (let lazy (t, consumer) = lookup p in
+                        Opt t, reader consumer)
            end
   | -19 -> begin match read_type_index () with
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             from_val (Vec t, function () -> read_t_star consumer)
-           | p -> lookup_type_index type_table p
+                             from_val (Vec t, function () -> read_t_star_ consumer)
+           | p -> lazy (let lazy (t, consumer) = lookup p in
+                        Vec t, function () -> read_t_star_ consumer)
            end
-(*  | -20 -> begin match read_type_index () with
-           | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             Vec t, (function () -> read_t_star consumer)
-           | p -> lookup_type_index type_table p
-           end *)
+(*  | -20 -> let assocs = read_t_star read_assoc in
+ *)
   | _ -> failwith "unrecognised structured type"
 
 
-let read_type_table (t : unit -> typ * (unit -> unit)) : (typ * (unit -> unit)) array =
+let read_type_table (t : unit -> (typ * (unit -> unit)) Lazy.t) : (typ * (unit -> unit)) Lazy.t array =
   let rep = read_leb128 () in
   Array.init rep (function _ -> t ())
 
@@ -170,9 +176,11 @@ let read_type_table (t : unit -> typ * (unit -> unit)) : (typ * (unit -> unit)) 
 
 let top_level () : unit =
   read_magic ();
-  let lazy (ty, m) = read_type (ref (Array.of_list [])) in
+  let rec tab = lazy (read_type_table (function () -> read_type lookup))
+      and lookup = function indx -> Array.get (force tab) indx in
+  let tyindx = read_type_index () in
+  let lazy (ty, m) = Array.get (force tab) tyindx in
   m ()
-  (*type_table := read_type_table read_type*)
 
 
 
