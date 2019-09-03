@@ -1059,7 +1059,7 @@ A(kv* : <datatype>*) = ( B(kv* : <datatype>*), R(kv* : <datatype>*) )
 B(kv* : <datatype>*) =
   i8('D') i8('I') i8('D') i8('L')      magic number
   T*(<datatype>*)                      type definition table
-  I*(<datatype>*)                      type of argument list
+  I(<datatype>)                        type of argument list
   M(kv* : <datatype>*)                 values of argument list
 ```
 The vector `T*(<datatype>*)` contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the other `<datatype>` vector.
