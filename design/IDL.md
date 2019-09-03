@@ -937,7 +937,7 @@ T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
 T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
-  sleb128(-22) T*(<fieldtype2>*) T*(<fieldtype2>*) T*(<funcann>*)
+  sleb128(-22) T*(<fieldtype1>*) T*(<fieldtype2>*) T*(<funcann>*)
 T(service {<methtype>*}) =
   sleb128(-23) T*(<methtype>*)
 
