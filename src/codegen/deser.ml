@@ -130,10 +130,6 @@ let decode_primitive_type : int -> typ * (unit -> unit) =
   | -17 -> Empty, ignore
   | _ -> failwith "unrecognised primitive type"
 
-(*let type_table = ref (Array.make 0 (Empty, epsilon))*)
-
-
-(*let lookup_type_index type_table indx = lazy (Array.get !type_table indx) *)
 
 let read_type lookup : (typ * (unit -> unit)) Lazy.t =
   match read_sleb128 () with
@@ -186,11 +182,6 @@ let top_level () : unit =
   read_magic ();
   let rec tab = lazy (read_type_table (function () -> read_type lookup))
       and lookup = function indx -> Array.get (force tab) indx in
-  let tyindx = read_type_index () in
-  let lazy (ty, m) = Array.get (force tab) tyindx in
-  m ()
-
-
-
-
-
+  let tynums = read_t_star read_type_index in
+  let consumers = Array.map (function tynum -> let lazy (ty, m) = Array.get (force tab) tynum in m) tynums in
+  Array.iter (function f -> f ()) consumers
