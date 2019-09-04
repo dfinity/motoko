@@ -14,7 +14,7 @@ let read_byte () : int =
 
 let read_signed_byte () : bool * int =
   let b = read_byte () in
-  if b > 127 then true, b - 128 else false, b
+  Printf.printf "read_signed_byte: %d\n" b; if b > 127 then true, b - 128 else false, b
 
 let read_known char : unit = (* TODO: use read_byte *)
   let b = input_byte stdin in
@@ -33,9 +33,9 @@ let read_leb128 () : int = (* TODO: should be bigint *)
 
 let read_sleb128 () : int = (* TODO: should be bigint *)
   let rec sleb128 w a : int =
-  match read_signed_byte () with
-  | (true, n) -> sleb128 (w * 128) (n * w + a)
-  | (_, n) -> if n > 63 then - (64 - (n - 64)) * w - a else n * w + a in
+    match read_signed_byte () with
+    | (true, n) -> Printf.printf "LSB SLEB128: w: %d, a: %d, n: %d\n" w a n; sleb128 (w * 128) (n * w + a)
+    | (_, n) -> Printf.printf "Multi SLEB128: w: %d, a: %d, n: %d\n" w a n; if n > 63 then - (64 - (n - 64)) * w - a else n * w + a in
   let res = sleb128 1 0 in Printf.printf "SLEB128: %d\n" res; res
 
 (* bool: M(b : bool)     = i8(if b then 1 else 0) *)
@@ -77,7 +77,9 @@ let read_t_star (t : unit -> 'a) : 'a array =
 
 type typ = Null | Bool | Nat | NatN of int
          | Int | IntN of int | Reserved | Empty
-         | Opt of typ | Vec of typ | Record of (int * typ) array
+         | Opt of typ | Vec of typ
+         | Record of (int * typ) array
+         | Variant of (int * typ) array
 
 (* type index/ground type (negative) *)
 
@@ -88,7 +90,7 @@ let read_assoc () = let hash = read_leb128 () in
                     Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
 
 (* outputters *)
-let output_nat int = () (* TODO: output formatted *)
+let output_nat nat = Printf.printf "output_nat: %d\n" nat
 let output_int int = Printf.printf "output_int: %d\n" int
 let output_bool b = Printf.printf "output_bool: %s\n" (if b then "true" else "false")
 let output_nil () = ()
@@ -120,7 +122,7 @@ T(empty)    = sleb128(-17)
  *)
   let decode_primitive_type : int -> typ * (unit -> unit) =
     function
-    | -1 -> Null, epsilon
+    | -1 -> Null, output_nil
     | -2 -> Bool, (function () -> output_bool (read_bool ()))
     | -3 -> Nat, (function () -> output_nat (read_leb128 ()))
     | -4 -> Int, (function () -> output_int (read_sleb128 ()))
@@ -135,6 +137,10 @@ T(empty)    = sleb128(-17)
     | -16 -> Reserved, ignore
     | -17 -> Empty, ignore
     | _ -> failwith "unrecognised primitive type" in
+
+  let prim_or_lookup = function
+    | p when p < 0 -> decode_primitive_type p
+    | i -> force (lookup i) in
 
   match read_sleb128 () with
   | p when p < 0 && p > -18 -> from_val (decode_primitive_type p)
@@ -155,24 +161,25 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
         | 1 -> output_some (consumer ())
         | _ -> failwith "invalid optional" in
       match read_type_index () with
-           | p when p < 0 -> let t, consumer = decode_primitive_type(* FIXME: decode_type?,  *) p in
+           | p when p < 0 -> let t, consumer = decode_primitive_type p in
                              from_val (Opt t, reader consumer)
            | i -> lazy (let lazy (t, consumer) = lookup i in
                         Opt t, reader consumer)
            end
   | -19 -> begin match read_type_index () with
-           | p when p < 0 -> let t, consumer = decode_primitive_type(* FIXME: decode_type? *) p in
+           | p when p < 0 -> let t, consumer = decode_primitive_type p in
                              from_val (Vec t, function () -> read_t_star_ consumer)
            | i -> lazy (let lazy (t, consumer) = lookup i in
                         Vec t, function () -> read_t_star_ consumer)
            end
   | -20 -> let assocs = read_t_star read_assoc in
-           let prim_or_lookup = function
-             | p when p < 0 -> decode_primitive_type(* FIXME: decode_type? *) p
-             | i -> force (lookup i) in
            lazy (let members = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
                  let consumers = Array.map (function (_, tynum) -> snd (prim_or_lookup tynum)) assocs in
                  Record members, function () -> Array.iter (function f -> f ()) consumers)
+  | -21 -> let assocs = read_t_star read_assoc in
+           lazy (let alts = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
+                 let consumers = Array.map (function (_, tynum) -> snd (prim_or_lookup tynum)) assocs in
+                 Variant alts, function () -> let i = read_leb128 () in Array.get consumers i ())
   | t -> failwith (Printf.sprintf "unrecognised structured type: %d" t)
 
 
