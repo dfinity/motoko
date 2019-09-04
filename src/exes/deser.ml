@@ -212,17 +212,51 @@ let read_type_table (t : unit -> (typ * (unit -> unit)) Lazy.t) : (typ * (unit -
 
 (* Top-level *)
 
-let top_level () : unit =
+type mode = Legacy | Default
+
+let top_level md : unit =
   Printf.printf "DESER, to your service!\n";
   read_magic ();
   let rec tab' = lazy (read_type_table (function () -> read_type lookup))
       and lookup = function indx -> Array.get (force tab') indx in
   let tab = force tab' in
-  let argtys = read_t_star read_type_index in
-  Printf.printf "ARGS: %d\n" (Array.length argtys);
-  let consumers = Array.map (function tynum -> let lazy (ty, m) = Array.get tab tynum in m) argtys in
-  Array.iter (function f -> f ()) consumers
+  match md with
+  | Default ->
+    let argtys = read_t_star read_type_index in
+    Printf.printf "ARGS: %d\n" (Array.length argtys);
+    let consumers = Array.map (function tynum -> let lazy (ty, m) = Array.get tab tynum in m) argtys in
+    Array.iter (function f -> f ()) consumers
+  | Legacy ->
+    let argty = read_type_index () in
+    Printf.printf "ARGTY: %d\n" argty;
+    snd (force (Array.get tab argty)) ()
+
+(* CLI *)
+
+let name = "deser"
+let version = "0.1"
+let banner = "Interface Description Language (IDL) " ^ version ^ " message dumper"
+let usage = "Usage: " ^ name ^ " [option] [file ...]"
+
+let mode = ref Default
+
+let set_mode m () =
+  if !mode <> Default then begin
+    Printf.eprintf "deser: multiple execution modes specified"; exit 1
+  end;
+  mode := m
+
+let add_arg source = () (* args := !args @ [source] *)
+
+let argspec = Arg.align
+[
+  "--legacy", Arg.Unit (set_mode Legacy), " decode legacy message API";
+  "--version",
+    Arg.Unit (fun () -> Printf.printf "%s\n" banner; exit 0), " show version";
+]
 
 (* run it *)
 
-let () = top_level ()
+let () =
+  Arg.parse argspec add_arg usage;
+  top_level !mode
