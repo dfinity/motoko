@@ -937,7 +937,7 @@ T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
 T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
-  sleb128(-22) T*(<fieldtype2>*) T*(<fieldtype2>*) T*(<funcann>*)
+  sleb128(-22) T*(<fieldtype1>*) T*(<fieldtype2>*) T*(<funcann>*)
 T(service {<methtype>*}) =
   sleb128(-23) T*(<methtype>*)
 
@@ -1059,7 +1059,7 @@ A(kv* : <datatype>*) = ( B(kv* : <datatype>*), R(kv* : <datatype>*) )
 B(kv* : <datatype>*) =
   i8('D') i8('I') i8('D') i8('L')      magic number
   T*(<datatype>*)                      type definition table
-  I*(<datatype>*)                      type of argument list
+  I*(<datatype>*)                      types of the argument list
   M(kv* : <datatype>*)                 values of argument list
 ```
 The vector `T*(<datatype>*)` contains an arbitrary sequence of type definitions (see above), to be referenced in the serialisation of the other `<datatype>` vector.
