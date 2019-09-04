@@ -50,9 +50,9 @@ let read_int8 () : int =
   | (true, n) -> n - 128
   | (_, n) -> n
 
-let read_int16 () : int = assert false
-let read_int32 () : int = assert false
-let read_int64 () : int = assert false
+let read_int16 () : int = assert false (* TODO *)
+let read_int32 () : int = assert false (* TODO *)
+let read_int64 () : int = assert false (* TODO *)
 
 (* Magic *)
 
@@ -74,12 +74,22 @@ let read_t_star (t : unit -> 'a) : 'a array =
   let rep = read_leb128 () in
   Array.init rep (function _ -> t ())
 
+(* Annotations *)
+
+type ann = Pure | Oneway
+
+let read_annotation () : ann =
+  match read_byte () with
+  | 1 -> Pure
+  | 2 -> Oneway
+  | _ -> failwith "invalid annotation"
 
 type typ = Null | Bool | Nat | NatN of int
          | Int | IntN of int | Reserved | Empty
          | Opt of typ | Vec of typ
          | Record of (int * typ) array
          | Variant of (int * typ) array
+         | Function of (int * typ) array * (int * typ) array * ann array
 
 (* type index/ground type (negative) *)
 
@@ -180,6 +190,19 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
            lazy (let alts = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
                  let consumers = Array.map (function (_, tynum) -> snd (prim_or_lookup tynum)) assocs in
                  Variant alts, function () -> let i = read_leb128 () in Array.get consumers i ())
+(*
+T(func (<fieldtype1>* ) -> (<fieldtype2>* ) <funcann>* ) =
+  sleb128(-22) T*(<fieldtype1>* ) T*(<fieldtype2>* ) T*(<funcann>* )
+T(service {<methtype>*}) =
+  sleb128(-23) T*(<methtype>* )
+                   *)
+  | -22 -> let assocs1 = read_t_star read_assoc in
+           let assocs2 = read_t_star read_assoc in
+           let anns = read_t_star read_annotation in
+           lazy (let args = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs1 in
+                 let rslts = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs2 in
+                 Function (args, rslts, anns), epsilon)
+
   | t -> failwith (Printf.sprintf "unrecognised structured type: %d" t)
 
 
