@@ -24,15 +24,19 @@ let read_known char : unit = (* TODO: use read_byte *)
   | _ -> failwith "unexpected"
 
 
-let rec read_leb128 () : int = (* TODO: should be bigint *)
+let read_leb128 () : int = (* TODO: should be bigint *)
+  let rec leb128 w : int =
   match read_signed_byte () with
-  | (true, n) -> n + 128 * read_leb128 ()
-  | (_, n) -> n
+  | (true, n) -> n * w + leb128 (w * 128)
+  | (_, n) -> n * w in
+  let res = leb128 1 in Printf.printf "LEB128: %d\n" res; res
 
-let rec read_sleb128 () : int = (* TODO: should be bigint *)
+let read_sleb128 () : int = (* TODO: should be bigint *)
+  let rec sleb128 w a : int =
   match read_signed_byte () with
-  | (true, n) -> n + 128 * read_sleb128 ()
-  | (_, n) -> if n > 63 then n - 64 else n
+  | (true, n) -> sleb128 (w * 128) (n * w + a)
+  | (_, n) -> if n > 63 then - (64 - (n - 64)) * w - a else n * w + a in
+  let res = sleb128 1 0 in Printf.printf "SLEB128: %d\n" res; res
 
 (* bool: M(b : bool)     = i8(if b then 1 else 0) *)
 let read_bool () : bool =
@@ -81,12 +85,12 @@ let read_type_index = read_sleb128
 
 let read_assoc () = let hash = read_leb128 () in
                     let tynum = read_type_index () in
-                    hash, tynum
+                    Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
 
 (* outputters *)
 let output_nat int = () (* TODO: output formatted *)
-let output_int int = ()
-let output_bool b = ()
+let output_int int = Printf.printf "output_int: %d\n" int
+let output_bool b = Printf.printf "output_bool: %s\n" (if b then "true" else "false")
 let output_nil () = ()
 let output_some d = ()
 let output_byte b = ()
@@ -114,7 +118,7 @@ T(empty)    = sleb128(-17)
  *)
 let decode_primitive_type : int -> typ * (unit -> unit) =
   function
-  | -1 -> Null, epsilon (* TODO: i8(0) *)
+  | -1 -> Null, epsilon
   | -2 -> Bool, (function () -> output_bool (read_bool ()))
   | -3 -> Nat, (function () -> output_nat (read_leb128 ()))
   | -4 -> Int, (function () -> output_int (read_sleb128 ()))
@@ -133,7 +137,7 @@ let decode_primitive_type : int -> typ * (unit -> unit) =
 
 let read_type lookup : (typ * (unit -> unit)) Lazy.t =
   match read_sleb128 () with
-  | p when p < 0 -> from_val (decode_primitive_type p)
+  | p when p < 0 && p > -18 -> from_val (decode_primitive_type p)
 (*
 
 T(opt <datatype>) = sleb128(-18) I(<datatype>)
@@ -162,8 +166,8 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
            | i -> lazy (let lazy (t, consumer) = lookup i in
                         Vec t, function () -> read_t_star_ consumer)
            end
-  | -20 -> let assocs = read_t_star read_assoc in
-           let prim_or_lookup = function
+  | -20 -> Printf.printf "Record\n";let assocs = read_t_star read_assoc in
+           Printf.printf "SIZE: %d\n" (Array.length assocs); let prim_or_lookup = function
              | p when p < 0 -> decode_primitive_type p
              | i -> force (lookup i) in
            lazy (let members = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
@@ -174,18 +178,20 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
 
 let read_type_table (t : unit -> (typ * (unit -> unit)) Lazy.t) : (typ * (unit -> unit)) Lazy.t array =
   let rep = read_leb128 () in
-  Array.init rep (function _ -> t ())
+  Array.init rep (function i -> Printf.printf "read_type_table: %d\n" i;t ())
 
 (* Top-level *)
 
 let top_level () : unit =
   Printf.printf "DESER, to your service!\n";
   read_magic ();
-  let rec tab = lazy (read_type_table (function () -> read_type lookup))
-      and lookup = function indx -> Array.get (force tab) indx in
+  let rec tab' = lazy (read_type_table (function () -> read_type lookup))
+      and lookup = function indx -> Array.get (force tab') indx in
+  let tab = force tab' in
   let tynums = read_t_star read_type_index in
-  let consumers = Array.map (function tynum -> let lazy (ty, m) = Array.get (force tab) tynum in m) tynums in
-  Array.iter (function f -> f ()) consumers
+  Printf.printf "TYNUMS %d\n" (Array.length tynums);
+  let consumers = Array.map (function tynum -> let lazy (ty, m) = Array.get tab tynum in m) tynums in
+  Array.iter (function f -> Printf.printf "M...READING\n";f ()) consumers
 
 (* run it *)
 
