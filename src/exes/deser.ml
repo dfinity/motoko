@@ -179,9 +179,14 @@ let read_type_table (t : unit -> (typ * (unit -> unit)) Lazy.t) : (typ * (unit -
 (* Top-level *)
 
 let top_level () : unit =
+  Printf.printf "DESER, to your service!\n";
   read_magic ();
   let rec tab = lazy (read_type_table (function () -> read_type lookup))
       and lookup = function indx -> Array.get (force tab) indx in
   let tynums = read_t_star read_type_index in
   let consumers = Array.map (function tynum -> let lazy (ty, m) = Array.get (force tab) tynum in m) tynums in
   Array.iter (function f -> f ()) consumers
+
+(* run it *)
+
+let () = top_level ()
