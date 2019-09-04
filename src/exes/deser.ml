@@ -24,15 +24,15 @@ let read_known char : unit = (* TODO: use read_byte *)
   | _ -> failwith "unexpected"
 
 
-let read_leb128 () : int = (* TODO: should be bigint *)
+let rec read_leb128 () : int = (* TODO: should be bigint *)
   match read_signed_byte () with
-  | (true, n) -> n
-  | _ -> failwith "multi-byte LEB128 not implemented yet"
+  | (true, n) -> n + 128 * read_leb128 ()
+  | (_, n) -> n
 
-let read_sleb128 () : int = (* TODO: should be bigint *)
+let rec read_sleb128 () : int = (* TODO: should be bigint *)
   match read_signed_byte () with
-  | (true, n) -> if n > 63 then n - 64 else n
-  | _ -> failwith "multi-byte SLEB128 not implemented yet"
+  | (true, n) -> n + 128 * read_sleb128 ()
+  | (_, n) -> if n > 63 then n - 64 else n
 
 (* bool: M(b : bool)     = i8(if b then 1 else 0) *)
 let read_bool () : bool =
@@ -169,7 +169,7 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
            lazy (let members = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
                  let consumers = Array.map (function (_, tynum) -> snd (prim_or_lookup tynum)) assocs in
                  Record members, function () -> Array.iter (function f -> f ()) consumers)
-  | _ -> failwith "unrecognised structured type"
+  | t -> failwith (Printf.sprintf "unrecognised structured type: %d" t)
 
 
 let read_type_table (t : unit -> (typ * (unit -> unit)) Lazy.t) : (typ * (unit -> unit)) Lazy.t array =
