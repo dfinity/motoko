@@ -289,6 +289,20 @@ let prim = function
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
+  | "error" -> fun v k ->
+     k (Value.Tup [Variant ("user", Tup []); v])
+  | "errorCode" -> fun v k ->
+    (match Value.as_tup v with
+    | [code; _message] ->
+      k code
+    | _ -> assert false
+    )
+  | "errorMessage" -> fun v k ->
+    (match Value.as_tup v with
+    | [_code; message] ->
+      k message
+    | _ -> assert false
+    )
   | p when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with
     | [_;_;s1;s2] ->

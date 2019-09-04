@@ -21,6 +21,7 @@ type Word64 = prim "Word64";
 type Float = prim "Float";
 type Char = prim "Char";
 type Text = prim "Text";
+type Error = prim "Error";
 
 type Iter<T_> = {next : () -> ?T_};
 
@@ -329,11 +330,18 @@ func Array_init<T>(len : Nat,  x : T) : [var T] {
 func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
-// these will change
 
+// these will change
 type ErrorCode = {#error; #system};
 
-type Error =  (ErrorCode,Text); // must agree with T.catch
+func error (message : Text) : Error =
+  (prim "error" : Text -> Error)(message);
+
+func errorCode (e : Error) : ErrorCode =
+  (prim "errorCode" : Error -> ErrorCode)(e);
+
+func errorMessage (e : Error) : Text =
+  (prim "errorMessage" : Error -> Text)(e);
 
 type Cont<T> = T -> () ;
 type Async<T> = (Cont<T>,Cont<Error>) -> ();

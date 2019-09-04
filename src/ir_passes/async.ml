@@ -89,17 +89,21 @@ module Transform() = struct
 
   (* End of configuration *)
 
+  (* Lowered representations of T.catchT and T.err_contT *)
+  let t_catchT = T.Tup [T.Variant T.catchErrorCodes; T.text]
+  let t_err_contT = T.Func (T.Local, T.Returns, [], [t_catchT], [])
+
   let unary typ = [typ]
 
   let nary typ = T.as_seq typ
 
   let replyT as_seq typ = T.Func(T.Shared, T.Returns, [], as_seq typ, [])
 
-  let rejectT = T.Func(T.Shared, T.Returns, [], [T.catch], [])
+  let rejectT = T.Func(T.Shared, T.Returns, [], [t_catchT], [])
 
   let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
-  let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
+  let failT = T.Func(T.Local, T.Returns, [], [t_catchT], [])
 
   let t_async as_seq t =
     T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT], [])
@@ -132,7 +136,7 @@ module Transform() = struct
     (* construct the n-ary async value, coercing the continuation, if necessary *)
     let nary_async =
       let k' = fresh_var "k" (contT t1) in
-      let r' = fresh_var "r" err_contT in
+      let r' = fresh_var "r" t_err_contT in
       match ts1 with
       | [t] ->
         unary_async
@@ -154,7 +158,7 @@ module Transform() = struct
       vs -@>* (unary_fulfill -*-  seq_of_vs)
     in
     let nary_reject =
-      let v = fresh_var "err" T.catch in
+      let v = fresh_var "err" t_catchT in
       [v] -@>* (fail -*- v)
     in
     let async,reply,reject =
@@ -200,6 +204,7 @@ module Transform() = struct
 
   let rec t_typ (t:T.typ) =
     match t with
+    | T.Prim Error -> t_catchT (* lower the error type *)
     | T.Prim _
       | Var _ -> t
     | Con (c, ts) ->
@@ -315,8 +320,8 @@ module Transform() = struct
         | t -> assert false in
       let k = fresh_var "k" contT in
       let v1 = fresh_var "v" t1 in
-      let r = fresh_var "r" err_contT in
-      let e = fresh_var "e" T.catch in
+      let r = fresh_var "r" t_err_contT in
+      let e = fresh_var "e" t_catchT in
       let post = fresh_var "post" (T.Func(T.Shared, T.Returns, [], [], [])) in
       let u = fresh_var "u" T.unit in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply t1 in
@@ -405,7 +410,7 @@ module Transform() = struct
               in
               let typbinds' = t_typ_binds typbinds in
               let y = fresh_var "y" res_typ in
-              let e = fresh_var "e" T.catch in
+              let e = fresh_var "e" t_catchT in
               let exp' =
                 match exp.it with
                 | PrimE (OtherPrim "@async", [cps]) ->
@@ -418,7 +423,7 @@ module Transform() = struct
                           ;
                           (not add_reject_parameter,
                            lazy (
-                             let e1 = fresh_var "e1" T.catch in
+                             let e1 = fresh_var "e1" t_catchT in
                              funcD r e1 (sys_rejectE e1)))])
                      ((t_exp cps) -*- tupE [(y --> (k -*- y)); ([e] -->* (r -*- e)) ]))
                 | _ -> assert false
