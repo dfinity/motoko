@@ -102,7 +102,9 @@ let output_int16 i = ()
 let output_int32 i = ()
 let output_int64 i = ()
 
-(* primitive type
+
+let read_type lookup : (typ * (unit -> unit)) Lazy.t =
+  (* primitive type
 
 T : <primtype> -> i8*
 T(null)     = sleb128(-1)
@@ -116,26 +118,24 @@ T(text)     = sleb128(-15)
 T(reserved) = sleb128(-16)
 T(empty)    = sleb128(-17)
  *)
-let decode_primitive_type : int -> typ * (unit -> unit) =
-  function
-  | -1 -> Null, epsilon
-  | -2 -> Bool, (function () -> output_bool (read_bool ()))
-  | -3 -> Nat, (function () -> output_nat (read_leb128 ()))
-  | -4 -> Int, (function () -> output_int (read_sleb128 ()))
-  | -5 -> NatN 8, (function () -> output_byte (read_byte ()))
-  | -6 -> NatN 16, (function () -> output_2byte (read_byte ())) (* FIXME *)
-  | -7 -> NatN 32, (function () -> output_4byte (read_byte ())) (* FIXME *)
-  | -8 -> NatN 64, (function () -> output_8byte (read_byte ())) (* FIXME *)
-  | -9 -> IntN 8, (function () -> output_int8 (read_int8 ()))
-  | -10 -> IntN 16, (function () -> output_int16 (read_int16 ()))
-  | -11 -> IntN 32, (function () -> output_int32 (read_int32 ()))
-  | -12 -> IntN 64, (function () -> output_int64 (read_int64 ()))
-  | -16 -> Reserved, ignore
-  | -17 -> Empty, ignore
-  | _ -> failwith "unrecognised primitive type"
+  let decode_primitive_type : int -> typ * (unit -> unit) =
+    function
+    | -1 -> Null, epsilon
+    | -2 -> Bool, (function () -> output_bool (read_bool ()))
+    | -3 -> Nat, (function () -> output_nat (read_leb128 ()))
+    | -4 -> Int, (function () -> output_int (read_sleb128 ()))
+    | -5 -> NatN 8, (function () -> output_byte (read_byte ()))
+    | -6 -> NatN 16, (function () -> output_2byte (read_byte ())) (* FIXME *)
+    | -7 -> NatN 32, (function () -> output_4byte (read_byte ())) (* FIXME *)
+    | -8 -> NatN 64, (function () -> output_8byte (read_byte ())) (* FIXME *)
+    | -9 -> IntN 8, (function () -> output_int8 (read_int8 ()))
+    | -10 -> IntN 16, (function () -> output_int16 (read_int16 ()))
+    | -11 -> IntN 32, (function () -> output_int32 (read_int32 ()))
+    | -12 -> IntN 64, (function () -> output_int64 (read_int64 ()))
+    | -16 -> Reserved, ignore
+    | -17 -> Empty, ignore
+    | _ -> failwith "unrecognised primitive type" in
 
-
-let read_type lookup : (typ * (unit -> unit)) Lazy.t =
   match read_sleb128 () with
   | p when p < 0 && p > -18 -> from_val (decode_primitive_type p)
 (*
@@ -155,20 +155,20 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
         | 1 -> output_some (consumer ())
         | _ -> failwith "invalid optional" in
       match read_type_index () with
-           | p when p < 0 -> let t, consumer = decode_primitive_type p in
+           | p when p < 0 -> let t, consumer = decode_primitive_type(* FIXME: decode_type?,  *) p in
                              from_val (Opt t, reader consumer)
            | i -> lazy (let lazy (t, consumer) = lookup i in
                         Opt t, reader consumer)
            end
   | -19 -> begin match read_type_index () with
-           | p when p < 0 -> let t, consumer = decode_primitive_type p in
+           | p when p < 0 -> let t, consumer = decode_primitive_type(* FIXME: decode_type? *) p in
                              from_val (Vec t, function () -> read_t_star_ consumer)
            | i -> lazy (let lazy (t, consumer) = lookup i in
                         Vec t, function () -> read_t_star_ consumer)
            end
-  | -20 -> Printf.printf "Record\n";let assocs = read_t_star read_assoc in
-           Printf.printf "SIZE: %d\n" (Array.length assocs); let prim_or_lookup = function
-             | p when p < 0 -> decode_primitive_type p
+  | -20 -> let assocs = read_t_star read_assoc in
+           let prim_or_lookup = function
+             | p when p < 0 -> decode_primitive_type(* FIXME: decode_type? *) p
              | i -> force (lookup i) in
            lazy (let members = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
                  let consumers = Array.map (function (_, tynum) -> snd (prim_or_lookup tynum)) assocs in
@@ -188,10 +188,10 @@ let top_level () : unit =
   let rec tab' = lazy (read_type_table (function () -> read_type lookup))
       and lookup = function indx -> Array.get (force tab') indx in
   let tab = force tab' in
-  let tynums = read_t_star read_type_index in
-  Printf.printf "TYNUMS %d\n" (Array.length tynums);
-  let consumers = Array.map (function tynum -> let lazy (ty, m) = Array.get tab tynum in m) tynums in
-  Array.iter (function f -> Printf.printf "M...READING\n";f ()) consumers
+  let argtys = read_t_star read_type_index in
+  Printf.printf "ARGS: %d\n" (Array.length argtys);
+  let consumers = Array.map (function tynum -> let lazy (ty, m) = Array.get tab tynum in m) argtys in
+  Array.iter (function f -> f ()) consumers
 
 (* run it *)
 
