@@ -19,6 +19,9 @@ let relative_to_test_case root contained expected =
        (show actual);
      false)
 
+let%test "it removes leading current directory" =
+  normalise_test_case "./ListClient.as" "ListClient.as"
+
 let%test "it removes leading `./` for relative paths" =
   normalise_test_case "./lib/foo" "lib/foo"
 

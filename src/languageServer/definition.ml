@@ -13,12 +13,11 @@ let range_of_region (at : Source.region) : Lsp.range = Lsp.
   }
 
 let definition_handler
-      (* index *)
+      index
       position
       file_contents
       project_root
       file_path =
-  let index = Declaration_index.make_index () in
   let result =
     Lib.Option.bind
       (Source_file.identifier_at_pos

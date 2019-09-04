@@ -112,7 +112,11 @@ let start () =
   let project_root = Sys.getcwd () in
 
   let vfs = ref Vfs.empty in
-
+  let decl_index =
+    let ix = match Declaration_index.make_index () with
+      | Error(err) -> Declaration_index.Index.empty
+      | Ok((ix, _)) -> ix in
+    ref ix in
   let rec loop () =
     let clength = read_line () in
     log_to_file "content-length" clength;
@@ -180,6 +184,7 @@ let start () =
          | Some file_content ->
             let result =
               Hover.hover_handler
+                !decl_index
                 position
                 file_content
                 project_root
@@ -202,6 +207,7 @@ let start () =
          | Some file_content ->
             let result =
               Definition.definition_handler
+                !decl_index
                 position
                 file_content
                 project_root
@@ -222,6 +228,9 @@ let start () =
        let msgs = match result with
          | Error msgs' -> msgs'
          | Ok (_, msgs') -> msgs' in
+       (match Declaration_index.make_index () with
+        | Error(err) -> ()
+        | Ok((ix, _)) -> decl_index := ix);
        Lib.Fun.flip Lib.Option.iter !client_capabilities (fun _ ->
            (* TODO: determine if the client accepts diagnostics with related info *)
            (* let textDocument = capabilities.client_capabilities_textDocument in
@@ -250,6 +259,7 @@ let start () =
                     ; message = "Tried to find completions for a file that hadn't been opened yet"}
          | Some file_content ->
             Completion.completion_handler
+              !decl_index
               log_to_file
               project_root
               (abs_file_from_uri log_to_file uri)
