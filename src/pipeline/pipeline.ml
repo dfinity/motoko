@@ -345,7 +345,13 @@ let check_files files : check_result =
 let check_string s name : check_result =
   Diag.map ignore (load_decl (parse_string s name) initial_stat_env)
 
+(* Generate IDL *)
 
+let generate_idl files : Idllib.Syntax.prog Diag.result =
+  Diag.bind (load_progs (parse_files files) initial_stat_env)
+    (fun (libraries, progs, senv) ->
+      Diag.return (As_idl.As_to_idl.prog (progs, senv)))
+  
 (* Running *)
 
 let run_files files : unit option =

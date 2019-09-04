@@ -19,12 +19,13 @@ let string_of_prim p =
   | Bool -> "bool"
   | Text -> "text"
   | Null -> "null"
-  | Reserved -> "reserved"          
+  | Reserved -> "reserved"
+  | Empty -> "empty"
 
 let string_of_mode m =
   match m.it with
-  | Oneway -> "oneway"
-  | Pure -> "pure"
+  | Oneway -> " oneway"
+  | Pure -> " pure"
                  
 let ($$) head inner = Node (head, inner)
 
@@ -74,19 +75,43 @@ let string_of_list f sep list = String.concat sep (List.map f list)
          
 let rec string_of_typ t =
   match t.it with
-  | VarT id -> sprintf "var %s" id.it
+  | VarT id -> sprintf "%s" id.it
   | PrimT s -> string_of_prim s
   | FuncT (ms,s,t) ->
-     sprintf "(%s) -> (%s) %s" (string_of_list string_of_field ", " s) (string_of_list string_of_field ", " t) (string_of_list string_of_mode " " ms)
+     sprintf "func %s" (string_of_func (ms,s,t))
   | OptT t -> "opt " ^ string_of_typ t
   | VecT t -> "vec " ^ string_of_typ t
-  | RecordT fs -> sprintf "{%s}" (string_of_list string_of_field "; " fs)
+  | RecordT fs -> sprintf "record {%s}" (string_of_list string_of_field "; " fs)
   | VariantT fs -> sprintf "variant {%s}" (string_of_list string_of_field "; " fs)
-  | ServT ms -> sprintf "service {%s}" (string_of_list string_of_meth "; " ms)
+  | ServT ms -> sprintf "service {\n%s}" (string_of_list string_of_meth "" ms)
   | PreT -> "Pre"
-
+and string_of_func (ms,s,t) =
+  sprintf "(%s) -> (%s)%s"
+    (string_of_list string_of_field ", " s)
+    (string_of_list string_of_field ", " t)
+    (string_of_list string_of_mode " " ms)
 and string_of_field f =
-  sprintf "%s : %s" f.it.name.it (string_of_typ f.it.typ)
+  let unnamed = (f.it.name.it = Lib.Uint32.to_string f.it.id) in
+  if unnamed then string_of_typ f.it.typ
+  else sprintf "%s : %s" f.it.name.it (string_of_typ f.it.typ)
 and string_of_meth m =
-  sprintf "%s : %s" m.it.var.it (string_of_typ m.it.meth)
+  sprintf "%s : %s;\n"
+    m.it.var.it
+    (match m.it.meth.it with
+     | FuncT (ms,s,t) -> string_of_func (ms,s,t)
+     | _ -> string_of_typ m.it.meth)
 
+let string_of_dec d =
+  match d.it with
+  | TypD (id, typ) -> sprintf "type %s = %s;\n" id.it (string_of_typ typ)
+  | ImportD (f, fp) -> sprintf "import \"%s\";\n" f
+
+let string_of_actor a =
+  match a with
+  | None -> ""
+  | Some {it = ActorD (id, {it=ServT ms; _}); _} -> sprintf "service %s {\n%s}\n" id.it (string_of_list string_of_meth "" ms)
+  | Some {it = ActorD (id, {it=VarT x; _}); _} -> sprintf "service %s : %s\n" id.it x.it
+  | Some _ -> assert false
+
+let string_of_prog prog =
+  sprintf "%s%s" (string_of_list string_of_dec "" prog.it.decs) (string_of_actor prog.it.actor)

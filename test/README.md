@@ -38,3 +38,18 @@ Adding a new test
 1. Create `foo.as`
 2. Run `make accept` (or, more targeted, `../run.sh -a foo.as`)
 3. Add `foo.as` and `ok/foo.*.ok` to git.
+
+
+Running as a `nix` derivation
+-----------------------------
+
+You can run the test suite from the `actorscript` (top-level) directory as:
+
+``` shell
+$ nix-build -A tests
+```
+
+Randomised testing
+------------------
+
+See `README.md` in the `random/` subdirectory.

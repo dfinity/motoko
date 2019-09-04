@@ -1,10 +1,10 @@
-var cnt : Int = 0;
+var cnt : Nat = 0;
 
-func f(i:Int) : async Int {
+func f(i:Nat) : async Nat {
     print "cnt: ";
-    printInt cnt;
+    printNat cnt;
     print " i: ";
-    printInt i;
+    printNat i;
     print "\n";
     cnt += 1;
     cnt;

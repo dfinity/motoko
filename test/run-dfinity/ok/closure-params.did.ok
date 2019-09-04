@@ -1,0 +1,5 @@
+type Nat = nat;
+service a {
+incn : (Nat) -> () oneway;
+readCounter : (func (Nat) -> () oneway) -> () oneway;
+}

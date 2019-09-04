@@ -396,6 +396,9 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
         (T.Prim T.Text)
     ),
     List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
+  | T.Non ->
+    define_show t unreachableE,
+    []
   | _ -> assert false (* Should be prevented by can_show *)
 
 (* Synthesizing the types recursively. Hopefully well-founded. *)

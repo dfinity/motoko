@@ -147,8 +147,8 @@ let rec string_of_desc t = function
     "?(" ^ string_of_desc t' desc ^ ")"
   | Tag (desc, l) ->
     let t' = T.lookup_val_field l (T.as_variant_sub l t) in
-    if T.sub t' T.unit
-    then "#" ^ l
+    if T.sub t' T.unit then "#" ^ l
+    else if T.is_tup t' then "#" ^ l ^ string_of_desc t' desc
     else "#" ^ l ^ "(" ^ string_of_desc t' desc ^ ")"
   | NotTag ls ->
     let tfs = T.as_variant (T.promote t) in

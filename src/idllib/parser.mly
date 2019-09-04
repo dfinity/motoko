@@ -27,7 +27,7 @@ let _anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
 let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat64", Nat64;
                  "int", Int; "int8", Int8; "int16", Int16; "int32", Int32; "int64", Int64;
                  "float32", Float32; "float64", Float64; "bool", Bool; "text", Text;
-                 "null", Null; "reserved", Reserved]
+                 "null", Null; "reserved", Reserved; "empty", Empty]
 let is_prim_typs t = List.assoc_opt t prim_typs
 
 let func_modes = ["oneway", Oneway; "pure", Pure]

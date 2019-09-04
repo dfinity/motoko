@@ -2,6 +2,7 @@
   test-dvm ? true,
   dvm ? null,
   export-shell ? false,
+  replay ? 0
 }:
 
 let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
@@ -148,6 +149,10 @@ rec {
     '';
   };
 
+  qc-actorscript = nixpkgs.haskellPackages.callCabal2nix "qc-actorscript" test/random { };
+
+  replay-option = if replay != 0 then " --quickcheck-replay=${toString replay}" else "";
+
   tests = stdenv.mkDerivation {
     name = "tests";
     src = subpath ./test;
@@ -163,7 +168,7 @@ rec {
         filecheck
         js-client
       ] ++
-      (if test-dvm then [ real-dvm ] else []) ++
+      (if test-dvm then [ real-dvm qc-actorscript ] else []) ++
       llvmBuildInputs;
 
     buildPhase = ''
@@ -177,6 +182,7 @@ rec {
       '' +
       (if test-dvm then ''
         make parallel
+        qc-actorscript${replay-option}
       '' else ''
         make quick
       '');

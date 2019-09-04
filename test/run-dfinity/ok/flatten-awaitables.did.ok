@@ -1,0 +1,21 @@
+type Text = text;
+type Int = int;
+type Bool = bool;
+service a {
+g0 : (func (record {}) -> (record {}), record {}) -> (record {});
+g1 : (func (Int) -> (Int), Int) -> (Int);
+g2 : (func (record {Int; Bool}) -> (record {Int; Bool}), record {Int; Bool}) -> (record {Int; Bool});
+g3 : (func (record {Int; Bool; Text}) -> (record {Int; Bool; Text}), record {Int; Bool; Text}) -> (record {Int; Bool; Text});
+h0 : (func () -> (record {}), record {}) -> (record {});
+h1 : (func (Int) -> (Int), Int) -> (Int);
+h2 : (func (Int, Bool) -> (record {Int; Bool}), record {Int; Bool}) -> (record {Int; Bool});
+h3 : (func (Int, Bool, Text) -> (record {Int; Bool; Text}), record {Int; Bool; Text}) -> (record {Int; Bool; Text});
+m0 : () -> (record {});
+m1 : (Int) -> (Int);
+m2 : (Int, Bool) -> (record {Int; Bool});
+m3 : (Int, Bool, Text) -> (record {Int; Bool; Text});
+n0 : (record {}) -> (record {});
+n1 : (Int) -> (Int);
+n2 : (record {Int; Bool}) -> (record {Int; Bool});
+n3 : (record {Int; Bool; Text}) -> (record {Int; Bool; Text});
+}

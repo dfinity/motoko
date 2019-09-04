@@ -34,7 +34,7 @@ let group_num s =
   Buffer.contents buf
 
 (* Represent n-bit integers using k-bit (n<=k) integers by shifting left/right by k-n bits *)
-module SubRep(Rep : Wasm.Int.RepType)(Width : sig val bitwidth : int end) :
+module SubRep (Rep : Wasm.Int.RepType) (Width : sig val bitwidth : int end) :
   Wasm.Int.RepType with type t = Rep.t =
 struct
   let _ = assert (Width.bitwidth < Rep.bitwidth)
@@ -79,7 +79,8 @@ sig
   val to_pretty_string : t -> string
 end
 
-module MakeWord(WasmInt : Wasm.Int.S) =
+module MakeWord
+  (WasmInt : Wasm.Int.S) (ToInt : sig val to_int : WasmInt.t -> int end) =
 struct
   include WasmInt
   let neg w = sub zero w
@@ -92,18 +93,28 @@ struct
       pow (mul x x) (shr_u y one)
     else
       mul x (pow x (sub y one))
-  let to_string w = WasmInt.to_string_u w
-  let to_pretty_string w = group_num (WasmInt.to_string_u w)
+
+  let base = of_int_u 16
+  let digs =
+    [|"0"; "1"; "2"; "3"; "4"; "5"; "6"; "7";
+      "8"; "9"; "A"; "B"; "C"; "D"; "E"; "F"|]
+  let rec to_pretty_string w = if w = zero then "0" else to_pretty_string' w 0 ""
+  and to_pretty_string' w i s =
+    if w = zero then s else
+    let dig = digs.(ToInt.to_int (WasmInt.rem_u w base)) in
+    let s' = dig ^ (if i = 4 then "_" else "") ^ s in
+    to_pretty_string' (WasmInt.div_u w base) (i mod 4 + 1) s'
+  let to_string = to_pretty_string
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
-module Int16Rep = SubRep(Int32Rep)(struct let bitwidth = 16 end)
-module Int8Rep = SubRep(Int32Rep)(struct let bitwidth = 8 end)
+module Int16Rep = SubRep (Int32Rep) (struct let bitwidth = 16 end)
+module Int8Rep = SubRep (Int32Rep) (struct let bitwidth = 8 end)
 
-module Word8 = MakeWord(Wasm.Int.Make(Int8Rep))
-module Word16 = MakeWord(Wasm.Int.Make(Int16Rep))
-module Word32 = MakeWord(Wasm.I32)
-module Word64 = MakeWord(Wasm.I64)
+module Word8 = MakeWord (Wasm.Int.Make (Int8Rep)) (Int8Rep)
+module Word16 = MakeWord (Wasm.Int.Make (Int16Rep)) (Int16Rep)
+module Word32 = MakeWord (Wasm.I32) (Int32)
+module Word64 = MakeWord (Wasm.I64) (Int64)
 
 module type FloatType =
 sig
@@ -117,6 +128,7 @@ struct
   include WasmFloat
   let pow x y = of_float (to_float x ** to_float y)
   let to_pretty_string w = group_num (WasmFloat.to_string w)
+  let to_string = to_pretty_string
 end
 
 module Float = MakeFloat(Wasm.F64)
@@ -182,8 +194,8 @@ struct
   let of_int = big_int_of_int
   let of_big_int i = i
   let to_big_int i = i
-  let to_string i = string_of_big_int i
   let to_pretty_string i = group_num (string_of_big_int i)
+  let to_string = to_pretty_string
   let of_string s =
     big_int_of_string (String.concat "" (String.split_on_char '_' s))
 
@@ -203,7 +215,7 @@ struct
     if ge z zero then z else raise (Invalid_argument "Nat.sub")
 end
 
-module RangeLimited(Rep : NumType)(Range : sig val is_range : Rep.t -> bool end) : NumType =
+module Ranged (Rep : NumType) (Range : sig val is_range : Rep.t -> bool end) : NumType =
 struct
   let check i =
     if Range.is_range i then i
@@ -222,27 +234,27 @@ struct
   let of_string s = let res = Rep.of_string s in check res
 end
 
-module NatRange(Limit : sig val upper : Big_int.big_int end) =
+module NatRange (Limit : sig val upper : Big_int.big_int end) =
 struct
   open Big_int
   let is_range n = ge_big_int n zero_big_int && lt_big_int n Limit.upper
 end
 
-module Nat8 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x100 end))
-module Nat16 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x10000 end))
-module Nat32 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.big_int_of_int 0x100000000 end))
-module Nat64 = RangeLimited(Nat)(NatRange(struct let upper = Big_int.power_int_positive_int 2 64 end))
+module Nat8 = Ranged (Nat) (NatRange (struct let upper = Big_int.big_int_of_int 0x100 end))
+module Nat16 = Ranged (Nat) (NatRange (struct let upper = Big_int.big_int_of_int 0x1_0000 end))
+module Nat32 = Ranged (Nat) (NatRange (struct let upper = Big_int.big_int_of_int 0x1_0000_0000 end))
+module Nat64 = Ranged (Nat) (NatRange (struct let upper = Big_int.power_int_positive_int 2 64 end))
 
-module IntRange(Limit : sig val upper : Big_int.big_int end) =
+module IntRange (Limit : sig val upper : Big_int.big_int end) =
 struct
   open Big_int
   let is_range n = ge_big_int n (minus_big_int Limit.upper) && lt_big_int n Limit.upper
 end
 
-module Int_8 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x80 end))
-module Int_16 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x8000 end))
-module Int_32 = RangeLimited(Int)(IntRange(struct let upper = Big_int.big_int_of_int 0x80000000 end))
-module Int_64 = RangeLimited(Int)(IntRange(struct let upper = Big_int.power_int_positive_int 2 63 end))
+module Int_8 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_int 0x80 end))
+module Int_16 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_int 0x8000 end))
+module Int_32 = Ranged (Int) (IntRange (struct let upper = Big_int.big_int_of_int 0x8000_0000 end))
+module Int_64 = Ranged (Int) (IntRange (struct let upper = Big_int.power_int_positive_int 2 63 end))
 
 (* Types *)
 
@@ -380,22 +392,24 @@ let string_of_string lsep s rsep =
   Buffer.add_char buf rsep;
   Buffer.contents buf
 
+let pos_sign b = if b then "+" else ""
+
 let rec string_of_val_nullary d = function
   | Null -> "null"
   | Bool b -> if b then "true" else "false"
-  | Int i -> Int.to_pretty_string i
-  | Int8 w -> Int_8.to_pretty_string w
-  | Int16 w -> Int_16.to_pretty_string w
-  | Int32 w -> Int_32.to_pretty_string w
-  | Int64 w -> Int_64.to_pretty_string w
-  | Nat8 w -> Nat8.to_pretty_string w
-  | Nat16 w -> Nat16.to_pretty_string w
-  | Nat32 w -> Nat32.to_pretty_string w
-  | Nat64 w -> Nat64.to_pretty_string w
-  | Word8 w -> Word8.to_pretty_string w
-  | Word16 w -> Word16.to_pretty_string w
-  | Word32 w -> Word32.to_pretty_string w
-  | Word64 w -> Word64.to_pretty_string w
+  | Int n when Int.(ge n zero) -> Int.to_pretty_string n
+  | Int8 n when Int_8.(n = zero) -> Int_8.to_pretty_string n
+  | Int16 n when Int_16.(n = zero) -> Int_16.to_pretty_string n
+  | Int32 n when Int_32.(n = zero) -> Int_32.to_pretty_string n
+  | Int64 n when Int_64.(n = zero) -> Int_64.to_pretty_string n
+  | Nat8 n -> Nat8.to_pretty_string n
+  | Nat16 n -> Nat16.to_pretty_string n
+  | Nat32 n -> Nat32.to_pretty_string n
+  | Nat64 n -> Nat64.to_pretty_string n
+  | Word8 w -> "0x" ^ Word8.to_pretty_string w
+  | Word16 w -> "0x" ^ Word16.to_pretty_string w
+  | Word32 w -> "0x" ^ Word32.to_pretty_string w
+  | Word64 w -> "0x" ^ Word64.to_pretty_string w
   | Float f -> Float.to_pretty_string f
   | Char c -> string_of_string '\'' [c] '\''
   | Text t -> string_of_string '\"' (Wasm.Utf8.decode t) '\"'
@@ -403,8 +417,6 @@ let rec string_of_val_nullary d = function
     sprintf "(%s%s)"
       (String.concat ", " (List.map (string_of_val d) vs))
       (if List.length vs = 1 then "," else "")
-  | Opt v ->
-    sprintf "?%s" (string_of_val_nullary d v)
   | Obj ve ->
     if d = 0 then "{...}" else
     sprintf "{%s}" (String.concat "; " (List.map (fun (x, v) ->
@@ -416,14 +428,20 @@ let rec string_of_val_nullary d = function
   | v -> "(" ^ string_of_val d v ^ ")"
 
 and string_of_val d = function
+  | Int i -> Int.to_pretty_string i
+  | Int8 i -> Int_8.(pos_sign (gt i zero) ^ to_pretty_string i)
+  | Int16 i -> Int_16.(pos_sign (gt i zero) ^ to_pretty_string i)
+  | Int32 i -> Int_32.(pos_sign (gt i zero) ^ to_pretty_string i)
+  | Int64 i -> Int_64.(pos_sign (gt i zero) ^ to_pretty_string i)
+  | Opt v -> sprintf "?%s" (string_of_val_nullary d v)
+  | Variant (l, Tup []) -> sprintf "#%s" l
+  | Variant (l, Tup vs) -> sprintf "#%s%s" l (string_of_val d (Tup vs))
+  | Variant (l, v) -> sprintf "#%s(%s)" l (string_of_val d v)
   | Async {result; waiters = []} ->
     sprintf "async %s" (string_of_res d result)
   | Async {result; waiters} ->
     sprintf "async[%d] %s"
       (List.length waiters) (string_of_res d result)
-  | Variant (l, Tup []) -> sprintf "#%s" l
-  | Variant (l, v) when v <> unit ->
-    sprintf "#%s %s" l (string_of_val_nullary d v)
   | Mut r -> sprintf "%s" (string_of_val d !r)
   | v -> string_of_val_nullary d v
 

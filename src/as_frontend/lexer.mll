@@ -44,7 +44,7 @@ let codepoint lexbuf s i =
       i := String.index_from s j '}';
       (try
         let n = int_of_string ("0x" ^ String.sub s j (!i - j)) in
-        if 0 <= n && n < 0x110000 then n else raise (Failure "")
+        if 0 <= n && n < 0xD800 || 0xE000 <= n && n < 0x110000 then n else raise (Failure "")
       with Failure _ -> error lexbuf "unicode escape out of range")
     | h ->
       incr i;
