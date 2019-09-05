@@ -12,6 +12,21 @@ let read_byte () : int =
   | Some b -> b
   | None -> failwith "EOF"
 
+let read_2byte () : int =
+  let lsb = read_byte () in
+  let msb = read_byte () in
+  msb * 256 + lsb
+
+let read_4byte () : int =
+  let lsb = read_2byte () in
+  let msb = read_2byte () in
+  msb * 65536 + lsb
+
+let read_8byte () : int = (* TODO: should be bigint *)
+  let lsb = read_4byte () in
+  let msb = read_4byte () in
+  msb * 4294967296 + lsb
+
 let read_signed_byte () : bool * int =
   let b = read_byte () in
   Printf.printf "read_signed_byte: %d\n" b; if b > 127 then true, b - 128 else false, b
@@ -137,9 +152,9 @@ T(empty)    = sleb128(-17)
     | -3 -> Nat, (function () -> output_nat (read_leb128 ()))
     | -4 -> Int, (function () -> output_int (read_sleb128 ()))
     | -5 -> NatN 8, (function () -> output_byte (read_byte ()))
-    | -6 -> NatN 16, (function () -> output_2byte (read_byte ())) (* FIXME *)
-    | -7 -> NatN 32, (function () -> output_4byte (read_byte ())) (* FIXME *)
-    | -8 -> NatN 64, (function () -> output_8byte (read_byte ())) (* FIXME *)
+    | -6 -> NatN 16, (function () -> output_2byte (read_2byte ()))
+    | -7 -> NatN 32, (function () -> output_4byte (read_4byte ()))
+    | -8 -> NatN 64, (function () -> output_8byte (read_8byte ()))
     | -9 -> IntN 8, (function () -> output_int8 (read_int8 ()))
     | -10 -> IntN 16, (function () -> output_int16 (read_int16 ()))
     | -11 -> IntN 32, (function () -> output_int32 (read_int32 ()))
