@@ -66,6 +66,10 @@ function normalize () {
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
     sed 's/prelude:[^:]*:/prelude:___:/g' |
     sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
+    sed 's/rip_addr: [0-9]*/rip_addr: XXX/g' |
+    sed 's,/tmp/.*dfinity.[^/]*,/tmp/dfinity.XXX,g' |
+    sed 's,/build/.*dfinity.[^/]*,/tmp/dfinity.XXX,g' |
+    sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
