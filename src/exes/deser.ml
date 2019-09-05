@@ -35,7 +35,7 @@ let read_sleb128 () : int = (* TODO: should be bigint *)
   let rec sleb128 w a : int =
     match read_signed_byte () with
     | (true, n) -> Printf.printf "LSB SLEB128: w: %d, a: %d, n: %d\n" w a n; sleb128 (w * 128) (n * w + a)
-    | (_, n) -> Printf.printf "Multi SLEB128: w: %d, a: %d, n: %d\n" w a n; if n > 63 then - (64 - (n - 64)) * w - a else n * w + a in
+    | (_, n) -> Printf.printf "Multi SLEB128: w: %d, a: %d, n: %d\n" w a n; if n > 63 then - (64 - (n - 64)) * w + a else n * w + a in
   let res = sleb128 1 0 in Printf.printf "SLEB128: %d\n" res; res
 
 (* bool: M(b : bool)     = i8(if b then 1 else 0) *)
