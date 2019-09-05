@@ -110,7 +110,7 @@ let read_annotation () : ann =
   | _ -> failwith "invalid annotation"
 
 type typ = Null | Bool | Nat | NatN of int
-         | Int | IntN of int | Reserved | Empty
+         | Int | IntN of int | Text | Reserved | Empty
          | Opt of typ | Vec of typ
          | Record of (int * typ) array
          | Variant of (int * typ) array
@@ -138,7 +138,12 @@ let output_int8 i = ()
 let output_int16 i = ()
 let output_int32 i = ()
 let output_int64 i = ()
-
+let output_text bytes from tostream = (* for _ = 1 to bytes do  done *)
+      let buf = Buffer.create 0 in
+      let text = input_buffer from buf ~len:bytes in
+      Printf.printf "output_text: %d bytes follow on next line\n" bytes;
+      Stdio.Out_channel.output_buffer tostream buf;
+      Printf.printf "\n"
 
 let read_type lookup : (typ * (unit -> unit)) Lazy.t =
   (* primitive type
@@ -169,6 +174,7 @@ T(empty)    = sleb128(-17)
     | -10 -> IntN 16, (function () -> output_int16 (read_int16 ()))
     | -11 -> IntN 32, (function () -> output_int32 (read_int32 ()))
     | -12 -> IntN 64, (function () -> output_int64 (read_int64 ()))
+    | -15 -> Text, (function () -> let len = read_leb128 () in output_text len stdin stdout)
     | -16 -> Reserved, ignore
     | -17 -> Empty, ignore
     | _ -> failwith "unrecognised primitive type" in

@@ -1,7 +1,7 @@
 var x = require("./test-did.js")
 var fs = require("fs")
 
-var gInstance = {"0": true, "1": 422, "2": -422, "3": {"0": true, "1": 12345}}
+var gInstance = {"0": true, "1": 422, "2": -422, "3": {"0": "Hello Wörld!", "1": 12345}}
 console.log(x.g)
 var resultBuffer = x.g.encode(gInstance)
 
