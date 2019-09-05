@@ -31,13 +31,12 @@ let read_signed_byte () : bool * int =
   let b = read_byte () in
   Printf.printf "read_signed_byte: %d\n" b; if b > 127 then true, b - 128 else false, b
 
-let read_known char : unit = (* TODO: use read_byte *)
-  let b = input_byte stdin in
-  match b with
-  | Some b when b = Char.code char -> ()
-  | None -> failwith "EOF"
+let read_known char : unit =
+  match read_byte () with
+  | b when b = Char.code char -> ()
   | _ -> failwith "unexpected"
 
+(* reading numbers *)
 
 let read_leb128 () : int = (* TODO: should be bigint *)
   let rec leb128 w : int =
