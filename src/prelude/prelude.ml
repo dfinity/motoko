@@ -334,13 +334,13 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
 // these will change
 type ErrorCode = {#error; #system};
 
-func error (message : Text) : Error =
+func error(message : Text) : Error =
   (prim "error" : Text -> Error)(message);
 
-func errorCode (e : Error) : ErrorCode =
+func errorCode(e : Error) : ErrorCode =
   (prim "errorCode" : Error -> ErrorCode)(e);
 
-func errorMessage (e : Error) : Text =
+func errorMessage(e : Error) : Text =
   (prim "errorMessage" : Error -> Text)(e);
 
 type Cont<T> = T -> () ;

@@ -6045,6 +6045,23 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e ^^
       Text.prim_decodeUTF8 env
 
+    | OtherPrim "error", [e] ->
+      SR.UnboxedTuple 2,
+      compile_exp_vanilla env ae
+        ({ it = TagE ("error", Construct.tupE []);
+           at = no_region;
+           note = {note_typ = Type.Variant (Type.throwErrorCodes);
+                   note_eff = Type.Triv }}) ^^
+      compile_exp_vanilla env ae e
+    | OtherPrim "errorCode", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Tuple.load_n (Int32.of_int 0)
+    | OtherPrim "errorMessage", [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Tuple.load_n (Int32.of_int 1)
+
     (* Other prims, binary*)
     | OtherPrim "Array.init", [_;_] ->
       const_sr SR.Vanilla (Arr.init env)
