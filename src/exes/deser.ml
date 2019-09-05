@@ -43,14 +43,14 @@ let read_leb128 () : int = (* TODO: should be bigint *)
   match read_signed_byte () with
   | (true, n) -> w * n + leb128 (w * 128)
   | (_, n) -> w * n in
-  let res = leb128 1 in Printf.printf "LEB128: %d\n" res; res
+  leb128 1
 
 let read_sleb128 () : int = (* TODO: should be bigint *)
   let rec sleb128 w : int =
     match read_signed_byte () with
     | (true, n) -> w * n + sleb128 (w * 128)
     | (_, n) -> w * if n > 63 then n - 128 else n in
-  let res = sleb128 1 in Printf.printf "SLEB128: %d\n" res; res
+  sleb128 1
 
 let read_int8 () : int =
   match read_signed_byte () with
@@ -174,6 +174,7 @@ T(empty)    = sleb128(-17)
     | -10 -> IntN 16, (function () -> output_int16 (read_int16 ()))
     | -11 -> IntN 32, (function () -> output_int32 (read_int32 ()))
     | -12 -> IntN 64, (function () -> output_int64 (read_int64 ()))
+    | -13 | -14 -> failwith "no floats yet" (* TODO *)
     | -15 -> Text, (function () -> let len = read_leb128 () in output_text len stdin stdout)
     | -16 -> Reserved, ignore
     | -17 -> Empty, ignore
