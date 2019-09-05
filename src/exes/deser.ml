@@ -52,21 +52,32 @@ let read_sleb128 () : int = (* TODO: should be bigint *)
     | (_, n) -> w * if n > 63 then n - 128 else n in
   let res = sleb128 1 in Printf.printf "SLEB128: %d\n" res; res
 
+let read_int8 () : int =
+  match read_signed_byte () with
+  | (true, n) -> n - 128
+  | (_, n) -> n
+
+let read_int16 () : int =
+  let lsb = read_byte () in
+  let msb = read_int8 () in
+  msb * 256 + lsb
+
+let read_int32 () : int =
+  let lsb = read_2byte () in
+  let msb = read_int16 () in
+  msb * 65536 + lsb
+
+let read_int64 () : int = (* TODO: should be bigint *)
+  let lsb = read_4byte () in
+  let msb = read_int32 () in
+  msb * 4294967296 + lsb
+
 (* bool: M(b : bool)     = i8(if b then 1 else 0) *)
 let read_bool () : bool =
   match read_byte () with
   | 0 -> false
   | 1 -> true
   | _ -> failwith "invalid boolean"
-
-let read_int8 () : int =
-  match read_signed_byte () with
-  | (true, n) -> n - 128
-  | (_, n) -> n
-
-let read_int16 () : int = assert false (* TODO *)
-let read_int32 () : int = assert false (* TODO *)
-let read_int64 () : int = assert false (* TODO *)
 
 (* Magic *)
 
