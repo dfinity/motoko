@@ -129,8 +129,8 @@ let read_assoc () = let hash = read_leb128 () in
 let output_nat nat = Printf.printf "output_nat: %d\n" nat
 let output_int int = Printf.printf "output_int: %d\n" int
 let output_bool b = Printf.printf "output_bool: %s\n" (if b then "true" else "false")
-let output_nil () = ()
-let output_some d = ()
+let output_nil () = Printf.printf "null (0 bytes)"
+let output_some consumer = Printf.printf "Some: value follows on the next line\n"; consumer ()
 let output_byte b = ()
 let output_2byte b = ()
 let output_4byte b = ()
@@ -139,10 +139,10 @@ let output_int8 i = ()
 let output_int16 i = ()
 let output_int32 i = ()
 let output_int64 i = ()
-let output_text bytes from tostream = (* for _ = 1 to bytes do  done *)
+let output_text bytes from tostream =
       let buf = Buffer.create 0 in
       let text = input_buffer from buf ~len:bytes in
-      Printf.printf "output_text: %d bytes follow on next line\n" bytes;
+      Printf.printf "Text: %d bytes follow on next line\n" bytes;
       Stdio.Out_channel.output_buffer tostream buf;
       Printf.printf "\n"
 
@@ -201,7 +201,7 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
       let reader consumer () =
         match read_byte () with
         | 0 -> output_nil ()
-        | 1 -> output_some (consumer ())
+        | 1 -> output_some consumer
         | _ -> failwith "invalid optional" in
       match read_type_index () with
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
