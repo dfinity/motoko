@@ -27,14 +27,14 @@ let read_known char : unit = (* TODO: use read_byte *)
 let read_leb128 () : int = (* TODO: should be bigint *)
   let rec leb128 w : int =
   match read_signed_byte () with
-  | (true, n) -> n * w + leb128 (w * 128)
-  | (_, n) -> n * w in
+  | (true, n) -> w * n + leb128 (w * 128)
+  | (_, n) -> w * n in
   let res = leb128 1 in Printf.printf "LEB128: %d\n" res; res
 
 let read_sleb128 () : int = (* TODO: should be bigint *)
   let rec sleb128 w : int =
     match read_signed_byte () with
-    | (true, n) -> sleb128 (w * 128) + n * w
+    | (true, n) -> w * n + sleb128 (w * 128)
     | (_, n) -> w * if n > 63 then n - 128 else n in
   let res = sleb128 1 in Printf.printf "SLEB128: %d\n" res; res
 
