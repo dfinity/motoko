@@ -29,7 +29,7 @@ let read_8byte () : int = (* TODO: should be bigint *)
 
 let read_signed_byte () : bool * int =
   let b = read_byte () in
-  Printf.printf "read_signed_byte: %d\n" b; if b > 127 then true, b - 128 else false, b
+  if b > 127 then true, b - 128 else false, b
 
 let read_known char : unit =
   match read_byte () with
@@ -284,4 +284,7 @@ let argspec = Arg.align
 
 let () =
   Arg.parse argspec add_arg usage;
-  top_level !mode
+  top_level !mode;
+  match input_byte stdin with
+  | Some _ -> failwith "surplus bytes in input"
+  | None -> ()
