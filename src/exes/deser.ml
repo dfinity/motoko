@@ -32,11 +32,11 @@ let read_leb128 () : int = (* TODO: should be bigint *)
   let res = leb128 1 in Printf.printf "LEB128: %d\n" res; res
 
 let read_sleb128 () : int = (* TODO: should be bigint *)
-  let rec sleb128 w a : int =
+  let rec sleb128 w : int =
     match read_signed_byte () with
-    | (true, n) -> sleb128 (w * 128) (n * w + a)
-    | (_, n) -> a + w * if n > 63 then n - 128 else n in
-  let res = sleb128 1 0 in Printf.printf "SLEB128: %d\n" res; res
+    | (true, n) -> sleb128 (w * 128) + n * w
+    | (_, n) -> w * if n > 63 then n - 128 else n in
+  let res = sleb128 1 in Printf.printf "SLEB128: %d\n" res; res
 
 (* bool: M(b : bool)     = i8(if b then 1 else 0) *)
 let read_bool () : bool =
