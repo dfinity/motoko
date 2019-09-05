@@ -1,7 +1,8 @@
 open Stdio.In_channel
 open Lazy
 
-(* reading at byte-level *)
+(* read nothing *)
+
 let epsilon : unit -> unit = ignore
 
 (* reading at byte-level *)
