@@ -87,6 +87,28 @@ module Transform() = struct
                                      add_reject_argument, lazy reject])))
     | V2 -> failwith "NYI" (* TODO: call dedicated prim, separating args vs from reply & reject *)
 
+  let sys_error_codeE () =
+    match platform with
+    | V1 -> { it = TagE("error",tupE[]);
+              at = no_region;
+              note = {
+                note_typ = T.Variant (T.catchErrorCodes);
+                note_eff = T.Triv }
+            };
+    | V2 -> failwith "NYI" (* TODO: call dedicated prim *)
+
+  let errorMessageE e =
+  { it = PrimE (OtherPrim "errorMessage", [e]);
+    at = no_region;
+    note = { note_typ = T.text; note_eff = eff e }
+  }
+
+  let make_errorE e_code e_msg =
+  { it = PrimE (OtherPrim "make_error", [e_code; e_msg]);
+    at = no_region;
+    note = { note_typ = T.Prim T.Error; note_eff = max (eff e_code) (eff e_msg) }
+  }
+
   (* End of configuration *)
 
   let unary typ = [typ]
@@ -95,7 +117,7 @@ module Transform() = struct
 
   let replyT as_seq typ = T.Func(T.Shared, T.Returns, [], as_seq typ, [])
 
-  let rejectT = T.Func(T.Shared, T.Returns, [], [T.catch], [])
+  let rejectT = T.Func(T.Shared, T.Returns, [], [T.text], [])
 
   let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
@@ -154,8 +176,8 @@ module Transform() = struct
       vs -@>* (unary_fulfill -*- seq_of_vs)
     in
     let nary_reject =
-      let v = fresh_var "err" T.catch in
-      [v] -@>* (fail -*- v)
+      let v = fresh_var "msg" T.text in
+      [v] -@>* (fail -*- (make_errorE (sys_error_codeE()) v))
     in
     let async,reply,reject =
       fresh_var "async" (typ nary_async),
@@ -322,7 +344,7 @@ module Transform() = struct
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply t1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
                funcD k v1 (nary_reply -*- v1);
-               nary_funcD r [e] (reject -*- e);
+               nary_funcD r [e] (reject -*- (errorMessageE e));
                funcD post u ((t_exp exp2) -*- (tupE [k;r]));
                expD (post -*- tupE[])]
                nary_async
@@ -409,18 +431,21 @@ module Transform() = struct
               let exp' =
                 match exp.it with
                 | PrimE (OtherPrim "@async", [cps]) ->
-                  (blockE
-                     (select
-                        [ (not add_reply_parameter,
-                           lazy (
-                             let vs = List.map (fresh_var "v") (nary res_typ) in
-                             nary_funcD k vs (sys_replyE vs)))
-                          ;
-                          (not add_reject_parameter,
-                           lazy (
-                             let e1 = fresh_var "e1" T.catch in
-                             funcD r e1 (sys_rejectE e1)))])
-                     ((t_exp cps) -*- tupE [(y --> (k -*- y)); ([e] -->* (r -*- e)) ]))
+                  blockE
+                    (select
+                       [ (not add_reply_parameter,
+                          lazy (
+                              let vs = List.map (fresh_var "v") (nary res_typ) in
+                              nary_funcD k vs (sys_replyE vs)))
+                       ;
+                         (not add_reject_parameter,
+                          lazy (
+                              let msg = fresh_var "msg" T.text in
+                              funcD r msg (sys_rejectE msg)))])
+                    ((t_exp cps) -*-
+                       tupE [(y --> (k -*- y));
+                             ([e] -->* (r -*- (errorMessageE e)))]
+                    )
                 | _ -> assert false
               in
               FuncE (x, cc', typbinds', args', [], exp')

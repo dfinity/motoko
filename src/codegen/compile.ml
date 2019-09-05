@@ -6063,6 +6063,11 @@ and compile_exp (env : E.t) ae exp =
       Tuple.load_n (Int32.of_int 1)
 
     (* Other prims, binary*)
+    | OtherPrim "make_error", [e1; e2] ->
+      SR.UnboxedTuple 2,
+      compile_exp_vanilla env ae e1 ^^
+      compile_exp_vanilla env ae e2
+
     | OtherPrim "Array.init", [_;_] ->
       const_sr SR.Vanilla (Arr.init env)
     | OtherPrim "Array.tabulate", [_;_] ->
