@@ -3541,6 +3541,7 @@ module Serialization = struct
         size_word env (get_x ^^ Heap.load_field Text.len_field) ^^
         inc_data_size (get_x ^^ Heap.load_field Text.len_field)
       | Prim Null -> G.nop
+      | Any -> G.nop
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
@@ -3661,6 +3662,7 @@ module Serialization = struct
           write env t
         )
       | Prim Null -> G.nop
+      | Any -> G.nop
       | Opt t ->
         get_x ^^
         Opt.is_some env ^^
@@ -3801,6 +3803,11 @@ module Serialization = struct
         ReadBuf.read_byte env get_data_buf
       | Prim Null ->
         assert_prim_typ () ^^
+        Opt.null
+      | Any ->
+        (* TODO: Accept actually any type, and skip its values *)
+        assert_prim_typ () ^^
+        (* We can return essentially any value here *)
         Opt.null
       | Prim Text ->
         assert_prim_typ () ^^
