@@ -452,8 +452,8 @@ type ErrorCode = {#error; #system ; /*...*/ };
 A constructed error `e = error(m)` has `errorCode(e) = #error` and `errorMessage(e)=m`.
 Errors with non-`#error` (system) error codes may be caught and thrown, but not constructed.
 
-Note: Exiting an async block or shared function via an explicit throw of a system error
-replaces its code with `#error` and preserves the error message.
+Note: Exiting an async block or shared function with a system error
+exits with a copy of the error with revised code `#error` and the original error message.
 This prevents programmatic forgery of system errors. (TBR)
 
 ## Constructed types
