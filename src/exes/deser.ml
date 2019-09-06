@@ -131,17 +131,17 @@ let output_int int = Printf.printf "output_int: %d\n" int
 let output_bool b = Printf.printf "output_bool: %s\n" (if b then "true" else "false")
 let output_nil () = Printf.printf "null (0 bytes)"
 let output_some consumer = Printf.printf "Some: value follows on the next line\n"; consumer ()
-let output_byte b = ()
-let output_2byte b = ()
-let output_4byte b = ()
-let output_8byte b = ()
-let output_int8 i = ()
-let output_int16 i = ()
-let output_int32 i = ()
-let output_int64 i = ()
+let output_byte b = Printf.printf "output_byte: %d\n" b
+let output_2byte b = Printf.printf "output_2byte: %d\n" b
+let output_4byte b = Printf.printf "output_4byte: %d\n" b
+let output_8byte b = Printf.printf "output_8byte: %d\n" b
+let output_int8 i = Printf.printf "output_int8: %d\n" i
+let output_int16 i = Printf.printf "output_int16: %d\n" i
+let output_int32 i = Printf.printf "output_int32: %d\n" i
+let output_int64 i = Printf.printf "output_int64: %d\n" i
 let output_text bytes from tostream =
       let buf = Buffer.create 0 in
-      let text = input_buffer from buf ~len:bytes in
+      ignore (input_buffer from buf ~len:bytes);
       Printf.printf "Text: %d bytes follow on next line\n" bytes;
       Stdio.Out_channel.output_buffer tostream buf;
       Printf.printf "\n"
