@@ -39,17 +39,12 @@ non-closed actor: (ActorE
             (FuncE
               $r/1
               (shared 1 -> 0)
-              (params $e1/0/raw)
+              (params $msg/0/raw)
               ()
               (BlockE
                 (LetD
-                  (TupP (VarP $e1/0))
-                  (TupE
-                    (PrimE
-                      (DeserializePrim ({#error; #system}, Text))
-                      (VarE $e1/0/raw)
-                    )
-                  )
+                  (TupP (VarP $msg/0))
+                  (TupE (PrimE (DeserializePrim Text) (VarE $msg/0/raw)))
                 )
                 (AssertE (LitE (BoolLit false)))
               )
@@ -84,7 +79,7 @@ non-closed actor: (ActorE
                 (CallE
                   (shared 1 -> 0)
                   (VarE $r/1)
-                  (PrimE (SerializePrim ({#error; #system}, Text)) (VarE $e/0))
+                  (PrimE (SerializePrim Text) (PrimE errorMessage (VarE $e/0)))
                 )
               )
             )

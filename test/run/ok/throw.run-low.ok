@@ -1,3 +1,1 @@
-throw.as:55.5-60.6: warning, the catches in this try do not cover value
-  (#error, _)
 (unknown location): execution error, assertion failure
