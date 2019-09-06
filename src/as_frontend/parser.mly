@@ -398,12 +398,11 @@ exp_un(B) :
   | QUEST e=exp_un(ob)
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un(ob)
-    { let e' = e in
-      let vanilla = UnE(ref Type.Pre, op, e') @? at $sloc in
-      match op, e'.it with
+    { let vanilla = UnE(ref Type.Pre, op, e) @? at $sloc in
+      match op, e.it with
       | NegOp, LitE lit ->
         (match !lit with
-         | PreLit (s, Type.Nat) -> LitE (ref (PreLit ("-" ^ s, Type.Int))) @? at $sloc
+         | PreLit (s, Type.Nat) -> LitE(ref (PreLit ("-" ^ s, Type.Int))) @? at $sloc
          | _ -> vanilla)
       | _ -> vanilla
     }
