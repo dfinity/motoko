@@ -436,11 +436,25 @@ representation is applied.
 
 Errors are opaque values constructed using operation
 * `error: Text -> Unit`
-and examined using values operations:
+and examined using operations:
 * `errorCode`: `Error -> ErrorCode` (TBC)
 * `errorMessage`: `Error -> Text`
 
-Error values can be thrown and caught within an async block or shared function (only).
+(where `ErrorCode` is the prelude defined variant type:
+
+```
+type ErrorCode = {#error; #system ; /*...*/ };
+```
+)
+
+`Error` values can be thrown and caught within an `async` expression or `shared` function (only).
+
+A constructed error `e = error(m)` has `errorCode(e) = #error` and `errorMessage(e)=m`.
+Errors with non-`#error` (system) error codes may be caught and thrown, but not constructed.
+
+Note: Exiting an async block or shared function via an explicit throw of a system error
+replaces its code with `#error` and preserves the error message.
+This prevents programmatic forgery of system errors. (TBR)
 
 ## Constructed types
 
@@ -1129,7 +1143,7 @@ The `try` expression `try <exp1> catch <pat> <exp2>` has type `T` provided:
 Expression `try <exp1> catch <pat> <exp2>` evaluates `<exp1>` to a result `r`.
 If evaluation of  `<exp1>` throws an uncaught error value `e`, the result of the `try` is the result of evaluating `<exp2>` under the bindings determined by the match of `e` against `pat`.
 
-Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that <pat> is an irrefutable wildcard or identifier pattern).
+Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern).
 
 ## Assert
 
