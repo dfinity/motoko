@@ -217,7 +217,8 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
            end
   | -20 -> let assocs = read_t_star read_assoc in
            lazy (let members = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
-                 let consumers = Array.mapi (function i -> function (_, tynum) -> function () -> Printf.printf "Record member %d: " i; snd (prim_or_lookup tynum) ()) assocs in
+                 let herald_member i (_, tynum) () = Printf.printf "Record member %d: " i; snd (prim_or_lookup tynum) () in
+                 let consumers = Array.mapi herald_member assocs in
                  Record members, function () -> Array.iter (function f -> f ()) consumers)
   | -21 -> let assocs = read_t_star read_assoc in
            lazy (let alts = Array.map (function (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
