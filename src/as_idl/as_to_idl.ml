@@ -11,7 +11,7 @@ let env = ref Env.empty
 (* For monomorphization *)
 let stamp = ref Env.empty
 let type_map = ref Env.empty
-           
+
 let normalize str =
   let illegal_chars = ['-'; '/';] in
   String.map (fun c -> if List.mem c illegal_chars then '_' else c) str
@@ -26,7 +26,7 @@ let string_of_con vs c =
        match Env.find_opt id !type_map with
        | None ->
           (match Env.find_opt name !stamp with
-           | None -> 
+           | None ->
               stamp := Env.add name 1 !stamp;
               type_map := Env.add id 1 !type_map;
               1
@@ -37,12 +37,12 @@ let string_of_con vs c =
        | Some n -> n
      in Printf.sprintf "%s_%d" (normalize name) n
   | _ -> assert false
-  
+
 let unescape lab : label =
   let lab = normalize lab in
   let len = String.length lab in
   try if lab.[len-1] = '_' then begin
-          if lab.[0] = '_' then 
+          if lab.[0] = '_' then
             Nat (Lib.Uint32.of_string lab)
           else Id (String.sub lab 0 (len-1))
         end else Id lab
@@ -72,7 +72,8 @@ let prim p =
   | Float -> I.Float64
   | Char -> I.Nat32
   | Text -> I.Text
-  
+  | Error -> assert false
+
 let rec typ vs t =
   (match t with
   | Any -> I.PrimT I.Reserved
@@ -101,7 +102,7 @@ let rec typ vs t =
   | Tup ts ->
      I.RecordT (tuple vs ts)
   | Array t -> I.VecT (typ vs t)
-  | Opt t -> I.OptT (typ vs t)                 
+  | Opt t -> I.OptT (typ vs t)
   | Obj (Object, fs) ->
      I.RecordT (List.map (field vs) fs)
   | Obj (Actor, fs) -> I.ServT (meths vs fs)
@@ -118,14 +119,14 @@ let rec typ vs t =
   | Async t -> assert false
   | Mut t -> assert false
   | Serialized t -> assert false
-  | Pre -> assert false                  
+  | Pre -> assert false
   ) @@ no_region
 and field vs {lab; typ=t} =
   match unescape lab with
   | Nat nat ->
      let name = Lib.Uint32.to_string nat @@ no_region in
      I.{id = nat; name = name; typ = typ vs t} @@ no_region
-  | Id id -> 
+  | Id id ->
      let name = id @@ no_region in
      let id = Idllib.IdlHash.idl_hash id in
      I.{id = id; name = name; typ = typ vs t} @@ no_region
@@ -171,7 +172,7 @@ let chase_decs env =
   ConSet.iter (fun c ->
       if is_actor_con c then chase_con [] c
     ) env.Scope.con_env
-  
+
 let gather_decs () =
   Env.fold (fun id t list ->
       let dec = I.TypD (id @@ no_region, t) @@ no_region in
@@ -210,12 +211,11 @@ let actor progs =
      match find_last_actor prog with
      | None -> None
      | Some (id, t) -> Some (I.ActorD (id @@ no_region, typ [] t) @@ no_region)
-             
+
 let prog (progs, senv) : I.prog =
   env := Env.empty;
   let actor = actor progs in
   if actor = None then chase_decs senv;
-  let decs = gather_decs () in  
+  let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
   {it = prog; at = no_region; note = ""}
-
