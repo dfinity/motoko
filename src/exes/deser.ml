@@ -297,3 +297,14 @@ let () =
   match input_byte stdin with
   | Some _ -> failwith "surplus bytes in input"
   | None -> ()
+
+
+
+(* TODOs:
+  - use bigint where necessary
+  - variant heralding
+  - customisable formatters
+  - floats
+  - pass the nesting level to the M^-1
+  - service types
+ *)
