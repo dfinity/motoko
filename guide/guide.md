@@ -1102,7 +1102,7 @@ The `await` expression `await <exp>` has type `T` provided:
 * `T` is shared,
 * the `await` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-`await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a promise. If the promise is complete with value `v`, then `await <exp>` evaluates to value `v`.
+Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a promise. If the promise is complete with value `v`, then `await <exp>` evaluates to value `v`.
 If the promise is complete with (thrown) error value `e`, then `await <exp>` re-throws the error `e`.
 If the `promise` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `promise`. Execution of the suspension is resumed once the promise is completed (if ever).
 
@@ -1129,13 +1129,13 @@ The `try` expression `try <exp1> catch <pat> <exp2>` has type `T` provided:
 Expression `try <exp1> catch <pat> <exp2>` evaluates `<exp1>` to a result `r`.
 If evaluation of  `<exp1>` throws an uncaught error value `e`, the result of the `try` is the result of evaluating `<exp2>` under the bindings determined by the match of `e` against `pat`.
 
-Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that <pat> is either a wild-card or identifier pattern).
+Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that <pat> is an irrefutable wildcard or identifier pattern).
 
 ## Assert
 
 The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool`.
 
-`assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a boolean value `v`. The result of `assert <exp>` is
+Expression `assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a boolean value `v`. The result of `assert <exp>` is
 
 * the value `()`, when `v` is `true`; or
 * `trap`, when `v` is `false`.

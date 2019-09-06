@@ -45,7 +45,7 @@ Terms `t` are `await/try/throw` free terms (in the sense that await can only occ
 Trivial terms can be compiled in direct style by translation `T[t]`.
 
 Non-trivial terms must be cps-converted by translations `C r [e]` and `CPS[e] r`.
-Their translations expect a pair `r = (reply,reject)` and `reply` and `reject` continuations (for interpreting early `return` and `throw`).
+Their translations expect a pair `r = (reply,reject)` and `reply` and `reject` continuations (for interpreting early `return` and `throw`). We write 'r.reply' and `r.reject` for the obvious projections.
 The `reply` continuation only changes when we enter an async block. 
 The `reject` continuation changes when we enter a `async` or `try`.
 The translation `C r [e]` produces a term in cps, taking a single continuation argument.
@@ -56,7 +56,7 @@ the translation by not threading two continuations throughout.
 
 
 ```JS
-CPS[ e ] = \\(reply,reject).C (reply,reject) [e] @ reply
+CPS[ e ] = \\r.C r [e] @ r.reply
 
 where
 
@@ -73,7 +73,7 @@ C r [ let x = e1 in e2 ] =
 C r [ await t ] =
    \\k.await(T[t1], (k, r) )
 C r [ await e ] =
-   \\(k,r).C r [e] @ (\\v.await(v,(k,r))
+   \\k.C r [e] @ (\\v.await(v,(k,r))
 C r [ if e1 then e2 else e3 ]  =
    \\k.C r [e1] @ (\\b.if b then C r [e1]@k else C r [e2]@k)
 C r [ if t1 then e2 else e3 ]  =
@@ -94,14 +94,14 @@ C r [ while e1 do e2 ] =
     l@()
 C r [ label l e ] = \\l. C r [e] @ l                 // we use label l to name the success continuation
 C r [ break l e ] = \\k. C r [e] @ l                 // discard k, continue from l
-C ((reply,_) as r) [ return e ] = \\k. C r [e] @ reply      // discard (k,r), exit via reply
-C ((reply,reject) as r) [ try e1 with x -> e2 ] =
+C r [ return e ] = \\k. C r [e] @ r.reply      // discard k, exit via r.reply
+C r [ try e1 with x -> e2 ] =
   let reject' = \\x. C r [e2] @ k in
-  \\k. C (reply,reject') [e1] @ k
-C ((_,reject) as r) [ throw e] = \\k. C r [e] @ reject      // discard k, exit async or try via reject
+  \\k. C (r.reply,reject') [e1] @ k
+C r [ throw e] = \\k. C r [e] @ r.reject      // discard k, exit async or try via reject
 ```
 
-The translation of trivial terms, `T[ _ ]`, is  homomorpic on all terms but `async _`, at which point we switch to the `CPS[-]` translation.
+The translation of trivial terms, `T[ _ ]`, is  homomorphic on all terms but `async _`, at which point we switch to the `CPS[-]` translation.
 Note `T[await _]`, `T[throw _]` and `T[try _ with _ -> _]`, are (deliberately) undefined.
 
 ```JS
@@ -181,7 +181,7 @@ The first call to break occurs in a trivial sub-expression and is compiled to `b
 However, the second call to `break l (await{2})` is a non-trivial expression (due to the await()) and compiled as the application to a continuation `C[await{2}] @ l`.
 
 Our remedy is to track the target representation of a source label as either target label (Label) or target continuation (Cont) and
-translate accordingly. To handle the translation of return to reply or return, we use a distinguished label `l_ret`.
+translate accordingly. To handle the translation of (source) `return` to (target) `reply` or `return`, we use a distinguished label `l_ret`.
 
 Thus extend the translations `C[]`, `CPS[]` and `T[]` with an implicit environment argument,`env`, classifying labels and
 consulted and modified in select rules. The other cases are unchanged (apart from propagating the `env` argument).
@@ -195,9 +195,9 @@ C env r [ break l e ] =
   assert(env[l] = Cont)
   \\k. C env r [e] @ l        // discard k, continue from l
 
-C env (reply,reject) [ return e ] =
+C env r [ return e ] =
   assert(env[kret] = Cont)
-  \\k. C env r [e] @ reply   // discard k, using reply
+  \\k. C env r [e] @ r.reply   // discard k, using reply
 
 T env [ async e ] =
   let env' = [l_ret->Cont] in
