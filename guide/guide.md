@@ -1116,9 +1116,7 @@ The `throw` expression `throw <exp>` has type `None` provided:
 * `<exp>` has type `Error`,
 * the `throw` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-`throw <exp>` evaluates `<exp>` to an result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is an error value `e`. Execution proceeds from the `catch` clause of the nearest enclosing `try <exp> catch <pat> <ex>` whose pattern `<pat>` matches value `e`. If there is no such `try` expression, `e` is stored as the erroneous result of the `async` value of the nearest enclosing `async` expression or `shared` function invokation.
-
-_WARNING:_ between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
+Expression `throw <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is an error value `e`. Execution proceeds from the `catch` clause of the nearest enclosing `try <exp> catch <pat> <ex>` whose pattern `<pat>` matches value `e`. If there is no such `try` expression, `e` is stored as the erroneous result of the `async` value of the nearest enclosing `async` expression or `shared` function invocation.
 
 ## Try
 
@@ -1128,7 +1126,7 @@ The `try` expression `try <exp1> catch <pat> <exp2>` has type `T` provided:
 * `<pat>` has type `Error` and `<exp2>` has type `T` in the context extended with `<pat>`
 * the `try` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-`try <exp1> catch <pat> <exp2>` evaluates `<exp1>` to a result `r`.
+Expression `try <exp1> catch <pat> <exp2>` evaluates `<exp1>` to a result `r`.
 If evaluation of  `<exp1>` throws an uncaught error value `e`, the result of the `try` is the result of evaluating `<exp2>` under the bindings determined by the match of `e` against `pat`.
 
 Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that <pat> is either a wild-card or identifier pattern).
