@@ -4339,6 +4339,7 @@ module StackRep = struct
     | Prim (Nat32 | Int32 | Word32) -> UnboxedWord32
     | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
     | Prim Text -> Vanilla
+    | Prim Error -> UnboxedTuple 2
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function

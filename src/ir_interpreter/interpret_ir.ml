@@ -112,7 +112,7 @@ end
 
 (* Async auxiliary functions *)
 
-(* Are these just duplicated of the corresponding functions in interpret.ml? If so, refactor *)
+(* Are these just duplicates of the corresponding functions in interpret.ml? If so, refactor *)
 
 let make_async () : V.async =
   {V.result = Lib.Promise.make (); waiters = []}
@@ -133,16 +133,21 @@ let reject_async async v =
   Lib.Promise.fulfill async.V.result (V.Error v);
   async.V.waiters <- []
 
-let fulfill async v =
+let reply async v =
   Scheduler.queue (fun () -> set_async async v)
 
 let reject async v =
-  Scheduler.queue (fun () -> reject_async async v)
+  match v with
+  | V.Tup [ _code; message ] ->
+    (* mask the error code before rejecting *)
+    Scheduler.queue
+      (fun () -> reject_async async (V.Tup [V.Variant("error", V.unit); message]))
+  | _ -> assert false
 
 let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
     let async = make_async () in
     (*    let k' = fun v1 -> set_async async v1 in *)
-    let k' = fulfill async in
+    let k' = reply async in
     let r = reject async in
     if env.flags.trace then trace "-> async %s" (string_of_region at);
     Scheduler.queue (fun () ->

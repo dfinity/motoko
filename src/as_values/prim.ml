@@ -290,7 +290,7 @@ let prim = function
     | _ -> assert false
     )
   | "error" -> fun v k ->
-     k (Value.Tup [Variant ("user", Tup []); v])
+     k (Value.Tup [Variant ("error", Tup []); v])
   | "errorCode" -> fun v k ->
     (match Value.as_tup v with
     | [code; _message] ->

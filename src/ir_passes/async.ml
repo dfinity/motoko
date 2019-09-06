@@ -89,7 +89,7 @@ module Transform() = struct
 
   let sys_error_codeE () =
     match platform with
-    | V1 -> { it = TagE("error",tupE[]);
+    | V1 -> { it = TagE ("error", tupE []);
               at = no_region;
               note = {
                 note_typ = T.Variant (T.catchErrorCodes);
