@@ -325,8 +325,8 @@ module Transform() = struct
       ArrayE (mut, t_typ t, List.map t_exp exps)
     | IdxE (exp1, exp2) ->
       IdxE (t_exp exp1, t_exp exp2)
-    | PrimE (OtherPrim "@await", [a;k]) ->
-      ((t_exp a) -*- (t_exp k)).it
+    | PrimE (OtherPrim "@await", [a;kr]) ->
+      ((t_exp a) -*- (t_exp kr)).it
     | PrimE (OtherPrim "@async", [exp2]) ->
       let t1, contT = match typ exp2 with
         | Func(_,_,

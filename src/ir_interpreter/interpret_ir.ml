@@ -224,39 +224,34 @@ let extended_prim env s typ at =
   | "@async" ->
     assert (not env.flavor.has_await && env.flavor.has_async_typ);
     (fun v k ->
-      let (_, f) = V.as_func v in
-      match typ with
-      | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _)], _) ->
-        let call_conv = CC.call_conv_of_typ f_dom in
-        async env at
-          (fun k' r ->
-            let k' = Value.Func (call_conv, fun v _ -> k' v) in
-            f k' V.as_unit
-          )
-          k
-(* TODO(crusso): One await/async.ml are done, this should become something like
-      | T.Func(_, _, _, [T.Func(_, _, _, [f_dom,r_dom], _)], _) ->
-        let call_conv = CC.call_conv_of_typ f_dom in
-        let call_conv_r = CC.call_conv_of_typ r_dom in
-        async env at
-          (fun k' r ->
-            let k' = Value.Func (call_conv, fun v _ -> k' v) in
-            let r' = Value.Func (call_conv_r, fun v _ -> r' v) in
-            f (V.Tup(k',r')) V.as_unit
-          )
-          k
-*)
-      | _ -> assert false
+       let (_, f) = V.as_func v in
+       match typ with
+       | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _);T.Func(_, _, _, [r_dom], _)], _) ->
+         let call_conv_f = CC.call_conv_of_typ f_dom in
+         let call_conv_r = CC.call_conv_of_typ r_dom in
+         async env at
+           (fun k' r ->
+             let vk' = Value.Func (call_conv_f, fun v _ -> k' v) in
+             let vr = Value.Func (call_conv_r, fun v _ -> r v) in
+             f (V.Tup [vk';vr]) V.as_unit
+           )
+           k
+       | _ -> assert false
     )
   | "@await" ->
     assert (not env.flavor.has_await && env.flavor.has_async_typ);
-    fun v k ->
-      (match V.as_tup v with
-      | [async; w] ->
-        let (_, f) = V.as_func w in
-        await env at (V.as_async async) (fun v -> f v k) (Lib.Option.value env.throws)
-      | _ -> assert false
-      )
+    (fun v k ->
+      match V.as_tup v with
+      | [async; v1] ->
+        (match V.as_tup v1 with
+         | [vf; vr] ->
+           let (_, f) = V.as_func vf in
+           let (_, r) = V.as_func vr in
+           await env at (V.as_async async)
+             (fun v -> f v k)
+             (fun e -> r e k) (* TBR *)
+         | _ -> assert false)
+      | _ -> assert false)
   | _ -> Prim.prim s
 
 
