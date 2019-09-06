@@ -16,6 +16,7 @@ TODO:
 * [ ] Object patterns
 * [ ] Import expressions
 * [ ] Modules
+* [ ] Complete draft of Try/Throw expressions and primitive Error/ErrorCode type
 * [ ] Prelude
 
 # Introduction
@@ -133,9 +134,9 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ```bnf
-actor and async assert await break case class continue else
+actor and async assert await break case catch class continue else
 false for func if in new not null object or label let loop
-private public return shared switch true type var while
+private public return shared switch true try type var while
 ```
 
 ## Identifiers
@@ -337,6 +338,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
+  Error                                         errors/exceptions
   Shared                                        sharable types
   ( type )                                      parenthesized type
 ```
@@ -358,6 +360,7 @@ The sort of a type determines the operators (unary, binary, relational and assig
 | `Word64` | A, B, C | unsigned 64-bit integers with bitwise operations |
 | `Char` | C | unicode characters |
 | `Text` | T, C | unicode strings of characters with concatentation `_ # _` |
+| `Error` | | (opaque) error values |
 
 ### Type `Bool`
 
@@ -428,6 +431,16 @@ Word types are not in subtype relationship with each other or with
 other arithmetic types, and their literals need type annotation, e.g.
 `(-42 : Word16)`. For negative literals the two's-complement
 representation is applied.
+
+### Error type
+
+Errors are opaque values constructed using operation
+* `error: Text -> Unit`
+and examined using values operations:
+* `errorCode`: `Error -> ErrorCode` (TBC)
+* `errorMessage`: `Error -> Text`
+
+Error values can be thrown and caught within an async block or shared function (only).
 
 ## Constructed types
 
@@ -629,7 +642,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 A type `T` is *shared* if it is
 * `Any` or `None`, or
-* a primitive type, or
+* a primitive type other than `Error`, or
 * an option type `? V` where `V` is shared, or
 * a tuple type `(T0, ..., Tn)` where all `Ti` are shared, or
 * an immutable array type `[V]` where `V` is shared, or
@@ -684,6 +697,8 @@ A type `T` is *shared* if it is
   return <exp>?                                  return
   async <exp>                                    async expression
   await <exp>                                    await future (only in async)
+  throw <exp>                                    raise an error (only in async)
+  try <exp> catch <pat> <exp>                    catch an error (only in async)
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
   dec                                            declaration
@@ -905,7 +920,7 @@ Otherwise, the expression returns the result of evaluating `<exp2>`.
 ## Or
 
 The or expression `<exp1> or <exp2>` has type `Bool` provided `<exp1>` and `<exp2>` have type `Bool`.
-switch
+
 The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a Boolean value `v`.
 If `v == true` the expression returns the value `true` (without evaluating `<exp2>`).
 Otherwise, the expression returns the result of evaluating `<exp2>`.
@@ -1018,7 +1033,7 @@ The label-expression  `label <id> (: <typ>)? <exp>` has type `T` provided:
 
 The result of evaluating `label <id> (: <typ>)? <exp>` is the result of evaluating `<exp>`.
 
-### Labeled loops
+## Labeled loops
 
 If `<exp>` in `label <id> (: <typ>)? <exp>` is a looping construct:
 
@@ -1063,7 +1078,7 @@ The `return` expression exits the corresponding dynamic function invocation or c
 
 TBR async traps?
 
-### Async
+## Async
 
 The async expression `async <exp>` has type `async T` provided:
 
@@ -1079,19 +1094,46 @@ The implicit return type in `<exp>` is `T`. That is, the |  `==` | equals |
 
 Evaluation of `async <exp>` queues a message to evaluate `<exp>` in the nearest enclosing or top-level actor. It immediately returns a promise of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
 
-### Await
+## Await
 
 The `await` expression `await <exp>` has type `T` provided:
 
 * `<exp>` has type `async T`,
 * `T` is shared,
-* the `await` is explicitly enclosed by an `async`-expression.
+* the `await` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-`await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r1` is a promise. If the promise is complete with value `v`, then `await <exp>` evaluates to value `v`. If the `promise` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `promise`. Execution of the suspension is resumed once the promise is completed (if ever).
+`await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a promise. If the promise is complete with value `v`, then `await <exp>` evaluates to value `v`.
+If the promise is complete with (thrown) error value `e`, then `await <exp>` re-throws the error `e`.
+If the `promise` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `promise`. Execution of the suspension is resumed once the promise is completed (if ever).
 
 _WARNING:_ between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
 
-### Assert
+
+## Throw
+
+The `throw` expression `throw <exp>` has type `None` provided:
+
+* `<exp>` has type `Error`,
+* the `throw` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
+
+`throw <exp>` evaluates `<exp>` to an result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is an error value `e`. Execution proceeds from the `catch` clause of the nearest enclosing `try <exp> catch <pat> <ex>` whose pattern `<pat>` matches value `e`. If there is no such `try` expression, `e` is stored as the erroneous result of the `async` value of the nearest enclosing `async` expression or `shared` function invokation.
+
+_WARNING:_ between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
+
+## Try
+
+The `try` expression `try <exp1> catch <pat> <exp2>` has type `T` provided:
+
+* `<exp1>` has type `T`.
+* `<pat>` has type `Error` and `<exp2>` has type `T` in the context extended with `<pat>`
+* the `try` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
+
+`try <exp1> catch <pat> <exp2>` evaluates `<exp1>` to a result `r`.
+If evaluation of  `<exp1>` throws an uncaught error value `e`, the result of the `try` is the result of evaluating `<exp2>` under the bindings determined by the match of `e` against `pat`.
+
+Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that <pat> is either a wild-card or identifier pattern).
+
+## Assert
 
 The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool`.
 
@@ -1100,7 +1142,7 @@ The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool
 * the value `()`, when `v` is `true`; or
 * `trap`, when `v` is `false`.
 
-### Type Annotation
+## Type Annotation
 
 The type annotation expression `<exp> : <typ>` has type `T` provided:
 
@@ -1113,13 +1155,13 @@ The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`.
 
 Note: type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
 
-### Declaration Expression
+## Declaration Expression
 
 The declaration expression `<dec>` has type `T` provided the declaration `<dec>` has type `T`.
 
 Evaluating the expression `<dec>` proceed by evaluating `<dec>`, returning the result of `<dec>` but discarding the bindings introduced by `<dec>` (if any).
 
-### Parentheses
+## Parentheses
 
 The parenthesized expression `( <exp> )` has type `T` provided `<exp>` has type `T`.
 
@@ -1152,7 +1194,6 @@ The consequences of pattern match failure depends on the context of the pattern.
 ## Wildcard pattern
 
 The wildcard pattern `_`  matches a single value without binding its contents to an identifier.
-
 
 ## Identifier pattern
 
