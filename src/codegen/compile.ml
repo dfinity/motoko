@@ -293,20 +293,18 @@ module E = struct
         idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
       } in
       let fi = reg env.func_imports (nr i) in
-      let name = modname ^ "_" ^ funcname in
+      let name = modname ^ "." ^ funcname in
       assert (not (NameEnv.mem name !(env.built_in_funcs)));
       env.built_in_funcs := NameEnv.add name (Defined fi) !(env.built_in_funcs);
     else assert false (* "add all imports before all functions!" *)
 
   let call_import (env : t) modname funcname =
-    let name = modname ^ "_" ^ funcname in
-    let fi = match NameEnv.find_opt name !(env.built_in_funcs) with
-      | Some (Defined fi) -> fi
+    let name = modname ^ "." ^ funcname in
+    match NameEnv.find_opt name !(env.built_in_funcs) with
+      | Some (Defined fi) -> G.i (Call (nr fi))
       | _ ->
-        Printf.eprintf "Function import not declared: %s.%s\n" modname funcname;
+        Printf.eprintf "Function import not declared: %s\n" name;
         assert false
-    in
-    G.i (Call (nr fi))
 
   let get_prelude (env : t) = env.prelude
   let get_rts (env : t) = env.rts
@@ -2252,20 +2250,18 @@ module BigNumLibtommath : BigNumType = struct
 
   let compile_eq env = E.call_import env "rts" "bigint_eq"
   let compile_is_negative env = E.call_import env "rts" "bigint_isneg"
-  let compile_relop env op =
-    let fn = match op with
-      | Lt -> "rts_bigint_lt"
-      | Le -> "rts_bigint_le"
-      | Ge -> "rts_bigint_ge"
-      | Gt -> "rts_bigint_gt" in
-    G.i (Call (nr (E.built_in env fn)))
+  let compile_relop env = function
+      | Lt -> E.call_import env "rts" "bigint_lt"
+      | Le -> E.call_import env "rts" "bigint_le"
+      | Ge -> E.call_import env "rts" "bigint_ge"
+      | Gt -> E.call_import env "rts" "bigint_gt"
 
   let fits_signed_bits env bits =
-    G.i (Call (nr (E.built_in env ("rts_bigint_2complement_bits")))) ^^
+    E.call_import env "rts" "bigint_2complement_bits" ^^
     compile_unboxed_const (Int32.of_int bits) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU))
   let fits_unsigned_bits env bits =
-    G.i (Call (nr (E.built_in env ("rts_bigint_count_bits")))) ^^
+    E.call_import env "rts" "bigint_count_bits" ^^
     compile_unboxed_const (Int32.of_int bits) ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU))
 
@@ -2898,9 +2894,9 @@ module Dfinity = struct
       E.add_func_import env "func" "bind_i32" [I32Type; I32Type] [I32Type];
     end
 
-  let system_call env name =
+  let system_call env modname funcname =
     if E.mode env = DfinityMode
-    then G.i (Call (nr (E.built_in env name)))
+    then E.call_import env modname funcname
     else G.i Unreachable
 
   let compile_databuf_of_text env  =
@@ -2914,7 +2910,7 @@ module Dfinity = struct
       Heap.load_field (Text.len_field) ^^
 
       (* Externalize *)
-      system_call env "data_externalize"
+      system_call env "data" "externalize"
     )
 
   let compile_databuf_of_bytes env (bytes : string) =
@@ -2923,11 +2919,11 @@ module Dfinity = struct
   (* For debugging *)
   let compile_static_print env s =
       compile_databuf_of_bytes env s ^^
-      system_call env "test_print"
+      system_call env "test" "print"
 
   let _compile_println_int env =
-      system_call env "test_show_i32" ^^
-      system_call env "test_print" ^^
+      system_call env "test" "show_i32" ^^
+      system_call env "test" "print" ^^
       compile_static_print env "\n"
 
   let trap_with env s =
@@ -2937,7 +2933,7 @@ module Dfinity = struct
 
   let prim_print env =
     compile_databuf_of_text env ^^
-    system_call env "test_print"
+    system_call env "test" "print"
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
@@ -2984,12 +2980,12 @@ module Dfinity = struct
     ElemHeap.recall_reference env
 
   let get_self_reference env =
-    system_call env "actor_self" ^^
+    system_call env "actor" "self" ^^
     box_reference env
 
   let static_message_funcref env fi =
     compile_unboxed_const fi ^^
-    system_call env "func_externalize"
+    system_call env "func" "externalize"
 
 end (* Dfinity *)
 
@@ -3028,7 +3024,7 @@ module OrthogonalPersistence = struct
     Func.define_built_in env "restore_mem" [] [] (fun env1 ->
        let (set_i, get_i) = new_local env1 "len" in
        G.i (GlobalGet (nr mem_global)) ^^
-       Dfinity.system_call env1 "data_length" ^^
+       Dfinity.system_call env1 "data" "length" ^^
        set_i ^^
 
        get_i ^^
@@ -3049,11 +3045,11 @@ module OrthogonalPersistence = struct
            get_i ^^
            G.i (GlobalGet (nr mem_global)) ^^
            compile_unboxed_zero ^^
-           Dfinity.system_call env1 "data_internalize" ^^
+           Dfinity.system_call env1 "data" "internalize" ^^
 
            (* Load reference counter *)
            G.i (GlobalGet (nr elem_global)) ^^
-           Dfinity.system_call env1 "elem_length" ^^
+           Dfinity.system_call env1 "elem" "length" ^^
            ElemHeap.set_ref_ctr ^^
 
            (* Load references *)
@@ -3061,7 +3057,7 @@ module OrthogonalPersistence = struct
            ElemHeap.get_ref_ctr ^^
            G.i (GlobalGet (nr elem_global)) ^^
            compile_unboxed_zero ^^
-           Dfinity.system_call env1 "elem_internalize"
+           Dfinity.system_call env1 "elem" "internalize"
         )
     );
     Func.define_built_in env "save_mem" [] [] (fun env1 ->
@@ -3070,13 +3066,13 @@ module OrthogonalPersistence = struct
        Heap.get_heap_ptr ^^
        compile_unboxed_const ElemHeap.table_end ^^
        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-       Dfinity.system_call env "data_externalize" ^^
+       Dfinity.system_call env "data" "externalize" ^^
        G.i (GlobalSet (nr mem_global)) ^^
 
        (* Store references *)
        compile_unboxed_const ElemHeap.ref_location ^^
        ElemHeap.get_ref_ctr ^^
-       Dfinity.system_call env "elem_externalize" ^^
+       Dfinity.system_call env "elem" "externalize" ^^
        G.i (GlobalSet (nr elem_global))
     )
 
@@ -3545,6 +3541,7 @@ module Serialization = struct
         size_word env (get_x ^^ Heap.load_field Text.len_field) ^^
         inc_data_size (get_x ^^ Heap.load_field Text.len_field)
       | Prim Null -> G.nop
+      | Any -> G.nop
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
@@ -3665,6 +3662,7 @@ module Serialization = struct
           write env t
         )
       | Prim Null -> G.nop
+      | Any -> G.nop
       | Opt t ->
         get_x ^^
         Opt.is_some env ^^
@@ -3805,6 +3803,11 @@ module Serialization = struct
         ReadBuf.read_byte env get_data_buf
       | Prim Null ->
         assert_prim_typ () ^^
+        Opt.null
+      | Any ->
+        (* TODO: Accept actually any type, and skip its values *)
+        assert_prim_typ () ^^
+        (* We can return essentially any value here *)
         Opt.null
       | Prim Text ->
         assert_prim_typ () ^^
@@ -3961,7 +3964,7 @@ module Serialization = struct
         get_refs_start ^^
         get_data_start ^^
         get_data_size ^^
-        Dfinity.system_call env "data_externalize" ^^
+        Dfinity.system_call env "data" "externalize" ^^
         store_unskewed_ptr  ^^
 
         if has_no_references t
@@ -3978,7 +3981,7 @@ module Serialization = struct
           (* Finally, create elembuf *)
           get_refs_start ^^
           get_refs_size ^^ compile_divU_const Heap.word_size ^^
-          Dfinity.system_call env "elem_externalize"
+          Dfinity.system_call env "elem" "externalize"
     )
 
   let deserialize_text env get_databuf =
@@ -3986,7 +3989,7 @@ module Serialization = struct
     let (set_x, get_x) = new_local env "x" in
 
     get_databuf ^^
-    Dfinity.system_call env "data_length" ^^
+    Dfinity.system_call env "data" "length" ^^
     set_data_size ^^
 
     get_data_size ^^
@@ -3997,7 +4000,7 @@ module Serialization = struct
     get_data_size ^^
     get_databuf ^^
     compile_unboxed_const 0l ^^
-    Dfinity.system_call env "data_internalize" ^^
+    Dfinity.system_call env "data" "internalize" ^^
 
     get_x
 
@@ -4025,7 +4028,7 @@ module Serialization = struct
         else
           (* Allocate space for the elem buffer *)
           get_elembuf ^^
-          Dfinity.system_call env "elem_length" ^^
+          Dfinity.system_call env "elem" "length" ^^
           set_refs_size ^^
 
           get_refs_size ^^
@@ -4039,7 +4042,7 @@ module Serialization = struct
           get_refs_size ^^
           get_elembuf ^^
           compile_unboxed_const 0l ^^
-          Dfinity.system_call env "elem_internalize" ^^
+          Dfinity.system_call env "elem" "internalize" ^^
 
           (* Get databuf *)
           get_refs_start ^^
@@ -4049,7 +4052,7 @@ module Serialization = struct
 
         (* Allocate space for the data buffer *)
         get_databuf ^^
-        Dfinity.system_call env "data_length" ^^
+        Dfinity.system_call env "data" "length" ^^
         set_data_size ^^
 
         get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
@@ -4059,7 +4062,7 @@ module Serialization = struct
         get_data_size ^^
         get_databuf ^^
         compile_unboxed_const 0l ^^
-        Dfinity.system_call env "data_internalize" ^^
+        Dfinity.system_call env "data" "internalize" ^^
 
         (* Allocate space for out parameters of parse_idl_header *)
         Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
@@ -4655,7 +4658,7 @@ module FuncDec = struct
   let call_funcref env cc get_ref =
     compile_unboxed_const tmp_table_slot ^^ (* slot number *)
     get_ref ^^ (* the unboxed funcref *)
-    Dfinity.system_call env "func_internalize" ^^
+    Dfinity.system_call env "func" "internalize" ^^
 
     compile_unboxed_const tmp_table_slot ^^
     G.i (CallIndirect (nr (message_ty env cc)))
@@ -4664,9 +4667,9 @@ module FuncDec = struct
     Func.share_code1 env "export_self_message" ("name", I32Type) [I32Type] (fun env get_name ->
       Tagged.obj env Tagged.Reference [
         (* Create a funcref for the message *)
-        Dfinity.system_call env "actor_self" ^^
+        Dfinity.system_call env "actor" "self" ^^
         get_name ^^ (* the databuf with the message name *)
-        Dfinity.system_call env "actor_export" ^^
+        Dfinity.system_call env "actor" "export" ^^
         ElemHeap.remember_reference env
       ]
     )
@@ -4862,10 +4865,10 @@ module FuncDec = struct
         SR.UnboxedReference,
         code ^^
         compile_unboxed_const fi ^^
-        Dfinity.system_call env "func_externalize" ^^
+        Dfinity.system_call env "func" "externalize" ^^
         get_clos ^^
         ClosureTable.remember_closure env ^^
-        Dfinity.system_call env "func_bind_i32"
+        Dfinity.system_call env "func" "bind_i32"
 
   let lit env ae how name cc free_vars args mk_body at =
     let captured = List.filter (ASEnv.needs_capture ae) free_vars in
@@ -6552,6 +6555,7 @@ This function compiles the prelude, just to find out the bound names.
 and find_prelude_names env =
   (* Create a throw-away environment *)
   let env0 = E.mk_global (E.mode env) None (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
+  Dfinity.system_imports env0;
   RTS.system_imports env0;
   let env1 = E.mk_fun_env env0 0l 0 in
   let ae = ASEnv.empty_ae in
@@ -6655,8 +6659,8 @@ and actor_lit outer_env this ds fs at =
 
     Dfinity.compile_databuf_of_bytes outer_env wasm_binary ^^
     (* Create actorref *)
-    Dfinity.system_call outer_env "module_new" ^^
-    Dfinity.system_call outer_env "actor_new"
+    Dfinity.system_call outer_env "module" "new" ^^
+    Dfinity.system_call outer_env "actor" "new"
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 this ds fs =
@@ -6673,7 +6677,7 @@ and main_actor env ae1 this ds fs =
 
 and actor_fake_object_idx env name =
     Dfinity.compile_databuf_of_bytes env name ^^
-    Dfinity.system_call env "actor_export"
+    Dfinity.system_call env "actor" "export"
 
 and conclude_module env module_name start_fi_o =
 
