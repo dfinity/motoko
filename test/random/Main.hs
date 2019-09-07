@@ -150,6 +150,98 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
   assertSuccessNoFuzz id res
 
 
+data Matching where
+  Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
+
+deriving instance Show Matching
+
+
+instance Arbitrary Matching where
+  arbitrary = oneof [ realise Matching <$> gen @Bool
+                    , realise Matching <$> gen @(Bool, Bool)
+                    , realise Matching <$> gen @(Bool, Integer)
+                    , realise Matching <$> gen @((Bool, Natural), Integer)
+                    , realise Matching <$> gen @(BitLimited 8 Natural, BitLimited 8 Integer, BitLimited 8 Word)
+                    , realise Matching <$> gen @(Maybe Integer)
+                    ]
+    where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
+          gen = (do term <- arbitrary
+                    let val = evaluate term
+                    pure (term, val)) `suchThat` (isJust . snd)
+          realise f (tm, Just v) = f (tm, v)
+
+prop_matchStructured :: Matching -> Property
+prop_matchStructured (Matching a) = locally a
+
+locally :: (AnnotLit t, ASValue t) => (ASTerm t, t) -> Property
+locally (tm, v) = monadicIO $ do
+  let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
+
+      eval'd = unparse v
+      expr = unparseAS tm
+  runScriptNoFuzz "matchLocally" testCase
+
+prop_matchInActor :: Matching -> Property
+prop_matchInActor (Matching a) = mobile a
+
+mobile :: (AnnotLit t, ASValue t) => (ASTerm t, t) -> Property
+mobile (tm, v) = monadicIO $ do
+  let testCase = "/*let a = actor { public func match (b : " <> typed <> ") : async Bool = async { true } };*/ assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false })"
+
+      eval'd = unparse v
+      typed = unparseType v
+      expr = unparseAS tm
+  runScriptNoFuzz "matchMobile" testCase
+
+-- instances of ASValue describe "ground values" in
+-- ActorScript. These can appear in patterns and have
+-- well-defined AS type.
+--
+class ASValue a where
+  unparseType :: a -> String
+  unparse :: a -> String
+
+instance ASValue Bool where
+  unparseType _ = "Bool"
+  unparse = unparseAS . Bool
+
+instance ASValue Integer where
+  unparseType _ = "Int"
+  unparse = show
+
+instance ASValue Natural where
+  unparseType _ = "Nat"
+  unparse = show
+
+instance KnownNat n => ASValue (BitLimited n Natural) where
+  unparseType _ = "Nat" <> bitWidth (Proxy @n)
+  unparse (NatN a) = annot (Five @(BitLimited n Natural)) (show a)
+
+instance KnownNat n => ASValue (BitLimited n Integer) where
+  unparseType _ = "Int" <> bitWidth (Proxy @n)
+  unparse (IntN a) = annot (Five @(BitLimited n Integer)) (show a)
+
+instance KnownNat n => ASValue (BitLimited n Word) where
+  unparseType _ = "Word" <> bitWidth (Proxy @n)
+  unparse (WordN a) = annot (Five @(BitLimited n Word)) (show a)
+
+instance (ASValue a, ASValue b) => ASValue (a, b) where
+  unparseType (a, b) = "(" <> unparseType a <> ", " <> unparseType b <> ")"
+  unparse (a, b) = "(" <> unparse a <> ", " <> unparse b <> ")"
+
+instance (ASValue a, ASValue b, ASValue c) => ASValue (a, b, c) where
+  unparseType (a, b, c) = "(" <> unparseType a <> ", " <> unparseType b <> ", " <> unparseType c <> ")"
+  unparse (a, b, c) = "(" <> unparse a <> ", " <> unparse b <> ", " <> unparse c <> ")"
+
+instance ASValue a => ASValue (Maybe a) where
+  unparseType Nothing = "Null"
+  unparseType (Just a) = "?" <> unparseType a
+  unparse Nothing = "null"
+  unparse (Just a) = "?" <> unparse a
+
+-- wiggle room around an *important value*
+-- think of it as a "fuzz"
+--
 data Off = TwoLess | OneLess | OneMore | TwoMore
  deriving (Enum, Eq, Ord, Show)
 
@@ -815,92 +907,3 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 --   - bitsize-preserving conversions
 --   - "abü".len();
 --   - data ASTerm (p :: {Term, Pattern}) where ... Pattern :: ASValue a => a -> ASTerm (Pattern/both) a
-
-data Matching where
-  Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
-
-deriving instance Show Matching
-
-
-instance Arbitrary Matching where
-  arbitrary = oneof [ realise Matching <$> gen @Bool
-                    , realise Matching <$> gen @(Bool, Bool)
-                    , realise Matching <$> gen @(Bool, Integer)
-                    , realise Matching <$> gen @((Bool, Natural), Integer)
-                    , realise Matching <$> gen @(BitLimited 8 Natural, BitLimited 8 Integer, BitLimited 8 Word)
-                    , realise Matching <$> gen @(Maybe Integer)
-                    ]
-    where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
-          gen = (do term <- arbitrary
-                    let val = evaluate term
-                    pure (term, val)) `suchThat` (isJust . snd)
-          realise f (tm, Just v) = f (tm, v)
-
-prop_matchStructured :: Matching -> Property
-prop_matchStructured (Matching a) = locally a
-
-locally :: (AnnotLit t, ASValue t) => (ASTerm t, t) -> Property
-locally (tm, v) = monadicIO $ do
-  let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
-
-      eval'd = unparse v
-      expr = unparseAS tm
-  runScriptNoFuzz "matchLocally" testCase
-
-prop_matchInActor :: Matching -> Property
-prop_matchInActor (Matching a) = mobile a
-
-mobile :: (AnnotLit t, ASValue t) => (ASTerm t, t) -> Property
-mobile (tm, v) = monadicIO $ do
-  let testCase = "/*let a = actor { public func match (b : " <> typed <> ") : async Bool = async { true } };*/ assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false })"
-
-      eval'd = unparse v
-      typed = unparseType v
-      expr = unparseAS tm
-  runScriptNoFuzz "matchMobile" testCase
-
--- instances of ASValue describe "ground values" in
--- ActorScript. These can appear in patterns and have
--- well-defined AS type.
---
-class ASValue a where
-  unparseType :: a -> String
-  unparse :: a -> String
-
-instance ASValue Bool where
-  unparseType _ = "Bool"
-  unparse = unparseAS . Bool
-
-instance ASValue Integer where
-  unparseType _ = "Int"
-  unparse = show
-
-instance ASValue Natural where
-  unparseType _ = "Nat"
-  unparse = show
-
-instance KnownNat n => ASValue (BitLimited n Natural) where
-  unparseType _ = "Nat" <> bitWidth (Proxy @n)
-  unparse (NatN a) = annot (Five @(BitLimited n Natural)) (show a)
-
-instance KnownNat n => ASValue (BitLimited n Integer) where
-  unparseType _ = "Int" <> bitWidth (Proxy @n)
-  unparse (IntN a) = annot (Five @(BitLimited n Integer)) (show a)
-
-instance KnownNat n => ASValue (BitLimited n Word) where
-  unparseType _ = "Word" <> bitWidth (Proxy @n)
-  unparse (WordN a) = annot (Five @(BitLimited n Word)) (show a)
-
-instance (ASValue a, ASValue b) => ASValue (a, b) where
-  unparseType (a, b) = "(" <> unparseType a <> ", " <> unparseType b <> ")"
-  unparse (a, b) = "(" <> unparse a <> ", " <> unparse b <> ")"
-
-instance (ASValue a, ASValue b, ASValue c) => ASValue (a, b, c) where
-  unparseType (a, b, c) = "(" <> unparseType a <> ", " <> unparseType b <> ", " <> unparseType c <> ")"
-  unparse (a, b, c) = "(" <> unparse a <> ", " <> unparse b <> ", " <> unparse c <> ")"
-
-instance ASValue a => ASValue (Maybe a) where
-  unparseType Nothing = "Null"
-  unparseType (Just a) = "?" <> unparseType a
-  unparse Nothing = "null"
-  unparse (Just a) = "?" <> unparse a
