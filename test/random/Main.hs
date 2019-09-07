@@ -814,6 +814,7 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 --   - trapping flavour-preserving conversions Nat -> NatN
 --   - bitsize-preserving conversions
 --   - "abü".len();
+--   - data ASTerm (p :: {Term, Pattern}) where ... Pattern :: ASValue a => a -> ASTerm (Pattern/both) a
 
 data Matching where
   Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
@@ -858,6 +859,10 @@ mobile (tm, v) = monadicIO $ do
       expr = unparseAS tm
   runScriptNoFuzz "matchMobile" testCase
 
+-- instances of ASValue describe "ground values" in
+-- ActorScript. These can appear in patterns and have
+-- well-defined AS type.
+--
 class ASValue a where
   unparseType :: a -> String
   unparse :: a -> String
