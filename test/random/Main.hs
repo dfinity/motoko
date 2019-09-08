@@ -40,6 +40,7 @@ arithProps = testGroup "Arithmetic/logic"
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
   , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
+  , QC.testProperty "length computation" $ prop_textLength
   ]
 
 matchingProps = testGroup "pattern matching"
@@ -91,6 +92,10 @@ prop_charToText (UTF8 char) = monadicIO $ do
 
       c = escape char
   runScriptNoFuzz "charToText" testCase
+
+prop_textLength (UTF8 text) = monadicIO $ do
+  let testCase = "assert(\"" <> (text >>= escape) <> "\".len() == " <> show (length text) <> ")"
+  runScriptNoFuzz "textLength" testCase
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
@@ -900,5 +905,4 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 --   - pattern matches (over numeric, bool, structured)
 --   - trapping flavour-preserving conversions Nat -> NatN
 --   - bitsize-preserving conversions
---   - "abü".len();
 --   - data ASTerm (p :: {Term, Pattern}) where ... Pattern :: ASValue a => a -> ASTerm (Pattern/both) a
