@@ -203,7 +203,7 @@ module Transform() = struct
                Func (s, T.Returns, List.map t_bind tbs,
                      extendTup (List.map t_typ t1)
                        (select
-                          [ add_reply_parameter, (let t = replyT nary (t_typ t2) in lazy t)
+                          [ add_reply_parameter, lazy (replyT nary (t_typ t2))
                           ]),
                      [])
              | _ -> assert false
