@@ -82,9 +82,8 @@ module Transform() = struct
   let sys_callE v1 typs vs reply reject =
     match platform with
     | V1 ->
-          callE v1 typs (seqE (vs @
-                           (select [ add_reply_argument, lazy reply;
-                                     add_reject_argument, lazy reject])))
+          assert (add_reply_argument && not add_reject_argument);
+          callE v1 typs (seqE (vs @ [reply]))
     | V2 -> failwith "NYI" (* TODO: call dedicated prim, separating args vs from reply & reject *)
 
   let sys_error_codeE () =
@@ -242,7 +241,7 @@ module Transform() = struct
                Func (s, T.Returns, List.map t_bind tbs,
                      extendTup (List.map t_typ t1)
                        (select
-                          [ add_reply_parameter, (let t = replyT nary (t_typ t2) in lazy t);
+                          [ add_reply_parameter, lazy (replyT nary (t_typ t2));
                             add_reject_parameter, lazy rejectT ]),
                      [])
              | _ -> assert false
@@ -345,7 +344,7 @@ module Transform() = struct
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
                funcD k v1 (nary_reply -*- v1);
                nary_funcD r [e] (reject -*- (errorMessageE e));
-               funcD post u ((t_exp exp2) -*- (tupE [k;r]));
+               funcD post u (t_exp exp2 -*- (tupE [k;r]));
                expD (post -*- tupE[])]
                nary_async
       ).it
