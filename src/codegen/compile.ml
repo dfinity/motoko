@@ -6052,6 +6052,7 @@ and compile_exp (env : E.t) ae exp =
            at = no_region;
            note = {note_typ = Type.Variant (Type.throwErrorCodes);
                    note_eff = Type.Triv }}) ^^
+                   (* TODO Joachim: Avoid creating IR terms here, use `Variant.lit` or something instead *)
       compile_exp_vanilla env ae e
     | OtherPrim "errorCode", [e] ->
       SR.Vanilla,
