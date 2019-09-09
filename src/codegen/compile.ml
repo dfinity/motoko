@@ -4938,6 +4938,36 @@ open PatCode
 (* All the code above is independent of the IR *)
 open Ir
 
+(* Compiling Error primitives *)
+module Error = struct
+
+  (* Opaque type `Error` is represented as concrete type `(ErrorCode,Text)` *)
+
+  let is_error_prim p = match p with
+      | OtherPrim ("error" | "errorCode" | "errorMessage" | "make_error") -> true
+      | _ -> false
+
+  let compile_prim compile_exp env ae p es =
+    match p, es with
+    | OtherPrim "error", [e] ->
+      SR.UnboxedTuple 2,
+      Variant.inject env "error" (compile_exp env ae e) ^^
+      compile_exp env ae e
+    | OtherPrim "errorCode", [e] ->
+      SR.Vanilla,
+      compile_exp env ae e ^^
+      Tuple.load_n (Int32.of_int 0)
+    | OtherPrim "errorMessage", [e] ->
+      SR.Vanilla,
+      compile_exp env ae e ^^
+      Tuple.load_n (Int32.of_int 1)
+    | OtherPrim "make_error", [e1; e2] ->
+      SR.UnboxedTuple 2,
+      compile_exp env ae e1 ^^
+      compile_exp env ae e2
+    | _ -> assert false
+
+end
 
 module AllocHow = struct
   (*
@@ -6045,30 +6075,7 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e ^^
       Text.prim_decodeUTF8 env
 
-    | OtherPrim "error", [e] ->
-      SR.UnboxedTuple 2,
-      compile_exp_vanilla env ae
-        ({ it = TagE ("error", Construct.tupE []);
-           at = no_region;
-           note = {note_typ = Type.Variant (Type.throwErrorCodes);
-                   note_eff = Type.Triv }}) ^^
-                   (* TODO Joachim: Avoid creating IR terms here, use `Variant.lit` or something instead *)
-      compile_exp_vanilla env ae e
-    | OtherPrim "errorCode", [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Tuple.load_n (Int32.of_int 0)
-    | OtherPrim "errorMessage", [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Tuple.load_n (Int32.of_int 1)
-
     (* Other prims, binary*)
-    | OtherPrim "make_error", [e1; e2] ->
-      SR.UnboxedTuple 2,
-      compile_exp_vanilla env ae e1 ^^
-      compile_exp_vanilla env ae e2
-
     | OtherPrim "Array.init", [_;_] ->
       const_sr SR.Vanilla (Arr.init env)
     | OtherPrim "Array.tabulate", [_;_] ->
@@ -6085,6 +6092,11 @@ and compile_exp (env : E.t) ae exp =
         set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.And))
       )
+
+    (* Error related prims *)
+    | p, es when Error.is_error_prim p ->
+      Error.compile_prim compile_exp_vanilla env ae p es
+
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
   | VarE var ->
