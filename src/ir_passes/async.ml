@@ -76,9 +76,8 @@ module Transform() = struct
   let sys_callE v1 typs vs reply =
     match platform with
     | V1 ->
-          callE v1 typs (seqE (vs @
-                           (select [ add_reply_argument, lazy reply
-                                   ])))
+          assert add_reply_argument;
+          callE v1 typs (seqE (vs @ [reply]))
     | V2 -> failwith "NYI" (* TODO: call dedicated prim, separating args vs from reply *)
 
   (* End of configuration *)
