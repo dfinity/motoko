@@ -2970,7 +2970,7 @@ module Dfinity = struct
     ) in
     let fi = E.add_fun env "start_stub" empty_f in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "dfn_init";
+      name = Wasm.Utf8.decode "canister_init";
       edesc = nr (FuncExport (nr fi))
     });
     E.add_dfinity_type env (fi, [])
@@ -6525,7 +6525,7 @@ and export_actor_field env  ae (f : Ir.field) =
   );
   *)
   E.add_export env (nr {
-    name = Wasm.Utf8.decode ("dfn_update " ^ f.it.name);
+    name = Wasm.Utf8.decode ("canister_update " ^ f.it.name);
     edesc = nr (FuncExport (nr fi))
   })
 

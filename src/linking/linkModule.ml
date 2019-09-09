@@ -183,9 +183,9 @@ let prepend_to_start fi (em : extended_module)  =
       }
   }
 
-let remove_non_dfinity_exports (em : extended_module) : extended_module =
-  let is_dfinity_export (exp : export) = Lib.String.chop_prefix "dfn_" (Wasm.Utf8.encode exp.it.name) <> None in
-  map_module (fun m -> { m with exports = List.filter is_dfinity_export m.exports }) em
+let remove_non_canister_exports (em : extended_module) : extended_module =
+  let is_canister_export (exp : export) = Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None in
+  map_module (fun m -> { m with exports = List.filter is_canister_export m.exports }) em
 
 (* Generic linking logic *)
 
@@ -660,5 +660,5 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_name_section funs2
     )
   |> add_call_ctors
-  |> remove_non_dfinity_exports (* only sane if no additional files get linked in *)
+  |> remove_non_canister_exports (* only sane if no additional files get linked in *)
   |> map_module (remove_exports is_global_export)
