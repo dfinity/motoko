@@ -80,7 +80,6 @@ module Transform() = struct
                            (select [ add_reply_argument, lazy reply
                                    ])))
     | V2 -> failwith "NYI" (* TODO: call dedicated prim, separating args vs from reply *)
-(* @JOACHIM: this might be a good place to just add a trapping reject argument; instead of in the backend *) 
 
   (* End of configuration *)
 
@@ -305,8 +304,8 @@ module Transform() = struct
       let ((nary_async, nary_reply), def) = new_nary_async_reply t1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
                funcD k v1 (nary_reply -*- v1);
-               funcD post u ((t_exp exp2) -*- k);
-               expD (post -*- tupE[])]
+               funcD post u (t_exp exp2 -*- k);
+               expD (post -*- tupE [])]
                nary_async
       ).it
     | CallE (cc, exp1, typs, exp2) when isAwaitableFunc exp1 ->
