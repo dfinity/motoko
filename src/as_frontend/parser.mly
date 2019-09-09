@@ -548,7 +548,7 @@ pat_un :
     { OptP(p) @! at $sloc }
   | op=unop l=lit
     { match op, l with
-      | NegOp, PreLit (s, Type.Nat) -> SignP(PosOp, ref (PreLit ("-" ^ s, Type.Int))) @! at $sloc
+      | NegOp, PreLit (s, Type.Nat) -> LitP (ref (PreLit ("-" ^ s, Type.Int))) @! at $sloc
       | _ -> SignP(op, ref l) @! at $sloc
     }
 
