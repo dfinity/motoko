@@ -80,7 +80,7 @@ module Transform() = struct
                            (select [ add_reply_argument, lazy reply
                                    ])))
     | V2 -> failwith "NYI" (* TODO: call dedicated prim, separating args vs from reply *)
-
+(* @JOACHIM: this might be a good place to just add a trapping reject argument; instead of in the backend *) 
 
   (* End of configuration *)
 
