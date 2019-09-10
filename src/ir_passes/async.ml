@@ -216,7 +216,6 @@ module Transform() = struct
     | Async t -> t_async nary (t_typ t)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
-    | Serialized t -> Serialized (t_typ t)
     | Any -> Any
     | Non -> Non
     | Pre -> Pre
@@ -249,8 +248,6 @@ module Transform() = struct
     | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
     | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
     | ShowPrim ot -> ShowPrim (t_typ ot)
-    | SerializePrim ot -> SerializePrim (t_typ ot)
-    | DeserializePrim ot -> DeserializePrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
     | OtherPrim s -> OtherPrim s
 

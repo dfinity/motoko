@@ -117,8 +117,7 @@ let rec typ vs t =
   | Func _ -> assert false
   | Async t -> assert false
   | Mut t -> assert false
-  | Serialized t -> assert false
-  | Pre -> assert false                  
+  | Pre -> assert false
   ) @@ no_region
 and field vs {lab; typ=t} =
   match unescape lab with
