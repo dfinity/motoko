@@ -454,7 +454,7 @@ let await_lowering =
 let async_lowering =
   transform_if "Async Lowering" Async.transform
 
-let serialization =
+let _serialization =
   transform_if "Synthesizing serialization code" Serialization.transform
 
 let tailcall_optimization =
@@ -499,7 +499,6 @@ let lower_prog senv lib_env libraries progs name =
   let prog_ir = desugar senv lib_env libraries progs name in
   let prog_ir = await_lowering !Flags.await_lowering initial_stat_env prog_ir name in
   let prog_ir = async_lowering !Flags.async_lowering initial_stat_env prog_ir name in
-  let prog_ir = serialization !Flags.await_lowering initial_stat_env prog_ir name in
   let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir

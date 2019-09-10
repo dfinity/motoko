@@ -4,4 +4,4 @@ actor hello_world {
   }
 }
 
-//CALL hello
+//CALL hello 0x4449444C0000 []

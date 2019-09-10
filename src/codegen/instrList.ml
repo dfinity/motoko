@@ -78,6 +78,7 @@ let (^^) (is1 : t) (is2 : t) : t = fun d pos rest -> is1 d pos (is2 d pos rest)
 let i (instr : instr') : t = fun _ pos rest -> (instr @@ pos) :: rest
 
 (* map and concat *)
+let concat xs = List.fold_right (^^) xs nop
 let concat_map f xs = List.fold_right (^^) (List.map f xs) nop
 let concat_mapi f xs = List.fold_right (^^) (List.mapi f xs) nop
 let table n f = List.fold_right (^^) (Lib.List.table n f) nop
