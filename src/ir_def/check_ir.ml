@@ -112,10 +112,7 @@ let check_sub env at t1 t2 =
     (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
 
 let check_shared env at t =
-  if env.flavor.Ir.serialized
-  then check env at (T.is_serialized t)
-    "message argument is not serialized:\n  %s" (T.string_of_typ_expand t)
-  else check env at (T.shared t)
+  check env at (T.shared t)
     "message argument is not sharable:\n  %s" (T.string_of_typ_expand t)
 
 let check_concrete env at t =
@@ -192,12 +189,6 @@ let rec check_typ env typ : unit =
       error env no_region "variant type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Mut typ ->
     check_typ env typ
-  | T.Serialized typ ->
-    check env no_region env.flavor.Ir.serialized
-      "Serialized in non-serialized flavor";
-    check_typ env typ;
-    check env no_region (T.shared typ)
-       "serialized type is not sharable:\n  %s" (T.string_of_typ_expand typ)
   | T.Typ c ->
     check_con env c
 
@@ -351,18 +342,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env exp1;
       typ exp1 <: ot;
       T.Prim T.Text <: t
-    | SerializePrim ot, [exp1] ->
-      check env.flavor.serialized "Serialized expression in wrong flavor";
-      check (T.shared ot) "argument to SerializePrim not shared";
-      check_exp env exp1;
-      typ exp1 <: ot;
-      T.Serialized ot <: t
-    | DeserializePrim ot, [exp1] ->
-      check env.flavor.serialized "Serialized expression in wrong flavor";
-      check (T.shared ot) "argument to SerializePrim not shared";
-      check_exp env exp1;
-      typ exp1 <: T.Serialized ot;
-      ot <: t
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"

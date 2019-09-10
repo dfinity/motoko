@@ -1110,21 +1110,21 @@ module Tagged = struct
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Array _ | Tup _ | Obj _) -> true
-      | (Prim _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
+      | (Prim _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Text ->
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Prim Text | Obj _) -> true
-      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
+      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Object ->
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Obj _) -> true
-      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
+      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | _ -> true
@@ -5680,20 +5680,6 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae sr e1 ^^
       compile_exp_as env ae sr e2 ^^
       code
-
-    (* Special prims *)
-
-    (*
-    | SerializePrim t, [e] ->
-      SR.UnboxedReference,
-      compile_exp_vanilla env ae e ^^
-      Serialization.serialize env t
-
-    | DeserializePrim t, [e] ->
-      SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedReference e ^^
-      Serialization.deserialize env t
-    *)
 
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
