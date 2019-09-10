@@ -454,9 +454,6 @@ let await_lowering =
 let async_lowering =
   transform_if "Async Lowering" Async.transform
 
-let _serialization =
-  transform_if "Synthesizing serialization code" Serialization.transform
-
 let tailcall_optimization =
   transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
 
