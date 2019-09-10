@@ -624,7 +624,12 @@ module RTS = struct
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
     let idl_trap_fi = E.add_fun env "idl_trap" (
-      Func.of_body env [] [] (fun env ->
+      Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
+        let get_str = G.i (LocalGet (nr 0l)) in
+        let get_len = G.i (LocalGet (nr 1l)) in
+        get_str ^^ get_len ^^
+        E.call_import env "data" "externalize" ^^
+        E.call_import env "test" "print" ^^
         E.trap_with env "IDL error: Unknown error"
       )
     ) in
