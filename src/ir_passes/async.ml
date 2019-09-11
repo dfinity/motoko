@@ -79,7 +79,7 @@ module Transform() = struct
     | V1 ->
           assert add_reply_argument;
           callE v1 typs (seqE (vs @ [reply]))
-    | V2 -> failwith "NYI" (* TODO: call dedicated prim, separating args vs from reply *)
+    | V2 -> assert false (* NYI, needs a dedicated prim, separating args vs from reply *)
 
   (* End of configuration *)
 
