@@ -84,8 +84,6 @@ let as_seqP p =
 
 let primE prim es =
   let ty = match prim with
-    | DeserializePrim t -> t
-    | SerializePrim t -> T.Serialized t
     | ShowPrim _ -> T.text
     | _ -> assert false (* implement more as needed *)
   in

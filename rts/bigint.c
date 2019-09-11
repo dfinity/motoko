@@ -345,11 +345,11 @@ export as_ptr bigint_leb128_decode(buf *buf) {
     b = read_byte(buf);
     if (s > 0 && b == 0x00) {
         // The high 7 bits are all zeros, this is not a shortest encoding
-        idl_trap();
+        idl_trap_with("not shortest encoding");
     }
     if (s + 7 < s) {
         // shift overflow. number is absurdly large anyways
-        idl_trap();
+        idl_trap_with("absurdly large number");
     }
     mp_set_u32(&tmp, (b & (uint8_t)0x7f));
     CHECK(mp_mul_2d(&tmp, s, &tmp));
@@ -371,11 +371,11 @@ export as_ptr bigint_sleb128_decode(buf *buf) {
     b = read_byte(buf);
     if (s > 0 && ((!last_sign_bit_set && b == 0x00) || (last_sign_bit_set && b == 0x7F))) {
         // The high 8 bits are all zeros or ones, so this is not a shortest encoding
-        idl_trap();
+        idl_trap_with("not shortest encoding");
     }
     if (s + 7 < s) {
         // shift overflow. number is absurdly large anyways
-        idl_trap();
+        idl_trap_with("absurdly large number");
     }
     mp_set_u32(&tmp, (b & (uint8_t)0x7f));
     CHECK(mp_mul_2d(&tmp, s, &tmp));
