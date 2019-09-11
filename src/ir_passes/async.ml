@@ -68,7 +68,7 @@ module Transform() = struct
      implemented (as far as possible) for V1;
      TBC for V2 *)
 
-  let sys_replyE vs =
+  let sys_replyE v =
     match platform with
     | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
     | V2 -> failwith "NYI" (* TODO: call dedicated prim *)
@@ -372,26 +372,21 @@ module Transform() = struct
               let cc' = Call_conv.message_cc (cc.Call_conv.n_args + 1) in
               let res_typ = t_typ res_typ in
               let reply_typ = replyT nary res_typ in
-              let k = fresh_var "k" reply_typ in
+              let r = fresh_var "r" reply_typ in
               let args' = t_args args @
-                            (select [ add_reply_parameter, lazy (arg_of_exp k);
+                            (select [ add_reply_parameter, lazy (arg_of_exp r);
                                     ])
               in
               let typbinds' = t_typ_binds typbinds in
-              let y = fresh_var "y" res_typ in
               let exp' =
                 match exp.it with
                 | PrimE (OtherPrim "@async", [cps]) ->
-                  blockE
-                    (select
-                       [ (not add_reply_parameter,
-                          lazy (
-                              let vs = List.map (fresh_var "v") (nary res_typ) in
-                              nary_funcD k vs (sys_replyE vs)))
-                       ])
-                    ((t_exp cps) -*-
-                       (y --> (k -*- y))
-                    )
+                  let v = fresh_var "v" res_typ in
+                  let k = if add_reply_parameter then
+                            (v --> (r -*- v))
+                          else
+                            (v --> (sys_replyE v)) in
+                  t_exp cps -*- k
                 | _ -> assert false
               in
               FuncE (x, cc', typbinds', args', [], exp')
