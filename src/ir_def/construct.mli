@@ -42,6 +42,7 @@ val as_seqP : pat -> pat list
 val primE : Ir.prim -> exp list -> exp
 val asyncE : typ -> exp -> exp
 val awaitE : typ -> exp -> exp -> exp
+val replyE : exp list -> exp
 val projE : exp ->  int -> exp
 val blockE : dec list -> exp -> exp
 val textE : string -> exp

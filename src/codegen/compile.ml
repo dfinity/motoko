@@ -3836,7 +3836,6 @@ module Serialization = struct
     (compile_unboxed_const 0l) ^^
     Dfinity.system_call env "msg" "arg_data_copy"
 
-
   let serialize_unit env =
     Func.share_code0 env "@serialize_unit" [] (fun env ->
       let data = "DIDL\x00\x00" in
@@ -3846,7 +3845,6 @@ module Serialization = struct
     )
 
   let serialize env ts : G.t =
-    if ts = [] then serialize_unit env else
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@serialize<" ^ ts_name ^ ">" in
     assert (List.for_all has_no_references ts);
@@ -4608,7 +4606,8 @@ module FuncDec = struct
       Serialization.deserialize env arg_tys ^^
       G.concat (List.rev setters) ^^
       mk_body env ae1 ^^
-      Serialization.serialize env ret_tys  ^^
+      (* Hack: Emit a unit response for one-shot functions *)
+      if ret_tys = [] then Serialization.serialize_unit env else G.nop ^^
 
       (* Collect garbage *)
       G.i (Call (nr (E.built_in env "collect")))
@@ -5890,6 +5889,16 @@ and compile_exp (env : E.t) ae exp =
         set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.And))
       )
+
+    | OtherPrim "reply", es ->
+      SR.unit,
+      let ts = List.map (fun e -> e.note.note_typ) es in
+      G.concat_map (fun e -> compile_exp_as env ae SR.Vanilla e) es ^^
+      (* We can try to avoid the boxing and pass the arguments to serialize individually *)
+      (if List.length ts = 1 then G.nop else Tuple.from_stack env (List.length ts)) ^^
+      Serialization.serialize env ts
+
+    (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
   | VarE var ->

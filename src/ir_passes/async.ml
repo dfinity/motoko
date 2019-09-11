@@ -44,9 +44,9 @@ module Transform() = struct
     V1  (* legacy, Haskell *)
   | V2  (* new, Rust *)
 
-  let platform = V1
+  let platform = V2
 
-  let _ = V2 (* suppress warning on unused V2 *)
+  let _ = V1 (* suppress warning on unused V2 *)
 
   (* Lowering options, specific to V1 or V2 *)
 
@@ -68,10 +68,11 @@ module Transform() = struct
      implemented (as far as possible) for V1;
      TBC for V2 *)
 
+  (* NB: The type annotations on the vs need to match the IDL type of the function *)
   let sys_replyE vs =
     match platform with
     | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
-    | V2 -> failwith "NYI" (* TODO: call dedicated prim *)
+    | V2 -> replyE vs
 
   let sys_callE v1 typs vs reply =
     match platform with
@@ -86,7 +87,7 @@ module Transform() = struct
 
   let nary typ = T.as_seq typ
 
-  let replyT as_seq typ = T.Func(T.Shared, T.Returns, [], as_seq typ, [])
+  let replyT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
   let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
