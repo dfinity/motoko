@@ -383,7 +383,7 @@ module Transform() = struct
                 | PrimE (OtherPrim "@async", [cps]) ->
                   let v = fresh_var "v" res_typ in
                   let k = if add_reply_parameter then
-                            (v --> (r -*- v))
+                            (v --> (r -*- v)) (* wrap shared function in local function *)
                           else
                             (v --> (sys_replyE v)) in
                   t_exp cps -*- k
