@@ -554,6 +554,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let scope0 = { empty_scope with val_env = ve0 } in
     let scope1 = List.fold_left (gather_dec env') scope0 ds in
     let env'' = adjoin env' scope1 in
+    check_decs env'' ds;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
