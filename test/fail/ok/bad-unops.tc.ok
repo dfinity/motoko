@@ -12,7 +12,7 @@ does not have expected type
   Nat
 bad-unops.as:6.20-6.22: type error, operator cannot consume expected type
   Nat
-bad-unops.as:7.28-7.30: type error, literal of type
+bad-unops.as:7.20-7.22: type error, literal of type
   Int
 does not have expected type
   Nat
