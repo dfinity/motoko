@@ -828,14 +828,9 @@ instance Literal Integer
 instance Literal Natural
 instance Literal (BitLimited n Natural)
 instance KnownNat bits => Literal (BitLimited bits Integer) where
-  -- compensate for https://github.com/dfinity-lab/actorscript/issues/505
-  literal (evalN -> n) = if buggy n then "intToInt" <> bitWidth pr <> "(" <> show n <> ")"
-                         else if n < 0
+  literal (evalN -> n) = if n < 0
                          then "(" <> show n <> ")"
                          else show n
-    where buggy n = n == - 2 ^ (numbits - 1)
-          numbits = natVal pr
-          pr = Proxy @bits
 instance KnownNat bits => Literal (BitLimited bits Word) where
   literal n = show . fromJust $ trapWord (natVal (Proxy @bits)) (evalN n)
 

@@ -105,6 +105,10 @@ struct
     let s' = dig ^ (if i = 4 then "_" else "") ^ s in
     to_pretty_string' (WasmInt.div_u w base) (i mod 4 + 1) s'
   let to_string = to_pretty_string
+  let of_string_s s =
+    if String.length s > 0 && String.get s 0 = '-'
+    then neg (of_string_u (String.sub s 1 (String.length s - 1)))
+    else of_string_u s
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
@@ -289,7 +293,6 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
-  | Serialized of value
 
 and async = {result : def; mutable waiters : value cont list}
 and def = value Lib.Promise.t
@@ -333,7 +336,6 @@ let as_variant = function Variant (i, v) -> i, v | _ -> invalid "as_variant"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
-let as_serialized = function Serialized v -> v | _ -> invalid "as_serialized"
 let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"

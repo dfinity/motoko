@@ -8,7 +8,7 @@ actor {
     printNat c; print "\n";
   }
 }
-//CALL inc
-//CALL inc
-//CALL inc
-//CALL printCounter
+//CALL inc 0x4449444C0000 []
+//CALL inc 0x4449444C0000 []
+//CALL inc 0x4449444C0000 []
+//CALL printCounter 0x4449444C0000 []
