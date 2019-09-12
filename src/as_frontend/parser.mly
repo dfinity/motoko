@@ -551,7 +551,7 @@ pat_un :
     { let merge_sign s = function | NegOp -> "-" ^ s | _ -> s in
       match op, l with
       | (PosOp | NegOp), PreLit (s, Type.Nat) ->
-	LitP(ref (PreLit (merge_sign s op, Type.Int))) @! at $sloc
+        LitP(ref (PreLit (merge_sign s op, Type.Int))) @! at $sloc
       | _ -> SignP(op, ref l) @! at $sloc
     }
 
