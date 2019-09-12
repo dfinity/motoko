@@ -398,14 +398,11 @@ exp_un(B) :
   | QUEST e=exp_un(ob)
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un(ob)
-    { let vanilla = UnE(ref Type.Pre, op, e) @? at $sloc in
-      let merge_sign s = function | NegOp -> "-" ^ s | _ -> s in
-      match op, e.it with
-      | (PosOp | NegOp), LitE lit ->
-        (match !lit with
-         | PreLit (s, Type.Nat) -> LitE(ref (PreLit (merge_sign s op, Type.Int))) @? at $sloc
-         | _ -> vanilla)
-      | _ -> vanilla
+    { match op, e.it with
+      | (PosOp | NegOp), LitE {contents = PreLit (s, Type.Nat)} ->
+        let signed = match op with | NegOp -> "-" ^ s | _ -> s in
+        LitE(ref (PreLit (signed, Type.Int))) @? at $sloc
+      | _ -> UnE(ref Type.Pre, op, e) @? at $sloc
     }
   | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
@@ -548,10 +545,10 @@ pat_un :
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }
   | op=unop l=lit
-    { let merge_sign s = function | NegOp -> "-" ^ s | _ -> s in
-      match op, l with
+    { match op, l with
       | (PosOp | NegOp), PreLit (s, Type.Nat) ->
-        LitP(ref (PreLit (merge_sign s op, Type.Int))) @! at $sloc
+        let signed = match op with | NegOp -> "-" ^ s | _ -> s in
+        LitP(ref (PreLit (signed, Type.Int))) @! at $sloc
       | _ -> SignP(op, ref l) @! at $sloc
     }
 
