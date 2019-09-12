@@ -106,11 +106,10 @@ let awaitE typ e1 e2 =
     note = { note_typ = T.unit; note_eff = max_eff (eff e1) (eff e2) }
   }
 
-let replyE es =
-  let eff = List.fold_left max_eff T.Triv (List.map eff es) in
-  { it = PrimE (OtherPrim "reply", es);
+let replyE e =
+  { it = PrimE (OtherPrim "reply", [e]);
     at = no_region;
-    note = { note_typ = T.Non; note_eff = eff }
+    note = { note_typ = T.Non; note_eff = eff e }
   }
 
 

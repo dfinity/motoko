@@ -5890,13 +5890,10 @@ and compile_exp (env : E.t) ae exp =
         G.i (Binary (Wasm.Values.I64 I64Op.And))
       )
 
-    | OtherPrim "reply", es ->
+    | OtherPrim "reply", [e] ->
       SR.unit,
-      let ts = List.map (fun e -> e.note.note_typ) es in
-      G.concat_map (fun e -> compile_exp_as env ae SR.Vanilla e) es ^^
-      (* We can try to avoid the boxing and pass the arguments to serialize individually *)
-      (if List.length ts = 1 then G.nop else Tuple.from_stack env (List.length ts)) ^^
-      Serialization.serialize env ts
+      compile_exp_vanilla env ae e ^^
+      Serialization.serialize env [e.note.note_typ]
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
