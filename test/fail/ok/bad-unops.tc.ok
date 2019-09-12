@@ -10,7 +10,15 @@ bad-unops.as:4.15-4.17: type error, literal of type
   Int
 does not have expected type
   Nat
+bad-unops.as:6.20-6.22: type error, operator cannot consume expected type
+  Nat
 bad-unops.as:7.28-7.30: type error, literal of type
   Int
 does not have expected type
   Nat
+bad-unops.as:8.20-8.22: type error, literal of type
+  Int
+does not have expected type
+  Nat
+bad-unops.as:10.21-10.23: type error, operator cannot consume expected type
+  Int
