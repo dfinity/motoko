@@ -57,7 +57,6 @@ module SR = struct
   type t =
     | Vanilla
     | UnboxedTuple of int
-    | UnboxedRefTuple of int
     | UnboxedWord64
     | UnboxedWord32
     | UnboxedReference
@@ -624,7 +623,16 @@ module RTS = struct
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
     let idl_trap_fi = E.add_fun env "idl_trap" (
-      Func.of_body env [] [] (fun env ->
+      Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
+        begin
+          if E.mode env = DfinityMode then
+            let get_str = G.i (LocalGet (nr 0l)) in
+            let get_len = G.i (LocalGet (nr 1l)) in
+            get_str ^^ get_len ^^
+            E.call_import env "data" "externalize" ^^
+            E.call_import env "test" "print"
+          else G.nop
+        end ^^
         E.trap_with env "IDL error: Unknown error"
       )
     ) in
@@ -1102,21 +1110,21 @@ module Tagged = struct
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Array _ | Tup _ | Obj _) -> true
-      | (Prim _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
+      | (Prim _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Text ->
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Prim Text | Obj _) -> true
-      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
+      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Object ->
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Obj _) -> true
-      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Serialized _ | Non) -> false
+      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | _ -> true
@@ -3230,33 +3238,25 @@ end (* HeapTraversal *)
 
 module Serialization = struct
   (*
-    Also see (and update) `design/TmpWireFormat.md`, which documents the format
-    in a “user-facing” way.
-
-    We have a specific serialization strategy for `Text` and references for
-    easier interop with the console and the nonce. This is a stop-gap measure
-    until we have nailed down IDL and Bidirectional Messaging.
-
     The general serialization strategy is as follows:
+    * We statically generate the IDL type description header.
     * We traverse the data to calculate the size needed for the data buffer and the
       reference buffer.
     * We allocate memory for the data buffer and the reference buffer
       (this memory area is not referenced, so will be dead with the next GC)
-    * We traverse the data, in a type-driven way, and copy it to the scratch space.
-      We thread through pointers to the current free space of the two scratch spaces.
+    * We copy the IDL type header to the data buffer.
+    * We traverse the data and serialize it into the data buffer.
       This is type driven, and we use the `share_code` machinery and names that
       properly encode the type to resolve loops in a convenient way.
-    * We externalize all that new data space into a databuf, and add this reference
-      to the reference space.
+    * We externalize all that new data space into a databuf
     * We externalize the reference space into a elembuf
-
-    TODO: Cycles are not detected.
+    * We pass both databuf and elembuf to shared functions
+      (this mimicks the future system API)
 
     The deserialization is analogous:
-    * We allocate some scratch space, and internalize the elembuf into it.
-    * We allocate some more scratch space, and internalize the databuf into it.
+    * We allocate some scratch space, and internalize the databuf and elembuf into it.
     * We parse the data, in a type-driven way, using normal construction and
-      allocation.
+      allocation, while keeping tabs on the type description header for subtyping.
     * At the end, the scratch space is a hole in the heap, and will be reclaimed
       by the next GC.
   *)
@@ -3269,7 +3269,8 @@ module Serialization = struct
      - It needs to be injective wrt. type equality
      - It needs to terminate, even for recursive types
      - It may fail upon type parameters (i.e. no polymorphism)
-    We can use string_of_typ here for now, it seems.
+    We can use string_of_typ here for now, it seems, but eventually we
+    want something more efficient and compact and less fragile.
   *)
   let typ_id : Type.typ -> string = Type.string_of_typ
 
@@ -3277,41 +3278,6 @@ module Serialization = struct
     List.sort
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
       (List.map (fun f -> (Idllib.IdlHash.idl_hash f.Type.lab, f)) fs)
-
-  (* Checks whether the serialization of a given type could contain references *)
-  module TS = Set.Make (struct type t = Type.typ let compare = compare end)
-  let has_no_references : Type.typ -> bool = fun t ->
-    let open Type in
-    let seen = ref TS.empty in (* break the cycles *)
-    let rec go t =
-      TS.mem t !seen ||
-      begin
-        seen := TS.add t !seen;
-        match t with
-        | Var _ -> assert false
-        | (Prim _ | Any | Non | Pre) -> true
-        | Con (c, ts) ->
-          begin match Con.kind c with
-          | Abs _ -> assert false
-          | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)
-          end
-        | Array t -> go t
-        | Tup ts -> List.for_all go ts
-        | Func (Shared, c, tbs, ts1, ts2) -> false
-        | Func (s, c, tbs, ts1, ts2) ->
-          let ts = open_binds tbs in
-          List.for_all go (List.map (open_ ts) ts1) &&
-          List.for_all go (List.map (open_ ts) ts2)
-        | Opt t -> go t
-        | Variant fs -> List.for_all (fun f -> go f.typ) fs
-        | Async t -> go t
-        | Obj (Actor, fs) -> false
-        | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
-        | Mut t -> go t
-        | Serialized t -> go t
-        | Typ _ -> false
-      end
-    in go t
 
   (* TODO (leb128 for i32):
      All leb128 currently goes through bignum. This is of course
@@ -3353,7 +3319,7 @@ module Serialization = struct
     | Non -> Some 17
     | _ -> None
 
-  let type_desc t : string =
+  let type_desc ts : string =
     let open Type in
 
     (* Type traversal *)
@@ -3362,9 +3328,7 @@ module Serialization = struct
       let typs = ref [] in
       let idx = ref TM.empty in
       let rec go t =
-        let t = normalize t in
-        let t = match t with Serialized t -> t | _ -> t in
-        let t = normalize t in
+        let t = Type.normalize t in
         if to_idl_prim t <> None then () else
         if TM.mem t !idx then () else begin
           idx := TM.add t (List.length !typs) !idx;
@@ -3383,7 +3347,7 @@ module Serialization = struct
             assert false
         end
       in
-      go t;
+      List.iter go ts;
       (!typs, !idx)
     in
 
@@ -3419,9 +3383,7 @@ module Serialization = struct
     (* Actual binary data *)
 
     let add_idx t =
-      let t = normalize t in
-      let t = match t with Serialized t -> t | _ -> t in
-      let t = normalize t in
+      let t = Type.normalize t in
       match to_idl_prim t with
       | Some i -> add_sleb128 (-i)
       | None -> add_sleb128 (TM.find (normalize t) idx) in
@@ -3474,13 +3436,14 @@ module Serialization = struct
     Buffer.add_string buf "DIDL";
     add_leb128 (List.length typs);
     List.iter add_typ typs;
-    add_idx (normalize t);
+    add_leb128 (List.length ts);
+    List.iter add_idx ts;
     Buffer.contents buf
 
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
     let open Type in
-    let t = normalize t in
+    let t = Type.normalize t in
     let name = "@buffer_size<" ^ typ_id t ^ ">" in
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type]
     (fun env get_x ->
@@ -3570,7 +3533,7 @@ module Serialization = struct
   (* Copies x to the data_buffer, storing references after ref_count entries in ref_base *)
   let rec serialize_go env t =
     let open Type in
-    let t = normalize t in
+    let t = Type.normalize t in
     let name = "@serialize_go<" ^ typ_id t ^ ">" in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
@@ -3907,196 +3870,114 @@ module Serialization = struct
       end
     )
 
-  let serialize env t =
-    let name = "@serialize<" ^ typ_id t ^ ">" in
-    Func.share_code1 env name ("x", I32Type) [I32Type] (fun env get_x ->
-      match Type.normalize t with
-      (* Special-cased formats for scaffolding *)
-      | Type.Prim Type.Text -> get_x ^^ Dfinity.compile_databuf_of_text env
-      | Type.Obj (Type.Actor, _)
-      | Type.Func (Type.Shared, _, _, _, _) -> get_x ^^ Dfinity.unbox_reference env
-      (* normal format *)
-      | _ ->
-        let (set_data_size, get_data_size) = new_local env "data_size" in
-        let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+  let serialize env ts : G.t =
+    let ts_name = String.concat "," (List.map typ_id ts) in
+    let name = "@serialize<" ^ ts_name ^ ">" in
+    Func.share_code1 env name ("x", I32Type) [I32Type; I32Type] (fun env get_x ->
+      let (set_data_size, get_data_size) = new_local env "data_size" in
+      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
 
-        let tydesc = type_desc t in
-        let tydesc_len = Int32.of_int (String.length tydesc) in
+      let tydesc = type_desc ts in
+      let tydesc_len = Int32.of_int (String.length tydesc) in
 
-        (* Get object sizes *)
-        get_x ^^
-        buffer_size env t ^^
-        compile_add_const 1l ^^ (* Leave space for databuf *)
-        compile_mul_const Heap.word_size ^^
-        set_refs_size ^^
+      (* Get object sizes *)
+      get_x ^^
+      buffer_size env (Type.seq ts) ^^
+      compile_mul_const Heap.word_size ^^
+      set_refs_size ^^
 
-        compile_add_const tydesc_len  ^^
-        set_data_size ^^
+      compile_add_const tydesc_len  ^^
+      set_data_size ^^
 
-        let (set_data_start, get_data_start) = new_local env "data_start" in
-        let (set_refs_start, get_refs_start) = new_local env "refs_start" in
+      let (set_data_start, get_data_start) = new_local env "data_start" in
+      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-        get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
-        get_refs_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
+      get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
+      get_refs_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
 
-        (* Write ty desc *)
-        get_data_start ^^
-        Text.lit env tydesc ^^ Text.payload_ptr_unskewed ^^
-        compile_unboxed_const tydesc_len ^^
-        Heap.memcpy env ^^
+      (* Write ty desc *)
+      get_data_start ^^
+      Text.lit env tydesc ^^ Text.payload_ptr_unskewed ^^
+      compile_unboxed_const tydesc_len ^^
+      Heap.memcpy env ^^
 
-        (* Serialize x into the buffer *)
-        get_x ^^
-        get_data_start ^^ compile_add_const tydesc_len ^^
-        get_refs_start ^^ compile_add_const Heap.word_size ^^ (* Leave space for databuf *)
-        serialize_go env t ^^
+      (* Serialize x into the buffer *)
+      get_x ^^
+      get_data_start ^^ compile_add_const tydesc_len ^^
+      get_refs_start ^^
+      serialize_go env (Type.seq ts) ^^
 
-        (* Sanity check: Did we fill exactly the buffer *)
-        get_refs_start ^^ get_refs_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        E.else_trap_with env "reference buffer not filled " ^^
+      (* Sanity check: Did we fill exactly the buffer *)
+      get_refs_start ^^ get_refs_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      E.else_trap_with env "reference buffer not filled " ^^
 
-        get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        E.else_trap_with env "data buffer not filled " ^^
+      get_data_start ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      E.else_trap_with env "data buffer not filled " ^^
 
-        (* Create databuf, and store at beginning of ref area *)
-        get_refs_start ^^
-        get_data_start ^^
-        get_data_size ^^
-        Dfinity.system_call env "data" "externalize" ^^
-        store_unskewed_ptr  ^^
+      (* Store it all in a databuf and an elembuf *)
+      get_data_start ^^ get_data_size ^^
+      Dfinity.system_call env "data" "externalize" ^^
 
-        if has_no_references t
-        then
-          (* Sanity check: Really no references *)
-          get_refs_size ^^
-          compile_unboxed_const Heap.word_size ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-          E.else_trap_with env "has_no_references wrong" ^^
-          (* If there are no references, just return the databuf *)
-          get_refs_start ^^
-          load_unskewed_ptr
-        else
-          (* Finally, create elembuf *)
-          get_refs_start ^^
-          get_refs_size ^^ compile_divU_const Heap.word_size ^^
-          Dfinity.system_call env "elem" "externalize"
+      get_refs_start ^^ get_refs_size ^^
+      Dfinity.system_call env "elem" "externalize"
     )
 
-  let deserialize_text env get_databuf =
-    let (set_data_size, get_data_size) = new_local env "data_size" in
-    let (set_x, get_x) = new_local env "x" in
+  let deserialize env ts =
+    let ts_name = String.concat "," (List.map typ_id ts) in
+    let name = "@deserialize<" ^ ts_name ^ ">" in
+    Func.share_code2 env name (("databuf",I32Type),("elembuf", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_databuf get_elembuf ->
+      let (set_data_size, get_data_size) = new_local env "data_size" in
+      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+      let (set_data_start, get_data_start) = new_local env "data_start" in
+      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-    get_databuf ^^
-    Dfinity.system_call env "data" "length" ^^
-    set_data_size ^^
+      (* Allocate space for the data buffer and copy it *)
+      get_databuf ^^ Dfinity.system_call env "data" "length" ^^ set_data_size ^^
+      get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
+      get_data_start ^^ get_data_size ^^ get_databuf ^^ compile_unboxed_const 0l ^^
+      Dfinity.system_call env "data" "internalize" ^^
 
-    get_data_size ^^
-    Text.alloc env ^^
-    set_x ^^
+      (* Allocate space for the reference buffer and copy it *)
+      get_elembuf ^^ Dfinity.system_call env "elem" "length" ^^ set_refs_size ^^
+      get_refs_size ^^ compile_mul_const Heap.word_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
+      get_refs_start ^^ get_refs_size ^^ get_elembuf ^^ compile_unboxed_const 0l ^^
+      Dfinity.system_call env "elem" "internalize" ^^
 
-    get_x ^^ Text.payload_ptr_unskewed ^^
-    get_data_size ^^
-    get_databuf ^^
-    compile_unboxed_const 0l ^^
-    Dfinity.system_call env "data" "internalize" ^^
+      (* Allocate space for out parameters of parse_idl_header *)
+      Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
+      Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
 
-    get_x
+      (* Set up read buffers *)
+      ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
 
+      ReadBuf.set_ptr get_data_buf get_data_start ^^
+      ReadBuf.set_size get_data_buf get_data_size ^^
+      ReadBuf.set_ptr get_ref_buf get_refs_start ^^
+      ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
-  let deserialize env t =
-    let name = "@deserialize<" ^ typ_id t ^ ">" in
-    Func.share_code1 env name ("elembuf", I32Type) [I32Type] (fun env get_elembuf ->
-      match Type.normalize t with
-      | Type.Prim Type.Text -> deserialize_text env get_elembuf
-      | Type.Obj (Type.Actor, _)
-      | Type.Func (Type.Shared, _, _, _, _) -> get_elembuf ^^ Dfinity.box_reference env
-      | _ ->
-        let (set_data_size, get_data_size) = new_local env "data_size" in
-        let (set_refs_size, get_refs_size) = new_local env "refs_size" in
-        let (set_data_start, get_data_start) = new_local env "data_start" in
-        let (set_refs_start, get_refs_start) = new_local env "refs_start" in
-        let (set_databuf, get_databuf) = new_local env "databuf" in
+      (* Go! *)
+      get_data_buf ^^ get_typtbl_ptr ^^ get_maintyps_ptr ^^
+      E.call_import env "rts" "parse_idl_header" ^^
 
-        begin
-        if has_no_references t
-        then
-          (* We have no elembuf wrapper, so the argument is the databuf *)
-          compile_unboxed_const 0l ^^ set_refs_start ^^
-          get_elembuf ^^ set_databuf
-        else
-          (* Allocate space for the elem buffer *)
-          get_elembuf ^^
-          Dfinity.system_call env "elem" "length" ^^
-          set_refs_size ^^
+      (* set up a dedicated read buffer for the list of main types *)
+      ReadBuf.alloc env (fun get_main_typs_buf ->
+        ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
+        ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
 
-          get_refs_size ^^
-          Arr.alloc env ^^
-          compile_add_const Arr.header_size ^^
-          compile_add_const ptr_unskew ^^
-          set_refs_start ^^
-
-          (* Copy elembuf *)
-          get_refs_start ^^
-          get_refs_size ^^
-          get_elembuf ^^
-          compile_unboxed_const 0l ^^
-          Dfinity.system_call env "elem" "internalize" ^^
-
-          (* Get databuf *)
-          get_refs_start ^^
-          load_unskewed_ptr ^^
-          set_databuf
-        end ^^
-
-        (* Allocate space for the data buffer *)
-        get_databuf ^^
-        Dfinity.system_call env "data" "length" ^^
-        set_data_size ^^
-
-        get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
-
-        (* Copy data *)
-        get_data_start ^^
-        get_data_size ^^
-        get_databuf ^^
-        compile_unboxed_const 0l ^^
-        Dfinity.system_call env "data" "internalize" ^^
-
-        (* Allocate space for out parameters of parse_idl_header *)
-        Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
-        Stack.with_words env "get_maintyp_ptr" 1l (fun get_maintyp_ptr ->
-
-
-        (* Set up read buffers *)
-        ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
-
-        ReadBuf.set_ptr get_data_buf get_data_start ^^
-        ReadBuf.set_size get_data_buf get_data_size ^^
-        ReadBuf.set_ptr get_ref_buf (get_refs_start ^^ compile_add_const Heap.word_size) ^^
-        ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_sub_const 1l ^^ compile_mul_const Heap.word_size) ^^
-
-        (* Go! *)
-        get_data_buf ^^ get_typtbl_ptr ^^ get_maintyp_ptr ^^
-        E.call_import env "rts" "parse_idl_header" ^^
-
-        get_data_buf ^^ get_ref_buf ^^
-        get_typtbl_ptr ^^ load_unskewed_ptr ^^
-        get_maintyp_ptr ^^ load_unskewed_ptr ^^
-        deserialize_go env t
-        ))))
-    )
-
-    let dfinity_type t =
-      let open As_types.Type in
-      let open Wasm_exts.CustomModule in
-      match normalize t with
-      | Prim Text -> DataBuf
-      | Obj (Actor, _) -> ActorRef
-      | Func (Shared, _, _, _, _) -> FuncRef
-      | t' when has_no_references t' -> DataBuf
-      | _ -> ElemBuf
+        (* read count *)
+        ReadBuf.read_leb128 env get_main_typs_buf ^^
+        compile_eq_const (Int32.of_int (List.length ts)) ^^
+        E.else_trap_with env ("IDL error: wrong arity parsing " ^ ts_name) ^^
+        G.concat_map (fun t ->
+          get_data_buf ^^ get_ref_buf ^^
+          get_typtbl_ptr ^^ load_unskewed_ptr ^^
+          ReadBuf.read_sleb128 env get_main_typs_buf ^^
+          deserialize_go env t
+        ) ts
+      )
+    )))))
 
 end (* Serialization *)
 
@@ -4333,9 +4214,6 @@ module StackRep = struct
   let of_arity n =
     if n = 1 then Vanilla else UnboxedTuple n
 
-  let refs_of_arity n =
-    if n = 1 then UnboxedReference else UnboxedRefTuple n
-
   (* The stack rel of a primitive type, i.e. what the binary operators expect *)
   let of_type t =
     let open Type in
@@ -4357,10 +4235,6 @@ module StackRep = struct
     | UnboxedTuple 1 -> ValBlockType (Some I32Type)
     | UnboxedTuple n when not !Flags.multi_value -> assert false
     | UnboxedTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
-    | UnboxedRefTuple 0 -> ValBlockType None
-    | UnboxedRefTuple 1 -> ValBlockType (Some I32Type)
-    | UnboxedRefTuple n when not !Flags.multi_value -> assert false
-    | UnboxedRefTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
     | StaticThing _ -> ValBlockType None
     | Unreachable -> ValBlockType None
 
@@ -4370,7 +4244,6 @@ module StackRep = struct
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedReference -> "UnboxedReference"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
-    | UnboxedRefTuple n -> Printf.sprintf "UnboxedRefTuple %d" n
     | Unreachable -> "Unreachable"
     | StaticThing _ -> "StaticThing"
 
@@ -4404,7 +4277,6 @@ module StackRep = struct
     | UnboxedWord32 -> G.i Drop
     | UnboxedReference -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
-    | UnboxedRefTuple n -> G.table n (fun _ -> G.i Drop)
     | StaticThing _ -> G.nop
     | Unreachable -> G.nop
 
@@ -4426,33 +4298,7 @@ module StackRep = struct
       Dfinity.static_message_funcref env fi ^^
       Dfinity.box_reference env
 
-  let unbox_reference_n env n = match n with
-    | 0 -> G.nop
-    | 1 -> Dfinity.unbox_reference env
-    | _ ->
-      let name = Printf.sprintf "unbox_reference_n %i" n in
-      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
-      let retty = Lib.List.make n I32Type in
-      Func.share_code env name args retty (fun env ->
-        G.table n (fun i ->
-          G.i (LocalGet (nr (Int32.of_int i))) ^^ Dfinity.unbox_reference env
-        )
-      )
-
-  let box_reference_n env n = match n with
-    | 0 -> G.nop
-    | 1 -> Dfinity.box_reference env
-    | _ ->
-      let name = Printf.sprintf "box_reference_n %i" n in
-      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
-      let retty = Lib.List.make n I32Type in
-      Func.share_code env name args retty (fun env ->
-        G.table n (fun i ->
-          G.i (LocalGet (nr (Int32.of_int i))) ^^ Dfinity.box_reference env
-        )
-      )
-
-  let rec adjust env (sr_in : t) sr_out =
+  let adjust env (sr_in : t) sr_out =
     if sr_in = sr_out
     then G.nop
     else match sr_in, sr_out with
@@ -4461,15 +4307,6 @@ module StackRep = struct
 
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
-
-    | UnboxedRefTuple n, UnboxedTuple m when n = m -> box_reference_n env n
-    | UnboxedTuple n, UnboxedRefTuple m when n = m -> unbox_reference_n env n
-
-    | UnboxedRefTuple n, sr ->
-      box_reference_n env n ^^ adjust env (UnboxedTuple n) sr
-    | sr,  UnboxedRefTuple n ->
-      adjust env sr (UnboxedTuple n) ^^ unbox_reference_n env n
-
 
     | UnboxedWord64, Vanilla -> BoxedWord64.box env
     | Vanilla, UnboxedWord64 -> BoxedWord64.unbox env
@@ -4544,6 +4381,16 @@ module ASEnv = struct
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
       ({ ae with vars = NameEnv.add name (VarLoc.Local i) ae.vars }, i)
+
+  (* Adds the names to the environment and returns a list of setters *)
+  let rec add_argument_locals env (ae : t) = function
+    | [] -> (ae, [])
+    | (name :: names) ->
+      let i = E.add_anon_local env I32Type in
+      E.add_local_name env i name;
+      let ae' = { ae with vars = NameEnv.add name (VarLoc.Local i) ae.vars } in
+      let (ae_final, setters) = add_argument_locals env ae' names
+      in (ae_final, G.i (LocalSet (nr i)) :: setters)
 
   let in_scope_set (ae : t) =
     NameEnv.fold (fun k _ -> Freevars.S.add k) ae.vars Freevars.S.empty
@@ -4652,9 +4499,9 @@ module FuncDec = struct
 
   (* The type of messages *)
   let message_ty env cc =
-    E.func_type env (FuncType (Lib.List.make cc.Call_conv.n_args I32Type,[]))
+    E.func_type env (FuncType ([I32Type; I32Type], []))
 
-  (* Expects all arguments on the stack, in serialized form. *)
+  (* Expects databuf and elembuf on the stack, in serialized form. *)
   let call_funcref env cc get_ref =
     compile_unboxed_const tmp_table_slot ^^ (* slot number *)
     get_ref ^^ (* the unboxed funcref *)
@@ -4717,10 +4564,12 @@ module FuncDec = struct
      - Fake orthogonal persistence
   *)
   let compile_message outer_env outer_ae cc restore_env args mk_body at =
-    let arg_names = List.map (fun a -> a.it, I32Type) args in
     assert (cc.Call_conv.n_res = 0);
     let ae0 = ASEnv.mk_fun_ae outer_ae in
-    Func.of_body outer_env (["clos", I32Type] @ arg_names) [] (fun env -> G.with_region at (
+    Func.of_body outer_env ["clos", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
+      let get_databuf = G.i (LocalGet (nr 1l)) in
+      let get_elembuf = G.i (LocalGet (nr 2l)) in
+
       (* Restore memory *)
       OrthogonalPersistence.restore_mem env ^^
 
@@ -4732,10 +4581,13 @@ module FuncDec = struct
 
       let (ae1, closure_code) = restore_env env ae0 get_closure in
 
-      (* Add arguments to the environment, as unboxed references *)
-      let ae2 = bind_args ae1 1 args (fun ae a get ->
-        ASEnv.add_local_deferred ae a.it SR.UnboxedReference (fun _ -> get) true
-      ) in
+      (* Deserialize argument and add params to the environment *)
+      let arg_names = List.map (fun a -> a.it) args in
+      let arg_tys = List.map (fun a -> a.note) args in
+      let (ae2, setters) = ASEnv.add_argument_locals env ae1 arg_names in
+      get_databuf ^^ get_elembuf ^^
+      Serialization.deserialize env arg_tys ^^
+      G.concat (List.rev setters) ^^
 
       closure_code ^^
       mk_body env ae2 ^^
@@ -4747,20 +4599,23 @@ module FuncDec = struct
       OrthogonalPersistence.save_mem env
     ))
 
-  let compile_static_message outer_env outer_ae cc args mk_body at : E.func_with_names =
-    let arg_names = List.map (fun a -> a.it, I32Type) args in
+  let compile_static_message outer_env outer_ae cc args mk_body ret_tys at : E.func_with_names =
     assert (cc.Call_conv.n_res = 0);
     let ae0 = ASEnv.mk_fun_ae outer_ae in
-    (* Messages take no closure, return nothing *)
-    Func.of_body outer_env arg_names [] (fun env ->
+    Func.of_body outer_env ["databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
+      let get_databuf = G.i (LocalGet (nr 0l)) in
+      let get_elembuf = G.i (LocalGet (nr 1l)) in
+
       (* Set up memory *)
       OrthogonalPersistence.restore_mem env ^^
 
-      (* Add arguments to the environment, as unboxed references *)
-      let ae1 = bind_args ae0 0 args (fun ae a get ->
-        ASEnv.add_local_deferred ae a.it SR.UnboxedReference (fun _ -> get) true
-      ) in
-
+      (* Deserialize argument and add params to the environment *)
+      let arg_names = List.map (fun a -> a.it) args in
+      let arg_tys = List.map (fun a -> a.note) args in
+      let (ae1, setters) = ASEnv.add_argument_locals env ae0 arg_names in
+      get_databuf ^^ get_elembuf ^^
+      Serialization.deserialize env arg_tys ^^
+      G.concat (List.rev setters) ^^
       mk_body env ae1 ^^
 
       (* Collect garbage *)
@@ -4768,24 +4623,22 @@ module FuncDec = struct
 
       (* Save memory *)
       OrthogonalPersistence.save_mem env
-      )
+    ))
 
-  let declare_dfinity_type env has_closure fi args =
+  let declare_dfinity_type env has_closure fi =
       E.add_dfinity_type env (fi,
         (if has_closure then [ Wasm_exts.CustomModule.I32 ] else []) @
-        List.map (
-          fun a -> Serialization.dfinity_type (Type.as_serialized a.note)
-        ) args
+        [ Wasm_exts.CustomModule.DataBuf; Wasm_exts.CustomModule.ElemBuf ]
       )
 
   (* Compile a closed function declaration (captures no local variables) *)
-  let closed pre_env cc name args mk_body at =
+  let closed pre_env cc name args mk_body ret_tys at =
     let (fi, fill) = E.reserve_fun pre_env name in
     if cc.Call_conv.sort = Type.Shared
     then begin
-      declare_dfinity_type pre_env false fi args;
+      declare_dfinity_type pre_env false fi ;
       ( SR.StaticMessage fi, fun env ae ->
-        fill (compile_static_message env ae cc args mk_body at)
+        fill (compile_static_message env ae cc args mk_body ret_tys at)
       )
     end else
       ( SR.StaticFun fi, fun env ae ->
@@ -4830,7 +4683,7 @@ module FuncDec = struct
 
       let fi = E.add_fun env name f in
 
-      if not is_local then declare_dfinity_type env true fi args;
+      if not is_local then declare_dfinity_type env true fi;
 
       let code =
         (* Allocate a heap object for the closure *)
@@ -4870,12 +4723,12 @@ module FuncDec = struct
         ClosureTable.remember_closure env ^^
         Dfinity.system_call env "func" "bind_i32"
 
-  let lit env ae how name cc free_vars args mk_body at =
+  let lit env ae how name cc free_vars args mk_body ret_tys at =
     let captured = List.filter (ASEnv.needs_capture ae) free_vars in
 
     if captured = []
     then
-      let (st, fill) = closed env cc name args mk_body at in
+      let (st, fill) = closed env cc name args mk_body ret_tys at in
       fill env ae;
       (SR.StaticThing st, G.nop)
     else closure env ae cc name captured args mk_body at
@@ -5828,18 +5681,6 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae sr e2 ^^
       code
 
-    (* Special prims *)
-
-    | SerializePrim t, [e] ->
-      SR.UnboxedReference,
-      compile_exp_vanilla env ae e ^^
-      Serialization.serialize env t
-
-    | DeserializePrim t, [e] ->
-      SR.Vanilla,
-      compile_exp_as env ae SR.UnboxedReference e ^^
-      Serialization.deserialize env t
-
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
       let open Type in
@@ -6165,7 +6006,11 @@ and compile_exp (env : E.t) ae exp =
         let (set_funcref, get_funcref) = new_local env "funcref" in
         code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
         set_funcref ^^
-        compile_exp_as env ae (StackRep.refs_of_arity cc.Call_conv.n_args) e2 ^^
+        compile_exp_as env ae SR.Vanilla e2 ^^
+        (* We can try to avoid the boxing and pass the arguments to
+           serialize individually *)
+        let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
+        Serialization.serialize env ts ^^
         FuncDec.call_funcref env cc get_funcref
     end
   | SwitchE (e, cs) ->
@@ -6196,10 +6041,10 @@ and compile_exp (env : E.t) ae exp =
     SR.unit,
     compile_exp_vanilla env ae e ^^
     Var.set_val env ae name
-  | FuncE (x, cc, typ_binds, args, _rt, e) ->
+  | FuncE (x, cc, typ_binds, args, ret_tys, e) ->
     let captured = Freevars.captured exp in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity cc.Call_conv.n_res) e in
-    FuncDec.lit env ae typ_binds x cc captured args mk_body exp.at
+    FuncDec.lit env ae typ_binds x cc captured args mk_body ret_tys exp.at
   | ActorE (i, ds, fs, _) ->
     SR.UnboxedReference,
     let captured = Freevars.exp exp in
@@ -6221,10 +6066,6 @@ and compile_exp_as env ae sr_out e =
   G.with_region e.at (
     match sr_out, e.it with
     (* Some optimizations for certain sr_out and expressions *)
-    | SR.UnboxedRefTuple n, TupE es when n = List.length es ->
-      G.concat_map (fun e ->
-        compile_exp_as env ae SR.UnboxedReference e
-      ) es
     | _ , BlockE (decs, exp) ->
       let captured = Freevars.captured_vars (Freevars.exp exp) in
       let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs captured in
@@ -6529,14 +6370,14 @@ and compile_prog env ae (ds, e) =
     (ae', code1 ^^ code2)
 
 and compile_static_exp env pre_ae how exp = match exp.it with
-  | FuncE (name, cc, typ_binds, args, _rt, e) ->
+  | FuncE (name, cc, typ_binds, args, ret_tys, e) ->
       let mk_body env ae =
         assert begin (* Is this really closed? *)
           List.for_all (fun v -> ASEnv.NameEnv.mem v ae.ASEnv.vars)
             (Freevars.M.keys (Freevars.exp e))
         end;
         compile_exp_as env ae (StackRep.of_arity cc.Call_conv.n_res) e in
-      FuncDec.closed env cc name args mk_body exp.at
+      FuncDec.closed env cc name args mk_body ret_tys exp.at
   | _ -> assert false
 
 and compile_prelude env ae =
@@ -6608,12 +6449,7 @@ and export_actor_field env  ae (f : Ir.field) =
     | _ -> assert false in
   (* There should be no code associated with this *)
   assert (G.is_nop code);
-  let _, _, _, ts, _ = Type.as_func f.note in
-  E.add_dfinity_type env (fi,
-    List.map (
-      fun t -> Serialization.dfinity_type (Type.as_serialized t)
-    ) ts
-  );
+  FuncDec.declare_dfinity_type env false fi;
   E.add_export env (nr {
     name = Wasm.Utf8.decode f.it.name;
     edesc = nr (FuncExport (nr fi))
