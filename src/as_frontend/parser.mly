@@ -548,9 +548,10 @@ pat_un :
   | QUEST p=pat_un
     { OptP(p) @! at $sloc }
   | op=unop l=lit
-    { match op, l with
-      | NegOp, PreLit (s, Type.Nat) -> LitP(ref (PreLit ("-" ^ s, Type.Int))) @! at $sloc
-      | PosOp, PreLit (s, Type.Nat) -> LitP(ref (PreLit (s, Type.Int))) @! at $sloc
+    { let merge_sign s = function | NegOp -> "-" ^ s | _ -> s in
+      match op, l with
+      | (PosOp | NegOp), PreLit (s, Type.Nat) ->
+	LitP(ref (PreLit (merge_sign s op, Type.Int))) @! at $sloc
       | _ -> SignP(op, ref l) @! at $sloc
     }
 
