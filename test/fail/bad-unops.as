@@ -13,4 +13,4 @@ ignore (switch (-1) { case (-1) "good"; case _ "hmmm" });
 
 ignore (switch (^1 : Word8) { case (^1) "good"; case _ "hmmm" });
 //switch (+1 : Word8) { case (+1) "good"; case _ "hmmm" }; // both `+1` are not accepted
-switch (-1 : Word8) { case (-1) "good"; case _ "hmmm" };
+ignore (switch (-1 : Word8) { case (-1) "good"; case _ "hmmm" });
