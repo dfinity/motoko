@@ -109,7 +109,7 @@ let awaitE typ e1 e2 =
 let replyE e =
   { it = PrimE (OtherPrim "reply", [e]);
     at = no_region;
-    note = { note_typ = T.Non; note_eff = eff e }
+    note = { note_typ = T.unit; note_eff = eff e }
   }
 
 
