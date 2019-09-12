@@ -108,6 +108,8 @@ struct
   let of_string_s s =
     if String.length s > 0 && String.get s 0 = '-'
     then neg (of_string_u (String.sub s 1 (String.length s - 1)))
+    else if String.length s > 0 && String.get s 0 = '+'
+    then of_string_u (String.sub s 1 (String.length s - 1))
     else of_string_u s
 end
 
