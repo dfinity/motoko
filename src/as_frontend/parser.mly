@@ -399,10 +399,11 @@ exp_un(B) :
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un(ob)
     { let vanilla = UnE(ref Type.Pre, op, e) @? at $sloc in
+      let merge_sign s = function | NegOp -> "-" ^ s | _ -> s in
       match op, e.it with
-      | NegOp, LitE lit ->
+      | (PosOp | NegOp), LitE lit ->
         (match !lit with
-         | PreLit (s, Type.Nat) -> LitE(ref (PreLit ("-" ^ s, Type.Int))) @? at $sloc
+         | PreLit (s, Type.Nat) -> LitE(ref (PreLit (merge_sign s op, Type.Int))) @? at $sloc
          | _ -> vanilla)
       | _ -> vanilla
     }
