@@ -400,7 +400,7 @@ exp_un(B) :
   | op=unop e=exp_un(ob)
     { match op, e.it with
       | (PosOp | NegOp), LitE {contents = PreLit (s, Type.Nat)} ->
-        let signed = match op with | NegOp -> "-" ^ s | _ -> s in
+        let signed = match op with NegOp -> "-" ^ s | _ -> "+" ^ s in
         LitE(ref (PreLit (signed, Type.Int))) @? at $sloc
       | _ -> UnE(ref Type.Pre, op, e) @? at $sloc
     }
@@ -547,7 +547,7 @@ pat_un :
   | op=unop l=lit
     { match op, l with
       | (PosOp | NegOp), PreLit (s, Type.Nat) ->
-        let signed = match op with | NegOp -> "-" ^ s | _ -> s in
+        let signed = match op with NegOp -> "-" ^ s | _ -> "+" ^ s in
         LitP(ref (PreLit (signed, Type.Int))) @! at $sloc
       | _ -> SignP(op, ref l) @! at $sloc
     }
