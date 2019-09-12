@@ -878,7 +878,7 @@ module ClosureTable = struct
   two reasons:
   - we cannot just bind the address via i32.bind, because that is not stable, due
     to our moving GC, and
-  - we need to remember that these closures are roots (and currenlty never freed!)
+  - we need to remember that these closures are roots (and currently never freed!)
 
   Therefore we maintain a static table from closure index to address of the closure
   on the heap.
@@ -888,7 +888,7 @@ module ClosureTable = struct
   let loc = ElemHeap.table_end
   let table_end = Int32.(add loc (mul max_entries Heap.word_size))
 
-  (* For reasons I do not recall we use the first word of the table as the counter,
+  (* For reasons I do not recall, we use the first word of the table as the counter,
      and not a global.
   *)
   let get_counter = compile_unboxed_const loc ^^ load_unskewed_ptr
@@ -3747,7 +3747,7 @@ module Serialization = struct
           end
       | Prim (Int64|Nat64|Word64) ->
         assert_prim_typ () ^^
-        ReadBuf.read_word64 env get_data_buf^^
+        ReadBuf.read_word64 env get_data_buf ^^
         BoxedWord64.box env
       | Prim (Int32|Nat32|Word32) ->
         assert_prim_typ () ^^
@@ -3781,7 +3781,7 @@ module Serialization = struct
         get_len ^^ Text.alloc env ^^ set_x ^^
         get_x ^^ Text.payload_ptr_unskewed ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
-        (* TODO: Check validty of utf8 *)
+        (* TODO: Check validity of utf8 *)
         get_x
 
       (* Composite types *)
