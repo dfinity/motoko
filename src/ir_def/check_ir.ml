@@ -535,6 +535,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check ((cc.Call_conv.sort = T.Shared && Type.is_async (T.seq ret_tys))
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
+    check (cc.Call_conv.n_args = List.length args)
+      "calling convention arity does not match number of parameters";
+    check (cc.Call_conv.n_res = List.length ret_tys)
+      "calling convention arity does not match number of return types";
     if (cc.Call_conv.sort = T.Shared) then List.iter (check_concrete env exp.at) ret_tys;
     let env'' =
       {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
