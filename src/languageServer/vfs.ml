@@ -28,21 +28,9 @@ let open_file did_open_params vfs =
     Lib.String.split text '\n' in
   VfsStore.add uri lines vfs
 
-let join_with s xs = match xs with
-  | [] -> ""
-  | [x] -> x
-  | x::xs ->
-     let res = Buffer.create 16 in
-     Buffer.add_string res x;
-     List.iter
-       (fun l ->
-         Buffer.add_string res s;
-         Buffer.add_string res l) xs;
-     Buffer.contents res
-
 let read_file uri vfs =
   VfsStore.find_opt uri vfs
-  |> Lib.Option.map (join_with "\n")
+  |> Lib.Option.map (String.concat "\n")
 
 let close_file did_close_params =
   let uri =
@@ -106,7 +94,7 @@ and apply_change lines Lsp_t.{
           ^ String.sub aff ec (String.length aff - ec)
        | affected ->
           let (init, last) = Lib.List.split_last affected in
-          String.sub (join_with "\n" init) 0 sc
+          String.sub (String.concat "\n" init) 0 sc
           ^ text
           ^ String.sub last ec (String.length last - ec)
      in

@@ -1,10 +1,5 @@
 module Lsp = Lsp.Lsp_t
 
-let join_with s xs = match xs with
-  | [] -> ""
-  | [x] -> x
-  | x::xs -> List.fold_left (fun x y -> x ^ s ^ y) x xs
-
 let extract_cursors input =
   let cursor_start = ref (0, 0) in
   let start_found = ref false in
@@ -46,7 +41,7 @@ let apply_change_test_case file replacement expected =
     }
   in
   let actual =
-    join_with "\n"
+    String.concat "\n"
       (Vfs.apply_change
          (Lib.String.split input '\n')
          Lsp.{
