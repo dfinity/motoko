@@ -106,11 +106,12 @@ struct
     to_pretty_string' (WasmInt.div_u w base) (i mod 4 + 1) s'
   let to_string = to_pretty_string
   let of_string_s s =
-    if String.length s > 0 && String.get s 0 = '-'
-    then neg (of_string_u (String.sub s 1 (String.length s - 1)))
-    else if String.length s > 0 && String.get s 0 = '+'
-    then of_string_u (String.sub s 1 (String.length s - 1))
-    else of_string_u s
+    let open Big_int in
+    let value = big_int_of_string s in
+    match sign_big_int value with
+    | +1 -> of_string_u (string_of_big_int value)
+    | 0 -> zero
+    | _ -> neg (of_string_u (string_of_big_int (minus_big_int value)))
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
