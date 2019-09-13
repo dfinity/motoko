@@ -115,7 +115,7 @@ struct
       let absolute = minus_big_int value in
       let twice = add_big_int absolute absolute in
       (* test against max positive *)
-      ignore (of_string_u (string_of_big_int (sub_big_int twice unit_big_int)));
+      ignore (of_string_u (string_of_big_int (pred_big_int twice)));
       neg (of_string_u (string_of_big_int absolute))
 end
 
