@@ -38,55 +38,15 @@ module Transform() = struct
 
   let con_renaming = ref ConRenaming.empty
 
-  (* Configuring the translation for target platform V1 or V2 *)
+  let sys_replyE v = primE (OtherPrim "sys_reply") [v]
 
-  type platform =
-    V1  (* legacy, Haskell *)
-  | V2  (* new, Rust *)
-
-  let platform = V1
-
-  let _ = V2 (* suppress warning on unused V2 *)
-
-  (* Lowering options, specific to V1 or V2 *)
-
-  let add_reply_parameter, add_reply_argument =
-    match platform with
-    | V1 -> (true, true)
-    | V2 -> (false, true)
-
-  (* Helper for selective code generation based on predicated lazy expressions *)
-  let rec select bls =
-    match bls with
-    | [] -> []
-    | (true, l)::bls' ->
-      (Lazy.force l)::select bls'
-    | (false, _)::bls' ->
-      select bls'
-
-  (* Explicit invocation of reply and call System API functions;
-     implemented (as far as possible) for V1;
-     TBC for V2 *)
-
-  let sys_replyE v =
-    match platform with
-    | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
-    | V2 -> failwith "NYI" (* TODO: call dedicated prim *)
-
-  let sys_callE v1 typs vs reply =
-    match platform with
-    | V1 ->
-          assert add_reply_argument;
-          callE v1 typs (seqE (vs @ [reply]))
-    | V2 -> failwith "NYI" (* TODO: call dedicated prim, separating args vs from reply *)
+  let sys_callE v1 typs vs reply =  primE (OtherPrim "sys_call") (vs@[reply])
 
   (* End of configuration *)
 
   let unary typ = [typ]
 
   let nary typ = T.as_seq typ
-
-  let replyT as_seq typ = T.Func(T.Shared, T.Returns, [], as_seq typ, [])
 
   let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
@@ -161,8 +121,6 @@ module Transform() = struct
     | T.Func (T.Shared,T.Promises,_,_,[T.Async _]) -> true
     | _ -> false
 
-  let extendTup ts ts' = ts @ ts'
-
   (* Given sequence type ts, bind e of type (seq ts) to a
    sequence of expressions supplied to decs d_of_es,
    preserving effects of e when the sequence type is empty.
@@ -200,11 +158,8 @@ module Transform() = struct
                Func(s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
              | [Async t2] ->
                assert (c = T.Promises);
-               Func (s, T.Returns, List.map t_bind tbs,
-                     extendTup (List.map t_typ t1)
-                       (select
-                          [ add_reply_parameter, lazy (replyT nary (t_typ t2))
-                          ]),
+               Func (s, c (* T.Returns*), List.map t_bind tbs,
+                     List.map t_typ t1,
                      [])
              | _ -> assert false
            end
@@ -369,26 +324,19 @@ module Transform() = struct
             | T.Tup [] ->
               FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
             | T.Async res_typ ->
-              let cc' = Call_conv.message_cc (cc.Call_conv.n_args + 1) in
               let res_typ = t_typ res_typ in
-              let reply_typ = replyT nary res_typ in
-              let r = fresh_var "r" reply_typ in
-              let args' = t_args args @
-                            (select [ add_reply_parameter, lazy (arg_of_exp r);
-                                    ])
+              let args' = t_args args
               in
               let typbinds' = t_typ_binds typbinds in
               let exp' =
                 match exp.it with
                 | PrimE (OtherPrim "@async", [cps]) ->
                   let v = fresh_var "v" res_typ in
-                  let k = if add_reply_parameter then
-                            (v --> (r -*- v)) (* wrap shared function in local function *)
-                          else
-                            (v --> (sys_replyE v)) in
+                  let k = v --> sys_replyE v in
                   t_exp cps -*- k
                 | _ -> assert false
               in
+              let cc' = { cc with Call_conv.n_res = 0 } in
               FuncE (x, cc', typbinds', args', [], exp')
             | _ -> assert false
           end

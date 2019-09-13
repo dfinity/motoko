@@ -154,7 +154,7 @@ let rec check_typ env typ : unit =
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
     List.iter (check_typ env') ts2;
-    if control = T.Promises then begin
+    if control = T.Promises && env.flavor.Ir.has_async_typ then begin
       match ts2 with
       | [T.Async _ ] -> ()
       | _ ->
@@ -166,11 +166,14 @@ let rec check_typ env typ : unit =
       List.iter (fun t -> check_shared env no_region t) ts1;
       match ts2 with
       | [] -> ()
-      | [T.Async t2] ->
+      | [T.Async t2] when env.flavor.Ir.has_async_typ->
         check env' no_region (T.shared t2)
           "message result is not sharable:\n  %s" (T.string_of_typ_expand t2)
-      | _ -> error env no_region "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand (T.seq ts2))
+      | ts2 when not env.flavor.Ir.has_async_typ && control <> T.Returns ->
+        List.iter (fun t -> check_shared env no_region t) ts2;
+      | _ ->
+        error env no_region "oneway function with non-empty return type \n  %s"
+          (T.string_of_typ typ)
     end
   | T.Opt typ ->
     check_typ env typ

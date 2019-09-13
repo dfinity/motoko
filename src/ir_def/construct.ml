@@ -85,6 +85,8 @@ let as_seqP p =
 let primE prim es =
   let ty = match prim with
     | ShowPrim _ -> T.text
+    | OtherPrim "sys_reply" -> T.unit
+    | OtherPrim "sys_call" -> T.unit
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in

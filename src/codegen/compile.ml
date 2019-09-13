@@ -4584,6 +4584,17 @@ module FuncDec = struct
       (* Deserialize argument and add params to the environment *)
       let arg_names = List.map (fun a -> a.it) args in
       let arg_tys = List.map (fun a -> a.note) args in
+
+      (* add the reply continuation *)
+      let arg_names, arg_tys =
+        match cc.Call_conv.control with
+        | Type.Returns ->
+          arg_names, arg_tys (* oneway, no change *)
+        | Type.Promises -> (* async returning *)
+          (arg_names @ ["@reply"]),
+          (arg_tys @ [Type.Func(Type.Shared, Type.Returns, [], arg_tys, [])])
+      in
+
       let (ae2, setters) = ASEnv.add_argument_locals env ae1 arg_names in
       get_databuf ^^ get_elembuf ^^
       Serialization.deserialize env arg_tys ^^
@@ -5909,7 +5920,36 @@ and compile_exp (env : E.t) ae exp =
         let (set_b, get_b) = new_local64 env "b" in
         set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.And))
-      )
+        )
+    | OtherPrim "sys_reply", [v] ->
+      SR.unit,
+      let t = Type.Func(Type.Shared,Type.Returns,[],Type.as_seq (v.note.note_typ),[]) in
+      compile_exp_vanilla env ae (Construct.callE (Construct.idE "@reply" t) [] v)
+    | OtherPrim "sys_call", vs ->
+      SR.unit,
+      begin
+      match Lib.List.split_last vs with
+      | (e1::es,k) ->
+        let fun_sr, code1 = compile_exp env ae e1 in
+        let cc = Call_conv.call_conv_of_typ (e1.note.note_typ) in
+        begin match fun_sr, cc.Call_conv.sort with
+        | SR.StaticThing (SR.StaticFun fi), _ ->
+          assert false (* Joachim, is the possible? *)
+        | _, Type.Shared ->
+          let (set_funcref, get_funcref) = new_local env "funcref" in
+          code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
+          set_funcref ^^
+          compile_exp_as env ae SR.Vanilla (Construct.tupE (es@[k])) ^^
+          (* We can try to avoid the boxing and pass the arguments to
+           serialize individually *)
+          let cc' = Call_conv.message_cc (cc.Call_conv.n_args + 1) in
+          let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
+          Serialization.serialize env (ts@[k.note.note_typ]) ^^
+            FuncDec.call_funcref env cc' get_funcref
+        | _ -> assert false
+        end
+      | _ -> assert false
+      end
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
   | VarE var ->
