@@ -31,7 +31,14 @@ let open_file did_open_params vfs =
 let join_with s xs = match xs with
   | [] -> ""
   | [x] -> x
-  | x::xs -> List.fold_left (fun x y -> x ^ s ^ y) x xs
+  | x::xs ->
+     let res = Buffer.create 16 in
+     Buffer.add_string res x;
+     List.iter
+       (fun l ->
+         Buffer.add_string res s;
+         Buffer.add_string res l) xs;
+     Buffer.contents res
 
 let read_file uri vfs =
   VfsStore.find_opt uri vfs
