@@ -1713,17 +1713,41 @@ let name_from_relop = function
   | Ge -> "B_ge"
   | Gt -> "B_gt"
 
-(* helper, measures the dynamics of the unsigned i32, returns (32 - effective bits)
-   expects i32 on stack *)
-let unsigned_dynamics =
+(* helper, measures the dynamics of the unsigned i32, returns (32 - effective bits) *)
+let unsigned_dynamics get_x =
+  get_x ^^
   G.i (Unary (Wasm.Values.I32 I32Op.Clz))
 
-(* helper, measures the dynamics of the signed i32, returns (32 - effective bits)
-   expects two identical i32 copies on stack *)
-let signed_dynamics =
-  compile_shl_const 1l ^^
+(* helper, measures the dynamics of the signed i32, returns (32 - effective bits) *)
+let signed_dynamics get_x =
+  get_x ^^ compile_shl_const 1l ^^
+  get_x ^^
   G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-  unsigned_dynamics
+  G.i (Unary (Wasm.Values.I32 I32Op.Clz))
+
+module I32Leb = struct
+  let compile_size dynamics get_x =
+    get_x ^^ G.if_ (ValBlockType (Some I32Type))
+      begin
+        compile_unboxed_const 38l ^^
+        dynamics get_x ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+        compile_divU_const 7l
+      end
+      compile_unboxed_one
+
+  let compile_leb128_size get_x = compile_size unsigned_dynamics get_x
+  let compile_sleb128_size get_x = compile_size signed_dynamics get_x
+
+  let compile_store_to_data_buf_unsigned env get_x get_buf =
+    get_x ^^ get_buf ^^ E.call_import env "rts" "leb128_encode" ^^
+    compile_leb128_size get_x
+
+  let compile_store_to_data_buf_signed env get_x get_buf =
+    get_x ^^ get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
+    compile_sleb128_size get_x
+
+end
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
@@ -2050,19 +2074,6 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_res ^^ Num.truncate_to_word32 env ^^ compress)
       get_res
 
-  let compile_encoding_size dynamics get_x =
-    get_x ^^ G.if_ (ValBlockType (Some I32Type))
-      begin
-        compile_unboxed_const 38l ^^
-        get_x ^^ dynamics ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-        compile_divU_const 7l
-      end
-      compile_unboxed_one
-
-  let compile_leb128_size = compile_encoding_size unsigned_dynamics
-  let compile_sleb128_size get_x = compile_encoding_size (get_x ^^ signed_dynamics) get_x
-
   let compile_store_to_data_buf_unsigned env =
     let set_x, get_x = new_local env "x" in
     let set_buf, get_buf = new_local env "buf" in
@@ -2070,9 +2081,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        extend ^^ compile_shrS_const 1l ^^ set_x ^^ get_x ^^
-        get_buf ^^ E.call_import env "rts" "leb128_encode" ^^
-        compile_leb128_size get_x
+        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        I32Leb.compile_store_to_data_buf_unsigned env get_x get_buf
       )
       (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
       env
@@ -2084,9 +2094,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        extend ^^ compile_shrS_const 1l ^^ set_x ^^ get_x ^^
-        get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
-        compile_sleb128_size get_x
+        extend ^^ compile_shrS_const 1l ^^ set_x ^^
+        I32Leb.compile_store_to_data_buf_signed env get_x get_buf
       )
       (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
@@ -2096,7 +2105,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun _ ->
         let set_x, get_x = new_local env "x" in
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
-        compile_leb128_size get_x
+        I32Leb.compile_leb128_size get_x
       )
       (fun env -> Num.compile_data_size_unsigned env)
       env
@@ -2106,7 +2115,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun _ ->
         let set_x, get_x = new_local env "x" in
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
-        compile_sleb128_size get_x
+        I32Leb.compile_sleb128_size get_x
       )
       (fun env -> Num.compile_data_size_unsigned env)
       env
@@ -3279,17 +3288,6 @@ module Serialization = struct
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
       (List.map (fun f -> (Idllib.IdlHash.idl_hash f.Type.lab, f)) fs)
 
-  (* TODO (leb128 for i32):
-     All leb128 currently goes through bignum. This is of course
-     absurdly expensive and round-about, but I want _one_ implementation
-     first that I can test, until we properly exercise this code (i.e. there
-     is also the JS-side of things and we know it is bug-free).
-     Writing a Wasm-native implementation of this will then be done separately.
-
-     Update as of #469: we have leb128_encode and sleb128_encode in rts now!
-     This is #581.
-  *)
-
   (* The IDL serialization prefaces the data with a type description.
      We can statically create the type description in Ocaml code,
      store it in the program, and just copy it to the beginning of the message.
@@ -3463,9 +3461,10 @@ module Serialization = struct
         get_ref_size ^^ compile_add_const i ^^ set_ref_size
       in
 
-      (* See TODO (leb128 for i32) *)
       let size_word env code =
-        inc_data_size (code ^^ BigNum.from_word32 env ^^ BigNum.compile_data_size_unsigned env)
+        let (set_word, get_word) = new_local env "word" in
+        code ^^ set_word ^^
+        inc_data_size (I32Leb.compile_leb128_size get_word)
       in
 
       let size env t =
@@ -3548,10 +3547,9 @@ module Serialization = struct
         get_ref_buf ^^ compile_add_const Heap.word_size ^^ set_ref_buf in
 
       let write_word code =
-        (* See TODO (leb128 for i32) *)
-        get_data_buf ^^
-        code ^^ BigNum.from_word32 env ^^
-        BigNum.compile_store_to_data_buf_unsigned env ^^
+        let (set_word, get_word) = new_local env "word" in
+        code ^^ set_word ^^
+        I32Leb.compile_store_to_data_buf_unsigned env get_word get_data_buf ^^
         advance_data_buf
       in
 
@@ -5395,7 +5393,7 @@ let compile_binop env t op =
             get_n ^^ compile_shrU_const Int32.(sub 33l (of_int bits)) ^^
             G.if_ (ValBlockType (Some I32Type))
               begin
-                get_n ^^ unsigned_dynamics ^^ compile_sub_const (Int32.of_int bits) ^^
+                unsigned_dynamics get_n ^^ compile_sub_const (Int32.of_int bits) ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
                 compile_unboxed_const (-30l) ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
@@ -5422,7 +5420,7 @@ let compile_binop env t op =
               begin
                 get_exp ^^ compile_unboxed_const 32l ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^ then_arithmetic_overflow env ^^
-                get_n ^^ unsigned_dynamics ^^ compile_sub_const 32l ^^
+                unsigned_dynamics get_n ^^ compile_sub_const 32l ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust Type.Nat32 ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
                 compile_unboxed_const (-62l) ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
@@ -5449,7 +5447,7 @@ let compile_binop env t op =
             get_n ^^ compile_shrS_const Int32.(sub 33l (of_int bits)) ^^
             G.if_ (ValBlockType (Some I32Type))
               begin
-                get_n ^^ get_n ^^ signed_dynamics ^^ compile_sub_const (Int32.of_int (bits - 1)) ^^
+                signed_dynamics get_n ^^ compile_sub_const (Int32.of_int (bits - 1)) ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
                 compile_unboxed_const (-30l) ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
@@ -5492,7 +5490,7 @@ let compile_binop env t op =
               begin
                 get_exp ^^ compile_unboxed_const 32l ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^ then_arithmetic_overflow env ^^
-                get_n ^^ get_n ^^ signed_dynamics ^^ compile_sub_const 31l ^^
+                signed_dynamics get_n ^^ compile_sub_const 31l ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust Type.Int32 ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
                 compile_unboxed_const (-62l) ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
