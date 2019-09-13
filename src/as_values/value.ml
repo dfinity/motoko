@@ -111,7 +111,12 @@ struct
     match sign_big_int value with
     | +1 -> of_string_u (string_of_big_int value)
     | 0 -> zero
-    | _ -> neg (of_string_u (string_of_big_int (minus_big_int value)))
+    | _ ->
+      let absolute = minus_big_int value in
+      let twice = add_big_int absolute absolute in
+      (* test against max positive *)
+      ignore (of_string_u (string_of_big_int (sub_big_int twice unit_big_int)));
+      neg (of_string_u (string_of_big_int absolute))
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
