@@ -116,7 +116,7 @@ struct
       let twice = add_big_int absolute absolute in
       (* test against max positive *)
       ignore (of_string_u (string_of_big_int (pred_big_int twice)));
-      neg (of_string_u (string_of_big_int absolute))
+      of_string s
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
