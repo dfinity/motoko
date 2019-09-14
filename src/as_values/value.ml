@@ -109,7 +109,7 @@ struct
     let open Big_int in
     let value = big_int_of_string s in
     match sign_big_int value with
-    | +1 -> of_string_u (string_of_big_int value)
+    | +1 -> of_string s
     | 0 -> zero
     | _ ->
       let absolute = minus_big_int value in
