@@ -23,6 +23,7 @@ type env =
     labs : lab_env;
     rets : ret_env;
     async : bool;
+    await : bool;
     pre : bool;
     msgs : Diag.msg_store;
   }
@@ -36,6 +37,7 @@ let env_of_scope msgs scope =
     labs = T.Env.empty;
     rets = None;
     async = false;
+    await = false;
     pre = false;
     msgs;
   }
@@ -488,6 +490,8 @@ and infer_exp' f env exp : T.typ =
   t'
 
 and infer_exp'' env exp : T.typ =
+  let in_await = env.await in
+  let env = { env with await = false } in
   match exp.it with
   | PrimE _ ->
     error env exp.at "cannot infer type of primitive"
@@ -680,6 +684,9 @@ and infer_exp'' env exp : T.typ =
           error env exp2.at
             "shared function call result contains abstract type\n  %s"
             (T.string_of_typ_expand t_ret);
+        if T.is_async t_ret && not in_await then
+          error env exp2.at
+            "shared, async function must be called within an await expression"
       end
     end;
     t_ret
@@ -816,6 +823,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then check_exp env T.throw exp1;
     T.Non
   | AsyncE exp1 ->
+    error env exp.at "unsupported async block";
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
@@ -823,16 +831,21 @@ and infer_exp'' env exp : T.typ =
       error env exp1.at "async type has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
     T.Async t
-  | AwaitE exp1 ->
+  | AwaitE ({ it = CallE (f,_,_); at; note} as exp1) ->
     if not env.async then
       error env exp.at "misplaced await";
-    let t1 = infer_exp_promote env exp1 in
+    let t1 = infer_exp_promote { env with await = true} exp1 in
+    let cc = Call_conv.call_conv_of_typ f.note.note_typ in
+    if cc.Call_conv.control <> T.Promises then
+      error env f.at "expecting call to shared, async function in await";
     (try
       T.as_async_sub t1
     with Invalid_argument _ ->
       error env exp1.at "expected async type, but expression has type\n  %s"
         (T.string_of_typ_expand t1)
     )
+  | AwaitE _ ->
+     error env exp.at "argument to async must be a call expression"
   | AssertE exp1 ->
     if not env.pre then check_exp env T.bool exp1;
     T.unit
