@@ -40,7 +40,7 @@ module Transform() = struct
 
   let sys_replyE v = primE (OtherPrim "sys_reply") [v]
 
-  let sys_callE v1 typs vs reply =  primE (OtherPrim "sys_call") (vs@[reply])
+  let sys_callE v typs vs reply =  primE (OtherPrim "sys_call") (v::vs@[reply])
 
   (* End of configuration *)
 
@@ -160,7 +160,7 @@ module Transform() = struct
                assert (c = T.Promises);
                Func (s, c (* T.Returns*), List.map t_bind tbs,
                      List.map t_typ t1,
-                     [])
+                     T.as_seq t2)
              | _ -> assert false
            end
         | T.Local ->
@@ -336,8 +336,8 @@ module Transform() = struct
                   t_exp cps -*- k
                 | _ -> assert false
               in
-              let cc' = { cc with Call_conv.n_res = 0 } in
-              FuncE (x, cc', typbinds', args', [], exp')
+              (* let cc' = { cc with Call_conv.n_res = 0 } in *)
+              FuncE (x, cc, typbinds', args', T.as_seq res_typ, exp')
             | _ -> assert false
           end
       end

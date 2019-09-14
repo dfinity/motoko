@@ -4563,7 +4563,7 @@ module FuncDec = struct
      - Do GC at the end
      - Fake orthogonal persistence
   *)
-  let compile_message outer_env outer_ae cc restore_env args mk_body at =
+  let compile_message outer_env outer_ae cc restore_env args ret_tys mk_body at =
     assert (cc.Call_conv.n_res = 0);
     let ae0 = ASEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env ["clos", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
@@ -4592,7 +4592,7 @@ module FuncDec = struct
           arg_names, arg_tys (* oneway, no change *)
         | Type.Promises -> (* async returning *)
           (arg_names @ ["@reply"]),
-          (arg_tys @ [Type.Func(Type.Shared, Type.Returns, [], arg_tys, [])])
+          (arg_tys @ [Type.Func(Type.Shared, Type.Returns, [], ret_tys, [])])
       in
 
       let (ae2, setters) = ASEnv.add_argument_locals env ae1 arg_names in
@@ -4623,6 +4623,17 @@ module FuncDec = struct
       (* Deserialize argument and add params to the environment *)
       let arg_names = List.map (fun a -> a.it) args in
       let arg_tys = List.map (fun a -> a.note) args in
+
+      (* add the reply continuation *)
+      let arg_names, arg_tys =
+        match cc.Call_conv.control with
+        | Type.Returns ->
+          arg_names, arg_tys (* oneway, no change *)
+        | Type.Promises -> (* async returning *)
+          (arg_names @ ["@reply"]),
+          (arg_tys @ [Type.Func(Type.Shared, Type.Returns, [], ret_tys, [])])
+      in
+
       let (ae1, setters) = ASEnv.add_argument_locals env ae0 arg_names in
       get_databuf ^^ get_elembuf ^^
       Serialization.deserialize env arg_tys ^^
@@ -4658,7 +4669,7 @@ module FuncDec = struct
       )
 
   (* Compile a closure declaration (captures local variables) *)
-  let closure env ae cc name captured args mk_body at =
+  let closure env ae cc name captured args ret_tys mk_body at =
       let is_local = cc.Call_conv.sort <> Type.Shared in
 
       let (set_clos, get_clos) = new_local env (name ^ "_clos") in
@@ -4690,7 +4701,7 @@ module FuncDec = struct
       let f =
         if is_local
         then compile_local_function env ae cc restore_env args mk_body at
-        else compile_message env ae cc restore_env args mk_body at in
+        else compile_message env ae cc restore_env args ret_tys mk_body at in
 
       let fi = E.add_fun env name f in
 
@@ -4742,7 +4753,7 @@ module FuncDec = struct
       let (st, fill) = closed env cc name args mk_body ret_tys at in
       fill env ae;
       (SR.StaticThing st, G.nop)
-    else closure env ae cc name captured args mk_body at
+    else closure env ae cc name captured args ret_tys mk_body at
 
 end (* FuncDec *)
 
@@ -6413,7 +6424,9 @@ and compile_static_exp env pre_ae how exp = match exp.it with
   | FuncE (name, cc, typ_binds, args, ret_tys, e) ->
       let mk_body env ae =
         assert begin (* Is this really closed? *)
-          List.for_all (fun v -> ASEnv.NameEnv.mem v ae.ASEnv.vars)
+            List.for_all (fun v ->
+                v = "@reply" ||
+                  ASEnv.NameEnv.mem v ae.ASEnv.vars)
             (Freevars.M.keys (Freevars.exp e))
         end;
         compile_exp_as env ae (StackRep.of_arity cc.Call_conv.n_res) e in

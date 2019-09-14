@@ -196,7 +196,10 @@ let make_async_message env id v =
 let make_message env x cc v : V.value =
   match cc.CC.control with
   | T.Returns -> make_unit_message env x v
-  | T.Promises -> make_async_message env x v
+  | T.Promises ->
+    if env.flavor.has_async_typ then
+      make_async_message env x v
+    else make_unit_message env x v
 
 
 let extended_prim env s typ at =
@@ -222,6 +225,19 @@ let extended_prim env s typ at =
       | [async; w] ->
         let (_, f) = V.as_func w in
         await env at (V.as_async async) (fun v -> f v k)
+      | _ -> assert false
+      )
+  | "sys_reply" ->
+    assert (not env.flavor.has_await && not env.flavor.has_async_typ);
+    fun v k -> k v
+  | "sys_call" ->
+    assert (not env.flavor.has_await && not env.flavor.has_async_typ);
+    fun v k1 ->
+      (match Lib.List.split_last (V.as_tup v) with
+      | (fv::vs,kv) ->
+        let (_, f) = V.as_func fv in
+        let (_, k) = V.as_func kv  in
+        k1 (f (V.Tup vs) (fun v -> k v V.as_unit);V.unit)
       | _ -> assert false
       )
   | _ -> Prim.prim s

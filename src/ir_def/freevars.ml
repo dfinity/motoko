@@ -59,6 +59,8 @@ let close (f,d) = diff f d
 let rec exp e : f = match e.it with
   | VarE i              -> M.singleton i {captured = false}
   | LitE l              -> M.empty
+  | PrimE (OtherPrim "sys_reply",es) ->
+    exps es ++ M.singleton "@reply" {captured = false}
   | PrimE (_, es)       -> exps es
   | TupE es             -> exps es
   | ProjE (e, i)        -> exp e
