@@ -106,11 +106,9 @@ struct
     to_pretty_string' (WasmInt.div_u w base) (i mod 4 + 1) s'
   let to_string = to_pretty_string
   let of_string_s s =
-    let open Big_int in
-    let value, word = big_int_of_string s, of_string s in
-    match sign_big_int value with
-    | +1 -> word
-    | 0 -> zero
+    let word = of_string s in
+    match Big_int.(sign_big_int (big_int_of_string s)) with
+    | sign when sign >= 0 -> word
     | _ -> if lt_s word zero then word else of_string "throw"
 end
 
