@@ -107,16 +107,11 @@ struct
   let to_string = to_pretty_string
   let of_string_s s =
     let open Big_int in
-    let value = big_int_of_string s in
+    let value, word = big_int_of_string s, of_string s in
     match sign_big_int value with
-    | +1 -> of_string s
+    | +1 -> word
     | 0 -> zero
-    | _ ->
-      let absolute = minus_big_int value in
-      let twice = add_big_int absolute absolute in
-      (* test against max positive *)
-      ignore (of_string_u (string_of_big_int (pred_big_int twice)));
-      of_string s
+    | _ -> if lt_s word zero then word else of_string "throw"
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
