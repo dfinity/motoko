@@ -1,0 +1,24 @@
+bad-unops.as:1.9-1.11: type error, operator is not defined for operand type
+  Int
+bad-unops.as:2.9-2.12: type error, operator is not defined for operand type
+  Int
+bad-unops.as:3.15-3.17: type error, literal of type
+  Int
+does not have expected type
+  Nat
+bad-unops.as:4.15-4.17: type error, literal of type
+  Int
+does not have expected type
+  Nat
+bad-unops.as:6.20-6.22: type error, operator cannot consume expected type
+  Nat
+bad-unops.as:7.20-7.22: type error, literal of type
+  Int
+does not have expected type
+  Nat
+bad-unops.as:8.20-8.22: type error, literal of type
+  Int
+does not have expected type
+  Nat
+bad-unops.as:10.21-10.23: type error, operator cannot consume expected type
+  Int
