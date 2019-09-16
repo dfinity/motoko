@@ -105,11 +105,7 @@ struct
     let s' = dig ^ (if i = 4 then "_" else "") ^ s in
     to_pretty_string' (WasmInt.div_u w base) (i mod 4 + 1) s'
   let to_string = to_pretty_string
-  let of_string_s s =
-    let word = of_string s in
-    match Big_int.(sign_big_int (big_int_of_string s)) with
-    | sign when sign >= 0 -> word
-    | _ -> if lt_s word zero then word else of_string "throw"
+  let of_string_s = of_string
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
