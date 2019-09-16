@@ -234,13 +234,8 @@ let start () =
        (match Declaration_index.make_index () with
         | Error(err) -> ()
         | Ok((ix, _)) -> decl_index := ix);
-       Lib.Fun.flip Lib.Option.iter !client_capabilities (fun _ ->
-           (* TODO: determine if the client accepts diagnostics with related info *)
-           (* let textDocument = capabilities.client_capabilities_textDocument in
-           * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
-           let diags = List.map diagnostics_of_message msgs in
-           publish_diagnostics uri diags;
-         );
+       let diags = List.map diagnostics_of_message msgs in
+       publish_diagnostics uri diags;
 
     (* Notification messages *)
 
