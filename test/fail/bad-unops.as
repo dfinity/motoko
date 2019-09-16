@@ -12,7 +12,7 @@ ignore (switch (-1) { case (+1) "hmmm"; case _ "as expected" });
 ignore (switch (-1) { case (-1) "as expected"; case _ "hmmm" });
 
 ignore (switch (^1 : Word8) { case (^1) "as expected"; case _ "hmmm" });
-//switch (+1 : Word8) { case (+1) "as expected"; case _ "hmmm" }; // both `+1` are not accepted
+ignore (switch (+1 : Word8) { case (+1) "as expected"; case _ "hmmm" });
 ignore (switch (-1 : Word8) { case (-1) "as expected"; case _ "hmmm" });
 
 // when testing the switch expression in the REPL, I either

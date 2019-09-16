@@ -105,10 +105,6 @@ struct
     let s' = dig ^ (if i = 4 then "_" else "") ^ s in
     to_pretty_string' (WasmInt.div_u w base) (i mod 4 + 1) s'
   let to_string = to_pretty_string
-  let of_string_s s =
-    if String.length s > 0 && String.get s 0 = '-'
-    then neg (of_string_u (String.sub s 1 (String.length s - 1)))
-    else of_string_u s
 end
 
 module Int32Rep = struct include Int32 let bitwidth = 32 end
