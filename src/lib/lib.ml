@@ -116,7 +116,7 @@ struct
 
   let rec take n xs =
     match n, xs with
-    | _, _ when n <= 0 -> []
+    | _ when n <= 0 -> []
     | n, x::xs' when n > 0 -> x :: take (n - 1) xs'
     | _ -> failwith "take"
 
