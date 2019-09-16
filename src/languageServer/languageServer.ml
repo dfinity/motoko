@@ -150,7 +150,10 @@ let start () =
        let text_document_sync_options =
          Lsp_t.{
              text_document_sync_options_openClose = Some true;
-             text_document_sync_options_change = Some 1;
+             (* Full *)
+             (* text_document_sync_options_change = Some 1; *)
+             (* Incremental *)
+             text_document_sync_options_change = Some 2;
              text_document_sync_options_willSave = Some false;
              text_document_sync_options_willSaveWaitUntil = Some false;
              text_document_sync_options_save = Some {
