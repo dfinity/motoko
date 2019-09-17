@@ -69,6 +69,8 @@ function normalize () {
     sed 's/rip_addr: [0-9]*/rip_addr: XXX/g' |
     sed 's,/tmp/.*dfinity.[^/]*,/tmp/dfinity.XXX,g' |
     sed 's,/build/.*dfinity.[^/]*,/tmp/dfinity.XXX,g' |
+    sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
+    sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
     cat > $1.norm
     mv $1.norm $1
