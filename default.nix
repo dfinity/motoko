@@ -326,7 +326,7 @@ rec {
       mv * $out/
       rm $out/Makefile
       mkdir -p $out/nix-support
-      echo "report guide $out/guide index.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out index.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
