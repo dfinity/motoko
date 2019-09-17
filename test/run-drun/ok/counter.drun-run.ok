@@ -1,14 +1,17 @@
 ingress(0) System
-debug.print: Array index out of bounds
+debug.print: 2
+debug.print: 
 
-ingress(1) Err: Error { code: Internal, description: "Instance::run method_name=\"canister_update inc\" error=RuntimeFault(FaultDetails { fatal: false, trapcode: Some(Unreachable), rip_addr: XXX, rip_addr_details: Some(AddrDetails { in_module_code: true, file_name: Some(\"/tmp/ic.XXX/mod.so\"), sym_name: None }) })" }
-debug.print: Array index out of bounds
+ingress(1) Completed: Canister: Payload: 0x4449444c0000
+debug.print: 3
+debug.print: 
 
-ingress(2) Err: Error { code: Internal, description: "Instance::run method_name=\"canister_update inc\" error=RuntimeFault(FaultDetails { fatal: false, trapcode: Some(Unreachable), rip_addr: XXX, rip_addr_details: Some(AddrDetails { in_module_code: true, file_name: Some(\"/tmp/ic.XXX/mod.so\"), sym_name: None }) })" }
-debug.print: Array index out of bounds
+ingress(2) Completed: Canister: Payload: 0x4449444c0000
+debug.print: 4
+debug.print: 
 
-ingress(3) Err: Error { code: Internal, description: "Instance::run method_name=\"canister_update inc\" error=RuntimeFault(FaultDetails { fatal: false, trapcode: Some(Unreachable), rip_addr: XXX, rip_addr_details: Some(AddrDetails { in_module_code: true, file_name: Some(\"/tmp/ic.XXX/mod.so\"), sym_name: None }) })" }
-debug.print: 0
+ingress(3) Completed: Canister: Payload: 0x4449444c0000
+debug.print: 4
 debug.print: 
 
 ingress(4) Completed: Canister: Payload: 0x4449444c0000
