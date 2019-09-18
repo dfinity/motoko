@@ -26,9 +26,10 @@
 #ifndef UTF8_VALID_H
 #define UTF8_VALID_H
 #include <stddef.h>
-#include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "rts.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,8 +75,8 @@ utf8_check(const char *src, size_t len, size_t *cursor) {
     if (cur >= end - 3) {
       if (cur == end)
         break;
-      memset(buf, 0, 4);
-      memcpy(buf, cur, end - cur);
+      buf[0] = buf[1] = buf[2] = buf[3] = 0;
+      as_memcpy((char *)buf, (const char *)cur, end - cur);
       p = (const unsigned char *)buf;
     }
 
