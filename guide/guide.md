@@ -17,6 +17,7 @@ TODO:
 * [ ] Import expressions
 * [ ] Modules
 * [ ] Prelude
+* [ ] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O.
 
 # Introduction
 
@@ -99,10 +100,10 @@ The key language features of ActorScript are:
 
 * Message passing is asynchronous (to hide network latency).
 
-* A familiar `async`/`await` constructs enables sequential programming with asynchronous messaging.
+* Familiar `async`/`await` constructs enable sequential programming with asynchronous messaging.
 
 Like most programming languages, ActorScript borrows features from others and
-draws inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell.
+draws inspirations from Java, C#, JavaScript, Swift, Pony, ML and Haskell.
 
 # ActorScript Syntax (Sketch)
 
@@ -243,7 +244,7 @@ Some types have several categories, e.g. type `Int` is both arithmetic (A) and r
 |  `==` | R | equals |
 |  `!=` | R | not equals |
 |  `<=` | R | less than or equal |
-|  `>=` | R |greater than or equal |
+|  `>=` | R | greater than or equal |
 
 
 Equality is structural.
@@ -301,7 +302,8 @@ The  category of a compound assigment `<unop>=`/`<binop>=` is given by the categ
 
 ## Operator and Keyword Precedence
 
-The following table defines the relative precedence and associativity of operators and token, order from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity.
+The following table defines the relative precedence and associativity of operators and token, ordered from lowest to highest precedence.
+Tokens on the same line have equal precedence with the indicated associativity.
 
 Precedence | Associativity | Token |
 |---|------------|--------|
@@ -348,9 +350,9 @@ An absent `<sort>?` abbreviates `object`.
 
 ## Primitive types
 
-ActorScript provides the following primitive types, including support for Booleans, integers, words of various sizes, characters and text.
+ActorScript provides the following primitive type identifiers, including support for Booleans, signed and unsigned integers and machine words of various sizes, characters and text.
 
-The category of a type determines the operators (unary, binary, relational and assigment) applicable to values of that type.
+The category of a type determines the operators (unary, binary, relational and in-place update via assigment) applicable to values of that type.
 
 | Identifier | Category | Description |
 |---|------------|--------|
@@ -370,7 +372,7 @@ The category of a type determines the operators (unary, binary, relational and a
 | `Word32` | A, B, R | unsigned 32-bit integers with bitwise operations |
 | `Word64` | A, B, R | unsigned 64-bit integers with bitwise operations |
 | `Char` | R | unicode characters |
-| `Text` | T, R | unicode strings of characters with concatentation `_ # _` |
+| `Text` | T, R | unicode strings of characters with concatenation `_ # _` |
 
 ### Type `Bool`
 
@@ -381,26 +383,22 @@ Comparison TODO.
 ### Type `Char`
 
 A `Char` of category R (Relational) represents characters as a code point in the Unicode character
-set. Characters can be converteinhabitd to `Word32`, and `Word32`s in the
+set. Characters can be converted to `Word32`, and `Word32`s in the
 range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
 if outside of this range). With `singletonText` a character can be
 converted into a text of length 1.
 
-Comparison TODO.
-
 ### Type `Text`
 
 The type `Text` of categories T and R ( Text, Relational) represents sequences of unicode characters (i.e. strings).
-Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `for (c in _) ... c ...`. The `textLength` function returns the number of characters in a `Text` value.
+Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `for (c in _) ... c ...`.
+The `textLength` function returns the number of characters in a `Text` value.
 
 Comparison TODO.
 
 ### Type `Int` and `Nat`
 
 The types `Int` and `Nat` are signed integral and natural numbers of categories A (Arithmetic) and R (Relational).
-The usual arithmetic operations of addition `+`, subtraction `-` (which
-may trap for `Nat`), multiplication `*`, division `/`, modulus `%` and
-exponentiation `**` are available.
 
 Both `Int` and `Nat` are arbitrary precision,
 with only subtraction `-` on `Nat` trapping on underflow.
@@ -408,15 +406,21 @@ with only subtraction `-` on `Nat` trapping on underflow.
 The subtype relation `Nat <: Int` holds, so every expression of type 'Nat' is also an expression of type `Int` (but *not* vice versa).
 In particular, every value of type `Nat` is also a value of type `Int`, without change of representation.
 
-Comparison TODO.
-
 ### Bounded Integers `Int8`, `Int16`, `Int32` and `Int64`
 
-TBC
+The types `Int8`, `Int16`, `Int32` and `Int64` represent
+signed integers with respectively 8, 16, 32 and 64 bit precision.
+All have categories A (Arithmetic) and R (Relational).
+
+Operations that may under- or overflow the representation are checked and trap on error.
 
 ### Bounded Naturals `Nat8`, `Nat16`, `Nat32` and `Nat64`
 
-TBC
+The types `Nat8`, `Nat16`, `Nat32` and `Nat64` represent
+unsigned integers with respectively 8, 16, 31 and 64 bit precision.
+All have categories A (Arithmetic) and R (Relational).
+
+Operations that may under- or overflow the representation are checked and trap on error.
 
 ### Word types
 
@@ -567,7 +571,6 @@ All type parameters declared in a vector are in scope within its bounds.
 <typ-args> ::=                                type arguments
   < <typ>,* >
 ```
-
 Type constructors and functions may take type arguments.
 
 The number of type arguments must agree with the number of declared type parameters of the function.
@@ -611,7 +614,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 * `T` is a mutable array type `[ var T ]`, `V` is a mutable array type  `[ var W ]`
     and `V == W`.
 
-* `T` is `Null` and `U` is the an option type `? W`.
+* `T` is `Null` and `U` is an option type `? W` for some 'W'.
 
 * `T` is `? V`, `U` is `? W` and `V <: W`.
 
@@ -662,7 +665,7 @@ A type `T` is *shared* if it is
   <text>                                        unicode text
 ```
 
-Literals are constant values.
+Literals are constant values. The syntactic validity of a literal depends on the precision of the type at which it is used.
 
 # Expressions
 
@@ -842,7 +845,7 @@ Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifie
 The expression `[ var? <exp>,* ]` has type `[var? T]` provided
 each expression `<exp>` in the sequence `<exp,>*` has type T.
 
- The array expression `[ var <exp0>, ..., <expn> ]` evaluates the expressions false`exp0` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp0`, ..., `<expn>` evaluate to values `v0`,...,`vn` then the array expression returns the array value `[var? v0, ... , vn]` (of size `n+1`).
+The array expression `[ var <exp0>, ..., <expn> ]` evaluates the expressions `exp0` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp0`, ..., `<expn>` evaluate to values `v0`,...,`vn` then the array expression returns the array value `[var? v0, ... , vn]` (of size `n+1`).
 
 The array indexing expression `<exp1> [ <exp2> ]` has type `var? T` provided <exp> has (mutable or immutable) array type `[var? T1]`.
 
@@ -850,7 +853,7 @@ The projection `<exp1> . <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise, `r1` is an array value, `var? [v0, ..., vn]`, and r2 is a natural integer `i`. If  'i > n' the index expression returns `trap`.
+Otherwise, `r1` is an array value, `var? [v0, ..., vn]`, and `r2` is a natural integer `i`. If  'i > n' the index expression returns `trap`.
 
 Otherwise, the index expression returns the value `v`, obtained as follows:
 
@@ -877,7 +880,10 @@ The call expression `<exp1> <T0,...,Tn>? <exp2>` evaluates `exp1` to a result `r
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise, `r1` is a function value, `shared? func <X0 <: V0, ..., n <: Vn> pat { exp }` (for some implicit environment), and `r2` is a value `v2`. Evaluation continues by matching `v1` against `pat`. If matching succeeds with some bindings, evaluation proceeds with `exp` using the environment of the function value (not shown) extended with those bindings. Otherwise, the pattern match has failed and the call results in `trap`.
+Otherwise, `r1` is a function value, `shared? func <X0 <: V0, ..., n <: Vn> pat { exp }` (for some implicit environment), and `r2` is a value `v2`.
+Evaluation continues by matching `v1` against `pat`.
+If matching succeeds with some bindings, evaluation proceeds with `exp` using the environment of the function value (not shown) extended with those bindings.
+Otherwise, the pattern match has failed and the call results in `trap`.
 
 ## Functions
 
@@ -1170,7 +1176,6 @@ The consequences of pattern match failure depends on the context of the pattern.
 ## Wildcard pattern
 
 The wildcard pattern `_`  matches a single value without binding its contents to an identifier.
-
 
 ## Identifier pattern
 
