@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 typedef intptr_t as_ptr;
 
@@ -36,4 +37,13 @@ int main () {
       bigint_pow(bigint_of_word32(70), bigint_of_word32(31)),
       bigint_of_word32(70)
     )) ? "ok" : "not ok");
+
+
+  extern bool utf8_valid(const char*, size_t);
+  const int cases = 1;
+  const char* utf8_inputs[cases] = {
+    "abcd"
+  };
+  for (int i = 0; i < cases; ++i)
+    printf("UTF-8 test #%d: %s\n", i + 1, utf8_valid(utf8_inputs[i], strlen(utf8_inputs[i])) ? "ok" : "not ok");
 }
