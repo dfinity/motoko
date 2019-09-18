@@ -40,10 +40,11 @@ int main () {
 
 
   extern bool utf8_valid(const char*, size_t);
-  const int cases = 1;
+  const int cases = 2;
   const char* utf8_inputs[cases] = {
-    "abcd"
+    "abcd",
+    "\xff"
   };
   for (int i = 0; i < cases; ++i)
-    printf("UTF-8 test #%d: %s\n", i + 1, utf8_valid(utf8_inputs[i], strlen(utf8_inputs[i])) ? "ok" : "not ok");
+    printf("valid UTF-8 test #%d: %s\n", i + 1, utf8_valid(utf8_inputs[i], strlen(utf8_inputs[i])) ? "ok" : "not ok");
 }
