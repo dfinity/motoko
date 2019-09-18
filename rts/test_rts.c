@@ -46,6 +46,10 @@ int main () {
 
     // from https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
     //
+    // 3.5  Impossible bytes
+    "\xfe",
+    "\xff",
+
     // 4.1  Examples of an overlong ASCII character
     "\xc0\xaf",
     "\xe0\x80\xaf",
@@ -84,11 +88,7 @@ int main () {
     "\xed\xae\x80\xed\xb0\x80",
     "\xed\xae\x80\xed\xbf\xbf",
     "\xed\xaf\xbf\xed\xb0\x80",
-    "\xed\xaf\xbf\xed\xbf\xbf",
-
-    // 3.5  Impossible bytes
-    "\xfe",
-    "\xff"
+    "\xed\xaf\xbf\xed\xbf\xbf"
   };
   for (int i = 0; i < cases; ++i)
   {
