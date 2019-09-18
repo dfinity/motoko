@@ -20,7 +20,7 @@ function realpath() {
 
 ACCEPT=no
 API=wasm
-CHECK_IDL_ONLY=no
+IDL=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
@@ -47,7 +47,7 @@ while getopts "a12si" o; do
             ECHO=true
             ;;
         i)
-            CHECK_IDL_ONLY=yes
+            IDL=yes
             ;;
     esac
 done
@@ -114,10 +114,10 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,drun-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat}
+  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,wasm.stderr,drun-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat,did,did.tc,js.out}
   if [ $ACCEPT = yes ]
   then
-    rm -f $ok/$base.{tc,wasm,wasm.map,wasm-run,drun-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat}.ok
+    rm -f $ok/$base.{tc,wasm,wasm.map,wasm-run,wasm.stderr,drun-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat,did,did.tc,js.out}.ok
   fi
 
   # First run all the steps, and remember what to diff
@@ -134,7 +134,7 @@ do
 
     if [ "$tc_succeeded" -eq 0 ]
     then
-      if [ $CHECK_IDL_ONLY = 'yes' ]
+      if [ $IDL = 'yes' ]
       then
         $ECHO -n " [idl]"
         $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
@@ -149,7 +149,6 @@ do
           diff_files="$diff_files $base.did.tc"
         fi
       else
-      
         if [ "$SKIP_RUNNING" != yes ]
         then
           # Interpret
@@ -203,19 +202,6 @@ do
         then
           if [ "$SKIP_RUNNING" != yes ]
           then
-            $ECHO -n " [idl]"
-            $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
-            idl_succeeded=$?
-            normalize $out/$base.did
-            normalize $out/$base.idl.stderr
-            diff_files="$diff_files $base.did $base.idl.stderr"
-            if [ "$idl_succeeded" -eq 0 ]
-            then
-              $ECHO -n " [didc]"
-              $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
-              diff_files="$diff_files $base.did.tc"
-            fi
-
             if [ $API = ancient ]
             then
               $ECHO -n " [dvm]"
@@ -283,9 +269,9 @@ do
       then
         $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$JSCLIENT:$JSCLIENT/src
-        node $out/$base.js > $out/$base.err 2>&1
-        normalize $out/$base.err
-        diff_files="$diff_files $base.err"
+        node $out/$base.js > $out/$base.js.out 2>&1
+        normalize $out/$base.js.out
+        diff_files="$diff_files $base.js.out"
       fi
     fi
   fi
