@@ -93,12 +93,6 @@ RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
 
 #
-# Side dependencies (due to included headers)
-#
-
-_build/wasm/utf8_valid.o: utf8_valid.h
-
-#
 # The actual RTS, as we ship it with the compiler
 #
 
