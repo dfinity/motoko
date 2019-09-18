@@ -7,7 +7,8 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Compile without -no-dfinity-api, uses drun to run
+#    -1: Use Ancient API
+#    -2: Use IC API
 #    -s: Be silent in sunny-day execution
 #    -i: Only check as to idl generation
 #
