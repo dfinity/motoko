@@ -5934,8 +5934,8 @@ and compile_exp (env : E.t) ae exp =
         )
     | OtherPrim "sys_reply", [v] ->
       SR.unit,
-      let t = Type.Func(Type.Shared,Type.Returns,[],Type.as_seq (v.note.note_typ),[]) in
-      compile_exp_vanilla env ae (Construct.callE (Construct.idE "@reply" t) [] v)
+      let t = Type.Func(Type.Shared,Type.Returns,[],[v.note.note_typ],[]) in
+      compile_exp_as env ae SR.unit (Construct.callE (Construct.idE "@reply" t) [] v)
     | OtherPrim "sys_call", vs ->
       SR.unit,
       begin

@@ -540,13 +540,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
       "shared function with async type has non-async body";
     check (cc.Call_conv.n_args = List.length args)
       "calling convention arity does not match number of parameters";
-    check (cc.Call_conv.n_res = List.length ret_tys)
+    check (if not env.flavor.Ir.has_async_typ && cc.Call_conv.control = T.Promises
+           then cc.Call_conv.n_res = 0
+           else cc.Call_conv.n_res = List.length ret_tys)
       "calling convention arity does not match number of return types";
     if (cc.Call_conv.sort = T.Shared) then List.iter (check_concrete env exp.at) ret_tys;
     let env'' =
       {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
     check_exp (adjoin_vals env'' ve) exp;
-    check_sub env' exp.at (typ exp) (T.seq ret_tys);
+    if not env.flavor.Ir.has_async_typ && cc.Call_conv.control = T.Promises then
+      check_sub env' exp.at (typ exp) T.unit
+    else check_sub env' exp.at (typ exp) (T.seq ret_tys);
     (* Now construct the function type and compare with the annotation *)
     let ts1 = List.map (fun a -> a.note) args in
     if (cc.Call_conv.sort = T.Shared) then List.iter (check_concrete env exp.at) ts1;

@@ -331,13 +331,13 @@ module Transform() = struct
               let exp' =
                 match exp.it with
                 | PrimE (OtherPrim "@async", [cps]) ->
-                  let v = fresh_var "v" res_typ in
-                  let k = v --> sys_replyE v in
-                  t_exp cps -*- k
+                  let vs = fresh_vars "v" (T.as_seq res_typ) in
+                  let k = vs -->* sys_replyE (seqE vs) in
+                  (t_exp cps) -*- k
                 | _ -> assert false
               in
-              (* let cc' = { cc with Call_conv.n_res = 0 } in *)
-              FuncE (x, cc, typbinds', args', T.as_seq res_typ, exp')
+              let cc' = { cc with Call_conv.n_res = 0 (* List.length (T.as_seq res_typ)*) } in
+              FuncE (x, cc', typbinds', args', T.as_seq res_typ, exp')
             | _ -> assert false
           end
       end
