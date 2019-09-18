@@ -188,7 +188,7 @@ AS distinguishes sharable types:
 
   - all primitive types are sharable (scalars + text)
   - any `shared` function type is sharable
-  - an object type is sharable if it's fields are sharable and immutable
+  - an object type is sharable if its fields are sharable and immutable
   - any `actor` type is sharable
   - `[T]` and `?T`  are sharable if `T` is sharable.
   - `(T1,...,Tn)` is sharable if `T1`,..., `Tn` all sharable.

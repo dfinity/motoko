@@ -9,7 +9,7 @@ TODO
 -->
 TODO:
 
-* [X] *Categorize* primitives and operations as arithmetic (A), logical (L), bitwise (B) and comparable (C) and use these categories to concisely present categorized operators (unop, binop, relop, a(ssigning)op) etc.
+* [X] *Categorize* primitives and operations as arithmetic (A), logical (L), bitwise (B) and relational (R) and use these categories to concisely present categorized operators (unop, binop, relop, a(ssigning)op) etc.
 * [ ] Various inline TBCs and TBRs and TODOs
 * [ ] Typing of patterns
 * [ ] Variants
@@ -214,15 +214,15 @@ text ::= '"' character* '"'
 To simplify the presentation of available operators, operators and primitive types are classified into basic categories:
 
 
-| Category| Category |          |
+| Abbreviation| Category |          |
 |---|----|-------|
 | A | Arithmetic | arithmetic operations |
 | L | Logical | logical/Boolean operations |
 | B | Bitwise | bitwise operations|
-| C | Comparable | equality and comparison |
+| R | Relational | equality and comparison |
 | T | Text | concatention |
 
-Some types have several categories, e.g. type `Int` is both arithmetic and comparable and supports both addition and less than (amongst other operations).
+Some types have several categories, e.g. type `Int` is both arithmetic (A) and relational (R) and supports both arithmentic addition ('+') and relational less than ('<=') (amongst other operations).
 
 ### Unary Operators
 
@@ -238,12 +238,12 @@ Some types have several categories, e.g. type `Int` is both arithmetic and compa
 
 | `<relop>` | Category    |          |
 |-------|---|------|
-| `␣<␣` | C | less than *(must be enclosed in whitespace)* |
-| `␣>␣` | C | greater than *(must be enclosed in whitespace)* |
-|  `==` | C | equals |
-|  `!=` | C | not equals |
-|  `<=` | C | less than or equal |
-|  `>=` | C |greater than or equal |
+| `␣<␣` | R | less than *(must be enclosed in whitespace)* |
+| `␣>␣` | R | greater than *(must be enclosed in whitespace)* |
+|  `==` | R | equals |
+|  `!=` | R | not equals |
+|  `<=` | R | less than or equal |
+|  `>=` | R |greater than or equal |
 
 
 Equality is structural.
@@ -354,33 +354,33 @@ The category of a type determines the operators (unary, binary, relational and a
 
 | Identifier | Category | Description |
 |---|------------|--------|
-| `Bool` | L, C | boolean values `true` and `false` and logical operators |
-| `Int`  | A, C | signed integer values with arithmetic (unbounded)|
-| `Int8`  | A, C | signed 8-bit integer values with checked arithmetic|
-| `Int16`  | A, C | signed 16-bit integer values with checked arithmetic|
-| `Int32`  | A, C | signed 32-bit integer values with checked arithmetic|
-| `Int64`  | A, C | signed 64-bit integer values with checked arithmetic|
-| `Nat`  | A, C | non-negative integer values with arithmetic (unbounded)|
-| `Nat8`  | A, C | non-negative 8-bit integer values with checked arithmetic|
-| `Nat16`  | A, C | non-negative 16-bit integer values with checked arithmetic|
-| `Nat32`  | A, C | non-negative 32-bit integer values with checked arithmetic|
-| `Nat64`  | A, C | non-negative 64-bit integer values with checked arithmetic|
-| `Word8` | A, B, C | unsigned 8-bit integers with bitwise operations |
-| `Word16` | A, B, C | unsigned 16-bit integers with bitwise operations |
-| `Word32` | A, B, C | unsigned 32-bit integers with bitwise operations |
-| `Word64` | A, B, C | unsigned 64-bit integers with bitwise operations |
-| `Char` | C | unicode characters |
-| `Text` | T, C | unicode strings of characters with concatentation `_ # _` |
+| `Bool` | L, R | boolean values `true` and `false` and logical operators |
+| `Int`  | A, R | signed integer values with arithmetic (unbounded)|
+| `Int8`  | A, R | signed 8-bit integer values with checked arithmetic|
+| `Int16`  | A, R | signed 16-bit integer values with checked arithmetic|
+| `Int32`  | A, R | signed 32-bit integer values with checked arithmetic|
+| `Int64`  | A, R | signed 64-bit integer values with checked arithmetic|
+| `Nat`  | A, R | non-negative integer values with arithmetic (unbounded)|
+| `Nat8`  | A, R | non-negative 8-bit integer values with checked arithmetic|
+| `Nat16`  | A, R | non-negative 16-bit integer values with checked arithmetic|
+| `Nat32`  | A, R | non-negative 32-bit integer values with checked arithmetic|
+| `Nat64`  | A, R | non-negative 64-bit integer values with checked arithmetic|
+| `Word8` | A, B, R | unsigned 8-bit integers with bitwise operations |
+| `Word16` | A, B, R | unsigned 16-bit integers with bitwise operations |
+| `Word32` | A, B, R | unsigned 32-bit integers with bitwise operations |
+| `Word64` | A, B, R | unsigned 64-bit integers with bitwise operations |
+| `Char` | R | unicode characters |
+| `Text` | T, R | unicode strings of characters with concatentation `_ # _` |
 
 ### Type `Bool`
 
-The type `Bool` of categories L, C (Logical, Comparable) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
+The type `Bool` of categories L, R (Logical, Relational) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
 
 Comparison TODO.
 
 ### Type `Char`
 
-A `Char` of category C (Comparable) represents characters as a code point in the Unicode character
+A `Char` of category R (Relational) represents characters as a code point in the Unicode character
 set. Characters can be converteinhabitd to `Word32`, and `Word32`s in the
 range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
 if outside of this range). With `singletonText` a character can be
@@ -390,25 +390,23 @@ Comparison TODO.
 
 ### Type `Text`
 
-The type `Text` of categories T and C ( Text, Comparable) represents sequences of unicode characters (i.e. strings).
+The type `Text` of categories T and R ( Text, Relational) represents sequences of unicode characters (i.e. strings).
 Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `for (c in _) ... c ...`. The `textLength` function returns the number of characters in a `Text` value.
 
 Comparison TODO.
 
 ### Type `Int` and `Nat`
 
-The types `Int` and `Nat` are signed integral and natural numbers of categories A (Arithmetic) and C (omparable).
+The types `Int` and `Nat` are signed integral and natural numbers of categories A (Arithmetic) and R (Relational).
 The usual arithmetic operations of addition `+`, subtraction `-` (which
 may trap for `Nat`), multiplication `*`, division `/`, modulus `%` and
 exponentiation `**` are available.
 
-Additionally, since every inhabitant
-of `Nat` is also an inhabitant of `Int`, the subtype relation `Nat <: Int` holds.
-
 Both `Int` and `Nat` are arbitrary precision,
 with only subtraction `-` on `Nat` trapping on underflow.
 
-Due to subtyping, every value of type `Nat` is also a value of type `Int`, without change of representation.
+The subtype relation `Nat <: Int` holds, so every expression of type 'Nat' is also an expression of type `Int` (but *not* vice versa).
+In particular, every value of type `Nat` is also a value of type `Int`, without change of representation.
 
 Comparison TODO.
 
@@ -424,7 +422,7 @@ TBC
 
 The types `Word8`, `Word16`, `Word32` and `Word64` represent
 fixed-width bit patterns of width *n* (8, 16, 32 and 64).
-All word types have categories A (Arithmetic), B (Bitwise) and  C (Comparable).
+All word types have categories A (Arithmetic), B (Bitwise) and  R (Relational).
 As arithmetic types, word types implementing numeric wrap-around
 (modulo *2^n*).
 As bitwise types, word types support bitwise operations *and* `(&)`,
@@ -746,7 +744,7 @@ The relational expression `<exp1> <relop> <exp2>` has type `Bpol` provided:
 
 * `<exp1>` has type `T`, and
 * `<exp2>` has type `T`, and
-* `<relop>`'s category C is a category of `T`.
+* `<relop>`'s category R is a category of `T`.
 
 The binary operator expression `<exp1> <relop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 
