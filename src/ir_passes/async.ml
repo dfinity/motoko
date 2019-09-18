@@ -370,10 +370,6 @@ module Transform() = struct
             | T.Tup [] ->
               FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
             | T.Async res_typ ->
-              let cc' =
-                if add_reply_parameter
-                then Call_conv.message_cc (cc.Call_conv.n_args + 1)
-                else Call_conv.message_cc cc.Call_conv.n_args in
               let res_typ = t_typ res_typ in
               let reply_typ = replyT nary res_typ in
               let r = fresh_var "r" reply_typ in
@@ -393,6 +389,7 @@ module Transform() = struct
                   t_exp cps -*- k
                 | _ -> assert false
               in
+              let cc' = Call_conv.message_cc (List.length args') in
               FuncE (x, cc', typbinds', args', [], exp')
             | _ -> assert false
           end

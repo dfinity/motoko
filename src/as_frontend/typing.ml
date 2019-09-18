@@ -342,10 +342,10 @@ let check_int8 env = check_lit_val env T.Int8 Value.Int_8.of_string
 let check_int16 env = check_lit_val env T.Int16 Value.Int_16.of_string
 let check_int32 env = check_lit_val env T.Int32 Value.Int_32.of_string
 let check_int64 env = check_lit_val env T.Int64 Value.Int_64.of_string
-let check_word8 env = check_lit_val env T.Word8 Value.Word8.of_string_u
-let check_word16 env = check_lit_val env T.Word16 Value.Word16.of_string_u
-let check_word32 env = check_lit_val env T.Word32 Value.Word32.of_string_u
-let check_word64 env = check_lit_val env T.Word64 Value.Word64.of_string_u
+let check_word8 env = check_lit_val env T.Word8 Value.Word8.of_string
+let check_word16 env = check_lit_val env T.Word16 Value.Word16.of_string
+let check_word32 env = check_lit_val env T.Word32 Value.Word32.of_string
+let check_word64 env = check_lit_val env T.Word64 Value.Word64.of_string
 let check_float env = check_lit_val env T.Float Value.Float.of_string
 
 

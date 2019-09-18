@@ -29,7 +29,7 @@ import Turtle
 
 main = defaultMain tests
   where tests :: TestTree
-        tests = testGroup "ActorScript tests" [arithProps, utf8Props]
+        tests = testGroup "ActorScript tests" [arithProps, utf8Props, matchingProps]
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
@@ -40,8 +40,13 @@ arithProps = testGroup "Arithmetic/logic"
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
   , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
+  , QC.testProperty "length computation" $ prop_textLength
   ]
 
+matchingProps = testGroup "pattern matching"
+  [ QC.testProperty "intra-actor" $ prop_matchStructured
+  , QC.testProperty "inter-actor" $ prop_matchInActor
+  ]
 
 (runScriptNoFuzz, runScriptWantFuzz) = (runner id, runner not)
     where runner relevant name testCase = 
@@ -87,6 +92,10 @@ prop_charToText (UTF8 char) = monadicIO $ do
 
       c = escape char
   runScriptNoFuzz "charToText" testCase
+
+prop_textLength (UTF8 text) = monadicIO $ do
+  let testCase = "assert(\"" <> (text >>= escape) <> "\".len() == " <> show (length text) <> ")"
+  runScriptNoFuzz "textLength" testCase
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
@@ -146,6 +155,98 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
   assertSuccessNoFuzz id res
 
 
+data Matching where
+  Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
+
+deriving instance Show Matching
+
+
+instance Arbitrary Matching where
+  arbitrary = oneof [ realise Matching <$> gen @Bool
+                    , realise Matching <$> gen @(Bool, Bool)
+                    , realise Matching <$> gen @(Bool, Integer)
+                    , realise Matching <$> gen @((Bool, Natural), Integer)
+                    , realise Matching <$> gen @(BitLimited 8 Natural, BitLimited 8 Integer, BitLimited 8 Word)
+                    , realise Matching <$> gen @(Maybe Integer)
+                    ]
+    where gen :: (Arbitrary (ASTerm a), Evaluatable a) => Gen (ASTerm a, Maybe a)
+          gen = (do term <- arbitrary
+                    let val = evaluate term
+                    pure (term, val)) `suchThat` (isJust . snd)
+          realise f (tm, Just v) = f (tm, v)
+
+prop_matchStructured :: Matching -> Property
+prop_matchStructured (Matching a) = locally a
+
+locally :: (AnnotLit t, ASValue t) => (ASTerm t, t) -> Property
+locally (tm, v) = monadicIO $ do
+  let testCase = "assert (switch (" <> expr <> ") { case (" <> eval'd <> ") true; case _ false })"
+
+      eval'd = unparse v
+      expr = unparseAS tm
+  runScriptNoFuzz "matchLocally" testCase
+
+prop_matchInActor :: Matching -> Property
+prop_matchInActor (Matching a) = mobile a
+
+mobile :: (AnnotLit t, ASValue t) => (ASTerm t, t) -> Property
+mobile (tm, v) = monadicIO $ do
+  let testCase = "/*let a = actor { public func match (b : " <> typed <> ") : async Bool = async { true } };*/ assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false })"
+
+      eval'd = unparse v
+      typed = unparseType v
+      expr = unparseAS tm
+  runScriptNoFuzz "matchMobile" testCase
+
+-- instances of ASValue describe "ground values" in
+-- ActorScript. These can appear in patterns and have
+-- well-defined AS type.
+--
+class ASValue a where
+  unparseType :: a -> String
+  unparse :: a -> String
+
+instance ASValue Bool where
+  unparseType _ = "Bool"
+  unparse = unparseAS . Bool
+
+instance ASValue Integer where
+  unparseType _ = "Int"
+  unparse = show
+
+instance ASValue Natural where
+  unparseType _ = "Nat"
+  unparse = show
+
+instance KnownNat n => ASValue (BitLimited n Natural) where
+  unparseType _ = "Nat" <> bitWidth (Proxy @n)
+  unparse (NatN a) = annot (Five @(BitLimited n Natural)) (show a)
+
+instance KnownNat n => ASValue (BitLimited n Integer) where
+  unparseType _ = "Int" <> bitWidth (Proxy @n)
+  unparse (IntN a) = annot (Five @(BitLimited n Integer)) (show a)
+
+instance KnownNat n => ASValue (BitLimited n Word) where
+  unparseType _ = "Word" <> bitWidth (Proxy @n)
+  unparse (WordN a) = annot (Five @(BitLimited n Word)) (show a)
+
+instance (ASValue a, ASValue b) => ASValue (a, b) where
+  unparseType (a, b) = "(" <> unparseType a <> ", " <> unparseType b <> ")"
+  unparse (a, b) = "(" <> unparse a <> ", " <> unparse b <> ")"
+
+instance (ASValue a, ASValue b, ASValue c) => ASValue (a, b, c) where
+  unparseType (a, b, c) = "(" <> unparseType a <> ", " <> unparseType b <> ", " <> unparseType c <> ")"
+  unparse (a, b, c) = "(" <> unparse a <> ", " <> unparse b <> ", " <> unparse c <> ")"
+
+instance ASValue a => ASValue (Maybe a) where
+  unparseType Nothing = "Null"
+  unparseType (Just a) = "?" <> unparseType a
+  unparse Nothing = "null"
+  unparse (Just a) = "?" <> unparse a
+
+-- wiggle room around an *important value*
+-- think of it as a "fuzz"
+--
 data Off = TwoLess | OneLess | OneMore | TwoMore
  deriving (Enum, Eq, Ord, Show)
 
@@ -213,7 +314,7 @@ instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Word)) where
 data ASTerm :: * -> * where
   -- Comparisons
   NotEqual, Equals, GreaterEqual, Greater, LessEqual, Less
-    :: (Annot a, Literal a, Evaluatable a) => ASTerm a -> ASTerm a -> ASTerm Bool
+    :: (AnnotLit a, Evaluatable a) => ASTerm a -> ASTerm a -> ASTerm Bool
   -- Short-circuit
   ShortAnd, ShortOr
     :: ASTerm Bool -> ASTerm Bool -> ASTerm Bool
@@ -238,6 +339,14 @@ data ASTerm :: * -> * where
   ConvertNat :: KnownNat n => ASTerm (BitLimited n Natural) -> ASTerm Integer
   ConvertInt :: KnownNat n => ASTerm (BitLimited n Integer) -> ASTerm Integer
   ConvertWord :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Integer
+  -- Constructors (intro forms)
+  Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
+  Triple :: (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c)
+         => ASTerm a -> ASTerm b -> ASTerm c -> ASTerm (a, b, c)
+  Array :: ASTerm a -> ASTerm [a] -- not matchable!
+  Null :: ASTerm (Maybe a)
+  Some :: (AnnotLit a, Evaluatable a) => ASTerm a -> ASTerm (Maybe a)
+  -- Variants, Objects (TODO)
 
 deriving instance Show (ASTerm t)
 
@@ -286,7 +395,7 @@ bitwiseTerm n =
 
 -- generate reasonably formed trees from smaller subterms
 --
-reasonablyShaped :: (Arbitrary (Neuralgic a), Annot a, Evaluatable a, Literal a)
+reasonablyShaped :: (Arbitrary (Neuralgic a), AnnotLit a, Evaluatable a)
                  => (Int -> [(Int, Gen (ASTerm a))])
                  -> Gen (ASTerm a)
 reasonablyShaped sub = sized $ \(succ -> n) -> frequency $
@@ -313,6 +422,15 @@ instance {-# OVERLAPPABLE #-} WordLike n => Arbitrary (ASTerm (BitLimited n Word
 instance {-# OVERLAPS #-} Arbitrary (ASTerm Word8) where
   arbitrary = reasonablyShaped $ (<>) <$> subTerm True <*> bitwiseTerm
 
+instance (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b, Arbitrary (ASTerm a), Arbitrary (ASTerm b)) => Arbitrary (ASTerm (a, b)) where
+  arbitrary = scale (`quot` 2) $ Pair <$> arbitrary <*> arbitrary
+
+instance (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c, Arbitrary (ASTerm a), Arbitrary (ASTerm b), Arbitrary (ASTerm c))
+    => Arbitrary (ASTerm (a, b, c)) where
+  arbitrary = scale (`quot` 3) $ Triple <$> arbitrary <*> arbitrary <*> arbitrary
+
+instance (AnnotLit a, Evaluatable a, Arbitrary (ASTerm a)) => Arbitrary (ASTerm (Maybe a)) where
+  arbitrary = frequency [(1, pure Null), (10, Some <$> arbitrary)]
 
 instance Arbitrary (ASTerm Bool) where
   arbitrary = sized $ \(succ -> n) -> -- TODO: use frequency?
@@ -422,6 +540,10 @@ deriving instance Show (BitLimited n a)
 deriving instance Eq (BitLimited n a)
 deriving instance Ord (BitLimited n a)
 
+
+-- for a BitLimited n Word, the instances of WordView provide the
+-- change of perspective to the built-in Word types' semantics
+--
 class WordView a where
   type WordType a :: *
   toWord :: a -> WordType a
@@ -432,6 +554,7 @@ class WordView a where
   lift1b f (f . toWord -> res) = res
   lift2 :: (WordType a -> WordType a -> WordType a) -> a -> a -> a
   lift2 f (toWord -> a) (toWord -> b) = fromWord (a `f` b)
+  {-# MINIMAL toWord, fromWord #-}
 
 
 type family WordTypeForBits a where
@@ -606,6 +729,16 @@ instance Evaluatable Integer where
 instance Evaluatable Natural where
   evaluate = eval
 
+instance (Evaluatable a, Evaluatable b) => Evaluatable (a, b) where
+  evaluate (Pair a b) = (,) <$> evaluate a <*> evaluate b
+
+instance (Evaluatable a, Evaluatable b, Evaluatable c) => Evaluatable (a, b, c) where
+  evaluate (Triple a b c) = (,,) <$> evaluate a <*> evaluate b <*> evaluate c
+
+instance Evaluatable a => Evaluatable (Maybe a) where
+  evaluate Null = pure Nothing
+  evaluate (Some a) = Just <$> evaluate a
+
 eval :: (Restricted a, Integral a) => ASTerm a -> Maybe a
 eval Five = pure 5
 eval (Neuralgic n) = evalN n
@@ -639,11 +772,21 @@ instance Evaluatable Bool where
   evaluate (Not a) = not <$> evaluate a
   evaluate (Bool b) = pure b
 
+type AnnotLit t = (Annot t, Literal t)
 
 class Annot t where
   annot :: ASTerm t -> String -> String
   sizeSuffix :: ASTerm t -> String -> String
   sizeSuffix _ = id
+
+instance Annot (a, b) where
+  annot _ = id
+
+instance Annot (a, b, c) where
+  annot _ = id
+
+instance Annot (Maybe a) where
+  annot _ = id
 
 instance Annot Integer where
   annot _ s = "((" <> s <> ") : Int)"
@@ -672,28 +815,32 @@ class Literal a where
   literal :: Neuralgic a -> String
   literal (evalN -> n) = if n < 0 then "(" <> show n <> ")" else show n
 
+instance Literal (a, b) where
+  literal _ = error "Literal (a, b) makes no sense"
+
+instance Literal (a, b, c) where
+  literal _ = error "Literal (a, b, c) makes no sense"
+
+instance Literal (Maybe a) where
+  literal _ = error "Literal (Maybe a) makes no sense"
+
 instance Literal Integer
 instance Literal Natural
 instance Literal (BitLimited n Natural)
 instance KnownNat bits => Literal (BitLimited bits Integer) where
-  -- compensate for https://github.com/dfinity-lab/actorscript/issues/505
-  literal (evalN -> n) = if buggy n then "intToInt" <> bitWidth pr <> "(" <> show n <> ")"
-                         else if n < 0
+  literal (evalN -> n) = if n < 0
                          then "(" <> show n <> ")"
                          else show n
-    where buggy n = n == - 2 ^ (numbits - 1)
-          numbits = natVal pr
-          pr = Proxy @bits
 instance KnownNat bits => Literal (BitLimited bits Word) where
   literal n = show . fromJust $ trapWord (natVal (Proxy @bits)) (evalN n)
 
 instance Literal Bool where
-  literal _ = undefined
+  literal _ = error "Literal Bool makes no sense"
 
 inParens :: (a -> String) -> String -> a -> a -> String
 inParens to op lhs rhs = "(" <> to lhs <> " " <> op <> " " <> to rhs <> ")"
 
-unparseAS :: (Annot a, Literal a) => ASTerm a -> String
+unparseAS :: AnnotLit a => ASTerm a -> String
 unparseAS f@Five = annot f "5"
 unparseAS a@(Neuralgic n) = annot a $ literal n
 unparseAS (Pos n) = "(+" <> unparseAS n <> ")"
@@ -733,6 +880,10 @@ unparseAS (a `ShortOr` b) = inParens unparseAS "or" a b
 unparseAS (Not a) = "(not " <> unparseAS a <> ")"
 unparseAS (Bool False) = "false"
 unparseAS (Bool True) = "true"
+unparseAS (a `Pair` b) = "(" <> unparseAS a <> ", " <> unparseAS b <> ")"
+unparseAS (Triple a b c) = "(" <> unparseAS a <> ", " <> unparseAS b <> ", " <> unparseAS c <> ")"
+unparseAS Null = "null"
+unparseAS (Some a) = '?' : unparseAS a
 
 unparseNat :: KnownNat n => Proxy n -> ASTerm (BitLimited n Natural) -> String
 unparseNat p a = "(nat" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))"
@@ -746,6 +897,7 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 -- TODOs:
 --   - wordToInt
 --   - bitwise ops (btst?)
---   - pattern matches (over numeric, bool)
+--   - pattern matches (over numeric, bool, structured)
 --   - trapping flavour-preserving conversions Nat -> NatN
 --   - bitsize-preserving conversions
+--   - data ASTerm (p :: {Term, Pattern}) where ... Pattern :: ASValue a => a -> ASTerm (Pattern/both) a
