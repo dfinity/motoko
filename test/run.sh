@@ -18,7 +18,7 @@ function realpath() {
 
 
 ACCEPT=no
-DFINITY=no
+API=wasm
 CHECK_IDL_ONLY=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
@@ -26,17 +26,21 @@ AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export AS_LD
 WASM=${WASM:-wasm}
+DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 JSCLIENT=${JSCLIENT:-$(realpath $(dirname $0)/../../dev/experimental/js-dfinity-client)}
 ECHO=echo
 
-while getopts "adsi" o; do
+while getopts "a12si" o; do
     case "${o}" in
         a)
             ACCEPT=yes
             ;;
-        d)
-            DFINITY=yes
+        1)
+            API=ancient
+            ;;
+        2)
+            API=ic
             ;;
         s)
             ECHO=true
@@ -47,10 +51,8 @@ while getopts "adsi" o; do
     esac
 done
 
-if [ $DFINITY = "no" ]
-then
-    EXTRA_ASC_FLAGS=-no-dfinity-api
-fi
+if [ $API = "wasm" ]; then EXTRA_ASC_FLAGS=-no-system-api; fi
+if [ $API = "ancient" ]; then EXTRA_ASC_FLAGS=-ancient-system-api; fi
 
 shift $((OPTIND-1))
 
@@ -200,21 +202,27 @@ do
         then
           if [ "$SKIP_RUNNING" != yes ]
           then
-            if [ $DFINITY = 'yes' ]
+            $ECHO -n " [idl]"
+            $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
+            idl_succeeded=$?
+            normalize $out/$base.did
+            normalize $out/$base.idl.stderr
+            diff_files="$diff_files $base.did $base.idl.stderr"
+            if [ "$idl_succeeded" -eq 0 ]
             then
-              $ECHO -n " [idl]"
-              $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --idl $base.as -o $out/$base.did 2> $out/$base.idl.stderr
-              idl_succeeded=$?
-              normalize $out/$base.did
-              normalize $out/$base.idl.stderr
-              diff_files="$diff_files $base.did $base.idl.stderr"
-              if [ "$idl_succeeded" -eq 0 ]
-              then
-                $ECHO -n " [didc]"
-                $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
-                diff_files="$diff_files $base.did.tc"
-              fi
+              $ECHO -n " [didc]"
+              $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
+              diff_files="$diff_files $base.did.tc"
+            fi
 
+            if [ $API = ancient ]
+            then
+              $ECHO -n " [dvm]"
+              $DVM_WRAPPER $out/$base.wasm $base.as > $out/$base.dvm-run 2>&1
+              normalize $out/$base.dvm-run
+              diff_files="$diff_files $base.dvm-run"
+            elif [ $API = ic ]
+            then
               $ECHO -n " [drun]"
               $DRUN_WRAPPER $out/$base.wasm $base.as > $out/$base.drun-run 2>&1
               normalize $out/$base.drun-run

@@ -22,7 +22,7 @@ let set_mode m () =
   end;
   mode := m
 
-let compile_mode = ref Pipeline.DfinityMode
+let compile_mode = ref Pipeline.ICMode
 let out_file = ref ""
 let link = ref true
 let interpret_ir = ref false
@@ -34,7 +34,7 @@ let argspec = Arg.align
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
-  "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";  
+  "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
   "-v", Arg.Set Pipeline.Flags.verbose, " verbose output";
   "-p", Arg.Set_int Pipeline.Flags.print_depth, " set print depth";
   "-o", Arg.Set_string out_file, " output file";
@@ -66,9 +66,12 @@ let argspec = Arg.align
   "-no-async", Arg.Clear Pipeline.Flags.async_lowering, " no async-lowering (with -iR)";
 
   "-no-link", Arg.Clear link, " do not statically link-in runtime";
-  "-no-dfinity-api",
+  "-no-system-api",
     Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
-      " do not import the DFINITY system API";
+      " do not import the any system API";
+  "-ancient-system-api",
+    Arg.Unit (fun () -> compile_mode := Pipeline.AncientMode),
+      " use the ancient DFINITY system API (dvm)";
   "-fake-op", Arg.Set Codegen.Flags.fake_orthogonal_persistence, " fake OP";
   "-no-fake-op", Arg.Clear Codegen.Flags.fake_orthogonal_persistence, " do not fake OP";
   "-multi-value", Arg.Set Codegen.Flags.multi_value, " use multi-value extension";

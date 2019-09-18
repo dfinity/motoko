@@ -1,4 +1,4 @@
-RUNFLAGS = -d
+RUNFLAGS = -1
 
 all:
 	../run.sh $(RUNFLAGS) *.as

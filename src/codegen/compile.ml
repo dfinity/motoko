@@ -106,7 +106,7 @@ The fields fall into the following categories:
 
 (* Before we can define the environment, we need some auxillary types *)
 
-type mode = WasmMode | DfinityMode
+type mode = WasmMode | AncientMode | ICMode
 
 
 module E = struct
@@ -625,7 +625,7 @@ module RTS = struct
     let idl_trap_fi = E.add_fun env "idl_trap" (
       Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
         begin
-          if E.mode env = DfinityMode then
+          if E.mode env = ICMode then
             let get_str = G.i (LocalGet (nr 0l)) in
             let get_len = G.i (LocalGet (nr 1l)) in
             get_str ^^ get_len ^^
@@ -659,7 +659,8 @@ module Heap = struct
 
   (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
   let grow_memory env =
-    if E.mode env = DfinityMode
+    (* No growing of memory on drun yet *)
+    if E.mode env = ICMode
     then G.i Drop
     else Func.share_code1 env "grow_memory" ("ptr", I32Type) [] (fun env get_ptr ->
       let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
@@ -2898,12 +2899,13 @@ module Dfinity = struct
   let get_api_nonce = G.i (GlobalGet (nr api_nonce_global))
 
   let system_imports env =
-    begin
+    match E.mode env with
+    | ICMode ->
       E.add_func_import env "debug" "print" [I32Type; I32Type] [];
       E.add_func_import env "msg" "arg_data_size" [I64Type] [I32Type];
       E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
-      (*
+      E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] []
+    | AncientMode ->
       E.add_func_import env "test" "print" [I32Type] [];
       E.add_func_import env "test" "show_i32" [I32Type] [I32Type];
       E.add_func_import env "data" "externalize" [I32Type; I32Type] [I32Type];
@@ -2918,14 +2920,10 @@ module Dfinity = struct
       E.add_func_import env "actor" "export" [I32Type; I32Type] [I32Type];
       E.add_func_import env "func" "internalize" [I32Type; I32Type] [];
       E.add_func_import env "func" "externalize" [I32Type] [I32Type];
-      E.add_func_import env "func" "bind_i32" [I32Type; I32Type] [I32Type];
-      *)
-    end
+      E.add_func_import env "func" "bind_i32" [I32Type; I32Type] [I32Type]
+    | _ -> ()
 
-  let system_call env modname funcname =
-    if E.mode env = DfinityMode
-    then E.call_import env modname funcname
-    else G.i Unreachable
+  let system_call env modname funcname = E.call_import env modname funcname
 
   let compile_databuf_of_text env  =
     Func.share_code1 env "databuf_of_text" ("string", I32Type) [I32Type] (fun env get_string ->
@@ -2945,6 +2943,7 @@ module Dfinity = struct
     Text.lit env bytes ^^ compile_databuf_of_text env
 
   let prim_print env =
+    if E.mode env = WasmMode then G.i Drop else
     Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
       get_str ^^ Text.payload_ptr_unskewed ^^
       get_str ^^ Heap.load_field (Text.len_field) ^^
@@ -2961,9 +2960,9 @@ module Dfinity = struct
       compile_static_print env "\n"
 
   let trap_with env s =
-    if E.mode env = DfinityMode
-    then compile_static_print env (s ^ "\n") ^^ G.i Unreachable
-    else G.i Unreachable
+    if E.mode env = WasmMode
+    then G.i Unreachable
+    else compile_static_print env (s ^ "\n") ^^ G.i Unreachable
 
 
   let default_exports env =
@@ -6442,7 +6441,7 @@ and actor_lit outer_env this ds fs at =
       (E.get_trap_with outer_env)
       ClosureTable.table_end in
 
-    if E.mode mod_env = DfinityMode then Dfinity.system_imports mod_env;
+    Dfinity.system_imports mod_env;
     RTS.system_imports mod_env;
     RTS.system_exports mod_env;
 
@@ -6614,17 +6613,14 @@ and conclude_module env module_name start_fi_o =
 let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts prelude Dfinity.trap_with ClosureTable.table_end in
 
-  if E.mode env = DfinityMode then Dfinity.system_imports env;
+  Dfinity.system_imports env;
   RTS.system_imports env;
   RTS.system_exports env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in
-  let start_fi_o =
-    if E.mode env = DfinityMode
-    then begin
-      Dfinity.export_start env start_fi;
-      None
-    end else Some (nr start_fi) in
+  let start_fi_o = match E.mode env with
+    | AncientMode | ICMode -> Dfinity.export_start env start_fi; None
+    | WasmMode -> Some (nr start_fi) in
 
   conclude_module env module_name start_fi_o

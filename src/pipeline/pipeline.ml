@@ -484,7 +484,7 @@ let load_as_rts () =
   let wasm = load_file wasm_filename in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" wasm
 
-type compile_mode = Codegen.Compile.mode = WasmMode | DfinityMode
+type compile_mode = Codegen.Compile.mode = WasmMode | AncientMode | ICMode
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
 let name_progs progs =
