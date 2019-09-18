@@ -21,24 +21,24 @@ TODO:
 # Introduction
 
 ActorScript is a new, general purpose programming language for the
-Dfinity platform.
+DFINITY platform.
 
 ## Why a new language?
 
-Dfinity has chosen WebAssembly as its low-level virtual machine.
+DFINITY has chosen WebAssembly as its low-level virtual machine.
 
 The currently
 available compilers targeting WebAssembly are for languages that are
 either too unsafe (C, C++) or too complex (Rust) for mainstream
 programmers.
 
-To promote correctness and reduce complexity, Dfinity is designing its own language, *ActorScript*, that is safe and expressive, yet simple and approachable to mainstream programmers.
+To promote correctness and reduce complexity, DFINITY is designing its own language, *ActorScript*, that is safe and expressive, yet simple and approachable to mainstream programmers.
 
 ### Interoperability
 
-ActorScript is just one of hopefully many languages able to run on the Dfinity platform.
+ActorScript is just one of hopefully many languages able to run on the DFINITY platform.
 
-Since WebAssembly is language agnostic and, unlike other virtual machines, does not mandate a high-level type system for language interoperation, Dfinity will provide an *Interface Definition Language* to support typed, cross-language communication.
+Since WebAssembly is language agnostic and, unlike other virtual machines, does not mandate a high-level type system for language interoperation, DFINITY will provide an *Interface Definition Language* to support typed, cross-language communication.
 
 The ActorScript compiler will automate the production and consumption of IDL files, driven by type signatures ActorScript programs and the structure of imported IDL interfaces.
 
@@ -49,13 +49,13 @@ The IDL language is currently under design and outside the scope of this documen
 
 ActorScript provides:
 
-* A high-level language for programming Dfinity applications
+* A high-level language for programming DFINITY applications
 
 * A simple ("K.I.S.S.") design and familiar syntax for average programmers
 
-* Good and convenient support for the actor model embodied in Dfinity canisters
+* Good and convenient support for the actor model embodied in DFINITY canisters
 
-* A good fit for underlying Wasm and Dfinity execution model
+* A good fit for underlying Wasm and DFINITY execution model
 
 * A forward looking design that anticipates future extensions to WebAssembly
 
@@ -501,7 +501,7 @@ The optional identifier `<id>`, naming its components, is for documentation purp
 
 ## Any type
 
-Type `Any` is the *top* type, i.e. the super-type of all types, (think Object in Java or C#). All values have type any.
+Type `Any` is the *top* type, i.e. the super-type of all types, (think Object in Java or C#). All values have type 'Any'.
 
 ## None type
 
@@ -509,7 +509,6 @@ Type `None` is the *bottom* type, a subtype of all other types.
 No value has type `None`.
 
 As an empty type, `None` can be used to specify the impossible return value of an infinite loop or unconditional trap.
-
 
 ## Parenthesised type
 
@@ -663,6 +662,8 @@ A type `T` is *shared* if it is
   <text>                                        unicode text
 ```
 
+Literals are constant values.
+
 # Expressions
 
 ```bnf
@@ -711,6 +712,8 @@ The expression `<id>` evaluates to the value bound to `<id>` in the current eval
 
 ## Literals
 
+A literal has type 'T' only when its value is within the prescribed range of values of type 'T'.
+
 The literal (or constant) expression `<lit>` evaluates to itself.
 
 ## Unary operators
@@ -740,7 +743,7 @@ the result of `v1 <binop> v2`.
 
 ## Relational operators
 
-The relational expression `<exp1> <relop> <exp2>` has type `Bpol` provided:
+The relational expression `<exp1> <relop> <exp2>` has type `Bool` provided:
 
 * `<exp1>` has type `T`, and
 * `<exp2>` has type `T`, and
