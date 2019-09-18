@@ -23,7 +23,8 @@ type env =
     labs : lab_env;
     rets : ret_env;
     async : bool;
-    await : bool;
+    in_await : bool;
+    in_shared : bool;
     pre : bool;
     msgs : Diag.msg_store;
   }
@@ -37,7 +38,8 @@ let env_of_scope msgs scope =
     labs = T.Env.empty;
     rets = None;
     async = false;
-    await = false;
+    in_await = false;
+    in_shared = false;
     pre = false;
     msgs;
   }
@@ -481,8 +483,9 @@ and infer_exp' f env exp : T.typ =
   t'
 
 and infer_exp'' env exp : T.typ =
-  let in_await = env.await in
-  let env = { env with await = false } in
+  let in_await = env.in_await in
+  let in_shared = env.in_shared in
+  let env = { env with in_await = false; in_shared = false } in
   match exp.it with
   | PrimE _ ->
     error env exp.at "cannot infer type of primitive"
@@ -629,7 +632,11 @@ and infer_exp'' env exp : T.typ =
     let t2 = check_typ env' typ in
     if not env.pre then begin
       let env'' =
-        {env' with labs = T.Env.empty; rets = Some t2; async = false} in
+        {env' with
+          labs = T.Env.empty;
+          rets = Some t2;
+          async = false;
+          in_shared = sort.it = T.Shared} in
       check_exp (adjoin_vals env'' ve) t2 exp;
       if sort.it = T.Shared then begin
         if not (T.shared t1) then
@@ -796,7 +803,7 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | AsyncE exp1 ->
-    error env exp.at "unsupported async block";
+    if not in_shared then error env exp.at "unsupported async block";
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
@@ -807,12 +814,12 @@ and infer_exp'' env exp : T.typ =
   | AwaitE ({ it = CallE (f,_,_); at; note} as exp1) ->
     if not env.async then
       error env exp.at "misplaced await";
-    let t1 = infer_exp_promote { env with await = true} exp1 in
-    let cc = Call_conv.call_conv_of_typ f.note.note_typ in
-    if cc.Call_conv.control <> T.Promises then
+    let t1 = infer_exp_promote { env with in_await = true} exp1 in
+    if not env.pre &&
+       (Call_conv.call_conv_of_typ f.note.note_typ).Call_conv.control <> T.Promises then
       error env f.at "expecting call to shared, async function in await";
     (try
-      T.as_async_sub t1
+       T.as_async_sub t1
     with Invalid_argument _ ->
       error env exp1.at "expected async type, but expression has type\n  %s"
         (T.string_of_typ_expand t1)
@@ -844,6 +851,8 @@ and check_exp env t exp =
   exp.note <- {note_typ = t'; note_eff = e}
 
 and check_exp' env t exp : T.typ =
+  let in_shared = env.in_shared in
+  let env = { env with in_await = false; in_shared = false } in
   match exp.it, t with
   | PrimE s, T.Func _ ->
     t
@@ -874,6 +883,7 @@ and check_exp' env t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE exp1, T.Async t' ->
+    if not in_shared then  error env exp.at "unsupported async block";
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
     check_exp env' t' exp1;
     t
@@ -914,7 +924,12 @@ and check_exp' env t exp : T.typ =
         "function return type\n  %s\ndoes not match expected return type\n  %s"
         (T.string_of_typ_expand t2) (T.string_of_typ_expand (T.seq ts2));
     let env' =
-      {env with labs = T.Env.empty; rets = Some t2; async = false} in
+      {env with
+        labs = T.Env.empty;
+        rets = Some t2;
+        async = false;
+        in_shared = s'.it = T.Shared;
+      } in
     check_exp (adjoin_vals env' ve) t2 exp;
     t
   | _ ->
