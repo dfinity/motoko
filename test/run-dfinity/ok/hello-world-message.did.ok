@@ -1,3 +1,0 @@
-service anon_hello_world_message {
-hello : () -> () oneway;
-}
