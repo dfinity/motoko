@@ -29,12 +29,12 @@ val initial_stat_env : Scope.scope
 val chase_imports : Scope.scope -> Resolve_import.S.t ->
   (Syntax.libraries * Scope.scope) Diag.result
 
-val run_files           : string list -> unit option
-val interpret_ir_files  : string list -> unit option
-val run_files_and_stdin : string list -> unit option
-
 type compile_mode = WasmMode | AncientMode | ICMode
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
+
+val run_files           : string list -> unit option
+val interpret_ir_files  : compile_mode -> string list -> unit option
+val run_files_and_stdin : string list -> unit option
 
 val compile_string : compile_mode -> string -> string -> compile_result
 val compile_files : compile_mode -> bool -> string list -> compile_result

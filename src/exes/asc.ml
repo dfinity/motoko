@@ -101,7 +101,7 @@ let process_files files : unit =
     assert false
   | Run ->
     if !interpret_ir
-    then exit_on_none (Pipeline.interpret_ir_files files)
+    then exit_on_none (Pipeline.interpret_ir_files !compile_mode files)
     else exit_on_none (Pipeline.run_files files)
   | Interact ->
     printf "%s\n%!" banner;
@@ -113,7 +113,7 @@ let process_files files : unit =
     let prog = Diag.run (Pipeline.generate_idl files) in
     ignore (Diag.run (Idllib.Pipeline.check_prog prog));
     let oc = open_out !out_file in
-    let idl_code = Idllib.Arrange_idl.string_of_prog prog in    
+    let idl_code = Idllib.Arrange_idl.string_of_prog prog in
     output_string oc idl_code; close_out oc
   | Compile ->
     set_out_file files ".wasm";

@@ -521,10 +521,10 @@ let compile_string mode s name : compile_result =
 
 (* Interpretation (IR) *)
 
-let interpret_ir_prog inp_env libraries progs =
+let interpret_ir_prog mode inp_env libraries progs =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog WasmMode initial_stat_env inp_env libraries progs name in
+  let prog_ir = lower_prog mode initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
@@ -534,7 +534,7 @@ let interpret_ir_prog inp_env libraries progs =
   let _ = interpret_prog flags denv1 prog_ir in
   ()
 
-let interpret_ir_files files =
+let interpret_ir_files mode files =
   Lib.Option.map
-    (fun (libraries, progs, senv) -> interpret_ir_prog senv.Scope.lib_env libraries progs)
+    (fun (libraries, progs, senv) -> interpret_ir_prog mode senv.Scope.lib_env libraries progs)
     (Diag.flush_messages (load_progs (parse_files files) initial_stat_env))
