@@ -1,0 +1,4 @@
+service anon_counter {
+inc : () -> () oneway;
+printCounter : () -> () oneway;
+}

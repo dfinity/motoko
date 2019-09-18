@@ -106,6 +106,12 @@ let awaitE typ e1 e2 =
     note = { note_typ = T.unit; note_eff = max_eff (eff e1) (eff e2) }
   }
 
+let replyE e =
+  { it = PrimE (OtherPrim "reply", [e]);
+    at = no_region;
+    note = { note_typ = T.unit; note_eff = eff e }
+  }
+
 
 (* tuples *)
 

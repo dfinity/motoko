@@ -21,7 +21,11 @@ open Construct
 
 (* written as a functor so we can allocate some temporary shared state without making it global *)
 
-module Transform() = struct
+type platform =
+    V1  (* legacy, Haskell *)
+  | V2  (* new, Rust *)
+
+module Transform(Platform : sig val platform : platform end) = struct
 
   module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
 
@@ -38,20 +42,10 @@ module Transform() = struct
 
   let con_renaming = ref ConRenaming.empty
 
-  (* Configuring the translation for target platform V1 or V2 *)
-
-  type platform =
-    V1  (* legacy, Haskell *)
-  | V2  (* new, Rust *)
-
-  let platform = V1
-
-  let _ = V2 (* suppress warning on unused V2 *)
-
   (* Lowering options, specific to V1 or V2 *)
 
   let add_reply_parameter, add_reply_argument =
-    match platform with
+    match Platform.platform with
     | V1 -> (true, true)
     | V2 -> (false, true)
 
@@ -68,17 +62,18 @@ module Transform() = struct
      implemented (as far as possible) for V1;
      TBC for V2 *)
 
+  (* NB: The type annotations on the v needs to match the IDL type of the function *)
   let sys_replyE v =
-    match platform with
+    match Platform.platform with
     | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
-    | V2 -> failwith "NYI" (* TODO: call dedicated prim *)
+    | V2 -> replyE v
 
   let sys_callE v1 typs vs reply =
-    match platform with
+    match Platform.platform with
     | V1 ->
           assert add_reply_argument;
           callE v1 typs (seqE (vs @ [reply]))
-    | V2 -> failwith "NYI" (* TODO: call dedicated prim, separating args vs from reply *)
+    | V2 -> assert false (* NYI, needs a dedicated prim, separating args vs from reply *)
 
   (* End of configuration *)
 
@@ -451,8 +446,9 @@ module Transform() = struct
 
 end
 
-let transform env prog =
-  let module T = Transform() in
+let transform platform =
+  let module T = Transform(struct let platform = platform end) in
+  fun env prog ->
   (*
   Initialized the con_renaming with those type constructors already in scope.
   Eventually, pipeline will allow us to pass the con_renaming to downstream program

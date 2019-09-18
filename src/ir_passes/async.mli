@@ -1,4 +1,8 @@
 (* lower uses of async type appropriately *)
 open Ir_def
 
-val transform : As_types.Scope.scope -> Ir.prog -> Ir.prog
+type platform =
+    V1  (* legacy, Haskell *)
+  | V2  (* new, Rust *)
+
+val transform : platform -> As_types.Scope.scope -> Ir.prog -> Ir.prog

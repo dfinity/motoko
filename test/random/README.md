@@ -44,7 +44,7 @@ Of course you can dump the failing test case into a file, compile it
 to WASM, and execute it in (e.g.) `wasm-interp`:
 
 ``` shell
-$ asc -no-dfinity-api snippet.as
+$ asc -no-system-api snippet.as
 $ wasm-interp --enable-multi snippet.wasm
 ```
 

@@ -55,7 +55,7 @@ matchingProps = testGroup "pattern matching"
                 fileArg = fromString . encodeString
                 script = do Turtle.output as $ fromString testCase
                             res@(exitCode, _, _) <- procStrictWithErr "asc"
-                                ["-no-dfinity-api", "-no-check-ir", fileArg as] empty
+                                ["-no-system-api", "-no-check-ir", fileArg as] empty
                             if ExitSuccess == exitCode
                             then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
                             else pure (False, res)
@@ -135,7 +135,7 @@ instance Arbitrary TestCase where
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
   let script cases = do Turtle.output "tests.as" $ msum cases
                         res@(exitCode, _, _) <- procStrictWithErr "asc"
-                                 ["-no-dfinity-api", "-no-check-ir", "tests.as"] empty
+                                 ["-no-system-api", "-no-check-ir", "tests.as"] empty
                         if ExitSuccess == exitCode
                         then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "tests.wasm"] empty
                         else pure (False, res)

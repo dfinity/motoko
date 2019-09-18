@@ -1,0 +1,5 @@
+type Bool = bool;
+service async_rec_actor {
+is_true : () -> () oneway;
+test : (Bool) -> () oneway;
+}
