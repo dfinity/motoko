@@ -30,13 +30,15 @@ extern bool bigint_eq(as_ptr a, as_ptr b);
 int main () {
   printf("ASC RTS test suite\n");
 
+  int ret = EXIT_SUCCESS;
+
   printf("70**32 = 70**31 * 70: %s\n",
    bigint_eq(
     bigint_pow(bigint_of_word32(70), bigint_of_word32(32)),
     bigint_mul(
       bigint_pow(bigint_of_word32(70), bigint_of_word32(31)),
       bigint_of_word32(70)
-    )) ? "ok" : "not ok");
+	       )) ? "ok" : (ret = EXIT_FAILURE, "not ok"));
 
 
   extern bool utf8_valid(const char*, size_t);
@@ -96,6 +98,8 @@ int main () {
     printf("%svalid UTF-8 test #%d: %s\n",
 	   invalid ? "in" : "",
 	   i + 1,
-	   invalid != utf8_valid(utf8_inputs[i], strlen(utf8_inputs[i])) ? "ok" : "not ok");
+	   invalid != utf8_valid(utf8_inputs[i], strlen(utf8_inputs[i])) ? "ok" : (ret = EXIT_FAILURE, "not ok"));
   }
+
+  return ret;
 }
