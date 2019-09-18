@@ -1,4 +1,0 @@
-type Int = int;
-service a {
-len2 : () -> (record {Int; Int});
-}
