@@ -417,7 +417,7 @@ Operations that may under- or overflow the representation are checked and trap o
 ### Bounded Naturals `Nat8`, `Nat16`, `Nat32` and `Nat64`
 
 The types `Nat8`, `Nat16`, `Nat32` and `Nat64` represent
-unsigned integers with respectively 8, 16, 31 and 64 bit precision.
+unsigned integers with respectively 8, 16, 32 and 64 bit precision.
 All have categories A (Arithmetic) and R (Relational).
 
 Operations that may under- or overflow the representation are checked and trap on error.
