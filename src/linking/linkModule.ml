@@ -76,12 +76,6 @@ let remove_export is_thing name : module_' -> module_' = fun m ->
   in
   { m with exports = List.filter to_remove m.exports }
 
-let remove_exports is_thing : module_' -> module_' = fun m ->
-  let to_remove e =
-    not (is_thing e.it.edesc.it <> None)
-  in
-  { m with exports = List.filter to_remove m.exports }
-
 module NameMap = Map.Make(struct type t = Wasm.Ast.name let compare = compare end)
 
 type exports = int32 NameMap.t
@@ -183,9 +177,35 @@ let prepend_to_start fi (em : extended_module)  =
       }
   }
 
-let remove_non_canister_exports (em : extended_module) : extended_module =
+let _remove_non_canister_exports (em : extended_module) : extended_module =
   let is_canister_export (exp : export) = Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None in
   map_module (fun m -> { m with exports = List.filter is_canister_export m.exports }) em
+
+module VarMap = Map.Make(Int32)
+
+let remove_non_dfinity_exports (em : extended_module) : extended_module =
+  (* We assume that every exported function that does not have an entry in the
+   custom types section was only exported for linking, and should not be
+   exported in the final module *)
+  let dfinity_exports = List.fold_left
+    (fun map (fi, _) -> VarMap.add fi () map)
+    VarMap.empty em.types in
+
+  let is_canister_export (exp : export) =
+    Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None in
+
+  let is_interesting_global (exp : export) =
+    (* For the ancient system API *)
+    Wasm.Utf8.encode exp.it.name = "datastore" ||
+    Wasm.Utf8.encode exp.it.name = "elemstore" in
+
+  let is_dfinity_export exp =
+    is_canister_export exp ||
+    match exp.it.edesc.it with
+      | FuncExport var -> VarMap.mem var.it dfinity_exports
+      | GlobalExport _ -> is_interesting_global exp
+      | _ -> true in
+  map_module (fun m -> { m with exports = List.filter is_dfinity_export m.exports }) em
 
 (* Generic linking logic *)
 
@@ -660,5 +680,4 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_name_section funs2
     )
   |> add_call_ctors
-  |> remove_non_canister_exports (* only sane if no additional files get linked in *)
-  |> map_module (remove_exports is_global_export)
+  |> remove_non_dfinity_exports (* only sane if no additional files get linked in *)

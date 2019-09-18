@@ -1,4 +1,5 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
+  dvm ? null,
   drun ? null,
   export-shell ? false,
   replay ? 0
@@ -35,7 +36,11 @@ let dfinity-repo = import (builtins.fetchGit {
   rev = "a50367859416ef7c12ca103b7fc03f5a7654f6ad";
 }) { system = nixpkgs.system; }; in
 
-# Include drun
+let real-dvm =
+  if dvm == null
+  then dev.dvm
+  else dvm; in
+
 let real-drun =
   if drun == null
   then dfinity-repo.dfinity.drun
@@ -170,8 +175,9 @@ rec {
         nixpkgs.nodejs-10_x
         filecheck
         js-client
-	drun
-	qc-actorscript
+        dvm
+        drun
+        qc-actorscript
       ] ++
       llvmBuildInputs;
 
@@ -296,6 +302,7 @@ rec {
   };
 
   wasm = ocaml_wasm;
+  dvm = real-dvm;
   drun = real-drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];

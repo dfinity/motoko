@@ -1,0 +1,10 @@
+type Control = service {
+testBlock : () -> () oneway;
+testLoop : () -> () oneway;
+testLoopWhile : () -> () oneway;
+testLoopWhile2 : () -> () oneway;
+testLoopWhile3 : () -> () oneway;
+testLoopWhile4 : () -> () oneway;
+testNestedWhile : () -> () oneway;
+testWhile : () -> () oneway;
+};
