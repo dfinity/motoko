@@ -106,6 +106,7 @@ a.incVariant(#foo 20);
 a.incVariant(#bar 20);
 a.printCounter();
 a.printLabeled("Foo1: ");
+a.printLabeled("μεταγράψτε: ");
 a.printLabeledOpt(?"Foo2: ");
 a.incn(10000000000000);
 a.inci(10000000000000);
