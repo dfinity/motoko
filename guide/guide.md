@@ -221,7 +221,7 @@ To simplify the presentation of available operators, operators and primitive typ
 | L | Logical | logical/Boolean operations |
 | B | Bitwise | bitwise operations|
 | R | Relational | equality and comparison |
-| T | Text | concatention |
+| T | Text | concatenation |
 
 Some types have several categories, e.g. type `Int` is both arithmetic (A) and relational (R) and supports both arithmentic addition ('+') and relational less than ('<=') (amongst other operations).
 
