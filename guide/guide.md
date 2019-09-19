@@ -15,9 +15,13 @@ TODO:
 * [ ] Variants
 * [ ] Object patterns
 * [ ] Import expressions
-* [ ] Modules
-* [ ] Prelude
+* [ ] Modules and static restriction
+* [ ] Type components and paths
+* [ ] Prelude (move scattered descriptions of assorted prims like charToText here)
 * [ ] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O.
+* [ ] Include actual grammar (extracted from menhir) in appendix?
+* [ ] Prose description of definedness checks
+* [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
 
 # Introduction
 
@@ -167,10 +171,10 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 ## Characters
 
 A character is a single quote (`'`) delimited:
-* unicode character in UTF-8,
+* Unicode character in UTF-8,
 * `\`-escaped  newline, carriage return, tab, single or double quotation mark
 * `\`-prefixed ASCII character (TBR),
-* or  `\u{` hexnum `}` enclosed valid, escaped unicode character in hexadecimal (TBR).
+* or  `\u{` hexnum `}` enclosed valid, escaped Unicode character in hexadecimal (TBR).
 
 ```bnf
 ascii ::= ['\x00'-'\x7f']
@@ -330,7 +334,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
 ```
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
-  <sort>? { <typ-field>;* }                 object
+  <sort>? { <typ-field>;* }                     object
   [ var? <typ> ]                                array
   Null                                          null type
   ? <typ>                                       option
@@ -371,8 +375,8 @@ The category of a type determines the operators (unary, binary, relational and i
 | `Word16` | A, B, R | unsigned 16-bit integers with bitwise operations |
 | `Word32` | A, B, R | unsigned 32-bit integers with bitwise operations |
 | `Word64` | A, B, R | unsigned 64-bit integers with bitwise operations |
-| `Char` | R | unicode characters |
-| `Text` | T, R | unicode strings of characters with concatenation `_ # _` |
+| `Char` | R | Unicode characters |
+| `Text` | T, R | Unicode strings of characters with concatenation `_ # _` |
 
 ### Type `Bool`
 
@@ -390,7 +394,7 @@ converted into a text of length 1.
 
 ### Type `Text`
 
-The type `Text` of categories T and R (Text, Relational) represents sequences of unicode characters (i.e. strings).
+The type `Text` of categories T and R (Text, Relational) represents sequences of Unicode characters (i.e. strings).
 Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `for (c in _) ... c ...`.
 The `textLength` function returns the number of characters in a `Text` value.
 
@@ -662,7 +666,7 @@ A type `T` is *shared* if it is
   <nat>                                         natural
   <float>                                       float
   <char>                                        character
-  <text>                                        unicode text
+  <text>                                        Unicode text
 ```
 
 Literals are constant values. The syntactic validity of a literal depends on the precision of the type at which it is used.
@@ -670,7 +674,7 @@ Literals are constant values. The syntactic validity of a literal depends on the
 # Expressions
 
 ```bnf
-<exp> ::=
+<exp> ::=                                      expressions
   <id>                                           variable
   <lit>                                          literal
   <unop> <exp>                                   unary operator
@@ -1050,7 +1054,7 @@ If `<exp>` in `label <id> (: <typ>)? <exp>` is a looping construct:
 * `loop <exp1> (while (<exp2>))?`, or
 * `for (<pat> in <exp2> <exp1>`
 
-the body, `<exp1>`, of the loop is implicitly enclosed in `label <id_continue> (...)` allowing early continuation of loop by the evaluation of expression `continue <id>`.
+the body, `<exp1>`, of the loop is implicitly enclosed in `label <id_continue> (...)` allowing early continuation of the loop by the evaluation of expression `continue <id>`.
 
 `<id_continue>` is fresh identifier that can only be referenced by `continue <id>`
 (through its implicit expansion to `break <id_continue>`).
@@ -1094,12 +1098,10 @@ The async expression `async <exp>` has type `async T` provided:
 * `<exp>` has type `T`;
 * `T` is shared.
 
-Any control-flow label in scope for `async <exp>` is not in scope for `<exp>` (that `<exp>` may declare its own, local, labels.
+Any control-flow label in scope for `async <exp>` is not in scope for `<exp>`. However,
+`<exp>` may declare and use its own, local, labels.
 
-The implicit return type in `<exp>` is `T`. That is, the |  `==` | equals |
-|  `!=` | not equals |
-|  `<=` | less than or equal |
-|  `>=` | greater than or equal |return argument, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
+The implicit return type in `<exp>` is `T`. That is, the return expression, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
 
 Evaluation of `async <exp>` queues a message to evaluate `<exp>` in the nearest enclosing or top-level actor. It immediately returns a promise of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
 
@@ -1214,14 +1216,14 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
 # Declarations
 
 ```bnf
-<dec> ::=                                                       declaration
-  <exp>                                                           expression
-  let <pat> = <exp>                                               immutable
-  var <id> (: <typ>)? = <exp>                                     mutable
-  <sort> <id>? =? { <dec-field>;* }                           object
-  shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>      function
-  type <id> <typ-params>? = <typ>                                 type
-  <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* } class
+<dec> ::=                                                                declaration
+  <exp>                                                                    expression
+  let <pat> = <exp>                                                        immutable
+  var <id> (: <typ>)? = <exp>                                              mutable
+  <sort> <id>? =? { <dec-field>;* }                                        object
+  shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>               function
+  type <id> <typ-params>? = <typ>                                          type
+  <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }   class
 
 
 ```
