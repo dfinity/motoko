@@ -302,7 +302,7 @@ The  category of a compound assigment `<unop>=`/`<binop>=` is given by the categ
 
 ## Operator and Keyword Precedence
 
-The following table defines the relative precedence and associativity of operators and token, ordered from lowest to highest precedence.
+The following table defines the relative precedence and associativity of operators and tokens, ordered from lowest to highest precedence.
 Tokens on the same line have equal precedence with the indicated associativity.
 
 Precedence | Associativity | Token |
