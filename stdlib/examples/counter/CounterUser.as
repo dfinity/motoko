@@ -37,7 +37,7 @@ actor CounterUser {
     let c = MakeCounter(42);
     await (c.inc());
     await (c.inc());
-    let x = c.read ();
+    let x = c.read();
     printNat (await x);
   }
 };
