@@ -32,7 +32,7 @@ actor Counter {
   var cell : Nat = 0;
 
   // increment `cell`, with a unit-valued (asynchronous) response
-  public func inc () : async () {
+  public func inc() : async () {
     cell := cell + 1;
   };
 
