@@ -153,6 +153,7 @@ module E = struct
     funcs : (func * string * local_names) Lib.Promise.t list ref;
     globals : (global * string) list ref;
     global_names : int32 NameEnv.t ref;
+    persist : (int32 * Wasm_exts.CustomModule.type_) list ref;
     built_in_funcs : lazy_built_in NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
@@ -187,6 +188,7 @@ module E = struct
     funcs = ref [];
     globals = ref [];
     global_names = ref NameEnv.empty;
+    persist = ref [];
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
@@ -268,6 +270,11 @@ module E = struct
     })
 
   let get_globals (env : t) = List.map (fun (g,n) -> g) !(env.globals)
+
+  let persist (env : t) i t =
+    env.persist := !(env.persist) @ [(i, t)]
+
+  let get_persist (env : t) = !(env.persist)
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
@@ -3122,7 +3129,9 @@ module OrthogonalPersistence = struct
     E.add_global32 env "datastore" Mutable 0l;
     E.add_global32 env "elemstore" Mutable 0l;
     E.export_global env "datastore";
-    E.export_global env "elemstore"
+    E.export_global env "elemstore";
+    E.persist env (E.get_global env "datastore") Wasm_exts.CustomModule.DataBuf;
+    E.persist env (E.get_global env "elemstore") Wasm_exts.CustomModule.ElemBuf
 
   let register env start_funid =
     let mem_global = E.get_global env "datastore" in
@@ -6802,10 +6811,7 @@ and conclude_module env module_name start_fi_o =
             List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
       };
       types = E.get_dfinity_types env;
-      persist = if E.mode env = AncientMode then
-             [ (E.get_global env "datastore", Wasm_exts.CustomModule.DataBuf)
-             ; (E.get_global env "elemstore", Wasm_exts.CustomModule.ElemBuf)
-             ] else [];
+      persist = E.get_persist env
     } in
 
   match E.get_rts env with
