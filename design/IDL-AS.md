@@ -143,8 +143,8 @@ if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
 if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
 
 ifn : <functype> -> <typ>
-ifn((<datatype>,*) -> () oneway pure?) = shared ia(<as>) -> ()
-ifn((<datatype1>,*) -> (<datatype2>,*) pure?) = shared ia(<datatype1>,*) -> ia(<datatype2>,*)
+ifn((<datatype>,*) -> () oneway query?) = shared ia(<as>) -> ()
+ifn((<datatype1>,*) -> (<datatype2>,*) query?) = shared ia(<datatype1>,*) -> ia(<datatype2>,*)
 
 ia : <argtype>,* -> <typ>
 ia(<argtype>,) = i(<argtype>)
@@ -218,7 +218,7 @@ escape <name> = "_" hash(<name>) "_"  otherwise
    ```
    In other words: ActorScript subtyping must be contained in IDL subtyping.
 
- * There is no way to produce `float32` or functions with a `pure` annotation.
+ * There is no way to produce `float32` or functions with a `query` annotation.
    Importing interfaces that contain these types fails.
 
 ## The value mappings
@@ -236,41 +236,41 @@ These mappings should be straight-forward, given the following clarifications:
 ## Works flows
 
 The mapping specified here can be used to support the following use-cases. The
-user interfaces (e.g. flag names, or whether `asc`, `idlc`, `dfx` is used) are
+user interfaces (e.g. flag names, or whether `asc`, `didc`, `dfx` is used) are
 just suggestions.
 
 * Generating IDL from ActorScript
 
   If `foo.as` is an ActorScript `actor` compilation unit, then
 
-      asc --generate-idl foo.as -o foo.didl
+      asc --generate-idl foo.as -o foo.did
 
   will type-check `foo.as` as `t = actor { … }`, map the ActorScript type `t`
   to an IDL type `e(t)` of the form `service <actortype>`, and produce a
-  textual IDL file `foo.didl` that ends with a `service n : <actortype>`,
+  textual IDL file `foo.did` that ends with a `service n : <actortype>`,
   where `n` is the name of the actor class, actor, or basename of the source
   file.
 
 * Checking ActorScript against a given IDL
 
-  If `foo.as` is an ActorScript `actor` compilation unit and `foo.didl` a
+  If `foo.as` is an ActorScript `actor` compilation unit and `foo.did` a
   textual IDL file, then
 
-      asc --check-idl foo.didl foo.as -o foo.wasm
+      asc --check-idl foo.did foo.as -o foo.wasm
 
-  will import the type service `t_spec` specified in `foo.didl`, using the
+  will import the type service `t_spec` specified in `foo.did`, using the
   mapping `i`, will generate an IDL type `e(t)` as in the previous point, and
   and check that `e(t) <: t_spec` (using IDL subtyping).
 
 * Converting IDL types to ActorScript types
 
-  If `foo.didl` a textual IDL file, then
+  If `foo.did` a textual IDL file, then
 
-      idlc foo.didl -o foo.as
+      didc foo.did -o foo.as
 
   will create an ActorScript library unit `foo.as` that consists of type
   definitions.
-  All `<def>`s and the final `<actor>` from `foo.didl` is turned into a `type`
+  All `<def>`s and the final `<actor>` from `foo.did` is turned into a `type`
   declaration in ActorScript, according to `i`.
   Imported IDL files are recursively inlined.
 
@@ -279,9 +279,9 @@ just suggestions.
 
 * Importing IDL types from the ActorScript compiler
 
-  If `path/to/foo.didl` a textual IDL file, then a declaration
+  If `path/to/foo.did` a textual IDL file, then a declaration
 
       import Foo "path/to/foo"
 
-  is treated by `asc` by reading `foo.didl` as if  the developer had
-  run `idlc path/to/foo.didl -o path/to/foo.as`.
+  is treated by `asc` by reading `foo.did` as if  the developer had
+  run `didc path/to/foo.did -o path/to/foo.as`.
