@@ -253,7 +253,7 @@ rec {
     '';
   };
 
-  lsp-int = nixpkgs.haskellPackages.callCabal2nix "lsp-int" test/lsp-int { };
+  lsp-int = nixpkgs.haskellPackages.callCabal2nix "lsp-int" test/lsp-int { lsp-test = lsp-test; };
 
   qc-actorscript = nixpkgs.haskellPackages.callCabal2nix "qc-actorscript" test/random { };
 
