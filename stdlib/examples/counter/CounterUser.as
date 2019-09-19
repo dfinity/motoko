@@ -33,7 +33,7 @@ actor class MakeCounter (init:Nat) {
 // counter value `42`:
 
 actor CounterUser {
-  public func doThings () : async () {
+  public func doThings() : async () {
     let c = MakeCounter(42);
     await (c.inc ());
     await (c.inc ());
