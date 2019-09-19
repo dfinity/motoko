@@ -261,6 +261,12 @@ module E = struct
     | Some gi -> gi
     | None -> add_global32 env name mut init; get_global env name
 
+  let export_global env name =
+    add_export env (nr {
+      name = Wasm.Utf8.decode name;
+      edesc = nr (GlobalExport (nr (get_global env name)))
+    })
+
   let get_globals (env : t) = List.map (fun (g,n) -> g) !(env.globals)
 
   let reserve_fun (env : t) name =
@@ -837,7 +843,8 @@ module Stack = struct
 
   let register_globals env =
     (* stack pointer *)
-    E.add_global32 env "__stack_pointer" Mutable end_of_stack
+    E.add_global32 env "__stack_pointer" Mutable end_of_stack;
+    E.export_global env "__stack_pointer"
 
   let get_stack_ptr env =
     G.i (GlobalGet (nr (E.get_global env "__stack_pointer")))
@@ -3112,23 +3119,14 @@ module OrthogonalPersistence = struct
     (* We want to put all persistent globals first:
        The index in the persist annotation refers to the index in the
        list of *exported* globals, not all globals (at least with v8/dvm) *)
-    (* persistent databuf for memory *)
     E.add_global32 env "datastore" Mutable 0l;
-    (* persistent elembuf for references *)
-    E.add_global32 env "elemstore" Mutable 0l
+    E.add_global32 env "elemstore" Mutable 0l;
+    E.export_global env "datastore";
+    E.export_global env "elemstore"
 
   let register env start_funid =
     let mem_global = E.get_global env "datastore" in
     let elem_global = E.get_global env "elemstore" in
-
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "datastore";
-      edesc = nr (GlobalExport (nr mem_global))
-    });
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "elemstore";
-      edesc = nr (GlobalExport (nr elem_global))
-    });
 
     Func.define_built_in env "restore_mem" [] [] (fun env1 ->
        let (set_i, get_i) = new_local env1 "len" in
@@ -6741,6 +6739,7 @@ and conclude_module env module_name start_fi_o =
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
   E.add_global32 env "__heap_base" Immutable (E.get_end_of_static_memory env);
+  E.export_global env "__heap_base";
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
@@ -6768,15 +6767,6 @@ and conclude_module env module_name start_fi_o =
 
   let memories = [nr {mtype = MemoryType {min = E.mem_size env; max = None}} ] in
 
-
-  E.add_export env (nr {
-    name = Wasm.Utf8.decode "__stack_pointer";
-    edesc = nr (GlobalExport (nr (E.get_global env "__stack_pointer")))
-  });
-  E.add_export env (nr {
-    name = Wasm.Utf8.decode "__heap_base";
-    edesc = nr (GlobalExport (nr (E.get_global env "__heap_base")))
-  });
 
   let data = List.map (fun (offset, init) -> nr {
     index = nr 0l;
