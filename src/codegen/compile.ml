@@ -607,7 +607,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] []
+    E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] []
 
   let system_exports env =
     E.add_export env (nr {
@@ -3839,7 +3840,8 @@ module Serialization = struct
         get_len ^^ Text.alloc env ^^ set_x ^^
         get_x ^^ Text.payload_ptr_unskewed ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
-        (* TODO: Check validity of utf8 *)
+        get_x ^^ Text.payload_ptr_unskewed ^^ get_len ^^
+        E.call_import env "rts" "utf8_validate" ^^
         get_x
 
       (* Composite types *)
