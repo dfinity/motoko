@@ -13,7 +13,7 @@
 
 actor class MakeCounter (init:Nat) {
   var cell : Nat = init;
-  public func inc () : async () {
+  public func inc() : async () {
     cell := cell + 1;
   };
   public func read () : async Nat {
