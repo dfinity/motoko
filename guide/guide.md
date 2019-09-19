@@ -385,7 +385,7 @@ Comparison TODO.
 A `Char` of category R (Relational) represents characters as a code point in the Unicode character
 set. Characters can be converted to `Word32`, and `Word32`s in the
 range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
-if outside of this range). With `singletonText` a character can be
+if outside of this range). With `charToText` a character can be
 converted into a text of length 1.
 
 ### Type `Text`
