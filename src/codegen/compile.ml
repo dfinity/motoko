@@ -151,6 +151,8 @@ module E = struct
     exports : export list ref;
     dfinity_types : (int32 * Wasm_exts.CustomModule.type_ list) list ref; (* Dfinity types of exports *)
     funcs : (func * string * local_names) Lib.Promise.t list ref;
+    globals : (global * string) list ref;
+    global_names : int32 NameEnv.t ref;
     built_in_funcs : lazy_built_in NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
@@ -183,6 +185,8 @@ module E = struct
     exports = ref [];
     dfinity_types = ref [];
     funcs = ref [];
+    globals = ref [];
+    global_names = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
@@ -229,6 +233,35 @@ module E = struct
   let add_dfinity_type (env : t) e =
     assert (mode env = AncientMode);
     ignore (reg env.dfinity_types e)
+
+  let add_global (env : t) name g =
+    assert (not (NameEnv.mem name !(env.global_names)));
+    let gi = reg env.globals (g, name) in
+    env.global_names := NameEnv.add name gi !(env.global_names)
+
+  let add_global32 (env : t) name mut init =
+    add_global env name (
+      nr { gtype = GlobalType (I32Type, mut);
+        value = nr (G.to_instr_list (G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 init)))))
+      })
+
+  let add_global64 (env : t) name mut init =
+    add_global env name (
+      nr { gtype = GlobalType (I64Type, mut);
+        value = nr (G.to_instr_list (G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 init)))))
+      })
+
+  let get_global (env : t) name : int32 =
+    match NameEnv.find_opt name !(env.global_names) with
+    | Some gi -> gi
+    | None -> raise (Invalid_argument (Printf.sprintf "No global named %s declared" name))
+
+  let get_global32_lazy (env : t) name mut init : int32 =
+    match NameEnv.find_opt name !(env.global_names) with
+    | Some gi -> gi
+    | None -> add_global32 env name mut init; get_global env name
+
+  let get_globals (env : t) = List.map (fun (g,n) -> g) !(env.globals)
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
@@ -6697,45 +6730,35 @@ and conclude_module env module_name start_fi_o =
 
   (* We want to put all persistent globals first:
      The index in the persist annotation refers to the index in the
-     list of *exported* globals, not all globals (at least with v8) *)
-  let globals = [
-      (* persistent databuf for memory *)
-      nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list compile_unboxed_zero)
-      };
-      (* persistent elembuf for references *)
-      nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list compile_unboxed_zero)
-      };
-      (* stack pointer *)
-      nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list (compile_unboxed_const Stack.end_of_stack))
-      };
-      (* beginning-of-heap pointer, may be changed by linker *)
-      nr { gtype = GlobalType (I32Type, Immutable);
-        value = nr (G.to_instr_list (compile_unboxed_const (E.get_end_of_static_memory env)))
-      };
-      (* end-of-heap pointer, initialized to __heap_base upon start *)
-      nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list (compile_unboxed_const 0xDEAFBEEFl))
-      };
-      (* reference counter *)
-      nr { gtype = GlobalType (I32Type, Mutable);
-        value = nr (G.to_instr_list compile_unboxed_zero)
-      };
-      (* current api_nonce *)
-      nr { gtype = GlobalType (I64Type, Mutable);
-        value = nr (G.to_instr_list (compile_const_64 Int64.zero))
-      };
-      ] @
-      (* multi value return emulations *)
-      begin if !Flags.multi_value then [] else
-        Lib.List.table 10 (fun i ->
-        nr { gtype = GlobalType (I32Type, Mutable);
-          value = nr (G.to_instr_list compile_unboxed_zero)
-        })
-      end
-      in
+     list of *exported* globals, not all globals (at least with v8/dvm) *)
+  (* persistent databuf for memory *)
+  ignore (E.add_global32 env "datastore" Mutable 0l);
+  (* persistent elembuf for references *)
+  ignore (E.add_global32 env "elemstore" Mutable 0l);
+  (* stack pointer *)
+  ignore (E.add_global32 env "__stack_pointer" Mutable Stack.end_of_stack);
+  (* beginning-of-heap pointer, may be changed by linker *)
+  ignore (E.add_global32 env "__heap_base" Immutable (E.get_end_of_static_memory env));
+  (* end-of-heap pointer, initialized to __heap_base upon start *)
+  ignore (E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl);
+  (* reference counter *)
+  ignore (E.add_global32 env "refcounter" Mutable 0l);
+  (* current api_nonce *)
+  ignore (E.add_global64 env "api_nonce" Mutable 0L);
+  (* multi value return emulations *)
+  ignore (E.add_global32 env "multi_val_0" Mutable 0l);
+  ignore (E.add_global32 env "multi_val_1" Mutable 0l);
+  ignore (E.add_global32 env "multi_val_2" Mutable 0l);
+  ignore (E.add_global32 env "multi_val_3" Mutable 0l);
+  ignore (E.add_global32 env "multi_val_4" Mutable 0l);
+  ignore (E.add_global32 env "multi_val_5" Mutable 0l);
+  ignore (E.add_global32 env "multi_val_6" Mutable 0l);
+  ignore (E.add_global32 env "multi_val_7" Mutable 0l);
+  ignore (E.add_global32 env "multi_val_8" Mutable 0l);
+  ignore (E.add_global32 env "multi_val_9" Mutable 0l);
+  ignore (E.add_global32 env "multi_val_10" Mutable 0l);
+  let globals = E.get_globals env in
+
   E.add_export env (nr {
     name = Wasm.Utf8.decode "__stack_pointer";
     edesc = nr (GlobalExport (nr Stack.stack_global))
