@@ -516,28 +516,31 @@ module FakeMultiVal = struct
      tools) it is useful to avoid the multi-value extension.
 
      This module provides mostly transparent wrappers that put multiple values
-     in statically allocated globals (at most 10...) and pull them off again.
+     in statically allocated globals and pull them off again.
+
+     So far only does I32Type (but that could be changed).
 
      If the multi_value flag is on, these do not do anything.
   *)
-  let first_multival_global = 7
-
   let ty tys =
     if !Flags.multi_value || List.length tys <= 1
     then tys
     else []
 
-  let store tys =
+  let global env i =
+    E.get_global32_lazy env (Printf.sprintf "multi_val_%d" i) Mutable 0l
+
+  let store env tys =
     if !Flags.multi_value || List.length tys <= 1 then G.nop else
     G.concat_mapi (fun i _ ->
-      G.i (GlobalSet (nr (Int32.of_int (first_multival_global + i))))
+      G.i (GlobalSet (nr (global env i)))
     ) tys
 
-  let load tys =
+  let load env tys =
     if !Flags.multi_value || List.length tys <= 1 then G.nop else
-    let n = first_multival_global + List.length tys - 1 in
+    let n = List.length tys - 1 in
     G.concat_mapi (fun i _ ->
-      G.i (GlobalGet (nr (Int32.of_int (n - i))))
+      G.i (GlobalGet (nr (global env (n - i))))
     ) tys
 
 end (* FakeMultiVal *)
@@ -552,7 +555,7 @@ module Func = struct
     List.iteri (fun i (n,_t) -> E.add_local_name env1 (Int32.of_int i) n) params;
     let ty = FuncType (List.map snd params, FakeMultiVal.ty retty) in
     let body = G.to_instr_list (
-      mk_body env1 ^^ FakeMultiVal.store retty
+      mk_body env1 ^^ FakeMultiVal.store env1 retty
     ) in
     (nr { ftype = nr (E.func_type env ty);
           locals = E.get_locals env1;
@@ -567,7 +570,7 @@ module Func = struct
   let share_code env name params retty mk_body =
     define_built_in env name params retty mk_body;
     G.i (Call (nr (E.built_in env name))) ^^
-    FakeMultiVal.load retty
+    FakeMultiVal.load env retty
 
 
   (* Shorthands for various arities *)
@@ -686,14 +689,19 @@ module Heap = struct
   (* Memory addresses are 32 bit (I32Type). *)
   let word_size = 4l
 
+  let register_globals env =
+    (* end-of-heap pointer, we set this to __heap_base upon start *)
+    E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl
+
   (* We keep track of the end of the used heap in this global, and bump it if
      we allocate stuff. This is the actual memory offset, not-skewed yet *)
-  let base_global = 3l
-  let heap_global = 4l
-  let get_heap_base = G.i (GlobalGet (nr base_global))
-  let get_heap_ptr = G.i (GlobalGet (nr heap_global))
-  let set_heap_ptr = G.i (GlobalSet (nr heap_global))
-  let get_skewed_heap_ptr = get_heap_ptr ^^ compile_add_const ptr_skew
+  let get_heap_base env =
+    G.i (GlobalGet (nr (E.get_global env "__heap_base")))
+  let get_heap_ptr env =
+    G.i (GlobalGet (nr (E.get_global env "end_of_heap")))
+  let set_heap_ptr env =
+    G.i (GlobalSet (nr (E.get_global env "end_of_heap")))
+  let get_skewed_heap_ptr env = get_heap_ptr env ^^ compile_add_const ptr_skew
 
   (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
   let grow_memory env =
@@ -728,14 +736,14 @@ module Heap = struct
       (* expects the size (in words), returns the pointer *)
 
       (* return the current pointer (skewed) *)
-      get_skewed_heap_ptr ^^
+      get_skewed_heap_ptr env ^^
 
       (* Update heap pointer *)
-      get_heap_ptr ^^
+      get_heap_ptr env ^^
       get_n ^^ compile_mul_const word_size ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      set_heap_ptr ^^
-      get_heap_ptr ^^ grow_memory env
+      set_heap_ptr env ^^
+      get_heap_ptr env ^^ grow_memory env
     )
 
   let dyn_alloc_bytes env =
@@ -825,25 +833,29 @@ module Stack = struct
      We sometimes use the stack space if we need small amounts of scratch space.
   *)
 
-  let stack_global = 2l
-
   let end_of_stack = page_size (* 64k of stack *)
 
-  let get_stack_ptr = G.i (GlobalGet (nr stack_global))
-  let set_stack_ptr = G.i (GlobalSet (nr stack_global))
+  let register_globals env =
+    (* stack pointer *)
+    E.add_global32 env "__stack_pointer" Mutable end_of_stack
+
+  let get_stack_ptr env =
+    G.i (GlobalGet (nr (E.get_global env "__stack_pointer")))
+  let set_stack_ptr env =
+    G.i (GlobalSet (nr (E.get_global env "__stack_pointer")))
 
   let alloc_words env n =
-    get_stack_ptr ^^
+    get_stack_ptr env ^^
     compile_unboxed_const (Int32.mul n Heap.word_size) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-    set_stack_ptr ^^
-    get_stack_ptr
+    set_stack_ptr env ^^
+    get_stack_ptr env
 
   let free_words env n =
-    get_stack_ptr ^^
+    get_stack_ptr env ^^
     compile_unboxed_const (Int32.mul n Heap.word_size) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    set_stack_ptr
+    set_stack_ptr env
 
   let with_words env name n f =
     let (set_x, get_x) = new_local env name in
@@ -863,9 +875,13 @@ module ElemHeap = struct
      target orthogonal persistence anyways.
   *)
 
-  let ref_counter_global = 5l
-  let get_ref_ctr = G.i (GlobalGet (nr ref_counter_global))
-  let set_ref_ctr = G.i (GlobalSet (nr ref_counter_global))
+  let register_globals env =
+    (* reference counter *)
+    E.add_global32 env "refcounter" Mutable 0l
+  let get_ref_ctr env =
+    G.i (GlobalGet (nr (E.get_global env "refcounter")))
+  let set_ref_ctr env =
+    G.i (GlobalSet (nr (E.get_global env "refcounter")))
 
   (* For now, we allocate a fixed size range. This obviously cannot stay. *)
   let max_references = 1024l
@@ -879,25 +895,25 @@ module ElemHeap = struct
   let remember_reference env : G.t =
     Func.share_code1 env "remember_reference" ("ref", I32Type) [I32Type] (fun env get_ref ->
       (* Check table space *)
-      get_ref_ctr ^^
+      get_ref_ctr env ^^
       compile_unboxed_const max_references ^^
       G.i (Compare (Wasm.Values.I32 I64Op.LtU)) ^^
       E.else_trap_with env "Reference table full" ^^
 
       (* Return index *)
-      get_ref_ctr ^^
+      get_ref_ctr env ^^
 
       (* Store reference *)
-      get_ref_ctr ^^
+      get_ref_ctr env ^^
       compile_mul_const Heap.word_size ^^
       compile_add_const ref_location ^^
       get_ref ^^
       store_unskewed_ptr ^^
 
       (* Bump counter *)
-      get_ref_ctr ^^
+      get_ref_ctr env ^^
       compile_add_const 1l ^^
-      set_ref_ctr
+      set_ref_ctr env
     )
 
   (* Assumes a index into the table on the stack, and replaces it with the reference *)
@@ -1281,7 +1297,7 @@ module Closure = struct
     Heap.load_field funptr_field ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
-    FakeMultiVal.load (Lib.List.make cc.Call_conv.n_res I32Type)
+    FakeMultiVal.load env (Lib.List.make cc.Call_conv.n_res I32Type)
 
   let fixed_closure env fi fields =
       Tagged.obj env Tagged.Closure
@@ -2932,9 +2948,12 @@ end (* Tuple *)
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)
 
-  let api_nonce_global = 6l
-  let set_api_nonce = G.i (GlobalSet (nr api_nonce_global))
-  let get_api_nonce = G.i (GlobalGet (nr api_nonce_global))
+  let set_api_nonce env = G.i (GlobalSet (nr (E.get_global env "api_nonce")))
+  let get_api_nonce env = G.i (GlobalGet (nr (E.get_global env "api_nonce")))
+
+  let register_globals env =
+    (* current api_nonce *)
+    E.add_global64 env "api_nonce" Mutable 0L
 
   let system_imports env =
     match E.mode env with
@@ -3075,24 +3094,33 @@ end (* Dfinity *)
 module OrthogonalPersistence = struct
   (* This module implements the code that fakes orthogonal persistence *)
 
-  let mem_global = 0l
-  let elem_global = 1l
-
   (* Strategy:
      * There is a persistent global databuf called `datastore`
      * Two helper functions are installed in each actor: restore_mem and save_mem.
        (The don’t actually have names, just numbers, of course).
      * Upon each message entry, call restore_mem. At the end, call save_mem.
-     * restore_mem checks if memstore is defined.
+     * restore_mem checks if datastore is defined.
        - If it is 0, then this is the first message ever received.
          Run the actor’s start function (e.g. to initialize globals).
        - If it is not 0, then load the databuf into memory, and set
          the global with the end-of-memory pointer to the length.
      * save_mem simply copies the whole dynamic memory (up to the end-of-memory
-       pointer) to a new databuf and stores that in memstore.
+       pointer) to a new databuf and stores that in datastore.
   *)
 
+  let register_globals env =
+    (* We want to put all persistent globals first:
+       The index in the persist annotation refers to the index in the
+       list of *exported* globals, not all globals (at least with v8/dvm) *)
+    (* persistent databuf for memory *)
+    E.add_global32 env "datastore" Mutable 0l;
+    (* persistent elembuf for references *)
+    E.add_global32 env "elemstore" Mutable 0l
+
   let register env start_funid =
+    let mem_global = E.get_global env "datastore" in
+    let elem_global = E.get_global env "elemstore" in
+
     E.add_export env (nr {
       name = Wasm.Utf8.decode "datastore";
       edesc = nr (GlobalExport (nr mem_global))
@@ -3118,8 +3146,8 @@ module OrthogonalPersistence = struct
          ( (* Set heap pointer based on databuf length *)
            get_i ^^
            compile_add_const ElemHeap.table_end ^^
-           Heap.set_heap_ptr ^^
-           Heap.get_heap_ptr ^^ Heap.grow_memory env ^^
+           Heap.set_heap_ptr env ^^
+           Heap.get_heap_ptr env ^^ Heap.grow_memory env ^^
 
            (* Load memory *)
            compile_unboxed_const ElemHeap.table_end ^^
@@ -3131,11 +3159,11 @@ module OrthogonalPersistence = struct
            (* Load reference counter *)
            G.i (GlobalGet (nr elem_global)) ^^
            Dfinity.system_call env1 "elem" "length" ^^
-           ElemHeap.set_ref_ctr ^^
+           ElemHeap.set_ref_ctr env ^^
 
            (* Load references *)
            compile_unboxed_const ElemHeap.ref_location ^^
-           ElemHeap.get_ref_ctr ^^
+           ElemHeap.get_ref_ctr env ^^
            G.i (GlobalGet (nr elem_global)) ^^
            compile_unboxed_zero ^^
            Dfinity.system_call env1 "elem" "internalize"
@@ -3144,7 +3172,7 @@ module OrthogonalPersistence = struct
     Func.define_built_in env "save_mem" [] [] (fun env1 ->
        (* Store memory *)
        compile_unboxed_const ElemHeap.table_end ^^
-       Heap.get_heap_ptr ^^
+       Heap.get_heap_ptr env ^^
        compile_unboxed_const ElemHeap.table_end ^^
        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
        Dfinity.system_call env "data" "externalize" ^^
@@ -3152,7 +3180,7 @@ module OrthogonalPersistence = struct
 
        (* Store references *)
        compile_unboxed_const ElemHeap.ref_location ^^
-       ElemHeap.get_ref_ctr ^^
+       ElemHeap.get_ref_ctr env ^^
        Dfinity.system_call env "elem" "externalize" ^^
        G.i (GlobalSet (nr elem_global))
     )
@@ -3964,17 +3992,17 @@ module Serialization = struct
     )
 
   let reply_with_data env get_data_start get_data_size =
-    Dfinity.get_api_nonce ^^
+    Dfinity.get_api_nonce env ^^
     get_data_start ^^
     get_data_size ^^
     Dfinity.system_call env "msg" "reply"
 
   let argument_data_size env =
-    Dfinity.get_api_nonce ^^
+    Dfinity.get_api_nonce env ^^
     Dfinity.system_call env "msg" "arg_data_size"
 
   let argument_data_copy env get_dest get_length =
-    Dfinity.get_api_nonce ^^
+    Dfinity.get_api_nonce env ^^
     get_dest ^^
     get_length ^^
     (compile_unboxed_const 0l) ^^
@@ -4254,9 +4282,9 @@ module GC = struct
     let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
     let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
 
-    Heap.get_heap_base ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
-    Heap.get_skewed_heap_ptr ^^ set_begin_to_space ^^
-    Heap.get_skewed_heap_ptr ^^ set_end_to_space ^^
+    Heap.get_heap_base env ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
+    Heap.get_skewed_heap_ptr env ^^ set_begin_to_space ^^
+    Heap.get_skewed_heap_ptr env ^^ set_end_to_space ^^
 
 
     (* Common arguments for evacuate *)
@@ -4308,7 +4336,7 @@ module GC = struct
     get_begin_from_space ^^ compile_add_const ptr_unskew ^^
     get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    Heap.set_heap_ptr
+    Heap.set_heap_ptr env
   )
 
 end (* GC *)
@@ -4781,7 +4809,7 @@ module FuncDec = struct
     | ICMode ->
       let ae0 = ASEnv.mk_fun_ae outer_ae in
       Func.of_body outer_env ["api_nonce", I64Type] [] (fun env -> G.with_region at (
-        G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce ^^
+        G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
 
         (* Deserialize argument and add params to the environment *)
         let arg_names = List.map (fun a -> a.it) args in
@@ -6148,7 +6176,7 @@ and compile_exp (env : E.t) ae exp =
   | RetE e ->
     SR.Unreachable,
     compile_exp_as env ae (StackRep.of_arity (E.get_n_res env)) e ^^
-    FakeMultiVal.store (Lib.List.make (E.get_n_res env) I32Type) ^^
+    FakeMultiVal.store env (Lib.List.make (E.get_n_res env) I32Type) ^^
     G.i Return
   | OptE e ->
     SR.Vanilla,
@@ -6174,7 +6202,7 @@ and compile_exp (env : E.t) ae exp =
         compile_unboxed_zero ^^ (* A dummy closure *)
         compile_exp_as env ae (StackRep.of_arity cc.Call_conv.n_args) e2 ^^ (* the args *)
         G.i (Call (nr fi)) ^^
-        FakeMultiVal.load (Lib.List.make cc.Call_conv.n_res I32Type)
+        FakeMultiVal.load env (Lib.List.make cc.Call_conv.n_res I32Type)
      | _, Type.Local ->
         let (set_clos, get_clos) = new_local env "clos" in
         code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
@@ -6577,6 +6605,7 @@ This function compiles the prelude, just to find out the bound names.
 and find_prelude_names env =
   (* Create a throw-away environment *)
   let env0 = E.mk_global (E.mode env) None (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
+  Heap.register_globals env0;
   Dfinity.system_imports env0;
   RTS.system_imports env0;
   let env1 = E.mk_fun_env env0 0l 0 in
@@ -6649,9 +6678,16 @@ and actor_lit outer_env this ds fs at =
       (E.get_trap_with outer_env)
       ClosureTable.table_end in
 
+    if E.mode mod_env = AncientMode then OrthogonalPersistence.register_globals mod_env;
+    Heap.register_globals mod_env;
+    ElemHeap.register_globals mod_env;
+    Stack.register_globals mod_env;
+    Dfinity.register_globals mod_env;
+
     Dfinity.system_imports mod_env;
     RTS.system_imports mod_env;
     RTS.system_exports mod_env;
+
 
     let start_fun = Func.of_body mod_env [] [] (fun env -> G.with_region at @@
       let ae0 = ASEnv.empty_ae in
@@ -6702,10 +6738,14 @@ and actor_fake_object_idx env name =
 
 and conclude_module env module_name start_fi_o =
 
+  (* add beginning-of-heap pointer, may be changed by linker *)
+  (* needs to happen here now that we know the size of static memory *)
+  E.add_global32 env "__heap_base" Immutable (E.get_end_of_static_memory env);
+
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    Heap.get_heap_base ^^
-    Heap.set_heap_ptr ^^
+    G.i (GlobalGet (nr (E.get_global env "__heap_base"))) ^^
+    Heap.set_heap_ptr env ^^
     match start_fi_o with
     | Some fi -> G.i (Call fi)
     | None -> G.nop
@@ -6728,44 +6768,14 @@ and conclude_module env module_name start_fi_o =
 
   let memories = [nr {mtype = MemoryType {min = E.mem_size env; max = None}} ] in
 
-  (* We want to put all persistent globals first:
-     The index in the persist annotation refers to the index in the
-     list of *exported* globals, not all globals (at least with v8/dvm) *)
-  (* persistent databuf for memory *)
-  ignore (E.add_global32 env "datastore" Mutable 0l);
-  (* persistent elembuf for references *)
-  ignore (E.add_global32 env "elemstore" Mutable 0l);
-  (* stack pointer *)
-  ignore (E.add_global32 env "__stack_pointer" Mutable Stack.end_of_stack);
-  (* beginning-of-heap pointer, may be changed by linker *)
-  ignore (E.add_global32 env "__heap_base" Immutable (E.get_end_of_static_memory env));
-  (* end-of-heap pointer, initialized to __heap_base upon start *)
-  ignore (E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl);
-  (* reference counter *)
-  ignore (E.add_global32 env "refcounter" Mutable 0l);
-  (* current api_nonce *)
-  ignore (E.add_global64 env "api_nonce" Mutable 0L);
-  (* multi value return emulations *)
-  ignore (E.add_global32 env "multi_val_0" Mutable 0l);
-  ignore (E.add_global32 env "multi_val_1" Mutable 0l);
-  ignore (E.add_global32 env "multi_val_2" Mutable 0l);
-  ignore (E.add_global32 env "multi_val_3" Mutable 0l);
-  ignore (E.add_global32 env "multi_val_4" Mutable 0l);
-  ignore (E.add_global32 env "multi_val_5" Mutable 0l);
-  ignore (E.add_global32 env "multi_val_6" Mutable 0l);
-  ignore (E.add_global32 env "multi_val_7" Mutable 0l);
-  ignore (E.add_global32 env "multi_val_8" Mutable 0l);
-  ignore (E.add_global32 env "multi_val_9" Mutable 0l);
-  ignore (E.add_global32 env "multi_val_10" Mutable 0l);
-  let globals = E.get_globals env in
 
   E.add_export env (nr {
     name = Wasm.Utf8.decode "__stack_pointer";
-    edesc = nr (GlobalExport (nr Stack.stack_global))
+    edesc = nr (GlobalExport (nr (E.get_global env "__stack_pointer")))
   });
   E.add_export env (nr {
     name = Wasm.Utf8.decode "__heap_base";
-    edesc = nr (GlobalExport (nr Heap.base_global))
+    edesc = nr (GlobalExport (nr (E.get_global env "__heap_base")))
   });
 
   let data = List.map (fun (offset, init) -> nr {
@@ -6783,7 +6793,7 @@ and conclude_module env module_name start_fi_o =
         offset = nr (G.to_instr_list (compile_unboxed_const ni'));
         init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
       start = Some (nr rts_start_fi);
-      globals = globals;
+      globals = E.get_globals env;
       memories = memories;
       imports = func_imports @ other_imports;
       exports = E.get_exports env;
@@ -6803,8 +6813,8 @@ and conclude_module env module_name start_fi_o =
       };
       types = E.get_dfinity_types env;
       persist = if E.mode env = AncientMode then
-             [ (OrthogonalPersistence.mem_global, Wasm_exts.CustomModule.DataBuf)
-             ; (OrthogonalPersistence.elem_global, Wasm_exts.CustomModule.ElemBuf)
+             [ (E.get_global env "datastore", Wasm_exts.CustomModule.DataBuf)
+             ; (E.get_global env "elemstore", Wasm_exts.CustomModule.ElemBuf)
              ] else [];
     } in
 
@@ -6814,6 +6824,12 @@ and conclude_module env module_name start_fi_o =
 
 let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts prelude Dfinity.trap_with ClosureTable.table_end in
+
+  if E.mode env = AncientMode then OrthogonalPersistence.register_globals env;
+  Heap.register_globals env;
+  ElemHeap.register_globals env;
+  Stack.register_globals env;
+  Dfinity.register_globals env;
 
   Dfinity.system_imports env;
   RTS.system_imports env;
