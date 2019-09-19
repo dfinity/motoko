@@ -11,7 +11,7 @@
 // We define an actor class for creating counter actors,
 // `MakeCounter`; we use it below.
 
-actor class MakeCounter (init:Nat) {
+actor class MakeCounter(init : Nat) {
   var cell : Nat = init;
   public func inc() : async () {
     cell += 1;
