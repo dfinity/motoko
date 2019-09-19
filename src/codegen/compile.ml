@@ -3123,6 +3123,7 @@ module OrthogonalPersistence = struct
   *)
 
   let register_globals env =
+    assert (E.mode env = AncientMode);
     (* We want to put all persistent globals first:
        The index in the persist annotation refers to the index in the
        list of *exported* globals, not all globals (at least with v8/dvm) *)
@@ -3134,6 +3135,7 @@ module OrthogonalPersistence = struct
     E.persist env (E.get_global env "elemstore") Wasm_exts.CustomModule.ElemBuf
 
   let register env start_funid =
+    assert (E.mode env = AncientMode);
     let mem_global = E.get_global env "datastore" in
     let elem_global = E.get_global env "elemstore" in
 
