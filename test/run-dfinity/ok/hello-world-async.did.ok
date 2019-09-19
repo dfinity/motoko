@@ -1,4 +1,0 @@
-service a {
-go : () -> () oneway;
-world : () -> () oneway;
-}

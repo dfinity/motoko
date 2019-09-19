@@ -1,5 +1,5 @@
 ASC=../src/asc
-DVM=dvm
+DRUN=drun
 OUTDIR=_out
 DOCDIR=doc
 STOPWATCH_C=./tools/stopwatch.c
@@ -432,92 +432,53 @@ $(STOPWATCH): $(STOPWATCH_C)
 	gcc $< -o $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 1, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 1, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 2, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 2, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 3, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 3, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 4, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 4, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 5, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 5, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 6, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 6, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 7, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 7, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 8, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 8, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 9, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 9, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 10, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 10, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 20, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 20, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 50, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 50, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm $(STOPWATCH)
-	rm -rf ./.dvm
-	$(DVM) reset
-	$(DVM) new $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm
-	$(STOPWATCH) "$(DVM) run 1 start " "5, 100, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 100, " > $@
 	cat $@

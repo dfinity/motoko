@@ -3,6 +3,8 @@ open As_def
 open Source
 open Syntax
 
+let flat_map f xs = List.flatten (List.map f xs)
+
 type value_decl = {
     name : string;
     typ: Type.typ;
@@ -81,12 +83,17 @@ let string_of_index index =
          ^ string_of_list string_of_ide_decl decls
          ^ "\n")
 
-let lib_files () : string list =
-  let lib_dir = "lib" in
-  Sys.readdir lib_dir
-  |> Array.to_list
+let project_files () : string list =
+  let rec read_dir d =
+    if Sys.is_directory d
+    then
+      let entries =
+        Array.to_list (Sys.readdir d)
+        |> List.map (fun file -> Filename.concat d file) in
+      flat_map read_dir entries
+    else [d] in
+  read_dir "."
   |> List.filter (fun file -> String.equal (Filename.extension file) ".as")
-  |> List.map (fun file -> Filename.concat lib_dir file)
 
 let read_single_module_lib (ty: Type.typ): ide_decl list option =
   match ty with
@@ -108,7 +115,6 @@ let unwrap_module_ast (prog : Syntax.dec list): Syntax.exp_field list option =
      Some fields
   | _ -> None
 
-let flat_map f xs = List.flatten (List.map f xs)
 
 let populate_definitions
     (libraries : Syntax.libraries)
@@ -155,24 +161,24 @@ let populate_definitions
   | Some (_, prog) ->
      List.map (find_def prog.it) decls
 
-let make_index_inner () : declaration_index =
-  let (libraries, scope) =
-    Diag.run
-      (Pipeline.chase_imports
-         Pipeline.initial_stat_env
-         (Pipeline__.Resolve_import.S.of_list (lib_files ()))) in
-  Type.Env.fold
-    (fun path ty acc ->
-      Index.add
-        path
-        (ty
-         |> read_single_module_lib
-         |> Lib.Fun.flip Lib.Option.get []
-         |> populate_definitions libraries path)
-        acc)
-    scope.Scope.lib_env
-    Index.empty
+let make_index_inner () : declaration_index Diag.result =
+  let entry_points = project_files () in
+  Pipeline.chase_imports
+    Pipeline.initial_stat_env
+    (Pipeline__.Resolve_import.S.of_list entry_points)
+  |> Diag.map (fun (libraries, scope) ->
+      Type.Env.fold
+        (fun path ty acc ->
+        Index.add
+            path
+            (ty
+            |> read_single_module_lib
+            |> Lib.Fun.flip Lib.Option.get []
+            |> populate_definitions libraries path)
+            acc)
+        scope.Scope.lib_env
+        Index.empty)
 
-let make_index () : declaration_index =
+let make_index () : declaration_index Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
-  try make_index_inner () with _ -> Index.empty
+  try make_index_inner () with _ -> Diag.return Index.empty

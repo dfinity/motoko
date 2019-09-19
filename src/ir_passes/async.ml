@@ -22,11 +22,17 @@ open Construct
 
 (* written as a functor so we can allocate some temporary shared state without making it global *)
 
-module Transform() = struct
+type platform =
+    V1  (* legacy, Haskell *)
+  | V2  (* new, Rust *)
+
+module Transform(Platform : sig val platform : platform end) = struct
+
+  let platform = Platform.platform
 
   module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
 
-  (* the state *)
+   (* the state *)
 
   (* maps constructors to new constructors (name name, new stamp, new kind)
      it is initialized with the type constructors defined outside here, which are
@@ -38,18 +44,6 @@ module Transform() = struct
   *)
 
   let con_renaming = ref ConRenaming.empty
-
-  (* Configuring the translation for target platform V1 or V2 *)
-
-  type platform =
-    V1  (* legacy, Haskell *)
-  | V2  (* new, Rust *)
-
-  let platform = V1
-
-  let _ = V2 (* suppress warning on unused V2 *)
-
-  (* Lowering options, specific to V1 or V2 *)
 
   let add_reply_parameter, add_reject_parameter, add_reply_argument, add_reject_argument =
     match platform with
@@ -65,19 +59,40 @@ module Transform() = struct
     | (false, _)::bls' ->
       select bls'
 
+
   (* Explicit invocation of reply, reject and call System API functions;
      implemented (as far as possible) for V1;
      TBC for V2 *)
 
-  let sys_replyE vs =
+  let sys_replyE v =
     match platform with
     | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
-    | V2 -> failwith "NYI" (* TODO: call dedicated prim *)
+    | V2 -> replyE v
 
   let sys_rejectE e =
     match platform with
     |  V1 -> assertE (boolE false) (* used in V1 to cause traps on non-local throws *)
     |  V2 -> failwith "NYI" (* TODO: call dedicated prim *)
+
+  (*=======
+  (* Explicit invocation of reply and call System API functions;
+     implemented (as far as possible) for V1;
+     TBC for V2 *)
+
+  (* NB: The type annotations on the v needs to match the IDL type of the function *)
+  let sys_replyE v =
+    match Platform.platform with
+    | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
+    | V2 -> replyE v
+
+  let sys_callE v1 typs vs reply =
+    match Platform.platform with
+    | V1 ->
+          assert add_reply_argument;
+          callE v1 typs (seqE (vs @ [reply]))
+    | V2 -> assert false (* NYI, needs a dedicated prim, separating args vs from reply *)
+>>>>>>> origin/master *)
+
 
   let sys_callE v1 typs vs reply reject =
     match platform with
@@ -160,6 +175,9 @@ module Transform() = struct
       | ts ->
         let seq_of_v' = tupE (List.mapi (fun i _ -> projE v' i) ts) in
         [k';r'] -->*  (unary_async -*- (tupE[([v'] -->* (k' -*- seq_of_v'));r']))
+(*
+        [k'] -->*  (unary_async -*- ([v'] -->* (k' -*- seq_of_v')))
+>>>>>>> origin/master *)
     in
     (* construct the n-ary reply message that sends a sequence of values to fulfill the async *)
     let nary_reply =
@@ -186,6 +204,15 @@ module Transform() = struct
       (async, reply, reject),
         blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
           (tupE [nary_async; nary_reply; nary_reject])
+(*
+    let async, reply =
+      fresh_var "async" (typ nary_async),
+      fresh_var "reply" (typ nary_reply)
+    in
+      (async, reply),
+        blockE [letP (tupP [varP unary_async; varP unary_fulfill])  call_new_async]
+          (tupE [nary_async; nary_reply])
+>>>>>>> origin/master *)
 
 
   let letEta e scope =
@@ -243,6 +270,10 @@ module Transform() = struct
                        (select
                           [ add_reply_parameter, lazy (replyT nary (t_typ t2));
                             add_reject_parameter, lazy rejectT ]),
+(*=======
+                          [ add_reply_parameter, lazy (replyT nary (t_typ t2))
+                          ]),
+>>>>>>> origin/master*)
                      [])
              | _ -> assert false
            end
@@ -254,7 +285,6 @@ module Transform() = struct
     | Async t -> t_async nary (t_typ t)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
-    | Serialized t -> Serialized (t_typ t)
     | Any -> Any
     | Non -> Non
     | Pre -> Pre
@@ -287,8 +317,6 @@ module Transform() = struct
     | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
     | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
     | ShowPrim ot -> ShowPrim (t_typ ot)
-    | SerializePrim ot -> SerializePrim (t_typ ot)
-    | DeserializePrim ot -> DeserializePrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
     | OtherPrim s -> OtherPrim s
 
@@ -331,6 +359,9 @@ module Transform() = struct
         | Func(_,_,
                [],
                [Func(_, _, [], ts1, []) as contT; _],
+(*
+               [Func(_, _, [], ts1, []) as contT],
+>>>>>>> origin/master *)
                []) -> (* TBR, why isn't this []? *)
           (t_typ (T.seq ts1),t_typ contT)
         | t -> assert false in
@@ -346,6 +377,15 @@ module Transform() = struct
                nary_funcD r [e] (reject -*- (errorMessageE e));
                funcD post u (t_exp exp2 -*- (tupE [k;r]));
                expD (post -*- tupE[])]
+(*=======
+      let post = fresh_var "post" (T.Func(T.Shared, T.Returns, [], [], [])) in
+      let u = fresh_var "u" T.unit in
+      let ((nary_async, nary_reply), def) = new_nary_async_reply t1 in
+      (blockE [letP (tupP [varP nary_async; varP nary_reply]) def;
+               funcD k v1 (nary_reply -*- v1);
+               funcD post u (t_exp exp2 -*- k);
+               expD (post -*- tupE [])]
+>>>>>>> origin/master *)
                nary_async
       ).it
     | CallE (cc, exp1, typs, exp2) when isAwaitableFunc exp1 ->
@@ -359,11 +399,17 @@ module Transform() = struct
       let exp2' = t_exp exp2 in
       let typs = List.map t_typ typs in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply t2 in
+(*=======
+      let ((nary_async, nary_reply), def) = new_nary_async_reply t2 in
+>>>>>>> origin/master *)
       let _ = letEta in
       (blockE ( letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
                 letEta exp1' (fun v1 ->
                   letSeq ts1 exp2' (fun vs ->
                       [ expD (sys_callE v1 typs vs nary_reply reject) ]
+(*=======
+                      [ expD (sys_callE v1 typs vs nary_reply) ]
+>>>>>>> origin/master *)
                     )
                   )
          )
@@ -397,6 +443,9 @@ module Transform() = struct
     | AwaitE _
     | TryE _
     | ThrowE _ -> assert false
+(*=======
+    | AwaitE _ -> assert false
+>>>>>>> origin/master *)
     | AssertE exp1 ->
       AssertE (t_exp exp1)
     | DeclareE (id, typ, exp1) ->
@@ -415,7 +464,6 @@ module Transform() = struct
             | T.Tup [] ->
               FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
             | T.Async res_typ ->
-              let cc' = Call_conv.message_cc (cc.Call_conv.n_args + 1) in
               let res_typ = t_typ res_typ in
               let reply_typ = replyT nary res_typ in
               let k = fresh_var "k" reply_typ in
@@ -435,7 +483,7 @@ module Transform() = struct
                        [ (not add_reply_parameter,
                           lazy (
                               let vs = List.map (fresh_var "v") (nary res_typ) in
-                              nary_funcD k vs (sys_replyE vs)))
+                              nary_funcD k vs (sys_replyE (seqE vs))))
                        ;
                          (not add_reject_parameter,
                           lazy (
@@ -445,8 +493,26 @@ module Transform() = struct
                        tupE [(y --> (k -*- y));
                              ([e] -->* (r -*- (errorMessageE e)))]
                     )
+(*=======
+              let r = fresh_var "r" reply_typ in
+              let args' = t_args args @
+                            (select [ add_reply_parameter, lazy (arg_of_exp r);
+                                    ])
+              in
+              let typbinds' = t_typ_binds typbinds in
+              let exp' =
+                match exp.it with
+                | PrimE (OtherPrim "@async", [cps]) ->
+                  let v = fresh_var "v" res_typ in
+                  let k = if add_reply_parameter then
+                            (v --> (r -*- v)) (* wrap shared function in local function *)
+                          else
+                            (v --> (sys_replyE v)) in
+                  t_exp cps -*- k
+>>>>>>> origin/master*)
                 | _ -> assert false
               in
+              let cc' = Call_conv.message_cc (List.length args') in
               FuncE (x, cc', typbinds', args', [], exp')
             | _ -> assert false
           end
@@ -509,8 +575,9 @@ module Transform() = struct
 
 end
 
-let transform env prog =
-  let module T = Transform() in
+let transform platform =
+  let module T = Transform(struct let platform = platform end) in
+  fun env prog ->
   (*
   Initialized the con_renaming with those type constructors already in scope.
   Eventually, pipeline will allow us to pass the con_renaming to downstream program

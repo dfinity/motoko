@@ -132,10 +132,7 @@ let find_completion_prefix logger file line column: (string * string) option =
     | _ -> loop (next ()) in
   loop (next ())
 
-(* TODO(Christoph): Don't recompute the index whenever completions are
-   requested *)
-let completions (* index *) logger project_root file_path file_contents line column =
-  let index = make_index () in
+let completions index logger project_root file_path file_contents line column =
   let imported = parse_module_header project_root file_path file_contents in
   let module_alias_completion_item alias =
     Lsp_t.{
@@ -173,8 +170,8 @@ let completions (* index *) logger project_root file_path file_contents line col
         (* No module with the given prefix was found *)
         []
 
-let completion_handler logger project_root file_path file_contents position =
+let completion_handler index logger project_root file_path file_contents position =
   let line = position.Lsp_t.position_line in
   let column = position.Lsp_t.position_character in
   `CompletionResponse
-    (completions logger project_root file_path file_contents line column)
+    (completions index logger project_root file_path file_contents line column)

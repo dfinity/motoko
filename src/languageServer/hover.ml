@@ -10,9 +10,7 @@ let hover_detail = function
      Printf.sprintf "public type %s%s" ty.name params
 
 
-let hover_handler (* index *) position file_contents project_root file_path =
-  (* TODO(Christoph): Don't rebuild index on every hover *)
-  let index = make_index () in
+let hover_handler index position file_contents project_root file_path =
   let hover_result =
     Lib.Option.bind
       (Source_file.identifier_at_pos

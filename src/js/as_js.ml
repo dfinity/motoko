@@ -40,7 +40,7 @@ let js_check source =
 let js_compile_with mode_string source convert =
   let mode =
     match Js.to_string mode_string with
-    | "dfinity" -> Pipeline.DfinityMode
+    | "dfinity" -> Pipeline.AncientMode
     | _ -> Pipeline.WasmMode
   in
   match Pipeline.compile_string mode (Js.to_string source) "js-input" with

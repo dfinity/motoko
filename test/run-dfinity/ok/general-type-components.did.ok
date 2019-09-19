@@ -1,5 +1,0 @@
-type T_16 = Int;
-type Int = int;
-service A {
-f : () -> () oneway;
-}

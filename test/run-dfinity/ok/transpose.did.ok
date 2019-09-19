@@ -1,5 +1,0 @@
-type Text = text;
-type Int = int;
-service foo {
-transpose : (vec record {Int; Text}) -> (record {ints : vec Int; txts : vec Text});
-}

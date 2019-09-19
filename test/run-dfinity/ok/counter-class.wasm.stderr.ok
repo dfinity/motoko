@@ -90,5 +90,5 @@ non-closed actor: (ActorE
   )
   (read read)
   (dec dec)
-  actor {dec : shared () -> (); read : shared (serialized shared (serialized Int) -> ()) -> ()}
+  actor {dec : shared () -> (); read : shared (shared Int -> ()) -> ()}
 )
