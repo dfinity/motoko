@@ -33,7 +33,7 @@ actor Counter {
 
   // increment `cell`, with a unit-valued (asynchronous) response
   public func inc() : async () {
-    cell := cell + 1;
+    cell += 1;
   };
 
   // request the value held in `cell` in (asynchronous) response
