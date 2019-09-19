@@ -1,3 +1,0 @@
-service hello_world {
-hello : () -> () oneway;
-}

@@ -1,0 +1,3 @@
+actor {
+  print("Debug out");
+}

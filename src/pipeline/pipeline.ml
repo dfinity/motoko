@@ -451,8 +451,9 @@ let desugar env lib_env libraries progs name =
 let await_lowering =
   transform_if "Await Lowering" (fun _ -> Await.transform)
 
-let async_lowering =
-  transform_if "Async Lowering" Async.transform
+let async_lowering mode =
+  let platform = if mode = Codegen.Compile.ICMode then Async.V2 else Async.V1 in
+  transform_if "Async Lowering" (Async.transform platform)
 
 let tailcall_optimization =
   transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
@@ -484,7 +485,7 @@ let load_as_rts () =
   let wasm = load_file wasm_filename in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" wasm
 
-type compile_mode = Codegen.Compile.mode = WasmMode | DfinityMode
+type compile_mode = Codegen.Compile.mode = WasmMode | AncientMode | ICMode
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
 let name_progs progs =
@@ -492,10 +493,10 @@ let name_progs progs =
   then "empty"
   else (Lib.List.last progs).Source.note
 
-let lower_prog senv lib_env libraries progs name =
+let lower_prog mode senv lib_env libraries progs name =
   let prog_ir = desugar senv lib_env libraries progs name in
   let prog_ir = await_lowering !Flags.await_lowering initial_stat_env prog_ir name in
-  let prog_ir = async_lowering !Flags.async_lowering initial_stat_env prog_ir name in
+  let prog_ir = async_lowering mode !Flags.async_lowering initial_stat_env prog_ir name in
   let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir
@@ -503,7 +504,7 @@ let lower_prog senv lib_env libraries progs name =
 let compile_prog mode do_link lib_env libraries progs : Wasm_exts.CustomModule.extended_module =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog initial_stat_env lib_env libraries progs name in
+  let prog_ir = lower_prog mode initial_stat_env lib_env libraries progs name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts prelude_ir [prog_ir]
@@ -523,7 +524,7 @@ let compile_string mode s name : compile_result =
 let interpret_ir_prog inp_env libraries progs =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
+  let prog_ir = lower_prog WasmMode initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in

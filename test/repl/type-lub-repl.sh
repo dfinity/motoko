@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests that correct lub types are inferred when values appear in arrays
-${ASC:-$(dirname "$BASH_SOURCE")/../../src/asc} -i ../run/type-lub.as <<__END__
+${ASC:-$(dirname "$BASH_SOURCE")/../../src/asc} -i ../run-dfinity/type-lub.as <<__END__
 opts;
 nulls;
 incompatible_objs;
