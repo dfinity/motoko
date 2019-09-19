@@ -390,7 +390,7 @@ converted into a text of length 1.
 
 ### Type `Text`
 
-The type `Text` of categories T and R ( Text, Relational) represents sequences of unicode characters (i.e. strings).
+The type `Text` of categories T and R (Text, Relational) represents sequences of unicode characters (i.e. strings).
 Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `for (c in _) ... c ...`.
 The `textLength` function returns the number of characters in a `Text` value.
 
