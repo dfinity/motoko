@@ -67,12 +67,12 @@ module Transform(Platform : sig val platform : platform end) = struct
   let sys_replyE v =
     match platform with
     | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
-    | V2 -> replyE v
+    | V2 -> (*assertE (boolE false)*) replyE v
 
   let sys_rejectE e =
     match platform with
     |  V1 -> assertE (boolE false) (* used in V1 to cause traps on non-local throws *)
-    |  V2 -> failwith "NYI" (* TODO: call dedicated prim *)
+    |  V2 -> assertE (boolE false) (* failwith "NYI" (* TODO: call dedicated prim *) *)
 
   (*=======
   (* Explicit invocation of reply and call System API functions;
@@ -466,33 +466,30 @@ module Transform(Platform : sig val platform : platform end) = struct
             | T.Async res_typ ->
               let res_typ = t_typ res_typ in
               let reply_typ = replyT nary res_typ in
-              let k = fresh_var "k" reply_typ in
-              let r = fresh_var "r" rejectT in
+              let reply = fresh_var "reply" reply_typ in
+              let reject = fresh_var "reject" rejectT in
               let args' = t_args args @
-                            (select [ add_reply_parameter, lazy (arg_of_exp k);
-                                      add_reject_parameter, lazy (arg_of_exp r)])
+                            (select [ add_reply_parameter, lazy (arg_of_exp reply);
+                                      add_reject_parameter, lazy (arg_of_exp reject)])
               in
               let typbinds' = t_typ_binds typbinds in
-              let y = fresh_var "y" res_typ in
-              let e = fresh_var "e" T.catch in
               let exp' =
                 match exp.it with
                 | PrimE (OtherPrim "@async", [cps]) ->
-                  blockE
-                    (select
-                       [ (not add_reply_parameter,
-                          lazy (
-                              let vs = List.map (fresh_var "v") (nary res_typ) in
-                              nary_funcD k vs (sys_replyE (seqE vs))))
-                       ;
-                         (not add_reject_parameter,
-                          lazy (
-                              let msg = fresh_var "msg" T.text in
-                              funcD r msg (sys_rejectE msg)))])
-                    ((t_exp cps) -*-
-                       tupE [(y --> (k -*- y));
-                             ([e] -->* (r -*- (errorMessageE e)))]
-                    )
+                  let v = fresh_var "v" res_typ in
+                  let k = if add_reply_parameter then
+                            (* wrap shared reply function in local function *)
+                            (v --> (reply -*- v))
+                          else
+                            (v --> (sys_replyE v)) in
+                  let e = fresh_var "e" T.catch in
+                  let r = if add_reject_parameter then
+                            (* wrap shared reject function in local function *)
+                            ([e] -->* (reject -*- (errorMessageE e)))
+                          else
+                            ([e] -->* (sys_rejectE (errorMessageE e)))
+                  in
+                  (t_exp cps) -*- tupE [k;r]
 (*=======
               let r = fresh_var "r" reply_typ in
               let args' = t_args args @
