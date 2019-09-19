@@ -157,6 +157,8 @@ rec {
     '';
   };
 
+  lsp-int = nixpkgs.haskellPackages.callCabal2nix "lsp-int" test/lsp-int { };
+
   qc-actorscript = nixpkgs.haskellPackages.callCabal2nix "qc-actorscript" test/random { };
 
   replay-option = if replay != 0 then " --quickcheck-replay=${toString replay}" else "";
@@ -178,6 +180,7 @@ rec {
         dvm
         drun
         qc-actorscript
+        lsp-int
       ] ++
       llvmBuildInputs;
 
@@ -191,6 +194,7 @@ rec {
         asc --version
         make parallel
         qc-actorscript${replay-option}
+        lsp-int
       '';
 
     installPhase = ''
