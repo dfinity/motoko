@@ -37,7 +37,7 @@ actor Counter {
   };
 
   // request the value held in `cell` in (asynchronous) response
-  public func read () : async Nat {
+  public func read() : async Nat {
     cell
   };
 
