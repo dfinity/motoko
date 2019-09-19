@@ -145,10 +145,6 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 
 let commonBuildInputs = [
-  nixpkgs.ghc
-  haskellPackages.haskell-lsp-types
-  haskellPackages.haskell-lsp
-  haskellPackages.lsp-test
   nixpkgs.ocaml
   nixpkgs.dune
   nixpkgs.ocamlPackages.atdgen
