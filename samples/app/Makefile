@@ -6,17 +6,18 @@ ASC?=../../src/asc
 DVM?=../../test/dvm.sh
 # we need to specify the output if there is more than one .as file
 OUT=main.wasm
-#ASC_FLAGS=-r -t -v
 LIB=list.as types.as server.as client.as
 
 SAMPLES:= test
 
 all:
-	$(ASC) -r -t -v main.as >main.txt 2>&1
+	rm -f main.txt
+	$(ASC) -ancient-system-api -r -t -v main.as >main.txt 2>&1
+	cat main.txt
 
 dvm:
-	$(ASC) -o $(OUT) main.as
+	$(ASC) -ancient-system-api -o $(OUT) main.as
 	$(DVM) $(OUT)
 
 clean:
-	rm -f $(OUT)
+	rm -f $(OUT) main.txt
