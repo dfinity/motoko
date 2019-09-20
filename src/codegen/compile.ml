@@ -587,7 +587,7 @@ module Func = struct
 
 
   (* Shorthands for various arities *)
-  let share_code0 env name retty mk_body =
+  let _share_code0 env name retty mk_body =
     share_code env name [] retty (fun env -> mk_body env)
   let share_code1 env name p1 retty mk_body =
     share_code env name [p1] retty (fun env -> mk_body env
@@ -4017,14 +4017,6 @@ module Serialization = struct
     (compile_unboxed_const 0l) ^^
     Dfinity.system_call env "msg" "arg_data_copy"
 
-  let serialize_unit env =
-    Func.share_code0 env "@serialize_unit" [] (fun env ->
-      let data = "DIDL\x00\x00" in
-      reply_with_data env
-        (Text.lit env data ^^ Text.payload_ptr_unskewed)
-        (compile_unboxed_const (Int32.of_int (String.length data)))
-    )
-
   let serialize env ts : G.t =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@serialize<" ^ ts_name ^ ">" in
@@ -4827,8 +4819,6 @@ module FuncDec = struct
         Serialization.deserialize env arg_tys ^^
         G.concat (List.rev setters) ^^
         mk_body env ae1 ^^
-        (* Hack: Emit a unit response for one-shot functions *)
-        if ret_tys = [] then Serialization.serialize_unit env else G.nop ^^
 
         (* Collect garbage *)
         G.i (Call (nr (E.built_in env "collect")))
