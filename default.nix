@@ -1,6 +1,6 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
-  test-dvm ? true,
   dvm ? null,
+  drun ? null,
   export-shell ? false,
   replay ? 0
 }:
@@ -30,13 +30,21 @@ let dev = import (builtins.fetchGit {
   rev = "ad50bcea8db6d55decf2622ad836435aa36fa33f";
 }) { system = nixpkgs.system; }; in
 
-# Include dvm
+let dfinity-repo = import (builtins.fetchGit {
+  url = "ssh://git@github.com/dfinity-lab/dfinity";
+  ref = "master";
+  rev = "a50367859416ef7c12ca103b7fc03f5a7654f6ad";
+}) { system = nixpkgs.system; }; in
+
 let real-dvm =
   if dvm == null
-  then if test-dvm
-    then dev.dvm
-    else null
+  then dev.dvm
   else dvm; in
+
+let real-drun =
+  if drun == null
+  then dfinity-repo.dfinity.drun
+  else drun; in
 
 # Include js-client
 let js-client = dev.js-dfinity-client; in
@@ -167,8 +175,10 @@ rec {
         nixpkgs.nodejs-10_x
         filecheck
         js-client
+        dvm
+        drun
+        qc-actorscript
       ] ++
-      (if test-dvm then [ real-dvm qc-actorscript ] else []) ++
       llvmBuildInputs;
 
     buildPhase = ''
@@ -179,22 +189,14 @@ rec {
         export DIDC=didc
         export JSCLIENT=${js-client}
         asc --version
-      '' +
-      (if test-dvm then ''
         make parallel
         qc-actorscript${replay-option}
-      '' else ''
-        make quick
-      '');
+      '';
 
     installPhase = ''
       touch $out
     '';
   };
-
-  tests-no-mv = tests.overrideAttrs (oldAttrs: {
-    ASC_FLAGS = "-no-multi-value";
-  });
 
   unit-tests = stdenv.mkDerivation {
     name = "unit-tests";
@@ -240,8 +242,8 @@ rec {
         nixpkgs.bash
         nixpkgs.perl
         filecheck
+	real-drun
       ] ++
-      (if test-dvm then [ real-dvm ] else []) ++
       llvmBuildInputs;
 
     buildPhase = ''
@@ -297,6 +299,7 @@ rec {
 
   wasm = ocaml_wasm;
   dvm = real-dvm;
+  drun = real-drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
@@ -326,7 +329,7 @@ rec {
       mv * $out/
       rm $out/Makefile
       mkdir -p $out/nix-support
-      echo "report guide $out/guide index.html" >> $out/nix-support/hydra-build-products
+      echo "report guide $out index.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -419,7 +422,6 @@ rec {
       js
       didc
       tests
-      tests-no-mv
       unit-tests
       samples
       rts

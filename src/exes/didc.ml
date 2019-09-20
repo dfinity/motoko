@@ -61,7 +61,7 @@ let print_exn exn =
 let () =
   (* 
   Sys.catch_break true; - enable to get stacktrace on interrupt
-  (usefull for debugging infinite loops)
+  (useful for debugging infinite loops)
   *)
   Printexc.record_backtrace true;
   try

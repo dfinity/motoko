@@ -116,7 +116,7 @@ struct
 
   let rec take n xs =
     match n, xs with
-    | 0, _ -> []
+    | _ when n <= 0 -> []
     | n, x::xs' when n > 0 -> x :: take (n - 1) xs'
     | _ -> failwith "take"
 
@@ -125,6 +125,11 @@ struct
     | 0, _ -> xs
     | n, _::xs' when n > 0 -> drop (n - 1) xs'
     | _ -> failwith "drop"
+
+  let split_at n xs =
+    if n <= List.length xs
+    then (take n xs, drop n xs)
+    else (xs, [])
 
   let hd_opt = function
     | x :: _ -> Some x

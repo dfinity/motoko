@@ -13,8 +13,8 @@ type broker = service {
 
 service server {
   addUser : (name : text, age : nat8) -> (id : nat64);
-  userName : (id : nat64) -> (text) pure;
-  userAge : (id : nat64) -> (nat8) pure;
+  userName : (id : nat64) -> (text) query;
+  userAge : (id : nat64) -> (nat8) query;
   deleteUser : (id : nat64) -> () oneway;
   f : (message) -> (broker);
 }

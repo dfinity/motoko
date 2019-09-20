@@ -317,10 +317,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         if Show.can_show ot
         then k (Value.Text (Show.show_val ot v))
         else raise (Invalid_argument "debug_show"))
-    | SerializePrim t, [exp1] ->
-      interpret_exp env exp1 (fun v -> k (V.Serialized v))
-    | DeserializePrim t, [exp1] ->
-      interpret_exp env exp1 (fun v -> k (V.as_serialized v))
     | OtherPrim s, exps ->
       interpret_exps env exps [] (fun vs ->
         let at = exp.at in

@@ -1,4 +1,0 @@
-service anon_counter2 {
-inc : () -> () oneway;
-printCounter : () -> () oneway;
-}

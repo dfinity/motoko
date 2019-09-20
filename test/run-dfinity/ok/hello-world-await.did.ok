@@ -1,6 +1,0 @@
-type Text = text;
-service a {
-go : () -> (record {});
-hello : () -> (Text);
-world : () -> (Text);
-}

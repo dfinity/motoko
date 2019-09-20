@@ -451,7 +451,7 @@ public func splitSizedList<K,V>(l:AssocList<Key<K>,V>, bitpos:Nat)
    ---------
    merge tries, preferring the right trie where there are collisions
    in common keys. note: the `disj` operation generalizes this `merge`
-   operation in various ways, and does not (in general) loose
+   operation in various ways, and does not (in general) lose
    information; this operation is a simpler, special case.
 
    See also:
