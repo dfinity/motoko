@@ -659,41 +659,6 @@ module RTS = struct
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] []
 
-  let system_exports env =
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "alloc_bytes";
-      edesc = nr (FuncExport (nr (E.built_in env "alloc_bytes")))
-    });
-    let bigint_trap_fi = E.add_fun env "bigint_trap" (
-      Func.of_body env [] [] (fun env ->
-        E.trap_with env "bigint function error"
-      )
-    ) in
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "bigint_trap";
-      edesc = nr (FuncExport (nr bigint_trap_fi))
-    });
-    let idl_trap_fi = E.add_fun env "idl_trap" (
-      Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
-        let get_str = G.i (LocalGet (nr 0l)) in
-        let get_len = G.i (LocalGet (nr 1l)) in
-        get_str ^^ get_len ^^
-        match E.mode env with
-        | AncientMode ->
-          E.call_import env "data" "externalize" ^^
-          E.call_import env "test" "print" ^^
-          G.i Unreachable
-        | ICMode ->
-          E.call_import env "debug" "print" ^^
-          G.i Unreachable
-        | WasmMode | WASIMode -> G.i Unreachable
-      )
-    ) in
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "idl_trap";
-      edesc = nr (FuncExport (nr idl_trap_fi))
-    })
-
 end (* RTS *)
 
 module Heap = struct
@@ -3015,17 +2980,17 @@ module Dfinity = struct
   let compile_databuf_of_bytes env (bytes : string) =
     Text.lit env bytes ^^ compile_databuf_of_text env
 
-  let prim_print env =
+  let print_ptr_len env =
     match E.mode env with
-    | WasmMode -> G.nop
+    | WasmMode -> G.i Drop ^^ G.i Drop
     | WASIMode ->
-      Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
+      Func.share_code2 env "print_ptr" (("ptr", I32Type), ("len", I32Type)) [] (fun env get_ptr get_len ->
         Stack.with_words env "io_vec" 1l (fun get_iovec_ptr ->
           get_iovec_ptr ^^
-          get_str ^^ Text.payload_ptr_unskewed ^^
+          get_ptr ^^
           G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
           get_iovec_ptr ^^
-          get_str ^^ Heap.load_field (Text.len_field) ^^
+          get_len ^^
           G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
 
           compile_unboxed_const 1l (* stdout *) ^^
@@ -3036,15 +3001,18 @@ module Dfinity = struct
           G.i Drop
         )
       )
-    | ICMode ->
-      Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
-        get_str ^^ Text.payload_ptr_unskewed ^^
-        get_str ^^ Heap.load_field (Text.len_field) ^^
-        system_call env "debug" "print"
-      )
+    | ICMode -> system_call env "debug" "print"
     | AncientMode ->
-      compile_databuf_of_text env ^^
+      E.call_import env "data" "externalize" ^^
       system_call env "test" "print"
+
+
+  let prim_print env =
+    Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
+      get_str ^^ Text.payload_ptr_unskewed ^^
+      get_str ^^ Heap.load_field (Text.len_field) ^^
+      print_ptr_len env
+    )
 
   (* For debugging *)
   let compile_static_print env s =
@@ -3127,6 +3095,37 @@ module Dfinity = struct
     system_call env "func" "externalize"
 
 end (* Dfinity *)
+
+module RTS_Exports = struct
+  let system_exports env =
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "alloc_bytes";
+      edesc = nr (FuncExport (nr (E.built_in env "alloc_bytes")))
+    });
+    let bigint_trap_fi = E.add_fun env "bigint_trap" (
+      Func.of_body env [] [] (fun env ->
+        E.trap_with env "bigint function error"
+      )
+    ) in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "bigint_trap";
+      edesc = nr (FuncExport (nr bigint_trap_fi))
+    });
+    let idl_trap_fi = E.add_fun env "idl_trap" (
+      Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
+        let get_str = G.i (LocalGet (nr 0l)) in
+        let get_len = G.i (LocalGet (nr 1l)) in
+        get_str ^^ get_len ^^ Dfinity.print_ptr_len env ^^
+        G.i Unreachable
+      )
+    ) in
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "idl_trap";
+      edesc = nr (FuncExport (nr idl_trap_fi))
+    })
+
+end (* RTS_Exports *)
+
 
 module OrthogonalPersistence = struct
   (* This module implements the code that fakes orthogonal persistence *)
@@ -6718,7 +6717,7 @@ and actor_lit outer_env this ds fs at =
 
     Dfinity.system_imports mod_env;
     RTS.system_imports mod_env;
-    RTS.system_exports mod_env;
+    RTS_Exports.system_exports mod_env;
 
 
     let start_fun = Func.of_body mod_env [] [] (fun env -> G.with_region at @@
@@ -6854,7 +6853,7 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
 
   Dfinity.system_imports env;
   RTS.system_imports env;
-  RTS.system_exports env;
+  RTS_Exports.system_exports env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in
