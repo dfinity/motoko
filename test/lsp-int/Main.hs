@@ -10,6 +10,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Default
 import Data.Text (Text)
 import System.Directory (setCurrentDirectory)
+import System.Environment (getArgs)
 import Test.Hspec (shouldBe)
 
 hoverTestCase
@@ -31,8 +32,9 @@ plainMarkup t =
 
 main :: IO ()
 main = do
+  [as_ide] <- getArgs
   setCurrentDirectory "./lsp-int/test-project"
-  runSession "as-ide" fullCaps "." $ do
+  runSession as_ide fullCaps "." $ do
     initRes <- initializeResponse
     doc <- openDoc "ListClient.as" "actorscript"
     hoverTestCase

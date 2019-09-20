@@ -289,7 +289,7 @@ rec {
         asc --version
         make parallel
         qc-actorscript${replay-option}
-        lsp-int ${as-ide}
+        lsp-int ${as-ide}/bin/as-ide
       '';
 
     installPhase = ''
