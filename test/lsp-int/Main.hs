@@ -31,7 +31,7 @@ plainMarkup t =
 
 main :: IO ()
 main = do
-  setCurrentDirectory "/home/creek/code/example-project"
+  setCurrentDirectory "test/lsp-int/test-project"
   runSession "as-ide" fullCaps "." $ do
     initRes <- initializeResponse
     doc <- openDoc "ListClient.as" "actorscript"
