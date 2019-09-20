@@ -25,7 +25,7 @@ let string_of_prim p =
 let string_of_mode m =
   match m.it with
   | Oneway -> " oneway"
-  | Pure -> " pure"
+  | Query -> " query"
                  
 let ($$) head inner = Node (head, inner)
 

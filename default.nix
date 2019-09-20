@@ -159,8 +159,6 @@ rec {
 
   qc-actorscript = nixpkgs.haskellPackages.callCabal2nix "qc-actorscript" test/random { };
 
-  replay-option = if replay != 0 then " --quickcheck-replay=${toString replay}" else "";
-
   tests = stdenv.mkDerivation {
     name = "tests";
     src = subpath ./test;
@@ -190,7 +188,8 @@ rec {
         export JSCLIENT=${js-client}
         asc --version
         make parallel
-        qc-actorscript${replay-option}
+        qc-actorscript${nixpkgs.lib.optionalString (replay != 0)
+          " --quickcheck-replay=${toString replay}"}
       '';
 
     installPhase = ''
