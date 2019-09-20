@@ -107,7 +107,7 @@ let start () =
   let publish_diagnostics = Channel.publish_diagnostics oc in
   let send_response = Channel.send_response oc in
   let show_message = Channel.show_message oc in
-
+  let shutdown = ref false in
   let client_capabilities = ref None in
   let project_root = Sys.getcwd () in
 
@@ -242,6 +242,13 @@ let start () =
     | (None, `Initialized _) ->
        show_message Lsp.MessageType.Info "Language server initialized"
 
+    | (Some id, `Shutdown _) ->
+       shutdown := true;
+       response_result_message id (`ShutdownResponse None)
+       |> Lsp_j.string_of_response_message
+       |> send_response
+    | (_, `Exit _) ->
+       if !shutdown then exit 0 else exit 1
     | (Some id, `CompletionRequest params) ->
        let uri =
          params
