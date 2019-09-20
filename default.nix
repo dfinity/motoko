@@ -256,8 +256,6 @@ rec {
 
   qc-actorscript = haskellPackages.callCabal2nix "qc-actorscript" test/random { };
 
-  replay-option = if replay != 0 then " --quickcheck-replay=${toString replay}" else "";
-
   tests = stdenv.mkDerivation {
     name = "tests";
     src = subpath ./test;
@@ -288,7 +286,8 @@ rec {
         export JSCLIENT=${js-client}
         asc --version
         make parallel
-        qc-actorscript${replay-option}
+        qc-actorscript${nixpkgs.lib.optionalString (replay != 0)
+          " --quickcheck-replay=${toString replay}"}
         cp -R ${subpath ./test/lsp-int/test-project} test-project
         find ./test-project -type d -exec chmod +w {} +
         lsp-int ${as-ide}/bin/as-ide ./test-project
