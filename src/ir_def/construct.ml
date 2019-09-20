@@ -118,6 +118,18 @@ let replyE e =
     note = { note_typ = T.unit; note_eff = eff e }
   }
 
+let rejectE e =
+  { it = PrimE (OtherPrim "reject", [e]);
+    at = no_region;
+    note = { note_typ = T.unit; note_eff = eff e }
+  }
+
+let error_codeE () =
+  { it = PrimE (OtherPrim "error_code", []);
+    at = no_region;
+    note = { note_typ = T.Prim T.Int32; note_eff = T.Triv }
+  }
+
 
 (* tuples *)
 

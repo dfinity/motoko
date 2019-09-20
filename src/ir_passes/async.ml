@@ -67,12 +67,12 @@ module Transform(Platform : sig val platform : platform end) = struct
   let sys_replyE v =
     match platform with
     | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
-    | V2 -> (*assertE (boolE false)*) replyE v
+    | V2 -> replyE v
 
   let sys_rejectE e =
     match platform with
     |  V1 -> assertE (boolE false) (* used in V1 to cause traps on non-local throws *)
-    |  V2 -> assertE (boolE false) (* failwith "NYI" (* TODO: call dedicated prim *) *)
+    |  V2 -> rejectE e (* failwith "NYI" (* TODO: call dedicated prim *) *)
 
   (*=======
   (* Explicit invocation of reply and call System API functions;
@@ -108,8 +108,12 @@ module Transform(Platform : sig val platform : platform end) = struct
               note = {
                 note_typ = T.Variant (T.catchErrorCodes);
                 note_eff = T.Triv }
-            };
-    | V2 -> failwith "NYI" (* TODO: call dedicated prim *)
+            }
+    | V2 -> callE
+              (idE "@int32ToErrorCode"
+                 (T.Func(T.Local,T.Returns,[],[T.Prim T.Int32],[T.Variant T.catchErrorCodes])))
+              []
+              (error_codeE())
 
   let errorMessageE e =
   { it = PrimE (OtherPrim "errorMessage", [e]);

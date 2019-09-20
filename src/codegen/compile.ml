@@ -2909,7 +2909,9 @@ module Dfinity = struct
       E.add_func_import env "debug" "print" [I32Type; I32Type] [];
       E.add_func_import env "msg" "arg_data_size" [I64Type] [I32Type];
       E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] []
+      E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
+      E.add_func_import env "msg" "reject" [I64Type; I32Type] [];
+      E.add_func_import env "msg" "error_code" [I64Type] [I32Type]
     | AncientMode ->
       E.add_func_import env "test" "print" [I32Type] [];
       E.add_func_import env "test" "show_i32" [I32Type] [I32Type];
@@ -6090,6 +6092,19 @@ and compile_exp (env : E.t) ae exp =
       SR.unit,
       compile_exp_vanilla env ae e ^^
       Serialization.serialize env [e.note.note_typ]
+
+    | OtherPrim "reject", [e] ->
+      SR.unit,
+      Dfinity.get_api_nonce ^^
+      compile_exp_vanilla env ae e ^^
+      G.i Drop ^^ (* TODO: don't drop but extract payload, once reject complies with spec *)
+      compile_unboxed_const 4l (* CANISTER_REJECT *) ^^
+      Dfinity.system_call env "msg" "reject"
+
+    | OtherPrim "error_code", [] ->
+      SR.UnboxedWord32,
+      Dfinity.get_api_nonce ^^
+      Dfinity.system_call env "msg" "error_code"
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)

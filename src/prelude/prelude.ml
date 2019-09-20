@@ -332,7 +332,7 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
 };
 
 // these will change
-type ErrorCode = {#error; #system};
+type ErrorCode = {#error; #system}; /* TBC */
 
 func error(message : Text) : Error =
   (prim "error" : Text -> Error)(message);
@@ -342,6 +342,13 @@ func errorCode(e : Error) : ErrorCode =
 
 func errorMessage(e : Error) : Text =
   (prim "errorMessage" : Error -> Text)(e);
+
+func @int32ToErrorCode(i : Int32) : ErrorCode {
+  switch (i) {
+    case 4 /* CANISTER_REJECT */ #error;
+    case _ #system; /* TBC */
+  }
+};
 
 type Cont<T> = T -> () ;
 type Async<T> = (Cont<T>,Cont<Error>) -> ();

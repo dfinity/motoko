@@ -44,6 +44,8 @@ val asyncE : typ -> exp -> exp
 val assertE : exp -> exp
 val awaitE : typ -> exp -> exp -> exp
 val replyE : exp -> exp
+val rejectE : exp -> exp
+val error_codeE : unit -> exp
 val projE : exp ->  int -> exp
 val blockE : dec list -> exp -> exp
 val textE : string -> exp
