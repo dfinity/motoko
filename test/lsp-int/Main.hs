@@ -32,8 +32,8 @@ plainMarkup t =
 
 main :: IO ()
 main = do
-  [as_ide] <- getArgs
-  setCurrentDirectory "./lsp-int/test-project"
+  [as_ide, project] <- getArgs
+  setCurrentDirectory project
   runSession as_ide fullCaps "." $ do
     initRes <- initializeResponse
     doc <- openDoc "ListClient.as" "actorscript"

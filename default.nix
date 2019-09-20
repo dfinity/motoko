@@ -289,7 +289,9 @@ rec {
         asc --version
         make parallel
         qc-actorscript${replay-option}
-        lsp-int ${as-ide}/bin/as-ide
+        cp -R ${subpath ./test/lsp-int/test-project} test-project
+        find ./test-project -type d -exec chmod +w {} +
+        lsp-int ${as-ide}/bin/as-ide ./test-project
       '';
 
     installPhase = ''
