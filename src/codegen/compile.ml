@@ -106,7 +106,7 @@ The fields fall into the following categories:
 
 (* Before we can define the environment, we need some auxillary types *)
 
-type mode = WasmMode | AncientMode | ICMode
+type mode = WasmMode | WASIMode | AncientMode | ICMode
 
 
 module E = struct
@@ -686,7 +686,7 @@ module RTS = struct
         | ICMode ->
           E.call_import env "debug" "print" ^^
           G.i Unreachable
-        | WasmMode -> G.i Unreachable
+        | WasmMode | WASIMode -> G.i Unreachable
       )
     ) in
     E.add_export env (nr {
@@ -2992,7 +2992,9 @@ module Dfinity = struct
       E.add_func_import env "func" "internalize" [I32Type; I32Type] [];
       E.add_func_import env "func" "externalize" [I32Type] [I32Type];
       E.add_func_import env "func" "bind_i32" [I32Type; I32Type] [I32Type]
-    | _ -> ()
+    | WASIMode ->
+      E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
+    | WasmMode -> ()
 
   let system_call env modname funcname = E.call_import env modname funcname
 
@@ -3015,7 +3017,25 @@ module Dfinity = struct
 
   let prim_print env =
     match E.mode env with
-    | WasmMode -> G.i Drop
+    | WasmMode -> G.nop
+    | WASIMode ->
+      Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
+        Stack.with_words env "io_vec" 1l (fun get_iovec_ptr ->
+          get_iovec_ptr ^^
+          get_str ^^ Text.payload_ptr_unskewed ^^
+          G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+          get_iovec_ptr ^^
+          get_str ^^ Heap.load_field (Text.len_field) ^^
+          G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+
+          compile_unboxed_const 1l (* stdout *) ^^
+          get_iovec_ptr ^^
+          compile_unboxed_const 1l (* one string *) ^^
+          get_iovec_ptr ^^ (* out for bytes written, we ignore that *)
+          E.call_import env "wasi_unstable" "fd_write" ^^
+          G.i Drop
+        )
+      )
     | ICMode ->
       Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
         get_str ^^ Text.payload_ptr_unskewed ^^
@@ -3028,23 +3048,26 @@ module Dfinity = struct
 
   (* For debugging *)
   let compile_static_print env s =
-      Text.lit env s ^^ prim_print env
+    Text.lit env s ^^ prim_print env
 
   let _compile_println_int env =
-      system_call env "test" "show_i32" ^^
-      system_call env "test" "print" ^^
-      compile_static_print env "\n"
+    system_call env "test" "show_i32" ^^
+    system_call env "test" "print" ^^
+    compile_static_print env "\n"
 
   let trap_with env s =
-    if E.mode env = WasmMode
-    then G.i Unreachable
-    else compile_static_print env (s ^ "\n") ^^ G.i Unreachable
+    compile_static_print env (s ^ "\n") ^^
+    G.i Unreachable
 
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "mem";
+      name = Wasm.Utf8.decode (
+        match E.mode env with
+        | WASIMode -> "memory"
+        | _  -> "mem"
+      );
       edesc = nr (MemoryExport (nr 0l))
     });
     E.add_export env (nr {
@@ -4092,7 +4115,7 @@ module Serialization = struct
         (* Copy out the bytes *)
         reply_with_data env get_data_start get_data_size
 
-      | WasmMode -> assert false
+      | WasmMode | WASIMode -> assert false
     )
 
   let deserialize env ts =
@@ -4833,7 +4856,7 @@ module FuncDec = struct
         (* Collect garbage *)
         G.i (Call (nr (E.built_in env "collect")))
       ))
-    | WasmMode -> assert false
+    | WasmMode | WASIMode -> assert false
 
   let declare_dfinity_type env has_closure fi =
     if E.mode env = AncientMode then
@@ -6841,6 +6864,6 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
       Dfinity.export_start_stub env;
       None
     | ICMode -> Dfinity.export_start env start_fi; None
-    | WasmMode -> Some (nr start_fi) in
+    | WasmMode | WASIMode -> Some (nr start_fi) in
 
   conclude_module env module_name start_fi_o

@@ -5,6 +5,8 @@
   replay ? 0
 }:
 
+let nixpkgs_newer = (import ./nix/nixpkgs-newer.nix){}; in
+
 let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
 let stdenv = nixpkgs.stdenv; in
@@ -302,7 +304,7 @@ rec {
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
-
+  wasmtime = nixpkgs_newer.wasmtime;
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";

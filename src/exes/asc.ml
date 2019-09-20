@@ -72,6 +72,9 @@ let argspec = Arg.align
   "-ancient-system-api",
     Arg.Unit (fun () -> compile_mode := Pipeline.AncientMode),
       " use the ancient DFINITY system API (dvm)";
+  "-wasi-system-api",
+    Arg.Unit (fun () -> compile_mode := Pipeline.WASIMode),
+      " use the WASI system API (wasmtime)";
   "-multi-value", Arg.Set Codegen.Flags.multi_value, " use multi-value extension";
   "-no-multi-value", Arg.Clear Codegen.Flags.multi_value, " avoid multi-value extension";
 

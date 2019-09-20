@@ -19,7 +19,7 @@ function realpath() {
 
 
 ACCEPT=no
-API=wasm
+API=wasi
 IDL=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
@@ -27,6 +27,7 @@ AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export AS_LD
 WASM=${WASM:-wasm}
+WASMTIME=${WASMTIME:-wasmtime}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 JSCLIENT=${JSCLIENT:-$(realpath $(dirname $0)/../../dev/experimental/js-dfinity-client)}
@@ -53,6 +54,7 @@ while getopts "a12si" o; do
 done
 
 if [ $API = "wasm" ]; then EXTRA_ASC_FLAGS=-no-system-api; fi
+if [ $API = "wasi" ]; then EXTRA_ASC_FLAGS=-wasi-system-api; fi
 if [ $API = "ancient" ]; then EXTRA_ASC_FLAGS=-ancient-system-api; fi
 
 shift $((OPTIND-1))
@@ -75,6 +77,7 @@ function normalize () {
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
+    sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -214,6 +217,12 @@ do
               $DRUN_WRAPPER $out/$base.wasm $base.as > $out/$base.drun-run 2>&1
               normalize $out/$base.drun-run
               diff_files="$diff_files $base.drun-run"
+            elif [ $API = wasi ]
+            then
+              $ECHO -n " [wasm-run]"
+              $WASMTIME $out/$base.wasm > $out/$base.wasm-run 2>&1
+              normalize $out/$base.wasm-run
+              diff_files="$diff_files $base.wasm-run"
             else
               $ECHO -n " [wasm-run]"
               $WASM $out/$base.wasm  > $out/$base.wasm-run 2>&1
