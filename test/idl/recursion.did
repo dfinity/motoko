@@ -8,6 +8,6 @@ type tree = variant {
 };
 type s = service { f : t; g : (list) -> (B,tree,stream); };
 type t = func (server : s) -> ();
-type stream = opt record {head:nat; next:func ()-> (stream) pure};
+type stream = opt record {head:nat; next:func ()-> (stream) query};
 
 service A : s
