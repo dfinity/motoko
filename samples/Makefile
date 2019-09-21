@@ -14,9 +14,11 @@ all:
 	@for sample in $(SAMPLES); do \
 	  echo "$(ASC) $(ASC_FLAGS) $$sample.as >$$sample.txt 2>&1"; \
 	  $(ASC) $(ASC_FLAGS) $$sample.as >$$sample.txt 2>&1; \
+	  cat $$sample.txt; \
 	done
 	@for dir in $(SUBDIRS); do \
-	  make -C  $$dir ; \
+	  echo "make -s -C $$dir"; \
+	  make -s -C $$dir ; \
 	done
 
 clean:
