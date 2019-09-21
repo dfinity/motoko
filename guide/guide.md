@@ -1,4 +1,4 @@
-% ActorScript’s Users Guide
+% Language Reference Guide
 % [DFINITY Foundation](https://dfinity.org/)
 
 <!---
@@ -6,7 +6,7 @@ TODO
 * use menhir --only-preprocess-uu parser.mly followed by sed to create concrete grammar
 * perhaps use notions of left-evaluation and evaluation to talk about variable deref in just on place?
 * perhaps just spell out left-to-right evaluation, trap propagating to avoid all the lurid detail in each expression
--->
+
 TODO:
 
 * [X] *Sort* primitives and operations as arithmetic (A), boolean (L), bitwise (B) and comparable (C) and use these sorts to concisely present sorted operators (unop, binop, relop, a(ssing)op) etc.
@@ -17,96 +17,90 @@ TODO:
 * [ ] Import expressions
 * [ ] Modules
 * [ ] Prelude
-
+-->
 # Introduction
 
-ActorScript is a new, general purpose programming language for the
-Dfinity platform.
+The *internet computer* is a network of connected computers that communicate securely and provide processing services to registered users, developers, and other computers. 
+If you think of the internet computer as an infrastructure platform, it is similar to a public cloud provider, like Amazon Web Services (AWS), Google Cloud Platform (GCP), or Microsoft Azure, or a private cloud managed internally by private organizations. 
+Unlike a public or private cloud, however, the internet computer platform is not owned and operated by a single private company. 
+Its architecture enables multiple computers to operate like one, very powerful, virtual machine that does not dependent on legacy technologies that are vulnerable to attack.
+
+=== Why develop applications to run on the internet computer?
+
+For programmers and software developers, the **internet computer** platform provides unique capabilities and opportunities within a framework that simplifies how you can design, build, and deploy applications. 
+
+*{proglang}* is a programming language that has been specifically designed for writing applications, services, and microservices that run on the **internet computer** platform and that take full advantage of the unique features that the **internet computer** provides, such as orthogonal persistence, autonomous operation, and tamper-proof message handling. For more information about the unique features of the **internet computer** along with tutorials and examples to help you develop programs that make use of them, see the _Developer's Guide_.
+
+{proglang} provides:
+
+* A high-level language for programming applications to run on the internet computer platform.
+
+* A simple design that uses familiar syntax that is easy for programmers to learn.
+
+* A well-constructed *actor-based* programming model optimized for efficient message handling.
+
+* An integrated approach to using compiled WebAssembly code to run autonomous applications.
+
+* A flexible architecture that anticipates future extensions and improvement to WebAssembly.
 
 ## Why a new language?
 
-Dfinity has chosen WebAssembly as its low-level virtual machine.
+The internet computer provides a network platform that can support programs written in different languages. 
+The only requirement is that the program must support compiling to WebAssembly code. 
+WebAssembly (commonly-abbreviated as Wasm) is a low-level computer instruction format for virtual machines. 
+Because WebAssembly code is designed to provide portable low-level instructions that enable client and server applications to be deployed on the web, it is a natural fit for deploying applications that are intended to run on the internet computer platform. 
+However, most of the higher-level languages--like C, C++, and Rust--that support compiling to WebAssembly are either too unsafe (for example, C or C&#43;&#43;) or too complex (for example, Rust) for developers who want to deliver secure applications with minimal overhead.
 
-The currently
-available compilers targeting WebAssembly are for languages that are
-either too unsafe (C, C++) or too complex (Rust) for mainstream
-programmers.
+To address the need for correctness without complexity, {company-id} has designed its own *{proglang}* programming language. *{proglang}* provides a simple and expressive alternative to other programming languages that is easy to learn whether you are a new or experienced programmer.
+=== Support for other languages
 
-To promote correctness and reduce complexity, Dfinity is designing its own language, *ActorScript*, that is safe and expressive, yet simple and approachable to mainstream programmers.
+WebAssembly is language-agnostic. 
+It does not require a high-level type system for language inter-operation. 
+Although {proglang} is specifically designed to compile to WebAssembly and make it easy to write programs to run on the internet computer, it just one of many languages you can use to develop applications for the internet computer platform.
 
-### Interoperability
+To support multiple languages and typed, cross-language communication, {company-id} also provides an *Interface Definition Language* (IDL).
+The {proglang} compiler automates the production and consumption of IDL files using the type signatures in {proglang} programs and the structure of imported IDL interfaces.
 
-ActorScript is just one of hopefully many languages able to run on the Dfinity platform.
+For information about the *Interface Definition Language* interfaces, see XXX.
 
-Since WebAssembly is language agnostic and, unlike other virtual machines, does not mandate a high-level type system for language interoperation, Dfinity will provide an *Interface Definition Language* to support typed, cross-language communication.
+== Highlights and important features
 
-The ActorScript compiler will automate the production and consumption of IDL files, driven by type signatures ActorScript programs and the structure of imported IDL interfaces.
+Although {proglang} is, strictly-speaking, a new language, you might find it is similar to a language you already know. For example, the {proglang} syntax is similar to coding using a functional programming language such as OCaml (Objective Caml).
+It also draws on elements that are common in other, more familiar, languages, including JavaScript, TypeScript, C#, Swift, Pony, ML, and Haskell.
+Unlike other programming languages, however, {proglang} extends and optimizes features that are uniquely suited to the internet computer platform.
 
-The IDL language is currently under design and outside the scope of this document.
+=== Actors and objects
 
+One of the most important principles to keep in mind when preparing to use {proglang} is that it is an *actor-based* programming model. 
+An actor is a special kind of object that can query and update fields) remotely and asynchronously.
+All communication with and between actors involves passing messages asynchronously, in an isolated state, over the network using the internet computer's messaging protocol.
+An actor’s messages are processed in sequence, so state modifications never cause race conditions.
 
-## Design Goals
+Classes can be used to produce object of a predetermined type, with a predetermined interface and behavior. 
+Because actors are essentially objects, you can also define actor classes. 
+In general, each actor object is used to create one application which is then deployed as a *canister* containing compiled WebAssembly, some environment configuration information, and interface bindings.
+For more information about the developing applications and deploying applications, see the _Developer's Guide_.
 
-ActorScript provides:
+=== Key language features
 
-* A high-level language for programming Dfinity applications
-
-* A simple ("K.I.S.S.") design and familiar syntax for average programmers
-
-* Good and convenient support for the actor model embodied in Dfinity canisters
-
-* A good fit for underlying Wasm and Dfinity execution model
-
-* A forward looking design that anticipates future extensions to WebAssembly
-
-## Key Features
-
-The key language features of ActorScript are:
+Some of the other important language features of {proglang} include the following:
 
 * JavaScript/TypeScript-style syntax.
-
-* Automatic memory management (by precise garbage collection).
-
-* Strong, static typing with parametric polymorphism, subtype polymorphism and structural typing.
-
-* Unbounded and bounded numeric types with explicit conversions
-  between them. Bounded numeric types are overflow-checked.
-
-* Imperative programming features such a mutable variables and arrays
-  and flexible, local control flow constructs (`return`, `break` and `continue`).
-
-* Functions (and messages) are first-class values, argument evaluation
-  is strict (call-by-value).
-
-* Pattern matching on scalar and compound values.
-
+* Automatic memory management by precise garbage collection between messages.
+* Bounded polymorphic type system that can assign types without explicit type annotations. 
+Strong, static typing ensures type safety and includes subtype polymorphism, and structural typing.
+Unbounded and bounded numeric types with explicit conversions between
+them.
+Bounded numeric types are checked for overflow.
+* Support for imperative programming features, including mutable variables and arrays,
+and local control flow constructs, such as `+return+`, `+break+` and
+`+continue+`.
+* Functions and messages are first-class values. Call-by-value argument evaluation
+is strict. 
+Pattern-matching is supported for scalar and compound values.
 * A simple, class-based object system without inheritance.
-
-* The value of a reference can never implicitly be `null`,
-  preventing a large class of `null`-reference failures.
-  Instead, an explicitly handled, possibly `null`, *option type* `?<type>` is provided.
-
-* Classes can be actors (canisters).
-
-* An Actor based concurrency model:
-
-  * Actor state is isolated.
-
-  * All communication with and between actors is by message passing (never through shared state).
-
-  * An actor's messages are processed in sequence, so state modifications are
-     always data-race free.
-
-* Message passing is asynchronous (to hide network latency).
-
-* A familiar `async`/`await` constructs enables sequential programming with asynchronous messaging.
-
-Like most programming languages, ActorScript borrows features from others and
-draws inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell.
-
-# ActorScript Syntax (Sketch)
-
-Productions marked * probably deferred to later versions.
+* The value of a reference can never implicitly be `+null+` to prevent many common `+null+`-reference failures. Instead, the language enables you to explicitly handle `+null+` reference values using `+null+`, _option type_ `+?<type>+`.
+* Asynchronous message handling enables sequential programming with familiar `+async+` and `+await+` constructs and `promise` replies.
 
 # Lexical conventions
 
