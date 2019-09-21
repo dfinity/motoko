@@ -1,9 +1,9 @@
 rec {
-  rev = "3cd3d1eeb6b26f3acb9e9e16cd7220cd5eb07148";
+  rev = "e0c7712eac67c6b820d9d1020f46bac96fd8cede";
 
   src = builtins.fetchTarball {
-    sha256 = "0671riiyzw2y3vw2apxhnq6vq67py64cqkgwiajfnw5qcrva86pw";
-    url = "https://github.com/dfinity-lab/nixpkgs/archive/${rev}.tar.gz";
+    sha256 = "08rcnqxkninl5a560ss39s4nbqf0a677q6qh1fh7i0lr9pxf6aan";
+    url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
   };
 
   nixpkgs = import src;
