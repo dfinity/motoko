@@ -5,7 +5,7 @@
   replay ? 0
 }:
 
-let nixpkgs_wasi = (import ./nix/nixpkgs-wasi.nix){}; in
+let nixpkgs_wasi = (import ./nix/nixpkgs-wasi.nix){ system = nixpkgs.system; }; in
 
 let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
