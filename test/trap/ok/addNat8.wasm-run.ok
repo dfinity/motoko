@@ -1,1 +1,1 @@
-_out/addNat8.wasm:0x___: runtime trap: unreachable executed
+error while processing main module _out/addNat8.wasm: Instantiation error: Trap occurred while invoking start function: wasm trap at 0x___:

@@ -5,7 +5,7 @@
   replay ? 0
 }:
 
-let nixpkgs_newer = (import ./nix/nixpkgs-newer.nix){}; in
+let nixpkgs_wasi = (import ./nix/nixpkgs-wasi.nix){}; in
 
 let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
@@ -177,6 +177,7 @@ rec {
         js-client
         dvm
         drun
+        wasmtime
         qc-actorscript
       ] ++
       llvmBuildInputs;
@@ -304,7 +305,7 @@ rec {
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
-  wasmtime = nixpkgs_newer.wasmtime;
+  wasmtime = nixpkgs_wasi.wasmtime;
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";

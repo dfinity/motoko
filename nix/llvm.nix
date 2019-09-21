@@ -12,7 +12,7 @@ let overlay = self: super:
     );
   }; in
 
-let pkgs = (import ./nixpkgs-newer.nix) {
+let pkgs = (import ./nixpkgs-llvm.nix) {
   system = system;
   overlays = [overlay];
  }; in
