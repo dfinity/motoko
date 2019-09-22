@@ -107,6 +107,10 @@ and prim =
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
+  | ICReplyPrim of Type.typ
+  | ICRejectPrim
+  | ICErrorCodePrim
+
 
 (* Declarations *)
 

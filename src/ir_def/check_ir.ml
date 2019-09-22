@@ -342,6 +342,20 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env exp1;
       typ exp1 <: ot;
       T.Prim T.Text <: t
+    | ICReplyPrim ot, [exp1] ->
+      check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
+      check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
+      (* TODO: check against expected reply typ; note this may not be env.ret_tys. *)
+      check_exp env exp1;
+      typ exp1 <: ot;
+      T.unit <: t
+    | ICRejectPrim, [exp1] ->
+      check (not (env.flavor.has_async_typ)) "ICRejectPrim in async flavor";
+      check_exp env exp1;
+      typ exp1 <: T.text;
+      T.unit <: t
+    | ICErrorCodePrim, [] ->
+      T.Prim (T.Int32) <: t
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"

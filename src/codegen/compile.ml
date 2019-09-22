@@ -6148,22 +6148,27 @@ and compile_exp (env : E.t) ae exp =
     | p, es when Error.is_error_prim p ->
       Error.compile_prim compile_exp_vanilla env ae p es
 
-    | OtherPrim "reply", [e] ->
+    | ICReplyPrim t, [e] ->
+      assert (E.mode env = ICMode);
       SR.unit,
       compile_exp_vanilla env ae e ^^
-      Serialization.serialize env [e.note.note_typ]
+      Serialization.serialize env [t]
 
-    | OtherPrim "reject", [e] ->
+    | ICRejectPrim, [e] ->
+      assert (E.mode env = ICMode);
       SR.unit,
-      Dfinity.get_api_nonce ^^
+      Dfinity.get_api_nonce env ^^
       compile_exp_vanilla env ae e ^^
-      G.i Drop ^^ (* TODO: don't drop but extract payload, once reject complies with spec *)
+      G.i Drop ^^ (* TODO:
+        https://github.com/dfinity-lab/actorscript/issues/679
+        don't drop but extract payload, once reject complies with spec *)
       compile_unboxed_const 4l (* CANISTER_REJECT *) ^^
       Dfinity.system_call env "msg" "reject"
 
-    | OtherPrim "error_code", [] ->
+    | ICErrorCodePrim, [] ->
+      assert (E.mode env = ICMode);
       SR.UnboxedWord32,
-      Dfinity.get_api_nonce ^^
+      Dfinity.get_api_nonce env ^^
       Dfinity.system_call env "msg" "error_code"
 
     (* Unknown prim *)

@@ -43,9 +43,9 @@ val primE : Ir.prim -> exp list -> exp
 val asyncE : typ -> exp -> exp
 val assertE : exp -> exp
 val awaitE : typ -> exp -> exp -> exp
-val replyE : exp -> exp
-val rejectE : exp -> exp
-val error_codeE : unit -> exp
+val ic_replyE : typ -> exp -> exp
+val ic_rejectE : exp -> exp
+val ic_error_codeE : unit -> exp
 val projE : exp ->  int -> exp
 val blockE : dec list -> exp -> exp
 val textE : string -> exp

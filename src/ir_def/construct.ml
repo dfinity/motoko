@@ -85,6 +85,9 @@ let as_seqP p =
 let primE prim es =
   let ty = match prim with
     | ShowPrim _ -> T.text
+    | ICReplyPrim _ -> T.unit
+    | ICRejectPrim -> T.unit
+    | ICErrorCodePrim -> T.Prim T.Int32
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -112,20 +115,20 @@ let awaitE typ e1 e2 =
     note = { note_typ = T.unit; note_eff = max_eff (eff e1) (eff e2) }
   }
 
-let replyE e =
-  { it = PrimE (OtherPrim "reply", [e]);
+let ic_replyE t e =
+  { it = PrimE (ICReplyPrim t, [e]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = eff e }
   }
 
-let rejectE e =
-  { it = PrimE (OtherPrim "reject", [e]);
+let ic_rejectE e =
+  { it = PrimE (ICRejectPrim, [e]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = eff e }
   }
 
-let error_codeE () =
-  { it = PrimE (OtherPrim "error_code", []);
+let ic_error_codeE () =
+  { it = PrimE (ICErrorCodePrim, []);
     at = no_region;
     note = { note_typ = T.Prim T.Int32; note_eff = T.Triv }
   }

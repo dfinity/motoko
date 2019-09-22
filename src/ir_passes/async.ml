@@ -64,15 +64,15 @@ module Transform(Platform : sig val platform : platform end) = struct
      implemented (as far as possible) for V1;
      TBC for V2 *)
 
-  let sys_replyE v =
+  let sys_replyE t v =
     match platform with
     | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
-    | V2 -> replyE v
+    | V2 -> ic_replyE t v
 
   let sys_rejectE e =
     match platform with
     |  V1 -> assertE (boolE false) (* used in V1 to cause traps on non-local throws *)
-    |  V2 -> rejectE e
+    |  V2 -> ic_rejectE e
 
   let sys_callE v1 typs vs reply reject =
     match platform with
@@ -93,7 +93,7 @@ module Transform(Platform : sig val platform : platform end) = struct
               (idE "@int32ToErrorCode"
                  (T.Func(T.Local,T.Returns,[],[T.Prim T.Int32],[T.Variant T.catchErrorCodes])))
               []
-              (error_codeE())
+              (ic_error_codeE())
 
   let errorMessageE e =
   { it = PrimE (OtherPrim "errorMessage", [e]);
@@ -285,7 +285,8 @@ module Transform(Platform : sig val platform : platform end) = struct
     | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
     | ShowPrim ot -> ShowPrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
-    | OtherPrim s -> OtherPrim s
+    | ICReplyPrim t -> ICReplyPrim(t_typ t)
+    | p -> p
 
   and t_field {lab; typ} =
     { lab; typ = t_typ typ }
@@ -427,7 +428,7 @@ module Transform(Platform : sig val platform : platform end) = struct
                             (* wrap shared reply function in local function *)
                             (v --> (reply -*- v))
                           else
-                            (v --> (sys_replyE v)) in
+                            (v --> (sys_replyE res_typ v)) in
                   let e = fresh_var "e" T.catch in
                   let r = if add_reject_parameter then
                             (* wrap shared reject function in local function *)
