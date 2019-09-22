@@ -65,7 +65,7 @@ This is a summary of the grammar proposed:
 <actortype> ::= { <methtype>;* }
 <methtype>  ::= <name> : (<functype> | <id>)
 <functype>  ::= ( <argtype>,* ) -> ( <argtype>,* ) <funcann>*
-<funcann>   ::= oneway | pure
+<funcann>   ::= oneway | query
 <argtype>   ::= <datatype>
 <fieldtype> ::= <nat> : <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
@@ -161,8 +161,8 @@ Identifiers cannot be keywords of the IDL grammar. In case a name is needed that
 ```
 service {
   addUser : (name : text, age : nat8) -> (id : nat64);
-  userName : (id : nat64) -> (text) pure;
-  userAge : (id : nat64) -> (nat8) pure;
+  userName : (id : nat64) -> (text) query;
+  userAge : (id : nat64) -> (nat8) query;
   deleteUser : (id : nat64) -> () oneway;
 }
 ```
@@ -178,11 +178,11 @@ service {
 
 #### Structure
 
-A function type describes the list of parameters and results and their respective types. It can optionally be annotated to be *pure*, which indicates that it does not modify any state and can potentially be executed more efficiently (e.g., on cached state). (Other annotations may be added in the future.)
+A function type describes the list of parameters and results and their respective types. It can optionally be annotated to be *query*, which indicates that it does not modify any state and can potentially be executed more efficiently (e.g., on cached state). (Other annotations may be added in the future.)
 
 ```
 <functype> ::= ( <argtype>,* ) -> ( <argtype>,* ) <funcann>*
-<funcann>  ::= oneway | pure
+<funcann>  ::= oneway | query
 <argtype>  ::= <datatype>
 ```
 We identify `<funcann>` lists in a function type up to reordering.
@@ -945,7 +945,7 @@ T : <methtype> -> i8*
 T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
 
 T : <funcann> -> i8*
-T(pure)   = i8(1)
+T(query)   = i8(1)
 T(oneway) = i8(2)
 
 T* : <X>* -> i8*
