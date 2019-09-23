@@ -367,7 +367,6 @@ module E = struct
     env.end_of_static_memory := Int32.add ptr aligned;
     ptr
 
-
   let add_mutable_static_bytes (env : t) data : int32 =
     let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
@@ -5014,7 +5013,7 @@ module Error = struct
     match p, es with
     | OtherPrim "error", [e] ->
       SR.UnboxedTuple 2,
-      Variant.inject env "error" (compile_exp env ae e) ^^
+      Variant.inject env "error" Tuple.compile_unit ^^
       compile_exp env ae e
     | OtherPrim "errorCode", [e] ->
       SR.Vanilla,
