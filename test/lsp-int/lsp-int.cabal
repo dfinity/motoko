@@ -18,7 +18,9 @@ executable lsp-int
                      , text ^>=1.2.3.1
                      , hspec
                      , directory
+                     , lens
                      , data-default
+                     , haskell-lsp-types
                      , lsp-test ^>=0.7.0.0
   -- hs-source-dirs:
   default-language:    Haskell2010
