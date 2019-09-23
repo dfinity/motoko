@@ -3104,6 +3104,23 @@ module Dfinity = struct
     compile_unboxed_const fi ^^
     system_call env "func" "externalize"
 
+  let error_code_CANISTER_REJECT = 4l (* Api's CANISTER_REJECT *)
+
+  let reject env arg_instrs =
+      SR.unit,
+      get_api_nonce env ^^
+      arg_instrs ^^
+      G.i Drop ^^ (* TODO:
+        https://github.com/dfinity-lab/actorscript/issues/679
+        don't drop but extract payload, once reject complies with spec *)
+      compile_unboxed_const error_code_CANISTER_REJECT ^^
+      system_call env "msg" "reject"
+
+  let error_code env =
+      SR.UnboxedWord32,
+      get_api_nonce env ^^
+      system_call env "msg" "error_code"
+
 end (* Dfinity *)
 
 module OrthogonalPersistence = struct
@@ -6157,20 +6174,11 @@ and compile_exp (env : E.t) ae exp =
 
     | ICRejectPrim, [e] ->
       assert (E.mode env = ICMode);
-      SR.unit,
-      Dfinity.get_api_nonce env ^^
-      compile_exp_vanilla env ae e ^^
-      G.i Drop ^^ (* TODO:
-        https://github.com/dfinity-lab/actorscript/issues/679
-        don't drop but extract payload, once reject complies with spec *)
-      compile_unboxed_const 4l (* CANISTER_REJECT *) ^^
-      Dfinity.system_call env "msg" "reject"
+      Dfinity.reject env (compile_exp_vanilla env ae e)
 
     | ICErrorCodePrim, [] ->
       assert (E.mode env = ICMode);
-      SR.UnboxedWord32,
-      Dfinity.get_api_nonce env ^^
-      Dfinity.system_call env "msg" "error_code"
+      Dfinity.error_code env
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
