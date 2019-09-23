@@ -78,7 +78,8 @@
     :major-modes '(actorscript-mode)
     :server-id 'asls)))
 
-(use-package lsp-ui :ensure t :commands lsp-ui-mode)
+(use-package lsp-ui :ensure t :commands lsp-ui-mode
+  :config (setq lsp-ui-sideline-enable nil))
 (use-package company :ensure t)
 (use-package company-lsp :ensure t :commands company-lsp)
 (use-package yasnippet :ensure t)
