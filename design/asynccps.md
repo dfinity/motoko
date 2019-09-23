@@ -105,7 +105,7 @@ The translation of trivial terms, `T[ _ ]`, is  homomorphic on all terms but `as
 Note `T[await _]`, `T[throw _]` and `T[try _ with _ -> _]`, are (deliberately) undefined.
 
 ```JS
-T[ async e ] = spawn (\t.CPS[e] @ ((\v.complete(t,v)),(\v.reject(t,e)))
+T[ async e ] = spawn (\t.CPS[e] @ ((\v.complete(t,v)),(\e.reject(t,e)))
 T[ x ]= x
 T[ c ] = c
 T[ \x.t ] = \x.T[t]
