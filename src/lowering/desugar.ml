@@ -125,6 +125,7 @@ and exp' at note = function
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
+  | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
@@ -132,6 +133,7 @@ and exp' at note = function
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
   | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
   | S.RetE e -> I.RetE (exp e)
+  | S.ThrowE e -> I.ThrowE (exp e)
   | S.AsyncE e -> I.AsyncE (exp e)
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)

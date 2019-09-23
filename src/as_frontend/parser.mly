@@ -95,8 +95,8 @@ let share_expfield (ef : exp_field) =
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT ASYNC BREAK CASE CONTINUE LABEL
-%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN
+%token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL
+%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
@@ -462,6 +462,14 @@ exp_nondec(B) :
     { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp(bl) ELSE e2=exp(bl)
     { IfE(b, e1, e2) @? at $sloc }
+  | TRY e1=exp_nullary(ob) CATCH c=catch
+    { TryE(e1, [c]) @? at $sloc }
+(* TODO: enable multi-branch TRY (already supported by compiler)
+  | TRY e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
+    { TryE(e, cs) @? at $sloc }
+*)
+  | THROW e=exp(bl)
+    { ThrowE(e) @? at $sloc }
   | SWITCH e=exp_nullary(ob) LCURLY cs=seplist(case, semicolon) RCURLY
     { SwitchE(e, cs) @? at $sloc }
   | WHILE e1=exp_nullary(ob) e2=exp(bl)
@@ -485,9 +493,12 @@ exp(B) :
   | d=dec_var
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
-
 case :
   | CASE p=pat_nullary e=exp(bl)
+    { {pat = p; exp = e} @@ at $sloc }
+
+catch :
+  | p=pat_nullary e=exp(bl)
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field_nonvar :

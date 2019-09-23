@@ -156,6 +156,7 @@ let rec
   | AnnotE (exp1, _)
   | AsyncE exp1
   | AwaitE exp1
+  | ThrowE exp1
   | LoopE (exp1, None) ->
     exp env exp1
   | BinE (_, exp1, _, exp2)
@@ -180,6 +181,7 @@ let rec
     exp env exp1;
     exp env exp2;
     exp env exp3
+  | TryE (exp1, cases)
   | SwitchE (exp1, cases) ->
     exp env exp1;
     List.iter (fun c -> exp env c.it.exp) cases

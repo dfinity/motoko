@@ -14,7 +14,8 @@ let process_prog_result result =
       match result with
         Some(Value.Async a,_) -> begin
           match Lib.Promise.value_opt a.Value.result with
-          | Some v -> Counters.dump counters (Value.as_obj v)
+          | Some (Value.Ok v) -> Counters.dump counters (Value.as_obj v)
+          | Some _
           | None   -> ()
         end
       | _  -> ()
