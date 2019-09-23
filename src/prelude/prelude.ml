@@ -344,7 +344,7 @@ func errorMessage(e : Error) : Text =
   (prim "errorMessage" : Error -> Text)(e);
 
 func @int32ToErrorCode(i : Int32) : ErrorCode {
-  switch (i) {
+  switch (int32ToInt(i)) { /*TODO: conversion only to avoid bug in asc-js, TBR */
     case 4 /* CANISTER_REJECT */ #error;
     case _ #system; /* TBC */
   }
