@@ -5005,29 +5005,25 @@ module Error = struct
 
   (* Opaque type `Error` is represented as concrete type `(ErrorCode,Text)` *)
 
-  let is_error_prim p = match p with
-      | OtherPrim ("error" | "errorCode" | "errorMessage" | "make_error") -> true
-      | _ -> false
-
-  let compile_prim compile_exp env ae p es =
-    match p, es with
-    | OtherPrim "error", [e] ->
+  let compile_error env arg_instrs =
       SR.UnboxedTuple 2,
       Variant.inject env "error" Tuple.compile_unit ^^
-      compile_exp env ae e
-    | OtherPrim "errorCode", [e] ->
+      arg_instrs
+
+  let compile_errorCode arg_instrs =
       SR.Vanilla,
-      compile_exp env ae e ^^
+      arg_instrs ^^
       Tuple.load_n (Int32.of_int 0)
-    | OtherPrim "errorMessage", [e] ->
+
+  let compile_errorMessage arg_instrs =
       SR.Vanilla,
-      compile_exp env ae e ^^
+      arg_instrs ^^
       Tuple.load_n (Int32.of_int 1)
-    | OtherPrim "make_error", [e1; e2] ->
+
+  let compile_make_error arg_instrs1 arg_instrs2 =
       SR.UnboxedTuple 2,
-      compile_exp env ae e1 ^^
-      compile_exp env ae e2
-    | _ -> assert false
+      arg_instrs1 ^^
+      arg_instrs2
 
 end
 
@@ -6144,8 +6140,14 @@ and compile_exp (env : E.t) ae exp =
       )
 
     (* Error related prims *)
-    | p, es when Error.is_error_prim p ->
-      Error.compile_prim compile_exp_vanilla env ae p es
+    | OtherPrim "error", [e] ->
+      Error.compile_error env (compile_exp_vanilla env ae e)
+    | OtherPrim "errorCode", [e] ->
+      Error.compile_errorCode (compile_exp_vanilla env ae e)
+    | OtherPrim "errorMessage", [e] ->
+      Error.compile_errorMessage (compile_exp_vanilla env ae e)
+    | OtherPrim "make_error", [e1; e2] ->
+      Error.compile_make_error (compile_exp_vanilla env ae e1) (compile_exp_vanilla env ae e2)
 
     | ICReplyPrim t, [e] ->
       assert (E.mode env = ICMode);
