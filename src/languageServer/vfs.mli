@@ -4,7 +4,6 @@ type t
 
 type uri = string
 (* NOTE(Christoph): Track file version *)
-type virtual_file = string
 
 (** Creates a new virtual file system *)
 val empty: t
@@ -13,10 +12,13 @@ val empty: t
 val open_file: Lsp_t.text_document_did_open_params -> t -> t
 
 (** Reads a file from the vfs *)
-val read_file: uri -> t -> virtual_file option
+val read_file: uri -> t -> string option
 
 (** Updates the contents of a file in the vfs *)
 val update_file: Lsp_t.text_document_did_change_params -> t -> t
 
 (** Removes a file from the vfs *)
 val close_file: Lsp_t.text_document_did_close_params -> t -> t
+
+(** For tests *)
+val apply_change: string list -> Lsp_t.text_document_content_change_event -> string list

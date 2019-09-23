@@ -84,8 +84,6 @@ let as_seqP p =
 
 let primE prim es =
   let ty = match prim with
-    | DeserializePrim t -> t
-    | SerializePrim t -> T.Serialized t
     | ShowPrim _ -> T.text
     | _ -> assert false (* implement more as needed *)
   in
@@ -106,6 +104,12 @@ let awaitE typ e1 e2 =
   { it = PrimE (OtherPrim "@await", [e1; e2]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = max_eff (eff e1) (eff e2) }
+  }
+
+let replyE e =
+  { it = PrimE (OtherPrim "reply", [e]);
+    at = no_region;
+    note = { note_typ = T.unit; note_eff = eff e }
   }
 
 

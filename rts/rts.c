@@ -29,6 +29,11 @@ as_ptr as_str_of_cstr(const char * const s) {
   return r;
 }
 
+void idl_trap_with(const char *str) {
+  idl_trap(str, as_strlen(str));
+}
+
+
 // This is mostly to test static strings and access to the AS heap
 const char* RTS_VERSION = "0.1";
 

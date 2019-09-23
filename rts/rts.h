@@ -62,10 +62,11 @@ char *alloc(size_t n);
 
 /* IDL code */
 /*@ assigns \nothing; ensures \false ; */
-from_rts __attribute__ ((noreturn)) void idl_trap();
+from_rts __attribute__ ((noreturn)) void idl_trap(const char* str, size_t n);
 from_rts __attribute__ ((noreturn)) void bigint_trap();
 
 /** Functions used in multiple modules of the RTS */
 export void as_memcpy(char *str1, const char *str2, size_t n);
+export __attribute__ ((noreturn)) void idl_trap_with(const char *str1);
 
 #endif /* RTS_H */
