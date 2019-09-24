@@ -656,7 +656,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] []
+    E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type] []
 
   let system_exports env =
     E.add_export env (nr {
@@ -3915,9 +3916,10 @@ module Serialization = struct
         assert_prim_typ () ^^
         Opt.null
       | Any ->
-        (* TODO: Accept actually any type, and skip its values *)
-        assert_prim_typ () ^^
-        (* We can return essentially any value here *)
+        get_data_buf ^^ get_typtbl ^^ get_idltyp ^^
+        E.call_import env "rts" "skip_any" ^^
+
+        (* Any vanilla value works here *)
         Opt.null
       | Prim Text ->
         assert_prim_typ () ^^
