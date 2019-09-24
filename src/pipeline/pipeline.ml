@@ -82,6 +82,7 @@ let dump_ir flag prog_ir =
     else ()
 
 (* Parsing *)
+
 type rel_path = string
 
 type parse_result = (Syntax.prog * rel_path) Diag.result
@@ -119,9 +120,6 @@ let parse_file filename : parse_result =
   match result with
   | Ok prog -> Diag.return (prog, filename)
   | Error e -> Error [e]
-
-let parse_files =
-  Diag.traverse parse_file
 
 (* Import file name resolution *)
 
