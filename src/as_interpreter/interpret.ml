@@ -364,6 +364,7 @@ let check_call_conv_arg env exp v call_conv =
       (string_of_val env v)
     )
 
+module MakeInterpreter (Conf : sig val release : bool end) = struct
 
 let rec interpret_exp env exp (k : V.value V.cont) =
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
@@ -552,7 +553,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id.it env.labs)
   | DebugE exp1 ->
-    interpret_exp env exp1 k
+    if Conf.release then k V.unit else interpret_exp env exp1 k
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | ThrowE exp1 ->
@@ -900,3 +901,4 @@ let interpret_library flags scope (filename, p) : scope =
   in
   library_scope filename v scope
 
+end
