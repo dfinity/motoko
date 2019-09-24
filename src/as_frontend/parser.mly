@@ -95,7 +95,7 @@ let share_expfield (ef : exp_field) =
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL
+%token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
 %token IF IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED
@@ -458,6 +458,8 @@ exp_nondec(B) :
   | CONTINUE x=id
     { let x' = ("continue " ^ x.it) @@ x.at in
       BreakE(x', TupE([]) @? no_region) @? at $sloc }
+  | DEBUG e=exp(bl)
+    { DebugE(e) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp(bl) %prec IF_NO_ELSE
     { IfE(b, e1, TupE([]) @? no_region) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp(bl) ELSE e2=exp(bl)

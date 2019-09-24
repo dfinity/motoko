@@ -551,6 +551,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env' exp1 k
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id.it env.labs)
+  | DebugE exp1 ->
+    interpret_exp env exp1 k
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | ThrowE exp1 ->
