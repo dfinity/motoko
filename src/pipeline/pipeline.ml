@@ -261,7 +261,7 @@ let load_decl parse_one senv : load_decl_result =
 (* Configuration *)
 
 module type Conf = sig val release : bool end
-let conf () = (module struct let release = not !Flags.release_mode end : Conf)
+let conf () = (module struct let release = !Flags.release_mode end : Conf)
 
 (* Interpretation (Source) *)
 
