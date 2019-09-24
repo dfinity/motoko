@@ -367,7 +367,6 @@ module E = struct
     env.end_of_static_memory := Int32.add ptr aligned;
     ptr
 
-
   let add_mutable_static_bytes (env : t) data : int32 =
     let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
@@ -1179,15 +1178,15 @@ module Tagged = struct
     | Array ->
       begin match normalize ty with
       | (Con _ | Any) -> true
-      | (Array _ | Tup _ | Obj _) -> true
-      | (Prim _ | Opt _ | Variant _ | Func _ | Non) -> false
+      | (Array _ | Tup _) -> true
+      | (Prim _ |  Obj _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Text ->
       begin match normalize ty with
       | (Con _ | Any) -> true
-      | (Prim Text | Obj _) -> true
-      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
+      | (Prim Text) -> true
+      | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Object ->
@@ -2975,7 +2974,9 @@ module Dfinity = struct
       E.add_func_import env "debug" "print" [I32Type; I32Type] [];
       E.add_func_import env "msg" "arg_data_size" [I64Type] [I32Type];
       E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] []
+      E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
+      E.add_func_import env "msg" "reject" [I64Type; I32Type] [];
+      E.add_func_import env "msg" "error_code" [I64Type] [I32Type]
     | AncientMode ->
       E.add_func_import env "test" "print" [I32Type] [];
       E.add_func_import env "test" "show_i32" [I32Type] [I32Type];
@@ -3102,6 +3103,23 @@ module Dfinity = struct
   let static_message_funcref env fi =
     compile_unboxed_const fi ^^
     system_call env "func" "externalize"
+
+  let error_code_CANISTER_REJECT = 4l (* Api's CANISTER_REJECT *)
+
+  let reject env arg_instrs =
+      SR.unit,
+      get_api_nonce env ^^
+      arg_instrs ^^
+      G.i Drop ^^ (* TODO:
+        https://github.com/dfinity-lab/actorscript/issues/679
+        don't drop but extract payload, once reject complies with spec *)
+      compile_unboxed_const error_code_CANISTER_REJECT ^^
+      system_call env "msg" "reject"
+
+  let error_code env =
+      SR.UnboxedWord32,
+      get_api_nonce env ^^
+      system_call env "msg" "error_code"
 
 end (* Dfinity *)
 
@@ -4999,6 +5017,32 @@ open PatCode
 (* All the code above is independent of the IR *)
 open Ir
 
+(* Compiling Error primitives *)
+module Error = struct
+
+  (* Opaque type `Error` is represented as concrete type `(ErrorCode,Text)` *)
+
+  let compile_error env arg_instrs =
+      SR.UnboxedTuple 2,
+      Variant.inject env "error" Tuple.compile_unit ^^
+      arg_instrs
+
+  let compile_errorCode arg_instrs =
+      SR.Vanilla,
+      arg_instrs ^^
+      Tuple.load_n (Int32.of_int 0)
+
+  let compile_errorMessage arg_instrs =
+      SR.Vanilla,
+      arg_instrs ^^
+      Tuple.load_n (Int32.of_int 1)
+
+  let compile_make_error arg_instrs1 arg_instrs2 =
+      SR.UnboxedTuple 2,
+      arg_instrs1 ^^
+      arg_instrs2
+
+end
 
 module AllocHow = struct
   (*
@@ -6112,10 +6156,29 @@ and compile_exp (env : E.t) ae exp =
         G.i (Binary (Wasm.Values.I64 I64Op.And))
       )
 
-    | OtherPrim "reply", [e] ->
+    (* Error related prims *)
+    | OtherPrim "error", [e] ->
+      Error.compile_error env (compile_exp_vanilla env ae e)
+    | OtherPrim "errorCode", [e] ->
+      Error.compile_errorCode (compile_exp_vanilla env ae e)
+    | OtherPrim "errorMessage", [e] ->
+      Error.compile_errorMessage (compile_exp_vanilla env ae e)
+    | OtherPrim "make_error", [e1; e2] ->
+      Error.compile_make_error (compile_exp_vanilla env ae e1) (compile_exp_vanilla env ae e2)
+
+    | ICReplyPrim t, [e] ->
+      assert (E.mode env = ICMode);
       SR.unit,
       compile_exp_vanilla env ae e ^^
-      Serialization.serialize env [e.note.note_typ]
+      Serialization.serialize env [t]
+
+    | ICRejectPrim, [e] ->
+      assert (E.mode env = ICMode);
+      Dfinity.reject env (compile_exp_vanilla env ae e)
+
+    | ICErrorCodePrim, [] ->
+      assert (E.mode env = ICMode);
+      Dfinity.error_code env
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)

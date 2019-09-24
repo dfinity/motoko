@@ -56,6 +56,8 @@ let rec exp e = match e.it with
   | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
   | ImportE (f, fp)     -> "ImportE" $$ [Atom (if !fp = "" then f else !fp)]
+  | ThrowE e            -> "ThrowE"  $$ [exp e]
+  | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
 
 and pat p = match p.it with
   | WildP           -> Atom "WildP"
@@ -94,6 +96,8 @@ and lit (l:lit) = match l with
   | PreLit (s,p)  -> "PreLit"    $$ [ Atom s; Arrange_type.prim p ]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
+
+and catch c = "catch" $$ [pat c.it.pat; exp c.it.exp]
 
 and pat_field pf = pf.it.id.it $$ [pat pf.it.pat]
 

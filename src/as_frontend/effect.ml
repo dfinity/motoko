@@ -82,8 +82,10 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     max_eff e1 e2
   | AsyncE exp1 ->
     T.Triv
-  | AwaitE exp1 ->
-    T.Await
+  | ThrowE _
+  | TryE _
+  | AwaitE _ ->
+    T.Await (* TBR: perhaps we should rename the effect *)
 
 and effect_cases cases =
   match cases with

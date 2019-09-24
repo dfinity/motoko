@@ -68,6 +68,8 @@ and exp' rho e  = match e with
      let e' = exp rho' e in
      FuncE (x, s, tp, p', ts, e')
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
+  | ThrowE e            -> ThrowE (exp rho e)
+  | TryE (e, cs)        -> TryE (exp rho e, cases rho cs)
 
 and exps rho es  = List.map (exp rho) es
 

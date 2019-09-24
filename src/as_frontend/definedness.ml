@@ -81,10 +81,10 @@ let rec exp msgs e : f = match e.it with
   | VarE i              -> M.singleton i.it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
   | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
-  (* And break and return can be thought of as calling a continuation: *)
+  (* And break, return, throw can be thought of as calling a continuation: *)
   | BreakE (i, e)       -> eagerify (exp msgs e)
   | RetE e              -> eagerify (exp msgs e)
-
+  | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)
   | FuncE (_, s, tp, p, t, e) -> delayify (exp msgs e /// pat msgs p)
 
@@ -112,6 +112,7 @@ let rec exp msgs e : f = match e.it with
   | OrE (e1, e2)        -> exps msgs [e1; e2]
   | IfE (e1, e2, e3)    -> exps msgs [e1; e2; e3]
   | SwitchE (e, cs)     -> exp msgs e ++ cases msgs cs
+  | TryE (e, cs)        -> exp msgs e ++ cases msgs cs
   | WhileE (e1, e2)     -> exps msgs [e1; e2]
   | LoopE (e1, None)    -> exp msgs e1
   | LoopE (e1, Some e2) -> exps msgs [e1; e2]

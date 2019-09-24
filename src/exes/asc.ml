@@ -68,7 +68,7 @@ let argspec = Arg.align
   "-no-link", Arg.Clear link, " do not statically link-in runtime";
   "-no-system-api",
     Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
-      " do not import the any system API";
+      " do not import any system API";
   "-ancient-system-api",
     Arg.Unit (fun () -> compile_mode := Pipeline.AncientMode),
       " use the ancient DFINITY system API (dvm)";

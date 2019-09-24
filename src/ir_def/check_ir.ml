@@ -342,6 +342,20 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env exp1;
       typ exp1 <: ot;
       T.Prim T.Text <: t
+    | ICReplyPrim ot, [exp1] ->
+      check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
+      check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
+      (* TODO: check against expected reply typ; note this may not be env.ret_tys. *)
+      check_exp env exp1;
+      typ exp1 <: ot;
+      T.unit <: t
+    | ICRejectPrim, [exp1] ->
+      check (not (env.flavor.has_async_typ)) "ICRejectPrim in async flavor";
+      check_exp env exp1;
+      typ exp1 <: T.text;
+      T.unit <: t
+    | ICErrorCodePrim, [] ->
+      T.Prim (T.Int32) <: t
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
@@ -451,6 +465,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
         warn env exp.at "the cases in this switch do not cover all possible values";
  *)
     check_cases env t1 t cases
+  | TryE (exp1, cases) ->
+    check env.flavor.has_await "try in non-await flavor";
+    check env.async "misplaced try";
+    check_exp env exp1;
+    typ exp1 <: t;
+    check_cases env T.catch t cases;
   | LoopE exp1 ->
     check_exp env exp1;
     typ exp1 <: T.unit;
@@ -481,6 +501,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
         check_exp env exp1;
         typ exp1 <: t0;
     end;
+    T.Non <: t (* vacuously true *)
+  | ThrowE exp1 ->
+    check env.flavor.has_await "throw in non-await flavor";
+    check env.async "misplaced throw";
+    check_exp env exp1;
+    typ exp1 <: T.throw;
     T.Non <: t (* vacuously true *)
   | AsyncE exp1 ->
     check env.flavor.has_await "async expression in non-await flavor";
