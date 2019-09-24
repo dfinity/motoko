@@ -1173,8 +1173,6 @@ If evaluation of  `<exp1>` throws an uncaught error value `e`, the result of the
 
 Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern).
 
-
-
 ## Assert
 
 The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool`.
