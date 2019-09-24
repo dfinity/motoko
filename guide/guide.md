@@ -37,7 +37,7 @@ For programmers and software developers, the internet computer platform provides
 
 * A simple design that uses familiar syntax that is easy for programmers to learn.
 
-* A well-constructed *actor-based* programming model optimized for efficient message handling.
+* An *actor-based* programming model optimized for efficient message handling.
 
 * An integrated approach to using compiled WebAssembly code to run autonomous applications.
 
