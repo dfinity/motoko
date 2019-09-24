@@ -8,9 +8,9 @@ import Control.Monad (unless)
 import Control.Monad.IO.Class (liftIO)
 import Data.Default
 import Data.Text (Text)
-import Language.Haskell.LSP.Test
-import Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..))
-import Language.Haskell.LSP.Types.Lens (contents, label, detail)
+import Language.Haskell.LSP.Test hiding (message)
+import Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..))
+import Language.Haskell.LSP.Types.Lens (contents, label, detail, message)
 import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
 import Test.Hspec (shouldBe, shouldMatchList)
@@ -78,6 +78,15 @@ main = do
     -- 14 | List.pus|
       (Position 13 14)
       [("push",Just "<T>(T, List<T>) -> List<T>")]
+    closeDoc doc
+    doc <- openDoc "ListClient.as" "actorscript"
+    --     1 | module {
+    -- ==> 1 | ule {
+    let edit = TextEdit (Range (Position 0 1) (Position 0 3)) ""
+    _ <- applyEdit doc edit
+    sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
+    (diagnostic:_) <- waitForDiagnostics
+    liftIO (diagnostic^.message `shouldBe` "unexpected token")
     pure ()
 
 
