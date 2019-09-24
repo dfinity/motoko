@@ -96,7 +96,7 @@ Bounded numeric types are checked for overflow.
 * Support for imperative programming features, including mutable variables and arrays,
 and local control flow constructs, such as `+return+`, `+break+` and
 `+continue+`.
-* Functions and messages are first-class values. Call-by-value argument evaluation
+* Functions and messages are first-class values.
 is strict. 
 Pattern-matching is supported for scalar and compound values.
 * A simple, class-based object system without inheritance.
