@@ -99,7 +99,7 @@ and local control flow constructs, such as `+return+`, `+break+` and
 * Functions and messages are first-class values.
 Pattern-matching is supported for scalar and compound values.
 * A simple, class-based object system without inheritance.
-* The value of a reference can never implicitly be `+null+` to prevent many common `+null+`-reference failures. Instead, the language enables you to explicitly handle `+null+` reference values using `+null+`, _option type_ `+?<type>+`.
+* The value of a reference can never implicitly be `+null+` to prevent many common `+null+`-reference failures. Instead, the language enables you to explicitly handle `+null+` values using `+null+`, _option type_ `+?<type>+`.
 * Asynchronous message handling enables sequential programming with familiar `+async+` and `+await+` constructs and `promise` replies.
 
 # Lexical conventions
