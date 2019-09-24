@@ -47,15 +47,18 @@ let typed_phrase' f x =
   let n' = typ_note x.note in
   { x with it = f x.at n' x.it; note = n' }
 
-let rec exps es = List.map exp es
+let rec exps release es = List.map (exp release) es
 
-and exp e =
+and exp release e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
     match e.it with
-    | S.AnnotE (e,_) -> exp e
-    | _ -> typed_phrase' exp' e
+    | S.AnnotE (e,_) -> exp release e
+    | _ -> typed_phrase' (exp' release) e
 
-and exp' at note = function
+and exp' release at note =
+  let exp = exp release in
+  let exps = exps release in
+  function
   | S.VarE i -> I.VarE i.it
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
@@ -70,7 +73,7 @@ and exp' at note = function
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, es) ->
-    obj at s None es note.I.note_typ
+    obj release at s None es note.I.note_typ
   | S.TagE (c, e) -> I.TagE (c.it, exp e)
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -119,18 +122,18 @@ and exp' at note = function
       I.CallE (cc, exp e1, inst, exp e2)
   | S.BlockE [] -> I.TupE []
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
-  | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)
+  | S.BlockE ds -> I.BlockE (block release (T.is_unit note.I.note_typ) ds)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
-  | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
-  | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
+  | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases release cs)
+  | S.TryE (e1, cs) -> I.TryE (exp e1, cases release cs)
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
-  | S.DebugE e -> if true then I.TupE [] else (exp e).it
+  | S.DebugE e -> if release then I.TupE [] else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
   | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
   | S.RetE e -> I.RetE (exp e)
@@ -148,10 +151,10 @@ and mut m = match m.it with
   | S.Const -> Ir.Const
   | S.Var -> Ir.Var
 
-and obj at s self_id es obj_typ =
+and obj release at s self_id es obj_typ =
   match s.it with
-  | T.Object | T.Module -> build_obj at s self_id es obj_typ
-  | T.Actor -> build_actor at self_id es obj_typ
+  | T.Object | T.Module -> build_obj release at s self_id es obj_typ
+  | T.Actor -> build_actor release at self_id es obj_typ
 
 and build_field {T.lab; T.typ} =
   { it = { I.name = lab
@@ -169,22 +172,22 @@ and build_fields obj_typ =
       List.map build_field val_fields
     | _ -> assert false
 
-and build_actor at self_id es obj_typ =
+and build_actor release at self_id es obj_typ =
   let fs = build_fields obj_typ in
-  let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+  let ds = decs release (List.map (fun ef -> ef.it.S.dec) es) in
   let name = match self_id with
     | Some n -> n.it
     | None -> "anon-actor-" ^ string_of_pos at.left in
   I.ActorE (name, ds, fs, obj_typ)
 
-and build_obj at s self_id es obj_typ =
+and build_obj release at s self_id es obj_typ =
   let fs = build_fields obj_typ in
   let obj_e = newObjE s.it fs obj_typ in
   let ret_ds, ret_o =
     match self_id with
     | None -> [], obj_e
     | Some id -> let self = idE id.it obj_typ in [ letD self obj_e ], self
-  in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
+  in I.BlockE (decs release (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
 
 and typ_binds tbs = List.map typ_bind tbs
 
@@ -232,7 +235,9 @@ and text_dotE proj e =
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
     |  _ -> assert false
 
-and block force_unit ds =
+and block release force_unit ds =
+  let exp = exp release in
+  let dec = dec release in
   let extra = extra_typDs ds in
   let prefix, last = Lib.List.split_last ds in
   match force_unit, last.it with
@@ -257,11 +262,13 @@ and extra_typDs ds =
       typD :: extra_typDs ds
     | _ -> extra_typDs ds
 
-and decs ds = extra_typDs ds @ List.map dec ds
+and decs release ds = extra_typDs ds @ List.map (dec release) ds
 
-and dec d = { (phrase' dec' d) with note = () }
+and dec release d = { (phrase' (dec' release) d) with note = () }
 
-and dec' at n d = match d with
+and dec' release at n d =
+  let exp = exp release in
+  match d with
   | S.ExpD e -> (expD (exp e)).it
   | S.LetD (p, e) ->
     let p' = pat p in
@@ -297,7 +304,7 @@ and dec' at n d = match d with
     let args, wrap = to_args cc p in
     let fn = {
       it = I.FuncE (id.it, cc, typ_binds tbs, args, [obj_typ], wrap
-         { it = obj at s (Some self_id) es obj_typ;
+         { it = obj release at s (Some self_id) es obj_typ;
            at = at;
            note = { I.note_typ = obj_typ; I.note_eff = T.Triv } });
       at = at;
@@ -305,11 +312,11 @@ and dec' at n d = match d with
     } in
     I.LetD (varPat, fn)
 
-and cases cs = List.map case cs
+and cases release cs = List.map (case release) cs
 
-and case c = phrase case' c
+and case release c = phrase (case' release) c
 
-and case' c = S.{ I.pat = pat c.pat; I.exp = exp c.exp }
+and case' release c = S.{ I.pat = pat c.pat; I.exp = exp release c.exp }
 
 and pats ps = List.map pat ps
 
@@ -407,10 +414,10 @@ and to_args cc p : (Ir.arg list * (Ir.exp -> Ir.exp)) =
 
   args, wrap_under_async
 
-and prog (p : Syntax.prog) : Ir.prog =
+and prog release (p : Syntax.prog) : Ir.prog =
   begin match p.it with
     | [] -> ([], tupE [])
-    | _ -> block false p.it
+    | _ -> block release false p.it
   end
   , { I.has_await = true
     ; I.has_async_typ = true
@@ -480,8 +487,8 @@ let combine_files imp_env libraries progs : Syntax.prog =
            | _ -> "all"
   }
 
-let transform release p = prog p
+let transform release p = prog release p
 
 let transform_graph release imp_env libraries progs =
-  prog (combine_files imp_env libraries progs)
+  prog release (combine_files imp_env libraries progs)
 
