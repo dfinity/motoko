@@ -97,7 +97,6 @@ Bounded numeric types are checked for overflow.
 and local control flow constructs, such as `+return+`, `+break+` and
 `+continue+`.
 * Functions and messages are first-class values.
-is strict. 
 Pattern-matching is supported for scalar and compound values.
 * A simple, class-based object system without inheritance.
 * The value of a reference can never implicitly be `+null+` to prevent many common `+null+`-reference failures. Instead, the language enables you to explicitly handle `+null+` reference values using `+null+`, _option type_ `+?<type>+`.
