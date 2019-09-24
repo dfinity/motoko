@@ -49,7 +49,7 @@ The internet computer provides a network platform that can support programs writ
 The only requirement is that the program must support compilation to WebAssembly code. 
 WebAssembly (commonly-abbreviated as Wasm) is a low-level computer instruction format for virtual machines. 
 Because WebAssembly code is designed to provide portable low-level instructions that enable applications to be deployed on platforms such as the web, it is a natural fit for deploying applications that are intended to run on the internet computer platform. 
-However, most of the higher-level languages--like C, C++, and Rust--that support compiling to WebAssembly are either too unsafe (for example, C or C&#43;&#43;) or too complex (for example, Rust) for developers who want to deliver secure applications with minimal overhead.
+However, most of the higher-level languages--like C, C++, and Rust--that support compiling to WebAssembly are either too unsafe (for example, C or C++) or too complex (for example, Rust) for developers who want to deliver secure applications without a long learning curve.
 
 To address the need for correctness without complexity, {company-id} has designed its own *{proglang}* programming language. *{proglang}* provides a simple and expressive alternative to other programming languages that is easy to learn whether you are a new or experienced programmer.
 
@@ -57,7 +57,7 @@ To address the need for correctness without complexity, {company-id} has designe
 
 WebAssembly is language-agnostic. 
 It does not require a high-level type system for language inter-operation. 
-Although {proglang} is specifically designed to compile to WebAssembly and make it easy to write programs to run on the internet computer, it just one of many languages you can use to develop applications for the internet computer platform.
+Although {proglang} is specifically designed to compile to WebAssembly and make it easy to write programs to run on the internet computer, it is just one of many languages you can eventually use to develop applications for the internet computer platform.
 
 To support multiple languages and typed, cross-language communication, {company-id} also provides an *Interface Definition Language* (IDL).
 The {proglang} compiler automates the production and consumption of IDL files using the type signatures in {proglang} programs and the structure of imported IDL interfaces.
@@ -66,18 +66,18 @@ For information about the *Interface Definition Language* interfaces, see XXX.
 
 ## Highlights and important features
 
-Although {proglang} is, strictly-speaking, a new language, you might find it is similar to a language you already know. For example, the {proglang} syntax is similar to coding using a functional programming language such as OCaml (Objective Caml).
+Although {proglang} is, strictly-speaking, a new language, you might find it is similar to a language you already know. For example, the {proglang} typing system is similar to a functional programming language such as OCaml (Objective Caml), but the syntax you use in defining functions is more like coding in JavaScript.
 It also draws on elements that are common in other, more familiar, languages, including JavaScript, TypeScript, C#, Swift, Pony, ML, and Haskell.
 Unlike other programming languages, however, {proglang} extends and optimizes features that are uniquely suited to the internet computer platform.
 
 ### Actors and objects
 
 One of the most important principles to keep in mind when preparing to use {proglang} is that it is an *actor-based* programming model. 
-An actor is a special kind of object that can query and update fields) remotely and asynchronously.
-All communication with and between actors involves passing messages asynchronously, in an isolated state, over the network using the internet computer's messaging protocol.
+An actor is a special kind of object with an isolated state that can interacted with remotely and asynchronously.
+All communication with and between actors involves passing messages asynchronously over the network using the internet computer's messaging protocol.
 An actor’s messages are processed in sequence, so state modifications never cause race conditions.
 
-Classes can be used to produce object of a predetermined type, with a predetermined interface and behavior. 
+Classes can be used to produce objects of a predetermined type, with a predetermined interface and behavior. 
 Because actors are essentially objects, you can also define actor classes. 
 In general, each actor object is used to create one application which is then deployed as a *canister* containing compiled WebAssembly, some environment configuration information, and interface bindings.
 For more information about the developing applications and deploying applications, see the _Developer's Guide_.
@@ -87,14 +87,14 @@ For more information about the developing applications and deploying application
 Some of the other important language features of {proglang} include the following:
 
 * JavaScript/TypeScript-style syntax.
-* Bounded polymorphic type system that can assign types without explicit type annotations. 
-Strong, static typing ensures type safety and includes subtype polymorphism, and structural typing.
+* Bounded polymorphic type system that can assign types without explicit type annotations.
 Types can be inferred in many common situations.
+Strong, static typing ensures type safety and includes subtype polymorphism, and structural typing.
 Unbounded and bounded numeric types with explicit conversions between
 them.
 Bounded numeric types are checked for overflow.
 * Support for imperative programming features, including mutable variables and arrays,
-and local control flow constructs, such as `+return+`, `+break+` and
+and local control flow constructs, such as loops, `+return+`, `+break+` and
 `+continue+`.
 * Functions and messages are first-class values.
 Pattern-matching is supported for scalar and compound values.
