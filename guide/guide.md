@@ -25,7 +25,7 @@ If you think of the internet computer as an infrastructure platform, it is simil
 Unlike a public or private cloud, however, the internet computer platform is not owned and operated by a single private company. 
 Its architecture enables multiple computers to operate like one, very powerful, virtual machine that does not depend on legacy technologies that are vulnerable to attack.
 
-=== Why develop applications to run on the internet computer?
+### Why develop applications to run on the internet computer?
 
 For programmers and software developers, the internet computer platform provides unique capabilities and opportunities within a framework that simplifies how you can design, build, and deploy applications. 
 
@@ -39,11 +39,11 @@ For programmers and software developers, the internet computer platform provides
 
 * An *actor-based* programming model optimized for efficient message handling.
 
-* An integrated approach to using compiled WebAssembly code to run autonomous applications.
+* An interpreter and compiler that you can use to test and compile the WebAssembly code for autonomous applications.
 
-* A flexible architecture that anticipates future extensions and improvement to WebAssembly.
+* Support for features not-yet implemented that anticipate future extensions and improvement to WebAssembly.
 
-## Why a new language?
+### Why a new language?
 
 The internet computer provides a network platform that can support programs written in different languages. 
 The only requirement is that the program must support compilation to WebAssembly code. 
@@ -53,7 +53,7 @@ However, most of the higher-level languages--like C, C++, and Rust--that support
 
 To address the need for correctness without complexity, {company-id} has designed its own *{proglang}* programming language. *{proglang}* provides a simple and expressive alternative to other programming languages that is easy to learn whether you are a new or experienced programmer.
 
-## Support for other languages
+### Support for other languages
 
 WebAssembly is language-agnostic. 
 It does not require a high-level type system for language inter-operation. 
@@ -87,9 +87,9 @@ For more information about the developing applications and deploying application
 Some of the other important language features of {proglang} include the following:
 
 * JavaScript/TypeScript-style syntax.
-* Automatic memory management by precise garbage collection between messages.
 * Bounded polymorphic type system that can assign types without explicit type annotations. 
 Strong, static typing ensures type safety and includes subtype polymorphism, and structural typing.
+Types can be inferred in many common situations.
 Unbounded and bounded numeric types with explicit conversions between
 them.
 Bounded numeric types are checked for overflow.
