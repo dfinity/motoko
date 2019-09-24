@@ -46,7 +46,7 @@ For programmers and software developers, the internet computer platform provides
 ## Why a new language?
 
 The internet computer provides a network platform that can support programs written in different languages. 
-The only requirement is that the program must support compiling to WebAssembly code. 
+The only requirement is that the program must support compilation to WebAssembly code. 
 WebAssembly (commonly-abbreviated as Wasm) is a low-level computer instruction format for virtual machines. 
 Because WebAssembly code is designed to provide portable low-level instructions that enable client and server applications to be deployed on the web, it is a natural fit for deploying applications that are intended to run on the internet computer platform. 
 However, most of the higher-level languages--like C, C++, and Rust--that support compiling to WebAssembly are either too unsafe (for example, C or C&#43;&#43;) or too complex (for example, Rust) for developers who want to deliver secure applications with minimal overhead.
