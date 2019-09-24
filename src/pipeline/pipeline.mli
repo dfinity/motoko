@@ -5,6 +5,7 @@ module Flags :
 sig
   val trace : bool ref
   val verbose : bool ref
+  val release_mode : bool ref
   val print_depth : int ref
   val await_lowering : bool ref
   val async_lowering : bool ref

@@ -79,6 +79,12 @@ let argspec = Arg.align
   "-dt", Arg.Set Pipeline.Flags.dump_tc, " dump type-checked AST";
   "-dl", Arg.Set Pipeline.Flags.dump_lowering, " dump intermediate representation ";
   "-no-check-ir", Arg.Clear Pipeline.Flags.check_ir, " do not check intermediate code";
+  "--release",
+    Arg.Unit (fun () -> Pipeline.Flags.release_mode := true),
+      " ignore debug expressions in source";
+  "--debug",
+    Arg.Unit (fun () -> Pipeline.Flags.release_mode := false),
+      " respect debug expressions in source";
 ]
 
 
