@@ -883,6 +883,8 @@ let interpret_prog flags scope p : (V.value * scope) option =
     None
 
 
+(* Libraries *)
+
 let interpret_library flags scope (filename, p) : scope =
   let env = env_of_scope flags scope in
   trace_depth := 0;
