@@ -1,4 +1,4 @@
-% Language Reference Guide
+% Language Reference Manual
 % [DFINITY Foundation](https://dfinity.org/)
 
 <!---
@@ -20,16 +20,16 @@ TODO:
 -->
 # Introduction
 
-The *internet computer* is a network of connected computers that communicate securely and provide processing services to registered users, developers, and other computers. 
+The **internet computer** is a network of connected computers that communicate securely and provide processing services to registered users, developers, and other computers. 
 If you think of the internet computer as an infrastructure platform, it is similar to a public cloud provider, like Amazon Web Services (AWS), Google Cloud Platform (GCP), or Microsoft Azure, or a private cloud managed internally by private organizations. 
 Unlike a public or private cloud, however, the internet computer platform is not owned and operated by a single private company. 
 Its architecture enables multiple computers to operate like one, very powerful, virtual machine that does not depend on legacy technologies that are vulnerable to attack.
 
 === Why develop applications to run on the internet computer?
 
-For programmers and software developers, the **internet computer** platform provides unique capabilities and opportunities within a framework that simplifies how you can design, build, and deploy applications. 
+For programmers and software developers, the internet computer platform provides unique capabilities and opportunities within a framework that simplifies how you can design, build, and deploy applications. 
 
-*{proglang}* is a programming language that has been specifically designed for writing applications, services, and microservices that run on the **internet computer** platform and that take full advantage of the unique features that the **internet computer** provides, such as orthogonal persistence, autonomous operation, and tamper-proof message handling. For more information about the unique features of the **internet computer** along with tutorials and examples to help you develop programs that make use of them, see the _Developer's Guide_.
+*{proglang}* is a programming language that has been specifically designed for writing applications, services, and microservices that run on the internet computer platform and that take full advantage of the unique features that the internet computer provides, such as orthogonal persistence, autonomous operation, and tamper-proof message handling. For more information about the unique features of the internet computer along with tutorials and examples to help you develop programs that make use of them, see the _Developer's Guide_.
 
 {proglang} provides:
 
@@ -52,7 +52,8 @@ Because WebAssembly code is designed to provide portable low-level instructions 
 However, most of the higher-level languages--like C, C++, and Rust--that support compiling to WebAssembly are either too unsafe (for example, C or C&#43;&#43;) or too complex (for example, Rust) for developers who want to deliver secure applications with minimal overhead.
 
 To address the need for correctness without complexity, {company-id} has designed its own *{proglang}* programming language. *{proglang}* provides a simple and expressive alternative to other programming languages that is easy to learn whether you are a new or experienced programmer.
-=== Support for other languages
+
+## Support for other languages
 
 WebAssembly is language-agnostic. 
 It does not require a high-level type system for language inter-operation. 
@@ -63,13 +64,13 @@ The {proglang} compiler automates the production and consumption of IDL files us
 
 For information about the *Interface Definition Language* interfaces, see XXX.
 
-== Highlights and important features
+## Highlights and important features
 
 Although {proglang} is, strictly-speaking, a new language, you might find it is similar to a language you already know. For example, the {proglang} syntax is similar to coding using a functional programming language such as OCaml (Objective Caml).
 It also draws on elements that are common in other, more familiar, languages, including JavaScript, TypeScript, C#, Swift, Pony, ML, and Haskell.
 Unlike other programming languages, however, {proglang} extends and optimizes features that are uniquely suited to the internet computer platform.
 
-=== Actors and objects
+### Actors and objects
 
 One of the most important principles to keep in mind when preparing to use {proglang} is that it is an *actor-based* programming model. 
 An actor is a special kind of object that can query and update fields) remotely and asynchronously.
@@ -81,7 +82,7 @@ Because actors are essentially objects, you can also define actor classes.
 In general, each actor object is used to create one application which is then deployed as a *canister* containing compiled WebAssembly, some environment configuration information, and interface bindings.
 For more information about the developing applications and deploying applications, see the _Developer's Guide_.
 
-=== Key language features
+### Key language features
 
 Some of the other important language features of {proglang} include the following:
 
