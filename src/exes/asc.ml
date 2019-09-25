@@ -82,14 +82,12 @@ let argspec = Arg.align
   "--release",
   Arg.Unit
     (fun () ->
-      Pipeline.Flags.release_mode := true;
       As_interpreter.Interpret.release_mode := true;
       Lowering.Desugar.release_mode := true),
       " ignore debug expressions in source";
   "--debug",
   Arg.Unit
     (fun () ->
-      Pipeline.Flags.release_mode := false;
       As_interpreter.Interpret.release_mode := false;
       Lowering.Desugar.release_mode := false),
       " respect debug expressions in source (the default)";

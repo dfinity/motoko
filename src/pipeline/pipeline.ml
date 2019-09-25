@@ -16,7 +16,6 @@ type env = stat_env * dyn_env
 module Flags = struct
   let trace = ref false
   let verbose = ref false
-  let release_mode = ref false
   let print_depth = ref 2
   let await_lowering = ref true
   let async_lowering = ref true
