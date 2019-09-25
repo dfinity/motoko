@@ -3,7 +3,7 @@ open As_types
 open Ir_def
 
 module type Conf = sig
-  val release : bool
+  val release : unit -> bool
 end
 
 module MakeDesugarer (C : Conf) : sig

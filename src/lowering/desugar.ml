@@ -11,7 +11,7 @@ module T = Type
 open Construct
 
 module type Conf = sig
-  val release : bool
+  val release : unit -> bool
 end
 
 module MakeDesugarer (C : Conf) = struct
@@ -136,7 +136,7 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
-  | S.DebugE e -> if C.release then I.TupE [] else (exp e).it
+  | S.DebugE e -> if C.release () then I.TupE [] else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
   | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
   | S.RetE e -> I.RetE (exp e)

@@ -261,7 +261,7 @@ let load_decl parse_one senv : load_decl_result =
 
 (* Interpretation (Source) *)
 
-module Interpreter = Interpret.MakeInterpreter(struct let release = !Flags.release_mode end)
+module Interpreter = Interpret.MakeInterpreter(struct let release () = !Flags.release_mode end)
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   let open Interpret in
@@ -443,9 +443,10 @@ let transform_if transform_name trans flag env prog name =
   if flag then transform transform_name trans env prog name
   else prog
 
+module Desugarer = Lowering.Desugar.MakeDesugarer(struct let release () = !Flags.release_mode end)
+
 let desugar env lib_env libraries progs name =
   phase "Desugaring" name;
-  let module Desugarer = Lowering.Desugar.MakeDesugarer(struct let release = !Flags.release_mode end) in
   let prog_ir' : Ir.prog = Desugarer.transform_graph lib_env libraries progs in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
@@ -506,7 +507,6 @@ let lower_prog mode senv lib_env libraries progs name =
   prog_ir
 
 let compile_prog mode do_link lib_env libraries progs : Wasm_exts.CustomModule.extended_module =
-  let module Desugarer = Lowering.Desugar.MakeDesugarer(struct let release = !Flags.release_mode end) in
   let prelude_ir = Desugarer.transform prelude in
   let name = name_progs progs in
   let prog_ir = lower_prog mode initial_stat_env lib_env libraries progs name in
@@ -527,7 +527,6 @@ let compile_string mode s name : compile_result =
 (* Interpretation (IR) *)
 
 let interpret_ir_prog inp_env libraries progs =
-  let module Desugarer = Lowering.Desugar.MakeDesugarer(struct let release = !Flags.release_mode end) in
   let prelude_ir = Desugarer.transform prelude in
   let name = name_progs progs in
   let prog_ir = lower_prog WasmMode initial_stat_env inp_env libraries progs name in

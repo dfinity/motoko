@@ -21,7 +21,7 @@ val adjoin_scope : scope -> scope -> scope
 exception Trap of Source.region * string
 
 module type Conf = sig
-  val release : bool
+  val release : unit -> bool
 end
 
 module MakeInterpreter (C : Conf) : sig

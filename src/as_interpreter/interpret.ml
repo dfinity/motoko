@@ -365,7 +365,7 @@ let check_call_conv_arg env exp v call_conv =
     )
 
 module type Conf = sig
-  val release : bool
+  val release : unit -> bool
 end
 
 module MakeInterpreter (C : Conf) = struct
@@ -557,7 +557,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id.it env.labs)
   | DebugE exp1 ->
-    if C.release then k V.unit else interpret_exp env exp1 k
+    if C.release () then k V.unit else interpret_exp env exp1 k
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | ThrowE exp1 ->
