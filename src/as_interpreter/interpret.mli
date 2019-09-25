@@ -20,7 +20,11 @@ val adjoin_scope : scope -> scope -> scope
 
 exception Trap of Source.region * string
 
-module MakeInterpreter (Conf : sig val release : bool end) : sig
+module type Conf = sig
+  val release : bool
+end
+
+module MakeInterpreter (C : Conf) : sig
   val interpret_prog : flags -> scope -> Syntax.prog -> (V.value * scope) option
   val interpret_library : flags -> scope -> Syntax.library -> scope
 end
