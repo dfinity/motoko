@@ -84,7 +84,7 @@ let argspec = Arg.align
       " ignore debug expressions in source";
   "--debug",
     Arg.Unit (fun () -> Pipeline.Flags.release_mode := false),
-      " respect debug expressions in source";
+      " respect debug expressions in source (the default)";
 ]
 
 
