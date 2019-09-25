@@ -145,9 +145,9 @@ and exp' =
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * string ref)           (* import statement *)
-(*
-  | ThrowE of exp list                         (* throw exception *)
+  | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list                    (* catch exception *)
+(*
   | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
 *)

@@ -429,7 +429,7 @@ $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDI
 
 
 $(STOPWATCH): $(STOPWATCH_C)
-	gcc $< -o $@
+	$(CC) $< -o $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm $(STOPWATCH)
 	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 1, " > $@

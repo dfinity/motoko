@@ -28,6 +28,7 @@ type prim =
   | Float
   | Char
   | Text
+  | Error
 
 type t = typ
 and typ =
@@ -64,6 +65,13 @@ val nat : typ
 val int : typ
 val text : typ
 val char : typ
+
+val throwErrorCodes : field list
+val catchErrorCodes : field list
+val throw : typ
+val catch : typ
+
+
 val iter_obj : typ -> typ
 
 val prim : string -> prim

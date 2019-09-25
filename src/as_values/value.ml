@@ -290,7 +290,9 @@ and value =
   | Async of async
   | Mut of value ref
 
-and async = {result : def; mutable waiters : value cont list}
+and res = Ok of value | Error of value
+and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
+
 and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
@@ -434,16 +436,17 @@ and string_of_val d = function
   | Variant (l, Tup vs) -> sprintf "#%s%s" l (string_of_val d (Tup vs))
   | Variant (l, v) -> sprintf "#%s(%s)" l (string_of_val d v)
   | Async {result; waiters = []} ->
-    sprintf "async %s" (string_of_def_nullary d result)
+    sprintf "async %s" (string_of_res d result)
   | Async {result; waiters} ->
     sprintf "async[%d] %s"
-      (List.length waiters) (string_of_def_nullary d result)
+      (List.length waiters) (string_of_res d result)
   | Mut r -> sprintf "%s" (string_of_val d !r)
   | v -> string_of_val_nullary d v
 
-and string_of_def_nullary d def =
-  match Lib.Promise.value_opt def with
-  | Some v -> string_of_val_nullary d v
+and string_of_res d result =
+  match Lib.Promise.value_opt result with
+  | Some (Error v)-> sprintf "Error %s" (string_of_val_nullary d v)
+  | Some (Ok v) -> string_of_val_nullary d v
   | None -> "_"
 
 and string_of_def d def =

@@ -107,7 +107,7 @@ let start () =
   let publish_diagnostics = Channel.publish_diagnostics oc in
   let send_response = Channel.send_response oc in
   let show_message = Channel.show_message oc in
-
+  let shutdown = ref false in
   let client_capabilities = ref None in
   let project_root = Sys.getcwd () in
 
@@ -234,19 +234,21 @@ let start () =
        (match Declaration_index.make_index () with
         | Error(err) -> ()
         | Ok((ix, _)) -> decl_index := ix);
-       Lib.Fun.flip Lib.Option.iter !client_capabilities (fun _ ->
-           (* TODO: determine if the client accepts diagnostics with related info *)
-           (* let textDocument = capabilities.client_capabilities_textDocument in
-           * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
-           let diags = List.map diagnostics_of_message msgs in
-           publish_diagnostics uri diags;
-         );
+       let diags = List.map diagnostics_of_message msgs in
+       publish_diagnostics uri diags;
 
     (* Notification messages *)
 
     | (None, `Initialized _) ->
        show_message Lsp.MessageType.Info "Language server initialized"
 
+    | (Some id, `Shutdown _) ->
+       shutdown := true;
+       response_result_message id (`ShutdownResponse None)
+       |> Lsp_j.string_of_response_message
+       |> send_response
+    | (_, `Exit _) ->
+       if !shutdown then exit 0 else exit 1
     | (Some id, `CompletionRequest params) ->
        let uri =
          params

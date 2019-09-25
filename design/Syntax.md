@@ -17,6 +17,7 @@ Productions marked * probably deferred to later versions.
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
+  Error                                         errors/exceptions
 
 <typ-field> ::=                               object type fields
   <id> : <typ>                                  immutable
@@ -68,7 +69,7 @@ Productions marked * probably deferred to later versions.
   <exp> and <exp>                                conjunction
   <exp> or <exp>                                 disjunction
   if <exp> <exp> (else <exp>)?                   conditional
-  switch <exp> { (case <pat> <exp>)+ }           switch
+  switch <exp> { (case <pat> <exp>;)+ }           switch
   while <exp> <exp>                              while loop
   loop <exp> (while <exp>)?                      loop
   for <id>? in <exp> <exp>                       iteration
@@ -81,8 +82,9 @@ Productions marked * probably deferred to later versions.
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
   <dec>                                          declaration (scopes to block)
-* throw <exp>                                    raise exception
-* try <exp> (catch <pat> <exp>)+ (<finally> <exp>)?  try
+  throw <exp>                                    raise error (only in async)
+  try <exp> catch <pat> <exp>                    try (only in async)
+* try <exp> catch { (case <pat> <exp>;) +} (<finally> <exp>)?  try-finally
 
 <exp-field> ::=                                object expression fields
   var? <id> = <exp>                              field

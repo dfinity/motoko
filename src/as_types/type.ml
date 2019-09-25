@@ -28,6 +28,7 @@ type prim =
   | Float
   | Char
   | Text
+  | Error
 
 type t = typ
 and typ =
@@ -67,6 +68,16 @@ module ConEnv = Env.Make(struct type t = con let compare = Con.compare end)
 module ConSet = ConEnv.Dom
 
 
+(* Field ordering *)
+
+let compare_field f1 f2 =
+  match f1,f2 with
+  | {lab = l1; typ = Typ _}, {lab = l2; typ = Typ _ } -> compare l1 l2
+  | {lab = l1; typ = Typ _}, {lab = l2; typ = _ } -> -1
+  | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
+  | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
+
+
 (* Short-hands *)
 
 let unit = Tup []
@@ -75,6 +86,19 @@ let nat = Prim Nat
 let int = Prim Int
 let text = Prim Text
 let char = Prim Char
+
+let throwErrorCodes = List.sort compare_field [
+  { lab = "error"; typ = unit }
+]
+
+let catchErrorCodes = List.sort compare_field (
+  throwErrorCodes @ [
+    { lab = "system"; typ = unit}
+      (* TBC *)
+  ])
+
+let throw = Prim Error (* Tup [Variant throwErrorCodes; text] *)
+let catch = Prim Error (* Tup [Variant catchErrorCodes; text] *)
 
 let prim = function
   | "Null" -> Null
@@ -96,6 +120,7 @@ let prim = function
   | "Float" -> Float
   | "Char" -> Char
   | "Text" -> Text
+  | "Error" -> Error
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 
 let seq = function [t] -> t | ts -> Tup ts
@@ -375,13 +400,6 @@ let lookup_typ_field l tfs =
   | Some {typ = Typ c; _} -> c
   | _ -> invalid "lookup_typ_field"
 
-let compare_field f1 f2 =
-  match f1,f2 with
-  | {lab = l1; typ = Typ _}, {lab = l2; typ = Typ _ } -> compare l1 l2
-  | {lab = l1; typ = Typ _}, {lab = l2; typ = _ } -> -1
-  | {lab = l1; typ = _}, {lab = l2; typ = Typ _ } -> 1
-  | {lab = l1; typ = _}, {lab = l2; typ = _ } -> compare l1 l2
-
 
 (* Span *)
 
@@ -390,7 +408,7 @@ let rec span = function
   | Con _ as t -> span (promote t)
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
-  | Prim (Nat | Int | Float | Text) -> None
+  | Prim (Nat | Int | Float | Text | Error) -> None
   | Prim (Nat8 | Int8 | Word8) -> Some 0x100
   | Prim (Nat16 | Int16 | Word16) -> Some 0x10000
   | Prim (Nat32 | Int32 | Word32 | Nat64 | Int64 | Word64 | Char) -> None  (* for all practical purposes *)
@@ -536,6 +554,7 @@ let shared t =
       seen := S.add t !seen;
       match t with
       | Var _ | Pre -> assert false
+      | Prim Error -> false
       | Any | Non | Prim _ | Typ _ -> true
       | Async _ | Mut _ -> false
       | Con (c, ts) ->
@@ -1030,6 +1049,7 @@ let string_of_prim = function
   | Word64 -> "Word64"
   | Char -> "Char"
   | Text -> "Text"
+  | Error -> "Error"
 
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i

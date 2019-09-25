@@ -915,37 +915,44 @@ We assume that the fields in a record or function type are sorted by increasing 
 
 ```
 T : <primtype> -> i8*
-T(null)     = sleb128(-1)
-T(bool)     = sleb128(-2)
-T(nat)      = sleb128(-3)
-T(int)      = sleb128(-4)
-T(nat<N>)   = sleb128(-5 - log2(N/8))
-T(int<N>)   = sleb128(-9 - log2(N/8))
-T(float<N>) = sleb128(-13 - log2(N/32))
-T(text)     = sleb128(-15)
-T(reserved) = sleb128(-16)
-T(empty)    = sleb128(-17)
+T(null)     = sleb128(-1)  = 0x7f
+T(bool)     = sleb128(-2)  = 0x7e
+T(nat)      = sleb128(-3)  = 0x7d
+T(int)      = sleb128(-4)  = 0x7c
+T(nat8)     = sleb128(-5)  = 0x7b
+T(nat16)    = sleb128(-6)  = 0x7a
+T(nat32)    = sleb128(-7)  = 0x79
+T(nat32)    = sleb128(-8)  = 0x78
+T(int8)     = sleb128(-9)  = 0x77
+T(int16)    = sleb128(-10) = 0x76
+T(int32)    = sleb128(-11) = 0x75
+T(int64)    = sleb128(-12) = 0x74
+T(float32)  = sleb128(-13) = 0x73
+T(float64)  = sleb128(-14) = 0x72
+T(text)     = sleb128(-15) = 0x71
+T(reserved) = sleb128(-16) = 0x70
+T(empty)    = sleb128(-17) = 0x6f
 
 T : <constype> -> i8*
-T(opt <datatype>) = sleb128(-18) I(<datatype>)
-T(vec <datatype>) = sleb128(-19) I(<datatype>)
-T(record {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
-T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
+T(opt <datatype>) = sleb128(-18) I(<datatype>)              // 0x6e
+T(vec <datatype>) = sleb128(-19) I(<datatype>)              // 0x6d
+T(record {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)  // 0x6c
+T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N) // 0x6b
 
 T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
 T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
-  sleb128(-22) T*(<fieldtype1>*) T*(<fieldtype2>*) T*(<funcann>*)
+  sleb128(-22) T*(<fieldtype1>*) T*(<fieldtype2>*) T*(<funcann>*) // 0x6a
 T(service {<methtype>*}) =
-  sleb128(-23) T*(<methtype>*)
+  sleb128(-23) T*(<methtype>*)                                    // 0x69
 
 T : <methtype> -> i8*
 T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
 
 T : <funcann> -> i8*
-T(query)   = i8(1)
+T(query)  = i8(1)
 T(oneway) = i8(2)
 
 T* : <X>* -> i8*
