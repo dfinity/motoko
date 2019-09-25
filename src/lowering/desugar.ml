@@ -10,12 +10,6 @@ module I = Ir
 module T = Type
 open Construct
 
-module type Conf = sig
-  val release : unit -> bool
-end
-
-module MakeDesugarer (C : Conf) = struct
-
 (*
 As a first scaffolding, we translate imported files into let-bound
 variables with a special, non-colliding name, which we sometimes
@@ -52,6 +46,8 @@ let phrase' f x =
 let typed_phrase' f x =
   let n' = typ_note x.note in
   { x with it = f x.at n' x.it; note = n' }
+
+let release_mode = ref false
 
 let rec exps es = List.map exp es
 
@@ -136,7 +132,7 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
-  | S.DebugE e -> if C.release () then I.TupE [] else (exp e).it
+  | S.DebugE e -> if !release_mode then I.TupE [] else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
   | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
   | S.RetE e -> I.RetE (exp e)
@@ -491,4 +487,3 @@ let transform p = prog p
 let transform_graph imp_env libraries progs =
   prog (combine_files imp_env libraries progs)
 
-end

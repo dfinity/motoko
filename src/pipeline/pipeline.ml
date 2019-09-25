@@ -260,14 +260,12 @@ let load_decl parse_one senv : load_decl_result =
 
 
 (* Interpretation (Source) *)
-module Settings : Interpret.Conf = struct let release () = !Flags.release_mode end
-module Interpreter = Interpret.MakeInterpreter(Settings)
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   let open Interpret in
   phase "Interpreting" prog.Source.note;
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-  let result = Interpreter.interpret_prog flags denv prog in
+  let result = Interpret.interpret_prog flags denv prog in
   Profiler.process_prog_result result ;
   result
 
@@ -278,7 +276,7 @@ let rec interpret_libraries denv libraries : Interpret.scope =
   | (f, p)::libs ->
     phase "Interpreting" p.Source.note;
     let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-    let dscope = Interpreter.interpret_library flags denv (f, p) in
+    let dscope = interpret_library flags denv (f, p) in
     let denv' = adjoin_scope denv dscope in
     interpret_libraries denv' libs
 
@@ -443,11 +441,9 @@ let transform_if transform_name trans flag env prog name =
   if flag then transform transform_name trans env prog name
   else prog
 
-module Desugarer = Lowering.Desugar.MakeDesugarer(Settings)
-
 let desugar env lib_env libraries progs name =
   phase "Desugaring" name;
-  let prog_ir' : Ir.prog = Desugarer.transform_graph lib_env libraries progs in
+  let prog_ir' : Ir.prog = Lowering.Desugar.transform_graph lib_env libraries progs in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose env "Desugaring" prog_ir';
@@ -507,7 +503,7 @@ let lower_prog mode senv lib_env libraries progs name =
   prog_ir
 
 let compile_prog mode do_link lib_env libraries progs : Wasm_exts.CustomModule.extended_module =
-  let prelude_ir = Desugarer.transform prelude in
+  let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
   let prog_ir = lower_prog mode initial_stat_env lib_env libraries progs name in
   phase "Compiling" name;
@@ -527,7 +523,7 @@ let compile_string mode s name : compile_result =
 (* Interpretation (IR) *)
 
 let interpret_ir_prog inp_env libraries progs =
-  let prelude_ir = Desugarer.transform prelude in
+  let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
   let prog_ir = lower_prog WasmMode initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;

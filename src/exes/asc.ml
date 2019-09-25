@@ -80,10 +80,18 @@ let argspec = Arg.align
   "-dl", Arg.Set Pipeline.Flags.dump_lowering, " dump intermediate representation ";
   "-no-check-ir", Arg.Clear Pipeline.Flags.check_ir, " do not check intermediate code";
   "--release",
-    Arg.Unit (fun () -> Pipeline.Flags.release_mode := true),
+  Arg.Unit
+    (fun () ->
+      Pipeline.Flags.release_mode := true;
+      As_interpreter.Interpret.release_mode := true;
+      Lowering.Desugar.release_mode := true),
       " ignore debug expressions in source";
   "--debug",
-    Arg.Unit (fun () -> Pipeline.Flags.release_mode := false),
+  Arg.Unit
+    (fun () ->
+      Pipeline.Flags.release_mode := false;
+      As_interpreter.Interpret.release_mode := false;
+      Lowering.Desugar.release_mode := false),
       " respect debug expressions in source (the default)";
 ]
 
