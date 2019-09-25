@@ -260,8 +260,8 @@ let load_decl parse_one senv : load_decl_result =
 
 
 (* Interpretation (Source) *)
-
-module Interpreter = Interpret.MakeInterpreter(struct let release () = !Flags.release_mode end)
+module Settings : Interpret.Conf = struct let release () = !Flags.release_mode end
+module Interpreter = Interpret.MakeInterpreter(Settings)
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   let open Interpret in
@@ -443,7 +443,7 @@ let transform_if transform_name trans flag env prog name =
   if flag then transform transform_name trans env prog name
   else prog
 
-module Desugarer = Lowering.Desugar.MakeDesugarer(struct let release () = !Flags.release_mode end)
+module Desugarer = Lowering.Desugar.MakeDesugarer(Settings)
 
 let desugar env lib_env libraries progs name =
   phase "Desugaring" name;
