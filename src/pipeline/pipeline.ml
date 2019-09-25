@@ -261,11 +261,12 @@ let load_decl parse_one senv : load_decl_result =
 
 (* Interpretation (Source) *)
 
+module Interpreter = Interpret.MakeInterpreter(struct let release = !Flags.release_mode end)
+
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   let open Interpret in
   phase "Interpreting" prog.Source.note;
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-  let module Interpreter = MakeInterpreter(struct let release = !Flags.release_mode end) in
   let result = Interpreter.interpret_prog flags denv prog in
   Profiler.process_prog_result result ;
   result
@@ -277,7 +278,6 @@ let rec interpret_libraries denv libraries : Interpret.scope =
   | (f, p)::libs ->
     phase "Interpreting" p.Source.note;
     let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-    let module Interpreter = MakeInterpreter(struct let release = !Flags.release_mode end) in
     let dscope = Interpreter.interpret_library flags denv (f, p) in
     let denv' = adjoin_scope denv dscope in
     interpret_libraries denv' libs
