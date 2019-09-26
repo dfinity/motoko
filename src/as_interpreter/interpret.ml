@@ -364,8 +364,6 @@ let check_call_conv_arg env exp v call_conv =
       (string_of_val env v)
     )
 
-let release_mode = ref false
-
 let rec interpret_exp env exp (k : V.value V.cont) =
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
@@ -553,7 +551,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id.it env.labs)
   | DebugE exp1 ->
-    if !release_mode then k V.unit else interpret_exp env exp1 k
+    if !As_config.Flags.release_mode then k V.unit else interpret_exp env exp1 k
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | ThrowE exp1 ->

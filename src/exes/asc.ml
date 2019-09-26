@@ -1,4 +1,5 @@
 open Wasm_exts
+open As_config
 
 open Printf
 
@@ -35,35 +36,35 @@ let argspec = Arg.align
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
-  "-v", Arg.Set Pipeline.Flags.verbose, " verbose output";
-  "-p", Arg.Set_int Pipeline.Flags.print_depth, " set print depth";
+  "-v", Arg.Set Flags.verbose, " verbose output";
+  "-p", Arg.Set_int Flags.print_depth, " set print depth";
   "-o", Arg.Set_string out_file, " output file";
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
   "--map", Arg.Set gen_source_map, " output source map";
 
-  "-t", Arg.Set Pipeline.Flags.trace, " activate tracing";
+  "-t", Arg.Set Flags.trace, " activate tracing";
   "--package", (let package_name_ref = ref "DEADBEEF" in
                Arg.Tuple [
                    Arg.Set_string package_name_ref ;
                    Arg.String begin fun package_url ->
                      (* push (package_name, package_url) onto the list. *)
-                     Pipeline.Flags.package_urls := (
+                     Flags.package_urls := (
                        !package_name_ref,
                        package_url
-                     ) :: ! Pipeline.Flags.package_urls
+                     ) :: ! Flags.package_urls
                      end
                  ]), "<args> Specify a package-name-package-URL pair, separated by a space" ;
-  "--profile", Arg.Set Pipeline.Flags.profile, " activate profiling counters in interpreters ";
-  "--profile-file", Arg.Set_string Pipeline.Flags.profile_file, " set profiling output file ";
-  "--profile-line-prefix", Arg.Set_string Pipeline.Flags.profile_line_prefix, " prefix each profile line with the given string ";
+  "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
+  "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
+  "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, " prefix each profile line with the given string ";
   "--profile-field",
-  Arg.String (fun n -> Pipeline.Flags.(profile_field_names := n :: !profile_field_names)),
+  Arg.String (fun n -> Flags.(profile_field_names := n :: !profile_field_names)),
   " profile file includes the given field from the program result ";
   "-iR", Arg.Set interpret_ir, " interpret the lowered code";
-  "-no-await", Arg.Clear Pipeline.Flags.await_lowering, " no await-lowering (with -iR)";
-  "-no-async", Arg.Clear Pipeline.Flags.async_lowering, " no async-lowering (with -iR)";
+  "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
+  "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
 
   "-no-link", Arg.Clear link, " do not statically link-in runtime";
   "-no-system-api",
@@ -75,21 +76,17 @@ let argspec = Arg.align
   "-multi-value", Arg.Set Codegen.Flags.multi_value, " use multi-value extension";
   "-no-multi-value", Arg.Clear Codegen.Flags.multi_value, " avoid multi-value extension";
 
-  "-dp", Arg.Set Pipeline.Flags.dump_parse, " dump parse";
-  "-dt", Arg.Set Pipeline.Flags.dump_tc, " dump type-checked AST";
-  "-dl", Arg.Set Pipeline.Flags.dump_lowering, " dump intermediate representation ";
-  "-no-check-ir", Arg.Clear Pipeline.Flags.check_ir, " do not check intermediate code";
+  "-dp", Arg.Set Flags.dump_parse, " dump parse";
+  "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
+  "-dl", Arg.Set Flags.dump_lowering, " dump intermediate representation ";
+  "-no-check-ir", Arg.Clear Flags.check_ir, " do not check intermediate code";
   "--release",
   Arg.Unit
-    (fun () ->
-      As_interpreter.Interpret.release_mode := true;
-      Lowering.Desugar.release_mode := true),
+    (fun () -> Flags.release_mode := true),
       " ignore debug expressions in source";
   "--debug",
   Arg.Unit
-    (fun () ->
-      As_interpreter.Interpret.release_mode := false;
-      Lowering.Desugar.release_mode := false),
+    (fun () -> Flags.release_mode := false),
       " respect debug expressions in source (the default)";
 ]
 
@@ -146,11 +143,11 @@ let process_files files : unit =
    https://github.com/dfinity-lab/actorscript/pull/405#issuecomment-503326551
 *)
 let process_profiler_flags () =
-  ProfilerFlags.profile             := !Pipeline.Flags.profile;
-  ProfilerFlags.profile_verbose     := !Pipeline.Flags.profile_verbose;
-  ProfilerFlags.profile_file        := !Pipeline.Flags.profile_file;
-  ProfilerFlags.profile_line_prefix := !Pipeline.Flags.profile_line_prefix;
-  ProfilerFlags.profile_field_names := !Pipeline.Flags.profile_field_names;
+  ProfilerFlags.profile             := !Flags.profile;
+  ProfilerFlags.profile_verbose     := !Flags.profile_verbose;
+  ProfilerFlags.profile_file        := !Flags.profile_file;
+  ProfilerFlags.profile_line_prefix := !Flags.profile_line_prefix;
+  ProfilerFlags.profile_field_names := !Flags.profile_field_names;
   ()
 
 let () =
