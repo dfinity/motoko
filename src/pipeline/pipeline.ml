@@ -436,7 +436,7 @@ let await_lowering =
   transform_if "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering mode =
-  let platform = if mode = Codegen.Compile.ICMode then Async.V2 else Async.V1 in
+  let platform = if mode = Flags.ICMode then Async.V2 else Async.V1 in
   transform_if "Async Lowering" (Async.transform platform)
 
 let tailcall_optimization =
@@ -469,7 +469,6 @@ let load_as_rts () =
   let wasm = load_file wasm_filename in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" wasm
 
-type compile_mode = Codegen.Compile.mode = WasmMode | AncientMode | ICMode
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
 let name_progs progs =
@@ -508,7 +507,7 @@ let compile_string mode s name : compile_result =
 let interpret_ir_prog inp_env libraries progs =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog WasmMode initial_stat_env inp_env libraries progs name in
+  let prog_ir = lower_prog Flags.WasmMode initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
