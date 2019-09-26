@@ -108,7 +108,7 @@ let rec pp_typ ppf t =
   | OptT t -> str ppf "IDL.Opt("; pp_typ ppf t; str ppf ")";
   | VariantT ts -> str ppf "IDL.Variant({"; concat ppf pp_field "," ts; str ppf "})";
   | FuncT (ms, t1, t2) ->
-     str ppf "IDL.Message(";
+     str ppf "IDL.Func(";
      pp_fields ppf t1;
      kwd ppf ",";
      pp_fields ppf t2;
@@ -175,22 +175,29 @@ let pp_actor ppf actor =
   (match actor.it with
    | ActorD (x, t) ->
       let x = ("actor_" ^ x.it) @@ x.at in
-      match t.it with
-      | ServT tp ->
-         id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
-         str ppf "IDL.ActorInterface({";
-         concat ppf pp_meth "," tp;
-         str ppf "})"
-      | VarT var -> id ppf x; space ppf (); kwd ppf "="; id ppf var
-      | _ -> assert false
+      (match t.it with
+       | ServT tp ->
+          id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
+          str ppf "IDL.ActorInterface({";
+          concat ppf pp_meth "," tp;
+          str ppf "});"
+       | VarT var -> id ppf x; space ppf (); kwd ppf "="; id ppf var; str ppf ";";
+       | _ -> assert false
+      );
+      pp_force_newline ppf ();
+      kwd ppf "return"; id ppf x; str ppf ";"
   );
   pp_close_box ppf ()
 
 let pp_header ppf () =
   pp_open_vbox ppf 0;
-  str ppf "const IDL = require('IDL')";
+  str ppf "export default ({ IDL }) => {";
   pp_close_box ppf ()
-  
+
+let pp_footer ppf () =
+  pp_force_newline ppf ();
+  pp_print_string ppf "};"
+
 let pp_prog ppf env prog =
   match prog.it.actor with
   | None -> ()
@@ -206,7 +213,8 @@ let pp_prog ppf env prog =
      TS.iter (pp_rec ppf) recs;
      List.iter (pp_dec ppf) env_list;
      pp_actor ppf actor;
-     pp_close_box ppf ()
+     pp_close_box ppf ();
+     pp_footer ppf ()
    
 let compile (scope : Typing.scope) (prog : Syntax.prog) =
   let buf = Buffer.create 100 in

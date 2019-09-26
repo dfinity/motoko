@@ -268,8 +268,8 @@ do
       if [ -e $out/$base.js ]
       then
         $ECHO -n " [node]"
-        export NODE_PATH=$NODE_PATH:$JSCLIENT:$JSCLIENT/src
-        node $out/$base.js > $out/$base.js.out 2>&1
+        export NODE_PATH=$NODE_PATH:$ESM
+        node -r esm $out/$base.js > $out/$base.js.out 2>&1
         normalize $out/$base.js.out
         diff_files="$diff_files $base.js.out"
       fi

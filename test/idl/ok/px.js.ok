@@ -1,4 +1,4 @@
-const IDL = require('IDL')
+export default ({ IDL }) => {
 const UserId = IDL.Nat
 const RegionId = IDL.Nat
 const ProducerId = IDL.Nat
@@ -14,5 +14,7 @@ const OpEntId = IDL.Opt(EntId)
 const IdErr = IDL.Obj({'idErr': OpEntId})
 const actor_ProduceExchange = new IDL.ActorInterface({
  'getInventory':
-  IDL.Message(IDL.Obj({'producer_id': IDL.Nat, '3667444713': UserInfo}),
-   IDL.Obj({'0': Inventory, '1': IdErr}))})
+  IDL.Func(IDL.Obj({'producer_id': IDL.Nat, '3667444713': UserInfo}),
+   IDL.Obj({'0': Inventory, '1': IdErr}))});
+ return actor_ProduceExchange;
+};
