@@ -87,14 +87,3 @@ main = do
     sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
     (diagnostic:_) <- waitForDiagnostics
     liftIO (diagnostic^.message `shouldBe` "unexpected token")
-    pure ()
-
-
-
--- To make tests involving diagnostics work, we need the compiler
--- pipeline to read its files from the VFS
-
--- let edit = TextEdit (Range (Position 1 1) (Position 1 3)) ""
--- _ <- applyEdit doc edit
--- request_ TextDocumentDidSave (DidSaveTextDocumentParams doc)
--- diags <- waitForDiagnostics
