@@ -10,6 +10,21 @@ type t = virtual_file VfsStore.t
 
 type uri = string
 
+let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
+let uri_from_file path = file_uri_prefix ^ path
+let file_from_uri logger uri =
+  match Lib.String.chop_prefix file_uri_prefix uri with
+   | Some file -> file
+   | None ->
+      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
+      uri
+let abs_file_from_uri logger uri =
+  match Lib.String.chop_prefix "file://" uri with
+   | Some file -> file
+   | None ->
+      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
+      uri
+
 let empty = VfsStore.empty
 
 let open_file did_open_params vfs =
@@ -99,3 +114,8 @@ and apply_change lines Lsp_t.{
           ^ String.sub last ec (String.length last - ec)
      in
      prev_lines @ Lib.String.split new_ '\n' @ past_lines
+
+let parse_file vfs path =
+  match read_file (uri_from_file path) vfs with
+  | None -> Pipeline.parse_file path
+  | Some(file) -> Pipeline.parse_string path file
