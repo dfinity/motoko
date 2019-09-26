@@ -161,9 +161,10 @@ let populate_definitions
   | Some (_, prog) ->
      List.map (find_def prog.it) decls
 
-let make_index_inner () : declaration_index Diag.result =
+let make_index_inner vfs : declaration_index Diag.result =
   let entry_points = project_files () in
   Pipeline.chase_imports
+    (Vfs.parse_file vfs)
     Pipeline.initial_stat_env
     (Pipeline__.Resolve_import.S.of_list entry_points)
   |> Diag.map (fun (libraries, scope) ->
@@ -179,6 +180,6 @@ let make_index_inner () : declaration_index Diag.result =
         scope.Scope.lib_env
         Index.empty)
 
-let make_index () : declaration_index Diag.result =
+let make_index vfs : declaration_index Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
-  try make_index_inner () with _ -> Diag.return Index.empty
+  try make_index_inner vfs with _ -> Diag.return Index.empty
