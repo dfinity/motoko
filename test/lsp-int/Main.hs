@@ -87,3 +87,14 @@ main = do
     sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
     (diagnostic:_) <- waitForDiagnostics
     liftIO (diagnostic^.message `shouldBe` "unexpected token")
+    closeDoc doc
+
+    -- It finds errors in transitive modules that have been changed in
+    -- the vfs but not yet stored to disc
+    doc <- openDoc "ListClient.as" "actorscript"
+    let edit = TextEdit (Range (Position 0 1) (Position 0 3)) ""
+    _ <- applyEdit doc edit
+    appDoc <- openDoc "app.as" "actorscript"
+    sendNotification TextDocumentDidSave (DidSaveTextDocumentParams appDoc)
+    (diagnostic:_) <- waitForDiagnostics
+    liftIO (diagnostic^.message `shouldBe` "unexpected token")
