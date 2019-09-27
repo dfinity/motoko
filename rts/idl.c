@@ -185,7 +185,10 @@ void skip_leb128(buf *buf) {
 //
 // This is currently implemented recursively, but we could
 // do this in a loop (by maintaing a stack of the t arguments)
-export void skip_any(buf *b, uint8_t **typtbl, int32_t t) {
+export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
+  if (depth > 100) {
+        idl_trap_with("skip_any: too deeply nested record");
+  }
   if (t < 0) { // primitive type
     switch(t) {
       case IDL_PRIM_null:
@@ -232,14 +235,14 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t) {
       case IDL_CON_opt: {
         int32_t it = read_i32_of_sleb128(&tb);
         if (read_byte(b)) {
-          skip_any(b, typtbl, it);
+          skip_any(b, typtbl, it, 0);
         }
         return;
       }
       case IDL_CON_vec: {
         int32_t it = read_i32_of_sleb128(&tb);
         for (uint32_t n = read_u32_of_leb128(b); n > 0; n--) {
-          skip_any(b, typtbl, it);
+          skip_any(b, typtbl, it, 0);
         }
         return;
       }
@@ -247,7 +250,10 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t) {
         for (uint32_t n = read_u32_of_leb128(&tb); n > 0; n--) {
           skip_leb128(&tb);
           int32_t it = read_i32_of_sleb128(&tb);
-          skip_any(b, typtbl, it);
+	  // This is just a quick check; we should be keeping
+	  // track of all enclosing records to detect larger loops
+	  if (it == t) idl_trap_with("skip_any: recursive record");
+          skip_any(b, typtbl, it, depth + 1);
         }
         return;
       }
@@ -261,7 +267,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t) {
         }
         skip_leb128(&tb);
         int32_t it = read_i32_of_sleb128(&tb);
-        skip_any(b, typtbl, it);
+        skip_any(b, typtbl, it, 0);
         return;
       }
 
