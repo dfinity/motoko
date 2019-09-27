@@ -229,21 +229,21 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t) {
     buf tb = { typtbl[t], b->e };
     int32_t tc = read_i32_of_sleb128(&tb);
     switch(tc) {
-      case (IDL_CON_opt): {
+      case IDL_CON_opt: {
         int32_t it = read_i32_of_sleb128(&tb);
         if (read_byte(b)) {
           skip_any(b, typtbl, it);
         }
         return;
       }
-      case (IDL_CON_vec): {
+      case IDL_CON_vec: {
         int32_t it = read_i32_of_sleb128(&tb);
         for (uint32_t n = read_u32_of_leb128(b); n > 0; n--) {
           skip_any(b, typtbl, it);
         }
         return;
       }
-      case (IDL_CON_record): {
+      case IDL_CON_record: {
         for (uint32_t n = read_u32_of_leb128(&tb); n > 0; n--) {
           skip_leb128(&tb);
           int32_t it = read_i32_of_sleb128(&tb);
@@ -251,7 +251,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t) {
         }
         return;
       }
-      case (IDL_CON_variant): {
+      case IDL_CON_variant: {
         uint32_t n = read_u32_of_leb128(&tb);
         uint32_t i = read_u32_of_leb128(b);
         if (i >= n) idl_trap_with("skip_any: variant tag too large");
