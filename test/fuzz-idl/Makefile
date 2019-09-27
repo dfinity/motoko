@@ -9,3 +9,7 @@ test.wasm: ../../src/asc ../../rts/as-rts.wasm test.as
 
 clean:
 	rm -f test.wasm test.c test.h main
+
+afl_in: main
+	mkdir -p afl_in
+	./main gen afl_in/

@@ -31,7 +31,7 @@ as_ptr as_str_of_cstr(const char * const s) {
 
 void idl_trap_with(const char *str) {
   int l2 = as_strlen(str);
-  int l1 = as_strlen("IDL error: ") + l2;
+  int l1 = as_strlen("IDL error: ");
   char msg[l1 + l2 + 1];
   as_memcpy(msg, "IDL error: ", l1);
   as_memcpy(msg + l1, str, l2);

@@ -1,4 +1,5 @@
 test.c
 test.h
+afl_in
 afl_out
 main
