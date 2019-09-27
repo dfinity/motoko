@@ -7,7 +7,6 @@ actor {
 }
 
 // Primitive values:
-
 //CALL ingress any 0x4449444C00027f7103466F6F
 //CALL ingress any 0x4449444C00027e710103466F6F
 //CALL ingress any 0x4449444C00027d718080800803466F6F
