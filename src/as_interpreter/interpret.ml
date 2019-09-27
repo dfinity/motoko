@@ -364,7 +364,6 @@ let check_call_conv_arg env exp v call_conv =
       (string_of_val env v)
     )
 
-
 let rec interpret_exp env exp (k : V.value V.cont) =
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
@@ -551,6 +550,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env' exp1 k
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id.it env.labs)
+  | DebugE exp1 ->
+    if !As_config.Flags.release_mode then k V.unit else interpret_exp env exp1 k
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | ThrowE exp1 ->
@@ -879,6 +880,8 @@ let interpret_prog flags scope p : (V.value * scope) option =
     print_exn flags exn;
     None
 
+
+(* Libraries *)
 
 let interpret_library flags scope (filename, p) : scope =
   let env = env_of_scope flags scope in

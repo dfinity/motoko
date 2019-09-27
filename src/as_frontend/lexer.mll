@@ -194,7 +194,7 @@ rule token mode = parse
   | "catch" { CATCH }
   | "class" { CLASS }
   | "continue" { CONTINUE }
-  | "label" { LABEL }
+  | "debug" { DEBUG }
   | "else" { ELSE }
   | "false" { BOOL false }
   | "for" { FOR }
@@ -207,6 +207,7 @@ rule token mode = parse
   | "null" { NULL }
   | "object" { OBJECT }
   | "or" { OR }
+  | "label" { LABEL }
   | "let" { LET }
   | "loop" { LOOP }
   | "private" { PRIVATE }
