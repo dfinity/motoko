@@ -657,7 +657,9 @@ module RTS = struct
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] []
+    E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "find_field" [I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] []
 
   let system_exports env =
     E.add_export env (nr {
@@ -3947,13 +3949,21 @@ module Serialization = struct
         )
       | Obj (Object, fs) ->
         with_composite_typ (-20l) (fun get_typ_buf ->
-          ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
-          Object.lit_raw env (List.map (fun (_h,f) ->
+          let (set_n, get_n) = new_local env "record_fields" in
+          ReadBuf.read_leb128 env get_typ_buf ^^ set_n ^^
+
+          Object.lit_raw env (List.map (fun (h,f) ->
             f.Type.lab, fun () ->
-              ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
-              ReadBuf.read_sleb128 env get_typ_buf ^^
-              go env f.typ
-          ) (sort_by_hash fs))
+              (* skip all possible intermediate extra fields *)
+              get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Lib.Uint32.to_int32 h) ^^ get_n ^^
+              E.call_import env "rts" "find_field" ^^ set_n ^^
+
+              ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
+          ) (sort_by_hash fs)) ^^
+
+          (* skip all possible trailing extra fields *)
+          get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n ^^
+          E.call_import env "rts" "skip_fields"
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
