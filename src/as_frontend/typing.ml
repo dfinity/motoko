@@ -342,10 +342,10 @@ let check_int8 env = check_lit_val env T.Int8 Value.Int_8.of_string
 let check_int16 env = check_lit_val env T.Int16 Value.Int_16.of_string
 let check_int32 env = check_lit_val env T.Int32 Value.Int_32.of_string
 let check_int64 env = check_lit_val env T.Int64 Value.Int_64.of_string
-let check_word8 env = check_lit_val env T.Word8 Value.Word8.of_string_u
-let check_word16 env = check_lit_val env T.Word16 Value.Word16.of_string_u
-let check_word32 env = check_lit_val env T.Word32 Value.Word32.of_string_u
-let check_word64 env = check_lit_val env T.Word64 Value.Word64.of_string_u
+let check_word8 env = check_lit_val env T.Word8 Value.Word8.of_string
+let check_word16 env = check_lit_val env T.Word16 Value.Word16.of_string
+let check_word32 env = check_lit_val env T.Word32 Value.Word32.of_string
+let check_word64 env = check_lit_val env T.Word64 Value.Word64.of_string
 let check_float env = check_lit_val env T.Float Value.Float.of_string
 
 
@@ -726,6 +726,20 @@ and infer_exp'' env exp : T.typ =
           (String.concat " or\n  " ss)
     end;
     t
+  | TryE (exp1, cases) ->
+    if not env.async then
+      error env exp.at "misplaced try";
+    let t1 = infer_exp env exp1 in
+    let t2 = infer_cases env T.catch T.Non cases in
+    if not env.pre then begin
+      match Coverage.check_cases cases T.catch with
+      | [] -> ()
+      | ss ->
+        warn env exp.at
+          "the catches in this try do not cover error value\n  %s"
+          (String.concat " or\n  " ss)
+    end;
+    T.lub t1 t2
   | WhileE (exp1, exp2) ->
     if not env.pre then begin
       check_exp env T.bool exp1;
@@ -787,6 +801,11 @@ and infer_exp'' env exp : T.typ =
       | None ->
         local_error env exp.at "misplaced return"
     end;
+    T.Non
+  | ThrowE exp1 ->
+    if not env.async then
+      error env exp.at "misplaced throw";
+    if not env.pre then check_exp env T.throw exp1;
     T.Non
   | AsyncE exp1 ->
     let env' =
@@ -881,6 +900,19 @@ and check_exp' env t exp : T.typ =
       warn env exp.at
         "the cases in this switch over type\n  %s\ndo not cover value\n  %s"
         (Type.string_of_typ_expand t1)
+        (String.concat " or\n  " ss)
+    );
+    t
+  | TryE (exp1, cases), _ ->
+    if not env.async then
+      error env exp.at "misplaced try";
+    check_exp env t exp1;
+    check_cases env T.catch t cases;
+    (match Coverage.check_cases cases T.catch with
+    | [] -> ()
+    | ss ->
+      warn env exp.at
+        "the catches in this try do not cover value\n  %s"
         (String.concat " or\n  " ss)
     );
     t

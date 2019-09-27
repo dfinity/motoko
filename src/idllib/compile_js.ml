@@ -90,7 +90,8 @@ let pp_prim p =
   | Text -> "Text"
   | Null -> "Unit"
   | Reserved -> "None"
-                       
+  | Empty -> "Empty"
+  
 let rec concat ppf f sep list =
   match list with
   | [] -> ()

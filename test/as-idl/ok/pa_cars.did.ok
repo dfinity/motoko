@@ -1,0 +1,17 @@
+type User = record {name : Text};
+type TimeSpan = record {end : Int; start : Int};
+type Text = text;
+type Result_1 = opt record {reservationId : Text};
+type PACars = service {
+verifyCarInformation : (User, Car) -> (opt func (Location, TimeSpan) -> (Result_1));
+};
+type Nat = nat;
+type Location = record {lat : Float; long : Float};
+type Int = int;
+type Float = float64;
+type DMV = service {
+check : (Car) -> (CarInfo);
+};
+type CarInfo = record {expires : Nat; isValid : Bool; model : Text; plate : Text; wasStolen : Bool};
+type Car = record {model : Text; plate : Text};
+type Bool = bool;

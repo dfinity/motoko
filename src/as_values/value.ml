@@ -289,9 +289,10 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
-  | Serialized of value
 
-and async = {result : def; mutable waiters : value cont list}
+and res = Ok of value | Error of value
+and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
+
 and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
@@ -333,7 +334,6 @@ let as_variant = function Variant (i, v) -> i, v | _ -> invalid "as_variant"
 let as_tup = function Tup vs -> vs | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
-let as_serialized = function Serialized v -> v | _ -> invalid "as_serialized"
 let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
@@ -436,16 +436,17 @@ and string_of_val d = function
   | Variant (l, Tup vs) -> sprintf "#%s%s" l (string_of_val d (Tup vs))
   | Variant (l, v) -> sprintf "#%s(%s)" l (string_of_val d v)
   | Async {result; waiters = []} ->
-    sprintf "async %s" (string_of_def_nullary d result)
+    sprintf "async %s" (string_of_res d result)
   | Async {result; waiters} ->
     sprintf "async[%d] %s"
-      (List.length waiters) (string_of_def_nullary d result)
+      (List.length waiters) (string_of_res d result)
   | Mut r -> sprintf "%s" (string_of_val d !r)
   | v -> string_of_val_nullary d v
 
-and string_of_def_nullary d def =
-  match Lib.Promise.value_opt def with
-  | Some v -> string_of_val_nullary d v
+and string_of_res d result =
+  match Lib.Promise.value_opt result with
+  | Some (Error v)-> sprintf "Error %s" (string_of_val_nullary d v)
+  | Some (Ok v) -> string_of_val_nullary d v
   | None -> "_"
 
 and string_of_def d def =

@@ -28,6 +28,7 @@ type prim =
   | Float
   | Char
   | Text
+  | Error
 
 type t = typ
 and typ =
@@ -42,7 +43,6 @@ and typ =
   | Func of func_sort * control * bind list * typ list * typ list  (* function *)
   | Async of typ                              (* future *)
   | Mut of typ                                (* mutable type *)
-  | Serialized of typ                         (* a serialized value *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
@@ -65,6 +65,13 @@ val nat : typ
 val int : typ
 val text : typ
 val char : typ
+
+val throwErrorCodes : field list
+val catchErrorCodes : field list
+val throw : typ
+val catch : typ
+
+
 val iter_obj : typ -> typ
 
 val prim : string -> prim
@@ -84,7 +91,6 @@ val is_pair : typ -> bool
 val is_func : typ -> bool
 val is_async : typ -> bool
 val is_mut : typ -> bool
-val is_serialized : typ -> bool
 val is_typ : typ -> bool
 
 val as_prim : prim -> typ -> unit
@@ -99,7 +105,6 @@ val as_func : typ -> func_sort * control * bind list * typ list * typ list
 val as_async : typ -> typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
-val as_serialized : typ -> typ
 val as_typ : typ -> con
 
 val as_prim_sub : prim -> typ -> unit

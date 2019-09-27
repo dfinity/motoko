@@ -84,9 +84,10 @@ let as_seqP p =
 
 let primE prim es =
   let ty = match prim with
-    | DeserializePrim t -> t
-    | SerializePrim t -> T.Serialized t
     | ShowPrim _ -> T.text
+    | ICReplyPrim _ -> T.unit
+    | ICRejectPrim -> T.unit
+    | ICErrorCodePrim -> T.Prim T.Int32
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -102,10 +103,34 @@ let asyncE typ e =
     note = { note_typ = T.Async typ; note_eff = eff e }
   }
 
+let assertE e =
+  { it = AssertE e;
+    at = no_region;
+    note = { note_typ = T.unit; note_eff = eff e}
+  }
+
 let awaitE typ e1 e2 =
   { it = PrimE (OtherPrim "@await", [e1; e2]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = max_eff (eff e1) (eff e2) }
+  }
+
+let ic_replyE t e =
+  { it = PrimE (ICReplyPrim t, [e]);
+    at = no_region;
+    note = { note_typ = T.unit; note_eff = eff e }
+  }
+
+let ic_rejectE e =
+  { it = PrimE (ICRejectPrim, [e]);
+    at = no_region;
+    note = { note_typ = T.unit; note_eff = eff e }
+  }
+
+let ic_error_codeE () =
+  { it = PrimE (ICErrorCodePrim, []);
+    at = no_region;
+    note = { note_typ = T.Prim T.Int32; note_eff = T.Triv }
   }
 
 
@@ -147,7 +172,6 @@ let textE s =
     at = no_region;
     note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
   }
-
 
 let unitE =
   { it = TupE [];
@@ -404,9 +428,14 @@ let nary_funcD f xs exp =
 let answerT = T.unit
 
 let contT typ = T.Func (T.Local, T.Returns, [], T.as_seq typ, [])
-let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ], [])
 
-let fresh_cont typ = fresh_var "cont" (contT typ)
+let err_contT =  T.Func (T.Local, T.Returns, [], [T.catch], [])
+
+let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
+
+let fresh_cont typ = fresh_var "k" (contT typ)
+
+let fresh_err_cont ()  = fresh_var "r" (err_contT)
 
 (* Sequence expressions *)
 
@@ -524,3 +553,4 @@ let forE pat exp1 exp2 =
 let unreachableE =
   (* Do we want UnreachableE in the AST *)
   loopE unitE
+

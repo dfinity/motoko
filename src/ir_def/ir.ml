@@ -91,6 +91,8 @@ and exp' =
       string * Call_conv.t * typ_bind list * arg list * Type.typ list * exp
   | ActorE of id * dec list * field list * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
+  | ThrowE of exp                              (* throw *)
+  | TryE of exp * case list                    (* try/catch *)
 
 and field = (field', Type.typ) Source.annotated_phrase
 and field' = {name : Type.lab; var : id} (* the var is by reference, not by value *)
@@ -103,10 +105,12 @@ and prim =
   | BinPrim of Type.typ * binop       (* binary operator *)
   | RelPrim of Type.typ * relop       (* relational operator *)
   | ShowPrim of Type.typ              (* debug show *)
-  | SerializePrim of Type.typ         (* serialize *)
-  | DeserializePrim of Type.typ       (* deserialize *)
   | NumConvPrim of Type.prim * Type.prim
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
+  | ICReplyPrim of Type.typ
+  | ICRejectPrim
+  | ICErrorCodePrim
+
 
 (* Declarations *)
 

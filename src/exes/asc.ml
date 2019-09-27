@@ -10,7 +10,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | Compile | Run | Interact
+type mode = Default | Check | Compile | Run | Interact | Idl
 
 let mode = ref Default
 let args = ref []
@@ -22,7 +22,7 @@ let set_mode m () =
   end;
   mode := m
 
-let compile_mode = ref Pipeline.DfinityMode
+let compile_mode = ref Pipeline.ICMode
 let out_file = ref ""
 let link = ref true
 let interpret_ir = ref false
@@ -34,6 +34,7 @@ let argspec = Arg.align
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
+  "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
   "-v", Arg.Set Pipeline.Flags.verbose, " verbose output";
   "-p", Arg.Set_int Pipeline.Flags.print_depth, " set print depth";
   "-o", Arg.Set_string out_file, " output file";
@@ -65,10 +66,13 @@ let argspec = Arg.align
   "-no-async", Arg.Clear Pipeline.Flags.async_lowering, " no async-lowering (with -iR)";
 
   "-no-link", Arg.Clear link, " do not statically link-in runtime";
-  "-no-dfinity-api",
+  "-no-system-api",
     Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
-      " do not import the DFINITY system API";
-  "-no-fake-op", Arg.Clear Codegen.Flags.fake_orthogonal_persistence, " do not fake OP";
+      " do not import any system API";
+  "-ancient-system-api",
+    Arg.Unit (fun () -> compile_mode := Pipeline.AncientMode),
+      " use the ancient DFINITY system API (dvm)";
+  "-multi-value", Arg.Set Codegen.Flags.multi_value, " use multi-value extension";
   "-no-multi-value", Arg.Clear Codegen.Flags.multi_value, " avoid multi-value extension";
 
   "-dp", Arg.Set Pipeline.Flags.dump_parse, " dump parse";
@@ -78,6 +82,13 @@ let argspec = Arg.align
 ]
 
 
+let set_out_file files ext =
+  if !out_file = "" then begin
+    match files with
+    | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ext
+    | ns -> eprintf "asc: no output file specified"; exit 1
+  end
+  
 (* Main *)
 
 let exit_on_none = function
@@ -97,12 +108,15 @@ let process_files files : unit =
     exit_on_none (Pipeline.run_files_and_stdin files)
   | Check ->
     Diag.run (Pipeline.check_files files)
+  | Idl ->
+    set_out_file files ".did";
+    let prog = Diag.run (Pipeline.generate_idl files) in
+    ignore (Diag.run (Idllib.Pipeline.check_prog prog));
+    let oc = open_out !out_file in
+    let idl_code = Idllib.Arrange_idl.string_of_prog prog in    
+    output_string oc idl_code; close_out oc
   | Compile ->
-    if !out_file = "" then begin
-      match files with
-      | [n] -> out_file := Filename.remove_extension (Filename.basename n) ^ ".wasm"
-      | ns -> eprintf "asc: no output file specified"; exit 1
-    end;
+    set_out_file files ".wasm";
     let module_ = Diag.run Pipeline.(compile_files !compile_mode !link files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in

@@ -90,9 +90,6 @@ A simple language for writing Dfinity actors.
 * Async types: like futures/promises
   - `async T`
 
-* Like types: structural expansions of nominal types
-  - `like T`
-
 * Structural equi-recursive subtyping
 
 * Generics over reference types, uniform representation

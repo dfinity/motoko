@@ -1,2 +1,2 @@
 func.did:10.3-10.8: type error, p is a non-function type
- var o
+ o

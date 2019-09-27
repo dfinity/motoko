@@ -102,9 +102,10 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
-  | Serialized of value
 
-and async = {result : def; mutable waiters : value cont list}
+and res = Ok of value | Error of value
+and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
+
 and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
 
@@ -148,7 +149,6 @@ val as_variant : value -> string * value
 val as_func : value -> Call_conv.t * func
 val as_async : value -> async
 val as_mut : value -> value ref
-val as_serialized : value -> value
 
 
 (* Ordering *)

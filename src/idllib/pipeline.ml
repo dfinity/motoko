@@ -8,10 +8,10 @@ let phase heading name =
 let error at cat text =
   Error [{ Diag.sev = Diag.Error; at; cat; text }]
 
-let print_stat_ve =
+let print_stat_te =
   Typing.Env.iter (fun x t ->
-    printf "%s %s : %s\n"
-      "var" x (Arrange_idl.string_of_typ t)
+    printf "%s %s = %s\n"
+      "type" x (Arrange_idl.string_of_typ t)
   )
 
 let dump_prog flag prog =
@@ -63,7 +63,7 @@ let check_prog senv prog
   let r = Typing.check_prog senv prog in
   (match r with
    | Ok (scope, _) ->
-      if !Flags.verbose then print_stat_ve scope;
+      if !Flags.verbose then print_stat_te scope;
    | Error _ -> ());
   r
 
@@ -121,7 +121,8 @@ let load_prog parse senv =
 let initial_stat_env = Typing.empty_scope
 
 let check_file file : load_result = load_prog (parse_file file) initial_stat_env
-  
+let check_prog prog : Typing.scope Diag.result = check_prog initial_stat_env prog
+                                  
 (* JS Compilation *)
 
 type compile_result = Buffer.t Diag.result
