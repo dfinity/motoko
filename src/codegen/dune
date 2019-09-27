@@ -1,4 +1,4 @@
 (library
   (name codegen)
-  (libraries wasm lib as_config lang_utils wasm_exts ir_def linking)
+  (libraries wasm lib lang_utils wasm_exts ir_def linking)
 )
