@@ -86,20 +86,6 @@ let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
     diagnostic_relatedInformation = None;
   }
 
-let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
-let file_from_uri logger uri =
-  match Lib.String.chop_prefix file_uri_prefix uri with
-   | Some file -> file
-   | None ->
-      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
-      uri
-let abs_file_from_uri logger uri =
-  match Lib.String.chop_prefix "file://" uri with
-   | Some file -> file
-   | None ->
-      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
-      uri
-
 let start () =
   let oc: out_channel = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"; in
 
@@ -113,7 +99,7 @@ let start () =
 
   let vfs = ref Vfs.empty in
   let decl_index =
-    let ix = match Declaration_index.make_index () with
+    let ix = match Declaration_index.make_index !vfs with
       | Error(err) -> Declaration_index.Index.empty
       | Ok((ix, _)) -> ix in
     ref ix in
@@ -191,7 +177,7 @@ let start () =
                 position
                 file_content
                 project_root
-                (abs_file_from_uri log_to_file uri) in
+                (Vfs.abs_file_from_uri log_to_file uri) in
             response_result_message id result in
        send_response (Lsp_j.string_of_response_message response);
     | (Some id, `TextDocumentDefinition params) ->
@@ -214,7 +200,7 @@ let start () =
                 position
                 file_content
                 project_root
-                (abs_file_from_uri log_to_file uri) in
+                (Vfs.abs_file_from_uri log_to_file uri) in
             response_result_message id result in
        send_response (Lsp_j.string_of_response_message response);
     | (_, `TextDocumentDidOpen params) ->
@@ -226,12 +212,12 @@ let start () =
     | (_, `TextDocumentDidSave params) ->
        let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
-       let file_name = file_from_uri log_to_file uri in
-       let result = Pipeline.check_files [file_name] in
+       let file_name = Vfs.file_from_uri log_to_file uri in
+       let result = Pipeline.check_files' (Vfs.parse_file !vfs) [file_name] in
        let msgs = match result with
          | Error msgs' -> msgs'
          | Ok (_, msgs') -> msgs' in
-       (match Declaration_index.make_index () with
+       (match Declaration_index.make_index !vfs with
         | Error(err) -> ()
         | Ok((ix, _)) -> decl_index := ix);
        let diags = List.map diagnostics_of_message msgs in
@@ -267,7 +253,7 @@ let start () =
               !decl_index
               log_to_file
               project_root
-              (abs_file_from_uri log_to_file uri)
+              (Vfs.abs_file_from_uri log_to_file uri)
               file_content
               position
             |> response_result_message id in
