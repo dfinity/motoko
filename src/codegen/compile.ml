@@ -3916,6 +3916,7 @@ module Serialization = struct
         assert_prim_typ () ^^
         Opt.null
       | Any ->
+        (* Skip values of any possible type *)
         get_data_buf ^^ get_typtbl ^^ get_idltyp ^^ compile_unboxed_const 0l ^^
         E.call_import env "rts" "skip_any" ^^
 
