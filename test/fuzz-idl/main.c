@@ -11,89 +11,52 @@
 #include "test.h"
 #include "wasm-rt-impl.h"
 
-typedef u32 ref;
+u32 arg_len;
+char *arg_data;
 
-typedef struct databuf {
-  u32 len;
-  u8 *data;
-} databuf;
-
-void *refs[1000];
-int ref_counter = 0;
+u32 ret_len;
+char *ret_data;
 
 bool ok_to_trap = false;
 
 
-extern ref data_externalize(u32 offset, u32 len) {
-  // printf("data_externalize: %d bytes\n", len);
-  databuf *db = malloc(sizeof(databuf));
-  if (len > 0 && db == NULL ) {
-    fprintf(stderr, "data_externalize: OOM!\n");
-    exit(1);
-  }
-  db->len = len;
-  db->data = malloc(len+1);
-  memcpy(db->data, Z_mem->data + offset, len);
-  db->data[len] = '\0';
-  refs[ref_counter] = db;
-  return ref_counter++;
+extern u32 msg_arg_data_size(u64 api_nonce) {
+  return arg_len;
 }
-
-extern ref data_of_string(char *buf, size_t len) {
-  // printf("data_of_string: %d bytes\n", len);
-  databuf *db = malloc(sizeof(databuf));
-  db->len = len;
-  db->data = malloc(len+1);
-  memcpy(db->data, buf, len);
-  db->data[len] = '\0';
-  refs[ref_counter] = db;
-  return ref_counter++;
-}
-
-extern u32 data_length(ref dbref) {
-  databuf *db = refs[dbref];
-  // printf("data_length: %d bytes\n", db->len);
-  return db->len;
-}
-
-extern void data_internalize(u32 dst, u32 len, ref dbref, u32 offset){
-  // printf("data_internalize\n");
-  databuf *db = refs[dbref];
-  memcpy(Z_mem->data + dst, db->data + offset, len);
+extern void msg_arg_data_copy(u64 api_nonce, u32 dest, u32 len, u32 offset) {
+  memcpy(Z_mem->data + dest, arg_data + offset, len);
   return;
 }
 
-void test_print(ref dbref) {
-  databuf *db = refs[dbref];
-  // printf("test_print: %d bytes\n", db->len);
-  if (memcmp(db->data, "IDL error:",strlen("IDL error:")) == 0) {
+extern void msg_reply(u64 api_nonce, u32 src, u32 len) {
+  ret_len = len;
+  ret_data = malloc(len+1);
+  memcpy(ret_data, Z_mem->data + src, len);
+  return;
+}
+
+
+void debug_print(u32 src, u32 len) {
+  char msg[len+1];
+  memcpy(msg, Z_mem->data + src, len);
+  msg[len] = '\0';
+  if (memcmp(msg, "IDL error:",strlen("IDL error:")) == 0) {
     ok_to_trap = true;
   };
-  if (memcmp(db->data, "Cannot grow memory",strlen("Cannot grow memory")) == 0) {
+  if (memcmp(msg, "Cannot grow memory",strlen("Cannot grow memory")) == 0) {
     ok_to_trap = true;
   };
-  if (memcmp(db->data, "Array allocation too large",strlen("Array allocation too large")) == 0) {
+  if (memcmp(msg, "Array allocation too large",strlen("Array allocation too large")) == 0) {
     ok_to_trap = true;
   };
-  printf("%s", db->data);
+  printf("%s", msg);
   fflush(stdout);
   return;
 }
 
-u32 test_show_i32(u32 x) {
-  char *tmp;
-  asprintf(&tmp, "%u\n", x);
-  ref db = data_of_string(tmp, strlen(tmp));
-  free(tmp);
-  return db;
-}
-
-
-void (*Z_testZ_printZ_vi)(u32) = &test_print;
-u32 (*Z_testZ_show_i32Z_ii)(u32) = &test_show_i32;
-u32 (*Z_dataZ_externalizeZ_iii)(u32, u32) = &data_externalize;
-u32 (*Z_dataZ_lengthZ_ii)(u32) = &data_length;
-void (*Z_dataZ_internalizeZ_viiii)(u32, u32, u32, u32) = &data_internalize;
+void (*Z_debugZ_printZ_vii)(u32, u32) = &debug_print;
+u32 (*Z_msgZ_arg_data_sizeZ_ij)(u64) = &msg_arg_data_size;
+void (*Z_msgZ_arg_data_copyZ_vjiii)(u64, u32, u32, u32) = &msg_arg_data_copy;
 
 int main(int argc, char** argv) {
   /* Make sure there is at least one command-line argument. */
@@ -109,10 +72,14 @@ int main(int argc, char** argv) {
       exit(1);
   }
   fseek(f, 0, SEEK_END);
-  long input_size = ftell(f);
+  arg_len = ftell(f);
   fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
-  char *input = malloc(input_size);
-  fread(input, 1, input_size, f);
+  arg_data = malloc(arg_len);
+  size_t read = fread(arg_data, 1, arg_len, f);
+  if (read != arg_len) {
+      fprintf(stderr, "Could not read all of %s\n", argv[1]);
+      exit(1);
+  }
   fclose(f);
 
   wasm_rt_trap_t code = wasm_rt_impl_try();
@@ -128,10 +95,9 @@ int main(int argc, char** argv) {
   // the whole wasm2c embedding behaves badly when it really runs out of memory
   // so lets run out of memory earlier
   Z_mem->max_pages = 10000;
-  Z_startZ_vv();
+  Z_canister_initZ_vj(0);
 
-  ref db = data_of_string(input, input_size);
-  Z_fooZ_vi(db);
+  Z_canister_updateZ20fooZ_vj(0);
 
   return 0;
 }

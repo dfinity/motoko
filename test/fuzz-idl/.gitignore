@@ -1,0 +1,4 @@
+test.c
+test.h
+afl_out
+main

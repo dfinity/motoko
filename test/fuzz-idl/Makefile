@@ -5,7 +5,7 @@ test.c: test.wasm
 	wasm2c test.wasm -o test.c
 
 test.wasm: ../../src/asc ../../rts/as-rts.wasm test.as
-	../../src/asc -no-fake-op -no-multi-value test.as -o test.wasm
+	../../src/asc test.as -o test.wasm
 
 clean:
 	rm -f test.wasm test.c test.h main
