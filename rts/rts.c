@@ -30,12 +30,12 @@ as_ptr as_str_of_cstr(const char * const s) {
 }
 
 void idl_trap_with(const char *str) {
-  int l2 = as_strlen(str);
-  int l1 = as_strlen("IDL error: ");
-  char msg[l1 + l2 + 1];
-  as_memcpy(msg, "IDL error: ", l1);
-  as_memcpy(msg + l1, str, l2);
-  idl_trap(msg, l1 + l2);
+  const char prefix[] = "IDL error: ";
+  int len = as_strlen(str);
+  char msg[sizeof prefix + len];
+  as_memcpy(msg, prefix, sizeof prefix - 1);
+  as_memcpy(msg + sizeof prefix - 1, str, len);
+  idl_trap(msg, sizeof prefix - 1 + len);
 }
 
 
