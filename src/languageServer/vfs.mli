@@ -5,6 +5,11 @@ type t
 type uri = string
 (* NOTE(Christoph): Track file version *)
 
+val uri_from_file : string -> uri
+val file_from_uri : (string -> string -> 'a) -> uri -> string
+val abs_file_from_uri : (string -> string -> 'a) -> uri -> string
+val parse_file : t -> Pipeline.parse_fn
+
 (** Creates a new virtual file system *)
 val empty: t
 
