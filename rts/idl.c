@@ -276,3 +276,27 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
     }
   }
 }
+
+export uint32_t find_field(buf *tb, buf *b, uint8_t **typtbl, uint32_t tag, uint32_t remaining_fields) {
+  while (remaining_fields-- > 0) {
+    uint32_t this_tag = read_u32_of_leb128(tb);
+    if (this_tag < tag) {
+      int32_t it = read_i32_of_sleb128(tb);
+      skip_any(b, typtbl, it, 0);
+    } else if (tag == this_tag) {
+      return remaining_fields;
+    } else {
+      idl_trap_with("expected record field skipped");
+    }
+  }
+  idl_trap_with("expected record field missing");
+}
+
+export void skip_fields(buf *tb, buf *b, uint8_t **typtbl, uint32_t remaining_fields) {
+  while (remaining_fields-- > 0) {
+    skip_leb128(tb);
+    int32_t it = read_i32_of_sleb128(tb);
+    skip_any(b, typtbl, it, 0);
+  }
+}
+
