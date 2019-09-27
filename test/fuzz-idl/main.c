@@ -131,7 +131,19 @@ int main(int argc, char** argv) {
 
     wasm_rt_trap_t code = wasm_rt_impl_try();
     if (code != 0) {
-      printf("A trap occurred with code: %d (trap ok? %d)\n", code, ok_to_trap);
+      char *msg;
+      switch (code) {
+        // see wasm-rt.h
+        case WASM_RT_TRAP_OOB: msg = "Out-of-bounds access in linear memory."; break;
+        case WASM_RT_TRAP_INT_OVERFLOW: msg = "Integer overflow on divide or truncation."; break;
+        case WASM_RT_TRAP_DIV_BY_ZERO: msg = "Integer divide by zero."; break;
+        case WASM_RT_TRAP_INVALID_CONVERSION: msg = "Conversion from NaN to integer."; break;
+        case WASM_RT_TRAP_UNREACHABLE: msg = "Unreachable instruction executed."; break;
+        case WASM_RT_TRAP_CALL_INDIRECT: msg = "Invalid call_indirect, for any reason."; break;
+        case WASM_RT_TRAP_EXHAUSTION: msg = "Call stack exhausted."; break;
+        default: msg = "Unexpected error code";
+      }
+      printf("A trap occurred: %s (trap ok? %d)\n", msg, ok_to_trap);
       if (ok_to_trap) exit(0); else abort();
     }
 
