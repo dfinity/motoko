@@ -1,3 +1,4 @@
+/*
 actor {
   type t_in = {
     #f0 : Null;
@@ -23,6 +24,27 @@ actor {
       case 2 (#f2 "Just a test");
 
       case _ { print("No such seed"); #f0 null}
+    }
+  };
+}
+*/
+actor {
+  type t_in = Any;
+
+  // different types to exercise subtyping
+  type t_out = Text;
+
+  public func foo(n : t_in) : () {
+    print("all izz well\n");
+  };
+
+  public func seed(n : Nat) : async t_out {
+    switch n {
+      case 0 "";
+      case 1 "hello";
+      case 2 "foo";
+
+      case _ { print("No such seed"); ""}
     }
   };
 }
