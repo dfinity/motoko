@@ -226,7 +226,7 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t) {
         idl_trap_with("skip_any: unknown prim");
     }
   } else {
-    buf tb = { typtbl[t], b->e};
+    buf tb = { typtbl[t], b->e };
     int32_t tc = read_i32_of_sleb128(&tb);
     switch(tc) {
       case (IDL_CON_opt): {
