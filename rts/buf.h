@@ -16,5 +16,6 @@ typedef struct {
 
 extern uint8_t read_byte(buf *buf);
 extern uint32_t read_word(buf *buf);
+extern void advance(buf *buf, uint32_t n); 
 
 #endif /* BUF_H */

@@ -15,3 +15,6 @@ uint32_t read_word(buf *buf) {
   return r;
 }
 
+void advance(buf *buf, uint32_t n) {
+ buf->p += n;
+}
