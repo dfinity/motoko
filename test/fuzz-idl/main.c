@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
     arg_len = DIDL_NAT_LEN;
     arg_data = malloc(DIDL_NAT_LEN);
     memcpy(arg_data, DIDL_NAT, DIDL_NAT_LEN);
-    for (uint8_t i = 0; i < 3; i++) {
+    for (uint8_t i = 0; i < 4; i++) {
       printf("Getting seed %u\n", i);
       arg_data[DIDL_NAT_LEN-1] = i;
       Z_canister_updateZ20seedZ_vj(0);
