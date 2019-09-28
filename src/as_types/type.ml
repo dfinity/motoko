@@ -5,7 +5,8 @@ type var = string
 
 type control = Returns | Promises (* Returns a computed value or immediate promise *)
 type obj_sort = Object | Actor | Module
-type func_sort = Local | Shared
+type mode = Query | Write
+type func_sort = Local | Shared of mode
 type eff = Triv | Await
 
 type prim =
@@ -566,7 +567,7 @@ let shared t =
       | Tup ts -> List.for_all go ts
       | Obj (s, fs) -> s = Actor || List.for_all (fun f -> go f.typ) fs
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
-      | Func (s, c, tbs, ts1, ts2) -> s = Shared
+      | Func (s, c, tbs, ts1, ts2) -> s <> Local
     end
   in go t
 
@@ -1065,7 +1066,8 @@ let string_of_obj_sort = function
 
 let string_of_func_sort = function
   | Local -> ""
-  | Shared -> "shared "
+  | Shared Write -> "shared "
+  | Shared Query -> "shared query "
 
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
@@ -1197,3 +1199,5 @@ let rec string_of_typ_expand t =
       | t' -> s ^ " = " ^ string_of_typ_expand t'
     )
   | _ -> s
+
+let is_shared_sort sort = sort <> Local

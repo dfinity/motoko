@@ -216,6 +216,7 @@ rule token mode = parse
   | "try" { TRY }
   | "throw" { THROW }
   | "debug_show" { DEBUG_SHOW }
+  | "query" { QUERY }
   | "switch" { SWITCH }
   | "true" { BOOL true }
   | "type" { TYPE }

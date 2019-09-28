@@ -116,7 +116,7 @@ val unit : value
 
 val local_func : int -> int -> func -> value
 val message_func : int -> func -> value
-val async_func : int -> func -> value
+val async_func : int -> Type.mode -> func -> value
 
 
 (* Projections *)

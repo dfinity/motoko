@@ -3422,7 +3422,7 @@ module Serialization = struct
           end
         | Array t -> go t
         | Tup ts -> List.for_all go ts
-        | Func (Shared, c, tbs, ts1, ts2) -> false
+        | Func (Shared _, c, tbs, ts1, ts2) -> false
         | Func (s, c, tbs, ts1, ts2) ->
           let ts = open_binds tbs in
           List.for_all go (List.map (open_ ts) ts1) &&
@@ -4791,11 +4791,16 @@ module FuncDec = struct
       closure_code ^^
       mk_body env ae2 ^^
 
-      (* Collect garbage *)
-      G.i (Call (nr (E.built_in env "collect"))) ^^
-
-      (* Save memory *)
-      OrthogonalPersistence.save_mem env
+      match cc.Call_conv.sort with
+      | Type.Shared Type.Write ->
+          (* Collect garbage *)
+          G.i (Call (nr (E.built_in env "collect"))) ^^
+          (* Save memory *)
+          OrthogonalPersistence.save_mem env
+      | Type.Shared Type.Query ->
+        (* Don't collect or persist *)
+        G.i Nop
+      | _ -> assert false
     ))
 
   let compile_static_message outer_env outer_ae cc args mk_body ret_tys at : E.func_with_names =
@@ -4817,13 +4822,19 @@ module FuncDec = struct
         get_databuf ^^ get_elembuf ^^
         Serialization.deserialize env arg_tys ^^
         G.concat (List.rev setters) ^^
+
         mk_body env ae1 ^^
 
-        (* Collect garbage *)
-        G.i (Call (nr (E.built_in env "collect"))) ^^
-
-        (* Save memory *)
-        OrthogonalPersistence.save_mem env
+        match cc.Call_conv.sort with
+        | Type.Shared Type.Write ->
+          (* Collect garbage *)
+          G.i (Call (nr (E.built_in env "collect"))) ^^
+          (* Save memory *)
+          OrthogonalPersistence.save_mem env
+        | Type.Shared Type.Query ->
+          (* Don't collect or persist *)
+          G.i Nop
+        | _ -> assert false
       ))
     | ICMode ->
       let ae0 = ASEnv.mk_fun_ae outer_ae in
@@ -4853,7 +4864,7 @@ module FuncDec = struct
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env cc name args mk_body ret_tys at =
     let (fi, fill) = E.reserve_fun pre_env name in
-    if cc.Call_conv.sort = Type.Shared
+    if Type.is_shared_sort (cc.Call_conv.sort)
     then begin
       declare_dfinity_type pre_env false fi ;
       ( SR.StaticMessage fi, fun env ae ->
@@ -4867,7 +4878,7 @@ module FuncDec = struct
 
   (* Compile a closure declaration (captures local variables) *)
   let closure env ae cc name captured args mk_body at =
-      let is_local = cc.Call_conv.sort <> Type.Shared in
+      let is_local = cc.Call_conv.sort = Type.Local in
 
       let (set_clos, get_clos) = new_local env (name ^ "_clos") in
 
@@ -6273,7 +6284,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae (StackRep.of_arity cc.Call_conv.n_args) e2 ^^
         get_clos ^^
         Closure.call_closure env cc
-     | _, Type.Shared ->
+     | _, Type.Shared _ ->
         let (set_funcref, get_funcref) = new_local env "funcref" in
         code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
         set_funcref ^^

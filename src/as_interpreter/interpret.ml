@@ -201,7 +201,7 @@ let make_unit_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared; n_res = 0; _} ->
+  | {sort = T.Shared T.Write; n_res = 0; _} ->
     Value.message_func call_conv.n_args (fun v k ->
       actor_msg env id f v (fun _ -> ());
       k V.unit
@@ -213,8 +213,8 @@ let make_async_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared; control = T.Promises; n_res = 1; _} ->
-    Value.async_func call_conv.n_args (fun v k ->
+  | {sort = T.Shared T.Write; control = T.Promises; n_res = 1; _} ->
+    Value.async_func call_conv.n_args T.Write (fun v k ->
       let async = make_async () in
       actor_msg env id f v (fun v_async ->
         get_async (V.as_async v_async) (set_async async) (reject_async async)
@@ -464,7 +464,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let v = V.Func (CC.call_conv_of_typ exp.note.note_typ, f) in
     let v' =
       match _sort.it with
-      | T.Shared -> make_message env name exp.note.note_typ v
+      | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
   | CallE (exp1, typs, exp2) ->
