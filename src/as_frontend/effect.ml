@@ -62,6 +62,8 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     let t1 = effect_exp exp1 in
     let t2 = effect_exp exp2 in
     max_eff t1 t2
+  | DebugE exp1 ->
+    effect_exp exp1
   | TupE exps
   | ArrayE (_, exps) ->
     let es = List.map effect_exp exps in

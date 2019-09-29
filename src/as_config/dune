@@ -1,0 +1,3 @@
+(library
+  (name as_config)
+)
