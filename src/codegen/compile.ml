@@ -3987,24 +3987,36 @@ module Serialization = struct
         )
       | Variant vs ->
         with_composite_typ (-21l) (fun get_typ_buf ->
-          ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
+          (* Find the tag *)
+          let (set_n, get_n) = new_local env "len" in
+          ReadBuf.read_leb128 env get_typ_buf ^^ set_n ^^
 
-          let (set_tag, get_tag) = new_local env "tag" in
-          ReadBuf.read_leb128 env get_data_buf ^^ set_tag ^^
+          let (set_tagidx, get_tagidx) = new_local env "tagidx" in
+          ReadBuf.read_leb128 env get_data_buf ^^ set_tagidx ^^
 
-          let (set_idltyp, get_idltyp) = new_local env "idltyp" in
-          List.fold_right (fun (i, {lab = l; typ = t}) continue ->
-              (* type desc for this variant *)
+          get_tagidx ^^ get_n ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+          E.else_trap_with env "IDL error: variant index out of bounds" ^^
+
+          (* Zoom past the previous entries *)
+          get_tagidx ^^ from_0_to_n env (fun _ ->
               ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
-              ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
+              ReadBuf.read_sleb128 env get_typ_buf ^^ G.i Drop
+          ) ^^
 
-              get_tag ^^
-              compile_eq_const (Int32.of_int i) ^^
+          (* Now read the tag *)
+          let (set_tag, get_tag) = new_local env "tag" in
+          ReadBuf.read_leb128 env get_typ_buf ^^ set_tag ^^
+          let (set_idltyp, get_idltyp) = new_local env "idltyp" in
+          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
+
+          List.fold_right (fun (h, {lab = l; typ = t}) continue ->
+              get_tag ^^ compile_eq_const (Lib.Uint32.to_int32 h) ^^
               G.if_ (ValBlockType (Some I32Type))
                 ( Variant.inject env l (get_idltyp ^^ go env t) )
                 continue
             )
-            ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
+            ( sort_by_hash vs )
             ( E.trap_with env "IDL error: unexpected variant tag" )
         )
       | (Func _ | Obj (Actor, _)) ->
