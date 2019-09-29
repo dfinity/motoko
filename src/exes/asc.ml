@@ -23,7 +23,6 @@ let set_mode m () =
   end;
   mode := m
 
-let compile_mode = ref Pipeline.ICMode
 let out_file = ref ""
 let link = ref true
 let interpret_ir = ref false
@@ -68,13 +67,13 @@ let argspec = Arg.align
 
   "-no-link", Arg.Clear link, " do not statically link-in runtime";
   "-no-system-api",
-    Arg.Unit (fun () -> compile_mode := Pipeline.WasmMode),
+    Arg.Unit (fun () -> Flags.(compile_mode := WasmMode)),
       " do not import any system API";
   "-ancient-system-api",
-    Arg.Unit (fun () -> compile_mode := Pipeline.AncientMode),
+    Arg.Unit (fun () -> Flags.(compile_mode := AncientMode)),
       " use the ancient DFINITY system API (dvm)";
-  "-multi-value", Arg.Set Codegen.Flags.multi_value, " use multi-value extension";
-  "-no-multi-value", Arg.Clear Codegen.Flags.multi_value, " avoid multi-value extension";
+  "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
+  "-no-multi-value", Arg.Clear Flags.multi_value, " avoid multi-value extension";
 
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
@@ -126,7 +125,7 @@ let process_files files : unit =
     output_string oc idl_code; close_out oc
   | Compile ->
     set_out_file files ".wasm";
-    let module_ = Diag.run Pipeline.(compile_files !compile_mode !link files) in
+    let module_ = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
