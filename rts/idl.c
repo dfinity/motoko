@@ -173,7 +173,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
 }
 
 // can also be used for sleb
-void skip_leb128(buf *buf) {
+export void skip_leb128(buf *buf) {
   uint8_t b;
   do {
     b = read_byte(buf);
