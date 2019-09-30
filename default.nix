@@ -5,7 +5,12 @@
   replay ? 0
 }:
 
-let nixpkgs_wasi = (import ./nix/nixpkgs-wasi.nix){ system = nixpkgs.system; }; in
+let nixpkgs_wasi = (import ./nix/nixpkgs-wasi.nix){
+  system = nixpkgs.system;
+  overlays = [
+    (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
+  ];
+}; in
 
 let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
 
