@@ -171,3 +171,108 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
 
   *typtbl_out = typtbl;
 }
+
+// can also be used for sleb
+void skip_leb128(buf *buf) {
+  uint8_t b;
+  do {
+    b = read_byte(buf);
+  } while (b & (uint8_t)0x80);
+}
+
+// Assumes that buf is the encoding of type t, and fast-forwards past that
+// Assumes that all type references in the typtbl are already checked
+//
+// This is currently implemented recursively, but we could
+// do this in a loop (by maintaing a stack of the t arguments)
+export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
+  if (depth > 100) {
+        idl_trap_with("skip_any: too deeply nested record");
+  }
+  if (t < 0) { // primitive type
+    switch(t) {
+      case IDL_PRIM_null:
+      case IDL_PRIM_reserved:
+        return;
+      case IDL_PRIM_bool:
+      case IDL_PRIM_nat8:
+      case IDL_PRIM_int8:
+        advance(b, 1);
+        return;
+      case IDL_PRIM_nat:
+      case IDL_PRIM_int:
+        skip_leb128(b);
+        return;
+      case IDL_PRIM_nat16:
+      case IDL_PRIM_int16:
+        advance(b, 2);
+        return;
+      case IDL_PRIM_nat32:
+      case IDL_PRIM_int32:
+      case IDL_PRIM_float32:
+        advance(b, 4);
+        return;
+      case IDL_PRIM_nat64:
+      case IDL_PRIM_int64:
+      case IDL_PRIM_float64:
+        advance(b, 8);
+        return;
+      case IDL_PRIM_text:
+        {
+          uint32_t len = read_u32_of_leb128(b);
+          advance(b, len);
+        }
+        return;
+      case IDL_PRIM_empty:
+        idl_trap_with("skip_any: encountered empty");
+      default:
+        idl_trap_with("skip_any: unknown prim");
+    }
+  } else {
+    buf tb = { typtbl[t], b->e };
+    int32_t tc = read_i32_of_sleb128(&tb);
+    switch(tc) {
+      case IDL_CON_opt: {
+        int32_t it = read_i32_of_sleb128(&tb);
+        if (read_byte(b)) {
+          skip_any(b, typtbl, it, 0);
+        }
+        return;
+      }
+      case IDL_CON_vec: {
+        int32_t it = read_i32_of_sleb128(&tb);
+        for (uint32_t n = read_u32_of_leb128(b); n > 0; n--) {
+          skip_any(b, typtbl, it, 0);
+        }
+        return;
+      }
+      case IDL_CON_record: {
+        for (uint32_t n = read_u32_of_leb128(&tb); n > 0; n--) {
+          skip_leb128(&tb);
+          int32_t it = read_i32_of_sleb128(&tb);
+	  // This is just a quick check; we should be keeping
+	  // track of all enclosing records to detect larger loops
+	  if (it == t) idl_trap_with("skip_any: recursive record");
+          skip_any(b, typtbl, it, depth + 1);
+        }
+        return;
+      }
+      case IDL_CON_variant: {
+        uint32_t n = read_u32_of_leb128(&tb);
+        uint32_t i = read_u32_of_leb128(b);
+        if (i >= n) idl_trap_with("skip_any: variant tag too large");
+        for (; i > 0; i--) {
+          skip_leb128(&tb);
+          skip_leb128(&tb);
+        }
+        skip_leb128(&tb);
+        int32_t it = read_i32_of_sleb128(&tb);
+        skip_any(b, typtbl, it, 0);
+        return;
+      }
+
+      default:
+        idl_trap_with("skip_any: unknown tycon");
+    }
+  }
+}
