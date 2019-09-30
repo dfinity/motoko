@@ -1,4 +1,4 @@
-{ rustPlatform, fetchFromGitHub, lib, python, cmake, llvmPackages, clang }:
+{ rustPlatform, fetchFromGitHub, lib, python, cmake, llvmPackages, clang, stdenv, darwin }:
 
 rustPlatform.buildRustPackage {
   pname = "wasmtime";
@@ -17,8 +17,8 @@ rustPlatform.buildRustPackage {
   cargoPatches = [ ./cargo-lock.patch ];
 
   nativeBuildInputs = [ python cmake clang ];
-  buildInputs = [ llvmPackages.libclang ];
-
+  buildInputs = [ llvmPackages.libclang ] ++
+   lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.Security ];
   LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
 
   meta = with lib; {
