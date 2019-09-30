@@ -3939,12 +3939,21 @@ module Serialization = struct
       (* Composite types *)
       | Tup ts ->
         with_composite_typ (-20l) (fun get_typ_buf ->
-          ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
-          G.concat_map (fun t ->
-            ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
-            ReadBuf.read_sleb128 env get_typ_buf ^^
-            go env t
+          let (set_n, get_n) = new_local env "record_fields" in
+          ReadBuf.read_leb128 env get_typ_buf ^^ set_n ^^
+
+          G.concat_mapi (fun i t ->
+            (* skip all possible intermediate extra fields *)
+            get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Int32.of_int i) ^^ get_n ^^
+            E.call_import env "rts" "find_field" ^^ set_n ^^
+
+            ReadBuf.read_sleb128 env get_typ_buf ^^ go env t
           ) ts ^^
+
+          (* skip all possible trailing extra fields *)
+          get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n ^^
+          E.call_import env "rts" "skip_fields" ^^
+
           Tuple.from_stack env (List.length ts)
         )
       | Obj (Object, fs) ->
