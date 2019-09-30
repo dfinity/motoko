@@ -78,6 +78,7 @@ function normalize () {
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
+    sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     cat > $1.norm
     mv $1.norm $1
   fi
