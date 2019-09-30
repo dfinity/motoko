@@ -1,4 +1,4 @@
-// This tests checks that the IDL decoder can
+// This test checks that the IDL decoder can
 // do the subtyping from null to option
 actor {
   public func any(o : ?Text) : async () {
