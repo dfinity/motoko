@@ -1655,8 +1655,8 @@ module ReadBuf = struct
     get_buf ^^ E.call_import env "rts" "read_i32_of_sleb128"
 
   let check_space env get_buf get_delta =
-    get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    get_end get_buf ^^
+    get_delta ^^
+    get_end get_buf ^^ get_ptr get_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     G.i (Compare (Wasm.Values.I32 I64Op.LeU)) ^^
     E.else_trap_with env "IDL error: out of bounds read"
 
@@ -3990,24 +3990,30 @@ module Serialization = struct
           get_x
         )
       | Opt t ->
-        (* TODO: Subtyping with primitive null *)
-        let (set_idltyp, get_idltyp) = new_local env "idltyp" in
-        with_composite_typ (-18l) (fun get_typ_buf ->
-          ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
-          ReadBuf.read_byte env get_data_buf ^^
-          let (set_b, get_b) = new_local env "b" in
-          set_b ^^
-          get_b ^^
-          compile_eq_const 0l ^^
-          G.if_ (ValBlockType (Some I32Type))
+        check_prim_typ (Prim Null) ^^
+        G.if_ (ValBlockType (Some I32Type))
           begin
-            Opt.null
-          end begin
-            get_b ^^ compile_eq_const 1l ^^
-            E.else_trap_with env "IDL error: opt tag not 0 or 1 " ^^
-            Opt.inject env (get_idltyp ^^ go env t)
+                Opt.null
           end
-        )
+          begin
+            let (set_idltyp, get_idltyp) = new_local env "idltyp" in
+            with_composite_typ (-18l) (fun get_typ_buf ->
+              ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
+              ReadBuf.read_byte env get_data_buf ^^
+              let (set_b, get_b) = new_local env "b" in
+              set_b ^^
+              get_b ^^
+              compile_eq_const 0l ^^
+              G.if_ (ValBlockType (Some I32Type))
+              begin
+                Opt.null
+              end begin
+                get_b ^^ compile_eq_const 1l ^^
+                E.else_trap_with env "IDL error: opt tag not 0 or 1" ^^
+                Opt.inject env (get_idltyp ^^ go env t)
+              end
+            )
+          end
       | Variant vs ->
         with_composite_typ (-21l) (fun get_typ_buf ->
           (* Find the tag *)
