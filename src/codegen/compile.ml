@@ -655,6 +655,7 @@ module RTS = struct
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "skip_leb128" [I32Type] [];
     E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "find_field" [I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] []
@@ -3951,7 +3952,7 @@ module Serialization = struct
           Object.lit_raw env (List.map (fun (h,f) ->
             f.Type.lab, fun () ->
               (* skip all possible intermediate extra fields *)
-              get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const h ^^ get_n ^^
+              get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Lib.Uint32.to_int32 h) ^^ get_n ^^
               E.call_import env "rts" "find_field" ^^ set_n ^^
 
               ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
@@ -4010,8 +4011,8 @@ module Serialization = struct
 
           (* Zoom past the previous entries *)
           get_tagidx ^^ from_0_to_n env (fun _ ->
-              ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
-              ReadBuf.read_sleb128 env get_typ_buf ^^ G.i Drop
+            get_typ_buf ^^ E.call_import env "rts" "skip_leb128" ^^
+            get_typ_buf ^^ E.call_import env "rts" "skip_leb128"
           ) ^^
 
           (* Now read the tag *)

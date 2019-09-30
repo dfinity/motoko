@@ -104,7 +104,7 @@ end
 
 module Uint32 :
 sig
-  type t = int32
+  type t
   val to_string : t -> string
   val of_string : string -> t
   val of_int : int -> t
