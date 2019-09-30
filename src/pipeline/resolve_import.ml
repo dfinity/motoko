@@ -170,6 +170,8 @@ let rec
   | LoopE (exp1, Some exp2)
   | ForE (_, exp1, exp2) ->
     exp env exp1; exp env exp2
+  | DebugE exp1 ->
+    exp env exp1
   | TupE exps
   | ArrayE (_, exps) ->
     List.iter (exp env) exps

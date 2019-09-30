@@ -6,31 +6,13 @@ open As_interpreter
 open Ir_def
 open Ir_interpreter
 open Ir_passes
+open As_config
 
 open Printf
 
 type stat_env = Scope.t
 type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
-
-module Flags = struct
-  let trace = ref false
-  let verbose = ref false
-  let print_depth = ref 2
-  let await_lowering = ref true
-  let async_lowering = ref true
-  let dump_parse = ref false
-  let dump_tc = ref false
-  let dump_lowering = ref false
-  let check_ir = ref true
-  let package_urls : (string * string) list ref = ref []
-  let profile = ref false
-  let profile_verbose = ref false
-  let profile_file = ref "profiling-counters.csv"
-  let profile_line_prefix = ref ""
-  let profile_field_names : string list ref = ref []
-end (* Flags *)
-
 
 (* Diagnostics *)
 
@@ -454,7 +436,7 @@ let await_lowering =
   transform_if "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering mode =
-  let platform = if mode = Codegen.Compile.ICMode then Async.V2 else Async.V1 in
+  let platform = if mode = Flags.ICMode then Async.V2 else Async.V1 in
   transform_if "Async Lowering" (Async.transform platform)
 
 let tailcall_optimization =
@@ -487,7 +469,6 @@ let load_as_rts () =
   let wasm = load_file wasm_filename in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" wasm
 
-type compile_mode = Codegen.Compile.mode = WasmMode | AncientMode | ICMode
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
 let name_progs progs =
@@ -526,7 +507,7 @@ let compile_string mode s name : compile_result =
 let interpret_ir_prog inp_env libraries progs =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog WasmMode initial_stat_env inp_env libraries progs name in
+  let prog_ir = lower_prog Flags.WasmMode initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
