@@ -9,7 +9,7 @@ uint8_t read_byte(buf *buf) {
 }
 
 uint32_t read_word(buf *buf) {
-  if (buf->p + sizeof(uint8_t) > buf->e) idl_trap_with("word read out of buffer");
+  if (buf->p + sizeof(uint32_t) > buf->e) idl_trap_with("word read out of buffer");
   uint32_t r = ((uint32_t*)(buf->p))[0];
   buf->p += sizeof(uint32_t);
   return r;
