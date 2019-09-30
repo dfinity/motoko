@@ -1653,8 +1653,8 @@ module ReadBuf = struct
     get_buf ^^ E.call_import env "rts" "read_i32_of_sleb128"
 
   let check_space env get_buf get_delta =
-    get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    get_end get_buf ^^
+    get_delta ^^
+    get_end get_buf ^^ get_ptr get_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     G.i (Compare (Wasm.Values.I32 I64Op.LeU)) ^^
     E.else_trap_with env "IDL error: out of bounds read"
 
