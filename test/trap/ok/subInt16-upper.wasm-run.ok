@@ -1,1 +1,2 @@
-error while processing main module _out/subInt16-upper.wasm: Instantiation error: Trap occurred while invoking start function: wasm trap at 0x___:
+error: failed to process main module `_out/subInt16-upper.wasm`
+    caused by: Instantiation error: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:

@@ -48,7 +48,6 @@ accept:
 	$(MAKE) -C idl accept
 	$(MAKE) -C as-idl accept
 	$(MAKE) -C trap accept
-	$(MAKE) -C trap check
 
 clean:
 	$(MAKE) -C fail clean
