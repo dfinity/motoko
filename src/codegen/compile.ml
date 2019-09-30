@@ -2632,7 +2632,7 @@ module Text = struct
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed = compile_add_const unskewed_payload_offset
 
-  (* String concatentation. Expects two strings on stack *)
+  (* String concatenation. Expects two strings on stack *)
   let concat env = Func.share_code2 env "concat" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       let (set_z, get_z) = new_local env "z" in
       let (set_len1, get_len1) = new_local env "len1" in
