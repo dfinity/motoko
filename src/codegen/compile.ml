@@ -655,6 +655,7 @@ module RTS = struct
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "skip_leb128" [I32Type] [];
     E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] []
 
   let system_exports env =
@@ -4003,8 +4004,8 @@ module Serialization = struct
 
           (* Zoom past the previous entries *)
           get_tagidx ^^ from_0_to_n env (fun _ ->
-              ReadBuf.read_leb128 env get_typ_buf ^^ G.i Drop ^^
-              ReadBuf.read_sleb128 env get_typ_buf ^^ G.i Drop
+            get_typ_buf ^^ E.call_import env "rts" "skip_leb128" ^^
+            get_typ_buf ^^ E.call_import env "rts" "skip_leb128"
           ) ^^
 
           (* Now read the tag *)
