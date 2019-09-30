@@ -143,6 +143,7 @@ int main(int argc, char** argv) {
         case WASM_RT_TRAP_EXHAUSTION: msg = "Call stack exhausted."; break;
         default: msg = "Unexpected error code";
       }
+      ok_to_trap = ok_to_trap || (code == WASM_RT_TRAP_EXHAUSTION);
       printf("A trap occurred: %s (trap ok? %d)\n", msg, ok_to_trap);
       if (ok_to_trap) exit(0); else abort();
     }
