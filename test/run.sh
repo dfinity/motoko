@@ -221,7 +221,7 @@ do
             elif [ $API = wasi ]
             then
               $ECHO -n " [wasm-run]"
-              $WASMTIME $out/$base.wasm > $out/$base.wasm-run 2>&1
+              $WASMTIME --disable-cache $out/$base.wasm > $out/$base.wasm-run 2>&1
               normalize $out/$base.wasm-run
               diff_files="$diff_files $base.wasm-run"
             else
