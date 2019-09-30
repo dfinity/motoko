@@ -299,4 +299,3 @@ export void skip_fields(buf *tb, buf *b, uint8_t **typtbl, uint32_t remaining_fi
     skip_any(b, typtbl, it, 0);
   }
 }
-
