@@ -112,7 +112,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   uint8_t **typtbl = (uint8_t **)alloc(n_types * sizeof(uint8_t*));
   for (int i = 0; i < n_types; i++) {
     typtbl[i] = buf->p;
-    int ty = read_i32_of_sleb128(buf);
+    int32_t ty = read_i32_of_sleb128(buf);
     if (ty >= IDL_PRIM_lowest) {
       idl_trap_with("type index too high"); // illegal
     } else if (ty == IDL_CON_opt) {
@@ -122,36 +122,36 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
       int32_t t = read_i32_of_sleb128(buf);
       if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
     } else if (ty == IDL_CON_record) {
-      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         read_u32_of_leb128(buf);
         int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
       }
     } else if (ty == IDL_CON_variant) {
-      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         read_u32_of_leb128(buf);
         int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
       }
     } else if (ty == IDL_CON_func) {
       // arg types
-      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
       }
       // ret types
-      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         int32_t t = read_i32_of_sleb128(buf);
         if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
       }
       // annotations
-      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         (buf->p)++;
       }
     } else if (ty == IDL_CON_service) {
-      for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+      for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         // name
-        unsigned int size = read_u32_of_leb128(buf);
+        uint32_t size = read_u32_of_leb128(buf);
         (buf->p) += size;
         // type
         int32_t t = read_i32_of_sleb128(buf);
@@ -164,7 +164,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   }
   // Now read the main types
   *main_types_out = buf->p;
-  for (int n = read_u32_of_leb128(buf); n > 0; n--) {
+  for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
     int32_t t = read_i32_of_sleb128(buf);
     if (t < IDL_PRIM_lowest || t >= n_types) idl_trap_with("type index out of range");
   }
