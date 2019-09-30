@@ -779,6 +779,9 @@ and infer_exp'' env exp : T.typ =
     let t = check_typ env typ in
     if not env.pre then check_exp (add_lab env id.it t) t exp1;
     t
+  | DebugE exp1 ->
+    if not env.pre then check_exp env T.unit exp1;
+    T.unit
   | BreakE (id, exp1) ->
     (match T.Env.find_opt id.it env.labs with
     | Some t ->

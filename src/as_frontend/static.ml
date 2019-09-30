@@ -71,6 +71,7 @@ let rec exp m e = match e.it with
   | OrE _
   | WhileE _
   | ForE _
+  | DebugE _
   | IfE _
   | SwitchE _
   | ThrowE _
