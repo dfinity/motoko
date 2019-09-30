@@ -2,7 +2,7 @@
 
 rustPlatform.buildRustPackage {
   pname = "wasmtime";
-  version = "20190521";
+  version = "20190927";
 
   src = fetchFromGitHub {
     owner = "CraneStation";
@@ -12,7 +12,7 @@ rustPlatform.buildRustPackage {
     fetchSubmodules = true;
   };
 
-  cargoSha256 = "1jbpq09czm295316gdv3y0pfapqs0ynj3qbarwlnrv7valq5ak13";
+  cargoSha256 = "1ynnr5cpz6snb65a5hs8jwq2b800x5c6l0kijg5qqb29gh0x8yyg";
 
   cargoPatches = [ ./cargo-lock.patch ];
 
