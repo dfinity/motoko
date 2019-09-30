@@ -3990,7 +3990,7 @@ module Serialization = struct
                 Opt.null
               end begin
                 get_b ^^ compile_eq_const 1l ^^
-                E.else_trap_with env "IDL error: opt tag not 0 or 1 " ^^
+                E.else_trap_with env "IDL error: opt tag not 0 or 1" ^^
                 Opt.inject env (get_idltyp ^^ go env t)
               end
             )
