@@ -140,6 +140,7 @@ and exp' =
   | LabelE of id * typ * exp                   (* label *)
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
+  | DebugE of exp                              (* debugging *)
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
