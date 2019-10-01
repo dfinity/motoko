@@ -405,7 +405,7 @@ module Transform(Platform : sig val platform : platform end) = struct
         match s with
         | T.Local  ->
           FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
-        | T.Shared _->
+        | T.Shared mode->
           begin
             match typ exp with
             | T.Tup [] ->
@@ -439,7 +439,7 @@ module Transform(Platform : sig val platform : platform end) = struct
                   (t_exp cps) -*- tupE [k;r]
                 | _ -> assert false
               in
-              let cc' = Call_conv.message_cc (List.length args') in
+              let cc' = Call_conv.message_cc mode (List.length args') in
               FuncE (x, cc', typbinds', args', [], exp')
             | _ -> assert false
           end

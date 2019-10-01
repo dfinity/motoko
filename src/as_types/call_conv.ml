@@ -9,8 +9,8 @@ type call_conv = {
 type t = call_conv
 
 let local_cc n m = { sort = Local; control = Returns; n_args = n; n_res = m}
-let message_cc n = { sort = Shared Write; control = Returns; n_args = n; n_res = 0}
-let async_cc n mode = { sort = Shared mode; control = Promises; n_args = n; n_res = 1}
+let message_cc mode n = { sort = Shared mode; control = Returns; n_args = n; n_res = 0}
+let async_cc mode n = { sort = Shared mode; control = Promises; n_args = n; n_res = 1}
 
 let call_conv_of_typ typ =
   match typ with
