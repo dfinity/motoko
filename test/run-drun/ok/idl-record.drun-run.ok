@@ -3,3 +3,5 @@ debug.print: ok: +42
 ingress(1) Completed: Canister: Payload: 0x4449444c016c000100
 debug.print: ok: Hey!
 ingress(2) Completed: Canister: Payload: 0x4449444c016c000100
+debug.print: ok: +25
+ingress(3) Completed: Canister: Payload: 0x4449444c016c000100
