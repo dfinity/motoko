@@ -268,9 +268,17 @@ do
       then
         $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$ESM
+
         node -r esm $out/$base.js > $out/$base.js.out 2>&1
         normalize $out/$base.js.out
         diff_files="$diff_files $base.js.out"
+
+        node -r esm -e \
+        "import actorInterface from './$out/$base.js';
+        import { makeActor, makeHttpAgent } from '$JS_USER_LIBRARY';
+        const httpAgent = makeHttpAgent({ canisterId: 1 });
+        const actor = makeActor(actorInterface)(httpAgent);
+        assert(Object.entries(actor).length > 0);"
       fi
     fi
   fi
