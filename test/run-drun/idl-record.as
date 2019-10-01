@@ -17,6 +17,11 @@ actor {
        case {byte} print ("ok: " # debug_show byte);
      }
   };
+    public func record2(o : {content: Text; value : Int}, follower : Int8) : async Int8 {
+     switch o {
+       case {content} { print ("ok: " # " " # content # " " # debug_show follower); follower };
+     }
+  };
 }
 
 //CALL ingress pair 0x4449444C016C020071017C010004486579212A
@@ -25,3 +30,5 @@ actor {
 // CALL ingress record1 0x4449444C016C0388be8c890477b99adecb0171f1fee18d037C010004486579212A19
 //  needs to jump over redundant `content` field
 //CALL ingress record1 0x4449444C016C03b99adecb0171f1fee18d037C88be8c890477010004486579212A19
+//  needs to jump over redundant trailing `byte` field
+//CALL ingress record2 0x4449444C016C03b99adecb0171f1fee18d037C88be8c89047702007704486579212A1819
