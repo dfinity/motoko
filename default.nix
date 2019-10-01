@@ -32,8 +32,8 @@ let dev = import (builtins.fetchGit {
 
 let dfinity-repo = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dfinity";
-  ref = "mw/memory-grow";
-  rev = "bee6bc75433a8b20db70321abc6c2d31ede814c6";
+  ref = "master";
+  rev = "1b7e7c185fdd20a61b13e4c76d4dde29dce9862e";
 }) { system = nixpkgs.system; }; in
 
 let real-dvm =
