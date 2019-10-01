@@ -4868,9 +4868,14 @@ module FuncDec = struct
         Serialization.deserialize env arg_tys ^^
         G.concat (List.rev setters) ^^
         mk_body env ae1 ^^
-
-        (* Collect garbage *)
-        G.i (Call (nr (E.built_in env "collect")))
+        match cc.Call_conv.sort with
+        | Type.Shared Type.Write ->
+          (* Collect garbage *)
+          G.i (Call (nr (E.built_in env "collect")))
+        | Type.Shared Type.Query ->
+          (* Don't collect *)
+          G.i Nop
+        | _ -> assert false
       ))
     | Flags.WasmMode -> assert false
 
