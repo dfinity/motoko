@@ -621,55 +621,6 @@ record { <fieldtype>;* } <: record { <fieldtype'>;* }
 record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
 ```
 
-**TODO: Rules below are unsound as is, need fixing!**
-
-In addition, record fields of `null` or option type can be removed, treating the absent field as having value `null`.
-```
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
--------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
-
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
------------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
-```
-TODO: What we want to achieve: Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
-```
-type T = {};
-actor { f : T -> T };
-```
-can safely be upgraded to
-```
-type T' = {x : opt text};
-actor { f : T' -> T' };
-```
-for all first-order uses of `T`, because both of the following hold:
-```
-upgrade T' <: T
-upgrade T <: T'
-```
-And hence:
-```
-upgrade (T' -> T')  <:  (T -> T)
-```
-for some version of a type `upgrade T`.
-Moreover, this extends to the higher-order case, where e.g. a function of the above type is expected as a parameter:
-```
-actor { g : (h : T -> T) -> ()}
-```
-Upgrading `T` as above contra-variantly requires
-```
-upgrade (T -> T)  <:  (T' -> T')
-```
-which also holds.
-
-Note: Subtyping still needs to be transitive . We must not allow:
-```
-record {x : opt text} <: record {} <: record {x : opt nat}
-```
-**TODO: Sanity continues from here.**
-
-
 #### Variants
 
 For a specialised variants, the type of a tag can be specialised, or a tag can be removed.
