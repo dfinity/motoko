@@ -118,6 +118,7 @@ let rec exp msgs e : f = match e.it with
   | LoopE (e1, Some e2) -> exps msgs [e1; e2]
   | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
   | LabelE (i, t, e)    -> exp msgs e
+  | DebugE e            -> exp msgs e
   | AsyncE e            -> exp msgs e
   | AwaitE e            -> exp msgs e
   | AssertE e           -> exp msgs e

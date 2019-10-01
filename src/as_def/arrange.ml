@@ -46,6 +46,7 @@ let rec exp e = match e.it with
   | LoopE (e1, Some e2) -> "LoopE"   $$ [exp e1; exp e2]
   | ForE (p, e1, e2)    -> "ForE"    $$ [pat p; exp e1; exp e2]
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
+  | DebugE e            -> "DebugE"  $$ [exp e]
   | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
   | RetE e              -> "RetE"    $$ [exp e]
   | AsyncE e            -> "AsyncE"  $$ [exp e]
