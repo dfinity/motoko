@@ -86,20 +86,6 @@ let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
     diagnostic_relatedInformation = None;
   }
 
-let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
-let file_from_uri logger uri =
-  match Lib.String.chop_prefix file_uri_prefix uri with
-   | Some file -> file
-   | None ->
-      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
-      uri
-let abs_file_from_uri logger uri =
-  match Lib.String.chop_prefix "file://" uri with
-   | Some file -> file
-   | None ->
-      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
-      uri
-
 let start () =
   let oc: out_channel = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"; in
 
@@ -107,12 +93,16 @@ let start () =
   let publish_diagnostics = Channel.publish_diagnostics oc in
   let send_response = Channel.send_response oc in
   let show_message = Channel.show_message oc in
-
+  let shutdown = ref false in
   let client_capabilities = ref None in
   let project_root = Sys.getcwd () in
 
   let vfs = ref Vfs.empty in
-
+  let decl_index =
+    let ix = match Declaration_index.make_index !vfs with
+      | Error(err) -> Declaration_index.Index.empty
+      | Ok((ix, _)) -> ix in
+    ref ix in
   let rec loop () =
     let clength = read_line () in
     log_to_file "content-length" clength;
@@ -146,7 +136,10 @@ let start () =
        let text_document_sync_options =
          Lsp_t.{
              text_document_sync_options_openClose = Some true;
-             text_document_sync_options_change = Some 1;
+             (* Full *)
+             (* text_document_sync_options_change = Some 1; *)
+             (* Incremental *)
+             text_document_sync_options_change = Some 2;
              text_document_sync_options_willSave = Some false;
              text_document_sync_options_willSaveWaitUntil = Some false;
              text_document_sync_options_save = Some {
@@ -180,10 +173,11 @@ let start () =
          | Some file_content ->
             let result =
               Hover.hover_handler
+                !decl_index
                 position
                 file_content
                 project_root
-                (abs_file_from_uri log_to_file uri) in
+                (Vfs.abs_file_from_uri log_to_file uri) in
             response_result_message id result in
        send_response (Lsp_j.string_of_response_message response);
     | (Some id, `TextDocumentDefinition params) ->
@@ -202,10 +196,11 @@ let start () =
          | Some file_content ->
             let result =
               Definition.definition_handler
+                !decl_index
                 position
                 file_content
                 project_root
-                (abs_file_from_uri log_to_file uri) in
+                (Vfs.abs_file_from_uri log_to_file uri) in
             response_result_message id result in
        send_response (Lsp_j.string_of_response_message response);
     | (_, `TextDocumentDidOpen params) ->
@@ -217,24 +212,29 @@ let start () =
     | (_, `TextDocumentDidSave params) ->
        let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
        let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
-       let file_name = file_from_uri log_to_file uri in
-       let result = Pipeline.check_files [file_name] in
+       let file_name = Vfs.file_from_uri log_to_file uri in
+       let result = Pipeline.check_files' (Vfs.parse_file !vfs) [file_name] in
        let msgs = match result with
          | Error msgs' -> msgs'
          | Ok (_, msgs') -> msgs' in
-       Lib.Fun.flip Lib.Option.iter !client_capabilities (fun _ ->
-           (* TODO: determine if the client accepts diagnostics with related info *)
-           (* let textDocument = capabilities.client_capabilities_textDocument in
-           * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
-           let diags = List.map diagnostics_of_message msgs in
-           publish_diagnostics uri diags;
-         );
+       (match Declaration_index.make_index !vfs with
+        | Error(err) -> ()
+        | Ok((ix, _)) -> decl_index := ix);
+       let diags = List.map diagnostics_of_message msgs in
+       publish_diagnostics uri diags;
 
     (* Notification messages *)
 
     | (None, `Initialized _) ->
        show_message Lsp.MessageType.Info "Language server initialized"
 
+    | (Some id, `Shutdown _) ->
+       shutdown := true;
+       response_result_message id (`ShutdownResponse None)
+       |> Lsp_j.string_of_response_message
+       |> send_response
+    | (_, `Exit _) ->
+       if !shutdown then exit 0 else exit 1
     | (Some id, `CompletionRequest params) ->
        let uri =
          params
@@ -250,9 +250,10 @@ let start () =
                     ; message = "Tried to find completions for a file that hadn't been opened yet"}
          | Some file_content ->
             Completion.completion_handler
+              !decl_index
               log_to_file
               project_root
-              (abs_file_from_uri log_to_file uri)
+              (Vfs.abs_file_from_uri log_to_file uri)
               file_content
               position
             |> response_result_message id in

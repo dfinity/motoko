@@ -107,7 +107,7 @@ let float =
   | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
 let char = '\'' character '\''
 let text = '"' character* '"'
-let id = letter ((letter | digit | '_')*)
+let id = (letter  | '_') ((letter | digit | '_')*)
 let privileged_id = "@" id
 
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
@@ -191,9 +191,10 @@ rule token mode = parse
   | "await" { AWAIT }
   | "break" { BREAK }
   | "case" { CASE }
+  | "catch" { CATCH }
   | "class" { CLASS }
   | "continue" { CONTINUE }
-  | "label" { LABEL }
+  | "debug" { DEBUG }
   | "else" { ELSE }
   | "false" { BOOL false }
   | "for" { FOR }
@@ -206,12 +207,15 @@ rule token mode = parse
   | "null" { NULL }
   | "object" { OBJECT }
   | "or" { OR }
+  | "label" { LABEL }
   | "let" { LET }
   | "loop" { LOOP }
   | "private" { PRIVATE }
   | "public" { PUBLIC }
   | "return" { RETURN }
   | "shared" { SHARED }
+  | "try" { TRY }
+  | "throw" { THROW }
   | "debug_show" { DEBUG_SHOW }
   | "switch" { SWITCH }
   | "true" { BOOL true }

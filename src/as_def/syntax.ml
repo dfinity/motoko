@@ -140,14 +140,15 @@ and exp' =
   | LabelE of id * typ * exp                   (* label *)
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
+  | DebugE of exp                              (* debugging *)
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * string ref)           (* import statement *)
-(*
-  | ThrowE of exp list                         (* throw exception *)
+  | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list                    (* catch exception *)
+(*
   | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
 *)

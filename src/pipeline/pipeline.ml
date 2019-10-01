@@ -6,31 +6,13 @@ open As_interpreter
 open Ir_def
 open Ir_interpreter
 open Ir_passes
+open As_config
 
 open Printf
 
 type stat_env = Scope.t
 type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
-
-module Flags = struct
-  let trace = ref false
-  let verbose = ref false
-  let print_depth = ref 2
-  let await_lowering = ref true
-  let async_lowering = ref true
-  let dump_parse = ref false
-  let dump_tc = ref false
-  let dump_lowering = ref false
-  let check_ir = ref true
-  let package_urls : (string * string) list ref = ref []
-  let profile = ref false
-  let profile_verbose = ref false
-  let profile_file = ref "profiling-counters.csv"
-  let profile_line_prefix = ref ""
-  let profile_field_names : string list ref = ref []
-end (* Flags *)
-
 
 (* Diagnostics *)
 
@@ -87,6 +69,8 @@ type rel_path = string
 
 type parse_result = (Syntax.prog * rel_path) Diag.result
 
+type parse_fn = rel_path -> parse_result
+
 let parse_with mode lexer parse name =
   try
     phase "Parsing" name;
@@ -101,7 +85,7 @@ let parse_with mode lexer parse name =
     | Parser.Error ->
       error (Lexer.region lexer) "syntax" "unexpected token"
 
-let parse_string s name : parse_result =
+let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
   let parse = Parser.parse_prog in
   match parse_with Lexer.Normal lexer parse name with
@@ -118,9 +102,6 @@ let parse_file filename : parse_result =
   match result with
   | Ok prog -> Diag.return (prog, filename)
   | Error e -> Error [e]
-
-let parse_files =
-  Diag.traverse parse_file
 
 (* Import file name resolution *)
 
@@ -190,7 +171,7 @@ type load_result =
 type load_decl_result =
   (Syntax.libraries * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
 
-let chase_imports senv0 imports : (Syntax.libraries * Scope.scope) Diag.result =
+let chase_imports parsefn senv0 imports : (Syntax.libraries * Scope.scope) Diag.result =
   (*
   This function loads and type-checkes the files given in `imports`,
   including any further dependencies.
@@ -219,7 +200,7 @@ let chase_imports senv0 imports : (Syntax.libraries * Scope.scope) Diag.result =
       }]
     else begin
       pending := add f !pending;
-      Diag.bind (parse_file f) (fun (prog, base) ->
+      Diag.bind (parsefn f) (fun (prog, base) ->
       Diag.bind (Static.prog prog) (fun () ->
       Diag.bind (Resolve_import.resolve !Flags.package_urls prog base) (fun more_imports ->
       Diag.bind (go_set more_imports) (fun () ->
@@ -235,14 +216,14 @@ let chase_imports senv0 imports : (Syntax.libraries * Scope.scope) Diag.result =
   in
   Diag.map (fun () -> (List.rev !libraries, !senv)) (go_set imports)
 
-let load_progs parse senv : load_result =
-  Diag.bind parse (fun parsed ->
+let load_progs parsefn files senv : load_result =
+  Diag.bind (Diag.traverse parsefn files) (fun parsed ->
   Diag.bind (resolve_progs parsed) (fun rs ->
   let progs' = List.map fst rs in
   let libraries =
     List.fold_left Resolve_import.S.union Resolve_import.S.empty
     (List.map snd rs) in
-  Diag.bind (chase_imports senv libraries) (fun (libraries, senv') ->
+  Diag.bind (chase_imports parsefn senv libraries) (fun (libraries, senv') ->
   Diag.bind (typecheck_progs senv' progs') (fun senv'' ->
   Diag.bind (defindeness_progs progs') (fun _ ->
   Diag.return (libraries, progs', senv'')
@@ -251,7 +232,7 @@ let load_progs parse senv : load_result =
 let load_decl parse_one senv : load_decl_result =
   Diag.bind parse_one (fun parsed ->
   Diag.bind (resolve_prog parsed) (fun (prog, libraries) ->
-  Diag.bind (chase_imports senv libraries) (fun (libraries, senv') ->
+  Diag.bind (chase_imports parse_file senv libraries) (fun (libraries, senv') ->
   Diag.bind (infer_prog senv' prog) (fun (t, sscope) ->
   let senv'' = Scope.adjoin senv' sscope in
   Diag.return (libraries, prog, senv'', t, sscope)
@@ -291,7 +272,7 @@ let rec interpret_progs denv progs : Interpret.scope option =
 
 let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) option =
   Lib.Option.bind
-    (Diag.flush_messages (load_progs (parse_files files) senv0))
+    (Diag.flush_messages (load_progs parse_file files senv0))
     (fun (libraries, progs, senv1) ->
       let denv1 = interpret_libraries denv0 libraries in
       match interpret_progs denv1 progs with
@@ -339,19 +320,22 @@ let initial_env = (initial_stat_env, initial_dyn_env)
 
 type check_result = unit Diag.result
 
+let check_files' parsefn files : check_result =
+  Diag.map ignore (load_progs parsefn files initial_stat_env)
+
 let check_files files : check_result =
-  Diag.map ignore (load_progs (parse_files files) initial_stat_env)
+  check_files' parse_file files
 
 let check_string s name : check_result =
-  Diag.map ignore (load_decl (parse_string s name) initial_stat_env)
+  Diag.map ignore (load_decl (parse_string name s) initial_stat_env)
 
 (* Generate IDL *)
 
 let generate_idl files : Idllib.Syntax.prog Diag.result =
-  Diag.bind (load_progs (parse_files files) initial_stat_env)
+  Diag.bind (load_progs parse_file files initial_stat_env)
     (fun (libraries, progs, senv) ->
       Diag.return (As_idl.As_to_idl.prog (progs, senv)))
-  
+
 (* Running *)
 
 let run_files files : unit option =
@@ -451,11 +435,9 @@ let desugar env lib_env libraries progs name =
 let await_lowering =
   transform_if "Await Lowering" (fun _ -> Await.transform)
 
-let async_lowering =
-  transform_if "Async Lowering" Async.transform
-
-let serialization =
-  transform_if "Synthesizing serialization code" Serialization.transform
+let async_lowering mode =
+  let platform = if mode = Flags.ICMode then Async.V2 else Async.V1 in
+  transform_if "Async Lowering" (Async.transform platform)
 
 let tailcall_optimization =
   transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
@@ -487,7 +469,6 @@ let load_as_rts () =
   let wasm = load_file wasm_filename in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" wasm
 
-type compile_mode = Codegen.Compile.mode = WasmMode | DfinityMode
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
 let name_progs progs =
@@ -495,11 +476,10 @@ let name_progs progs =
   then "empty"
   else (Lib.List.last progs).Source.note
 
-let lower_prog senv lib_env libraries progs name =
+let lower_prog mode senv lib_env libraries progs name =
   let prog_ir = desugar senv lib_env libraries progs name in
   let prog_ir = await_lowering !Flags.await_lowering initial_stat_env prog_ir name in
-  let prog_ir = async_lowering !Flags.async_lowering initial_stat_env prog_ir name in
-  let prog_ir = serialization !Flags.await_lowering initial_stat_env prog_ir name in
+  let prog_ir = async_lowering mode !Flags.async_lowering initial_stat_env prog_ir name in
   let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir
@@ -507,18 +487,18 @@ let lower_prog senv lib_env libraries progs name =
 let compile_prog mode do_link lib_env libraries progs : Wasm_exts.CustomModule.extended_module =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog initial_stat_env lib_env libraries progs name in
+  let prog_ir = lower_prog mode initial_stat_env lib_env libraries progs name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts prelude_ir [prog_ir]
 
 let compile_files mode do_link files : compile_result =
-  Diag.bind (load_progs (parse_files files) initial_stat_env)
+  Diag.bind (load_progs parse_file files initial_stat_env)
     (fun (libraries, progs, senv) ->
     Diag.return (compile_prog mode do_link senv.Scope.lib_env libraries progs))
 
 let compile_string mode s name : compile_result =
-  Diag.bind (load_decl (parse_string s name) initial_stat_env)
+  Diag.bind (load_decl (parse_string name s) initial_stat_env)
     (fun (libraries, prog, senv, _t, _sscope) ->
     Diag.return (compile_prog mode false senv.Scope.lib_env libraries [prog]))
 
@@ -527,7 +507,7 @@ let compile_string mode s name : compile_result =
 let interpret_ir_prog inp_env libraries progs =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog initial_stat_env inp_env libraries progs name in
+  let prog_ir = lower_prog Flags.WasmMode initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
@@ -540,4 +520,4 @@ let interpret_ir_prog inp_env libraries progs =
 let interpret_ir_files files =
   Lib.Option.map
     (fun (libraries, progs, senv) -> interpret_ir_prog senv.Scope.lib_env libraries progs)
-    (Diag.flush_messages (load_progs (parse_files files) initial_stat_env))
+    (Diag.flush_messages (load_progs parse_file files initial_stat_env))

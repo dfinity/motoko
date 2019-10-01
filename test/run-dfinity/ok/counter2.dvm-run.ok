@@ -1,8 +1,8 @@
-DVM: Calling method inc
+DVM: Calling method inc 0x4449444C0000 []
 2
-DVM: Calling method inc
+DVM: Calling method inc 0x4449444C0000 []
 3
-DVM: Calling method inc
+DVM: Calling method inc 0x4449444C0000 []
 4
-DVM: Calling method printCounter
+DVM: Calling method printCounter 0x4449444C0000 []
 4

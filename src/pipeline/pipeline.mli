@@ -1,40 +1,26 @@
 open As_def
+open As_config
 open As_types
 
-module Flags :
-sig
-  val trace : bool ref
-  val verbose : bool ref
-  val print_depth : int ref
-  val await_lowering : bool ref
-  val async_lowering : bool ref
-  val dump_parse : bool ref
-  val dump_tc : bool ref
-  val dump_lowering : bool ref
-  val check_ir : bool ref
-  val package_urls : (string * string) list ref
-  val profile : bool ref
-  val profile_verbose : bool ref
-  val profile_file : string ref
-  val profile_line_prefix : string ref
-  val profile_field_names : string list ref
-end
+type parse_fn = string -> (Syntax.prog * string) Diag.result
+val parse_file: parse_fn
+val parse_string: string -> parse_fn
 
 val check_files  : string list -> unit Diag.result
+val check_files' : parse_fn -> string list -> unit Diag.result
 val check_string : string -> string -> unit Diag.result
 
 val generate_idl : string list -> Idllib.Syntax.prog Diag.result
 
 val initial_stat_env : Scope.scope
-val chase_imports : Scope.scope -> Resolve_import.S.t ->
+val chase_imports : parse_fn -> Scope.scope -> Resolve_import.S.t ->
   (Syntax.libraries * Scope.scope) Diag.result
 
 val run_files           : string list -> unit option
 val interpret_ir_files  : string list -> unit option
 val run_files_and_stdin : string list -> unit option
 
-type compile_mode = WasmMode | DfinityMode
 type compile_result = Wasm_exts.CustomModule.extended_module Diag.result
 
-val compile_string : compile_mode -> string -> string -> compile_result
-val compile_files : compile_mode -> bool -> string list -> compile_result
+val compile_string : Flags.compile_mode -> string -> string -> compile_result
+val compile_files : Flags.compile_mode -> bool -> string list -> compile_result

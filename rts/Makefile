@@ -55,6 +55,8 @@ WASM_FLAGS = \
 # Build targets
 #
 
+.PHONY: all
+
 all: as-rts.wasm test_rts test_leb128
 
 _build/wasm _build/native:
@@ -79,7 +81,7 @@ TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 # Our part of the RTS, Wasm and native
 #
 
-RTSFILES=rts idl bigint buf
+RTSFILES=rts idl bigint buf utf8_valid
 
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
@@ -91,7 +93,7 @@ RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
 
 #
-# The actual RTS, a we ship it with the compiler
+# The actual RTS, as we ship it with the compiler
 #
 
 as-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O)

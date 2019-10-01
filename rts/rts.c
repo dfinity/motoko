@@ -29,6 +29,16 @@ as_ptr as_str_of_cstr(const char * const s) {
   return r;
 }
 
+void idl_trap_with(const char *str) {
+  const char prefix[] = "IDL error: ";
+  int len = as_strlen(str);
+  char msg[sizeof prefix + len];
+  as_memcpy(msg, prefix, sizeof prefix - 1);
+  as_memcpy(msg + sizeof prefix - 1, str, len);
+  idl_trap(msg, sizeof prefix - 1 + len);
+}
+
+
 // This is mostly to test static strings and access to the AS heap
 const char* RTS_VERSION = "0.1";
 

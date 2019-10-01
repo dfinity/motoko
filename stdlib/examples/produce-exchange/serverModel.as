@@ -601,12 +601,12 @@ public class Model() {
    ==================
    */
 
-  func debug (t:Text)   { print t };
-  func debugInt (i:Int) { printInt i };
+  func debugOut (t:Text)   { debug { print t } };
+  func debugInt (i:Int)    { debug { printInt i } };
 
-  func debugOff (t:Text)   {  };
-  func debugIntOff (i:Int) {  };
-  func debugOffInt (i:Int) {  };
+  func debugOff (t:Text)   { debug {  } };
+  func debugIntOff (i:Int) { debug {  } };
+  func debugOffInt (i:Int) { debug {  } };
 
   func idIsEq(x:Nat,y:Nat):Bool { x == y };
 

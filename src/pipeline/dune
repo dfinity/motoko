@@ -4,6 +4,7 @@
     lib
     lang_utils
     as_def
+    as_config
     as_types
     as_values
     as_frontend

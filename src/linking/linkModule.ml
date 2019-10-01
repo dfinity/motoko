@@ -72,7 +72,7 @@ let count_imports is_thing m =
 
 let remove_export is_thing name : module_' -> module_' = fun m ->
   let to_remove e =
-    is_thing e.it.edesc.it <> None && e.it.name = Wasm.Utf8.decode name
+    not (is_thing e.it.edesc.it <> None && e.it.name = Wasm.Utf8.decode name)
   in
   { m with exports = List.filter to_remove m.exports }
 
@@ -177,6 +177,10 @@ let prepend_to_start fi (em : extended_module)  =
       }
   }
 
+let _remove_non_canister_exports (em : extended_module) : extended_module =
+  let is_canister_export (exp : export) = Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None in
+  map_module (fun m -> { m with exports = List.filter is_canister_export m.exports }) em
+
 module VarMap = Map.Make(Int32)
 
 let remove_non_dfinity_exports (em : extended_module) : extended_module =
@@ -187,11 +191,21 @@ let remove_non_dfinity_exports (em : extended_module) : extended_module =
     (fun map (fi, _) -> VarMap.add fi () map)
     VarMap.empty em.types in
 
-  let is_dfinity_export exp = match exp.it.edesc.it with
+  let is_canister_export (exp : export) =
+    Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None in
+
+  let is_interesting_global (exp : export) =
+    (* For the ancient system API *)
+    Wasm.Utf8.encode exp.it.name = "datastore" ||
+    Wasm.Utf8.encode exp.it.name = "elemstore" in
+
+  let is_dfinity_export exp =
+    is_canister_export exp ||
+    match exp.it.edesc.it with
       | FuncExport var -> VarMap.mem var.it dfinity_exports
+      | GlobalExport _ -> is_interesting_global exp
       | _ -> true in
   map_module (fun m -> { m with exports = List.filter is_dfinity_export m.exports }) em
-
 
 (* Generic linking logic *)
 
@@ -440,6 +454,19 @@ let read_table_size (m : module_') : int32 =
     else min
   | _ -> raise (LinkError "Expect one table in first module")
 
+let set_memory_size new_size_bytes : module_' -> module_' = fun m ->
+  let open Wasm.Types in
+  let page_size = Int32.of_int (64*1024) in
+  let new_size_pages = Int32.(add (div new_size_bytes page_size) 1l) in
+  match m.memories with
+  | [t] ->
+    { m with
+      memories = [ phrase (fun m ->
+        { mtype = MemoryType ({min = new_size_pages; max = None}) }
+      ) t ]
+    }
+  | _ -> raise (LinkError "Expect one memory in first module")
+
 let set_table_size new_size : module_' -> module_' = fun m ->
   let open Wasm.Types in
   match m.tables with
@@ -649,6 +676,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_extended funs1
     |> rename_globals_extended globals1
     |> map_module (set_global heap_global new_heap_start)
+    |> map_module (set_memory_size new_heap_start)
     |> map_module (set_table_size new_elem_size)
     )
     ( dm2

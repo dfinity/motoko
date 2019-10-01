@@ -71,8 +71,11 @@ let rec exp m e = match e.it with
   | OrE _
   | WhileE _
   | ForE _
+  | DebugE _
   | IfE _
   | SwitchE _
+  | ThrowE _
+  | TryE _
   -> err m e.at
 
 and fields m efs = List.iter (fun ef -> dec m ef.it.dec) efs
