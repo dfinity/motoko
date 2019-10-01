@@ -27,6 +27,8 @@ import System.Process hiding (proc)
 import Turtle
 -- import Debug.Trace (traceShowId)
 
+import Idl
+
 main = defaultMain tests
   where tests :: TestTree
         tests = testGroup "ActorScript tests" [arithProps, utf8Props, matchingProps]

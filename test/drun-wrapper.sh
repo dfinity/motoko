@@ -11,4 +11,4 @@ fi
 
 export LANG=C
 
-( if [ -n "$2" ]; then grep '^//CALL ' $2 | cut -c8-; fi;) | $DRUN $1 /dev/stdin
+( if [ -n "$2" ]; then grep '^//CALL ' $2 | cut -c8-; fi;) | tee /dev/tty | $DRUN $1 /dev/stdin

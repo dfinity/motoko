@@ -145,6 +145,9 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 
 let commonBuildInputs = [
+  nixpkgs.zlib
+  nixpkgs.ghc
+  nixpkgs.cabal-install
   nixpkgs.ocaml
   nixpkgs.dune
   nixpkgs.ocamlPackages.atdgen

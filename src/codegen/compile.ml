@@ -3968,7 +3968,7 @@ module Serialization = struct
               E.call_import env "rts" "find_field" ^^ set_n ^^
 
               ReadBuf.read_sleb128 env get_typ_buf ^^ go env f.typ
-          ) (sort_by_hash fs)) ^^
+          ) (List.iter (fun (i, _) -> Printf.printf "HASH: %d\n" (Lib.Uint32.to_int i)) (sort_by_hash fs); sort_by_hash fs)) ^^
 
           (* skip all possible trailing extra fields *)
           get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ get_n ^^
