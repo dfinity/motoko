@@ -1115,7 +1115,7 @@ Analoguous to types, a few syntactic shorthands are supported that can be reduce
 
 ```
 <consval> ::= ...
-  | blob                   :=  vec <text>    (TODO: interpreted as byte string; UTF-encoding for contained Unicode chars (as in Wasm))
+  | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted as a byte string and UTF-8 encoding for contained Unicode chars (similar to Wasm)
 
 <fieldval> ::= ...
   | <name> = <val>         :=  <hash(name)> = <val>
