@@ -192,9 +192,13 @@ seplist1(X, SEP) :
   | (* empty *) { Type.Object @@ no_region }
   | s=obj_sort { s }
 
+%inline mode_opt :
+  | (* empty *) { Type.Write }
+  | QUERY { Type.Query }
+
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED { Type.Shared Type.Write @@ at $sloc }
+  | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
   | QUERY { Type.Shared Type.Query @@ at $sloc }
 
 

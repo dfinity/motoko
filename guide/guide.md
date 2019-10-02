@@ -24,7 +24,7 @@ TODO:
 * [ ] Include actual grammar (extracted from menhir) in appendix?
 * [ ] Prose description of definedness checks
 * [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
-
+* [ ] Queries
 
 # Introduction
 
