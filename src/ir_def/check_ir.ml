@@ -162,20 +162,16 @@ let rec check_typ env typ : unit =
         error env no_region "promising function with non-async result type \n  %s"
           (T.string_of_typ_expand t2)
     end;
-    (match sort with
-    | T.Shared _ ->
-      begin
+    if T.is_shared_sort sort then begin
       List.iter (fun t -> check_shared env no_region t) ts1;
       match ts2 with
-      | [] -> ()
+      | [] when not env.flavor.Ir.has_async_typ || sort = T.Shared T.Write  -> ()
       | [T.Async t2] ->
         check env' no_region (T.shared t2)
           "message result is not sharable:\n  %s" (T.string_of_typ_expand t2)
       | _ -> error env no_region "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
-      end
-    | _ -> ()
-    )
+    end
   | T.Opt typ ->
     check_typ env typ
   | T.Async typ ->
