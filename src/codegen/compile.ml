@@ -4908,7 +4908,7 @@ module FuncDec = struct
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env cc name args mk_body ret_tys at =
     let (fi, fill) = E.reserve_fun pre_env name in
-    if Type.is_shared_sort (cc.Call_conv.sort)
+    if Type.is_shared_sort cc.Call_conv.sort
     then begin
       declare_dfinity_type pre_env false fi ;
       ( SR.StaticMessage fi, fun env ae ->
