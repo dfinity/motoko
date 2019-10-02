@@ -130,7 +130,7 @@ let read_assoc () = let hash = read_leb128 () in
 let output_nat nat = Printf.printf "output_nat: %d\n" nat
 let output_int int = Printf.printf "output_int: %d\n" int
 let output_bool b = Printf.printf "output_bool: %s\n" (if b then "true" else "false")
-let output_nil () = Printf.printf "null (0 bytes)"
+let output_nil () = Printf.printf "null (0 bytes)\n"
 let output_some consumer = Printf.printf "Some: value follows on the next line\n"; consumer ()
 let output_byte b = Printf.printf "output_byte: %d\n" b
 let output_2byte b = Printf.printf "output_2byte: %d\n" b
