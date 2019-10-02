@@ -1115,7 +1115,7 @@ Analoguous to types, a few syntactic shorthands are supported that can be reduce
 
 ```
 <consval> ::= ...
-  | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted as a byte string and UTF-8 encoding for contained Unicode chars (similar to Wasm)
+  | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted [as in the WebAssembly textual format](https://webassembly.github.io/spec/core/text/values.html#strings)
 
 <fieldval> ::= ...
   | <name> = <val>         :=  <hash(name)> = <val>
