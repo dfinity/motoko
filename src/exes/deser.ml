@@ -146,6 +146,27 @@ let output_text bytes from tostream =
       Stdio.Out_channel.output_buffer tostream buf;
       Printf.printf "\n"
 
+let decode_primitive_type : int -> typ * (unit -> unit) =
+  function
+  | -1 -> Null, output_nil
+  | -2 -> Bool, (function () -> output_bool (read_bool ()))
+  | -3 -> Nat, (function () -> output_nat (read_leb128 ()))
+  | -4 -> Int, (function () -> output_int (read_sleb128 ()))
+  | -5 -> NatN 8, (function () -> output_byte (read_byte ()))
+  | -6 -> NatN 16, (function () -> output_2byte (read_2byte ()))
+  | -7 -> NatN 32, (function () -> output_4byte (read_4byte ()))
+  | -8 -> NatN 64, (function () -> output_8byte (read_8byte ()))
+  | -9 -> IntN 8, (function () -> output_int8 (read_int8 ()))
+  | -10 -> IntN 16, (function () -> output_int16 (read_int16 ()))
+  | -11 -> IntN 32, (function () -> output_int32 (read_int32 ()))
+  | -12 -> IntN 64, (function () -> output_int64 (read_int64 ()))
+  | -13 | -14 -> failwith "no floats yet" (* TODO *)
+  | -15 -> Text, (function () -> let len = read_leb128 () in output_text len stdin stdout)
+  | -16 -> Reserved, ignore
+  | -17 -> Empty, ignore
+  | _ -> failwith "unrecognised primitive type"
+
+
 let read_type lookup : (typ * (unit -> unit)) Lazy.t =
   (* primitive type
 
@@ -161,26 +182,6 @@ T(text)     = sleb128(-15)
 T(reserved) = sleb128(-16)
 T(empty)    = sleb128(-17)
  *)
-  let decode_primitive_type : int -> typ * (unit -> unit) =
-    function
-    | -1 -> Null, output_nil
-    | -2 -> Bool, (function () -> output_bool (read_bool ()))
-    | -3 -> Nat, (function () -> output_nat (read_leb128 ()))
-    | -4 -> Int, (function () -> output_int (read_sleb128 ()))
-    | -5 -> NatN 8, (function () -> output_byte (read_byte ()))
-    | -6 -> NatN 16, (function () -> output_2byte (read_2byte ()))
-    | -7 -> NatN 32, (function () -> output_4byte (read_4byte ()))
-    | -8 -> NatN 64, (function () -> output_8byte (read_8byte ()))
-    | -9 -> IntN 8, (function () -> output_int8 (read_int8 ()))
-    | -10 -> IntN 16, (function () -> output_int16 (read_int16 ()))
-    | -11 -> IntN 32, (function () -> output_int32 (read_int32 ()))
-    | -12 -> IntN 64, (function () -> output_int64 (read_int64 ()))
-    | -13 | -14 -> failwith "no floats yet" (* TODO *)
-    | -15 -> Text, (function () -> let len = read_leb128 () in output_text len stdin stdout)
-    | -16 -> Reserved, ignore
-    | -17 -> Empty, ignore
-    | _ -> failwith "unrecognised primitive type" in
-
   let prim_or_lookup = function
     | p when p < 0 -> decode_primitive_type p
     | i -> force (lookup i) in
@@ -254,17 +255,22 @@ let top_level md : unit =
   let rec tab' = lazy (read_type_table (function () -> read_type lookup))
       and lookup = function indx -> Array.get (force tab') indx in
   let tab = force tab' in
-  match md with
+  begin match md with
   | Default ->
     let argtys = read_t_star read_type_index in
     Printf.printf "ARGS: %d\n" (Array.length argtys);
-    let consumers = Array.map (function tynum -> let lazy (ty, m) = Array.get tab tynum in m) argtys in
+    let typ_ingester = function
+      | prim when prim < 0 -> from_val (decode_primitive_type prim)
+      | index -> Array.get tab index in
+    let consumers = Array.map (function tynum -> let lazy (ty, m) = typ_ingester tynum in m) argtys in
     Array.iter (function f -> f ()) consumers
   | Legacy ->
     let argty = read_type_index () in
     Printf.printf "ARGTY: %d\n" argty;
     snd (force (Array.get tab argty)) ()
-
+  end;
+  Printf.printf "\n-------- DESER DONE\n"
+  
 (* CLI *)
 
 let name = "deser"
