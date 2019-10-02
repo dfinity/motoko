@@ -95,7 +95,7 @@ public type Key<K> = {
   key: K;
 };
 
-/** Equality function for two `Key<K>`s, in terms of equaltiy of `K`'s. */
+/** Equality function for two `Key<K>`s, in terms of equality of `K`'s. */
 public func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) = {
   func (key1:Key<K>, key2:Key<K>) : Bool =
     label profile_trie_keyEq : Bool
