@@ -67,7 +67,7 @@ let let_or_exp named x e' at =
 let share_typ t =
   match t.it with
   | FuncT ({it = Type.Local; _} as s, tbs, t1, t2) ->
-    { t with it = FuncT ({s with it = Type.Shared}, tbs, t1, t2)}
+    { t with it = FuncT ({s with it = Type.Shared Type.Write}, tbs, t1, t2)}
   | _ -> t
 
 let share_typfield (tf : typ_field) =
@@ -76,7 +76,7 @@ let share_typfield (tf : typ_field) =
 let share_exp e =
   match e.it with
   | FuncE (x, ({it = Type.Local; _} as s), tbs, p, t, e) ->
-    FuncE (x, {s with it = Type.Shared}, tbs, p, t, e) @? e.at
+    FuncE (x, {s with it = Type.Shared Type.Write}, tbs, p, t, e) @? e.at
   | _ -> e
 
 let share_dec d =
@@ -98,7 +98,7 @@ let share_expfield (ef : exp_field) =
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
 %token IF IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
-%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED
+%token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
 %token AND OR NOT
 %token IMPORT MODULE
@@ -192,9 +192,14 @@ seplist1(X, SEP) :
   | (* empty *) { Type.Object @@ no_region }
   | s=obj_sort { s }
 
+%inline mode_opt :
+  | (* empty *) { Type.Write }
+  | QUERY { Type.Query }
+
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED { Type.Shared @@ at $sloc }
+  | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
+  | QUERY { Type.Shared Type.Query @@ at $sloc }
 
 
 (* Paths *)

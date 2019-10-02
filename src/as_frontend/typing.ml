@@ -196,7 +196,7 @@ and check_typ' env typ : T.typ =
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     let c = match typs2 with [{it = AsyncT _; _}] -> T.Promises | _ -> T.Returns in
-    if sort.it = T.Shared then
+    if Type.is_shared_sort sort.it then
     if not env.pre then begin
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
@@ -204,7 +204,8 @@ and check_typ' env typ : T.typ =
           "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand t1);
       match ts2 with
-      | [] | [T.Async _] -> ()
+      | [] when sort.it = T.Shared T.Write -> ()
+      | [T.Async _] -> ()
       | _ ->
         error env typ2.at
           "shared function has non-async result type\n  %s"
@@ -627,13 +628,13 @@ and infer_exp'' env exp : T.typ =
       let env'' =
         {env' with labs = T.Env.empty; rets = Some t2; async = false} in
       check_exp (adjoin_vals env'' ve) t2 exp;
-      if sort.it = T.Shared then begin
+      if Type.is_shared_sort sort.it then begin
         if not (T.shared t1) then
           error env pat.at
             "shared function has non-shared parameter type\n  %s"
             (T.string_of_typ_expand t1);
         match t2 with
-        | T.Tup [] -> ()
+        | T.Tup [] when sort.it = T.Shared T.Write -> ()
         | T.Async _ ->
           if not (isAsyncE exp) then
             error env exp.at
@@ -647,7 +648,7 @@ and infer_exp'' env exp : T.typ =
     let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
     let c =
       match sort.it, typ.it with
-      | T.Shared, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
+      | T.Shared _, AsyncT _ -> T.Promises
       | _ -> T.Returns
     in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
@@ -666,7 +667,7 @@ and infer_exp'' env exp : T.typ =
     let t_ret = T.open_ ts t_ret in
     if not env.pre then begin
       check_exp env t_arg exp2;
-      if sort = T.Shared then begin
+      if Type.is_shared_sort sort then begin
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"

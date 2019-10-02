@@ -113,9 +113,9 @@ module Transform(Platform : sig val platform : platform end) = struct
 
   let nary typ = T.as_seq typ
 
-  let replyT as_seq typ = T.Func(T.Shared, T.Returns, [], as_seq typ, [])
+  let replyT as_seq typ = T.Func(T.Shared T.Write, T.Returns, [], as_seq typ, [])
 
-  let rejectT = T.Func(T.Shared, T.Returns, [], [T.text], [])
+  let rejectT = T.Func(T.Shared T.Write, T.Returns, [], [T.text], [])
 
   let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
@@ -194,7 +194,7 @@ module Transform(Platform : sig val platform : platform end) = struct
 
   let isAwaitableFunc exp =
     match typ exp with
-    | T.Func (T.Shared,T.Promises,_,_,[T.Async _]) -> true
+    | T.Func (T.Shared _,T.Promises,_,_,[T.Async _]) -> true
     | _ -> false
 
   let extendTup ts ts' = ts @ ts'
@@ -228,7 +228,7 @@ module Transform(Platform : sig val platform : platform end) = struct
     | Func (s, c, tbs, t1, t2) ->
       begin
         match s with
-        | T.Shared ->
+        | T.Shared _ ->
            begin
              match t2 with
              | [] ->
@@ -334,7 +334,7 @@ module Transform(Platform : sig val platform : platform end) = struct
       let v1 = fresh_var "v" t1 in
       let r = fresh_var "r" err_contT in
       let e = fresh_var "e" T.catch in
-      let post = fresh_var "post" (T.Func(T.Shared, T.Returns, [], [], [])) in
+      let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Returns, [], [], [])) in
       let u = fresh_var "u" T.unit in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply t1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
@@ -347,7 +347,7 @@ module Transform(Platform : sig val platform : platform end) = struct
     | CallE (cc, exp1, typs, exp2) when isAwaitableFunc exp1 ->
       let ts1,t2 =
         match typ exp1 with
-        | T.Func (T.Shared,T.Promises,tbs,ts1,[T.Async t2]) ->
+        | T.Func (T.Shared _, T.Promises,tbs,ts1,[T.Async t2]) ->
           List.map t_typ ts1, t_typ t2
         | _ -> assert(false)
       in
@@ -405,7 +405,7 @@ module Transform(Platform : sig val platform : platform end) = struct
         match s with
         | T.Local  ->
           FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
-        | T.Shared ->
+        | T.Shared s' ->
           begin
             match typ exp with
             | T.Tup [] ->
@@ -439,7 +439,7 @@ module Transform(Platform : sig val platform : platform end) = struct
                   (t_exp cps) -*- tupE [k;r]
                 | _ -> assert false
               in
-              let cc' = Call_conv.message_cc (List.length args') in
+              let cc' = Call_conv.message_cc s' (List.length args') in
               FuncE (x, cc', typbinds', args', [], exp')
             | _ -> assert false
           end
