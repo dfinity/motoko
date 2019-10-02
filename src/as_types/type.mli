@@ -5,7 +5,8 @@ type var = string
 
 type control = Returns | Promises (* returns a computed value or immediate promise *)
 type obj_sort = Object | Actor | Module
-type func_sort = Local | Shared
+type shared_sort = Query | Write
+type func_sort = Local | Shared of shared_sort
 type eff = Triv | Await
 
 type prim =
@@ -56,6 +57,9 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+(* Function sorts *)
+
+val is_shared_sort : func_sort -> bool
 
 (* Short-hands *)
 
@@ -198,3 +202,4 @@ val string_of_typ : typ -> string
 val string_of_kind : kind -> string
 val strings_of_kind : kind -> string * string * string
 val string_of_typ_expand : typ -> string
+

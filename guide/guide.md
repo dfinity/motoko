@@ -24,7 +24,10 @@ TODO:
 * [ ] Include actual grammar (extracted from menhir) in appendix?
 * [ ] Prose description of definedness checks
 * [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
+* [ ] Queries
+* [ ] Remove Shared type
 -->
+
 # Introduction
 
 The **internet computer** is a network of connected computers that communicate securely and provide processing services to registered users, developers, and other computers. 

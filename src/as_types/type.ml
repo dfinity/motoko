@@ -5,7 +5,8 @@ type var = string
 
 type control = Returns | Promises (* Returns a computed value or immediate promise *)
 type obj_sort = Object | Actor | Module
-type func_sort = Local | Shared
+type shared_sort = Query | Write
+type func_sort = Local | Shared of shared_sort
 type eff = Triv | Await
 
 type prim =
@@ -56,6 +57,9 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+(* Function sorts *)
+
+let is_shared_sort sort = sort <> Local
 
 (* Constructors *)
 
@@ -97,8 +101,8 @@ let catchErrorCodes = List.sort compare_field (
       (* TBC *)
   ])
 
-let throw = Prim Error (* Tup [Variant throwErrorCodes; text] *)
-let catch = Prim Error (* Tup [Variant catchErrorCodes; text] *)
+let throw = Prim Error
+let catch = Prim Error
 
 let prim = function
   | "Null" -> Null
@@ -566,7 +570,7 @@ let shared t =
       | Tup ts -> List.for_all go ts
       | Obj (s, fs) -> s = Actor || List.for_all (fun f -> go f.typ) fs
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
-      | Func (s, c, tbs, ts1, ts2) -> s = Shared
+      | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
     end
   in go t
 
@@ -1065,7 +1069,8 @@ let string_of_obj_sort = function
 
 let string_of_func_sort = function
   | Local -> ""
-  | Shared -> "shared "
+  | Shared Write -> "shared "
+  | Shared Query -> "shared query "
 
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
@@ -1197,3 +1202,5 @@ let rec string_of_typ_expand t =
       | t' -> s ^ " = " ^ string_of_typ_expand t'
     )
   | _ -> s
+
+let is_shared_sort sort = sort <> Local

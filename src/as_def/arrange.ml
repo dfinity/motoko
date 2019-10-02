@@ -109,7 +109,8 @@ and obj_sort s = match s.it with
 
 and func_sort s = match s.it with
   | Type.Local -> Atom "Local"
-  | Type.Shared -> Atom "Shared"
+  | Type.Shared Type.Write -> Atom "Shared"
+  | Type.Shared Type.Query -> Atom "Query"
 
 and mut m = match m.it with
   | Const -> Atom "Const"
