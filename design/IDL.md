@@ -1075,3 +1075,45 @@ The same representation is used for function results.
 Note:
 
 * It is unspecified how the pair (B,R) representing a serialised value is bundled together in an external environment.
+
+
+## Text Format
+
+To enable convenient debugging, we also specify a text format for IDL values.
+
+```
+<val> ::= <primval> | <consval> | <refval>
+
+<primval> ::=
+  | <nat> | <int> | <float>     (same as ActorScript grammar plus sign)
+  | <text>                      (same as ActorScript grammar)
+  | true | false
+  | null
+
+<consval> ::=
+  | opt <val>
+  | vec { <val>;* }
+  | record { <fieldval>;* }
+  | variant { <fieldval> }
+
+<fieldval> ::= <nat> = <val>
+
+<refval> ::=
+  | service <text>             (canister URI)
+  | func <text> . <id>         (canister URI and message name)
+```
+
+#### Syntactic Shorthands
+
+Analoguous to types, a few syntactic shorthands are supported that can be reduced to the basic value forms:
+
+```
+<consval> ::= ...
+  | blob                   :=  vec <text>
+
+<fieldval> ::= ...
+  | <name> = <val>         :=  <hash(name)> = <val>
+  | <val>                  :=  N = <val>  where N is either 0 or previous + 1  (only in records)
+  | <nat>                  :=  <nat> = null   (only in variants)
+  | <name>                 :=  <name> = null  (only in variants)
+```
