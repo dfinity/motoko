@@ -202,7 +202,7 @@ T(empty)    = sleb128(-17)
                              from_val (Opt t, reader consumer)
            | i -> lazy (let lazy (t, consumer) = lookup i in
                         Opt t, reader consumer)
-           end
+    end
   | -19 -> begin match read_type_index () with
            | p when p < -17 -> assert false
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
@@ -249,22 +249,21 @@ let top_level md : unit =
   Printf.printf "\n========================== Type section\n";
   let rec tab' = lazy (read_type_table (function () -> read_type lookup))
       and lookup = function indx -> Printf.printf "indx: %d\n" indx; Array.get (force tab') indx in
-  let tab = force tab' in
-  (*Array.iter (function lazy _ -> ()) tab;*)
+  let tab = Array.map force (force tab') in
   Printf.printf "\n========================== Value section\n";
   begin match md with
   | Default ->
     let argtys = read_t_star read_type_index in
     Printf.printf "ARGS: %d\n" (Array.length argtys);
     let typ_ingester = function
-      | prim when prim < 0 -> from_val (decode_primitive_type prim)
+      | prim when prim < 0 -> decode_primitive_type prim
       | index -> Array.get tab index in
-    let consumers = Array.map (function tynum -> let lazy (ty, m) = typ_ingester tynum in m) argtys in
+    let consumers = Array.map (function tynum -> let (ty, m) = typ_ingester tynum in m) argtys in
     Array.iter (function f -> f ()) consumers
   | Legacy ->
     let argty = read_type_index () in
     Printf.printf "ARGTY: %d\n" argty;
-    snd (force (Array.get tab argty)) ()
+    snd (Array.get tab argty) ()
   end;
   Printf.printf "\n-------- DESER DONE\n"
   
