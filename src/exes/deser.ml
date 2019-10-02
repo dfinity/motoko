@@ -250,11 +250,14 @@ let read_type_table (t : unit -> (typ * (unit -> unit)) Lazy.t) : (typ * (unit -
 type mode = Legacy | Default
 
 let top_level md : unit =
-  Printf.printf "DESER, to your service!\n";
+  Printf.printf "\nDESER, to your service!\n";
   read_magic ();
+  Printf.printf "\n========================== Type section\n";
   let rec tab' = lazy (read_type_table (function () -> read_type lookup))
-      and lookup = function indx -> Array.get (force tab') indx in
+      and lookup = function indx -> Printf.printf "indx: %d\n" indx; Array.get (force tab') indx in
   let tab = force tab' in
+  (*Array.iter (function lazy _ -> ()) tab;*)
+  Printf.printf "\n========================== Value section\n";
   begin match md with
   | Default ->
     let argtys = read_t_star read_type_index in
