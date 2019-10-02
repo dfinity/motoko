@@ -285,6 +285,7 @@ rec {
         qc-actorscript
         lsp-int
         esm
+        nixpkgs.gnugrep
       ] ++
       llvmBuildInputs;
 
