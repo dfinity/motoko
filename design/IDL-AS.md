@@ -85,13 +85,14 @@ e(Word<n>) = nat<n> for n = 8, 16, 32, 64
 e(Float) = float64
 e(Char) = nat32
 e(Text) = text
-e(shared { <typ-field>;* }) = record { ef(<typ-field>);* }
+e({ <typ-field>;* }) = record { ef(<typ-field>);* }
 e(variant { <typ-field>;* }) = variant { ef(<typ-field>);* }
 e([<typ>]) = vec (e(<typ>))
 e(? <typ>) = opt (e(<typ>))
 e(shared <typ1> -> <typ2>) = func (efn(shared <typ1> -> <typ2>))
 e(actor { <typ-field>;* }) = service { em(<typ-field>);* }
-e( ( <typ>,* ) ) = record { e(<typ>);* }
+e( () ) = null
+e( ( <typ>,+ ) ) = record { e(<typ>);+ }
 e(Any) = reserved
 e(None) = empty
 
@@ -132,8 +133,8 @@ i(reserved) = Any
 i(opt <datatype>) = ? i(<datatype>)
 i(vec <datatype>) = [ i(<datatype>) ]
 i(blob) = [ word8 ] // if ActorScript had a bytes type, it would show up here
-i(record { <datatype>;* }) = ( i(<datatype>),* ) // matches tuple short-hand
-i(record { <fieldtype>;* }) = shared { if(<fieldtype>);* }
+i(record { <datatype>;+ }) = ( i(<datatype>),+ ) // matches tuple short-hand
+i(record { <fieldtype>;* }) = { if(<fieldtype>);* }
 i(variant { <fieldtype>;* }) = variant { if(<typ-field>);* }
 i(func <functype>) = ifn(<functype>)
 i(service { <methtype>;* }) = actor { im(<methtype>);* }
@@ -173,27 +174,30 @@ escape <name> = "_" hash(<name>) "_"  otherwise
    e(()) = record {}
    e((Int, )) = record {int}
    e((Int, Nat)) = record {int;nat}
-   e(shared {i:Int, n:Nat)) = record {i:int; n:nat}
-   e(shared {_0_:Int, _1_:Nat)) = record {0:int; 1:nat}
+   e({i:Int, n:Nat)) = record {i:int; n:nat}
+   e({_0_:Int, _1_:Nat)) = record {0:int; 1:nat}
    ```
 
- * The mapping `i` tries to detect types that can be expressed as tuples in
-   ActorScript.
+ * The mapping `i` tries to detect types that can be expressed as (non-nullary)
+   tuples in ActorScript.
    ```
    i(record {int;nat}) = (Int, Nat)
-   i(record {int; nat; foo:text}) = shared {_0_:Int; _1_:Nat; foo:Text}
-   i(record {0:Int, 1:Nat)) = shared {_0_:int; _1_:nat}
+   i(record {int; nat; foo:text}) = {_0_:Int; _1_:Nat; foo:Text}
+   i(record {0:Int, 1:Nat)) = {_0_:int; _1_:nat}
    ```
+
+   But note that  `i(record {}) ≠ ()` because `e(()) = null` and we want
+   `e(i(record {})) = record {}`.
 
  * The `escape` and `unescape` functions allow round-tripping of IDL field
    names that are not valid ActorScript names (fake hash values):
    ```
    i(record {int; if:text; foobar_:nat; "_0_":bool})
-     = shared (_0_:Int; if_:Text; _1234_:Nat; _4321_:Bool)
+     = (_0_:Int; if_:Text; _1234_:Nat; _4321_:Bool)
    ```
    This is another source of partiality for `e`:
    ```
-   e(shared {clash_ : Nat; clash : Int})
+   e({clash_ : Nat; clash : Int})
    ```
    is undefined, because `unescape(clash_) = unescape(clash)`.
 
