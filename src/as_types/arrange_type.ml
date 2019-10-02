@@ -14,7 +14,8 @@ let obj_sort s = match s with
 
 let func_sort s = match s with
   | Local -> "Local"
-  | Shared -> "Shared"
+  | Shared Write -> "Shared"
+  | Shared Query -> "Shared Query"
 
 let prim p = match p with
   | Null -> Atom "Null"
