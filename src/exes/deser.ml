@@ -123,6 +123,7 @@ let read_type_index = read_sleb128
 
 let read_assoc () = let hash = read_leb128 () in
                     let tynum = read_type_index () in
+                    assert (tynum > -18);
                     Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
 
 (* outputters *)
@@ -188,15 +189,6 @@ T(empty)    = sleb128(-17)
 
   match read_sleb128 () with
   | p when p < 0 && p > -18 -> from_val (decode_primitive_type p)
-(*
-
-T(opt <datatype>) = sleb128(-18) I(<datatype>)
-T(vec <datatype>) = sleb128(-19) I(<datatype>)
-T(record {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
-T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
-
-
-*)
   | -18 ->
     begin
       let reader consumer () =
@@ -205,12 +197,14 @@ T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
         | 1 -> output_some consumer
         | _ -> failwith "invalid optional" in
       match read_type_index () with
+           | p when p < -17 -> assert false
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
                              from_val (Opt t, reader consumer)
            | i -> lazy (let lazy (t, consumer) = lookup i in
                         Opt t, reader consumer)
            end
   | -19 -> begin match read_type_index () with
+           | p when p < -17 -> assert false
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
                              from_val (Vec t, function () -> read_t_star_ consumer)
            | i -> lazy (let lazy (t, consumer) = lookup i in
