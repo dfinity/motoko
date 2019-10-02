@@ -5,8 +5,8 @@ type var = string
 
 type control = Returns | Promises (* Returns a computed value or immediate promise *)
 type obj_sort = Object | Actor | Module
-type mode = Query | Write
-type func_sort = Local | Shared of mode
+type shared_sort = Query | Write
+type func_sort = Local | Shared of shared_sort
 type eff = Triv | Await
 
 type prim =
@@ -57,6 +57,9 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+(* Function sorts *)
+
+let is_shared_sort sort = sort <> Local
 
 (* Constructors *)
 
@@ -98,8 +101,8 @@ let catchErrorCodes = List.sort compare_field (
       (* TBC *)
   ])
 
-let throw = Prim Error (* Tup [Variant throwErrorCodes; text] *)
-let catch = Prim Error (* Tup [Variant catchErrorCodes; text] *)
+let throw = Prim Error
+let catch = Prim Error
 
 let prim = function
   | "Null" -> Null

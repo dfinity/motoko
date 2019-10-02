@@ -302,8 +302,8 @@ and 'a cont = 'a -> unit
 let unit = Tup []
 
 let local_func n m f = Func (Call_conv.local_cc n m, f)
-let message_func mode n f = Func (Call_conv.message_cc mode n, f)
-let async_func mode n f = Func ( Call_conv.async_cc mode n, f)
+let message_func s n f = Func (Call_conv.message_cc s n, f)
+let async_func s n f = Func ( Call_conv.async_cc s n, f)
 
 
 (* Projections *)

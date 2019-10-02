@@ -438,7 +438,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     let t_arg = T.open_ insts t2 in
     let t_ret = T.open_ insts t3 in
-    if call_conv.Call_conv.sort <> T.Local then begin
+    if T.is_shared_sort call_conv.Call_conv.sort then begin
       check_concrete env exp.at t_arg;
       check_concrete env exp.at t_ret;
     end;
@@ -558,21 +558,21 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
-    check ((cc.Call_conv.sort <> T.Local && Type.is_async (T.seq ret_tys))
+    check ((T.is_shared_sort cc.Call_conv.sort && Type.is_async (T.seq ret_tys))
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
     check (cc.Call_conv.n_args = List.length args)
       "calling convention arity does not match number of parameters";
     check (cc.Call_conv.n_res = List.length ret_tys)
       "calling convention arity does not match number of return types";
-    if (T.is_shared_sort (cc.Call_conv.sort)) then List.iter (check_concrete env exp.at) ret_tys;
+    if T.is_shared_sort cc.Call_conv.sort then List.iter (check_concrete env exp.at) ret_tys;
     let env'' =
       {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) (T.seq ret_tys);
     (* Now construct the function type and compare with the annotation *)
     let ts1 = List.map (fun a -> a.note) args in
-    if (T.is_shared_sort cc.Call_conv.sort) then List.iter (check_concrete env exp.at) ts1;
+    if T.is_shared_sort cc.Call_conv.sort then List.iter (check_concrete env exp.at) ts1;
     let fun_ty = T.Func
       ( cc.Call_conv.sort, cc.Call_conv.control
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
