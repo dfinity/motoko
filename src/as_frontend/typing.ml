@@ -642,7 +642,7 @@ and infer_exp'' env exp : T.typ =
         | _ ->
           error env typ.at "shared function has non-async result type\n  %s"
             (T.string_of_typ_expand t2))
-        end
+      end
     end;
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
