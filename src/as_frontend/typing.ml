@@ -633,7 +633,7 @@ and infer_exp'' env exp : T.typ =
           error env pat.at
             "shared function has non-shared parameter type\n  %s"
             (T.string_of_typ_expand t1);
-        (match t2 with
+        match t2 with
         | T.Tup [] when sort.it = T.Shared T.Write -> ()
         | T.Async _ ->
           if not (isAsyncE exp) then
@@ -641,7 +641,7 @@ and infer_exp'' env exp : T.typ =
               "shared function with async result type has non-async body"
         | _ ->
           error env typ.at "shared function has non-async result type\n  %s"
-            (T.string_of_typ_expand t2))
+            (T.string_of_typ_expand t2)
       end
     end;
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in

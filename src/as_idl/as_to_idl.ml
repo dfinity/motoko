@@ -114,10 +114,11 @@ let rec typ vs t =
      (match ts2 with
      | [] when c = Returns -> I.FuncT ([I.Oneway @@ no_region], fs1, [])
      | [Async t] when c = Promises ->
-       I.FuncT ((match s with
-                | Query -> [I.Query @@ no_region]
-                | Write -> []),
-                fs1, tuple vs [t])
+       I.FuncT (
+         (match s with
+          | Query -> [I.Query @@ no_region]
+          | Write -> []),
+         fs1, tuple vs [t])
      | _ -> assert false)
   | Func _ -> assert false
   | Async t -> assert false
