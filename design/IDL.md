@@ -1083,11 +1083,13 @@ To enable convenient debugging, we also specify a text format for IDL values.
 The types of these values are assumed to be known from context, so the syntax does not attempt to be self-describing.
 
 ```
-<val> ::= <primval> | <consval> | <refval>
+<val> ::=
+  | <primval> | <consval> | <refval>
+  | <val> : <datatype>
 
 <primval> ::=
-  | <nat> | <int> | <float>     (same as ActorScript grammar plus sign)
-  | <text>                      (same as ActorScript grammar)
+  | <nat> | <int> | <float>     (TODO: same as ActorScript grammar plus sign)
+  | <text>                      (TODO: same as ActorScript grammar)
   | true | false
   | null
 
@@ -1113,7 +1115,7 @@ Analoguous to types, a few syntactic shorthands are supported that can be reduce
 
 ```
 <consval> ::= ...
-  | blob                   :=  vec <text>
+  | blob                   :=  vec <text>    (TODO: interpreted as byte string; UTF-encoding for contained Unicode chars (as in Wasm))
 
 <fieldval> ::= ...
   | <name> = <val>         :=  <hash(name)> = <val>
