@@ -1080,6 +1080,7 @@ Note:
 ## Text Format
 
 To enable convenient debugging, we also specify a text format for IDL values.
+The types of these values are assumed to be known from context, so the syntax does not attempt to be self-describing.
 
 ```
 <val> ::= <primval> | <consval> | <refval>
@@ -1101,6 +1102,9 @@ To enable convenient debugging, we also specify a text format for IDL values.
 <refval> ::=
   | service <text>             (canister URI)
   | func <text> . <id>         (canister URI and message name)
+
+<arg> ::= ( <val>,* )
+
 ```
 
 #### Syntactic Shorthands
