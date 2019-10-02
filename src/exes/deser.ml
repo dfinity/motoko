@@ -187,6 +187,9 @@ T(empty)    = sleb128(-17)
     | p when p < 0 -> decode_primitive_type p
     | i -> force (lookup i) in
 
+  let lfst p = lazy (let lazy (f, _) = p in f) in
+  let lsnd p = lazy (let lazy (_, s) = p in s) in
+
   match read_sleb128 () with
   | p when p < 0 && p > -18 -> from_val (decode_primitive_type p)
   | -18 ->
@@ -201,7 +204,7 @@ T(empty)    = sleb128(-17)
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
                              from_val (Opt (lazy t), reader (lazy consumer))
            | i -> lazy (let p = lookup i in
-                        Opt (lazy (fst (force p))), reader (lazy (snd (force p))))
+                        Opt (lfst p), reader (lsnd p))
     end
   | -19 -> begin match read_type_index () with
            | p when p < -17 -> assert false
