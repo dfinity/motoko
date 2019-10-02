@@ -126,7 +126,7 @@ and t_exp' context exp' =
          (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
      in
      (* TODO: bind k_fail *)
-     (asyncE (typ exp1) ([k_ret; k_fail] -->*
+     (asyncE (T.as_seq (typ exp1)) ([k_ret; k_fail] -->*
                            c_exp context' exp1 (ContVar k_ret))).it
   | TryE _
   | ThrowE _
@@ -360,7 +360,7 @@ and c_exp' context exp k =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
-    k -@- (asyncE (typ exp1) ([k_ret; k_fail] -->*
+    k -@- (asyncE (T.as_seq (typ exp1)) ([k_ret; k_fail] -->*
                                    (c_exp context' exp1 (ContVar k_ret))))
   | AwaitE exp1 ->
      let r = match LabelEnv.find_opt Throw context with

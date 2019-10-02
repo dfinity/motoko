@@ -3431,7 +3431,7 @@ module Serialization = struct
           List.for_all go (List.map (open_ ts) ts2)
         | Opt t -> go t
         | Variant fs -> List.for_all (fun f -> go f.typ) fs
-        | Async t -> go t
+        | Async ts -> List.for_all go ts
         | Obj (Actor, fs) -> false
         | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
         | Mut t -> go t

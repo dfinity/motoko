@@ -97,10 +97,10 @@ let primE prim es =
     note = { note_typ = ty; note_eff = e }
   }
 
-let asyncE typ e =
+let asyncE typs e =
   { it = PrimE (OtherPrim "@async", [e]);
     at = no_region;
-    note = { note_typ = T.Async typ; note_eff = eff e }
+    note = { note_typ = T.Async typs; note_eff = eff e }
   }
 
 let assertE e =

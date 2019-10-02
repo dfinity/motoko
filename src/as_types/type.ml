@@ -42,7 +42,7 @@ and typ =
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
   | Func of func_sort * control * bind list * typ list * typ list  (* function *)
-  | Async of typ                              (* future *)
+  | Async of typ list                         (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
@@ -150,7 +150,7 @@ let rec shift i n t =
     let i' = i + List.length tbs in
     Func (s, c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
   | Opt t -> Opt (shift i n t)
-  | Async t -> Async (shift i n t)
+  | Async ts -> Async (List.map (shift i n) ts)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Variant fs -> Variant (List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
@@ -196,7 +196,7 @@ let rec subst sigma t =
     Func (s, c, List.map (subst_bind sigma') tbs,
           List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
-  | Async t -> Async (subst sigma t)
+  | Async ts -> Async (List.map (subst sigma) ts)
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
   | Variant fs -> Variant (List.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
@@ -251,7 +251,7 @@ let rec open' i ts t =
     let i' = i + List.length tbs in
     Func (s, c, List.map (open_bind i' ts) tbs, List.map (open' i' ts) ts1, List.map (open' i' ts) ts2)
   | Opt t -> Opt (open' i ts t)
-  | Async t -> Async (open' i ts t)
+  | Async ts' -> Async (List.map (open' i ts) ts')
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
   | Variant fs -> Variant (List.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
@@ -339,7 +339,7 @@ let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
 let as_func = function Func (s, c, tbs, ts1, ts2) -> s, c, tbs, ts1, ts2 | _ -> invalid "as_func"
-let as_async = function Async t -> t | _ -> invalid "as_async"
+let as_async = function Async ts -> ts | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_typ = function Typ c -> c | _ -> invalid "as_typ"
@@ -386,9 +386,9 @@ let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
   | Non -> Any, Non
   | _ -> invalid "as_func_sub"
-let as_async_sub t = match promote t with
-  | Async t -> t
-  | Non -> Non
+let as_async_sub n t = match promote t with
+  | Async ts -> ts
+  | Non -> Lib.List.make n Non
   | _ -> invalid "as_async_sub"
 
 
@@ -453,7 +453,7 @@ let rec avoid' cons seen = function
       List.map (avoid' cons seen) ts2
     )
   | Opt t -> Opt (avoid' cons seen t)
-  | Async t -> Async (avoid' cons seen t)
+  | Async ts -> Async (List.map (avoid' cons seen) ts)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons seen) fs)
   | Variant fs -> Variant (List.map (avoid_field cons seen) fs)
   | Mut t -> Mut (avoid' cons seen t)
@@ -491,9 +491,9 @@ let rec cons t cs =
   | (Prim _ | Any | Non | Pre) -> cs
   | Con (c, ts) ->
     List.fold_right cons ts (ConSet.add c cs)
-  | (Opt t | Async t | Mut t | Array t) ->
+  | (Opt t | Mut t | Array t) ->
     cons t cs
-  | Tup ts -> List.fold_right cons ts cs
+  | (Async ts | Tup ts) -> List.fold_right cons ts cs
   | Func (s, c, tbs, ts1, ts2) ->
     let cs = List.fold_right cons_bind tbs  cs in
     let cs = List.fold_right cons ts1 cs in
@@ -538,8 +538,8 @@ let concrete t =
         | Abs _ -> false
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
-      | Array t | Opt t | Async t | Mut t -> go t
-      | Tup ts -> List.for_all go ts
+      | Array t | Opt t | Mut t -> go t
+      | Async ts | Tup ts -> List.for_all go ts
       | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         let ts = open_binds tbs in
@@ -638,6 +638,7 @@ let rec rel_typ rel eq t1 t2 =
     true
   | Variant fs1, Variant fs2 ->
     rel_tags rel eq fs1 fs2
+  | Async ts1, Async ts2
   | Tup ts1, Tup ts2 ->
     rel_list rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
@@ -648,8 +649,6 @@ let rec rel_typ rel eq t1 t2 =
       rel_list rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
     )
-  | Async t1', Async t2' ->
-    rel_typ rel eq t1' t2'
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
   | Typ c1, Typ c2 ->
@@ -758,6 +757,7 @@ let rec compatible_typ co t1 t2 =
     true
   | Array t1', Array t2' ->
     compatible_typ co t1' t2'
+  | Async ts1, Async ts2
   | Tup ts1, Tup ts2 ->
     compatible_list compatible_typ co ts1 ts2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
@@ -769,8 +769,6 @@ let rec compatible_typ co t1 t2 =
     true
   | Variant tfs1, Variant tfs2 ->
     compatible_tags co tfs1 tfs2
-  | Async t1', Async t2' ->
-    compatible_typ co t1' t2'
   | Func _, Func _ ->
     true
   | Typ _, Typ _ ->
@@ -872,8 +870,8 @@ let rec lub' lubs glbs t1 t2 =
         s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
-    | Async t1', Async t2' ->
-      Async (lub' lubs glbs t1' t2')
+    | Async ts1, Async ts2 when List.(length ts1 = length ts2) ->
+      Async (List.map2 (lub' lubs glbs) ts1 ts2)
     | Con _, _
     | _, Con _ ->
       (* TODO(rossberg): fix handling of bounds *)
@@ -944,8 +942,8 @@ and glb' lubs glbs t1 t2 =
         s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
-    | Async t1', Async t2' ->
-      Async (glb' lubs glbs t1' t2')
+    | Async ts1, Async ts2 when List.(length ts1 = length ts2) ->
+      Async (List.map2 (glb' lubs glbs) ts1 ts2)
     | Con _, _
     | _, Con _ ->
       (* TODO(rossberg): fix handling of bounds *)
@@ -1131,8 +1129,10 @@ and string_of_typ' vs t =
       (string_of_dom (vs' @ vs) ts1) (string_of_cod c (vs' @ vs) ts2)
   | Opt t ->
     sprintf "?%s"  (string_of_typ_nullary vs t)
-  | Async t ->
-    sprintf "async %s" (string_of_typ_nullary vs t)
+  | Async ts ->
+    sprintf "async (%s%s)"
+      (String.concat ", " (List.map (string_of_typ' vs) ts))
+      (if List.length ts = 1 then "," else "")
   | Obj (s, fs) ->
     sprintf "%s%s" (string_of_obj_sort s) (string_of_typ_nullary vs (Obj (Object, fs)))
   | Typ c ->

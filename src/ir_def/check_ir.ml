@@ -166,18 +166,19 @@ let rec check_typ env typ : unit =
       List.iter (fun t -> check_shared env no_region t) ts1;
       match ts2 with
       | [] when not env.flavor.Ir.has_async_typ || sort = T.Shared T.Write  -> ()
-      | [T.Async t2] ->
-        check env' no_region (T.shared t2)
-          "message result is not sharable:\n  %s" (T.string_of_typ_expand t2)
+      | [T.Async ts'] ->
+        check env' no_region (List.for_all T.shared ts')
+          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.Tup ts'))
       | _ -> error env no_region "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
     end
   | T.Opt typ ->
     check_typ env typ
-  | T.Async typ ->
+  | T.Async typs ->
     check env no_region env.flavor.Ir.has_async_typ "async in non-async flavor";
-    let t' = T.promote typ in
-    check_shared env no_region t'
+    List.iter (fun typ ->
+      let t' = T.promote typ in
+      check_shared env no_region t') typs
   | T.Obj (sort, fields) ->
     List.iter (check_typ_field env (Some sort)) fields;
     (* fields strictly sorted (and) distinct *)
@@ -515,18 +516,18 @@ let rec check_exp env (exp:Ir.exp) : unit =
       {env with labs = T.Env.empty; rets = Some t1; async = true} in
     check_exp env' exp1;
     t1 <: T.Any;
-    T.Async t1 <: t
+    T.Async (T.as_seq t1) <: t
   | AwaitE exp1 ->
     check env.flavor.has_await "await in non-await flavor";
     check env.async "misplaced await";
     check_exp env exp1;
     let t1 = T.promote (typ exp1) in
-    let t2 = try T.as_async_sub t1
-             with Invalid_argument _ ->
+    let ts2 = try T.as_async_sub (List.length (T.as_seq t1)) t1 (* TBR *)
+              with Invalid_argument _ ->
                error env exp1.at "expected async type, but expression has type\n  %s"
                  (T.string_of_typ_expand t1)
     in
-    t2 <: t
+    T.seq ts2 <: t
   | AssertE exp1 ->
     check_exp env exp1;
     typ exp1 <: T.bool;

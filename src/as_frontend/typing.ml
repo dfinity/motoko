@@ -225,7 +225,8 @@ and check_typ' env typ : T.typ =
     if not env.pre && not (T.shared t) then
       error env typ.at "async has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
-    T.Async t
+    let ts = match typ.it with TupT _ -> T.as_seq t | _ -> [t] in
+    T.Async ts
   | ObjT (sort, fields) ->
     check_ids env "object" "field"
       (List.map (fun (field : typ_field) -> field.it.id) fields);
@@ -818,13 +819,13 @@ and infer_exp'' env exp : T.typ =
     if not (T.shared t) then
       error env exp1.at "async type has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
-    T.Async t
+    T.Async (T.as_seq t)
   | AwaitE exp1 ->
     if not env.async then
       error env exp.at "misplaced await";
     let t1 = infer_exp_promote env exp1 in
     (try
-      T.as_async_sub t1
+      T.seq (T.as_async_sub (List.length (T.as_seq t1)) t1)
     with Invalid_argument _ ->
       error env exp1.at "expected async type, but expression has type\n  %s"
         (T.string_of_typ_expand t1)
@@ -884,8 +885,8 @@ and check_exp' env t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE exp1, T.Async t' ->
-    let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
-    check_exp env' t' exp1;
+    let env' = {env with labs = T.Env.empty; rets = Some (T.seq t'); async = true} in
+    check_exp env' (T.seq t') exp1;
     t
   | BlockE decs, _ ->
     ignore (check_block env t decs exp.at);
