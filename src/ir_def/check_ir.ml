@@ -438,7 +438,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp2;
     let t_arg = T.open_ insts t2 in
     let t_ret = T.open_ insts t3 in
-    if (call_conv.Call_conv.sort <> T.Local) then begin
+    if call_conv.Call_conv.sort <> T.Local then begin
       check_concrete env exp.at t_arg;
       check_concrete env exp.at t_ret;
     end;
