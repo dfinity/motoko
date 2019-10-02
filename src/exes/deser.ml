@@ -112,7 +112,7 @@ let read_annotation () : ann =
 
 type typ = Null | Bool | Nat | NatN of int
          | Int | IntN of int | Text | Reserved | Empty
-         | Opt of typ | Vec of typ
+         | Opt of typ Lazy.t | Vec of typ
          | Record of (int * typ) array
          | Variant of (int * typ) array
          | Function of (int * typ) array * (int * typ) array * ann array
@@ -194,14 +194,14 @@ T(empty)    = sleb128(-17)
       let reader consumer () =
         match read_byte () with
         | 0 -> output_nil ()
-        | 1 -> output_some consumer
+        | 1 -> output_some (force consumer)
         | _ -> failwith "invalid optional" in
       match read_type_index () with
            | p when p < -17 -> assert false
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             from_val (Opt t, reader consumer)
-           | i -> lazy (let lazy (t, consumer) = lookup i in
-                        Opt t, reader consumer)
+                             from_val (Opt (lazy t), reader (lazy consumer))
+           | i -> lazy (let p = lookup i in
+                        Opt (lazy (fst (force p))), reader (lazy (snd (force p))))
     end
   | -19 -> begin match read_type_index () with
            | p when p < -17 -> assert false
@@ -248,7 +248,7 @@ let top_level md : unit =
   read_magic ();
   Printf.printf "\n========================== Type section\n";
   let rec tab' = lazy (read_type_table (function () -> read_type lookup))
-      and lookup = function indx -> Printf.printf "indx: %d\n" indx; Array.get (force tab') indx in
+      and lookup = function indx -> Printf.printf "{indx: %d}" indx; Array.get (force tab') indx in
   let tab = Array.map force (force tab') in
   Printf.printf "\n========================== Value section\n";
   begin match md with
