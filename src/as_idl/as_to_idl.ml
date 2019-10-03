@@ -118,7 +118,7 @@ let rec typ vs t =
          (match s with
           | Query -> [I.Query @@ no_region]
           | Write -> []),
-         fs1, tuple vs [t])
+         fs1, tuple vs (as_seq t))
      | _ -> assert false)
   | Func _ -> assert false
   | Async t -> assert false
