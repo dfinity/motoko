@@ -6780,7 +6780,14 @@ and export_actor_field env  ae (f : Ir.field) =
   E.add_export env (nr {
     name = Wasm.Utf8.decode (match E.mode env with
       | Flags.AncientMode -> f.it.name
-      | Flags.ICMode -> "canister_update " ^ f.it.name
+      | Flags.ICMode ->
+        As_types.Type.(
+        match normalize f.note with
+        |  Func(Shared sort,_,_,_,_) ->
+           (match sort with
+            | Write -> "canister_update " ^ f.it.name
+            | Query -> "canister_query " ^ f.it.name)
+        | _ -> assert false)
       | _ -> assert false);
     edesc = nr (FuncExport (nr fi))
   })
