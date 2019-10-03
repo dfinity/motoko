@@ -399,7 +399,7 @@ and to_args cc p : (Ir.arg list * (Ir.exp -> Ir.exp)) =
   in
 
   let wrap_under_async e =
-    if T.is_shared_sort cc.Call_conv.sort && cc.Call_conv.control = T.Promises
+    if T.is_shared_sort cc.Call_conv.sort && cc.Call_conv.control <> T.Returns
     then match e.it with
       | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
       | _ -> assert false

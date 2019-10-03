@@ -154,14 +154,16 @@ let rec check_typ env typ : unit =
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
     List.iter (check_typ env') ts2;
-    if control = T.Promises then begin
+    (match control with
+    | T.Returns -> ()
+    | T.Promises p -> begin
       match ts2 with
       | [T.Async _ ] -> ()
       | _ ->
         let t2 = T.seq ts2 in
         error env no_region "promising function with non-async result type \n  %s"
           (T.string_of_typ_expand t2)
-    end;
+    end);
     if T.is_shared_sort sort then begin
       List.iter (fun t -> check_shared env no_region t) ts1;
       match ts2 with

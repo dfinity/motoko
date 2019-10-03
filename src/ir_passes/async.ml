@@ -145,7 +145,7 @@ module Transform(Platform : sig val platform : platform end) = struct
     let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
     (async, fulfill, fail), call_new_async
 
-  let new_nary_async_reply t1 =
+  let new_nary_async_reply p t1 =
     let (unary_async, unary_fulfill, fail), call_new_async = new_async t1 in
     let v' = fresh_var "v" t1 in
     let ts1 = T.as_seq t1 in
@@ -194,7 +194,7 @@ module Transform(Platform : sig val platform : platform end) = struct
 
   let isAwaitableFunc exp =
     match typ exp with
-    | T.Func (T.Shared _,T.Promises,_,_,[T.Async _]) -> true
+    | T.Func (T.Shared _,T.Promises _,_,_,[T.Async _]) -> true
     | _ -> false
 
   let extendTup ts ts' = ts @ ts'
@@ -230,16 +230,15 @@ module Transform(Platform : sig val platform : platform end) = struct
         match s with
         | T.Shared _ ->
            begin
-             match t2 with
-             | [] ->
+             match t2,c with
+             | [],_ ->
                assert (c = T.Returns);
                Func(s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
-             | [Async t2] ->
-               assert (c = T.Promises);
+             | [Async t2], T.Promises p ->
                Func (s, T.Returns, List.map t_bind tbs,
                      extendTup (List.map t_typ t1)
                        (select
-                          [ add_reply_parameter, lazy (replyT nary (t_typ t2));
+                          [ add_reply_parameter, lazy (replyT (if p = 1 then unary else nary) (t_typ t2));
                             add_reject_parameter, lazy rejectT ]),
                      [])
              | _ -> assert false
@@ -327,7 +326,7 @@ module Transform(Platform : sig val platform : platform end) = struct
         | Func(_,_,
                [],
                [Func(_, _, [], ts1, []) as contT; _],
-               []) -> (* TBR, why isn't this []? *)
+               []) ->
           (t_typ (T.seq ts1),t_typ contT)
         | t -> assert false in
       let k = fresh_var "k" contT in
@@ -336,7 +335,7 @@ module Transform(Platform : sig val platform : platform end) = struct
       let e = fresh_var "e" T.catch in
       let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Returns, [], [], [])) in
       let u = fresh_var "u" T.unit in
-      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply t1 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply 1 t1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
                funcD k v1 (nary_reply -*- v1);
                nary_funcD r [e] (reject -*- (errorMessageE e));
@@ -345,16 +344,16 @@ module Transform(Platform : sig val platform : platform end) = struct
                nary_async
       ).it
     | CallE (cc, exp1, typs, exp2) when isAwaitableFunc exp1 ->
-      let ts1,t2 =
+      let p, ts1,t2 =
         match typ exp1 with
-        | T.Func (T.Shared _, T.Promises,tbs,ts1,[T.Async t2]) ->
-          List.map t_typ ts1, t_typ t2
+        | T.Func (T.Shared _, T.Promises p,tbs,ts1,[T.Async t2]) ->
+          p, List.map t_typ ts1, t_typ t2
         | _ -> assert(false)
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
       let typs = List.map t_typ typs in
-      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply t2 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply p t2 in
       let _ = letEta in
       (blockE ( letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
                 letEta exp1' (fun v1 ->
@@ -407,12 +406,12 @@ module Transform(Platform : sig val platform : platform end) = struct
           FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
         | T.Shared s' ->
           begin
-            match typ exp with
-            | T.Tup [] ->
+            match typ exp, cc.Call_conv.control with
+            | T.Tup [], _ ->
               FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
-            | T.Async res_typ ->
+            | T.Async res_typ, Promises p ->
               let res_typ = t_typ res_typ in
-              let reply_typ = replyT nary res_typ in
+              let reply_typ = replyT (if p = 1 then unary else nary) res_typ in
               let reply = fresh_var "reply" reply_typ in
               let reject = fresh_var "reject" rejectT in
               let args' = t_args args @
@@ -423,7 +422,14 @@ module Transform(Platform : sig val platform : platform end) = struct
               let exp' =
                 match exp.it with
                 | PrimE (OtherPrim "@async", [cps]) ->
-                  let v = fresh_var "v" res_typ in
+                  let t1, contT = match typ cps with
+                    | Func(_,_,
+                           [],
+                           [Func(_, _, [], ts1, []) as contT; _],
+                           []) ->
+                      (t_typ (T.seq ts1),t_typ contT)
+                    | t -> assert false in
+                  let v = fresh_var "v" t1 in
                   let k = if add_reply_parameter then
                             (* wrap shared reply function in local function *)
                             (v --> (reply -*- v))

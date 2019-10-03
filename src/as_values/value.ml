@@ -303,7 +303,7 @@ let unit = Tup []
 
 let local_func n m f = Func (Call_conv.local_cc n m, f)
 let message_func s n f = Func (Call_conv.message_cc s n, f)
-let async_func s n f = Func ( Call_conv.async_cc s n, f)
+let async_func s n p f = Func ( Call_conv.async_cc s n p, f)
 
 
 (* Projections *)

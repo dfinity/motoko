@@ -3,7 +3,7 @@
 type lab = string
 type var = string
 
-type control = Returns | Promises (* Returns a computed value or immediate promise *)
+type control = Returns | Promises of int (* Returns a computed value or immediate promise *)
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
 type func_sort = Local | Shared of shared_sort
@@ -1114,7 +1114,7 @@ and string_of_cod c vs ts =
   | [Async _] ->
     (match c with
      | Returns -> sprintf "(%s)" cod
-     | Promises -> sprintf "%s" cod
+     | Promises _ -> sprintf "%s" cod
     )
   | _ -> cod
 

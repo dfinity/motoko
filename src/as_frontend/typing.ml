@@ -195,7 +195,9 @@ and check_typ' env typ : T.typ =
     let typs2 = as_seqT typ2 in
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
-    let c = match typs2 with [{it = AsyncT _; _}] -> T.Promises | _ -> T.Returns in
+    let c = match typs2 with
+      | [{it = AsyncT typ; _}] -> T.Promises (List.length (as_seqT typ)) (* TBR *)
+      | _ -> T.Returns in
     if Type.is_shared_sort sort.it then
     if not env.pre then begin
       let t1 = T.seq ts1 in
@@ -648,7 +650,7 @@ and infer_exp'' env exp : T.typ =
     let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
     let c =
       match sort.it, typ.it with
-      | T.Shared _, AsyncT _ -> T.Promises
+      | T.Shared _, AsyncT ret_typ -> T.Promises (List.length (as_seqT ret_typ))
       | _ -> T.Returns
     in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
