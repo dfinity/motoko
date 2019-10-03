@@ -565,6 +565,8 @@ rec {
     ));
 
     shellHook = llvmEnv;
+    ESM=esm;
+    JS_USER_LIBRARY=js-user-library;
     TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
   } else null;
