@@ -3,7 +3,7 @@ actor {
     (x, y)
   };
 
-  public func three(x:Text, y:Text, z: Text) : async (Text, Text, Text) {
+  public query func three(x:Text, y:Text, z: Text) : async (Text, Text, Text) {
     (x, y, z)
   };
 
