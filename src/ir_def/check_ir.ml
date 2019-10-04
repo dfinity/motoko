@@ -159,11 +159,11 @@ let rec check_typ env typ : unit =
     | T.Promises p -> begin
       match ts2 with
       | [T.Async t ] ->
-        let arity = List.length (T.as_seq t) in
-        if p <> 1 && arity <> p then
+        let a = T.arity t in
+        if p <> 1 && a <> p then
           error env no_region
             "promising function of arity %i has async result type\n  %s\n  of mismatched arity %i"
-            p (T.string_of_typ_expand (T.seq ts2)) arity
+            p (T.string_of_typ_expand (T.seq ts2)) a
       | _ ->
         error env no_region "promising function with non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))

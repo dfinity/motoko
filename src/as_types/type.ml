@@ -344,7 +344,15 @@ let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_typ = function Typ c -> c | _ -> invalid "as_typ"
 
-let as_seq = function Tup ts -> ts | t -> [t]
+let as_seq t =
+  match normalize t with
+  | Tup ts -> ts
+  | t -> [t]
+
+let arity t =
+  match normalize t with
+  | Tup ts -> List.length ts
+  | t -> 1
 
 let as_prim_sub p t = match promote t with
   | Prim p' when p = p' -> ()

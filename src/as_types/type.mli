@@ -128,7 +128,7 @@ val as_async_sub : typ -> typ
 
 val seq : typ list -> typ
 val as_seq : typ -> typ list
-
+val arity : typ -> int
 
 (* Fields *)
 
