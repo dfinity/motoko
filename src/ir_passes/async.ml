@@ -344,7 +344,7 @@ module Transform(Platform : sig val platform : platform end) = struct
                expD (post -*- tupE[])]
                nary_async
       ).it
-    | CallE (cc, exp1, typs, exp2) when isAwaitableFunc exp1 ->
+    | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
       let ts1,t2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises,tbs,ts1,[T.Async t2]) ->
@@ -367,9 +367,9 @@ module Transform(Platform : sig val platform : platform end) = struct
         .it
     | PrimE (p, exps) ->
       PrimE (prim p, List.map t_exp exps)
-    | CallE (cc, exp1, typs, exp2)  ->
+    | CallE (exp1, typs, exp2)  ->
       assert (not (isAwaitableFunc exp1));
-      CallE (cc, t_exp exp1, List.map t_typ typs, t_exp exp2)
+      CallE (t_exp exp1, List.map t_typ typs, t_exp exp2)
     | BlockE b ->
       BlockE (t_block b)
     | IfE (exp1, exp2, exp3) ->
@@ -399,18 +399,17 @@ module Transform(Platform : sig val platform : platform end) = struct
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
       DefineE (id, mut, t_exp exp1)
-    | FuncE (x, cc, typbinds, args, typT, exp) ->
-      let s = cc.Call_conv.sort in
+    | FuncE (x, s, c, typbinds, args, typT, exp) ->
       begin
         match s with
         | T.Local  ->
-          FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
+          FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
         | T.Shared s' ->
           begin
-            match typ exp with
-            | T.Tup [] ->
-              FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
-            | T.Async res_typ ->
+            match c, typ exp with (* TBR: Why not look at typT here? *)
+            | Returns, T.Tup [] ->
+              FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
+            | Promises, T.Async res_typ ->
               let res_typ = t_typ res_typ in
               let reply_typ = replyT nary res_typ in
               let reply = fresh_var "reply" reply_typ in
@@ -439,8 +438,7 @@ module Transform(Platform : sig val platform : platform end) = struct
                   (t_exp cps) -*- tupE [k;r]
                 | _ -> assert false
               in
-              let cc' = Call_conv.message_cc s' (List.length args') in
-              FuncE (x, cc', typbinds', args', [], exp')
+              FuncE (x, T.Shared s', Returns, typbinds', args', [], exp')
             | _ -> assert false
           end
       end
