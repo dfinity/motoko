@@ -23,7 +23,7 @@ actor {
     xyzw
   };
 
-  public func unary3(xyzw : (Text, Text, Text, Text)) : async ((Text, Text, Text, Text)) {
+  public query func unary3(xyzw : (Text, Text, Text, Text)) : async ((Text, Text, Text, Text)) {
     xyzw
   };
 
