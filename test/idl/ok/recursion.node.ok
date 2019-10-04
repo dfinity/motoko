@@ -1,0 +1,5 @@
+/home/jojo/dfinity/actorscript/test/idl/_out/recursion.js:2
+const B = IDL.Rec()
+              ^
+
+TypeError: IDL.Rec is not a function
