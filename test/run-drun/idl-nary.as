@@ -7,7 +7,7 @@ actor {
     (x, y, z)
   };
 
-  public func four(x:Text, y:Text, z: Text, w: Text) : async (Text, Text, Text, Text) {
+  public query func four(x:Text, y:Text, z: Text, w: Text) : async (Text, Text, Text, Text) {
     (x, y, z, w)
   };
 
