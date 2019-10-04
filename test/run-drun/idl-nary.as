@@ -1,5 +1,5 @@
 actor {
-  public func two(x:Text, y:Text) : async (Text, Text) {
+  public query func two(x:Text, y:Text) : async (Text, Text) {
     (x, y)
   };
 
