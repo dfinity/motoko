@@ -64,10 +64,10 @@ module Transform(Platform : sig val platform : platform end) = struct
      implemented (as far as possible) for V1;
      TBC for V2 *)
 
-  let sys_replyE t v =
+  let sys_replyE ts v =
     match platform with
     | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
-    | V2 -> ic_replyE t v
+    | V2 -> ic_replyE ts v
 
   let sys_rejectE e =
     match platform with
@@ -112,6 +112,8 @@ module Transform(Platform : sig val platform : platform end) = struct
   let unary typ = [typ]
 
   let nary typ = T.as_seq typ
+
+  let flatten arity = if arity = 1 then unary else nary
 
   let replyT as_seq typ = T.Func(T.Shared T.Write, T.Returns, [], as_seq typ, [])
 
@@ -238,7 +240,7 @@ module Transform(Platform : sig val platform : platform end) = struct
                Func (s, T.Returns, List.map t_bind tbs,
                      extendTup (List.map t_typ t1)
                        (select
-                          [ add_reply_parameter, lazy (replyT (if p = 1 then unary else nary) (t_typ t2));
+                          [ add_reply_parameter, lazy (replyT (flatten p) (t_typ t2));
                             add_reject_parameter, lazy rejectT ]),
                      [])
              | _ -> assert false
@@ -284,7 +286,7 @@ module Transform(Platform : sig val platform : platform end) = struct
     | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
     | ShowPrim ot -> ShowPrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
-    | ICReplyPrim t -> ICReplyPrim(t_typ t)
+    | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
     | p -> p
 
   and t_field {lab; typ} =
@@ -411,7 +413,8 @@ module Transform(Platform : sig val platform : platform end) = struct
               FuncE (x, cc, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
             | T.Async res_typ, Promises p ->
               let res_typ = t_typ res_typ in
-              let reply_typ = replyT (if p = 1 then unary else nary) res_typ in
+              let res_typs = flatten p res_typ in
+              let reply_typ = replyT (flatten p) res_typ in
               let reply = fresh_var "reply" reply_typ in
               let reject = fresh_var "reject" rejectT in
               let args' = t_args args @
@@ -434,7 +437,7 @@ module Transform(Platform : sig val platform : platform end) = struct
                             (* wrap shared reply function in local function *)
                             (v --> (reply -*- v))
                           else
-                            (v --> (sys_replyE res_typ v)) in
+                            (v --> (sys_replyE res_typs v)) in
                   let e = fresh_var "e" T.catch in
                   let r = if add_reject_parameter then
                             (* wrap shared reject function in local function *)

@@ -6221,11 +6221,13 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "make_error", [e1; e2] ->
       Error.compile_make_error (compile_exp_vanilla env ae e1) (compile_exp_vanilla env ae e2)
 
-    | ICReplyPrim t, [e] ->
+    | ICReplyPrim ts, [e] ->
       assert (E.mode env = Flags.ICMode);
       SR.unit,
-      compile_exp_vanilla env ae e ^^
-      Serialization.serialize env [t]
+      compile_exp_as env ae SR.Vanilla e ^^
+      (* TODO: We can try to avoid the boxing and pass the arguments to
+        serialize individually *)
+      Serialization.serialize env ts
 
     | ICRejectPrim, [e] ->
       assert (E.mode env = Flags.ICMode);
