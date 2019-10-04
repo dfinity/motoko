@@ -6374,8 +6374,8 @@ and compile_exp (env : E.t) ae exp =
     Var.set_val env ae name
   | FuncE (x, sort, _control, typ_binds, args, ret_tys, e) ->
     let captured = Freevars.captured exp in
-    let n_args = List.length args in
-    let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity n_args) e in
+    let n_res = List.length ret_tys in
+    let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity n_res) e in
     FuncDec.lit env ae typ_binds x sort captured args mk_body ret_tys exp.at
   | ActorE (i, ds, fs, _) ->
     SR.UnboxedReference,
