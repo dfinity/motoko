@@ -5,7 +5,7 @@ let ($$) head inner = Node (head, inner)
 
 let control c = match c with
   | Returns -> "Returns"
-  | Promises -> "Promises"
+  | Promises n -> "Promises " ^ string_of_int n
 
 let obj_sort s = match s with
   | Object -> Atom "Object"
