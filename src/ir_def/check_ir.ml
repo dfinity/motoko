@@ -158,11 +158,15 @@ let rec check_typ env typ : unit =
     | T.Returns -> ()
     | T.Promises p -> begin
       match ts2 with
-      | [T.Async _ ] -> ()
+      | [T.Async t ] ->
+        let arity = List.length (T.as_seq t) in
+        if p <> 1 && arity <> p then
+          error env no_region
+            "promising function of arity %i has async result type\n  %s\n  of mismatched arity %i"
+            p (T.string_of_typ_expand (T.seq ts2)) arity
       | _ ->
-        let t2 = T.seq ts2 in
-        error env no_region "promising function with non-async result type \n  %s"
-          (T.string_of_typ_expand t2)
+        error env no_region "promising function with non-async result type\n  %s"
+          (T.string_of_typ_expand (T.seq ts2))
     end);
     if T.is_shared_sort sort then begin
       List.iter (fun t -> check_shared env no_region t) ts1;
