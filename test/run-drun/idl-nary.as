@@ -11,7 +11,7 @@ actor {
     (x, y, z, w)
   };
 
-  public func mkRecord() : async ((Text, Text, Text, Text)) {
+  public query func mkRecord() : async ((Text, Text, Text, Text)) {
     ("One", "Two", "Three", "Four")
   };
 
