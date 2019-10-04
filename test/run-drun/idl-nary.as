@@ -1,29 +1,29 @@
 actor {
-  public query func two(x:Text, y:Text) : async (Text, Text) {
+  public func two(x:Text, y:Text) : async (Text, Text) {
     (x, y)
   };
 
-  public query func three(x:Text, y:Text, z: Text) : async (Text, Text, Text) {
+  public func three(x:Text, y:Text, z: Text) : async (Text, Text, Text) {
     (x, y, z)
   };
 
-  public query func four(x:Text, y:Text, z: Text, w: Text) : async (Text, Text, Text, Text) {
+  public func four(x:Text, y:Text, z: Text, w: Text) : async (Text, Text, Text, Text) {
     (x, y, z, w)
   };
 
-  public query func mkRecord() : async ((Text, Text, Text, Text)) {
+  public func mkRecord() : async ((Text, Text, Text, Text)) {
     ("One", "Two", "Three", "Four")
   };
 
-  public query func unary1((x:Text, y:Text, z: Text, w: Text)) : async ((Text, Text, Text, Text)) {
+  public func unary1((x:Text, y:Text, z: Text, w: Text)) : async ((Text, Text, Text, Text)) {
     (x, y, z, w)
   };
 
-  public query func unary2(xyzw : (Text, Text, Text, Text)) : async ((Text, Text, Text, Text)) {
+  public func unary2(xyzw : (Text, Text, Text, Text)) : async ((Text, Text, Text, Text)) {
     xyzw
   };
 
-  public query func unary3(xyzw : (Text, Text, Text, Text)) : async ((Text, Text, Text, Text)) {
+  public func unary3(xyzw : (Text, Text, Text, Text)) : async ((Text, Text, Text, Text)) {
     xyzw
   };
 
