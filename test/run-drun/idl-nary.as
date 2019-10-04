@@ -28,7 +28,7 @@ actor {
   };
 
   type T = (Text, Text, Text, Text);
-  public func unary4(xyzw : (Text, Text, Text,Text)) : async T  {
+  public func unary4(xyzw : (Text, Text, Text, Text)) : async T  {
     xyzw
   }
 
