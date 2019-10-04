@@ -15,7 +15,7 @@ actor {
     ("One", "Two", "Three", "Four")
   };
 
-  public func unary1((x:Text, y:Text, z: Text, w: Text)) : async ((Text, Text, Text, Text)) {
+  public query func unary1((x:Text, y:Text, z: Text, w: Text)) : async ((Text, Text, Text, Text)) {
     (x, y, z, w)
   };
 
