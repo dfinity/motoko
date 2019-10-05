@@ -312,4 +312,5 @@ let () =
   - floats
   - pass the nesting level to the M^-1
   - service types
+  - break lazy cycles (the way Opt does it) everywhere
  *)
