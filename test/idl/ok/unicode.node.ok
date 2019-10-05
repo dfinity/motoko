@@ -1,5 +1,0 @@
-/home/jojo/dfinity/actorscript/test/idl/_out/unicode.js:6
- IDL.Variant({'': IDL.Unit, '空的': IDL.Unit, '  空的  ': IDL.Unit,
-     ^
-
-TypeError: IDL.Variant is not a function

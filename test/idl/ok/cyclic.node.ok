@@ -1,5 +1,0 @@
-/home/jojo/dfinity/actorscript/test/idl/_out/cyclic.js:2
-const A = IDL.Rec()
-              ^
-
-TypeError: IDL.Rec is not a function

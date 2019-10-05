@@ -1,5 +1,0 @@
-/home/jojo/dfinity/actorscript/test/idl/_out/import3.js:2
-const B = IDL.Rec()
-              ^
-
-TypeError: IDL.Rec is not a function

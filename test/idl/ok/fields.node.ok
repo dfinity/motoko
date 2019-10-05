@@ -1,5 +1,0 @@
-/home/jojo/dfinity/actorscript/test/idl/_out/fields.js:8
- IDL.Variant({'1': IDL.Unit, '2': IDL.Unit, '3': IDL.Unit, '4': IDL.Unit,
-     ^
-
-TypeError: IDL.Variant is not a function
