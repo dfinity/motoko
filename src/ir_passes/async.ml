@@ -400,17 +400,17 @@ module Transform(Platform : sig val platform : platform end) = struct
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
       DefineE (id, mut, t_exp exp1)
-    | FuncE (x, s, c, typbinds, args, typT, exp) ->
+    | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
       begin
         match s with
         | T.Local  ->
-          FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
+          FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
         | T.Shared s' ->
           begin
-            match typ exp, c with (* TBR: Why not look at typT here? *)
-            | T.Tup [], _ ->
-              FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ typT, t_exp exp)
-            | T.Async res_typ, Promises p ->
+            match ret_tys, c with
+            | [], _ ->
+              FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
+            | [T.Async res_typ], Promises p ->
               let res_typ = t_typ res_typ in
               let res_typs = flatten p res_typ in
               let reply_typ = replyT (flatten p) res_typ in
