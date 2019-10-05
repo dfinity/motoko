@@ -1,6 +1,13 @@
 open As_types
 open Type
 
+(*
+Functions of different arities (even if the look like they have the same type)
+are not compatible, but the interpreters just pass tuples to them. In order to
+still catch mismatching arities in the interpreter, we tag function values
+with their “calling convention”, and check them in calls.
+*)
+
 type call_conv = {
   sort: func_sort;
   control : control;
