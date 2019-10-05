@@ -116,7 +116,7 @@ let read_annotation () : ann =
 
 type typ = Null | Bool | Nat | NatN of int
          | Int | IntN of int | Text | Reserved | Empty
-         | Opt of typ Lazy.t | Vec of typ
+         | Opt of typ Lazy.t | Vec of typ Lazy.t
          | Record of (int * typ) array
          | Variant of (int * typ) array
          | Function of (int * typ) array * (int * typ) array * ann array
@@ -225,10 +225,10 @@ T(empty)    = sleb128(-17)
   | -19 -> begin match read_type_index () with
            | p when p < -17 -> assert false
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             from_val (Vec t, fun () -> read_star_heralding output_vector consumer)
+                             from_val (Vec (lazy t), fun () -> read_star_heralding output_vector consumer)
            | i ->
-             lazy (let lazy (t, consumer) = lookup i in
-                   Vec t, fun () -> read_star_heralding output_vector consumer)
+             lazy (let p = lookup i in
+                   Vec (lfst p), fun () -> read_star_heralding output_vector (force (lsnd p)))
            end
   | -20 -> let assocs = read_t_star read_assoc in
            lazy (let herald_record, herald_member = output_record (Array.length assocs) in
