@@ -96,7 +96,7 @@ let read_star_heralding (heralder : int -> outputter * (int -> outputter -> outp
   let rep = read_leb128 () in
   let herald_vector, herald_member = heralder rep in
   herald_vector ();
-  for i = 1 to rep do
+  for i = 0 to rep - 1 do
     herald_member i t ()
   done
 
