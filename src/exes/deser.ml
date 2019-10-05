@@ -147,6 +147,14 @@ let output_text bytes from tostream =
       Stdio.Out_channel.output_buffer tostream buf;
       Printf.printf "\n"
 
+type outputter = unit -> unit
+
+let output_record members : outputter * (int -> outputter -> outputter) =
+  let herald_record () = if members = 0 then Printf.printf "Empty Record\n"
+                         else Printf.printf "Record with %d members follows\n" members in
+  let herald_member i f () = Printf.printf "Record member %d%s: " i (if i + 1 = members then " (last)" else ""); f () in
+  herald_record, herald_member
+
 let decode_primitive_type : int -> typ * (unit -> unit) =
   function
   | -1 -> Null, output_nil
@@ -214,13 +222,10 @@ T(empty)    = sleb128(-17)
                         Vec t, fun () -> read_t_star_ consumer)
            end
   | -20 -> let assocs = read_t_star read_assoc in
-           lazy (let herald_record members : int -> (unit -> unit) -> unit -> unit =
-                   let herald_member i f () = Printf.printf "Record member %d: " i; f () in
-                   herald_member in
-                 let herald_member = herald_record (Array.length assocs) in
+           lazy (let herald_record, herald_member = output_record (Array.length assocs) in
                  let consumers = Array.mapi herald_member (Array.map (fun (_, tynum) -> snd (prim_or_lookup tynum)) assocs) in
                  let members = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
-                 Record members, fun () -> Array.iter (fun f -> f ()) consumers)
+                 Record members, fun () -> herald_record (); Array.iter (fun f -> f ()) consumers)
   | -21 -> let assocs = read_t_star read_assoc in
            lazy (let alts = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
                  let consumers = Array.map (fun (_, tynum) -> snd (prim_or_lookup tynum)) assocs in
