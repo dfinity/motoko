@@ -92,10 +92,12 @@ let read_magic () : unit =
 
 (* Repetition *)
 
-let read_t_star_ (t : unit -> unit) : unit =
+let read_star_heralding (heralder : int -> outputter * (int -> outputter -> outputter)) (t : outputter) : unit =
   let rep = read_leb128 () in
-  for _ = 1 to rep do
-    t ()
+  let herald_vector, herald_member = heralder rep in
+  herald_vector ();
+  for i = 1 to rep do
+    herald_member i t ()
   done
 
 let read_t_star (t : unit -> 'a) : 'a array =
@@ -149,6 +151,12 @@ let output_text bytes from tostream =
       Stdio.Out_channel.output_buffer tostream buf;
       Printf.printf "\n"
 
+let output_vector members : outputter * (int -> outputter -> outputter) =
+  let herald_vector () = if members = 0 then Printf.printf "Empty Vector\n"
+                         else Printf.printf "Vector with %d members follows\n" members in
+  let herald_member i f () = Printf.printf "Vector member %d%s: " i (if i + 1 = members then " (last)" else ""); f () in
+  herald_vector, herald_member
+
 let output_record members : outputter * (int -> outputter -> outputter) =
   let herald_record () = if members = 0 then Printf.printf "Empty Record\n"
                          else Printf.printf "Record with %d members follows\n" members in
@@ -171,7 +179,7 @@ let decode_primitive_type : int -> typ * outputter =
   | -12 -> IntN 64, (fun () -> output_int64 (read_int64 ()))
   | -13 | -14 -> failwith "no floats yet" (* TODO *)
   | -15 -> Text, (fun () -> let len = read_leb128 () in output_text len stdin stdout)
-  | -16 -> Reserved, ignore (* TODO *)
+  | -16 -> Reserved, ignore
   | -17 -> Empty, ignore
   | _ -> failwith "unrecognised primitive type"
 
@@ -217,9 +225,10 @@ T(empty)    = sleb128(-17)
   | -19 -> begin match read_type_index () with
            | p when p < -17 -> assert false
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             from_val (Vec t, fun () -> read_t_star_ consumer)
-           | i -> lazy (let lazy (t, consumer) = lookup i in
-                        Vec t, fun () -> read_t_star_ consumer)
+                             from_val (Vec t, fun () -> read_star_heralding output_vector consumer)
+           | i ->
+             lazy (let lazy (t, consumer) = lookup i in
+                   Vec t, fun () -> read_star_heralding output_vector consumer)
            end
   | -20 -> let assocs = read_t_star read_assoc in
            lazy (let herald_record, herald_member = output_record (Array.length assocs) in
@@ -321,5 +330,4 @@ let () =
   - pass the nesting level to the M^-1
   - service types
   - break lazy cycles (the way Opt does it) everywhere
-  - interpret (-16 -> Reserved)
  *)
