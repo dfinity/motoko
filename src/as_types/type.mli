@@ -3,7 +3,7 @@
 type lab = string
 type var = string
 
-type control = Returns | Promises (* returns a computed value or immediate promise *)
+type control = Returns | Promises of int (* returns a computed value or immediate promise *)
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
 type func_sort = Local | Shared of shared_sort
@@ -128,7 +128,7 @@ val as_async_sub : typ -> typ
 
 val seq : typ list -> typ
 val as_seq : typ -> typ list
-
+val arity : typ -> int
 
 (* Fields *)
 
