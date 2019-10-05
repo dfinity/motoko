@@ -1,9 +1,11 @@
 open Stdio.In_channel
 open Lazy
 
+type outputter = unit -> unit
+
 (* read nothing *)
 
-let epsilon : unit -> unit = ignore
+let epsilon : outputter = ignore
 
 (* reading at byte-level *)
 
@@ -147,15 +149,13 @@ let output_text bytes from tostream =
       Stdio.Out_channel.output_buffer tostream buf;
       Printf.printf "\n"
 
-type outputter = unit -> unit
-
 let output_record members : outputter * (int -> outputter -> outputter) =
   let herald_record () = if members = 0 then Printf.printf "Empty Record\n"
                          else Printf.printf "Record with %d members follows\n" members in
   let herald_member i f () = Printf.printf "Record member %d%s: " i (if i + 1 = members then " (last)" else ""); f () in
   herald_record, herald_member
 
-let decode_primitive_type : int -> typ * (unit -> unit) =
+let decode_primitive_type : int -> typ * outputter =
   function
   | -1 -> Null, output_nil
   | -2 -> Bool, (fun () -> output_bool (read_bool ()))
@@ -171,12 +171,12 @@ let decode_primitive_type : int -> typ * (unit -> unit) =
   | -12 -> IntN 64, (fun () -> output_int64 (read_int64 ()))
   | -13 | -14 -> failwith "no floats yet" (* TODO *)
   | -15 -> Text, (fun () -> let len = read_leb128 () in output_text len stdin stdout)
-  | -16 -> Reserved, ignore
+  | -16 -> Reserved, ignore (* TODO *)
   | -17 -> Empty, ignore
   | _ -> failwith "unrecognised primitive type"
 
 
-let read_type lookup : (typ * (unit -> unit)) Lazy.t =
+let read_type lookup : (typ * outputter) Lazy.t =
   (* primitive type
 
 T : <primtype> -> i8*
@@ -246,7 +246,7 @@ T(service {<methtype>*}) =
   | t -> failwith (Printf.sprintf "unrecognised structured type: %d" t)
 
 
-let read_type_table (t : unit -> (typ * (unit -> unit)) Lazy.t) : (typ * (unit -> unit)) Lazy.t array =
+let read_type_table (t : unit -> (typ * outputter) Lazy.t) : (typ * outputter) Lazy.t array =
   let rep = read_leb128 () in
   Array.init rep (fun i -> Printf.printf "read_type_table: %d\n" i;t ())
 
@@ -321,4 +321,5 @@ let () =
   - pass the nesting level to the M^-1
   - service types
   - break lazy cycles (the way Opt does it) everywhere
+  - interpret (-16 -> Reserved)
  *)
