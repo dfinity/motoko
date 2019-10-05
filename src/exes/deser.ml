@@ -214,11 +214,11 @@ T(empty)    = sleb128(-17)
                         Vec t, fun () -> read_t_star_ consumer)
            end
   | -20 -> let assocs = read_t_star read_assoc in
-           lazy (let herald_record members : int -> (int * int) -> unit -> unit =
-                   let herald_member i (_, tynum) () = Printf.printf "Record member %d: " i; snd (prim_or_lookup tynum) () in
+           lazy (let herald_record members : int -> (unit -> unit) -> unit -> unit =
+                   let herald_member i f () = Printf.printf "Record member %d: " i; f () in
                    herald_member in
                  let herald_member = herald_record (Array.length assocs) in
-                 let consumers = Array.mapi herald_member assocs in
+                 let consumers = Array.mapi herald_member (Array.map (fun (_, tynum) -> snd (prim_or_lookup tynum)) assocs) in
                  let members = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
                  Record members, fun () -> Array.iter (fun f -> f ()) consumers)
   | -21 -> let assocs = read_t_star read_assoc in
