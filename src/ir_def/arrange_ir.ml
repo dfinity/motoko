@@ -60,7 +60,7 @@ and prim = function
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
   | OtherPrim s       -> Atom s
-  | ICReplyPrim t     -> "ICReplyPrim" $$ [typ t]
+  | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICErrorCodePrim   -> Atom "ICErrorCodePrim"
 

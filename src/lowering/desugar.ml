@@ -405,7 +405,7 @@ and to_args typ p : (Ir.arg list * (Ir.exp -> Ir.exp) * T.control * int) =
   in
 
   let wrap_under_async e =
-    if T.is_shared_sort sort && control = T.Promises
+    if T.is_shared_sort sort && control <> T.Returns
     then match e.it with
       | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
       | _ -> assert false
