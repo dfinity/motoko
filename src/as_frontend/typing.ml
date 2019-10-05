@@ -168,6 +168,14 @@ let rec check_typ env typ : T.typ =
   typ.note <- t;
   t
 
+and infer_control env sort typ =
+    match sort.it, typ.it with
+      | T.Shared _, AsyncT ret_typ -> T.Promises (arity ret_typ)
+      | T.Shared T.Write, TupT [] -> T.Returns
+      | T.Shared T.Write, _ -> error env typ.at "shared function must have syntactic return type `()` or `async <typ>`"
+      | T.Shared T.Query, _ -> error env typ.at "shared query function must have syntactic return type `async <typ>`"
+      | _ -> T.Returns
+
 and check_typ' env typ : T.typ =
   match typ.it with
   | PathT (path, typs) ->
@@ -195,8 +203,8 @@ and check_typ' env typ : T.typ =
     let typs2 = as_seqT typ2 in
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
-    let c = match typs2 with [{it = AsyncT _; _}] -> T.Promises | _ -> T.Returns in
-    if sort.it = T.Shared then
+    let c = infer_control env sort typ2 in
+    if Type.is_shared_sort sort.it then
     if not env.pre then begin
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
@@ -204,7 +212,8 @@ and check_typ' env typ : T.typ =
           "shared function has non-shared parameter type\n  %s"
           (T.string_of_typ_expand t1);
       match ts2 with
-      | [] | [T.Async _] -> ()
+      | [] when sort.it = T.Shared T.Write -> ()
+      | [T.Async _] -> ()
       | _ ->
         error env typ2.at
           "shared function has non-async result type\n  %s"
@@ -619,6 +628,7 @@ and infer_exp'' env exp : T.typ =
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
+    let c = infer_control env sort typ in
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let t1, ve = infer_pat_exhaustive env' pat in
@@ -627,13 +637,13 @@ and infer_exp'' env exp : T.typ =
       let env'' =
         {env' with labs = T.Env.empty; rets = Some t2; async = false} in
       check_exp (adjoin_vals env'' ve) t2 exp;
-      if sort.it = T.Shared then begin
+      if Type.is_shared_sort sort.it then begin
         if not (T.shared t1) then
           error env pat.at
             "shared function has non-shared parameter type\n  %s"
             (T.string_of_typ_expand t1);
         match t2 with
-        | T.Tup [] -> ()
+        | T.Tup [] when sort.it = T.Shared T.Write -> ()
         | T.Async _ ->
           if not (isAsyncE exp) then
             error env exp.at
@@ -645,11 +655,6 @@ and infer_exp'' env exp : T.typ =
     end;
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
-    let c =
-      match sort.it, typ.it with
-      | T.Shared, (AsyncT _) -> T.Promises  (* TBR: do we want this for T.Local too? *)
-      | _ -> T.Returns
-    in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, insts, exp2) ->
@@ -666,7 +671,7 @@ and infer_exp'' env exp : T.typ =
     let t_ret = T.open_ ts t_ret in
     if not env.pre then begin
       check_exp env t_arg exp2;
-      if sort = T.Shared then begin
+      if Type.is_shared_sort sort then begin
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
@@ -779,6 +784,9 @@ and infer_exp'' env exp : T.typ =
     let t = check_typ env typ in
     if not env.pre then check_exp (add_lab env id.it t) t exp1;
     t
+  | DebugE exp1 ->
+    if not env.pre then check_exp env T.unit exp1;
+    T.unit
   | BreakE (id, exp1) ->
     (match T.Env.find_opt id.it env.labs with
     | Some t ->

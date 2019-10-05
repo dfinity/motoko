@@ -201,8 +201,8 @@ let make_unit_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared; n_res = 0; _} ->
-    Value.message_func call_conv.n_args (fun v k ->
+  | {sort = T.Shared s; n_res = 0; _} ->
+    Value.message_func s call_conv.n_args (fun v k ->
       actor_msg env id f v (fun _ -> ());
       k V.unit
     )
@@ -213,8 +213,8 @@ let make_async_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared; control = T.Promises; n_res = 1; _} ->
-    Value.async_func call_conv.n_args (fun v k ->
+  | {sort = T.Shared s; control = T.Promises p; n_res = 1; _} ->
+    Value.async_func s call_conv.n_args p (fun v k ->
       let async = make_async () in
       actor_msg env id f v (fun v_async ->
         get_async (V.as_async v_async) (set_async async) (reject_async async)
@@ -364,7 +364,6 @@ let check_call_conv_arg env exp v call_conv =
       (string_of_val env v)
     )
 
-
 let rec interpret_exp env exp (k : V.value V.cont) =
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
@@ -464,7 +463,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let v = V.Func (CC.call_conv_of_typ exp.note.note_typ, f) in
     let v' =
       match _sort.it with
-      | T.Shared -> make_message env name exp.note.note_typ v
+      | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
   | CallE (exp1, typs, exp2) ->
@@ -551,6 +550,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env' exp1 k
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id.it env.labs)
+  | DebugE exp1 ->
+    if !As_config.Flags.release_mode then k V.unit else interpret_exp env exp1 k
   | RetE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | ThrowE exp1 ->
@@ -879,6 +880,8 @@ let interpret_prog flags scope p : (V.value * scope) option =
     print_exn flags exn;
     None
 
+
+(* Libraries *)
 
 let interpret_library flags scope (filename, p) : scope =
   let env = env_of_scope flags scope in
