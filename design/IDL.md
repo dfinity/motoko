@@ -921,7 +921,7 @@ T(int)      = sleb128(-4)  = 0x7c
 T(nat8)     = sleb128(-5)  = 0x7b
 T(nat16)    = sleb128(-6)  = 0x7a
 T(nat32)    = sleb128(-7)  = 0x79
-T(nat32)    = sleb128(-8)  = 0x78
+T(nat64)    = sleb128(-8)  = 0x78
 T(int8)     = sleb128(-9)  = 0x77
 T(int16)    = sleb128(-10) = 0x76
 T(int32)    = sleb128(-11) = 0x75
