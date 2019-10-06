@@ -68,7 +68,7 @@ failures=no
 function normalize () {
   if [ -e "$1" ]
   then
-    grep -a -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $1 |
+    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ *at ' $1 |
     sed 's/\x00//g' |
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
@@ -275,9 +275,9 @@ do
       then
         $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$JSCLIENT:$JSCLIENT/src
-        node $out/$base.js > $out/$base.js.out 2>&1
-        normalize $out/$base.js.out
-        diff_files="$diff_files $base.js.out"
+        node $out/$base.js >& $out/$base.node 2>&1
+        normalize $out/$base.node
+        diff_files="$diff_files $base.node"
       fi
     fi
   fi
