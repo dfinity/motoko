@@ -118,7 +118,7 @@ type typ = Null | Bool | Nat | NatN of int
          | Int | IntN of int | Text | Reserved | Empty
          | Opt of typ Lazy.t | Vec of typ Lazy.t
          | Record of (int * typ) array
-         | Variant of (int * typ) array
+         | Variant of (int * typ Lazy.t) array
          | Function of (int * typ) array * (int * typ) array * ann array
 
 (* type index/ground type (negative) *)
@@ -199,9 +199,10 @@ T(text)     = sleb128(-15)
 T(reserved) = sleb128(-16)
 T(empty)    = sleb128(-17)
  *)
-  let prim_or_lookup = function
-    | p when p < 0 -> decode_primitive_type p
-    | i -> force (lookup i) in
+  let lprim_or_lookup = function
+    | p when p < 0 -> lazy (decode_primitive_type p)
+    | i -> lookup i in
+  let prim_or_lookup ty = force (lprim_or_lookup ty) in
 
   let lfst p = lazy (let lazy (f, _) = p in f) in
   let lsnd p = lazy (let lazy (_, s) = p in s) in
@@ -236,8 +237,8 @@ T(empty)    = sleb128(-17)
                  let members = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
                  Record members, fun () -> herald_record (); Array.iter (fun f -> f ()) consumers)
   | -21 -> let assocs = read_t_star read_assoc in
-           lazy (let alts = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
-                 let consumers = Array.map (fun (_, tynum) -> snd (prim_or_lookup tynum)) assocs in
+           lazy (let alts = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
+                 let consumers = Array.map (fun (_, tynum) -> fun () -> snd (prim_or_lookup tynum) ()) assocs in
                  Variant alts, fun () -> let i = read_leb128 () in Array.get consumers i ())
 (*
 T(func (<fieldtype1>* ) -> (<fieldtype2>* ) <funcann>* ) =
