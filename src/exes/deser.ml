@@ -117,7 +117,7 @@ let read_annotation () : ann =
 type typ = Null | Bool | Nat | NatN of int
          | Int | IntN of int | Text | Reserved | Empty
          | Opt of typ Lazy.t | Vec of typ Lazy.t
-         | Record of (int * typ) array
+         | Record of (int * typ Lazy.t) array
          | Variant of (int * typ Lazy.t) array
          | Function of (int * typ) array * (int * typ) array * ann array
 
@@ -233,8 +233,8 @@ T(empty)    = sleb128(-17)
            end
   | -20 -> let assocs = read_t_star read_assoc in
            lazy (let herald_record, herald_member = output_record (Array.length assocs) in
-                 let consumers = Array.mapi herald_member (Array.map (fun (_, tynum) -> snd (prim_or_lookup tynum)) assocs) in
-                 let members = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs in
+                 let consumers = Array.mapi herald_member (Array.map (fun (_, tynum) () -> snd (prim_or_lookup tynum) ()) assocs) in
+                 let members = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
                  Record members, fun () -> herald_record (); Array.iter (fun f -> f ()) consumers)
   | -21 -> let assocs = read_t_star read_assoc in
            lazy (let alts = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
