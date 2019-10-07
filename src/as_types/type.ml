@@ -3,7 +3,7 @@
 type lab = string
 type var = string
 
-type control = Returns | Promises (* Returns a computed value or immediate promise *)
+type control = Returns | Promises of int (* Returns a computed value or immediate promise *)
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
 type func_sort = Local | Shared of shared_sort
@@ -344,7 +344,15 @@ let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_typ = function Typ c -> c | _ -> invalid "as_typ"
 
-let as_seq = function Tup ts -> ts | t -> [t]
+let as_seq t =
+  match normalize t with
+  | Tup ts -> ts
+  | t -> [t]
+
+let arity t =
+  match normalize t with
+  | Tup ts -> List.length ts
+  | t -> 1
 
 let as_prim_sub p t = match promote t with
   | Prim p' when p = p' -> ()
@@ -1114,7 +1122,7 @@ and string_of_cod c vs ts =
   | [Async _] ->
     (match c with
      | Returns -> sprintf "(%s)" cod
-     | Promises -> sprintf "%s" cod
+     | Promises _ -> sprintf "%s" cod
     )
   | _ -> cod
 

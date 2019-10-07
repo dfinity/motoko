@@ -196,6 +196,11 @@ let as_seqT t =
   | TupT ts -> ts
   | _ -> [t]
 
+let arity t =
+  match t.Source.it with
+  | TupT ts -> List.length ts
+  | _ -> 1
+
 (* Literals *)
 
 let string_of_lit = function
