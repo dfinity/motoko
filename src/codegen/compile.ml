@@ -3403,7 +3403,7 @@ module Serialization = struct
   let sort_by_hash fs =
     List.sort
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
-      (List.map (fun f -> (Idllib.IdlHash.idl_hash f.Type.lab, f)) fs)
+      (List.map (fun f -> (Idllib.Escape.unescape_hash f.Type.lab, f)) fs)
 
   (* Checks whether the serialization of a given type could contain references *)
   module TS = Set.Make (struct type t = Type.typ let compare = compare end)

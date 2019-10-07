@@ -5,8 +5,6 @@ open Printf
 module E = As_def.Syntax
 module I = Idllib.Syntax
 
-type label = Nat of Lib.Uint32.t | Id of string
-
 let env = ref Env.empty
 (* For monomorphization *)
 let stamp = ref Env.empty
@@ -37,19 +35,6 @@ let string_of_con vs c =
        | Some n -> n
      in Printf.sprintf "%s_%d" (normalize name) n
   | _ -> assert false
-
-let unescape lab : label =
-  let lab = normalize lab in
-  let len = String.length lab in
-  try if lab.[len-1] = '_' then begin
-          if lab.[0] = '_' then
-            Nat (Lib.Uint32.of_string lab)
-          else Id (String.sub lab 0 (len-1))
-        end else Id lab
-  with _ ->
-    if len >= 2 && lab.[len-1] = '_'
-    then Id (String.sub lab 0 (len-1))
-    else Id lab
 
 let prim p =
   match p with
@@ -126,6 +111,7 @@ let rec typ vs t =
   | Pre -> assert false
   ) @@ no_region
 and field vs {lab; typ=t} =
+  let open Idllib.Escape in
   match unescape lab with
   | Nat nat ->
      let name = Lib.Uint32.to_string nat @@ no_region in
@@ -148,6 +134,7 @@ and meths vs fs =
          list
       | _ ->
          let meth =
+           let open Idllib.Escape in
            match unescape f.lab with
            | Nat nat ->
               I.{var = Lib.Uint32.to_string nat @@ no_region;
