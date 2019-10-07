@@ -163,6 +163,12 @@ let output_record members : outputter * (int -> outputter -> outputter) =
   let herald_member i f () = Printf.printf "Record member %d%s: " i (if i + 1 = members then " (last)" else ""); f () in
   herald_record, herald_member
 
+let output_variant members : outputter * (int -> outputter -> outputter) =
+  let herald_variant () = assert (members <> 0);
+                          Printf.printf "Variant with %d members follows\n" members in
+  let herald_member i f () = Printf.printf "Variant member %d: " i; f () in
+  herald_variant, herald_member
+
 let decode_primitive_type : int -> typ * outputter =
   function
   | -1 -> Null, output_nil
@@ -237,9 +243,10 @@ T(empty)    = sleb128(-17)
                  let members = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
                  Record members, fun () -> herald_record (); Array.iter (fun f -> f ()) consumers)
   | -21 -> let assocs = read_t_star read_assoc in
-           lazy (let alts = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
+           lazy (let herald_variant, herald_member = output_variant (Array.length assocs) in
+                 let alts = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
                  let consumers = Array.map (fun (_, tynum) () -> snd (prim_or_lookup tynum) ()) assocs in
-                 Variant alts, fun () -> let i = read_leb128 () in Array.get consumers i ())
+                 Variant alts, fun () -> herald_variant (); let i = read_leb128 () in herald_member i (Array.get consumers i) ())
 (*
 T(func (<fieldtype1>* ) -> (<fieldtype2>* ) <funcann>* ) =
   sleb128(-22) T*(<fieldtype1>* ) T*(<fieldtype2>* ) T*(<funcann>* )
