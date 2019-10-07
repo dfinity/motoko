@@ -3456,7 +3456,7 @@ module Serialization = struct
     | Prim Int -> Some 4
     | Prim (Nat8|Word8) -> Some 5
     | Prim (Nat16|Word16) -> Some 6
-    | Prim (Nat32|Word32) -> Some 7
+    | Prim (Nat32|Word32|Char) -> Some 7
     | Prim (Nat64|Word64) -> Some 8
     | Prim Int8 -> Some 9
     | Prim Int16 -> Some 10
@@ -3630,7 +3630,7 @@ module Serialization = struct
       | Prim Int -> inc_data_size (get_x ^^ BigNum.compile_data_size_signed env)
       | Prim (Int8|Nat8|Word8) -> inc_data_size (compile_unboxed_const 1l)
       | Prim (Int16|Nat16|Word16) -> inc_data_size (compile_unboxed_const 2l)
-      | Prim (Int32|Nat32|Word32) -> inc_data_size (compile_unboxed_const 4l)
+      | Prim (Int32|Nat32|Word32|Char) -> inc_data_size (compile_unboxed_const 4l)
       | Prim (Int64|Nat64|Word64) -> inc_data_size (compile_unboxed_const 8l)
       | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
       | Tup ts ->
@@ -3741,6 +3741,15 @@ module Serialization = struct
         get_x ^^ BoxedSmallWord.unbox env ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 4l ^^ advance_data_buf
+
+
+      | Prim Char ->
+        get_data_buf ^^
+        get_x ^^ UnboxedSmallWord.unbox_codepoint ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 4l ^^ advance_data_buf
+
+
       | Prim (Int16|Nat16|Word16) ->
         get_data_buf ^^
         get_x ^^ UnboxedSmallWord.lsb_adjust Word16 ^^
@@ -3902,6 +3911,15 @@ module Serialization = struct
         assert_prim_typ () ^^
         ReadBuf.read_word32 env get_data_buf ^^
         BoxedSmallWord.box env
+
+
+      | Prim Char ->
+        assert_prim_typ () ^^
+        ReadBuf.read_word32 env get_data_buf ^^
+          UnboxedSmallWord.box_codepoint (* TODO range check *)
+
+
+
       | Prim (Int16|Nat16|Word16) ->
         assert_prim_typ () ^^
         ReadBuf.read_word16 env get_data_buf ^^
