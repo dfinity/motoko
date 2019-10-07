@@ -1532,6 +1532,20 @@ module UnboxedSmallWord = struct
   let unbox_codepoint = compile_shrU_const 8l
   let box_codepoint = compile_shl_const 8l
 
+  (* Checks (n < 0xD800 || 0xE000 ≤ n ≤ 0x10FFFF),
+     ensuring the codepoint range and the absence of surrogates. *)
+  let check_and_box_codepoint env get_n =
+    get_n ^^ compile_unboxed_const 0xD800l ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
+    get_n ^^ compile_unboxed_const 0xE000l ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+    get_n ^^ compile_unboxed_const 0x10FFFFl ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    E.then_trap_with env "codepoint out of range" ^^
+    get_n ^^ box_codepoint
+
   (* Two utilities for dealing with utf-8 encoded bytes. *)
   let compile_load_byte get_ptr offset =
     get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)})
@@ -3456,7 +3470,7 @@ module Serialization = struct
     | Prim Int -> Some 4
     | Prim (Nat8|Word8) -> Some 5
     | Prim (Nat16|Word16) -> Some 6
-    | Prim (Nat32|Word32) -> Some 7
+    | Prim (Nat32|Word32|Char) -> Some 7
     | Prim (Nat64|Word64) -> Some 8
     | Prim Int8 -> Some 9
     | Prim Int16 -> Some 10
@@ -3630,7 +3644,7 @@ module Serialization = struct
       | Prim Int -> inc_data_size (get_x ^^ BigNum.compile_data_size_signed env)
       | Prim (Int8|Nat8|Word8) -> inc_data_size (compile_unboxed_const 1l)
       | Prim (Int16|Nat16|Word16) -> inc_data_size (compile_unboxed_const 2l)
-      | Prim (Int32|Nat32|Word32) -> inc_data_size (compile_unboxed_const 4l)
+      | Prim (Int32|Nat32|Word32|Char) -> inc_data_size (compile_unboxed_const 4l)
       | Prim (Int64|Nat64|Word64) -> inc_data_size (compile_unboxed_const 8l)
       | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
       | Tup ts ->
@@ -3739,6 +3753,11 @@ module Serialization = struct
       | Prim (Int32|Nat32|Word32) ->
         get_data_buf ^^
         get_x ^^ BoxedSmallWord.unbox env ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 4l ^^ advance_data_buf
+      | Prim Char ->
+        get_data_buf ^^
+        get_x ^^ UnboxedSmallWord.unbox_codepoint ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 4l ^^ advance_data_buf
       | Prim (Int16|Nat16|Word16) ->
@@ -3902,6 +3921,11 @@ module Serialization = struct
         assert_prim_typ () ^^
         ReadBuf.read_word32 env get_data_buf ^^
         BoxedSmallWord.box env
+      | Prim Char ->
+        let set_n, get_n = new_local env "len" in
+        assert_prim_typ () ^^
+        ReadBuf.read_word32 env get_data_buf ^^ set_n ^^
+        UnboxedSmallWord.check_and_box_codepoint env get_n
       | Prim (Int16|Nat16|Word16) ->
         assert_prim_typ () ^^
         ReadBuf.read_word16 env get_data_buf ^^
@@ -6105,17 +6129,7 @@ and compile_exp (env : E.t) ae exp =
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type]
-          (fun env get_n ->
-           get_n ^^ compile_unboxed_const 0xD800l ^^
-           G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
-           get_n ^^ compile_unboxed_const 0xE000l ^^
-           G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-           G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-           get_n ^^ compile_unboxed_const 0x10FFFFl ^^
-           G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
-           G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-           E.then_trap_with env "codepoint out of range" ^^
-           get_n ^^ UnboxedSmallWord.box_codepoint)
+          UnboxedSmallWord.check_and_box_codepoint
 
       | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
       end
