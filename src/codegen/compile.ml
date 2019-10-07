@@ -1532,6 +1532,7 @@ module UnboxedSmallWord = struct
   let unbox_codepoint = compile_shrU_const 8l
   let box_codepoint = compile_shl_const 8l
   let check_and_box_codepoint env get_n =
+    (* checks (n < 0xD800 || 0xE000 ≤ n ≤ 0x10FFFF) *)
     get_n ^^ compile_unboxed_const 0xD800l ^^
     G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
     get_n ^^ compile_unboxed_const 0xE000l ^^
