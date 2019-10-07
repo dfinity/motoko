@@ -11,6 +11,7 @@
 #    -2: Use IC API
 #    -s: Be silent in sunny-day execution
 #    -i: Only check as to idl generation
+#    -r: Activate release mode (eliminate `debug` blocks)
 #
 
 function realpath() {
@@ -21,6 +22,7 @@ function realpath() {
 ACCEPT=no
 API=wasm
 IDL=no
+RELEASE=no
 EXTRA_ASC_FLAGS=
 ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
 AS_LD=${AS_LD:-$(realpath $(dirname $0)/../src/as-ld)}
@@ -31,7 +33,7 @@ DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 ECHO=echo
 
-while getopts "a12si" o; do
+while getopts "a12sir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -48,11 +50,15 @@ while getopts "a12si" o; do
         i)
             IDL=yes
             ;;
+        r)
+            RELEASE=yes
+            ;;
     esac
 done
 
 if [ $API = "wasm" ]; then EXTRA_ASC_FLAGS=-no-system-api; fi
 if [ $API = "ancient" ]; then EXTRA_ASC_FLAGS=-ancient-system-api; fi
+if [ $RELEASE = "yes" ]; then ASC_FLAGS=--release; fi
 
 shift $((OPTIND-1))
 
@@ -61,7 +67,7 @@ failures=no
 function normalize () {
   if [ -e "$1" ]
   then
-    grep -a -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $1 |
+    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ *at ' $1 |
     sed 's/\x00//g' |
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
@@ -270,9 +276,9 @@ do
         $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$ESM
 
-        node -r esm $out/$base.js > $out/$base.js.out 2>&1
-        normalize $out/$base.js.out
-        diff_files="$diff_files $base.js.out"
+        node -r esm $out/$base.js > $out/$base.node 2>&1
+        normalize $out/$base.node
+        diff_files="$diff_files $base.node"
 
         node -r esm -e \
         "import actorInterface from './$out/$base.js';

@@ -593,7 +593,6 @@ vec <datatype> <: vec <datatype'>
 ```
 Furthermore, an option type can be specialised to either `null` or to its constituent type:
 ```
-not (null <: <datatype>)
 ------------------------
 null <: opt <datatype>
 
@@ -602,7 +601,7 @@ not (null <: <datatype>)
 -----------------------------
 <datatype> <: opt <datatype'>
 ```
-The premise means that the rule does not apply when the constituent type is itself `null` or an option. That restriction is necessary so that there is no ambiguity. For example, there would be two ways to interpret `null` when going from `opt nat` to `opt opt nat`, either as `null` or as `?null`.
+The premise means that the rule does not apply when the constituent type is itself `null`, an option or `reserved`. That restriction is necessary so that there is no ambiguity. For example, otherwise there would be two ways to interpret `null` when going from `opt nat` to `opt opt nat`, either as `null` or as `?null`.
 
 Q: The negated nature of this premise isn't really compatible with parametric polymorphism. Is that a problem? We could always introduce a supertype of all non-nullable types and rephrase it with that.
 
@@ -895,7 +894,7 @@ Note:
 
 #### Notation
 
-`T` and `M` create a byte sequence described below in terms of natural storage types (`i<N>` for `N = 8, 16, 32, 64`, `f<N>` for `N = 32, 64`).
+`T` and `M` create a byte sequence described below in terms of natural storage types (`i<N>` for `N = 8, 16, 32, 64`, `f<N>` for `N = 32, 64`). The bytes are sequenced according to increasing significance (least significant byte first, a.k.a. little-endian).
 
 The following notation is used:
 
@@ -922,7 +921,7 @@ T(int)      = sleb128(-4)  = 0x7c
 T(nat8)     = sleb128(-5)  = 0x7b
 T(nat16)    = sleb128(-6)  = 0x7a
 T(nat32)    = sleb128(-7)  = 0x79
-T(nat32)    = sleb128(-8)  = 0x78
+T(nat64)    = sleb128(-8)  = 0x78
 T(int8)     = sleb128(-9)  = 0x77
 T(int16)    = sleb128(-10) = 0x76
 T(int32)    = sleb128(-11) = 0x75

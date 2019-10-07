@@ -140,6 +140,7 @@ and exp' =
   | LabelE of id * typ * exp                   (* label *)
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
+  | DebugE of exp                              (* debugging *)
   | AsyncE of exp                              (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
@@ -194,6 +195,11 @@ let as_seqT t =
   match t.Source.it with
   | TupT ts -> ts
   | _ -> [t]
+
+let arity t =
+  match t.Source.it with
+  | TupT ts -> List.length ts
+  | _ -> 1
 
 (* Literals *)
 

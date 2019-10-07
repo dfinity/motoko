@@ -130,6 +130,7 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
+  | S.DebugE e -> if !As_config.Flags.release_mode then I.TupE [] else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
   | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
   | S.RetE e -> I.RetE (exp e)
@@ -398,7 +399,7 @@ and to_args cc p : (Ir.arg list * (Ir.exp -> Ir.exp)) =
   in
 
   let wrap_under_async e =
-    if cc.Call_conv.sort = T.Shared && cc.Call_conv.control = T.Promises
+    if T.is_shared_sort cc.Call_conv.sort && cc.Call_conv.control <> T.Returns
     then match e.it with
       | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
       | _ -> assert false

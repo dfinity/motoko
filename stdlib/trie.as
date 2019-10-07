@@ -1082,7 +1082,7 @@ public type Trie3D<K1, K2, K3, V> = Trie<K1, Trie2D<K2, K3, V> >;
     rec(tl, tr)
   };
 
-  // Equality function for two `Key<K>`s, in terms of equaltiy of `K`'s.
+  // Equality function for two `Key<K>`s, in terms of equality of `K`'s.
   public func keyEq<K>(keq:(K,K) -> Bool) : ((Key<K>,Key<K>) -> Bool) = {
     func (key1:Key<K>, key2:Key<K>) : Bool =
       label profile_trie_keyEq : Bool
