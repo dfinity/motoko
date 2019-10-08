@@ -214,7 +214,7 @@ and check_typ_field env s typ_field : unit =
       (s <> Some T.Actor || T.is_func (T.promote typ))
       "actor field has non-function type";
     check env no_region
-      (s <> Some T.Actor || T.shared typ)
+      (s <> Some T.Actor || T.is_shared_function typ)
       "actor field has non-shared type"
   end
 
@@ -737,7 +737,7 @@ and type_exp_field env s f : T.field =
   if not (T.is_typ t) then begin
     check env f.at ((s = T.Actor) ==> T.is_func t)
       "public actor field is not a function";
-    check env f.at ((s = T.Actor) ==> T.shared t)
+    check env f.at ((s = T.Actor) ==> T.is_shared_function t)
       "public actor field has non-shared type";
   end;
   T.{lab = name; typ = t}

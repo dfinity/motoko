@@ -1,4 +1,5 @@
 (* Representation *)
+open As_config
 
 type lab = string
 type var = string
@@ -559,6 +560,9 @@ let concrete t =
 
 
 let shared t =
+  (* TBR: Hack to restrict sharing in ICMode *)
+  let allow_actor = not (!Flags.compile_mode = Flags.ICMode) in
+  let allow_shared = not (!Flags.compile_mode = Flags.ICMode) in
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -576,12 +580,17 @@ let shared t =
         )
       | Array t | Opt t -> go t
       | Tup ts -> List.for_all go ts
-      | Obj (s, fs) -> s = Actor || List.for_all (fun f -> go f.typ) fs
+      | Obj (s, fs) -> (allow_actor && s = Actor) ||
+                       (not (s = Actor) && List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
-      | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
+      | Func (s, c, tbs, ts1, ts2) -> allow_shared && is_shared_sort s
     end
   in go t
 
+let is_shared_function t =
+  match normalize t with
+  | Func(Shared _, _, _, _,_) -> true
+  | _ -> false
 
 (* Equivalence & Subtyping *)
 
