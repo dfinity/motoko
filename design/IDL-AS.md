@@ -141,7 +141,7 @@ i(service { <methtype>;* }) = actor { im(<methtype>);* }
 
 if : <fieldtype> -> <typ>
 if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
-if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
+if(<nat> : <datatype>) = escape_number(<nat>) : i(<datatype>) // also for implicit labels
 
 ifn : <functype> -> <typ>
 ifn((<datatype>,*) -> () oneway query?) = shared ia(<as>) -> ()
@@ -154,11 +154,13 @@ ia(<argtype>,*) = ( i(<argtype>),* )  otherwise
 im : <methtype> -> <typ>
 im(<name> : <functype>) = escape(<name>) : ifn(<functype>)
 
+escape_number <nat> = "_" <nat> "_"
+
 escape : <name> -> <id>
 escape <name> = <name> "_"  if <name> is a reserved identifier in ActorScript
-escape <name> = <name> "_"  if <name> ends with "_"
+escape <name> = <name> "_"  if <name> is a valid ActorScript <id> ending in "_"
 escape <name> = <name>  if <name> is a valid ActorScript <id> not ending in "_"
-escape <name> = "_" hash(<name>) "_"  otherwise
+escape <name> = escape_number(hash(<name>))  otherwise
 ```
 
 ### Notes:
@@ -224,6 +226,9 @@ escape <name> = "_" hash(<name>) "_"  otherwise
 
  * There is no way to produce `float32` or functions with a `query` annotation.
    Importing interfaces that contain these types fails.
+
+ * The functions `escape`/`unescape` ensure round-tripping of IDL field names
+   through ActorScript types. See `IDL-AS.proofs.md` for details.
 
 ## The value mappings
 
