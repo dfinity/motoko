@@ -140,6 +140,7 @@ let indent () = indentation := !indentation + indent_amount
 let outdent () = indentation := !indentation - indent_amount
 let ind i = if i = 0 then indent ()
 let outd max i = if i + 1 = max then outdent ()
+let bracket max g i f () = ind i; g i f (); outd max i
 
 let fill () = if !continue_line then (continue_line := false; "") else String.make !indentation ' '
 
@@ -176,8 +177,8 @@ let output_vector members : outputter * (int -> outputter -> outputter) =
 let output_record members : outputter * (int -> outputter -> outputter) =
   let herald_record () = if members = 0 then Printf.printf "%sEmpty Record\n" (fill ())
                          else Printf.printf "%sRecord with %d members follows\n" (fill ()) members in
-  let herald_member i f () = ind i; Printf.printf "%sRecord member %d%s: " (fill ()) i (if i + 1 = members then " (last)" else "");  continue_line := true; f (); outd members i in
-  herald_record, herald_member
+  let herald_member i f () = Printf.printf "%sRecord member %d%s: " (fill ()) i (if i + 1 = members then " (last)" else ""); continue_line := true; f (); in
+  herald_record, bracket members herald_member
 
 let output_variant members : outputter * (int -> outputter -> outputter) =
   let herald_variant () = assert (members <> 0);
