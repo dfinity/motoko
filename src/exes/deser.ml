@@ -130,10 +130,25 @@ let read_assoc () = let hash = read_leb128 () in
                     assert (tynum > -18);
                     Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
 
+(* indentation *)
+
+let indent_amount : int = 4
+let indentation : int ref = ref 10
+let continue_line : bool ref = ref false
+
+let indent () = indentation := !indentation + indent_amount
+let outdent () = indentation := !indentation - indent_amount
+let ind i = if i = 0 then indent ()
+let outd max i = if i + 1 = max then outdent ()
+
+let fill () = if !continue_line then (continue_line := false; "") else String.make !indentation ' '
+
+let output_string what (s : string) = Printf.printf "%s%s: %s\n" (fill ()) what s
+
 (* outputters *)
 let output_nat nat = Printf.printf "output_nat: %d\n" nat
 let output_int int = Printf.printf "output_int: %d\n" int
-let output_bool b = Printf.printf "output_bool: %s\n" (if b then "true" else "false")
+let output_bool b = output_string "output_bool" (if b then "true" else "false")
 let output_nil () = Printf.printf "null (0 bytes)\n"
 let output_some consumer = Printf.printf "Some: value follows on the next line\n"; consumer ()
 let output_byte b = Printf.printf "output_byte: %d\n" b
@@ -147,20 +162,21 @@ let output_int64 i = Printf.printf "output_int64: %d\n" i
 let output_text bytes from tostream =
       let buf = Buffer.create 0 in
       ignore (input_buffer from buf ~len:bytes);
-      Printf.printf "Text: %d bytes follow on next line\n" bytes;
+      Printf.printf "%sText: %d bytes follow on next line\n" (fill ()) bytes;
+      Printf.printf "%s---->" (fill ()); (* TODO: puts? *)
       Stdio.Out_channel.output_buffer tostream buf;
       Printf.printf "\n"
 
 let output_vector members : outputter * (int -> outputter -> outputter) =
   let herald_vector () = if members = 0 then Printf.printf "Empty Vector\n"
                          else Printf.printf "Vector with %d members follows\n" members in
-  let herald_member i f () = Printf.printf "Vector member %d%s: " i (if i + 1 = members then " (last)" else ""); f () in
+  let herald_member i f () = Printf.printf "Vector member %d%s: " i (if i + 1 = members then " (last)" else ""); continue_line := true; f () in
   herald_vector, herald_member
 
 let output_record members : outputter * (int -> outputter -> outputter) =
-  let herald_record () = if members = 0 then Printf.printf "Empty Record\n"
-                         else Printf.printf "Record with %d members follows\n" members in
-  let herald_member i f () = Printf.printf "Record member %d%s: " i (if i + 1 = members then " (last)" else ""); f () in
+  let herald_record () = if members = 0 then Printf.printf "%sEmpty Record\n" (fill ())
+                         else Printf.printf "%sRecord with %d members follows\n" (fill ()) members in
+  let herald_member i f () = ind i; Printf.printf "%sRecord member %d%s: " (fill ()) i (if i + 1 = members then " (last)" else "");  continue_line := true; f (); outd members i in
   herald_record, herald_member
 
 let output_variant members : outputter * (int -> outputter -> outputter) =
