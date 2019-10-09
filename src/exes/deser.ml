@@ -332,7 +332,7 @@ let () =
 
 (* TODOs:
   - use bigint where necessary
-  - variant heralding
+  - argument heralding
   - customisable formatters
   - floats
   - pass the nesting level to the M^-1
