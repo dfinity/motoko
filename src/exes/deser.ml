@@ -249,11 +249,11 @@ let output_arguments args : outputter * (int -> outputter -> outputter) =
     | () when args = 0 -> output_string "# No arguments...\n"
     | _ when args = 1 -> output_string "# 1 argument follows\n"
     | _ -> Printf.printf "# %d arguments follow\n" args in
-  let herald_member i f () = Printf.printf "# Argument #%d%s: " i (if i + 1 = args then " (last)" else ""); f () in
+  let herald_member i f () = Printf.printf "# Argument #%d%s:\n" i (if i + 1 = args then " (last)" else ""); f () in
   herald_arguments, (*bracket args*) herald_member
 
 let start i = if i = 0 then output_string_space "{"
-let stop max i = if i + 1 = max then output_string_space " }\n"
+let stop max i = if i + 1 = max then output_string " }"
 let bracket max g i f () = start i; g i f; stop max i
 
 let output_vector members : outputter * (int -> outputter -> outputter) =
@@ -263,19 +263,19 @@ let output_vector members : outputter * (int -> outputter -> outputter) =
   herald_vector, bracket members herald_member
 
 let output_record members : outputter * (int -> outputter -> outputter) =
-  let herald_record () = if members = 0 then output_string_space "record"
+  let herald_record () = if members = 0 then output_string_space "record { }"
                          else output_string_space "record {" in
-  let herald_member i f = f () in
+  let herald_member i f = Printf.printf "%d : " i; f () in
   herald_record, bracket members herald_member
 
 let output_variant members : outputter * (int -> outputter -> outputter) =
   let herald_variant () = assert (members <> 0);
-                          Printf.printf "Variant with %d members follows\n" members in
-  let herald_member i f () = start i; Printf.printf "Variant member %d: " i; f (); stop 1 i in
+                          output_string_space "variant" in
+  let herald_member i f () = start 0; Printf.printf "%d : " i; f (); stop 1 0 in
   herald_variant, herald_member
 end
 
-module Output : Dump = OutputVerbatim
+module Output : Dump = OutputIdl
 
 let decode_primitive_type : int -> typ * outputter =
   let open Output in
