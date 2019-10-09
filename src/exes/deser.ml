@@ -153,7 +153,7 @@ val output_variant : int -> outputter * (int -> outputter -> outputter)
 end
 
 
-module Output : Dump = struct
+module OutputVerbatim : Dump = struct
 
 (* indentation *)
 
@@ -221,6 +221,8 @@ let output_variant members : outputter * (int -> outputter -> outputter) =
   herald_variant, herald_member
 
 end
+
+module Output : Dump = OutputVerbatim
 
 let decode_primitive_type : int -> typ * outputter =
   let open Output in
