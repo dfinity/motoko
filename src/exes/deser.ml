@@ -169,8 +169,10 @@ let output_text bytes from tostream =
       Printf.printf "\n"
 
 let output_arguments args : outputter * (int -> outputter -> outputter) =
-  let herald_arguments () = if args = 0 then Printf.printf "%sNo arguments...\n" (fill ())
-                            else Printf.printf "%s%d arguments follow\n" (fill ()) args in
+  let herald_arguments = function
+    | () when args = 0 -> Printf.printf "%sNo arguments...\n" (fill ())
+    | _ when args = 1 -> Printf.printf "%s1 argument follows\n" (fill ())
+    | _ -> Printf.printf "%s%d arguments follow\n" (fill ()) args in
   let herald_member i f = Printf.printf "%sArgument #%d%s: " (fill ()) i (if i + 1 = args then " (last)" else ""); continue_line := true; f (); in
   herald_arguments, bracket args herald_member
 
@@ -307,7 +309,6 @@ let top_level md : unit =
     let argtys = read_t_star read_type_index in
     let herald_arguments, herald_member = output_arguments (Array.length argtys) in
     herald_arguments ();
-    (* Printf.printf "ARGS: %d\n" (Array.length argtys); *)
     let typ_ingester = function
       | prim when prim < 0 -> decode_primitive_type prim
       | index -> Array.get tab index in
