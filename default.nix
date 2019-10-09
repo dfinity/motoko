@@ -26,14 +26,14 @@ let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix n
 
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
-  ref = "master";
-  rev = "ad50bcea8db6d55decf2622ad836435aa36fa33f";
+  # ref = "master";
+  rev = "9030c90efe5b3de33670d4f4f0331482d51c5858";
 }) { system = nixpkgs.system; }; in
 
 let dfinity-repo = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dfinity";
-  ref = "master";
-  rev = "a50367859416ef7c12ca103b7fc03f5a7654f6ad";
+  # ref = "master";
+  rev = "ab9d9d6ccba33748fc92f6e8d631327f7f25aead";
 }) { system = nixpkgs.system; }; in
 
 let real-dvm =

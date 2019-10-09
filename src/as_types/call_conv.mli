@@ -9,8 +9,8 @@ type call_conv = {
 type t = call_conv
 
 val local_cc : int -> int -> call_conv
-val message_cc : int -> call_conv
-val async_cc : int -> call_conv
+val message_cc : Type.shared_sort -> int -> call_conv
+val async_cc : Type.shared_sort -> int -> int -> call_conv
 
 val call_conv_of_typ : Type.typ -> call_conv
 

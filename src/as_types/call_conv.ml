@@ -9,8 +9,8 @@ type call_conv = {
 type t = call_conv
 
 let local_cc n m = { sort = Local; control = Returns; n_args = n; n_res = m}
-let message_cc n = { sort = Shared; control = Returns; n_args = n; n_res = 0}
-let async_cc n = { sort = Shared; control = Promises; n_args = n; n_res = 1}
+let message_cc s n = { sort = Shared s; control = Returns; n_args = n; n_res = 0}
+let async_cc s n p = { sort = Shared s; control = Promises p; n_args = n; n_res = 1}
 
 let call_conv_of_typ typ =
   match typ with
@@ -24,6 +24,6 @@ let string_of_call_conv {sort;control;n_args;n_res} =
   Printf.sprintf "(%s%i %s %i)"
     (string_of_func_sort sort)
     n_args
-    (match control with Returns -> "->" | Promises -> "@>")
+    (match control with Returns -> "->" | Promises p -> "@>"^ string_of_int p)
     n_res
 

@@ -115,8 +115,11 @@ let awaitE typ e1 e2 =
     note = { note_typ = T.unit; note_eff = max_eff (eff e1) (eff e2) }
   }
 
-let ic_replyE t e =
-  { it = PrimE (ICReplyPrim t, [e]);
+let ic_replyE ts e =
+  (match ts with
+  | [t] -> assert (T.sub (e.note.note_typ) t)
+  | _ -> assert (T.sub (T.Tup ts) (e.note.note_typ)));
+  { it = PrimE (ICReplyPrim ts, [e]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = eff e }
   }
@@ -466,7 +469,7 @@ let (-->*) xs exp =
 
 (* n-ary shared lambda *)
 let (-@>*) xs exp  =
-  let fun_ty = T.Func (T.Shared, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
+  let fun_ty = T.Func (T.Shared T.Write, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
   nary_funcE "$lambda" fun_ty xs exp
 
 

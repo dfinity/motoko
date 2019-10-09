@@ -1532,6 +1532,20 @@ module UnboxedSmallWord = struct
   let unbox_codepoint = compile_shrU_const 8l
   let box_codepoint = compile_shl_const 8l
 
+  (* Checks (n < 0xD800 || 0xE000 ≤ n ≤ 0x10FFFF),
+     ensuring the codepoint range and the absence of surrogates. *)
+  let check_and_box_codepoint env get_n =
+    get_n ^^ compile_unboxed_const 0xD800l ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
+    get_n ^^ compile_unboxed_const 0xE000l ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+    get_n ^^ compile_unboxed_const 0x10FFFFl ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    E.then_trap_with env "codepoint out of range" ^^
+    get_n ^^ box_codepoint
+
   (* Two utilities for dealing with utf-8 encoded bytes. *)
   let compile_load_byte get_ptr offset =
     get_ptr ^^ G.i (Load {ty = I32Type; align = 0; offset; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)})
@@ -3424,7 +3438,7 @@ module Serialization = struct
           end
         | Array t -> go t
         | Tup ts -> List.for_all go ts
-        | Func (Shared, c, tbs, ts1, ts2) -> false
+        | Func (Shared _, c, tbs, ts1, ts2) -> false
         | Func (s, c, tbs, ts1, ts2) ->
           let ts = open_binds tbs in
           List.for_all go (List.map (open_ ts) ts1) &&
@@ -3456,7 +3470,7 @@ module Serialization = struct
     | Prim Int -> Some 4
     | Prim (Nat8|Word8) -> Some 5
     | Prim (Nat16|Word16) -> Some 6
-    | Prim (Nat32|Word32) -> Some 7
+    | Prim (Nat32|Word32|Char) -> Some 7
     | Prim (Nat64|Word64) -> Some 8
     | Prim Int8 -> Some 9
     | Prim Int16 -> Some 10
@@ -3630,7 +3644,7 @@ module Serialization = struct
       | Prim Int -> inc_data_size (get_x ^^ BigNum.compile_data_size_signed env)
       | Prim (Int8|Nat8|Word8) -> inc_data_size (compile_unboxed_const 1l)
       | Prim (Int16|Nat16|Word16) -> inc_data_size (compile_unboxed_const 2l)
-      | Prim (Int32|Nat32|Word32) -> inc_data_size (compile_unboxed_const 4l)
+      | Prim (Int32|Nat32|Word32|Char) -> inc_data_size (compile_unboxed_const 4l)
       | Prim (Int64|Nat64|Word64) -> inc_data_size (compile_unboxed_const 8l)
       | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
       | Tup ts ->
@@ -3739,6 +3753,11 @@ module Serialization = struct
       | Prim (Int32|Nat32|Word32) ->
         get_data_buf ^^
         get_x ^^ BoxedSmallWord.unbox env ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 4l ^^ advance_data_buf
+      | Prim Char ->
+        get_data_buf ^^
+        get_x ^^ UnboxedSmallWord.unbox_codepoint ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
         compile_unboxed_const 4l ^^ advance_data_buf
       | Prim (Int16|Nat16|Word16) ->
@@ -3902,6 +3921,11 @@ module Serialization = struct
         assert_prim_typ () ^^
         ReadBuf.read_word32 env get_data_buf ^^
         BoxedSmallWord.box env
+      | Prim Char ->
+        let set_n, get_n = new_local env "len" in
+        assert_prim_typ () ^^
+        ReadBuf.read_word32 env get_data_buf ^^ set_n ^^
+        UnboxedSmallWord.check_and_box_codepoint env get_n
       | Prim (Int16|Nat16|Word16) ->
         assert_prim_typ () ^^
         ReadBuf.read_word16 env get_data_buf ^^
@@ -4830,11 +4854,16 @@ module FuncDec = struct
       closure_code ^^
       mk_body env ae2 ^^
 
-      (* Collect garbage *)
-      G.i (Call (nr (E.built_in env "collect"))) ^^
-
-      (* Save memory *)
-      OrthogonalPersistence.save_mem env
+      match cc.Call_conv.sort with
+      | Type.Shared Type.Write ->
+          (* Collect garbage *)
+          G.i (Call (nr (E.built_in env "collect"))) ^^
+          (* Save memory *)
+          OrthogonalPersistence.save_mem env
+      | Type.Shared Type.Query ->
+        (* Don't collect or persist *)
+        G.i Nop
+      | _ -> assert false
     ))
 
   let compile_static_message outer_env outer_ae cc args mk_body ret_tys at : E.func_with_names =
@@ -4856,13 +4885,19 @@ module FuncDec = struct
         get_databuf ^^ get_elembuf ^^
         Serialization.deserialize env arg_tys ^^
         G.concat (List.rev setters) ^^
+
         mk_body env ae1 ^^
 
-        (* Collect garbage *)
-        G.i (Call (nr (E.built_in env "collect"))) ^^
-
-        (* Save memory *)
-        OrthogonalPersistence.save_mem env
+        match cc.Call_conv.sort with
+        | Type.Shared Type.Write ->
+          (* Collect garbage *)
+          G.i (Call (nr (E.built_in env "collect"))) ^^
+          (* Save memory *)
+          OrthogonalPersistence.save_mem env
+        | Type.Shared Type.Query ->
+          (* Don't collect or persist *)
+          G.i Nop
+        | _ -> assert false
       ))
     | Flags.ICMode ->
       let ae0 = ASEnv.mk_fun_ae outer_ae in
@@ -4876,9 +4911,14 @@ module FuncDec = struct
         Serialization.deserialize env arg_tys ^^
         G.concat (List.rev setters) ^^
         mk_body env ae1 ^^
-
-        (* Collect garbage *)
-        G.i (Call (nr (E.built_in env "collect")))
+        match cc.Call_conv.sort with
+        | Type.Shared Type.Write ->
+          (* Collect garbage *)
+          G.i (Call (nr (E.built_in env "collect")))
+        | Type.Shared Type.Query ->
+          (* Don't collect *)
+          G.i Nop
+        | _ -> assert false
       ))
     | Flags.WasmMode -> assert false
 
@@ -4892,7 +4932,7 @@ module FuncDec = struct
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env cc name args mk_body ret_tys at =
     let (fi, fill) = E.reserve_fun pre_env name in
-    if cc.Call_conv.sort = Type.Shared
+    if Type.is_shared_sort cc.Call_conv.sort
     then begin
       declare_dfinity_type pre_env false fi ;
       ( SR.StaticMessage fi, fun env ae ->
@@ -4906,7 +4946,7 @@ module FuncDec = struct
 
   (* Compile a closure declaration (captures local variables) *)
   let closure env ae cc name captured args mk_body at =
-      let is_local = cc.Call_conv.sort <> Type.Shared in
+      let is_local = cc.Call_conv.sort = Type.Local in
 
       let (set_clos, get_clos) = new_local env (name ^ "_clos") in
 
@@ -6089,17 +6129,7 @@ and compile_exp (env : E.t) ae exp =
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type]
-          (fun env get_n ->
-           get_n ^^ compile_unboxed_const 0xD800l ^^
-           G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
-           get_n ^^ compile_unboxed_const 0xE000l ^^
-           G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-           G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-           get_n ^^ compile_unboxed_const 0x10FFFFl ^^
-           G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
-           G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-           E.then_trap_with env "codepoint out of range" ^^
-           get_n ^^ UnboxedSmallWord.box_codepoint)
+          UnboxedSmallWord.check_and_box_codepoint
 
       | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
       end
@@ -6205,11 +6235,13 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "make_error", [e1; e2] ->
       Error.compile_make_error (compile_exp_vanilla env ae e1) (compile_exp_vanilla env ae e2)
 
-    | ICReplyPrim t, [e] ->
+    | ICReplyPrim ts, [e] ->
       assert (E.mode env = Flags.ICMode);
       SR.unit,
-      compile_exp_vanilla env ae e ^^
-      Serialization.serialize env [t]
+      compile_exp_as env ae SR.Vanilla e ^^
+      (* TODO: We can try to avoid the boxing and pass the arguments to
+        serialize individually *)
+      Serialization.serialize env ts
 
     | ICRejectPrim, [e] ->
       assert (E.mode env = Flags.ICMode);
@@ -6312,7 +6344,7 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_as env ae (StackRep.of_arity cc.Call_conv.n_args) e2 ^^
         get_clos ^^
         Closure.call_closure env cc
-     | _, Type.Shared ->
+     | _, Type.Shared _ ->
         let (set_funcref, get_funcref) = new_local env "funcref" in
         code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
         set_funcref ^^
@@ -6764,7 +6796,14 @@ and export_actor_field env  ae (f : Ir.field) =
   E.add_export env (nr {
     name = Wasm.Utf8.decode (match E.mode env with
       | Flags.AncientMode -> f.it.name
-      | Flags.ICMode -> "canister_update " ^ f.it.name
+      | Flags.ICMode ->
+        As_types.Type.(
+        match normalize f.note with
+        |  Func(Shared sort,_,_,_,_) ->
+           (match sort with
+            | Write -> "canister_update " ^ f.it.name
+            | Query -> "canister_query " ^ f.it.name)
+        | _ -> assert false)
       | _ -> assert false);
     edesc = nr (FuncExport (nr fi))
   })
