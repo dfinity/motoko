@@ -173,19 +173,19 @@ let output_arguments args : outputter * (int -> outputter -> outputter) =
     | () when args = 0 -> Printf.printf "%sNo arguments...\n" (fill ())
     | _ when args = 1 -> Printf.printf "%s1 argument follows\n" (fill ())
     | _ -> Printf.printf "%s%d arguments follow\n" (fill ()) args in
-  let herald_member i f = Printf.printf "%sArgument #%d%s: " (fill ()) i (if i + 1 = args then " (last)" else ""); continue_line := true; f (); in
+  let herald_member i f = Printf.printf "%sArgument #%d%s: " (fill ()) i (if i + 1 = args then " (last)" else ""); continue_line := true; f () in
   herald_arguments, bracket args herald_member
 
 let output_vector members : outputter * (int -> outputter -> outputter) =
-  let herald_vector () = if members = 0 then Printf.printf "Empty Vector\n"
-                         else Printf.printf "Vector with %d members follows\n" members in
-  let herald_member i f () = Printf.printf "Vector member %d%s: " i (if i + 1 = members then " (last)" else ""); continue_line := true; f () in
-  herald_vector, herald_member
+  let herald_vector () = if members = 0 then Printf.printf "%sEmpty Vector\n" (fill ())
+                         else Printf.printf "%sVector with %d members follows\n" (fill ()) members in
+  let herald_member i f = Printf.printf "%sVector member %d%s: " (fill ()) i (if i + 1 = members then " (last)" else ""); continue_line := true; f () in
+  herald_vector, bracket members herald_member
 
 let output_record members : outputter * (int -> outputter -> outputter) =
   let herald_record () = if members = 0 then Printf.printf "%sEmpty Record\n" (fill ())
                          else Printf.printf "%sRecord with %d members follows\n" (fill ()) members in
-  let herald_member i f = Printf.printf "%sRecord member %d%s: " (fill ()) i (if i + 1 = members then " (last)" else ""); continue_line := true; f (); in
+  let herald_member i f = Printf.printf "%sRecord member %d%s: " (fill ()) i (if i + 1 = members then " (last)" else ""); continue_line := true; f () in
   herald_record, bracket members herald_member
 
 let output_variant members : outputter * (int -> outputter -> outputter) =
