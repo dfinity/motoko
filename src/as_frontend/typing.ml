@@ -257,7 +257,7 @@ and check_typ_field env s typ_field : T.field =
     if not (T.is_func (T.promote t)) then
       error env typ.at "actor field %s has non-function type\n  %s"
         id.it (T.string_of_typ_expand t);
-    if not (T.shared t) then
+    if not (T.is_shared_function t) then
       error env typ.at "actor field %s has non-shared type\n  %s"
         id.it (T.string_of_typ_expand t)
   end;
