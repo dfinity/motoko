@@ -241,7 +241,7 @@ let output_int8 = output_decimal
 let output_int16 = output_decimal
 let output_int32 = output_decimal
 let output_int64 = output_decimal
-let output_text n froms tos = output_string "<some text>"
+let output_text n froms tos = output_string "\"<some text>\""
 
 
 let output_arguments args : outputter * (int -> outputter -> outputter) =
@@ -264,8 +264,8 @@ let output_vector members : outputter * (int -> outputter -> outputter) =
 
 let output_record members : outputter * (int -> outputter -> outputter) =
   let herald_record () = if members = 0 then output_string_space "record { }"
-                         else output_string_space "record {" in
-  let herald_member i f = Printf.printf "%d : " i; f () in
+                         else output_string_space "record" in
+  let herald_member i f = Printf.printf "%d : " i; f (); output_string_space ";" in
   herald_record, bracket members herald_member
 
 let output_variant members : outputter * (int -> outputter -> outputter) =
