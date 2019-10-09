@@ -432,4 +432,5 @@ let () =
   - floats
   - service types
   - break lazy cycles (the way Opt does it) everywhere (Function!)
+  - add `--idl` (default), `--json` and `--verbose`
  *)
