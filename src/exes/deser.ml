@@ -133,7 +133,7 @@ let read_assoc () = let hash = read_leb128 () in
 (* indentation *)
 
 let indent_amount : int = 4
-let indentation : int ref = ref 10
+let indentation : int ref = ref 0
 let continue_line : bool ref = ref false
 
 let indent () = indentation := !indentation + indent_amount
@@ -167,6 +167,12 @@ let output_text bytes from tostream =
       Printf.printf "%s---->" (fill ()); (* TODO: puts? *)
       Stdio.Out_channel.output_buffer tostream buf;
       Printf.printf "\n"
+
+let output_arguments args : outputter * (int -> outputter -> outputter) =
+  let herald_arguments () = if args = 0 then Printf.printf "%sNo arguments...\n" (fill ())
+                            else Printf.printf "%s%d arguments follow\n" (fill ()) args in
+  let herald_member i f = Printf.printf "%sArgument #%d%s: " (fill ()) i (if i + 1 = args then " (last)" else ""); continue_line := true; f (); in
+  herald_arguments, bracket args herald_member
 
 let output_vector members : outputter * (int -> outputter -> outputter) =
   let herald_vector () = if members = 0 then Printf.printf "Empty Vector\n"
@@ -299,12 +305,14 @@ let top_level md : unit =
   begin match md with
   | Default ->
     let argtys = read_t_star read_type_index in
-    Printf.printf "ARGS: %d\n" (Array.length argtys);
+    let herald_arguments, herald_member = output_arguments (Array.length argtys) in
+    herald_arguments ();
+    (* Printf.printf "ARGS: %d\n" (Array.length argtys); *)
     let typ_ingester = function
       | prim when prim < 0 -> decode_primitive_type prim
       | index -> Array.get tab index in
     let consumers = Array.map (fun tynum -> let (ty, m) = typ_ingester tynum in m) argtys in
-    Array.iter (fun f -> f ()) consumers
+    Array.iteri (fun i f -> herald_member i f ()) consumers
   | Legacy ->
     let argty = read_type_index () in
     Printf.printf "ARGTY: %d\n" argty;
@@ -349,7 +357,6 @@ let () =
 
 (* TODOs:
   - use bigint where necessary
-  - argument heralding
   - customisable formatters
   - floats
   - pass the nesting level to the M^-1
