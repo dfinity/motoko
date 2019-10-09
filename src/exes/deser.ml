@@ -130,6 +130,11 @@ let read_assoc () = let hash = read_leb128 () in
                     assert (tynum > -18);
                     Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
 
+(*sig Dump *)
+
+
+module Output = struct
+
 (* indentation *)
 
 let indent_amount : int = 4
@@ -195,7 +200,10 @@ let output_variant members : outputter * (int -> outputter -> outputter) =
   let herald_member i f () = indent (); Printf.printf "%sVariant member %d: " (fill ()) i; continue_line := true; f (); outdent () in
   herald_variant, herald_member
 
+end
+
 let decode_primitive_type : int -> typ * outputter =
+  let open Output in
   function
   | -1 -> Null, output_nil
   | -2 -> Bool, (fun () -> output_bool (read_bool ()))
@@ -225,6 +233,7 @@ let read_type lookup : (typ * outputter) Lazy.t =
   let lfst p = lazy (let lazy (f, _) = p in f) in
   let lsnd p = lazy (let lazy (_, s) = p in s) in
 
+  let open Output in
   match read_sleb128 () with
   | p when p < 0 && p > -18 -> from_val (decode_primitive_type p)
   | -18 ->
@@ -289,6 +298,7 @@ let top_level md : unit =
       and lookup = fun indx -> Printf.printf "{indx: %d}" indx; Array.get (force tab') indx in
   let tab = Array.map force (force tab') in
   Printf.printf "\n========================== Value section\n";
+  let open Output in
   begin match md with
   | Default ->
     let argtys = read_t_star read_type_index in
