@@ -130,10 +130,30 @@ let read_assoc () = let hash = read_leb128 () in
                     assert (tynum > -18);
                     Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
 
-(*sig Dump *)
+module type Dump =
+sig
+val output_nat : int -> unit
+val output_int : int -> unit
+val output_bool : bool -> unit
+val output_nil : outputter
+val output_byte : int -> unit
+val output_2byte : int -> unit
+val output_4byte : int -> unit
+val output_8byte : int -> unit
+val output_int8 : int -> unit
+val output_int16 : int -> unit
+val output_int32 : int -> unit
+val output_int64 : int -> unit
+val output_text : int -> Stdio.In_channel.t -> Stdio.Out_channel.t -> unit
+val output_some : outputter -> unit
+val output_arguments : int -> outputter * (int -> outputter -> outputter)
+val output_vector : int -> outputter * (int -> outputter -> outputter)
+val output_record : int -> outputter * (int -> outputter -> outputter)
+val output_variant : int -> outputter * (int -> outputter -> outputter)
+end
 
 
-module Output = struct
+module Output : Dump = struct
 
 (* indentation *)
 
