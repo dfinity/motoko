@@ -257,9 +257,9 @@ let stop max i = if i + 1 = max then output_string " }"
 let bracket max g i f () = start i; g i f; stop max i
 
 let output_vector members : outputter * (int -> outputter -> outputter) =
-  let herald_vector () = if members = 0 then output_string_space "vec"
-                         else output_string_space "vec {" in
-  let herald_member i f = f () in
+  let herald_vector () = if members = 0 then output_string_space "vec { }"
+                         else output_string_space "vec" in
+  let herald_member i f = f (); output_string_space ";" in
   herald_vector, bracket members herald_member
 
 let output_record members : outputter * (int -> outputter -> outputter) =
@@ -433,4 +433,5 @@ let () =
   - service types
   - break lazy cycles (the way Opt does it) everywhere (Function!)
   - add `--idl` (default), `--json` and `--verbose`
+  - index to hash
  *)
