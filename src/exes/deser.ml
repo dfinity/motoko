@@ -222,6 +222,59 @@ let output_variant members : outputter * (int -> outputter -> outputter) =
 
 end
 
+module OutputIdl : Dump = struct
+
+let output_string (s : string) = print_string s
+let output_string_space (s : string) = Printf.printf "%s " s
+let output_decimal (i : int) = Printf.printf "%d" i
+
+let output_bool b = output_string (if b then "true" else "false")
+let output_nil () = output_string "null"
+let output_some consumer = output_string_space "opt"; consumer ()
+let output_byte = output_decimal
+let output_2byte = output_decimal
+let output_4byte = output_decimal
+let output_8byte = output_decimal
+let output_nat = output_decimal
+let output_int = output_decimal
+let output_int8 = output_decimal
+let output_int16 = output_decimal
+let output_int32 = output_decimal
+let output_int64 = output_decimal
+let output_text n froms tos = output_string "<some text>"
+
+
+let output_arguments args : outputter * (int -> outputter -> outputter) =
+  let herald_arguments = function
+    | () when args = 0 -> output_string "# No arguments...\n"
+    | _ when args = 1 -> output_string "# 1 argument follows\n"
+    | _ -> Printf.printf "# %d arguments follow\n" args in
+  let herald_member i f () = Printf.printf "# Argument #%d%s: " i (if i + 1 = args then " (last)" else ""); f () in
+  herald_arguments, (*bracket args*) herald_member
+
+let start i = if i = 0 then output_string_space "{"
+let stop max i = if i + 1 = max then output_string_space " }\n"
+let bracket max g i f () = start i; g i f; stop max i
+
+let output_vector members : outputter * (int -> outputter -> outputter) =
+  let herald_vector () = if members = 0 then output_string_space "vec"
+                         else output_string_space "vec {" in
+  let herald_member i f = f () in
+  herald_vector, bracket members herald_member
+
+let output_record members : outputter * (int -> outputter -> outputter) =
+  let herald_record () = if members = 0 then output_string_space "record"
+                         else output_string_space "record {" in
+  let herald_member i f = f () in
+  herald_record, bracket members herald_member
+
+let output_variant members : outputter * (int -> outputter -> outputter) =
+  let herald_variant () = assert (members <> 0);
+                          Printf.printf "Variant with %d members follows\n" members in
+  let herald_member i f () = start i; Printf.printf "Variant member %d: " i; f (); stop 1 i in
+  herald_variant, herald_member
+end
+
 module Output : Dump = OutputVerbatim
 
 let decode_primitive_type : int -> typ * outputter =
