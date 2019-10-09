@@ -145,21 +145,22 @@ let bracket max g i f () = ind i; g i f; outd max i
 let fill () = if !continue_line then (continue_line := false; "") else String.make !indentation ' '
 
 let output_string what (s : string) = Printf.printf "%s%s: %s\n" (fill ()) what s
+let output_decimal what (i : int) = Printf.printf "%s%s: %d\n" (fill ()) what i
 
 (* outputters *)
-let output_nat nat = Printf.printf "output_nat: %d\n" nat
-let output_int int = Printf.printf "output_int: %d\n" int
+let output_nat nat = output_decimal "output_nat" nat
+let output_int int = output_decimal "output_int" int
 let output_bool b = output_string "output_bool" (if b then "true" else "false")
-let output_nil () = Printf.printf "null (0 bytes)\n"
-let output_some consumer = Printf.printf "Some: value follows on the next line\n"; consumer ()
-let output_byte b = Printf.printf "output_byte: %d\n" b
-let output_2byte b = Printf.printf "output_2byte: %d\n" b
-let output_4byte b = Printf.printf "output_4byte: %d\n" b
-let output_8byte b = Printf.printf "output_8byte: %d\n" b
-let output_int8 i = Printf.printf "output_int8: %d\n" i
-let output_int16 i = Printf.printf "output_int16: %d\n" i
-let output_int32 i = Printf.printf "output_int32: %d\n" i
-let output_int64 i = Printf.printf "output_int64: %d\n" i
+let output_nil () = Printf.printf "%snull (0 bytes)\n" (fill ())
+let output_some consumer = Printf.printf "%sSome: value follows on the next line\n"  (fill ()); consumer ()
+let output_byte b = output_decimal "output_byte" b
+let output_2byte b = output_decimal "output_2byte" b
+let output_4byte b = output_decimal "output_4byte" b
+let output_8byte b = output_decimal "output_8byte" b
+let output_int8 i = output_decimal "output_int8" i
+let output_int16 i = output_decimal "output_int16" i
+let output_int32 i = output_decimal "output_int32" i
+let output_int64 i = output_decimal "output_int64" i
 let output_text bytes from tostream =
       let buf = Buffer.create 0 in
       ignore (input_buffer from buf ~len:bytes);
