@@ -191,8 +191,8 @@ let output_record members : outputter * (int -> outputter -> outputter) =
 
 let output_variant members : outputter * (int -> outputter -> outputter) =
   let herald_variant () = assert (members <> 0);
-                          Printf.printf "Variant with %d members follows\n" members in
-  let herald_member i f () = Printf.printf "Variant member %d: " i; f () in
+                          Printf.printf "%sVariant with %d members follows\n" (fill ()) members in
+  let herald_member i f () = indent (); Printf.printf "%sVariant member %d: " (fill ()) i; continue_line := true; f (); outdent () in
   herald_variant, herald_member
 
 let decode_primitive_type : int -> typ * outputter =
@@ -217,20 +217,6 @@ let decode_primitive_type : int -> typ * outputter =
 
 
 let read_type lookup : (typ * outputter) Lazy.t =
-  (* primitive type
-
-T : <primtype> -> i8*
-T(null)     = sleb128(-1)
-T(bool)     = sleb128(-2)
-T(nat)      = sleb128(-3)
-T(int)      = sleb128(-4)
-T(nat<N>)   = sleb128(-5 - log2(N/8))
-T(int<N>)   = sleb128(-9 - log2(N/8))
-T(float<N>) = sleb128(-13 - log2(N/32))
-T(text)     = sleb128(-15)
-T(reserved) = sleb128(-16)
-T(empty)    = sleb128(-17)
- *)
   let lprim_or_lookup = function
     | p when p < 0 -> lazy (decode_primitive_type p)
     | i -> lookup i in
@@ -273,18 +259,16 @@ T(empty)    = sleb128(-17)
                  let alts = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
                  let consumers = Array.map (fun (_, tynum) () -> snd (prim_or_lookup tynum) ()) assocs in
                  Variant alts, fun () -> herald_variant (); let i = read_leb128 () in herald_member i (Array.get consumers i) ())
-(*
-T(func (<fieldtype1>* ) -> (<fieldtype2>* ) <funcann>* ) =
-  sleb128(-22) T*(<fieldtype1>* ) T*(<fieldtype2>* ) T*(<funcann>* )
-T(service {<methtype>*}) =
-  sleb128(-23) T*(<methtype>* )
-                   *)
   | -22 -> let assocs1 = read_t_star read_assoc in
            let assocs2 = read_t_star read_assoc in
            let anns = read_t_star read_annotation in
            lazy (let args = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs1 in
                  let rslts = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs2 in
                  Function (args, rslts, anns), epsilon)
+(*
+T(service {<methtype>*}) =
+  sleb128(-23) T*(<methtype>* )
+                   *)
 
   | t -> failwith (Printf.sprintf "unrecognised structured type: %d" t)
 
@@ -361,7 +345,6 @@ let () =
   - use bigint where necessary
   - customisable formatters
   - floats
-  - pass the nesting level to the M^-1
   - service types
-  - break lazy cycles (the way Opt does it) everywhere
+  - break lazy cycles (the way Opt does it) everywhere (Function!)
  *)
