@@ -315,7 +315,7 @@ let top_level md : unit =
   read_magic ();
   Printf.printf "\n========================== Type section\n";
   let rec tab' = lazy (read_type_table (fun () -> read_type lookup))
-      and lookup = fun indx -> Printf.printf "{indx: %d}" indx; Array.get (force tab') indx in
+      and lookup = fun indx -> (*Printf.printf "{indx: %d}" indx; *)Array.get (force tab') indx in
   let tab = Array.map force (force tab') in
   Printf.printf "\n========================== Value section\n";
   let open Output in
