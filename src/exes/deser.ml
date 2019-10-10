@@ -278,6 +278,58 @@ let output_variant members : outputter * (alts -> int -> outputter -> outputter)
   herald_variant, herald_member
 end
 
+
+module OutputJson : Dump = struct
+
+let output_string (s : string) = print_string s
+let output_string_space (s : string) = Printf.printf "%s " s
+let output_decimal (i : int) = Printf.printf "%d" i
+
+let output_bool b = output_string (if b then "true" else "false")
+let output_nil () = output_string "null"
+let output_some consumer = output_string "["; consumer (); output_string "]"
+let output_byte = output_decimal
+let output_2byte = output_decimal
+let output_4byte = output_decimal
+let output_8byte = output_decimal
+let output_nat = output_decimal
+let output_int = output_decimal
+let output_int8 = output_decimal
+let output_int16 = output_decimal
+let output_int32 = output_decimal
+let output_int64 = output_decimal
+let output_text n froms tos = output_string "'<some text>'"
+
+
+let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
+  let herald_arguments = function
+    | () when args = 0 -> output_string "# No arguments...\n"
+    | _ when args = 1 -> output_string "# 1 argument follows\n"
+    | _ -> Printf.printf "# %d arguments follow\n" args in
+  let herald_member () i f () = Printf.printf "# Argument #%d%s:\n" i (if i + 1 = args then " (last)" else ""); f () in
+  herald_arguments, (*bracket args*) herald_member
+
+let start punct i = if i = 0 then output_string_space (String.make 1 punct)
+let stop punct max i = if i + 1 = max then output_string (String.make 1 punct)
+let bracket punct max g p i f () = start (punct.[0]) i; g p i f; stop (punct.[1]) max i
+
+let output_vector members : outputter * (unit -> int -> outputter -> outputter) =
+  let herald_vector () = if members = 0 then output_string_space "[]" in
+  let herald_member () i f = f (); output_string_space "," in
+  herald_vector, bracket "[]" members herald_member
+
+let output_record members : outputter * (fields -> int -> outputter -> outputter) =
+  let herald_record () = if members = 0 then output_string_space "{}" in
+  let herald_member fields i f = Printf.printf "_%d_ : " (fst (Array.get fields i)); f (); output_string_space ";" in
+  herald_record, bracket "{}" members herald_member
+
+let output_variant members : outputter * (alts -> int -> outputter -> outputter) =
+  let herald_variant () = assert (members <> 0) in
+  let herald_member alts i f () = start '{' 0; Printf.printf "_%d_ : " (fst (Array.get alts i)); f (); stop '}' 1 0 in
+  herald_variant, herald_member
+end
+
+
 type mode = Legacy | Default
 
 module MakeOutputter(F : Dump) = struct
@@ -440,7 +492,7 @@ let () =
   begin match !output_format with
   | Prose -> let module Prose = MakeOutputter(OutputProse) in Prose.top_level !mode;
   | Idl -> let module Idl = MakeOutputter(OutputIdl) in Idl.top_level !mode;
-  | Json -> failwith "--json not implemented yet"
+  | Json -> let module Json = MakeOutputter(OutputJson) in Json.top_level !mode;
   end;
   match input_byte stdin with
   | Some _ -> failwith "surplus bytes in input"
@@ -454,5 +506,6 @@ let () =
   - floats
   - service types
   - break lazy cycles (the way Opt does it) everywhere (Function!)
-  - add `--idl` (default), `--json` and `--prose`
+  - add JSON formatter
+  - fix output_text
  *)
