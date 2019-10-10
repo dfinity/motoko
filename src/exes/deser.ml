@@ -156,7 +156,7 @@ val output_variant : int -> outputter * (alts -> int -> outputter -> outputter)
 end
 
 
-module OutputVerbatim : Dump = struct
+module OutputProse : Dump = struct
 
 (* indentation *)
 
@@ -278,10 +278,12 @@ let output_variant members : outputter * (alts -> int -> outputter -> outputter)
   herald_variant, herald_member
 end
 
-module Output : Dump = OutputIdl
+type mode = Legacy | Default
+
+module MakeOutputter(F : Dump) = struct
 
 let decode_primitive_type : int -> typ * outputter =
-  let open Output in
+  let open F in
   function
   | -1 -> Null, output_nil
   | -2 -> Bool, (fun () -> output_bool (read_bool ()))
@@ -311,7 +313,7 @@ let read_type lookup : (typ * outputter) Lazy.t =
   let lfst p = lazy (let lazy (f, _) = p in f) in
   let lsnd p = lazy (let lazy (_, s) = p in s) in
 
-  let open Output in
+  let open F in
   match read_sleb128 () with
   | p when p < 0 && p > -18 -> from_val (decode_primitive_type p)
   | -18 ->
@@ -352,10 +354,10 @@ let read_type lookup : (typ * outputter) Lazy.t =
            lazy (let args = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs1 in
                  let rslts = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs2 in
                  Function (args, rslts, anns), epsilon)
+
 (*
-T(service {<methtype>*}) =
-  sleb128(-23) T*(<methtype>* )
-                   *)
+T(service {<methtype>*}) = sleb128(-23) T*(<methtype>* )
+*)
 
   | t -> failwith (Printf.sprintf "unrecognised structured type: %d" t)
 
@@ -366,8 +368,6 @@ let read_type_table (t : unit -> (typ * outputter) Lazy.t) : (typ * outputter) L
 
 (* Top-level *)
 
-type mode = Legacy | Default
-
 let top_level md : unit =
   Printf.printf "\nDESER, to your service!\n";
   read_magic ();
@@ -376,7 +376,7 @@ let top_level md : unit =
       and lookup = fun indx -> (*Printf.printf "{indx: %d}" indx; *)Array.get (force tab') indx in
   let tab = Array.map force (force tab') in
   Printf.printf "\n========================== Value section\n";
-  let open Output in
+  let open F in
   begin match md with
   | Default ->
     let argtys = read_t_star read_type_index in
@@ -393,7 +393,9 @@ let top_level md : unit =
     snd (Array.get tab argty) ()
   end;
   Printf.printf "\n-------- DESER DONE\n"
-  
+
+end
+
 (* CLI *)
 
 let name = "deser"
@@ -409,20 +411,37 @@ let set_mode m () =
   end;
   mode := m
 
-let add_arg source = () (* args := !args @ [source] *)
+type format = Idl | Prose | Json
+
+let output_format = ref Idl
+
+let set_format f () =
+  if !output_format <> Idl then begin
+    Printf.eprintf "deser: multiple output formats specified"; exit 1
+  end;
+  output_format := f
 
 let argspec = Arg.align
 [
   "--legacy", Arg.Unit (set_mode Legacy), " decode legacy message API";
+  "--prose", Arg.Unit (set_format Prose), " output indented prose";
+  "--json", Arg.Unit (set_format Json), " output JSON values";
+  "--idl", Arg.Unit (set_format Idl), " output IDL values";
   "--version",
     Arg.Unit (fun () -> Printf.printf "%s\n" banner; exit 0), " show version";
 ]
+
+let add_arg source = () (* args := !args @ [source] *)
 
 (* run it *)
 
 let () =
   Arg.parse argspec add_arg usage;
-  top_level !mode;
+  begin match !output_format with
+  | Prose -> let module Prose = MakeOutputter(OutputProse) in Prose.top_level !mode;
+  | Idl -> let module Idl = MakeOutputter(OutputIdl) in Idl.top_level !mode;
+  | Json -> failwith "--json not implemented yet"
+  end;
   match input_byte stdin with
   | Some _ -> failwith "surplus bytes in input"
   | None -> ()
@@ -435,5 +454,5 @@ let () =
   - floats
   - service types
   - break lazy cycles (the way Opt does it) everywhere (Function!)
-  - add `--idl` (default), `--json` and `--verbose`
+  - add `--idl` (default), `--json` and `--prose`
  *)
