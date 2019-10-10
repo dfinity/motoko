@@ -92,12 +92,12 @@ let read_magic () : unit =
 
 (* Repetition *)
 
-let read_star_heralding (heralder : int -> outputter * (int -> outputter -> outputter)) (t : outputter) : unit =
+let read_star_heralding a (heralder : int -> outputter * ('a -> int -> outputter -> outputter)) (t : outputter) : unit =
   let rep = read_leb128 () in
   let herald_vector, herald_member = heralder rep in
   herald_vector ();
   for i = 0 to rep - 1 do
-    herald_member i t ()
+    herald_member a i t ()
   done
 
 let read_t_star (t : unit -> 'a) : 'a array =
@@ -117,9 +117,12 @@ let read_annotation () : ann =
 type typ = Null | Bool | Nat | NatN of int
          | Int | IntN of int | Text | Reserved | Empty
          | Opt of typ Lazy.t | Vec of typ Lazy.t
-         | Record of (int * typ Lazy.t) array
-         | Variant of (int * typ Lazy.t) array
+         | Record of fields
+         | Variant of alts
          | Function of (int * typ) array * (int * typ) array * ann array
+
+and alts = (int * typ Lazy.t) array
+and fields = (int * typ Lazy.t) array
 
 (* type index/ground type (negative) *)
 
@@ -146,10 +149,10 @@ val output_int32 : int -> unit
 val output_int64 : int -> unit
 val output_text : int -> Stdio.In_channel.t -> Stdio.Out_channel.t -> unit
 val output_some : outputter -> unit
-val output_arguments : int -> outputter * (int -> outputter -> outputter)
-val output_vector : int -> outputter * (int -> outputter -> outputter)
-val output_record : int -> outputter * (int -> outputter -> outputter)
-val output_variant : int -> outputter * (int -> outputter -> outputter)
+val output_arguments : int -> outputter * (unit -> int -> outputter -> outputter)
+val output_vector : int -> outputter * (unit -> int -> outputter -> outputter)
+val output_record : int -> outputter * (fields -> int -> outputter -> outputter)
+val output_variant : int -> outputter * (alts -> int -> outputter -> outputter)
 end
 
 
@@ -165,7 +168,7 @@ let indent () = indentation := !indentation + indent_amount
 let outdent () = indentation := !indentation - indent_amount
 let ind i = if i = 0 then indent ()
 let outd max i = if i + 1 = max then outdent ()
-let bracket max g i f () = ind i; g i f; outd max i
+let bracket max g p i f () = ind i; g p i f; outd max i
 
 let fill () = if !continue_line then (continue_line := false; "") else String.make !indentation ' '
 
@@ -194,30 +197,30 @@ let output_text bytes from tostream =
       Stdio.Out_channel.output_buffer tostream buf;
       Printf.printf "\n"
 
-let output_arguments args : outputter * (int -> outputter -> outputter) =
+let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
   let herald_arguments = function
     | () when args = 0 -> Printf.printf "%sNo arguments...\n" (fill ())
     | _ when args = 1 -> Printf.printf "%s1 argument follows\n" (fill ())
     | _ -> Printf.printf "%s%d arguments follow\n" (fill ()) args in
-  let herald_member i f = Printf.printf "%sArgument #%d%s: " (fill ()) i (if i + 1 = args then " (last)" else ""); continue_line := true; f () in
+  let herald_member () i f = Printf.printf "%sArgument #%d%s: " (fill ()) i (if i + 1 = args then " (last)" else ""); continue_line := true; f () in
   herald_arguments, bracket args herald_member
 
-let output_vector members : outputter * (int -> outputter -> outputter) =
+let output_vector members : outputter * (unit -> int -> outputter -> outputter) =
   let herald_vector () = if members = 0 then Printf.printf "%sEmpty Vector\n" (fill ())
                          else Printf.printf "%sVector with %d members follows\n" (fill ()) members in
-  let herald_member i f = Printf.printf "%sVector member %d%s: " (fill ()) i (if i + 1 = members then " (last)" else ""); continue_line := true; f () in
+  let herald_member () i f = Printf.printf "%sVector member %d%s: " (fill ()) i (if i + 1 = members then " (last)" else ""); continue_line := true; f () in
   herald_vector, bracket members herald_member
 
-let output_record members : outputter * (int -> outputter -> outputter) =
+let output_record members : outputter * (fields -> int -> outputter -> outputter) =
   let herald_record () = if members = 0 then Printf.printf "%sEmpty Record\n" (fill ())
                          else Printf.printf "%sRecord with %d members follows\n" (fill ()) members in
-  let herald_member i f = Printf.printf "%sRecord member %d%s: " (fill ()) i (if i + 1 = members then " (last)" else ""); continue_line := true; f () in
+  let herald_member fields i f = Printf.printf "%sRecord member %d%s: " (fill ()) (fst (Array.get fields i)) (if i + 1 = members then " (last)" else ""); continue_line := true; f () in
   herald_record, bracket members herald_member
 
-let output_variant members : outputter * (int -> outputter -> outputter) =
+let output_variant members : outputter * (alts -> int -> outputter -> outputter) =
   let herald_variant () = assert (members <> 0);
                           Printf.printf "%sVariant with %d members follows\n" (fill ()) members in
-  let herald_member i f () = indent (); Printf.printf "%sVariant member %d: " (fill ()) i; continue_line := true; f (); outdent () in
+  let herald_member alts i f () = indent (); Printf.printf "%sVariant member %d: " (fill ()) (fst (Array.get alts i)); continue_line := true; f (); outdent () in
   herald_variant, herald_member
 
 end
@@ -244,34 +247,34 @@ let output_int64 = output_decimal
 let output_text n froms tos = output_string "\"<some text>\""
 
 
-let output_arguments args : outputter * (int -> outputter -> outputter) =
+let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
   let herald_arguments = function
     | () when args = 0 -> output_string "# No arguments...\n"
     | _ when args = 1 -> output_string "# 1 argument follows\n"
     | _ -> Printf.printf "# %d arguments follow\n" args in
-  let herald_member i f () = Printf.printf "# Argument #%d%s:\n" i (if i + 1 = args then " (last)" else ""); f () in
+  let herald_member () i f () = Printf.printf "# Argument #%d%s:\n" i (if i + 1 = args then " (last)" else ""); f () in
   herald_arguments, (*bracket args*) herald_member
 
 let start i = if i = 0 then output_string_space "{"
 let stop max i = if i + 1 = max then output_string " }"
-let bracket max g i f () = start i; g i f; stop max i
+let bracket max g p i f () = start i; g p i f; stop max i
 
-let output_vector members : outputter * (int -> outputter -> outputter) =
+let output_vector members : outputter * (unit -> int -> outputter -> outputter) =
   let herald_vector () = if members = 0 then output_string_space "vec { }"
                          else output_string_space "vec" in
-  let herald_member i f = f (); output_string_space ";" in
+  let herald_member () i f = f (); output_string_space ";" in
   herald_vector, bracket members herald_member
 
-let output_record members : outputter * (int -> outputter -> outputter) =
+let output_record members : outputter * (fields -> int -> outputter -> outputter) =
   let herald_record () = if members = 0 then output_string_space "record { }"
                          else output_string_space "record" in
-  let herald_member i f = Printf.printf "%d : " i; f (); output_string_space ";" in
+  let herald_member fields i f = Printf.printf "%d : " (fst (Array.get fields i)); f (); output_string_space ";" in
   herald_record, bracket members herald_member
 
-let output_variant members : outputter * (int -> outputter -> outputter) =
+let output_variant members : outputter * (alts -> int -> outputter -> outputter) =
   let herald_variant () = assert (members <> 0);
                           output_string_space "variant" in
-  let herald_member i f () = start 0; Printf.printf "%d : " i; f (); stop 1 0 in
+  let herald_member alts i f () = start 0; Printf.printf "%d : " (fst (Array.get alts i)); f (); stop 1 0 in
   herald_variant, herald_member
 end
 
@@ -328,21 +331,21 @@ let read_type lookup : (typ * outputter) Lazy.t =
   | -19 -> begin match read_type_index () with
            | p when p < -17 -> assert false
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             from_val (Vec (lazy t), fun () -> read_star_heralding output_vector consumer)
+                             from_val (Vec (lazy t), fun () -> read_star_heralding () output_vector consumer)
            | i ->
              lazy (let p = lookup i in
-                   Vec (lfst p), fun () -> read_star_heralding output_vector (force (lsnd p)))
+                   Vec (lfst p), fun () -> read_star_heralding () output_vector (force (lsnd p)))
            end
   | -20 -> let assocs = read_t_star read_assoc in
            lazy (let herald_record, herald_member = output_record (Array.length assocs) in
-                 let consumers = Array.mapi herald_member (Array.map (fun (_, tynum) () -> snd (prim_or_lookup tynum) ()) assocs) in
                  let members = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
+                 let consumers = Array.mapi (herald_member members) (Array.map (fun (_, tynum) () -> snd (prim_or_lookup tynum) ()) assocs) in
                  Record members, fun () -> herald_record (); Array.iter (fun f -> f ()) consumers)
   | -21 -> let assocs = read_t_star read_assoc in
            lazy (let herald_variant, herald_member = output_variant (Array.length assocs) in
                  let alts = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
                  let consumers = Array.map (fun (_, tynum) () -> snd (prim_or_lookup tynum) ()) assocs in
-                 Variant alts, fun () -> herald_variant (); let i = read_leb128 () in herald_member i (Array.get consumers i) ())
+                 Variant alts, fun () -> herald_variant (); let i = read_leb128 () in herald_member alts i (Array.get consumers i) ())
   | -22 -> let assocs1 = read_t_star read_assoc in
            let assocs2 = read_t_star read_assoc in
            let anns = read_t_star read_annotation in
@@ -383,7 +386,7 @@ let top_level md : unit =
       | prim when prim < 0 -> decode_primitive_type prim
       | index -> Array.get tab index in
     let consumers = Array.map (fun tynum -> let (ty, m) = typ_ingester tynum in m) argtys in
-    Array.iteri (fun i f -> herald_member i f ()) consumers
+    Array.iteri (fun i f -> herald_member () i f ()) consumers
   | Legacy ->
     let argty = read_type_index () in
     Printf.printf "ARGTY: %d\n" argty;
@@ -433,5 +436,4 @@ let () =
   - service types
   - break lazy cycles (the way Opt does it) everywhere (Function!)
   - add `--idl` (default), `--json` and `--verbose`
-  - index to hash
  *)
