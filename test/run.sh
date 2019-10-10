@@ -270,8 +270,7 @@ do
       normalize $out/$base.js.out
       diff_files="$diff_files $base.js.out $base.js"
 
-      # Proceed only if the file is not empty & doesn't just contain whitespace
-      if [[ ! -z $(grep '[^[:space:]]' $out/$base.js) ]];
+      if [ -e $out/$base.js ]
       then
         $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$ESM
