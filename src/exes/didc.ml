@@ -48,7 +48,7 @@ let process_file file : unit =
          out_file := Filename.remove_extension (Filename.basename file) ^ ".js";
      let buf = Diag.run Pipeline.(compile_js_file file) in
      if Buffer.length buf = 0 then begin
-         eprintf "cannot generate JS bindings"; exit 1
+         eprintf "No actor found, cannot generate JS bindings"; exit 1
      end;
      let oc = open_out !out_file in
      Buffer.add_string buf "\n";
