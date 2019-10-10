@@ -244,7 +244,12 @@ let output_int8 = output_decimal
 let output_int16 = output_decimal
 let output_int32 = output_decimal
 let output_int64 = output_decimal
-let output_text n froms tos = output_string "\"<some text>\""
+let output_text n froms tos =
+  output_string "\"";
+  let buf = Buffer.create 0 in
+  ignore (input_buffer froms buf ~len:n);
+  Stdio.Out_channel.output_buffer tos buf;
+  output_string "\""
 
 
 let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
@@ -298,7 +303,12 @@ let output_int8 = output_decimal
 let output_int16 = output_decimal
 let output_int32 = output_decimal
 let output_int64 = output_decimal
-let output_text n froms tos = output_string "'<some text>'"
+let output_text n froms tos =
+  output_string "'";
+  let buf = Buffer.create 0 in
+  ignore (input_buffer froms buf ~len:n);
+  Stdio.Out_channel.output_buffer tos buf;
+  output_string "'"
 
 
 let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
@@ -504,10 +514,8 @@ let () =
 
 (* TODOs:
   - use bigint where necessary
-  - customisable formatters
   - floats
   - service types
   - break lazy cycles (the way Opt does it) everywhere (Function!)
-  - add JSON formatter
-  - fix output_text
+  - escaping in text
  *)
