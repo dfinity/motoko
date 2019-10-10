@@ -309,19 +309,21 @@ let output_arguments args : outputter * (unit -> int -> outputter -> outputter) 
   let herald_member () i f () = Printf.printf "# Argument #%d%s:\n" i (if i + 1 = args then " (last)" else ""); f () in
   herald_arguments, (*bracket args*) herald_member
 
-let start punct i = if i = 0 then output_string_space (String.make 1 punct)
+let start punct i = if i = 0 then output_string (String.make 1 punct)
 let stop punct max i = if i + 1 = max then output_string (String.make 1 punct)
 let bracket punct max g p i f () = start (punct.[0]) i; g p i f; stop (punct.[1]) max i
 
 let output_vector members : outputter * (unit -> int -> outputter -> outputter) =
-  let herald_vector () = if members = 0 then output_string_space "[]" in
+  let punct = "[]" in
+  let herald_vector () = if members = 0 then output_string_space punct in
   let herald_member () i f = f (); output_string_space "," in
-  herald_vector, bracket "[]" members herald_member
+  herald_vector, bracket punct members herald_member
 
 let output_record members : outputter * (fields -> int -> outputter -> outputter) =
-  let herald_record () = if members = 0 then output_string_space "{}" in
-  let herald_member fields i f = Printf.printf "_%d_ : " (fst (Array.get fields i)); f (); output_string_space ";" in
-  herald_record, bracket "{}" members herald_member
+  let punct = "{}" in
+  let herald_record () = if members = 0 then output_string_space punct in
+  let herald_member fields i f = Printf.printf "_%d_ : " (fst (Array.get fields i)); f (); output_string_space "," in
+  herald_record, bracket punct members herald_member
 
 let output_variant members : outputter * (alts -> int -> outputter -> outputter) =
   let herald_variant () = assert (members <> 0) in
