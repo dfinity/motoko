@@ -3378,16 +3378,6 @@ end (* HeapTraversal *)
 
 module Serialization = struct
   (*
-<<<<<<< HEAD
-=======
-    Also see (and update) `design/IDL.md`, which documents the format
-    in a “user-facing” way.
-
-    We have a specific serialization strategy for `Text` and references for
-    easier interop with the console and the nonce. This is a stop-gap measure
-    until we have nailed down IDL and Bidirectional Messaging.
-
->>>>>>> We have an IDL doc now
     The general serialization strategy is as follows:
     * We statically generate the IDL type description header.
     * We traverse the data to calculate the size needed for the data buffer and the
