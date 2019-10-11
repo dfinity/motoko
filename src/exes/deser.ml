@@ -483,7 +483,7 @@ let argspec = Arg.align
   "--legacy", Arg.Unit (set_mode Legacy), " decode legacy message API";
   "--prose", Arg.Unit (set_format Prose), " output indented prose";
   "--json", Arg.Unit (set_format Json), " output JSON values";
-  "--idl", Arg.Unit (set_format Idl), " output IDL values";
+  "--idl", Arg.Unit (set_format Idl), " output IDL values (default)";
   "--version",
     Arg.Unit (fun () -> Printf.printf "%s\n" banner; exit 0), " show version";
 ]
@@ -510,4 +510,6 @@ let () =
   - floats
   - service types
   - escaping in text
+  - no trailing semi or comma in JSON
+  - heralding/outputting of type table
  *)
