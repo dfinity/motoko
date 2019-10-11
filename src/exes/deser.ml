@@ -251,9 +251,9 @@ let output_text n froms tos =
 let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
   let herald_arguments = function
     | () when args = 0 -> output_string "# No arguments...\n"
-    | _ when args = 1 -> output_string "# 1 argument follows\n"
-    | _ -> Printf.printf "# %d arguments follow\n" args in
-  let herald_member () i f () = Printf.printf "# Argument #%d%s:\n" i (if i + 1 = args then " (last)" else ""); f () in
+    | _ when args = 1 -> output_string "# 1 argument follows"
+    | _ -> Printf.printf "# %d arguments follow" args in
+  let herald_member () i f () = Printf.printf "\n# Argument #%d%s:\n" i (if i + 1 = args then " (last)" else ""); f () in
   herald_arguments, (*bracket args*) herald_member
 
 let start i = if i = 0 then output_string_space "{"
@@ -306,9 +306,9 @@ let output_text n froms tos =
 let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
   let herald_arguments = function
     | () when args = 0 -> output_string "# No arguments...\n"
-    | _ when args = 1 -> output_string "# 1 argument follows\n"
-    | _ -> Printf.printf "# %d arguments follow\n" args in
-  let herald_member () i f () = Printf.printf "# Argument #%d%s:\n" i (if i + 1 = args then " (last)" else ""); f () in
+    | _ when args = 1 -> output_string "# 1 argument follows"
+    | _ -> Printf.printf "# %d arguments follow" args in
+  let herald_member () i f () = Printf.printf "\n# Argument #%d%s:\n" i (if i + 1 = args then " (last)" else ""); f () in
   herald_arguments, (*bracket args*) herald_member
 
 let start punct i = if i = 0 then output_string (String.make 1 punct)
