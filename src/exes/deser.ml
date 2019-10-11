@@ -119,7 +119,7 @@ type typ = Null | Bool | Nat | NatN of int
          | Opt of typ Lazy.t | Vec of typ Lazy.t
          | Record of fields
          | Variant of alts
-         | Function of (int * typ) array * (int * typ) array * ann array
+         | Function of (int * typ Lazy.t) array * (int * typ Lazy.t) array * ann array
 
 and alts = (int * typ Lazy.t) array
 and fields = (int * typ Lazy.t) array
@@ -407,8 +407,8 @@ let read_type lookup : (typ * outputter) Lazy.t =
   | -22 -> let assocs1 = read_t_star read_assoc in
            let assocs2 = read_t_star read_assoc in
            let anns = read_t_star read_annotation in
-           lazy (let args = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs1 in
-                 let rslts = Array.map (fun (i, tynum) -> i, fst (prim_or_lookup tynum)) assocs2 in
+           lazy (let args = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs1 in
+                 let rslts = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs2 in
                  Function (args, rslts, anns), epsilon)
 
 (*
@@ -428,9 +428,10 @@ let top_level md : unit =
   Printf.printf "\nDESER, to your service!\n";
   read_magic ();
   Printf.printf "\n========================== Type section\n";
-  let rec tab' = lazy (read_type_table (fun () -> read_type lookup))
-      and lookup = fun indx -> (*Printf.printf "{indx: %d}" indx; *)Array.get (force tab') indx in
-  let tab = Array.map force (force tab') in
+  let tab =
+    let rec tab = lazy (read_type_table (fun () -> read_type lookup))
+    and lookup = fun indx -> Printf.printf "{indx: %d}" indx; Array.get (force tab) indx in
+    Array.map force (force tab) in
   Printf.printf "\n========================== Value section\n";
   let open F in
   begin match md with
@@ -508,6 +509,5 @@ let () =
   - use bigint where necessary
   - floats
   - service types
-  - break lazy cycles (the way Opt does it) everywhere (Function!)
   - escaping in text
  *)
