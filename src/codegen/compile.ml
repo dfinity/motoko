@@ -3419,40 +3419,6 @@ module Serialization = struct
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
       (List.map (fun f -> (Idllib.IdlHash.idl_hash f.Type.lab, f)) fs)
 
-  (* Checks whether the serialization of a given type could contain references *)
-  module TS = Set.Make (struct type t = Type.typ let compare = compare end)
-  let has_no_references : Type.typ -> bool = fun t ->
-    let open Type in
-    let seen = ref TS.empty in (* break the cycles *)
-    let rec go t =
-      TS.mem t !seen ||
-      begin
-        seen := TS.add t !seen;
-        match t with
-        | Var _ -> assert false
-        | (Prim _ | Any | Non | Pre) -> true
-        | Con (c, ts) ->
-          begin match Con.kind c with
-          | Abs _ -> assert false
-          | Def (tbs,t) -> go (open_ ts t) (* TBR this may fail to terminate *)
-          end
-        | Array t -> go t
-        | Tup ts -> List.for_all go ts
-        | Func (Shared _, c, tbs, ts1, ts2) -> false
-        | Func (s, c, tbs, ts1, ts2) ->
-          let ts = open_binds tbs in
-          List.for_all go (List.map (open_ ts) ts1) &&
-          List.for_all go (List.map (open_ ts) ts2)
-        | Opt t -> go t
-        | Variant fs -> List.for_all (fun f -> go f.typ) fs
-        | Async t -> go t
-        | Obj (Actor, fs) -> false
-        | Obj (_, fs) -> List.for_all (fun f -> go f.typ) fs
-        | Mut t -> go t
-        | Typ _ -> false
-      end
-    in go t
-
   (* The IDL serialization prefaces the data with a type description.
      We can statically create the type description in Ocaml code,
      store it in the program, and just copy it to the beginning of the message.
@@ -4101,7 +4067,6 @@ module Serialization = struct
   let serialize env ts : G.t =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@serialize<" ^ ts_name ^ ">" in
-    if E.mode env = Flags.ICMode then assert (List.for_all has_no_references ts);
     (* On ancient API returns databuf/elembuf, on new API returns nothing *)
     let ret_tys = if E.mode env = Flags.ICMode then [] else [I32Type; I32Type] in
     Func.share_code1 env name ("x", I32Type) ret_tys (fun env get_x ->
@@ -4160,7 +4125,7 @@ module Serialization = struct
         get_refs_size ^^
         compile_unboxed_const 0l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        E.else_trap_with env "has_no_references wrong" ^^
+        E.else_trap_with env "cannot send references on IC System API" ^^
 
         (* Copy out the bytes *)
         reply_with_data env get_data_start get_data_size
@@ -4169,7 +4134,6 @@ module Serialization = struct
     )
 
   let deserialize env ts =
-    if E.mode env = Flags.ICMode then assert (List.for_all has_no_references ts);
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@deserialize<" ^ ts_name ^ ">" in
     let args = if E.mode env = Flags.ICMode then [] else [("databuf",I32Type);("elembuf", I32Type)]  in
