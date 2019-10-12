@@ -430,7 +430,7 @@ let top_level md : unit =
   Printf.printf "\n========================== Type section\n";
   let tab =
     let rec tab = lazy (read_type_table (fun () -> read_type lookup))
-    and lookup = fun indx -> Printf.printf "{indx: %d}" indx; Array.get (force tab) indx in
+    and lookup = fun indx -> (*Printf.printf "{indx: %d}" indx; *)Array.get (force tab) indx in
     Array.map force (force tab) in
   Printf.printf "\n========================== Value section\n";
   let open F in
