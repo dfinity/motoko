@@ -1,3 +1,5 @@
+import List "list.as";
+
 module {
 /**
 
@@ -9,8 +11,6 @@ Association Lists, a la functional programming, in ActorScript.
 Implements the same interface as `Trie`, but as a linked-list of key-value pairs.
 
 */
-
-import List "list.as";
 
 // polymorphic association linked lists between keys and values
 public type AssocList<K,V> = List.List<(K,V)>;

@@ -1,7 +1,7 @@
-let T = (import "../serverTypes.as");
-let A = (import "../serverActor.as");
-let Result = (import "../../../result.as");
-let Option = (import "../../../option.as");
+import T = "../serverTypes.as";
+import A = "../serverActor.as";
+import Result = "../../../result.as";
+import Option = "../../../option.as";
 
 func printEntityCount(entname:Text, count:Nat) {
   print ("- " # entname # " count: ");

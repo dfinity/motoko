@@ -1,6 +1,6 @@
-module {
 import P "prelude.as";
 
+module {
 /**
 
  Result

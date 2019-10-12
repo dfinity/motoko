@@ -17,10 +17,10 @@
    in the future, we might avoid this via https://dfinity.atlassian.net/browse/AST-32
 
 */
-module {
 import Trie "trie2.as";
 import Hash "hash.as";
 
+module {
 public type Hash = Hash.Hash;
 public type Set<T> = Trie.Trie<T,()>;
 

@@ -1,6 +1,6 @@
-module {
-  import Event "Event.as";
+import Event "Event.as";
 
+module {
   public type EventHandler<Value, Error> = Event.Type<Value, Error> -> ();
 
   public class Type<Value, Error>(handler_ : EventHandler<Value, Error>) {

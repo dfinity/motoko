@@ -11,9 +11,9 @@ import L = "serverLang.as";
 import Model = "serverModel.as";
 import Result = "../../result.as";
 
-let Trie = (import "../../trie2.as");
+import Trie = "../../trie2.as";
+import List = "../../list.as";
 
-let List = (import "../../list.as");
 type List<T> = List.List<T>;
 
 type Result<Ok,Err> = Result.Result<Ok,Err>;

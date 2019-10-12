@@ -1,3 +1,8 @@
+import Hash "hash.as";
+
+//import Trie "trie.as";
+import Trie "trie2.as";
+
 module {
 /**
 
@@ -42,11 +47,6 @@ type information.
  choice between (for now) using tries (and internally, association lists).
 
  */
-
-import Hash "hash.as";
-
-//import Trie "trie.as";
-import Trie "trie2.as";
 
 public type Hash = Hash.Hash;
 public type Trie<K,V> = Trie.Trie<K,V>;

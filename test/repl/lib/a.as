@@ -1,1 +1,3 @@
-import "c.as"
+import C "c.as"
+
+let i = C.i;

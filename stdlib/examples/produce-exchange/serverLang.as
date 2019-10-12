@@ -1,3 +1,7 @@
+import Result = "../../result.as";
+import T = "serverTypes.as";
+
+
 module {
 /**
 
@@ -7,9 +11,6 @@ module {
  A simple DSL for scripting interactions with the Produce Exchange (PX) server.
 
 */
-
-import Result = "../../result.as";
-import T = "serverTypes.as";
 
 public type Result<Ok,Err> = Result.Result<Ok,Err>;
 

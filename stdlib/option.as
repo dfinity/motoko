@@ -1,11 +1,11 @@
+import P "prelude.as";
+
 module {
 /**
 
 Functions for Option types.
 
 */
-
-import P "prelude.as";
 
 public type t<A> = ?A;
 

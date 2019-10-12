@@ -639,9 +639,6 @@ dec_nonvar :
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
-  | IMPORT xf=id_opt EQ? f=TEXT
-    { let named, x = xf "import" $sloc in
-      let_or_exp named x (ImportE (f, ref "")) (at $sloc) }
 
 dec :
   | d=dec_var
@@ -677,12 +674,17 @@ class_body :
 
 (* Programs *)
 
+imp :
+  | IMPORT xf=id_opt EQ? f=TEXT
+    { let named, x = xf "import" $sloc in
+      let_or_exp named x (ImportE (f, ref "")) (at $sloc) }
+
 parse_prog :
-  | ds=seplist(dec, semicolon) EOF
-    { fun filename -> { it = ds; at = at $sloc ; note = filename} }
+  | is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
+    { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
 
 parse_prog_interactive :
-  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
-    { fun filename -> { it = ds; at = at $sloc ; note = filename} }
+  | is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
+    { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
 
 %%

@@ -204,3 +204,9 @@ let check_prog prog =
     ignore (decs msgs prog.it);
     Some ()
   )
+
+let check_lib lib =
+  Diag.with_message_store (fun msgs ->
+    ignore (exp msgs lib.it);
+    Some ()
+  )

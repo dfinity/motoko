@@ -1,7 +1,7 @@
-module {
-  import Int "int.as";
-  import Prelude "prelude.as";
+import Int "int.as";
+import Prelude "prelude.as";
 
+module {
   public func add(x : Nat, y : Nat) : Nat {
     x + y;
   };

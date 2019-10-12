@@ -1,8 +1,8 @@
-module {
-  import Array "../../../array.as";
-  import Int "../../../int.as";
-  import Text "../../../text.as";
+import Array "../../../array.as";
+import Int "../../../int.as";
+import Text "../../../text.as";
 
+module {
   public type Group = {
     name : Text;
     groups : [Group];

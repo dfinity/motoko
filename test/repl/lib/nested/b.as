@@ -1,3 +1,4 @@
+import A "./a.as";
 module {
-  import "./a.as";
+  public let i = A.i;
 }

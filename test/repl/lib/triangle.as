@@ -1,1 +1,1 @@
-import "a.as"
+import A "a.as"

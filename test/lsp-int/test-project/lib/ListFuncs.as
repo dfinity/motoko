@@ -1,6 +1,6 @@
-module {
-  import List = "./ListLib.as";
+import List = "./ListLib.as";
 
+module {
   public func singleton<T>(x: T): List.List<T> =
     List.cons<T>(x, List.nil<T>());
 

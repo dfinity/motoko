@@ -1,8 +1,8 @@
-module {
-    import List "lib/list.as";
-    import Option "lib/option.as";
-    import P "lib/prelude.as";
+import List "lib/list.as";
+import Option "lib/option.as";
+import P "lib/prelude.as";
 
+module {
     public type Stack = List.List<Int>;
 
     let (a, b) = (1, 2);

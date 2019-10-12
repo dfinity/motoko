@@ -14,7 +14,7 @@ val generate_idl : string list -> Idllib.Syntax.prog Diag.result
 
 val initial_stat_env : Scope.scope
 val chase_imports : parse_fn -> Scope.scope -> Resolve_import.S.t ->
-  (Syntax.libraries * Scope.scope) Diag.result
+  (Syntax.lib list * Scope.scope) Diag.result
 
 val run_files           : string list -> unit option
 val interpret_ir_files  : string list -> unit option
