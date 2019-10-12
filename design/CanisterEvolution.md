@@ -2,16 +2,17 @@
 Claim 1: 
          Subtyping is the wrong idea for typing canister upgrades.
 
-Subtyping is a partial order.  Time is a total order.  This idea
-conflates these two (distinct) notion, which fundementally does not
-make sense, and thus leads only to non-solutions.
+Subtyping is a partial order.  Time is a total order.  Using subtyping
+to reason about time conflates these two (distinct) notions, which
+fundamentally does not make sense, and thus leads only to
+non-solutions.
 
-Analogy from Gradual typing literature: Type consistency is a partial
-order, but is distinct from subtyping.  These orderings are not
-comparable, and attempts to use subtyping to define gradual type
-consistency do not work.  Instead, type consistency is defined as
-another (distinct) binary relation over types, with distinct
-algebraic properties.
+Consider an analogy from the gradual typing literature: Type
+consistency is a partial order, but is distinct from subtyping.  These
+orderings are not comparable, and attempts to use subtyping to define
+gradual type consistency do not work.  Instead, type consistency is
+defined as another (distinct) binary relation over types, with
+distinct algebraic properties.
 
 Analogously, we need a distinct relation (_not_ subtyping!) for
 describing how the interface of a single canister relates to its
@@ -60,7 +61,7 @@ where the program terms e1 and e2 have the following types:
   e2 : S -> T
 
 And these terms form a kind of "lens structure" (maybe?), which may or may not
-be a Gaolis connection (maybe?).
+be a Galois connection (maybe?).
 
 These two properties say that these bridge functions compose as the
 identity when going from the past to the future and back (claim 2, below),
@@ -72,21 +73,21 @@ back to the past and then back to the future (claim 3, below):
 
   Claim 3. For all y : S.
                    (e1 (e2 y)) <= y    <----- this ordering is over terms, not types,
-                                              and it corresonds to "term evolution".
+                                              and it corresponds to "term evolution".
 
 = Record type evolution and "the bridge algorithm"
 
 Suppose that S1 evolves to S2.
 
 Let's consider the case where S1 and S2 are record types that define
-the input and output records of a canister's interface.  As we define
+the input and output records of a cannister's interface.  As we define
 below, S1 and S2 can relate by:
 
  - S2 adds an option field to S1 (a form of "width" evolution).
  - S2 reserves an additional field compared with S1 (a form of "width" evolution).
  - S2 evolves the type of an existing field in S1 (a form of "depth" evolution).
 
-To define the execution semantics of these accomodations, we can
+To define the execution semantics of these accommodations, we can
 extend the binary relation to generate the "bridge code" by adding and
 removing these optional fields, or otherwise massaging the message.
 
@@ -96,7 +97,7 @@ effect of these terms can be performed on the fly given a runtime
 representation of the two message types, which are available in our
 current IDL design.
 
-Hence, each canister's runtime can contain a single "bridge algorithm"
+Hence, each cannister's runtime can contain a single "bridge algorithm"
 that is fixed for all time, that works for all current and future
 message types.  Below, we discuss the higher order case of bridging
 types across canister evolution.
