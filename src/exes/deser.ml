@@ -119,7 +119,7 @@ type typ = Null | Bool | Nat | NatN of int
          | Opt of typ Lazy.t | Vec of typ Lazy.t
          | Record of fields
          | Variant of alts
-         | Function of (int * typ Lazy.t) array * (int * typ Lazy.t) array * ann array
+         | Function of typ Lazy.t array * typ Lazy.t array * ann array
 
 and alts = (int * typ Lazy.t) array
 and fields = (int * typ Lazy.t) array
@@ -404,11 +404,11 @@ let read_type lookup : (typ * outputter) Lazy.t =
                  let alts = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
                  let consumers = Array.map (fun (_, tynum) () -> snd (prim_or_lookup tynum) ()) assocs in
                  Variant alts, fun () -> herald_variant (); let i = read_leb128 () in herald_member alts i (Array.get consumers i) ())
-  | -22 -> let assocs1 = read_t_star read_assoc in
-           let assocs2 = read_t_star read_assoc in
+  | -22 -> let types1 = read_t_star read_type_index in
+           let types2 = read_t_star read_type_index in
            let anns = read_t_star read_annotation in
-           lazy (let args = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs1 in
-                 let rslts = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs2 in
+           lazy (let args = Array.map (fun tynum -> lfst (lprim_or_lookup tynum)) types1 in
+                 let rslts = Array.map (fun tynum -> lfst (lprim_or_lookup tynum)) types2 in
                  Function (args, rslts, anns), epsilon)
 
 (*
