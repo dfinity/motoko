@@ -676,8 +676,8 @@ class_body :
 
 imp :
   | IMPORT xf=id_opt EQ? f=TEXT
-    { let named, x = xf "import" $sloc in
-      let_or_exp named x (ImportE (f, ref "")) (at $sloc) }
+    { let _, x = xf "import" $sloc in
+      let_or_exp true x (ImportE (f, ref "")) (at $sloc) }
 
 parse_prog :
   | is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
