@@ -169,7 +169,7 @@ let pp_rec ppf x =
   pp_close_box ppf ();
   pp_print_cut ppf ()
 
-let pp_actor ppf actor =
+let pp_actor ppf actor recs =
   pp_open_hovbox ppf 1;
   kwd ppf "const";
   (match actor.it with
@@ -182,7 +182,11 @@ let pp_actor ppf actor =
           concat ppf pp_meth "," tp;
           str ppf "});"
        | VarT var ->
-          id ppf x; space ppf (); kwd ppf "="; str ppf (var.it ^ ".__typ;");
+          id ppf x; space ppf (); kwd ppf "=";
+          if TS.mem var.it recs then
+            str ppf (var.it ^ ".__typ;")
+          else
+            str ppf var.it;
        | _ -> assert false
       );
       pp_force_newline ppf ();
@@ -213,7 +217,7 @@ let pp_prog ppf env prog =
      pp_open_vbox ppf 0;
      TS.iter (pp_rec ppf) recs;
      List.iter (pp_dec ppf) env_list;
-     pp_actor ppf actor;
+     pp_actor ppf actor recs;
      pp_close_box ppf ();
      pp_footer ppf ()
    
