@@ -382,19 +382,15 @@ let read_type lookup : (typ * outputter) Lazy.t =
   match read_sleb128 () with
   | p when p < 0 && p > -18 -> from_val (decode_primitive_type p)
   | -18 ->
-    begin
-      let reader consumer () =
-        match read_byte () with
-        | 0 -> output_nil ()
-        | 1 -> output_some (force consumer)
-        | _ -> failwith "invalid optional" in
-      match read_type_index () with
-           | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             from_val (Opt (lazy t), reader (lazy consumer))
-           | i -> lazy (let p = lookup i in
-                        Opt (lfst p), reader (lsnd p))
-    end
-  | -19 -> let i = match read_type_index () in
+    let reader consumer () =
+      match read_byte () with
+      | 0 -> output_nil ()
+      | 1 -> output_some (force consumer)
+      | _ -> failwith "invalid optional" in
+    let i = read_type_index () in
+    lazy (let p = lprim_or_lookup i in
+          Opt (lfst p), reader (lsnd p))
+  | -19 -> let i = read_type_index () in
            lazy
              (let p = lprim_or_lookup i in
               Vec (lfst p), fun () -> read_star_heralding () output_vector (force (lsnd p)))
