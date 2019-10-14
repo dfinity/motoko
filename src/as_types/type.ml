@@ -588,6 +588,7 @@ let shared t =
     end
   in go t
 
+
 let is_shared_func t =
   match normalize t with
   | Func(Shared _, _, _, _,_) -> true

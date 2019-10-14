@@ -69,9 +69,34 @@ let local_error env at fmt =
 let warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
 
-let error_in modes env at fmt =
-  if List.mem !Flags.compile_mode modes then
-    error env at fmt
+type limit =
+  Temporary   (* not yet implemented in target *)
+| Indefinite  (* not sure how to support it on target *)
+
+let flag_of_compile_mode mode =
+  match mode with
+  | Flags.ICMode -> ""
+  | Flags.WasmMode -> " with flag -no-system-api"
+  | Flags.AncientMode -> " with flag -ancient-system-api"
+
+let compile_mode_error limit env mode at fmt =
+  Printf.ksprintf
+    (fun s ->
+      let s =
+        Printf.sprintf "%s\n (This is %slimitation of interpretation/compilation%s.)"
+          s
+          (match limit with
+           | Temporary ->  "a temporary "
+           | Indefinite -> "an indefinite "
+          )
+          (flag_of_compile_mode mode)
+      in
+      Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
+
+let error_in limit modes env at fmt =
+  let mode = !Flags.compile_mode in
+  if List.mem mode modes then
+    compile_mode_error limit env mode at fmt
 
 (* Context extension *)
 
@@ -685,9 +710,9 @@ and infer_exp'' env exp : T.typ =
       check_exp env t_arg exp2;
       if Type.is_shared_sort sort then begin
         if T.is_async t_ret && not in_await then
-          error_in [Flags.ICMode] env exp2.at
+          error_in Indefinite [Flags.ICMode] env exp2.at
             "shared, async function must be called within an await expression";
-        error_in [Flags.ICMode] env exp1.at "call to shared function not yet supported";
+        error_in Temporary [Flags.ICMode] env exp1.at "call to shared function not yet supported";
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
@@ -833,7 +858,7 @@ and infer_exp'' env exp : T.typ =
     T.Non
   | AsyncE exp1 ->
     if not in_shared then
-      error_in [Flags.ICMode] env exp.at "unsupported async block";
+      error_in Indefinite [Flags.ICMode] env exp.at "unsupported async block";
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
@@ -848,8 +873,8 @@ and infer_exp'' env exp : T.typ =
     (match exp1.it with
        | CallE (f, _, _) ->
          if not env.pre && (Call_conv.call_conv_of_typ f.note.note_typ).Call_conv.control = T.Returns then
-           error_in [Flags.ICMode] env f.at "expecting call to shared, async function in await";
-      | _ -> error_in [Flags.ICMode] env exp1.at "argument to await must be a call expression");
+           error_in Indefinite [Flags.ICMode] env f.at "expecting call to shared, async function in await";
+      | _ -> error_in Indefinite [Flags.ICMode] env exp1.at "argument to await must be a call expression");
     (try
        T.as_async_sub t1
     with Invalid_argument _ ->
@@ -914,7 +939,7 @@ and check_exp' env0 t exp : T.typ =
     t
   | AsyncE exp1, T.Async t' ->
     if not in_shared then
-      error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
+      error_in Indefinite [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
     check_exp env' t' exp1;
     t
