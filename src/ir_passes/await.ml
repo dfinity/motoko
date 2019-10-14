@@ -84,8 +84,8 @@ and t_exp' context exp' =
     ArrayE (mut, typ, List.map (t_exp context) exps)
   | IdxE (exp1, exp2) ->
     IdxE (t_exp context exp1, t_exp context exp2)
-  | CallE (cc, exp1, typs, exp2) ->
-    CallE (cc, t_exp context exp1, typs, t_exp context exp2)
+  | CallE (exp1, typs, exp2) ->
+    CallE (t_exp context exp1, typs, t_exp context exp2)
   | BlockE b ->
     BlockE (t_block context b)
   | IfE (exp1, exp2, exp3) ->
@@ -137,9 +137,9 @@ and t_exp' context exp' =
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
-  | FuncE (x, s, typbinds, pat, typ, exp) ->
+  | FuncE (x, s, c, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
-    FuncE (x, s, typbinds, pat, typ,t_exp context' exp)
+    FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)
   | ActorE (id, ds, ids, t) ->
     ActorE (id, t_decs context ds, ids, t)
   | NewObjE (sort, ids, typ) -> exp'
@@ -262,8 +262,8 @@ and c_exp' context exp k =
     nary context k (fun vs -> e (ArrayE (mut, typ, vs))) exps
   | IdxE (exp1, exp2) ->
     binary context k (fun v1 v2 -> e (IdxE (v1, v2))) exp1 exp2
-  | CallE (cc, exp1, typs, exp2) ->
-    binary context k (fun v1 v2 -> e (CallE (cc, v1, typs, v2))) exp1 exp2
+  | CallE (exp1, typs, exp2) ->
+    binary context k (fun v1 v2 -> e (CallE (v1, typs, v2))) exp1 exp2
   | BlockE (decs, exp) ->
     c_block context decs exp k
   | IfE (exp1, exp2, exp3) ->
