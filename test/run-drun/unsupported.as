@@ -3,9 +3,7 @@
 // top-level actor objects are supported
 actor Counter {
 
-    /* TODO
-    func shared bad_shared() { }; // not  public
-    */
+    shared func bad_private_shared() { }; // not  public
 
     public func badactorarg(a:actor{}) : async () {};
 
@@ -39,9 +37,8 @@ actor Counter {
 }
 ;
 
-/* TODO
-func shared bad_shared() { }; // not actor enclosed
-*/
+shared func bad_shared() { }; // not actor enclosed
+
 
 func local_spawn() {
   ignore(async ()); // not yet supported
@@ -65,5 +62,5 @@ func local_spawn() {
 */
 
 {
-  actor class BadActorClass () { };
+  actor class BadActorClass () { }; // no actor classes
 };

@@ -24,6 +24,7 @@ type env =
     labs : lab_env;
     rets : ret_env;
     async : bool;
+    in_actor : bool;
     in_await : bool;
     in_shared : bool;
     pre : bool;
@@ -41,6 +42,7 @@ let env_of_scope msgs scope =
     async = false;
     in_await = false;
     in_shared = false;
+    in_actor = false;
     pre = false;
     msgs;
   }
@@ -518,9 +520,10 @@ and infer_exp' f env exp : T.typ =
   t'
 
 and infer_exp'' env exp : T.typ =
+  let in_actor = env.in_actor in
   let in_await = env.in_await in
   let in_shared = env.in_shared in
-  let env = {env with in_await = false; in_shared = false} in
+  let env = {env with in_actor = false; in_await = false; in_shared = false} in
   match exp.it with
   | PrimE _ ->
     error env exp.at "cannot infer type of primitive"
@@ -605,7 +608,7 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t1)
     )
   | ObjE (sort, fields) ->
-    let env' = if sort.it = T.Actor then {env with async = false} else env in
+    let env' = if sort.it = T.Actor then {env with async = false; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
@@ -656,6 +659,8 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t1)
     )
   | FuncE (_, sort, typ_binds, pat, typ_opt, exp) ->
+    if not env.pre && not in_actor && T.is_shared_sort sort.it then
+      error_in Indefinite [Flags.ICMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let typ =
       match typ_opt with
       | Some typ -> typ
@@ -1386,12 +1391,13 @@ and is_typ_dec dec : bool = match dec.it with
 
 
 and infer_obj env s fields at : T.typ =
+  let env = {env with in_actor = s = T.Actor} in
   let decs = List.map (fun (field : exp_field) -> field.it.dec) fields in
   let _, scope = infer_block env decs at in
   let t = object_of_scope env s fields scope at in
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
-    if s = T.Actor then
+    if s = T.Actor then begin
       List.iter (fun T.{lab; typ} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields fields in
@@ -1399,12 +1405,17 @@ and infer_obj env s fields at : T.typ =
             "public actor field %s has non-shared type\n  %s"
             lab (T.string_of_typ_expand typ)
       ) tfs;
-    if s = T.Actor then
       List.iter (fun ef ->
         if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) && not (is_typ_dec ef.it.dec) then
           local_error env ef.it.dec.at
             "public actor field needs to be a manifest function"
-      ) fields;
+        ) fields;
+      List.iter (fun ef ->
+        if ef.it.vis.it = Syntax.Private  && is_actor_method ef.it.dec then
+          error_in Temporary [Flags.ICMode] env ef.it.dec.at
+            "a shared function cannot be private"
+        ) fields;
+    end;
     if s = T.Module then Static.fields env.msgs fields
   end;
   t
@@ -1456,7 +1467,8 @@ and infer_dec env dec : T.typ =
         { (add_val env'' self_id.it self_typ) with
           labs = T.Env.empty;
           rets = None;
-          async = false
+          async = false;
+          in_actor = sort.it = T.Actor;
         }
       in
       let t' = infer_obj env''' sort.it fields dec.at in
