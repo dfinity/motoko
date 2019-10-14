@@ -132,11 +132,10 @@ and fields = (int * typ Lazy.t) array
 
 (* type index/ground type (negative) *)
 
-let read_type_index = read_sleb128
+let read_type_index () = let ty = read_sleb128 () in assert (ty > -18); ty
 
 let read_assoc () = let hash = read_leb128 () in
                     let tynum = read_type_index () in
-                    assert (tynum > -18);
                     Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
 
 module type Dump =
@@ -371,6 +370,7 @@ let decode_primitive_type : int -> typ * outputter =
 
 let read_type lookup : (typ * outputter) Lazy.t =
   let lprim_or_lookup = function
+    | p when p < -17 -> assert false
     | p when p < 0 -> lazy (decode_primitive_type p)
     | i -> lookup i in
   let prim_or_lookup ty = force (lprim_or_lookup ty) in
@@ -389,20 +389,15 @@ let read_type lookup : (typ * outputter) Lazy.t =
         | 1 -> output_some (force consumer)
         | _ -> failwith "invalid optional" in
       match read_type_index () with
-           | p when p < -17 -> assert false
            | p when p < 0 -> let t, consumer = decode_primitive_type p in
                              from_val (Opt (lazy t), reader (lazy consumer))
            | i -> lazy (let p = lookup i in
                         Opt (lfst p), reader (lsnd p))
     end
-  | -19 -> begin match read_type_index () with
-           | p when p < -17 -> assert false
-           | p when p < 0 -> let t, consumer = decode_primitive_type p in
-                             from_val (Vec (lazy t), fun () -> read_star_heralding () output_vector consumer)
-           | i ->
-             lazy (let p = lookup i in
-                   Vec (lfst p), fun () -> read_star_heralding () output_vector (force (lsnd p)))
-           end
+  | -19 -> let i = match read_type_index () in
+           lazy
+             (let p = lprim_or_lookup i in
+              Vec (lfst p), fun () -> read_star_heralding () output_vector (force (lsnd p)))
   | -20 -> let assocs = read_t_star read_assoc in
            lazy (let herald_record, herald_member = output_record (Array.length assocs) in
                  let members = Array.map (fun (i, tynum) -> i, lfst (lprim_or_lookup tynum)) assocs in
