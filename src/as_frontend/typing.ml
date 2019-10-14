@@ -883,9 +883,9 @@ and check_exp env t exp =
   let e = A.infer_effect_exp exp in
   exp.note <- {note_typ = t'; note_eff = e}
 
-and check_exp' env t exp : T.typ =
-  let in_shared = env.in_shared in
-  let env = {env with in_await = false; in_shared = false} in
+and check_exp' env0 t exp : T.typ =
+  let in_shared = env0.in_shared in
+  let env = {env0 with in_await = false; in_shared = false} in
   match exp.it, t with
   | PrimE s, T.Func _ ->
     t
@@ -980,9 +980,9 @@ and check_exp' env t exp : T.typ =
     check_exp (adjoin_vals env' ve) t2 exp;
     t
   | _ ->
-    let t' = infer_exp env exp in
+    let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
-      local_error env exp.at
+      local_error env0 exp.at
         "expression of type\n  %s\ncannot produce expected type\n  %s"
         (T.string_of_typ_expand t')
         (T.string_of_typ_expand t);
