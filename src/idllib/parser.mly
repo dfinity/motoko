@@ -31,7 +31,7 @@ let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat6
 let is_prim_typs t = List.assoc_opt t prim_typs
 
 let func_modes = ["oneway", Oneway; "query", Query]
-let get_func_mode m = List.assoc m func_modes               
+let get_func_mode m = List.assoc_opt m func_modes               
 
 let hash = IdlHash.idl_hash
 
@@ -133,7 +133,10 @@ param_typs :
 
 func_mode :
   | m=id
-    { get_func_mode m.it @@ at $sloc }
+    { match get_func_mode m.it with
+        Some m -> m @@ at $sloc
+      | None -> $syntaxerror
+    }
 
 func_modes_opt :
   | (* empty *) { [] }
