@@ -921,7 +921,7 @@ T(int)      = sleb128(-4)  = 0x7c
 T(nat8)     = sleb128(-5)  = 0x7b
 T(nat16)    = sleb128(-6)  = 0x7a
 T(nat32)    = sleb128(-7)  = 0x79
-T(nat32)    = sleb128(-8)  = 0x78
+T(nat64)    = sleb128(-8)  = 0x78
 T(int8)     = sleb128(-9)  = 0x77
 T(int16)    = sleb128(-10) = 0x76
 T(int32)    = sleb128(-11) = 0x75
@@ -942,8 +942,8 @@ T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
-T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
-  sleb128(-22) T*(<fieldtype1>*) T*(<fieldtype2>*) T*(<funcann>*) // 0x6a
+T(func (<datatype1>*) -> (<datatype2>*) <funcann>*) =
+  sleb128(-22) T*(<datatype1>*) T*(<datatype2>*) T*(<funcann>*) // 0x6a
 T(service {<methtype>*}) =
   sleb128(-23) T*(<methtype>*)                                    // 0x69
 
@@ -1075,3 +1075,51 @@ The same representation is used for function results.
 Note:
 
 * It is unspecified how the pair (B,R) representing a serialised value is bundled together in an external environment.
+
+
+## Text Format
+
+To enable convenient debugging, we also specify a text format for IDL values.
+The types of these values are assumed to be known from context, so the syntax does not attempt to be self-describing.
+
+```
+<val> ::=
+  | <primval> | <consval> | <refval>
+  | <val> : <datatype>
+
+<primval> ::=
+  | <nat> | <int> | <float>     (TODO: same as ActorScript grammar plus sign)
+  | <text>                      (TODO: same as ActorScript grammar)
+  | true | false
+  | null
+
+<consval> ::=
+  | opt <val>
+  | vec { <val>;* }
+  | record { <fieldval>;* }
+  | variant { <fieldval> }
+
+<fieldval> ::= <nat> = <val>
+
+<refval> ::=
+  | service <text>             (canister URI)
+  | func <text> . <id>         (canister URI and message name)
+
+<arg> ::= ( <val>,* )
+
+```
+
+#### Syntactic Shorthands
+
+Analoguous to types, a few syntactic shorthands are supported that can be reduced to the basic value forms:
+
+```
+<consval> ::= ...
+  | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted [as in the WebAssembly textual format](https://webassembly.github.io/spec/core/text/values.html#strings)
+
+<fieldval> ::= ...
+  | <name> = <val>         :=  <hash(name)> = <val>
+  | <val>                  :=  N = <val>  where N is either 0 or previous + 1  (only in records)
+  | <nat>                  :=  <nat> = null   (only in variants)
+  | <name>                 :=  <name> = null  (only in variants)
+```
