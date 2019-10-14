@@ -694,7 +694,7 @@ null        <: <argtype2>
 -------------------------------------------------------------------------------------------------------------------
 func ( <argtype1>,*,<argtype2>,* ) -> ( <argtype3>,*,<argtype4>,* ) <funcann>* <: func ( <argtype1'>,* ) -> ( <argtype2'>,* ) <funcann>*
 ```
-where the premises are read pointwise, with all meta-sequences per premise having the same length. The fourth premise is vacuoulsy true and included only for symmetry.
+where the premises are read pointwise, with all meta-sequences per premise having the same length. The fourth premise is vacuously true and included only for symmetry.
 
 Viewed as sets, the annotations on the functions must be equal.
 
