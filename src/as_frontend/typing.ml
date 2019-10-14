@@ -254,11 +254,8 @@ and check_typ_field env s typ_field : T.field =
   let {id; mut; typ} = typ_field.it in
   let t = infer_mut mut (check_typ env typ) in
   if not env.pre && s = T.Actor then begin
-    if not (T.is_func (T.promote t)) then
-      error env typ.at "actor field %s has non-function type\n  %s"
-        id.it (T.string_of_typ_expand t);
-    if not (T.is_shared_function t) then
-      error env typ.at "actor field %s has non-shared type\n  %s"
+    if not (T.is_shared_func t) then
+      error env typ.at "actor field %s must have shared function type, but has type \n  %s"
         id.it (T.string_of_typ_expand t)
   end;
   T.{lab = id.it; typ = t}
@@ -1370,8 +1367,8 @@ and infer_obj env s fields at : T.typ =
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
     if s = T.Actor then
-      List.iter (fun (T.{lab; typ}) ->
-        if not (T.is_typ typ) && not (T.is_shared_function typ) then
+      List.iter (fun T.{lab; typ} ->
+        if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields fields in
           error env (T.Env.find lab pub_val)
             "public actor field %s has non-shared type\n  %s"
