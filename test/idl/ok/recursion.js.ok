@@ -23,6 +23,6 @@ s.fill(
   'g':
    IDL.Func(IDL.Obj({'0': list}), IDL.Obj({'2': stream, '1': tree, '0': B}))
   }))
-const actor_A = s;
+const actor_A = s.__typ;
  return actor_A;
 };
