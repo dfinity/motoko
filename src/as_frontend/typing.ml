@@ -498,7 +498,7 @@ and infer_exp' f env exp : T.typ =
 and infer_exp'' env exp : T.typ =
   let in_await = env.in_await in
   let in_shared = env.in_shared in
-  let env = { env with in_await = false; in_shared = false } in
+  let env = {env with in_await = false; in_shared = false} in
   match exp.it with
   | PrimE _ ->
     error env exp.at "cannot infer type of primitive"
