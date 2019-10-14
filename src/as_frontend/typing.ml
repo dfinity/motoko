@@ -689,7 +689,7 @@ and infer_exp'' env exp : T.typ =
       if Type.is_shared_sort sort then begin
         if T.is_async t_ret && not in_await then
           error_in [Flags.ICMode] env exp2.at
-               "shared, async function must be called within an await expression";
+            "shared, async function must be called within an await expression";
         error_in [Flags.ICMode] env exp1.at "call to shared function not yet supported";
         if not (T.concrete t_arg) then
           error env exp1.at
