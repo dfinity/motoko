@@ -646,7 +646,7 @@ and infer_exp'' env exp : T.typ =
     let t2 = check_typ env' typ in
     if not env.pre then begin
       let env'' =
-        {env' with
+        { env' with
           labs = T.Env.empty;
           rets = Some t2;
           async = false;
