@@ -810,6 +810,8 @@ func ( <datatype1>,* ) -> ( <datatype2>,* ) <funcann>* <: func ( <datatype1'>,* 
   ~> \x.\y.f2 (x (f1 y))
 ```
 
+Note that because of transitivity and coherence of elaboration, the function wrapper can be applied lazily when the function is invoked. It is sound to pass the original function value in higher-order contexts.
+
 #### Actors
 
 ```
