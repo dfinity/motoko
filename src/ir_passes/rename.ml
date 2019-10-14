@@ -44,8 +44,7 @@ and exp' rho e  = match e with
   | AssignE (e1, e2)    -> AssignE (exp rho e1, exp rho e2)
   | ArrayE (m, t, es)   -> ArrayE (m, t, exps rho es)
   | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)
-  | CallE (cc, e1, ts, e2)
-                        -> CallE  (cc, exp rho e1, ts, exp rho e2)
+  | CallE (e1, ts, e2)  -> CallE  (exp rho e1, ts, exp rho e2)
   | BlockE (ds, e1)     -> let ds', rho' = decs rho ds
                            in BlockE (ds', exp rho' e1)
   | IfE (e1, e2, e3)    -> IfE (exp rho e1, exp rho e2, exp rho e3)
@@ -63,10 +62,10 @@ and exp' rho e  = match e with
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
-  | FuncE (x, s, tp, p, ts, e) ->
+  | FuncE (x, s, c, tp, p, ts, e) ->
      let p', rho' = args rho p in
      let e' = exp rho' e in
-     FuncE (x, s, tp, p', ts, e')
+     FuncE (x, s, c, tp, p', ts, e')
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
   | ThrowE e            -> ThrowE (exp rho e)
   | TryE (e, cs)        -> TryE (exp rho e, cases rho cs)

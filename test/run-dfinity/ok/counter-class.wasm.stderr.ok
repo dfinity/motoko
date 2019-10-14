@@ -5,10 +5,11 @@ non-closed actor: (ActorE
     (VarP dec)
     (FuncE
       dec
-      (shared 0 -> 0)
+      Shared
+      Returns
       ()
       (BlockE
-        (LetD WildP (CallE (1 -> 0) (VarE showCounter) (VarE j)))
+        (LetD WildP (CallE (VarE showCounter) (VarE j)))
         (AssignE
           (VarE j)
           (PrimE (BinPrim Int SubOp) (VarE j) (LitE (IntLit 1)))
@@ -20,29 +21,32 @@ non-closed actor: (ActorE
     (VarP read)
     (FuncE
       read
-      (shared 1 -> 0)
+      Shared
+      Returns
       (params $reply/0)
       ()
       (CallE
-        (2 -> 0)
         (FuncE
           $lambda
-          (2 -> 0)
+          Local
+          Returns
           (params $k/0 $r/0)
           ()
-          (CallE (1 -> 0) (VarE $k/0) (VarE j))
+          (CallE (VarE $k/0) (VarE j))
         )
         (TupE
           (FuncE
             $lambda
-            (1 -> 0)
+            Local
+            Returns
             (params $v/0)
             ()
-            (CallE (shared 1 -> 0) (VarE $reply/0) (VarE $v/0))
+            (CallE (VarE $reply/0) (VarE $v/0))
           )
           (FuncE
             $lambda
-            (1 -> 0)
+            Local
+            Returns
             (params $e/0)
             ()
             (AssertE (LitE (BoolLit false)))
