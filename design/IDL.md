@@ -814,7 +814,7 @@ func ( <argtype1>,*,<argtype2>,* ) -> ( <argtype3>,*,<argtype4>,* ) <funcann>* <
 ```
 where the `f1`, `f2`, `f3` and the pattern match work on subsequences of the appropriate length.
 
-Note that because of transitive coherence of subtyping, and the fact that encoded messages contain the argument types, function references (here `g`) do not have to be eagerly wrapped, but it suffices to infer and apply the coercions when recieving concrete values.
+Note that because of transitive coherence of subtyping, and the fact that encoded messages contain the argument types, function references (here `g`) do not have to be eagerly wrapped, but it suffices to infer and apply the coercions when receiving concrete values.
 
 #### Actors
 
