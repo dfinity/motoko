@@ -1,3 +1,5 @@
+
+
 // top-level actor objects are supported
 actor Counter {
 
@@ -62,3 +64,6 @@ func local_spawn() {
 };
 */
 
+{
+  actor class BadActorClass () { };
+};

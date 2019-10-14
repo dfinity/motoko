@@ -1725,7 +1725,9 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c ;
     }
-  | ClassD (id, typ_binds, pat, _, _, _, _) ->
+  | ClassD (id, typ_binds, pat, _, sort, _, _) ->
+    if sort.it = T.Actor then
+      error_in Indefinite [Flags.ICMode] env dec.at "actor classes are not supported; use an actor declaration instead";
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in

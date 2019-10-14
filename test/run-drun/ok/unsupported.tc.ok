@@ -1,18 +1,20 @@
-unsupported.as:8.28-8.39: type error, shared function has non-shared parameter type
+unsupported.as:10.28-10.39: type error, shared function has non-shared parameter type
   actor {}
-unsupported.as:10.31-10.53: type error, shared function has non-shared parameter type
+unsupported.as:12.31-12.53: type error, shared function has non-shared parameter type
   shared () -> async ()
-unsupported.as:21.19-21.21: type error, shared, async function must be called within an await expression
+unsupported.as:23.19-23.21: type error, shared, async function must be called within an await expression
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:25.16-25.18: type error, call to shared function not yet supported
+unsupported.as:27.16-27.18: type error, call to shared function not yet supported
  (This is a temporary limitation of interpretation/compilation.)
-unsupported.as:30.8-30.9: type error, argument to await must be a call expression
+unsupported.as:32.8-32.9: type error, argument to await must be a call expression
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:34.17-34.29: type error, unsupported async block
+unsupported.as:36.17-36.29: type error, unsupported async block
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:45.10-45.18: type error, unsupported async block
+unsupported.as:47.10-47.18: type error, unsupported async block
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:50.31-50.48: type error, shared function has non-shared parameter type
+unsupported.as:52.31-52.48: type error, shared function has non-shared parameter type
   shared () -> ()
-unsupported.as:55.31-55.41: type error, shared function has non-shared parameter type
+unsupported.as:57.31-57.41: type error, shared function has non-shared parameter type
   actor {}
+unsupported.as:68.3-68.35: type error, actor classes are not supported; use an actor declaration instead
+ (This is an indefinite limitation of interpretation/compilation.)
