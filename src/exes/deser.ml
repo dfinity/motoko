@@ -1,6 +1,12 @@
 open Stdio.In_channel
 open Lazy
 
+(* The type of outputters
+
+ While decoding a type, we simultaneously build an outputter (IO action),
+ that reads bytes from the stdin and dumps to stdout in a formatted way.
+*)
+
 type outputter = unit -> unit
 
 (* read nothing *)
