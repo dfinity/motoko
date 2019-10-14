@@ -9,7 +9,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | Js
+type mode = Default | Check | Js | PrettyPrint
 
 let mode = ref Default
 let args = ref []
@@ -27,6 +27,7 @@ let argspec = Arg.align
 [
   "--js", Arg.Unit (set_mode Js), " output Javascript binding";
   "--check", Arg.Unit (set_mode Check), " type-check only";
+  "--pp", Arg.Unit (set_mode PrettyPrint), "Pretty print did file";
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-o", Arg.Set_string out_file, " output file";
@@ -43,6 +44,9 @@ let process_file file : unit =
      assert false
   | Check ->
      ignore (Diag.run (Pipeline.check_file file))
+  | PrettyPrint ->
+     let (ast, _) = Diag.run (Pipeline.check_file file) in
+     printf "%s" (Idllib.Arrange_idl.string_of_prog ast);
   | Js ->
      if !out_file = "" then
          out_file := Filename.remove_extension (Filename.basename file) ^ ".js";
