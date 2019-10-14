@@ -182,7 +182,7 @@ let pp_actor ppf actor =
           concat ppf pp_meth "," tp;
           str ppf "});"
        | VarT var ->
-          id ppf x; space ppf (); kwd ppf "="; id ppf (var.it ^ ".__typ;");
+          id ppf x; space ppf (); kwd ppf "="; str ppf (var.it ^ ".__typ;");
        | _ -> assert false
       );
       pp_force_newline ppf ();
