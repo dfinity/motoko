@@ -1,16 +1,16 @@
-const IDL = require('IDL')
+export default ({ IDL }) => {
 const B = IDL.Rec()
 const list = IDL.Rec()
 const s = IDL.Rec()
 const stream = IDL.Rec()
 const tree = IDL.Rec()
-const t = IDL.Message(IDL.Obj({'server': s}), IDL.Obj({}))
+const t = IDL.Func(IDL.Obj({'server': s}), IDL.Obj({}))
 const node = IDL.Obj({'head': IDL.Nat, 'tail': list})
 list.fill(IDL.Opt(node))
 stream.fill(
  IDL.Opt(
   IDL.Obj({'head': IDL.Nat,
-   'next': IDL.Message(IDL.Obj({}), IDL.Obj({'0': stream}))}))
+   'next': IDL.Func(IDL.Obj({}), IDL.Obj({'0': stream}))}))
   )
 tree.fill(
  IDL.Variant({
@@ -21,6 +21,8 @@ B.fill(IDL.Opt(A))
 s.fill(
  new IDL.ActorInterface({'f': t,
   'g':
-   IDL.Message(IDL.Obj({'0': list}),
-    IDL.Obj({'2': stream, '1': tree, '0': B}))}))
-const actor_S = s
+   IDL.Func(IDL.Obj({'0': list}), IDL.Obj({'2': stream, '1': tree, '0': B}))
+  }))
+const actor_S = s.__typ;
+ return actor_S;
+};

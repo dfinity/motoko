@@ -36,6 +36,17 @@ let dfinity-repo = import (builtins.fetchGit {
   rev = "ab9d9d6ccba33748fc92f6e8d631327f7f25aead";
 }) { system = nixpkgs.system; }; in
 
+let sdk = import (builtins.fetchGit {
+  url = "ssh://git@github.com/dfinity-lab/sdk";
+  ref = "paulyoung/ts-user-library";
+  rev = "42f15621bc5b228c7fd349cb52f265917d33a3a0";
+}) { system = nixpkgs.system; }; in
+
+let esm = builtins.fetchTarball {
+  sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
+  url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
+}; in
+
 let real-dvm =
   if dvm == null
   then dev.dvm
@@ -46,8 +57,7 @@ let real-drun =
   then dfinity-repo.dfinity.drun
   else drun; in
 
-# Include js-client
-let js-client = dev.js-dfinity-client; in
+let js-user-library = sdk.js-user-library; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = self: super: {
@@ -269,11 +279,12 @@ rec {
         nixpkgs.getconf
         nixpkgs.nodejs-10_x
         filecheck
-        js-client
+        js-user-library
         dvm
         drun
         qc-actorscript
         lsp-int
+        esm
       ] ++
       llvmBuildInputs;
 
@@ -283,7 +294,8 @@ rec {
         export ASC=asc
         export AS_LD=as-ld
         export DIDC=didc
-        export JSCLIENT=${js-client}
+        export ESM=${esm}
+        export JS_USER_LIBRARY=${js-user-library}
         asc --version
         make parallel
         qc-actorscript${nixpkgs.lib.optionalString (replay != 0)
@@ -552,8 +564,9 @@ rec {
     ));
 
     shellHook = llvmEnv;
+    ESM=esm;
+    JS_USER_LIBRARY=js-user-library;
     TOMMATHSRC = libtommath;
-    JSCLIENT = js-client;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
   } else null;
 
