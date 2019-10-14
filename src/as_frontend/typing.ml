@@ -971,7 +971,7 @@ and check_exp' env t exp : T.typ =
         "function return type\n  %s\ndoes not match expected return type\n  %s"
         (T.string_of_typ_expand t2) (T.string_of_typ_expand (T.seq ts2));
     let env' =
-      {env with
+      { env with
         labs = T.Env.empty;
         rets = Some t2;
         async = false;
