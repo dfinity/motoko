@@ -687,12 +687,14 @@ variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; 
 
 For a specialised function, any parameter type can be generalised and any result type specialised. Moreover, arguments can be dropped while results can be added. That is, the rules mirror those of tuple-like records, i.e., they are ordered and can only be extended at the end.
 ```
-record { (N1' : <datatype1'>);* } <: record { (N1 : <datatype1>);* }
-record { (N2 : <datatype2>);* } <: record { N2' : <datatype2'>);* }
+<argtype1'> <: <argtype1>
+null        <: <argtype2>
+<argtype3>  <: <argtype3'>
+<argtype4>  <: reserved
 -------------------------------------------------------------------------------------------------------------------
-func ( <datatype1>,* ) -> ( <datatype2>,* ) <funcann>* <: func ( <datatype1'>,* ) -> ( <datatype2'>,* ) <funcann>*
+func ( <argtype1>,*,<argtype2>,* ) -> ( <argtype3>,*,<argtype4>,* ) <funcann>* <: func ( <argtype1'>,* ) -> ( <argtype2'>,* ) <funcann>*
 ```
-where `NI*` is the `<nat>` sequence `1`..`|<datatypeNI>*|`, respectively.
+where the premises are read pointwise, with all meta-sequences per premise having the same length. The fourth premise is vacuoulsy true and included only for symmetry.
 
 Viewed as sets, the annotations on the functions must be equal.
 
@@ -803,12 +805,16 @@ variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; 
 #### Functions
 
 ```
-record { N1':<datatype1'>;* } <: record { N1:<datatype1>;* } ~> f1
-record { N2:<datatype2>;* } <: record { N2':<datatype2'>;* } ~> f2
-------------------------------------------------------------------------------------------------------------------
-func ( <datatype1>,* ) -> ( <datatype2>,* ) <funcann>* <: func ( <datatype1'>,* ) -> ( <datatype2'>,* ) <funcann>*
-  ~> \x.\y.f2 (x (f1 y))
+<argtype1'> <: <argtype1>  ~> f1
+null        <: <argtype2>  ~> f2
+<argtype3>  <: <argtype3'> ~> f3
+-------------------------------------------------------------------------------------------------------------------
+func ( <argtype1>,*,<argtype2>,* ) -> ( <argtype3>,*,<argtype4>,* ) <funcann>* <: func ( <argtype1'>,* ) -> ( <argtype2'>,* ) <funcann>*
+  ~> \g.\xs1. let (xs3', xs4') = g (f1 xs1, f2 (null,*)) in f3 xs3'
 ```
+where the `f1`, `f2`, `f3` and the pattern match work on subsequences of the appropriate length.
+
+Note that because of transitive coherence of subtyping, and the fact that encoded messages contain the argument types, function references (here `g`) do not have to be eagerly wrapped, but it suffices to infer and apply the coercions when recieving concrete values.
 
 #### Actors
 
