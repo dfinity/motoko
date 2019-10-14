@@ -27,7 +27,7 @@ let argspec = Arg.align
 [
   "--js", Arg.Unit (set_mode Js), " output Javascript binding";
   "--check", Arg.Unit (set_mode Check), " type-check only";
-  "--pp", Arg.Unit (set_mode PrettyPrint), "Pretty print did file";
+  "--pp", Arg.Unit (set_mode PrettyPrint), " Pretty print did file";
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-o", Arg.Set_string out_file, " output file";
