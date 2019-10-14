@@ -885,7 +885,7 @@ and check_exp env t exp =
 
 and check_exp' env t exp : T.typ =
   let in_shared = env.in_shared in
-  let env = { env with in_await = false; in_shared = false } in
+  let env = {env with in_await = false; in_shared = false} in
   match exp.it, t with
   | PrimE s, T.Func _ ->
     t
