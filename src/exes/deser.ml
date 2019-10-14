@@ -342,7 +342,7 @@ end
    - Legacy: top-level encoded as one value
    - Default: top-level are several values
  *)
-type mode = Legacy | Default
+type mode = Unary | Nary
 
 module MakeOutputter(F : Dump) = struct
 
@@ -435,7 +435,7 @@ let top_level md : unit =
   Printf.printf "\n========================== Value section\n";
   let open F in
   begin match md with
-  | Default ->
+  | Nary ->
     let argtys = read_t_star read_type_index in
     let herald_arguments, herald_member = output_arguments (Array.length argtys) in
     herald_arguments ();
@@ -444,7 +444,7 @@ let top_level md : unit =
       | index -> Array.get tab index in
     let consumers = Array.map (fun tynum -> let (ty, m) = typ_ingester tynum in m) argtys in
     Array.iteri (fun i f -> herald_member () i f ()) consumers
-  | Legacy ->
+  | Unary ->
     let argty = read_type_index () in
     Printf.printf "ARGTY: %d\n" argty;
     snd (Array.get tab argty) ()
@@ -460,10 +460,10 @@ let version = "0.1"
 let banner = "Interface Description Language (IDL) " ^ version ^ " message dumper"
 let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
-let mode = ref Default
+let mode = ref Nary
 
 let set_mode m () =
-  if !mode <> Default then begin
+  if !mode <> Nary then begin
     Printf.eprintf "deser: multiple execution modes specified"; exit 1
   end;
   mode := m
@@ -480,7 +480,7 @@ let set_format f () =
 
 let argspec = Arg.align
 [
-  "--legacy", Arg.Unit (set_mode Legacy), " decode legacy message API";
+  "--unary", Arg.Unit (set_mode Unary), " decode legacy (unary) message API";
   "--prose", Arg.Unit (set_format Prose), " output indented prose";
   "--json", Arg.Unit (set_format Json), " output JSON values";
   "--idl", Arg.Unit (set_format Idl), " output IDL values (default)";
