@@ -301,11 +301,11 @@ let output_nat, output_int = output_bignum, output_bignum
 let output_int8, output_int16, output_int32 = output_decimal, output_decimal, output_decimal
 let output_int64 = output_bignum
 let output_text n froms tos =
-  output_string "'";
+  output_string "\"";
   let buf = Buffer.create 0 in
   ignore (input_buffer froms buf ~len:n);
   Stdio.Out_channel.output_buffer tos buf;
-  output_string "'"
+  output_string "\""
 
 
 let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
@@ -323,13 +323,13 @@ let bracket punct max g p i f () = start (punct.[0]) i; g p i f; stop (punct.[1]
 let output_vector members : outputter * (unit -> int -> outputter -> outputter) =
   let punct = "[]" in
   let herald_vector () = if members = 0 then output_string_space punct in
-  let herald_member () i f = f (); output_string_space "," in
+  let herald_member () i f = if (i > 0) then output_string_space ","; f () in
   herald_vector, bracket punct members herald_member
 
 let output_record members : outputter * (fields -> int -> outputter -> outputter) =
   let punct = "{}" in
   let herald_record () = if members = 0 then output_string_space punct in
-  let herald_member fields i f = Printf.printf "_%d_ : " (fst (Array.get fields i)); f (); output_string_space "," in
+  let herald_member fields i f = if (i > 0) then output_string_space ","; Printf.printf "\"_%d_\": " (fst (Array.get fields i)); f () in
   herald_record, bracket punct members herald_member
 
 let output_variant members : outputter * (alts -> int -> outputter -> outputter) =
@@ -510,6 +510,5 @@ let () =
   - floats
   - service types
   - escaping in text
-  - no trailing semi or comma in JSON
   - heralding/outputting of type table
  *)
