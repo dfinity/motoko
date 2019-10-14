@@ -333,7 +333,10 @@ let output_variant members : outputter * (alts -> int -> outputter -> outputter)
   herald_variant, herald_member
 end
 
-
+(* IDL binary mode:
+   - Legacy: top-level encoded as one value
+   - Default: top-level are several values
+ *)
 type mode = Legacy | Default
 
 module MakeOutputter(F : Dump) = struct
