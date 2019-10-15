@@ -42,7 +42,7 @@ unescape(<id>) = <id>
 **Prop 1**: The range of escape is in the set of valid ActorScript field names.
 `∀ s. isValid(escape(s)) ∧ ¬ isReserved(escape(s))`
 
-**Proof**: Case analysis accoring to the definition of `escape`:
+**Proof**: Case analysis according to the definition of `escape`:
 1. If `s` is a reserved identifier, then `isValid(s)` by A1 and `isValid(escape(s))` by A3, and also `¬ isReserved(escape(s))` by A2.
 2. If `isValid(s)` and `s` ends in `"_"`, then `isValid(escape(s))` by A3 and `¬ isReserved(escape(s))` by A2.
 3. If `isValid(s)` and `¬ isReserved(escape(s))`, then the thesis follows from `escape(s) = s`.
