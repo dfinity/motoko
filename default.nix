@@ -272,6 +272,7 @@ rec {
     buildInputs =
       [ asc
         didc
+        deser
         ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
@@ -294,6 +295,7 @@ rec {
         export ASC=asc
         export AS_LD=as-ld
         export DIDC=didc
+        export DESER=deser
         export ESM=${esm}
         export JS_USER_LIBRARY=${js-user-library}
         asc --version
@@ -406,6 +408,19 @@ rec {
     installPhase = ''
       mkdir -p $out/bin
       cp --verbose --dereference didc $out/bin
+    '';
+  };
+
+  deser = stdenv.mkDerivation {
+    name = "deser";
+    src = subpath ./src;
+    buildInputs = commonBuildInputs;
+    buildPhase = ''
+      make DUNE_OPTS="--display=short --profile release" deser
+    '';
+    installPhase = ''
+      mkdir -p $out/bin
+      cp --verbose --dereference deser $out/bin
     '';
   };
 
@@ -533,6 +548,7 @@ rec {
       as-ide
       js
       didc
+      deser
       tests
       unit-tests
       samples
@@ -558,6 +574,7 @@ rec {
       js.buildInputs ++
       rts.buildInputs ++
       didc.buildInputs ++
+      deser.buildInputs ++
       tests.buildInputs ++
       users-guide.buildInputs ++
       [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
