@@ -27,7 +27,7 @@ let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix n
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   ref = "joachim/dvm/empty-elembuf";
-  rev = "9982f4157298828ac0ea4293da12c462f01591b3";
+  rev = "86dcb3cc24bf56442cda674ab79824d2eff878fc";
 }) { system = nixpkgs.system; }; in
 
 let dfinity-repo = import (builtins.fetchGit {
