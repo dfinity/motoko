@@ -175,11 +175,11 @@ let pp_rec ppf x =
   pp_print_cut ppf ()
 
 let pp_actor ppf actor recs =
-  pp_open_hovbox ppf 1;
-  kwd ppf "const";
-  (match actor.it with
+  match actor.it with
    | ActorD (x, t) ->
       let x = ("actor_" ^ x.it) @@ x.at in
+      pp_open_hovbox ppf 1;
+      kwd ppf "const";
       (match t.it with
        | ServT tp ->
           id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
@@ -194,17 +194,18 @@ let pp_actor ppf actor recs =
             str ppf var.it;
        | _ -> assert false
       );
+      pp_close_box ppf ();      
       pp_force_newline ppf ();
-      kwd ppf "return"; id ppf x; str ppf ";"
-  );
-  pp_close_box ppf ()
+      pp_open_hovbox ppf 0;
+      kwd ppf "return"; id ppf x; str ppf ";";
+      pp_close_box ppf ()
 
 let pp_header ppf () =
-  pp_open_vbox ppf 0;
-  str ppf "export default ({ IDL }) => {";
-  pp_close_box ppf ()
+  pp_open_vbox ppf 1;
+  str ppf "export default ({ IDL }) => {"
 
 let pp_footer ppf () =
+  pp_close_box ppf ();
   pp_force_newline ppf ();
   pp_print_string ppf "};"
 
@@ -219,11 +220,9 @@ let pp_prog ppf env prog =
            if TS.mem e.var recs then {e with is_rec = true} else e)
          env_list in
      pp_header ppf ();
-     pp_open_vbox ppf 0;
      TS.iter (pp_rec ppf) recs;
      List.iter (pp_dec ppf) env_list;
      pp_actor ppf actor recs;
-     pp_close_box ppf ();
      pp_footer ppf ()
    
 let compile (scope : Typing.scope) (prog : Syntax.prog) =

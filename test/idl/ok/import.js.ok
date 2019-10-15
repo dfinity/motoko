@@ -1,22 +1,21 @@
 export default ({ IDL }) => {
-const t = IDL.Arr(IDL.Nat8)
-const t1 = t
-const UserId = IDL.Nat
-const t2 = UserId
-const list = IDL.Arr(IDL.Nat)
-const RegionId = IDL.Nat
-const TruckTypeId = IDL.Nat
-const EntId =
- IDL.Obj({'region': RegionId, 'user': UserId, 'truckType': TruckTypeId})
-const OpEntId = IDL.Opt(EntId)
-const IdErr = IDL.Obj({'idErr': OpEntId})
-const Inventory = IDL.Obj({'produce_id': IDL.Nat, 'quantity': IDL.Nat})
-const actor_S = new IDL.ActorInterface({
- 'f':
-  IDL.Func(IDL.Obj({'0': t, '1': t1, '2': t2}),
-   IDL.Obj({'0': list, '1': IdErr})),
- 'getInventory':
-  IDL.Func(IDL.Obj({'producer_id': IDL.Nat}), IDL.Obj({'0': Inventory}))});
- 
+ const t = IDL.Arr(IDL.Nat8)
+ const t1 = t
+ const UserId = IDL.Nat
+ const t2 = UserId
+ const list = IDL.Arr(IDL.Nat)
+ const RegionId = IDL.Nat
+ const TruckTypeId = IDL.Nat
+ const EntId =
+  IDL.Obj({'region': RegionId, 'user': UserId, 'truckType': TruckTypeId})
+ const OpEntId = IDL.Opt(EntId)
+ const IdErr = IDL.Obj({'idErr': OpEntId})
+ const Inventory = IDL.Obj({'produce_id': IDL.Nat, 'quantity': IDL.Nat})
+ const actor_S = new IDL.ActorInterface({
+  'f':
+   IDL.Func(IDL.Obj({'0': t, '1': t1, '2': t2}),
+    IDL.Obj({'0': list, '1': IdErr})),
+  'getInventory':
+   IDL.Func(IDL.Obj({'producer_id': IDL.Nat}), IDL.Obj({'0': Inventory}))});
  return actor_S;
 };
