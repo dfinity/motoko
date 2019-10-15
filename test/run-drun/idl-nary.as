@@ -45,3 +45,9 @@ actor {
 //CALL ingress unary4 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
 
 
+// too few arguments
+//CALL ingress three "DIDL\x00\x02\x71\x71\x03One\x03Two"
+// extra bytes (bad)
+//CALL ingress three "DIDL\x00\x03\x71\x71\x71\x03One\x03Two\x05ThreeEXTRABYTES"
+// extra arguments (ok)
+//CALL ingress four "DIDL\x00\x05\x71\x71\x71\x71\x71\x03One\x03Two\x05Three\x04Four\x04Five"
