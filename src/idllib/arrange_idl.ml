@@ -32,11 +32,14 @@ let ($$) head inner = Node (head, inner)
 and id i = Atom i.it
 and tag i = Atom ("#" ^ i.it)
 
-let field_tag (tf : typ_field)
-  = tf.it.name.it ^ "(" ^ Lib.Uint32.to_string tf.it.id ^ ")"
+let field_tag (tf : field_label)
+  = match tf.it with
+    Id n -> Lib.Uint32.to_string n
+  | Named name -> name
+  | Unnamed n -> Lib.Uint32.to_string n
 
 let rec typ_field (tf : typ_field)
-  = field_tag tf $$ [typ tf.it.typ]
+  = field_tag (tf.it.label) $$ [typ tf.it.typ]
 
 and typ_meth (tb : typ_meth)
   = tb.it.var.it $$ [typ tb.it.meth]
@@ -91,9 +94,14 @@ and string_of_func (ms,s,t) =
     (string_of_list string_of_field ", " t)
     (string_of_list string_of_mode " " ms)
 and string_of_field f =
-  let unnamed = (f.it.name.it = Lib.Uint32.to_string f.it.id) in
+  let typ = string_of_typ f.it.typ in
+  match f.it.label.it with
+    Id n -> sprintf "%s : %s" (Lib.Uint32.to_string n) typ
+  | Named name -> sprintf "\"%s\" : %s" name typ
+  | Unnamed _ -> sprintf "%s" typ
+  (*let unnamed = (f.it.name.it = Lib.Uint32.to_string f.it.id) in
   if unnamed then string_of_typ f.it.typ
-  else sprintf "\"%s\" : %s" f.it.name.it (string_of_typ f.it.typ)
+  else sprintf "\"%s\" : %s" f.it.name.it (string_of_typ f.it.typ)*)
 and string_of_meth m =
   sprintf "\"%s\" : %s;\n"
     m.it.var.it

@@ -70,7 +70,7 @@ let str ppf s = pp_print_string ppf s; pp_print_cut ppf ()
 let id ppf s = str ppf s.it; pp_print_cut ppf ()
 let space = pp_print_space             
 let kwd ppf s = str ppf s; space ppf ()
-let field_name ppf s = str ppf "'"; str ppf s.it; str ppf "'"; pp_print_cut ppf ()                
+let quote_name ppf s = str ppf "'"; str ppf s; str ppf "'"; pp_print_cut ppf ()
 
 let pp_prim p =
   match p with
@@ -133,12 +133,17 @@ and pp_fields ppf fs =
   
 and pp_field ppf tf =
   pp_open_box ppf 1;
-  field_name ppf tf.it.name; kwd ppf ":"; pp_typ ppf tf.it.typ;
+  let f_name =
+    match tf.it.label.it with
+      Id n -> Lib.Uint32.to_string n
+    | Named name -> name
+    | Unnamed n -> Lib.Uint32.to_string n
+  in quote_name ppf f_name; kwd ppf ":"; pp_typ ppf tf.it.typ;
   pp_close_box ppf ()
 
 and pp_meth ppf meth =
   pp_open_box ppf 1;
-  field_name ppf meth.it.var;
+  quote_name ppf meth.it.var.it;
   kwd ppf ":";
   pp_typ ppf meth.it.meth;
   pp_close_box ppf ()
