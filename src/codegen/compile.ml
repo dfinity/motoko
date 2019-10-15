@@ -4084,7 +4084,6 @@ module Serialization = struct
       (* Get object sizes *)
       get_x ^^
       buffer_size env (Type.seq ts) ^^
-      compile_mul_const Heap.word_size ^^
       set_refs_size ^^
 
       compile_add_const tydesc_len  ^^
@@ -4094,7 +4093,7 @@ module Serialization = struct
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
       get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
-      get_refs_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
+      get_refs_size ^^ compile_mul_const Heap.word_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
 
       (* Write ty desc *)
       get_data_start ^^
@@ -4109,7 +4108,7 @@ module Serialization = struct
       serialize_go env (Type.seq ts) ^^
 
       (* Sanity check: Did we fill exactly the buffer *)
-      get_refs_start ^^ get_refs_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      get_refs_start ^^ get_refs_size ^^ compile_mul_const Heap.word_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       E.else_trap_with env "reference buffer not filled " ^^
 
