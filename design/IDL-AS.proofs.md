@@ -14,7 +14,7 @@ A1: ∀s. isReserved s -> isValid s
 A2: ∀s. ¬isReserved (s "_")
 A3: ∀s. isValid s -> isValid (s "_")
 A4: ∀n. isValid ("_" n "_")
-A5: ∀s. ¬isReserved("_" s)
+A5: ∀s. ¬isReserved ("_" s)
 A6: ∀n. ¬isValid ("")
 ```
 
