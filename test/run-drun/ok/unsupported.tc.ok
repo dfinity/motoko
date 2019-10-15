@@ -22,7 +22,7 @@ unsupported.as:52.31-52.41: type error, shared function has non-shared parameter
   actor {}
 unsupported.as:63.3-63.35: type error, actor classes are not supported; use an actor declaration instead
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:67.45-67.53: type error, non toplevel actor; actors cannot only be declared at the toplevel of a program
+unsupported.as:67.45-67.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:71.29-71.37: type error, non toplevel actor; actors cannot only be declared at the toplevel of a program
+unsupported.as:71.29-71.37: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
  (This is an indefinite limitation of interpretation/compilation.)
