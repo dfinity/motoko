@@ -1,4 +1,7 @@
-const IDL = require('IDL')
+export default ({ IDL }) => {
 const actor_Foo = new IDL.ActorInterface({
- 'foo': IDL.Message(IDL.Obj({'0': IDL.Obj({'2': IDL.Int})}), IDL.Obj({})),
- 'bar': IDL.Message(IDL.Obj({'0': IDL.Obj({'2': IDL.Int})}), IDL.Obj({}))})
+ 'foo': IDL.Func(IDL.Obj({'0': IDL.Obj({'2': IDL.Int})}), IDL.Obj({})),
+ 'bar': IDL.Func(IDL.Obj({'0': IDL.Obj({'2': IDL.Int})}), IDL.Obj({}))});
+ 
+ return actor_Foo;
+};

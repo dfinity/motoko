@@ -99,9 +99,6 @@ and string_of_field f =
     Id n -> sprintf "%s : %s" (Lib.Uint32.to_string n) typ
   | Named name -> sprintf "\"%s\" : %s" name typ
   | Unnamed _ -> sprintf "%s" typ
-  (*let unnamed = (f.it.name.it = Lib.Uint32.to_string f.it.id) in
-  if unnamed then string_of_typ f.it.typ
-  else sprintf "\"%s\" : %s" f.it.name.it (string_of_typ f.it.typ)*)
 and string_of_meth m =
   sprintf "\"%s\" : %s;\n"
     m.it.var.it
