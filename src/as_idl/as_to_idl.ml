@@ -128,17 +128,20 @@ let rec typ vs t =
 and field vs {lab; typ=t} =
   match unescape lab with
   | Nat nat ->
-     let name = Lib.Uint32.to_string nat @@ no_region in
-     I.{id = nat; name = name; typ = typ vs t} @@ no_region
+     I.{label = I.Id nat @@ no_region; typ = typ vs t} @@ no_region
+     (*let name = Lib.Uint32.to_string nat @@ no_region in
+     I.{id = nat; name = name; typ = typ vs t} @@ no_region*)
   | Id id ->
-     let name = id @@ no_region in
+     I.{label = I.Named id @@ no_region; typ = typ vs t} @@ no_region
+     (*let name = id @@ no_region in
      let id = Idllib.IdlHash.idl_hash id in
-     I.{id = id; name = name; typ = typ vs t} @@ no_region
+     I.{id = id; name = name; typ = typ vs t} @@ no_region*)
 and tuple vs ts =
   List.mapi (fun i x ->
       let id = Lib.Uint32.of_int i in
-      let name = Lib.Uint32.to_string id @@ no_region in
-      I.{id = id; name = name; typ = typ vs x} @@ no_region
+      I.{label = I.Unnamed id @@ no_region; typ = typ vs x} @@ no_region
+      (*let name = Lib.Uint32.to_string id @@ no_region in
+      I.{id = id; name = name; typ = typ vs x} @@ no_region*)
     ) ts
 and meths vs fs =
   List.fold_right (fun f list ->
