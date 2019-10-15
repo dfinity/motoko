@@ -49,7 +49,6 @@ unescape(<id>) = <id>
 4. by A4 and A2
 
 **Prop 2**: `∀s1 s2, escape(s1) = escape(s2) → hash(s1) = hash(s2)`
-A
 **Proof**: The four equations of `escape` have disjoint ranges: Only equation 3 produces output not ending in `"_"`, only equation 4 produces output beginning in `"_"` and ending in exactly one `"_"` (due to A6, A1), only equation 1 produces output beginning with no `"_"` and ending with exactly one `"_"` (due to A2, A5, A6), only equation 2 produces output ending in more than one `"_"`.
 
 Therefore it suffices to look at each equation separately. Equations 1-3 are injective, and equation 4 is injective up-to `hash(…)`, because `escape_number` is injective.
