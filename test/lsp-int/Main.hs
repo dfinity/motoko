@@ -1,19 +1,25 @@
 {-# language OverloadedStrings #-}
 {-# language DuplicateRecordFields #-}
+{-# language ExplicitForAll #-}
+{-# language ScopedTypeVariables #-}
 
 module Main where
 
-import Control.Lens ((^.))
-import Control.Monad (unless)
-import Control.Monad.IO.Class (liftIO)
-import Data.Default
-import Data.Text (Text)
-import Language.Haskell.LSP.Test hiding (message)
-import Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..))
-import Language.Haskell.LSP.Types.Lens (contents, label, detail, message)
-import System.Directory (setCurrentDirectory)
-import System.Environment (getArgs)
-import Test.Hspec (shouldBe, shouldMatchList)
+import qualified Control.Exception as Exception
+import           Control.Lens ((^.))
+import           Control.Monad (unless)
+import           Control.Monad.IO.Class (liftIO)
+import           Data.Default
+import           Data.Text (Text)
+import           Language.Haskell.LSP.Test hiding (message)
+import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..))
+import           Language.Haskell.LSP.Types.Lens (contents, label, detail, message)
+import           System.Directory (setCurrentDirectory)
+import           System.Environment (getArgs)
+import           System.Exit (exitFailure)
+import           System.IO (hPutStr, stderr)
+import           Test.HUnit.Lang (HUnitFailure(..), formatFailureReason)
+import           Test.Hspec (shouldBe, shouldMatchList)
 
 completionTestCase
   :: TextDocumentIdentifier
@@ -44,8 +50,18 @@ plainMarkup t =
       , _value = t
       })
 
+handleHUnitFailure :: forall a. IO a -> IO a
+handleHUnitFailure act = do
+  result :: Either HUnitFailure a <- Exception.try act
+  case result of
+    Right res ->
+      pure res
+    Left (HUnitFailure _ reason) -> do
+      hPutStr stderr (formatFailureReason reason)
+      exitFailure
+
 main :: IO ()
-main = do
+main = handleHUnitFailure $ do
   args <- getArgs
   unless (length args == 2)
     (putStrLn
