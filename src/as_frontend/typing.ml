@@ -27,6 +27,7 @@ type env =
     in_actor : bool;
     in_await : bool;
     in_shared : bool;
+    in_prog : bool;
     pre : bool;
     msgs : Diag.msg_store;
   }
@@ -43,6 +44,7 @@ let env_of_scope msgs scope =
     in_await = false;
     in_shared = false;
     in_actor = false;
+    in_prog = false;
     pre = false;
     msgs;
   }
@@ -520,10 +522,11 @@ and infer_exp' f env exp : T.typ =
   t'
 
 and infer_exp'' env exp : T.typ =
+  let in_prog = env.in_prog in
   let in_actor = env.in_actor in
   let in_await = env.in_await in
   let in_shared = env.in_shared in
-  let env = {env with in_actor = false; in_await = false; in_shared = false} in
+  let env = {env with in_actor = false; in_await = false; in_prog = false; in_shared = false} in
   match exp.it with
   | PrimE _ ->
     error env exp.at "cannot infer type of primitive"
@@ -608,6 +611,8 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t1)
     )
   | ObjE (sort, fields) ->
+    if not in_prog && sort.it = T.Actor then
+      error_in Indefinite [Flags.ICMode] env exp.at "non toplevel actor; an actor can only be declared at the toplevel of a program";
     let env' = if sort.it = T.Actor then {env with async = false; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
@@ -717,7 +722,7 @@ and infer_exp'' env exp : T.typ =
         if T.is_async t_ret && not in_await then
           error_in Indefinite [Flags.ICMode] env exp2.at
             "shared, async function must be called within an await expression";
-        error_in Temporary [Flags.ICMode] env exp1.at "call to shared function not yet supported";
+        error_in Temporary [Flags.ICMode] env exp1.at "calling a shared function not yet supported";
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
@@ -912,7 +917,7 @@ and check_exp env t exp =
 
 and check_exp' env0 t exp : T.typ =
   let in_shared = env0.in_shared in
-  let env = {env0 with in_await = false; in_shared = false} in
+  let env = {env0 with in_await = false; in_shared = false; in_prog = false} in
   match exp.it, t with
   | PrimE s, T.Func _ ->
     t
@@ -1761,7 +1766,7 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env = env_of_scope msgs scope in
+          let env = {(env_of_scope msgs scope) with in_prog = true} in
           let res = infer_block env prog.it prog.at in
           res
         ) prog

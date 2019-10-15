@@ -1,5 +1,3 @@
-
-
 // top-level actor objects are supported
 actor Counter {
 
@@ -64,3 +62,14 @@ func local_spawn() {
 {
   actor class BadActorClass () { }; // no actor classes
 };
+
+{
+ let bad_non_top_actor : actor {} = if true actor {} else actor {};
+};
+
+{
+  let bad_nested_actor =  { actor {}; ()};
+};
+
+
+actor BadSecondActor { };
