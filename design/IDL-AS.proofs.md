@@ -48,7 +48,7 @@ unescape(<id>) = <id>
 3. If `isValid(s)` and `¬ isReserved(escape(s))`, then the thesis follows from `escape(s) = s`.
 4. by A4 and A2
 
-**Prop 2**: `∀s1 s2, escape(i1) = escape(i2) → hash(i1) = hash(i2)`
+**Prop 2**: `∀s1 s2, escape(s1) = escape(s2) → hash(s1) = hash(s2)`
 A
 **Proof**: The four equations of `escape` have disjoint ranges: Only equation 3 produces output not ending in `"_"`, only equation 4 produces output beginning in `"_"` and ending in exactly one `"_"` (due to A6, A1), only equation 1 produces output beginning with no `"_"` and ending with exactly one `"_"` (due to A2, A5, A6), only equation 2 produces output ending in more than one `"_"`.
 
