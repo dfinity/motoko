@@ -2,6 +2,20 @@
 
 A simple language for writing Dfinity actors.
 
+## User Documentation & Samples
+
+Overview slides [here](guide/as-slides.md).
+
+Draft (incomplete) manual [here](guide/guide.md).
+
+Prelude [here](src/prelude/prelude.ml).
+
+Beginnings of standard library [here](stdlib).
+
+Small samples [here](samples).
+
+Produce Exchange [here](stdlib/examples/produce-exchange).
+
 ## Introduction
 
 ### Motivation and Goals
