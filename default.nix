@@ -38,7 +38,7 @@ let dfinity-repo = import (builtins.fetchGit {
 
 let sdk = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/sdk";
-  ref = "paulyoung/ts-user-library";
+  ref = "paulyoung/js-user-library";
   rev = "42f15621bc5b228c7fd349cb52f265917d33a3a0";
 }) { system = nixpkgs.system; }; in
 
