@@ -25,6 +25,7 @@ parallel: quick
 	$(MAKE_PAR) -C run-dfinity quick
 	$(MAKE_PAR) -C run-drun quick
 	$(MAKE_PAR) -C trap quick
+	$(MAKE_PAR) -C run-deser quick
 
 coverage:
 	rm -rf _coverage
