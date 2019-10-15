@@ -511,4 +511,5 @@ let () =
   - service types
   - escaping in text
   - heralding/outputting of type table
+  - at least a very small test suite to prevent bitrot
  *)
