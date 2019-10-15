@@ -76,8 +76,8 @@ let warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
 
 type limit =
-  Temporary   (* not yet implemented in target *)
-| Indefinite  (* not sure how to support it on target *)
+  Temporary   (* not yet implemented in target; coming soon *)
+| Indefinite  (* not sure how to support it on target; don't hold your breath *)
 
 let flag_of_compile_mode mode =
   match mode with
@@ -210,7 +210,10 @@ let rec check_typ env typ : T.typ =
 and infer_control env sort typ =
     match sort.it, typ.it with
       | T.Shared _, AsyncT ret_typ -> T.Promises (arity ret_typ)
-      | T.Shared T.Write, TupT [] -> T.Returns
+      | T.Shared T.Write, TupT [] ->
+(*     error_in Temporary [Flags.ICMode] env typ.at
+          "oneway shared functions are not supported; return async () instead"; *)
+        T.Returns
       | T.Shared T.Write, _ -> error env typ.at "shared function must have syntactic return type `()` or `async <typ>`"
       | T.Shared T.Query, _ -> error env typ.at "shared query function must have syntactic return type `async <typ>`"
       | _ -> T.Returns
