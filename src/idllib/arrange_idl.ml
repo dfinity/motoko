@@ -97,11 +97,11 @@ and string_of_field f =
   let typ = string_of_typ f.it.typ in
   match f.it.label.it with
     Id n -> sprintf "%s : %s" (Lib.Uint32.to_string n) typ
-  | Named name -> sprintf "\"%s\" : %s" name typ
+  | Named name -> sprintf "\"%s\" : %s" (Lib.String.lightweight_escaped name) typ
   | Unnamed _ -> sprintf "%s" typ
 and string_of_meth m =
   sprintf "\"%s\" : %s;\n"
-    m.it.var.it
+    (Lib.String.lightweight_escaped m.it.var.it)
     (match m.it.meth.it with
      | FuncT (ms,s,t) -> string_of_func (ms,s,t)
      | _ -> string_of_typ m.it.meth)

@@ -70,7 +70,7 @@ let str ppf s = pp_print_string ppf s; pp_print_cut ppf ()
 let id ppf s = str ppf s.it; pp_print_cut ppf ()
 let space = pp_print_space             
 let kwd ppf s = str ppf s; space ppf ()
-let quote_name ppf s = str ppf "'"; str ppf s; str ppf "'"; pp_print_cut ppf ()
+let quote_name ppf s = pp_open_hbox ppf (); str ppf "'"; str ppf (Lib.String.lightweight_escaped s); str ppf "'"; pp_close_box ppf (); pp_print_cut ppf ()
 
 let pp_prim p =
   match p with
