@@ -8,9 +8,10 @@ all: quick
 
 quick: $(patsubst %.bin, _out/%.done, $(wildcard *.bin))
 
-accept:
-
-# TODO
+accept: $(wildcard *.bin)
+	rm $(wildcard ok/*.ok)
+	echo $(foreach FILE,$^,"$(DESER) < $(FILE) > $(patsubst %.bin, ok/%.ok, $(FILE)) ;") \
+	| sh
 
 clean:
 	rm -rf _out
