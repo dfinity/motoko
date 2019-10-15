@@ -32,6 +32,8 @@ sig
   val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
   val is_ordered : ('a -> 'a -> int) -> 'a list -> bool
   val is_strictly_ordered : ('a -> 'a -> int) -> 'a list -> bool
+
+  val iter_pairs : ('a -> 'a -> unit) -> 'a list -> unit
 end
 
 module List32 :
