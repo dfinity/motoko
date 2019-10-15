@@ -28,6 +28,7 @@ type env =
     in_await : bool;
     in_shared : bool;
     in_prog : bool;
+    actors : int ref;
     pre : bool;
     msgs : Diag.msg_store;
   }
@@ -45,6 +46,7 @@ let env_of_scope msgs scope =
     in_shared = false;
     in_actor = false;
     in_prog = false;
+    actors = ref 0;
     pre = false;
     msgs;
   }
@@ -612,7 +614,13 @@ and infer_exp'' env exp : T.typ =
     )
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
-      error_in Indefinite [Flags.ICMode] env exp.at "non toplevel actor; an actor can only be declared at the toplevel of a program";
+      error_in Indefinite [Flags.ICMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
+    if in_prog && sort.it = T.Actor then begin
+       env.actors := !(env.actors) + 1;
+       if !(env.actors) > 1 then
+         error_in Indefinite [Flags.ICMode] env exp.at
+           "second actor in program; there must be at most one actor declaration in a program";
+    end;
     let env' = if sort.it = T.Actor then {env with async = false; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
@@ -1387,7 +1395,7 @@ and object_of_scope env sort fields scope at =
       (T.string_of_typ_expand t)
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE _; _}) -> true
+  | LetD ({it = VarP _; _}, {it = FuncE (_,sort, _, _, _, _); _}) -> T.is_shared_sort sort.it
   | _ -> false
 
 and is_typ_dec dec : bool = match dec.it with
@@ -1744,7 +1752,8 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (id, typ_binds, pat, _, sort, _, _) ->
     if sort.it = T.Actor then
-      error_in Indefinite [Flags.ICMode] env dec.at "actor classes are not supported; use an actor declaration instead";
+      error_in Indefinite [Flags.ICMode] env dec.at
+        "actor classes are not supported; use an actor declaration instead";
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in

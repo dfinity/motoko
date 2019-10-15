@@ -224,7 +224,7 @@ $(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
 	$(ASC) -ancient-system-api -r examples/produce-exchange/test/evalBulk.as > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/serverActor.as
+	$(ASC) -ancient-system-api -c -o $@ examples/produce-exchange/serverActor.as
 
 $(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@
