@@ -60,8 +60,10 @@ let record_fields fs =
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
+%token TRUE FALSE NULL
 
 %start<string -> Syntax.prog> parse_prog
+%start<string -> Syntax.arg> parse_arg
 
 %%
 
@@ -180,5 +182,37 @@ actor :
 parse_prog :
   | ds=seplist(def, SEMICOLON) actor=actor EOF
     { fun filename -> { it = {decs=ds; actor=actor}; at = at $sloc; note = filename} }
+
+(* Values *)
+
+value :
+  | text=TEXT
+    { TextV text @@ at $sloc }
+  | FALSE
+    { FalseV @@ at $sloc }
+  | TRUE
+    { TrueV @@ at $sloc }
+  | NULL
+    { NullV @@ at $sloc }
+  | OPT v=value
+    { OptV v @@ at $sloc }
+  | VEC LCURLY vs=seplist(value, SEMICOLON) RCURLY
+    { VecV vs @@ at $sloc }
+  | RECORD LCURLY vfs=seplist(field_value, SEMICOLON) RCURLY
+    { RecordV vfs @@ at $sloc }
+  | VARIANT LCURLY vf=field_value RCURLY
+    { VariantV vf @@ at $sloc }
+  | v=value COLON ty=data_typ
+    { AnnotV(v, ty) @@ at $sloc }
+
+field_value :
+  | n=NAT COLON v=value
+    { { hash = Uint32.of_string n; name = None; value = v } @@ at $sloc }
+  | name=name COLON v=value
+    { { hash = hash name.it; name = Some name; value = v } @@ at $sloc }
+
+parse_arg :
+  | LPAR vs=seplist(value, COMMA) actor=actor RPAR EOF
+    { fun filename -> { it = vs; at = at $sloc; note = filename} }
 
 %%

@@ -1,5 +1,6 @@
 open Stdio.In_channel
 open Lazy
+(*let module Parser = Idllib.Parser*)
 
 (* The type of outputters
 
@@ -504,12 +505,18 @@ let set_format f () =
   end;
   output_format := f
 
+let reverse_mode = ref false
+
+let set_reverse f () =
+  reverse_mode := f
+
 let argspec = Arg.align
 [
   "--unary", Arg.Unit (set_mode Unary), " decode legacy (unary) message API";
   "--prose", Arg.Unit (set_format Prose), " output indented prose";
   "--json", Arg.Unit (set_format Json), " output JSON values";
   "--idl", Arg.Unit (set_format Idl), " output IDL values (default)";
+  "--reverse", Arg.Unit (set_reverse true), " parse IDL values";
   "--verbose", Arg.Unit (fun () -> chatty := true), " amend commentary";
   "--version",
     Arg.Unit (fun () -> Printf.printf "%s\n" banner; exit 0), " show version";
@@ -521,15 +528,25 @@ let add_arg source = () (* args := !args @ [source] *)
 
 let () =
   Arg.parse argspec add_arg usage;
-  begin match !output_format with
-  | Prose -> let module Prose = MakeOutputter(OutputProse) in Prose.top_level !mode;
-  | Idl -> let module Idl = MakeOutputter(OutputIdl) in Idl.top_level !mode;
-  | Json -> let module Json = MakeOutputter(OutputJson) in Json.top_level !mode;
-  end;
-  match input_byte stdin with
-  | Some _ -> failwith "surplus bytes in input"
-  | None -> ()
+  if !reverse_mode then
+    begin
+      Printf.printf "\nDESER, parsing!\n";
+      let lexer = Lexing.from_channel stdin in
+      let Source.{it = value; _} = Idllib.Parser.parse_arg Idllib.Lexer.token lexer "<stdin>" in
+            Printf.printf "\nDESER, parsed!\n";
 
+    end
+  else
+    begin
+      begin match !output_format with
+      | Prose -> let module Prose = MakeOutputter(OutputProse) in Prose.top_level !mode;
+      | Idl -> let module Idl = MakeOutputter(OutputIdl) in Idl.top_level !mode;
+      | Json -> let module Json = MakeOutputter(OutputJson) in Json.top_level !mode;
+      end;
+      match input_byte stdin with
+      | Some _ -> failwith "surplus bytes in input"
+      | None -> ()
+    end
 
 
 (* TODOs:

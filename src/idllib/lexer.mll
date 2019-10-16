@@ -133,6 +133,10 @@ rule token = parse
 
   | id as s { ID s }
 
+  | "true" { TRUE }
+  | "false" { FALSE }
+  | "null" { NULL }
+
   | "//"utf8_no_nl*eof { EOF }
   | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token lexbuf }
   | "//"utf8_no_nl* { token lexbuf (* causes error on following position *) }

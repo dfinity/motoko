@@ -59,6 +59,25 @@ and actor = actor' Source.phrase
 and actor' = 
   | ActorD of id * typ     (* service *)
                
+(* Values *)
+
+and value = value' Source.phrase
+and value' =
+  | FalseV                         (* false *)
+  | TrueV                          (* true *)
+  | NullV                          (* null *)
+  | TextV of string                (* text *)
+  | OptV of value                  (* option *)
+  | VecV of value list             (* vector *)
+  | RecordV of value_field list    (* record *)
+  | VariantV of value_field        (* variant *)
+  | AnnotV of value * typ          (* annotated *)
+
+and value_field = value_field' Source.phrase
+and value_field' = { hash : Lib.Uint32.t; name : id option; value : value }
+
+and arg = (value list, string) Source.annotated_phrase
+
 (* Program *)
 
 type prog = (prog', string) Source.annotated_phrase
