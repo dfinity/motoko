@@ -212,7 +212,7 @@ field_value :
     { { hash = hash name.it; name = Some name; value = v } @@ at $sloc }
 
 parse_arg :
-  | LPAR vs=seplist(value, COMMA) actor=actor RPAR EOF
+  | LPAR vs=seplist(value, COMMA) RPAR EOF
     { fun filename -> { it = vs; at = at $sloc; note = filename} }
 
 %%
