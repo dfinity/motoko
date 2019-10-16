@@ -71,17 +71,17 @@ and actor a = match a with
 and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
 and value v = match v.it with
-  | FalseV        -> Atom "FalseV"
-  | TrueV         -> Atom "TrueV"
-  | NullV         -> Atom "NullV"
-  | TextV s       -> "TextV" $$ [Atom s]
-  | OptV v        -> "OptV" $$ [value v]
-  | VecV vs       -> "VecV" $$ List.map value vs
-  | RecordV vfs   -> "RecordV" $$ List.map value_field vfs
-  | VariantV vf   -> "VariantV" $$ [value_field vf]
-  | FuncV (uri, m) -> "FuncV" $$ [Atom uri; id m]
-  | ServiceV uri  -> "ServiceV" $$ [Atom uri]
-  | AnnotV (v, t) -> "AnnotV" $$ [value v; typ t]
+  | FalseV           -> Atom "FalseV"
+  | TrueV            -> Atom "TrueV"
+  | NullV            -> Atom "NullV"
+  | TextV s          -> "TextV" $$ [Atom s]
+  | OptV v           -> "OptV" $$ [value v]
+  | VecV vs          -> "VecV" $$ List.map value vs
+  | RecordV vfs      -> "RecordV" $$ List.map value_field vfs
+  | VariantV vf      -> "VariantV" $$ [value_field vf]
+  | FuncV (uri, msg) -> "FuncV" $$ [Atom uri; id msg]
+  | ServiceV uri     -> "ServiceV" $$ [Atom uri]
+  | AnnotV (v, t)    -> "AnnotV" $$ [value v; typ t]
 
 and value_field (vf : value_field) = match vf.it with
   | { hash; name = Some name; value = v } ->
