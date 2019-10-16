@@ -1,0 +1,2 @@
+# .gitattributes file which reclassifies `.as` files as Swift:
+*.as linguist-language=Swift
