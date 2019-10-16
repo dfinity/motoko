@@ -72,51 +72,146 @@ and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
 
 (* Pretty printing  *)
-              
-open Printf
-let string_of_list f sep list = String.concat sep (List.map f list)
-         
-let rec string_of_typ t =
-  match t.it with
-  | VarT id -> sprintf "%s" id.it
-  | PrimT s -> string_of_prim s
+open Format
+let str ppf s = pp_print_string ppf s(*; pp_print_cut ppf ()*)
+let space = pp_print_space
+let kwd ppf s = str ppf s; space ppf ()
+
+let rec pp_typ ppf t =
+  pp_open_hovbox ppf 1;
+  (match t.it with
+  | VarT id -> str ppf id.it
+  | PrimT p -> str ppf (string_of_prim p)
+  | OptT t -> kwd ppf "opt"; pp_typ ppf t
+  | VecT t -> kwd ppf "vec"; pp_typ ppf t
+  | RecordT fs ->
+     pp_open_vbox ppf 2;
+     str ppf "record {";
+     List.iter (fun f -> pp_print_cut ppf (); pp_field ppf f; str ppf ";") fs;
+     pp_print_break ppf 0 (-2);
+     str ppf "}";
+     pp_close_box ppf ()
+  | VariantT fs ->
+     pp_open_vbox ppf 2;
+     str ppf "variant {";
+     List.iter (fun f -> pp_print_cut ppf (); pp_field ppf f; str ppf ";") fs;
+     pp_print_break ppf 0 (-2);
+     str ppf "}";
+     pp_close_box ppf ()
   | FuncT (ms,s,t) ->
-     sprintf "func %s" (string_of_func (ms,s,t))
-  | OptT t -> "opt " ^ string_of_typ t
-  | VecT t -> "vec " ^ string_of_typ t
-  | RecordT fs -> sprintf "record {%s}" (string_of_list string_of_field "; " fs)
-  | VariantT fs -> sprintf "variant {%s}" (string_of_list string_of_field "; " fs)
-  | ServT ms -> sprintf "service {\n%s}" (string_of_list string_of_meth "" ms)
-  | PreT -> "Pre"
-and string_of_func (ms,s,t) =
-  sprintf "(%s) -> (%s)%s"
-    (string_of_list string_of_field ", " s)
-    (string_of_list string_of_field ", " t)
-    (string_of_list string_of_mode " " ms)
-and string_of_field f =
-  let typ = string_of_typ f.it.typ in
-  match f.it.label.it with
-    Id n -> sprintf "%s : %s" (Lib.Uint32.to_string n) typ
-  | Named name -> sprintf "\"%s\" : %s" (Lib.String.lightweight_escaped name) typ
-  | Unnamed _ -> sprintf "%s" typ
-and string_of_meth m =
-  sprintf "\"%s\" : %s;\n"
-    (Lib.String.lightweight_escaped m.it.var.it)
-    (match m.it.meth.it with
-     | FuncT (ms,s,t) -> string_of_func (ms,s,t)
-     | _ -> string_of_typ m.it.meth)
+     kwd ppf "func";
+     pp_func ppf (ms,s,t)
+  | ServT ms ->
+     pp_open_vbox ppf 2;
+     str ppf "service {";
+     List.iter (fun m -> pp_print_cut ppf (); pp_meth ppf m; str ppf ";") ms;
+     pp_print_break ppf 0 (-2);
+     str ppf "}";
+     pp_close_box ppf ()
+  | PreT -> assert false);
+  pp_close_box ppf ()
 
-let string_of_dec d =
-  match d.it with
-  | TypD (id, typ) -> sprintf "type %s = %s;\n" id.it (string_of_typ typ)
-  | ImportD (f, fp) -> sprintf "import \"%s\";\n" f
+and pp_field ppf f =
+  pp_open_hovbox ppf 1;
+  (match f.it.label.it with
+  | Id n -> str ppf (Lib.Uint32.to_string n); kwd ppf ":"
+  | Named name ->
+     str ppf "\"";
+     str ppf (Lib.String.lightweight_escaped name);
+     str ppf "\"";
+     kwd ppf ":"
+  | Unnamed _ -> ());
+  pp_typ ppf f.it.typ;
+  pp_close_box ppf ()
 
-let string_of_actor a =
-  match a with
-  | None -> ""
-  | Some {it = ActorD (id, {it=ServT ms; _}); _} -> sprintf "service %s {\n%s}\n" id.it (string_of_list string_of_meth "" ms)
-  | Some {it = ActorD (id, {it=VarT x; _}); _} -> sprintf "service %s : %s\n" id.it x.it
-  | Some _ -> assert false
+and pp_func ppf (ms,s,t) =
+  pp_args ppf s;
+  kwd ppf " ->";
+  pp_args ppf t;
+  List.iter (fun m -> str ppf (string_of_mode m)) ms
 
+and pp_args ppf fs =
+  let n = List.length fs in
+  str ppf "(";
+  List.iteri (fun i f ->
+      pp_field ppf f;
+      if i < n-1 then
+        kwd ppf ",";
+    ) fs;
+  str ppf ")"
+
+and pp_meth ppf m =
+  pp_open_hovbox ppf 1;
+  str ppf "\"";
+  str ppf (Lib.String.lightweight_escaped m.it.var.it);
+  str ppf "\"";
+  kwd ppf ":";
+  (match m.it.meth.it with
+   | FuncT (ms,s,t) -> pp_func ppf (ms,s,t)
+   | _ -> pp_typ ppf m.it.meth);
+  pp_close_box ppf ()
+  
+let pp_dec ppf d =
+  pp_open_vbox ppf 1;
+  (match d.it with
+   | TypD (id, typ) ->
+      pp_open_hbox ppf ();
+      kwd ppf "type";
+      kwd ppf id.it;
+      kwd ppf "=";
+      pp_close_box ppf ();
+      pp_typ ppf typ
+   | ImportD (f, fp) ->
+      str ppf "import \"";
+      str ppf f;
+      str ppf "\""
+  );
+  pp_close_box ppf ()
+
+let pp_actor ppf actor =
+  (match actor with
+  | None -> ()
+  | Some {it = ActorD (id, {it=ServT ms; _}); _} ->
+     pp_open_vbox ppf 2;
+     pp_open_hbox ppf ();
+     kwd ppf "service";
+     kwd ppf id.it;
+     str ppf "{";
+     pp_close_box ppf ();
+     List.iter (fun m -> pp_print_cut ppf (); pp_meth ppf m; str ppf ";") ms;
+     pp_print_break ppf 0 (-2);
+     str ppf "}";
+     pp_close_box ppf ()
+  | Some {it = ActorD (id, {it=VarT x; _}); _} ->
+     pp_open_hbox ppf ();
+     kwd ppf "service";
+     kwd ppf id.it;
+     kwd ppf ":";
+     str ppf x.it;
+     pp_close_box ppf ()
+  | _ -> assert false);
+  pp_print_cut ppf ()
+  
+let pp_prog ppf prog =
+  pp_open_vbox ppf 0;
+  List.iter (fun d ->
+      pp_dec ppf d;
+      str ppf ";";
+      pp_print_cut ppf ()
+    ) prog.it.decs;
+  pp_actor ppf prog.it.actor;
+  pp_close_box ppf ()
+
+let string_of_typ t =
+  let buf = Buffer.create 100 in
+  let ppf = formatter_of_buffer buf in
+  pp_typ ppf t;
+  pp_print_flush ppf ();
+  Buffer.contents buf
+  
 let string_of_prog prog =
-  sprintf "%s%s" (string_of_list string_of_dec "" prog.it.decs) (string_of_actor prog.it.actor)
+  let buf = Buffer.create 100 in
+  let ppf = formatter_of_buffer buf in
+  pp_prog ppf prog;
+  pp_print_flush ppf ();
+  Buffer.contents buf
