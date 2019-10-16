@@ -62,9 +62,6 @@ let record_fields fs =
 %token<string> TEXT
 %token TRUE FALSE NULL
 
-%left COLON
-%right OPT
-
 %start<string -> Syntax.prog> parse_prog
 %start<string -> Syntax.arg> parse_arg
 
@@ -199,23 +196,29 @@ value :
     { NullV @@ at $sloc }
   | OPT v=value
     { OptV v @@ at $sloc }
-  | VEC LCURLY vs=seplist(value, SEMICOLON) RCURLY
+  | VEC LCURLY vs=seplist(annval, SEMICOLON) RCURLY
     { VecV vs @@ at $sloc }
   | RECORD LCURLY vfs=seplist(field_value, SEMICOLON) RCURLY
     { RecordV vfs @@ at $sloc }
   | VARIANT LCURLY vf=field_value RCURLY
     { VariantV vf @@ at $sloc }
+  | LPAR v=annval RPAR
+    { v }
+
+annval :
+  | v=value
+    { v }
   | v=value COLON ty=data_typ
     { AnnotV(v, ty) @@ at $sloc }
 
 field_value :
-  | n=NAT COLON v=value
+  | n=NAT COLON v=annval
     { { hash = Uint32.of_string n; name = None; value = v } @@ at $sloc }
-  | name=name COLON v=value
+  | name=name COLON v=annval
     { { hash = hash name.it; name = Some name; value = v } @@ at $sloc }
 
 parse_arg :
-  | LPAR vs=seplist(value, COMMA) RPAR EOF
+  | LPAR vs=seplist(annval, COMMA) RPAR EOF
     { fun filename -> { it = vs; at = at $sloc; note = filename} }
 
 %%
