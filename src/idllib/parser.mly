@@ -194,7 +194,7 @@ value :
     { TrueV @@ at $sloc }
   | NULL
     { NullV @@ at $sloc }
-  | OPT LPAR v=value RPAR
+  | OPT v=value
     { OptV v @@ at $sloc }
   | VEC LCURLY vs=seplist(value, SEMICOLON) RCURLY
     { VecV vs @@ at $sloc }
@@ -202,9 +202,10 @@ value :
     { RecordV vfs @@ at $sloc }
   | VARIANT LCURLY vf=field_value RCURLY
     { VariantV vf @@ at $sloc }
-  | v=value COLON ty=data_typ
+(*  | v=value COLON ty=data_typ
     { AnnotV(v, ty) @@ at $sloc }
-
+creates conflict, make `opt <val>` higher precedence than <val> : <typ>?
+*)
 field_value :
   | n=NAT COLON v=value
     { { hash = Uint32.of_string n; name = None; value = v } @@ at $sloc }
