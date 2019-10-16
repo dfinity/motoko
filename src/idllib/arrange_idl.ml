@@ -73,7 +73,7 @@ and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
 (* Pretty printing  *)
 open Format
-let str ppf s = pp_print_string ppf s(*; pp_print_cut ppf ()*)
+let str ppf s = pp_print_string ppf s
 let space = pp_print_space
 let kwd ppf s = str ppf s; space ppf ()
 
@@ -150,6 +150,11 @@ and pp_meth ppf m =
    | FuncT (ms,s,t) -> pp_func ppf (ms,s,t)
    | _ -> pp_typ ppf m.it.meth);
   pp_close_box ppf ()
+
+let is_composite_type t =
+  match t.it with
+  | RecordT _ | VariantT _ | ServT _ -> true
+  | _ -> false
   
 let pp_dec ppf d =
   pp_open_vbox ppf 1;
@@ -160,6 +165,8 @@ let pp_dec ppf d =
       kwd ppf id.it;
       kwd ppf "=";
       pp_close_box ppf ();
+      if is_composite_type typ then
+        pp_print_cut ppf ();
       pp_typ ppf typ
    | ImportD (f, fp) ->
       str ppf "import \"";
