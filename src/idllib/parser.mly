@@ -188,6 +188,10 @@ parse_prog :
 value :
   | text=TEXT
     { TextV text @@ at $sloc }
+  | FUNC
+    { FuncV @@ at $sloc }
+  | SERVICE
+    { ServiceV @@ at $sloc }
   | FALSE
     { FalseV @@ at $sloc }
   | TRUE

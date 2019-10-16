@@ -71,6 +71,8 @@ and actor a = match a with
 and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
 and value v = match v.it with
+  | FuncV         -> Atom "FuncV"
+  | ServiceV      -> Atom "ServiceV"
   | FalseV        -> Atom "FalseV"
   | TrueV         -> Atom "TrueV"
   | NullV         -> Atom "NullV"
