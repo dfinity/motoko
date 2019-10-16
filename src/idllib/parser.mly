@@ -62,6 +62,9 @@ let record_fields fs =
 %token<string> TEXT
 %token TRUE FALSE NULL
 
+%left COLON
+%right OPT
+
 %start<string -> Syntax.prog> parse_prog
 %start<string -> Syntax.arg> parse_arg
 
@@ -202,10 +205,9 @@ value :
     { RecordV vfs @@ at $sloc }
   | VARIANT LCURLY vf=field_value RCURLY
     { VariantV vf @@ at $sloc }
-(*  | v=value COLON ty=data_typ
+  | v=value COLON ty=data_typ
     { AnnotV(v, ty) @@ at $sloc }
-creates conflict, make `opt <val>` higher precedence than <val> : <typ>?
-*)
+
 field_value :
   | n=NAT COLON v=value
     { { hash = Uint32.of_string n; name = None; value = v } @@ at $sloc }
