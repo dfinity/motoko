@@ -532,7 +532,7 @@ let () =
     begin
       Printf.printf "\nDESER, parsing!\n";
       let lexer = Lexing.from_channel stdin in
-      let Source.{it = value; _} = Idllib.Parser.parse_arg Idllib.Lexer.token lexer "<stdin>" in
+      let Source.{it = _; _} = Idllib.Parser.parse_arg Idllib.Lexer.token lexer "<stdin>" in
             Printf.printf "\nDESER, parsed!\n";
 
     end
