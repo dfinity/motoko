@@ -37,7 +37,6 @@ actor Counter {
 
 shared func bad_shared() { }; // not actor enclosed
 
-
 func local_spawn() {
   ignore(async ()); // not yet supported
 };
@@ -73,3 +72,5 @@ func local_spawn() {
 
 
 actor BadSecondActor { };
+
+func implicit_async() : async () { }; // async functions not supported

@@ -14,15 +14,17 @@ unsupported.as:4.5-4.41: type error, a shared function cannot be private
  (This is a temporary limitation of interpretation/compilation.)
 unsupported.as:38.26-38.29: type error, a shared function is only allowed as a public field of an actor
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:42.10-42.18: type error, unsupported async block
+unsupported.as:41.10-41.18: type error, unsupported async block
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:47.31-47.48: type error, shared function has non-shared parameter type
+unsupported.as:46.31-46.48: type error, shared function has non-shared parameter type
   shared () -> ()
-unsupported.as:52.31-52.41: type error, shared function has non-shared parameter type
+unsupported.as:51.31-51.41: type error, shared function has non-shared parameter type
   actor {}
-unsupported.as:63.3-63.35: type error, actor classes are not supported; use an actor declaration instead
+unsupported.as:62.3-62.35: type error, actor classes are not supported; use an actor declaration instead
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:67.45-67.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+unsupported.as:66.45-66.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:71.29-71.37: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+unsupported.as:70.29-70.37: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+ (This is an indefinite limitation of interpretation/compilation.)
+unsupported.as:76.34-76.37: type error, freestanding async expression not yet supported
  (This is an indefinite limitation of interpretation/compilation.)
