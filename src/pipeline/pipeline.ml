@@ -493,11 +493,9 @@ let compile_prog mode do_link lib_env libraries progs : Wasm_exts.CustomModule.e
   Codegen.Compile.compile mode name rts prelude_ir [prog_ir]
 
 let compile_files mode do_link files : compile_result =
-  Diag.bind (load_progs parse_file files initial_stat_env)
-    (fun (libraries, progs, senv) ->
-      Diag.bind (Typing.check_actors senv progs)
-        (fun () ->
-          Diag.return (compile_prog mode do_link senv.Scope.lib_env libraries progs)))
+  Diag.bind (load_progs parse_file files initial_stat_env) (fun (libraries, progs, senv) ->
+  Diag.bind (Typing.check_actors senv progs) (fun () ->
+  Diag.return (compile_prog mode do_link senv.Scope.lib_env libraries progs)))
 
 let compile_string mode s name : compile_result =
   Diag.bind (load_decl (parse_string name s) initial_stat_env)

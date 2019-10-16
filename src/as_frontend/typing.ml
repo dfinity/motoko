@@ -83,7 +83,7 @@ let flag_of_compile_mode mode =
   | Flags.WasmMode -> " with flag -no-system-api"
   | Flags.AncientMode -> " with flag -ancient-system-api"
 
-let compile_mode_error limit env mode at fmt =
+let compile_mode_error mode limit env at fmt =
   Printf.ksprintf
     (fun s ->
       let s =
@@ -97,10 +97,10 @@ let compile_mode_error limit env mode at fmt =
       in
       Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
 
-let error_in limit modes env at fmt =
+let error_in modes limit env at fmt =
   let mode = !Flags.compile_mode in
   if List.mem mode modes then
-    compile_mode_error limit env mode at fmt
+    compile_mode_error mode limit env at fmt
 
 (* Context extension *)
 
@@ -615,7 +615,7 @@ and infer_exp'' env exp : T.typ =
     )
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
-      error_in Indefinite [Flags.ICMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
+      error_in [Flags.ICMode] Indefinite env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
     let env' = if sort.it = T.Actor then {env with async = false; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
@@ -668,7 +668,7 @@ and infer_exp'' env exp : T.typ =
     )
   | FuncE (_, sort, typ_binds, pat, typ_opt, exp) ->
     if not env.pre && not in_actor && T.is_shared_sort sort.it then
-      error_in Indefinite [Flags.ICMode] env exp.at "a shared function is only allowed as a public field of an actor";
+      error_in [Flags.ICMode] Indefinite env exp.at "a shared function is only allowed as a public field of an actor";
     let typ =
       match typ_opt with
       | Some typ -> typ
@@ -723,9 +723,9 @@ and infer_exp'' env exp : T.typ =
       check_exp env t_arg exp2;
       if Type.is_shared_sort sort then begin
         if T.is_async t_ret && not in_await then
-          error_in Indefinite [Flags.ICMode] env exp2.at
+          error_in [Flags.ICMode] Indefinite env exp2.at
             "shared, async function must be called within an await expression";
-        error_in Temporary [Flags.ICMode] env exp1.at "calling a shared function not yet supported";
+        error_in [Flags.ICMode] Temporary env exp1.at "calling a shared function not yet supported";
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
@@ -871,7 +871,7 @@ and infer_exp'' env exp : T.typ =
     T.Non
   | AsyncE exp1 ->
     if not in_shared then
-      error_in Indefinite [Flags.ICMode] env exp.at "unsupported async block";
+      error_in [Flags.ICMode] Indefinite env exp.at "unsupported async block";
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
@@ -886,8 +886,8 @@ and infer_exp'' env exp : T.typ =
     (match exp1.it with
        | CallE (f, _, _) ->
          if not env.pre && (Call_conv.call_conv_of_typ f.note.note_typ).Call_conv.control = T.Returns then
-           error_in Indefinite [Flags.ICMode] env f.at "expecting call to shared, async function in await";
-      | _ -> error_in Indefinite [Flags.ICMode] env exp1.at "argument to await must be a call expression");
+           error_in [Flags.ICMode] Indefinite env f.at "expecting call to shared, async function in await";
+      | _ -> error_in [Flags.ICMode] Indefinite env exp1.at "argument to await must be a call expression");
     (try
        T.as_async_sub t1
     with Invalid_argument _ ->
@@ -952,7 +952,7 @@ and check_exp' env0 t exp : T.typ =
     t
   | AsyncE exp1, T.Async t' ->
     if not in_shared then
-      error_in Indefinite [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
+      error_in [Flags.ICMode] Indefinite env exp.at "freestanding async expression not yet supported";
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
     check_exp env' t' exp1;
     t
@@ -1420,7 +1420,7 @@ and infer_obj env s fields at : T.typ =
         ) fields;
       List.iter (fun ef ->
         if ef.it.vis.it = Syntax.Private  && is_actor_method ef.it.dec then
-          error_in Temporary [Flags.ICMode] env ef.it.dec.at
+          error_in [Flags.ICMode] Temporary env ef.it.dec.at
             "a shared function cannot be private"
         ) fields;
     end;
@@ -1747,7 +1747,7 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (id, typ_binds, pat, _, sort, _, _) ->
     if sort.it = T.Actor then
-      error_in Indefinite [Flags.ICMode] env dec.at
+      error_in [Flags.ICMode] Indefinite env dec.at
         "actor classes are not supported; use an actor declaration instead";
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
@@ -1802,20 +1802,22 @@ let check_actors scope progs : unit Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
-      let prog = List.concat (List.map (fun prog -> prog.Source.it) progs) in
-      let env = env_of_scope msgs scope in
-      let is_actor_dec d =
-        match d.it with
-        | LetD(_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
-        | _ -> false
-      in match List.filter is_actor_dec prog with
-       | [] -> ()
-       | [d] -> ()
-       | ds ->
-         List.iter (fun d ->
-             recover
-               (error_in Indefinite [Flags.ICMode] env d.at)
-               "multiple actors in program; there must be at most one actor declaration in a program")
-           ds
-        ) progs
-    )
+        let prog = List.concat (List.map (fun prog -> prog.Source.it) progs) in
+        let env = env_of_scope msgs scope in
+        let is_actor_dec d =
+          match d.it with
+          | LetD(_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
+          | _ -> false
+        in
+        match List.filter is_actor_dec prog with
+        | [] -> ()
+        | [d] -> ()
+        | ds ->
+          List.iter (fun d ->
+              recover
+                (error_in [Flags.ICMode] Indefinite env d.at)
+                "multiple actors in program; there must be at most one actor declaration in a program")
+            ds
+        )
+        progs)
+
