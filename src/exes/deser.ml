@@ -1,6 +1,5 @@
 open Stdio.In_channel
 open Lazy
-(*let module Parser = Idllib.Parser*)
 
 (* The type of outputters
 
@@ -530,11 +529,12 @@ let () =
   Arg.parse argspec add_arg usage;
   if !reverse_mode then
     begin
+      let open Idllib in
       Printf.printf "\nDESER, parsing!\n";
       let lexer = Lexing.from_channel stdin in
-      let Source.{it = _; _} = Idllib.Parser.parse_arg Idllib.Lexer.token lexer "<stdin>" in
-            Printf.printf "\nDESER, parsed!\n";
-
+      let Source.{it = vs; _} = Parser.parse_arg Lexer.token lexer "<stdin>" in
+      Wasm.Sexpr.print 80 Arrange_idl.("Arg" $$ List.map value vs);
+      Printf.printf "\nDESER, parsed!\n";
     end
   else
     begin

@@ -47,15 +47,15 @@ and typ_meth (tb : typ_meth)
 and mode m = Atom (string_of_mode m)
   
 and typ t = match t.it with
-  | VarT s        -> "VarT" $$ [id s]
-  | PrimT p             -> "PrimT" $$ [Atom (string_of_prim p)]
-  | RecordT ts        -> "RecordT" $$ List.map typ_field ts
-  | VecT t       -> "VecT" $$ [typ t]
-  | OptT t              -> "OptT" $$ [typ t]
-  | VariantT cts        -> "VariantT" $$ List.map typ_field cts
+  | VarT s           -> "VarT" $$ [id s]
+  | PrimT p          -> "PrimT" $$ [Atom (string_of_prim p)]
+  | RecordT ts       -> "RecordT" $$ List.map typ_field ts
+  | VecT t           -> "VecT" $$ [typ t]
+  | OptT t           -> "OptT" $$ [typ t]
+  | VariantT cts     -> "VariantT" $$ List.map typ_field cts
   | FuncT (ms, s, t) -> "FuncT" $$ List.map typ_field s @ List.map typ_field t @ List.map mode ms
-  | ServT ts -> "ServT" $$ List.map typ_meth ts
-  | PreT -> Atom "PreT"
+  | ServT ts         -> "ServT" $$ List.map typ_meth ts
+  | PreT             -> Atom "PreT"
                         
 and dec d = match d.it with
   | TypD (x, t) ->
@@ -70,6 +70,22 @@ and actor a = match a with
     
 and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
+and value v = match v.it with
+  | FalseV        -> Atom "FalseV"
+  | TrueV         -> Atom "TrueV"
+  | NullV         -> Atom "NullV"
+  | TextV s       -> "TextV" $$ [Atom s]
+  | OptV v        -> "OptV" $$ [value v]
+  | VecV vs       -> "VecV" $$ List.map value vs
+  | RecordV vfs   -> "RecordV" $$ List.map value_field vfs
+  | VariantV vf   -> "VariantV" $$ [value_field vf]
+  | AnnotV (v, t) -> "AnnotV" $$ [value v; typ t]
+                        
+and value_field (vf : value_field) = match vf.it with
+  | { hash; name = Some name; value = v } ->
+    (name.it ^ "(" ^ Lib.Uint32.to_string hash ^ ")") $$ [value v]
+  | { hash; name = _; value = v } ->
+    ("(" ^ Lib.Uint32.to_string hash ^ ")") $$ [value v]
 
 (* Pretty printing  *)
 open Format
