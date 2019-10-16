@@ -26,5 +26,3 @@ unsupported.as:67.45-67.53: type error, non-toplevel actor; an actor can only be
  (This is an indefinite limitation of interpretation/compilation.)
 unsupported.as:71.29-71.37: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
  (This is an indefinite limitation of interpretation/compilation.)
-unsupported.as:75.1-75.25: type error, second actor in program; there must be at most one actor declaration in a program
- (This is an indefinite limitation of interpretation/compilation.)

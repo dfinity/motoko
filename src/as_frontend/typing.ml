@@ -28,7 +28,6 @@ type env =
     in_await : bool;
     in_shared : bool;
     in_prog : bool;
-    actors : int ref;
     pre : bool;
     msgs : Diag.msg_store;
   }
@@ -45,8 +44,7 @@ let env_of_scope msgs scope =
     in_await = false;
     in_shared = false;
     in_actor = false;
-    in_prog = false;
-    actors = ref 0;
+    in_prog = true;
     pre = false;
     msgs;
   }
@@ -618,12 +616,6 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
       error_in Indefinite [Flags.ICMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
-    if in_prog && sort.it = T.Actor then begin
-       env.actors := !(env.actors) + 1;
-       if !(env.actors) > 1 then
-         error_in Indefinite [Flags.ICMode] env exp.at
-           "second actor in program; there must be at most one actor declaration in a program";
-    end;
     let env' = if sort.it = T.Actor then {env with async = false; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
@@ -1778,7 +1770,7 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env = {(env_of_scope msgs scope) with in_prog = true} in
+          let env = env_of_scope msgs scope in
           let res = infer_block env prog.it prog.at in
           res
         ) prog
@@ -1804,4 +1796,26 @@ let check_library scope (filename, prog) : Scope.t Diag.result =
           let typ = infer_library env prog.it prog.at in
           Scope.library filename typ
         ) prog
+    )
+
+let check_actors scope progs : unit Diag.result =
+  Diag.with_message_store
+    (fun msgs ->
+      recover_opt (fun progs ->
+      let prog = List.concat (List.map (fun prog -> prog.Source.it) progs) in
+      let env = env_of_scope msgs scope in
+      let is_actor_dec d =
+        match d.it with
+        | LetD(_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
+        | _ -> false
+      in match List.filter is_actor_dec prog with
+       | [] -> ()
+       | [d] -> ()
+       | ds ->
+         List.iter (fun d ->
+             recover
+               (error_in Indefinite [Flags.ICMode] env d.at)
+               "multiple actors in program; there must be at most one actor declaration in a program")
+           ds
+        ) progs
     )
