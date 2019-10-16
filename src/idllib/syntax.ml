@@ -71,8 +71,8 @@ and value' =
   | VecV of value list             (* vector *)
   | RecordV of value_field list    (* record *)
   | VariantV of value_field        (* variant *)
-  | FuncV                          (* function *)
-  | ServiceV                       (* service *)
+  | FuncV of string * id           (* function *)
+  | ServiceV of string             (* service *)
   | AnnotV of value * typ          (* annotated *)
 
 and value_field = value_field' Source.phrase

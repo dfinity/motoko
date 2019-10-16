@@ -66,13 +66,11 @@ and dec d = match d.it with
 and actor a = match a with
   | None -> Atom "NoActor"
   | Some {it=ActorD (x, t); _} ->
-     "ActorD" $$ id x :: [typ t]
+     "ActorD" $$ [id x; typ t]
 
 and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
 and value v = match v.it with
-  | FuncV         -> Atom "FuncV"
-  | ServiceV      -> Atom "ServiceV"
   | FalseV        -> Atom "FalseV"
   | TrueV         -> Atom "TrueV"
   | NullV         -> Atom "NullV"
@@ -81,6 +79,8 @@ and value v = match v.it with
   | VecV vs       -> "VecV" $$ List.map value vs
   | RecordV vfs   -> "RecordV" $$ List.map value_field vfs
   | VariantV vf   -> "VariantV" $$ [value_field vf]
+  | FuncV (uri, m) -> "FuncV" $$ [Atom uri; id m]
+  | ServiceV uri  -> "ServiceV" $$ [Atom uri]
   | AnnotV (v, t) -> "AnnotV" $$ [value v; typ t]
 
 and value_field (vf : value_field) = match vf.it with

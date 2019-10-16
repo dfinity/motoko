@@ -108,6 +108,7 @@ rule token = parse
   | "}" { RCURLY }
   | ";" { SEMICOLON }
   | "," { COMMA }
+  | "." { DOT }
   | ":" { COLON }
   | "=" { EQ }
   | "->" { ARROW }

@@ -55,7 +55,7 @@ let record_fields fs =
 %token LPAR RPAR LCURLY RCURLY
 %token ARROW
 %token FUNC TYPE SERVICE IMPORT
-%token SEMICOLON COMMA COLON EQ
+%token SEMICOLON COMMA DOT COLON EQ
 %token OPT VEC RECORD VARIANT BLOB
 %token<string> NAT
 %token<string> ID
@@ -188,10 +188,10 @@ parse_prog :
 value :
   | text=TEXT
     { TextV text @@ at $sloc }
-  | FUNC
-    { FuncV @@ at $sloc }
-  | SERVICE
-    { ServiceV @@ at $sloc }
+  | FUNC uri=TEXT DOT id=id
+    { FuncV(uri, id) @@ at $sloc }
+  | SERVICE uri=TEXT
+    { ServiceV uri @@ at $sloc }
   | FALSE
     { FalseV @@ at $sloc }
   | TRUE
