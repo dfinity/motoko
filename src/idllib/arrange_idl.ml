@@ -26,7 +26,7 @@ let string_of_mode m =
   match m.it with
   | Oneway -> " oneway"
   | Query -> " query"
-                 
+
 let ($$) head inner = Node (head, inner)
 
 and id i = Atom i.it
@@ -45,7 +45,7 @@ and typ_meth (tb : typ_meth)
   = tb.it.var.it $$ [typ tb.it.meth]
 
 and mode m = Atom (string_of_mode m)
-  
+
 and typ t = match t.it with
   | VarT s           -> "VarT" $$ [id s]
   | PrimT p          -> "PrimT" $$ [Atom (string_of_prim p)]
@@ -56,7 +56,7 @@ and typ t = match t.it with
   | FuncT (ms, s, t) -> "FuncT" $$ List.map typ_field s @ List.map typ_field t @ List.map mode ms
   | ServT ts         -> "ServT" $$ List.map typ_meth ts
   | PreT             -> Atom "PreT"
-                        
+
 and dec d = match d.it with
   | TypD (x, t) ->
      "TypD" $$ [id x] @ [typ t]
@@ -65,9 +65,9 @@ and dec d = match d.it with
 
 and actor a = match a with
   | None -> Atom "NoActor"
-  | Some {it=ActorD (x, t); _} -> 
+  | Some {it=ActorD (x, t); _} ->
      "ActorD" $$ id x :: [typ t]
-    
+
 and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
 and value v = match v.it with
@@ -80,7 +80,7 @@ and value v = match v.it with
   | RecordV vfs   -> "RecordV" $$ List.map value_field vfs
   | VariantV vf   -> "VariantV" $$ [value_field vf]
   | AnnotV (v, t) -> "AnnotV" $$ [value v; typ t]
-                        
+
 and value_field (vf : value_field) = match vf.it with
   | { hash; name = Some name; value = v } ->
     (name.it ^ "(" ^ Lib.Uint32.to_string hash ^ ")") $$ [value v]
@@ -170,7 +170,7 @@ let rec is_linebreak_type t =
   | RecordT fs | VariantT fs -> List.length fs > 1
   | VecT t | OptT t -> is_linebreak_type t
   | _ -> false
-  
+
 let pp_dec ppf d =
   pp_open_vbox ppf 1;
   (match d.it with
@@ -213,7 +213,7 @@ let pp_actor ppf actor =
      pp_close_box ppf ()
   | _ -> assert false);
   pp_print_cut ppf ()
-  
+
 let pp_prog ppf prog =
   pp_open_vbox ppf 0;
   List.iter (fun d ->
@@ -230,7 +230,7 @@ let string_of_typ t =
   pp_typ ppf t;
   pp_print_flush ppf ();
   Buffer.contents buf
-  
+
 let string_of_prog prog =
   let buf = Buffer.create 100 in
   let ppf = formatter_of_buffer buf in
