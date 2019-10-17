@@ -591,7 +591,7 @@ let shared t =
 
 let is_shared_func t =
   match normalize t with
-  | Func(Shared _, _, _, _,_) -> true
+  | Func (Shared _, _, _, _, _) -> true
   | _ -> false
 
 (* Equivalence & Subtyping *)
