@@ -1,16 +1,13 @@
-type Text = text;
-type Nat = nat;
-type Int = int;
 service anon_inline_result {
-  "f": (opt Nat) -> (variant {
-                       "err": Text;
-                       "ok": Nat;
+  "f": (opt nat) -> (variant {
+                       "err": text;
+                       "ok": nat;
                      });
   "g": (variant {
-          "err": Text;
-          "ok": Nat;
+          "err": text;
+          "ok": nat;
         }) -> (variant {
                  "err": record {};
-                 "ok": Int;
+                 "ok": int;
                });
 }

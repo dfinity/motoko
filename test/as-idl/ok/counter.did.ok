@@ -1,7 +1,6 @@
-type Int = int;
 type Counter = 
  service {
    "dec": () -> () oneway;
-   "read": () -> (Int);
+   "read": () -> (int);
  };
 service c : Counter
