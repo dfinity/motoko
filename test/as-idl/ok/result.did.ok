@@ -6,12 +6,12 @@ type Result_1_2 =
 type Result_1_1 = 
  variant {
    "err": text;
-   "ok": record {};
+   "ok": null;
  };
 type Result3_1 = 
  variant {
    "err": Result2_1;
-   "ok": record {};
+   "ok": null;
  };
 type Result2_2 = 
  variant {
@@ -21,7 +21,7 @@ type Result2_2 =
 type Result2_1 = 
  variant {
    "err": Result_1_1;
-   "ok": record {};
+   "ok": null;
  };
 service anon_result {
   "f": (opt nat) -> (Result_1_2);

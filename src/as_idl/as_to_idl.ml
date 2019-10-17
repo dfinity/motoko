@@ -116,7 +116,10 @@ let rec typ vs t =
       | _ -> assert false)
   | Typ c -> assert false
   | Tup ts ->
-     I.RecordT (tuple vs ts)
+     if ts == [] then
+       I.PrimT I.Null
+     else
+       I.RecordT (tuple vs ts)
   | Array t -> I.VecT (typ vs t)
   | Opt t -> I.OptT (typ vs t)
   | Obj (Object, fs) ->

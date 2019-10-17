@@ -2,8 +2,7 @@ type Info = {
     name : Text;
     _1_ : Info;
     _345_ : Text;
-    _name_: Int;
-    name__ : Nat;
+    name_: Int;
 };
 type Tup = (Text, Info, Text, Nat);
 actor Server {
