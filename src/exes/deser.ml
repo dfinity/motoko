@@ -612,7 +612,7 @@ let () =
       let open Idllib in
       Printf.printf "\nDESER, parsing!\n";
       let lexer = Lexing.from_channel stdin in
-      let Source.{it = vs; _} = Parser.parse_arg Lexer.token lexer "<stdin>" in
+      let Source.{it = vs; _} = Parser.parse_arg Lexer.value_token lexer "<stdin>" in
       Wasm.Sexpr.print 80 Arrange_idl.("Arg" $$ List.map value vs);
       Printf.printf "\nDESER, parsed!\n";
       let open Typer in

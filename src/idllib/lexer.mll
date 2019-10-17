@@ -108,7 +108,6 @@ rule token = parse
   | "}" { RCURLY }
   | ";" { SEMICOLON }
   | "," { COMMA }
-  | "." { DOT }
   | ":" { COLON }
   | "=" { EQ }
   | "->" { ARROW }
@@ -132,10 +131,6 @@ rule token = parse
   | "variant" { VARIANT }
   | "blob" { BLOB }
 
-  | "true" { TRUE }
-  | "false" { FALSE }
-  | "null" { NULL }
-
   | id as s { ID s }
 
   | "//"utf8_no_nl*eof { EOF }
@@ -155,4 +150,47 @@ and comment start = parse
   | '\n' { Lexing.new_line lexbuf; comment start lexbuf }
   | eof { error_nest start lexbuf "unclosed comment" }
   | utf8 { comment start lexbuf }
+  | _ { error lexbuf "malformed UTF-8 encoding" }
+
+and value_token = parse
+  | "(" { LPAR }
+  | ")" { RPAR }
+  | "{" { LCURLY }
+  | "}" { RCURLY }
+  | ";" { SEMICOLON }
+  | "," { COMMA }
+  | "." { DOT }
+  | ":" { COLON }
+
+  | nat as s { NAT s }
+  | text as s { TEXT (text lexbuf s) }
+  | '"'character*('\n'|eof)
+    { error lexbuf "unclosed text literal" }
+  | '"'character*['\x00'-'\x09''\x0b'-'\x1f''\x7f']
+    { error lexbuf "illegal control character in text literal" }
+  | '"'character*'\\'_
+    { error_nest (Lexing.lexeme_end_p lexbuf) lexbuf "illegal escape" }
+
+  | "true" { TRUE }
+  | "false" { FALSE }
+  | "null" { NULL }
+
+  | "service" { SERVICE }
+  | "func" { FUNC }
+  | "opt" { OPT }
+  | "vec" { VEC }
+  | "record" { RECORD }
+  | "variant" { VARIANT }
+
+  | id as s { ID s }
+
+  | "//"utf8_no_nl*eof { EOF }
+  | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; value_token lexbuf }
+  | "//"utf8_no_nl* { value_token lexbuf (* causes error on following position *) }
+  | "/*" { comment (Lexing.lexeme_start_p lexbuf) lexbuf; value_token lexbuf }
+  | space#'\n' { value_token lexbuf }
+  | '\n' { Lexing.new_line lexbuf; value_token lexbuf }
+  | eof { EOF }
+
+  | utf8 { error lexbuf "malformed operator" }
   | _ { error lexbuf "malformed UTF-8 encoding" }
