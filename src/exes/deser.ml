@@ -596,9 +596,8 @@ let () =
       let Source.{it = vs; _} = Parser.parse_arg Lexer.token lexer "<stdin>" in
       Wasm.Sexpr.print 80 Arrange_idl.("Arg" $$ List.map value vs);
       Printf.printf "\nDESER, parsed!\n";
-      let open Syntax in
-      let open Source in
-      let ts = List.map (fun v -> Typer.get_bid v (PrimT Reserved) @@ v.at) vs in
+      let open Typer in
+      let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
     end
   else
