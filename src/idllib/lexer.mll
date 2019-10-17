@@ -132,11 +132,11 @@ rule token = parse
   | "variant" { VARIANT }
   | "blob" { BLOB }
 
-  | id as s { ID s }
-
   | "true" { TRUE }
   | "false" { FALSE }
   | "null" { NULL }
+
+  | id as s { ID s }
 
   | "//"utf8_no_nl*eof { EOF }
   | "//"utf8_no_nl*'\n' { Lexing.new_line lexbuf; token lexbuf }
