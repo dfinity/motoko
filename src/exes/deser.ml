@@ -548,6 +548,8 @@ let rec lub t u =
   | PrimT Nat, PrimT Int -> t
   | PrimT Int, PrimT Nat -> u
   | VecT p, VecT q -> VecT (lub p.it q.it @@ p.at)
+  | PrimT Null, OptT _ -> u
+  | OptT _, PrimT Null -> t
   | _ -> failwith "lub TODO"
 
 
