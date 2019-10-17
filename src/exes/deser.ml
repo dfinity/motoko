@@ -558,6 +558,17 @@ let rec get_bid (v : value) : bid =
               | PrimT Reserved -> OptT (infer v)
               | OptT t -> OptT (get_bid v t.it @@ v.at)
               | _ -> bottom)
+  | VecV _ -> failwith "cannot yet"
+  | RecordV _ -> failwith "cannot yet"
+  | VariantV _ -> failwith "cannot yet"
+  | FuncV _ -> failwith "cannot yet"
+
+  | AnnotV (v, t) -> let bid = get_bid v in
+                     (fun t' -> (*bid t'*) (bid t.it))
+  | ServiceV uri -> (function
+                     | PrimT Reserved -> ServT []
+                     | ServT _ as serv -> serv
+                     | _ -> bottom)
 end
 
 (* run it *)
