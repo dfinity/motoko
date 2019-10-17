@@ -34,7 +34,7 @@ and tag i = Atom ("#" ^ i.it)
 
 let field_tag (tf : field_label)
   = match tf.it with
-    Id n -> Lib.Uint32.to_string n
+    | Id n -> Lib.Uint32.to_string n
   | Named name -> name
   | Unnamed n -> Lib.Uint32.to_string n
 

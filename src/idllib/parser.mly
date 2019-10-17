@@ -34,7 +34,6 @@ let func_modes = ["oneway", Oneway; "query", Query]
 let get_func_mode m = List.assoc_opt m func_modes               
 
 let hash = IdlHash.idl_hash
-                    
 let record_fields fs =
   let open Uint32 in
   let rec go start fs =
@@ -110,7 +109,7 @@ variant_typ :
   | name=name
     { { label = Named name.it @@ at $loc(name); typ = PrimT Null @@ no_region } @@ at $sloc } 
   | n=NAT
-    { { label = Id (Uint32.of_string n) @@ at $loc(n); typ = PrimT Null @@ no_region } @@ at $sloc } 
+    { { label = Id (Uint32.of_string n) @@ at $loc(n); typ = PrimT Null @@ no_region } @@ at $sloc }
 
 record_typs :
   | LCURLY fs=seplist(record_typ, SEMICOLON) RCURLY
