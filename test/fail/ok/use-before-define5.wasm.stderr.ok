@@ -4,7 +4,8 @@ non-closed actor: (ActorE
     (VarP foo)
     (FuncE
       foo
-      (shared 0 -> 0)
+      Shared
+      Returns
       ()
       (AssertE (PrimE (RelPrim Nat EqOp) (VarE x) (LitE (NatLit 1))))
     )

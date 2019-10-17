@@ -7,7 +7,7 @@ open Source
 
 module V = Value
 module T = Type
-module CC = As_types.Call_conv
+module CC = Call_conv
 
 (* Context *)
 
@@ -186,8 +186,8 @@ let make_unit_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared; n_res = 0; _} ->
-    Value.message_func call_conv.n_args (fun v k ->
+  | {sort = T.Shared s; n_res = 0; _} ->
+    Value.message_func s call_conv.n_args (fun v k ->
       actor_msg env id f v (fun _ -> ());
       k V.unit
     )
@@ -200,8 +200,8 @@ let make_async_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared; control = T.Promises; n_res = 1; _} ->
-    Value.async_func call_conv.n_args (fun v k ->
+  | {sort = T.Shared s; control = T.Promises p; n_res = 1; _} ->
+    Value.async_func s call_conv.n_args p (fun v k ->
       let async = make_async () in
       actor_msg env id f v (fun v_async ->
         get_async (V.as_async v_async) (set_async async) (reject_async async)
@@ -216,7 +216,7 @@ let make_async_message env id v =
 let make_message env x cc v : V.value =
   match cc.CC.control with
   | T.Returns -> make_unit_message env x v
-  | T.Promises -> make_async_message env x v
+  | T.Promises _ -> make_async_message env x v
 
 
 let extended_prim env s typ at =
@@ -396,7 +396,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
            with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
-  | CallE (_cc, exp1, typs, exp2) ->
+  | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
         let call_conv, f = V.as_func v1 in
@@ -465,13 +465,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | FuncE (x, cc, _typbinds, args, _typ, e) ->
+  | FuncE (x, sort, control, _typbinds, args, ret_typs, e) ->
+    let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
+
     let f = interpret_func env exp.at x args
       (fun env' -> interpret_exp env' e) in
     let v = V.Func (cc, f) in
     let v =
       match cc.sort with
-      | T.Shared -> make_message env x cc v
+      | T.Shared _ -> make_message env x cc v
       | _-> v
     in
     k v

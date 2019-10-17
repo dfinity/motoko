@@ -31,7 +31,6 @@ export AS_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
-JSCLIENT=${JSCLIENT:-$(realpath $(dirname $0)/../../dev/experimental/js-dfinity-client)}
 ECHO=echo
 
 while getopts "a12sir" o; do
@@ -68,7 +67,7 @@ failures=no
 function normalize () {
   if [ -e "$1" ]
   then
-    grep -a -E -v '^Raised by|Raised at|^Re-raised at|^Re-Raised at|^Called from' $1 |
+    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ *at ' $1 |
     sed 's/\x00//g' |
     sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
@@ -265,6 +264,12 @@ do
 
     if [ "$tc_succeeded" -eq 0 ];
     then
+      $ECHO -n " [pp]"
+      $DIDC --pp $base.did > $out/$base.pp.did
+      sed -i 's/import "/import "..\//g' $out/$base.pp.did
+      $DIDC --check $out/$base.pp.did > $out/$base.pp.tc 2>&1
+      diff_files="$diff_files $base.pp.tc"
+      
       $ECHO -n " [js]"
       $DIDC --js $base.did -o $out/$base.js >& $out/$base.js.out
       normalize $out/$base.js
@@ -274,10 +279,18 @@ do
       if [ -e $out/$base.js ]
       then
         $ECHO -n " [node]"
-        export NODE_PATH=$NODE_PATH:$JSCLIENT:$JSCLIENT/src
-        node $out/$base.js > $out/$base.js.out 2>&1
-        normalize $out/$base.js.out
-        diff_files="$diff_files $base.js.out"
+        export NODE_PATH=$NODE_PATH:$ESM
+
+        node -r esm $out/$base.js > $out/$base.node 2>&1
+        normalize $out/$base.node
+        diff_files="$diff_files $base.node"
+
+        node -r esm -e \
+        "import actorInterface from './$out/$base.js';
+        import { makeActor, makeHttpAgent } from '$JS_USER_LIBRARY';
+        const httpAgent = makeHttpAgent({ canisterId: 1 });
+        const actor = makeActor(actorInterface)(httpAgent);
+        assert(Object.entries(actor).length > 0);"
       fi
     fi
   fi

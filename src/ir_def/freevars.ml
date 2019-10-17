@@ -67,7 +67,7 @@ let rec exp e : f = match e.it with
   | AssignE (e1, e2)    -> exps [e1; e2]
   | ArrayE (m, t, es)   -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]
-  | CallE (_, e1, ts, e2) -> exps [e1; e2]
+  | CallE (e1, ts, e2)  -> exps [e1; e2]
   | BlockE (ds, e1)     -> close (decs ds +++ exp e1)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
@@ -82,7 +82,7 @@ let rec exp e : f = match e.it with
   | TagE (_, e)         -> exp e
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
-  | FuncE (x, cc, tp, as_, t, e) -> under_lambda (exp e /// args as_)
+  | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
   | ActorE (i, ds, fs, _) -> close (decs ds +++ fields fs) // i
   | NewObjE (_, fs, _)  -> fields fs
   | ThrowE e            -> exp e
