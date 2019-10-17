@@ -523,6 +523,41 @@ let argspec = Arg.align
 
 let add_arg source = () (* args := !args @ [source] *)
 
+
+(* type checker/inferencer -- SHOULD MOVE TO IDLLIB *)
+module Typer = struct
+open Idllib.Syntax
+open Source
+
+(* the type of bidirectional checker/inferencer
+Every IDL value corresponds to such a function.
+
+ - for inferencing the most general type: call with `PrimT Reserved`
+ - for type checking against `t`: call with `t`
+
+Guaranteed to return a `typ` that is `<=` in the IDL type lattice.
+ *)
+type bid = typ' -> typ'
+
+let rec get_bid (v : value) : bid =
+  match v.it with
+  | FalseV
+  | TrueV -> (function
+              | PrimT (Reserved | Bool) -> PrimT Bool
+              | _ -> PrimT Empty)
+  | NullV -> (function
+              | PrimT (Reserved | Null) -> PrimT Null
+              | OptT _ as opt -> opt
+              | _ -> PrimT Empty)
+  | TextV _ -> (function
+                | PrimT (Reserved | Text) -> PrimT Text
+                | _ -> PrimT Empty)
+  | OptV v -> (function
+              | PrimT Reserved -> OptT (get_bid v (PrimT Reserved) @@ v.at)
+              | OptT t -> OptT (get_bid v t.it @@ v.at)
+              | _ -> PrimT Empty)
+end
+
 (* run it *)
 
 let () =
