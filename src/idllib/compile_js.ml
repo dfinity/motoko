@@ -70,7 +70,7 @@ let str ppf s = pp_print_string ppf s; pp_print_cut ppf ()
 let id ppf s = str ppf s.it; pp_print_cut ppf ()
 let space = pp_print_space             
 let kwd ppf s = str ppf s; space ppf ()
-let field_name ppf s = str ppf "'"; str ppf s.it; str ppf "'"; pp_print_cut ppf ()                
+let quote_name ppf s = pp_open_hbox ppf (); str ppf "'"; str ppf (Lib.String.lightweight_escaped s); str ppf "'"; pp_close_box ppf (); pp_print_cut ppf ()
 
 let pp_prim p =
   match p with
@@ -108,7 +108,7 @@ let rec pp_typ ppf t =
   | OptT t -> str ppf "IDL.Opt("; pp_typ ppf t; str ppf ")";
   | VariantT ts -> str ppf "IDL.Variant({"; concat ppf pp_field "," ts; str ppf "})";
   | FuncT (ms, t1, t2) ->
-     str ppf "IDL.Message(";
+     str ppf "IDL.Func(";
      pp_fields ppf t1;
      kwd ppf ",";
      pp_fields ppf t2;
@@ -133,12 +133,17 @@ and pp_fields ppf fs =
   
 and pp_field ppf tf =
   pp_open_box ppf 1;
-  field_name ppf tf.it.name; kwd ppf ":"; pp_typ ppf tf.it.typ;
+  let f_name =
+    match tf.it.label.it with
+    | Id n -> Lib.Uint32.to_string n
+    | Named name -> name
+    | Unnamed n -> Lib.Uint32.to_string n
+  in quote_name ppf f_name; kwd ppf ":"; pp_typ ppf tf.it.typ;
   pp_close_box ppf ()
 
 and pp_meth ppf meth =
   pp_open_box ppf 1;
-  field_name ppf meth.it.var;
+  quote_name ppf meth.it.var.it;
   kwd ppf ":";
   pp_typ ppf meth.it.meth;
   pp_close_box ppf ()
@@ -169,28 +174,41 @@ let pp_rec ppf x =
   pp_close_box ppf ();
   pp_print_cut ppf ()
 
-let pp_actor ppf actor =
-  pp_open_hovbox ppf 1;
-  kwd ppf "const";
-  (match actor.it with
+let pp_actor ppf actor recs =
+  match actor.it with
    | ActorD (x, t) ->
       let x = ("actor_" ^ x.it) @@ x.at in
-      match t.it with
-      | ServT tp ->
-         id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
-         str ppf "IDL.ActorInterface({";
-         concat ppf pp_meth "," tp;
-         str ppf "})"
-      | VarT var -> id ppf x; space ppf (); kwd ppf "="; id ppf var
-      | _ -> assert false
-  );
-  pp_close_box ppf ()
+      pp_open_hovbox ppf 1;
+      kwd ppf "const";
+      (match t.it with
+       | ServT tp ->
+          id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
+          str ppf "IDL.ActorInterface({";
+          concat ppf pp_meth "," tp;
+          str ppf "});"
+       | VarT var ->
+          id ppf x; space ppf (); kwd ppf "=";
+          if TS.mem var.it recs then
+            str ppf (var.it ^ ".__typ;")
+          else
+            str ppf var.it;
+       | _ -> assert false
+      );
+      pp_close_box ppf ();      
+      pp_force_newline ppf ();
+      pp_open_hovbox ppf 0;
+      kwd ppf "return"; id ppf x; str ppf ";";
+      pp_close_box ppf ()
 
 let pp_header ppf () =
-  pp_open_vbox ppf 0;
-  str ppf "const IDL = require('IDL')";
-  pp_close_box ppf ()
-  
+  pp_open_vbox ppf 1;
+  str ppf "export default ({ IDL }) => {"
+
+let pp_footer ppf () =
+  pp_close_box ppf ();
+  pp_force_newline ppf ();
+  pp_print_string ppf "};"
+
 let pp_prog ppf env prog =
   match prog.it.actor with
   | None -> ()
@@ -202,11 +220,10 @@ let pp_prog ppf env prog =
            if TS.mem e.var recs then {e with is_rec = true} else e)
          env_list in
      pp_header ppf ();
-     pp_open_vbox ppf 0;
      TS.iter (pp_rec ppf) recs;
      List.iter (pp_dec ppf) env_list;
-     pp_actor ppf actor;
-     pp_close_box ppf ()
+     pp_actor ppf actor recs;
+     pp_footer ppf ()
    
 let compile (scope : Typing.scope) (prog : Syntax.prog) =
   let buf = Buffer.create 100 in

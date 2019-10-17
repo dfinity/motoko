@@ -25,6 +25,7 @@ parallel: quick
 	$(MAKE_PAR) -C run-dfinity quick
 	$(MAKE_PAR) -C run-drun quick
 	$(MAKE_PAR) -C trap quick
+	$(MAKE_PAR) -C run-deser quick
 
 coverage:
 	rm -rf _coverage
@@ -53,6 +54,7 @@ accept:
 	$(MAKE) -C as-idl accept
 	$(MAKE) -C trap accept
 	$(MAKE) -C trap check
+	$(MAKE) -C run-deser accept
 
 clean:
 	$(MAKE) -C fail clean

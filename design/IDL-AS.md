@@ -133,7 +133,7 @@ i(reserved) = Any
 i(opt <datatype>) = ? i(<datatype>)
 i(vec <datatype>) = [ i(<datatype>) ]
 i(blob) = [ word8 ] // if ActorScript had a bytes type, it would show up here
-i(record { <datatype>;+ }) = ( i(<datatype>),+ ) // matches tuple short-hand
+i(record { <datatype>;^N }) = ( i(<datatype>),^N ) if n > 1 // matches tuple short-hand
 i(record { <fieldtype>;* }) = { if(<fieldtype>);* }
 i(variant { <fieldtype>;* }) = variant { if(<typ-field>);* }
 i(func <functype>) = ifn(<functype>)
@@ -178,7 +178,7 @@ escape <name> = "_" hash(<name>) "_"  otherwise
    e({_0_:Int, _1_:Nat)) = record {0:int; 1:nat}
    ```
 
- * The mapping `i` tries to detect types that can be expressed as (non-nullary)
+ * The mapping `i` tries to detect types that can be expressed as
    tuples in ActorScript.
    ```
    i(record {int;nat}) = (Int, Nat)
@@ -186,8 +186,14 @@ escape <name> = "_" hash(<name>) "_"  otherwise
    i(record {0:Int, 1:Nat)) = {_0_:int; _1_:nat}
    ```
 
-   But note that  `i(record {}) ≠ ()` because `e(()) = null` and we want
-   `e(i(record {})) = record {}`.
+   But note that
+
+   * `i(record {}) ≠ ()` because `e(()) = null` and we want
+     `e(i(record {})) = record {}`.
+
+   * `i(record {int}) ≠ (int,)` because we do not have unary tuples in AS.
+     Instead, `i(record {int}) = { _0_ : int}` so that `e(i(record {int})) =
+     record {int}`.
 
  * The `escape` and `unescape` functions allow round-tripping of IDL field
    names that are not valid ActorScript names (fake hash values):

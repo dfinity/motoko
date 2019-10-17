@@ -18,3 +18,8 @@
  (modules didc)
  (libraries idllib)
 )
+(executable
+ (name deser)
+ (modules deser)
+ (libraries stdio)
+)

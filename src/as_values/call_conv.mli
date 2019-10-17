@@ -1,4 +1,5 @@
 (* Calling convention *)
+open As_types
 
 type call_conv = {
   sort: Type.func_sort;
