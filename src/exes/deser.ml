@@ -539,6 +539,8 @@ Guaranteed to return a `typ` that is `<=` in the IDL type lattice.
  *)
 type bid = typ' -> typ'
 
+let lub bid t : bid = bid (* TODO *)
+
 let rec get_bid (v : value) : bid =
   let infer v = get_bid v (PrimT Reserved) @@ v.at in
   let bottom = PrimT Empty in
@@ -564,7 +566,7 @@ let rec get_bid (v : value) : bid =
   | FuncV _ -> failwith "cannot yet"
 
   | AnnotV (v, t) -> let bid = get_bid v in
-                     (fun t' -> (*bid t'*) (bid t.it))
+                     lub bid t.it
   | ServiceV uri -> (function
                      | PrimT Reserved -> ServT []
                      | ServT _ as serv -> serv
