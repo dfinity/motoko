@@ -889,7 +889,7 @@ and infer_exp'' env exp : T.typ =
            error_in [Flags.ICMode] Indefinite env f.at "expecting call to shared async function in await";
       | _ -> error_in [Flags.ICMode] Indefinite env exp1.at "argument to await must be a call expression");
     (try
-       T.as_async_sub t1
+      T.as_async_sub t1
     with Invalid_argument _ ->
       error env exp1.at "expected async type, but expression has type\n  %s"
         (T.string_of_typ_expand t1)
