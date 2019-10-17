@@ -1,0 +1,7 @@
+type record = record {};
+type variant = variant {};
+type type = nat;
+service service {
+  record : (record, type, record {}) -> (variant, blob);
+  "blob": (blob) -> (blob);
+}

@@ -9,6 +9,7 @@ type Info =
  record {
    1: Info;
    345: text;
+   "_34_5": bool;
    "_name": int;
    "name": text;
    "name_": nat;

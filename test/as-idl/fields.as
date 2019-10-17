@@ -2,6 +2,7 @@ type Info = {
     name : Text;
     _1_ : Info;
     _345_ : Text;
+    _34_5_: Bool;
     _name_: Int;
     name__ : Nat;
 };

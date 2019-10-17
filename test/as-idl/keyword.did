@@ -1,0 +1,3 @@
+service record {
+  "record": () -> ();
+}
