@@ -886,7 +886,7 @@ and infer_exp'' env exp : T.typ =
     (match exp1.it with
        | CallE (f, _, _) ->
          if not env.pre && (Call_conv.call_conv_of_typ f.note.note_typ).Call_conv.control = T.Returns then
-           error_in [Flags.ICMode] Indefinite env f.at "expecting call to shared, async function in await";
+           error_in [Flags.ICMode] Indefinite env f.at "expecting call to shared async function in await";
       | _ -> error_in [Flags.ICMode] Indefinite env exp1.at "argument to await must be a call expression");
     (try
        T.as_async_sub t1
