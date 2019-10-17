@@ -882,7 +882,7 @@ and infer_exp'' env exp : T.typ =
   | AwaitE (exp1) ->
     if not env.async then
       error env exp.at "misplaced await";
-    let t1 = infer_exp_promote { env with in_await = true} exp1 in
+    let t1 = infer_exp_promote {env with in_await = true} exp1 in
     (match exp1.it with
        | CallE (f, _, _) ->
          if not env.pre && (Call_conv.call_conv_of_typ f.note.note_typ).Call_conv.control = T.Returns then
