@@ -552,7 +552,6 @@ let rec lub t u =
 
 
 let rec get_bid (v : value) : bid =
-  let infer v = get_bid v (PrimT Reserved) @@ v.at in
   let bottom = PrimT Empty in
   match v.it with
   | FalseV
@@ -580,6 +579,9 @@ let rec get_bid (v : value) : bid =
                      | PrimT Reserved -> ServT []
                      | ServT _ as serv -> serv
                      | _ -> bottom)
+
+and infer v = get_bid v (PrimT Reserved) @@ v.at
+
 end
 
 (* run it *)
@@ -594,6 +596,10 @@ let () =
       let Source.{it = vs; _} = Parser.parse_arg Lexer.token lexer "<stdin>" in
       Wasm.Sexpr.print 80 Arrange_idl.("Arg" $$ List.map value vs);
       Printf.printf "\nDESER, parsed!\n";
+      let open Syntax in
+      let open Source in
+      let ts = List.map (fun v -> Typer.get_bid v (PrimT Reserved) @@ v.at) vs in
+      Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
     end
   else
     begin
