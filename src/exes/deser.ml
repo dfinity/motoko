@@ -569,12 +569,14 @@ let rec get_bid (v : value) : bid =
               | PrimT Reserved -> OptT (infer v)
               | OptT t -> OptT (get_bid v t.it @@ v.at)
               | _ -> bottom)
-  | VecV _ -> failwith "cannot yet"
+  | VecV vs -> (function
+                | PrimT Reserved -> VecT List.(fold_left lub (PrimT Reserved) (map infer' vs) @@ v.at)
+                | _ -> failwith "cannot VecT yet")
   | RecordV _ -> failwith "cannot yet"
   | VariantV vf -> (function
                     | PrimT Reserved ->
                       VariantT [{label = Unnamed vf.it.hash @@ vf.at; typ = infer vf.it.value} @@ vf.at]
-                    | _ -> failwith "cannot yet")
+                    | _ -> failwith "cannot VariantT yet")
   | FuncV _ -> failwith "cannot yet"
 
   | AnnotV (v, t) -> fun t' -> get_bid v (lub t' t.it)
@@ -583,7 +585,8 @@ let rec get_bid (v : value) : bid =
                      | ServT _ as serv -> serv
                      | _ -> bottom)
 
-and infer v = get_bid v (PrimT Reserved) @@ v.at
+and infer v = infer' v @@ v.at
+and infer' v = get_bid v (PrimT Reserved)
 
 end
 
