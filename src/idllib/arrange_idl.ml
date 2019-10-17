@@ -75,6 +75,7 @@ and value v = match v.it with
   | TrueV            -> Atom "TrueV"
   | NullV            -> Atom "NullV"
   | TextV s          -> "TextV" $$ [Atom s]
+  | IntegralV s      -> "IntegralV" $$ [Atom s]
   | OptV v           -> "OptV" $$ [value v]
   | VecV vs          -> "VecV" $$ List.map value vs
   | RecordV vfs      -> "RecordV" $$ List.map value_field vfs

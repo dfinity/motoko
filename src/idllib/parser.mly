@@ -58,6 +58,7 @@ let record_fields fs =
 %token SEMICOLON COMMA DOT COLON EQ
 %token OPT VEC RECORD VARIANT BLOB
 %token<string> NAT
+%token<char> SIGN
 %token<string> ID
 %token<string> TEXT
 %token TRUE FALSE NULL
@@ -188,6 +189,10 @@ parse_prog :
 value :
   | text=TEXT
     { TextV text @@ at $sloc }
+  | int=NAT
+    { IntegralV int @@ at $sloc }
+  | sign=SIGN int=NAT
+    { IntegralV (String.make 1 sign ^ int) @@ at $sloc }
   | FUNC uri=TEXT DOT id=id
     { FuncV(uri, id) @@ at $sloc }
   | SERVICE uri=TEXT

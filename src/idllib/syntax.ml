@@ -67,6 +67,7 @@ and value' =
   | TrueV                          (* true *)
   | NullV                          (* null *)
   | TextV of string                (* text *)
+  | IntegralV of string            (* integral *)
   | OptV of value                  (* option *)
   | VecV of value list             (* vector *)
   | RecordV of value_field list    (* record *)

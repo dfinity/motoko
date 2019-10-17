@@ -163,6 +163,7 @@ and value_token = parse
   | ":" { COLON }
 
   | nat as s { NAT s }
+  | sign as c { SIGN c }
   | text as s { TEXT (text lexbuf s) }
   | '"'character*('\n'|eof)
     { error lexbuf "unclosed text literal" }
