@@ -540,22 +540,24 @@ Guaranteed to return a `typ` that is `<=` in the IDL type lattice.
 type bid = typ' -> typ'
 
 let rec get_bid (v : value) : bid =
+  let infer v = get_bid v (PrimT Reserved) @@ v.at in
+  let bottom = PrimT Empty in
   match v.it with
   | FalseV
   | TrueV -> (function
               | PrimT (Reserved | Bool) -> PrimT Bool
-              | _ -> PrimT Empty)
+              | _ -> bottom)
   | NullV -> (function
               | PrimT (Reserved | Null) -> PrimT Null
               | OptT _ as opt -> opt
-              | _ -> PrimT Empty)
+              | _ -> bottom)
   | TextV _ -> (function
                 | PrimT (Reserved | Text) -> PrimT Text
-                | _ -> PrimT Empty)
+                | _ -> bottom)
   | OptV v -> (function
-              | PrimT Reserved -> OptT (get_bid v (PrimT Reserved) @@ v.at)
+              | PrimT Reserved -> OptT (infer v)
               | OptT t -> OptT (get_bid v t.it @@ v.at)
-              | _ -> PrimT Empty)
+              | _ -> bottom)
 end
 
 (* run it *)
