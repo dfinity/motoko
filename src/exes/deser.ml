@@ -571,7 +571,10 @@ let rec get_bid (v : value) : bid =
               | _ -> bottom)
   | VecV _ -> failwith "cannot yet"
   | RecordV _ -> failwith "cannot yet"
-  | VariantV _ -> failwith "cannot yet"
+  | VariantV vf -> (function
+                    | PrimT Reserved ->
+                      VariantT [{label = Unnamed vf.it.hash @@ vf.at; typ = infer vf.it.value} @@ vf.at]
+                    | _ -> failwith "cannot yet")
   | FuncV _ -> failwith "cannot yet"
 
   | AnnotV (v, t) -> fun t' -> get_bid v (lub t' t.it)
