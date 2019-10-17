@@ -10,8 +10,7 @@ service anon_inline_result {
           "err": Text;
           "ok": Nat;
         }) -> (variant {
-                 "err": record {
-                        };
+                 "err": record {};
                  "ok": Int;
                });
 }

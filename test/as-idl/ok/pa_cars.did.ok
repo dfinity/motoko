@@ -1,16 +1,11 @@
-type User = 
- record {
-   "name": Text;
- };
+type User = record {"name": Text;};
 type TimeSpan = 
  record {
    "end": Int;
    "start": Int;
  };
 type Text = text;
-type Result_1 = opt record {
-                      "reservationId": Text;
-                    };
+type Result_1 = opt record {"reservationId": Text;};
 type PACars = 
  service {
    "verifyCarInformation": (User, Car) ->

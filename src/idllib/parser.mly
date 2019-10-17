@@ -43,7 +43,7 @@ let record_fields fs =
        let field = hd start in
        let next =
          (match field.it.label.it with
-           Id n -> succ n
+         | Id n -> succ n
          | Named name -> succ (hash name)
          | Unnamed n -> succ n) in
        field :: (go next tl)

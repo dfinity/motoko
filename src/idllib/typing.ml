@@ -65,12 +65,12 @@ let hash = IdlHash.idl_hash
 
 let field_id (f: typ_field) =
   match f.it.label.it with
-    Id n -> n
+  | Id n -> n
   | Named name -> hash name
   | Unnamed n -> n
 let field_name (f: typ_field) =
   match f.it.label.it with
-    Id n -> Lib.Uint32.to_string n
+  | Id n -> Lib.Uint32.to_string n
   | Named name -> name
   | Unnamed n -> "Unnamed " ^ (Lib.Uint32.to_string n)
                     

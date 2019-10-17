@@ -135,7 +135,7 @@ and pp_field ppf tf =
   pp_open_box ppf 1;
   let f_name =
     match tf.it.label.it with
-      Id n -> Lib.Uint32.to_string n
+    | Id n -> Lib.Uint32.to_string n
     | Named name -> name
     | Unnamed n -> Lib.Uint32.to_string n
   in quote_name ppf f_name; kwd ppf ":"; pp_typ ppf tf.it.typ;

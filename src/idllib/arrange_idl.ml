@@ -34,7 +34,7 @@ and tag i = Atom ("#" ^ i.it)
 
 let field_tag (tf : field_label)
   = match tf.it with
-    | Id n -> Lib.Uint32.to_string n
+  | Id n -> Lib.Uint32.to_string n
   | Named name -> name
   | Unnamed n -> Lib.Uint32.to_string n
 
@@ -76,6 +76,10 @@ open Format
 let str ppf s = pp_print_string ppf s
 let space = pp_print_space
 let kwd ppf s = str ppf s; space ppf ()
+let quote ppf s =
+  pp_open_hbox ppf ();
+  str ppf "\""; str ppf (Lib.String.lightweight_escaped s); str ppf "\"";
+  pp_close_box ppf ()
 
 let rec pp_typ ppf t =
   pp_open_hovbox ppf 1;
@@ -84,20 +88,8 @@ let rec pp_typ ppf t =
   | PrimT p -> str ppf (string_of_prim p)
   | OptT t -> kwd ppf "opt"; pp_typ ppf t
   | VecT t -> kwd ppf "vec"; pp_typ ppf t
-  | RecordT fs ->
-     pp_open_vbox ppf 2;
-     str ppf "record {";
-     List.iter (fun f -> pp_print_cut ppf (); pp_field ppf f; str ppf ";") fs;
-     pp_print_break ppf 0 (-2);
-     str ppf "}";
-     pp_close_box ppf ()
-  | VariantT fs ->
-     pp_open_vbox ppf 2;
-     str ppf "variant {";
-     List.iter (fun f -> pp_print_cut ppf (); pp_field ppf f; str ppf ";") fs;
-     pp_print_break ppf 0 (-2);
-     str ppf "}";
-     pp_close_box ppf ()
+  | RecordT fs -> pp_fields ppf "record" fs
+  | VariantT fs -> pp_fields ppf "variant" fs
   | FuncT (ms,s,t) ->
      kwd ppf "func";
      pp_func ppf (ms,s,t)
@@ -110,15 +102,22 @@ let rec pp_typ ppf t =
      pp_close_box ppf ()
   | PreT -> assert false);
   pp_close_box ppf ()
-
+and pp_fields ppf name fs =
+  if List.length fs > 1 then
+    pp_open_vbox ppf 2
+  else
+    pp_open_hovbox ppf 2;
+  str ppf (name ^ " {");
+  List.iter (fun f -> pp_print_cut ppf (); pp_field ppf f; str ppf ";") fs;
+  pp_print_break ppf 0 (-2);
+  str ppf "}";
+  pp_close_box ppf ()
 and pp_field ppf f =
   pp_open_hovbox ppf 1;
   (match f.it.label.it with
   | Id n -> str ppf (Lib.Uint32.to_string n); kwd ppf ":"
   | Named name ->
-     str ppf "\"";
-     str ppf (Lib.String.lightweight_escaped name);
-     str ppf "\"";
+     quote ppf name;
      kwd ppf ":"
   | Unnamed _ -> ());
   pp_typ ppf f.it.typ;
@@ -142,18 +141,18 @@ and pp_args ppf fs =
 
 and pp_meth ppf m =
   pp_open_hovbox ppf 1;
-  str ppf "\"";
-  str ppf (Lib.String.lightweight_escaped m.it.var.it);
-  str ppf "\"";
+  quote ppf m.it.var.it;
   kwd ppf ":";
   (match m.it.meth.it with
    | FuncT (ms,s,t) -> pp_func ppf (ms,s,t)
    | _ -> pp_typ ppf m.it.meth);
   pp_close_box ppf ()
 
-let is_composite_type t =
+let rec is_linebreak_type t =
   match t.it with
-  | RecordT _ | VariantT _ | ServT _ -> true
+  | ServT _ -> true
+  | RecordT fs | VariantT fs -> List.length fs > 1
+  | VecT t | OptT t -> is_linebreak_type t
   | _ -> false
   
 let pp_dec ppf d =
@@ -165,7 +164,7 @@ let pp_dec ppf d =
       kwd ppf id.it;
       kwd ppf "=";
       pp_close_box ppf ();
-      if is_composite_type typ then
+      if is_linebreak_type typ then
         pp_print_cut ppf ();
       pp_typ ppf typ
    | ImportD (f, fp) ->
