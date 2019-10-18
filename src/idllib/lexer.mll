@@ -161,6 +161,7 @@ and value_token = parse
   | "," { COMMA }
   | "." { DOT }
   | ":" { COLON }
+  | "=" { EQ }
 
   | nat as s { NAT s }
   | sign as c { SIGN c }

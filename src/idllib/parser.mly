@@ -221,9 +221,9 @@ annval :
     { AnnotV(v, ty) @@ at $sloc }
 
 field_value :
-  | n=NAT COLON v=annval
+  | n=NAT EQ v=annval
     { { hash = Uint32.of_string n; name = None; value = v } @@ at $sloc }
-  | name=name COLON v=annval
+  | name=name EQ v=annval
     { { hash = hash name.it; name = Some name; value = v } @@ at $sloc }
 
 parse_arg :
