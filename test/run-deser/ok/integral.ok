@@ -1,5 +1,5 @@
 
-DESER, parsing!
+DESER, reading!
 (Arg
   (IntegralV 42)
   (IntegralV -25)
@@ -26,3 +26,5 @@ DESER, parsed!
   (PrimT nat64)
   (PrimT int64)
 )
+
+DESER, type inferred!

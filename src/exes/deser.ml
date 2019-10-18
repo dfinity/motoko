@@ -641,7 +641,7 @@ let () =
   if !reverse_mode then
     begin
       let open Idllib in
-      Printf.printf "\nDESER, parsing!\n";
+      Printf.printf "\nDESER, reading!\n";
       let lexer = Lexing.from_channel stdin in
       let Source.{it = vs; _} = Parser.parse_arg Lexer.value_token lexer "<stdin>" in
       Wasm.Sexpr.print 80 Arrange_idl.("Arg" $$ List.map value vs);
@@ -649,6 +649,7 @@ let () =
       let open Typer in
       let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
+      Printf.printf "\nDESER, type inferred!\n";
     end
   else
     begin

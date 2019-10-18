@@ -1,5 +1,5 @@
 
-DESER, parsing!
+DESER, reading!
 (Arg
   (RecordV)
   (RecordV ((0) (IntegralV 42)) ((1) (IntegralV 25)))
@@ -12,3 +12,5 @@ DESER, parsed!
   (RecordT (0 (PrimT nat)) (1 (PrimT nat)))
   (RecordT (a (PrimT nat)) (b (PrimT nat)))
 )
+
+DESER, type inferred!
