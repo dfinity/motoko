@@ -602,7 +602,7 @@ let rec to_bid (v : value) : bid =
                     | _ -> bottom)
   | VariantV vf -> (function
                     | PrimT Reserved ->
-                      VariantT [{label = Unnamed vf.it.hash @@ vf.at; typ = infer vf.it.value} @@ vf.at]
+                      VariantT [{label = Id vf.it.hash @@ vf.at; typ = infer vf.it.value} @@ vf.at]
                     | _ -> failwith "cannot VariantT yet")
   | FuncV _ -> failwith "cannot yet"
 
@@ -617,7 +617,7 @@ and infer' v = to_bid v (PrimT Reserved)
 
 and infer_field vf = match vf.it with
   | { hash; name = Some id; value } -> { label = Named id.it @@ id.at; typ = infer value } @@ vf.at
-  | { hash; name = None; value } -> { label = Unnamed hash @@ vf.at; typ = infer value } @@ vf.at
+  | { hash; name = None; value } -> { label = Id hash @@ vf.at; typ = infer value } @@ vf.at
 
 and refine_record_field tf t =
   match t with
@@ -628,8 +628,7 @@ and refine_record_field tf t =
       let same_label = match label.it, label'.it with
         | Unnamed s, Unnamed t -> s = t
         | Named s, Named t -> s = t
-        | Id s, Unnamed t -> s = t
-        | Unnamed s, Id t -> s = t
+        | Id s, Id t -> s = t
         | _ -> Wasm.Sexpr.print 80 Idllib.Arrange_idl.("LABEL" $$ [typ_field tf']);false in  (* FIXME: better compare *)
       if same_label then
       ({label = (label'); typ = lub typ.it typ'.it @@ typ'.at} @@ tf'.at) :: tfs, false
