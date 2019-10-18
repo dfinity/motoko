@@ -1422,7 +1422,7 @@ and infer_obj env s fields at : T.typ =
         if ef.it.vis.it = Syntax.Private  && is_actor_method ef.it.dec then
           error_in [Flags.ICMode] Temporary env ef.it.dec.at
             "a shared function cannot be private"
-        ) fields;
+      ) fields;
     end;
     if s = T.Module then Static.fields env.msgs fields
   end;
