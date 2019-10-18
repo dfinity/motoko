@@ -1,4 +1,5 @@
 DESER ?= ../../src/deser
+DESER := $(shell which $(DESER))
 
 _out/%.done: %.bin $(DESER) | _out
 	@ $(DESER) < $< | diff -u $(patsubst %.bin, ok/%.ok, $<) - > $@
@@ -7,6 +8,9 @@ _out/%.done: %.bin $(DESER) | _out
 _out/%.done: %.idv $(DESER) | _out
 	@ $(DESER) --reverse < $< | diff -u $(patsubst %.idv, ok/%.ok, $<) - > $@
 	@ cat $@
+
+
+.PHONY: all quick accept clean
 
 all: quick
 
