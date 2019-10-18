@@ -578,9 +578,8 @@ let rec get_bid (v : value) : bid =
   | TextV _ -> (function
                 | PrimT (Reserved | Text) -> PrimT Text
                 | _ -> bottom)
-  | IntegralV s -> let open Big_int in
-                   let value = big_int_of_string s in (* TODO: do this in parser *)
-                   let negative = sign_big_int value < 0 in
+  | IntegralV v -> let open Big_int in
+                   let negative = sign_big_int v < 0 in
                    (function
                     | PrimT Reserved -> PrimT (if negative then Int else Nat)
                     | PrimT Int -> PrimT Int

@@ -190,9 +190,9 @@ value :
   | text=TEXT
     { TextV text @@ at $sloc }
   | int=NAT
-    { IntegralV int @@ at $sloc }
+    { IntegralV (Big_int.big_int_of_string int) @@ at $sloc }
   | sign=SIGN int=NAT
-    { IntegralV (String.make 1 sign ^ int) @@ at $sloc }
+    { IntegralV (Big_int.big_int_of_string (String.make 1 sign ^ int)) @@ at $sloc }
   | FUNC uri=TEXT DOT id=id
     { FuncV(uri, id) @@ at $sloc }
   | SERVICE uri=TEXT
