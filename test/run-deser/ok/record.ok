@@ -4,6 +4,11 @@ DESER, reading!
   (RecordV)
   (RecordV ((0) (IntegralV 42)) ((1) (IntegralV 25)))
   (RecordV (a(97) (IntegralV 42)) (b(98) (IntegralV 25)))
+  (AnnotV (RecordV ((1000) (IntegralV 42)) ((3000) (IntegralV 25))) (RecordT))
+  (AnnotV
+    (RecordV ((1000) (IntegralV 42)) ((3000) (IntegralV 25)))
+    (RecordT (1000 (PrimT int)))
+  )
 )
 
 DESER, parsed!
@@ -11,6 +16,8 @@ DESER, parsed!
   (RecordT)
   (RecordT (0 (PrimT nat)) (1 (PrimT nat)))
   (RecordT (a (PrimT nat)) (b (PrimT nat)))
+  (RecordT (1000 (PrimT nat)) (3000 (PrimT nat)))
+  (RecordT (1000 (PrimT nat)) (3000 (PrimT nat)))
 )
 
 DESER, type inferred!

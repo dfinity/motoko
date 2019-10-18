@@ -560,6 +560,7 @@ let rec lub t u =
   | PrimT p, PrimT q when p = q -> t
   | PrimT Nat, PrimT Int -> t
   | PrimT Int, PrimT Nat -> u
+  | PrimT _, PrimT _ -> PrimT Empty
   | VecT p, VecT q -> VecT (lub p.it q.it @@ p.at)
   | _ -> failwith "lub TODO"
 
@@ -593,7 +594,12 @@ let rec to_bid (v : value) : bid =
                 | _ -> failwith "cannot VecT yet")
   | RecordV vfs -> (function
                     | PrimT Reserved -> RecordT (List.map infer_field vfs)
-                    | _ -> failwith "cannot yet")
+                    | RecordT tfs ->
+                      let identity x = x in
+                      let compose f g x = g (f x) in
+                      let refiners = List.map refine_record_field tfs in
+                      List.fold_left compose identity refiners (RecordT (List.map infer_field vfs))
+                    | _ -> bottom)
   | VariantV vf -> (function
                     | PrimT Reserved ->
                       VariantT [{label = Unnamed vf.it.hash @@ vf.at; typ = infer vf.it.value} @@ vf.at]
@@ -612,6 +618,26 @@ and infer' v = to_bid v (PrimT Reserved)
 and infer_field vf = match vf.it with
   | { hash; name = Some id; value } -> { label = Named id.it @@ id.at; typ = infer value } @@ vf.at
   | { hash; name = None; value } -> { label = Unnamed hash @@ vf.at; typ = infer value } @@ vf.at
+
+and refine_record_field tf t =
+  match t with
+  | RecordT tfs ->
+    let {label; typ} = tf.it in
+    let comb tf' (tfs, absent) =
+      let {label = label'; typ = typ'} = tf'.it in
+      let same_label = match label.it, label'.it with
+        | Unnamed s, Unnamed t -> s = t
+        | Named s, Named t -> s = t
+        | Id s, Unnamed t -> s = t
+        | Unnamed s, Id t -> s = t
+        | _ -> Wasm.Sexpr.print 80 Idllib.Arrange_idl.("LABEL" $$ [typ_field tf']);false in  (* FIXME: better compare *)
+      if same_label then
+      ({label = (label'); typ = lub typ.it typ'.it @@ typ'.at} @@ tf'.at) :: tfs, false
+      else tf' :: tfs, absent in
+    let tfs, bad = List.fold_right comb tfs ([], true) in
+    if bad then PrimT Empty else RecordT tfs
+  | PrimT Empty -> t
+  | _ -> assert false
 
 and in_range t v =
   let open Big_int in
