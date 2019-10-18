@@ -578,13 +578,13 @@ let rec to_bid (v : value) : bid =
   | TextV _ -> (function
                 | PrimT (Reserved | Text) -> PrimT Text
                 | _ -> bottom)
-  | IntegralV v -> let open Big_int in
-                   let negative = sign_big_int v < 0 in
+  | IntegralV i -> let open Big_int in
+                   let negative = sign_big_int i < 0 in
                    (function
                     | PrimT Reserved -> PrimT (if negative then Int else Nat)
                     | PrimT Int -> PrimT Int
                     | PrimT Nat -> PrimT (if negative then Empty else Nat) (* TODO: report error *)
-                    | PrimT (Int8|Int16|Int32|Int64|Nat8|Nat16|Nat32|Nat64 as t) when in_range t v -> PrimT t
+                    | PrimT (Int8|Int16|Int32|Int64|Nat8|Nat16|Nat32|Nat64 as t) when in_range t i -> PrimT t
                     | _ -> bottom)
   | OptV v -> (function
               | PrimT Reserved -> OptT (infer v)
@@ -615,7 +615,22 @@ and infer_field vf = match vf.it with
   | { hash; name = Some id; value } -> { label = Named id.it @@ id.at; typ = infer value } @@ vf.at
   | { hash; name = None; value } -> { label = Unnamed hash @@ vf.at; typ = infer value } @@ vf.at
 
-and in_range t v = true (* TODO: implement, report error *)
+and in_range t v =
+  let open Big_int in
+  let two_raised = power_int_positive_int 2 in
+  let neg_two_raised n = minus_big_int (two_raised n) in
+  let between low up = le_big_int low v && lt_big_int v up in
+                    (* TODO: report error on v *)
+  match t with
+  | Nat8 -> between zero_big_int (two_raised 8)
+  | Nat16 -> between zero_big_int (two_raised 16)
+  | Nat32 -> between zero_big_int (two_raised 32)
+  | Nat64 -> between zero_big_int (two_raised 64)
+  | Int8 -> between (neg_two_raised 7) (two_raised 7)
+  | Int16 -> between (neg_two_raised 15) (two_raised 15)
+  | Int32 -> between (neg_two_raised 31) (two_raised 31)
+  | Int64 -> between (neg_two_raised 63) (two_raised 63)
+  | _ -> assert false
 
 end
 
