@@ -59,32 +59,6 @@ let prim p =
   | Text -> I.Text
   | Error -> assert false
 
-(* Convert prelude primitive type cons to IDL primitive types *)
-let to_prim name =
-  match name with
-  | "Any" -> Some I.Reserved
-  | "None" -> Some I.Empty
-  | "Null" -> Some I.Null
-  | "Bool" -> Some I.Bool
-  | "Nat" -> Some I.Nat
-  | "Nat8" -> Some I.Nat8
-  | "Nat16" -> Some I.Nat16
-  | "Nat32" -> Some I.Nat32
-  | "Nat64" -> Some I.Nat64
-  | "Int" -> Some I.Int
-  | "Int8" -> Some I.Int8
-  | "Int16" -> Some I.Int16
-  | "Int32" -> Some I.Int32
-  | "Int64" -> Some I.Int64
-  | "Word8" -> Some I.Nat8
-  | "Word16" -> Some I.Nat16
-  | "Word32" -> Some I.Nat32
-  | "Word64" -> Some I.Nat64
-  | "Float" -> Some I.Float64
-  | "Char" -> Some I.Nat32
-  | "Text" -> Some I.Text
-  | _ -> None
-           
 let rec typ vs t =
   (match t with
   | Any -> I.PrimT I.Reserved
@@ -92,10 +66,11 @@ let rec typ vs t =
   | Prim p -> I.PrimT (prim p)
   | Var (s, i) -> (typ vs (List.nth vs i)).it
   | Con (c, []) ->
-     let name = As_types.Type.string_of_con c in
-     (match to_prim name with
-     | Some p -> I.PrimT p
-     | None ->       
+     (match Con.kind c with
+     | Def ([], Prim p) -> I.PrimT (prim p)
+     | Def ([], Any) -> I.PrimT I.Reserved
+     | Def ([], Non) -> I.PrimT I.Empty
+     | _ ->
         chase_con vs c;
         I.VarT (string_of_con vs c @@ no_region)
      )
@@ -116,7 +91,7 @@ let rec typ vs t =
       | _ -> assert false)
   | Typ c -> assert false
   | Tup ts ->
-     if ts == [] then
+     if ts = [] then
        I.PrimT I.Null
      else
        I.RecordT (tuple vs ts)

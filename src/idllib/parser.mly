@@ -85,6 +85,9 @@ seplist(X, SEP) :
   | IMPORT { "import" @@ at $sloc }
   | FUNC { "func" @@ at $sloc }
   | TYPE { "type" @@ at $sloc }
+  | BLOB { "blob" @@ at $sloc }
+  | VEC { "vec" @@ at $sloc }
+  | OPT { "opt" @@ at $sloc }
 
 %inline name :
   | id=extended_id { id }
@@ -93,7 +96,7 @@ seplist(X, SEP) :
 (* Types *)
 
 prim_typ :
-  | x=extended_id
+  | x=id
     { (match is_prim_typs x.it with
          None -> VarT x
        | Some t -> PrimT t) @@ at $sloc }
@@ -161,7 +164,7 @@ func_typ :
 meth_typ :
   | x=name COLON t=func_typ
     { { var = x; meth = t } @@ at $sloc }
-  | x=name COLON id=extended_id
+  | x=name COLON id=id
     { { var = x; meth = VarT id @@ at $sloc } @@ at $sloc }
 
 actor_typ :
@@ -171,7 +174,7 @@ actor_typ :
 (* Declarations *)
 
 def :
-  | TYPE x=extended_id EQ t=data_typ
+  | TYPE x=id EQ t=data_typ
     { TypD(x, t) @@ at $sloc }
   (* TODO enforce all imports to go first in the type definitions  *)
   | IMPORT file=TEXT
@@ -179,9 +182,9 @@ def :
 
 actor :
   | (* empty *) { None }
-  | SERVICE id=extended_id tys=actor_typ
+  | SERVICE id=id tys=actor_typ
     { Some (ActorD(id, ServT tys @@ at $loc(tys)) @@ at $sloc) }
-  | SERVICE id=extended_id COLON x=extended_id
+  | SERVICE id=id COLON x=id
     { Some (ActorD(id, VarT x @@ x.at) @@ at $sloc) }
 
 (* Programs *)

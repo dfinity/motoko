@@ -8,7 +8,7 @@ type Info = {
 };
 type Tup = (Text, Info, Text, Nat);
 actor Server {
-    public query func f_(user : Tup) : async () {
+    public func f_(user : Tup) : async () {
     };
     public func f__(user : ?Tup) : () { };
 }

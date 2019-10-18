@@ -15,6 +15,6 @@ type Info =
    "name_": nat;
  };
 service Server {
-  "f": (Tup) -> () query;
+  "f": (Tup) -> ();
   "f_": (opt Tup) -> () oneway;
 }

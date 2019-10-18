@@ -1,7 +1,5 @@
-type record = record {};
-type variant = variant {};
-type type = nat;
-service service {
-  record : (record, type, record {}) -> (variant, blob);
-  "blob": (blob) -> (blob);
+type const_ = record { type:nat; service:nat; vec:nat };
+service s {
+  blob: (const_) -> (blob);
+  record: (opt:nat, import:nat, variant:variant {}) -> (record:nat, record {});
 }

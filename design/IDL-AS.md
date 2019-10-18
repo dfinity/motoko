@@ -101,8 +101,7 @@ ef (<id> : <typ>) = unescape(<id>) : e(<typ>)
 
 efn : <typ> -> <functype>
 efn(shared <typ> -> ()) = ea(<typ>) -> () oneway
-efn(shared <typ1> -> async <typ2>) = ea(<typ1>) -> ea(<typ2>)
-efn(query shared <typ1> -> async <typ2>) = ea(<typ1>) -> ea(<typ2>) query
+efn(shared query? <typ1> -> async <typ2>) = ea(<typ1>) -> ea(<typ2>) query?
 
 ea : <typ> -> <argtype>,*
 ea( ( <typ>,* ) ) = e(<typ>);*
@@ -145,8 +144,8 @@ if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
 if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
 
 ifn : <functype> -> <typ>
-ifn((<datatype>,*) -> () oneway query?) = shared ia(<as>) -> ()
-ifn((<datatype1>,*) -> (<datatype2>,*) query?) = shared ia(<datatype1>,*) -> ia(<datatype2>,*)
+ifn((<datatype>,*) -> () oneway) = shared ia(<as>) -> ()
+ifn((<datatype1>,*) -> (<datatype2>,*) query?) = shared query? ia(<datatype1>,*) -> async ia(<datatype2>,*)
 
 ia : <argtype>,* -> <typ>
 ia(<argtype>,) = i(<argtype>)
@@ -172,7 +171,6 @@ escape <name> = "_" hash(<name>) "_"  otherwise
  * Non-empty tuples are exported using the unnamed field short-hand, which is how tuples
    are idiomatically expressed in the IDL:
    ```
-   e((Int, )) = record {int}
    e((Int, Nat)) = record {int;nat}
    e({i:Int, n:Nat)) = record {i:int; n:nat}
    e({_0_:Int, _1_:Nat)) = record {0:int; 1:nat}
@@ -243,7 +241,30 @@ These mappings should be straight-forward, given the following clarifications:
 * Characters (of type `Char`) are mapped to their Unicode scalar as a `nat32`.
   Decoding a `nat32` that is not a valid Unicode scalar fails.
 
-## Works flows
+## Identifier mappings
+
+Identifiers are identity mappings, except when the identifier is a reserved
+identifier in the target language. In this case, we append a "_" after the
+identifier in the target language.
+
+### Export
+
+```
+escape : <id> -> <id>
+escape <id> = <id> "_" if <id> is a reserved identifier in the target language
+escape <id> = <id>     otherwise
+```
+
+### Import
+
+```
+unescape : <id> -> <id>
+unescape(<id> "_") = <id>  if <id> is a reserved identifier in the source language
+unescape(<id>) = <id>      otherwise
+
+```
+
+## Work flows
 
 The mapping specified here can be used to support the following use-cases. The
 user interfaces (e.g. flag names, or whether `asc`, `didc`, `dfx` is used) are
@@ -253,7 +274,7 @@ just suggestions.
 
   If `foo.as` is an ActorScript `actor` compilation unit, then
 
-      asc --generate-idl foo.as -o foo.did
+      asc --idl foo.as -o foo.did
 
   will type-check `foo.as` as `t = actor { … }`, map the ActorScript type `t`
   to an IDL type `e(t)` of the form `service <actortype>`, and produce a
