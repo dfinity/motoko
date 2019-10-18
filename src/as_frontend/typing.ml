@@ -192,6 +192,23 @@ and check_typ_path' env path : T.con =
       error env id.at "type field %s does not exist in type\n  %s"
         id.it (T.string_of_typ_expand (T.Obj (s, fs)))
 
+let error_shared env t at fmt =
+  match T.find_unshared t with
+  | None -> error env at fmt
+  | Some t1 ->
+    let s = Printf.sprintf "\ntype\n  %s\nis or contains non-shared type\n  %s"
+      (T.string_of_typ_expand t) (T.string_of_typ_expand t1) in
+    Printf.ksprintf
+      (fun s1 ->
+        Diag.add_msg env.msgs (type_error at (s1^s));
+        match t1 with
+        | T.Obj (T.Actor, _) ->
+          error_in [Flags.ICMode] env at "actor types are non-shared."
+        | T.Func (T.Shared _, _, _, _, _) ->
+          error_in [Flags.ICMode] env at "shared function types are non-shared."
+        | _ -> raise Recover)
+      fmt
+
 let rec check_typ env typ : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
@@ -238,9 +255,7 @@ and check_typ' env typ : T.typ =
     if not env.pre then begin
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
-        error env typ1.at
-          "shared function has non-shared parameter type\n  %s"
-          (T.string_of_typ_expand t1);
+        error_shared env t1 typ1.at "shared function has non-shared parameter type\n  %s" (T.string_of_typ_expand t1);
       match ts2 with
       | [] when sort.it = T.Shared T.Write -> ()
       | [T.Async _] -> ()
@@ -261,7 +276,7 @@ and check_typ' env typ : T.typ =
   | AsyncT typ ->
     let t = check_typ env typ in
     if not env.pre && not (T.shared t) then
-      error env typ.at "async has non-shared content type\n  %s"
+      error_shared env t typ.at "async has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
     T.Async t
   | ObjT (sort, fields) ->
@@ -679,7 +694,7 @@ and infer_exp'' env exp : T.typ =
       check_exp (adjoin_vals env'' ve) t2 exp;
       if Type.is_shared_sort sort.it then begin
         if not (T.shared t1) then
-          error env pat.at
+          error_shared env t1 pat.at
             "shared function has non-shared parameter type\n  %s"
             (T.string_of_typ_expand t1);
         match t2 with
@@ -866,7 +881,7 @@ and infer_exp'' env exp : T.typ =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
     if not (T.shared t) then
-      error env exp1.at "async type has non-shared content type\n  %s"
+      error_shared env t exp1.at "async type has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
     T.Async t
   | AwaitE (exp1) ->
@@ -1380,7 +1395,7 @@ and object_of_scope env sort fields scope at =
       (T.string_of_typ_expand t)
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE (_,sort, _, _, _, _); _}) -> T.is_shared_sort sort.it
+  | LetD ({it = VarP _; _}, {it = FuncE (_, sort, _, _, _, _); _}) -> T.is_shared_sort sort.it
   | _ -> false
 
 and is_typ_dec dec : bool = match dec.it with
@@ -1400,7 +1415,7 @@ and infer_obj env s fields at : T.typ =
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields fields in
           error env (T.Env.find lab pub_val)
-            "public actor field %s has non-shared type\n  %s"
+            "public actor field %s has non-shared function type\n  %s"
             lab (T.string_of_typ_expand typ)
       ) tfs;
       List.iter (fun ef ->
@@ -1788,25 +1803,25 @@ let check_library scope (filename, prog) : Scope.t Diag.result =
         ) prog
     )
 
+let is_actor_dec d =
+  match d.it with
+  | LetD(_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
+  | _ -> false
+
 let check_actors scope progs : unit Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
         let prog = List.concat (List.map (fun prog -> prog.Source.it) progs) in
         let env = env_of_scope msgs scope in
-        let is_actor_dec d =
-          match d.it with
-          | LetD(_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
-          | _ -> false
-        in
         match List.filter is_actor_dec prog with
         | [] -> ()
         | [d] -> ()
         | ds ->
           List.iter (fun d ->
-              recover
-                (error_in [Flags.ICMode] env d.at)
-                "multiple actors in program; there must be at most one actor declaration in a program")
+            recover
+              (error_in [Flags.ICMode] env d.at)
+              "multiple actors in program; there must be at most one actor declaration in a program")
             ds
         )
         progs)
