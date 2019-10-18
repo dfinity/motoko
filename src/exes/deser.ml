@@ -578,11 +578,9 @@ let rec to_bid (v : value) : bid =
   | TextV _ -> (function
                 | PrimT (Reserved | Text) -> PrimT Text
                 | _ -> bottom)
-  | IntegralV i -> let open Big_int in
-                   let negative = sign_big_int i < 0 in
+  | IntegralV i -> let negative = Big_int.sign_big_int i < 0 in
                    (function
-                    | PrimT Reserved -> PrimT (if negative then Int else Nat)
-                    | PrimT Int -> PrimT Int
+                    | PrimT (Reserved | Int) -> PrimT (if negative then Int else Nat)
                     | PrimT Nat -> PrimT (if negative then Empty else Nat) (* TODO: report error *)
                     | PrimT (Int8|Int16|Int32|Int64|Nat8|Nat16|Nat32|Nat64 as t) when in_range t i -> PrimT t
                     | _ -> bottom)
