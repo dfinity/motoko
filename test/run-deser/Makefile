@@ -1,5 +1,5 @@
 DESER ?= ../../src/deser
-DESER := $(shell which $(DESER))
+DESER != /usr/bin/which $(DESER)
 
 _out/%.done: %.bin $(DESER) | _out
 	@ $(DESER) < $< | diff -u $(patsubst %.bin, ok/%.ok, $<) - > $@
