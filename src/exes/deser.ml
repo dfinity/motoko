@@ -593,7 +593,9 @@ let rec to_bid (v : value) : bid =
   | VecV vs -> (function
                 | PrimT Reserved -> VecT List.(fold_left glb (PrimT Empty) (map infer' vs) @@ v.at)
                 | _ -> failwith "cannot VecT yet")
-  | RecordV _ -> failwith "cannot yet"
+  | RecordV vfs -> (function
+                    | PrimT Reserved -> RecordT (List.map infer_field vfs)
+                    | _ -> failwith "cannot yet")
   | VariantV vf -> (function
                     | PrimT Reserved ->
                       VariantT [{label = Unnamed vf.it.hash @@ vf.at; typ = infer vf.it.value} @@ vf.at]
@@ -608,6 +610,11 @@ let rec to_bid (v : value) : bid =
 
 and infer v = infer' v @@ v.at
 and infer' v = to_bid v (PrimT Reserved)
+
+and infer_field vf = match vf.it with
+  | { hash; name = Some id; value } -> { label = Named id.it @@ id.at; typ = infer value } @@ vf.at
+  | { hash; name = None; value } -> { label = Unnamed hash @@ vf.at; typ = infer value } @@ vf.at
+
 
 end
 

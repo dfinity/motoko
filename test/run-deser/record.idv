@@ -1,3 +1,7 @@
 ( record {}
-, record {0 = 42; 2 = 25 }
+, record {0 = 42; 1 = 25}
+, record {a = 42; b = 25}
+// , record {1000 = 42; 3000 = 25} : record {1000 : 42}
+// , record {a = 42; b = 25} : record {a : 42; b : 25}
+// , record {a = 42; b = 25} : record {a : 42}
 )
