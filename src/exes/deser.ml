@@ -584,7 +584,7 @@ let rec to_bid (v : value) : bid =
                     | PrimT Reserved -> PrimT (if negative then Int else Nat)
                     | PrimT Int -> PrimT Int
                     | PrimT Nat -> PrimT (if negative then Empty else Nat) (* TODO: report error *)
-                    (* TODO: bitlimited ones *)
+                    | PrimT (Int8|Int16|Int32|Int64|Nat8|Nat16|Nat32|Nat64 as t) when in_range t v -> PrimT t
                     | _ -> bottom)
   | OptV v -> (function
               | PrimT Reserved -> OptT (infer v)
@@ -615,6 +615,7 @@ and infer_field vf = match vf.it with
   | { hash; name = Some id; value } -> { label = Named id.it @@ id.at; typ = infer value } @@ vf.at
   | { hash; name = None; value } -> { label = Unnamed hash @@ vf.at; typ = infer value } @@ vf.at
 
+and in_range t v = true (* TODO: implement, report error *)
 
 end
 

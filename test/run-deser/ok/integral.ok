@@ -1,0 +1,28 @@
+
+DESER, parsing!
+(Arg
+  (IntegralV 42)
+  (IntegralV -25)
+  (AnnotV (IntegralV 200) (PrimT nat8))
+  (AnnotV (IntegralV -128) (PrimT int8))
+  (AnnotV (IntegralV 57005) (PrimT nat16))
+  (AnnotV (IntegralV -23456) (PrimT int16))
+  (AnnotV (IntegralV 3735936685) (PrimT nat32))
+  (AnnotV (IntegralV -234567890) (PrimT int32))
+  (AnnotV (IntegralV 16045690709955431117) (PrimT nat64))
+  (AnnotV (IntegralV -38780996747555) (PrimT int64))
+)
+
+DESER, parsed!
+(ArgTy
+  (PrimT nat)
+  (PrimT int)
+  (PrimT nat8)
+  (PrimT int8)
+  (PrimT nat16)
+  (PrimT int16)
+  (PrimT nat32)
+  (PrimT int32)
+  (PrimT nat64)
+  (PrimT int64)
+)

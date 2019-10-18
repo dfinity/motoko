@@ -1,0 +1,11 @@
+( 42
+, -25
+, 200 : nat8
+, -128 : int8
+, 0xdead : nat16
+, -23456 : int16
+, 0xdeaddead : nat32
+, -234567890 : int32
+, 0xdeadbeafdeadcacd : nat64
+, -0x234567890123 : int64
+)
