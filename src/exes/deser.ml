@@ -564,7 +564,7 @@ let rec lub t u =
   | _ -> failwith "lub TODO"
 
 
-let rec get_bid (v : value) : bid =
+let rec to_bid (v : value) : bid =
   let bottom = PrimT Empty in
   match v.it with
   | FalseV
@@ -588,7 +588,7 @@ let rec get_bid (v : value) : bid =
                     | _ -> bottom)
   | OptV v -> (function
               | PrimT Reserved -> OptT (infer v)
-              | OptT t -> OptT (get_bid v t.it @@ v.at)
+              | OptT t -> OptT (to_bid v t.it @@ v.at)
               | _ -> bottom)
   | VecV vs -> (function
                 | PrimT Reserved -> VecT List.(fold_left glb (PrimT Empty) (map infer' vs) @@ v.at)
@@ -600,14 +600,14 @@ let rec get_bid (v : value) : bid =
                     | _ -> failwith "cannot VariantT yet")
   | FuncV _ -> failwith "cannot yet"
 
-  | AnnotV (v, t) -> fun t' -> get_bid v (lub t' t.it)
+  | AnnotV (v, t) -> fun t' -> to_bid v (lub t' t.it)
   | ServiceV uri -> (function
                      | PrimT Reserved -> ServT []
                      | ServT _ as serv -> serv
                      | _ -> bottom)
 
 and infer v = infer' v @@ v.at
-and infer' v = get_bid v (PrimT Reserved)
+and infer' v = to_bid v (PrimT Reserved)
 
 end
 
