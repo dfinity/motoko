@@ -1419,7 +1419,7 @@ and infer_obj env s fields at : T.typ =
             "public actor field needs to be a manifest function"
       ) fields;
       List.iter (fun ef ->
-        if ef.it.vis.it = Syntax.Private  && is_actor_method ef.it.dec then
+        if ef.it.vis.it = Syntax.Private && is_actor_method ef.it.dec then
           error_in [Flags.ICMode] Temporary env ef.it.dec.at
             "a shared function cannot be private"
       ) fields;
