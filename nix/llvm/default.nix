@@ -10,11 +10,11 @@ let
 
   fetch = name: sha256: fetchsvn {
     url = "http://llvm.org/svn/llvm-project/${name}/trunk/";
-    rev = "358327";
+    rev = "375226";
     inherit sha256;
   };
 
-  clang-tools-extra_src = fetch "clang-tools-extra" "0gx7dbgjfnx3k06ggil782d6xbmj088yqd25sv05qri2d5j58k0x";
+  clang-tools-extra_src = fetch "clang-tools-extra" "1hg9swmwb4d48b6fzxi1y0c2anhqmnylg85dgk3q6giwzkacnj5k";
 
   tools = stdenv.lib.makeExtensible (tools: let
     callPackage = newScope (tools // { inherit stdenv cmake libxml2 python isl release_version version fetch; });
