@@ -1417,7 +1417,7 @@ and infer_obj env s fields at : T.typ =
         if ef.it.vis.it = Syntax.Public && not (is_actor_method ef.it.dec) && not (is_typ_dec ef.it.dec) then
           local_error env ef.it.dec.at
             "public actor field needs to be a manifest function"
-        ) fields;
+      ) fields;
       List.iter (fun ef ->
         if ef.it.vis.it = Syntax.Private  && is_actor_method ef.it.dec then
           error_in [Flags.ICMode] Temporary env ef.it.dec.at
