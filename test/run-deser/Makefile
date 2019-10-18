@@ -1,10 +1,10 @@
 DESER ?= ../../src/deser
 
-_out/%.done: %.bin | _out
+_out/%.done: %.bin $(DESER) | _out
 	@ $(DESER) < $< | diff -u $(patsubst %.bin, ok/%.ok, $<) - > $@
 	@ cat $@
 
-_out/%.done: %.idv | _out
+_out/%.done: %.idv $(DESER) | _out
 	@ $(DESER) --reverse < $< | diff -u $(patsubst %.idv, ok/%.ok, $<) - > $@
 	@ cat $@
 
