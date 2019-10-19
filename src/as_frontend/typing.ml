@@ -1805,7 +1805,7 @@ let check_library scope (filename, prog) : Scope.t Diag.result =
 
 let is_actor_dec d =
   match d.it with
-  | LetD(_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
+  | LetD (_, {it = ObjE ({it = T.Actor; _}, _); _}) -> true
   | _ -> false
 
 let check_actors scope progs : unit Diag.result =
