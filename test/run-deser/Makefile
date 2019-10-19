@@ -1,11 +1,12 @@
 DESER ?= ../../src/deser
-DESER != /usr/bin/which $(DESER)
 
-_out/%.done: %.bin $(DESER) | _out
+_out/%.done: $(DESER)
+
+_out/%.done: %.bin | _out
 	@ $(DESER) < $< | diff -u $(patsubst %.bin, ok/%.ok, $<) - > $@
 	@ cat $@
 
-_out/%.done: %.idv $(DESER) | _out
+_out/%.done: %.idv | _out
 	@ $(DESER) --reverse < $< | diff -u $(patsubst %.idv, ok/%.ok, $<) - > $@
 	@ cat $@
 
