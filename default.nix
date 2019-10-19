@@ -183,7 +183,6 @@ let
   };
 
   llvmBuildInputs = [
-    nixpkgs.clang # for native building
     llvm.clang_9 # for wasm building
     llvm.lld_9 # for wasm building
   ];
@@ -194,7 +193,7 @@ let
   # there we use plain clang-9. There is no stdlib there anyways.
   llvmEnv = ''
     export CLANG="clang"
-    export WASM_CLANG="clang-9"
+    export WASM_CLANG="clang"
     export WASM_LD=wasm-ld
   '';
 in
