@@ -569,7 +569,7 @@ rec {
     # both.
     #
 
-    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != didc) (
+    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != didc && i != deser) (
       asc-bin.buildInputs ++
       js.buildInputs ++
       rts.buildInputs ++
