@@ -16,6 +16,7 @@ actor {
     print "unreachable";
   };
 
+  // TODO test await and calls to shared functions
 }
 //CALL ingress oneway 0x4449444C0000
 //CALL ingress discard 0x4449444C0000
