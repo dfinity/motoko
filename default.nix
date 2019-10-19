@@ -566,19 +566,21 @@ rec {
     # Since building asc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
     # build dependencies of the two to provide a build environment that offers
-    # both.
+    # both, while not actually building `asc`
     #
 
-    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != didc) (
-      asc-bin.buildInputs ++
-      js.buildInputs ++
-      rts.buildInputs ++
-      didc.buildInputs ++
-      deser.buildInputs ++
-      tests.buildInputs ++
-      users-guide.buildInputs ++
-      [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
-    ));
+    buildInputs =
+      let dont_build = [ asc didc deser ]; in
+      nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
+        asc-bin.buildInputs ++
+        js.buildInputs ++
+        rts.buildInputs ++
+        didc.buildInputs ++
+        deser.buildInputs ++
+        tests.buildInputs ++
+        users-guide.buildInputs ++
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
+      ));
 
     shellHook = llvmEnv;
     ESM=esm;
