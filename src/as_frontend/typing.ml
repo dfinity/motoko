@@ -1395,7 +1395,8 @@ and object_of_scope env sort fields scope at =
       (T.string_of_typ_expand t)
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE (_, sort, _, _, _, _); _}) -> T.is_shared_sort sort.it
+  | LetD ({it = VarP _; _}, {it = FuncE (_, sort, _, _, _, _); _}) ->
+    T.is_shared_sort sort.it
   | _ -> false
 
 and is_typ_dec dec : bool = match dec.it with
