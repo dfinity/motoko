@@ -634,8 +634,9 @@ and infer_exp'' env exp : T.typ =
     let t1, ve = infer_pat_exhaustive env' pat in
     let t2 = check_typ env' typ in
     if not env.pre then begin
+      let is_oneway = T.is_shared_sort sort.it && c = T.Returns in
       let env'' =
-        {env' with labs = T.Env.empty; rets = Some t2; async = false} in
+        {env' with labs = T.Env.empty; rets = Some t2; async = is_oneway} in
       check_exp (adjoin_vals env'' ve) t2 exp;
       if Type.is_shared_sort sort.it then begin
         if not (T.shared t1) then
@@ -924,7 +925,7 @@ and check_exp' env t exp : T.typ =
         (String.concat " or\n  " ss)
     );
     t
-  | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
+  | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, c, [], ts1, ts2) ->
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
     let t2 =
       match typ_opt with
@@ -940,8 +941,9 @@ and check_exp' env t exp : T.typ =
       error env exp.at
         "function return type\n  %s\ndoes not match expected return type\n  %s"
         (T.string_of_typ_expand t2) (T.string_of_typ_expand (T.seq ts2));
+    let is_oneway = T.is_shared_sort s && c = T.Returns in
     let env' =
-      {env with labs = T.Env.empty; rets = Some t2; async = false} in
+      {env with labs = T.Env.empty; rets = Some t2; async = is_oneway} in
     check_exp (adjoin_vals env' ve) t2 exp;
     t
   | _ ->

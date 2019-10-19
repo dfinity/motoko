@@ -1,4 +1,4 @@
 (library
   (name ir_passes)
-  (libraries lib ir_def)
+  (libraries lib as_config ir_def)
 )
