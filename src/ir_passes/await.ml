@@ -137,7 +137,7 @@ and t_exp' context exp' =
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
-  | FuncE (x, T.Shared T.Write, T.Returns, typbinds, pat, typ_, exp1) ->
+  | FuncE (x, ((T.Shared T.Write) as s), (T.Returns as c), typbinds, pat, typ_, exp1) ->
     let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
     (* add the implicit return/throw label *)
     let k_ret = fresh_cont (typ exp1) in
@@ -152,11 +152,12 @@ and t_exp' context exp' =
       then expD (ic_replyE [] unitE)::decs
       else decs
     in
-    (blockE
-       (reply [
-          funcD k_ret v unitE;
-          funcD k_fail e unitE])
-       (c_exp context' exp1 (ContVar k_ret))).it
+    FuncE (x, s, c, typbinds, pat, typ_,
+           (blockE
+              (reply [
+                   funcD k_ret v unitE;
+                   funcD k_fail e unitE])
+              (c_exp context' exp1 (ContVar k_ret))))
   | FuncE (x, s, c, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)

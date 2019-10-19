@@ -349,7 +349,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       T.Prim T.Text <: t
     | ICReplyPrim ts, [exp1] ->
-      check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
+      check (not (env.flavor.has_await)) "ICReplyPrim in await flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
       (* TODO: check against expected reply typ; note this may not be env.ret_tys. *)
       check_exp env exp1;
@@ -568,8 +568,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
+    let is_oneway = T.is_shared_sort sort && control = T.Returns in
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
+      {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = is_oneway} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) (T.seq ret_tys);
     (* Now construct the function type and compare with the annotation *)
