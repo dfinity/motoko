@@ -248,7 +248,7 @@ rec {
         export MOC=moc
         export MO_LD=mo-ld
         export DIDC=didc
-        export DESER=deser
+        export DESER=${deser}/bin/deser
         export ESM=${esm}
         export JS_USER_LIBRARY=${js-user-library}
         moc --version
