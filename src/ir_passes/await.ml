@@ -153,11 +153,11 @@ and t_exp' context exp' =
       else decs
     in
     FuncE (x, s, c, typbinds, pat, typ_,
-           (blockE
-              (reply [
-                   funcD k_ret v unitE;
-                   funcD k_fail e unitE])
-              (c_exp context' exp1 (ContVar k_ret))))
+      (blockE
+        (reply [
+          funcD k_ret v unitE;
+          funcD k_fail e unitE])
+        (c_exp context' exp1 (ContVar k_ret))))
   | FuncE (x, s, c, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)
