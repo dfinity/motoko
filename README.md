@@ -263,7 +263,7 @@ See [here](design/Syntax.html).
 
 ## Semantics
 
-TODO...
+TODO ...
 
 
 ## Implementation
