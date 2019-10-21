@@ -1,0 +1,5 @@
+( variant {a = 25}
+, variant {a = 25} : variant {a : nat}
+, variant {a = 25} : variant {}
+, variant {0 = 42} : variant {0 : int; 1 : text}
+)

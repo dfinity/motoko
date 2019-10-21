@@ -1,0 +1,13 @@
+
+DESER, reading!
+(Arg
+  (VariantV (a(97) (IntegralV 25)))
+  (AnnotV (VariantV (a(97) (IntegralV 25))) (VariantT (a (PrimT nat))))
+  (AnnotV (VariantV (a(97) (IntegralV 25))) (VariantT))
+  (AnnotV
+    (VariantV ((0) (IntegralV 42)))
+    (VariantT (0 (PrimT int)) (1 (PrimT text)))
+  )
+)
+
+DESER, parsed!

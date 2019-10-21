@@ -586,9 +586,9 @@ let rec to_bid (v : value) : bid =
                     | PrimT (Int8|Int16|Int32|Int64|Nat8|Nat16|Nat32|Nat64 as t) when in_range t i -> PrimT t
                     | _ -> bottom)
   | OptV v -> (function
-              | PrimT Reserved -> OptT (infer v)
-              | OptT t -> OptT (to_bid v t.it @@ v.at)
-              | _ -> bottom)
+               | PrimT Reserved -> OptT (infer v)
+               | OptT t -> OptT (to_bid v t.it @@ v.at)
+               | _ -> bottom)
   | VecV vs -> (function
                 | PrimT Reserved -> VecT List.(fold_left glb (PrimT Empty) (map infer' vs) @@ v.at)
                 | _ -> failwith "cannot VecT yet")
@@ -596,13 +596,14 @@ let rec to_bid (v : value) : bid =
                     | PrimT Reserved -> RecordT (List.map infer_field vfs)
                     | RecordT tfs ->
                       let identity x = x in
-                      let compose f g x = g (f x) in
+                      let compose g f x = g (f x) in
                       let refiners = List.map refine_record_field tfs in
                       List.fold_left compose identity refiners (RecordT (List.map infer_field vfs))
                     | _ -> bottom)
   | VariantV vf -> (function
                     | PrimT Reserved ->
                       VariantT [{label = Id vf.it.hash @@ vf.at; typ = infer vf.it.value} @@ vf.at]
+                    (*  | VariantT tfs -> *)
                     | _ -> failwith "cannot VariantT yet")
   | FuncV _ -> failwith "cannot yet"
 
@@ -619,19 +620,20 @@ and infer_field vf = match vf.it with
   | { hash; name = Some id; value } -> { label = Named id.it @@ id.at; typ = infer value } @@ vf.at
   | { hash; name = None; value } -> { label = Id hash @@ vf.at; typ = infer value } @@ vf.at
 
+and same_label = function
+        | Unnamed s, Unnamed t -> s = t
+        | Named s, Named t -> s = t
+        | Id s, Id t -> s = t
+        | _ -> false  (* FIXME: better compare *)
+
 and refine_record_field tf t =
   match t with
   | RecordT tfs ->
     let {label; typ} = tf.it in
     let comb tf' (tfs, absent) =
       let {label = label'; typ = typ'} = tf'.it in
-      let same_label = match label.it, label'.it with
-        | Unnamed s, Unnamed t -> s = t
-        | Named s, Named t -> s = t
-        | Id s, Id t -> s = t
-        | _ -> Wasm.Sexpr.print 80 Idllib.Arrange_idl.("LABEL" $$ [typ_field tf']);false in  (* FIXME: better compare *)
-      if same_label then
-      ({label = (label'); typ = lub typ.it typ'.it @@ typ'.at} @@ tf'.at) :: tfs, false
+      if same_label (label.it, label'.it)
+      then ({label = label'; typ = lub typ.it typ'.it @@ typ'.at} @@ tf'.at) :: tfs, false
       else tf' :: tfs, absent in
     let tfs, bad = List.fold_right comb tfs ([], true) in
     if bad then PrimT Empty else RecordT tfs
