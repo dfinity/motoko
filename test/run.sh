@@ -132,7 +132,7 @@ do
   then
     # Typecheck
     $ECHO -n " [tc]"
-    $ASC $ASC_FLAGS --check $base.as > $out/$base.tc 2>&1
+    $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS --check $base.as > $out/$base.tc 2>&1
     tc_succeeded=$?
     normalize $out/$base.tc
     diff_files="$diff_files $base.tc"
@@ -158,13 +158,13 @@ do
         then
           # Interpret
           $ECHO -n " [run]"
-          $ASC $ASC_FLAGS -r $base.as > $out/$base.run 2>&1
+          $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS -r $base.as > $out/$base.run 2>&1
           normalize $out/$base.run
           diff_files="$diff_files $base.run"
 
           # Interpret IR without lowering
           $ECHO -n " [run-ir]"
-          $ASC $ASC_FLAGS -r -iR -no-async -no-await $base.as > $out/$base.run-ir 2>&1
+          $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS -r -iR -no-async -no-await $base.as > $out/$base.run-ir 2>&1
           normalize $out/$base.run-ir
           diff_files="$diff_files $base.run-ir"
 
@@ -174,7 +174,7 @@ do
 
           # Interpret IR with lowering
           $ECHO -n " [run-low]"
-          $ASC $ASC_FLAGS -r -iR $base.as > $out/$base.run-low 2>&1
+          $ASC $ASC_FLAGS $EXTRA_ASC_FLAGS -r -iR $base.as > $out/$base.run-low 2>&1
           normalize $out/$base.run-low
           diff_files="$diff_files $base.run-low"
 
@@ -264,6 +264,12 @@ do
 
     if [ "$tc_succeeded" -eq 0 ];
     then
+      $ECHO -n " [pp]"
+      $DIDC --pp $base.did > $out/$base.pp.did
+      sed -i 's/import "/import "..\//g' $out/$base.pp.did
+      $DIDC --check $out/$base.pp.did > $out/$base.pp.tc 2>&1
+      diff_files="$diff_files $base.pp.tc"
+      
       $ECHO -n " [js]"
       $DIDC --js $base.did -o $out/$base.js >& $out/$base.js.out
       normalize $out/$base.js

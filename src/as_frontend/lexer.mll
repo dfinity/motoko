@@ -184,6 +184,10 @@ rule token mode = parse
   | '"'character*'\\'_
     { error_nest (Lexing.lexeme_end_p lexbuf) lexbuf "illegal escape" }
 
+  (* If you add keywords, please also update
+     - src/idllib/escape.ml
+     - emacs/actorscript-mode.el
+  *)
   | "actor" { ACTOR }
   | "and" { AND }
   | "async" { ASYNC }

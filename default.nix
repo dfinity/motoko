@@ -272,6 +272,7 @@ rec {
     buildInputs =
       [ asc
         didc
+        deser
         ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
@@ -294,6 +295,7 @@ rec {
         export ASC=asc
         export AS_LD=as-ld
         export DIDC=didc
+        export DESER=deser
         export ESM=${esm}
         export JS_USER_LIBRARY=${js-user-library}
         asc --version
@@ -406,6 +408,19 @@ rec {
     installPhase = ''
       mkdir -p $out/bin
       cp --verbose --dereference didc $out/bin
+    '';
+  };
+
+  deser = stdenv.mkDerivation {
+    name = "deser";
+    src = subpath ./src;
+    buildInputs = commonBuildInputs;
+    buildPhase = ''
+      make DUNE_OPTS="--display=short --profile release" deser
+    '';
+    installPhase = ''
+      mkdir -p $out/bin
+      cp --verbose --dereference deser $out/bin
     '';
   };
 
@@ -533,6 +548,7 @@ rec {
       as-ide
       js
       didc
+      deser
       tests
       unit-tests
       samples
@@ -550,18 +566,21 @@ rec {
     # Since building asc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
     # build dependencies of the two to provide a build environment that offers
-    # both.
+    # both, while not actually building `asc`
     #
 
-    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != didc) (
-      asc-bin.buildInputs ++
-      js.buildInputs ++
-      rts.buildInputs ++
-      didc.buildInputs ++
-      tests.buildInputs ++
-      users-guide.buildInputs ++
-      [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ]
-    ));
+    buildInputs =
+      let dont_build = [ asc didc deser ]; in
+      nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
+        asc-bin.buildInputs ++
+        js.buildInputs ++
+        rts.buildInputs ++
+        didc.buildInputs ++
+        deser.buildInputs ++
+        tests.buildInputs ++
+        users-guide.buildInputs ++
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ]
+      ));
 
     shellHook = llvmEnv;
     ESM=esm;

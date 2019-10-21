@@ -100,7 +100,9 @@ let start () =
   let vfs = ref Vfs.empty in
   let decl_index =
     let ix = match Declaration_index.make_index !vfs with
-      | Error(err) -> Declaration_index.Index.empty
+      | Error(err) ->
+        List.iter (fun e -> log_to_file "Error" (Diag.string_of_message e))  err;
+        Declaration_index.Index.empty
       | Ok((ix, _)) -> ix in
     ref ix in
   let rec loop () =

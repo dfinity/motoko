@@ -134,4 +134,5 @@ sig
   val find_from_opt : (char -> bool) -> string -> int -> int option
   val chop_prefix : string -> string -> string option
   val chop_suffix : string -> string -> string option
+  val lightweight_escaped : string -> string
 end
