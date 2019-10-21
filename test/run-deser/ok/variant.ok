@@ -11,3 +11,11 @@ DESER, reading!
 )
 
 DESER, parsed!
+(ArgTy
+  (VariantT (97 (PrimT nat)))
+  (VariantT (a (PrimT nat)))
+  (VariantT)
+  (VariantT (0 (PrimT nat)) (1 (PrimT text)))
+)
+
+DESER, type inferred!

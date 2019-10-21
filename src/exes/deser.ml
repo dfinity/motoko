@@ -621,10 +621,9 @@ and infer_field vf = match vf.it with
   | { hash; name = None; value } -> { label = Id hash @@ vf.at; typ = infer value } @@ vf.at
 
 and same_label = function
-        | Unnamed s, Unnamed t -> s = t
-        | Named s, Named t -> s = t
-        | Id s, Id t -> s = t
-        | _ -> false  (* FIXME: better compare *)
+  | Named s, Named t -> s = t
+  | (Id s | Unnamed s), (Unnamed t | Id t) -> s = t
+  | _ -> false  (* FIXME: better compare *)
 
 and refine_record_field tf t =
   match t with
