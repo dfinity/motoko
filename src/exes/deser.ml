@@ -126,6 +126,7 @@ type typ = Null | Bool | Nat | NatN of int
          | Record of fields
          | Variant of alts
          | Function of typ Lazy.t array * typ Lazy.t array * ann array
+         | Future of int * Buffer.t
 
 and alts = (int * typ Lazy.t) array
 and fields = (int * typ Lazy.t) array
@@ -415,7 +416,17 @@ let read_type lookup : (typ * outputter) Lazy.t =
 T(service {<methtype>*}) = sleb128(-23) T*(<methtype>* )
 *)
 
-  | t -> failwith (Printf.sprintf "unrecognised structured type: %d" t)
+  | t -> (* future type *)
+    let bytes = read_leb128 () in
+    let buf = Buffer.create 0 in
+    ignore (input_buffer stdin buf ~len:bytes);
+    let ingest () =
+      let bytes = read_leb128 () in
+      let refs = read_leb128 () in
+      let buf = Buffer.create 0 in
+      assert (refs = 0);
+      ignore (input_buffer stdin buf ~len:bytes) in
+    lazy (Future (t, buf), ingest)
 
 
 let read_type_table (t : unit -> (typ * outputter) Lazy.t) : (typ * outputter) Lazy.t array =
