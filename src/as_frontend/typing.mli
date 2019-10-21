@@ -6,3 +6,4 @@ open Scope
 
 val infer_prog : scope -> Syntax.prog -> (typ * scope) Diag.result
 val check_library : scope -> Syntax.library -> scope Diag.result
+val check_actors : scope -> Syntax.prog list -> unit Diag.result
