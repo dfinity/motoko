@@ -7,7 +7,23 @@ non-closed actor: (ActorE
       Shared
       Returns
       ()
-      (AssertE (PrimE (RelPrim Nat EqOp) (VarE x) (LitE (NatLit 1))))
+      (BlockE
+        (LetD
+          (VarP $k/0)
+          (FuncE
+            $k/0
+            Local
+            Returns
+            ()
+            (BlockE (LetD (VarP $v/0) (TupE)) (TupE))
+          )
+        )
+        (LetD (VarP $r/0) (FuncE $r/0 Local Returns (params $e/0) () (TupE)))
+        (CallE
+          (VarE $k/0)
+          (AssertE (PrimE (RelPrim Nat EqOp) (VarE x) (LitE (NatLit 1))))
+        )
+      )
     )
   )
   (foo foo)
