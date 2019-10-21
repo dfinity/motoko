@@ -603,8 +603,8 @@ let rec to_bid (v : value) : bid =
   | VariantV vf -> (function
                     | PrimT Reserved ->
                       VariantT [{label = Id vf.it.hash @@ vf.at; typ = infer vf.it.value} @@ vf.at]
-                    (*  | VariantT tfs -> *)
-                    | _ -> failwith "cannot VariantT yet")
+                    | VariantT tfs -> refine_variant_field vf tfs
+                    | _ -> bottom)
   | FuncV _ -> failwith "cannot yet"
 
   | AnnotV (v, t) -> fun t' -> to_bid v (lub t' t.it)
@@ -639,6 +639,30 @@ and refine_record_field tf t =
     if bad then PrimT Empty else RecordT tfs
   | PrimT Empty -> t
   | _ -> assert false
+
+and refine_variant_field vf tfs =
+  match vf.it with
+  | {hash; name = None; value} ->
+    let trans tf =
+      let {label; typ} = tf.it in
+      if same_label (Id hash, label.it) then
+        begin
+          let inf = to_bid value typ.it in
+          {label; typ = inf @@ vf.at} @@ vf.at
+        end
+      else tf in
+    VariantT (List.map trans tfs)
+  | {hash; name = Some id; value} ->
+    let trans tf =
+      let {label; typ} = tf.it in
+      if same_label (Named id.it, label.it) then
+        begin
+          let inf = to_bid value typ.it in
+          {label; typ = inf @@ vf.at} @@ vf.at
+        end
+      else tf in
+    VariantT (List.map trans tfs)
+
 
 and in_range t v =
   let open Big_int in
