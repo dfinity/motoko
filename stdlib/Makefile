@@ -209,22 +209,22 @@ PRODUCE_EXCHANGE_SRC=\
 
 $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/test/simpleSetupAndQuery.as > $@
+	$(ASC) -ancient-system-api -r examples/produce-exchange/test/simpleSetupAndQuery.as > $@
 
 $(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/test/retailerReserveMany.as > $@
+	$(ASC) -ancient-system-api -r examples/produce-exchange/test/retailerReserveMany.as > $@
 
 $(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/producerRemInventory.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/test/producerRemInventory.as > $@
+	$(ASC) -ancient-system-api -r examples/produce-exchange/test/producerRemInventory.as > $@
 
 $(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/test/evalBulk.as > $@
+	$(ASC) -ancient-system-api -r examples/produce-exchange/test/evalBulk.as > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/serverActor.as
+	$(ASC) -ancient-system-api -c -o $@ examples/produce-exchange/serverActor.as
 
 $(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@

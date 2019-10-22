@@ -720,10 +720,7 @@ module Heap = struct
 
   (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
   let grow_memory env =
-    (* No growing of memory on drun yet *)
-    if E.mode env = Flags.ICMode
-    then G.i Drop
-    else Func.share_code1 env "grow_memory" ("ptr", I32Type) [] (fun env get_ptr ->
+    Func.share_code1 env "grow_memory" ("ptr", I32Type) [] (fun env get_ptr ->
       let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
       get_ptr ^^ compile_divU_const page_size ^^
       compile_add_const 1l ^^
@@ -3422,7 +3419,7 @@ module Serialization = struct
   let sort_by_hash fs =
     List.sort
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
-      (List.map (fun f -> (Idllib.IdlHash.idl_hash f.Type.lab, f)) fs)
+      (List.map (fun f -> (Idllib.Escape.unescape_hash f.Type.lab, f)) fs)
 
   (* The IDL serialization prefaces the data with a type description.
      We can statically create the type description in Ocaml code,

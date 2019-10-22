@@ -70,7 +70,7 @@ let str ppf s = pp_print_string ppf s; pp_print_cut ppf ()
 let id ppf s = str ppf s.it; pp_print_cut ppf ()
 let space = pp_print_space             
 let kwd ppf s = str ppf s; space ppf ()
-let field_name ppf s = str ppf "'"; str ppf s.it; str ppf "'"; pp_print_cut ppf ()                
+let quote_name ppf s = pp_open_hbox ppf (); str ppf "'"; str ppf (Lib.String.lightweight_escaped s); str ppf "'"; pp_close_box ppf (); pp_print_cut ppf ()
 
 let pp_prim p =
   match p with
@@ -133,12 +133,17 @@ and pp_fields ppf fs =
   
 and pp_field ppf tf =
   pp_open_box ppf 1;
-  field_name ppf tf.it.name; kwd ppf ":"; pp_typ ppf tf.it.typ;
+  let f_name =
+    match tf.it.label.it with
+    | Id n -> Lib.Uint32.to_string n
+    | Named name -> name
+    | Unnamed n -> Lib.Uint32.to_string n
+  in quote_name ppf f_name; kwd ppf ":"; pp_typ ppf tf.it.typ;
   pp_close_box ppf ()
 
 and pp_meth ppf meth =
   pp_open_box ppf 1;
-  field_name ppf meth.it.var;
+  quote_name ppf meth.it.var.it;
   kwd ppf ":";
   pp_typ ppf meth.it.meth;
   pp_close_box ppf ()
@@ -170,11 +175,11 @@ let pp_rec ppf x =
   pp_print_cut ppf ()
 
 let pp_actor ppf actor recs =
-  pp_open_hovbox ppf 1;
-  kwd ppf "const";
-  (match actor.it with
+  match actor.it with
    | ActorD (x, t) ->
       let x = ("actor_" ^ x.it) @@ x.at in
+      pp_open_hovbox ppf 1;
+      kwd ppf "const";
       (match t.it with
        | ServT tp ->
           id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
@@ -189,17 +194,18 @@ let pp_actor ppf actor recs =
             str ppf var.it;
        | _ -> assert false
       );
+      pp_close_box ppf ();      
       pp_force_newline ppf ();
-      kwd ppf "return"; id ppf x; str ppf ";"
-  );
-  pp_close_box ppf ()
+      pp_open_hovbox ppf 0;
+      kwd ppf "return"; id ppf x; str ppf ";";
+      pp_close_box ppf ()
 
 let pp_header ppf () =
-  pp_open_vbox ppf 0;
-  str ppf "export default ({ IDL }) => {";
-  pp_close_box ppf ()
+  pp_open_vbox ppf 1;
+  str ppf "export default ({ IDL }) => {"
 
 let pp_footer ppf () =
+  pp_close_box ppf ();
   pp_force_newline ppf ();
   pp_print_string ppf "};"
 
@@ -214,11 +220,9 @@ let pp_prog ppf env prog =
            if TS.mem e.var recs then {e with is_rec = true} else e)
          env_list in
      pp_header ppf ();
-     pp_open_vbox ppf 0;
      TS.iter (pp_rec ppf) recs;
      List.iter (pp_dec ppf) env_list;
      pp_actor ppf actor recs;
-     pp_close_box ppf ();
      pp_footer ppf ()
    
 let compile (scope : Typing.scope) (prog : Syntax.prog) =

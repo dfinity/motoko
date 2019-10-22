@@ -1085,6 +1085,10 @@ The types of these values are assumed to be known from context, so the syntax do
 ```
 <val> ::=
   | <primval> | <consval> | <refval>
+  | ( <annval> )
+
+<annval> ::=
+  | <val>
   | <val> : <datatype>
 
 <primval> ::=
@@ -1095,17 +1099,17 @@ The types of these values are assumed to be known from context, so the syntax do
 
 <consval> ::=
   | opt <val>
-  | vec { <val>;* }
+  | vec { <annval>;* }
   | record { <fieldval>;* }
   | variant { <fieldval> }
 
-<fieldval> ::= <nat> = <val>
+<fieldval> ::= <nat> = <annval>
 
 <refval> ::=
   | service <text>             (canister URI)
   | func <text> . <id>         (canister URI and message name)
 
-<arg> ::= ( <val>,* )
+<arg> ::= ( <annval>,* )
 
 ```
 

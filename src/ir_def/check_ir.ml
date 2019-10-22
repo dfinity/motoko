@@ -211,11 +211,8 @@ and check_typ_field env s typ_field : unit =
   check_typ env typ;
   if not (T.is_typ typ) then begin
     check env no_region
-      (s <> Some T.Actor || T.is_func (T.promote typ))
-      "actor field has non-function type";
-    check env no_region
-      (s <> Some T.Actor || T.shared typ)
-      "actor field has non-shared type"
+      (s <> Some T.Actor || T.is_shared_func typ)
+      "actor field must have shared function type"
   end
 
 and check_typ_binds_acyclic env cs ts  =
@@ -731,10 +728,8 @@ and type_exp_field env s f : T.field =
   assert (t <> T.Pre);
   check_sub env f.at t f.note;
   if not (T.is_typ t) then begin
-    check env f.at ((s = T.Actor) ==> T.is_func t)
-      "public actor field is not a function";
-    check env f.at ((s = T.Actor) ==> T.shared t)
-      "public actor field has non-shared type";
+    check env f.at ((s = T.Actor) ==> T.is_shared_func t)
+      "public actor field must have shared function type";
   end;
   T.{lab = name; typ = t}
 
