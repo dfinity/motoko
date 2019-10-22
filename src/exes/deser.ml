@@ -535,7 +535,7 @@ Every IDL value corresponds to such a function.
  - for inferencing the most general type: call with `PrimT Reserved`
  - for type checking against `t`: call with `t`
 
-Guaranteed to return a `typ` that is `<=` in the IDL type lattice.
+NOPE: Guaranteed to return a `typ` that is `<=` in the IDL type lattice.
  *)
 type bid = typ' -> typ'
 
@@ -622,8 +622,9 @@ and infer_field vf = match vf.it with
 
 and same_label = function
   | Named s, Named t -> s = t
+  | (Id s | Unnamed s), Named t -> s = Idllib.IdlHash.idl_hash t
+  | Named s, (Id t | Unnamed t) -> Idllib.IdlHash.idl_hash s = t
   | (Id s | Unnamed s), (Unnamed t | Id t) -> s = t
-  | _ -> false  (* FIXME: better compare *)
 
 and refine_record_field tf t =
   match t with
@@ -640,27 +641,18 @@ and refine_record_field tf t =
   | _ -> assert false
 
 and refine_variant_field vf tfs =
-  match vf.it with
-  | {hash; name = None; value} ->
+  let {hash; value; _} = vf.it in
+  if List.exists (fun {it={label;_};_} -> same_label (Id hash, label.it)) tfs then
     let trans tf =
       let {label; typ} = tf.it in
-      if same_label (Id hash, label.it) then
+      if same_label (Id vf.it.hash, label.it) then
         begin
           let inf = to_bid value typ.it in
           {label; typ = inf @@ vf.at} @@ vf.at
         end
       else tf in
     VariantT (List.map trans tfs)
-  | {hash; name = Some id; value} ->
-    let trans tf =
-      let {label; typ} = tf.it in
-      if same_label (Named id.it, label.it) then
-        begin
-          let inf = to_bid value typ.it in
-          {label; typ = inf @@ vf.at} @@ vf.at
-        end
-      else tf in
-    VariantT (List.map trans tfs)
+  else PrimT Empty
 
 
 and in_range t v =

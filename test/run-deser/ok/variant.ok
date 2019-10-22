@@ -14,7 +14,7 @@ DESER, parsed!
 (ArgTy
   (VariantT (97 (PrimT nat)))
   (VariantT (a (PrimT nat)))
-  (VariantT)
+  (PrimT empty)
   (VariantT (0 (PrimT nat)) (1 (PrimT text)))
 )
 
