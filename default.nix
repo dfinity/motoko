@@ -561,6 +561,12 @@ rec {
     ];
   };
 
+  licenses = import ./licenses.nix nixpkgs nixpkgs;
+
+  asc-tar-licenses = licenses.lib.runtime.runtimeLicensesReport asc-tar;
+  stdlib-licenses = licenses.lib.runtime.runtimeLicensesReport stdlib;
+  all-systems-go-licenses = licenses.lib.runtime.runtimeLicensesReport all-systems-go;
+
   shell = if export-shell then nixpkgs.mkShell {
     #
     # Since building asc, and testing it, are two different derivations in we
