@@ -5,9 +5,11 @@ DESER, to your service!
 read_type_table: 0
 
 ========================== Value section
-# 2 arguments follow
-# Argument #0:
-
-# Argument #1 (last):
-"Foo"
+// 2 arguments follow
+(
+// Argument #0:
+  
+// Argument #1 (last):
+, "Foo"
+)
 -------- DESER DONE
