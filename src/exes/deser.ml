@@ -49,6 +49,26 @@ let read_known char : unit =
   | b when b = Char.code char -> ()
   | _ -> failwith "unexpected"
 
+(* encoding numbers *)
+
+let rec encode_leb128 n acc =
+  let open Big_int in
+  let lim = big_int_of_int 128 in
+  if lt_big_int n lim then
+    acc ^ String.make 1 (Char.chr (int_of_big_int n))
+  else
+    let q, m = quomod_big_int n lim in
+    encode_leb128 q (acc ^ String.make 1 (Char.chr (128 + int_of_big_int n)))
+
+let rec encode_sleb128 n acc =
+  let open Big_int in
+  let lim_pos, lim_neg = big_int_of_int 64, big_int_of_int (-64) in
+  if lt_big_int n lim_pos && ge_big_int n lim_neg then
+    acc ^ String.make 1 (Char.chr (int_of_big_int n)) (* FIXME *)
+  else
+    let q, m = quomod_big_int n (big_int_of_int 128) in
+    encode_sleb128 q (acc ^ String.make 1 (Char.chr (128 + int_of_big_int n)))
+
 (* reading numbers *)
 
 let read_leb128 () : int = (* TODO: should be bigint *)
@@ -690,6 +710,23 @@ let () =
       let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
       Printf.printf "\nDESER, type inferred!\n";
+      let prim = function
+        |  Source.{it = Syntax.PrimT _; _} -> true
+        | _ -> false in
+      if List.for_all prim ts then
+        begin
+          Printf.printf "DIDL\x00";
+          let s = encode_sleb128 Big_int.zero_big_int "" in print_string s
+        end
+      else
+        Printf.printf ""
+      (*
+      if List.every (type_realizable) ts then
+        traverse_collect_types
+          Printf.printf "\nDESER, term traversed!\n";
+      else
+        error
+       *)
     end
   else
     begin
