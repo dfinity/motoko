@@ -685,7 +685,7 @@ module RTS = struct
           E.call_import env "test" "print" ^^
           G.i Unreachable
         | Flags.ICMode ->
-          E.call_import env "debug" "print" ^^
+          E.call_import env "ic" "trap" ^^
           G.i Unreachable
         | Flags.WasmMode -> G.i Unreachable
       )
@@ -2989,7 +2989,8 @@ module Dfinity = struct
       E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "reject" [I64Type; I32Type] [];
-      E.add_func_import env "msg" "error_code" [I64Type] [I32Type]
+      E.add_func_import env "msg" "error_code" [I64Type] [I32Type];
+      E.add_func_import env "ic" "trap" [I32Type; I32Type] []
     | Flags.AncientMode ->
       E.add_func_import env "test" "print" [I32Type] [];
       E.add_func_import env "test" "show_i32" [I32Type] [I32Type];
@@ -3049,11 +3050,18 @@ module Dfinity = struct
       system_call env "test" "print" ^^
       compile_static_print env "\n"
 
-  let trap_with env s =
-    if E.mode env = Flags.WasmMode
-    then G.i Unreachable
-    else compile_static_print env (s ^ "\n") ^^ G.i Unreachable
+  let ic_trap env =
+      Func.share_code1 env "ic_trap" ("str", I32Type) [] (fun env get_str ->
+        get_str ^^ Text.payload_ptr_unskewed ^^
+        get_str ^^ Heap.load_field (Text.len_field) ^^
+        system_call env "ic" "trap"
+      )
 
+  let trap_with env s =
+    match E.mode env with
+    | Flags.WasmMode -> G.i Unreachable
+    | Flags.AncientMode -> compile_static_print env (s ^ "\n") ^^ G.i Unreachable
+    | Flags.ICMode -> Text.lit env s ^^ ic_trap env ^^ G.i Unreachable
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)

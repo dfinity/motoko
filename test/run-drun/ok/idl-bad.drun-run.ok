@@ -1,0 +1,2 @@
+ingress(0) System
+Err: Error { code: ContractViolation, description: "explicit canister trap: IDL error: missing magic bytes" }
