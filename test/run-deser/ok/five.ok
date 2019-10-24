@@ -5,9 +5,8 @@ DESER, to your service!
 
 ========================== Value section
 // 5 arguments follow
-(
 // Argument #0:
-  "One"
+( "One"
 // Argument #1:
 , "Two"
 // Argument #2:
