@@ -75,6 +75,7 @@ function normalize () {
     sed 's/prelude:[^:]*:/prelude:___:/g' |
     sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
     sed 's/rip_addr: [0-9]*/rip_addr: XXX/g' |
+    sed 's,/private/tmp/,/tmp/,g' |
     sed 's,/tmp/.*dfinity.[^/]*,/tmp/dfinity.XXX,g' |
     sed 's,/build/.*dfinity.[^/]*,/tmp/dfinity.XXX,g' |
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |

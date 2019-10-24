@@ -417,9 +417,10 @@ let compile_rotl_const = compile_op_const I32Op.Rotl
 let compile_bitand_const = compile_op_const I32Op.And
 let compile_bitor_const = function
   | 0l -> G.nop | n -> compile_op_const I32Op.Or n
-let compile_eq_const i =
+let compile_rel_const rel i =
   compile_unboxed_const i ^^
-  G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+  G.i (Compare (Wasm.Values.I32 rel))
+let compile_eq_const = compile_rel_const I32Op.Eq
 
 let compile_op64_const op i =
     compile_const_64 i ^^
@@ -1670,6 +1671,10 @@ module ReadBuf = struct
     get_end get_buf ^^ get_ptr get_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
     G.i (Compare (Wasm.Values.I32 I64Op.LeU)) ^^
     E.else_trap_with env "IDL error: out of bounds read"
+
+  let is_empty env get_buf =
+    get_end get_buf ^^ get_ptr get_buf ^^
+    G.i (Compare (Wasm.Values.I32 I64Op.Eq))
 
   let read_byte env get_buf =
     check_space env get_buf (compile_unboxed_const 1l) ^^
@@ -4084,7 +4089,6 @@ module Serialization = struct
       (* Get object sizes *)
       get_x ^^
       buffer_size env (Type.seq ts) ^^
-      compile_mul_const Heap.word_size ^^
       set_refs_size ^^
 
       compile_add_const tydesc_len  ^^
@@ -4094,7 +4098,7 @@ module Serialization = struct
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
       get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
-      get_refs_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
+      get_refs_size ^^ compile_mul_const Heap.word_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
 
       (* Write ty desc *)
       get_data_start ^^
@@ -4109,7 +4113,7 @@ module Serialization = struct
       serialize_go env (Type.seq ts) ^^
 
       (* Sanity check: Did we fill exactly the buffer *)
-      get_refs_start ^^ get_refs_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      get_refs_start ^^ get_refs_size ^^ compile_mul_const Heap.word_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       E.else_trap_with env "reference buffer not filled " ^^
 
@@ -4147,6 +4151,7 @@ module Serialization = struct
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
       let (set_data_start, get_data_start) = new_local env "data_start" in
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
+      let (set_arg_count, get_arg_count) = new_local env "arg_count" in
 
       begin match E.mode env with
       | Flags.AncientMode ->
@@ -4196,16 +4201,27 @@ module Serialization = struct
         ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
         ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
 
-        (* read count *)
-        ReadBuf.read_leb128 env get_main_typs_buf ^^
-        compile_eq_const (Int32.of_int (List.length ts)) ^^
-        E.else_trap_with env ("IDL error: wrong arity parsing " ^ ts_name) ^^
+        ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
+
+        get_arg_count ^^
+        compile_rel_const I32Op.GeU (Int32.of_int (List.length ts)) ^^
+        E.else_trap_with env ("IDL error: too few arguments " ^ ts_name) ^^
+
         G.concat_map (fun t ->
           get_data_buf ^^ get_ref_buf ^^
           get_typtbl_ptr ^^ load_unskewed_ptr ^^
           ReadBuf.read_sleb128 env get_main_typs_buf ^^
           deserialize_go env t
-        ) ts
+        ) ts ^^
+
+        get_arg_count ^^ compile_eq_const (Int32.of_int (List.length ts)) ^^
+        G.if_ (ValBlockType None)
+          begin
+            ReadBuf.is_empty env get_data_buf ^^
+            E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
+            ReadBuf.is_empty env get_ref_buf ^^
+            E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
+          end G.nop
       )
     )))))
 
