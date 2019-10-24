@@ -425,6 +425,7 @@ let read_type lookup : (typ * outputter) Lazy.t =
 (*
 T(service {<methtype>*}) = sleb128(-23) T*(<methtype>* )
 *)
+  | -23 -> failwith "service types not supported yet"
 
   | t -> (* future type *)
     let bytes = read_leb128 () in
