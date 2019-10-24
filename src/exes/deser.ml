@@ -9,6 +9,10 @@ open Lazy
 
 type outputter = unit -> unit
 
+(* noise reduction *)
+
+let chatty = ref true
+
 (* read nothing *)
 
 let epsilon : outputter = ignore
@@ -234,6 +238,7 @@ end
 module OutputIdl : Dump = struct
 
 let output_string (s : string) = print_string s
+let chat_string s = if !chatty then output_string s
 let output_string_space (s : string) = Printf.printf "%s " s
 let output_decimal (i : int) = Printf.printf "%d" i
 let output_bignum (i : int) = output_decimal i (* for now *)
@@ -257,15 +262,15 @@ let output_text n froms tos =
 let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
   let last i = i + 1 = args in
   let herald_arguments = function
-    | () when args = 0 -> output_string "// No arguments...\n()"
-    | _ when args = 1 -> output_string "// 1 argument follows\n(\n"
-    | _ -> Printf.printf "// %d arguments follow\n(\n" args in
+    | () when args = 0 -> chat_string "// No arguments...\n"; output_string "()"
+    | _ when args = 1 -> chat_string "// 1 argument follows\n"
+    | _ -> if !chatty then Printf.printf "// %d arguments follow\n" args in
   let herald_member () i f () =
-    Printf.printf "// Argument #%d%s:\n" i (if last i then " (last)" else "");
-    if i = 0 then print_string "  " else print_string ", ";
+    if !chatty then Printf.printf "// Argument #%d%s:\n" i (if last i then " (last)" else "");
+    output_string (if i = 0 then "( " else ", ");
     f ();
-    if last i then print_string "\n)" else print_string "\n" in
-  herald_arguments, (*bracket args*) herald_member
+    output_string (if last i then "\n)" else "\n") in
+  herald_arguments, herald_member
 
 let start i = if i = 0 then output_string_space "{"
 let stop max i = if i + 1 = max then output_string " }"
@@ -500,6 +505,7 @@ let argspec = Arg.align
   "--prose", Arg.Unit (set_format Prose), " output indented prose";
   "--json", Arg.Unit (set_format Json), " output JSON values";
   "--idl", Arg.Unit (set_format Idl), " output IDL values (default)";
+  "--quiet", Arg.Unit (fun () -> chatty := false), " suppress commentary";
   "--version",
     Arg.Unit (fun () -> Printf.printf "%s\n" banner; exit 0), " show version";
 ]
