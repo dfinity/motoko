@@ -141,7 +141,7 @@ let read_type_index () = let ty = read_sleb128 () in assert (ty > -18); ty
 
 let read_assoc () = let hash = read_leb128 () in
                     let tynum = read_type_index () in
-                    Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
+                    if !chatty then Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
 
 module type Dump =
 sig
