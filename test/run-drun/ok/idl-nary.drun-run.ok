@@ -7,10 +7,6 @@ ingress(5) Completed: Canister: Payload: 0x4449444c016c0400710171027103710100034
 ingress(6) Completed: Canister: Payload: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
 ingress(7) Completed: Canister: Payload: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
 ingress(8) Completed: Canister: Payload: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
-debug.print: IDL error: too few arguments Text,Text,Text
-
-ingress(9) Err: Error { code: Internal, description: "Instance::run method_name=\"canister_update three\" error=RuntimeFault(FaultDetails { fatal: false, trapcode: Some(Unreachable), rip_addr: XXX, rip_addr_details: Some(AddrDetails { in_module_code: true, file_name: Some(\"/tmp/ic.XXX/mod.so\"), sym_name: None }) })" }
-debug.print: IDL error: left-over bytes Text,Text,Text
-
-ingress(10) Err: Error { code: Internal, description: "Instance::run method_name=\"canister_update three\" error=RuntimeFault(FaultDetails { fatal: false, trapcode: Some(Unreachable), rip_addr: XXX, rip_addr_details: Some(AddrDetails { in_module_code: true, file_name: Some(\"/tmp/ic.XXX/mod.so\"), sym_name: None }) })" }
+ingress(9) Err: Error { code: ContractViolation, description: "explicit canister trap: IDL error: too few arguments Text,Text,Text" }
+ingress(10) Err: Error { code: ContractViolation, description: "explicit canister trap: IDL error: left-over bytes Text,Text,Text" }
 ingress(11) Completed: Canister: Payload: 0x4449444c000471717171034f6e650354776f05546872656504466f7572
