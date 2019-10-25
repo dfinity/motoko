@@ -51,23 +51,29 @@ let read_known char : unit =
 
 (* encoding numbers *)
 
+let add_uint8 b v =
+  let open Buffer in
+  add_char b (char_of_int (v land 0xFF))
+
 let rec encode_leb128 n acc =
   let open Big_int in
   let lim = big_int_of_int 128 in
   if lt_big_int n lim then
-    acc ^ String.make 1 (Char.chr (int_of_big_int n))
+    (add_uint8 acc (int_of_big_int n land 0x7F); acc)
   else
     let q, m = quomod_big_int n lim in
-    encode_leb128 q (acc ^ String.make 1 (Char.chr (128 + int_of_big_int n)))
+    add_uint8 acc (128 lor int_of_big_int n);
+    encode_leb128 q acc
 
 let rec encode_sleb128 n acc =
   let open Big_int in
   let lim_pos, lim_neg = big_int_of_int 64, big_int_of_int (-64) in
   if lt_big_int n lim_pos && ge_big_int n lim_neg then
-    acc ^ String.make 1 (Char.chr (int_of_big_int n)) (* FIXME *)
+    (add_uint8 acc (int_of_big_int n land 0x7F); acc)
   else
     let q, m = quomod_big_int n (big_int_of_int 128) in
-    encode_sleb128 q (acc ^ String.make 1 (Char.chr (128 + int_of_big_int n)))
+    add_uint8 acc (128 lor int_of_big_int n);
+    encode_sleb128 q acc
 
 (* reading numbers *)
 
@@ -739,10 +745,10 @@ let () =
       if List.for_all prim ts then
         begin
           Printf.printf "DIDL\x00"; (* no constructed types *)
-          let args = encode_leb128 (Big_int.big_int_of_int (List.length vs)) "" in print_string args;
+          let args = encode_leb128 (Big_int.big_int_of_int (List.length vs)) (Buffer.create 0) in Buffer.output_buffer stdout args;
           let write_typ ty =
             let n, _ = lookup_tynum ty in
-            print_string (encode_sleb128 (Big_int.big_int_of_int n) "") in
+            Buffer.output_buffer stdout (encode_sleb128 (Big_int.big_int_of_int n) (Buffer.create 0)) in
           List.iter write_typ ts
         end
       else
