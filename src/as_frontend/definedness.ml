@@ -86,8 +86,9 @@ let rec exp msgs e : f = match e.it with
   | RetE e              -> eagerify (exp msgs e)
   | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)
-  | FuncE (_, s, tp, p, t, e) -> delayify (exp msgs e /// pat msgs p)
-
+  | FuncE (_, s, tp, p, None, t, e) -> delayify (exp msgs e /// pat msgs p)
+  | FuncE (_, s, tp, p1, Some p2, t, e) ->
+    delayify ((exp msgs e /// pat msgs p1) /// pat msgs p2)
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE l              -> M.empty
   | PrimE _             -> M.empty

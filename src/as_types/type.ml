@@ -105,6 +105,11 @@ let catchErrorCodes = List.sort compare_field (
 let throw = Prim Error
 let catch = Prim Error
 
+(* Shared call context *)
+
+let caller = Prim Int32 (*TBR*)
+let ctxt = Obj (Object,[{ lab = "caller"; typ = caller }])
+
 let prim = function
   | "Null" -> Null
   | "Bool" -> Bool

@@ -126,7 +126,7 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | FuncE of string * func_sort * typ_bind list * pat * typ option * exp  (* function *)
+  | FuncE of string * func_sort * typ_bind list * pat * pat option * typ option * exp  (* function *)
   | CallE of exp * typ list * exp              (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)

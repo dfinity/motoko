@@ -671,7 +671,7 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | FuncE (_, sort, typ_binds, pat, typ_opt, exp) ->
+  | FuncE (_, sort, typ_binds, pat, pat_opt, typ_opt, exp) ->
     if not env.pre && not in_actor && T.is_shared_sort sort.it then
       error_in [Flags.ICMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let typ =
@@ -994,8 +994,16 @@ and check_exp' env0 t exp : T.typ =
         (String.concat " or\n  " ss)
     );
     t
-  | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
+  | FuncE (_, s', [], pat, pat_opt, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
+    let ve1 =
+      match pat_opt with
+      | None -> T.Env.empty
+      | Some pat1 ->
+        if not (T.is_shared_sort s'.it) then
+          error env pat1.at "non-shared function cannot take a context pattern";
+        check_pat_exhaustive env T.ctxt pat
+    in
     let t2 =
       match typ_opt with
       | None -> T.seq ts2
@@ -1017,7 +1025,7 @@ and check_exp' env0 t exp : T.typ =
         async = false;
         in_shared = T.is_shared_sort s'.it;
       } in
-    check_exp (adjoin_vals env' ve) t2 exp;
+    check_exp (adjoin_vals (adjoin_vals env' ve) ve1) t2 exp;
     t
   | _ ->
     let t' = infer_exp env0 exp in
@@ -1395,7 +1403,7 @@ and object_of_scope env sort fields scope at =
       (T.string_of_typ_expand t)
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE (_, sort, _, _, _, _); _}) ->
+  | LetD ({it = VarP _; _}, {it = FuncE (_, sort, _, _, _, _, _); _}) ->
     T.is_shared_sort sort.it
   | _ -> false
 

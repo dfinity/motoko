@@ -75,6 +75,8 @@ val catchErrorCodes : field list
 val throw : typ
 val catch : typ
 
+val caller : typ
+val ctxt: typ
 
 val iter_obj : typ -> typ
 
