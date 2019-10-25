@@ -554,7 +554,9 @@ let add_arg source = () (* args := !args @ [source] *)
 module Typer = struct
 open Idllib.Syntax
 
-let write_nil () = ()
+let write_nil (v : value') = ()
+let write_text (v : value') = Printf.printf "\x03HEY"
+
 let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
   [ Null, (-1, write_nil)
   ; Bool, (-2, write_nil)
@@ -569,7 +571,7 @@ let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
   ; Int32, (-11, write_nil)
   ; Int64, (-12, write_nil)
   (* | -13 | -14 -> failwith "no floats yet" (* TODO *) *)
-  ; Text, (-15, write_nil)
+  ; Text, (-15, write_text)
   ; Reserved, (-16, write_nil)
   ; Empty, (-17, write_nil)
   ]
@@ -749,7 +751,11 @@ let () =
           let write_typ ty =
             let n, _ = lookup_tynum ty in
             Buffer.output_buffer stdout (encode_sleb128 (Big_int.big_int_of_int n) (Buffer.create 0)) in
-          List.iter write_typ ts
+          List.iter write_typ ts;
+          let write_val ty value =
+            let _, writer = lookup_tynum ty in
+            writer value.Source.it in
+          List.iter2 write_val ts vs
         end
       else
         Printf.printf ""
