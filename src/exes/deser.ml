@@ -547,6 +547,29 @@ let add_arg source = () (* args := !args @ [source] *)
 (* type checker/inferencer -- SHOULD MOVE TO IDLLIB *)
 module Typer = struct
 open Idllib.Syntax
+
+let write_nil () = ()
+let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
+  [ Null, (-1, write_nil)
+  ; Bool, (-2, write_nil)
+  ; Nat, (-3, write_nil)
+  ; Int, (-4, write_nil)
+  ; Nat8, (-5, write_nil)
+  ; Nat16, (-6, write_nil)
+  ; Nat32, (-7, write_nil)
+  ; Nat64, (-8, write_nil)
+  ; Int8, (-9, write_nil)
+  ; Int16, (-10, write_nil)
+  ; Int32, (-11, write_nil)
+  ; Int64, (-12, write_nil)
+  (* | -13 | -14 -> failwith "no floats yet" (* TODO *) *)
+  ; Text, (-15, write_nil)
+  ; Reserved, (-16, write_nil)
+  ; Empty, (-17, write_nil)
+  ]
+
+let lookup_tynum (ty : typ) = List.assoc ty.Source.it type_assoc
+
 open Source
 
 (* the type of bidirectional checker/inferencer
@@ -715,8 +738,12 @@ let () =
         | _ -> false in
       if List.for_all prim ts then
         begin
-          Printf.printf "DIDL\x00";
-          let s = encode_sleb128 Big_int.zero_big_int "" in print_string s
+          Printf.printf "DIDL\x00"; (* no constructed types *)
+          let args = encode_leb128 (Big_int.big_int_of_int (List.length vs)) "" in print_string args;
+          let write_typ ty =
+            let n, _ = lookup_tynum ty in
+            print_string (encode_sleb128 (Big_int.big_int_of_int n) "") in
+          List.iter write_typ ts
         end
       else
         Printf.printf ""
