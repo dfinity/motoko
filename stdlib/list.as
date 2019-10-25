@@ -495,12 +495,67 @@ public type List<T> = ?(T, List<T>);
     rec(0)
   };
 
+  /**
+   `singleton`
+   ----------------
+   Creates a list with exactly one element.
+   */
+  public func singleton<X>(x : X) : List<X> {
+    ?(x, null)
+  };
+
+  /**
+   `replicate`
+   ----------------
+   Creates a list of the given length with the same value in each position.
+   */
+  public func replicate<X>(n : Nat, x : X) : List<X> {
+    tabulate<X>(n, func (_) { x })
+  };
+
+  /**
+   `zip`
+   -------------
+   Creates a list of pairs from a pair of lists.
+   */
+  public func zip<X, Y>(xs : List<X>, ys : List<Y>) : List<(X, Y)> {
+    zipWith<X, Y, (X, Y)>(xs, ys, func (x, y) { (x, y) })
+  };
+
+  /**
+   `zipWith`
+   -------------
+   Creates a list whose elements are calculated from the given function and
+   elements occuring at the same position in the given lists.
+   */
+  public func zipWith<X, Y, Z>(
+    xs : List<X>,
+    ys : List<Y>,
+    f : (X, Y) -> Z
+  ) : List<Z> {
+    switch (pop<X>(xs)) {
+      case (null, _) {
+        nil<Z>()
+      };
+      case (?x, xt) {
+        switch (pop<Y>(ys)) {
+          case (null, _) {
+            nil<Z>()
+          };
+          case (?y, yt) {
+            push<Z>(f(x, y), zipWith<X, Y, Z>(xt, yt, f))
+          }
+        }
+      }
+    }
+  };
+
 /**
 
 To do:
 --------
 - iterator objects, for use in `for ... in ...` patterns
-- operations for lists of pairs and pairs of lists: zip, split, etc
+- operations for lists of pairs and pairs of lists: split, etc
 - more regression tests for everything that is below
 
 */
