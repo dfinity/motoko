@@ -516,7 +516,9 @@ public type List<T> = ?(T, List<T>);
   /**
    `zip`
    -------------
-   Creates a list of pairs from a pair of lists.
+   Creates a list of pairs from a pair of lists. If the given lists have
+   inconsistent lengths, then the list created will have a length equal to the
+   minimum.
    */
   public func zip<X, Y>(xs : List<X>, ys : List<Y>) : List<(X, Y)> {
     zipWith<X, Y, (X, Y)>(xs, ys, func (x, y) { (x, y) })
@@ -526,7 +528,9 @@ public type List<T> = ?(T, List<T>);
    `zipWith`
    -------------
    Creates a list whose elements are calculated from the given function and
-   elements occuring at the same position in the given lists.
+   elements occuring at the same position in the given lists. If the given lists
+   have inconsistent lengths, then the list created will have a length equal to 
+   the minimum.
    */
   public func zipWith<X, Y, Z>(
     xs : List<X>,
