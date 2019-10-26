@@ -388,13 +388,14 @@ and to_args typ p wp : (Ir.arg list * (Ir.exp -> Ir.exp) * T.control * int) =
       let v = fresh_var "caller" T.caller in
       let c = fresh_var "ctxt" T.ctxt in
       blockE
-        [letD v (primE I.ICErrorCodePrim []);
+        [letD v (primE I.ICCallerPrim []);
          letD c
            (newObjE T.Object
               [{ it = {Ir.name = "caller"; var = id_of_exp v};
                  at = no_region;
                  note = T.caller }]
-              T.ctxt)]
+              T.ctxt);
+         letP (pat p) c]
         e in
 
   let args, wrap =

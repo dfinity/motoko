@@ -2986,6 +2986,9 @@ module Dfinity = struct
     (* current api_nonce *)
     E.add_global64 env "api_nonce" Mutable 0L
 
+  (* TODO: inline to true one msg.caller supported by platform *)
+  let has_msg_caller = false
+
   let system_imports env =
     match E.mode env with
     | Flags.ICMode ->
@@ -2995,6 +2998,8 @@ module Dfinity = struct
       E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "reject" [I64Type; I32Type] [];
       E.add_func_import env "msg" "error_code" [I64Type] [I32Type];
+      (* TODO: declare and use once available *)
+      if has_msg_caller then E.add_func_import env "msg" "caller" [I64Type] [I64Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] []
     | Flags.AncientMode ->
       E.add_func_import env "test" "print" [I32Type] [];
@@ -3133,19 +3138,26 @@ module Dfinity = struct
   let error_code_CANISTER_REJECT = 4l (* Api's CANISTER_REJECT *)
 
   let reject env arg_instrs =
-      SR.unit,
-      get_api_nonce env ^^
-      arg_instrs ^^
-      G.i Drop ^^ (* TODO:
-        https://github.com/dfinity-lab/actorscript/issues/679
-        don't drop but extract payload, once reject complies with spec *)
-      compile_unboxed_const error_code_CANISTER_REJECT ^^
-      system_call env "msg" "reject"
+    SR.unit,
+    get_api_nonce env ^^
+    arg_instrs ^^
+    G.i Drop ^^ (* TODO:
+      https://github.com/dfinity-lab/actorscript/issues/679
+      don't drop but extract payload, once reject complies with spec *)
+    compile_unboxed_const error_code_CANISTER_REJECT ^^
+    system_call env "msg" "reject"
 
   let error_code env =
-      SR.UnboxedWord32,
-      get_api_nonce env ^^
-      system_call env "msg" "error_code"
+    SR.UnboxedWord32,
+    get_api_nonce env ^^
+    system_call env "msg" "error_code"
+
+  let caller env =
+    SR.UnboxedWord64,
+    get_api_nonce env ^^
+    if has_msg_caller then
+      system_call env "msg" "caller" (* TODO: enable me *)
+    else G.nop (* Until then, fake it: just use the nonce *)
 
 end (* Dfinity *)
 
@@ -6236,6 +6248,10 @@ and compile_exp (env : E.t) ae exp =
     | ICErrorCodePrim, [] ->
       assert (E.mode env = Flags.ICMode);
       Dfinity.error_code env
+
+    | ICCallerPrim, [] ->
+      assert (E.mode env = Flags.ICMode);
+      Dfinity.caller env
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)

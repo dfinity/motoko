@@ -683,6 +683,7 @@ and infer_exp'' env exp : T.typ =
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let t1, ve = infer_pat_exhaustive env' pat in
+    let ve' = check_with_pat env' sort pat_opt in
     let t2 = check_typ env' typ in
     if not env.pre then begin
       let env'' =
@@ -691,7 +692,7 @@ and infer_exp'' env exp : T.typ =
           rets = Some t2;
           async = false;
           in_shared = T.is_shared_sort sort.it} in
-      check_exp (adjoin_vals env'' ve) t2 exp;
+      check_exp (adjoin_vals (adjoin_vals env'' ve) ve') t2 exp;
       if Type.is_shared_sort sort.it then begin
         if not (T.shared t1) then
           error_shared env t1 pat.at
@@ -994,16 +995,9 @@ and check_exp' env0 t exp : T.typ =
         (String.concat " or\n  " ss)
     );
     t
-  | FuncE (_, s', [], pat, pat_opt, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
+  | FuncE (_, s', [], pat, with_pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
-    let ve1 =
-      match pat_opt with
-      | None -> T.Env.empty
-      | Some pat1 ->
-        if not (T.is_shared_sort s'.it) then
-          error env pat1.at "non-shared function cannot take a context pattern";
-        check_pat_exhaustive env T.ctxt pat
-    in
+    let ve' = check_with_pat env s' with_pat in
     let t2 =
       match typ_opt with
       | None -> T.seq ts2
@@ -1025,7 +1019,7 @@ and check_exp' env0 t exp : T.typ =
         async = false;
         in_shared = T.is_shared_sort s'.it;
       } in
-    check_exp (adjoin_vals (adjoin_vals env' ve) ve1) t2 exp;
+    check_exp (adjoin_vals (adjoin_vals env' ve) ve') t2 exp;
     t
   | _ ->
     let t' = infer_exp env0 exp in
@@ -1149,6 +1143,16 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
     let typ, ve1 = infer_pat env pf.it.pat in
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
+
+and check_with_pat env sort with_pat : Scope.val_env =
+  match with_pat with
+  | None -> T.Env.empty
+  | Some pat ->
+    if not (T.is_shared_sort sort.it) then
+      error env pat.at "non-shared function cannot take a context pattern";
+    if sort.it = T.Shared (T.Query) then
+      error env pat.at "query function cannot take a context pattern";
+    check_pat_exhaustive env T.ctxt pat
 
 and check_pat_exhaustive env t pat : Scope.val_env =
   let ve = check_pat env t pat in

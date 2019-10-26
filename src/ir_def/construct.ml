@@ -86,6 +86,7 @@ let primE prim es =
     | ICReplyPrim _ -> T.unit
     | ICRejectPrim -> T.unit
     | ICErrorCodePrim -> T.Prim T.Int32
+    | ICCallerPrim -> T.caller
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in

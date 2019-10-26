@@ -359,6 +359,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.unit <: t
     | ICErrorCodePrim, [] ->
       T.Prim (T.Int32) <: t
+    | ICCallerPrim, [] ->
+      T.caller <: t
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
