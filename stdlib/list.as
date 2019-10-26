@@ -263,7 +263,7 @@ public type List<T> = ?(T, List<T>);
     func rec(l : List<T>) : List<T> {
       switch l {
       case null     { m };
-      case (?(h,t)) {?(h,rec(l))};
+      case (?(h,t)) {?(h,rec(t))};
       }
     };
     rec(l)
