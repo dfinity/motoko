@@ -57,7 +57,8 @@ let prim p =
   | Float -> I.Float64
   | Char -> I.Nat32
   | Text -> I.Text
-  | Error -> assert false
+  | Error
+  | EntityId -> assert false
 
 let rec typ vs t =
   (match t with

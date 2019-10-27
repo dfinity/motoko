@@ -14,7 +14,7 @@ actor {
     return;
   };
 
-  public func c5 () with {} {
+  public func c5 () with {} : async () {
   };
 
   public func c6 (c:Bool) with {caller = c} : async () {
