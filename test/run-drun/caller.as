@@ -1,27 +1,30 @@
 actor {
 
-  public func c1 () with ctxt  : async Int64 {
-    return ctxt.caller;
+  public func c1 () with ctxt  : async () {
+    let c : EntityId = ctxt.caller;
+    return;
   };
 
-  public func c2 () with ({caller = c}) : async Int64 {
-    return c;
+  public func c2 () with ({caller = c}) : async () {
+    let c1 : EntityId = c;
+    return;
   };
 
-  public func c3 () with _ : async Int64 {
-    return 0;
+  public func c3 () with _ : async () {
+    return;
   };
 
   public func c5 () with {} {
   };
 
-  public func c6 (c:Bool) with {caller = c} : async Int64 {
-    return c;
+  public func c6 (c:Bool) with {caller = c} : async () {
+    let c1 : EntityId = c;
+    return;
   };
 
 /*
-  public query func c4 () with _ : async Int64 {
-    return c;
+  public query func c4 () with _ : async () {
+    return;
   };
 */
 }

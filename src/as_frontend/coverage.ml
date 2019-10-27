@@ -103,6 +103,7 @@ let pick_val vs = function
   | T.Char -> pick_char vs
   | T.Text
   | T.Error
+  | T.EntityId
   | T.Float -> Any
 
 let rec expand_notval t n vs : desc list =

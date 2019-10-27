@@ -22,6 +22,7 @@ type Float = prim "Float";
 type Char = prim "Char";
 type Text = prim "Text";
 type Error = prim "Error";
+type EntityId = prim "EntityId";
 
 type Iter<T_> = {next : () -> ?T_};
 

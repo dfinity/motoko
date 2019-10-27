@@ -30,6 +30,7 @@ type prim =
   | Char
   | Text
   | Error
+  | EntityId
 
 type t = typ
 and typ =
