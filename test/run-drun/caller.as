@@ -5,7 +5,7 @@ actor {
     return;
   };
 
-  public func c2 () with ({caller = c}) : async () {
+  public func c2 () with {caller = c} : async () {
     let c1 : EntityId = c;
     return;
   };
@@ -17,7 +17,7 @@ actor {
   public func c5 () with {} : async () {
   };
 
-  public func c6 (c:Bool) with {caller = c} : async () {
+  public func c6 (c:Bool) with {caller = c} : async () { // test lexical scoping
     let c1 : EntityId = c;
     return;
   };
