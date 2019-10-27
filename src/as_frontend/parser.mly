@@ -594,10 +594,9 @@ pat_field :
   | x=id EQ p=pat
     { {id = x; pat = p} @@ at $sloc }
 
-(* Contexts *)
-
 with_pat :
-  | WITH p=pat_param  { p }
+  | WITH p=pat_nullary { p }
+
 
 (* Declarations *)
 

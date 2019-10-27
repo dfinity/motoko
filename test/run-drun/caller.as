@@ -12,10 +12,10 @@ actor {
     return 0;
   };
 
-  public func c5 () with ({}) {
+  public func c5 () with {} {
   };
 
-  public func c6 (c:Bool) with ({caller = c}) : async Int64 {
+  public func c6 (c:Bool) with {caller = c} : async Int64 {
     return c;
   };
 

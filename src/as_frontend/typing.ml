@@ -1149,9 +1149,9 @@ and check_with_pat env sort with_pat : Scope.val_env =
   | None -> T.Env.empty
   | Some pat ->
     if not (T.is_shared_sort sort.it) then
-      error env pat.at "non-shared function cannot take a context pattern";
+      error env pat.at "non-shared function cannot take a 'with' pattern";
     if sort.it = T.Shared (T.Query) then
-      error env pat.at "query function cannot take a context pattern";
+      error env pat.at "query function cannot take a 'with' pattern";
     check_pat_exhaustive env T.ctxt pat
 
 and check_pat_exhaustive env t pat : Scope.val_env =
