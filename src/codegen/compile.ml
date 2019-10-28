@@ -6291,6 +6291,11 @@ and compile_exp (env : E.t) ae exp =
       assert (E.mode env = Flags.ICMode);
       Dfinity.error_code env
 
+(*    | ICCallPrim, [f;e;k;r] ->
+      assert (E.mode env = Flags.ICMode);
+      ...
+*)
+
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
