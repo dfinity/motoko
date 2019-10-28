@@ -32,7 +32,7 @@ enum as_heap_tag {
   TAG_CLOSURE = 7,
   TAG_SOME = 8,
   TAG_VARIANT = 9,
-  TAG_TEXT = 10,
+  TAG_BLOB = 10,
   TAG_INDIRECTION = 11,
   TAG_SMALLWORD = 12,
   TAG_BIGINT = 13,

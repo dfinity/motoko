@@ -1100,7 +1100,7 @@ module Tagged = struct
     | Closure
     | Some (* For opt *)
     | Variant
-    | Text
+    | Blob
     | Indirection
     | SmallWord (* Contains a 32 bit unsigned number *)
     | BigInt
@@ -1116,7 +1116,7 @@ module Tagged = struct
     | Closure -> 7l
     | Some -> 8l
     | Variant -> 9l
-    | Text -> 10l
+    | Blob -> 10l
     | Indirection -> 11l
     | SmallWord -> 12l
     | BigInt -> 13l
@@ -1184,7 +1184,7 @@ module Tagged = struct
       | (Prim _ |  Obj _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
-    | Text ->
+    | Blob ->
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Prim Text) -> true
@@ -2613,14 +2613,17 @@ module Iterators = struct
 
 end (* Iterators *)
 
-module Text = struct
-  (* The layout of a text object is
+module Blob = struct
+  (* The layout of a blob object is
 
      ┌─────┬─────────┬──────────────────┐
      │ tag │ n_bytes │ bytes (padded) … │
      └─────┴─────────┴──────────────────┘
 
-     Note: The bytes are UTF-8 encoded code points from Unicode.
+    This hepa object is used for various kinds of binary, non-pointer data.
+
+    When used for Text values, the bytes are UTF-8 encoded code points from
+    Unicode.
   *)
 
   let header_size = Int32.add Tagged.header_size 1l
@@ -2628,13 +2631,13 @@ module Text = struct
   let len_field = Int32.add Tagged.header_size 0l
 
   let lit env s =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Text) in
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Blob) in
     let len = bytes_of_int32 (Int32.of_int (String.length s)) in
     let data = tag ^ len ^ s in
     let ptr = E.add_static_bytes env data in
     compile_unboxed_const ptr
 
-  let alloc env = Func.share_code1 env "text_alloc" ("len", I32Type) [I32Type] (fun env get_len ->
+  let alloc env = Func.share_code1 env "blob_alloc" ("len", I32Type) [I32Type] (fun env get_len ->
       let (set_x, get_x) = new_local env "x" in
       compile_unboxed_const (Int32.mul Heap.word_size header_size) ^^
       get_len ^^
@@ -2642,7 +2645,7 @@ module Text = struct
       Heap.dyn_alloc_bytes env ^^
       set_x ^^
 
-      get_x ^^ Tagged.store Tagged.Text ^^
+      get_x ^^ Tagged.store Tagged.Blob ^^
       get_x ^^ get_len ^^ Heap.store_field len_field ^^
       get_x
    )
@@ -2650,7 +2653,7 @@ module Text = struct
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed = compile_add_const unskewed_payload_offset
 
-  (* String concatenation. Expects two strings on stack *)
+  (* Blob concatenation. Expects two strings on stack *)
   let concat env = Func.share_code2 env "concat" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       let (set_z, get_z) = new_local env "z" in
       let (set_len1, get_len1) = new_local env "len1" in
@@ -2683,16 +2686,16 @@ module Text = struct
     )
 
 
-  (* String comparison. Expects two strings on stack *)
+  (* Lexicographic blob comparison. Expects two blobs on the stack *)
   let rec compare env op =
     let open Operator in
     let name = match op with
-        | LtOp -> "Text.compare_lt"
-        | LeOp -> "Text.compare_le"
-        | GeOp -> "Text.compare_ge"
-        | GtOp -> "Text.compare_gt"
-        | EqOp -> "Text.compare_eq"
-        | NeqOp -> "Text.compare_ne" in
+        | LtOp -> "Blob.compare_lt"
+        | LeOp -> "Blob.compare_le"
+        | GeOp -> "Blob.compare_ge"
+        | GtOp -> "Blob.compare_gt"
+        | EqOp -> "Blob.compare_eq"
+        | NeqOp -> "Blob.compare_ne" in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
       match op with
         (* Some operators can be reduced to the negation of other operators *)
@@ -2764,11 +2767,17 @@ module Text = struct
       end
   )
 
+  let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed
+
+end (* Blob *)
+
+module Text = struct
+
   let prim_decodeUTF8 env =
     Func.share_code1 env "decodeUTF8" ("string", I32Type)
       [I32Type; I32Type] (fun env get_string ->
         let (set_res, get_res) = new_local env "res" in
-        get_string ^^ payload_ptr_unskewed ^^
+        get_string ^^ Blob.payload_ptr_unskewed ^^
         UnboxedSmallWord.len_UTF8_head env set_res ^^
         BoxedSmallWord.box env ^^
         get_res ^^ UnboxedSmallWord.box_codepoint
@@ -2776,10 +2785,10 @@ module Text = struct
 
   let text_chars_direct env =
     Iterators.create env "text_chars_direct"
-      (fun env get_x -> get_x ^^ Heap.load_field len_field)
+      (fun env get_x -> get_x ^^ Heap.load_field Blob.len_field)
       (fun env get_i get_x ->
           let (set_char, get_char) = new_local env "char" in
-          get_x ^^ payload_ptr_unskewed ^^
+          get_x ^^ Blob.payload_ptr_unskewed ^^
           get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           UnboxedSmallWord.len_UTF8_head env set_char ^^
           get_char ^^ UnboxedSmallWord.box_codepoint
@@ -2792,11 +2801,11 @@ module Text = struct
       let (set_len, get_len) = new_local env "len" in
       compile_unboxed_zero ^^ set_n ^^
       compile_unboxed_zero ^^ set_len ^^
-      get_x ^^ Heap.load_field len_field ^^ set_max ^^
+      get_x ^^ Heap.load_field Blob.len_field ^^ set_max ^^
       compile_while
         (get_n ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
         begin
-          get_x ^^ payload_ptr_unskewed ^^ get_n ^^
+          get_x ^^ Blob.payload_ptr_unskewed ^^ get_n ^^
             G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
           UnboxedSmallWord.len_UTF8_head env (G.i Drop) ^^
           get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
@@ -2812,15 +2821,15 @@ module Text = struct
     let storeLeader bitpat shift =
       get_c ^^ compile_shrU_const shift ^^ compile_bitor_const bitpat ^^
       G.i (Store {ty = I32Type; align = 0;
-                  offset = unskewed_payload_offset;
+                  offset = Blob.unskewed_payload_offset;
                   sz = Some Wasm.Memory.Pack8}) in
     let storeFollower offset shift =
       get_c ^^ compile_shrU_const shift ^^ UnboxedSmallWord.compile_6bit_mask ^^
         compile_bitor_const 0b10000000l ^^
       G.i (Store {ty = I32Type; align = 0;
-                  offset = Int32.add offset unskewed_payload_offset;
+                  offset = Int32.add offset Blob.unskewed_payload_offset;
                   sz = Some Wasm.Memory.Pack8}) in
-    let allocPayload n = compile_unboxed_const n ^^ alloc env ^^ set_utf8 ^^ get_utf8 in
+    let allocPayload n = compile_unboxed_const n ^^ Blob.alloc env ^^ set_utf8 ^^ get_utf8 in
     UnboxedSmallWord.unbox_codepoint ^^
     set_c ^^
     get_c ^^
@@ -2856,10 +2865,6 @@ module Text = struct
           end
       end ^^
     get_utf8
-
-  (* We also use Text heap objects for byte arrays
-     (really should rename Text to Bytes) *)
-  let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed
 
 end (* Text *)
 
@@ -3068,26 +3073,26 @@ module Dfinity = struct
     Func.share_code1 env "databuf_of_text" ("string", I32Type) [I32Type] (fun env get_string ->
       (* Calculate the offset *)
       get_string ^^
-      compile_add_const Int32.(add (mul Heap.word_size Text.header_size) ptr_unskew) ^^
+      compile_add_const Int32.(add (mul Heap.word_size Blob.header_size) ptr_unskew) ^^
 
       (* Calculate the length *)
       get_string ^^
-      Heap.load_field (Text.len_field) ^^
+      Heap.load_field (Blob.len_field) ^^
 
       (* Externalize *)
       system_call env "data" "externalize"
     )
 
   let compile_databuf_of_bytes env (bytes : string) =
-    Text.lit env bytes ^^ compile_databuf_of_text env
+    Blob.lit env bytes ^^ compile_databuf_of_text env
 
   let prim_print env =
     match E.mode env with
     | Flags.WasmMode -> G.i Drop
     | Flags.ICMode ->
       Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
-        get_str ^^ Text.payload_ptr_unskewed ^^
-        get_str ^^ Heap.load_field (Text.len_field) ^^
+        get_str ^^ Blob.payload_ptr_unskewed ^^
+        get_str ^^ Heap.load_field (Blob.len_field) ^^
         system_call env "debug" "print"
       )
     | Flags.AncientMode ->
@@ -3096,7 +3101,7 @@ module Dfinity = struct
 
   (* For debugging *)
   let compile_static_print env s =
-      Text.lit env s ^^ prim_print env
+      Blob.lit env s ^^ prim_print env
 
   let _compile_println_int env =
       system_call env "test" "show_i32" ^^
@@ -3105,8 +3110,8 @@ module Dfinity = struct
 
   let ic_trap env =
       Func.share_code1 env "ic_trap" ("str", I32Type) [] (fun env get_str ->
-        get_str ^^ Text.payload_ptr_unskewed ^^
-        get_str ^^ Heap.load_field (Text.len_field) ^^
+        get_str ^^ Blob.payload_ptr_unskewed ^^
+        get_str ^^ Heap.load_field (Blob.len_field) ^^
         system_call env "ic" "trap"
       )
 
@@ -3114,7 +3119,7 @@ module Dfinity = struct
     match E.mode env with
     | Flags.WasmMode -> G.i Unreachable
     | Flags.AncientMode -> compile_static_print env (s ^ "\n") ^^ G.i Unreachable
-    | Flags.ICMode -> Text.lit env s ^^ ic_trap env ^^ G.i Unreachable
+    | Flags.ICMode -> Blob.lit env s ^^ ic_trap env ^^ G.i Unreachable
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
@@ -3322,12 +3327,12 @@ module HeapTraversal = struct
           get_x ^^
           Heap.load_field Arr.len_field ^^
           compile_add_const Arr.header_size
-        ; Tagged.Text,
+        ; Tagged.Blob,
           get_x ^^
-          Heap.load_field Text.len_field ^^
+          Heap.load_field Blob.len_field ^^
           compile_add_const 3l ^^
           compile_divU_const Heap.word_size ^^
-          compile_add_const Text.header_size
+          compile_add_const Blob.header_size
         ; Tagged.Object,
           get_x ^^
           Heap.load_field Object.size_field ^^
@@ -3375,7 +3380,7 @@ module HeapTraversal = struct
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size 4l) ^^
         set_ptr_loc ^^
-        code_offset Text.unskewed_payload_offset
+        code_offset Blob.unskewed_payload_offset
       ; Tagged.Some,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size Opt.payload_field) ^^
@@ -3689,8 +3694,8 @@ module Serialization = struct
           size env t
         )
       | Prim Text ->
-        size_word env (get_x ^^ Heap.load_field Text.len_field) ^^
-        inc_data_size (get_x ^^ Heap.load_field Text.len_field)
+        size_word env (get_x ^^ Heap.load_field Blob.len_field) ^^
+        inc_data_size (get_x ^^ Heap.load_field Blob.len_field)
       | Prim Null -> G.nop
       | Any -> G.nop
       | Opt t ->
@@ -3837,11 +3842,11 @@ module Serialization = struct
           ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Text ->
         let (set_len, get_len) = new_local env "len" in
-        get_x ^^ Heap.load_field Text.len_field ^^ set_len ^^
+        get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
 
         write_word get_len ^^
         get_data_buf ^^
-        get_x ^^ Text.payload_ptr_unskewed ^^
+        get_x ^^ Blob.payload_ptr_unskewed ^^
         get_len ^^
         Heap.memcpy env ^^
         get_len ^^ advance_data_buf
@@ -3977,10 +3982,10 @@ module Serialization = struct
         let (set_x, get_x) = new_local env "x" in
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
 
-        get_len ^^ Text.alloc env ^^ set_x ^^
-        get_x ^^ Text.payload_ptr_unskewed ^^
+        get_len ^^ Blob.alloc env ^^ set_x ^^
+        get_x ^^ Blob.payload_ptr_unskewed ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
-        get_x ^^ Text.payload_ptr_unskewed ^^ get_len ^^
+        get_x ^^ Blob.payload_ptr_unskewed ^^ get_len ^^
         E.call_import env "rts" "utf8_validate" ^^
         get_x
 
@@ -4145,12 +4150,12 @@ module Serialization = struct
       let (set_data_start, get_data_start) = new_local env "data_start" in
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
 
-      get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
-      get_refs_size ^^ compile_mul_const Heap.word_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
+      get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
+      get_refs_size ^^ compile_mul_const Heap.word_size ^^ Blob.dyn_alloc_scratch env ^^ set_refs_start ^^
 
       (* Write ty desc *)
       get_data_start ^^
-      Text.lit env tydesc ^^ Text.payload_ptr_unskewed ^^
+      Blob.lit env tydesc ^^ Blob.payload_ptr_unskewed ^^
       compile_unboxed_const tydesc_len ^^
       Heap.memcpy env ^^
 
@@ -4208,19 +4213,19 @@ module Serialization = struct
 
         (* Allocate space for the data buffer and copy it *)
         get_databuf ^^ Dfinity.system_call env "data" "length" ^^ set_data_size ^^
-        get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
+        get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
         get_data_start ^^ get_data_size ^^ get_databuf ^^ compile_unboxed_const 0l ^^
         Dfinity.system_call env "data" "internalize" ^^
 
         (* Allocate space for the reference buffer and copy it *)
         get_elembuf ^^ Dfinity.system_call env "elem" "length" ^^ set_refs_size ^^
-        get_refs_size ^^ compile_mul_const Heap.word_size ^^ Text.dyn_alloc_scratch env ^^ set_refs_start ^^
+        get_refs_size ^^ compile_mul_const Heap.word_size ^^ Blob.dyn_alloc_scratch env ^^ set_refs_start ^^
         get_refs_start ^^ get_refs_size ^^ get_elembuf ^^ compile_unboxed_const 0l ^^
         Dfinity.system_call env "elem" "internalize"
       | Flags.ICMode ->
         (* Allocate space for the data buffer and copy it *)
         argument_data_size env ^^ set_data_size ^^
-        get_data_size ^^ Text.dyn_alloc_scratch env ^^ set_data_start ^^
+        get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
         argument_data_copy env get_data_start get_data_size ^^
 
         (* Allocate space for the reference buffer and copy it *)
@@ -5353,7 +5358,7 @@ let compile_lit env lit =
     | Nat64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (nat64_to_int64 n))
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
-    | TextLit t     -> SR.Vanilla, Text.lit env t
+    | TextLit t     -> SR.Vanilla, Blob.lit env t
     | _ -> todo_trap_SR env "compile_lit" (Arrange_ir.lit lit)
   with Failure _ ->
     Printf.eprintf "compile_lit: Overflow in literal %s\n" (string_of_lit lit);
@@ -5924,13 +5929,13 @@ let compile_binop env t op =
       get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
       sanitize_word_result ty))
 
-  | Type.Prim Type.Text, CatOp -> Text.concat env
+  | Type.Prim Type.Text, CatOp -> Blob.concat env
   | Type.Non, _ -> G.i Unreachable
   | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
   )
 
 let compile_eq env = function
-  | Type.(Prim Text) -> Text.compare env Operator.EqOp
+  | Type.(Prim Text) -> Blob.compare env Operator.EqOp
   | Type.(Prim Bool) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
   | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
@@ -5962,7 +5967,7 @@ let compile_relop env t op =
   StackRep.of_type t,
   let open Operator in
   match t, op with
-  | Type.Prim Type.Text, _ -> Text.compare env op
+  | Type.Prim Type.Text, _ -> Blob.compare env op
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz))
@@ -6561,8 +6566,8 @@ and compile_lit_pat env l =
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Word64)
   | TextLit t ->
-    Text.lit env t ^^
-    Text.compare env Operator.EqOp
+    Blob.lit env t ^^
+    Blob.compare env Operator.EqOp
   | _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
 
 and fill_pat env ae pat : patternCode =
