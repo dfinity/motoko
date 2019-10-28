@@ -227,7 +227,6 @@ rule token mode = parse
   | "type" { TYPE }
   | "var" { VAR }
   | "while" { WHILE }
-  | "with" { WITH }
 
   | "prim" as s { if mode = Privileged then PRIM else ID s }
   | id as s { ID s }

@@ -458,7 +458,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
            with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
-  | FuncE (name, _sort, _typbinds, pat, opat, _typ, exp2) -> (*TODO handle opat*)
+  | FuncE (name, _sort, _pat_opt, _typbinds, pat, _typ, exp2) -> (*TODO handle pat_opt*)
     let f = interpret_func env name pat (fun env' -> interpret_exp env' exp2) in
     let v = V.Func (CC.call_conv_of_typ exp.note.note_typ, f) in
     let v' =

@@ -75,8 +75,8 @@ let share_typfield (tf : typ_field) =
 
 let share_exp e =
   match e.it with
-  | FuncE (x, ({it = Type.Local; _} as s), tbs, p, wp, t, e) ->
-    FuncE (x, {s with it = Type.Shared Type.Write}, tbs, p, wp, t, e) @? e.at
+  | FuncE (x, ({it = Type.Local; _} as s), po, tbs, p, t, e) ->
+    FuncE (x, {s with it = Type.Shared Type.Write}, po, tbs, p, t, e) @? e.at
   | _ -> e
 
 let share_dec d =
@@ -96,7 +96,7 @@ let share_expfield (ef : exp_field) =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
-%token IF IN ELSE SWITCH LOOP WHILE WITH FOR RETURN TRY THROW
+%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
@@ -196,11 +196,15 @@ seplist1(X, SEP) :
   | (* empty *) { Type.Write }
   | QUERY { Type.Query }
 
-%inline func_sort_opt :
+%inline arrow_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
   | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
   | QUERY { Type.Shared Type.Query @@ at $sloc }
 
+%inline func_sort_opt :
+  | (* empty *) { (Type.Local @@ no_region, None) }
+  | SHARED m=mode_opt op=pat_nullary? { (Type.Shared m @@ at ($startpos,$endpos(m)), op) }
+  | QUERY op=pat_nullary?{ (Type.Shared Type.Query @@ at ($startpos,$endpos($0)), op) }
 
 (* Paths *)
 
@@ -256,7 +260,7 @@ typ_pre :
 typ :
   | t=typ_pre
     { t }
-  | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ
+  | s=arrow_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ
     { FuncT(s, tps, t1, t2) @! at $sloc }
 
 typ_item :
@@ -594,10 +598,6 @@ pat_field :
   | x=id EQ p=pat
     { {id = x; pat = p} @@ at $sloc }
 
-with_pat :
-  | WITH p=pat_nullary { p }
-
-
 (* Declarations *)
 
 dec_var :
@@ -622,11 +622,12 @@ dec_nonvar :
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
-  | s=func_sort_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_param wp=with_pat? t=return_typ? fb=func_body
+  | so=func_sort_opt FUNC xf=id_opt
+      tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
+      let (s,po) = so in
       let e = match fb with
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
@@ -635,7 +636,7 @@ dec_nonvar :
           | _ -> e
       in
       let named, x = xf "func" $sloc in
-      let_or_exp named x (FuncE(x.it, s, tps, p, wp, t, e)) (at $sloc) }
+      let_or_exp named x (FuncE(x.it, s, po, tps, p, t, e)) (at $sloc) }
   | s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in

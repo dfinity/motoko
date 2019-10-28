@@ -86,8 +86,8 @@ and exp' at note = function
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
-  | S.FuncE (name, s, tbs, p, wp, _t_opt, e) ->
-    let args, wrap, control, n_res  = to_args note.I.note_typ p wp in
+  | S.FuncE (name, s, po, tbs, p, _t_opt, e) ->
+    let args, wrap, control, n_res  = to_args note.I.note_typ po p in
     let _, _, _, ty = T.as_func_sub s.it (List.length tbs) note.I.note_typ in
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
@@ -292,7 +292,7 @@ and dec' at n d = match d with
       | _ -> assert false
     in
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
-    let args, wrap, control, _n_res = to_args n.S.note_typ p None in
+    let args, wrap, control, _n_res = to_args n.S.note_typ None p in
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
@@ -369,7 +369,7 @@ and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     (fun e -> blockE [letP (pat p) v] e)
 
 
-and to_args typ p wp : (Ir.arg list * (Ir.exp -> Ir.exp) * T.control * int) =
+and to_args typ po p : (Ir.arg list * (Ir.exp -> Ir.exp) * T.control * int) =
   let sort, control, n_args, n_res =
     match typ with
     | Type.Func (sort, control, tbds, dom, res) ->
@@ -381,8 +381,8 @@ and to_args typ p wp : (Ir.arg list * (Ir.exp -> Ir.exp) * T.control * int) =
 
   let tys = if n_args = 1 then [p.note] else T.as_seq p.note in
 
-  let wrap_wp e =
-    match wp with
+  let wrap_po e =
+    match po with
     | None -> e
     | Some p ->
       let v = fresh_var "caller" T.caller in
@@ -403,22 +403,22 @@ and to_args typ p wp : (Ir.arg list * (Ir.exp -> Ir.exp) * T.control * int) =
     | _, S.WildP ->
       let vs = fresh_vars "param" tys in
       List.map arg_of_exp vs,
-      wrap_wp
+      wrap_po
     | 1, _ ->
       let a, wrap = to_arg p in
-      [a], fun e -> wrap (wrap_wp e)
+      [a], fun e -> wrap (wrap_po e)
     | 0, S.TupP [] ->
-      [] , wrap_wp
+      [] , wrap_po
     | _, S.TupP ps ->
       assert (List.length ps = n_args);
       List.fold_right (fun p (args, wrap) ->
         let (a, wrap1) = to_arg p in
         (a::args, fun e -> wrap1 (wrap e))
-      ) ps ([], wrap_wp)
+      ) ps ([], wrap_po)
     | _, _ ->
       let vs = fresh_vars "param" tys in
       List.map arg_of_exp vs,
-      (fun e -> blockE [letP (pat p) (tupE vs)] (wrap_wp e))
+      (fun e -> blockE [letP (pat p) (tupE vs)] (wrap_po e))
   in
 
   let wrap_under_async e =

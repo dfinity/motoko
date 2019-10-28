@@ -1,23 +1,23 @@
 actor {
 
-  public func c1 () with ctxt  : async () {
+  public shared ctxt func c1 ()  : async () {
     let c : EntityId = ctxt.caller;
     return;
   };
 
-  public func c2 () with {caller = c} : async () {
+  public shared {caller = c} func c2 () : async () {
     let c1 : EntityId = c;
     return;
   };
 
-  public func c3 () with _ : async () {
+  public shared _ func c3 () : async () {
     return;
   };
 
-  public func c5 () with {} : async () {
+  public shared {} func c5 () : async () {
   };
 
-  public func c6 (c:Bool) with {caller = c} : async () { // test lexical scoping
+  public shared {caller = c} func c6 (c:Bool) : async () { // test lexical scoping
     let c1 : EntityId = c;
     return;
   };

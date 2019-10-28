@@ -671,7 +671,7 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | FuncE (_, sort, typ_binds, pat, pat_opt, typ_opt, exp) ->
+  | FuncE (_, sort, pat_opt, typ_binds, pat, typ_opt, exp) ->
     if not env.pre && not in_actor && T.is_shared_sort sort.it then
       error_in [Flags.ICMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let typ =
@@ -682,8 +682,8 @@ and infer_exp'' env exp : T.typ =
     let c = infer_control env sort typ in
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
+    let ve0 = check_shared_pat env' sort pat_opt in
     let t1, ve = infer_pat_exhaustive env' pat in
-    let ve' = check_with_pat env' sort pat_opt in
     let t2 = check_typ env' typ in
     if not env.pre then begin
       let env'' =
@@ -692,7 +692,7 @@ and infer_exp'' env exp : T.typ =
           rets = Some t2;
           async = false;
           in_shared = T.is_shared_sort sort.it} in
-      check_exp (adjoin_vals (adjoin_vals env'' ve) ve') t2 exp;
+      check_exp (adjoin_vals (adjoin_vals env'' ve0) ve) t2 exp;
       if Type.is_shared_sort sort.it then begin
         if not (T.shared t1) then
           error_shared env t1 pat.at
@@ -995,9 +995,9 @@ and check_exp' env0 t exp : T.typ =
         (String.concat " or\n  " ss)
     );
     t
-  | FuncE (_, s', [], pat, with_pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
+  | FuncE (_, s', pat_opt,  [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
-    let ve' = check_with_pat env s' with_pat in
+    let ve' = check_shared_pat env s' pat_opt in
     let t2 =
       match typ_opt with
       | None -> T.seq ts2
@@ -1144,12 +1144,11 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
 
-and check_with_pat env sort with_pat : Scope.val_env =
-  match with_pat with
+and check_shared_pat env sort pat_opt : Scope.val_env =
+  match pat_opt with
   | None -> T.Env.empty
   | Some pat ->
-    if not (T.is_shared_sort sort.it) then
-      error env pat.at "non-shared function cannot take a 'with' pattern";
+    assert (T.is_shared_sort sort.it);
     if sort.it = T.Shared (T.Query) then
       error env pat.at "query function cannot take a 'with' pattern";
     check_pat_exhaustive env T.ctxt pat
