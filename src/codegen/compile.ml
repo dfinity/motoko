@@ -3034,6 +3034,8 @@ module Dfinity = struct
     (* current api_nonce *)
     E.add_global64 env "api_nonce" Mutable 0L
 
+  let reject_enabled = false (* TODO inline as true once msg.reject has spec'ed signature *)
+
   let system_imports env =
     match E.mode env with
     | Flags.ICMode ->
@@ -3041,7 +3043,8 @@ module Dfinity = struct
       E.add_func_import env "msg" "arg_data_size" [I64Type] [I32Type];
       E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject" [I64Type; I32Type] [];
+      if reject_enabled then
+        E.add_func_import env "msg" "reject" [I64Type; I32Type] [];
       E.add_func_import env "msg" "error_code" [I64Type] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] []
     | Flags.AncientMode ->
@@ -3188,7 +3191,11 @@ module Dfinity = struct
         https://github.com/dfinity-lab/actorscript/issues/679
         don't drop but extract payload, once reject complies with spec *)
       compile_unboxed_const error_code_CANISTER_REJECT ^^
-      system_call env "msg" "reject"
+      if reject_enabled then
+        system_call env "msg" "reject"
+      else
+        E.trap_with env "reject disabled"
+
 
   let error_code env =
       SR.UnboxedWord32,
