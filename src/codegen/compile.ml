@@ -1012,6 +1012,8 @@ module Bool = struct
     | false -> compile_unboxed_zero
     | true -> compile_unboxed_one
 
+  let neg = G.i (Test (Wasm.Values.I32 I32Op.Eqz))
+
 end (* Bool *)
 
 
@@ -2680,40 +2682,86 @@ module Text = struct
       get_z
     )
 
+
   (* String comparison. Expects two strings on stack *)
-  let compare env =
-    Func.share_code2 env "Text.compare" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
-      let (set_len1, get_len1) = new_local env "len1" in
-      let (set_len2, get_len2) = new_local env "len2" in
+  let rec compare env op =
+    let open Operator in
+    let name = match op with
+        | LtOp -> "Text.compare_lt"
+        | LeOp -> "Text.compare_le"
+        | GeOp -> "Text.compare_ge"
+        | GtOp -> "Text.compare_gt"
+        | EqOp -> "Text.compare_eq"
+        | NeqOp -> "Text.compare_ne" in
+    Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
+      match op with
+        (* Some operators can be reduced to the negation of other operators *)
+        | LtOp ->  get_x ^^ get_y ^^ compare env GeOp ^^ Bool.neg
+        | GtOp ->  get_x ^^ get_y ^^ compare env LeOp ^^ Bool.neg
+        | NeqOp -> get_x ^^ get_y ^^ compare env EqOp ^^ Bool.neg
+        | _ ->
+      begin
+        let (set_len1, get_len1) = new_local env "len1" in
+        let (set_len2, get_len2) = new_local env "len2" in
+        let (set_len, get_len) = new_local env "len" in
+        let (set_a, get_a) = new_local env "a" in
+        let (set_b, get_b) = new_local env "b" in
 
-      get_x ^^ Heap.load_field len_field ^^ set_len1 ^^
-      get_y ^^ Heap.load_field len_field ^^ set_len2 ^^
+        get_x ^^ Heap.load_field len_field ^^ set_len1 ^^
+        get_y ^^ Heap.load_field len_field ^^ set_len2 ^^
 
-      get_len1 ^^
-      get_len2 ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      G.if_ (ValBlockType None) G.nop (Bool.lit false ^^ G.i Return) ^^
+        (* Find mininum length *)
+        begin if op = EqOp then
+          (* Early exit for equality *)
+          get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          G.if_ (ValBlockType None) G.nop (Bool.lit false ^^ G.i Return) ^^
 
-      (* We could do word-wise comparisons if we know that the trailing bytes
-         are zeroed *)
-      get_len1 ^^
-      from_0_to_n env (fun get_i ->
-        get_x ^^
-        payload_ptr_unskewed ^^
-        get_i ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+          get_len1 ^^ set_len
+        else
+          get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+          G.if_ (ValBlockType None)
+            (get_len1 ^^ set_len)
+            (get_len2 ^^ set_len)
+        end ^^
 
-        get_y ^^
-        payload_ptr_unskewed ^^
-        get_i ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+        (* We could do word-wise comparisons if we know that the trailing bytes
+           are zeroed *)
+        get_len ^^
+        from_0_to_n env (fun get_i ->
+          get_x ^^
+          payload_ptr_unskewed ^^
+          get_i ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+          set_a ^^
 
-        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        G.if_ (ValBlockType None) G.nop (Bool.lit false ^^ G.i Return)
-      ) ^^
-      Bool.lit true
+
+          get_y ^^
+          payload_ptr_unskewed ^^
+          get_i ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some (Wasm.Memory.Pack8, Wasm.Memory.ZX)}) ^^
+          set_b ^^
+
+          get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          G.if_ (ValBlockType None) G.nop (
+            (* first non-equal elements *)
+            begin match op with
+            | LeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
+            | GeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
+            | EqOp -> Bool.lit false
+            |_ -> assert false
+            end ^^
+            G.i Return
+          )
+        ) ^^
+        (* Common prefix is same *)
+        match op with
+        | LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
+        | GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
+        | EqOp -> Bool.lit true
+        |_ -> assert false
+      end
   )
 
   let prim_decodeUTF8 env =
@@ -5882,7 +5930,7 @@ let compile_binop env t op =
   )
 
 let compile_eq env = function
-  | Type.(Prim Text) -> Text.compare env
+  | Type.(Prim Text) -> Text.compare env Operator.EqOp
   | Type.(Prim Bool) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
   | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
@@ -5914,6 +5962,7 @@ let compile_relop env t op =
   StackRep.of_type t,
   let open Operator in
   match t, op with
+  | Type.Prim Type.Text, _ -> Text.compare env op
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz))
@@ -6513,7 +6562,7 @@ and compile_lit_pat env l =
     compile_eq env Type.(Prim Word64)
   | TextLit t ->
     Text.lit env t ^^
-    Text.compare env
+    Text.compare env Operator.EqOp
   | _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
 
 and fill_pat env ae pat : patternCode =
