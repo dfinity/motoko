@@ -359,6 +359,30 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.unit <: t
     | ICErrorCodePrim, [] ->
       T.Prim (T.Int32) <: t
+    | ICCallPrim, [exp1; exp2; k; r] ->
+      check_exp env exp1;
+      check_exp env exp2;
+      check_exp env k;
+      check_exp env r;
+      let t1 = T.promote (typ exp1) in
+      begin match t1 with
+      (* TODO: oneways *)
+      | T.Func (sort, T.Promises p, [], arg_tys, [T.Async ret_ty]) ->
+        check_exp env exp2;
+        let t_arg = T.seq arg_tys in
+        let t_rets = if (p = 1) then [ret_ty] else T.as_seq ret_ty in
+        if T.is_shared_sort sort then begin
+          check_concrete env exp.at t_arg;
+          check_concrete env exp.at ret_ty;
+        end;
+        typ exp2 <: t_arg;
+        typ k <: T.Func (T.Local, T.Returns, [], t_rets, []);
+        typ r <: T.Func (T.Local, T.Returns, [], [T.catch], []);
+      | T.Non -> () (* dead code, not much to check here *)
+      | _ ->
+         error env exp1.at "expected function type, but expression produces type\n  %s"
+           (T.string_of_typ_expand t1)
+    end
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"

@@ -79,7 +79,9 @@ module Transform(Platform : sig val platform : platform end) = struct
     | V1 ->
           assert (add_reply_argument && not add_reject_argument);
           callE v1 typs (seqE (vs @ [reply]))
-    | V2 -> failwith "NYI" (* TODO: call dedicated prim, separating args vs from reply & reject *)
+    | V2 ->
+      assert (typs = []);
+      ic_callE v1 (seqE vs) reply reject
 
   let sys_error_codeE () =
     match platform with

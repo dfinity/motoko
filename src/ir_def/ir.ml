@@ -109,6 +109,7 @@ and prim =
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICErrorCodePrim
+  | ICCallPrim
 
 
 (* Declarations *)
