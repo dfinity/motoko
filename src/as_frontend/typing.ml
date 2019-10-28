@@ -682,8 +682,10 @@ and infer_exp'' env exp : T.typ =
     let c = infer_control env sort typ in
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
-    let ve0 = check_shared_pat env' sort pat_opt in
-    let t1, ve = infer_pat_exhaustive env' pat in
+    let ve = check_shared_pat env' sort pat_opt in
+    let t1, ve1 = infer_pat_exhaustive env' pat in
+    let ve2 = disjoint_union env pat.at
+                "duplicate binding for %s in shared and parameter pattern" ve ve1 in
     let t2 = check_typ env' typ in
     if not env.pre then begin
       let env'' =
@@ -692,7 +694,7 @@ and infer_exp'' env exp : T.typ =
           rets = Some t2;
           async = false;
           in_shared = T.is_shared_sort sort.it} in
-      check_exp (adjoin_vals (adjoin_vals env'' ve0) ve) t2 exp;
+      check_exp (adjoin_vals env'' ve2) t2 exp;
       if Type.is_shared_sort sort.it then begin
         if not (T.shared t1) then
           error_shared env t1 pat.at
@@ -996,8 +998,10 @@ and check_exp' env0 t exp : T.typ =
     );
     t
   | FuncE (_, s', pat_opt,  [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
-    let ve = check_pat_exhaustive env (T.seq ts1) pat in
-    let ve' = check_shared_pat env s' pat_opt in
+    let ve = check_shared_pat env s' pat_opt in
+    let ve1 = check_pat_exhaustive env (T.seq ts1) pat in
+    let ve2 = disjoint_union env pat.at
+                "duplicate binding for %s in shared and parameter pattern" ve ve1 in
     let t2 =
       match typ_opt with
       | None -> T.seq ts2
@@ -1019,7 +1023,7 @@ and check_exp' env0 t exp : T.typ =
         async = false;
         in_shared = T.is_shared_sort s'.it;
       } in
-    check_exp (adjoin_vals (adjoin_vals env' ve) ve') t2 exp;
+    check_exp (adjoin_vals env' ve2) t2 exp;
     t
   | _ ->
     let t' = infer_exp env0 exp in
@@ -1150,7 +1154,7 @@ and check_shared_pat env sort pat_opt : Scope.val_env =
   | Some pat ->
     assert (T.is_shared_sort sort.it);
     if sort.it = T.Shared (T.Query) then
-      error env pat.at "query function cannot take a 'with' pattern";
+      error env pat.at "query function cannot take a context pattern";
     check_pat_exhaustive env T.ctxt pat
 
 and check_pat_exhaustive env t pat : Scope.val_env =
