@@ -187,7 +187,7 @@ let rec
   | SwitchE (exp1, cases) ->
     exp env exp1;
     List.iter (fun c -> exp env c.it.exp) cases
-  | FuncE (_, _ , _ , _, _, e) ->
+  | FuncE (_, _ , _, _, _, e) ->
     exp env e
 
 and decs env = List.iter (dec env)
