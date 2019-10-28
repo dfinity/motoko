@@ -22,11 +22,3 @@ compile_relop: GeOp
 of_type: Float
 compile_relop: GeOp
 of_type: Float
-compile_relop: LtOp
-compile_relop: LtOp
-compile_relop: LeOp
-compile_relop: LeOp
-compile_relop: GtOp
-compile_relop: GtOp
-compile_relop: GeOp
-compile_relop: GeOp
