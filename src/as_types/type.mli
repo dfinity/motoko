@@ -6,7 +6,8 @@ type var = string
 type control = Returns | Promises of int (* returns a computed value or immediate promise *)
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
-type func_sort = Local | Shared of shared_sort
+type 'a shared = Local | Shared of 'a
+type func_sort = shared_sort shared
 type eff = Triv | Await
 
 type prim =
@@ -60,7 +61,7 @@ and kind =
 
 (* Function sorts *)
 
-val is_shared_sort : func_sort -> bool
+val is_shared_sort : 'a shared -> bool
 
 (* Short-hands *)
 

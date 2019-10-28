@@ -24,11 +24,10 @@ let rec exp e = match e.it with
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
-  | FuncE (x, s, po, tp, p, t, e') ->
+  | FuncE (x, sp, tp, p, t, e') ->
     "FuncE" $$ [
       Atom (Type.string_of_typ e.note.note_typ);
-      func_sort s;
-      (match po with None -> Atom "_" | Some p' -> pat p');
+      sort_pat sp;
       Atom x] @
       List.map typ_bind tp @ [
       pat p;
@@ -107,6 +106,15 @@ and obj_sort s = match s.it with
   | Type.Object -> Atom "Object"
   | Type.Actor -> Atom "Actor"
   | Type.Module -> Atom "Module"
+
+and pat_opt op = match op with
+    None -> []
+  | Some p -> [pat p]
+
+and sort_pat sp = match sp.it with
+  | Type.Local -> Atom "Local"
+  | Type.Shared (Type.Write, op) -> "Shared" $$ (pat_opt op)
+  | Type.Shared (Type.Query, op) -> "Query" $$ (pat_opt op)
 
 and func_sort s = match s.it with
   | Type.Local -> Atom "Local"

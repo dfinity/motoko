@@ -215,7 +215,7 @@ let rec check_typ env typ : T.typ =
   t
 
 and infer_control env sort typ =
-    match sort.it, typ.it with
+    match sort, typ.it with
       | T.Shared _, AsyncT ret_typ -> T.Promises (arity ret_typ)
       | T.Shared T.Write, TupT [] ->
         T.Returns
@@ -250,7 +250,7 @@ and check_typ' env typ : T.typ =
     let typs2 = as_seqT typ2 in
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
-    let c = infer_control env sort typ2 in
+    let c = infer_control env sort.it typ2 in
     if Type.is_shared_sort sort.it then
     if not env.pre then begin
       let t1 = T.seq ts1 in
@@ -671,18 +671,18 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | FuncE (_, sort, pat_opt, typ_binds, pat, typ_opt, exp) ->
-    if not env.pre && not in_actor && T.is_shared_sort sort.it then
+  | FuncE (_, sort_pat, typ_binds, pat, typ_opt, exp) ->
+    if not env.pre && not in_actor && T.is_shared_sort sort_pat.it then
       error_in [Flags.ICMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let typ =
       match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
+    let sort, ve = check_sort_pat env sort_pat in
     let c = infer_control env sort typ in
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
-    let ve = check_shared_pat env' sort pat_opt in
     let t1, ve1 = infer_pat_exhaustive env' pat in
     let ve2 = disjoint_union env pat.at
                 "duplicate binding for %s in shared and parameter pattern" ve ve1 in
@@ -693,15 +693,15 @@ and infer_exp'' env exp : T.typ =
           labs = T.Env.empty;
           rets = Some t2;
           async = false;
-          in_shared = T.is_shared_sort sort.it} in
+          in_shared = T.is_shared_sort sort} in
       check_exp (adjoin_vals env'' ve2) t2 exp;
-      if Type.is_shared_sort sort.it then begin
+      if Type.is_shared_sort sort then begin
         if not (T.shared t1) then
           error_shared env t1 pat.at
             "shared function has non-shared parameter type\n  %s"
             (T.string_of_typ_expand t1);
         match t2 with
-        | T.Tup [] when sort.it = T.Shared T.Write -> ()
+        | T.Tup [] when sort = T.Shared T.Write -> ()
         | T.Async _ ->
           if not (isAsyncE exp) then
             error env exp.at
@@ -714,7 +714,7 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
     let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, insts, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let sort, tbs, t_arg, t_ret =
@@ -997,8 +997,8 @@ and check_exp' env0 t exp : T.typ =
         (String.concat " or\n  " ss)
     );
     t
-  | FuncE (_, s', pat_opt,  [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
-    let ve = check_shared_pat env s' pat_opt in
+  | FuncE (_, sort_pat,  [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
+    let sort, ve = check_sort_pat env sort_pat in
     let ve1 = check_pat_exhaustive env (T.seq ts1) pat in
     let ve2 = disjoint_union env pat.at
                 "duplicate binding for %s in shared and parameter pattern" ve ve1 in
@@ -1007,10 +1007,10 @@ and check_exp' env0 t exp : T.typ =
       | None -> T.seq ts2
       | Some typ -> check_typ env typ
     in
-    if s'.it <> s then
+    if sort <> s then
       error env exp.at
         "%sshared function does not match expected %sshared function type"
-        (if s'.it = T.Local then "non-" else "")
+        (if sort = T.Local then "non-" else "")
         (if s = T.Local then "non-" else "");
     if not (T.sub t2 (T.seq ts2)) then
       error env exp.at
@@ -1021,7 +1021,7 @@ and check_exp' env0 t exp : T.typ =
         labs = T.Env.empty;
         rets = Some t2;
         async = false;
-        in_shared = T.is_shared_sort s'.it;
+        in_shared = T.is_shared_sort sort;
       } in
     check_exp (adjoin_vals env' ve2) t2 exp;
     t
@@ -1148,14 +1148,14 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
 
-and check_shared_pat env sort pat_opt : Scope.val_env =
-  match pat_opt with
-  | None -> T.Env.empty
-  | Some pat ->
-    assert (T.is_shared_sort sort.it);
-    if sort.it = T.Shared (T.Query) then
+and check_sort_pat env sort_pat : (T.func_sort * Scope.val_env) =
+  match sort_pat.it with
+  | T.Local -> (T.Local, T.Env.empty)
+  | T.Shared (ss, None) -> (T.Shared ss, T.Env.empty)
+  | T.Shared (ss,Some pat) ->
+    if ss = T.Query then
       error env pat.at "query function cannot take a context pattern";
-    check_pat_exhaustive env T.ctxt pat
+    (T.Shared ss, check_pat_exhaustive env T.ctxt pat)
 
 and check_pat_exhaustive env t pat : Scope.val_env =
   let ve = check_pat env t pat in
@@ -1410,8 +1410,8 @@ and object_of_scope env sort fields scope at =
       (T.string_of_typ_expand t)
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE (_, sort, _, _, _, _, _); _}) ->
-    T.is_shared_sort sort.it
+  | LetD ({it = VarP _; _}, {it = FuncE (_, sort_pat, _, _, _, _); _}) ->
+    T.is_shared_sort sort_pat.it
   | _ -> false
 
 and is_typ_dec dec : bool = match dec.it with

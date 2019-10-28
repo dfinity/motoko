@@ -7,7 +7,8 @@ type var = string
 type control = Returns | Promises of int (* Returns a computed value or immediate promise *)
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
-type func_sort = Local | Shared of shared_sort
+type 'a shared = Local | Shared of 'a
+type func_sort = shared_sort shared
 type eff = Triv | Await
 
 type prim =
@@ -1264,4 +1265,3 @@ let rec string_of_typ_expand t =
     )
   | _ -> s
 
-let is_shared_sort sort = sort <> Local

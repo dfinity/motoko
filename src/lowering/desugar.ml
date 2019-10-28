@@ -86,14 +86,17 @@ and exp' at note = function
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
-  | S.FuncE (name, s, po, tbs, p, _t_opt, e) ->
+  | S.FuncE (name, sp, tbs, p, _t_opt, e) ->
+    let s,po = match sp.it with
+      | T.Local -> (T.Local, None)
+      | T.Shared (ss,po) -> (T.Shared ss, po) in
     let args, wrap, control, n_res  = to_args note.I.note_typ po p in
-    let _, _, _, ty = T.as_func_sub s.it (List.length tbs) note.I.note_typ in
+    let _, _, _, ty = T.as_func_sub s (List.length tbs) note.I.note_typ in
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let ty = T.open_ vars ty in
     let tys = if n_res = 1 then [ty] else T.as_seq ty in
-    I.FuncE (name, s.it, control, tbs', args, tys, wrap (exp e))
+    I.FuncE (name, s, control, tbs', args, tys, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
