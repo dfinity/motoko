@@ -2620,7 +2620,7 @@ module Blob = struct
      │ tag │ n_bytes │ bytes (padded) … │
      └─────┴─────────┴──────────────────┘
 
-    This hepa object is used for various kinds of binary, non-pointer data.
+    This heap object is used for various kinds of binary, non-pointer data.
 
     When used for Text values, the bytes are UTF-8 encoded code points from
     Unicode.
