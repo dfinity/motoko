@@ -17,7 +17,6 @@ actor {
   public shared {} func c4 () : async () {
   };
 
-
 /*
   public shared {caller = c} func c5 (c:Bool) : async () { // reject re-rebinding
     let c1 : Bool = c;
