@@ -478,7 +478,7 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib.tar -C $src *.as
+      tar -rf $out/stdlib.tar -C $src *.as --exclude="*Test.as"
       mkdir -p $out/nix-support
       echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
     '';
