@@ -1,6 +1,6 @@
-open As_def
-open As_config
-open As_types
+open Mo_def
+open Mo_config
+open Mo_types
 
 type parse_fn = string -> (Syntax.prog * string) Diag.result
 val parse_file: parse_fn

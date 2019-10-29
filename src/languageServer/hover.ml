@@ -1,4 +1,4 @@
-open As_types
+open Mo_types
 open Declaration_index
 module Lsp = Lsp.Lsp_t
 

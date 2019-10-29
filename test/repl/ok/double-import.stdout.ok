@@ -1,10 +1,10 @@
-ActorScript 0.1 interpreter
+Motoko 0.1 interpreter
 -- Parsing stdin:
-> -- Parsing empty.as:
--- Checking empty.as:
--- Definedness empty.as:
+> -- Parsing empty.mo:
+-- Checking empty.mo:
+-- Definedness empty.mo:
 -- Checking stdin:
--- Interpreting empty.as:
+-- Interpreting empty.mo:
 -- Interpreting stdin:
 -- Finished stdin:
 {} : module {}

@@ -355,7 +355,7 @@ An absent `<sort>?` abbreviates `object`.
 
 ## Primitive types
 
-ActorScript provides the following primitive type identifiers, including support for Booleans, signed and unsigned integers and machine words of various sizes, characters and text.
+Motoko provides the following primitive type identifiers, including support for Booleans, signed and unsigned integers and machine words of various sizes, characters and text.
 
 The category of a type determines the operators (unary, binary, relational and in-place update via assigment) applicable to values of that type.
 

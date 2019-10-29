@@ -3,7 +3,7 @@ open Source
 open Ir
 open Ir_effect
 
-module T = As_types.Type
+module T = Mo_types.Type
 
 type var = exp
 

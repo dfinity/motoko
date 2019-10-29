@@ -1,5 +1,5 @@
-open As_types
-open As_def
+open Mo_types
+open Mo_def
 open Source
 open Syntax
 
@@ -93,7 +93,7 @@ let project_files () : string list =
       flat_map read_dir entries
     else [d] in
   read_dir "."
-  |> List.filter (fun file -> String.equal (Filename.extension file) ".as")
+  |> List.filter (fun file -> String.equal (Filename.extension file) ".mo")
 
 let read_single_module_lib (ty: Type.typ): ide_decl list option =
   match ty with

@@ -1,4 +1,4 @@
 (library
   (name ir_def)
-  (libraries lib as_types as_values)
+  (libraries lib mo_types mo_values)
 )

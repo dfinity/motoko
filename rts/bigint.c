@@ -8,11 +8,11 @@ A libtommath arbitrary precision integer is a struct (`mp_int`) that contains a
 pointer to a data array.
 
  * The libtommath library never allocates the struct, so we are in full
-   control. We can embed the struct simply in an ActorScript heap object
+   control. We can embed the struct simply in an Motoko heap object
    with a dedicated tag for it.
 
  * The data array is allocated with mp_calloc and mp_realloc. We provide these
-   calls, allocate ActorScript arrays (using the TAG_BLOB tag for byte arrays,
+   calls, allocate Motoko arrays (using the TAG_BLOB tag for byte arrays,
    not TAG_ARRAY for arrays of pointers) and store the pointer to the
    _payload_ in the `mp_digit* dp` field of the struct. This way, things look all nice
    and dandy from libtommath’s point of view.

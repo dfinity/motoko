@@ -1,5 +1,5 @@
 (*
-This module is the backend of the ActorScript compiler. It takes a program in
+This module is the backend of the Motoko compiler. It takes a program in
 the intermediate representation (ir.ml), and produces a WebAssembly module,
 with DFINITY extensions (customModule.ml). An important helper module is
 instrList.ml, which provides a more convenient way of assembling WebAssembly
@@ -11,9 +11,9 @@ this keeps documentation close to the code (a lesson learned from Simon PJ).
 *)
 
 open Ir_def
-open As_values
-open As_types
-open As_config
+open Mo_values
+open Mo_types
+open Mo_config
 
 open Wasm.Ast
 open Wasm.Types
@@ -85,7 +85,7 @@ The fields fall into the following categories:
     Example: whether we are compiling with -no-system-api; the prelude code
 
  2. Immutable global fields. Change in a well-scoped manner.
-    Example: Mapping from ActorScript names to their location.
+    Example: Mapping from Motoko names to their location.
 
  3. Mutable global fields. Change only monotonously.
     These are used to register things like functions. This should be monotone
@@ -391,7 +391,7 @@ end
 
 
 (* General code generation functions:
-   Rule of thumb: Here goes stuff that independent of the ActorScript AST.
+   Rule of thumb: Here goes stuff that independent of the Motoko AST.
 *)
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
@@ -1175,7 +1175,7 @@ module Tagged = struct
   (* Needs to be conservative, i.e. return `true` if unsure *)
   (* This function can also be used as assertions in a lint mode, e.g. in compile_exp *)
   let can_have_tag ty tag =
-    let open As_types.Type in
+    let open Mo_types.Type in
     match (tag : tag) with
     | Array ->
       begin match normalize ty with
@@ -1260,7 +1260,7 @@ module Variant = struct
   let tag_field = Tagged.header_size
   let payload_field = Int32.add Tagged.header_size 1l
 
-  let hash_variant_label : As_types.Type.lab -> int32 = fun l ->
+  let hash_variant_label : Mo_types.Type.lab -> int32 = fun l ->
     Int32.of_int (Hashtbl.hash l)
 
   let inject env l e =
@@ -3190,7 +3190,7 @@ module Dfinity = struct
       get_api_nonce env ^^
       arg_instrs ^^
       G.i Drop ^^ (* TODO:
-        https://github.com/dfinity-lab/actorscript/issues/679
+        https://github.com/dfinity-lab/motoko/issues/679
         don't drop but extract payload, once reject complies with spec *)
       compile_unboxed_const error_code_CANISTER_REJECT ^^
       system_call env "msg" "reject"
@@ -4474,7 +4474,7 @@ module VarLoc = struct
     ; is_local : bool (* Only valid within the current function *)
     }
 
-  (* A type to record where ActorScript names are stored. *)
+  (* A type to record where Motoko names are stored. *)
   type varloc =
     (* A Wasm Local of the current function, directly containing the value
        (note that most values are pointers, but not all)
@@ -4627,9 +4627,9 @@ module StackRep = struct
 
 end (* StackRep *)
 
-module ASEnv = struct
+module VarEnv = struct
   (*
-  The ActorScript specific environment:
+  The source variable environment:
   In scope variables and in-scope jump labels
   *)
 
@@ -4702,16 +4702,16 @@ module ASEnv = struct
       | Some d -> d
       | None   -> Printf.eprintf "Could not find %s\n" name; raise Not_found
 
-end (* ASEnv *)
+end (* VarEnv *)
 
 module Var = struct
-  (* This module is all about looking up ActorScript variables in the environment,
+  (* This module is all about looking up Motoko variables in the environment,
      and dealing with mutable variables *)
 
   open VarLoc
 
   (* Stores the payload (which is found on the stack) *)
-  let set_val env ae var = match ASEnv.lookup_var ae var with
+  let set_val env ae var = match VarEnv.lookup_var ae var with
     | Some (Local i) ->
       G.i (LocalSet (nr i))
     | Some (HeapInd (i, off)) ->
@@ -4730,7 +4730,7 @@ module Var = struct
     | None   -> assert false
 
   (* Returns the payload (optimized representation) *)
-  let get_val (env : E.t) (ae : ASEnv.t) var = match ASEnv.lookup_var ae var with
+  let get_val (env : E.t) (ae : VarEnv.t) var = match VarEnv.lookup_var ae var with
     | Some (Local i) ->
       SR.Vanilla, G.i (LocalGet (nr i))
     | Some (HeapInd (i, off)) ->
@@ -4742,26 +4742,26 @@ module Var = struct
     | None -> assert false
 
   (* Returns the payload (vanilla representation) *)
-  let get_val_vanilla (env : E.t) (ae : ASEnv.t) var =
+  let get_val_vanilla (env : E.t) (ae : VarEnv.t) var =
     let sr, code = get_val env ae var in
     code ^^ StackRep.adjust env sr SR.Vanilla
 
   (* Returns the value to put in the closure,
      and code to restore it, including adding to the environment
   *)
-  let capture old_env ae0 var : G.t * (E.t -> ASEnv.t -> (ASEnv.t * G.t)) =
-    match ASEnv.lookup_var ae0 var with
+  let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> (VarEnv.t * G.t)) =
+    match VarEnv.lookup_var ae0 var with
     | Some (Local i) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let (ae2, j) = ASEnv.add_direct_local new_env ae1 var in
+        let (ae2, j) = VarEnv.add_direct_local new_env ae1 var in
         let restore_code = G.i (LocalSet (nr j))
         in (ae2, restore_code)
       )
     | Some (HeapInd (i, off)) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let (ae2, j) = ASEnv.add_local_with_offset new_env ae1 var off in
+        let (ae2, j) = VarEnv.add_local_with_offset new_env ae1 var off in
         let restore_code = G.i (LocalSet (nr j))
         in (ae2, restore_code)
       )
@@ -4770,7 +4770,7 @@ module Var = struct
       ( d.materialize old_env ^^
         StackRep.adjust old_env d.stack_rep SR.Vanilla
       , fun new_env ae1 ->
-        let (ae2, j) = ASEnv.add_direct_local new_env ae1 var in
+        let (ae2, j) = VarEnv.add_direct_local new_env ae1 var in
         let restore_code = G.i (LocalSet (nr j))
         in (ae2, restore_code)
       )
@@ -4782,7 +4782,7 @@ module Var = struct
   let field_box env code =
     Tagged.obj env Tagged.ObjInd [ code ]
 
-  let get_val_ptr env ae var = match ASEnv.lookup_var ae var with
+  let get_val_ptr env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd (i, 1l)) -> G.i (LocalGet (nr i))
     | Some (Static _) -> assert false (* we never do this on the toplevel *)
     | _  -> field_box env (get_val_vanilla env ae var)
@@ -4840,7 +4840,7 @@ module FuncDec = struct
     let arg_names = List.map (fun a -> a.it, I32Type) args in
     let n_res = List.length ret_tys in
     let retty = Lib.List.make n_res I32Type in
-    let ae0 = ASEnv.mk_fun_ae outer_ae in
+    let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env (["clos", I32Type] @ arg_names) retty (fun env -> G.with_region at (
       let get_closure = G.i (LocalGet (nr 0l)) in
 
@@ -4848,7 +4848,7 @@ module FuncDec = struct
 
       (* Add arguments to the environment *)
       let ae2 = bind_args ae1 1 args (fun env a get ->
-        ASEnv.add_local_deferred env a.it SR.Vanilla (fun _ -> get) true
+        VarEnv.add_local_deferred env a.it SR.Vanilla (fun _ -> get) true
       ) in
 
       closure_code ^^
@@ -4866,7 +4866,7 @@ module FuncDec = struct
   let compile_message outer_env outer_ae sort restore_env args mk_body ret_tys at =
     assert (E.mode outer_env = Flags.AncientMode);
     assert (List.length ret_tys = 0);
-    let ae0 = ASEnv.mk_fun_ae outer_ae in
+    let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env ["clos", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
       let get_databuf = G.i (LocalGet (nr 1l)) in
       let get_elembuf = G.i (LocalGet (nr 2l)) in
@@ -4885,7 +4885,7 @@ module FuncDec = struct
       (* Deserialize argument and add params to the environment *)
       let arg_names = List.map (fun a -> a.it) args in
       let arg_tys = List.map (fun a -> a.note) args in
-      let (ae2, setters) = ASEnv.add_argument_locals env ae1 arg_names in
+      let (ae2, setters) = VarEnv.add_argument_locals env ae1 arg_names in
       get_databuf ^^ get_elembuf ^^
       Serialization.deserialize env arg_tys ^^
       G.concat (List.rev setters) ^^
@@ -4909,7 +4909,7 @@ module FuncDec = struct
     match E.mode outer_env with
     | Flags.AncientMode ->
       assert (List.length ret_tys = 0);
-      let ae0 = ASEnv.mk_fun_ae outer_ae in
+      let ae0 = VarEnv.mk_fun_ae outer_ae in
       Func.of_body outer_env ["databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
         let get_databuf = G.i (LocalGet (nr 0l)) in
         let get_elembuf = G.i (LocalGet (nr 1l)) in
@@ -4920,7 +4920,7 @@ module FuncDec = struct
         (* Deserialize argument and add params to the environment *)
         let arg_names = List.map (fun a -> a.it) args in
         let arg_tys = List.map (fun a -> a.note) args in
-        let (ae1, setters) = ASEnv.add_argument_locals env ae0 arg_names in
+        let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
         get_databuf ^^ get_elembuf ^^
         Serialization.deserialize env arg_tys ^^
         G.concat (List.rev setters) ^^
@@ -4939,14 +4939,14 @@ module FuncDec = struct
         | _ -> assert false
       ))
     | Flags.ICMode ->
-      let ae0 = ASEnv.mk_fun_ae outer_ae in
+      let ae0 = VarEnv.mk_fun_ae outer_ae in
       Func.of_body outer_env ["api_nonce", I64Type] [] (fun env -> G.with_region at (
         G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
 
         (* Deserialize argument and add params to the environment *)
         let arg_names = List.map (fun a -> a.it) args in
         let arg_tys = List.map (fun a -> a.note) args in
-        let (ae1, setters) = ASEnv.add_argument_locals env ae0 arg_names in
+        let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
         Serialization.deserialize env arg_tys ^^
         G.concat (List.rev setters) ^^
         mk_body env ae1 ^^
@@ -5061,7 +5061,7 @@ module FuncDec = struct
         Dfinity.system_call env "func" "bind_i32"
 
   let lit env ae how name sort free_vars args mk_body ret_tys at =
-    let captured = List.filter (ASEnv.needs_capture ae) free_vars in
+    let captured = List.filter (VarEnv.needs_capture ae) free_vars in
 
     if captured = []
     then
@@ -5215,7 +5215,7 @@ module AllocHow = struct
     (* Does this capture nothing from outside? *)
     (S.is_empty (S.inter
       (Freevars.captured_vars f)
-      (set_of_map (M.filter (fun _ x -> not (VarLoc.is_non_local x)) (ae.ASEnv.vars))))) &&
+      (set_of_map (M.filter (fun _ x -> not (VarLoc.is_non_local x)) (ae.VarEnv.vars))))) &&
     (* Does this capture nothing non-static from here? *)
     (S.is_empty (S.inter
       (Freevars.captured_vars f)
@@ -5306,12 +5306,12 @@ module AllocHow = struct
 
   (* Functions to extend the environment (and possibly allocate memory)
      based on how we want to store them. *)
-  let add_how env ae name : nonStatic option -> ASEnv.t * G.t = function
+  let add_how env ae name : nonStatic option -> VarEnv.t * G.t = function
     | Some LocalImmut | Some LocalMut ->
-      let (ae1, i) = ASEnv.add_direct_local env ae name in
+      let (ae1, i) = VarEnv.add_direct_local env ae name in
       (ae1, G.nop)
     | Some StoreHeap ->
-      let (ae1, i) = ASEnv.add_local_with_offset env ae name 1l in
+      let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
       let alloc_code =
         Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
         G.i (LocalSet (nr i)) in
@@ -5320,7 +5320,7 @@ module AllocHow = struct
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
       let zero = bytes_of_int32 0l in
       let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
-      let ae1 = ASEnv.add_local_static ae name ptr in
+      let ae1 = VarEnv.add_local_static ae name ptr in
       (ae1, G.nop)
     | None -> (ae, G.nop)
 
@@ -6336,12 +6336,12 @@ and compile_exp (env : E.t) ae exp =
     SR.Vanilla,
     G.block_ (StackRep.to_block_type env SR.Vanilla) (
       G.with_current_depth (fun depth ->
-        let ae1 = ASEnv.add_label ae name depth in
+        let ae1 = VarEnv.add_label ae name depth in
         compile_exp_vanilla env ae1 e
       )
     )
   | BreakE (name, e) ->
-    let d = ASEnv.get_label_depth ae name in
+    let d = VarEnv.get_label_depth ae name in
     SR.Unreachable,
     compile_exp_vanilla env ae e ^^
     G.branch_to_ d
@@ -6422,7 +6422,7 @@ and compile_exp (env : E.t) ae exp =
       code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
-    let (ae1, i) = ASEnv.add_local_with_offset env ae name 1l in
+    let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
     let sr, code = compile_exp env ae1 e in
     sr,
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
@@ -6641,11 +6641,11 @@ and fill_pat env ae pat : patternCode =
 and alloc_pat_local env ae pat =
   let (_,d) = Freevars.pat pat in
   AllocHow.S.fold (fun v ae ->
-    let (ae1, _i) = ASEnv.add_direct_local env ae v
+    let (ae1, _i) = VarEnv.add_direct_local env ae v
     in ae1
   ) d ae
 
-and alloc_pat env ae how pat : ASEnv.t * G.t  =
+and alloc_pat env ae how pat : VarEnv.t * G.t  =
   (fun (ae,code) -> (ae, G.with_region pat.at code)) @@
   let (_,d) = Freevars.pat pat in
   AllocHow.S.fold (fun v (ae,code0) ->
@@ -6653,7 +6653,7 @@ and alloc_pat env ae how pat : ASEnv.t * G.t  =
     in (ae1, code0 ^^ code1)
   ) d (ae, G.nop)
 
-and compile_pat_local env ae pat : ASEnv.t * patternCode =
+and compile_pat_local env ae pat : VarEnv.t * patternCode =
   (* It returns:
      - the extended environment
      - the code to do the pattern matching.
@@ -6697,7 +6697,7 @@ and compile_n_ary_pat env ae how pat =
       orTrap env (fill_pat env ae1 pat)
   in (ae1, alloc_code, arity, fill_code)
 
-and compile_dec env pre_ae how dec : ASEnv.t * G.t * (ASEnv.t -> G.t) =
+and compile_dec env pre_ae how dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
   (fun (pre_ae,alloc_code,mk_code) ->
        (pre_ae, G.with_region dec.at alloc_code, fun ae ->
          G.with_region dec.at (mk_code ae))) @@
@@ -6707,7 +6707,7 @@ and compile_dec env pre_ae how dec : ASEnv.t * G.t * (ASEnv.t -> G.t) =
   (* A special case for static expressions *)
   | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v how) ->
     let (static_thing, fill) = compile_static_exp env pre_ae how e in
-    let pre_ae1 = ASEnv.add_local_deferred pre_ae v
+    let pre_ae1 = VarEnv.add_local_deferred pre_ae v
       (SR.StaticThing static_thing) (fun _ -> G.nop) false in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
   | LetD (p, e) ->
@@ -6727,7 +6727,7 @@ and compile_dec env pre_ae how dec : ASEnv.t * G.t * (ASEnv.t -> G.t) =
         Var.set_val env ae name
       )
 
-and compile_decs env ae lvl decs captured_in_body : ASEnv.t * G.t =
+and compile_decs env ae lvl decs captured_in_body : VarEnv.t * G.t =
   let how = AllocHow.decs ae lvl decs captured_in_body in
   let rec go pre_ae decs = match decs with
     | []          -> (pre_ae, G.nop, fun _ -> G.nop)
@@ -6765,7 +6765,7 @@ and compile_static_exp env pre_ae how exp = match exp.it with
   | FuncE (name, sort, _control, typ_binds, args, ret_tys, e) ->
       let mk_body env ae =
         assert begin (* Is this really closed? *)
-          List.for_all (fun v -> ASEnv.NameEnv.mem v ae.ASEnv.vars)
+          List.for_all (fun v -> VarEnv.NameEnv.mem v ae.VarEnv.vars)
             (Freevars.M.keys (Freevars.exp e))
         end;
         compile_exp_as env ae (StackRep.of_arity (List.length ret_tys)) e in
@@ -6792,9 +6792,9 @@ and find_prelude_names env =
   Dfinity.system_imports env0;
   RTS.system_imports env0;
   let env1 = E.mk_fun_env env0 0l 0 in
-  let ae = ASEnv.empty_ae in
+  let ae = VarEnv.empty_ae in
   let (env2, _) = compile_prelude env1 ae in
-  ASEnv.in_scope_set env2
+  VarEnv.in_scope_set env2
 
 
 and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
@@ -6831,7 +6831,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
         let (ae1, code1) = compile_prog env ae prog in
         let code2 = go ae1 progs in
         code1 ^^ code2 in
-    go ASEnv.empty_ae progs
+    go VarEnv.empty_ae progs
     )
 
 and export_actor_field env  ae (f : Ir.field) =
@@ -6847,7 +6847,7 @@ and export_actor_field env  ae (f : Ir.field) =
     name = Wasm.Utf8.decode (match E.mode env with
       | Flags.AncientMode -> f.it.name
       | Flags.ICMode ->
-        As_types.Type.(
+        Mo_types.Type.(
         match normalize f.note with
         |  Func(Shared sort,_,_,_,_) ->
            (match sort with
@@ -6880,13 +6880,13 @@ and actor_lit outer_env this ds fs at =
 
 
     let start_fun = Func.of_body mod_env [] [] (fun env -> G.with_region at @@
-      let ae0 = ASEnv.empty_ae in
+      let ae0 = VarEnv.empty_ae in
 
       (* Compile the prelude *)
       let (ae1, prelude_code) = compile_prelude env ae0 in
 
       (* Add this pointer *)
-      let ae2 = ASEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
+      let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
 
       (* Compile the declarations *)
       let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds Freevars.S.empty in
@@ -6912,7 +6912,7 @@ and actor_lit outer_env this ds fs at =
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 this ds fs =
   (* Add this pointer *)
-  let ae2 = ASEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
+  let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
 
   (* Compile the declarations *)
   let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds Freevars.S.empty in
