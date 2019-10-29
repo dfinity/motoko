@@ -1,4 +1,0 @@
-(library
-  (name as_interpreter)
-  (libraries lib as_config as_def as_types as_values profiler)
-)

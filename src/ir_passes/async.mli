@@ -5,4 +5,4 @@ type platform =
     V1  (* legacy, Haskell *)
   | V2  (* new, Rust *)
 
-val transform : platform -> As_types.Scope.scope -> Ir.prog -> Ir.prog
+val transform : platform -> Mo_types.Scope.scope -> Ir.prog -> Ir.prog

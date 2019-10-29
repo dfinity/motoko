@@ -1,3 +1,0 @@
-module {
-  import "./a.as";
-}
