@@ -138,7 +138,7 @@ let ic_callE f e k r =
   let es = [f; e; k; r] in
   let effs = List.map eff es in
   let eff = List.fold_left max_eff T.Triv effs in
-  { it = PrimE (ICRejectPrim, es);
+  { it = PrimE (ICCallPrim, es);
     at = no_region;
     note = { note_typ = T.unit; note_eff = eff }
   }
