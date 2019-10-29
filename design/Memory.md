@@ -1,4 +1,4 @@
-# Memory Management and Persistence in Wasm/Dfinity/ActorScript
+# Memory Management and Persistence in Wasm/Dfinity/Motoko
 
 ## Preliminaries
 

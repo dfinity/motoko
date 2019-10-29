@@ -29,7 +29,7 @@ import Turtle
 
 main = defaultMain tests
   where tests :: TestTree
-        tests = testGroup "ActorScript tests" [arithProps, utf8Props, matchingProps]
+        tests = testGroup "Motoko tests" [arithProps, utf8Props, matchingProps]
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
@@ -54,7 +54,7 @@ matchingProps = testGroup "pattern matching"
                 wasm = name <.> "wasm"
                 fileArg = fromString . encodeString
                 script = do Turtle.output as $ fromString testCase
-                            res@(exitCode, _, _) <- procStrictWithErr "asc"
+                            res@(exitCode, _, _) <- procStrictWithErr "moc"
                                 ["-no-system-api", "-no-check-ir", fileArg as] empty
                             if ExitSuccess == exitCode
                             then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
@@ -133,9 +133,9 @@ instance Arbitrary TestCase where
 
 
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
-  let script cases = do Turtle.output "tests.as" $ msum cases
-                        res@(exitCode, _, _) <- procStrictWithErr "asc"
-                                 ["-no-system-api", "-no-check-ir", "tests.as"] empty
+  let script cases = do Turtle.output "tests.mo" $ msum cases
+                        res@(exitCode, _, _) <- procStrictWithErr "moc"
+                                 ["-no-system-api", "-no-check-ir", "tests.mo"] empty
                         if ExitSuccess == exitCode
                         then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "tests.wasm"] empty
                         else pure (False, res)
@@ -199,7 +199,7 @@ mobile (tm, v) = monadicIO $ do
   runScriptNoFuzz "matchMobile" testCase
 
 -- instances of ASValue describe "ground values" in
--- ActorScript. These can appear in patterns and have
+-- Motoko. These can appear in patterns and have
 -- well-defined AS type.
 --
 class ASValue a where
@@ -255,7 +255,7 @@ instance Arbitrary Off where
 
 -- Below data structure tries to focus test case generation of
 -- numeric values to *neuralgic points* of the numeric line, namely
--- areas where (from our white-box knowledge of ActorScript's inner
+-- areas where (from our white-box knowledge of Motoko's inner
 -- workings) representation changes are expected to happen. These
 -- are mostly at a power-of-two boundary and around it, e.g. we have
 -- signed 30 bit numbers (`Int` and `Nat`) that have a compact representation
