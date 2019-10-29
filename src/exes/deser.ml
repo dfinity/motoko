@@ -255,11 +255,16 @@ let output_text n froms tos =
 
 
 let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
+  let last i = i + 1 = args in
   let herald_arguments = function
-    | () when args = 0 -> output_string "# No arguments...\n"
-    | _ when args = 1 -> output_string "# 1 argument follows"
-    | _ -> Printf.printf "# %d arguments follow" args in
-  let herald_member () i f () = Printf.printf "\n# Argument #%d%s:\n" i (if i + 1 = args then " (last)" else ""); f () in
+    | () when args = 0 -> output_string "// No arguments...\n()"
+    | _ when args = 1 -> output_string "// 1 argument follows\n(\n"
+    | _ -> Printf.printf "// %d arguments follow\n(\n" args in
+  let herald_member () i f () =
+    Printf.printf "// Argument #%d%s:\n" i (if last i then " (last)" else "");
+    if i = 0 then print_string "  " else print_string ", ";
+    f ();
+    if last i then print_string "\n)" else print_string "\n" in
   herald_arguments, (*bracket args*) herald_member
 
 let start i = if i = 0 then output_string_space "{"

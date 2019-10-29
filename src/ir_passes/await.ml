@@ -1,6 +1,6 @@
 open Ir_def
-open As_types
-open As_config
+open Mo_types
+open Mo_config
 
 open Source
 open Ir

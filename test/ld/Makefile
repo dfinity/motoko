@@ -11,7 +11,7 @@ clean:
 
 WASM_CLANG?=clang-9
 WASM_LD?=wasm-ld-9
-AS_LD?=../../src/as-ld
+MO_LD?=../../src/mo-ld
 
 _out/%.lib.o: %.c | _out
 	$(WASM_CLANG) --compile -fpic --std=c11 --target=wasm32-unknown-unknown-wasm -fvisibility=hidden --optimize=3 \
@@ -27,7 +27,7 @@ _out/%.base.wasm: %.wat | _out
 	wat2wasm --debug-names --enable-multi-value $< -o $@
 
 _out/%.linked.wasm: _out/%.base.wasm _out/%.lib.wasm
-	$(AS_LD) -b _out/$*.base.wasm -l _out/$*.lib.wasm -o _out/$*.linked.wasm
+	$(MO_LD) -b _out/$*.base.wasm -l _out/$*.lib.wasm -o _out/$*.linked.wasm
 
 _out/%.wat: _out/%.wasm
 	wasm2wat --no-check $< -o $@

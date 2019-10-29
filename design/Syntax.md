@@ -1,4 +1,4 @@
-# ActorScript Syntax (Sketch)
+# Motoko Syntax (Sketch)
 
 Productions marked * probably deferred to later versions.
 

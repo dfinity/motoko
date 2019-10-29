@@ -1,12 +1,12 @@
-open As_def
-open As_frontend
-open As_types
-open As_values
-open As_interpreter
+open Mo_def
+open Mo_frontend
+open Mo_types
+open Mo_values
+open Mo_interpreter
 open Ir_def
 open Ir_interpreter
 open Ir_passes
-open As_config
+open Mo_config
 
 open Printf
 
@@ -334,7 +334,7 @@ let check_string s name : check_result =
 let generate_idl files : Idllib.Syntax.prog Diag.result =
   Diag.bind (load_progs parse_file files initial_stat_env)
     (fun (libraries, progs, senv) ->
-      Diag.return (As_idl.As_to_idl.prog (progs, senv)))
+      Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv)))
 
 (* Running *)
 
@@ -460,12 +460,12 @@ let load_as_rts () =
 
   (*
   The RTS can be found via environment (in particular when built via nix),
-  or relative to the directory of the invoked asc (when developing)
+  or relative to the directory of the invoked moc (when developing)
   *)
   let wasm_filename =
-    match Sys.getenv_opt "ASC_RTS" with
+    match Sys.getenv_opt "MOC_RTS" with
     | Some filename -> filename
-    | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/as-rts.wasm") in
+    | None -> Filename.(concat (dirname Sys.argv.(0)) "../rts/mo-rts.wasm") in
   let wasm = load_file wasm_filename in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" wasm
 

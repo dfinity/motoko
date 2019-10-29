@@ -1,4 +1,4 @@
-all: index.html actorscript-guide.pdf as-slides.html
+all: index.html motoko-guide.pdf as-slides.html
 
 SHELL=bash
 
@@ -36,7 +36,7 @@ TEX_OPTIONS=\
   --include-in-header=<(echo '\newunicodechar{█}{\textrm{\textfallback{█}}}') \
   --include-in-header=<(echo '\newunicodechar{ツ}{\textrm{\textfallback{ツ}}}') \
 
-actorscript-guide.pdf: guide.md
+motoko-guide.pdf: guide.md
 	if [ -n "$$NIX_FONTCONFIG_FILE" ]; then export FONTCONFIG_FILE="$$NIX_FONTCONFIG_FILE"; fi; \
 	pandoc \
 	  --toc \

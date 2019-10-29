@@ -7,3 +7,6 @@ ingress(5) Completed: Canister: Payload: 0x4449444c016c0400710171027103710100034
 ingress(6) Completed: Canister: Payload: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
 ingress(7) Completed: Canister: Payload: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
 ingress(8) Completed: Canister: Payload: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
+ingress(9) Err: Error { code: ContractViolation, description: "explicit canister trap: IDL error: too few arguments Text,Text,Text" }
+ingress(10) Err: Error { code: ContractViolation, description: "explicit canister trap: IDL error: left-over bytes Text,Text,Text" }
+ingress(11) Completed: Canister: Payload: 0x4449444c000471717171034f6e650354776f05546872656504466f7572
