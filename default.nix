@@ -299,6 +299,7 @@ rec {
         export ESM=${esm}
         export JS_USER_LIBRARY=${js-user-library}
         moc --version
+        drun --version # run this once to work around self-unpacking-race-condition
         make parallel
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
           " --quickcheck-replay=${toString replay}"}
@@ -356,7 +357,7 @@ rec {
         nixpkgs.bash
         nixpkgs.perl
         filecheck
-	real-drun
+        real-drun
       ] ++
       llvmBuildInputs;
 
