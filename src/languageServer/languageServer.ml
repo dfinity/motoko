@@ -81,7 +81,7 @@ let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
   { diagnostic_range = range_of_region msg.Diag.at;
     diagnostic_severity = Some (severity_of_sev msg.Diag.sev);
     diagnostic_code = None;
-    diagnostic_source = Some "ActorScript";
+    diagnostic_source = Some "Motoko";
     diagnostic_message = msg.Diag.text;
     diagnostic_relatedInformation = None;
   }

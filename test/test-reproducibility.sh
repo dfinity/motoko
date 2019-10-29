@@ -6,12 +6,12 @@
 
 # It needs the tool reprotest to be installed
 
-ASC=${ASC:-$(realpath $(dirname $0)/../src/asc)}
+MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 
-files="*/*.as"
+files="*/*.mo"
 
-reprotest --source-pattern "*/*.as" \
+reprotest --source-pattern "*/*.mo" \
   --vary=-fileordering,-user_group,-domain_host \
-  "for file in */*.as; do ${ASC} -c --map \$file 2> \$(basename \$file).stderr || true ; done" \
+  "for file in */*.mo; do ${MOC} -c --map \$file 2> \$(basename \$file).stderr || true ; done" \
   '*.wasm *.map *.stderr'
 

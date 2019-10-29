@@ -31,7 +31,7 @@ extern int32_t read_i32_of_sleb128(buf *buf);
 
 
 int main(int argc, char** argv) {
-  printf("ASC LEB128 round-trip tests\n");
+  printf("LEB128 round-trip tests\n");
 
   if (argc < 2) {
     printf("Usage: %s inputfile\n", argv[0]);

@@ -1,5 +1,5 @@
-open As_types
-open As_frontend
+open Mo_types
+open Mo_frontend
 open Declaration_index
 module Lsp_t = Lsp.Lsp_t
 

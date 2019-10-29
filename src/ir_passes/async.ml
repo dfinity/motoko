@@ -1,4 +1,4 @@
-open As_types
+open Mo_types
 open Ir_def
 
 module E = Env

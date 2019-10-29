@@ -1,4 +1,4 @@
-open As_def
+open Mo_def
 
 (*
 This module traverses the syntax tree. For each `import` statement, it looks
@@ -100,7 +100,7 @@ let resolve_import_string env region (f: string) (fp: string ref) =
     else f in
   let f =
     if Sys.file_exists f && Sys.is_directory f
-    then Filename.concat f "lib.as"
+    then Filename.concat f "lib.mo"
     else f in
   let f = File_path.normalise f in
   if Sys.file_exists f

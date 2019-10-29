@@ -1,4 +1,4 @@
-ActorScript 0.1 interpreter
+Motoko 0.1 interpreter
 > +127 : Int8
 > prelude:___: execution error, numeric overflow
 > -128 : Int8
