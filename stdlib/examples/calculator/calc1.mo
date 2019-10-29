@@ -18,17 +18,17 @@ type Instr = {
 
 actor class Calc(init:Nat) {
   var cell : Nat = init;
-  
+
   public func eval(instr:Instr) : async ?Nat {
     switch(instr) {
       case (#add n) { cell += n };
       case (#sub n) { cell -= n };
       case (#mul n) { cell *= n };
-      case (#div n) { 
-        if ( n == 0 ) { 
+      case (#div n) {
+        if ( n == 0 ) {
           // null encodes div-by-zero error
-          return null 
-        } else { 
+          return null
+        } else {
           cell /= n
         }
       };

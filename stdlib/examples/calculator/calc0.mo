@@ -15,10 +15,10 @@ actor class Calc(init:Nat) {
   public func sub(n:Nat) : async Nat { cell += n; cell };
   public func mul(n:Nat) : async Nat { cell += n; cell };
   public func div(n:Nat) : async ?Nat {
-    if ( n == 0 ) { 
+    if ( n == 0 ) {
       // null encodes div-by-zero error
-      return null 
-    } else { 
+      return null
+    } else {
       cell /= n; ?cell
     }
   };

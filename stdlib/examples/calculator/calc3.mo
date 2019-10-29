@@ -22,7 +22,7 @@ type LogEntry = {
 type Log = List<LogEntry>;
 
 actor class Calc(init: Nat) {
-  var value: Nat = init;
+  var state: Lang.State = { cell = 0 };
   var log: Log = null;
   let maxLog: Nat = 5;
 
@@ -36,15 +36,15 @@ actor class Calc(init: Nat) {
   public func eval(reqInstr: Lang.Instr) : async ?Nat {
     // 1. do the evaluation, using the language definition
     let reqResult: ?Nat = {
-      switch (Lang.eval({cell=value}, reqInstr)) {
+      switch (Lang.eval(state, reqInstr)) {
         case null {
           // failure: no state update
           null
         };
-        case (?state) {
+        case (?updatedState) {
           // success: do the state update
-          value := state.cell ;
-          ?value
+          state := updatedState ;
+          ?state.cell
         };
       }
     };
