@@ -30,3 +30,9 @@ actor class Calc(init: Nat) {
     }
   };
 }
+
+// Final point: 
+// Imagine if the single cell were an entire sheet of cells;
+// This application/program structure would all be the same.
+// Rather than pass a single value back and forth, we'd pass
+// the "current sheet" back and forth to the `eval` function.
