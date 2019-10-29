@@ -579,7 +579,7 @@ rec {
         deser.buildInputs ++
         tests.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ]
       ));
 
     shellHook = llvmEnv;
