@@ -19,7 +19,7 @@ import Lang "calc_lang.mo";
 actor class Calc(init: Nat) {
   var value : Nat = init;
   
-  func eval(instr: Lang.Instr) : ?Nat {
+  public func eval(instr: Lang.Instr) : async ?Nat {
     switch (Lang.eval({cell=value}, instr)) {
       case null { null };
       case (?state) {

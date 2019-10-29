@@ -19,7 +19,7 @@ type Instr = {
 actor class Calc(init:Nat) {
   var cell : Nat = init;
   
-  func eval(instr:Instr) : ?Nat {
+  public func eval(instr:Instr) : async ?Nat {
     switch(instr) {
       case (#add n) { cell += n };
       case (#sub n) { cell -= n };

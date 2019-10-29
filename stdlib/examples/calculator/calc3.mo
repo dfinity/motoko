@@ -26,11 +26,11 @@ actor class Calc(init: Nat) {
   var log: Log = null;
   let maxLog: Nat = 5;
   
-  func getLog() : Log {
+  public func getLog() : async Log {
     log
   };
 
-  func eval(reqInstr: Lang.Instr) : ?Nat {
+  public func eval(reqInstr: Lang.Instr) : async ?Nat {
     let reqResult: ?Nat = {
       switch (Lang.eval({cell=value}, reqInstr)) {
         case null { null };
