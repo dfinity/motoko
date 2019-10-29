@@ -10,9 +10,11 @@
 //   The `calc_lang.mo` file gives a _mathematical definition_
 //   of the calculator as a DSL (domain-specific language), 
 //   in terms of pure data and functions (no state mutation, 
-//   network interaction, or other complex stuff).
+//   network interaction, or other complex Motoko stuff.
 
 // This file just uses that DSL definition, calling its `eval` function.
+
+// Next, in version 3 we consider logging.
 
 import Lang "calc_lang.mo";
 
