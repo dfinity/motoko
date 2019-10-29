@@ -1,0 +1,32 @@
+// Single-cell calculuator, third version (version 2).
+
+// (Compare to versions 0 and 1, which are simpler).
+
+// Here, we use `calc_lang.mo`, a separate (purely-functional) module
+// that defines the entire language of calculator instructions, 
+// mathematically.
+
+// This solution gives a more "PL way" of solving the problem:
+//   The `calc_lang.mo` file gives a _mathematical definition_
+//   of the calculator as a DSL (domain-specific language), 
+//   in terms of pure data and functions (no state mutation, 
+//   network interaction, or other complex stuff).
+
+// This file just uses that DSL definition, calling its `eval` function.
+
+import Lang "calc_lang.mo";
+
+actor class Calc(init: Nat) {
+  var value : Nat = init;
+  
+  func eval(instr: Lang.Instr) : ?Nat {
+    switch (Lang.eval({cell=value}, instr)) {
+      case null { null };
+      case (?state) {
+        // do the state update
+        value := state.cell ;
+        ?value
+      };
+    }
+  };
+}
