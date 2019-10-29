@@ -33,7 +33,7 @@ let dev = import (builtins.fetchGit {
 let dfinity-repo = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   # ref = "master";
-  rev = "c0eaddd3c8430e86fb3d13897b751500a80f314d";
+  rev = "3c82c6400b0eb8c5785669996f5b8007623cd9fc";
 }) { system = nixpkgs.system; }; in
 
 let sdk = import (builtins.fetchGit {
