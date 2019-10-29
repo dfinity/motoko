@@ -3039,8 +3039,6 @@ module Dfinity = struct
     (* current api_nonce *)
     E.add_global64 env "api_nonce" Mutable 0L
 
-  let reject_enabled = false (* TODO inline as true once msg.reject has spec'ed signature *)
-
   let system_imports env =
     match E.mode env with
     | Flags.ICMode ->
@@ -3048,8 +3046,7 @@ module Dfinity = struct
       E.add_func_import env "msg" "arg_data_size" [I64Type] [I32Type];
       E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
-      if reject_enabled then
-        E.add_func_import env "msg" "reject" [I64Type; I32Type] [];
+      E.add_func_import env "msg" "reject" [I64Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "error_code" [I64Type] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] []
     | Flags.AncientMode ->
@@ -3186,21 +3183,15 @@ module Dfinity = struct
     compile_unboxed_const fi ^^
     system_call env "func" "externalize"
 
-  let error_code_CANISTER_REJECT = 4l (* Api's CANISTER_REJECT *)
-
   let reject env arg_instrs =
       SR.unit,
       get_api_nonce env ^^
+      let (set_text, get_text) = new_local env "text" in
       arg_instrs ^^
-      G.i Drop ^^ (* TODO:
-        https://github.com/dfinity-lab/motoko/issues/679
-        don't drop but extract payload, once reject complies with spec *)
-      compile_unboxed_const error_code_CANISTER_REJECT ^^
-      if reject_enabled then
-        system_call env "msg" "reject"
-      else
-        E.trap_with env "reject disabled"
-
+      set_text ^^
+      get_text ^^ Blob.payload_ptr_unskewed ^^
+      get_text ^^ Heap.load_field (Blob.len_field) ^^
+      system_call env "msg" "reject"
 
   let error_code env =
       SR.UnboxedWord32,
