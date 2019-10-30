@@ -45,10 +45,10 @@ module Transform(Platform : sig val platform : platform end) = struct
 
   let con_renaming = ref ConRenaming.empty
 
-  let add_reply_parameter, add_reject_parameter, add_reply_argument, add_reject_argument =
+  let add_reply_parameter, add_reject_parameter =
     match platform with
-    | V1 -> (true, false, true, false)
-    | V2 -> (false, false, true, true)
+    | V1 -> (true, false)
+    | V2 -> (false, false)
 
   (* Helper for selective code generation based on predicated lazy expressions *)
   let rec select bls =
@@ -76,9 +76,7 @@ module Transform(Platform : sig val platform : platform end) = struct
 
   let sys_callE v1 typs vs reply reject =
     match platform with
-    | V1 ->
-          assert (add_reply_argument && not add_reject_argument);
-          callE v1 typs (seqE (vs @ [reply]))
+    | V1 -> callE v1 typs (seqE (vs @ [reply]))
     | V2 ->
       assert (typs = []);
       ic_callE v1 (seqE vs) reply reject
