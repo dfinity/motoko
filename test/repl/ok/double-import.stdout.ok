@@ -4,6 +4,7 @@ ActorScript 0.1 interpreter
 -- Checking empty.as:
 -- Definedness empty.as:
 -- Checking stdin:
+-- Definedness stdin:
 -- Interpreting empty.as:
 -- Interpreting stdin:
 -- Finished stdin:
@@ -11,6 +12,7 @@ let anon-import-1.1 : module {} = {}
 
 -- Parsing stdin:
 > -- Checking stdin:
+-- Definedness stdin:
 -- Interpreting stdin:
 -- Finished stdin:
 let anon-import-2.1 : module {} = {}

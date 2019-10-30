@@ -7,6 +7,7 @@ ActorScript 0.1 interpreter
 -- Checking b.as:
 -- Definedness b.as:
 -- Checking stdin:
+-- Definedness stdin:
 -- Interpreting c.as:
 -- Interpreting b.as:
 -- Interpreting stdin:
@@ -18,6 +19,7 @@ let anon-import-1.1 : module {i : Nat} = {i = 42}
 -- Checking a.as:
 -- Definedness a.as:
 -- Checking stdin:
+-- Definedness stdin:
 -- Interpreting a.as:
 -- Interpreting stdin:
 -- Finished stdin:
@@ -25,6 +27,7 @@ let anon-import-2.1 : module {i : Nat} = {i = 42}
 
 -- Parsing stdin:
 > -- Checking stdin:
+-- Definedness stdin:
 -- Interpreting stdin:
 -- Finished stdin:
 let anon-import-3.1 : module {i : Nat} = {i = 42}
@@ -34,6 +37,7 @@ let anon-import-3.1 : module {i : Nat} = {i = 42}
 -- Checking triangle.as:
 -- Definedness triangle.as:
 -- Checking stdin:
+-- Definedness stdin:
 -- Interpreting triangle.as:
 -- Interpreting stdin:
 -- Finished stdin:

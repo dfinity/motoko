@@ -116,7 +116,7 @@ let resolve_progs =
   Diag.traverse resolve_prog
 
 
-(* Typechecking *)
+(* Checking *)
 
 let infer_prog senv prog
   : (Type.typ * Scope.scope) Diag.result =
@@ -130,7 +130,10 @@ let infer_prog senv prog
       dump_prog Flags.dump_tc prog;
     | Error _ -> ()
   end;
-  r
+  phase "Definedness" prog.Source.note;
+  Diag.bind r (fun t_sscope ->
+    Diag.bind (Definedness.check_prog prog) (fun () -> Diag.return t_sscope)
+  )
 
 let rec check_progs senv progs : Scope.scope Diag.result =
   match progs with
@@ -143,21 +146,10 @@ let rec check_progs senv progs : Scope.scope Diag.result =
 
 let check_lib senv lib : Scope.scope Diag.result =
   phase "Checking" (Filename.basename lib.Source.note);
-  Typing.check_lib senv lib
-
-
-(* Definedness checking *)
-
-let definedness_prog prog : unit Diag.result =
-  phase "Definedness" prog.Source.note;
-  Definedness.check_prog prog
-
-let definedness_progs progs : unit Diag.result =
-  Diag.traverse_ definedness_prog progs
-
-let definedness_lib lib : unit Diag.result =
-  phase "Definedness" (Filename.basename lib.Source.note);
-  Definedness.check_lib lib
+  Diag.bind (Typing.check_lib senv lib) (fun sscope ->
+    phase "Definedness" (Filename.basename lib.Source.note);
+    Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
+  )
 
 
 (* Imported file loading *)
@@ -241,12 +233,11 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
       Diag.bind (go_set more_imports) (fun () ->
       let lib = lib_of_prog f prog in
       Diag.bind (check_lib !senv lib) (fun sscope ->
-      Diag.bind (definedness_lib lib) (fun () ->
       libs := lib :: !libs; (* NB: Conceptually an append *)
       senv := Scope.adjoin !senv sscope;
       pending := remove f !pending;
       Diag.return ()
-      ))))))
+      )))))
     end
     and go_set todo = Diag.traverse_ go (elements todo)
   in
@@ -261,9 +252,8 @@ let load_progs parsefn files senv : load_result =
     (List.map snd rs) in
   Diag.bind (chase_imports parsefn senv libs) (fun (libs, senv') ->
   Diag.bind (check_progs senv' progs') (fun senv'' ->
-  Diag.bind (definedness_progs progs') (fun _ ->
   Diag.return (libs, progs', senv'')
-  )))))
+  ))))
 
 let load_decl parse_one senv : load_decl_result =
   Diag.bind parse_one (fun parsed ->
