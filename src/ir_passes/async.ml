@@ -289,25 +289,26 @@ module Transform(Platform : sig val platform : platform end) = struct
     | PrimE (OtherPrim "@await", [a;kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
     | PrimE (OtherPrim "@async", [exp2]) ->
-      let t1, contT = match typ exp2 with
+      let t1, ts, contT = match typ exp2 with
         | Func(_,_,
                [],
                [Func(_, _, [], ts1, []) as contT; _],
                []) ->
-          (t_typ (T.seq ts1),t_typ contT)
+          (t_typ (T.seq ts1), ts1, t_typ contT)
         | t -> assert false in
-      let k = fresh_var "k" contT in
-      let v1 = fresh_var "v" t1 in
-      let r = fresh_var "r" err_contT in
-      let e = fresh_var "e" T.catch in
-      let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Returns, [], [], [])) in
+      let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Promises 0, [], [], [])) in
       let u = fresh_var "u" T.unit in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply 1 t1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
-               funcD k v1 (nary_reply -*- v1);
-               nary_funcD r [e] (reject -*- (errorMessageE e));
-               funcD post u (t_exp exp2 -*- (tupE [k;r]));
-               expD (post -*- tupE[])]
+               funcD post u (
+                  let v = fresh_var "v" t1 in
+                  let k = v --> (sys_replyE ts v) in
+                  let e = fresh_var "e" T.catch in
+                  let r = [e] -->* (sys_rejectE (errorMessageE e)) in
+                  (t_exp exp2) -*- tupE [k;r]);
+
+               expD (sys_callE post [] [] nary_reply reject);
+               ]
                nary_async
       ).it
     | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
