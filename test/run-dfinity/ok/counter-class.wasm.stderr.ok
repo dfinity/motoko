@@ -22,8 +22,7 @@ non-closed actor: (ActorE
     (FuncE
       read
       Shared
-      Returns
-      (params $reply/0)
+      Promises 1
       ()
       (CallE
         (FuncE
@@ -41,7 +40,7 @@ non-closed actor: (ActorE
             Returns
             (params $v/0)
             ()
-            (CallE (VarE $reply/0) (VarE $v/0))
+            (PrimE (ICReplyPrim Int) (VarE $v/0))
           )
           (FuncE
             $lambda
@@ -49,7 +48,7 @@ non-closed actor: (ActorE
             Returns
             (params $e/0)
             ()
-            (AssertE (LitE (BoolLit false)))
+            (PrimE ICRejectPrim (PrimE errorMessage (VarE $e/0)))
           )
         )
       )
@@ -57,5 +56,5 @@ non-closed actor: (ActorE
   )
   (read read)
   (dec dec)
-  actor {dec : shared () -> (); read : shared (shared Int -> ()) -> ()}
+  actor {dec : shared () -> (); read : shared () -> ()}
 )
