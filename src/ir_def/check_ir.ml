@@ -164,6 +164,8 @@ let rec check_typ env typ : unit =
           error env no_region
             "promising function of arity %i has async result type\n  %s\n  of mismatched arity %i"
             p (T.string_of_typ_expand (T.seq ts2)) a
+      | [] ->
+        check env no_region (not (env.flavor.Ir.has_async_typ)) "promising function with unit result pre-async-pass"
       | _ ->
         error env no_region "promising function with non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
@@ -380,18 +382,18 @@ let rec check_exp env (exp:Ir.exp) : unit =
         typ k <: T.Func (T.Local, T.Returns, [], t_rets, []);
         typ r <: T.Func (T.Local, T.Returns, [], [T.catch], []);
 *)
-      | T.Func (sort, T.Returns, [], arg_tys, []) ->
+      | T.Func (sort, T.Promises _, [], arg_tys, []) ->
         check_exp env exp2;
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;
         (match (T.promote  (typ k)) with
-        | T.Func (T.Shared _, T.Returns, [], t_rets, []) ->
+        | T.Func (T.Shared T.Write, T.Promises 0, [], t_rets, []) ->
           check_concrete env exp.at (T.seq t_rets)
         | T.Non -> () (* dead code, not much to check here *)
-        | _ ->
+        | t ->
           error env k.at "expected continuation type, but expression produces type\n  %s"
-            (T.string_of_typ_expand t1));
-        typ r <: T.Func (T.Shared T.Write, T.Returns, [], [T.text], []);
+            (T.string_of_typ_expand t));
+        typ r <: T.Func (T.Shared T.Write, T.Promises 0, [], [T.text], []);
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"

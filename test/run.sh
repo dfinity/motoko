@@ -163,6 +163,7 @@ do
           normalize $out/$base.run
           diff_files="$diff_files $base.run"
 
+	  if false; then
           # Interpret IR without lowering
           $ECHO -n " [run-ir]"
           $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS -r -iR -no-async -no-await $base.mo > $out/$base.run-ir 2>&1
@@ -182,6 +183,7 @@ do
           # Diff interpretations without/with lowering
           diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
           diff_files="$diff_files $base.diff-low"
+          fi
 
         fi
 

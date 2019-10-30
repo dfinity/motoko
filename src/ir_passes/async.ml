@@ -45,41 +45,17 @@ module Transform(Platform : sig val platform : platform end) = struct
 
   let con_renaming = ref ConRenaming.empty
 
-  let add_reply_parameter, add_reject_parameter =
-    match platform with
-    | V1 -> (true, false)
-    | V2 -> (false, false)
-
-  (* Helper for selective code generation based on predicated lazy expressions *)
-  let rec select bls =
-    match bls with
-    | [] -> []
-    | (true, l)::bls' ->
-      (Lazy.force l)::select bls'
-    | (false, _)::bls' ->
-      select bls'
-
-
   (* Explicit invocation of reply, reject and call System API functions;
      implemented (as far as possible) for V1;
      TBC for V2 *)
 
-  let sys_replyE ts v =
-    match platform with
-    | V1 -> assert false (* never required in V1, `reply` is by calling continuation*)
-    | V2 -> ic_replyE ts v
+  let sys_replyE ts v = ic_replyE ts v
 
-  let sys_rejectE e =
-    match platform with
-    |  V1 -> assertE (boolE false) (* used in V1 to cause traps on non-local throws *)
-    |  V2 -> ic_rejectE e
+  let sys_rejectE e = ic_rejectE e
 
   let sys_callE v1 typs vs reply reject =
-    match platform with
-    | V1 -> callE v1 typs (seqE (vs @ [reply]))
-    | V2 ->
-      assert (typs = []);
-      ic_callE v1 (seqE vs) reply reject
+    assert (typs = []);
+    ic_callE v1 (seqE vs) reply reject
 
   let sys_error_codeE () =
     match platform with
@@ -114,10 +90,6 @@ module Transform(Platform : sig val platform : platform end) = struct
   let nary typ = T.as_seq typ
 
   let flatten arity = if arity = 1 then unary else nary
-
-  let replyT as_seq typ = T.Func(T.Shared T.Write, T.Returns, [], as_seq typ, [])
-
-  let rejectT = T.Func(T.Shared T.Write, T.Returns, [], [T.text], [])
 
   let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
@@ -199,8 +171,6 @@ module Transform(Platform : sig val platform : platform end) = struct
     | T.Func (T.Shared _,T.Promises _,_,_,[T.Async _]) -> true
     | _ -> false
 
-  let extendTup ts ts' = ts @ ts'
-
   (* Given sequence type ts, bind e of type (seq ts) to a
    sequence of expressions supplied to decs d_of_es,
    preserving effects of e when the sequence type is empty.
@@ -237,12 +207,7 @@ module Transform(Platform : sig val platform : platform end) = struct
                assert (c = T.Returns);
                Func(s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
              | [Async t2], T.Promises p ->
-               Func (s, T.Returns, List.map t_bind tbs,
-                     extendTup (List.map t_typ t1)
-                       (select
-                          [ add_reply_parameter, lazy (replyT (flatten p) (t_typ t2));
-                            add_reject_parameter, lazy rejectT ]),
-                     [])
+               Func (s, T.Promises p, List.map t_bind tbs, List.map t_typ t1, [])
              | _ -> assert false
            end
         | T.Local ->
@@ -413,13 +378,7 @@ module Transform(Platform : sig val platform : platform end) = struct
             | [T.Async res_typ], Promises p ->
               let res_typ = t_typ res_typ in
               let res_typs = flatten p res_typ in
-              let reply_typ = replyT (flatten p) res_typ in
-              let reply = fresh_var "reply" reply_typ in
-              let reject = fresh_var "reject" rejectT in
-              let args' = t_args args @
-                            (select [ add_reply_parameter, lazy (arg_of_exp reply);
-                                      add_reject_parameter, lazy (arg_of_exp reject)])
-              in
+              let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in
               let exp' =
                 match exp.it with
@@ -432,22 +391,13 @@ module Transform(Platform : sig val platform : platform end) = struct
                       (t_typ (T.seq ts1),t_typ contT)
                     | t -> assert false in
                   let v = fresh_var "v" t1 in
-                  let k = if add_reply_parameter then
-                            (* wrap shared reply function in local function *)
-                            (v --> (reply -*- v))
-                          else
-                            (v --> (sys_replyE res_typs v)) in
+                  let k = v --> (sys_replyE res_typs v) in
                   let e = fresh_var "e" T.catch in
-                  let r = if add_reject_parameter then
-                            (* wrap shared reject function in local function *)
-                            ([e] -->* (reject -*- (errorMessageE e)))
-                          else
-                            ([e] -->* (sys_rejectE (errorMessageE e)))
-                  in
+                  let r = [e] -->* (sys_rejectE (errorMessageE e)) in
                   (t_exp cps) -*- tupE [k;r]
                 | _ -> assert false
               in
-              FuncE (x, T.Shared s', Returns, typbinds', args', [], exp')
+              FuncE (x, T.Shared s', Promises p, typbinds', args', [], exp')
             | _ -> assert false
           end
       end
