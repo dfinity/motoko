@@ -1,4 +1,4 @@
-# ActorScript Implementation Strategy
+# Motoko Implementation Strategy
 
 ## Subtyping
 

@@ -1,11 +1,11 @@
-ActorScript Standard Library
+Motoko Standard Library
 ==============================
 
 Prior Documentation
 -------------------------
 
 - [(Jira Story)](https://dfinity.atlassian.net/browse/AST-31):
-- Older [See #127](https://github.com/dfinity-lab/actorscript/issues/127)
+- Older [See #127](https://github.com/dfinity-lab/motoko/issues/127)
 
 --------------------------------------------------------------
 
@@ -13,7 +13,7 @@ Produce Exchange
 =================
 
 We focus on explaining the role of these collections from perspective
-of the [produce exchange example](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange).
+of the [produce exchange example](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange).
 
 See also, the [library modules by priority](#library-modules-by-priority).
 
@@ -144,7 +144,7 @@ To do
 **Open questions**
 
 - If, how and when will the compiler/language just support this stuff "for free"?
-- versus, how much should we write as ActorScript-based abstractions?
+- versus, how much should we write as Motoko-based abstractions?
 
 
 ---------------------------------------------------------------

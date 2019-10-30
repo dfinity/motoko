@@ -72,7 +72,7 @@ main = handleHUnitFailure $ do
   setCurrentDirectory project
   runSession as_ide fullCaps "." $ do
     initRes <- initializeResponse
-    doc <- openDoc "ListClient.as" "actorscript"
+    doc <- openDoc "ListClient.mo" "motoko"
     hoverTestCase
       doc
       (Position 13 11)
@@ -95,7 +95,7 @@ main = handleHUnitFailure $ do
       (Position 13 14)
       [("push",Just "<T>(T, List<T>) -> List<T>")]
     closeDoc doc
-    doc <- openDoc "ListClient.as" "actorscript"
+    doc <- openDoc "ListClient.mo" "motoko"
     --     1 | module {
     -- ==> 1 | ule {
     let edit = TextEdit (Range (Position 0 1) (Position 0 3)) ""
@@ -107,10 +107,10 @@ main = handleHUnitFailure $ do
 
     -- It finds errors in transitive modules that have been changed in
     -- the vfs but not yet stored to disc
-    doc <- openDoc "ListClient.as" "actorscript"
+    doc <- openDoc "ListClient.mo" "motoko"
     let edit = TextEdit (Range (Position 0 1) (Position 0 3)) ""
     _ <- applyEdit doc edit
-    appDoc <- openDoc "app.as" "actorscript"
+    appDoc <- openDoc "app.mo" "motoko"
     sendNotification TextDocumentDidSave (DidSaveTextDocumentParams appDoc)
     (diagnostic:_) <- waitForDiagnostics
     liftIO (diagnostic^.message `shouldBe` "unexpected token")
