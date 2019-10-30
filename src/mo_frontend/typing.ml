@@ -92,7 +92,8 @@ let compile_mode_error mode env at fmt =
 let error_in modes env at fmt =
   let mode = !Flags.compile_mode in
   if List.mem mode modes then
-    compile_mode_error mode env at fmt
+  compile_mode_error mode env at fmt
+
 
 (* Context extension *)
 

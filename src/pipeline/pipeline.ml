@@ -507,8 +507,7 @@ let compile_string mode s name : compile_result =
 let interpret_ir_prog inp_env libraries progs =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  Flags.compile_mode := Flags.WasmMode; (* REMOVE THIS HACK *)
-  let prog_ir = lower_prog Flags.WasmMode initial_stat_env inp_env libraries progs name in
+  let prog_ir = lower_prog (!Flags.compile_mode) initial_stat_env inp_env libraries progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
