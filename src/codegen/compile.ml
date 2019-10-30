@@ -4923,6 +4923,9 @@ module FuncDec = struct
         (* Restore memory *)
         OrthogonalPersistence.restore_mem env ^^
 
+        (* Set initial dummy continuation *)
+        Dfinity.initial_reply env ^^ Dfinity.set_reply_cont env ^^
+
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
@@ -4987,6 +4990,9 @@ module FuncDec = struct
 
         (* Set up memory *)
         OrthogonalPersistence.restore_mem env ^^
+
+        (* Set initial dummy continuation *)
+        Dfinity.initial_reply env ^^ Dfinity.set_reply_cont env ^^
 
         (* Deserialize argument and add params to the environment *)
         let arg_names = List.map (fun a -> a.it) args in
