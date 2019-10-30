@@ -15,6 +15,8 @@ type val_env = V.def V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
+type reply_env = V.value V.cont option
+type reject_env = V.value V.cont option
 
 type scope = val_env
 
@@ -30,8 +32,13 @@ type env =
     labs : lab_env;
     rets : ret_env;
     throws : throw_env;
+    replies : reply_env;
+    rejects : reject_env;
     async : bool
   }
+
+let reply_arg =   {it = "@reply"; at = Source.no_region; note = T.Pre}
+let reject_arg =  {it = "@reject"; at = Source.no_region; note = T.Pre}
 
 let adjoin_scope s ve = V.Env.adjoin s ve
 let adjoin_vals c ve = {c with vals = adjoin_scope c.vals ve}
@@ -45,6 +52,8 @@ let env_of_scope flags flavor ve =
     labs = V.Env.empty;
     rets = None;
     throws = None;
+    replies = None;
+    rejects = None;
     async = false;
   }
 
@@ -356,7 +365,31 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       interpret_exps env exps [] (fun vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.num_conv_prim t1 t2 arg k
-      )
+        )
+    | ICReplyPrim ts, [exp1] ->
+      assert (not env.flavor.has_async_typ);
+      let _, reply = V.as_func (Lib.Promise.value (find reply_arg.it env.vals)) in
+      interpret_exp env exp1 (fun v -> reply v k)
+    | ICRejectPrim, [exp1] ->
+      assert (not env.flavor.has_async_typ);
+      let _, reject = V.as_func (Lib.Promise.value (find reject_arg.it env.vals)) in
+      interpret_exp env exp1 (fun v -> reject v k)
+    | ICCallPrim, [exp1; exp2; expk ; expr] ->
+      assert (not env.flavor.has_async_typ);
+      interpret_exp env exp1 (fun v1 ->
+      interpret_exp env exp2 (fun v2 ->
+      interpret_exp env expk (fun kv ->
+      interpret_exp env expr (fun rv ->
+          let call_conv, f = V.as_func v1 in
+          (*          check_call_conv exp1 call_conv; *)
+          let v2' =
+            if call_conv.n_args = 3 then V.Tup [kv;rv;v2]
+            else match v2 with 
+                 | V.Tup vs -> V.Tup (kv::rv::vs)
+                 | _ -> assert false in
+          (*          check_call_conv_arg env exp2 v2' call_conv; *)
+          last_region := exp.at; (* in case the following throws *)
+          f v2' k))))
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -465,6 +498,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
+  | FuncE (x, (T.Shared _ as sort), (T.Returns as control), _typbinds, args, ret_typs, e) when not env.flavor.has_async_typ ->
+    let cc = { sort; control; n_args = 2 + List.length args; n_res = List.length ret_typs } in
+
+    let f = interpret_func env exp.at x (reply_arg::reject_arg::args)
+              (fun env' -> interpret_exp env' e) in
+
+    let v = V.Func (cc, f) in
+    let v = make_message env x cc v in
+    k v
+
   | FuncE (x, sort, control, _typbinds, args, ret_typs, e) ->
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
 

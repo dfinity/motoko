@@ -1,4 +1,4 @@
-actor {
+actor X {
 
 
   public func A() : async () {

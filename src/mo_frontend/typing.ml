@@ -89,10 +89,12 @@ let compile_mode_error mode env at fmt =
       in
       Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
 
-let error_in modes env at fmt =
+let error_in modes env at fmt = 
   let mode = !Flags.compile_mode in
-  if List.mem mode modes then
-    compile_mode_error mode env at fmt
+  if false  (* DON'T CHECK ME IN *)
+     && List.mem mode modes then
+  compile_mode_error mode env at fmt
+
 
 (* Context extension *)
 
