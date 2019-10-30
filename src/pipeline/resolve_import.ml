@@ -23,7 +23,7 @@ module M = Map.Make(String)
    which for now is just a filesystem path:
 
    e.g.,
-   packages("std") = "/Users/home/username/.dfinity-sdk/src/as-stdlib/0.1.0/"
+   packages("std") = "/Users/home/username/.dfinity-sdk/src/mo-stdlib/0.1.0/"
    packages("foo") = "/Users/home/username/fooPackage/1.2.3/src"
 *)
 type package_map = string M.t
@@ -38,16 +38,16 @@ type env = {
 open Syntax
 open Source
 
-(* match `f` against the URL pattern 'as://package-name/path',
+(* match `f` against the URL pattern 'mo://package-name/path',
    optionally returning the package-name and path components as a pair of strings.
 
    e.g.,
-   match_package_name "as:std/list"    = Some("std", "list")
-   match_package_name "as:std/foo/bar" = Some("std", "foo/bar")
-   match_package_name "as:foo/bar"     = Some("foo", "bar")
+   match_package_name "mo:std/list"    = Some("std", "list")
+   match_package_name "mo:std/foo/bar" = Some("std", "foo/bar")
+   match_package_name "mo:foo/bar"     = Some("foo", "bar")
 
-   match_package_name "as:"            = None
-   match_package_name "as:std"         = None
+   match_package_name "mo:"            = None
+   match_package_name "mo:std"         = None
    match_package_name "std/foo"        = None
    match_package_name "std/foo/bar"    = None
 
@@ -72,10 +72,10 @@ let match_package_name (f: string) : (string * string) option =
       )
     in
     match prefix with
-    | "as:" -> loop suffix ""
+    | "mo:" -> loop suffix ""
     | _     -> None
 
-(* using env, resolve import strings of the form "as:package-name/mod1/mod2/item"
+(* using env, resolve import strings of the form "mo:package-name/mod1/mod2/item"
    into the triple ("package-name", "package-url", "mod1/mod2/item") when the package name is defined.
    Does not validate the package url or path.
  *)
