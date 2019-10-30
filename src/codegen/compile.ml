@@ -3040,8 +3040,7 @@ module Dfinity = struct
 
   let register_globals env =
     (* current api_nonce *)
-    E.add_global64 env "api_nonce" Mutable 0L;
-    E.add_global32 env "reply_cont" Mutable 0l
+    E.add_global64 env "api_nonce" Mutable 0L
 
   let system_imports env =
     match E.mode env with
@@ -3137,20 +3136,29 @@ module Dfinity = struct
       edesc = nr (TableExport (nr 0l))
     })
 
-  let initial_reply env =
-    assert (E.mode env = Flags.AncientMode);
-    let f = Func.of_body env ["databuf", I32Type; "elembuf", I32Type] []
-      (fun env -> trap_with env "initial_reply reached") in
-    let fi = E.add_fun env "empty_reply" f in
-    E.add_dfinity_type env (fi, [ Wasm_exts.CustomModule.DataBuf; Wasm_exts.CustomModule.ElemBuf ]);
-    compile_unboxed_const fi ^^
-    system_call env "func" "externalize"
+  let register_reply env =
+    if E.mode env = Flags.AncientMode
+    then begin
+      (* in-canister emulation of the call context, in particular the “current reply” *)
+      Func.define_built_in env "empty_reply" ["databuf", I32Type; "elembuf", I32Type] []
+        (fun env -> trap_with env "dummy_reply called");
+      let fi =  E.built_in env "empty_reply" in
+      E.add_dfinity_type env (fi, [ Wasm_exts.CustomModule.DataBuf; Wasm_exts.CustomModule.ElemBuf ]);
+      E.add_global32 env "reply_cont" Mutable 0l
+    end
+
+  let set_dummy_reply env =
+    if E.mode env = Flags.AncientMode then
+      compile_unboxed_const (E.built_in env "empty_reply") ^^
+      system_call env "func" "externalize" ^^
+      set_reply_cont env
+    else G.nop
 
   let export_start_stub env =
     assert (E.mode env = Flags.AncientMode);
     let empty_f = Func.of_body env [] [] (fun env1 ->
       (* Set initial reply continuation *)
-      initial_reply env ^^ set_reply_cont env ^^
+      set_dummy_reply env ^^
       (* Set up memory *)
       G.i (Call (nr (E.built_in env1 "restore_mem"))) ^^
       (* Collect garbage *)
@@ -4924,7 +4932,7 @@ module FuncDec = struct
         OrthogonalPersistence.restore_mem env ^^
 
         (* Set initial dummy continuation *)
-        Dfinity.initial_reply env ^^ Dfinity.set_reply_cont env ^^
+        Dfinity.set_dummy_reply env ^^
 
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
@@ -4992,7 +5000,7 @@ module FuncDec = struct
         OrthogonalPersistence.restore_mem env ^^
 
         (* Set initial dummy continuation *)
-        Dfinity.initial_reply env ^^ Dfinity.set_reply_cont env ^^
+        Dfinity.set_dummy_reply env ^^
 
         (* Deserialize argument and add params to the environment *)
         let arg_names = List.map (fun a -> a.it) args in
@@ -7004,6 +7012,8 @@ and actor_lit outer_env this ds fs at =
     RTS.system_imports mod_env;
     RTS.system_exports mod_env;
 
+    Dfinity.register_reply mod_env;
+
 
     let start_fun = Func.of_body mod_env [] [] (fun env -> G.with_region at @@
       let ae0 = VarEnv.empty_ae in
@@ -7139,6 +7149,8 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
   Dfinity.system_imports env;
   RTS.system_imports env;
   RTS.system_exports env;
+
+  Dfinity.register_reply env;
 
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in
