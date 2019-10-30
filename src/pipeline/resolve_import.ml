@@ -26,6 +26,7 @@ module M = Map.Make(String)
    packages("std") = "/Users/home/username/.dfinity-sdk/src/mo-stdlib/0.1.0/"
    packages("foo") = "/Users/home/username/fooPackage/1.2.3/src"
 *)
+
 type package_map = string M.t
 
 type env = {
