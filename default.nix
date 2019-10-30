@@ -33,7 +33,7 @@ let dev = import (builtins.fetchGit {
 let dfinity-repo = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   # ref = "master";
-  rev = "50626f51b377c6cdf955b2b41dfae9e550025361";
+  rev = "3c82c6400b0eb8c5785669996f5b8007623cd9fc";
 }) { system = nixpkgs.system; }; in
 
 let sdk = import (builtins.fetchGit {
@@ -299,6 +299,7 @@ rec {
         export ESM=${esm}
         export JS_USER_LIBRARY=${js-user-library}
         moc --version
+        drun --version # run this once to work around self-unpacking-race-condition
         make parallel
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
           " --quickcheck-replay=${toString replay}"}
@@ -356,7 +357,7 @@ rec {
         nixpkgs.bash
         nixpkgs.perl
         filecheck
-	real-drun
+        real-drun
       ] ++
       llvmBuildInputs;
 

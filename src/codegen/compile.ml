@@ -3049,7 +3049,7 @@ module Dfinity = struct
       E.add_func_import env "msg" "arg_data_size" [I64Type] [I32Type];
       E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject" [I64Type; I32Type] [];
+      E.add_func_import env "msg" "reject" [I64Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "error_code" [I64Type] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] []
     | Flags.AncientMode ->
@@ -3207,17 +3207,15 @@ module Dfinity = struct
     compile_unboxed_const fi ^^
     system_call env "func" "externalize"
 
-  let error_code_CANISTER_REJECT = 4l (* Api's CANISTER_REJECT *)
-
   let reject env arg_instrs =
     match E.mode env with
     | Flags.ICMode ->
       get_api_nonce env ^^
+      let (set_text, get_text) = new_local env "text" in
       arg_instrs ^^
-      G.i Drop ^^ (* TODO:
-        https://github.com/dfinity-lab/motoko/issues/679
-        don't drop but extract payload, once reject complies with spec *)
-      compile_unboxed_const error_code_CANISTER_REJECT ^^
+      set_text ^^
+      get_text ^^ Blob.payload_ptr_unskewed ^^
+      get_text ^^ Heap.load_field (Blob.len_field) ^^
       system_call env "msg" "reject"
     | Flags.AncientMode ->
       trap_with env "Explicit reject on ancient system"
