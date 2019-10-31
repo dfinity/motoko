@@ -278,6 +278,7 @@ rec {
         nixpkgs.bash
         nixpkgs.perl
         nixpkgs.getconf
+        nixpkgs.moreutils
         nixpkgs.nodejs-10_x
         filecheck
         js-user-library
