@@ -197,20 +197,8 @@ module Transform(Platform : sig val platform : platform end) = struct
     | Array t -> Array (t_typ t)
     | Tup ts -> Tup (List.map t_typ ts)
     | Func (s, c, tbs, t1, t2) ->
-      begin
-        match s with
-        | T.Shared _ ->
-           begin
-             match c with
-             | T.Returns ->
-               assert (t2 = []);
-               Func(s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
-             | T.Promises ->
-               Func (s, T.Promises, List.map t_bind tbs, List.map t_typ t1, [])
-           end
-        | T.Local ->
-          Func (s, c, List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
-      end
+      let c' = if c = T.Promises then T.Replies else c in
+      Func (s, c', List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
     | Opt t -> Opt (t_typ t)
     | Variant fs -> Variant (List.map t_field fs)
     | Async t -> t_async nary (t_typ t)
@@ -294,7 +282,7 @@ module Transform(Platform : sig val platform : platform end) = struct
                []) ->
           (List.map t_typ ts1, t_typ contT)
         | t -> assert false in
-      let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Promises, [], [], [])) in
+      let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Replies, [], [], [])) in
       let u = fresh_var "u" T.unit in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
@@ -393,7 +381,8 @@ module Transform(Platform : sig val platform : platform end) = struct
               let e = fresh_var "e" T.catch in
               let r = [e] -->* (sys_rejectE (errorMessageE e)) in
               let exp' = (t_exp cps) -*- tupE [k;r] in
-              FuncE (x, T.Shared s', Returns, typbinds', args', [], exp')
+              FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
+            | Replies -> assert false
           end
       end
     | ActorE (id, ds, fs, typ) ->

@@ -162,7 +162,7 @@ module E = struct
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
     n_param : int32; (* Number of parameters (to calculate indices of locals) *)
-    n_res : int; (* Number of return values (for type of Return) *)
+    return_arity : int; (* Number of return values (for type of Return) *)
 
     (* Immutable *)
 
@@ -194,16 +194,16 @@ module E = struct
     static_memory_frozen = ref false;
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
-    n_res = 0;
+    return_arity = 0;
     locals = ref [];
     local_names = ref [];
   }
 
 
-  let mk_fun_env env n_param n_res =
+  let mk_fun_env env n_param return_arity =
     { env with
       n_param;
-      n_res;
+      return_arity;
       locals = ref [];
       local_names = ref [];
     }
@@ -310,7 +310,7 @@ module E = struct
     | Some (Defined fi) ->  ()
     | Some (Pending mk_fun) -> ()
 
-  let get_n_res (env : t) = env.n_res
+  let get_return_arity (env : t) = env.return_arity
 
   let get_func_imports (env : t) = !(env.func_imports)
   let get_other_imports (env : t) = !(env.other_imports)
@@ -4878,8 +4878,8 @@ module FuncDec = struct
    the function will find in the closure. *)
   let compile_local_function outer_env outer_ae restore_env args mk_body ret_tys at =
     let arg_names = List.map (fun a -> a.it, I32Type) args in
-    let n_res = List.length ret_tys in
-    let retty = Lib.List.make n_res I32Type in
+    let return_arity = List.length ret_tys in
+    let retty = Lib.List.make return_arity I32Type in
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env (["clos", I32Type] @ arg_names) retty (fun env -> G.with_region at (
       let get_closure = G.i (LocalGet (nr 0l)) in
@@ -4952,7 +4952,8 @@ module FuncDec = struct
         mk_body env ae2 ^^
         message_cleanup env sort
       ))
-    | Type.Promises _ ->
+    | Type.Promises -> assert false
+    | Type.Replies ->
       Func.of_body outer_env ["clos", I32Type; "reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
         let get_reply  = G.i (LocalGet (nr 1l)) in
         let get_databuf = G.i (LocalGet (nr 2l)) in
@@ -5011,8 +5012,8 @@ module FuncDec = struct
         mk_body env ae1 ^^
         message_cleanup env sort
       ))
-    | Flags.AncientMode, Type.Promises _ -> (* with callback *)
-      assert (List.length ret_tys = 0);
+    | Flags.AncientMode, Type.Promises -> assert false
+    | Flags.AncientMode, Type.Replies -> (* with callback *)
       let ae0 = VarEnv.mk_fun_ae outer_ae in
       Func.of_body outer_env ["reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
         let get_reply = G.i (LocalGet (nr 0l)) in
@@ -6478,8 +6479,8 @@ and compile_exp (env : E.t) ae exp =
    G.i Unreachable
   | RetE e ->
     SR.Unreachable,
-    compile_exp_as env ae (StackRep.of_arity (E.get_n_res env)) e ^^
-    FakeMultiVal.store env (Lib.List.make (E.get_n_res env) I32Type) ^^
+    compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
+    FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
     G.i Return
   | OptE e ->
     SR.Vanilla,
@@ -6499,9 +6500,12 @@ and compile_exp (env : E.t) ae exp =
   | CallE (e1, _, e2) ->
     let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
     let n_args = List.length arg_tys in
-    let n_res = List.length ret_tys in
+    let return_arity = match control with
+      | Type.Returns -> List.length ret_tys
+      | Type.Replies -> 0
+      | Type.Promises -> assert false in
 
-    StackRep.of_arity n_res,
+    StackRep.of_arity return_arity,
     let fun_sr, code1 = compile_exp env ae e1 in
     begin match fun_sr, sort with
      | SR.StaticThing (SR.StaticFun fi), _ ->
@@ -6509,7 +6513,7 @@ and compile_exp (env : E.t) ae exp =
         compile_unboxed_zero ^^ (* A dummy closure *)
         compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
         G.i (Call (nr fi)) ^^
-        FakeMultiVal.load env (Lib.List.make n_res I32Type)
+        FakeMultiVal.load env (Lib.List.make return_arity I32Type)
      | _, Type.Local ->
         let (set_clos, get_clos) = new_local env "clos" in
         code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
@@ -6517,7 +6521,7 @@ and compile_exp (env : E.t) ae exp =
         get_clos ^^
         compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
         get_clos ^^
-        Closure.call_closure env n_args n_res
+        Closure.call_closure env n_args return_arity
      | _, Type.Shared _ ->
         (* Non-one-shot functions have been rewritten in async.ml *)
         assert (control = Type.Returns);
@@ -6559,11 +6563,15 @@ and compile_exp (env : E.t) ae exp =
     SR.unit,
     compile_exp_vanilla env ae e ^^
     Var.set_val env ae name
-  | FuncE (x, sort, control, typ_binds, args, ret_tys, e) ->
+  | FuncE (x, sort, control, typ_binds, args, res_tys, e) ->
     let captured = Freevars.captured exp in
-    let n_res = List.length ret_tys in
-    let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity n_res) e in
-    FuncDec.lit env ae typ_binds x sort control captured args mk_body ret_tys exp.at
+    let return_tys = match control with
+      | Type.Returns -> res_tys
+      | Type.Replies -> []
+      | Type.Promises -> assert false in
+    let return_arity = List.length return_tys in
+    let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
+    FuncDec.lit env ae typ_binds x sort control captured args mk_body return_tys exp.at
   | ActorE (i, ds, fs, _) ->
     SR.UnboxedReference,
     let captured = Freevars.exp exp in
@@ -6889,14 +6897,18 @@ and compile_prog env ae (ds, e) =
     (ae', code1 ^^ code2)
 
 and compile_static_exp env pre_ae how exp = match exp.it with
-  | FuncE (name, sort, control, typ_binds, args, ret_tys, e) ->
+  | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
+      let return_tys = match control with
+        | Type.Returns -> res_tys
+        | Type.Replies -> []
+        | Type.Promises -> assert false in
       let mk_body env ae =
         assert begin (* Is this really closed? *)
           List.for_all (fun v -> VarEnv.NameEnv.mem v ae.VarEnv.vars)
             (Freevars.M.keys (Freevars.exp e))
         end;
-        compile_exp_as env ae (StackRep.of_arity (List.length ret_tys)) e in
-      FuncDec.closed env sort control name args mk_body ret_tys exp.at
+        compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
+      FuncDec.closed env sort control name args mk_body return_tys exp.at
   | _ -> assert false
 
 and compile_prelude env ae =
@@ -6971,7 +6983,7 @@ and export_actor_field env  ae (f : Ir.field) =
   assert (G.is_nop code);
 
   let is_await = match Type.normalize f.note with
-      | Type.Func(_,Type.Promises _,_,_,_) -> true
+      | Type.Func(_,Type.Replies,_,_,_) -> true
       | _ -> false in
 
   FuncDec.declare_dfinity_type env false is_await fi;

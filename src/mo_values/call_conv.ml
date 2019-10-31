@@ -32,6 +32,6 @@ let string_of_call_conv {sort;control;n_args;n_res} =
   Printf.sprintf "(%s%i %s %i)"
     (string_of_func_sort sort)
     n_args
-    (match control with Returns -> "->" | Promises -> "@>")
+    (match control with Returns -> "->" | Promises -> "@>" | Replies -> "@>")
     n_res
 

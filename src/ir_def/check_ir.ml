@@ -158,16 +158,20 @@ let rec check_typ env typ : unit =
       List.iter (fun t -> check_shared env no_region t) ts1;
       match control with
       | T.Returns ->
-        (* async translations changes result of one-shot function.
-           this can change once we preserve the return type of Promising functions
-           past async translation
-        *)
-        if env.flavor.Ir.has_async_typ then
-          check env' no_region (sort = T.Shared T.Write)
-            "one-shot query function pointless"
+        check env' no_region (sort = T.Shared T.Write)
+          "one-shot query function pointless"
       | T.Promises ->
+        check env no_region env.flavor.Ir.has_async_typ
+          "promising function in post-async flavor";
         check env' no_region (sort <> T.Local)
           "promising function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
+        check env' no_region (List.for_all T.shared ts)
+          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
+      | T.Replies ->
+        check env no_region (not env.flavor.Ir.has_async_typ)
+          "replying function in pre-async flavor";
+        check env' no_region (sort <> T.Local)
+          "replying function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
         check env' no_region (List.for_all T.shared ts)
           "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
     end else
@@ -375,18 +379,18 @@ let rec check_exp env (exp:Ir.exp) : unit =
         typ k <: T.Func (T.Local, T.Returns, [], t_rets, []);
         typ r <: T.Func (T.Local, T.Returns, [], [T.catch], []);
 *)
-      | T.Func (sort, T.Promises, [], arg_tys, []) ->
+      | T.Func (sort, T.Replies, [], arg_tys, _ret_tys) ->
         check_exp env exp2;
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;
-        (match (T.promote  (typ k)) with
-        | T.Func (T.Shared T.Write, T.Promises, [], t_rets, []) ->
+        (match T.promote (typ k) with
+        | T.Func (T.Shared T.Write, T.Replies, [], t_rets, []) ->
           check_concrete env exp.at (T.seq t_rets)
         | T.Non -> () (* dead code, not much to check here *)
         | t ->
           error env k.at "expected continuation type, but expression produces type\n  %s"
             (T.string_of_typ_expand t));
-        typ r <: T.Func (T.Shared T.Write, T.Promises, [], [T.text], []);
+        typ r <: T.Func (T.Shared T.Write, T.Replies, [], [T.text], []);
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"

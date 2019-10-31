@@ -217,6 +217,7 @@ let make_message env x cc v : V.value =
   match cc.CC.control with
   | T.Returns -> make_unit_message env x v
   | T.Promises-> make_async_message env x v
+  | T.Replies -> make_async_message env x v (* TBR *)
 
 
 let extended_prim env s typ at =

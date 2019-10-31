@@ -465,9 +465,9 @@ let (-->*) xs exp =
   nary_funcE "$lambda" fun_ty xs exp
 
 
-(* n-ary shared lambda, used for callbacks *)
+(* n-ary shared lambda, used for callbacks in async *)
 let (-@>*) xs exp  =
-  let fun_ty = T.Func (T.Shared T.Write, T.Promises, [], List.map typ xs, T.as_seq (typ exp)) in
+  let fun_ty = T.Func (T.Shared T.Write, T.Replies, [], List.map typ xs, T.as_seq (typ exp)) in
   nary_funcE "$lambda" fun_ty xs exp
 
 

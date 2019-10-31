@@ -22,8 +22,8 @@ non-closed actor: (ActorE
     (FuncE
       read
       Shared
-      Promises 1
-      ()
+      Replies
+      Int
       (CallE
         (FuncE
           $lambda
@@ -56,5 +56,5 @@ non-closed actor: (ActorE
   )
   (read read)
   (dec dec)
-  actor {dec : shared () -> (); read : shared () -> ()}
+  actor {dec : shared () -> (); read : shared () -> replies Int}
 )
