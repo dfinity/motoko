@@ -418,32 +418,30 @@ module Transform(Platform : sig val platform : platform end) = struct
                                       add_reject_parameter, lazy (arg_of_exp reject)])
               in
               let typbinds' = t_typ_binds typbinds in
-              let exp' =
-                match exp.it with
-                | PrimE (OtherPrim "@async", [cps]) ->
-                  let t1, contT = match typ cps with
-                    | Func(_,_,
-                           [],
-                           [Func(_, _, [], ts1, []) as contT; _],
-                           []) ->
-                      (t_typ (T.seq ts1),t_typ contT)
-                    | t -> assert false in
-                  let v = fresh_var "v" t1 in
-                  let k = if add_reply_parameter then
-                            (* wrap shared reply function in local function *)
-                            (v --> (reply -*- v))
-                          else
-                            (v --> (sys_replyE ret_tys v)) in
-                  let e = fresh_var "e" T.catch in
-                  let r = if add_reject_parameter then
-                            (* wrap shared reject function in local function *)
-                            ([e] -->* (reject -*- (errorMessageE e)))
-                          else
-                            ([e] -->* (sys_rejectE (errorMessageE e)))
-                  in
-                  (t_exp cps) -*- tupE [k;r]
-                | _ -> assert false
+              let cps = match exp.it with
+                | PrimE (OtherPrim "@async", [cps]) -> cps
+                | _ -> assert false in
+              let t1, contT = match typ cps with
+                | Func(_,_,
+                       [],
+                       [Func(_, _, [], ts1, []) as contT; _],
+                       []) ->
+                  (t_typ (T.seq ts1),t_typ contT)
+                | t -> assert false in
+              let v = fresh_var "v" t1 in
+              let k = if add_reply_parameter then
+                        (* wrap shared reply function in local function *)
+                        (v --> (reply -*- v))
+                      else
+                        (v --> (sys_replyE ret_tys v)) in
+              let e = fresh_var "e" T.catch in
+              let r = if add_reject_parameter then
+                        (* wrap shared reject function in local function *)
+                        ([e] -->* (reject -*- (errorMessageE e)))
+                      else
+                        ([e] -->* (sys_rejectE (errorMessageE e)))
               in
+              let exp' = (t_exp cps) -*- tupE [k;r] in
               FuncE (x, T.Shared s', Returns, typbinds', args', [], exp')
           end
       end
