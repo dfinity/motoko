@@ -42,7 +42,7 @@ async {
   var j = 0;
   label l
   loop {
-   if (j > 3) {
+   if (j > 2) {
      break l;
      assert(false);
    };
