@@ -3,7 +3,7 @@ open Source
 open Ir
 open Ir_effect
 
-module T = As_types.Type
+module T = Mo_types.Type
 
 type var = exp
 
@@ -72,11 +72,6 @@ let seqP ps =
   match ps with
   | [p] -> p
   | ps -> tupP ps
-
-let as_seqP p =
-  match p.it with
-  | TupP ps -> ps
-  | _ -> [p]
 
 (* Primitives *)
 
@@ -445,11 +440,6 @@ let seqE es =
   match es with
   | [e] -> e
   | es -> tupE es
-
-let as_seqE e =
-  match e.it with
-  | TupE es -> es
-  | _ -> [e]
 
 (* Lambdas & continuations *)
 

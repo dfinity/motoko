@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 open Ir_def
 
 open Ir
@@ -200,8 +200,8 @@ let make_async_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared s; control = T.Promises p; n_res = 1; _} ->
-    Value.async_func s call_conv.n_args p (fun v k ->
+  | {sort = T.Shared s; control = T.Promises; _} ->
+    Value.async_func s call_conv.n_args call_conv.n_res (fun v k ->
       let async = make_async () in
       actor_msg env id f v (fun v_async ->
         get_async (V.as_async v_async) (set_async async) (reject_async async)
@@ -216,7 +216,7 @@ let make_async_message env id v =
 let make_message env x cc v : V.value =
   match cc.CC.control with
   | T.Returns -> make_unit_message env x v
-  | T.Promises _ -> make_async_message env x v
+  | T.Promises-> make_async_message env x v
 
 
 let extended_prim env s typ at =
