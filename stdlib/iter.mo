@@ -1,5 +1,5 @@
 module {
-  public func for<A>(
+  public func forIn<A>(
     f : (A, Nat) -> (),
     xs : { next : () -> ?A; }
   ) {

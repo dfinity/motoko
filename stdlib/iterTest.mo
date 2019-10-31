@@ -4,14 +4,14 @@ import Prelude "prelude.mo";
 Prelude.printLn("Iter");
 
 {
-  Prelude.printLn("  for");
+  Prelude.printLn("  forIn");
 
   let xs = [ "a", "b", "c", "d", "e", "f" ];
 
   var y = "";
   var z = 0;
 
-  Iter.for<Text>(func (x : Text, i : Nat) {
+  Iter.forIn<Text>(func (x : Text, i : Nat) {
     y := y # x;
     z += i;
   }, xs.vals());
