@@ -32,6 +32,12 @@ module {
     ys;
   };
 
+  public func enumerate<A>(xs : [A]) : [(A, Nat)] {
+    Array_tabulate<(A, Nat)>(xs.len(), func (i : Nat) : (A, Nat) {
+      (xs[i], i);
+    });
+  };
+
   public func foldl<A, B>(f : (B, A) -> B, initial : B, xs : [A]) : B {
     var acc = initial;
     let len = xs.len();
@@ -78,6 +84,12 @@ module {
   public func map<A, B>(f : A -> B, xs : [A]) : [B] {
     Array_tabulate<B>(xs.len(), func (i : Nat) : B {
       f(xs[i]);
+    });
+  };
+
+  public func mapWithIndex<A, B>(f : (A, Nat) -> B, xs : [A]) : [B] {
+    Array_tabulate<B>(xs.len(), func (i : Nat) : B {
+      f(xs[i], i);
     });
   };
 
