@@ -19,6 +19,8 @@ TESTS=\
 	ArrayTest \
 	AssocList \
 	DocTable \
+  Function \
+  FunctionTest \
 	Hash \
 	Int \
 	IntTest \
@@ -68,6 +70,12 @@ $(OUTDIR)/Array.out: array.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/ArrayTest.out: arrayTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Function.out: function.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/FunctionTest.out: functionTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Int.out: int.mo | $(OUTDIR)
