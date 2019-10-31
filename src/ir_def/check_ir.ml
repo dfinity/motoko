@@ -385,13 +385,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
         typ exp2 <: t_arg;
         check_concrete env exp.at t_arg;
         (match T.promote (typ k) with
-        | T.Func (T.Shared T.Write, T.Replies, [], t_rets, []) ->
+        | T.Func (T.Local, T.Returns, [], t_rets, []) ->
           check_concrete env exp.at (T.seq t_rets)
         | T.Non -> () (* dead code, not much to check here *)
         | t ->
           error env k.at "expected continuation type, but expression produces type\n  %s"
             (T.string_of_typ_expand t));
-        typ r <: T.Func (T.Shared T.Write, T.Replies, [], [T.text], []);
+        typ r <: T.Func (T.Local, T.Returns, [], [T.text], []);
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"

@@ -133,7 +133,7 @@ module Transform(Platform : sig val platform : platform end) = struct
         let seq_of_v' = tupE (List.mapi (fun i _ -> projE v' i) ts) in
         [k';r'] -->*  (unary_async -*- (tupE[([v'] -->* (k' -*- seq_of_v'));r']))
     in
-    (* construct the n-ary reply message that sends a sequence of values to fulfill the async *)
+    (* construct the n-ary reply callback that sends a sequence of values to fulfill the async *)
     let nary_reply =
       let vs,seq_of_vs =
         match ts1 with
@@ -144,11 +144,12 @@ module Transform(Platform : sig val platform : platform end) = struct
           let vs = fresh_vars "rep" ts in
           vs, tupE vs
       in
-      vs -@>* (unary_fulfill -*- seq_of_vs)
+      vs -->* (unary_fulfill -*- seq_of_vs)
     in
+    (* construct the n-ary reject callback *)
     let nary_reject =
       let v = fresh_var "msg" T.text in
-      [v] -@>* (fail -*- (make_errorE (sys_error_codeE()) v))
+      [v] -->* (fail -*- (make_errorE (sys_error_codeE()) v))
     in
     let async,reply,reject =
       fresh_var "async" (typ nary_async),

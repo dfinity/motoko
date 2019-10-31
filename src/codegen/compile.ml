@@ -232,6 +232,7 @@ module E = struct
 
   let add_dfinity_type (env : t) e =
     assert (mode env = Flags.AncientMode);
+    (* ignore duplicates? or use a map? but who cares, is for ancient system only *)
     ignore (reg env.dfinity_types e)
 
   let add_global (env : t) name g =
@@ -4840,7 +4841,8 @@ module FuncDec = struct
   let call_ty env =
     E.func_type env (FuncType ([I32Type; I32Type; I32Type], []))
 
-  (* Expects reply callback, databuf and elembuf on the stack, in serialized form. *)
+
+  (* Expects reply callback funcref, databuf and elembuf on the stack, in serialized form. *)
   let call_await_funcref env get_ref =
     compile_unboxed_const tmp_table_slot ^^ (* slot number *)
     get_ref ^^ (* the unboxed funcref *)
@@ -5154,6 +5156,47 @@ module FuncDec = struct
         get_clos ^^
         ClosureTable.remember_closure env ^^
         Dfinity.system_call env "func" "bind_i32"
+
+  (* Wraps a local closure in a shared function that does serialization and
+     takes care of the reply global *)
+  (* Need this function once per type, so we can share based on ts *)
+  let callback_to_funcref env ts get_closure =
+    assert (E.mode env = Flags.AncientMode);
+    let name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
+    Func.define_built_in env name ["clos", I32Type; "reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env ->
+        let get_reply  = G.i (LocalGet (nr 1l)) in
+        let get_databuf = G.i (LocalGet (nr 2l)) in
+        let get_elembuf = G.i (LocalGet (nr 3l)) in
+
+        (* Restore memory *)
+        OrthogonalPersistence.restore_mem env ^^
+
+        (* Story reply contiuation *)
+        get_reply ^^ Dfinity.set_reply_cont env ^^
+
+        (* Look up closure *)
+        let (set_closure, get_closure) = new_local env "closure" in
+        G.i (LocalGet (nr 0l)) ^^
+        ClosureTable.recall_closure env ^^ (* At this point we can remove the closure *)
+        set_closure ^^
+        get_closure ^^
+
+        (* Deserialize arguments  *)
+        get_databuf ^^ get_elembuf ^^
+        Serialization.deserialize env ts ^^
+
+        get_closure ^^
+        Closure.call_closure env (List.length ts) 0 ^^
+
+        message_cleanup env (Type.Shared Type.Write)
+      );
+    declare_dfinity_type env true true (E.built_in env name);
+    compile_unboxed_const (E.built_in env name) ^^
+    Dfinity.system_call env "func" "externalize" ^^
+    get_closure ^^ ClosureTable.remember_closure env ^^
+    Dfinity.system_call env "func" "bind_i32" ^^
+    Dfinity.get_reply_cont env ^^
+    Dfinity.system_call env "func" "bind_ref"
 
   let lit env ae how name sort control free_vars args mk_body ret_tys at =
     let captured = List.filter (VarEnv.needs_capture ae) free_vars in
@@ -6399,7 +6442,7 @@ and compile_exp (env : E.t) ae exp =
     | ICCallPrim, [f;e;k;r] ->
       SR.unit, begin match E.mode env with
       | Flags.ICMode ->
-        todo_trap env "compile_exp" (Arrange_ir.exp exp)
+        assert false (* not implemented yet *)
       | Flags.AncientMode ->
         let (set_funcref, get_funcref) = new_local env "funcref" in
         let (set_arg, get_arg) = new_local env "arg" in
@@ -6409,15 +6452,17 @@ and compile_exp (env : E.t) ae exp =
         set_funcref ^^
 
         compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
-        compile_exp_as env ae SR.UnboxedReference k ^^ set_k ^^
+        compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
         (* We drop the reject continuation on the ancient platform, but still
            need to evaluate it *)
         let (r_sr, code_r) = compile_exp env ae r in
         code_r ^^ StackRep.drop env r_sr ^^
 
-        get_k ^^ Dfinity.get_reply_cont env ^^ Dfinity.system_call env "func" "bind_ref" ^^
-        let _, _, _, ts, _ = Type.as_func f.note.note_typ in
-        get_arg ^^ Serialization.serialize env ts ^^
+        (* TBR: Can we do better than using the notes? *)
+        let _, _, _, ts1, _ = Type.as_func f.note.note_typ in
+        let _, _, _, ts2, _ = Type.as_func k.note.note_typ in
+        FuncDec.callback_to_funcref env ts2 get_k ^^
+        get_arg ^^ Serialization.serialize env ts1 ^^
         FuncDec.call_await_funcref env get_funcref
       | _ -> assert false
       end

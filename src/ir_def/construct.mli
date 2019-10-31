@@ -104,5 +104,4 @@ val seqE : exp list -> exp
 
 val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
-val (-@>*) : var list -> exp -> exp (* n-ary shared *)
 val (-*-) : exp -> exp -> exp       (* application *)
