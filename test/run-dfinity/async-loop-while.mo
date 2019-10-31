@@ -8,8 +8,8 @@ async {
    assert(j == i);
    i += 1;
    j += 1;
-  } while (i < 11);
-  assert(i == 11);
+  } while (i < 3);
+  assert(i == 3);
 };
 
 
@@ -21,8 +21,8 @@ async {
     assert(j == i);
     i += 1;
     j += 1;
-  } while (await async (i < 11));
-  assert(i == 11);
+  } while (await async (i < 3));
+  assert(i == 3);
 };
 
 {
@@ -33,8 +33,8 @@ async {
    assert(j == i);
    await (async (i += 1));
    j += 1;
-  } while (i < 11);
-  assert(i == 11);
+  } while (i < 3);
+  assert(i == 3);
 };
 
 {
@@ -42,7 +42,7 @@ async {
   var j = 0;
   label l
   loop {
-   if (j > 10) {
+   if (j > 3) {
      break l;
      assert(false);
    };
@@ -53,7 +53,7 @@ async {
    continue l;
    assert(false);
   } while (true);
-  assert(i == 11);
+  assert(i == 3);
 };
 
 };

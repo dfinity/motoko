@@ -34,7 +34,7 @@ print "e";
 let e = async {
     var i = 5;
     print "e-while";
-    while (i < 10) {
+    while (i < 8) {
 	let _ = await f(i);
 	i += 1;
     };
@@ -48,7 +48,7 @@ let g = async {
     print "g-label";
     label lp
     while (true) {
-	if (i < 15) {
+	if (i < 13) {
     	    print ".";
      	    let _ = await f(i);
      	    i += 1;
