@@ -74,6 +74,23 @@ Prelude.printLn("Array");
 };
 
 {
+  Prelude.printLn("  filter");
+
+  let isEven = func (x : Int) : Bool {
+    x % 2 == 0;
+  };
+
+  let actual = Array.filter<Nat>(isEven, [ 1, 2, 3, 4, 5, 6 ]);
+  let expected = [ 2, 4, 6 ];
+
+  assert(actual.len() == expected.len());
+
+  for (i in actual.keys()) {
+    assert(actual[i] == expected[i]);
+  };
+};
+
+{
   Prelude.printLn("  find");
 
   type Element = {

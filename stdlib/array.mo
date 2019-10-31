@@ -38,6 +38,16 @@ module {
     });
   };
 
+  public func filter<A>(f : A -> Bool, xs : [A]) : [A] {
+    var ys : [A] = [];
+    for (x in xs.vals()) {
+      if (f(x)) {
+        ys := append<A>(ys, [x]);
+      };
+    };
+    ys;
+  };
+
   public func foldl<A, B>(f : (B, A) -> B, initial : B, xs : [A]) : B {
     var acc = initial;
     let len = xs.len();
