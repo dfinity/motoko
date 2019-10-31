@@ -146,7 +146,7 @@ module Transform(Platform : sig val platform : platform end) = struct
     (async, fulfill, fail), call_new_async
 
   let new_nary_async_reply ts1 =
-    (* The async implemenation isn't n-ary *)
+    (* The async implementation isn't n-ary *)
     let t1 = T.seq ts1 in
     let (unary_async, unary_fulfill, fail), call_new_async = new_async t1 in
     let v' = fresh_var "v" t1 in
