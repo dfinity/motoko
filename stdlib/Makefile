@@ -30,6 +30,8 @@ TESTS=\
 	ListTest \
 	Nat \
 	NatTest \
+  None \
+  NoneTest \
 	Option \
 	OptionTest \
 	Result \
@@ -97,6 +99,12 @@ $(OUTDIR)/NatTest.out: natTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Hash.out: hash.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/None.out: none.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/NoneTest.out: noneTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Option.out: option.mo | $(OUTDIR)
