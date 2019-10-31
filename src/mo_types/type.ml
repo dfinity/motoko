@@ -4,7 +4,7 @@ open Mo_config
 type lab = string
 type var = string
 
-type control = Returns | Promises of int (* Returns a computed value or immediate promise *)
+type control = Returns | Promises
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
 type func_sort = Local | Shared of shared_sort
@@ -130,6 +130,9 @@ let prim = function
 
 let seq = function [t] -> t | ts -> Tup ts
 
+let codom c ts =  match c with
+  | Promises -> Async (seq ts)
+  | Returns -> seq ts
 
 (* Coercions *)
 
@@ -350,6 +353,11 @@ let as_seq t =
   | Tup ts -> ts
   | t -> [t]
 
+let seq_of_tup t =
+  match normalize t with
+  | Tup ts -> ts
+  | t -> invalid "seq_of_tup"
+
 let arity t =
   match normalize t with
   | Tup ts -> List.length ts
@@ -388,7 +396,7 @@ let as_pair_sub t = match promote t with
   | Non -> Non, Non
   | _ -> invalid "as_pair_sub"
 let as_func_sub default_s default_arity t = match promote t with
-  | Func (s, _, tbs, ts1, ts2) -> s, tbs, seq ts1,  seq ts2
+  | Func (s, c, tbs, ts1, ts2) -> s, tbs, seq ts1, codom c ts2
   | Non -> default_s, Lib.List.make default_arity {var = "X"; bound = Any}, Any, Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub t = match promote t with
@@ -1159,29 +1167,29 @@ and string_of_dom vs ts =
      sprintf "(%s)" dom
   | _ -> dom
 
-and string_of_cod c vs ts =
+and string_of_cod vs ts =
   let cod = string_of_typ' vs (seq ts) in
   match ts with
-  | [Tup _] ->
-    sprintf "(%s)" cod
-  | [Async _] ->
-    (match c with
-     | Returns -> sprintf "(%s)" cod
-     | Promises _ -> sprintf "%s" cod
-    )
+  | [Tup _] -> sprintf "(%s)" cod
   | _ -> cod
+
+and string_of_control_cod c vs ts =
+  let cod = string_of_cod vs ts in
+  match c with
+  | Returns -> cod
+  | Promises -> sprintf "async %s" cod
 
 and string_of_typ' vs t =
   match t with
   | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
       (string_of_dom vs ts1)
-      (string_of_cod c vs ts2)
+      (string_of_control_cod c vs ts2)
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = vars_of_binds vs tbs in
     sprintf "%s%s%s -> %s"
       (string_of_func_sort s) (string_of_binds (vs' @ vs) vs' tbs)
-      (string_of_dom (vs' @ vs) ts1) (string_of_cod c (vs' @ vs) ts2)
+      (string_of_dom (vs' @ vs) ts1) (string_of_control_cod c (vs' @ vs) ts2)
   | Opt t ->
     sprintf "?%s"  (string_of_typ_nullary vs t)
   | Async t ->
