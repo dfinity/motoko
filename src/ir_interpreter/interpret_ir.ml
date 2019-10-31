@@ -115,13 +115,13 @@ struct
     if not (Queue.is_empty q) then (yield (); run ())
 end
 
-(* Callback Stack *)
+(* Callback Register *)
 
-module CallbackStack =
+module CallbackReg =
 struct
-  let s : (V.value V.cont option * V.value V.cont option) Stack.t = Stack.create ()
-  let pop () = Stack.pop s
-  let push v = Stack.push v s
+  let reg : (V.value V.cont option * V.value V.cont option) ref  = ref (None,None)
+  let get () = !reg
+  let set v = reg := v
 end
 
 
@@ -392,8 +392,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           last_region := exp.at; (* in case the following throws *)
           let _, kc = V.as_func kv in
           let _, rc = V.as_func rv in
-          CallbackStack.push (Some (fun v -> kc v (fun v -> ())),
-                              Some (fun v -> rc v (fun v -> ())));
+          CallbackReg.set (Some (fun v -> kc v (fun v -> ())),
+                                Some (fun v -> rc v (fun v -> ())));
           f v2 k))))
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
@@ -441,7 +441,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
-        CallbackStack.push (None,None);
         f v2 k
       )
     )
@@ -504,13 +503,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | FuncE (x, (T.Shared _ as sort), (T.Returns as control), _typbinds, args, ret_typs, e) when not env.flavor.has_async_typ ->
+  | FuncE (x, (T.Shared T.Write as sort), (T.Returns as control), _typbinds, args, ret_typs, e) when not env.flavor.has_async_typ ->
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
 
     let f = interpret_func env exp.at x args
               (fun env' ->
-                let (replies,rejects) =  CallbackStack.pop() in
-                interpret_exp { env' with rejects = rejects; replies = replies } e) in
+                let (replies_,rejects_) = CallbackReg.get() in
+                interpret_exp { env' with rejects = rejects_; replies = replies_ } e) in
 
     let v = V.Func (cc, f) in
     let v = make_message env x cc v in
