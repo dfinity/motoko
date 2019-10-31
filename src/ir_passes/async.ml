@@ -276,14 +276,10 @@ module Transform(Platform : sig val platform : platform end) = struct
     | PrimE (OtherPrim "@await", [a;kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
     | PrimE (OtherPrim "@async", [exp2]) ->
-      let ts1, contT = match typ exp2 with
-        | Func(_,_,
-               [],
-               [Func(_, _, [], ts1, []) as contT; _],
-               []) ->
-          (List.map t_typ ts1, t_typ contT)
+      let ts1 = match typ exp2 with
+        | Func(_,_, [], [Func(_, _, [], ts1, []); _], []) -> List.map t_typ ts1
         | t -> assert false in
-      let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Replies, [], [], [])) in
+      let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Replies, [], [], ts1)) in
       let u = fresh_var "u" T.unit in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
