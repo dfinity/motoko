@@ -22,6 +22,8 @@ TESTS=\
 	Hash \
 	Int \
 	IntTest \
+  Iter \
+  IterTest \
 	List \
 	ListTest \
 	Nat \
@@ -72,6 +74,12 @@ $(OUTDIR)/Int.out: int.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/IntTest.out: intTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Iter.out: iter.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/IterTest.out: iterTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Nat.out: nat.mo | $(OUTDIR)
