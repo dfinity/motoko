@@ -383,6 +383,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         check_exp env exp2;
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;
+        check_concrete env exp.at t_arg;
         (match T.promote (typ k) with
         | T.Func (T.Shared T.Write, T.Replies, [], t_rets, []) ->
           check_concrete env exp.at (T.seq t_rets)
