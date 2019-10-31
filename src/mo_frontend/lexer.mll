@@ -187,6 +187,7 @@ rule token mode = parse
   (* If you add keywords, please also update
      - src/idllib/escape.ml
      - emacs/motoko-mode.el
+     - guide/guide.md
   *)
   | "actor" { ACTOR }
   | "and" { AND }
