@@ -1,3 +1,4 @@
+import A "./a.mo";
 module {
-  import "./a.mo";
+  public let i = A.i
 }

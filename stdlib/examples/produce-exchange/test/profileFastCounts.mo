@@ -2,8 +2,8 @@
 // we correlate these numbers with times that we
 // measure elsewhere, where these numbers are not available.
 
-let T = (import "../serverTypes.mo");
-let Model = (import "../serverModel.mo");
+import T = "../serverTypes.mo";
+import Model = "../serverModel.mo";
 
 let m = Model.Model();
 
