@@ -91,7 +91,7 @@ let primE prim es =
   }
 
 let asyncE typ e =
-  { it = PrimE (OtherPrim "@async", [e]);
+  { it = PrimE (CPSAsync, [e]);
     at = no_region;
     note = { note_typ = T.Async typ; note_eff = eff e }
   }
@@ -103,7 +103,7 @@ let assertE e =
   }
 
 let awaitE typ e1 e2 =
-  { it = PrimE (OtherPrim "@await", [e1; e2]);
+  { it = PrimE (CPSAwait, [e1; e2]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = max_eff (eff e1) (eff e2) }
   }
