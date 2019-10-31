@@ -214,9 +214,9 @@ let as_domT t =
   | TupT ts -> ts
   | _ -> [t]
 
-let as_codomT t =
-  match t.Source.it with
-  | AsyncT t -> T.Promises, as_domT t
+let as_codomT sort t =
+  match sort, t.Source.it with
+  | T.Shared _, AsyncT t -> T.Promises, as_domT t
   | _ -> T.Returns, as_domT t
 
 let check_shared_return env at sort c ts =
@@ -256,7 +256,7 @@ and check_typ' env typ : T.typ =
     let cs, ts, te, ce = check_typ_binds env binds in
     let env' = adjoin_typs env te ce in
     let typs1 = as_domT typ1 in
-    let c, typs2 = as_codomT typ2 in
+    let c, typs2 = as_codomT sort.it typ2 in
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
@@ -695,7 +695,7 @@ and infer_exp'' env exp : T.typ =
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
-    let c, ts2 = as_codomT typ in
+    let c, ts2 = as_codomT sort.it typ in
     check_shared_return env typ.at sort.it c ts2;
 
     let cs, ts, te, ce = check_typ_binds env typ_binds in

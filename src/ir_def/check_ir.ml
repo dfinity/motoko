@@ -107,23 +107,6 @@ let disjoint_union env at fmt env1 env2 =
 
 (* Types *)
 
-(* A variant of T.codom that replaces the synthetic async with
-whatever the async translations produces
-*)
-let ir_codom env c ts =
-  if env.flavor.Ir.has_async_typ then T.codom c ts else
-
-  (* This is a hack that needs more thought *)
-  let fulfillT ts = T.Func(T.Local, T.Returns, [], ts, []) in
-  let failT = T.Func(T.Local, T.Returns, [], [T.catch], []) in
-  let asyncT ts =
-    T.Func (T.Local, T.Returns, [], [fulfillT ts; failT], []) in
-  match c with
-    | T.Promises -> asyncT ts
-    | T.Returns -> T.seq ts
-
-
-
 let check_sub env at t1 t2 =
   check env at (T.sub t1 t2) "subtype violation:\n  %s\n  %s\n"
     (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
@@ -183,9 +166,13 @@ let rec check_typ env typ : unit =
           check env' no_region (sort = T.Shared T.Write)
             "one-shot query function pointless"
       | T.Promises ->
+        check env' no_region (sort <> T.Local)
+          "promising function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
         check env' no_region (List.for_all T.shared ts)
           "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
-    end
+    end else
+        check env' no_region (control = T.Returns)
+          "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
   | T.Opt typ ->
     check_typ env typ
   | T.Async typ ->
@@ -443,7 +430,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         check_inst_bounds env tbs insts exp.at;
         check_exp env exp2;
         let t_arg = T.open_ insts (T.seq arg_tys) in
-        let t_ret = T.open_ insts (ir_codom env control ret_tys) in
+        let t_ret = T.open_ insts (T.codom control ret_tys) in
         if T.is_shared_sort sort then begin
           check_concrete env exp.at t_arg;
           check_concrete env exp.at t_ret;
@@ -572,7 +559,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check ((T.is_shared_sort sort && control = T.Promises) ==> isAsyncE exp)
       "shared function with async type has non-async body";
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
-    let codom = ir_codom env control ret_tys in
+    let codom = T.codom control ret_tys in
     let env'' =
       {env' with labs = T.Env.empty; rets = Some codom; async = false} in
     check_exp (adjoin_vals env'' ve) exp;
