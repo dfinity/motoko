@@ -193,11 +193,6 @@ let seqT ts =
       at = Source.no_region;
       Source.note = Type.Tup (List.map (fun t -> t.Source.note) ts) }
 
-let as_seqT t =
-  match t.Source.it with
-  | TupT ts -> ts
-  | _ -> [t]
-
 let arity t =
   match t.Source.it with
   | TupT ts -> List.length ts
