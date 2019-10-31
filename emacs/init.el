@@ -1,8 +1,8 @@
-;; ActorScript Emacs IDE
+;; Motoko Emacs IDE
 ;; ===
 ;;
 ;; A minimal set of packages + configuration that lets you use the
-;; ActorScript LSP support from within Emacs without having to change
+;; Motoko LSP support from within Emacs without having to change
 ;; your personal configuration.
 ;;
 ;; Requirements:
@@ -16,7 +16,7 @@
 ;;
 ;; 2. Start Emacs from your command line like so:
 ;;
-;; `emacs -q --load ~/code/actorscript/emacs/init.el`
+;; `emacs -q --load ~/code/motoko/emacs/init.el`
 ;;
 ;; (adjust to match the path to this file)
 ;;
@@ -29,8 +29,8 @@
 (setq as/ide-binary "as-ide")
 
 ;; Change this to point to the directory where you cloned the
-;; actorscript repo
-(setq as/installation-directory "~/code/actorscript")
+;; motoko repo
+(setq as/installation-directory "~/code/motoko")
 
 ;; Change nil to t if you want to use vim bindings for editing and
 ;; navigation
@@ -60,22 +60,22 @@
 (eval-and-compile
   (defun as/as-mode-load-path ()
     (format "%s/emacs" as/installation-directory)))
-(use-package actorscript-mode
+(use-package motoko-mode
   :load-path (lambda () (list (as/as-mode-load-path)))
   :config
-  (add-hook 'actorscript-mode-hook 'flycheck-mode)
-  (add-hook 'actorscript-mode-hook 'lsp)
-  (add-hook 'actorscript-mode-hook 'company-mode))
+  (add-hook 'motoko-mode-hook 'flycheck-mode)
+  (add-hook 'motoko-mode-hook 'lsp)
+  (add-hook 'motoko-mode-hook 'company-mode))
 
 (use-package lsp-mode :ensure t
   :config
   (setq lsp-prefer-flymake nil)
   (setq lsp-auto-configure t)
-  (add-to-list 'lsp-language-id-configuration '(actorscript-mode . "actorscript"))
+  (add-to-list 'lsp-language-id-configuration '(motoko-mode . "motoko"))
   (lsp-register-client
    (make-lsp-client
     :new-connection (lsp-stdio-connection as/ide-binary)
-    :major-modes '(actorscript-mode)
+    :major-modes '(motoko-mode)
     :server-id 'asls)))
 
 (use-package lsp-ui :ensure t :commands lsp-ui-mode

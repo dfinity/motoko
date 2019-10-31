@@ -1,4 +1,4 @@
-open As_frontend
+open Mo_frontend
 module Lsp = Lsp.Lsp_t
 
 type cursor_target =

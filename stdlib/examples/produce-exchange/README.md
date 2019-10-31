@@ -1,13 +1,13 @@
 Produce Exchange Canister Component
 =====================================
 
-We give an example of ActorScript by implementing
-the **Produce Exchange Canister** in ActorScript.
+We give an example of Motoko by implementing
+the **Produce Exchange Canister** in Motoko.
 
 The **produce exchange** gives a realistic marketplace-like
 application, and serves as a canonical example DFINITY Dapp.
 
-We use it here to illustrate ActorScript the language, the standard
+We use it here to illustrate Motoko the language, the standard
 library, and the associated the DFINITY Dapp design process.
 
 Prior documentation
@@ -23,20 +23,20 @@ Current design documentation:
 
 The documentation of this design now evolves in two places:
 
- 1. The SDK and ActorScript teams' documentation:  
+ 1. The SDK and Motoko teams' documentation:  
     i. Current [design document, under the SDK
      space](https://dfinity.atlassian.net/wiki/x/MwD2Bg).  
     ii. Current [requirements document for the MVP
       Design](https://dfinity.atlassian.net/wiki/spaces/DE/pages/116654198/Produce+Exchange+MVP+Product+Requirements).  
-    iii. Early, older [documentation under the ActorScript space](https://dfinity.atlassian.net/wiki/spaces/AST/pages/104401122/Example+Dapp+Produce+Exchange).  
+    iii. Early, older [documentation under the Motoko space](https://dfinity.atlassian.net/wiki/spaces/AST/pages/104401122/Example+Dapp+Produce+Exchange).  
 
  2. [**This documentation and associated source
-    code**](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/examples/produce-exchange)
+    code**](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/examples/produce-exchange)
     
     This code is implementing the **Produce Exchange Canister component**,
-    as a way to push the development of the ActorScript language, its
+    as a way to push the development of the Motoko language, its
     standard library, and elsewhere, the ambient DFINITY system that
-    runs ActorScript canisters.
+    runs Motoko canisters.
 
 --------------------------------------------------------------
 
@@ -56,9 +56,9 @@ We break the standards definition into several files, described below in detail 
 
 **Server message formats**
 
-As ActorScript-based documentation, the embedded source code for these
+As Motoko-based documentation, the embedded source code for these
 components makes the standards definition into a **formal definition**, to
-the same degree that ActorScript has a formal semantics of its own, in
+the same degree that Motoko has a formal semantics of its own, in
 terms of DFINITY's semantics, etc:
 
 - The [server types](#server-types) define `shared` data types for client and server messages.
@@ -97,7 +97,7 @@ into the **server _model_ components**, with the aspiration of the server
 component itself being a minimal wrapper over model definitions, and
 little to no logic of its own.
 
-These models are based closely on the ActorScript **standard library**,
+These models are based closely on the Motoko **standard library**,
 and basic functional programming design patterns, which we
 demonstrate through this example.
 
@@ -116,7 +116,7 @@ Server components
 ==========================
 
 We decompose the _Canister_ for the **Produce Exchange example Dapp**
-into an _ActorScript-based_ implementation of a "**Server**" with the
+into an _Motoko-based_ implementation of a "**Server**" with the
 following definitional pieces, listed below.
 
 **Server types**
@@ -126,7 +126,7 @@ Basic types used in messages, and published/stored internally in the server acto
 
 See [`serverTypes.md`]($DOCURL/examples/produce-exchange/serverTypes.html) for authoritative documentation.
 
-See [`serverTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.as) for the source code.
+See [`serverTypes.mo`](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/stdlib/examples/produce-exchange/serverTypes.mo) for the source code.
 
 **Server actor**
 ----------------------
@@ -135,7 +135,7 @@ Defined by the server actor's public signature, which specifies the messages and
 
 See [`serverActor.md`]($DOCURL/examples/produce-exchange/serverActor.html) for authoritative documentation.
 
-See [`serverActor.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverActor.as) for the source code.
+See [`serverActor.mo`](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/stdlib/examples/produce-exchange/serverActor.mo) for the source code.
 
 
 **Server model types**
@@ -145,12 +145,12 @@ This component defines structures that the next component uses to implement the 
 
 See [`serverModelTypes.md`]($DOCURL/examples/produce-exchange/serverModelTypes.html) for authoritative documentation.
 
-See [`serverModelTypes.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModelTypes.as) for the source code.
+See [`serverModelTypes.mo`](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModelTypes.mo) for the source code.
 
 **Standard library**
 --------------------------
 
-See [the standard library](https://github.com/dfinity-lab/actorscript/tree/stdlib-examples/stdlib/#produce-exchange)
+See [the standard library](https://github.com/dfinity-lab/motoko/tree/stdlib-examples/stdlib/#produce-exchange)
 for collection abstractions,
 including 
     the [`DocTable` class]($DOCURL/docTable.html)
@@ -166,7 +166,7 @@ types_](#server-model-types).
 
 See  [`serverModel.md`]($DOCURL/examples/produce-exchange/serverModel.html) for authoritative documentation.
 
-See [`serverModel.as`](https://github.com/dfinity-lab/actorscript/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.as) for the source code.
+See [`serverModel.mo`](https://github.com/dfinity-lab/motoko/blob/stdlib-examples/stdlib/examples/produce-exchange/serverModel.mo) for the source code.
 
 Note that while we define the **behavior for the server**, the
 _implementation details of this component and [server model
@@ -176,7 +176,7 @@ subject to change independently of this definition.
 **Aside:** This model implementation is highly formulaic.  In the
 future, we could likely _derive_ such implementations (auto-generate
 them) from a higher-level property and relation markup language
-defined over, and targeting, the existing actorscript type system and
+defined over, and targeting, the existing motoko type system and
 associated standard library patterns.
 
 
@@ -344,20 +344,20 @@ Merge to `master` requirements:
 
 This example is a work in progress.  It will be finished (and merged
 to `master`) when the following are in a stable state, and working
-locally, as locally-running ActorScript.
+locally, as locally-running Motoko.
 
 **Requirements list**:
-  1. **the exchange’s interface definition**, as an ActorScript actor.
+  1. **the exchange’s interface definition**, as an Motoko actor.
 
   2.  **the behavior of the exchange**, as that actor’s prototype
       implementation.
 
   3. **the internal data model representation**, based on the
-     ActorScript language and standard library, used internally to the
+     Motoko language and standard library, used internally to the
      actor, to implement the specification behavior.
 
   4. **test suite** for all of the above, using local execution and
-     ActorScript-based test cases.
+     Motoko-based test cases.
 
 **Canister component**: The requirements listed above also correspond with
 those of the *Canister component* in Milestone 2.0 of the [MVP
@@ -428,12 +428,12 @@ Exit criteria for this Canister
 
 **Dates and people** 
 
-- [MVP features](#produce-exchange-canister-mvp-requirements) done on or before March 26 ActorScript team meeting
+- [MVP features](#produce-exchange-canister-mvp-requirements) done on or before March 26 Motoko team meeting
 
-- Full exit criteria met asap, before ActorScript and/or SDK launch (?)
+- Full exit criteria met asap, before Motoko and/or SDK launch (?)
 
 - Most items below are tasked to @Matthewhammer; some require support
-  from other teams at DFINITY, including the ActorScript and SDK
+  from other teams at DFINITY, including the Motoko and SDK
   teams.
 
 **Feature-based metrics** 
@@ -518,7 +518,7 @@ We have the following questions:
 
     **2019.03.12 -- TODO-Cursors:** Introduce the idea of "cursors", with
     allocation, de-allocation and movement messages, as per discussion in
-    the 2019.03.12 ActorScript Team meeting.
+    the 2019.03.12 Motoko Team meeting.
 
  2. For now, can we assume that the canister is maintained by the
     central authority?
@@ -532,7 +532,7 @@ We have the following questions:
     ship on a single truck route?  Presumably, we can?
 
  5. Define a query language?
-    --- Not until ActorScript implements variant types.
+    --- Not until Motoko implements variant types.
 
  6. [Canister upgrades](#canisterupgrades)
 
@@ -546,11 +546,11 @@ The standards evolve according to the "central authority" (cf PE spec
 document), who we identify as the github repo and open source
 developer community that surrounds this implementation.
 
-Updating the types in the standards requires changing the file `serverTypes.as`
+Updating the types in the standards requires changing the file `serverTypes.mo`
 mentioned above, and performing a canister upgrade on the running
 system.  Similarly, to evolve the behavioral definition of standards, the
-implementation of this actor will change (in `serverActor.as` and
-`serverModel.as`), and will also require a canister upgrade.
+implementation of this actor will change (in `serverActor.mo` and
+`serverModel.mo`), and will also require a canister upgrade.
 
 
 ---------------------------------------------------------------------------------------

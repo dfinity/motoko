@@ -852,7 +852,7 @@ service Server : {
 Note:
 * `TruckTypeId` and `nat` are used interchangeably.
 
-With this IDL file, the server code in ActorScript could be:
+With this IDL file, the server code in Motoko could be:
 ```
 actor Server {
   registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
@@ -942,8 +942,8 @@ T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
-T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
-  sleb128(-22) T*(<fieldtype1>*) T*(<fieldtype2>*) T*(<funcann>*) // 0x6a
+T(func (<datatype1>*) -> (<datatype2>*) <funcann>*) =
+  sleb128(-22) T*(<datatype1>*) T*(<datatype2>*) T*(<funcann>*) // 0x6a
 T(service {<methtype>*}) =
   sleb128(-23) T*(<methtype>*)                                    // 0x69
 
@@ -1085,27 +1085,31 @@ The types of these values are assumed to be known from context, so the syntax do
 ```
 <val> ::=
   | <primval> | <consval> | <refval>
+  | ( <annval> )
+
+<annval> ::=
+  | <val>
   | <val> : <datatype>
 
 <primval> ::=
-  | <nat> | <int> | <float>     (TODO: same as ActorScript grammar plus sign)
-  | <text>                      (TODO: same as ActorScript grammar)
+  | <nat> | <int> | <float>     (TODO: same as Motoko grammar plus sign)
+  | <text>                      (TODO: same as Motoko grammar)
   | true | false
   | null
 
 <consval> ::=
   | opt <val>
-  | vec { <val>;* }
+  | vec { <annval>;* }
   | record { <fieldval>;* }
   | variant { <fieldval> }
 
-<fieldval> ::= <nat> = <val>
+<fieldval> ::= <nat> = <annval>
 
 <refval> ::=
   | service <text>             (canister URI)
   | func <text> . <id>         (canister URI and message name)
 
-<arg> ::= ( <val>,* )
+<arg> ::= ( <annval>,* )
 
 ```
 

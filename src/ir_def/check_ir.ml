@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 
 open Source
 module T = Type
@@ -211,11 +211,8 @@ and check_typ_field env s typ_field : unit =
   check_typ env typ;
   if not (T.is_typ typ) then begin
     check env no_region
-      (s <> Some T.Actor || T.is_func (T.promote typ))
-      "actor field has non-function type";
-    check env no_region
-      (s <> Some T.Actor || T.shared typ)
-      "actor field has non-shared type"
+      (s <> Some T.Actor || T.is_shared_func typ)
+      "actor field must have shared function type"
   end
 
 and check_typ_binds_acyclic env cs ts  =
@@ -429,27 +426,27 @@ let rec check_exp env (exp:Ir.exp) : unit =
     in
     typ exp2 <: T.nat;
     t2 <~ t
-  | CallE (call_conv, exp1, insts, exp2) ->
+  | CallE (exp1, insts, exp2) ->
     check_exp env exp1;
     check_exp env exp2;
-    (* TODO: check call_conv (assuming there's something to check) *)
     let t1 = T.promote (typ exp1) in
-    let _, tbs, t2, t3 =
-      try T.as_func_sub call_conv.Call_conv.sort (List.length insts) t1 with
-      |  Invalid_argument _ ->
+    begin match t1 with
+      | T.Func (sort, control, tbs, arg_tys, ret_tys) ->
+        check_inst_bounds env tbs insts exp.at;
+        check_exp env exp2;
+        let t_arg = T.open_ insts (T.seq arg_tys) in
+        let t_ret = T.open_ insts (T.seq ret_tys) in
+        if T.is_shared_sort sort then begin
+          check_concrete env exp.at t_arg;
+          check_concrete env exp.at t_ret;
+        end;
+        typ exp2 <: t_arg;
+        t_ret <: t
+      | T.Non -> () (* dead code, not much to check here *)
+      | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
-    in
-    check_inst_bounds env tbs insts exp.at;
-    check_exp env exp2;
-    let t_arg = T.open_ insts t2 in
-    let t_ret = T.open_ insts t3 in
-    if T.is_shared_sort call_conv.Call_conv.sort then begin
-      check_concrete env exp.at t_arg;
-      check_concrete env exp.at t_ret;
-    end;
-    typ exp2 <: t_arg;
-    t_ret <: t
+    end
   | BlockE (ds, exp1) ->
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
@@ -559,28 +556,24 @@ let rec check_exp env (exp:Ir.exp) : unit =
           typ exp1 <: t0
     end;
     T.unit <: t
-  | FuncE (x, cc, typ_binds, args, ret_tys, exp) ->
+  | FuncE (x, sort, control, typ_binds, args, ret_tys, exp) ->
     let cs, tbs, ce = check_open_typ_binds env typ_binds in
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
-    check ((T.is_shared_sort cc.Call_conv.sort && Type.is_async (T.seq ret_tys))
+    check ((T.is_shared_sort sort && Type.is_async (T.seq ret_tys))
            ==> isAsyncE exp)
       "shared function with async type has non-async body";
-    check (cc.Call_conv.n_args = List.length args)
-      "calling convention arity does not match number of parameters";
-    check (cc.Call_conv.n_res = List.length ret_tys)
-      "calling convention arity does not match number of return types";
-    if T.is_shared_sort cc.Call_conv.sort then List.iter (check_concrete env exp.at) ret_tys;
+    if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
     let env'' =
       {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) (T.seq ret_tys);
     (* Now construct the function type and compare with the annotation *)
     let ts1 = List.map (fun a -> a.note) args in
-    if T.is_shared_sort cc.Call_conv.sort then List.iter (check_concrete env exp.at) ts1;
+    if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ts1;
     let fun_ty = T.Func
-      ( cc.Call_conv.sort, cc.Call_conv.control
+      ( sort, control
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
@@ -735,10 +728,8 @@ and type_exp_field env s f : T.field =
   assert (t <> T.Pre);
   check_sub env f.at t f.note;
   if not (T.is_typ t) then begin
-    check env f.at ((s = T.Actor) ==> T.is_func t)
-      "public actor field is not a function";
-    check env f.at ((s = T.Actor) ==> T.shared t)
-      "public actor field has non-shared type";
+    check env f.at ((s = T.Actor) ==> T.is_shared_func t)
+      "public actor field must have shared function type";
   end;
   T.{lab = name; typ = t}
 

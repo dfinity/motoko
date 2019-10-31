@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 open Ir_def
 
 open Ir
@@ -7,7 +7,7 @@ open Source
 
 module V = Value
 module T = Type
-module CC = As_types.Call_conv
+module CC = Call_conv
 
 (* Context *)
 
@@ -396,7 +396,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
            with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
-  | CallE (_cc, exp1, typs, exp2) ->
+  | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
         let call_conv, f = V.as_func v1 in
@@ -465,7 +465,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | FuncE (x, cc, _typbinds, args, _typ, e) ->
+  | FuncE (x, sort, control, _typbinds, args, ret_typs, e) ->
+    let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
+
     let f = interpret_func env exp.at x args
       (fun env' -> interpret_exp env' e) in
     let v = V.Func (cc, f) in

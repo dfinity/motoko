@@ -1,4 +1,0 @@
-(library
-  (name as_values)
-  (libraries num wasm lib lang_utils as_types idllib)
-)

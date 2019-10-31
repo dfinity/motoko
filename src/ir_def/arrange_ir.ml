@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 open Source
 open Ir
 open Wasm.Sexpr
@@ -23,7 +23,7 @@ let rec exp e = match e.it with
   | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
   | ArrayE (m, t, es)   -> "ArrayE"  $$ [mut m; typ t] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
-  | CallE (cc, e1, ts, e2) -> "CallE" $$ [call_conv cc; exp e1] @ List.map typ ts @ [exp e2]
+  | CallE (e1, ts, e2)  -> "CallE" $$ [exp e1] @ List.map typ ts @ [exp e2]
   | BlockE (ds, e1)     -> "BlockE"  $$ List.map dec ds @ [exp e1]
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
@@ -38,8 +38,8 @@ let rec exp e = match e.it with
   | TagE (i, e)         -> "TagE" $$ [id i; exp e]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
-  | FuncE (x, cc, tp, as_, ts, e) ->
-    "FuncE" $$ [Atom x; call_conv cc] @ List.map typ_bind tp @ args as_@ [ typ (Type.seq ts); exp e]
+  | FuncE (x, s, c, tp, as_, ts, e) ->
+    "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_@ [ typ (Type.seq ts); exp e]
   | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | ThrowE e             -> "ThrowE"    $$ [exp e]
@@ -104,7 +104,9 @@ and pat_field pf = pf.it.name $$ [pat pf.it.pat]
 
 and case c = "case" $$ [pat c.it.pat; exp c.it.exp]
 
-and call_conv cc = Atom (Call_conv.string_of_call_conv cc)
+and func_sort s = Atom (Arrange_type.func_sort s)
+
+and control s = Atom (Arrange_type.control s)
 
 and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]

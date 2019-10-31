@@ -1,5 +1,5 @@
-open As_def
-open As_types
+open Mo_def
+open Mo_types
 open Ir_def
 
 val transform : Syntax.prog -> Ir.prog

@@ -1,11 +1,9 @@
-open As_types
-
 (* WIP translation of syntaxops to use IR in place of Source *)
 open Source
 open Ir
 open Ir_effect
 
-module T = As_types.Type
+module T = Mo_types.Type
 
 type var = exp
 
@@ -189,16 +187,17 @@ let boolE b =
   }
 
 let callE exp1 ts exp2 =
-  let fun_ty = typ exp1 in
-  let cc = Call_conv.call_conv_of_typ fun_ty in
-  let _, _, _, ret_ty = T.as_func_sub cc.Call_conv.sort (List.length ts) fun_ty in
-  { it = CallE (cc, exp1, ts, exp2);
-    at = no_region;
-    note = {
-      note_typ = T.open_ ts ret_ty;
-      note_eff = max_eff (eff exp1) (eff exp2)
+  match T.promote (typ exp1) with
+  | T.Func (_sort, _control, _, _, ret_tys) ->
+    { it = CallE (exp1, ts, exp2);
+      at = no_region;
+      note = {
+        note_typ = T.open_ ts (T.seq ret_tys);
+        note_eff = max_eff (eff exp1) (eff exp2)
+      }
     }
-  }
+  | T.Non -> exp1
+  | _ -> raise (Invalid_argument "callE expect a function")
 
 let ifE exp1 exp2 exp3 typ =
   { it = IfE (exp1, exp2, exp3);
@@ -367,12 +366,11 @@ let ignoreE exp =
 
 (* Mono-morphic function expression *)
 let funcE name t x exp =
-  let arg_tys, retty = match t with
-    | T.Func(_, _, _, ts1, ts2) -> ts1, ts2
+  let sort, control, arg_tys, ret_tys = match t with
+    | T.Func(s, c, _, ts1, ts2) -> s, c, ts1, ts2
     | _ -> assert false in
-  let cc = Call_conv.call_conv_of_typ t in
   let args, exp' =
-    if cc.Call_conv.n_args = 1;
+    if List.length arg_tys = 1;
     then
       [ arg_of_exp x ], exp
     else
@@ -382,11 +380,12 @@ let funcE name t x exp =
   in
   ({it = FuncE
      ( name,
-       cc,
+       sort,
+       control,
        [],
        args,
        (* TODO: Assert invariant: retty has no free (unbound) DeBruijn indices -- Claudio *)
-       retty,
+       ret_tys,
        exp'
      );
     at = no_region;
@@ -394,17 +393,17 @@ let funcE name t x exp =
    })
 
 let nary_funcE name t xs exp =
-  let retty = match t with
-    | T.Func(_, _, _, _, ts2) -> ts2
+  let sort, control, arg_tys, ret_tys = match t with
+    | T.Func(s, c, _, ts1, ts2) -> s, c, ts1, ts2
     | _ -> assert false in
-  let cc = Call_conv.call_conv_of_typ t in
-  assert (cc.Call_conv.n_args = List.length xs);
+  assert (List.length arg_tys = List.length xs);
   ({it = FuncE
       ( name,
-        cc,
+        sort,
+        control,
         [],
         List.map arg_of_exp xs,
-        retty,
+        ret_tys,
         exp
       );
     at = no_region;
@@ -477,11 +476,10 @@ let (-@>*) xs exp  =
 
 let ( -*- ) exp1 exp2 =
   match typ exp1 with
-  | T.Func (_, _, [], ts1, ts2) ->
-    let cc = Call_conv.call_conv_of_typ (typ exp1) in
-    { it = CallE (cc, exp1, [], exp2);
+  | T.Func (_, _, [], _, ret_tys) ->
+    { it = CallE (exp1, [], exp2);
       at = no_region;
-      note = {note_typ = T.seq ts2;
+      note = {note_typ = T.seq ret_tys;
               note_eff = max_eff (eff exp1) (eff exp2)}
     }
   | typ1 -> failwith

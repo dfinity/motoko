@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 
 type id = string
 
@@ -73,8 +73,7 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * Type.typ * exp list        (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | CallE of                                   (* function call *)
-      Call_conv.t * exp * Type.typ list * exp
+  | CallE of exp * Type.typ list * exp         (* function call *)
   | BlockE of (dec list * exp)                 (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
@@ -88,7 +87,7 @@ and exp' =
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
-      string * Call_conv.t * typ_bind list * arg list * Type.typ list * exp
+      string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
   | ActorE of id * dec list * field list * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
   | ThrowE of exp                              (* throw *)

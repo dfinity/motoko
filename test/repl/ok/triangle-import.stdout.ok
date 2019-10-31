@@ -1,26 +1,26 @@
-ActorScript 0.1 interpreter
+Motoko 0.1 interpreter
 -- Parsing stdin:
-> -- Parsing b.as:
--- Parsing c.as:
--- Checking c.as:
--- Definedness c.as:
--- Checking b.as:
--- Definedness b.as:
+> -- Parsing b.mo:
+-- Parsing c.mo:
+-- Checking c.mo:
+-- Definedness c.mo:
+-- Checking b.mo:
+-- Definedness b.mo:
 -- Checking stdin:
 -- Definedness stdin:
--- Interpreting c.as:
--- Interpreting b.as:
+-- Interpreting c.mo:
+-- Interpreting b.mo:
 -- Interpreting stdin:
 -- Finished stdin:
 let anon-import-1.1 : module {i : Nat} = {i = 42}
 
 -- Parsing stdin:
-> -- Parsing a.as:
--- Checking a.as:
--- Definedness a.as:
+> -- Parsing a.mo:
+-- Checking a.mo:
+-- Definedness a.mo:
 -- Checking stdin:
 -- Definedness stdin:
--- Interpreting a.as:
+-- Interpreting a.mo:
 -- Interpreting stdin:
 -- Finished stdin:
 let anon-import-2.1 : module {i : Nat} = {i = 42}
@@ -33,12 +33,12 @@ let anon-import-2.1 : module {i : Nat} = {i = 42}
 let anon-import-3.1 : module {i : Nat} = {i = 42}
 
 -- Parsing stdin:
-> -- Parsing triangle.as:
--- Checking triangle.as:
--- Definedness triangle.as:
+> -- Parsing triangle.mo:
+-- Checking triangle.mo:
+-- Definedness triangle.mo:
 -- Checking stdin:
 -- Definedness stdin:
--- Interpreting triangle.as:
+-- Interpreting triangle.mo:
 -- Interpreting stdin:
 -- Finished stdin:
 let anon-import-4.1 : module {} = {}
