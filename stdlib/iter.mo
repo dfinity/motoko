@@ -1,7 +1,7 @@
 module {
   public func forIn<A>(
     f : (A, Nat) -> (),
-    xs : { next : () -> ?A; }
+    xs : Iter<A>
   ) {
     var i = 0;
     label l loop {
