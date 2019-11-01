@@ -1,3 +1,8 @@
+import T = "serverTypes.mo";
+import Trie = "../../trie2.mo";
+import DocTable = "../../docTable.mo";
+
+
 module {
 /**
 
@@ -33,11 +38,7 @@ Representation
 
 */
 
-import T = "serverTypes.mo";
-
-import Trie = "../../trie2.mo";
 public type Trie<K,V> = Trie.Trie<K,V>;
-
 public type Map<X, Y> = Trie<X, Y>;
 public let Map = Trie;
 
@@ -97,7 +98,6 @@ internal sharing:
 
 */
 
-public let DocTable = (import "../../docTable.mo");
 public type DocTable<X,Y,Z> = DocTable.DocTable<X,Y,Z>;
 
 /**

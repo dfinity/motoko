@@ -138,9 +138,10 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ```bnf
-actor and async assert await break case catch class continue else
-false for func if in new not null object or label let loop
-private public return shared switch true try type var while
+actor and async assert await break case catch class continue debug
+else false for func if in import module not null object or label
+let loop private public return shared try throw debug_show query
+switch true type var while
 ```
 
 ## Identifiers

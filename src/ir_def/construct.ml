@@ -73,11 +73,6 @@ let seqP ps =
   | [p] -> p
   | ps -> tupP ps
 
-let as_seqP p =
-  match p.it with
-  | TupP ps -> ps
-  | _ -> [p]
-
 (* Primitives *)
 
 let primE prim es =
@@ -96,7 +91,7 @@ let primE prim es =
   }
 
 let asyncE typ e =
-  { it = PrimE (OtherPrim "@async", [e]);
+  { it = PrimE (CPSAsync, [e]);
     at = no_region;
     note = { note_typ = T.Async typ; note_eff = eff e }
   }
@@ -108,7 +103,7 @@ let assertE e =
   }
 
 let awaitE typ e1 e2 =
-  { it = PrimE (OtherPrim "@await", [e1; e2]);
+  { it = PrimE (CPSAwait, [e1; e2]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = max_eff (eff e1) (eff e2) }
   }
@@ -445,11 +440,6 @@ let seqE es =
   match es with
   | [e] -> e
   | es -> tupE es
-
-let as_seqE e =
-  match e.it with
-  | TupE es -> es
-  | _ -> [e]
 
 (* Lambdas & continuations *)
 

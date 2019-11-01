@@ -96,7 +96,7 @@ let share_expfield (ef : exp_field) =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
-%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
+%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
@@ -371,6 +371,8 @@ exp_nullary(B) :
     { BlockE(ds) @? at $sloc }
   | x=id
     { VarE(x) @? at $sloc }
+  | IGNORE
+    { VarE("@ignore" @@ at $sloc) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
   | LPAR es=seplist(exp(ob), COMMA) RPAR
@@ -639,9 +641,6 @@ dec_nonvar :
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
-  | IMPORT xf=id_opt EQ? f=TEXT
-    { let named, x = xf "import" $sloc in
-      let_or_exp named x (ImportE (f, ref "")) (at $sloc) }
 
 dec :
   | d=dec_var
@@ -677,12 +676,17 @@ class_body :
 
 (* Programs *)
 
+imp :
+  | IMPORT xf=id_opt EQ? f=TEXT
+    { let _, x = xf "import" $sloc in
+      let_or_exp true x (ImportE (f, ref "")) (at $sloc) }
+
 parse_prog :
-  | ds=seplist(dec, semicolon) EOF
-    { fun filename -> { it = ds; at = at $sloc ; note = filename} }
+  | is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
+    { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
 
 parse_prog_interactive :
-  | ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
-    { fun filename -> { it = ds; at = at $sloc ; note = filename} }
+  | is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
+    { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
 
 %%

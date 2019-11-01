@@ -1,3 +1,18 @@
+import P = "../../prelude.mo";
+
+import T = "serverTypes.mo";
+import L = "serverLang.mo";
+import M = "serverModelTypes.mo";
+
+import List = "../../list.mo";
+import Hash_ = "../../hash.mo";
+import Option = "../../option.mo";
+import Trie = "../../trie2.mo";
+
+import DT = "../../docTable.mo";
+import Result = "../../result.mo";
+
+
 module {
 /**
 
@@ -22,20 +37,10 @@ uses are is not.
 */
 
 
-import P = "../../prelude.mo";
-
-import T = "serverTypes.mo";
-import L = "serverLang.mo";
-import M = "serverModelTypes.mo";
-
-public let List = (import "../../list.mo");
 public type List<T> = List.List<T>;
 
-public let Hash = (import "../../hash.mo").BitVec;
+public let Hash = Hash_.BitVec;
 public type Hash = Hash.t;
-
-import Option = "../../option.mo";
-import Trie = "../../trie2.mo";
 
 public type Trie<K,V> = Trie.Trie<K,V>;
 public type TrieBuild<K,V> = Trie.Build.TrieBuild<K,V>;
@@ -47,11 +52,9 @@ public let Table = Trie;
 public type Map<K,V> = Trie.Trie<K,V>;
 public let Map = Trie;
 
-import DT = "../../docTable.mo";
 public let DocTable = DT.DocTable;
 public type DocTable<X,Y,Z> = DT.DocTable<X,Y,Z>;
 
-import Result = "../../result.mo";
 public type Result<Ok,Err> = Result.Result<Ok,Err>;
 
 public type RouteInventoryMap = Trie<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;

@@ -1,3 +1,7 @@
+import Result = "../../result.mo";
+import T = "serverTypes.mo";
+
+
 module {
 /**
 
@@ -7,9 +11,6 @@ module {
  A simple DSL for scripting interactions with the Produce Exchange (PX) server.
 
 */
-
-import Result = "../../result.mo";
-import T = "serverTypes.mo";
 
 public type Result<Ok,Err> = Result.Result<Ok,Err>;
 

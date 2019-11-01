@@ -5,6 +5,7 @@ Motoko 0.1 interpreter
 -- Interpreting 63:
 -- Parsing stdin:
 > -- Checking stdin:
+-- Definedness stdin:
 -- Interpreting stdin:
 -- Finished stdin:
 

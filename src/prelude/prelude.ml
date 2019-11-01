@@ -27,7 +27,7 @@ type Iter<T_> = {next : () -> ?T_};
 
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
-func ignore(_ : Any) {};
+func @ignore(_ : Any) {};
 
 class range(x : Nat, y : Nat) {
   var i = x;
