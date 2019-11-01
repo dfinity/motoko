@@ -1807,26 +1807,15 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
         ) prog
     )
 
-let infer_library env prog at =
-  let typ,scope = infer_block env prog at in
-  match prog with
-  | [{it = Syntax.ExpD _;_}] ->
-    typ
-  (* HACK: to be removed once we insist on single expression imports *)
-  | ds ->
-    object_of_scope env T.Module
-      (List.map (fun d -> {vis = Public @@ no_region; dec = d} @@ no_region) ds)
-      scope at
-
-let check_library scope (filename, prog) : Scope.t Diag.result =
+let check_lib scope lib : Scope.t Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
-        (fun prog ->
+        (fun lib ->
           let env = env_of_scope msgs scope in
-          let typ = infer_library env prog.it prog.at in
-          Scope.library filename typ
-        ) prog
+          let typ = infer_exp env lib.it in
+          Scope.lib lib.note typ
+        ) lib
     )
 
 let is_actor_dec d =

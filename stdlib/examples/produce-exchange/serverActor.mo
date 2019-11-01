@@ -11,9 +11,9 @@ import L = "serverLang.mo";
 import Model = "serverModel.mo";
 import Result = "../../result.mo";
 
-let Trie = (import "../../trie2.mo");
+import Trie = "../../trie2.mo";
+import List = "../../list.mo";
 
-let List = (import "../../list.mo");
 type List<T> = List.List<T>;
 
 type Result<Ok,Err> = Result.Result<Ok,Err>;

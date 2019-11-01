@@ -1,2 +1,5 @@
-assert ((import "lib/hello-string.mo") == "Hello!");
-assert ((import "lib/dir") == "Hello!");
+import A "lib/hello-string.mo";
+import B "lib/dir";
+
+assert (A.hello == "Hello!");
+assert (B.hello == "Hello!");
