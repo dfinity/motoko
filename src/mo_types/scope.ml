@@ -37,5 +37,5 @@ let adjoin scope1 scope2 =
 
 let adjoin_val_env scope ve = {scope with val_env = T.Env.adjoin scope.val_env ve}
 
-let library f t =
+let lib f t =
   { empty with lib_env = T.Env.add f t empty.lib_env }

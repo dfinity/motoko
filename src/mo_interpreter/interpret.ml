@@ -46,7 +46,7 @@ let adjoin_vals env ve = { env with vals = V.Env.adjoin env.vals ve }
 
 let empty_scope = { val_env = V.Env.empty; lib_env = V.Env.empty }
 
-let library_scope f v scope : scope =
+let lib_scope f v scope : scope =
   { scope with lib_env = V.Env.add f v scope.lib_env }
 
 let env_of_scope flags scope =
@@ -213,8 +213,8 @@ let make_async_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared s; control = T.Promises p; n_res = 1; _} ->
-    Value.async_func s call_conv.n_args p (fun v k ->
+  | {sort = T.Shared s; control = T.Promises; _} ->
+    Value.async_func s call_conv.n_args call_conv.n_res (fun v k ->
       let async = make_async () in
       actor_msg env id f v (fun v_async ->
         get_async (V.as_async v_async) (set_async async) (reject_async async)
@@ -227,8 +227,8 @@ let make_async_message env id v =
 
 let make_message env name t v : V.value =
   match t with
-  | T.Func (_, _, _, _, []) -> make_unit_message env name v
-  | T.Func (_, _, _, _, [T.Async _]) -> make_async_message env name v
+  | T.Func (_, T.Returns, _, _, _) -> make_unit_message env name v
+  | T.Func (_, T.Promises, _, _, _) -> make_async_message env name v
   | _ -> (* assert false *)
     failwith (Printf.sprintf "actorfield: %s %s" name (T.string_of_typ t))
 
@@ -883,21 +883,12 @@ let interpret_prog flags scope p : (V.value * scope) option =
 
 (* Libraries *)
 
-let interpret_library flags scope (filename, p) : scope =
+let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags scope in
   trace_depth := 0;
   let vo = ref None in
-  let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
-    interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+    interpret_exp env lib.it (fun v -> vo := Some v)
   );
   Scheduler.run ();
-  let v = match p.it with
-    | [ { it = ExpD _ ; _ } ] ->
-      Lib.Option.value !vo
-    (* HACK: to be removed once we restrict libraries to expressions *)
-    | ds ->
-      V.Obj (V.Env.map Lib.Promise.value (!ve))
-  in
-  library_scope filename v scope
-
+  lib_scope lib.note (Lib.Option.value !vo) scope

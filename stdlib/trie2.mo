@@ -1,4 +1,11 @@
-module{
+import P "prelude.mo";
+import Option "option.mo";
+import H "hash.mo";
+
+import List "list.mo";
+import AssocList "assocList.mo";
+
+module {
 /**
 
 Hash tries
@@ -73,18 +80,10 @@ public let MAX_LEAF_COUNT = 8; // <-- beats both 4 and 16 for me, now
 //let MAX_LEAF_COUNT = 16;
 //let MAX_LEAF_COUNT = 32;
 
-import P "prelude.mo";
-
-import Option "option.mo";
-
-import H "hash.mo";
 public let Hash = H.BitVec;
 public type Hash = Hash.t;
 
-import List "list.mo";
 public type List<T> = List.List<T>;
-
-import AssocList "assocList.mo";
 public type AssocList<K,V> = AssocList.AssocList<K,V>;
 
 /** A `Key` for the trie has an associated hash value */

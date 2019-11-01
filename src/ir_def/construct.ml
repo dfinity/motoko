@@ -73,11 +73,6 @@ let seqP ps =
   | [p] -> p
   | ps -> tupP ps
 
-let as_seqP p =
-  match p.it with
-  | TupP ps -> ps
-  | _ -> [p]
-
 (* Primitives *)
 
 let primE prim es =
@@ -445,11 +440,6 @@ let seqE es =
   match es with
   | [e] -> e
   | es -> tupE es
-
-let as_seqE e =
-  match e.it with
-  | TupE es -> es
-  | _ -> [e]
 
 (* Lambdas & continuations *)
 
