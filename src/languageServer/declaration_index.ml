@@ -83,18 +83,6 @@ let string_of_index index =
          ^ string_of_list string_of_ide_decl decls
          ^ "\n")
 
-let project_files () : string list = ["app.mo"]
-  (* let rec read_dir d =
-   *   if Sys.is_directory d
-   *   then
-   *     let entries =
-   *       Array.to_list (Sys.readdir d)
-   *       |> List.map (fun file -> Filename.concat d file) in
-   *     flat_map read_dir entries
-   *   else [d] in
-   * read_dir "."
-   * |> List.filter (fun file -> String.equal (Filename.extension file) ".mo") *)
-
 let read_single_module_lib (ty: Type.typ): ide_decl list option =
   match ty with
   | Type.Obj (Type.Module, fields) ->
