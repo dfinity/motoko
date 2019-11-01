@@ -89,15 +89,14 @@ let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
   let parse = Parser.parse_prog in
   match parse_with Lexer.Normal lexer parse name with
-  | Ok prog -> Diag.return (prog, Filename.current_dir_name)
+  | Ok prog -> Diag.return (prog, name)
   | Error e -> Error [e]
 
 let parse_file filename : parse_result =
   let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
   let parse = Parser.parse_prog in
-  let name = Filename.basename filename in
-  let result = parse_with Lexer.Normal lexer parse name in
+  let result = parse_with Lexer.Normal lexer parse filename in
   close_in ic;
   match result with
   | Ok prog -> Diag.return (prog, filename)
