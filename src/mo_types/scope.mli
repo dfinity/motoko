@@ -20,4 +20,4 @@ val empty : scope
 val adjoin : scope -> scope -> scope
 
 val adjoin_val_env : scope -> val_env -> scope
-val library : string -> typ -> scope
+val lib : string -> typ -> scope

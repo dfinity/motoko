@@ -1,8 +1,8 @@
-idl-func.mo:1.33-1.37: type error, async has non-shared content type
+idl-func.mo:1.13-1.37: type error, shared function has non-shared return type
   Func = shared Int -> async Func
 type
   Func = shared Int -> async Func
 is or contains non-shared type
   shared Int -> async Func
-idl-func.mo:1.33-1.37: type error, shared function types are non-shared.
+idl-func.mo:1.13-1.37: type error, shared function types are non-shared.
   (This is a limitation of the current version.)
