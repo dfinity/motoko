@@ -319,9 +319,9 @@ module Transform(Platform : sig val platform : platform end) = struct
       ArrayE (mut, t_typ t, List.map t_exp exps)
     | IdxE (exp1, exp2) ->
       IdxE (t_exp exp1, t_exp exp2)
-    | PrimE (OtherPrim "@await", [a;kr]) ->
+    | PrimE (CPSAwait, [a;kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
-    | PrimE (OtherPrim "@async", [exp2]) ->
+    | PrimE (CPSAsync, [exp2]) ->
       let ts1, contT = match typ exp2 with
         | Func(_,_,
                [],
@@ -419,7 +419,7 @@ module Transform(Platform : sig val platform : platform end) = struct
               in
               let typbinds' = t_typ_binds typbinds in
               let cps = match exp.it with
-                | PrimE (OtherPrim "@async", [cps]) -> cps
+                | PrimE (CPSAsync, [cps]) -> cps
                 | _ -> assert false in
               let t1, contT = match typ cps with
                 | Func(_,_,
