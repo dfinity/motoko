@@ -1,8 +1,6 @@
 actor Oom {
   public func doloop() {
-    for (i in range(0,1200)) {
-      ignore(Array_init<()>(1024/4, ()));
-    };
+    ignore(Array_init<()>(1200*1024/4, ()));
   };
 }
 
