@@ -89,11 +89,12 @@ let diagnostics_of_message (msg : Diag.message) : (Lsp_t.diagnostic * string) = 
     diagnostic_relatedInformation = None;
   }, msg.Diag.at.Source.left.Source.file)
 
-let start () =
-  (* TODO Only merge with proper arg parsing *)
-  let entry_point = Array.get Sys.argv 2 in
+let start entry_point debug =
   let oc: out_channel =
-    open_out_gen [Open_append; Open_creat] 0o666 "ls.log"; in
+    if debug then
+      open_out_gen [Open_append; Open_creat] 0o666 "ls.log"
+    else
+      open_out "/dev/null" in
   let log_to_file = Channel.log_to_file oc in
   let _ = log_to_file "entry_point" entry_point in
   let publish_diagnostics = Channel.publish_diagnostics oc in
