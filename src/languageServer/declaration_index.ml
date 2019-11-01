@@ -166,15 +166,10 @@ let populate_definitions
      List.map (find_def lib) decls
 
 let make_index_inner vfs entry_points : declaration_index Diag.result =
-  (* use load_progs instead *)
   Pipeline.load_progs
     (Vfs.parse_file vfs)
     entry_points
     Pipeline.initial_stat_env
-  (* Pipeline.chase_imports
-   *   (Vfs.parse_file vfs)
-   *   Pipeline.initial_stat_env
-   *   (Pipeline__.Resolve_import.S.of_list entry_points) *)
   |> Diag.map (fun (libs, _, scope) ->
       Type.Env.fold
         (fun path ty acc ->
