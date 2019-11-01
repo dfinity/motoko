@@ -1,5 +1,5 @@
-let T = (import "serverTypes.mo");
-let Model = (import "serverModel.mo");
+import T = "serverTypes.mo";
+import Model = "serverModel.mo";
 
 actor server {
   // morally: loadQuery (region_count:Nat, scale_factor:Nat) {

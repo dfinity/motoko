@@ -1,6 +1,6 @@
-module {
-  import Prelude "prelude.mo";
+import Prelude "prelude.mo";
 
+module {
   public func add(x : Int, y : Int) : Int {
     x + y;
   };

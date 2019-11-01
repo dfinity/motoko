@@ -1,11 +1,11 @@
+import P "prelude.mo";
+
 module {
 /**
 
 Functions for Option types.
 
 */
-
-import P "prelude.mo";
 
 public type t<A> = ?A;
 
@@ -124,20 +124,6 @@ public func assertNullAny(x: ?Any) =
   };
 
 public func assertNull<A>(x: ?A) = assertNullAny(x);
-
-/***
-
- `printOpInt`
- --------------------
-
- Print an optional integer.
-
-*/
-public func printOpInt(x : ?Int) =
-  switch x {
-    case null  { print "null" };
-    case (?x_) { print "?"; printInt x_ };
-  };
 
 public func apply<A, B>(f : ?(A -> B), x : ?A) : ?B {
   switch (f, x) {
