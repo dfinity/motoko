@@ -1,7 +1,7 @@
 actor Oom {
   public func doloop() {
     for (i in range(0,1200)) {
-      ignore(debug_show (1000:Nat));
+      ignore(Array_init<()>(1024/4, ()));
     };
   };
 }
