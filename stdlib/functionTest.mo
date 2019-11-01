@@ -30,22 +30,22 @@ Prelude.printLn("Function");
 };
 
 {
-  Prelude.printLn("  curry");
+  Prelude.printLn("  lift");
+
+  let appendPair = Function.lift<Text, Text, Text>(Text.append);
+  let pair = ("Hello, ", "World!");
+
+  assert(appendPair(pair) == "Hello, World!");
+};
+
+{
+  Prelude.printLn("  lower");
 
   func appendPair(pair : (Text, Text)) : Text {
     pair.0 # pair.1;
   };
 
-  let append = Function.curry<Text, Text, Text>(appendPair);
+  let append = Function.lower<Text, Text, Text>(appendPair);
 
   assert(append("Hello, ", "World!") == "Hello, World!");
-};
-
-{
-  Prelude.printLn("  uncurry");
-
-  let appendPair = Function.uncurry<Text, Text, Text>(Text.append);
-  let pair = ("Hello, ", "World!");
-
-  assert(appendPair(pair) == "Hello, World!");
 };
