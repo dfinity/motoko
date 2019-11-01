@@ -68,12 +68,11 @@ main = handleHUnitFailure $ do
       "This test expects two command line arguments,\
       \the path to the as-ide binary and the path to\
       \the test project it's supposed to run in")
-  let [as_ide, project] = args
+  let [mo_ide, project] = args
   setCurrentDirectory project
-  runSession as_ide fullCaps "." $ do
+  runSession (mo_ide <> " --argname app.mo") fullCaps "." $ do
     initRes <- initializeResponse
     doc <- openDoc "ListClient.mo" "motoko"
-{- TODO(kritzcreek): Fix me and reactivate
     hoverTestCase
       doc
       (Position 13 11)
@@ -95,7 +94,6 @@ main = handleHUnitFailure $ do
     -- 14 | List.pus|
       (Position 13 14)
       [("push",Just "<T>(T, List<T>) -> List<T>")]
--}
     closeDoc doc
     doc <- openDoc "ListClient.mo" "motoko"
     --     1 | module {
