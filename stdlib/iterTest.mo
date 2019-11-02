@@ -21,6 +21,24 @@ Prelude.printLn("Iter");
 };
 
 {
+  Prelude.printLn("  map");
+
+  let isEven = func (x : Int) : Bool {
+    x % 2 == 0;
+  };
+
+  let _actual = Iter.map<Nat, Bool>(isEven, [ 1, 2, 3 ].vals());
+  let actual = [var true, false, true];
+  Iter.forIn<Bool>(func (x, i) { actual[i] := x; }, _actual);
+
+  let expected = [false, true, false];
+
+  for (i in actual.keys()) {
+    assert(actual[i] == expected[i]);
+  };
+};
+
+{
   Prelude.printLn("  pure");
 
   let x = 1;
