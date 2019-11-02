@@ -49,3 +49,29 @@ Prelude.printLn("Iter");
     case (?z) { assert (x == z); };
   };
 };
+
+{
+  Prelude.printLn("  toArray");
+
+  let expected = [1, 2, 3];
+  let actual = Iter.toArray<Nat>(expected.vals());
+
+  assert (actual.len() == expected.len());
+
+  for (i in actual.keys()) {
+    assert(actual[i] == expected[i]);
+  };
+};
+
+{
+  Prelude.printLn("  toArrayMut");
+
+  let expected = [var 1, 2, 3];
+  let actual = Iter.toArrayMut<Nat>(expected.vals());
+
+  assert (actual.len() == expected.len());
+
+  for (i in actual.keys()) {
+    assert(actual[i] == expected[i]);
+  };
+};
