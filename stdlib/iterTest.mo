@@ -18,4 +18,16 @@ Prelude.printLn("Iter");
 
   assert(y == "abcdef");
   assert(z == 15);
-}
+};
+
+{
+  Prelude.printLn("  pure");
+
+  let x = 1;
+  let y = Iter.pure<Nat>(x);
+
+  switch (y.next()) {
+    case null { assert false; };
+    case (?z) { assert (x == z); };
+  };
+};

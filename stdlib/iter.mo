@@ -17,4 +17,10 @@ module {
       continue l;
     };
   };
+
+  public func pure<A>(x : A) : Iter<A> = object {
+    public func next() : ?A {
+      ?x;
+    };
+  };
 }
