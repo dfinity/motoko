@@ -11,7 +11,10 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
-let ocamlpkgs = nixpkgs.pkgsMusl; in
+let ocamlpkgs =
+  if nixpkgs.stdenv.isDarwin
+  then nixpkgs
+  else nixpkgs.pkgsMusl; in
 
 let ocaml_wasm = import ./nix/ocaml-wasm.nix {
   inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml;
