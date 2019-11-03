@@ -11,18 +11,20 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
+let ocamlpkgs = nixpkgs.pkgsMusl; in
+
 let ocaml_wasm = import ./nix/ocaml-wasm.nix {
-  inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
-  inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
+  inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml;
+  inherit (ocamlpkgs.ocamlPackages) findlib ocamlbuild;
 }; in
 
 let ocaml_vlq = import ./nix/ocaml-vlq.nix {
-  inherit (nixpkgs) stdenv fetchFromGitHub ocaml dune;
-  inherit (nixpkgs.ocamlPackages) findlib;
+  inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml dune;
+  inherit (ocamlpkgs.ocamlPackages) findlib;
 }; in
 
-let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
-let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
+let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix ocamlpkgs; in
+let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix ocamlpkgs; in
 
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
@@ -155,23 +157,23 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 
 let commonBuildInputs = [
-  nixpkgs.ocaml
+  ocamlpkgs.ocaml
   nixpkgs.dune
-  nixpkgs.ocamlPackages.atdgen
-  nixpkgs.ocamlPackages.findlib
-  nixpkgs.ocamlPackages.menhir
-  nixpkgs.ocamlPackages.num
-  nixpkgs.ocamlPackages.stdint
+  ocamlpkgs.ocamlPackages.atdgen
+  ocamlpkgs.ocamlPackages.findlib
+  ocamlpkgs.ocamlPackages.menhir
+  ocamlpkgs.ocamlPackages.num
+  ocamlpkgs.ocamlPackages.stdint
   ocaml_wasm
   ocaml_vlq
-  nixpkgs.ocamlPackages.zarith
-  nixpkgs.ocamlPackages.yojson
-  nixpkgs.ocamlPackages.ppxlib
-  nixpkgs.ocamlPackages.ppx_inline_test
+  ocamlpkgs.ocamlPackages.zarith
+  ocamlpkgs.ocamlPackages.yojson
+  ocamlpkgs.ocamlPackages.ppxlib
+  ocamlpkgs.ocamlPackages.ppx_inline_test
   ocaml_bisect_ppx
   ocaml_bisect_ppx-ocamlbuild
-  nixpkgs.ocamlPackages.ocaml-migrate-parsetree
-  nixpkgs.ocamlPackages.ppx_tools_versioned
+  ocamlpkgs.ocamlPackages.ocaml-migrate-parsetree
+  ocamlpkgs.ocamlPackages.ppx_tools_versioned
 ]; in
 
 let
