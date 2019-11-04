@@ -135,8 +135,8 @@ public func assertNull<A>(x: ?A) = assertNullAny(x);
 */
 public func printOpInt(x : ?Int) =
   switch x {
-    case null  { print "null" };
-    case (?x_) { print "?"; printInt x_ };
+    case null  { debugPrint "null" };
+    case (?x_) { debugPrint "?"; debugPrintInt x_ };
   };
 
 public func apply<A, B>(f : ?(A -> B), x : ?A) : ?B {

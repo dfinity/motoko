@@ -2,8 +2,8 @@ let a = actor {
   var c = 0;
   public func incn(n : Nat) : () {
     c += n;
-    printNat(c);
-    print("\n");
+    debugPrintNat(c);
+    debugPrint("\n");
   };
   public func readCounter(f : shared Nat -> ()) : () {
     f(c);
@@ -11,12 +11,12 @@ let a = actor {
 };
 
 a.incn(1);
-a.readCounter(shared func (n : Nat) = { printNat n; print("\n") });
+a.readCounter(shared func (n : Nat) = { debugPrintNat n; debugPrint("\n") });
 a.incn(2);
-a.readCounter(shared func (n : Nat) = { printNat n; print("\n") });
+a.readCounter(shared func (n : Nat) = { debugPrintNat n; debugPrint("\n") });
 a.incn(3);
-a.readCounter(shared func (n : Nat) = { printNat n; print("\n") });
+a.readCounter(shared func (n : Nat) = { debugPrintNat n; debugPrint("\n") });
 a.incn(4);
-a.readCounter(shared func (n : Nat) = { printNat n; print("\n") });
+a.readCounter(shared func (n : Nat) = { debugPrintNat n; debugPrint("\n") });
 a.incn(5);
-a.readCounter(shared func (n : Nat) = { printNat n; print("\n") });
+a.readCounter(shared func (n : Nat) = { debugPrintNat n; debugPrint("\n") });
