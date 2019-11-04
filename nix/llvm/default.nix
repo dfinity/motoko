@@ -2,17 +2,26 @@
 , libxml2, python, isl, fetchsvn, overrideCC, wrapCCWith, wrapBintoolsWith
 , buildLlvmTools # tools, but from the previous stage, for cross
 , targetLlvmLibraries # libraries, but from the next stage, for cross
+, runCommandNoCC, fetchFromGitHub
 }:
 
 let
   release_version = "9.0.0";
   version = release_version; # differentiating these is important for rc's
 
-  fetch = name: sha256: fetchsvn {
-    url = "http://llvm.org/svn/llvm-project/${name}/trunk/";
-    rev = "375226";
-    inherit sha256;
+
+  src = fetchFromGitHub {
+    owner = "llvm";
+    repo = "llvm-project";
+    rev = "65f61c0030c5c375852f27ff6dd21e6a078e2420";
+    sha256 = "1fz3az8cdsw51ii9c58cfpwrqnnd8q03q420vjq06jbxvaiy5ap3";
   };
+
+  fetch = name: _sha256:
+    runCommandNoCC "${name}-${release_version}.tar.gz" {}
+    ''
+      tar -c -v -f $out -C ${src} ${name}
+    '';
 
   clang-tools-extra_src = fetch "clang-tools-extra" "1hg9swmwb4d48b6fzxi1y0c2anhqmnylg85dgk3q6giwzkacnj5k";
 

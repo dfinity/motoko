@@ -9,14 +9,12 @@ let
     name = "clang-${version}";
 
     unpackPhase = ''
-      unpackFile ${fetch "cfe" "1d3jwwmvr87ksybnchf1gf49fxy496vvyrin88y1gipv5r7a2478"}
-      chmod -R u+w cfe-*
-      mv cfe-* clang
+      unpackFile ${fetch "clang" "1d3jwwmvr87ksybnchf1gf49fxy496vvyrin88y1gipv5r7a2478"}
       sourceRoot=$PWD/clang
       unpackFile ${clang-tools-extra_src}
-      chmod -R u+w $sourceRoot/tools
-      chmod -R u+w clang-tools-extra-*
-      mv clang-tools-extra-* $sourceRoot/tools/extra
+      chmod -R u+w $sourceRoot
+      chmod -R u+w clang-tools-extra
+      mv clang-tools-extra $sourceRoot/tools/extra
     '';
 
     nativeBuildInputs = [ cmake python ]
