@@ -19,7 +19,7 @@ some further experience and discussion.  Until then, they live here.
 
 */
 public func printLn(x : Text) {
-  print(x # "\n");
+  debug_print(x # "\n");
 };
 
 /***

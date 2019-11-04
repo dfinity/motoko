@@ -49,7 +49,7 @@ actor class Server() = {
               case null { clients := n.tail };
               case (?p) { p.tail := n.tail };
             };
-            print "(unsubscribe "; printInt id; print ")\n";
+            debug_print "(unsubscribe "; debug_print_Int id; debug_print ")\n";
             return;
           };
           prev := next;

@@ -30,26 +30,26 @@ actor class Test() = this {
       /////////////////////////////////////////////////////////////////////////////////////
       let s = server;
 
-      print "\nExchange setup: Begin...\n====================================\n";
+      debug_print "\nExchange setup: Begin...\n====================================\n";
       await s.loadWorkload(params);
 
       if false {
-        print "\nRetailer queries\n====================================\n";
+        debug_print "\nRetailer queries\n====================================\n";
         // do a query for each retailer:
         for (r in range(0, params.retailer_count)) {
           await retailerQueryAll("", r)
         };
       };
 
-      print "\nQuery counts\n----------------\n";
+      debug_print "\nQuery counts\n----------------\n";
       let counts = await s.getCounts();
 
       printEntityCount("Retailer join", counts.retailer_join_count);
       printEntityCount("Retailer query", counts.retailer_query_count);
       printLabeledCost("Retailer query", counts.retailer_query_cost);
 
-      print "\nDump all\n====================================\n";
-      print (debug_show (await s.getCounts()));
+      debug_print "\nDump all\n====================================\n";
+      debug_print (debug_show (await s.getCounts()));
       if false {
         await debugDumpAll()
       }
@@ -61,107 +61,107 @@ actor class Test() = this {
 //func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
 func retailerQueryAll(pk:Text, retailerId:T.RetailerId) : async () {
 
-  print "\nRetailer ";
-  printInt retailerId;
-  print " sends `retailerQueryAll`\n";
-  print "------------------------------------\n";
+  debug_print "\nRetailer ";
+  debug_print_Int retailerId;
+  debug_print " sends `retailerQueryAll`\n";
+  debug_print "------------------------------------\n";
 
-  print "\n## Query begin:\n";
+  debug_print "\n## Query begin:\n";
   let res = Result.assertUnwrapAny<T.QueryAllResults>(
     await server.retailerQueryAll(pk, retailerId, null, null)
   );
-  print "\n## Query end.";
+  debug_print "\n## Query end.";
 
-  print "\n## Query results (";
-  printInt (res.len());
-  print ")\n";
+  debug_print "\n## Query results (";
+  debug_print_Int (res.len());
+  debug_print ")\n";
   for (info in res.vals()) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   }
 };
 
 //func debugDumpAll(server:A.Server) : async () {
 func debugDumpAll() : async () {
 
-  print "\nTruck type info\n----------------\n";
+  debug_print "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nRegion info\n----------------\n";
+  debug_print "\nRegion info\n----------------\n";
   for ( info in ((await server.allRegionInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nProduce info\n----------------\n";
+  debug_print "\nProduce info\n----------------\n";
   for ( info in ((await server.allProduceInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nProducer info\n----------------\n";
+  debug_print "\nProducer info\n----------------\n";
   for ( info in ((await server.allProducerInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nTransporter info\n----------------\n";
+  debug_print "\nTransporter info\n----------------\n";
   for ( info in ((await server.allTransporterInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nRetailer info\n----------------\n";
+  debug_print "\nRetailer info\n----------------\n";
   for ( info in ((await server.allRetailerInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  { print "\nInventory info\n----------------\n";
+  { debug_print "\nInventory info\n----------------\n";
     let items = await server.allInventoryInfo();
-    print "total count of ";
-    printInt (items.len());
-    print ":\n";
+    debug_print "total count of ";
+    debug_print_Int (items.len());
+    debug_print ":\n";
     for ( info in items.vals() ) {
-      print "- ";
-      print (debug_show info);
-      print "\n";
+      debug_print "- ";
+      debug_print (debug_show info);
+      debug_print "\n";
     };
   };
 
-  { print "\nRoute info\n----------------\n";
+  { debug_print "\nRoute info\n----------------\n";
     let routes = await server.allRouteInfo();
-    print "total count of ";
-    printInt (routes.len());
-    print ":\n";
+    debug_print "total count of ";
+    debug_print_Int (routes.len());
+    debug_print ":\n";
     for ( info in (routes.vals()) ) {
-      print "- ";
-      print (debug_show info);
-      print "\n";
+      debug_print "- ";
+      debug_print (debug_show info);
+      debug_print "\n";
     };
   };
 };
 
 func printEntityCount(entname:Text, count:Nat) {
-  print ("- " # entname # " count: ");
-  printInt count;
-  print "\n";
+  debug_print ("- " # entname # " count: ");
+  debug_print_Int count;
+  debug_print "\n";
 };
 
 func printLabeledCost(lab:Text, cost:Nat) {
-  print ("- " # lab # " cost: ");
-  printInt cost;
-  print "\n";
+  debug_print ("- " # lab # " cost: ");
+  debug_print_Int cost;
+  debug_print "\n";
 };
 
 let test = Test();

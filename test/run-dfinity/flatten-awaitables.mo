@@ -32,7 +32,7 @@ let a = actor {
 
 };
 
-func println(s:Text) {print s;print ",";};
+func println(s:Text) {debug_print s;debug_print ",";};
 
 let _ = async {
 
@@ -116,6 +116,6 @@ let _ = async {
     let (3,false,"text") = await a.g3(a.n3,xyz);
     println "15";
 
-    print "\n";
+    debug_print "\n";
 };
 

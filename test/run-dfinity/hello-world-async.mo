@@ -1,10 +1,10 @@
 let a = actor {
   public func world() {
-    print("World!\n");
+    debug_print("World!\n");
   };
   public func go() {
     world();
-    print("Hello ");
+    debug_print("Hello ");
   };
 };
 

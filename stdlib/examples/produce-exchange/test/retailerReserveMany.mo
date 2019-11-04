@@ -4,15 +4,15 @@ import Result = "../../../result.mo";
 import Option = "../../../option.mo";
 
 func printEntityCount(entname:Text, count:Nat) {
-  print ("- " # entname # " count: ");
-  printInt count;
-  print "\n";
+  debug_print ("- " # entname # " count: ");
+  debug_print_Int count;
+  debug_print "\n";
 };
 
 func printLabeledCost(lab:Text, cost:Nat) {
-  print ("- " # lab # " cost: ");
-  printInt cost;
-  print "\n";
+  debug_print ("- " # lab # " cost: ");
+  debug_print_Int cost;
+  debug_print "\n";
 };
 
 actor class Test() = this {
@@ -21,7 +21,7 @@ actor class Test() = this {
     {
       let s = A.Server();
 
-      print "\nExchange setup: Begin...\n====================================\n";
+      debug_print "\nExchange setup: Begin...\n====================================\n";
 
       let pka = "beef";
       let pkb = "dead";
@@ -97,7 +97,7 @@ actor class Test() = this {
 
       //////////////////////////////////////////////////////////////////
 
-      print "\nExchange setup: Done.\n====================================\n";
+      debug_print "\nExchange setup: Done.\n====================================\n";
 
       let inventoryCount1 = await debugDumpInventory(s, pka, 0);
       let routeCount1 = await debugDumpRoutes(s, pka, 0);
@@ -105,7 +105,7 @@ actor class Test() = this {
 
       //////////////////////////////////////////////////////////////////
 
-      print "\nRetailer queries\n====================================\n";
+      debug_print "\nRetailer queries\n====================================\n";
 
       // do some queries
       await retailerQueryAll(s, pka, ? Result.assertUnwrapAny<T.UserId>(uida));
@@ -114,17 +114,17 @@ actor class Test() = this {
       await retailerQueryAll(s, pkd, ? Result.assertUnwrapAny<T.UserId>(uidd));
       await retailerQueryAll(s, pke, ? Result.assertUnwrapAny<T.UserId>(uide));
 
-      print "\nQuery counts\n----------------\n";
+      debug_print "\nQuery counts\n----------------\n";
       let counts = await s.getCounts();
 
       printEntityCount("Retailer join", counts.retailer_join_count);
       printEntityCount("Retailer query", counts.retailer_query_count);
       printLabeledCost("Retailer query", counts.retailer_query_cost);
 
-      print "\nRetailer reservations\n====================================\n";
+      debug_print "\nRetailer reservations\n====================================\n";
 
 
-      print "\nRetailer reservations: begin...\n------------------------\n";
+      debug_print "\nRetailer reservations: begin...\n------------------------\n";
 
       let rrm =
         await s.retailerReserveMany(pka,
@@ -135,24 +135,24 @@ actor class Test() = this {
 
       let urrm = Result.assertUnwrapAny<[Result.Result<(T.ReservedInventoryId, T.ReservedRouteId), T.ServerErr>]>(rrm);
 
-      print "\nRetailer reservations: results:\n---------------------------------\n";
+      debug_print "\nRetailer reservations: results:\n---------------------------------\n";
 
       for (i in urrm.keys()) {
-        printInt i;
-        print ". ";
-        print (debug_show urrm[i]);
-        print "\n";
+        debug_print_Int i;
+        debug_print ". ";
+        debug_print (debug_show urrm[i]);
+        debug_print "\n";
       };
 
-      print "\nRetailer reservations: results[0]: expect success.\n---------------------------------\n";
+      debug_print "\nRetailer reservations: results[0]: expect success.\n---------------------------------\n";
 
       let (ri0, rr0) = Result.assertUnwrapAny<(T.ReservedInventoryId, T.ReservedRouteId)>(urrm[0]);
 
-      print "- ";
-      print (debug_show (ri0, rr0));
-      print "\n";
+      debug_print "- ";
+      debug_print (debug_show (ri0, rr0));
+      debug_print "\n";
 
-      print "\nRetailer reservations: results[1]: expect error: already reserved by us!\n---------------------------------\n";
+      debug_print "\nRetailer reservations: results[1]: expect error: already reserved by us!\n---------------------------------\n";
 
       Result.assertErrAs<T.ServerErr, ()>
       (urrm[1],
@@ -160,7 +160,7 @@ actor class Test() = this {
          switch err {
          case (#idErr entid) {
                 switch entid {
-                case (?(#inventory 0)) print "- error is `#idErr(?(#inventory 0))`\n";
+                case (?(#inventory 0)) debug_print "- error is `#idErr(?(#inventory 0))`\n";
                 case _ assert false;
                 }
               };
@@ -168,9 +168,9 @@ actor class Test() = this {
          }
        });
 
-      print "\nRetailer reservations: done.\n---------------------------------\n";
+      debug_print "\nRetailer reservations: done.\n---------------------------------\n";
 
-      print "\nExchange interactions: Done.\n====================================\n";
+      debug_print "\nExchange interactions: Done.\n====================================\n";
 
       let inventoryCount2 = await debugDumpInventory(s, pka, 0);
       let routeCount2 = await debugDumpRoutes(s, pka, 0);
@@ -183,117 +183,117 @@ actor class Test() = this {
 };
 
 func debugDumpInventory(server:A.Server, pk:T.PublicKey, p:T.ProducerId) : async Nat {
-  print "\nProducer ";
-  printInt p;
-  print "'s inventory:\n--------------------------------\n";
+  debug_print "\nProducer ";
+  debug_print_Int p;
+  debug_print "'s inventory:\n--------------------------------\n";
   let res = await server.producerAllInventoryInfo(pk, p);
   let items = Result.assertUnwrapAny<[T.InventoryInfo]>(res);
   for (i in items.keys()) {
-    printInt i;
-    print ". ";
-    print (debug_show (items[i]));
-    print "\n";
+    debug_print_Int i;
+    debug_print ". ";
+    debug_print (debug_show (items[i]));
+    debug_print "\n";
   };
-  print "(list end)\n";
+  debug_print "(list end)\n";
   items.len()
 };
 
 func debugDumpRoutes(server:A.Server, pk:T.PublicKey, t:T.TransporterId) : async Nat {
-  print "\nTransporter ";
-  printInt t;
-  print "'s routes:\n--------------------------------\n";
+  debug_print "\nTransporter ";
+  debug_print_Int t;
+  debug_print "'s routes:\n--------------------------------\n";
   let res = await server.transporterAllRouteInfo(pk, t);
   let items = Result.assertUnwrapAny<[T.RouteInfo]>(res);
   for (i in items.keys()) {
-    printInt i;
-    print ". ";
-    print (debug_show (items[i]));
-    print "\n";
+    debug_print_Int i;
+    debug_print ". ";
+    debug_print (debug_show (items[i]));
+    debug_print "\n";
   };
-  print "(list end)\n";
+  debug_print "(list end)\n";
   items.len()
 };
 
 func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
 
-  print "\nRetailer ";
+  debug_print "\nRetailer ";
   let retailerId: T.UserId = Option.unwrap<T.UserId>(r);
-  printInt retailerId;
-  print " sends `retailerQueryAll`\n";
-  print "------------------------------------\n";
+  debug_print_Int retailerId;
+  debug_print " sends `retailerQueryAll`\n";
+  debug_print "------------------------------------\n";
 
-  print "\n## Query begin:\n";
+  debug_print "\n## Query begin:\n";
   let res = Result.assertUnwrapAny<T.QueryAllResults>(
     await server.retailerQueryAll(pk, retailerId, null, null)
   );
-  print "\n## Query end.";
+  debug_print "\n## Query end.";
 
-  print "\n## Query results (";
-  printInt (res.len());
-  print ")\n";
+  debug_print "\n## Query results (";
+  debug_print_Int (res.len());
+  debug_print ")\n";
   for (info in res.vals()) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   }
 };
 
 func debugDumpAll(server:A.Server) : async () {
 
-  print "\nTruck type info\n----------------\n";
+  debug_print "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nRegion info\n----------------\n";
+  debug_print "\nRegion info\n----------------\n";
   for ( info in ((await server.allRegionInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nProduce info\n----------------\n";
+  debug_print "\nProduce info\n----------------\n";
   for ( info in ((await server.allProduceInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nProducer info\n----------------\n";
+  debug_print "\nProducer info\n----------------\n";
   for ( info in ((await server.allProducerInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nTransporter info\n----------------\n";
+  debug_print "\nTransporter info\n----------------\n";
   for ( info in ((await server.allTransporterInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nRetailer info\n----------------\n";
+  debug_print "\nRetailer info\n----------------\n";
   for ( info in ((await server.allRetailerInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nInventory info\n----------------\n";
+  debug_print "\nInventory info\n----------------\n";
   for ( info in ((await server.allInventoryInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 
-  print "\nRoute info\n----------------\n";
+  debug_print "\nRoute info\n----------------\n";
   for ( info in ((await server.allRouteInfo()).vals()) ) {
-    print "- ";
-    print (debug_show info);
-    print "\n";
+    debug_print "- ";
+    debug_print (debug_show info);
+    debug_print "\n";
   };
 };
 

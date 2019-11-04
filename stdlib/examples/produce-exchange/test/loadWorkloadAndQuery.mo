@@ -1,7 +1,7 @@
 func scaledParams(region_count_:Nat, factor:Nat) : T.WorkloadParams = {
-  print "## region_count = "; printInt region_count_; print "\n";
-  print "## factor = "; printInt factor; print "\n";
-  print "## data format: source-region, evaluation-count:\n";
+  debug_print "## region_count = "; debug_print_Int region_count_; debug_print "\n";
+  debug_print "## factor = "; debug_print_Int factor; debug_print "\n";
+  debug_print "## data format: source-region, evaluation-count:\n";
   shared {
     region_count        = region_count_:Nat;
     day_count           = 3:Nat;

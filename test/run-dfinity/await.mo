@@ -1,70 +1,70 @@
 var cnt : Nat = 0;
 
 func f(i:Nat) : async Nat {
-    print "cnt: ";
-    printNat cnt;
-    print " i: ";
-    printNat i;
-    print "\n";
+    debug_print "cnt: ";
+    debug_print_Nat cnt;
+    debug_print " i: ";
+    debug_print_Nat i;
+    debug_print "\n";
     cnt += 1;
     cnt;
 };
 
-print "a";
+debug_print "a";
 
 let a = async await f(0);
 
-print "b";
+debug_print "b";
 
 let b = async { await f(1); };
 
-print "c";
+debug_print "c";
 
 let c = async {
     let _ = await f(2);
     await f(3);
 };
 
-print "d";
+debug_print "d";
 
 let d  = (async { return await f(4); }) : async Int; 
 
-print "e";
+debug_print "e";
 
 let e = async {
     var i = 5;
-    print "e-while";
+    debug_print "e-while";
     while (i < 8) {
 	let _ = await f(i);
 	i += 1;
     };
-    print "e-exit";
+    debug_print "e-exit";
 };
 
-print "g";
+debug_print "g";
 
 let g = async {
     var i = 10;
-    print "g-label";
+    debug_print "g-label";
     label lp
     while (true) {
 	if (i < 13) {
-    	    print ".";
+    	    debug_print ".";
      	    let _ = await f(i);
      	    i += 1;
 	    continue lp; 
 	} else {};
 	break lp;
     };
-    print "g-exit";
+    debug_print "g-exit";
 };
 
-print "holy";
+debug_print "holy";
 
 func p():async (Text,Text) { ("fst","snd"); };
 let h = async {
    let (a,b) = ("a","b"); /* await p(a,b);*/
-   print a;
-   print b;
+   debug_print a;
+   debug_print b;
 };
 
