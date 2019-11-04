@@ -241,29 +241,6 @@ These mappings should be straight-forward, given the following clarifications:
 * Characters (of type `Char`) are mapped to their Unicode scalar as a `nat32`.
   Decoding a `nat32` that is not a valid Unicode scalar fails.
 
-## Identifier mappings
-
-Identifiers are identity mappings, except when the identifier is a reserved
-identifier in the target language. In this case, we append a "_" after the
-identifier in the target language.
-
-### Export
-
-```
-escape : <id> -> <id>
-escape <id> = <id> "_" if <id> is a reserved identifier in the target language
-escape <id> = <id>     otherwise
-```
-
-### Import
-
-```
-unescape : <id> -> <id>
-unescape(<id> "_") = <id>  if <id> is a reserved identifier in the source language
-unescape(<id>) = <id>      otherwise
-
-```
-
 ## Work flows
 
 The mapping specified here can be used to support the following use-cases. The

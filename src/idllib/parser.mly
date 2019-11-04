@@ -77,20 +77,8 @@ seplist(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
-%inline extended_id :
-  | id=ID { id @@ at $sloc }
-  | RECORD { "record" @@ at $sloc }
-  | VARIANT { "variant" @@ at $sloc }
-  | SERVICE { "service" @@ at $sloc }
-  | IMPORT { "import" @@ at $sloc }
-  | FUNC { "func" @@ at $sloc }
-  | TYPE { "type" @@ at $sloc }
-  | BLOB { "blob" @@ at $sloc }
-  | VEC { "vec" @@ at $sloc }
-  | OPT { "opt" @@ at $sloc }
-
 %inline name :
-  | id=extended_id { id }
+  | id=ID { id @@ at $sloc }
   | text=TEXT { text @@ at $sloc }
 
 (* Types *)
