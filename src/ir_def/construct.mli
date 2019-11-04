@@ -1,4 +1,4 @@
-open As_types
+open Mo_types
 
 open Ir
 open Type
@@ -35,7 +35,6 @@ val varP : var -> pat
 val tupP :  pat list -> pat
 
 val seqP : pat list -> pat
-val as_seqP : pat -> pat list
 
 (* Expressions *)
 
@@ -99,7 +98,6 @@ val fresh_err_cont : unit -> var
 (* Sequence expressions *)
 
 val seqE : exp list -> exp
-val as_seqE : exp -> exp list
 
 (* Lambdas *)
 

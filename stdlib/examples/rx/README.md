@@ -1,3 +1,3 @@
-# RxActorScript
+# RxMotoko
 
-A [ReactiveX](http://reactivex.io/) implementation in ActorScript.
+A [ReactiveX](http://reactivex.io/) implementation in Motoko.

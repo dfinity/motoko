@@ -1,7 +1,7 @@
 open Ir_def
-open As_def
-open As_types
-open As_values
+open Mo_def
+open Mo_types
+open Mo_values
 
 open Source
 open Operator
@@ -87,12 +87,10 @@ and exp' at note = function
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, s, tbs, p, _t_opt, e) ->
-    let args, wrap, control, n_res  = to_args note.I.note_typ p in
-    let _, _, _, ty = T.as_func_sub s.it (List.length tbs) note.I.note_typ in
+    let args, wrap, control, res_tys = to_args note.I.note_typ p in
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
-    let ty = T.open_ vars ty in
-    let tys = if n_res = 1 then [ty] else T.as_seq ty in
+    let tys = List.map (T.open_ vars) res_tys in
     I.FuncE (name, s.it, control, tbs', args, tys, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
@@ -128,7 +126,7 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
-  | S.DebugE e -> if !As_config.Flags.release_mode then I.TupE [] else (exp e).it
+  | S.DebugE e -> if !Mo_config.Flags.release_mode then I.TupE [] else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
   | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
   | S.RetE e -> I.RetE (exp e)
@@ -369,17 +367,17 @@ and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     (fun e -> blockE [letP (pat p) v] e)
 
 
-and to_args typ p : (Ir.arg list * (Ir.exp -> Ir.exp) * T.control * int) =
-  let sort, control, n_args, n_res =
+and to_args typ p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
+  let sort, control, n_args, res_tys =
     match typ with
     | Type.Func (sort, control, tbds, dom, res) ->
-      sort, control, List.length dom, List.length res
+      sort, control, List.length dom, res
     | Type.Non ->
-      Type.Local, Type.Returns, 1, 1
+      Type.Local, Type.Returns, 1, []
     | _ -> raise (Invalid_argument ("to_args " ^ Type.string_of_typ typ))
   in
 
-  let tys = if n_args = 1 then [p.note] else T.as_seq p.note in
+  let tys = if n_args = 1 then [p.note] else T.seq_of_tup p.note in
 
   let args, wrap =
     match n_args, p.it with
@@ -411,7 +409,7 @@ and to_args typ p : (Ir.arg list * (Ir.exp -> Ir.exp) * T.control * int) =
       | _ -> assert false
     else wrap e in
 
-  args, wrap_under_async, control, n_res
+  args, wrap_under_async, control, res_tys
 
 and prog (p : Syntax.prog) : Ir.prog =
   begin match p.it with
@@ -425,60 +423,18 @@ and prog (p : Syntax.prog) : Ir.prog =
     }
 
 
-let declare_import imp_env (f, (prog:Syntax.prog))  =
+let declare_import imp_env lib =
   let open Source in
+  let f = lib.note in
   let t = T.Env.find f imp_env in
   let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
-  match prog.it with
-  |  [{it = Syntax.ExpD e;_}] ->
-     { it = Syntax.LetD (
-                { it = Syntax.VarP (id_of_full_path f)
-                ; at = no_region
-                ; note = t
-                }
-              , e
-              )
-     ; at = no_region
-     ; note = typ_note
-     }
-  (* HACK: to be removed once we restrict programs to expressions *)
-  |  ds ->
-     Diag.(
-       print_message
-         { sev = Warning
-         ; at = prog.at
-         ; cat = "import"
-         ; text = Printf.sprintf
-                    "imported declarations `...` from file %s as a module; \
-                     please rewrite library %s as `module { ... }` instead." f f
-         }
-     );
-     { it =
-         Syntax.LetD
-           (
-             { it = Syntax.VarP (id_of_full_path f)
-             ; at = no_region
-             ; note = t
-             }
-           , { it = Syntax.ObjE
-                      (T.Module @@ no_region,
-                       List.map
-                         (fun d ->
-                           { Syntax.dec=d; vis=Syntax.Public @@ no_region }
-                              @@ d.at)
-                         prog.it)
-             ; at = no_region
-             ; note = typ_note
-             }
-           )
-     ; at = no_region
-     ; note = typ_note
-     }
+  let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
+  { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
 
-let combine_files imp_env libraries progs : Syntax.prog =
+let combine_files imp_env libs progs : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
-  { it = List.map (declare_import imp_env) libraries
+  { it = List.map (declare_import imp_env) libs
          @ List.concat (List.map (fun p -> p.it) progs)
   ; at = no_region
   ; note = match progs with

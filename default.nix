@@ -27,13 +27,13 @@ let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix n
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   # ref = "master";
-  rev = "9030c90efe5b3de33670d4f4f0331482d51c5858";
+  rev = "6fca1936fcd027aaeaccab0beb51defeee38a0ff";
 }) { system = nixpkgs.system; }; in
 
 let dfinity-repo = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   # ref = "master";
-  rev = "ab9d9d6ccba33748fc92f6e8d631327f7f25aead";
+  rev = "3c82c6400b0eb8c5785669996f5b8007623cd9fc";
 }) { system = nixpkgs.system; }; in
 
 let sdk = import (builtins.fetchGit {
@@ -201,7 +201,7 @@ in
 
 rec {
   rts = stdenv.mkDerivation {
-    name = "asc-rts";
+    name = "moc-rts";
 
     src = subpath ./rts;
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
@@ -221,56 +221,56 @@ rec {
 
     installPhase = ''
       mkdir -p $out/rts
-      cp as-rts.wasm $out/rts
+      cp mo-rts.wasm $out/rts
     '';
   };
 
-  asc-bin = stdenv.mkDerivation {
-    name = "asc-bin";
+  moc-bin = stdenv.mkDerivation {
+    name = "moc-bin";
 
     src = subpath ./src;
 
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" asc as-ld
+      make DUNE_OPTS="--display=short --profile release" moc mo-ld
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp --verbose --dereference asc as-ld $out/bin
+      cp --verbose --dereference moc mo-ld $out/bin
     '';
   };
 
-  asc = nixpkgs.symlinkJoin {
-    name = "asc";
-    paths = [ asc-bin rts ];
+  moc = nixpkgs.symlinkJoin {
+    name = "moc";
+    paths = [ moc-bin rts ];
     buildInputs = [ nixpkgs.makeWrapper ];
     postBuild = ''
-      wrapProgram $out/bin/asc \
-        --set-default ASC_RTS "$out/rts/as-rts.wasm"
+      wrapProgram $out/bin/moc \
+        --set-default MOC_RTS "$out/rts/mo-rts.wasm"
     '';
   };
 
-  asc-tar = nixpkgs.symlinkJoin {
-    name = "asc-tar";
-    paths = [ asc-bin rts didc ];
+  moc-tar = nixpkgs.symlinkJoin {
+    name = "moc-tar";
+    paths = [ moc-bin rts didc ];
     postBuild = ''
-      tar -chf $out/asc.tar -C $out bin/asc rts/as-rts.wasm bin/didc
+      tar -chf $out/moc.tar -C $out bin/moc rts/mo-rts.wasm bin/didc
       mkdir -p $out/nix-support
-      echo "file bin $out/asc.tar" >> $out/nix-support/hydra-build-products
+      echo "file bin $out/moc.tar" >> $out/nix-support/hydra-build-products
     '';
   };
 
   lsp-int = haskellPackages.callCabal2nix "lsp-int" test/lsp-int { };
 
-  qc-actorscript = haskellPackages.callCabal2nix "qc-actorscript" test/random { };
+  qc-motoko = haskellPackages.callCabal2nix "qc-motoko" test/random { };
 
   tests = stdenv.mkDerivation {
     name = "tests";
     src = subpath ./test;
     buildInputs =
-      [ asc
+      [ moc
         didc
         deser
         ocaml_wasm
@@ -283,7 +283,7 @@ rec {
         js-user-library
         dvm
         drun
-        qc-actorscript
+        qc-motoko
         lsp-int
         esm
       ] ++
@@ -292,19 +292,20 @@ rec {
     buildPhase = ''
         patchShebangs .
         ${llvmEnv}
-        export ASC=asc
-        export AS_LD=as-ld
+        export MOC=moc
+        export MO_LD=mo-ld
         export DIDC=didc
         export DESER=deser
         export ESM=${esm}
         export JS_USER_LIBRARY=${js-user-library}
-        asc --version
+        moc --version
+        drun --version # run this once to work around self-unpacking-race-condition
         make parallel
-        qc-actorscript${nixpkgs.lib.optionalString (replay != 0)
+        qc-motoko${nixpkgs.lib.optionalString (replay != 0)
           " --quickcheck-replay=${toString replay}"}
         cp -R ${subpath ./test/lsp-int/test-project} test-project
         find ./test-project -type d -exec chmod +w {} +
-        lsp-int ${as-ide}/bin/as-ide ./test-project
+        lsp-int ${mo-ide}/bin/mo-ide ./test-project
       '';
 
     installPhase = ''
@@ -328,20 +329,20 @@ rec {
     '';
   };
 
-  as-ide = stdenv.mkDerivation {
-    name = "as-ide";
+  mo-ide = stdenv.mkDerivation {
+    name = "mo-ide";
 
     src = subpath ./src;
 
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" as-ide
+      make DUNE_OPTS="--display=short --profile release" mo-ide
     '';
 
     installPhase = ''
       mkdir -p $out/bin
-      cp --verbose --dereference as-ide $out/bin
+      cp --verbose --dereference mo-ide $out/bin
     '';
   };
 
@@ -349,20 +350,20 @@ rec {
     name = "samples";
     src = subpath ./samples;
     buildInputs =
-      [ asc
+      [ moc
         didc
         ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
         filecheck
-	real-drun
+        real-drun
       ] ++
       llvmBuildInputs;
 
     buildPhase = ''
         patchShebangs .
-        export ASC=asc
+        export MOC=moc
         make all
       '';
     installPhase = ''
@@ -370,8 +371,8 @@ rec {
     '';
   };
 
-  js = asc-bin.overrideAttrs (oldAttrs: {
-    name = "asc.js";
+  js = moc-bin.overrideAttrs (oldAttrs: {
+    name = "moc.js";
 
     buildInputs = commonBuildInputs ++ [
       nixpkgs.ocamlPackages.js_of_ocaml
@@ -381,12 +382,12 @@ rec {
     ];
 
     buildPhase = ''
-      make asc.js
+      make moc.js
     '';
 
     installPhase = ''
       mkdir -p $out
-      cp -v asc.js $out
+      cp -v moc.js $out
       cp -vr ${rts}/rts $out
     '';
 
@@ -470,15 +471,15 @@ rec {
     '';
     doCheck = true;
     checkInputs = [
-      asc
+      moc
       nixpkgs.python
     ];
     checkPhase = ''
-      make ASC=${asc}/bin/asc alltests
+      make MOC=${moc}/bin/moc alltests
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib.tar -C $src *.as
+      tar -rf $out/stdlib.tar -C $src *.mo
       mkdir -p $out/nix-support
       echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
     '';
@@ -525,15 +526,15 @@ rec {
     name = "produce-exchange";
     src = subpath ./stdlib;
     buildInputs = [
-      asc
+      moc
     ];
 
     doCheck = true;
     buildPhase = ''
-      make ASC=asc OUTDIR=_out _out/ProduceExchange.wasm
+      make MOC=moc OUTDIR=_out _out/ProduceExchange.wasm
     '';
     checkPhase = ''
-      make ASC=asc OUTDIR=_out _out/ProduceExchange.out
+      make MOC=moc OUTDIR=_out _out/ProduceExchange.out
     '';
     installPhase = ''
       mkdir -p $out
@@ -544,8 +545,8 @@ rec {
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
-      asc
-      as-ide
+      moc
+      mo-ide
       js
       didc
       deser
@@ -563,16 +564,16 @@ rec {
 
   shell = if export-shell then nixpkgs.mkShell {
     #
-    # Since building asc, and testing it, are two different derivations in we
+    # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
     # build dependencies of the two to provide a build environment that offers
-    # both, while not actually building `asc`
+    # both, while not actually building `moc`
     #
 
     buildInputs =
-      let dont_build = [ asc didc deser ]; in
+      let dont_build = [ moc didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
-        asc-bin.buildInputs ++
+        moc-bin.buildInputs ++
         js.buildInputs ++
         rts.buildInputs ++
         didc.buildInputs ++

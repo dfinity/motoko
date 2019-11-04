@@ -1,4 +1,4 @@
 (library
   (name lowering)
-  (libraries lib as_config as_def ir_def)
+  (libraries lib mo_config mo_def ir_def)
 )
