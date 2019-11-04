@@ -173,6 +173,7 @@ do
           diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
           diff_files="$diff_files $base.diff-ir"
 
+	  if false; then
           # Interpret IR with lowering
           $ECHO -n " [run-low]"
           $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS -r -iR $base.mo > $out/$base.run-low 2>&1
@@ -182,6 +183,7 @@ do
           # Diff interpretations without/with lowering
           diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
           diff_files="$diff_files $base.diff-low"
+          fi
 
         fi
 

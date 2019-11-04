@@ -73,11 +73,6 @@ let seqP ps =
   | [p] -> p
   | ps -> tupP ps
 
-let as_seqP p =
-  match p.it with
-  | TupP ps -> ps
-  | _ -> [p]
-
 (* Primitives *)
 
 let primE prim es =
@@ -455,11 +450,6 @@ let seqE es =
   | [e] -> e
   | es -> tupE es
 
-let as_seqE e =
-  match e.it with
-  | TupE es -> es
-  | _ -> [e]
-
 (* Lambdas & continuations *)
 
 (* Lambda abstraction *)
@@ -473,13 +463,6 @@ let (-->) x exp =
 let (-->*) xs exp =
   let fun_ty = T.Func (T.Local, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
   nary_funcE "$lambda" fun_ty xs exp
-
-
-(* n-ary shared lambda *)
-let (-@>*) xs exp  =
-  let fun_ty = T.Func (T.Shared T.Write, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
-  nary_funcE "$lambda" fun_ty xs exp
-
 
 (* Lambda application (monomorphic) *)
 

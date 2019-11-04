@@ -210,19 +210,28 @@ let error_shared env t at fmt =
         | _ -> raise Recover)
       fmt
 
+let as_domT t =
+  match t.Source.it with
+  | TupT ts -> ts
+  | _ -> [t]
+
+let as_codomT sort t =
+  match sort, t.Source.it with
+  | T.Shared _, AsyncT t -> T.Promises, as_domT t
+  | _ -> T.Returns, as_domT t
+
+let check_shared_return env at sort c ts =
+  match sort, c, ts with
+      | T.Shared _, T.Promises, _ -> ()
+      | T.Shared T.Write, T.Returns, [] -> ()
+      | T.Shared T.Write, _, _ -> error env at "shared function must have syntactic return type `()` or `async <typ>`"
+      | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `async <typ>`"
+      | _ -> ()
+
 let rec check_typ env typ : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
   t
-
-and infer_control env sort typ =
-    match sort.it, typ.it with
-      | T.Shared _, AsyncT ret_typ -> T.Promises (arity ret_typ)
-      | T.Shared T.Write, TupT [] ->
-        T.Returns
-      | T.Shared T.Write, _ -> error env typ.at "shared function must have syntactic return type `()` or `async <typ>`"
-      | T.Shared T.Query, _ -> error env typ.at "shared query function must have syntactic return type `async <typ>`"
-      | _ -> T.Returns
 
 and check_typ' env typ : T.typ =
   match typ.it with
@@ -247,19 +256,26 @@ and check_typ' env typ : T.typ =
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, ts, te, ce = check_typ_binds env binds in
     let env' = adjoin_typs env te ce in
-    let typs1 = as_seqT typ1 in
-    let typs2 = as_seqT typ2 in
+    let typs1 = as_domT typ1 in
+    let c, typs2 = as_codomT sort.it typ2 in
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
-    let c = infer_control env sort typ2 in
+    check_shared_return env typ2.at sort.it c ts2;
+
     if Type.is_shared_sort sort.it then
     if not env.pre then begin
       let t1 = T.seq ts1 in
       if not (T.shared t1) then
         error_shared env t1 typ1.at "shared function has non-shared parameter type\n  %s" (T.string_of_typ_expand t1);
-      match ts2 with
-      | [] when sort.it = T.Shared T.Write -> ()
-      | [T.Async _] -> ()
+      List.iter (fun t ->
+        if not (T.shared t) then
+          error_shared env t typ.at
+            "shared function has non-shared return type\n  %s"
+            (T.string_of_typ_expand t);
+      ) ts2;
+      match c, ts2 with
+      | T.Returns, [] when sort.it = T.Shared T.Write -> ()
+      | T.Promises, _ -> ()
       | _ ->
         error env typ2.at
           "shared function has non-async result type\n  %s"
@@ -680,37 +696,45 @@ and infer_exp'' env exp : T.typ =
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
-    let c = infer_control env sort typ in
+    let c, ts2 = as_codomT sort.it typ in
+    check_shared_return env typ.at sort.it c ts2;
+
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let t1, ve = infer_pat_exhaustive env' pat in
-    let t2 = check_typ env' typ in
+    let ts2 = List.map (check_typ env') ts2 in
+    let codom = T.codom c ts2 in
     if not env.pre then begin
       let env'' =
         { env' with
           labs = T.Env.empty;
-          rets = Some t2;
+          rets = Some codom;
           async = false;
           in_shared = T.is_shared_sort sort.it} in
-      check_exp (adjoin_vals env'' ve) t2 exp;
+      check_exp (adjoin_vals env'' ve) codom exp;
       if Type.is_shared_sort sort.it then begin
         if not (T.shared t1) then
           error_shared env t1 pat.at
             "shared function has non-shared parameter type\n  %s"
             (T.string_of_typ_expand t1);
-        match t2 with
-        | T.Tup [] when sort.it = T.Shared T.Write -> ()
-        | T.Async _ ->
+        List.iter (fun t ->
+          if not (T.shared t) then
+            error_shared env t typ.at
+              "shared function has non-shared return type\n  %s"
+              (T.string_of_typ_expand t);
+        ) ts2;
+        match c, ts2 with
+        | T.Returns,  [] when sort.it = T.Shared T.Write -> ()
+        | T.Promises, _ ->
           if not (isAsyncE exp) then
             error env exp.at
               "shared function with async result type has non-async body"
         | _ ->
           error env typ.at "shared function has non-async result type\n  %s"
-            (T.string_of_typ_expand t2)
+            (T.string_of_typ_expand codom)
       end
     end;
-    let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
-    let ts2 = match typ.it with TupT _ -> T.as_seq t2 | _ -> [t2] in
+    let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, insts, exp2) ->
@@ -996,11 +1020,12 @@ and check_exp' env0 t exp : T.typ =
         (String.concat " or\n  " ss)
     );
     t
-  | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, _, [], ts1, ts2) ->
+  | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, c, [], ts1, ts2) ->
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
+    let codom = T.codom c ts2 in
     let t2 =
       match typ_opt with
-      | None -> T.seq ts2
+      | None -> codom
       | Some typ -> check_typ env typ
     in
     if s'.it <> s then
@@ -1008,10 +1033,10 @@ and check_exp' env0 t exp : T.typ =
         "%sshared function does not match expected %sshared function type"
         (if s'.it = T.Local then "non-" else "")
         (if s = T.Local then "non-" else "");
-    if not (T.sub t2 (T.seq ts2)) then
+    if not (T.sub t2 codom) then
       error env exp.at
         "function return type\n  %s\ndoes not match expected return type\n  %s"
-        (T.string_of_typ_expand t2) (T.string_of_typ_expand (T.seq ts2));
+        (T.string_of_typ_expand t2) (T.string_of_typ_expand codom);
     let env' =
       { env with
         labs = T.Env.empty;
@@ -1761,7 +1786,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
-    let ts1 = match pat.it with TupP _ -> T.as_seq t1 | _ -> [t1] in
+    let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     let t = T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]) in

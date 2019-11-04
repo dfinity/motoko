@@ -87,12 +87,10 @@ and exp' at note = function
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, s, tbs, p, _t_opt, e) ->
-    let args, wrap, control, n_res  = to_args note.I.note_typ p in
-    let _, _, _, ty = T.as_func_sub s.it (List.length tbs) note.I.note_typ in
+    let args, wrap, control, res_tys = to_args note.I.note_typ p in
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
-    let ty = T.open_ vars ty in
-    let tys = if n_res = 1 then [ty] else T.as_seq ty in
+    let tys = List.map (T.open_ vars) res_tys in
     I.FuncE (name, s.it, control, tbs', args, tys, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
@@ -369,17 +367,17 @@ and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     (fun e -> blockE [letP (pat p) v] e)
 
 
-and to_args typ p : (Ir.arg list * (Ir.exp -> Ir.exp) * T.control * int) =
-  let sort, control, n_args, n_res =
+and to_args typ p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
+  let sort, control, n_args, res_tys =
     match typ with
     | Type.Func (sort, control, tbds, dom, res) ->
-      sort, control, List.length dom, List.length res
+      sort, control, List.length dom, res
     | Type.Non ->
-      Type.Local, Type.Returns, 1, 1
+      Type.Local, Type.Returns, 1, []
     | _ -> raise (Invalid_argument ("to_args " ^ Type.string_of_typ typ))
   in
 
-  let tys = if n_args = 1 then [p.note] else T.as_seq p.note in
+  let tys = if n_args = 1 then [p.note] else T.seq_of_tup p.note in
 
   let args, wrap =
     match n_args, p.it with
@@ -411,7 +409,7 @@ and to_args typ p : (Ir.arg list * (Ir.exp -> Ir.exp) * T.control * int) =
       | _ -> assert false
     else wrap e in
 
-  args, wrap_under_async, control, n_res
+  args, wrap_under_async, control, res_tys
 
 and prog (p : Syntax.prog) : Ir.prog =
   begin match p.it with
