@@ -605,10 +605,16 @@ let rec check_exp env (exp:Ir.exp) : unit =
     (type_obj env'' T.Actor fs) <: (T.Obj (s0, val_tfs0));
     t0 <: t;
   | NewObjE (s, fs, t0) ->
+    (* check object *)
+    let t1 = type_obj env s fs in
+    check_typ env t1;
+
+    (* check annotation *)
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
-    (type_obj env s fs) <: (T.Obj (s0, val_tfs0));
+    t1 <: T.Obj (s0, val_tfs0);
+
     t0 <: t
 
 (* Cases *)
