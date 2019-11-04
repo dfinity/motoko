@@ -82,7 +82,7 @@ public class Model() {
    */
 
   public func loadWorkload(params:T.WorkloadParams) : () {
-    func db(s:Text) = if false {debug_print "Model::loadWorkload: "; debug_print s; debug_print "\n"};
+    func db(s:Text) = if false {debugPrint "Model::loadWorkload: "; debugPrint s; debugPrint "\n"};
 
     /**- generate add requests for these params: */
     db "generate requests for workload...";
@@ -130,7 +130,7 @@ public class Model() {
 
    */
   public func evalReq(req:L.Req) : Result<L.Resp, T.IdErr> {
-    if false {debug_print "Model::evalReq: "; debug_print (debug_show req); debug_print "\n"; };
+    if false {debugPrint "Model::evalReq: "; debugPrint (debug_show req); debugPrint "\n"; };
     switch req {
     case (#reset) {
            /**- 1. reset each entity table: */
@@ -604,8 +604,8 @@ public class Model() {
    ==================
    */
 
-  func debugOut (t:Text)   { debug { debug_print t } };
-  func debugInt (i:Int)    { debug { debug_print_Int i } };
+  func debugOut (t:Text)   { debug { debugPrint t } };
+  func debugInt (i:Int)    { debug { debugPrintInt i } };
 
   func debugOff (t:Text)   { debug {  } };
   func debugIntOff (i:Int) { debug {  } };

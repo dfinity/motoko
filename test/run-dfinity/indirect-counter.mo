@@ -3,17 +3,17 @@ let a = actor {
     var c = 1;
     public func inc() {
       c += 1;
-      debug_print_Nat(c)
+      debugPrintNat(c)
     };
-    public func debug_print() {
-      debug_print_Nat(c)
+    public func debugPrint() {
+      debugPrintNat(c)
     };
   };
   public func inc() { aa.inc() };
-  public func debug_print() { aa.debug_print() };
+  public func debugPrint() { aa.debugPrint() };
 };
 
 a.inc();
 a.inc();
 a.inc();
-a.debug_print()
+a.debugPrint()

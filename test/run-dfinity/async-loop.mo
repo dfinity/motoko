@@ -5,7 +5,7 @@ async {
   var j = 0;
   label l
   loop {
-   debug_print_Nat(j);
+   debugPrintNat(j);
    assert(j == i);
    i += 1;
    j += 1;
@@ -20,7 +20,7 @@ async {
   var j = 0;
   label l
   loop {
-    debug_print_Nat(j);
+    debugPrintNat(j);
     assert(j == i);
     i += 1;
     j += 1;
@@ -35,7 +35,7 @@ async {
   var j = 0;
   label l
   loop {
-   debug_print_Nat(j);
+   debugPrintNat(j);
    assert(j == i);
    await (async (i += 1));
    j += 1;
@@ -54,7 +54,7 @@ async {
      break l;
      assert(false);
    };
-   debug_print_Nat(j);
+   debugPrintNat(j);
    assert(j == i);
    await (async (i += 1));
    j += 1;

@@ -4,31 +4,31 @@
 
 ignore(async {
     ignore ((0-1):Int);
-    debug_print("This is reachable.\n");
+    debugPrint("This is reachable.\n");
 });
 ignore(async {
     ignore ((1-1):Nat);
-    debug_print("This is reachable.\n");
+    debugPrint("This is reachable.\n");
 });
 ignore(async {
     ignore ((0-1):Nat);
-    debug_print("This should be unreachable.\n");
+    debugPrint("This should be unreachable.\n");
 });
 ignore(async {
     ignore ((0-1):Nat);
-    debug_print("This should be unreachable.\n");
+    debugPrint("This should be unreachable.\n");
 });
 /*
 ignore(async {
     ignore ((18446744073709551615 + 0):Nat);
-    debug_print("This is reachable.\n");
+    debugPrint("This is reachable.\n");
 });
 */
 ignore(async {
     ignore ((9223372036854775806 + 9223372036854775806 + 1):Nat);
-    debug_print("This is reachable.\n");
+    debugPrint("This is reachable.\n");
 });
 ignore(async {
     ignore ((9223372036854775806 + 9223372036854775806 + 2):Nat);
-    debug_print("This is reachable.\n");
+    debugPrint("This is reachable.\n");
 });

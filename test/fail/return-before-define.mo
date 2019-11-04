@@ -6,8 +6,8 @@ func f():() -> Int {
   };
 };
 
-debug_print "1\n";
+debugPrint "1\n";
 let h = f();
 
-debug_print "2\n";
+debugPrint "2\n";
 let wrong = h();

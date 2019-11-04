@@ -2,10 +2,10 @@ actor {
   var c = 1;
   public func inc() {
     c += 1;
-    debug_print_Nat c; debug_print "\n";
+    debugPrintNat c; debugPrint "\n";
   };
   public func printCounter () {
-    debug_print_Nat c; debug_print "\n";
+    debugPrintNat c; debugPrint "\n";
   };
   public func get() : async Nat {
     return c

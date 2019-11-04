@@ -3,4 +3,4 @@ func fac(n : Nat) : Nat {
   n * fac (n-1);
 };
 
-debug_print_Nat(fac 5);
+debugPrintNat(fac 5);

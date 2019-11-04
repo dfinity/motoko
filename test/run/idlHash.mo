@@ -1,7 +1,7 @@
 func testHash(s : Text, h : Word32) {
-  debug_print("Hash for " # s # ":\n");
-  debug_print("Expected: " # debug_show (word32ToNat(h)) # "\n");
-  debug_print("Actual:   " # debug_show (word32ToNat(idlHash s)) # "\n");
+  debugPrint("Hash for " # s # ":\n");
+  debugPrint("Expected: " # debug_show (word32ToNat(h)) # "\n");
+  debugPrint("Actual:   " # debug_show (word32ToNat(idlHash s)) # "\n");
 };
 
 // The lines below can be copied verbatim out of the corresponding JS unit test

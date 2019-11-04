@@ -53,7 +53,7 @@ actor class Server() = {
               case null { clients := n.tail };
               case (?p) { p.tail := n.tail };
             };
-            debug_print "(unsubscribe "; debug_print_Nat id; debug_print ")\n";
+            debugPrint "(unsubscribe "; debugPrintNat id; debugPrint ")\n";
             return;
           };
           prev := next;
@@ -81,7 +81,7 @@ actor class Client() = this {
   };
 
   public func send(msg : Text) {
-    debug_print(name # " received " # msg # "\n");
+    debugPrint(name # " received " # msg # "\n");
   };
 };
 

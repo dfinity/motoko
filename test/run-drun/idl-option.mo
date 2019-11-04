@@ -3,8 +3,8 @@
 actor {
   public func any(o : ?Text) : async () {
      switch o {
-       case null debug_print ("ok: null");
-       case (?x) debug_print ("ok: " # x);
+       case null debugPrint ("ok: null");
+       case (?x) debugPrint ("ok: " # x);
      }
   };
 }
