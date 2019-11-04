@@ -115,16 +115,6 @@ struct
     if not (Queue.is_empty q) then (yield (); run ())
 end
 
-(* Callback Register *)
-
-module CallbackReg =
-struct
-  let reg : (V.value V.cont option * V.value V.cont option) ref  = ref (None,None)
-  let get () = !reg
-  let set v = reg := v
-end
-
-
 (* Async auxiliary functions *)
 
 (* Are these just duplicates of the corresponding functions in interpret.ml? If so, refactor *)
@@ -227,12 +217,26 @@ let make_async_message env id v =
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
     (* assert (false) *)
 
+let make_replying_message env id v =
+  assert (not env.flavor.has_async_typ);
+  let open CC in
+  let call_conv, f = V.as_func v in
+  match call_conv with
+  | {sort = T.Shared s; control = T.Replies; _} ->
+    Value.replies_func s call_conv.n_args call_conv.n_res (fun v k ->
+      actor_msg env id f v (fun v -> ());
+      k (V.unit)
+    )
+  | _ ->
+    failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
+    (* assert (false) *)
+
 
 let make_message env x cc v : V.value =
   match cc.CC.control with
   | T.Returns -> make_unit_message env x v
   | T.Promises-> make_async_message env x v
-  | T.Replies -> make_async_message env x v (* TBR *)
+  | T.Replies -> make_replying_message env x v (* TBR *)
 
 
 let extended_prim env s typ at =
@@ -391,11 +395,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           check_call_conv exp1 call_conv;
           check_call_conv_arg env exp2 v2 call_conv;
           last_region := exp.at; (* in case the following throws *)
-          let _, kc = V.as_func kv in
-          let _, rc = V.as_func rv in
-          CallbackReg.set (Some (fun v -> kc v (fun v -> ())),
-                                Some (fun v -> rc v (fun v -> ())));
-          f v2 k))))
+          f (V.Tup[kv;rv;v2]) k))))
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -504,13 +504,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | FuncE (x, (T.Shared T.Write as sort), (T.Returns as control), _typbinds, args, ret_typs, e) when not env.flavor.has_async_typ ->
+  | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
+    assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
 
-    let f = interpret_func env exp.at x args
+    let f = interpret_message env exp.at x args
               (fun env' ->
-                let (replies_,rejects_) = CallbackReg.get() in
-                interpret_exp { env' with rejects = rejects_; replies = replies_ } e) in
+                interpret_exp env' e) in
 
     let v = V.Func (cc, f) in
     let v = make_message env x cc v in
@@ -779,6 +779,28 @@ and interpret_func env at x args f v (k : V.value V.cont) =
     }
   in f env' k'
 
+and interpret_message env at x args f v (k : V.value V.cont) =
+  if env.flags.trace then trace "%s%s" x (string_of_arg env v);
+  let [vk;vr;v] = V.as_tup v in
+  let _, reply = V.as_func vk in
+  let _, reject = V.as_func vr in
+  let ve = match_args at args v in
+  incr trace_depth;
+  let k' = fun v' ->
+    if env.flags.trace then trace "<= %s" (string_of_val env v');
+    decr trace_depth;
+    k v'
+  in
+  let env' =
+    { env with
+      vals = V.Env.adjoin env.vals ve;
+      labs = V.Env.empty;
+      rets = Some k';
+      replies = Some (fun v -> reply v (fun r -> ()));
+      rejects = Some (fun v -> reject v (fun r -> ()));
+      async = false
+    }
+  in f env' k'
 
 (* Programs *)
 
