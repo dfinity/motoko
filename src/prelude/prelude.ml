@@ -85,10 +85,10 @@ func @text_chars(xs : Text) : (() -> Iter<Char>) =
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
 
-func printNat(x : Nat) { print (@text_of_Nat x) };
-func printInt(x : Int) { print (@text_of_Int x) };
-func printChar(x : Char) { print (charToText x) };
-func print(x : Text) { (prim "print" : Text -> ()) x };
+func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
+func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };
+func debugPrintInt(x : Int) { debugPrint (@text_of_Int x) };
+func debugPrintChar(x : Char) { debugPrint (charToText x) };
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
 
 // Hashing
@@ -344,7 +344,7 @@ func errorMessage(e : Error) : Text =
   (prim "errorMessage" : Error -> Text)(e);
 
 func @int32ToErrorCode(i : Int32) : ErrorCode {
-  switch (int32ToInt(i)) { /*TODO: conversion only to avoid bug in asc-js, TBR */
+  switch (int32ToInt(i)) { /*TODO: conversion only to avoid bug in moc-js, TBR */
     case 4 /* CANISTER_REJECT */ #error;
     case _ #system; /* TBC */
   }

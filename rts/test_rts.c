@@ -28,7 +28,7 @@ extern bool bigint_eq(as_ptr a, as_ptr b);
 
 
 int main () {
-  printf("ASC RTS test suite\n");
+  printf("Motoko RTS test suite\n");
 
   int ret = EXIT_SUCCESS;
 

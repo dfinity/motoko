@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 
 open Source
 module T = Type
@@ -154,30 +154,25 @@ let rec check_typ env typ : unit =
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
     List.iter (check_typ env') ts2;
-    (match control with
-    | T.Returns -> ()
-    | T.Promises p -> begin
-      match ts2 with
-      | [T.Async t ] ->
-        let a = T.arity t in
-        if p <> 1 && a <> p then
-          error env no_region
-            "promising function of arity %i has async result type\n  %s\n  of mismatched arity %i"
-            p (T.string_of_typ_expand (T.seq ts2)) a
-      | _ ->
-        error env no_region "promising function with non-async result type\n  %s"
-          (T.string_of_typ_expand (T.seq ts2))
-    end);
     if T.is_shared_sort sort then begin
       List.iter (fun t -> check_shared env no_region t) ts1;
-      match ts2 with
-      | [] when not env.flavor.Ir.has_async_typ || sort = T.Shared T.Write  -> ()
-      | [T.Async t2] ->
-        check env' no_region (T.shared t2)
-          "message result is not sharable:\n  %s" (T.string_of_typ_expand t2)
-      | _ -> error env no_region "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand (T.seq ts2))
-    end
+      match control with
+      | T.Returns ->
+        (* async translations changes result of one-shot function.
+           this can change once we preserve the return type of Promising functions
+           past async translation
+        *)
+        if env.flavor.Ir.has_async_typ then
+          check env' no_region (sort = T.Shared T.Write)
+            "one-shot query function pointless"
+      | T.Promises ->
+        check env' no_region (sort <> T.Local)
+          "promising function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
+        check env' no_region (List.for_all T.shared ts)
+          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
+    end else
+        check env' no_region (control = T.Returns)
+          "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
   | T.Opt typ ->
     check_typ env typ
   | T.Async typ ->
@@ -211,11 +206,8 @@ and check_typ_field env s typ_field : unit =
   check_typ env typ;
   if not (T.is_typ typ) then begin
     check env no_region
-      (s <> Some T.Actor || T.is_func (T.promote typ))
-      "actor field has non-function type";
-    check env no_region
-      (s <> Some T.Actor || T.shared typ)
-      "actor field has non-shared type"
+      (s <> Some T.Actor || T.is_shared_func typ)
+      "actor field must have shared function type"
   end
 
 and check_typ_binds_acyclic env cs ts  =
@@ -297,7 +289,7 @@ let type_lit env lit at : T.prim =
 let isAsyncE exp =
   match exp.it with
   | AsyncE _ (* pre await transformation *)
-  | PrimE(OtherPrim "@async", [_]) (* post await transformation *)
+  | PrimE (CPSAsync, [_]) (* post await transformation *)
     -> true
   | _ -> false
 
@@ -348,6 +340,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env exp1;
       typ exp1 <: ot;
       T.Prim T.Text <: t
+    | CPSAwait, [a; kr] ->
+      check (not (env.flavor.has_await)) "CPSAwait await flavor";
+      check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
+      (* TODO: We can check more here, can we *)
+    | CPSAsync, [exp] ->
+      check (not (env.flavor.has_await)) "CPSAsync await flavor";
+      check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
+      (* TODO: We can check more here, can we *)
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
@@ -438,7 +438,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         check_inst_bounds env tbs insts exp.at;
         check_exp env exp2;
         let t_arg = T.open_ insts (T.seq arg_tys) in
-        let t_ret = T.open_ insts (T.seq ret_tys) in
+        let t_ret = T.open_ insts (T.codom control ret_tys) in
         if T.is_shared_sort sort then begin
           check_concrete env exp.at t_arg;
           check_concrete env exp.at t_ret;
@@ -564,14 +564,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
-    check ((T.is_shared_sort sort && Type.is_async (T.seq ret_tys))
-           ==> isAsyncE exp)
+    check ((T.is_shared_sort sort && control = T.Promises) ==> isAsyncE exp)
       "shared function with async type has non-async body";
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
+    let codom = T.codom control ret_tys in
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
+      {env' with labs = T.Env.empty; rets = Some codom; async = false} in
     check_exp (adjoin_vals env'' ve) exp;
-    check_sub env' exp.at (typ exp) (T.seq ret_tys);
+    check_sub env' exp.at (typ exp) codom;
     (* Now construct the function type and compare with the annotation *)
     let ts1 = List.map (fun a -> a.note) args in
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ts1;
@@ -731,10 +731,8 @@ and type_exp_field env s f : T.field =
   assert (t <> T.Pre);
   check_sub env f.at t f.note;
   if not (T.is_typ t) then begin
-    check env f.at ((s = T.Actor) ==> T.is_func t)
-      "public actor field is not a function";
-    check env f.at ((s = T.Actor) ==> T.shared t)
-      "public actor field has non-shared type";
+    check env f.at ((s = T.Actor) ==> T.is_shared_func t)
+      "public actor field must have shared function type";
   end;
   T.{lab = name; typ = t}
 

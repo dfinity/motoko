@@ -2,7 +2,7 @@
 
 char *alloc(size_t n) {
   as_ptr r = alloc_bytes (2*sizeof(void*) + n);
-  FIELD(r, 0) = TAG_TEXT;
+  FIELD(r, 0) = TAG_BLOB;
   FIELD(r, 1) = n;
   return (char *)&FIELD(r,2);
 }
@@ -23,7 +23,7 @@ size_t as_strlen(const char* p) {
 as_ptr as_str_of_cstr(const char * const s) {
   size_t l = as_strlen(s);
   as_ptr r = alloc_bytes (2*sizeof(void*) + l);
-  FIELD(r, 0) = TAG_TEXT;
+  FIELD(r, 0) = TAG_BLOB;
   FIELD(r, 1) = l;
   as_memcpy((char *)(&FIELD(r,2)), s, l);
   return r;

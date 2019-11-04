@@ -852,7 +852,7 @@ service Server : {
 Note:
 * `TruckTypeId` and `nat` are used interchangeably.
 
-With this IDL file, the server code in ActorScript could be:
+With this IDL file, the server code in Motoko could be:
 ```
 actor Server {
   registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
@@ -1092,8 +1092,8 @@ The types of these values are assumed to be known from context, so the syntax do
   | <val> : <datatype>
 
 <primval> ::=
-  | <nat> | <int> | <float>     (TODO: same as ActorScript grammar plus sign)
-  | <text>                      (TODO: same as ActorScript grammar)
+  | <nat> | <int> | <float>     (TODO: same as Motoko grammar plus sign)
+  | <text>                      (TODO: same as Motoko grammar)
   | true | false
   | null
 

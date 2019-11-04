@@ -1,6 +1,6 @@
 # ActorSpec
 
-A testing framework for ActorScript.
+A testing framework for Motoko.
 
 ## Demo
 

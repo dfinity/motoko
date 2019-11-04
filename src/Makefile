@@ -2,45 +2,45 @@
 # dependency tracking makefile, it just
 # calls `dune`
 
-AS_IDE_TARGET = _build/default/exes/as_ide.exe
-AS_LD_TARGET = _build/default/exes/as_ld.exe
-ASC_TARGET = _build/default/exes/asc.exe
+MO_IDE_TARGET = _build/default/exes/mo_ide.exe
+MO_LD_TARGET = _build/default/exes/mo_ld.exe
+MOC_TARGET = _build/default/exes/moc.exe
 DIDC_TARGET = _build/default/exes/didc.exe
-ASC_JS_TARGET = _build/default/js/as_js.bc.js
+MOC_JS_TARGET = _build/default/js/mo_js.bc.js
 DESER_TARGET = _build/default/exes/deser.exe
 
 DUNE_OPTS ?=
 
-ALL_TARGETS = $(AS_IDE_TARGET) $(AS_LD_TARGET) $(ASC_TARGET) $(ASC_JS_TARGET) $(DIDC_TARGET) $(DESER_TARGET)
+ALL_TARGETS = $(MO_IDE_TARGET) $(MO_LD_TARGET) $(MOC_TARGET) $(MOC_JS_TARGET) $(DIDC_TARGET) $(DESER_TARGET)
 
-.PHONY: all clean asc as-ide as-ld asc.js didc deser unit-tests
+.PHONY: all clean moc mo-ide mo-ld moc.js didc deser unit-tests
 
 # This targets is spelled out so that `make`
 # only invokes `dune` once, much faster
 all:
 	dune build $(DUNE_OPTS) $(ALL_TARGETS)
-	@ln -fs $(ASC_TARGET) asc
-	@ln -fs $(AS_IDE_TARGET) as-ide
-	@ln -fs $(AS_LD_TARGET) as-ld
-	@ln -fs $(ASC_JS_TARGET) asc.js
+	@ln -fs $(MOC_TARGET) moc
+	@ln -fs $(MO_IDE_TARGET) mo-ide
+	@ln -fs $(MO_LD_TARGET) mo-ld
+	@ln -fs $(MOC_JS_TARGET) moc.js
 	@ln -fs $(DIDC_TARGET) didc
 	@ln -fs $(DESER_TARGET) deser
 
-asc:
-	dune build $(DUNE_OPTS) $(ASC_TARGET)
-	@ln -fs $(ASC_TARGET) asc
+moc:
+	dune build $(DUNE_OPTS) $(MOC_TARGET)
+	@ln -fs $(MOC_TARGET) moc
 
-as-ide:
-	dune build $(DUNE_OPTS) $(AS_IDE_TARGET)
-	@ln -fs $(AS_IDE_TARGET) as-ide
+mo-ide:
+	dune build $(DUNE_OPTS) $(MO_IDE_TARGET)
+	@ln -fs $(MO_IDE_TARGET) mo-ide
 
-as-ld:
-	dune build $(DUNE_OPTS) $(AS_LD_TARGET)
-	@ln -fs $(AS_LD_TARGET) as-ld
+mo-ld:
+	dune build $(DUNE_OPTS) $(MO_LD_TARGET)
+	@ln -fs $(MO_LD_TARGET) mo-ld
 
-asc.js:
-	dune build $(DUNE_OPTS) $(ASC_JS_TARGET)
-	@ln -fs $(ASC_JS_TARGET) asc.js
+moc.js:
+	dune build $(DUNE_OPTS) $(MOC_JS_TARGET)
+	@ln -fs $(MOC_JS_TARGET) moc.js
 
 didc:
 	dune build $(DUNE_OPTS) $(DIDC_TARGET)
@@ -54,13 +54,13 @@ unit-tests:
 	dune runtest $(DUNE_OPTS)
 
 clean:
-	rm -f asc as-ide as-ld asc.js didc deser
+	rm -f moc mo-ide mo-ld moc.js didc deser
 	dune clean
 
 test: $(NAME)
-	make -C ../test ASC=$(ASC) all
-	make -C ../stdlib ASC=$(ASC) all
-	make -C ../samples ASC=$(ASC) all
+	make -C ../test MOC=$(MOC) all
+	make -C ../stdlib MOC=$(MOC) all
+	make -C ../samples MOC=$(MOC) all
 
 test-quick: $(NAME)
-	make -C ../test ASC=$(ASC) quick
+	make -C ../test MOC=$(MOC) quick
