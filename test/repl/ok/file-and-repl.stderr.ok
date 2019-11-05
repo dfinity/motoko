@@ -1,4 +1,4 @@
-63:1.12-1.40: warning, the cases in this switch over type
+/dev/fd/63:1.12-1.40: warning, the cases in this switch over type
   Bool
 do not cover value
   false

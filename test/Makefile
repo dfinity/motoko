@@ -53,7 +53,6 @@ accept:
 	$(MAKE) -C idl accept
 	$(MAKE) -C mo-idl accept
 	$(MAKE) -C trap accept
-	$(MAKE) -C trap check
 	$(MAKE) -C run-deser accept
 
 clean:
