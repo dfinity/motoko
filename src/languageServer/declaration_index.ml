@@ -83,18 +83,6 @@ let string_of_index index =
          ^ string_of_list string_of_ide_decl decls
          ^ "\n")
 
-let project_files () : string list =
-  let rec read_dir d =
-    if Sys.is_directory d
-    then
-      let entries =
-        Array.to_list (Sys.readdir d)
-        |> List.map (fun file -> Filename.concat d file) in
-      flat_map read_dir entries
-    else [d] in
-  read_dir "."
-  |> List.filter (fun file -> String.equal (Filename.extension file) ".mo")
-
 let read_single_module_lib (ty: Type.typ): ide_decl list option =
   match ty with
   | Type.Obj (Type.Module, fields) ->
@@ -165,13 +153,12 @@ let populate_definitions
   | Some lib ->
      List.map (find_def lib) decls
 
-let make_index_inner vfs : declaration_index Diag.result =
-  let entry_points = project_files () in
-  Pipeline.chase_imports
+let make_index_inner vfs entry_points : declaration_index Diag.result =
+  Pipeline.load_progs
     (Vfs.parse_file vfs)
+    entry_points
     Pipeline.initial_stat_env
-    (Pipeline__.Resolve_import.S.of_list entry_points)
-  |> Diag.map (fun (libs, scope) ->
+  |> Diag.map (fun (libs, _, scope) ->
       Type.Env.fold
         (fun path ty acc ->
         Index.add
@@ -184,6 +171,6 @@ let make_index_inner vfs : declaration_index Diag.result =
         scope.Scope.lib_env
         Index.empty)
 
-let make_index vfs : declaration_index Diag.result =
+let make_index vfs entry_points : declaration_index Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
-  try make_index_inner vfs with _ -> Diag.return Index.empty
+  try make_index_inner vfs entry_points with _ -> Diag.return Index.empty
