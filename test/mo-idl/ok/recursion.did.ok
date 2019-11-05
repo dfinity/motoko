@@ -1,16 +1,14 @@
-type Nat = nat;
 type List_2 = 
  record {
-   "head": Nat;
+   "head": nat;
    "tail": opt List_2;
  };
 type List_1 = 
  record {
-   "head": Int;
+   "head": int;
    "tail": opt List_1;
  };
-type Int = int;
 service anon_recursion {
-  "f": (Nat) -> (List_2);
-  "g": (Int) -> (List_1);
+  "f": (nat) -> (List_2);
+  "g": (int) -> (List_1);
 }
