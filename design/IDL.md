@@ -1096,12 +1096,13 @@ The types of these values are assumed to be known from context, so the syntax do
   | <text>                      (TODO: same as Motoko grammar)
   | true | false
   | null
+  | none
 
 <consval> ::=
-  | opt <val>
-  | vec { <annval>;* }
-  | record { <fieldval>;* }
-  | variant { <fieldval> }
+  | ? <val>
+  | [ <annval>;* ]
+  | { <fieldval>;* }
+  | # <fieldval>
 
 <fieldval> ::= <nat> = <annval>
 
@@ -1111,6 +1112,8 @@ The types of these values are assumed to be known from context, so the syntax do
 
 <arg> ::= ( <annval>,* )
 
+<meth> ::= <id> <arg>
+
 ```
 
 #### Syntactic Shorthands
@@ -1118,8 +1121,12 @@ The types of these values are assumed to be known from context, so the syntax do
 Analoguous to types, a few syntactic shorthands are supported that can be reduced to the basic value forms:
 
 ```
+<primval> ::=
+  | <digits>       := <nat>
+  | (+|-) <digits> := <int>
+
 <consval> ::= ...
-  | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted [as in the WebAssembly textual format](https://webassembly.github.io/spec/core/text/values.html#strings)
+  | blob <text>            := [ N;* ]  where N* are of bytes in the string, interpreted [as in the WebAssembly textual format](https://webassembly.github.io/spec/core/text/values.html#strings)
 
 <fieldval> ::= ...
   | <name> = <val>         :=  <hash(name)> = <val>
