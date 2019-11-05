@@ -780,27 +780,30 @@ and interpret_func env at x args f v (k : V.value V.cont) =
   in f env' k'
 
 and interpret_message env at x args f v (k : V.value V.cont) =
-  if env.flags.trace then trace "%s%s" x (string_of_arg env v);
-  let [vk;vr;v] = V.as_tup v in
-  let _, reply = V.as_func vk in
-  let _, reject = V.as_func vr in
-  let ve = match_args at args v in
-  incr trace_depth;
-  let k' = fun v' ->
-    if env.flags.trace then trace "<= %s" (string_of_val env v');
-    decr trace_depth;
-    k v'
-  in
-  let env' =
-    { env with
-      vals = V.Env.adjoin env.vals ve;
-      labs = V.Env.empty;
-      rets = Some k';
-      replies = Some (fun v -> reply v (fun r -> ()));
-      rejects = Some (fun v -> reject v (fun r -> ()));
-      async = false
-    }
-  in f env' k'
+  match V.as_tup v with
+  | [v_reply; v_reject; v] ->
+    if env.flags.trace then trace "%s%s" x (string_of_arg env v);
+    let _, reply = V.as_func v_reply in
+    let _, reject = V.as_func v_reject in
+    let ve = match_args at args v in
+    incr trace_depth;
+    let k' = fun v' ->
+      if env.flags.trace then trace "<= %s" (string_of_val env v');
+      decr trace_depth;
+      k v'
+    in
+    let env' =
+      { env with
+        vals = V.Env.adjoin env.vals ve;
+        labs = V.Env.empty;
+        rets = Some k';
+        replies = Some (fun v -> reply v V.as_unit);
+        rejects = Some (fun v -> reject v V.as_unit);
+        async = false
+      }
+    in f env' k'
+  | _ -> assert false
+
 
 (* Programs *)
 
