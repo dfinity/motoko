@@ -2,20 +2,20 @@
 // In principle, it should run on all targets.
 
 async {
-   print "1";
+   debugPrint "1";
    try {
-     print "2";
+     debugPrint "2";
      throw error("t2");
      assert(false);
    } catch e {
      switch (errorCode(e), errorMessage(e)) {
        case (#error, "t1") { assert false; };
        case (#system, _ ) { assert false; };
-       case (#error, _) { print "3"; };
+       case (#error, _) { debugPrint "3"; };
      }
    };
-   print "4";
-   print "done";
+   debugPrint "4";
+   debugPrint "done";
 };
 
 
