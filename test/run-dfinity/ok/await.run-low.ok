@@ -12,5 +12,5 @@ cnt: 10 i: 12
 .cnt: 11 i: 8
 cnt: 12 i: 13
 .cnt: 13 i: 9
-cnt: 14 i: 14
-e-exitg-exit
+e-exitcnt: 14 i: 14
+g-exit
