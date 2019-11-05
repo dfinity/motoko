@@ -1,4 +1,5 @@
 import Array "array.mo";
+import List "list.mo";
 
 module {
   public func forIn<A>(
@@ -52,22 +53,29 @@ module {
   };
 
   public func toArray<A>(xs : Iter<A>) : [A] {
-    Array.freeze<A>(toArrayMut<A>(xs));
+    List.toArray<A>(toList<A>(xs));
   };
 
   public func toArrayMut<A>(xs : Iter<A>) : [var A] {
-    let first = xs.next();
-    switch (first) {
-      case null { [var]; };
-      case (?x0) {
-        // FIXME: `length` consumes the iterator
-        let len = length<A>(xs) + 1;
-        let array = Array_init<A>(len, x0);
-        forIn<A>(func (x : A, i : Nat) {
-          array[i + 1] := x;
-        }, xs);
-        array;
-      };
-    };
+    Array.thaw<A>(toArray<A>(xs));
+  };
+
+  public func toList<A>(xs : Iter<A>) : List.List<A> {
+    toListWithLength<A>(xs).list;
+  };
+
+  public func toListWithLength<A>(
+    xs : Iter<A>,
+  ) : ({
+    length : Nat;
+    list : List.List<A>;
+  }) {
+    var _length = 0;
+    var _list = List.nil<A>();
+    forIn<A>(func (x, i) {
+      _length += 1;
+      _list := List.push<A>(x, _list);
+    }, xs);
+    { length = _length; list = List.rev<A>(_list); };
   };
 }

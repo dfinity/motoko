@@ -1,4 +1,5 @@
 import Iter "iter.mo";
+import List "list.mo";
 import Prelude "prelude.mo";
 
 Prelude.printLn("Iter");
@@ -74,4 +75,29 @@ Prelude.printLn("Iter");
   for (i in actual.keys()) {
     assert(actual[i] == expected[i]);
   };
+};
+
+{
+  Prelude.printLn("  toList");
+
+  let expected : List.List<Nat> = ?(1, ?(2, ?(3, List.nil<Nat>())));
+  let actual = Iter.toList<Nat>([1, 2, 3].vals());
+  assert List.isEq<Nat>(expected, actual, func (x1, x2) { x1 == x2 });
+};
+
+{
+  Prelude.printLn("  toListWithLength");
+
+  let expected : {
+    length : Nat;
+    list : List.List<Nat>;
+  } = {
+    length = 3;
+    list = ?(1, ?(2, ?(3, List.nil<Nat>())));
+  };
+
+  let actual = Iter.toListWithLength<Nat>([1, 2, 3].vals());
+
+  assert (expected.length == actual.length);
+  assert List.isEq<Nat>(expected.list, actual.list, func (x1, x2) { x1 == x2 });
 };

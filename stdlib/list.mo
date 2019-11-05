@@ -1,3 +1,6 @@
+import Array "array.mo";
+import Option "option.mo";
+
 module {
 /**
 
@@ -552,6 +555,20 @@ public type List<T> = ?(T, List<T>);
         }
       }
     }
+  };
+
+  public func toArray<A>(xs : List<A>) : [A] {
+    let length = len<A>(xs);
+    var list = xs;
+    Array_tabulate<A>(length, func (i) {
+      let popped = pop<A>(list);
+      list := popped.1;
+      Option.unwrap<A>(popped.0);
+    });
+  };
+
+  public func toArrayMut<A>(xs : List<A>) : [var A] {
+    Array.thaw<A>(toArray<A>(xs));
   };
 
 /**

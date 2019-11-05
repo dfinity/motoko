@@ -1,4 +1,5 @@
 import List "list.mo";
+import Prelude "prelude.mo";
 
 type X = Nat;
 
@@ -57,3 +58,31 @@ type X = Nat;
   assert (List.len<X>(l1) == 0);
   assert (List.len<X>(l2) == 1);
   assert (List.len<X>(l3) == 2);
+
+  {
+    Prelude.printLn("  toArray");
+
+    let expected = [1, 2, 3];
+    let list : List.List<Nat> = ?(1, ?(2, ?(3, List.nil<Nat>())));
+    let actual = List.toArray<Nat>(list);
+
+    assert (actual.len() == expected.len());
+
+    for (i in actual.keys()) {
+      assert(actual[i] == expected[i]);
+    };
+  };
+
+  {
+    Prelude.printLn("  toArrayMut");
+
+    let expected = [var 1, 2, 3];
+    let list : List.List<Nat> = ?(1, ?(2, ?(3, List.nil<Nat>())));
+    let actual = List.toArrayMut<Nat>(list);
+
+    assert (actual.len() == expected.len());
+
+    for (i in actual.keys()) {
+      assert(actual[i] == expected[i]);
+    };
+  };
