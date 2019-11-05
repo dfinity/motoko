@@ -40,7 +40,7 @@ actor class Client() = this {
   };
 
   public func send(msg : Text) {
-    print(name # " received " # msg # "\n");
+    debugPrint(name # " received " # msg # "\n");
   };
 };
 

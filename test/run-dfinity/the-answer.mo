@@ -1,1 +1,1 @@
-printNat(42);
+debugPrintNat(42);

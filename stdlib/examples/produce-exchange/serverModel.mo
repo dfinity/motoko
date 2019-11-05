@@ -1,3 +1,18 @@
+import P = "../../prelude.mo";
+
+import T = "serverTypes.mo";
+import L = "serverLang.mo";
+import M = "serverModelTypes.mo";
+
+import List = "../../list.mo";
+import Hash_ = "../../hash.mo";
+import Option = "../../option.mo";
+import Trie = "../../trie2.mo";
+
+import DT = "../../docTable.mo";
+import Result = "../../result.mo";
+
+
 module {
 /**
 
@@ -22,20 +37,10 @@ uses are is not.
 */
 
 
-import P = "../../prelude.mo";
-
-import T = "serverTypes.mo";
-import L = "serverLang.mo";
-import M = "serverModelTypes.mo";
-
-public let List = (import "../../list.mo");
 public type List<T> = List.List<T>;
 
-public let Hash = (import "../../hash.mo").BitVec;
+public let Hash = Hash_.BitVec;
 public type Hash = Hash.t;
-
-import Option = "../../option.mo";
-import Trie = "../../trie2.mo";
 
 public type Trie<K,V> = Trie.Trie<K,V>;
 public type TrieBuild<K,V> = Trie.Build.TrieBuild<K,V>;
@@ -47,11 +52,9 @@ public let Table = Trie;
 public type Map<K,V> = Trie.Trie<K,V>;
 public let Map = Trie;
 
-import DT = "../../docTable.mo";
 public let DocTable = DT.DocTable;
 public type DocTable<X,Y,Z> = DT.DocTable<X,Y,Z>;
 
-import Result = "../../result.mo";
 public type Result<Ok,Err> = Result.Result<Ok,Err>;
 
 public type RouteInventoryMap = Trie<(T.RouteId, T.InventoryId), (M.RouteDoc, M.InventoryDoc)>;
@@ -79,7 +82,7 @@ public class Model() {
    */
 
   public func loadWorkload(params:T.WorkloadParams) : () {
-    func db(s:Text) = if false {print "Model::loadWorkload: "; print s; print "\n"};
+    func db(s:Text) = if false {debugPrint "Model::loadWorkload: "; debugPrint s; debugPrint "\n"};
 
     /**- generate add requests for these params: */
     db "generate requests for workload...";
@@ -127,7 +130,7 @@ public class Model() {
 
    */
   public func evalReq(req:L.Req) : Result<L.Resp, T.IdErr> {
-    if false {print "Model::evalReq: "; print (debug_show req); print "\n"; };
+    if false {debugPrint "Model::evalReq: "; debugPrint (debug_show req); debugPrint "\n"; };
     switch req {
     case (#reset) {
            /**- 1. reset each entity table: */
@@ -601,8 +604,8 @@ public class Model() {
    ==================
    */
 
-  func debugOut (t:Text)   { debug { print t } };
-  func debugInt (i:Int)    { debug { printInt i } };
+  func debugOut (t:Text)   { debug { debugPrint t } };
+  func debugInt (i:Int)    { debug { debugPrintInt i } };
 
   func debugOff (t:Text)   { debug {  } };
   func debugIntOff (i:Int) { debug {  } };

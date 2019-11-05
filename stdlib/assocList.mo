@@ -1,3 +1,5 @@
+import List "list.mo";
+
 module {
 /**
 
@@ -9,8 +11,6 @@ Association Lists, a la functional programming, in Motoko.
 Implements the same interface as `Trie`, but as a linked-list of key-value pairs.
 
 */
-
-import List "list.mo";
 
 // polymorphic association linked lists between keys and values
 public type AssocList<K,V> = List.List<(K,V)>;

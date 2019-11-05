@@ -2,10 +2,10 @@ actor counter = {
   var c = 1;
   public func inc() {
     c += 1;
-    printNat c; print "\n";
+    debugPrintNat c; debugPrint "\n";
   };
   public func printCounter () {
-    printNat c; print "\n";
+    debugPrintNat c; debugPrint "\n";
   };
   public func get() : async Nat {
     return c
@@ -13,7 +13,7 @@ actor counter = {
   public query func read() : async Nat {
     let tmp = c;
     c += 1;
-    printNat c; print "(read)\n";
+    debugPrintNat c; debugPrint "(read)\n";
     return tmp;
   };
 

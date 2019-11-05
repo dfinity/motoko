@@ -1,3 +1,8 @@
+import H "hash.mo";
+import List "list.mo";
+import AssocList "assocList.mo";
+
+
 module {
 /**
 
@@ -61,14 +66,10 @@ See the full details in the definitions below:
 
 */
 
-import H "hash.mo";
 public let Hash = H.BitVec;
 public type Hash = Hash.t;
 
-import List "list.mo";
 public type List<T> = List.List<T>;
-
-import AssocList "assocList.mo";
 public type AssocList<K,V> = AssocList.AssocList<K,V>;
 
 public let HASH_BITS = 4;

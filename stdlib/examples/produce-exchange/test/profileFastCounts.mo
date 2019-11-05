@@ -1,19 +1,19 @@
-// print a table of numbers (somewhat) quickly.
+// debugPrint a table of numbers (somewhat) quickly.
 // we correlate these numbers with times that we
 // measure elsewhere, where these numbers are not available.
 
-let T = (import "../serverTypes.mo");
-let Model = (import "../serverModel.mo");
+import T = "../serverTypes.mo";
+import Model = "../serverModel.mo";
 
 let m = Model.Model();
 
 let scales = [1,2,3,4,5,6,7,8,9,10,
               20,50,100];
 
-print "# column: region count\n";
-print "# column: workload scale\n";
-print "# column: inventory count\n";
-print "# column: route count\n";
+debugPrint "# column: region count\n";
+debugPrint "# column: workload scale\n";
+debugPrint "# column: inventory count\n";
+debugPrint "# column: route count\n";
 
 for (scale in scales.vals()) {
   let (ic, rc) = m.countAddReqs(3, 1,
@@ -22,12 +22,12 @@ for (scale in scales.vals()) {
       5 * scale,
       5);
 
-  printInt 5;
-  print ", ";
-  printInt scale;
-  print ", ";
-  printInt ic;
-  print ", ";
-  printInt rc;
-  print "\n";
+  debugPrintInt 5;
+  debugPrint ", ";
+  debugPrintInt scale;
+  debugPrint ", ";
+  debugPrintInt ic;
+  debugPrint ", ";
+  debugPrintInt rc;
+  debugPrint "\n";
 };

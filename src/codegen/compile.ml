@@ -731,7 +731,7 @@ module Heap = struct
       (* Check that the new heap pointer is within the memory *)
       get_pages_needed ^^
       compile_unboxed_zero ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
       G.if_ (ValBlockType None)
         ( get_pages_needed ^^
           G.i MemoryGrow ^^
@@ -4954,7 +4954,7 @@ module FuncDec = struct
           G.i (Call (nr (E.built_in env "collect")))
         | Type.Shared Type.Query ->
           (* Don't collect *)
-          G.i Nop
+          G.nop
         | _ -> assert false
       ))
     | Flags.WasmMode -> assert false
@@ -6928,8 +6928,7 @@ and conclude_module env module_name start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    G.i (GlobalGet (nr (E.get_global env "__heap_base"))) ^^
-    Heap.set_heap_ptr env ^^
+    Heap.get_heap_base env ^^ Heap.set_heap_ptr env ^^
     match start_fi_o with
     | Some fi -> G.i (Call fi)
     | None -> G.nop

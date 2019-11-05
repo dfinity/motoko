@@ -11,9 +11,9 @@ import L = "serverLang.mo";
 import Model = "serverModel.mo";
 import Result = "../../result.mo";
 
-let Trie = (import "../../trie2.mo");
+import Trie = "../../trie2.mo";
+import List = "../../list.mo";
 
-let List = (import "../../list.mo");
 type List<T> = List.List<T>;
 
 type Result<Ok,Err> = Result.Result<Ok,Err>;
@@ -1048,7 +1048,7 @@ been processed
 
 
   public func loadWorkload(params:T.WorkloadParams) : () {
-    func db(s:Text) = if false {print "Model::loadWorkload: "; print s; print "\n"};
+    func db(s:Text) = if false {debugPrint "Model::loadWorkload: "; debugPrint s; debugPrint "\n"};
     getModel().loadWorkload(params)
   };
 

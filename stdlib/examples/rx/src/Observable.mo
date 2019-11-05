@@ -1,7 +1,7 @@
-module {
-  import Disposable "Disposable.mo";
-  import Observer "Observer.mo";
+import Disposable "Disposable.mo";
+import Observer "Observer.mo";
 
+module {
   type Subscriber<Value, Error> = Observer.Type<Value, Error> -> Disposable.Type;
 
   public class Type<Value, Error>(subscribe_ : Subscriber<Value, Error>) {
