@@ -199,6 +199,35 @@ let
   '';
 in
 
+let
+  commonPkgs =
+    let
+      system = builtins.currentSystem;
+      crossSystem = null;
+      config = {};
+      overlays = [];
+      # The `common` repo provides code (mostly Nix) that is used in the
+      # `infra`, `dfinity` and `sdk` repositories.
+      #
+      # To conveniently test changes to a local `common` repo you set the `COMMON`
+      # environment variable to an absolute path of it. For example:
+      #
+      #   COMMON="$(realpath ../common)" nix-build -A rust-workspace
+      commonSrc =
+        let localCommonSrc = builtins.getEnv "COMMON"; in
+        if localCommonSrc != ""
+        then localCommonSrc
+        else builtins.fetchGit {
+          url = "ssh://git@github.com/dfinity-lab/common";
+          rev = "e50de4525bd890f96a5d3a4d15b05352b253d42a";
+          ref = "master";
+        };
+    in import commonSrc {
+      inherit system crossSystem config;
+      # overlays = import ./overlays ++ overlays;
+     };
+in
+
 rec {
   rts = stdenv.mkDerivation {
     name = "moc-rts";
@@ -225,21 +254,24 @@ rec {
     '';
   };
 
-  moc-bin = stdenv.mkDerivation {
-    name = "moc-bin";
+  moc-bin = commonPkgs.lib.standaloneRust {
+    exename = "moc";
+    drv = stdenv.mkDerivation {
+      name = "moc-bin";
 
-    src = subpath ./src;
+      src = subpath ./src;
 
-    buildInputs = commonBuildInputs;
+      buildInputs = commonBuildInputs;
 
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" moc mo-ld
-    '';
+      buildPhase = ''
+        make DUNE_OPTS="--display=short --profile release" moc mo-ld
+      '';
 
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference moc mo-ld $out/bin
-    '';
+      installPhase = ''
+        mkdir -p $out/bin
+        cp --verbose --dereference moc mo-ld $out/bin
+      '';
+    };
   };
 
   moc = nixpkgs.symlinkJoin {
@@ -330,21 +362,24 @@ rec {
     '';
   };
 
-  mo-ide = stdenv.mkDerivation {
-    name = "mo-ide";
+  mo-ide = commonPkgs.lib.standaloneRust {
+    exename = "mo-ide";
+    drv = stdenv.mkDerivation {
+      name = "mo-ide";
 
-    src = subpath ./src;
+      src = subpath ./src;
 
-    buildInputs = commonBuildInputs;
+      buildInputs = commonBuildInputs;
 
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" mo-ide
-    '';
+      buildPhase = ''
+        make DUNE_OPTS="--display=short --profile release" mo-ide
+      '';
 
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference mo-ide $out/bin
-    '';
+      installPhase = ''
+        mkdir -p $out/bin
+        cp --verbose --dereference mo-ide $out/bin
+      '';
+    };
   };
 
   samples = stdenv.mkDerivation {
@@ -400,17 +435,20 @@ rec {
 
   });
 
-  didc = stdenv.mkDerivation {
-    name = "didc";
-    src = subpath ./src;
-    buildInputs = commonBuildInputs;
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" didc
-    '';
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference didc $out/bin
-    '';
+  didc = commonPkgs.lib.standaloneRust {
+    exename = "didc";
+    drv = stdenv.mkDerivation {
+      name = "didc";
+      src = subpath ./src;
+      buildInputs = commonBuildInputs;
+      buildPhase = ''
+        make DUNE_OPTS="--display=short --profile release" didc
+      '';
+      installPhase = ''
+        mkdir -p $out/bin
+        cp --verbose --dereference didc $out/bin
+      '';
+    };
   };
 
   deser = stdenv.mkDerivation {
