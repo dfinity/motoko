@@ -214,7 +214,8 @@ let commonBuildInputs = pkgs:
 
 let darwin_standalone =
   import nix/standalone-darwin.nix {
-    inherit (nixpkgs) runCommandNoCC stdenv grep removeReferencesTo lib;
+    inherit (nixpkgs) runCommandNoCC stdenv removeReferencesTo lib;
+    grep = nixpkgs.gnugrep;
   }; in
 
 let ocaml_exe = name: bin:
