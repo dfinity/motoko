@@ -241,28 +241,19 @@ These mappings should be straight-forward, given the following clarifications:
 * Characters (of type `Char`) are mapped to their Unicode scalar as a `nat32`.
   Decoding a `nat32` that is not a valid Unicode scalar fails.
 
-## Identifier mappings
+## Type name mangling
 
-Identifiers are identity mapping, except when the identifier is a reserved
-keyword in the target language. In this case, we append a "_" after the
-identifier in the target language.
+The name of type definition or services are irrelevant with regard to whether
+the resulting imported/exported types are correct, as both Motoko and IDL
+employ structural typing. Nevertheless, when the type export or import has to
+produce such identifiers, it tries to preserve the original name. This is a
+best effort approach.
 
-### Export
+If it happens that such a name is invalid (e.g. reserved) in the target
+language, a `"_"` is appended during translation.
 
-```
-escape : <id> -> <id>
-escape <id> = <id> "_" if <id> is a reserved keyword in the target language
-escape <id> = <id>     otherwise
-```
-
-### Import
-
-```
-unescape : <id> -> <id>
-unescape(<id> "_") = <id>  if <id> is a reserved keyword in the source language
-unescape(<id>) = <id>      otherwise
-
-```
+Conversely, a name of the form `<id> "_"` is translated  to `<id>`, if the
+latter is legal in the target language.
 
 ## Work flows
 
