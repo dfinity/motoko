@@ -374,9 +374,9 @@ rec {
     name = "moc.js";
 
     buildInputs = commonBuildInputs ++ [
-      nixpkgs.ocamlPackages.js_of_ocaml
-      nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
-      nixpkgs.ocamlPackages.js_of_ocaml-ppx
+      ocamlpkgs.ocamlPackages.js_of_ocaml
+      ocamlpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
+      ocamlpkgs.ocamlPackages.js_of_ocaml-ppx
       nixpkgs.nodejs-10_x
     ];
 
