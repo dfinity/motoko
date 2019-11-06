@@ -11,11 +11,6 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
-let ocamlpkgs =
-  if nixpkgs.stdenv.isDarwin
-  then nixpkgs
-  else nixpkgs.pkgsMusl; in
-
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   # ref = "master";
@@ -170,12 +165,21 @@ let
   '';
 in
 
+# When building for linux (but not in nix-shell) we build statically
+let ocamlpkgs =
+  if nixpkgs.stdenv.isDarwin
+  then nixpkgs
+  else nixpkgs.pkgsMusl; in
+
 let ocaml_wasm_static =
   import ./nix/ocaml-wasm.nix {
     inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml;
     inherit (ocamlpkgs.ocamlPackages) findlib ocamlbuild;
   }; in
 
+# This branches on the pkgs, which is either
+# normal nixpkgs (nix-shell, darwin)
+# nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
   let ocaml_wasm = import ./nix/ocaml-wasm.nix {
     inherit (pkgs) stdenv fetchFromGitHub ocaml;
