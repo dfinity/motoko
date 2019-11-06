@@ -60,6 +60,9 @@ module Channel = struct
       }) in
     let notification = notification params in
     send_notification oc (Lsp_j.string_of_notification_message notification)
+
+  let clear_diagnostics (oc : out_channel) (uri : Lsp_t.document_uri): unit =
+    publish_diagnostics oc uri []
 end
 
 let position_of_pos (pos : Source.pos) : Lsp_t.position = Lsp_t.
@@ -77,44 +80,38 @@ let severity_of_sev : Diag.severity -> Lsp.DiagnosticSeverity.t = function
   | Diag.Error -> Lsp.DiagnosticSeverity.Error
   | Diag.Warning -> Lsp.DiagnosticSeverity.Warning
 
-let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
+let diagnostics_of_message (msg : Diag.message) : (Lsp_t.diagnostic * string) = (Lsp_t.
   { diagnostic_range = range_of_region msg.Diag.at;
     diagnostic_severity = Some (severity_of_sev msg.Diag.sev);
     diagnostic_code = None;
-    diagnostic_source = Some "ActorScript";
+    diagnostic_source = Some "Motoko";
     diagnostic_message = msg.Diag.text;
     diagnostic_relatedInformation = None;
-  }
+  }, msg.Diag.at.Source.left.Source.file)
 
-let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
-let file_from_uri logger uri =
-  match Lib.String.chop_prefix file_uri_prefix uri with
-   | Some file -> file
-   | None ->
-      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
-      uri
-let abs_file_from_uri logger uri =
-  match Lib.String.chop_prefix "file://" uri with
-   | Some file -> file
-   | None ->
-      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
-      uri
-
-let start () =
-  let oc: out_channel = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"; in
-
+let start entry_point debug =
+  let oc: out_channel =
+    if debug then
+      open_out_gen [Open_append; Open_creat] 0o666 "ls.log"
+    else
+      open_out "/dev/null" in
   let log_to_file = Channel.log_to_file oc in
+  let _ = log_to_file "entry_point" entry_point in
   let publish_diagnostics = Channel.publish_diagnostics oc in
+  let clear_diagnostics = Channel.clear_diagnostics oc in
   let send_response = Channel.send_response oc in
   let show_message = Channel.show_message oc in
-
+  let shutdown = ref false in
   let client_capabilities = ref None in
   let project_root = Sys.getcwd () in
+  let files_with_diags = ref [] in
 
   let vfs = ref Vfs.empty in
   let decl_index =
-    let ix = match Declaration_index.make_index () with
-      | Error(err) -> Declaration_index.Index.empty
+    let ix = match Declaration_index.make_index !vfs [entry_point] with
+      | Error(err) ->
+        List.iter (fun e -> log_to_file "Error" (Diag.string_of_message e))  err;
+        Declaration_index.Index.empty
       | Ok((ix, _)) -> ix in
     ref ix in
   let rec loop () =
@@ -191,7 +188,7 @@ let start () =
                 position
                 file_content
                 project_root
-                (abs_file_from_uri log_to_file uri) in
+                (Vfs.abs_file_from_uri log_to_file uri) in
             response_result_message id result in
        send_response (Lsp_j.string_of_response_message response);
     | (Some id, `TextDocumentDefinition params) ->
@@ -214,7 +211,7 @@ let start () =
                 position
                 file_content
                 project_root
-                (abs_file_from_uri log_to_file uri) in
+                (Vfs.abs_file_from_uri log_to_file uri) in
             response_result_message id result in
        send_response (Lsp_j.string_of_response_message response);
     | (_, `TextDocumentDidOpen params) ->
@@ -223,30 +220,38 @@ let start () =
        vfs := Vfs.update_file params !vfs
     | (_, `TextDocumentDidClose params) ->
        vfs := Vfs.close_file params !vfs
-    | (_, `TextDocumentDidSave params) ->
-       let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
-       let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
-       let file_name = file_from_uri log_to_file uri in
-       let result = Pipeline.check_files [file_name] in
-       let msgs = match result with
-         | Error msgs' -> msgs'
-         | Ok (_, msgs') -> msgs' in
-       (match Declaration_index.make_index () with
-        | Error(err) -> ()
-        | Ok((ix, _)) -> decl_index := ix);
-       Lib.Fun.flip Lib.Option.iter !client_capabilities (fun _ ->
-           (* TODO: determine if the client accepts diagnostics with related info *)
-           (* let textDocument = capabilities.client_capabilities_textDocument in
-           * let send_related_information = textDocument.publish_diagnostics.relatedInformation in *)
-           let diags = List.map diagnostics_of_message msgs in
-           publish_diagnostics uri diags;
-         );
+    | (_, `TextDocumentDidSave _) ->
+       let msgs = match Declaration_index.make_index !vfs [entry_point] with
+        | Error msgs' -> msgs'
+        | Ok((ix, msgs')) ->
+           decl_index := ix;
+           msgs' in
+       let diags_by_file =
+         msgs
+         |> List.map diagnostics_of_message
+         |> Lib.List.group (fun (_, f1) (_, f2) -> f1 = f2)
+         |> List.map (fun diags ->
+                let (_, file) = List.hd diags in
+                (List.map fst diags, Vfs.uri_from_file file)) in
+
+       List.iter clear_diagnostics !files_with_diags;
+       files_with_diags := List.map snd diags_by_file;
+       List.iter (fun (diags, uri) ->
+           let _ = log_to_file "diag_uri" uri in
+           publish_diagnostics uri diags) diags_by_file;
 
     (* Notification messages *)
 
     | (None, `Initialized _) ->
        show_message Lsp.MessageType.Info "Language server initialized"
 
+    | (Some id, `Shutdown _) ->
+       shutdown := true;
+       response_result_message id (`ShutdownResponse None)
+       |> Lsp_j.string_of_response_message
+       |> send_response
+    | (_, `Exit _) ->
+       if !shutdown then exit 0 else exit 1
     | (Some id, `CompletionRequest params) ->
        let uri =
          params
@@ -265,7 +270,7 @@ let start () =
               !decl_index
               log_to_file
               project_root
-              (abs_file_from_uri log_to_file uri)
+              (Vfs.abs_file_from_uri log_to_file uri)
               file_content
               position
             |> response_result_message id in

@@ -3,12 +3,13 @@
   (libraries
     lib
     lang_utils
-    as_def
-    as_types
-    as_values
-    as_frontend
-    as_idl
-    as_interpreter
+    mo_def
+    mo_config
+    mo_types
+    mo_values
+    mo_frontend
+    mo_idl
+    mo_interpreter
     lowering
     wasm_exts
     ir_def

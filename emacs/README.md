@@ -1,7 +1,7 @@
-ActorScript Emacs playground
+Motoko Emacs playground
 ===
 
-A minimal set of packages + configuration that lets you use the ActorScript LSP support from within Emacs without having to change your personal configuration.
+A minimal set of packages + configuration that lets you use the Motoko LSP support from within Emacs without having to change your personal configuration.
 
 ## Getting started
 

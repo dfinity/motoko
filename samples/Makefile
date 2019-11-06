@@ -1,22 +1,24 @@
-# Makefile for actorscript  demos
+# Makefile for motoko  demos
 
 # This works with bash
 
-ASC?=../src/asc
-ASC_FLAGS=-r -t -v
+MOC?=../src/moc
+MOC_FLAGS=-r -t -v
 
 
-SAMPLES:=$(basename $(wildcard *.as))
+SAMPLES:=$(basename $(wildcard *.mo))
 SUBDIRS:=$(shell ls -d */)
 
 all:
 	rm -f *.txt
 	@for sample in $(SAMPLES); do \
-	  echo "$(ASC) $(ASC_FLAGS) $$sample.as >$$sample.txt 2>&1"; \
-	  $(ASC) $(ASC_FLAGS) $$sample.as >$$sample.txt 2>&1; \
+	  echo "$(MOC) $(MOC_FLAGS) $$sample.mo >$$sample.txt 2>&1"; \
+	  $(MOC) $(MOC_FLAGS) $$sample.mo >$$sample.txt 2>&1; \
+	  cat $$sample.txt; \
 	done
 	@for dir in $(SUBDIRS); do \
-	  make -C  $$dir ; \
+	  echo "make -s -C $$dir"; \
+	  make -s -C $$dir ; \
 	done
 
 clean:

@@ -1,4 +1,4 @@
-% ActorScript’s Users Guide
+% Language Reference Manual
 % [DFINITY Foundation](https://dfinity.org/)
 
 <!---
@@ -6,107 +6,112 @@ TODO
 * use menhir --only-preprocess-uu parser.mly followed by sed to create concrete grammar
 * perhaps use notions of left-evaluation and evaluation to talk about variable deref in just on place?
 * perhaps just spell out left-to-right evaluation, trap propagating to avoid all the lurid detail in each expression
--->
+
 TODO:
 
-* [X] *Sort* primitives and operations as arithmetic (A), boolean (L), bitwise (B) and comparable (C) and use these sorts to concisely present sorted operators (unop, binop, relop, a(ssing)op) etc.
+* [X] *Categorize* primitives and operations as arithmetic (A), logical (L), bitwise (B) and relational (R) and use these categories to concisely present categorized operators (unop, binop, relop, a(ssigning)op) etc.
 * [ ] Various inline TBCs and TBRs and TODOs
 * [ ] Typing of patterns
 * [ ] Variants
 * [ ] Object patterns
 * [ ] Import expressions
-* [ ] Modules
+* [ ] Complete draft of Try/Throw expressions and primitive Error/ErrorCode type
 * [ ] Prelude
+* [ ] Modules and static restriction
+* [ ] Type components and paths
+* [ ] Prelude (move scattered descriptions of assorted prims like charToText here)
+* [ ] Split category R into E (Equality) and O (Ordering) if we don't want Bool to support O.
+* [ ] Include actual grammar (extracted from menhir) in appendix?
+* [ ] Prose description of definedness checks
+* [ ] Platform changes: remove async expressions (and perhaps types); restrict await to shared calls.
+* [ ] Queries
+* [ ] Remove Shared type
+-->
 
 # Introduction
 
-ActorScript is a new, general purpose programming language for the
-Dfinity platform.
+The **internet computer** is a network of connected computers that communicate securely and provide processing services to registered users, developers, and other computers. 
+If you think of the internet computer as an infrastructure platform, it is similar to a public cloud provider, like Amazon Web Services (AWS), Google Cloud Platform (GCP), or Microsoft Azure, or a private cloud managed internally by private organizations. 
+Unlike a public or private cloud, however, the internet computer platform is not owned and operated by a single private company. 
+Its architecture enables multiple computers to operate like one, very powerful, virtual machine that does not depend on legacy technologies that are vulnerable to attack.
 
-## Why a new language?
+### Why develop applications to run on the internet computer?
 
-Dfinity has chosen WebAssembly as its low-level virtual machine.
+For programmers and software developers, the internet computer platform provides unique capabilities and opportunities within a framework that simplifies how you can design, build, and deploy applications. 
 
-The currently
-available compilers targeting WebAssembly are for languages that are
-either too unsafe (C, C++) or too complex (Rust) for mainstream
-programmers.
+*{proglang}* is a programming language that has been specifically designed for writing applications, services, and microservices that run on the internet computer platform and that take full advantage of the unique features that the internet computer provides, such as orthogonal persistence, autonomous operation, and tamper-proof message handling. For more information about the unique features of the internet computer along with tutorials and examples to help you develop programs that make use of them, see the _Developer's Guide_.
 
-To promote correctness and reduce complexity, Dfinity is designing its own language, *ActorScript*, that is safe and expressive, yet simple and approachable to mainstream programmers.
+{proglang} provides:
 
-### Interoperability
+* A high-level language for programming applications to run on the internet computer platform.
 
-ActorScript is just one of hopefully many languages able to run on the Dfinity platform.
+* A simple design that uses familiar syntax that is easy for programmers to learn.
 
-Since WebAssembly is language agnostic and, unlike other virtual machines, does not mandate a high-level type system for language interoperation, Dfinity will provide an *Interface Definition Language* to support typed, cross-language communication.
+* An *actor-based* programming model optimized for efficient message handling.
 
-The ActorScript compiler will automate the production and consumption of IDL files, driven by type signatures ActorScript programs and the structure of imported IDL interfaces.
+* An interpreter and compiler that you can use to test and compile the WebAssembly code for autonomous applications.
 
-The IDL language is currently under design and outside the scope of this document.
+* Support for features not-yet implemented that anticipate future extensions and improvement to WebAssembly.
 
+### Why a new language?
 
-## Design Goals
+The internet computer provides a network platform that can support programs written in different languages. 
+The only requirement is that the program must support compilation to WebAssembly code. 
+WebAssembly (commonly-abbreviated as Wasm) is a low-level computer instruction format for virtual machines. 
+Because WebAssembly code is designed to provide portable low-level instructions that enable applications to be deployed on platforms such as the web, it is a natural fit for deploying applications that are intended to run on the internet computer platform. 
+However, most of the higher-level languages--like C, C++, and Rust--that support compiling to WebAssembly are either too unsafe (for example, C or C++) or too complex (for example, Rust) for developers who want to deliver secure applications without a long learning curve.
 
-ActorScript provides:
+To address the need for correctness without complexity, {company-id} has designed its own *{proglang}* programming language. *{proglang}* provides a simple and expressive alternative to other programming languages that is easy to learn whether you are a new or experienced programmer.
 
-* A high-level language for programming Dfinity applications
+### Support for other languages
 
-* A simple ("K.I.S.S.") design and familiar syntax for average programmers
+WebAssembly is language-agnostic. 
+It does not require a high-level type system for language inter-operation. 
+Although {proglang} is specifically designed to compile to WebAssembly and make it easy to write programs to run on the internet computer, it is just one of many languages you can eventually use to develop applications for the internet computer platform.
 
-* Good and convenient support for the actor model embodied in Dfinity canisters
+To support multiple languages and typed, cross-language communication, {company-id} also provides an *Interface Definition Language* (IDL).
+The {proglang} compiler automates the production and consumption of IDL files using the type signatures in {proglang} programs and the structure of imported IDL interfaces.
 
-* A good fit for underlying Wasm and Dfinity execution model
+For information about the *Interface Definition Language* interfaces, see XXX.
 
-* A forward looking design that anticipates future extensions to WebAssembly
+## Highlights and important features
 
-## Key Features
+Although {proglang} is, strictly-speaking, a new language, you might find it is similar to a language you already know. For example, the {proglang} typing system is similar to a functional programming language such as OCaml (Objective Caml), but the syntax you use in defining functions is more like coding in JavaScript.
+It also draws on elements that are common in other, more familiar, languages, including JavaScript, TypeScript, C#, Swift, Pony, ML, and Haskell.
+Unlike other programming languages, however, {proglang} extends and optimizes features that are uniquely suited to the internet computer platform.
 
-The key language features of ActorScript are:
+### Actors and objects
+
+One of the most important principles to keep in mind when preparing to use {proglang} is that it is an *actor-based* programming model. 
+An actor is a special kind of object with an isolated state that can interacted with remotely and asynchronously.
+All communication with and between actors involves passing messages asynchronously over the network using the internet computer's messaging protocol.
+An actor’s messages are processed in sequence, so state modifications never cause race conditions.
+
+Classes can be used to produce objects of a predetermined type, with a predetermined interface and behavior. 
+Because actors are essentially objects, you can also define actor classes. 
+In general, each actor object is used to create one application which is then deployed as a *canister* containing compiled WebAssembly, some environment configuration information, and interface bindings.
+For more information about the developing applications and deploying applications, see the _Developer's Guide_.
+
+### Key language features
+
+Some of the other important language features of {proglang} include the following:
 
 * JavaScript/TypeScript-style syntax.
-
-* Automatic memory management (by precise garbage collection).
-
-* Strong, static typing with parametric polymorphism, subtype polymorphism and structural typing.
-
-* Unbounded and bounded numeric types with explicit conversions
-  between them. Bounded numeric types are overflow-checked.
-
-* Imperative programming features such a mutable variables and arrays
-  and flexible, local control flow constructs (`return`, `break` and `continue`).
-
-* Functions (and messages) are first-class values, argument evaluation
-  is strict (call-by-value).
-
-* Pattern matching on scalar and compound values.
-
+* Bounded polymorphic type system that can assign types without explicit type annotations.
+Types can be inferred in many common situations.
+Strong, static typing ensures type safety and includes subtype polymorphism, and structural typing.
+Unbounded and bounded numeric types with explicit conversions between
+them.
+Bounded numeric types are checked for overflow.
+* Support for imperative programming features, including mutable variables and arrays,
+and local control flow constructs, such as loops, `+return+`, `+break+` and
+`+continue+`.
+* Functions and messages are first-class values.
+Pattern-matching is supported for scalar and compound values.
 * A simple, class-based object system without inheritance.
 
-* The value of a reference can never implicitly be `null`,
-  preventing a large class of `null`-reference failures.
-  Instead, an explicitly handled, possibly `null`, *option type* `?<type>` is provided.
-
-* Classes can be actors (canisters).
-
-* An Actor based concurrency model:
-
-  * Actor state is isolated.
-
-  * All communication with and between actors is by message passing (never through shared state).
-
-  * An actor's messages are processed in sequence, so state modifications are
-     always data-race free.
-
-* Message passing is asynchronous (to hide network latency).
-
-* A familiar `async`/`await` constructs enables sequential programming with asynchronous messaging.
-
-Like most programming languages, ActorScript borrows features from others and
-draws inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell.
-
-# ActorScript Syntax (Sketch)
-
-Productions marked * probably deferred to later versions.
+* The value of a reference can never implicitly be `+null+` to prevent many common `+null+`-reference failures. Instead, the language enables you to explicitly handle `+null+` values using `+null+`, _option type_ `+?<type>+`.
+* Asynchronous message handling enables sequential programming with familiar `+async+` and `+await+` constructs and `promise` replies.
 
 # Lexical conventions
 
@@ -133,9 +138,10 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ```bnf
-actor and async assert await break case class continue else
-false for func if in new not null object or label let loop
-private public return shared switch true type var while
+actor and async assert await break case catch class continue debug
+else false for func if in import module not null object or label
+let loop private public return shared try throw debug_show query
+switch true type var while
 ```
 
 ## Identifiers
@@ -166,10 +172,10 @@ Negative integers may be constructed by applying a prefix negation `-` operation
 ## Characters
 
 A character is a single quote (`'`) delimited:
-* unicode character in UTF-8,
+* Unicode character in UTF-8,
 * `\`-escaped  newline, carriage return, tab, single or double quotation mark
 * `\`-prefixed ASCII character (TBR),
-* or  `\u{` hexnum `}` enclosed valid, escaped unicode character in hexadecimal (TBR).
+* or  `\u{` hexnum `}` enclosed valid, escaped Unicode character in hexadecimal (TBR).
 
 ```bnf
 ascii ::= ['\x00'-'\x7f']
@@ -209,24 +215,24 @@ text ::= '"' character* '"'
 ## Operators
 
 
-### Sorts
+### Categories
 
-To simplify the presentation of available operators, operators and primitive types are classified into basic sorts:
+To simplify the presentation of available operators, operators and primitive types are classified into basic categories:
 
 
-| Sort| Sort |          |
+| Abbreviation| Category |          |
 |---|----|-------|
 | A | Arithmetic | arithmetic operations |
-| L | Logical A | boolean operations |
+| L | Logical | logical/Boolean operations |
 | B | Bitwise | bitwise operations|
-| C | Comparable | equality and comparison | 
-| T | Text | concatention |
+| R | Relational | equality and comparison |
+| T | Text | concatenation |
 
-Some types have several sorts, e.g. type `Int` is both arithmetic and comparable and supports both addition and less than (amongst other operations).
+Some types have several categories, e.g. type `Int` is both arithmetic (A) and relational (R) and supports both arithmentic addition ('+') and relational less than ('<=') (amongst other operations).
 
 ### Unary Operators
 
-| `<unop>`| Sort   |          |
+| `<unop>`| Category   |          |
 |------|----|-------|
 | `-`  |  A | numeric negation |
 | `+`  |  A | numeric identity |
@@ -236,21 +242,21 @@ Some types have several sorts, e.g. type `Int` is both arithmetic and comparable
 
 ### Relational Operators
 
-| `<relop>` | Sort    |          |
+| `<relop>` | Category    |          |
 |-------|---|------|
-| `␣<␣` | C | less than *(must be enclosed in whitespace)* |
-| `␣>␣` | C | greater than *(must be enclosed in whitespace)* |
-|  `==` | C | equals |
-|  `!=` | C | not equals |
-|  `<=` | C | less than or equal |
-|  `>=` | C |greater than or equal |
+| `␣<␣` | R | less than *(must be enclosed in whitespace)* |
+| `␣>␣` | R | greater than *(must be enclosed in whitespace)* |
+|  `==` | R | equals |
+|  `!=` | R | not equals |
+|  `<=` | R | less than or equal |
+|  `>=` | R | greater than or equal |
 
 
 Equality is structural.
 
 ### Numeric Binary Operators
 
-| `<binop>`| Sort    |          |
+| `<binop>`| Category    |          |
 |------|---|----------|
 |  `+` | A | addition |
 |  `-` | A | subtraction |
@@ -261,7 +267,7 @@ Equality is structural.
 
 ### Bitwise Binary Operators
 
-| `<binop>` | Sort |          |
+| `<binop>` | Category |          |
 |-------|---|------|
 | `&`   | B | bitwise and |
 | `|`   | B | bitwise or |
@@ -273,13 +279,13 @@ Equality is structural.
 
 ### String Operators
 
-|  `<binop>` | Sort         |
+|  `<binop>` | Category |    |
 |------|---|------|
 |  `#` | T | concatenation |
 
 ### Assignment Operators
 
-|`:=`, `<unop>=`, `<binop>=`| Sort|          |
+|`:=`, `<unop>=`, `<binop>=`| Category|          |
 |--------| ----|----|
 | `:=`   | * | assignment (in place update) |
 | `+=`   | A | in place add |
@@ -289,7 +295,7 @@ Equality is structural.
 | `%=`   | A | in place modulo |
 | `**=`  | A | in place exponentiation |
 | `&=`   | B | in place logical and |
-| `|=`   | B | in place logical or |
+| `\|=`   | B | in place logical or |
 | `^=`   | B | in place exclusive or |
 | `<<=`  | B | in place shift left |
 | `>>=`  | B | in place shift right |
@@ -297,24 +303,25 @@ Equality is structural.
 | `<>>=` | B | in place rotate right |
 | `#=`   | T | in place concatenation |
 
-The  sort of a compound assigment `<unop>=`/`<binop>=` is given by the sort of the operator `<unop>`/`<binop>`.
+The  category of a compound assigment `<unop>=`/`<binop>=` is given by the category of the operator `<unop>`/`<binop>`.
 
 ## Operator and Keyword Precedence
 
-The following table defines the relative precedence and associativity of operators and token, order from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity.
+The following table defines the relative precedence and associativity of operators and tokens, ordered from lowest to highest precedence.
+Tokens on the same line have equal precedence with the indicated associativity.
 
 Precedence | Associativity | Token |
 |---|------------|--------|
 LOWEST  | none | `if _ _` (no `else`), `loop _` (no `while`)
 || none | `else`, `while`
-|| right | `:= `, `+=`, `-=`, `*=`, `|=`, `%=`, `**=`, `#=`, `&=`, `|=`, `^=`, `<<=`, `>>-`, `<<>=`, `<>>=`
+|| right | `:= `, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<<=`, `>>-`, `<<>=`, `<>>=`
 || left | `:`
 || left | `or`
 || left | `and`
 || none | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`
 || left | `+`, `-`, `#`
 || left | `*`, `/`, `%`
-|| left | `|`
+|| left | `\|`
 || left | `&`
 || left | `^`
 || none | `<<`, `>>`, `<<>`, `<>>`
@@ -328,7 +335,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
 ```
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
-  actor? { <typ-field>;* }                      object
+  <sort>? { <typ-field>;* }                     object
   [ var? <typ> ]                                array
   Null                                          null type
   ? <typ>                                       option
@@ -337,77 +344,96 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
   None                                          bottom
+  Error                                         errors/exceptions
   Shared                                        sharable types
   ( type )                                      parenthesized type
+
+<sort> ::= (actor | module | object)
 ```
+
+An absent `<sort>?` abbreviates `object`.
+
 
 ## Primitive types
 
-ActorScript provides the following primitive types, including support for Booleans, integers, words of various sizes, characters and text.
+Motoko provides the following primitive type identifiers, including support for Booleans, signed and unsigned integers and machine words of various sizes, characters and text.
 
-The sort of a type determines the operators (unary, binary, relational and assigment) applicable to values of that type.
+The category of a type determines the operators (unary, binary, relational and in-place update via assigment) applicable to values of that type.
 
-| Identifier | Sort | Description |
+| Identifier | Category | Description |
 |---|------------|--------|
-| `Bool` | L, C | boolean values `true` and `false` and logical operators |
-| `Int`  | A, C | signed integer values with checked arithmetic (currently 64-bit, eventually unbounded)|
-| `Nat`  | A, C | non-negative integer values with checked arithmetic (currently 63-bit, eventually unbounded)|
-| `Word8` | A, B, C | unsigned 8-bit integers with bitwise operations |
-| `Word16` | A, B, C | unsigned 16-bit integers with bitwise operations |
-| `Word32` | A, B, C | unsigned 32-bit integers with bitwise operations |
-| `Word64` | A, B, C | unsigned 64-bit integers with bitwise operations |
-| `Char` | C | unicode characters |
-| `Text` | T, C | unicode strings of characters with concatentation `_ # _` |
+| `Bool` | L, R | boolean values `true` and `false` and logical operators |
+| `Int`  | A, R | signed integer values with arithmetic (unbounded)|
+| `Int8`  | A, R | signed 8-bit integer values with checked arithmetic|
+| `Int16`  | A, R | signed 16-bit integer values with checked arithmetic|
+| `Int32`  | A, R | signed 32-bit integer values with checked arithmetic|
+| `Int64`  | A, R | signed 64-bit integer values with checked arithmetic|
+| `Nat`  | A, R | non-negative integer values with arithmetic (unbounded)|
+| `Nat8`  | A, R | non-negative 8-bit integer values with checked arithmetic|
+| `Nat16`  | A, R | non-negative 16-bit integer values with checked arithmetic|
+| `Nat32`  | A, R | non-negative 32-bit integer values with checked arithmetic|
+| `Nat64`  | A, R | non-negative 64-bit integer values with checked arithmetic|
+| `Word8` | A, B, R | unsigned 8-bit integers with bitwise operations |
+| `Word16` | A, B, R | unsigned 16-bit integers with bitwise operations |
+| `Word32` | A, B, R | unsigned 32-bit integers with bitwise operations |
+| `Word64` | A, B, R | unsigned 64-bit integers with bitwise operations |
+| `Char` | R | Unicode characters |
+| `Text` | T, R | Unicode strings of characters with concatenation `_ # _` |
+| `Error` | | (opaque) error values |
 
 ### Type `Bool`
 
-The type `Bool` of sorts L, C (Logical, Comparable) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
+The type `Bool` of categories L, R (Logical, Relational) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`,  `and` and `or` are short-circuiting.
 
 Comparison TODO.
 
 ### Type `Char`
 
-A `Char` of sort C (Comparable) represents characters as a code point in the Unicode character
-set. Characters can be converteinhabitd to `Word32`, and `Word32`s in the
+A `Char` of category R (Relational) represents characters as a code point in the Unicode character
+set. Characters can be converted to `Word32`, and `Word32`s in the
 range *0 .. 0x1FFFFF* can be converted to `Char` (the conversion traps
-if outside of this range). With `singletonText` a character can be
+if outside of this range). With `charToText` a character can be
 converted into a text of length 1.
-
-Comparison TODO.
 
 ### Type `Text`
 
-The type `Text` of sorts T and C ( Text, Comparable) represents sequences of unicode characters (i.e. strings).
-Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `for (c in _) ... c ...`. The `textLength` function returns the number of characters in a `Text` value.
+The type `Text` of categories T and R (Text, Relational) represents sequences of Unicode characters (i.e. strings).
+Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `for (c in _) ... c ...`.
+The `textLength` function returns the number of characters in a `Text` value.
 
 Comparison TODO.
 
 ### Type `Int` and `Nat`
 
-The types `Int` and `Nat` are signed integral and natural numbers of sorts A (Arithmetic) and C (omparable).
-The usual arithmetic operations of addition `+`, subtraction `-` (which
-may trap for `Nat`), multiplication `*`, division `/`, modulus `%` and
-exponentiation `**` are available.
+The types `Int` and `Nat` are signed integral and natural numbers of categories A (Arithmetic) and R (Relational).
 
-
-Additionally, since every inhabitant
-of `Nat` is also an inhabitant of `Int`, the subtype relation `Nat <: Int` holds.
-
-Both `Int` and `Nat` will be arbitrary precision,
+Both `Int` and `Nat` are arbitrary precision,
 with only subtraction `-` on `Nat` trapping on underflow.
 
-Due to subtyping, every value of type `Nat` is also a value of type `Int`, without change of representation.
+The subtype relation `Nat <: Int` holds, so every expression of type 'Nat' is also an expression of type `Int` (but *not* vice versa).
+In particular, every value of type `Nat` is also a value of type `Int`, without change of representation.
 
-> In `asc` compiled wasm code, `Int` and `Nat` values are represented with only 64-bit precision, and operations that would over or underflow trap.
-> Moreover, viewing a natural number value as an integer value is only meaning preserving if the value of the natural is between 0 and 2^64-1. TBR
+### Bounded Integers `Int8`, `Int16`, `Int32` and `Int64`
 
-Comparison TODO.
+The types `Int8`, `Int16`, `Int32` and `Int64` represent
+signed integers with respectively 8, 16, 32 and 64 bit precision.
+All have categories A (Arithmetic) and R (Relational).
+
+Operations that may under- or overflow the representation are checked and trap on error.
+
+### Bounded Naturals `Nat8`, `Nat16`, `Nat32` and `Nat64`
+
+The types `Nat8`, `Nat16`, `Nat32` and `Nat64` represent
+unsigned integers with respectively 8, 16, 32 and 64 bit precision.
+All have categories A (Arithmetic) and R (Relational).
+
+Operations that may under- or overflow the representation are checked and trap on error.
 
 ### Word types
 
 The types `Word8`, `Word16`, `Word32` and `Word64` represent
 fixed-width bit patterns of width *n* (8, 16, 32 and 64).
-All word types have sorts A (Arithmetic), B (Bitwise) and  C (Comparable).
+All word types have categories A (Arithmetic), B (Bitwise) and  R (Relational).
 As arithmetic types, word types implementing numeric wrap-around
 (modulo *2^n*).
 As bitwise types, word types support bitwise operations *and* `(&)`,
@@ -429,6 +455,30 @@ other arithmetic types, and their literals need type annotation, e.g.
 `(-42 : Word16)`. For negative literals the two's-complement
 representation is applied.
 
+### Error type
+
+Errors are opaque values constructed using operation
+* `error: Text -> Unit`
+and examined using operations:
+* `errorCode`: `Error -> ErrorCode` (TBC)
+* `errorMessage`: `Error -> Text`
+
+(where `ErrorCode` is the prelude defined variant type:
+
+```
+type ErrorCode = {#error; #system ; /*...*/ };
+```
+)
+
+`Error` values can be thrown and caught within an `async` expression or `shared` function (only).
+
+A constructed error `e = error(m)` has `errorCode(e) = #error` and `errorMessage(e)=m`.
+Errors with non-`#error` (system) error codes may be caught and thrown, but not constructed.
+
+Note: Exiting an async block or shared function with a system error
+exits with a copy of the error with revised code `#error` and the original error message.
+This prevents programmatic forgery of system errors. (TBR)
+
 ## Constructed types
 
  `<id> <typ-args>?` is the application of type a identifier, either built-in (i.e. `Int`) or user defined, to zero or more type *arguments*.
@@ -436,13 +486,13 @@ representation is applied.
 
 ## Object types
 
-`actor? { <typ-field>;* }` specifies an object type by listing its zero or more named *type fields*.
+`<sort>? { <typ-field>;* }` specifies an object type by listing its zero or more named *type fields*.
 
 Within an object type, the names of fields must be distinct.
 
 Object types that differ only in the ordering of the fields are equivalent.
 
-The optional qualifier `actor` constrains the object's fields to be *shared* functions (i.e. messages).
+When `<sort>?` is `actor`, all fields have `shared` function type (specifying messages).
 
 ## Variant types
 
@@ -482,11 +532,11 @@ Promise types typically appear as the result type of a `shared` function that pr
 
 `( ((<id> :)? <typ>),* )` specifies the type of a tuple with zero or more ordered components.
 
-The optional identifier `<id>`, naming its components, is for documentation purposes only and cannot be used for component access. In particular, tuple types that differ only in the names of fields are equivalent.
+The optional identifier `<id>`, naming its components, is for documentation purposes only and cannot be used for component access. In particular, tuple types that differ only in the names of components are equivalent.
 
 ## Any type
 
-Type `Any` is the *top* type, i.e. the super-type of all types, (think Object in Java or C#). All values have type any.
+Type `Any` is the *top* type, i.e. the super-type of all types, (think Object in Java or C#). All values have type 'Any'.
 
 ## None type
 
@@ -494,7 +544,6 @@ Type `None` is the *bottom* type, a subtype of all other types.
 No value has type `None`.
 
 As an empty type, `None` can be used to specify the impossible return value of an infinite loop or unconditional trap.
-
 
 ## Parenthesised type
 
@@ -553,12 +602,11 @@ All type parameters declared in a vector are in scope within its bounds.
 <typ-args> ::=                                type arguments
   < <typ>,* >
 ```
-
 Type constructors and functions may take type arguments.
 
 The number of type arguments must agree with the number of declared type parameters of the function.
 
-Given a vector of type arguments instantiating a vector of type parametbooleaners,
+Given a vector of type arguments instantiating a vector of type parameters,
 each type argument must satisfy the instantiated bounds of the corresponding
 type parameter.
 
@@ -597,7 +645,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 * `T` is a mutable array type `[ var T ]`, `V` is a mutable array type  `[ var W ]`
     and `V == W`.
 
-* `T` is `Null` and `U` is the an option type `? W`.
+* `T` is `Null` and `U` is an option type `? W` for some 'W'.
 
 * `T` is `? V`, `U` is `? W` and `V <: W`.
 
@@ -629,7 +677,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 A type `T` is *shared* if it is
 * `Any` or `None`, or
-* a primitive type, or
+* a primitive type other than `Error`, or
 * an option type `? V` where `V` is shared, or
 * a tuple type `(T0, ..., Tn)` where all `Ti` are shared, or
 * an immutable array type `[V]` where `V` is shared, or
@@ -645,13 +693,15 @@ A type `T` is *shared* if it is
   <nat>                                         natural
   <float>                                       float
   <char>                                        character
-  <text>                                        unicode text
+  <text>                                        Unicode text
 ```
+
+Literals are constant values. The syntactic validity of a literal depends on the precision of the type at which it is used.
 
 # Expressions
 
 ```bnf
-<exp> ::=
+<exp> ::=                                      expressions
   <id>                                           variable
   <lit>                                          literal
   <unop> <exp>                                   unary operator
@@ -684,6 +734,8 @@ A type `T` is *shared* if it is
   return <exp>?                                  return
   async <exp>                                    async expression
   await <exp>                                    await future (only in async)
+  throw <exp>                                    raise an error (only in async)
+  try <exp> catch <pat> <exp>                    catch an error (only in async)
   assert <exp>                                   assertion
   <exp> : <typ>                                  type annotation
   dec                                            declaration
@@ -696,6 +748,8 @@ The expression `<id>` evaluates to the value bound to `<id>` in the current eval
 
 ## Literals
 
+A literal has type 'T' only when its value is within the prescribed range of values of type 'T'.
+
 The literal (or constant) expression `<lit>` evaluates to itself.
 
 ## Unary operators
@@ -703,7 +757,7 @@ The literal (or constant) expression `<lit>` evaluates to itself.
 The unary operator `<unop> <exp>` has type `T` provided:
 
 * `<exp>` has type `T`, and
-* `<unop>`'s sort is a sort of `T`.
+* `<unop>`'s category is a category of `T`.
 
 The unary operator expression `<unop> <exp>` evaluates `exp` to a result. If the result is a value `v`, it returns the result of `<unop> v`.
 If the result is a trap, it, too, traps.
@@ -714,7 +768,7 @@ The binary compound assigment `<exp1> <binop> <exp2>` has type `T` provided:
 
 * `<exp1>` has type `T`, and
 * `<exp2>` has type `T`, and
-* `<binop>`'s sort is a sort of `T`.
+* `<binop>`'s category is a category of `T`.
 
 The binary operator expression `<exp1> <binop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 
@@ -725,11 +779,11 @@ the result of `v1 <binop> v2`.
 
 ## Relational operators
 
-The relational expression `<exp1> <relop> <exp2>` has type `Bpol` provided:
+The relational expression `<exp1> <relop> <exp2>` has type `Bool` provided:
 
 * `<exp1>` has type `T`, and
 * `<exp2>` has type `T`, and
-* `<relop>`'s sort C is a sort of `T`.
+* `<relop>`'s category R is a category of `T`.
 
 The binary operator expression `<exp1> <relop> <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
 
@@ -799,7 +853,7 @@ Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifie
 The unary compound assignment `<unop>= <exp>` has type `()` provided:
 
 * `<exp>` has type `var T`, and
-* `<unop>`'s sort is a sort of `T`.
+* `<unop>`'s category is a category of `T`.
 
 The unary compound assignment
 `<unop>= <exp>`  evaluates `<exp>` to a result `r`. If `r` is 'trap' the evaluation traps, otherwise `r` is a location storing value `v` and `r` is updated to
@@ -811,7 +865,7 @@ The binary compound assigment `<exp1> <binop>= <exp2>` has type `()` provided:
 
 * `<exp1>` has type `var T`, and
 * `<exp2>` has type `T`, and
-* `<binop>`'s sort is a sort of `T`.
+* `<binop>`'s category is a category of `T`.
 
 For binary operator `<binop>`, `<exp1> <binop>= <exp1>`,
 the compound assignment expression `<exp1> <binop>= <exp2>` evaluates `<exp1>` to a result `r1`. If `r1` is `trap`, the expression results in `trap`.
@@ -824,7 +878,7 @@ Otherwise `r1`  and `r2` are (respectively) a location `v1` (a mutable identifie
 The expression `[ var? <exp>,* ]` has type `[var? T]` provided
 each expression `<exp>` in the sequence `<exp,>*` has type T.
 
- The array expression `[ var <exp0>, ..., <expn> ]` evaluates the expressions false`exp0` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp0`, ..., `<expn>` evaluate to values `v0`,...,`vn` then the array expression returns the array value `[var? v0, ... , vn]` (of size `n+1`).
+The array expression `[ var <exp0>, ..., <expn> ]` evaluates the expressions `exp0` ... `expn` in order, trapping as soon as some expression `<expi>` traps. If no evaluation traps and `exp0`, ..., `<expn>` evaluate to values `v0`,...,`vn` then the array expression returns the array value `[var? v0, ... , vn]` (of size `n+1`).
 
 The array indexing expression `<exp1> [ <exp2> ]` has type `var? T` provided <exp> has (mutable or immutable) array type `[var? T1]`.
 
@@ -832,7 +886,7 @@ The projection `<exp1> . <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise, `r1` is an array value, `var? [v0, ..., vn]`, and r2 is a natural integer `i`. If  'i > n' the index expression returns `trap`.
+Otherwise, `r1` is an array value, `var? [v0, ..., vn]`, and `r2` is a natural integer `i`. If  'i > n' the index expression returns `trap`.
 
 Otherwise, the index expression returns the value `v`, obtained as follows:
 
@@ -859,7 +913,10 @@ The call expression `<exp1> <T0,...,Tn>? <exp2>` evaluates `exp1` to a result `r
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise, `r1` is a function value, `shared? func <X0 <: V0, ..., n <: Vn> pat { exp }` (for some implicit environment), and `r2` is a value `v2`. Evaluation continues by matching `v1` against `pat`. If matching succeeds with some bindings, evaluation proceeds with `exp` using the environment of the function value (not shown) extended with those bindings. Otherwise, the pattern match has failed and the call results in `trap`.
+Otherwise, `r1` is a function value, `shared? func <X0 <: V0, ..., n <: Vn> pat { exp }` (for some implicit environment), and `r2` is a value `v2`.
+Evaluation continues by matching `v1` against `pat`.
+If matching succeeds with some bindings, evaluation proceeds with `exp` using the environment of the function value (not shown) extended with those bindings.
+Otherwise, the pattern match has failed and the call results in `trap`.
 
 ## Functions
 
@@ -905,8 +962,8 @@ Otherwise, the expression returns the result of evaluating `<exp2>`.
 ## Or
 
 The or expression `<exp1> or <exp2>` has type `Bool` provided `<exp1>` and `<exp2>` have type `Bool`.
-switch
-The expression `<exp1> and <exp2>` evaluates `exp1` to a switchresult `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` switchis a Boolean value `v`.
+
+The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a Boolean value `v`.
 If `v == true` the expression returns the value `true` (without evaluating `<exp2>`).
 Otherwise, the expression returns the result of evaluating `<exp2>`.
 
@@ -1018,7 +1075,7 @@ The label-expression  `label <id> (: <typ>)? <exp>` has type `T` provided:
 
 The result of evaluating `label <id> (: <typ>)? <exp>` is the result of evaluating `<exp>`.
 
-### Labeled loops
+## Labeled loops
 
 If `<exp>` in `label <id> (: <typ>)? <exp>` is a looping construct:
 
@@ -1026,7 +1083,7 @@ If `<exp>` in `label <id> (: <typ>)? <exp>` is a looping construct:
 * `loop <exp1> (while (<exp2>))?`, or
 * `for (<pat> in <exp2> <exp1>`
 
-the body, `<exp1>`, of the loop is implicitly enclosed in `label <id_continue> (...)` allowing early continuation of loop by the evaluation of expression `continue <id>`.
+the body, `<exp1>`, of the loop is implicitly enclosed in `label <id_continue> (...)` allowing early continuation of the loop by the evaluation of expression `continue <id>`.
 
 `<id_continue>` is fresh identifier that can only be referenced by `continue <id>`
 (through its implicit expansion to `break <id_continue>`).
@@ -1063,44 +1120,67 @@ The `return` expression exits the corresponding dynamic function invocation or c
 
 TBR async traps?
 
-### Async
+## Async
 
 The async expression `async <exp>` has type `async T` provided:
 
 * `<exp>` has type `T`;
 * `T` is shared.
 
-Any control-flow label in scope for `async <exp>` is not in scope for `<exp>` (that `<exp>` may declare its own, local, labels.
+Any control-flow label in scope for `async <exp>` is not in scope for `<exp>`. However,
+`<exp>` may declare and use its own, local, labels.
 
-The implicit return type in `<exp>` is `T`. That is, the |  `==` | equals |
-|  `!=` | not equals |
-|  `<=` | less than or equal |
-|  `>=` | greater than or equal |return argument, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
+The implicit return type in `<exp>` is `T`. That is, the return expression, `<exp0>`, (implicit or explicit) to any enclosed `return <exp0>?` expression, must have type `T`.
 
 Evaluation of `async <exp>` queues a message to evaluate `<exp>` in the nearest enclosing or top-level actor. It immediately returns a promise of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
 
-### Await
+## Await
 
 The `await` expression `await <exp>` has type `T` provided:
 
 * `<exp>` has type `async T`,
 * `T` is shared,
-* the `await` is explicitly enclosed by an `async`-expression.
+* the `await` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
-`await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r1` is a promise. If the promise is complete with value `v`, then `await <exp>` evaluates to value `v`. If the `promise` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `promise`. Execution of the suspension is resumed once the promise is completed (if ever).
+Expression `await <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a promise. If the promise is complete with value `v`, then `await <exp>` evaluates to value `v`.
+If the promise is complete with (thrown) error value `e`, then `await <exp>` re-throws the error `e`.
+If the `promise` is incomplete, that is, its evaluation is still pending, `await <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `promise`. Execution of the suspension is resumed once the promise is completed (if ever).
 
 _WARNING:_ between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer's responsibility to guard against non-synchronized state changes.
 
-### Assert
+
+## Throw
+
+The `throw` expression `throw <exp>` has type `None` provided:
+
+* `<exp>` has type `Error`,
+* the `throw` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
+
+Expression `throw <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is an error value `e`. Execution proceeds from the `catch` clause of the nearest enclosing `try <exp> catch <pat> <ex>` whose pattern `<pat>` matches value `e`. If there is no such `try` expression, `e` is stored as the erroneous result of the `async` value of the nearest enclosing `async` expression or `shared` function invocation.
+
+## Try
+
+The `try` expression `try <exp1> catch <pat> <exp2>` has type `T` provided:
+
+* `<exp1>` has type `T`.
+* `<pat>` has type `Error` and `<exp2>` has type `T` in the context extended with `<pat>`
+* the `try` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
+
+Expression `try <exp1> catch <pat> <exp2>` evaluates `<exp1>` to a result `r`.
+If evaluation of  `<exp1>` throws an uncaught error value `e`, the result of the `try` is the result of evaluating `<exp2>` under the bindings determined by the match of `e` against `pat`.
+
+Note: because the `Error` type is opaque, the pattern match cannot fail (typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern).
+
+## Assert
 
 The assert expression `assert <exp>` has type `()` provided `exp` has type `Bool`.
 
-`assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a boolean value `v`. The result of `assert <exp>` is
+Expression `assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a boolean value `v`. The result of `assert <exp>` is:
 
 * the value `()`, when `v` is `true`; or
 * `trap`, when `v` is `false`.
 
-### Type Annotation
+## Type Annotation
 
 The type annotation expression `<exp> : <typ>` has type `T` provided:
 
@@ -1113,13 +1193,13 @@ The result of evaluating `<exp> : <typ>` is the result of evaluating `<exp>`.
 
 Note: type annotations have no-runtime cost and cannot be used to perform the (checked or unchecked) `down-casts` available in other object-oriented languages.
 
-### Declaration Expression
+## Declaration Expression
 
 The declaration expression `<dec>` has type `T` provided the declaration `<dec>` has type `T`.
 
 Evaluating the expression `<dec>` proceed by evaluating `<dec>`, returning the result of `<dec>` but discarding the bindings introduced by `<dec>` (if any).
 
-### Parentheses
+## Parentheses
 
 The parenthesized expression `( <exp> )` has type `T` provided `<exp>` has type `T`.
 
@@ -1152,7 +1232,6 @@ The consequences of pattern match failure depends on the context of the pattern.
 ## Wildcard pattern
 
 The wildcard pattern `_`  matches a single value without binding its contents to an identifier.
-
 
 ## Identifier pattern
 
@@ -1191,14 +1270,16 @@ matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the fi
 # Declarations
 
 ```bnf
-<dec> ::=                                                       declaration
-  <exp>                                                           expression
-  let <pat> = <exp>                                               immutable
-  var <id> (: <typ>)? = <exp>                                     mutable
-  (object|module|actor) <id>? =? { <dec-field>;* }                object
-  shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>      function
-  type <id> <typ-params>? = <typ>                                 type
-  obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }` class
+<dec> ::=                                                                declaration
+  <exp>                                                                    expression
+  let <pat> = <exp>                                                        immutable
+  var <id> (: <typ>)? = <exp>                                              mutable
+  <sort> <id>? =? { <dec-field>;* }                                        object
+  shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>               function
+  type <id> <typ-params>? = <typ>                                          type
+  <sort>? class <id> <typ-params>? <pat> (: <typ>)? =? { <exp-field>;* }   class
+
+
 ```
 
 ```bnf
@@ -1258,10 +1339,10 @@ In scope of the declaration  `type C < X0<:T0>, ..., Xn <: Tn > = U`, any  well-
 
 ## Object Declaration
 
-Declaration `(object|module|actor) <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp_field>;*`.
+Declaration `<sort> <id>? =? { <exp-field>;* }` declares an object with optional identifier `<id>` and zero or more fields `<exp_field>;*`.
 Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
-The qualifier `object|module|actor` specifies the *sort* of the object's type. The sort imposes restrictions on the types of the public object fields.
+The qualifier `<sort>` (one of 'actor', 'module' or 'object') specifies the *sort* of the object's type. The sort imposes restrictions on the types of the public object fields.
 
 Let `T = sort { [var0] id0 : T0, ... , [varn] idn : T0 }` denote the type of the object.
 Let `<dec>;*` be the sequence of declarations in `<exp_field>;*`.
@@ -1274,7 +1355,7 @@ The object declaration has type `T` provided that:
    * `{ id0, ..., idn } == Id_public`, and
    * for all `i in 0 <= i <= n`, `[vari] Ti == T(idi)`.
 
-Note that requirement 1. imposes further constraints on the fields type of `T`.
+Note that requirement 1. imposes further constraints on the field types of `T`.
 In particular:
 
 * if the sort is `actor` then all public fields must be non-`var` (immutable)     `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions).
@@ -1305,18 +1386,16 @@ Named function definitions are recursive.
 
 ## Class declarations
 
-The declaration `obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* }` is sugar for pair of a
-a type and function declaration:
+The declaration `<sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <exp-field>;* }` is sugar for pair of a type and function declaration:
 
 ```bnf
-obj_sort? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <dec-field>;* } :=
-  type <id> <typ-params> = sort { <typ-field>;* };
-  func <id> <typ-params>? <pat> : <id> <typ-args>  = sort <id_this>? { <dec-field>;* }
+<sort>? class <id> <typ-params>? <pat> (: <typ>)? =? <id_this>? { <dec-field>;* } :=
+  type <id> <typ-params> = <sort> { <typ-field>;* };
+  func <id> <typ-params>? <pat> : <id> <typ-args>  = <sort> <id_this>? { <dec-field>;* }
 ```
 
 where:
 
-* `<sort>` is `object` if `obj_sort?` is absent or `sort == obj_sort` otherwise.
 * `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
 * `<typ-field>;*` is the set of public field types inferred from `<dec-field;*>`.
 * `<id_this>?` is the optional `this` parameter of the object instance.
@@ -1362,7 +1441,8 @@ conservative static analysis not described here.
 # Programs
 
 ```bnf
-<prog> ::= <dec>;*
+<prog> ::=
+ <dec>;*
 
 ```
 

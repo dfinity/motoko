@@ -593,7 +593,6 @@ vec <datatype> <: vec <datatype'>
 ```
 Furthermore, an option type can be specialised to either `null` or to its constituent type:
 ```
-not (null <: <datatype>)
 ------------------------
 null <: opt <datatype>
 
@@ -602,7 +601,7 @@ not (null <: <datatype>)
 -----------------------------
 <datatype> <: opt <datatype'>
 ```
-The premise means that the rule does not apply when the constituent type is itself `null` or an option. That restriction is necessary so that there is no ambiguity. For example, there would be two ways to interpret `null` when going from `opt nat` to `opt opt nat`, either as `null` or as `?null`.
+The premise means that the rule does not apply when the constituent type is itself `null`, an option or `reserved`. That restriction is necessary so that there is no ambiguity. For example, otherwise there would be two ways to interpret `null` when going from `opt nat` to `opt opt nat`, either as `null` or as `?null`.
 
 Q: The negated nature of this premise isn't really compatible with parametric polymorphism. Is that a problem? We could always introduce a supertype of all non-nullable types and rephrase it with that.
 
@@ -853,7 +852,7 @@ service Server : {
 Note:
 * `TruckTypeId` and `nat` are used interchangeably.
 
-With this IDL file, the server code in ActorScript could be:
+With this IDL file, the server code in Motoko could be:
 ```
 actor Server {
   registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
@@ -895,7 +894,7 @@ Note:
 
 #### Notation
 
-`T` and `M` create a byte sequence described below in terms of natural storage types (`i<N>` for `N = 8, 16, 32, 64`, `f<N>` for `N = 32, 64`).
+`T` and `M` create a byte sequence described below in terms of natural storage types (`i<N>` for `N = 8, 16, 32, 64`, `f<N>` for `N = 32, 64`). The bytes are sequenced according to increasing significance (least significant byte first, a.k.a. little-endian).
 
 The following notation is used:
 
@@ -915,37 +914,44 @@ We assume that the fields in a record or function type are sorted by increasing 
 
 ```
 T : <primtype> -> i8*
-T(null)     = sleb128(-1)
-T(bool)     = sleb128(-2)
-T(nat)      = sleb128(-3)
-T(int)      = sleb128(-4)
-T(nat<N>)   = sleb128(-5 - log2(N/8))
-T(int<N>)   = sleb128(-9 - log2(N/8))
-T(float<N>) = sleb128(-13 - log2(N/32))
-T(text)     = sleb128(-15)
-T(reserved) = sleb128(-16)
-T(empty)    = sleb128(-17)
+T(null)     = sleb128(-1)  = 0x7f
+T(bool)     = sleb128(-2)  = 0x7e
+T(nat)      = sleb128(-3)  = 0x7d
+T(int)      = sleb128(-4)  = 0x7c
+T(nat8)     = sleb128(-5)  = 0x7b
+T(nat16)    = sleb128(-6)  = 0x7a
+T(nat32)    = sleb128(-7)  = 0x79
+T(nat64)    = sleb128(-8)  = 0x78
+T(int8)     = sleb128(-9)  = 0x77
+T(int16)    = sleb128(-10) = 0x76
+T(int32)    = sleb128(-11) = 0x75
+T(int64)    = sleb128(-12) = 0x74
+T(float32)  = sleb128(-13) = 0x73
+T(float64)  = sleb128(-14) = 0x72
+T(text)     = sleb128(-15) = 0x71
+T(reserved) = sleb128(-16) = 0x70
+T(empty)    = sleb128(-17) = 0x6f
 
 T : <constype> -> i8*
-T(opt <datatype>) = sleb128(-18) I(<datatype>)
-T(vec <datatype>) = sleb128(-19) I(<datatype>)
-T(record {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)
-T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N)
+T(opt <datatype>) = sleb128(-18) I(<datatype>)              // 0x6e
+T(vec <datatype>) = sleb128(-19) I(<datatype>)              // 0x6d
+T(record {<fieldtype>^N}) = sleb128(-20) T*(<fieldtype>^N)  // 0x6c
+T(variant {<fieldtype>^N}) = sleb128(-21) T*(<fieldtype>^N) // 0x6b
 
 T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
-T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
-  sleb128(-22) T*(<fieldtype1>*) T*(<fieldtype2>*) T*(<funcann>*)
+T(func (<datatype1>*) -> (<datatype2>*) <funcann>*) =
+  sleb128(-22) T*(<datatype1>*) T*(<datatype2>*) T*(<funcann>*) // 0x6a
 T(service {<methtype>*}) =
-  sleb128(-23) T*(<methtype>*)
+  sleb128(-23) T*(<methtype>*)                                    // 0x69
 
 T : <methtype> -> i8*
 T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
 
 T : <funcann> -> i8*
-T(query)   = i8(1)
+T(query)  = i8(1)
 T(oneway) = i8(2)
 
 T* : <X>* -> i8*
@@ -1069,3 +1075,55 @@ The same representation is used for function results.
 Note:
 
 * It is unspecified how the pair (B,R) representing a serialised value is bundled together in an external environment.
+
+
+## Text Format
+
+To enable convenient debugging, we also specify a text format for IDL values.
+The types of these values are assumed to be known from context, so the syntax does not attempt to be self-describing.
+
+```
+<val> ::=
+  | <primval> | <consval> | <refval>
+  | ( <annval> )
+
+<annval> ::=
+  | <val>
+  | <val> : <datatype>
+
+<primval> ::=
+  | <nat> | <int> | <float>     (TODO: same as Motoko grammar plus sign)
+  | <text>                      (TODO: same as Motoko grammar)
+  | true | false
+  | null
+
+<consval> ::=
+  | opt <val>
+  | vec { <annval>;* }
+  | record { <fieldval>;* }
+  | variant { <fieldval> }
+
+<fieldval> ::= <nat> = <annval>
+
+<refval> ::=
+  | service <text>             (canister URI)
+  | func <text> . <id>         (canister URI and message name)
+
+<arg> ::= ( <annval>,* )
+
+```
+
+#### Syntactic Shorthands
+
+Analoguous to types, a few syntactic shorthands are supported that can be reduced to the basic value forms:
+
+```
+<consval> ::= ...
+  | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted [as in the WebAssembly textual format](https://webassembly.github.io/spec/core/text/values.html#strings)
+
+<fieldval> ::= ...
+  | <name> = <val>         :=  <hash(name)> = <val>
+  | <val>                  :=  N = <val>  where N is either 0 or previous + 1  (only in records)
+  | <nat>                  :=  <nat> = null   (only in variants)
+  | <name>                 :=  <name> = null  (only in variants)
+```

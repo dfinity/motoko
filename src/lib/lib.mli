@@ -16,6 +16,7 @@ sig
   val equal : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
   val make : int -> 'a -> 'a list
   val table : int -> (int -> 'a) -> 'a list
+  val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
   val take : int -> 'a list -> 'a list (* raises Failure *)
   val drop : int -> 'a list -> 'a list (* raises Failure *)
   val split_at : int -> 'a list -> ('a list * 'a list)
@@ -132,4 +133,5 @@ sig
   val find_from_opt : (char -> bool) -> string -> int -> int option
   val chop_prefix : string -> string -> string option
   val chop_suffix : string -> string -> string option
+  val lightweight_escaped : string -> string
 end
