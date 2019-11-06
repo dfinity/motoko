@@ -228,7 +228,7 @@ let ocaml_exe = name: bin:
     drv = ocamlpkgs.stdenv.mkDerivation {
       inherit name;
 
-      ${if nixpkgs.stdenv.isDarwin then null else "allowRequisites"} = [];
+      ${if nixpkgs.stdenv.isDarwin then null else "allowedRequisites"} = [];
 
       src = subpath ./src;
 
