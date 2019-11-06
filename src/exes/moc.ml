@@ -67,10 +67,10 @@ let argspec = Arg.align
 
   "-no-link", Arg.Clear link, " do not statically link-in runtime";
   "-no-system-api",
-    Arg.Unit (fun () -> Flags.(compile_mode := Some WasmMode)),
+    Arg.Unit (fun () -> Flags.(compile_mode := WasmMode)),
       " do not import any system API";
   "-ancient-system-api",
-    Arg.Unit (fun () -> Flags.(compile_mode := Some AncientMode)),
+    Arg.Unit (fun () -> Flags.(compile_mode := AncientMode)),
       " use the ancient DFINITY system API (dvm)";
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
   "-no-multi-value", Arg.Clear Flags.multi_value, " avoid multi-value extension";
@@ -125,7 +125,7 @@ let process_files files : unit =
     output_string oc idl_code; close_out oc
   | Compile ->
     set_out_file files ".wasm";
-    let module_ = Diag.run Pipeline.(compile_files (Lib.Option.value (!Flags.compile_mode)) !link files) in
+    let module_ = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
@@ -157,9 +157,6 @@ let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
-  match !mode with
-  | Run | Interact ->
-    Flags.compile_mode := None
-  | _ -> ();
+  Flags.compiled := (!mode = Compile);
   process_profiler_flags () ;
   process_files !args

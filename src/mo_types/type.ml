@@ -568,8 +568,8 @@ let concrete t =
 
 let shared t =
   (* TBR: Hack to restrict sharing in ICMode *)
-  let allow_actor = not (!Flags.compile_mode = Some Flags.ICMode) in
-  let allow_shared = not (!Flags.compile_mode = Some Flags.ICMode) in
+  let allow_actor as allow_shared =
+    not (!Flags.compiled && !Flags.compile_mode = Flags.ICMode) in
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -598,8 +598,8 @@ let shared t =
 (* Find the first unshared subexpression in a type *)
 let find_unshared t =
    (* TBR: Hack to restrict sharing in ICMode *)
-  let allow_actor = not (!Flags.compile_mode = Some Flags.ICMode) in
-  let allow_shared = not (!Flags.compile_mode = Some Flags.ICMode) in
+  let allow_actor as allow_shared =
+    not (!Flags.compiled && !Flags.compile_mode = Flags.ICMode) in
   let seen = ref S.empty in
   let rec go t =
     if S.mem t !seen then None else
