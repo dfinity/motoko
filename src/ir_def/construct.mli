@@ -50,6 +50,7 @@ val projE : exp ->  int -> exp
 val blockE : dec list -> exp -> exp
 val textE : string -> exp
 val letE : var -> exp -> exp -> exp
+val thenE : exp -> exp -> exp
 val ignoreE : exp -> exp
 
 val unitE : exp

@@ -168,7 +168,17 @@ module Transform(Platform : sig val platform : platform end) = struct
 
   let isAwaitableFunc exp =
     match typ exp with
-    | T.Func (T.Shared _,T.Promises,_,_,_) -> true
+    | T.Func (T.Shared _,T.Promises,tbs,_,_) ->
+      assert (tbs = []);
+      true
+    | _ -> false
+
+  let isOneWayFunc exp =
+    match typ exp with
+    | T.Func (T.Shared _,T.Returns,tbs,_,ts) ->
+      assert (tbs = []);
+      assert (ts = []);
+      true
     | _ -> false
 
   (* Given sequence type ts, bind e of type (seq ts) to a
@@ -197,9 +207,12 @@ module Transform(Platform : sig val platform : platform end) = struct
       Con (t_con c, List.map t_typ ts)
     | Array t -> Array (t_typ t)
     | Tup ts -> Tup (List.map t_typ ts)
-    | Func (s, c, tbs, t1, t2) ->
+    | Func (T.Shared _ as s, T.Returns, tbs, ts1, ts2) ->
+      assert (ts2 == []);
+      Func (s, T.Replies, List.map t_bind tbs, List.map t_typ ts1, [])
+    | Func (s, c, tbs, ts1, ts2) ->
       let c' = if c = T.Promises then T.Replies else c in
-      Func (s, c', List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
+      Func (s, c', List.map t_bind tbs, List.map t_typ ts1, List.map t_typ ts2)
     | Opt t -> Opt (t_typ t)
     | Variant fs -> Variant (List.map t_field fs)
     | Async t -> t_async nary (t_typ t)
@@ -294,6 +307,10 @@ module Transform(Platform : sig val platform : platform end) = struct
                ]
                nary_async
       ).it
+    | CallE (exp1, typs, exp2) when isOneWayFunc exp1 ->
+      (sys_callE (t_exp exp1) typs [t_exp exp2]
+        ([] -->* tupE [])
+        ([fresh_var "msg" T.text] -->* tupE [])).it
     | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
       let ts1,ts2 =
         match typ exp1 with
@@ -358,7 +375,10 @@ module Transform(Platform : sig val platform : platform end) = struct
           begin
             match c with
             | Returns ->
-              FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
+              assert (ret_tys = []);
+              FuncE (x, s, T.Replies, t_typ_binds typbinds, t_args args, [],
+                     thenE (sys_replyE [] (tupE [])) (* reply early *)
+                           (t_exp exp))
             | Promises ->
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in
@@ -378,7 +398,7 @@ module Transform(Platform : sig val platform : platform end) = struct
               let e = fresh_var "e" T.catch in
               let r = [e] -->* (sys_rejectE (errorMessageE e)) in
               let exp' = (t_exp cps) -*- tupE [k;r] in
-              FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
+              FuncE (x, s, Replies, typbinds', args', ret_tys, exp')
             | Replies -> assert false
           end
       end
