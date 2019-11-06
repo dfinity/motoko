@@ -237,6 +237,12 @@ rec {
 
     buildInputs = commonBuildInputs;
 
+    profile =
+      if nixpkgs.stdenv.isDarwin
+      then "release"
+      else "release-static";
+
+
     buildPhase = ''
       make DUNE_OPTS="--display=short --profile release" moc mo-ld
     '';
