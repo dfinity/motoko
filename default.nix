@@ -230,7 +230,7 @@ rec {
     '';
   };
 
-  moc-bin = stdenv.mkDerivation {
+  moc-bin = ocamlpkgs.stdenv.mkDerivation {
     name = "moc-bin";
 
     src = subpath ./src;
