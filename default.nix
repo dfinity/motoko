@@ -191,8 +191,6 @@ let commonBuildInputs = pkgs:
     inherit (pkgs.ocamlPackages) findlib;
   }; in
 
-  let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix pkgs; in
-  let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix pkgs; in
   [
     pkgs.ocaml
     pkgs.dune
@@ -207,8 +205,8 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.yojson
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_inline_test
-    ocaml_bisect_ppx
-    ocaml_bisect_ppx-ocamlbuild
+    pkgs.ocamlPackages.bisect_ppx
+    pkgs.ocamlPackages.bisect_ppx-ocamlbuild
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
   ]; in
