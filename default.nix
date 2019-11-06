@@ -329,7 +329,7 @@ rec {
     '';
   };
 
-  unit-tests = stdenv.mkDerivation {
+  unit-tests = ocamlpkgs.stdenv.mkDerivation {
     name = "unit-tests";
 
     src = subpath ./src;
