@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 open Ir_def
 
 open Ir
@@ -7,7 +7,7 @@ open Source
 
 module V = Value
 module T = Type
-module CC = As_types.Call_conv
+module CC = Call_conv
 
 (* Context *)
 
@@ -186,8 +186,8 @@ let make_unit_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared; n_res = 0; _} ->
-    Value.message_func call_conv.n_args (fun v k ->
+  | {sort = T.Shared s; n_res = 0; _} ->
+    Value.message_func s call_conv.n_args (fun v k ->
       actor_msg env id f v (fun _ -> ());
       k V.unit
     )
@@ -200,8 +200,8 @@ let make_async_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared; control = T.Promises; n_res = 1; _} ->
-    Value.async_func call_conv.n_args (fun v k ->
+  | {sort = T.Shared s; control = T.Promises; _} ->
+    Value.async_func s call_conv.n_args call_conv.n_res (fun v k ->
       let async = make_async () in
       actor_msg env id f v (fun v_async ->
         get_async (V.as_async v_async) (set_async async) (reject_async async)
@@ -216,44 +216,7 @@ let make_async_message env id v =
 let make_message env x cc v : V.value =
   match cc.CC.control with
   | T.Returns -> make_unit_message env x v
-  | T.Promises -> make_async_message env x v
-
-
-let extended_prim env s typ at =
-  match s with
-  | "@async" ->
-    assert (not env.flavor.has_await && env.flavor.has_async_typ);
-    (fun v k ->
-       let (_, f) = V.as_func v in
-       match typ with
-       | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _);T.Func(_, _, _, [r_dom], _)], _) ->
-         let call_conv_f = CC.call_conv_of_typ f_dom in
-         let call_conv_r = CC.call_conv_of_typ r_dom in
-         async env at
-           (fun k' r ->
-             let vk' = Value.Func (call_conv_f, fun v _ -> k' v) in
-             let vr = Value.Func (call_conv_r, fun v _ -> r v) in
-             f (V.Tup [vk';vr]) V.as_unit
-           )
-           k
-       | _ -> assert false
-    )
-  | "@await" ->
-    assert (not env.flavor.has_await && env.flavor.has_async_typ);
-    (fun v k ->
-      match V.as_tup v with
-      | [async; v1] ->
-        (match V.as_tup v1 with
-         | [vf; vr] ->
-           let (_, f) = V.as_func vf in
-           let (_, r) = V.as_func vr in
-           await env at (V.as_async async)
-             (fun v -> f v k)
-             (fun e -> r e k) (* TBR *)
-         | _ -> assert false)
-      | _ -> assert false)
-  | _ -> Prim.prim s
-
+  | T.Promises-> make_async_message env x v
 
 (* Literals *)
 
@@ -345,12 +308,42 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         if Show.can_show ot
         then k (Value.Text (Show.show_val ot v))
         else raise (Invalid_argument "debug_show"))
+    | CPSAsync, [exp1] ->
+      interpret_exp env exp1 (fun v ->
+        assert (not env.flavor.has_await && env.flavor.has_async_typ);
+        let (_, f) = V.as_func v in
+        let typ = exp.note.note_typ in
+        match typ with
+        | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _);T.Func(_, _, _, [r_dom], _)], _) ->
+          let call_conv_f = CC.call_conv_of_typ f_dom in
+          let call_conv_r = CC.call_conv_of_typ r_dom in
+          async env exp.at
+            (fun k' r ->
+              let vk' = Value.Func (call_conv_f, fun v _ -> k' v) in
+              let vr = Value.Func (call_conv_r, fun v _ -> r v) in
+              f (V.Tup [vk';vr]) V.as_unit
+            )
+            k
+        | _ -> assert false
+      )
+    | CPSAwait, [exp1;exp2] ->
+      interpret_exp env exp1 (fun v1 ->
+        interpret_exp env exp2 (fun v2 ->
+          assert (not env.flavor.has_await && env.flavor.has_async_typ);
+          match V.as_tup v2 with
+           | [vf; vr] ->
+             let (_, f) = V.as_func vf in
+             let (_, r) = V.as_func vr in
+             await env exp.at (V.as_async v1)
+               (fun v -> f v k)
+               (fun e -> r e k) (* TBR *)
+          | _ -> assert false
+        )
+      )
     | OtherPrim s, exps ->
       interpret_exps env exps [] (fun vs ->
-        let at = exp.at in
-        let t = exp.note.note_typ in
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        extended_prim env s t at arg k
+        Prim.prim s arg k
       )
     | NumConvPrim (t1, t2), exps ->
       interpret_exps env exps [] (fun vs ->
@@ -396,7 +389,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
            with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
-  | CallE (_cc, exp1, typs, exp2) ->
+  | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
         let call_conv, f = V.as_func v1 in
@@ -465,13 +458,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | FuncE (x, cc, _typbinds, args, _typ, e) ->
+  | FuncE (x, sort, control, _typbinds, args, ret_typs, e) ->
+    let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
+
     let f = interpret_func env exp.at x args
       (fun env' -> interpret_exp env' e) in
     let v = V.Func (cc, f) in
     let v =
       match cc.sort with
-      | T.Shared -> make_message env x cc v
+      | T.Shared _ -> make_message env x cc v
       | _-> v
     in
     k v

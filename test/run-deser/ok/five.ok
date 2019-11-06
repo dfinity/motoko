@@ -1,0 +1,20 @@
+
+DESER, to your service!
+
+========================== Type section
+
+========================== Value section
+// 5 arguments follow
+(
+// Argument #0:
+  "One"
+// Argument #1:
+, "Two"
+// Argument #2:
+, "Three"
+// Argument #3:
+, "Four"
+// Argument #4 (last):
+, "Five"
+)
+-------- DESER DONE

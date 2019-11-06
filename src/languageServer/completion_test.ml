@@ -86,7 +86,7 @@ List.|
 let%test "it handles a full module" =
   prefix_test_case
 {|module {
-  private import List = "./ListLib.as";
+  private import List = "./ListLib.mo";
 
   func singleton<T>(x: T): List.List<T> =
     List.cons<T>(x, Test.|<T>());
@@ -98,8 +98,8 @@ let%test "it handles a full module" =
 let%test "it doesn't fall through to the next valid prefix" =
   prefix_test_case
 {|module {
-private import List = "lib/ListLib.as"; // private, so we don't re-export List
-private import ListFns = "lib/ListFuncs.as"; // private, so we don't re-export List
+private import List = "lib/ListLib.mo"; // private, so we don't re-export List
+private import ListFns = "lib/ListFuncs.mo"; // private, so we don't re-export List
 type Stack = List.List<Int>;
 func push(x : Int, s : Stack) : Stack = List.cons<Int>(x, s);
 func empty():Stack = List.nil<Int>();
@@ -111,40 +111,40 @@ func singleton(x : Int) : Stack =
 let%test "it makes an import relative to the project root" =
   import_relative_test_case
     "/home/project"
-    "/home/project/src/main.as"
-    "lib/List.as"
-    (Some "src/lib/List.as")
+    "/home/project/src/main.mo"
+    "lib/List.mo"
+    (Some "src/lib/List.mo")
 
 let%test "it preserves trailing slashes for directory imports" =
   import_relative_test_case
     "/home/project"
-    "/home/project/src/main.as"
+    "/home/project/src/main.mo"
     "lib/List/"
     (Some "src/lib/List/")
 
 let%test "it can handle parent directory relationships" =
   import_relative_test_case
     "/home/project"
-    "/home/project/src/main.as"
-    "../lib/List.as"
-    (Some "lib/List.as")
+    "/home/project/src/main.mo"
+    "../lib/List.mo"
+    (Some "lib/List.mo")
 
 let%test "it parses a simple module header" =
   parse_module_header_test_case
     "/project"
-    "/project/src/Main.as"
-    "import P \"lib/prelude.as\""
-    ["P", "src/lib/prelude.as"]
+    "/project/src/Main.mo"
+    "import P \"lib/prelude.mo\""
+    ["P", "src/lib/prelude.mo"]
 
 let%test "it parses a simple module header" =
   parse_module_header_test_case
     "/project"
-    "/project/Main.as"
+    "/project/Main.mo"
     {|
 module {
 
-private import List "lib/ListLib.as";
-private import ListFuncs "lib/ListFuncs.as";
+private import List "lib/ListLib.mo";
+private import ListFuncs "lib/ListFuncs.mo";
 
 type Stack = List.List<Int>;
 
@@ -158,6 +158,6 @@ func singleton(x: Int): Stack =
   ListFuncs.doubleton<Int>(x, x);
 }
 |}
-    [ ("List", "lib/ListLib.as")
-    ; ("ListFuncs", "lib/ListFuncs.as")
+    [ ("List", "lib/ListLib.mo")
+    ; ("ListFuncs", "lib/ListFuncs.mo")
     ]

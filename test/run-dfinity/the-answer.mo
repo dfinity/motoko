@@ -1,0 +1,1 @@
+debugPrintNat(42);

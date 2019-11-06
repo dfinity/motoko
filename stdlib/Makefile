@@ -1,14 +1,16 @@
-ASC=../src/asc
+MOC=../src/moc
 DRUN=drun
 OUTDIR=_out
 DOCDIR=doc
 STOPWATCH_C=./tools/stopwatch.c
-MDofAS=./tools/markdown-of-actorscript.py
+MDofMO=./tools/markdown-of-motoko.py
 MDofMD=./tools/markdown-of-markdown.py
 PANDOC=pandoc
 STOPWATCH=$(OUTDIR)/stopwatch
 
 WASM=\
+	ActorSpec \
+	ActorSpecDemo \
 	ProduceExchange \
 	Rx \
 
@@ -17,13 +19,19 @@ TESTS=\
 	ArrayTest \
 	AssocList \
 	DocTable \
+  Function \
+  FunctionTest \
 	Hash \
 	Int \
 	IntTest \
+  Iter \
+  IterTest \
 	List \
 	ListTest \
 	Nat \
 	NatTest \
+  None \
+  NoneTest \
 	Option \
 	OptionTest \
 	Result \
@@ -60,63 +68,81 @@ clean:
 $(OUTDIR):
 	@mkdir $@
 
-$(OUTDIR)/Array.out: array.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/Array.out: array.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/ArrayTest.out: arrayTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/ArrayTest.out: arrayTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Int.out: int.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/Function.out: function.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/IntTest.out: intTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/FunctionTest.out: functionTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Nat.out: nat.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/Int.out: int.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/NatTest.out: natTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/IntTest.out: intTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Hash.out: hash.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/Iter.out: iter.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Option.out: option.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/IterTest.out: iterTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/OptionTest.out: optionTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/Nat.out: nat.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Result.out: result.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/NatTest.out: natTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/List.out: list.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/Hash.out: hash.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/ListTest.out: listTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/None.out: none.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/AssocList.out: assocList.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/NoneTest.out: noneTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Text.out: text.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/Option.out: option.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/TextTest.out: textTest.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/OptionTest.out: optionTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Result.out: result.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/List.out: list.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/ListTest.out: listTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/AssocList.out: assocList.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Text.out: text.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/TextTest.out: textTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 
-$(OUTDIR)/Trie.out: trie.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/Trie.out: trie.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Trie2.out:trie2.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/Trie2.out:trie2.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Set.out: set.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/Set.out: set.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/DocTable.out: docTable.as | $(OUTDIR)
-	$(ASC) -r $(filter-out $(OUTDIR), $^) > $@
+$(OUTDIR)/DocTable.out: docTable.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 
 #########################################################################################################33
@@ -198,40 +224,60 @@ $(DOCDIR)/examples/produce-exchange/README.md: examples/produce-exchange/README.
 ##
 
 PRODUCE_EXCHANGE_SRC=\
-	prelude.as option.as hash.as list.as assocList.as trie2.as docTable.as result.as \
-	examples/produce-exchange/serverTypes.as \
-	examples/produce-exchange/serverLang.as \
-	examples/produce-exchange/serverModelTypes.as \
-	examples/produce-exchange/serverModel.as \
-	examples/produce-exchange/serverActor.as \
+	prelude.mo option.mo hash.mo list.mo assocList.mo trie2.mo docTable.mo result.mo \
+	examples/produce-exchange/serverTypes.mo \
+	examples/produce-exchange/serverLang.mo \
+	examples/produce-exchange/serverModelTypes.mo \
+	examples/produce-exchange/serverModel.mo \
+	examples/produce-exchange/serverActor.mo \
 
 $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/simpleSetupAndQuery.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/test/simpleSetupAndQuery.as > $@
+	examples/produce-exchange/test/simpleSetupAndQuery.mo | $(OUTDIR)
+	$(MOC) -ancient-system-api -r examples/produce-exchange/test/simpleSetupAndQuery.mo > $@
 
 $(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/retailerReserveMany.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/test/retailerReserveMany.as > $@
+	examples/produce-exchange/test/retailerReserveMany.mo | $(OUTDIR)
+	$(MOC) -ancient-system-api -r examples/produce-exchange/test/retailerReserveMany.mo > $@
 
 $(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/producerRemInventory.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/test/producerRemInventory.as > $@
+	examples/produce-exchange/test/producerRemInventory.mo | $(OUTDIR)
+	$(MOC) -ancient-system-api -r examples/produce-exchange/test/producerRemInventory.mo > $@
 
 $(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
-	examples/produce-exchange/test/evalBulk.as | $(OUTDIR)
-	$(ASC) -r examples/produce-exchange/test/evalBulk.as > $@
+	examples/produce-exchange/test/evalBulk.mo | $(OUTDIR)
+	$(MOC) -ancient-system-api -r examples/produce-exchange/test/evalBulk.mo > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/produce-exchange/serverActor.as
+	$(MOC) -ancient-system-api -c -o $@ examples/produce-exchange/serverActor.mo
 
-$(DOCDIR)/%.md: %.as $(MDofAS) | $(DOCDIR)
+$(DOCDIR)/%.md: %.mo $(MDofMO) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@
 	@echo "" >> $@
 	@echo "" >> $@
-	$(MDofAS) $< >> $@
+	$(MDofMO) $< >> $@
 
 $(DOCDIR)/%.html: $(DOCDIR)/%.md
 	$(PANDOC) -f gfm $^ > $@
+
+#########################################################################################################33
+
+##
+## ActorSpec Example
+##
+
+ACTORSPEC_SRC=\
+	array.mo \
+	int.mo \
+	text.mo \
+	examples/actorspec/src/ActorSpec.mo \
+	examples/actorspec/demo/Demo.mo \
+
+$(OUTDIR)/ActorSpec.wasm: $(ACTORSPEC_SRC) | $(OUTDIR)
+	$(MOC) -c -o $@ examples/actorspec/src/ActorSpec.mo
+
+$(OUTDIR)/ActorSpecDemo.wasm: $(ACTORSPEC_SRC) | $(OUTDIR)
+	$(MOC) -c -o $@ examples/actorspec/demo/Demo.mo
+
 
 #########################################################################################################33
 
@@ -240,16 +286,16 @@ $(DOCDIR)/%.html: $(DOCDIR)/%.md
 ##
 
 RX_SRC=\
-  array.as \
-	examples/rx/src/Rx.as \
-  examples/rx/test/RxTest.as \
+	array.mo \
+	examples/rx/src/Rx.mo \
+	examples/rx/test/RxTest.mo \
 
 $(OUTDIR)/RxTest.out: $(RX_SRC) \
-	examples/rx/test/RxTest.as | $(OUTDIR)
-	$(ASC) -r examples/rx/test/RxTest.as > $@
+	examples/rx/test/RxTest.mo | $(OUTDIR)
+	$(MOC) -r examples/rx/test/RxTest.mo > $@
 
 $(OUTDIR)/Rx.wasm: $(RX_SRC) | $(OUTDIR)
-	$(ASC) -c -o $@ examples/rx/src/Rx.as
+	$(MOC) -c -o $@ examples/rx/src/Rx.mo
 
 #########################################################################################################33
 
@@ -261,12 +307,12 @@ $(OUTDIR)/Rx.wasm: $(RX_SRC) | $(OUTDIR)
 #        There is lot of redundancy, but I don't know how to hack the Makefile to overcome it without also making it too complex.
 
 PROFILE_LOAD_SRC=\
-	examples/produce-exchange/serverActor.as \
-	examples/produce-exchange/test/profileLoad.as
+	examples/produce-exchange/serverActor.mo \
+	examples/produce-exchange/test/profileLoad.mo
 
 PROFILE_LOAD_QUERY_SRC=\
-	examples/produce-exchange/serverActor.as \
-	examples/produce-exchange/test/profileLoadQuery.as
+	examples/produce-exchange/serverActor.mo \
+	examples/produce-exchange/test/profileLoadQuery.mo
 
 PROFILE_FIELDS=\
 		--profile-field "hash_bit_length" \
@@ -285,8 +331,8 @@ PROFILE_FIELDS=\
 profile-fast-counts: \
 	$(OUTDIR)/profileFastCounts.csv
 
-$(OUTDIR)/profileFastCounts.csv: examples/produce-exchange/test/profileFastCounts.as
-	$(ASC) -r examples/produce-exchange/test/profileFastCounts.as > $@
+$(OUTDIR)/profileFastCounts.csv: examples/produce-exchange/test/profileFastCounts.mo
+	$(MOC) -r examples/produce-exchange/test/profileFastCounts.mo > $@
 
 profile-interp: \
 	$(OUTDIR)/profileLoadQuery.05-01.csv \
@@ -303,47 +349,47 @@ profile-interp: \
 	$(OUTDIR)/profileLoadQuery.05-50.csv \
 	$(OUTDIR)/profileLoadQuery.05-100.csv \
 
-## AS wishlist: the following various targets each take a params file that defines two variables used in the common test file.
-##              it would be better if we could accept named AS values as CLI params; that feature would obviate the need for the `param-X-Y.as` files used below:
+## MO wishlist: the following various targets each take a params file that defines two variables used in the common test file.
+##              it would be better if we could accept named MO values as CLI params; that feature would obviate the need for the `param-X-Y.mo` files used below:
 
 $(OUTDIR)/profileLoadQuery.05-01.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-1.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-1.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-02.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-2.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-2.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-03.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-3.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-3.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-04.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-4.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-4.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-05.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-5.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-5.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-06.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-6.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-6.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-07.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-7.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-7.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-08.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-8.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-8.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-09.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-9.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-9.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-10.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-10.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-10.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-20.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-20.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-20.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-50.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-50.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-50.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 $(OUTDIR)/profileLoadQuery.05-100.csv: $(PRODUCE_EXCHANGE_SRC) $(PROFILE_LOAD_QUERY_SRC) | $(OUTDIR)
-	time $(ASC) -r --profile examples/produce-exchange/test/params-5-100.as $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
+	time $(MOC) -r --profile examples/produce-exchange/test/params-5-100.mo $(PROFILE_LOAD_QUERY_SRC) --profile-file $@ $(PROFILE_FIELDS)
 
 # wasm binaries and time measurements for various-sized PX workloads
 profile-wasm: $(OUTDIR) profile-fast-counts \
@@ -389,43 +435,43 @@ profile-wasm: $(OUTDIR) profile-fast-counts \
 
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-1.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-1.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-2.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-2.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-3.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-3.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-4.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-4.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-5.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-5.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-6.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-6.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-7.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-7.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-8.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-8.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-9.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-9.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-10.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-10.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-20.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-20.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-50.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-50.mo examples/produce-exchange/profileActor.mo
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(ASC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-100.as examples/produce-exchange/profileActor.as
+	$(MOC) -c -no-check-ir -o $@ examples/produce-exchange/test/params-5-100.mo examples/produce-exchange/profileActor.mo
 
 
 $(STOPWATCH): $(STOPWATCH_C)

@@ -1,5 +1,5 @@
 open Ir_def
-open As_types
+open Mo_types
 
 open Source
 open Ir
@@ -101,7 +101,7 @@ and exp' env e  : exp' = match e.it with
   | AssignE (e1, e2)    -> AssignE (exp env e1, exp env e2)
   | ArrayE (m,t,es)     -> ArrayE (m,t,(exps env es))
   | IdxE (e1, e2)       -> IdxE (exp env e1, exp env e2)
-  | CallE (cc, e1, insts, e2)  ->
+  | CallE (e1, insts, e2)  ->
     begin
       match e1.it, env with
       | VarE f1, { tail_pos = true;
@@ -110,7 +110,7 @@ and exp' env e  : exp' = match e.it with
         tail_called := true;
         (blockE (assignEs temps (exp env e2))
                  (breakE label (tupE []))).it
-      | _,_-> CallE(cc, exp env e1, insts, exp env e2)
+      | _,_-> CallE (exp env e1, insts, exp env e2)
     end
   | BlockE (ds, e)      -> BlockE (block env ds e)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)
@@ -131,11 +131,11 @@ and exp' env e  : exp' = match e.it with
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
-  | FuncE (x, cc, tbs, as_, ret_tys, exp0) ->
+  | FuncE (x, s, c, tbs, as_, ret_tys, exp0) ->
     let env1 = { tail_pos = true; info = None} in
     let env2 = args env1 as_ in
     let exp0' = tailexp env2 exp0 in
-    FuncE (x, cc, tbs, as_, ret_tys, exp0')
+    FuncE (x, s, c, tbs, as_, ret_tys, exp0')
   | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: descent into ds *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
 
@@ -188,7 +188,7 @@ and dec' env d =
   (* A local let bound function, this is what we are looking for *)
   (* TODO: Do we need to detect more? A tuple of functions? *)
   | LetD (({it = VarP id;_} as id_pat),
-          ({it = FuncE (x, ({ Call_conv.sort = Local; _} as cc), tbs, as_, typT, exp0);_} as funexp)) ->
+          ({it = FuncE (x, Local, c, tbs, as_, typT, exp0);_} as funexp)) ->
     let env = bind env id None in
     begin fun env1 ->
       let temps = fresh_vars "temp" (List.map (fun a -> Mut a.note) as_) in
@@ -220,9 +220,9 @@ and dec' env d =
             )
           )
         in
-        LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, List.map arg_of_exp ids, typT, body)})
+        LetD (id_pat, {funexp with it = FuncE (x, Local, c, tbs, List.map arg_of_exp ids, typT, body)})
       else
-        LetD (id_pat, {funexp with it = FuncE (x, cc, tbs, as_, typT, exp0')})
+        LetD (id_pat, {funexp with it = FuncE (x, Local, c, tbs, as_, typT, exp0')})
     end,
     env
   | LetD (p, e) ->

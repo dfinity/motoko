@@ -1,0 +1,15 @@
+non-closed actor: (ActorE
+  a
+  (LetD
+    (VarP foo)
+    (FuncE
+      foo
+      Shared
+      Returns
+      ()
+      (AssertE (PrimE (RelPrim Nat EqOp) (VarE x) (LitE (NatLit 1))))
+    )
+  )
+  (foo foo)
+  actor {foo : shared () -> ()}
+)
