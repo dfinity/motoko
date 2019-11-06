@@ -166,6 +166,7 @@ let
 in
 
 # When building for linux (but not in nix-shell) we build statically
+# (We should probably just figure out how to use nix overlays to add this to nixpkgs)
 let ocamlpkgs =
   if nixpkgs.stdenv.isDarwin
   then nixpkgs
