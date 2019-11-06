@@ -8,7 +8,7 @@ To document, discover, and interact with actors on the platform, we need an inte
 exchange (names, parameter and result formats of actor methods)
 * Simple and canonical constructs (C-like; algebraically: sums, products, exponentials)
 * Extensible, backwards-compatible
-* Well-formedness is checkable and guaranteed by the platform
+* Well-formedness is checkable
 * Deterministic mapping to serialised representation
 * Human-readable and machine-readable
 * Declarative, usable as input to binding code generators
@@ -537,8 +537,6 @@ That is, outbound message results can only be replaced with a subtype (more fiel
 
 Subtyping applies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
 
-**TODO: unsound, fix**
-
 To make these constraints as flexible as possible, two special rules apply:
 
  * An absent record field is considered equivalent to a present field with value `null`. Moreover, a record field of type `null` is a subtype of a field with type `opt <datatype>`. That way,	That way, a field of option (or null) type can always be added to a record type, no matter whether in co- or contra-variant position. If an optional field is added to an inbound record, and he client did not provide it, the service will read it as if its value was null.
@@ -546,7 +544,9 @@ To make these constraints as flexible as possible, two special rules apply:
   - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;	
   - in an inbound record, a field of option (or null) type can also be added, in which case the service will read it as if its value was null.
 
-Future extensions: defaults, including for variants?
+Taken together, the rules allow record types to support round-trips, i.e., occur in both inbound and outbound positions, while still remaining upgradable via new optional fields.
+
+Possible future extensions: defaults for options, including for variants?
 
 
 ### Rules
@@ -593,7 +593,7 @@ vec <datatype> <: vec <datatype'>
 ```
 Furthermore, an option type can be specialised to either `null` or to its constituent type:
 ```
-------------------------
+----------------------
 null <: opt <datatype>
 
 not (null <: <datatype>)
@@ -616,23 +616,20 @@ record { <fieldtype'>;* } <: record { }
 
 <datatype> <: <datatype'>
 record { <fieldtype>;* } <: record { <fieldtype'>;* }
-----------------------------------------------------------------------------------------------
-record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
+--------------------------------------------------------------------------------------------
+record { <fieldtype>;* <nat> : <datatype> } <: record { <fieldtype'>;* <nat> : <datatype'> }
 ```
-
-**TODO: Rules below are unsound as is, need fixing!**
-
 In addition, record fields of `null` or option type can be removed, treating the absent field as having value `null`.
 ```
 record { <fieldtype>;* } <: record { <fieldtype'>;* }
--------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
+------------------------------------------------------------------
+record { <fieldtype>;* } <: record { <fieldtype'>;* <nat> : null }
 
 record { <fieldtype>;* } <: record { <fieldtype'>;* }
------------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
+----------------------------------------------------------------------------
+record { <fieldtype>;* } <: record { <fieldtype'>;* <nat> : opt <datatype> }
 ```
-TODO: What we want to achieve: Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
+Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
 ```
 type T = {};
 actor { f : T -> T };
@@ -644,29 +641,47 @@ actor { f : T' -> T' };
 ```
 for all first-order uses of `T`, because both of the following hold:
 ```
-upgrade T' <: T
-upgrade T <: T'
+T' <: T   (by usual width subtyping)
+T  <: T'  (by option field subtyping)
 ```
 And hence:
 ```
-upgrade (T' -> T')  <:  (T -> T)
+(T' -> T')  <:  (T -> T)
 ```
-for some version of a type `upgrade T`.
 Moreover, this extends to the higher-order case, where e.g. a function of the above type is expected as a parameter:
 ```
 actor { g : (h : T -> T) -> ()}
 ```
 Upgrading `T` as above contra-variantly requires
 ```
-upgrade (T -> T)  <:  (T' -> T')
+(T -> T)  <:  (T' -> T')
 ```
 which also holds.
 
-Note: Subtyping still needs to be transitive . We must not allow:
+Finally, one auxiliary rule is needed to ensure that subtyping is still transitive:
 ```
-record {x : opt text} <: record {} <: record {x : opt nat}
+not (<datatype> <: opt <datatype')
+record { <fieldtype>;* } <: record { <fieldtype'>;* }
+------------------------------------------------------------------------------------------------
+record { <fieldtype>;* <nat> : <datatype> } <: record { <fieldtype'>;* <nat> : opt <datatype'> }
 ```
-**TODO: Sanity continues from here.**
+This rule allows the consecutive removal and later re-addition of a field with different types over multiple upgrades. For example:
+```
+record {x : text} <: record {} <: record {x : opt nat}
+```
+The field will also read as `null` in this case.
+Transitivity is necessary so that data compatibility is guaranteed in all cases under the earlier rules, even across multiple upgrades.
+
+Note that this rule does not cover the case where the new version of the field has the same type as the old:
+```
+record {x : opt nat} <: record {} <: record {x : opt text}
+```
+In this case, a direct access of the old value under the new interface, without going through the intermediate version, will be handled according to the ordinary rule for options, keeping its value.
+The semantics has no way of knowing whether that is intended or not, but this behaviour avoids any semantic ambiguity.
+
+However, this implies that -- although subtyping is transitive and the respective conversions compose -- the composition of conversions is not always *coherent*, i.e., it may return values different from a direct conversion.
+Unfortunately, a fully coherent semantics seems impossible to achieve for this case.
+In practice, users are not recommended to remove optional fields in an upgrade, avoiding the scenario.
 
 
 #### Variants
@@ -679,8 +694,8 @@ variant { } <: variant { <fieldtype'>;* }
 
 <datatype> <: <datatype'>
 variant { <fieldtype>;* } <: variant { <fieldtype'>;* }
-------------------------------------------------------------------------------------------------
-variant { <nat> : <datatype>; <fieldtype>;* } <: variant { <nat> : <datatype'>; <fieldtype'>;* }
+----------------------------------------------------------------------------------------------
+variant { <fieldtype>;* <nat> : <datatype> } <: variant { <fieldtype'>;* <nat> : <datatype'> }
 ```
 
 #### Functions
@@ -714,6 +729,7 @@ service { <name> : <functype>; <methtype>;* } <: service { <name> : <functype'>;
 ### Elaboration
 
 To define the actual coercion function, we extend the subtyping relation to a ternary *elaboration* relation `T <: T' ~> f`, where `f` is a suitable coercion function of type `T -> T'`.
+To express this function, we assume a simple lambda calculus over IDL values.
 
 
 #### Primitive Types
@@ -724,15 +740,15 @@ To define the actual coercion function, we extend the subtyping relation to a te
 <primtype> <: <primtype> ~> \x.x
 
 
-------------------
-Nat <: Int ~> \x.x
+-------------------
+Nat <: Int ~> \x.+x
 
 
-------------------------------
-<datatype> <: reserved ~> \x.x
+---------------------------------
+<datatype> <: reserved ~> \x.null
 
 
-------------------------------
+-------------------------------------
 empty <: <datatype> ~> \_.unreachable
 ```
 
@@ -768,20 +784,23 @@ record { <fieldtype'>;* } <: record { } ~> \x.{}
 <datatype> <: <datatype'> ~> f1
 record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f2
 ----------------------------------------------------------------------------------------------
-record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
+record { <fieldtype>;* <nat> : <datatype> } <: record { <fieldtype'>;* <nat> : <datatype'> }
   ~> \x.{f2 x with <nat> = f1 x.<nat>}
-```
 
-TODO: Fix
-```
 record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
--------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
+------------------------------------------------------------------
+record { <fieldtype>;* } <: record { <fieldtype'>;* <nat> : null }
   ~> \x.{f x; <nat> = null}
 
 record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
 -----------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
+record { <fieldtype>;* } <: record { <fieldtype'>;* <nat> : opt <datatype> }
+  ~> \x.{f x; <nat> = null}
+
+not (<datatype> <: opt <datatype')
+record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
+------------------------------------------------------------------------------------------------
+record { <fieldtype>;* <nat> : <datatype> } <: record { <fieldtype'>;* <nat> : opt <datatype'> }
   ~> \x.{f x; <nat> = null}
 ```
 
@@ -1081,6 +1100,10 @@ Note:
 
 To enable convenient debugging, we also specify a text format for IDL values.
 The types of these values are assumed to be known from context, so the syntax does not attempt to be self-describing.
+Type annotations can be given to disambiguate.
+
+Note: It is expected that reading IDL values (in diagnostics or logs) is by far the dominant use case.
+For that reason, the syntax is designed for easy readability instead of convenient writability. To that end, it intentionally matches the type syntax.
 
 ```
 <val> ::=
