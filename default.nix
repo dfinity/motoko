@@ -16,6 +16,11 @@ let ocamlpkgs =
   then nixpkgs
   else nixpkgs.pkgsMusl; in
 
+let profile =
+  if nixpkgs.stdenv.isDarwin
+  then "release"
+  else "release-static"; in
+
 let ocaml_wasm = import ./nix/ocaml-wasm.nix {
   inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml;
   inherit (ocamlpkgs.ocamlPackages) findlib ocamlbuild;
@@ -237,14 +242,8 @@ rec {
 
     buildInputs = commonBuildInputs;
 
-    profile =
-      if nixpkgs.stdenv.isDarwin
-      then "release"
-      else "release-static";
-
-
     buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" moc mo-ld
+      make DUNE_OPTS="--display=short --profile ${profile}" moc mo-ld
     '';
 
     installPhase = ''
@@ -348,7 +347,7 @@ rec {
     buildInputs = commonBuildInputs;
 
     buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" mo-ide
+      make DUNE_OPTS="--display=short --profile ${profile}" mo-ide
     '';
 
     installPhase = ''
@@ -415,7 +414,7 @@ rec {
     src = subpath ./src;
     buildInputs = commonBuildInputs;
     buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" didc
+      make DUNE_OPTS="--display=short --profile ${profile}" didc
     '';
     installPhase = ''
       mkdir -p $out/bin
@@ -428,7 +427,7 @@ rec {
     src = subpath ./src;
     buildInputs = commonBuildInputs;
     buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" deser
+      make DUNE_OPTS="--display=short --profile ${profile}" deser
     '';
     installPhase = ''
       mkdir -p $out/bin
