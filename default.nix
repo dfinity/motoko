@@ -212,27 +212,40 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppx_tools_versioned
   ]; in
 
-let ocaml_binaries = name: bins:
-  let profile =
+let darwin_standalone =
+  import nix/standalone-darwin.nix {
+    inherit (nixpkgs) runCommandNoCC stdenv grep removeReferencesTo lib;
+  }; in
+
+let ocaml_exe = name: bin:
+  let
+    profile =
       if nixpkgs.stdenv.isDarwin
       then "release"
-      else "release-static"; in
-  ocamlpkgs.stdenv.mkDerivation {
-    inherit name;
+      else "release-static";
 
-    src = subpath ./src;
+    drv = ocamlpkgs.stdenv.mkDerivation {
+      inherit name;
 
-    buildInputs = commonBuildInputs ocamlpkgs;
+      src = subpath ./src;
 
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile ${profile}" ${builtins.toString bins}
-    '';
+      buildInputs = commonBuildInputs ocamlpkgs;
 
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference ${builtins.toString bins} $out/bin
-    '';
-  }; in
+      buildPhase = ''
+        make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
+      '';
+
+      installPhase = ''
+        mkdir -p $out/bin
+        cp --verbose --dereference ${bin} $out/bin
+      '';
+    };
+  in
+    # Make standalone on darwin (nothing to do on linux, is static)
+    if nixpkgs.stdenv.isDarwin
+    then darwin_standalone { inherit drv; exename = bin; }
+    else drv;
+in
 
 rec {
   rts = stdenv.mkDerivation {
@@ -260,10 +273,11 @@ rec {
     '';
   };
 
-  moc-bin = ocaml_binaries "moc-bin" ["moc" "mo-ld"];
-  mo-ide = ocaml_binaries "mo-ide" ["mo-ide"];
-  didc = ocaml_binaries "didc" ["didc"];
-  deser = ocaml_binaries "deser" ["deser"];
+  moc-bin = ocaml_exe "moc-bin" "moc";
+  mo-ld = ocaml_exe "mo-ld" "mo-ld";
+  mo-ide = ocaml_exe "mo-ide" "mo-ide";
+  didc = ocaml_exe "didc" "didc";
+  deser = ocaml_exe "deser" "deser";
 
   moc = nixpkgs.symlinkJoin {
     name = "moc";
@@ -294,6 +308,7 @@ rec {
     src = subpath ./test;
     buildInputs =
       [ moc
+        mo-ld
         didc
         deser
         ocaml_wasm_static
