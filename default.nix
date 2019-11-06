@@ -16,19 +16,6 @@ let ocamlpkgs =
   then nixpkgs
   else nixpkgs.pkgsMusl; in
 
-let ocaml_wasm = import ./nix/ocaml-wasm.nix {
-  inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml;
-  inherit (ocamlpkgs.ocamlPackages) findlib ocamlbuild;
-}; in
-
-let ocaml_vlq = import ./nix/ocaml-vlq.nix {
-  inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml dune;
-  inherit (ocamlpkgs.ocamlPackages) findlib;
-}; in
-
-let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix ocamlpkgs; in
-let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix ocamlpkgs; in
-
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   # ref = "master";
@@ -158,27 +145,6 @@ let haskellPackages = nixpkgs.haskellPackages.override {
              }) {};
       };
     }; in
-
-let commonBuildInputs = [
-  ocamlpkgs.ocaml
-  nixpkgs.dune
-  ocamlpkgs.ocamlPackages.atdgen
-  ocamlpkgs.ocamlPackages.findlib
-  ocamlpkgs.ocamlPackages.menhir
-  ocamlpkgs.ocamlPackages.num
-  ocamlpkgs.ocamlPackages.stdint
-  ocaml_wasm
-  ocaml_vlq
-  ocamlpkgs.ocamlPackages.zarith
-  ocamlpkgs.ocamlPackages.yojson
-  ocamlpkgs.ocamlPackages.ppxlib
-  ocamlpkgs.ocamlPackages.ppx_inline_test
-  ocaml_bisect_ppx
-  ocaml_bisect_ppx-ocamlbuild
-  ocamlpkgs.ocamlPackages.ocaml-migrate-parsetree
-  ocamlpkgs.ocamlPackages.ppx_tools_versioned
-]; in
-
 let
   libtommath = nixpkgs.fetchFromGitHub {
     owner = "libtom";
@@ -204,6 +170,44 @@ let
   '';
 in
 
+let ocaml_wasm_static =
+  import ./nix/ocaml-wasm.nix {
+    inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml;
+    inherit (ocamlpkgs.ocamlPackages) findlib ocamlbuild;
+  }; in
+
+let commonBuildInputs = pkgs:
+  let ocaml_wasm = import ./nix/ocaml-wasm.nix {
+    inherit (pkgs) stdenv fetchFromGitHub ocaml;
+    inherit (pkgs.ocamlPackages) findlib ocamlbuild;
+  }; in
+
+  let ocaml_vlq = import ./nix/ocaml-vlq.nix {
+    inherit (pkgs) stdenv fetchFromGitHub ocaml dune;
+    inherit (pkgs.ocamlPackages) findlib;
+  }; in
+
+  let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix pkgs; in
+  let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix pkgs; in
+  [
+    pkgs.ocaml
+    pkgs.dune
+    pkgs.ocamlPackages.atdgen
+    pkgs.ocamlPackages.findlib
+    pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.num
+    pkgs.ocamlPackages.stdint
+    ocaml_wasm
+    ocaml_vlq
+    pkgs.ocamlPackages.zarith
+    pkgs.ocamlPackages.yojson
+    pkgs.ocamlPackages.ppxlib
+    pkgs.ocamlPackages.ppx_inline_test
+    ocaml_bisect_ppx
+    ocaml_bisect_ppx-ocamlbuild
+    pkgs.ocamlPackages.ocaml-migrate-parsetree
+    pkgs.ocamlPackages.ppx_tools_versioned
+  ]; in
 
 let ocaml_binaries = name: bins:
   let profile =
@@ -215,7 +219,7 @@ let ocaml_binaries = name: bins:
 
     src = subpath ./src;
 
-    buildInputs = commonBuildInputs;
+    buildInputs = commonBuildInputs ocamlpkgs;
 
     buildPhase = ''
       make DUNE_OPTS="--display=short --profile ${profile}" ${builtins.toString bins}
@@ -289,7 +293,7 @@ rec {
       [ moc
         didc
         deser
-        ocaml_wasm
+        ocaml_wasm_static
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -334,7 +338,7 @@ rec {
 
     src = subpath ./src;
 
-    buildInputs = commonBuildInputs;
+    buildInputs = commonBuildInputs ocamlpkgs;
 
     buildPhase = ''
       make DUNE_OPTS="--display=short" unit-tests
@@ -351,7 +355,7 @@ rec {
     buildInputs =
       [ moc
         didc
-        ocaml_wasm
+        ocaml_wasm_static
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -370,13 +374,15 @@ rec {
     '';
   };
 
-  js = moc-bin.overrideAttrs (oldAttrs: {
+  js = stdenv.mkDerivation {
     name = "moc.js";
 
-    buildInputs = commonBuildInputs ++ [
-      ocamlpkgs.ocamlPackages.js_of_ocaml
-      ocamlpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
-      ocamlpkgs.ocamlPackages.js_of_ocaml-ppx
+    src = subpath ./src;
+
+    buildInputs = commonBuildInputs nixpkgs ++ [
+      nixpkgs.ocamlPackages.js_of_ocaml
+      nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
+      nixpkgs.ocamlPackages.js_of_ocaml-ppx
       nixpkgs.nodejs-10_x
     ];
 
@@ -395,10 +401,9 @@ rec {
     installCheckPhase = ''
       NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv ${./test/node-test.js}
     '';
+  };
 
-  });
-
-  wasm = ocaml_wasm;
+  wasm = ocaml_wasm_static;
   dvm = real-dvm;
   drun = real-drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
@@ -546,12 +551,9 @@ rec {
     buildInputs =
       let dont_build = [ moc didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
-        moc-bin.buildInputs ++
-        js.buildInputs ++
+        commonBuildInputs nixpkgs ++
         rts.buildInputs ++
-        didc.buildInputs ++
-        deser.buildInputs ++
-        tests.buildInputs ++
+        js.buildInputs ++
         users-guide.buildInputs ++
         [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ]
       ));
