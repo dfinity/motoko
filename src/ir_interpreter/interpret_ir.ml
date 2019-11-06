@@ -373,11 +373,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | ICReplyPrim ts, [exp1] ->
       assert (not env.flavor.has_async_typ);
       let reply = Lib.Option.value env.replies in
-      interpret_exp env exp1 reply
+      interpret_exp env exp1 (fun v -> Scheduler.queue (fun () -> reply v))
     | ICRejectPrim, [exp1] ->
       assert (not env.flavor.has_async_typ);
       let reject = Lib.Option.value env.rejects in
-      interpret_exp env exp1 reject
+      interpret_exp env exp1 (fun v -> Scheduler.queue (fun () -> reject v))
     | ICCallPrim, [exp1; exp2; expk ; expr] ->
       assert (not env.flavor.has_async_typ);
       interpret_exp env exp1 (fun v1 ->
