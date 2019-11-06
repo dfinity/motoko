@@ -75,7 +75,7 @@ let warn env at fmt =
 
 let flag_of_compile_mode mode =
   match mode with
-  | Flags.ICMode -> ""
+  | Flags.ICMode -> "compiled"
   | Flags.WasmMode -> " and flag -no-system-api"
   | Flags.AncientMode -> " and flag -ancient-system-api"
 
@@ -90,8 +90,10 @@ let compile_mode_error mode env at fmt =
       Diag.add_msg env.msgs (type_error at s); raise Recover) fmt
 
 let error_in modes env at fmt =
-  let mode = !Flags.compile_mode in
-  if List.mem mode modes then
+  match !Flags.compile_mode with
+  | None -> ()
+  | Some mode ->
+    if List.mem mode modes then
     compile_mode_error mode env at fmt
 
 (* Context extension *)
