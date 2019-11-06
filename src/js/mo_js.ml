@@ -30,7 +30,7 @@ let diagnostics_of_msgs (msgs : Diag.message list) =
 
 let js_check source =
   let msgs = match
-    Pipeline.check_string (Js.to_string source) "js-input" with
+    Pipeline.check_string (Js.to_string source) Filename.current_dir_name with
     | Error msgs -> msgs
     | Ok (_,  msgs) -> msgs in
   object%js
@@ -44,7 +44,7 @@ let js_compile_with mode_string source convert =
     | "dfinity" -> Flags.AncientMode
     | _ -> Flags.WasmMode
   in
-  match Pipeline.compile_string mode (Js.to_string source) "js-input" with
+  match Pipeline.compile_string mode (Js.to_string source) Filename.current_dir_name with
   | Ok (module_, msgs) ->
     let (code, map) = convert module_ in
     object%js

@@ -1,4 +1,11 @@
-module{
+import P "prelude.mo";
+import Option "option.mo";
+import H "hash.mo";
+
+import List "list.mo";
+import AssocList "assocList.mo";
+
+module {
 /**
 
 Hash tries
@@ -73,18 +80,10 @@ public let MAX_LEAF_COUNT = 8; // <-- beats both 4 and 16 for me, now
 //let MAX_LEAF_COUNT = 16;
 //let MAX_LEAF_COUNT = 32;
 
-import P "prelude.mo";
-
-import Option "option.mo";
-
-import H "hash.mo";
 public let Hash = H.BitVec;
 public type Hash = Hash.t;
 
-import List "list.mo";
 public type List<T> = List.List<T>;
-
-import AssocList "assocList.mo";
 public type AssocList<K,V> = AssocList.AssocList<K,V>;
 
 /** A `Key` for the trie has an associated hash value */
@@ -143,20 +142,20 @@ public func isValid<K,V> (t:Trie<K,V>, enforceNormal:Bool) : Bool {
            ( List.all<(Key<K>,V)>(
                l.keyvals,
                func ((k:Key<K>,v:V)):Bool{
-                 //{ print "testing hash..."; true }
+                 //{ debugPrint "testing hash..."; true }
                  //and
                  ((k.hash & mask) == bits)
                  or
-                 { print "\nmalformed hash!:\n";
-                   printInt (word32ToNat(k.hash));
-                   print "\n (key hash) != (path bits): \n";
-                   printInt (word32ToNat(bits));
-                   print "\nmask  : "; printInt (word32ToNat(mask));
-                   print "\n";
+                 { debugPrint "\nmalformed hash!:\n";
+                   debugPrintInt (word32ToNat(k.hash));
+                   debugPrint "\n (key hash) != (path bits): \n";
+                   debugPrintInt (word32ToNat(bits));
+                   debugPrint "\nmask  : "; debugPrintInt (word32ToNat(mask));
+                   debugPrint "\n";
                    false }
                }
              ) or
-           { print "one or more hashes are malformed"; false }
+           { debugPrint "one or more hashes are malformed"; false }
            )
          };
     case (#branch b) {
@@ -167,7 +166,7 @@ public func isValid<K,V> (t:Trie<K,V>, enforceNormal:Bool) : Bool {
            let mask1 = mask | (natToWord32(1) << bitpos1);
            let bits1 = bits | (natToWord32(1) << bitpos1);
            let sum = count<K,V>(b.left) + count<K,V>(b.right);
-           (b.count == sum or { print "malformed count"; false })
+           (b.count == sum or { debugPrint "malformed count"; false })
            and
            rec(b.left,  ?bitpos1, bits,  mask1)
            and

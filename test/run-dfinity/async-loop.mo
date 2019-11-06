@@ -5,13 +5,13 @@ async {
   var j = 0;
   label l
   loop {
-   printNat(j);
+   debugPrintNat(j);
    assert(j == i);
    i += 1;
    j += 1;
-   if (j == 11) break l else continue l;
+   if (j == 3) break l else continue l;
   } ;
-  assert(i == 11);
+  assert(i == 3);
 };
 
 
@@ -20,14 +20,14 @@ async {
   var j = 0;
   label l
   loop {
-    printNat(j);
+    debugPrintNat(j);
     assert(j == i);
     i += 1;
     j += 1;
-    if (await async (j == 11)) break l else continue l;
+    if (await async (j == 3)) break l else continue l;
     assert(false);
   };
-  assert(i == 11);
+  assert(i == 3);
 };
 
 {
@@ -35,14 +35,14 @@ async {
   var j = 0;
   label l
   loop {
-   printNat(j);
+   debugPrintNat(j);
    assert(j == i);
    await (async (i += 1));
    j += 1;
-   if (j == 11) break l else continue l;
+   if (j == 3) break l else continue l;
    assert(false);
   };
-  assert(i == 11);
+  assert(i == 3);
 };
 
 {
@@ -50,18 +50,18 @@ async {
   var j = 0;
   label l
   loop {
-   if (j > 10) {
+   if (j > 2) {
      break l;
      assert(false);
    };
-   printNat(j);
+   debugPrintNat(j);
    assert(j == i);
    await (async (i += 1));
    j += 1;
    continue l;
    assert(false);
   };
-  assert(i == 11);
+  assert(i == 3);
 };
 
 };

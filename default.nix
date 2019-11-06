@@ -278,6 +278,7 @@ rec {
         nixpkgs.bash
         nixpkgs.perl
         nixpkgs.getconf
+        nixpkgs.moreutils
         nixpkgs.nodejs-10_x
         filecheck
         js-user-library
@@ -588,6 +589,7 @@ rec {
     JS_USER_LIBRARY=js-user-library;
     TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
+    LOCALE_ARCHIVE="${nixpkgs.glibcLocales}/lib/locale/locale-archive";
   } else null;
 
 }

@@ -8,9 +8,5 @@ cnt: 5 i: 10
 cnt: 7 i: 6
 cnt: 8 i: 11
 .cnt: 9 i: 7
-cnt: 10 i: 12
-.cnt: 11 i: 8
-cnt: 12 i: 13
-.cnt: 13 i: 9
-e-exitcnt: 14 i: 14
+e-exitcnt: 10 i: 12
 g-exit

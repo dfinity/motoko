@@ -423,60 +423,18 @@ and prog (p : Syntax.prog) : Ir.prog =
     }
 
 
-let declare_import imp_env (f, (prog:Syntax.prog))  =
+let declare_import imp_env lib =
   let open Source in
+  let f = lib.note in
   let t = T.Env.find f imp_env in
   let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
-  match prog.it with
-  |  [{it = Syntax.ExpD e;_}] ->
-     { it = Syntax.LetD (
-                { it = Syntax.VarP (id_of_full_path f)
-                ; at = no_region
-                ; note = t
-                }
-              , e
-              )
-     ; at = no_region
-     ; note = typ_note
-     }
-  (* HACK: to be removed once we restrict programs to expressions *)
-  |  ds ->
-     Diag.(
-       print_message
-         { sev = Warning
-         ; at = prog.at
-         ; cat = "import"
-         ; text = Printf.sprintf
-                    "imported declarations `...` from file %s as a module; \
-                     please rewrite library %s as `module { ... }` instead." f f
-         }
-     );
-     { it =
-         Syntax.LetD
-           (
-             { it = Syntax.VarP (id_of_full_path f)
-             ; at = no_region
-             ; note = t
-             }
-           , { it = Syntax.ObjE
-                      (T.Module @@ no_region,
-                       List.map
-                         (fun d ->
-                           { Syntax.dec=d; vis=Syntax.Public @@ no_region }
-                              @@ d.at)
-                         prog.it)
-             ; at = no_region
-             ; note = typ_note
-             }
-           )
-     ; at = no_region
-     ; note = typ_note
-     }
+  let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
+  { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
 
-let combine_files imp_env libraries progs : Syntax.prog =
+let combine_files imp_env libs progs : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
-  { it = List.map (declare_import imp_env) libraries
+  { it = List.map (declare_import imp_env) libs
          @ List.concat (List.map (fun p -> p.it) progs)
   ; at = no_region
   ; note = match progs with

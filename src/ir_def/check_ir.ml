@@ -293,7 +293,7 @@ let type_lit env lit at : T.prim =
 let isAsyncE exp =
   match exp.it with
   | AsyncE _ (* pre await transformation *)
-  | PrimE(OtherPrim "@async", [_]) (* post await transformation *)
+  | PrimE (CPSAsync, [_]) (* post await transformation *)
     -> true
   | _ -> false
 
@@ -344,6 +344,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env exp1;
       typ exp1 <: ot;
       T.Prim T.Text <: t
+    | CPSAwait, [a; kr] ->
+      check (not (env.flavor.has_await)) "CPSAwait await flavor";
+      check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
+      (* TODO: We can check more here, can we *)
+    | CPSAsync, [exp] ->
+      check (not (env.flavor.has_await)) "CPSAsync await flavor";
+      check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
+      (* TODO: We can check more here, can we *)
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";

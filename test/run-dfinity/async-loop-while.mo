@@ -4,12 +4,12 @@ async {
 { var i = 0;
   var j = 0;
   loop {
-   printNat(j);
+   debugPrintNat(j);
    assert(j == i);
    i += 1;
    j += 1;
-  } while (i < 11);
-  assert(i == 11);
+  } while (i < 3);
+  assert(i == 3);
 };
 
 
@@ -17,24 +17,24 @@ async {
   var i = 0;
   var j = 0;
   loop {
-    printNat(j);
+    debugPrintNat(j);
     assert(j == i);
     i += 1;
     j += 1;
-  } while (await async (i < 11));
-  assert(i == 11);
+  } while (await async (i < 3));
+  assert(i == 3);
 };
 
 {
   var i = 0;
   var j = 0;
   loop {
-   printNat(j);
+   debugPrintNat(j);
    assert(j == i);
    await (async (i += 1));
    j += 1;
-  } while (i < 11);
-  assert(i == 11);
+  } while (i < 3);
+  assert(i == 3);
 };
 
 {
@@ -42,18 +42,18 @@ async {
   var j = 0;
   label l
   loop {
-   if (j > 10) {
+   if (j > 2) {
      break l;
      assert(false);
    };
-   printNat(j);
+   debugPrintNat(j);
    assert(j == i);
    await (async (i += 1));
    j += 1;
    continue l;
    assert(false);
   } while (true);
-  assert(i == 11);
+  assert(i == 3);
 };
 
 };

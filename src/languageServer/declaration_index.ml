@@ -83,18 +83,6 @@ let string_of_index index =
          ^ string_of_list string_of_ide_decl decls
          ^ "\n")
 
-let project_files () : string list =
-  let rec read_dir d =
-    if Sys.is_directory d
-    then
-      let entries =
-        Array.to_list (Sys.readdir d)
-        |> List.map (fun file -> Filename.concat d file) in
-      flat_map read_dir entries
-    else [d] in
-  read_dir "."
-  |> List.filter (fun file -> String.equal (Filename.extension file) ".mo")
-
 let read_single_module_lib (ty: Type.typ): ide_decl list option =
   match ty with
   | Type.Obj (Type.Module, fields) ->
@@ -109,15 +97,18 @@ let read_single_module_lib (ty: Type.typ): ide_decl list option =
      |> Lib.Option.some
   | _ -> None
 
-let unwrap_module_ast (prog : Syntax.dec list): Syntax.exp_field list option =
-  match prog with
-  | ({it=Syntax.ExpD {it= Syntax.ObjE(_,fields) ;_} ;_} :: _) ->
-     Some fields
+let unwrap_module_ast (lib : Syntax.lib): Syntax.exp_field list option =
+  match lib.it.it with
+  | Syntax.BlockE [] -> None
+  | Syntax.BlockE decs ->
+    (match Lib.List.last decs with
+    | {it=Syntax.ExpD {it= Syntax.ObjE(_,fields) ;_} ;_} -> Some fields
+    | _ -> None)
   | _ -> None
 
 
 let populate_definitions
-    (libraries : Syntax.libraries)
+    (libs : Syntax.lib list)
     (path : string)
     (decls : ide_decl list)
     : ide_decl list =
@@ -131,9 +122,10 @@ let populate_definitions
        Some typ_id
     | _ -> None in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
-  let find_def (prog : Syntax.dec list) def = match def with
+  let find_def (lib : Syntax.lib) def =
+    match def with
     | ValueDecl value ->
-       let fields = Lib.Option.get (unwrap_module_ast prog) [] in
+       let fields = Lib.Option.get (unwrap_module_ast lib) [] in
        let positioned_binder =
          fields
          |> Lib.List.map_filter is_let_bound
@@ -142,7 +134,7 @@ let populate_definitions
        in
        ValueDecl { value with definition = positioned_binder }
     | TypeDecl typ ->
-       let fields = Lib.Option.get (unwrap_module_ast prog) [] in
+       let fields = Lib.Option.get (unwrap_module_ast lib) [] in
        let type_definition =
          fields
          |> Lib.List.map_filter is_type_def
@@ -154,20 +146,19 @@ let populate_definitions
        TypeDecl { typ with definition = type_definition } in
   let opt_lib =
     List.find_opt
-      (fun (path', _) -> String.equal path path')
-      libraries in
+      (fun lib -> String.equal path lib.note)
+      libs in
   match opt_lib with
   | None -> decls
-  | Some (_, prog) ->
-     List.map (find_def prog.it) decls
+  | Some lib ->
+     List.map (find_def lib) decls
 
-let make_index_inner vfs : declaration_index Diag.result =
-  let entry_points = project_files () in
-  Pipeline.chase_imports
+let make_index_inner vfs entry_points : declaration_index Diag.result =
+  Pipeline.load_progs
     (Vfs.parse_file vfs)
+    entry_points
     Pipeline.initial_stat_env
-    (Pipeline__.Resolve_import.S.of_list entry_points)
-  |> Diag.map (fun (libraries, scope) ->
+  |> Diag.map (fun (libs, _, scope) ->
       Type.Env.fold
         (fun path ty acc ->
         Index.add
@@ -175,11 +166,11 @@ let make_index_inner vfs : declaration_index Diag.result =
             (ty
             |> read_single_module_lib
             |> Lib.Fun.flip Lib.Option.get []
-            |> populate_definitions libraries path)
+            |> populate_definitions libs path)
             acc)
         scope.Scope.lib_env
         Index.empty)
 
-let make_index vfs : declaration_index Diag.result =
+let make_index vfs entry_points : declaration_index Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
-  try make_index_inner vfs with _ -> Diag.return Index.empty
+  try make_index_inner vfs entry_points with _ -> Diag.return Index.empty

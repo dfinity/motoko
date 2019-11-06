@@ -56,6 +56,41 @@ Prelude.printLn("Array");
 };
 
 {
+  Prelude.printLn("  enumerate");
+
+  let xs = [ "a", "b", "c" ];
+  let ys = Array.enumerate<Text>(xs);
+
+  assert(xs.len() == ys.len());
+
+  assert(ys[0].0 == xs[0]);
+  assert(ys[0].1 == 0);
+
+  assert(ys[1].0 == xs[1]);
+  assert(ys[1].1 == 1);
+
+  assert(ys[2].0 == xs[2]);
+  assert(ys[2].1 == 2);
+};
+
+{
+  Prelude.printLn("  filter");
+
+  let isEven = func (x : Int) : Bool {
+    x % 2 == 0;
+  };
+
+  let actual = Array.filter<Nat>(isEven, [ 1, 2, 3, 4, 5, 6 ]);
+  let expected = [ 2, 4, 6 ];
+
+  assert(actual.len() == expected.len());
+
+  for (i in actual.keys()) {
+    assert(actual[i] == expected[i]);
+  };
+};
+
+{
   Prelude.printLn("  find");
 
   type Element = {
@@ -149,6 +184,39 @@ Prelude.printLn("Array");
 
   for (i in actual.keys()) {
     assert(actual[i] == expected[i]);
+  };
+};
+
+{
+  Prelude.printLn("  mapWithIndex");
+
+  let isEven = func (x : Int) : Bool {
+    x % 2 == 0;
+  };
+
+  let xs = [ 1, 2, 3, 4, 5, 6 ];
+
+  let actual = Array.mapWithIndex<Int, (Bool, Bool)>(
+    func (value : Int, index : Nat) : (Bool, Bool) {
+      (isEven value, isEven index)
+    },
+    xs
+  );
+
+  let expected = [
+    (false, true),
+    (true, false),
+    (false, true),
+    (true, false),
+    (false, true),
+    (true, false),
+  ];
+
+  assert(actual.len() == expected.len());
+
+  for (i in actual.keys()) {
+    assert(actual[i].0 == expected[i].0);
+    assert(actual[i].1 == expected[i].1);
   };
 };
 

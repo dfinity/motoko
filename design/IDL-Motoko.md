@@ -101,7 +101,7 @@ ef (<id> : <typ>) = unescape(<id>) : e(<typ>)
 
 efn : <typ> -> <functype>
 efn(shared <typ> -> ()) = ea(<typ>) -> () oneway
-efn(shared <typ1> -> async <typ2>) = ea(<typ1>) -> ea(<typ2>)
+efn(shared query? <typ1> -> async <typ2>) = ea(<typ1>) -> ea(<typ2>) query?
 
 ea : <typ> -> <argtype>,*
 ea( ( <typ>,* ) ) = e(<typ>);*
@@ -144,8 +144,8 @@ if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
 if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
 
 ifn : <functype> -> <typ>
-ifn((<datatype>,*) -> () oneway query?) = shared ia(<as>) -> ()
-ifn((<datatype1>,*) -> (<datatype2>,*) query?) = shared ia(<datatype1>,*) -> ia(<datatype2>,*)
+ifn((<datatype>,*) -> () oneway) = shared ia(<as>) -> ()
+ifn((<datatype1>,*) -> (<datatype2>,*) query?) = shared query? ia(<datatype1>,*) -> async ia(<datatype2>,*)
 
 ia : <argtype>,* -> <typ>
 ia(<argtype>,) = i(<argtype>)
@@ -168,11 +168,9 @@ escape <name> = "_" hash(<name>) "_"  otherwise
    Formally: For all IDL types `t ∈ dom i`, we have that `e(i(t))` is equivalent to
    `t`, i.e. either they are the same types, or short-hands of each other.
 
- * Tuples are exported using the unnamed field short-hand, which is how tuples
+ * Non-empty tuples are exported using the unnamed field short-hand, which is how tuples
    are idiomatically expressed in the IDL:
    ```
-   e(()) = record {}
-   e((Int, )) = record {int}
    e((Int, Nat)) = record {int;nat}
    e({i:Int, n:Nat)) = record {i:int; n:nat}
    e({_0_:Int, _1_:Nat)) = record {0:int; 1:nat}
@@ -243,7 +241,7 @@ These mappings should be straight-forward, given the following clarifications:
 * Characters (of type `Char`) are mapped to their Unicode scalar as a `nat32`.
   Decoding a `nat32` that is not a valid Unicode scalar fails.
 
-## Works flows
+## Work flows
 
 The mapping specified here can be used to support the following use-cases. The
 user interfaces (e.g. flag names, or whether `moc`, `didc`, `dfx` is used) are
@@ -253,7 +251,7 @@ just suggestions.
 
   If `foo.mo` is an Motoko `actor` compilation unit, then
 
-      moc --generate-idl foo.mo -o foo.did
+      moc --idl foo.mo -o foo.did
 
   will type-check `foo.mo` as `t = actor { … }`, map the Motoko type `t`
   to an IDL type `e(t)` of the form `service <actortype>`, and produce a

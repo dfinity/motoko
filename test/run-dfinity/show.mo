@@ -1,4 +1,4 @@
-func printLn(x : Text) { print(x # "\n"); };
+func printLn(x : Text) { debugPrint(x # "\n"); };
 printLn(debug_show (true));
 printLn(debug_show (false));
 printLn(debug_show (-42000000000000));

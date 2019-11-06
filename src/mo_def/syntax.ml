@@ -171,15 +171,17 @@ and dec' =
   | ClassD of                                  (* class *)
       typ_id * typ_bind list * pat * typ option * obj_sort * id * exp_field list
 
+
 (* Program *)
 
 type prog = (prog', string) Source.annotated_phrase
 and prog' = dec list
 
+
 (* Libraries *)
 
-type library = string * prog
-type libraries = library list
+type lib = (exp, string) Source.annotated_phrase
+
 
 (* n-ary arguments/result sequences *)
 

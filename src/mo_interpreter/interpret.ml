@@ -46,7 +46,7 @@ let adjoin_vals env ve = { env with vals = V.Env.adjoin env.vals ve }
 
 let empty_scope = { val_env = V.Env.empty; lib_env = V.Env.empty }
 
-let library_scope f v scope : scope =
+let lib_scope f v scope : scope =
   { scope with lib_env = V.Env.add f v scope.lib_env }
 
 let env_of_scope flags scope =
@@ -883,21 +883,12 @@ let interpret_prog flags scope p : (V.value * scope) option =
 
 (* Libraries *)
 
-let interpret_library flags scope (filename, p) : scope =
+let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags scope in
   trace_depth := 0;
   let vo = ref None in
-  let ve = ref V.Env.empty in
   Scheduler.queue (fun () ->
-    interpret_block env p.it (Some ve) (fun v -> vo := Some v)
+    interpret_exp env lib.it (fun v -> vo := Some v)
   );
   Scheduler.run ();
-  let v = match p.it with
-    | [ { it = ExpD _ ; _ } ] ->
-      Lib.Option.value !vo
-    (* HACK: to be removed once we restrict libraries to expressions *)
-    | ds ->
-      V.Obj (V.Env.map Lib.Promise.value (!ve))
-  in
-  library_scope filename v scope
-
+  lib_scope lib.note (Lib.Option.value !vo) scope

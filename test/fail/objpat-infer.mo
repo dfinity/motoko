@@ -4,7 +4,7 @@ ignore (switch (object {}) { case {a} 42 });
 
 // checks
 
-for ({} in [object {}].vals()) { print "hey" };
+for ({} in [object {}].vals()) { debugPrint "hey" };
 
 // infers
 

@@ -1,4 +1,4 @@
-print "This should appear\n";
-debug { print "This shouldn't appear\n" };
-print "This should appear too\n";
+debugPrint "This should appear\n";
+debug { debugPrint "This shouldn't appear\n" };
+debugPrint "This should appear too\n";
 
