@@ -14,7 +14,7 @@ func scaledParams(region_count_:Nat, factor:Nat) : T.WorkloadParams = {
 
 actor class Test() = this {
   go() {
-    ignore(async
+    ignore(future
     {
       // Vary the choice of region count and scaling factor here;
       // Each choice leads to a different count of (InventoryCount, RouteCount), and load time:

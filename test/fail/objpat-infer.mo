@@ -12,7 +12,7 @@ func foo({}) : Int = 42;
 
 // infers
 
-shared func baz(a : actor {}) : async Int { 42 };
+shared func baz(a : actor {}) : future Int { 42 };
 
 // call it
 
@@ -20,7 +20,7 @@ ignore (foo({}));
 ignore (foo(object {}));
 ignore (foo(actor {}));
 
-let a = actor { public func bar({}) : async Nat = async 25 };
+let a = actor { public func bar({}) : future Nat = future 25 };
 ignore (foo a);
 
 

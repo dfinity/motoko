@@ -17,7 +17,7 @@ func printLabeledCost(lab:Text, cost:Nat) {
 
 actor class Test() = this {
   public func go() {
-    ignore(async
+    ignore(future
     {
       let s = A.Server();
 
@@ -335,7 +335,7 @@ actor class Test() = this {
 };
 
 
-func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
+func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : future () {
 
   print "\nRetailer ";
   let retailerId: T.UserId = Option.unwrap<T.UserId>(r);
@@ -359,7 +359,7 @@ func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
   }
 };
 
-func debugDumpAll(server:A.Server) : async () {
+func debugDumpAll(server:A.Server) : future () {
 
   print "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {

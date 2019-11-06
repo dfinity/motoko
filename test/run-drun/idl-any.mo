@@ -1,7 +1,7 @@
 // This tests checks that the IDL decoder properly
 // zooms past the any argument and finds the beginning of the string
 actor {
-  public func any(_ : Any, x : Text) : async () {
+  public func any(_ : Any, x : Text) : future () {
      print ("ok: " # x);
   };
 }

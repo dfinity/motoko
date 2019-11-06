@@ -10,7 +10,7 @@ module T = Type
 open T
 open Construct
 
-(* lower the async type itself
+(* lower the future type itself
    - adds a final reply argument to every awaitable shared function, replace
      the result by unit
    - declares a trapping reject callback in every awaitable shared function
@@ -121,47 +121,47 @@ module Transform(Platform : sig val platform : platform end) = struct
 
   let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
-  let t_async as_seq t =
+  let t_fut as_seq t =
     T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT], [])
 
-  let new_async_ret as_seq t = [t_async as_seq t; fulfillT as_seq t; failT]
+  let new_fut_ret as_seq t = [t_fut as_seq t; fulfillT as_seq t; failT]
 
-  let new_asyncT =
+  let new_futT =
     T.Func (
         T.Local,
         T.Returns,
         [ { var = "T"; bound = T.Any } ],
         [],
-        new_async_ret unary (T.Var ("T", 0))
+        new_fut_ret unary (T.Var ("T", 0))
       )
 
-  let new_asyncE =
-    idE "@new_async" new_asyncT
+  let new_futE =
+    idE "@new_fut" new_futT
 
-  let new_async t1 =
-    let call_new_async = callE new_asyncE [t1] (tupE []) in
-    let async = fresh_var "async" (typ (projE call_new_async 0)) in
-    let fulfill = fresh_var "fulfill" (typ (projE call_new_async 1)) in
-    let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
-    (async, fulfill, fail), call_new_async
+  let new_fut t1 =
+    let call_new_fut = callE new_futE [t1] (tupE []) in
+    let fut = fresh_var "future" (typ (projE call_new_fut 0)) in
+    let fulfill = fresh_var "fulfill" (typ (projE call_new_fut 1)) in
+    let fail = fresh_var "fail" (typ (projE call_new_fut 2)) in
+    (fut, fulfill, fail), call_new_fut
 
-  let new_nary_async_reply ts1 =
-    (* The async implementation isn't n-ary *)
+  let new_nary_fut_reply ts1 =
+    (* The future implementation isn't n-ary *)
     let t1 = T.seq ts1 in
-    let (unary_async, unary_fulfill, fail), call_new_async = new_async t1 in
+    let (unary_fut, unary_fulfill, fail), call_new_fut = new_fut t1 in
     let v' = fresh_var "v" t1 in
-    (* construct the n-ary async value, coercing the continuation, if necessary *)
-    let nary_async =
+    (* construct the n-ary future value, coercing the continuation, if necessary *)
+    let nary_fut =
       match ts1 with
       | [t] ->
-        unary_async
+        unary_fut
       | ts ->
         let k' = fresh_var "k" (contT t1) in
         let r' = fresh_var "r" err_contT in
         let seq_of_v' = tupE (List.mapi (fun i _ -> projE v' i) ts) in
-        [k';r'] -->*  (unary_async -*- (tupE[([v'] -->* (k' -*- seq_of_v'));r']))
+        [k';r'] -->*  (unary_fut -*- (tupE[([v'] -->* (k' -*- seq_of_v'));r']))
     in
-    (* construct the n-ary reply message that sends a sequence of values to fulfill the async *)
+    (* construct the n-ary reply message that sends a sequence of values to fulfill the future *)
     let nary_reply =
       let vs,seq_of_vs =
         match ts1 with
@@ -178,14 +178,14 @@ module Transform(Platform : sig val platform : platform end) = struct
       let v = fresh_var "msg" T.text in
       [v] -@>* (fail -*- (make_errorE (sys_error_codeE()) v))
     in
-    let async,reply,reject =
-      fresh_var "async" (typ nary_async),
+    let fut,reply,reject =
+      fresh_var "future" (typ nary_fut),
       fresh_var "reply" (typ nary_reply),
       fresh_var "reject" (typ nary_reject)
     in
-      (async, reply, reject),
-        blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
-          (tupE [nary_async; nary_reply; nary_reject])
+      (fut, reply, reject),
+        blockE [letP (tupP [varP unary_fut; varP unary_fulfill; varP fail])  call_new_fut]
+          (tupE [nary_fut; nary_reply; nary_reject])
 
   let letEta e scope =
     match e.it with
@@ -248,7 +248,7 @@ module Transform(Platform : sig val platform : platform end) = struct
       end
     | Opt t -> Opt (t_typ t)
     | Variant fs -> Variant (List.map t_field fs)
-    | Async t -> t_async nary (t_typ t)
+    | Fut t -> t_fut nary (t_typ t)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
     | Any -> Any
@@ -321,7 +321,7 @@ module Transform(Platform : sig val platform : platform end) = struct
       IdxE (t_exp exp1, t_exp exp2)
     | PrimE (OtherPrim "@await", [a;kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
-    | PrimE (OtherPrim "@async", [exp2]) ->
+    | PrimE (OtherPrim "@future", [exp2]) ->
       let ts1, contT = match typ exp2 with
         | Func(_,_,
                [],
@@ -335,13 +335,13 @@ module Transform(Platform : sig val platform : platform end) = struct
       let e = fresh_var "e" T.catch in
       let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Returns, [], [], [])) in
       let u = fresh_var "u" T.unit in
-      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts1 in
-      (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+      let ((nary_fut, nary_reply, reject), def) = new_nary_fut_reply ts1 in
+      (blockE [letP (tupP [varP nary_fut; varP nary_reply; varP reject]) def;
                nary_funcD k vs1 (nary_reply -*- (seqE vs1));
                nary_funcD r [e] (reject -*- (errorMessageE e));
                funcD post u (t_exp exp2 -*- (tupE [k;r]));
                expD (post -*- tupE[])]
-               nary_async
+               nary_fut
       ).it
     | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
       let ts1,ts2 =
@@ -353,16 +353,16 @@ module Transform(Platform : sig val platform : platform end) = struct
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
       let typs = List.map t_typ typs in
-      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts2 in
+      let ((nary_fut, nary_reply, reject), def) = new_nary_fut_reply ts2 in
       let _ = letEta in
-      (blockE ( letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+      (blockE ( letP (tupP [varP nary_fut; varP nary_reply; varP reject]) def ::
                 letEta exp1' (fun v1 ->
                   letSeq ts1 exp2' (fun vs ->
                       [ expD (sys_callE v1 typs vs nary_reply reject) ]
                     )
                   )
          )
-         nary_async)
+         nary_fut)
         .it
     | PrimE (p, exps) ->
       PrimE (prim p, List.map t_exp exps)
@@ -388,7 +388,7 @@ module Transform(Platform : sig val platform : platform end) = struct
       BreakE (id, t_exp exp1)
     | RetE exp1 ->
       RetE (t_exp exp1)
-    | AsyncE _
+    | FutE _
     | AwaitE _
     | TryE _
     | ThrowE _ -> assert false
@@ -419,7 +419,7 @@ module Transform(Platform : sig val platform : platform end) = struct
               in
               let typbinds' = t_typ_binds typbinds in
               let cps = match exp.it with
-                | PrimE (OtherPrim "@async", [cps]) -> cps
+                | PrimE (OtherPrim "@future", [cps]) -> cps
                 | _ -> assert false in
               let t1, contT = match typ cps with
                 | Func(_,_,
@@ -499,7 +499,7 @@ module Transform(Platform : sig val platform : platform end) = struct
 
   and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
-  and t_prog (prog, flavor) = (t_block prog, { flavor with has_async_typ = false } )
+  and t_prog (prog, flavor) = (t_block prog, { flavor with has_fut_typ = false } )
 
 end
 

@@ -7,10 +7,10 @@ actor {
   public func printCounter () {
     printNat c; print "\n";
   };
-  public func get() : async Nat {
+  public func get() : future Nat {
     return c
   };
-  public query func read() : async Nat {
+  public query func read() : future Nat {
     let tmp = c;
     c += 1;
     printNat c; print "\n";

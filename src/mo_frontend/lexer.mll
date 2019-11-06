@@ -191,7 +191,6 @@ rule token mode = parse
   *)
   | "actor" { ACTOR }
   | "and" { AND }
-  | "async" { ASYNC }
   | "assert" { ASSERT }
   | "await" { AWAIT }
   | "break" { BREAK }
@@ -204,6 +203,7 @@ rule token mode = parse
   | "false" { BOOL false }
   | "for" { FOR }
   | "func" { FUNC }
+  | "future" { FUTURE }
   | "if" { IF }
   | "in" { IN }
   | "import" { IMPORT }

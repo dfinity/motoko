@@ -42,7 +42,7 @@ and typ =
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
   | Func of func_sort * control * bind list * typ list * typ list  (* function *)
-  | Async of typ                              (* future *)
+  | Fut of typ                                (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
@@ -93,7 +93,7 @@ val is_tup : typ -> bool
 val is_unit : typ -> bool
 val is_pair : typ -> bool
 val is_func : typ -> bool
-val is_async : typ -> bool
+val is_fut : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
 
@@ -106,7 +106,7 @@ val as_tup : typ -> typ list
 val as_unit : typ -> unit
 val as_pair : typ -> typ * typ
 val as_func : typ -> func_sort * control * bind list * typ list * typ list
-val as_async : typ -> typ
+val as_fut : typ -> typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
 val as_typ : typ -> con
@@ -121,7 +121,7 @@ val as_unit_sub : typ -> unit
 val as_pair_sub : typ -> typ * typ
 val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
-val as_async_sub : typ -> typ
+val as_fut_sub : typ -> typ
 
 
 (* Argument/result sequences *)

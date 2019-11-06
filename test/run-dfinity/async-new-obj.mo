@@ -1,6 +1,6 @@
 /* Test asynchronous construction of an object */
 
-let a = async {
+let a = future {
   let o = object {
     let a = "aa";
     let b = "ab";
@@ -13,9 +13,9 @@ let a = async {
   print "\n";
 };
 
-let b = async {
+let b = future {
   let o = object {
-    let a = await (async "ba") ;
+    let a = await (future "ba") ;
     let b = "bb";
     public func get_a() : Text { a };
     public func get_b() : Text { b };
@@ -26,10 +26,10 @@ let b = async {
   print "\n";
 };
 
-let c = async {
+let c = future {
   let o = object {
-    let a = await (async "ca") ;
-    let b = await (async "cb");
+    let a = await (future "ca") ;
+    let b = await (future "cb");
     public func get_a() : Text { a };
     public func get_b() : Text { b };
   };
@@ -39,10 +39,10 @@ let c = async {
   print "\n";
 };
 
-let d = async {
+let d = future {
   let o = object {
     let a = "da";
-    let b = await (async "db");
+    let b = await (future "db");
     public func get_a() : Text { a };
     public func get_b() : Text { b };
   };
@@ -52,10 +52,10 @@ let d = async {
   print "\n";
 };
 
-let e = async {
+let e = future {
   let o = object this {
     let a = "ea";
-    let b = await (async "eb");
+    let b = await (future "eb");
     public func get_a() : Text { a };
     public func get_b() : Text { b };
     public func get_ab() : (Text, Text) {

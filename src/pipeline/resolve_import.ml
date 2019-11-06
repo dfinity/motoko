@@ -155,7 +155,7 @@ let rec
   | BreakE (_, exp1)
   | RetE exp1
   | AnnotE (exp1, _)
-  | AsyncE exp1
+  | FutE exp1
   | AwaitE exp1
   | ThrowE exp1
   | LoopE (exp1, None) ->

@@ -2,22 +2,22 @@
 // do the subtyping from received many-field record
 // to a double-field one (field names are in hash order)
 actor {
-    public func pair(o : (Text, Int)) : async () {
+    public func pair(o : (Text, Int)) : future () {
      switch o {
        case (content, num) print ("ok: " # debug_show num);
      }
   };
-  public func record(o : {content: Text; value : Int}) : async () {
+  public func record(o : {content: Text; value : Int}) : future () {
      switch o {
        case {content} print ("ok: " # content);
      }
   };
-  public func record1(o : {value : Int; byte : Int8}) : async () {
+  public func record1(o : {value : Int; byte : Int8}) : future () {
      switch o {
        case {byte} print ("ok: " # debug_show byte);
      }
   };
-    public func record2(o : {content: Text; value : Int}, follower : Int8) : async Int8 {
+    public func record2(o : {content: Text; value : Int}, follower : Int8) : future Int8 {
      switch o {
        case {content} { print ("ok: " # " " # content # " " # debug_show follower); follower };
      }

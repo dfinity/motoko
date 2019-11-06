@@ -1,7 +1,7 @@
 // This file only exercises local throws that don't cross function boundaries.
 // In principle, it should run on all targets.
 
-shared func t2() : async () {
+shared func t2() : future () {
    try {
      throw error("t2");
      assert(false);
@@ -14,7 +14,7 @@ shared func t2() : async () {
    }
 };
 
-shared func t3() : async () {
+shared func t3() : future () {
   try {
     try {
       throw error("t3");
@@ -47,7 +47,7 @@ shared func t3() : async () {
 };
 
 
-async {
+future {
 
   try {
     await t2();

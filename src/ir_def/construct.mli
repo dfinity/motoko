@@ -39,7 +39,7 @@ val seqP : pat list -> pat
 (* Expressions *)
 
 val primE : Ir.prim -> exp list -> exp
-val asyncE : typ -> exp -> exp
+val futE : typ -> exp -> exp
 val assertE : exp -> exp
 val awaitE : typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp

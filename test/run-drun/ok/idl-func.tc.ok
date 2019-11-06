@@ -1,8 +1,8 @@
 idl-func.mo:1.13-1.37: type error, shared function has non-shared return type
-  Func = shared Int -> async Func
+  Func = shared Int -> future Func
 type
-  Func = shared Int -> async Func
+  Func = shared Int -> future Func
 is or contains non-shared type
-  shared Int -> async Func
+  shared Int -> future Func
 idl-func.mo:1.13-1.37: type error, shared function types are non-shared.
   (This is a limitation of the current version.)

@@ -23,7 +23,7 @@ type env =
     objs : Scope.obj_env;
     labs : lab_env;
     rets : ret_env;
-    async : bool;
+    in_fut : bool;
     in_actor : bool;
     in_await : bool;
     in_shared : bool;
@@ -40,7 +40,7 @@ let env_of_scope msgs scope =
     objs = T.Env.empty;
     labs = T.Env.empty;
     rets = None;
-    async = false;
+    in_fut = false;
     in_await = false;
     in_shared = false;
     in_actor = false;
@@ -216,15 +216,15 @@ let as_domT t =
 
 let as_codomT sort t =
   match sort, t.Source.it with
-  | T.Shared _, AsyncT t -> T.Promises, as_domT t
+  | T.Shared _, FutT t -> T.Promises, as_domT t
   | _ -> T.Returns, as_domT t
 
 let check_shared_return env at sort c ts =
   match sort, c, ts with
       | T.Shared _, T.Promises, _ -> ()
       | T.Shared T.Write, T.Returns, [] -> ()
-      | T.Shared T.Write, _, _ -> error env at "shared function must have syntactic return type `()` or `async <typ>`"
-      | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `async <typ>`"
+      | T.Shared T.Write, _, _ -> error env at "shared function must have syntactic return type `()` or `future <typ>`"
+      | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `future <typ>`"
       | _ -> ()
 
 let rec check_typ env typ : T.typ =
@@ -277,7 +277,7 @@ and check_typ' env typ : T.typ =
       | T.Promises, _ -> ()
       | _ ->
         error env typ2.at
-          "shared function has non-async result type\n  %s"
+          "shared function has non-future return type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
     end;
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
@@ -289,12 +289,12 @@ and check_typ' env typ : T.typ =
       (List.map (fun (tag : typ_tag) -> tag.it.tag) tags);
     let fs = List.map (check_typ_tag env) tags in
     T.Variant (List.sort T.compare_field fs)
-  | AsyncT typ ->
+  | FutT typ ->
     let t = check_typ env typ in
     if not env.pre && not (T.shared t) then
-      error_shared env t typ.at "async has non-shared content type\n  %s"
+      error_shared env t typ.at "future has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
-    T.Async t
+    T.Fut t
   | ObjT (sort, fields) ->
     check_ids env "object" "field"
       (List.map (fun (field : typ_field) -> field.it.id) fields);
@@ -513,9 +513,9 @@ let text_obj () =
 
 (* Expressions *)
 
-let isAsyncE exp =
+let isFutE exp =
   match exp.it with
-  | AsyncE _ -> true
+  | FutE _ -> true
   | _ -> false
 
 let rec infer_exp env exp : T.typ =
@@ -637,7 +637,7 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
       error_in [Flags.ICMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
-    let env' = if sort.it = T.Actor then {env with async = false; in_actor = true} else env in
+    let env' = if sort.it = T.Actor then {env with in_fut = false; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
@@ -708,7 +708,7 @@ and infer_exp'' env exp : T.typ =
         { env' with
           labs = T.Env.empty;
           rets = Some codom;
-          async = false;
+          in_fut = false;
           in_shared = T.is_shared_sort sort.it} in
       check_exp (adjoin_vals env'' ve) codom exp;
       if Type.is_shared_sort sort.it then begin
@@ -725,11 +725,11 @@ and infer_exp'' env exp : T.typ =
         match c, ts2 with
         | T.Returns,  [] when sort.it = T.Shared T.Write -> ()
         | T.Promises, _ ->
-          if not (isAsyncE exp) then
+          if not (isFutE exp) then
             error env exp.at
-              "shared function with async result type has non-async body"
+              "shared function with future result type has non-future body"
         | _ ->
-          error env typ.at "shared function has non-async result type\n  %s"
+          error env typ.at "shared function has non-future return type\n  %s"
             (T.string_of_typ_expand codom)
       end
     end;
@@ -751,9 +751,9 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       check_exp env t_arg exp2;
       if Type.is_shared_sort sort then begin
-        if T.is_async t_ret && not in_await then
+        if T.is_fut t_ret && not in_await then
           error_in [Flags.ICMode] env exp2.at
-            "shared, async function must be called within an await expression";
+            "shared function with future return type must be called within an await expression";
         error_in [Flags.ICMode] env exp1.at "calling a shared function not yet supported";
         if not (T.concrete t_arg) then
           error env exp1.at
@@ -815,7 +815,7 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | TryE (exp1, cases) ->
-    if not env.async then
+    if not env.in_fut then
       error env exp.at "misplaced try";
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
@@ -894,33 +894,33 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | ThrowE exp1 ->
-    if not env.async then
+    if not env.in_fut then
       error env exp.at "misplaced throw";
     if not env.pre then check_exp env T.throw exp1;
     T.Non
-  | AsyncE exp1 ->
+  | FutE exp1 ->
     if not in_shared then
-      error_in [Flags.ICMode] env exp.at "unsupported async block";
+      error_in [Flags.ICMode] env exp.at "unsupported future expression";
     let env' =
-      {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
+      {env with labs = T.Env.empty; rets = Some T.Pre; in_fut = true} in
     let t = infer_exp env' exp1 in
     if not (T.shared t) then
-      error_shared env t exp1.at "async type has non-shared content type\n  %s"
+      error_shared env t exp1.at "future type has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
-    T.Async t
+    T.Fut t
   | AwaitE (exp1) ->
-    if not env.async then
+    if not env.in_fut then
       error env exp.at "misplaced await";
     let t1 = infer_exp_promote {env with in_await = true} exp1 in
     (match exp1.it with
        | CallE (f, _, _) ->
          if not env.pre && (Call_conv.call_conv_of_typ f.note.note_typ).Call_conv.control = T.Returns then
-           error_in [Flags.ICMode] env f.at "expecting call to shared async function in await";
+           error_in [Flags.ICMode] env f.at "expecting call to shared function with future return type in await";
       | _ -> error_in [Flags.ICMode] env exp1.at "argument to await must be a call expression");
     (try
-      T.as_async_sub t1
+      T.as_fut_sub t1
     with Invalid_argument _ ->
-      error env exp1.at "expected async type, but expression has type\n  %s"
+      error env exp1.at "expected future type, but expression has type\n  %s"
         (T.string_of_typ_expand t1)
     )
   | AssertE exp1 ->
@@ -979,10 +979,10 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand (T.Array t'));
     List.iter (check_exp env (T.as_immut t')) exps;
     t
-  | AsyncE exp1, T.Async t' ->
+  | FutE exp1, T.Fut t' ->
     if not in_shared then
-      error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
-    let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
+      error_in [Flags.ICMode] env exp.at "freestanding future expression not yet supported";
+    let env' = {env with labs = T.Env.empty; rets = Some t'; in_fut = true} in
     check_exp env' t' exp1;
     t
   | BlockE decs, _ ->
@@ -1006,7 +1006,7 @@ and check_exp' env0 t exp : T.typ =
     );
     t
   | TryE (exp1, cases), _ ->
-    if not env.async then
+    if not env.in_fut then
       error env exp.at "misplaced try";
     check_exp env t exp1;
     check_cases env T.catch t cases;
@@ -1039,7 +1039,7 @@ and check_exp' env0 t exp : T.typ =
       { env with
         labs = T.Env.empty;
         rets = Some t2;
-        async = false;
+        in_fut = false;
         in_shared = T.is_shared_sort s'.it;
       } in
     check_exp (adjoin_vals env' ve) t2 exp;
@@ -1506,7 +1506,7 @@ and infer_dec env dec : T.typ =
         { (add_val env'' self_id.it self_typ) with
           labs = T.Env.empty;
           rets = None;
-          async = false;
+          in_fut = false;
           in_actor = sort.it = T.Actor;
         }
       in

@@ -7,10 +7,10 @@ actor counter = {
   public func printCounter () {
     printNat c; print "\n";
   };
-  public func get() : async Nat {
+  public func get() : future Nat {
     return c
   };
-  public query func read() : async Nat {
+  public query func read() : future Nat {
     let tmp = c;
     c += 1;
     printNat c; print "(read)\n";
@@ -22,11 +22,11 @@ actor counter = {
 
 { // fully explicit syntax
 
-let _ : actor { read : shared query () -> async Nat } = counter;
+let _ : actor { read : shared query () -> future Nat } = counter;
 
-shared query func f () : async Nat { 666; };
+shared query func f () : future Nat { 666; };
 
-type Query = shared query () -> async Nat;
+type Query = shared query () -> future Nat;
 
 let _ : Query = counter.read;
 
@@ -36,17 +36,17 @@ let _ : Query = counter.read;
 
 // sugar, surpressing shared
 
-let _ : actor { read: query () -> async Nat } = counter;
+let _ : actor { read: query () -> future Nat } = counter;
 
-query func f () : async Nat { 666; };
+query func f () : future Nat { 666; };
 
-type Query = query () -> async Nat;
+type Query = query () -> future Nat;
 
 let _ : Query = counter.read;
 
 };
 
-async {
+future {
  counter.inc();
  counter.inc();
  counter.inc();

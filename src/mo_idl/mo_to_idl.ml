@@ -106,7 +106,7 @@ let rec typ vs t =
          fs1, tuple vs ts)
      | _ -> assert false)
   | Func _ -> assert false
-  | Async t -> assert false
+  | Fut t -> assert false
   | Mut t -> assert false
   | Pre -> assert false
   ) @@ no_region

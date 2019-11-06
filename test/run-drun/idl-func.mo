@@ -1,10 +1,10 @@
-type Func = shared Int -> async Func;
+type Func = shared Int -> future Func;
 
 actor {
-  public query func fun() : async ?Func {
+  public query func fun() : future ?Func {
         null
   };
-  public query func fun2(arg : ?Func) : async () {
+  public query func fun2(arg : ?Func) : future () {
   };
 }
 

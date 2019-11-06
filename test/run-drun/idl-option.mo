@@ -1,7 +1,7 @@
 // This test checks that the IDL decoder can
 // do the subtyping from null to option
 actor {
-  public func any(o : ?Text) : async () {
+  public func any(o : ?Text) : future () {
      switch o {
        case null print ("ok: null");
        case (?x) print ("ok: " # x);

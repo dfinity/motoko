@@ -8,7 +8,7 @@
 // - Client: Pick a parking spot from a Google Map like interface + time
 // - Server: Register the parking spot for the user
 type Car = { model : Text; plate : Text };
-type DMV = actor { check : Car -> async CarInfo };
+type DMV = actor { check : Car -> future CarInfo };
 type CarInfo = {
   model : Text;
   plate : Text;
@@ -18,10 +18,10 @@ type CarInfo = {
 };
 
 actor class PACars(dmv : DMV) {
-  public func verifyCarInformation(user : User, car : Car) : async ?(shared (Location, TimeSpan) -> async Result) {
+  public func verifyCarInformation(user : User, car : Car) : future ?(shared (Location, TimeSpan) -> future Result) {
     let carInfo = await dmv.check(car);
     if (carInfo.isValid and not carInfo.wasStolen) {
-      return ?(shared func (location, time) : async Result {
+      return ?(shared func (location, time) : future Result {
         return reserveSpot(user, carInfo, location, time);
       })
     } else {

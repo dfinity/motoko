@@ -60,7 +60,7 @@ let rec exp m e = match e.it with
   | LabelE _
   | BreakE _
   | RetE _
-  | AsyncE _
+  | FutE _
   | AwaitE _
   | LoopE _
   | BinE _

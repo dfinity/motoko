@@ -1,8 +1,8 @@
 actor {
-  public query func hello(who : Text) : async Text {
+  public query func hello(who : Text) : future Text {
     "Hello " # who # "!";
   };
-  public query func hello2(who : Text) : async Text {
+  public query func hello2(who : Text) : future Text {
     return ("Hello " # who # "!");
   }
 }

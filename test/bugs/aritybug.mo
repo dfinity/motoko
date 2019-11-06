@@ -9,11 +9,11 @@
 
 {
 let t = "u_u\n";
-shared func fu_u(a:Int,) : async (Int,) {
+shared func fu_u(a:Int,) : future (Int,) {
    return (2*a,);
 };
 
-let _ : async (Int,)  = async {
+let _ : future (Int,)  = future {
   let (x,) = await fu_u(1); // *
   assert(x==2);
   print t;

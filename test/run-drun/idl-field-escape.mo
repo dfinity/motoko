@@ -4,20 +4,20 @@ actor {
   type R = {
     _0_ : Int;
     _1_ : Nat;
-    async_ : Text
+    future_ : Text
   };
 
-  public func out() : async R {
+  public func out() : future R {
     { _0_ = 0xFFFF;
       _1_ = 0x1000;
-      async_ = "XXX"
+      future_ = "XXX"
     }
   };
 
-  public func foo1() : async {foo_ : ()} { { foo_ = () } };
-  public func foo2() : async {foo : ()} { { foo = () } };
+  public func foo1() : future {foo_ : ()} { { foo_ = () } };
+  public func foo2() : future {foo : ()} { { foo = () } };
 
-  public func input(r : R) : async () {
+  public func input(r : R) : future () {
   };
 }
 

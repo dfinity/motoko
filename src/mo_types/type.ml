@@ -43,7 +43,7 @@ and typ =
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
   | Func of func_sort * control * bind list * typ list * typ list  (* function *)
-  | Async of typ                              (* future *)
+  | Fut of typ                                (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
@@ -131,7 +131,7 @@ let prim = function
 let seq = function [t] -> t | ts -> Tup ts
 
 let codom c ts =  match c with
-  | Promises -> Async (seq ts)
+  | Promises -> Fut (seq ts)
   | Returns -> seq ts
 
 (* Coercions *)
@@ -154,7 +154,7 @@ let rec shift i n t =
     let i' = i + List.length tbs in
     Func (s, c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
   | Opt t -> Opt (shift i n t)
-  | Async t -> Async (shift i n t)
+  | Fut t -> Fut (shift i n t)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Variant fs -> Variant (List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
@@ -200,7 +200,7 @@ let rec subst sigma t =
     Func (s, c, List.map (subst_bind sigma') tbs,
           List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
-  | Async t -> Async (subst sigma t)
+  | Fut t -> Fut (subst sigma t)
   | Obj (s, fs) -> Obj (s, List.map (subst_field sigma) fs)
   | Variant fs -> Variant (List.map (subst_field sigma) fs)
   | Mut t -> Mut (subst sigma t)
@@ -255,7 +255,7 @@ let rec open' i ts t =
     let i' = i + List.length tbs in
     Func (s, c, List.map (open_bind i' ts) tbs, List.map (open' i' ts) ts1, List.map (open' i' ts) ts2)
   | Opt t -> Opt (open' i ts t)
-  | Async t -> Async (open' i ts t)
+  | Fut t -> Fut (open' i ts t)
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
   | Variant fs -> Variant (List.map (open_field i ts) fs)
   | Mut t -> Mut (open' i ts t)
@@ -328,7 +328,7 @@ let is_tup = function Tup _ -> true | _ -> false
 let is_unit = function Tup [] -> true | _ -> false
 let is_pair = function Tup [_; _] -> true | _ -> false
 let is_func = function Func _ -> true | _ -> false
-let is_async = function Async _ -> true | _ -> false
+let is_fut = function Fut _ -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_typ = function Typ _ -> true | _ -> false
 
@@ -343,7 +343,7 @@ let as_tup = function Tup ts -> ts | _ -> invalid "as_tup"
 let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [t1; t2] -> t1, t2 | _ -> invalid "as_pair"
 let as_func = function Func (s, c, tbs, ts1, ts2) -> s, c, tbs, ts1, ts2 | _ -> invalid "as_func"
-let as_async = function Async t -> t | _ -> invalid "as_async"
+let as_fut = function Fut t -> t | _ -> invalid "as_fut"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_typ = function Typ c -> c | _ -> invalid "as_typ"
@@ -403,10 +403,10 @@ let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
   | Non -> Any, Non
   | _ -> invalid "as_func_sub"
-let as_async_sub t = match promote t with
-  | Async t -> t
+let as_fut_sub t = match promote t with
+  | Fut t -> t
   | Non -> Non
-  | _ -> invalid "as_async_sub"
+  | _ -> invalid "as_fut_sub"
 
 
 let lookup_val_field l tfs =
@@ -433,7 +433,7 @@ let rec span = function
   | Prim (Nat8 | Int8 | Word8) -> Some 0x100
   | Prim (Nat16 | Int16 | Word16) -> Some 0x10000
   | Prim (Nat32 | Int32 | Word32 | Nat64 | Int64 | Word64 | Char) -> None  (* for all practical purposes *)
-  | Obj _ | Tup _ | Async _ -> Some 1
+  | Obj _ | Tup _ | Fut _ -> Some 1
   | Variant fs -> Some (List.length fs)
   | Array _ | Func _ | Any -> None
   | Opt _ -> Some 2
@@ -470,7 +470,7 @@ let rec avoid' cons seen = function
       List.map (avoid' cons seen) ts2
     )
   | Opt t -> Opt (avoid' cons seen t)
-  | Async t -> Async (avoid' cons seen t)
+  | Fut t -> Fut (avoid' cons seen t)
   | Obj (s, fs) -> Obj (s, List.map (avoid_field cons seen) fs)
   | Variant fs -> Variant (List.map (avoid_field cons seen) fs)
   | Mut t -> Mut (avoid' cons seen t)
@@ -508,7 +508,7 @@ let rec cons t cs =
   | (Prim _ | Any | Non | Pre) -> cs
   | Con (c, ts) ->
     List.fold_right cons ts (ConSet.add c cs)
-  | (Opt t | Async t | Mut t | Array t) ->
+  | (Opt t | Fut t | Mut t | Array t) ->
     cons t cs
   | Tup ts -> List.fold_right cons ts cs
   | Func (s, c, tbs, ts1, ts2) ->
@@ -555,7 +555,7 @@ let concrete t =
         | Abs _ -> false
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
-      | Array t | Opt t | Async t | Mut t -> go t
+      | Array t | Opt t | Fut t | Mut t -> go t
       | Tup ts -> List.for_all go ts
       | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
@@ -579,7 +579,7 @@ let shared t =
       | Var _ | Pre -> assert false
       | Prim Error -> false
       | Any | Non | Prim _ | Typ _ -> true
-      | Async _ | Mut _ -> false
+      | Fut _ | Mut _ -> false
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
@@ -609,7 +609,7 @@ let find_unshared t =
       | Var _ | Pre -> assert false
       | Prim Error -> Some t
       | Any | Non | Prim _ | Typ _ -> None
-      | Async _ | Mut _ -> Some t
+      | Fut _ | Mut _ -> Some t
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> None
@@ -709,7 +709,7 @@ let rec rel_typ rel eq t1 t2 =
       rel_list rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
     )
-  | Async t1', Async t2' ->
+  | Fut t1', Fut t2' ->
     rel_typ rel eq t1' t2'
   | Mut t1', Mut t2' ->
     eq_typ rel eq t1' t2'
@@ -830,7 +830,7 @@ let rec compatible_typ co t1 t2 =
     true
   | Variant tfs1, Variant tfs2 ->
     compatible_tags co tfs1 tfs2
-  | Async t1', Async t2' ->
+  | Fut t1', Fut t2' ->
     compatible_typ co t1' t2'
   | Func _, Func _ ->
     true
@@ -876,7 +876,7 @@ let rec inhabited_typ co t =
   match promote t with
   | Pre -> assert false
   | Non -> false
-  | Any | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> true
+  | Any | Prim _ | Array _ | Opt _ | Fut _ | Func _ | Typ _ -> true
   | Mut t' -> inhabited_typ co t'
   | Tup ts -> List.for_all (inhabited_typ co) ts
   | Obj (_, tfs) -> List.for_all (inhabited_field co) tfs
@@ -933,8 +933,8 @@ let rec lub' lubs glbs t1 t2 =
         s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
-    | Async t1', Async t2' ->
-      Async (lub' lubs glbs t1' t2')
+    | Fut t1', Fut t2' ->
+      Fut (lub' lubs glbs t1' t2')
     | Con _, _
     | _, Con _ ->
       (* TODO(rossberg): fix handling of bounds *)
@@ -1005,8 +1005,8 @@ and glb' lubs glbs t1 t2 =
         s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
-    | Async t1', Async t2' ->
-      Async (glb' lubs glbs t1' t2')
+    | Fut t1', Fut t2' ->
+      Fut (glb' lubs glbs t1' t2')
     | Con _, _
     | _, Con _ ->
       (* TODO(rossberg): fix handling of bounds *)
@@ -1177,7 +1177,7 @@ and string_of_control_cod c vs ts =
   let cod = string_of_cod vs ts in
   match c with
   | Returns -> cod
-  | Promises -> sprintf "async %s" cod
+  | Promises -> sprintf "fut %s" cod
 
 and string_of_typ' vs t =
   match t with
@@ -1192,8 +1192,8 @@ and string_of_typ' vs t =
       (string_of_dom (vs' @ vs) ts1) (string_of_control_cod c (vs' @ vs) ts2)
   | Opt t ->
     sprintf "?%s"  (string_of_typ_nullary vs t)
-  | Async t ->
-    sprintf "async %s" (string_of_typ_nullary vs t)
+  | Fut t ->
+    sprintf "fut %s" (string_of_typ_nullary vs t)
   | Obj (s, fs) ->
     sprintf "%s%s" (string_of_obj_sort s) (string_of_typ_nullary vs (Obj (Object, fs)))
   | Typ c ->

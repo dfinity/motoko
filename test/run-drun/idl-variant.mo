@@ -8,7 +8,7 @@ func to_left(e : Either) : Either
     };
 
 actor {
-  public query func numify(t: Either) : async Either {
+  public query func numify(t: Either) : future Either {
     to_left t
   }
 }

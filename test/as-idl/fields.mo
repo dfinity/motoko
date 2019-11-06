@@ -7,6 +7,6 @@ type Info = {
 };
 type Tup = (Text, Info, Text, Nat);
 actor Server {
-    public func f_(user1 : Info, user2 : Tup) : async () {
+    public func f_(user1 : Info, user2 : Tup) : future () {
     };
 }

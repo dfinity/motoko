@@ -351,11 +351,10 @@ func @int32ToErrorCode(i : Int32) : ErrorCode {
 };
 
 type Cont<T> = T -> () ;
-type Async<T> = (Cont<T>,Cont<Error>) -> ();
-
+type Fut<T> = (Cont<T>, Cont<Error>) -> ();
 type Result<T> = {#ok : T; #error : Error};
 
-func @new_async<T <: Any>() : (Async<T>, Cont<T>, Cont<Error>) {
+func @new_future<T <: Any>() : (Fut<T>, Cont<T>, Cont<Error>) {
   let k_null = func(_ : T) {};
   let r_null = func(_ : Error) {};
   var result : ?(Result<T>) = null;

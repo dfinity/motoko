@@ -1,34 +1,34 @@
 actor {
-  public func two(x:Text, y:Text) : async (Text, Text) {
+  public func two(x:Text, y:Text) : future (Text, Text) {
     (x, y)
   };
 
-  public func three(x:Text, y:Text, z: Text) : async (Text, Text, Text) {
+  public func three(x:Text, y:Text, z: Text) : future (Text, Text, Text) {
     (x, y, z)
   };
 
-  public func four(x:Text, y:Text, z: Text, w: Text) : async (Text, Text, Text, Text) {
+  public func four(x:Text, y:Text, z: Text, w: Text) : future (Text, Text, Text, Text) {
     (x, y, z, w)
   };
 
-  public func mkRecord() : async ((Text, Text, Text, Text)) {
+  public func mkRecord() : future ((Text, Text, Text, Text)) {
     ("One", "Two", "Three", "Four")
   };
 
-  public func unary1((x:Text, y:Text, z: Text, w: Text)) : async ((Text, Text, Text, Text)) {
+  public func unary1((x:Text, y:Text, z: Text, w: Text)) : future ((Text, Text, Text, Text)) {
     (x, y, z, w)
   };
 
-  public func unary2(xyzw : (Text, Text, Text, Text)) : async ((Text, Text, Text, Text)) {
+  public func unary2(xyzw : (Text, Text, Text, Text)) : future ((Text, Text, Text, Text)) {
     xyzw
   };
 
-  public func unary3(xyzw : (Text, Text, Text, Text)) : async ((Text, Text, Text, Text)) {
+  public func unary3(xyzw : (Text, Text, Text, Text)) : future ((Text, Text, Text, Text)) {
     xyzw
   };
 
   type T = (Text, Text, Text, Text);
-  public func unary4(xyzw : (Text, Text, Text, Text)) : async T  {
+  public func unary4(xyzw : (Text, Text, Text, Text)) : future T  {
     xyzw
   }
 

@@ -81,7 +81,7 @@ actor class Server () {
     isProducer: Bool,
     isRetailer: Bool,
     isTransporter: Bool
-  ) : async Result<T.UserId,T.IdErr> {
+  ) : future Result<T.UserId,T.IdErr> {
     Result.fromOption<T.UserId,T.IdErr>(
       getModel().addUser(
         public_key,
@@ -102,7 +102,7 @@ actor class Server () {
    -------------
    Get info for all users.
    */
-  public func allUserInfo() : async [T.UserInfo] {
+  public func allUserInfo() : future [T.UserInfo] {
     getModel().userTable.allInfo()
   };
 
@@ -111,7 +111,7 @@ actor class Server () {
    ---------------------------
    Get the information associated with a user, based on its id.
    */
-  public func getUserInfo(id:T.UserId) : async Result<T.UserInfo, T.IdErr> {
+  public func getUserInfo(id:T.UserId) : future Result<T.UserInfo, T.IdErr> {
     Result.fromOption<T.UserInfo, T.IdErr>(
       getModel().userTable.getInfo(id),
       #idErr null
@@ -123,7 +123,7 @@ actor class Server () {
    ---------------------------
    Returns true if the user id matches the public key.
    */
-  public func validateUser(public_key: T.PublicKey, id: T.UserId) : async Bool {
+  public func validateUser(public_key: T.PublicKey, id: T.UserId) : future Bool {
     getModel().isValidPublicKey(#user(id), public_key);
   };
 
@@ -146,7 +146,7 @@ actor class Server () {
     capacity_ : T.Weight,
     isFridge_ : Bool,
     isFreezer_ : Bool,
-  ) : async Result<T.TruckTypeId,None> {
+  ) : future Result<T.TruckTypeId,None> {
     Result.fromSome<T.TruckTypeId>(
       getModel()
         .truckTypeTable.addInfoGetId(
@@ -177,7 +177,7 @@ actor class Server () {
 
   public func registrarRemTruckType(
     id: T.TruckTypeId
-  ) : async Result<(),T.ServerErr> {
+  ) : future Result<(),T.ServerErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().truckTypeTable.remGetUnit(id),
       #idErr null
@@ -191,7 +191,7 @@ actor class Server () {
 
   public func getTruckTypeInfo(
     id: T.TruckTypeId
-  ) : async Result<T.TruckTypeInfo,T.IdErr> {
+  ) : future Result<T.TruckTypeInfo,T.IdErr> {
     Result.fromOption<T.TruckTypeInfo,T.IdErr>(
       getModel().truckTypeTable.getInfo(id),
       #idErr null
@@ -203,7 +203,7 @@ actor class Server () {
    ---------------------
    */
 
-  public func allTruckTypeInfo() : async [T.TruckTypeInfo] {
+  public func allTruckTypeInfo() : future [T.TruckTypeInfo] {
     getModel().truckTypeTable.allInfo()
   };
 
@@ -225,7 +225,7 @@ actor class Server () {
   public func registrarAddRegion(
     short_name_:  Text,
     description_: Text,
-  ) : async Result<T.RegionId,None> {
+  ) : future Result<T.RegionId,None> {
     Result.fromSome<T.RegionId>(
       getModel().regionTable.addInfoGetId(
         func (id_:T.RegionId) : T.RegionInfo =
@@ -246,7 +246,7 @@ actor class Server () {
 
   public func registrarRemRegion(
     id: T.RegionId
-  ) : async Result<(),T.IdErr> {
+  ) : future Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().regionTable.remGetUnit(id),
       #idErr null,
@@ -263,7 +263,7 @@ actor class Server () {
 
   public func getRegionInfo(
     id: T.RegionId
-  ) : async Result<T.RegionInfo,T.IdErr> {
+  ) : future Result<T.RegionInfo,T.IdErr> {
     Result.fromOption<T.RegionInfo,T.IdErr>(
       getModel().regionTable.getInfo(id),
       #idErr null
@@ -279,7 +279,7 @@ actor class Server () {
 
    */
 
-  public func allRegionInfo() : async [T.RegionInfo] {
+  public func allRegionInfo() : future [T.RegionInfo] {
     getModel().regionTable.allInfo()
   };
 
@@ -302,7 +302,7 @@ actor class Server () {
     short_name_:  Text,
     description_: Text,
     grade_: T.Grade,
-  ) : async Result<T.ProduceId,None> {
+  ) : future Result<T.ProduceId,None> {
     Result.fromSome<T.ProduceId>(
       getModel().produceTable.addInfoGetId(
         func (id_:T.ProduceId) : T.ProduceInfo =
@@ -324,7 +324,7 @@ actor class Server () {
 
   public func registrarRemProduce(
     id: T.ProduceId
-  ) : async Result<(),T.IdErr> {
+  ) : future Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().produceTable.remGetUnit(id),
       #idErr null,
@@ -339,7 +339,7 @@ actor class Server () {
 
   public func getProduceInfo(
     id: T.ProduceId
-  ) : async Result<T.ProduceInfo,T.IdErr> {
+  ) : future Result<T.ProduceInfo,T.IdErr> {
     Result.fromOption<T.ProduceInfo,T.IdErr>(
       getModel().produceTable.getInfo(id),
       #idErr null
@@ -351,7 +351,7 @@ actor class Server () {
    ---------------------
    */
 
-  public func allProduceInfo() : async [T.ProduceInfo] {
+  public func allProduceInfo() : future [T.ProduceInfo] {
     getModel().produceTable.allInfo()
   };
 
@@ -374,7 +374,7 @@ actor class Server () {
     short_name_:  Text,
     description_: Text,
     region_: T.RegionId,
-  ) : async Result<T.ProducerId,T.IdErr> {
+  ) : future Result<T.ProducerId,T.IdErr> {
     Result.fromOption<T.ProduceId,T.IdErr>(
       getModel().producerTable.addInfoGetId(
         func(id_:T.ProducerId):T.ProducerInfo {
@@ -401,7 +401,7 @@ actor class Server () {
 
   public func registrarRemProducer(
     id: T.ProducerId
-  ) : async Result<(),T.IdErr> {
+  ) : future Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().producerTable.remGetUnit(id),
       #idErr null
@@ -416,7 +416,7 @@ actor class Server () {
 
   public func getProducerInfo(
     id: T.ProducerId
-  ) : async Result<T.ProducerInfo,T.IdErr> {
+  ) : future Result<T.ProducerInfo,T.IdErr> {
     Result.fromOption<T.ProducerInfo,T.IdErr>(
       getModel().producerTable.getInfo(id),
       #idErr null
@@ -428,7 +428,7 @@ actor class Server () {
    ---------------------
    */
 
-  public func allProducerInfo() : async [T.ProducerInfo] {
+  public func allProducerInfo() : future [T.ProducerInfo] {
     getModel().producerTable.allInfo()
   };
 
@@ -451,7 +451,7 @@ actor class Server () {
     short_name_:  Text,
     description_: Text,
     region_: T.RegionId,
-  ) : async Result<T.RetailerId,T.IdErr> {
+  ) : future Result<T.RetailerId,T.IdErr> {
     Result.fromOption<T.RetailerId,T.IdErr>(
       getModel().retailerTable.addInfoGetId(
         func(id_:T.RetailerId):T.RetailerInfo {
@@ -476,7 +476,7 @@ actor class Server () {
 
   public func registrarRemRetailer(
     id: T.RetailerId
-  ) : async Result<(),T.IdErr> {
+  ) : future Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().retailerTable.remGetUnit(id),
       #idErr null
@@ -490,7 +490,7 @@ actor class Server () {
 
   public func getRetailerInfo(
     id: T.RetailerId
-  ) : async Result<T.RetailerInfo,T.IdErr> {
+  ) : future Result<T.RetailerInfo,T.IdErr> {
     Result.fromOption<T.RetailerInfo,T.IdErr>(
       getModel().retailerTable.getInfo(id),
       #idErr null
@@ -502,7 +502,7 @@ actor class Server () {
    ---------------------
    */
 
-  public func allRetailerInfo() : async [T.RetailerInfo] {
+  public func allRetailerInfo() : future [T.RetailerInfo] {
     getModel().retailerTable.allInfo()
   };
 
@@ -522,7 +522,7 @@ actor class Server () {
     transporter_public_key: T.PublicKey,
     short_name_:  Text,
     description_: Text,
-  ) : async Result<T.TransporterId,()> {
+  ) : future Result<T.TransporterId,()> {
     Result.fromOption<T.TransporterId,()>(
       getModel().transporterTable.addInfoGetId(
         func(id_:T.TransporterId):T.TransporterInfo {
@@ -547,7 +547,7 @@ actor class Server () {
 
   public func registrarRemTransporter(
     id: T.TransporterId
-  ) : async Result<(),T.IdErr> {
+  ) : future Result<(),T.IdErr> {
     Result.fromOption<(),T.IdErr>(
       getModel().transporterTable.remGetUnit(id),
       #idErr null
@@ -561,7 +561,7 @@ actor class Server () {
 
   public func getTransporterInfo(
     id: T.TransporterId
-  ) : async Result<T.TransporterInfo,T.IdErr> {
+  ) : future Result<T.TransporterInfo,T.IdErr> {
     Result.fromOption<T.TransporterInfo,T.IdErr>(
       getModel().transporterTable.getInfo(id),
       #idErr null
@@ -574,7 +574,7 @@ actor class Server () {
    ---------------------
    */
 
-  public func allTransporterInfo() : async [T.TransporterInfo] {
+  public func allTransporterInfo() : future [T.TransporterInfo] {
     getModel().transporterTable.allInfo()
   };
 
@@ -600,7 +600,7 @@ actor class Server () {
     begin:T.Date,
     end:  T.Date,
     comments: Text,
-  ) : async Result<T.InventoryId,T.ServerErr> {
+  ) : future Result<T.InventoryId,T.ServerErr> {
     if (not getModel().isValidPublicKey(#producer(id), public_key)) {
       return (#err(#publicKeyErr))
     };
@@ -625,7 +625,7 @@ actor class Server () {
     begin:T.Date,
     end:  T.Date,
     comments: Text,
-  ) : async Result<(),T.ServerErr> {
+  ) : future Result<(),T.ServerErr> {
     if (not getModel().isValidPublicKey(#producer(id), public_key)) {
       return (#err(#publicKeyErr))
     };
@@ -638,7 +638,7 @@ actor class Server () {
    `producerRemInventory`
    ---------------------------
    */
-  public func producerRemInventory(public_key: T.PublicKey, id:T.InventoryId) : async Result<(),T.ServerErr> {
+  public func producerRemInventory(public_key: T.PublicKey, id:T.InventoryId) : future Result<(),T.ServerErr> {
     if (not getModel().isValidPublicKey(#producer(id), public_key)) {
       return (#err(#publicKeyErr))
     };
@@ -649,7 +649,7 @@ actor class Server () {
    `producerAllInventoryInfo`
    ---------------------------
    */
-  public func producerAllInventoryInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.InventoryInfo],T.IdErr> {
+  public func producerAllInventoryInfo(public_key: T.PublicKey, id:T.UserId) : future Result<[T.InventoryInfo],T.IdErr> {
     Result.fromOption<[T.InventoryInfo],T.IdErr>(
       getModel()
         .producerAllInventoryInfo(id),
@@ -661,7 +661,7 @@ actor class Server () {
    `producerAllReservationInfo`
    ---------------------------
    */
-  public func producerReservations(public_key: T.PublicKey, id:T.UserId) : async Result<[T.ReservedInventoryInfo],T.IdErr> {
+  public func producerReservations(public_key: T.PublicKey, id:T.UserId) : future Result<[T.ReservedInventoryInfo],T.IdErr> {
     Result.fromOption<[T.ReservedInventoryInfo],T.IdErr>(
       getModel()
         .producerAllReservationInfo(id),
@@ -682,7 +682,7 @@ actor class Server () {
    ---------------------------
    The last sales price for produce within a given geographic area; null region id means "all areas."
    */
-  public func produceMarketInfo(public_key: T.PublicKey, id:T.ProduceId, reg:?T.RegionId) : async Result<[T.ProduceMarketInfo],T.IdErr> {
+  public func produceMarketInfo(public_key: T.PublicKey, id:T.ProduceId, reg:?T.RegionId) : future Result<[T.ProduceMarketInfo],T.IdErr> {
     Result.fromOption<[T.ProduceMarketInfo],T.IdErr>(
       getModel()
         .produceMarketInfo(id, reg),
@@ -696,7 +696,7 @@ actor class Server () {
    ---------------------------
    Get the information for all known inventory.
    */
-  public func allInventoryInfo() : async [T.InventoryInfo] {
+  public func allInventoryInfo() : future [T.InventoryInfo] {
     getModel()
       .inventoryTable.allInfo()
   };
@@ -706,7 +706,7 @@ actor class Server () {
    ---------------------------
    Get the information associated with inventory, based on its id.
    */
-  public func getInventoryInfo(id:T.InventoryId) : async Result<T.InventoryInfo,T.IdErr> {
+  public func getInventoryInfo(id:T.InventoryId) : future Result<T.InventoryInfo,T.IdErr> {
     Result.fromOption<T.InventoryInfo,T.IdErr>(
       getModel()
         .inventoryTable.getInfo(id),
@@ -733,7 +733,7 @@ actor class Server () {
     end:    T.Date,
     cost:   T.Price,
     ttid:   T.TruckTypeId
-  ) : async Result<T.RouteId,T.ServerErr> {
+  ) : future Result<T.RouteId,T.ServerErr> {
     if (not getModel().isValidPublicKey(#transporter(id), public_key)) {
       return (#err(#publicKeyErr))
     };
@@ -754,7 +754,7 @@ actor class Server () {
     end:    T.Date,
     cost:   T.Price,
     ttid:   T.TruckTypeId
-  ) : async Result<(),T.ServerErr> {
+  ) : future Result<(),T.ServerErr> {
     if (not getModel().isValidPublicKey(#transporter(id), public_key)) {
       return (#err(#publicKeyErr))
     };
@@ -765,7 +765,7 @@ actor class Server () {
    `transporterRemRoute`
    ---------------------------
    */
-  public func transporterRemRoute(public_key: T.PublicKey, id:T.RouteId) : async Result<(),T.ServerErr> {
+  public func transporterRemRoute(public_key: T.PublicKey, id:T.RouteId) : future Result<(),T.ServerErr> {
     if (not getModel().isValidPublicKey(#transporter(id), public_key)) {
       return (#err(#publicKeyErr))
     };
@@ -776,7 +776,7 @@ actor class Server () {
    `transporterAllRouteInfo`
    ---------------------------
    */
-  public func transporterAllRouteInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.RouteInfo],T.IdErr> {
+  public func transporterAllRouteInfo(public_key: T.PublicKey, id:T.UserId) : future Result<[T.RouteInfo],T.IdErr> {
     Result.fromOption<[T.RouteInfo],T.IdErr>(
       getModel()
         .transporterAllRouteInfo(id),
@@ -788,7 +788,7 @@ actor class Server () {
    `transporterAllReservationInfo`
    ---------------------------
    */
-  public func transporterAllReservationInfo(public_key: T.PublicKey, id:T.UserId) : async Result<[T.ReservedRouteInfo],T.IdErr> {
+  public func transporterAllReservationInfo(public_key: T.PublicKey, id:T.UserId) : future Result<[T.ReservedRouteInfo],T.IdErr> {
     Result.fromOption<[T.ReservedRouteInfo],T.IdErr>(
       getModel()
         .transporterAllReservationInfo(id),
@@ -801,7 +801,7 @@ actor class Server () {
    ---------------------------
    Get the information for all known routes.
    */
-  public func allRouteInfo() : async [T.RouteInfo] {
+  public func allRouteInfo() : future [T.RouteInfo] {
     getModel()
       .routeTable.allInfo()
   };
@@ -811,7 +811,7 @@ actor class Server () {
    ---------------------------
    Get the information for all reserved routes.
    */
-  public func allReservedRouteInfo() : async [T.ReservedRouteInfo] {
+  public func allReservedRouteInfo() : future [T.ReservedRouteInfo] {
     getModel()
       .reservedRouteTable.allInfo()
   };
@@ -826,7 +826,7 @@ actor class Server () {
 
   public func getRouteInfo(
     id: T.RouteId
-  ) : async Result<T.RouteInfo,T.IdErr> {
+  ) : future Result<T.RouteInfo,T.IdErr> {
     Result.fromOption<T.RouteInfo,T.IdErr>(
       getModel().routeTable.getInfo(id),
       #idErr null
@@ -846,7 +846,7 @@ actor class Server () {
     id:T.RetailerId,
     queryProduce:?T.ProduceId,
     queryDate:?T.Date
-  ) : async Result<T.QueryAllResults,T.IdErr> {
+  ) : future Result<T.QueryAllResults,T.IdErr> {
     Result.fromOption<T.QueryAllResults,T.IdErr>(
       getModel().
         retailerQueryAll(id, queryProduce, queryDate),
@@ -862,7 +862,7 @@ actor class Server () {
     public_key: T.PublicKey,
     id:T.RetailerId,
     inventory:T.InventoryId,
-    route:T.RouteId) : async Result<(T.ReservedInventoryId, T.ReservedRouteId),T.ServerErr>
+    route:T.RouteId) : future Result<(T.ReservedInventoryId, T.ReservedRouteId),T.ServerErr>
   {
     if (not getModel().isValidPublicKey(#retailer(id), public_key)) {
       return (#err(#publicKeyErr))
@@ -880,7 +880,7 @@ actor class Server () {
     id: T.RetailerId,
     list: [(T.InventoryId, T.RouteId)]
   )
-    : async Result<[Result<(T.ReservedInventoryId, T.ReservedRouteId), T.ServerErr>], T.ServerErr>
+    : future Result<[Result<(T.ReservedInventoryId, T.ReservedRouteId), T.ServerErr>], T.ServerErr>
   {
     if (not getModel().isValidPublicKey(#retailer(id), public_key)) {
       return (#err(#publicKeyErr))
@@ -894,7 +894,7 @@ actor class Server () {
 
   */
   public func retailerReservations(public_key: T.PublicKey, id:T.RetailerId) :
-    async Result<[(T.ReservedInventoryInfo,
+    future Result<[(T.ReservedInventoryInfo,
                    T.ReservedRouteInfo)],T.ServerErr>
   {
     Result.fromOption<[(T.ReservedInventoryInfo,
@@ -921,7 +921,7 @@ actor class Server () {
    ----------
    */
 
-  public func getCounts() : async T.ProduceExchangeCounts {
+  public func getCounts() : future T.ProduceExchangeCounts {
     let m = getModel();
     {
       hash_bit_length          = 0;
@@ -953,7 +953,7 @@ actor class Server () {
 been processed
 */
 
-  public func devViewGMV() : async ?Nat {
+  public func devViewGMV() : future ?Nat {
     P.nyi()
   };
 
@@ -967,7 +967,7 @@ been processed
 
    */
 
-  public func devViewQueries() : async ?Nat {
+  public func devViewQueries() : future ?Nat {
     ?getModel().retailerQueryCount;
   };
 
@@ -982,7 +982,7 @@ been processed
 
    */
 
-  public func devViewReservations() : async Nat {
+  public func devViewReservations() : future Nat {
     getModel().reservedInventoryTable.count()
   };
 
@@ -998,7 +998,7 @@ been processed
 
    */
 
-  public func devViewProducers() : async [T.ProducerInfo] {
+  public func devViewProducers() : future [T.ProducerInfo] {
     getModel().producerTable.allInfo()
   };
 
@@ -1015,7 +1015,7 @@ been processed
 
    */
 
-  public func devViewTransporters() : async [T.TransporterInfo] {
+  public func devViewTransporters() : future [T.TransporterInfo] {
     getModel().transporterTable.allInfo()
   };
 
@@ -1031,7 +1031,7 @@ been processed
 
    */
 
-  public func devViewRetailers() : async [T.RetailerInfo] {
+  public func devViewRetailers() : future [T.RetailerInfo] {
     getModel().retailerTable.allInfo()
   };
 
@@ -1042,7 +1042,7 @@ been processed
    evaluate a collection of API calls (a "bulk request"), represented as an AS datatype.
    */
 
-  public func evalBulkArray(reqs:[L.BulkReq]) : async [L.BulkResp] {
+  public func evalBulkArray(reqs:[L.BulkReq]) : future [L.BulkResp] {
     getModel().evalBulkArray(reqs)
   };
 

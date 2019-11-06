@@ -12,7 +12,7 @@ let process_prog_result result =
   if !ProfilerFlags.profile then
     try
       match result with
-        Some(Value.Async a,_) -> begin
+        Some(Value.Fut a,_) -> begin
           match Lib.Promise.value_opt a.Value.result with
           | Some (Value.Ok v) -> Counters.dump counters (Value.as_obj v)
           | Some _

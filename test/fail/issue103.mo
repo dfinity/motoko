@@ -12,16 +12,16 @@
   };
 };
 
-// Cannot return a function in an async
+// Cannot return a function in a future
 {
-  func invalid3 () : (async (() -> Nat)) {
-     async { func foo() : Nat = 1 }
+  func invalid3 () : (future (() -> Nat)) {
+     future { func foo() : Nat = 1 }
   };
 };
 
-// Cannot return an object with function fields in an async
+// Cannot return an object with function fields in a future
 {
-  func invalid4 () : (async ({foo : () -> Nat})) {
-     async { object { public func foo() : Nat = 1; } }
+  func invalid4 () : (future ({foo : () -> Nat})) {
+     future { object { public func foo() : Nat = 1; } }
   };
 };

@@ -3,10 +3,10 @@ type List<A> = {
   tail:?List<A>;
 };
 actor {
- public func f(x:Nat):async List<Nat> {
+ public func f(x:Nat):future List<Nat> {
    {head=x; tail=null};
  };
- public func g(x:Int):async List<Int> {
+ public func g(x:Int):future List<Int> {
    {head=x; tail=null};
  };
 }

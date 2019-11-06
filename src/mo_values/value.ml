@@ -286,11 +286,11 @@ and value =
   | Array of value array
   | Obj of value Env.t
   | Func of Call_conv.t * func
-  | Async of async
+  | Fut of fut
   | Mut of value ref
 
 and res = Ok of value | Error of value
-and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
+and fut = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
 
 and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
@@ -302,7 +302,7 @@ let unit = Tup []
 
 let local_func n m f = Func (Call_conv.local_cc n m, f)
 let message_func s n f = Func (Call_conv.message_cc s n, f)
-let async_func s n p f = Func ( Call_conv.async_cc s n p, f)
+let fut_func s n p f = Func ( Call_conv.async_cc s n p, f)
 
 
 (* Projections *)
@@ -335,7 +335,7 @@ let as_unit = function Tup [] -> () | _ -> invalid "as_unit"
 let as_pair = function Tup [v1; v2] -> v1, v2 | _ -> invalid "as_pair"
 let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
-let as_async = function Async a -> a | _ -> invalid "as_async"
+let as_fut = function Fut a -> a | _ -> invalid "as_fut"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
 
 
@@ -365,7 +365,7 @@ let rec compare x1 x2 =
     | i -> i
     )
   | Mut r1, Mut r2 -> compare !r1 !r2
-  | Async _, Async _ -> raise (Invalid_argument "Value.compare")
+  | Fut _, Fut _ -> raise (Invalid_argument "Value.compare")
   | _ -> generic_compare x1 x2
 
 let equal x1 x2 = compare x1 x2 = 0
@@ -434,10 +434,10 @@ and string_of_val d = function
   | Variant (l, Tup []) -> sprintf "#%s" l
   | Variant (l, Tup vs) -> sprintf "#%s%s" l (string_of_val d (Tup vs))
   | Variant (l, v) -> sprintf "#%s(%s)" l (string_of_val d v)
-  | Async {result; waiters = []} ->
-    sprintf "async %s" (string_of_res d result)
-  | Async {result; waiters} ->
-    sprintf "async[%d] %s"
+  | Fut {result; waiters = []} ->
+    sprintf "future %s" (string_of_res d result)
+  | Fut {result; waiters} ->
+    sprintf "future[%d] %s"
       (List.length waiters) (string_of_res d result)
   | Mut r -> sprintf "%s" (string_of_val d !r)
   | v -> string_of_val_nullary d v

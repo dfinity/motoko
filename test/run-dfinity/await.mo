@@ -1,6 +1,6 @@
 var cnt : Nat = 0;
 
-func f(i:Nat) : async Nat {
+func f(i:Nat) : future Nat {
     print "cnt: ";
     printNat cnt;
     print " i: ";
@@ -12,26 +12,26 @@ func f(i:Nat) : async Nat {
 
 print "a";
 
-let a = async await f(0);
+let a = future await f(0);
 
 print "b";
 
-let b = async { await f(1); };
+let b = future { await f(1); };
 
 print "c";
 
-let c = async {
+let c = future {
     let _ = await f(2);
     await f(3);
 };
 
 print "d";
 
-let d  = (async { return await f(4); }) : async Int; 
+let d  = (future { return await f(4); }) : future Int; 
 
 print "e";
 
-let e = async {
+let e = future {
     var i = 5;
     print "e-while";
     while (i < 10) {
@@ -43,7 +43,7 @@ let e = async {
 
 print "g";
 
-let g = async {
+let g = future {
     var i = 10;
     print "g-label";
     label lp
@@ -61,8 +61,8 @@ let g = async {
 
 print "holy";
 
-func p():async (Text,Text) { ("fst","snd"); };
-let h = async {
+func p():future (Text,Text) { ("fst","snd"); };
+let h = future {
    let (a,b) = ("a","b"); /* await p(a,b);*/
    print a;
    print b;

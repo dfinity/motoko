@@ -1,10 +1,10 @@
-type post = shared Text -> async ();
+type post = shared Text -> future ();
 
 type IServer = actor {
-  post: Text -> async ();
-  subscribe: IClient -> async post;
+  post: Text -> future ();
+  subscribe: IClient -> future post;
 };
 
 type IClient = actor {
-   send: shared Text -> async ();
+   send: shared Text -> future ();
 };

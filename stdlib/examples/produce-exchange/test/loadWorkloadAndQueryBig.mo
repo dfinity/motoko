@@ -16,7 +16,7 @@ func scaledParams(region_count_:Nat, factor:Nat) : T.WorkloadParams = shared {
 
 actor class Test() = this {
   go() {
-    ignore(async
+    ignore(future
     {
       // Vary the choice of region count and scaling factor here;
       // Each choice leads to a different count of (InventoryCount, RouteCount), and load time:
@@ -58,8 +58,8 @@ actor class Test() = this {
 };
 
 
-//func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
-func retailerQueryAll(pk:Text, retailerId:T.RetailerId) : async () {
+//func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : future () {
+func retailerQueryAll(pk:Text, retailerId:T.RetailerId) : future () {
 
   print "\nRetailer ";
   printInt retailerId;
@@ -82,8 +82,8 @@ func retailerQueryAll(pk:Text, retailerId:T.RetailerId) : async () {
   }
 };
 
-//func debugDumpAll(server:A.Server) : async () {
-func debugDumpAll() : async () {
+//func debugDumpAll(server:A.Server) : future () {
+func debugDumpAll() : future () {
 
   print "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {

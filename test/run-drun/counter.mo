@@ -7,7 +7,7 @@ actor {
   public func printCounter () {
     printNat c; print "\n";
   };
-  public func get() : async Nat {
+  public func get() : future Nat {
     return c
   };
 }

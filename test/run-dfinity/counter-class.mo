@@ -6,7 +6,7 @@ actor class Counter(i : Int) {
    j -= 1;
   };
 
-  public func read() : async Int { j };
+  public func read() : future Int { j };
 };
 
 func showCounter(c : Int) {};

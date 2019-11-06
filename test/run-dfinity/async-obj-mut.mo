@@ -1,8 +1,8 @@
-let _ = async {
+let _ = future {
   let o = object {
-    public var x = await { async { 1 } };
+    public var x = await { future { 1 } };
     let a = printNat(x);
-    // private b = (x := await { async (x + 1) });
+    // private b = (x := await { future (x + 1) });
     let b = (x := x + 1);
     let c = printNat(x);
     public func foo() = { x := x + 1 };

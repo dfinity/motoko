@@ -1,5 +1,5 @@
 let a = actor {
-  public func len2() : async (Int,Int) {
+  public func len2() : future (Int,Int) {
     (23, 42)
   }
 };

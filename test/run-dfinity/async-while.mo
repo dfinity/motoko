@@ -1,5 +1,5 @@
 let _ =
-async {
+future {
 
 { var i = 0;
   var j = 0;
@@ -16,7 +16,7 @@ async {
 {
   var i = 0;
   var j = 0;
-  while (await async (j <= 10)) {
+  while (await future (j <= 10)) {
     printNat(j);
     assert(j == i);
     i += 1;
@@ -31,7 +31,7 @@ async {
   while (j <= 10) {
    printNat(j);
    assert(j == i);
-   await (async (i += 1));
+   await (future (i += 1));
    j += 1;
   };
   assert(i == 11);
@@ -48,7 +48,7 @@ async {
    };
    printNat(j);
    assert(j == i);
-   await (async (i += 1));
+   await (future (i += 1));
    j += 1;
    continue l;
    assert(false);

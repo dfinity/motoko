@@ -1,1 +1,1 @@
-async { ():Any };
+future { ():Any };

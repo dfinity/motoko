@@ -1,6 +1,6 @@
 type Pair = (Int,Int);
 actor {
-  public func len2(x:Text, y:Text) : async Pair {
+  public func len2(x:Text, y:Text) : future Pair {
     (x.len(), y.len())
   }
 }

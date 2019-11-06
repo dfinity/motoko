@@ -1,1 +1,1 @@
-func call3(f : shared () -> async Int) : async Int { f(); };
+func call3(f : shared () -> future Int) : future Int { f(); };

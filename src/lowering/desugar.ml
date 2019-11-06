@@ -131,7 +131,7 @@ and exp' at note = function
   | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
   | S.RetE e -> I.RetE (exp e)
   | S.ThrowE e -> I.ThrowE (exp e)
-  | S.AsyncE e -> I.AsyncE (exp e)
+  | S.FutE e -> I.FutE (exp e)
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
@@ -402,14 +402,14 @@ and to_args typ p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
       (fun e -> blockE [letP (pat p) (tupE vs)] e)
   in
 
-  let wrap_under_async e =
+  let wrap_under_fut e =
     if T.is_shared_sort sort && control <> T.Returns
     then match e.it with
-      | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
+      | Ir.FutE e' -> { e with it = Ir.FutE (wrap e') }
       | _ -> assert false
     else wrap e in
 
-  args, wrap_under_async, control, res_tys
+  args, wrap_under_fut, control, res_tys
 
 and prog (p : Syntax.prog) : Ir.prog =
   begin match p.it with
@@ -417,7 +417,7 @@ and prog (p : Syntax.prog) : Ir.prog =
     | _ -> block false p.it
   end
   , { I.has_await = true
-    ; I.has_async_typ = true
+    ; I.has_fut_typ = true
     ; I.has_show = true
     ; I.serialized = false
     }

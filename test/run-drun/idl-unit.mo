@@ -1,5 +1,5 @@
 actor {
-  public query func unit_id() : async () {
+  public query func unit_id() : future () {
     ()
   }
 }

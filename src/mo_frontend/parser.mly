@@ -95,8 +95,8 @@ let share_expfield (ef : exp_field) =
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
-%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
+%token AWAIT BREAK CASE CATCH CONTINUE LABEL DEBUG
+%token IF IN ELSE FUTURE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
@@ -246,8 +246,8 @@ typ_pre :
     { t }
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
-  | ASYNC t=typ_pre
-    { AsyncT(t) @! at $sloc }
+  | FUTURE t=typ_pre
+    { FutT(t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -441,8 +441,8 @@ exp_nondec(B) :
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | ASYNC e=exp(bl)
-    { AsyncE(e) @? at $sloc }
+  | FUTURE e=exp(bl)
+    { FutE(e) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)
@@ -621,14 +621,14 @@ dec_nonvar :
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
   | s=func_sort_opt FUNC xf=id_opt
       tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
-    { (* This is a hack to support local func declarations that return a computed async.
-         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
+    { (* This is a hack to support local func declarations that return a computed future.
+         These should be defined using RHS syntax EQ e to avoid the implicit FutE introduction
          around bodies declared as blocks *)
       let e = match fb with
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
           match t with
-          | Some {it = AsyncT _; _} -> AsyncE(e) @? e.at
+          | Some {it = FutT _; _} -> FutE(e) @? e.at
           | _ -> e
       in
       let named, x = xf "func" $sloc in

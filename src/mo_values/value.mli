@@ -100,11 +100,11 @@ and value =
   | Array of value array
   | Obj of value Env.t
   | Func of Call_conv.t * func
-  | Async of async
+  | Fut of fut
   | Mut of value ref
 
 and res = Ok of value | Error of value
-and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
+and fut = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
 
 and def = value Lib.Promise.t
 and 'a cont = 'a -> unit
@@ -116,7 +116,7 @@ val unit : value
 
 val local_func : int -> int -> func -> value
 val message_func : Type.shared_sort -> int -> func -> value
-val async_func : Type.shared_sort -> int -> int -> func -> value
+val fut_func : Type.shared_sort -> int -> int -> func -> value
 
 
 (* Projections *)
@@ -147,7 +147,7 @@ val as_opt : value -> value
 val as_obj : value -> value Env.t
 val as_variant : value -> string * value
 val as_func : value -> Call_conv.t * func
-val as_async : value -> async
+val as_fut : value -> fut
 val as_mut : value -> value ref
 
 

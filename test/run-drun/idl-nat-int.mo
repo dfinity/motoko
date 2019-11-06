@@ -1,8 +1,8 @@
 actor {
-  public query func absolute(x:Int) : async Nat {
+  public query func absolute(x:Int) : future Nat {
     abs x
   };
-  public query func absolutes(xs:[Int]) : async [Nat] {
+  public query func absolutes(xs:[Int]) : future [Nat] {
     Array_tabulate<Nat>(xs.len(), func (i:Int) : Nat = abs(xs[i]))
   };
 }

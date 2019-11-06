@@ -10,12 +10,12 @@ actor class Counter(i : Int) {
   };
 
   // Read counter, asynchronous
-  public func read() : async Int { c };
+  public func read() : future Int { c };
 };
 
 // Dummy functions to show intermediate value in trace.
 func show(note : Text, c : Int) {};
-func showAsync(note : Text, a : async Int) {};
+func showFuture(note : Text, a : future Int) {};
 
 // Create an actor.
 let c = Counter(10);
@@ -34,13 +34,13 @@ testDec();
 // Issue ten `dec` & `read` messages.
 func testRead() {
   var i : Int = 10;
-  let _ = async {
+  let _ = future {
     while (i > 0) {
       c.dec();
       let t = c.read();
-      showAsync("before", t);
+      showFuture("before", t);
       show("await", await t);
-      showAsync("after", t);
+      showFuture("after", t);
       i -= 1;
     }
   }

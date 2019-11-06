@@ -50,11 +50,11 @@ let shared_funcs = [ func (a : Int) : Int = a
                    , func (a : Nat) : Nat = 42
                    ];
 
-type C = async(?Int);
-type D = async(?Nat);
+type C = future(?Int);
+type D = future(?Nat);
 
 func c0(c : C, d : D) : [C] { ignore([c, d]); [c, d] };
-let c1s = [async ?4, async ?-42];
+let c1s = [future ?4, future ?-42];
 
 
 // recursive objects

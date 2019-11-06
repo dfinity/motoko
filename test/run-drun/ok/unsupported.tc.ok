@@ -7,26 +7,26 @@ is or contains non-shared type
 unsupported.mo:6.28-6.39: type error, actor types are non-shared.
   (This is a limitation of the current version.)
 unsupported.mo:8.31-8.53: type error, shared function has non-shared parameter type
-  shared () -> async ()
+  shared () -> future ()
 type
-  shared () -> async ()
+  shared () -> future ()
 is or contains non-shared type
-  shared () -> async ()
+  shared () -> future ()
 unsupported.mo:8.31-8.53: type error, shared function types are non-shared.
   (This is a limitation of the current version.)
-unsupported.mo:19.19-19.21: type error, shared, async function must be called within an await expression
+unsupported.mo:19.19-19.21: type error, shared function with future return type must be called within an await expression
   (This is a limitation of the current version.)
 unsupported.mo:23.16-23.18: type error, calling a shared function not yet supported
   (This is a limitation of the current version.)
 unsupported.mo:28.8-28.9: type error, argument to await must be a call expression
   (This is a limitation of the current version.)
-unsupported.mo:32.17-32.29: type error, unsupported async block
+unsupported.mo:32.17-32.29: type error, unsupported future expression
   (This is a limitation of the current version.)
 unsupported.mo:4.5-4.41: type error, a shared function cannot be private
   (This is a limitation of the current version.)
 unsupported.mo:38.26-38.29: type error, a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version.)
-unsupported.mo:41.10-41.18: type error, unsupported async block
+unsupported.mo:41.10-41.18: type error, unsupported future expression
   (This is a limitation of the current version.)
 unsupported.mo:46.31-46.48: type error, shared function has non-shared parameter type
   shared () -> ()
@@ -50,5 +50,5 @@ unsupported.mo:66.45-66.53: type error, non-toplevel actor; an actor can only be
   (This is a limitation of the current version.)
 unsupported.mo:70.29-70.37: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version.)
-unsupported.mo:76.34-76.37: type error, freestanding async expression not yet supported
+unsupported.mo:76.34-76.37: type error, freestanding future expression not yet supported
   (This is a limitation of the current version.)

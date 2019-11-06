@@ -1,10 +1,10 @@
 actor {
   // top-level tuple
-  public query func len2(x:Text, y:Text) : async (Int,Int) {
+  public query func len2(x:Text, y:Text) : future (Int,Int) {
     (x.len(), y.len())
   };
   // a pair embedded in top-level tuple
-  public query func len3((x:Text, i:Int32), y:Text) : async (Int,Int,Int) {
+  public query func len3((x:Text, i:Int32), y:Text) : future (Int,Int,Int) {
     (x.len(), y.len(), int32ToInt i)
   }
 }

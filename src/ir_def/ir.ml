@@ -81,7 +81,7 @@ and exp' =
   | LabelE of id * Type.typ * exp              (* label *)
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
-  | AsyncE of exp                              (* async *)
+  | FutE of exp                                (* future *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
@@ -154,15 +154,15 @@ should hold.
 *)
 
 type flavor = {
-  has_async_typ : bool; (* AsyncT *)
-  has_await : bool; (* AwaitE and AsyncE *)
+  has_fut_typ : bool; (* FutT *)
+  has_await : bool; (* AwaitE and FutE *)
   has_show : bool; (* ShowE *)
   serialized : bool; (* Shared function arguments are serialized *)
 }
 
 let full_flavor : flavor = {
   has_await = true;
-  has_async_typ = true;
+  has_fut_typ = true;
   has_show = true;
   serialized = false;
 }

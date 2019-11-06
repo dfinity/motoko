@@ -17,7 +17,7 @@ func printLabeledCost(lab:Text, cost:Nat) {
 
 actor class Test() = this {
   public func go() {
-    ignore(async
+    ignore(future
     {
       let s = A.Server();
 
@@ -147,7 +147,7 @@ actor class Test() = this {
   };
 };
 
-func debugDumpInventory(server:A.Server, pk:T.PublicKey, p:T.ProducerId) : async () {
+func debugDumpInventory(server:A.Server, pk:T.PublicKey, p:T.ProducerId) : future () {
   print "\nProducer ";
   printInt p;
   print "'s inventory:\n--------------------------------\n";
@@ -161,7 +161,7 @@ func debugDumpInventory(server:A.Server, pk:T.PublicKey, p:T.ProducerId) : async
   }
 };
 
-func debugDumpAll(server:A.Server) : async () {
+func debugDumpAll(server:A.Server) : future () {
 
   print "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {

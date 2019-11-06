@@ -52,7 +52,7 @@ type env =
     cons : con_env;
     labs : lab_env;
     rets : ret_env;
-    async : bool;
+    fut : bool;
   }
 
 let env_of_scope scope flavor : env =
@@ -61,7 +61,7 @@ let env_of_scope scope flavor : env =
     cons = scope.Scope.con_env;
     labs = T.Env.empty;
     rets = None;
-    async = false;
+    fut = false;
   }
 
 
@@ -162,7 +162,7 @@ let rec check_typ env typ : unit =
            this can change once we preserve the return type of Promising functions
            past async translation
         *)
-        if env.flavor.Ir.has_async_typ then
+        if env.flavor.Ir.has_fut_typ then
           check env' no_region (sort = T.Shared T.Write)
             "one-shot query function pointless"
       | T.Promises ->
@@ -175,8 +175,8 @@ let rec check_typ env typ : unit =
           "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
   | T.Opt typ ->
     check_typ env typ
-  | T.Async typ ->
-    check env no_region env.flavor.Ir.has_async_typ "async in non-async flavor";
+  | T.Fut typ ->
+    check env no_region env.flavor.Ir.has_fut_typ "future in non-future flavor";
     let t' = T.promote typ in
     check_shared env no_region t'
   | T.Obj (sort, fields) ->
@@ -286,10 +286,10 @@ let type_lit env lit at : T.prim =
 
 (* Expressions *)
 
-let isAsyncE exp =
+let isFutE exp =
   match exp.it with
-  | AsyncE _ (* pre await transformation *)
-  | PrimE(OtherPrim "@async", [_]) (* post await transformation *)
+  | FutE _ (* pre await transformation *)
+  | PrimE(OtherPrim "@future", [_]) (* post await transformation *)
     -> true
   | _ -> false
 
@@ -341,14 +341,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       T.Prim T.Text <: t
     | ICReplyPrim ts, [exp1] ->
-      check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
+      check (not (env.flavor.has_fut_typ)) "ICReplyPrim in future flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
       (* TODO: check against expected reply typ; note this may not be env.ret_tys. *)
       check_exp env exp1;
       typ exp1 <: (T.seq ts);
       T.unit <: t
     | ICRejectPrim, [exp1] ->
-      check (not (env.flavor.has_async_typ)) "ICRejectPrim in async flavor";
+      check (not (env.flavor.has_fut_typ)) "ICRejectPrim in future flavor";
       check_exp env exp1;
       typ exp1 <: T.text;
       T.unit <: t
@@ -465,7 +465,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_cases env t1 t cases
   | TryE (exp1, cases) ->
     check env.flavor.has_await "try in non-await flavor";
-    check env.async "misplaced try";
+    check env.fut "misplaced try";
     check_exp env exp1;
     typ exp1 <: t;
     check_cases env T.catch t cases;
@@ -502,26 +502,26 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.Non <: t (* vacuously true *)
   | ThrowE exp1 ->
     check env.flavor.has_await "throw in non-await flavor";
-    check env.async "misplaced throw";
+    check env.fut "misplaced throw";
     check_exp env exp1;
     typ exp1 <: T.throw;
     T.Non <: t (* vacuously true *)
-  | AsyncE exp1 ->
-    check env.flavor.has_await "async expression in non-await flavor";
+  | FutE exp1 ->
+    check env.flavor.has_await "future expression in non-await flavor";
     let t1 = typ exp1 in
     let env' =
-      {env with labs = T.Env.empty; rets = Some t1; async = true} in
+      {env with labs = T.Env.empty; rets = Some t1; fut = true} in
     check_exp env' exp1;
     t1 <: T.Any;
-    T.Async t1 <: t
+    T.Fut t1 <: t
   | AwaitE exp1 ->
     check env.flavor.has_await "await in non-await flavor";
-    check env.async "misplaced await";
+    check env.fut "misplaced await";
     check_exp env exp1;
     let t1 = T.promote (typ exp1) in
-    let t2 = try T.as_async_sub t1
+    let t2 = try T.as_fut_sub t1
              with Invalid_argument _ ->
-               error env exp1.at "expected async type, but expression has type\n  %s"
+               error env exp1.at "expected future type, but expression has type\n  %s"
                  (T.string_of_typ_expand t1)
     in
     t2 <: t
@@ -556,12 +556,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
-    check ((T.is_shared_sort sort && control = T.Promises) ==> isAsyncE exp)
-      "shared function with async type has non-async body";
+    check ((T.is_shared_sort sort && control = T.Promises) ==> isFutE exp)
+      "shared function with future type has non-future body";
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
     let codom = T.codom control ret_tys in
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some codom; async = false} in
+      {env' with labs = T.Env.empty; rets = Some codom; fut = false} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) codom;
     (* Now construct the function type and compare with the annotation *)
@@ -573,7 +573,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       ) in
     fun_ty <: t
   | ActorE (id, ds, fs, t0) ->
-    let env' = { env with async = false } in
+    let env' = { env with fut = false } in
     let ve0 = T.Env.singleton id t0 in
     let scope0 = { empty_scope with val_env = ve0 } in
     let scope1 = List.fold_left (gather_dec env') scope0 ds in

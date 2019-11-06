@@ -1182,21 +1182,21 @@ module Tagged = struct
       | (Con _ | Any) -> true
       | (Array _ | Tup _) -> true
       | (Prim _ |  Obj _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | (Pre | Fut _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Blob ->
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Prim Text) -> true
       | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | (Pre | Fut _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | Object ->
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Obj _) -> true
       | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | (Pre | Fut _ | Mut _ | Var _ | Typ _) -> assert false
       end
     | _ -> true
 
@@ -6413,7 +6413,7 @@ and compile_exp (env : E.t) ae exp =
           in
       let code2 = go env cs in
       code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
-  (* Async-wait lowering support features *)
+  (* Future-await lowering support features *)
   | DeclareE (name, _, e) ->
     let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
     let sr, code = compile_exp env ae1 e in

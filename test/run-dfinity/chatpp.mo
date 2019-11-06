@@ -28,7 +28,7 @@ actor class Server() = {
     };
   };
 
-  public func subscribe(aclient : Client) : async Subscription {
+  public func subscribe(aclient : Client) : future Subscription {
     let c = {id = nextId; client = aclient; var revoked = false};
     nextId += 1;
     let cs = {head = c; var tail = clients};
@@ -72,7 +72,7 @@ actor class Client() = this {
   public func go(n : Text, s : Server) {
     name := n;
     server := ?s;
-    ignore(async {
+    ignore(future {
       let sub = await s.subscribe(this);
       sub.post("hello from " # name);
       sub.post("goodbye from " # name);

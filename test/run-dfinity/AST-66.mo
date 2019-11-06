@@ -1,13 +1,13 @@
-// test cps conversion of async blocks with type decs
+// test cps conversion of future blocks with type decs
 
-let _ = async{
+let _ = future{
   type T = Null;
-  await { async (null:T) };
+  await { future (null:T) };
 };
 
-let _ = async{
+let _ = future{
   type T = U;
-  let _ = await { async (null:T) };
+  let _ = await { future (null:T) };
   type U = Null;
-  await { async (null:T) };
+  await { future (null:T) };
 };
