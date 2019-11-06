@@ -1,7 +1,7 @@
 Motoko 0.1 interpreter
 -- Parsing stdin:
-> -- Parsing b.mo:
--- Parsing c.mo:
+> -- Parsing lib/b.mo:
+-- Parsing lib/c.mo:
 -- Checking c.mo:
 -- Definedness c.mo:
 -- Checking b.mo:
@@ -15,7 +15,7 @@ Motoko 0.1 interpreter
 let anon-import-1.1 : module {i : Nat} = {i = 42}
 
 -- Parsing stdin:
-> -- Parsing a.mo:
+> -- Parsing lib/a.mo:
 -- Checking a.mo:
 -- Definedness a.mo:
 -- Checking stdin:
@@ -33,7 +33,7 @@ let anon-import-2.1 : module {i : Nat} = {i = 42}
 let anon-import-3.1 : module {i : Nat} = {i = 42}
 
 -- Parsing stdin:
-> -- Parsing triangle.mo:
+> -- Parsing lib/triangle.mo:
 -- Checking triangle.mo:
 -- Definedness triangle.mo:
 -- Checking stdin:

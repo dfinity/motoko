@@ -5,7 +5,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int){
 	if (n >= bound) {
-            print "done 1\n";
+            debugPrint "done 1\n";
             return;
 	};
 	Loop(n+1);
@@ -16,7 +16,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int){
 	if (n >= bound) {
-            print "done 2\n";
+            debugPrint "done 2\n";
             return;
 	};
 	if (true)
@@ -31,7 +31,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int){
 	if (n >= bound) {
-            print "done 3\n";
+            debugPrint "done 3\n";
             return;
 	};
 	switch (n % 2) {
@@ -47,7 +47,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int){
 	if (n >= bound) {
-            print "done 4\n";
+            debugPrint "done 4\n";
             return;
 	};
 	{ let m = n;
@@ -61,7 +61,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int){
 	if (n >= bound) {
-            print "done 5\n";
+            debugPrint "done 5\n";
             return;
 	};
 	let _ = (return Loop(n+1)) + 1;
@@ -73,7 +73,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int):Bool{
 	if (n >= bound) {
-            print "done 6\n";
+            debugPrint "done 6\n";
             return true;
 	};
 	true and Loop(n+1);
@@ -84,7 +84,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int):Bool {
 	if (n >= bound) {
-            print "done 7\n";
+            debugPrint "done 7\n";
             return true;
 	};
 	false or Loop(n+1);

@@ -1,6 +1,6 @@
 Motoko 0.1 interpreter
 -- Parsing stdin:
-> -- Parsing empty.mo:
+> -- Parsing lib/empty.mo:
 -- Checking empty.mo:
 -- Definedness empty.mo:
 -- Checking stdin:

@@ -10,8 +10,8 @@ func size<A>(t : Tree<A>) : Nat {
 let tt1 : Tree<Int> = #branch(#leaf 1, #leaf (-1));
 let tt2 = #leaf ""; // infers type {#leaf : Text} which is a subtype of Tree<Text>
 
-printNat(size<Int>(tt1)); print "\n";
-printNat(size<Text>(tt2)); print "\n";
+debugPrintNat(size<Int>(tt1)); debugPrint "\n";
+debugPrintNat(size<Text>(tt2)); debugPrint "\n";
 
 
 // subtyping

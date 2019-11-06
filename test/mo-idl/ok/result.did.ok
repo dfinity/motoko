@@ -1,0 +1,29 @@
+type Result_1_2 = 
+ variant {
+   "err": text;
+   "ok": nat;
+ };
+type Result_1_1 = 
+ variant {
+   "err": text;
+   "ok": null;
+ };
+type Result3_1 = 
+ variant {
+   "err": Result2_1;
+   "ok": null;
+ };
+type Result2_2 = 
+ variant {
+   "err": Result_1_2;
+   "ok": nat;
+ };
+type Result2_1 = 
+ variant {
+   "err": Result_1_1;
+   "ok": null;
+ };
+service anon_result {
+  "f": (opt nat) -> (Result_1_2);
+  "g": (Result3_1) -> (Result2_2);
+}
