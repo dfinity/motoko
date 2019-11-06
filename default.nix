@@ -16,11 +16,6 @@ let ocamlpkgs =
   then nixpkgs
   else nixpkgs.pkgsMusl; in
 
-let profile =
-  if nixpkgs.stdenv.isDarwin
-  then "release"
-  else "release-static"; in
-
 let ocaml_wasm = import ./nix/ocaml-wasm.nix {
   inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml;
   inherit (ocamlpkgs.ocamlPackages) findlib ocamlbuild;
@@ -209,6 +204,29 @@ let
   '';
 in
 
+
+let ocaml_binaries = name: bins:
+  let profile =
+      if nixpkgs.stdenv.isDarwin
+      then "release"
+      else "release-static"; in
+  ocamlpkgs.stdenv.mkDerivation {
+    inherit name;
+
+    src = subpath ./src;
+
+    buildInputs = commonBuildInputs;
+
+    buildPhase = ''
+      make DUNE_OPTS="--display=short --profile ${profile}" ${builtins.toString bins}
+    '';
+
+    installPhase = ''
+      mkdir -p $out/bin
+      cp --verbose --dereference ${builtins.toString bins} $out/bin
+    '';
+  }; in
+
 rec {
   rts = stdenv.mkDerivation {
     name = "moc-rts";
@@ -235,22 +253,10 @@ rec {
     '';
   };
 
-  moc-bin = ocamlpkgs.stdenv.mkDerivation {
-    name = "moc-bin";
-
-    src = subpath ./src;
-
-    buildInputs = commonBuildInputs;
-
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile ${profile}" moc mo-ld
-    '';
-
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference moc mo-ld $out/bin
-    '';
-  };
+  moc-bin = ocaml_binaries "moc-bin" ["moc" "mo-ld"];
+  mo-ide = ocaml_binaries "mo-ide" ["mo-ide"];
+  didc = ocaml_binaries "didc" ["didc"];
+  deser = ocaml_binaries "deser" ["deser"];
 
   moc = nixpkgs.symlinkJoin {
     name = "moc";
@@ -339,23 +345,6 @@ rec {
     '';
   };
 
-  mo-ide = stdenv.mkDerivation {
-    name = "mo-ide";
-
-    src = subpath ./src;
-
-    buildInputs = commonBuildInputs;
-
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile ${profile}" mo-ide
-    '';
-
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference mo-ide $out/bin
-    '';
-  };
-
   samples = stdenv.mkDerivation {
     name = "samples";
     src = subpath ./samples;
@@ -408,32 +397,6 @@ rec {
     '';
 
   });
-
-  didc = stdenv.mkDerivation {
-    name = "didc";
-    src = subpath ./src;
-    buildInputs = commonBuildInputs;
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile ${profile}" didc
-    '';
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference didc $out/bin
-    '';
-  };
-
-  deser = stdenv.mkDerivation {
-    name = "deser";
-    src = subpath ./src;
-    buildInputs = commonBuildInputs;
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile ${profile}" deser
-    '';
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference deser $out/bin
-    '';
-  };
 
   wasm = ocaml_wasm;
   dvm = real-dvm;
