@@ -298,7 +298,7 @@ let transform env prog =
       (blockE ( letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
                 letEta exp1' (fun v1 ->
                   letSeq ts1 exp2' (fun vs ->
-                      [ expD (ic_callE v1 (tupE vs) nary_reply reject) ]
+                      [ expD (ic_callE v1 (seqE vs) nary_reply reject) ]
                     )
                   )
          )
