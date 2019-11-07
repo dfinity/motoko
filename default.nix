@@ -571,10 +571,11 @@ rec {
     #
 
     buildInputs =
-      let dont_build = [ moc didc deser ]; in
+      let dont_build = [ moc mo-ld didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
+        tests.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
         [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ]
@@ -585,7 +586,7 @@ rec {
     JS_USER_LIBRARY=js-user-library;
     TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
-    LOCALE_ARCHIVE="${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    ${if nixpkgs ? glibcLocales then "LOCALE_ARCHIVE" else null} ="${nixpkgs.glibcLocales}/lib/locale/locale-archive";
   } else null;
 
 }
