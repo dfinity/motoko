@@ -358,12 +358,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
       (* TODO: check against expected reply typ; note this may not be env.ret_tys. *)
       check_exp env exp1;
       typ exp1 <: (T.seq ts);
-      T.unit <: t
+      T.Non <: t
     | ICRejectPrim, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICRejectPrim in async flavor";
       check_exp env exp1;
       typ exp1 <: T.text;
-      T.unit <: t
+      T.Non <: t
     | ICErrorCodePrim, [] ->
       T.Prim (T.Int32) <: t
     | ICCallPrim, [exp1; exp2; k; r] ->
@@ -373,20 +373,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env r;
       let t1 = T.promote (typ exp1) in
       begin match t1 with
-      (* TODO: oneways *)
-(*
-      | T.Func (sort, T.Promises p, [], arg_tys, [T.Async ret_ty]) ->
-        check_exp env exp2;
-        let t_arg = T.seq arg_tys in
-        let t_rets = if (p = 1) then [ret_ty] else T.as_seq ret_ty in
-        if T.is_shared_sort sort then begin
-          check_concrete env exp.at t_arg;
-          check_concrete env exp.at ret_ty;
-        end;
-        typ exp2 <: t_arg;
-        typ k <: T.Func (T.Local, T.Returns, [], t_rets, []);
-        typ r <: T.Func (T.Local, T.Returns, [], [T.catch], []);
-*)
       | T.Func (sort, T.Replies, [], arg_tys, ret_tys) ->
         check_exp env exp2;
         let t_arg = T.seq arg_tys in

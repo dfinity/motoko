@@ -236,7 +236,7 @@ let make_message env x cc v : V.value =
   match cc.CC.control with
   | T.Returns -> make_unit_message env x v
   | T.Promises-> make_async_message env x v
-  | T.Replies -> make_replying_message env x v (* TBR *)
+  | T.Replies -> make_replying_message env x v
 
 (* Literals *)
 
@@ -373,11 +373,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | ICReplyPrim ts, [exp1] ->
       assert (not env.flavor.has_async_typ);
       let reply = Lib.Option.value env.replies in
-      interpret_exp env exp1 (fun v -> Scheduler.queue (fun () -> reply v))
+      interpret_exp env exp1
+        (fun v -> Scheduler.queue (fun () -> reply v))
     | ICRejectPrim, [exp1] ->
       assert (not env.flavor.has_async_typ);
       let reject = Lib.Option.value env.rejects in
-      interpret_exp env exp1 (fun v -> Scheduler.queue (fun () -> reject v))
+      interpret_exp env exp1
+        (fun v -> Scheduler.queue (fun () -> reject v))
     | ICCallPrim, [exp1; exp2; expk ; expr] ->
       assert (not env.flavor.has_async_typ);
       interpret_exp env exp1 (fun v1 ->

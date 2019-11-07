@@ -461,8 +461,7 @@ let await_lowering =
   transform_if "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering mode =
-  let platform = if mode = Flags.ICMode then Async.V2 else Async.V1 in
-  transform_if "Async Lowering" (Async.transform platform)
+  transform_if "Async Lowering" (Async.transform mode)
 
 let tailcall_optimization =
   transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
