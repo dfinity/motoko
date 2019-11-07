@@ -549,7 +549,7 @@ Subtyping applies recursively to the types of the fields themselves. Moreover, t
 
 To make these constraints as flexible as possible, two special rules apply:
 
- * An absent record field is considered equivalent to a present field with value `null`. Moreover, a record field of type `null` is a subtype of a field with type `opt <datatype>`. That way,	That way, a field of option (or null) type can always be added to a record type, no matter whether in co- or contra-variant position. If an optional field is added to an inbound record, and he client did not provide it, the service will read it as if its value was null.
+ * An absent record field is considered equivalent to a present field with value `null`. Moreover, a record field of type `null` is a subtype of a field with type `opt <datatype>`. That way, a field of option (or null) type can always be added to a record type, no matter whether in co- or contra-variant position. If an optional field is added to an inbound record, and the client did not provide it, the service will read it as if its value was null.
 
   - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;	
   - in an inbound record, a field of option (or null) type can also be added, in which case the service will read it as if its value was null.
@@ -670,7 +670,7 @@ which also holds.
 
 Finally, one auxiliary rule is needed to ensure that subtyping is still transitive:
 ```
-not (<datatype> <: opt <datatype')
+not (<datatype> <: opt <datatype'>)
 record { <fieldtype>;* } <: record { <fieldtype'>;* }
 ------------------------------------------------------------------------------------------------
 record { <fieldtype>;* <nat> : <datatype> } <: record { <fieldtype'>;* <nat> : opt <datatype'> }
