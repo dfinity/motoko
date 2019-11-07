@@ -24,7 +24,7 @@ actor Counter {
     };
 
     public func bad_await() : async () {
-        let t : async Int = loop {};
+        let t : async () = loop {};
 	await t; // unsupported general await
     };
 
@@ -67,7 +67,7 @@ func local_spawn() {
 };
 
 {
-  let bad_nested_actor =  { actor {}; ()};
+  let bad_nested_actor =  { let _ = actor {}; ()};
 };
 
 
