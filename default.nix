@@ -571,10 +571,11 @@ rec {
     #
 
     buildInputs =
-      let dont_build = [ moc didc deser ]; in
+      let dont_build = [ moc mo-ld didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
+        tests.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
         [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ]
