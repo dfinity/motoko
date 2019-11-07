@@ -197,9 +197,9 @@ module Transform(Platform : sig val platform : platform end) = struct
       Con (t_con c, List.map t_typ ts)
     | Array t -> Array (t_typ t)
     | Tup ts -> Tup (List.map t_typ ts)
-    | Func (s, c, tbs, t1, t2) ->
+    | Func (s, c, tbs, ts1, ts2) ->
       let c' = if c = T.Promises then T.Replies else c in
-      Func (s, c', List.map t_bind tbs, List.map t_typ t1, List.map t_typ t2)
+      Func (s, c', List.map t_bind tbs, List.map t_typ ts1, List.map t_typ ts2)
     | Opt t -> Opt (t_typ t)
     | Variant fs -> Variant (List.map t_field fs)
     | Async t -> t_async nary (t_typ t)
