@@ -358,12 +358,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
       (* TODO: check against expected reply typ; note this may not be env.ret_tys. *)
       check_exp env exp1;
       typ exp1 <: (T.seq ts);
-      T.unit <: t
+      T.Non <: t
     | ICRejectPrim, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICRejectPrim in async flavor";
       check_exp env exp1;
       typ exp1 <: T.text;
-      T.unit <: t
+      T.Non <: t
     | ICErrorCodePrim, [] ->
       T.Prim (T.Int32) <: t
     | ICCallPrim, [exp1; exp2; k; r] ->

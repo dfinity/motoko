@@ -78,8 +78,8 @@ let seqP ps =
 let primE prim es =
   let ty = match prim with
     | ShowPrim _ -> T.text
-    | ICReplyPrim _ -> T.unit
-    | ICRejectPrim -> T.unit
+    | ICReplyPrim _ -> T.Non
+    | ICRejectPrim -> T.Non
     | ICErrorCodePrim -> T.Prim T.Int32
     | _ -> assert false (* implement more as needed *)
   in
