@@ -25,19 +25,19 @@ module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
 
 (* Helpers *)
 
-let sys_error_codeE () =
-  match !Flags.compile_mode with
+let error_codeE mode =
+  match mode with
   | Flags.ICMode -> callE
-            (idE "@int32ToErrorCode"
-               (T.Func(T.Local,T.Returns,[],[T.Prim T.Int32],[T.Variant T.catchErrorCodes])))
-            []
-            (ic_error_codeE())
+    (idE "@int32ToErrorCode"
+      (T.Func(T.Local,T.Returns,[],[T.Prim T.Int32],[T.Variant T.catchErrorCodes])))
+    []
+    (ic_error_codeE())
   | _ -> { it = TagE ("error", tupE []);
-            at = no_region;
-            note = {
-              note_typ = T.Variant (T.catchErrorCodes);
-              note_eff = T.Triv }
-          }
+           at = no_region;
+           note = {
+               note_typ = T.Variant (T.catchErrorCodes);
+               note_eff = T.Triv }
+         }
 
 let errorMessageE e =
 { it = PrimE (OtherPrim "errorMessage", [e]);
@@ -83,7 +83,7 @@ let new_async t1 =
   let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
   (async, fulfill, fail), call_new_async
 
-let new_nary_async_reply ts1 =
+let new_nary_async_reply mode ts1 =
   (* The async implementation isn't n-ary *)
   let t1 = T.seq ts1 in
   let (unary_async, unary_fulfill, fail), call_new_async = new_async t1 in
@@ -115,7 +115,7 @@ let new_nary_async_reply ts1 =
   (* construct the n-ary reject callback *)
   let nary_reject =
     let v = fresh_var "msg" T.text in
-    [v] -->* (fail -*- (make_errorE (sys_error_codeE()) v))
+    [v] -->* (fail -*- (make_errorE (error_codeE mode) v))
   in
   let async,reply,reject =
     fresh_var "async" (typ nary_async),
@@ -158,7 +158,7 @@ let letSeq ts e d_of_vs =
 
 (* The actual transformation *)
 
-let transform env prog =
+let transform mode env prog =
 
   (* the state *)
   let con_renaming = ref
@@ -176,7 +176,7 @@ let transform env prog =
      fragments, then we would simply start with an empty con_renaming and the prelude.
   *)
   in
-
+ 
   let rec t_typ (t:T.typ) =
     match t with
     | T.Prim _
@@ -270,7 +270,7 @@ let transform env prog =
         | t -> assert false in
       let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Replies, [], [], ts1)) in
       let u = fresh_var "u" T.unit in
-      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts1 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
                funcD post u (
                   let vs = fresh_vars "v" ts1 in
@@ -293,7 +293,7 @@ let transform env prog =
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
-      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts2 in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts2 in
       let _ = letEta in
       (blockE ( letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
                 letEta exp1' (fun v1 ->

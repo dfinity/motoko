@@ -461,7 +461,7 @@ let await_lowering =
   transform_if "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering mode =
-  transform_if "Async Lowering" Async.transform
+  transform_if "Async Lowering" (Async.transform mode)
 
 let tailcall_optimization =
   transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
