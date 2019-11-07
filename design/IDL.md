@@ -77,8 +77,7 @@ This is a summary of the grammar proposed:
   | bool
   | text
   | null
-  | reserved
-  | empty
+  | any | empty
 
 <constype>  ::=
   | opt <datatype>
@@ -274,21 +273,32 @@ The type `null` has exactly one value (the *null* value) and therefor carries no
 <primtype> ::= ... | null | ...
 ```
 
-#### Reserved
+#### Any and Empty
 
-The type `reserved` is a type with unknown content that ought to be ignored. Its purpose is to occupy field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record types below.
+The type `any` is a type with unknown content (i.e., it is the type of all possible values) that ought to be ignored. Its primary purpose is to occupy yet unused field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record type subtyping below.
 ```
 <primtype> ::= ... | reserved
 ```
-**Note:** This type has a similar role as *reserved fields* in proto buffers.
 
-
-#### Empty
-
-The type `empty` is the type of values that are not present. Its purpose is to mark variants that are not actually there, or -- as argument types of function reference -- indicate that they will not be called.
+Dually, the type `empty` is the type of unused or absent content (i.e., it is the type with no values). Its primary purpose is to occupy no longer used field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record type subtyping below.
+It can also be used to mark variants that are not actually there, or -- as argument types of function reference -- indicate that they will not be called.
 ```
 <primtype> ::= ... | empty
 ```
+
+Technically, the types of the IDL form a lattice by subtyping, where `any` and `empty` are the top and bottom element.
+
+##### Shorthands: Reserved and Deprecated
+
+When evolving record types over time (see below), it sometimes is useful to *reserve* fields for future use, or *deprecate* old fields so that they are no longer used. Defining the fields or keeping them around as "occupied" can prevent backwards/forwards compatibility problems.
+The types `reserved` and `deprecated` can be used for this purpose.
+See the discussion of record subtyping for more details.
+```
+<constype> ::= ....
+  | reserved    :=  any
+  | deprecated  :=  empty
+```
+
 
 ### Constructed Data
 
@@ -301,6 +311,7 @@ An *option* is a value of a specific data type that may be absent.
 ```
 <constype>  ::= opt <datatype> | ...
 ```
+
 
 #### Vectors
 
@@ -681,7 +692,25 @@ The semantics has no way of knowing whether that is intended or not, but this be
 
 However, this implies that -- although subtyping is transitive and the respective conversions compose -- the composition of conversions is not always *coherent*, i.e., it may return values different from a direct conversion.
 Unfortunately, a fully coherent semantics seems impossible to achieve for this case.
+
 In practice, users are not recommended to remove optional fields in an upgrade, avoiding the scenario.
+Instead, the preferred way to avoid backwards compatibility issues is to *deprecate* such fields by giving them type `opt deprecated`.
+Accordingly, both the following hold:
+```
+record {x : opt deprecated} <: record {x : opt T}
+record {x : opt T} <: record {x : opt deprecated}
+```
+The first is for outbound uses and holds by usual subtyping, the second is for inbound uses, by the auxiliary rule above.
+
+Dually, forward compatibility can be ensured by *reserving* a field via the type `opt reserved`.
+Accordingly, both the following hold:
+```
+record {x : opt T} <: record {x : opt reserved}
+record {x : opt reserved} <: record {x : opt T}
+```
+The first use again is for outbound uses, by usual subtyping, the second for inbound ones, by the auxiliary rule above.
+
+Note: The auxiliary subtyping rule above should not be invoked in a static check for upgradability of a service, with the exception of these two cases. We expect tooling to warn about any such dependency on the rule. The only purpose of allowing the other cases is for dynamic coercions, i.e., to make sure that subtyping is transitive and therefore avoids unexpected runtime failure after multiple upgrades in all cases.
 
 
 #### Variants
