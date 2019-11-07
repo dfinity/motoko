@@ -279,7 +279,7 @@ let transform mode env prog =
                   let r = [e] -->* (ic_rejectE (errorMessageE e)) in
                   (t_exp exp2) -*- tupE [k;r]);
 
-               expD (ic_callE post (tupE []) nary_reply reject);
+               expD (ic_callE post (seqE []) nary_reply reject);
                ]
                nary_async
       ).it
