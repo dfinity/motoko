@@ -684,7 +684,7 @@ Transitivity is necessary so that data compatibility is guaranteed in all cases 
 
 Note that this rule does not cover the case where the new version of the field has the same type as the old:
 ```
-record {x : opt nat} <: record {} <: record {x : opt text}
+record {x : opt text} <: record {} <: record {x : opt text}
 ```
 In this case, a direct access of the old value under the new interface, without going through the intermediate version, will be handled according to the ordinary rule for options, keeping its value.
 The semantics has no way of knowing whether that is intended or not, but this behaviour avoids any semantic ambiguity.
