@@ -1,3 +1,4 @@
+open Mo_config
 open Mo_types
 open Ir_def
 
@@ -20,20 +21,149 @@ open Construct
      a manifest tuple argument extended with a final reply continuation.
  *)
 
-(* written as a functor so we can allocate some temporary shared state without making it global *)
+module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
 
-type platform =
-    V1  (* legacy, Haskell *)
-  | V2  (* new, Rust *)
+(* Helpers *)
 
-module Transform(Platform : sig val platform : platform end) = struct
+let sys_error_codeE () =
+  match !Flags.compile_mode with
+  | Flags.ICMode -> callE
+            (idE "@int32ToErrorCode"
+               (T.Func(T.Local,T.Returns,[],[T.Prim T.Int32],[T.Variant T.catchErrorCodes])))
+            []
+            (ic_error_codeE())
+  | _ -> { it = TagE ("error", tupE []);
+            at = no_region;
+            note = {
+              note_typ = T.Variant (T.catchErrorCodes);
+              note_eff = T.Triv }
+          }
 
-  let platform = Platform.platform
+let errorMessageE e =
+{ it = PrimE (OtherPrim "errorMessage", [e]);
+  at = no_region;
+  note = { note_typ = T.text; note_eff = eff e }
+}
 
-  module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
+let make_errorE e_code e_msg =
+{ it = PrimE (OtherPrim "make_error", [e_code; e_msg]);
+  at = no_region;
+  note = { note_typ = T.Prim T.Error; note_eff = max (eff e_code) (eff e_msg) }
+}
 
-   (* the state *)
+let unary typ = [typ]
 
+let nary typ = T.as_seq typ
+
+let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
+
+let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
+
+let t_async as_seq t =
+  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT], [])
+
+let new_async_ret as_seq t = [t_async as_seq t; fulfillT as_seq t; failT]
+
+let new_asyncT =
+  T.Func (
+      T.Local,
+      T.Returns,
+      [ { var = "T"; bound = T.Any } ],
+      [],
+      new_async_ret unary (T.Var ("T", 0))
+    )
+
+let new_asyncE =
+  idE "@new_async" new_asyncT
+
+let new_async t1 =
+  let call_new_async = callE new_asyncE [t1] (tupE []) in
+  let async = fresh_var "async" (typ (projE call_new_async 0)) in
+  let fulfill = fresh_var "fulfill" (typ (projE call_new_async 1)) in
+  let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
+  (async, fulfill, fail), call_new_async
+
+let new_nary_async_reply ts1 =
+  (* The async implementation isn't n-ary *)
+  let t1 = T.seq ts1 in
+  let (unary_async, unary_fulfill, fail), call_new_async = new_async t1 in
+  let v' = fresh_var "v" t1 in
+  (* construct the n-ary async value, coercing the continuation, if necessary *)
+  let nary_async =
+    match ts1 with
+    | [t] ->
+      unary_async
+    | ts ->
+      let k' = fresh_var "k" (contT t1) in
+      let r' = fresh_var "r" err_contT in
+      let seq_of_v' = tupE (List.mapi (fun i _ -> projE v' i) ts) in
+      [k';r'] -->*  (unary_async -*- (tupE[([v'] -->* (k' -*- seq_of_v'));r']))
+  in
+  (* construct the n-ary reply callback that sends a sequence of values to fulfill the async *)
+  let nary_reply =
+    let vs,seq_of_vs =
+      match ts1 with
+      | [t] ->
+        let v = fresh_var "rep" t in
+        [v],v
+      | ts ->
+        let vs = fresh_vars "rep" ts in
+        vs, tupE vs
+    in
+    vs -->* (unary_fulfill -*- seq_of_vs)
+  in
+  (* construct the n-ary reject callback *)
+  let nary_reject =
+    let v = fresh_var "msg" T.text in
+    [v] -->* (fail -*- (make_errorE (sys_error_codeE()) v))
+  in
+  let async,reply,reject =
+    fresh_var "async" (typ nary_async),
+    fresh_var "reply" (typ nary_reply),
+    fresh_var "reject" (typ nary_reject)
+  in
+    (async, reply, reject),
+      blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
+        (tupE [nary_async; nary_reply; nary_reject])
+
+let letEta e scope =
+  match e.it with
+  | VarE _ -> scope e (* pure, so reduce *)
+  | _  -> let f = fresh_var "x" (typ e) in
+          letD f e :: (scope f) (* maybe impure; sequence *)
+
+let isAwaitableFunc exp =
+  match typ exp with
+  | T.Func (T.Shared _,T.Promises,_,_,_) -> true
+  | _ -> false
+
+(* Given sequence type ts, bind e of type (seq ts) to a
+ sequence of expressions supplied to decs d_of_es,
+ preserving effects of e when the sequence type is empty.
+ d_of_es must not duplicate or discard the evaluation of es.
+ *)
+
+let letSeq ts e d_of_vs =
+  match ts with
+  | [] ->
+    (expD e)::d_of_vs []
+  | [t] ->
+    let x = fresh_var "x" t in
+    let p = varP x in
+    (letP p e)::d_of_vs [x]
+  | ts ->
+    let xs = fresh_vars "x" ts in
+    let p = tupP (List.map varP xs) in
+    (letP p e)::d_of_vs (xs)
+
+(* The actual transformation *)
+
+let transform env prog =
+
+  (* the state *)
+  let con_renaming = ref
+     (Type.ConSet.fold (fun c env -> ConRenaming.add c c env)
+       env.Scope.con_env ConRenaming.empty)
   (* maps constructors to new constructors (name name, new stamp, new kind)
      it is initialized with the type constructors defined outside here, which are
      not rewritten.
@@ -41,153 +171,11 @@ module Transform(Platform : sig val platform : platform end) = struct
      If we run this translation on two program fragments (e.g. prelude and program)
      we would have to pass down the `con_renaming`. But this is simply the right thing
      to do for a pass that changes the context.
+
+     Eventually, pipeline will allow us to pass the con_renaming to downstream program
+     fragments, then we would simply start with an empty con_renaming and the prelude.
   *)
-
-  let con_renaming = ref ConRenaming.empty
-
-  (* Explicit invocation of reply, reject and call System API functions;
-     implemented (as far as possible) for V1;
-     TBC for V2 *)
-
-  let sys_replyE ts v = ic_replyE ts v
-
-  let sys_rejectE e = ic_rejectE e
-
-  let sys_callE v1 typs vs reply reject =
-    assert (typs = []);
-    ic_callE v1 (seqE vs) reply reject
-
-  let sys_error_codeE () =
-    match platform with
-    | V1 -> { it = TagE ("error", tupE []);
-              at = no_region;
-              note = {
-                note_typ = T.Variant (T.catchErrorCodes);
-                note_eff = T.Triv }
-            }
-    | V2 -> callE
-              (idE "@int32ToErrorCode"
-                 (T.Func(T.Local,T.Returns,[],[T.Prim T.Int32],[T.Variant T.catchErrorCodes])))
-              []
-              (ic_error_codeE())
-
-  let errorMessageE e =
-  { it = PrimE (OtherPrim "errorMessage", [e]);
-    at = no_region;
-    note = { note_typ = T.text; note_eff = eff e }
-  }
-
-  let make_errorE e_code e_msg =
-  { it = PrimE (OtherPrim "make_error", [e_code; e_msg]);
-    at = no_region;
-    note = { note_typ = T.Prim T.Error; note_eff = max (eff e_code) (eff e_msg) }
-  }
-
-  (* End of configuration *)
-
-  let unary typ = [typ]
-
-  let nary typ = T.as_seq typ
-
-  let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
-
-  let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
-
-  let t_async as_seq t =
-    T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT], [])
-
-  let new_async_ret as_seq t = [t_async as_seq t; fulfillT as_seq t; failT]
-
-  let new_asyncT =
-    T.Func (
-        T.Local,
-        T.Returns,
-        [ { var = "T"; bound = T.Any } ],
-        [],
-        new_async_ret unary (T.Var ("T", 0))
-      )
-
-  let new_asyncE =
-    idE "@new_async" new_asyncT
-
-  let new_async t1 =
-    let call_new_async = callE new_asyncE [t1] (tupE []) in
-    let async = fresh_var "async" (typ (projE call_new_async 0)) in
-    let fulfill = fresh_var "fulfill" (typ (projE call_new_async 1)) in
-    let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
-    (async, fulfill, fail), call_new_async
-
-  let new_nary_async_reply ts1 =
-    (* The async implementation isn't n-ary *)
-    let t1 = T.seq ts1 in
-    let (unary_async, unary_fulfill, fail), call_new_async = new_async t1 in
-    let v' = fresh_var "v" t1 in
-    (* construct the n-ary async value, coercing the continuation, if necessary *)
-    let nary_async =
-      match ts1 with
-      | [t] ->
-        unary_async
-      | ts ->
-        let k' = fresh_var "k" (contT t1) in
-        let r' = fresh_var "r" err_contT in
-        let seq_of_v' = tupE (List.mapi (fun i _ -> projE v' i) ts) in
-        [k';r'] -->*  (unary_async -*- (tupE[([v'] -->* (k' -*- seq_of_v'));r']))
-    in
-    (* construct the n-ary reply callback that sends a sequence of values to fulfill the async *)
-    let nary_reply =
-      let vs,seq_of_vs =
-        match ts1 with
-        | [t] ->
-          let v = fresh_var "rep" t in
-          [v],v
-        | ts ->
-          let vs = fresh_vars "rep" ts in
-          vs, tupE vs
-      in
-      vs -->* (unary_fulfill -*- seq_of_vs)
-    in
-    (* construct the n-ary reject callback *)
-    let nary_reject =
-      let v = fresh_var "msg" T.text in
-      [v] -->* (fail -*- (make_errorE (sys_error_codeE()) v))
-    in
-    let async,reply,reject =
-      fresh_var "async" (typ nary_async),
-      fresh_var "reply" (typ nary_reply),
-      fresh_var "reject" (typ nary_reject)
-    in
-      (async, reply, reject),
-        blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
-          (tupE [nary_async; nary_reply; nary_reject])
-
-  let letEta e scope =
-    match e.it with
-    | VarE _ -> scope e (* pure, so reduce *)
-    | _  -> let f = fresh_var "x" (typ e) in
-            letD f e :: (scope f) (* maybe impure; sequence *)
-
-  let isAwaitableFunc exp =
-    match typ exp with
-    | T.Func (T.Shared _,T.Promises,_,_,_) -> true
-    | _ -> false
-
-  (* Given sequence type ts, bind e of type (seq ts) to a
-   sequence of expressions supplied to decs d_of_es,
-   preserving effects of e when the sequence type is empty.
-   d_of_es must not duplicate or discard the evaluation of es.
-   *)
-  let letSeq ts e d_of_vs =
-    match ts with
-    | [] ->
-      (expD e)::d_of_vs []
-    | [t] ->
-      let x = fresh_var "x" t in
-      let p = varP x in
-      (letP p e)::d_of_vs [x]
-    | ts ->
-      let xs = fresh_vars "x" ts in
-      let p = tupP (List.map varP xs) in
-      (letP p e)::d_of_vs (xs)
+  in
 
   let rec t_typ (t:T.typ) =
     match t with
@@ -243,6 +231,7 @@ module Transform(Platform : sig val platform : platform end) = struct
 
   and t_field {lab; typ} =
     { lab; typ = t_typ typ }
+  in
 
   let rec t_exp (exp: exp) =
     { it = t_exp' exp;
@@ -285,16 +274,17 @@ module Transform(Platform : sig val platform : platform end) = struct
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
                funcD post u (
                   let vs = fresh_vars "v" ts1 in
-                  let k = vs -->* (sys_replyE ts1 (seqE vs)) in
+                  let k = vs -->* (ic_replyE ts1 (seqE vs)) in
                   let e = fresh_var "e" T.catch in
-                  let r = [e] -->* (sys_rejectE (errorMessageE e)) in
+                  let r = [e] -->* (ic_rejectE (errorMessageE e)) in
                   (t_exp exp2) -*- tupE [k;r]);
 
-               expD (sys_callE post [] [] nary_reply reject);
+               expD (ic_callE post (tupE []) nary_reply reject);
                ]
                nary_async
       ).it
     | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
+      assert (typs = []);
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises,tbs,ts1,ts2) ->
@@ -303,13 +293,12 @@ module Transform(Platform : sig val platform : platform end) = struct
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
-      let typs = List.map t_typ typs in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply ts2 in
       let _ = letEta in
       (blockE ( letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
                 letEta exp1' (fun v1 ->
                   letSeq ts1 exp2' (fun vs ->
-                      [ expD (sys_callE v1 typs vs nary_reply reject) ]
+                      [ expD (ic_callE v1 (tupE vs) nary_reply reject) ]
                     )
                   )
          )
@@ -374,9 +363,9 @@ module Transform(Platform : sig val platform : platform end) = struct
                   (t_typ (T.seq ts1),t_typ contT)
                 | t -> assert false in
               let v = fresh_var "v" t1 in
-              let k = v --> (sys_replyE ret_tys v) in
+              let k = v --> (ic_replyE ret_tys v) in
               let e = fresh_var "e" T.catch in
-              let r = [e] -->* (sys_rejectE (errorMessageE e)) in
+              let r = [e] -->* (ic_rejectE (errorMessageE e)) in
               let exp' = (t_exp cps) -*- tupE [k;r] in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
             | Replies -> assert false
@@ -437,16 +426,6 @@ module Transform(Platform : sig val platform : platform end) = struct
   and t_typ_binds typbinds = List.map t_typ_bind typbinds
 
   and t_prog (prog, flavor) = (t_block prog, { flavor with has_async_typ = false } )
+in
+  t_prog prog
 
-end
-
-let transform platform =
-  let module T = Transform(struct let platform = platform end) in
-  fun env prog ->
-  (*
-  Initialized the con_renaming with those type constructors already in scope.
-  Eventually, pipeline will allow us to pass the con_renaming to downstream program
-  fragments, then we would simply start with an empty con_renaming and the prelude.
-  *)
-  Type.ConSet.iter (fun c -> T.con_renaming := T.ConRenaming.add c c (!T.con_renaming)) env.Scope.con_env;
-  T.t_prog prog
