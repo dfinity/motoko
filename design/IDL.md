@@ -288,17 +288,6 @@ It can also be used to mark variants that are not actually there, or -- as argum
 
 Technically, the types of the IDL form a lattice by subtyping, where `any` and `empty` are the top and bottom element.
 
-##### Shorthands: Reserved and Deprecated
-
-When evolving record types over time (see below), it sometimes is useful to *reserve* fields for future use, or *deprecate* old fields so that they are no longer used. Defining the fields or keeping them around as "occupied" can prevent backwards/forwards compatibility problems.
-The types `reserved` and `deprecated` can be used for this purpose.
-See the discussion of record subtyping for more details.
-```
-<constype> ::= ....
-  | reserved    :=  any
-  | deprecated  :=  empty
-```
-
 
 ### Constructed Data
 
@@ -311,6 +300,16 @@ An *option* is a value of a specific data type that may be absent.
 ```
 <constype>  ::= opt <datatype> | ...
 ```
+##### Shorthands: Reserved and Deprecated
+ 
+When evolving record types over time (see below), it sometimes is useful to *reserve* fields for future use, or *deprecate* old fields so that they are no longer used. Defining the fields or keeping them around as "occupied" can prevent backwards/forwards compatibility problems.
+The types `reserved` and `deprecated` can be used for this purpose.
+See the discussion of record subtyping for more details.
+ ```
+<constype> ::= ....
+  | reserved    :=  opt any
+  | deprecated  :=  opt empty
+ ```
 
 
 #### Vectors
@@ -694,19 +693,19 @@ However, this implies that -- although subtyping is transitive and the respectiv
 Unfortunately, a fully coherent semantics seems impossible to achieve for this case.
 
 In practice, users are not recommended to remove optional fields in an upgrade, avoiding the scenario.
-Instead, the preferred way to avoid backwards compatibility issues is to *deprecate* such fields by giving them type `opt deprecated`.
+Instead, the preferred way to avoid backwards compatibility issues is to *deprecate* such fields by giving them type `deprecated`, a shorthand for `opt empty`.
 Accordingly, both the following hold:
 ```
-record {x : opt deprecated} <: record {x : opt T}
-record {x : opt T} <: record {x : opt deprecated}
+record {x : deprecated} <: record {x : opt T}
+record {x : opt T} <: record {x : deprecated}
 ```
 The first is for outbound uses and holds by usual subtyping, the second is for inbound uses, by the auxiliary rule above.
 
-Dually, forward compatibility can be ensured by *reserving* a field via the type `opt reserved`.
+Dually, forward compatibility can be ensured by *reserving* a field via the type `reserved`, a shorthand for `opt any`.
 Accordingly, both the following hold:
 ```
-record {x : opt T} <: record {x : opt reserved}
-record {x : opt reserved} <: record {x : opt T}
+record {x : opt T} <: record {x : reserved}
+record {x : reserved} <: record {x : opt T}
 ```
 The first use again is for outbound uses, by usual subtyping, the second for inbound ones, by the auxiliary rule above.
 
