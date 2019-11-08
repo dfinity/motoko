@@ -5015,7 +5015,7 @@ module FuncDec = struct
         message_cleanup env sort
       ))
     | Flags.AncientMode, Type.Promises -> assert false
-    | Flags.AncientMode, Type.Replies -> (* with callback *)
+    | Flags.AncientMode, Type.Replies -> (* with callbacks *)
       let ae0 = VarEnv.mk_fun_ae outer_ae in
       Func.of_body outer_env ["reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
         let get_reply = G.i (LocalGet (nr 0l)) in
