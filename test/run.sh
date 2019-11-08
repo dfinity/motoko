@@ -31,6 +31,7 @@ export MO_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
+IC_STUB_RUN=${IC_STUB:-ic-stub-run}
 ECHO=echo
 
 while getopts "a12sir" o; do
@@ -229,6 +230,7 @@ do
             elif [ $API = ic ]
             then
               run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
+              DRUN=$IC_STUB_RUN run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $base.mo
             else
               run wasm-run $WASM $out/$base.wasm
             fi

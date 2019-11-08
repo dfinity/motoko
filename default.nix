@@ -238,6 +238,7 @@ rec {
         drun
         haskellPackages.qc-motoko
         haskellPackages.lsp-int
+        ic-stub
         esm
       ] ++
       llvmBuildInputs;

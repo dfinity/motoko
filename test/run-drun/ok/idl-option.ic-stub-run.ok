@@ -1,0 +1,4 @@
+Completed CompleteUnit
+ok: nullCompleted (CompleteArg "DIDL\NUL\NUL")
+ok: nullCompleted (CompleteArg "DIDL\NUL\NUL")
+ok: FooCompleted (CompleteArg "DIDL\NUL\NUL")

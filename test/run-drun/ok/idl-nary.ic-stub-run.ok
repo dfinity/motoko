@@ -1,0 +1,12 @@
+Completed CompleteUnit
+Completed (CompleteArg "DIDL\NUL\STXqq\ETXOne\ETXTwo")
+Completed (CompleteArg "DIDL\NUL\ETXqqq\ETXOne\ETXTwo\ENQThree")
+Completed (CompleteArg "DIDL\NUL\EOTqqqq\ETXOne\ETXTwo\ENQThree\EOTFour")
+Completed (CompleteArg "DIDL\SOHl\EOT\NULq\SOHq\STXq\ETXq\SOH\NUL\ETXOne\ETXTwo\ENQThree\EOTFour")
+Completed (CompleteArg "DIDL\SOHl\EOT\NULq\SOHq\STXq\ETXq\SOH\NUL\ETXOne\ETXTwo\ENQThree\EOTFour")
+Completed (CompleteArg "DIDL\SOHl\EOT\NULq\SOHq\STXq\ETXq\SOH\NUL\ETXOne\ETXTwo\ENQThree\EOTFour")
+Completed (CompleteArg "DIDL\SOHl\EOT\NULq\SOHq\STXq\ETXq\SOH\NUL\ETXOne\ETXTwo\ENQThree\EOTFour")
+Completed (CompleteArg "DIDL\SOHl\EOT\NULq\SOHq\STXq\ETXq\SOH\NUL\ETXOne\ETXTwo\ENQThree\EOTFour")
+Rejected (0,"canister trapped: EvalTrapError :0.1 \"explicit trap\"")
+Rejected (0,"canister trapped: EvalTrapError :0.1 \"explicit trap\"")
+Completed (CompleteArg "DIDL\NUL\EOTqqqq\ETXOne\ETXTwo\ENQThree\EOTFour")
