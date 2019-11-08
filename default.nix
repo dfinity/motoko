@@ -12,18 +12,21 @@ let stdenv = nixpkgs.stdenv; in
 let subpath = p: import ./nix/gitSource.nix p; in
 
 let dev = import (builtins.fetchGit {
+  name = "dev-sources";
   url = "ssh://git@github.com/dfinity-lab/dev";
   # ref = "master";
   rev = "6fca1936fcd027aaeaccab0beb51defeee38a0ff";
 }) { system = nixpkgs.system; }; in
 
 let dfinity-repo = import (builtins.fetchGit {
+  name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   # ref = "master";
   rev = "3c82c6400b0eb8c5785669996f5b8007623cd9fc";
 }) { system = nixpkgs.system; }; in
 
 let sdk = import (builtins.fetchGit {
+  name = "sdk-sources";
   url = "ssh://git@github.com/dfinity-lab/sdk";
   ref = "paulyoung/js-user-library";
   rev = "42f15621bc5b228c7fd349cb52f265917d33a3a0";
