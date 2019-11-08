@@ -46,7 +46,7 @@ unsupported.mo:62.3-62.35: type error, actor classes are not supported; use an a
   (This is a limitation of the current version.)
 unsupported.mo:66.45-66.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version.)
-unsupported.mo:70.29-70.37: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+unsupported.mo:70.37-70.45: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
   (This is a limitation of the current version.)
 unsupported.mo:76.34-76.37: type error, freestanding async expression not yet supported
   (This is a limitation of the current version.)

@@ -119,6 +119,16 @@ let check_concrete env at t =
   check env at (T.concrete t)
     "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
 
+let check_field_hashes env what at =
+  Lib.List.iter_pairs
+    (fun x y ->
+      if not (T.is_typ x.T.typ) && not (T.is_typ y.T.typ) &&
+         Hash.hash x.T.lab = Hash.hash y.T.lab
+      then error env at "field names %s and %s in %s type have colliding hashes"
+        x.T.lab y.T.lab what;
+    )
+
+
 let rec check_typ env typ : unit =
   match typ with
   | T.Pre ->
@@ -185,11 +195,13 @@ let rec check_typ env typ : unit =
     check_shared env no_region t'
   | T.Obj (sort, fields) ->
     List.iter (check_typ_field env (Some sort)) fields;
+    check_field_hashes env "object" no_region fields;
     (* fields strictly sorted (and) distinct *)
     if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "object type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Variant fields ->
     List.iter (check_typ_field env None) fields;
+    check_field_hashes env "variant" no_region fields;
     if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "variant type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Mut typ ->
@@ -616,10 +628,16 @@ let rec check_exp env (exp:Ir.exp) : unit =
     (type_obj env'' T.Actor fs) <: (T.Obj (s0, val_tfs0));
     t0 <: t;
   | NewObjE (s, fs, t0) ->
+    (* check object *)
+    let t1 = type_obj env s fs in
+    check_typ env t1;
+
+    (* check annotation *)
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
-    (type_obj env s fs) <: (T.Obj (s0, val_tfs0));
+    t1 <: T.Obj (s0, val_tfs0);
+
     t0 <: t
 
 (* Cases *)

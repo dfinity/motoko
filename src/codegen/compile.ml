@@ -1261,8 +1261,8 @@ module Variant = struct
   let tag_field = Tagged.header_size
   let payload_field = Int32.add Tagged.header_size 1l
 
-  let hash_variant_label : Mo_types.Type.lab -> int32 = fun l ->
-    Int32.of_int (Hashtbl.hash l)
+  let hash_variant_label : Mo_types.Type.lab -> int32 =
+    Mo_types.Hash.hash
 
   let inject env l e =
     Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label l); e]
@@ -2425,10 +2425,6 @@ module Object = struct
   (* Number of object fields *)
   let size_field = Int32.add Tagged.header_size 0l
 
-  (* We use the same hashing function as Ocaml would *)
-  let hash_field_name s =
-    Int32.of_int (Hashtbl.hash s)
-
   module FieldEnv = Env.Make(String)
 
   (* This is for non-recursive objects, i.e. ObjNewE *)
@@ -2440,7 +2436,7 @@ module Object = struct
          then we need to allocate separate boxes for the non-public ones:
          List.filter (fun (_, vis, f) -> vis.it = Public) |>
       *)
-      List.map (fun (n,_) -> (hash_field_name n, n)) |>
+      List.map (fun (n,_) -> (Mo_types.Hash.hash n, n)) |>
       List.sort compare |>
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -2472,7 +2468,7 @@ module Object = struct
      let init_field (name, mk_is) : G.t =
        (* Write the hash *)
        get_ri ^^
-       compile_unboxed_const (hash_field_name name) ^^
+       compile_unboxed_const (Mo_types.Hash.hash name) ^^
        Heap.store_field (hash_position env name) ^^
        (* Write the pointer to the indirection *)
        get_ri ^^
@@ -2534,7 +2530,7 @@ module Object = struct
     with Invalid_argument _ -> false
 
   let idx env obj_type name =
-    compile_unboxed_const (hash_field_name name) ^^
+    compile_unboxed_const (Mo_types.Hash.hash name) ^^
     idx_hash env (is_mut_field env obj_type name)
 
   let load_idx env obj_type f =
