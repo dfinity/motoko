@@ -1,4 +1,16 @@
 module {
+  public func isEq<A>(a : [A], b : [A], eq : (A,A) -> Bool) : Bool {
+    if (a.len() != b.len()) { 
+      return false 
+    };
+    for (i in range(1,a.len())) {
+      if (not eq(a[i-1],b[i-1])) { 
+          return false 
+        }
+    };
+    return true; 
+  };
+
   public func append<A>(xs : [A], ys : [A]) : [A] {
     switch(xs.len(), ys.len()) {
       case (0, 0) { []; };
