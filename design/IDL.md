@@ -547,7 +547,7 @@ That is, outbound message results can only be replaced with a subtype (more fiel
 
 In addition, we define
 
-* *Round-tripping* data is both outbound and inbound, i.e., it is returned from the server to the client and later passed back to the server. Such round trips ought to be possible without losing fields.
+* *Round-tripping* data is both outbound and inbound, i.e., it is returned from the server to the client and later passed back to the server. Such round trips ought to be possible without losing fields that the client read (it may still lose new fields if the client is out of date with the server's interface).
 
 Subtyping applies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
 
