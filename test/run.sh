@@ -31,7 +31,7 @@ export MO_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
-IC_STUB_RUN=${IC_STUB:-ic-stub-run}
+IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
 ECHO=echo
 
 while getopts "a12sir" o; do
