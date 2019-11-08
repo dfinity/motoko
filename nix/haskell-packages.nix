@@ -89,4 +89,8 @@ stdenv: self: super: {
          license = stdenv.lib.licenses.bsd3;
          hydraPlatforms = stdenv.lib.platforms.none;
        }) {};
+
+  lsp-int = self.callCabal2nix "lsp-int" ../test/lsp-int { };
+
+  qc-motoko = self.callCabal2nix "qc-motoko" ../test/random { };
 }

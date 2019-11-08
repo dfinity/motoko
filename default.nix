@@ -214,9 +214,8 @@ rec {
     '';
   };
 
-  lsp-int = haskellPackages.callCabal2nix "lsp-int" test/lsp-int { };
-
-  qc-motoko = haskellPackages.callCabal2nix "qc-motoko" test/random { };
+  # “our” Haskell packages
+  inherit (haskellPackages) lsp-int qc-motoko;
 
   tests = stdenv.mkDerivation {
     name = "tests";
@@ -237,8 +236,8 @@ rec {
         js-user-library
         dvm
         drun
-        qc-motoko
-        lsp-int
+        haskellPackages.qc-motoko
+        haskellPackages.lsp-int
         esm
       ] ++
       llvmBuildInputs;
