@@ -277,7 +277,7 @@ The type `null` has exactly one value (the *null* value) and therefor carries no
 
 The type `any` is a type with unknown content (i.e., it is the type of all possible values) that ought to be ignored. Its primary purpose is to occupy yet unused field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record type subtyping below.
 ```
-<primtype> ::= ... | reserved
+<primtype> ::= ... | any
 ```
 
 Dually, the type `empty` is the type of unused or absent content (i.e., it is the type with no values). Its primary purpose is to occupy no longer used field ids in records in order to prevent backwards/forwards compatibility problems, see the description of record type subtyping below.
@@ -307,8 +307,8 @@ The types `reserved` and `deprecated` can be used for this purpose.
 See the discussion of record subtyping for more details.
  ```
 <constype> ::= ....
-  | reserved    :=  opt any
-  | deprecated  :=  opt empty
+  | reserved    :=  opt empty
+  | deprecated  :=  opt any
  ```
 
 
@@ -545,6 +545,10 @@ For upgrading data structures passed between service and client, it is important
 
 That is, outbound message results can only be replaced with a subtype (more fields) in an upgrade, while inbound message parameters can only be replaced with a supertype (fewer fields). This corresponds to the notions of co-variance and contra-variance in type systems.
 
+In addition, we define
+
+* *Round-tripping* data is both outbound and inbound, i.e., it is returned from the server to the client and later passed back to the server. Such round trips ought to be possible without losing fields.
+
 Subtyping applies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
 
 To make these constraints as flexible as possible, two special rules apply:
@@ -554,7 +558,7 @@ To make these constraints as flexible as possible, two special rules apply:
   - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;	
   - in an inbound record, a field of option (or null) type can also be added, in which case the service will read it as if its value was null.
 
-Taken together, the rules allow record types to support round-trips, i.e., occur in both inbound and outbound positions, while still remaining upgradable via new optional fields.
+Taken together, the rules allow even round-tripping record types to be upgraded by adding new fields, as long as these fields are optional.
 
 Possible future extensions: defaults for options, including for variants?
 
@@ -696,18 +700,18 @@ In practice, users are not recommended to remove optional fields in an upgrade, 
 Instead, the preferred way to avoid backwards compatibility issues is to *deprecate* such fields by giving them type `deprecated`, a shorthand for `opt empty`.
 Accordingly, both the following hold:
 ```
-record {x : deprecated} <: record {x : opt T}
 record {x : opt T} <: record {x : deprecated}
+record {x : deprecated} <: record {x : opt T}
 ```
-The first is for outbound uses and holds by usual subtyping, the second is for inbound uses, by the auxiliary rule above.
+The first is for inbound uses and holds by usual subtyping, the second is for outbound uses, by the auxiliary rule above.
 
 Dually, forward compatibility can be ensured by *reserving* a field via the type `reserved`, a shorthand for `opt any`.
 Accordingly, both the following hold:
 ```
-record {x : opt T} <: record {x : reserved}
 record {x : reserved} <: record {x : opt T}
+record {x : opt T} <: record {x : reserved}
 ```
-The first use again is for outbound uses, by usual subtyping, the second for inbound ones, by the auxiliary rule above.
+The first use again is for inbound uses, by usual subtyping, the second for outbound ones, by the auxiliary rule above.
 
 Note: The auxiliary subtyping rule above should not be invoked in a static check for upgradability of a service, with the exception of these two cases. We expect tooling to warn about any such dependency on the rule. The only purpose of allowing the other cases is for dynamic coercions, i.e., to make sure that subtyping is transitive and therefore avoids unexpected runtime failure after multiple upgrades in all cases.
 
@@ -976,7 +980,7 @@ T(int64)    = sleb128(-12) = 0x74
 T(float32)  = sleb128(-13) = 0x73
 T(float64)  = sleb128(-14) = 0x72
 T(text)     = sleb128(-15) = 0x71
-T(reserved) = sleb128(-16) = 0x70
+T(any)      = sleb128(-16) = 0x70
 T(empty)    = sleb128(-17) = 0x6f
 
 T : <constype> -> i8*
@@ -1042,7 +1046,7 @@ M(z : float<N>) = f<N>(z)
 M(b : bool)     = i8(if b then 1 else 0)
 M(t : text)     = leb128(|utf8(t)|) i8*(utf8(t))
 M(_ : null)     = .
-M(_ : reserved) = .
+M(_ : any)      = .
 // NB: M(_ : empty) will never be called
 
 M : <val> -> <constype> -> i8*
