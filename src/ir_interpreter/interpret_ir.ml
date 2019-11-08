@@ -504,7 +504,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
 
     let f = interpret_message env exp.at x args
-              (fun env' ->
+    (fun env' ->
                 interpret_exp env' e) in
 
     let v = V.Func (cc, f) in
