@@ -71,7 +71,7 @@ let find id env =
 let trace_depth = ref 0
 
 let trace fmt =
-    Printf.ksprintf (fun s ->
+  Printf.ksprintf (fun s ->
     Printf.printf "%s%s\n%!" (String.make (2 * !trace_depth) ' ') s
   ) fmt
 
