@@ -1,2 +1,2 @@
 Completed CompleteUnit
-Rejected (0,"canister trapped: EvalTrapError :0.1 \"explicit trap\"")
+Rejected (RC_CANISTER_ERROR,"canister trapped: EvalTrapError :0.1 \"explicit trap\"")

@@ -1,10 +1,10 @@
 Completed CompleteUnit
 2
-Rejected (0,"canister did not respond")
+Rejected (RC_CANISTER_ERROR,"canister did not respond")
 3
-Rejected (0,"canister did not respond")
+Rejected (RC_CANISTER_ERROR,"canister did not respond")
 4
-Rejected (0,"canister did not respond")
+Rejected (RC_CANISTER_ERROR,"canister did not respond")
 4
-Rejected (0,"canister did not respond")
+Rejected (RC_CANISTER_ERROR,"canister did not respond")
 Completed (CompleteArg "DIDL\NUL\SOH}\EOT")

@@ -1,4 +1,4 @@
 Completed CompleteUnit
-1Rejected (0,"canister trapped: EvalTrapError :0.1 \"unimplemented: reject\"")
+1Rejected (RC_CANISTER_REJECT,"Error")
 1okCompleted (CompleteArg "DIDL\NUL\NUL")
-1okRejected (0,"canister trapped: EvalTrapError :0.1 \"unimplemented: reject\"")
+1okRejected (RC_CANISTER_REJECT,"Error")

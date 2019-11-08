@@ -13,6 +13,7 @@ module IC.Stub where
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BSC
+import qualified Data.ByteString.Lazy.UTF8 as BSU
 import qualified Data.Vector as V
 import qualified Data.Map as M
 import qualified Data.IntMap as IM
@@ -51,7 +52,23 @@ type EntityId = Blob
 type CanisterId = EntityId
 type MethodName = String
 type RequestID = Blob
-type RejectCode = Integer
+
+-- Reject code
+
+data RejectCode
+    = RC_SYS_FATAL
+    | RC_SYS_TRANSIENT
+    | RC_DESTINATION_INVALID
+    | RC_CANISTER_REJECT
+    | RC_CANISTER_ERROR
+  deriving Show
+
+rejectCode :: RejectCode -> Int
+rejectCode RC_SYS_FATAL           = 1
+rejectCode RC_SYS_TRANSIENT       = 2
+rejectCode RC_DESTINATION_INVALID = 3
+rejectCode RC_CANISTER_REJECT     = 4
+rejectCode RC_CANISTER_ERROR      = 5
 
 -- Abstract HTTP Interface
 
@@ -139,14 +156,14 @@ readRequest (StatusRequest rid) =
 
 readRequest (QueryRequest method arg) =
   gets (M.lookup dummyCanisterId . canisters) >>= \case
-    Nothing -> return $ Rejected (0, "canister does not exist")
-    Just Nothing -> return $ Rejected (0, "canister is empty")
+    Nothing -> return $ Rejected (RC_DESTINATION_INVALID, "canister does not exist")
+    Just Nothing -> return $ Rejected (RC_DESTINATION_INVALID, "canister is empty")
     Just (Just (CanState wasm_state can_mod)) ->
       case M.lookup method (query_methods can_mod) of
-        Nothing -> return $ Rejected (0, "query method does not exist")
+        Nothing -> return $ Rejected (RC_DESTINATION_INVALID, "query method does not exist")
         Just f ->
           case f (Arg arg dummyUserId) wasm_state of
-            Trap msg -> return $ Rejected (0, "canister trapped: " ++ msg)
+            Trap msg -> return $ Rejected (RC_CANISTER_ERROR, "canister trapped: " ++ msg)
             Return (Reply res) -> return $ Completed (CompleteArg res)
             Return (Reject (rc,rm)) -> return $ Rejected (rc, rm)
 
@@ -186,11 +203,11 @@ processRequest :: ICT m => AsyncRequest -> m ()
 processRequest r@(InstallRequest can_mod arg) =
   case parseCanister can_mod of
     Left err ->
-      setReqStatus r (Rejected (0, "Parsing failed: " ++ err))
+      setReqStatus r (Rejected (RC_SYS_FATAL, "Parsing failed: " ++ err))
     Right can_mod ->
       case init_method can_mod (dummyCanisterId, arg) of
         Trap msg ->
-          setReqStatus r (Rejected (0, "Initialization trapped: " ++ msg))
+          setReqStatus r (Rejected (RC_CANISTER_ERROR, "Initialization trapped: " ++ msg))
         Return wasm_state -> do
           createCanister dummyCanisterId can_mod wasm_state
           setReqStatus r (Completed CompleteUnit)
@@ -198,14 +215,14 @@ processRequest r@(InstallRequest can_mod arg) =
 processRequest r@(UpdateRequest method arg) = do
   setReqStatus r Processing
   gets (M.lookup dummyCanisterId . canisters) >>= \case
-    Nothing -> setReqStatus r $ Rejected (0, "canister does not exist")
-    Just Nothing -> setReqStatus r $ Rejected (0, "canister is empty")
+    Nothing -> setReqStatus r $ Rejected (RC_DESTINATION_INVALID, "canister does not exist")
+    Just Nothing -> setReqStatus r $ Rejected (RC_DESTINATION_INVALID, "canister is empty")
     Just (Just (CanState wasm_state can_mod)) ->
       case M.lookup method (update_methods can_mod) of
-        Nothing -> setReqStatus r $ Rejected (0, "update method does not exist")
+        Nothing -> setReqStatus r $ Rejected (RC_DESTINATION_INVALID, "update method does not exist")
         Just f ->
           case f (Arg arg dummyUserId) wasm_state of
-            Trap msg -> setReqStatus r $ Rejected (0, "canister trapped: " ++ msg)
+            Trap msg -> setReqStatus r $ Rejected (RC_CANISTER_ERROR, "canister trapped: " ++ msg)
             Return (new_state, mb_response) -> do
               setCanisterState dummyCanisterId new_state
               case mb_response of
@@ -217,7 +234,7 @@ processRequest r@(UpdateRequest method arg) = do
 
 starvedRequest :: ICT m => AsyncRequest -> m ()
 starvedRequest r@(UpdateRequest method arg) =
-  setReqStatus r $ Rejected (0, "canister did not respond")
+  setReqStatus r $ Rejected (RC_CANISTER_ERROR, "canister did not respond")
 
 runToCompletion :: ICT m => m ()
 runToCompletion =
@@ -354,7 +371,7 @@ systemAPI esref =
           _ -> fail "ic.trap: invalid argument"
       ]
     , (,) "msg"
-      [ unimplemented "reject" [i64, i32, i32] []
+      [ (,,,) "reject" [i64, i32, i32] [] msg_reject
       , (,,,) "reply" [i64, i32, i32] [] msg_reply
       , unimplemented "error_code" [i64] [i32]
       , (,,,) "arg_data_copy" [i64, i32, i32, i32] [] arg_data_copy
@@ -405,6 +422,15 @@ systemAPI esref =
       modES esref (\es -> es { response = Just (Reply bytes) })
       return []
     msg_reply _ = fail "msg_reply: invalid argument"
+
+    msg_reject :: [W.Value] -> HostFunc s
+    msg_reject [W.I64 _nonce, W.I32 ptr, W.I32 len] = do
+      mem <- getsES esref memory
+      bytes <- getBytes mem (fromIntegral ptr) len
+      let msg = BSU.toString bytes
+      modES esref (\es -> es { response = Just (Reject (RC_CANISTER_REJECT, msg)) })
+      return []
+    msg_reject _ = fail "msg_reply: invalid argument"
 
 
 
