@@ -1,0 +1,28 @@
+cabal-version:       >=1.10
+name:                ic-stub
+version:             0.1.0.0
+author:              Joachim Breitner
+maintainer:          mail@joachim-breitner.de
+build-type:          Simple
+
+executable ic-stub-run
+  main-is:             ic-stub-run.hs
+  hs-source-dirs:      src
+  other-modules:       IC.Stub
+  other-modules:       IC.DRun.Parse
+  build-depends:       base >=4.11 && <5
+  build-depends:       optparse-applicative
+  build-depends:       filepath
+  build-depends:       hex-text
+  build-depends:       text
+  build-depends:       bytestring
+  build-depends:       containers
+  build-depends:       winter
+  build-depends:       mtl
+  build-depends:       transformers
+  build-depends:       binary
+  build-depends:       data-default-class
+  build-depends:       vector
+  build-depends:       primitive
+  default-language:    Haskell2010
+  ghc-options:        -rtsopts

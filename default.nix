@@ -50,7 +50,7 @@ let real-drun =
 let js-user-library = sdk.js-user-library; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
-      overrides = import nix/haskell-packages.nix stdenv;
+      overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
   libtommath = nixpkgs.fetchFromGitHub {
@@ -215,7 +215,7 @@ rec {
   };
 
   # “our” Haskell packages
-  inherit (haskellPackages) lsp-int qc-motoko;
+  inherit (haskellPackages) lsp-int qc-motoko ic-stub;
 
   tests = stdenv.mkDerivation {
     name = "tests";
@@ -470,6 +470,7 @@ rec {
       stdlib-doc-live
       produce-exchange
       users-guide
+      ic-stub
     ];
   };
 
