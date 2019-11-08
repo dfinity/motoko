@@ -16,8 +16,6 @@ unsupported.mo:8.31-8.53: type error, shared function types are non-shared.
   (This is a limitation of the current version.)
 unsupported.mo:19.19-19.21: type error, shared, async function must be called within an await expression
   (This is a limitation of the current version.)
-unsupported.mo:23.16-23.18: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
 unsupported.mo:28.8-28.9: type error, argument to await must be a call expression
   (This is a limitation of the current version.)
 unsupported.mo:32.17-32.29: type error, unsupported async block

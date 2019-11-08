@@ -168,16 +168,20 @@ let rec check_typ env typ : unit =
       List.iter (fun t -> check_shared env no_region t) ts1;
       match control with
       | T.Returns ->
-        (* async translations changes result of one-shot function.
-           this can change once we preserve the return type of Promising functions
-           past async translation
-        *)
-        if env.flavor.Ir.has_async_typ then
-          check env' no_region (sort = T.Shared T.Write)
-            "one-shot query function pointless"
+        check env' no_region (sort = T.Shared T.Write)
+          "one-shot query function pointless"
       | T.Promises ->
+        check env no_region env.flavor.Ir.has_async_typ
+          "promising function in post-async flavor";
         check env' no_region (sort <> T.Local)
           "promising function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
+        check env' no_region (List.for_all T.shared ts)
+          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
+      | T.Replies ->
+        check env no_region (not env.flavor.Ir.has_async_typ)
+          "replying function in pre-async flavor";
+        check env' no_region (sort <> T.Local)
+          "replying function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
         check env' no_region (List.for_all T.shared ts)
           "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
     end else
@@ -366,14 +370,33 @@ let rec check_exp env (exp:Ir.exp) : unit =
       (* TODO: check against expected reply typ; note this may not be env.ret_tys. *)
       check_exp env exp1;
       typ exp1 <: (T.seq ts);
-      T.unit <: t
+      T.Non <: t
     | ICRejectPrim, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICRejectPrim in async flavor";
       check_exp env exp1;
       typ exp1 <: T.text;
-      T.unit <: t
+      T.Non <: t
     | ICErrorCodePrim, [] ->
       T.Prim (T.Int32) <: t
+    | ICCallPrim, [exp1; exp2; k; r] ->
+      check_exp env exp1;
+      check_exp env exp2;
+      check_exp env k;
+      check_exp env r;
+      let t1 = T.promote (typ exp1) in
+      begin match t1 with
+      | T.Func (sort, T.Replies, [], arg_tys, ret_tys) ->
+        check_exp env exp2;
+        let t_arg = T.seq arg_tys in
+        typ exp2 <: t_arg;
+        check_concrete env exp.at t_arg;
+        typ k <: T.Func (T.Local, T.Returns, [], ret_tys, []);
+        typ r <: T.Func (T.Local, T.Returns, [], [T.text], []);
+      | T.Non -> () (* dead code, not much to check here *)
+      | _ ->
+         error env exp1.at "expected function type, but expression produces type\n  %s"
+           (T.string_of_typ_expand t1)
+    end
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
