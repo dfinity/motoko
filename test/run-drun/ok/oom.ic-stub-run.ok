@@ -1,3 +1,6 @@
-Completed CompleteUnit
-Rejected (RC_CANISTER_ERROR,"canister did not respond")
-Rejected (RC_CANISTER_ERROR,"canister did not respond")
+→ install
+← completed
+→ update doloop(0x4449444c0000)
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update doloop(0x4449444c0000)
+← rejected (RC_CANISTER_ERROR): canister did not respond

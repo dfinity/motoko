@@ -1,5 +1,10 @@
-Completed CompleteUnit
-Completed (CompleteArg "DIDL\STXl\SOH\134\142\183\STX\SOHl\NUL\SOH\NUL")
-Completed (CompleteArg "DIDL\STXl\SOH\134\142\183\STX\SOHl\NUL\SOH\NUL")
-Completed (CompleteArg "DIDL\SOHl\ETX\NUL|\SOH}\188\254\247\177\STXq\SOH\NUL\255\255\ETX\128 \ETXXXX")
-Completed (CompleteArg "DIDL\NUL\NUL")
+→ install
+← completed
+→ update foo1(0x4449444c0000)
+← completed: 0x4449444c026c01868eb702016c000100
+→ update foo2(0x4449444c0000)
+← completed: 0x4449444c026c01868eb702016c000100
+→ update out(0x4449444c0000)
+← completed: 0x4449444c016c03007c017dbcfef7b102710100ffff03802003585858
+→ update input(0x4449444c016c03007c017dbcfef7b102710100ffff03802003585858)
+← completed: 0x4449444c0000

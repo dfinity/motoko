@@ -1,18 +1,44 @@
-Completed CompleteUnit
+→ install
+← completed
+→ update inc(0x4449444c0000)
 2
-Rejected (RC_CANISTER_ERROR,"canister did not respond")
+
+
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update inc(0x4449444c0000)
 3
-Rejected (RC_CANISTER_ERROR,"canister did not respond")
+
+
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update inc(0x4449444c0000)
 4
-Rejected (RC_CANISTER_ERROR,"canister did not respond")
+
+
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update printCounter(0x4449444c0000)
 4
-Rejected (RC_CANISTER_ERROR,"canister did not respond")
-Completed (CompleteArg "DIDL\NUL\SOH}\EOT")
+
+
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update get(0x4449444c0000)
+← completed: 0x4449444c00017d04
+→ query read(0x4449444c0000)
 5
-Completed (CompleteArg "DIDL\NUL\SOH}\EOT")
+
+
+← completed: 0x4449444c00017d04
+→ update printCounter(0x4449444c0000)
 4
-Rejected (RC_CANISTER_ERROR,"canister did not respond")
+
+
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ query read(0x4449444c0000)
 5
-Completed (CompleteArg "DIDL\NUL\SOH}\EOT")
+
+
+← completed: 0x4449444c00017d04
+→ update printCounter(0x4449444c0000)
 4
-Rejected (RC_CANISTER_ERROR,"canister did not respond")
+
+
+← rejected (RC_CANISTER_ERROR): canister did not respond

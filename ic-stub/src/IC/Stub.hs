@@ -357,7 +357,7 @@ modES (_, esref) f = lift $ modifySTRef esref (fmap f)
 putBytes :: PrimMonad m => ESRef (PrimState m) -> BS.ByteString -> m ()
 putBytes (pref, _esref) bytes =
   stToPrim (readSTRef pref) >>= \case
-    True -> unsafeIOToPrim (BS.putStr bytes)
+    True -> unsafeIOToPrim (BSC.putStrLn bytes)
     False -> return ()
 
 

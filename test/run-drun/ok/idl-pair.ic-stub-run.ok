@@ -1,2 +1,4 @@
-Completed CompleteUnit
-Completed (CompleteArg "DIDL\SOHl\STX\NUL|\SOH|\SOH\NUL\STX\ENQ")
+→ install
+← completed
+→ update len2(0x4449444c0002717102486905576f726c64)
+← completed: 0x4449444c016c02007c017c01000205

@@ -1,3 +1,6 @@
-Completed CompleteUnit
-Completed (CompleteArg "DIDL\NUL\SOHq\fHello World!")
-Completed (CompleteArg "DIDL\NUL\SOHq\fHello World!")
+→ install
+← completed
+→ query hello(0x4449444c00017105576f726c64)
+← completed: 0x4449444c0001710c48656c6c6f20576f726c6421
+→ query hello2(0x4449444c00017105576f726c64)
+← completed: 0x4449444c0001710c48656c6c6f20576f726c6421

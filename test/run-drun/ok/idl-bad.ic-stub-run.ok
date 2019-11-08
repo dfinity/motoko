@@ -1,2 +1,4 @@
-Completed CompleteUnit
-Rejected (RC_CANISTER_ERROR,"canister trapped: EvalTrapError :0.1 \"explicit trap\"")
+→ install
+← completed
+→ query foo(0x4e4f544449444c)
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "explicit trap"

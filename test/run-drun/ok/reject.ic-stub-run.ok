@@ -1,4 +1,13 @@
-Completed CompleteUnit
-1Rejected (RC_CANISTER_REJECT,"Error")
-1okCompleted (CompleteArg "DIDL\NUL\NUL")
-1okRejected (RC_CANISTER_REJECT,"Error")
+→ install
+← completed
+→ update reject1(0x4449444c0000)
+1
+← rejected (RC_CANISTER_REJECT): Error
+→ update reject2(0x4449444c0000)
+1
+ok
+← completed: 0x4449444c0000
+→ update reject3(0x4449444c0000)
+1
+ok
+← rejected (RC_CANISTER_REJECT): Error

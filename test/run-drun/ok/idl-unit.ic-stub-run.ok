@@ -1,2 +1,4 @@
-Completed CompleteUnit
-Completed (CompleteArg "DIDL\NUL\NUL")
+→ install
+← completed
+→ query unit_id(0x4449444c0000)
+← completed: 0x4449444c0000
