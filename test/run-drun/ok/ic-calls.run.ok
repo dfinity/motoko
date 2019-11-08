@@ -1,0 +1,9 @@
+ic-calls.mo:18.9-18.10: warning, this pattern consuming type
+  Int
+does not cover value
+  0 or -1 or _
+ic-calls.mo:19.9-19.17: warning, this pattern consuming type
+  (Int, Bool)
+does not cover value
+  (1, false) or
+  (0 or -1 or _, _)

@@ -8,9 +8,9 @@ let a = async {
     public func get_b() : Text { b };
   };
   let (a, b) = (o.get_a(), o.get_b());
-  print a;
-  print b;
-  print "\n";
+  debugPrint a;
+  debugPrint b;
+  debugPrint "\n";
 };
 
 let b = async {
@@ -21,9 +21,9 @@ let b = async {
     public func get_b() : Text { b };
   };
   let (a, b) = (o.get_a(), o.get_b());
-  print a;
-  print b;
-  print "\n";
+  debugPrint a;
+  debugPrint b;
+  debugPrint "\n";
 };
 
 let c = async {
@@ -34,9 +34,9 @@ let c = async {
     public func get_b() : Text { b };
   };
   let (a, b) = (o.get_a(), o.get_b());
-  print a;
-  print b;
-  print "\n";
+  debugPrint a;
+  debugPrint b;
+  debugPrint "\n";
 };
 
 let d = async {
@@ -47,9 +47,9 @@ let d = async {
     public func get_b() : Text { b };
   };
   let (a, b) = (o.get_a(), o.get_b());
-  print a;
-  print b;
-  print "\n";
+  debugPrint a;
+  debugPrint b;
+  debugPrint "\n";
 };
 
 let e = async {
@@ -63,7 +63,7 @@ let e = async {
     };
   };
   let (a, b) = o.get_ab();
-  print a;
-  print b;
-  print "\n";
+  debugPrint a;
+  debugPrint b;
+  debugPrint "\n";
 };

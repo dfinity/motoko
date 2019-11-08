@@ -4,7 +4,7 @@ async {
 { var i = 0;
   var j = 0;
   loop {
-   printNat(j);
+   debugPrintNat(j);
    assert(j == i);
    i += 1;
    j += 1;
@@ -17,7 +17,7 @@ async {
   var i = 0;
   var j = 0;
   loop {
-    printNat(j);
+    debugPrintNat(j);
     assert(j == i);
     i += 1;
     j += 1;
@@ -29,7 +29,7 @@ async {
   var i = 0;
   var j = 0;
   loop {
-   printNat(j);
+   debugPrintNat(j);
    assert(j == i);
    await (async (i += 1));
    j += 1;
@@ -46,7 +46,7 @@ async {
      break l;
      assert(false);
    };
-   printNat(j);
+   debugPrintNat(j);
    assert(j == i);
    await (async (i += 1));
    j += 1;

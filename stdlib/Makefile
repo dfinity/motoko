@@ -19,13 +19,19 @@ TESTS=\
 	ArrayTest \
 	AssocList \
 	DocTable \
+  Function \
+  FunctionTest \
 	Hash \
 	Int \
 	IntTest \
+  Iter \
+  IterTest \
 	List \
 	ListTest \
 	Nat \
 	NatTest \
+  None \
+  NoneTest \
 	Option \
 	OptionTest \
 	Result \
@@ -68,10 +74,22 @@ $(OUTDIR)/Array.out: array.mo | $(OUTDIR)
 $(OUTDIR)/ArrayTest.out: arrayTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
+$(OUTDIR)/Function.out: function.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/FunctionTest.out: functionTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
 $(OUTDIR)/Int.out: int.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/IntTest.out: intTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Iter.out: iter.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/IterTest.out: iterTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Nat.out: nat.mo | $(OUTDIR)
@@ -81,6 +99,12 @@ $(OUTDIR)/NatTest.out: natTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Hash.out: hash.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/None.out: none.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/NoneTest.out: noneTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Option.out: option.mo | $(OUTDIR)

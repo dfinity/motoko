@@ -89,15 +89,14 @@ let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
   let parse = Parser.parse_prog in
   match parse_with Lexer.Normal lexer parse name with
-  | Ok prog -> Diag.return (prog, Filename.current_dir_name)
+  | Ok prog -> Diag.return (prog, name)
   | Error e -> Error [e]
 
 let parse_file filename : parse_result =
   let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
   let parse = Parser.parse_prog in
-  let name = Filename.basename filename in
-  let result = parse_with Lexer.Normal lexer parse name in
+  let result = parse_with Lexer.Normal lexer parse filename in
   close_in ic;
   match result with
   | Ok prog -> Diag.return (prog, filename)
@@ -462,8 +461,7 @@ let await_lowering =
   transform_if "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering mode =
-  let platform = if mode = Flags.ICMode then Async.V2 else Async.V1 in
-  transform_if "Async Lowering" (Async.transform platform)
+  transform_if "Async Lowering" (Async.transform mode)
 
 let tailcall_optimization =
   transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
@@ -534,8 +532,7 @@ let compile_string mode s name : compile_result =
 let interpret_ir_prog inp_env libs progs =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  Flags.compile_mode := Flags.WasmMode; (* REMOVE THIS HACK *)
-  let prog_ir = lower_prog Flags.WasmMode initial_stat_env inp_env libs progs name in
+  let prog_ir = lower_prog (!Flags.compile_mode) initial_stat_env inp_env libs progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
