@@ -3,10 +3,12 @@ module {
     if (a.len() != b.len()) { 
       return false 
     };
-    for (i in range(1,a.len())) {
-      if (not eq(a[i-1],b[i-1])) { 
-          return false 
-        }
+    var i = 0;
+    while (i < a.len()) {
+      if (not eq(a[i],b[i])) { 
+        return false 
+      };
+      i += 1
     };
     return true; 
   };
