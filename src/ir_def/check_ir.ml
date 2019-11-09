@@ -618,9 +618,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | ActorE (id, ds, fs, t0) ->
     let env' = { env with async = false } in
     let ve0 = T.Env.singleton id t0 in
-    let scope0 = { empty_scope with val_env = ve0 } in
-    let scope1 = List.fold_left (gather_dec env') scope0 ds in
-    let env'' = adjoin env' scope1 in
+    let scope1 = List.fold_left (gather_dec env') empty_scope ds in
+    let env'' = adjoin (adjoin_vals env' ve0) scope1 in
     check_decs env'' ds;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
