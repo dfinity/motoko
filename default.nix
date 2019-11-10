@@ -33,7 +33,7 @@ let dev = import (builtins.fetchGit {
 let dfinity-repo = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   # ref = "master";
-  rev = "3c82c6400b0eb8c5785669996f5b8007623cd9fc";
+  rev = "5e124292f17f55120738742b93fbbd02e83b14bf";
 }) { system = nixpkgs.system; }; in
 
 let sdk = import (builtins.fetchGit {
@@ -54,7 +54,7 @@ let real-dvm =
 
 let real-drun =
   if drun == null
-  then dfinity-repo.dfinity.drun
+  then dfinity-repo.dfinity.rs.drun
   else drun; in
 
 let js-user-library = sdk.js-user-library; in
