@@ -3916,7 +3916,7 @@ module Serialization = struct
 
       let assert_prim_typ () =
         check_prim_typ t ^^
-        E.else_trap_with env ("IDL error: unexpected IDL typ when parsing " ^ string_of_typ t)
+        E.else_trap_with env ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
       in
 
 
@@ -3927,7 +3927,7 @@ module Serialization = struct
         (* make sure index is not negative *)
         get_idltyp ^^
         compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
-        E.else_trap_with env ("IDL error: expected composite typ when parsing " ^ string_of_typ t) ^^
+        E.else_trap_with env ("IDL error: expected composite type when parsing " ^ string_of_typ t) ^^
         ReadBuf.alloc env (fun get_typ_buf ->
           (* Update typ_buf *)
           ReadBuf.set_ptr get_typ_buf (
@@ -3941,7 +3941,7 @@ module Serialization = struct
           ReadBuf.read_sleb128 env get_typ_buf ^^
           (* Check it is the expected value *)
           compile_eq_const idl_tycon_id ^^
-          E.else_trap_with env ("IDL error: wrong composite typ when parsing " ^ string_of_typ t) ^^
+          E.else_trap_with env ("IDL error: wrong composite type when parsing " ^ string_of_typ t) ^^
           (* to the work *)
           f get_typ_buf
         ) in
