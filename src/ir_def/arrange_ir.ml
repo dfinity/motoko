@@ -65,6 +65,7 @@ and prim = function
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICErrorCodePrim   -> Atom "ICErrorCodePrim"
+  | ICCallPrim        -> Atom "ICCallPrim"
 
 and mut = function
   | Const -> Atom "Const"
