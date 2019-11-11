@@ -11,7 +11,7 @@ type outputter = unit -> unit
 
 (* noise reduction *)
 
-let chatty = ref true
+let chatty = ref false
 
 (* read nothing *)
 
@@ -510,7 +510,7 @@ let argspec = Arg.align
   "--prose", Arg.Unit (set_format Prose), " output indented prose";
   "--json", Arg.Unit (set_format Json), " output JSON values";
   "--idl", Arg.Unit (set_format Idl), " output IDL values (default)";
-  "--quiet", Arg.Unit (fun () -> chatty := false), " suppress commentary";
+  "--verbose", Arg.Unit (fun () -> chatty := true), " amend commentary";
   "--version",
     Arg.Unit (fun () -> Printf.printf "%s\n" banner; exit 0), " show version";
 ]
