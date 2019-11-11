@@ -1,5 +1,5 @@
 open Ir_def
-open As_types
+open Mo_types
 
 open Source
 open Ir

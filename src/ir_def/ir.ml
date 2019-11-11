@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 
 type id = string
 
@@ -106,9 +106,12 @@ and prim =
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
+  | CPSAwait
+  | CPSAsync
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICErrorCodePrim
+  | ICCallPrim
 
 
 (* Declarations *)

@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 open Source
 open Ir
 open Wasm.Sexpr
@@ -60,9 +60,12 @@ and prim = function
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
   | OtherPrim s       -> Atom s
+  | CPSAwait          -> Atom "CPSAwait"
+  | CPSAsync          -> Atom "CPSAsync"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICErrorCodePrim   -> Atom "ICErrorCodePrim"
+  | ICCallPrim        -> Atom "ICCallPrim"
 
 and mut = function
   | Const -> Atom "Const"
