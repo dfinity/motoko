@@ -1,14 +1,14 @@
 module {
-  public func isEq<A>(a : [A], b : [A], eq : (A,A) -> Bool) : Bool {
+  public func equals<A>(a : [A], b : [A], eq : (A,A) -> Bool) : Bool {
     if (a.len() != b.len()) { 
-      return false 
+      return false; 
     };
     var i = 0;
     while (i < a.len()) {
       if (not eq(a[i],b[i])) { 
-        return false 
+        return false; 
       };
-      i += 1
+      i += 1;
     };
     return true; 
   };
