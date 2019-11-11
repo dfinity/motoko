@@ -2,17 +2,17 @@
 
 rustPlatform.buildRustPackage {
   pname = "wasmtime";
-  version = "20191018";
+  version = "20191111";
 
   src = fetchFromGitHub {
-    owner = "CraneStation";
+    owner = "kubkon";
     repo = "wasmtime";
-    rev = "ebef2c6b5720fce164af9ded8b7ff3dd5d7e041c";
-    sha256 = "15wa0by7lb90qd6fg8i2v1hw7hgbkrh1rqhrf7z850c9ydah6n13";
+    rev = "d2d623ef2b528f80e477c0ece5187c0fed17b712";
+    sha256 = "1mm9276xyw95px105v0i3b1xq852jgmsa742bynlxgw4p1cxm423";
     fetchSubmodules = true;
   };
 
-  cargoSha256 = "07qz6wl32j6gzc9nxv0dr7y6ixmzbzv5j1flkrysdrfidxlldn9k";
+  cargoSha256 = "0mnwaipa2az3vpgbz4m9siz6bfyhmzwz174k678cv158m7mxx12f";
 
   cargoPatches = [ ./cargo-lock.patch ];
 
