@@ -1,2 +1,6 @@
-error: failed to process main module `_out/addNat32.wasm`
-    caused by: Instantiation error: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:
+Error: failed to process main module `_out/addNat32.wasm`
+
+Caused by:
+    0: Instantiation failed during setup
+    1: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:
+
