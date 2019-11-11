@@ -68,34 +68,6 @@ let import_relative_to_project_root root module_path dependency =
      |> Pipeline__.File_path.normalise
      |> Lib.Option.some
 
-(* Given the source of a module, figure out under what names what
-   modules have been imported. Normalizes the imported modules
-   filepaths relative to the project root *)
-let parse_module_header project_root current_file_path file =
-  let lexbuf = Lexing.from_string file in
-  let next () = Lexer.token Lexer.Normal lexbuf in
-  let res = ref [] in
-  let rec loop = function
-    | Parser.IMPORT ->
-       (match next () with
-        | Parser.ID alias ->
-           (match next () with
-            | Parser.TEXT path ->
-               let path =
-                 import_relative_to_project_root
-                   project_root
-                   current_file_path
-                   path in
-               (match path with
-                | Some path -> res := (alias, path) :: !res
-                | None -> ());
-               loop (next ())
-            | tkn -> loop tkn)
-        | tkn -> loop tkn)
-    | Parser.EOF -> List.rev !res
-    | tkn -> loop (next ()) in
-  loop (next ())
-
 (* Given a source file and a cursor position in that file, figure out
    the prefix relevant to searching completions. For example, given:
 
@@ -133,7 +105,7 @@ let find_completion_prefix logger file line column: (string * string) option =
   loop (next ())
 
 let completions index logger project_root file_path file_contents line column =
-  let imported = parse_module_header project_root file_path file_contents in
+  let imported = Source_file.parse_module_header project_root file_path file_contents in
   let module_alias_completion_item alias =
     Lsp_t.{
         completion_item_label = alias;
