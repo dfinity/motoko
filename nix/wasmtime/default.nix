@@ -5,10 +5,10 @@ rustPlatform.buildRustPackage {
   version = "20191111";
 
   src = fetchFromGitHub {
-    owner = "kubkon";
+    owner = "CraneStation";
     repo = "wasmtime";
-    rev = "d2d623ef2b528f80e477c0ece5187c0fed17b712";
-    sha256 = "1mm9276xyw95px105v0i3b1xq852jgmsa742bynlxgw4p1cxm423";
+    rev = "0006a2af954eba74c79885cb1fe8cdeb68f531c1";
+    sha256 = "0lf3pdkjxcrjmjic7xxyjl5dka3arxi809sp9hm4hih5p2fhf2gw";
     fetchSubmodules = true;
   };
 
