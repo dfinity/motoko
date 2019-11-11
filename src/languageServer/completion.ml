@@ -102,7 +102,7 @@ let find_completion_prefix logger file line column: (string * string) option =
         | tkn -> loop tkn)
     | Parser.EOF -> None
     | _ -> loop (next ()) in
-  loop (next ())
+  try loop (next ()) with _ -> None
 
 let completions index logger project_root file_path file_contents line column =
   let imported = Source_file.parse_module_header project_root file_path file_contents in
