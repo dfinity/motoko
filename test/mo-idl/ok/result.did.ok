@@ -23,7 +23,7 @@ type Result2_1 =
    "err": Result_1_1;
    "ok": null;
  };
-service anon_result {
+service anon {
   "f": (opt nat) -> (Result_1_2);
   "g": (Result3_1) -> (Result2_2);
 }

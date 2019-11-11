@@ -524,11 +524,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     in
     k v
   | ActorE (id, ds, fs, _) ->
-    let ve = declare_decs ds (declare_id id) in
-    let env' = adjoin_vals env ve in
+    let ve0 = declare_id id in
+    let env0 = adjoin_vals env ve0 in
+    let ve = declare_decs ds V.Env.empty in
+    let env' = adjoin_vals env0 ve in
     interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
-      define_id env' id obj;
+      define_id env0 id obj;
       k obj)
   | NewObjE (sort, fs, _) ->
     k (interpret_fields env fs)

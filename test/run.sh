@@ -89,10 +89,13 @@ function normalize () {
 function run () {
   # first argument: extension of the output file
   # remaining argument: command line
-  # uses from scope: $out, $base, $diff_files
+  # uses from scope: $out, $file, $base, $diff_files
 
   local ext="$1"
   shift
+
+  if grep -q "^//SKIP $ext" $file; then return; fi
+
   $ECHO -n " [$ext]"
   "$@" >& $out/$base.$ext
   local ret=$?
@@ -182,15 +185,21 @@ do
           run run-ir $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
-          diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
-          diff_files="$diff_files $base.diff-ir"
+          if [ -e $out/$base.run -a -e $out/$base.run-ir ]
+          then
+            diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
+            diff_files="$diff_files $base.diff-ir"
+          fi
 
           # Interpret IR with lowering
           run run-low $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS -r -iR $base.mo
 
           # Diff interpretations without/with lowering
-          diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
-          diff_files="$diff_files $base.diff-low"
+          if [ -e $out/$base.run -a -e $out/$base.run-low ]
+          then
+            diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
+            diff_files="$diff_files $base.diff-low"
+          fi
 
         fi
 
