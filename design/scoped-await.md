@@ -46,7 +46,7 @@ _Please break it_
 Ctxt := E; async[T]   // async context with index U
     |  E; -           // non-async context
 
-Env :=                // the usual suspect
+Env :=                // the usual suspects
     | E, x : T
     | E, X
     | <emp>
@@ -65,7 +65,8 @@ E; async[U] |- async<X> e <U>: async[U]T
 ```
 An `async` expression at index `X` provides the scoped ability to await asyncs with index `X`.
 
-The body 'e' of an async must be parametric in the index but the index parameteris immediately eliminated at any index `U` (not mentioning `X`).
+The body `e` of an async must be parametric in the index but the index
+parameter is immediately eliminated at some index `U` (not mentioning `X`).
 
 ### (restricted) await expressions
 
