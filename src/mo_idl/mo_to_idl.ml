@@ -178,7 +178,7 @@ let gather_decs () =
 let actor progs =
   let open E in
   let find_last_actor (prog : prog) =
-    let anon = normalize ("anon_" ^ (Filename.remove_extension prog.note)) in
+    let anon = "anon" in
     let check_dec d t def =
       let rec check_pat p =
         match p.it with

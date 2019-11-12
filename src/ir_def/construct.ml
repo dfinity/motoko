@@ -78,8 +78,8 @@ let seqP ps =
 let primE prim es =
   let ty = match prim with
     | ShowPrim _ -> T.text
-    | ICReplyPrim _ -> T.unit
-    | ICRejectPrim -> T.unit
+    | ICReplyPrim _ -> T.Non
+    | ICRejectPrim -> T.Non
     | ICErrorCodePrim -> T.Prim T.Int32
     | _ -> assert false (* implement more as needed *)
   in
@@ -127,6 +127,15 @@ let ic_error_codeE () =
   { it = PrimE (ICErrorCodePrim, []);
     at = no_region;
     note = { note_typ = T.Prim T.Int32; note_eff = T.Triv }
+  }
+
+let ic_callE f e k r =
+  let es = [f; e; k; r] in
+  let effs = List.map eff es in
+  let eff = List.fold_left max_eff T.Triv effs in
+  { it = PrimE (ICCallPrim, es);
+    at = no_region;
+    note = { note_typ = T.unit; note_eff = eff }
   }
 
 
@@ -454,13 +463,6 @@ let (-->) x exp =
 let (-->*) xs exp =
   let fun_ty = T.Func (T.Local, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
   nary_funcE "$lambda" fun_ty xs exp
-
-
-(* n-ary shared lambda *)
-let (-@>*) xs exp  =
-  let fun_ty = T.Func (T.Shared T.Write, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
-  nary_funcE "$lambda" fun_ty xs exp
-
 
 (* Lambda application (monomorphic) *)
 

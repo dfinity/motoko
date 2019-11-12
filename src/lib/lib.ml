@@ -231,6 +231,10 @@ struct
       match f x1 x2 with
       | -1 -> is_strictly_ordered f (x2::xs')
       | _ -> false
+
+  let rec iter_pairs f = function
+    | [] -> ()
+    | x::ys -> List.iter (fun y -> f x y) ys; iter_pairs f ys
 end
 
 module List32 =

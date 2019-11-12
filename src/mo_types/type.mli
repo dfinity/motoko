@@ -3,7 +3,7 @@
 type lab = string
 type var = string
 
-type control = Returns | Promises
+type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
 type func_sort = Local | Shared of shared_sort

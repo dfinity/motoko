@@ -128,14 +128,13 @@ let disjoint_union env at fmt env1 env2 =
 
 (* Types *)
 
-let check_ids env kind member ids = ignore
-  (List.fold_left
-    (fun dom id ->
-      if List.mem id.it dom
-      then error env id.at "duplicate %s name %s in %s type" member id.it kind
-      else id.it::dom
-    ) [] ids
-  )
+let check_ids env kind member ids = Lib.List.iter_pairs
+  (fun x y ->
+    if x.it = y.it
+    then error env y.at "duplicate %s name %s in %s type" member y.it kind;
+    if Hash.hash x.it = Hash.hash y.it
+    then error env y.at "%s names %s and %s in %s type have colliding hashes" member x.it y.it kind;
+  ) ids
 
 let infer_mut mut : T.typ -> T.typ =
   match mut.it with
@@ -1408,6 +1407,15 @@ and object_of_scope env sort fields scope at =
         else tfs
       ) scope.Scope.val_env tfs
   in
+
+  Lib.List.iter_pairs
+    (fun x y ->
+      if not (T.is_typ x.T.typ) && not (T.is_typ y.T.typ) &&
+         Hash.hash x.T.lab = Hash.hash y.T.lab
+      then error env at "field names %s and %s in %sobject type have colliding hashes"
+        x.T.lab y.T.lab (T.string_of_obj_sort sort);
+    ) tfs';
+
   let t = T.Obj (sort, List.sort T.compare_field tfs') in
   let accessible_cons = gather_typ T.ConSet.empty t in
   let inaccessible_cons = T.ConSet.diff scope.Scope.con_env accessible_cons in
