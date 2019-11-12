@@ -14,19 +14,19 @@ values it has created, hopefully ruling out:
 while still allowing local uses of first-class async values.
 
 Deadlock is (hopefully) prevented because an async can't await itself, since
-it can only await async it has created. Similarly a sequence of
-async can only be awaited by the async that created them, not by each other.
+it can only await asyncs it has created. Similarly a sequence of
+asyncs can only be awaited by the async that created them, not by each other.
 That's the hope anyway.
 
 The idea behind ruling out reply-to-wrong-sender is that an async
 value cannot be stored in a non-local var or other mutable
 datastructure, due to the fresh index, so it is only accessible from
-the currentmessage and thus can only receive continuation from the
-current message.  It can't  receive continuations from an inner
+the current message and thus can only receive continuations from the
+current message.  It can't receive continuations from an inner
 function by escaping into that function, since the inner function can at
-most await asyncs with its inner index, not the outer ne. Thus the only
+most await asyncs with its inner index, not the outer one. Thus the only
 contination that are stored (including the ultimate reply
-continuation), are from the current function.
+continuation), must be from the current function.
 
 _Please break it_
 
@@ -55,6 +55,8 @@ Env :=                // the usual suspects
 # Concrete Syntax
 
 TBD, but hopefully the explicit parameterization/instantiaton can be surpressed, much as Rust *lifetimes* are largely implicit.
+Here, the simplist might be to use the function name itself for the implicit index parameter
+(although not all motoko functions are named) and always instantiate with the ambient index (or `Any` if none).
 
 ### Parameterized async expressions
 
