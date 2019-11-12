@@ -9,6 +9,10 @@ open Lazy
 
 type outputter = unit -> unit
 
+(* noise reduction *)
+
+let chatty = ref false
+
 (* read nothing *)
 
 let epsilon : outputter = ignore
@@ -137,7 +141,7 @@ let read_type_index () = let ty = read_sleb128 () in assert (ty > -18); ty
 
 let read_assoc () = let hash = read_leb128 () in
                     let tynum = read_type_index () in
-                    Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
+                    if !chatty then Printf.printf "hash: %d, tynum: %d\n" hash tynum; hash, tynum
 
 module type Dump =
 sig
@@ -199,9 +203,9 @@ let output_text bytes from tostream =
       let buf = Buffer.create 0 in
       ignore (input_buffer from buf ~len:bytes);
       Printf.printf "%sText: %d bytes follow on next line\n" (fill ()) bytes;
-      Printf.printf "%s---->" (fill ()); (* TODO: puts? *)
+      Printf.printf "%s---->" (fill ());
       Stdio.Out_channel.output_buffer tostream buf;
-      Printf.printf "\n"
+      print_string "\n"
 
 let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
   let herald_arguments = function
@@ -234,7 +238,8 @@ end
 module OutputIdl : Dump = struct
 
 let output_string (s : string) = print_string s
-let output_string_space (s : string) = Printf.printf "%s " s
+let chat_string s = if !chatty then output_string s
+let output_string_space (s : string) = output_string s; output_string " "
 let output_decimal (i : int) = Printf.printf "%d" i
 let output_bignum (i : int) = output_decimal i (* for now *)
 
@@ -257,15 +262,15 @@ let output_text n froms tos =
 let output_arguments args : outputter * (unit -> int -> outputter -> outputter) =
   let last i = i + 1 = args in
   let herald_arguments = function
-    | () when args = 0 -> output_string "// No arguments...\n()"
-    | _ when args = 1 -> output_string "// 1 argument follows\n(\n"
-    | _ -> Printf.printf "// %d arguments follow\n(\n" args in
+    | () when args = 0 -> chat_string "// No arguments...\n"; output_string "()"
+    | _ when args = 1 -> chat_string "// 1 argument follows\n"
+    | _ -> if !chatty then Printf.printf "// %d arguments follow\n" args in
   let herald_member () i f () =
-    Printf.printf "// Argument #%d%s:\n" i (if last i then " (last)" else "");
-    if i = 0 then print_string "  " else print_string ", ";
+    if !chatty then Printf.printf "// Argument #%d%s:\n" i (if last i then " (last)" else "");
+    output_string (if i = 0 then "( " else ", ");
     f ();
-    if last i then print_string "\n)" else print_string "\n" in
-  herald_arguments, (*bracket args*) herald_member
+    output_string (if last i then "\n)" else "\n") in
+  herald_arguments, herald_member
 
 let start i = if i = 0 then output_string_space "{"
 let stop max i = if i + 1 = max then output_string " }"
@@ -420,6 +425,7 @@ let read_type lookup : (typ * outputter) Lazy.t =
 (*
 T(service {<methtype>*}) = sleb128(-23) T*(<methtype>* )
 *)
+  | -23 -> failwith "service types not supported yet"
 
   | t -> (* future type *)
     let bytes = read_leb128 () in
@@ -436,19 +442,23 @@ T(service {<methtype>*}) = sleb128(-23) T*(<methtype>* )
 
 let read_type_table (t : unit -> (typ * outputter) Lazy.t) : (typ * outputter) Lazy.t array =
   let rep = read_leb128 () in
-  Array.init rep (fun i -> Printf.printf "read_type_table: %d\n" i;t ())
+  Array.init rep (fun i -> if !chatty then Printf.printf "read_type_table: %d\n" i; t ())
+
+(* Utilities *)
+
+let chat_string = if !chatty then print_string else ignore
 
 (* Top-level *)
 
 let top_level md : unit =
-  Printf.printf "\nDESER, to your service!\n";
+  chat_string "\nDESER, to your service!\n";
   read_magic ();
-  Printf.printf "\n========================== Type section\n";
+  chat_string "\n========================== Type section\n";
   let tab =
     let rec tab = lazy (read_type_table (fun () -> read_type lookup))
     and lookup = fun indx -> (*Printf.printf "{indx: %d}" indx; *)Array.get (force tab) indx in
     Array.map force (force tab) in
-  Printf.printf "\n========================== Value section\n";
+  chat_string "\n========================== Value section\n";
   let open F in
   begin match md with
   | Nary ->
@@ -462,10 +472,10 @@ let top_level md : unit =
     Array.iteri (fun i f -> herald_member () i f ()) consumers
   | Unary ->
     let argty = read_type_index () in
-    Printf.printf "ARGTY: %d\n" argty;
+    if !chatty then Printf.printf "# ARGTY: %d\n" argty;
     snd (Array.get tab argty) ()
   end;
-  Printf.printf "\n-------- DESER DONE\n"
+  chat_string "\n-------- DESER DONE\n"
 
 end
 
@@ -500,6 +510,7 @@ let argspec = Arg.align
   "--prose", Arg.Unit (set_format Prose), " output indented prose";
   "--json", Arg.Unit (set_format Json), " output JSON values";
   "--idl", Arg.Unit (set_format Idl), " output IDL values (default)";
+  "--verbose", Arg.Unit (fun () -> chatty := true), " amend commentary";
   "--version",
     Arg.Unit (fun () -> Printf.printf "%s\n" banner; exit 0), " show version";
 ]
