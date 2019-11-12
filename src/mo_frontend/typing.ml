@@ -47,6 +47,9 @@ let env_of_scope msgs scope =
     msgs;
   }
 
+
+(* Predicates for (temporary) context dependent syntactic restrictions *)
+
 let in_await env =
   match env.context with
   | _ :: AwaitE _ :: _ -> true
@@ -69,16 +72,14 @@ let in_oneway_ignore env =
     BlockE [ { it = ExpD _; _} ] ::
     FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
     _ ->
-      (match typ_opt with
-       | Some { it = TupT []; _}
-       | None -> true
-       | _ -> false)
-  | _ ->
-(*    List.iter (fun e  ->
-                Wasm.Sexpr.print 80 (Arrange.exp {it = e; at = no_region; note = {  note_typ = T.Pre; note_eff = T.Triv}})) env.context; *)
-    false
+    (match typ_opt with
+     | Some { it = TupT []; _}
+     | None -> true
+     | _ -> false)
+  | _ -> false
 
 (* Error bookkeeping *)
+
 exception Recover
 
 let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
