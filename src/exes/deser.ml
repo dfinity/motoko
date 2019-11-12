@@ -556,12 +556,32 @@ open Idllib.Syntax
 
 let write_nil (v : value') = ()
 let write_text (v : value') = Printf.printf "\x03HEY"
+
+let rec write_bool = function
+  | AnnotV (v, t) -> write_bool v.it
+  | FalseV ->
+    let buf = Buffer.create 0 in
+    add_uint8 buf 0; Buffer.output_buffer stdout buf
+  | TrueV ->
+    let buf = Buffer.create 0 in
+    add_uint8 buf 1; Buffer.output_buffer stdout buf
+  | _ -> assert false
+
 let rec write_byte (v : value') =
   match v with
   | AnnotV (v, t) -> write_byte v.it
   | IntegralV i ->
     let buf = Buffer.create 0 in
     add_uint8 buf (Big_int.int_of_big_int i); Buffer.output_buffer stdout buf
+  | _ -> assert false
+
+let rec write_signedbyte (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_signedbyte v.it
+  | IntegralV i ->
+    let buf = Buffer.create 0 in
+    let i = Big_int.int_of_big_int i in
+    add_uint8 buf (if i < 0 then i lor 128 else i); Buffer.output_buffer stdout buf
   | _ -> assert false
 
 let rec write_nat (v : value') =
@@ -582,14 +602,14 @@ let rec write_int (v : value') =
 
 let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
   [ Null, (-1, write_nil)
-  ; Bool, (-2, write_nil)
+  ; Bool, (-2, write_bool)
   ; Nat, (-3, write_nat)
   ; Int, (-4, write_int)
   ; Nat8, (-5, write_byte)
   ; Nat16, (-6, write_nil)
   ; Nat32, (-7, write_nil)
   ; Nat64, (-8, write_nil)
-  ; Int8, (-9, write_nil)
+  ; Int8, (-9, write_signedbyte)
   ; Int16, (-10, write_nil)
   ; Int32, (-11, write_nil)
   ; Int64, (-12, write_nil)
