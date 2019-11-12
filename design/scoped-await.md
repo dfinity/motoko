@@ -1,5 +1,35 @@
 # Structured awaits using indexed async types and parametric polymorphism
 
+Inspired by Launchbury's RunST trick and Rust's lifetimes.
+
+*Basic idea:*
+
+Use type indexing and parametricity to ensure
+that a function can only await async
+values it has created, hopefully ruling out:
+
+* deadlock, and
+* reply to wrong sender
+
+while still allowing local uses of first-class async values.
+
+Deadlock is (hopefully) prevented because an async can't await itself, since
+it can only await async it has created. Similarly a sequence of
+async can only be awaited by the async that created them, not by each other.
+That's the hope anyway.
+
+The idea behind ruling out reply-to-wrong-sender is that an async
+value cannot be stored in a non-local var or other mutable
+datastructure, due to the fresh index, so it is only accessible from
+the currentmessage and thus can only receive continuation from the
+current message.  It can't  receive continuations from an inner
+function by escaping into that function, since the inner function can at
+most await asyncs with its inner index, not the outer ne. Thus the only
+contination that are stored (including the ultimate reply
+continuation), are from the current function.
+
+_Please break it_
+
 
 # Abstract Syntax
 
@@ -8,24 +38,37 @@
     | async[T]U          // T is an index, typically a type parameter
 
 <exp> :=
-    | async<X> e <U>                                  // index abstraction plus application in one
-	| shared f<X>(x:T) : async[X]U = async<Y> e <X>;  // requests
-	| shared f<X>(x:T) : async[X]U { e; }             // sugar (for the above)
-	| f <T> e                                         // (indexed) application
+    | async<X> e <U>                                  // index abstraction plus application in one (parameter X free in e, but not in instantiation U)
+    | shared f<X>(x:T) : async[X]U = async<Y> e <X>;  // requests
+    | shared f<X>(x:T) : async[X]U { e; }             // sugar (for the above)
+    | f <T> e                                         // (indexed) application
+
+Ctxt := E; async[T]   // async context with index U
+    |  E; -           // non-async context
+
+Env :=                // the usual suspect
+    | E, x : T
+    | E, X
+    | <emp>
 ```
+
+# Concrete Syntax
+
+TBD, but hopefully the explicit parameterization/instantiaton can be surpressed, much as Rust *lifetimes* are largely implicit.
 
 ### Parameterized async expressions
 
 ```
-E,X; async[X] |- e : T
---------------------------------------
-E; async[U] |- async<X> e <T>: async[U]T
+E, X; async[X] |- e : T   E |- U :: *   (X fresh)
+-------------------------------------------------
+E; async[U] |- async<X> e <U>: async[U]T
 ```
 An `async` expression at index `X` provides the scoped ability to await asyncs with index `X`.
 
-The body 'e' of an async must be parametric in the index but the index parameter is immediately eliminated at any index `U`.
+The body 'e' of an async must be parametric in the index but the index parameteris immediately eliminated at any index `U` (not mentioning `X`).
 
 ### (restricted) await expressions
+
 ```
 E; async[T] |- e : async[T]U
 ------------------------------
@@ -49,16 +92,16 @@ it could be any enclosing index parameter.
 
 ### Abstraction
 
-Rule for (desugared) shared functions:
+Rule for (desugared) shared functions (ignoring recursion).
 
 ```
-E, X, x : T, Y;  async<Y> |- e : U
+E, X, x : T, Y;  async<Y> |- e : U  (X, Y fresh)
 ----------------------------------------------------
 E; _ |- shared f<X>(x:T) : async[X]U = async<Y> e <X>;
 ```
 Every shared function introduce a new index parameter, immediately supplied to the inner async expression.
 
-Derived rule for sugar:
+Derived rule for sugar (ignoring recursion):
 
 ```
 E, X, x : T; async<X> |- e : U
@@ -71,18 +114,16 @@ E; _ |- shared f<X>(x:T) : async[X] U { e; }
 Assuming the following requests:
 
 ```
-shared Request<X>() : async[X](){
-}
+shared Ack<X>() : async[X](){ };
 
-shared Echo<X>(i : Int) : async[X] Int { return i; }
+shared Request<X>(i : Int) : async[X] Int { return i; }
 ```
-
 
 ### Static parralel waiting:
 ```
 async<X> {
-  let a1 = Request<X>();
-  let a2 = Request<X>()
+  let a1 = Ack<X>();
+  let a2 = Ack<X>()
   await(a1);
   await(a2);
 }<Any>;
@@ -92,7 +133,7 @@ async<X> {
 
 ```
 async<X> {
-  let as = Array_tabulate<Async<X>()>(func _ { Request<X>(); });
+  let as = Array_tabulate<Async<X>()>(func _ { Ack<X>(); });
   for (a in as.key) {
    await(a2);
   };
@@ -103,7 +144,7 @@ async<X> {
 
 ```
 async<X> {
-  let as = Array_tabulate<Async<X>()>(func _ { Request<X>(); });
+  let as = Array_tabulate<Async<X>()>(func _ { Ack<X>(); });
   let res = Array_init<>(as.len,-1);
   rs = for (i in as.keys()) {
     res[i] := await(a2);
@@ -119,12 +160,13 @@ shared func waitN<X>(n:Nat) : async[X]() {
   if (n = 0)
     ()
   else {
-    let a = Request<X>();
+    let a = Ack<X>();
     await waitN<X>(n-1);
-	await<X>(a);
+        await<X>(a);
   };
 }<Any>;
 ```
+
 ### Recursive parallel waiting (with results)
 
 ```
@@ -132,19 +174,22 @@ shared func waitN<X>(n:Nat) : async[X](List<Int>) {
   if (n = 0)
     List.null<Int>
   else {
-    let a = Echo<X>(n);
+    let a = Request<X>(n);
     let tl = await waitN<X>(n-1);
-	List.cons<Int>(await<X>(a),tl);
+    List.cons<Int>(await<X>(a),tl);
   };
 }<Any>;
 ```
+
 ### Deadlock Prevention:
 
 ### Immediate deadlock
 
+
 ```
 let t:async[T]U = async<X>{ await t;}<T>; // bad await since t : Async[Any]U  </: Async[X]U
 ```
+
 Ruled out by index scoping (`X != T`, any `T`)
 
 ###
