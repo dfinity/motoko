@@ -556,13 +556,36 @@ open Idllib.Syntax
 
 let write_nil (v : value') = ()
 let write_text (v : value') = Printf.printf "\x03HEY"
+let rec write_byte (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_byte v.it
+  | IntegralV i ->
+    let buf = Buffer.create 0 in
+    add_uint8 buf (Big_int.int_of_big_int i); Buffer.output_buffer stdout buf
+  | _ -> assert false
+
+let rec write_nat (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_nat v.it
+  | IntegralV i ->
+    let buf = Buffer.create 0 in
+    encode_leb128 i buf; Buffer.output_buffer stdout buf
+  | _ -> assert false
+
+let rec write_int (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_int v.it
+  | IntegralV i ->
+    let buf = Buffer.create 0 in
+    encode_sleb128 i buf; Buffer.output_buffer stdout buf
+  | _ -> assert false
 
 let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
   [ Null, (-1, write_nil)
   ; Bool, (-2, write_nil)
-  ; Nat, (-3, write_nil)
-  ; Int, (-4, write_nil)
-  ; Nat8, (-5, write_nil)
+  ; Nat, (-3, write_nat)
+  ; Int, (-4, write_int)
+  ; Nat8, (-5, write_byte)
   ; Nat16, (-6, write_nil)
   ; Nat32, (-7, write_nil)
   ; Nat64, (-8, write_nil)
