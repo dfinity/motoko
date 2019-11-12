@@ -14,18 +14,18 @@ values it has created, hopefully ruling out:
 while still allowing local uses of first-class async values.
 
 Deadlock is (hopefully) prevented because an async can't await itself, since
-it can only await asyncs it has created. Similarly a sequence of
+it can only await asyncs it has created. Similarly, a sequence of
 asyncs can only be awaited by the async that created them, not by each other.
 That's the hope anyway.
 
-The idea behind ruling out reply-to-wrong-sender is that an async
+The idea behind ruling out *reply-to-wrong-sender* is that an async
 value cannot be stored in a non-local var or other mutable
 datastructure, due to the fresh index, so it is only accessible from
-the current message and thus can only receive continuations from the
+the current message and thus can only receive continuations (via `await`) from the
 current message.  It can't receive continuations from an inner
 function by escaping into that function, since the inner function can at
 most await asyncs with its inner index, not the outer one. Thus the only
-contination that are stored (including the ultimate reply
+continations that are stored (including the ultimate reply
 continuation), must be from the current function.
 
 _Please break it_
