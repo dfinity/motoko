@@ -572,7 +572,49 @@ let rec write_byte (v : value') =
   | AnnotV (v, t) -> write_byte v.it
   | IntegralV i ->
     let buf = Buffer.create 0 in
-    add_uint8 buf (Big_int.int_of_big_int i); Buffer.output_buffer stdout buf
+    add_uint8 buf (Big_int.int_of_big_int i);
+    Buffer.output_buffer stdout buf
+  | _ -> assert false
+
+let rec write_2byte (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_2byte v.it
+  | IntegralV i ->
+    let buf = Buffer.create 0 in
+    let i = Big_int.int_of_big_int i in
+    add_uint8 buf (i land 0xFF);
+    add_uint8 buf (i lsr 8);
+    Buffer.output_buffer stdout buf
+  | _ -> assert false
+
+let rec write_4byte (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_4byte v.it
+  | IntegralV i ->
+    let buf = Buffer.create 0 in
+    let i = Big_int.int_of_big_int i in
+    add_uint8 buf (i land 0xFF);
+    add_uint8 buf (i lsr 8 land 0xFF);
+    add_uint8 buf (i lsr 16 land 0xFF);
+    add_uint8 buf (i lsr 24);
+    Buffer.output_buffer stdout buf
+  | _ -> assert false
+
+let rec write_8byte (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_8byte v.it
+  | IntegralV i ->
+    let buf = Buffer.create 0 in
+    let i = Big_int.int_of_big_int i in (* TODO: Int64 *)
+    add_uint8 buf (i land 0xFF);
+    add_uint8 buf (i lsr 8 land 0xFF);
+    add_uint8 buf (i lsr 16 land 0xFF);
+    add_uint8 buf (i lsr 24 land 0xFF);
+    add_uint8 buf (i lsr 32 land 0xFF);
+    add_uint8 buf (i lsr 40 land 0xFF);
+    add_uint8 buf (i lsr 48 land 0xFF);
+    add_uint8 buf (i lsr 56);
+    Buffer.output_buffer stdout buf
   | _ -> assert false
 
 let rec write_signedbyte (v : value') =
@@ -581,7 +623,8 @@ let rec write_signedbyte (v : value') =
   | IntegralV i ->
     let buf = Buffer.create 0 in
     let i = Big_int.int_of_big_int i in
-    add_uint8 buf (if i < 0 then i lor 128 else i); Buffer.output_buffer stdout buf
+    add_uint8 buf (if i < 0 then i lor 128 else i);
+    Buffer.output_buffer stdout buf
   | _ -> assert false
 
 let rec write_nat (v : value') =
@@ -589,7 +632,8 @@ let rec write_nat (v : value') =
   | AnnotV (v, t) -> write_nat v.it
   | IntegralV i ->
     let buf = Buffer.create 0 in
-    encode_leb128 i buf; Buffer.output_buffer stdout buf
+    encode_leb128 i buf;
+    Buffer.output_buffer stdout buf
   | _ -> assert false
 
 let rec write_int (v : value') =
@@ -597,7 +641,8 @@ let rec write_int (v : value') =
   | AnnotV (v, t) -> write_int v.it
   | IntegralV i ->
     let buf = Buffer.create 0 in
-    encode_sleb128 i buf; Buffer.output_buffer stdout buf
+    encode_sleb128 i buf;
+    Buffer.output_buffer stdout buf
   | _ -> assert false
 
 let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
@@ -606,9 +651,9 @@ let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
   ; Nat, (-3, write_nat)
   ; Int, (-4, write_int)
   ; Nat8, (-5, write_byte)
-  ; Nat16, (-6, write_nil)
-  ; Nat32, (-7, write_nil)
-  ; Nat64, (-8, write_nil)
+  ; Nat16, (-6, write_2byte)
+  ; Nat32, (-7, write_4byte)
+  ; Nat64, (-8, write_8byte)
   ; Int8, (-9, write_signedbyte)
   ; Int16, (-10, write_nil)
   ; Int32, (-11, write_nil)
