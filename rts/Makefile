@@ -47,7 +47,7 @@ CLANG_FLAGS = \
 #
 
 WASM_FLAGS = \
-   --target=wasm32-unknown-unknown-wasm -fvisibility=hidden \
+   --target=wasm32-unknown-emscripten-wasm -fvisibility=hidden \
    -fno-builtin -ffreestanding \
    --optimize=3 \
 
