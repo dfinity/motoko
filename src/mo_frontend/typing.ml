@@ -48,36 +48,6 @@ let env_of_scope msgs scope =
   }
 
 
-(* Predicates for (temporary) context dependent syntactic restrictions *)
-
-let in_await env =
-  match env.context with
-  | _ :: AwaitE _ :: _ -> true
-  | _ -> false
-
-let in_shared_promising env =
-  match env.context with
-  | _ :: FuncE (_, {it = T.Shared _; _}, _, _, typ_opt, _) :: _ ->
-    (match typ_opt with
-     | Some {it = AsyncT _; _} -> true
-     | _ -> false)
-  | _ -> false
-
-let in_oneway_ignore env =
-  match env.context with
-  | _ :: CallE({ it = VarE { it = "@ignore"; _} ; _}, [], _) ::
-    FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
-    _
-  | _ :: CallE({ it = VarE { it = "@ignore"; _} ; _}, [], _) ::
-    BlockE [ { it = ExpD _; _} ] ::
-    FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
-    _ ->
-    (match typ_opt with
-     | Some { it = TupT []; _}
-     | None -> true
-     | _ -> false)
-  | _ -> false
-
 (* Error bookkeeping *)
 
 exception Recover
@@ -152,6 +122,37 @@ let adjoin_typs env te ce =
 let disjoint_union env at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
   with T.Env.Clash k -> error env at fmt k
+
+
+(* Syntactic predicates for context dependent restrictions *)
+
+let in_await env =
+  match env.context with
+  | _ :: AwaitE _ :: _ -> true
+  | _ -> false
+
+let in_shared_promising env =
+  match env.context with
+  | _ :: FuncE (_, {it = T.Shared _; _}, _, _, typ_opt, _) :: _ ->
+    (match typ_opt with
+     | Some {it = AsyncT _; _} -> true
+     | _ -> false)
+  | _ -> false
+
+let in_oneway_ignore env =
+  match env.context with
+  | _ :: CallE({ it = VarE { it = "@ignore"; _} ; _}, [], _) ::
+    FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
+    _
+  | _ :: CallE({ it = VarE { it = "@ignore"; _} ; _}, [], _) ::
+    BlockE [ { it = ExpD _; _} ] ::
+    FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
+    _ ->
+    (match typ_opt with
+     | Some { it = TupT []; _}
+     | None -> true
+     | _ -> false)
+  | _ -> false
 
 
 (* Types *)
