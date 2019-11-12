@@ -136,7 +136,7 @@ async<X> {
 async<X> {
   let as = Array_tabulate<Async<X>()>(func _ { Ack<X>(); });
   for (a in as.key) {
-   await(a2);
+    await(a2);
   };
 }<Any>;
 ```
@@ -162,8 +162,8 @@ shared func waitN<X>(n:Nat) : async[X]() {
     ()
   else {
     let a = Ack<X>();
-    await waitN<X>(n-1);
-        await<X>(a);
+    await waitN<X>(n-1); // recurse
+    await<X>(a);
   };
 }<Any>;
 ```
@@ -173,7 +173,7 @@ shared func waitN<X>(n:Nat) : async[X]() {
 ```
 shared func waitN<X>(n:Nat) : async[X](List<Int>) {
   if (n = 0)
-    List.null<Int>
+    List.null<Int>();
   else {
     let a = Request<X>(n);
     let tl = await waitN<X>(n-1);
@@ -184,7 +184,7 @@ shared func waitN<X>(n:Nat) : async[X](List<Int>) {
 
 ### Deadlock Prevention:
 
-### Immediate deadlock
+#### Immediate deadlock
 
 
 ```
@@ -193,9 +193,7 @@ let t:async[T]U = async<X>{ await t;}<T>; // bad await since t : Async[Any]U  </
 
 Ruled out by index scoping (`X != T`, any `T`)
 
-###
-
-Indirect deadlock
+#### Indirect deadlock
 
 ```
 async<X> {
@@ -204,4 +202,5 @@ async<X> {
   await(a1);
 }<Any>;
 ```
+
 Ruled out by index scoping (`X != Y,Z`, any `Y,Z`)
