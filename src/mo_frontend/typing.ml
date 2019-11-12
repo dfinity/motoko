@@ -64,12 +64,19 @@ let in_oneway_ignore env =
   match env.context with
   | _ :: CallE({ it = VarE { it = "@ignore"; _} ; _}, [], _) ::
     FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
+    _
+  | _ :: CallE({ it = VarE { it = "@ignore"; _} ; _}, [], _) ::
+    BlockE [ { it = ExpD _; _} ] ::
+    FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
     _ ->
       (match typ_opt with
        | Some { it = TupT []; _}
        | None -> true
        | _ -> false)
-  | _ -> false
+  | _ ->
+(*    List.iter (fun e  ->
+                Wasm.Sexpr.print 80 (Arrange.exp {it = e; at = no_region; note = {  note_typ = T.Pre; note_eff = T.Triv}})) env.context; *)
+    false
 
 (* Error bookkeeping *)
 exception Recover

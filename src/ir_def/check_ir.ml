@@ -365,7 +365,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
       (* TODO: We can check more here, can we *)
     | ICReplyPrim ts, [exp1] ->
-      check (not (env.flavor.has_await)) "ICReplyPrim in await flavor";
+      check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
       (* TODO: check against expected reply typ; note this may not be env.ret_tys. *)
       check_exp env exp1;

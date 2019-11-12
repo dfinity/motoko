@@ -9,26 +9,10 @@ non-closed actor: (ActorE
       Returns
       ()
       (BlockE
-        (LetD
-          (VarP $k/0)
-          (FuncE
-            $k/0
-            Local
-            Returns
-            ()
-            (BlockE (LetD (VarP $v/0) (TupE)) (TupE))
-          )
-        )
-        (LetD (VarP $r/0) (FuncE $r/0 Local Returns (params $e/0) () (TupE)))
-        (CallE
-          (VarE $k/0)
-          (BlockE
-            (LetD WildP (CallE (VarE showCounter) (VarE j)))
-            (AssignE
-              (VarE j)
-              (PrimE (BinPrim Int SubOp) (VarE j) (LitE (IntLit 1)))
-            )
-          )
+        (LetD WildP (CallE (VarE showCounter) (VarE j)))
+        (AssignE
+          (VarE j)
+          (PrimE (BinPrim Int SubOp) (VarE j) (LitE (IntLit 1)))
         )
       )
     )
@@ -45,16 +29,16 @@ non-closed actor: (ActorE
           $lambda
           Local
           Returns
-          (params $k/1 $r/1)
+          (params $k/0 $r/0)
           ()
-          (CallE (VarE $k/1) (VarE j))
+          (CallE (VarE $k/0) (VarE j))
         )
         (TupE
           (FuncE
             $lambda
             Local
             Returns
-            (params $v/1)
+            (params $v/0)
             ()
             (PrimE (ICReplyPrim Int) (VarE $v/0))
           )
@@ -62,7 +46,7 @@ non-closed actor: (ActorE
             $lambda
             Local
             Returns
-            (params $e/1)
+            (params $e/0)
             ()
             (PrimE ICRejectPrim (PrimE errorMessage (VarE $e/0)))
           )

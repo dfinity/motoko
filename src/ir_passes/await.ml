@@ -1,6 +1,5 @@
 open Ir_def
 open Mo_types
-open Mo_config
 
 open Source
 open Ir
@@ -137,27 +136,6 @@ and t_exp' context exp' =
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
-  | FuncE (x, ((T.Shared T.Write) as s), (T.Returns as c), typbinds, pat, typ_, exp1) ->
-    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
-    (* add the implicit return/throw label *)
-    let k_ret = fresh_cont (typ exp1) in
-    let v = fresh_var "v" (typ exp1) in
-    let k_fail = fresh_err_cont () in
-    let e = fresh_var "e" T.catch in
-    let context' =
-      LabelEnv.add Return (Cont (ContVar k_ret))
-        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty) in
-    let reply decs =
-      if !Flags.compile_mode = Flags.ICMode
-      then expD (ic_replyE [] unitE)::decs
-      else decs
-    in
-    FuncE (x, s, c, typbinds, pat, typ_,
-      (blockE
-        (reply [
-          funcD k_ret v unitE;
-          funcD k_fail e unitE])
-        (c_exp context' exp1 (ContVar k_ret))))
   | FuncE (x, s, c, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)
