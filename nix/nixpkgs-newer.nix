@@ -1,6 +1,6 @@
-with { rev = "233ba4052a2bfebcc6514c255f54cbfb02305a92"; };
+with { rev = "42710203b04738b8f19ae51f0fd21d22fddf3f39"; };
 
 import (builtins.fetchTarball {
-  sha256 = "0rmpvjr8rbqf6f1v8f871qdhdd2kgkv7pxanb5gz6xvsfzxky3s4";
+  sha256 = "1fqfi0rrlhmssp2cfz07f9sg3mvck28mxnmd39w2ir8670xfixvq";
   url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
 })
