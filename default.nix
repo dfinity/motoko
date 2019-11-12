@@ -21,8 +21,8 @@ let dev = import (builtins.fetchGit {
 let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
-  ref = "dsd/hermetic_drun";
-  rev = "78561c99113a3eb508c85be4e495acee6927fb3e";
+  ref = "master";
+  rev = "907aaadd6272d81ab9d9b02d9858fa8423192bfe";
 }) { system = nixpkgs.system; }; in
 
 let sdk = import (builtins.fetchGit {
