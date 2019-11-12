@@ -557,6 +557,16 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
+  public func fromArray<A>(xs : [A]) : List<A> {
+    Array.foldr<A, List<A>>(func (x : A, ys : List<A>) : List<A> {
+      push<A>(x, ys);
+    }, nil<A>(), xs);
+  };
+
+  public func fromArrayMut<A>(xs : [var A]) : List<A> {
+    fromArray<A>(Array.freeze<A>(xs));
+  };
+
   public func toArray<A>(xs : List<A>) : [A] {
     let length = len<A>(xs);
     var list = xs;

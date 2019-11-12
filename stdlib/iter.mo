@@ -52,6 +52,18 @@ module {
     };
   };
 
+  public func fromArray<A>(xs : [A]) : Iter<A> {
+    fromList<A>(List.fromArray<A>(xs));
+  };
+
+  public func fromArrayMut<A>(xs : [var A]) : Iter<A> {
+    fromArray<A>(Array.freeze<A>(xs));
+  };
+
+  public func fromList<A>(xs : List.List<A>) : Iter<A> {
+    List.toArray<A>(xs).vals();
+  };
+
   public func toArray<A>(xs : Iter<A>) : [A] {
     List.toArray<A>(toList<A>(xs));
   };

@@ -60,6 +60,26 @@ type X = Nat;
   assert (List.len<X>(l3) == 2);
 
   {
+    Prelude.printLn("  fromArray");
+
+    let expected : List.List<Nat> = ?(1, ?(2, ?(3, List.nil<Nat>())));
+    let array = [1, 2, 3];
+    let actual = List.fromArray<Nat>(array);
+
+    assert List.isEq<Nat>(expected, actual, func (x1, x2) { x1 == x2 });
+  };
+
+  {
+    Prelude.printLn("  fromArrayMut");
+
+    let expected : List.List<Nat> = ?(1, ?(2, ?(3, List.nil<Nat>())));
+    let array = [var 1, 2, 3];
+    let actual = List.fromArrayMut<Nat>(array);
+
+    assert List.isEq<Nat>(expected, actual, func (x1, x2) { x1 == x2 });
+  };
+
+  {
     Prelude.printLn("  toArray");
 
     let expected = [1, 2, 3];

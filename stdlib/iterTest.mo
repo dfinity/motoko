@@ -52,6 +52,49 @@ Prelude.printLn("Iter");
 };
 
 {
+  Prelude.printLn("  fromArray");
+
+  let expected = [1, 2, 3];
+  let _actual = Iter.fromArray<Nat>(expected);
+  let actual = [var 0, 0, 0];
+
+  Iter.forIn<Nat>(func (x, i) { actual[i] := x; }, _actual);
+
+  for (i in actual.keys()) {
+    assert(actual[i] == expected[i]);
+  };
+};
+
+{
+  Prelude.printLn("  fromArrayMut");
+
+  let expected = [var 1, 2, 3];
+  let _actual = Iter.fromArrayMut<Nat>(expected);
+  let actual = [var 0, 0, 0];
+
+  Iter.forIn<Nat>(func (x, i) { actual[i] := x; }, _actual);
+
+  for (i in actual.keys()) {
+    assert(actual[i] == expected[i]);
+  };
+};
+
+{
+  Prelude.printLn("  fromList");
+
+  let list : List.List<Nat> = ?(1, ?(2, ?(3, List.nil<Nat>())));
+  let _actual = Iter.fromList<Nat>(list);
+  let actual = [var 0, 0, 0];
+  let expected = [1, 2, 3];
+
+  Iter.forIn<Nat>(func (x, i) { actual[i] := x; }, _actual);
+
+  for (i in actual.keys()) {
+    assert(actual[i] == expected[i]);
+  };
+};
+
+{
   Prelude.printLn("  toArray");
 
   let expected = [1, 2, 3];
