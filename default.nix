@@ -21,8 +21,8 @@ let dev = import (builtins.fetchGit {
 let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
-  # ref = "master";
-  rev = "3c82c6400b0eb8c5785669996f5b8007623cd9fc";
+  ref = "master";
+  rev = "907aaadd6272d81ab9d9b02d9858fa8423192bfe";
 }) { system = nixpkgs.system; }; in
 
 let sdk = import (builtins.fetchGit {
@@ -44,7 +44,7 @@ let real-dvm =
 
 let real-drun =
   if drun == null
-  then dfinity-repo.dfinity.drun
+  then dfinity-repo.drun or dfinity-repo.dfinity.drun
   else drun; in
 
 let js-user-library = sdk.js-user-library; in
@@ -499,7 +499,8 @@ rec {
     JS_USER_LIBRARY=js-user-library;
     TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
-    ${if nixpkgs ? glibcLocales then "LOCALE_ARCHIVE" else null} ="${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+
   } else null;
 
 }
