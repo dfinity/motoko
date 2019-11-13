@@ -1,0 +1,9 @@
+
+DESER, reading!
+(Arg (OptV (OptV (IntegralV 6))))
+
+DESER, parsed!
+(ArgTy (OptT (OptT (PrimT nat))))
+
+DESER, type inferred!
+STUFF'S HARDER

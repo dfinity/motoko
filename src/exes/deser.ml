@@ -804,7 +804,7 @@ let rec to_bid (v : value) : bid =
                       VariantT [{label = Id vf.it.hash @@ vf.at; typ = infer vf.it.value} @@ vf.at]
                     | VariantT tfs -> refine_variant_field vf tfs
                     | _ -> bottom)
-  | FuncV _ -> failwith "cannot yet"
+  | FuncV _ -> failwith "cannot FuncV yet"
 
   | AnnotV (v, t) -> fun t' -> to_bid v (lub t' t.it)
   | ServiceV uri -> (function
@@ -906,7 +906,7 @@ let () =
           List.iter2 write_val ts vs
         end
       else
-        Printf.printf ""
+        Printf.printf "STUFF'S HARDER"
       (*
       if List.every (type_realizable) ts then
         traverse_collect_types
