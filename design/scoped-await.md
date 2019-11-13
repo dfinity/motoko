@@ -48,7 +48,7 @@ Ctxt := E; async[T]   // async context with index U
 
 Env :=                // the usual suspects
     | E, x : T
-    | E, X
+    | E, X <: T
     | <emp>
 ```
 
