@@ -85,7 +85,6 @@ let read_int64 () : int = (* TODO: should be bigint *)
   let msb = read_int32 () in
   msb * 4294967296 + lsb
 
-(* bool: M(b : bool)     = i8(if b then 1 else 0) *)
 let read_bool () : bool =
   match read_byte () with
   | 0 -> false
@@ -242,15 +241,18 @@ let chat_string s = if !chatty then output_string s
 let output_string_space (s : string) = output_string s; output_string " "
 let output_decimal (i : int) = Printf.printf "%d" i
 let output_bignum (i : int) = output_decimal i (* for now *)
+let casted ty f v = f v; Printf.printf " : %s" ty
 
 let output_bool b = output_string (if b then "true" else "false")
 let output_nil () = output_string "null"
 let output_some consumer = output_string_space "opt"; consumer ()
-let output_byte, output_2byte, output_4byte = output_decimal, output_decimal, output_decimal
-let output_8byte = output_bignum
+let output_byte, output_2byte, output_4byte =
+  casted "nat8" output_decimal, casted "nat16" output_decimal, casted "nat32" output_decimal
+let output_8byte = casted "nat64" output_bignum
 let output_nat, output_int = output_bignum, output_bignum
-let output_int8, output_int16, output_int32 = output_decimal, output_decimal, output_decimal
-let output_int64 = output_bignum
+let output_int8, output_int16, output_int32 =
+  casted "int8" output_decimal, casted "int16" output_decimal, casted "int32" output_decimal
+let output_int64 = casted "int64" output_bignum
 let output_text n froms tos =
   output_string "\"";
   let buf = Buffer.create 0 in
