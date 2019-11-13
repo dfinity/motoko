@@ -627,7 +627,7 @@ let rec write_signedbyte (v : value') =
   | IntegralV i ->
     let buf = Buffer.create 0 in
     let i = Big_int.int_of_big_int i in
-    add_uint8 buf (if i < 0 then i lor 128 else i);
+    add_uint8 buf (i land 0xFF);
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
@@ -639,7 +639,7 @@ let rec write_2signedbyte (v : value') =
     let i = Big_int.int_of_big_int i in
     add_uint8 buf (i land 0xFF);
     let i = i asr 8 in
-    add_uint8 buf (if i < 0 then i lor 128 else i);
+    add_uint8 buf (i land 0xFF);
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
@@ -655,7 +655,7 @@ let rec write_4signedbyte (v : value') =
     let i = i asr 8 in
     add_uint8 buf (i land 0xFF);
     let i = i asr 8 in
-    add_uint8 buf (if i < 0 then i lor 128 else i);
+    add_uint8 buf (i land 0xFF);
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
