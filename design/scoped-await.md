@@ -206,3 +206,28 @@ async<X> {
 ```
 
 Ruled out by index scoping (`X != Y,Z`, any `Y,Z`)
+
+### Imperative deadlock
+
+The informal example:
+```
+shared func f() : async () {
+  var x : async Nat = async 0;
+  x := async { 
+    await x 
+  }; 
+}
+```
+
+is rejected by this system:
+
+Explicitly, the shared function and nested async would have distinct indices,so the await for type `async<S>Nat` on `x` (of type async<R>Nat (with the outer parameter) would actually be illegal:
+
+```
+shared func f<R>() : async () {
+  var x : async<R> Nat = async<_> 0 <R>;
+  x := async<S>{ 
+    await x // illegal: await _ : async<S>T -> T (not async<R> T -> T) (any T)
+  } <R>;  
+}
+```
