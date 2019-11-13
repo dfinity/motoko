@@ -241,18 +241,21 @@ let chat_string s = if !chatty then output_string s
 let output_string_space (s : string) = output_string s; output_string " "
 let output_decimal (i : int) = Printf.printf "%d" i
 let output_bignum (i : int) = output_decimal i (* for now *)
-let casted ty f v = f v; Printf.printf " : %s" ty
+let casted ty f v = match ty with
+  | IntN n -> f v; Printf.printf " : int%d" n
+  | NatN n -> f v; Printf.printf " : nat%d" n
+  | _ -> assert false
 
 let output_bool b = output_string (if b then "true" else "false")
 let output_nil () = output_string "null"
 let output_some consumer = output_string_space "opt"; consumer ()
 let output_byte, output_2byte, output_4byte =
-  casted "nat8" output_decimal, casted "nat16" output_decimal, casted "nat32" output_decimal
-let output_8byte = casted "nat64" output_bignum
+  casted (NatN 8) output_decimal, casted (NatN 16) output_decimal, casted (NatN 32) output_decimal
+let output_8byte = casted (NatN 64) output_bignum
 let output_nat, output_int = output_bignum, output_bignum
 let output_int8, output_int16, output_int32 =
-  casted "int8" output_decimal, casted "int16" output_decimal, casted "int32" output_decimal
-let output_int64 = casted "int64" output_bignum
+  casted (IntN 8) output_decimal, casted (IntN 16) output_decimal, casted (IntN 32) output_decimal
+let output_int64 = casted (IntN 64) output_bignum
 let output_text n froms tos =
   output_string "\"";
   let buf = Buffer.create 0 in
