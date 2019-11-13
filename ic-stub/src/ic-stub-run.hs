@@ -15,12 +15,9 @@ import qualified Data.Text as T
 import qualified Text.Hex as T
 import Text.Printf
 
-import IC.DRun.Parse (Type(..), parseFile)
+import IC.Types
 import IC.Stub
-  (Blob, EntityId,
-   IC, AsyncRequest(..), SyncRequest(..), requestId, ReqResponse(..),
-   RequestStatus(..), CompletionValue(..),
-   initialIC, submitRequest, readRequest, runToCompletion)
+import IC.DRun.Parse (Type(..), parseFile)
 
 type DRun = StateT IC IO
 

@@ -9,6 +9,9 @@ executable ic-stub-run
   main-is:             ic-stub-run.hs
   hs-source-dirs:      src
   other-modules:       IC.Stub
+  other-modules:       IC.Types
+  other-modules:       IC.Canister.Imp
+  other-modules:       IC.Canister.Pure
   other-modules:       IC.Wasm.Winter
   other-modules:       IC.DRun.Parse
   build-depends:       base >=4.11 && <5

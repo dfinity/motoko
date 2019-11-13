@@ -1,3 +1,10 @@
+{-|
+
+This module provides a thin wrapper around the winter Wasm engine, exposing just
+the bits needed by the IC stub.
+
+This is the interface at which one might plug in a different Wasm engine.
+-}
 module IC.Wasm.Winter
   ( Module
   , parseModule
