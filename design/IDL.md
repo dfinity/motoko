@@ -1122,8 +1122,8 @@ Analoguous to types, a few syntactic shorthands are supported that can be reduce
   | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted [as in the WebAssembly textual format](https://webassembly.github.io/spec/core/text/values.html#strings)
 
 <fieldval> ::= ...
-  | <name> = <val>         :=  <hash(name)> = <val>
-  | <val>                  :=  N = <val>  where N is either 0 or previous + 1  (only in records)
+  | <name> = <annval>      :=  <hash(name)> = <annval>
+  | <annval>               :=  N = <annval>  where N is either 0 or previous + 1  (only in records)
   | <nat>                  :=  <nat> = null   (only in variants)
   | <name>                 :=  <name> = null  (only in variants)
 ```
