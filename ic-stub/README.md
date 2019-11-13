@@ -20,7 +20,11 @@ present; in particular, error handling and input validation is incomplete.
 Installation of `ic-stub-run`
 -----------------------------
 
-From the top-level repository directory, run
+If you use the top-level `nix-shell`, you should already have `ic-stub-run` in
+your `PATH`.
+
+To install it into your normal environment, run from the top-level repository
+directory.
 
 
     nix-env -i -f . -A ic-stub
