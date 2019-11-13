@@ -4,13 +4,11 @@
 module Main where
 
 import Options.Applicative
-import Control.Monad (join, foldM_, forM_)
+import Control.Monad (join, forM_)
 import Data.Monoid ((<>))
-import System.FilePath
 import qualified Data.ByteString.Lazy as B
 import Control.Monad.Trans
 import Control.Monad.Trans.State
-import Control.Monad.IO.Class
 import qualified Data.Text as T
 import qualified Text.Hex as T
 import Text.Printf
@@ -79,7 +77,7 @@ work wasm_file msg_file = do
   msgs <- parseFile msg_file
 
   flip evalStateT initialIC $ do
-    req_res <- submitAndRun (InstallRequest wasm B.empty)
+    _req_res <- submitAndRun (InstallRequest wasm B.empty)
     forM_ msgs $ \case
        (Query,  method, arg) -> submitRead  (QueryRequest method arg)
        (Update, method, arg) -> submitAndRun (UpdateRequest method arg)

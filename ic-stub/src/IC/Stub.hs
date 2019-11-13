@@ -12,23 +12,10 @@ module IC.Stub where
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BSC
-import qualified Data.ByteString.Lazy.UTF8 as BSU
-import qualified Data.Vector as V
 import qualified Data.Map as M
-import qualified Data.IntMap as IM
-import qualified Data.Text.Lazy as T
 import Data.List
-import Data.Monoid
 import Data.Maybe
 import Control.Monad.State.Class
-import Control.Monad.Trans.State.Strict (StateT(..), evalStateT)
-import Control.Monad.Identity
-import Control.Monad.Primitive
-import Control.Monad.Except
-import Control.Monad.ST
-import Data.STRef
-import Data.Binary.Get (runGetOrFail)
-import Data.Default.Class (Default (..))
 
 import IC.Types
 import IC.Canister.Pure
@@ -96,13 +83,13 @@ requestId :: AsyncRequest -> Blob
 requestId r = BSC.pack (show r) -- TODO: Implement request hashing
 
 findRequest :: RequestID -> IC -> Maybe (AsyncRequest, RequestStatus)
-findRequest rid ic = find (\(r,s) -> requestId r == rid) (M.toList (requests ic))
+findRequest rid ic = find (\(r,_s) -> requestId r == rid) (M.toList (requests ic))
 
 readRequest :: ICT m => SyncRequest -> m ReqResponse
 
 readRequest (StatusRequest rid) =
   gets (findRequest rid) >>= \case
-    Just (r,status) -> return status
+    Just (_r,status) -> return status
     Nothing -> return Unknown
 
 readRequest (QueryRequest method arg) =
@@ -156,7 +143,7 @@ processRequest r@(InstallRequest can_mod arg) =
     Left err ->
       setReqStatus r (Rejected (RC_SYS_FATAL, "Parsing failed: " ++ err))
     Right can_mod ->
-      case init_method can_mod (dummyCanisterId, arg) of
+      case init_method can_mod (dummyCanisterId, Arg arg dummyUserId) of
         Trap msg ->
           setReqStatus r (Rejected (RC_CANISTER_ERROR, "Initialization trapped: " ++ msg))
         Return wasm_state -> do
@@ -184,8 +171,10 @@ processRequest r@(UpdateRequest method arg) = do
 -- processRequest r = setReqStatus r (Rejected (0, "Unknown request type"))
 
 starvedRequest :: ICT m => AsyncRequest -> m ()
-starvedRequest r@(UpdateRequest method arg) =
+starvedRequest r@(UpdateRequest _method _arg) =
   setReqStatus r $ Rejected (RC_CANISTER_ERROR, "canister did not respond")
+starvedRequest r =
+  fail $ "Did not expect request " ++ show r ++ " to starve"
 
 runToCompletion :: ICT m => m ()
 runToCompletion =

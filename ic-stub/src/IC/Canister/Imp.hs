@@ -25,7 +25,6 @@ import qualified Data.ByteString.Lazy.UTF8 as BSU
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Control.Monad.Except
-import Control.Monad.Trans.State.Strict (StateT(..), evalStateT)
 import Data.STRef
 import Data.Maybe
 
@@ -67,7 +66,7 @@ runESST :: (forall s. ESRef s -> ST s a) -> a
 runESST f = runST $ newESRef >>= f
 
 withES :: PrimMonad m => ESRef (PrimState m) -> ExecutionState (PrimState m) -> m a -> m (a, ExecutionState (PrimState m))
-withES (pref, esref) es f = do
+withES (_pref, esref) es f = do
   before <- stToPrim $ readSTRef esref
   unless (isNothing before) $ fail "withES with non-empty es"
   stToPrim $ writeSTRef esref $ Just es
@@ -80,7 +79,7 @@ withES (pref, esref) es f = do
       return (x, es')
 
 silently :: PrimMonad m => ESRef (PrimState m) -> m x -> m x
-silently (pref, esref) f = do
+silently (pref, _esref) f = do
   before <- stToPrim $ readSTRef pref
   stToPrim $ writeSTRef pref False
   x <- f
@@ -107,7 +106,7 @@ systemAPI :: forall s. ESRef s -> Imports s
 systemAPI esref =
     [ (,) "ic"
       [ (,,,) "trap" [i32, i32] [] $ \case
-          [v1,v2] -> throwError "explicit trap"
+          [_v1, _v2] -> throwError "explicit trap"
           _ -> fail "ic.trap: invalid argument"
       ]
     , (,) "msg"
@@ -172,25 +171,25 @@ systemAPI esref =
       return []
     msg_reject _ = fail "msg_reply: invalid argument"
 
-
-
-ifStateIsPresent :: Monad m => m x -> StateT s m x -> StateT (Maybe s) m x
-ifStateIsPresent err (StateT f) = StateT $ \case
-  Nothing -> (, Nothing) <$> err
-  Just es -> do
-    (r, es') <- f es
-    return (r, Just es')
-
 type RawState s = (ESRef s, CanisterId, Instance s)
 
-rawInitializeMethod :: ESRef s -> Module -> CanisterId -> Blob -> ST s (TrapOr (RawState s))
+rawInitializeMethod :: ESRef s -> Module -> CanisterId -> Arg -> ST s (TrapOr (RawState s))
 rawInitializeMethod esref wasm_mod cid arg = do
   result <- runExceptT $ do
     inst <- initialize wasm_mod (systemAPI esref)
 
+    let es = (initalExecutionState cid inst)
+              { params = Params
+                  { param_dat    = Just $ dat arg
+                  , param_caller = Just $ caller arg
+                  , reject_code  = 0
+                  , reject_message = ""
+                  }
+              }
+
     --  invoke canister_init
     when ("canister_init" `elem` exportedFunctions wasm_mod) $
-      void $ withES esref (initalExecutionState cid inst) $
+      void $ withES esref es $
          invokeExport inst "canister_init" [I64 0]
 
     return (esref, cid, inst)

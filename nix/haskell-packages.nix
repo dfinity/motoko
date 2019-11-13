@@ -104,5 +104,5 @@ nix: subpath:
       sha256 = "1gk5597fpw14y6pg1hklb1nv1psqf6wwaph8v2vx8fxlk41lyrv8";
      }) "--no-check" {};
 
-  ic-stub = self.callCabal2nix "ic-stub" (subpath "ic-stub") { };
+  ic-stub = self.callCabal2nixWithOptions "ic-stub" (subpath "ic-stub") "-frelease" { };
 }

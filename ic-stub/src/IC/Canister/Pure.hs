@@ -22,35 +22,19 @@ module IC.Canister.Pure
     )
     where
 
-import qualified Data.ByteString.Lazy as BS
-import qualified Data.ByteString.Lazy.Char8 as BSC
-import qualified Data.ByteString.Lazy.UTF8 as BSU
-import qualified Data.Vector as V
 import qualified Data.Map as M
-import qualified Data.IntMap as IM
-import qualified Data.Text.Lazy as T
 import Data.List
-import Data.Monoid
-import Data.Maybe
-import Control.Monad.State.Class
-import Control.Monad.Trans.State.Strict (StateT(..), evalStateT)
-import Control.Monad.Identity
-import Control.Monad.Primitive
-import Control.Monad.Except
 import Control.Monad.ST
-import Data.STRef
-import Data.Binary.Get (runGetOrFail)
-import Data.Default.Class (Default (..))
 
 import IC.Types
 import IC.Wasm.Winter (parseModule, exportedFunctions, Module)
 import IC.Canister.Imp
 
 data WasmState
-  = WSInit Module CanisterId Blob
+  = WSInit Module CanisterId Arg
   | WSUpdate MethodName Arg WasmState
 
-type InitFunc = (CanisterId, Blob) -> TrapOr WasmState
+type InitFunc = (CanisterId, Arg) -> TrapOr WasmState
 type UpdateFunc = WasmState -> TrapOr (WasmState, {- List MethodCall, -} Maybe Response)
 type QueryFunc = WasmState -> TrapOr Response
 
@@ -81,7 +65,7 @@ concreteToAbstractModule wasm_mod = CanisterModule
     ]
   }
 
-initializeMethod :: Module -> CanisterId -> Blob -> TrapOr WasmState
+initializeMethod :: Module -> CanisterId -> Arg -> TrapOr WasmState
 initializeMethod wasm_mod cid arg = runESST $ \esref -> do
   result <- rawInitializeMethod esref wasm_mod cid arg
   case result of
@@ -105,7 +89,7 @@ queryMethod m arg s = runESST $ \esref -> do
 replay :: ESRef s -> WasmState -> ST s (RawState s)
 replay esref s = silently esref $ go s
   where
-    trapToFail (Trap err) = fail "replay failed"
+    trapToFail (Trap _err) = fail "replay failed"
     trapToFail (Return x) = return x
 
     go (WSInit wasm_mod cid arg) =

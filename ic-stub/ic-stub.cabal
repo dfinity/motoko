@@ -5,6 +5,10 @@ author:              Joachim Breitner
 maintainer:          mail@joachim-breitner.de
 build-type:          Simple
 
+flag release
+  default: False
+  description: Release build, warnings are errors
+
 executable ic-stub-run
   main-is:             ic-stub-run.hs
   hs-source-dirs:      src
@@ -31,4 +35,7 @@ executable ic-stub-run
   build-depends:       utf8-string
   build-depends:       hex-text
   default-language:    Haskell2010
-  ghc-options:        -rtsopts
+  ghc-options:         -rtsopts
+  ghc-options:         -Wall -Wno-name-shadowing
+  if flag(release)
+    ghc-options:       -Werror
