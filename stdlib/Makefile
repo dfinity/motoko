@@ -39,6 +39,7 @@ TESTS=\
 	retailerReserveMany \
 	evalBulk \
 	RxTest \
+	TestCI \
 
 OUTFILES=$(addsuffix .out, $(TESTS)) $(addsuffix .wasm, $(WASM))
 
