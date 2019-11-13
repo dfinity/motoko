@@ -31,17 +31,7 @@ import Data.STRef
 import Data.Binary.Get (runGetOrFail)
 import Data.Default.Class (Default (..))
 
-import qualified Wasm.Binary.Decode as W
-import qualified Wasm.Exec.Eval as W
-import qualified Wasm.Runtime.Func as W
-import qualified Wasm.Runtime.Instance as W
-import qualified Wasm.Runtime.Memory as W
-import qualified Wasm.Syntax.AST as W
-import qualified Wasm.Syntax.Types as W
-import qualified Wasm.Syntax.Values as W
-import qualified Wasm.Syntax.Memory as W
-import Wasm.Runtime.Mutable
-
+import IC.Wasm.Winter
 
 type (↦) = M.Map
 
@@ -251,29 +241,27 @@ runToCompletion =
 -- WebAssembly engine.
 
 data WasmState
-  = WSInit (W.Module Identity) CanisterId Blob
+  = WSInit Module CanisterId Blob
   | WSUpdate MethodName Arg WasmState
 
 parseCanister :: Blob -> Either String CanisterModule
 parseCanister bytes =
-  case runGetOrFail W.getModule bytes of
-    Left  (_,_,err) -> Left err
-    Right (_,_,wasm_mod) -> Right $ concreteToAbstractModule wasm_mod
+  case parseModule bytes of
+    Left  err -> Left err
+    Right wasm_mod -> Right $ concreteToAbstractModule wasm_mod
 
-concreteToAbstractModule :: W.Module Identity -> CanisterModule
+concreteToAbstractModule :: Module -> CanisterModule
 concreteToAbstractModule wasm_mod = CanisterModule
   { init_method = \(cid, arg) -> initializeMethod wasm_mod cid arg
   , update_methods = M.fromList
     [ (m, \arg wasm_state -> updateMethod m arg wasm_state)
-    | Identity e <- W._moduleExports wasm_mod
-    , W.FuncExport {} <- return $ W._exportDesc e
-    , Just m <- return $ stripPrefix "canister_update " (T.unpack (W._exportName e))
+    | n <- exportedFunctions wasm_mod
+    , Just m <- return $ stripPrefix "canister_update " n
     ]
   , query_methods = M.fromList
     [ (m, \arg wasm_state -> queryMethod m arg wasm_state)
-    | Identity e <- W._moduleExports wasm_mod
-    , W.FuncExport {} <- return $ W._exportDesc e
-    , Just m <- return $ stripPrefix "canister_query " (T.unpack (W._exportName e))
+    | n <- exportedFunctions wasm_mod
+    , Just m <- return $ stripPrefix "canister_query " n
     ]
   }
 
@@ -285,7 +273,7 @@ data Params = Params
   }
 
 data ExecutionState s = ExecutionState
-  { memory :: Memory s
+  { inst :: Instance s
   , self_id :: CanisterId
   , params :: Params
   , response :: Maybe Response
@@ -294,27 +282,14 @@ data ExecutionState s = ExecutionState
 
 
 
-initalExecutionState :: CanisterId -> Memory s -> ExecutionState s
-initalExecutionState self_id memory = ExecutionState
-  { memory
+initalExecutionState :: CanisterId -> Instance s -> ExecutionState s
+initalExecutionState self_id inst = ExecutionState
+  { inst
   , self_id
   , params = Params Nothing Nothing 0 ""
   , response = Nothing
   , reply_data = mempty
   }
-
-type HostFunc s = ExceptT String (ST s) [W.Value]
-type Memory s = W.MemoryInst (ST s)
-
-getBytes :: Memory s -> W.Address -> W.Size -> ExceptT String (ST s) Blob
-getBytes mem ptr len = do
-  vec <- withExceptT show $ W.loadBytes mem ptr len
-  return $ BS.pack $ V.toList vec
-
-setBytes :: Memory s -> W.Address -> Blob -> ExceptT String (ST s) ()
-setBytes mem ptr blob =
-  withExceptT show $
-    W.storeBytes mem (fromIntegral ptr) (V.fromList (BS.unpack blob))
 
 type ESRef s = (STRef s Bool, STRef s (Maybe (ExecutionState s)))
 
@@ -361,9 +336,7 @@ putBytes (pref, _esref) bytes =
     False -> return ()
 
 
-systemAPI :: forall s.
-    ESRef s ->
-    [(String, [(String, W.StackType, W.StackType, [W.Value] -> HostFunc s)])]
+systemAPI :: forall s. ESRef s -> Imports s
 systemAPI esref =
     [ (,) "ic"
       [ (,,,) "trap" [i32, i32] [] $ \case
@@ -385,48 +358,48 @@ systemAPI esref =
     unimplemented name arg ret = (,,,) name arg ret $
       \_ -> throwError $ "unimplemented: " ++ name
 
-    i32 = W.I32Type
-    i64 = W.I64Type
+    i32 = I32Type
+    i64 = I64Type
 
-    debug_print :: [W.Value] -> HostFunc s
-    debug_print [W.I32 ptr, W.I32 len] = do
-      mem <- getsES esref memory
-      bytes <- getBytes mem (fromIntegral ptr) len
+    debug_print :: [Value] -> HostFunc s
+    debug_print [I32 ptr, I32 len] = do
+      i <- getsES esref inst
+      bytes <- getBytes i (fromIntegral ptr) len
       putBytes esref bytes
       return []
     debug_print _ = fail "debug_print: invalid argument"
 
-    arg_data_size :: [W.Value] -> HostFunc s
-    arg_data_size [W.I64 _nonce] = do
+    arg_data_size :: [Value] -> HostFunc s
+    arg_data_size [I64 _nonce] = do
       blob <- getsES esref (param_dat . params)
           >>= maybe (throwError "arg_data_size: No argument") return
-      return [W.I32 (fromIntegral (BS.length blob))]
+      return [I32 (fromIntegral (BS.length blob))]
     arg_data_size _ = fail "arg_data_size: invalid argument"
 
-    arg_data_copy :: [W.Value] -> HostFunc s
-    arg_data_copy [W.I64 _nonce, W.I32 dst, W.I32 len, W.I32 offset] = do
+    arg_data_copy :: [Value] -> HostFunc s
+    arg_data_copy [I64 _nonce, I32 dst, I32 len, I32 offset] = do
       blob <- getsES esref (param_dat . params)
           >>= maybe (throwError "arg_data_size: No argument") return
       unless (offset == 0) $ throwError "arg_data_copy: offset /= 0 not suppoted"
       unless (len == fromIntegral (BS.length blob)) $ throwError "arg_data_copy: len not full blob not suppoted"
-      mem <- getsES esref memory
+      i <- getsES esref inst
       -- TODO Bounds checking
-      setBytes mem (fromIntegral dst) blob
+      setBytes i (fromIntegral dst) blob
       return []
     arg_data_copy _ = fail "arg_data_copy: invalid argument"
 
-    msg_reply :: [W.Value] -> HostFunc s
-    msg_reply [W.I64 _nonce, W.I32 ptr, W.I32 len] = do
-      mem <- getsES esref memory
-      bytes <- getBytes mem (fromIntegral ptr) len
+    msg_reply :: [Value] -> HostFunc s
+    msg_reply [I64 _nonce, I32 ptr, I32 len] = do
+      i <- getsES esref inst
+      bytes <- getBytes i (fromIntegral ptr) len
       modES esref (\es -> es { response = Just (Reply bytes) })
       return []
     msg_reply _ = fail "msg_reply: invalid argument"
 
-    msg_reject :: [W.Value] -> HostFunc s
-    msg_reject [W.I64 _nonce, W.I32 ptr, W.I32 len] = do
-      mem <- getsES esref memory
-      bytes <- getBytes mem (fromIntegral ptr) len
+    msg_reject :: [Value] -> HostFunc s
+    msg_reject [I64 _nonce, I32 ptr, I32 len] = do
+      i <- getsES esref inst
+      bytes <- getBytes i (fromIntegral ptr) len
       let msg = BSU.toString bytes
       modES esref (\es -> es { response = Just (Reject (RC_CANISTER_REJECT, msg)) })
       return []
@@ -441,7 +414,7 @@ ifStateIsPresent err (StateT f) = StateT $ \case
     (r, es') <- f es
     return (r, Just es')
 
-initializeMethod :: W.Module Identity -> CanisterId -> Blob -> TrapOr WasmState
+initializeMethod :: Module -> CanisterId -> Blob -> TrapOr WasmState
 initializeMethod wasm_mod cid arg = runESST $ \esref -> do
   result <- rawInitializeMethod esref wasm_mod cid arg
   case result of
@@ -474,43 +447,26 @@ replay esref s = silently esref $ go s
       _ <- rawUpdateMethod rs m arg >>= trapToFail
       return rs
 
-type RawState s = (ESRef s, CanisterId, IM.IntMap (W.ModuleInst Identity (ST s)), W.ModuleInst Identity (ST s))
+type RawState s = (ESRef s, CanisterId, Instance s)
 
-rawInitializeMethod :: ESRef s -> W.Module Identity -> CanisterId -> Blob -> ST s (TrapOr (RawState s))
+rawInitializeMethod :: ESRef s -> Module -> CanisterId -> Blob -> ST s (TrapOr (RawState s))
 rawInitializeMethod esref wasm_mod cid arg = do
   result <- runExceptT $ do
-      let names = M.fromList (zip (map (T.pack . fst) (systemAPI esref)) [1..])
-          mods  = IM.fromList $ zip [1..]
-            [ (W.emptyModuleInst def)
-              { W._miGlobals  = [ ]
-              , W._miTables   = [ ]
-              , W._miMemories = [ ]
-              , W._miFuncs    = [ ]
-              , W._miExports  = M.fromList
-                [ (,) (T.pack fname) $ W.ExternFunc $
-                  W.allocHostEff (W.FuncType arg_ty ret_ty)
-                      (\ args -> runExceptT $ f args)
-                | (fname, arg_ty, ret_ty, f) <- funcs
-                ]
-              }
-            | (_name, funcs) <- systemAPI esref
-            ]
-      (ref, inst) <- W.initialize (Identity wasm_mod) names mods
-      let mods' = IM.insert ref inst mods
+    inst <- initialize wasm_mod (systemAPI esref)
 
-      --  invoke canister_init
-      when (M.member (T.pack "canister_init") $ W._miExports inst) $
-        void $ withES esref (initalExecutionState cid (head (W._miMemories inst))) $
-           W.invokeByName mods' inst (T.pack "canister_init") [W.I64 0]
+    --  invoke canister_init
+    when ("canister_init" `elem` exportedFunctions wasm_mod) $
+      void $ withES esref (initalExecutionState cid inst) $
+         invokeExport inst "canister_init" [I64 0]
 
-      return (esref, cid, mods', inst)
+    return (esref, cid, inst)
   case result of
-    Left  err     -> return $ Trap $ show err
-    Right _raw_state -> return $ Return _raw_state
+    Left  err     -> return $ Trap err
+    Right raw_state -> return $ Return raw_state
 
 rawQueryMethod :: RawState s -> MethodName -> Arg -> ST s (TrapOr Response)
-rawQueryMethod (esref, cid, mods', inst) method arg = do
-  let es = (initalExecutionState cid (head (W._miMemories inst)))
+rawQueryMethod (esref, cid, inst) method arg = do
+  let es = (initalExecutionState cid inst)
             { params = Params
                 { param_dat    = Just $ dat arg
                 , param_caller = Just $ caller arg
@@ -519,16 +475,16 @@ rawQueryMethod (esref, cid, mods', inst) method arg = do
                 }
             }
   result <- runExceptT $ withES esref es $
-      W.invokeByName mods' inst (T.pack $ "canister_query " ++ method) [W.I64 0]
+    invokeExport inst ("canister_query " ++ method) [I64 0]
   case result of
-    Left err -> return $ Trap $ show err
+    Left err -> return $ Trap err
     Right (_, es')
       | Just r <- response es' -> return $ Return r
       | otherwise -> return $ Trap "No response"
 
 rawUpdateMethod :: RawState s -> MethodName -> Arg -> ST s (TrapOr ({- List MethodCall, -} Maybe Response))
-rawUpdateMethod (esref, cid, mods', inst) method arg = do
-  let es = (initalExecutionState cid (head (W._miMemories inst)))
+rawUpdateMethod (esref, cid, inst) method arg = do
+  let es = (initalExecutionState cid inst)
             { params = Params
                 { param_dat    = Just $ dat arg
                 , param_caller = Just $ caller arg
@@ -538,7 +494,7 @@ rawUpdateMethod (esref, cid, mods', inst) method arg = do
             }
 
   result <- runExceptT $ withES esref es $
-    W.invokeByName mods' inst (T.pack $ "canister_update " ++ method) [W.I64 0]
+    invokeExport inst ("canister_update " ++ method) [I64 0]
   case result of
-    Left  err -> return $ Trap $ show err
+    Left  err -> return $ Trap err
     Right (_, es') -> return $ Return (response es')
