@@ -604,16 +604,20 @@ let rec write_8byte (v : value') =
   match v with
   | AnnotV (v, t) -> write_8byte v.it
   | IntegralV i ->
+    let open Big_int in
+    let lim = big_int_of_int64 Int64.max_int in
+    let i = if gt_big_int i lim then add_big_int i (mult_int_big_int 2 (big_int_of_int64 Int64.min_int)) else i in
+    let i = int64_of_big_int i in
+    let slice_at n = Int64.(to_int (shift_right_logical i n)) land 0xFF in
     let buf = Buffer.create 0 in
-    let i = Big_int.int_of_big_int i in (* TODO: Int64 *)
-    add_uint8 buf (i land 0xFF);
-    add_uint8 buf (i lsr 8 land 0xFF);
-    add_uint8 buf (i lsr 16 land 0xFF);
-    add_uint8 buf (i lsr 24 land 0xFF);
-    add_uint8 buf (i lsr 32 land 0xFF);
-    add_uint8 buf (i lsr 40 land 0xFF);
-    add_uint8 buf (i lsr 48 land 0xFF);
-    add_uint8 buf (i lsr 56);
+    add_uint8 buf (slice_at 0);
+    add_uint8 buf (slice_at 8);
+    add_uint8 buf (slice_at 16);
+    add_uint8 buf (slice_at 24);
+    add_uint8 buf (slice_at 32);
+    add_uint8 buf (slice_at 40);
+    add_uint8 buf (slice_at 48);
+    add_uint8 buf (slice_at 56);
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
@@ -624,6 +628,53 @@ let rec write_signedbyte (v : value') =
     let buf = Buffer.create 0 in
     let i = Big_int.int_of_big_int i in
     add_uint8 buf (if i < 0 then i lor 128 else i);
+    Buffer.output_buffer stdout buf
+  | _ -> assert false
+
+let rec write_2signedbyte (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_2signedbyte v.it
+  | IntegralV i ->
+    let buf = Buffer.create 0 in
+    let i = Big_int.int_of_big_int i in
+    add_uint8 buf (i land 0xFF);
+    let i = i asr 8 in
+    add_uint8 buf (if i < 0 then i lor 128 else i);
+    Buffer.output_buffer stdout buf
+  | _ -> assert false
+
+let rec write_4signedbyte (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_4signedbyte v.it
+  | IntegralV i ->
+    let buf = Buffer.create 0 in
+    let i = Big_int.int_of_big_int i in
+    add_uint8 buf (i land 0xFF);
+    let i = i asr 8 in
+    add_uint8 buf (i land 0xFF);
+    let i = i asr 8 in
+    add_uint8 buf (i land 0xFF);
+    let i = i asr 8 in
+    add_uint8 buf (if i < 0 then i lor 128 else i);
+    Buffer.output_buffer stdout buf
+  | _ -> assert false
+
+let rec write_8signedbyte (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_8signedbyte v.it
+  | IntegralV i ->
+    let open Big_int in
+    let i = int64_of_big_int i in
+    let slice_at n = Int64.(to_int (shift_right i n)) land 0xFF in
+    let buf = Buffer.create 0 in
+    add_uint8 buf (slice_at 0);
+    add_uint8 buf (slice_at 8);
+    add_uint8 buf (slice_at 16);
+    add_uint8 buf (slice_at 24);
+    add_uint8 buf (slice_at 32);
+    add_uint8 buf (slice_at 40);
+    add_uint8 buf (slice_at 48);
+    add_uint8 buf (slice_at 56);
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
@@ -655,9 +706,9 @@ let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
   ; Nat32, (-7, write_4byte)
   ; Nat64, (-8, write_8byte)
   ; Int8, (-9, write_signedbyte)
-  ; Int16, (-10, write_nil)
-  ; Int32, (-11, write_nil)
-  ; Int64, (-12, write_nil)
+  ; Int16, (-10, write_2signedbyte)
+  ; Int32, (-11, write_4signedbyte)
+  ; Int64, (-12, write_8signedbyte)
   (* | -13 | -14 -> failwith "no floats yet" (* TODO *) *)
   ; Text, (-15, write_text)
   ; Reserved, (-16, write_nil)
