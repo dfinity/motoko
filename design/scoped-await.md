@@ -54,7 +54,7 @@ Env :=                // the usual suspects
 
 # Concrete Syntax
 
-TBD, but hopefully the explicit parameterization/instantiaton can be surpressed, much as Rust *lifetimes* are largely implicit.
+TBD, but hopefully the explicit parameterization/instantiation can be supressed, much as Rust *lifetimes* are largely implicit.
 Here, the simplist might be to use the function name itself for the implicit index parameter
 (although not all motoko functions are named) and always instantiate with the ambient index (or `Any` if none).
 
