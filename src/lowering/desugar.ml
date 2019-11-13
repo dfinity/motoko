@@ -131,7 +131,7 @@ and exp' at note = function
   | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
   | S.RetE e -> I.RetE (exp e)
   | S.ThrowE e -> I.ThrowE (exp e)
-  | S.AsyncE e -> I.AsyncE (exp e)
+  | S.AsyncE (tb, e, t) -> I.AsyncE (typ_bind tb, exp e, t.Source.note)
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
@@ -367,7 +367,7 @@ and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     (fun e -> blockE [letP (pat p) v] e)
 
 
-and to_args typ p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
+and to_args typ p : Ir.arg list * (Ir.exp -> Ir.exp) * T.typ T.control * T.typ list =
   let sort, control, n_args, res_tys =
     match typ with
     | Type.Func (sort, control, tbds, dom, res) ->
@@ -405,7 +405,7 @@ and to_args typ p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
   let wrap_under_async e =
     if T.is_shared_sort sort && control <> T.Returns
     then match e.it with
-      | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
+      | Ir.AsyncE (tb, e',t) -> { e with it = Ir.AsyncE (tb, wrap e', t) }
       | _ -> assert false
     else wrap e in
 

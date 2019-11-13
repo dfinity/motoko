@@ -3,7 +3,7 @@ open Mo_types
 
 type call_conv = {
   sort: Type.func_sort;
-  control : Type.control;
+  control : unit Type.control;
   n_args : int;
   n_res : int;
 }

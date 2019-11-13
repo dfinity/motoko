@@ -49,7 +49,7 @@ let rec exp e = match e.it with
   | DebugE e            -> "DebugE"  $$ [exp e]
   | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
   | RetE e              -> "RetE"    $$ [exp e]
-  | AsyncE e            -> "AsyncE"  $$ [exp e]
+  | AsyncE (tb, e, t)   -> "AsyncE"  $$ [typ_bind tb; exp e; typ t]
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
@@ -147,7 +147,7 @@ and typ t = match t.it with
   | VariantT cts        -> "VariantT" $$ List.map typ_tag cts
   | TupT ts             -> "TupT" $$ List.map typ ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
-  | AsyncT t            -> "AsyncT" $$ [typ t]
+  | AsyncT (t1, t2)     -> "AsyncT" $$ [typ t1; typ t2]
   | ParT t              -> "ParT" $$ [typ t]
 
 and dec d = match d.it with

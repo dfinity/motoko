@@ -81,13 +81,13 @@ and exp' =
   | LabelE of id * Type.typ * exp              (* label *)
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
-  | AsyncE of exp                              (* async *)
+  | AsyncE of typ_bind * exp * Type.typ        (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
-      string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
+      string * Type.func_sort * Type.typ Type.control * typ_bind list * arg list * Type.typ list * exp
   | ActorE of id * dec list * field list * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
   | ThrowE of exp                              (* throw *)

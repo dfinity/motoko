@@ -124,7 +124,7 @@ and t_exp' env = function
     RetE (t_exp env exp1)
   | ThrowE exp1 ->
     ThrowE (t_exp env exp1)
-  | AsyncE e -> AsyncE (t_exp env e)
+  | AsyncE (tb, e, typ) -> AsyncE (tb, t_exp env e, typ) (* TBR *)
   | AwaitE e -> AwaitE (t_exp env e)
   | AssertE exp1 ->
     AssertE (t_exp env exp1)

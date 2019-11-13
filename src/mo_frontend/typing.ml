@@ -215,12 +215,12 @@ let as_domT t =
 
 let as_codomT sort t =
   match sort, t.Source.it with
-  | T.Shared _, AsyncT t -> T.Promises, as_domT t
+  | T.Shared _, AsyncT (t1,t2) -> T.Promises t1 , as_domT t2
   | _ -> T.Returns, as_domT t
 
 let check_shared_return env at sort c ts =
   match sort, c, ts with
-      | T.Shared _, T.Promises, _ -> ()
+      | T.Shared _, T.Promises _, _ -> ()
       | T.Shared T.Write, T.Returns, [] -> ()
       | T.Shared T.Write, _, _ -> error env at "shared function must have syntactic return type `()` or `async <typ>`"
       | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `async <typ>`"
@@ -258,6 +258,7 @@ and check_typ' env typ : T.typ =
     let c, typs2 = as_codomT sort.it typ2 in
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
+    let c' = T.map_control (check_typ env') c in
     check_shared_return env typ2.at sort.it c ts2;
 
     if Type.is_shared_sort sort.it then
@@ -273,14 +274,15 @@ and check_typ' env typ : T.typ =
       ) ts2;
       match c, ts2 with
       | T.Returns, [] when sort.it = T.Shared T.Write -> ()
-      | T.Promises, _ -> ()
+      | T.Promises _, _ -> ()
       | _ ->
         error env typ2.at
           "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
-    end;
+      end;
+
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
-    T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort.it, c', T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
     T.Opt (check_typ env typ)
   | VariantT tags ->
@@ -288,12 +290,13 @@ and check_typ' env typ : T.typ =
       (List.map (fun (tag : typ_tag) -> tag.it.tag) tags);
     let fs = List.map (check_typ_tag env) tags in
     T.Variant (List.sort T.compare_field fs)
-  | AsyncT typ ->
+  | AsyncT (typ0, typ) ->
+    let t0 = check_typ env typ0 in
     let t = check_typ env typ in
     if not env.pre && not (T.shared t) then
       error_shared env t typ.at "async has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
-    T.Async t
+    T.Async (t0,t)
   | ObjT (sort, fields) ->
     check_ids env "object" "field"
       (List.map (fun (field : typ_field) -> field.it.id) fields);
@@ -694,13 +697,13 @@ and infer_exp'' env exp : T.typ =
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
-    let c, ts2 = as_codomT sort.it typ in
-    check_shared_return env typ.at sort.it c ts2;
-
+    let cT, ts2 = as_codomT sort.it typ in
+    check_shared_return env typ.at sort.it cT ts2;
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let t1, ve = infer_pat_exhaustive env' pat in
     let ts2 = List.map (check_typ env') ts2 in
+    let c = T.map_control (check_typ env') cT in
     let codom = T.codom c ts2 in
     if not env.pre then begin
       let env'' =
@@ -723,7 +726,7 @@ and infer_exp'' env exp : T.typ =
         ) ts2;
         match c, ts2 with
         | T.Returns,  [] when sort.it = T.Shared T.Write -> ()
-        | T.Promises, _ ->
+        | T.Promises _, _ ->
           if not (isAsyncE exp) then
             error env exp.at
               "shared function with async result type has non-async body"
@@ -897,7 +900,7 @@ and infer_exp'' env exp : T.typ =
       error env exp.at "misplaced throw";
     if not env.pre then check_exp env T.throw exp1;
     T.Non
-  | AsyncE exp1 ->
+  | AsyncE (_, exp1, _) ->
     if not in_shared then
       error_in [Flags.ICMode] env exp.at "unsupported async block";
     let env' =
@@ -907,9 +910,11 @@ and infer_exp'' env exp : T.typ =
       error_shared env t exp1.at "async type has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
     T.Async t
-  | AwaitE (exp1) ->
+  | AwaitE (typ_bind, exp1, typ0) ->
     if not env.async then
       error env exp.at "misplaced await";
+    let t0 = check_typ env typ0 in
+    
     let t1 = infer_exp_promote {env with in_await = true} exp1 in
     (match exp1.it with
        | CallE (f, _, _) ->

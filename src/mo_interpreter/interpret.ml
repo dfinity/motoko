@@ -213,7 +213,7 @@ let make_async_message env id v =
   let open CC in
   let call_conv, f = V.as_func v in
   match call_conv with
-  | {sort = T.Shared s; control = T.Promises; _} ->
+  | {sort = T.Shared s; control = T.Promises _; _} ->
     Value.async_func s call_conv.n_args call_conv.n_res (fun v k ->
       let async = make_async () in
       actor_msg env id f v (fun v_async ->
@@ -228,7 +228,7 @@ let make_async_message env id v =
 let make_message env name t v : V.value =
   match t with
   | T.Func (_, T.Returns, _, _, _) -> make_unit_message env name v
-  | T.Func (_, T.Promises, _, _, _) -> make_async_message env name v
+  | T.Func (_, T.Promises _, _, _, _) -> make_async_message env name v
   | _ -> (* assert false *)
     failwith (Printf.sprintf "actorfield: %s %s" name (T.string_of_typ t))
 
@@ -556,7 +556,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.throws)
-  | AsyncE exp1 ->
+  | AsyncE (_ ,exp1, _) ->
     async env
       exp.at
       (fun k' r ->

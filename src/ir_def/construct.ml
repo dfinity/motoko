@@ -90,10 +90,10 @@ let primE prim es =
     note = { note_typ = ty; note_eff = e }
   }
 
-let asyncE typ e =
+let asyncE typ1 typ2 e =
   { it = PrimE (CPSAsync, [e]);
     at = no_region;
-    note = { note_typ = T.Async typ; note_eff = eff e }
+    note = { note_typ = T.Async (typ1, typ2); note_eff = eff e }
   }
 
 let assertE e =

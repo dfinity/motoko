@@ -75,7 +75,7 @@ let rec exp e : f = match e.it with
   | LabelE (i, t, e)    -> exp e
   | BreakE (i, e)       -> exp e
   | RetE e              -> exp e
-  | AsyncE e            -> exp e
+  | AsyncE (_, e, _)    -> exp e
   | AwaitE e            -> exp e
   | AssertE e           -> exp e
   | OptE e              -> exp e

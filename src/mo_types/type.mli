@@ -3,7 +3,7 @@
 type lab = string
 type var = string
 
-type control = Returns | Promises | Replies
+type 'a control = Returns | Promises of 'a | Replies
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
 type func_sort = Local | Shared of shared_sort
@@ -41,8 +41,8 @@ and typ =
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of func_sort * control * bind list * typ list * typ list  (* function *)
-  | Async of typ                              (* future *)
+  | Func of func_sort * (typ control) * bind list * typ list * typ list  (* function *)
+  | Async of typ * typ                        (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
@@ -60,6 +60,8 @@ and kind =
 (* Function sorts *)
 
 val is_shared_sort : func_sort -> bool
+val is_promising : 'a control -> bool
+val map_control : ('a -> 'b) -> 'a control -> 'b control
 
 (* Short-hands *)
 
@@ -105,8 +107,8 @@ val as_opt : typ -> typ
 val as_tup : typ -> typ list
 val as_unit : typ -> unit
 val as_pair : typ -> typ * typ
-val as_func : typ -> func_sort * control * bind list * typ list * typ list
-val as_async : typ -> typ
+val as_func : typ -> func_sort * (typ control) * bind list * typ list * typ list
+val as_async : typ -> typ * typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
 val as_typ : typ -> con
@@ -121,13 +123,13 @@ val as_unit_sub : typ -> unit
 val as_pair_sub : typ -> typ * typ
 val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
-val as_async_sub : typ -> typ
+val as_async_sub : typ -> typ * typ
 
 
 (* Argument/result sequences *)
 
 val seq : typ list -> typ
-val codom : control -> typ list -> typ
+val codom : typ control -> typ list -> typ
 val as_seq : typ -> typ list (* This needs to go away *)
 val seq_of_tup : typ -> typ list
 val arity : typ -> int

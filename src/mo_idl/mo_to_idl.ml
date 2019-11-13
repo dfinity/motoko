@@ -107,7 +107,7 @@ let rec typ vs t =
      let fs1 = tuple vs ts1 in
      (match ts2, c with
      | [], Returns -> I.FuncT ([I.Oneway @@ no_region], fs1, [])
-     | ts, Promises ->
+     | ts, Promises _ ->
        I.FuncT (
          (match s with
           | Query -> [I.Query @@ no_region]
@@ -115,7 +115,7 @@ let rec typ vs t =
          fs1, tuple vs ts)
      | _ -> assert false)
   | Func _ -> assert false
-  | Async t -> assert false
+  | Async _ -> assert false
   | Mut t -> assert false
   | Pre -> assert false
   ) @@ no_region

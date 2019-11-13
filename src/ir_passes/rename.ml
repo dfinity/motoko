@@ -54,7 +54,7 @@ and exp' rho e  = match e with
                            LabelE(i', t, exp rho' e)
   | BreakE (i, e)       -> BreakE(id rho i,exp rho e)
   | RetE e              -> RetE (exp rho e)
-  | AsyncE e            -> AsyncE (exp rho e)
+  | AsyncE (tb, e, t)   -> AsyncE (tb, exp rho e, t)
   | AwaitE e            -> AwaitE (exp rho e)
   | AssertE e           -> AssertE (exp rho e)
   | OptE e              -> OptE (exp rho e)

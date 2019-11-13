@@ -40,7 +40,7 @@ and typ' =
   | VariantT of typ_tag list                       (* variant *)
   | TupT of typ list                               (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
-  | AsyncT of typ                                  (* future *)
+  | AsyncT of typ * typ                            (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
 
 and typ_field = typ_field' Source.phrase
@@ -141,7 +141,7 @@ and exp' =
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
-  | AsyncE of exp                              (* async *)
+  | AsyncE of typ_bind * exp * typ             (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)

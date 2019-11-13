@@ -134,7 +134,7 @@ let letEta e scope =
 
 let isAwaitableFunc exp =
   match typ exp with
-  | T.Func (T.Shared _,T.Promises,_,_,_) -> true
+  | T.Func (T.Shared _,T.Promises _,_,_,_) -> true
   | _ -> false
 
 (* Given sequence type ts, bind e of type (seq ts) to a
@@ -186,11 +186,11 @@ let transform mode env prog =
     | Array t -> Array (t_typ t)
     | Tup ts -> Tup (List.map t_typ ts)
     | Func (s, c, tbs, ts1, ts2) ->
-      let c' = if c = T.Promises then T.Replies else c in
+      let c' =  match c with T.Promises _ -> T.Replies | _ -> c in
       Func (s, c', List.map t_bind tbs, List.map t_typ ts1, List.map t_typ ts2)
     | Opt t -> Opt (t_typ t)
     | Variant fs -> Variant (List.map t_field fs)
-    | Async t -> t_async nary (t_typ t)
+    | Async (_, t) -> t_async nary (t_typ t) (* TBR exploit the index _ *)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
     | Any -> Any
@@ -287,7 +287,7 @@ let transform mode env prog =
       assert (typs = []);
       let ts1,ts2 =
         match typ exp1 with
-        | T.Func (T.Shared _, T.Promises,tbs,ts1,ts2) ->
+        | T.Func (T.Shared _, T.Promises _,tbs,ts1,ts2) ->
           List.map t_typ ts1, List.map t_typ ts2
         | _ -> assert(false)
       in
@@ -348,7 +348,8 @@ let transform mode env prog =
             match c with
             | Returns ->
               FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
-            | Promises ->
+            | Promises _ ->
+              (* TODO: deal with _ ^^^*)
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in

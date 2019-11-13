@@ -123,7 +123,7 @@ and exp' env e  : exp' = match e.it with
   | RetE e              -> RetE (tailexp { env with tail_pos = true } e)
   (* NB:^ e is always in tailposition, regardless of fst env *)
   | ThrowE e            -> ThrowE (exp env e) (* TODO: make me a tail call *)
-  | AsyncE e            -> AsyncE (exp { tail_pos = true; info = None } e)
+  | AsyncE (tb, e, typ) -> AsyncE (tb, exp { tail_pos = true; info = None } e, typ)
   | AwaitE e            -> AwaitE (exp env e)
   | AssertE e           -> AssertE (exp env e)
   | OptE e              -> OptE (exp env e)

@@ -5,7 +5,7 @@ let ($$) head inner = Node (head, inner)
 
 let control c = match c with
   | Returns -> "Returns"
-  | Promises -> "Promises"
+  | Promises t -> "Promises ?"
   | Replies -> "Replies"
 
 let obj_sort s = match s with
@@ -51,13 +51,15 @@ let rec typ (t:Type.typ) = match t with
   | Opt t                  -> "Opt" $$ [typ t]
   | Variant tfs            -> "Variant" $$ List.map typ_field tfs
   | Tup ts                 -> "Tup" $$ List.map typ ts
-  | Func (s, c, tbs, at, rt) -> "Func" $$ [Atom (func_sort s); Atom (control c)] @ List.map typ_bind tbs @ [ "" $$ (List.map typ at); "" $$ (List.map typ rt)]
-  | Async t               -> "Async" $$ [typ t]
-  | Mut t                 -> "Mut" $$ [typ t]
-  | Any                   -> Atom "Any"
-  | Non                   -> Atom "Non"
-  | Pre                   -> Atom "Pre"
-  | Typ c                 -> "Typ" $$ [con c]
+  | Func (s, c, tbs, at, rt) ->
+    "Func" $$ [Atom (func_sort s); Atom (control c)] @
+      List.map typ_bind tbs @ [ "" $$ (List.map typ at); "" $$ (List.map typ rt)]
+  | Async (t1, t2)         -> "Async" $$ [typ t1; typ t2]
+  | Mut t                  -> "Mut" $$ [typ t]
+  | Any                    -> Atom "Any"
+  | Non                    -> Atom "Non"
+  | Pre                    -> Atom "Pre"
+  | Typ c                  -> "Typ" $$ [con c]
 
 and typ_bind (tb : Type.bind) =
   tb.var $$ [typ tb.bound]

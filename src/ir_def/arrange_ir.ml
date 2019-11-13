@@ -31,7 +31,7 @@ let rec exp e = match e.it with
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
   | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
   | RetE e              -> "RetE"    $$ [exp e]
-  | AsyncE e            -> "AsyncE"  $$ [exp e]
+  | AsyncE (tb, e, t)   -> "AsyncE"  $$ [typ_bind tb; exp e; typ t]
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
   | OptE e              -> "OptE"    $$ [exp e]
