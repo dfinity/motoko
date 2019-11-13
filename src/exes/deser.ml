@@ -38,7 +38,7 @@ let read_4byte () : int =
 let read_8byte () : Big_int.big_int =
   let lsb = read_4byte () in
   let msb = read_4byte () in
-  Big_int.(add_int_big_int lsb (mult_int_big_int 4294967296 (big_int_of_int msb))) (* FIXME*)
+  Big_int.(add_int_big_int lsb (mult_int_big_int 4294967296 (big_int_of_int msb)))
 
 let read_signed_byte () : bool * int =
   let b = read_byte () in
