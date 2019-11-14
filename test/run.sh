@@ -229,7 +229,7 @@ do
               run dvm $DVM_WRAPPER $out/$base.wasm $base.mo
             elif [ $API = ic ]
             then
-              run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
+              # run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
               DRUN=$IC_STUB_RUN run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $base.mo
             else
               run wasm-run $WASM $out/$base.wasm

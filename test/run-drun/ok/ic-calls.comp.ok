@@ -7,9 +7,3 @@ ic-calls.mo:19.9-19.17: warning, this pattern consuming type
 does not cover value
   (1, false) or
   (0 or -1 or _, _)
-ic-calls.mo:17.20-17.21: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-ic-calls.mo:18.19-18.20: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-ic-calls.mo:19.26-19.27: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

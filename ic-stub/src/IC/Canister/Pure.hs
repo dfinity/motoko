@@ -31,17 +31,19 @@ import IC.Wasm.Winter (parseModule, exportedFunctions, Module)
 import IC.Canister.Imp
 
 data WasmState
-  = WSInit Module CanisterId Arg
-  | WSUpdate MethodName Arg WasmState
+  = WSInit Module CanisterId EntityId Blob
+  | WSUpdate MethodName EntityId Blob WasmState
+  | WSCallback Callback EntityId Response WasmState
 
-type InitFunc = (CanisterId, Arg) -> TrapOr WasmState
-type UpdateFunc = WasmState -> TrapOr (WasmState, {- List MethodCall, -} Maybe Response)
+type InitFunc = CanisterId -> EntityId -> Blob -> TrapOr WasmState
+type UpdateFunc = WasmState -> TrapOr (WasmState, [MethodCall], Maybe Response)
 type QueryFunc = WasmState -> TrapOr Response
 
 data CanisterModule = CanisterModule
   { init_method :: InitFunc
-  , update_methods :: MethodName ↦ (Arg -> UpdateFunc)
-  , query_methods :: MethodName ↦ (Arg -> QueryFunc)
+  , update_methods :: MethodName ↦ (EntityId -> Blob -> UpdateFunc)
+  , query_methods :: MethodName ↦ (EntityId -> Blob -> QueryFunc)
+  , callbacks :: Callback -> EntityId -> Response -> UpdateFunc
   }
 
 parseCanister :: Blob -> Either String CanisterModule
@@ -52,9 +54,9 @@ parseCanister bytes =
 
 concreteToAbstractModule :: Module -> CanisterModule
 concreteToAbstractModule wasm_mod = CanisterModule
-  { init_method = \(cid, arg) -> initializeMethod wasm_mod cid arg
+  { init_method = \cid caller dat -> initializeMethod wasm_mod cid caller dat
   , update_methods = M.fromList
-    [ (m, \arg wasm_state -> updateMethod m arg wasm_state)
+    [ (m, \caller dat wasm_state -> updateMethod m caller dat wasm_state)
     | n <- exportedFunctions wasm_mod
     , Just m <- return $ stripPrefix "canister_update " n
     ]
@@ -63,27 +65,43 @@ concreteToAbstractModule wasm_mod = CanisterModule
     | n <- exportedFunctions wasm_mod
     , Just m <- return $ stripPrefix "canister_query " n
     ]
+  , callbacks = callbackMethod
   }
 
-initializeMethod :: Module -> CanisterId -> Arg -> TrapOr WasmState
-initializeMethod wasm_mod cid arg = runESST $ \esref -> do
-  result <- rawInitializeMethod esref wasm_mod cid arg
+initializeMethod :: Module -> CanisterId -> EntityId -> Blob -> TrapOr WasmState
+initializeMethod wasm_mod cid caller dat = runESST $ \esref -> do
+  result <- rawInitializeMethod esref wasm_mod cid caller dat
+  let state' = WSInit wasm_mod cid caller dat
   case result of
     Trap err          -> return $ Trap err
-    Return _raw_state -> return $ Return $ WSInit wasm_mod cid arg
+    Return _raw_state -> return $ Return state'
 
-updateMethod :: MethodName -> Arg -> WasmState -> TrapOr (WasmState, Maybe Response)
-updateMethod m arg s = runESST $ \esref -> do
+updateMethod ::
+    MethodName -> EntityId -> Blob ->
+    WasmState -> TrapOr (WasmState, [MethodCall], Maybe Response)
+updateMethod m caller dat s = runESST $ \esref -> do
   rs <- replay esref s
-  tor <- rawUpdateMethod rs m arg
+  tor <- rawUpdateMethod rs m caller dat
+  let state' = WSUpdate m caller dat s
   case tor of
     Trap msg -> return $ Trap msg
-    Return r -> return $ Return (WSUpdate m arg s, r)
+    Return (calls, r) -> return $ Return (state', calls, r)
 
-queryMethod :: MethodName -> Arg -> WasmState -> TrapOr Response
-queryMethod m arg s = runESST $ \esref -> do
+callbackMethod ::
+    Callback -> EntityId -> Response ->
+    WasmState -> TrapOr (WasmState, [MethodCall], Maybe Response)
+callbackMethod cb caller r s = runESST $ \esref -> do
   rs <- replay esref s
-  rawQueryMethod rs m arg
+  tor <- rawCallbackMethod rs cb caller r
+  let state' = WSCallback cb caller r s
+  case tor of
+    Trap msg -> return $ Trap msg
+    Return (calls, r) -> return $ Return (state', calls, r)
+
+queryMethod :: MethodName -> EntityId -> Blob -> WasmState -> TrapOr Response
+queryMethod m caller dat s = runESST $ \esref -> do
+  rs <- replay esref s
+  rawQueryMethod rs m caller dat
 
 
 replay :: ESRef s -> WasmState -> ST s (RawState s)
@@ -92,10 +110,14 @@ replay esref s = silently esref $ go s
     trapToFail (Trap _err) = fail "replay failed"
     trapToFail (Return x) = return x
 
-    go (WSInit wasm_mod cid arg) =
-      rawInitializeMethod esref wasm_mod cid arg >>= trapToFail
-    go (WSUpdate m arg s) = do
+    go (WSInit wasm_mod cid caller dat) =
+      rawInitializeMethod esref wasm_mod cid caller dat >>= trapToFail
+    go (WSUpdate m caller dat s) = do
       rs <- go s
-      _ <- rawUpdateMethod rs m arg >>= trapToFail
+      _ <- rawUpdateMethod rs m caller dat >>= trapToFail
+      return rs
+    go (WSCallback cb caller r s) = do
+      rs <- go s
+      _ <- rawCallbackMethod rs cb caller r >>= trapToFail
       return rs
 

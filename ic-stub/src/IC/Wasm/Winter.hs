@@ -10,6 +10,7 @@ module IC.Wasm.Winter
   , parseModule
   , exportedFunctions
   , Imports
+  , HostM
   , HostFunc
   , W.Value(..)
   , W.StackType
@@ -21,6 +22,7 @@ module IC.Wasm.Winter
   , initialize
   , Instance
   , invokeExport
+  , invokeTable
   )
 where
 
@@ -33,6 +35,7 @@ import qualified Data.Text.Lazy as T
 import Control.Monad.ST
 import Data.Binary.Get (runGetOrFail)
 import Data.Default.Class (Default (..))
+import Data.Int
 import qualified Data.Vector as V
 
 import qualified Wasm.Binary.Decode as W
@@ -47,7 +50,9 @@ import qualified Wasm.Syntax.Memory as W
 
 type Instance s = (IM.IntMap (W.ModuleInst Identity (ST s)), W.ModuleInst Identity (ST s))
 
-type HostFunc s = ExceptT String (ST s) [W.Value]
+type HostM s = ExceptT String (ST s)
+
+type HostFunc s = HostM s [W.Value]
 
 type Imports s = [(String, [(String, W.StackType, W.StackType, [W.Value] -> HostFunc s)])]
 
@@ -59,7 +64,7 @@ parseModule bytes = case runGetOrFail W.getModule bytes of
   Right (_,_,wasm_mod) -> Right wasm_mod
 
 
-initialize :: Module -> Imports s -> ExceptT String (ST s) (Instance s)
+initialize :: Module -> Imports s -> HostM s (Instance s)
 initialize mod imps = withExceptT show $ do
   let names = M.fromList (zip (map (T.pack . fst) imps) [1..])
       mods  = IM.fromList $ zip [1..]
@@ -90,19 +95,24 @@ exportedFunctions wasm_mod =
   ]
 
 
-invokeExport :: Instance s -> String -> [W.Value] -> ExceptT String (ST s) [W.Value]
+invokeExport :: Instance s -> String -> [W.Value] -> HostM s [W.Value]
 invokeExport (mods', inst) method args =
   withExceptT show $
     W.invokeByName mods' inst (T.pack method) args
 
+invokeTable :: Instance s -> Int32 -> [W.Value] -> HostM s [W.Value]
+invokeTable (mods', inst) idx args =
+  withExceptT show $ do
+    func <- W.elem inst 0 idx def
+    W.invoke mods' inst func args
 
-getBytes :: Instance s -> W.Address -> W.Size -> ExceptT String (ST s) BS.ByteString
+getBytes :: Instance s -> W.Address -> W.Size -> HostM s BS.ByteString
 getBytes (_, inst) ptr len = do
   let mem = head (W._miMemories inst)
   vec <- withExceptT show $ W.loadBytes mem ptr len
   return $ BS.pack $ V.toList vec
 
-setBytes :: Instance s -> W.Address -> BS.ByteString -> ExceptT String (ST s) ()
+setBytes :: Instance s -> W.Address -> BS.ByteString -> HostM s ()
 setBytes (_, inst) ptr blob = do
   let mem = head (W._miMemories inst)
   withExceptT show $

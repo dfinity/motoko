@@ -25,7 +25,7 @@ prettyBlob :: Blob -> String
 prettyBlob b = "0x" ++ T.unpack (T.encodeHex (B.toStrict b))
 
 prettyID :: EntityId -> String
-prettyID = prettyBlob -- implement the "ic:…" stuff
+prettyID = prettyBlob . rawEntityId -- implement the "ic:…" stuff
 
 printAsyncRequest :: AsyncRequest -> IO ()
 printAsyncRequest (InstallRequest _ _) =

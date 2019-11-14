@@ -14,6 +14,7 @@ module IC.Canister.Imp
  , runESST
  , rawInitializeMethod
  , rawUpdateMethod
+ , rawCallbackMethod
  , rawQueryMethod
  , silently
  )
@@ -27,6 +28,7 @@ import Control.Monad.ST
 import Control.Monad.Except
 import Data.STRef
 import Data.Maybe
+import Data.Int
 
 import IC.Types
 import IC.Wasm.Winter
@@ -43,9 +45,8 @@ data ExecutionState s = ExecutionState
   , self_id :: CanisterId
   , params :: Params
   , response :: Maybe Response
-  , reply_data :: Blob
+  , calls :: [MethodCall]
   }
-
 
 
 initalExecutionState :: CanisterId -> Instance s -> ExecutionState s
@@ -54,7 +55,7 @@ initalExecutionState self_id inst = ExecutionState
   , self_id
   , params = Params Nothing Nothing 0 ""
   , response = Nothing
-  , reply_data = mempty
+  , calls = mempty
   }
 
 type ESRef s = (STRef s Bool, STRef s (Maybe (ExecutionState s)))
@@ -86,14 +87,21 @@ silently (pref, _esref) f = do
   stToPrim $ writeSTRef pref before
   return x
 
-getsES :: ESRef s -> (ExecutionState s -> b) -> ExceptT String (ST s) b
+getsES :: ESRef s -> (ExecutionState s -> b) -> HostM s b
 getsES (_, esref) f = lift (readSTRef esref) >>= \case
       Nothing -> throwError "System API not available yet"
       Just es -> return (f es)
 
-modES :: ESRef s -> (ExecutionState s -> ExecutionState s) -> ExceptT String (ST s) ()
+modES :: ESRef s -> (ExecutionState s -> ExecutionState s) -> HostM s ()
 modES (_, esref) f = lift $ modifySTRef esref (fmap f)
 
+setResponse :: ESRef s -> Response -> HostM s ()
+setResponse esref r = modES esref $ \es ->
+  es { response = Just r }
+
+appendCall :: ESRef s -> MethodCall -> HostM s ()
+appendCall esref c = modES esref $ \es ->
+  es { calls = calls es ++ [c] }
 
 putBytes :: PrimMonad m => ESRef (PrimState m) -> BS.ByteString -> m ()
 putBytes (pref, _esref) bytes =
@@ -105,83 +113,157 @@ putBytes (pref, _esref) bytes =
 systemAPI :: forall s. ESRef s -> Imports s
 systemAPI esref =
     [ (,) "ic"
-      [ (,,,) "trap" [i32, i32] [] $ \case
-          [_v1, _v2] -> throwError "explicit trap"
-          _ -> fail "ic.trap: invalid argument"
+      [ (,,,) "trap" [i32, i32] [] explicit_trap
       ]
     , (,) "msg"
-      [ (,,,) "reject" [i64, i32, i32] [] msg_reject
-      , (,,,) "reply" [i64, i32, i32] [] msg_reply
+      [ (,,,) "reject" [i64, i32, i32] [] $ with_nonce msg_reject
+      , (,,,) "reply" [i64, i32, i32] [] $ with_nonce msg_reply
       , unimplemented "error_code" [i64] [i32]
-      , (,,,) "arg_data_copy" [i64, i32, i32, i32] [] arg_data_copy
-      , (,,,) "arg_data_size" [i64] [i32] arg_data_size
+      , (,,,) "arg_data_copy" [i64, i32, i32, i32] [] $ with_nonce arg_data_copy
+      , (,,,) "arg_data_size" [i64] [i32] $ with_nonce arg_data_size
       ]
     , (,) "debug"
       [ (,,,) "print" [i32, i32] [] debug_print
       ]
+    , (,) "ic0"
+      [ (,,,) "call_simple" (replicate 10 i32) [i32] call_simple
+      , (,,,) "canister_self_len" [] [i32] canister_self_len
+      , (,,,) "canister_self_copy" (replicate 3 i32) [] canister_self_copy
+      ]
     ]
   where
+    -- Utilities
+
     unimplemented name arg ret = (,,,) name arg ret $
       \_ -> throwError $ "unimplemented: " ++ name
 
     i32 = I32Type
     i64 = I64Type
 
-    debug_print :: [Value] -> HostFunc s
-    debug_print [I32 ptr, I32 len] = do
+    with_nonce :: ([Value] -> HostFunc s) -> ([Value] -> HostFunc s)
+    with_nonce f (I64 _nonce : args) = f args
+    with_nonce _ _ = fail "with_nonce: missing or wrongly typed nonce argument"
+
+    copy_to_canister :: String -> Int32 -> Int32 -> Int32 -> Blob -> HostM s ()
+    copy_to_canister name dst offset len blob = do
+      unless (offset == 0) $
+        throwError $ name ++ ": offset /= 0 not suppoted"
+      unless (len == fromIntegral (BS.length blob)) $
+        throwError $ name ++ ": len not full blob not suppoted"
       i <- getsES esref inst
-      bytes <- getBytes i (fromIntegral ptr) len
+      -- TODO Bounds checking
+      setBytes i (fromIntegral dst) blob
+
+    copy_from_canister :: String -> Int32 -> Int32 -> HostM s Blob
+    copy_from_canister _name src len = do
+      i <- getsES esref inst
+      getBytes i (fromIntegral src) len
+
+    -- The system calls
+
+    -- (TODO: Give them proper Haskell types and write generic code that takes
+    -- apart the values)
+
+    debug_print :: [Value] -> HostFunc s
+    debug_print [I32 src, I32 len] = do
+      -- TODO: This should be a non-trapping copy
+      bytes <- copy_from_canister "debug_print" src len
       putBytes esref bytes
       return []
     debug_print _ = fail "debug_print: invalid argument"
 
+    explicit_trap :: [Value] -> HostFunc s
+    explicit_trap [I32 src, I32 len] = do
+      -- TODO: This should be a non-trapping copy
+      bytes <- copy_from_canister "ic.trap" src len
+      let msg = BSU.toString bytes
+      throwError $ "canister trapped explicitly: " ++ msg
+    explicit_trap _ = fail "explicit_trap: invalid argument"
+
+    canister_self_len :: [Value] -> HostFunc s
+    canister_self_len [] = do
+      id <- getsES esref self_id
+      return [I32 (fromIntegral (BS.length (rawEntityId id)))]
+    canister_self_len _ = fail "arg_data_size: invalid argument"
+
+    canister_self_copy :: [Value] -> HostFunc s
+    canister_self_copy [I32 dst, I32 offset, I32 len] = do
+      id <- getsES esref self_id
+      copy_to_canister "canister_self_copy" dst offset len (rawEntityId id)
+      return []
+    canister_self_copy _ = fail "arg_data_size: invalid argument"
+
     arg_data_size :: [Value] -> HostFunc s
-    arg_data_size [I64 _nonce] = do
+    arg_data_size [] = do
       blob <- getsES esref (param_dat . params)
           >>= maybe (throwError "arg_data_size: No argument") return
       return [I32 (fromIntegral (BS.length blob))]
     arg_data_size _ = fail "arg_data_size: invalid argument"
 
     arg_data_copy :: [Value] -> HostFunc s
-    arg_data_copy [I64 _nonce, I32 dst, I32 len, I32 offset] = do
+    arg_data_copy [I32 dst, I32 len, I32 offset] = do
       blob <- getsES esref (param_dat . params)
           >>= maybe (throwError "arg_data_size: No argument") return
-      unless (offset == 0) $ throwError "arg_data_copy: offset /= 0 not suppoted"
-      unless (len == fromIntegral (BS.length blob)) $ throwError "arg_data_copy: len not full blob not suppoted"
-      i <- getsES esref inst
-      -- TODO Bounds checking
-      setBytes i (fromIntegral dst) blob
+      copy_to_canister "arg_data_copy" dst offset len blob
       return []
     arg_data_copy _ = fail "arg_data_copy: invalid argument"
 
     msg_reply :: [Value] -> HostFunc s
-    msg_reply [I64 _nonce, I32 ptr, I32 len] = do
-      i <- getsES esref inst
-      bytes <- getBytes i (fromIntegral ptr) len
-      modES esref (\es -> es { response = Just (Reply bytes) })
+    msg_reply [I32 src, I32 len] = do
+      bytes <- copy_from_canister "debug_print" src len
+      setResponse esref (Reply bytes)
       return []
     msg_reply _ = fail "msg_reply: invalid argument"
 
     msg_reject :: [Value] -> HostFunc s
-    msg_reject [I64 _nonce, I32 ptr, I32 len] = do
-      i <- getsES esref inst
-      bytes <- getBytes i (fromIntegral ptr) len
+    msg_reject [I32 src, I32 len] = do
+      bytes <- copy_from_canister "debug_print" src len
       let msg = BSU.toString bytes
       modES esref (\es -> es { response = Just (Reject (RC_CANISTER_REJECT, msg)) })
       return []
     msg_reject _ = fail "msg_reply: invalid argument"
 
+    call_simple :: [Value] -> HostFunc s
+    call_simple
+      [ I32 callee_src
+      , I32 callee_len
+      , I32 name_src
+      , I32 name_len
+      , I32 reply_fun
+      , I32 reply_env
+      , I32 reject_fun
+      , I32 reject_env
+      , I32 data_src
+      , I32 data_len
+      ] = do
+      callee <- copy_from_canister "call_simple" callee_src callee_len
+      method_name <- copy_from_canister "call_simple" name_src name_len
+      arg <- copy_from_canister "call_simple" data_src data_len
+
+      appendCall esref $ MethodCall
+        { call_callee = EntityId callee
+        , call_method_name = BSU.toString method_name -- TODO: check for valid UTF8
+        , call_arg = arg
+        , call_callback = Callback
+            { reply_callback = WasmClosure reply_fun reply_env
+            , reject_callback = WasmClosure reject_fun reject_env
+            }
+        }
+
+      return [I32 0]
+    call_simple _ = fail "call_simple: invalid argument"
+
 type RawState s = (ESRef s, CanisterId, Instance s)
 
-rawInitializeMethod :: ESRef s -> Module -> CanisterId -> Arg -> ST s (TrapOr (RawState s))
-rawInitializeMethod esref wasm_mod cid arg = do
+rawInitializeMethod :: ESRef s -> Module -> CanisterId -> EntityId -> Blob -> ST s (TrapOr (RawState s))
+rawInitializeMethod esref wasm_mod cid caller dat = do
   result <- runExceptT $ do
     inst <- initialize wasm_mod (systemAPI esref)
 
     let es = (initalExecutionState cid inst)
               { params = Params
-                  { param_dat    = Just $ dat arg
-                  , param_caller = Just $ caller arg
+                  { param_dat    = Just dat
+                  , param_caller = Just caller
                   , reject_code  = 0
                   , reject_message = ""
                   }
@@ -191,36 +273,39 @@ rawInitializeMethod esref wasm_mod cid arg = do
     when ("canister_init" `elem` exportedFunctions wasm_mod) $
       void $ withES esref es $
          invokeExport inst "canister_init" [I64 0]
+         -- TODO: Check no calls are made
 
     return (esref, cid, inst)
   case result of
-    Left  err     -> return $ Trap err
+    Left  err -> return $ Trap err
     Right raw_state -> return $ Return raw_state
 
-rawQueryMethod :: RawState s -> MethodName -> Arg -> ST s (TrapOr Response)
-rawQueryMethod (esref, cid, inst) method arg = do
+rawQueryMethod :: RawState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr Response)
+rawQueryMethod (esref, cid, inst) method caller dat = do
   let es = (initalExecutionState cid inst)
             { params = Params
-                { param_dat    = Just $ dat arg
-                , param_caller = Just $ caller arg
+                { param_dat    = Just dat
+                , param_caller = Just caller
                 , reject_code  = 0
                 , reject_message = ""
                 }
             }
   result <- runExceptT $ withES esref es $
     invokeExport inst ("canister_query " ++ method) [I64 0]
+    -- TODO: Check no calls are made
+
   case result of
     Left err -> return $ Trap err
     Right (_, es')
       | Just r <- response es' -> return $ Return r
       | otherwise -> return $ Trap "No response"
 
-rawUpdateMethod :: RawState s -> MethodName -> Arg -> ST s (TrapOr ({- List MethodCall, -} Maybe Response))
-rawUpdateMethod (esref, cid, inst) method arg = do
+rawUpdateMethod :: RawState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr ([MethodCall], Maybe Response))
+rawUpdateMethod (esref, cid, inst) method caller dat = do
   let es = (initalExecutionState cid inst)
             { params = Params
-                { param_dat    = Just $ dat arg
-                , param_caller = Just $ caller arg
+                { param_dat    = Just dat
+                , param_caller = Just caller
                 , reject_code  = 0
                 , reject_message = ""
                 }
@@ -230,5 +315,25 @@ rawUpdateMethod (esref, cid, inst) method arg = do
     invokeExport inst ("canister_update " ++ method) [I64 0]
   case result of
     Left  err -> return $ Trap err
-    Right (_, es') -> return $ Return (response es')
+    Right (_, es') -> return $ Return (calls es', response es')
+
+rawCallbackMethod :: RawState s -> Callback -> EntityId -> Response -> ST s (TrapOr ([MethodCall], Maybe Response))
+rawCallbackMethod (esref, cid, inst) callback caller res = do
+  let param_caller = Just caller
+  let params = case res of
+        Reply dat ->
+          Params { param_dat = Just dat, param_caller, reject_code = 0, reject_message = "" }
+        Reject (rc, reject_message) ->
+          Params { param_dat = Nothing, param_caller, reject_code = rejectCode rc, reject_message }
+  let es = (initalExecutionState cid inst) { params }
+
+  let WasmClosure fun_idx env = case res of
+        Reply {}  -> reply_callback callback
+        Reject {} -> reject_callback callback
+
+  result <- runExceptT $ withES esref es $
+    invokeTable inst fun_idx [I64 0, I32 env]
+  case result of
+    Left  err -> return $ Trap err
+    Right (_, es') -> return $ Return (calls es', response es')
 
