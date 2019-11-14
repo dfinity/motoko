@@ -887,12 +887,13 @@ module ElemHeap = struct
      ElemRef). This way, the fake orthogonal persistence code can easily
      store all references an elembuf.
 
-     This could be done differently (e.g. traversing the heap and looking for tagged references), but
-     it predates the heap traversal code, and the whole thing goes away once we
-     target orthogonal persistence anyways.
+     This could be done differently (e.g. traversing the heap and looking for
+     tagged references), but it predates the heap traversal code, and the whole
+     thing goes away once we target orthogonal persistence anyways.
   *)
 
   let register_globals env =
+    assert (E.mode env = Flags.AncientMode);
     (* reference counter *)
     E.add_global32 env "refcounter" Mutable 0l
   let get_ref_ctr env =
@@ -910,6 +911,7 @@ module ElemHeap = struct
   (* Assumes a reference on the stack, and replaces it with an index into the
      reference table *)
   let remember_reference env : G.t =
+    assert (E.mode env = Flags.AncientMode);
     Func.share_code1 env "remember_reference" ("ref", I32Type) [I32Type] (fun env get_ref ->
       (* Check table space *)
       get_ref_ctr env ^^
@@ -935,6 +937,7 @@ module ElemHeap = struct
 
   (* Assumes a index into the table on the stack, and replaces it with the reference *)
   let recall_reference env : G.t =
+    assert (E.mode env = Flags.AncientMode);
     Func.share_code1 env "recall_reference" ("ref_idx", I32Type) [I32Type] (fun env get_ref_idx ->
       get_ref_idx ^^
       compile_mul_const Heap.word_size ^^
@@ -3230,6 +3233,7 @@ module Dfinity = struct
     })
 
   let box_reference env =
+    assert (E.mode env = Flags.AncientMode);
     Func.share_code1 env "box_reference" ("ref", I32Type) [I32Type] (fun env get_ref ->
       Tagged.obj env Tagged.Reference [
         get_ref ^^
@@ -3238,6 +3242,7 @@ module Dfinity = struct
     )
 
   let unbox_reference env =
+    assert (E.mode env = Flags.AncientMode);
     Heap.load_field 1l ^^
     ElemHeap.recall_reference env
 
@@ -7230,7 +7235,7 @@ and actor_lit outer_env this ds fs at =
 
     if E.mode mod_env = Flags.AncientMode then OrthogonalPersistence.register_globals mod_env;
     Heap.register_globals mod_env;
-    ElemHeap.register_globals mod_env;
+    if E.mode mod_env = Flags.AncientMode then ElemHeap.register_globals mod_env;
     Stack.register_globals mod_env;
     Dfinity.register_globals mod_env;
 
@@ -7377,7 +7382,7 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
 
   if E.mode env = Flags.AncientMode then OrthogonalPersistence.register_globals env;
   Heap.register_globals env;
-  ElemHeap.register_globals env;
+  if E.mode env = Flags.AncientMode then ElemHeap.register_globals env;
   Stack.register_globals env;
   Dfinity.register_globals env;
 
