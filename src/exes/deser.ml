@@ -912,14 +912,14 @@ let write_typ_index m (ty, i) =
   let open Syntax in
   begin match ty with
   | OptT t ->
-    Typer.write_int_sleb128 (-17(* FIXME *));
+    Typer.write_int_sleb128 (-18);
     let n =
       if prim t then
         fst (Typer.lookup_tynum t)
       else
         M.find t.it m in
-    Typer.write_int_sleb128 n;
-    Printf.printf "\nOPT INDEX: %d needs %d\n" i n
+    Typer.write_int_sleb128 n(*;
+    Printf.printf "\nOPT INDEX: %d needs %d\n" i n*)
   | PrimT _ -> assert false
   | _ -> assert false (* TODO *)
   end;
@@ -973,7 +973,7 @@ let () =
           let m = List.fold_left (fun m ty -> build_typ_map m ty.it) M.empty ts in
           Printf.eprintf "In MAP: %d\n" (M.cardinal m);
           print_string "DIDL"; write_int_leb128 (M.cardinal m);
-          List.fold_left write_typ_index m (M.bindings m);
+          List.fold_left write_typ_index m (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
           Printf.printf "\nDESER, term traversed!\n";
         end
 
