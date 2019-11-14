@@ -59,7 +59,7 @@ let rec encode_leb128 n acc =
   let open Big_int in
   let lim = big_int_of_int 128 in
   if lt_big_int n lim then
-    (add_uint8 acc (int_of_big_int n land 0x7F); acc)
+    add_uint8 acc (int_of_big_int n land 0x7F)
   else
     let q, m = quomod_big_int n lim in
     add_uint8 acc (128 lor int_of_big_int n);
@@ -69,7 +69,7 @@ let rec encode_sleb128 n acc =
   let open Big_int in
   let lim_pos, lim_neg = big_int_of_int 64, big_int_of_int (-64) in
   if lt_big_int n lim_pos && ge_big_int n lim_neg then
-    (add_uint8 acc (int_of_big_int n land 0x7F); acc)
+    add_uint8 acc (int_of_big_int n land 0x7F)
   else
     let q, m = quomod_big_int n (big_int_of_int 128) in
     add_uint8 acc (128 lor int_of_big_int n);
@@ -562,9 +562,10 @@ let add_arg source = () (* args := !args @ [source] *)
 (* type checker/inferencer -- SHOULD MOVE TO IDLLIB *)
 module Typer = struct
 open Idllib.Syntax
+open Source
 
 let write_nil (v : value') = ()
-let write_text (v : value') = Printf.printf "\x03HEY"
+let write_text (v : value') = Printf.printf "\x03HEY" (* TODO *)
 
 let rec write_bool = function
   | AnnotV (v, t) -> write_bool v.it
@@ -726,8 +727,6 @@ let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
 
 let lookup_tynum (ty : typ) = List.assoc ty.Source.it type_assoc
 
-open Source
-
 (* the type of bidirectional checker/inferencer
 Every IDL value corresponds to such a function.
 
@@ -873,6 +872,13 @@ and in_range t v =
 
 end
 
+
+
+
+(* type map *)
+
+module M = Map.Make(Int32)
+
 (* run it *)
 
 let () =
@@ -895,10 +901,14 @@ let () =
       if List.for_all prim ts then
         begin
           Printf.printf "DIDL\x00"; (* no constructed types *)
-          let args = encode_leb128 (Big_int.big_int_of_int (List.length vs)) (Buffer.create 0) in Buffer.output_buffer stdout args;
+          let buf = Buffer.create 0 in
+          encode_leb128 (Big_int.big_int_of_int (List.length vs)) buf;
+          Buffer.output_buffer stdout buf;
           let write_typ ty =
             let n, _ = lookup_tynum ty in
-            Buffer.output_buffer stdout (encode_sleb128 (Big_int.big_int_of_int n) (Buffer.create 0)) in
+            let buf = Buffer.create 0 in
+            encode_sleb128 (Big_int.big_int_of_int n) buf;
+            Buffer.output_buffer stdout buf in
           List.iter write_typ ts;
           let write_val ty value =
             let _, writer = lookup_tynum ty in
@@ -906,11 +916,26 @@ let () =
           List.iter2 write_val ts vs
         end
       else
-        Printf.printf "STUFF'S HARDER"
+        begin
+          let open Syntax in
+          let open Source in
+          Printf.printf "STUFF'S HARDER!\n";
+          let tys = ref [] in
+          let stash ty : int =
+            if prim ty then fst (lookup_tynum ty) else
+              let len = List.length !tys in
+
+              match ty.it with
+              | OptT t when prim t -> tys := PreT :: !tys; len
+              | _ -> len in
+          let tnums = List.map stash ts in
+          List.iter (fun n -> Printf.eprintf "Num: %d\n" n) tnums;
+          Printf.printf "\nDESER, term traversed!\n";
+        end
+
       (*
       if List.every (type_realizable) ts then
         traverse_collect_types
-          Printf.printf "\nDESER, term traversed!\n";
       else
         error
        *)
