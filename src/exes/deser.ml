@@ -905,7 +905,7 @@ let build_typ_map =
   let augment ty m = if mem ty m then m else add ty (cardinal m) m in
   fold_typ augment
 
-let lookup_prim_tynum t m =
+let lookup_tynum t m =
   if prim t then
     fst (Typer.lookup_prim_tynum t)
   else
@@ -915,11 +915,18 @@ let write_typ_index m (ty, i) =
   match ty with
   | OptT t ->
     Typer.write_int_sleb128 (-18);
-    let n = lookup_prim_tynum t m in
+    let n = lookup_tynum t m in
     Typer.write_int_sleb128 n(*;
     Printf.printf "\nOPT INDEX: %d needs %d\n" i n*)
   | PrimT _ -> assert false
   | _ -> assert false (* TODO *)
+
+let rec write_typed_value t v = match t.it, v.it with
+  | _, AnnotV (v', _) -> write_typed_value t v'
+  | PrimT _, v -> snd (Typer.lookup_prim_tynum t) v
+  | _, NullV -> Typer.write_int_leb128 0
+  | OptT t', OptV v' -> Typer.write_int_leb128 1; write_typed_value t' v'
+  | _ -> assert false
 
 end
 
@@ -962,9 +969,8 @@ let () =
           print_string "DIDL"; write_int_leb128 (M.cardinal m);
           List.iter (write_typ_index m) (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
           write_int_leb128 (List.length vs);
-          List.iter (fun t -> write_int_sleb128 (lookup_prim_tynum t m)) ts;
-          write_int_leb128 1;
-          write_int_leb128 0;
+          List.iter (fun t -> write_int_sleb128 (lookup_tynum t m)) ts;
+          List.iter2 write_typed_value ts vs;
           Printf.printf "\nDESER, term traversed!\n";
         end
 
