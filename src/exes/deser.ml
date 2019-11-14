@@ -733,7 +733,7 @@ let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
   ; Empty, (-17, write_nil)
   ]
 
-let lookup_tynum (ty : typ) = List.assoc ty.Source.it type_assoc
+let lookup_prim_tynum (ty : typ) = List.assoc ty.Source.it type_assoc
 
 (* the type of bidirectional checker/inferencer
 Every IDL value corresponds to such a function.
@@ -905,15 +905,17 @@ let build_typ_map =
   let augment ty m = if mem ty m then m else add ty (cardinal m) m in
   fold_typ augment
 
+let lookup_prim_tynum t m =
+  if prim t then
+    fst (Typer.lookup_prim_tynum t)
+  else
+    M.find t.it m
+
 let write_typ_index m (ty, i) =
   match ty with
   | OptT t ->
     Typer.write_int_sleb128 (-18);
-    let n =
-      if prim t then
-        fst (Typer.lookup_tynum t)
-      else
-        M.find t.it m in
+    let n = lookup_prim_tynum t m in
     Typer.write_int_sleb128 n(*;
     Printf.printf "\nOPT INDEX: %d needs %d\n" i n*)
   | PrimT _ -> assert false
@@ -943,11 +945,11 @@ let () =
           Printf.printf "DIDL\x00"; (* no constructed types *)
           write_int_leb128 (List.length vs);
           let write_typ ty =
-            let n, _ = lookup_tynum ty in
+            let n, _ = lookup_prim_tynum ty in
             write_int_sleb128 n in
           List.iter write_typ ts;
           let write_val ty value =
-            let _, writer = lookup_tynum ty in
+            let _, writer = lookup_prim_tynum ty in
             writer value.it in
           List.iter2 write_val ts vs
         end
@@ -959,6 +961,10 @@ let () =
           Printf.eprintf "In MAP: %d\n" (M.cardinal m);
           print_string "DIDL"; write_int_leb128 (M.cardinal m);
           List.iter (write_typ_index m) (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
+          write_int_leb128 (List.length vs);
+          List.iter (fun t -> write_int_sleb128 (lookup_prim_tynum t m)) ts;
+          write_int_leb128 1;
+          write_int_leb128 0;
           Printf.printf "\nDESER, term traversed!\n";
         end
 
