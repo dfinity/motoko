@@ -89,8 +89,9 @@ let share_expfield (ef : exp_field) =
   then ef
   else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
 
-let scope_bind = [{var = "@" @@ no_region; bound = PrimT "Any" @! no_region} @=no_region]
-let scope_typ = VarT "@" @! no_region
+let scope_id = "@_"
+let scope_bind = {var = scope_id @@ no_region; bound = PrimT "Any" @! no_region} @= no_region
+let scope_typ = PathT ((IdH (scope_id @@ no_region)) @! no_region, []) @! no_region
 
 %}
 
@@ -631,7 +632,7 @@ dec_nonvar :
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
           match t with
-          | Some {it = AsyncT _; _} -> AsyncE(e) @? e.at
+          | Some {it = AsyncT _; _} -> AsyncE(scope_bind,e,scope_typ) @? e.at
           | _ -> e
       in
       let named, x = xf "func" $sloc in
