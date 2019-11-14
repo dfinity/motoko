@@ -367,6 +367,11 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Sc
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
   cs, ts, te, T.ConSet.of_list cs
 
+and check_typ_bind env typ_bind : T.con * T.typ * Scope.typ_env * Scope.con_env =
+  match check_typ_binds env [typ_bind] with
+  | [c], [t], te, cs -> c, t, te, cs
+  | _ -> assert false
+
 and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) typs at =
   let pars = List.length tbs in
   let args = List.length ts in
@@ -900,21 +905,22 @@ and infer_exp'' env exp : T.typ =
       error env exp.at "misplaced throw";
     if not env.pre then check_exp env T.throw exp1;
     T.Non
-  | AsyncE (_, exp1, _) ->
+  | AsyncE (tb, exp1, typ0) ->
     if not in_shared then
       error_in [Flags.ICMode] env exp.at "unsupported async block";
+    let t0 = check_typ env typ0 in
+    let c, tb, ce, cs = check_typ_bind env tb in
     let env' =
-      {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
+      {(adjoin_typs env ce cs) with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
-    if not (T.shared t) then
-      error_shared env t exp1.at "async type has non-shared content type\n  %s"
-        (T.string_of_typ_expand t);
-    T.Async t
-  | AwaitE (typ_bind, exp1, typ0) ->
+    let t1 = T.open_ [t0] (T.close [c] t)  in
+    if not (T.shared t1) then
+      error_shared env t1 exp1.at "async type has non-shared content type\n  %s"
+        (T.string_of_typ_expand t1);
+    T.Async (t0,t1)
+  | AwaitE  exp1 ->
     if not env.async then
       error env exp.at "misplaced await";
-    let t0 = check_typ env typ0 in
-    let c, tb, ce = check_open_typ_bind env tb in
     let t1 = infer_exp_promote {env with in_await = true} exp1 in
     (match exp1.it with
        | CallE (f, _, _) ->
@@ -922,7 +928,9 @@ and infer_exp'' env exp : T.typ =
            error_in [Flags.ICMode] env f.at "expecting call to shared async function in await";
       | _ -> error_in [Flags.ICMode] env exp1.at "argument to await must be a call expression");
     (try
-      T.as_async_sub t1
+       let (t2,t3) = T.as_async_sub t1 in
+       (* TODO: check the index *)
+       t3
     with Invalid_argument _ ->
       error env exp1.at "expected async type, but expression has type\n  %s"
         (T.string_of_typ_expand t1)
@@ -983,10 +991,17 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand (T.Array t'));
     List.iter (check_exp env (T.as_immut t')) exps;
     t
-  | AsyncE exp1, T.Async t' ->
+  | AsyncE (tb, exp1, typ0), T.Async (t0',t') ->
     if not in_shared then
       error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
-    let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
+    let t0 = check_typ env typ0 in
+    if not (T.eq t0 t0') then
+      error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s"
+        (T.string_of_typ_expand t0)
+        (T.string_of_typ_expand t0');
+    let c, tb, ce, cs = check_typ_bind env tb in
+    let env' =
+      {(adjoin_typs env ce cs) with labs = T.Env.empty; rets = Some t'; async = true} in
     check_exp env' t' exp1;
     t
   | BlockE decs, _ ->

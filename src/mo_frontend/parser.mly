@@ -89,6 +89,9 @@ let share_expfield (ef : exp_field) =
   then ef
   else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
 
+let scope_bind = [{var = "@" @@ no_region; bound = PrimT "Any" @! no_region} @=no_region]
+let scope_typ = VarT "@" @! no_region
+
 %}
 
 %token EOF
@@ -247,7 +250,7 @@ typ_pre :
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
-    { AsyncT(t) @! at $sloc }
+    { AsyncT(scope_typ,t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -442,7 +445,7 @@ exp_nondec(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp(bl)
-    { AsyncE(e) @? at $sloc }
+    { AsyncE(scope_bind,e,scope_typ) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)

@@ -4950,7 +4950,7 @@ module FuncDec = struct
         mk_body env ae2 ^^
         message_cleanup env sort
       ))
-    | Type.Promises -> assert false
+    | Type.Promises _ -> assert false
     | Type.Replies ->
       Func.of_body outer_env ["clos", I32Type; "reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
         let get_reply  = G.i (LocalGet (nr 1l)) in
@@ -5010,7 +5010,7 @@ module FuncDec = struct
         mk_body env ae1 ^^
         message_cleanup env sort
       ))
-    | Flags.AncientMode, Type.Promises -> assert false
+    | Flags.AncientMode, Type.Promises _ -> assert false
     | Flags.AncientMode, Type.Replies -> (* with callbacks *)
       let ae0 = VarEnv.mk_fun_ae outer_ae in
       Func.of_body outer_env ["reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
@@ -6544,7 +6544,7 @@ and compile_exp (env : E.t) ae exp =
     let return_arity = match control with
       | Type.Returns -> List.length ret_tys
       | Type.Replies -> 0
-      | Type.Promises -> assert false in
+      | Type.Promises _ -> assert false in
 
     StackRep.of_arity return_arity,
     let fun_sr, code1 = compile_exp env ae e1 in
@@ -6609,7 +6609,7 @@ and compile_exp (env : E.t) ae exp =
     let return_tys = match control with
       | Type.Returns -> res_tys
       | Type.Replies -> []
-      | Type.Promises -> assert false in
+      | Type.Promises _ -> assert false in
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     FuncDec.lit env ae typ_binds x sort control captured args mk_body return_tys exp.at
@@ -6942,7 +6942,7 @@ and compile_static_exp env pre_ae how exp = match exp.it with
       let return_tys = match control with
         | Type.Returns -> res_tys
         | Type.Replies -> []
-        | Type.Promises -> assert false in
+        | Type.Promises _ -> assert false in
       let mk_body env ae =
         assert begin (* Is this really closed? *)
           List.for_all (fun v -> VarEnv.NameEnv.mem v ae.VarEnv.vars)
