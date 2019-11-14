@@ -17,6 +17,7 @@ executable ic-stub-run
   other-modules:       IC.Canister.Imp
   other-modules:       IC.Canister.Pure
   other-modules:       IC.Wasm.Winter
+  other-modules:       IC.Wasm.Imports
   other-modules:       IC.DRun.Parse
   build-depends:       base >=4.11 && <5
   build-depends:       optparse-applicative

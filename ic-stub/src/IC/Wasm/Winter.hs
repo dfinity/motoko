@@ -9,6 +9,7 @@ module IC.Wasm.Winter
   ( Module
   , parseModule
   , exportedFunctions
+  , Import
   , Imports
   , HostM
   , HostFunc
@@ -54,7 +55,9 @@ type HostM s = ExceptT String (ST s)
 
 type HostFunc s = HostM s [W.Value]
 
-type Imports s = [(String, [(String, W.StackType, W.StackType, [W.Value] -> HostFunc s)])]
+type Import s = (String, W.StackType, W.StackType, [W.Value] -> HostFunc s)
+
+type Imports s = [(String, [Import s])]
 
 type Module = W.Module Identity
 

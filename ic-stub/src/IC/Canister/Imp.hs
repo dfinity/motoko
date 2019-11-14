@@ -1,7 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 
@@ -32,6 +31,7 @@ import Data.Int
 
 import IC.Types
 import IC.Wasm.Winter
+import IC.Wasm.Imports
 
 data Params = Params
   { param_dat  :: Maybe Blob
@@ -109,19 +109,18 @@ putBytes (pref, _esref) bytes =
     True -> unsafeIOToPrim (BSC.putStrLn bytes)
     False -> return ()
 
-
 systemAPI :: forall s. ESRef s -> Imports s
 systemAPI esref =
     [ (,) "ic0"
-      [ (,,,) "call_simple" (replicate 10 i32) [i32] call_simple
-      , (,,,) "canister_self_copy" (replicate 3 i32) [] canister_self_copy
-      , (,,,) "canister_self_len" [] [i32] canister_self_len
-      , (,,,) "debug_print" [i32, i32] [] debug_print
-      , (,,,) "msg_arg_data_copy" [i32, i32, i32] [] arg_data_copy
-      , (,,,) "msg_arg_data_size" [] [i32] arg_data_size
-      , (,,,) "msg_reject" [i32, i32] [] msg_reject
-      , (,,,) "msg_reply" [i32, i32] [] msg_reply
-      , (,,,) "trap" [i32, i32] [] explicit_trap
+      [ toImport "call_simple" call_simple
+      , toImport "canister_self_copy" canister_self_copy
+      , toImport "canister_self_len" canister_self_len
+      , toImport "debug_print" debug_print
+      , toImport "msg_arg_data_copy" arg_data_copy
+      , toImport "msg_arg_data_size" arg_data_size
+      , toImport "msg_reject" msg_reject
+      , toImport "msg_reply" msg_reply
+      , toImport "trap" explicit_trap
       , unimplemented "msg_error_code" [] [i32]
       ]
     ]
@@ -150,81 +149,67 @@ systemAPI esref =
 
     -- The system calls
 
-    -- (TODO: Give them proper Haskell types and write generic code that takes
-    -- apart the values)
-
-    debug_print :: [Value] -> HostFunc s
-    debug_print [I32 src, I32 len] = do
+    debug_print :: (Int32, Int32) -> HostM s ()
+    debug_print (src, len) = do
       -- TODO: This should be a non-trapping copy
       bytes <- copy_from_canister "debug_print" src len
       putBytes esref bytes
-      return []
-    debug_print _ = fail "debug_print: invalid argument"
 
-    explicit_trap :: [Value] -> HostFunc s
-    explicit_trap [I32 src, I32 len] = do
+    explicit_trap :: (Int32, Int32) -> HostM s ()
+    explicit_trap (src, len) = do
       -- TODO: This should be a non-trapping copy
       bytes <- copy_from_canister "ic.trap" src len
       let msg = BSU.toString bytes
       throwError $ "canister trapped explicitly: " ++ msg
-    explicit_trap _ = fail "explicit_trap: invalid argument"
 
-    canister_self_len :: [Value] -> HostFunc s
-    canister_self_len [] = do
+    canister_self_len :: () -> HostM s Int32
+    canister_self_len () = do
       id <- getsES esref self_id
-      return [I32 (fromIntegral (BS.length (rawEntityId id)))]
-    canister_self_len _ = fail "arg_data_size: invalid argument"
+      return $ fromIntegral (BS.length (rawEntityId id))
 
-    canister_self_copy :: [Value] -> HostFunc s
-    canister_self_copy [I32 dst, I32 offset, I32 len] = do
+    canister_self_copy :: (Int32, Int32, Int32) -> HostM s ()
+    canister_self_copy (dst, offset, len) = do
       id <- getsES esref self_id
       copy_to_canister "canister_self_copy" dst offset len (rawEntityId id)
-      return []
-    canister_self_copy _ = fail "arg_data_size: invalid argument"
 
-    arg_data_size :: [Value] -> HostFunc s
-    arg_data_size [] = do
+    arg_data_size :: () -> HostM s Int32
+    arg_data_size () = do
       blob <- getsES esref (param_dat . params)
           >>= maybe (throwError "arg_data_size: No argument") return
-      return [I32 (fromIntegral (BS.length blob))]
-    arg_data_size _ = fail "arg_data_size: invalid argument"
+      return $ fromIntegral (BS.length blob)
 
-    arg_data_copy :: [Value] -> HostFunc s
-    arg_data_copy [I32 dst, I32 offset, I32 len] = do
+    arg_data_copy ::  (Int32, Int32, Int32) -> HostM s ()
+    arg_data_copy (dst, offset, len) = do
       blob <- getsES esref (param_dat . params)
           >>= maybe (throwError "arg_data_size: No argument") return
       copy_to_canister "arg_data_copy" dst offset len blob
-      return []
-    arg_data_copy _ = fail "arg_data_copy: invalid argument"
 
-    msg_reply :: [Value] -> HostFunc s
-    msg_reply [I32 src, I32 len] = do
+    msg_reply :: (Int32, Int32) -> HostM s ()
+    msg_reply (src, len) = do
       bytes <- copy_from_canister "debug_print" src len
       setResponse esref (Reply bytes)
-      return []
-    msg_reply _ = fail "msg_reply: invalid argument"
 
-    msg_reject :: [Value] -> HostFunc s
-    msg_reject [I32 src, I32 len] = do
+    msg_reject :: (Int32, Int32) -> HostM s ()
+    msg_reject (src, len) = do
       bytes <- copy_from_canister "debug_print" src len
       let msg = BSU.toString bytes
       modES esref (\es -> es { response = Just (Reject (RC_CANISTER_REJECT, msg)) })
-      return []
-    msg_reject _ = fail "msg_reply: invalid argument"
 
-    call_simple :: [Value] -> HostFunc s
+    call_simple ::
+      ( Int32, Int32, Int32, Int32, Int32
+      , Int32, Int32, Int32, Int32, Int32) -> HostM s Int32
     call_simple
-      [ I32 callee_src
-      , I32 callee_len
-      , I32 name_src
-      , I32 name_len
-      , I32 reply_fun
-      , I32 reply_env
-      , I32 reject_fun
-      , I32 reject_env
-      , I32 data_src
-      , I32 data_len
-      ] = do
+      ( callee_src
+      , callee_len
+      , name_src
+      , name_len
+      , reply_fun
+      , reply_env
+      , reject_fun
+      , reject_env
+      , data_src
+      , data_len
+      ) = do
       callee <- copy_from_canister "call_simple" callee_src callee_len
       method_name <- copy_from_canister "call_simple" name_src name_len
       arg <- copy_from_canister "call_simple" data_src data_len
@@ -239,8 +224,7 @@ systemAPI esref =
             }
         }
 
-      return [I32 0]
-    call_simple _ = fail "call_simple: invalid argument"
+      return 0
 
 type RawState s = (ESRef s, CanisterId, Instance s)
 
