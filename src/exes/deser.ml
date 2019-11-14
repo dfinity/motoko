@@ -883,10 +883,12 @@ end
 
 (* type table *)
 
+module TypeTable = struct
+open Idllib
+open Syntax
+open Source
+
 let rec fold_typ (f : Idllib.Syntax.typ' -> 'a -> 'a) a ty =
-  let open Idllib in
-  let open Syntax in
-  let open Source in
   match ty with
    | PrimT _ -> a
    | OptT t -> fold_typ f (f ty a) t.it
@@ -894,11 +896,7 @@ let rec fold_typ (f : Idllib.Syntax.typ' -> 'a -> 'a) a ty =
 
 module M = Map.Make (struct type t = Idllib.Syntax.typ' let compare = compare end)
 
-let prim =
-  let open Idllib in
-  let open Syntax in
-  let open Source in
-  function
+let prim = function
   | {it = PrimT _; _} -> true
   | _ -> false
 
@@ -908,9 +906,7 @@ let build_typ_map =
   fold_typ augment
 
 let write_typ_index m (ty, i) =
-  let open Idllib in
-  let open Syntax in
-  begin match ty with
+  match ty with
   | OptT t ->
     Typer.write_int_sleb128 (-18);
     let n =
@@ -922,8 +918,8 @@ let write_typ_index m (ty, i) =
     Printf.printf "\nOPT INDEX: %d needs %d\n" i n*)
   | PrimT _ -> assert false
   | _ -> assert false (* TODO *)
-  end;
-  m
+
+end
 
 (* run it *)
 
@@ -942,7 +938,7 @@ let () =
       let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
       Printf.printf "\nDESER, type inferred!\n";
-      if List.for_all prim ts then
+      if List.for_all TypeTable.prim ts then
         begin
           Printf.printf "DIDL\x00"; (* no constructed types *)
           write_int_leb128 (List.length vs);
@@ -957,23 +953,12 @@ let () =
         end
       else
         begin
-          let open Syntax in
+          let open TypeTable in
           Printf.printf "STUFF'S HARDER!\n";
-          (*
-          let tys = ref [] in
-          let stash ty : int =
-            if prim ty then fst (lookup_tynum ty) else
-              let len = List.length !tys in
-
-              match ty.it with
-              | OptT t when prim t -> tys := PreT :: !tys; len
-              | _ -> len in
-          let tnums = List.map stash ts in
-          List.iter (fun n -> Printf.eprintf "Num: %d\n" n) tnums; *)
           let m = List.fold_left (fun m ty -> build_typ_map m ty.it) M.empty ts in
           Printf.eprintf "In MAP: %d\n" (M.cardinal m);
           print_string "DIDL"; write_int_leb128 (M.cardinal m);
-          List.fold_left write_typ_index m (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
+          List.iter (write_typ_index m) (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
           Printf.printf "\nDESER, term traversed!\n";
         end
 
