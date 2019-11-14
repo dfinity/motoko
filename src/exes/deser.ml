@@ -891,7 +891,7 @@ open Source
 let rec fold_typ (f : Idllib.Syntax.typ' -> 'a -> 'a) a ty =
   match ty with
    | PrimT _ -> a
-   | OptT t -> fold_typ f (f ty a) t.it
+   | OptT t | VecT t -> fold_typ f (f ty a) t.it
    | _ -> a (* TODO *)
 
 module M = Map.Make (struct type t = Idllib.Syntax.typ' let compare = compare end)
@@ -912,20 +912,23 @@ let lookup_tynum t m =
     M.find t.it m
 
 let write_typ_index m (ty, i) =
+  let open Typer in
   match ty with
   | OptT t ->
-    Typer.write_int_sleb128 (-18);
-    let n = lookup_tynum t m in
-    Typer.write_int_sleb128 n(*;
-    Printf.printf "\nOPT INDEX: %d needs %d\n" i n*)
+    write_int_sleb128 (-18);
+    write_int_sleb128 (lookup_tynum t m)
+  | VecT t ->
+    write_int_sleb128 (-19);
+    write_int_sleb128 (lookup_tynum t m)
   | PrimT _ -> assert false
   | _ -> assert false (* TODO *)
 
 let rec write_typed_value t v = match t.it, v.it with
   | _, AnnotV (v', _) -> write_typed_value t v'
   | PrimT _, v -> snd (Typer.lookup_prim_tynum t) v
-  | _, NullV -> Typer.write_int_leb128 0
+  | OptT _, NullV -> Typer.write_int_leb128 0
   | OptT t', OptV v' -> Typer.write_int_leb128 1; write_typed_value t' v'
+  | VecT t', VecV vs -> Typer.write_int_leb128 (List.length vs); List.iter (write_typed_value t') vs
   | _ -> assert false
 
 end
