@@ -104,7 +104,7 @@ queryMethod m caller dat s = runESST $ \esref -> do
   rawQueryMethod rs m caller dat
 
 
-replay :: ESRef s -> WasmState -> ST s (RawState s)
+replay :: ESRef s -> WasmState -> ST s (ImpState s)
 replay esref s = silently esref $ go s
   where
     trapToFail (Trap _err) = fail "replay failed"
@@ -113,11 +113,11 @@ replay esref s = silently esref $ go s
     go (WSInit wasm_mod cid caller dat) =
       rawInitializeMethod esref wasm_mod cid caller dat >>= trapToFail
     go (WSUpdate m caller dat s) = do
-      rs <- go s
-      _ <- rawUpdateMethod rs m caller dat >>= trapToFail
-      return rs
+      is <- go s
+      _ <- rawUpdateMethod is m caller dat >>= trapToFail
+      return is
     go (WSCallback cb caller r s) = do
-      rs <- go s
-      _ <- rawCallbackMethod rs cb caller r >>= trapToFail
-      return rs
+      is <- go s
+      _ <- rawCallbackMethod is cb caller r >>= trapToFail
+      return is
 

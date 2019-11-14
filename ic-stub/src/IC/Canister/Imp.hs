@@ -9,7 +9,7 @@ The canister interface, presented imperatively (or impurely), i.e. without rollb
 -}
 module IC.Canister.Imp
  ( ESRef
- , RawState
+ , ImpState
  , runESST
  , rawInitializeMethod
  , rawUpdateMethod
@@ -33,6 +33,8 @@ import IC.Types
 import IC.Wasm.Winter
 import IC.Wasm.Imports
 
+-- Parameters are the data that come from the caller
+
 data Params = Params
   { param_dat  :: Maybe Blob
   , param_caller :: Maybe EntityId
@@ -40,10 +42,14 @@ data Params = Params
   , reject_message :: String
   }
 
+-- The execution state is all information available to the
+-- canister. Some of it is immutable (could be separated here)
+
 data ExecutionState s = ExecutionState
   { inst :: Instance s
   , self_id :: CanisterId
   , params :: Params
+  -- now the mutable parts
   , response :: Maybe Response
   , calls :: [MethodCall]
   }
@@ -58,6 +64,14 @@ initalExecutionState self_id inst = ExecutionState
   , calls = mempty
   }
 
+-- Some bookkeeping to access the ExecutionState
+--
+-- We “always” have the 'STRef', but only within 'withES' is it actually
+-- present. 
+--
+-- Also: A flag to check whether we are running in silent mode or not
+-- (a bit of a hack)
+
 type ESRef s = (STRef s Bool, STRef s (Maybe (ExecutionState s)))
 
 newESRef :: ST s (ESRef s)
@@ -66,7 +80,12 @@ newESRef = (,) <$> newSTRef True <*> newSTRef Nothing
 runESST :: (forall s. ESRef s -> ST s a) -> a
 runESST f = runST $ newESRef >>= f
 
-withES :: PrimMonad m => ESRef (PrimState m) -> ExecutionState (PrimState m) -> m a -> m (a, ExecutionState (PrimState m))
+-- | runs a computation with the given initial execution state
+-- and returns the final execution state with it.
+withES :: PrimMonad m =>
+  ESRef (PrimState m) ->
+  ExecutionState (PrimState m) ->
+  m a -> m (a, ExecutionState (PrimState m))
 withES (_pref, esref) es f = do
   before <- stToPrim $ readSTRef esref
   unless (isNothing before) $ fail "withES with non-empty es"
@@ -95,6 +114,7 @@ getsES (_, esref) f = lift (readSTRef esref) >>= \case
 modES :: ESRef s -> (ExecutionState s -> ExecutionState s) -> HostM s ()
 modES (_, esref) f = lift $ modifySTRef esref (fmap f)
 
+
 setResponse :: ESRef s -> Response -> HostM s ()
 setResponse esref r = modES esref $ \es ->
   es { response = Just r }
@@ -103,11 +123,9 @@ appendCall :: ESRef s -> MethodCall -> HostM s ()
 appendCall esref c = modES esref $ \es ->
   es { calls = calls es ++ [c] }
 
-putBytes :: PrimMonad m => ESRef (PrimState m) -> BS.ByteString -> m ()
-putBytes (pref, _esref) bytes =
-  stToPrim (readSTRef pref) >>= \case
-    True -> unsafeIOToPrim (BSC.putStrLn bytes)
-    False -> return ()
+-- The System API, with all imports
+
+-- The code is defined in the where clause to scope over the 'ESRef'
 
 systemAPI :: forall s. ESRef s -> Imports s
 systemAPI esref =
@@ -147,13 +165,20 @@ systemAPI esref =
       i <- getsES esref inst
       getBytes i (fromIntegral src) len
 
+    -- Unsafely print (if not in silent mode)
+    putBytes :: BS.ByteString -> HostM s ()
+    putBytes bytes =
+      stToPrim (readSTRef (fst esref)) >>= \case
+        True -> unsafeIOToPrim (BSC.putStrLn bytes)
+        False -> return ()
+
     -- The system calls
 
     debug_print :: (Int32, Int32) -> HostM s ()
     debug_print (src, len) = do
       -- TODO: This should be a non-trapping copy
       bytes <- copy_from_canister "debug_print" src len
-      putBytes esref bytes
+      putBytes bytes
 
     explicit_trap :: (Int32, Int32) -> HostM s ()
     explicit_trap (src, len) = do
@@ -226,9 +251,13 @@ systemAPI esref =
 
       return 0
 
-type RawState s = (ESRef s, CanisterId, Instance s)
+-- The state of an instance, consistig of the underlying Wasm state,
+-- additional remembered information like the CanisterId
+-- and the 'ESRef' that the system api functions are accessing
 
-rawInitializeMethod :: ESRef s -> Module -> CanisterId -> EntityId -> Blob -> ST s (TrapOr (RawState s))
+type ImpState s = (ESRef s, CanisterId, Instance s)
+
+rawInitializeMethod :: ESRef s -> Module -> CanisterId -> EntityId -> Blob -> ST s (TrapOr (ImpState s))
 rawInitializeMethod esref wasm_mod cid caller dat = do
   result <- runExceptT $ do
     inst <- initialize wasm_mod (systemAPI esref)
@@ -253,7 +282,7 @@ rawInitializeMethod esref wasm_mod cid caller dat = do
     Left  err -> return $ Trap err
     Right raw_state -> return $ Return raw_state
 
-rawQueryMethod :: RawState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr Response)
+rawQueryMethod :: ImpState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr Response)
 rawQueryMethod (esref, cid, inst) method caller dat = do
   let es = (initalExecutionState cid inst)
             { params = Params
@@ -273,7 +302,7 @@ rawQueryMethod (esref, cid, inst) method caller dat = do
       | Just r <- response es' -> return $ Return r
       | otherwise -> return $ Trap "No response"
 
-rawUpdateMethod :: RawState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr ([MethodCall], Maybe Response))
+rawUpdateMethod :: ImpState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr ([MethodCall], Maybe Response))
 rawUpdateMethod (esref, cid, inst) method caller dat = do
   let es = (initalExecutionState cid inst)
             { params = Params
@@ -290,7 +319,7 @@ rawUpdateMethod (esref, cid, inst) method caller dat = do
     Left  err -> return $ Trap err
     Right (_, es') -> return $ Return (calls es', response es')
 
-rawCallbackMethod :: RawState s -> Callback -> EntityId -> Response -> ST s (TrapOr ([MethodCall], Maybe Response))
+rawCallbackMethod :: ImpState s -> Callback -> EntityId -> Response -> ST s (TrapOr ([MethodCall], Maybe Response))
 rawCallbackMethod (esref, cid, inst) callback caller res = do
   let param_caller = Just caller
   let params = case res of

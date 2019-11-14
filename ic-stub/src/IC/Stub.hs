@@ -195,24 +195,24 @@ dummyUserId :: CanisterId
 dummyUserId = EntityId $ BS.pack [0xCA, 0xFF, 0xEE]
 
 processRequest :: ICT m => AsyncRequest -> m ()
-processRequest r@(InstallRequest can_mod dat) =
+processRequest r@(InstallRequest can_mod dat) = do
+  let canister_id = dummyCanisterId
   case parseCanister can_mod of
     Left err ->
       setReqStatus r $ Rejected (RC_SYS_FATAL, "Parsing failed: " ++ err)
     Right can_mod ->
-      case init_method can_mod dummyCanisterId dummyUserId dat of
+      case init_method can_mod canister_id dummyUserId dat of
         Trap msg ->
           setReqStatus r $ Rejected (RC_CANISTER_ERROR, "Initialization trapped: " ++ msg)
         Return wasm_state -> do
-          createCanister dummyCanisterId can_mod wasm_state
+          createCanister canister_id can_mod wasm_state
           setReqStatus r $ Completed CompleteUnit
 
 processRequest r@(UpdateRequest method arg) = do
-
-  let canister = dummyCanisterId
+  let canister_id = dummyCanisterId
 
   ctxt_id <- newCallContext $ CallContext
-    { canister = canister
+    { canister = canister_id
     , origin = FromUser r
     , responded = False
     , last_trap = Nothing
@@ -287,7 +287,7 @@ processMessage (CallMessage ctxt_id entry) = do
         Trap msg ->
           rememberTrap ctxt_id msg
         Return (new_state, calls, mb_response) -> do
-          setCanisterState dummyCanisterId new_state
+          setCanisterState callee new_state
           forM_ calls $ \call -> do
             new_ctxt_id <- newCallContext $ CallContext
               { canister = call_callee call
