@@ -686,7 +686,7 @@ module RTS = struct
           E.call_import env "data" "externalize" ^^
           E.call_import env "test" "print" ^^
           G.i Unreachable
-        | Flags.ICMode ->
+        | Flags.ICMode | Flags.StubMode ->
           E.call_import env "ic" "trap" ^^
           G.i Unreachable
         | Flags.WasmMode -> G.i Unreachable
@@ -3058,6 +3058,15 @@ module Dfinity = struct
       E.add_func_import env "msg" "reject" [I64Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "error_code" [I64Type] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
+      ()
+    | Flags.StubMode  ->
+      E.add_func_import env "debug" "print" [I32Type; I32Type] [];
+      E.add_func_import env "msg" "arg_data_size" [I64Type] [I32Type];
+      E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
+      E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
+      E.add_func_import env "msg" "reject" [I64Type; I32Type; I32Type] [];
+      E.add_func_import env "msg" "error_code" [I64Type] [I32Type];
+      E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
       E.add_func_import env "ic0" "canister_self_len" [] [I32Type];
       E.add_func_import env "ic0" "canister_self_copy" [I32Type; I32Type; I32Type] [];
       E.add_func_import env "ic0" "call_simple" (Lib.List.make 10 I32Type) [I32Type];
@@ -3103,7 +3112,7 @@ module Dfinity = struct
   let prim_print env =
     match E.mode env with
     | Flags.WasmMode -> G.i Drop
-    | Flags.ICMode ->
+    | Flags.ICMode | Flags.StubMode ->
       Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
         get_str ^^ Blob.payload_ptr_unskewed ^^
         get_str ^^ Heap.load_field (Blob.len_field) ^^
@@ -3133,7 +3142,7 @@ module Dfinity = struct
     match E.mode env with
     | Flags.WasmMode -> G.i Unreachable
     | Flags.AncientMode -> compile_static_print env (s ^ "\n") ^^ G.i Unreachable
-    | Flags.ICMode -> Blob.lit env s ^^ ic_trap env ^^ G.i Unreachable
+    | Flags.ICMode | Flags.StubMode -> Blob.lit env s ^^ ic_trap env ^^ G.i Unreachable
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
@@ -3184,7 +3193,7 @@ module Dfinity = struct
     E.add_dfinity_type env (fi, [])
 
   let export_start env start_fi =
-    assert (E.mode env = Flags.ICMode);
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
     (* Create an empty message *)
     let empty_f = Func.of_body env ["api_nonce",I64Type] [] (fun env1 ->
       G.i (Call (nr start_fi)) ^^
@@ -3212,6 +3221,8 @@ module Dfinity = struct
   let get_self_reference env =
     match E.mode env with
     | Flags.ICMode ->
+      assert false
+    | Flags.StubMode ->
       Func.share_code0 env "canister_self" [I32Type] (fun env ->
         let (set_len, get_len) = new_local env "len" in
         let (set_blob, get_blob) = new_local env "blob" in
@@ -3238,7 +3249,7 @@ module Dfinity = struct
 
   let reject env arg_instrs =
     match E.mode env with
-    | Flags.ICMode ->
+    | Flags.ICMode | Flags.StubMode ->
       get_api_nonce env ^^
       let (set_text, get_text) = new_local env "text" in
       arg_instrs ^^
@@ -4242,7 +4253,7 @@ module Serialization = struct
         get_refs_start ^^ get_refs_size ^^
         Dfinity.system_call env "elem" "externalize"
 
-      | Flags.ICMode ->
+      | Flags.ICMode | Flags.StubMode ->
         get_refs_size ^^
         compile_unboxed_const 0l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -4256,7 +4267,9 @@ module Serialization = struct
   let deserialize env ts =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@deserialize<" ^ ts_name ^ ">" in
-    let args = if E.mode env = Flags.ICMode then [] else [("databuf",I32Type);("elembuf", I32Type)]  in
+    let args = match E.mode env with
+      | Flags.ICMode | Flags.StubMode -> []
+      | _ -> [("databuf",I32Type);("elembuf", I32Type)]  in
     Func.share_code env name args (List.map (fun _ -> I32Type) ts) (fun env ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
@@ -4280,7 +4293,7 @@ module Serialization = struct
         get_refs_size ^^ compile_mul_const Heap.word_size ^^ Blob.dyn_alloc_scratch env ^^ set_refs_start ^^
         get_refs_start ^^ get_refs_size ^^ get_elembuf ^^ compile_unboxed_const 0l ^^
         Dfinity.system_call env "elem" "internalize"
-      | Flags.ICMode ->
+      | Flags.ICMode | Flags.StubMode ->
         (* Allocate space for the data buffer and copy it *)
         argument_data_size env ^^ set_data_size ^^
         get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
@@ -5062,7 +5075,7 @@ module FuncDec = struct
         mk_body env ae1 ^^
         message_cleanup env sort
       ))
-    | Flags.ICMode, _ ->
+    | (Flags.ICMode | Flags.StubMode), _ ->
       let ae0 = VarEnv.mk_fun_ae outer_ae in
       Func.of_body outer_env ["api_nonce", I64Type] [] (fun env -> G.with_region at (
         G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
@@ -5225,7 +5238,7 @@ module FuncDec = struct
      takes care of the environment *)
   (* Need this function once per type, so we can share based on ts *)
   let closure_to_reply_callback env ts get_closure =
-    assert (E.mode env = Flags.ICMode);
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
     let name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
     Func.define_built_in env name ["api_nonce",I64Type; "env", I32Type] [] (fun env ->
         G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
@@ -5249,7 +5262,7 @@ module FuncDec = struct
     get_closure ^^ ClosureTable.remember_closure env
 
   let closure_to_reject_callback env get_closure =
-    assert (E.mode env = Flags.ICMode);
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
     let name = "@reject_callback" in
     Func.define_built_in env name ["api_nonce",I64Type; "env", I32Type] [] (fun env ->
         G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
@@ -6493,7 +6506,7 @@ and compile_exp (env : E.t) ae exp =
 
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with
-      | Flags.ICMode ->
+      | Flags.ICMode | Flags.StubMode ->
         compile_exp_as env ae SR.Vanilla e ^^
         (* TODO: We can try to avoid the boxing and pass the arguments to
           serialize individually *)
@@ -6515,7 +6528,7 @@ and compile_exp (env : E.t) ae exp =
       SR.unit, Dfinity.reject env (compile_exp_vanilla env ae e)
 
     | ICErrorCodePrim, [] ->
-      assert (E.mode env = Flags.ICMode);
+      assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
       Dfinity.error_code env
 
     | ICCallPrim, [f;e;k;r] ->
@@ -6525,7 +6538,7 @@ and compile_exp (env : E.t) ae exp =
       let _, _, _, ts2, _ = Type.as_func k.note.note_typ in
 
       match E.mode env with
-      | Flags.ICMode ->
+      | Flags.ICMode | Flags.StubMode ->
 
         let (set_funcref, get_funcref) = new_local env "funcref" in
         let (set_arg, get_arg) = new_local env "arg" in
@@ -7137,7 +7150,7 @@ and export_actor_field env  ae (f : Ir.field) =
   E.add_export env (nr {
     name = Wasm.Utf8.decode (match E.mode env with
       | Flags.AncientMode -> f.it.name
-      | Flags.ICMode ->
+      | Flags.ICMode | Flags.StubMode ->
         Mo_types.Type.(
         match normalize f.note with
         |  Func(Shared sort,_,_,_,_) ->
@@ -7191,6 +7204,7 @@ and actor_lit outer_env this ds fs at =
     let start_fi = E.add_fun mod_env "start" start_fun in
 
     if E.mode mod_env = Flags.ICMode then Dfinity.export_start mod_env start_fi;
+    if E.mode mod_env = Flags.StubMode then Dfinity.export_start mod_env start_fi;
     if E.mode mod_env = Flags.AncientMode then OrthogonalPersistence.register mod_env start_fi;
 
     let m = conclude_module mod_env this None in
@@ -7221,7 +7235,7 @@ and actor_fake_object_idx env name =
   | Flags.AncientMode ->
     Dfinity.compile_databuf_of_bytes env name ^^
     Dfinity.system_call env "actor" "export"
-  | Flags.ICMode ->
+  | Flags.ICMode | Flags.StubMode ->
     (* simply tuple canister name and function name *)
     Blob.lit env name ^^
     Tuple.from_stack env 2
@@ -7324,7 +7338,7 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
       OrthogonalPersistence.register env start_fi;
       Dfinity.export_start_stub env;
       None
-    | Flags.ICMode -> Dfinity.export_start env start_fi; None
+    | Flags.ICMode | Flags.StubMode -> Dfinity.export_start env start_fi; None
     | Flags.WasmMode -> Some (nr start_fi) in
 
   conclude_module env module_name start_fi_o

@@ -72,6 +72,9 @@ let argspec = Arg.align
   "-ancient-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := AncientMode)),
       " use the ancient DFINITY system API (dvm)";
+  "-stub-system-api",
+    Arg.Unit (fun () -> Flags.(compile_mode := StubMode)),
+      " use the future DFINITY system API (ic-stub-run)";
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
   "-no-multi-value", Arg.Clear Flags.multi_value, " avoid multi-value extension";
 
