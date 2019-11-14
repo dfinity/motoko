@@ -1,7 +1,7 @@
 /**
 
- Sets
- ========
+ Trie-based Sets
+ ================
 
  Sets are partial maps from element type to unit type,
  i.e., the partial map represents the set with its domain.
@@ -17,7 +17,7 @@
    in the future, we might avoid this via https://dfinity.atlassian.net/browse/AST-32
 
 */
-import Trie "trie2.mo";
+import Trie "trie.mo";
 import Hash "hash.mo";
 
 module {

@@ -7,7 +7,7 @@ import M = "serverModelTypes.mo";
 import List = "../../list.mo";
 import Hash_ = "../../hash.mo";
 import Option = "../../option.mo";
-import Trie = "../../trie2.mo";
+import Trie = "../../trie.mo";
 
 import DT = "../../docTable.mo";
 import Result = "../../result.mo";
