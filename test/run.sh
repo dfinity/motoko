@@ -218,21 +218,24 @@ do
         # Compile
         run comp $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --map -c $base.mo -o $out/$base.wasm
 
-        # Check filecheck
-        if [ "$SKIP_RUNNING" != yes ]
-        then
-          if grep -F -q CHECK $base.mo
-          then
-            $ECHO -n " [FileCheck]"
-            wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
-            cat $out/$base.wat | FileCheck $base.mo > $out/$base.filecheck 2>&1
-            diff_files="$diff_files $base.filecheck"
-          fi
-        fi
-
-        # Run compiled program
         if [ -e $out/$base.wasm ]
         then
+          # Validate wasm
+          run valid wasm-validate $out/$base.wasm
+
+          # Check filecheck
+          if [ "$SKIP_RUNNING" != yes ]
+          then
+            if grep -F -q CHECK $base.mo
+            then
+              $ECHO -n " [FileCheck]"
+              wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
+              cat $out/$base.wat | FileCheck $base.mo > $out/$base.filecheck 2>&1
+              diff_files="$diff_files $base.filecheck"
+            fi
+          fi
+
+          # Run compiled program
           if [ "$SKIP_RUNNING" != yes ]
           then
             if [ $API = ancient ]

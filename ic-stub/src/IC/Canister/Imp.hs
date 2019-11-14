@@ -139,7 +139,7 @@ systemAPI esref =
       , toImport "msg_reject" msg_reject
       , toImport "msg_reply" msg_reply
       , toImport "trap" explicit_trap
-      , unimplemented "msg_error_code" [] [i32]
+      , unimplemented "msg_reject_code" [] [i32]
       ]
     ]
   where

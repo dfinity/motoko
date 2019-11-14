@@ -3069,7 +3069,7 @@ module Dfinity = struct
       E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "reject" [I64Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "error_code" [I64Type] [I32Type];
+      E.add_func_import env "msg" "reject_code" [I64Type] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
       ()
     | Flags.StubMode  ->
@@ -3079,7 +3079,7 @@ module Dfinity = struct
       E.add_func_import env "ic0" "debug_print" [I32Type; I32Type] [];
       E.add_func_import env "ic0" "msg_arg_data_copy" [I32Type; I32Type; I32Type] [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
-      E.add_func_import env "ic0" "msg_error_code" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject" [I32Type; I32Type] [];
       E.add_func_import env "ic0" "msg_reply" [I32Type; I32Type] [];
       E.add_func_import env "ic0" "trap" [I32Type; I32Type] [];
@@ -3299,9 +3299,9 @@ module Dfinity = struct
       match E.mode env with
       | Flags.ICMode ->
         get_api_nonce env ^^
-        system_call env "msg" "error_code"
+        system_call env "msg" "reject_code"
       | Flags.StubMode ->
-        system_call env "ic" "msg_error_code"
+        system_call env "ic" "msg_reject_code"
       | _ -> assert false
 
   let reply_with_data env =
