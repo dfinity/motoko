@@ -571,9 +571,9 @@ let concrete t =
   in go t
 
 let shared t =
-  (* TBR: Hack to restrict sharing in ICMode *)
+  (* TBR: Hack to restrict sharing in Wasm and ICMode *)
   let allow_actor as allow_shared =
-    not (!Flags.compiled && !Flags.compile_mode = Flags.ICMode) in
+    not !Flags.compiled || !Flags.compile_mode = Flags.AncientMode in
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -601,9 +601,9 @@ let shared t =
 
 (* Find the first unshared subexpression in a type *)
 let find_unshared t =
-   (* TBR: Hack to restrict sharing in ICMode *)
+   (* TBR: Hack to restrict sharing in Wasm and ICMode *)
   let allow_actor as allow_shared =
-    not (!Flags.compiled && !Flags.compile_mode = Flags.ICMode) in
+    not !Flags.compiled || !Flags.compile_mode = Flags.AncientMode in
   let seen = ref S.empty in
   let rec go t =
     if S.mem t !seen then None else

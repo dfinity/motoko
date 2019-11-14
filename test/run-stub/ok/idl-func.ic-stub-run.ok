@@ -1,6 +1,0 @@
-→ install
-← completed
-→ query fun(0x4449444c0000)
-← completed: 0x4449444c026e016a017c010100010000
-→ query fun2(0x4449444c026e016a017c0000010000)
-← completed: 0x4449444c0000
