@@ -688,22 +688,30 @@ let rec write_8signedbyte (v : value') =
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
-let rec write_nat (v : value') =
-  match v with
-  | AnnotV (v, t) -> write_nat v.it
-  | IntegralV i ->
+let write_leb128 i =
     let buf = Buffer.create 0 in
     encode_leb128 i buf;
     Buffer.output_buffer stdout buf
+
+let write_int_leb128 n = write_leb128 (Big_int.big_int_of_int n)
+
+let write_sleb128 i =
+    let buf = Buffer.create 0 in
+    encode_sleb128 i buf;
+    Buffer.output_buffer stdout buf
+
+let write_int_sleb128 n = write_sleb128 (Big_int.big_int_of_int n)
+
+let rec write_nat (v : value') =
+  match v with
+  | AnnotV (v, t) -> write_nat v.it
+  | IntegralV i -> write_leb128 i
   | _ -> assert false
 
 let rec write_int (v : value') =
   match v with
   | AnnotV (v, t) -> write_int v.it
-  | IntegralV i ->
-    let buf = Buffer.create 0 in
-    encode_sleb128 i buf;
-    Buffer.output_buffer stdout buf
+  | IntegralV i -> write_sleb128 i
   | _ -> assert false
 
 let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
@@ -873,11 +881,49 @@ and in_range t v =
 end
 
 
+(* type table *)
 
+let rec fold_typ (f : Idllib.Syntax.typ' -> 'a -> 'a) a ty =
+  let open Idllib in
+  let open Syntax in
+  let open Source in
+  match ty with
+   | PrimT _ -> a
+   | OptT t -> fold_typ f (f ty a) t.it
+   | _ -> a (* TODO *)
 
-(* type map *)
+module M = Map.Make (struct type t = Idllib.Syntax.typ' let compare = compare end)
 
-module M = Map.Make(Int32)
+let prim =
+  let open Idllib in
+  let open Syntax in
+  let open Source in
+  function
+  | {it = PrimT _; _} -> true
+  | _ -> false
+
+let build_typ_map =
+  let open M in
+  let augment ty m = if mem ty m then m else add ty (cardinal m) m in
+  fold_typ augment
+
+let write_typ_index m (ty, i) =
+  let open Idllib in
+  let open Syntax in
+  begin match ty with
+  | OptT t ->
+    Typer.write_int_sleb128 (-17(* FIXME *));
+    let n =
+      if prim t then
+        fst (Typer.lookup_tynum t)
+      else
+        M.find t.it m in
+    Typer.write_int_sleb128 n;
+    Printf.printf "\nOPT INDEX: %d needs %d\n" i n
+  | PrimT _ -> assert false
+  | _ -> assert false (* TODO *)
+  end;
+  m
 
 (* run it *)
 
@@ -886,40 +932,34 @@ let () =
   if !reverse_mode then
     begin
       let open Idllib in
+      let open Source in
       Printf.printf "\nDESER, reading!\n";
       let lexer = Lexing.from_channel stdin in
-      let Source.{it = vs; _} = Parser.parse_arg Lexer.value_token lexer "<stdin>" in
+      let {it = vs; _} = Parser.parse_arg Lexer.value_token lexer "<stdin>" in
       Wasm.Sexpr.print 80 Arrange_idl.("Arg" $$ List.map value vs);
       Printf.printf "\nDESER, parsed!\n";
       let open Typer in
       let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
       Printf.printf "\nDESER, type inferred!\n";
-      let prim = function
-        |  Source.{it = Syntax.PrimT _; _} -> true
-        | _ -> false in
       if List.for_all prim ts then
         begin
           Printf.printf "DIDL\x00"; (* no constructed types *)
-          let buf = Buffer.create 0 in
-          encode_leb128 (Big_int.big_int_of_int (List.length vs)) buf;
-          Buffer.output_buffer stdout buf;
+          write_int_leb128 (List.length vs);
           let write_typ ty =
             let n, _ = lookup_tynum ty in
-            let buf = Buffer.create 0 in
-            encode_sleb128 (Big_int.big_int_of_int n) buf;
-            Buffer.output_buffer stdout buf in
+            write_int_sleb128 n in
           List.iter write_typ ts;
           let write_val ty value =
             let _, writer = lookup_tynum ty in
-            writer value.Source.it in
+            writer value.it in
           List.iter2 write_val ts vs
         end
       else
         begin
           let open Syntax in
-          let open Source in
           Printf.printf "STUFF'S HARDER!\n";
+          (*
           let tys = ref [] in
           let stash ty : int =
             if prim ty then fst (lookup_tynum ty) else
@@ -929,7 +969,11 @@ let () =
               | OptT t when prim t -> tys := PreT :: !tys; len
               | _ -> len in
           let tnums = List.map stash ts in
-          List.iter (fun n -> Printf.eprintf "Num: %d\n" n) tnums;
+          List.iter (fun n -> Printf.eprintf "Num: %d\n" n) tnums; *)
+          let m = List.fold_left (fun m ty -> build_typ_map m ty.it) M.empty ts in
+          Printf.eprintf "In MAP: %d\n" (M.cardinal m);
+          print_string "DIDL"; write_int_leb128 (M.cardinal m);
+          List.fold_left write_typ_index m (M.bindings m);
           Printf.printf "\nDESER, term traversed!\n";
         end
 
