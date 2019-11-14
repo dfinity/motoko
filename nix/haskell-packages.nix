@@ -98,10 +98,10 @@ nix: subpath:
 
   winter = self.callCabal2nixWithOptions "winter"
     (nix.fetchFromGitHub {
-      owner = "nomeata";
+      owner = "dfinity";
       repo = "winter";
-      rev = "eca9fb8dd8ec4d02962db104721f855040f33720";
-      sha256 = "1gk5597fpw14y6pg1hklb1nv1psqf6wwaph8v2vx8fxlk41lyrv8";
+      rev = "2c9cfc593ab3c670858bc9773a70b35b6c3d89e1";
+      sha256 = "092149z54yxi6kzwpm87ipnzf16x7qcyw4506ki48ivkmykycycl";
      }) "--no-check" {};
 
   ic-stub = self.callCabal2nixWithOptions "ic-stub" (subpath "ic-stub") "-frelease" { };
