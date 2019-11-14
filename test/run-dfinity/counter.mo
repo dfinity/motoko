@@ -2,10 +2,10 @@ let a = actor {
   var c = 1;
   public func inc() {
     c += 1;
-    debugPrintNat c; debugPrint "\n";
+    Debug.printNat c; Debug.print "\n";
   };
   public func printCounter () {
-    debugPrintNat c; debugPrint "\n";
+    Debug.printNat c; Debug.print "\n";
   }
 };
 

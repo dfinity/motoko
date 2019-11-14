@@ -4,22 +4,22 @@
 actor {
     public func pair(o : (Text, Int)) : async () {
      switch o {
-       case (content, num) debugPrint ("ok: " # debug_show num);
+       case (content, num) Debug.print ("ok: " # Debug.show num);
      }
   };
   public func record(o : {content: Text; value : Int}) : async () {
      switch o {
-       case {content} debugPrint ("ok: " # content);
+       case {content} Debug.print ("ok: " # content);
      }
   };
   public func record1(o : {value : Int; byte : Int8}) : async () {
      switch o {
-       case {byte} debugPrint ("ok: " # debug_show byte);
+       case {byte} Debug.print ("ok: " # Debug.show byte);
      }
   };
     public func record2(o : {content: Text; value : Int}, follower : Int8) : async Int8 {
      switch o {
-       case {content} { debugPrint ("ok: " # " " # content # " " # debug_show follower); follower };
+       case {content} { Debug.print ("ok: " # " " # content # " " # Debug.show follower); follower };
      }
   };
 }

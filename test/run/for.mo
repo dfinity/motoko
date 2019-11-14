@@ -1,6 +1,6 @@
 var i = 0;
 for (j in range(0, 10)) {
- debugPrintNat(j);
+ Debug.printNat(j);
  assert(j == i);
  i += 1;
 };

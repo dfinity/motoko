@@ -1,6 +1,6 @@
 actor test {
   public func exported() {
-    debugPrint("exported()\n");
+    Debug.print("exported()\n");
   };
   public let exported_too = exported;
 };

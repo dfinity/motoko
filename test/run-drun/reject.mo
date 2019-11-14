@@ -1,25 +1,25 @@
 actor {
   public func reject1() : async () {
-     debugPrint "1";
+     Debug.print "1";
      throw (error("Error"));
-     debugPrint "wrong";
+     Debug.print "wrong";
   };
 
   public func reject2() : async () {
-     debugPrint "1";
+     Debug.print "1";
      try { throw (error("Error")) }
      catch e {};
-     debugPrint "ok";
+     Debug.print "ok";
   };
 
   public func reject3() : async () {
-     debugPrint "1";
+     Debug.print "1";
      try { throw (error("Error")) }
      catch e {
-      debugPrint "ok";
+      Debug.print "ok";
       throw e;
      };
-     debugPrint "wrong";
+     Debug.print "wrong";
   };
 
 }

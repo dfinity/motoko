@@ -2,7 +2,7 @@
 // zooms past the any argument and finds the beginning of the string
 actor {
   public func any(_ : Any, x : Text) : async () {
-     debugPrint ("ok: " # x);
+     Debug.print ("ok: " # x);
   };
 }
 

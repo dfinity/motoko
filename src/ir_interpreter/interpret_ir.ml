@@ -327,7 +327,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       interpret_exp env exp1 (fun v ->
         if Show.can_show ot
         then k (Value.Text (Show.show_val ot v))
-        else raise (Invalid_argument "debug_show"))
+        else raise (Invalid_argument "Debug.show"))
     | CPSAsync, [exp1] ->
       interpret_exp env exp1 (fun v ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);

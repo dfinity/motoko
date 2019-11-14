@@ -85,10 +85,14 @@ func @text_chars(xs : Text) : (() -> Iter<Char>) =
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
 
-func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
-func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };
-func debugPrintInt(x : Int) { debugPrint (@text_of_Int x) };
-func debugPrintChar(x : Char) { debugPrint (charToText x) };
+module Debug {
+  public func print(x : Text) { (prim "print" : Text -> ()) x };
+  public func printLn(x : Text) { print (x # "\n"); };
+  public func printNat(x : Nat) { printLn (@text_of_Nat x) };
+  public func printInt(x : Int) { printLn (@text_of_Int x) };
+  public func printChar(x : Char) { printLn (charToText x) };
+};
+
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
 
 // Hashing

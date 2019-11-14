@@ -53,7 +53,7 @@ let is_keyword = function
   | "shared"
   | "try"
   | "throw"
-  | "debug_show"
+  | "Debug.show"
   | "query"
   | "switch"
   | "true"

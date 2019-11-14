@@ -1,6 +1,6 @@
 actor hello_world {
   public func hello() {
-    debugPrint("Hello World!\n");
+    Debug.print("Hello World!\n");
   }
 }
 

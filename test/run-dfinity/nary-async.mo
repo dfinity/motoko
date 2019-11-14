@@ -6,7 +6,7 @@ let t = "0_0\n";
 shared func f0_0() : async () {};
 let _ : async () = async {
   await f0_0();
-  debugPrint t;
+  Debug.print t;
 };
 };
 
@@ -17,7 +17,7 @@ shared func f1_0(x:Int) : async () {
 };
 let _ : async () = async {
   await f1_0(1);
-  debugPrint t;
+  Debug.print t;
 };
 };
 
@@ -29,7 +29,7 @@ shared func f2_0(x:Int,y:Bool) : async () {
 };
 let _ : async () = async {
   await f2_0(1,true);
-  debugPrint t;
+  Debug.print t;
 };
 };
 
@@ -42,7 +42,7 @@ shared func f3_0(x:Int,y:Bool,z:Text) : async () {
 };
 let _ : async () = async {
   await f3_0(1,true,"a");
-  debugPrint t;
+  Debug.print t;
 };
 };
 
@@ -53,7 +53,7 @@ let t = "0_0\n";
 shared func f0_0() : async () {};
 let _ : async () = async {
   await f0_0();
-  debugPrint t;
+  Debug.print t;
 };
 };
 
@@ -66,7 +66,7 @@ shared func f0_1() : async Int {
 let _ : async Int = async {
   let x = await f0_1();
   assert(x == 1);
-  debugPrint t;
+  Debug.print t;
   x;
 };
 };
@@ -80,7 +80,7 @@ let _ : async (Int,Bool) = async {
   let (x,y) = await f0_2();
   assert(x==1);
   assert(y==true);
-  debugPrint t;
+  Debug.print t;
   (x,y);
 };
 };
@@ -96,7 +96,7 @@ let _ : async (Int,Bool,Text)  = async {
   assert(x==1);
   assert(y==true);
   assert(z=="a");
-  debugPrint t;
+  Debug.print t;
   (x,y,z);
 };
 };
@@ -114,7 +114,7 @@ shared func fu_u(a:Int,) : async (Int,) {
 let _ : async (Int,)  = async {
   let (x,) = await fu_u(1);
   assert(x==2);
-  debugPrint t;
+  Debug.print t;
   return (x,);
 };
 };
@@ -131,7 +131,7 @@ shared func fu_u(x:T) : async T {
 let _ : async T  = async {
   let y = await fu_u(x);
   assert(eq(x,y));
-  debugPrint t;
+  Debug.print t;
   return y;
 };
 };

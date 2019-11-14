@@ -2,10 +2,10 @@ import Array "array.mo";
 import Prelude "prelude.mo";
 import Text "text.mo";
 
-Prelude.printLn("Array");
+Debug.printLn("Array");
 
 {
-  Prelude.printLn("  append");
+  Debug.printLn("  append");
 
   let actual = Array.append<Int>([ 1, 2, 3 ], [ 4, 5, 6 ]);
   let expected = [ 1, 2, 3, 4, 5, 6 ];
@@ -18,7 +18,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  apply");
+  Debug.printLn("  apply");
 
   let ask = func (x : Text) : Text {
     x # "?";
@@ -39,7 +39,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  bind");
+  Debug.printLn("  bind");
 
   let purePlusOne = func (x : Int) : [Int] {
     [ x + 1 ];
@@ -56,7 +56,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  enumerate");
+  Debug.printLn("  enumerate");
 
   let xs = [ "a", "b", "c" ];
   let ys = Array.enumerate<Text>(xs);
@@ -74,7 +74,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  filter");
+  Debug.printLn("  filter");
 
   let isEven = func (x : Int) : Bool {
     x % 2 == 0;
@@ -91,7 +91,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  find");
+  Debug.printLn("  find");
 
   type Element = {
     key : Text;
@@ -119,7 +119,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  foldl");
+  Debug.printLn("  foldl");
 
   let xs = [ "a", "b", "c" ];
 
@@ -130,7 +130,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  foldr");
+  Debug.printLn("  foldr");
 
   let xs = [ "a", "b", "c" ];
 
@@ -141,7 +141,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  freeze");
+  Debug.printLn("  freeze");
 
   var xs : [var Int] = [ var 1, 2, 3 ];
 
@@ -156,7 +156,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  join");
+  Debug.printLn("  join");
 
   let xs = [ [ 1, 2, 3 ] ];
 
@@ -171,7 +171,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  map");
+  Debug.printLn("  map");
 
   let isEven = func (x : Int) : Bool {
     x % 2 == 0;
@@ -188,7 +188,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  mapWithIndex");
+  Debug.printLn("  mapWithIndex");
 
   let isEven = func (x : Int) : Bool {
     x % 2 == 0;
@@ -221,7 +221,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  pure");
+  Debug.printLn("  pure");
 
   let actual = Array.pure<Int>(0);
   let expected = [0];
@@ -234,7 +234,7 @@ Prelude.printLn("Array");
 };
 
 {
-  Prelude.printLn("  thaw");
+  Debug.printLn("  thaw");
 
   let xs : [Int] = [ 1, 2, 3 ];
 

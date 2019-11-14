@@ -3,9 +3,9 @@ let b = [];
 
 ignore(async {
   ignore(a[5]);
-  debugPrint("Unreachable code reached\n");
+  Debug.print("Unreachable code reached\n");
 });
 ignore(async {
   ignore(b[0]);
-  debugPrint("Unreachable code reached\n");
+  Debug.print("Unreachable code reached\n");
 });

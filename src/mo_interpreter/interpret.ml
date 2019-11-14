@@ -398,7 +398,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v ->
       if Show.can_show !ot
       then k (Value.Text (Show.show_val !ot v))
-      else raise (Invalid_argument "debug_show"))
+      else raise (Invalid_argument "Debug.show"))
   | RelE (ot, exp1, op, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->

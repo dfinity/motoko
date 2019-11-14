@@ -1,4 +1,4 @@
-debugPrint "This should appear\n";
-debug { debugPrint "This shouldn't appear\n" };
-debugPrint "This should appear too\n";
+Debug.print "This should appear\n";
+debug { Debug.print "This shouldn't appear\n" };
+Debug.print "This should appear too\n";
 

@@ -142,20 +142,20 @@ public func isValid<K,V> (t:Trie<K,V>, enforceNormal:Bool) : Bool {
            ( List.all<(Key<K>,V)>(
                l.keyvals,
                func ((k:Key<K>,v:V)):Bool{
-                 //{ debugPrint "testing hash..."; true }
+                 //{ Debug.print "testing hash..."; true }
                  //and
                  ((k.hash & mask) == bits)
                  or
-                 { debugPrint "\nmalformed hash!:\n";
-                   debugPrintInt (word32ToNat(k.hash));
-                   debugPrint "\n (key hash) != (path bits): \n";
-                   debugPrintInt (word32ToNat(bits));
-                   debugPrint "\nmask  : "; debugPrintInt (word32ToNat(mask));
-                   debugPrint "\n";
+                 { Debug.print "\nmalformed hash!:\n";
+                   Debug.printInt (word32ToNat(k.hash));
+                   Debug.print "\n (key hash) != (path bits): \n";
+                   Debug.printInt (word32ToNat(bits));
+                   Debug.print "\nmask  : "; Debug.printInt (word32ToNat(mask));
+                   Debug.print "\n";
                    false }
                }
              ) or
-           { debugPrint "one or more hashes are malformed"; false }
+           { Debug.print "one or more hashes are malformed"; false }
            )
          };
     case (#branch b) {
@@ -166,7 +166,7 @@ public func isValid<K,V> (t:Trie<K,V>, enforceNormal:Bool) : Bool {
            let mask1 = mask | (natToWord32(1) << bitpos1);
            let bits1 = bits | (natToWord32(1) << bitpos1);
            let sum = count<K,V>(b.left) + count<K,V>(b.right);
-           (b.count == sum or { debugPrint "malformed count"; false })
+           (b.count == sum or { Debug.print "malformed count"; false })
            and
            rec(b.left,  ?bitpos1, bits,  mask1)
            and

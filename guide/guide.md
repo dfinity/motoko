@@ -141,7 +141,7 @@ The following keywords are reserved and may not be used as identifiers:
 ```bnf
 actor and async assert await break case catch class continue debug
 else false for func if in import module not null object or label
-let loop private public return shared try throw debug_show query
+let loop private public return shared try throw Debug.show query
 switch true type var while
 ```
 

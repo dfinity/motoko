@@ -2,10 +2,10 @@ import Array "array.mo";
 import None "none.mo";
 import Prelude "prelude.mo";
 
-Prelude.printLn("None");
+Debug.printLn("None");
 
 {
-  Prelude.printLn("  absurd");
+  Debug.printLn("  absurd");
 
   func showNone(x : None) : Text {
     None.absurd<Text>(x);

@@ -1,19 +1,19 @@
 let _ = async {
   let o = object {
     public var x = await { async { 1 } };
-    let a = debugPrintNat(x);
+    let a = Debug.printNat(x);
     // private b = (x := await { async (x + 1) });
     let b = (x := x + 1);
-    let c = debugPrintNat(x);
+    let c = Debug.printNat(x);
     public func foo() = { x := x + 1 };
     let e = foo();
-    let f = debugPrintNat(x);
+    let f = Debug.printNat(x);
   };
-  debugPrint("\ndone creating\n");
-  debugPrintNat(o.x);
+  Debug.print("\ndone creating\n");
+  Debug.printNat(o.x);
   o.x := o.x + 1;
-  debugPrintNat(o.x);
+  Debug.printNat(o.x);
   o.foo();
-  debugPrintNat(o.x);
-  debugPrint("\n");
+  Debug.printNat(o.x);
+  Debug.print("\n");
 }

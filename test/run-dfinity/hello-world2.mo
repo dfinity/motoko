@@ -1,6 +1,6 @@
 let a = actor {
   public func hello() {
-    debugPrint("Hello World!\n");
+    Debug.print("Hello World!\n");
   }
 };
 
