@@ -9,6 +9,8 @@
 #    -a: Update the files in ok/
 #    -1: Use Ancient API
 #    -2: Use IC API
+#    -3: Use Stub API
+#    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
 #    -r: Activate release mode (eliminate `debug` blocks)
@@ -32,9 +34,11 @@ WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
+SKIP_RUNNING=${SKIP_RUNNING:-no}
+ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "a123sir" o; do
+while getopts "a123stir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -50,6 +54,9 @@ while getopts "a123sir" o; do
             ;;
         s)
             ECHO=true
+            ;;
+        t)
+            ONLY_TYPECHECK=true
             ;;
         i)
             IDL=yes
@@ -166,7 +173,7 @@ do
     run tc $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --check $base.mo
     tc_succeeded=$?
 
-    if [ "$tc_succeeded" -eq 0 ]
+    if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
