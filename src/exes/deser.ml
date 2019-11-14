@@ -892,7 +892,13 @@ let rec fold_typ (f : Idllib.Syntax.typ' -> 'a -> 'a) a ty =
   match ty with
    | PrimT _ -> a
    | OptT t | VecT t -> fold_typ f (f ty a) t.it
+   | RecordT tfs | VariantT tfs -> List.fold_left (fun a {it;_} -> fold_field f a it) (f ty a) tfs
    | _ -> a (* TODO *)
+
+and fold_field (f : Idllib.Syntax.typ' -> 'a -> 'a) a ({ label; typ } : Idllib.Syntax.typ_field') =
+  match typ.it with
+  | PrimT _ -> a
+  | t -> f t a
 
 module M = Map.Make (struct type t = Idllib.Syntax.typ' let compare = compare end)
 
@@ -911,6 +917,10 @@ let lookup_tynum t m =
   else
     M.find t.it m
 
+let write_label = function
+  | Id i | Unnamed i -> Typer.write_leb128 (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 i))
+  | Named n -> Typer.write_leb128 (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash n)))
+
 let write_typ_index m (ty, i) =
   let open Typer in
   match ty with
@@ -920,6 +930,12 @@ let write_typ_index m (ty, i) =
   | VecT t ->
     write_int_sleb128 (-19);
     write_int_sleb128 (lookup_tynum t m)
+  | RecordT tfs ->
+    write_int_sleb128 (-20);
+    write_int_leb128 (List.length tfs);
+    List.iter (fun { it = { label; typ }; _ } ->
+        write_label label.it;
+        write_int_sleb128 (lookup_tynum typ m)) tfs
   | PrimT _ -> assert false
   | _ -> assert false (* TODO *)
 
@@ -929,8 +945,10 @@ let rec write_typed_value t v = match t.it, v.it with
   | OptT _, NullV -> Typer.write_int_leb128 0
   | OptT t', OptV v' -> Typer.write_int_leb128 1; write_typed_value t' v'
   | VecT t', VecV vs -> Typer.write_int_leb128 (List.length vs); List.iter (write_typed_value t') vs
+  | RecordT tfs, RecordV vfs -> Typer.write_int_leb128 (List.length vfs); List.iter2 write_typed_value_field tfs vfs
   | _ -> assert false
 
+and write_typed_value_field _ _ = ()
 end
 
 (* run it *)
@@ -968,7 +986,6 @@ let () =
           let open TypeTable in
           Printf.printf "STUFF'S HARDER!\n";
           let m = List.fold_left (fun m ty -> build_typ_map m ty.it) M.empty ts in
-          Printf.eprintf "In MAP: %d\n" (M.cardinal m);
           print_string "DIDL"; write_int_leb128 (M.cardinal m);
           List.iter (write_typ_index m) (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
           write_int_leb128 (List.length vs);
@@ -1003,4 +1020,5 @@ let () =
   - service types
   - escaping in text
   - heralding/outputting of type table
+  - sort type/value fields (optionally)
  *)
