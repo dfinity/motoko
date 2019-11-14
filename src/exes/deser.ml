@@ -949,7 +949,7 @@ let () =
       Printf.printf "\nDESER, type inferred!\n";
       if List.for_all TypeTable.prim ts then
         begin
-          Printf.printf "DIDL\x00"; (* no constructed types *)
+          Printf.printf "DIDL\x00"; (* no constructed types, TODO: remove *)
           write_int_leb128 (List.length vs);
           let write_typ ty =
             let n, _ = lookup_prim_tynum ty in

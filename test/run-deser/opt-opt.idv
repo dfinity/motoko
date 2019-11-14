@@ -1,1 +1,1 @@
-(opt opt 6)
+(opt opt 6, opt (null : opt nat))
