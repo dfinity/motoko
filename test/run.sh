@@ -34,7 +34,7 @@ DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
 ECHO=echo
 
-while getopts "a12sir" o; do
+while getopts "a123sir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -44,6 +44,9 @@ while getopts "a12sir" o; do
             ;;
         2)
             API=ic
+            ;;
+        3)
+            API=stub
             ;;
         s)
             ECHO=true
@@ -59,6 +62,7 @@ done
 
 if [ $API = "wasm" ]; then EXTRA_MOC_FLAGS=-no-system-api; fi
 if [ $API = "ancient" ]; then EXTRA_MOC_FLAGS=-ancient-system-api; fi
+if [ $API = "stub" ]; then EXTRA_MOC_FLAGS=-stub-system-api; fi
 if [ $RELEASE = "yes" ]; then MOC_FLAGS=--release; fi
 
 shift $((OPTIND-1))
@@ -229,7 +233,9 @@ do
               run dvm $DVM_WRAPPER $out/$base.wasm $base.mo
             elif [ $API = ic ]
             then
-              # run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
+              run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
+            elif [ $API = stub ]
+	    then
               DRUN=$IC_STUB_RUN run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $base.mo
             else
               run wasm-run $WASM $out/$base.wasm
