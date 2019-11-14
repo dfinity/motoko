@@ -16,12 +16,15 @@ actor X {
 
   public func test() : async () {
     debugPrint("test1");
-    let () = await X.A();
+    let x = await X.A();
     debugPrint("test2");
-    let 1 = await X.B(1);
+    let y = await X.B(1);
     debugPrint("test3");
-    let (1,true) = await X.C(1,true);
+    let z = await X.C(2,true);
     debugPrint("test4");
+    assert (y == 1);
+    assert (z.0 == 2);
+    assert (z.1);
   };
 }
 //CALL ingress test 0x4449444C0000

@@ -112,23 +112,17 @@ putBytes (pref, _esref) bytes =
 
 systemAPI :: forall s. ESRef s -> Imports s
 systemAPI esref =
-    [ (,) "ic"
-      [ (,,,) "trap" [i32, i32] [] explicit_trap
-      ]
-    , (,) "msg"
-      [ (,,,) "reject" [i64, i32, i32] [] $ with_nonce msg_reject
-      , (,,,) "reply" [i64, i32, i32] [] $ with_nonce msg_reply
-      , unimplemented "error_code" [i64] [i32]
-      , (,,,) "arg_data_copy" [i64, i32, i32, i32] [] $ with_nonce arg_data_copy
-      , (,,,) "arg_data_size" [i64] [i32] $ with_nonce arg_data_size
-      ]
-    , (,) "debug"
-      [ (,,,) "print" [i32, i32] [] debug_print
-      ]
-    , (,) "ic0"
+    [ (,) "ic0"
       [ (,,,) "call_simple" (replicate 10 i32) [i32] call_simple
-      , (,,,) "canister_self_len" [] [i32] canister_self_len
       , (,,,) "canister_self_copy" (replicate 3 i32) [] canister_self_copy
+      , (,,,) "canister_self_len" [] [i32] canister_self_len
+      , (,,,) "debug_print" [i32, i32] [] debug_print
+      , (,,,) "msg_arg_data_copy" [i32, i32, i32] [] arg_data_copy
+      , (,,,) "msg_arg_data_size" [] [i32] arg_data_size
+      , (,,,) "msg_reject" [i32, i32] [] msg_reject
+      , (,,,) "msg_reply" [i32, i32] [] msg_reply
+      , (,,,) "trap" [i32, i32] [] explicit_trap
+      , unimplemented "msg_error_code" [] [i32]
       ]
     ]
   where
@@ -138,11 +132,6 @@ systemAPI esref =
       \_ -> throwError $ "unimplemented: " ++ name
 
     i32 = I32Type
-    i64 = I64Type
-
-    with_nonce :: ([Value] -> HostFunc s) -> ([Value] -> HostFunc s)
-    with_nonce f (I64 _nonce : args) = f args
-    with_nonce _ _ = fail "with_nonce: missing or wrongly typed nonce argument"
 
     copy_to_canister :: String -> Int32 -> Int32 -> Int32 -> Blob -> HostM s ()
     copy_to_canister name dst offset len blob = do
@@ -201,7 +190,7 @@ systemAPI esref =
     arg_data_size _ = fail "arg_data_size: invalid argument"
 
     arg_data_copy :: [Value] -> HostFunc s
-    arg_data_copy [I32 dst, I32 len, I32 offset] = do
+    arg_data_copy [I32 dst, I32 offset, I32 len] = do
       blob <- getsES esref (param_dat . params)
           >>= maybe (throwError "arg_data_size: No argument") return
       copy_to_canister "arg_data_copy" dst offset len blob
@@ -272,7 +261,7 @@ rawInitializeMethod esref wasm_mod cid caller dat = do
     --  invoke canister_init
     when ("canister_init" `elem` exportedFunctions wasm_mod) $
       void $ withES esref es $
-         invokeExport inst "canister_init" [I64 0]
+         invokeExport inst "canister_init" []
          -- TODO: Check no calls are made
 
     return (esref, cid, inst)
@@ -291,7 +280,7 @@ rawQueryMethod (esref, cid, inst) method caller dat = do
                 }
             }
   result <- runExceptT $ withES esref es $
-    invokeExport inst ("canister_query " ++ method) [I64 0]
+    invokeExport inst ("canister_query " ++ method) []
     -- TODO: Check no calls are made
 
   case result of
@@ -312,7 +301,7 @@ rawUpdateMethod (esref, cid, inst) method caller dat = do
             }
 
   result <- runExceptT $ withES esref es $
-    invokeExport inst ("canister_update " ++ method) [I64 0]
+    invokeExport inst ("canister_update " ++ method) []
   case result of
     Left  err -> return $ Trap err
     Right (_, es') -> return $ Return (calls es', response es')
@@ -332,7 +321,7 @@ rawCallbackMethod (esref, cid, inst) callback caller res = do
         Reject {} -> reject_callback callback
 
   result <- runExceptT $ withES esref es $
-    invokeTable inst fun_idx [I64 0, I32 env]
+    invokeTable inst fun_idx [I32 env]
   case result of
     Left  err -> return $ Trap err
     Right (_, es') -> return $ Return (calls es', response es')
