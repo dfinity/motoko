@@ -22,7 +22,7 @@ public type ArrayBuf<X> = {
 #### Terminology:
 
 Note, above we say `count` rather than `len`, the term used by the
-buffer abstaction.
+buffer abstraction.
 
 Here, we use `count ` and not `len` to distinguish from `array.len()`.
 
@@ -105,6 +105,7 @@ public class Make<X> (init:InitArg<X>) : Buf.Buf<X> {
   };
 
   public func iter() : Iter<X> =
+    // todo
     P.nyi();
 
   public func array() : [X] =

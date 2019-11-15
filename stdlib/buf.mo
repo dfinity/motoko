@@ -3,13 +3,13 @@ module {
 Buffers
 ===================
 
-Define common types for buffers that grow, with a general element type.
+This module defines common types for buffers that grow, with a general element type.
 
 Implementations of these types are/will be defined elsewhere.
 
 ### Why? 
 
-Motoko applications expose interfaces that use arrays of non-`Char`
+Motoko applications expose interfaces that use arrays of general (user-defined)
 elements to represent sets, sequences and maps of application-specific
 elements.
 
@@ -29,15 +29,15 @@ The only way to access elements is with iteration, or by producing an array (eit
 We capture the most basic buffer abstraction with the following `Buf<X>` object type:
 */
 
-type Buf<X> = {
+public type Buf<X> = {
   // intro forms: addElm and addBuf
-  addElm: X -> ();
+  add: X -> ();
   addBuf: Buf<X> -> ();
 
   // utilities:
   len: () -> Nat;
   clear: () -> ();
-  copy: () -> Buf<X>; // copies do not interfere across future mutations
+  clone: () -> Buf<X>; // copies do not interfere across future mutations
   
   // elim forms for accessing elements:
   iter: () -> Iter<X>;
@@ -69,7 +69,7 @@ type RamBuf<X> = {
   // utilities:
   len: () -> Nat;
   clear: () -> ();
-  copy: () -> Buf<X>; // copies do not interfere across future mutations
+  clone: () -> Buf<X>; // copies do not interfere across future mutations
   
   // elim forms for accessing elements:
   iter: () -> Iter<X>;
@@ -88,5 +88,7 @@ type RamBuf<X> = {
 // missing language feature?
 // assert that two types are related by subtyping, without having instances?:
 // e.g., use a compiler meta-function `assertIsSubTypeOf<X>(RamBuf<X>, Buf<X>);` here?
+
+// alternatively, we could have a way to "append" object types, as with `+` on Rust traits
 
 }
