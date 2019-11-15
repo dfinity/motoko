@@ -24,7 +24,7 @@ import IC.Wasm.Winter (parseModule, exportedFunctions, Module)
 import IC.Canister.Imp
 
 -- Here we can swap out the persistence implementation
-import IC.Canister.Pure
+import IC.Canister.Persisted
 
 type InitFunc = CanisterId -> EntityId -> Blob -> TrapOr WasmState
 type UpdateFunc = WasmState -> TrapOr (WasmState, [MethodCall], Maybe Response)

@@ -1,5 +1,5 @@
 import T = "serverTypes.mo";
-import Trie = "../../trie2.mo";
+import Trie = "../../trie.mo";
 import DocTable = "../../docTable.mo";
 
 

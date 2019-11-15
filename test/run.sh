@@ -191,10 +191,10 @@ do
         if [ "$SKIP_RUNNING" != yes ]
         then
           # Interpret
-          run run $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS -r $base.mo
+          run run $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS -r -iR -no-async -no-await $base.mo
+          run run-ir $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -204,7 +204,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS -r -iR $base.mo
+          run run-low $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -216,7 +216,7 @@ do
         fi
 
         # Compile
-        run comp $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --map -c $base.mo -o $out/$base.wasm
+        run comp $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings --map -c $base.mo -o $out/$base.wasm
 
         if [ -e $out/$base.wasm ]
         then
