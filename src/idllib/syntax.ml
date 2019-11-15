@@ -43,7 +43,7 @@ and typ' =
   | PreT   (* pre-type *)
 
 and typ_field = typ_field' Source.phrase
-and typ_field' = { label: field_label; typ : typ }
+and typ_field' = { label : field_label; typ : typ }
 
 and typ_meth = typ_meth' Source.phrase
 and typ_meth' = {var : id; meth : typ}
