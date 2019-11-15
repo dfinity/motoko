@@ -3047,7 +3047,7 @@ module Dfinity = struct
       E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
       E.add_func_import env "msg" "reject" [I64Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "error_code" [I64Type] [I32Type];
+      E.add_func_import env "msg" "reject_code" [I64Type] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] []
     | Flags.AncientMode ->
       E.add_func_import env "test" "print" [I32Type] [];
@@ -3222,7 +3222,7 @@ module Dfinity = struct
   let error_code env =
       SR.UnboxedWord32,
       get_api_nonce env ^^
-      system_call env "msg" "error_code"
+      system_call env "msg" "reject_code"
 
 end (* Dfinity *)
 
