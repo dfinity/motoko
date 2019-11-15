@@ -1,5 +1,5 @@
 (library
   (name lang_utils)
-  (libraries lib)
+  (libraries lib mo_config)
   (wrapped false)
 )
