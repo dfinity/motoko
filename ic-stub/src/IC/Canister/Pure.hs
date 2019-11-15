@@ -120,4 +120,3 @@ replay esref s = silently esref $ go s
       is <- go s
       _ <- rawCallbackMethod is cb caller r >>= trapToFail
       return is
-

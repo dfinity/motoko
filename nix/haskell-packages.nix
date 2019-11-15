@@ -100,8 +100,8 @@ nix: subpath:
     (nix.fetchFromGitHub {
       owner = "nomeata";
       repo = "winter";
-      rev = "0c1f8e0e473b904c341fca320d648139ee084c72";
-      sha256 = "09gmzcbwck15l6461w9mg9glm7mimx5mwrpb8qzg0pwmd9gdji3z";
+      rev = "eb8add32c7de95ccdaf1c896f894814833633bbc";
+      sha256 = "05pa6fwvs7galf0gnjngampfdfrki8zjd92f4hzr9yv75jxzv10v";
      }) "--no-check" {};
 
   ic-stub = self.callCabal2nixWithOptions "ic-stub" (subpath "ic-stub") "-frelease" { };

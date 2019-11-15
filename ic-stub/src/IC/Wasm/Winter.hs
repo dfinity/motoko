@@ -49,7 +49,7 @@ import qualified Wasm.Syntax.Types as W
 import qualified Wasm.Syntax.Values as W
 import qualified Wasm.Syntax.Memory as W
 
-type Instance s = (IM.IntMap (W.ModuleInst Identity (ST s)), W.ModuleInst Identity (ST s))
+type Instance s = (IM.IntMap (W.ModuleInst Identity (ST s)), Int)
 
 type HostM s = ExceptT String (ST s)
 
@@ -87,7 +87,7 @@ initialize mod imps = withExceptT show $ do
         ]
   (ref, inst) <- W.initialize (Identity mod) names mods
   let mods' = IM.insert ref inst mods
-  return (mods', inst)
+  return (mods', ref)
 
 
 exportedFunctions :: Module -> [String]
@@ -99,24 +99,28 @@ exportedFunctions wasm_mod =
 
 
 invokeExport :: Instance s -> String -> [W.Value] -> HostM s [W.Value]
-invokeExport (mods', inst) method args =
+invokeExport (mods', ref) method args = do
+  let inst = mods' IM.! ref
   withExceptT show $
     W.invokeByName mods' inst (T.pack method) args
 
 invokeTable :: Instance s -> Int32 -> [W.Value] -> HostM s [W.Value]
-invokeTable (mods', inst) idx args =
+invokeTable (mods', ref) idx args = do
+  let inst = mods' IM.! ref
   withExceptT show $ do
     func <- W.elem inst 0 idx def
     W.invoke mods' inst func args
 
 getBytes :: Instance s -> W.Address -> W.Size -> HostM s BS.ByteString
-getBytes (_, inst) ptr len = do
+getBytes (mods', ref) ptr len = do
+  let inst = mods' IM.! ref
   let mem = head (W._miMemories inst)
   vec <- withExceptT show $ W.loadBytes mem ptr len
   return $ BS.pack $ V.toList vec
 
 setBytes :: Instance s -> W.Address -> BS.ByteString -> HostM s ()
-setBytes (_, inst) ptr blob = do
+setBytes (mods', ref) ptr blob = do
+  let inst = mods' IM.! ref
   let mem = head (W._miMemories inst)
   withExceptT show $
     W.storeBytes mem (fromIntegral ptr) (V.fromList (BS.unpack blob))
