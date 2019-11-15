@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {- |
 This module provides a way to persist the state of a Winter Wasm instance, and
 to recover it.
@@ -9,7 +10,12 @@ to recover it.
 It is tailored to the use by ic-stub. For example it assumes that the
 table of a wasm instance is immutable.
 -}
-module IC.Wasm.Winter.Persist where
+module IC.Wasm.Winter.Persist
+  ( PInstance
+  , persistInstance
+  , resumeInstance
+  )
+  where
 
 import Control.Monad.Identity
 import Control.Monad.ST
@@ -25,7 +31,7 @@ import qualified Wasm.Runtime.Instance as W
 import qualified Wasm.Runtime.Memory as W
 import qualified Wasm.Syntax.Values as W
 
-type Instance s = (IM.IntMap (W.ModuleInst Identity (ST s)), Int)
+import IC.Wasm.Winter (Instance)
 
 -- |
 -- This stores data read from an instance.
@@ -33,35 +39,40 @@ type Instance s = (IM.IntMap (W.ModuleInst Identity (ST s)), Int)
 -- Note that an 'Instance' has aliasing, the same global may appear in various
 -- spots. We don’t worry about that for now and just de-alias on reading, at the
 -- expense of writing the corresponding mutable values more than once.
-newtype PInstance = PInstance (IM.IntMap PModuleInst)
+newtype PInstance = PInstance (Persisted (Instance ()))
 
 persistInstance :: Instance s -> ST s PInstance
-persistInstance (i,_) = PInstance <$> persist1 i
+persistInstance i = PInstance <$> persist i
 
+resumeInstance :: Instance s -> PInstance -> ST s ()
+resumeInstance i (PInstance p) = resume i p
 
-class Persistable f where
-  type Persisted f :: *
-  persist :: f (ST s) -> ST s (Persisted f)
-  resume :: f (ST s) -> Persisted f -> ST s ()
+class Monad (M a) => Persistable a where
+  type Persisted a :: *
+  type M a :: * -> *
+  persist :: a -> M a (Persisted a)
+  resume :: a -> Persisted a -> M a ()
 
-instance Persistable W.MemoryInst where
-  type Persisted W.MemoryInst = V.Vector Word8
+instance Persistable (W.MemoryInst (ST s)) where
+  type Persisted (W.MemoryInst (ST s)) = V.Vector Word8
+  type M (W.MemoryInst (ST s)) = ST s
   persist m = readMutVar (W._miContent m) >>= V.freeze
   resume m v = V.thaw v >>= writeMutVar (W._miContent m)
 
-instance Persistable W.GlobalInst where
-  type Persisted W.GlobalInst = W.Value
+instance Persistable (W.GlobalInst (ST s)) where
+  type Persisted (W.GlobalInst (ST s)) = W.Value
+  type M (W.GlobalInst (ST s)) = ST s
   persist m = readMutVar (W._giContent m)
   resume m = writeMutVar (W._giContent m)
 
-
 data PExtern
-  = PExternMemory (Persisted W.MemoryInst)
-  | PExternGlobal (Persisted W.GlobalInst)
+  = PExternMemory (Persisted (W.MemoryInst (ST ())))
+  | PExternGlobal (Persisted (W.GlobalInst (ST ())))
   | PExternOther
 
-instance Persistable (W.Extern f) where
-  type Persisted (W.Extern f) = PExtern
+instance Persistable (W.Extern f (ST s)) where
+  type Persisted (W.Extern f (ST s)) = PExtern
+  type M (W.Extern f (ST s)) = ST s
 
   persist (W.ExternGlobal g) = PExternGlobal <$> persist g
   persist (W.ExternMemory m) = PExternMemory <$> persist m
@@ -72,41 +83,50 @@ instance Persistable (W.Extern f) where
   resume _ _ = return ()
 
 data PModuleInst = PModuleInst
-  { memories :: [Persisted W.MemoryInst]
-  , globals :: [Persisted W.GlobalInst]
-  , exports :: M.Map T.Text (Persisted (W.Extern Identity))
+  { memories :: [Persisted (W.MemoryInst (ST ()))]
+  , globals :: [Persisted (W.GlobalInst (ST ()))]
+  , exports :: M.Map T.Text (Persisted (W.Extern Identity (ST ())))
   }
 
-instance Persistable (W.ModuleInst Identity) where
-  type Persisted (W.ModuleInst Identity) = PModuleInst
+instance Persistable (W.ModuleInst Identity (ST s)) where
+  type Persisted (W.ModuleInst Identity (ST s)) = PModuleInst
+  type M (W.ModuleInst Identity (ST s)) = ST s
   persist inst = PModuleInst
-    <$> persist1 (W._miMemories inst)
-    <*> persist1 (W._miGlobals inst)
-    <*> persist1 (W._miExports inst)
+    <$> persist (W._miMemories inst)
+    <*> persist (W._miGlobals inst)
+    <*> persist (W._miExports inst)
   resume inst pinst = do
-    resume1 (W._miMemories inst) (memories pinst)
-    resume1 (W._miGlobals inst) (globals pinst)
-    resume1 (W._miExports inst) (exports pinst)
+    resume (W._miMemories inst) (memories pinst)
+    resume (W._miGlobals inst) (globals pinst)
+    resume (W._miExports inst) (exports pinst)
 
 
-class Persistable1 c f where
-  persist1 :: c (f (ST s)) -> ST s (c (Persisted f))
-  resume1 :: c (f (ST s)) -> c (Persisted f) -> ST s ()
-
-instance Persistable f => Persistable1 [] f where
-  persist1 = mapM persist
-  resume1 xs ys = do
+instance Persistable a => Persistable [a] where
+  type Persisted [a] = [Persisted a]
+  type M [a] = M a
+  persist = mapM persist
+  resume xs ys = do
     unless (length xs == length ys) $ fail "Lengths don’t match"
     zipWithM_ resume xs ys
 
-instance (Eq k, Persistable f) => Persistable1 (M.Map k) f where
-  persist1 = mapM persist
-  resume1 xs ys = do
+instance (Eq k, Persistable a) => Persistable (M.Map k a) where
+  type Persisted (M.Map k a) = M.Map k (Persisted a)
+  type M (M.Map k a) = M a
+  persist = mapM persist
+  resume xs ys = do
     unless (M.keys xs == M.keys ys) $ fail "Map keys don’t match"
     zipWithM_ resume (M.elems xs) (M.elems ys)
 
-instance Persistable f => Persistable1 IM.IntMap f where
-  persist1 = mapM persist
-  resume1 xs ys = do
+instance Persistable a => Persistable (IM.IntMap a) where
+  type Persisted (IM.IntMap a) = IM.IntMap (Persisted a)
+  type M (IM.IntMap a) = M a
+  persist = mapM persist
+  resume xs ys = do
     unless (IM.keys xs == IM.keys ys) $ fail "Map keys don’t match"
     zipWithM_ resume (IM.elems xs) (IM.elems ys)
+
+instance Persistable a => Persistable (a, Int) where
+  type Persisted (a, Int) = Persisted a
+  type M (a, Int) = M a
+  persist (a, _i) = persist a
+  resume (a, _i) p = resume a p
