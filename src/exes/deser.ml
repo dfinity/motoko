@@ -982,6 +982,25 @@ and write_typed_variant_field tfs vf =
 
 end
 
+module Sanitise = struct
+open Idllib
+open Syntax
+open Source
+
+let rec sanitise_value (v : value) : value =
+  match v.it with
+  | NullV | TrueV | FalseV | TextV _ | IntegralV _ | FuncV _ | ServiceV _ -> v
+  | OptV v' -> {  v with it = OptV (sanitise_value v') }
+  | VecV vs -> {  v with it = VecV (List.map sanitise_value vs) }
+  | RecordV vfs -> {  v with it = RecordV (List.map sanitise_value_field vfs) }
+  | VariantV vf -> {  v with it = VariantV (sanitise_value_field vf) }
+  | AnnotV (v', t) -> {  v with it = AnnotV (sanitise_value v', sanitise_type t) }
+
+and sanitise_value_field vf = vf (* TODO *)
+and sanitise_type t = t (* TODO *)
+
+end
+
 (* run it *)
 
 let () =
@@ -994,12 +1013,15 @@ let () =
       let lexer = Lexing.from_channel stdin in
       let {it = vs; _} = Parser.parse_arg Lexer.value_token lexer "<stdin>" in
       Wasm.Sexpr.print 80 Arrange_idl.("Arg" $$ List.map value vs);
+      let vs = List.map Sanitise.sanitise_value vs in
+      Printf.printf "\nDESER, sanitised!\n";
+      Wasm.Sexpr.print 80 Arrange_idl.("(sanitised) Arg" $$ List.map value vs);
       Printf.printf "\nDESER, parsed!\n";
       let open Typer in
       let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
       Printf.printf "\nDESER, type inferred!\n";
-      let open TypeTable in if List.for_all TypeTable.prim ts then () else Printf.printf "STUFF'S HARDER!\n";
+      let open TypeTable in
       let m = List.fold_left (fun m ty -> build_typ_map m ty.it) M.empty ts in
       print_string "DIDL"; write_int_leb128 (M.cardinal m);
       List.iter (write_typ_index m) (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
@@ -1038,4 +1060,6 @@ let () =
   - Yan, do you sort type fields? (in Rust?)
   - argument realisability! don't externalise bottom!
   - shrink type table (union-find)
+  - `+42` infers as `nat`, should be `int`
+  - shorthands
  *)
