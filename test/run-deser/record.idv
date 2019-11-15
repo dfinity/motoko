@@ -9,4 +9,7 @@
 , record {a = -42; b = 25} : record {a : int}
 , record {a = -42; b = 25} : record {a : nat} // TODO!
 , record {0 = -42; 1 = 25} : record {int; nat}
+, record {1 = -42; 0 = 25} : record {1 : nat; 0 : int}
+, record {1 = -42; 0 = 25} : record {0 : int; 1 : nat}
+, record {1 = -42; 0 = 25}
 )

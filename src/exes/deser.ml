@@ -1025,7 +1025,7 @@ let () =
           Printf.printf "\nDESER, term traversed!\n";
         end
 
-      (*
+      (* TODO!
       if List.every (type_realizable) ts then
         traverse_collect_types
       else
@@ -1051,5 +1051,8 @@ let () =
   - service types
   - escaping in text
   - heralding/outputting of type table
-  - sort type/value fields (optionally)
+  - sort type/value fields (optionally?) `--sanitize`
+  - Yan, do you sort type fields? (in Rust?)
+  - argument realisability! don't externalise bottom!
+  - shrink type table (union-find)
  *)
