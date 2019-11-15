@@ -131,7 +131,7 @@ let in_await env =
   | _ :: AwaitE _ :: _ -> true
   | _ -> false
 
-let in_shared_promising env =
+let in_shared_async env =
   match env.context with
   | _ :: FuncE (_, {it = T.Shared _; _}, _, _, typ_opt, _) :: _ ->
     (match typ_opt with
@@ -141,11 +141,9 @@ let in_shared_promising env =
 
 let in_oneway_ignore env =
   match env.context with
-  | _ :: CallE({ it = VarE { it = "@ignore"; _} ; _}, [], _) ::
-    FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
-    _
-  | _ :: CallE({ it = VarE { it = "@ignore"; _} ; _}, [], _) ::
-    BlockE [ { it = ExpD _; _} ] ::
+  | _ ::
+    AnnotE  _  ::
+    BlockE [ {it = LetD ({ it = WildP;_}, _); _} ] ::
     FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
     _ ->
     (match typ_opt with
@@ -925,7 +923,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then check_exp env T.throw exp1;
     T.Non
   | AsyncE exp1 ->
-    if not (in_shared_promising env || in_oneway_ignore env) then
+    if not (in_shared_async env || in_oneway_ignore env) then
       error_in [Flags.ICMode] env exp.at "unsupported async block";
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
@@ -1005,7 +1003,7 @@ and check_exp' env0 t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE exp1, T.Async t' ->
-    if not (in_shared_promising env || in_oneway_ignore env) then
+    if not (in_shared_async env || in_oneway_ignore env) then
       error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
     check_exp env' t' exp1;

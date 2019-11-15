@@ -370,9 +370,11 @@ let transform mode env prog =
                TODO: remove this special casing once async fully supported
               *)
             | Returns,
-              { it =
-                   CallE({ it = VarE "@ignore"; _}, [],
-                         ({ it = PrimE (CPSAsync, _); _} as exp));
+              { it = BlockE (
+                [{ it = LetD (
+                  { it = WildP; _},
+                  ({ it = PrimE (CPSAsync, _); _} as exp)); _ }],
+                { it = TupE []; _});
                 _ } ->
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in

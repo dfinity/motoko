@@ -371,8 +371,6 @@ exp_nullary(B) :
     { BlockE(ds) @? at $sloc }
   | x=id
     { VarE(x) @? at $sloc }
-  | IGNORE
-    { VarE("@ignore" @@ at $sloc) @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
   | LPAR es=seplist(exp(ob), COMMA) RPAR
@@ -641,6 +639,8 @@ dec_nonvar :
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
+  | IGNORE e=exp(ob)
+    { LetD(WildP @! no_region, AnnotE (e, PrimT "Any" @! no_region) @? no_region) @? at $sloc }
 
 dec :
   | d=dec_var
