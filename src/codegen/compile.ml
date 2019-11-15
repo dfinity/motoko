@@ -5349,6 +5349,12 @@ module FuncDec = struct
     compile_unboxed_const (E.built_in env name) ^^
     get_closure ^^ ClosureTable.remember_closure env
 
+  let ignoring_callback env =
+    assert (E.mode env = Flags.StubMode);
+    let name = "@ignore_callback" in
+    Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
+    compile_unboxed_const (E.built_in env name)
+
   let lit env ae how name sort control free_vars args mk_body ret_tys at =
     let captured = List.filter (VarEnv.needs_capture ae) free_vars in
 
@@ -6773,10 +6779,10 @@ and compile_exp (env : E.t) ae exp =
           (* The method name *)
           get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
           (* The reply callback *)
-          compile_unboxed_const 0l ^^
+          FuncDec.ignoring_callback env ^^
           compile_unboxed_const 0l ^^
           (* The reject callback *)
-          compile_unboxed_const 0l ^^
+          FuncDec.ignoring_callback env ^^
           compile_unboxed_const 0l ^^
           (* the data *)
           get_arg ^^ Serialization.serialize env ts ^^
