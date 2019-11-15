@@ -4,7 +4,10 @@ open Mo_config
 type lab = string
 type var = string
 
-type control = Returns | Promises
+type control =
+  | Returns (* regular local function or one-shot shared function *)
+  | Promises (* shared function producing a future value upon call *)
+  | Replies (* (IR only): responds asynchronously using `reply` *)
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
 type func_sort = Local | Shared of shared_sort
@@ -133,6 +136,7 @@ let seq = function [t] -> t | ts -> Tup ts
 let codom c ts =  match c with
   | Promises -> Async (seq ts)
   | Returns -> seq ts
+  | Replies -> Tup []
 
 (* Coercions *)
 
@@ -568,8 +572,8 @@ let concrete t =
 
 let shared t =
   (* TBR: Hack to restrict sharing in ICMode *)
-  let allow_actor = not (!Flags.compile_mode = Flags.ICMode) in
-  let allow_shared = not (!Flags.compile_mode = Flags.ICMode) in
+  let allow_actor as allow_shared =
+    not (!Flags.compiled && !Flags.compile_mode = Flags.ICMode) in
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -598,8 +602,8 @@ let shared t =
 (* Find the first unshared subexpression in a type *)
 let find_unshared t =
    (* TBR: Hack to restrict sharing in ICMode *)
-  let allow_actor = not (!Flags.compile_mode = Flags.ICMode) in
-  let allow_shared = not (!Flags.compile_mode = Flags.ICMode) in
+  let allow_actor as allow_shared =
+    not (!Flags.compiled && !Flags.compile_mode = Flags.ICMode) in
   let seen = ref S.empty in
   let rec go t =
     if S.mem t !seen then None else
@@ -1178,6 +1182,7 @@ and string_of_control_cod c vs ts =
   match c with
   | Returns -> cod
   | Promises -> sprintf "async %s" cod
+  | Replies -> sprintf "replies %s" cod
 
 and string_of_typ' vs t =
   match t with

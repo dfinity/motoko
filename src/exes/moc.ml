@@ -35,9 +35,11 @@ let argspec = Arg.align
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
+  "-o", Arg.Set_string out_file, " output file";
+
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
-  "-o", Arg.Set_string out_file, " output file";
+  "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
@@ -121,7 +123,7 @@ let process_files files : unit =
     let prog = Diag.run (Pipeline.generate_idl files) in
     ignore (Diag.run (Idllib.Pipeline.check_prog prog));
     let oc = open_out !out_file in
-    let idl_code = Idllib.Arrange_idl.string_of_prog prog in    
+    let idl_code = Idllib.Arrange_idl.string_of_prog prog in
     output_string oc idl_code; close_out oc
   | Compile ->
     set_out_file files ".wasm";
@@ -157,5 +159,6 @@ let () =
   Printexc.record_backtrace true;
   Arg.parse argspec add_arg usage;
   if !mode = Default then mode := (if !args = [] then Interact else Compile);
+  Flags.compiled := (!mode = Compile);
   process_profiler_flags () ;
   process_files !args

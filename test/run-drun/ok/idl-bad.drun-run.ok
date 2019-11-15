@@ -1,2 +1,2 @@
 ingress(0) System
-Err: IC0503: Canister 42 called 'ic.trap' with message 'explicit canister trap: IDL error: missing magic bytes'
+Err: IC0503: Canister 42 trapped explicitly: IDL error: missing magic bytes

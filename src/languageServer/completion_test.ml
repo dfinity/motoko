@@ -43,25 +43,6 @@ let import_relative_test_case root module_path import expected =
        (show actual);
      false)
 
-let parse_module_header_test_case project_root current_file file expected =
-  let actual =
-    Completion.parse_module_header
-      project_root
-      current_file file in
-  let display_result (alias, path) = Printf.sprintf "%s => \"%s\"" alias path in
-  let result = Lib.List.equal
-    (fun (x, y) (x', y') ->
-      String.equal x x' && String.equal y y')
-    actual
-    expected in
-  if not result then
-    Printf.printf
-      "\nExpected: %s\nActual:   %s"
-      (Completion.string_of_list display_result expected)
-      (Completion.string_of_list display_result actual) else ();
-  result
-
-
 let%test "it finds a simple prefix" =
   prefix_test_case "List.|" (Some ("List", ""))
 
@@ -128,36 +109,3 @@ let%test "it can handle parent directory relationships" =
     "/home/project/src/main.mo"
     "../lib/List.mo"
     (Some "lib/List.mo")
-
-let%test "it parses a simple module header" =
-  parse_module_header_test_case
-    "/project"
-    "/project/src/Main.mo"
-    "import P \"lib/prelude.mo\""
-    ["P", "src/lib/prelude.mo"]
-
-let%test "it parses a simple module header" =
-  parse_module_header_test_case
-    "/project"
-    "/project/Main.mo"
-    {|
-module {
-
-private import List "lib/ListLib.mo";
-private import ListFuncs "lib/ListFuncs.mo";
-
-type Stack = List.List<Int>;
-
-func push(x: Int, s: Stack): Stack =
-  List.cons<Int>(x, s);
-
-func empty(): Stack =
-  List.nil<Int>();
-
-func singleton(x: Int): Stack =
-  ListFuncs.doubleton<Int>(x, x);
-}
-|}
-    [ ("List", "lib/ListLib.mo")
-    ; ("ListFuncs", "lib/ListFuncs.mo")
-    ]

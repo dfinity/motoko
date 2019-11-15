@@ -1,3 +1,3 @@
 actor {
-  print("Debug out");
+  debugPrint("Debug out");
 }

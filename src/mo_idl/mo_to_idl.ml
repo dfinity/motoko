@@ -66,8 +66,14 @@ let rec typ vs t =
   | Prim p -> I.PrimT (prim p)
   | Var (s, i) -> (typ vs (List.nth vs i)).it
   | Con (c, []) ->
-     chase_con vs c;
-     I.VarT (string_of_con vs c @@ no_region)
+     (match Con.kind c with
+     | Def ([], Prim p) -> I.PrimT (prim p)
+     | Def ([], Any) -> I.PrimT I.Reserved
+     | Def ([], Non) -> I.PrimT I.Empty
+     | _ ->
+        chase_con vs c;
+        I.VarT (string_of_con vs c @@ no_region)
+     )
   | Con (c, ts) ->
      let ts =
        List.map (fun t ->
@@ -85,7 +91,10 @@ let rec typ vs t =
       | _ -> assert false)
   | Typ c -> assert false
   | Tup ts ->
-     I.RecordT (tuple vs ts)
+     if ts = [] then
+       I.PrimT I.Null
+     else
+       I.RecordT (tuple vs ts)
   | Array t -> I.VecT (typ vs t)
   | Opt t -> I.OptT (typ vs t)
   | Obj (Object, fs) ->
@@ -169,7 +178,7 @@ let gather_decs () =
 let actor progs =
   let open E in
   let find_last_actor (prog : prog) =
-    let anon = normalize ("anon_" ^ (Filename.remove_extension prog.note)) in
+    let anon = "anon" in
     let check_dec d t def =
       let rec check_pat p =
         match p.it with

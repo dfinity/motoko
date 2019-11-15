@@ -123,9 +123,9 @@ public module BitVec {
   public func bitsPrintRev(bits:BitVec) {
     for (j in range(0, length() - 1)) {
       if (getHashBit(bits, j)) {
-        print "1"
+        debugPrint "1"
       } else {
-        print "0"
+        debugPrint "0"
       }
     }
   };
@@ -133,9 +133,9 @@ public module BitVec {
   public func hashPrintRev(bits:BitVec) {
     for (j in range(length() - 1, 0)) {
       if (getHashBit(bits, j)) {
-        print "1"
+        debugPrint "1"
       } else {
-        print "0"
+        debugPrint "0"
       }
     }
   };
@@ -200,22 +200,22 @@ public module BitList {
 
   public func bitsPrintRev(bits:BitList) {
 	  switch bits {
-	  case null { print "" };
+	  case null { debugPrint "" };
 	  case (?(bit,bits_)) {
 		       bitsPrintRev(bits_);
-		       if bit { print "1R." }
-		       else   { print "0L." }
+		       if bit { debugPrint "1R." }
+		       else   { debugPrint "0L." }
 	       }
 	  }
   };
 
   public func hashPrintRev(bits:BitList) {
 	  switch bits {
-	  case null { print "" };
+	  case null { debugPrint "" };
 	  case (?(bit,bits_)) {
 		       hashPrintRev(bits_);
-		       if bit { print "1" }
-		       else   { print "0" }
+		       if bit { debugPrint "1" }
+		       else   { debugPrint "0" }
 	       }
 	  }
   };

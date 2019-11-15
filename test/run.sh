@@ -86,6 +86,32 @@ function normalize () {
   fi
 }
 
+function run () {
+  # first argument: extension of the output file
+  # remaining argument: command line
+  # uses from scope: $out, $file, $base, $diff_files
+
+  local ext="$1"
+  shift
+
+  if grep -q "^//SKIP $ext" $file; then return; fi
+
+  $ECHO -n " [$ext]"
+  "$@" >& $out/$base.$ext
+  local ret=$?
+
+  if [ $ret != 0 ]
+  then echo "Return code $ret" >> $out/$base.$ext.ret
+  else rm -f $out/$base.$ext.ret
+  fi
+  diff_files="$diff_files $base.$ext.ret"
+
+  normalize $out/$base.$ext
+  diff_files="$diff_files $base.$ext"
+
+  return $ret
+}
+
 for file in "$@";
 do
   if ! [ -r $file ]
@@ -120,10 +146,10 @@ do
   [ -d $out ] || mkdir $out
   [ -d $ok ] || mkdir $ok
 
-  rm -f $out/$base.{tc,wasm,wasm.map,wasm-run,wasm.stderr,drun-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat,did,did.tc,js.out}
+  rm -f $out/$base.*
   if [ $ACCEPT = yes ]
   then
-    rm -f $ok/$base.{tc,wasm,wasm.map,wasm-run,wasm.stderr,drun-run,filecheck,diff-ir,diff-low,stdout,stderr,linked.wat,did,did.tc,js.out}.ok
+    rm -f $ok/$base.*
   fi
 
   # First run all the steps, and remember what to diff
@@ -132,99 +158,82 @@ do
   if [ ${file: -3} == ".mo" ]
   then
     # Typecheck
-    $ECHO -n " [tc]"
-    $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --check $base.mo > $out/$base.tc 2>&1
+    run tc $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --check $base.mo
     tc_succeeded=$?
-    normalize $out/$base.tc
-    diff_files="$diff_files $base.tc"
 
     if [ "$tc_succeeded" -eq 0 ]
     then
       if [ $IDL = 'yes' ]
       then
-        $ECHO -n " [idl]"
-        $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --idl $base.mo -o $out/$base.did 2> $out/$base.idl.stderr
+        run idl $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
+
         normalize $out/$base.did
-        normalize $out/$base.idl.stderr
-        diff_files="$diff_files $base.did $base.idl.stderr"
+        diff_files="$diff_files $base.did"
+
         if [ "$idl_succeeded" -eq 0 ]
         then
-          $ECHO -n " [didc]"
-          $DIDC --check $out/$base.did > $out/$base.did.tc 2>&1
-          diff_files="$diff_files $base.did.tc"
+          run didc $DIDC --check $out/$base.did
         fi
       else
         if [ "$SKIP_RUNNING" != yes ]
         then
           # Interpret
-          $ECHO -n " [run]"
-          $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS -r $base.mo > $out/$base.run 2>&1
-          normalize $out/$base.run
-          diff_files="$diff_files $base.run"
+          run run $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          $ECHO -n " [run-ir]"
-          $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS -r -iR -no-async -no-await $base.mo > $out/$base.run-ir 2>&1
-          normalize $out/$base.run-ir
-          diff_files="$diff_files $base.run-ir"
+          run run-ir $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
-          diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
-          diff_files="$diff_files $base.diff-ir"
+          if [ -e $out/$base.run -a -e $out/$base.run-ir ]
+          then
+            diff -u -N --label "$base.run" $out/$base.run --label "$base.run-ir" $out/$base.run-ir > $out/$base.diff-ir
+            diff_files="$diff_files $base.diff-ir"
+          fi
 
           # Interpret IR with lowering
-          $ECHO -n " [run-low]"
-          $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS -r -iR $base.mo > $out/$base.run-low 2>&1
-          normalize $out/$base.run-low
-          diff_files="$diff_files $base.run-low"
+          run run-low $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
-          diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
-          diff_files="$diff_files $base.diff-low"
+          if [ -e $out/$base.run -a -e $out/$base.run-low ]
+          then
+            diff -u -N --label "$base.run" $out/$base.run --label "$base.run-low" $out/$base.run-low > $out/$base.diff-low
+            diff_files="$diff_files $base.diff-low"
+          fi
 
         fi
 
         # Compile
-        $ECHO -n " [wasm]"
-        $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --map -c $base.mo -o $out/$base.wasm 2> $out/$base.wasm.stderr
-        normalize $out/$base.wasm.stderr
-        diff_files="$diff_files $base.wasm.stderr"
+        run comp $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings --map -c $base.mo -o $out/$base.wasm
 
-        # Check filecheck
-        if [ "$SKIP_RUNNING" != yes ]
-        then
-          if grep -F -q CHECK $base.mo
-          then
-            $ECHO -n " [FileCheck]"
-            wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
-            cat $out/$base.wat | FileCheck $base.mo > $out/$base.filecheck 2>&1
-            diff_files="$diff_files $base.filecheck"
-          fi
-        fi
-
-        # Run compiled program
         if [ -e $out/$base.wasm ]
         then
+          # Validate wasm
+          run valid wasm-validate $out/$base.wasm
+
+          # Check filecheck
+          if [ "$SKIP_RUNNING" != yes ]
+          then
+            if grep -F -q CHECK $base.mo
+            then
+              $ECHO -n " [FileCheck]"
+              wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
+              cat $out/$base.wat | FileCheck $base.mo > $out/$base.filecheck 2>&1
+              diff_files="$diff_files $base.filecheck"
+            fi
+          fi
+
+          # Run compiled program
           if [ "$SKIP_RUNNING" != yes ]
           then
             if [ $API = ancient ]
             then
-              $ECHO -n " [dvm]"
-              $DVM_WRAPPER $out/$base.wasm $base.mo > $out/$base.dvm-run 2>&1
-              normalize $out/$base.dvm-run
-              diff_files="$diff_files $base.dvm-run"
+              run dvm $DVM_WRAPPER $out/$base.wasm $base.mo
             elif [ $API = ic ]
             then
-              $ECHO -n " [drun]"
-              $DRUN_WRAPPER $out/$base.wasm $base.mo > $out/$base.drun-run 2>&1
-              normalize $out/$base.drun-run
-              diff_files="$diff_files $base.drun-run"
+              run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
             else
-              $ECHO -n " [wasm-run]"
-              $WASM $out/$base.wasm  > $out/$base.wasm-run 2>&1
-              normalize $out/$base.wasm-run
-              diff_files="$diff_files $base.wasm-run"
+              run wasm-run $WASM $out/$base.wasm
             fi
           fi
         fi
@@ -249,9 +258,8 @@ do
 
     if [ -e $out/$base.linked.wasm ]
     then
-        $ECHO -n " [wat]"
-	wasm2wat $out/$base.linked.wasm -o $out/$base.linked.wat 2> $out/$base.linked.wat.stderr
-        diff_files="$diff_files $base.linked.wat $base.linked.wat.stderr"
+        run wasm2wat wasm2wat $out/$base.linked.wasm -o $out/$base.linked.wat
+        diff_files="$diff_files $base.linked.wat"
     fi
 
   else

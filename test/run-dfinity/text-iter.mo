@@ -1,69 +1,69 @@
 let s = "hello world!\n";
 
-print "via `print`:\n";
-print s;
-print "\n";
+debugPrint "via `debugPrint`:\n";
+debugPrint s;
+debugPrint "\n";
 
-print "via iteration and `printChar`: #1\n";
+debugPrint "via iteration and `debugPrintChar`: #1\n";
 for (a in s.chars()) {
-  printChar a;
+  debugPrintChar a;
 };
-print "\n";
+debugPrint "\n";
 
-print "via iteration and `printChar`: #2\n";
+debugPrint "via iteration and `debugPrintChar`: #2\n";
 var x = 0;
 for (a in s.chars()) {
   x += 1;
-  printNat x;
-  print ":";
-  printChar '\'';
-  printChar a;
-  printChar '\'';
-  print " ";
+  debugPrintNat x;
+  debugPrint ":";
+  debugPrintChar '\'';
+  debugPrintChar a;
+  debugPrintChar '\'';
+  debugPrint " ";
 };
-print "\n";
+debugPrint "\n";
 
 let russian = "Приветствую, мир!\n";
 assert(russian.len() == 18);
 
-print "via iteration and `printChar` (Unicode): #3\n";
+debugPrint "via iteration and `debugPrintChar` (Unicode): #3\n";
 x := 0;
 for (a in russian.chars()) {
   x += 1;
-  printNat x;
-  print ":";
-  printChar '\'';
-  printChar a;
-  printChar '\'';
-  print " ";
+  debugPrintNat x;
+  debugPrint ":";
+  debugPrintChar '\'';
+  debugPrintChar a;
+  debugPrintChar '\'';
+  debugPrint " ";
 };
-print "\n";
+debugPrint "\n";
 assert(x == 18);
 
 let emojis = "🙈🎸😋";
 assert(emojis.len() == 3);
 
-print "via iteration and `printChar` (Unicode): #4\n";
+debugPrint "via iteration and `debugPrintChar` (Unicode): #4\n";
 x := 0;
 for (a in emojis.chars()) {
   x += 1;
-  printNat x;
-  print ":";
-  printChar '\'';
-  printChar a;
-  printChar '\'';
-  print " ";
+  debugPrintNat x;
+  debugPrint ":";
+  debugPrintChar '\'';
+  debugPrintChar a;
+  debugPrintChar '\'';
+  debugPrint " ";
 };
-print "\n";
+debugPrint "\n";
 assert(x == 3);
 
-print russian; print "\n";
+debugPrint russian; debugPrint "\n";
 switch (russian.chars().next()) {
-  case (?c) { printChar c; print "\n" };
+  case (?c) { debugPrintChar c; debugPrint "\n" };
   case _ {};
 };
 
 switch (emojis.chars().next()) {
-  case (?c) { assert (c == '\u{1f648}'); printChar c; print "\n" };
+  case (?c) { assert (c == '\u{1f648}'); debugPrintChar c; debugPrint "\n" };
   case _ {};
 };
