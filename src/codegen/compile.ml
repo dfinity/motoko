@@ -3081,7 +3081,8 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject" [I32Type; I32Type] [];
-      E.add_func_import env "ic0" "msg_reply" [I32Type; I32Type] [];
+      E.add_func_import env "ic0" "msg_reply_data_append" [I32Type; I32Type] [];
+      E.add_func_import env "ic0" "msg_reply" [] [];
       E.add_func_import env "ic0" "trap" [I32Type; I32Type] [];
       ()
     | Flags.AncientMode ->
@@ -3312,7 +3313,9 @@ module Dfinity = struct
         get_data_size ^^
         match E.mode env with
         | Flags.ICMode -> system_call env "msg" "reply"
-        | Flags.StubMode -> system_call env "ic0" "msg_reply"
+        | Flags.StubMode ->
+          system_call env "ic0" "msg_reply_data_append" ^^
+          system_call env "ic0" "msg_reply"
         | _ -> assert false
     )
 end (* Dfinity *)

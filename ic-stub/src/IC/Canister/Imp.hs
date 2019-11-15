@@ -51,6 +51,7 @@ data ExecutionState s = ExecutionState
   , params :: Params
   -- now the mutable parts
   , response :: Maybe Response
+  , reply_data :: Blob
   , calls :: [MethodCall]
   }
 
@@ -61,6 +62,7 @@ initalExecutionState self_id inst = ExecutionState
   , self_id
   , params = Params Nothing Nothing 0 ""
   , response = Nothing
+  , reply_data = mempty
   , calls = mempty
   }
 
@@ -114,6 +116,9 @@ getsES (_, esref) f = lift (readSTRef esref) >>= \case
 modES :: ESRef s -> (ExecutionState s -> ExecutionState s) -> HostM s ()
 modES (_, esref) f = lift $ modifySTRef esref (fmap f)
 
+appendReplyData :: ESRef s -> Blob -> HostM s ()
+appendReplyData esref dat = modES esref $ \es ->
+  es { reply_data = reply_data es <> dat }
 
 setResponse :: ESRef s -> Response -> HostM s ()
 setResponse esref r = modES esref $ \es ->
@@ -130,25 +135,27 @@ appendCall esref c = modES esref $ \es ->
 systemAPI :: forall s. ESRef s -> Imports s
 systemAPI esref =
     [ (,) "ic0"
-      [ toImport "call_simple" call_simple
+      [ toImport "msg_arg_data_size" msg_arg_data_size
+      , toImport "msg_arg_data_copy" msg_arg_data_copy
+      , toImport "msg_caller_size" msg_caller_size
+      , toImport "msg_caller_copy" msg_caller_copy
+      , toImport "msg_reject_code" msg_reject_code
+      , toImport "msg_reject_msg_len" msg_reject_msg_len
+      , toImport "msg_reject_msg_copy" msg_reject_msg_copy
+      , toImport "msg_reply_data_append" msg_reply_data_append
+      , toImport "msg_reply" msg_reply
+      , toImport "msg_reject" msg_reject
       , toImport "canister_self_copy" canister_self_copy
       , toImport "canister_self_len" canister_self_len
+      , toImport "call_simple" call_simple
       , toImport "debug_print" debug_print
-      , toImport "msg_arg_data_copy" arg_data_copy
-      , toImport "msg_arg_data_size" arg_data_size
-      , toImport "msg_reject" msg_reject
-      , toImport "msg_reply" msg_reply
       , toImport "trap" explicit_trap
-      , unimplemented "msg_reject_code" [] [i32]
       ]
     ]
   where
     -- Utilities
-
-    unimplemented name arg ret = (,,,) name arg ret $
-      \_ -> throwError $ "unimplemented: " ++ name
-
-    i32 = I32Type
+    gets :: (ExecutionState s -> b) -> HostM s b
+    gets = getsES esref
 
     copy_to_canister :: String -> Int32 -> Int32 -> Int32 -> Blob -> HostM s ()
     copy_to_canister name dst offset len blob = do
@@ -162,7 +169,7 @@ systemAPI esref =
 
     copy_from_canister :: String -> Int32 -> Int32 -> HostM s Blob
     copy_from_canister _name src len = do
-      i <- getsES esref inst
+      i <- gets inst
       getBytes i (fromIntegral src) len
 
     -- Unsafely print (if not in silent mode)
@@ -172,53 +179,85 @@ systemAPI esref =
         True -> unsafeIOToPrim (BSC.putStrLn bytes)
         False -> return ()
 
-    -- The system calls
+    -- The system calls (in the order of the public spec)
+    -- https://docs.dfinity.systems/spec/public/#_system_imports
 
-    debug_print :: (Int32, Int32) -> HostM s ()
-    debug_print (src, len) = do
-      -- TODO: This should be a non-trapping copy
-      bytes <- copy_from_canister "debug_print" src len
-      putBytes bytes
-
-    explicit_trap :: (Int32, Int32) -> HostM s ()
-    explicit_trap (src, len) = do
-      -- TODO: This should be a non-trapping copy
-      bytes <- copy_from_canister "ic.trap" src len
-      let msg = BSU.toString bytes
-      throwError $ "canister trapped explicitly: " ++ msg
-
-    canister_self_len :: () -> HostM s Int32
-    canister_self_len () = do
-      id <- getsES esref self_id
-      return $ fromIntegral (BS.length (rawEntityId id))
-
-    canister_self_copy :: (Int32, Int32, Int32) -> HostM s ()
-    canister_self_copy (dst, offset, len) = do
-      id <- getsES esref self_id
-      copy_to_canister "canister_self_copy" dst offset len (rawEntityId id)
-
-    arg_data_size :: () -> HostM s Int32
-    arg_data_size () = do
-      blob <- getsES esref (param_dat . params)
+    msg_arg_data_size :: () -> HostM s Int32
+    msg_arg_data_size () = do
+      blob <- gets (param_dat . params)
           >>= maybe (throwError "arg_data_size: No argument") return
       return $ fromIntegral (BS.length blob)
 
-    arg_data_copy ::  (Int32, Int32, Int32) -> HostM s ()
-    arg_data_copy (dst, offset, len) = do
-      blob <- getsES esref (param_dat . params)
+    msg_arg_data_copy ::  (Int32, Int32, Int32) -> HostM s ()
+    msg_arg_data_copy (dst, offset, len) = do
+      blob <- gets (param_dat . params)
           >>= maybe (throwError "arg_data_size: No argument") return
       copy_to_canister "arg_data_copy" dst offset len blob
 
-    msg_reply :: (Int32, Int32) -> HostM s ()
-    msg_reply (src, len) = do
+    msg_caller_size :: () -> HostM s Int32
+    msg_caller_size () = do
+      blob <- gets (param_caller . params)
+          >>= maybe (throwError "arg_data_size: No argument") return
+      return $ fromIntegral (BS.length (rawEntityId blob))
+
+    msg_caller_copy ::  (Int32, Int32, Int32) -> HostM s ()
+    msg_caller_copy (dst, offset, len) = do
+      blob <- gets (param_caller . params)
+          >>= maybe (throwError "arg_data_size: No argument") return
+      copy_to_canister "msg_caller_copy" dst offset len (rawEntityId blob)
+
+    msg_reject_code :: () -> HostM s Int32
+    msg_reject_code () =
+      fromIntegral <$> gets (reject_code . params)
+
+    msg_reject_msg_len :: () -> HostM s Int32
+    msg_reject_msg_len () = do
+      c <- gets (reject_code . params)
+      when (c == 0) $ throwError "msg_reject_msg_len: No reject message"
+      msg <- gets (reject_message . params)
+      return $ fromIntegral (BS.length (BSU.fromString msg))
+
+    msg_reject_msg_copy ::  (Int32, Int32, Int32) -> HostM s ()
+    msg_reject_msg_copy (dst, offset, len) = do
+      c <- gets (reject_code . params)
+      when (c == 0) $ throwError "msg_reject_msg_len: No reject message"
+      msg <- gets (reject_message . params)
+      copy_to_canister "msg_reject_msg_copy" dst offset len (BSU.fromString msg)
+
+    assert_not_responded :: HostM s ()
+    assert_not_responded =
+      gets response >>= \case
+        Nothing -> return ()
+        Just  _ -> throwError "This has already be responded to"
+
+    msg_reply_data_append :: (Int32, Int32) -> HostM s ()
+    msg_reply_data_append (src, len) = do
+      assert_not_responded
       bytes <- copy_from_canister "debug_print" src len
+      appendReplyData esref bytes
+
+    msg_reply :: () -> HostM s ()
+    msg_reply () = do
+      assert_not_responded
+      bytes <- gets reply_data
       setResponse esref (Reply bytes)
 
     msg_reject :: (Int32, Int32) -> HostM s ()
     msg_reject (src, len) = do
+      assert_not_responded
       bytes <- copy_from_canister "debug_print" src len
       let msg = BSU.toString bytes
-      modES esref (\es -> es { response = Just (Reject (RC_CANISTER_REJECT, msg)) })
+      setResponse esref $ Reject (RC_CANISTER_REJECT, msg)
+
+    canister_self_len :: () -> HostM s Int32
+    canister_self_len () = do
+      id <- gets self_id
+      return $ fromIntegral (BS.length (rawEntityId id))
+
+    canister_self_copy :: (Int32, Int32, Int32) -> HostM s ()
+    canister_self_copy (dst, offset, len) = do
+      id <- gets self_id
+      copy_to_canister "canister_self_copy" dst offset len (rawEntityId id)
 
     call_simple ::
       ( Int32, Int32, Int32, Int32, Int32
@@ -248,8 +287,20 @@ systemAPI esref =
             , reject_callback = WasmClosure reject_fun reject_env
             }
         }
-
       return 0
+
+    debug_print :: (Int32, Int32) -> HostM s ()
+    debug_print (src, len) = do
+      -- TODO: This should be a non-trapping copy
+      bytes <- copy_from_canister "debug_print" src len
+      putBytes bytes
+
+    explicit_trap :: (Int32, Int32) -> HostM s ()
+    explicit_trap (src, len) = do
+      -- TODO: This should be a non-trapping copy
+      bytes <- copy_from_canister "trap" src len
+      let msg = BSU.toString bytes
+      throwError $ "canister trapped explicitly: " ++ msg
 
 -- The state of an instance, consistig of the underlying Wasm state,
 -- additional remembered information like the CanisterId
