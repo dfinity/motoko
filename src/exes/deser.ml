@@ -936,6 +936,12 @@ let write_typ_index m (ty, i) =
     List.iter (fun { it = { label; typ }; _ } ->
         write_label label.it;
         write_int_sleb128 (lookup_tynum typ m)) tfs
+  | VariantT tfs ->
+    write_int_sleb128 (-21);
+    write_int_leb128 (List.length tfs);
+    List.iter (fun { it = { label; typ }; _ } ->
+        write_label label.it;
+        write_int_sleb128 (lookup_tynum typ m)) tfs (* TODO: consolidate with above *)
   | PrimT _ -> assert false
   | _ -> assert false (* TODO *)
 
@@ -946,6 +952,8 @@ let rec write_typed_value t v = match t.it, v.it with
   | OptT t', OptV v' -> Typer.write_int_leb128 1; write_typed_value t' v'
   | VecT t', VecV vs -> Typer.write_int_leb128 (List.length vs); List.iter (write_typed_value t') vs
   | RecordT tfs, RecordV vfs -> List.iter2 write_typed_value_field tfs vfs
+  (*| VariantT tfs, VariantV vf -> Typer.write_int_leb128 0; write_typed_value_field tfs vf*)
+  | VariantT [tf], VariantV vf -> Typer.write_int_leb128 0; write_typed_value_field tf vf
   | _ -> assert false
 
 and write_typed_value_field tf vf = match tf.it, vf.it with
