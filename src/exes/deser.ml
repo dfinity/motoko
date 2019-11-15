@@ -943,7 +943,7 @@ let write_typ_index m (ty, i) =
   | RecordT tfs -> write_type_fields (-20) m tfs
   | VariantT tfs -> write_type_fields (-21) m tfs
   | PrimT _ -> assert false
-  | _ -> assert false (* TODO *)
+  | _ -> assert false (* TODO: function, service *)
 
 let rec write_typed_value t v = match t.it, v.it with
   | _, AnnotV (v', _) -> write_typed_value t v'
@@ -952,14 +952,22 @@ let rec write_typed_value t v = match t.it, v.it with
   | OptT t', OptV v' -> Typer.write_int_leb128 1; write_typed_value t' v'
   | VecT t', VecV vs -> Typer.write_int_leb128 (List.length vs); List.iter (write_typed_value t') vs
   | RecordT tfs, RecordV vfs -> List.iter2 write_typed_value_field tfs vfs
-  (*| VariantT tfs, VariantV vf -> Typer.write_int_leb128 0; write_typed_value_field tfs vf*)
-  | VariantT [tf], VariantV vf -> Typer.write_int_leb128 0; write_typed_value_field tf vf
+  | VariantT tfs, VariantV vf -> write_typed_variant_field tfs vf
   | _ -> assert false
 
 and write_typed_value_field tf vf = match tf.it, vf.it with
   | { label; typ }, { hash; value; _ } ->
-    assert true(*TODO: hash label = hash *);
+    assert (Typer.same_label (Id vf.it.hash, tf.it.label.it));
     write_typed_value typ value
+
+and write_typed_variant_field tfs vf =
+  let matching i tf =
+    if Typer.same_label (Id vf.it.hash, tf.it.label.it) then
+      begin
+        Typer.write_int_leb128 i;
+        write_typed_value_field tf vf
+      end in
+  List.iteri matching tfs
 
 end
 
