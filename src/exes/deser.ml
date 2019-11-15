@@ -921,6 +921,16 @@ let write_label = function
   | Id i | Unnamed i -> Typer.write_leb128 (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 i))
   | Named n -> Typer.write_leb128 (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash n)))
 
+let write_type_fields key m tfs =
+  let open Typer in
+  write_int_sleb128 key;
+  write_int_leb128 (List.length tfs);
+  List.iter
+    (fun { it = { label; typ }; _ } ->
+      write_label label.it;
+      write_int_sleb128 (lookup_tynum typ m))
+    tfs
+
 let write_typ_index m (ty, i) =
   let open Typer in
   match ty with
@@ -930,18 +940,8 @@ let write_typ_index m (ty, i) =
   | VecT t ->
     write_int_sleb128 (-19);
     write_int_sleb128 (lookup_tynum t m)
-  | RecordT tfs ->
-    write_int_sleb128 (-20);
-    write_int_leb128 (List.length tfs);
-    List.iter (fun { it = { label; typ }; _ } ->
-        write_label label.it;
-        write_int_sleb128 (lookup_tynum typ m)) tfs
-  | VariantT tfs ->
-    write_int_sleb128 (-21);
-    write_int_leb128 (List.length tfs);
-    List.iter (fun { it = { label; typ }; _ } ->
-        write_label label.it;
-        write_int_sleb128 (lookup_tynum typ m)) tfs (* TODO: consolidate with above *)
+  | RecordT tfs -> write_type_fields (-20) m tfs
+  | VariantT tfs -> write_type_fields (-21) m tfs
   | PrimT _ -> assert false
   | _ -> assert false (* TODO *)
 
