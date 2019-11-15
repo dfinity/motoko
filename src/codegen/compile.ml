@@ -6749,15 +6749,43 @@ and compile_exp (env : E.t) ae exp =
      | _, Type.Shared _ ->
         (* Non-one-shot functions have been rewritten in async.ml *)
         assert (control = Type.Returns);
-        let (set_funcref, get_funcref) = new_local env "funcref" in
-        code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
-        set_funcref ^^
-        compile_exp_as env ae SR.Vanilla e2 ^^
-        (* We can try to avoid the boxing and pass the arguments to
-           serialize individually *)
-        let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
-        Serialization.serialize env ts ^^
-        FuncDec.call_message_funcref env get_funcref
+        match E.mode env with
+        | Flags.AncientMode ->
+          let (set_funcref, get_funcref) = new_local env "funcref" in
+          code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
+          set_funcref ^^
+          compile_exp_as env ae SR.Vanilla e2 ^^
+          (* We can try to avoid the boxing and pass the arguments to
+             serialize individually *)
+          let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
+          Serialization.serialize env ts ^^
+          FuncDec.call_message_funcref env get_funcref
+        | Flags.StubMode ->
+          let (set_funcref, get_funcref) = new_local env "funcref" in
+          let (set_arg, get_arg) = new_local env "arg" in
+          let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
+          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
+          set_funcref ^^
+          compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
+
+          (* The callee *)
+          get_funcref ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+          (* The method name *)
+          get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+          (* The reply callback *)
+          compile_unboxed_const 0l ^^
+          compile_unboxed_const 0l ^^
+          (* The reject callback *)
+          compile_unboxed_const 0l ^^
+          compile_unboxed_const 0l ^^
+          (* the data *)
+          get_arg ^^ Serialization.serialize env ts ^^
+          (* done! *)
+          Dfinity.system_call env "ic0" "call_simple" ^^
+          (* TODO: Check error code *)
+          G.i Drop
+
+        | _ -> assert false
     end
   | SwitchE (e, cs) ->
     SR.Vanilla,
