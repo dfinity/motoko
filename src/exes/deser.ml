@@ -990,14 +990,26 @@ open Source
 let rec sanitise_value (v : value) : value =
   match v.it with
   | NullV | TrueV | FalseV | TextV _ | IntegralV _ | FuncV _ | ServiceV _ -> v
-  | OptV v' -> {  v with it = OptV (sanitise_value v') }
-  | VecV vs -> {  v with it = VecV (List.map sanitise_value vs) }
-  | RecordV vfs -> {  v with it = RecordV (List.map sanitise_value_field vfs) }
-  | VariantV vf -> {  v with it = VariantV (sanitise_value_field vf) }
-  | AnnotV (v', t) -> {  v with it = AnnotV (sanitise_value v', sanitise_type t) }
+  | OptV v' -> { v with it = OptV (sanitise_value v') }
+  | VecV vs -> { v with it = VecV (List.map sanitise_value vs) }
+  | RecordV vfs -> { v with it = RecordV (sanitise_value_fields vfs) }
+  | VariantV vf -> { v with it = VariantV (sanitise_value_field vf) }
+  | AnnotV (v', t) -> { v with it = AnnotV (sanitise_value v', sanitise_type t) }
 
+and sanitise_value_fields vfs = List.map sanitise_value_field vfs (* TODO: sort *)
 and sanitise_value_field vf = vf (* TODO *)
-and sanitise_type t = t (* TODO *)
+
+and sanitise_type t =
+  match t.it with
+  | PrimT _ | VarT _ | PreT -> t
+  | OptT t' -> { t with it = OptT (sanitise_type t') }
+  | VecT t' -> { t with it = VecT (sanitise_type t') }
+  | RecordT tfs -> { t with it = RecordT (sanitise_type_fields tfs) }
+  | VariantT tfs -> { t with it = VariantT (sanitise_type_fields tfs) }
+  | FuncT _ | ServT _ -> assert false (* TODO *)
+
+and sanitise_type_fields tfs = List.map sanitise_type_field tfs (* TODO: sort *)
+and sanitise_type_field tf = tf (* TODO *)
 
 end
 
