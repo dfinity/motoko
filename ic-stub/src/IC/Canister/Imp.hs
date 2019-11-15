@@ -11,6 +11,7 @@ module IC.Canister.Imp
  ( ESRef
  , ImpState
  , runESST
+ , rawInitializeModule
  , rawInitializeMethod
  , rawUpdateMethod
  , rawCallbackMethod
@@ -294,11 +295,16 @@ systemAPI esref =
 
 type ImpState s = (ESRef s, CanisterId, Instance s)
 
-rawInitializeMethod :: ESRef s -> Module -> CanisterId -> EntityId -> Blob -> ST s (TrapOr (ImpState s))
-rawInitializeMethod esref wasm_mod cid caller dat = do
-  result <- runExceptT $ do
-    inst <- initialize wasm_mod (systemAPI esref)
+rawInitializeModule :: ESRef s -> Module -> ST s (TrapOr (Instance s))
+rawInitializeModule esref wasm_mod = do
+  result <- runExceptT $ initialize wasm_mod (systemAPI esref)
+  case result of
+    Left  err -> return $ Trap err
+    Right inst -> return $ Return inst
 
+rawInitializeMethod :: ESRef s -> Module -> Instance s -> CanisterId -> EntityId -> Blob -> ST s (TrapOr ())
+rawInitializeMethod esref wasm_mod inst cid caller dat = do
+  result <- runExceptT $ do
     let es = (initalExecutionState cid inst)
               { params = Params
                   { param_dat    = Just dat
@@ -313,11 +319,9 @@ rawInitializeMethod esref wasm_mod cid caller dat = do
       void $ withES esref es $
          invokeExport inst "canister_init" []
          -- TODO: Check no calls are made
-
-    return (esref, cid, inst)
   case result of
     Left  err -> return $ Trap err
-    Right raw_state -> return $ Return raw_state
+    Right () -> return $ Return ()
 
 rawQueryMethod :: ImpState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr Response)
 rawQueryMethod (esref, cid, inst) method caller dat = do
