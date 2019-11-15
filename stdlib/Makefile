@@ -35,11 +35,10 @@ TESTS=\
 	Option \
 	OptionTest \
 	Result \
-	Set \
 	Text \
 	TextTest \
 	Trie \
-	Trie2 \
+	TrieSet \
 	ProduceExchange \
 	producerRemInventory \
 	retailerReserveMany \
@@ -135,10 +134,7 @@ $(OUTDIR)/TextTest.out: textTest.mo | $(OUTDIR)
 $(OUTDIR)/Trie.out: trie.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/Trie2.out:trie2.mo | $(OUTDIR)
-	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/Set.out: set.mo | $(OUTDIR)
+$(OUTDIR)/TrieSet.out: trieSet.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/DocTable.out: docTable.mo | $(OUTDIR)
@@ -164,8 +160,7 @@ docMd: \
 	$(DOCDIR)/list.md \
 	$(DOCDIR)/assocList.md \
 	$(DOCDIR)/trie.md \
-	$(DOCDIR)/trie2.md \
-	$(DOCDIR)/set.md \
+	$(DOCDIR)/trieSet.md \
 	$(DOCDIR)/docTable.md \
 	$(DOCDIR)/examples/produce-exchange/README.md \
 	$(DOCDIR)/examples/produce-exchange/serverTypes.md \
@@ -188,9 +183,8 @@ docHtml: \
 	$(DOCDIR)/list.html \
 	$(DOCDIR)/assocList.html \
 	$(DOCDIR)/trie.html \
-	$(DOCDIR)/trie2.html \
 	$(DOCDIR)/docTable.html \
-	$(DOCDIR)/set.html \
+	$(DOCDIR)/trieSet.html \
 	$(DOCDIR)/examples/produce-exchange/README.html \
 	$(DOCDIR)/examples/produce-exchange/serverTypes.html \
 	$(DOCDIR)/examples/produce-exchange/serverLang.html \
@@ -224,7 +218,7 @@ $(DOCDIR)/examples/produce-exchange/README.md: examples/produce-exchange/README.
 ##
 
 PRODUCE_EXCHANGE_SRC=\
-	prelude.mo option.mo hash.mo list.mo assocList.mo trie2.mo docTable.mo result.mo \
+	prelude.mo option.mo hash.mo list.mo assocList.mo trie.mo docTable.mo result.mo \
 	examples/produce-exchange/serverTypes.mo \
 	examples/produce-exchange/serverLang.mo \
 	examples/produce-exchange/serverModelTypes.mo \
