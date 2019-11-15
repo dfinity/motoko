@@ -6618,7 +6618,7 @@ and compile_exp (env : E.t) ae exp =
         (* The method name *)
         get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
         (* The reply callback *)
-        FuncDec.closure_to_reply_callback env ts1 get_k ^^
+        FuncDec.closure_to_reply_callback env ts2 get_k ^^
         (* The reject callback *)
         FuncDec.closure_to_reject_callback env get_r ^^
         (* the data *)

@@ -3,6 +3,8 @@ module IC.Types where
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map as M
+import qualified Data.Text as T
+import qualified Text.Hex as T
 import Data.Int
 
 type (↦) = M.Map
@@ -15,6 +17,13 @@ type CanisterId = EntityId
 type UserId = EntityId
 type MethodName = String
 type RequestID = Blob
+
+prettyBlob :: Blob -> String
+prettyBlob b = "0x" ++ T.unpack (T.encodeHex (BS.toStrict b))
+
+prettyID :: EntityId -> String
+prettyID = prettyBlob . rawEntityId -- implement the "ic:…" stuff
+
 
 data RejectCode
     = RC_SYS_FATAL

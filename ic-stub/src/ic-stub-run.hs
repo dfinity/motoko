@@ -9,8 +9,6 @@ import Data.Monoid ((<>))
 import qualified Data.ByteString.Lazy as B
 import Control.Monad.Trans
 import Control.Monad.Trans.State
-import qualified Data.Text as T
-import qualified Text.Hex as T
 import Text.Printf
 
 import IC.Types
@@ -20,12 +18,6 @@ import IC.DRun.Parse (Type(..), parseFile)
 type DRun = StateT IC IO
 
 -- Pretty printing
-
-prettyBlob :: Blob -> String
-prettyBlob b = "0x" ++ T.unpack (T.encodeHex (B.toStrict b))
-
-prettyID :: EntityId -> String
-prettyID = prettyBlob . rawEntityId -- implement the "ic:…" stuff
 
 dummyUserId :: CanisterId
 dummyUserId = EntityId $ B.pack [0xCA, 0xFF, 0xEE]
