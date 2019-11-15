@@ -21,14 +21,11 @@ public type ArrayBuf<X> = {
 /**
 #### Terminology:
 
-Note, above we say `count` rather than `len`, the term used by the
-buffer abstraction.
+The buffer abstraction says `len` for what we call `count` here internally.
 
-Here, we use `count ` and not `len` to distinguish from `array.len()`.
-
-`array.len()` gives the _capacity_ of the buffer's current array, but
-not its current (growable) "length" within that array (which again, we
-call "count" to avoid further confusion here).
+We do this because `array.len()` gives the _capacity_ of the buffer's
+current array, but not its current (growable) "length" within that
+array (which again, we call "count" to avoid further confusion here).
 
 */
 
