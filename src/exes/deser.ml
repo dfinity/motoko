@@ -999,31 +999,14 @@ let () =
       let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
       Printf.printf "\nDESER, type inferred!\n";
-      if List.for_all TypeTable.prim ts then
-        begin
-          Printf.printf "DIDL\x00"; (* no constructed types, TODO: remove *)
-          write_int_leb128 (List.length vs);
-          let write_typ ty =
-            let n, _ = lookup_prim_tynum ty in
-            write_int_sleb128 n in
-          List.iter write_typ ts;
-          let write_val ty value =
-            let _, writer = lookup_prim_tynum ty in
-            writer value.it in
-          List.iter2 write_val ts vs
-        end
-      else
-        begin
-          let open TypeTable in
-          Printf.printf "STUFF'S HARDER!\n";
-          let m = List.fold_left (fun m ty -> build_typ_map m ty.it) M.empty ts in
-          print_string "DIDL"; write_int_leb128 (M.cardinal m);
-          List.iter (write_typ_index m) (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
-          write_int_leb128 (List.length vs);
-          List.iter (fun t -> write_int_sleb128 (lookup_tynum t m)) ts;
-          List.iter2 write_typed_value ts vs;
-          Printf.printf "\nDESER, term traversed!\n";
-        end
+      let open TypeTable in if List.for_all TypeTable.prim ts then () else Printf.printf "STUFF'S HARDER!\n";
+      let m = List.fold_left (fun m ty -> build_typ_map m ty.it) M.empty ts in
+      print_string "DIDL"; write_int_leb128 (M.cardinal m);
+      List.iter (write_typ_index m) (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
+      write_int_leb128 (List.length vs);
+      List.iter (fun t -> write_int_sleb128 (lookup_tynum t m)) ts;
+      List.iter2 write_typed_value ts vs;
+      if List.for_all TypeTable.prim ts then () else Printf.printf "\nDESER, term traversed!\n";
 
       (* TODO!
       if List.every (type_realizable) ts then
