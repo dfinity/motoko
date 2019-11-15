@@ -52,7 +52,7 @@ type env =
     cons : con_env;
     labs : lab_env;
     rets : ret_env;
-    async : bool;
+    async : T.con option;
   }
 
 let env_of_scope scope flavor : env =
@@ -61,7 +61,7 @@ let env_of_scope scope flavor : env =
     cons = scope.Scope.con_env;
     labs = T.Env.empty;
     rets = None;
-    async = false;
+    async = None;
   }
 
 
@@ -508,7 +508,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_cases env t1 t cases
   | TryE (exp1, cases) ->
     check env.flavor.has_await "try in non-await flavor";
-    check env.async "misplaced try";
+    check (env.async <> None) "misplaced try";
     check_exp env exp1;
     typ exp1 <: t;
     check_cases env T.catch t cases;
@@ -545,7 +545,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.Non <: t (* vacuously true *)
   | ThrowE exp1 ->
     check env.flavor.has_await "throw in non-await flavor";
-    check env.async "misplaced throw";
+    check (env.async <> None) "misplaced throw";
     check_exp env exp1;
     typ exp1 <: T.throw;
     T.Non <: t (* vacuously true *)
@@ -556,23 +556,24 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let t1 = typ exp1 in
     let env' =
       {(adjoin_cons env ce)
-       with labs = T.Env.empty; rets = Some t1; async = true} in
+       with labs = T.Env.empty; rets = Some t1; async = Some c} in
     check_exp env' exp1;
     let t1' = T.open_ [t0] (T.close [c] t1)  in
     t1' <: T.Any; (* vacuous *)
     T.Async (t0,t1') <: t
   | AwaitE exp1 ->
     check env.flavor.has_await "await in non-await flavor";
-    check env.async "misplaced await";
+    check (env.async <> None) "misplaced await";
+    let t0 = T.Con(Lib.Option.value env.async, []) in
     check_exp env exp1;
     let t1 = T.promote (typ exp1) in
-    let (t0, t2) = try T.as_async_sub t1
+    let (t2, t3) = try T.as_async_sub t1
              with Invalid_argument _ ->
                error env exp1.at "expected async type, but expression has type\n  %s"
                  (T.string_of_typ_expand t1)
     in
-    (* TODO check t0 is in async context *)
-    t2 <: t
+    check (T.eq t0 t2) "ill-scoped async";
+    t3 <: t
   | AssertE exp1 ->
     check_exp env exp1;
     typ exp1 <: T.bool;
@@ -609,7 +610,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
     let codom = T.codom control ret_tys in
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some codom; async = false} in
+      {env' with labs = T.Env.empty; rets = Some codom; async = None} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) codom;
     (* Now construct the function type and compare with the annotation *)
@@ -621,7 +622,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       ) in
     fun_ty <: t
   | ActorE (id, ds, fs, t0) ->
-    let env' = { env with async = false } in
+    let env' = { env with async = None } in
     let ve0 = T.Env.singleton id t0 in
     let scope1 = List.fold_left (gather_dec env') empty_scope ds in
     let env'' = adjoin (adjoin_vals env' ve0) scope1 in

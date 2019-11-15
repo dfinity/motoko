@@ -23,7 +23,7 @@ type env =
     objs : Scope.obj_env;
     labs : lab_env;
     rets : ret_env;
-    async : Type.con option;
+    async : T.con option;
     in_actor : bool;
     in_await : bool;
     in_shared : bool;
