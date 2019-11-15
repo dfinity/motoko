@@ -14,16 +14,22 @@ module {
     var j : [E.Event<T>] = [env.wrap<T>(init)]; 
   
     // The write function.
-    public func write(v : T) : () { j := A.append<E.Event<T>>(j, [env.wrap<T>(v)]) };
+    public func write(v : T) : () { 
+      j := A.append<E.Event<T>>(j, [env.wrap<T>(v)]) 
+    };
   
     // Read functions.
     // The current value (i.e. the last one written). 
-    public func read() : T = env.unwrap<T>(A.fromEnd<E.Event<T>>(j, 0)) ;
+    public func read() : T { 
+      env.unwrap<T>(A.fromEnd<E.Event<T>>(j, 0)) 
+    };
 
     // The entire raw journal.
     public func journal() : [E.Event<T>] = j ;
 
     // The history of written values as an array.
-    public func values() : [T] = A.map<E.Event<T>,T>(func(e){env.unwrap<T>(e)}, j) ;
+    public func values() : [T] { 
+      A.map<E.Event<T>,T>(func(e){env.unwrap<T>(e)}, j) 
+    };
   };
 }

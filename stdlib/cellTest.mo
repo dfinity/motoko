@@ -1,6 +1,6 @@
-import E "../stdlib/env.mo";
-import C "../stdlib/cell.mo";
-import A "../stdlib/array.mo";
+import E "env.mo";
+import C "cell.mo";
+import A "array.mo";
 import P "prelude.mo";
 
 P.printLn("Cell");
