@@ -945,10 +945,14 @@ let rec write_typed_value t v = match t.it, v.it with
   | OptT _, NullV -> Typer.write_int_leb128 0
   | OptT t', OptV v' -> Typer.write_int_leb128 1; write_typed_value t' v'
   | VecT t', VecV vs -> Typer.write_int_leb128 (List.length vs); List.iter (write_typed_value t') vs
-  | RecordT tfs, RecordV vfs -> Typer.write_int_leb128 (List.length vfs); List.iter2 write_typed_value_field tfs vfs
+  | RecordT tfs, RecordV vfs -> List.iter2 write_typed_value_field tfs vfs
   | _ -> assert false
 
-and write_typed_value_field _ _ = ()
+and write_typed_value_field tf vf = match tf.it, vf.it with
+  | { label; typ }, { hash; value; _ } ->
+    assert true(*TODO: hash label = hash *);
+    write_typed_value typ value
+
 end
 
 (* run it *)
