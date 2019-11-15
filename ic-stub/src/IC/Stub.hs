@@ -38,12 +38,12 @@ import IC.Canister.Pure
 -- Abstract HTTP Interface
 
 data AsyncRequest
-    = InstallRequest Blob Blob
-    | UpdateRequest MethodName Blob
+    = InstallRequest UserId Blob Blob
+    | UpdateRequest UserId MethodName Blob
   deriving (Eq, Ord, Show)
 
 data SyncRequest
-    = QueryRequest MethodName Blob
+    = QueryRequest UserId MethodName Blob
     | StatusRequest Blob
 
 data RequestStatus
@@ -133,7 +133,7 @@ readRequest (StatusRequest rid) =
     Just (_r,status) -> return status
     Nothing -> return Unknown
 
-readRequest (QueryRequest method arg) =
+readRequest (QueryRequest user_id method arg) =
   gets (M.lookup dummyCanisterId . canisters) >>= \case
     Nothing -> return $ Rejected (RC_DESTINATION_INVALID, "canister does not exist")
     Just Nothing -> return $ Rejected (RC_DESTINATION_INVALID, "canister is empty")
@@ -141,7 +141,7 @@ readRequest (QueryRequest method arg) =
       case M.lookup method (query_methods can_mod) of
         Nothing -> return $ Rejected (RC_DESTINATION_INVALID, "query method does not exist")
         Just f ->
-          case f dummyUserId arg wasm_state of
+          case f user_id arg wasm_state of
             Trap msg -> return $ Rejected (RC_CANISTER_ERROR, "canister trapped: " ++ msg)
             Return (Reply res) -> return $ Completed (CompleteArg res)
             Return (Reject (rc,rm)) -> return $ Rejected (rc, rm)
@@ -191,24 +191,21 @@ setCanisterState cid wasm_state =
 dummyCanisterId :: CanisterId
 dummyCanisterId = EntityId $ BS.pack [0xDE, 0xAD, 0xBE, 0xEF]
 
-dummyUserId :: CanisterId
-dummyUserId = EntityId $ BS.pack [0xCA, 0xFF, 0xEE]
-
 processRequest :: ICT m => AsyncRequest -> m ()
-processRequest r@(InstallRequest can_mod dat) = do
+processRequest r@(InstallRequest user_id can_mod dat) = do
   let canister_id = dummyCanisterId
   case parseCanister can_mod of
     Left err ->
       setReqStatus r $ Rejected (RC_SYS_FATAL, "Parsing failed: " ++ err)
     Right can_mod ->
-      case init_method can_mod canister_id dummyUserId dat of
+      case init_method can_mod canister_id user_id dat of
         Trap msg ->
           setReqStatus r $ Rejected (RC_CANISTER_ERROR, "Initialization trapped: " ++ msg)
         Return wasm_state -> do
           createCanister canister_id can_mod wasm_state
           setReqStatus r $ Completed CompleteUnit
 
-processRequest r@(UpdateRequest method arg) = do
+processRequest r@(UpdateRequest _user_id method arg) = do
   let canister_id = dummyCanisterId
 
   ctxt_id <- newCallContext $ CallContext
@@ -250,11 +247,15 @@ rememberTrap :: ICT m => CallId -> String -> m ()
 rememberTrap ctxt_id msg =
   modifyContext ctxt_id $ \ctxt -> ctxt { last_trap = Just msg }
 
+callerOfRequest :: AsyncRequest -> EntityId
+callerOfRequest (InstallRequest user_id _ _) = user_id
+callerOfRequest (UpdateRequest user_id _ _) = user_id
+
 callerOfCallID :: ICT m => CallId -> m EntityId
 callerOfCallID ctxt_id = do
   ctxt <- gets ((M.! ctxt_id) . call_contexts)
   case origin ctxt of
-    FromUser _request -> return dummyUserId
+    FromUser request -> return $ callerOfRequest request
     FromCanister other_ctxt_id _callback -> calleeOfCallID other_ctxt_id
 
 calleeOfCallID :: ICT m => CallId -> m EntityId

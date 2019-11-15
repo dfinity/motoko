@@ -12,6 +12,7 @@ type (↦) = M.Map
 type Blob = BS.ByteString
 newtype EntityId = EntityId { rawEntityId :: Blob } deriving (Show, Eq, Ord)
 type CanisterId = EntityId
+type UserId = EntityId
 type MethodName = String
 type RequestID = Blob
 

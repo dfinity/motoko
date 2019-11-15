@@ -27,16 +27,19 @@ prettyBlob b = "0x" ++ T.unpack (T.encodeHex (B.toStrict b))
 prettyID :: EntityId -> String
 prettyID = prettyBlob . rawEntityId -- implement the "ic:…" stuff
 
+dummyUserId :: CanisterId
+dummyUserId = EntityId $ B.pack [0xCA, 0xFF, 0xEE]
+
 printAsyncRequest :: AsyncRequest -> IO ()
-printAsyncRequest (InstallRequest _ _) =
+printAsyncRequest InstallRequest{} =
     printf "→ install\n"
-printAsyncRequest (UpdateRequest method arg) =
+printAsyncRequest (UpdateRequest _ method arg) =
     printf "→ update %s(%s)\n" method (prettyBlob arg)
 
 printSyncRequest :: SyncRequest -> IO ()
 printSyncRequest (StatusRequest rid) =
     printf "→ status? %s\n" (prettyBlob rid)
-printSyncRequest (QueryRequest method arg) =
+printSyncRequest (QueryRequest _ method arg) =
     printf "→ query %s(%s)\n" method (prettyBlob arg)
 
 printReqStatus :: RequestStatus -> IO ()
@@ -77,10 +80,10 @@ work wasm_file msg_file = do
   msgs <- parseFile msg_file
 
   flip evalStateT initialIC $ do
-    _req_res <- submitAndRun (InstallRequest wasm B.empty)
+    _req_res <- submitAndRun (InstallRequest dummyUserId wasm B.empty)
     forM_ msgs $ \case
-       (Query,  method, arg) -> submitRead  (QueryRequest method arg)
-       (Update, method, arg) -> submitAndRun (UpdateRequest method arg)
+       (Query,  method, arg) -> submitRead  (QueryRequest dummyUserId method arg)
+       (Update, method, arg) -> submitAndRun (UpdateRequest dummyUserId method arg)
 
 main :: IO ()
 main = join . customExecParser (prefs showHelpOnError) $

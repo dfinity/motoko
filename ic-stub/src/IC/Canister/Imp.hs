@@ -69,7 +69,7 @@ initalExecutionState self_id inst = ExecutionState
 -- Some bookkeeping to access the ExecutionState
 --
 -- We “always” have the 'STRef', but only within 'withES' is it actually
--- present. 
+-- present.
 --
 -- Also: A flag to check whether we are running in silent mode or not
 -- (a bit of a hack)
