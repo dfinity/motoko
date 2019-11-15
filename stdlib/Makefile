@@ -157,6 +157,8 @@ docMd: \
 	$(DOCDIR)/README.md \
 	$(DOCDIR)/prelude.md \
 	$(DOCDIR)/array.md \
+	$(DOCDIR)/arrayBuf.md \
+	$(DOCDIR)/buf.md \
 	$(DOCDIR)/option.md \
 	$(DOCDIR)/result.md \
 	$(DOCDIR)/hash.md \
@@ -180,6 +182,8 @@ docHtml: \
 	$(DOCDIR)/README.html \
 	$(DOCDIR)/prelude.html \
 	$(DOCDIR)/array.html \
+	$(DOCDIR)/arrayBuf.html \
+	$(DOCDIR)/buf.html \
 	$(DOCDIR)/option.html \
 	$(DOCDIR)/result.html \
 	$(DOCDIR)/hash.html \
