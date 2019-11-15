@@ -5,7 +5,7 @@ let bound:Int = 100000;
 {
 func Loop(n:Int){
      if (n >= bound) {
-          debugPrint "done 1\n";
+          debugPrint "done 1";
 	  return;
      };
      Loop(n+1);
@@ -17,7 +17,7 @@ Loop(0);
 {
 func Loop(n:Int){
      if (n >= bound) {
-          debugPrint "done 2\n";
+          debugPrint "done 2";
 	  return;
      };
      return Loop(n+1);
@@ -30,7 +30,7 @@ Loop(0);
 {
 func Loop<T>(n:Int){
      if (n >= bound) {
-          debugPrint "done 3\n";
+          debugPrint "done 3";
 	  return;
      };
      Loop<T>(n+1);
@@ -42,7 +42,7 @@ Loop<Int>(0);
 {
 func Loop<T,U>(n:Int){
      if (n >= bound) {
-          debugPrint "done 4\n";
+          debugPrint "done 4";
 	  return;
      };
      Loop<T,U>(n+1);
