@@ -17,11 +17,9 @@ module IC.Canister
 
 import qualified Data.Map as M
 import Data.List
-import Control.Monad.ST
 
 import IC.Types
 import IC.Wasm.Winter (parseModule, exportedFunctions, Module)
-import IC.Canister.Imp
 
 -- Here we can swap out the persistence implementation
 import IC.Canister.Persisted
