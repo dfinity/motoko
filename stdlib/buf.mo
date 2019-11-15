@@ -53,6 +53,19 @@ public type ArrayBuf<X> = {
 };
 
 /**
+#### Terminology:
+
+The buffer abstraction `Buf.Buf<X>` says `len()` for the value tracked
+(interrnally) by the `count` field of `ArrayBuf<X>`.
+
+We say `count`, and not `len`, to avoid confusion with the `len()`
+method of field `array`, which gives the _capacity_ of the buffer's
+current array, but not its current (growable) "length" within that
+array.
+
+*/
+
+/**
 
 Based on this type, we define subtypes with more features below.
 

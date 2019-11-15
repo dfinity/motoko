@@ -13,19 +13,6 @@ See [buffer documentation](buf.mo) for more.
 
 */
 
-/**
-#### Terminology:
-
-The buffer abstraction `Buf.Buf<X>` says `len()` for the value tracked
-(interrnally) by the `count` field of `ArrayBuf<X>`.
-
-We say `count`, and not `len`, to avoid confusion with the `len()`
-method of field `array`, which gives the _capacity_ of the buffer's
-current array, but not its current (growable) "length" within that
-array.
-
-*/
-
 // re-export types and use them below.
 public type ArrayBuf<X> = Buf.ArrayBuf<X>;
 public type Buf<X> = Buf.Buf<X>;
