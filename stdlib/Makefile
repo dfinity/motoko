@@ -82,6 +82,9 @@ $(OUTDIR)/ArrayBuf.out: arrayBuf.mo | $(OUTDIR)
 $(OUTDIR)/ArrayBufTest.out: arrayBufTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
+$(OUTDIR)/Buf.out: buf.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
 $(OUTDIR)/Function.out: function.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
