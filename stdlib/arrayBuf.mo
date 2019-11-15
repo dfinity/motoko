@@ -21,11 +21,13 @@ public type ArrayBuf<X> = {
 /**
 #### Terminology:
 
-The buffer abstraction says `len` for what we call `count` here internally.
+The buffer abstraction `Buf.Buf<X>` says `len()` for the value tracked
+(interrnally) by the `count` field of `ArrayBuf<X>`.
 
-We do this because `array.len()` gives the _capacity_ of the buffer's
+We say `count`, and not `len`, to avoid confusion with the `len()`
+method of field `array`, which gives the _capacity_ of the buffer's
 current array, but not its current (growable) "length" within that
-array (which again, we call "count" to avoid further confusion here).
+array.
 
 */
 
