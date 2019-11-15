@@ -3,3 +3,10 @@ DESER, reading!
 (Arg (AnnotV (OptV (TextV hhh)) (PrimT text)) (FuncV URI mess) (ServiceV uri))
 
 DESER, parsed!
+
+DESER, sanitised!
+((sanitised) Arg
+  (AnnotV (OptV (TextV hhh)) (PrimT text))
+  (FuncV URI mess)
+  (ServiceV uri)
+)
