@@ -106,10 +106,8 @@ type RamBuf<X> = {
   setEnd : (Nat, X) -> ?X;
 };
 
-// missing language feature?
-// assert that two types are related by subtyping, without having instances?:
-// e.g., use a compiler meta-function `assertIsSubTypeOf<X>(RamBuf<X>, Buf<X>);` here?
-
-// alternatively, we could have a way to "append" object types, as with `+` on Rust traits
+// assert that two types are related by subtyping, without having instances:
+func _assertSubtypes<X>(ramBuf:RamBuf<X>) : Buf<X> = ramBuf;
+// (alternatively, we could have a way to "append" object types, as with `+` on Rust traits.)
 
 }
