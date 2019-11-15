@@ -564,8 +564,33 @@ module Typer = struct
 open Idllib.Syntax
 open Source
 
+(* (s)leb128 helpers *)
+
+let write_leb128 i =
+    let buf = Buffer.create 0 in
+    encode_leb128 i buf;
+    Buffer.output_buffer stdout buf
+
+let write_int_leb128 n = write_leb128 (Big_int.big_int_of_int n)
+
+let write_sleb128 i =
+    let buf = Buffer.create 0 in
+    encode_sleb128 i buf;
+    Buffer.output_buffer stdout buf
+
+let write_int_sleb128 n = write_sleb128 (Big_int.big_int_of_int n)
+
+(* IDL value writing *)
+
 let write_nil (v : value') = ()
-let write_text (v : value') = Printf.printf "\x03HEY" (* TODO *)
+let write_text = function
+  | TextV str ->
+    let open Buffer in
+    let buf = create 0 in
+    add_string buf str;
+    write_int_leb128 (length buf);
+    output_buffer stdout buf
+  | _ -> assert false
 
 let rec write_bool = function
   | AnnotV (v, t) -> write_bool v.it
@@ -687,20 +712,6 @@ let rec write_8signedbyte (v : value') =
     add_uint8 buf (slice_at 56);
     Buffer.output_buffer stdout buf
   | _ -> assert false
-
-let write_leb128 i =
-    let buf = Buffer.create 0 in
-    encode_leb128 i buf;
-    Buffer.output_buffer stdout buf
-
-let write_int_leb128 n = write_leb128 (Big_int.big_int_of_int n)
-
-let write_sleb128 i =
-    let buf = Buffer.create 0 in
-    encode_sleb128 i buf;
-    Buffer.output_buffer stdout buf
-
-let write_int_sleb128 n = write_sleb128 (Big_int.big_int_of_int n)
 
 let rec write_nat (v : value') =
   match v with
