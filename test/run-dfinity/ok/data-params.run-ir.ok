@@ -1,7 +1,3 @@
-data-params.mo:59.30-59.40: warning, this pattern consuming type
-  ?Text
-does not cover value
-  null
 0
 +1
 +3
