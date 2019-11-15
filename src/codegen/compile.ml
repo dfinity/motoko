@@ -2656,7 +2656,7 @@ module Blob = struct
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
   let payload_ptr_unskewed = compile_add_const unskewed_payload_offset
 
-  let as_ptr_len env = Func.share_code1 env "as_ptr_len" ("x", I32Type) [I32Type; I32Type] (
+  let as_ptr_len env = Func.share_code1 env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
     fun env get_x ->
       get_x ^^ payload_ptr_unskewed ^^
       get_x ^^ Heap.load_field len_field
@@ -3075,7 +3075,7 @@ module Dfinity = struct
     | Flags.StubMode  ->
       E.add_func_import env "ic0" "call_simple" (Lib.List.make 10 I32Type) [I32Type];
       E.add_func_import env "ic0" "canister_self_copy" [I32Type; I32Type; I32Type] [];
-      E.add_func_import env "ic0" "canister_self_len" [] [I32Type];
+      E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" [I32Type; I32Type] [];
       E.add_func_import env "ic0" "msg_arg_data_copy" [I32Type; I32Type; I32Type] [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
@@ -3255,7 +3255,7 @@ module Dfinity = struct
       Func.share_code0 env "canister_self" [I32Type] (fun env ->
         let (set_len, get_len) = new_local env "len" in
         let (set_blob, get_blob) = new_local env "blob" in
-        system_call env "ic0" "canister_self_len" ^^
+        system_call env "ic0" "canister_self_size" ^^
         set_len ^^
 
         get_len ^^ Blob.alloc env ^^ set_blob ^^

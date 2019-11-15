@@ -140,13 +140,13 @@ systemAPI esref =
       , toImport "msg_caller_size" msg_caller_size
       , toImport "msg_caller_copy" msg_caller_copy
       , toImport "msg_reject_code" msg_reject_code
-      , toImport "msg_reject_msg_len" msg_reject_msg_len
+      , toImport "msg_reject_msg_size" msg_reject_msg_size
       , toImport "msg_reject_msg_copy" msg_reject_msg_copy
       , toImport "msg_reply_data_append" msg_reply_data_append
       , toImport "msg_reply" msg_reply
       , toImport "msg_reject" msg_reject
       , toImport "canister_self_copy" canister_self_copy
-      , toImport "canister_self_len" canister_self_len
+      , toImport "canister_self_size" canister_self_size
       , toImport "call_simple" call_simple
       , toImport "debug_print" debug_print
       , toImport "trap" explicit_trap
@@ -157,20 +157,31 @@ systemAPI esref =
     gets :: (ExecutionState s -> b) -> HostM s b
     gets = getsES esref
 
-    copy_to_canister :: String -> Int32 -> Int32 -> Int32 -> Blob -> HostM s ()
-    copy_to_canister name dst offset len blob = do
+    copy_to_canister :: Int32 -> Int32 -> Int32 -> Blob -> HostM s ()
+    copy_to_canister dst offset size blob = do
       unless (offset == 0) $
-        throwError $ name ++ ": offset /= 0 not suppoted"
-      unless (len == fromIntegral (BS.length blob)) $
-        throwError $ name ++ ": len not full blob not suppoted"
+        throwError "offset /= 0 not suppoted"
+      unless (size == fromIntegral (BS.length blob)) $
+        throwError "copying less than the full blob is not supported"
       i <- getsES esref inst
       -- TODO Bounds checking
       setBytes i (fromIntegral dst) blob
 
     copy_from_canister :: String -> Int32 -> Int32 -> HostM s Blob
-    copy_from_canister _name src len = do
+    copy_from_canister _name src size = do
       i <- gets inst
-      getBytes i (fromIntegral src) len
+      getBytes i (fromIntegral src) size
+
+    size_and_copy :: HostM s Blob ->
+      ( () -> HostM s Int32
+      , (Int32, Int32, Int32) -> HostM s ()
+      )
+    size_and_copy get_blob =
+      ( \() ->
+        get_blob >>= \blob -> return $ fromIntegral (BS.length blob)
+      , \(dst, offset, size) ->
+        get_blob >>= \blob -> copy_to_canister dst offset size blob
+      )
 
     -- Unsafely print (if not in silent mode)
     putBytes :: BS.ByteString -> HostM s ()
@@ -183,57 +194,37 @@ systemAPI esref =
     -- https://docs.dfinity.systems/spec/public/#_system_imports
 
     msg_arg_data_size :: () -> HostM s Int32
-    msg_arg_data_size () = do
-      blob <- gets (param_dat . params)
-          >>= maybe (throwError "arg_data_size: No argument") return
-      return $ fromIntegral (BS.length blob)
-
-    msg_arg_data_copy ::  (Int32, Int32, Int32) -> HostM s ()
-    msg_arg_data_copy (dst, offset, len) = do
-      blob <- gets (param_dat . params)
-          >>= maybe (throwError "arg_data_size: No argument") return
-      copy_to_canister "arg_data_copy" dst offset len blob
+    msg_arg_data_copy :: (Int32, Int32, Int32) -> HostM s ()
+    (msg_arg_data_size, msg_arg_data_copy) = size_and_copy $
+        gets (param_dat . params) >>= maybe (throwError "arg_data_size: No argument") return
 
     msg_caller_size :: () -> HostM s Int32
-    msg_caller_size () = do
-      blob <- gets (param_caller . params)
-          >>= maybe (throwError "arg_data_size: No argument") return
-      return $ fromIntegral (BS.length (rawEntityId blob))
-
-    msg_caller_copy ::  (Int32, Int32, Int32) -> HostM s ()
-    msg_caller_copy (dst, offset, len) = do
-      blob <- gets (param_caller . params)
-          >>= maybe (throwError "arg_data_size: No argument") return
-      copy_to_canister "msg_caller_copy" dst offset len (rawEntityId blob)
+    msg_caller_copy :: (Int32, Int32, Int32) -> HostM s ()
+    (msg_caller_size, msg_caller_copy) = size_and_copy $
+        fmap rawEntityId $ gets (param_caller . params) >>= maybe (throwError "arg_data_size: No argument") return
 
     msg_reject_code :: () -> HostM s Int32
     msg_reject_code () =
       fromIntegral <$> gets (reject_code . params)
 
-    msg_reject_msg_len :: () -> HostM s Int32
-    msg_reject_msg_len () = do
+    msg_reject_msg_size :: () -> HostM s Int32
+    msg_reject_msg_copy :: (Int32, Int32, Int32) -> HostM s ()
+    (msg_reject_msg_size, msg_reject_msg_copy) = size_and_copy $ do
       c <- gets (reject_code . params)
-      when (c == 0) $ throwError "msg_reject_msg_len: No reject message"
+      when (c == 0) $ throwError "msg_reject_msg: No reject message"
       msg <- gets (reject_message . params)
-      return $ fromIntegral (BS.length (BSU.fromString msg))
-
-    msg_reject_msg_copy ::  (Int32, Int32, Int32) -> HostM s ()
-    msg_reject_msg_copy (dst, offset, len) = do
-      c <- gets (reject_code . params)
-      when (c == 0) $ throwError "msg_reject_msg_len: No reject message"
-      msg <- gets (reject_message . params)
-      copy_to_canister "msg_reject_msg_copy" dst offset len (BSU.fromString msg)
+      return $ BSU.fromString msg
 
     assert_not_responded :: HostM s ()
     assert_not_responded =
       gets response >>= \case
         Nothing -> return ()
-        Just  _ -> throwError "This has already be responded to"
+        Just  _ -> throwError "This call has already be responded to"
 
     msg_reply_data_append :: (Int32, Int32) -> HostM s ()
-    msg_reply_data_append (src, len) = do
+    msg_reply_data_append (src, size) = do
       assert_not_responded
-      bytes <- copy_from_canister "debug_print" src len
+      bytes <- copy_from_canister "debug_print" src size
       appendReplyData esref bytes
 
     msg_reply :: () -> HostM s ()
@@ -243,40 +234,35 @@ systemAPI esref =
       setResponse esref (Reply bytes)
 
     msg_reject :: (Int32, Int32) -> HostM s ()
-    msg_reject (src, len) = do
+    msg_reject (src, size) = do
       assert_not_responded
-      bytes <- copy_from_canister "debug_print" src len
+      bytes <- copy_from_canister "debug_print" src size
       let msg = BSU.toString bytes
       setResponse esref $ Reject (RC_CANISTER_REJECT, msg)
 
-    canister_self_len :: () -> HostM s Int32
-    canister_self_len () = do
-      id <- gets self_id
-      return $ fromIntegral (BS.length (rawEntityId id))
-
+    canister_self_size :: () -> HostM s Int32
     canister_self_copy :: (Int32, Int32, Int32) -> HostM s ()
-    canister_self_copy (dst, offset, len) = do
-      id <- gets self_id
-      copy_to_canister "canister_self_copy" dst offset len (rawEntityId id)
+    (canister_self_size, canister_self_copy) = size_and_copy $
+      rawEntityId <$> gets self_id
 
     call_simple ::
       ( Int32, Int32, Int32, Int32, Int32
       , Int32, Int32, Int32, Int32, Int32) -> HostM s Int32
     call_simple
       ( callee_src
-      , callee_len
+      , callee_size
       , name_src
-      , name_len
+      , name_size
       , reply_fun
       , reply_env
       , reject_fun
       , reject_env
       , data_src
-      , data_len
+      , data_size
       ) = do
-      callee <- copy_from_canister "call_simple" callee_src callee_len
-      method_name <- copy_from_canister "call_simple" name_src name_len
-      arg <- copy_from_canister "call_simple" data_src data_len
+      callee <- copy_from_canister "call_simple" callee_src callee_size
+      method_name <- copy_from_canister "call_simple" name_src name_size
+      arg <- copy_from_canister "call_simple" data_src data_size
 
       appendCall esref $ MethodCall
         { call_callee = EntityId callee
@@ -290,15 +276,15 @@ systemAPI esref =
       return 0
 
     debug_print :: (Int32, Int32) -> HostM s ()
-    debug_print (src, len) = do
+    debug_print (src, size) = do
       -- TODO: This should be a non-trapping copy
-      bytes <- copy_from_canister "debug_print" src len
+      bytes <- copy_from_canister "debug_print" src size
       putBytes bytes
 
     explicit_trap :: (Int32, Int32) -> HostM s ()
-    explicit_trap (src, len) = do
+    explicit_trap (src, size) = do
       -- TODO: This should be a non-trapping copy
-      bytes <- copy_from_canister "trap" src len
+      bytes <- copy_from_canister "trap" src size
       let msg = BSU.toString bytes
       throwError $ "canister trapped explicitly: " ++ msg
 
