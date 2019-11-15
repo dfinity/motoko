@@ -17,6 +17,9 @@ WASM=\
 TESTS=\
 	Array \
 	ArrayTest \
+	ArrayBuf \
+	ArrayBufTest \
+	Buf \
 	AssocList \
 	DocTable \
   Function \

@@ -43,6 +43,13 @@ public type Buf<X> = {
   iter: () -> Iter<X>;
   array: () -> [X];
   mutArray: () -> [var X]; // bikeshed decision: `varArray` instead?
+  arrayBuf: () -> ArrayBuf<X>; // can expose _spare capacity_, if any
+};
+
+// A type that can represent and implement Buf<X>; See [`ArrayBuf`](arrayBuf.mo) for details.
+public type ArrayBuf<X> = {
+  array: [var ?X];
+  var count: Nat;
 };
 
 /**
@@ -75,6 +82,7 @@ type RamBuf<X> = {
   iter: () -> Iter<X>;
   array: () -> [X];
   mutArray: () -> [var X]; // bikeshed decision: `varArray` instead?
+  arrayBuf: () -> ArrayBuf<X>; // can expose _spare capacity_, if any
 
   // get/set via an offset from the start, beginning at zero.
   get : Nat -> ?X;

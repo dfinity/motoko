@@ -13,11 +13,6 @@ See [buffer documentation](buf.mo) for more.
 
 */
 
-public type ArrayBuf<X> = {
-  array: [var ?X];
-  var count: Nat;
-};
-
 /**
 #### Terminology:
 
@@ -31,9 +26,13 @@ array.
 
 */
 
+// re-export types and use them below.
+public type ArrayBuf<X> = Buf.ArrayBuf<X>;
+public type Buf<X> = Buf.Buf<X>;
+
 public type InitArg<X> = {
-  // no initial info
-  #none;
+  // requests an empty buffer without asking for a capacity
+  #empty;
   // take ownership of an existing representation
   #arrayBuf: ArrayBuf<X>;
   // initially-empty, with specified capacity
@@ -43,11 +42,11 @@ public type InitArg<X> = {
 };
 
 // Create a Buf<X> instance, represented as an ArrayBuf<X> instance
-public class Make<X> (init:InitArg<X>) : Buf.Buf<X> {
+public class Make<X> (init:InitArg<X>) : Buf<X> {
   var buf : ArrayBuf<X> = switch init
   {
   case (#arrayBuf(buf)) buf;
-  case (#none)
+  case (#empty)
   { // 0 is "most conservative" on initial size:
     array = Array_init<?X>(0, null);
     var count = 0;
@@ -83,7 +82,7 @@ public class Make<X> (init:InitArg<X>) : Buf.Buf<X> {
     }
   };
 
-  public func addBuf(b:Buf.Buf<X>) {
+  public func addBuf(b:Buf<X>) {
     for (x in b.iter()) { add(x) }
   };
 
@@ -98,7 +97,7 @@ public class Make<X> (init:InitArg<X>) : Buf.Buf<X> {
     buf.count := 0
   };
 
-  public func clone() : Buf.Buf<X> {
+  public func clone() : Buf<X> {
     /** Blocked: See issue 871 */
     P.nyi()
   };
@@ -119,6 +118,9 @@ public class Make<X> (init:InitArg<X>) : Buf.Buf<X> {
     /** Blocked: See issue 871 */
     P.nyi()
   };
+
+  public func arrayBuf() : ArrayBuf<X>
+    = buf;
 };
 
 }
