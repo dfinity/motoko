@@ -1,8 +1,3 @@
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
@@ -17,57 +12,23 @@ We could do some hacking caching of state using stable names, so that as long as
 
 module IC.Canister.Pure
     ( WasmState
-    , parseCanister
-    , CanisterModule(..)
-    , InitFunc, UpdateFunc, QueryFunc
+    , initializeMethod
+    , updateMethod
+    , callbackMethod
+    , queryMethod
     )
     where
 
-import qualified Data.Map as M
-import Data.List
 import Control.Monad.ST
 
 import IC.Types
-import IC.Wasm.Winter (parseModule, exportedFunctions, Module)
+import IC.Wasm.Winter (Module)
 import IC.Canister.Imp
 
 data WasmState
   = WSInit Module CanisterId EntityId Blob
   | WSUpdate MethodName EntityId Blob WasmState
   | WSCallback Callback EntityId Response WasmState
-
-type InitFunc = CanisterId -> EntityId -> Blob -> TrapOr WasmState
-type UpdateFunc = WasmState -> TrapOr (WasmState, [MethodCall], Maybe Response)
-type QueryFunc = WasmState -> TrapOr Response
-
-data CanisterModule = CanisterModule
-  { init_method :: InitFunc
-  , update_methods :: MethodName ↦ (EntityId -> Blob -> UpdateFunc)
-  , query_methods :: MethodName ↦ (EntityId -> Blob -> QueryFunc)
-  , callbacks :: Callback -> EntityId -> Response -> UpdateFunc
-  }
-
-parseCanister :: Blob -> Either String CanisterModule
-parseCanister bytes =
-  case parseModule bytes of
-    Left  err -> Left err
-    Right wasm_mod -> Right $ concreteToAbstractModule wasm_mod
-
-concreteToAbstractModule :: Module -> CanisterModule
-concreteToAbstractModule wasm_mod = CanisterModule
-  { init_method = \cid caller dat -> initializeMethod wasm_mod cid caller dat
-  , update_methods = M.fromList
-    [ (m, \caller dat wasm_state -> updateMethod m caller dat wasm_state)
-    | n <- exportedFunctions wasm_mod
-    , Just m <- return $ stripPrefix "canister_update " n
-    ]
-  , query_methods = M.fromList
-    [ (m, \arg wasm_state -> queryMethod m arg wasm_state)
-    | n <- exportedFunctions wasm_mod
-    , Just m <- return $ stripPrefix "canister_query " n
-    ]
-  , callbacks = callbackMethod
-  }
 
 initializeMethod :: Module -> CanisterId -> EntityId -> Blob -> TrapOr WasmState
 initializeMethod wasm_mod cid caller dat = runESST $ \esref ->

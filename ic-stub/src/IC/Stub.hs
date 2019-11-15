@@ -33,7 +33,7 @@ import Control.Monad.State.Class
 -- import Debug.Trace
 
 import IC.Types
-import IC.Canister.Persisted
+import IC.Canister
 
 -- Abstract HTTP Interface
 

@@ -14,6 +14,7 @@ executable ic-stub-run
   hs-source-dirs:      src
   other-modules:       IC.Stub
   other-modules:       IC.Types
+  other-modules:       IC.Canister
   other-modules:       IC.Canister.Imp
   other-modules:       IC.Canister.Pure
   other-modules:       IC.Canister.Persisted
