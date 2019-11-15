@@ -996,8 +996,11 @@ let rec sanitise_value (v : value) : value =
   | VariantV vf -> { v with it = VariantV (sanitise_value_field vf) }
   | AnnotV (v', t) -> { v with it = AnnotV (sanitise_value v', sanitise_type t) }
 
-and sanitise_value_fields vfs = List.map sanitise_value_field vfs (* TODO: sort *)
-and sanitise_value_field vf = vf (* TODO *)
+and sanitise_value_fields vfs =
+  let hash_compare a b = Lib.Uint32.compare a.it.hash b.it.hash in
+  let vfs = List.sort hash_compare vfs in
+  List.map sanitise_value_field vfs
+and sanitise_value_field vf = { vf with it = { vf.it with value = sanitise_value vf.it.value } }
 
 and sanitise_type t =
   match t.it with
@@ -1008,8 +1011,14 @@ and sanitise_type t =
   | VariantT tfs -> { t with it = VariantT (sanitise_type_fields tfs) }
   | FuncT _ | ServT _ -> assert false (* TODO *)
 
-and sanitise_type_fields tfs = List.map sanitise_type_field tfs (* TODO: sort *)
-and sanitise_type_field tf = tf (* TODO *)
+and sanitise_type_fields tfs =
+  let hash_of = function
+    | Id h | Unnamed h -> h
+    | Named s -> Idllib.IdlHash.idl_hash s in
+  let hash_compare a b = Lib.Uint32.compare (hash_of a.it.label.it) (hash_of b.it.label.it) in
+  let tfs = List.sort hash_compare tfs in
+  List.map sanitise_type_field tfs
+and sanitise_type_field tf = { tf with it = { tf.it with typ = sanitise_type tf.it.typ} }
 
 end
 
@@ -1025,10 +1034,10 @@ let () =
       let lexer = Lexing.from_channel stdin in
       let {it = vs; _} = Parser.parse_arg Lexer.value_token lexer "<stdin>" in
       Wasm.Sexpr.print 80 Arrange_idl.("Arg" $$ List.map value vs);
+      Printf.printf "\nDESER, parsed!\n";
       let vs = List.map Sanitise.sanitise_value vs in
       Printf.printf "\nDESER, sanitised!\n";
       Wasm.Sexpr.print 80 Arrange_idl.("(sanitised) Arg" $$ List.map value vs);
-      Printf.printf "\nDESER, parsed!\n";
       let open Typer in
       let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
@@ -1068,8 +1077,7 @@ let () =
   - service types
   - escaping in text
   - heralding/outputting of type table
-  - sort type/value fields (optionally?) `--sanitize`
-  - Yan, do you sort type fields? (in Rust?)
+  - sort type/value fields (optionally?) `--sanitize`/`--verbatim`
   - argument realisability! don't externalise bottom!
   - shrink type table (union-find)
   - `+42` infers as `nat`, should be `int`
