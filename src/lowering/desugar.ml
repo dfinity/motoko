@@ -405,7 +405,7 @@ and to_args typ p : Ir.arg list * (Ir.exp -> Ir.exp) * T.typ T.control * T.typ l
   let wrap_under_async e =
     if T.is_shared_sort sort && control <> T.Returns
     then match e.it with
-      | Ir.AsyncE (tb, e',t) -> { e with it = Ir.AsyncE (tb, wrap e', t) }
+      | Ir.AsyncE (tb, e', t) -> { e with it = Ir.AsyncE (tb, wrap e', t) }
       | _ -> assert false
     else wrap e in
 
