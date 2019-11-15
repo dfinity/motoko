@@ -90,8 +90,8 @@ let share_expfield (ef : exp_field) =
   else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
 
 let scope_id = "@_"
-let scope_bind = {var = scope_id @@ no_region; bound = PrimT "Any" @! no_region} @= no_region
-let scope_typ = PathT ((IdH (scope_id @@ no_region)) @! no_region, []) @! no_region
+let scope_bind() = {var = scope_id @@ no_region; bound = PrimT "Any" @! no_region} @= no_region
+let scope_typ() = PathT ((IdH (scope_id @@ no_region)) @! no_region, []) @! no_region
 
 %}
 
@@ -251,7 +251,7 @@ typ_pre :
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
-    { AsyncT(scope_typ,t) @! at $sloc }
+    { AsyncT(scope_typ(),t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -446,7 +446,7 @@ exp_nondec(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp(bl)
-    { AsyncE(scope_bind,e,scope_typ) @? at $sloc }
+    { AsyncE(scope_bind(),e,scope_typ()) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)
@@ -632,7 +632,7 @@ dec_nonvar :
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
           match t with
-          | Some {it = AsyncT _; _} -> AsyncE(scope_bind,e,scope_typ) @? e.at
+          | Some {it = AsyncT _; _} -> AsyncE(scope_bind(),e,scope_typ()) @? e.at
           | _ -> e
       in
       let named, x = xf "func" $sloc in

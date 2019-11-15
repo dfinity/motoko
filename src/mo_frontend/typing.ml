@@ -23,7 +23,7 @@ type env =
     objs : Scope.obj_env;
     labs : lab_env;
     rets : ret_env;
-    async : bool;
+    async : Type.con option;
     in_actor : bool;
     in_await : bool;
     in_shared : bool;
@@ -40,7 +40,7 @@ let env_of_scope msgs scope =
     objs = T.Env.empty;
     labs = T.Env.empty;
     rets = None;
-    async = false;
+    async = None;
     in_await = false;
     in_shared = false;
     in_actor = false;
@@ -644,7 +644,7 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
       error_in [Flags.ICMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
-    let env' = if sort.it = T.Actor then {env with async = false; in_actor = true} else env in
+    let env' = if sort.it = T.Actor then {env with async = None; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
@@ -715,7 +715,7 @@ and infer_exp'' env exp : T.typ =
         { env' with
           labs = T.Env.empty;
           rets = Some codom;
-          async = false;
+          async = None;
           in_shared = T.is_shared_sort sort.it} in
       check_exp (adjoin_vals env'' ve) codom exp;
       if Type.is_shared_sort sort.it then begin
@@ -822,7 +822,7 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | TryE (exp1, cases) ->
-    if not env.async then
+    if env.async = None then
       error env exp.at "misplaced try";
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
@@ -901,7 +901,7 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | ThrowE exp1 ->
-    if not env.async then
+    if env.async = None then
       error env exp.at "misplaced throw";
     if not env.pre then check_exp env T.throw exp1;
     T.Non
@@ -911,7 +911,7 @@ and infer_exp'' env exp : T.typ =
     let t0 = check_typ env typ0 in
     let c, tb, ce, cs = check_typ_bind env tb in
     let env' =
-      {(adjoin_typs env ce cs) with labs = T.Env.empty; rets = Some T.Pre; async = true} in
+      {(adjoin_typs env ce cs) with labs = T.Env.empty; rets = Some T.Pre; async = Some c} in
     let t = infer_exp env' exp1 in
     let t1 = T.open_ [t0] (T.close [c] t)  in
     if not (T.shared t1) then
@@ -919,7 +919,7 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t1);
     T.Async (t0,t1)
   | AwaitE  exp1 ->
-    if not env.async then
+    if env.async = None then
       error env exp.at "misplaced await";
     let t1 = infer_exp_promote {env with in_await = true} exp1 in
     (match exp1.it with
@@ -929,7 +929,9 @@ and infer_exp'' env exp : T.typ =
       | _ -> error_in [Flags.ICMode] env exp1.at "argument to await must be a call expression");
     (try
        let (t2,t3) = T.as_async_sub t1 in
-       (* TODO: check the index *)
+       let t0 = T.Con(Lib.Option.value env.async, []) in
+       if not (T.eq t0 t2) then
+          error env exp.at "ill-scoped await";
        t3
     with Invalid_argument _ ->
       error env exp1.at "expected async type, but expression has type\n  %s"
@@ -1001,7 +1003,7 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t0');
     let c, tb, ce, cs = check_typ_bind env tb in
     let env' =
-      {(adjoin_typs env ce cs) with labs = T.Env.empty; rets = Some t'; async = true} in
+      {(adjoin_typs env ce cs) with labs = T.Env.empty; rets = Some t'; async = Some c} in
     check_exp env' t' exp1;
     t
   | BlockE decs, _ ->
@@ -1025,7 +1027,7 @@ and check_exp' env0 t exp : T.typ =
     );
     t
   | TryE (exp1, cases), _ ->
-    if not env.async then
+    if env.async = None then
       error env exp.at "misplaced try";
     check_exp env t exp1;
     check_cases env T.catch t cases;
@@ -1058,7 +1060,7 @@ and check_exp' env0 t exp : T.typ =
       { env with
         labs = T.Env.empty;
         rets = Some t2;
-        async = false;
+        async = None;
         in_shared = T.is_shared_sort s'.it;
       } in
     check_exp (adjoin_vals env' ve) t2 exp;
@@ -1534,7 +1536,7 @@ and infer_dec env dec : T.typ =
         { (add_val env'' self_id.it self_typ) with
           labs = T.Env.empty;
           rets = None;
-          async = false;
+          async = None;
           in_actor = sort.it = T.Actor;
         }
       in
