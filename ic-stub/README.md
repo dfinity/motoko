@@ -35,3 +35,13 @@ Developing on ic-stub
 
 Running `nix-shell` in the `ic-stub/` directory should give you an environment
 that allows you to build the project using `cabal new-build`.
+
+The interpreter is too slow
+---------------------------
+
+The obvious performance issue with `winter`, according to profiling, is
+evaluation under lambdas, the cost centres `step_Label7_k`, `step_Label7`,
+`step_Label2` and `step_Framed4` are responsible for most allocation. Switching
+to an interpreter form with a control stack would likely help a lot, but would
+move `winter` away from being a straight-forward port of the Ocaml reference
+interpreter `wasm`.
