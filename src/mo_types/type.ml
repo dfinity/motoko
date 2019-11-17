@@ -214,7 +214,7 @@ let rec subst sigma t =
   | Tup ts -> Tup (List.map (subst sigma) ts)
   | Func (s, c, tbs, ts1, ts2) ->
     let sigma' = ConEnv.map (shift 0 (List.length tbs)) sigma in
-    Func (s, c, List.map (subst_bind sigma') tbs,
+    Func (s, map_control (subst sigma') c, List.map (subst_bind sigma') tbs,
           List.map (subst sigma') ts1, List.map (subst sigma') ts2)
   | Opt t -> Opt (subst sigma t)
   | Async (t1, t2) -> Async (subst sigma t1, subst sigma t2)
@@ -270,7 +270,7 @@ let rec open' i ts t =
   | Tup ts' -> Tup (List.map (open' i ts) ts')
   | Func (s, c, tbs, ts1, ts2) ->
     let i' = i + List.length tbs in
-    Func (s, c, List.map (open_bind i' ts) tbs, List.map (open' i' ts) ts1, List.map (open' i' ts) ts2)
+    Func (s, map_control (open' i' ts) c, List.map (open_bind i' ts) tbs, List.map (open' i' ts) ts1, List.map (open' i' ts) ts2)
   | Opt t -> Opt (open' i ts t)
   | Async (t1, t2) -> Async (open' i ts t1, open' i ts t2)
   | Obj (s, fs) -> Obj (s, List.map (open_field i ts) fs)
@@ -575,7 +575,7 @@ let concrete t =
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
       | Array t | Opt t | Mut t -> go t
-      | Async (t1, t2) -> go t1 && go t2
+      | Async (t1, t2) -> go t2 (* t1 is a phantom type *)
       | Tup ts -> List.for_all go ts
       | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
@@ -722,9 +722,10 @@ let rec rel_typ rel eq t1 t2 =
   | Tup ts1, Tup ts2 ->
     rel_list rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    c1 = c2 && s1 = s2 &&
+    s1 = s2 &&
     (match rel_binds rel eq tbs1 tbs2 with
     | Some ts ->
+      eq_control' rel eq (map_control (open_ ts) c1) (map_control (open_ ts) c2) &&
       rel_list rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
       rel_list rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
@@ -738,6 +739,13 @@ let rec rel_typ rel eq t1 t2 =
     eq_con eq c1 c2
   | _, _ -> false
   end
+
+and eq_control' rel eq c1 c2 =
+  match c1, c2 with
+  | Promises t1, Promises t2 -> eq_typ rel eq t1 t2
+  | Returns, Returns -> true
+  | Replies, Replies -> true
+  | _ -> false
 
 and rel_fields rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
@@ -816,6 +824,9 @@ and eq_con eq c1 c2 =
     )
 
 let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
+
+let eq_control c1 c2 : bool =
+  let eq = ref SS.empty in eq_control' eq eq c1 c2
 
 (* Compatibility *)
 
@@ -952,7 +963,7 @@ let rec lub' lubs glbs t1 t2 =
     | Obj (s1, tf1), Obj (s2, tf2) when s1 = s2 ->
       Obj (s1, lub_fields lubs glbs tf1 tf2)
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
-        s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
+        s1 = s2 && eq_control c1 c2 && List.(length bs1 = length bs2) &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
@@ -1025,7 +1036,7 @@ and glb' lubs glbs t1 t2 =
       | Some fs -> Obj (s1, fs)
       )
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
-        s1 = s2 && c1 = c2 && List.(length bs1 = length bs2) &&
+        s1 = s2 && eq_control c1 c2 && List.(length bs1 = length bs2) &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
