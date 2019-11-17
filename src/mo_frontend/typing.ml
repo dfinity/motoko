@@ -742,7 +742,7 @@ and infer_exp'' env exp : T.typ =
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort.it, T.map_control  (T.close cs) c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, insts, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let sort, tbs, t_arg, t_ret =

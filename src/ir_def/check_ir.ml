@@ -160,6 +160,7 @@ let rec check_typ env typ : unit =
     let cs, ce = check_typ_binds env binds in
     let env' = adjoin_cons env ce in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
+    let control = T.map_control (T.open_ ts) control in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
@@ -170,7 +171,8 @@ let rec check_typ env typ : unit =
       | T.Returns ->
         check env' no_region (sort = T.Shared T.Write)
           "one-shot query function pointless"
-      | T.Promises _ ->
+      | T.Promises t ->
+        check_typ env' typ;
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
         check env' no_region (sort <> T.Local)
@@ -617,7 +619,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let ts1 = List.map (fun a -> a.note) args in
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ts1;
     let fun_ty = T.Func
-      ( sort, control
+      ( sort, T.map_control (T.close cs) control
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
