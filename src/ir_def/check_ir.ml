@@ -171,8 +171,8 @@ let rec check_typ env typ : unit =
       | T.Returns ->
         check env' no_region (sort = T.Shared T.Write)
           "one-shot query function pointless"
-      | T.Promises t ->
-        check_typ env' typ;
+      | T.Promises t' ->
+        check_typ env' t';
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
         check env' no_region (sort <> T.Local)
