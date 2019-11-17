@@ -175,17 +175,13 @@ let rec check_typ env typ : unit =
         check_typ env' t';
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
-        check env' no_region (sort <> T.Local)
-          "promising function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
-        check env' no_region (List.for_all T.shared ts)
-          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
+        check env' no_region (List.for_all T.shared ts2)
+          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts2))
       | T.Replies ->
         check env no_region (not env.flavor.Ir.has_async_typ)
           "replying function in pre-async flavor";
-        check env' no_region (sort <> T.Local)
-          "replying function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
-        check env' no_region (List.for_all T.shared ts)
-          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
+        check env' no_region (List.for_all T.shared ts2)
+          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts2))
     end else
         check env' no_region (control = T.Returns)
           "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
