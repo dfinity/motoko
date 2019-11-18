@@ -48,6 +48,11 @@ let record_fields fs =
          | Unnamed n -> succ n) in
        field :: (go next tl)
   in go zero fs
+
+let pass_hash (h, fs) ff =
+  let field = ff h in
+  (Uint32.succ field.it.hash, field :: fs)
+
 %}
 
 %token EOF
@@ -208,9 +213,10 @@ value :
   | VEC LCURLY vs=seplist(annval, SEMICOLON) RCURLY
     { VecV vs @@ at $sloc }
   | RECORD LCURLY vfs=seplist(field_value(record_field_shorthand), SEMICOLON) RCURLY
-    { RecordV vfs @@ at $sloc }
+    { RecordV (List.rev (snd (List.fold_left pass_hash (Uint32.zero, []) vfs)))
+      @@ at $sloc }
   | VARIANT LCURLY vf=field_value(variant_field_shorthand) RCURLY
-    { VariantV vf @@ at $sloc }
+    { VariantV (vf Uint32.zero) @@ at $sloc }
   | LPAR v=annval RPAR
     { v }
 
@@ -222,19 +228,19 @@ annval :
 
 record_field_shorthand :
   | v=annval
-    { { hash = Uint32.zero; name = None; value = v } @@ at $sloc }
+    { fun h -> { hash = h; name = None; value = v } @@ at $sloc }
 
 variant_field_shorthand :
   | n=NAT
-    { { hash = Uint32.of_string n; name = None; value = NullV @@ no_region } @@ at $sloc }
+    { fun _ -> { hash = Uint32.of_string n; name = None; value = NullV @@ no_region } @@ at $sloc }
   | name=name
-    { { hash = hash name.it; name = Some name; value = NullV @@ no_region } @@ at $sloc }
+    { fun _ -> { hash = hash name.it; name = Some name; value = NullV @@ no_region } @@ at $sloc }
 
 field_value(shorthand) :
   | n=NAT EQ v=annval
-    { { hash = Uint32.of_string n; name = None; value = v } @@ at $sloc }
+    { fun _ -> { hash = Uint32.of_string n; name = None; value = v } @@ at $sloc }
   | name=name EQ v=annval
-    { { hash = hash name.it; name = Some name; value = v } @@ at $sloc }
+    { fun _ -> { hash = hash name.it; name = Some name; value = v } @@ at $sloc }
   | field=shorthand
     { field }
 
