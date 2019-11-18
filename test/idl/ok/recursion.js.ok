@@ -4,25 +4,19 @@ export default ({ IDL }) => {
  const s = IDL.Rec()
  const stream = IDL.Rec()
  const tree = IDL.Rec()
- const t = IDL.Func(IDL.Obj({'server': s}), IDL.Obj({}))
+ const t = IDL.Func([s], [])
  const node = IDL.Obj({'head': IDL.Nat, 'tail': list})
  list.fill(IDL.Opt(node))
- stream.fill(
-  IDL.Opt(
-   IDL.Obj({'head': IDL.Nat,
-    'next': IDL.Func(IDL.Obj({}), IDL.Obj({'0': stream}))}))
-   )
+ const A = B
+ B.fill(IDL.Opt(A))
  tree.fill(
   IDL.Variant({
    'branch': IDL.Obj({'val': IDL.Int, 'left': tree, 'right': tree}),
    'leaf': IDL.Int}))
- const A = B
- B.fill(IDL.Opt(A))
+ stream.fill(
+  IDL.Opt(IDL.Obj({'head': IDL.Nat, 'next': IDL.Func([], [stream])})))
  s.fill(
-  new IDL.ActorInterface({'f': t,
-   'g':
-    IDL.Func(IDL.Obj({'0': list}), IDL.Obj({'2': stream, '1': tree, '0': B}))
-   }))
+  new IDL.ActorInterface({'f': t, 'g': IDL.Func([list], [B, tree, stream])}))
  const actor_A = s.__typ;
  return actor_A;
 };

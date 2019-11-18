@@ -104,15 +104,15 @@ let rec typ vs t =
   | Variant fs ->
      I.VariantT (List.map (field vs) fs)
   | Func (Shared s, c, [], ts1, ts2) ->
-     let fs1 = tuple vs ts1 in
+     let t1 = args vs ts1 in
      (match ts2, c with
-     | [], Returns -> I.FuncT ([I.Oneway @@ no_region], fs1, [])
+     | [], Returns -> I.FuncT ([I.Oneway @@ no_region], t1, [])
      | ts, Promises ->
        I.FuncT (
          (match s with
           | Query -> [I.Query @@ no_region]
           | Write -> []),
-         fs1, tuple vs ts)
+         t1, args vs ts)
      | _ -> assert false)
   | Func _ -> assert false
   | Async t -> assert false
@@ -131,6 +131,8 @@ and tuple vs ts =
       let id = Lib.Uint32.of_int i in
       I.{label = I.Unnamed id @@ no_region; typ = typ vs x} @@ no_region
     ) ts
+and args vs ts =
+  List.map (fun x -> typ vs x) ts
 and meths vs fs =
   List.fold_right (fun f list ->
       match f.typ with
