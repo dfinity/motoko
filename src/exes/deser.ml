@@ -749,7 +749,7 @@ let lookup_prim_tynum (ty : typ) = List.assoc ty.Source.it type_assoc
 (* the type of bidirectional checker/inferencer
 Every IDL value corresponds to such a function.
 
- - for inferencing the most general type: call with `PrimT Reserved`
+ - for inferencing the most general type: call with `PreT`
  - for type checking against `t`: call with `t`
 
 NOPE: Guaranteed to return a `typ` that is `<=` in the IDL type lattice.
@@ -787,30 +787,30 @@ let rec to_bid (v : value) : bid =
   match v.it with
   | FalseV
   | TrueV -> (function
-              | PrimT (Reserved | Bool) -> PrimT Bool
+              | PreT | PrimT Bool -> PrimT Bool
               | _ -> bottom)
   | NullV -> (function
-              | PrimT (Reserved | Null) -> PrimT Null
+              | PreT | PrimT Null -> PrimT Null
               | OptT _ as opt -> opt
               | _ -> bottom)
   | TextV _ -> (function
-                | PrimT (Reserved | Text) -> PrimT Text
+                | PreT | PrimT Text -> PrimT Text
                 | _ -> bottom)
   | IntegralV i -> let negative = Big_int.sign_big_int i < 0 in
                    (function
-                    | PrimT (Reserved | Int) -> PrimT (if negative then Int else Nat)
+                    | PreT | PrimT Int -> PrimT (if negative then Int else Nat)
                     | PrimT Nat -> PrimT (if negative then Empty else Nat) (* TODO: report error *)
                     | PrimT (Int8|Int16|Int32|Int64|Nat8|Nat16|Nat32|Nat64 as t) when in_range t i -> PrimT t
                     | _ -> bottom)
   | OptV v -> (function
-               | PrimT Reserved -> OptT (infer v)
+               | PreT -> OptT (infer v)
                | OptT t -> OptT (to_bid v t.it @@ v.at)
                | _ -> bottom)
   | VecV vs -> (function
-                | PrimT Reserved -> VecT List.(fold_left glb (PrimT Empty) (map infer' vs) @@ v.at)
+                | PreT -> VecT List.(fold_left glb (PrimT Empty) (map infer' vs) @@ v.at)
                 | _ -> failwith "cannot VecT yet")
   | RecordV vfs -> (function
-                    | PrimT Reserved -> RecordT (List.map infer_field vfs)
+                    | PreT -> RecordT (List.map infer_field vfs)
                     | RecordT tfs ->
                       let identity x = x in
                       let compose g f x = g (f x) in
@@ -818,20 +818,22 @@ let rec to_bid (v : value) : bid =
                       List.fold_left compose identity refiners (RecordT (List.map infer_field vfs))
                     | _ -> bottom)
   | VariantV vf -> (function
-                    | PrimT Reserved ->
+                    | PreT ->
                       VariantT [{label = Id vf.it.hash @@ vf.at; typ = infer vf.it.value} @@ vf.at]
                     | VariantT tfs -> refine_variant_field vf tfs
                     | _ -> bottom)
   | FuncV _ -> failwith "cannot FuncV yet"
 
-  | AnnotV (v, t) -> fun t' -> to_bid v (lub t' t.it)
+  | AnnotV (v, t) -> (function
+                      | PreT -> to_bid v t.it
+                      | t' -> to_bid v (lub t' t.it))
   | ServiceV uri -> (function
-                     | PrimT Reserved -> ServT []
+                     | PreT -> ServT []
                      | ServT _ as serv -> serv
                      | _ -> bottom)
 
 and infer v = infer' v @@ v.at
-and infer' v = to_bid v (PrimT Reserved)
+and infer' v = to_bid v PreT
 
 and infer_field vf = match vf.it with
   | { hash; name = Some id; value } -> { label = Named id.it @@ id.at; typ = infer value } @@ vf.at
@@ -1091,5 +1093,4 @@ let () =
   - shrink type table (union-find)
   - `+42` infers as `nat`, should be `int`
   - shorthands
-  - use PreT as the don't know type
  *)
