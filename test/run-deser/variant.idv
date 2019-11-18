@@ -1,6 +1,6 @@
 ( variant {a = 25}
 , variant {a = 25} : variant {a : nat}
-, variant {a = 25} : variant {}
+// , variant {a = 25} : variant {} BOTTOM
 , variant {0 = 42} : variant {0 : int; 1 : text}
 , variant {1 = "cool"} : variant {0 : int; 1 : text}
 , variant {1 = "rev"} : variant {1 : text; 0 : int}

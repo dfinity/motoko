@@ -1020,6 +1020,15 @@ and sanitise_type_fields tfs =
   List.map sanitise_type_field tfs
 and sanitise_type_field tf = { tf with it = { tf.it with typ = sanitise_type tf.it.typ} }
 
+(* given a type, decide if there is a value inhabiting it *)
+(* TODO: Should we relax this to be constructor aware? *)
+let rec value_realisable = function
+  | PrimT Empty | PreT -> false
+  | PrimT _ | VarT _ -> true
+  | OptT t' | VecT t' -> value_realisable t'.it
+  | RecordT tfs | VariantT tfs -> List.for_all (fun t -> value_realisable t.it.typ.it) tfs
+  | FuncT _ | ServT _ -> assert false (* TODO *)
+
 end
 
 (* run it *)
@@ -1042,21 +1051,22 @@ let () =
       let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
       Printf.printf "\nDESER, type inferred!\n";
-      let open TypeTable in
-      let m = List.fold_left (fun m ty -> build_typ_map m ty.it) M.empty ts in
-      print_string "DIDL"; write_int_leb128 (M.cardinal m);
-      List.iter (write_typ_index m) (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
-      write_int_leb128 (List.length vs);
-      List.iter (fun t -> write_int_sleb128 (lookup_tynum t m)) ts;
-      List.iter2 write_typed_value ts vs;
-      if List.for_all TypeTable.prim ts then () else Printf.printf "\nDESER, term traversed!\n";
-
-      (* TODO!
-      if List.every (type_realizable) ts then
-        traverse_collect_types
+      if List.for_all (fun t -> Sanitise.value_realisable t.it) ts then
+        begin
+          let open TypeTable in
+          let m = List.fold_left (fun m ty -> build_typ_map m ty.it) M.empty ts in
+          print_string "DIDL"; write_int_leb128 (M.cardinal m);
+          List.iter (write_typ_index m) (List.sort (fun (_, i1) (_, i2) -> compare i1 i2) (M.bindings m));
+          write_int_leb128 (List.length vs);
+          List.iter (fun t -> write_int_sleb128 (lookup_tynum t m)) ts;
+          List.iter2 write_typed_value ts vs;
+          if List.for_all TypeTable.prim ts then () else Printf.printf "\nDESER, term traversed!\n";
+        end
       else
-        error
-       *)
+        begin
+          Printf.eprintf "deser: inferred type is not realisable";
+          exit 1
+        end
     end
   else
     begin
@@ -1078,7 +1088,6 @@ let () =
   - escaping in text
   - heralding/outputting of type table
   - sort type/value fields (optionally?) `--sanitize`/`--verbatim`
-  - argument realisability! don't externalise bottom!
   - shrink type table (union-find)
   - `+42` infers as `nat`, should be `int`
   - shorthands
