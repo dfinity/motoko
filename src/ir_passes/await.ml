@@ -116,7 +116,7 @@ and t_exp' context exp' =
       | Some Label -> RetE (t_exp context exp1)
       | None -> assert false
     end
-  | AsyncE (_tb, exp1, typ1) ->
+  | AsyncE (tb, exp1, typ1) ->
      (* TODO: this needs more work to account for _tb and _ty *)
      let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
      (* add the implicit return/throw label *)
@@ -126,9 +126,9 @@ and t_exp' context exp' =
        LabelEnv.add Return (Cont (ContVar k_ret))
          (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
      in
-     (* TODO: bind k_fail *)
-     (asyncE typ1 (typ exp1) ([k_ret; k_fail] -->*
-                              c_exp context' exp1 (ContVar k_ret))).it
+     (asyncE typ1 (typ exp1)
+        (forall [tb] ([k_ret; k_fail] -->*
+                       c_exp context' exp1 (ContVar k_ret)))).it
   | TryE _
   | ThrowE _
   | AwaitE _ -> assert false (* these never have effect T.Triv *)
@@ -353,7 +353,7 @@ and c_exp' context exp k =
       | Some Label
       | None -> assert false
     end
-  | AsyncE (_, exp1, typ1) ->
+  | AsyncE (tb, exp1, typ1) ->
     (* TODO: this needs more thought *)
      (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) in
@@ -362,8 +362,9 @@ and c_exp' context exp k =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
-    k -@- (asyncE typ1 (typ exp1) ([k_ret; k_fail] -->*
-                                   (c_exp context' exp1 (ContVar k_ret))))
+    k -@- (asyncE typ1 (typ exp1)
+            (forall [tb] ([k_ret; k_fail] -->*
+                                   (c_exp context' exp1 (ContVar k_ret)))))
   | AwaitE exp1 ->
      let r = match LabelEnv.find_opt Throw context with
      | Some (Cont r) -> r

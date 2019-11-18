@@ -227,6 +227,7 @@ let transform mode env prog =
     | ShowPrim ot -> ShowPrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
     | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
+    | CPSAsync t -> CPSAsync (t_typ t)
     | p -> p
 
   and t_field {lab; typ} =
@@ -262,11 +263,13 @@ let transform mode env prog =
       ArrayE (mut, t_typ t, List.map t_exp exps)
     | IdxE (exp1, exp2) ->
       IdxE (t_exp exp1, t_exp exp2)
-    | PrimE (CPSAwait, [a;kr]) ->
+    | PrimE (CPSAwait, [a; kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
-    | PrimE (CPSAsync, [exp2]) ->
-      let ts1 = match typ exp2 with
-        | Func(_,_, [], [Func(_, _, [], ts1, []); _], []) -> List.map t_typ ts1
+    | PrimE (CPSAsync t0, [exp2]) ->
+      let t0 = t_typ t0 in
+      let tb, ts1 = match typ exp2 with
+        | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
+          tb, List.map t_typ (List.map (T.open_ [t0]) ts1)
         | t -> assert false in
       let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Replies, [], [], ts1)) in
       let u = fresh_var "u" T.unit in
@@ -277,8 +280,7 @@ let transform mode env prog =
                   let k = vs -->* (ic_replyE ts1 (seqE vs)) in
                   let e = fresh_var "e" T.catch in
                   let r = [e] -->* (ic_rejectE (errorMessageE e)) in
-                  (t_exp exp2) -*- tupE [k;r]);
-
+                  callE (t_exp exp2) [t0] (tupE [k;r]));
                expD (ic_callE post (seqE []) nary_reply reject);
                ]
                nary_async
@@ -353,21 +355,21 @@ let transform mode env prog =
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in
-              let cps = match exp.it with
-                | PrimE (CPSAsync, [cps]) -> cps
+              let t0, cps = match exp.it with
+                | PrimE (CPSAsync t0, [cps]) -> t_typ t0, cps
                 | _ -> assert false in
               let t1, contT = match typ cps with
                 | Func(_,_,
-                       [],
+                       [tb],
                        [Func(_, _, [], ts1, []) as contT; _],
                        []) ->
-                  (t_typ (T.seq ts1),t_typ contT)
+                  (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
                 | t -> assert false in
               let v = fresh_var "v" t1 in
               let k = v --> (ic_replyE ret_tys v) in
               let e = fresh_var "e" T.catch in
               let r = [e] -->* (ic_rejectE (errorMessageE e)) in
-              let exp' = (t_exp cps) -*- tupE [k;r] in
+              let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
             | Replies -> assert false
           end

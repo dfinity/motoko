@@ -2,7 +2,7 @@
 open Source
 open Ir
 open Ir_effect
-
+module Con = Mo_types.Con
 module T = Mo_types.Type
 
 type var = exp
@@ -91,7 +91,7 @@ let primE prim es =
   }
 
 let asyncE typ1 typ2 e =
-  { it = PrimE (CPSAsync, [e]);
+  { it = PrimE (CPSAsync typ1, [e]);
     at = no_region;
     note = { note_typ = T.Async (typ1, typ2); note_eff = eff e }
   }
@@ -463,6 +463,24 @@ let (-->) x exp =
 let (-->*) xs exp =
   let fun_ty = T.Func (T.Local, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
   nary_funcE "$lambda" fun_ty xs exp
+
+let close_typ_binds cs tbs =
+  List.map (fun {it = {con; bound}; _} -> {T.var = Con.name con; bound = T.close cs bound}) tbs
+
+(* polymorphic, n-ary local lambda *)
+let forall tbs e =
+ let cs = List.map (fun tb -> tb.it.con) tbs in
+ match e.it, e.note.note_typ with
+ | FuncE (n, s, c1, [], xs, ts, exp),
+   T.Func ( _, c2, [], ts1, ts2) ->
+   { e with
+     it = FuncE(n, s, c1, tbs, xs, ts, exp);
+     note = { e.note with
+              note_typ = T.Func(s, T.map_control (T.close cs) c2, close_typ_binds cs tbs,
+                                List.map (T.close cs) ts1,
+                                List.map (T.close cs) ts2)
+   }}
+ | _ -> assert false
 
 (* Lambda application (monomorphic) *)
 

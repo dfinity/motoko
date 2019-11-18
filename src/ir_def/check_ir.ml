@@ -146,7 +146,8 @@ let rec check_typ env typ : unit =
           check_con {env with cons = T.ConSet.add c env.cons} c;
         check_typ_bounds env tbs typs no_region
       | T.Abs (tbs, _) ->
-        check env no_region (T.ConSet.mem c env.cons) "free type constructor";
+        check env no_region (T.ConSet.mem c env.cons) "free type constructor %s "
+          (T.string_of_typ typ);
         check_typ_bounds env tbs typs no_region
     end
   | T.Any -> ()
@@ -303,7 +304,7 @@ let type_lit env lit at : T.prim =
 let isAsyncE exp =
   match exp.it with
   | AsyncE _ (* pre await transformation *)
-  | PrimE (CPSAsync, [_]) (* post await transformation *)
+  | PrimE (CPSAsync _, [_]) (* post await transformation *)
     -> true
   | _ -> false
 
@@ -360,9 +361,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env a;
       check_exp env kr
       (* TODO: We can check more here, can we *)
-    | CPSAsync, [exp] ->
+    | CPSAsync t, [exp] ->
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
+      check_typ env t;
       check_exp env exp;
       (* TODO: We can check more here, can we *)
     | ICReplyPrim ts, [exp1] ->

@@ -107,7 +107,7 @@ and prim =
   | NumConvPrim of Type.prim * Type.prim
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   | CPSAwait
-  | CPSAsync
+  | CPSAsync of Type.typ
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICErrorCodePrim
