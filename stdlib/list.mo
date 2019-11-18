@@ -560,7 +560,7 @@ public type List<T> = ?(T, List<T>);
   /**
    `splitAt`
    -----------
-   Creates a pair of lists by splitting the given list at the given index.
+   Creates a pair of lists by splitting the given list at the given (zero-based) index.
    */
   public func splitAt<X>(n : Nat, xs : List<X>) : (List<X>, List<X>) {
     if (n == 0) {
