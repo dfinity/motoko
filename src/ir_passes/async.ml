@@ -286,11 +286,12 @@ let transform mode env prog =
                nary_async
       ).it
     | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
-      assert (typs = []);
+      (*      assert (typs = []); *)
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises _,tbs,ts1,ts2) ->
-          List.map t_typ ts1, List.map t_typ ts2
+          List.map (fun t -> t_typ (T.open_ typs t)) ts1,
+          List.map (fun t -> t_typ (T.open_ typs t)) ts2
         | _ -> assert(false)
       in
       let exp1' = t_exp exp1 in

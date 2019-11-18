@@ -388,7 +388,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env r;
       let t1 = T.promote (typ exp1) in
       begin match t1 with
-      | T.Func (sort, T.Replies, [], arg_tys, ret_tys) ->
+      | T.Func (sort, T.Replies, _ (*TBR*), arg_tys, ret_tys) ->
         check_exp env exp2;
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;

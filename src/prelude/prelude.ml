@@ -24,7 +24,7 @@ type Text = prim "Text";
 type Error = prim "Error";
 
 // top level scope
-type @_ = Any;
+type @ = Any;
 
 type Iter<T_> = {next : () -> ?T_};
 

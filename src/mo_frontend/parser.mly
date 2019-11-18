@@ -89,7 +89,7 @@ let share_expfield (ef : exp_field) =
   then ef
   else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
 
-let scope_id = "@_"
+let scope_id = "@"
 let scope_bind() = {var = scope_id @@ no_region; bound = PrimT "Any" @! no_region} @= no_region
 let scope_typ() = PathT ((IdH (scope_id @@ no_region)) @! no_region, []) @! no_region
 
