@@ -357,10 +357,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | CPSAwait, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
+      check_exp env a;
+      check_exp env kr
       (* TODO: We can check more here, can we *)
     | CPSAsync, [exp] ->
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
+      check_exp env exp;
       (* TODO: We can check more here, can we *)
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
