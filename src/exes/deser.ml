@@ -1000,8 +1000,13 @@ let rec sanitise_value (v : value) : value =
 
 and sanitise_value_fields vfs =
   let hash_compare a b = Lib.Uint32.compare a.it.hash b.it.hash in
-  let vfs = List.sort hash_compare vfs in
-  List.map sanitise_value_field vfs
+  let vfs' = List.sort_uniq hash_compare vfs in
+  if List.(length vfs' <> length vfs) then
+    begin
+      Printf.eprintf "deser: record value fields repeated";
+      exit 1
+    end;
+  List.map sanitise_value_field vfs'
 and sanitise_value_field vf = { vf with it = { vf.it with value = sanitise_value vf.it.value } }
 
 and sanitise_type t =
@@ -1018,8 +1023,13 @@ and sanitise_type_fields tfs =
     | Id h | Unnamed h -> h
     | Named s -> Idllib.IdlHash.idl_hash s in
   let hash_compare a b = Lib.Uint32.compare (hash_of a.it.label.it) (hash_of b.it.label.it) in
-  let tfs = List.sort hash_compare tfs in
-  List.map sanitise_type_field tfs
+  let tfs' = List.sort_uniq hash_compare tfs in
+  if List.(length tfs' <> length tfs) then
+    begin
+      Printf.eprintf "deser: type fields repeated";
+      exit 1
+    end;
+  List.map sanitise_type_field tfs'
 and sanitise_type_field tf = { tf with it = { tf.it with typ = sanitise_type tf.it.typ} }
 
 (* given a type, decide if there is a value inhabiting it *)
