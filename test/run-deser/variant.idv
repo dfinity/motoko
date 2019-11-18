@@ -4,4 +4,6 @@
 , variant {0 = 42} : variant {0 : int; 1 : text}
 , variant {1 = "cool"} : variant {0 : int; 1 : text}
 , variant {1 = "rev"} : variant {1 : text; 0 : int}
+, variant {a} : variant {a; b}
+, variant {987} : variant {987; 989}
 )

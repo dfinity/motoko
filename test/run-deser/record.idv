@@ -12,4 +12,6 @@
 , record {1 = -42; 0 = 25} : record {1 : nat; 0 : int}
 , record {1 = -42; 0 = 25} : record {0 : int; 1 : nat}
 , record {1 = -42; 0 = 25}
+, record {0 = -42; 1 = 25} : record {int; nat}
+, record {-42; 25} : record {int; nat}
 )
