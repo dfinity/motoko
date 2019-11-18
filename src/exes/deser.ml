@@ -1091,4 +1091,5 @@ let () =
   - shrink type table (union-find)
   - `+42` infers as `nat`, should be `int`
   - shorthands
+  - use PreT as the don't know type
  *)
