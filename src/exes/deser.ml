@@ -1098,9 +1098,8 @@ let () =
   - floats
   - service types
   - escaping in text
-  - heralding/outputting of type table
+  - heralding of the type table
   - sort type/value fields (optionally?) `--sanitize`/`--verbatim`
   - shrink type table (union-find)
   - `+42` infers as `nat`, should be `int`
-  - shorthands
  *)
