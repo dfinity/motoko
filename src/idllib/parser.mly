@@ -207,9 +207,9 @@ value :
     { OptV v @@ at $sloc }
   | VEC LCURLY vs=seplist(annval, SEMICOLON) RCURLY
     { VecV vs @@ at $sloc }
-  | RECORD LCURLY vfs=seplist(field_value(record_field_value_shorthand), SEMICOLON) RCURLY
+  | RECORD LCURLY vfs=seplist(field_value(record_field_shorthand), SEMICOLON) RCURLY
     { RecordV vfs @@ at $sloc }
-  | VARIANT LCURLY vf=field_value(variant_field_value_shorthand) RCURLY
+  | VARIANT LCURLY vf=field_value(variant_field_shorthand) RCURLY
     { VariantV vf @@ at $sloc }
   | LPAR v=annval RPAR
     { v }
@@ -220,23 +220,23 @@ annval :
   | v=value COLON ty=data_typ
     { AnnotV(v, ty) @@ at $sloc }
 
-record_field_value_shorthand :
+record_field_shorthand :
   | v=annval
     { { hash = Uint32.zero; name = None; value = v } @@ at $sloc }
 
-variant_field_value_shorthand :
+variant_field_shorthand :
   | n=NAT
     { { hash = Uint32.of_string n; name = None; value = NullV @@ no_region } @@ at $sloc }
   | name=name
     { { hash = hash name.it; name = Some name; value = NullV @@ no_region } @@ at $sloc }
 
-field_value(flavour) :
+field_value(shorthand) :
   | n=NAT EQ v=annval
     { { hash = Uint32.of_string n; name = None; value = v } @@ at $sloc }
   | name=name EQ v=annval
     { { hash = hash name.it; name = Some name; value = v } @@ at $sloc }
-  | shorthand=flavour
-    { shorthand }
+  | field=shorthand
+    { field }
 
 parse_arg :
   | LPAR vs=seplist(annval, COMMA) RPAR EOF
