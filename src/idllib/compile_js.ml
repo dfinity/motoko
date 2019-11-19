@@ -11,7 +11,7 @@ type typ_info = {
     typ : typ;
     is_rec : bool;
   }
-          
+
 (* Gather type definitions from actor and sort the definitions in topological order *)              
 let chase_env env actor =
   let new_env = ref [] in
@@ -31,7 +31,7 @@ let chase_env env actor =
     | VecT t -> chase t
     | RecordT fs -> chase_fields fs
     | VariantT fs -> chase_fields fs
-    | FuncT (ms, fs1, fs2) -> chase_fields fs1; chase_fields fs2
+    | FuncT (ms, fs1, fs2) -> List.iter chase fs1; List.iter chase fs2
     | PreT -> assert false
   and chase_fields fs =
     List.iter (fun (f : typ_field) -> chase f.it.typ) fs
@@ -58,7 +58,7 @@ let infer_rec env_list =
     | VecT t -> go t
     | RecordT fs -> go_fields fs
     | VariantT fs -> go_fields fs
-    | FuncT (_, fs1, fs2) -> go_fields fs1; go_fields fs2
+    | FuncT (_, fs1, fs2) -> List.iter go fs1; List.iter go fs2
     | preT -> assert false
   and go_fields fs =
     List.iter (fun (f:typ_field) -> go f.it.typ) fs
@@ -109,9 +109,9 @@ let rec pp_typ ppf t =
   | VariantT ts -> str ppf "IDL.Variant({"; concat ppf pp_field "," ts; str ppf "})";
   | FuncT (ms, t1, t2) ->
      str ppf "IDL.Func(";
-     pp_fields ppf t1;
+     pp_args ppf t1;
      kwd ppf ",";
-     pp_fields ppf t2;
+     pp_args ppf t2;
      str ppf ")";
   | ServT ts ->
      pp_open_hovbox ppf 1;
@@ -122,6 +122,13 @@ let rec pp_typ ppf t =
      pp_close_box ppf ();
   | PreT -> assert false
   );
+  pp_close_box ppf ()
+
+and pp_args ppf args =
+  pp_open_box ppf 1;
+  str ppf "[";
+  concat ppf pp_typ "," args;
+  str ppf "]";
   pp_close_box ppf ()
 
 and pp_fields ppf fs =
