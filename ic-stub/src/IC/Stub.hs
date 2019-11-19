@@ -233,19 +233,23 @@ newCallContext cc = state go
         i | M.null (call_contexts ic) = 0
           | otherwise = fst (M.findMax (call_contexts ic)) + 1
 
-modifyContext :: ICT m => CallId -> (CallContext -> CallContext) -> m ()
-modifyContext ctxt_id f =
+getCallContext :: ICT m => CallId -> m CallContext
+getCallContext ctxt_id =
+  gets ((M.! ctxt_id) . call_contexts)
+
+modifyCallContext :: ICT m => CallId -> (CallContext -> CallContext) -> m ()
+modifyCallContext ctxt_id f =
   modify $ \ic -> ic { call_contexts = M.adjust f ctxt_id (call_contexts ic) }
 
-respondContext :: ICT m => CallId -> Response -> m ()
-respondContext ctxt_id response = do
+respondCallContext :: ICT m => CallId -> Response -> m ()
+respondCallContext ctxt_id response = do
   -- TODO: check no prior response
-  modifyContext ctxt_id $ \ctxt -> ctxt { responded = True }
+  modifyCallContext ctxt_id $ \ctxt -> ctxt { responded = True }
   enqueueMessage $ ResponseMessage { call_context = ctxt_id, response }
 
 rememberTrap :: ICT m => CallId -> String -> m ()
 rememberTrap ctxt_id msg =
-  modifyContext ctxt_id $ \ctxt -> ctxt { last_trap = Just msg }
+  modifyCallContext ctxt_id $ \ctxt -> ctxt { last_trap = Just msg }
 
 callerOfRequest :: AsyncRequest -> EntityId
 callerOfRequest (InstallRequest user_id _ _) = user_id
@@ -253,14 +257,14 @@ callerOfRequest (UpdateRequest user_id _ _) = user_id
 
 callerOfCallID :: ICT m => CallId -> m EntityId
 callerOfCallID ctxt_id = do
-  ctxt <- gets ((M.! ctxt_id) . call_contexts)
+  ctxt <- getCallContext ctxt_id
   case origin ctxt of
     FromUser request -> return $ callerOfRequest request
     FromCanister other_ctxt_id _callback -> calleeOfCallID other_ctxt_id
 
 calleeOfCallID :: ICT m => CallId -> m EntityId
 calleeOfCallID ctxt_id = do
-  ctxt <- gets ((M.! ctxt_id) . call_contexts)
+  ctxt <- getCallContext ctxt_id
   return $ canister ctxt
 
 invokeEntry :: ICT m =>
@@ -279,7 +283,7 @@ invokeEntry ctxt_id (CanState wasm_state can_mod) entry = do
 processMessage :: ICT m => Message -> m ()
 processMessage (CallMessage ctxt_id entry) = do
   callee <- calleeOfCallID ctxt_id
-  let res r = respondContext ctxt_id r
+  let res r = respondCallContext ctxt_id r
   gets (M.lookup callee . canisters) >>= \case
     Nothing -> res $ Reject (RC_DESTINATION_INVALID, "canister does not exist: " ++ show callee)
     Just Nothing -> res $ Reject (RC_DESTINATION_INVALID, "canister is empty")
@@ -303,7 +307,7 @@ processMessage (CallMessage ctxt_id entry) = do
           mapM_ res mb_response
 
 processMessage (ResponseMessage ctxt_id response) = do
-  ctxt <- gets ((M.! ctxt_id) . call_contexts)
+  ctxt <- getCallContext ctxt_id
   case origin ctxt of
     FromUser request -> setReqStatus request $
       case response of
@@ -315,12 +319,12 @@ processMessage (ResponseMessage ctxt_id response) = do
         , entry = Closure callback response
         }
 
-starveContext :: ICT m => CallId -> m ()
-starveContext ctxt_id = do
-  ctxt <- gets ((M.! ctxt_id) . call_contexts)
+starveCallContext :: ICT m => CallId -> m ()
+starveCallContext ctxt_id = do
+  ctxt <- getCallContext ctxt_id
   let msg | Just t <- last_trap ctxt = "canister trapped: " ++ t
           | otherwise                = "canister did not respond"
-  respondContext ctxt_id $ Reject (RC_CANISTER_ERROR, msg)
+  respondCallContext ctxt_id $ Reject (RC_CANISTER_ERROR, msg)
 
 runToCompletion :: ICT m => m ()
 runToCompletion =
@@ -329,5 +333,5 @@ runToCompletion =
     Nothing -> nextMessage >>= \case
       Just m  -> processMessage m >> runToCompletion
       Nothing -> nextStarved >>= \case
-        Just c  -> starveContext c >> runToCompletion
+        Just c  -> starveCallContext c >> runToCompletion
         Nothing -> return ()
