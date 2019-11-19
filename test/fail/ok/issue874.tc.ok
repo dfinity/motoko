@@ -1,2 +1,0 @@
-issue874.mo:3.11-3.12: type error, field foo does not exist in type
-  actor {}
