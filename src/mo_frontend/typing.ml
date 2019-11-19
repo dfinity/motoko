@@ -919,8 +919,9 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t');
     T.Async (t1, t')
   | AwaitE exp1 ->
-    if env.async = None then
-      error env exp.at "misplaced await";
+    let t0 = match env.async with
+      | Some c -> T.Con(c, [])
+      | None -> error env exp.at "misplaced await" in
     let t1 = infer_exp_promote {env with in_await = true} exp1 in
     (match exp1.it with
        | CallE (f, _, _) ->
@@ -928,7 +929,6 @@ and infer_exp'' env exp : T.typ =
            error_in [Flags.ICMode] env f.at "expecting call to shared async function in await";
       | _ -> error_in [Flags.ICMode] env exp1.at "argument to await must be a call expression");
     (try
-       let t0 = T.Con (Lib.Option.value env.async, []) in
        let (t2, t3) = T.as_async_sub t0 t1 in
        if not (T.eq t0 t2) then
           error env exp.at "ill-scoped await";

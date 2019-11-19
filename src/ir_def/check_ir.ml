@@ -566,8 +566,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.Async (t0, t1') <: t
   | AwaitE exp1 ->
     check env.flavor.has_await "await in non-await flavor";
-    check (env.async <> None) "misplaced await";
-    let t0 = T.Con(Lib.Option.value env.async, []) in
+    let t0 = match env.async with
+      | Some c -> T.Con(c, [])
+      | None -> error env exp.at "misplaced await" in
     check_exp env exp1;
     let t1 = T.promote (typ exp1) in
     let (t2, t3) = try T.as_async_sub t0 t1
