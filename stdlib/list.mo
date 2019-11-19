@@ -513,7 +513,7 @@ public type List<T> = ?(T, List<T>);
    Creates a list of the given length with the same value in each position.
    */
   public func replicate<X>(n : Nat, x : X) : List<X> {
-    tabulate<X>(n, func (_) { x })
+    tabulate<X>(n, func _ { x })
   };
 
   /**
@@ -590,7 +590,7 @@ public type List<T> = ?(T, List<T>);
   public func chunksOf<X>(n : Nat, xs : List<X>) : List<List<X>> {
     let (l, r) = splitAt<X>(n, xs);
     if (isNil<X>(l)) {
-      l
+      null
     } else {
       push<List<X>>(l, chunksOf<X>(n, r))
     }
