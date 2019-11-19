@@ -132,7 +132,7 @@ and tuple vs ts =
       I.{label = I.Unnamed id @@ no_region; typ = typ vs x} @@ no_region
     ) ts
 and args vs ts =
-  List.map (fun x -> typ vs x) ts
+  List.map (typ vs) ts
 and meths vs fs =
   List.fold_right (fun f list ->
       match f.typ with
