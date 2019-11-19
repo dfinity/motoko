@@ -905,19 +905,19 @@ and infer_exp'' env exp : T.typ =
       error env exp.at "misplaced throw";
     if not env.pre then check_exp env T.throw exp1;
     T.Non
-  | AsyncE (typbind, exp1, typ1) ->
+  | AsyncE (typ_bind, exp1, typ1) ->
     if not in_shared then
       error_in [Flags.ICMode] env exp.at "unsupported async block";
-    let t0 = check_typ env typ0 in
-    let c, tb, ce, cs = check_typ_bind env tb in
+    let t1 = check_typ env typ1 in
+    let c, tb, ce, cs = check_typ_bind env typ_bind in
     let env' =
       {(adjoin_typs env ce cs) with labs = T.Env.empty; rets = Some T.Pre; async = Some c} in
     let t = infer_exp env' exp1 in
-    let t1 = T.open_ [t0] (T.close [c] t)  in
-    if not (T.shared t1) then
-      error_shared env t1 exp1.at "async type has non-shared content type\n  %s"
-        (T.string_of_typ_expand t1);
-    T.Async (t0, t1)
+    let t' = T.open_ [t1] (T.close [c] t)  in
+    if not (T.shared t') then
+      error_shared env t' exp1.at "async type has non-shared content type\n  %s"
+        (T.string_of_typ_expand t');
+    T.Async (t1, t')
   | AwaitE exp1 ->
     if env.async = None then
       error env exp.at "misplaced await";
@@ -993,14 +993,14 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand (T.Array t'));
     List.iter (check_exp env (T.as_immut t')) exps;
     t
-  | AsyncE (tb, exp1, typ0), T.Async (t0',t') ->
+  | AsyncE (tb, exp1, typ1), T.Async (t1',t') ->
     if not in_shared then
       error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
-    let t0 = check_typ env typ0 in
-    if not (T.eq t0 t0') then
+    let t1 = check_typ env typ1 in
+    if not (T.eq t1 t1') then
       error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s"
-        (T.string_of_typ_expand t0)
-        (T.string_of_typ_expand t0');
+        (T.string_of_typ_expand t1)
+        (T.string_of_typ_expand t1');
     let c, tb, ce, cs = check_typ_bind env tb in
     let env' =
       {(adjoin_typs env ce cs) with labs = T.Env.empty; rets = Some t'; async = Some c} in
