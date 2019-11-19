@@ -27,8 +27,9 @@ initializeMethod :: Module -> CanisterId -> EntityId -> Blob -> TrapOr WasmState
 initializeMethod wasm_mod cid caller dat = runESST $ \esref ->
   rawInitializeModule esref wasm_mod >>= \case
     Trap err -> return $ Trap err
-    Return inst ->
-      rawInitializeMethod esref wasm_mod inst cid caller dat >>= \case
+    Return inst -> do
+      let rs = (esref, cid, inst)
+      rawInitializeMethod rs wasm_mod caller dat >>= \case
         Trap err -> return $ Trap err
         Return () -> Return . WasmState wasm_mod cid <$> persistInstance inst
 

@@ -35,7 +35,8 @@ initializeMethod wasm_mod cid caller dat = runESST $ \esref ->
   rawInitializeModule esref wasm_mod >>= \case
     Trap err -> return $ Trap err
     Return inst -> do
-      result <- rawInitializeMethod esref wasm_mod inst cid caller dat
+      let rs = (esref, cid, inst)
+      result <- rawInitializeMethod rs wasm_mod caller dat
       let state' = WSInit wasm_mod cid caller dat
       case result of
         Trap err          -> return $ Trap err
@@ -78,8 +79,9 @@ replay esref s = silently esref $ go s
     go :: WasmState -> ST s (ImpState s)
     go (WSInit wasm_mod cid caller dat) = do
       inst <- rawInitializeModule esref wasm_mod >>= trapToFail
-      rawInitializeMethod esref wasm_mod inst cid caller dat >>= trapToFail
-      return (esref, cid, inst)
+      let rs = (esref, cid, inst)
+      rawInitializeMethod rs wasm_mod caller dat >>= trapToFail
+      return rs
     go (WSUpdate m caller dat s) = do
       is <- go s
       _ <- rawUpdateMethod is m caller dat >>= trapToFail

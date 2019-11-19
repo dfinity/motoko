@@ -302,8 +302,8 @@ rawInitializeModule esref wasm_mod = do
     Left  err -> return $ Trap err
     Right inst -> return $ Return inst
 
-rawInitializeMethod :: ESRef s -> Module -> Instance s -> CanisterId -> EntityId -> Blob -> ST s (TrapOr ())
-rawInitializeMethod esref wasm_mod inst cid caller dat = do
+rawInitializeMethod :: ImpState s -> Module -> EntityId -> Blob -> ST s (TrapOr ())
+rawInitializeMethod (esref, cid, inst) wasm_mod caller dat = do
   result <- runExceptT $ do
     let es = (initalExecutionState cid inst)
               { params = Params
