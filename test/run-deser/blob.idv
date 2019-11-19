@@ -1,0 +1,4 @@
+( blob "Hi!"
+, blob "你好" : vec nat8
+, blob "谢谢" : blob
+)

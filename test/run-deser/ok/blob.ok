@@ -1,0 +1,16 @@
+
+DESER, reading!
+(Arg
+  (AnnotV (VecV) (VecT (PrimT nat8)))
+  (AnnotV (AnnotV (VecV) (VecT (PrimT nat8))) (VecT (PrimT nat8)))
+  (AnnotV (AnnotV (VecV) (VecT (PrimT nat8))) (VecT (PrimT nat8)))
+)
+
+DESER, parsed!
+
+DESER, sanitised!
+((sanitised) Arg
+  (AnnotV (VecV) (VecT (PrimT nat8)))
+  (AnnotV (AnnotV (VecV) (VecT (PrimT nat8))) (VecT (PrimT nat8)))
+  (AnnotV (AnnotV (VecV) (VecT (PrimT nat8))) (VecT (PrimT nat8)))
+)
