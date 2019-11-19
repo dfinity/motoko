@@ -1,3 +1,6 @@
+import Array "array.mo";
+import Option "option.mo";
+
 module {
 /**
 
@@ -517,7 +520,7 @@ public type List<T> = ?(T, List<T>);
    `zip`
    -------------
    Creates a list of pairs from a pair of lists. If the given lists have
-   inconsistent lengths, then the list created will have a length equal to the
+   inconsistent lengths, then the list created will have a length equal to their
    minimum.
    */
   public func zip<X, Y>(xs : List<X>, ys : List<Y>) : List<(X, Y)> {
@@ -530,7 +533,7 @@ public type List<T> = ?(T, List<T>);
    Creates a list whose elements are calculated from the given function and
    elements occuring at the same position in the given lists. If the given lists
    have inconsistent lengths, then the list created will have a length equal to 
-   the minimum.
+   their minimum.
    */
   public func zipWith<X, Y, Z>(
     xs : List<X>,
@@ -552,6 +555,58 @@ public type List<T> = ?(T, List<T>);
         }
       }
     }
+  };
+
+  /**
+   `splitAt`
+   -----------
+   Creates a pair of lists by splitting the given list at the given (zero-based) index.
+   */
+  public func splitAt<X>(n : Nat, xs : List<X>) : (List<X>, List<X>) {
+    if (n == 0) {
+      (null, xs)
+    } else {
+      func rec(n : Nat, xs : List<X>) : (List<X>, List<X>) {
+        switch (pop<X>(xs)) {
+          case (null, _) {
+            (null, null)
+          };
+          case (?h, t) {
+            if (n == 1) {
+              (singleton<X>(h), t)
+            } else {
+              let (l, r) = rec(n - 1, t);
+              (push<X>(h, l), r)
+            }
+          }
+        }
+      };
+      rec(n, xs)
+    }
+  };
+
+  public func fromArray<A>(xs : [A]) : List<A> {
+    Array.foldr<A, List<A>>(func (x : A, ys : List<A>) : List<A> {
+      push<A>(x, ys);
+    }, nil<A>(), xs);
+  };
+
+  public func fromArrayMut<A>(xs : [var A]) : List<A> {
+    fromArray<A>(Array.freeze<A>(xs));
+  };
+
+  public func toArray<A>(xs : List<A>) : [A] {
+    let length = len<A>(xs);
+    var list = xs;
+    Array_tabulate<A>(length, func (i) {
+      let popped = pop<A>(list);
+      list := popped.1;
+      Option.unwrap<A>(popped.0);
+    });
+  };
+
+  public func toArrayMut<A>(xs : List<A>) : [var A] {
+    Array.thaw<A>(toArray<A>(xs));
   };
 
 /**

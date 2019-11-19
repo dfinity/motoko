@@ -9,6 +9,8 @@
 #    -a: Update the files in ok/
 #    -1: Use Ancient API
 #    -2: Use IC API
+#    -3: Use Stub API
+#    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
 #    -r: Activate release mode (eliminate `debug` blocks)
@@ -31,9 +33,12 @@ export MO_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
+IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
+SKIP_RUNNING=${SKIP_RUNNING:-no}
+ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "a12sir" o; do
+while getopts "a123stir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -44,8 +49,14 @@ while getopts "a12sir" o; do
         2)
             API=ic
             ;;
+        3)
+            API=stub
+            ;;
         s)
             ECHO=true
+            ;;
+        t)
+            ONLY_TYPECHECK=true
             ;;
         i)
             IDL=yes
@@ -58,6 +69,7 @@ done
 
 if [ $API = "wasm" ]; then EXTRA_MOC_FLAGS=-no-system-api; fi
 if [ $API = "ancient" ]; then EXTRA_MOC_FLAGS=-ancient-system-api; fi
+if [ $API = "stub" ]; then EXTRA_MOC_FLAGS=-stub-system-api; fi
 if [ $RELEASE = "yes" ]; then MOC_FLAGS=--release; fi
 
 shift $((OPTIND-1))
@@ -161,7 +173,7 @@ do
     run tc $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --check $base.mo
     tc_succeeded=$?
 
-    if [ "$tc_succeeded" -eq 0 ]
+    if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
@@ -232,6 +244,9 @@ do
             elif [ $API = ic ]
             then
               run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
+            elif [ $API = stub ]
+	    then
+              DRUN=$IC_STUB_RUN run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $base.mo
             else
               run wasm-run $WASM $out/$base.wasm
             fi
