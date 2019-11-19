@@ -106,7 +106,7 @@ let rec typ vs t =
   | Func (Shared s, c, [], ts1, ts2) ->
      let t1 = args vs ts1 in
      (match ts2, c with
-     | [], Returns -> I.FuncT ([I.Oneway @@ no_region], fs1, [])
+     | [], Returns -> I.FuncT ([I.Oneway @@ no_region], t1, [])
      | ts, Promises _ ->
        I.FuncT (
          (match s with
