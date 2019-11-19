@@ -4256,7 +4256,7 @@ module Serialization = struct
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@serialize<" ^ ts_name ^ ">" in
     (* On ancient API returns databuf/elembuf,
-       On IC API returns data/length poitners (will be GC next time!)
+       On IC API returns data/length pointers (will be GC next time!)
     *)
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type] (fun env get_x ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
@@ -5135,7 +5135,13 @@ module FuncDec = struct
       let ae0 = VarEnv.mk_fun_ae outer_ae in
       Func.of_body outer_env ["api_nonce", I64Type] [] (fun env -> G.with_region at (
         G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
-
+        (* reply early for a oneway *)
+        (if control = Type.Returns
+         then
+           Tuple.compile_unit ^^
+           Serialization.serialize env [] ^^
+           Dfinity.reply_with_data env
+         else G.nop) ^^
         (* Deserialize argument and add params to the environment *)
         let arg_names = List.map (fun a -> a.it) args in
         let arg_tys = List.map (fun a -> a.note) args in
