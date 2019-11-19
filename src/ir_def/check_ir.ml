@@ -570,7 +570,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let t0 = T.Con(Lib.Option.value env.async, []) in
     check_exp env exp1;
     let t1 = T.promote (typ exp1) in
-    let (t2, t3) = try T.as_async_sub t1
+    let (t2, t3) = try T.as_async_sub t0 t1
              with Invalid_argument _ ->
                error env exp1.at "expected async type, but expression has type\n  %s"
                  (T.string_of_typ_expand t1)

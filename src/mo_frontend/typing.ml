@@ -928,8 +928,8 @@ and infer_exp'' env exp : T.typ =
            error_in [Flags.ICMode] env f.at "expecting call to shared async function in await";
       | _ -> error_in [Flags.ICMode] env exp1.at "argument to await must be a call expression");
     (try
-       let (t2, t3) = T.as_async_sub t1 in
        let t0 = T.Con (Lib.Option.value env.async, []) in
+       let (t2, t3) = T.as_async_sub t0 t1 in
        if not (T.eq t0 t2) then
           error env exp.at "ill-scoped await";
        t3

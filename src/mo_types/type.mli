@@ -123,7 +123,7 @@ val as_unit_sub : typ -> unit
 val as_pair_sub : typ -> typ * typ
 val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
-val as_async_sub : typ -> typ * typ
+val as_async_sub : typ -> typ -> typ * typ
 
 
 (* Argument/result sequences *)
