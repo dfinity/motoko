@@ -811,7 +811,8 @@ let rec to_bid (v : value) : bid =
                | _ -> bottom)
   | VecV vs -> (function
                 | PreT -> VecT List.(fold_left lub (PrimT Reserved) (map infer' vs) @@ v.at)
-                | _ -> failwith "cannot VecT yet")
+                | VecT el -> VecT List.(fold_left lub (PrimT Reserved) (map (fun v -> to_bid v el.it) vs) @@ v.at)
+                | _ -> bottom)
   | RecordV vfs -> (function
                     | PreT -> RecordT (List.map infer_field vfs)
                     | RecordT tfs ->
