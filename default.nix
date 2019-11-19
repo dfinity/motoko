@@ -204,16 +204,6 @@ rec {
     '';
   };
 
-  moc-tar = nixpkgs.symlinkJoin {
-    name = "moc-tar";
-    paths = [ moc-bin rts didc ];
-    postBuild = ''
-      tar -chf $out/moc.tar -C $out bin/moc rts/mo-rts.wasm bin/didc
-      mkdir -p $out/nix-support
-      echo "file bin $out/moc.tar" >> $out/nix-support/hydra-build-products
-    '';
-  };
-
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko ic-stub;
 
@@ -391,27 +381,8 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib.tar -C $src *.mo
-      mkdir -p $out/nix-support
-      echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
-    '';
-    forceShare = ["man"];
-  };
-
-  stdlib-doc-live = stdenv.mkDerivation {
-    name = "stdlib-doc-live";
-    src = subpath ./stdlib;
-    buildInputs = with nixpkgs;
-      [ pandoc bash python ];
-    buildPhase = ''
-      patchShebangs .
-      make alldoc
-    '';
-    installPhase = ''
-      mkdir -p $out
-      mv doc $out/
-      mkdir -p $out/nix-support
-      echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
+      cp ./*.mo $out
+      rm $out/*Test.mo
     '';
     forceShare = ["man"];
   };
@@ -427,9 +398,9 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib-doc.tar -C doc .
+      mv doc $out/
       mkdir -p $out/nix-support
-      echo "report stdlib-doc $out/stdlib-doc.tar" >> $out/nix-support/hydra-build-products
+      echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
     '';
     forceShare = ["man"];
   };
@@ -468,7 +439,6 @@ rec {
       rts
       stdlib
       stdlib-doc
-      stdlib-doc-live
       produce-exchange
       users-guide
       ic-stub
