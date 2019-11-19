@@ -446,7 +446,7 @@ exp_nondec(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp(bl)
-    { AsyncE(scope_bind(),e,scope_typ()) @? at $sloc }
+    { AsyncE(scope_bind(), e, scope_typ()) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)
