@@ -993,7 +993,7 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand (T.Array t'));
     List.iter (check_exp env (T.as_immut t')) exps;
     t
-  | AsyncE (tb, exp1, typ1), T.Async (t1',t') ->
+  | AsyncE (tb, exp1, typ1), T.Async (t1', t') ->
     if not in_shared then
       error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
     let t1 = check_typ env typ1 in
