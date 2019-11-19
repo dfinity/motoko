@@ -1699,7 +1699,8 @@ and infer_dec_typdecs env dec : Scope.t =
     let decs = List.map (fun {it = {vis;dec}; _} -> dec) fields in
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
-    let obj_scope = infer_block_typdecs env' decs in
+    let obj_scope_typs = infer_block_typdecs env' decs in
+    let obj_scope = Scope.adjoin scope obj_scope_typs in
     Scope.{ empty with
       con_env = obj_scope.con_env;
       val_env = T.Env.singleton id.it (object_of_scope env sort fields obj_scope at);
@@ -1790,7 +1791,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let obj_scope' =
       infer_block_valdecs
         (adjoin {env with pre = true} obj_scope)
-        decs Scope.empty
+        decs obj_scope
     in
     let obj_typ = object_of_scope env sort fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
