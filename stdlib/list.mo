@@ -513,7 +513,7 @@ public type List<T> = ?(T, List<T>);
    Creates a list of the given length with the same value in each position.
    */
   public func replicate<X>(n : Nat, x : X) : List<X> {
-    tabulate<X>(n, func _ { x })
+    tabulate<X>(n, func (_) { x })
   };
 
   /**
