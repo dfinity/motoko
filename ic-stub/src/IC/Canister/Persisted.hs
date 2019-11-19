@@ -24,13 +24,12 @@ data WasmState = WasmState Module CanisterId PInstance
 
 initialize :: Module -> CanisterId -> EntityId -> Blob -> TrapOr WasmState
 initialize wasm_mod cid caller dat = runESST $ \esref ->
-  rawInitializeModule esref wasm_mod >>= \case
+  rawInitialize esref cid wasm_mod >>= \case
     Trap err -> return $ Trap err
-    Return inst -> do
-      let rs = (esref, cid, inst)
+    Return rs ->
       rawInvoke rs (CI.Initialize wasm_mod caller dat) >>= \case
         Trap err -> return $ Trap err
-        Return () -> Return . WasmState wasm_mod cid <$> persistInstance inst
+        Return () -> Return <$> newWasmState wasm_mod rs
 
 invoke :: WasmState -> CI.CanisterMethod r -> TrapOr (WasmState, r)
 invoke s m = runESST $ \esref -> do
@@ -44,12 +43,20 @@ invoke s m = runESST $ \esref -> do
 
 replay :: ESRef s -> WasmState -> ST s (ImpState s)
 replay esref (WasmState wasm_mod cid pinst) = do
-    is <- rawInitializeModule esref wasm_mod >>= trapToFail
-    resumeInstance is pinst
-    return (esref, cid, is)
+    rs <- rawInitialize esref cid wasm_mod >>= trapToFail
+    resume rs pinst
+    return rs
   where
     trapToFail (Trap _err) = fail "replay failed"
     trapToFail (Return x) = return x
+
+newWasmState :: Module -> ImpState s -> ST s WasmState
+newWasmState wasm_mod (_esref, cid, inst) =
+    WasmState wasm_mod cid <$> persistInstance inst
+
+resume :: ImpState s -> PInstance -> ST s ()
+resume (_, _, inst) pinst =
+    resumeInstance inst pinst
 
 persist :: WasmState -> ImpState s -> ST s WasmState
 persist (WasmState wasm_mod cid _) (_, _, inst) =

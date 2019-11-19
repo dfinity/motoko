@@ -12,7 +12,7 @@ module IC.Canister.Imp
  ( ESRef
  , ImpState
  , runESST
- , rawInitializeModule
+ , rawInitialize
  , rawInvoke
  , silently
  )
@@ -294,12 +294,12 @@ systemAPI esref =
 
 type ImpState s = (ESRef s, CanisterId, Instance s)
 
-rawInitializeModule :: ESRef s -> Module -> ST s (TrapOr (Instance s))
-rawInitializeModule esref wasm_mod = do
+rawInitialize :: ESRef s -> CanisterId -> Module -> ST s (TrapOr (ImpState s))
+rawInitialize esref cid wasm_mod = do
   result <- runExceptT $ initialize wasm_mod (systemAPI esref)
   case result of
     Left  err -> return $ Trap err
-    Right inst -> return $ Return inst
+    Right inst -> return $ Return (esref, cid, inst)
 
 rawInvoke :: ImpState s -> CI.CanisterMethod r -> ST s (TrapOr r)
 rawInvoke esref (CI.Initialize wasm_mod caller dat) =

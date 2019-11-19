@@ -36,10 +36,9 @@ data WasmState = WasmState
 
 initialize :: Module -> CanisterId -> EntityId -> Blob -> TrapOr WasmState
 initialize wasm_mod cid caller dat = runESST $ \esref ->
-  rawInitializeModule esref wasm_mod >>= \case
+  rawInitialize esref cid wasm_mod >>= \case
     Trap err -> return $ Trap err
-    Return inst -> do
-      let rs = (esref, cid, inst)
+    Return rs -> do
       let m = CI.Initialize wasm_mod caller dat
       result <- rawInvoke rs m
       let state' = WasmState wasm_mod cid [ACall m]
@@ -63,9 +62,7 @@ replay esref WasmState{ ws_mod, ws_self_id, ws_calls } = silently esref $ go ws_
     trapToFail (Return x) = return x
 
     go :: [ACall] -> ST s (ImpState s)
-    go [] = do
-      inst <- rawInitializeModule esref ws_mod >>= trapToFail
-      return (esref, ws_self_id, inst)
+    go [] = rawInitialize esref ws_self_id ws_mod >>= trapToFail
     go (ACall m:ms) = do
       is <- go ms
       _ <- rawInvoke is m >>= trapToFail
