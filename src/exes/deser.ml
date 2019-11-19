@@ -28,17 +28,17 @@ let read_byte () : int =
 let read_2byte () : int =
   let lsb = read_byte () in
   let msb = read_byte () in
-  msb * 256 + lsb
+  msb lsl 8 + lsb
 
 let read_4byte () : int =
   let lsb = read_2byte () in
   let msb = read_2byte () in
-  msb * 65536 + lsb
+  msb lsl 16 + lsb
 
-let read_8byte () : int = (* TODO: should be bigint *)
+let read_8byte () : Big_int.big_int =
   let lsb = read_4byte () in
   let msb = read_4byte () in
-  msb * 4294967296 + lsb
+  Big_int.(add_int_big_int lsb (mult_int_big_int 4294967296 (big_int_of_int msb)))
 
 let read_signed_byte () : bool * int =
   let b = read_byte () in
@@ -73,19 +73,18 @@ let read_int8 () : int =
 let read_int16 () : int =
   let lsb = read_byte () in
   let msb = read_int8 () in
-  msb * 256 + lsb
+  msb lsl 8 lor lsb
 
 let read_int32 () : int =
   let lsb = read_2byte () in
   let msb = read_int16 () in
-  msb * 65536 + lsb
+  msb lsl 16 lor lsb
 
-let read_int64 () : int = (* TODO: should be bigint *)
+let read_int64 () : Big_int.big_int =
   let lsb = read_4byte () in
   let msb = read_int32 () in
-  msb * 4294967296 + lsb
+  Big_int.(add_int_big_int lsb (mult_int_big_int 4294967296 (big_int_of_int msb)))
 
-(* bool: M(b : bool)     = i8(if b then 1 else 0) *)
 let read_bool () : bool =
   match read_byte () with
   | 0 -> false
@@ -152,11 +151,11 @@ val output_nil : outputter
 val output_byte : int -> unit
 val output_2byte : int -> unit
 val output_4byte : int -> unit
-val output_8byte : int -> unit
+val output_8byte : Big_int.big_int -> unit
 val output_int8 : int -> unit
 val output_int16 : int -> unit
 val output_int32 : int -> unit
-val output_int64 : int -> unit
+val output_int64 : Big_int.big_int -> unit
 val output_text : int -> Stdio.In_channel.t -> Stdio.Out_channel.t -> unit
 val output_some : outputter -> unit
 val output_arguments : int -> outputter * (unit -> int -> outputter -> outputter)
@@ -184,6 +183,7 @@ let fill () = if !continue_line then (continue_line := false; "") else String.ma
 
 let output_string what (s : string) = Printf.printf "%s%s: %s\n" (fill ()) what s
 let output_decimal what (i : int) = Printf.printf "%s%s: %d\n" (fill ()) what i
+let output_big_decimal what (i : Big_int.big_int) = Printf.printf "%s%s: %s\n" (fill ()) what (Big_int.string_of_big_int i)
 
 (* outputters *)
 let output_nat nat = output_decimal "output_nat" nat
@@ -194,11 +194,11 @@ let output_some consumer = Printf.printf "%sSome: value follows on the next line
 let output_byte b = output_decimal "output_byte" b
 let output_2byte b = output_decimal "output_2byte" b
 let output_4byte b = output_decimal "output_4byte" b
-let output_8byte b = output_decimal "output_8byte" b
+let output_8byte b = output_big_decimal "output_8byte" b
 let output_int8 i = output_decimal "output_int8" i
 let output_int16 i = output_decimal "output_int16" i
 let output_int32 i = output_decimal "output_int32" i
-let output_int64 i = output_decimal "output_int64" i
+let output_int64 i = output_big_decimal "output_int64" i
 let output_text bytes from tostream =
       let buf = Buffer.create 0 in
       ignore (input_buffer from buf ~len:bytes);
@@ -241,16 +241,24 @@ let output_string (s : string) = print_string s
 let chat_string s = if !chatty then output_string s
 let output_string_space (s : string) = output_string s; output_string " "
 let output_decimal (i : int) = Printf.printf "%d" i
-let output_bignum (i : int) = output_decimal i (* for now *)
+let output_big_decimal (i : Big_int.big_int) = output_string (Big_int.string_of_big_int i)
+(* let output_bignum (i : Big_int.big_int) = Printf.printf "%s" (Big_int.string_of_big_int i) *)
+let output_bignum (i : int) = output_decimal i (* for now, later: output_big_decimal *)
+let casted ty f v = match ty with
+  | IntN n -> f v; Printf.printf " : int%d" n
+  | NatN n -> f v; Printf.printf " : nat%d" n
+  | _ -> assert false
 
 let output_bool b = output_string (if b then "true" else "false")
 let output_nil () = output_string "null"
 let output_some consumer = output_string_space "opt"; consumer ()
-let output_byte, output_2byte, output_4byte = output_decimal, output_decimal, output_decimal
-let output_8byte = output_bignum
+let output_byte, output_2byte, output_4byte =
+  casted (NatN 8) output_decimal, casted (NatN 16) output_decimal, casted (NatN 32) output_decimal
+let output_8byte = casted (NatN 64) output_big_decimal
 let output_nat, output_int = output_bignum, output_bignum
-let output_int8, output_int16, output_int32 = output_decimal, output_decimal, output_decimal
-let output_int64 = output_bignum
+let output_int8, output_int16, output_int32 =
+  casted (IntN 8) output_decimal, casted (IntN 16) output_decimal, casted (IntN 32) output_decimal
+let output_int64 = casted (IntN 64) output_big_decimal
 let output_text n froms tos =
   output_string "\"";
   let buf = Buffer.create 0 in
@@ -301,16 +309,17 @@ module OutputJson : Dump = struct
 let output_string (s : string) = print_string s
 let output_string_space (s : string) = Printf.printf "%s " s
 let output_decimal (i : int) = Printf.printf "%d" i
+let output_big_decimal (i : Big_int.big_int) = output_string (Big_int.string_of_big_int i)
 let output_bignum (i : int) = output_decimal i (* for now *)
 
 let output_bool b = output_string (if b then "true" else "false")
 let output_nil () = output_string "null"
 let output_some consumer = output_string "["; consumer (); output_string "]"
 let output_byte, output_2byte, output_4byte = output_decimal, output_decimal, output_decimal
-let output_8byte = output_bignum
+let output_8byte = output_big_decimal
 let output_nat, output_int = output_bignum, output_bignum
 let output_int8, output_int16, output_int32 = output_decimal, output_decimal, output_decimal
-let output_int64 = output_bignum
+let output_int64 = output_big_decimal
 let output_text n froms tos =
   output_string "\"";
   let buf = Buffer.create 0 in
