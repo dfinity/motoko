@@ -73,7 +73,7 @@ let field_name (f: typ_field) =
   | Id n -> Lib.Uint32.to_string n
   | Named name -> name
   | Unnamed n -> "Unnamed " ^ (Lib.Uint32.to_string n)
-                    
+
 let compare_field (f1: typ_field) (f2: typ_field) = Lib.Uint32.compare (field_id f1) (field_id f2)
 let compare_meth (m1: typ_meth) (m2: typ_meth) = compare m1.it.var m2.it.var
 let find_type env id =
@@ -113,8 +113,8 @@ let rec check_typ env t =
   | PrimT prim -> t
   | VarT id -> ignore (find_type env id); t
   | FuncT (ms, t1, t2) ->
-     let t1' = check_fields env t1 in
-     let t2' = check_fields env t2 in
+     let t1' = List.map (fun t -> check_typ env t) t1 in
+     let t2' = List.map (fun t -> check_typ env t) t2 in
      if List.exists (fun m -> m.it == Oneway) ms && List.length t2 > 0 then
        error env t.at "oneway function has non-unit return type";
      FuncT (ms, t1', t2') @@ t.at
