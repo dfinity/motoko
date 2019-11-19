@@ -1,5 +1,5 @@
-import List "mo:stdlib/list.mo";
-import Option "mo:stdlib/option.mo";
+import List "list.mo";
+import Option "option.mo";
 
 type List<T> = List.List<T>;
 
