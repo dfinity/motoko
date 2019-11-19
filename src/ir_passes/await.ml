@@ -125,7 +125,6 @@ and t_exp' context exp' =
        LabelEnv.add Return (Cont (ContVar k_ret))
          (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
      in
-     (* TODO: bind k_fail *)
      (asyncE (typ exp1) ([k_ret; k_fail] -->*
                            c_exp context' exp1 (ContVar k_ret))).it
   | TryE _

@@ -11,7 +11,7 @@ then
   exit 1
 fi
 
-export LANG=C
+export LANG=C.UTF-8
 
 ( if [ -n "$2" ]; then grep '^//CALL ' $2 | cut -c8-; fi;) |
 	$DRUN -c "$CONFIG" $1 /dev/stdin

@@ -1,4 +1,6 @@
-stdenv: self: super: {
+nix: subpath:
+  let stdenv = nix.stdenv; in
+  self: super: {
   haskell-lsp-types = self.callPackage
     ({ mkDerivation, aeson, base, bytestring, data-default, deepseq
      , filepath, hashable, lens, network-uri, scientific, text
@@ -90,7 +92,17 @@ stdenv: self: super: {
          hydraPlatforms = stdenv.lib.platforms.none;
        }) {};
 
-  lsp-int = self.callCabal2nix "lsp-int" ../test/lsp-int { };
+  lsp-int = self.callCabal2nix "lsp-int" (subpath "test/lsp-int") { };
 
-  qc-motoko = self.callCabal2nix "qc-motoko" ../test/random { };
+  qc-motoko = self.callCabal2nix "qc-motoko" (subpath "test/random") { };
+
+  winter = self.callCabal2nixWithOptions "winter"
+    (nix.fetchFromGitHub {
+      owner = "nomeata";
+      repo = "winter";
+      rev = "eb8add32c7de95ccdaf1c896f894814833633bbc";
+      sha256 = "05pa6fwvs7galf0gnjngampfdfrki8zjd92f4hzr9yv75jxzv10v";
+     }) "--no-check" {};
+
+  ic-stub = self.callCabal2nixWithOptions "ic-stub" (subpath "ic-stub") "-frelease" { };
 }
