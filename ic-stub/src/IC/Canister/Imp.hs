@@ -110,8 +110,8 @@ silently (pref, _esref) f = do
 
 getsES :: ESRef s -> (ExecutionState s -> b) -> HostM s b
 getsES (_, esref) f = lift (readSTRef esref) >>= \case
-      Nothing -> throwError "System API not available yet"
-      Just es -> return (f es)
+  Nothing -> throwError "System API not available yet"
+  Just es -> return (f es)
 
 modES :: ESRef s -> (ExecutionState s -> ExecutionState s) -> HostM s ()
 modES (_, esref) f = lift $ modifySTRef esref (fmap f)
@@ -160,7 +160,7 @@ systemAPI esref =
     copy_to_canister :: Int32 -> Int32 -> Int32 -> Blob -> HostM s ()
     copy_to_canister dst offset size blob = do
       unless (offset == 0) $
-        throwError "offset /= 0 not suppoted"
+        throwError "offset /= 0 not supported"
       unless (size == fromIntegral (BS.length blob)) $
         throwError "copying less than the full blob is not supported"
       i <- getsES esref inst

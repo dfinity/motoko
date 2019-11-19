@@ -52,11 +52,11 @@ replay esref (WasmState wasm_mod cid pinst) = do
 
 newWasmState :: Module -> ImpState s -> ST s WasmState
 newWasmState wasm_mod (_esref, cid, inst) =
-    WasmState wasm_mod cid <$> persistInstance inst
+  WasmState wasm_mod cid <$> persistInstance inst
 
 resume :: ImpState s -> PInstance -> ST s ()
 resume (_, _, inst) pinst =
-    resumeInstance inst pinst
+  resumeInstance inst pinst
 
 persist :: WasmState -> ImpState s -> ST s WasmState
 persist (WasmState wasm_mod cid _) (_, _, inst) =
