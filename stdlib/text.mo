@@ -1,9 +1,9 @@
 import List "list.mo";
 import Option "option.mo";
 
-type List<T> = List.List<T>;
-
 module {
+
+  type List<T> = List.List<T>;
 
   public func append(x : Text, y : Text) : Text {
     x # y;
