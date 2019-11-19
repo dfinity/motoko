@@ -29,6 +29,8 @@ import Data.List
 import Data.Maybe
 import Control.Monad
 import Control.Monad.State.Class
+import Data.Sequence (Seq(..))
+import Data.Foldable (toList)
 
 -- import Debug.Trace
 
@@ -108,7 +110,7 @@ data Message =
 data IC = IC
   { canisters :: CanisterId ↦ Maybe CanState
   , requests :: AsyncRequest ↦ RequestStatus
-  , messages :: [Message]
+  , messages :: Seq Message
   , call_contexts :: CallId ↦ CallContext
   }
 
@@ -157,7 +159,7 @@ nextStarved = gets $ \ic -> listToMaybe
   [ c
   | (c, ctxt) <- M.toList (call_contexts ic)
   , not $ responded ctxt
-  , null [ () | ResponseMessage { call_context = c' } <- messages ic, c' == c ]
+  , null [ () | ResponseMessage { call_context = c' } <- toList (messages ic), c' == c ]
   , null
       [ ()
       | CallContext { responded = False, origin = FromCanister c' _}
@@ -169,8 +171,8 @@ nextStarved = gets $ \ic -> listToMaybe
 nextMessage :: ICT m => m (Maybe Message)
 nextMessage = state $ \ic ->
   case messages ic of
-    [] -> (Nothing, ic)
-    (m:ms) -> (Just m, ic { messages = ms })
+    Empty -> (Nothing, ic)
+    m :<| ms -> (Just m, ic { messages = ms })
 
 setReqStatus :: ICT m => AsyncRequest -> RequestStatus -> m ()
 setReqStatus r s =
@@ -220,10 +222,8 @@ processRequest r@(UpdateRequest _user_id method arg) = do
     }
   setReqStatus r Processing
 
--- processRequest r = setReqStatus r (Rejected (0, "Unknown request type"))
-
 enqueueMessage :: ICT m => Message -> m ()
-enqueueMessage m = modify $ \ic -> ic { messages = messages ic ++ [m] }
+enqueueMessage m = modify $ \ic -> ic { messages = messages ic :|> m }
 
 newCallContext :: ICT m => CallContext -> m CallId
 newCallContext cc = state go
