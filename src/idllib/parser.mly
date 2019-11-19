@@ -212,6 +212,8 @@ value :
     { OptV v @@ at $sloc }
   | VEC LCURLY vs=seplist(annval, SEMICOLON) RCURLY
     { VecV vs @@ at $sloc }
+  | BLOB text=TEXT
+    { AnnotV (VecV [] @@ at $sloc, VecT (PrimT Nat8 @@ no_region) @@ no_region) @@ at $sloc }
   | RECORD LCURLY vfs=seplist(field_value(record_field_shorthand), SEMICOLON) RCURLY
     { RecordV (List.rev (snd (List.fold_left pass_hash (Uint32.zero, []) vfs)))
       @@ at $sloc }

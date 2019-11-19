@@ -181,6 +181,7 @@ and value_token = parse
   | "func" { FUNC }
   | "opt" { OPT }
   | "vec" { VEC }
+  | "blob" { BLOB }
   | "record" { RECORD }
   | "variant" { VARIANT }
 
