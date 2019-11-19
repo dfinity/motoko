@@ -544,6 +544,8 @@ let reverse_mode = ref false
 let set_reverse f () =
   reverse_mode := f
 
+let sanitise = ref true
+
 let argspec = Arg.align
 [
   "--unary", Arg.Unit (set_mode Unary), " decode legacy (unary) message API";
@@ -551,6 +553,7 @@ let argspec = Arg.align
   "--json", Arg.Unit (set_format Json), " output JSON values";
   "--idl", Arg.Unit (set_format Idl), " output IDL values (default)";
   "--reverse", Arg.Unit (set_reverse true), " parse IDL values";
+  "--verbatim", Arg.Unit (fun () -> sanitise := false), " generate unsanitised output in reverse mode";
   "--verbose", Arg.Unit (fun () -> chatty := true), " amend commentary";
   "--version",
     Arg.Unit (fun () -> Printf.printf "%s\n" banner; exit 0), " show version";
@@ -1056,9 +1059,12 @@ let () =
       let {it = vs; _} = Parser.parse_arg Lexer.value_token lexer "<stdin>" in
       Wasm.Sexpr.print 80 Arrange_idl.("Arg" $$ List.map value vs);
       Printf.printf "\nDESER, parsed!\n";
-      let vs = List.map Sanitise.sanitise_value vs in
-      Printf.printf "\nDESER, sanitised!\n";
-      Wasm.Sexpr.print 80 Arrange_idl.("(sanitised) Arg" $$ List.map value vs);
+      let vs = if !sanitise then List.map Sanitise.sanitise_value vs else vs in
+      if !sanitise then
+        begin
+          Printf.printf "\nDESER, sanitised!\n";
+          Wasm.Sexpr.print 80 Arrange_idl.("(sanitised) Arg" $$ List.map value vs);
+        end;
       let open Typer in
       let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
@@ -1096,10 +1102,10 @@ let () =
 (* TODOs:
   - use bigint where necessary
   - floats
-  - service types
-  - escaping in text
+  - funcref/service types
+  - escaping in text (output)
   - heralding of the type table
-  - sort type/value fields (optionally?) `--sanitize`/`--verbatim`
   - shrink type table (union-find)
   - `+42` infers as `nat`, should be `int`
+  - summand-dependent bottom check
  *)
