@@ -1212,7 +1212,6 @@ and string_of_control_cod c vs ts =
   let cod = string_of_cod vs ts in
   match c with
   | Returns -> cod
-
   | Promises t -> sprintf "async<%s> %s" (string_of_typ' vs t) cod
   | Replies -> sprintf "replies %s" cod
 
