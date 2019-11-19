@@ -234,7 +234,7 @@ rec {
         filecheck
         js-user-library
         dvm
-        drun
+        real-drun
         haskellPackages.qc-motoko
         haskellPackages.lsp-int
         esm
@@ -505,5 +505,7 @@ rec {
     dummyBuildPhase = ''
       touch $out
     '';
+    preferLocalBuild = true;
+    allowSubstitutes = true;
   };
 }
