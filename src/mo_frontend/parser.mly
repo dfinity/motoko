@@ -632,7 +632,7 @@ dec_nonvar :
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
           match t with
-          | Some {it = AsyncT _; _} -> AsyncE(scope_bind(),e,scope_typ()) @? e.at
+          | Some {it = AsyncT _; _} -> AsyncE(scope_bind(), e, scope_typ()) @? e.at
           | _ -> e
       in
       let named, x = xf "func" $sloc in

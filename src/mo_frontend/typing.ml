@@ -215,7 +215,7 @@ let as_domT t =
 
 let as_codomT sort t =
   match sort, t.Source.it with
-  | T.Shared _, AsyncT (t1,t2) -> T.Promises t1 , as_domT t2
+  | T.Shared _, AsyncT (t1, t2) -> T.Promises t1 , as_domT t2
   | _ -> T.Returns, as_domT t
 
 let check_shared_return env at sort c ts =
@@ -296,7 +296,7 @@ and check_typ' env typ : T.typ =
     if not env.pre && not (T.shared t) then
       error_shared env t typ.at "async has non-shared content type\n  %s"
         (T.string_of_typ_expand t);
-    T.Async (t0,t)
+    T.Async (t0, t)
   | ObjT (sort, fields) ->
     check_ids env "object" "field"
       (List.map (fun (field : typ_field) -> field.it.id) fields);
@@ -742,7 +742,7 @@ and infer_exp'' env exp : T.typ =
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Func (sort.it, T.map_control  (T.close cs) c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort.it, T.map_control (T.close cs) c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, insts, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let sort, tbs, t_arg, t_ret =
@@ -905,7 +905,7 @@ and infer_exp'' env exp : T.typ =
       error env exp.at "misplaced throw";
     if not env.pre then check_exp env T.throw exp1;
     T.Non
-  | AsyncE (tb, exp1, typ0) ->
+  | AsyncE (typbind, exp1, typ1) ->
     if not in_shared then
       error_in [Flags.ICMode] env exp.at "unsupported async block";
     let t0 = check_typ env typ0 in
@@ -917,8 +917,8 @@ and infer_exp'' env exp : T.typ =
     if not (T.shared t1) then
       error_shared env t1 exp1.at "async type has non-shared content type\n  %s"
         (T.string_of_typ_expand t1);
-    T.Async (t0,t1)
-  | AwaitE  exp1 ->
+    T.Async (t0, t1)
+  | AwaitE exp1 ->
     if env.async = None then
       error env exp.at "misplaced await";
     let t1 = infer_exp_promote {env with in_await = true} exp1 in
@@ -929,7 +929,7 @@ and infer_exp'' env exp : T.typ =
       | _ -> error_in [Flags.ICMode] env exp1.at "argument to await must be a call expression");
     (try
        let (t2,t3) = T.as_async_sub t1 in
-       let t0 = T.Con(Lib.Option.value env.async, []) in
+       let t0 = T.Con (Lib.Option.value env.async, []) in
        if not (T.eq t0 t2) then
           error env exp.at "ill-scoped await";
        t3

@@ -41,7 +41,7 @@ and typ =
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of func_sort * (typ control) * bind list * typ list * typ list  (* function *)
+  | Func of func_sort * typ control * bind list * typ list * typ list  (* function *)
   | Async of typ * typ                        (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
@@ -107,7 +107,7 @@ val as_opt : typ -> typ
 val as_tup : typ -> typ list
 val as_unit : typ -> unit
 val as_pair : typ -> typ * typ
-val as_func : typ -> func_sort * (typ control) * bind list * typ list * typ list
+val as_func : typ -> func_sort * typ control * bind list * typ list * typ list
 val as_async : typ -> typ * typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ

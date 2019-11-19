@@ -46,7 +46,7 @@ and typ =
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of func_sort * (typ control) * bind list * typ list * typ list  (* function *)
+  | Func of func_sort * typ control * bind list * typ list * typ list  (* function *)
   | Async of typ * typ                        (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
@@ -147,7 +147,7 @@ let prim = function
 let seq = function [t] -> t | ts -> Tup ts
 
 let codom c ts =  match c with
-  | Promises t -> Async (t, (seq ts))
+  | Promises t -> Async (t, seq ts)
   | Returns -> seq ts
   | Replies -> Tup []
 
@@ -730,7 +730,7 @@ let rec rel_typ rel eq t1 t2 =
       rel_list rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
     )
-  | Async (t11, t12), Async (t21,t22) ->
+  | Async (t11, t12), Async (t21, t22) ->
     eq_typ rel eq t11 t21 &&
     rel_typ rel eq t12 t22
   | Mut t1', Mut t2' ->

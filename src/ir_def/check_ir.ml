@@ -563,7 +563,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env' exp1;
     let t1' = T.open_ [t0] (T.close [c] t1)  in
     t1' <: T.Any; (* vacuous *)
-    T.Async (t0,t1') <: t
+    T.Async (t0, t1') <: t
   | AwaitE exp1 ->
     check env.flavor.has_await "await in non-await flavor";
     check (env.async <> None) "misplaced await";
