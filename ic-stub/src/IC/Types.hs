@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveFunctor #-}
 module IC.Types where
 
 import qualified Data.ByteString.Lazy as BS
@@ -46,7 +47,7 @@ data Response = Reply Blob | Reject (RejectCode, String)
 
 -- Abstract canisters
 
-data TrapOr a = Trap String | Return a
+data TrapOr a = Trap String | Return a deriving Functor
 
 data WasmClosure = WasmClosure
   { closure_idx :: Int32

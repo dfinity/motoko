@@ -1,6 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 {-# OPTIONS_GHC -Wmissing-signatures #-}
 {-|
@@ -12,10 +14,8 @@ We could do some hacking caching of state using stable names, so that as long as
 
 module IC.Canister.Pure
     ( WasmState
-    , initializeMethod
-    , updateMethod
-    , callbackMethod
-    , queryMethod
+    , initialize
+    , invoke
     )
     where
 
@@ -23,70 +23,50 @@ import Control.Monad.ST
 
 import IC.Types
 import IC.Wasm.Winter (Module)
+import qualified IC.Canister.Interface as CI
 import IC.Canister.Imp
 
-data WasmState
-  = WSInit Module CanisterId EntityId Blob
-  | WSUpdate MethodName EntityId Blob WasmState
-  | WSCallback Callback EntityId Response WasmState
+data ACall = forall r. ACall (CI.CanisterMethod r)
 
-initializeMethod :: Module -> CanisterId -> EntityId -> Blob -> TrapOr WasmState
-initializeMethod wasm_mod cid caller dat = runESST $ \esref ->
+data WasmState = WasmState
+    { ws_mod :: Module
+    , ws_self_id :: CanisterId
+    , ws_calls :: [ACall] -- in reverse order
+    }
+
+initialize :: Module -> CanisterId -> EntityId -> Blob -> TrapOr WasmState
+initialize wasm_mod cid caller dat = runESST $ \esref ->
   rawInitializeModule esref wasm_mod >>= \case
     Trap err -> return $ Trap err
     Return inst -> do
       let rs = (esref, cid, inst)
-      result <- rawInitializeMethod rs wasm_mod caller dat
-      let state' = WSInit wasm_mod cid caller dat
+      let m = CI.Initialize wasm_mod caller dat
+      result <- rawInvoke rs m
+      let state' = WasmState wasm_mod cid [ACall m]
       case result of
         Trap err          -> return $ Trap err
         Return _raw_state -> return $ Return state'
 
-updateMethod ::
-    MethodName -> EntityId -> Blob ->
-    WasmState -> TrapOr (WasmState, [MethodCall], Maybe Response)
-updateMethod m caller dat s = runESST $ \esref -> do
+invoke :: WasmState -> CI.CanisterMethod r -> TrapOr (WasmState, r)
+invoke s m = runESST $ \esref -> do
   rs <- replay esref s
-  tor <- rawUpdateMethod rs m caller dat
-  let state' = WSUpdate m caller dat s
+  tor <- rawInvoke rs m
+  let state' = s { ws_calls = ACall m : ws_calls s }
   case tor of
     Trap msg -> return $ Trap msg
-    Return (calls, r) -> return $ Return (state', calls, r)
-
-callbackMethod ::
-    Callback -> EntityId -> Response ->
-    WasmState -> TrapOr (WasmState, [MethodCall], Maybe Response)
-callbackMethod cb caller r s = runESST $ \esref -> do
-  rs <- replay esref s
-  tor <- rawCallbackMethod rs cb caller r
-  let state' = WSCallback cb caller r s
-  case tor of
-    Trap msg -> return $ Trap msg
-    Return (calls, r) -> return $ Return (state', calls, r)
-
-queryMethod :: MethodName -> EntityId -> Blob -> WasmState -> TrapOr Response
-queryMethod m caller dat s = runESST $ \esref -> do
-  rs <- replay esref s
-  rawQueryMethod rs m caller dat
-
+    Return r -> return $ Return (state', r)
 
 replay :: forall s. ESRef s -> WasmState -> ST s (ImpState s)
-replay esref s = silently esref $ go s
+replay esref WasmState{ ws_mod, ws_self_id, ws_calls } = silently esref $ go ws_calls
   where
     trapToFail (Trap _err) = fail "replay failed"
     trapToFail (Return x) = return x
 
-    go :: WasmState -> ST s (ImpState s)
-    go (WSInit wasm_mod cid caller dat) = do
-      inst <- rawInitializeModule esref wasm_mod >>= trapToFail
-      let rs = (esref, cid, inst)
-      rawInitializeMethod rs wasm_mod caller dat >>= trapToFail
-      return rs
-    go (WSUpdate m caller dat s) = do
-      is <- go s
-      _ <- rawUpdateMethod is m caller dat >>= trapToFail
-      return is
-    go (WSCallback cb caller r s) = do
-      is <- go s
-      _ <- rawCallbackMethod is cb caller r >>= trapToFail
+    go :: [ACall] -> ST s (ImpState s)
+    go [] = do
+      inst <- rawInitializeModule esref ws_mod >>= trapToFail
+      return (esref, ws_self_id, inst)
+    go (ACall m:ms) = do
+      is <- go ms
+      _ <- rawInvoke is m >>= trapToFail
       return is

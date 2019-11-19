@@ -21,11 +21,12 @@ import Data.List
 import IC.Types
 import IC.Wasm.Winter (parseModule, exportedFunctions, Module)
 
+import qualified IC.Canister.Interface as CI
 -- Here we can swap out the persistence implementation
 import IC.Canister.Persisted
 
 type InitFunc = CanisterId -> EntityId -> Blob -> TrapOr WasmState
-type UpdateFunc = WasmState -> TrapOr (WasmState, [MethodCall], Maybe Response)
+type UpdateFunc = WasmState -> TrapOr (WasmState, ([MethodCall], Maybe Response))
 type QueryFunc = WasmState -> TrapOr Response
 
 data CanisterModule = CanisterModule
@@ -43,16 +44,17 @@ parseCanister bytes =
 
 concreteToAbstractModule :: Module -> CanisterModule
 concreteToAbstractModule wasm_mod = CanisterModule
-  { init_method = \cid caller dat -> initializeMethod wasm_mod cid caller dat
+  { init_method = \cid caller dat -> initialize wasm_mod cid caller dat
   , update_methods = M.fromList
-    [ (m, \caller dat wasm_state -> updateMethod m caller dat wasm_state)
+    [ (m, \caller dat wasm_state -> invoke wasm_state (CI.Update m caller dat))
     | n <- exportedFunctions wasm_mod
     , Just m <- return $ stripPrefix "canister_update " n
     ]
   , query_methods = M.fromList
-    [ (m, \arg wasm_state -> queryMethod m arg wasm_state)
+    [ (m, \caller arg wasm_state ->
+        snd <$> invoke wasm_state (CI.Query m caller arg))
     | n <- exportedFunctions wasm_mod
     , Just m <- return $ stripPrefix "canister_query " n
     ]
-  , callbacks = callbackMethod
+  , callbacks = \cb cid res wasm_state -> invoke wasm_state (CI.Callback cb cid res)
   }

@@ -265,14 +265,14 @@ calleeOfCallID ctxt_id = do
 
 invokeEntry :: ICT m =>
     CallId -> CanState -> EntryPoint ->
-    m (TrapOr (WasmState, [MethodCall], Maybe Response))
+    m (TrapOr (WasmState, ([MethodCall], Maybe Response)))
 invokeEntry ctxt_id (CanState wasm_state can_mod) entry = do
     caller <- callerOfCallID ctxt_id
     case entry of
       Public method dat ->
         case M.lookup method (update_methods can_mod) of
           Just f -> return $ f caller dat wasm_state
-          Nothing -> return $ Return (wasm_state, [], Just $ Reject (RC_DESTINATION_INVALID, "update method does not exist: " ++ method))
+          Nothing -> return $ Return (wasm_state, ([], Just $ Reject (RC_DESTINATION_INVALID, "update method does not exist: " ++ method)))
       Closure cb r ->
         return $ callbacks can_mod cb caller r wasm_state
 
@@ -287,7 +287,7 @@ processMessage (CallMessage ctxt_id entry) = do
       invokeEntry ctxt_id cs entry >>= \case
         Trap msg ->
           rememberTrap ctxt_id msg
-        Return (new_state, calls, mb_response) -> do
+        Return (new_state, (calls, mb_response)) -> do
           setCanisterState callee new_state
           forM_ calls $ \call -> do
             new_ctxt_id <- newCallContext $ CallContext

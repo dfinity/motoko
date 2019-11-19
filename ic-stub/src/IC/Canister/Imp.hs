@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 {-|
@@ -12,10 +13,7 @@ module IC.Canister.Imp
  , ImpState
  , runESST
  , rawInitializeModule
- , rawInitializeMethod
- , rawUpdateMethod
- , rawCallbackMethod
- , rawQueryMethod
+ , rawInvoke
  , silently
  )
 where
@@ -33,6 +31,7 @@ import Data.Int
 import IC.Types
 import IC.Wasm.Winter
 import IC.Wasm.Imports
+import qualified IC.Canister.Interface as CI
 
 -- Parameters are the data that come from the caller
 
@@ -301,6 +300,16 @@ rawInitializeModule esref wasm_mod = do
   case result of
     Left  err -> return $ Trap err
     Right inst -> return $ Return inst
+
+rawInvoke :: ImpState s -> CI.CanisterMethod r -> ST s (TrapOr r)
+rawInvoke esref (CI.Initialize wasm_mod caller dat) =
+    rawInitializeMethod esref wasm_mod caller dat
+rawInvoke esref (CI.Query name caller dat) =
+    rawQueryMethod esref name caller dat
+rawInvoke esref (CI.Update name caller dat) =
+    rawUpdateMethod esref name caller dat
+rawInvoke esref (CI.Callback cb caller res) =
+    rawCallbackMethod esref cb caller res
 
 rawInitializeMethod :: ImpState s -> Module -> EntityId -> Blob -> ST s (TrapOr ())
 rawInitializeMethod (esref, cid, inst) wasm_mod caller dat = do
