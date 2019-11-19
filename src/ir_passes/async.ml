@@ -176,7 +176,7 @@ let transform mode env prog =
      fragments, then we would simply start with an empty con_renaming and the prelude.
   *)
   in
- 
+
   let rec t_typ (t:T.typ) =
     match t with
     | T.Prim _
@@ -345,10 +345,8 @@ let transform mode env prog =
           FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
         | T.Shared s' ->
           begin
-            match c with
-            | Returns ->
-              FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
-            | Promises ->
+            match c, exp with
+            | Promises, exp ->
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in
@@ -368,7 +366,39 @@ let transform mode env prog =
               let r = [e] -->* (ic_rejectE (errorMessageE e)) in
               let exp' = (t_exp cps) -*- tupE [k;r] in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
-            | Replies -> assert false
+            (* oneway with an `ignore(async _)` body
+               TODO: remove this special casing once async fully supported
+              *)
+            | Returns,
+              { it = BlockE (
+                [{ it = LetD (
+                  { it = WildP; _},
+                  ({ it = PrimE (CPSAsync, _); _} as exp)); _ }],
+                { it = TupE []; _});
+                _ } ->
+              let ret_tys = List.map t_typ ret_tys in
+              let args' = t_args args in
+              let typbinds' = t_typ_binds typbinds in
+              let cps = match exp.it with
+                | PrimE (CPSAsync, [cps]) -> cps
+                | _ -> assert false in
+              let t1, contT = match typ cps with
+                | Func(_,_,
+                       [],
+                       [Func(_, _, [], ts1, []) as contT; _],
+                       []) ->
+                  (t_typ (T.seq ts1),t_typ contT)
+                | t -> assert false in
+              let v = fresh_var "v" t1 in
+              let k = v --> tupE [] in (* discard return *)
+              let e = fresh_var "e" T.catch in
+              let r = [e] -->* tupE [] in (* discard error *)
+              let exp' = (t_exp cps) -*- tupE [k;r] in
+              FuncE (x, T.Shared s', Returns, typbinds', args', ret_tys, exp')
+            (* sequential oneway *)
+            | Returns, _ ->
+              FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
+            | Replies,_ -> assert false
           end
       end
     | ActorE (id, ds, fs, typ) ->

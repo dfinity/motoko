@@ -5039,7 +5039,10 @@ module FuncDec = struct
       let ae0 = VarEnv.mk_fun_ae outer_ae in
       Func.of_body outer_env ["api_nonce", I64Type] [] (fun env -> G.with_region at (
         G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
-
+        (* reply early for a oneway *)
+        (if control = Type.Returns
+         then Tuple.compile_unit ^^ Serialization.serialize env []
+         else G.nop) ^^
         (* Deserialize argument and add params to the environment *)
         let arg_names = List.map (fun a -> a.it) args in
         let arg_tys = List.map (fun a -> a.note) args in
