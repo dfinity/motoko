@@ -53,6 +53,12 @@ let pass_hash (h, fs) ff =
   let field = ff h in
   (Uint32.succ field.it.hash, field :: fs)
 
+let vec_of_blob text =
+  let r = ref [] in
+  let nat8 c = r := (IntegralV (Big_int.big_int_of_int (Char.code c)) @@ no_region) :: !r in
+  String.iter nat8 text;
+  List.rev !r
+
 %}
 
 %token EOF
@@ -213,7 +219,7 @@ value :
   | VEC LCURLY vs=seplist(annval, SEMICOLON) RCURLY
     { VecV vs @@ at $sloc }
   | BLOB text=TEXT
-    { AnnotV (VecV [] @@ at $sloc, VecT (PrimT Nat8 @@ no_region) @@ no_region) @@ at $sloc }
+    { AnnotV (VecV (vec_of_blob text) @@ at $sloc, VecT (PrimT Nat8 @@ no_region) @@ no_region) @@ at $sloc }
   | RECORD LCURLY vfs=seplist(field_value(record_field_shorthand), SEMICOLON) RCURLY
     { RecordV (List.rev (snd (List.fold_left pass_hash (Uint32.zero, []) vfs)))
       @@ at $sloc }
