@@ -251,7 +251,7 @@ typ_pre :
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
-    { AsyncT(scope_typ(),t) @! at $sloc }
+    { AsyncT(scope_typ(), t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs

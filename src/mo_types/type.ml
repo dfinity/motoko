@@ -171,7 +171,7 @@ let rec shift i n t =
     let i' = i + List.length tbs in
     Func (s, c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
   | Opt t -> Opt (shift i n t)
-  | Async (t1,t2) -> Async (shift i n t1, shift i n t2)
+  | Async (t1, t2) -> Async (shift i n t1, shift i n t2)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
   | Variant fs -> Variant (List.map (shift_field n i) fs)
   | Mut t -> Mut (shift i n t)
