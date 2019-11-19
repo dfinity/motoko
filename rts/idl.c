@@ -94,6 +94,8 @@ export int32_t read_i32_of_sleb128(buf *buf) {
  *    (again via pointer argument, for lack of multi-value returns in C)
  */
 export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_types_out) {
+  if (buf->p == buf->e) idl_trap_with("empty input");
+
   // Magic bytes (DIDL)
   if (read_word(buf) != 0x4C444944) idl_trap_with("missing magic bytes");
 

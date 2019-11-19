@@ -1,0 +1,52 @@
+unsupported.mo:6.28-6.39: type error, shared function has non-shared parameter type
+  actor {}
+type
+  actor {}
+is or contains non-shared type
+  actor {}
+unsupported.mo:6.28-6.39: type error, actor types are non-shared.
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:8.31-8.53: type error, shared function has non-shared parameter type
+  shared () -> async ()
+type
+  shared () -> async ()
+is or contains non-shared type
+  shared () -> async ()
+unsupported.mo:8.31-8.53: type error, shared function types are non-shared.
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:19.19-19.21: type error, shared, async function must be called within an await expression
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:28.8-28.9: type error, argument to await must be a call expression
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:32.17-32.29: type error, unsupported async block
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:4.5-4.41: type error, a shared function cannot be private
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:38.26-38.29: type error, a shared function is only allowed as a public field of an actor
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:41.10-41.18: type error, unsupported async block
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:46.31-46.48: type error, shared function has non-shared parameter type
+  shared () -> ()
+type
+  shared () -> ()
+is or contains non-shared type
+  shared () -> ()
+unsupported.mo:46.31-46.48: type error, shared function types are non-shared.
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:51.31-51.41: type error, shared function has non-shared parameter type
+  actor {}
+type
+  actor {}
+is or contains non-shared type
+  actor {}
+unsupported.mo:51.31-51.41: type error, actor types are non-shared.
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:62.3-62.35: type error, actor classes are not supported; use an actor declaration instead
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:66.45-66.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:70.37-70.45: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:76.34-76.37: type error, freestanding async expression not yet supported
+  (This is a limitation of the current version and flag -stub-system-api.)
