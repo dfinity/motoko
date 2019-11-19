@@ -4,7 +4,7 @@
 A “pure” implementation of canisters, using "IC.Canister.Imp", but just replaying when needed.
 Note that this is quadratic in the number of update calls, so do not run such canisters for long.
 
-We could do some hacking caching of state using stable names, so that as long as no trap occurs, 'replay' is fast.
+We could do some hacking caching of state using stable names, so that, as long as no trap occurs, 'replay' is fast.
 -}
 
 module IC.Canister

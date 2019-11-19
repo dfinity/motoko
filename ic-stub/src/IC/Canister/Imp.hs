@@ -219,7 +219,7 @@ systemAPI esref =
     assert_not_responded =
       gets response >>= \case
         Nothing -> return ()
-        Just  _ -> throwError "This call has already be responded to"
+        Just  _ -> throwError "This call has already been responded to"
 
     msg_reply_data_append :: (Int32, Int32) -> HostM s ()
     msg_reply_data_append (src, size) = do

@@ -13,7 +13,7 @@ execution of a single canister.
 Status
 ------
 
-This is neither complete nor authorative. Since this is primarily meant for
+This is neither complete nor authoritative. Since this is primarily meant for
 testing the output of Motoko, code paths not exercised by Motoko may not be
 present; in particular, error handling and input validation is incomplete.
 

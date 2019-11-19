@@ -146,8 +146,8 @@ readRequest (QueryRequest user_id method arg) =
             Return (Reply res) -> return $ Completed (CompleteArg res)
             Return (Reject (rc,rm)) -> return $ Rejected (rc, rm)
 
-nextRecieved :: ICT m => m (Maybe AsyncRequest)
-nextRecieved = gets $ \ic -> listToMaybe
+nextReceived :: ICT m => m (Maybe AsyncRequest)
+nextReceived = gets $ \ic -> listToMaybe
   [ r | (r, Received) <- M.toList (requests ic) ]
 
 nextStarved :: ICT m => m (Maybe CallId)
@@ -324,7 +324,7 @@ starveContext ctxt_id = do
 
 runToCompletion :: ICT m => m ()
 runToCompletion =
-  nextRecieved >>= \case
+  nextReceived >>= \case
     Just  r -> processRequest r >> runToCompletion
     Nothing -> nextMessage >>= \case
       Just m  -> processMessage m >> runToCompletion

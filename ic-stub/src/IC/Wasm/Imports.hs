@@ -46,7 +46,7 @@ instance WasmArgs () where
     fromValues xs = argError 0 xs
     toValues () = []
 
--- The formatting is a bit odd, but allows it easier to create new instances by copy and paste and adding lines
+-- The formatting is a bit odd, but it allows to create new instances easily by copy and paste and adding lines
 instance
     ( WasmArg a1
     , WasmArg a2
