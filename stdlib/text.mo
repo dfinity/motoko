@@ -4,4 +4,8 @@ module {
     x # y;
   };
 
+  public func toIter(text : Text) : Iter<Char> {
+    { next = text.chars().next }
+  }
+
 }
