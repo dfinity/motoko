@@ -513,7 +513,7 @@ public type List<T> = ?(T, List<T>);
    Creates a list of the given length with the same value in each position.
    */
   public func replicate<X>(n : Nat, x : X) : List<X> {
-    tabulate<X>(n, func (_) { x })
+    tabulate<X>(n, func _ x)
   };
 
   /**
@@ -524,7 +524,7 @@ public type List<T> = ?(T, List<T>);
    minimum.
    */
   public func zip<X, Y>(xs : List<X>, ys : List<Y>) : List<(X, Y)> {
-    zipWith<X, Y, (X, Y)>(xs, ys, func (x, y) { (x, y) })
+    zipWith<X, Y, (X, Y)>(xs, ys, func (x, y) (x, y))
   };
 
   /**
@@ -541,14 +541,10 @@ public type List<T> = ?(T, List<T>);
     f : (X, Y) -> Z
   ) : List<Z> {
     switch (pop<X>(xs)) {
-      case (null, _) {
-        nil<Z>()
-      };
+      case (null, _) null;
       case (?x, xt) {
         switch (pop<Y>(ys)) {
-          case (null, _) {
-            nil<Z>()
-          };
+          case (null, _) null;
           case (?y, yt) {
             push<Z>(f(x, y), zipWith<X, Y, Z>(xt, yt, f))
           }
@@ -594,7 +590,7 @@ public type List<T> = ?(T, List<T>);
   public func chunksOf<X>(n : Nat, xs : List<X>) : List<List<X>> {
     let (l, r) = splitAt<X>(n, xs);
     if (isNil<X>(l)) {
-      null
+      l
     } else {
       push<List<X>>(l, chunksOf<X>(n, r))
     }
