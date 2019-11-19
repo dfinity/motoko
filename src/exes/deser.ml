@@ -752,14 +752,14 @@ let lookup_prim_tynum (ty : typ) = List.assoc ty.Source.it type_assoc
 (* the type of bidirectional checker/inferencer
 Every IDL value corresponds to such a function.
 
- - for inferencing the most general type: call with `PreT`
+ - for inferencing the most precise type: call with `PreT`
  - for type checking against `t`: call with `t`
 
 NOPE: Guaranteed to return a `typ` that is `<=` in the IDL type lattice.
  *)
 type bid = typ' -> typ'
 
-let rec glb t u =
+let rec lub t u =
   match t, u with
   | PrimT p, PrimT q when p = q -> t
   | PrimT Empty, _ -> u
@@ -767,12 +767,12 @@ let rec glb t u =
   | PrimT Reserved, _ | _, PrimT Reserved -> PrimT Reserved
   | PrimT Nat, PrimT Int -> u
   | PrimT Int, PrimT Nat -> t
-  | VecT p, VecT q -> VecT (glb p.it q.it @@ p.at)
+  | VecT p, VecT q -> VecT (lub p.it q.it @@ p.at)
   | PrimT Null, OptT _ -> u
   | OptT _, PrimT Null -> t
-  | _ -> failwith "glb TODO"
+  | _ -> failwith "lub TODO"
 
-let rec lub t u =
+let rec glb t u =
   match t, u with
   | PrimT Reserved, _ -> u
   | _, PrimT Reserved -> t
@@ -781,8 +781,8 @@ let rec lub t u =
   | PrimT Nat, PrimT Int -> t
   | PrimT Int, PrimT Nat -> u
   | PrimT _, PrimT _ -> PrimT Empty
-  | VecT p, VecT q -> VecT (lub p.it q.it @@ p.at)
-  | _ -> failwith "lub TODO"
+  | VecT p, VecT q -> VecT (glb p.it q.it @@ p.at)
+  | _ -> failwith "glb TODO"
 
 
 let rec to_bid (v : value) : bid =
@@ -810,7 +810,7 @@ let rec to_bid (v : value) : bid =
                | OptT t -> OptT (to_bid v t.it @@ v.at)
                | _ -> bottom)
   | VecV vs -> (function
-                | PreT -> VecT List.(fold_left glb (PrimT Empty) (map infer' vs) @@ v.at)
+                | PreT -> VecT List.(fold_left lub (PrimT Reserved) (map infer' vs) @@ v.at)
                 | _ -> failwith "cannot VecT yet")
   | RecordV vfs -> (function
                     | PreT -> RecordT (List.map infer_field vfs)
@@ -829,7 +829,7 @@ let rec to_bid (v : value) : bid =
 
   | AnnotV (v, t) -> (function
                       | PreT -> to_bid v t.it
-                      | t' -> to_bid v (lub t' t.it))
+                      | t' -> to_bid v (glb t' t.it))
   | ServiceV uri -> (function
                      | PreT -> ServT []
                      | ServT _ as serv -> serv
