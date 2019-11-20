@@ -104,7 +104,6 @@ public type IndexedBuf<X> = {
 };
 
 // assert that two types are related by subtyping, without having instances:
-func _assertSubtypes<X>(ramBuf:IndexedBuf<X>) : Buf<X> = ramBuf;
-// (alternatively, we could have a way to "append" object types, as with `+` on Rust traits.)
+func _assertSubtypes<X>(b:IndexedBuf<X>) : Buf<X> = b;
 
 }
