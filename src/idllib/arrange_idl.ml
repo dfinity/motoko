@@ -26,7 +26,7 @@ let string_of_mode m =
   match m.it with
   | Oneway -> " oneway"
   | Query -> " query"
-                 
+
 let ($$) head inner = Node (head, inner)
 
 and id i = Atom i.it
@@ -53,7 +53,7 @@ and typ t = match t.it with
   | VecT t       -> "VecT" $$ [typ t]
   | OptT t              -> "OptT" $$ [typ t]
   | VariantT cts        -> "VariantT" $$ List.map typ_field cts
-  | FuncT (ms, s, t) -> "FuncT" $$ List.map typ_field s @ List.map typ_field t @ List.map mode ms
+  | FuncT (ms, s, t) -> "FuncT" $$ List.map typ s @ List.map typ t @ List.map mode ms
   | ServT ts -> "ServT" $$ List.map typ_meth ts
   | PreT -> Atom "PreT"
                         
@@ -133,7 +133,7 @@ and pp_args ppf fs =
   let n = List.length fs in
   str ppf "(";
   List.iteri (fun i f ->
-      pp_field ppf f;
+      pp_typ ppf f;
       if i < n-1 then
         kwd ppf ",";
     ) fs;

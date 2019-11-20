@@ -3,6 +3,6 @@ service Foo {
   bar : (record {"2" : int}) -> ();
   // TODO: JS binding treats all field names as string
   baz : (record {2: int; "2": nat}) -> ();
-  bab : (2: int, "2": nat) -> ();
+  bab : (two: int, "2": nat) -> ();
 }
 

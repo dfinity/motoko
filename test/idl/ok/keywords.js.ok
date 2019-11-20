@@ -2,12 +2,8 @@ export default ({ IDL }) => {
  const const_ =
   IDL.Obj({'type_': IDL.Nat, 'vec_': IDL.Nat, 'service_': IDL.Nat})
  const actor_s = new IDL.ActorInterface({
-  'blob': IDL.Func(IDL.Obj({'0': const_}), IDL.Obj({'0': IDL.Arr(IDL.Nat8)})),
-  
+  'blob': IDL.Func([const_], [IDL.Arr(IDL.Nat8)]),
   'record':
-   IDL.Func(
-    IDL.Obj({'opt_': IDL.Nat, 'import_': IDL.Nat, 'variant_': IDL.Variant({})
-     }),
-     IDL.Obj({'record_': IDL.Nat, '821774511': IDL.Obj({})}))});
+   IDL.Func([IDL.Nat, IDL.Nat, IDL.Variant({})], [IDL.Nat, IDL.Obj({})])});
  return actor_s;
 };
