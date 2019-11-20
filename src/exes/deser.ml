@@ -541,9 +541,6 @@ let set_format f () =
 
 let reverse_mode = ref false
 
-let set_reverse f () =
-  reverse_mode := f
-
 let sanitise = ref true
 
 let argspec = Arg.align
@@ -552,9 +549,9 @@ let argspec = Arg.align
   "--prose", Arg.Unit (set_format Prose), " output indented prose";
   "--json", Arg.Unit (set_format Json), " output JSON values";
   "--idl", Arg.Unit (set_format Idl), " output IDL values (default)";
-  "--reverse", Arg.Unit (set_reverse true), " parse IDL values";
-  "--verbatim", Arg.Unit (fun () -> sanitise := false), " generate unsanitised output in reverse mode, omitting field sorting and uniqueness check";
-  "--verbose", Arg.Unit (fun () -> chatty := true), " amend commentary";
+  "--reverse", Arg.Set reverse_mode, " parse IDL values";
+  "--verbatim", Arg.Clear sanitise, " generate unsanitised output in reverse mode, omitting field sorting and uniqueness check";
+  "--verbose", Arg.Set chatty, " amend commentary";
   "--version",
     Arg.Unit (fun () -> Printf.printf "%s\n" banner; exit 0), " show version";
 ]
