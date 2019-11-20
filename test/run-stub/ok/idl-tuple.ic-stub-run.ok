@@ -1,3 +1,5 @@
+→ create
+← completed: canister-id = 0x0000000000000400
 → install
 ← completed
 → query len2(0x4449444c0002717102486905576f726c64)
