@@ -5,6 +5,8 @@ TO-TEST = \
   $(patsubst %.sh,_out/%_done,$(wildcard *.sh)) \
   $(patsubst %.wat,_out/%_done,$(wildcard *.wat)) \
   $(patsubst %.did,_out/%_done,$(wildcard *.did)) \
+  $(patsubst %.idv,_out/%_done,$(wildcard *.idv)) \
+  $(patsubst %.bin,_out/%_done,$(wildcard *.bin)) \
 
 
 .PHONY: quick
@@ -16,15 +18,21 @@ _out:
 
 # run single test, e.g. make _out/AST-56_done
 # _done, not .done, because run.sh likes to clean $base.*
-_out/%_done: %.mo $(wildcard ../../src/moc) ../run.sh  | _out
+_out/%_done: %.mo $(wildcard ../../src/moc) ../run.sh | _out
 	@+ chronic ../run.sh $(RUNFLAGS) $<
 	@+ touch $@
-_out/%_done: %.sh $(wildcard ../../src/moc) ../run.sh  | _out
+_out/%_done: %.sh $(wildcard ../../src/moc) ../run.sh | _out
 	@+ chronic ../run.sh $(RUNFLAGS) $<
 	@+ touch $@
-_out/%_done: %.wat $(wildcard ../../src/moc) ../run.sh  | _out
+_out/%_done: %.wat $(wildcard ../../src/moc) ../run.sh | _out
 	@+ chronic ../run.sh $(RUNFLAGS) $<
 	@+ touch $@
-_out/%_done: %.did $(wildcard ../../src/didc) ../run.sh  | _out
+_out/%_done: %.did $(wildcard ../../src/didc) ../run.sh | _out
+	@+ chronic ../run.sh $(RUNFLAGS) $<
+	@+ touch $@
+_out/%_done: %.idv $(wildcard ../../src/deser) ../run.sh | _out
+	@+ chronic ../run.sh $(RUNFLAGS) $<
+	@+ touch $@
+_out/%_done: %.bin $(wildcard ../../src/deser) ../run.sh | _out
 	@+ chronic ../run.sh $(RUNFLAGS) $<
 	@+ touch $@
