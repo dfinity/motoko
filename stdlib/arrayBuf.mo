@@ -1,5 +1,5 @@
 import P "prelude.mo";
-import Buf "buf.mo";
+import B "buf.mo";
 import Option "option.mo";
 
 module {
@@ -14,8 +14,8 @@ See [buffer documentation](buf.mo) for more.
 */
 
 // re-export types and use them below.
-public type ArrayBuf<X> = Buf.ArrayBuf<X>;
-public type IndexedBuf<X> = Buf.IndexedBuf<X>;
+public type ArrayBuf<X> = B.ArrayBuf<X>;
+public type IndexedBuf<X> = B.IndexedBuf<X>;
 
 /*
 Create an IndexedBuf<X>, represented internally by an mutable array.
@@ -24,7 +24,7 @@ The argument `initCapacity` gives the initial capacity.  Under the
 interface, the mutable array grows by doubling when this initial
 capacity is exhausted.
 */
-public class ArrayBufObj<X> (initCapacity : Nat) : IndexedBuf<X> {
+public class Buf<X> (initCapacity : Nat) : IndexedBuf<X> {
   var count : Nat = 0;
   var elems : [var X] = [var]; // initially empty; allocated upon first `add`
 
@@ -45,7 +45,7 @@ public class ArrayBufObj<X> (initCapacity : Nat) : IndexedBuf<X> {
     count += 1;
   };
 
-  public func addBuf(b:Buf.Buf<X>) {
+  public func addBuf(b:B.Buf<X>) {
     for (x in b.iter()) { add(x) }
   };
 
@@ -56,7 +56,7 @@ public class ArrayBufObj<X> (initCapacity : Nat) : IndexedBuf<X> {
     count := 0;
 
   public func clone() : IndexedBuf<X> {
-    let c = ArrayBufObj<X>(initCapacity);
+    let c = Buf<X>(initCapacity);
     for (elem in iter()) { c.add(elem) };
     c
   };

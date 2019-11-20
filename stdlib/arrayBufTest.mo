@@ -1,10 +1,10 @@
 import ArrayBuf "arrayBuf.mo";
 
-let a = ArrayBuf.Make<Nat>(#empty);
-let b = ArrayBuf.Make<Nat>(#capacity(1000));
-let c1 = ArrayBuf.Make<Nat>(#arrayBuf(a.arrayBuf()));
-let c2 = ArrayBuf.Make<Nat>(#arrayBuf(b.arrayBuf()));
-let d1 = ArrayBuf.Make<Nat>(#array([1,2,3]));
-let d2 = ArrayBuf.Make<Nat>(#array(a.array()));
+let a = ArrayBuf.Buf<Nat>(3);
+for (i in range(0, 123)) {
+  a.add(i);
+};
+for (i in range(0, 123)) {
+  assert (a.get(i) == i);
+}
 
-// todo: assert stuff here about the variables defined above
