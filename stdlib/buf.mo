@@ -42,12 +42,14 @@ public type Buf<X> = {
   // elim forms for accessing elements:
   iter: () -> Iter<X>;
   array: () -> [X];
-  mutArray: () -> [var X]; // bikeshed decision: `varArray` instead?
-  arrayBuf: () -> ArrayBuf<X>; // can expose _spare capacity_, if any
+  mutArray: () -> [var X];
+  arrayBuf: () -> ArrayBuf<X>;
 };
 
 /*
- A type that can represent and implement Buf<X>; See [`ArrayBuf`](arrayBuf.mo) for details.
+ A concrete representation of a growable buffer.
+
+ See [`ArrayBuf`](arrayBuf.mo) for details.
 
  invariants:
  1. the first `count` elements are "filled" in the `elems` array;
