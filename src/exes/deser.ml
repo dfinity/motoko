@@ -553,7 +553,7 @@ let argspec = Arg.align
   "--json", Arg.Unit (set_format Json), " output JSON values";
   "--idl", Arg.Unit (set_format Idl), " output IDL values (default)";
   "--reverse", Arg.Unit (set_reverse true), " parse IDL values";
-  "--verbatim", Arg.Unit (fun () -> sanitise := false), " generate unsanitised output in reverse mode";
+  "--verbatim", Arg.Unit (fun () -> sanitise := false), " generate unsanitised output in reverse mode, omitting field sorting and uniqueness check";
   "--verbose", Arg.Unit (fun () -> chatty := true), " amend commentary";
   "--version",
     Arg.Unit (fun () -> Printf.printf "%s\n" banner; exit 0), " show version";
