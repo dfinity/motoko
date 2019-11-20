@@ -652,7 +652,7 @@ let rec write_8byte (v : value') =
     add_uint8 buf (slice_at 32);
     add_uint8 buf (slice_at 40);
     add_uint8 buf (slice_at 48);
-    add_uint8 buf (slice_at 56);
+    (* once we upgrade to Ocaml 4.08, look into using add_int64_be etc. *)
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
