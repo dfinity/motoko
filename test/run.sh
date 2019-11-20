@@ -29,6 +29,7 @@ EXTRA_MOC_FLAGS=
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
+DESER=${DESER:-$(realpath $(dirname $0)/../src/deser)}
 export MO_LD
 WASM=${WASM:-wasm}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
@@ -141,8 +142,12 @@ do
   then base=$(basename $file .wat)
   elif [ ${file: -4} == ".did" ]
   then base=$(basename $file .did)
+  elif [ ${file: -4} == ".idv" ]
+  then base=$(basename $file .idv)
+  elif [ ${file: -4} == ".bin" ]
+  then base=$(basename $file .bin)
   else
-    echo "Unknown file extension in $file, expected .mo, .sh, .wat or .did"; exit 1
+    echo "Unknown file extension in $file, expected .mo, .sh, .wat, .did, .idv or .bin"; exit 1
     failures=yes
     continue
   fi
@@ -276,6 +281,23 @@ do
         run wasm2wat wasm2wat $out/$base.linked.wasm -o $out/$base.linked.wat
         diff_files="$diff_files $base.linked.wat"
     fi
+  elif [ ${file: -4} == ".idv" ]
+  then
+    # The file is an IDL value file, so we are expected encode it to binary
+    $ECHO -n " [deser-enc]"
+    $DESER --reverse < ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
+
+    normalize $out/$base.stderr
+    diff_files="$diff_files $base.stdout $base.stderr"
+
+  elif [ ${file: -4} == ".bin" ]
+  then
+    # The file is an encoded IDL value, so we are expected decode it to text
+    $ECHO -n " [deser]"
+    $DESER < ./$(basename $file) > $out/$base.stdout 2> $out/$base.stderr
+
+    normalize $out/$base.stderr
+    diff_files="$diff_files $base.stdout $base.stderr"
 
   else
     # The file is a .did file, so we are expected to test the idl
