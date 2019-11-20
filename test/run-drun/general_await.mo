@@ -1,8 +1,13 @@
 actor Await {
 
-  public shared func Ack<@>() : async(){ };
+  public shared func Ack<@>() : async(){
+    debugPrint "\nAck"
+  };
 
-  public shared func Request<@>(i : Int) : async Int { return i; };
+  public shared func Request<@>(i : Int) : async Int {
+    debugPrint("\nRequest(");debugPrintInt(i);debugPrint(")");
+    return i;
+  };
 
   // Static parallel waiting:
 
@@ -35,7 +40,9 @@ actor Await {
     let as = Array_tabulate<async Int>(10, f);
     let res = Array_init<Int>(as.len(),-1);
     for (i in as.keys()) {
-      res[i] := (await as[i]);
+//      res[i] := (await as[i]); <-- compiler bug (generates incorrect code)
+      let a = await as[i];
+      res[i] := a;
     };
     Array_tabulate<Int>(as.len(),func i = res[i])
   };
@@ -65,7 +72,7 @@ actor Await {
   };
 
 
-  public shared func Test<@>() : async () {
+  public shared func Test() : async () {
 
       await PA<@>();
 
@@ -84,7 +91,7 @@ actor Await {
       await RPA<@>(10);
 
       var l = await RPR<@>(10);
-      for (i in range(0, 9)) {
+      for (i in revrange(10, 1)) {
         switch (l) {
           case (?(h, t)) {
             assert (h == i);
@@ -92,10 +99,11 @@ actor Await {
           };
           case null (assert false);
         }
-      }
+      };
   }
 };
 
-Await.test();
+Await.Test();
 
 //SKIP run-drun
+//SKIP comp
