@@ -1,10 +1,10 @@
 import Iter "iter.mo";
 import Prelude "prelude.mo";
 
-Debug.printLn("Iter");
+Prelude.printLn("Iter");
 
 {
-  Debug.printLn("  forIn");
+  Prelude.printLn("  forIn");
 
   let xs = [ "a", "b", "c", "d", "e", "f" ];
 

@@ -1048,7 +1048,7 @@ been processed
 
 
   public func loadWorkload(params:T.WorkloadParams) : () {
-    func db(s:Text) = if false {Debug.print "Model::loadWorkload: "; Debug.print s; Debug.print "\n"};
+    func db(s:Text) = if false {debugPrint "Model::loadWorkload: "; debugPrint s; debugPrint "\n"};
     getModel().loadWorkload(params)
   };
 

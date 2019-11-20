@@ -30,26 +30,26 @@ actor class Test() = this {
       /////////////////////////////////////////////////////////////////////////////////////
       let s = server;
 
-      Debug.print "\nExchange setup: Begin...\n====================================\n";
+      debugPrint "\nExchange setup: Begin...\n====================================\n";
       await s.loadWorkload(params);
 
       if false {
-        Debug.print "\nRetailer queries\n====================================\n";
+        debugPrint "\nRetailer queries\n====================================\n";
         // do a query for each retailer:
         for (r in range(0, params.retailer_count)) {
           await retailerQueryAll("", r)
         };
       };
 
-      Debug.print "\nQuery counts\n----------------\n";
+      debugPrint "\nQuery counts\n----------------\n";
       let counts = await s.getCounts();
 
       printEntityCount("Retailer join", counts.retailer_join_count);
       printEntityCount("Retailer query", counts.retailer_query_count);
       printLabeledCost("Retailer query", counts.retailer_query_cost);
 
-      Debug.print "\nDump all\n====================================\n";
-      Debug.print (Debug.show (await s.getCounts()));
+      debugPrint "\nDump all\n====================================\n";
+      debugPrint (debug_show (await s.getCounts()));
       if false {
         await debugDumpAll()
       }
@@ -61,107 +61,107 @@ actor class Test() = this {
 //func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
 func retailerQueryAll(pk:Text, retailerId:T.RetailerId) : async () {
 
-  Debug.print "\nRetailer ";
-  Debug.printInt retailerId;
-  Debug.print " sends `retailerQueryAll`\n";
-  Debug.print "------------------------------------\n";
+  debugPrint "\nRetailer ";
+  debugPrintInt retailerId;
+  debugPrint " sends `retailerQueryAll`\n";
+  debugPrint "------------------------------------\n";
 
-  Debug.print "\n## Query begin:\n";
+  debugPrint "\n## Query begin:\n";
   let res = Result.assertUnwrapAny<T.QueryAllResults>(
     await server.retailerQueryAll(pk, retailerId, null, null)
   );
-  Debug.print "\n## Query end.";
+  debugPrint "\n## Query end.";
 
-  Debug.print "\n## Query results (";
-  Debug.printInt (res.len());
-  Debug.print ")\n";
+  debugPrint "\n## Query results (";
+  debugPrintInt (res.len());
+  debugPrint ")\n";
   for (info in res.vals()) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   }
 };
 
 //func debugDumpAll(server:A.Server) : async () {
 func debugDumpAll() : async () {
 
-  Debug.print "\nTruck type info\n----------------\n";
+  debugPrint "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nRegion info\n----------------\n";
+  debugPrint "\nRegion info\n----------------\n";
   for ( info in ((await server.allRegionInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nProduce info\n----------------\n";
+  debugPrint "\nProduce info\n----------------\n";
   for ( info in ((await server.allProduceInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nProducer info\n----------------\n";
+  debugPrint "\nProducer info\n----------------\n";
   for ( info in ((await server.allProducerInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nTransporter info\n----------------\n";
+  debugPrint "\nTransporter info\n----------------\n";
   for ( info in ((await server.allTransporterInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nRetailer info\n----------------\n";
+  debugPrint "\nRetailer info\n----------------\n";
   for ( info in ((await server.allRetailerInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  { Debug.print "\nInventory info\n----------------\n";
+  { debugPrint "\nInventory info\n----------------\n";
     let items = await server.allInventoryInfo();
-    Debug.print "total count of ";
-    Debug.printInt (items.len());
-    Debug.print ":\n";
+    debugPrint "total count of ";
+    debugPrintInt (items.len());
+    debugPrint ":\n";
     for ( info in items.vals() ) {
-      Debug.print "- ";
-      Debug.print (Debug.show info);
-      Debug.print "\n";
+      debugPrint "- ";
+      debugPrint (debug_show info);
+      debugPrint "\n";
     };
   };
 
-  { Debug.print "\nRoute info\n----------------\n";
+  { debugPrint "\nRoute info\n----------------\n";
     let routes = await server.allRouteInfo();
-    Debug.print "total count of ";
-    Debug.printInt (routes.len());
-    Debug.print ":\n";
+    debugPrint "total count of ";
+    debugPrintInt (routes.len());
+    debugPrint ":\n";
     for ( info in (routes.vals()) ) {
-      Debug.print "- ";
-      Debug.print (Debug.show info);
-      Debug.print "\n";
+      debugPrint "- ";
+      debugPrint (debug_show info);
+      debugPrint "\n";
     };
   };
 };
 
 func printEntityCount(entname:Text, count:Nat) {
-  Debug.print ("- " # entname # " count: ");
-  Debug.printInt count;
-  Debug.print "\n";
+  debugPrint ("- " # entname # " count: ");
+  debugPrintInt count;
+  debugPrint "\n";
 };
 
 func printLabeledCost(lab:Text, cost:Nat) {
-  Debug.print ("- " # lab # " cost: ");
-  Debug.printInt cost;
-  Debug.print "\n";
+  debugPrint ("- " # lab # " cost: ");
+  debugPrintInt cost;
+  debugPrint "\n";
 };
 
 let test = Test();

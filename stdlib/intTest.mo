@@ -1,10 +1,10 @@
 import Prelude "prelude.mo";
 import Int "int.mo";
 
-Debug.printLn("Int");
+Prelude.printLn("Int");
 
 {
-  Debug.printLn("  add");
+  Prelude.printLn("  add");
 
   assert(Int.add(1, Int.add(2, 3)) == Int.add(1, Int.add(2, 3)));
   assert(Int.add(0, 1) == 1);
@@ -14,7 +14,7 @@ Debug.printLn("Int");
 };
 
 {
-  Debug.printLn("  toText");
+  Prelude.printLn("  toText");
 
   assert(Int.toText(0) == "0");
   assert(Int.toText(-0) == "0");

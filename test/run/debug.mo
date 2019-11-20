@@ -1,1 +1,1 @@
-debug { Debug.print "This is for debugging only" }; // okay: result ()
+debug { debugPrint "This is for debugging only" }; // okay: result ()

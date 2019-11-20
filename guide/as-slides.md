@@ -545,7 +545,7 @@ alice.start("Alice", Server); // async send as function call
 
 * connects internal primitives with surface syntax (types, operations)
 * conversions like `intToWord32`
-* side-effecting operations `Debug.printInt`
+* side-effecting operations `debugPrintInt`
   (tie into execution environment)
 * utilities like `hashInt`, `clzWord32`
 
@@ -608,7 +608,7 @@ actor class Client() = this {
 ```
 ```
   public func send(msg : Text) {
-    Debug.print(name # " received " # msg # "\n");
+    debugPrint(name # " received " # msg # "\n");
   };
 };
 ```

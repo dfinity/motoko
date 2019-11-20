@@ -6,7 +6,7 @@ let a = actor {
     "World!\n"
   };
   public func go() : async () {
-    Debug.print((await hello()) # (await world()));
+    debugPrint((await hello()) # (await world()));
   };
 };
 

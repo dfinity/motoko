@@ -16,7 +16,7 @@ shared func fu_u(a:Int,) : async (Int,) {
 let _ : async (Int,)  = async {
   let (x,) = await fu_u(1); // *
   assert(x==2);
-  Debug.print t;
+  debugPrint t;
   return (x,);
 };
 };

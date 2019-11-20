@@ -221,7 +221,7 @@ rule token mode = parse
   | "shared" { SHARED }
   | "try" { TRY }
   | "throw" { THROW }
-  | "Debug.show" { DEBUG_SHOW }
+  | "debug_show" { DEBUG_SHOW }
   | "query" { QUERY }
   | "switch" { SWITCH }
   | "true" { BOOL true }

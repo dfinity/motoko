@@ -42,7 +42,7 @@ actor class Client() = this {
     }
   };
   send(msg : Text) {
-    Debug.print(name # " received " # msg # "\n");
+    debugPrint(name # " received " # msg # "\n");
   };
 };
 

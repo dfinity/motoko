@@ -2,88 +2,88 @@ let a = actor {
   var c : Int = 0;
   public func inci(n : Int) : () {
     c += n;
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func incn(n : Nat) : () {
     c += n;
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func incnn(n1 : Nat, n2 : Nat) : () {
     c += n1 + n2;
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func incnested(n1 : Nat, (n2 : Nat, n3 : Nat)) : () {
     c += n1 + n2 + n3;
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func incarray(a : [Nat]) : () {
     for (i in a.vals()) { c += i };
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func incopt(a : ?Nat) : () {
     switch a {
       case null { c += 1000000 };
       case (?a) { c += a };
     };
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func increcord(a : { x : Nat; y : Nat }) : () {
     c += a.x;
     c += a.y;
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func incVariant(v : { #foo : Nat; #bar : Nat }) {
     c += (switch v {
       case (#foo n) n;
       case (#bar n) n;
     });
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func printCounter() {
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func printLabeled(l:Text) {
-    Debug.print l;
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrint l;
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func printLabeledOpt(?l:?Text) {
-    Debug.print l;
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrint l;
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func incwords(w8 : Word8, w16 : Word16, w32 : Word32, w64 : Word64) : () {
     c += word8ToInt(w8);
     c += word16ToInt(w16);
     c += word32ToInt(w32);
     c += word64ToInt(w64);
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func incnats(n8 : Nat8, n16 : Nat16, n32 : Nat32, n64 : Nat64) : () {
     c += nat8ToNat(n8);
     c += nat16ToNat(n16);
     c += nat32ToNat(n32);
     c += nat64ToNat(n64);
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
   public func incints(i8 : Int8, i16 : Int16, i32 : Int32, i64 : Int64) : () {
     c += int8ToInt(i8);
     c += int16ToInt(i16);
     c += int32ToInt(i32);
     c += int64ToInt(i64);
-    Debug.printInt(c);
-    Debug.print("\n");
+    debugPrintInt(c);
+    debugPrint("\n");
   };
 };
 

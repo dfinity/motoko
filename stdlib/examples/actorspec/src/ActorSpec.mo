@@ -42,10 +42,10 @@ module {
   public func run(groups_ : [Group]) : Bool {
     let (groups, status) = getGroups(groups_);
     printGroups(groups, "");
-    Debug.print("\n");
-    Debug.print(printStatus(status));
-    Debug.print("\n");
-    Debug.print("\n");
+    debugPrint("\n");
+    debugPrint(printStatus(status));
+    debugPrint("\n");
+    debugPrint("\n");
     status.failed == 0;
   };
 
@@ -86,7 +86,7 @@ module {
           case (_, _, _) { ":" # printStatus(status); };
         };
       };
-      Debug.print(newline # indent # group.name # statusText # "\n");
+      debugPrint(newline # indent # group.name # statusText # "\n");
       printGroups(group.groups, indent # "  ");
     };
   };

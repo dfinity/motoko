@@ -4,15 +4,15 @@ import Result = "../../../result.mo";
 import Option = "../../../option.mo";
 
 func printEntityCount(entname:Text, count:Nat) {
-  Debug.print ("- " # entname # " count: ");
-  Debug.printInt count;
-  Debug.print "\n";
+  debugPrint ("- " # entname # " count: ");
+  debugPrintInt count;
+  debugPrint "\n";
 };
 
 func printLabeledCost(lab:Text, cost:Nat) {
-  Debug.print ("- " # lab # " cost: ");
-  Debug.printInt cost;
-  Debug.print "\n";
+  debugPrint ("- " # lab # " cost: ");
+  debugPrintInt cost;
+  debugPrint "\n";
 };
 
 actor class Test() = this {
@@ -21,7 +21,7 @@ actor class Test() = this {
     {
       let s = A.Server();
 
-      Debug.print "\nExchange setup: Begin...\n====================================\n";
+      debugPrint "\nExchange setup: Begin...\n====================================\n";
 
       let pka = "beef";
       let pkb = "dead";
@@ -124,22 +124,22 @@ actor class Test() = this {
       await debugDumpInventory(s, pka, 0);
       await debugDumpAll(s);
       
-      Debug.print "\n First time: Producer remove query\n====================================\n";
+      debugPrint "\n First time: Producer remove query\n====================================\n";
       
       let rem0 = await s.producerRemInventory(pka, 0);
-      Debug.print "- first producerRemInventory(pka, 0) result:";
-      Debug.print (Debug.show rem0);
-      Debug.print "\n";
+      debugPrint "- first producerRemInventory(pka, 0) result:";
+      debugPrint (debug_show rem0);
+      debugPrint "\n";
 
       await debugDumpInventory(s, pka, 0);
       await debugDumpAll(s);
 
-      Debug.print "\n Second time: Producer remove query\n====================================\n";
+      debugPrint "\n Second time: Producer remove query\n====================================\n";
 
       let rem0b = await s.producerRemInventory(pka, 0);
-      Debug.print "- second producerRemInventory(pka, 0) result:";
-      Debug.print (Debug.show rem0b);
-      Debug.print "\n";
+      debugPrint "- second producerRemInventory(pka, 0) result:";
+      debugPrint (debug_show rem0b);
+      debugPrint "\n";
 
       await debugDumpInventory(s, pka, 0);
       await debugDumpAll(s);
@@ -148,75 +148,75 @@ actor class Test() = this {
 };
 
 func debugDumpInventory(server:A.Server, pk:T.PublicKey, p:T.ProducerId) : async () {
-  Debug.print "\nProducer ";
-  Debug.printInt p;
-  Debug.print "'s inventory:\n--------------------------------\n";
+  debugPrint "\nProducer ";
+  debugPrintInt p;
+  debugPrint "'s inventory:\n--------------------------------\n";
   let res = await server.producerAllInventoryInfo(pk, p);
   let items = Result.assertUnwrapAny<[T.InventoryInfo]>(res);
   for (i in items.keys()) {
-    Debug.printInt i;
-    Debug.print ". ";
-    Debug.print (Debug.show (items[i]));
-    Debug.print "\n";
+    debugPrintInt i;
+    debugPrint ". ";
+    debugPrint (debug_show (items[i]));
+    debugPrint "\n";
   }
 };
 
 func debugDumpAll(server:A.Server) : async () {
 
-  Debug.print "\nTruck type info\n----------------\n";
+  debugPrint "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nRegion info\n----------------\n";
+  debugPrint "\nRegion info\n----------------\n";
   for ( info in ((await server.allRegionInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nProduce info\n----------------\n";
+  debugPrint "\nProduce info\n----------------\n";
   for ( info in ((await server.allProduceInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nProducer info\n----------------\n";
+  debugPrint "\nProducer info\n----------------\n";
   for ( info in ((await server.allProducerInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nTransporter info\n----------------\n";
+  debugPrint "\nTransporter info\n----------------\n";
   for ( info in ((await server.allTransporterInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nRetailer info\n----------------\n";
+  debugPrint "\nRetailer info\n----------------\n";
   for ( info in ((await server.allRetailerInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nInventory info\n----------------\n";
+  debugPrint "\nInventory info\n----------------\n";
   for ( info in ((await server.allInventoryInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 
-  Debug.print "\nRoute info\n----------------\n";
+  debugPrint "\nRoute info\n----------------\n";
   for ( info in ((await server.allRouteInfo()).vals()) ) {
-    Debug.print "- ";
-    Debug.print (Debug.show info);
-    Debug.print "\n";
+    debugPrint "- ";
+    debugPrint (debug_show info);
+    debugPrint "\n";
   };
 };
 

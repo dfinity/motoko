@@ -1,13 +1,13 @@
 import Option "option.mo";
 import Prelude "prelude.mo";
 
-Debug.printLn("Option");
+Prelude.printLn("Option");
 
 {
-  Debug.printLn("  apply");
+  Prelude.printLn("  apply");
 
   {
-    Debug.printLn("    null function, null value");
+    Prelude.printLn("    null function, null value");
 
     let actual = Option.apply<Int, Bool>(null, null);
     let expected : ?Bool = null;
@@ -23,7 +23,7 @@ Debug.printLn("Option");
   };
 
   {
-    Debug.printLn("    null function, non-null value");
+    Prelude.printLn("    null function, non-null value");
 
      let actual = Option.apply<Int, Bool>(null, ?0);
     let expected : ?Bool = null;
@@ -39,7 +39,7 @@ Debug.printLn("Option");
   };
 
   {
-    Debug.printLn("    non-null function, null value");
+    Prelude.printLn("    non-null function, null value");
 
      let isEven = func (x : Int) : Bool {
       x % 2 == 0;
@@ -59,7 +59,7 @@ Debug.printLn("Option");
   };
 
   {
-    Debug.printLn("    non-null function, non-null value");
+    Prelude.printLn("    non-null function, non-null value");
 
    let isEven = func (x : Int) : Bool {
       x % 2 == 0;
@@ -81,10 +81,10 @@ Debug.printLn("Option");
  };
 
 {
-  Debug.printLn("  bind");
+  Prelude.printLn("  bind");
 
   {
-    Debug.printLn("    null value to null value");
+    Prelude.printLn("    null value to null value");
 
     let safeInt = func (x : Int) : ?Int {
       if (x > 9007199254740991) {
@@ -108,7 +108,7 @@ Debug.printLn("Option");
   };
 
   {
-    Debug.printLn("    non-null value to null value");
+    Prelude.printLn("    non-null value to null value");
 
     let safeInt = func (x : Int) : ?Int {
       if (x > 9007199254740991) {
@@ -132,7 +132,7 @@ Debug.printLn("Option");
   };
 
   {
-    Debug.printLn("    non-null value to non-null value");
+    Prelude.printLn("    non-null value to non-null value");
 
     let safeInt = func (x : Int) : ?Int {
       if (x > 9007199254740991) {
@@ -158,10 +158,10 @@ Debug.printLn("Option");
 };
 
 {
-  Debug.printLn("  join");
+  Prelude.printLn("  join");
 
   {
-    Debug.printLn("    null value");
+    Prelude.printLn("    null value");
 
     let actual = Option.join<Int>(?null);
     let expected : ?Int = null;
@@ -177,7 +177,7 @@ Debug.printLn("Option");
   };
 
   {
-    Debug.printLn("    non-null value");
+    Prelude.printLn("    non-null value");
     let actual = Option.join<Int>(??0);
     let expected = ?0;
 
@@ -194,10 +194,10 @@ Debug.printLn("Option");
 };
 
 {
-  Debug.printLn("  map");
+  Prelude.printLn("  map");
 
   {
-    Debug.printLn("    null value");
+    Prelude.printLn("    null value");
 
     let isEven = func (x : Int) : Bool {
       x % 2 == 0;
@@ -217,7 +217,7 @@ Debug.printLn("Option");
   };
 
   {
-    Debug.printLn("    non-null value");
+    Prelude.printLn("    non-null value");
 
     let isEven = func (x : Int) : Bool {
       x % 2 == 0;
@@ -239,7 +239,7 @@ Debug.printLn("Option");
 };
 
 {
-  Debug.printLn("  pure");
+  Prelude.printLn("  pure");
 
   let actual = Option.pure<Int>(0);
   let expected = ?0;

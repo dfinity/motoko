@@ -2,10 +2,10 @@ actor {
   var c = 1;
   public func inc() {
     c += 1;
-    Debug.printNat c; Debug.print "\n";
+    debugPrintNat c; debugPrint "\n";
   };
   public func printCounter () {
-    Debug.printNat c; Debug.print "\n";
+    debugPrintNat c; debugPrint "\n";
   }
 }
 //CALL inc 0x4449444C0000 []

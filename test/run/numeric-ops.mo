@@ -4,9 +4,9 @@
 // asserts that those compare equal
 
 func verify<T>(etalon : [T], results : [T], cmp : (T, T) -> Bool) {
-    //Debug.print "\n";
+    //debugPrint "\n";
     for (i in etalon.keys())
-    { //Debug.printInt i; Debug.print "\n";
+    { //debugPrintInt i; debugPrint "\n";
       assert cmp(etalon[i], results[i * 2]);
       assert cmp(etalon[i], results[i * 2 + 1]);
     }

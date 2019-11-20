@@ -1,10 +1,10 @@
 import Prelude "prelude.mo";
 import Text "text.mo";
 
-Debug.printLn("Text");
+Prelude.printLn("Text");
 
 {
-  Debug.printLn("  append");
+  Prelude.printLn("  append");
 
   let actual = Text.append("x", "y");
   let expected = "xy";

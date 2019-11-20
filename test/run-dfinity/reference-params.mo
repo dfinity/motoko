@@ -1,6 +1,6 @@
 let a = actor {
   public func hello() {
-    Debug.print("Hello World!\n");
+    debugPrint("Hello World!\n");
   };
 };
 a.hello();
@@ -27,7 +27,7 @@ let d = actor {
     f();
   };
   public func hello() {
-    Debug.print("Hello Universe!\n");
+    debugPrint("Hello Universe!\n");
   };
   public func go() {
     say_hi(hello);
@@ -38,7 +38,7 @@ d.go();
 // test passing a self to an actor
 let e = actor this {
   public func hello() {
-    Debug.print("Hello Galaxy!\n");
+    debugPrint("Hello Galaxy!\n");
   };
   public func send_to(f : shared (actor { hello : () -> () }) -> ()) {
     f(this);
