@@ -34,7 +34,7 @@ type typ = typ' Source.phrase
 and typ' =
   | PrimT of prim                                (* primitive *)
   | VarT of id                                    (* type name *)
-  | FuncT of func_mode list * typ_field list * typ_field list   (* function *)
+  | FuncT of func_mode list * typ list * typ list   (* function *)
   | OptT of typ   (* option *)
   | VecT of typ   (* vector *)
   | RecordT of typ_field list  (* record *)

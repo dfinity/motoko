@@ -145,8 +145,12 @@ data_typ :
   | t=prim_typ { t }
 
 param_typs :
-  | LPAR fs=seplist(record_typ, COMMA) RPAR
-    { record_fields fs }
+  | LPAR fs=seplist(param_typ, COMMA) RPAR
+    { fs }
+
+param_typ :
+  | t=data_typ { t }
+  | name COLON t=data_typ { t }
 
 func_mode :
   | m=id
