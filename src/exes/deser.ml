@@ -741,7 +741,7 @@ let type_assoc = List.map (fun (prim, snd) -> (PrimT prim, snd))
   (* | -13 | -14 -> failwith "no floats yet" (* TODO *) *)
   ; Text, (-15, write_text)
   ; Reserved, (-16, write_nil)
-  ; Empty, (-17, write_nil)
+  ; Empty, (-17, fun _ -> assert false)
   ]
 
 let lookup_prim_tynum (ty : typ) = List.assoc ty.Source.it type_assoc
