@@ -118,4 +118,13 @@ module {
     };
     ys;
   };
+
+  public func Array_tabulate_mut<T>(len : Nat,  gen : Nat -> T) : [var T] {
+    if (len == 0) { return [] };
+    let xs = Array_init(len, gen 0);
+    for (i in range(1,len)) {
+      xs[i] := gen i;
+    };
+    return xs;
+  };
 }

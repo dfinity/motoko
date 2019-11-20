@@ -15,99 +15,117 @@ See [buffer documentation](buf.mo) for more.
 
 // re-export types and use them below.
 public type ArrayBuf<X> = Buf.ArrayBuf<X>;
-public type Buf<X> = Buf.Buf<X>;
+public type IndexedBuf<X> = Buf.IndexedBuf<X>;
 
-public type InitArg<X> = {
-  // requests an empty buffer without asking for a capacity
-  #empty;
-  // take ownership of an existing representation
-  #arrayBuf: ArrayBuf<X>;
-  // initially-empty, with specified capacity
-  #capacity: Nat;
-  // initialize with given elements, and additional capacity
-  #array: [X];
-};
+/*
+Create an IndexedBuf<X>, represented internally by an mutable array.
 
-// Create a Buf<X> instance, represented as an ArrayBuf<X> instance
-public class Make<X> (init:InitArg<X>) : Buf<X> {
-  var buf : ArrayBuf<X> = switch init
-  {
-  case (#arrayBuf(buf)) buf;
-  case (#empty)
-  { // 0 is "most conservative" on initial size:
-    array = Array_init<?X>(0, null);
-    var count = 0;
-  };
-  case (#capacity(initCapacity))
-  {
-    array = Array_init<?X>(initCapacity, null);
-    var count = 0;
-  };
-  case (#array(array_))
-  {
-    // allocate new buffer,
-    let newBuf = {
-      array = Array_init<?X>(array_.len() * 2, null);
-      var count = array_.len()
+The argument `initCapacity` gives the initial capacity.  Under the
+interface, the mutable array grows by doubling when this initial
+capacity is exhausted.
+*/
+public class ArrayBufObj<X> (initCapacity : Nat) : IndexedBuf<X> {
+  var count : Nat = 0;
+  var elems : [var X] = [var]; // initially empty; allocated upon first `add`
+
+  public func add(elem : X) {
+    if (count == elems.len()) {
+      let size =
+        if (count == 0)
+          initCapacity
+        else
+          2 * elems.len();
+      let elems2 = Array_init<X>(size, elem);
+      for (i in elems.keys()) {
+        elems2[i] := elems[i];
+      };
+      elems := elems2;
     };
-    // initialize via immutable array arg
-    for (i in array_.keys()) {
-      newBuf.array[i] := ?(array_[i])
-    };
-    newBuf
-  };
+    elems[count] := elem;
+    count += 1;
   };
 
-  public func add(x:X) {
-    if (buf.count < buf.array.len()) {
-      Option.assertNullAny(buf.array[buf.count]);
-      buf.array[buf.count] := ?x;
-      buf.count += 1;
-    } else {
-      // todo: grow
-      P.nyi()
-    }
-  };
-
-  public func addBuf(b:Buf<X>) {
+  public func addBuf(b:Buf.Buf<X>) {
     for (x in b.iter()) { add(x) }
   };
 
   public func len() : Nat =
-    buf.count;
+    count;
 
-  public func clear() {
-    // clear away elements, but do not reallocate
-    for (x in buf.array.keys()) {
-      buf.array[x] := null
-    };
-    buf.count := 0
+  public func clear() =
+    count := 0;
+
+  public func clone() : IndexedBuf<X> {
+    let c = ArrayBufObj<X>(initCapacity);
+    for (elem in iter()) { c.add(elem) };
+    c
   };
 
-  public func clone() : Buf<X> {
-    /** Blocked: See issue 871 */
-    P.nyi()
+  public func iter() : Iter<X> = object {
+    var pos = 0;
+    public func next() : ?X {
+      if (pos == count) { null } else {
+        let elem = ?elems[pos];
+        pos += 1;
+        elem
+      }
+    }
   };
-
-  public func iter() : Iter<X> =
-    // todo
-    P.nyi();
 
   public func array() : [X] =
     // immutable clone of array
     Array_tabulate<X>(
-      buf.array.len(),
-      func(x: Nat): X {
-    Option.unwrap<X>(buf.array[x])
-  });
+      elems.len(),
+      func(x: Nat): X { elems[x] }
+    );
 
   public func mutArray() : [var X] = {
-    /** Blocked: See issue 871 */
-    P.nyi()
+    if (count == 0) { [var] } else {
+      let a = Array_init<X>(count, elems[0]);
+      for (i in elems.keys()) {
+        a[i] := elems[i]
+      };
+      a
+    }
   };
 
-  public func arrayBuf() : ArrayBuf<X>
-    = buf;
+  public func arrayBuf() : ArrayBuf<X> {
+    // overcome common field names between source/target objects:
+    let e = elems;
+    let c = count;
+    { var elems = e;
+      var count = c }
+  };
+
+  public func get(offset : Nat) : X {
+    elems[offset]
+  };
+
+  public func getOpt(offset : Nat) : ?X {
+    if (offset < count) {
+      ?elems[offset]
+    }
+    else {
+      null
+    }
+  };
+
+  public func set(offset : Nat, elem : X) {
+    elems[offset] := elem;
+  };
+
+  public func getEnd(offset : Nat) : X {
+    elems[count - offset]
+  };
+
+  public func getEndOpt(offset : Nat) : ?X {
+    if (count > offset) { ?elems[count - offset] }
+    else { null }
+  };
+
+  public func setEnd(offset : Nat, elem : X) {
+    elems[count - offset] := elem;
+  };
 };
 
 }
