@@ -119,9 +119,9 @@ module {
     ys;
   };
 
-  public func Array_tabulate_mut<T>(len : Nat,  gen : Nat -> T) : [var T] {
-    if (len == 0) { return [] };
-    let xs = Array_init(len, gen 0);
+  public func Array_tabulate_mut<A>(len : Nat,  gen : Nat -> A) : [var A] {
+    if (len == 0) { return [var] };
+    let xs = Array_init<A>(len, gen 0);
     for (i in range(1,len)) {
       xs[i] := gen i;
     };
