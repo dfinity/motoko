@@ -985,6 +985,12 @@ and write_typed_variant_field tfs vf =
 
 end
 
+
+(* Sanitise: utilities for normalising and consistency checking
+   - detect duplicated fields (equal hash)
+   - sort type/value fields by key (hash)
+ *)
+
 module Sanitise = struct
 open Idllib
 open Syntax
