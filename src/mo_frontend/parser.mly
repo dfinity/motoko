@@ -100,7 +100,7 @@ let scope_typ() = PathT ((IdH (scope_id @@ no_region)) @! no_region, []) @! no_r
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT ASYNC BREAK CASE CATCH CONTINUE LABEL DEBUG
-%token IF IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
+%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST
@@ -643,6 +643,8 @@ dec_nonvar :
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
+  | IGNORE e=exp(ob)
+    { LetD(WildP @! no_region, AnnotE (e, PrimT "Any" @! no_region) @? no_region) @? at $sloc }
 
 dec :
   | d=dec_var

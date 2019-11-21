@@ -4,6 +4,7 @@ all:
 	$(MAKE) -C run-release
 	$(MAKE) -C run-dfinity
 	$(MAKE) -C run-drun
+	$(MAKE) -C run-stub
 	$(MAKE) -C repl
 	$(MAKE) -C ld
 	$(MAKE) -C idl
@@ -24,6 +25,7 @@ quick:
 parallel: quick
 	$(MAKE_PAR) -C run-dfinity quick
 	$(MAKE_PAR) -C run-drun quick
+	$(MAKE_PAR) -C run-stub quick
 	$(MAKE_PAR) -C trap quick
 	$(MAKE_PAR) -C run-deser quick
 
@@ -37,6 +39,7 @@ coverage:
 	$(MAKE) -C run-release; \
 	$(MAKE) -C run-dfinity; \
 	$(MAKE) -C run-drun; \
+	$(MAKE) -C run-stub; \
 	$(MAKE) -C repl;
 	$(MAKE) -C ld || true
 	bisect-ppx-report -I ../src/_build/ -html coverage/ _coverage/bisect*.out
@@ -48,6 +51,7 @@ accept:
 	$(MAKE) -C run-release accept
 	$(MAKE) -C run-dfinity accept
 	$(MAKE) -C run-drun accept
+	$(MAKE) -C run-stub accept
 	$(MAKE) -C repl accept
 	$(MAKE) -C ld accept
 	$(MAKE) -C idl accept
@@ -61,6 +65,7 @@ clean:
 	$(MAKE) -C run-release clean
 	$(MAKE) -C run-dfinity clean
 	$(MAKE) -C run-drun clean
+	$(MAKE) -C run-stub clean
 	$(MAKE) -C repl clean
 	$(MAKE) -C ld clean
 	$(MAKE) -C mo-idl clean

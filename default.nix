@@ -22,7 +22,7 @@ let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   ref = "master";
-  rev = "8f017216245d57fb7173f27cb395f6c0e35d2c47";
+  rev = "5c7efff0524adbf97d85b27adb180e6137a3428f";
 }) { system = nixpkgs.system; }; in
 
 let sdk = import (builtins.fetchGit {
@@ -50,7 +50,7 @@ let real-drun =
 let js-user-library = sdk.js-user-library; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
-      overrides = import nix/haskell-packages.nix stdenv;
+      overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
   libtommath = nixpkgs.fetchFromGitHub {
@@ -204,18 +204,8 @@ rec {
     '';
   };
 
-  moc-tar = nixpkgs.symlinkJoin {
-    name = "moc-tar";
-    paths = [ moc-bin rts didc ];
-    postBuild = ''
-      tar -chf $out/moc.tar -C $out bin/moc rts/mo-rts.wasm bin/didc
-      mkdir -p $out/nix-support
-      echo "file bin $out/moc.tar" >> $out/nix-support/hydra-build-products
-    '';
-  };
-
   # “our” Haskell packages
-  inherit (haskellPackages) lsp-int qc-motoko;
+  inherit (haskellPackages) lsp-int qc-motoko ic-stub;
 
   tests = stdenv.mkDerivation {
     name = "tests";
@@ -238,6 +228,7 @@ rec {
         drun
         haskellPackages.qc-motoko
         haskellPackages.lsp-int
+        ic-stub
         esm
       ] ++
       llvmBuildInputs;
@@ -390,27 +381,8 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib.tar -C $src *.mo
-      mkdir -p $out/nix-support
-      echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
-    '';
-    forceShare = ["man"];
-  };
-
-  stdlib-doc-live = stdenv.mkDerivation {
-    name = "stdlib-doc-live";
-    src = subpath ./stdlib;
-    buildInputs = with nixpkgs;
-      [ pandoc bash python ];
-    buildPhase = ''
-      patchShebangs .
-      make alldoc
-    '';
-    installPhase = ''
-      mkdir -p $out
-      mv doc $out/
-      mkdir -p $out/nix-support
-      echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
+      cp ./*.mo $out
+      rm $out/*Test.mo
     '';
     forceShare = ["man"];
   };
@@ -426,9 +398,9 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib-doc.tar -C doc .
+      mv doc $out/
       mkdir -p $out/nix-support
-      echo "report stdlib-doc $out/stdlib-doc.tar" >> $out/nix-support/hydra-build-products
+      echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
     '';
     forceShare = ["man"];
   };
@@ -467,9 +439,9 @@ rec {
       rts
       stdlib
       stdlib-doc
-      stdlib-doc-live
       produce-exchange
       users-guide
+      ic-stub
     ];
   };
 

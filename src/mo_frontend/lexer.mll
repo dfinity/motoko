@@ -205,6 +205,7 @@ rule token mode = parse
   | "for" { FOR }
   | "func" { FUNC }
   | "if" { IF }
+  | "ignore" { IGNORE }
   | "in" { IN }
   | "import" { IMPORT }
   | "module" { MODULE }
