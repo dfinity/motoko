@@ -1023,7 +1023,8 @@ and sanitise_type t =
   | VecT t' -> { t with it = VecT (sanitise_type t') }
   | RecordT tfs -> { t with it = RecordT (sanitise_type_fields tfs) }
   | VariantT tfs -> { t with it = VariantT (sanitise_type_fields tfs) }
-  | FuncT _ | ServT _ -> assert false (* TODO *)
+  | FuncT (modes, args, rets) -> List.{ t with it = FuncT (modes, map sanitise_type args, map sanitise_type rets) }
+  | ServT _ -> assert false (* TODO *)
 
 and sanitise_type_fields tfs =
   let hash_of = function
