@@ -1,0 +1,5 @@
+illegal-await.mo:3.30-3.37: type error, ill-scoped await
+illegal-await.mo:12.32-12.40: type error, ill-scoped await
+illegal-await.mo:13.32-13.40: type error, ill-scoped await
+illegal-await.mo:24.7-24.14: type error, ill-scoped await
+illegal-await.mo:33.5-33.12: type error, ill-scoped await
