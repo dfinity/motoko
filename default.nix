@@ -28,8 +28,8 @@ let dfinity-repo = import (builtins.fetchGit {
 let sdk = import (builtins.fetchGit {
   name = "sdk-sources";
   url = "ssh://git@github.com/dfinity-lab/sdk";
-  ref = "paulyoung/js-user-library";
-  rev = "42f15621bc5b228c7fd349cb52f265917d33a3a0";
+  ref = "master";
+  rev = "bfdd1e2cc374c34e5bc2d74680289f3a66b06953";
 }) { system = nixpkgs.system; }; in
 
 let esm = builtins.fetchTarball {
