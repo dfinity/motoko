@@ -1,4 +1,4 @@
-import B "Buf.mo";
+import B "buf.mo";
 
 let a = B.Buf<Nat>(3);
 for (i in range(0, 123)) {
