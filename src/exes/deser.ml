@@ -746,6 +746,9 @@ NOPE: Guaranteed to return a `typ` that is `<=` in the IDL type lattice.
  *)
 type bid = typ' -> typ'
 
+(* combine locations: currently dropping both *)
+let combined f t t' = f t.it t'.it @@ no_region
+
 let rec lub t u =
   match t, u with
   | PrimT p, PrimT q when p = q -> t
@@ -757,9 +760,11 @@ let rec lub t u =
   | VecT p, VecT q -> VecT (lub p.it q.it @@ p.at)
   | PrimT Null, OptT _ -> u
   | OptT _, PrimT Null -> t
+  | FuncT (attrs, args, results), FuncT (attrs', args', results') when attrs = attrs' ->
+    List.(FuncT (attrs, map2 (combined glb) args args', map2 (combined lub) results results'))
   | _ -> failwith "lub TODO"
 
-let rec glb t u =
+and glb t u =
   match t, u with
   | PrimT Reserved, _ -> u
   | _, PrimT Reserved -> t
@@ -769,6 +774,8 @@ let rec glb t u =
   | PrimT Int, PrimT Nat -> u
   | PrimT _, PrimT _ -> PrimT Empty
   | VecT p, VecT q -> VecT (glb p.it q.it @@ p.at)
+  | FuncT (attrs, args, results), FuncT (attrs', args', results') when attrs = attrs' ->
+    List.(FuncT (attrs, map2 (combined lub) args args', map2 (combined glb) results results'))
   | _ -> failwith "glb TODO"
 
 
