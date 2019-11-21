@@ -806,7 +806,7 @@ let rec to_bid (v : value) : bid =
                       let identity x = x in
                       let compose g f x = g (f x) in
                       let refiners = List.map refine_record_field tfs in
-                      List.fold_left compose identity refiners (RecordT (List.map infer_field vfs))
+                      List.(fold_left compose identity refiners (RecordT (map infer_field vfs)))
                     | _ -> bottom)
   | VariantV vf -> (function
                     | PreT ->
@@ -817,7 +817,7 @@ let rec to_bid (v : value) : bid =
 
   | AnnotV (v, t) -> (function
                       | PreT -> to_bid v t.it
-                      | t' -> to_bid v (glb t' t.it))
+                      | t' -> glb t' (to_bid v t.it))
   | ServiceV uri -> (function
                      | PreT -> ServT []
                      | ServT _ as serv -> serv
