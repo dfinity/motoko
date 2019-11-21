@@ -760,7 +760,8 @@ let rec lub t u =
   | VecT p, VecT q -> VecT (lub p.it q.it @@ p.at)
   | PrimT Null, OptT _ -> u
   | OptT _, PrimT Null -> t
-  | FuncT (attrs, args, results), FuncT (attrs', args', results') when attrs = attrs' ->
+  | FuncT (attrs, args, results), FuncT (attrs', args', results')
+      when attrs = attrs' && List.(length args = length args' && length results = length results') ->
     List.(FuncT (attrs, map2 (combined glb) args args', map2 (combined lub) results results'))
   | _ -> failwith "lub TODO"
 
@@ -774,7 +775,8 @@ and glb t u =
   | PrimT Int, PrimT Nat -> u
   | PrimT _, PrimT _ -> PrimT Empty
   | VecT p, VecT q -> VecT (glb p.it q.it @@ p.at)
-  | FuncT (attrs, args, results), FuncT (attrs', args', results') when attrs = attrs' ->
+  | FuncT (attrs, args, results), FuncT (attrs', args', results')
+      when attrs = attrs' && List.(length args = length args' && length results = length results') ->
     List.(FuncT (attrs, map2 (combined lub) args args', map2 (combined glb) results results'))
   | _ -> failwith "glb TODO"
 
