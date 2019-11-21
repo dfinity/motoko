@@ -1,6 +1,6 @@
-import ArrayBuf "arrayBuf.mo";
+import B "Buf.mo";
 
-let a = ArrayBuf.Buf<Nat>(3);
+let a = B.Buf<Nat>(3);
 for (i in range(0, 123)) {
   a.add(i);
 };
