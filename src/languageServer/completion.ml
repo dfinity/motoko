@@ -82,7 +82,6 @@ let find_completion_prefix logger file line column: (string * string) option =
   let pos_past_cursor pos =
     pos.Source.line > line
     || (pos.Source.line = line && pos.Source.column > column) in
-  let pos_past_eq_cursor pos = pos_past_cursor pos || pos_eq_cursor pos in
   let rec loop = function
     | _ when (pos_past_cursor (Lexer.region lexbuf).Source.right) -> None
     | Parser.ID ident ->
@@ -101,7 +100,8 @@ let find_completion_prefix logger file line column: (string * string) option =
                else loop (Parser.ID prefix)
             | tkn ->
                let next_token_start = (Lexer.region lexbuf).Source.left in
-               if pos_past_eq_cursor next_token_start
+               if pos_eq_cursor next_token_start
+                  || pos_past_cursor next_token_start
                then Some (ident, "")
                else loop tkn)
         | tkn -> loop tkn)
