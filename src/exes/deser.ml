@@ -1102,6 +1102,6 @@ let () =
   - heralding of the type table
   - shrink type table (union-find)
   - `+42` infers as `nat`, should be `int`
-  - `(vec {})`: `(ArgTy (VecT (PrimT empty)))`
-  - summand-dependent bottom check
+  - summand-dependent bottom check --> `(vec {})`: `(ArgTy (VecT (PrimT empty)))`
+  - error output (module parameter?)
  *)
