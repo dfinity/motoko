@@ -1,111 +1,135 @@
+import P "prelude.mo";
+import B "buf.mo";
+
 module {
+
 /**
+
 Buffers
 ===================
 
-This module defines common types for buffers that grow, with a general element type.
-
-Implementations of these types are/will be defined elsewhere.
+This module defines buffers that grow, with a general element type.
 
 ### Why?
 
-Motoko applications expose interfaces that use arrays of general (user-defined)
-elements to represent sets, sequences and maps of application-specific
-elements.
-
-To create these arrays, and to consume them with ergonomic (imperative) code, and
-low API friction, developers need _buffers that grow_.
+Motoko applications expose interfaces that use fixed-size arrays of
+general (user-defined) elements to represent sets, sequences and maps
+of application-specific elements.
 
 The `Array` module focuses on Motoko's builtin arrays, whose size is
 each fixed.  They do not permit general growth/appending, which is the
 focus here.
 
+To create these arrays, and to consume them with ergonomic (imperative) code, and
+low API friction, developers need _buffers that grow_.
+
 ### Define `Buf<X>` object type
 
-A "buffer" is a mutable sequence that grows, either one element at a time, or one (second) buffer at time.
+A "buffer" is a mutable sequence that grows, either one element at a
+time, or one (second) buffer at time.
 
-The only way to access elements is with iteration, or by producing an array (either mutable or immutable).
-
-We capture the most basic buffer abstraction with the following `Buf<X>` object type:
 */
 
-public type Buf<X> = {
-  // intro forms: addElm and addBuf
-  add: X -> ();
-  addBuf: Buf<X> -> ();
-
-  // utilities:
-  len: () -> Nat;
-  clear: () -> ();
-  clone: () -> Buf<X>; // copies do not interfere across future mutations
-
-  // elim forms for accessing elements:
-  iter: () -> Iter<X>;
-  array: () -> [X];
-  mutArray: () -> [var X];
-  arrayBuf: () -> ArrayBuf<X>;
-};
 
 /*
- A concrete representation of a growable buffer.
+Create a buffer represented internally by an mutable array.
 
- See [`ArrayBuf`](arrayBuf.mo) for details.
-
- invariants:
- 1. the first `count` elements are "filled" in the `elems` array;
- 2. any remaining slots in `elems` contain a default value of type `X`.
+The argument `initCapacity` gives the initial capacity.  Under the
+interface, the mutable array grows by doubling when this initial
+capacity is exhausted.
 */
-public type ArrayBuf<X> = {
-  var elems: [var X];
-  var count: Nat;
+public class Buf<X> (initCapacity : Nat) {
+  var count : Nat = 0;
+  var elems : [var X] = [var]; // initially empty; allocated upon first `add`
+
+  public func add(elem : X) {
+    if (count == elems.len()) {
+      let size =
+        if (count == 0)
+          initCapacity
+        else
+          2 * elems.len();
+      let elems2 = Array_init<X>(size, elem);
+      for (i in elems.keys()) {
+        elems2[i] := elems[i];
+      };
+      elems := elems2;
+    };
+    elems[count] := elem;
+    count += 1;
+  };
+
+  public func append(b:Buf<X>) {
+    if (count + b.count >= b.len()) {
+      let size = 2 * count * b.count;
+      let elems2 = Array_init<X>(size, elems[0]);
+      for (i in elems.keys()) {
+        elems2[i] := elems[i];
+      };
+      elems := elems;
+    };
+    for (i in b.elems.keys()) {
+      elems[count + i] := b.elems[i];
+    };
+    count += b.count;
+  };
+
+  public func len() : Nat =
+    count;
+
+  public func clear() =
+    count := 0;
+
+  public func clone() : Buf<X> {
+    let c = Buf<X>(initCapacity);
+    for (elem in iter()) { c.add(elem) };
+    c
+  };
+
+  public func iter() : Iter<X> = object {
+    var pos = 0;
+    public func next() : ?X {
+      if (pos == count) { null } else {
+        let elem = ?elems[pos];
+        pos += 1;
+        elem
+      }
+    }
+  };
+
+  public func toArray() : [X] =
+    // immutable clone of array
+    Array_tabulate<X>(
+      elems.len(),
+      func(x: Nat): X { elems[x] }
+    );
+
+  public func toVarArray() : [var X] = {
+    if (count == 0) { [var] } else {
+      let a = Array_init<X>(count, elems[0]);
+      for (i in elems.keys()) {
+        a[i] := elems[i]
+      };
+      a
+    }
+  };
+
+  public func get(offset : Nat) : X {
+    elems[offset]
+  };
+
+  public func getOpt(offset : Nat) : ?X {
+    if (offset < count) {
+      ?elems[offset]
+    }
+    else {
+      null
+    }
+  };
+
+  public func set(offset : Nat, elem : X) {
+    elems[offset] := elem;
+  };
 };
-
-/**
-
-### Define `IndexedBuf<X>` object type
-
-A more general version of `Buf` that permits **indexed-based random
-access** of its elements, independent of iteration or producing an
-auxiliary array.
-
-##### Addressing accesses and updates
-
-By default, to _address_ an element for access, we use an offset from
-the start of the buffer, beginning at zero.
-
-Additionally, the abstraction provides access by a (zero-based) offset
-from the end (via `getEnd` and `setEnd`).
-
-*/
-
-public type IndexedBuf<X> = {
-  // intro forms: add and addBuf
-  add: X -> ();
-  addBuf: Buf<X> -> ();
-
-  // utilities:
-  len: () -> Nat;
-  clear: () -> ();
-  clone: () -> IndexedBuf<X>; // copies do not interfere across future mutations
-
-  // elim forms for accessing elements:
-  iter: () -> Iter<X>;
-  array: () -> [X];
-  mutArray: () -> [var X];
-  arrayBuf: () -> ArrayBuf<X>;
-
-  // get/set via an offset from the start, beginning at zero.
-  get : Nat -> X; // out-of-bounds access traps (as with ordinary arrays)
-  getOpt : Nat -> ?X; // `null` means "out of bounds"
-  set : (Nat, X) -> ();
-
-  // get/set via an offset from the end, beginning at zero.
-  getEnd : Nat -> X; // out-of-bounds access traps (as with ordinary arrays)
-  getEndOpt : Nat -> ?X; // `null` means "out of bounds"
-  setEnd : (Nat, X) -> ();
-};
-
-// assert that two types are related by subtyping, without having instances:
-func _assertSubtypes<X>(b:IndexedBuf<X>) : Buf<X> = b;
 
 }
