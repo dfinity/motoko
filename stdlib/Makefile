@@ -18,6 +18,7 @@ TESTS=\
 	Array \
 	ArrayTest \
 	AssocList \
+	Debug \
 	DocTable \
   Function \
   FunctionTest \
