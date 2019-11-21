@@ -115,6 +115,9 @@ let has_prefix (prefix : string) (ide_decl : ide_decl): bool =
   |> Lib.String.chop_prefix prefix
   |> Lib.Option.is_some
 
+let opt_bind f = function
+  | None -> None
+  | Some x -> f x
 
 let completions index logger project_root file_path file_contents line column =
   let imported = Source_file.parse_module_header project_root file_path file_contents in
@@ -132,28 +135,24 @@ let completions index logger project_root file_path file_contents line column =
      (* If we don't have any prefix to work with, just suggest the
         imported module aliases, as well as top-level definitions in
         the current file *)
-     let toplevel = match current_uri_opt with
-       | None -> []
-       | Some uri ->
-          match Index.find_opt uri index with
-          | None -> []
-          | Some decls ->
-             List.map item_of_ide_decl decls in
+     let toplevel =
+       current_uri_opt
+       |> opt_bind (fun uri -> Index.find_opt uri index)
+       |> Lib.Option.map (List.map item_of_ide_decl)
+       |> Lib.Fun.flip Lib.Option.get [] in
      imported
      |> List.map (fun (alias, _) -> module_alias_completion_item alias)
      |> List.append toplevel
   | Some ("", prefix) ->
      (* Without an alias but with a prefix we filter the toplevel
         idenfiers of the current module *)
-     (match current_uri_opt with
-       | None -> []
-       | Some uri ->
-          (match Index.find_opt uri index with
-           | None -> []
-           | Some decls ->
-              decls
-              |> List.filter (has_prefix prefix)
-              |> List.map item_of_ide_decl))
+       current_uri_opt
+       |> opt_bind (fun uri -> Index.find_opt uri index)
+       |> Lib.Option.map (fun decls ->
+            decls
+            |> List.filter (has_prefix prefix)
+            |> List.map item_of_ide_decl)
+       |> Lib.Fun.flip Lib.Option.get []
   | Some (alias, prefix) ->
      let module_path =
        imported
