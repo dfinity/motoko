@@ -4736,15 +4736,9 @@ module StackRep = struct
   let materialize_unboxed_ref env = function
     | StaticFun fi ->
       assert false
-    | StaticMessage fi ->
-      begin match E.mode env with
-      | Flags.AncientMode ->
-        Dfinity.static_message_funcref env fi
-      | _ ->
-        E.trap_with env "cannot call anonymous shared function"
-      end
-    | PublicMethod (_, _) ->
-      assert false
+    | StaticMessage fi | PublicMethod (fi, _) ->
+      assert (E.mode env = Flags.AncientMode);
+      Dfinity.static_message_funcref env fi
 
   let materialize env = function
     | StaticFun fi ->
@@ -4754,14 +4748,11 @@ module StackRep = struct
         compile_unboxed_const fi;
         compile_unboxed_zero (* number of parameters: none *)
       ]
+    | (StaticMessage fi | PublicMethod (fi, _)) when E.mode env = Flags.AncientMode ->
+      Dfinity.static_message_funcref env fi ^^
+      Dfinity.box_reference env
     | StaticMessage fi ->
-      begin match E.mode env with
-      | Flags.AncientMode ->
-        Dfinity.static_message_funcref env fi ^^
-        Dfinity.box_reference env
-      | _ ->
-        E.trap_with env "cannot call anonymous shared function"
-      end
+      assert false
     | PublicMethod (_, name) ->
       Dfinity.get_self_reference env ^^
       Dfinity.actor_public_field env name
