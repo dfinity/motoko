@@ -1,5 +1,4 @@
 import P "prelude.mo";
-import B "buf.mo";
 
 module {
 
