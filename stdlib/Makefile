@@ -75,13 +75,10 @@ $(OUTDIR)/Array.out: array.mo | $(OUTDIR)
 $(OUTDIR)/ArrayTest.out: arrayTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/ArrayBuf.out: arrayBuf.mo | $(OUTDIR)
-	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
-
-$(OUTDIR)/ArrayBufTest.out: arrayBufTest.mo | $(OUTDIR)
-	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
-
 $(OUTDIR)/Buf.out: buf.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/BufTest.out: bufTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Function.out: function.mo | $(OUTDIR)
@@ -165,7 +162,6 @@ docMd: \
 	$(DOCDIR)/README.md \
 	$(DOCDIR)/prelude.md \
 	$(DOCDIR)/array.md \
-	$(DOCDIR)/arrayBuf.md \
 	$(DOCDIR)/buf.md \
 	$(DOCDIR)/option.md \
 	$(DOCDIR)/result.md \
@@ -190,7 +186,6 @@ docHtml: \
 	$(DOCDIR)/README.html \
 	$(DOCDIR)/prelude.html \
 	$(DOCDIR)/array.html \
-	$(DOCDIR)/arrayBuf.html \
 	$(DOCDIR)/buf.html \
 	$(DOCDIR)/option.html \
 	$(DOCDIR)/result.html \
