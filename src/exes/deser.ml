@@ -580,7 +580,8 @@ let write_sleb128 i =
 
 let write_int_sleb128 n = write_sleb128 (Big_int.big_int_of_int n)
 
-(* IDL value writing *)
+(* primitive IDL value writing *)
+(* these assume that all surrounding AnnotV are already removed *)
 
 let write_nil (v : value') = ()
 let write_text = function
@@ -592,8 +593,7 @@ let write_text = function
     output_buffer stdout buf
   | _ -> assert false
 
-let rec write_bool = function
-  | AnnotV (v, t) -> write_bool v.it
+let write_bool = function
   | FalseV ->
     let buf = Buffer.create 0 in
     add_uint8 buf 0; Buffer.output_buffer stdout buf
@@ -602,18 +602,16 @@ let rec write_bool = function
     add_uint8 buf 1; Buffer.output_buffer stdout buf
   | _ -> assert false
 
-let rec write_byte (v : value') =
+let write_byte (v : value') =
   match v with
-  | AnnotV (v, t) -> write_byte v.it
   | IntegralV i ->
     let buf = Buffer.create 0 in
     add_uint8 buf (Big_int.int_of_big_int i);
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
-let rec write_2byte (v : value') =
+let write_2byte (v : value') =
   match v with
-  | AnnotV (v, t) -> write_2byte v.it
   | IntegralV i ->
     let buf = Buffer.create 0 in
     let i = Big_int.int_of_big_int i in
@@ -622,9 +620,8 @@ let rec write_2byte (v : value') =
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
-let rec write_4byte (v : value') =
+let write_4byte (v : value') =
   match v with
-  | AnnotV (v, t) -> write_4byte v.it
   | IntegralV i ->
     let buf = Buffer.create 0 in
     let i = Big_int.int_of_big_int i in
@@ -635,9 +632,8 @@ let rec write_4byte (v : value') =
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
-let rec write_8byte (v : value') =
+let write_8byte (v : value') =
   match v with
-  | AnnotV (v, t) -> write_8byte v.it
   | IntegralV i ->
     let open Big_int in
     let lim = big_int_of_int64 Int64.max_int in
@@ -656,9 +652,8 @@ let rec write_8byte (v : value') =
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
-let rec write_signedbyte (v : value') =
+let write_signedbyte (v : value') =
   match v with
-  | AnnotV (v, t) -> write_signedbyte v.it
   | IntegralV i ->
     let buf = Buffer.create 0 in
     let i = Big_int.int_of_big_int i in
@@ -666,9 +661,8 @@ let rec write_signedbyte (v : value') =
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
-let rec write_2signedbyte (v : value') =
+let write_2signedbyte (v : value') =
   match v with
-  | AnnotV (v, t) -> write_2signedbyte v.it
   | IntegralV i ->
     let buf = Buffer.create 0 in
     let i = Big_int.int_of_big_int i in
@@ -678,9 +672,8 @@ let rec write_2signedbyte (v : value') =
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
-let rec write_4signedbyte (v : value') =
+let write_4signedbyte (v : value') =
   match v with
-  | AnnotV (v, t) -> write_4signedbyte v.it
   | IntegralV i ->
     let buf = Buffer.create 0 in
     let i = Big_int.int_of_big_int i in
@@ -694,9 +687,8 @@ let rec write_4signedbyte (v : value') =
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
-let rec write_8signedbyte (v : value') =
+let write_8signedbyte (v : value') =
   match v with
-  | AnnotV (v, t) -> write_8signedbyte v.it
   | IntegralV i ->
     let open Big_int in
     let i = int64_of_big_int i in
@@ -713,15 +705,13 @@ let rec write_8signedbyte (v : value') =
     Buffer.output_buffer stdout buf
   | _ -> assert false
 
-let rec write_nat (v : value') =
+let write_nat (v : value') =
   match v with
-  | AnnotV (v, t) -> write_nat v.it
   | IntegralV i -> write_leb128 i
   | _ -> assert false
 
-let rec write_int (v : value') =
+let write_int (v : value') =
   match v with
-  | AnnotV (v, t) -> write_int v.it
   | IntegralV i -> write_sleb128 i
   | _ -> assert false
 
