@@ -68,3 +68,9 @@ data MethodCall = MethodCall
   , call_callback :: Callback
   }
   deriving Show
+
+type ExistingCanisters = [CanisterId]
+type NewCanisters = [(CanisterId, Blob, Blob)]
+
+type InitResult = (NewCanisters, [MethodCall])
+type UpdateResult = (NewCanisters, [MethodCall], Maybe Response)
