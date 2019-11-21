@@ -5,5 +5,4 @@
 → update go(0x4449444c0000)
 Hello 
 World!
-
 ← rejected (RC_CANISTER_ERROR): canister did not respond

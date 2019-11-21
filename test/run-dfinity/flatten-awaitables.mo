@@ -32,29 +32,27 @@ let a = actor {
 
 };
 
-func println(s:Text) {debugPrint s;debugPrint ",";};
-
 let _ = async {
 
-    println "\nfirst-order\n";
+    debugPrint "first-order";
 
     let () = await a.m0();
-    println "0";
+    debugPrint "0";
     let 1 = await a.m1(1);
-    println "1";
+    debugPrint "1";
     let (2,true) = await a.m2(2,true);
-    println "2";
+    debugPrint "2";
     let (3,false,"text") = await a.m3(3,false,"text");
-    println "3";
+    debugPrint "3";
 
     let () = await a.n0();
-    println "4";
+    debugPrint "4";
     let 1 = await a.n1(1);
-    println "5";
+    debugPrint "5";
     let (2,true) = await a.n2(2,true);
-    println "6";
+    debugPrint "6";
     let (3,false,"text") = await a.n3(3,false,"text");
-    println "7";
+    debugPrint "7";
 
     let u = ();
     let x:Int = 1;
@@ -62,60 +60,58 @@ let _ = async {
     let xyz:(Int,Bool,Text) = (3,false,"text");
 
     let () = await a.m0 u;
-    println "8";
+    debugPrint "8";
     let 1 = await a.m1 x;
-    println "9";
+    debugPrint "9";
     let (2,true) = await a.m2 xy;
-    println "10";
+    debugPrint "10";
     let (3,false,"text") = await a.m3 xyz;
-    println "11";
+    debugPrint "11";
 
     let () = await a.n0 u;
-    println "12";
+    debugPrint "12";
     let 1 = await a.n1 x;
-    println "13";
+    debugPrint "13";
     let (2,true) = await a.n2 xy;
-    println "14";
+    debugPrint "14";
     let (3,false,"text") = await a.n3 xyz;
-    println "15";
-   
-    println "\nhigher-order\n";
+    debugPrint "15";
+
+    debugPrint "higher-order";
     let () = await a.h0(a.m0,());
-    println "0";
+    debugPrint "0";
     let 1 = await a.h1(a.m1,1);
-    println "1";
+    debugPrint "1";
     let (2,true) = await a.h2(a.m2,(2,true));
-    println "2";
+    debugPrint "2";
     let (3,false,"text") = await a.h3(a.m3,(3,false,"text"));
-    println "3";
+    debugPrint "3";
 
     let () = await a.g0(a.n0,());
-    println "4";
+    debugPrint "4";
     let 1 = await a.g1(a.n1,1);
-    println "5";
+    debugPrint "5";
     let (2,true) = await a.g2(a.n2,(2,true));
-    println "6";
+    debugPrint "6";
     let (3,false,"text") = await a.g3(a.n3,(3,false,"text"));
-    println "7";
+    debugPrint "7";
 
     let () = await a.h0(a.m0,u);
-    println "8";
+    debugPrint "8";
     let 1 = await a.h1(a.m1,x);
-    println "9";
+    debugPrint "9";
     let (2,true) = await a.h2(a.m2,xy);
-    println "10";
+    debugPrint "10";
     let (3,false,"text") = await a.h3(a.m3,xyz);
-    println "11";
+    debugPrint "11";
 
     let () = await a.g0(a.n0,u);
-    println "12";
+    debugPrint "12";
     let 1 = await a.g1(a.n1,x);
-    println "13";
+    debugPrint "13";
     let (2,true) = await a.g2(a.n2,xy);
-    println "14";
+    debugPrint "14";
     let (3,false,"text") = await a.g3(a.n3,xyz);
-    println "15";
-
-    debugPrint "\n";
+    debugPrint "15";
 };
 

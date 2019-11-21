@@ -1,6 +1,6 @@
 let a = actor {
   public func world() {
-    debugPrint("World!\n");
+    debugPrint("World!");
   };
   public func go() {
     a.world();

@@ -3,7 +3,7 @@ let a = actor {
     "Hello ";
   };
   public func world() : async Text {
-    "World!\n"
+    "World!"
   };
   public func go() : async () {
     debugPrint((await hello()) # (await world()));

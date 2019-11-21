@@ -3143,8 +3143,13 @@ module Dfinity = struct
         system_call env "ic0" "debug_print"
       )
     | Flags.AncientMode ->
-      compile_databuf_of_text env ^^
-      system_call env "test" "print"
+      Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
+        get_str ^^
+        Blob.lit env "\n" ^^
+        Blob.concat env ^^
+        compile_databuf_of_text env ^^
+        system_call env "test" "print"
+      )
 
   (* For debugging *)
   let compile_static_print env s =
