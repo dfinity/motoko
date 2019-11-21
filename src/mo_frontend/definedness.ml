@@ -14,6 +14,7 @@ open Mo_def
 
 open Source
 open Syntax
+module T = Mo_types.Type
 
 (* We collect a few things along the way *)
 type usage_info = Eager | Delayed
@@ -60,6 +61,7 @@ let (///) (x : f) ((f, d) : fd) = f ++ diff x d
 (* Usage tracking. We distinguish between eager and delayed variable use.
    Eager variables become delayed
    - inside lambda
+   - inside `actor` (the actor body is evaluated asynchronously)
    Delayed variables may stay delayed
    - when storing variables in data structures (tuples, objects, arrays)
    Delayed variables become eager
@@ -98,10 +100,11 @@ let rec exp msgs e : f = match e.it with
   | ShowE (_, e)        -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
-  | ObjE (s, efs)       ->
-    (* For actors, this may be too permissive; to be revised when we work on actors again *)
-    (* Also see https://dfinity.atlassian.net/browse/AST-49 *)
-    exp_fields msgs efs
+  | ObjE (s, efs) ->
+    begin match s.it with
+      | T.Actor -> delayify (exp_fields msgs efs)
+      | _       -> exp_fields msgs efs
+    end
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
   | ArrayE (m, es)      -> exps msgs es
