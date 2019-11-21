@@ -23,15 +23,17 @@ dummyUserId :: CanisterId
 dummyUserId = EntityId $ B.pack [0xCA, 0xFF, 0xEE]
 
 printAsyncRequest :: AsyncRequest -> IO ()
+printAsyncRequest CreateRequest{} =
+    printf "→ create\n"
 printAsyncRequest InstallRequest{} =
     printf "→ install\n"
-printAsyncRequest (UpdateRequest _ method arg) =
+printAsyncRequest (UpdateRequest _ _ method arg) =
     printf "→ update %s(%s)\n" method (prettyBlob arg)
 
 printSyncRequest :: SyncRequest -> IO ()
 printSyncRequest (StatusRequest rid) =
     printf "→ status? %s\n" (prettyBlob rid)
-printSyncRequest (QueryRequest _ method arg) =
+printSyncRequest (QueryRequest _ _ method arg) =
     printf "→ query %s(%s)\n" method (prettyBlob arg)
 
 printReqStatus :: RequestStatus -> IO ()
@@ -71,11 +73,14 @@ work wasm_file msg_file = do
   wasm <- B.readFile wasm_file
   msgs <- parseFile msg_file
 
+  let user_id = dummyUserId
+
   flip evalStateT initialIC $ do
-    _req_res <- submitAndRun (InstallRequest dummyUserId wasm B.empty)
+    Completed (CompleteCanisterId cid) <- submitAndRun (CreateRequest user_id)
+    _ <- submitAndRun (InstallRequest cid user_id wasm B.empty)
     forM_ msgs $ \case
-       (Query,  method, arg) -> submitRead  (QueryRequest dummyUserId method arg)
-       (Update, method, arg) -> submitAndRun (UpdateRequest dummyUserId method arg)
+       (Query,  method, arg) -> submitRead  (QueryRequest cid user_id method arg)
+       (Update, method, arg) -> submitAndRun (UpdateRequest cid user_id method arg)
 
 main :: IO ()
 main = join . customExecParser (prefs showHelpOnError) $

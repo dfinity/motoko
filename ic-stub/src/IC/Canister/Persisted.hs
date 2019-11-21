@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TupleSections #-}
 
 {-# OPTIONS_GHC -Wmissing-signatures #-}
 {-|
@@ -22,14 +23,14 @@ import IC.Canister.Imp
 
 data WasmState = WasmState Module CanisterId PInstance
 
-initialize :: Module -> CanisterId -> EntityId -> Blob -> TrapOr WasmState
-initialize wasm_mod cid caller dat = runESST $ \esref ->
+initialize :: ExistingCanisters -> Module -> CanisterId -> EntityId -> Blob -> TrapOr (InitResult, WasmState)
+initialize ex wasm_mod cid caller dat = runESST $ \esref ->
   rawInitialize esref cid wasm_mod >>= \case
     Trap err -> return $ Trap err
     Return rs ->
-      rawInvoke rs (CI.Initialize wasm_mod caller dat) >>= \case
+      rawInvoke rs (CI.Initialize ex wasm_mod caller dat) >>= \case
         Trap err -> return $ Trap err
-        Return () -> Return <$> newWasmState wasm_mod rs
+        Return ir -> Return . (ir,) <$> newWasmState wasm_mod rs
 
 invoke :: WasmState -> CI.CanisterMethod r -> TrapOr (WasmState, r)
 invoke s m = runESST $ \esref -> do
