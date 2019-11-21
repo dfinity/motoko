@@ -1,6 +1,5 @@
 import P "prelude.mo";
 import B "buf.mo";
-import Option "option.mo";
 
 module {
 /**
