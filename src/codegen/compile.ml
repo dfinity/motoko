@@ -3339,7 +3339,7 @@ module Dfinity = struct
     | _ -> assert false
 
   (* Actor reference on the stack *)
-  and actor_public_field env name =
+  let actor_public_field env name =
     match E.mode env with
     | Flags.AncientMode ->
       compile_databuf_of_bytes env name ^^
@@ -3349,6 +3349,9 @@ module Dfinity = struct
       Blob.lit env name ^^
       Tuple.from_stack env 2
     | Flags.WasmMode -> assert false
+
+  let fail_assert env at =
+    E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
 
 end (* Dfinity *)
 
@@ -6702,7 +6705,7 @@ and compile_exp (env : E.t) ae exp =
   | AssertE e1 ->
     SR.unit,
     compile_exp_as env ae SR.bool e1 ^^
-    G.if_ (ValBlockType None) G.nop (G.i Unreachable)
+    G.if_ (ValBlockType None) G.nop (Dfinity.fail_assert env exp.at)
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as env ae SR.bool scrut in
     let sr1, code1 = compile_exp env ae e1 in
