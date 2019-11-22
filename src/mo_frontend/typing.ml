@@ -230,9 +230,9 @@ let error_shared env t at fmt =
         Diag.add_msg env.msgs (type_error at (s1^s));
         match t1 with
         | T.Obj (T.Actor, _) ->
-          error_in [Flags.ICMode; Flags.StubMode] env at "actor types are non-shared."
+          error_in [Flags.ICMode] env at "actor types are non-shared."
         | T.Func (T.Shared _, _, _, _, _) ->
-          error_in [Flags.ICMode; Flags.StubMode] env at "shared function types are non-shared."
+          error_in [Flags.ICMode] env at "shared function types are non-shared."
         | _ -> raise Recover)
       fmt
 
