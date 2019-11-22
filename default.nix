@@ -2,10 +2,11 @@
   dvm ? null,
   drun ? null,
   export-shell ? false,
-  replay ? 0
+  replay ? 0,
+  system ? nixpkgs.system
 }:
 
-let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
+let llvm = import ./nix/llvm.nix { inherit system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -16,21 +17,21 @@ let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   # ref = "master";
   rev = "6fca1936fcd027aaeaccab0beb51defeee38a0ff";
-}) { system = nixpkgs.system; }; in
+}) { inherit system; }; in
 
 let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   ref = "master";
   rev = "5c7efff0524adbf97d85b27adb180e6137a3428f";
-}) { system = nixpkgs.system; }; in
+}) { inherit system; }; in
 
 let sdk = import (builtins.fetchGit {
   name = "sdk-sources";
   url = "ssh://git@github.com/dfinity-lab/sdk";
   ref = "paulyoung/js-user-library";
   rev = "42f15621bc5b228c7fd349cb52f265917d33a3a0";
-}) { system = nixpkgs.system; }; in
+}) { inherit system; }; in
 
 let esm = builtins.fetchTarball {
   sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";

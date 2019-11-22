@@ -1,0 +1,13 @@
+→ create
+← completed: canister-id = 0x0000000000000400
+→ install
+main actor creating a
+main actor calling a.foo()
+a created
+a.foo() called
+a creating b
+a calling b.foo()
+a.foo() done
+b created
+b.foo() called
+← completed
