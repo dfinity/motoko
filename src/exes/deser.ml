@@ -749,6 +749,13 @@ type bid = typ' -> typ'
 (* combine locations: currently dropping both *)
 let combined f t t' = f t.it t'.it @@ no_region
 
+
+let hash_compare a b =
+  let hash_of = function
+    | Id h | Unnamed h -> h
+    | Named s -> Idllib.IdlHash.idl_hash s in
+  Lib.Uint32.compare (hash_of a.it.label.it) (hash_of b.it.label.it)
+
 let rec lub t u =
   match t, u with
   | PrimT p, PrimT q when p = q -> t
@@ -760,6 +767,7 @@ let rec lub t u =
   | VecT p, VecT q -> VecT (lub p.it q.it @@ p.at)
   | PrimT Null, OptT _ -> u
   | OptT _, PrimT Null -> t
+  | RecordT lfs, RecordT rfs -> RecordT (lub_record_fields lfs rfs)
   | FuncT (attrs, args, results), FuncT (attrs', args', results')
       when attrs = attrs' && List.(length args = length args' && length results = length results') ->
     List.(FuncT (attrs, map2 (combined glb) args args', map2 (combined lub) results results'))
@@ -775,11 +783,27 @@ and glb t u =
   | PrimT Int, PrimT Nat -> u
   | PrimT _, PrimT _ -> PrimT Empty
   | VecT p, VecT q -> VecT (glb p.it q.it @@ p.at)
+  | RecordT lfs, RecordT rfs -> RecordT (glb_record_fields lfs rfs)
   | FuncT (attrs, args, results), FuncT (attrs', args', results')
       when attrs = attrs' && List.(length args = length args' && length results = length results') ->
     List.(FuncT (attrs, map2 (combined lub) args args', map2 (combined glb) results results'))
   | _ -> failwith "glb TODO"
 
+and lub_record_fields lfs rfs =
+  let lub_record_field lf rf = { lf with typ = combined lub lf.typ rf.typ } in
+  let rec go = function
+    | a :: b :: r when 0 = hash_compare a b -> combined lub_record_field a b :: go r
+    | _ :: r -> go r
+    | _ -> [] in
+  go (List.stable_sort hash_compare (lfs @ rfs))
+
+and glb_record_fields lfs rfs =
+  let glb_record_field lf rf = { lf with typ = combined glb lf.typ rf.typ } in
+  let rec go = function
+    | a :: b :: r when 0 = hash_compare a b -> combined glb_record_field a b :: go r
+    | a :: r -> a :: go r
+    | [] -> [] in
+  go (List.stable_sort hash_compare (lfs @ rfs))
 
 let rec to_bid (v : value) : bid =
   let bottom = PrimT Empty in
@@ -1026,11 +1050,7 @@ and sanitise_type t =
   | ServT _ -> assert false (* TODO *)
 
 and sanitise_type_fields tfs =
-  let hash_of = function
-    | Id h | Unnamed h -> h
-    | Named s -> Idllib.IdlHash.idl_hash s in
-  let hash_compare a b = Lib.Uint32.compare (hash_of a.it.label.it) (hash_of b.it.label.it) in
-  let tfs' = List.sort_uniq hash_compare tfs in
+  let tfs' = List.sort_uniq Typer.hash_compare tfs in
   if List.(length tfs' <> length tfs) then
     begin
       Printf.eprintf "deser: type fields repeated";
