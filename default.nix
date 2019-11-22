@@ -1,10 +1,11 @@
 { nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
   dvm ? null,
   drun ? null,
-  replay ? 0
+  replay ? 0,
+  system ? nixpkgs.system
 }:
 
-let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
+let llvm = import ./nix/llvm.nix { inherit system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -15,21 +16,21 @@ let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   # ref = "master";
   rev = "6fca1936fcd027aaeaccab0beb51defeee38a0ff";
-}) { system = nixpkgs.system; }; in
+}) { inherit system; }; in
 
 let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   ref = "master";
-  rev = "8f017216245d57fb7173f27cb395f6c0e35d2c47";
-}) { system = nixpkgs.system; }; in
+  rev = "5c7efff0524adbf97d85b27adb180e6137a3428f";
+}) { inherit system; }; in
 
 let sdk = import (builtins.fetchGit {
   name = "sdk-sources";
   url = "ssh://git@github.com/dfinity-lab/sdk";
   ref = "paulyoung/js-user-library";
   rev = "42f15621bc5b228c7fd349cb52f265917d33a3a0";
-}) { system = nixpkgs.system; }; in
+}) { inherit system; }; in
 
 let esm = builtins.fetchTarball {
   sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
@@ -200,16 +201,6 @@ rec {
     postBuild = ''
       wrapProgram $out/bin/moc \
         --set-default MOC_RTS "$out/rts/mo-rts.wasm"
-    '';
-  };
-
-  moc-tar = nixpkgs.symlinkJoin {
-    name = "moc-tar";
-    paths = [ moc-bin rts didc ];
-    postBuild = ''
-      tar -chf $out/moc.tar -C $out bin/moc rts/mo-rts.wasm bin/didc
-      mkdir -p $out/nix-support
-      echo "file bin $out/moc.tar" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -390,27 +381,8 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib.tar -C $src *.mo
-      mkdir -p $out/nix-support
-      echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
-    '';
-    forceShare = ["man"];
-  };
-
-  stdlib-doc-live = stdenv.mkDerivation {
-    name = "stdlib-doc-live";
-    src = subpath ./stdlib;
-    buildInputs = with nixpkgs;
-      [ pandoc bash python ];
-    buildPhase = ''
-      patchShebangs .
-      make alldoc
-    '';
-    installPhase = ''
-      mkdir -p $out
-      mv doc $out/
-      mkdir -p $out/nix-support
-      echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
+      cp ./*.mo $out
+      rm $out/*Test.mo
     '';
     forceShare = ["man"];
   };
@@ -426,9 +398,9 @@ rec {
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib-doc.tar -C doc .
+      mv doc $out/
       mkdir -p $out/nix-support
-      echo "report stdlib-doc $out/stdlib-doc.tar" >> $out/nix-support/hydra-build-products
+      echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
     '';
     forceShare = ["man"];
   };
@@ -467,7 +439,6 @@ rec {
       rts
       stdlib
       stdlib-doc
-      stdlib-doc-live
       produce-exchange
       users-guide
       ic-stub

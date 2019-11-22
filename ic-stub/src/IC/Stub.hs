@@ -22,12 +22,10 @@ module IC.Stub
   )
 where
 
-import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BSC
 import qualified Data.Map as M
 import Data.List
 import Data.Maybe
-import Control.Monad
 import Control.Monad.State.Class
 import Data.Sequence (Seq(..))
 import Data.Foldable (toList)
@@ -36,16 +34,18 @@ import Data.Foldable (toList)
 
 import IC.Types
 import IC.Canister
+import IC.Id
 
 -- Abstract HTTP Interface
 
 data AsyncRequest
-    = InstallRequest UserId Blob Blob
-    | UpdateRequest UserId MethodName Blob
+    = CreateRequest UserId
+    | InstallRequest CanisterId UserId Blob Blob
+    | UpdateRequest CanisterId UserId MethodName Blob
   deriving (Eq, Ord, Show)
 
 data SyncRequest
-    = QueryRequest UserId MethodName Blob
+    = QueryRequest CanisterId UserId MethodName Blob
     | StatusRequest Blob
 
 data RequestStatus
@@ -94,6 +94,7 @@ data CallContext = CallContext
 data CallOrigin
   = FromUser AsyncRequest
   | FromCanister CallId Callback
+  | FromInit EntityId
   deriving Show
 
 data Message =
@@ -135,8 +136,8 @@ readRequest (StatusRequest rid) =
     Just (_r,status) -> return status
     Nothing -> return Unknown
 
-readRequest (QueryRequest user_id method arg) =
-  gets (M.lookup dummyCanisterId . canisters) >>= \case
+readRequest (QueryRequest canister_id user_id method arg) =
+  gets (M.lookup canister_id . canisters) >>= \case
     Nothing -> return $ Rejected (RC_DESTINATION_INVALID, "canister does not exist")
     Just Nothing -> return $ Rejected (RC_DESTINATION_INVALID, "canister is empty")
     Just (Just (CanState wasm_state can_mod)) ->
@@ -154,8 +155,6 @@ nextReceived = gets $ \ic -> listToMaybe
 
 nextStarved :: ICT m => m (Maybe CallId)
 nextStarved = gets $ \ic -> listToMaybe
-  -- TODO: This should return a starved calling context.
-  -- Until we have them, we treat requests in Processing state as starved
   [ c
   | (c, ctxt) <- M.toList (call_contexts ic)
   , not $ responded ctxt
@@ -178,8 +177,16 @@ setReqStatus :: ICT m => AsyncRequest -> RequestStatus -> m ()
 setReqStatus r s =
   modify (\ic -> ic { requests = M.insert r s (requests ic) })
 
-createCanister :: ICT m => CanisterId -> CanisterModule -> WasmState -> m ()
-createCanister cid can_mod wasm_state =
+createEmptyCanister :: ICT m => CanisterId -> m ()
+createEmptyCanister cid =
+  modify (\ic -> ic { canisters =
+    M.insert cid Nothing (canisters ic)
+  })
+
+
+installCanister :: ICT m => CanisterId -> CanisterModule -> WasmState -> m ()
+installCanister cid can_mod wasm_state =
+  -- Check that canister exists but is empty before?
   modify (\ic -> ic { canisters =
     M.insert cid (Just (CanState {can_mod, wasm_state})) (canisters ic)
   })
@@ -190,26 +197,42 @@ setCanisterState cid wasm_state =
     M.adjust (fmap (\cs -> cs { wasm_state })) cid (canisters ic)
   })
 
-dummyCanisterId :: CanisterId
-dummyCanisterId = EntityId $ BS.pack [0xDE, 0xAD, 0xBE, 0xEF]
-
 processRequest :: ICT m => AsyncRequest -> m ()
-processRequest r@(InstallRequest user_id can_mod dat) = do
-  let canister_id = dummyCanisterId
+
+processRequest r@(CreateRequest _user_id) = do
+  existing_canisters <- gets (M.keys . canisters)
+  let new_id = freshId existing_canisters
+  createEmptyCanister new_id
+  setReqStatus r $ Completed $ CompleteCanisterId new_id
+
+processRequest r@(InstallRequest canister_id user_id can_mod dat) =
   case parseCanister can_mod of
     Left err ->
       setReqStatus r $ Rejected (RC_SYS_FATAL, "Parsing failed: " ++ err)
-    Right can_mod ->
-      case init_method can_mod canister_id user_id dat of
+    Right can_mod -> do
+      -- We only need a call context to be able to do inter-canister calls
+      -- from init, which is useful for Motoko testing, but not currently
+      -- allowed by the spec.
+      ctxt_id <- newCallContext $ CallContext
+        { canister = canister_id
+        , origin = FromInit user_id
+        , responded = True
+        , last_trap = Nothing
+        }
+
+      existing_canisters <- gets (M.keys . canisters)
+
+      case init_method can_mod existing_canisters canister_id user_id dat of
         Trap msg ->
           setReqStatus r $ Rejected (RC_CANISTER_ERROR, "Initialization trapped: " ++ msg)
-        Return wasm_state -> do
-          createCanister canister_id can_mod wasm_state
+        Return ((new_canisters, new_calls), wasm_state) -> do
+          installCanister canister_id can_mod wasm_state
+          mapM_ (\(i,_,_) -> createEmptyCanister i) new_canisters
+          mapM_ (\(i,mod,dat) -> submitRequest (InstallRequest i canister_id mod dat)) new_canisters
+          mapM_ (newCall ctxt_id) new_calls
           setReqStatus r $ Completed CompleteUnit
 
-processRequest r@(UpdateRequest _user_id method arg) = do
-  let canister_id = dummyCanisterId
-
+processRequest r@(UpdateRequest canister_id _user_id method arg) = do
   ctxt_id <- newCallContext $ CallContext
     { canister = canister_id
     , origin = FromUser r
@@ -252,8 +275,9 @@ rememberTrap ctxt_id msg =
   modifyCallContext ctxt_id $ \ctxt -> ctxt { last_trap = Just msg }
 
 callerOfRequest :: AsyncRequest -> EntityId
-callerOfRequest (InstallRequest user_id _ _) = user_id
-callerOfRequest (UpdateRequest user_id _ _) = user_id
+callerOfRequest (CreateRequest user_id) = user_id
+callerOfRequest (InstallRequest _ user_id _ _) = user_id
+callerOfRequest (UpdateRequest _ user_id _ _) = user_id
 
 callerOfCallID :: ICT m => CallId -> m EntityId
 callerOfCallID ctxt_id = do
@@ -261,6 +285,7 @@ callerOfCallID ctxt_id = do
   case origin ctxt of
     FromUser request -> return $ callerOfRequest request
     FromCanister other_ctxt_id _callback -> calleeOfCallID other_ctxt_id
+    FromInit entity_id -> return entity_id
 
 calleeOfCallID :: ICT m => CallId -> m EntityId
 calleeOfCallID ctxt_id = do
@@ -269,16 +294,33 @@ calleeOfCallID ctxt_id = do
 
 invokeEntry :: ICT m =>
     CallId -> CanState -> EntryPoint ->
-    m (TrapOr (WasmState, ([MethodCall], Maybe Response)))
+    m (TrapOr (WasmState, UpdateResult))
 invokeEntry ctxt_id (CanState wasm_state can_mod) entry = do
+    existing_canisters <- gets (M.keys . canisters)
     caller <- callerOfCallID ctxt_id
     case entry of
       Public method dat ->
         case M.lookup method (update_methods can_mod) of
-          Just f -> return $ f caller dat wasm_state
-          Nothing -> return $ Return (wasm_state, ([], Just $ Reject (RC_DESTINATION_INVALID, "update method does not exist: " ++ method)))
+          Just f ->
+            return $ f existing_canisters caller dat wasm_state
+          Nothing -> do
+            let reject = Reject (RC_DESTINATION_INVALID, "update method does not exist: " ++ method)
+            return $ Return (wasm_state, ([], [], Just reject))
       Closure cb r ->
-        return $ callbacks can_mod cb caller r wasm_state
+        return $ callbacks can_mod cb existing_canisters caller r wasm_state
+
+newCall :: ICT m => CallId -> MethodCall -> m ()
+newCall from_ctxt_id call = do
+  new_ctxt_id <- newCallContext $ CallContext
+    { canister = call_callee call
+    , origin = FromCanister from_ctxt_id (call_callback call)
+    , responded = False
+    , last_trap = Nothing
+    }
+  enqueueMessage $ CallMessage
+    { call_context = new_ctxt_id
+    , entry = Public (call_method_name call) (call_arg call)
+    }
 
 processMessage :: ICT m => Message -> m ()
 processMessage (CallMessage ctxt_id entry) = do
@@ -291,19 +333,11 @@ processMessage (CallMessage ctxt_id entry) = do
       invokeEntry ctxt_id cs entry >>= \case
         Trap msg ->
           rememberTrap ctxt_id msg
-        Return (new_state, (calls, mb_response)) -> do
+        Return (new_state, (new_canisters, new_calls, mb_response)) -> do
           setCanisterState callee new_state
-          forM_ calls $ \call -> do
-            new_ctxt_id <- newCallContext $ CallContext
-              { canister = call_callee call
-              , origin = FromCanister ctxt_id (call_callback call)
-              , responded = False
-              , last_trap = Nothing
-              }
-            enqueueMessage $ CallMessage
-              { call_context = new_ctxt_id
-              , entry = Public (call_method_name call) (call_arg call)
-              }
+          mapM_ (\(i,_,_) -> createEmptyCanister i) new_canisters
+          mapM_ (\(i,mod,dat) -> submitRequest (InstallRequest i callee mod dat)) new_canisters
+          mapM_ (newCall ctxt_id) new_calls
           mapM_ res mb_response
 
 processMessage (ResponseMessage ctxt_id response) = do
@@ -318,6 +352,7 @@ processMessage (ResponseMessage ctxt_id response) = do
         { call_context = other_ctxt_id
         , entry = Closure callback response
         }
+    FromInit _ -> fail "unexpected Response in Init"
 
 starveCallContext :: ICT m => CallId -> m ()
 starveCallContext ctxt_id = do

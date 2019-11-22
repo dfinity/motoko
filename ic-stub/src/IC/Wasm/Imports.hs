@@ -77,6 +77,46 @@ instance
     ( WasmArg a1
     , WasmArg a2
     , WasmArg a3
+    , WasmArg a4
+    ) => WasmArgs
+    ( a1
+    , a2
+    , a3
+    , a4
+    ) where
+    stackType =
+        [ valueType @a1
+        , valueType @a2
+        , valueType @a3
+        , valueType @a4
+        ]
+    fromValues
+        [ x1
+        , x2
+        , x3
+        , x4
+        ] = (,,,)
+            <$> fromValue x1
+            <*> fromValue x2
+            <*> fromValue x3
+            <*> fromValue x4
+    fromValues xs = argError 3 xs
+    toValues
+        ( x1
+        , x2
+        , x3
+        , x4
+        ) =
+        [ toValue x1
+        , toValue x2
+        , toValue x3
+        , toValue x4
+        ]
+
+instance
+    ( WasmArg a1
+    , WasmArg a2
+    , WasmArg a3
     ) => WasmArgs
     ( a1
     , a2
