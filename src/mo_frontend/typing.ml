@@ -1502,7 +1502,7 @@ and infer_block_decs env decs : Scope.t =
   let scope = gather_block_decs env decs in
   let env' = adjoin {env with pre = true} scope in
   let scope_ce = infer_block_typdecs env' decs in
-  let env'' = adjoin env' scope_ce in
+  let env'' = adjoin {env' with pre = env.pre} scope_ce in
   let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (scope_ce = _scope_ce); *)
