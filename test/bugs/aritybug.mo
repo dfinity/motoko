@@ -8,7 +8,7 @@
 // eventhough Int != Tup[Int]
 
 {
-let t = "u_u\n";
+let t = "u_u";
 shared func fu_u(a:Int,) : async (Int,) {
    return (2*a,);
 };

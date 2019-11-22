@@ -2,7 +2,7 @@
 
 /* n-ary args */
 {
-let t = "0_0\n";
+let t = "0_0";
 shared func f0_0() : async () {};
 let _ : async () = async {
   await f0_0();
@@ -11,7 +11,7 @@ let _ : async () = async {
 };
 
 {
-let t = "1_0\n";
+let t = "1_0";
 shared func f1_0(x:Int) : async () {
   assert(x == 1);
 };
@@ -22,7 +22,7 @@ let _ : async () = async {
 };
 
 {
-let t = "2_0\n";
+let t = "2_0";
 shared func f2_0(x:Int,y:Bool) : async () {
   assert(x==1);
   assert(y==true);
@@ -34,7 +34,7 @@ let _ : async () = async {
 };
 
 {
-let t = "3_0\n";
+let t = "3_0";
 shared func f3_0(x:Int,y:Bool,z:Text) : async () {
   assert(x == 1);
   assert(y == true);
@@ -49,7 +49,7 @@ let _ : async () = async {
 /* n-ary returns */
 
 {
-let t = "0_0\n";
+let t = "0_0";
 shared func f0_0() : async () {};
 let _ : async () = async {
   await f0_0();
@@ -58,7 +58,7 @@ let _ : async () = async {
 };
 
 {
-let t = "0_1\n";
+let t = "0_1";
 shared func f0_1() : async Int {
    1;
 };
@@ -72,7 +72,7 @@ let _ : async Int = async {
 };
 
 {
-let t = "0_2\n";
+let t = "0_2";
 shared func f0_2() : async (Int,Bool) {
    (1,true);
 };
@@ -87,7 +87,7 @@ let _ : async (Int,Bool) = async {
 
 
 {
-let t = "0_3\n!!";
+let t = "0_3!!";
 shared func f0_3() : async (Int,Bool,Text) {
    (1,true,"a");
 };
@@ -106,7 +106,7 @@ let _ : async (Int,Bool,Text)  = async {
 /* special case: unary tuples */
 /*
 {
-let t = "(1)-(1)\n";
+let t = "(1)-(1)";
 shared func fu_u(a:Int,) : async (Int,) {
    return (2*a,);
 };
@@ -137,11 +137,11 @@ let _ : async T  = async {
 };
 
 
-Generic<Int>("<Int>\n", 1, func eq(i:Int,j:Int) : Bool = i == j);
+Generic<Int>("<Int>", 1, func eq(i:Int,j:Int) : Bool = i == j);
 
-Generic<()>("<()>\n", (), func eq(i:(),j:()) : Bool = true);
+Generic<()>("<()>", (), func eq(i:(),j:()) : Bool = true);
 
-Generic<(Int,Bool)>("<(Int,Bool)>\n", (1,true),
+Generic<(Int,Bool)>("<(Int,Bool)>", (1,true),
 	            func eq((i,b):(Int,Bool),
 		            (j,c):(Int,Bool)) : Bool = i == j and b == c);
 */

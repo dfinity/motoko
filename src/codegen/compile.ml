@@ -47,7 +47,8 @@ module SR = struct
   *)
   type static_thing =
     | StaticFun of int32
-    | StaticMessage of int32
+    | StaticMessage of int32 (* anonymous message, only on ancient *)
+    | PublicMethod of int32 * string
 
   (* Value representation on the stack:
 
@@ -3062,6 +3063,7 @@ module Dfinity = struct
     then E.add_global64 env "api_nonce" Mutable 0L
 
   let system_imports env =
+    let i32s n = Lib.List.make n I32Type in
     match E.mode env with
     | Flags.ICMode ->
       E.add_func_import env "debug" "print" [I32Type; I32Type] [];
@@ -3073,17 +3075,20 @@ module Dfinity = struct
       E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
       ()
     | Flags.StubMode  ->
-      E.add_func_import env "ic0" "call_simple" (Lib.List.make 10 I32Type) [I32Type];
-      E.add_func_import env "ic0" "canister_self_copy" [I32Type; I32Type; I32Type] [];
+      E.add_func_import env "ic0" "call_simple" (i32s 10) [I32Type];
+      E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
-      E.add_func_import env "ic0" "debug_print" [I32Type; I32Type] [];
-      E.add_func_import env "ic0" "msg_arg_data_copy" [I32Type; I32Type; I32Type] [];
+      E.add_func_import env "ic0" "debug_print" (i32s 2) [];
+      E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
-      E.add_func_import env "ic0" "msg_reject" [I32Type; I32Type] [];
-      E.add_func_import env "ic0" "msg_reply_data_append" [I32Type; I32Type] [];
+      E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
+      E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
-      E.add_func_import env "ic0" "trap" [I32Type; I32Type] [];
+      E.add_func_import env "ic0" "trap" (i32s 2) [];
+      E.add_func_import env "stub" "create_canister" (i32s 4) [I32Type];
+      E.add_func_import env "stub" "created_canister_id_size" (i32s 1) [I32Type];
+      E.add_func_import env "stub" "created_canister_id_copy" (i32s 4) [];
       ()
     | Flags.AncientMode ->
       E.add_func_import env "test" "print" [I32Type] [];
@@ -3139,8 +3144,13 @@ module Dfinity = struct
         system_call env "ic0" "debug_print"
       )
     | Flags.AncientMode ->
-      compile_databuf_of_text env ^^
-      system_call env "test" "print"
+      Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
+        get_str ^^
+        Blob.lit env "\n" ^^
+        Blob.concat env ^^
+        compile_databuf_of_text env ^^
+        system_call env "test" "print"
+      )
 
   (* For debugging *)
   let compile_static_print env s =
@@ -3318,6 +3328,31 @@ module Dfinity = struct
           system_call env "ic0" "msg_reply"
         | _ -> assert false
     )
+
+
+  (* References have special stack representation on the ancient platform,
+     but are just vanilla Blobs on the IC platform. *)
+  let reference_sr env = match E.mode env with
+    | Flags.AncientMode -> SR.UnboxedReference
+    | Flags.ICMode -> SR.Vanilla
+    | Flags.StubMode -> SR.Vanilla
+    | _ -> assert false
+
+  (* Actor reference on the stack *)
+  let actor_public_field env name =
+    match E.mode env with
+    | Flags.AncientMode ->
+      compile_databuf_of_bytes env name ^^
+      system_call env "actor" "export"
+    | Flags.ICMode | Flags.StubMode ->
+      (* simply tuple canister name and function name *)
+      Blob.lit env name ^^
+      Tuple.from_stack env 2
+    | Flags.WasmMode -> assert false
+
+  let fail_assert env at =
+    E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
+
 end (* Dfinity *)
 
 module OrthogonalPersistence = struct
@@ -4709,12 +4744,9 @@ module StackRep = struct
   let materialize_unboxed_ref env = function
     | StaticFun fi ->
       assert false
-    | StaticMessage fi ->
-      match E.mode env with
-      | Flags.AncientMode ->
-        Dfinity.static_message_funcref env fi
-      | _ ->
-        E.trap_with env "cannot call anonymous shared function"
+    | StaticMessage fi | PublicMethod (fi, _) ->
+      assert (E.mode env = Flags.AncientMode);
+      Dfinity.static_message_funcref env fi
 
   let materialize env = function
     | StaticFun fi ->
@@ -4724,13 +4756,14 @@ module StackRep = struct
         compile_unboxed_const fi;
         compile_unboxed_zero (* number of parameters: none *)
       ]
+    | (StaticMessage fi | PublicMethod (fi, _)) when E.mode env = Flags.AncientMode ->
+      Dfinity.static_message_funcref env fi ^^
+      Dfinity.box_reference env
     | StaticMessage fi ->
-      match E.mode env with
-      | Flags.AncientMode ->
-        Dfinity.static_message_funcref env fi ^^
-        Dfinity.box_reference env
-      | _ ->
-        E.trap_with env "cannot call anonymous shared function"
+      assert false
+    | PublicMethod (_, name) ->
+      Dfinity.get_self_reference env ^^
+      Dfinity.actor_public_field env name
 
   let adjust env (sr_in : t) sr_out =
     if sr_in = sr_out
@@ -5258,7 +5291,8 @@ module FuncDec = struct
         SR.Vanilla,
         code ^^
         get_clos
-      else
+      else begin
+        assert (E.mode env = Flags.AncientMode);
         SR.UnboxedReference,
         code ^^
         compile_unboxed_const fi ^^
@@ -5266,6 +5300,7 @@ module FuncDec = struct
         get_clos ^^
         ClosureTable.remember_closure env ^^
         Dfinity.system_call env "func" "bind_i32"
+      end
 
   (* Wraps a local closure in a shared function that does serialization and
      takes care of the reply global *)
@@ -6314,14 +6349,10 @@ and compile_exp (env : E.t) ae exp =
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
     Object.load_idx env e.note.note_typ name
-  | ActorDotE (e, name) when E.mode env = Flags.AncientMode ->
-    SR.UnboxedReference,
-    compile_exp_as env ae SR.UnboxedReference e ^^
-    actor_fake_object_idx env name
   | ActorDotE (e, name) ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.Vanilla e ^^
-    actor_fake_object_idx env name
+    Dfinity.reference_sr env,
+    compile_exp_as env ae (Dfinity.reference_sr env) e ^^
+    Dfinity.actor_public_field env name
   | PrimE (p, es) ->
 
     (* for more concise code when all arguments and result use the same sr *)
@@ -6674,7 +6705,7 @@ and compile_exp (env : E.t) ae exp =
   | AssertE e1 ->
     SR.unit,
     compile_exp_as env ae SR.bool e1 ^^
-    G.if_ (ValBlockType None) G.nop (G.i Unreachable)
+    G.if_ (ValBlockType None) G.nop (Dfinity.fail_assert env exp.at)
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as env ae SR.bool scrut in
     let sr1, code1 = compile_exp env ae e1 in
@@ -6837,7 +6868,7 @@ and compile_exp (env : E.t) ae exp =
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     FuncDec.lit env ae typ_binds x sort control captured args mk_body return_tys exp.at
   | ActorE (i, ds, fs, _) ->
-    SR.UnboxedReference,
+    Dfinity.reference_sr env,
     let captured = Freevars.exp exp in
     let prelude_names = find_prelude_names env in
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
@@ -7096,13 +7127,25 @@ and compile_n_ary_pat env ae how pat =
       orTrap env (fill_pat env ae1 pat)
   in (ae1, alloc_code, arity, fill_code)
 
-and compile_dec env pre_ae how dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
+and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
   (fun (pre_ae,alloc_code,mk_code) ->
        (pre_ae, G.with_region dec.at alloc_code, fun ae ->
          G.with_region dec.at (mk_code ae))) @@
   match dec.it with
   | TypD _ ->
     (pre_ae, G.nop, fun _ -> G.nop)
+  (* A special case for public methods *)
+  (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
+  | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
+    let (static_thing, fill) = compile_static_exp env pre_ae how e in
+    let fi = match static_thing with
+      | SR.StaticMessage fi -> fi
+      | _ -> assert false in
+    let pre_ae1 = VarEnv.add_local_deferred pre_ae v
+      (SR.StaticThing (SR.PublicMethod (fi, (E.NameEnv.find v v2en))))
+      (fun _ -> G.nop) false in
+    ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
+
   (* A special case for static expressions *)
   | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v how) ->
     let (static_thing, fill) = compile_static_exp env pre_ae how e in
@@ -7127,12 +7170,15 @@ and compile_dec env pre_ae how dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
       )
 
 and compile_decs env ae lvl decs captured_in_body : VarEnv.t * G.t =
+  compile_decs_public env ae lvl decs E.NameEnv.empty captured_in_body
+
+and compile_decs_public env ae lvl decs v2en captured_in_body : VarEnv.t * G.t =
   let how = AllocHow.decs ae lvl decs captured_in_body in
   let rec go pre_ae decs = match decs with
     | []          -> (pre_ae, G.nop, fun _ -> G.nop)
-    | [dec]       -> compile_dec env pre_ae how dec
+    | [dec]       -> compile_dec env pre_ae how v2en dec
     | (dec::decs) ->
-        let (pre_ae1, alloc_code1, mk_code1) = compile_dec env pre_ae how dec in
+        let (pre_ae1, alloc_code1, mk_code1) = compile_dec env pre_ae how v2en dec in
         let (pre_ae2, alloc_code2, mk_code2) = go              pre_ae1 decs in
         ( pre_ae2,
           alloc_code1 ^^ alloc_code2,
@@ -7239,9 +7285,9 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
 
 and export_actor_field env  ae (f : Ir.field) =
   let sr, code = Var.get_val env ae f.it.var in
-  (* A public actor field is guaranteed to be compiled as a StaticMessage *)
+  (* A public actor field is guaranteed to be compiled as a PublicMethod *) 
   let fi = match sr with
-    | SR.StaticThing (SR.StaticMessage fi) -> fi
+    | SR.StaticThing (SR.PublicMethod (fi, _)) -> fi
     | _ -> assert false in
   (* There should be no code associated with this *)
   assert (G.is_nop code);
@@ -7298,8 +7344,11 @@ and actor_lit outer_env this ds fs at =
       (* Add this pointer *)
       let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
 
+      (* Reverse the fs, to a map from variable to exported name *)
+      let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
+
       (* Compile the declarations *)
-      let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds Freevars.S.empty in
+      let (ae3, decls_code) = compile_decs_public env ae2 AllocHow.TopLvl ds v2en Freevars.S.empty in
 
       (* Export the public functions *)
       List.iter (export_actor_field env ae3) fs;
@@ -7315,36 +7364,56 @@ and actor_lit outer_env this ds fs at =
     let (_map, wasm_binary) = Wasm_exts.CustomModuleEncode.encode m in
     wasm_binary in
 
-    Dfinity.compile_databuf_of_bytes outer_env wasm_binary ^^
-    (* Create actorref *)
-    Dfinity.system_call outer_env "module" "new" ^^
-    Dfinity.system_call outer_env "actor" "new"
+    match E.mode outer_env with
+    | Flags.AncientMode ->
+      Dfinity.compile_databuf_of_bytes outer_env wasm_binary ^^
+      (* Create actorref *)
+      Dfinity.system_call outer_env "module" "new" ^^
+      Dfinity.system_call outer_env "actor" "new"
+    | Flags.StubMode ->
+      let (set_idx, get_idx) = new_local outer_env "idx" in
+      let (set_len, get_len) = new_local outer_env "len" in
+      let (set_id, get_id) = new_local outer_env "id" in
+      (* the module *)
+      Blob.lit outer_env wasm_binary ^^
+      Blob.as_ptr_len outer_env ^^
+      (* the arg (not used in motoko yet) *)
+      compile_unboxed_const 0l ^^
+      compile_unboxed_const 0l ^^
+      Dfinity.system_call outer_env "stub" "create_canister" ^^
+      set_idx ^^
+
+      get_idx ^^
+      Dfinity.system_call outer_env "stub" "created_canister_id_size" ^^
+      set_len ^^
+
+      get_len ^^ Blob.alloc outer_env ^^ set_id ^^
+
+      get_idx ^^
+      get_id ^^ Blob.payload_ptr_unskewed ^^
+      compile_unboxed_const 0l ^^
+      get_len ^^
+      Dfinity.system_call outer_env "stub" "created_canister_id_copy" ^^
+
+      get_id
+    | _ -> assert false
+
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 this ds fs =
   (* Add this pointer *)
   let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
 
+  (* Reverse the fs, to a map from variable to exported name *)
+  let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
+
   (* Compile the declarations *)
-  let (ae3, decls_code) = compile_decs env ae2 AllocHow.TopLvl ds Freevars.S.empty in
+  let (ae3, decls_code) = compile_decs_public env ae2 AllocHow.TopLvl ds v2en Freevars.S.empty in
 
   (* Export the public functions *)
   List.iter (export_actor_field env ae3) fs;
 
   decls_code
-
-(* Actor reference on the stack *)
-and actor_fake_object_idx env name =
-  match E.mode env with
-  | Flags.AncientMode ->
-    Dfinity.compile_databuf_of_bytes env name ^^
-    Dfinity.system_call env "actor" "export"
-  | Flags.ICMode | Flags.StubMode ->
-    (* simply tuple canister name and function name *)
-    Blob.lit env name ^^
-    Tuple.from_stack env 2
-  | Flags.WasmMode -> assert false
-
 
 and conclude_module env module_name start_fi_o =
 
