@@ -19,8 +19,10 @@
 → update unary4(0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572)
 ← completed: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
 → update three(0x4449444c00027171034f6e650354776f)
+Trap: EvalTrapError :0.1 "canister trapped explicitly: IDL error: too few arguments Text,Text,Text"
 ← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: IDL error: too few arguments Text,Text,Text"
 → update three(0x4449444c0003717171034f6e650354776f05546872656545585452414259544553)
+Trap: EvalTrapError :0.1 "canister trapped explicitly: IDL error: left-over bytes Text,Text,Text"
 ← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: IDL error: left-over bytes Text,Text,Text"
 → update four(0x4449444c00057171717171034f6e650354776f05546872656504466f75720446697665)
 ← completed: 0x4449444c000471717171034f6e650354776f05546872656504466f7572
