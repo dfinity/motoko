@@ -38,9 +38,8 @@ interface, the mutable array grows by doubling when this initial
 capacity is exhausted.
 */
 public class Buf<X> (initCapacity : Nat) {
-  // TODO: These should be private, but then `append` is not implementable as is.
-  public var count : Nat = 0;
-  public var elems : [var X] = [var]; // initially empty; allocated upon first `add`
+  var count : Nat = 0;
+  var elems : [var X] = [var]; // initially empty; allocated upon first `add`
 
   public func add(elem : X) {
     if (count == elems.len()) {
@@ -60,18 +59,13 @@ public class Buf<X> (initCapacity : Nat) {
   };
 
   public func append(b:Buf<X>) {
-    if (count + b.count >= b.len()) {
-      let size = 2 * count * b.count;
-      let elems2 = Array_init<X>(size, elems[0]);
-      for (i in elems.keys()) {
-        elems2[i] := elems[i];
+    let i = b.iter();
+    loop {
+      switch (i.next()) {
+      case null return;
+      case (?x) add(x);
       };
-      elems := elems;
     };
-    for (i in b.elems.keys()) {
-      elems[count + i] := b.elems[i];
-    };
-    count += b.count;
   };
 
   public func len() : Nat =
