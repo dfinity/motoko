@@ -76,7 +76,9 @@ public class Buf<X> (initCapacity : Nat) {
 
   public func clone() : Buf<X> {
     let c = Buf<X>(initCapacity);
-    for (elem in iter()) { c.add(elem) };
+    for (i in elems.keys()) {
+      c.add(elems[i])
+    };
     c
   };
 
