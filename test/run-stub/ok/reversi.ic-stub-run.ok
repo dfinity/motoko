@@ -1,0 +1,20 @@
+→ create
+← completed: canister-id = 0x0000000000000400
+→ install
+← completed
+→ update reset(0x4449444c0000)
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update board(0x4449444c0000)
+← completed: 0x4449444c000171482e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e4f2a2e2e2e0a2e2e2e2a4f2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a
+→ update place(0x4449444c00037c7c7c010204)
+← completed: 0x4449444c000171024f4b
+→ update board(0x4449444c0000)
+← completed: 0x4449444c000171482e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2e4f2e2e2e0a2e2e2e4f4f2e2e2e0a2e2e2e2a4f2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a
+→ update place(0x4449444c00037c7c7c020203)
+← completed: 0x4449444c000171024f4b
+→ update board(0x4449444c0000)
+← completed: 0x4449444c000171482e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2a4f2e2e2e0a2e2e2e2a4f2e2e2e0a2e2e2e2a4f2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a
+→ update place(0x4449444c00037c7c7c010402)
+← completed: 0x4449444c000171024f4b
+→ update board(0x4449444c0000)
+← completed: 0x4449444c000171482e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2a4f2e2e2e0a2e2e2e4f4f2e2e2e0a2e2e4f4f4f2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a2e2e2e2e2e2e2e2e0a
