@@ -1,11 +1,5 @@
 → create
 ← completed: canister-id = 0x0000000000000400
 → install
-test1
-A called
-test2
-B called
-test3
-C called
-test4
+ok
 ← completed

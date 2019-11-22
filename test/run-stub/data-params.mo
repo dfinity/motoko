@@ -1,4 +1,4 @@
-let a = actor {
+actor a {
   var c : Int = 0;
   public func inci(n : Int) : () {
     c += n;
@@ -72,7 +72,7 @@ let a = actor {
     debugPrintInt(c);
   };
 
-  public func go() : async () {
+  public func go() : () {
     a.incn(0);
     a.incn(1);
     a.incn(2);
@@ -112,5 +112,5 @@ let a = actor {
     a.inci(-42);
     a.incn(2**31 - 1); // highest compact
   };
-}
-//CALL ingress go 0x4449444C0000
+};
+a.go();

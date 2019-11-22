@@ -5,9 +5,9 @@ let a = actor {
   public func world() : async Text {
     "World!"
   };
-  public func go() : async () {
+  public func go() = ignore async  {
     debugPrint((await hello()) # (await world()));
   };
 };
 
-let _ = a.go()
+a.go()
