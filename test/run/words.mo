@@ -1,6 +1,6 @@
 // CHECK: func $start
 
-func printBit(a : Bool) { debugPrint(if a "set" else "clear"); debugPrint "\n" };
+func printBit(a : Bool) { debugPrint(if a "set" else "clear") };
 
 
 func checkpointAlpha() {};
@@ -16,7 +16,7 @@ func checkpointJuliett() {};
 
 // Word64 operations
 {
-    func printW64ln(w : Word64) { debugPrintNat(word64ToNat w);  debugPrint " "; debugPrintInt(word64ToInt w); debugPrint "\n" };
+    func printW64ln(w : Word64) { debugPrintNat(word64ToNat w);  debugPrint " "; debugPrintInt(word64ToInt w) };
 
     let a : Word64 = 4567;
     let b : Word64 = 7;
@@ -71,7 +71,7 @@ func checkpointJuliett() {};
 
 // Word32 operations
 {
-    func printW32ln(w : Word32) { debugPrintNat(word32ToNat w);  debugPrint " "; debugPrintInt(word32ToInt w); debugPrint "\n" };
+    func printW32ln(w : Word32) { debugPrintNat(word32ToNat w);  debugPrint " "; debugPrintInt(word32ToInt w) };
 
     let a : Word32 = 4567;
     let b : Word32 = 7;
@@ -125,7 +125,7 @@ func checkpointJuliett() {};
 
 // Word16 operations
 {
-    func printW16ln(w : Word16) { debugPrintNat(word16ToNat w); debugPrint " "; debugPrintInt(word16ToInt w); debugPrint "\n" };
+    func printW16ln(w : Word16) { debugPrintNat(word16ToNat w); debugPrint " "; debugPrintInt(word16ToInt w) };
 
     let a : Word16 = 4567;
     let b : Word16 = 7;
@@ -205,7 +205,7 @@ func checkpointJuliett() {};
 
 // Word8 operations
 {
-    func printW8ln(w : Word8) { debugPrintNat(word8ToNat w); debugPrint " "; debugPrintInt(word8ToInt w); debugPrint "\n" };
+    func printW8ln(w : Word8) { debugPrintNat(word8ToNat w); debugPrint " "; debugPrintInt(word8ToInt w) };
 
     let a : Word8 = 67;
     let b : Word8 = 7;

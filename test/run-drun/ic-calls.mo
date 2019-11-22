@@ -20,5 +20,5 @@ actor X {
   };
 
 }
-//CALL ingress inc 0x4449444C0000
+//CALL ingress test 0x4449444C0000
 

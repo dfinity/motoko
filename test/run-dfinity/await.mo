@@ -1,11 +1,7 @@
 var cnt : Nat = 0;
 
 func f(i:Nat) : async Nat {
-    debugPrint "cnt: ";
-    debugPrintNat cnt;
-    debugPrint " i: ";
-    debugPrintNat i;
-    debugPrint "\n";
+    debugPrint ("cnt: " # debug_show cnt # " i: " # debug_show i);
     cnt += 1;
     cnt;
 };
