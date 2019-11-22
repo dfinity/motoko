@@ -66,6 +66,7 @@ and prim = function
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICErrorCodePrim   -> Atom "ICErrorCodePrim"
   | ICCallPrim        -> Atom "ICCallPrim"
+  | ICPing            -> Atom "ICPing"
 
 and mut = function
   | Const -> Atom "Const"

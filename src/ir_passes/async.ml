@@ -29,7 +29,7 @@ let error_codeE mode =
   match mode with
   | Flags.ICMode -> callE
     (idE "@int32ToErrorCode"
-      (T.Func(T.Local,T.Returns,[],[T.Prim T.Int32],[T.Variant T.catchErrorCodes])))
+       (T.Func(T.Local,T.Returns,[],[T.Prim T.Int32],[T.Variant T.catchErrorCodes])))
     []
     (ic_error_codeE())
   | _ -> { it = TagE ("error", tupE []);
@@ -38,6 +38,13 @@ let error_codeE mode =
                note_typ = T.Variant (T.catchErrorCodes);
                note_eff = T.Triv }
          }
+
+let ic_pingE() =
+{ it = PrimE (ICPing, []);
+  at = no_region;
+  note = { note_typ = T.Func(T.Shared T.Write,T.Replies,[],[],[]);
+           note_eff = T.Triv }
+}
 
 let errorMessageE e =
 { it = PrimE (OtherPrim "errorMessage", [e]);
@@ -268,6 +275,20 @@ let transform mode env prog =
       let ts1 = match typ exp2 with
         | Func(_,_, [], [Func(_, _, [], ts1, []); _], []) -> List.map t_typ ts1
         | t -> assert false in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
+      (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+               let e = fresh_var "e" T.catch in
+               let r = [e] -->* (reject -*- (errorMessageE e)) in
+               let k = [] -->* ((t_exp exp2) -*- tupE [nary_reply;r]) in
+               expD (ic_callE (ic_pingE()) (seqE []) k reject);
+               ]
+               nary_async
+      ).it
+(*
+    | PrimE (CPSAsync, [exp2]) ->
+      let ts1 = match typ exp2 with
+        | Func(_,_, [], [Func(_, _, [], ts1, []); _], []) -> List.map t_typ ts1
+        | t -> assert false in
       let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Replies, [], [], ts1)) in
       let u = fresh_var "u" T.unit in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
@@ -283,6 +304,29 @@ let transform mode env prog =
                ]
                nary_async
       ).it
+*)
+    
+(*
+    | PrimE (CPSAsync, [exp2]) ->
+      let ts1 = match typ exp2 with
+        | Func(_,_, [], [Func(_, _, [], ts1, []); _], []) -> List.map t_typ ts1
+        | t -> assert false in
+      let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Replies, [], [], ts1)) in
+      let u = fresh_var "u" T.unit in
+      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
+      (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+               funcD post u (
+                  let vs = fresh_vars "v" ts1 in
+                  let k = vs -->* (ic_replyE ts1 (seqE vs)) in
+                  let e = fresh_var "e" T.catch in
+                  let r = [e] -->* (ic_rejectE (errorMessageE e)) in
+                  (t_exp exp2) -*- tupE [k;r]);
+
+               expD (ic_callE post (seqE []) nary_reply reject);
+               ]
+               nary_async
+      ).it
+*)
     | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
       assert (typs = []);
       let ts1,ts2 =

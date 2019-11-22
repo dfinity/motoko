@@ -391,6 +391,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           check_call_conv_arg env exp2 v2 call_conv;
           last_region := exp.at; (* in case the following throws *)
           f (V.Tup[kv;rv;v2]) k))))
+    | ICPing, [] ->
+      assert (not env.flavor.has_async_typ);
+      let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = 0 } in
+      let v = make_message env "ping" cc (V.Func(cc, fun v k' -> V.as_unit v; k' V.unit)) in
+      k v
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))

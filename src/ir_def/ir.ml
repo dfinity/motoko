@@ -112,6 +112,7 @@ and prim =
   | ICRejectPrim
   | ICErrorCodePrim
   | ICCallPrim
+  | ICPing
 
 
 (* Declarations *)

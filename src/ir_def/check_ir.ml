@@ -396,7 +396,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
-    end
+      end
+    | ICPing, [] ->
+      t <: T.Func (T.Shared T.Write, T.Replies, [], [], [])
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
