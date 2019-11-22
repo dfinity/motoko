@@ -9,11 +9,10 @@ let _ = async {
     let e = foo();
     let f = debugPrintNat(x);
   };
-  debugPrint("\ndone creating\n");
+  debugPrint("done creating\n");
   debugPrintNat(o.x);
   o.x := o.x + 1;
   debugPrintNat(o.x);
   o.foo();
   debugPrintNat(o.x);
-  debugPrint("\n");
 }

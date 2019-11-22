@@ -51,14 +51,14 @@ async {
 
   try {
     await t2();
-    debugPrint ("\n t2 ok");
+    debugPrint ("t2 ok");
   } catch _ {
     assert false;
   };
 
   try {
     await t3();
-    debugPrint ("\n t3 ok");
+    debugPrint ("t3 ok");
   } catch _ {
     assert false;
   };
