@@ -7127,6 +7127,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
   | TypD _ ->
     (pre_ae, G.nop, fun _ -> G.nop)
   (* A special case for public methods *)
+  (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
     let (static_thing, fill) = compile_static_exp env pre_ae how e in
     let fi = match static_thing with
