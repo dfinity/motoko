@@ -16,6 +16,7 @@ executable ic-stub-run
   other-modules:       IC.Types
   other-modules:       IC.Canister
   other-modules:       IC.Id
+  other-modules:       IC.Logger
   other-modules:       IC.Canister.Imp
   other-modules:       IC.Canister.Interface
   other-modules:       IC.Canister.Pure
