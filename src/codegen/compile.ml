@@ -6685,8 +6685,9 @@ and compile_exp (env : E.t) ae exp =
         FuncDec.call_await_funcref env get_funcref
       | _ -> assert false
       end
-
-    (* Unknown prim *)
+    | ICPing, _ ->
+      (* load the value for the ping method *)
+      SR.Unreachable, todo_trap env "compile_exp: ICPing" (Arrange_ir.exp exp)                         (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
   | VarE var ->
