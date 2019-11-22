@@ -513,7 +513,7 @@ public type List<T> = ?(T, List<T>);
    Creates a list of the given length with the same value in each position.
    */
   public func replicate<X>(n : Nat, x : X) : List<X> {
-    tabulate<X>(n, func (_) { x })
+    tabulate<X>(n, func _ { x })
   };
 
   /**
@@ -541,14 +541,10 @@ public type List<T> = ?(T, List<T>);
     f : (X, Y) -> Z
   ) : List<Z> {
     switch (pop<X>(xs)) {
-      case (null, _) {
-        nil<Z>()
-      };
+      case (null, _) null;
       case (?x, xt) {
         switch (pop<Y>(ys)) {
-          case (null, _) {
-            nil<Z>()
-          };
+          case (null, _) null;
           case (?y, yt) {
             push<Z>(f(x, y), zipWith<X, Y, Z>(xt, yt, f))
           }
@@ -560,7 +556,7 @@ public type List<T> = ?(T, List<T>);
   /**
    `splitAt`
    -----------
-   Creates a pair of lists by splitting the given list at the given (zero-based) index.
+   Split the given list at the given zero-based index.
    */
   public func splitAt<X>(n : Nat, xs : List<X>) : (List<X>, List<X>) {
     if (n == 0) {
@@ -582,6 +578,21 @@ public type List<T> = ?(T, List<T>);
         }
       };
       rec(n, xs)
+    }
+  };
+
+  /**
+   `chunksOf`
+   -----------
+    Split the given list into length-n chunks. The last chunk will be shorter if
+    n does not evenly divide the length of the given list.
+   */
+  public func chunksOf<X>(n : Nat, xs : List<X>) : List<List<X>> {
+    let (l, r) = splitAt<X>(n, xs);
+    if (isNil<X>(l)) {
+      null
+    } else {
+      push<List<X>>(l, chunksOf<X>(n, r))
     }
   };
 

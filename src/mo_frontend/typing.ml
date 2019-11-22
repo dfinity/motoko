@@ -661,7 +661,7 @@ and infer_exp'' env exp : T.typ =
     )
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
-      error_in [Flags.ICMode; Flags.StubMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
+      error_in [Flags.ICMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
     let env' = if sort.it = T.Actor then {env with async = false; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->

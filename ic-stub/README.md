@@ -17,6 +17,27 @@ This is neither complete nor authoritative. Since this is primarily meant for
 testing the output of Motoko, code paths not exercised by Motoko may not be
 present; in particular, error handling and input validation is incomplete.
 
+Extra features
+--------------
+
+In order to support patterns useful for and used in the Motoko test suite, the
+IC stub has some extra features that are not spec’ed or implemented in the
+official client. These are:
+
+ * The ability to create calls from `canister_init`.
+
+ * The ability to create additional canisters, in a way where the creating
+   canisters learns the id of the created canister synchronously, and can send
+   messages to it right away.
+
+   The interface for that is
+
+      ic.create_canister : (mod_src : i32, mod_size : i32, arg_src : i32, arg_size : i32) -> (idx : i32)
+      ic.created_canister_id_size : (idx : i32) -> (size : i32)
+      ic.created_canister_id_copy : (idx : i32, dst : i32, offset : i32, size : i32) -> ()
+
+   where the `idx` is only valid within the same function invokation.
+
 Installation of `ic-stub-run`
 -----------------------------
 
