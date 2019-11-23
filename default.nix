@@ -7,9 +7,7 @@
 }:
 
 
-let nixpkgs =
-  (import ./nix/nixpkgs.nix)
-  .nixpkgs (if system == null then {} else { inherit system; }); in
+let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs { inherit system; }; in
 
 let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; }; in
 
