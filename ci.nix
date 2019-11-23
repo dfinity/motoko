@@ -8,8 +8,6 @@ let
 in
 linux // {
   darwin = darwin.all-systems-go;
-  moc-tar-x86_64-darwin = darwin.moc-tar;
-  moc-tar-x86_64-linux = linux.moc-tar;
   all-systems-go = inject-rev (nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
