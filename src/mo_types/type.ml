@@ -31,6 +31,7 @@ type prim =
   | Float
   | Char
   | Text
+  | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
 
 type t = typ
@@ -431,7 +432,7 @@ let rec span = function
   | Con _ as t -> span (promote t)
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
-  | Prim (Nat | Int | Float | Text | Error) -> None
+  | Prim (Nat | Int | Float | Text | Blob | Error) -> None
   | Prim (Nat8 | Int8 | Word8) -> Some 0x100
   | Prim (Nat16 | Int16 | Word16) -> Some 0x10000
   | Prim (Nat32 | Int32 | Word32 | Nat64 | Int64 | Word64 | Char) -> None  (* for all practical purposes *)
@@ -1109,6 +1110,7 @@ let string_of_prim = function
   | Word64 -> "Word64"
   | Char -> "Char"
   | Text -> "Text"
+  | Blob -> "Blob"
   | Error -> "Error"
 
 let string_of_var (x, i) =
