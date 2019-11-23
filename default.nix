@@ -3,11 +3,13 @@
   drun ? null,
   export-shell ? false,
   replay ? 0,
-  system ? null,
-  nixpkgs ?
-    (import ./nix/nixpkgs.nix)
-    .nixpkgs (if system == null then {} else { inherit system; }),
+  system ? builtins.currentSystem,
 }:
+
+
+let nixpkgs =
+  (import ./nix/nixpkgs.nix)
+  .nixpkgs (if system == null then {} else { inherit system; }); in
 
 let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; }; in
 
