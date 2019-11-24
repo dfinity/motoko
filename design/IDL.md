@@ -426,22 +426,6 @@ type tree = variant {
 
 A third form of value are *references*. They represent first-class handles to (possibly remote) *functions* or *services*.
 
-#### Function References
-
-A *function reference* is described by its function type. For example, they allow passing callbacks to other functions.
-
-```
-<reftype> ::= func <functype> | ...
-```
-
-##### Example
-
-```
-type engine = service {
-  search : (query : text, callback : func (vec result) -> ());
-}
-```
-
 #### Actor References
 
 An *actor reference* points to a service and is described by an actor type. Through this, services can communicate connections to other services.
@@ -450,6 +434,10 @@ An *actor reference* points to a service and is described by an actor type. Thro
 <reftype> ::= ... | service <actortype>
 ```
 
+There are two forms of values for actor references:
+
+* `Ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `Id(b)`, where `b : blob`, indicates a transparent reference to a service addressed by the blob `b`.
 
 ##### Example
 
@@ -460,6 +448,26 @@ type broker = service {
 }
 ```
 
+#### Function References
+
+A *function reference* is described by its function type. For example, they allow passing callbacks to other functions.
+
+```
+<reftype> ::= func <functype> | ...
+```
+
+There are two forms of values for actor references:
+
+* `Ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `Public(s,n)`, where `s : service <actortype>` and `n : text`, indicates the public method `n` of the service referenced by `s`.
+
+##### Example
+
+```
+type engine = service {
+  search : (query : text, callback : func (vec result) -> ());
+}
+```
 
 ### Type Definitions
 
@@ -1009,8 +1017,11 @@ M : (<nat>, <val>) -> <fieldtype> -> i8*
 M((k,v) : k:<datatype>) = M(v : <datatype>)
 
 M : <val> -> <reftype> -> i8*
-M(r : service <actortype>) = .
-M(r : func <functype>)     = .
+M(Ref(r)   : service <actortype>) = i8(0)
+M(Id(blob) : service <actortype>) = i8(1) M(blob)
+
+M(Ref(r)                : func <functype>) = i8(0)
+M(Public(service, name) : func <functype>) = i8(1) M(service) M(name)
 ```
 
 
@@ -1034,8 +1045,10 @@ R : (<nat>, <val>) -> <fieldtype> -> <ref>*
 R((k,v) : k:<datatype>) = R(v : <datatype>)
 
 R : <val> -> <reftype> -> <ref>*
-R(r : service <actortype>) = r
-R(r : func <functype>)     = r
+R(Ref(r)   : service <actortype>) = r
+R(Id(blob) : service <actortype>) = .
+R(Ref(r)                : func <functype>) = r
+R(Public(service, name) : func <functype>) = .
 ```
 
 Note:
