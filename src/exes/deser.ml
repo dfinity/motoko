@@ -768,6 +768,7 @@ let rec lub t u =
   | PrimT Null, OptT _ -> u
   | OptT _, PrimT Null -> t
   | RecordT lfs, RecordT rfs -> RecordT (lub_record_fields lfs rfs)
+  | VariantT lfs, VariantT rfs -> VariantT (lub_variant_fields lfs rfs)
   | FuncT (attrs, args, results), FuncT (attrs', args', results')
       when attrs = attrs' && List.(length args = length args' && length results = length results') ->
     List.(FuncT (attrs, map2 (combined glb) args args', map2 (combined lub) results results'))
@@ -784,25 +785,42 @@ and glb t u =
   | PrimT _, PrimT _ -> PrimT Empty
   | VecT p, VecT q -> VecT (glb p.it q.it @@ p.at)
   | RecordT lfs, RecordT rfs -> RecordT (glb_record_fields lfs rfs)
+  | VariantT lfs, VariantT rfs -> VariantT (glb_variant_fields lfs rfs)
   | FuncT (attrs, args, results), FuncT (attrs', args', results')
       when attrs = attrs' && List.(length args = length args' && length results = length results') ->
     List.(FuncT (attrs, map2 (combined lub) args args', map2 (combined glb) results results'))
   | _ -> failwith "glb TODO"
 
+and  lub_field lf rf = { lf with typ = combined lub lf.typ rf.typ }
+
 and lub_record_fields lfs rfs =
-  let lub_record_field lf rf = { lf with typ = combined lub lf.typ rf.typ } in
   let rec go = function
-    | a :: b :: r when 0 = hash_compare a b -> combined lub_record_field a b :: go r
+    | a :: b :: r when 0 = hash_compare a b -> combined lub_field a b :: go r
     | _ :: r -> go r
     | _ -> [] in
   go (List.stable_sort hash_compare (lfs @ rfs))
 
+and glb_field lf rf = { lf with typ = combined glb lf.typ rf.typ }
+
 and glb_record_fields lfs rfs =
-  let glb_record_field lf rf = { lf with typ = combined glb lf.typ rf.typ } in
   let rec go = function
-    | a :: b :: r when 0 = hash_compare a b -> combined glb_record_field a b :: go r
+    | a :: b :: r when 0 = hash_compare a b -> combined glb_field a b :: go r
     | a :: r -> a :: go r
     | [] -> [] in
+  go (List.stable_sort hash_compare (lfs @ rfs))
+
+and lub_variant_fields lfs rfs =
+  let rec go = function
+    | a :: b :: r when 0 = hash_compare a b -> combined lub_field a b :: go r
+    | a :: r -> a :: go r
+    | [] -> [] in
+  go (List.stable_sort hash_compare (lfs @ rfs))
+
+and glb_variant_fields lfs rfs =
+  let rec go = function
+    | a :: b :: r when 0 = hash_compare a b -> combined glb_field a b :: go r
+    | _ :: r -> go r
+    | _ -> [] in
   go (List.stable_sort hash_compare (lfs @ rfs))
 
 let rec to_bid (v : value) : bid =
