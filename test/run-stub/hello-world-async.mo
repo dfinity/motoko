@@ -1,6 +1,6 @@
 let a = actor {
   public func world() {
-    debugPrint("World!\n");
+    debugPrint("World!");
   };
   public func go() {
     a.world();
@@ -8,5 +8,5 @@ let a = actor {
   };
 };
 
-//CALL ingress go 0x4449444C0000
+a.go()
 

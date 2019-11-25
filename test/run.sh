@@ -159,10 +159,6 @@ do
   [ -d $ok ] || mkdir $ok
 
   rm -f $out/$base.*
-  if [ $ACCEPT = yes ]
-  then
-    rm -f $ok/$base.*
-  fi
 
   # First run all the steps, and remember what to diff
   diff_files=
@@ -312,7 +308,7 @@ do
         node -r esm -e \
         "import actorInterface from './$out/$base.js';
         import { makeActor, makeHttpAgent } from '$JS_USER_LIBRARY';
-        const httpAgent = makeHttpAgent({ canisterId: 1 });
+        const httpAgent = makeHttpAgent({ canisterId: "ffffffffffffffff" });
         const actor = makeActor(actorInterface)(httpAgent);
         assert(Object.entries(actor).length > 0);"
       fi
@@ -322,6 +318,8 @@ do
 
   if [ $ACCEPT = yes ]
   then
+    rm -f $ok/$base.*
+
     for outfile in $diff_files
     do
       if [ -s $out/$outfile ]

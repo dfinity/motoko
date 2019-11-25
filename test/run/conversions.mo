@@ -112,7 +112,7 @@ assert(intToWord32 2147483648 == (2147483648 : Word32)); // 2**31
 assert(intToWord32 2147483649 == (2147483649 : Word32)); // 2**31 + 1
 assert(intToWord32 4294967295 == (4294967295 : Word32)); // 2**32 - 1
 
-func println(i : Int) { debugPrintInt(i); debugPrint "\n"; };
+func println(i : Int) { debugPrintInt(i) };
 
 println(word32ToInt (-2147483648)); // -2**31
 println(word32ToInt (-2147483647)); // -2**31 + 1

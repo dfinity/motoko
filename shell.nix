@@ -1,4 +1,3 @@
-{ nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
+{ system ? builtins.currentSystem,
 }:
-(import ./default.nix { inherit nixpkgs; }).shell
-
+(import ./default.nix { inherit system; }).shell

@@ -1,4 +1,4 @@
-actor class Control() {
+actor control {
 
   func condition() : Bool = false;
 
