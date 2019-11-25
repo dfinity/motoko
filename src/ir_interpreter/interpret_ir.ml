@@ -391,11 +391,27 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           check_call_conv_arg env exp2 v2 call_conv;
           last_region := exp.at; (* in case the following throws *)
           f (V.Tup[kv;rv;v2]) k))))
-    | ICPing, [] ->
+    | ICSelfCallPrim, [exp1; expk; expr] ->
       assert (not env.flavor.has_async_typ);
-      let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = 0 } in
-      let v = make_message env "ping" cc (V.Func(cc, fun v k' -> V.as_unit v; k' V.unit)) in
-      k v
+      interpret_exp env exp1 (fun v1 ->
+      interpret_exp env expk (fun kv ->
+      interpret_exp env expr (fun rv ->
+          let call_conv, f = V.as_func v1 in
+          check_call_conv exp1 call_conv;
+          let m = interpret_message env exp.at "anon" []
+            (fun env'  ->
+              let reply = Lib.Option.value env'.replies in
+              let reply_cc, _ = V.as_func kv in
+              let replyv = V.Func (reply_cc, fun v k -> reply v) in
+              let reject = Lib.Option.value env'.rejects in
+              let reject_cc, _ = V.as_func rv in
+              let rejectv = V.Func (reject_cc, fun v k -> reject v) in
+              f (V.Tup [replyv; rejectv]))
+          in
+          (* TODO More checks *)
+          last_region := exp.at; (* in case the following throws *)
+          (m (V.Tup [kv; rv; V.Tup []]) V.as_unit);
+          k V.unit)))
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))

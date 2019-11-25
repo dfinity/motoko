@@ -39,10 +39,10 @@ let error_codeE mode =
                note_eff = T.Triv }
          }
 
-let ic_pingE() =
-{ it = PrimE (ICPing, []);
+let ic_selfcallE e1 e2 e3 =
+ { it = PrimE (ICSelfCallPrim, [e1; e2; e3]);
   at = no_region;
-  note = { note_typ = T.Func(T.Shared T.Write,T.Replies,[],[],[]);
+  note = { note_typ = T.unit;
            note_eff = T.Triv }
 }
 
@@ -271,16 +271,19 @@ let transform mode env prog =
       IdxE (t_exp exp1, t_exp exp2)
     | PrimE (CPSAwait, [a;kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
-    | PrimE (CPSAsync, [exp2]) ->
-      let ts1 = match typ exp2 with
+    | PrimE (CPSAsync, [exp1]) ->
+      let ts1 = match typ exp1 with
         | Func(_,_, [], [Func(_, _, [], ts1, []); _], []) -> List.map t_typ ts1
         | t -> assert false in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
-      (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+      (blockE [
+               letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+(*              ; let v = fresh_var "v" (T.seq ts1) in
+               let ic_reply = v --> (ic_replyE ts1 v) in
                let e = fresh_var "e" T.catch in
-               let r = [e] -->* (reject -*- (errorMessageE e)) in
-               let k = [] -->* ((t_exp exp2) -*- tupE [nary_reply;r]) in
-               expD (ic_callE (ic_pingE()) (seqE []) k reject)
+               let ic_reject = [e] -->* (ic_rejectE (errorMessageE e)) in
+ *)
+               expD (ic_selfcallE (t_exp exp1) nary_reply reject)
                ]
                nary_async
       ).it
