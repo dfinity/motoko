@@ -1,3 +1,5 @@
+TODO: compile_lit
+
 Error: failed to process main module `_out/issue36.wasm`
 
 Caused by:

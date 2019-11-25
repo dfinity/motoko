@@ -1,3 +1,5 @@
+Array index out of bounds
+
 Error: failed to process main module `_out/array-bounds.wasm`
 
 Caused by:

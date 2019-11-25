@@ -1,3 +1,5 @@
+codepoint out of range
+
 Error: failed to process main module `_out/char-low-surrogate-trap.wasm`
 
 Caused by:
