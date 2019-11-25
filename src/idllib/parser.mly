@@ -31,10 +31,9 @@ let prim_typs = ["nat", Nat; "nat8", Nat8; "nat16", Nat16; "nat32", Nat32; "nat6
 let is_prim_typs t = List.assoc_opt t prim_typs
 
 let func_modes = ["oneway", Oneway; "query", Query]
-let get_func_mode m = List.assoc m func_modes               
+let get_func_mode m = List.assoc_opt m func_modes               
 
 let hash = IdlHash.idl_hash
-
 let record_fields fs =
   let open Uint32 in
   let rec go start fs =
@@ -42,7 +41,11 @@ let record_fields fs =
     | [] -> []
     | hd :: tl ->
        let field = hd start in
-       let next = succ field.it.id in
+       let next =
+         (match field.it.label.it with
+         | Id n -> succ n
+         | Named name -> succ (hash name)
+         | Unnamed n -> succ n) in
        field :: (go next tl)
   in go zero fs
 %}
@@ -92,21 +95,21 @@ ref_typ :
 
 field_typ :
   | n=NAT COLON t=data_typ
-    { { id = Uint32.of_string n; name = n @@ at $loc(n); typ = t } @@ at $sloc }
+    { { label = Id (Uint32.of_string n) @@ at $loc(n); typ = t } @@ at $sloc } 
   | name=name COLON t=data_typ
-    { { id = hash name.it; name = name; typ = t } @@ at $sloc }
+    { { label = Named name.it @@ at $loc(name); typ = t } @@ at $sloc } 
 
 record_typ :
   | f=field_typ { fun _ -> f }
   | t=data_typ
-    { fun x -> { id = x; name = Uint32.to_string x @@ no_region; typ = t } @@ at $sloc }
+    { fun x -> { label = Unnamed x @@ no_region; typ = t } @@ at $sloc }
 
 variant_typ :
   | f=field_typ { f }
   | name=name
-    { { id = hash name.it; name = name; typ = PrimT Null @@ no_region } @@ at $sloc }
+    { { label = Named name.it @@ at $loc(name); typ = PrimT Null @@ no_region } @@ at $sloc } 
   | n=NAT
-    { { id = Uint32.of_string n; name = n @@ at $loc(n); typ = PrimT Null @@ no_region } @@ at $sloc }
+    { { label = Id (Uint32.of_string n) @@ at $loc(n); typ = PrimT Null @@ no_region } @@ at $sloc }
 
 record_typs :
   | LCURLY fs=seplist(record_typ, SEMICOLON) RCURLY
@@ -128,12 +131,19 @@ data_typ :
   | t=prim_typ { t }
 
 param_typs :
-  | LPAR fs=seplist(record_typ, COMMA) RPAR
-    { record_fields fs }
+  | LPAR fs=seplist(param_typ, COMMA) RPAR
+    { fs }
+
+param_typ :
+  | t=data_typ { t }
+  | name COLON t=data_typ { t }
 
 func_mode :
   | m=id
-    { get_func_mode m.it @@ at $sloc }
+    { match get_func_mode m.it with
+        Some m -> m @@ at $sloc
+      | None -> $syntaxerror
+    }
 
 func_modes_opt :
   | (* empty *) { [] }

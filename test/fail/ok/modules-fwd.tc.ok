@@ -1,2 +1,1 @@
-modules-fwd.as:5.9-5.10: type error, field v does not exist in type
-  module {type T = ()}
+modules-fwd.mo:5.9-5.12: type error, cannot infer type of forward field reference v

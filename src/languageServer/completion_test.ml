@@ -43,30 +43,17 @@ let import_relative_test_case root module_path import expected =
        (show actual);
      false)
 
-let parse_module_header_test_case project_root current_file file expected =
-  let actual =
-    Completion.parse_module_header
-      project_root
-      current_file file in
-  let display_result (alias, path) = Printf.sprintf "%s => \"%s\"" alias path in
-  let result = Lib.List.equal
-    (fun (x, y) (x', y') ->
-      String.equal x x' && String.equal y y')
-    actual
-    expected in
-  if not result then
-    Printf.printf
-      "\nExpected: %s\nActual:   %s"
-      (Completion.string_of_list display_result expected)
-      (Completion.string_of_list display_result actual) else ();
-  result
+let%test "it finds unqualified prefixes" =
+  prefix_test_case "filt|" (Some ("", "filt"))
 
+let%test "it understands whitespace" =
+  prefix_test_case "filt |" None
+
+let%test "it does find non-qualified idents after qualifiers" =
+  prefix_test_case "List.filter we|" (Some ("", "we"))
 
 let%test "it finds a simple prefix" =
   prefix_test_case "List.|" (Some ("List", ""))
-
-let%test "it doesn't find non-qualified idents" =
-  prefix_test_case "List.filter we|" None
 
 let%test "it picks the qualified closest to the cursor" =
   prefix_test_case "Stack.some List.|" (Some ("List", ""))
@@ -86,7 +73,7 @@ List.|
 let%test "it handles a full module" =
   prefix_test_case
 {|module {
-  private import List = "./ListLib.as";
+  private import List = "./ListLib.mo";
 
   func singleton<T>(x: T): List.List<T> =
     List.cons<T>(x, Test.|<T>());
@@ -98,8 +85,8 @@ let%test "it handles a full module" =
 let%test "it doesn't fall through to the next valid prefix" =
   prefix_test_case
 {|module {
-private import List = "lib/ListLib.as"; // private, so we don't re-export List
-private import ListFns = "lib/ListFuncs.as"; // private, so we don't re-export List
+private import List = "lib/ListLib.mo"; // private, so we don't re-export List
+private import ListFns = "lib/ListFuncs.mo"; // private, so we don't re-export List
 type Stack = List.List<Int>;
 func push(x : Int, s : Stack) : Stack = List.cons<Int>(x, s);
 func empty():Stack = List.nil<Int>();
@@ -111,53 +98,20 @@ func singleton(x : Int) : Stack =
 let%test "it makes an import relative to the project root" =
   import_relative_test_case
     "/home/project"
-    "/home/project/src/main.as"
-    "lib/List.as"
-    (Some "src/lib/List.as")
+    "/home/project/src/main.mo"
+    "lib/List.mo"
+    (Some "src/lib/List.mo")
 
 let%test "it preserves trailing slashes for directory imports" =
   import_relative_test_case
     "/home/project"
-    "/home/project/src/main.as"
+    "/home/project/src/main.mo"
     "lib/List/"
     (Some "src/lib/List/")
 
 let%test "it can handle parent directory relationships" =
   import_relative_test_case
     "/home/project"
-    "/home/project/src/main.as"
-    "../lib/List.as"
-    (Some "lib/List.as")
-
-let%test "it parses a simple module header" =
-  parse_module_header_test_case
-    "/project"
-    "/project/src/Main.as"
-    "import P \"lib/prelude.as\""
-    ["P", "src/lib/prelude.as"]
-
-let%test "it parses a simple module header" =
-  parse_module_header_test_case
-    "/project"
-    "/project/Main.as"
-    {|
-module {
-
-private import List "lib/ListLib.as";
-private import ListFuncs "lib/ListFuncs.as";
-
-type Stack = List.List<Int>;
-
-func push(x: Int, s: Stack): Stack =
-  List.cons<Int>(x, s);
-
-func empty(): Stack =
-  List.nil<Int>();
-
-func singleton(x: Int): Stack =
-  ListFuncs.doubleton<Int>(x, x);
-}
-|}
-    [ ("List", "lib/ListLib.as")
-    ; ("ListFuncs", "lib/ListFuncs.as")
-    ]
+    "/home/project/src/main.mo"
+    "../lib/List.mo"
+    (Some "lib/List.mo")

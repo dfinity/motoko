@@ -21,12 +21,11 @@ type Word64 = prim "Word64";
 type Float = prim "Float";
 type Char = prim "Char";
 type Text = prim "Text";
+type Error = prim "Error";
 
 type Iter<T_> = {next : () -> ?T_};
 
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
-
-func ignore(_ : Any) {};
 
 class range(x : Nat, y : Nat) {
   var i = x;
@@ -84,10 +83,10 @@ func @text_chars(xs : Text) : (() -> Iter<Char>) =
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
 
-func printNat(x : Nat) { print (@text_of_Nat x) };
-func printInt(x : Int) { print (@text_of_Int x) };
-func printChar(x : Char) { print (charToText x) };
-func print(x : Text) { (prim "print" : Text -> ()) x };
+func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
+func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };
+func debugPrintInt(x : Int) { debugPrint (@text_of_Int x) };
+func debugPrintChar(x : Char) { debugPrint (charToText x) };
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
 
 // Hashing
@@ -330,36 +329,76 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
 
-type Cont<T> = T -> () ;
-type Async<T> = Cont<T> -> ();
+// these will change
+type ErrorCode = {#error; #system}; /* TBC */
 
-func @new_async<T <: Any>() : (Async<T>, Cont<T>) {
-  let empty = func(t : T) {};
-  var result : ?T = null;
-  var ks : T -> () = empty;
+func error(message : Text) : Error =
+  (prim "error" : Text -> Error)(message);
+
+func errorCode(e : Error) : ErrorCode =
+  (prim "errorCode" : Error -> ErrorCode)(e);
+
+func errorMessage(e : Error) : Text =
+  (prim "errorMessage" : Error -> Text)(e);
+
+func @int32ToErrorCode(i : Int32) : ErrorCode {
+  switch (int32ToInt(i)) { /*TODO: conversion only to avoid bug in moc-js, TBR */
+    case 4 /* CANISTER_REJECT */ #error;
+    case _ #system; /* TBC */
+  }
+};
+
+type Cont<T> = T -> () ;
+type Async<T> = (Cont<T>,Cont<Error>) -> ();
+
+type Result<T> = {#ok : T; #error : Error};
+
+func @new_async<T <: Any>() : (Async<T>, Cont<T>, Cont<Error>) {
+  let k_null = func(_ : T) {};
+  let r_null = func(_ : Error) {};
+  var result : ?(Result<T>) = null;
+  var ks : Cont<T> = k_null;
+  var rs : Cont<Error> = r_null;
 
   func fulfill(t : T) {
     switch result {
       case null {
-        result := ?t;
+        result := ?(#ok t);
         let ks_ = ks;
-        ks := empty;
+        ks := k_null;
+        rs := r_null;
         ks_(t);
       };
-      case (?t) { assert false };
+      case (? _) { assert false };
     };
   };
 
-  func enqueue(k : Cont<T>) {
+  func fail(e : Error) {
+    switch result {
+      case null {
+        result := ?(#error e);
+        let rs_ = rs;
+        ks := k_null;
+        rs := r_null;
+        rs_(e);
+      };
+      case (? _) { assert false };
+    };
+  };
+
+  func enqueue(k : Cont<T>, r : Cont<Error>) {
     switch result {
       case null {
         let ks_ = ks;
         ks := (func(t : T) { ks_(t); k(t) });
+        let rs_ = rs;
+        rs := (func(e : Error) { rs_(e); r(e) });
       };
-      case (?t) { k(t) };
+      case (? (#ok t)) { k(t) };
+      case (? (#error e)) { r(e) };
     };
   };
 
-  (enqueue, fulfill)
+  (enqueue, fulfill, fail)
 };
 |}

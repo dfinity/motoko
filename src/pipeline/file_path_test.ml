@@ -20,7 +20,7 @@ let relative_to_test_case root contained expected =
      false)
 
 let%test "it removes leading current directory" =
-  normalise_test_case "./ListClient.as" "ListClient.as"
+  normalise_test_case "./ListClient.mo" "ListClient.mo"
 
 let%test "it removes leading `./` for relative paths" =
   normalise_test_case "./lib/foo" "lib/foo"
@@ -52,20 +52,20 @@ let%test "it handles absolute directory paths" =
 let%test "it makes one absolute path relative to another one" =
   relative_to_test_case
     "/home/project"
-    "/home/project/src/main.as"
-    (Some "src/main.as")
+    "/home/project/src/main.mo"
+    (Some "src/main.mo")
 
 let%test "it's robust in the face of trailing slashes" =
   relative_to_test_case
     "/home/project/"
-    "/home/project/src/main.as"
-    (Some "src/main.as")
+    "/home/project/src/main.mo"
+    (Some "src/main.mo")
 
 let%test "it makes a file path relative to a path" =
   relative_to_test_case
     "/home/project"
-    "/home/project/main.as"
-    (Some "main.as")
+    "/home/project/main.mo"
+    (Some "main.mo")
 
 let%test "it preserves trailing slashes" =
   relative_to_test_case
@@ -82,11 +82,11 @@ let%test "it handles directory traversals" =
 let%test "it fails to make disjoint paths relative to one another" =
   relative_to_test_case
     "/home/project"
-    "/home/main.as"
+    "/home/main.mo"
     None
 
 let%test "it handles relative paths" =
   relative_to_test_case
     "project/src"
-    "project/src/Main.as"
-    (Some "Main.as")
+    "project/src/Main.mo"
+    (Some "Main.mo")

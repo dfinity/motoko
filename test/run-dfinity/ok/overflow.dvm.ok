@@ -1,0 +1,10 @@
+hypervisor: calling func$NNN failed with trap message: Uncaught RuntimeError: unreachable
+hypervisor: calling func$NNN failed with trap message: Uncaught RuntimeError: unreachable
+This is reachable.
+This is reachable.
+Natural subtraction underflow
+
+Natural subtraction underflow
+
+This is reachable.
+This is reachable.

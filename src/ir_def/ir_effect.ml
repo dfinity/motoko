@@ -1,6 +1,6 @@
 open Ir
 open Source
-module T = As_types.Type
+module T = Mo_types.Type
 
 (* a simple effect analysis to annote expressions as Triv(ial) (await-free) or Await (containing unprotected awaits) *)
 
@@ -41,7 +41,7 @@ let rec infer_effect_exp (exp: exp) : T.eff =
     effect_exp exp1
   | IdxE (exp1, exp2)
   | AssignE (exp1, exp2)
-  | CallE (_, exp1, _, exp2) ->
+  | CallE (exp1, _, exp2) ->
     let t1 = effect_exp exp1 in
     let t2 = effect_exp exp2 in
     max_eff t1 t2
@@ -64,7 +64,9 @@ let rec infer_effect_exp (exp: exp) : T.eff =
     max_eff e1 e2
   | AsyncE exp1 ->
     T.Triv
-  | AwaitE exp1 ->
+  | ThrowE _
+  | TryE _
+  | AwaitE _ ->
     T.Await
   | DeclareE (_, _, exp1) ->
     effect_exp exp1

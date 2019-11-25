@@ -1,0 +1,18 @@
+→ create
+← completed: canister-id = 0x0000000000000400
+→ install
+← completed
+→ update inc(0x4449444c0000)
+2
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update inc(0x4449444c0000)
+3
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update inc(0x4449444c0000)
+4
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update printCounter(0x4449444c0000)
+4
+← rejected (RC_CANISTER_ERROR): canister did not respond
+→ update get(0x4449444c0000)
+← completed: 0x4449444c00017d04

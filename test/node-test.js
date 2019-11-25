@@ -2,12 +2,12 @@ process.on('unhandledRejection', error => { assert.fail(error); });
 
 const assert = require('assert').strict;
 
-// Load asc.js
-const m = require('asc.js');
+// Load moc.js
+const m = require('moc.js');
 
 // Compile the empty module in plain and dfinity mode
-const empty_wasm_plain = m.ActorScript.compileWasm('wasm', '');
-const empty_wasm_dfinity = m.ActorScript.compileWasm('dfinity', '');
+const empty_wasm_plain = m.Motoko.compileWasm('wasm', '');
+const empty_wasm_dfinity = m.Motoko.compileWasm('dfinity', '');
 
 // For the plain module...
 // Check that the code looks like a WebAssembly binary
@@ -33,7 +33,7 @@ WebAssembly.compile(Buffer.from(empty_wasm_dfinity.code, 'ascii'));
 assert.notEqual(empty_wasm_plain.code, empty_wasm_dfinity.code);
 
 // Check if error messages are correctly returned
-const bad_result = m.ActorScript.compileWasm('dfinity', '1+');
+const bad_result = m.Motoko.compileWasm('dfinity', '1+');
 // Uncomment to see what to paste below
 // console.log(JSON.stringify(bad_result, null, 2));
 assert.deepStrictEqual(bad_result, {
@@ -50,7 +50,7 @@ assert.deepStrictEqual(bad_result, {
         }
       },
       "severity": 1,
-      "source": "actorscript",
+      "source": "motoko",
       "message": "unexpected token"
     }
   ],
@@ -59,12 +59,12 @@ assert.deepStrictEqual(bad_result, {
 });
 
 // Check the check command (should print errors, but have no code)
-assert.deepStrictEqual(m.ActorScript.check('1'), {
+assert.deepStrictEqual(m.Motoko.check('1'), {
   "diagnostics": [],
   "code": null
 });
 
-assert.deepStrictEqual(m.ActorScript.check('1+'), {
+assert.deepStrictEqual(m.Motoko.check('1+'), {
   "diagnostics": [
     {
       "range": {
@@ -78,7 +78,7 @@ assert.deepStrictEqual(m.ActorScript.check('1+'), {
         }
       },
       "severity": 1,
-      "source": "actorscript",
+      "source": "motoko",
       "message": "unexpected token"
     }
   ],
@@ -86,7 +86,7 @@ assert.deepStrictEqual(m.ActorScript.check('1+'), {
 });
 
 // Create a source map, and check some of its structure
-const with_map = m.ActorScript.compileWasm('dfinity', '');
+const with_map = m.Motoko.compileWasm('dfinity', '');
 assert.equal(typeof(with_map.map), 'string')
 let map
 assert.doesNotThrow(() => map = JSON.parse(with_map.map), SyntaxError)

@@ -99,6 +99,36 @@ struct
       Some (String.sub s 0 (s_len - suffix_len))
     else
       None
+
+  let lightweight_escaped str =
+    let n = ref 0 in
+    for i = 0 to String.length str - 1 do
+      n := !n +
+             (match str.[i] with
+              | '\"' | '\'' | '\\' | '\n' | '\r' | '\b' | '\t' -> 2
+              | _ -> 1)
+    done;
+    if !n = String.length str then str else begin
+        let s' = Bytes.create !n in
+        n := 0;
+        for i = 0 to String.length str -1 do
+          begin match str.[i] with
+          | ('\"' | '\'' | '\\') as c ->
+             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n c
+          | '\n' ->
+             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'n'
+          | '\r' ->
+             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'r'
+          | '\b' ->
+             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'b'
+          | '\t' ->
+             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 't'             
+          | c -> Bytes.set s' !n c
+          end;
+          n := !n + 1
+        done;
+        Bytes.unsafe_to_string s'
+      end    
 end
 
 module List =
@@ -113,6 +143,14 @@ struct
   let rec table n f = table' n f []
   and table' n f xs =
     if n = 0 then xs else table' (n - 1) f (f (n - 1) :: xs)
+
+  let group f l =
+    let rec grouping acc = function
+      | [] -> acc
+      | hd::tl ->
+         let l1,l2 = List.partition (f hd) tl in
+         grouping ((hd::l1)::acc) l2
+    in grouping [] l
 
   let rec take n xs =
     match n, xs with
@@ -193,6 +231,10 @@ struct
       match f x1 x2 with
       | -1 -> is_strictly_ordered f (x2::xs')
       | _ -> false
+
+  let rec iter_pairs f = function
+    | [] -> ()
+    | x::ys -> List.iter (fun y -> f x y) ys; iter_pairs f ys
 end
 
 module List32 =

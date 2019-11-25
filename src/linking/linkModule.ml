@@ -454,6 +454,19 @@ let read_table_size (m : module_') : int32 =
     else min
   | _ -> raise (LinkError "Expect one table in first module")
 
+let set_memory_size new_size_bytes : module_' -> module_' = fun m ->
+  let open Wasm.Types in
+  let page_size = Int32.of_int (64*1024) in
+  let new_size_pages = Int32.(add (div new_size_bytes page_size) 1l) in
+  match m.memories with
+  | [t] ->
+    { m with
+      memories = [ phrase (fun m ->
+        { mtype = MemoryType ({min = new_size_pages; max = None}) }
+      ) t ]
+    }
+  | _ -> raise (LinkError "Expect one memory in first module")
+
 let set_table_size new_size : module_' -> module_' = fun m ->
   let open Wasm.Types in
   match m.tables with
@@ -663,6 +676,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_extended funs1
     |> rename_globals_extended globals1
     |> map_module (set_global heap_global new_heap_start)
+    |> map_module (set_memory_size new_heap_start)
     |> map_module (set_table_size new_elem_size)
     )
     ( dm2

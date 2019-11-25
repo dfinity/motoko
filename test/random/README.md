@@ -1,17 +1,17 @@
-# QA tool `qc-actorscript`
+# QA tool `qc-motoko`
 
-This tool generates ActorScript AST fragments and executes them,
+This tool generates Motoko AST fragments and executes them,
 checking for the same outcome as the Haskell (here: reference)
 implementation.
 
 In order to compile and test it expects following tools to be in the
 `PATH`:
-- `asc` (the ActorScript compiler)
+- `moc` (the Motoko compiler)
 - `wasm-interp` (part of `nixpkgs.wabt`)
 
 ## How to spot failures
 
-`qc-actorscript` is run from the CI infrastructure on each commit. On failures, something like
+`qc-motoko` is run from the CI infrastructure on each commit. On failures, something like
 
 ```
   Properties
@@ -32,19 +32,19 @@ will appear in the CI log. The relevant recipe for reliable reproduction is the
 ## How to run locally
 
 With this piece of information you can run the identical test locally,
-using the following `nix-build` invocation from your `actorscript`
+using the following `nix-build` invocation from your `motoko`
 directory:
 ``` shell
 $ nix-build -A tests --arg replay 232458
 ```
 
-## Running in `asc` and `wasm-interp`
+## Running in `moc` and `wasm-interp`
 
 Of course you can dump the failing test case into a file, compile it
 to WASM, and execute it in (e.g.) `wasm-interp`:
 
 ``` shell
-$ asc -no-system-api snippet.as
+$ moc -no-system-api snippet.mo
 $ wasm-interp --enable-multi snippet.wasm
 ```
 
@@ -55,9 +55,9 @@ For *expected successes* it should execute without errors.
 
 When something doesn't build like expected, check for a file called (approximately)
 `test/random/.ghc.environment.x86_64-darwin-8.6.4`. This usually trips
-up `nix-build`'s ability to build `qc-actorscript` locally, and should
+up `nix-build`'s ability to build `qc-motoko` locally, and should
 be deleted.
 
 ## 0 -- 2019-08-08
 
-* First version. Released on a suspecting world. See also [GitHub issue 609](https://github.com/dfinity-lab/actorscript/pull/609).
+* First version. Released on a suspecting world. See also [GitHub issue 609](https://github.com/dfinity-lab/motoko/pull/609).

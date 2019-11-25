@@ -1,5 +1,5 @@
-open As_types
-open As_frontend
+open Mo_types
+open Mo_frontend
 open Declaration_index
 module Lsp_t = Lsp.Lsp_t
 
@@ -68,34 +68,6 @@ let import_relative_to_project_root root module_path dependency =
      |> Pipeline__.File_path.normalise
      |> Lib.Option.some
 
-(* Given the source of a module, figure out under what names what
-   modules have been imported. Normalizes the imported modules
-   filepaths relative to the project root *)
-let parse_module_header project_root current_file_path file =
-  let lexbuf = Lexing.from_string file in
-  let next () = Lexer.token Lexer.Normal lexbuf in
-  let res = ref [] in
-  let rec loop = function
-    | Parser.IMPORT ->
-       (match next () with
-        | Parser.ID alias ->
-           (match next () with
-            | Parser.TEXT path ->
-               let path =
-                 import_relative_to_project_root
-                   project_root
-                   current_file_path
-                   path in
-               (match path with
-                | Some path -> res := (alias, path) :: !res
-                | None -> ());
-               loop (next ())
-            | tkn -> loop tkn)
-        | tkn -> loop tkn)
-    | Parser.EOF -> List.rev !res
-    | tkn -> loop (next ()) in
-  loop (next ())
-
 (* Given a source file and a cursor position in that file, figure out
    the prefix relevant to searching completions. For example, given:
 
@@ -109,10 +81,14 @@ let find_completion_prefix logger file line column: (string * string) option =
     pos.Source.line = line && pos.Source.column = column in
   let pos_past_cursor pos =
     pos.Source.line > line
-    || (pos.Source.line = line && pos.Source.column >= column) in
+    || (pos.Source.line = line && pos.Source.column > column) in
   let rec loop = function
     | _ when (pos_past_cursor (Lexer.region lexbuf).Source.right) -> None
     | Parser.ID ident ->
+       let next_token_end = (Lexer.region lexbuf).Source.right in
+       if pos_eq_cursor next_token_end
+       then Some("", ident)
+       else
        (match next () with
         | Parser.DOT ->
            (match next () with
@@ -124,16 +100,28 @@ let find_completion_prefix logger file line column: (string * string) option =
                else loop (Parser.ID prefix)
             | tkn ->
                let next_token_start = (Lexer.region lexbuf).Source.left in
-               if pos_past_cursor next_token_start
+               if pos_eq_cursor next_token_start
+                  || pos_past_cursor next_token_start
                then Some (ident, "")
                else loop tkn)
         | tkn -> loop tkn)
     | Parser.EOF -> None
     | _ -> loop (next ()) in
-  loop (next ())
+  try loop (next ()) with _ -> None
+
+let has_prefix (prefix : string) (ide_decl : ide_decl): bool =
+  ide_decl
+  |> name_of_ide_decl
+  |> Lib.String.chop_prefix prefix
+  |> Lib.Option.is_some
+
+let opt_bind f = function
+  | None -> None
+  | Some x -> f x
 
 let completions index logger project_root file_path file_contents line column =
-  let imported = parse_module_header project_root file_path file_contents in
+  let imported = Source_file.parse_module_header project_root file_path file_contents in
+  let current_uri_opt = Pipeline__.File_path.relative_to project_root file_path in
   let module_alias_completion_item alias =
     Lsp_t.{
         completion_item_label = alias;
@@ -145,9 +133,26 @@ let completions index logger project_root file_path file_contents line column =
   match find_completion_prefix logger file_contents line column with
   | None ->
      (* If we don't have any prefix to work with, just suggest the
-        imported module aliases *)
+        imported module aliases, as well as top-level definitions in
+        the current file *)
+     let toplevel =
+       current_uri_opt
+       |> opt_bind (fun uri -> Index.find_opt uri index)
+       |> Lib.Option.map (List.map item_of_ide_decl)
+       |> Lib.Fun.flip Lib.Option.get [] in
      imported
      |> List.map (fun (alias, _) -> module_alias_completion_item alias)
+     |> List.append toplevel
+  | Some ("", prefix) ->
+     (* Without an alias but with a prefix we filter the toplevel
+        idenfiers of the current module *)
+       current_uri_opt
+       |> opt_bind (fun uri -> Index.find_opt uri index)
+       |> Lib.Option.map (fun decls ->
+            decls
+            |> List.filter (has_prefix prefix)
+            |> List.map item_of_ide_decl)
+       |> Lib.Fun.flip Lib.Option.get []
   | Some (alias, prefix) ->
      let module_path =
        imported
@@ -157,11 +162,7 @@ let completions index logger project_root file_path file_contents line column =
         (match Index.find_opt (snd mp) index with
          | Some decls ->
             decls
-            |> List.filter
-                 (fun d -> d
-                   |> name_of_ide_decl
-                   |> Lib.String.chop_prefix prefix
-                   |> Lib.Option.is_some)
+            |> List.filter (has_prefix prefix)
             |> List.map item_of_ide_decl
          | None ->
             (* The matching import references a module we haven't loaded *)

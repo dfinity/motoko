@@ -1,4 +1,4 @@
-open As_types
+open Mo_types
 
 open Ir
 open Type
@@ -35,14 +35,17 @@ val varP : var -> pat
 val tupP :  pat list -> pat
 
 val seqP : pat list -> pat
-val as_seqP : pat -> pat list
 
 (* Expressions *)
 
 val primE : Ir.prim -> exp list -> exp
 val asyncE : typ -> exp -> exp
+val assertE : exp -> exp
 val awaitE : typ -> exp -> exp -> exp
-val replyE : exp -> exp
+val ic_replyE : typ list -> exp -> exp
+val ic_rejectE : exp -> exp
+val ic_error_codeE : unit -> exp
+val ic_callE : exp -> exp -> exp -> exp -> exp
 val projE : exp ->  int -> exp
 val blockE : dec list -> exp -> exp
 val textE : string -> exp
@@ -88,17 +91,17 @@ val nary_funcD : var  -> var list -> exp -> dec
 
 val answerT : typ
 val contT : typ -> typ
+val err_contT : typ
 val cpsT : typ -> typ
 val fresh_cont : typ -> var
+val fresh_err_cont : unit -> var
 
 (* Sequence expressions *)
 
 val seqE : exp list -> exp
-val as_seqE : exp -> exp list
 
 (* Lambdas *)
 
 val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
-val (-@>*) : var list -> exp -> exp (* n-ary shared *)
 val (-*-) : exp -> exp -> exp       (* application *)
