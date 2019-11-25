@@ -240,7 +240,7 @@ do
           then
             if [ $API = ancient ]
             then
-#              run dvm $DVM_WRAPPER $out/$base.wasm $base.mo
+              run dvm $DVM_WRAPPER $out/$base.wasm $base.mo
 	     echo skip
             elif [ $API = ic ]
             then
