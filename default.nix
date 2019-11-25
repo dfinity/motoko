@@ -34,7 +34,7 @@ let sdk = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/sdk";
   ref = "master";
   rev = "7ee8cc40abab5b33c68bc8a32412e5be33a9f410";
-}) { system = nixpkgs.system; }; in
+}) { inherit (nixpkgs) system; }; in
 
 let esm = builtins.fetchTarball {
   sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
