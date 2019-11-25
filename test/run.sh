@@ -315,7 +315,7 @@ do
         node -r esm -e \
         "import actorInterface from './$out/$base.js';
         import { makeActor, makeHttpAgent } from '$JS_USER_LIBRARY';
-        const httpAgent = makeHttpAgent({ canisterId: 1 });
+        const httpAgent = makeHttpAgent({ canisterId: "ffffffffffffffff" });
         const actor = makeActor(actorInterface)(httpAgent);
         assert(Object.entries(actor).length > 0);"
       fi
