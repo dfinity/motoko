@@ -3095,35 +3095,46 @@ module Dfinity = struct
   let print_ptr_len env =
     match E.mode env with
     | Flags.WasmMode -> G.i Drop
-    | Flags.ICMode ->
-      Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
-        get_str ^^ Blob.payload_ptr_unskewed ^^
-        get_str ^^ Heap.load_field (Blob.len_field) ^^
-        system_call env "debug" "print"
-      )
+    | Flags.ICMode -> system_call env "debug" "print"
+    | Flags.StubMode -> system_call env "ic0" "debug_print"
     | Flags.WASIMode ->
       Func.share_code2 env "print_ptr" (("ptr", I32Type), ("len", I32Type)) [] (fun env get_ptr get_len ->
-        Stack.with_words env "io_vec" 1l (fun get_iovec_ptr ->
+        Stack.with_words env "io_vec" 6l (fun get_iovec_ptr ->
+          (* We use the iovec functionality to append a newline *)
           get_iovec_ptr ^^
           get_ptr ^^
           G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+
           get_iovec_ptr ^^
           get_len ^^
-          G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+          G.i (Store {ty = I32Type; align = 2; offset = 4l; sz = None}) ^^
+
+          get_iovec_ptr ^^
+          get_iovec_ptr ^^ compile_add_const 16l ^^
+          G.i (Store {ty = I32Type; align = 2; offset = 8l; sz = None}) ^^
+
+          get_iovec_ptr ^^
+          compile_unboxed_const 1l ^^
+          G.i (Store {ty = I32Type; align = 2; offset = 12l; sz = None}) ^^
+
+          get_iovec_ptr ^^
+          compile_unboxed_const (Int32.of_int (Char.code '\n')) ^^
+          G.i (Store {ty = I32Type; align = 0; offset = 16l; sz = Some Wasm.Memory.Pack8}) ^^
 
           compile_unboxed_const 1l (* stdout *) ^^
           get_iovec_ptr ^^
-          compile_unboxed_const 1l (* one string *) ^^
-          get_iovec_ptr ^^ (* out for bytes written, we ignore that *)
+          compile_unboxed_const 1l (* one string segments (2 doesnt work) *) ^^
+          get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
+          E.call_import env "wasi_unstable" "fd_write" ^^
+          G.i Drop ^^
+
+          compile_unboxed_const 1l (* stdout *) ^^
+          get_iovec_ptr ^^ compile_add_const 8l ^^
+          compile_unboxed_const 1l (* one string segments *) ^^
+          get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
           E.call_import env "wasi_unstable" "fd_write" ^^
           G.i Drop
         )
-      )
-    | Flags.StubMode ->
-      Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
-        get_str ^^ Blob.payload_ptr_unskewed ^^
-        get_str ^^ Heap.load_field (Blob.len_field) ^^
-        system_call env "ic0" "debug_print"
       )
     | Flags.AncientMode ->
       Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
