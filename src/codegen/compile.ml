@@ -3015,11 +3015,11 @@ module Dfinity = struct
     match E.mode env with
     | Flags.ICMode ->
       E.add_func_import env "debug" "print" [I32Type; I32Type] [];
-      E.add_func_import env "msg" "arg_data_size" [I64Type] [I32Type];
-      E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject" [I64Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject_code" [I64Type] [I32Type];
+      E.add_func_import env "msg" "arg_data_size" [] [I32Type];
+      E.add_func_import env "msg" "arg_data_copy" [I32Type; I32Type; I32Type] [];
+      E.add_func_import env "msg" "reply" [I32Type; I32Type] [];
+      E.add_func_import env "msg" "reject" [I32Type; I32Type] [];
+      E.add_func_import env "msg" "reject_code" [] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
       ()
     | Flags.StubMode  ->
