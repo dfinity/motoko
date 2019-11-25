@@ -3092,9 +3092,9 @@ module Dfinity = struct
   let compile_databuf_of_bytes env (bytes : string) =
     Blob.lit env bytes ^^ compile_databuf_of_text env
 
-  let print_ptr_len env =
+  let rec print_ptr_len env =
     match E.mode env with
-    | Flags.WasmMode -> G.i Drop
+    | Flags.WasmMode -> G.i Drop ^^ G.i Drop
     | Flags.ICMode -> system_call env "debug" "print"
     | Flags.StubMode -> system_call env "ic0" "debug_print"
     | Flags.WASIMode ->
@@ -3121,6 +3121,10 @@ module Dfinity = struct
           compile_unboxed_const (Int32.of_int (Char.code '\n')) ^^
           G.i (Store {ty = I32Type; align = 0; offset = 16l; sz = Some Wasm.Memory.Pack8}) ^^
 
+          (* Call fd_write twice to work around
+             https://github.com/bytecodealliance/wasmtime/issues/629
+          *)
+
           compile_unboxed_const 1l (* stdout *) ^^
           get_iovec_ptr ^^
           compile_unboxed_const 1l (* one string segments (2 doesnt work) *) ^^
@@ -3137,6 +3141,25 @@ module Dfinity = struct
         )
       )
     | Flags.AncientMode ->
+      Func.share_code2 env "print_ptr" (("ptr", I32Type), ("len", I32Type)) [] (fun env get_ptr get_len ->
+        let (set_blob, get_blob) = new_local env "blob" in
+        get_len ^^ Blob.alloc env ^^ set_blob ^^
+
+        get_blob ^^ Blob.payload_ptr_unskewed ^^
+        get_ptr ^^
+        get_len ^^
+        Heap.memcpy env ^^
+
+        get_blob ^^
+        print_text env
+      )
+
+  and print_text env =
+    match E.mode env with
+    | Flags.AncientMode ->
+      (* The recursion goes the other wary in the AncientMode.
+         This can be removed once we get rid of the ancient mode
+      *)
       Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
         get_str ^^
         Blob.lit env "\n" ^^
@@ -3144,18 +3167,16 @@ module Dfinity = struct
         compile_databuf_of_text env ^^
         system_call env "test" "print"
       )
-
-
-  let prim_print env =
-    Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
-      get_str ^^ Blob.payload_ptr_unskewed ^^
-      get_str ^^ Heap.load_field (Blob.len_field) ^^
-      print_ptr_len env
-    )
+    | _ ->
+      Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
+        get_str ^^ Blob.payload_ptr_unskewed ^^
+        get_str ^^ Heap.load_field (Blob.len_field) ^^
+        print_ptr_len env
+      )
 
   (* For debugging *)
   let compile_static_print env s =
-    Blob.lit env s ^^ prim_print env
+    Blob.lit env s ^^ print_text env
 
   let _compile_println_int env =
     system_call env "test" "show_i32" ^^
@@ -6613,7 +6634,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "print", [e] ->
       SR.unit,
       compile_exp_vanilla env ae e ^^
-      Dfinity.prim_print env
+      Dfinity.print_text env
     | OtherPrim "decodeUTF8", [e] ->
       SR.UnboxedTuple 2,
       compile_exp_vanilla env ae e ^^
