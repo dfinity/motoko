@@ -34,7 +34,9 @@ The `motoko` repository defines the following nix derivations, as attributes of 
 * `didc`: contains `bin/didc`
 * `rts`: contains `rts/mo-rts.wasm`, the Motoko runtime system
 * `stdlib`: contains the standard library, directly in the top level directory,
-  as `*.mo` files. It does not contain exra fiels (test files, for example) 
+  as `*.mo` files. It does not contain exra fiels (test files, for example)
+
+The `default.nix` file itself takes an optional `system` parameter which is either `"x86_64-linux"` or `"x86_64-darwin"`, and defaults to `builtins.currentSystem`.
 
 All binaries are either built statically (Linux) or only use system libraries (OSX).
 
