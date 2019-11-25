@@ -28,8 +28,8 @@ let dev = import (builtins.fetchGit {
 let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
-  ref = "master";
-  rev = "5c7efff0524adbf97d85b27adb180e6137a3428f";
+  ref = "motoko-pin-pr929";
+  rev = "9808d92ff612b86f6be1a5204fc6a3332b6032eb";
 }) { inherit (nixpkgs) system; }; in
 
 let sdk = import (builtins.fetchGit {
