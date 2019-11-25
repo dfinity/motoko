@@ -730,7 +730,7 @@ module Heap = struct
     E.add_global64 env "allocations" Mutable 0L
 
   let count_allocations env =
-    (* number of allocated bytes on the stack *)
+    (* assumes number of allocated bytes on the stack *)
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
     G.i (GlobalGet (nr (E.get_global env "allocations"))) ^^
     G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
