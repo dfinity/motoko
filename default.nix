@@ -25,15 +25,15 @@ let dev = import (builtins.fetchGit {
 let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
-  ref = "master";
-  rev = "5c7efff0524adbf97d85b27adb180e6137a3428f";
+  ref = "nm-restrict-eval";
+  rev = "d8aff4caa807064767a969601488b0bfc8deec1a";
 }) { inherit (nixpkgs) system; }; in
 
 let sdk = import (builtins.fetchGit {
   name = "sdk-sources";
   url = "ssh://git@github.com/dfinity-lab/sdk";
-  ref = "paulyoung/js-user-library";
-  rev = "42f15621bc5b228c7fd349cb52f265917d33a3a0";
+  ref = "nm-restrict-eval";
+  rev = "dd60255225eae4b95a22d9438919cc7be89a3d0d";
 }) { inherit (nixpkgs) system; }; in
 
 let esm = builtins.fetchTarball {
