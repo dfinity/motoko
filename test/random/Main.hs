@@ -17,6 +17,7 @@ import qualified Data.Text (null, unpack)
 import Data.Maybe
 import Data.Bool (bool)
 import Data.Proxy
+import Data.Type.Equality
 import GHC.Natural
 import GHC.TypeLits
 import qualified Data.Word
@@ -29,13 +30,17 @@ import Turtle
 
 main = defaultMain tests
   where tests :: TestTree
-        tests = testGroup "Motoko tests" [arithProps, utf8Props, matchingProps]
+        tests = testGroup "Motoko tests" [arithProps, conversionProps, utf8Props, matchingProps]
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
   , QC.testProperty "expected successes" $ prop_verifies
   ]
 
+conversionProps = testGroup "Numeric conversions"
+  [ QC.testProperty "roundtrip Word Nat Word " $ prop_roundtripWNW
+  --, QC.testProperty "modulo Nat Word Nat" $ prop_moduloNWN
+  ]
 
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
@@ -43,7 +48,7 @@ utf8Props = testGroup "UTF-8 coding"
   , QC.testProperty "length computation" $ prop_textLength
   ]
 
-matchingProps = testGroup "pattern matching"
+matchingProps = testGroup "Pattern matching"
   [ QC.testProperty "intra-actor" $ prop_matchStructured
   , QC.testProperty "inter-actor" $ prop_matchInActor
   ]
@@ -113,7 +118,7 @@ newtype Failing a = Failing a deriving Show
 
 instance Arbitrary (Failing String) where
   arbitrary = do let failed as = "let _ = " ++ unparseAS as ++ ";"
-                 Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @ Integer -> res) -> null res)
+                 Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @Integer -> res) -> null res)
 
 prop_rejects (Failing testCase) = monadicIO $ runScriptWantFuzz "fails" testCase
 
@@ -125,7 +130,7 @@ newtype TestCase = TestCase [String] deriving Show
 
 instance Arbitrary TestCase where
   arbitrary = do tests <- infiniteListOf arbitrary
-                 let expected = evaluate @ Integer <$> tests
+                 let expected = evaluate @Integer <$> tests
                  let paired as = fmap (\res -> "assert (" ++ unparseAS as ++ " == " ++ show res ++ ");")
                  pure . TestCase . take 100 . catMaybes $ zipWith paired tests expected
 
@@ -154,6 +159,21 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
     unless good $ (run . bisect $ halve testCase) >>= monitor . (counterexample . Data.Text.unpack $)
   assertSuccessNoFuzz id res
 
+
+newtype ConversionTest = ConversionTest (ASTerm (BitLimited 64 Word)) deriving Show
+
+instance Arbitrary ConversionTest where
+  arbitrary = ConversionTest . ConvertNaturalToWord . ConvertWordToNatural . Neuralgic <$> (arbitrary :: Gen (Neuralgic (BitLimited 64 Word)))
+
+prop_roundtripWNW :: ConversionTest -> Property
+prop_roundtripWNW (ConversionTest term) =
+    case term of
+      ConvertNaturalToWord (ConvertWordToNatural n) ->
+          case sameNat (bitsIn term) (bitsIn n) of
+            Just Refl -> let testCase = "assert(" <> unparseAS (term `Equals` n) <> ")" in
+                         monadicIO $ runScriptNoFuzz "roundtripWNW" testCase
+  where bitsIn :: KnownNat n => ASTerm (BitLimited n Word) -> Proxy n
+        bitsIn _ = Proxy
 
 data Matching where
   Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
@@ -339,6 +359,8 @@ data ASTerm :: * -> * where
   ConvertNat :: KnownNat n => ASTerm (BitLimited n Natural) -> ASTerm Integer
   ConvertInt :: KnownNat n => ASTerm (BitLimited n Integer) -> ASTerm Integer
   ConvertWord :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Integer
+  ConvertNaturalToWord :: WordLike n => ASTerm Natural -> ASTerm (BitLimited n Word)
+  ConvertWordToNatural :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Natural
   -- Constructors (intro forms)
   Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
   Triple :: (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c)
@@ -755,6 +777,8 @@ eval (ConvertNatural t) = fromIntegral <$> evaluate t
 eval (ConvertNat t) = fromIntegral <$> evaluate t
 eval (ConvertInt t) = fromIntegral <$> evaluate t
 eval (ConvertWord t) = fromIntegral <$> evaluate t
+eval (ConvertNaturalToWord t) = fromIntegral . (.&. 0xFFFFFFFFFFFFFFFF{- TODO: bitwidth -}) <$> evaluate t
+eval (ConvertWordToNatural t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evaluate c
                              eval $ if c then a else b
 --eval _ = Nothing
@@ -868,6 +892,13 @@ unparseAS (ConvertNatural a) = "(++++(" <> unparseAS a <> "))"
 unparseAS (ConvertNat a) = unparseNat Proxy a
 unparseAS (ConvertInt a) = unparseInt Proxy a
 unparseAS (ConvertWord a) = unparseWord Proxy a
+
+
+
+unparseAS (ConvertWordToNatural a) = "(word64ToNat " <> unparseAS a <> ")"
+unparseAS (ConvertNaturalToWord a) = "(natToWord64 " <> unparseAS a <> ")"
+
+
 unparseAS (IfThenElse a b c) = "(if (" <> unparseAS c <> ") " <> unparseAS a <> " else " <> unparseAS b <> ")"
 unparseAS (a `NotEqual` b) = inParens unparseAS "!=" a b
 unparseAS (a `Equals` b) = inParens unparseAS "==" a b
