@@ -43,11 +43,17 @@ let import_relative_test_case root module_path import expected =
        (show actual);
      false)
 
+let%test "it finds unqualified prefixes" =
+  prefix_test_case "filt|" (Some ("", "filt"))
+
+let%test "it understands whitespace" =
+  prefix_test_case "filt |" None
+
+let%test "it does find non-qualified idents after qualifiers" =
+  prefix_test_case "List.filter we|" (Some ("", "we"))
+
 let%test "it finds a simple prefix" =
   prefix_test_case "List.|" (Some ("List", ""))
-
-let%test "it doesn't find non-qualified idents" =
-  prefix_test_case "List.filter we|" None
 
 let%test "it picks the qualified closest to the cursor" =
   prefix_test_case "Stack.some List.|" (Some ("List", ""))

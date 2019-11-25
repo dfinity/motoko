@@ -1,11 +1,11 @@
-actor {
+actor a {
   var c = 1;
   public func inc() {
     c += 1;
-    debugPrintNat c; debugPrint "\n";
+    debugPrintNat c;
   };
   public func printCounter () {
-    debugPrintNat c; debugPrint "\n";
+    debugPrintNat c;
   };
   public func get() : async Nat {
     return c

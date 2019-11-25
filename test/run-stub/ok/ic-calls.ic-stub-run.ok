@@ -1,6 +1,8 @@
 → create
 ← completed: canister-id = 0x0000000000000400
 → install
+A
+B
+C
+test
 ← completed
-→ update test(0x4449444c0000)
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: cannot call anonymous shared function"

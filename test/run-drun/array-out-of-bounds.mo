@@ -4,11 +4,11 @@ actor a {
 
   public func foo1() : async () {
     ignore(xs[5]);
-    debugPrint("Unreachable code reached\n");
+    debugPrint("Unreachable code reached");
   };
   public func foo2() : async () {
     ignore(ys[0]);
-    debugPrint("Unreachable code reached\n");
+    debugPrint("Unreachable code reached");
   };
 };
 

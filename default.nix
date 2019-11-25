@@ -1,11 +1,15 @@
-{ nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
+{
   dvm ? null,
   drun ? null,
   export-shell ? false,
-  replay ? 0
+  replay ? 0,
+  system ? builtins.currentSystem,
 }:
 
-let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
+
+let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs { inherit system; }; in
+
+let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -16,20 +20,20 @@ let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   # ref = "master";
   rev = "6fca1936fcd027aaeaccab0beb51defeee38a0ff";
-}) { system = nixpkgs.system; }; in
+}) { inherit (nixpkgs) system; }; in
 
 let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   ref = "master";
   rev = "5c7efff0524adbf97d85b27adb180e6137a3428f";
-}) { system = nixpkgs.system; }; in
+}) { inherit (nixpkgs) system; }; in
 
 let sdk = import (builtins.fetchGit {
   name = "sdk-sources";
   url = "ssh://git@github.com/dfinity-lab/sdk";
   ref = "master";
-  rev = "bfdd1e2cc374c34e5bc2d74680289f3a66b06953";
+  rev = "7ee8cc40abab5b33c68bc8a32412e5be33a9f410";
 }) { system = nixpkgs.system; }; in
 
 let esm = builtins.fetchTarball {

@@ -3,11 +3,11 @@ let a = actor {
     "Hello ";
   };
   public func world() : async Text {
-    "World!\n"
+    "World!"
   };
-  public func go() : async () {
+  public func go() = ignore async  {
     debugPrint((await hello()) # (await world()));
   };
 };
 
-let _ = a.go()
+a.go()
