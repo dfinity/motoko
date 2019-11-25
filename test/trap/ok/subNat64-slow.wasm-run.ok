@@ -1,3 +1,5 @@
+Natural subtraction underflow
+
 Error: failed to process main module `_out/subNat64-slow.wasm`
 
 Caused by:

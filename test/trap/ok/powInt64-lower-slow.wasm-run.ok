@@ -1,3 +1,5 @@
+arithmetic overflow
+
 Error: failed to process main module `_out/powInt64-lower-slow.wasm`
 
 Caused by:

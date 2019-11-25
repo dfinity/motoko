@@ -1,3 +1,5 @@
+negative power
+
 Error: failed to process main module `_out/powInt32-raise-neg.wasm`
 
 Caused by:

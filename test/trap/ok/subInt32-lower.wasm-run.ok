@@ -1,3 +1,5 @@
+arithmetic overflow
+
 Error: failed to process main module `_out/subInt32-lower.wasm`
 
 Caused by:

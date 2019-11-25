@@ -1,3 +1,5 @@
+arithmetic overflow
+
 Error: failed to process main module `_out/addNat32.wasm`
 
 Caused by:

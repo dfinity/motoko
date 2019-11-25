@@ -1,3 +1,5 @@
+arithmetic overflow
+
 Error: failed to process main module `_out/mulInt64-lower.wasm`
 
 Caused by:

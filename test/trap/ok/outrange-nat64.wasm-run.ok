@@ -1,3 +1,5 @@
+losing precision
+
 Error: failed to process main module `_out/outrange-nat64.wasm`
 
 Caused by:

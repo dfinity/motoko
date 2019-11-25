@@ -1,3 +1,5 @@
+arithmetic overflow
+
 Error: failed to process main module `_out/subNat32.wasm`
 
 Caused by:

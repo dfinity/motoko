@@ -1,3 +1,5 @@
+arithmetic overflow
+
 Error: failed to process main module `_out/mulInt16-upper.wasm`
 
 Caused by:

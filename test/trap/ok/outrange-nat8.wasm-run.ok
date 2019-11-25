@@ -1,3 +1,5 @@
+losing precision
+
 Error: failed to process main module `_out/outrange-nat8.wasm`
 
 Caused by:
