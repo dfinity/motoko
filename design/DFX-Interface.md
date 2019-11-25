@@ -35,7 +35,7 @@ the top-level `default.nix`:
 * `didc`: contains `bin/didc`
 * `rts`: contains `rts/mo-rts.wasm`, the Motoko runtime system
 * `stdlib`: contains the standard library, directly in the top level directory,
-  as `*.mo` files. It does not contain exra fiels (test files, for example)
+  as `*.mo` files. It does not contain extra files (test files, for example)
 
 The `default.nix` file itself takes an optional `system` parameter which is
 either `"x86_64-linux"` or `"x86_64-darwin"`, and defaults to
@@ -112,4 +112,3 @@ This _reads_ `some/path/input.mo` and any `.mo` file referenced by
 `some/path/input.mo`, either relatively, absolutely or via the provided package aliases.
 
 No constraints are imposed where these imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
-
