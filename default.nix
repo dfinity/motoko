@@ -29,7 +29,7 @@ let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   ref = "motoko-pin-pr929";
-  rev = "9808d92ff612b86f6be1a5204fc6a3332b6032eb";
+  rev = "6d4f4d255003a34e864b8a2286b4e9efa279e6d9";
 }) { inherit (nixpkgs) system; }; in
 
 let sdk = import (builtins.fetchGit {
