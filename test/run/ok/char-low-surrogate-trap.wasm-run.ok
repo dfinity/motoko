@@ -1,1 +1,8 @@
-_out/char-low-surrogate-trap.wasm:0x___: runtime trap: unreachable executed
+codepoint out of range
+
+Error: failed to process main module `_out/char-low-surrogate-trap.wasm`
+
+Caused by:
+    0: Instantiation failed during setup
+    1: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:
+

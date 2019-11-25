@@ -1,10 +1,8 @@
 → create
 ← completed: canister-id = 0x0000000000000400
 → install
-← completed
-→ update test(0x4449444c0000)
 A
 B
 C
 test
-← completed: 0x4449444c0000
+← completed
