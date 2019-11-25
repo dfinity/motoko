@@ -1,7 +1,6 @@
 {
   dvm ? null,
   drun ? null,
-  export-shell ? false,
   replay ? 0,
   system ? builtins.currentSystem,
 }:
@@ -229,7 +228,7 @@ rec {
         filecheck
         js-user-library
         dvm
-        drun
+        real-drun
         haskellPackages.qc-motoko
         haskellPackages.lsp-int
         ic-stub
@@ -446,10 +445,11 @@ rec {
       produce-exchange
       users-guide
       ic-stub
+      shell
     ];
   };
 
-  shell = if export-shell then nixpkgs.mkShell {
+  shell = nixpkgs.mkShell {
     #
     # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
@@ -475,6 +475,13 @@ rec {
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 
-  } else null;
-
+    # allow building this as a derivation, so that hydra builds and caches
+    # the dependencies of shell
+    phases = ["dummyBuildPhase"];
+    dummyBuildPhase = ''
+      touch $out
+    '';
+    preferLocalBuild = true;
+    allowSubstitutes = true;
+  };
 }
