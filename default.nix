@@ -1,15 +1,12 @@
 {
   dvm ? null,
   drun ? null,
-  export-shell ? false,
   replay ? 0,
   system ? builtins.currentSystem,
 }:
 
-let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs { inherit system; }; in
-
-let nixpkgs_wasi = (import ./nix/nixpkgs-wasi.nix){
-  inherit (nixpkgs) system;
+let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
+  inherit system;
   overlays = [
     (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
   ];
@@ -229,7 +226,7 @@ rec {
         filecheck
         js-user-library
         dvm
-        drun
+        real-drun
         wasmtime
         haskellPackages.qc-motoko
         haskellPackages.lsp-int
@@ -336,7 +333,7 @@ rec {
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
-  wasmtime = nixpkgs_wasi.wasmtime;
+  wasmtime = nixpkgs.wasmtime;
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";
@@ -445,10 +442,11 @@ rec {
       produce-exchange
       users-guide
       ic-stub
+      shell
     ];
   };
 
-  shell = if export-shell then nixpkgs.mkShell {
+  shell = nixpkgs.mkShell {
     #
     # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
@@ -474,6 +472,13 @@ rec {
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 
-  } else null;
-
+    # allow building this as a derivation, so that hydra builds and caches
+    # the dependencies of shell
+    phases = ["dummyBuildPhase"];
+    dummyBuildPhase = ''
+      touch $out
+    '';
+    preferLocalBuild = true;
+    allowSubstitutes = true;
+  };
 }
