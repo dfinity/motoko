@@ -74,6 +74,7 @@ let warn env at fmt =
 let flag_of_compile_mode mode =
   match mode with
   | Flags.ICMode -> ""
+  | Flags.WASIMode -> " and flag -wasi-system-api"
   | Flags.WasmMode -> " and flag -no-system-api"
   | Flags.AncientMode -> " and flag -ancient-system-api"
   | Flags.StubMode -> " and flag -stub-system-api"
