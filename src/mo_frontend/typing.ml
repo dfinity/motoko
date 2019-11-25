@@ -778,7 +778,7 @@ and infer_exp'' env exp : T.typ =
       check_exp env t_arg exp2;
       if Type.is_shared_sort sort then begin
         if T.is_async t_ret && not (in_await env) then
-          error_in [Flags.ICMode; Flags.StubMode] env exp2.at
+          error_in [Flags.ICMode] env exp2.at
             "shared, async function must be called within an await expression";
         error_in [Flags.ICMode] env exp1.at "calling a shared function not yet supported";
         if not (T.concrete t_arg) then
@@ -942,7 +942,7 @@ and infer_exp'' env exp : T.typ =
        | CallE (f, _, _) ->
          if not env.pre && (Call_conv.call_conv_of_typ f.note.note_typ).Call_conv.control = T.Returns then
            error_in [Flags.ICMode; Flags.StubMode] env f.at "expecting call to shared async function in await";
-      | _ -> error_in [Flags.ICMode; Flags.StubMode] env exp1.at "argument to await must be a call expression");
+      | _ -> error_in [Flags.ICMode] env exp1.at "argument to await must be a call expression");
     (try
       T.as_async_sub t1
     with Invalid_argument _ ->

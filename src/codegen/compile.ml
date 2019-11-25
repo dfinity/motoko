@@ -671,19 +671,35 @@ module Heap = struct
   (* Memory addresses are 32 bit (I32Type). *)
   let word_size = 4l
 
-  let register_globals env =
-    (* end-of-heap pointer, we set this to __heap_base upon start *)
-    E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl
+  (* The heap base global can only be used late, see conclude_module
+     and GHC.register *)
+  let get_heap_base env =
+    G.i (GlobalGet (nr (E.get_global env "__heap_base")))
 
   (* We keep track of the end of the used heap in this global, and bump it if
      we allocate stuff. This is the actual memory offset, not-skewed yet *)
-  let get_heap_base env =
-    G.i (GlobalGet (nr (E.get_global env "__heap_base")))
   let get_heap_ptr env =
     G.i (GlobalGet (nr (E.get_global env "end_of_heap")))
   let set_heap_ptr env =
     G.i (GlobalSet (nr (E.get_global env "end_of_heap")))
   let get_skewed_heap_ptr env = get_heap_ptr env ^^ compile_add_const ptr_skew
+
+  let register_globals env =
+    (* end-of-heap pointer, we set this to __heap_base upon start *)
+    E.add_global32 env "end_of_heap" Mutable 0xDEADBEEFl;
+
+    (* counter for total allocations *)
+    E.add_global64 env "allocations" Mutable 0L
+
+  let count_allocations env =
+    (* assumes number of allocated bytes on the stack *)
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+    G.i (GlobalGet (nr (E.get_global env "allocations"))) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+    G.i (GlobalSet (nr (E.get_global env "allocations")))
+
+  let get_total_allocation env =
+    G.i (GlobalGet (nr (E.get_global env "allocations")))
 
   (* Page allocation. Ensures that the memory up to the given unskewed pointer is allocated. *)
   let grow_memory env =
@@ -712,16 +728,22 @@ module Heap = struct
   (* Dynamic allocation *)
   let dyn_alloc_words env =
     Func.share_code1 env "alloc_words" ("n", I32Type) [I32Type] (fun env get_n ->
-      (* expects the size (in words), returns the pointer *)
+      (* expects the size (in words), returns the skewed pointer *)
 
       (* return the current pointer (skewed) *)
       get_skewed_heap_ptr env ^^
+
+      (* Cound allocated bytes *)
+      get_n ^^ compile_mul_const word_size ^^
+      count_allocations env ^^
 
       (* Update heap pointer *)
       get_heap_ptr env ^^
       get_n ^^ compile_mul_const word_size ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
       set_heap_ptr env ^^
+
+      (* grow memory if needed *)
       get_heap_ptr env ^^ grow_memory env
     )
 
@@ -799,7 +821,6 @@ module Heap = struct
           store_ptr
       )
     )
-
 
 end (* Heap *)
 
@@ -969,6 +990,9 @@ module ClosureTable = struct
       compile_add_const loc ^^
       load_unskewed_ptr
     )
+
+  let get_outstanding_callbacks env =
+    get_counter
 
 end (* ClosureTable *)
 
@@ -4613,70 +4637,80 @@ module GC = struct
         get_begin_from_space get_begin_to_space get_end_to_space
   )
 
-  let register env (end_of_static_space : int32) = Func.define_built_in env "collect" [] [] (fun env ->
-    if not gc_enabled then G.nop else
+  let register env (end_of_static_space : int32) =
+    Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
+      Heap.get_heap_ptr env ^^
+      Heap.get_heap_base env ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+    );
 
-    (* Copy all roots. *)
-    let (set_begin_from_space, get_begin_from_space) = new_local env "begin_from_space" in
-    let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
-    let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
+    Func.define_built_in env "collect" [] [] (fun env ->
+      if not gc_enabled then G.nop else
 
-    Heap.get_heap_base env ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
-    Heap.get_skewed_heap_ptr env ^^ set_begin_to_space ^^
-    Heap.get_skewed_heap_ptr env ^^ set_end_to_space ^^
+      (* Copy all roots. *)
+      let (set_begin_from_space, get_begin_from_space) = new_local env "begin_from_space" in
+      let (set_begin_to_space, get_begin_to_space) = new_local env "begin_to_space" in
+      let (set_end_to_space, get_end_to_space) = new_local env "end_to_space" in
+
+      Heap.get_heap_base env ^^ compile_add_const ptr_skew ^^ set_begin_from_space ^^
+      Heap.get_skewed_heap_ptr env ^^ set_begin_to_space ^^
+      Heap.get_skewed_heap_ptr env ^^ set_end_to_space ^^
 
 
-    (* Common arguments for evacuate *)
-    let evac get_ptr_loc =
-        get_begin_from_space ^^
-        get_begin_to_space ^^
-        get_end_to_space ^^
-        get_ptr_loc ^^
-        evacuate env ^^
-        set_end_to_space in
+      (* Common arguments for evacuate *)
+      let evac get_ptr_loc =
+          get_begin_from_space ^^
+          get_begin_to_space ^^
+          get_end_to_space ^^
+          get_ptr_loc ^^
+          evacuate env ^^
+          set_end_to_space in
 
-    let evac_offset get_ptr_loc offset =
-        get_begin_from_space ^^
-        get_begin_to_space ^^
-        get_end_to_space ^^
-        get_ptr_loc ^^
-        evacuate_offset env offset ^^
-        set_end_to_space in
+      let evac_offset get_ptr_loc offset =
+          get_begin_from_space ^^
+          get_begin_to_space ^^
+          get_end_to_space ^^
+          get_ptr_loc ^^
+          evacuate_offset env offset ^^
+          set_end_to_space in
 
-    (* Go through the roots, and evacuate them *)
-    ClosureTable.get_counter ^^
-    from_0_to_n env (fun get_i -> evac (
-      get_i ^^
-      compile_add_const 1l ^^
-      compile_mul_const Heap.word_size ^^
-      compile_add_const ClosureTable.loc ^^
-      compile_add_const ptr_skew
-    )) ^^
-    HeapTraversal.walk_heap_from_to env
-      (compile_unboxed_const Int32.(add ClosureTable.table_end ptr_skew))
-      (compile_unboxed_const Int32.(add end_of_static_space ptr_skew))
-      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
+      (* Go through the roots, and evacuate them *)
+      ClosureTable.get_counter ^^
+      from_0_to_n env (fun get_i -> evac (
+        get_i ^^
+        compile_add_const 1l ^^
+        compile_mul_const Heap.word_size ^^
+        compile_add_const ClosureTable.loc ^^
+        compile_add_const ptr_skew
+      )) ^^
+      HeapTraversal.walk_heap_from_to env
+        (compile_unboxed_const Int32.(add ClosureTable.table_end ptr_skew))
+        (compile_unboxed_const Int32.(add end_of_static_space ptr_skew))
+        (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
 
-    (* Go through the to-space, and evacuate that.
-       Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
-     *)
-    HeapTraversal.walk_heap_from_to env
-      get_begin_to_space
-      get_end_to_space
-      (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
+      (* Go through the to-space, and evacuate that.
+         Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
+       *)
+      HeapTraversal.walk_heap_from_to env
+        get_begin_to_space
+        get_end_to_space
+        (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
 
-    (* Copy the to-space to the beginning of memory. *)
-    get_begin_from_space ^^ compile_add_const ptr_unskew ^^
-    get_begin_to_space ^^ compile_add_const ptr_unskew ^^
-    get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-    Heap.memcpy env ^^
+      (* Copy the to-space to the beginning of memory. *)
+      get_begin_from_space ^^ compile_add_const ptr_unskew ^^
+      get_begin_to_space ^^ compile_add_const ptr_unskew ^^
+      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      Heap.memcpy env ^^
 
-    (* Reset the heap pointer *)
-    get_begin_from_space ^^ compile_add_const ptr_unskew ^^
-    get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    Heap.set_heap_ptr env
+      (* Reset the heap pointer *)
+      get_begin_from_space ^^ compile_add_const ptr_unskew ^^
+      get_end_to_space ^^ get_begin_to_space ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      Heap.set_heap_ptr env
   )
+
+  let get_heap_size env =
+    G.i (Call (nr (E.built_in env "get_heap_size")))
 
 end (* GC *)
 
@@ -6593,6 +6627,19 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
       E.call_import env "rts" "version"
+
+    | OtherPrim "rts_heap_size", [] ->
+      SR.Vanilla,
+      GC.get_heap_size env ^^ Prim.prim_word32toNat env
+
+    | OtherPrim "rts_total_allocation", [] ->
+      SR.Vanilla,
+      Heap.get_total_allocation env ^^ BigNum.from_word64 env
+
+    | OtherPrim "rts_outstanding_callbacks", [] ->
+      SR.Vanilla,
+      ClosureTable.get_outstanding_callbacks env ^^ Prim.prim_word32toNat env
+
 
     | OtherPrim "idlHash", [e] ->
       SR.Vanilla,
