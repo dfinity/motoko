@@ -49,7 +49,7 @@ installing all required tools without nix is out of scope).
    ```
  * Install various command line tools used by, in particuar, the test suite:
    ```
-   nix-env -i -f . -A wasm
+   nix-env -i -f . -A wasmtime
    nix-env -i -f . -A filecheck
    nix-env -i -f . -A wabt
    nix-env -i -f . -A dvm

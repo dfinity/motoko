@@ -1,12 +1,18 @@
-{ nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
+{
   dvm ? null,
   drun ? null,
-  export-shell ? false,
   replay ? 0,
-  system ? nixpkgs.system
+  system ? builtins.currentSystem,
 }:
 
-let llvm = import ./nix/llvm.nix { inherit system; }; in
+let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
+  inherit system;
+  overlays = [
+    (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
+  ];
+}; in
+
+let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -17,21 +23,21 @@ let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   # ref = "master";
   rev = "6fca1936fcd027aaeaccab0beb51defeee38a0ff";
-}) { inherit system; }; in
+}) { inherit (nixpkgs) system; }; in
 
 let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   ref = "master";
   rev = "5c7efff0524adbf97d85b27adb180e6137a3428f";
-}) { inherit system; }; in
+}) { inherit (nixpkgs) system; }; in
 
 let sdk = import (builtins.fetchGit {
   name = "sdk-sources";
   url = "ssh://git@github.com/dfinity-lab/sdk";
-  ref = "paulyoung/js-user-library";
-  rev = "42f15621bc5b228c7fd349cb52f265917d33a3a0";
-}) { inherit system; }; in
+  ref = "master";
+  rev = "7ee8cc40abab5b33c68bc8a32412e5be33a9f410";
+}) { inherit (nixpkgs) system; }; in
 
 let esm = builtins.fetchTarball {
   sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
@@ -85,11 +91,6 @@ let ocamlpkgs =
   then nixpkgs
   else nixpkgs.pkgsMusl; in
 
-let ocaml_wasm_static =
-  import ./nix/ocaml-wasm.nix {
-    inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml;
-    inherit (ocamlpkgs.ocamlPackages) findlib ocamlbuild;
-  }; in
 
 # This branches on the pkgs, which is either
 # normal nixpkgs (nix-shell, darwin)
@@ -216,7 +217,6 @@ rec {
         mo-ld
         didc
         deser
-        ocaml_wasm_static
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -226,7 +226,8 @@ rec {
         filecheck
         js-user-library
         dvm
-        drun
+        real-drun
+        wasmtime
         haskellPackages.qc-motoko
         haskellPackages.lsp-int
         ic-stub
@@ -280,7 +281,6 @@ rec {
     buildInputs =
       [ moc
         didc
-        ocaml_wasm_static
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -328,13 +328,12 @@ rec {
     '';
   };
 
-  wasm = ocaml_wasm_static;
   dvm = real-dvm;
   drun = real-drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
-
+  wasmtime = nixpkgs.wasmtime;
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";
@@ -443,10 +442,11 @@ rec {
       produce-exchange
       users-guide
       ic-stub
+      shell
     ];
   };
 
-  shell = if export-shell then nixpkgs.mkShell {
+  shell = nixpkgs.mkShell {
     #
     # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
@@ -472,6 +472,13 @@ rec {
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 
-  } else null;
-
+    # allow building this as a derivation, so that hydra builds and caches
+    # the dependencies of shell
+    phases = ["dummyBuildPhase"];
+    dummyBuildPhase = ''
+      touch $out
+    '';
+    preferLocalBuild = true;
+    allowSubstitutes = true;
+  };
 }

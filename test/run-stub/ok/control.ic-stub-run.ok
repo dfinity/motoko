@@ -1,0 +1,4 @@
+→ create
+← completed: canister-id = 0x0000000000000400
+→ install
+← completed
