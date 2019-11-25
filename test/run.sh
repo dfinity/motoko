@@ -241,7 +241,6 @@ do
             if [ $API = ancient ]
             then
               run dvm $DVM_WRAPPER $out/$base.wasm $base.mo
-	     echo skip
             elif [ $API = ic ]
             then
               run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo

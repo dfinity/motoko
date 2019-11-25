@@ -388,7 +388,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       interpret_exp env expr (fun rv ->
           let call_conv, f = V.as_func v1 in
           check_call_conv exp1 call_conv;
-          check_call_conv_arg env exp2 v2 call_conv;
+          check_call_conv_arg env exp v2 call_conv;
           last_region := exp.at; (* in case the following throws *)
           f (V.Tup[kv;rv;v2]) k))))
     | ICSelfCallPrim, [exp1; expk; expr] ->
@@ -399,7 +399,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           let anon = "anon" in
           let call_conv, f = V.as_func v1 in
           check_call_conv exp1 call_conv;
-          let m = interpret_message env exp.at anon []
+          let message_body = interpret_message env exp.at anon []
             (fun env'  ->
               let reply = Lib.Option.value env'.replies in
               let reply_cc, _ = V.as_func kv in
@@ -412,11 +412,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
               f (V.Tup [replyv; rejectv]))
           in
           let cc = Call_conv.replies_cc T.Write 0 0 in
-          let v = V.Func (cc, m) in
-          let cc_, m' = V.as_func (make_message env anon cc v) in
-          (* TODO More checks *)
+          let v = V.Func (cc, message_body) in
+          let cc_, message = V.as_func (make_message env anon cc v) in
+          check_call_conv_arg env exp (V.Tup []) cc_;
           last_region := exp.at; (* in case the following throws *)
-          (m' (V.Tup [kv; rv; V.Tup []]) V.as_unit))));
+          (message (V.Tup [kv; rv; V.Tup []]) V.as_unit))));
           k V.unit
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
@@ -529,18 +529,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
-
     let f = interpret_message env exp.at x args
-    (fun env' ->
-                interpret_exp env' e) in
-
+      (fun env' -> interpret_exp env' e) in
     let v = V.Func (cc, f) in
     let v = make_message env x cc v in
     k v
-
   | FuncE (x, sort, control, _typbinds, args, ret_typs, e) ->
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
-
     let f = interpret_func env exp.at x args
       (fun env' -> interpret_exp env' e) in
     let v = V.Func (cc, f) in
