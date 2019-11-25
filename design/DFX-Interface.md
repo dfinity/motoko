@@ -27,7 +27,8 @@ It does not replace proper documentation, but should be kept rather concise.
 Nix derivations
 ---------------
 
-The `motoko` repository defines the following nix derivations, as attributes of the top-level `default.nix`:
+The `motoko` repository defines the following nix derivations, as attributes of
+the top-level `default.nix`:
 
 * `moc-bin`: contains `bin/moc`
 * `mo-ide`: contains `bin/mo-ide`
@@ -36,7 +37,9 @@ The `motoko` repository defines the following nix derivations, as attributes of 
 * `stdlib`: contains the standard library, directly in the top level directory,
   as `*.mo` files. It does not contain exra fiels (test files, for example)
 
-The `default.nix` file itself takes an optional `system` parameter which is either `"x86_64-linux"` or `"x86_64-darwin"`, and defaults to `builtins.currentSystem`.
+The `default.nix` file itself takes an optional `system` parameter which is
+either `"x86_64-linux"` or `"x86_64-darwin"`, and defaults to
+`builtins.currentSystem`.
 
 All binaries are either built statically (Linux) or only use system libraries (OSX).
 
