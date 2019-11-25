@@ -5,8 +5,12 @@
   system ? builtins.currentSystem,
 }:
 
-
-let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs { inherit system; }; in
+let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
+  inherit system;
+  overlays = [
+    (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
+  ];
+}; in
 
 let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; }; in
 
@@ -87,11 +91,6 @@ let ocamlpkgs =
   then nixpkgs
   else nixpkgs.pkgsMusl; in
 
-let ocaml_wasm_static =
-  import ./nix/ocaml-wasm.nix {
-    inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml;
-    inherit (ocamlpkgs.ocamlPackages) findlib ocamlbuild;
-  }; in
 
 # This branches on the pkgs, which is either
 # normal nixpkgs (nix-shell, darwin)
@@ -218,7 +217,6 @@ rec {
         mo-ld
         didc
         deser
-        ocaml_wasm_static
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -229,6 +227,7 @@ rec {
         js-user-library
         dvm
         real-drun
+        wasmtime
         haskellPackages.qc-motoko
         haskellPackages.lsp-int
         ic-stub
@@ -282,7 +281,6 @@ rec {
     buildInputs =
       [ moc
         didc
-        ocaml_wasm_static
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -330,13 +328,12 @@ rec {
     '';
   };
 
-  wasm = ocaml_wasm_static;
   dvm = real-dvm;
   drun = real-drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
-
+  wasmtime = nixpkgs.wasmtime;
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";
