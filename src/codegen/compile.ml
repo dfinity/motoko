@@ -6367,7 +6367,7 @@ and compile_exp (env : E.t) ae exp =
       | (Nat|Int), Word64 ->
         SR.UnboxedWord64,
         compile_exp_vanilla env ae e ^^
-        BigNum.to_word64 env
+        BigNum.truncate_to_word64 env
 
       | Nat64, Word64
       | Int64, Word64
