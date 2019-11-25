@@ -30,7 +30,6 @@ MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
-WASM=${WASM:-wasm}
 WASMTIME=${WASMTIME:-wasmtime}
 DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
@@ -251,7 +250,8 @@ do
             then
               run wasm-run $WASMTIME --disable-cache $out/$base.wasm
             else
-              run wasm-run $WASM $out/$base.wasm
+              echo "Unkonwn API $API"
+	      exit 1
             fi
           fi
         fi

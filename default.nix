@@ -94,11 +94,6 @@ let ocamlpkgs =
   then nixpkgs
   else nixpkgs.pkgsMusl; in
 
-let ocaml_wasm_static =
-  import ./nix/ocaml-wasm.nix {
-    inherit (ocamlpkgs) stdenv fetchFromGitHub ocaml;
-    inherit (ocamlpkgs.ocamlPackages) findlib ocamlbuild;
-  }; in
 
 # This branches on the pkgs, which is either
 # normal nixpkgs (nix-shell, darwin)
@@ -225,7 +220,6 @@ rec {
         mo-ld
         didc
         deser
-        ocaml_wasm_static
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -290,7 +284,6 @@ rec {
     buildInputs =
       [ moc
         didc
-        ocaml_wasm_static
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
@@ -338,7 +331,6 @@ rec {
     '';
   };
 
-  wasm = ocaml_wasm_static;
   dvm = real-dvm;
   drun = real-drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
