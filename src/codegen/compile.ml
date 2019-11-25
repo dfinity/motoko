@@ -3716,6 +3716,19 @@ module Serialization = struct
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
       (List.map (fun f -> (Idllib.Escape.unescape_hash f.Type.lab, f)) fs)
 
+  (* The code below does not work on all Motoko types, but only certain “raw
+     types”. In particular, type definitions have to be removed (using Type.normalize).
+     But also, at least for now, actor and function references are represented
+     as data, https://github.com/dfinity-lab/motoko/pull/883
+   *)
+  let raw_type env : Type.typ -> Type.typ = fun t ->
+    let open Type in
+    match normalize t with
+    | Obj (Actor, _) when E.mode env != Flags.AncientMode -> Prim Blob
+    | Func _  when E.mode env != Flags.AncientMode -> Tup [Prim Blob; Prim Text]
+    | t -> t
+
+
   (* The IDL serialization prefaces the data with a type description.
      We can statically create the type description in Ocaml code,
      store it in the program, and just copy it to the beginning of the message.
@@ -3741,20 +3754,21 @@ module Serialization = struct
     | Prim Int64 -> Some 12
     | Prim Float -> Some 14
     | Prim Text -> Some 15
+    (* NB: Prim Blob does not map to a primitive IDL type *)
     | Any -> Some 16
     | Non -> Some 17
     | _ -> None
 
-  let type_desc ts : string =
+  let type_desc env ts : string =
     let open Type in
 
     (* Type traversal *)
-    (* We do a first traversal to find out the indices of types *)
+    (* We do a first traversal to find out the indices of non-primitive types *)
     let (typs, idx) =
       let typs = ref [] in
       let idx = ref TM.empty in
       let rec go t =
-        let t = Type.normalize t in
+        let t = raw_type env t in
         if to_idl_prim t <> None then () else
         if TM.mem t !idx then () else begin
           idx := TM.add t (List.length !typs) !idx;
@@ -3768,6 +3782,7 @@ module Serialization = struct
           | Variant vs -> List.iter (fun f -> go f.typ) vs
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
+          | Prim Blob -> ()
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
             assert false
@@ -3809,14 +3824,17 @@ module Serialization = struct
     (* Actual binary data *)
 
     let add_idx t =
-      let t = Type.normalize t in
+      let t = raw_type env t in
       match to_idl_prim t with
       | Some i -> add_sleb128 (-i)
       | None -> add_sleb128 (TM.find (normalize t) idx) in
 
-    let add_typ t =
+    let rec add_typ t =
       match t with
-      | Prim _ | Non -> assert false
+      | Non -> assert false
+      | Prim Blob ->
+        add_typ Type.(Array (Prim Word8))
+      | Prim _ -> assert false
       | Tup ts ->
         add_sleb128 (-20);
         add_leb128 (List.length ts);
@@ -3832,6 +3850,7 @@ module Serialization = struct
           add_idx f.typ
         ) (sort_by_hash fs)
       | Obj (Actor, fs) ->
+        assert (E.mode env = Flags.AncientMode);
         add_sleb128 (-23);
         add_leb128 (List.length fs);
         List.iter (fun f ->
@@ -3851,6 +3870,8 @@ module Serialization = struct
           add_idx f.typ
         ) (sort_by_hash vs)
       | Func (s, c, tbs, ts1, ts2) ->
+        assert (Type.is_shared_sort s);
+        assert (E.mode env = Flags.AncientMode);
         add_sleb128 (-22);
         add_leb128 (List.length ts1);
         List.iter add_idx ts1;
@@ -3869,7 +3890,7 @@ module Serialization = struct
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
     let open Type in
-    let t = Type.normalize t in
+    let t = raw_type env t in
     let name = "@buffer_size<" ^ typ_id t ^ ">" in
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type]
     (fun env get_x ->
@@ -3927,9 +3948,11 @@ module Serialization = struct
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
         )
-      | Prim Text ->
-        size_word env (get_x ^^ Heap.load_field Blob.len_field) ^^
-        inc_data_size (get_x ^^ Heap.load_field Blob.len_field)
+      | Prim (Text | Blob) ->
+        let (set_len, get_len) = new_local env "len" in
+        get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
+        size_word env get_len ^^
+        inc_data_size get_len
       | Prim Null -> G.nop
       | Any -> G.nop
       | Opt t ->
@@ -3948,6 +3971,7 @@ module Serialization = struct
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | (Func _ | Obj (Actor, _)) ->
+        assert (E.mode env = Flags.AncientMode);
         inc_ref_size 1l
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
@@ -3960,7 +3984,7 @@ module Serialization = struct
   (* Copies x to the data_buffer, storing references after ref_count entries in ref_base *)
   let rec serialize_go env t =
     let open Type in
-    let t = Type.normalize t in
+    let t = raw_type env t in
     let name = "@serialize_go<" ^ typ_id t ^ ">" in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
@@ -3994,6 +4018,7 @@ module Serialization = struct
         set_ref_buf ^^
         set_data_buf
       in
+
 
       (* Now the actual serialization *)
 
@@ -4074,10 +4099,10 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
-      | Prim Text ->
+      | Prim (Text | Blob )->
+        (* Serializes to text or vec word8 respectively, but same data format *)
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
-
         write_word get_len ^^
         get_data_buf ^^
         get_x ^^ Blob.payload_ptr_unskewed ^^
@@ -4085,6 +4110,7 @@ module Serialization = struct
         Heap.memcpy env ^^
         get_len ^^ advance_data_buf
       | (Func _ | Obj (Actor, _)) ->
+        assert (E.mode env = Flags.AncientMode);
         get_ref_buf ^^
         get_x ^^ Dfinity.unbox_reference env ^^
         store_unskewed_ptr ^^
@@ -4099,7 +4125,7 @@ module Serialization = struct
 
   let rec deserialize_go env t =
     let open Type in
-    let t = normalize t in
+    let t = raw_type env t in
     let name = "@deserialize_go<" ^ typ_id t ^ ">" in
     Func.share_code4 env name
       (("data_buffer", I32Type),
@@ -4129,6 +4155,20 @@ module Serialization = struct
         E.else_trap_with env ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
       in
 
+      let read_blob validate =
+        let (set_len, get_len) = new_local env "len" in
+        let (set_x, get_x) = new_local env "x" in
+        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+
+        get_len ^^ Blob.alloc env ^^ set_x ^^
+        get_x ^^ Blob.payload_ptr_unskewed ^^
+        ReadBuf.read_blob env get_data_buf get_len ^^
+        begin if validate then
+          get_x ^^ Blob.payload_ptr_unskewed ^^ get_len ^^
+          E.call_import env "rts" "utf8_validate"
+        else G.nop end ^^
+        get_x
+      in
 
       (* checks that idltyp is positive, looks it up in the table, updates the typ_buf,
          reads the type constructor index and traps if it is the wrong one.
@@ -4155,6 +4195,14 @@ module Serialization = struct
           (* to the work *)
           f get_typ_buf
         ) in
+
+      let assert_blob_typ env =
+        with_composite_typ (-19l) (fun get_typ_buf ->
+          ReadBuf.read_sleb128 env get_typ_buf ^^
+          compile_eq_const (-5l) (* Nat8 *) ^^
+          E.else_trap_with env ("IDL error: blob not a vector of nat8")
+        )
+      in
 
       (* Now the actual deserialization *)
       begin match t with
@@ -4212,17 +4260,10 @@ module Serialization = struct
         Opt.null
       | Prim Text ->
         assert_prim_typ () ^^
-        let (set_len, get_len) = new_local env "len" in
-        let (set_x, get_x) = new_local env "x" in
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-
-        get_len ^^ Blob.alloc env ^^ set_x ^^
-        get_x ^^ Blob.payload_ptr_unskewed ^^
-        ReadBuf.read_blob env get_data_buf get_len ^^
-        get_x ^^ Blob.payload_ptr_unskewed ^^ get_len ^^
-        E.call_import env "rts" "utf8_validate" ^^
-        get_x
-
+        read_blob true
+      | Prim Blob ->
+        assert_blob_typ env ^^
+        read_blob false
       (* Composite types *)
       | Tup ts ->
         with_composite_typ (-20l) (fun get_typ_buf ->
@@ -4336,6 +4377,7 @@ module Serialization = struct
             ( E.trap_with env "IDL error: unexpected variant tag" )
         )
       | (Func _ | Obj (Actor, _)) ->
+        assert (E.mode env = Flags.AncientMode);
         ReadBuf.read_word32 env get_ref_buf ^^
         Dfinity.box_reference env
       | Non ->
@@ -4378,7 +4420,7 @@ module Serialization = struct
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
 
-      let tydesc = type_desc ts in
+      let tydesc = type_desc env ts in
       let tydesc_len = Int32.of_int (String.length tydesc) in
 
       (* Get object sizes *)
