@@ -441,6 +441,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
           n (T.string_of_typ_expand t1)
     end
   | AssignE (exp1, exp2) ->
+    begin
+      match exp1.it with
+      | (VarE _ | DotE _ | IdxE _) -> ()
+      | _ -> error env exp.at "unexpected assignment target"
+    end;
     check_exp env exp1;
     check_exp env exp2;
     let t2 = try T.as_mut  (typ exp1) with
