@@ -59,7 +59,7 @@ func local_spawn() {
 */
 
 {
-  actor class BadActorClass () { }; // no actor classes
+  actor class BadActorClass (x : Int) { }; // no actor classes
 };
 
 {

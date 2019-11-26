@@ -5,7 +5,7 @@ type Post = shared Text -> ();
 actor class Server() = {
   var clients : List<Client> = null;
 
-  shared func broadcast(message : Text) {
+  public func broadcast(message : Text) {
     var next = clients;
     loop {
       switch next {

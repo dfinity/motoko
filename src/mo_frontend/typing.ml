@@ -1812,8 +1812,15 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (id, typ_binds, pat, _, sort, _, _) ->
     if sort.it = T.Actor then
-      error_in [Flags.ICMode; Flags.StubMode] env dec.at
+      error_in [Flags.ICMode] env dec.at
         "actor classes are not supported; use an actor declaration instead";
+     let rec is_unit_pat p = match p.it with
+      | ParP p -> is_unit_pat p
+      | TupP [] -> true
+      | _ -> false in
+    if sort.it = T.Actor && not (is_unit_pat pat) then
+      error_in [Flags.StubMode] env dec.at
+        "actor classes with parametrs are not supported; use an actor declaration instead";
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
