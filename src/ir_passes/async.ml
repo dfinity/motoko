@@ -278,12 +278,12 @@ let transform mode env prog =
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
       (blockE [
                letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
-(*              ; let v = fresh_var "v" (T.seq ts1) in
+               let v = fresh_var "v" (T.seq ts1) in
                let ic_reply = v --> (ic_replyE ts1 v) in
                let e = fresh_var "e" T.catch in
                let ic_reject = [e] -->* (ic_rejectE (errorMessageE e)) in
- *)
-               expD (ic_selfcallE (t_exp exp1) nary_reply reject)
+               let exp' = t_exp exp1 -*- tupE [ic_reply; ic_reject] in
+               expD (ic_selfcallE exp' nary_reply reject)
                ]
                nary_async
       ).it

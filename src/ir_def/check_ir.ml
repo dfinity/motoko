@@ -401,6 +401,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env exp1;
       check_exp env k;
       check_exp env r;
+      (*
       let t1 = T.promote (typ exp1) in
       begin match t1 with
       | T.Func(_,_, [], [T.Func(_, _, [], arg_tys, []); _], []) ->
@@ -413,6 +414,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+      *)
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"

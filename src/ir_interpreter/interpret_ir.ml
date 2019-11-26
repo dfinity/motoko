@@ -393,31 +393,20 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           f (V.Tup[kv;rv;v2]) k))))
     | ICSelfCallPrim, [exp1; expk; expr] ->
       assert (not env.flavor.has_async_typ);
-      interpret_exp env exp1 (fun v1 ->
       interpret_exp env expk (fun kv ->
       interpret_exp env expr (fun rv ->
           let anon = "anon" in
-          let call_conv, f = V.as_func v1 in
-          check_call_conv exp1 call_conv;
-          let message_body = interpret_message env exp.at anon []
-            (fun env'  ->
-              let reply = Lib.Option.value env'.replies in
-              let reply_cc, _ = V.as_func kv in
-              let replyv = V.Func (reply_cc,
-                fun v _k -> Scheduler.queue (fun () -> reply v)) in
-              let reject = Lib.Option.value env'.rejects in
-              let reject_cc, _ = V.as_func rv in
-              let rejectv = V.Func (reject_cc,
-                fun v _k -> Scheduler.queue (fun () -> reject v)) in
-              f (V.Tup [replyv; rejectv]))
+          let message_body = interpret_message env exp.at anon [] (fun env' ->
+            interpret_exp env' exp1
+          )
           in
           let cc = Call_conv.replies_cc T.Write 0 0 in
           let v = V.Func (cc, message_body) in
           let cc_, message = V.as_func (make_message env anon cc v) in
           check_call_conv_arg env exp (V.Tup []) cc_;
           last_region := exp.at; (* in case the following throws *)
-          (message (V.Tup [kv; rv; V.Tup []]) V.as_unit))));
-          k V.unit
+          message (V.Tup [kv; rv; V.Tup []]) k
+      ))
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
