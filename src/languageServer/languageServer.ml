@@ -111,7 +111,7 @@ let start entry_point debug =
     let ix = match Declaration_index.make_index !vfs [entry_point] with
       | Error(err) ->
         List.iter (fun e -> log_to_file "Error" (Diag.string_of_message e))  err;
-        Declaration_index.Index.empty
+        Declaration_index.empty
       | Ok((ix, _)) -> ix in
     ref ix in
   let rec loop () =

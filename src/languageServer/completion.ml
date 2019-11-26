@@ -137,7 +137,7 @@ let completions index logger project_root file_path file_contents line column =
         the current file *)
      let toplevel =
        current_uri_opt
-       |> opt_bind (fun uri -> Index.find_opt uri index)
+       |> opt_bind (fun uri -> lookup_module uri index)
        |> Lib.Option.map (List.map item_of_ide_decl)
        |> Lib.Fun.flip Lib.Option.get [] in
      imported
@@ -147,7 +147,7 @@ let completions index logger project_root file_path file_contents line column =
      (* Without an alias but with a prefix we filter the toplevel
         idenfiers of the current module *)
        current_uri_opt
-       |> opt_bind (fun uri -> Index.find_opt uri index)
+       |> opt_bind (fun uri -> lookup_module uri index)
        |> Lib.Option.map (fun decls ->
             decls
             |> List.filter (has_prefix prefix)
@@ -159,7 +159,7 @@ let completions index logger project_root file_path file_contents line column =
        |> List.find_opt (fun (mn, _) -> String.equal mn alias) in
      match module_path with
      | Some mp ->
-        (match Index.find_opt (snd mp) index with
+        (match lookup_module (snd mp) index with
          | Some decls ->
             decls
             |> List.filter (has_prefix prefix)

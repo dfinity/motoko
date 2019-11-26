@@ -3,8 +3,6 @@ open Mo_def
 open Source
 open Syntax
 
-let flat_map f xs = List.flatten (List.map f xs)
-
 type value_decl = {
     name : string;
     typ: Type.typ;
@@ -53,6 +51,15 @@ let name_of_ide_decl (d : ide_decl) : string =
 
 module Index = Map.Make(String)
 type declaration_index = (ide_decl list) Index.t
+
+type path = string
+let lookup_module
+      (path : path)
+      (index : declaration_index)
+    : ide_decl list option =
+  Index.find_opt path index
+
+let empty : declaration_index = Index.empty
 
 module PatternMap = Map.Make(String)
 type pattern_map = Source.region PatternMap.t

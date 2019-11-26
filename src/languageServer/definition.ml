@@ -44,13 +44,13 @@ let definition_handler
        | Source_file.Alias _ -> None
        | Source_file.Unresolved _ -> None
        | Source_file.Resolved resolved ->
-          Index.find_opt resolved.Source_file.path index
+          lookup_module resolved.Source_file.path index
           |> opt_bind (find_named resolved.Source_file.ident)
           |> Lib.Option.map (fun loc -> (resolved.Source_file.path, loc))
        | Source_file.Ident ident ->
           Pipeline__.File_path.relative_to project_root file_path
           |> opt_bind (fun uri ->
-              Index.find_opt uri index
+              lookup_module uri index
               |> opt_bind (find_named ident)
               |> Lib.Option.map (fun loc -> (uri, loc))
       )) in
