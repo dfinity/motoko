@@ -5632,9 +5632,12 @@ module FuncDec = struct
         edesc = nr (FuncExport (nr fi))
       })
 
-    | Flags.ICMode | Flags.StubMode ->
-      Func.define_built_in env name [] [] (fun env ->
+    | Flags.ICMode ->
+      Func.define_built_in env name ["api_nonce", I64Type] [] (fun env ->
         let (set_closure, get_closure) = new_local env "closure" in
+
+        G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
+
         (* TODO: Check that it is us that is calling this *)
 
         (* Deserialize and look up closure argument *)
@@ -5645,6 +5648,21 @@ module FuncDec = struct
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
       );
+    | Flags.StubMode ->
+      Func.define_built_in env name [] [] (fun env ->
+        let (set_closure, get_closure) = new_local env "closure" in
+
+        (* TODO: Check that it is us that is calling this *)
+
+        (* Deserialize and look up closure argument *)
+        Serialization.deserialize env [Type.Prim Type.Word32] ^^
+        BoxedSmallWord.unbox env ^^
+        ClosureTable.recall_closure env ^^
+        set_closure ^^ get_closure ^^ get_closure ^^
+        Closure.call_closure env 0 0 ^^
+        message_cleanup env (Type.Shared Type.Write)
+      );
+
 
       let fi = E.built_in env name in
       declare_dfinity_type env false true fi;
