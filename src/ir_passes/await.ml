@@ -144,6 +144,7 @@ and t_exp' context exp' =
   | ActorE (id, ds, ids, t) ->
     ActorE (id, t_decs context ds, ids, t)
   | NewObjE (sort, ids, typ) -> exp'
+  | SelfCallE _ -> assert false
 
 and t_dec context dec =
   {dec with it = t_dec' context dec.it}
@@ -391,6 +392,7 @@ and c_exp' context exp k =
   | DefineE (id, mut, exp1) ->
     unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
   | NewObjE _ -> exp
+  | SelfCallE _ -> assert false
 
 and c_block context decs exp k =
   let is_typ dec =

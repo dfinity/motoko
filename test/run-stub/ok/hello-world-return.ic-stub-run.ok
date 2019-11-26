@@ -1,3 +1,5 @@
+→ create
+← completed: canister-id = 0x0000000000000400
 → install
 ← completed
 → query hello(0x4449444c00017105576f726c64)

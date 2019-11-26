@@ -69,6 +69,8 @@ and exp' rho e  = match e with
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
   | ThrowE e            -> ThrowE (exp rho e)
   | TryE (e, cs)        -> TryE (exp rho e, cases rho cs)
+  | SelfCallE (ts, e1, e2, e3) ->
+     SelfCallE (ts, exp rho e1, exp rho e2, exp rho e3)
 
 and exps rho es  = List.map (exp rho) es
 

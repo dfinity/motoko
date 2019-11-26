@@ -129,7 +129,6 @@ let scope_typ() = PathT ((IdH (scope_id @@ no_region)) @! no_region, []) @! no_r
 %nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
 %nonassoc ELSE WHILE
 
-%right ASSIGN PLUSASSIGN MINUSASSIGN MULASSIGN DIVASSIGN MODASSIGN POWASSIGN CATASSIGN ANDASSIGN ORASSIGN XORASSIGN SHLASSIGN USHRASSIGN SSHRASSIGN ROTLASSIGN ROTRASSIGN
 %left COLON
 %left OR
 %left AND
@@ -427,10 +426,6 @@ exp_bin(B) :
     { BinE(ref Type.Pre, e1, op, e2) @? at $sloc }
   | e1=exp_bin(ob) op=relop e2=exp_bin(ob)
     { RelE(ref Type.Pre, e1, op, e2) @? at $sloc }
-  | e1=exp_bin(ob) ASSIGN e2=exp_bin(ob)
-    { AssignE(e1, e2) @? at $sloc}
-  | e1=exp_bin(ob) op=binassign e2=exp_bin(ob)
-    { assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
   | e1=exp_bin(ob) AND e2=exp_bin(ob)
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin(ob) OR e2=exp_bin(ob)
@@ -441,6 +436,10 @@ exp_bin(B) :
 exp_nondec(B) :
   | e=exp_bin(B)
     { e }
+  | e1=exp_bin(ob) ASSIGN e2=exp(ob)
+    { AssignE(e1, e2) @? at $sloc}
+  | e1=exp_bin(ob) op=binassign e2=exp(ob)
+    { assign_op e1 (fun e1' -> BinE(ref Type.Pre, e1', op, e2) @? at $sloc) (at $sloc) }
   | RETURN %prec RETURN_NO_ARG
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)

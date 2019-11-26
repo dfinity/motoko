@@ -2,7 +2,6 @@ all:
 	$(MAKE) -C fail
 	$(MAKE) -C run
 	$(MAKE) -C run-release
-	$(MAKE) -C run-dfinity
 	$(MAKE) -C run-drun
 	$(MAKE) -C run-stub
 	$(MAKE) -C repl
@@ -23,7 +22,6 @@ quick:
 	$(MAKE_PAR) -C mo-idl quick
 
 parallel: quick
-	$(MAKE_PAR) -C run-dfinity quick
 	$(MAKE_PAR) -C run-drun quick
 	$(MAKE_PAR) -C run-stub quick
 	$(MAKE_PAR) -C trap quick
@@ -37,7 +35,6 @@ coverage:
 	$(MAKE) -C fail; \
 	$(MAKE) -C run; \
 	$(MAKE) -C run-release; \
-	$(MAKE) -C run-dfinity; \
 	$(MAKE) -C run-drun; \
 	$(MAKE) -C run-stub; \
 	$(MAKE) -C repl;
@@ -49,7 +46,6 @@ accept:
 	$(MAKE) -C fail accept
 	$(MAKE) -C run accept
 	$(MAKE) -C run-release accept
-	$(MAKE) -C run-dfinity accept
 	$(MAKE) -C run-drun accept
 	$(MAKE) -C run-stub accept
 	$(MAKE) -C repl accept
@@ -63,7 +59,6 @@ clean:
 	$(MAKE) -C fail clean
 	$(MAKE) -C run clean
 	$(MAKE) -C run-release clean
-	$(MAKE) -C run-dfinity clean
 	$(MAKE) -C run-drun clean
 	$(MAKE) -C run-stub clean
 	$(MAKE) -C repl clean

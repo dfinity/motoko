@@ -38,6 +38,7 @@ let prim p = match p with
   | Float -> Atom "Float"
   | Char -> Atom "Char"
   | Text -> Atom "Text"
+  | Blob -> Atom "Blob"
   | Error -> Atom "Error"
 
 let con c = Atom (Con.to_string c)

@@ -1,4 +1,7 @@
+→ create
+← completed: canister-id = 0x0000000000000400
 → install
 ← completed
 → query foo(0x4e4f544449444c)
-← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "canister trapped explicitly: IDL error: missing magic bytes"
+IDL error: missing magic bytes
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "unreachable executed"

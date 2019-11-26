@@ -29,7 +29,7 @@ let error_codeE mode =
   match mode with
   | Flags.ICMode -> callE
     (idE "@int32ToErrorCode"
-      (T.Func(T.Local,T.Returns,[],[T.Prim T.Int32],[T.Variant T.catchErrorCodes])))
+       (T.Func (T.Local, T.Returns, [], [T.Prim T.Int32], [T.Variant T.catchErrorCodes])))
     []
     (ic_error_codeE())
   | _ -> { it = TagE ("error", tupE []);
@@ -38,6 +38,13 @@ let error_codeE mode =
                note_typ = T.Variant (T.catchErrorCodes);
                note_eff = T.Triv }
          }
+
+let selfcallE ts e1 e2 e3 =
+ { it = SelfCallE (ts, e1, e2, e3);
+  at = no_region;
+  note = { note_typ = T.unit;
+           note_eff = T.Triv }
+}
 
 let errorMessageE e =
 { it = PrimE (OtherPrim "errorMessage", [e]);
@@ -265,23 +272,31 @@ let transform mode env prog =
       IdxE (t_exp exp1, t_exp exp2)
     | PrimE (CPSAwait, [a; kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
-    | PrimE (CPSAsync t0, [exp2]) ->
+    | PrimE (CPSAsync t0, [exp1]) ->
       let t0 = t_typ t0 in
-      let tb, ts1 = match typ exp2 with
+      let tb, ts1 = match typ exp1 with
         | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
           tb, List.map t_typ (List.map (T.open_ [t0]) ts1)
         | t -> assert false in
-      let post = fresh_var "post" (T.Func(T.Shared T.Write, T.Replies, [], [], ts1)) in
-      let u = fresh_var "u" T.unit in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
+(*
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
                funcD post u (
                   let vs = fresh_vars "v" ts1 in
                   let k = vs -->* (ic_replyE ts1 (seqE vs)) in
                   let e = fresh_var "e" T.catch in
                   let r = [e] -->* (ic_rejectE (errorMessageE e)) in
-                  callE (t_exp exp2) [t0] (tupE [k;r]));
+                  callE (t_exp exp1) [t0] (tupE [k;r]));
                expD (ic_callE post (seqE []) nary_reply reject);
+ *)
+      (blockE [
+               letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+               let v = fresh_var "v" (T.seq ts1) in
+               let ic_reply = v --> (ic_replyE ts1 v) in
+               let e = fresh_var "e" T.catch in
+               let ic_reject = [e] -->* (ic_rejectE (errorMessageE e)) in
+               let exp' = callE (t_exp exp1 [t0] (tupE [ic_reply; ic_reject])) in
+               expD (selfcallE ts1 exp' nary_reply reject)
                ]
                nary_async
       ).it
@@ -409,6 +424,7 @@ let transform mode env prog =
       ActorE (id, t_decs ds, t_fields fs, t_typ typ)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
+    | SelfCallE _ -> assert false
 
   and t_dec dec = { dec with it = t_dec' dec.it }
 
@@ -462,4 +478,3 @@ let transform mode env prog =
   and t_prog (prog, flavor) = (t_block prog, { flavor with has_async_typ = false } )
 in
   t_prog prog
-

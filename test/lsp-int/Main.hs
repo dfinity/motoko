@@ -116,7 +116,6 @@ main = handleHUnitFailure $ do
 
     -- It finds errors in transitive modules that have been changed in
     -- the vfs but not yet stored to disc
-    {- TODO(Christoph): Figure out why this isn't working right now
     doc <- openDoc "ListClient.mo" "motoko"
     let edit = TextEdit (Range (Position 0 1) (Position 0 3)) ""
     _ <- applyEdit doc edit
@@ -125,4 +124,3 @@ main = handleHUnitFailure $ do
     diags <- waitForDiagnostics
     (diagnostic:_) <- waitForDiagnostics
     liftIO (diagnostic^.message `shouldBe` "unexpected token")
-    -}

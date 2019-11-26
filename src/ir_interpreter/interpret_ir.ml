@@ -187,9 +187,8 @@ let actor_msg env id f v (k : V.value V.cont) =
     f v k
   )
 
-let make_unit_message env id v =
+let make_unit_message env id call_conv f =
   let open CC in
-  let call_conv, f = V.as_func v in
   match call_conv with
   | {sort = T.Shared s; n_res = 0; _} ->
     Value.message_func s call_conv.n_args (fun v k ->
@@ -200,10 +199,9 @@ let make_unit_message env id v =
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
 (* assert (false) *)
 
-let make_async_message env id v =
+let make_async_message env id call_conv f =
   assert env.flavor.has_async_typ;
   let open CC in
-  let call_conv, f = V.as_func v in
   match call_conv with
   | {sort = T.Shared s; control = T.Promises _; _} ->
     Value.async_func s call_conv.n_args call_conv.n_res (fun v k ->
@@ -217,10 +215,9 @@ let make_async_message env id v =
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
     (* assert (false) *)
 
-let make_replying_message env id v =
+let make_replying_message env id call_conv f =
   assert (not env.flavor.has_async_typ);
   let open CC in
-  let call_conv, f = V.as_func v in
   match call_conv with
   | {sort = T.Shared s; control = T.Replies; _} ->
     Value.replies_func s call_conv.n_args call_conv.n_res (fun v k ->
@@ -232,11 +229,12 @@ let make_replying_message env id v =
     (* assert (false) *)
 
 
-let make_message env x cc v : V.value =
+let make_message env x cc f : V.value =
   match cc.CC.control with
-  | T.Returns -> make_unit_message env x v
-  | T.Promises _ -> make_async_message env x v
-  | T.Replies -> make_replying_message env x v
+  | T.Returns -> make_unit_message env x cc f
+  | T.Promises _ -> make_async_message env x cc f
+  | T.Replies -> make_replying_message env x cc f
+
 
 (* Literals *)
 
@@ -388,7 +386,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       interpret_exp env expr (fun rv ->
           let call_conv, f = V.as_func v1 in
           check_call_conv exp1 call_conv;
-          check_call_conv_arg env exp2 v2 call_conv;
+          check_call_conv_arg env exp v2 call_conv;
           last_region := exp.at; (* in case the following throws *)
           f (V.Tup[kv;rv;v2]) k))))
     | _ ->
@@ -499,29 +497,34 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
+  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+    assert (not env.flavor.has_async_typ);
+    (* see code for FuncE *)
+    let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = List.length ts } in
+    let f = interpret_message env exp.at "anon" []
+      (fun env' -> interpret_exp env' exp_f) in
+    let v = make_message env "anon" cc f in
+    (* see code for ICCallPrim *)
+    interpret_exp env exp_k (fun kv ->
+    interpret_exp env exp_r (fun rv ->
+        let _call_conv, f = V.as_func v in
+        last_region := exp.at; (* in case the following throws *)
+        f (V.Tup[kv;rv;V.Tup []]) k))
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
-
     let f = interpret_message env exp.at x args
-    (fun env' ->
-                interpret_exp env' e) in
-
-    let v = V.Func (cc, f) in
-    let v = make_message env x cc v in
+      (fun env' -> interpret_exp env' e) in
+    let v = make_message env x cc f in
     k v
-
   | FuncE (x, sort, controlT, _typbinds, args, ret_typs, e) ->
     let control = Type.map_control (fun _ -> ()) controlT in
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
-
     let f = interpret_func env exp.at x args
       (fun env' -> interpret_exp env' e) in
-    let v = V.Func (cc, f) in
-    let v =
-      match cc.sort with
-      | T.Shared _ -> make_message env x cc v
-      | _-> v
+    let v = match cc.sort with
+      | T.Shared _ -> make_message env x cc f
+      | _ -> V.Func (cc, f)
     in
     k v
   | ActorE (id, ds, fs, _) ->

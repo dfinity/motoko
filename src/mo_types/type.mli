@@ -29,6 +29,7 @@ type prim =
   | Float
   | Char
   | Text
+  | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
 
 type t = typ

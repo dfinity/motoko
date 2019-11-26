@@ -91,6 +91,9 @@ func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };
 func debugPrintInt(x : Int) { debugPrint (@text_of_Int x) };
 func debugPrintChar(x : Char) { debugPrint (charToText x) };
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
+func rts_heap_size() : Nat { (prim "rts_heap_size" : () -> Nat) () };
+func rts_total_allocation() : Nat { (prim "rts_total_allocation" : () -> Nat) () };
+func rts_outstanding_callbacks() : Nat { (prim "rts_outstanding_callbacks" : () -> Nat) () };
 
 // Hashing
 func hashInt(x : Int) : Word32 {
