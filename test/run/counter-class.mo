@@ -22,3 +22,6 @@ func test() {
 };
 
 let _ = test();
+
+// no support for first-class shared functions anywhere yet
+//SKIP comp

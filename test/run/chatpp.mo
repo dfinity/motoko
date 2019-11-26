@@ -93,3 +93,6 @@ let charlie = Client();
 bob.go("bob", server);
 alice.go("alice", server);
 charlie.go("charlie", server);
+
+// no support for first-class shared functions anywhere yet
+//SKIP comp
