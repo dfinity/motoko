@@ -397,24 +397,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
-    | ICSelfCallPrim, [exp1;k;r] ->
-      check_exp env exp1;
-      check_exp env k;
-      check_exp env r;
-      (*
-      let t1 = T.promote (typ exp1) in
-      begin match t1 with
-      | T.Func(_,_, [], [T.Func(_, _, [], arg_tys, []); _], []) ->
-        let t_arg = T.seq arg_tys in
-        check_concrete env exp.at t_arg;
-        typ k <: T.Func (T.Local, T.Returns, [], arg_tys, []);
-        typ r <: T.Func (T.Local, T.Returns, [], [T.text], []);
-      | T.Non -> () (* dead code, not much to check here *)
-      | _ ->
-         error env exp1.at "expected function type, but expression produces type\n  %s"
-           (T.string_of_typ_expand t1)
-      end
-      *)
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
@@ -634,6 +616,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
+  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+    check (not env.flavor.Ir.has_async_typ) "SelfCallE in async flavor";
+    List.iter (check_typ env) ts;
+    check_exp env exp_f;
+    check_exp env exp_k;
+    check_exp env exp_r;
+    typ exp_f <: T.unit;
+    typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
+    typ exp_r <: T.Func (T.Local, T.Returns, [], [T.text], []);
   | ActorE (id, ds, fs, t0) ->
     let env' = { env with async = false } in
     let ve0 = T.Env.singleton id t0 in

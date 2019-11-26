@@ -136,6 +136,12 @@ and exp' env e  : exp' = match e.it with
     let env2 = args env1 as_ in
     let exp0' = tailexp env2 exp0 in
     FuncE (x, s, c, tbs, as_, ret_tys, exp0')
+  | SelfCallE (ts, exp1, exp2, exp3) ->
+    let env1 = { tail_pos = true; info = None} in
+    let exp1' = tailexp env1 exp1 in
+    let exp2' = tailexp env exp2 in
+    let exp3' = tailexp env exp3 in
+    SelfCallE (ts, exp1', exp2', exp3')
   | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: descent into ds *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
 

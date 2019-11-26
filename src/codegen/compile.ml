@@ -6685,9 +6685,6 @@ and compile_exp (env : E.t) ae exp =
         FuncDec.call_await_funcref env get_funcref
       | _ -> assert false
       end
-    | ICSelfCallPrim, _ ->
-      (* load the value for the ping method *)
-      SR.Unreachable, E.trap_with env "compile_exp: ICSelfCallPrim"
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
@@ -6866,6 +6863,9 @@ and compile_exp (env : E.t) ae exp =
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     FuncDec.lit env ae typ_binds x sort control captured args mk_body return_tys exp.at
+  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+    (* load the value for the ping method *)
+      SR.Unreachable, E.trap_with env "compile_exp: SelfCallE"
   | ActorE (i, ds, fs, _) ->
     Dfinity.reference_sr env,
     let captured = Freevars.exp exp in

@@ -388,21 +388,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           check_call_conv_arg env exp v2 call_conv;
           last_region := exp.at; (* in case the following throws *)
           f (V.Tup[kv;rv;v2]) k))))
-    | ICSelfCallPrim, [exp1; expk; expr] ->
-      assert (not env.flavor.has_async_typ);
-      interpret_exp env expk (fun kv ->
-      interpret_exp env expr (fun rv ->
-          let anon = "anon" in
-          let message_body = interpret_message env exp.at anon [] (fun env' ->
-            interpret_exp env' exp1
-          )
-          in
-          let cc = Call_conv.replies_cc T.Write 0 0 in
-          let cc_, message = V.as_func (make_message env anon cc message_body) in
-          check_call_conv_arg env exp (V.Tup []) cc_;
-          last_region := exp.at; (* in case the following throws *)
-          message (V.Tup [kv; rv; V.Tup []]) k
-      ))
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -511,6 +496,19 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
+  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+    assert (not env.flavor.has_async_typ);
+    (* see code for FuncE *)
+    let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = List.length ts } in
+    let f = interpret_message env exp.at "anon" []
+      (fun env' -> interpret_exp env' exp_f) in
+    let v = make_message env "anon" cc f in
+    (* see code for ICCallPrim *)
+    interpret_exp env exp_k (fun kv ->
+    interpret_exp env exp_r (fun rv ->
+        let _call_conv, f = V.as_func v in
+        last_region := exp.at; (* in case the following throws *)
+        f (V.Tup[kv;rv;V.Tup []]) k))
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in

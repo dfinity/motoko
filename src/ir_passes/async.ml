@@ -39,8 +39,8 @@ let error_codeE mode =
                note_eff = T.Triv }
          }
 
-let ic_selfcallE e1 e2 e3 =
- { it = PrimE (ICSelfCallPrim, [e1; e2; e3]);
+let selfcallE ts e1 e2 e3 =
+ { it = SelfCallE (ts, e1, e2, e3);
   at = no_region;
   note = { note_typ = T.unit;
            note_eff = T.Triv }
@@ -283,7 +283,7 @@ let transform mode env prog =
                let e = fresh_var "e" T.catch in
                let ic_reject = [e] -->* (ic_rejectE (errorMessageE e)) in
                let exp' = t_exp exp1 -*- tupE [ic_reply; ic_reject] in
-               expD (ic_selfcallE exp' nary_reply reject)
+               expD (selfcallE ts1 exp' nary_reply reject)
                ]
                nary_async
       ).it
@@ -409,6 +409,7 @@ let transform mode env prog =
       ActorE (id, t_decs ds, t_fields fs, t_typ typ)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
+    | SelfCallE _ -> assert false
 
   and t_dec dec = { dec with it = t_dec' dec.it }
 
