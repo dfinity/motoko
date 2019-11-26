@@ -3327,8 +3327,7 @@ module Dfinity = struct
         get_blob
       )
     | Flags.AncientMode ->
-      system_call env "actor" "self" ^^
-      box_reference env
+      system_call env "actor" "self"
     | _ ->
       assert false
 
@@ -3402,6 +3401,8 @@ module Dfinity = struct
 
   let fail_assert env at =
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
+
+  let async_method_name = "__motoko_async_helper"
 
 end (* Dfinity *)
 
@@ -5110,7 +5111,7 @@ module FuncDec = struct
     compile_unboxed_const tmp_table_slot ^^
     G.i (CallIndirect (nr (message_ty env)))
 
-  (* The type of messages (with return: expect a callback, first argument (for binding) *)
+  (* The type of messages (with return: expect a callback as the first argument *)
   let call_ty env =
     E.func_type env (FuncType ([I32Type; I32Type; I32Type], []))
 
@@ -5435,6 +5436,26 @@ module FuncDec = struct
         Dfinity.system_call env "func" "bind_i32"
       end
 
+  let lit env ae name sort control free_vars args mk_body ret_tys at =
+
+    let captured = List.filter (VarEnv.needs_capture ae) free_vars in
+
+    if captured = []
+    then
+      let (st, fill) = closed env sort control name args mk_body ret_tys at in
+      fill env ae;
+      (SR.StaticThing st, G.nop)
+    else closure env ae sort control name captured args mk_body ret_tys at
+
+  (* Returns the index of a saved closure *)
+  let async_body env ae ts free_vars mk_body at =
+    (* We compile this as a local, returning function, so set return type to [] *)
+    let sr, code = lit env ae "anon_async" Type.Local Type.Returns free_vars [] mk_body [] at in
+    code ^^
+    StackRep.adjust env sr SR.Vanilla ^^
+    ClosureTable.remember_closure env
+
+
   (* Wraps a local closure in a shared function that does serialization and
      takes care of the reply global *)
   (* Need this function once per type, so we can share based on ts *)
@@ -5529,15 +5550,128 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.built_in env name)
 
-  let lit env ae how name sort control free_vars args mk_body ret_tys at =
-    let captured = List.filter (VarEnv.needs_capture ae) free_vars in
+  let ic_call env ts1 ts2 get_funcref get_arg get_k get_r =
+    match E.mode env with
+    | Flags.ICMode | Flags.StubMode ->
 
-    if captured = []
-    then
-      let (st, fill) = closed env sort control name args mk_body ret_tys at in
-      fill env ae;
-      (SR.StaticThing st, G.nop)
-    else closure env ae sort control name captured args mk_body ret_tys at
+      (* The callee *)
+      get_funcref ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      (* The method name *)
+      get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      (* The reply callback *)
+      closure_to_reply_callback env ts2 get_k ^^
+      (* The reject callback *)
+      closure_to_reject_callback env get_r ^^
+      (* the data *)
+      get_arg ^^ Serialization.serialize env ts1 ^^
+      (* done! *)
+      Dfinity.system_call env "ic0" "call_simple" ^^
+      (* TODO: Check error code *)
+      G.i Drop
+    | Flags.AncientMode ->
+      callback_to_funcref env ts2 get_k ^^
+      get_arg ^^ Serialization.serialize env ts1 ^^
+      call_await_funcref env get_funcref
+    | _ -> assert false
+
+  let ic_call_one_shot env ts get_funcref get_arg =
+    match E.mode env with
+    | Flags.ICMode | Flags.StubMode ->
+
+      (* The callee *)
+      get_funcref ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      (* The method name *)
+      get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      (* The reply callback *)
+      ignoring_callback env ^^
+      compile_unboxed_zero ^^
+      (* The reject callback *)
+      ignoring_callback env ^^
+      compile_unboxed_zero ^^
+      (* the data *)
+      get_arg ^^ Serialization.serialize env ts ^^
+      (* done! *)
+      Dfinity.system_call env "ic0" "call_simple" ^^
+      (* TODO: Check error code *)
+      G.i Drop
+    | Flags.AncientMode ->
+      get_arg ^^ Serialization.serialize env ts ^^
+      call_message_funcref env get_funcref
+    | _ -> assert false
+
+  let export_async_method env =
+    let name = Dfinity.async_method_name in
+    begin match E.mode env with
+    | Flags.AncientMode ->
+      Func.define_built_in env name ["reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env ->
+        let (set_closure, get_closure) = new_local env "closure" in
+        let get_reply  = G.i (LocalGet (nr 0l)) in
+        let get_databuf = G.i (LocalGet (nr 1l)) in
+        let get_elembuf = G.i (LocalGet (nr 2l)) in
+
+        (* Restore memory *)
+        OrthogonalPersistence.restore_mem env ^^
+
+        (* Story reply contiuation *)
+        get_reply ^^ Dfinity.set_reply_cont env ^^
+
+        (* Look up closure *)
+        get_databuf ^^ get_elembuf ^^
+        Serialization.deserialize env [Type.Prim Type.Word32] ^^
+        BoxedSmallWord.unbox env ^^
+        ClosureTable.recall_closure env ^^ (* At this point we can remove the closure *)
+        set_closure ^^ get_closure ^^ get_closure ^^
+        Closure.call_closure env 0 0 ^^
+        message_cleanup env (Type.Shared Type.Write)
+      );
+
+      let fi = E.built_in env name in
+      declare_dfinity_type env false true fi;
+      E.add_export env (nr {
+        name = Wasm.Utf8.decode name;
+        edesc = nr (FuncExport (nr fi))
+      })
+
+    | Flags.ICMode ->
+      Func.define_built_in env name ["api_nonce", I64Type] [] (fun env ->
+        let (set_closure, get_closure) = new_local env "closure" in
+
+        G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
+
+        (* TODO: Check that it is us that is calling this *)
+
+        (* Deserialize and look up closure argument *)
+        Serialization.deserialize env [Type.Prim Type.Word32] ^^
+        BoxedSmallWord.unbox env ^^
+        ClosureTable.recall_closure env ^^
+        set_closure ^^ get_closure ^^ get_closure ^^
+        Closure.call_closure env 0 0 ^^
+        message_cleanup env (Type.Shared Type.Write)
+      );
+    | Flags.StubMode ->
+      Func.define_built_in env name [] [] (fun env ->
+        let (set_closure, get_closure) = new_local env "closure" in
+
+        (* TODO: Check that it is us that is calling this *)
+
+        (* Deserialize and look up closure argument *)
+        Serialization.deserialize env [Type.Prim Type.Word32] ^^
+        BoxedSmallWord.unbox env ^^
+        ClosureTable.recall_closure env ^^
+        set_closure ^^ get_closure ^^ get_closure ^^
+        Closure.call_closure env 0 0 ^^
+        message_cleanup env (Type.Shared Type.Write)
+      );
+
+
+      let fi = E.built_in env name in
+      declare_dfinity_type env false true fi;
+      E.add_export env (nr {
+        name = Wasm.Utf8.decode ("canister_update " ^ name);
+        edesc = nr (FuncExport (nr fi))
+      })
+    | _ -> ()
+    end
 
 end (* FuncDec *)
 
@@ -6789,52 +6923,16 @@ and compile_exp (env : E.t) ae exp =
       (* TBR: Can we do better than using the notes? *)
       let _, _, _, ts1, _ = Type.as_func f.note.note_typ in
       let _, _, _, ts2, _ = Type.as_func k.note.note_typ in
-
-      match E.mode env with
-      | Flags.ICMode | Flags.StubMode ->
-
-        let (set_funcref, get_funcref) = new_local env "funcref" in
-        let (set_arg, get_arg) = new_local env "arg" in
-        let (set_k, get_k) = new_local env "k" in
-        let (set_r, get_r) = new_local env "r" in
-        compile_exp_as env ae SR.Vanilla f ^^ set_funcref ^^
-        compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
-        compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
-        compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
-
-        (* The callee *)
-        get_funcref ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
-        (* The method name *)
-        get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
-        (* The reply callback *)
-        FuncDec.closure_to_reply_callback env ts2 get_k ^^
-        (* The reject callback *)
-        FuncDec.closure_to_reject_callback env get_r ^^
-        (* the data *)
-        get_arg ^^ Serialization.serialize env ts1 ^^
-        (* done! *)
-        Dfinity.system_call env "ic0" "call_simple" ^^
-        (* TODO: Check error code *)
-        G.i Drop
-      | Flags.AncientMode ->
-        let (set_funcref, get_funcref) = new_local env "funcref" in
-        let (set_arg, get_arg) = new_local env "arg" in
-        let (set_k, get_k) = new_local env "k" in
-        compile_exp_as env ae SR.UnboxedReference f ^^ set_funcref ^^
-        compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
-        compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
-
-        (* We drop the reject continuation on the ancient platform, but still
-           need to evaluate it *)
-        let (r_sr, code_r) = compile_exp env ae r in
-        code_r ^^ StackRep.drop env r_sr ^^
-
-        FuncDec.callback_to_funcref env ts2 get_k ^^
-        get_arg ^^ Serialization.serialize env ts1 ^^
-        FuncDec.call_await_funcref env get_funcref
-      | _ -> assert false
+      let (set_funcref, get_funcref) = new_local env "funcref" in
+      let (set_arg, get_arg) = new_local env "arg" in
+      let (set_k, get_k) = new_local env "k" in
+      let (set_r, get_r) = new_local env "r" in
+      compile_exp_as env ae (Dfinity.reference_sr env) f ^^ set_funcref ^^
+      compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
+      compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
+      compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
+      FuncDec.ic_call env ts1 ts2 get_funcref get_arg get_k get_r
       end
-
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
@@ -6938,43 +7036,15 @@ and compile_exp (env : E.t) ae exp =
      | _, Type.Shared _ ->
         (* Non-one-shot functions have been rewritten in async.ml *)
         assert (control = Type.Returns);
-        match E.mode env with
-        | Flags.AncientMode ->
-          let (set_funcref, get_funcref) = new_local env "funcref" in
-          code1 ^^ StackRep.adjust env fun_sr SR.UnboxedReference ^^
-          set_funcref ^^
-          compile_exp_as env ae SR.Vanilla e2 ^^
-          (* We can try to avoid the boxing and pass the arguments to
-             serialize individually *)
-          let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
-          Serialization.serialize env ts ^^
-          FuncDec.call_message_funcref env get_funcref
-        | Flags.StubMode ->
-          let (set_funcref, get_funcref) = new_local env "funcref" in
-          let (set_arg, get_arg) = new_local env "arg" in
-          let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
-          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
-          set_funcref ^^
-          compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
 
-          (* The callee *)
-          get_funcref ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
-          (* The method name *)
-          get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
-          (* The reply callback *)
-          FuncDec.ignoring_callback env ^^
-          compile_unboxed_const 0l ^^
-          (* The reject callback *)
-          FuncDec.ignoring_callback env ^^
-          compile_unboxed_const 0l ^^
-          (* the data *)
-          get_arg ^^ Serialization.serialize env ts ^^
-          (* done! *)
-          Dfinity.system_call env "ic0" "call_simple" ^^
-          (* TODO: Check error code *)
-          G.i Drop
+        let (set_funcref, get_funcref) = new_local env "funcref" in
+        let (set_arg, get_arg) = new_local env "arg" in
+        let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
+        code1 ^^ StackRep.adjust env fun_sr (Dfinity.reference_sr env) ^^
+        set_funcref ^^
+        compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
 
-        | _ -> assert false
+        FuncDec.ic_call_one_shot env ts get_funcref get_arg
     end
   | SwitchE (e, cs) ->
     SR.Vanilla,
@@ -7012,7 +7082,26 @@ and compile_exp (env : E.t) ae exp =
       | Type.Promises -> assert false in
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
-    FuncDec.lit env ae typ_binds x sort control captured args mk_body return_tys exp.at
+    FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
+  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+    SR.unit,
+    let (set_closure_idx, get_closure_idx) = new_local env "closure_idx" in
+    let (set_k, get_k) = new_local env "k" in
+    let (set_r, get_r) = new_local env "r" in
+    let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
+    let captured = Freevars.captured exp_f in
+    FuncDec.async_body env ae ts captured mk_body exp.at ^^
+    set_closure_idx ^^
+
+    compile_exp_as env ae SR.Vanilla exp_k ^^ set_k ^^
+    compile_exp_as env ae SR.Vanilla exp_r ^^ set_r ^^
+
+    FuncDec.ic_call env [Type.Prim Type.Word32] ts
+      ( Dfinity.get_self_reference env ^^
+        Dfinity.actor_public_field env (Dfinity.async_method_name))
+      (get_closure_idx ^^ BoxedSmallWord.box env)
+      get_k
+      get_r
   | ActorE (i, ds, fs, _) ->
     Dfinity.reference_sr env,
     let captured = Freevars.exp exp in
@@ -7481,7 +7570,6 @@ and actor_lit outer_env this ds fs at =
 
     Dfinity.register_reply mod_env;
 
-
     let start_fun = Func.of_body mod_env [] [] (fun env -> G.with_region at @@
       let ae0 = VarEnv.empty_ae in
 
@@ -7489,7 +7577,7 @@ and actor_lit outer_env this ds fs at =
       let (ae1, prelude_code) = compile_prelude env ae0 in
 
       (* Add this pointer *)
-      let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
+      let ae2 = VarEnv.add_local_deferred ae1 this (Dfinity.reference_sr env) Dfinity.get_self_reference false in
 
       (* Reverse the fs, to a map from variable to exported name *)
       let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
@@ -7549,7 +7637,7 @@ and actor_lit outer_env this ds fs at =
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 this ds fs =
   (* Add this pointer *)
-  let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
+  let ae2 = VarEnv.add_local_deferred ae1 this (Dfinity.reference_sr env) Dfinity.get_self_reference false in
 
   (* Reverse the fs, to a map from variable to exported name *)
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
@@ -7563,6 +7651,8 @@ and main_actor env ae1 this ds fs =
   decls_code
 
 and conclude_module env module_name start_fi_o =
+
+  FuncDec.export_async_method env;
 
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)

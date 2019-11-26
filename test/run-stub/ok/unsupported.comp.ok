@@ -1,12 +1,6 @@
-unsupported.mo:32.17-32.29: type error, unsupported async block
-  (This is a limitation of the current version and flag -stub-system-api.)
 unsupported.mo:4.5-4.41: type error, a shared function cannot be private
   (This is a limitation of the current version and flag -stub-system-api.)
 unsupported.mo:38.26-38.29: type error, a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version and flag -stub-system-api.)
-unsupported.mo:41.10-41.18: type error, unsupported async block
-  (This is a limitation of the current version and flag -stub-system-api.)
 unsupported.mo:62.3-62.35: type error, actor classes are not supported; use an actor declaration instead
-  (This is a limitation of the current version and flag -stub-system-api.)
-unsupported.mo:76.34-76.37: type error, freestanding async expression not yet supported
   (This is a limitation of the current version and flag -stub-system-api.)
