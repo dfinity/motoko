@@ -35,6 +35,7 @@ import Data.Foldable (toList)
 import IC.Types
 import IC.Canister
 import IC.Id
+import IC.Logger
 
 -- Abstract HTTP Interface
 
@@ -74,7 +75,7 @@ data CanState = CanState
   , can_mod :: CanisterModule
   }
 
-type ICT = MonadState IC
+type ICT m = (MonadState IC m, Logger m)
 
 data EntryPoint
   = Public MethodName Blob
@@ -331,7 +332,8 @@ processMessage (CallMessage ctxt_id entry) = do
     Just Nothing -> res $ Reject (RC_DESTINATION_INVALID, "canister is empty")
     Just (Just cs) ->
       invokeEntry ctxt_id cs entry >>= \case
-        Trap msg ->
+        Trap msg -> do
+          logTrap msg
           rememberTrap ctxt_id msg
         Return (new_state, (new_canisters, new_calls, mb_response)) -> do
           setCanisterState callee new_state

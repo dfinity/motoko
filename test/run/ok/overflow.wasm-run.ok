@@ -1,1 +1,6 @@
-_out/overflow.wasm:0x___: runtime trap: integer divide by zero
+Error: failed to process main module `_out/overflow.wasm`
+
+Caused by:
+    0: Instantiation failed during setup
+    1: Trap occurred while invoking start function: wasm trap: integer divide by zero, source location: @___:
+

@@ -38,36 +38,37 @@ let string_of_con vs c =
 
 let prim p =
   match p with
-  | Null -> I.Null
-  | Bool -> I.Bool
-  | Nat -> I.Nat
-  | Nat8 -> I.Nat8
-  | Nat16 -> I.Nat16
-  | Nat32 -> I.Nat32
-  | Nat64 -> I.Nat64
-  | Int -> I.Int
-  | Int8 -> I.Int8
-  | Int16 -> I.Int16
-  | Int32 -> I.Int32
-  | Int64 -> I.Int64
-  | Word8 -> I.Nat8
-  | Word16 -> I.Nat16
-  | Word32 -> I.Nat32
-  | Word64 -> I.Nat64
-  | Float -> I.Float64
-  | Char -> I.Nat32
-  | Text -> I.Text
+  | Null -> I.PrimT I.Null
+  | Bool -> I.PrimT I.Bool
+  | Nat -> I.PrimT I.Nat
+  | Nat8 -> I.PrimT I.Nat8
+  | Nat16 -> I.PrimT I.Nat16
+  | Nat32 -> I.PrimT I.Nat32
+  | Nat64 -> I.PrimT I.Nat64
+  | Int -> I.PrimT I.Int
+  | Int8 -> I.PrimT I.Int8
+  | Int16 -> I.PrimT I.Int16
+  | Int32 -> I.PrimT I.Int32
+  | Int64 -> I.PrimT I.Int64
+  | Word8 -> I.PrimT I.Nat8
+  | Word16 -> I.PrimT I.Nat16
+  | Word32 -> I.PrimT I.Nat32
+  | Word64 -> I.PrimT I.Nat64
+  | Float -> I.PrimT I.Float64
+  | Char -> I.PrimT I.Nat32
+  | Text -> I.PrimT I.Text
+  | Blob -> I.VecT (I.PrimT I.Nat8 @@ no_region)
   | Error -> assert false
 
 let rec typ vs t =
   (match t with
   | Any -> I.PrimT I.Reserved
   | Non -> I.PrimT I.Empty
-  | Prim p -> I.PrimT (prim p)
+  | Prim p -> prim p
   | Var (s, i) -> (typ vs (List.nth vs i)).it
   | Con (c, []) ->
      (match Con.kind c with
-     | Def ([], Prim p) -> I.PrimT (prim p)
+     | Def ([], Prim p) -> prim p
      | Def ([], Any) -> I.PrimT I.Reserved
      | Def ([], Non) -> I.PrimT I.Empty
      | _ ->

@@ -1,1 +1,6 @@
-_out/divInt64.wasm:0x___: runtime trap: integer overflow
+Error: failed to process main module `_out/divInt64.wasm`
+
+Caused by:
+    0: Instantiation failed during setup
+    1: Trap occurred while invoking start function: wasm trap: integer overflow, source location: @___:
+
