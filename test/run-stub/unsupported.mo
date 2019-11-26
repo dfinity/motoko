@@ -73,4 +73,9 @@ func local_spawn() {
 
 actor BadSecondActor { };
 
-func implicit_async() : async () { }; // async functions not supported
+// async functions not supported (inference mode)
+func implicit_async() : async () { };
+
+// anonymous shared functions not supported (inference and checking mode)
+let _ = shared func() : async () { };
+(shared func() : async () { }) : shared () -> async ();
