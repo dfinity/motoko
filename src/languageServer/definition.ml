@@ -1,5 +1,5 @@
 module Lsp = Lsp.Lsp_t
-open Declaration_index
+module DI = Declaration_index
 
 let position_of_pos (pos : Source.pos) : Lsp.position = Lsp.
   (* The LSP spec requires zero-based positions *)
@@ -12,15 +12,15 @@ let range_of_region (at : Source.region) : Lsp.range = Lsp.
     range_end_ = position_of_pos at.Source.right;
   }
 
-let find_named (name : string) : ide_decl list -> Source.region option =
+let find_named (name : string) : DI.ide_decl list -> Source.region option =
   Lib.List.first_opt (function
-    | ValueDecl value ->
-        if String.equal value.name name
-        then value.definition
+    | DI.ValueDecl value ->
+        if String.equal value.DI.name name
+        then value.DI.definition
         else None
-    | TypeDecl typ ->
-        if String.equal typ.name name
-        then typ.definition
+    | DI.TypeDecl typ ->
+        if String.equal typ.DI.name name
+        then typ.DI.definition
         else None)
 
 let opt_bind f = function
@@ -44,13 +44,13 @@ let definition_handler
        | Source_file.Alias _ -> None
        | Source_file.Unresolved _ -> None
        | Source_file.Resolved resolved ->
-          lookup_module resolved.Source_file.path index
+          DI.lookup_module resolved.Source_file.path index
           |> opt_bind (find_named resolved.Source_file.ident)
           |> Lib.Option.map (fun loc -> (resolved.Source_file.path, loc))
        | Source_file.Ident ident ->
           Pipeline__.File_path.relative_to project_root file_path
           |> opt_bind (fun uri ->
-              lookup_module uri index
+              DI.lookup_module uri index
               |> opt_bind (find_named ident)
               |> Lib.Option.map (fun loc -> (uri, loc))
       )) in
