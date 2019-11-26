@@ -29,7 +29,7 @@ let error_codeE mode =
   match mode with
   | Flags.ICMode -> callE
     (idE "@int32ToErrorCode"
-       (T.Func(T.Local,T.Returns,[],[T.Prim T.Int32],[T.Variant T.catchErrorCodes])))
+       (T.Func (T.Local, T.Returns, [], [T.Prim T.Int32], [T.Variant T.catchErrorCodes])))
     []
     (ic_error_codeE())
   | _ -> { it = TagE ("error", tupE []);
@@ -463,4 +463,3 @@ let transform mode env prog =
   and t_prog (prog, flavor) = (t_block prog, { flavor with has_async_typ = false } )
 in
   t_prog prog
-
