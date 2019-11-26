@@ -1,5 +1,5 @@
-hypervisor: calling func$NNN failed with trap message: Uncaught RuntimeError: unreachable
-hypervisor: calling func$NNN failed with trap message: Uncaught RuntimeError: unreachable
+hypervisor: calling __motoko_async_helper failed with trap message: Uncaught RuntimeError: unreachable
+hypervisor: calling __motoko_async_helper failed with trap message: Uncaught RuntimeError: unreachable
 This is reachable.
 This is reachable.
 Natural subtraction underflow

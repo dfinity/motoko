@@ -396,7 +396,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
-    end
+      end
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
@@ -616,6 +616,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
+  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+    check (not env.flavor.Ir.has_async_typ) "SelfCallE in async flavor";
+    List.iter (check_typ env) ts;
+    check_exp env exp_f;
+    check_exp env exp_k;
+    check_exp env exp_r;
+    typ exp_f <: T.unit;
+    typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
+    typ exp_r <: T.Func (T.Local, T.Returns, [], [T.text], []);
   | ActorE (id, ds, fs, t0) ->
     let env' = { env with async = false } in
     let ve0 = T.Env.singleton id t0 in
