@@ -17,3 +17,4 @@ actor a {
 };
 
 a.test();
+a
