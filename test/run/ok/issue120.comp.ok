@@ -1,6 +1,0 @@
-issue120.mo:2.8-2.11: type error, shared function has non-shared parameter type
-  Bar = actor {}
-type
-  Bar = actor {}
-is or contains non-shared type
-  actor {}
