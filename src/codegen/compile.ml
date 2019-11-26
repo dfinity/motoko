@@ -5624,6 +5624,14 @@ module FuncDec = struct
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
       );
+
+      let fi = E.built_in env name in
+      declare_dfinity_type env false true fi;
+      E.add_export env (nr {
+        name = Wasm.Utf8.decode name;
+        edesc = nr (FuncExport (nr fi))
+      })
+
     | Flags.ICMode | Flags.StubMode ->
       Func.define_built_in env name [] [] (fun env ->
         let (set_closure, get_closure) = new_local env "closure" in
@@ -5635,17 +5643,15 @@ module FuncDec = struct
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
       );
-    | _ -> assert false
-    end;
-    let fi = E.built_in env name in
-    declare_dfinity_type env false true fi;
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode (match E.mode env with
-        | Flags.AncientMode -> name
-        | Flags.ICMode | Flags.StubMode -> "canister_update " ^ name
-        | _ -> assert false);
-      edesc = nr (FuncExport (nr fi))
-    })
+
+      let fi = E.built_in env name in
+      declare_dfinity_type env false true fi;
+      E.add_export env (nr {
+        name = Wasm.Utf8.decode ("canister_update " ^ name);
+        edesc = nr (FuncExport (nr fi))
+      })
+    | _ -> ()
+    end
 
 end (* FuncDec *)
 
