@@ -71,6 +71,9 @@ let argspec = Arg.align
   "-no-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := WasmMode)),
       " do not import any system API";
+  "-wasi-system-api",
+    Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
+      " use the WASI system API (wasmtime)";
   "-ancient-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := AncientMode)),
       " use the ancient DFINITY system API (dvm)";

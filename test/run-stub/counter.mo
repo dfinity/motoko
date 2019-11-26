@@ -1,4 +1,4 @@
-actor {
+actor a {
   var c = 1;
   public func inc() {
     c += 1;
