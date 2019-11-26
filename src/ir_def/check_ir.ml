@@ -613,7 +613,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
       "shared function with async type has non-async body";
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
     let codom = T.codom control ret_tys in
-    let is_oneway = T.is_shared_sort sort && control = T.Returns in
     let env'' =
       {env' with labs = T.Env.empty; rets = Some codom; async = None} in
     check_exp (adjoin_vals env'' ve) exp;

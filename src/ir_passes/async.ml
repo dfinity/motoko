@@ -279,7 +279,7 @@ let transform mode env prog =
           tb, List.map t_typ (List.map (T.open_ [t0]) ts1)
         | t -> assert false in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
-(*
+(* TBD
       (blockE [letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
                funcD post u (
                   let vs = fresh_vars "v" ts1 in
@@ -291,11 +291,11 @@ let transform mode env prog =
  *)
       (blockE [
                letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
-               let v = fresh_var "v" (T.seq ts1) in
+               let v = fresh_var "v" (T.seq ts1) in (* flatten v, here and below? *)
                let ic_reply = v --> (ic_replyE ts1 v) in
                let e = fresh_var "e" T.catch in
                let ic_reject = [e] -->* (ic_rejectE (errorMessageE e)) in
-               let exp' = callE (t_exp exp1 [t0] (tupE [ic_reply; ic_reject])) in
+               let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject]) in
                expD (selfcallE ts1 exp' nary_reply reject)
                ]
                nary_async
