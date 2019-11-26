@@ -5635,6 +5635,8 @@ module FuncDec = struct
     | Flags.ICMode | Flags.StubMode ->
       Func.define_built_in env name [] [] (fun env ->
         let (set_closure, get_closure) = new_local env "closure" in
+        (* TODO: Check that it is us that is calling this *)
+
         (* Deserialize and look up closure argument *)
         Serialization.deserialize env [Type.Prim Type.Word32] ^^
         BoxedSmallWord.unbox env ^^
