@@ -187,9 +187,8 @@ let actor_msg env id f v (k : V.value V.cont) =
     f v k
   )
 
-let make_unit_message env id v =
+let make_unit_message env id call_conv f =
   let open CC in
-  let call_conv, f = V.as_func v in
   match call_conv with
   | {sort = T.Shared s; n_res = 0; _} ->
     Value.message_func s call_conv.n_args (fun v k ->
@@ -200,10 +199,9 @@ let make_unit_message env id v =
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
 (* assert (false) *)
 
-let make_async_message env id v =
+let make_async_message env id call_conv f =
   assert env.flavor.has_async_typ;
   let open CC in
-  let call_conv, f = V.as_func v in
   match call_conv with
   | {sort = T.Shared s; control = T.Promises; _} ->
     Value.async_func s call_conv.n_args call_conv.n_res (fun v k ->
@@ -217,10 +215,9 @@ let make_async_message env id v =
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
     (* assert (false) *)
 
-let make_replying_message env id v =
+let make_replying_message env id call_conv f =
   assert (not env.flavor.has_async_typ);
   let open CC in
-  let call_conv, f = V.as_func v in
   match call_conv with
   | {sort = T.Shared s; control = T.Replies; _} ->
     Value.replies_func s call_conv.n_args call_conv.n_res (fun v k ->
@@ -232,11 +229,11 @@ let make_replying_message env id v =
     (* assert (false) *)
 
 
-let make_message env x cc v : V.value =
+let make_message env x cc f : V.value =
   match cc.CC.control with
-  | T.Returns -> make_unit_message env x v
-  | T.Promises-> make_async_message env x v
-  | T.Replies -> make_replying_message env x v
+  | T.Returns -> make_unit_message env x cc f
+  | T.Promises-> make_async_message env x cc f
+  | T.Replies -> make_replying_message env x cc f
 
 (* Literals *)
 
@@ -401,8 +398,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           )
           in
           let cc = Call_conv.replies_cc T.Write 0 0 in
-          let v = V.Func (cc, message_body) in
-          let cc_, message = V.as_func (make_message env anon cc v) in
+          let cc_, message = V.as_func (make_message env anon cc message_body) in
           check_call_conv_arg env exp (V.Tup []) cc_;
           last_region := exp.at; (* in case the following throws *)
           message (V.Tup [kv; rv; V.Tup []]) k
@@ -520,18 +516,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
     let f = interpret_message env exp.at x args
       (fun env' -> interpret_exp env' e) in
-    let v = V.Func (cc, f) in
-    let v = make_message env x cc v in
+    let v = make_message env x cc f in
     k v
   | FuncE (x, sort, control, _typbinds, args, ret_typs, e) ->
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
     let f = interpret_func env exp.at x args
       (fun env' -> interpret_exp env' e) in
-    let v = V.Func (cc, f) in
-    let v =
-      match cc.sort with
-      | T.Shared _ -> make_message env x cc v
-      | _-> v
+    let v = match cc.sort with
+      | T.Shared _ -> make_message env x cc f
+      | _ -> V.Func (cc, f)
     in
     k v
   | ActorE (id, ds, fs, _) ->
