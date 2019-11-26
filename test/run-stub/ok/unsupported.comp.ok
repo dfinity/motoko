@@ -18,13 +18,9 @@ unsupported.mo:19.19-19.21: type error, shared, async function must be called wi
   (This is a limitation of the current version and flag -stub-system-api.)
 unsupported.mo:28.8-28.9: type error, argument to await must be a call expression
   (This is a limitation of the current version and flag -stub-system-api.)
-unsupported.mo:32.17-32.29: type error, unsupported async block
-  (This is a limitation of the current version and flag -stub-system-api.)
 unsupported.mo:4.5-4.41: type error, a shared function cannot be private
   (This is a limitation of the current version and flag -stub-system-api.)
 unsupported.mo:38.26-38.29: type error, a shared function is only allowed as a public field of an actor
-  (This is a limitation of the current version and flag -stub-system-api.)
-unsupported.mo:41.10-41.18: type error, unsupported async block
   (This is a limitation of the current version and flag -stub-system-api.)
 unsupported.mo:46.31-46.48: type error, shared function has non-shared parameter type
   shared () -> ()
@@ -43,6 +39,4 @@ is or contains non-shared type
 unsupported.mo:51.31-51.41: type error, actor types are non-shared.
   (This is a limitation of the current version and flag -stub-system-api.)
 unsupported.mo:62.3-62.35: type error, actor classes are not supported; use an actor declaration instead
-  (This is a limitation of the current version and flag -stub-system-api.)
-unsupported.mo:76.34-76.37: type error, freestanding async expression not yet supported
   (This is a limitation of the current version and flag -stub-system-api.)
