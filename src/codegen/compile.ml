@@ -5584,10 +5584,10 @@ module FuncDec = struct
       get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply callback *)
       ignoring_callback env ^^
-      compile_unboxed_const 0l ^^
+      compile_unboxed_zero ^^
       (* The reject callback *)
       ignoring_callback env ^^
-      compile_unboxed_const 0l ^^
+      compile_unboxed_zero ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
       (* done! *)
