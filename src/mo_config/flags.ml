@@ -1,6 +1,6 @@
 (* common flags for the moc compiler *)
 
-type compile_mode = WasmMode | AncientMode | ICMode | StubMode | WASIMode
+type compile_mode = WasmMode | ICMode | StubMode | WASIMode
 
 let trace = ref false
 let verbose = ref false
