@@ -3031,33 +3031,19 @@ end (* Tuple *)
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)
 
-  let set_api_nonce env =
-    assert (E.mode env = Flags.ICMode);
-    G.i (GlobalSet (nr (E.get_global env "api_nonce")))
-
-  let get_api_nonce env =
-    if E.mode env = Flags.ICMode
-    then G.i (GlobalGet (nr (E.get_global env "api_nonce")))
-    else G.nop
-
   let set_reply_cont env = G.i (GlobalSet (nr (E.get_global env "reply_cont")))
   let get_reply_cont env = G.i (GlobalGet (nr (E.get_global env "reply_cont")))
-
-  let register_globals env =
-    (* current api_nonce *)
-    if E.mode env = Flags.ICMode
-    then E.add_global64 env "api_nonce" Mutable 0L
 
   let system_imports env =
     let i32s n = Lib.List.make n I32Type in
     match E.mode env with
     | Flags.ICMode ->
       E.add_func_import env "debug" "print" [I32Type; I32Type] [];
-      E.add_func_import env "msg" "arg_data_size" [I64Type] [I32Type];
-      E.add_func_import env "msg" "arg_data_copy" [I64Type; I32Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reply" [I64Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject" [I64Type; I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject_code" [I64Type] [I32Type];
+      E.add_func_import env "msg" "arg_data_size" [] [I32Type];
+      E.add_func_import env "msg" "arg_data_copy" [I32Type; I32Type; I32Type] [];
+      E.add_func_import env "msg" "reply" [I32Type; I32Type] [];
+      E.add_func_import env "msg" "reject" [I32Type; I32Type] [];
+      E.add_func_import env "msg" "reject_code" [] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
       ()
     | Flags.StubMode  ->
@@ -3280,9 +3266,8 @@ module Dfinity = struct
 
   let export_start env start_fi =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
-    let args = if E.mode env = Flags.ICMode then ["api_nonce",I64Type] else [] in
     (* Create an empty message *)
-    let empty_f = Func.of_body env args [] (fun env1 ->
+    let empty_f = Func.of_body env [] [] (fun env1 ->
       G.i (Call (nr start_fi)) ^^
       (* Collect garbage *)
       G.i (Call (nr (E.built_in env1 "collect")))
@@ -3338,7 +3323,6 @@ module Dfinity = struct
   let reject env arg_instrs =
     match E.mode env with
     | Flags.ICMode | Flags.StubMode ->
-      get_api_nonce env ^^
       let (set_text, get_text) = new_local env "text" in
       arg_instrs ^^
       set_text ^^
@@ -3358,7 +3342,6 @@ module Dfinity = struct
       SR.UnboxedWord32,
       match E.mode env with
       | Flags.ICMode ->
-        get_api_nonce env ^^
         system_call env "msg" "reject_code"
       | Flags.StubMode ->
         system_call env "ic" "msg_reject_code"
@@ -3367,7 +3350,6 @@ module Dfinity = struct
   let reply_with_data env =
     Func.share_code2 env "reply_with_data" (("start", I32Type), ("size", I32Type)) [] (
       fun env get_data_start get_data_size ->
-        get_api_nonce env ^^
         get_data_start ^^
         get_data_size ^^
         match E.mode env with
@@ -4390,7 +4372,6 @@ module Serialization = struct
   let argument_data_size env =
     match E.mode env with
     | Flags.ICMode ->
-      Dfinity.get_api_nonce env ^^
       Dfinity.system_call env "msg" "arg_data_size"
     | Flags.StubMode ->
       Dfinity.system_call env "ic0" "msg_arg_data_size"
@@ -4399,7 +4380,6 @@ module Serialization = struct
   let argument_data_copy env get_dest get_length =
     match E.mode env with
     | Flags.ICMode ->
-      Dfinity.get_api_nonce env ^^
       get_dest ^^
       get_length ^^
       (compile_unboxed_const 0l) ^^
@@ -5300,8 +5280,7 @@ module FuncDec = struct
       ))
     | Flags.ICMode, _ ->
       let ae0 = VarEnv.mk_fun_ae outer_ae in
-      Func.of_body outer_env ["api_nonce", I64Type] [] (fun env -> G.with_region at (
-        G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
+      Func.of_body outer_env [] [] (fun env -> G.with_region at (
         (* reply early for a oneway *)
         (if control = Type.Returns
          then
@@ -5632,23 +5611,7 @@ module FuncDec = struct
         edesc = nr (FuncExport (nr fi))
       })
 
-    | Flags.ICMode ->
-      Func.define_built_in env name ["api_nonce", I64Type] [] (fun env ->
-        let (set_closure, get_closure) = new_local env "closure" in
-
-        G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
-
-        (* TODO: Check that it is us that is calling this *)
-
-        (* Deserialize and look up closure argument *)
-        Serialization.deserialize env [Type.Prim Type.Word32] ^^
-        BoxedSmallWord.unbox env ^^
-        ClosureTable.recall_closure env ^^
-        set_closure ^^ get_closure ^^ get_closure ^^
-        Closure.call_closure env 0 0 ^^
-        message_cleanup env (Type.Shared Type.Write)
-      );
-    | Flags.StubMode ->
+    | Flags.ICMode | Flags.StubMode ->
       Func.define_built_in env name [] [] (fun env ->
         let (set_closure, get_closure) = new_local env "closure" in
 
@@ -7562,7 +7525,6 @@ and actor_lit outer_env this ds fs at =
     Heap.register_globals mod_env;
     if E.mode mod_env = Flags.AncientMode then ElemHeap.register_globals mod_env;
     Stack.register_globals mod_env;
-    Dfinity.register_globals mod_env;
 
     Dfinity.system_imports mod_env;
     RTS.system_imports mod_env;
@@ -7733,7 +7695,6 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
   Heap.register_globals env;
   if E.mode env = Flags.AncientMode then ElemHeap.register_globals env;
   Stack.register_globals env;
-  Dfinity.register_globals env;
 
   Dfinity.system_imports env;
   RTS.system_imports env;

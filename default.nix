@@ -1,6 +1,4 @@
 {
-  dvm ? null,
-  drun ? null,
   replay ? 0,
   system ? builtins.currentSystem,
 }:
@@ -28,8 +26,8 @@ let dev = import (builtins.fetchGit {
 let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
-  ref = "master";
-  rev = "5c7efff0524adbf97d85b27adb180e6137a3428f";
+  # ref = "master";
+  rev = "a77f9b30fa5b1f35bef2913c2329e2c8e81c1af8";
 }) { inherit (nixpkgs) system; }; in
 
 let sdk = import (builtins.fetchGit {
@@ -44,16 +42,8 @@ let esm = builtins.fetchTarball {
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
 
-let real-dvm =
-  if dvm == null
-  then dev.dvm
-  else dvm; in
-
-let real-drun =
-  if drun == null
-  then dfinity-repo.drun or dfinity-repo.dfinity.drun
-  else drun; in
-
+let dvm = dev.dvm; in
+let drun = dfinity-repo.drun or dfinity-repo.dfinity.drun; in
 let js-user-library = sdk.js-user-library; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
@@ -226,7 +216,7 @@ rec {
         filecheck
         js-user-library
         dvm
-        real-drun
+        drun
         wasmtime
         haskellPackages.qc-motoko
         haskellPackages.lsp-int
@@ -285,7 +275,7 @@ rec {
         nixpkgs.bash
         nixpkgs.perl
         filecheck
-        real-drun
+        drun
       ] ++
       llvmBuildInputs;
 
@@ -328,8 +318,8 @@ rec {
     '';
   };
 
-  dvm = real-dvm;
-  drun = real-drun;
+  inherit dvm;
+  inherit drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;

@@ -974,7 +974,7 @@ and check_exp env t exp =
   exp.note <- {note_typ = t'; note_eff = e}
 
 and check_exp' env0 t exp : T.typ =
-  let env = {env0 with in_prog = false; context = exp.it :: env0.context } in
+  let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
   match exp.it, t with
   | PrimE s, T.Func _ ->
     t
@@ -1044,6 +1044,8 @@ and check_exp' env0 t exp : T.typ =
     );
     t
   | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, c, [], ts1, ts2) ->
+    if not env.pre && not env0.in_actor && T.is_shared_sort s'.it then
+      error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
     let codom = T.codom c ts2 in
     let t2 =

@@ -4,3 +4,7 @@ unsupported.mo:38.26-38.29: type error, a shared function is only allowed as a p
   (This is a limitation of the current version and flag -stub-system-api.)
 unsupported.mo:62.3-62.35: type error, actor classes are not supported; use an actor declaration instead
   (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:80.34-80.37: type error, a shared function is only allowed as a public field of an actor
+  (This is a limitation of the current version and flag -stub-system-api.)
+unsupported.mo:81.27-81.30: type error, a shared function is only allowed as a public field of an actor
+  (This is a limitation of the current version and flag -stub-system-api.)
