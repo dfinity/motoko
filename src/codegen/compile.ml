@@ -247,7 +247,7 @@ module E = struct
         value = nr (G.to_instr_list (G.i (Wasm.Ast.Const (nr (Wasm.Values.I32 init)))))
       })
 
-  let _add_global64 (env : t) name mut init =
+  let add_global64 (env : t) name mut init =
     add_global env name (
       nr { gtype = GlobalType (I64Type, mut);
         value = nr (G.to_instr_list (G.i (Wasm.Ast.Const (nr (Wasm.Values.I64 init)))))
@@ -5611,23 +5611,7 @@ module FuncDec = struct
         edesc = nr (FuncExport (nr fi))
       })
 
-    | Flags.ICMode ->
-      Func.define_built_in env name ["api_nonce", I64Type] [] (fun env ->
-        let (set_closure, get_closure) = new_local env "closure" in
-
-        G.i (LocalGet (nr 0l)) ^^ Dfinity.set_api_nonce env ^^
-
-        (* TODO: Check that it is us that is calling this *)
-
-        (* Deserialize and look up closure argument *)
-        Serialization.deserialize env [Type.Prim Type.Word32] ^^
-        BoxedSmallWord.unbox env ^^
-        ClosureTable.recall_closure env ^^
-        set_closure ^^ get_closure ^^ get_closure ^^
-        Closure.call_closure env 0 0 ^^
-        message_cleanup env (Type.Shared Type.Write)
-      );
-    | Flags.StubMode ->
+    | Flags.ICMode | Flags.StubMode ->
       Func.define_built_in env name [] [] (fun env ->
         let (set_closure, get_closure) = new_local env "closure" in
 
