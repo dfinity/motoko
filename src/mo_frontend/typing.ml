@@ -781,7 +781,8 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t1)
     in
     let insts = match insts, t1 with
-        | [], T.Func(_,T.Promises (T.Var (_,0)),[_],_,_) ->
+        | [], T.Func(_,T.Promises (T.Var (_,0)),[_],_,_)
+        | [], T.Func(_,T.Returns,[_],_,[T.Async (T.Var (_,0),_)]) ->
           [Syntax.scope_typ {left=exp1.at.right; right = exp2.at.left}]
         | _ -> insts
     in

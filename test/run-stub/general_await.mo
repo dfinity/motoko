@@ -41,7 +41,7 @@ actor Await {
   // Dynamic parallel waiting (with results)
 
   public shared func DPR<@>() : async [Int] {
-    func f (i:Nat) : async Int = Await.Request<@>(i);
+    func f<>(i:Nat) : async Int = Await.Request<@>(i);
     let as = Array_tabulate<async Int>(N, f);
     let res = Array_init<Int>(as.len(),-1);
     for (i in as.keys()) {
