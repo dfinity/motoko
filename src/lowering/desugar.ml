@@ -112,7 +112,7 @@ and exp' at note = function
     if T.is_non t
     then unreachableE.it
     else
-      let inst = List.map (fun t -> t.Source.note) inst in
+      let inst = List.map (fun t -> t.Source.note) (!inst) in
       I.CallE (exp e1, inst, exp e2)
   | S.BlockE [] -> I.TupE []
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it

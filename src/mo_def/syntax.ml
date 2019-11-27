@@ -127,7 +127,7 @@ and exp' =
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * func_sort * typ_bind list * pat * typ option * exp  (* function *)
-  | CallE of exp * typ list * exp              (* function call *)
+  | CallE of exp * typ list ref * exp          (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
@@ -222,3 +222,17 @@ let string_of_lit = function
   | TextLit t     -> t
   | FloatLit f    -> Value.Float.to_pretty_string f
   | PreLit _      -> assert false
+
+
+let scope_id = "@"
+
+let scope_typ region =
+  Source.(
+    { it = PathT (
+      { it = IdH { it = scope_id; at = region; note = () };
+        at = no_region;
+        note = Type.Pre },
+      []);
+    at = region;
+    note = Type.Pre });
+

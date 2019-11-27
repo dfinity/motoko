@@ -93,6 +93,31 @@ let scope_id = "@"
 let scope_bind() = {var = scope_id @@ no_region; bound = PrimT "Any" @! no_region} @= no_region
 let scope_typ() = PathT ((IdH (scope_id @@ no_region)) @! no_region, []) @! no_region
 
+let rec is_scope_typ t =
+  match t.it with
+  | PathT (p, []) ->
+    (match p.it with
+     | IdH id ->
+       id.it = scope_id
+     |  _ -> false)
+  | ParT t -> is_scope_typ t
+  | _ -> false
+
+let funcT(sort, tbs, t1, t2) =
+  match tbs, t2.it with
+  | [], (AsyncT (t21, _)) when is_scope_typ t21 ->
+    FuncT(sort, [scope_bind()], t1, t2)
+  | _ -> FuncT(sort, tbs, t1, t2)
+
+let funcE (f, s, tbs, p, t_opt, e) =
+  match tbs, t_opt with
+  | [], Some t ->
+    (match t.it with
+     | AsyncT (t1, _) when is_scope_typ t1 ->
+       FuncE(f, s, [scope_bind()], p, t_opt, e)
+     | _ -> FuncE(f, s, tbs, p, t_opt, e))
+  | _ -> FuncE(f, s, tbs, p, t_opt, e)
+
 %}
 
 %token EOF
@@ -260,7 +285,7 @@ typ :
   | t=typ_pre
     { t }
   | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ
-    { FuncT(s, tps, t1, t2) @! at $sloc }
+    { funcT(s, tps, t1, t2) @! at $sloc }
 
 typ_item :
   | id COLON t=typ { t }
@@ -277,7 +302,7 @@ typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ
-    { let t = FuncT(Type.Local @@ no_region, tps, t1, t2)
+    { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
@@ -394,7 +419,7 @@ exp_post(B) :
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(ob) tso=typ_args? e2=exp_nullary(ob)
     { let typ_args = Lib.Option.get tso [] in
-      CallE(e1, typ_args, e2) @? at $sloc }
+      CallE(e1, ref typ_args, e2) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
@@ -635,7 +660,7 @@ dec_nonvar :
           | _ -> e
       in
       let named, x = xf "func" $sloc in
-      let_or_exp named x (FuncE(x.it, s, tps, p, t, e)) (at $sloc) }
+      let_or_exp named x (funcE(x.it, s, tps, p, t, e)) (at $sloc) }
   | s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in

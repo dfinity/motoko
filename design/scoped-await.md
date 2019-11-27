@@ -35,15 +35,15 @@ _Please break it_
 
 ```bnf
 <typ> := ...
-    | async[T]U          // T is an index, typically a type parameter
+    | async<T>U          // T is an index, typically a type parameter
 
 <exp> :=
     | async<X> e <U>                                  // index abstraction plus application in one (parameter X free in e, but not in instantiation U)
-    | shared f<X>(x:T) : async[X]U = async<Y> e <X>;  // requests
-    | shared f<X>(x:T) : async[X]U { e; }             // sugar (for the above)
+    | shared f<X>(x:T) : async<X>U = async<Y> e <X>;  // requests
+    | shared f<X>(x:T) : async<X>U { e; }             // sugar (for the above)
     | f <T> e                                         // (indexed) application
 
-Ctxt := E; async[T]   // async context with index U
+Ctxt := E; async<T>   // async context with index U
     |  E; -           // non-async context
 
 Env :=                // the usual suspects
@@ -61,7 +61,7 @@ Here, the simplist might be to use the function name itself for the implicit ind
 ### Parameterized async expressions
 
 ```
-E, X; async[X] |- e : T   E |- U :: *   (X fresh)
+E, X; async<X> |- e : T   E |- U :: *   (X fresh)
 -------------------------------------------------
 E; - |- async<X> e <U>: async[U]T
 ```
@@ -73,20 +73,20 @@ parameter is immediately eliminated at some index `U` (not mentioning `X`).
 ### (restricted) await expressions
 
 ```
-E; async[T] |- e : async[T]U
+E; async<T> |- e : async<T>U
 ------------------------------
-E; async[T] |- await e : U
+E; async<T> |- await e : U
 ```
 
-We can only await things of the current index `T`, recorded in the context as `_ ; async[T]`.
+We can only await things of the current index `T`, recorded in the context as `_ ; async<T>`.
 
 ### Application
 
 ```
-E; _ |- f : shared <X> U -> async[X] V
+E; _ |- f : shared <X> U -> async<X> V
 E; _ |- e': [T/X] U
 -------------------------------------
-E; _ |-  f <T> e' : async[T]([T/X]V)
+E; _ |-  f <T> e' : async<T>([T/X]V)
 ```
 
 Application must provide an index, typically the nearest enclosing index parameter if want to await the result, but I guess
@@ -100,7 +100,7 @@ Rule for (desugared) shared functions (ignoring recursion).
 ```
 E, X, x : T, Y;  async<Y> |- e : U  (X, Y fresh)
 ----------------------------------------------------
-E; _ |- shared f<X>(x:T) : async[X]U = async<Y> e <X>;
+E; _ |- shared f<X>(x:T) : async<X>U = async<Y> e <X>;
 ```
 Every shared function introduce a new index parameter, immediately supplied to the inner async expression.
 
@@ -109,7 +109,7 @@ Derived rule for sugar (ignoring recursion):
 ```
 E, X, x : T; async<X> |- e : U
 --------------------------------------------
-E; _ |- shared f<X>(x:T) : async[X] U { e; }
+E; _ |- shared f<X>(x:T) : async<X> U { e; }
 ```
 
 ## Examples:
@@ -117,9 +117,9 @@ E; _ |- shared f<X>(x:T) : async[X] U { e; }
 Assuming the following requests:
 
 ```
-shared Ack<X>() : async[X](){ };
+shared Ack<X>() : async<X>(){ };
 
-shared Request<X>(i : Int) : async[X] Int { return i; }
+shared Request<X>(i : Int) : async<X> Int { return i; }
 ```
 
 ### Static parralel waiting:
@@ -159,7 +159,7 @@ async<X> {
 ### Recursive parallel waiting
 
 ```
-shared func waitN<X>(n:Nat) : async[X]() {
+shared func waitN<X>(n:Nat) : async<X>() {
   if (n = 0)
     ()
   else {
@@ -173,7 +173,7 @@ shared func waitN<X>(n:Nat) : async[X]() {
 ### Recursive parallel waiting (with results)
 
 ```
-shared func waitN<X>(n:Nat) : async[X](List<Int>) {
+shared func waitN<X>(n:Nat) : async<X>(List<Int>) {
   if (n = 0)
     List.null<Int>();
   else {
@@ -190,7 +190,7 @@ shared func waitN<X>(n:Nat) : async[X](List<Int>) {
 
 
 ```
-let t:async[T]U = async<X>{ await t;}<T>; // bad await since t : Async[Any]U  </: Async[X]U
+let t:async<T>U = async<X>{ await t;}<T>; // bad await since t : Async[Any]U  </: Async<X>U
 ```
 
 Ruled out by index scoping (`X != T`, any `T`)
@@ -199,8 +199,8 @@ Ruled out by index scoping (`X != T`, any `T`)
 
 ```
 async<X> {
-  let a1 = async<Y>{ await a2; }<X>; // bad await since a1 : Async[X]() </: Async<Y>()
-  let a2 = async<Z>{ await a1; }<X>; // bad await since a2 : Async[X]() </: Async<Z>()
+  let a1 = async<Y>{ await a2; }<X>; // bad await since a1 : Async<X>() </: Async<Y>()
+  let a2 = async<Z>{ await a1; }<X>; // bad await since a2 : Async<X>() </: Async<Z>()
   await(a1);
 }<Any>;
 ```
@@ -213,9 +213,9 @@ The informal example:
 ```
 shared func f() : async () {
   var x : async Nat = async 0;
-  x := async { 
-    await x 
-  }; 
+  x := async {
+    await x
+  };
 }
 ```
 
@@ -226,8 +226,34 @@ Explicitly, the shared function and nested async would have distinct indices,so 
 ```
 shared func f<R>() : async () {
   var x : async<R> Nat = async<_> 0 <R>;
-  x := async<S>{ 
+  x := async<S>{
     await x // illegal: await _ : async<S>T -> T (not async<R> T -> T) (any T)
-  } <R>;  
+  } <R>;
 }
+```
+
+
+syntactic sugar:
+
+```
+async typ := async<@> typ
+
+(typ,...) -> async<@> typ -> :=
+<@>(typ,...) -> async<@> typ
+
+func f(<pat>) : async<@> t = e
+func<@>f() : async<@>t = e
+
+func f(<pat>) : async<@> t { e } :-
+func<@>f() : async<@>t { e } :-
+
+x(pat) : async t {e}  = x<@>(pat): async<@> t
+x(pat) : async t = e  = x<@>(pat): async<@> t
+
+async e := async<@> e <@>
+```
+
+static sugar
+```
+f e = f<@>e when f: sort <X>(typ,...) -> async<X> t
 ```

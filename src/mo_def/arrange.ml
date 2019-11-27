@@ -34,7 +34,7 @@ let rec exp e = match e.it with
       (match t with None -> Atom "_" | Some t -> typ t);
       exp e'
     ]
-  | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map typ ts @ [exp e2]
+  | CallE (e1, tsr, e2)  -> "CallE"   $$ [exp e1] @ List.map typ (!tsr) @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds
   | NotE e              -> "NotE"    $$ [exp e]
   | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]

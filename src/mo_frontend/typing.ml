@@ -770,7 +770,8 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Func (sort.it, T.map_control (T.close cs) c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
-  | CallE (exp1, insts, exp2) ->
+  | CallE (exp1, insts_ref, exp2) ->
+    let insts = !insts_ref in
     let t1 = infer_exp_promote env exp1 in
     let sort, tbs, t_arg, t_ret =
       try T.as_func_sub T.Local (List.length insts) t1
@@ -779,6 +780,12 @@ and infer_exp'' env exp : T.typ =
           "expected function type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     in
+    let insts = match insts, t1 with
+        | [], T.Func(_,T.Promises (T.Var (_,0)),[_],_,_) ->
+          [Syntax.scope_typ {left=exp1.at.right; right = exp2.at.left}]
+        | _ -> insts
+    in
+    insts_ref := insts;
     let ts = check_inst_bounds env tbs insts exp.at in
     let t_arg = T.open_ ts t_arg in
     let t_ret = T.open_ ts t_ret in
