@@ -168,7 +168,7 @@ let rec shift i n t =
   | Tup ts -> Tup (List.map (shift i n) ts)
   | Func (s, c, tbs, ts1, ts2) ->
     let i' = i + List.length tbs in
-    Func (s, c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
+    Func (s,  map_control (shift i' n) c, List.map (shift_bind i' n) tbs, List.map (shift i' n) ts1, List.map (shift i' n) ts2)
   | Opt t -> Opt (shift i n t)
   | Async (t1, t2) -> Async (shift i n t1, shift i n t2)
   | Obj (s, fs) -> Obj (s, List.map (shift_field n i) fs)
@@ -1294,4 +1294,3 @@ let rec string_of_typ_expand t =
   | _ -> s
 
 let is_shared_sort sort = sort <> Local
-
