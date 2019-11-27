@@ -26,7 +26,7 @@ import Numeric
 
 import System.Process hiding (proc)
 import Turtle
-import Debug.Trace (traceShowId)
+-- import Debug.Trace (traceShowId)
 
 main = defaultMain tests
   where tests :: TestTree
@@ -182,9 +182,10 @@ instance Arbitrary ModuloTest where
   arbitrary = ModuloTest . Neuralgic <$> (arbitrary :: Gen (Neuralgic Natural))
 
 prop_moduloNWN :: ModuloTest -> Property
-prop_moduloNWN (ModuloTest term@(Neuralgic n)) = monadicIO $ runScriptNoFuzz "moduloNWN" (traceShowId testCase)
-    where n' = evalN n .&. (0xFFFFFFFFFFFFFFFF :: Natural){- TODO: bitwidth -}
-          testCase = "assert(" <> unparseAS (ConvertWordToNatural @64 (ConvertNaturalToWord term)) <> " == " <> show n' <> ")"
+prop_moduloNWN (ModuloTest term@(Neuralgic n)) = monadicIO $ runScriptNoFuzz "moduloNWN" testCase
+  where n' = evalN n .&. 0xFFFFFFFFFFFFFFFF :: Natural {- TODO: bitwidth -}
+        testCase = "assert(" <> unparseAS (ConvertWordToNatural @64 (ConvertNaturalToWord term))
+                <> " == " <> show n' <> ")"
 
 data Matching where
   Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
@@ -903,13 +904,8 @@ unparseAS (ConvertNatural a) = "(++++(" <> unparseAS a <> "))"
 unparseAS (ConvertNat a) = unparseNat Proxy a
 unparseAS (ConvertInt a) = unparseInt Proxy a
 unparseAS (ConvertWord a) = unparseWord Proxy a
-
-
-
 unparseAS (ConvertWordToNatural a) = "(word64ToNat " <> unparseAS a <> ")"
 unparseAS (ConvertNaturalToWord a) = "(natToWord64 " <> unparseAS a <> ")"
-
-
 unparseAS (IfThenElse a b c) = "(if (" <> unparseAS c <> ") " <> unparseAS a <> " else " <> unparseAS b <> ")"
 unparseAS (a `NotEqual` b) = inParens unparseAS "!=" a b
 unparseAS (a `Equals` b) = inParens unparseAS "==" a b
@@ -939,6 +935,7 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 -- TODOs:
 --   - wordToInt
 --   - natToNat64/intToWord64 (and round-trips)
+--       Done: natToWord64/word64ToNat
 --   - bitwise ops (btst?)
 --   - pattern matches (over numeric, bool, structured)
 --   - trapping flavour-preserving conversions Nat -> NatN
