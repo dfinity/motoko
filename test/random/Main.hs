@@ -39,7 +39,10 @@ arithProps = testGroup "Arithmetic/logic"
 
 conversionProps = testGroup "Numeric conversions"
   [ QC.testProperty "roundtrip Word Nat Word " $ prop_roundtripWNW
-  , QC.testProperty "modulo Nat Word Nat" $ prop_moduloNWN
+  , QC.testProperty "modulo Nat Word64 Nat" $ prop_moduloNWN @64
+  , QC.testProperty "modulo Nat Word32 Nat" $ prop_moduloNWN @32
+  , QC.testProperty "modulo Nat Word16 Nat" $ prop_moduloNWN @16
+  , QC.testProperty "modulo Nat Word8 Nat" $ prop_moduloNWN @8
   ]
 
 utf8Props = testGroup "UTF-8 coding"
@@ -163,12 +166,12 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
 newtype ConversionTest = ConversionTest (ASTerm (BitLimited 64 Word)) deriving Show
 
 instance Arbitrary ConversionTest where
-  arbitrary = ConversionTest . ConvertNaturalToWord . ConvertWordToNatural . Neuralgic <$> (arbitrary :: Gen (Neuralgic (BitLimited 64 Word)))
+  arbitrary = ConversionTest . ConvertNatToWord . ConvertWordToNat . Neuralgic <$> (arbitrary :: Gen (Neuralgic (BitLimited 64 Word)))
 
 prop_roundtripWNW :: ConversionTest -> Property
 prop_roundtripWNW (ConversionTest term) =
     case term of
-      ConvertNaturalToWord (ConvertWordToNatural n) ->
+      ConvertNatToWord (ConvertWordToNat n) ->
           case sameNat (bitsIn term) (bitsIn n) of
             Just Refl -> let testCase = "assert(" <> unparseAS (term `Equals` n) <> ")" in
                          monadicIO $ runScriptNoFuzz "roundtripWNW" testCase
@@ -176,16 +179,16 @@ prop_roundtripWNW (ConversionTest term) =
         bitsIn _ = Proxy
 
 
-newtype ModuloTest = ModuloTest (ASTerm Natural) deriving Show
+newtype ModuloTest (n :: Nat) = ModuloTest (ASTerm (BitLimited n Word)) deriving Show
 
-instance Arbitrary ModuloTest where
-  arbitrary = ModuloTest . Neuralgic <$> (arbitrary :: Gen (Neuralgic Natural))
+instance WordLike n => Arbitrary (ModuloTest n) where
+  arbitrary = ModuloTest . ConvertNatToWord @n . Neuralgic <$> (arbitrary :: Gen (Neuralgic Natural))
 
-prop_moduloNWN :: ModuloTest -> Property
-prop_moduloNWN (ModuloTest term@(Neuralgic n)) = monadicIO $ runScriptNoFuzz "moduloNWN" testCase
-  where n' = evalN n .&. 0xFFFFFFFFFFFFFFFF :: Natural {- TODO: bitwidth -}
-        testCase = "assert(" <> unparseAS (ConvertWordToNatural @64 (ConvertNaturalToWord term))
-                <> " == " <> show n' <> ")"
+prop_moduloNWN :: forall n . KnownNat n => ModuloTest n -> Property
+prop_moduloNWN (ModuloTest term@(ConvertNatToWord (Neuralgic m))) = monadicIO $ runScriptNoFuzz "moduloNWN" testCase
+  where m' = evalN m .&. maskFor term
+        testCase = "assert(" <> unparseAS (ConvertWordToNat term)
+                <> " == " <> show m' <> ")"
 
 data Matching where
   Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
@@ -371,8 +374,8 @@ data ASTerm :: * -> * where
   ConvertNat :: KnownNat n => ASTerm (BitLimited n Natural) -> ASTerm Integer
   ConvertInt :: KnownNat n => ASTerm (BitLimited n Integer) -> ASTerm Integer
   ConvertWord :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Integer
-  ConvertNaturalToWord :: WordLike n => ASTerm Natural -> ASTerm (BitLimited n Word)
-  ConvertWordToNatural :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Natural
+  ConvertNatToWord :: WordLike n => ASTerm Natural -> ASTerm (BitLimited n Word)
+  ConvertWordToNat :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Natural
   -- Constructors (intro forms)
   Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
   Triple :: (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c)
@@ -773,6 +776,10 @@ instance Evaluatable a => Evaluatable (Maybe a) where
   evaluate Null = pure Nothing
   evaluate (Some a) = Just <$> evaluate a
 
+maskFor :: forall n . KnownNat n => ASTerm (BitLimited n Word) -> Natural
+maskFor _ = fromIntegral $ 2 ^ natVal (Proxy @n) - 1
+
+
 eval :: (Restricted a, Integral a) => ASTerm a -> Maybe a
 eval Five = pure 5
 eval (Neuralgic n) = evalN n
@@ -789,10 +796,8 @@ eval (ConvertNatural t) = fromIntegral <$> evaluate t
 eval (ConvertNat t) = fromIntegral <$> evaluate t
 eval (ConvertInt t) = fromIntegral <$> evaluate t
 eval (ConvertWord t) = fromIntegral <$> evaluate t
-eval c@(ConvertNaturalToWord t) = fromIntegral . (.&. (2 ^ bits c - 1)) <$> evaluate t
-    where bits :: forall n . KnownNat n => ASTerm (BitLimited n Word) -> Natural
-          bits _ = fromIntegral $ natVal (Proxy @n)
-eval (ConvertWordToNatural t) = fromIntegral <$> evaluate t
+eval c@(ConvertNatToWord t) = fromIntegral . (.&. maskFor c) <$> evaluate t
+eval (ConvertWordToNat t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evaluate c
                              eval $ if c then a else b
 --eval _ = Nothing
@@ -906,8 +911,8 @@ unparseAS (ConvertNatural a) = "(++++(" <> unparseAS a <> "))"
 unparseAS (ConvertNat a) = unparseNat Proxy a
 unparseAS (ConvertInt a) = unparseInt Proxy a
 unparseAS (ConvertWord a) = unparseWord Proxy a
-unparseAS (ConvertWordToNatural a) = "(word64ToNat " <> unparseAS a <> ")"
-unparseAS (ConvertNaturalToWord a) = "(natToWord64 " <> unparseAS a <> ")"
+unparseAS (ConvertWordToNat a) = sizeSuffix a "(word" <> "ToNat " <> unparseAS a <> ")"
+unparseAS t@(ConvertNatToWord a) = sizeSuffix t "(natToWord" <> " " <> unparseAS a <> ")"
 unparseAS (IfThenElse a b c) = "(if (" <> unparseAS c <> ") " <> unparseAS a <> " else " <> unparseAS b <> ")"
 unparseAS (a `NotEqual` b) = inParens unparseAS "!=" a b
 unparseAS (a `Equals` b) = inParens unparseAS "==" a b
@@ -937,7 +942,7 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 -- TODOs:
 --   - wordToInt
 --   - natToNat64/intToWord64 (and round-trips)
---       Done: natToWord64/word64ToNat
+--       Done: natToWordN/wordNToNat
 --   - bitwise ops (btst?)
 --   - pattern matches (over numeric, bool, structured)
 --   - trapping flavour-preserving conversions Nat -> NatN
