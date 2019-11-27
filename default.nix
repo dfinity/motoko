@@ -16,13 +16,6 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
-let dev = import (builtins.fetchGit {
-  name = "dev-sources";
-  url = "ssh://git@github.com/dfinity-lab/dev";
-  # ref = "master";
-  rev = "6fca1936fcd027aaeaccab0beb51defeee38a0ff";
-}) { inherit (nixpkgs) system; }; in
-
 let dfinity-repo = import (builtins.fetchGit {
   name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
@@ -42,7 +35,6 @@ let esm = builtins.fetchTarball {
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
 
-let dvm = dev.dvm; in
 let drun = dfinity-repo.drun or dfinity-repo.dfinity.drun; in
 let js-user-library = sdk.js-user-library; in
 
@@ -215,7 +207,6 @@ rec {
         nixpkgs.nodejs-10_x
         filecheck
         js-user-library
-        dvm
         drun
         wasmtime
         haskellPackages.qc-motoko
@@ -318,7 +309,6 @@ rec {
     '';
   };
 
-  inherit dvm;
   inherit drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
