@@ -7,7 +7,6 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -1: Use Ancient API
 #    -2: Use IC API
 #    -3: Use Stub API
 #    -t: Only typecheck
@@ -31,20 +30,16 @@ MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
 WASMTIME=${WASMTIME:-wasmtime}
-DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "a123stir" o; do
+while getopts "a23stir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
-            ;;
-        1)
-            API=ancient
             ;;
         2)
             API=ic
@@ -68,7 +63,6 @@ while getopts "a123stir" o; do
 done
 
 if [ $API = "wasm" ]; then EXTRA_MOC_FLAGS=-no-system-api; fi
-if [ $API = "ancient" ]; then EXTRA_MOC_FLAGS=-ancient-system-api; fi
 if [ $API = "wasi" ]; then EXTRA_MOC_FLAGS=-wasi-system-api; fi
 if [ $API = "stub" ]; then EXTRA_MOC_FLAGS=-stub-system-api; fi
 if [ $RELEASE = "yes" ]; then MOC_FLAGS=--release; fi
@@ -237,10 +231,7 @@ do
           # Run compiled program
           if [ "$SKIP_RUNNING" != yes ]
           then
-            if [ $API = ancient ]
-            then
-              run dvm $DVM_WRAPPER $out/$base.wasm $base.mo
-            elif [ $API = ic ]
+            if [ $API = ic ]
             then
               run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
             elif [ $API = stub ]

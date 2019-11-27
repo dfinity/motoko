@@ -41,7 +41,6 @@ let js_check source =
 let js_compile_with mode_string source convert =
   let mode =
     match Js.to_string mode_string with
-    | "dfinity" -> Flags.AncientMode
     | _ -> Flags.WasmMode
   in
   match Pipeline.compile_string mode (Js.to_string source) Filename.current_dir_name with
