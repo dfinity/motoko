@@ -47,7 +47,7 @@ module SR = struct
   *)
   type static_thing =
     | StaticFun of int32
-    | StaticMessage of int32 (* anonymous message, only on ancient *)
+    | StaticMessage of int32 (* anonymous message, only temporary *)
     | PublicMethod of int32 * string
 
   (* Value representation on the stack:
@@ -61,7 +61,6 @@ module SR = struct
     | UnboxedTuple of int
     | UnboxedWord64
     | UnboxedWord32
-    | UnboxedReference
     | Unreachable
     | StaticThing of static_thing
 
@@ -148,11 +147,9 @@ module E = struct
     func_imports : import list ref;
     other_imports : import list ref;
     exports : export list ref;
-    dfinity_types : (int32 * Wasm_exts.CustomModule.type_ list) list ref; (* Dfinity types of exports *)
     funcs : (func * string * local_names) Lib.Promise.t list ref;
     globals : (global * string) list ref;
     global_names : int32 NameEnv.t ref;
-    persist : (int32 * Wasm_exts.CustomModule.type_) list ref;
     built_in_funcs : lazy_built_in NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
@@ -183,11 +180,9 @@ module E = struct
     func_imports = ref [];
     other_imports = ref [];
     exports = ref [];
-    dfinity_types = ref [];
     funcs = ref [];
     globals = ref [];
     global_names = ref NameEnv.empty;
-    persist = ref [];
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
@@ -231,11 +226,6 @@ module E = struct
   let add_export (env : t) e =
     ignore (reg env.exports e)
 
-  let add_dfinity_type (env : t) e =
-    assert (mode env = Flags.AncientMode);
-    (* ignore duplicates? or use a map? but who cares, is for ancient system only *)
-    ignore (reg env.dfinity_types e)
-
   let add_global (env : t) name g =
     assert (not (NameEnv.mem name !(env.global_names)));
     let gi = reg env.globals (g, name) in
@@ -270,11 +260,6 @@ module E = struct
     })
 
   let get_globals (env : t) = List.map (fun (g,n) -> g) !(env.globals)
-
-  let persist (env : t) i t =
-    env.persist := !(env.persist) @ [(i, t)]
-
-  let get_persist (env : t) = !(env.persist)
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
@@ -317,7 +302,6 @@ module E = struct
   let get_func_imports (env : t) = !(env.func_imports)
   let get_other_imports (env : t) = !(env.other_imports)
   let get_exports (env : t) = !(env.exports)
-  let get_dfinity_types (env : t) = !(env.dfinity_types)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
 
   let func_type (env : t) ty =
@@ -866,75 +850,10 @@ module Stack = struct
 
 end (* Stack *)
 
-module ElemHeap = struct
-  (* The ElemHeap adds a level of indirection for references (elements, as in
-     ElemRef). This way, the fake orthogonal persistence code can easily
-     store all references an elembuf.
-
-     This could be done differently (e.g. traversing the heap and looking for
-     tagged references), but it predates the heap traversal code, and the whole
-     thing goes away once we target orthogonal persistence anyways.
-  *)
-
-  let register_globals env =
-    assert (E.mode env = Flags.AncientMode);
-    (* reference counter *)
-    E.add_global32 env "refcounter" Mutable 0l
-  let get_ref_ctr env =
-    G.i (GlobalGet (nr (E.get_global env "refcounter")))
-  let set_ref_ctr env =
-    G.i (GlobalSet (nr (E.get_global env "refcounter")))
-
-  (* For now, we allocate a fixed size range. This obviously cannot stay. *)
-  let max_references = 1024l
-
-  let ref_location = Stack.end_of_stack
-
-  let table_end : int32 = Int32.(add ref_location (mul max_references Heap.word_size))
-
-  (* Assumes a reference on the stack, and replaces it with an index into the
-     reference table *)
-  let remember_reference env : G.t =
-    assert (E.mode env = Flags.AncientMode);
-    Func.share_code1 env "remember_reference" ("ref", I32Type) [I32Type] (fun env get_ref ->
-      (* Check table space *)
-      get_ref_ctr env ^^
-      compile_unboxed_const max_references ^^
-      G.i (Compare (Wasm.Values.I32 I64Op.LtU)) ^^
-      E.else_trap_with env "Reference table full" ^^
-
-      (* Return index *)
-      get_ref_ctr env ^^
-
-      (* Store reference *)
-      get_ref_ctr env ^^
-      compile_mul_const Heap.word_size ^^
-      compile_add_const ref_location ^^
-      get_ref ^^
-      store_unskewed_ptr ^^
-
-      (* Bump counter *)
-      get_ref_ctr env ^^
-      compile_add_const 1l ^^
-      set_ref_ctr env
-    )
-
-  (* Assumes a index into the table on the stack, and replaces it with the reference *)
-  let recall_reference env : G.t =
-    assert (E.mode env = Flags.AncientMode);
-    Func.share_code1 env "recall_reference" ("ref_idx", I32Type) [I32Type] (fun env get_ref_idx ->
-      get_ref_idx ^^
-      compile_mul_const Heap.word_size ^^
-      compile_add_const ref_location ^^
-      load_unskewed_ptr
-    )
-
-end (* ElemHeap *)
-
 module ClosureTable = struct
   (*
   Another fixed-size table at the beginning of memory: When we create a closure
-  that is bound to a funcref that we pass out, we need this level of indirection for
+  that is bound to a callback that we pass out, we need this level of indirection for
   two reasons:
   - we cannot just bind the address via i32.bind, because that is not stable, due
     to our moving GC, and
@@ -945,7 +864,7 @@ module ClosureTable = struct
   *)
 
   let max_entries = 1024l
-  let loc = ElemHeap.table_end
+  let loc = Stack.end_of_stack
   let table_end = Int32.(add loc (mul max_entries Heap.word_size))
 
   (* For reasons I do not recall, we use the first word of the table as the counter,
@@ -1088,7 +1007,6 @@ module Tagged = struct
     | Object
     | ObjInd (* The indirection used for object fields *)
     | Array (* Also a tuple *)
-    | Reference (* Either arrayref or funcref, no need to distinguish here *)
     | Int (* Contains a 64 bit number *)
     | MutBox (* used for mutable heap-allocated variables *)
     | Closure
@@ -1104,7 +1022,6 @@ module Tagged = struct
     | Object -> 1l
     | ObjInd -> 2l
     | Array -> 3l
-    | Reference -> 4l
     | Int -> 5l
     | MutBox -> 6l
     | Closure -> 7l
@@ -3031,9 +2948,6 @@ end (* Tuple *)
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)
 
-  let set_reply_cont env = G.i (GlobalSet (nr (E.get_global env "reply_cont")))
-  let get_reply_cont env = G.i (GlobalGet (nr (E.get_global env "reply_cont")))
-
   let system_imports env =
     let i32s n = Lib.List.make n I32Type in
     match E.mode env with
@@ -3062,47 +2976,13 @@ module Dfinity = struct
       E.add_func_import env "stub" "created_canister_id_size" (i32s 1) [I32Type];
       E.add_func_import env "stub" "created_canister_id_copy" (i32s 4) [];
       ()
-    | Flags.AncientMode ->
-      E.add_func_import env "test" "print" [I32Type] [];
-      E.add_func_import env "test" "show_i32" [I32Type] [I32Type];
-      E.add_func_import env "data" "externalize" [I32Type; I32Type] [I32Type];
-      E.add_func_import env "data" "internalize" [I32Type; I32Type; I32Type; I32Type] [];
-      E.add_func_import env "data" "length" [I32Type] [I32Type];
-      E.add_func_import env "elem" "externalize" [I32Type; I32Type] [I32Type];
-      E.add_func_import env "elem" "internalize" [I32Type; I32Type; I32Type; I32Type] [];
-      E.add_func_import env "elem" "length" [I32Type] [I32Type];
-      E.add_func_import env "module" "new" [I32Type] [I32Type];
-      E.add_func_import env "actor" "new" [I32Type] [I32Type];
-      E.add_func_import env "actor" "self" [] [I32Type];
-      E.add_func_import env "actor" "export" [I32Type; I32Type] [I32Type];
-      E.add_func_import env "func" "internalize" [I32Type; I32Type] [];
-      E.add_func_import env "func" "externalize" [I32Type] [I32Type];
-      E.add_func_import env "func" "bind_i32" [I32Type; I32Type] [I32Type];
-      E.add_func_import env "func" "bind_ref" [I32Type; I32Type] [I32Type]
     | Flags.WASIMode ->
       E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
 
   let system_call env modname funcname = E.call_import env modname funcname
 
-  let compile_databuf_of_text env  =
-    Func.share_code1 env "databuf_of_text" ("string", I32Type) [I32Type] (fun env get_string ->
-      (* Calculate the offset *)
-      get_string ^^
-      compile_add_const Int32.(add (mul Heap.word_size Blob.header_size) ptr_unskew) ^^
-
-      (* Calculate the length *)
-      get_string ^^
-      Heap.load_field (Blob.len_field) ^^
-
-      (* Externalize *)
-      system_call env "data" "externalize"
-    )
-
-  let compile_databuf_of_bytes env (bytes : string) =
-    Blob.lit env bytes ^^ compile_databuf_of_text env
-
-  let rec print_ptr_len env =
+  let print_ptr_len env =
     match E.mode env with
     | Flags.WasmMode -> G.i Drop ^^ G.i Drop
     | Flags.ICMode -> system_call env "debug" "print"
@@ -3150,39 +3030,13 @@ module Dfinity = struct
           G.i Drop
         )
       )
-    | Flags.AncientMode ->
-      Func.share_code2 env "print_ptr" (("ptr", I32Type), ("len", I32Type)) [] (fun env get_ptr get_len ->
-        let (set_blob, get_blob) = new_local env "blob" in
-        get_len ^^ Blob.alloc env ^^ set_blob ^^
 
-        get_blob ^^ Blob.payload_ptr_unskewed ^^
-        get_ptr ^^
-        get_len ^^
-        Heap.memcpy env ^^
-
-        get_blob ^^
-        print_text env
-      )
-
-  and print_text env =
-    match E.mode env with
-    | Flags.AncientMode ->
-      (* The recursion goes the other wary in the AncientMode.
-         This can be removed once we get rid of the ancient mode
-      *)
-      Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
-        get_str ^^
-        Blob.lit env "\n" ^^
-        Blob.concat env ^^
-        compile_databuf_of_text env ^^
-        system_call env "test" "print"
-      )
-    | _ ->
-      Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
-        get_str ^^ Blob.payload_ptr_unskewed ^^
-        get_str ^^ Heap.load_field (Blob.len_field) ^^
-        print_ptr_len env
-      )
+  let print_text env =
+    Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
+      get_str ^^ Blob.payload_ptr_unskewed ^^
+      get_str ^^ Heap.load_field (Blob.len_field) ^^
+      print_ptr_len env
+    )
 
   (* For debugging *)
   let compile_static_print env s =
@@ -3209,7 +3063,7 @@ module Dfinity = struct
   let trap_with env s =
     match E.mode env with
     | Flags.WasmMode -> G.i Unreachable
-    | Flags.AncientMode | Flags.WASIMode -> compile_static_print env (s ^ "\n") ^^ G.i Unreachable
+    | Flags.WASIMode -> compile_static_print env (s ^ "\n") ^^ G.i Unreachable
     | Flags.ICMode | Flags.StubMode -> Blob.lit env s ^^ ic_trap_str env ^^ G.i Unreachable
 
   let default_exports env =
@@ -3227,43 +3081,6 @@ module Dfinity = struct
       edesc = nr (TableExport (nr 0l))
     })
 
-  let register_reply env =
-    if E.mode env = Flags.AncientMode
-    then begin
-      (* in-canister emulation of the call context, in particular the “current reply” *)
-      Func.define_built_in env "empty_reply" ["databuf", I32Type; "elembuf", I32Type] []
-        (fun env -> trap_with env "dummy_reply called");
-      let fi =  E.built_in env "empty_reply" in
-      E.add_dfinity_type env (fi, [ Wasm_exts.CustomModule.DataBuf; Wasm_exts.CustomModule.ElemBuf ]);
-      E.add_global32 env "reply_cont" Mutable 0l
-    end
-
-  let set_dummy_reply env =
-    if E.mode env = Flags.AncientMode then
-      compile_unboxed_const (E.built_in env "empty_reply") ^^
-      system_call env "func" "externalize" ^^
-      set_reply_cont env
-    else G.nop
-
-  let export_start_stub env =
-    assert (E.mode env = Flags.AncientMode);
-    let empty_f = Func.of_body env [] [] (fun env1 ->
-      (* Set initial reply continuation *)
-      set_dummy_reply env ^^
-      (* Set up memory *)
-      G.i (Call (nr (E.built_in env1 "restore_mem"))) ^^
-      (* Collect garbage *)
-      G.i (Call (nr (E.built_in env1 "collect"))) ^^
-      (* Save memory *)
-      G.i (Call (nr (E.built_in env1 "save_mem")))
-    ) in
-    let fi = E.add_fun env "start_stub" empty_f in
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "start";
-      edesc = nr (FuncExport (nr fi))
-    });
-    E.add_dfinity_type env (fi, [])
-
   let export_start env start_fi =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
     (* Create an empty message *)
@@ -3278,24 +3095,8 @@ module Dfinity = struct
       edesc = nr (FuncExport (nr fi))
     })
 
-  let box_reference env =
-    assert (E.mode env = Flags.AncientMode);
-    Func.share_code1 env "box_reference" ("ref", I32Type) [I32Type] (fun env get_ref ->
-      Tagged.obj env Tagged.Reference [
-        get_ref ^^
-        ElemHeap.remember_reference env
-      ]
-    )
-
-  let unbox_reference env =
-    assert (E.mode env = Flags.AncientMode);
-    Heap.load_field 1l ^^
-    ElemHeap.recall_reference env
-
   let get_self_reference env =
     match E.mode env with
-    | Flags.ICMode ->
-      assert false
     | Flags.StubMode ->
       Func.share_code0 env "canister_self" [I32Type] (fun env ->
         let (set_len, get_len) = new_local env "len" in
@@ -3311,14 +3112,8 @@ module Dfinity = struct
 
         get_blob
       )
-    | Flags.AncientMode ->
-      system_call env "actor" "self"
     | _ ->
       assert false
-
-  let static_message_funcref env fi =
-    compile_unboxed_const fi ^^
-    system_call env "func" "externalize"
 
   let reject env arg_instrs =
     match E.mode env with
@@ -3333,8 +3128,6 @@ module Dfinity = struct
       | Flags.StubMode -> system_call env "ic0" "msg_reject"
       | _ -> assert false
       end
-    | Flags.AncientMode ->
-      trap_with env "Explicit reject on ancient system"
     | _ ->
       assert false
 
@@ -3360,21 +3153,9 @@ module Dfinity = struct
         | _ -> assert false
     )
 
-
-  (* References have special stack representation on the ancient platform,
-     but are just vanilla Blobs on the IC platform. *)
-  let reference_sr env = match E.mode env with
-    | Flags.AncientMode -> SR.UnboxedReference
-    | Flags.ICMode -> SR.Vanilla
-    | Flags.StubMode -> SR.Vanilla
-    | _ -> assert false
-
   (* Actor reference on the stack *)
   let actor_public_field env name =
     match E.mode env with
-    | Flags.AncientMode ->
-      compile_databuf_of_bytes env name ^^
-      system_call env "actor" "export"
     | Flags.ICMode | Flags.StubMode ->
       (* simply tuple canister name and function name *)
       Blob.lit env name ^^
@@ -3419,105 +3200,6 @@ module RTS_Exports = struct
 end (* RTS_Exports *)
 
 
-module OrthogonalPersistence = struct
-  (* This module implements the code that fakes orthogonal persistence *)
-
-  (* Strategy:
-     * There is a persistent global databuf called `datastore`
-     * Two helper functions are installed in each actor: restore_mem and save_mem.
-       (The don’t actually have names, just numbers, of course).
-     * Upon each message entry, call restore_mem. At the end, call save_mem.
-     * restore_mem checks if datastore is defined.
-       - If it is 0, then this is the first message ever received.
-         Run the actor’s start function (e.g. to initialize globals).
-       - If it is not 0, then load the databuf into memory, and set
-         the global with the end-of-memory pointer to the length.
-     * save_mem simply copies the whole dynamic memory (up to the end-of-memory
-       pointer) to a new databuf and stores that in datastore.
-  *)
-
-  let register_globals env =
-    assert (E.mode env = Flags.AncientMode);
-    (* We want to put all persistent globals first:
-       The index in the persist annotation refers to the index in the
-       list of *exported* globals, not all globals (at least with v8/dvm) *)
-    E.add_global32 env "datastore" Mutable 0l;
-    E.add_global32 env "elemstore" Mutable 0l;
-    E.export_global env "datastore";
-    E.export_global env "elemstore";
-    E.persist env (E.get_global env "datastore") Wasm_exts.CustomModule.DataBuf;
-    E.persist env (E.get_global env "elemstore") Wasm_exts.CustomModule.ElemBuf
-
-  let register env start_funid =
-    assert (E.mode env = Flags.AncientMode);
-    let mem_global = E.get_global env "datastore" in
-    let elem_global = E.get_global env "elemstore" in
-
-    Func.define_built_in env "restore_mem" [] [] (fun env1 ->
-       let (set_i, get_i) = new_local env1 "len" in
-       G.i (GlobalGet (nr mem_global)) ^^
-       Dfinity.system_call env1 "data" "length" ^^
-       set_i ^^
-
-       get_i ^^
-       compile_eq_const 0l ^^
-       G.if_ (ValBlockType None)
-         (* First run, call the start function *)
-         ( G.i (Call (nr start_funid)) )
-
-         (* Subsequent run *)
-         ( (* Set heap pointer based on databuf length *)
-           get_i ^^
-           compile_add_const ElemHeap.table_end ^^
-           Heap.set_heap_ptr env ^^
-           Heap.get_heap_ptr env ^^ Heap.grow_memory env ^^
-
-           (* Load memory *)
-           compile_unboxed_const ElemHeap.table_end ^^
-           get_i ^^
-           G.i (GlobalGet (nr mem_global)) ^^
-           compile_unboxed_zero ^^
-           Dfinity.system_call env1 "data" "internalize" ^^
-
-           (* Load reference counter *)
-           G.i (GlobalGet (nr elem_global)) ^^
-           Dfinity.system_call env1 "elem" "length" ^^
-           ElemHeap.set_ref_ctr env ^^
-
-           (* Load references *)
-           compile_unboxed_const ElemHeap.ref_location ^^
-           ElemHeap.get_ref_ctr env ^^
-           G.i (GlobalGet (nr elem_global)) ^^
-           compile_unboxed_zero ^^
-           Dfinity.system_call env1 "elem" "internalize"
-        )
-    );
-    Func.define_built_in env "save_mem" [] [] (fun env1 ->
-       (* Store memory *)
-       compile_unboxed_const ElemHeap.table_end ^^
-       Heap.get_heap_ptr env ^^
-       compile_unboxed_const ElemHeap.table_end ^^
-       G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-       Dfinity.system_call env "data" "externalize" ^^
-       G.i (GlobalSet (nr mem_global)) ^^
-
-       (* Store references *)
-       compile_unboxed_const ElemHeap.ref_location ^^
-       ElemHeap.get_ref_ctr env ^^
-       Dfinity.system_call env "elem" "externalize" ^^
-       G.i (GlobalSet (nr elem_global))
-    )
-
-  let save_mem env =
-    assert (E.mode env = Flags.AncientMode);
-    G.i (Call (nr (E.built_in env "save_mem")))
-
-  let restore_mem env =
-    assert (E.mode env = Flags.AncientMode);
-    G.i (Call (nr (E.built_in env "restore_mem")))
-
-end (* OrthogonalPersistence *)
-
 module HeapTraversal = struct
   (* Returns the object size (in words) *)
   let object_size env =
@@ -3530,8 +3212,6 @@ module HeapTraversal = struct
           compile_unboxed_const 2l
         ; Tagged.BigInt,
           compile_unboxed_const 5l (* HeapTag + sizeof(mp_int) *)
-        ; Tagged.Reference,
-          compile_unboxed_const 2l
         ; Tagged.Some,
           compile_unboxed_const 2l
         ; Tagged.Variant,
@@ -3707,8 +3387,8 @@ module Serialization = struct
   let raw_type env : Type.typ -> Type.typ = fun t ->
     let open Type in
     match normalize t with
-    | Obj (Actor, _) when E.mode env != Flags.AncientMode -> Prim Blob
-    | Func _  when E.mode env != Flags.AncientMode -> Tup [Prim Blob; Prim Text]
+    | Obj (Actor, _) -> Prim Blob
+    | Func _  -> Tup [Prim Blob; Prim Text]
     | t -> t
 
 
@@ -3833,14 +3513,7 @@ module Serialization = struct
           add_idx f.typ
         ) (sort_by_hash fs)
       | Obj (Actor, fs) ->
-        assert (E.mode env = Flags.AncientMode);
-        add_sleb128 (-23);
-        add_leb128 (List.length fs);
-        List.iter (fun f ->
-          add_leb128 (String.length f.lab);
-          Buffer.add_string buf f.lab;
-          add_idx f.typ
-        ) fs
+        assert false;
       | Array t ->
         add_sleb128 (-19); add_idx t
       | Opt t ->
@@ -3852,15 +3525,8 @@ module Serialization = struct
           add_leb128_32 h;
           add_idx f.typ
         ) (sort_by_hash vs)
-      | Func (s, c, tbs, ts1, ts2) ->
-        assert (Type.is_shared_sort s);
-        assert (E.mode env = Flags.AncientMode);
-        add_sleb128 (-22);
-        add_leb128 (List.length ts1);
-        List.iter add_idx ts1;
-        add_leb128 (List.length ts2);
-        List.iter add_idx ts2;
-        add_leb128 0 (* no annotations *)
+      | Func _ ->
+        assert false
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";
@@ -3888,9 +3554,6 @@ module Serialization = struct
         get_data_size ^^ code ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         set_data_size
-      in
-      let inc_ref_size i =
-        get_ref_size ^^ compile_add_const i ^^ set_ref_size
       in
 
       let size_word env code =
@@ -3954,8 +3617,7 @@ module Serialization = struct
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | (Func _ | Obj (Actor, _)) ->
-        assert (E.mode env = Flags.AncientMode);
-        inc_ref_size 1l
+        assert false
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
@@ -3978,8 +3640,6 @@ module Serialization = struct
 
       let advance_data_buf =
         get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_data_buf in
-      let advance_ref_buf =
-        get_ref_buf ^^ compile_add_const Heap.word_size ^^ set_ref_buf in
 
       let write_word code =
         let (set_word, get_word) = new_local env "word" in
@@ -4093,11 +3753,7 @@ module Serialization = struct
         Heap.memcpy env ^^
         get_len ^^ advance_data_buf
       | (Func _ | Obj (Actor, _)) ->
-        assert (E.mode env = Flags.AncientMode);
-        get_ref_buf ^^
-        get_x ^^ Dfinity.unbox_reference env ^^
-        store_unskewed_ptr ^^
-        advance_ref_buf
+        assert false
       | Non ->
         E.trap_with env "serializing value of type None"
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
@@ -4360,9 +4016,7 @@ module Serialization = struct
             ( E.trap_with env "IDL error: unexpected variant tag" )
         )
       | (Func _ | Obj (Actor, _)) ->
-        assert (E.mode env = Flags.AncientMode);
-        ReadBuf.read_word32 env get_ref_buf ^^
-        Dfinity.box_reference env
+        assert false;
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
@@ -4394,9 +4048,7 @@ module Serialization = struct
   let serialize env ts : G.t =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@serialize<" ^ ts_name ^ ">" in
-    (* On ancient API returns databuf/elembuf,
-       On IC API returns data/length pointers (will be GC next time!)
-    *)
+    (* returns data/length pointers (will be GC’ed next time!) *)
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type] (fun env get_x ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
@@ -4440,14 +4092,6 @@ module Serialization = struct
       E.else_trap_with env "data buffer not filled " ^^
 
       match E.mode env with
-      | Flags.AncientMode ->
-        (* Store it all in a databuf and an elembuf *)
-        get_data_start ^^ get_data_size ^^
-        Dfinity.system_call env "data" "externalize" ^^
-
-        get_refs_start ^^ get_refs_size ^^
-        Dfinity.system_call env "elem" "externalize"
-
       | Flags.ICMode | Flags.StubMode ->
         get_refs_size ^^
         compile_unboxed_const 0l ^^
@@ -4462,42 +4106,20 @@ module Serialization = struct
   let deserialize env ts =
     let ts_name = String.concat "," (List.map typ_id ts) in
     let name = "@deserialize<" ^ ts_name ^ ">" in
-    let args = match E.mode env with
-      | Flags.ICMode | Flags.StubMode -> []
-      | _ -> [("databuf",I32Type);("elembuf", I32Type)]  in
-    Func.share_code env name args (List.map (fun _ -> I32Type) ts) (fun env ->
+    Func.share_code env name [] (List.map (fun _ -> I32Type) ts) (fun env ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
       let (set_data_start, get_data_start) = new_local env "data_start" in
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
 
-      begin match E.mode env with
-      | Flags.AncientMode ->
-        let get_databuf = G.i (LocalGet (nr 0l)) in
-        let get_elembuf = G.i (LocalGet (nr 1l)) in
+      (* Allocate space for the data buffer and copy it *)
+      argument_data_size env ^^ set_data_size ^^
+      get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
+      argument_data_copy env get_data_start get_data_size ^^
 
-        (* Allocate space for the data buffer and copy it *)
-        get_databuf ^^ Dfinity.system_call env "data" "length" ^^ set_data_size ^^
-        get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
-        get_data_start ^^ get_data_size ^^ get_databuf ^^ compile_unboxed_const 0l ^^
-        Dfinity.system_call env "data" "internalize" ^^
-
-        (* Allocate space for the reference buffer and copy it *)
-        get_elembuf ^^ Dfinity.system_call env "elem" "length" ^^ set_refs_size ^^
-        get_refs_size ^^ compile_mul_const Heap.word_size ^^ Blob.dyn_alloc_scratch env ^^ set_refs_start ^^
-        get_refs_start ^^ get_refs_size ^^ get_elembuf ^^ compile_unboxed_const 0l ^^
-        Dfinity.system_call env "elem" "internalize"
-      | Flags.ICMode | Flags.StubMode ->
-        (* Allocate space for the data buffer and copy it *)
-        argument_data_size env ^^ set_data_size ^^
-        get_data_size ^^ Blob.dyn_alloc_scratch env ^^ set_data_start ^^
-        argument_data_copy env get_data_start get_data_size ^^
-
-        (* Allocate space for the reference buffer and copy it *)
-        compile_unboxed_const 0l ^^ set_refs_size (* none yet *)
-      | _ -> assert false
-      end ^^
+      (* Allocate space for the reference buffer and copy it *)
+      compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
 
       (* Allocate space for out parameters of parse_idl_header *)
       Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
@@ -4554,7 +4176,7 @@ module GC = struct
 
      Roots are:
      * All objects in the static part of the memory.
-     * all closures ever bound to a `funcref`.
+     * all closures ever passed out as callback or to async_method
        These therefore need to live in a separate area of memory
        (could be mutable array of pointers, similar to the reference table)
   *)
@@ -4805,7 +4427,6 @@ module StackRep = struct
     | Vanilla -> ValBlockType (Some I32Type)
     | UnboxedWord64 -> ValBlockType (Some I64Type)
     | UnboxedWord32 -> ValBlockType (Some I32Type)
-    | UnboxedReference -> ValBlockType (Some I32Type)
     | UnboxedTuple 0 -> ValBlockType None
     | UnboxedTuple 1 -> ValBlockType (Some I32Type)
     | UnboxedTuple n when not !Flags.multi_value -> assert false
@@ -4817,7 +4438,6 @@ module StackRep = struct
     | Vanilla -> "Vanilla"
     | UnboxedWord64 -> "UnboxedWord64"
     | UnboxedWord32 -> "UnboxedWord32"
-    | UnboxedReference -> "UnboxedReference"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
     | StaticThing _ -> "StaticThing"
@@ -4827,7 +4447,6 @@ module StackRep = struct
     | Unreachable, sr2 -> sr2
     | sr1, Unreachable -> sr1
     | UnboxedWord64, UnboxedWord64 -> UnboxedWord64
-    | UnboxedReference, UnboxedReference -> UnboxedReference
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
@@ -4850,17 +4469,9 @@ module StackRep = struct
     | Vanilla -> G.i Drop
     | UnboxedWord64 -> G.i Drop
     | UnboxedWord32 -> G.i Drop
-    | UnboxedReference -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | StaticThing _ -> G.nop
     | Unreachable -> G.nop
-
-  let materialize_unboxed_ref env = function
-    | StaticFun fi ->
-      assert false
-    | StaticMessage fi | PublicMethod (fi, _) ->
-      assert (E.mode env = Flags.AncientMode);
-      Dfinity.static_message_funcref env fi
 
   let materialize env = function
     | StaticFun fi ->
@@ -4870,9 +4481,6 @@ module StackRep = struct
         compile_unboxed_const fi;
         compile_unboxed_zero (* number of parameters: none *)
       ]
-    | (StaticMessage fi | PublicMethod (fi, _)) when E.mode env = Flags.AncientMode ->
-      Dfinity.static_message_funcref env fi ^^
-      Dfinity.box_reference env
     | StaticMessage fi ->
       assert false
     | PublicMethod (_, name) ->
@@ -4895,11 +4503,7 @@ module StackRep = struct
     | UnboxedWord32, Vanilla -> BoxedSmallWord.box env
     | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env
 
-    | UnboxedReference, Vanilla -> Dfinity.box_reference env
-    | Vanilla, UnboxedReference -> Dfinity.unbox_reference env
-
     | StaticThing s, Vanilla -> materialize env s
-    | StaticThing s, UnboxedReference -> materialize_unboxed_ref env s
     | StaticThing s, UnboxedTuple 0 -> G.nop
 
     | _, _ ->
@@ -5073,38 +4677,6 @@ end (* Var *)
 
 (* This comes late because it also deals with messages *)
 module FuncDec = struct
-  (* We use the first table slot for calls to funcrefs *)
-  (* This does not clash with slots for our functions as long as there
-     is at least one imported function (which we do not add to the table) *)
-  let tmp_table_slot = 0l
-
-  (* The type of messages (no return: one-shot, callbacks) *)
-  let message_ty env =
-    E.func_type env (FuncType ([I32Type; I32Type], []))
-
-  (* Expects databuf and elembuf on the stack, in serialized form. *)
-  let call_message_funcref env get_ref =
-    compile_unboxed_const tmp_table_slot ^^ (* slot number *)
-    get_ref ^^ (* the unboxed funcref *)
-    Dfinity.system_call env "func" "internalize" ^^
-
-    compile_unboxed_const tmp_table_slot ^^
-    G.i (CallIndirect (nr (message_ty env)))
-
-  (* The type of messages (with return: expect a callback as the first argument *)
-  let call_ty env =
-    E.func_type env (FuncType ([I32Type; I32Type; I32Type], []))
-
-
-  (* Expects reply callback funcref, databuf and elembuf on the stack, in serialized form. *)
-  let call_await_funcref env get_ref =
-    compile_unboxed_const tmp_table_slot ^^ (* slot number *)
-    get_ref ^^ (* the unboxed funcref *)
-    Dfinity.system_call env "func" "internalize" ^^
-
-    compile_unboxed_const tmp_table_slot ^^
-    G.i (CallIndirect (nr (call_ty env)))
-
   let bind_args ae0 first_arg as_ bind_arg =
     let rec go i ae = function
     | [] -> ae
@@ -5137,147 +4709,12 @@ module FuncDec = struct
     ))
 
   let message_cleanup env sort = match sort with
-      | Type.Shared Type.Write ->
-        (* Collect garbage *)
-        G.i (Call (nr (E.built_in env "collect"))) ^^
-        (* Save memory *)
-        if E.mode env = Flags.AncientMode
-        then OrthogonalPersistence.save_mem env
-        else G.nop
-      | Type.Shared Type.Query ->
-        (* Don't collect or persist *)
-        G.i Nop
+      | Type.Shared Type.Write -> G.i (Call (nr (E.built_in env "collect")))
+      | Type.Shared Type.Query -> G.i Nop
       | _ -> assert false
-
-  (* Similar, but for shared functions aka messages. Differences are:
-     - The closure is actually an index into the closure table
-     - The arguments need to be deserialized.
-     - The return value ought to be discarded
-     - We need to register the type in the custom types section
-     - Do GC at the end
-     - Fake orthogonal persistence
-  *)
-  let compile_message outer_env outer_ae sort control restore_env args mk_body ret_tys at =
-    assert (E.mode outer_env = Flags.AncientMode);
-    assert (List.length ret_tys = 0);
-    let ae0 = VarEnv.mk_fun_ae outer_ae in
-    match control with
-    | Type.Returns ->
-      Func.of_body outer_env ["clos", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
-        let get_databuf = G.i (LocalGet (nr 1l)) in
-        let get_elembuf = G.i (LocalGet (nr 2l)) in
-
-        (* Restore memory *)
-        OrthogonalPersistence.restore_mem env ^^
-
-        (* Set initial dummy continuation *)
-        Dfinity.set_dummy_reply env ^^
-
-        (* Look up closure *)
-        let (set_closure, get_closure) = new_local env "closure" in
-        G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall_closure env ^^
-        set_closure ^^
-
-        let (ae1, closure_code) = restore_env env ae0 get_closure in
-
-        (* Deserialize argument and add params to the environment *)
-        let arg_names = List.map (fun a -> a.it) args in
-        let arg_tys = List.map (fun a -> a.note) args in
-        let (ae2, setters) = VarEnv.add_argument_locals env ae1 arg_names in
-        get_databuf ^^ get_elembuf ^^
-        Serialization.deserialize env arg_tys ^^
-        G.concat (List.rev setters) ^^
-
-        closure_code ^^
-        mk_body env ae2 ^^
-        message_cleanup env sort
-      ))
-    | Type.Promises -> assert false
-    | Type.Replies ->
-      Func.of_body outer_env ["clos", I32Type; "reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
-        let get_reply  = G.i (LocalGet (nr 1l)) in
-        let get_databuf = G.i (LocalGet (nr 2l)) in
-        let get_elembuf = G.i (LocalGet (nr 3l)) in
-
-        (* Restore memory *)
-        OrthogonalPersistence.restore_mem env ^^
-
-        (* Story reply contiuation *)
-        get_reply ^^ Dfinity.set_reply_cont env ^^
-
-        (* Look up closure *)
-        let (set_closure, get_closure) = new_local env "closure" in
-        G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall_closure env ^^
-        set_closure ^^
-
-        let (ae1, closure_code) = restore_env env ae0 get_closure in
-
-        (* Deserialize argument and add params to the environment *)
-        let arg_names = List.map (fun a -> a.it) args in
-        let arg_tys = List.map (fun a -> a.note) args in
-        let (ae2, setters) = VarEnv.add_argument_locals env ae1 arg_names in
-        get_databuf ^^ get_elembuf ^^
-        Serialization.deserialize env arg_tys ^^
-        G.concat (List.rev setters) ^^
-
-        closure_code ^^
-        mk_body env ae2 ^^
-        message_cleanup env sort
-      ))
 
   let compile_static_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
     match E.mode outer_env, control with
-    | Flags.AncientMode, Type.Returns -> (* no callback *)
-      assert (List.length ret_tys = 0);
-      let ae0 = VarEnv.mk_fun_ae outer_ae in
-      Func.of_body outer_env ["databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
-        let get_databuf = G.i (LocalGet (nr 0l)) in
-        let get_elembuf = G.i (LocalGet (nr 1l)) in
-
-        (* Set up memory *)
-        OrthogonalPersistence.restore_mem env ^^
-
-        (* Set initial dummy continuation *)
-        Dfinity.set_dummy_reply env ^^
-
-        (* Deserialize argument and add params to the environment *)
-        let arg_names = List.map (fun a -> a.it) args in
-        let arg_tys = List.map (fun a -> a.note) args in
-        let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
-        get_databuf ^^ get_elembuf ^^
-        Serialization.deserialize env arg_tys ^^
-        G.concat (List.rev setters) ^^
-
-        mk_body env ae1 ^^
-        message_cleanup env sort
-      ))
-    | Flags.AncientMode, Type.Promises -> assert false
-    | Flags.AncientMode, Type.Replies -> (* with callbacks *)
-      let ae0 = VarEnv.mk_fun_ae outer_ae in
-      Func.of_body outer_env ["reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env -> G.with_region at (
-        let get_reply = G.i (LocalGet (nr 0l)) in
-        let get_databuf = G.i (LocalGet (nr 1l)) in
-        let get_elembuf = G.i (LocalGet (nr 2l)) in
-
-        (* Set up memory *)
-        OrthogonalPersistence.restore_mem env ^^
-
-        (* Story reply contiuation *)
-        get_reply ^^ Dfinity.set_reply_cont env ^^
-
-        (* Deserialize argument and add params to the environment *)
-        let arg_names = List.map (fun a -> a.it) args in
-        let arg_tys = List.map (fun a -> a.note) args in
-        let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
-        get_databuf ^^ get_elembuf ^^
-        Serialization.deserialize env arg_tys ^^
-        G.concat (List.rev setters) ^^
-
-        mk_body env ae1 ^^
-        message_cleanup env sort
-      ))
     | Flags.ICMode, _ ->
       let ae0 = VarEnv.mk_fun_ae outer_ae in
       Func.of_body outer_env [] [] (fun env -> G.with_region at (
@@ -5311,20 +4748,11 @@ module FuncDec = struct
       ))
     | (Flags.WasmMode | Flags.WASIMode), _ -> assert false
 
-  let declare_dfinity_type env has_closure has_reply fi =
-    if E.mode env = Flags.AncientMode then
-    E.add_dfinity_type env (fi,
-       (if has_closure then [ Wasm_exts.CustomModule.I32 ] else []) @
-       (if has_reply then [ Wasm_exts.CustomModule.FuncRef ] else []) @
-       [ Wasm_exts.CustomModule.DataBuf; Wasm_exts.CustomModule.ElemBuf ]
-    )
-
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env sort control name args mk_body ret_tys at =
     let (fi, fill) = E.reserve_fun pre_env name in
     if Type.is_shared_sort sort
     then begin
-      declare_dfinity_type pre_env false (control <> Type.Returns) fi ;
       ( SR.StaticMessage fi, fun env ae ->
         fill (compile_static_message env ae sort control args mk_body ret_tys at)
       )
@@ -5369,11 +4797,9 @@ module FuncDec = struct
       let f =
         if is_local
         then compile_local_function env ae restore_env args mk_body ret_tys at
-        else compile_message env ae sort control restore_env args mk_body ret_tys at in
+        else assert false (* no first class shared functions yet *) in
 
       let fi = E.add_fun env name f in
-
-      if not is_local then declare_dfinity_type env true (control <> Type.Returns) fi;
 
       let code =
         (* Allocate a heap object for the closure *)
@@ -5398,22 +4824,12 @@ module FuncDec = struct
         store_env
       in
 
-      (* Possibly turn into a funcref *)
       if is_local
       then
         SR.Vanilla,
         code ^^
         get_clos
-      else begin
-        assert (E.mode env = Flags.AncientMode);
-        SR.UnboxedReference,
-        code ^^
-        compile_unboxed_const fi ^^
-        Dfinity.system_call env "func" "externalize" ^^
-        get_clos ^^
-        ClosureTable.remember_closure env ^^
-        Dfinity.system_call env "func" "bind_i32"
-      end
+      else assert false (* no first class shared functions *)
 
   let lit env ae name sort control free_vars args mk_body ret_tys at =
 
@@ -5433,48 +4849,6 @@ module FuncDec = struct
     code ^^
     StackRep.adjust env sr SR.Vanilla ^^
     ClosureTable.remember_closure env
-
-
-  (* Wraps a local closure in a shared function that does serialization and
-     takes care of the reply global *)
-  (* Need this function once per type, so we can share based on ts *)
-  let callback_to_funcref env ts get_closure =
-    assert (E.mode env = Flags.AncientMode);
-    let name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
-    Func.define_built_in env name ["clos", I32Type; "reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env ->
-        let get_reply  = G.i (LocalGet (nr 1l)) in
-        let get_databuf = G.i (LocalGet (nr 2l)) in
-        let get_elembuf = G.i (LocalGet (nr 3l)) in
-
-        (* Restore memory *)
-        OrthogonalPersistence.restore_mem env ^^
-
-        (* Story reply contiuation *)
-        get_reply ^^ Dfinity.set_reply_cont env ^^
-
-        (* Look up closure *)
-        let (set_closure, get_closure) = new_local env "closure" in
-        G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall_closure env ^^ (* At this point we can remove the closure *)
-        set_closure ^^
-        get_closure ^^
-
-        (* Deserialize arguments  *)
-        get_databuf ^^ get_elembuf ^^
-        Serialization.deserialize env ts ^^
-
-        get_closure ^^
-        Closure.call_closure env (List.length ts) 0 ^^
-
-        message_cleanup env (Type.Shared Type.Write)
-      );
-    declare_dfinity_type env true true (E.built_in env name);
-    compile_unboxed_const (E.built_in env name) ^^
-    Dfinity.system_call env "func" "externalize" ^^
-    get_closure ^^ ClosureTable.remember_closure env ^^
-    Dfinity.system_call env "func" "bind_i32" ^^
-    Dfinity.get_reply_cont env ^^
-    Dfinity.system_call env "func" "bind_ref"
 
   (* Wraps a local closure in a local function that does serialization and
      takes care of the environment *)
@@ -5529,14 +4903,14 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.built_in env name)
 
-  let ic_call env ts1 ts2 get_funcref get_arg get_k get_r =
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
     match E.mode env with
     | Flags.ICMode | Flags.StubMode ->
 
       (* The callee *)
-      get_funcref ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
-      get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply callback *)
       closure_to_reply_callback env ts2 get_k ^^
       (* The reject callback *)
@@ -5547,20 +4921,16 @@ module FuncDec = struct
       Dfinity.system_call env "ic0" "call_simple" ^^
       (* TODO: Check error code *)
       G.i Drop
-    | Flags.AncientMode ->
-      callback_to_funcref env ts2 get_k ^^
-      get_arg ^^ Serialization.serialize env ts1 ^^
-      call_await_funcref env get_funcref
     | _ -> assert false
 
-  let ic_call_one_shot env ts get_funcref get_arg =
+  let ic_call_one_shot env ts get_meth_pair get_arg =
     match E.mode env with
     | Flags.ICMode | Flags.StubMode ->
 
       (* The callee *)
-      get_funcref ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
-      get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply callback *)
       ignoring_callback env ^^
       compile_unboxed_zero ^^
@@ -5573,44 +4943,11 @@ module FuncDec = struct
       Dfinity.system_call env "ic0" "call_simple" ^^
       (* TODO: Check error code *)
       G.i Drop
-    | Flags.AncientMode ->
-      get_arg ^^ Serialization.serialize env ts ^^
-      call_message_funcref env get_funcref
     | _ -> assert false
 
   let export_async_method env =
     let name = Dfinity.async_method_name in
     begin match E.mode env with
-    | Flags.AncientMode ->
-      Func.define_built_in env name ["reply", I32Type; "databuf", I32Type; "elembuf", I32Type] [] (fun env ->
-        let (set_closure, get_closure) = new_local env "closure" in
-        let get_reply  = G.i (LocalGet (nr 0l)) in
-        let get_databuf = G.i (LocalGet (nr 1l)) in
-        let get_elembuf = G.i (LocalGet (nr 2l)) in
-
-        (* Restore memory *)
-        OrthogonalPersistence.restore_mem env ^^
-
-        (* Story reply contiuation *)
-        get_reply ^^ Dfinity.set_reply_cont env ^^
-
-        (* Look up closure *)
-        get_databuf ^^ get_elembuf ^^
-        Serialization.deserialize env [Type.Prim Type.Word32] ^^
-        BoxedSmallWord.unbox env ^^
-        ClosureTable.recall_closure env ^^ (* At this point we can remove the closure *)
-        set_closure ^^ get_closure ^^ get_closure ^^
-        Closure.call_closure env 0 0 ^^
-        message_cleanup env (Type.Shared Type.Write)
-      );
-
-      let fi = E.built_in env name in
-      declare_dfinity_type env false true fi;
-      E.add_export env (nr {
-        name = Wasm.Utf8.decode name;
-        edesc = nr (FuncExport (nr fi))
-      })
-
     | Flags.ICMode | Flags.StubMode ->
       Func.define_built_in env name [] [] (fun env ->
         let (set_closure, get_closure) = new_local env "closure" in
@@ -5626,9 +4963,7 @@ module FuncDec = struct
         message_cleanup env (Type.Shared Type.Write)
       );
 
-
       let fi = E.built_in env name in
-      declare_dfinity_type env false true fi;
       E.add_export env (nr {
         name = Wasm.Utf8.decode ("canister_update " ^ name);
         edesc = nr (FuncExport (nr fi))
@@ -6580,8 +5915,8 @@ and compile_exp (env : E.t) ae exp =
     compile_exp_vanilla env ae e ^^
     Object.load_idx env e.note.note_typ name
   | ActorDotE (e, name) ->
-    Dfinity.reference_sr env,
-    compile_exp_as env ae (Dfinity.reference_sr env) e ^^
+    SR.Vanilla,
+    compile_exp_as env ae SR.Vanilla e ^^
     Dfinity.actor_public_field env name
   | PrimE (p, es) ->
 
@@ -6862,15 +6197,6 @@ and compile_exp (env : E.t) ae exp =
           serialize individually *)
         Serialization.serialize env ts ^^
         Dfinity.reply_with_data env
-      | Flags.AncientMode ->
-        let (set_funcref, get_funcref) = new_local env "funcref" in
-        Dfinity.get_reply_cont env ^^
-        set_funcref ^^
-        compile_exp_as env ae SR.Vanilla e ^^
-        (* TODO: We can try to avoid the boxing and pass the arguments to
-          serialize individually *)
-        Serialization.serialize env ts ^^
-        FuncDec.call_message_funcref env get_funcref
       | _ -> assert false
       end
 
@@ -6886,15 +6212,15 @@ and compile_exp (env : E.t) ae exp =
       (* TBR: Can we do better than using the notes? *)
       let _, _, _, ts1, _ = Type.as_func f.note.note_typ in
       let _, _, _, ts2, _ = Type.as_func k.note.note_typ in
-      let (set_funcref, get_funcref) = new_local env "funcref" in
+      let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
       let (set_arg, get_arg) = new_local env "arg" in
       let (set_k, get_k) = new_local env "k" in
       let (set_r, get_r) = new_local env "r" in
-      compile_exp_as env ae (Dfinity.reference_sr env) f ^^ set_funcref ^^
+      compile_exp_as env ae SR.Vanilla f ^^ set_meth_pair ^^
       compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
       compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
       compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
-      FuncDec.ic_call env ts1 ts2 get_funcref get_arg get_k get_r
+      FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r
       end
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
@@ -7000,14 +6326,14 @@ and compile_exp (env : E.t) ae exp =
         (* Non-one-shot functions have been rewritten in async.ml *)
         assert (control = Type.Returns);
 
-        let (set_funcref, get_funcref) = new_local env "funcref" in
+        let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
         let (set_arg, get_arg) = new_local env "arg" in
         let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
-        code1 ^^ StackRep.adjust env fun_sr (Dfinity.reference_sr env) ^^
-        set_funcref ^^
+        code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
+        set_meth_pair ^^
         compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
 
-        FuncDec.ic_call_one_shot env ts get_funcref get_arg
+        FuncDec.ic_call_one_shot env ts get_meth_pair get_arg
     end
   | SwitchE (e, cs) ->
     SR.Vanilla,
@@ -7066,7 +6392,7 @@ and compile_exp (env : E.t) ae exp =
       get_k
       get_r
   | ActorE (i, ds, fs, _) ->
-    Dfinity.reference_sr env,
+    SR.Vanilla,
     let captured = Freevars.exp exp in
     let prelude_names = find_prelude_names env in
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
@@ -7491,14 +6817,8 @@ and export_actor_field env  ae (f : Ir.field) =
   (* There should be no code associated with this *)
   assert (G.is_nop code);
 
-  let is_await = match Type.normalize f.note with
-      | Type.Func(_,Type.Replies,_,_,_) -> true
-      | _ -> false in
-
-  FuncDec.declare_dfinity_type env false is_await fi;
   E.add_export env (nr {
     name = Wasm.Utf8.decode (match E.mode env with
-      | Flags.AncientMode -> f.it.name
       | Flags.ICMode | Flags.StubMode ->
         Mo_types.Type.(
         match normalize f.note with
@@ -7521,16 +6841,12 @@ and actor_lit outer_env this ds fs at =
       (E.get_trap_with outer_env)
       ClosureTable.table_end in
 
-    if E.mode mod_env = Flags.AncientMode then OrthogonalPersistence.register_globals mod_env;
     Heap.register_globals mod_env;
-    if E.mode mod_env = Flags.AncientMode then ElemHeap.register_globals mod_env;
     Stack.register_globals mod_env;
 
     Dfinity.system_imports mod_env;
     RTS.system_imports mod_env;
     RTS_Exports.system_exports mod_env;
-
-    Dfinity.register_reply mod_env;
 
     let start_fun = Func.of_body mod_env [] [] (fun env -> G.with_region at @@
       let ae0 = VarEnv.empty_ae in
@@ -7539,7 +6855,7 @@ and actor_lit outer_env this ds fs at =
       let (ae1, prelude_code) = compile_prelude env ae0 in
 
       (* Add this pointer *)
-      let ae2 = VarEnv.add_local_deferred ae1 this (Dfinity.reference_sr env) Dfinity.get_self_reference false in
+      let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
 
       (* Reverse the fs, to a map from variable to exported name *)
       let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
@@ -7555,18 +6871,12 @@ and actor_lit outer_env this ds fs at =
 
     if E.mode mod_env = Flags.ICMode then Dfinity.export_start mod_env start_fi;
     if E.mode mod_env = Flags.StubMode then Dfinity.export_start mod_env start_fi;
-    if E.mode mod_env = Flags.AncientMode then OrthogonalPersistence.register mod_env start_fi;
 
     let m = conclude_module mod_env this None in
     let (_map, wasm_binary) = Wasm_exts.CustomModuleEncode.encode m in
     wasm_binary in
 
     match E.mode outer_env with
-    | Flags.AncientMode ->
-      Dfinity.compile_databuf_of_bytes outer_env wasm_binary ^^
-      (* Create actorref *)
-      Dfinity.system_call outer_env "module" "new" ^^
-      Dfinity.system_call outer_env "actor" "new"
     | Flags.StubMode ->
       let (set_idx, get_idx) = new_local outer_env "idx" in
       let (set_len, get_len) = new_local outer_env "len" in
@@ -7599,7 +6909,7 @@ and actor_lit outer_env this ds fs at =
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 this ds fs =
   (* Add this pointer *)
-  let ae2 = VarEnv.add_local_deferred ae1 this (Dfinity.reference_sr env) Dfinity.get_self_reference false in
+  let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
 
   (* Reverse the fs, to a map from variable to exported name *)
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
@@ -7680,8 +6990,6 @@ and conclude_module env module_name start_fi_o =
         locals_names =
             List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
       };
-      types = E.get_dfinity_types env;
-      persist = E.get_persist env
     } in
 
   match E.get_rts env with
@@ -7691,24 +6999,16 @@ and conclude_module env module_name start_fi_o =
 let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts prelude Dfinity.trap_with ClosureTable.table_end in
 
-  if E.mode env = Flags.AncientMode then OrthogonalPersistence.register_globals env;
   Heap.register_globals env;
-  if E.mode env = Flags.AncientMode then ElemHeap.register_globals env;
   Stack.register_globals env;
 
   Dfinity.system_imports env;
   RTS.system_imports env;
   RTS_Exports.system_exports env;
 
-  Dfinity.register_reply env;
-
   let start_fun = compile_start_func env (prelude :: progs) in
   let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o = match E.mode env with
-    | Flags.AncientMode ->
-      OrthogonalPersistence.register env start_fi;
-      Dfinity.export_start_stub env;
-      None
     | Flags.ICMode | Flags.StubMode -> Dfinity.export_start env start_fi; None
     | Flags.WasmMode | Flags.WASIMode-> Some (nr start_fi) in
 

@@ -124,7 +124,6 @@ let encode (em : extended_module) =
     let list f xs = List.iter f xs
     let opt f xo = Lib.Option.iter f xo
     let vec f xs = len (List.length xs); list f xs
-    let veci f xs = len (List.length xs); List.iteri f xs
 
     let gap32 () = let p = pos s in u32 0l; u8 0; p
     let patch_gap32 p n =
@@ -543,50 +542,6 @@ let encode (em : extended_module) =
     let data_section data =
       section 11 (vec memory_segment) data (data <> [])
 
-    (* DFINITY Types section *)
-
-    (*
-    The dfinity types are specified in terms of function ids excluding
-    imports, which is unidiomatic. We use real function ids internally,
-    so we have to work around it here.
-    *)
-    let count_fun_imports (em : extended_module) =
-      let is_fun_import imp = match imp.it.idesc.it with
-            | FuncImport _ -> true
-            | _ -> false in
-      Lib.List32.length (List.filter is_fun_import em.module_.imports)
-
-    let dfinity_type = function
-        | CustomModule.I32      -> vu32 0x7fl
-        | CustomModule.DataBuf  -> vu32 0x6cl
-        | CustomModule.ElemBuf  -> vu32 0x6bl
-        | CustomModule.ActorRef -> vu32 0x6fl
-        | CustomModule.FuncRef  -> vu32 0x6dl
-
-    let dfinity_fun_type (_fi, param_types) =
-      vu32 0x60l; (* function type op code *)
-      vec dfinity_type param_types;
-      vu32 0l
-
-    let dfinity_fun_type_map ni i (fi, _param_types) =
-      vu32 (Int32.sub fi ni);
-      vu32 (Int32.of_int i)
-
-    let dfinity_types_section ni tys =
-      (* We could deduplicate the types here *)
-      custom_section "types" (vec dfinity_fun_type) tys (tys <> []);
-      custom_section "typeMap" (veci (dfinity_fun_type_map ni)) tys (tys <> [])
-
-    (* DFINITY Persist section *)
-
-    let dfinity_persist_global (i, sort) =
-      vu32 0x03l; (* a global *)
-      vu32 i; (* the index *)
-      dfinity_type sort
-
-    let dfinity_persist_section pgs =
-      custom_section "persist" (vec dfinity_persist_global) pgs (pgs <> [])
-
     (* Name section *)
 
     let assoc_list : 'a. ('a -> unit) -> (int32 * 'a) list -> unit = fun f xs ->
@@ -626,8 +581,6 @@ let encode (em : extended_module) =
       code_section m.funcs;
       data_section m.data;
       (* other optional sections *)
-      dfinity_types_section (count_fun_imports em) em.types;
-      dfinity_persist_section em.persist;
       name_section em.name;
   end
   in E.module_ em;
