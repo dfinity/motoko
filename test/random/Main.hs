@@ -38,7 +38,10 @@ arithProps = testGroup "Arithmetic/logic"
   ]
 
 conversionProps = testGroup "Numeric conversions"
-  [ QC.testProperty "roundtrip Word Nat Word " $ prop_roundtripWNW
+  [ QC.testProperty "roundtrip Word64 Nat Word64 " $ prop_roundtripWNW @64
+  , QC.testProperty "roundtrip Word32 Nat Word32 " $ prop_roundtripWNW @32
+  , QC.testProperty "roundtrip Word16 Nat Word16 " $ prop_roundtripWNW @16
+  , QC.testProperty "roundtrip Word8 Nat Word8 " $ prop_roundtripWNW @8
   , QC.testProperty "modulo Nat Word64 Nat" $ prop_moduloNWN @64
   , QC.testProperty "modulo Nat Word32 Nat" $ prop_moduloNWN @32
   , QC.testProperty "modulo Nat Word16 Nat" $ prop_moduloNWN @16
@@ -163,12 +166,12 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
   assertSuccessNoFuzz id res
 
 
-newtype ConversionTest = ConversionTest (ASTerm (BitLimited 64 Word)) deriving Show
+newtype ConversionTest n = ConversionTest (ASTerm (BitLimited n Word)) deriving Show
 
-instance Arbitrary ConversionTest where
-  arbitrary = ConversionTest . ConvertNatToWord . ConvertWordToNat . Neuralgic <$> (arbitrary :: Gen (Neuralgic (BitLimited 64 Word)))
+instance WordLike n => Arbitrary (ConversionTest n) where
+  arbitrary = ConversionTest . ConvertNatToWord . ConvertWordToNat . Neuralgic <$> (arbitrary :: Gen (Neuralgic (BitLimited n Word)))
 
-prop_roundtripWNW :: ConversionTest -> Property
+prop_roundtripWNW :: ConversionTest n -> Property
 prop_roundtripWNW (ConversionTest term) =
     case term of
       ConvertNatToWord (ConvertWordToNat n) ->
