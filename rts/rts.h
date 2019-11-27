@@ -13,10 +13,13 @@
 /*
 Motoko pointers are offset by one. So let us represent
 them as a typedef, and access the fields using the payload macro.
+
+Note that for the purpose of ./test_rts, this needs to be 64 bit safe. So do
+_not_ encode that a word is 4 bytes!
 */
 typedef intptr_t as_ptr;
 #define SKEW(p) (((as_ptr)p)-1)
-#define UNSKEW(p) ((uint32_t *)(p+1))
+#define UNSKEW(p) ((size_t *)(p+1))
 #define FIELD(p,n) (UNSKEW(p)[n])
 #define TAG(p) FIELD(p,0)
 #define TEXT_LEN(p) (FIELD(p,1))
