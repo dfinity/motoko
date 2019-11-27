@@ -10,8 +10,8 @@ ping! 8
 ping! 8
 ping! 8
 ping! 8
-go 2: 8
-go 3: 8
-go 4: 8
-go 5: 8
+go 2: 7
+go 3: 6
+go 4: 5
+go 5: 4
 ← completed

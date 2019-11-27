@@ -3,7 +3,6 @@
 # This works with bash
 
 MOC?=../../src/moc
-DVM?=../../test/dvm.sh
 # we need to specify the output if there is more than one .mo file
 OUT=main.wasm
 LIB=list.mo types.mo server.mo client.mo
@@ -12,12 +11,8 @@ SAMPLES:= test
 
 all:
 	rm -f main.txt
-	$(MOC) -ancient-system-api -r -t -v main.mo >main.txt 2>&1
+	$(MOC) -stub-system-api -r -t -v main.mo >main.txt 2>&1
 	cat main.txt
-
-dvm:
-	$(MOC) -ancient-system-api -o $(OUT) main.mo
-	$(DVM) $(OUT)
 
 clean:
 	rm -f $(OUT) main.txt
