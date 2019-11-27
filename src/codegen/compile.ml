@@ -661,7 +661,13 @@ module RTS = struct
     E.add_func_import env "rts" "skip_leb128" [I32Type] [];
     E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "find_field" [I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] []
+    E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "remember_closure" [I32Type] [I32Type];
+    E.add_func_import env "rts" "recall_closure" [I32Type] [I32Type];
+    E.add_func_import env "rts" "closure_count" [] [I32Type];
+    E.add_func_import env "rts" "closure_box" [] [I32Type];
+    E.add_func_import env "rts" "closure_table_size" [] [I32Type];
+    ()
 
 end (* RTS *)
 
@@ -932,68 +938,12 @@ module ElemHeap = struct
 end (* ElemHeap *)
 
 module ClosureTable = struct
-  (*
-  Another fixed-size table at the beginning of memory: When we create a closure
-  that is bound to a funcref that we pass out, we need this level of indirection for
-  two reasons:
-  - we cannot just bind the address via i32.bind, because that is not stable, due
-    to our moving GC, and
-  - we need to remember that these closures are roots (and currently never freed!)
-
-  Therefore we maintain a static table from closure index to address of the closure
-  on the heap.
-  *)
-
-  let max_entries = 1024l
-  let loc = ElemHeap.table_end
-  let table_end = Int32.(add loc (mul max_entries Heap.word_size))
-
-  (* For reasons I do not recall, we use the first word of the table as the counter,
-     and not a global.
-  *)
-  let get_counter = compile_unboxed_const loc ^^ load_unskewed_ptr
-
-  (* Assumes a reference on the stack, and replaces it with an index into the
-     reference table *)
-  let remember_closure env : G.t =
-    Func.share_code1 env "remember_closure" ("ptr", I32Type) [I32Type] (fun env get_ptr ->
-      (* Check table space *)
-      get_counter ^^
-      compile_unboxed_const (Int32.sub max_entries 1l) ^^
-      G.i (Compare (Wasm.Values.I32 I64Op.LtU)) ^^
-      E.else_trap_with env "Closure table full" ^^
-
-      (* Return index *)
-      get_counter ^^
-      compile_add_const 1l ^^
-
-      (* Store reference *)
-      get_counter ^^
-      compile_add_const 1l ^^
-      compile_mul_const Heap.word_size ^^
-      compile_add_const loc ^^
-      get_ptr ^^
-      store_unskewed_ptr ^^
-
-      (* Bump counter *)
-      compile_unboxed_const loc ^^
-      get_counter ^^
-      compile_add_const 1l ^^
-      store_unskewed_ptr
-    )
-
-  (* Assumes a index into the table on the stack, and replaces it with a ptr to the closure *)
-  let recall_closure env : G.t =
-    Func.share_code1 env "recall_closure" ("closure_idx", I32Type) [I32Type] (fun env get_closure_idx ->
-      get_closure_idx ^^
-      compile_mul_const Heap.word_size ^^
-      compile_add_const loc ^^
-      load_unskewed_ptr
-    )
-
-  let get_outstanding_callbacks env =
-    get_counter
-
+  (* See rts/closure-table.c *)
+  let remember env : G.t = E.call_import env "rts" "remember_closure"
+  let recall env : G.t = E.call_import env "rts" "recall_closure"
+  let count env : G.t = E.call_import env "rts" "closure_count"
+  let size env : G.t = E.call_import env "rts" "closure_table_size"
+  let root env : G.t = E.call_import env "rts" "closure_box"
 end (* ClosureTable *)
 
 module Bool = struct
@@ -3394,6 +3344,10 @@ module RTS_Exports = struct
       name = Wasm.Utf8.decode "alloc_bytes";
       edesc = nr (FuncExport (nr (E.built_in env "alloc_bytes")))
     });
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "alloc_words";
+      edesc = nr (FuncExport (nr (E.built_in env "alloc_words")))
+    });
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
         E.trap_with env "bigint function error"
@@ -3403,7 +3357,7 @@ module RTS_Exports = struct
       name = Wasm.Utf8.decode "bigint_trap";
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
-    let idl_trap_fi = E.add_fun env "idl_trap" (
+    let rts_trap_fi = E.add_fun env "rts_trap" (
       Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
         let get_str = G.i (LocalGet (nr 0l)) in
         let get_len = G.i (LocalGet (nr 1l)) in
@@ -3412,8 +3366,8 @@ module RTS_Exports = struct
       )
     ) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "idl_trap";
-      edesc = nr (FuncExport (nr idl_trap_fi))
+      name = Wasm.Utf8.decode "rts_trap";
+      edesc = nr (FuncExport (nr rts_trap_fi))
     })
 
 end (* RTS_Exports *)
@@ -4698,16 +4652,9 @@ module GC = struct
           set_end_to_space in
 
       (* Go through the roots, and evacuate them *)
-      ClosureTable.get_counter ^^
-      from_0_to_n env (fun get_i -> evac (
-        get_i ^^
-        compile_add_const 1l ^^
-        compile_mul_const Heap.word_size ^^
-        compile_add_const ClosureTable.loc ^^
-        compile_add_const ptr_skew
-      )) ^^
+      evac (ClosureTable.root env) ^^
       HeapTraversal.walk_heap_from_to env
-        (compile_unboxed_const Int32.(add ClosureTable.table_end ptr_skew))
+        (compile_unboxed_const Int32.(add ElemHeap.table_end ptr_skew))
         (compile_unboxed_const Int32.(add end_of_static_space ptr_skew))
         (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
 
@@ -5176,7 +5123,7 @@ module FuncDec = struct
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall_closure env ^^
+        ClosureTable.recall env ^^
         set_closure ^^
 
         let (ae1, closure_code) = restore_env env ae0 get_closure in
@@ -5209,7 +5156,7 @@ module FuncDec = struct
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall_closure env ^^
+        ClosureTable.recall env ^^
         set_closure ^^
 
         let (ae1, closure_code) = restore_env env ae0 get_closure in
@@ -5411,7 +5358,7 @@ module FuncDec = struct
         compile_unboxed_const fi ^^
         Dfinity.system_call env "func" "externalize" ^^
         get_clos ^^
-        ClosureTable.remember_closure env ^^
+        ClosureTable.remember env ^^
         Dfinity.system_call env "func" "bind_i32"
       end
 
@@ -5432,7 +5379,7 @@ module FuncDec = struct
     let sr, code = lit env ae "anon_async" Type.Local Type.Returns free_vars [] mk_body [] at in
     code ^^
     StackRep.adjust env sr SR.Vanilla ^^
-    ClosureTable.remember_closure env
+    ClosureTable.remember env
 
 
   (* Wraps a local closure in a shared function that does serialization and
@@ -5455,7 +5402,7 @@ module FuncDec = struct
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall_closure env ^^ (* At this point we can remove the closure *)
+        ClosureTable.recall env ^^ (* At this point we can remove the closure *)
         set_closure ^^
         get_closure ^^
 
@@ -5471,7 +5418,7 @@ module FuncDec = struct
     declare_dfinity_type env true true (E.built_in env name);
     compile_unboxed_const (E.built_in env name) ^^
     Dfinity.system_call env "func" "externalize" ^^
-    get_closure ^^ ClosureTable.remember_closure env ^^
+    get_closure ^^ ClosureTable.remember env ^^
     Dfinity.system_call env "func" "bind_i32" ^^
     Dfinity.get_reply_cont env ^^
     Dfinity.system_call env "func" "bind_ref"
@@ -5486,7 +5433,7 @@ module FuncDec = struct
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall_closure env ^^ (* At this point we can remove the closure *)
+        ClosureTable.recall env ^^ (* At this point we can remove the closure *)
         set_closure ^^
         get_closure ^^
 
@@ -5499,7 +5446,7 @@ module FuncDec = struct
         message_cleanup env (Type.Shared Type.Write)
       );
     compile_unboxed_const (E.built_in env name) ^^
-    get_closure ^^ ClosureTable.remember_closure env
+    get_closure ^^ ClosureTable.remember env
 
   let closure_to_reject_callback env get_closure =
     assert (E.mode env = Flags.StubMode);
@@ -5508,7 +5455,7 @@ module FuncDec = struct
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall_closure env ^^ (* At this point we can remove the closure *)
+        ClosureTable.recall env ^^ (* At this point we can remove the closure *)
         set_closure ^^
         get_closure ^^
 
@@ -5521,7 +5468,7 @@ module FuncDec = struct
         message_cleanup env (Type.Shared Type.Write)
       );
     compile_unboxed_const (E.built_in env name) ^^
-    get_closure ^^ ClosureTable.remember_closure env
+    get_closure ^^ ClosureTable.remember env
 
   let ignoring_callback env =
     assert (E.mode env = Flags.StubMode);
@@ -5598,7 +5545,7 @@ module FuncDec = struct
         get_databuf ^^ get_elembuf ^^
         Serialization.deserialize env [Type.Prim Type.Word32] ^^
         BoxedSmallWord.unbox env ^^
-        ClosureTable.recall_closure env ^^ (* At this point we can remove the closure *)
+        ClosureTable.recall env ^^ (* At this point we can remove the closure *)
         set_closure ^^ get_closure ^^ get_closure ^^
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
@@ -5620,7 +5567,7 @@ module FuncDec = struct
         (* Deserialize and look up closure argument *)
         Serialization.deserialize env [Type.Prim Type.Word32] ^^
         BoxedSmallWord.unbox env ^^
-        ClosureTable.recall_closure env ^^
+        ClosureTable.recall env ^^
         set_closure ^^ get_closure ^^ get_closure ^^
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
@@ -6775,9 +6722,13 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       Heap.get_total_allocation env ^^ BigNum.from_word64 env
 
-    | OtherPrim "rts_outstanding_callbacks", [] ->
+    | OtherPrim "rts_callback_table_count", [] ->
       SR.Vanilla,
-      ClosureTable.get_outstanding_callbacks env ^^ Prim.prim_word32toNat env
+      ClosureTable.count env ^^ Prim.prim_word32toNat env
+
+    | OtherPrim "rts_callback_table_size", [] ->
+      SR.Vanilla,
+      ClosureTable.size env ^^ Prim.prim_word32toNat env
 
 
     | OtherPrim "idlHash", [e] ->
@@ -7519,7 +7470,7 @@ and actor_lit outer_env this ds fs at =
       (E.get_rts outer_env)
       (E.get_prelude outer_env)
       (E.get_trap_with outer_env)
-      ClosureTable.table_end in
+      ElemHeap.table_end in
 
     if E.mode mod_env = Flags.AncientMode then OrthogonalPersistence.register_globals mod_env;
     Heap.register_globals mod_env;
@@ -7689,7 +7640,7 @@ and conclude_module env module_name start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts prelude Dfinity.trap_with ClosureTable.table_end in
+  let env = E.mk_global mode rts prelude Dfinity.trap_with ElemHeap.table_end in
 
   if E.mode env = Flags.AncientMode then OrthogonalPersistence.register_globals env;
   Heap.register_globals env;

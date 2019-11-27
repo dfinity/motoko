@@ -6,15 +6,19 @@
 
 typedef intptr_t as_ptr;
 
+
 as_ptr alloc_bytes(size_t n) {
     void *ptr = malloc(n);
     if (ptr == NULL) { printf("OOM\n"); exit(1); };
     return ((as_ptr)ptr) - 1;
 };
+as_ptr alloc_words(size_t n) {
+    return alloc_bytes(sizeof(uint32_t) * n);
+};
 
-void idl_trap() {
-  printf("IDL trap\n");
-  exit(1);
+void rts_trap() {
+  printf("RTS trap\n");
+  abort();
 }
 void bigint_trap() {
   printf("Bigint trap\n");

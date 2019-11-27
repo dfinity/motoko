@@ -35,7 +35,16 @@ void idl_trap_with(const char *str) {
   char msg[sizeof prefix + len];
   as_memcpy(msg, prefix, sizeof prefix - 1);
   as_memcpy(msg + sizeof prefix - 1, str, len);
-  idl_trap(msg, sizeof prefix - 1 + len);
+  rts_trap(msg, sizeof prefix - 1 + len);
+}
+
+void rts_trap_with(const char *str) {
+  const char prefix[] = "RTS error: ";
+  int len = as_strlen(str);
+  char msg[sizeof prefix + len];
+  as_memcpy(msg, prefix, sizeof prefix - 1);
+  as_memcpy(msg + sizeof prefix - 1, str, len);
+  rts_trap(msg, sizeof prefix - 1 + len);
 }
 
 
