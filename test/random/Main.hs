@@ -26,7 +26,7 @@ import Numeric
 
 import System.Process hiding (proc)
 import Turtle
--- import Debug.Trace (traceShowId)
+import Debug.Trace (traceShowId)
 
 main = defaultMain tests
   where tests :: TestTree
@@ -39,7 +39,7 @@ arithProps = testGroup "Arithmetic/logic"
 
 conversionProps = testGroup "Numeric conversions"
   [ QC.testProperty "roundtrip Word Nat Word " $ prop_roundtripWNW
-  --, QC.testProperty "modulo Nat Word Nat" $ prop_moduloNWN
+  , QC.testProperty "modulo Nat Word Nat" $ prop_moduloNWN
   ]
 
 utf8Props = testGroup "UTF-8 coding"
@@ -175,6 +175,17 @@ prop_roundtripWNW (ConversionTest term) =
   where bitsIn :: KnownNat n => ASTerm (BitLimited n Word) -> Proxy n
         bitsIn _ = Proxy
 
+
+newtype ModuloTest = ModuloTest (ASTerm Natural) deriving Show
+
+instance Arbitrary ModuloTest where
+  arbitrary = ModuloTest . Neuralgic <$> (arbitrary :: Gen (Neuralgic Natural))
+
+prop_moduloNWN :: ModuloTest -> Property
+prop_moduloNWN (ModuloTest term@(Neuralgic n)) = monadicIO $ runScriptNoFuzz "moduloNWN" (traceShowId testCase)
+    where n' = evalN n .&. (0xFFFFFFFFFFFFFFFF :: Natural){- TODO: bitwidth -}
+          testCase = "assert(" <> unparseAS (ConvertWordToNatural @64 (ConvertNaturalToWord term)) <> " == " <> show n' <> ")"
+
 data Matching where
   Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
 
@@ -302,7 +313,7 @@ infix 1 `guardedFrom`
 
 instance Arbitrary (Neuralgic Natural) where
   arbitrary =  (\n -> if n >= 0 then pure (fromIntegral n) else Nothing)
-               `guardedFrom` [Around0, AroundPos 30, AroundPos 63, LargePos]
+               `guardedFrom` [Around0, AroundPos 30, AroundPos 63, LargePos, AroundPos 77]
 
 instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Natural)) where
   arbitrary = fmap NatN <$> trapNat bits `guardedFrom` menu bits
