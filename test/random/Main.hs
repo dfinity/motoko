@@ -789,7 +789,9 @@ eval (ConvertNatural t) = fromIntegral <$> evaluate t
 eval (ConvertNat t) = fromIntegral <$> evaluate t
 eval (ConvertInt t) = fromIntegral <$> evaluate t
 eval (ConvertWord t) = fromIntegral <$> evaluate t
-eval (ConvertNaturalToWord t) = fromIntegral . (.&. 0xFFFFFFFFFFFFFFFF{- TODO: bitwidth -}) <$> evaluate t
+eval c@(ConvertNaturalToWord t) = fromIntegral . (.&. (2 ^ bits c - 1)) <$> evaluate t
+    where bits :: forall n . KnownNat n => ASTerm (BitLimited n Word) -> Natural
+          bits _ = fromIntegral $ natVal (Proxy @n)
 eval (ConvertWordToNatural t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evaluate c
                              eval $ if c then a else b
