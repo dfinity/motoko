@@ -103,20 +103,25 @@ let rec is_scope_typ t =
   | ParT t -> is_scope_typ t
   | _ -> false
 
-let funcT(sort, tbs, t1, t2) =
-  match tbs, t2.it with
-  | [], (AsyncT (t21, _)) when is_scope_typ t21 ->
-    FuncT(sort, [scope_bind()], t1, t2)
-  | _ -> FuncT(sort, tbs, t1, t2)
+let funcT(sort, tbs_opt, t1, t2) =
+  match tbs_opt with
+  | None ->
+    (match t2.it with
+     | AsyncT (t21, _) when is_scope_typ t21 ->
+       FuncT(sort, [scope_bind()], t1, t2)
+     | _ ->
+       FuncT(sort, [], t1, t2))
+  | Some tbs -> FuncT(sort, tbs, t1, t2)
 
-let funcE (f, s, tbs, p, t_opt, e) =
-  match tbs, t_opt with
-  | [], Some t ->
+let funcE (f, s, tbs_opt, p, t_opt, e) =
+  match tbs_opt, t_opt with
+  | None, None -> FuncE(f, s, [], p, t_opt, e)
+  | None, Some t ->
     (match t.it with
      | AsyncT (t1, _) when is_scope_typ t1 ->
        FuncE(f, s, [scope_bind()], p, t_opt, e)
-     | _ -> FuncE(f, s, tbs, p, t_opt, e))
-  | _ -> FuncE(f, s, tbs, p, t_opt, e)
+     | _ -> FuncE(f, s, [], p, t_opt, e))
+  | Some tbs, _ -> FuncE(f, s, tbs, p, t_opt, e)
 
 %}
 
@@ -294,9 +299,13 @@ typ_item :
 typ_args :
   | LT ts=seplist(typ, COMMA) GT { ts }
 
-%inline typ_params_opt :
+%inline typ_params :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
+
+%inline typ_params_opt :
+  | (* empty *) { None }
+  | LT ts=seplist(typ_bind, COMMA) GT { Some ts }
 
 typ_field :
   | mut=var_opt x=id COLON t=typ
@@ -640,7 +649,7 @@ dec_nonvar :
         | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
         | _ -> p, e
       in LetD (p', e') @? at $sloc }
-  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=typ_params EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
@@ -662,7 +671,7 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let_or_exp named x (funcE(x.it, s, tps, p, t, e)) (at $sloc) }
   | s=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
+      tps=typ_params p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs

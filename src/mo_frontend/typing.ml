@@ -311,7 +311,7 @@ and check_typ' env typ : T.typ =
       end;
 
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
-    T.Func (sort.it, c', T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort.it, T.map_control (T.close cs) c', T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
     T.Opt (check_typ env typ)
   | VariantT tags ->
