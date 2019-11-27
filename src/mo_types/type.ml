@@ -1294,4 +1294,3 @@ let rec string_of_typ_expand t =
   | _ -> s
 
 let is_shared_sort sort = sort <> Local
-
