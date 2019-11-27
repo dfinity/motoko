@@ -853,7 +853,7 @@ end (* Stack *)
 module ClosureTable = struct
   (*
   Another fixed-size table at the beginning of memory: When we create a closure
-  that is bound to a funcref that we pass out, we need this level of indirection for
+  that is bound to a callback that we pass out, we need this level of indirection for
   two reasons:
   - we cannot just bind the address via i32.bind, because that is not stable, due
     to our moving GC, and
@@ -1007,7 +1007,6 @@ module Tagged = struct
     | Object
     | ObjInd (* The indirection used for object fields *)
     | Array (* Also a tuple *)
-    | Reference (* Either arrayref or funcref, no need to distinguish here *)
     | Int (* Contains a 64 bit number *)
     | MutBox (* used for mutable heap-allocated variables *)
     | Closure
@@ -1023,7 +1022,6 @@ module Tagged = struct
     | Object -> 1l
     | ObjInd -> 2l
     | Array -> 3l
-    | Reference -> 4l
     | Int -> 5l
     | MutBox -> 6l
     | Closure -> 7l
@@ -3214,8 +3212,6 @@ module HeapTraversal = struct
           compile_unboxed_const 2l
         ; Tagged.BigInt,
           compile_unboxed_const 5l (* HeapTag + sizeof(mp_int) *)
-        ; Tagged.Reference,
-          compile_unboxed_const 2l
         ; Tagged.Some,
           compile_unboxed_const 2l
         ; Tagged.Variant,
@@ -4180,7 +4176,7 @@ module GC = struct
 
      Roots are:
      * All objects in the static part of the memory.
-     * all closures ever bound to a `funcref`.
+     * all closures ever passed out as callback or to async_method
        These therefore need to live in a separate area of memory
        (could be mutable array of pointers, similar to the reference table)
   *)
@@ -4907,14 +4903,14 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.built_in env name)
 
-  let ic_call env ts1 ts2 get_funcref get_arg get_k get_r =
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
     match E.mode env with
     | Flags.ICMode | Flags.StubMode ->
 
       (* The callee *)
-      get_funcref ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
-      get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply callback *)
       closure_to_reply_callback env ts2 get_k ^^
       (* The reject callback *)
@@ -4927,14 +4923,14 @@ module FuncDec = struct
       G.i Drop
     | _ -> assert false
 
-  let ic_call_one_shot env ts get_funcref get_arg =
+  let ic_call_one_shot env ts get_meth_pair get_arg =
     match E.mode env with
     | Flags.ICMode | Flags.StubMode ->
 
       (* The callee *)
-      get_funcref ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
-      get_funcref ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
+      get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
       (* The reply callback *)
       ignoring_callback env ^^
       compile_unboxed_zero ^^
@@ -6216,15 +6212,15 @@ and compile_exp (env : E.t) ae exp =
       (* TBR: Can we do better than using the notes? *)
       let _, _, _, ts1, _ = Type.as_func f.note.note_typ in
       let _, _, _, ts2, _ = Type.as_func k.note.note_typ in
-      let (set_funcref, get_funcref) = new_local env "funcref" in
+      let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
       let (set_arg, get_arg) = new_local env "arg" in
       let (set_k, get_k) = new_local env "k" in
       let (set_r, get_r) = new_local env "r" in
-      compile_exp_as env ae SR.Vanilla f ^^ set_funcref ^^
+      compile_exp_as env ae SR.Vanilla f ^^ set_meth_pair ^^
       compile_exp_as env ae SR.Vanilla e ^^ set_arg ^^
       compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
       compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
-      FuncDec.ic_call env ts1 ts2 get_funcref get_arg get_k get_r
+      FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r
       end
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
@@ -6330,14 +6326,14 @@ and compile_exp (env : E.t) ae exp =
         (* Non-one-shot functions have been rewritten in async.ml *)
         assert (control = Type.Returns);
 
-        let (set_funcref, get_funcref) = new_local env "funcref" in
+        let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
         let (set_arg, get_arg) = new_local env "arg" in
         let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
         code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
-        set_funcref ^^
+        set_meth_pair ^^
         compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
 
-        FuncDec.ic_call_one_shot env ts get_funcref get_arg
+        FuncDec.ic_call_one_shot env ts get_meth_pair get_arg
     end
   | SwitchE (e, cs) ->
     SR.Vanilla,

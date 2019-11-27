@@ -4,8 +4,6 @@
 
 open Wasm.Ast
 
-type type_ = I32 | DataBuf | ElemBuf | ActorRef | FuncRef
-
 type name_section = {
   module_ : string option;
   function_names : (int32 * string) list;
