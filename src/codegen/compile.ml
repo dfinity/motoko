@@ -3723,7 +3723,7 @@ module Serialization = struct
 
   module TM = Map.Make (struct type t = Type.typ let compare = compare end)
   let to_idl_prim = let open Type in function
-    | Prim Null -> Some 1
+    | Prim Null | Tup [] -> Some 1
     | Prim Bool -> Some 2
     | Prim Nat -> Some 3
     | Prim Int -> Some 4
@@ -3914,6 +3914,9 @@ module Serialization = struct
       | Prim (Int32|Nat32|Word32|Char) -> inc_data_size (compile_unboxed_const 4l)
       | Prim (Int64|Nat64|Word64) -> inc_data_size (compile_unboxed_const 8l)
       | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
+      | Prim Null -> G.nop
+      | Any -> G.nop
+      | Tup [] -> G.nop (* e(()) = null *)
       | Tup ts ->
         G.concat_mapi (fun i t ->
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
@@ -3936,8 +3939,6 @@ module Serialization = struct
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         size_word env get_len ^^
         inc_data_size get_len
-      | Prim Null -> G.nop
-      | Any -> G.nop
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
@@ -4046,6 +4047,8 @@ module Serialization = struct
         get_x ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
         compile_unboxed_const 1l ^^ advance_data_buf
+      | Tup [] -> (* e(()) = null *)
+        G.nop
       | Tup ts ->
         G.concat_mapi (fun i t ->
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
@@ -4133,7 +4136,7 @@ module Serialization = struct
         compile_eq_const (Int32.of_int (- (Lib.Option.value (to_idl_prim t))))
       in
 
-      let assert_prim_typ () =
+      let assert_prim_typ t =
         check_prim_typ t ^^
         E.else_trap_with env ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
       in
@@ -4191,7 +4194,7 @@ module Serialization = struct
       begin match t with
       (* Primitive types *)
       | Prim Nat ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         get_data_buf ^^
         BigNum.compile_load_from_data_buf env false
       | Prim Int ->
@@ -4203,36 +4206,36 @@ module Serialization = struct
             BigNum.compile_load_from_data_buf env false
           end
           begin
-            assert_prim_typ () ^^
+            assert_prim_typ t ^^
             get_data_buf ^^
             BigNum.compile_load_from_data_buf env true
           end
       | Prim (Int64|Nat64|Word64) ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_word64 env get_data_buf ^^
         BoxedWord64.box env
       | Prim (Int32|Nat32|Word32) ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_word32 env get_data_buf ^^
         BoxedSmallWord.box env
       | Prim Char ->
         let set_n, get_n = new_local env "len" in
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_word32 env get_data_buf ^^ set_n ^^
         UnboxedSmallWord.check_and_box_codepoint env get_n
       | Prim (Int16|Nat16|Word16) ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_word16 env get_data_buf ^^
         UnboxedSmallWord.msb_adjust Word16
       | Prim (Int8|Nat8|Word8) ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_byte env get_data_buf ^^
         UnboxedSmallWord.msb_adjust Word8
       | Prim Bool ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_byte env get_data_buf
       | Prim Null ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         Opt.null
       | Any ->
         (* Skip values of any possible type *)
@@ -4242,11 +4245,14 @@ module Serialization = struct
         (* Any vanilla value works here *)
         Opt.null
       | Prim Text ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         read_blob true
       | Prim Blob ->
         assert_blob_typ env ^^
         read_blob false
+      | Tup [] -> (* e(()) = null *)
+        assert_prim_typ t ^^
+        Tuple.from_stack env 0
       (* Composite types *)
       | Tup ts ->
         with_composite_typ (-20l) (fun get_typ_buf ->
