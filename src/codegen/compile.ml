@@ -2893,6 +2893,7 @@ module Tuple = struct
         G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
       )
     end
+
 end (* Tuple *)
 
 module Dfinity = struct
@@ -4130,9 +4131,7 @@ module GC = struct
 
      Roots are:
      * All objects in the static part of the memory.
-     * all closures ever passed out as callback or to async_method
-       These therefore need to live in a separate area of memory
-       (could be mutable array of pointers, similar to the reference table)
+     * the closure_table (see module ClosureTable)
   *)
 
   let gc_enabled = true
@@ -4797,17 +4796,26 @@ module FuncDec = struct
     StackRep.adjust env sr SR.Vanilla ^^
     ClosureTable.remember env
 
-  (* Wraps a local closure in a local function that does serialization and
-     takes care of the environment *)
-  (* Need this function once per type, so we can share based on ts *)
-  let closure_to_reply_callback env ts get_closure =
+  (* Takes the reply and reject callbacks, tuples them up,
+     add them to the closure table, and returns the two callbacks expected by
+     call_simple.
+
+     The tupling is necesary because we want to free _both_ closures when
+     one is called.
+
+     The reply callback function exists once per type (it has to do
+     serialization); the reject callback function is unique.
+  *)
+
+  let closures_to_reply_reject_callbacks env ts =
     assert (E.mode env = Flags.StubMode);
-    let name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env ->
+    let reply_name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
+    Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall env ^^ (* At this point we can remove the closure *)
+        ClosureTable.recall env ^^
+        Arr.load_field 0l ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
 
@@ -4819,21 +4827,18 @@ module FuncDec = struct
 
         message_cleanup env (Type.Shared Type.Write)
       );
-    compile_unboxed_const (E.built_in env name) ^^
-    get_closure ^^ ClosureTable.remember env
 
-  let closure_to_reject_callback env get_closure =
-    assert (E.mode env = Flags.StubMode);
-    let name = "@reject_callback" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env ->
+    let reject_name = "@reject_callback" in
+    Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall env ^^ (* At this point we can remove the closure *)
+        ClosureTable.recall env ^^
+        Arr.load_field 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
 
-        (* Synthesize reject *)
+        (* Synthesize value of type `Error` *)
         E.trap_with env "reject_callback" ^^
 
         get_closure ^^
@@ -4841,8 +4846,21 @@ module FuncDec = struct
 
         message_cleanup env (Type.Shared Type.Write)
       );
-    compile_unboxed_const (E.built_in env name) ^^
-    get_closure ^^ ClosureTable.remember env
+
+    (* The upper half of this function must not depend on the get_k and get_r
+       parameters, so hide them from above (cute trick) *)
+    fun get_k get_r ->
+      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+      (* store the tuple away *)
+      Arr.lit env [get_k; get_r] ^^
+      ClosureTable.remember env ^^
+      set_cb_index ^^
+
+      (* return arguments for the ic.call *)
+      compile_unboxed_const (E.built_in env reply_name) ^^
+      get_cb_index ^^
+      compile_unboxed_const (E.built_in env reject_name) ^^
+      get_cb_index
 
   let ignoring_callback env =
     assert (E.mode env = Flags.StubMode);
@@ -4858,10 +4876,8 @@ module FuncDec = struct
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
-      (* The reply callback *)
-      closure_to_reply_callback env ts2 get_k ^^
-      (* The reject callback *)
-      closure_to_reject_callback env get_r ^^
+      (* The reply and reject callback *)
+      closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts1 ^^
       (* done! *)
