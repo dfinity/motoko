@@ -30,11 +30,11 @@ begin, they stay valid. We never shrink the table.
 #define INITIAL_SIZE 256
 
 // Skewed pointer to the Array object
-as_ptr table = 0;
+static as_ptr table = 0;
 // counter of allocated things
-uint32_t n_closures = 0;
+static uint32_t n_closures = 0;
 // next free
-uint32_t free_slot = FULL;
+static uint32_t free_slot = FULL;
 
 as_ptr alloc_array(uint32_t len) {
   as_ptr a = alloc_words(ARRAY_HEADER_SIZE + len);
