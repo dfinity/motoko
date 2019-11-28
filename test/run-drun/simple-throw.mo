@@ -1,6 +1,4 @@
 // This file only exercises local throws that don't cross function boundaries.
-// In principle, it should run on all targets.
-
 actor a {
   public func go() = ignore async {
      debugPrint "1";
@@ -18,5 +16,5 @@ actor a {
      debugPrint "4";
      debugPrint "done";
   };
-  go();
 };
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"

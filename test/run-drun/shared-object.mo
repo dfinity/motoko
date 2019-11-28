@@ -15,6 +15,5 @@ actor a {
     let b = await (baz foo);
     assert (b == 42);
   };
-
-  go();
-}
+};
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"

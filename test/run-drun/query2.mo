@@ -18,7 +18,24 @@ actor counter = {
     return tmp;
   };
 
+  public func go() = ignore async {
+   counter.inc();
+   counter.inc();
+   counter.inc();
+   counter.printCounter();
+   let c1 = await counter.get();
+   assert c1 == 4;
+   let c2 = await counter.read();
+   counter.printCounter();
+   assert c2 == 4;
+   let c3 = await counter.read();
+   counter.printCounter();
+   debugPrint("The following fails in the intepreter, for lack of query semantics");
+   assert c3 == 4;
+  };
 };
+counter.go(); //OR-CALL ingress go "DIDL\x00\x00"
+
 
 /* Disabled, while we don’t have first-class shared functions
 
@@ -49,18 +66,3 @@ actor counter = {
   };
 */
 
-async {
- counter.inc();
- counter.inc();
- counter.inc();
- counter.printCounter();
- let c1 = await counter.get();
- assert c1 == 4;
- let c2 = await counter.read();
- counter.printCounter();
- assert c2 == 4;
- let c3 = await counter.read();
- counter.printCounter();
- debugPrint("The following fails in the intepreter, for lack of query semantics");
- assert c3 == 4;
-};

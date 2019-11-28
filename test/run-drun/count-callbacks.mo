@@ -24,9 +24,8 @@ actor a {
     await a4;
     debugPrint("go 5: " # debug_show rts_callback_table_count());
   };
-
-  go();
-}
+};
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"
 
 //SKIP run
 //SKIP run-low

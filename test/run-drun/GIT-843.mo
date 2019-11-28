@@ -3,4 +3,5 @@
 actor Bad {
   public func Bad (){ debugPrint "ok"};
 };
-Bad.Bad();
+Bad.Bad(); //OR-CALL ingress Bad "DIDL\x00\x00"
+

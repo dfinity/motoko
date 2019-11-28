@@ -17,3 +17,5 @@ a.inc();
 a.inc();
 a.inc();
 a.debugPrint()
+
+//SKIP comp

@@ -26,3 +26,5 @@ actor A = {
 
 type AT = A.T;
 
+//SKIP comp
+//SKIP comp-stub

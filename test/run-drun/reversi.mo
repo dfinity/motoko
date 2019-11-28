@@ -272,3 +272,7 @@ actor {
 //CALL ingress board 0x4449444C0000
 //CALL ingress place 0x4449444C00037c7c7c010402
 //CALL ingress board 0x4449444C0000
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low

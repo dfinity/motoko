@@ -30,9 +30,7 @@ let a = actor {
     public func g3 (f3:shared ((Int,Bool,Text)) -> async (Int,Bool,Text), xyz:(Int,Bool,Text)) : async (Int,Bool,Text)
        { await f3 xyz; };
 
-};
-
-let _ = async {
+  public func go() = ignore async {
 
     debugPrint "first-order";
 
@@ -113,5 +111,6 @@ let _ = async {
     debugPrint "14";
     let (3,false,"text") = await a.g3(a.n3,xyz);
     debugPrint "15";
+  };
 };
-
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"

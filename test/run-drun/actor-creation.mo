@@ -19,3 +19,6 @@ actor a {
 };
 debugPrint ("main actor calling a.foo()");
 a.foo();
+
+// certainly won’t work on drun
+//SKIP comp

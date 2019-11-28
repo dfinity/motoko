@@ -1,5 +1,4 @@
 actor a {
-
   public func ping() : async () {
   };
 
@@ -29,9 +28,9 @@ actor a {
     assert (s2-s0 > 5_000);
     assert (s3-s0 < 5_000);
   };
+};
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"
 
-  go();
-}
 
 //SKIP run
 //SKIP run-low

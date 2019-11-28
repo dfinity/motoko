@@ -14,5 +14,3 @@ count-callbacks.mo:22.11-22.13: type error, argument to await must be a call exp
   (This is a limitation of the current version.)
 count-callbacks.mo:24.11-24.13: type error, argument to await must be a call expression
   (This is a limitation of the current version.)
-count-callbacks.mo:28.3-28.5: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

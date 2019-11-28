@@ -1,2 +1,4 @@
-AST-66.mo:3.9-6.2: type error, unsupported async block
+AST-66.mo:4.12-7.6: type error, unsupported async block
+  (This is a limitation of the current version.)
+AST-66.mo:9.12-14.6: type error, unsupported async block
   (This is a limitation of the current version.)

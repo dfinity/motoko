@@ -1,2 +1,6 @@
-async-while.mo:2.1-59.2: type error, unsupported async block
+async-while.mo:18.20-18.34: type error, unsupported async block
+  (This is a limitation of the current version.)
+async-while.mo:33.15-33.29: type error, unsupported async block
+  (This is a limitation of the current version.)
+async-while.mo:50.15-50.29: type error, unsupported async block
   (This is a limitation of the current version.)

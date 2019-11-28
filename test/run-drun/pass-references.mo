@@ -17,6 +17,5 @@ actor a {
     pass_func(b.foo);
     pass_actor(b);
   };
-
-  go();
-}
+};
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"

@@ -32,3 +32,7 @@ actor {
 //CALL ingress record1 0x4449444C016C03b99adecb0171f1fee18d037C88be8c890477010004486579212A19
 //  needs to jump over redundant trailing `byte` field
 //CALL ingress record2 0x4449444C016C03b99adecb0171f1fee18d037C88be8c89047702007704486579212A1819
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low

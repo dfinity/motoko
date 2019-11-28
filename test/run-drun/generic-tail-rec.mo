@@ -10,7 +10,7 @@ func Loop(n:Int){
      };
      Loop(n+1);
      };
-Loop(0);     
+Loop(0);
 };
 
 
@@ -24,7 +24,7 @@ func Loop(n:Int){
      assert(false);
      };
 
-Loop(0);     
+Loop(0);
 };
 
 {
@@ -34,7 +34,7 @@ func Loop<T>(n:Int){
 	  return;
      };
      Loop<T>(n+1);
-     };	
+     };
 
 Loop<Int>(0);
 };
@@ -46,7 +46,7 @@ func Loop<T,U>(n:Int){
 	  return;
      };
      Loop<T,U>(n+1);
-     };	
+     };
 
 Loop<Int,Bool>(0);
 };

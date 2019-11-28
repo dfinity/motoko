@@ -10,5 +10,3 @@ pass-references.mo:17.5-17.14: type error, calling a shared function not yet sup
   (This is a limitation of the current version.)
 pass-references.mo:18.5-18.15: type error, calling a shared function not yet supported
   (This is a limitation of the current version.)
-pass-references.mo:21.3-21.5: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

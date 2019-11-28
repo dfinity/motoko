@@ -48,7 +48,7 @@ actor a {
   };
 
 
-  async {
+  public func go() = ignore async {
     try {
       await t2();
       debugPrint ("t2 ok");
@@ -62,6 +62,6 @@ actor a {
     } catch _ {
       assert false;
     };
-
   };
 };
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"

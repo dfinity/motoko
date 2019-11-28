@@ -1,1 +1,1 @@
-let _ = actor {};
+actor {};

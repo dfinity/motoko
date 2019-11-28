@@ -10,15 +10,17 @@ let a = actor {
 
   public func printNat(n: Nat) { debugPrintNat n };
 
-  incn(1);
-  readCounter(printNat);
-  incn(2);
-  readCounter(printNat);
-  incn(3);
-  readCounter(printNat);
-  incn(4);
-  readCounter(printNat);
-  incn(5);
-  readCounter(printNat);
+  public func go() {
+    incn(1);
+    readCounter(printNat);
+    incn(2);
+    readCounter(printNat);
+    incn(3);
+    readCounter(printNat);
+    incn(4);
+    readCounter(printNat);
+    incn(5);
+    readCounter(printNat);
+  };
 };
-
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"

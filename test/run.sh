@@ -97,7 +97,7 @@ function run () {
   local ext="$1"
   shift
 
-  if grep -q "^//SKIP $ext" $file; then return; fi
+  if grep -q "^//SKIP $ext" $file; then return 1; fi
 
   $ECHO -n " [$ext]"
   "$@" >& $out/$base.$ext

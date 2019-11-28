@@ -8,5 +8,5 @@ In read:
 In read:
 6
 The following fails in the intepreter, for lack of query semantics
-query2.mo:65.2-65.16: execution error, assertion failure
+query2.mo:34.4-34.18: execution error, assertion failure
 6

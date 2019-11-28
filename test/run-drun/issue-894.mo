@@ -1,7 +1,7 @@
 actor a {
   public shared func id(i : Nat) : async Nat { i };
 
-  public shared func test() : async () {
+  public shared func go() : async () {
 
     {
       let o = {var l = 0};
@@ -44,5 +44,4 @@ actor a {
   };
 
 };
-
-a.test();
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"
