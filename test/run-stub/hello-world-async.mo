@@ -1,4 +1,4 @@
-let a = actor {
+actor a {
   public func world() {
     debugPrint("World!");
   };
@@ -7,6 +7,4 @@ let a = actor {
     debugPrint("Hello ");
   };
 };
-
-a.go()
-
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"

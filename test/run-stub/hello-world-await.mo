@@ -9,5 +9,4 @@ let a = actor {
     debugPrint((await hello()) # (await world()));
   };
 };
-
-a.go()
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"

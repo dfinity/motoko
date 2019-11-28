@@ -113,4 +113,4 @@ actor a {
     a.incn(2**31 - 1); // highest compact
   };
 };
-a.go();
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"

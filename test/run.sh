@@ -88,6 +88,7 @@ function normalize () {
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
+    sed 's,_out/\([^/]*\).mangled.mo,\1.mo,g' |
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
@@ -209,8 +210,25 @@ do
 
         fi
 
+        # Mangle for compilation:
+        # The compilation targets do not support self-calls during canister
+        # installation, so this replaces
+        #
+        #     actor a { … }
+        #     a.go(); //CALL …
+        #
+        # with
+        #
+        #     actor a { … }
+        #     //CALL …
+        #
+        # which actually works on the IC platform
+
+        sed 's,^.*//OR-CALL,//CALL,g' $base.mo > _out/$base.mangled.mo
+        mangled=_out/$base.mangled.mo
+
         # Compile
-        run comp $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings --map -c $base.mo -o $out/$base.wasm
+        run comp $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings --map -c $mangled -o $out/$base.wasm
 
         if [ -e $out/$base.wasm ]
         then
@@ -224,7 +242,7 @@ do
             then
               $ECHO -n " [FileCheck]"
               wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
-              cat $out/$base.wat | FileCheck $base.mo > $out/$base.filecheck 2>&1
+              cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
               diff_files="$diff_files $base.filecheck"
             fi
           fi
@@ -237,7 +255,7 @@ do
               run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
             elif [ $API = stub ]
 	    then
-              DRUN=$IC_STUB_RUN run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $base.mo
+              DRUN=$IC_STUB_RUN run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $mangled
             elif [ $API = wasi ]
             then
               run wasm-run $WASMTIME --disable-cache $out/$base.wasm

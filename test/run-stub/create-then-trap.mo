@@ -9,4 +9,4 @@ actor a {
     assert false;
   }
 };
-a.go();
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"
