@@ -1,3 +1,0 @@
-ingress(0) System
-debug.print: IDL error: missing magic bytes
-Err: IC0502: Canister 42 trapped: unreachable
