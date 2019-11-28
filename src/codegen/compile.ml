@@ -4850,7 +4850,6 @@ module FuncDec = struct
      takes care of the environment *)
   (* Need this function once per type, so we can share based on ts *)
   let closure_to_reply_callback env ts get_closure =
-    assert (E.mode env = Flags.StubMode);
     let name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
     Func.define_built_in env name ["env", I32Type] [] (fun env ->
         (* Look up closure *)
@@ -4872,7 +4871,6 @@ module FuncDec = struct
     get_closure ^^ ClosureTable.remember_closure env
 
   let closure_to_reject_callback env get_closure =
-    assert (E.mode env = Flags.StubMode);
     let name = "@reject_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env ->
         (* Look up closure *)
