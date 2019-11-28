@@ -17,7 +17,7 @@ debugPrint "ok1";
 assert(10000 == f (true, 10000, 0));
 debugPrint "ok2";
 
-// check recursion overflows for large n (on dvm only)
+// check recursion overflows for large n (on drun only)
 // disabled as overflowing or not appears to be non-deterministic on V8
 //assert(10000 == f (false, 10000, 0));
-//debugPrint "unreachable on dvm";
+//debugPrint "unreachable on drun";
