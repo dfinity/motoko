@@ -132,28 +132,6 @@ let in_await env =
   | _ :: AwaitE _ :: _ -> true
   | _ -> false
 
-let in_shared_async env =
-  match env.context with
-  | _ :: FuncE (_, {it = T.Shared _; _}, _, _, typ_opt, _) :: _ ->
-    (match typ_opt with
-     | Some {it = AsyncT _; _} -> true
-     | _ -> false)
-  | _ -> false
-
-let in_oneway_ignore env =
-  match env.context with
-  | _ ::
-    AnnotE  _  ::
-    BlockE [ {it = LetD ({ it = WildP;_}, _); _} ] ::
-    FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
-    _ ->
-    (match typ_opt with
-     | Some { it = TupT []; _}
-     | None -> true
-     | _ -> false)
-  | _ -> false
-
-
 (* Types *)
 
 let check_ids env kind member ids = Lib.List.iter_pairs
