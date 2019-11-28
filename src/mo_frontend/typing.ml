@@ -770,24 +770,29 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Func (sort.it, T.map_control (T.close cs) c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
-  | CallE (exp1, insts_ref, exp2) ->
-    let insts = !insts_ref in
+  | CallE (exp1, insts, exp2) ->
+    let n_insts = match !insts with
+      | Some ts -> List.length ts
+      | None -> 0
+    in
     let t1 = infer_exp_promote env exp1 in
     let sort, tbs, t_arg, t_ret =
-      try T.as_func_sub T.Local (List.length insts) t1
+      try T.as_func_sub T.Local n_insts t1
       with Invalid_argument _ ->
         error env exp1.at
           "expected function type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     in
-    let insts = match insts, t1 with
-        | [], T.Func(_,T.Promises (T.Var (_,0)),[_],_,_)
-        | [], T.Func(_,T.Returns,[_],_,[T.Async (T.Var (_,0),_)]) ->
+    (* only attempt scope inference when no inst, not empty inst (`<>`), provided *)
+    let typs = match !insts, t1 with
+        | None, T.Func(_,T.Promises (T.Var (_,0)),[_],_,_)
+        | None, T.Func(_,T.Returns,[_],_,[T.Async (T.Var (_,0),_)]) ->
           [Syntax.scope_typ {left=exp1.at.right; right = exp2.at.left}]
-        | _ -> insts
+        | None, _ -> []
+        | Some typs, _ -> typs
     in
-    insts_ref := insts;
-    let ts = check_inst_bounds env tbs insts exp.at in
+    insts := Some typs;
+    let ts = check_inst_bounds env tbs typs exp.at in
     let t_arg = T.open_ ts t_arg in
     let t_ret = T.open_ ts t_ret in
     if not env.pre then begin

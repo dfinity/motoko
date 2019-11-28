@@ -108,6 +108,8 @@ and vis' = Public | Private
 
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
+type inst = typ list option ref (* For implicit scope instantiation *)
+
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
@@ -127,7 +129,7 @@ and exp' =
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * func_sort * typ_bind list * pat * typ option * exp  (* function *)
-  | CallE of exp * typ list ref * exp          (* function call *)
+  | CallE of exp * inst * exp                  (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)

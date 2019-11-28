@@ -34,7 +34,7 @@ let rec exp e = match e.it with
       (match t with None -> Atom "_" | Some t -> typ t);
       exp e'
     ]
-  | CallE (e1, tsr, e2)  -> "CallE"   $$ [exp e1] @ List.map typ (!tsr) @ [exp e2]
+  | CallE (e1, ts_opt_ref, e2)  -> "CallE"   $$ [exp e1] @ inst ts_opt_ref @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds
   | NotE e              -> "NotE"    $$ [exp e]
   | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
@@ -59,6 +59,10 @@ let rec exp e = match e.it with
   | ImportE (f, fp)     -> "ImportE" $$ [Atom (if !fp = "" then f else !fp)]
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
+
+and inst ts_opt_ref = match !ts_opt_ref with
+  | None -> [Atom ("?")]
+  | Some ts -> List.map typ ts
 
 and pat p = match p.it with
   | WildP           -> Atom "WildP"
