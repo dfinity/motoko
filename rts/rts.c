@@ -29,24 +29,22 @@ as_ptr as_str_of_cstr(const char * const s) {
   return r;
 }
 
+void __attribute__ ((noreturn)) trap_with_prefix(const char* prefix, const char *str) {
+  int len1 = as_strlen(prefix);
+  int len2 = as_strlen(str);
+  char msg[len1 + len2];
+  as_memcpy(msg, prefix, len1);
+  as_memcpy(msg + len1, str, len2);
+  rts_trap(msg, len1 + len2);
+}
+
 void idl_trap_with(const char *str) {
-  const char prefix[] = "IDL error: ";
-  int len = as_strlen(str);
-  char msg[sizeof prefix + len];
-  as_memcpy(msg, prefix, sizeof prefix - 1);
-  as_memcpy(msg + sizeof prefix - 1, str, len);
-  rts_trap(msg, sizeof prefix - 1 + len);
+  trap_with_prefix("IDL error: ", str);
 }
 
 void rts_trap_with(const char *str) {
-  const char prefix[] = "RTS error: ";
-  int len = as_strlen(str);
-  char msg[sizeof prefix + len];
-  as_memcpy(msg, prefix, sizeof prefix - 1);
-  as_memcpy(msg + sizeof prefix - 1, str, len);
-  rts_trap(msg, sizeof prefix - 1 + len);
+  trap_with_prefix("RTS error: ", str);
 }
-
 
 // This is mostly to test static strings and access to the AS heap
 const char* RTS_VERSION = "0.1";
