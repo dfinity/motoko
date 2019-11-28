@@ -255,6 +255,12 @@ let check_shared_return env at sort c ts =
       | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `async <typ>`"
       | _ -> ()
 
+let infer_scope env cs cod  =
+    match cs, cod.it with
+    | [c], AsyncT(typ0,_) when is_scope_typ typ0  ->
+      { env with typs = T.Env.add scope_id c env.typs }
+    | _ -> env
+
 let rec check_typ env typ : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
@@ -283,6 +289,7 @@ and check_typ' env typ : T.typ =
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, ts, te, ce = check_typ_binds env binds in
     let env' = adjoin_typs env te ce in
+    let env' = infer_scope env' cs typ2 in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
     let ts1 = List.map (check_typ env') typs1 in
@@ -733,6 +740,7 @@ and infer_exp'' env exp : T.typ =
     check_shared_return env typ.at sort.it cT ts2;
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
+    let env' = infer_scope env' cs typ in
     let t1, ve = infer_pat_exhaustive env' pat in
     let ts2 = List.map (check_typ env') ts2 in
     let c = T.map_control (check_typ env') cT in
@@ -950,8 +958,9 @@ and infer_exp'' env exp : T.typ =
       error_in [Flags.ICMode] env exp.at "unsupported async block";
     let t1 = check_typ env typ1 in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
+    let ce_scope = T.Env.add "@" c ce in (* pun scope identifier @ with c *)
     let env' =
-      {(adjoin_typs env ce cs) with labs = T.Env.empty; rets = Some T.Pre; async = Some c} in
+      {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some T.Pre; async = Some c} in
     let t = infer_exp env' exp1 in
     let t' = T.open_ [t1] (T.close [c] t)  in
     if not (T.shared t') then

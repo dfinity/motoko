@@ -25,7 +25,7 @@ the current message and thus can only receive continuations (via `await`) from t
 current message.  It can't receive continuations from an inner
 function by escaping into that function, since the inner function can at
 most await asyncs with its inner index, not the outer one. Thus the only
-continations that are stored (including the ultimate reply
+continuations that are stored (including the ultimate reply
 continuation), must be from the current function.
 
 _Please break it_
@@ -114,6 +114,9 @@ E; _ |- shared f<X>(x:T) : async<X> U { e; }
 
 ## Examples:
 
+(These need fixing below but are all coded in [general_await.mo](../test/run-drun/general_await.mo)
+[general_await_implicit.mo](../test/run-drun/general_await_implicit.mo)
+
 Assuming the following requests:
 
 ```
@@ -186,8 +189,9 @@ shared func waitN<X>(n:Nat) : async<X>(List<Int>) {
 
 ### Deadlock Prevention:
 
-#### Immediate deadlock
+(These need fixing but are all correctly coded in [illegal-await.mo](../test/fail/illegal-await.mo)
 
+#### Immediate deadlock
 
 ```
 let t:async<T>U = async<X>{ await t;}<T>; // bad await since t : Async[Any]U  </: Async<X>U
@@ -232,28 +236,77 @@ shared func f<R>() : async () {
 }
 ```
 
+## Sugar
 
-syntactic sugar:
+Principle: Desugaring should be:
+* simple and unambiguous
+* expressible in the syntax (as explicit binders and instantiations).
+* avoidable (by supplying explicit binders and instantations).
+
+Basic idea: 
+
+Prelude: 
+defines default scope (non-awaitable) and instantiation:
+`
+type @ = Any
+`
+
+(`@` is a newly legal scope identifier)
+
+Parsing:
+
+* inserts `<@>` type instantations and binders for missing `async` binders and instantiations (in types and terms) and `async` binders (in terms)
+* adds missing `<@>` bindings to async returning functions with absent quantifiers (note we distinguish missing type parameters from empty parameters `<>`)
+
+Elaboration:
+
+* Elaboration ensures `@` is bound to appropriate constructor,
+shadowing any previous `@`-binding to ensure structured scoping.
+* Elaboration adds missing instantiations to function applications that require them, guided by the synthesized function type.
+
+syntactic sugar (during parse, applied bottom up as we construct types and terms)
+
 
 ```
-async typ := async<@> typ
+async T := async<@> T
+T1 -> async<@> T2 := <@>T1 -> async<@> T1
 
-(typ,...) -> async<@> typ -> :=
-<@>(typ,...) -> async<@> typ
+func f(<pat>) : async<@> T = e
+func<@>f() : async<@> T = e
 
-func f(<pat>) : async<@> t = e
-func<@>f() : async<@>t = e
+func f(<pat>) : async<@> T { e } :=
+func<@>f() : async<@> T = async<@> e <@>
 
-func f(<pat>) : async<@> t { e } :-
-func<@>f() : async<@>t { e } :-
+func f<X>(<pat>) : async<@> T { e } :=
+func<X>f() : async<@> T = async <X> e <@>
 
-x(pat) : async t {e}  = x<@>(pat): async<@> t
-x(pat) : async t = e  = x<@>(pat): async<@> t
+x(pat) : async<@> T {e} := x<@>(pat): async<@> T = async <@> e <@>
+x<X>(pat) : async<@> T := e = x<@>(pat): async<@> T = e
 
 async e := async<@> e <@>
+
 ```
 
-static sugar
+static sugar (during elaboration)
+
 ```
-f e = f<@>e when f: sort <X>(typ,...) -> async<X> t
+<X<:T0>T1 -> async<@> T2 ~~> <X<:T0> T1[X/@] -> async <X> T[X/@]
+<XsTs>T1 -> async<U> T2 ~~> LHS (|tbs| <> 1)
+
+
+async <X> e <U> ~~> async <X> e[X/@] <U>
+f e = f<@>e when f: sort <X>(typ,...) ~~> async<X> t
+
+func<X>f() : async<@> T = async <X> e <@> ~~>
+func<X>f() : async<@> T[X/@] = (async<X> e <@>) [X/@]
 ```
+(basically, we rebind `@` to the current scope during elaboration, so references inserted during parsing elaborate to the nearest appropiate binding, and default missing scope instantiations to the current meaning of `@`).
+
+Note that in a function type or definition with n>1 type parameters, `<@>` either shadows one of those eponymous type parameters or it retains its outer meaning. In the latter case (outer binding), we might either warn appropriately or reject as ambiguous, requiring the user to
+give the missing instantiation of the `async T` return type.
+
+(The implementation is currently silent and defaults `@` to the enclosing interpretation.)
+
+### Sugaring types (for pretty printing)
+
+During pretty printing of types, we suppress a unary type binding in a function type if it only occurs as an `async` type instantiation at DeBruijn level 0, in which case we elide all those `async` type instantiations too. Binders with async instantiations at DeBruijn levels higher than 0 must be shown to avoid ambiguity.

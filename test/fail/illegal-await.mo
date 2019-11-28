@@ -28,19 +28,19 @@
 
 // Recursive deadlock
 
-shared func Rec<@>(n : Int, a : async ()) : async () {
+shared func Rec(n : Int, a : async ()) : async () {
    if (n == 0) {
     await a // <- illegal await since async<@>() </: async<X>()
    }
    else {
-    await Rec<@>(n-1, a)
+    await Rec(n-1, a)
    }
 };
 
 
 {
   ignore async {
-    let t : async () = Rec<@>(10,t);
+    let t : async () = Rec(10,t);
     await t;
   }
 };

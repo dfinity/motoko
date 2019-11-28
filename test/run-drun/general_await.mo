@@ -1,11 +1,11 @@
 actor Await {
 
-  public shared func Ack<@>() : async(){
-    debugPrint "\nAck"
+  public shared func Ack/*<@>*/() : async(){
+    debugPrint "Ack"
   };
 
-  public shared func Request<@>(i : Int) : async Int {
-    debugPrint("\nRequest(");debugPrintInt(i);debugPrint(")");
+  public shared func Request/*<@>*/(i : Int) : async Int {
+    debugPrint("Request(" # debug_show i # ")");
     return i;
   };
 

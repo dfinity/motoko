@@ -25,10 +25,6 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let (@?) it at = {it; at; note = empty_typ_note}
-let (@!) it at = {it; at; note = Type.Pre}
-let (@=) it at = {it; at; note = None}
-
 let dup_var x = VarE (x.it @@ x.at) @? x.at
 
 let anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
@@ -89,41 +85,9 @@ let share_expfield (ef : exp_field) =
   then ef
   else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
 
-let scope_id = "@"
-let scope_bind() = {var = scope_id @@ no_region; bound = PrimT "Any" @! no_region} @= no_region
-let scope_typ() = PathT ((IdH (scope_id @@ no_region)) @! no_region, []) @! no_region
+let scope_typ() = scope_typ no_region
 
-let rec is_scope_typ t =
-  match t.it with
-  | PathT (p, []) ->
-    (match p.it with
-     | IdH id ->
-       id.it = scope_id
-     |  _ -> false)
-  | ParT t -> is_scope_typ t
-  | _ -> false
-
-let funcT(sort, tbs_opt, t1, t2) =
-  match tbs_opt with
-  | None ->
-    (match t2.it with
-     | AsyncT (t21, _) when is_scope_typ t21 ->
-       FuncT(sort, [scope_bind()], t1, t2)
-     | _ ->
-       FuncT(sort, [], t1, t2))
-  | Some tbs -> FuncT(sort, tbs, t1, t2)
-
-let funcE (f, s, tbs_opt, p, t_opt, e) =
-  match tbs_opt, t_opt with
-  | None, None -> FuncE(f, s, [], p, t_opt, e)
-  | None, Some t ->
-    (match t.it with
-     | AsyncT (t1, _) when is_scope_typ t1 ->
-       FuncE(f, s, [scope_bind()], p, t_opt, e)
-     | _ -> FuncE(f, s, [], p, t_opt, e))
-  | Some tbs, _ -> FuncE(f, s, tbs, p, t_opt, e)
-
-%}
+ %}
 
 %token EOF
 
@@ -487,7 +451,7 @@ exp_nondec(B) :
     { RetE(e) @? at $sloc }
   | ASYNC e=exp(bl)
     { AsyncE(scope_bind(), e, scope_typ()) @? at $sloc }
-  | ASYNC tb = scope_bind e=exp_block t=scope_inst_opt
+  | ASYNC tb = scope_bind e=exp_nullary(bl) t=scope_inst_opt
     { AsyncE(tb, e, t) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
@@ -674,7 +638,10 @@ dec_nonvar :
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
           match t with
-          | Some {it = AsyncT _; _} -> AsyncE(scope_bind(), e, scope_typ()) @? e.at
+          | Some {it = AsyncT _; _} ->
+            (match tps with
+             | Some [tb] -> AsyncE(pun_bind tb, e, scope_typ()) @? e.at
+             | _ -> AsyncE(scope_bind(), e, scope_typ()) @? e.at)
           | _ -> e
       in
       let named, x = xf "func" $sloc in
