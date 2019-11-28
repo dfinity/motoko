@@ -88,7 +88,7 @@ function normalize () {
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
-    sed 's,_out/\([^/]*\).mangled.mo,\1.mo,g' |
+    sed 's,\([a-zA-Z0-9.-]*\).mangled.mo,\1.mo,g' |
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
@@ -224,8 +224,9 @@ do
         #
         # which actually works on the IC platform
 
-        sed 's,^.*//OR-CALL,//CALL,g' $base.mo > _out/$base.mangled.mo
-        mangled=_out/$base.mangled.mo
+	# needs to be in the same directory to preserve relative paths :-(
+        mangled=$base.mangled.mo
+        sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
 
         # Compile
         run comp $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings --map -c $mangled -o $out/$base.wasm
@@ -265,6 +266,8 @@ do
             fi
           fi
         fi
+
+	rm -f $mangled
       fi
     fi
   elif [ ${file: -3} == ".sh" ]
