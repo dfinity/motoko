@@ -21,8 +21,8 @@ let dfinity-src =
   if env != "" then env else builtins.fetchGit {
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
-    ref = "joachim/for-motoko";
-    rev = "3a27b16296031c09adcf5e37d4db05ee6e94a732";
+    # ref = "master";
+    rev = "4da566c0b1981090f838987d92ef695af2e7e29d";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
