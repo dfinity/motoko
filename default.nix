@@ -16,12 +16,16 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
-let dfinity-repo = import (builtins.fetchGit {
-  name = "dfinity-sources";
-  url = "ssh://git@github.com/dfinity-lab/dfinity";
-  # ref = "master";
-  rev = "b0f24ee1073cbc696bfae4eb25295ac5a4e02c38";
-}) { inherit (nixpkgs) system; }; in
+let dfinity-src =
+  let env = builtins.getEnv "DFINITY_SRC"; in
+  if env != "" then env else builtins.fetchGit {
+    name = "dfinity-sources";
+    url = "ssh://git@github.com/dfinity-lab/dfinity";
+    ref = "joachim/for-motoko";
+    rev = "3a27b16296031c09adcf5e37d4db05ee6e94a732";
+  }; in
+
+let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
 
 let sdk = import (builtins.fetchGit {
   name = "sdk-sources";
@@ -35,7 +39,7 @@ let esm = builtins.fetchTarball {
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
 
-let drun = dfinity-repo.drun or dfinity-repo.dfinity.drun; in
+let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 let js-user-library = sdk.js-user-library; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
