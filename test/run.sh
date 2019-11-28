@@ -224,7 +224,7 @@ do
         # Compile
         if [ $DRUN = no ]
         then
-          run comp $MOC $MOC_FLAGS -no-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $MOC $MOC_FLAGS -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         else
           run comp $MOC $MOC_FLAGS --hide-warnings --map -c $mangled -o $out/$base.wasm
           can_use_drun=$?
