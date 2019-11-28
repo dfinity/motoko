@@ -21,7 +21,7 @@ We shift these 2 bit to the left so that GC treats them as scalars, not as
 pointers. It also means they can be used as a byte offset, but that is more
 cute than actually important.
 
-When the table is full we double the size, copy the existing table, and add the
+When the table is full, we double the size, copy the existing table, and add the
 second half to the free list. Since all indices are relative to the payload
 begin, they stay valid. We never shrink the table.
 */
