@@ -38,7 +38,7 @@ void __attribute__ ((noreturn)) trap_with_prefix(const char* prefix, const char 
   rts_trap(msg, len1 + len2);
 }
 
-void idl_trap_with(const char *str) {
+void __attribute__ ((noreturn)) idl_trap_with(const char *str) {
   trap_with_prefix("IDL error: ", str);
 }
 
@@ -84,4 +84,3 @@ export void sleb128_encode(int32_t n, unsigned char *buf) {
     }
   }
 }
-
