@@ -499,7 +499,7 @@ let from_0_to_n env mk_body =
 let load_unskewed_ptr : G.t =
   G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
 
-let store_unskewed_ptr : G.t =
+let _store_unskewed_ptr : G.t =
   G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
 
 let load_ptr : G.t =
@@ -645,7 +645,13 @@ module RTS = struct
     E.add_func_import env "rts" "skip_leb128" [I32Type] [];
     E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "find_field" [I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] []
+    E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "remember_closure" [I32Type] [I32Type];
+    E.add_func_import env "rts" "recall_closure" [I32Type] [I32Type];
+    E.add_func_import env "rts" "closure_count" [] [I32Type];
+    E.add_func_import env "rts" "closure_table_loc" [] [I32Type];
+    E.add_func_import env "rts" "closure_table_size" [] [I32Type];
+    ()
 
 end (* RTS *)
 
@@ -851,68 +857,12 @@ module Stack = struct
 end (* Stack *)
 
 module ClosureTable = struct
-  (*
-  Another fixed-size table at the beginning of memory: When we create a closure
-  that is bound to a callback that we pass out, we need this level of indirection for
-  two reasons:
-  - we cannot just bind the address via i32.bind, because that is not stable, due
-    to our moving GC, and
-  - we need to remember that these closures are roots (and currently never freed!)
-
-  Therefore we maintain a static table from closure index to address of the closure
-  on the heap.
-  *)
-
-  let max_entries = 1024l
-  let loc = Stack.end_of_stack
-  let table_end = Int32.(add loc (mul max_entries Heap.word_size))
-
-  (* For reasons I do not recall, we use the first word of the table as the counter,
-     and not a global.
-  *)
-  let get_counter = compile_unboxed_const loc ^^ load_unskewed_ptr
-
-  (* Assumes a reference on the stack, and replaces it with an index into the
-     reference table *)
-  let remember_closure env : G.t =
-    Func.share_code1 env "remember_closure" ("ptr", I32Type) [I32Type] (fun env get_ptr ->
-      (* Check table space *)
-      get_counter ^^
-      compile_unboxed_const (Int32.sub max_entries 1l) ^^
-      G.i (Compare (Wasm.Values.I32 I64Op.LtU)) ^^
-      E.else_trap_with env "Closure table full" ^^
-
-      (* Return index *)
-      get_counter ^^
-      compile_add_const 1l ^^
-
-      (* Store reference *)
-      get_counter ^^
-      compile_add_const 1l ^^
-      compile_mul_const Heap.word_size ^^
-      compile_add_const loc ^^
-      get_ptr ^^
-      store_unskewed_ptr ^^
-
-      (* Bump counter *)
-      compile_unboxed_const loc ^^
-      get_counter ^^
-      compile_add_const 1l ^^
-      store_unskewed_ptr
-    )
-
-  (* Assumes a index into the table on the stack, and replaces it with a ptr to the closure *)
-  let recall_closure env : G.t =
-    Func.share_code1 env "recall_closure" ("closure_idx", I32Type) [I32Type] (fun env get_closure_idx ->
-      get_closure_idx ^^
-      compile_mul_const Heap.word_size ^^
-      compile_add_const loc ^^
-      load_unskewed_ptr
-    )
-
-  let get_outstanding_callbacks env =
-    get_counter
-
+  (* See rts/closure-table.c *)
+  let remember env : G.t = E.call_import env "rts" "remember_closure"
+  let recall env : G.t = E.call_import env "rts" "recall_closure"
+  let count env : G.t = E.call_import env "rts" "closure_count"
+  let size env : G.t = E.call_import env "rts" "closure_table_size"
+  let root env : G.t = E.call_import env "rts" "closure_table_loc"
 end (* ClosureTable *)
 
 module Bool = struct
@@ -2943,6 +2893,7 @@ module Tuple = struct
         G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
       )
     end
+
 end (* Tuple *)
 
 module Dfinity = struct
@@ -3175,6 +3126,10 @@ module RTS_Exports = struct
       name = Wasm.Utf8.decode "alloc_bytes";
       edesc = nr (FuncExport (nr (E.built_in env "alloc_bytes")))
     });
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "alloc_words";
+      edesc = nr (FuncExport (nr (E.built_in env "alloc_words")))
+    });
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
         E.trap_with env "bigint function error"
@@ -3184,7 +3139,7 @@ module RTS_Exports = struct
       name = Wasm.Utf8.decode "bigint_trap";
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
-    let idl_trap_fi = E.add_fun env "idl_trap" (
+    let rts_trap_fi = E.add_fun env "rts_trap" (
       Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
         let get_str = G.i (LocalGet (nr 0l)) in
         let get_len = G.i (LocalGet (nr 1l)) in
@@ -3193,8 +3148,8 @@ module RTS_Exports = struct
       )
     ) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "idl_trap";
-      edesc = nr (FuncExport (nr idl_trap_fi))
+      name = Wasm.Utf8.decode "rts_trap";
+      edesc = nr (FuncExport (nr rts_trap_fi))
     })
 
 end (* RTS_Exports *)
@@ -4182,9 +4137,7 @@ module GC = struct
 
      Roots are:
      * All objects in the static part of the memory.
-     * all closures ever passed out as callback or to async_method
-       These therefore need to live in a separate area of memory
-       (could be mutable array of pointers, similar to the reference table)
+     * the closure_table (see module ClosureTable)
   *)
 
   let gc_enabled = true
@@ -4326,16 +4279,9 @@ module GC = struct
           set_end_to_space in
 
       (* Go through the roots, and evacuate them *)
-      ClosureTable.get_counter ^^
-      from_0_to_n env (fun get_i -> evac (
-        get_i ^^
-        compile_add_const 1l ^^
-        compile_mul_const Heap.word_size ^^
-        compile_add_const ClosureTable.loc ^^
-        compile_add_const ptr_skew
-      )) ^^
+      evac (ClosureTable.root env) ^^
       HeapTraversal.walk_heap_from_to env
-        (compile_unboxed_const Int32.(add ClosureTable.table_end ptr_skew))
+        (compile_unboxed_const Int32.(add Stack.end_of_stack ptr_skew))
         (compile_unboxed_const Int32.(add end_of_static_space ptr_skew))
         (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
 
@@ -4854,19 +4800,28 @@ module FuncDec = struct
     let sr, code = lit env ae "anon_async" Type.Local Type.Returns free_vars [] mk_body [] at in
     code ^^
     StackRep.adjust env sr SR.Vanilla ^^
-    ClosureTable.remember_closure env
+    ClosureTable.remember env
 
-  (* Wraps a local closure in a local function that does serialization and
-     takes care of the environment *)
-  (* Need this function once per type, so we can share based on ts *)
-  let closure_to_reply_callback env ts get_closure =
+  (* Takes the reply and reject callbacks, tuples them up,
+     add them to the closure table, and returns the two callbacks expected by
+     call_simple.
+
+     The tupling is necesary because we want to free _both_ closures when
+     one is called.
+
+     The reply callback function exists once per type (it has to do
+     serialization); the reject callback function is unique.
+  *)
+
+  let closures_to_reply_reject_callbacks env ts =
     assert (E.mode env = Flags.StubMode);
-    let name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env ->
+    let reply_name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
+    Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall_closure env ^^ (* At this point we can remove the closure *)
+        ClosureTable.recall env ^^
+        Arr.load_field 0l ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
 
@@ -4878,21 +4833,18 @@ module FuncDec = struct
 
         message_cleanup env (Type.Shared Type.Write)
       );
-    compile_unboxed_const (E.built_in env name) ^^
-    get_closure ^^ ClosureTable.remember_closure env
 
-  let closure_to_reject_callback env get_closure =
-    assert (E.mode env = Flags.StubMode);
-    let name = "@reject_callback" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env ->
+    let reject_name = "@reject_callback" in
+    Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall_closure env ^^ (* At this point we can remove the closure *)
+        ClosureTable.recall env ^^
+        Arr.load_field 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
 
-        (* Synthesize reject *)
+        (* Synthesize value of type `Error` *)
         E.trap_with env "reject_callback" ^^
 
         get_closure ^^
@@ -4900,8 +4852,21 @@ module FuncDec = struct
 
         message_cleanup env (Type.Shared Type.Write)
       );
-    compile_unboxed_const (E.built_in env name) ^^
-    get_closure ^^ ClosureTable.remember_closure env
+
+    (* The upper half of this function must not depend on the get_k and get_r
+       parameters, so hide them from above (cute trick) *)
+    fun get_k get_r ->
+      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+      (* store the tuple away *)
+      Arr.lit env [get_k; get_r] ^^
+      ClosureTable.remember env ^^
+      set_cb_index ^^
+
+      (* return arguments for the ic.call *)
+      compile_unboxed_const (E.built_in env reply_name) ^^
+      get_cb_index ^^
+      compile_unboxed_const (E.built_in env reject_name) ^^
+      get_cb_index
 
   let ignoring_callback env =
     assert (E.mode env = Flags.StubMode);
@@ -4917,10 +4882,8 @@ module FuncDec = struct
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
-      (* The reply callback *)
-      closure_to_reply_callback env ts2 get_k ^^
-      (* The reject callback *)
-      closure_to_reject_callback env get_r ^^
+      (* The reply and reject callback *)
+      closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts1 ^^
       (* done! *)
@@ -4963,7 +4926,7 @@ module FuncDec = struct
         (* Deserialize and look up closure argument *)
         Serialization.deserialize env [Type.Prim Type.Word32] ^^
         BoxedSmallWord.unbox env ^^
-        ClosureTable.recall_closure env ^^
+        ClosureTable.recall env ^^
         set_closure ^^ get_closure ^^ get_closure ^^
         Closure.call_closure env 0 0 ^^
         message_cleanup env (Type.Shared Type.Write)
@@ -6116,9 +6079,13 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       Heap.get_total_allocation env ^^ BigNum.from_word64 env
 
-    | OtherPrim "rts_outstanding_callbacks", [] ->
+    | OtherPrim "rts_callback_table_count", [] ->
       SR.Vanilla,
-      ClosureTable.get_outstanding_callbacks env ^^ Prim.prim_word32toNat env
+      ClosureTable.count env ^^ Prim.prim_word32toNat env
+
+    | OtherPrim "rts_callback_table_size", [] ->
+      SR.Vanilla,
+      ClosureTable.size env ^^ Prim.prim_word32toNat env
 
 
     | OtherPrim "idlHash", [e] ->
@@ -6845,7 +6812,7 @@ and actor_lit outer_env this ds fs at =
       (E.get_rts outer_env)
       (E.get_prelude outer_env)
       (E.get_trap_with outer_env)
-      ClosureTable.table_end in
+      Stack.end_of_stack in
 
     Heap.register_globals mod_env;
     Stack.register_globals mod_env;
@@ -7003,7 +6970,7 @@ and conclude_module env module_name start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts prelude Dfinity.trap_with ClosureTable.table_end in
+  let env = E.mk_global mode rts prelude Dfinity.trap_with Stack.end_of_stack in
 
   Heap.register_globals env;
   Stack.register_globals env;
