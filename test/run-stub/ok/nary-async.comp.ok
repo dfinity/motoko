@@ -1,0 +1,16 @@
+nary-async.mo:8.12-11.6: type error, unsupported async block
+  (This is a limitation of the current version.)
+nary-async.mo:19.12-22.6: type error, unsupported async block
+  (This is a limitation of the current version.)
+nary-async.mo:31.12-34.6: type error, unsupported async block
+  (This is a limitation of the current version.)
+nary-async.mo:44.12-47.6: type error, unsupported async block
+  (This is a limitation of the current version.)
+nary-async.mo:55.12-58.6: type error, unsupported async block
+  (This is a limitation of the current version.)
+nary-async.mo:66.12-71.6: type error, unsupported async block
+  (This is a limitation of the current version.)
+nary-async.mo:79.12-85.6: type error, unsupported async block
+  (This is a limitation of the current version.)
+nary-async.mo:94.12-101.6: type error, unsupported async block
+  (This is a limitation of the current version.)

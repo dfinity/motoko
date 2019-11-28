@@ -1,0 +1,2 @@
+general-type-components.mo:19.14-19.15: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)

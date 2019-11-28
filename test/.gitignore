@@ -16,3 +16,4 @@ _coverage
 *.wat-run
 *.tc
 *.wasm.map
+*.mangled.mo

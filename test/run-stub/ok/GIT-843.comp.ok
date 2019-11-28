@@ -1,0 +1,2 @@
+GIT-843.mo:6.1-6.8: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)

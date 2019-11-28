@@ -1,0 +1,4 @@
+shared-object.mo:15.20-15.23: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)
+shared-object.mo:19.3-19.5: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)

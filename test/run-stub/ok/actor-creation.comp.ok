@@ -1,0 +1,6 @@
+actor-creation.mo:7.5-12.6: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+  (This is a limitation of the current version.)
+actor-creation.mo:15.5-15.10: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)
+actor-creation.mo:21.1-21.6: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)

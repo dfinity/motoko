@@ -1,0 +1,8 @@
+ic-calls.mo:19.5-19.6: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)
+ic-calls.mo:20.19-20.20: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)
+ic-calls.mo:21.26-21.27: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)
+ic-calls.mo:26.1-26.7: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)

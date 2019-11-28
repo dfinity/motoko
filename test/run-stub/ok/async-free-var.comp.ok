@@ -1,0 +1,2 @@
+async-free-var.mo:1.8-15.2: type error, unsupported async block
+  (This is a limitation of the current version.)

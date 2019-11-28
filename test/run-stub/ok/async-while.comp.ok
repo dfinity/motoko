@@ -1,0 +1,2 @@
+async-while.mo:2.1-59.2: type error, unsupported async block
+  (This is a limitation of the current version.)
