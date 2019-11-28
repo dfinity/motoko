@@ -46,7 +46,7 @@ as_ptr alloc_array(uint32_t len) {
 void create_closure_table() {
   table = alloc_array(INITIAL_SIZE);
   free_slot = 0;
-  for (uint32_t i  = 0; i+1 < INITIAL_SIZE; i++) {
+  for (uint32_t i = 0; i+1 < INITIAL_SIZE; i++) {
     ARRAY_FIELD(table, i) = (i+1) << 2;
   }
   ARRAY_FIELD(table, INITIAL_SIZE - 1) = FULL;
