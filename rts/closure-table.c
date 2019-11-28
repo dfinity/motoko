@@ -5,7 +5,7 @@ This file implements the data structure the Motoko runtime uses to keep track of
 
  1. Adding a closure (any heap pointer) and getting an index (i32)
  2. Looking up a closure by index, which also frees it
- 3. Traverse all closures (for GC)
+ 3. GC must traverse all closures, and possibly move the table
  4. Obtain number of closures registered
  5. Obtain size of table
 
@@ -97,7 +97,7 @@ export uint32_t closure_count() {
   return n_closures;
 }
 
-export as_ptr closure_box() {
+export as_ptr closure_table_loc() {
   return SKEW(&table);
 }
 
