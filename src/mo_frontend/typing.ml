@@ -228,12 +228,7 @@ let error_shared env t at fmt =
     Printf.ksprintf
       (fun s1 ->
         Diag.add_msg env.msgs (type_error at (s1^s));
-        match t1 with
-        | T.Obj (T.Actor, _) ->
-          error_in [Flags.ICMode] env at "actor types are non-shared."
-        | T.Func (T.Shared _, _, _, _, _) ->
-          error_in [Flags.ICMode] env at "shared function types are non-shared."
-        | _ -> raise Recover)
+        raise Recover)
       fmt
 
 let as_domT t =
@@ -779,7 +774,6 @@ and infer_exp'' env exp : T.typ =
         if T.is_async t_ret && not (in_await env) then
           error_in [Flags.ICMode] env exp2.at
             "shared, async function must be called within an await expression";
-        error_in [Flags.ICMode] env exp1.at "calling a shared function not yet supported";
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
@@ -924,8 +918,6 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then check_exp env T.throw exp1;
     T.Non
   | AsyncE exp1 ->
-    if not (in_shared_async env || in_oneway_ignore env) then
-      error_in [Flags.ICMode] env exp.at "unsupported async block";
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
     let t = infer_exp env' exp1 in
@@ -1004,8 +996,6 @@ and check_exp' env0 t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE exp1, T.Async t' ->
-    if not (in_shared_async env || in_oneway_ignore env) then
-      error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
     check_exp env' t' exp1;
     t

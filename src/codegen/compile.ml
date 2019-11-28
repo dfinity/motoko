@@ -2953,6 +2953,7 @@ module Dfinity = struct
     match E.mode env with
     | Flags.ICMode ->
       E.add_func_import env "debug" "print" [I32Type; I32Type] [];
+      E.add_func_import env "ic0" "call_simple" (i32s 10) [I32Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
