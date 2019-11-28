@@ -27,7 +27,7 @@ typedef intptr_t as_ptr;
 
 #define ARRAY_LEN(p) (FIELD(p,1))
 #define ARRAY_HEADER_SIZE 2
-#define ARRAY_FIELD(p,n) (FIELD(p,2+n))
+#define ARRAY_FIELD(p,n) (FIELD(p,ARRAY_HEADER_SIZE+n))
 
 /* Heap tags. Needs to stay in sync with compile.ml */
 enum as_heap_tag {
