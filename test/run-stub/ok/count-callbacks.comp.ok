@@ -1,0 +1,8 @@
+count-callbacks.mo:9.18-9.20: type error, shared, async function must be called within an await expression
+  (This is a limitation of the current version.)
+count-callbacks.mo:11.18-11.20: type error, shared, async function must be called within an await expression
+  (This is a limitation of the current version.)
+count-callbacks.mo:13.18-13.20: type error, shared, async function must be called within an await expression
+  (This is a limitation of the current version.)
+count-callbacks.mo:15.18-15.20: type error, shared, async function must be called within an await expression
+  (This is a limitation of the current version.)

@@ -1,0 +1,2 @@
+chat.mo:5.1-26.2: type error, actor classes are not supported; use an actor declaration instead
+  (This is a limitation of the current version.)

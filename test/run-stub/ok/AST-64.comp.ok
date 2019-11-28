@@ -1,0 +1,8 @@
+AST-64.mo:1.10-1.23: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+  (This is a limitation of the current version.)
+AST-64.mo:2.10-2.18: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+  (This is a limitation of the current version.)
+AST-64.mo:9.10-9.53: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+  (This is a limitation of the current version.)
+AST-64.mo:10.10-10.43: type error, non-toplevel actor; an actor can only be declared at the toplevel of a program
+  (This is a limitation of the current version.)

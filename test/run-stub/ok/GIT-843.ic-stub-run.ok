@@ -1,5 +1,1 @@
-→ create
-← completed: canister-id = 0x0000000000000400
-→ install
-ok
-← completed
+/home/jojo/dfinity/motoko/test/run-stub/../drun-wrapper.sh: line 17: ic-stub-run: command not found

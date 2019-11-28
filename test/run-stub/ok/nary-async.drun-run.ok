@@ -1,0 +1,1 @@
+ingress(0) Err: IC0504: Canister 42 violated contract: "ic0.call_simple" cannot be executed during the initialization.

@@ -7,8 +7,7 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -2: Use IC API
-#    -3: Use Stub API
+#    -d: Run on in drun (or, if not possible, in stub)
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
@@ -21,10 +20,9 @@ function realpath() {
 
 
 ACCEPT=no
-API=wasi
+DRUN=no
 IDL=no
 RELEASE=no
-EXTRA_MOC_FLAGS=
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
@@ -36,16 +34,13 @@ SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "a23stir" o; do
+while getopts "adstir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
             ;;
-        2)
-            API=ic
-            ;;
-        3)
-            API=stub
+        d)
+            DRUN=yes
             ;;
         s)
             ECHO=true
@@ -62,9 +57,6 @@ while getopts "a23stir" o; do
     esac
 done
 
-if [ $API = "wasm" ]; then EXTRA_MOC_FLAGS=-no-system-api; fi
-if [ $API = "wasi" ]; then EXTRA_MOC_FLAGS=-wasi-system-api; fi
-if [ $API = "stub" ]; then EXTRA_MOC_FLAGS=-stub-system-api; fi
 if [ $RELEASE = "yes" ]; then MOC_FLAGS=--release; fi
 
 shift $((OPTIND-1))
@@ -164,14 +156,14 @@ do
   if [ ${file: -3} == ".mo" ]
   then
     # Typecheck
-    run tc $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --check $base.mo
+    run tc $MOC $MOC_FLAGS --check $base.mo
     tc_succeeded=$?
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
-        run idl $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --idl $base.mo -o $out/$base.did
+        run idl $MOC $MOC_FLAGS --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
 
         normalize $out/$base.did
@@ -185,10 +177,10 @@ do
         if [ "$SKIP_RUNNING" != yes ]
         then
           # Interpret
-          run run $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r $base.mo
+          run run $MOC $MOC_FLAGS --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $MOC $MOC_FLAGS --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -198,7 +190,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r -iR $base.mo
+          run run-low $MOC $MOC_FLAGS --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -210,7 +202,18 @@ do
         fi
 
         # Compile
-        run comp $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings --map -c $base.mo -o $out/$base.wasm
+        if [ $DRUN = no ]
+        then
+          run comp $MOC $MOC_FLAGS -no-system-api --hide-warnings --map -c $base.mo -o $out/$base.wasm
+        else
+          run comp $MOC $MOC_FLAGS --hide-warnings --map -c $base.mo -o $out/$base.wasm
+          can_use_drun=$?
+
+          if [ "$can_use_drun" -ne 0 ];
+          then
+            run comp-stub $MOC $MOC_FLAGS -stub-system-api --hide-warnings --map -c $base.mo -o $out/$base.wasm
+          fi
+        fi
 
         if [ -e $out/$base.wasm ]
         then
@@ -232,18 +235,15 @@ do
           # Run compiled program
           if [ "$SKIP_RUNNING" != yes ]
           then
-            if [ $API = ic ]
-            then
-              run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
-            elif [ $API = stub ]
-	    then
-              DRUN=$IC_STUB_RUN run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $base.mo
-            elif [ $API = wasi ]
+            if [ $DRUN = no ]
             then
               run wasm-run $WASMTIME --disable-cache $out/$base.wasm
-            else
-              echo "Unkonwn API $API"
-	      exit 1
+            elif [ "$can_use_drun" -eq 0 ]
+            then
+              run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
+	    else
+              DRUN=$IC_STUB_RUN \
+              run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $base.mo
             fi
           fi
         fi
