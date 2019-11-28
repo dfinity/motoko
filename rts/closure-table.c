@@ -64,7 +64,7 @@ void double_closure_table() {
   }
   ARRAY_FIELD(new, 2*old_size - 1) = free_slot;
   free_slot = old_size << 2;
-  table=new;
+  table = new;
 }
 
 export uint32_t remember_closure(as_ptr cls) {
