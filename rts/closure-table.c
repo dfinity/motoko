@@ -36,7 +36,7 @@ static uint32_t n_closures = 0;
 // next free
 static uint32_t free_slot = FULL;
 
-as_ptr alloc_array(uint32_t len) {
+static as_ptr alloc_array(uint32_t len) {
   as_ptr a = alloc_words(ARRAY_HEADER_SIZE + len);
   TAG(a) = TAG_ARRAY;
   ARRAY_LEN(a) = len;
