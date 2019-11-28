@@ -2953,8 +2953,10 @@ module Dfinity = struct
     match E.mode env with
     | Flags.ICMode ->
       E.add_func_import env "debug" "print" [I32Type; I32Type] [];
-      E.add_func_import env "msg" "arg_data_size" [] [I32Type];
-      E.add_func_import env "msg" "arg_data_copy" [I32Type; I32Type; I32Type] [];
+      E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "msg" "reply" [I32Type; I32Type] [];
       E.add_func_import env "msg" "reject" [I32Type; I32Type] [];
       E.add_func_import env "msg" "reject_code" [] [I32Type];
@@ -3097,7 +3099,7 @@ module Dfinity = struct
 
   let get_self_reference env =
     match E.mode env with
-    | Flags.StubMode ->
+    | Flags.ICMode | Flags.StubMode ->
       Func.share_code0 env "canister_self" [I32Type] (fun env ->
         let (set_len, get_len) = new_local env "len" in
         let (set_blob, get_blob) = new_local env "blob" in
@@ -4025,20 +4027,13 @@ module Serialization = struct
 
   let argument_data_size env =
     match E.mode env with
-    | Flags.ICMode ->
-      Dfinity.system_call env "msg" "arg_data_size"
-    | Flags.StubMode ->
+    | Flags.ICMode | Flags.StubMode ->
       Dfinity.system_call env "ic0" "msg_arg_data_size"
     | _ -> assert false
 
   let argument_data_copy env get_dest get_length =
     match E.mode env with
-    | Flags.ICMode ->
-      get_dest ^^
-      get_length ^^
-      (compile_unboxed_const 0l) ^^
-      Dfinity.system_call env "msg" "arg_data_copy"
-    | Flags.StubMode ->
+    | Flags.ICMode | Flags.StubMode ->
       get_dest ^^
       (compile_unboxed_const 0l) ^^
       get_length ^^
