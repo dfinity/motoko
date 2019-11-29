@@ -307,15 +307,3 @@ just suggestions.
 
   is treated by `moc` by reading `foo.did` as if  the developer had
   run `didc path/to/foo.did -o path/to/foo.mo`.
-
-## Provisional Scaffolding adjustments
-
-At the time of writing, the underlying transport mechanism on the Internet Computer has no notion of a “sequence of references”, as expected by the IDL spec. This means that the IDL types `service …` and `func …` are not usable.
-
-To work around this and at least support passing references to _public_ canister and to _public_ canister methods, and until this mismatch is resolved, we implement `e` as follows:
-
-```
-e(actor { <typ-field>;* }) = blob
-e(shared <typ1> -> <typ2>) = (blob, text)
-```
-where the `blob` is an actor id, and the `text` a method name.
