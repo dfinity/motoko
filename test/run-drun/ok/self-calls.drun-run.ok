@@ -1,9 +1,0 @@
-ingress(0) System
-debug.print: test1
-debug.print: A called
-debug.print: test2
-debug.print: B called
-debug.print: test3
-debug.print: C called
-debug.print: test4
-ingress(1) Completed: Canister: Payload: 0x4449444c0000
