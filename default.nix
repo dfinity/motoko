@@ -452,7 +452,6 @@ rec {
       js
       didc
       deser
-      tests
       samples
       rts
       stdlib
@@ -461,7 +460,7 @@ rec {
       users-guide
       ic-stub
       shell
-    ];
+    ] ++ builtins.attrValues tests;
   };
 
   shell = nixpkgs.mkShell {
@@ -477,10 +476,10 @@ rec {
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
-        tests.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ]
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ] ++
+        builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
     shellHook = llvmEnv;
