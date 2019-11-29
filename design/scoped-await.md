@@ -132,7 +132,7 @@ shared Request<X>(i : Int) : async<X> Int { return i; }
 ```
 async<X> {
   let a1 = Ack<X>();
-  let a2 = Ack<X>()
+  let a2 = Ack<X>();
   await(a1);
   await(a2);
 }<Any>;
@@ -197,7 +197,7 @@ shared func waitN<X>(n:Nat) : async<X>(List<Int>) {
 #### Immediate deadlock
 
 ```
-let t:async<T>U = async<X>{ await t;}<T>; // bad await since t : Async[Any]U  </: Async<X>U
+let t:async<T>U = async<X>{ await t;}<T>; // bad await since t : Async<T>U  </: Async<X>U
 ```
 
 Ruled out by index scoping (`X != T`, any `T`)
@@ -277,11 +277,11 @@ syntactic sugar (during parse, applied bottom up as we construct types and terms
 async T := async<@> T
 T1 -> async<@> T2 := <@>T1 -> async<@> T1
 
-func f(<pat>) : async<@> T = e
-func<@>f() : async<@> T = e
+func f(<pat>) : async<@> T = e :=
+func<@>f(<pat>) : async<@> T = e
 
 func f(<pat>) : async<@> T { e } :=
-func<@>f() : async<@> T = async<@> e <@>
+func<@>f(<pat>) : async<@> T = async<@> e <@>
 
 func f<X>(<pat>) : async<@> T { e } :=
 func<X>f() : async<@> T = async <X> e <@>
