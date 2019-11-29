@@ -7,7 +7,6 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -1: Use Ancient API
 #    -2: Use IC API
 #    -3: Use Stub API
 #    -t: Only typecheck
@@ -22,7 +21,7 @@ function realpath() {
 
 
 ACCEPT=no
-API=wasm
+API=wasi
 IDL=no
 RELEASE=no
 EXTRA_MOC_FLAGS=
@@ -30,21 +29,17 @@ MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
-WASM=${WASM:-wasm}
-DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
+WASMTIME=${WASMTIME:-wasmtime}
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "a123stir" o; do
+while getopts "a23stir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
-            ;;
-        1)
-            API=ancient
             ;;
         2)
             API=ic
@@ -68,7 +63,7 @@ while getopts "a123stir" o; do
 done
 
 if [ $API = "wasm" ]; then EXTRA_MOC_FLAGS=-no-system-api; fi
-if [ $API = "ancient" ]; then EXTRA_MOC_FLAGS=-ancient-system-api; fi
+if [ $API = "wasi" ]; then EXTRA_MOC_FLAGS=-wasi-system-api; fi
 if [ $API = "stub" ]; then EXTRA_MOC_FLAGS=-stub-system-api; fi
 if [ $RELEASE = "yes" ]; then MOC_FLAGS=--release; fi
 
@@ -93,6 +88,9 @@ function normalize () {
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
+    sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
+    sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
+    sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -159,10 +157,6 @@ do
   [ -d $ok ] || mkdir $ok
 
   rm -f $out/$base.*
-  if [ $ACCEPT = yes ]
-  then
-    rm -f $ok/$base.*
-  fi
 
   # First run all the steps, and remember what to diff
   diff_files=
@@ -238,17 +232,18 @@ do
           # Run compiled program
           if [ "$SKIP_RUNNING" != yes ]
           then
-            if [ $API = ancient ]
-            then
-              run dvm $DVM_WRAPPER $out/$base.wasm $base.mo
-            elif [ $API = ic ]
+            if [ $API = ic ]
             then
               run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
             elif [ $API = stub ]
 	    then
               DRUN=$IC_STUB_RUN run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $base.mo
+            elif [ $API = wasi ]
+            then
+              run wasm-run $WASMTIME --disable-cache $out/$base.wasm
             else
-              run wasm-run $WASM $out/$base.wasm
+              echo "Unkonwn API $API"
+	      exit 1
             fi
           fi
         fi
@@ -312,7 +307,7 @@ do
         node -r esm -e \
         "import actorInterface from './$out/$base.js';
         import { makeActor, makeHttpAgent } from '$JS_USER_LIBRARY';
-        const httpAgent = makeHttpAgent({ canisterId: 1 });
+        const httpAgent = makeHttpAgent({ canisterId: "ffffffffffffffff" });
         const actor = makeActor(actorInterface)(httpAgent);
         assert(Object.entries(actor).length > 0);"
       fi
@@ -322,6 +317,8 @@ do
 
   if [ $ACCEPT = yes ]
   then
+    rm -f $ok/$base.*
+
     for outfile in $diff_files
     do
       if [ -s $out/$outfile ]

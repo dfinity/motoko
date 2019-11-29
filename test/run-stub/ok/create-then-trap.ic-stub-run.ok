@@ -1,0 +1,5 @@
+→ create
+← completed: canister-id = 0x0000000000000400
+→ install
+Trap: EvalTrapError :0.1 "canister trapped explicitly: assertion failed at create-then-trap.mo:9.5-9.17"
+← completed
