@@ -63,8 +63,9 @@ Here, the simplist might be to use the function name itself for the implicit ind
 ```
 E, X; async<X> |- e : T   E |- U :: *   (X fresh)
 -------------------------------------------------
-E; - |- async<X> e <U>: async<U>T
+E; - |- async<X> e <U>: async<U> T[U/X]
 ```
+
 An `async` expression at index `X` provides the scoped ability to await asyncs with index `X`.
 
 The body `e` of an async must be parametric in the index but the index
@@ -73,43 +74,79 @@ parameter is immediately eliminated at some index `U` (not mentioning `X`).
 ### (restricted) await expressions
 
 ```
-E; async<T> |- e : async<T>U
+E; async<U> |- e : async<U> T
 ------------------------------
-E; async<T> |- await e : U
+E; async<U> |- await e : T
 ```
 
-We can only await things of the current index `T`, recorded in the context as `_ ; async<T>`.
+We can only await things of the current index `U`, recorded in the context as `_ ; async<U>`.
 
-### Application
+(For *closure under type substitution* of contexts, note that we need the annotation in the context to be a type, not just a type parameter).
+
+
+### Application (Derived Rule)
+
+In the explicit system, the rules for function abstraction and application are *unchanged*. But
+to illustrate how this works, we consider the derived rules:
+
 
 ```
-E; _ |- f : shared <X> U -> async<X> V
+E; _ |- f : shared <X> U -> async<U> V
 E; _ |- e': [T/X] U
 -------------------------------------
 E; _ |-  f <T> e' : async<T>([T/X]V)
 ```
 
-Application must provide an index, typically the nearest enclosing index parameter if want to await the result, but I guess
-it could be any enclosing index parameter.
+Application must provide an instantiation, typically the nearest enclosing index parameter if want to await the result, but it
+could be any type.
+
+In the implicit system, we change the rule for application to (if necessary) insert a single missing scope parameter (`@`)
+amongst the remaining explicit type parameters, driven by the expected async returning function type
+and the 1-deficit of type arguments. This is a simple check to see if the index of the return type is a type parameter and the number of arguments is 1 less than the number of parameters,
+and then inserting '@' at the correct index in the type arguments (otherwise the arguments are as given).
 
 
-### Abstraction
+### Abstraction (Derived Rule)
 
-Rule for (desugared) shared functions (ignoring recursion).
+Derivation for (desugared) shared functions (ignoring recursion).
+
+
+Consider the desugared async function:
+
+```shared f<X>(x:T) : async<X>U = async<Y> e <X>;```
+
+For reusability in different async contexts,
+every shared function should introduce a new index parameter, immediately supplied to the inner async expression.
+Using non-generic shared functions is ok, but less useful (typically only locally useful): the result type needs to
+be generic if we want to await it from other async contexts.
+
+Using the above rules and ordinary lambda abstraction we get:
 
 ```
-E, X, x : T, Y;  async<Y> |- e : U  (X, Y fresh)
-----------------------------------------------------
-E; _ |- shared f<X>(x:T) : async<X>U = async<Y> e <X>;
+E, X, x : T, Y;  async<Y> |- e : U[Y]  Y fresh
+-------------------------------------------------------------
+E, X, x : T |- async <Y> e <X> : U[Y] : (U[Y])[X/Y]  X fresh
+-------------------------------------------------------------
+E; _ |- shared f<X>(x:T) : async<X>U[X] = async<Y> e <X>;
+        shared <X>(x:T) : async<X>U[X]
 ```
-Every shared function introduce a new index parameter, immediately supplied to the inner async expression.
 
-Derived rule for sugar (ignoring recursion):
+
+If we explicitly pun `X` and `Y` in our *implicit* syntax desugaring we get:
 
 ```
-E, X, x : T; async<X> |- e : U
---------------------------------------------
-E; _ |- shared f<X>(x:T) : async<X> U { e; }
+shared f(x:T) : async U :=
+  shared f<X>(x:T) : async<X>U = async<X> e <X>;
+
+```
+
+Then we get the derived rule:
+
+```
+E, X, x : T; async<X> |- e : U  (X fresh)
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+E; _ |- shared f(x:T) : async U { e; } : shared <X> T -> async<X> U
 ```
 
 ## Examples:
@@ -129,6 +166,7 @@ shared Request<X>(i : Int) : async<X> Int { return i; }
 ```
 
 ### Static parralel waiting:
+
 ```
 async<X> {
   let a1 = Ack<X>();
@@ -266,8 +304,7 @@ Parsing:
 
 Elaboration:
 
-* Elaboration ensures `@` is bound to appropriate constructor,
-shadowing any previous `@`-binding to ensure structured scoping.
+* Elaboration ensures `@` is bound to appropriate constructor, shadowing any previous `@`-binding to ensure structured scoping.
 * Elaboration adds missing unary instantiations to function applications that require them, guided by the synthesized function type.
 
 syntactic sugar (during parse, applied bottom up as we construct types and terms)
@@ -284,10 +321,10 @@ func f(<pat>) : async<@> T { e } :=
 func<@>f(<pat>) : async<@> T = async<@> e <@>
 
 func f<X>(<pat>) : async<@> T { e } :=
-func<X>f() : async<@> T = async <X> e <@>
+func<X>f(<pat>) : async<@> T = async <X> e <@>
 
-x(pat) : async<@> T {e} := x<@>(pat): async<@> T = async <@> e <@>
-x<X>(pat) : async<@> T := e = x<@>(pat): async<@> T = e
+f(<pat>) : async<@> T {e} := f<@>(<pat>): async<@> T = async <@> e <@>
+f<X>(<pat>) : async<@> T := e = f<@>(<pat>): async<@> T = e
 
 async e := async<@> e <@>
 
@@ -305,7 +342,8 @@ f e = f<@>e when f: sort <X>(typ,...) ~~> async<X> t
 
 func<X>f() : async<@> T = async <X> e <@> ~~>
 func<X>f() : async<@> T[X/@] = (async<X> e <@>) [X/@]
-```
+````
+
 (basically, we rebind `@` to the current scope during elaboration, so references inserted during parsing elaborate to the nearest appropiate binding, and default missing scope instantiations to the current meaning of `@`).
 
 Note that in a function type or definition with n>1 type parameters, `<@>` either shadows one of those eponymous type parameters or it retains its outer meaning. In the latter case (outer binding), we might either warn appropriately or reject as ambiguous, requiring the user to
