@@ -285,6 +285,11 @@ Principle: Desugaring should be:
 * expressible in the syntax (as explicit binders and instantiations).
 * avoidable (by supplying explicit binders and instantations).
 
+
+*UPDATE*: The scheme below selectively adds a `@`-parameter to a (sugared) function with 0 or 1 type parameters and an omitted return index.
+I now think it might be better to just always add to `@` to non-`@` declaring type parameters when the return type is `async<@> U`, regardless of the arity, n, of the original type parameters. We can then just insert @ at the correct position in a call with n-1 type arguments by inspecting the index of the async return type. Pretty printing can detect and elide the parameter in a slight generalization of what I do now.
+
+
 ### Basic idea:
 
 Prelude:
@@ -346,10 +351,13 @@ func<X>f() : async<@> T[X/@] = (async<X> e <@>) [X/@]
 
 (basically, we rebind `@` to the current scope during elaboration, so references inserted during parsing elaborate to the nearest appropiate binding, and default missing scope instantiations to the current meaning of `@`).
 
-Note that in a function type or definition with n>1 type parameters, `<@>` either shadows one of those eponymous type parameters or it retains its outer meaning. In the latter case (outer binding), we might either warn appropriately or reject as ambiguous, requiring the user to
+Note that in a function type or definition with n>1 type parameters, `@` either shadows one of those eponymous type parameters or it retains its outer meaning. In the latter case (outer binding), we might either warn appropriately or reject as ambiguous, requiring the user to
 give the missing instantiation of the `async T` return type.
 
 (The implementation is currently silent and defaults `@` to the enclosing interpretation.)
+
+
+
 
 ### Sugaring types (for pretty printing)
 
