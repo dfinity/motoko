@@ -1,7 +1,6 @@
 all:
 	$(MAKE) -C fail
 	$(MAKE) -C run
-	$(MAKE) -C run-release
 	$(MAKE) -C run-drun
 	$(MAKE) -C repl
 	$(MAKE) -C ld
@@ -14,7 +13,6 @@ MAKE_PAR := $(MAKE) --no-print-directory --load-average -j $(shell getconf _NPRO
 quick:
 	$(MAKE_PAR) -C fail quick
 	$(MAKE_PAR) -C run quick
-	$(MAKE_PAR) -C run-release quick
 	$(MAKE_PAR) -C repl quick
 	$(MAKE_PAR) -C ld quick
 	$(MAKE_PAR) -C idl quick
@@ -32,7 +30,6 @@ coverage:
 	export SKIP_RUNNING=yes; \
 	$(MAKE) -C fail; \
 	$(MAKE) -C run; \
-	$(MAKE) -C run-release; \
 	$(MAKE) -C run-drun; \
 	$(MAKE) -C repl;
 	$(MAKE) -C ld || true
@@ -42,7 +39,6 @@ coverage:
 accept:
 	$(MAKE) -C fail accept
 	$(MAKE) -C run accept
-	$(MAKE) -C run-release accept
 	$(MAKE) -C run-drun accept
 	$(MAKE) -C repl accept
 	$(MAKE) -C ld accept
@@ -54,7 +50,6 @@ accept:
 clean:
 	$(MAKE) -C fail clean
 	$(MAKE) -C run clean
-	$(MAKE) -C run-release clean
 	$(MAKE) -C run-drun clean
 	$(MAKE) -C repl clean
 	$(MAKE) -C ld clean
