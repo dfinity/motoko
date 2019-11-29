@@ -309,7 +309,7 @@ do
       sed -i 's/import "/import "..\//g' $out/$base.pp.did
       $DIDC --check $out/$base.pp.did > $out/$base.pp.tc 2>&1
       diff_files="$diff_files $base.pp.tc"
-      
+
       $ECHO -n " [js]"
       $DIDC --js $base.did -o $out/$base.js >& $out/$base.js.out
       normalize $out/$base.js
@@ -328,7 +328,7 @@ do
         node -r esm -e \
         "import actorInterface from './$out/$base.js';
         import { makeActor, makeHttpAgent } from '$JS_USER_LIBRARY';
-        const httpAgent = makeHttpAgent({ canisterId: "ffffffffffffffff" });
+        const httpAgent = makeHttpAgent({ canisterId: \"ffffffffffffffff\" });
         const actor = makeActor(actorInterface)(httpAgent);
         assert(Object.entries(actor).length > 0);"
       fi
