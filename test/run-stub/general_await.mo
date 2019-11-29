@@ -1,38 +1,35 @@
-// TODO: Remove Await. prefix from calls once supported
-// Remove bug workaround
-// Increase N (once perf improves)
 actor Await {
 
-  let N = 3; // number of dynamic waits (low coz slow)
-
-  public shared func Ack<@>() : async(){
-    debugPrint "\nAck"
+  let N = 4;
+  
+  public shared func Ack<@>() : async<@> (){
+    debugPrint "Ack"
   };
 
-  public shared func Request<@>(i : Int) : async Int {
-    debugPrint("\nRequest(");debugPrintInt(i);debugPrint(")");
+  public shared func Request<@>(i : Int) : async<@> Int {
+    debugPrint("Request(" # debug_show i # ")");
     return i;
   };
 
   // Static parallel waiting:
 
-  public shared func PA<@>() : async () {
-    let a1 = Await.Ack<@>();
-    let a2 = Await.Ack<@>();
+  public shared func PA<@>() : async<@> () {
+    let a1 = Ack<@>();
+    let a2 = Ack<@>();
     await a1;
     await a2;
   };
 
-  public shared func PR<@>() : async (Int,Int) {
-    let a1 = Await.Request<@>(1);
-    let a2 = Await.Request<@>(2);
+  public shared func PR<@>() : async<@>(Int,Int) {
+    let a1 = Request<@>(1);
+    let a2 = Request<@>(2);
     (await a1, await a2)
   };
 
   // Dynamic parallel waiting for acknowledgements
 
-  public shared func DPA<@>() : async () {
-    let as: [async()]  = Array_tabulate<async ()>(N, func (_) { Await.Ack<@>(); });
+  public shared func DPA<@>() : async<@>() {
+    let as: [async()]  = Array_tabulate<async ()>(N, func (_) { Ack<@>(); });
     for (a in as.vals()) {
       await a;
     };
@@ -40,8 +37,8 @@ actor Await {
 
   // Dynamic parallel waiting (with results)
 
-  public shared func DPR<@>() : async [Int] {
-    func f<>(i:Nat) : async Int = Await.Request<@>(i);
+  public shared func DPR<@>() : async<@>[Int] {
+    func f<>(i:Nat) : async Int = Request<@>(i);
     let as = Array_tabulate<async Int>(N, f);
     let res = Array_init<Int>(as.len(),-1);
     for (i in as.keys()) {
@@ -54,11 +51,11 @@ actor Await {
 
   // Recursive parallel waiting
 
-  public shared func RPA<@>(n:Nat) : async () {
+  public shared func RPA<@>(n:Nat) : async<@>() {
     if (n == 0) ()
     else {
-      let a = Await.Ack<@>();
-      await Await.RPA<@>(n-1); // recurse
+      let a = Ack<@>();
+      await RPA<@>(n-1); // recurse
       await a;
     };
   };
@@ -67,35 +64,35 @@ actor Await {
 
   public type List<Int> = ?(Int,List<Int>);
 
-  public shared func RPR<@>(n:Nat) : async List<Int> {
+  public shared func RPR<@>(n:Nat) : async<@> List<Int> {
     if (n == 0) null
     else {
-      let a = Await.Request<@>(n);
-      let tl = await Await.RPR<@>(n-1); // recurse
+      let a = Request<@>(n);
+      let tl = await RPR<@>(n-1); // recurse
       ?(await a,tl)
     }
   };
 
 
-  public shared func Test() : async () {
+  public shared func Test<@>() : async<@>() {
 
-      await Await.PA<@>();
+      await PA<@>();
 
-      switch (await Await.PR<@>()) {
+      switch (await PR<@>()) {
         case (1,2) ();
         case _ (assert false);
       };
 
-      await Await.DPA<@>();
+      await DPA<@>();
 
-      let rs = await Await.DPR<@>();
+      let rs = await DPR<@>();
       for (i in rs.keys()) {
           assert rs[i] == i;
       };
 
-      await Await.RPA<@>(N);
+      await RPA<@>(N);
 
-      var l = await Await.RPR<@>(N);
+      var l = await RPR<@>(N);
       for (i in revrange(N, 1)) {
         switch (l) {
           case (?(h, t)) {
@@ -109,4 +106,3 @@ actor Await {
 };
 
 //CALL ingress Test 0x4449444C0000
-

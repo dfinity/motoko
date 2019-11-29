@@ -114,8 +114,11 @@ E; _ |- shared f<X>(x:T) : async<X> U { e; }
 
 ## Examples:
 
-(These need fixing below but are all coded in [general_await.mo](../test/run-drun/general_await.mo)
-[general_await_implicit.mo](../test/run-drun/general_await_implicit.mo)
+(These need fixing for typos below but are all coded in
+
+* [general_await.mo](../test/run-stub/general_await.mo) (no-sugar)
+* [general_await_implicit.mo](../test/run-stub/general_await_implicit.mo) (with sugar)
+)
 
 Assuming the following requests:
 
@@ -239,30 +242,33 @@ shared func f<R>() : async () {
 ## Sugar
 
 Principle: Desugaring should be:
+
 * simple and unambiguous
 * expressible in the syntax (as explicit binders and instantiations).
 * avoidable (by supplying explicit binders and instantations).
 
-Basic idea: 
+### Basic idea:
 
-Prelude: 
-defines default scope (non-awaitable) and instantiation:
-`
+Prelude:
+
+Defines default scope @ = Any (non-awaitable in any async context) and instantiation:
+
+```
 type @ = Any
-`
+```
 
 (`@` is a newly legal scope identifier)
 
 Parsing:
 
-* inserts `<@>` type instantations and binders for missing `async` binders and instantiations (in types and terms) and `async` binders (in terms)
+* inserts `<@>` type instantiations and binders for missing `async` binders and instantiations (in types and terms) and `async` binders (in terms)
 * adds missing `<@>` bindings to async returning functions with absent quantifiers (note we distinguish missing type parameters from empty parameters `<>`)
 
 Elaboration:
 
 * Elaboration ensures `@` is bound to appropriate constructor,
 shadowing any previous `@`-binding to ensure structured scoping.
-* Elaboration adds missing instantiations to function applications that require them, guided by the synthesized function type.
+* Elaboration adds missing unary instantiations to function applications that require them, guided by the synthesized function type.
 
 syntactic sugar (during parse, applied bottom up as we construct types and terms)
 
