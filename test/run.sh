@@ -80,6 +80,7 @@ function normalize () {
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
+    sed 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' |
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
@@ -96,7 +97,7 @@ function run () {
   local ext="$1"
   shift
 
-  if grep -q "^//SKIP $ext" $file; then return; fi
+  if grep -q "^//SKIP $ext" $file; then return 1; fi
 
   $ECHO -n " [$ext]"
   "$@" >& $out/$base.$ext
@@ -201,17 +202,36 @@ do
 
         fi
 
+        # Mangle for compilation:
+        # The compilation targets do not support self-calls during canister
+        # installation, so this replaces
+        #
+        #     actor a { … }
+        #     a.go(); //CALL …
+        #
+        # with
+        #
+        #     actor a { … }
+        #     //CALL …
+        #
+        # which actually works on the IC platform
+
+	# needs to be in the same directory to preserve relative paths :-(
+        mangled=$base.mo.mangled
+        sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
+
+
         # Compile
         if [ $DRUN = no ]
         then
-          run comp $MOC $MOC_FLAGS -no-system-api --hide-warnings --map -c $base.mo -o $out/$base.wasm
+          run comp $MOC $MOC_FLAGS -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         else
-          run comp $MOC $MOC_FLAGS --hide-warnings --map -c $base.mo -o $out/$base.wasm
+          run comp $MOC $MOC_FLAGS --hide-warnings --map -c $mangled -o $out/$base.wasm
           can_use_drun=$?
 
           if [ "$can_use_drun" -ne 0 ];
           then
-            run comp-stub $MOC $MOC_FLAGS -stub-system-api --hide-warnings --map -c $base.mo -o $out/$base.wasm
+            run comp-stub $MOC $MOC_FLAGS -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
           fi
         fi
 
@@ -223,11 +243,11 @@ do
           # Check filecheck
           if [ "$SKIP_RUNNING" != yes ]
           then
-            if grep -F -q CHECK $base.mo
+            if grep -F -q CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
               wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
-              cat $out/$base.wat | FileCheck $base.mo > $out/$base.filecheck 2>&1
+              cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
               diff_files="$diff_files $base.filecheck"
             fi
           fi
@@ -240,13 +260,14 @@ do
               run wasm-run $WASMTIME --disable-cache $out/$base.wasm
             elif [ "$can_use_drun" -eq 0 ]
             then
-              run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
-	    else
+              run drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
+            else
               DRUN=$IC_STUB_RUN \
-              run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $base.mo
+              run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $mangled
             fi
           fi
         fi
+	rm -f $mangled
       fi
     fi
   elif [ ${file: -3} == ".sh" ]

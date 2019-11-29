@@ -1,0 +1,17 @@
+→ create
+← completed: canister-id = 0x0000000000000400
+→ install
+← completed
+→ update go(0x4449444c0000)
+A
+B
+C
+D
+E
+1
+2
+3
+4
+5
+6
+← completed: 0x4449444c0000

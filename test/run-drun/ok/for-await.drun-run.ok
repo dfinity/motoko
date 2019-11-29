@@ -1,0 +1,5 @@
+ingress(0) System
+debug.print: 0
+debug.print: 1
+thread 'main' panicked at 'message (id='1', current_status='Some(Completed(Canister(Payload([68, 73, 68, 76, 0, 0]))))') cannot be transitioned to 'Processing'', execution_environment/src/history/mod.rs:45:13
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.

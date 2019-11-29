@@ -1,2 +1,0 @@
-issue-894.mo:48.7-48.9: type error, shared, async function must be called within an await expression
-  (This is a limitation of the current version.)

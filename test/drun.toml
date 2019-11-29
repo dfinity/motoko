@@ -1,3 +1,4 @@
 [scheduler]
+scheduler_cores = 1
 round_gas_max = 10_000_000_000_000
 exec_gas = 1_000_000_000_000

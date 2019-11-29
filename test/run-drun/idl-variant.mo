@@ -14,3 +14,7 @@ actor {
 }
 
 //CALL query numify 0x4449444c016b03d583b702008790c0bd0479dc9790cb0e790100000220000000
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low
