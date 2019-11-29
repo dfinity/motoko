@@ -1,4 +1,2 @@
-interleave.mo:17.27-17.28: type error, expecting call to shared async function in await
-  (This is a limitation of the current version.)
-interleave.mo:31.31-31.32: type error, expecting call to shared async function in await
+interleave.mo:13.13-21.6: type error, unsupported async block
   (This is a limitation of the current version.)

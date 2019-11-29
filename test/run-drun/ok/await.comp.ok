@@ -1,14 +1,2 @@
-await.mo:13.25-13.26: type error, expecting call to shared async function in await
-  (This is a limitation of the current version.)
-await.mo:17.27-17.28: type error, expecting call to shared async function in await
-  (This is a limitation of the current version.)
-await.mo:22.23-22.24: type error, expecting call to shared async function in await
-  (This is a limitation of the current version.)
-await.mo:23.15-23.16: type error, expecting call to shared async function in await
-  (This is a limitation of the current version.)
-await.mo:28.36-28.37: type error, expecting call to shared async function in await
-  (This is a limitation of the current version.)
-await.mo:36.27-36.28: type error, expecting call to shared async function in await
-  (This is a limitation of the current version.)
-await.mo:51.31-51.32: type error, expecting call to shared async function in await
+await.mo:13.13-13.29: type error, unsupported async block
   (This is a limitation of the current version.)
