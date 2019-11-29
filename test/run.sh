@@ -80,7 +80,7 @@ function normalize () {
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
-    sed 's,\([a-zA-Z0-9.-]*\).mangled.mo,\1.mo,g' |
+    sed 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' |
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
@@ -217,7 +217,7 @@ do
         # which actually works on the IC platform
 
 	# needs to be in the same directory to preserve relative paths :-(
-        mangled=$base.mangled.mo
+        mangled=$base.mo.mangled
         sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
 
 
