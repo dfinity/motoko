@@ -4849,7 +4849,6 @@ module FuncDec = struct
       get_cb_index
 
   let ignoring_callback env =
-    assert (E.mode env = Flags.StubMode);
     let name = "@ignore_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
     compile_unboxed_const (E.built_in env name)
