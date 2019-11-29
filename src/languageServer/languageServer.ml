@@ -36,9 +36,7 @@ module Channel = struct
     print_string cl;
     print_string "\r\n\r\n";
     print_string out;
-    flush stdout;
-    log_to_file oc (label ^ "_length") cl;
-    log_to_file oc label out
+    flush stdout
 
   let send_response (oc : out_channel) : string -> unit = send oc "response"
   let send_notification (oc : out_channel) : string -> unit = send oc "notification"
@@ -116,7 +114,6 @@ let start entry_point debug =
     ref ix in
   let rec loop () =
     let clength = read_line () in
-    log_to_file "content-length" clength;
     let cl = "Content-Length: " in
     let cll = String.length cl in
     let num =
@@ -129,8 +126,6 @@ let start entry_point debug =
     let buffer = Buffer.create num in
     Buffer.add_channel buffer stdin num;
     let raw = String.trim (Buffer.contents buffer) in
-    log_to_file "raw" raw;
-
     let message = Lsp_j.incoming_message_of_string raw in
     let message_id = message.Lsp_t.incoming_message_id in
 
@@ -243,7 +238,7 @@ let start entry_point debug =
     (* Notification messages *)
 
     | (None, `Initialized _) ->
-       show_message Lsp.MessageType.Info "Language server initialized"
+       show_message Lsp.MessageType.Info "Motoko LS initialized";
 
     | (Some id, `Shutdown _) ->
        shutdown := true;
