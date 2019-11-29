@@ -63,7 +63,7 @@ Here, the simplist might be to use the function name itself for the implicit ind
 ```
 E, X; async<X> |- e : T   E |- U :: *   (X fresh)
 -------------------------------------------------
-E; - |- async<X> e <U>: async[U]T
+E; - |- async<X> e <U>: async<U>T
 ```
 An `async` expression at index `X` provides the scoped ability to await asyncs with index `X`.
 
