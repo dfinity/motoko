@@ -27,3 +27,7 @@ actor {
 //CALL ingress printCounter 0x4449444C0000
 //CALL query read 0x4449444C0000
 //CALL ingress printCounter 0x4449444C0000
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low
