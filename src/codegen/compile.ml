@@ -4666,39 +4666,24 @@ module FuncDec = struct
       | _ -> assert false
 
   let compile_static_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
-    match E.mode outer_env, control with
-    | Flags.ICMode, _ ->
-      let ae0 = VarEnv.mk_fun_ae outer_ae in
-      Func.of_body outer_env [] [] (fun env -> G.with_region at (
-        (* reply early for a oneway *)
-        (if control = Type.Returns
-         then
-           Tuple.compile_unit ^^
-           Serialization.serialize env [] ^^
-           Dfinity.reply_with_data env
-         else G.nop) ^^
-        (* Deserialize argument and add params to the environment *)
-        let arg_names = List.map (fun a -> a.it) args in
-        let arg_tys = List.map (fun a -> a.note) args in
-        let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
-        Serialization.deserialize env arg_tys ^^
-        G.concat (List.rev setters) ^^
-        mk_body env ae1 ^^
-        message_cleanup env sort
-      ))
-    | Flags.StubMode, _ ->
-      let ae0 = VarEnv.mk_fun_ae outer_ae in
-      Func.of_body outer_env [] [] (fun env -> G.with_region at (
-        (* Deserialize argument and add params to the environment *)
-        let arg_names = List.map (fun a -> a.it) args in
-        let arg_tys = List.map (fun a -> a.note) args in
-        let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
-        Serialization.deserialize env arg_tys ^^
-        G.concat (List.rev setters) ^^
-        mk_body env ae1 ^^
-        message_cleanup env sort
-      ))
-    | (Flags.WasmMode | Flags.WASIMode), _ -> assert false
+    let ae0 = VarEnv.mk_fun_ae outer_ae in
+    Func.of_body outer_env [] [] (fun env -> G.with_region at (
+      (* reply early for a oneway *)
+      (if control = Type.Returns
+       then
+         Tuple.compile_unit ^^
+         Serialization.serialize env [] ^^
+         Dfinity.reply_with_data env
+       else G.nop) ^^
+      (* Deserialize argument and add params to the environment *)
+      let arg_names = List.map (fun a -> a.it) args in
+      let arg_tys = List.map (fun a -> a.note) args in
+      let (ae1, setters) = VarEnv.add_argument_locals env ae0 arg_names in
+      Serialization.deserialize env arg_tys ^^
+      G.concat (List.rev setters) ^^
+      mk_body env ae1 ^^
+      message_cleanup env sort
+    ))
 
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env sort control name args mk_body ret_tys at =

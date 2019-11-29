@@ -4,15 +4,15 @@
 ← completed
 → update inc(0x4449444c0000)
 2
-← rejected (RC_CANISTER_ERROR): canister did not respond
+← completed: 0x4449444c0000
 → update inc(0x4449444c0000)
 3
-← rejected (RC_CANISTER_ERROR): canister did not respond
+← completed: 0x4449444c0000
 → update inc(0x4449444c0000)
 4
-← rejected (RC_CANISTER_ERROR): canister did not respond
+← completed: 0x4449444c0000
 → update printCounter(0x4449444c0000)
 4
-← rejected (RC_CANISTER_ERROR): canister did not respond
+← completed: 0x4449444c0000
 → update get(0x4449444c0000)
 ← completed: 0x4449444c00017d04
