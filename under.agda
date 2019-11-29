@@ -29,13 +29,25 @@ if_then_else_ : {A : Set} → Bool → A → A → A
 if true then x else y = x
 if false then x else y = y
 
-escape : ∀ {pre post : Nat} {r v n : Bool} → Token pre r v n post → Token (if n then 1 else 0) false true false 1
+not : Bool → Bool
+not false = true
+not true = false
+
+_and_ : Bool → Bool → Bool
+true and b = b
+_ and _ = false
+
+_or_ : Bool → Bool → Bool
+false or b = b
+_ or _ = true
+
+escape : ∀ {pre post : Nat} {r v n : Bool} → Token pre r v n post → Token (if (n or (not v)) then 1 else 0) false true false 1
 escape k@keyword = suffix k
 escape n@number = escape-number n
-escape (false ident) = {! escape-number (hash f)  !}
-escape (true ident) = {!   !}
-escape empty = {!   !}
-escape (suffix t) = {!   !}
+escape i@(false ident) = escape-number (hash i)
+escape i@(true ident) = suffix i
+escape e@empty = escape-number (hash e)
+escape s@(suffix t) = {! s  !}
 escape (escape-number t) = {!   !}
 escape (hash t) = {!   !}
 
