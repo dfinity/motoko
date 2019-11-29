@@ -232,7 +232,7 @@ escape <name> = escape_number(hash(<name>))  otherwise
    Importing interfaces that contain these types fails.
 
  * The functions `escape`/`unescape` ensure round-tripping of IDL field names
-   through ActorScript types. See `IDL-AS.proofs.md` for details.
+   through Motoko types. See `IDL-Motoko.proofs.md` for details.
 
 ## The value mappings
 
