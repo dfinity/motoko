@@ -298,26 +298,15 @@ rec {
       inherit qc lsp unit-tests;
     };
 
-
   samples = stdenv.mkDerivation {
     name = "samples";
     src = subpath ./samples;
-    buildInputs =
-      [ moc
-        didc
-        nixpkgs.wabt
-        nixpkgs.bash
-        nixpkgs.perl
-        filecheck
-        drun
-      ] ++
-      llvmBuildInputs;
-
+    buildInputs = [ moc ];
     buildPhase = ''
-        patchShebangs .
-        export MOC=moc
-        make all
-      '';
+      patchShebangs .
+      export MOC=moc
+      make all
+    '';
     installPhase = ''
       touch $out
     '';
