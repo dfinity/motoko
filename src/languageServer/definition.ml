@@ -34,6 +34,7 @@ let definition_handler
       project_root
       file_path =
   let result =
+    let open Source_file in
     Lib.Option.bind
       (Source_file.identifier_at_pos
          project_root
@@ -41,13 +42,13 @@ let definition_handler
          file_contents
          position)
       (function
-       | Source_file.Alias _ -> None
-       | Source_file.Unresolved _ -> None
-       | Source_file.Resolved resolved ->
-          DI.lookup_module resolved.Source_file.path index
-          |> opt_bind (find_named resolved.Source_file.ident)
-          |> Lib.Option.map (fun loc -> (resolved.Source_file.path, loc))
-       | Source_file.Ident ident ->
+       | Alias _ -> None
+       | Unresolved _ -> None
+       | Resolved resolved ->
+          DI.lookup_module resolved.path index
+          |> opt_bind (find_named resolved.ident)
+          |> Lib.Option.map (fun loc -> (resolved.path, loc))
+       | Ident ident ->
           Pipeline__.File_path.relative_to project_root file_path
           |> opt_bind (fun uri ->
               DI.lookup_module uri index
@@ -57,7 +58,10 @@ let definition_handler
   let location =
     Lib.Option.map (fun (path, region) ->
         Lsp.
-        { location_uri = Vfs.uri_from_file path;
+        { location_uri =
+            if Source_file.is_package_path path
+            then Lib.Option.value (Source_file.uri_for_package path)
+            else Vfs.uri_from_file path;
           location_range = range_of_region region
         }) result in
   `TextDocumentDefinitionResponse location
