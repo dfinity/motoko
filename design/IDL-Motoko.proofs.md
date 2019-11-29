@@ -57,7 +57,7 @@ Therefore it suffices to look at each equation separately. Equations 1-3 are inj
 
 **Proof**: By definition.
 
-**Prop 4**: If `unescape(escape_number(n)) = i:id`, then `hash(id) = n`.
+**Prop 4**: If `unescape(escape_number(n)) = i:id`, then `hash(i) = n`.
 
 **Proof**: The assumption is never true, by definition.
 
