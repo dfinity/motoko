@@ -11,7 +11,6 @@
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
-#    -r: Activate release mode (eliminate `debug` blocks)
 #
 
 function realpath() {
@@ -22,7 +21,6 @@ function realpath() {
 ACCEPT=no
 DRUN=no
 IDL=no
-RELEASE=no
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
@@ -51,13 +49,8 @@ while getopts "adstir" o; do
         i)
             IDL=yes
             ;;
-        r)
-            RELEASE=yes
-            ;;
     esac
 done
-
-if [ $RELEASE = "yes" ]; then MOC_FLAGS=--release; fi
 
 shift $((OPTIND-1))
 
@@ -156,15 +149,18 @@ do
 
   if [ ${file: -3} == ".mo" ]
   then
+    # extra flags
+    moc_extra_flags="$(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' ')"
+
     # Typecheck
-    run tc $MOC $MOC_FLAGS --check $base.mo
+    run tc $MOC $moc_extra_flags --check $base.mo
     tc_succeeded=$?
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
-        run idl $MOC $MOC_FLAGS --idl $base.mo -o $out/$base.did
+        run idl $MOC $moc_extra_flags --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
 
         normalize $out/$base.did
@@ -178,10 +174,10 @@ do
         if [ "$SKIP_RUNNING" != yes ]
         then
           # Interpret
-          run run $MOC $MOC_FLAGS --hide-warnings -r $base.mo
+          run run $MOC $moc_extra_flags --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $MOC $MOC_FLAGS --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $MOC $moc_extra_flags --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -191,7 +187,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low $MOC $MOC_FLAGS --hide-warnings -r -iR $base.mo
+          run run-low $MOC $moc_extra_flags --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -224,14 +220,14 @@ do
         # Compile
         if [ $DRUN = no ]
         then
-          run comp $MOC $MOC_FLAGS -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         else
-          run comp $MOC $MOC_FLAGS --hide-warnings --map -c $mangled -o $out/$base.wasm
+          run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
           can_use_drun=$?
 
           if [ "$can_use_drun" -ne 0 ];
           then
-            run comp-stub $MOC $MOC_FLAGS -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+            run comp-stub $MOC $moc_extra_flags -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
           fi
         fi
 
