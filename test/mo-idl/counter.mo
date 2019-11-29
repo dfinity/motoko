@@ -15,7 +15,7 @@ actor class Counter(i : Int) {
 
 // Dummy functions to show intermediate value in trace.
 func show(note : Text, c : Int) {};
-func showAsync(note : Text, a : async Int) {};
+func showAsync<@>(note : Text, a : async<@> Int) {};
 
 // Create an actor.
 let c = Counter(10);
@@ -38,9 +38,9 @@ func testRead() {
     while (i > 0) {
       c.dec();
       let t = c.read();
-      showAsync("before", t);
+      showAsync<@>("before", t);
       show("await", await t);
-      showAsync("after", t);
+      showAsync<@>("after", t);
       i -= 1;
     }
   }
