@@ -3069,11 +3069,8 @@ module Dfinity = struct
   let reject env arg_instrs =
     match E.mode env with
     | Flags.ICMode | Flags.StubMode ->
-      let (set_text, get_text) = new_local env "text" in
       arg_instrs ^^
-      set_text ^^
-      get_text ^^ Blob.payload_ptr_unskewed ^^
-      get_text ^^ Heap.load_field (Blob.len_field) ^^
+      Blob.as_ptr_len env ^^
       begin match E.mode env with
       | Flags.ICMode -> system_call env "msg" "reject"
       | Flags.StubMode -> system_call env "ic0" "msg_reject"
