@@ -1,5 +1,5 @@
-Proofs related to IDL-AS.md
-===========================
+Proofs related to IDL-Motoko.md
+===============================
 
 Field name escaping
 -------------------
@@ -23,14 +23,14 @@ A6: ∀n. ¬isValid ("")
 ```
 escape_number <nat> = "_" <nat> "_"
 
-// IDL name to AS
+// IDL name to Motoko
 escape : <name> -> <id>
-escape <name> = <name> "_"  if <name> is a reserved identifier in ActorScript
-escape <name> = <name> "_"  if <name> is a valid ActorScript <id> ending in "_"
-escape <name> = <name>  if <name> is a valid ActorScript <id> not ending in "_"
+escape <name> = <name> "_"  if <name> is a reserved identifier in Motoko
+escape <name> = <name> "_"  if <name> is a valid Motoko <id> ending in "_"
+escape <name> = <name>  if <name> is a valid Motoko <id> not ending in "_"
 escape <name> = escape_number(hash(<name>))   otherwise
 
-// AS to IDL
+// Motoko to IDL
 unescape : <id> -> <nat>|<name>
 unescape("_" <nat> "_") = <nat>
 unescape(<id> "_") = <id>
@@ -39,7 +39,7 @@ unescape(<id>) = <id>
 
 ### Properties
 
-**Prop 1**: The range of escape is in the set of valid ActorScript field names.
+**Prop 1**: The range of escape is in the set of valid Motoko field names.
 `∀ s. isValid(escape(s)) ∧ ¬ isReserved(escape(s))`
 
 **Proof**: Case analysis according to the definition of `escape`:
