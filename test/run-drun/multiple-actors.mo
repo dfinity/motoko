@@ -1,7 +1,0 @@
-actor a { };
-
-actor b { };
-
-
-
-
