@@ -2893,6 +2893,7 @@ module Tuple = struct
         G.table n (fun i -> get_tup ^^ load_n (Int32.of_int i))
       )
     end
+
 end (* Tuple *)
 
 module Dfinity = struct
@@ -3357,7 +3358,7 @@ module Serialization = struct
 
   module TM = Map.Make (struct type t = Type.typ let compare = compare end)
   let to_idl_prim = let open Type in function
-    | Prim Null -> Some 1
+    | Prim Null | Tup [] -> Some 1
     | Prim Bool -> Some 2
     | Prim Nat -> Some 3
     | Prim Int -> Some 4
@@ -3531,6 +3532,9 @@ module Serialization = struct
       | Prim (Int32|Nat32|Word32|Char) -> inc_data_size (compile_unboxed_const 4l)
       | Prim (Int64|Nat64|Word64) -> inc_data_size (compile_unboxed_const 8l)
       | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
+      | Prim Null -> G.nop
+      | Any -> G.nop
+      | Tup [] -> G.nop (* e(()) = null *)
       | Tup ts ->
         G.concat_mapi (fun i t ->
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
@@ -3553,8 +3557,6 @@ module Serialization = struct
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         size_word env get_len ^^
         inc_data_size get_len
-      | Prim Null -> G.nop
-      | Any -> G.nop
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
@@ -3660,6 +3662,8 @@ module Serialization = struct
         get_x ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Memory.Pack8}) ^^
         compile_unboxed_const 1l ^^ advance_data_buf
+      | Tup [] -> (* e(()) = null *)
+        G.nop
       | Tup ts ->
         G.concat_mapi (fun i t ->
           get_x ^^ Tuple.load_n (Int32.of_int i) ^^
@@ -3743,7 +3747,7 @@ module Serialization = struct
         compile_eq_const (Int32.of_int (- (Lib.Option.value (to_idl_prim t))))
       in
 
-      let assert_prim_typ () =
+      let assert_prim_typ t =
         check_prim_typ t ^^
         E.else_trap_with env ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
       in
@@ -3801,7 +3805,7 @@ module Serialization = struct
       begin match t with
       (* Primitive types *)
       | Prim Nat ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         get_data_buf ^^
         BigNum.compile_load_from_data_buf env false
       | Prim Int ->
@@ -3813,36 +3817,36 @@ module Serialization = struct
             BigNum.compile_load_from_data_buf env false
           end
           begin
-            assert_prim_typ () ^^
+            assert_prim_typ t ^^
             get_data_buf ^^
             BigNum.compile_load_from_data_buf env true
           end
       | Prim (Int64|Nat64|Word64) ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_word64 env get_data_buf ^^
         BoxedWord64.box env
       | Prim (Int32|Nat32|Word32) ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_word32 env get_data_buf ^^
         BoxedSmallWord.box env
       | Prim Char ->
         let set_n, get_n = new_local env "len" in
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_word32 env get_data_buf ^^ set_n ^^
         UnboxedSmallWord.check_and_box_codepoint env get_n
       | Prim (Int16|Nat16|Word16) ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_word16 env get_data_buf ^^
         UnboxedSmallWord.msb_adjust Word16
       | Prim (Int8|Nat8|Word8) ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_byte env get_data_buf ^^
         UnboxedSmallWord.msb_adjust Word8
       | Prim Bool ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         ReadBuf.read_byte env get_data_buf
       | Prim Null ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         Opt.null
       | Any ->
         (* Skip values of any possible type *)
@@ -3852,11 +3856,14 @@ module Serialization = struct
         (* Any vanilla value works here *)
         Opt.null
       | Prim Text ->
-        assert_prim_typ () ^^
+        assert_prim_typ t ^^
         read_blob true
       | Prim Blob ->
         assert_blob_typ env ^^
         read_blob false
+      | Tup [] -> (* e(()) = null *)
+        assert_prim_typ t ^^
+        Tuple.from_stack env 0
       (* Composite types *)
       | Tup ts ->
         with_composite_typ (-20l) (fun get_typ_buf ->
@@ -4130,9 +4137,7 @@ module GC = struct
 
      Roots are:
      * All objects in the static part of the memory.
-     * all closures ever passed out as callback or to async_method
-       These therefore need to live in a separate area of memory
-       (could be mutable array of pointers, similar to the reference table)
+     * the closure_table (see module ClosureTable)
   *)
 
   let gc_enabled = true
@@ -4782,17 +4787,26 @@ module FuncDec = struct
     StackRep.adjust env sr SR.Vanilla ^^
     ClosureTable.remember env
 
-  (* Wraps a local closure in a local function that does serialization and
-     takes care of the environment *)
-  (* Need this function once per type, so we can share based on ts *)
-  let closure_to_reply_callback env ts get_closure =
+  (* Takes the reply and reject callbacks, tuples them up,
+     add them to the closure table, and returns the two callbacks expected by
+     call_simple.
+
+     The tupling is necesary because we want to free _both_ closures when
+     one is called.
+
+     The reply callback function exists once per type (it has to do
+     serialization); the reject callback function is unique.
+  *)
+
+  let closures_to_reply_reject_callbacks env ts =
     assert (E.mode env = Flags.StubMode);
-    let name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env ->
+    let reply_name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
+    Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall env ^^ (* At this point we can remove the closure *)
+        ClosureTable.recall env ^^
+        Arr.load_field 0l ^^ (* get the reply closure *)
         set_closure ^^
         get_closure ^^
 
@@ -4804,21 +4818,18 @@ module FuncDec = struct
 
         message_cleanup env (Type.Shared Type.Write)
       );
-    compile_unboxed_const (E.built_in env name) ^^
-    get_closure ^^ ClosureTable.remember env
 
-  let closure_to_reject_callback env get_closure =
-    assert (E.mode env = Flags.StubMode);
-    let name = "@reject_callback" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env ->
+    let reject_name = "@reject_callback" in
+    Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        ClosureTable.recall env ^^ (* At this point we can remove the closure *)
+        ClosureTable.recall env ^^
+        Arr.load_field 1l ^^ (* get the reject closure *)
         set_closure ^^
         get_closure ^^
 
-        (* Synthesize reject *)
+        (* Synthesize value of type `Error` *)
         E.trap_with env "reject_callback" ^^
 
         get_closure ^^
@@ -4826,8 +4837,21 @@ module FuncDec = struct
 
         message_cleanup env (Type.Shared Type.Write)
       );
-    compile_unboxed_const (E.built_in env name) ^^
-    get_closure ^^ ClosureTable.remember env
+
+    (* The upper half of this function must not depend on the get_k and get_r
+       parameters, so hide them from above (cute trick) *)
+    fun get_k get_r ->
+      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+      (* store the tuple away *)
+      Arr.lit env [get_k; get_r] ^^
+      ClosureTable.remember env ^^
+      set_cb_index ^^
+
+      (* return arguments for the ic.call *)
+      compile_unboxed_const (E.built_in env reply_name) ^^
+      get_cb_index ^^
+      compile_unboxed_const (E.built_in env reject_name) ^^
+      get_cb_index
 
   let ignoring_callback env =
     assert (E.mode env = Flags.StubMode);
@@ -4843,10 +4867,8 @@ module FuncDec = struct
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
       (* The method name *)
       get_meth_pair ^^ Arr.load_field 1l ^^ Blob.as_ptr_len env ^^
-      (* The reply callback *)
-      closure_to_reply_callback env ts2 get_k ^^
-      (* The reject callback *)
-      closure_to_reject_callback env get_r ^^
+      (* The reply and reject callback *)
+      closures_to_reply_reject_callbacks env ts2 get_k get_r ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts1 ^^
       (* done! *)
