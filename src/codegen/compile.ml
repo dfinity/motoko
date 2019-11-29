@@ -3331,19 +3331,6 @@ module Serialization = struct
       (fun (h1,_) (h2,_) -> Lib.Uint32.compare h1 h2)
       (List.map (fun f -> (Idllib.Escape.unescape_hash f.Type.lab, f)) fs)
 
-  (* The code below does not work on all Motoko types, but only certain “raw
-     types”. In particular, type definitions have to be removed (using Type.normalize).
-     But also, at least for now, actor and function references are represented
-     as data, https://github.com/dfinity-lab/motoko/pull/883
-   *)
-  let raw_type env : Type.typ -> Type.typ = fun t ->
-    let open Type in
-    match normalize t with
-    | Obj (Actor, _) -> Prim Blob
-    | Func _  -> Tup [Prim Blob; Prim Text]
-    | t -> t
-
-
   (* The IDL serialization prefaces the data with a type description.
      We can statically create the type description in Ocaml code,
      store it in the program, and just copy it to the beginning of the message.
@@ -3383,7 +3370,7 @@ module Serialization = struct
       let typs = ref [] in
       let idx = ref TM.empty in
       let rec go t =
-        let t = raw_type env t in
+        let t = Type.normalize t in
         if to_idl_prim t <> None then () else
         if TM.mem t !idx then () else begin
           idx := TM.add t (List.length !typs) !idx;
@@ -3439,7 +3426,7 @@ module Serialization = struct
     (* Actual binary data *)
 
     let add_idx t =
-      let t = raw_type env t in
+      let t = Type.normalize t in
       match to_idl_prim t with
       | Some i -> add_sleb128 (-i)
       | None -> add_sleb128 (TM.find (normalize t) idx) in
@@ -3464,8 +3451,6 @@ module Serialization = struct
           add_leb128_32 h;
           add_idx f.typ
         ) (sort_by_hash fs)
-      | Obj (Actor, fs) ->
-        assert false;
       | Array t ->
         add_sleb128 (-19); add_idx t
       | Opt t ->
@@ -3477,8 +3462,22 @@ module Serialization = struct
           add_leb128_32 h;
           add_idx f.typ
         ) (sort_by_hash vs)
-      | Func _ ->
-        assert false
+      | Func (s, c, tbs, ts1, ts2) ->
+        assert (Type.is_shared_sort s);
+        add_sleb128 (-22);
+        add_leb128 (List.length ts1);
+        List.iter add_idx ts1;
+        add_leb128 (List.length ts2);
+        List.iter add_idx ts2;
+        add_leb128 0 (* no annotations *)
+      | Obj (Actor, fs) ->
+        add_sleb128 (-23);
+        add_leb128 (List.length fs);
+        List.iter (fun f ->
+          add_leb128 (String.length f.lab);
+          Buffer.add_string buf f.lab;
+          add_idx f.typ
+        ) fs
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";
@@ -3491,7 +3490,7 @@ module Serialization = struct
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
     let open Type in
-    let t = raw_type env t in
+    let t = Type.normalize t in
     let name = "@buffer_size<" ^ typ_id t ^ ">" in
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type]
     (fun env get_x ->
@@ -3569,8 +3568,13 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
-      | (Func _ | Obj (Actor, _)) ->
-        assert false
+      | Func _ ->
+        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
+        get_x ^^ Arr.load_field 0l ^^ size env (Obj (Actor, [])) ^^
+        get_x ^^ Arr.load_field 1l ^^ size env (Prim Text)
+      | Obj (Actor, _) ->
+        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
+        get_x ^^ size env (Prim Blob)
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
@@ -3582,7 +3586,7 @@ module Serialization = struct
   (* Copies x to the data_buffer, storing references after ref_count entries in ref_base *)
   let rec serialize_go env t =
     let open Type in
-    let t = raw_type env t in
+    let t = Type.normalize t in
     let name = "@serialize_go<" ^ typ_id t ^ ">" in
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
@@ -3614,7 +3618,6 @@ module Serialization = struct
         set_ref_buf ^^
         set_data_buf
       in
-
 
       (* Now the actual serialization *)
 
@@ -3707,8 +3710,13 @@ module Serialization = struct
         get_len ^^
         Heap.memcpy env ^^
         get_len ^^ advance_data_buf
-      | (Func _ | Obj (Actor, _)) ->
-        assert false
+      | Func _ ->
+        write_byte (compile_unboxed_const 1l) ^^
+        get_x ^^ Arr.load_field 0l ^^ write env (Obj (Actor, [])) ^^
+        get_x ^^ Arr.load_field 1l ^^ write env (Prim Text)
+      | Obj (Actor, _) ->
+        write_byte (compile_unboxed_const 1l) ^^
+        get_x ^^ write env (Prim Blob)
       | Non ->
         E.trap_with env "serializing value of type None"
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
@@ -3719,7 +3727,7 @@ module Serialization = struct
 
   let rec deserialize_go env t =
     let open Type in
-    let t = raw_type env t in
+    let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_id t ^ ">" in
     Func.share_code4 env name
       (("data_buffer", I32Type),
@@ -3749,6 +3757,23 @@ module Serialization = struct
         E.else_trap_with env ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
       in
 
+      let read_byte_tagged = function
+        | [code0; code1] ->
+          ReadBuf.read_byte env get_data_buf ^^
+          let (set_b, get_b) = new_local env "b" in
+          set_b ^^
+          get_b ^^
+          compile_eq_const 0l ^^
+          G.if_ (ValBlockType (Some I32Type))
+          begin code0
+          end begin
+            get_b ^^ compile_eq_const 1l ^^
+            E.else_trap_with env "IDL error: byte tag not 0 or 1" ^^
+            code1
+          end
+        | _ -> assert false; (* can be generalized later as needed *)
+      in
+
       let read_blob validate =
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
@@ -3762,6 +3787,13 @@ module Serialization = struct
           E.call_import env "rts" "utf8_validate"
         else G.nop end ^^
         get_x
+      in
+
+      let read_actor_data () =
+        read_byte_tagged
+          [ E.trap_with env "IDL error: unexpected actor reference"
+          ; read_blob false
+          ]
       in
 
       (* checks that idltyp is positive, looks it up in the table, updates the typ_buf,
@@ -3924,19 +3956,10 @@ module Serialization = struct
             let (set_idltyp, get_idltyp) = new_local env "idltyp" in
             with_composite_typ (-18l) (fun get_typ_buf ->
               ReadBuf.read_sleb128 env get_typ_buf ^^ set_idltyp ^^
-              ReadBuf.read_byte env get_data_buf ^^
-              let (set_b, get_b) = new_local env "b" in
-              set_b ^^
-              get_b ^^
-              compile_eq_const 0l ^^
-              G.if_ (ValBlockType (Some I32Type))
-              begin
-                Opt.null
-              end begin
-                get_b ^^ compile_eq_const 1l ^^
-                E.else_trap_with env "IDL error: opt tag not 0 or 1" ^^
-                Opt.inject env (get_idltyp ^^ go env t)
-              end
+              read_byte_tagged
+                [ Opt.null
+                ; Opt.inject env (get_idltyp ^^ go env t)
+                ]
             )
           end
       | Variant vs ->
@@ -3973,8 +3996,17 @@ module Serialization = struct
             ( sort_by_hash vs )
             ( E.trap_with env "IDL error: unexpected variant tag" )
         )
-      | (Func _ | Obj (Actor, _)) ->
-        assert false;
+      | Func _ ->
+        with_composite_typ (-22l) (fun _get_typ_buf ->
+          read_byte_tagged
+            [ E.trap_with env "IDL error: unexpected function reference"
+            ; read_actor_data () ^^
+              read_blob true ^^
+              Tuple.from_stack env 2
+            ]
+        );
+      | Obj (Actor, _) ->
+        with_composite_typ (-23l) (fun _get_typ_buf -> read_actor_data ())
       | Non ->
         E.trap_with env "IDL error: deserializing value of type None"
       | _ -> todo_trap env "deserialize" (Arrange_ir.typ t)
