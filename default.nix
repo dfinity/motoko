@@ -1,169 +1,46 @@
-{ nixpkgs ? (import ./nix/nixpkgs.nix).nixpkgs {},
-  dvm ? null,
-  drun ? null,
-  export-shell ? false,
-  replay ? 0
+{
+  replay ? 0,
+  system ? builtins.currentSystem,
 }:
 
-let llvm = import ./nix/llvm.nix { system = nixpkgs.system; }; in
+let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
+  inherit system;
+  overlays = [
+    (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
+  ];
+}; in
+
+let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
-let ocaml_wasm = import ./nix/ocaml-wasm.nix {
-  inherit (nixpkgs) stdenv fetchFromGitHub ocaml;
-  inherit (nixpkgs.ocamlPackages) findlib ocamlbuild;
-}; in
-
-let ocaml_vlq = import ./nix/ocaml-vlq.nix {
-  inherit (nixpkgs) stdenv fetchFromGitHub ocaml dune;
-  inherit (nixpkgs.ocamlPackages) findlib;
-}; in
-
-let ocaml_bisect_ppx = import ./nix/ocaml-bisect_ppx.nix nixpkgs; in
-let ocaml_bisect_ppx-ocamlbuild = import ./nix/ocaml-bisect_ppx-ocamlbuild.nix nixpkgs; in
-
-let dev = import (builtins.fetchGit {
-  url = "ssh://git@github.com/dfinity-lab/dev";
-  # ref = "master";
-  rev = "9030c90efe5b3de33670d4f4f0331482d51c5858";
-}) { system = nixpkgs.system; }; in
-
 let dfinity-repo = import (builtins.fetchGit {
+  name = "dfinity-sources";
   url = "ssh://git@github.com/dfinity-lab/dfinity";
   # ref = "master";
-  rev = "261a330bb6282f864f0de411adf5abe287d7f8be";
-}) { system = nixpkgs.system; }; in
+  rev = "a77f9b30fa5b1f35bef2913c2329e2c8e81c1af8";
+}) { inherit (nixpkgs) system; }; in
 
-let real-dvm =
-  if dvm == null
-  then dev.dvm
-  else dvm; in
+let sdk = import (builtins.fetchGit {
+  name = "sdk-sources";
+  url = "ssh://git@github.com/dfinity-lab/sdk";
+  ref = "master";
+  rev = "7ee8cc40abab5b33c68bc8a32412e5be33a9f410";
+}) { inherit (nixpkgs) system; }; in
 
-let real-drun =
-  if drun == null
-  then dfinity-repo.dfinity.drun
-  else drun; in
+let esm = builtins.fetchTarball {
+  sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
+  url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
+}; in
 
-# Include js-client
-let js-client = dev.js-dfinity-client; in
+let drun = dfinity-repo.drun or dfinity-repo.dfinity.drun; in
+let js-user-library = sdk.js-user-library; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
-      overrides = self: super: {
-        haskell-lsp-types = self.callPackage
-          ({ mkDerivation, aeson, base, bytestring, data-default, deepseq
-           , filepath, hashable, lens, network-uri, scientific, text
-           , unordered-containers
-           }:
-             mkDerivation {
-               pname = "haskell-lsp-types";
-               version = "0.16.0.0";
-               sha256 = "14wlv54ydbddpw6cwgykcas3rb55w7m78q0s1wdbi594wg1bscqg";
-               libraryHaskellDepends = [
-                 aeson base bytestring data-default deepseq filepath hashable lens
-                 network-uri scientific text unordered-containers
-               ];
-               description = "Haskell library for the Microsoft Language Server Protocol, data types";
-               license = stdenv.lib.licenses.mit;
-               hydraPlatforms = stdenv.lib.platforms.none;
-             }) {};
-
-        rope-utf16-splay = self.callPackage
-          ({ mkDerivation, base, QuickCheck, tasty, tasty-hunit
-           , tasty-quickcheck, text
-           }:
-             mkDerivation {
-               pname = "rope-utf16-splay";
-               version = "0.3.1.0";
-               sha256 = "1ilcgwmdwqnp95vb7652fc03ji9dnzy6cm24pvbiwi2mhc4piy6b";
-               libraryHaskellDepends = [ base text ];
-               testHaskellDepends = [
-                 base QuickCheck tasty tasty-hunit tasty-quickcheck text
-               ];
-               description = "Ropes optimised for updating using UTF-16 code units and row/column pairs";
-               license = stdenv.lib.licenses.bsd3;
-             }) {};
-
-        haskell-lsp = self.callPackage
-          ({ mkDerivation, aeson, async, attoparsec, base, bytestring
-           , containers, data-default, directory, filepath, hashable
-           , haskell-lsp-types, hslogger, hspec, hspec-discover, lens, mtl
-           , network-uri, QuickCheck, quickcheck-instances, rope-utf16-splay
-           , sorted-list, stm, temporary, text, time, unordered-containers
-           }:
-             mkDerivation {
-               pname = "haskell-lsp";
-               version = "0.16.0.0";
-               sha256 = "1s04lfnb3c0g9bkwp4j7j59yw8ypps63dq27ayybynrfci4bpj95";
-               isLibrary = true;
-               isExecutable = true;
-               libraryHaskellDepends = [
-                 aeson async attoparsec base bytestring containers data-default
-                 directory filepath hashable haskell-lsp-types hslogger lens mtl
-                 network-uri rope-utf16-splay sorted-list stm temporary text time
-                 unordered-containers
-               ];
-               testHaskellDepends = [
-                 aeson base bytestring containers data-default directory filepath
-                 hashable hspec lens network-uri QuickCheck quickcheck-instances
-                 rope-utf16-splay sorted-list stm text
-               ];
-               testToolDepends = [ hspec-discover ];
-               description = "Haskell library for the Microsoft Language Server Protocol";
-               license = stdenv.lib.licenses.mit;
-               hydraPlatforms = stdenv.lib.platforms.none;
-             }) {};
-
-        lsp-test = self.callPackage
-          ({ mkDerivation, aeson, aeson-pretty, ansi-terminal, async, base
-           , bytestring, conduit, conduit-parse, containers, data-default
-           , Diff, directory, filepath, hspec, haskell-lsp, lens, mtl
-           , parser-combinators, process, rope-utf16-splay, text, transformers
-           , unix, unordered-containers
-           }:
-             mkDerivation {
-               pname = "lsp-test";
-               version = "0.7.0.0";
-               sha256 = "1lm299gbahrnwfrprhhpzxrmjljj33pps1gzz2wzmp3m9gzl1dx5";
-               libraryHaskellDepends = [
-                 aeson aeson-pretty ansi-terminal async base bytestring conduit
-                 conduit-parse containers data-default Diff directory filepath
-                 haskell-lsp lens mtl parser-combinators process rope-utf16-splay
-                 text transformers unix unordered-containers
-               ];
-               doCheck = false;
-               testHaskellDepends = [
-                 aeson base data-default haskell-lsp hspec lens text
-                 unordered-containers
-               ];
-               description = "Functional test framework for LSP servers";
-               license = stdenv.lib.licenses.bsd3;
-               hydraPlatforms = stdenv.lib.platforms.none;
-             }) {};
-      };
+      overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
-
-let commonBuildInputs = [
-  nixpkgs.ocaml
-  nixpkgs.dune
-  nixpkgs.ocamlPackages.atdgen
-  nixpkgs.ocamlPackages.findlib
-  nixpkgs.ocamlPackages.menhir
-  nixpkgs.ocamlPackages.num
-  nixpkgs.ocamlPackages.stdint
-  ocaml_wasm
-  ocaml_vlq
-  nixpkgs.ocamlPackages.zarith
-  nixpkgs.ocamlPackages.yojson
-  nixpkgs.ocamlPackages.ppxlib
-  nixpkgs.ocamlPackages.ppx_inline_test
-  ocaml_bisect_ppx
-  ocaml_bisect_ppx-ocamlbuild
-  nixpkgs.ocamlPackages.ocaml-migrate-parsetree
-  nixpkgs.ocamlPackages.ppx_tools_versioned
-]; in
-
 let
   libtommath = nixpkgs.fetchFromGitHub {
     owner = "libtom";
@@ -189,9 +66,89 @@ let
   '';
 in
 
+# When building for linux (but not in nix-shell) we build statically
+# (We should probably just figure out how to use nix overlays to add this to nixpkgs)
+let ocamlpkgs =
+  if nixpkgs.stdenv.isDarwin
+  then nixpkgs
+  else nixpkgs.pkgsMusl; in
+
+
+# This branches on the pkgs, which is either
+# normal nixpkgs (nix-shell, darwin)
+# nixpkgs.pkgsMusl for static building (release builds)
+let commonBuildInputs = pkgs:
+  let ocaml_wasm = import ./nix/ocaml-wasm.nix {
+    inherit (pkgs) stdenv fetchFromGitHub ocaml;
+    inherit (pkgs.ocamlPackages) findlib ocamlbuild;
+  }; in
+
+  let ocaml_vlq = import ./nix/ocaml-vlq.nix {
+    inherit (pkgs) stdenv fetchFromGitHub ocaml dune;
+    inherit (pkgs.ocamlPackages) findlib;
+  }; in
+
+  [
+    pkgs.ocaml
+    pkgs.dune
+    pkgs.ocamlPackages.atdgen
+    pkgs.ocamlPackages.findlib
+    pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.num
+    pkgs.ocamlPackages.stdint
+    ocaml_wasm
+    ocaml_vlq
+    pkgs.ocamlPackages.zarith
+    pkgs.ocamlPackages.yojson
+    pkgs.ocamlPackages.ppxlib
+    pkgs.ocamlPackages.ppx_inline_test
+    pkgs.ocamlPackages.bisect_ppx
+    pkgs.ocamlPackages.bisect_ppx-ocamlbuild
+    pkgs.ocamlPackages.ocaml-migrate-parsetree
+    pkgs.ocamlPackages.ppx_tools_versioned
+  ]; in
+
+let darwin_standalone =
+  import nix/standalone-darwin.nix {
+    inherit (nixpkgs) runCommandNoCC stdenv removeReferencesTo lib;
+    grep = nixpkgs.gnugrep;
+  }; in
+
+let ocaml_exe = name: bin:
+  let
+    profile =
+      if nixpkgs.stdenv.isDarwin
+      then "release"
+      else "release-static";
+
+    drv = ocamlpkgs.stdenv.mkDerivation {
+      inherit name;
+
+      ${if nixpkgs.stdenv.isDarwin then null else "allowedRequisites"} = [];
+
+      src = subpath ./src;
+
+      buildInputs = commonBuildInputs ocamlpkgs;
+
+      buildPhase = ''
+        make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
+      '';
+
+      installPhase = ''
+        mkdir -p $out/bin
+        cp --verbose --dereference ${bin} $out/bin
+      '';
+    };
+  in
+    # Make standalone on darwin (nothing to do on linux, is static)
+    if nixpkgs.stdenv.isDarwin
+    then darwin_standalone { inherit drv; exename = bin; }
+    else drv;
+in
+
 rec {
   rts = stdenv.mkDerivation {
-    name = "asc-rts";
+    name = "moc-rts";
 
     src = subpath ./rts;
     nativeBuildInputs = [ nixpkgs.makeWrapper ];
@@ -211,86 +168,71 @@ rec {
 
     installPhase = ''
       mkdir -p $out/rts
-      cp as-rts.wasm $out/rts
+      cp mo-rts.wasm $out/rts
     '';
   };
 
-  asc-bin = stdenv.mkDerivation {
-    name = "asc-bin";
+  moc-bin = ocaml_exe "moc-bin" "moc";
+  mo-ld = ocaml_exe "mo-ld" "mo-ld";
+  mo-ide = ocaml_exe "mo-ide" "mo-ide";
+  didc = ocaml_exe "didc" "didc";
+  deser = ocaml_exe "deser" "deser";
 
-    src = subpath ./src;
-
-    buildInputs = commonBuildInputs;
-
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" asc as-ld
-    '';
-
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference asc as-ld $out/bin
-    '';
-  };
-
-  asc = nixpkgs.symlinkJoin {
-    name = "asc";
-    paths = [ asc-bin rts ];
+  moc = nixpkgs.symlinkJoin {
+    name = "moc";
+    paths = [ moc-bin rts ];
     buildInputs = [ nixpkgs.makeWrapper ];
     postBuild = ''
-      wrapProgram $out/bin/asc \
-        --set-default ASC_RTS "$out/rts/as-rts.wasm"
+      wrapProgram $out/bin/moc \
+        --set-default MOC_RTS "$out/rts/mo-rts.wasm"
     '';
   };
 
-  asc-tar = nixpkgs.symlinkJoin {
-    name = "asc-tar";
-    paths = [ asc-bin rts didc ];
-    postBuild = ''
-      tar -chf $out/asc.tar -C $out bin/asc rts/as-rts.wasm bin/didc
-      mkdir -p $out/nix-support
-      echo "file bin $out/asc.tar" >> $out/nix-support/hydra-build-products
-    '';
-  };
-
-  lsp-int = haskellPackages.callCabal2nix "lsp-int" test/lsp-int { };
-
-  qc-actorscript = haskellPackages.callCabal2nix "qc-actorscript" test/random { };
+  # “our” Haskell packages
+  inherit (haskellPackages) lsp-int qc-motoko ic-stub;
 
   tests = stdenv.mkDerivation {
     name = "tests";
     src = subpath ./test;
     buildInputs =
-      [ asc
+      [ moc
+        mo-ld
         didc
-        ocaml_wasm
+        deser
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
         nixpkgs.getconf
+        nixpkgs.moreutils
         nixpkgs.nodejs-10_x
         filecheck
-        js-client
-        dvm
+        js-user-library
         drun
-        qc-actorscript
-        lsp-int
+        wasmtime
+        haskellPackages.qc-motoko
+        haskellPackages.lsp-int
+        ic-stub
+        esm
       ] ++
       llvmBuildInputs;
 
     buildPhase = ''
         patchShebangs .
         ${llvmEnv}
-        export ASC=asc
-        export AS_LD=as-ld
+        export MOC=moc
+        export MO_LD=mo-ld
         export DIDC=didc
-        export JSCLIENT=${js-client}
-        asc --version
+        export DESER=deser
+        export ESM=${esm}
+        export JS_USER_LIBRARY=${js-user-library}
+        moc --version
+        drun --version # run this once to work around self-unpacking-race-condition
         make parallel
-        qc-actorscript${nixpkgs.lib.optionalString (replay != 0)
+        qc-motoko${nixpkgs.lib.optionalString (replay != 0)
           " --quickcheck-replay=${toString replay}"}
         cp -R ${subpath ./test/lsp-int/test-project} test-project
         find ./test-project -type d -exec chmod +w {} +
-        lsp-int ${as-ide}/bin/as-ide ./test-project
+        lsp-int ${mo-ide}/bin/mo-ide ./test-project
       '';
 
     installPhase = ''
@@ -298,12 +240,12 @@ rec {
     '';
   };
 
-  unit-tests = stdenv.mkDerivation {
+  unit-tests = ocamlpkgs.stdenv.mkDerivation {
     name = "unit-tests";
 
     src = subpath ./src;
 
-    buildInputs = commonBuildInputs;
+    buildInputs = commonBuildInputs ocamlpkgs;
 
     buildPhase = ''
       make DUNE_OPTS="--display=short" unit-tests
@@ -314,41 +256,23 @@ rec {
     '';
   };
 
-  as-ide = stdenv.mkDerivation {
-    name = "as-ide";
-
-    src = subpath ./src;
-
-    buildInputs = commonBuildInputs;
-
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" as-ide
-    '';
-
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference as-ide $out/bin
-    '';
-  };
-
   samples = stdenv.mkDerivation {
     name = "samples";
     src = subpath ./samples;
     buildInputs =
-      [ asc
+      [ moc
         didc
-        ocaml_wasm
         nixpkgs.wabt
         nixpkgs.bash
         nixpkgs.perl
         filecheck
-	real-drun
+        drun
       ] ++
       llvmBuildInputs;
 
     buildPhase = ''
         patchShebangs .
-        export ASC=asc
+        export MOC=moc
         make all
       '';
     installPhase = ''
@@ -356,10 +280,12 @@ rec {
     '';
   };
 
-  js = asc-bin.overrideAttrs (oldAttrs: {
-    name = "asc.js";
+  js = stdenv.mkDerivation {
+    name = "moc.js";
 
-    buildInputs = commonBuildInputs ++ [
+    src = subpath ./src;
+
+    buildInputs = commonBuildInputs nixpkgs ++ [
       nixpkgs.ocamlPackages.js_of_ocaml
       nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
       nixpkgs.ocamlPackages.js_of_ocaml-ppx
@@ -367,12 +293,12 @@ rec {
     ];
 
     buildPhase = ''
-      make asc.js
+      make moc.js
     '';
 
     installPhase = ''
       mkdir -p $out
-      cp -v asc.js $out
+      cp -v moc.js $out
       cp -vr ${rts}/rts $out
     '';
 
@@ -381,29 +307,13 @@ rec {
     installCheckPhase = ''
       NODE_PATH=$out node --experimental-wasm-mut-global --experimental-wasm-mv ${./test/node-test.js}
     '';
-
-  });
-
-  didc = stdenv.mkDerivation {
-    name = "didc";
-    src = subpath ./src;
-    buildInputs = commonBuildInputs;
-    buildPhase = ''
-      make DUNE_OPTS="--display=short --profile release" didc
-    '';
-    installPhase = ''
-      mkdir -p $out/bin
-      cp --verbose --dereference didc $out/bin
-    '';
   };
 
-  wasm = ocaml_wasm;
-  dvm = real-dvm;
-  drun = real-drun;
+  inherit drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
-
+  wasmtime = nixpkgs.wasmtime;
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";
@@ -443,23 +353,22 @@ rec {
     '';
     doCheck = true;
     checkInputs = [
-      asc
+      moc
       nixpkgs.python
     ];
     checkPhase = ''
-      make ASC=${asc}/bin/asc alltests
+      make MOC=${moc}/bin/moc alltests
     '';
     installPhase = ''
       mkdir -p $out
-      tar -rf $out/stdlib.tar -C $src *.as
-      mkdir -p $out/nix-support
-      echo "report stdlib $out/stdlib.tar" >> $out/nix-support/hydra-build-products
+      cp ./*.mo $out
+      rm $out/*Test.mo
     '';
     forceShare = ["man"];
   };
 
-  stdlib-doc-live = stdenv.mkDerivation {
-    name = "stdlib-doc-live";
+  stdlib-doc = stdenv.mkDerivation {
+    name = "stdlib-doc";
     src = subpath ./stdlib;
     buildInputs = with nixpkgs;
       [ pandoc bash python ];
@@ -476,37 +385,19 @@ rec {
     forceShare = ["man"];
   };
 
-  stdlib-doc = stdenv.mkDerivation {
-    name = "stdlib-doc";
-    src = subpath ./stdlib;
-    buildInputs = with nixpkgs;
-      [ pandoc bash python ];
-    buildPhase = ''
-      patchShebangs .
-      make alldoc
-    '';
-    installPhase = ''
-      mkdir -p $out
-      tar -rf $out/stdlib-doc.tar -C doc .
-      mkdir -p $out/nix-support
-      echo "report stdlib-doc $out/stdlib-doc.tar" >> $out/nix-support/hydra-build-products
-    '';
-    forceShare = ["man"];
-  };
-
   produce-exchange = stdenv.mkDerivation {
     name = "produce-exchange";
     src = subpath ./stdlib;
     buildInputs = [
-      asc
+      moc
     ];
 
     doCheck = true;
     buildPhase = ''
-      make ASC=asc OUTDIR=_out _out/ProduceExchange.wasm
+      make MOC=moc OUTDIR=_out _out/ProduceExchange.wasm
     '';
     checkPhase = ''
-      make ASC=asc OUTDIR=_out _out/ProduceExchange.out
+      make MOC=moc OUTDIR=_out _out/ProduceExchange.out
     '';
     installPhase = ''
       mkdir -p $out
@@ -517,44 +408,57 @@ rec {
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
-      asc
-      as-ide
+      moc
+      mo-ide
       js
       didc
+      deser
       tests
       unit-tests
       samples
       rts
       stdlib
       stdlib-doc
-      stdlib-doc-live
       produce-exchange
       users-guide
+      ic-stub
+      shell
     ];
   };
 
-  shell = if export-shell then nixpkgs.mkShell {
+  shell = nixpkgs.mkShell {
     #
-    # Since building asc, and testing it, are two different derivations in we
+    # Since building moc, and testing it, are two different derivations in we
     # have to create a fake derivation for `nix-shell` that commons up the
     # build dependencies of the two to provide a build environment that offers
-    # both.
+    # both, while not actually building `moc`
     #
 
-    buildInputs = nixpkgs.lib.lists.unique (builtins.filter (i: i != asc && i != didc) (
-      asc-bin.buildInputs ++
-      js.buildInputs ++
-      rts.buildInputs ++
-      didc.buildInputs ++
-      tests.buildInputs ++
-      users-guide.buildInputs ++
-      [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin ]
-    ));
+    buildInputs =
+      let dont_build = [ moc mo-ld didc deser ]; in
+      nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
+        commonBuildInputs nixpkgs ++
+        rts.buildInputs ++
+        tests.buildInputs ++
+        js.buildInputs ++
+        users-guide.buildInputs ++
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ]
+      ));
 
     shellHook = llvmEnv;
+    ESM=esm;
+    JS_USER_LIBRARY=js-user-library;
     TOMMATHSRC = libtommath;
-    JSCLIENT = js-client;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
-  } else null;
+    LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 
+    # allow building this as a derivation, so that hydra builds and caches
+    # the dependencies of shell
+    phases = ["dummyBuildPhase"];
+    dummyBuildPhase = ''
+      touch $out
+    '';
+    preferLocalBuild = true;
+    allowSubstitutes = true;
+  };
 }

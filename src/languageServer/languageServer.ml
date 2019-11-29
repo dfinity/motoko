@@ -60,6 +60,9 @@ module Channel = struct
       }) in
     let notification = notification params in
     send_notification oc (Lsp_j.string_of_notification_message notification)
+
+  let clear_diagnostics (oc : out_channel) (uri : Lsp_t.document_uri): unit =
+    publish_diagnostics oc uri []
 end
 
 let position_of_pos (pos : Source.pos) : Lsp_t.position = Lsp_t.
@@ -77,30 +80,38 @@ let severity_of_sev : Diag.severity -> Lsp.DiagnosticSeverity.t = function
   | Diag.Error -> Lsp.DiagnosticSeverity.Error
   | Diag.Warning -> Lsp.DiagnosticSeverity.Warning
 
-let diagnostics_of_message (msg : Diag.message) : Lsp_t.diagnostic = Lsp_t.
+let diagnostics_of_message (msg : Diag.message) : (Lsp_t.diagnostic * string) = (Lsp_t.
   { diagnostic_range = range_of_region msg.Diag.at;
     diagnostic_severity = Some (severity_of_sev msg.Diag.sev);
     diagnostic_code = None;
-    diagnostic_source = Some "ActorScript";
+    diagnostic_source = Some "Motoko";
     diagnostic_message = msg.Diag.text;
     diagnostic_relatedInformation = None;
-  }
+  }, msg.Diag.at.Source.left.Source.file)
 
-let start () =
-  let oc: out_channel = open_out_gen [Open_append; Open_creat] 0o666 "ls.log"; in
-
+let start entry_point debug =
+  let oc: out_channel =
+    if debug then
+      open_out_gen [Open_append; Open_creat] 0o666 "ls.log"
+    else
+      open_out "/dev/null" in
   let log_to_file = Channel.log_to_file oc in
+  let _ = log_to_file "entry_point" entry_point in
   let publish_diagnostics = Channel.publish_diagnostics oc in
+  let clear_diagnostics = Channel.clear_diagnostics oc in
   let send_response = Channel.send_response oc in
   let show_message = Channel.show_message oc in
   let shutdown = ref false in
   let client_capabilities = ref None in
   let project_root = Sys.getcwd () in
+  let files_with_diags = ref [] in
 
   let vfs = ref Vfs.empty in
   let decl_index =
-    let ix = match Declaration_index.make_index !vfs with
-      | Error(err) -> Declaration_index.Index.empty
+    let ix = match Declaration_index.make_index !vfs [entry_point] with
+      | Error(err) ->
+        List.iter (fun e -> log_to_file "Error" (Diag.string_of_message e))  err;
+        Declaration_index.Index.empty
       | Ok((ix, _)) -> ix in
     ref ix in
   let rec loop () =
@@ -209,19 +220,25 @@ let start () =
        vfs := Vfs.update_file params !vfs
     | (_, `TextDocumentDidClose params) ->
        vfs := Vfs.close_file params !vfs
-    | (_, `TextDocumentDidSave params) ->
-       let textDocumentIdent = params.Lsp_t.text_document_did_save_params_textDocument in
-       let uri = textDocumentIdent.Lsp_t.text_document_identifier_uri in
-       let file_name = Vfs.file_from_uri log_to_file uri in
-       let result = Pipeline.check_files' (Vfs.parse_file !vfs) [file_name] in
-       let msgs = match result with
-         | Error msgs' -> msgs'
-         | Ok (_, msgs') -> msgs' in
-       (match Declaration_index.make_index !vfs with
-        | Error(err) -> ()
-        | Ok((ix, _)) -> decl_index := ix);
-       let diags = List.map diagnostics_of_message msgs in
-       publish_diagnostics uri diags;
+    | (_, `TextDocumentDidSave _) ->
+       let msgs = match Declaration_index.make_index !vfs [entry_point] with
+        | Error msgs' -> msgs'
+        | Ok((ix, msgs')) ->
+           decl_index := ix;
+           msgs' in
+       let diags_by_file =
+         msgs
+         |> List.map diagnostics_of_message
+         |> Lib.List.group (fun (_, f1) (_, f2) -> f1 = f2)
+         |> List.map (fun diags ->
+                let (_, file) = List.hd diags in
+                (List.map fst diags, Vfs.uri_from_file file)) in
+
+       List.iter clear_diagnostics !files_with_diags;
+       files_with_diags := List.map snd diags_by_file;
+       List.iter (fun (diags, uri) ->
+           let _ = log_to_file "diag_uri" uri in
+           publish_diagnostics uri diags) diags_by_file;
 
     (* Notification messages *)
 

@@ -1,11 +1,9 @@
-open As_types
-
 (* WIP translation of syntaxops to use IR in place of Source *)
 open Source
 open Ir
 open Ir_effect
 
-module T = As_types.Type
+module T = Mo_types.Type
 
 type var = exp
 
@@ -75,18 +73,13 @@ let seqP ps =
   | [p] -> p
   | ps -> tupP ps
 
-let as_seqP p =
-  match p.it with
-  | TupP ps -> ps
-  | _ -> [p]
-
 (* Primitives *)
 
 let primE prim es =
   let ty = match prim with
     | ShowPrim _ -> T.text
-    | ICReplyPrim _ -> T.unit
-    | ICRejectPrim -> T.unit
+    | ICReplyPrim _ -> T.Non
+    | ICRejectPrim -> T.Non
     | ICErrorCodePrim -> T.Prim T.Int32
     | _ -> assert false (* implement more as needed *)
   in
@@ -98,7 +91,7 @@ let primE prim es =
   }
 
 let asyncE typ e =
-  { it = PrimE (OtherPrim "@async", [e]);
+  { it = PrimE (CPSAsync, [e]);
     at = no_region;
     note = { note_typ = T.Async typ; note_eff = eff e }
   }
@@ -110,7 +103,7 @@ let assertE e =
   }
 
 let awaitE typ e1 e2 =
-  { it = PrimE (OtherPrim "@await", [e1; e2]);
+  { it = PrimE (CPSAwait, [e1; e2]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = max_eff (eff e1) (eff e2) }
   }
@@ -134,6 +127,15 @@ let ic_error_codeE () =
   { it = PrimE (ICErrorCodePrim, []);
     at = no_region;
     note = { note_typ = T.Prim T.Int32; note_eff = T.Triv }
+  }
+
+let ic_callE f e k r =
+  let es = [f; e; k; r] in
+  let effs = List.map eff es in
+  let eff = List.fold_left max_eff T.Triv effs in
+  { it = PrimE (ICCallPrim, es);
+    at = no_region;
+    note = { note_typ = T.unit; note_eff = eff }
   }
 
 
@@ -189,16 +191,17 @@ let boolE b =
   }
 
 let callE exp1 ts exp2 =
-  let fun_ty = typ exp1 in
-  let cc = Call_conv.call_conv_of_typ fun_ty in
-  let _, _, _, ret_ty = T.as_func_sub cc.Call_conv.sort (List.length ts) fun_ty in
-  { it = CallE (cc, exp1, ts, exp2);
-    at = no_region;
-    note = {
-      note_typ = T.open_ ts ret_ty;
-      note_eff = max_eff (eff exp1) (eff exp2)
+  match T.promote (typ exp1) with
+  | T.Func (_sort, _control, _, _, ret_tys) ->
+    { it = CallE (exp1, ts, exp2);
+      at = no_region;
+      note = {
+        note_typ = T.open_ ts (T.seq ret_tys);
+        note_eff = max_eff (eff exp1) (eff exp2)
+      }
     }
-  }
+  | T.Non -> exp1
+  | _ -> raise (Invalid_argument "callE expect a function")
 
 let ifE exp1 exp2 exp3 typ =
   { it = IfE (exp1, exp2, exp3);
@@ -367,12 +370,11 @@ let ignoreE exp =
 
 (* Mono-morphic function expression *)
 let funcE name t x exp =
-  let arg_tys, retty = match t with
-    | T.Func(_, _, _, ts1, ts2) -> ts1, ts2
+  let sort, control, arg_tys, ret_tys = match t with
+    | T.Func(s, c, _, ts1, ts2) -> s, c, ts1, ts2
     | _ -> assert false in
-  let cc = Call_conv.call_conv_of_typ t in
   let args, exp' =
-    if cc.Call_conv.n_args = 1;
+    if List.length arg_tys = 1;
     then
       [ arg_of_exp x ], exp
     else
@@ -382,11 +384,12 @@ let funcE name t x exp =
   in
   ({it = FuncE
      ( name,
-       cc,
+       sort,
+       control,
        [],
        args,
        (* TODO: Assert invariant: retty has no free (unbound) DeBruijn indices -- Claudio *)
-       retty,
+       ret_tys,
        exp'
      );
     at = no_region;
@@ -394,17 +397,17 @@ let funcE name t x exp =
    })
 
 let nary_funcE name t xs exp =
-  let retty = match t with
-    | T.Func(_, _, _, _, ts2) -> ts2
+  let sort, control, arg_tys, ret_tys = match t with
+    | T.Func(s, c, _, ts1, ts2) -> s, c, ts1, ts2
     | _ -> assert false in
-  let cc = Call_conv.call_conv_of_typ t in
-  assert (cc.Call_conv.n_args = List.length xs);
+  assert (List.length arg_tys = List.length xs);
   ({it = FuncE
       ( name,
-        cc,
+        sort,
+        control,
         [],
         List.map arg_of_exp xs,
-        retty,
+        ret_tys,
         exp
       );
     at = no_region;
@@ -447,11 +450,6 @@ let seqE es =
   | [e] -> e
   | es -> tupE es
 
-let as_seqE e =
-  match e.it with
-  | TupE es -> es
-  | _ -> [e]
-
 (* Lambdas & continuations *)
 
 (* Lambda abstraction *)
@@ -466,22 +464,14 @@ let (-->*) xs exp =
   let fun_ty = T.Func (T.Local, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
   nary_funcE "$lambda" fun_ty xs exp
 
-
-(* n-ary shared lambda *)
-let (-@>*) xs exp  =
-  let fun_ty = T.Func (T.Shared T.Write, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
-  nary_funcE "$lambda" fun_ty xs exp
-
-
 (* Lambda application (monomorphic) *)
 
 let ( -*- ) exp1 exp2 =
   match typ exp1 with
-  | T.Func (_, _, [], ts1, ts2) ->
-    let cc = Call_conv.call_conv_of_typ (typ exp1) in
-    { it = CallE (cc, exp1, [], exp2);
+  | T.Func (_, _, [], _, ret_tys) ->
+    { it = CallE (exp1, [], exp2);
       at = no_region;
-      note = {note_typ = T.seq ts2;
+      note = {note_typ = T.seq ret_tys;
               note_eff = max_eff (eff exp1) (eff exp2)}
     }
   | typ1 -> failwith

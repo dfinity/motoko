@@ -17,6 +17,7 @@ import qualified Data.Text (null, unpack)
 import Data.Maybe
 import Data.Bool (bool)
 import Data.Proxy
+import Data.Type.Equality
 import GHC.Natural
 import GHC.TypeLits
 import qualified Data.Word
@@ -29,13 +30,23 @@ import Turtle
 
 main = defaultMain tests
   where tests :: TestTree
-        tests = testGroup "ActorScript tests" [arithProps, utf8Props, matchingProps]
+        tests = testGroup "Motoko tests" [arithProps, conversionProps, utf8Props, matchingProps]
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
   , QC.testProperty "expected successes" $ prop_verifies
   ]
 
+conversionProps = testGroup "Numeric conversions"
+  [ QC.testProperty "roundtrip Word64 Nat Word64 " $ prop_roundtripWNW @64
+  , QC.testProperty "roundtrip Word32 Nat Word32 " $ prop_roundtripWNW @32
+  , QC.testProperty "roundtrip Word16 Nat Word16 " $ prop_roundtripWNW @16
+  , QC.testProperty "roundtrip Word8 Nat Word8 " $ prop_roundtripWNW @8
+  , QC.testProperty "modulo Nat Word64 Nat" $ prop_moduloNWN @64
+  , QC.testProperty "modulo Nat Word32 Nat" $ prop_moduloNWN @32
+  , QC.testProperty "modulo Nat Word16 Nat" $ prop_moduloNWN @16
+  , QC.testProperty "modulo Nat Word8 Nat" $ prop_moduloNWN @8
+  ]
 
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
@@ -43,7 +54,7 @@ utf8Props = testGroup "UTF-8 coding"
   , QC.testProperty "length computation" $ prop_textLength
   ]
 
-matchingProps = testGroup "pattern matching"
+matchingProps = testGroup "Pattern matching"
   [ QC.testProperty "intra-actor" $ prop_matchStructured
   , QC.testProperty "inter-actor" $ prop_matchInActor
   ]
@@ -54,7 +65,7 @@ matchingProps = testGroup "pattern matching"
                 wasm = name <.> "wasm"
                 fileArg = fromString . encodeString
                 script = do Turtle.output as $ fromString testCase
-                            res@(exitCode, _, _) <- procStrictWithErr "asc"
+                            res@(exitCode, _, _) <- procStrictWithErr "moc"
                                 ["-no-system-api", "-no-check-ir", fileArg as] empty
                             if ExitSuccess == exitCode
                             then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
@@ -113,7 +124,7 @@ newtype Failing a = Failing a deriving Show
 
 instance Arbitrary (Failing String) where
   arbitrary = do let failed as = "let _ = " ++ unparseAS as ++ ";"
-                 Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @ Integer -> res) -> null res)
+                 Failing . failed <$> suchThat (resize 5 arbitrary) (\(evaluate @Integer -> res) -> null res)
 
 prop_rejects (Failing testCase) = monadicIO $ runScriptWantFuzz "fails" testCase
 
@@ -125,7 +136,7 @@ newtype TestCase = TestCase [String] deriving Show
 
 instance Arbitrary TestCase where
   arbitrary = do tests <- infiniteListOf arbitrary
-                 let expected = evaluate @ Integer <$> tests
+                 let expected = evaluate @Integer <$> tests
                  let paired as = fmap (\res -> "assert (" ++ unparseAS as ++ " == " ++ show res ++ ");")
                  pure . TestCase . take 100 . catMaybes $ zipWith paired tests expected
 
@@ -133,9 +144,9 @@ instance Arbitrary TestCase where
 
 
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
-  let script cases = do Turtle.output "tests.as" $ msum cases
-                        res@(exitCode, _, _) <- procStrictWithErr "asc"
-                                 ["-no-system-api", "-no-check-ir", "tests.as"] empty
+  let script cases = do Turtle.output "tests.mo" $ msum cases
+                        res@(exitCode, _, _) <- procStrictWithErr "moc"
+                                 ["-no-system-api", "-no-check-ir", "tests.mo"] empty
                         if ExitSuccess == exitCode
                         then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "tests.wasm"] empty
                         else pure (False, res)
@@ -154,6 +165,33 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
     unless good $ (run . bisect $ halve testCase) >>= monitor . (counterexample . Data.Text.unpack $)
   assertSuccessNoFuzz id res
 
+
+newtype ConversionTest n = ConversionTest (ASTerm (BitLimited n Word)) deriving Show
+
+instance WordLike n => Arbitrary (ConversionTest n) where
+  arbitrary = ConversionTest . ConvertNatToWord . ConvertWordToNat . Neuralgic <$> (arbitrary :: Gen (Neuralgic (BitLimited n Word)))
+
+prop_roundtripWNW :: ConversionTest n -> Property
+prop_roundtripWNW (ConversionTest term) =
+    case term of
+      ConvertNatToWord (ConvertWordToNat n) ->
+          case sameNat (bitsIn term) (bitsIn n) of
+            Just Refl -> let testCase = "assert(" <> unparseAS (term `Equals` n) <> ")" in
+                         monadicIO $ runScriptNoFuzz "roundtripWNW" testCase
+  where bitsIn :: KnownNat n => ASTerm (BitLimited n Word) -> Proxy n
+        bitsIn _ = Proxy
+
+
+newtype ModuloTest (n :: Nat) = ModuloTest (ASTerm (BitLimited n Word)) deriving Show
+
+instance WordLike n => Arbitrary (ModuloTest n) where
+  arbitrary = ModuloTest . ConvertNatToWord @n . Neuralgic <$> (arbitrary :: Gen (Neuralgic Natural))
+
+prop_moduloNWN :: forall n . KnownNat n => ModuloTest n -> Property
+prop_moduloNWN (ModuloTest term@(ConvertNatToWord (Neuralgic m))) = monadicIO $ runScriptNoFuzz "moduloNWN" testCase
+  where m' = evalN m .&. maskFor term
+        testCase = "assert(" <> unparseAS (ConvertWordToNat term)
+                <> " == " <> show m' <> ")"
 
 data Matching where
   Matching :: (AnnotLit t, ASValue t, Show t) => (ASTerm t, t) -> Matching
@@ -199,7 +237,7 @@ mobile (tm, v) = monadicIO $ do
   runScriptNoFuzz "matchMobile" testCase
 
 -- instances of ASValue describe "ground values" in
--- ActorScript. These can appear in patterns and have
+-- Motoko. These can appear in patterns and have
 -- well-defined AS type.
 --
 class ASValue a where
@@ -255,7 +293,7 @@ instance Arbitrary Off where
 
 -- Below data structure tries to focus test case generation of
 -- numeric values to *neuralgic points* of the numeric line, namely
--- areas where (from our white-box knowledge of ActorScript's inner
+-- areas where (from our white-box knowledge of Motoko's inner
 -- workings) representation changes are expected to happen. These
 -- are mostly at a power-of-two boundary and around it, e.g. we have
 -- signed 30 bit numbers (`Int` and `Nat`) that have a compact representation
@@ -282,7 +320,7 @@ infix 1 `guardedFrom`
 
 instance Arbitrary (Neuralgic Natural) where
   arbitrary =  (\n -> if n >= 0 then pure (fromIntegral n) else Nothing)
-               `guardedFrom` [Around0, AroundPos 30, AroundPos 63, LargePos]
+               `guardedFrom` [Around0, AroundPos 30, AroundPos 63, LargePos, AroundPos 77]
 
 instance KnownNat n => Arbitrary (Neuralgic (BitLimited n Natural)) where
   arbitrary = fmap NatN <$> trapNat bits `guardedFrom` menu bits
@@ -339,6 +377,8 @@ data ASTerm :: * -> * where
   ConvertNat :: KnownNat n => ASTerm (BitLimited n Natural) -> ASTerm Integer
   ConvertInt :: KnownNat n => ASTerm (BitLimited n Integer) -> ASTerm Integer
   ConvertWord :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Integer
+  ConvertNatToWord :: WordLike n => ASTerm Natural -> ASTerm (BitLimited n Word)
+  ConvertWordToNat :: WordLike n => ASTerm (BitLimited n Word) -> ASTerm Natural
   -- Constructors (intro forms)
   Pair :: (AnnotLit a, AnnotLit b, Evaluatable a, Evaluatable b) => ASTerm a -> ASTerm b -> ASTerm (a, b)
   Triple :: (AnnotLit a, AnnotLit b, AnnotLit c, Evaluatable a, Evaluatable b, Evaluatable c)
@@ -739,6 +779,10 @@ instance Evaluatable a => Evaluatable (Maybe a) where
   evaluate Null = pure Nothing
   evaluate (Some a) = Just <$> evaluate a
 
+maskFor :: forall n . KnownNat n => ASTerm (BitLimited n Word) -> Natural
+maskFor _ = fromIntegral $ 2 ^ natVal (Proxy @n) - 1
+
+
 eval :: (Restricted a, Integral a) => ASTerm a -> Maybe a
 eval Five = pure 5
 eval (Neuralgic n) = evalN n
@@ -755,6 +799,8 @@ eval (ConvertNatural t) = fromIntegral <$> evaluate t
 eval (ConvertNat t) = fromIntegral <$> evaluate t
 eval (ConvertInt t) = fromIntegral <$> evaluate t
 eval (ConvertWord t) = fromIntegral <$> evaluate t
+eval c@(ConvertNatToWord t) = fromIntegral . (.&. maskFor c) <$> evaluate t
+eval (ConvertWordToNat t) = fromIntegral <$> evaluate t
 eval (IfThenElse a b c) = do c <- evaluate c
                              eval $ if c then a else b
 --eval _ = Nothing
@@ -868,6 +914,8 @@ unparseAS (ConvertNatural a) = "(++++(" <> unparseAS a <> "))"
 unparseAS (ConvertNat a) = unparseNat Proxy a
 unparseAS (ConvertInt a) = unparseInt Proxy a
 unparseAS (ConvertWord a) = unparseWord Proxy a
+unparseAS (ConvertWordToNat a) = sizeSuffix a "(word" <> "ToNat " <> unparseAS a <> ")"
+unparseAS t@(ConvertNatToWord a) = sizeSuffix t "(natToWord" <> " " <> unparseAS a <> ")"
 unparseAS (IfThenElse a b c) = "(if (" <> unparseAS c <> ") " <> unparseAS a <> " else " <> unparseAS b <> ")"
 unparseAS (a `NotEqual` b) = inParens unparseAS "!=" a b
 unparseAS (a `Equals` b) = inParens unparseAS "==" a b
@@ -896,6 +944,8 @@ unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))" -- TO
 
 -- TODOs:
 --   - wordToInt
+--   - natToNat64/intToWord64 (and round-trips)
+--       Done: natToWordN/wordNToNat
 --   - bitwise ops (btst?)
 --   - pattern matches (over numeric, bool, structured)
 --   - trapping flavour-preserving conversions Nat -> NatN

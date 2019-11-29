@@ -1,0 +1,4 @@
+(library
+  (name mo_types)
+  (libraries wasm lib lang_utils mo_config)
+)

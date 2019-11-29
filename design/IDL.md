@@ -852,7 +852,7 @@ service Server : {
 Note:
 * `TruckTypeId` and `nat` are used interchangeably.
 
-With this IDL file, the server code in ActorScript could be:
+With this IDL file, the server code in Motoko could be:
 ```
 actor Server {
   registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
@@ -942,8 +942,8 @@ T : <fieldtype> -> i8*
 T(<nat>:<datatype>) = leb128(<nat>) I(<datatype>)
 
 T : <reftype> -> i8*
-T(func (<fieldtype1>*) -> (<fieldtype2>*) <funcann>*) =
-  sleb128(-22) T*(<fieldtype1>*) T*(<fieldtype2>*) T*(<funcann>*) // 0x6a
+T(func (<datatype1>*) -> (<datatype2>*) <funcann>*) =
+  sleb128(-22) T*(<datatype1>*) T*(<datatype2>*) T*(<funcann>*) // 0x6a
 T(service {<methtype>*}) =
   sleb128(-23) T*(<methtype>*)                                    // 0x69
 
@@ -1075,3 +1075,55 @@ The same representation is used for function results.
 Note:
 
 * It is unspecified how the pair (B,R) representing a serialised value is bundled together in an external environment.
+
+
+## Text Format
+
+To enable convenient debugging, we also specify a text format for IDL values.
+The types of these values are assumed to be known from context, so the syntax does not attempt to be self-describing.
+
+```
+<val> ::=
+  | <primval> | <consval> | <refval>
+  | ( <annval> )
+
+<annval> ::=
+  | <val>
+  | <val> : <datatype>
+
+<primval> ::=
+  | <nat> | <int> | <float>     (TODO: same as Motoko grammar plus sign)
+  | <text>                      (TODO: same as Motoko grammar)
+  | true | false
+  | null
+
+<consval> ::=
+  | opt <val>
+  | vec { <annval>;* }
+  | record { <fieldval>;* }
+  | variant { <fieldval> }
+
+<fieldval> ::= <nat> = <annval>
+
+<refval> ::=
+  | service <text>             (canister URI)
+  | func <text> . <id>         (canister URI and message name)
+
+<arg> ::= ( <annval>,* )
+
+```
+
+#### Syntactic Shorthands
+
+Analoguous to types, a few syntactic shorthands are supported that can be reduced to the basic value forms:
+
+```
+<consval> ::= ...
+  | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted [as in the WebAssembly textual format](https://webassembly.github.io/spec/core/text/values.html#strings)
+
+<fieldval> ::= ...
+  | <name> = <annval>      :=  <hash(name)> = <annval>
+  | <annval>               :=  N = <annval>  where N is either 0 or previous + 1  (only in records)
+  | <nat>                  :=  <nat> = null   (only in variants)
+  | <name>                 :=  <name> = null  (only in variants)
+```

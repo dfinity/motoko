@@ -1,23 +1,18 @@
-# Makefile for actorscript  demos
+# Makefile for motoko  demos
 
 # This works with bash
 
-ASC?=../../src/asc
-DVM?=../../test/dvm.sh
-# we need to specify the output if there is more than one .as file
+MOC?=../../src/moc
+# we need to specify the output if there is more than one .mo file
 OUT=main.wasm
-LIB=list.as types.as server.as client.as
+LIB=list.mo types.mo server.mo client.mo
 
 SAMPLES:= test
 
 all:
 	rm -f main.txt
-	$(ASC) -ancient-system-api -r -t -v main.as >main.txt 2>&1
+	$(MOC) -stub-system-api -r -t -v main.mo >main.txt 2>&1
 	cat main.txt
-
-dvm:
-	$(ASC) -ancient-system-api -o $(OUT) main.as
-	$(DVM) $(OUT)
 
 clean:
 	rm -f $(OUT) main.txt

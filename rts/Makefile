@@ -4,7 +4,7 @@ WASM_LD ?= wasm-ld-9
 
 #
 # We manually list all the .c files of libtommath that we care about.
-# (Usually the Wasm linker embedded in asc will complain if something is missing.)
+# (Usually the Wasm linker embedded in moc will complain if something is missing.)
 #
 
 TOMMATHFILES=\
@@ -47,7 +47,7 @@ CLANG_FLAGS = \
 #
 
 WASM_FLAGS = \
-   --target=wasm32-unknown-unknown-wasm -fvisibility=hidden \
+   --target=wasm32-unknown-emscripten-wasm -fvisibility=hidden \
    -fno-builtin -ffreestanding \
    --optimize=3 \
 
@@ -57,7 +57,7 @@ WASM_FLAGS = \
 
 .PHONY: all
 
-all: as-rts.wasm test_rts test_leb128
+all: mo-rts.wasm test_rts test_leb128
 
 _build/wasm _build/native:
 	mkdir -p $@
@@ -81,7 +81,7 @@ TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 # Our part of the RTS, Wasm and native
 #
 
-RTSFILES=rts idl bigint buf utf8_valid
+RTSFILES=rts idl bigint buf utf8_valid closure-table
 
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
@@ -96,7 +96,7 @@ RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
 # The actual RTS, as we ship it with the compiler
 #
 
-as-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O)
+mo-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \
@@ -113,5 +113,5 @@ test_leb128: test_leb128.c $(RTS_NATIVE_O) $(TOMMATH_NATIVE_O)
 	$(CLANG) -o $@ $+
 
 clean:
-	rm -rf _build as-rts.wasm test_rts test_leb128
+	rm -rf _build mo-rts.wasm test_rts test_leb128
 

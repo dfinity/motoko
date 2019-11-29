@@ -181,31 +181,23 @@ let _remove_non_canister_exports (em : extended_module) : extended_module =
   let is_canister_export (exp : export) = Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None in
   map_module (fun m -> { m with exports = List.filter is_canister_export m.exports }) em
 
-module VarMap = Map.Make(Int32)
-
-let remove_non_dfinity_exports (em : extended_module) : extended_module =
+let remove_non_ic_exports (em : extended_module) : extended_module =
   (* We assume that every exported function that does not have an entry in the
    custom types section was only exported for linking, and should not be
    exported in the final module *)
-  let dfinity_exports = List.fold_left
-    (fun map (fi, _) -> VarMap.add fi () map)
-    VarMap.empty em.types in
+  let is_ic_export (exp : export) =
+    Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None
+  in
 
-  let is_canister_export (exp : export) =
-    Lib.String.chop_prefix "canister_" (Wasm.Utf8.encode exp.it.name) <> None in
-
-  let is_interesting_global (exp : export) =
-    (* For the ancient system API *)
-    Wasm.Utf8.encode exp.it.name = "datastore" ||
-    Wasm.Utf8.encode exp.it.name = "elemstore" in
-
-  let is_dfinity_export exp =
-    is_canister_export exp ||
+  let keep_export exp =
+    is_ic_export exp ||
     match exp.it.edesc.it with
-      | FuncExport var -> VarMap.mem var.it dfinity_exports
-      | GlobalExport _ -> is_interesting_global exp
-      | _ -> true in
-  map_module (fun m -> { m with exports = List.filter is_dfinity_export m.exports }) em
+      | FuncExport var -> false
+      | GlobalExport _ -> false
+      | MemoryExport _ -> true
+      | TableExport _ -> true in
+
+  map_module (fun m -> { m with exports = List.filter keep_export m.exports }) em
 
 (* Generic linking logic *)
 
@@ -389,7 +381,6 @@ let rename_funcs_name_section rn (ns : name_section) =
 let rename_funcs_extended rn (em : extended_module) =
   { em with
     module_ = rename_funcs rn em.module_;
-    types = List.map (fun (fi, ty) -> (rn fi, ty)) em.types;
     name = rename_funcs_name_section rn em.name;
   }
 
@@ -694,4 +685,4 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_name_section funs2
     )
   |> add_call_ctors
-  |> remove_non_dfinity_exports (* only sane if no additional files get linked in *)
+  |> remove_non_ic_exports (* only sane if no additional files get linked in *)

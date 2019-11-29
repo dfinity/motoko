@@ -27,11 +27,14 @@ type prim =
 type func_mode = func_mode' Source.phrase
 and func_mode' = Oneway | Query
 
+type field_label = field_label' Source.phrase
+and field_label' = Id of Lib.Uint32.t | Named of string | Unnamed of Lib.Uint32.t
+
 type typ = typ' Source.phrase
 and typ' =
   | PrimT of prim                                (* primitive *)
   | VarT of id                                    (* type name *)
-  | FuncT of func_mode list * typ_field list * typ_field list   (* function *)
+  | FuncT of func_mode list * typ list * typ list   (* function *)
   | OptT of typ   (* option *)
   | VecT of typ   (* vector *)
   | RecordT of typ_field list  (* record *)
@@ -40,7 +43,7 @@ and typ' =
   | PreT   (* pre-type *)
 
 and typ_field = typ_field' Source.phrase
-and typ_field' = { id : Lib.Uint32.t; name : id; typ : typ }
+and typ_field' = { label: field_label; typ : typ }
 
 and typ_meth = typ_meth' Source.phrase
 and typ_meth' = {var : id; meth : typ}

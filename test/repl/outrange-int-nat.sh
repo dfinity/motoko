@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests that the repl Int* and Nat* types properly trap
-${ASC:-$(dirname "$BASH_SOURCE")/../../src/asc} -i <<__END__
+${MOC:-$(dirname "$BASH_SOURCE")/../../src/moc} -i <<__END__
 intToInt8 0x7F;
 intToInt8 0x80;
 intToInt8 (-0x80);
