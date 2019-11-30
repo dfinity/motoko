@@ -16,12 +16,16 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
-let dfinity-repo = import (builtins.fetchGit {
-  name = "dfinity-sources";
-  url = "ssh://git@github.com/dfinity-lab/dfinity";
-  # ref = "master";
-  rev = "a77f9b30fa5b1f35bef2913c2329e2c8e81c1af8";
-}) { inherit (nixpkgs) system; }; in
+let dfinity-src =
+  let env = builtins.getEnv "DFINITY_SRC"; in
+  if env != "" then env else builtins.fetchGit {
+    name = "dfinity-sources";
+    url = "ssh://git@github.com/dfinity-lab/dfinity";
+    # ref = "master";
+    rev = "af802ab2d5758522525dcdc4c24a0fd95a950449";
+  }; in
+
+let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
 
 let sdk = import (builtins.fetchGit {
   name = "sdk-sources";
@@ -35,7 +39,7 @@ let esm = builtins.fetchTarball {
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
 
-let drun = dfinity-repo.drun or dfinity-repo.dfinity.drun; in
+let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 let js-user-library = sdk.js-user-library; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
@@ -294,26 +298,15 @@ rec {
       inherit qc lsp unit-tests;
     };
 
-
   samples = stdenv.mkDerivation {
     name = "samples";
     src = subpath ./samples;
-    buildInputs =
-      [ moc
-        didc
-        nixpkgs.wabt
-        nixpkgs.bash
-        nixpkgs.perl
-        filecheck
-        drun
-      ] ++
-      llvmBuildInputs;
-
+    buildInputs = [ moc ];
     buildPhase = ''
-        patchShebangs .
-        export MOC=moc
-        make all
-      '';
+      patchShebangs .
+      export MOC=moc
+      make all
+    '';
     installPhase = ''
       touch $out
     '';
