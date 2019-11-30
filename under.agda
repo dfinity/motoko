@@ -11,12 +11,12 @@ open import Agda.Builtin.Nat
 data Lang : Set where
   IDL Motoko : Lang
 
---                 +-- reserved
---                 |
---                 |      +-- valid
---                 |      |
---                 |      |      +-- num
---                 v      v      v
+--                        +-- reserved
+--                        |
+--                        |      +-- valid
+--                        |      |
+--                        |      |      +-- num
+--                        v      v      v
 data Token : Lang → Nat → Bool → Bool → Bool → Nat → Set where
   -- stems
   keyword : Token IDL 0 true true false 0
@@ -59,8 +59,8 @@ escape h@(hash t) = escape-number h
 
 unescape : ∀ {pre post : Nat} {r v n : Bool} → Token Motoko pre r v n post → Token IDL pre r v n post
 unescape (suffix t) = {!   !}
-unescape (escape-number t) = ?
-unescape (side t) = ?
+unescape (escape-number t) = {!   !}
+unescape (side t) = t
 
 
 -- field N {Empty|Valid|Reserved|Num|Invalid} N
