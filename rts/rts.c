@@ -14,6 +14,14 @@ export void as_memcpy(char *str1, const char *str2, size_t n) {
   }
 }
 
+export int as_memcmp(const unsigned char *str1, const unsigned char *str2, size_t n) {
+  for (size_t i = 0; i < n; i++) {
+    if (str1[i] != str2[i])
+      return str1[i]-str2[i];
+  }
+  return 0;
+}
+
 size_t as_strlen(const char* p) {
   size_t i = 0;
   while (p[i]) i++;
