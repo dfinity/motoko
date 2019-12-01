@@ -100,8 +100,10 @@ nix: subpath:
     (nix.fetchFromGitHub {
       owner = "nomeata";
       repo = "winter";
-      rev = "eb8add32c7de95ccdaf1c896f894814833633bbc";
-      sha256 = "05pa6fwvs7galf0gnjngampfdfrki8zjd92f4hzr9yv75jxzv10v";
+      # currently tracking branch motoko, which integrates various PRs that
+      # have not yet reached master
+      rev = "322c2c6aa7623e11cd83d4bbc2f311971986023d";
+      sha256 = "0bas1gx6k7m5ng59k65jajiyvczs8vjzjxz65k5amldvmfrhwrgw";
      }) "--no-check" {};
 
   ic-stub = self.callCabal2nixWithOptions "ic-stub" (subpath "ic-stub") "-frelease" { };
