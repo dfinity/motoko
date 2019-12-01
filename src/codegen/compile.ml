@@ -602,6 +602,7 @@ module RTS = struct
   (* The connection to the C parts of the RTS *)
   let system_imports env =
     E.add_func_import env "rts" "as_memcpy" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "as_memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "read_u32_of_leb128" [I32Type] [I32Type];
@@ -793,6 +794,8 @@ module Heap = struct
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env = E.call_import env "rts" "as_memcpy"
+  (* Comparing bytes (works on unskewed memory addresses) *)
+  let memcmp env = E.call_import env "rts" "as_memcmp"
 
   (* Copying words (works on skewed memory addresses) *)
   let memcpy_words_skewed env =
@@ -2909,6 +2912,8 @@ module Dfinity = struct
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
       E.add_func_import env "msg" "reply" [I32Type; I32Type] [];
       E.add_func_import env "msg" "reject" [I32Type; I32Type] [];
       E.add_func_import env "msg" "reject_code" [] [I32Type];
@@ -2921,6 +2926,8 @@ module Dfinity = struct
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
@@ -3117,6 +3124,30 @@ module Dfinity = struct
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
 
   let async_method_name = "__motoko_async_helper"
+
+  let assert_caller_self env =
+    let (set_len1, get_len1) = new_local env "len1" in
+    let (set_len2, get_len2) = new_local env "len2" in
+    let (set_str1, get_str1) = new_local env "str1" in
+    let (set_str2, get_str2) = new_local env "str2" in
+    system_call env "ic0" "canister_self_size" ^^ set_len1 ^^
+    system_call env "ic0" "msg_caller_size" ^^ set_len2 ^^
+    get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.else_trap_with env "not a self-call" ^^
+
+    get_len1 ^^ Blob.dyn_alloc_scratch env ^^ set_str1 ^^
+    get_str1 ^^ compile_unboxed_const 0l ^^ get_len1 ^^
+    system_call env "ic0" "canister_self_copy" ^^
+
+    get_len2 ^^ Blob.dyn_alloc_scratch env ^^ set_str2 ^^
+    get_str2 ^^ compile_unboxed_const 0l ^^ get_len2 ^^
+    system_call env "ic0" "msg_caller_copy" ^^
+
+
+    get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
+    compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.else_trap_with env "not a self-call"
+
 
 end (* Dfinity *)
 
@@ -4929,7 +4960,8 @@ module FuncDec = struct
       Func.define_built_in env name [] [] (fun env ->
         let (set_closure, get_closure) = new_local env "closure" in
 
-        (* TODO: Check that it is us that is calling this *)
+        (* Check that we are calling this *)
+        Dfinity.assert_caller_self env ^^
 
         (* Deserialize and look up closure argument *)
         Serialization.deserialize env [Type.Prim Type.Word32] ^^
