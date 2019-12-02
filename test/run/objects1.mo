@@ -45,3 +45,12 @@ func foo () : Int = switch row {
 };
 
 assert (foo () == 67)
+
+// matching on type-annotated fields
+
+func foo () : Int = switch {a = 42} {
+  case {a : Int} a  // OK
+};
+
+func full_name({first_name : Text; last_name : Text}) : Text =
+    first_name # " " # last_name;
