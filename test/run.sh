@@ -307,26 +307,15 @@ do
       diff_files="$diff_files $base.pp.tc"
 
       $ECHO -n " [js]"
-      $DIDC --js $base.did -o $out/$base.js >& $out/$base.js.out
+      run js $DIDC --js $base.did -o $out/$base.js
       normalize $out/$base.js
-      normalize $out/$base.js.out
-      diff_files="$diff_files $base.js.out $base.js"
+      diff_files="$diff_files $base.js"
 
       if [ -e $out/$base.js ]
       then
         $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$ESM
-
-        node -r esm $out/$base.js > $out/$base.node 2>&1
-        normalize $out/$base.node
-        diff_files="$diff_files $base.node"
-
-        node -r esm -e \
-        "import actorInterface from './$out/$base.js';
-        import { makeActor, makeHttpAgent } from '$JS_USER_LIBRARY';
-        const httpAgent = makeHttpAgent({ canisterId: \"ffffffffffffffff\" });
-        const actor = makeActor(actorInterface)(httpAgent);
-        assert(Object.entries(actor).length > 0);"
+        run node node -r esm $out/$base.js
       fi
     fi
   fi
