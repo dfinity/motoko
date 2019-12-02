@@ -98,12 +98,10 @@ nix: subpath:
 
   winter = self.callCabal2nixWithOptions "winter"
     (nix.fetchFromGitHub {
-      owner = "nomeata";
+      owner = "dfinity";
       repo = "winter";
-      # currently tracking branch motoko, which integrates various PRs that
-      # have not yet reached master
-      rev = "322c2c6aa7623e11cd83d4bbc2f311971986023d";
-      sha256 = "0bas1gx6k7m5ng59k65jajiyvczs8vjzjxz65k5amldvmfrhwrgw";
+      rev = "4295ff98da8ca890e824130152a78892ad6420ba";
+      sha256 = "05wr3066mlz7hh2s49wgf9pgdsh1bsivnhp6j7hklmw2cnj9g0sl";
      }) "--no-check" {};
 
   ic-stub = self.callCabal2nixWithOptions "ic-stub" (subpath "ic-stub") "-frelease" { };
