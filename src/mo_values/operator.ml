@@ -147,26 +147,27 @@ let num_relop fnat (fnat8, fnat16, fnat32, fnat64) fint (fint8, fint16, fint32, 
   | T.Float -> fun v1 v2 -> Bool (ffloat (as_float v1) (as_float v2))
   | t -> word_relop fwords t
 
-let ord_relop fnat fnats fint fints fwords ffloat fchar ftext = function
+let ord_relop fnat fnats fint fints fwords ffloat fchar ftext fblob = function
   | T.Char -> fun v1 v2 -> Bool (fchar (as_char v1) (as_char v2))
   | T.Text -> fun v1 v2 -> Bool (ftext (as_text v1) (as_text v2))
+  | T.Blob -> fun v1 v2 -> Bool (ftext (as_text v1) (as_text v2))
   | t -> num_relop fnat fnats fint fints fwords ffloat t
 
-let eq_relop fnat fnats fint fints fwords ffloat fchar ftext fnull fbool = function
+let eq_relop fnat fnats fint fints fwords ffloat fchar ftext fblob fnull fbool = function
   | T.Null -> fun v1 v2 -> Bool (fnull (as_null v1) (as_null v2))
   | T.Bool -> fun v1 v2 -> Bool (fbool (as_bool v1) (as_bool v2))
-  | t -> ord_relop fnat fnats fint fints fwords ffloat fchar ftext t
+  | t -> ord_relop fnat fnats fint fints fwords ffloat fchar ftext fblob t
 
 let relop op t =
   match t with
-  | T.Prim p -> 
+  | T.Prim p ->
     (match op with
-    | EqOp -> eq_relop Nat.eq (Nat8.eq, Nat16.eq, Nat32.eq, Nat64.eq) Int.eq (Int_8.eq, Int_16.eq, Int_32.eq, Int_64.eq) (Word8.eq, Word16.eq, Word32.eq, Word64.eq) Float.eq (=) (=) (=) (=) p
-    | NeqOp -> eq_relop Nat.ne (Nat8.ne, Nat16.ne, Nat32.ne, Nat64.ne) Int.ne (Int_8.ne, Int_16.ne, Int_32.ne, Int_64.ne) (Word8.ne, Word16.ne, Word32.ne, Word64.ne) Float.ne (<>) (<>) (<>) (<>) p
-    | LtOp -> ord_relop Nat.lt (Nat8.lt, Nat16.lt, Nat32.lt, Nat64.lt) Int.lt (Int_8.lt, Int_16.lt, Int_32.lt, Int_64.lt) (Word8.lt_u, Word16.lt_u, Word32.lt_u, Word64.lt_u) Float.lt (<) (<) p
-    | GtOp -> ord_relop Nat.gt (Nat8.gt, Nat16.gt, Nat32.gt, Nat64.gt) Int.gt (Int_8.gt, Int_16.gt, Int_32.gt, Int_64.gt) (Word8.gt_u, Word16.gt_u, Word32.gt_u, Word64.gt_u) Float.gt (>) (>) p
-    | LeOp -> ord_relop Nat.le (Nat8.le, Nat16.le, Nat32.le, Nat64.le) Int.le (Int_8.le, Int_16.le, Int_32.le, Int_64.le) (Word8.le_u, Word16.le_u, Word32.le_u, Word64.le_u) Float.le (<=) (<=) p
-    | GeOp -> ord_relop Nat.ge (Nat8.ge, Nat16.ge, Nat32.ge, Nat64.ge) Int.ge (Int_8.ge, Int_16.ge, Int_32.ge, Int_64.ge) (Word8.ge_u, Word16.ge_u, Word32.ge_u, Word64.ge_u) Float.ge (>=) (>=) p
+    | EqOp -> eq_relop Nat.eq (Nat8.eq, Nat16.eq, Nat32.eq, Nat64.eq) Int.eq (Int_8.eq, Int_16.eq, Int_32.eq, Int_64.eq) (Word8.eq, Word16.eq, Word32.eq, Word64.eq) Float.eq (=) (=) (=) (=) (=) p
+    | NeqOp -> eq_relop Nat.ne (Nat8.ne, Nat16.ne, Nat32.ne, Nat64.ne) Int.ne (Int_8.ne, Int_16.ne, Int_32.ne, Int_64.ne) (Word8.ne, Word16.ne, Word32.ne, Word64.ne) Float.ne (<>) (<>) (<>) (<>) (<>) p
+    | LtOp -> ord_relop Nat.lt (Nat8.lt, Nat16.lt, Nat32.lt, Nat64.lt) Int.lt (Int_8.lt, Int_16.lt, Int_32.lt, Int_64.lt) (Word8.lt_u, Word16.lt_u, Word32.lt_u, Word64.lt_u) Float.lt (<) (<) (<) p
+    | GtOp -> ord_relop Nat.gt (Nat8.gt, Nat16.gt, Nat32.gt, Nat64.gt) Int.gt (Int_8.gt, Int_16.gt, Int_32.gt, Int_64.gt) (Word8.gt_u, Word16.gt_u, Word32.gt_u, Word64.gt_u) Float.gt (>) (>) (>) p
+    | LeOp -> ord_relop Nat.le (Nat8.le, Nat16.le, Nat32.le, Nat64.le) Int.le (Int_8.le, Int_16.le, Int_32.le, Int_64.le) (Word8.le_u, Word16.le_u, Word32.le_u, Word64.le_u) Float.le (<=) (<=) (<=) p
+    | GeOp -> ord_relop Nat.ge (Nat8.ge, Nat16.ge, Nat32.ge, Nat64.ge) Int.ge (Int_8.ge, Int_16.ge, Int_32.ge, Int_64.ge) (Word8.ge_u, Word16.ge_u, Word32.ge_u, Word64.ge_u) Float.ge (>=) (>=) (>=) p
     )
   | T.Non -> impossible
   | _ -> raise (Invalid_argument "relop")

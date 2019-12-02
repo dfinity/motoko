@@ -4428,7 +4428,7 @@ module StackRep = struct
     | Prim (Nat64 | Int64 | Word64) -> UnboxedWord64
     | Prim (Nat32 | Int32 | Word32) -> UnboxedWord32
     | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
-    | Prim Text -> Vanilla
+    | Prim (Text|Blob) -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
@@ -5845,7 +5845,7 @@ let compile_binop env t op =
   )
 
 let compile_eq env = function
-  | Type.(Prim Text) -> Blob.compare env Operator.EqOp
+  | Type.(Prim (Text|Blob)) -> Blob.compare env Operator.EqOp
   | Type.(Prim Bool) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
   | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
@@ -5877,7 +5877,7 @@ let compile_relop env t op =
   StackRep.of_type t,
   let open Operator in
   match t, op with
-  | Type.Prim Type.Text, _ -> Blob.compare env op
+  | Type.(Prim (Text|Blob)), _ -> Blob.compare env op
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz))
