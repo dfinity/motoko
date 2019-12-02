@@ -44,11 +44,11 @@ func foo () : Int = switch row {
   case (a : Int, -42, {c} : {c : Char}) (word32ToNat(charToWord32 c))  // OK
 };
 
-assert (foo () == 67)
+assert (foo () == 67);
 
 // matching on type-annotated fields
 
-func foo () : Int = switch {a = 42} {
+func baz () : Int = switch {a = 42} {
   case {a : Int} a  // OK
 };
 
