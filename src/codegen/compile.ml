@@ -3503,7 +3503,15 @@ module Serialization = struct
         List.iter add_idx ts1;
         add_leb128 (List.length ts2);
         List.iter add_idx ts2;
-        add_leb128 0 (* no annotations *)
+        begin match s, c with
+          | _, Returns ->
+            add_leb128 1; add_u8 2; (* oneway *)
+          | Shared Write, _ ->
+            add_leb128 0; (* no annotation *)
+          | Shared Query, _ ->
+            add_leb128 1; add_u8 1; (* query *)
+          | _ -> assert false
+        end
       | Obj (Actor, fs) ->
         add_sleb128 (-23);
         add_leb128 (List.length fs);
