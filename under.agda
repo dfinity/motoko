@@ -41,12 +41,14 @@ not true = false
 _and_ : Bool → Bool → Bool
 true and b = b
 _ and _ = false
+infixr 17 _and_
 
 _or_ : Bool → Bool → Bool
 false or b = b
 _ or _ = true
+infixr 15 _or_
 
-escape : ∀ {pre post : Nat} {r v n : Bool} → Token IDL pre r v n post → Token Motoko (if (n or (not v)) then 1 else 0) r v (n or not v) (if v and not r then 0 else 1)
+escape : ∀ {pre post : Nat} {r v n : Bool} → Token IDL pre r v n post → Token Motoko (if n or not v then 1 else 0) r v (n or not v) (if v and not r then 0 else 1)
 escape k@keyword = suffix k
 escape n@number = escape-number n
 escape i@(false ident) = escape-number (hash i)
@@ -55,10 +57,10 @@ escape e@empty = escape-number (hash e)
 escape h@(hash t) = escape-number h
 
 
-unescape : ∀ {pre post : Nat} {r v n : Bool} → Token Motoko pre r v n (if (not r) and v then post else suc post) → Token IDL pre r v n post
+unescape : ∀ {pre post : Nat} {r v n : Bool} → Token Motoko (if n then suc pre else pre) r v n (if not r and v then post else suc post) → Token IDL pre r v n post
 unescape (suffix t) = t
-unescape (escape-number number) = {!   !}
-unescape (escape-number (hash t)) = {!   !}
+unescape (escape-number number) = number
+unescape (escape-number h@(hash t)) = h
 unescape (side t) = t
 
 
