@@ -7,15 +7,15 @@ export default ({ IDL }) => {
    'find':
     IDL.Func([IDL.Text],
      [
-      new IDL.ActorInterface({'up': IDL.Func([], []),
-       'current': IDL.Func([], [IDL.Nat])})
-      ])
-     })
+      new IDL.ActorInterface({'up': IDL.Func([], [], []),
+       'current': IDL.Func([], [IDL.Nat], [])})
+      ],
+      [])})
  const actor_server = new IDL.ActorInterface({
-  'addUser': IDL.Func([IDL.Text, IDL.Nat8], [IDL.Nat64]),
-  'userName': IDL.Func([IDL.Nat64], [IDL.Text]),
-  'userAge': IDL.Func([IDL.Nat64], [IDL.Nat8]),
-  'deleteUser': IDL.Func([IDL.Nat64], []), 'f': IDL.Func([message], [broker])
-  });
+  'addUser': IDL.Func([IDL.Text, IDL.Nat8], [IDL.Nat64], []),
+  'userName': IDL.Func([IDL.Nat64], [IDL.Text], ['query']),
+  'userAge': IDL.Func([IDL.Nat64], [IDL.Nat8], ['query']),
+  'deleteUser': IDL.Func([IDL.Nat64], [], ['oneway']),
+  'f': IDL.Func([message], [broker], [])});
  return actor_server;
 };
