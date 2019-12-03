@@ -2929,6 +2929,8 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
@@ -3097,6 +3099,20 @@ module Dfinity = struct
       | Flags.StubMode ->
         system_call env "ic" "msg_reject_code"
       | _ -> assert false
+
+  let error_message env =
+    let (set_len, get_len) = new_local env "len" in
+    let (set_blob, get_blob) = new_local env "blob" in
+    system_call env "ic0" "msg_reject_msg_size" ^^
+    set_len ^^
+
+    get_len ^^ Blob.alloc env ^^ set_blob ^^
+    get_blob ^^ Blob.payload_ptr_unskewed ^^
+    compile_unboxed_const 0l ^^
+    get_len ^^
+    system_call env "ic0" "msg_reject_msg_copy" ^^
+
+    get_blob
 
   let reply_with_data env =
     Func.share_code2 env "reply_with_data" (("start", I32Type), ("size", I32Type)) [] (
@@ -4892,8 +4908,10 @@ module FuncDec = struct
         set_closure ^^
         get_closure ^^
 
-        (* Synthesize value of type `Error` *)
-        E.trap_with env "reject_callback" ^^
+        (* Synthesize value of type `Text`, the error message
+           (The error code is fetched via a prim)
+        *)
+        Dfinity.error_message env ^^
 
         get_closure ^^
         Closure.call_closure env 1 0 ^^
@@ -5049,10 +5067,6 @@ module PatCode = struct
 end (* PatCode *)
 open PatCode
 
-
-(* All the code above is independent of the IR *)
-open Ir
-
 (* Compiling Error primitives *)
 module Error = struct
 
@@ -5066,19 +5080,21 @@ module Error = struct
   let compile_errorCode arg_instrs =
       SR.Vanilla,
       arg_instrs ^^
-      Tuple.load_n (Int32.of_int 0)
+      Tuple.load_n 0l
 
   let compile_errorMessage arg_instrs =
       SR.Vanilla,
       arg_instrs ^^
-      Tuple.load_n (Int32.of_int 1)
+      Tuple.load_n 1l
 
   let compile_make_error arg_instrs1 arg_instrs2 =
       SR.UnboxedTuple 2,
       arg_instrs1 ^^
       arg_instrs2
-
 end
+
+(* All the code above is independent of the IR *)
+open Ir
 
 module AllocHow = struct
   (*

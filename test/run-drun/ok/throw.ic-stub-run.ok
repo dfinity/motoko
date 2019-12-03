@@ -3,6 +3,6 @@
 → install
 ← completed
 → update go(0x4449444c0000)
-Trap: EvalTrapError :0.1 "canister trapped explicitly: reject_callback"
-Trap: EvalTrapError :0.1 "canister trapped explicitly: reject_callback"
+t2 ok
+t3 ok
 ← completed: 0x4449444c0000
