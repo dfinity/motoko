@@ -19,22 +19,6 @@ nix: subpath:
          hydraPlatforms = stdenv.lib.platforms.none;
        }) {};
 
-  rope-utf16-splay = self.callPackage
-    ({ mkDerivation, base, QuickCheck, tasty, tasty-hunit
-     , tasty-quickcheck, text
-     }:
-       mkDerivation {
-         pname = "rope-utf16-splay";
-         version = "0.3.1.0";
-         sha256 = "1ilcgwmdwqnp95vb7652fc03ji9dnzy6cm24pvbiwi2mhc4piy6b";
-         libraryHaskellDepends = [ base text ];
-         testHaskellDepends = [
-           base QuickCheck tasty tasty-hunit tasty-quickcheck text
-         ];
-         description = "Ropes optimised for updating using UTF-16 code units and row/column pairs";
-         license = stdenv.lib.licenses.bsd3;
-       }) {};
-
   haskell-lsp = self.callPackage
     ({ mkDerivation, aeson, async, attoparsec, base, bytestring
      , containers, data-default, directory, filepath, hashable
