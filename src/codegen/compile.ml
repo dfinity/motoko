@@ -2914,9 +2914,9 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "msg" "reply" [I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject" [I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject_code" [] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
       ()
     | Flags.StubMode  ->
@@ -3081,22 +3081,13 @@ module Dfinity = struct
     | Flags.ICMode | Flags.StubMode ->
       arg_instrs ^^
       Blob.as_ptr_len env ^^
-      begin match E.mode env with
-      | Flags.ICMode -> system_call env "msg" "reject"
-      | Flags.StubMode -> system_call env "ic0" "msg_reject"
-      | _ -> assert false
-      end
+      system_call env "ic0" "msg_reject"
     | _ ->
       assert false
 
   let error_code env =
       SR.UnboxedWord32,
-      match E.mode env with
-      | Flags.ICMode ->
-        system_call env "msg" "reject_code"
-      | Flags.StubMode ->
-        system_call env "ic" "msg_reject_code"
-      | _ -> assert false
+      system_call env "ic0" "msg_reject_code"
 
   let reply_with_data env =
     Func.share_code2 env "reply_with_data" (("start", I32Type), ("size", I32Type)) [] (
