@@ -1,0 +1,8 @@
+→ create
+← completed: canister-id = 0x0000000000000400
+→ install
+← completed
+→ update go(0x4449444c0000)
+Trap: EvalTrapError :0.1 "canister trapped explicitly: reject_callback"
+Trap: EvalTrapError :0.1 "canister trapped explicitly: reject_callback"
+← completed: 0x4449444c0000
