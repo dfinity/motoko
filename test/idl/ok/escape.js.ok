@@ -3,6 +3,6 @@ export default ({ IDL }) => {
   IDL.Obj({'\"': IDL.Nat, '\'': IDL.Nat, '\"\'': IDL.Nat, '\\\n\'\"': IDL.Nat
    })
  const actor_E = new IDL.ActorInterface({
-  '\n\'\"\'\'\"\"\r\t': IDL.Func([t], [])});
+  '\n\'\"\'\'\"\"\r\t': IDL.Func([t], [], [])});
  return actor_E;
 };
