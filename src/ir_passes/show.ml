@@ -1,6 +1,6 @@
 open Ir_def
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 (* Translates away calls to `show`. *)
 open Source
 open Ir
@@ -134,6 +134,8 @@ and t_exp' env = function
     DefineE (id, mut, t_exp env exp1)
   | NewObjE (sort, ids, t) ->
     NewObjE (sort, ids, t)
+  | SelfCallE (ts, e1, e2, e3) ->
+    SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
 
 and t_dec env dec = { dec with it = t_dec' env dec.it }
 

@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 
 open Source
 module T = Type
@@ -119,6 +119,16 @@ let check_concrete env at t =
   check env at (T.concrete t)
     "message argument is not concrete:\n  %s" (T.string_of_typ_expand t)
 
+let check_field_hashes env what at =
+  Lib.List.iter_pairs
+    (fun x y ->
+      if not (T.is_typ x.T.typ) && not (T.is_typ y.T.typ) &&
+         Hash.hash x.T.lab = Hash.hash y.T.lab
+      then error env at "field names %s and %s in %s type have colliding hashes"
+        x.T.lab y.T.lab what;
+    )
+
+
 let rec check_typ env typ : unit =
   match typ with
   | T.Pre ->
@@ -154,30 +164,29 @@ let rec check_typ env typ : unit =
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
     List.iter (check_typ env') ts2;
-    (match control with
-    | T.Returns -> ()
-    | T.Promises p -> begin
-      match ts2 with
-      | [T.Async t ] ->
-        let a = T.arity t in
-        if p <> 1 && a <> p then
-          error env no_region
-            "promising function of arity %i has async result type\n  %s\n  of mismatched arity %i"
-            p (T.string_of_typ_expand (T.seq ts2)) a
-      | _ ->
-        error env no_region "promising function with non-async result type\n  %s"
-          (T.string_of_typ_expand (T.seq ts2))
-    end);
     if T.is_shared_sort sort then begin
       List.iter (fun t -> check_shared env no_region t) ts1;
-      match ts2 with
-      | [] when not env.flavor.Ir.has_async_typ || sort = T.Shared T.Write  -> ()
-      | [T.Async t2] ->
-        check env' no_region (T.shared t2)
-          "message result is not sharable:\n  %s" (T.string_of_typ_expand t2)
-      | _ -> error env no_region "shared function has non-async result type\n  %s"
-          (T.string_of_typ_expand (T.seq ts2))
-    end
+      match control with
+      | T.Returns ->
+        check env' no_region (sort = T.Shared T.Write)
+          "one-shot query function pointless"
+      | T.Promises ->
+        check env no_region env.flavor.Ir.has_async_typ
+          "promising function in post-async flavor";
+        check env' no_region (sort <> T.Local)
+          "promising function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
+        check env' no_region (List.for_all T.shared ts)
+          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
+      | T.Replies ->
+        check env no_region (not env.flavor.Ir.has_async_typ)
+          "replying function in pre-async flavor";
+        check env' no_region (sort <> T.Local)
+          "replying function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
+        check env' no_region (List.for_all T.shared ts)
+          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
+    end else
+        check env' no_region (control = T.Returns)
+          "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
   | T.Opt typ ->
     check_typ env typ
   | T.Async typ ->
@@ -186,11 +195,13 @@ let rec check_typ env typ : unit =
     check_shared env no_region t'
   | T.Obj (sort, fields) ->
     List.iter (check_typ_field env (Some sort)) fields;
+    check_field_hashes env "object" no_region fields;
     (* fields strictly sorted (and) distinct *)
     if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "object type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Variant fields ->
     List.iter (check_typ_field env None) fields;
+    check_field_hashes env "variant" no_region fields;
     if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "variant type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Mut typ ->
@@ -294,7 +305,7 @@ let type_lit env lit at : T.prim =
 let isAsyncE exp =
   match exp.it with
   | AsyncE _ (* pre await transformation *)
-  | PrimE(OtherPrim "@async", [_]) (* post await transformation *)
+  | PrimE (CPSAsync, [_]) (* post await transformation *)
     -> true
   | _ -> false
 
@@ -345,22 +356,49 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env exp1;
       typ exp1 <: ot;
       T.Prim T.Text <: t
+    | CPSAwait, [a; kr] ->
+      check (not (env.flavor.has_await)) "CPSAwait await flavor";
+      check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
+      (* TODO: We can check more here, can we *)
+    | CPSAsync, [exp] ->
+      check (not (env.flavor.has_await)) "CPSAsync await flavor";
+      check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
+      (* TODO: We can check more here, can we *)
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
       (* TODO: check against expected reply typ; note this may not be env.ret_tys. *)
       check_exp env exp1;
       typ exp1 <: (T.seq ts);
-      T.unit <: t
+      T.Non <: t
     | ICRejectPrim, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICRejectPrim in async flavor";
       check_exp env exp1;
       typ exp1 <: T.text;
-      T.unit <: t
+      T.Non <: t
     | ICErrorCodePrim, [] ->
       T.Prim (T.Int32) <: t
     | ICCallerPrim, [] ->
       T.caller <: t
+    | ICCallPrim, [exp1; exp2; k; r] ->
+      check_exp env exp1;
+      check_exp env exp2;
+      check_exp env k;
+      check_exp env r;
+      let t1 = T.promote (typ exp1) in
+      begin match t1 with
+      | T.Func (sort, T.Replies, [], arg_tys, ret_tys) ->
+        check_exp env exp2;
+        let t_arg = T.seq arg_tys in
+        typ exp2 <: t_arg;
+        check_concrete env exp.at t_arg;
+        typ k <: T.Func (T.Local, T.Returns, [], ret_tys, []);
+        typ r <: T.Func (T.Local, T.Returns, [], [T.text], []);
+      | T.Non -> () (* dead code, not much to check here *)
+      | _ ->
+         error env exp1.at "expected function type, but expression produces type\n  %s"
+           (T.string_of_typ_expand t1)
+      end
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
@@ -405,6 +443,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
           n (T.string_of_typ_expand t1)
     end
   | AssignE (exp1, exp2) ->
+    begin
+      match exp1.it with
+      | (VarE _ | DotE _ | IdxE _) -> ()
+      | _ -> error env exp.at "unexpected assignment target"
+    end;
     check_exp env exp1;
     check_exp env exp2;
     let t2 = try T.as_mut  (typ exp1) with
@@ -437,7 +480,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         check_inst_bounds env tbs insts exp.at;
         check_exp env exp2;
         let t_arg = T.open_ insts (T.seq arg_tys) in
-        let t_ret = T.open_ insts (T.seq ret_tys) in
+        let t_ret = T.open_ insts (T.codom control ret_tys) in
         if T.is_shared_sort sort then begin
           check_concrete env exp.at t_arg;
           check_concrete env exp.at t_ret;
@@ -563,14 +606,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
-    check ((T.is_shared_sort sort && Type.is_async (T.seq ret_tys))
-           ==> isAsyncE exp)
+    check ((T.is_shared_sort sort && control = T.Promises) ==> isAsyncE exp)
       "shared function with async type has non-async body";
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
+    let codom = T.codom control ret_tys in
+    let is_oneway = T.is_shared_sort sort && control = T.Returns in
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some (T.seq ret_tys); async = false} in
+      {env' with labs = T.Env.empty; rets = Some codom; async = is_oneway} in
     check_exp (adjoin_vals env'' ve) exp;
-    check_sub env' exp.at (typ exp) (T.seq ret_tys);
+    check_sub env' exp.at (typ exp) codom;
     (* Now construct the function type and compare with the annotation *)
     let ts1 = List.map (fun a -> a.note) args in
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ts1;
@@ -579,12 +623,20 @@ let rec check_exp env (exp:Ir.exp) : unit =
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
+  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+    check (not env.flavor.Ir.has_async_typ) "SelfCallE in async flavor";
+    List.iter (check_typ env) ts;
+    check_exp env exp_f;
+    check_exp env exp_k;
+    check_exp env exp_r;
+    typ exp_f <: T.unit;
+    typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
+    typ exp_r <: T.Func (T.Local, T.Returns, [], [T.text], []);
   | ActorE (id, ds, fs, t0) ->
     let env' = { env with async = false } in
     let ve0 = T.Env.singleton id t0 in
-    let scope0 = { empty_scope with val_env = ve0 } in
-    let scope1 = List.fold_left (gather_dec env') scope0 ds in
-    let env'' = adjoin env' scope1 in
+    let scope1 = List.fold_left (gather_dec env') empty_scope ds in
+    let env'' = adjoin (adjoin_vals env' ve0) scope1 in
     check_decs env'' ds;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
@@ -592,10 +644,16 @@ let rec check_exp env (exp:Ir.exp) : unit =
     (type_obj env'' T.Actor fs) <: (T.Obj (s0, val_tfs0));
     t0 <: t;
   | NewObjE (s, fs, t0) ->
+    (* check object *)
+    let t1 = type_obj env s fs in
+    check_typ env t1;
+
+    (* check annotation *)
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
-    (type_obj env s fs) <: (T.Obj (s0, val_tfs0));
+    t1 <: T.Obj (s0, val_tfs0);
+
     t0 <: t
 
 (* Cases *)

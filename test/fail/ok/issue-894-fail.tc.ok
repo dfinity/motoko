@@ -1,0 +1,12 @@
+issue-894-fail.mo:5.20-5.21: type error, async type has non-shared content type
+  {var l : Nat}
+type
+  {var l : Nat}
+is or contains non-shared type
+  var Nat
+issue-894-fail.mo:12.20-12.21: type error, async type has non-shared content type
+  [var Nat]
+type
+  [var Nat]
+is or contains non-shared type
+  var Nat

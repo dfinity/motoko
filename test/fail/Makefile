@@ -1,10 +1,10 @@
-RUNFLAGS =
+RUNFLAGS = -t
 
 all:
-	../run.sh $(RUNFLAGS) *.as
+	../run.sh $(RUNFLAGS) *.mo
 
 accept:
-	../run.sh $(RUNFLAGS) -a *.as
+	../run.sh $(RUNFLAGS) -a *.mo
 
 clean:
 	rm -rf _out

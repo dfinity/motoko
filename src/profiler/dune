@@ -3,5 +3,5 @@
   (wrapped false)
   (modules profilerFlags counters profiler)
   (private_modules counters)
-  (libraries lang_utils as_values)
+  (libraries lang_utils mo_values)
 )

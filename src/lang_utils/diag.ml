@@ -1,3 +1,5 @@
+open Mo_config
+
 type severity = Warning | Error
 type message = {
   sev : severity;
@@ -50,7 +52,9 @@ let string_of_message msg =
   Printf.sprintf "%s: %s, %s\n" (Source.string_of_region msg.at) label msg.text
 
 let print_message msg =
-  Printf.eprintf "%s%!" (string_of_message msg)
+  if msg.sev = Warning && not !Flags.print_warnings
+  then ()
+  else Printf.eprintf "%s%!" (string_of_message msg)
 
 let print_messages = List.iter print_message
 

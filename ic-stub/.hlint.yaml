@@ -1,0 +1,6 @@
+# Warnings currently triggered by your code
+- ignore: {name: "Use uncurry"}
+- ignore: {name: "Avoid lambda"}
+- ignore: {name: "Use camelCase"}
+- ignore: {name: "Eta reduce"}
+- ignore: {name: "Use >=>"}

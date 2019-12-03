@@ -9,7 +9,7 @@ such as search, sorting, etc.
 *)
 
 open Source
-module Value = As_values.Value
+module Value = Mo_values.Value
 
 type t = {
     label  : ((region * string), int) Hashtbl.t ;

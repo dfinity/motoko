@@ -5,20 +5,17 @@ export default ({ IDL }) => {
  const broker =
   new IDL.ActorInterface({
    'find':
-    IDL.Func(IDL.Obj({'name': IDL.Text}),
-     IDL.Obj({
-      '0':
-       new IDL.ActorInterface({'up': IDL.Func(IDL.Obj({}), IDL.Obj({})),
-        'current': IDL.Func(IDL.Obj({}), IDL.Obj({'0': IDL.Nat}))})
-      }))
+    IDL.Func([IDL.Text],
+     [
+      new IDL.ActorInterface({'up': IDL.Func([], []),
+       'current': IDL.Func([], [IDL.Nat])})
+      ])
      })
  const actor_server = new IDL.ActorInterface({
-  'addUser':
-   IDL.Func(IDL.Obj({'name': IDL.Text, 'age': IDL.Nat8}),
-    IDL.Obj({'id': IDL.Nat64})),
-  'userName': IDL.Func(IDL.Obj({'id': IDL.Nat64}), IDL.Obj({'0': IDL.Text})),
-  'userAge': IDL.Func(IDL.Obj({'id': IDL.Nat64}), IDL.Obj({'0': IDL.Nat8})),
-  'deleteUser': IDL.Func(IDL.Obj({'id': IDL.Nat64}), IDL.Obj({})),
-  'f': IDL.Func(IDL.Obj({'0': message}), IDL.Obj({'0': broker}))});
+  'addUser': IDL.Func([IDL.Text, IDL.Nat8], [IDL.Nat64]),
+  'userName': IDL.Func([IDL.Nat64], [IDL.Text]),
+  'userAge': IDL.Func([IDL.Nat64], [IDL.Nat8]),
+  'deleteUser': IDL.Func([IDL.Nat64], []), 'f': IDL.Func([message], [broker])
+  });
  return actor_server;
 };

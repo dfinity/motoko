@@ -144,6 +144,14 @@ struct
   and table' n f xs =
     if n = 0 then xs else table' (n - 1) f (f (n - 1) :: xs)
 
+  let group f l =
+    let rec grouping acc = function
+      | [] -> acc
+      | hd::tl ->
+         let l1,l2 = List.partition (f hd) tl in
+         grouping ((hd::l1)::acc) l2
+    in grouping [] l
+
   let rec take n xs =
     match n, xs with
     | _ when n <= 0 -> []
@@ -223,6 +231,10 @@ struct
       match f x1 x2 with
       | -1 -> is_strictly_ordered f (x2::xs')
       | _ -> false
+
+  let rec iter_pairs f = function
+    | [] -> ()
+    | x::ys -> List.iter (fun y -> f x y) ys; iter_pairs f ys
 end
 
 module List32 =

@@ -1,0 +1,35 @@
+type User = record {"name": text;};
+type TimeSpan = 
+ record {
+   "end": int;
+   "start": int;
+ };
+type Result_1 = opt record {"reservationId": text;};
+type PACars = 
+ service {
+   "verifyCarInformation": (User, Car) ->
+    (opt func (Location, TimeSpan) -> (Result_1));
+ };
+type Location = 
+ record {
+   "lat": float64;
+   "long": float64;
+ };
+type DMV = 
+ service {
+   "check": (Car) -> (CarInfo);
+ };
+type CarInfo = 
+ record {
+   "expires": nat;
+   "isValid": bool;
+   "model": text;
+   "plate": text;
+   "wasStolen": bool;
+ };
+type Car = 
+ record {
+   "model": text;
+   "plate": text;
+ };
+

@@ -764,8 +764,6 @@ let module_ s =
      {types; tables; memories; globals; funcs; imports; exports; elems; data; start};
     dylink;
     name;
-    persist = []; (* no use case for parsing these yet *)
-    types = [] (* no use case for parsing these yet *)
   }
 
 

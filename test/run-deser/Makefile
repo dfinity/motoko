@@ -9,7 +9,8 @@ all: quick
 quick: $(patsubst %.bin, _out/%.done, $(wildcard *.bin))
 
 accept: $(wildcard *.bin)
-	rm $(wildcard ok/*.ok)
+	mkdir -p ok
+	rm -f $(wildcard ok/*.ok)
 	echo $(foreach FILE,$^,"$(DESER) < $(FILE) > $(patsubst %.bin, ok/%.ok, $(FILE)) ;") \
 	| sh
 

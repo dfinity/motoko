@@ -1,0 +1,13 @@
+→ create
+← completed: canister-id = 0x0000000000000400
+→ install
+← completed
+→ update go(0x4449444c0000)
+A
+A
+C
+Now in async
+C
+B
+B
+← completed: 0x4449444c0000
