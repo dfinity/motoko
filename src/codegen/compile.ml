@@ -3092,8 +3092,13 @@ module Dfinity = struct
       assert false
 
   let error_code env =
-      SR.UnboxedWord32,
-      system_call env "ic0" "msg_reject_code"
+    let (set_code, get_code) = new_local env "code" in
+    system_call env "ic0" "msg_reject_code" ^^ set_code ^^
+    get_code ^^ compile_unboxed_const 4l ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    G.if_ (ValBlockType (Some I32Type))
+      (Variant.inject env "error" Tuple.compile_unit)
+      (Variant.inject env "system" Tuple.compile_unit)
 
   let error_message env =
     let (set_len, get_len) = new_local env "len" in
@@ -3108,6 +3113,13 @@ module Dfinity = struct
     system_call env "ic0" "msg_reject_msg_copy" ^^
 
     get_blob
+
+  let error_value env =
+    Func.share_code0 env "error_value" [I32Type] (fun env ->
+      error_code env ^^
+      error_message env ^^
+      Tuple.from_stack env 2
+    )
 
   let reply_with_data env =
     Func.share_code2 env "reply_with_data" (("start", I32Type), ("size", I32Type)) [] (
@@ -4906,7 +4918,7 @@ module FuncDec = struct
         (* Synthesize value of type `Text`, the error message
            (The error code is fetched via a prim)
         *)
-        Dfinity.error_message env ^^
+        Dfinity.error_value env ^^
 
         get_closure ^^
         Closure.call_closure env 1 0 ^^
@@ -6234,10 +6246,6 @@ and compile_exp (env : E.t) ae exp =
 
     | ICRejectPrim, [e] ->
       SR.unit, Dfinity.reject env (compile_exp_vanilla env ae e)
-
-    | ICErrorCodePrim, [] ->
-      assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
-      Dfinity.error_code env
 
     | ICCallPrim, [f;e;k;r] ->
       SR.unit, begin

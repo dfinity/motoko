@@ -376,8 +376,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_exp env exp1;
       typ exp1 <: T.text;
       T.Non <: t
-    | ICErrorCodePrim, [] ->
-      T.Prim (T.Int32) <: t
     | ICCallPrim, [exp1; exp2; k; r] ->
       check_exp env exp1;
       check_exp env exp2;
@@ -391,7 +389,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         typ exp2 <: t_arg;
         check_concrete env exp.at t_arg;
         typ k <: T.Func (T.Local, T.Returns, [], ret_tys, []);
-        typ r <: T.Func (T.Local, T.Returns, [], [T.text], []);
+        typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
@@ -629,7 +627,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp_r;
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
-    typ exp_r <: T.Func (T.Local, T.Returns, [], [T.text], []);
+    typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
   | ActorE (id, ds, fs, t0) ->
     let env' = { env with async = false } in
     let ve0 = T.Env.singleton id t0 in

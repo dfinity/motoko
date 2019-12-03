@@ -80,7 +80,6 @@ let primE prim es =
     | ShowPrim _ -> T.text
     | ICReplyPrim _ -> T.Non
     | ICRejectPrim -> T.Non
-    | ICErrorCodePrim -> T.Prim T.Int32
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -121,12 +120,6 @@ let ic_rejectE e =
   { it = PrimE (ICRejectPrim, [e]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = eff e }
-  }
-
-let ic_error_codeE () =
-  { it = PrimE (ICErrorCodePrim, []);
-    at = no_region;
-    note = { note_typ = T.Prim T.Int32; note_eff = T.Triv }
   }
 
 let ic_callE f e k r =

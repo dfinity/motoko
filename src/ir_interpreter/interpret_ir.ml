@@ -376,7 +376,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       assert (not env.flavor.has_async_typ);
       let reject = Lib.Option.value env.rejects in
       interpret_exp env exp1
-        (fun v -> Scheduler.queue (fun () -> reject v))
+        (fun v ->
+          let e = V.Tup [V.Variant ("canister", V.unit); v] in
+          Scheduler.queue (fun () -> reject e))
     | ICCallPrim, [exp1; exp2; expk ; expr] ->
       assert (not env.flavor.has_async_typ);
       interpret_exp env exp1 (fun v1 ->
