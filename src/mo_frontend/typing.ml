@@ -1195,14 +1195,13 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
 
-and check_sort_pat env sort_pat : (T.func_sort * Scope.val_env) =
+and check_sort_pat env sort_pat : T.func_sort * Scope.val_env =
   match sort_pat.it with
-  | T.Local -> (T.Local, T.Env.empty)
-  | T.Shared (ss, None) -> (T.Shared ss, T.Env.empty)
-  | T.Shared (ss,Some pat) ->
-    if ss = T.Query then
-      error env pat.at "query function cannot take a context pattern";
-    (T.Shared ss, check_pat_exhaustive env T.ctxt pat)
+  | T.Local -> T.Local, T.Env.empty
+  | T.Shared (ss, None) -> T.Shared ss, T.Env.empty
+  | T.Shared (ss, Some pat) ->
+    error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "shared function cannot take a context pattern";
+    T.Shared ss, check_pat_exhaustive env T.ctxt pat
 
 and check_pat_exhaustive env t pat : Scope.val_env =
   let ve = check_pat env t pat in

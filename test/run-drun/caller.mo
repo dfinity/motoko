@@ -22,11 +22,13 @@ actor {
     let c1 : Bool = c;
     return;
   };
+*/
 
-  public query func c6 () with _ : async () {
+  public shared query {caller = c} func c6 () : async () {
+    let c1 : Blob = c;
     return;
   };
-*/
+
 }
 
 //CALL ingress c1 0x4449444C0000
