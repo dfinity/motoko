@@ -240,8 +240,11 @@ let prim = function
                                           | c when c <= 0o177 -> String.make 1 (Char.chr c)
                                           | code -> Wasm.Utf8.encode [code]
                                in k (Text str)
-  | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
+  | "print" -> fun v k -> Printf.printf "%s\n%!" (as_text v); k unit
   | "rts_version" -> fun v k -> as_unit v; k (Text "0.1")
+  | "rts_heap_size" -> fun v k -> as_unit v; k (Int (Int.of_int 0))
+  | "rts_total_allocation" -> fun v k -> as_unit v; k (Int (Int.of_int 0))
+  | "rts_outstanding_callbacks" -> fun v k -> as_unit v; k (Int (Int.of_int 0))
   | "idlHash" -> fun v k -> let s = as_text v in k (Word32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))
   | "decodeUTF8" -> fun v k ->
                     let s = as_text v in

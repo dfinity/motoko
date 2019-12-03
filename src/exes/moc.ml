@@ -35,9 +35,11 @@ let argspec = Arg.align
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
+  "-o", Arg.Set_string out_file, " output file";
+
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
-  "-o", Arg.Set_string out_file, " output file";
+  "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
@@ -69,9 +71,12 @@ let argspec = Arg.align
   "-no-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := WasmMode)),
       " do not import any system API";
-  "-ancient-system-api",
-    Arg.Unit (fun () -> Flags.(compile_mode := AncientMode)),
-      " use the ancient DFINITY system API (dvm)";
+  "-wasi-system-api",
+    Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
+      " use the WASI system API (wasmtime)";
+  "-stub-system-api",
+    Arg.Unit (fun () -> Flags.(compile_mode := StubMode)),
+      " use the future DFINITY system API (ic-stub-run)";
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
   "-no-multi-value", Arg.Clear Flags.multi_value, " avoid multi-value extension";
 

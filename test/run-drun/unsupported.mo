@@ -63,6 +63,10 @@ func local_spawn() {
 };
 
 {
+  actor class BadActorClass (x : Int) { }; // no actor classes
+};
+
+{
  let bad_non_top_actor : actor {} = if true actor {} else actor {};
 };
 
@@ -73,4 +77,9 @@ func local_spawn() {
 
 actor BadSecondActor { };
 
-func implicit_async() : async () { }; // async functions not supported
+// async functions not supported (inference mode)
+func implicit_async() : async () { };
+
+// anonymous shared functions not supported (inference and checking mode)
+let _ = shared func() : async () { };
+(shared func() : async () { }) : shared () -> async ();

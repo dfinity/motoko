@@ -105,9 +105,17 @@ main = handleHUnitFailure $ do
     liftIO (diagnostic^.message `shouldBe` "unexpected token")
     closeDoc doc
 
+    doc <- openDoc "ListClient.mo" "motoko"
+    -- Creates an unclosed text literal, which triggers a lexer error
+    let edit = TextEdit (Range (Position 0 1) (Position 0 3)) "\"hello"
+    _ <- applyEdit doc edit
+    -- We're just testing that the server doesn't crash here
+    getCompletions doc (Position 0 0)
+    getHover doc (Position 0 0)
+    closeDoc doc
+
     -- It finds errors in transitive modules that have been changed in
     -- the vfs but not yet stored to disc
-    {- TODO(Christoph): Figure out why this isn't working right now
     doc <- openDoc "ListClient.mo" "motoko"
     let edit = TextEdit (Range (Position 0 1) (Position 0 3)) ""
     _ <- applyEdit doc edit
@@ -116,4 +124,3 @@ main = handleHUnitFailure $ do
     diags <- waitForDiagnostics
     (diagnostic:_) <- waitForDiagnostics
     liftIO (diagnostic^.message `shouldBe` "unexpected token")
-    -}

@@ -1,10 +1,11 @@
 (* Representation *)
-open Mo_config
-
 type lab = string
 type var = string
 
-type control = Returns | Promises
+type control =
+  | Returns (* regular local function or one-shot shared function *)
+  | Promises (* shared function producing a future value upon call *)
+  | Replies (* (IR only): responds asynchronously using `reply` *)
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
 type func_sort = Local | Shared of shared_sort
@@ -30,6 +31,7 @@ type prim =
   | Float
   | Char
   | Text
+  | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
 
 type t = typ
@@ -125,6 +127,7 @@ let prim = function
   | "Float" -> Float
   | "Char" -> Char
   | "Text" -> Text
+  | "Blob" -> Blob
   | "Error" -> Error
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 
@@ -133,6 +136,7 @@ let seq = function [t] -> t | ts -> Tup ts
 let codom c ts =  match c with
   | Promises -> Async (seq ts)
   | Returns -> seq ts
+  | Replies -> Tup []
 
 (* Coercions *)
 
@@ -429,7 +433,7 @@ let rec span = function
   | Con _ as t -> span (promote t)
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
-  | Prim (Nat | Int | Float | Text | Error) -> None
+  | Prim (Nat | Int | Float | Text | Blob | Error) -> None
   | Prim (Nat8 | Int8 | Word8) -> Some 0x100
   | Prim (Nat16 | Int16 | Word16) -> Some 0x10000
   | Prim (Nat32 | Int32 | Word32 | Nat64 | Int64 | Word64 | Char) -> None  (* for all practical purposes *)
@@ -567,9 +571,6 @@ let concrete t =
   in go t
 
 let shared t =
-  (* TBR: Hack to restrict sharing in ICMode *)
-  let allow_actor as allow_shared =
-    not (!Flags.compiled && !Flags.compile_mode = Flags.ICMode) in
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -588,18 +589,15 @@ let shared t =
       | Array t | Opt t -> go t
       | Tup ts -> List.for_all go ts
       | Obj (s, fs) ->
-        (allow_actor && s = Actor) ||
+        s = Actor ||
           (not (s = Actor) && List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
-      | Func (s, c, tbs, ts1, ts2) -> allow_shared && is_shared_sort s
+      | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
     end
   in go t
 
 (* Find the first unshared subexpression in a type *)
 let find_unshared t =
-   (* TBR: Hack to restrict sharing in ICMode *)
-  let allow_actor as allow_shared =
-    not (!Flags.compiled && !Flags.compile_mode = Flags.ICMode) in
   let seen = ref S.empty in
   let rec go t =
     if S.mem t !seen then None else
@@ -619,12 +617,11 @@ let find_unshared t =
       | Tup ts -> Lib.List.first_opt go ts
       | Obj (s, fs) ->
         if s = Actor
-        then if allow_actor then None
-             else Some t
+        then None
         else Lib.List.first_opt (fun f -> go f.typ) fs
       | Variant fs -> Lib.List.first_opt (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
-        if allow_shared && is_shared_sort s
+        if is_shared_sort s
         then None
         else Some t
     end
@@ -1114,6 +1111,7 @@ let string_of_prim = function
   | Word64 -> "Word64"
   | Char -> "Char"
   | Text -> "Text"
+  | Blob -> "Blob"
   | Error -> "Error"
 
 let string_of_var (x, i) =
@@ -1178,6 +1176,7 @@ and string_of_control_cod c vs ts =
   match c with
   | Returns -> cod
   | Promises -> sprintf "async %s" cod
+  | Replies -> sprintf "replies %s" cod
 
 and string_of_typ' vs t =
   match t with

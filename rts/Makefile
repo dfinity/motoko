@@ -47,7 +47,7 @@ CLANG_FLAGS = \
 #
 
 WASM_FLAGS = \
-   --target=wasm32-unknown-unknown-wasm -fvisibility=hidden \
+   --target=wasm32-unknown-emscripten-wasm -fvisibility=hidden \
    -fno-builtin -ffreestanding \
    --optimize=3 \
 
@@ -81,7 +81,7 @@ TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 # Our part of the RTS, Wasm and native
 #
 
-RTSFILES=rts idl bigint buf utf8_valid
+RTSFILES=rts idl bigint buf utf8_valid closure-table
 
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@

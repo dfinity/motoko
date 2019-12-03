@@ -25,9 +25,8 @@ type env =
     rets : ret_env;
     async : bool;
     in_actor : bool;
-    in_await : bool;
-    in_shared : bool;
     in_prog : bool;
+    context : exp' list;
     pre : bool;
     msgs : Diag.msg_store;
   }
@@ -41,10 +40,9 @@ let env_of_scope msgs scope =
     labs = T.Env.empty;
     rets = None;
     async = false;
-    in_await = false;
-    in_shared = false;
     in_actor = false;
     in_prog = true;
+    context = [];
     pre = false;
     msgs;
   }
@@ -76,8 +74,9 @@ let warn env at fmt =
 let flag_of_compile_mode mode =
   match mode with
   | Flags.ICMode -> ""
+  | Flags.WASIMode -> " and flag -wasi-system-api"
   | Flags.WasmMode -> " and flag -no-system-api"
-  | Flags.AncientMode -> " and flag -ancient-system-api"
+  | Flags.StubMode -> " and flag -stub-system-api"
 
 let compile_mode_error mode env at fmt =
   Printf.ksprintf
@@ -124,6 +123,35 @@ let adjoin_typs env te ce =
 let disjoint_union env at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
   with T.Env.Clash k -> error env at fmt k
+
+
+(* Syntactic predicates for context dependent restrictions *)
+
+let in_await env =
+  match env.context with
+  | _ :: AwaitE _ :: _ -> true
+  | _ -> false
+
+let in_shared_async env =
+  match env.context with
+  | _ :: FuncE (_, {it = T.Shared _; _}, _, _, typ_opt, _) :: _ ->
+    (match typ_opt with
+     | Some {it = AsyncT _; _} -> true
+     | _ -> false)
+  | _ -> false
+
+let in_oneway_ignore env =
+  match env.context with
+  | _ ::
+    AnnotE  _  ::
+    BlockE [ {it = LetD ({ it = WildP;_}, _); _} ] ::
+    FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
+    _ ->
+    (match typ_opt with
+     | Some { it = TupT []; _}
+     | None -> true
+     | _ -> false)
+  | _ -> false
 
 
 (* Types *)
@@ -547,9 +575,7 @@ and infer_exp' f env exp : T.typ =
 and infer_exp'' env exp : T.typ =
   let in_prog = env.in_prog in
   let in_actor = env.in_actor in
-  let in_await = env.in_await in
-  let in_shared = env.in_shared in
-  let env = {env with in_actor = false; in_await = false; in_prog = false; in_shared = false} in
+  let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
   | PrimE _ ->
     error env exp.at "cannot infer type of primitive"
@@ -688,7 +714,7 @@ and infer_exp'' env exp : T.typ =
     )
   | FuncE (_, sort, typ_binds, pat, typ_opt, exp) ->
     if not env.pre && not in_actor && T.is_shared_sort sort.it then
-      error_in [Flags.ICMode] env exp.at "a shared function is only allowed as a public field of an actor";
+      error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let typ =
       match typ_opt with
       | Some typ -> typ
@@ -707,8 +733,8 @@ and infer_exp'' env exp : T.typ =
         { env' with
           labs = T.Env.empty;
           rets = Some codom;
-          async = false;
-          in_shared = T.is_shared_sort sort.it} in
+          async = false }
+      in
       check_exp (adjoin_vals env'' ve) codom exp;
       if Type.is_shared_sort sort.it then begin
         if not (T.shared t1) then
@@ -750,7 +776,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       check_exp env t_arg exp2;
       if Type.is_shared_sort sort then begin
-        if T.is_async t_ret && not in_await then
+        if T.is_async t_ret && not (in_await env) then
           error_in [Flags.ICMode] env exp2.at
             "shared, async function must be called within an await expression";
         error_in [Flags.ICMode] env exp1.at "calling a shared function not yet supported";
@@ -898,7 +924,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then check_exp env T.throw exp1;
     T.Non
   | AsyncE exp1 ->
-    if not in_shared then
+    if not (in_shared_async env || in_oneway_ignore env) then
       error_in [Flags.ICMode] env exp.at "unsupported async block";
     let env' =
       {env with labs = T.Env.empty; rets = Some T.Pre; async = true} in
@@ -910,7 +936,7 @@ and infer_exp'' env exp : T.typ =
   | AwaitE (exp1) ->
     if not env.async then
       error env exp.at "misplaced await";
-    let t1 = infer_exp_promote {env with in_await = true} exp1 in
+    let t1 = infer_exp_promote env exp1 in
     (match exp1.it with
        | CallE (f, _, _) ->
          if not env.pre && (Call_conv.call_conv_of_typ f.note.note_typ).Call_conv.control = T.Returns then
@@ -947,8 +973,7 @@ and check_exp env t exp =
   exp.note <- {note_typ = t'; note_eff = e}
 
 and check_exp' env0 t exp : T.typ =
-  let in_shared = env0.in_shared in
-  let env = {env0 with in_await = false; in_shared = false; in_prog = false} in
+  let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
   match exp.it, t with
   | PrimE s, T.Func _ ->
     t
@@ -979,7 +1004,7 @@ and check_exp' env0 t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE exp1, T.Async t' ->
-    if not in_shared then
+    if not (in_shared_async env || in_oneway_ignore env) then
       error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
     let env' = {env with labs = T.Env.empty; rets = Some t'; async = true} in
     check_exp env' t' exp1;
@@ -1018,6 +1043,8 @@ and check_exp' env0 t exp : T.typ =
     );
     t
   | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, c, [], ts1, ts2) ->
+    if not env.pre && not env0.in_actor && T.is_shared_sort s'.it then
+      error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let ve = check_pat_exhaustive env (T.seq ts1) pat in
     let codom = T.codom c ts2 in
     let t2 =
@@ -1038,9 +1065,8 @@ and check_exp' env0 t exp : T.typ =
       { env with
         labs = T.Env.empty;
         rets = Some t2;
-        async = false;
-        in_shared = T.is_shared_sort s'.it;
-      } in
+        async = false }
+    in
     check_exp (adjoin_vals env' ve) t2 exp;
     t
   | _ ->
@@ -1459,7 +1485,7 @@ and infer_obj env s fields at : T.typ =
       ) fields;
       List.iter (fun ef ->
         if ef.it.vis.it = Syntax.Private && is_actor_method ef.it.dec then
-          error_in [Flags.ICMode] env ef.it.dec.at
+          error_in [Flags.ICMode; Flags.StubMode] env ef.it.dec.at
             "a shared function cannot be private"
       ) fields;
     end;
@@ -1478,7 +1504,7 @@ and infer_block_decs env decs : Scope.t =
   let scope = gather_block_decs env decs in
   let env' = adjoin {env with pre = true} scope in
   let scope_ce = infer_block_typdecs env' decs in
-  let env'' = adjoin env scope_ce in
+  let env'' = adjoin {env' with pre = env.pre} scope_ce in
   let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (scope_ce = _scope_ce); *)
@@ -1675,7 +1701,8 @@ and infer_dec_typdecs env dec : Scope.t =
     let decs = List.map (fun {it = {vis;dec}; _} -> dec) fields in
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
-    let obj_scope = infer_block_typdecs env' decs in
+    let obj_scope_typs = infer_block_typdecs env' decs in
+    let obj_scope = Scope.adjoin scope obj_scope_typs in
     Scope.{ empty with
       con_env = obj_scope.con_env;
       val_env = T.Env.singleton id.it (object_of_scope env sort fields obj_scope at);
@@ -1766,7 +1793,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let obj_scope' =
       infer_block_valdecs
         (adjoin {env with pre = true} obj_scope)
-        decs Scope.empty
+        decs obj_scope
     in
     let obj_typ = object_of_scope env sort fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
@@ -1788,6 +1815,13 @@ and infer_dec_valdecs env dec : Scope.t =
     if sort.it = T.Actor then
       error_in [Flags.ICMode] env dec.at
         "actor classes are not supported; use an actor declaration instead";
+     let rec is_unit_pat p = match p.it with
+      | ParP p -> is_unit_pat p
+      | TupP [] -> true
+      | _ -> false in
+    if sort.it = T.Actor && not (is_unit_pat pat) then
+      error_in [Flags.StubMode] env dec.at
+        "actor classes with parameters are not supported; use an actor declaration instead";
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
@@ -1843,9 +1877,8 @@ let check_actors scope progs : unit Diag.result =
         | ds ->
           List.iter (fun d ->
             recover
-              (error_in [Flags.ICMode] env d.at)
+              (error_in [Flags.ICMode; Flags.StubMode] env d.at)
               "multiple actors in program; there must be at most one actor declaration in a program")
             ds
         )
         progs)
-

@@ -117,6 +117,7 @@ val unit : value
 val local_func : int -> int -> func -> value
 val message_func : Type.shared_sort -> int -> func -> value
 val async_func : Type.shared_sort -> int -> int -> func -> value
+val replies_func : Type.shared_sort -> int -> int -> func -> value
 
 
 (* Projections *)

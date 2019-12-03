@@ -102,6 +102,7 @@ let pick_val vs = function
   | T.Word64 -> pick_word (module V.Word64) (fun x -> V.Word64 x) vs
   | T.Char -> pick_char vs
   | T.Text
+  | T.Blob
   | T.Error
   | T.Float -> Any
 
