@@ -27,7 +27,7 @@ module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
 
 let error_codeE mode =
   match mode with
-  | Flags.ICMode -> callE
+  | Flags.ICMode | Flags.StubMode -> callE
     (idE "@int32ToErrorCode"
        (T.Func (T.Local, T.Returns, [], [T.Prim T.Int32], [T.Variant T.catchErrorCodes])))
     []

@@ -3093,12 +3093,7 @@ module Dfinity = struct
 
   let error_code env =
       SR.UnboxedWord32,
-      match E.mode env with
-      | Flags.ICMode ->
-        system_call env "msg" "reject_code"
-      | Flags.StubMode ->
-        system_call env "ic" "msg_reject_code"
-      | _ -> assert false
+      system_call env "ic0" "msg_reject_code"
 
   let error_message env =
     let (set_len, get_len) = new_local env "len" in
