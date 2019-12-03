@@ -73,6 +73,7 @@ function normalize () {
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
+    sed 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
     sed 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' |
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
