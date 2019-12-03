@@ -8,8 +8,8 @@ nix: subpath:
      }:
        mkDerivation {
          pname = "haskell-lsp-types";
-         version = "0.16.0.0";
-         sha256 = "14wlv54ydbddpw6cwgykcas3rb55w7m78q0s1wdbi594wg1bscqg";
+         version = "0.18.0.0";
+         sha256 = "1ypa3gxxcg7dl905d4nprcqzw2fcl7z7xy1hpg5har1dw3w9fyiq";
          libraryHaskellDepends = [
            aeson base bytestring data-default deepseq filepath hashable lens
            network-uri scientific text unordered-containers
@@ -28,8 +28,8 @@ nix: subpath:
      }:
        mkDerivation {
          pname = "haskell-lsp";
-         version = "0.16.0.0";
-         sha256 = "1s04lfnb3c0g9bkwp4j7j59yw8ypps63dq27ayybynrfci4bpj95";
+         version = "0.18.0.0";
+         sha256 = "0q9xpjgr3n7svhd9f7mmkw113avswvfm08fnbijdr1sblipd12sl";
          isLibrary = true;
          isExecutable = true;
          libraryHaskellDepends = [
@@ -58,8 +58,8 @@ nix: subpath:
      }:
        mkDerivation {
          pname = "lsp-test";
-         version = "0.7.0.0";
-         sha256 = "1lm299gbahrnwfrprhhpzxrmjljj33pps1gzz2wzmp3m9gzl1dx5";
+         version = "0.8.2.0";
+         sha256 = "1762avrs4fkkd9v8i76giaf6km5f3lds5laickn7la7zq7ysh8a3";
          libraryHaskellDepends = [
            aeson aeson-pretty ansi-terminal async base bytestring conduit
            conduit-parse containers data-default Diff directory filepath
