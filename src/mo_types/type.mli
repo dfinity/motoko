@@ -32,7 +32,6 @@ type prim =
   | Text
   | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
-  | EntityId
 
 type t = typ
 and typ =

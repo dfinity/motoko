@@ -87,9 +87,9 @@ and exp' at note = function
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
   | S.FuncE (name, sp, tbs, p, _t_opt, e) ->
-    let s,po = match sp.it with
+    let s, po = match sp.it with
       | T.Local -> (T.Local, None)
-      | T.Shared (ss,po) -> (T.Shared ss, po) in
+      | T.Shared (ss, po) -> (T.Shared ss, po) in
     let args, wrap, control, res_tys = to_args note.I.note_typ po p in
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in

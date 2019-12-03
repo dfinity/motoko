@@ -108,7 +108,7 @@ and vis' = Public | Private
 
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
-type sort_pat = ((Type.shared_sort * pat option) Type.shared) Source.phrase
+type sort_pat = (Type.shared_sort * pat option) Type.shared Source.phrase
 
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =

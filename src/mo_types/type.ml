@@ -134,6 +134,7 @@ let prim = function
   | "Char" -> Char
   | "Text" -> Text
   | "Error" -> Error
+  | "Blob" -> Blob
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 
 let seq = function [t] -> t | ts -> Tup ts

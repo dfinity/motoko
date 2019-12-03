@@ -11,6 +11,7 @@ here in for blocks (function decs).
 *)
 
 open Mo_def
+open Mo_types
 open Source
 open Syntax
 

@@ -1,12 +1,12 @@
 actor {
 
   public shared ctxt func c1 ()  : async () {
-    let c : EntityId = ctxt.caller;
+    let c : Blob = ctxt.caller;
     return;
   };
 
   public shared {caller = c} func c2 () : async () {
-    let c1 : EntityId = c;
+    let c1 : Blob = c;
     return;
   };
 

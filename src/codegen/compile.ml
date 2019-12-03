@@ -3077,13 +3077,6 @@ module Dfinity = struct
       assert false
 
   let caller env =
-    SR.UnboxedWord64,
-    get_api_nonce env ^^
-    if has_msg_caller then
-      system_call env "msg" "caller" (* TODO: enable me *)
-    else G.nop (* Until then, fake it: just use the nonce *)
-
-  let caller env =
     SR.Vanilla,
     match E.mode env with
     | Flags.ICMode | Flags.StubMode ->
@@ -6244,7 +6237,7 @@ and compile_exp (env : E.t) ae exp =
       assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
       Dfinity.error_code env
     | ICCallerPrim, [] ->
-      assert (E.mode env = Flags.ICMode);
+      assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
       Dfinity.caller env
     | ICCallPrim, [f;e;k;r] ->
       SR.unit, begin

@@ -719,10 +719,9 @@ and infer_exp'' env exp : T.typ =
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
-<<<<<<< HEAD:src/as_frontend/typing.ml
     let sort, ve = check_sort_pat env sort_pat in
-    let c, ts2 = as_codomT sort.it typ in
-    check_shared_return env typ.at sort.it c ts2;
+    let c, ts2 = as_codomT sort typ in
+    check_shared_return env typ.at sort c ts2;
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let t1, ve1 = infer_pat_exhaustive env' pat in
@@ -738,7 +737,6 @@ and infer_exp'' env exp : T.typ =
           async = false } in
       check_exp (adjoin_vals env'' ve2) codom exp;
       if Type.is_shared_sort sort then begin
-      if Type.is_shared_sort sort.it then begin
         if not (T.shared t1) then
           error_shared env t1 pat.at
             "shared function has non-shared parameter type\n  %s"
@@ -750,7 +748,7 @@ and infer_exp'' env exp : T.typ =
               (T.string_of_typ_expand t);
         ) ts2;
         match c, ts2 with
-        | T.Returns,  [] when sort.it = T.Shared T.Write -> ()
+        | T.Returns, [] when sort = T.Shared T.Write -> ()
         | T.Promises, _ ->
           if not (isAsyncE exp) then
             error env exp.at
@@ -1046,7 +1044,7 @@ and check_exp' env0 t exp : T.typ =
     t
   | FuncE (_, sort_pat,  [], pat, typ_opt, exp), T.Func (s, c, [], ts1, ts2) ->
     let sort, ve = check_sort_pat env sort_pat in
-    if not env.pre && not env0.in_actor && T.is_shared_sort sort.it then
+    if not env.pre && not env0.in_actor && T.is_shared_sort sort then
       error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let ve1 = check_pat_exhaustive env (T.seq ts1) pat in
     let ve2 = disjoint_union env pat.at
