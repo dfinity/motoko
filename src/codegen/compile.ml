@@ -5074,32 +5074,6 @@ module PatCode = struct
 end (* PatCode *)
 open PatCode
 
-(* Compiling Error primitives *)
-module Error = struct
-
-  (* Opaque type `Error` is represented as concrete type `(ErrorCode,Text)` *)
-
-  let compile_error env arg_instrs =
-      SR.UnboxedTuple 2,
-      Variant.inject env "error" Tuple.compile_unit ^^
-      arg_instrs
-
-  let compile_errorCode arg_instrs =
-      SR.Vanilla,
-      arg_instrs ^^
-      Tuple.load_n 0l
-
-  let compile_errorMessage arg_instrs =
-      SR.Vanilla,
-      arg_instrs ^^
-      Tuple.load_n 1l
-
-  let compile_make_error arg_instrs1 arg_instrs2 =
-      SR.UnboxedTuple 2,
-      arg_instrs1 ^^
-      arg_instrs2
-end
-
 (* All the code above is independent of the IR *)
 open Ir
 
@@ -6223,15 +6197,9 @@ and compile_exp (env : E.t) ae exp =
         G.i (Binary (Wasm.Values.I64 I64Op.And))
       )
 
-    (* Error related prims *)
-    | OtherPrim "error", [e] ->
-      Error.compile_error env (compile_exp_vanilla env ae e)
-    | OtherPrim "errorCode", [e] ->
-      Error.compile_errorCode (compile_exp_vanilla env ae e)
-    | OtherPrim "errorMessage", [e] ->
-      Error.compile_errorMessage (compile_exp_vanilla env ae e)
-    | OtherPrim "make_error", [e1; e2] ->
-      Error.compile_make_error (compile_exp_vanilla env ae e1) (compile_exp_vanilla env ae e2)
+    (* Coercions for abstract types *)
+    | OtherPrim ("openError"|"makeError"), [e] ->
+      compile_exp env ae e
 
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with

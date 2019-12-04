@@ -75,11 +75,15 @@ let seqP ps =
 
 (* Primitives *)
 
+let error_ty =
+  T.(Tup [ Variant [{lab = "error"; typ = unit};{lab = "system"; typ = unit}]; text])
+
 let primE prim es =
   let ty = match prim with
     | ShowPrim _ -> T.text
     | ICReplyPrim _ -> T.Non
     | ICRejectPrim -> T.Non
+    | OtherPrim "openError" -> error_ty
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in

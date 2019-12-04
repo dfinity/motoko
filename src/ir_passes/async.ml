@@ -32,10 +32,7 @@ let selfcallE ts e1 e2 e3 =
 }
 
 let errorMessageE e =
-{ it = PrimE (OtherPrim "errorMessage", [e]);
-  at = no_region;
-  note = { note_typ = T.text; note_eff = eff e }
-}
+  projE (primE (OtherPrim "openError") [e]) 1
 
 let unary typ = [typ]
 
