@@ -93,6 +93,12 @@ function run () {
 
   if grep -q "^//SKIP $ext" $file; then return 1; fi
 
+  if test -e $out/$base.$ext
+  then
+    echo "Output $ext already exists."
+    exit 1
+  fi
+
   $ECHO -n " [$ext]"
   "$@" >& $out/$base.$ext
   local ret=$?
@@ -307,14 +313,12 @@ do
       $DIDC --check $out/$base.pp.did > $out/$base.pp.tc 2>&1
       diff_files="$diff_files $base.pp.tc"
 
-      $ECHO -n " [js]"
-      run js $DIDC --js $base.did -o $out/$base.js
+      run didc-js $DIDC --js $base.did -o $out/$base.js
       normalize $out/$base.js
       diff_files="$diff_files $base.js"
 
       if [ -e $out/$base.js ]
       then
-        $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$ESM
         run node node -r esm $out/$base.js
       fi
