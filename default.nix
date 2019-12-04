@@ -22,7 +22,7 @@ let dfinity-src =
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
     # ref = "master";
-    rev = "af802ab2d5758522525dcdc4c24a0fd95a950449";
+    rev = "c1cce4a71ddbeaf044ee15c4da3619a24d447edf";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
@@ -31,7 +31,7 @@ let sdk = import (builtins.fetchGit {
   name = "sdk-sources";
   url = "ssh://git@github.com/dfinity-lab/sdk";
   ref = "master";
-  rev = "7ee8cc40abab5b33c68bc8a32412e5be33a9f410";
+  rev = "d7559c97edfcdfdb1ded48b551cb51de60e87d04";
 }) { inherit (nixpkgs) system; }; in
 
 let esm = builtins.fetchTarball {

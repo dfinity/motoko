@@ -2914,9 +2914,9 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "msg" "reply" [I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject" [I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject_code" [] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
       ()
     | Flags.StubMode  ->
@@ -3083,11 +3083,7 @@ module Dfinity = struct
     | Flags.ICMode | Flags.StubMode ->
       arg_instrs ^^
       Blob.as_ptr_len env ^^
-      begin match E.mode env with
-      | Flags.ICMode -> system_call env "msg" "reject"
-      | Flags.StubMode -> system_call env "ic0" "msg_reject"
-      | _ -> assert false
-      end
+      system_call env "ic0" "msg_reject"
     | _ ->
       assert false
 

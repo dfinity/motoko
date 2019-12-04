@@ -13,6 +13,7 @@ export default ({ IDL }) => {
  const OpEntId = IDL.Opt(EntId)
  const IdErr = IDL.Obj({'idErr': OpEntId})
  const actor_ProduceExchange = new IDL.ActorInterface({
-  'getInventory': IDL.Func([IDL.Nat, UserInfo], [Inventory, IdErr])});
+  'getInventory':
+   IDL.Func([IDL.Nat, UserInfo], [Inventory, IdErr], ['query'])});
  return actor_ProduceExchange;
 };
