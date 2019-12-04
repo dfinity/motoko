@@ -298,9 +298,9 @@ invokeEntry :: ICT m =>
     m (TrapOr (WasmState, UpdateResult))
 invokeEntry ctxt_id (CanState wasm_state can_mod) entry = do
     existing_canisters <- gets (M.keys . canisters)
-    caller <- callerOfCallID ctxt_id
     case entry of
-      Public method dat ->
+      Public method dat -> do
+        caller <- callerOfCallID ctxt_id
         case M.lookup method (update_methods can_mod) of
           Just f ->
             return $ f existing_canisters caller dat wasm_state
@@ -308,7 +308,7 @@ invokeEntry ctxt_id (CanState wasm_state can_mod) entry = do
             let reject = Reject (RC_DESTINATION_INVALID, "update method does not exist: " ++ method)
             return $ Return (wasm_state, ([], [], Just reject))
       Closure cb r ->
-        return $ callbacks can_mod cb existing_canisters caller r wasm_state
+        return $ callbacks can_mod cb existing_canisters r wasm_state
 
 newCall :: ICT m => CallId -> MethodCall -> m ()
 newCall from_ctxt_id call = do

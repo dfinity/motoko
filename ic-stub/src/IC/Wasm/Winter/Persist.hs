@@ -23,8 +23,7 @@ import Data.Primitive.MutVar
 import qualified Data.IntMap as IM
 import qualified Data.Map.Lazy as M
 import qualified Data.Text.Lazy as T
-import Data.Word
-import qualified Data.Vector.Unboxed as V
+import Data.ByteString.Lazy (ByteString)
 
 import qualified Wasm.Runtime.Global as W
 import qualified Wasm.Runtime.Instance as W
@@ -54,10 +53,10 @@ class Monad (M a) => Persistable a where
   resume :: a -> Persisted a -> M a ()
 
 instance Persistable (W.MemoryInst (ST s)) where
-  type Persisted (W.MemoryInst (ST s)) = V.Vector Word8
+  type Persisted (W.MemoryInst (ST s)) = ByteString
   type M (W.MemoryInst (ST s)) = ST s
-  persist m = readMutVar (W._miContent m) >>= V.freeze
-  resume m v = V.thaw v >>= writeMutVar (W._miContent m)
+  persist = W.exportMemory
+  resume = W.importMemory
 
 instance Persistable (W.GlobalInst (ST s)) where
   type Persisted (W.GlobalInst (ST s)) = W.Value
