@@ -124,14 +124,6 @@ let disjoint_union env at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
   with T.Env.Clash k -> error env at fmt k
 
-
-(* Syntactic predicates for context dependent restrictions *)
-
-let in_await env =
-  match env.context with
-  | _ :: AwaitE _ :: _ -> true
-  | _ -> false
-
 (* Types *)
 
 let check_ids env kind member ids = Lib.List.iter_pairs
@@ -749,9 +741,6 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       check_exp env t_arg exp2;
       if Type.is_shared_sort sort then begin
-        if T.is_async t_ret && not (in_await env) then
-          error_in [Flags.ICMode] env exp2.at
-            "shared, async function must be called within an await expression";
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
