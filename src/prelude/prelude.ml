@@ -339,10 +339,10 @@ type ErrorCode = {#error; #system}; /* TBC */
 
 // prims implement abstract type
 func makeError(e : (ErrorCode, Text)) : Error =
-  (prim "cast" : (ErrorCode, Text)-> Error)(e);
+  (prim "cast" : (ErrorCode, Text)-> Error) e;
 
 func openError(e : Error) : (ErrorCode, Text) =
-  (prim "cast" : Error -> (ErrorCode, Text))(e);
+  (prim "cast" : Error -> (ErrorCode, Text)) e;
 
 // public functions (ought to go to standard library)
 func error(message : Text) : Error = (makeError (#error, message));
