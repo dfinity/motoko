@@ -292,7 +292,6 @@ let prim = function
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
-  | ("openError"|"makeError") -> fun v k -> k v
   | p when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with
     | [_;_;s1;s2] ->

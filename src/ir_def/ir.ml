@@ -106,6 +106,7 @@ and prim =
   | RelPrim of Type.typ * relop       (* relational operator *)
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
+  | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   | CPSAwait
   | CPSAsync

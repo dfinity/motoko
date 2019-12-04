@@ -6198,7 +6198,7 @@ and compile_exp (env : E.t) ae exp =
       )
 
     (* Coercions for abstract types *)
-    | OtherPrim ("openError"|"makeError"), [e] ->
+    | CastPrim (_,_), [e] ->
       compile_exp env ae e
 
     | ICReplyPrim ts, [e] ->

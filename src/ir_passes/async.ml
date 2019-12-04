@@ -31,8 +31,11 @@ let selfcallE ts e1 e2 e3 =
            note_eff = T.Triv }
 }
 
+let error_ty =
+  T.(Tup [ Variant [{lab = "error"; typ = unit};{lab = "system"; typ = unit}]; text])
+
 let errorMessageE e =
-  projE (primE (OtherPrim "openError") [e]) 1
+  projE (primE (CastPrim (T.error, error_ty)) [e]) 1
 
 let unary typ = [typ]
 
