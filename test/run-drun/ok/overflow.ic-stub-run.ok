@@ -9,5 +9,4 @@ Trap: EvalTrapError :0.1 "canister trapped explicitly: Natural subtraction under
 This is reachable.
 This is reachable.
 This is reachable.
-Trap: EvalTrapError :0.1 "canister trapped explicitly: reject_callback"
 ← completed: 0x4449444c0000
