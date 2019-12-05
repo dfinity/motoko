@@ -1,1 +1,2 @@
-throw.mo:15.13-15.46: execution error, switch value (#canister, "t2") does not match any case
+t2 ok
+t3 ok
