@@ -892,7 +892,7 @@ Note:
 
 This section describes how abstract *IDL values* of the types described by the IDL are serialised into a binary representation for transfer between actors.
 
-Serialisation is defined by three functions `T`, `M`, and `R` defined below.
+Serialisation is defined by three functions `T`, `M`, and `R` given below.
 
 Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references:
 
