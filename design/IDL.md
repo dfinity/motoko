@@ -456,7 +456,7 @@ A *function reference* is described by its function type. For example, they allo
 <reftype> ::= func <functype> | ...
 ```
 
-There are two forms of values for actor references:
+There are two forms of values for function references:
 
 * `Ref(r)` indicates an opaque reference, understood only by the underlying system.
 * `Public(s,n)`, where `s : service <actortype>` and `n : text`, indicates the public method `n` of the service referenced by `s`.
