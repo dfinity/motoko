@@ -357,8 +357,8 @@ rawInvoke esref (CI.Query name caller dat) =
     rawQueryMethod esref name caller dat
 rawInvoke esref (CI.Update name ex caller dat) =
     rawUpdateMethod esref name ex caller dat
-rawInvoke esref (CI.Callback cb ex caller res) =
-    rawCallbackMethod esref cb ex caller res
+rawInvoke esref (CI.Callback cb ex res) =
+    rawCallbackMethod esref cb ex res
 
 rawInitializeMethod :: ImpState s -> ExistingCanisters -> Module -> EntityId -> Blob -> ST s (TrapOr InitResult)
 rawInitializeMethod (esref, cid, inst) ex wasm_mod caller dat = do
@@ -421,14 +421,13 @@ rawUpdateMethod (esref, cid, inst) method ex caller dat = do
     Left  err -> return $ Trap err
     Right (_, es') -> return $ Return (new_canisters es', calls es', response es')
 
-rawCallbackMethod :: ImpState s -> Callback -> ExistingCanisters -> EntityId -> Response -> ST s (TrapOr UpdateResult)
-rawCallbackMethod (esref, cid, inst) callback ex caller res = do
-  let param_caller = Just caller
+rawCallbackMethod :: ImpState s -> Callback -> ExistingCanisters -> Response -> ST s (TrapOr UpdateResult)
+rawCallbackMethod (esref, cid, inst) callback ex res = do
   let params = case res of
         Reply dat ->
-          Params { param_dat = Just dat, param_caller, reject_code = 0, reject_message = "" }
+          Params { param_dat = Just dat, param_caller = Nothing, reject_code = 0, reject_message = "" }
         Reject (rc, reject_message) ->
-          Params { param_dat = Nothing, param_caller, reject_code = rejectCode rc, reject_message }
+          Params { param_dat = Nothing, param_caller = Nothing, reject_code = rejectCode rc, reject_message }
   let es = (initalExecutionState cid inst ex) { params }
 
   let WasmClosure fun_idx env = case res of
