@@ -6,6 +6,8 @@
 open import Agda.Builtin.String
 open import Agda.Builtin.Bool
 open import Agda.Builtin.Nat
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; cong; sym)
 
 
 data Lang : Set where
