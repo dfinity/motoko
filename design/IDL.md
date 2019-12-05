@@ -434,11 +434,6 @@ An *actor reference* points to a service and is described by an actor type. Thro
 <reftype> ::= ... | service <actortype>
 ```
 
-There are two forms of values for actor references:
-
-* `Ref(r)` indicates an opaque reference, understood only by the underlying system.
-* `Id(b)`, where `b : blob`, indicates a transparent reference to a service addressed by the blob `b`.
-
 ##### Example
 
 ```
@@ -455,11 +450,6 @@ A *function reference* is described by its function type. For example, they allo
 ```
 <reftype> ::= func <functype> | ...
 ```
-
-There are two forms of values for actor references:
-
-* `Ref(r)` indicates an opaque reference, understood only by the underlying system.
-* `Public(s,n)`, where `s : service <actortype>` and `n : text`, indicates the public method `n` of the service referenced by `s`.
 
 ##### Example
 
@@ -900,6 +890,21 @@ Note:
 
 ### Serialisation
 
+This section describes how abstract *IDL values* of the types described by the IDL are serialised into a binary representation for transfer between actors.
+
+Serialisation is defined by three functions `T`, `M`, and `R` defined below.
+
+Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references:
+
+* `ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `id(b)`, indicates a transparent reference to a service addressed by the blob `b`.
+
+Likewise, there are two forms of IDL values for function references:
+
+* `ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `pub(s,n)`, indicates the public method name `n` of the service referenced by `s`.
+
+
 #### Notation
 
 `T` and `M` create a byte sequence described below in terms of natural storage types (`i<N>` for `N = 8, 16, 32, 64`, `f<N>` for `N = 32, 64`). The bytes are sequenced according to increasing significance (least significant byte first, a.k.a. little-endian).
@@ -1017,11 +1022,11 @@ M : (<nat>, <val>) -> <fieldtype> -> i8*
 M((k,v) : k:<datatype>) = M(v : <datatype>)
 
 M : <val> -> <reftype> -> i8*
-M(Ref(r)   : service <actortype>) = i8(0)
-M(Id(blob) : service <actortype>) = i8(1) M(blob)
+M(ref(r) : service <actortype>) = i8(0)
+M(id(v*) : service <actortype>) = i8(1) M(v* : vec i8)
 
-M(Ref(r)                : func <functype>) = i8(0)
-M(Public(service, name) : func <functype>) = i8(1) M(service) M(name)
+M(ref(r)   : func <functype>) = i8(0)
+M(pub(s,n) : func <functype>) = i8(1) M(s : service {}) M(n : text)
 ```
 
 
@@ -1045,10 +1050,10 @@ R : (<nat>, <val>) -> <fieldtype> -> <ref>*
 R((k,v) : k:<datatype>) = R(v : <datatype>)
 
 R : <val> -> <reftype> -> <ref>*
-R(Ref(r)   : service <actortype>) = r
-R(Id(blob) : service <actortype>) = .
-R(Ref(r)                : func <functype>) = r
-R(Public(service, name) : func <functype>) = .
+R(ref(r) : service <actortype>) = r
+R(id(b*) : service <actortype>) = .
+R(ref(r)   : func <functype>) = r
+R(pub(s,n) : func <functype>) = .
 ```
 
 Note:
