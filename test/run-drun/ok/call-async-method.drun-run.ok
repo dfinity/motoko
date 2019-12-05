@@ -1,0 +1,2 @@
+ingress(0) System
+ingress(1) Err: IC0503: Canister 42 trapped explicitly: not a self-call

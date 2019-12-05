@@ -1,11 +1,7 @@
 debug.print: via `debugPrint`:
-
 debug.print: hello world!
-
 debug.print: 
-
 debug.print: via iteration and `debugPrintChar`: #1
-
 debug.print: h
 debug.print: e
 debug.print: l
@@ -19,11 +15,7 @@ debug.print: l
 debug.print: d
 debug.print: !
 debug.print: 
-
-debug.print: 
-
 debug.print: via iteration and `debugPrintChar`: #2
-
 debug.print: 1
 debug.print: :
 debug.print: '
@@ -96,17 +88,8 @@ debug.print: '
 debug.print: !
 debug.print: '
 debug.print:  
-debug.print: 13
-debug.print: :
-debug.print: '
 debug.print: 
-
-debug.print: '
-debug.print:  
-debug.print: 
-
 debug.print: via iteration and `debugPrintChar` (Unicode): #3
-
 debug.print: 1
 debug.print: :
 debug.print: '
@@ -217,9 +200,7 @@ debug.print:
 debug.print: '
 debug.print:  
 debug.print: 
-
 debug.print: via iteration and `debugPrintChar` (Unicode): #4
-
 debug.print: 1
 debug.print: :
 debug.print: '
@@ -239,15 +220,11 @@ debug.print: 😋
 debug.print: '
 debug.print:  
 debug.print: 
-
 debug.print: Приветствую, мир!
 
 debug.print: 
-
 debug.print: П
 debug.print: 
-
 debug.print: 🙈
 debug.print: 
-
 ingress(0) System

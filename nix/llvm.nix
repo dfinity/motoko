@@ -1,6 +1,6 @@
 { system } :
 
-let pkgs = (import ./nixpkgs-newer.nix) {
+let pkgs = (import ./nixpkgs-llvm.nix) {
   system = system;
  }; in
 

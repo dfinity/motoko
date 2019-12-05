@@ -1,11 +1,11 @@
-/* test tail-position calculation; error would stack overflow in dvm*/
+/* test tail-position calculation; error would stack overflow in drun*/
 
 let bound:Int = 100000;
 
 {
     func Loop(n:Int){
 	if (n >= bound) {
-            debugPrint "done 1\n";
+            debugPrint "done 1";
             return;
 	};
 	Loop(n+1);
@@ -16,7 +16,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int){
 	if (n >= bound) {
-            debugPrint "done 2\n";
+            debugPrint "done 2";
             return;
 	};
 	if (true)
@@ -31,7 +31,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int){
 	if (n >= bound) {
-            debugPrint "done 3\n";
+            debugPrint "done 3";
             return;
 	};
 	switch (n % 2) {
@@ -47,7 +47,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int){
 	if (n >= bound) {
-            debugPrint "done 4\n";
+            debugPrint "done 4";
             return;
 	};
 	{ let m = n;
@@ -61,7 +61,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int){
 	if (n >= bound) {
-            debugPrint "done 5\n";
+            debugPrint "done 5";
             return;
 	};
 	let _ = (return Loop(n+1)) + 1;
@@ -73,7 +73,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int):Bool{
 	if (n >= bound) {
-            debugPrint "done 6\n";
+            debugPrint "done 6";
             return true;
 	};
 	true and Loop(n+1);
@@ -84,7 +84,7 @@ let bound:Int = 100000;
 {
     func Loop(n:Int):Bool {
 	if (n >= bound) {
-            debugPrint "done 7\n";
+            debugPrint "done 7";
             return true;
 	};
 	false or Loop(n+1);

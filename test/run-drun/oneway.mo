@@ -1,4 +1,4 @@
-actor Oneway {
+actor a {
   // test that oneways can locally try/throw
   public func oneway() : () {
     ignore (
@@ -50,10 +50,18 @@ actor Oneway {
       }
     );
 
-
   // TODO test await and calls to shared functions
-}
-//CALL ingress oneway 0x4449444C0000
-//CALL ingress onewayAlt 0x4449444C0000
-//CALL ingress discard 0x4449444C0000
-//CALL ingress discardAlt 0x4449444C0000
+
+  public func go() = ignore async {
+    debugPrint("A");
+    oneway();
+    debugPrint("B");
+    onewayAlt();
+    debugPrint("C");
+    discard();
+    debugPrint("D");
+    discardAlt();
+    debugPrint("E");
+  };
+};
+a.go(); //OR-CALL ingress go 0x4449444C0000

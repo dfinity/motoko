@@ -11,3 +11,7 @@ actor {
 
 // [[], [[], [[], [],], [], []], []]
 //CALL query rose 0x4449444c016d00010003000400020000000000
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low

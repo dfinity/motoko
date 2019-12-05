@@ -227,22 +227,22 @@ PRODUCE_EXCHANGE_SRC=\
 
 $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.mo | $(OUTDIR)
-	$(MOC) -ancient-system-api -r examples/produce-exchange/test/simpleSetupAndQuery.mo > $@
+	$(MOC) -stub-system-api -r examples/produce-exchange/test/simpleSetupAndQuery.mo > $@
 
 $(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/retailerReserveMany.mo | $(OUTDIR)
-	$(MOC) -ancient-system-api -r examples/produce-exchange/test/retailerReserveMany.mo > $@
+	$(MOC) -stub-system-api -r examples/produce-exchange/test/retailerReserveMany.mo > $@
 
 $(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/producerRemInventory.mo | $(OUTDIR)
-	$(MOC) -ancient-system-api -r examples/produce-exchange/test/producerRemInventory.mo > $@
+	$(MOC) -stub-system-api -r examples/produce-exchange/test/producerRemInventory.mo > $@
 
 $(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/evalBulk.mo | $(OUTDIR)
-	$(MOC) -ancient-system-api -r examples/produce-exchange/test/evalBulk.mo > $@
+	$(MOC) -stub-system-api -r examples/produce-exchange/test/evalBulk.mo > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(MOC) -ancient-system-api -c -o $@ examples/produce-exchange/serverActor.mo
+	$(MOC) -stub-system-api -c -o $@ examples/produce-exchange/serverActor.mo
 
 $(DOCDIR)/%.md: %.mo $(MDofMO) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@
@@ -472,53 +472,53 @@ $(STOPWATCH): $(STOPWATCH_C)
 	$(CC) $< -o $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_1.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 1, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 1, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_2.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 2, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 2, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_3.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 3, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 3, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_4.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 4, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 4, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_5.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 5, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 5, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_6.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 6, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 6, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_7.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 7, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 7, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_8.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 8, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 8, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_9.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 9, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 9, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_10.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 10, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 10, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_20.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 20, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 20, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_50.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 50, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 50, " > $@
 	cat $@
 
 $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm.csv: $(OUTDIR)/ProduceExchangeLoadQuery_5_100.wasm $(STOPWATCH)
-	$(STOPWATCH) "$(DRUN) $< /dev/zero" "5, 100, " > $@
+	$(STOPWATCH) "$(DRUN) $< /dev/null" "5, 100, " > $@
 	cat $@
