@@ -381,9 +381,32 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
   let tys = if n_args = 1 then [p.note] else T.seq_of_tup p.note in
 
+  let args, wrap =
+    match n_args, p.it with
+    | _, S.WildP ->
+      let vs = fresh_vars "param" tys in
+      List.map arg_of_exp vs,
+      (fun e -> e)
+    | 1, _ ->
+      let a, wrap = to_arg p in
+      [a], wrap
+    | 0, S.TupP [] ->
+      [] , (fun e -> e)
+    | _, S.TupP ps ->
+      assert (List.length ps = n_args);
+      List.fold_right (fun p (args, wrap) ->
+        let (a, wrap1) = to_arg p in
+        (a::args, fun e -> wrap1 (wrap e))
+      ) ps ([], fun e -> e)
+    | _, _ ->
+      let vs = fresh_vars "param" tys in
+      List.map arg_of_exp vs,
+      (fun e -> blockE [letP (pat p) (tupE vs)] e)
+  in
+
   let wrap_po e =
     match po with
-    | None -> e
+    | None -> wrap e
     | Some p ->
       let v = fresh_var "caller" T.caller in
       let c = fresh_var "ctxt" T.ctxt in
@@ -396,37 +419,15 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
                  note = T.caller }]
               T.ctxt);
          letP (pat p) c]
-        e in
-
-  let args, wrap =
-    match n_args, p.it with
-    | _, S.WildP ->
-      let vs = fresh_vars "param" tys in
-      List.map arg_of_exp vs,
-      wrap_po
-    | 1, _ ->
-      let a, wrap = to_arg p in
-      [a], fun e -> wrap (wrap_po e)
-    | 0, S.TupP [] ->
-      [] , wrap_po
-    | _, S.TupP ps ->
-      assert (List.length ps = n_args);
-      List.fold_right (fun p (args, wrap) ->
-        let (a, wrap1) = to_arg p in
-        (a::args, fun e -> wrap1 (wrap e))
-      ) ps ([], wrap_po)
-    | _, _ ->
-      let vs = fresh_vars "param" tys in
-      List.map arg_of_exp vs,
-      (fun e -> blockE [letP (pat p) (tupE vs)] (wrap_po e))
+        (wrap e)
   in
 
   let wrap_under_async e =
     if T.is_shared_sort sort && control <> T.Returns
     then match e.it with
-      | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
+      | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap_po e') }
       | _ -> assert false
-    else wrap e in
+    else wrap_po e in
 
   args, wrap_under_async, control, res_tys
 
