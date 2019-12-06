@@ -12,7 +12,7 @@ export default ({ IDL }) => {
  const IdErr = IDL.Obj({'idErr': OpEntId})
  const Inventory = IDL.Obj({'produce_id': IDL.Nat, 'quantity': IDL.Nat})
  const actor_S = new IDL.ActorInterface({
-  'f': IDL.Func([t, t1, t2], [list, IdErr]),
-  'getInventory': IDL.Func([IDL.Nat], [Inventory])});
+  'f': IDL.Func([t, t1, t2], [list, IdErr], []),
+  'getInventory': IDL.Func([IDL.Nat], [Inventory], ['query'])});
  return actor_S;
 };

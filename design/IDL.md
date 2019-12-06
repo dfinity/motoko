@@ -426,6 +426,23 @@ type tree = variant {
 
 A third form of value are *references*. They represent first-class handles to (possibly remote) *functions* or *services*.
 
+#### Actor References
+
+An *actor reference* points to a service and is described by an actor type. Through this, services can communicate connections to other services.
+
+```
+<reftype> ::= ... | service <actortype>
+```
+
+##### Example
+
+```
+type broker = service {
+  findCounterService : (name : text) ->
+    (service {up : () -> (); current : () -> nat});
+}
+```
+
 #### Function References
 
 A *function reference* is described by its function type. For example, they allow passing callbacks to other functions.
@@ -441,25 +458,6 @@ type engine = service {
   search : (query : text, callback : func (vec result) -> ());
 }
 ```
-
-#### Actor References
-
-An *actor reference* points to a service and is described by an actor type. Through this, services can communicate connections to other services.
-
-```
-<reftype> ::= ... | service <actortype>
-```
-
-
-##### Example
-
-```
-type broker = service {
-  findCounterService : (name : text) ->
-    (service {up : () -> (); current : () -> nat});
-}
-```
-
 
 ### Type Definitions
 
@@ -892,6 +890,21 @@ Note:
 
 ### Serialisation
 
+This section describes how abstract *IDL values* of the types described by the IDL are serialised into a binary representation for transfer between actors.
+
+Serialisation is defined by three functions `T`, `M`, and `R` given below.
+
+Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references:
+
+* `ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `id(b)`, indicates a transparent reference to a service addressed by the blob `b`.
+
+Likewise, there are two forms of IDL values for function references:
+
+* `ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `pub(s,n)`, indicates the public method name `n` of the service referenced by `s`.
+
+
 #### Notation
 
 `T` and `M` create a byte sequence described below in terms of natural storage types (`i<N>` for `N = 8, 16, 32, 64`, `f<N>` for `N = 32, 64`). The bytes are sequenced according to increasing significance (least significant byte first, a.k.a. little-endian).
@@ -1009,8 +1022,11 @@ M : (<nat>, <val>) -> <fieldtype> -> i8*
 M((k,v) : k:<datatype>) = M(v : <datatype>)
 
 M : <val> -> <reftype> -> i8*
-M(r : service <actortype>) = .
-M(r : func <functype>)     = .
+M(ref(r) : service <actortype>) = i8(0)
+M(id(v*) : service <actortype>) = i8(1) M(v* : vec i8)
+
+M(ref(r)   : func <functype>) = i8(0)
+M(pub(s,n) : func <functype>) = i8(1) M(s : service {}) M(n : text)
 ```
 
 
@@ -1034,8 +1050,10 @@ R : (<nat>, <val>) -> <fieldtype> -> <ref>*
 R((k,v) : k:<datatype>) = R(v : <datatype>)
 
 R : <val> -> <reftype> -> <ref>*
-R(r : service <actortype>) = r
-R(r : func <functype>)     = r
+R(ref(r) : service <actortype>) = r
+R(id(b*) : service <actortype>) = .
+R(ref(r)   : func <functype>) = r
+R(pub(s,n) : func <functype>) = .
 ```
 
 Note:
