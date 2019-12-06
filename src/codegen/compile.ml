@@ -652,6 +652,14 @@ module RTS = struct
     E.add_func_import env "rts" "closure_count" [] [I32Type];
     E.add_func_import env "rts" "closure_table_loc" [] [I32Type];
     E.add_func_import env "rts" "closure_table_size" [] [I32Type];
+    E.add_func_import env "rts" "text_of_ptr_size" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "text_concat" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_of_text" [I32Type] [I32Type];
+    E.add_func_import env "rts" "text_compare" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "text_len" [I32Type] [I32Type];
+    E.add_func_import env "rts" "text_iter" [I32Type] [I32Type];
+    E.add_func_import env "rts" "text_iter_done" [I32Type] [I32Type];
+    E.add_func_import env "rts" "text_iter_next" [I32Type] [I32Type];
     ()
 
 end (* RTS *)

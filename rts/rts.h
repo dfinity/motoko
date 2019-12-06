@@ -22,8 +22,9 @@ typedef intptr_t as_ptr;
 #define UNSKEW(p) ((size_t *)((as_ptr)p+1))
 #define FIELD(p,n) (UNSKEW(p)[n])
 #define TAG(p) FIELD(p,0)
-#define TEXT_LEN(p) (FIELD(p,1))
-#define TEXT_PAYLOAD(p) ((uint8_t *)(&FIELD(p,2)))
+
+#define BLOB_LEN(p) (FIELD(p,1))
+#define BLOB_PAYLOAD(p) ((char *)(&FIELD(p,2)))
 
 #define ARRAY_LEN(p) (FIELD(p,1))
 #define ARRAY_HEADER_SIZE 2
@@ -77,6 +78,7 @@ from_rts __attribute__ ((noreturn)) void bigint_trap();
 
 /** Functions used in multiple modules of the RTS */
 export void as_memcpy(char *str1, const char *str2, size_t n);
+export int as_memcmp(const char *str1, const char *str2, size_t n);
 export __attribute__ ((noreturn)) void idl_trap_with(const char *str1);
 export __attribute__ ((noreturn)) void rts_trap_with(const char *str1);
 
