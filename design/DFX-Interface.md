@@ -43,24 +43,6 @@ either `"x86_64-linux"` or `"x86_64-darwin"`, and defaults to
 
 All binaries are either built statically (Linux) or only use system libraries (OSX).
 
-
-Compiling Motoko Files
-----------------------
-
-In order to compile a motoko file, `dfx` invokes `moc` with
-
-    moc some/path/input.mo -o another/path/output.wasm { --package pkgname pkgpath }
-
-in an environment where `MOC_RTS` points to the location of the Motoko runtime system.
-
-This _reads_ `some/path/input.mo` and any `.mo` file referenced by
-`some/path/input.mo`, including in directories outside of `some/path` or even
-the current directories.
-
-This _writes_ to `another/path/output.wasm`, but has no other effect. It does
-not create `another/path/`.
-
-
 Compiling Motoko Files to Wasm
 ------------------------------
 
