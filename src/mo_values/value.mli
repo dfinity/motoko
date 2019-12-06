@@ -119,6 +119,10 @@ val message_func : Type.shared_sort -> int -> func -> value
 val async_func : Type.shared_sort -> int -> int -> func -> value
 val replies_func : Type.shared_sort -> int -> int -> func -> value
 
+(* Pseudo Ids *)
+
+val fresh_id : unit -> value
+val top_id : value
 
 (* Projections *)
 

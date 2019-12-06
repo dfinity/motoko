@@ -371,6 +371,16 @@ let rec compare x1 x2 =
 
 let equal x1 x2 = compare x1 x2 = 0
 
+(* (Pseudo)-Identities (for caller and self) *)
+
+let next_id = ref 0
+
+let fresh_id() =
+  let id = Printf.sprintf "ID:%i" (!next_id) in
+  next_id := !next_id + 1;
+  Text id
+
+let top_id = fresh_id ()
 
 (* Pretty Printing *)
 

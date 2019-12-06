@@ -16,6 +16,7 @@ type lib_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
+type self_env = V.value option
 
 type flags =
   { trace : bool;
@@ -34,6 +35,7 @@ type env =
     libs : lib_env;
     rets : ret_env;
     throws : throw_env;
+    selves : self_env;
     async : bool
   }
 
@@ -56,9 +58,13 @@ let env_of_scope flags scope =
     labs = V.Env.empty;
     rets = None;
     throws = None;
+    selves = Some V.top_id;
     async = false;
   }
 
+(* Helpers *)
+
+let local_sort_pat = { it = T.Local; at = Source.no_region; note = () };
 
 (* Error handling *)
 
@@ -412,7 +418,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, fields) ->
-    interpret_obj env sort fields k
+    let selves = if sort.it = T.Actor then Some (V.fresh_id ()) else None in
+    interpret_obj { env with selves = selves } sort fields k
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
@@ -458,11 +465,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
            with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
-  | FuncE (name, _sort, _typbinds, pat, _typ, exp2) -> (*TODO handle pat_opt*)
-    let f = interpret_func env name pat (fun env' -> interpret_exp env' exp2) in
+  | FuncE (name, sort_pat, _typbinds, pat, _typ, exp2) ->
+    let f = interpret_func env name sort_pat pat (fun env' -> interpret_exp env' exp2) in
     let v = V.Func (CC.call_conv_of_typ exp.note.note_typ, f) in
     let v' =
-      match _sort.it with
+      match sort_pat.it with
       | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
@@ -473,7 +480,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
-        f v2 k
+        let v3 = if T.is_shared_sort call_conv.Call_conv.sort
+          then V.Tup [V.Obj(V.Env.singleton "caller" (Lib.Option.value env.selves)); v2]
+          else v2
+        in
+        f v3 k
       )
     )
   | BlockE decs ->
@@ -816,7 +827,7 @@ and interpret_dec env dec (k : V.value V.cont) =
   | TypD _ ->
     k V.unit
   | ClassD (id, _typbinds, pat, _typ_opt, sort, id', fields) ->
-    let f = interpret_func env id.it pat (fun env' k' ->
+    let f = interpret_func env id.it local_sort_pat pat (fun env' k' ->
       let env'' = adjoin_vals env' (declare_id id') in
       interpret_obj env'' sort fields (fun v' ->
         define_id env'' id' v';
@@ -834,13 +845,24 @@ and interpret_decs env decs (k : V.value V.cont) =
   | dec::decs' ->
     interpret_dec env dec (fun _v -> interpret_decs env decs' k)
 
-
-and interpret_func env name pat f v (k : V.value V.cont) =
+and interpret_func env name sort_pat pat f v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" name (string_of_arg env v);
-  match match_pat pat v with
+  let ve1, v1 =
+      match sort_pat.it, v with
+      | T.Local, v -> V.Env.empty, v
+      | T.Shared (_ , None), V.Tup [ctxt; v1] -> V.Env.empty, v1
+      | T.Shared (_, Some pat), V.Tup [ctxt; v1] ->
+       (match match_pat pat ctxt with
+        | None ->
+          trap pat.at "context value %s does not match context pattern" (string_of_val env ctxt)
+        | Some ve1 ->
+          ve1, v1)
+      | _ -> assert false
+  in
+  match match_pat pat v1 with
   | None ->
-    trap pat.at "argument value %s does not match parameter list" (string_of_val env v)
-  | Some ve ->
+    trap pat.at "argument value %s does not match parameter list" (string_of_val env v1)
+  | Some ve2 ->
     incr trace_depth;
     let k' = fun v' ->
       if env.flags.trace then trace "<= %s" (string_of_val env v');
@@ -849,7 +871,7 @@ and interpret_func env name pat f v (k : V.value V.cont) =
     in
     let env' =
       { env with
-        vals = V.Env.adjoin env.vals ve;
+        vals = V.Env.adjoin env.vals (V.Env.adjoin ve1 ve2);
         libs = env.libs;
         labs = V.Env.empty;
         rets = Some k';
