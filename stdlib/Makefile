@@ -17,6 +17,8 @@ WASM=\
 TESTS=\
 	Array \
 	ArrayTest \
+	BufTest \
+	Buf \
 	AssocList \
 	DocTable \
   Function \
@@ -71,6 +73,12 @@ $(OUTDIR)/Array.out: array.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/ArrayTest.out: arrayTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Buf.out: buf.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/BufTest.out: bufTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Function.out: function.mo | $(OUTDIR)
@@ -154,6 +162,7 @@ docMd: \
 	$(DOCDIR)/README.md \
 	$(DOCDIR)/prelude.md \
 	$(DOCDIR)/array.md \
+	$(DOCDIR)/buf.md \
 	$(DOCDIR)/option.md \
 	$(DOCDIR)/result.md \
 	$(DOCDIR)/hash.md \
@@ -177,6 +186,7 @@ docHtml: \
 	$(DOCDIR)/README.html \
 	$(DOCDIR)/prelude.html \
 	$(DOCDIR)/array.html \
+	$(DOCDIR)/buf.html \
 	$(DOCDIR)/option.html \
 	$(DOCDIR)/result.html \
 	$(DOCDIR)/hash.html \
