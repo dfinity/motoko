@@ -73,6 +73,7 @@ module Env : Env.S with type key = string
 (* Types *)
 
 type unicode = int
+type actor_id = string
 
 type func = value -> value cont -> unit
 and value =
@@ -102,6 +103,7 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
+  | Actor of actor_id
 
 and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
@@ -121,8 +123,8 @@ val replies_func : Type.shared_sort -> int -> int -> func -> value
 
 (* Pseudo Ids *)
 
-val fresh_id : unit -> value
-val top_id : value
+val fresh_id : unit -> actor_id
+val top_id : actor_id
 
 (* Projections *)
 
@@ -154,7 +156,7 @@ val as_variant : value -> string * value
 val as_func : value -> Call_conv.t * func
 val as_async : value -> async
 val as_mut : value -> value ref
-
+val as_actor : value -> actor_id
 
 (* Ordering *)
 

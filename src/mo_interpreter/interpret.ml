@@ -16,7 +16,7 @@ type lib_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
-type self_env = V.value option
+type self_env = V.actor_id option
 
 type flags =
   { trace : bool;
@@ -75,8 +75,8 @@ let trap at fmt = Printf.ksprintf (fun s -> raise (Trap (at, s))) fmt
 let find id env =
   try V.Env.find id env
   with Not_found ->
-    assert false;
-    trap no_region "unbound identifier %s" id
+    let dom = V.Env.keys env in
+    trap no_region "unbound identifier %s in domain %s" id (String.concat " " dom)
 
 (* Tracing *)
 
@@ -379,9 +379,6 @@ let check_call_conv_arg env exp v call_conv =
       (string_of_val env v)
     )
 
-let is_actor exp  = match T.normalize (exp.note.note_typ) with
-  T.Obj(T.Actor, _) -> true | _ -> false
-
 let rec interpret_exp env exp (k : V.value V.cont) =
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
@@ -430,15 +427,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | ObjE (sort, fields) ->
-    let selves = if sort.it = T.Actor then Some (V.fresh_id ()) else None in
-    interpret_obj { env with selves = selves } sort fields k
+    interpret_obj env sort fields k
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
       match v1 with
-      | V.Text blob when is_actor exp1 ->
-        k (find id.it (V.as_obj (ActorHeap.find blob)))
+      | V.Actor a ->
+        k (find id.it (V.as_obj (ActorHeap.find a)))
       | V.Obj fs ->
         k (find id.it fs)
       | V.Array vs ->
@@ -495,7 +491,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let v3 = if T.is_shared_sort call_conv.Call_conv.sort
-          then V.Tup [V.Obj(V.Env.singleton "caller" (Lib.Option.value env.selves)); v2]
+          then V.Tup [V.Obj(V.Env.singleton "caller" (V.Text (Lib.Option.value env.selves))); v2]
           else v2
         in
         f v3 k
@@ -793,8 +789,9 @@ and match_sort_pat env sort_pat v =
 (* Objects *)
 
 and interpret_obj env sort fields (k : V.value V.cont) =
+  let selves = if sort.it = T.Actor then Some (V.fresh_id ()) else None in
   let ve_ex, ve_in = declare_exp_fields fields V.Env.empty V.Env.empty in
-  let env' = adjoin_vals env ve_in in
+  let env' = adjoin_vals {env with selves = selves} ve_in in
   interpret_exp_fields env' sort.it fields ve_ex k
 
 and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
@@ -812,8 +809,8 @@ and interpret_exp_fields env s fields ve (k : V.value V.cont) =
     let obj = V.Obj (V.Env.map Lib.Promise.value ve) in
     if s = T.Actor then
       let self = Lib.Option.value env.selves in
-      ActorHeap.add (V.as_text self) obj;
-      k self
+      ActorHeap.add self obj;
+      k (V.Actor self)
     else k obj
   | {it = {dec; _}; _}::fields' ->
     interpret_dec env dec (fun _v -> interpret_exp_fields env s fields' ve k)
