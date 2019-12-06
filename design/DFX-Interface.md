@@ -95,23 +95,23 @@ This _reads_ `some/path/input.mo` and any `.mo` file referenced by
 
 No constraints are imposed where these imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
 
-Printing module dependencies
-----------------
+Listing dependencies
+--------------------
 
-In order to figure out the direct (not transitive!) dependencies for a Motoko source file `dfx` invokes
+The command
 
-    moc --print-deps some/path/file.mo
+    moc --print-deps some/path/input.mo
 
-This reads and parses that file and if the parse succeds, it prints the imported paths one line at a time.
+prints to the standard output all URLs _directly_ imported by
+`some/path/input.mo`, one per line, e.g.
 
-For example for a file `deps.mo`:
+   mo:stdlib/List
+   mo:other_package/Some/Module
 
-    import List "mo:std/list.mo"
-    import Thing "path/to/thing.mo"
-    module {}
 
-Calling the print deps command looks like so:
+This _reads_ only `some/path/input.mo`, and writes no files.
 
-    $ moc --print-deps deps.mo
-    > mo:std/list.mo
-    > path/to/thing.mo
+By transitively exploring the dependency graph using this command (and
+resolving URLs appropriately before passing them as files to `moc`), one can
+determine the full set of set of `.mo` files read by the two compilation modes
+described above (to wasm and to IDL).
