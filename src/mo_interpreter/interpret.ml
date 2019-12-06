@@ -75,6 +75,7 @@ let trap at fmt = Printf.ksprintf (fun s -> raise (Trap (at, s))) fmt
 let find id env =
   try V.Env.find id env
   with Not_found ->
+    assert false;
     trap no_region "unbound identifier %s" id
 
 (* Tracing *)
@@ -125,6 +126,14 @@ struct
     if not (Queue.is_empty q) then (yield (); run ())
 end
 
+(* Actor Heap *)
+
+module ActorHeap =
+struct
+  let heap  = ref V.Env.empty
+  let add id v = heap := V.Env.add id v (!heap)
+  let find id = V.Env.find id (!heap)
+end
 
 (* Async auxiliary functions *)
 
@@ -370,6 +379,9 @@ let check_call_conv_arg env exp v call_conv =
       (string_of_val env v)
     )
 
+let is_actor exp  = match T.normalize (exp.note.note_typ) with
+  T.Obj(T.Actor, _) -> true | _ -> false
+
 let rec interpret_exp env exp (k : V.value V.cont) =
   interpret_exp_mut env exp (function V.Mut r -> k !r | v -> k v)
 
@@ -425,6 +437,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
       match v1 with
+      | V.Text blob when is_actor exp1 ->
+        k (find id.it (V.as_obj (ActorHeap.find blob)))
       | V.Obj fs ->
         k (find id.it fs)
       | V.Array vs ->
@@ -763,6 +777,19 @@ and match_pat_fields pfs vs ve : val_env option =
     | None -> None
     end
 
+and match_sort_pat env sort_pat v =
+  match sort_pat.it, v with
+  | T.Local, v -> V.Env.empty, v
+  | T.Shared (_ , None), V.Tup [ctxt; v1] -> V.Env.empty, v1
+  | T.Shared (_, Some pat), V.Tup [ctxt; v1] ->
+    (match match_pat pat ctxt with
+     | None ->
+       (* shouldn't occur with our irrefutable patterns, but may in future *)
+       trap pat.at "context value %s does not match context pattern" (string_of_val env ctxt)
+     | Some ve1 ->
+       ve1, v1)
+  | _ -> assert false
+
 (* Objects *)
 
 and interpret_obj env sort fields (k : V.value V.cont) =
@@ -781,7 +808,13 @@ and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
 
 and interpret_exp_fields env s fields ve (k : V.value V.cont) =
   match fields with
-  | [] -> k (V.Obj (V.Env.map Lib.Promise.value ve))
+  | [] ->
+    let obj = V.Obj (V.Env.map Lib.Promise.value ve) in
+    if s = T.Actor then
+      let self = Lib.Option.value env.selves in
+      ActorHeap.add (V.as_text self) obj;
+      k self
+    else k obj
   | {it = {dec; _}; _}::fields' ->
     interpret_dec env dec (fun _v -> interpret_exp_fields env s fields' ve k)
 
@@ -847,18 +880,7 @@ and interpret_decs env decs (k : V.value V.cont) =
 
 and interpret_func env name sort_pat pat f v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" name (string_of_arg env v);
-  let ve1, v1 =
-      match sort_pat.it, v with
-      | T.Local, v -> V.Env.empty, v
-      | T.Shared (_ , None), V.Tup [ctxt; v1] -> V.Env.empty, v1
-      | T.Shared (_, Some pat), V.Tup [ctxt; v1] ->
-       (match match_pat pat ctxt with
-        | None ->
-          trap pat.at "context value %s does not match context pattern" (string_of_val env ctxt)
-        | Some ve1 ->
-          ve1, v1)
-      | _ -> assert false
-  in
+  let (ve1, v1) = match_sort_pat env sort_pat v in
   match match_pat pat v1 with
   | None ->
     trap pat.at "argument value %s does not match parameter list" (string_of_val env v1)
@@ -878,7 +900,6 @@ and interpret_func env name sort_pat pat f v (k : V.value V.cont) =
         async = false
       }
     in f env' k'
-
 
 (* Programs *)
 
