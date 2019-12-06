@@ -27,7 +27,7 @@ let dfinity-src =
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
 
-let esm = builtins.fetchTarball {
+let esm = nixpkgs.fetchzip {
   sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
