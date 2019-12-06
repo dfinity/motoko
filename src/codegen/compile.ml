@@ -653,6 +653,7 @@ module RTS = struct
     E.add_func_import env "rts" "closure_table_loc" [] [I32Type];
     E.add_func_import env "rts" "closure_table_size" [] [I32Type];
     E.add_func_import env "rts" "text_of_ptr_size" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_concat" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "blob_of_text" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_compare" [I32Type; I32Type] [I32Type];
@@ -2413,8 +2414,9 @@ end (* Object *)
 
 module Iterators = struct
   (*
-    We have to synthesize iterators for various functions in Text and Array.
+    We have to synthesize iterators for various functions in Array.
     This is the common code for that.
+    (It used to work for Text as well, until that got moved to the C RTS)
   *)
 
   (*
@@ -2527,38 +2529,6 @@ module Blob = struct
       get_x ^^ Heap.load_field len_field
     )
 
-  (* Blob concatenation. Expects two strings on stack *)
-  let concat env = Func.share_code2 env "concat" (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
-      let (set_z, get_z) = new_local env "z" in
-      let (set_len1, get_len1) = new_local env "len1" in
-      let (set_len2, get_len2) = new_local env "len2" in
-
-      get_x ^^ Heap.load_field len_field ^^ set_len1 ^^
-      get_y ^^ Heap.load_field len_field ^^ set_len2 ^^
-
-      (* allocate memory *)
-      get_len1 ^^
-      get_len2 ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      alloc env ^^
-      set_z ^^
-
-      (* Copy first string *)
-      get_z ^^ payload_ptr_unskewed ^^
-      get_x ^^ payload_ptr_unskewed ^^
-      get_len1 ^^
-      Heap.memcpy env ^^
-
-      (* Copy second string *)
-      get_z ^^ payload_ptr_unskewed ^^ get_len1 ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-      get_y ^^ payload_ptr_unskewed ^^
-      get_len2 ^^
-      Heap.memcpy env ^^
-
-      (* Done *)
-      get_z
-    )
-
 
   (* Lexicographic blob comparison. Expects two blobs on the stack *)
   let rec compare env op =
@@ -2646,6 +2616,16 @@ module Blob = struct
 end (* Blob *)
 
 module Text = struct
+  (*
+  Most of the heavy lifting around text values is in rts/text.c
+  *)
+
+  let concat env =
+    E.call_import env "rts" "text_concat"
+
+  let len env =
+    E.call_import env "rts" "text_len" ^^
+    BigNum.from_word32 env
 
   let prim_decodeUTF8 env =
     Func.share_code1 env "decodeUTF8" ("string", I32Type)
@@ -2667,27 +2647,6 @@ module Text = struct
           UnboxedSmallWord.len_UTF8_head env set_char ^^
           get_char ^^ UnboxedSmallWord.box_codepoint
       )
-
-  let len env =
-    Func.share_code1 env "text_len" ("x", I32Type) [I32Type] (fun env get_x ->
-      let (set_max, get_max) = new_local env "max" in
-      let (set_n, get_n) = new_local env "n" in
-      let (set_len, get_len) = new_local env "len" in
-      compile_unboxed_zero ^^ set_n ^^
-      compile_unboxed_zero ^^ set_len ^^
-      get_x ^^ Heap.load_field Blob.len_field ^^ set_max ^^
-      compile_while
-        (get_n ^^ get_max ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)))
-        begin
-          get_x ^^ Blob.payload_ptr_unskewed ^^ get_n ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-          UnboxedSmallWord.len_UTF8_head env (G.i Drop) ^^
-          get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_n ^^
-          get_len ^^ compile_add_const 1l ^^ set_len
-        end ^^
-      get_len ^^
-      BigNum.from_word32 env
-    )
 
   let prim_showChar env =
     let (set_c, get_c) = new_local env "c" in
@@ -5846,7 +5805,7 @@ let compile_binop env t op =
       get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
       sanitize_word_result ty))
 
-  | Type.Prim Type.Text, CatOp -> Blob.concat env
+  | Type.Prim Type.Text, CatOp -> Text.concat env
   | Type.Non, _ -> G.i Unreachable
   | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
   )

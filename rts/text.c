@@ -95,10 +95,32 @@ export uint32_t text_len(text_t s) {
   uint32_t c = 0;
   while (n < BLOB_LEN(s)) {
     int k = __builtin_clz(~(p[n] << 24));     // Count # of leading 1 bits.
-    n += k + 1;
-    c++;
+    n += k ? k : 1;
+    c += 1;
   }
   return c;
+}
+
+// Text from Char
+export text_t text_singleton(uint32_t code) {
+  // adapted from https://gist.github.com/tylerneylon/9773800
+  char val[4];
+  int lead_byte_max = 0x7F;
+  int val_index = 0;
+  while (code > lead_byte_max) {
+    val[val_index++] = (code & 0x3F) | 0x80;
+    code >>= 6;
+    lead_byte_max >>= (val_index == 1 ? 2 : 1);
+  }
+  val[val_index++] = (code & lead_byte_max) | (~lead_byte_max << 1);
+
+  as_ptr r = alloc_blob(val_index);
+  char *p = BLOB_PAYLOAD(r);
+  while (val_index--) {
+    *p = val[val_index];
+    p++;
+  }
+  return r;
 }
 
 

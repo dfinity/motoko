@@ -1,4 +1,5 @@
 let s = "hello world!";
+assert(s.len() == 12);
 
 debugPrint "via `debugPrint`:";
 debugPrint s;
