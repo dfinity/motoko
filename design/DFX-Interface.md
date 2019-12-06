@@ -65,6 +65,30 @@ Compiling Motoko Files to IDL
 
 As the previous point, but passing `--idl` to `moc`.
 
+Listing dependencies
+--------------------
+
+**WARNING**: This is not yet implemented.
+
+The command
+
+    moc --print-deps some/path/input.mo
+
+prints to the standard output all URLs _directly_ imported by
+`some/path/input.mo`, one per line, e.g.
+
+   mo:stdlib/List
+   mo:other_package/Some/Module
+
+
+This _reads_ only `some/path/input.mo`, and writes no files.
+
+By transitively exploring the dependency graph using this command (and
+resolving URLs appropriately before passing them as files to `moc`), one can
+determine the full set of set of `.mo` files read by the two compilation modes
+described above (to wasm and to IDL).
+
+
 Compiling IDL Files to JS
 -------------------------
 
