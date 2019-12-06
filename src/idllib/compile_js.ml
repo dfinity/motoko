@@ -91,7 +91,12 @@ let pp_prim p =
   | Null -> "Unit"
   | Reserved -> "None"
   | Empty -> "Empty"
-  
+
+let pp_mode ppf m =
+  match m.it with
+  | Oneway -> str ppf "'oneway'"
+  | Query -> str ppf "'query'"
+
 let rec concat ppf f sep list =
   match list with
   | [] -> ()
@@ -112,6 +117,8 @@ let rec pp_typ ppf t =
      pp_args ppf t1;
      kwd ppf ",";
      pp_args ppf t2;
+     kwd ppf ",";
+     pp_modes ppf ms;
      str ppf ")";
   | ServT ts ->
      pp_open_hovbox ppf 1;
@@ -130,6 +137,13 @@ and pp_args ppf args =
   concat ppf pp_typ "," args;
   str ppf "]";
   pp_close_box ppf ()
+
+and pp_modes ppf modes =
+  pp_open_box ppf 1;
+  str ppf "[";
+  concat ppf pp_mode "," modes;
+  str ppf "]";
+  pp_close_box ppf ()  
 
 and pp_fields ppf fs =
   pp_open_box ppf 1;
@@ -196,7 +210,7 @@ let pp_actor ppf actor recs =
        | VarT var ->
           id ppf x; space ppf (); kwd ppf "=";
           if TS.mem var.it recs then
-            str ppf (var.it ^ ".__typ;")
+            str ppf (var.it ^ ".getType();")
           else
             str ppf var.it;
        | _ -> assert false

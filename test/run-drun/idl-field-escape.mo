@@ -25,3 +25,7 @@ actor {
 //CALL ingress foo2 0x4449444C0000
 //CALL ingress out 0x4449444C0000
 //CALL ingress input 0x4449444c016c03007c017dbcfef7b102710100ffff03802003585858
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low

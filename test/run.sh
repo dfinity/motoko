@@ -7,13 +7,10 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -1: Use Ancient API
-#    -2: Use IC API
-#    -3: Use Stub API
+#    -d: Run on in drun (or, if not possible, in stub)
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
-#    -r: Activate release mode (eliminate `debug` blocks)
 #
 
 function realpath() {
@@ -22,35 +19,26 @@ function realpath() {
 
 
 ACCEPT=no
-API=wasm
+DRUN=no
 IDL=no
-RELEASE=no
-EXTRA_MOC_FLAGS=
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
-WASM=${WASM:-wasm}
-DVM_WRAPPER=$(realpath $(dirname $0)/dvm.sh)
+WASMTIME=${WASMTIME:-wasmtime}
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "a123stir" o; do
+while getopts "adstir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
             ;;
-        1)
-            API=ancient
-            ;;
-        2)
-            API=ic
-            ;;
-        3)
-            API=stub
+        d)
+            DRUN=yes
             ;;
         s)
             ECHO=true
@@ -61,16 +49,8 @@ while getopts "a123stir" o; do
         i)
             IDL=yes
             ;;
-        r)
-            RELEASE=yes
-            ;;
     esac
 done
-
-if [ $API = "wasm" ]; then EXTRA_MOC_FLAGS=-no-system-api; fi
-if [ $API = "ancient" ]; then EXTRA_MOC_FLAGS=-ancient-system-api; fi
-if [ $API = "stub" ]; then EXTRA_MOC_FLAGS=-stub-system-api; fi
-if [ $RELEASE = "yes" ]; then MOC_FLAGS=--release; fi
 
 shift $((OPTIND-1))
 
@@ -93,6 +73,11 @@ function normalize () {
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
+    sed 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
+    sed 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' |
+    sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
+    sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
+    sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
     cat > $1.norm
     mv $1.norm $1
   fi
@@ -106,7 +91,13 @@ function run () {
   local ext="$1"
   shift
 
-  if grep -q "^//SKIP $ext" $file; then return; fi
+  if grep -q "^//SKIP $ext" $file; then return 1; fi
+
+  if test -e $out/$base.$ext
+  then
+    echo "Output $ext already exists."
+    exit 1
+  fi
 
   $ECHO -n " [$ext]"
   "$@" >& $out/$base.$ext
@@ -159,25 +150,24 @@ do
   [ -d $ok ] || mkdir $ok
 
   rm -f $out/$base.*
-  if [ $ACCEPT = yes ]
-  then
-    rm -f $ok/$base.*
-  fi
 
   # First run all the steps, and remember what to diff
   diff_files=
 
   if [ ${file: -3} == ".mo" ]
   then
+    # extra flags
+    moc_extra_flags="$(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' ')"
+
     # Typecheck
-    run tc $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --check $base.mo
+    run tc $MOC $moc_extra_flags --check $base.mo
     tc_succeeded=$?
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then
       if [ $IDL = 'yes' ]
       then
-        run idl $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --idl $base.mo -o $out/$base.did
+        run idl $MOC $moc_extra_flags --idl $base.mo -o $out/$base.did
         idl_succeeded=$?
 
         normalize $out/$base.did
@@ -191,10 +181,10 @@ do
         if [ "$SKIP_RUNNING" != yes ]
         then
           # Interpret
-          run run $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r $base.mo
+          run run $MOC $moc_extra_flags --hide-warnings -r $base.mo
 
           # Interpret IR without lowering
-          run run-ir $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r -iR -no-async -no-await $base.mo
+          run run-ir $MOC $moc_extra_flags --hide-warnings -r -iR -no-async -no-await $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-ir ]
@@ -204,7 +194,7 @@ do
           fi
 
           # Interpret IR with lowering
-          run run-low $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings -r -iR $base.mo
+          run run-low $MOC $moc_extra_flags --hide-warnings -r -iR $base.mo
 
           # Diff interpretations without/with lowering
           if [ -e $out/$base.run -a -e $out/$base.run-low ]
@@ -215,8 +205,38 @@ do
 
         fi
 
+        # Mangle for compilation:
+        # The compilation targets do not support self-calls during canister
+        # installation, so this replaces
+        #
+        #     actor a { … }
+        #     a.go(); //CALL …
+        #
+        # with
+        #
+        #     actor a { … }
+        #     //CALL …
+        #
+        # which actually works on the IC platform
+
+	# needs to be in the same directory to preserve relative paths :-(
+        mangled=$base.mo.mangled
+        sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
+
+
         # Compile
-        run comp $MOC $MOC_FLAGS $EXTRA_MOC_FLAGS --hide-warnings --map -c $base.mo -o $out/$base.wasm
+        if [ $DRUN = no ]
+        then
+          run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+        else
+          run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+          can_use_drun=$?
+
+          if [ "$can_use_drun" -ne 0 ];
+          then
+            run comp-stub $MOC $moc_extra_flags -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+          fi
+        fi
 
         if [ -e $out/$base.wasm ]
         then
@@ -226,11 +246,11 @@ do
           # Check filecheck
           if [ "$SKIP_RUNNING" != yes ]
           then
-            if grep -F -q CHECK $base.mo
+            if grep -F -q CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
               wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
-              cat $out/$base.wat | FileCheck $base.mo > $out/$base.filecheck 2>&1
+              cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
               diff_files="$diff_files $base.filecheck"
             fi
           fi
@@ -238,20 +258,19 @@ do
           # Run compiled program
           if [ "$SKIP_RUNNING" != yes ]
           then
-            if [ $API = ancient ]
+            if [ $DRUN = no ]
             then
-              run dvm $DVM_WRAPPER $out/$base.wasm $base.mo
-            elif [ $API = ic ]
+              run wasm-run $WASMTIME --disable-cache $out/$base.wasm
+            elif [ "$can_use_drun" -eq 0 ]
             then
-              run drun-run $DRUN_WRAPPER $out/$base.wasm $base.mo
-            elif [ $API = stub ]
-	    then
-              DRUN=$IC_STUB_RUN run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $base.mo
+              run drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
             else
-              run wasm-run $WASM $out/$base.wasm
+              DRUN=$IC_STUB_RUN \
+              run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $mangled
             fi
           fi
         fi
+	rm -f $mangled
       fi
     fi
   elif [ ${file: -3} == ".sh" ]
@@ -293,28 +312,15 @@ do
       sed -i 's/import "/import "..\//g' $out/$base.pp.did
       $DIDC --check $out/$base.pp.did > $out/$base.pp.tc 2>&1
       diff_files="$diff_files $base.pp.tc"
-      
-      $ECHO -n " [js]"
-      $DIDC --js $base.did -o $out/$base.js >& $out/$base.js.out
+
+      run didc-js $DIDC --js $base.did -o $out/$base.js
       normalize $out/$base.js
-      normalize $out/$base.js.out
-      diff_files="$diff_files $base.js.out $base.js"
+      diff_files="$diff_files $base.js"
 
       if [ -e $out/$base.js ]
       then
-        $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$ESM
-
-        node -r esm $out/$base.js > $out/$base.node 2>&1
-        normalize $out/$base.node
-        diff_files="$diff_files $base.node"
-
-        node -r esm -e \
-        "import actorInterface from './$out/$base.js';
-        import { makeActor, makeHttpAgent } from '$JS_USER_LIBRARY';
-        const httpAgent = makeHttpAgent({ canisterId: 1 });
-        const actor = makeActor(actorInterface)(httpAgent);
-        assert(Object.entries(actor).length > 0);"
+        run node node -r esm $out/$base.js
       fi
     fi
   fi
@@ -322,6 +328,8 @@ do
 
   if [ $ACCEPT = yes ]
   then
+    rm -f $ok/$base.*
+
     for outfile in $diff_files
     do
       if [ -s $out/$outfile ]

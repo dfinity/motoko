@@ -15,3 +15,7 @@ actor {
 //CALL query len3 0x4449444c016c030071007601750200710548656c6c6fdead0102030405576f726c64
 //  testing redundant third tuple member, gets ignored
 //CALL query len3 0x4449444c016c030071017502760200710548656c6c6f01020304dead05576f726c64
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low

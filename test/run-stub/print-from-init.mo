@@ -1,3 +1,0 @@
-actor {
-  debugPrint("Debug out");
-}

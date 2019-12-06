@@ -37,7 +37,6 @@ import Control.Monad.ST
 import Data.Binary.Get (runGetOrFail)
 import Data.Default.Class (Default (..))
 import Data.Int
-import qualified Data.Vector as V
 
 import qualified Wasm.Binary.Decode as W
 import qualified Wasm.Exec.Eval as W
@@ -115,13 +114,11 @@ getBytes :: Instance s -> W.Address -> W.Size -> HostM s BS.ByteString
 getBytes (mods', ref) ptr len = do
   let inst = mods' IM.! ref
   let mem = head (W._miMemories inst)
-  vec <- withExceptT show $ W.loadBytes mem ptr len
-  return $ BS.pack $ V.toList vec
+  withExceptT show $ W.loadBytes mem ptr len
 
 setBytes :: Instance s -> W.Address -> BS.ByteString -> HostM s ()
 setBytes (mods', ref) ptr blob = do
   let inst = mods' IM.! ref
   let mem = head (W._miMemories inst)
-  withExceptT show $
-    W.storeBytes mem (fromIntegral ptr) (V.fromList (BS.unpack blob))
+  withExceptT show $ W.storeBytes mem (fromIntegral ptr) blob
 
