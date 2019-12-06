@@ -341,7 +341,7 @@ let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
-let as_actor = function Actor b -> b | _ -> invalid "as_actor"
+let as_actor = function Actor id -> id | _ -> invalid "as_actor"
 
 
 (* Ordering *)

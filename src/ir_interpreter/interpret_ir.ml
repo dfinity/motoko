@@ -17,6 +17,8 @@ type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
 type reply_env = V.value V.cont option
 type reject_env = V.value V.cont option
+type self_env = V.actor_id option
+type caller_env = V.actor_id option
 
 type scope = val_env
 
@@ -34,7 +36,9 @@ type env =
     throws : throw_env;
     replies : reply_env;
     rejects : reject_env;
-    async : bool
+    async : bool;
+    callers : caller_env;
+    selves : self_env;
   }
 
 let adjoin_scope s ve = V.Env.adjoin s ve
@@ -51,6 +55,8 @@ let env_of_scope flags flavor ve =
     throws = None;
     replies = None;
     rejects = None;
+    callers = None;
+    selves = Some V.top_id;
     async = false;
   }
 
@@ -115,6 +121,16 @@ struct
     if not (Queue.is_empty q) then (yield (); run ())
 end
 
+(* Actor Heap *)
+
+module ActorHeap =
+struct
+  let heap  = ref V.Env.empty
+  let add id v = heap := V.Env.add id v (!heap)
+  let find id = V.Env.find id (!heap)
+end
+
+  
 (* Async auxiliary functions *)
 
 (* Are these just duplicates of the corresponding functions in interpret.ml? If so, refactor *)
@@ -338,7 +354,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             (fun k' r ->
               let vk' = Value.Func (call_conv_f, fun v _ -> k' v) in
               let vr = Value.Func (call_conv_r, fun v _ -> r v) in
-              f (V.Tup [vk';vr]) V.as_unit
+              let vc = V.Actor (Lib.Option.value env.selves) in
+              f (V.Tup [vc; vk'; vr]) V.as_unit
             )
             k
         | _ -> assert false
@@ -383,11 +400,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       interpret_exp env exp2 (fun v2 ->
       interpret_exp env expk (fun kv ->
       interpret_exp env expr (fun rv ->
-          let call_conv, f = V.as_func v1 in
-          check_call_conv exp1 call_conv;
-          check_call_conv_arg env exp v2 call_conv;
-          last_region := exp.at; (* in case the following throws *)
-          f (V.Tup[kv;rv;v2]) k))))
+        let call_conv, f = V.as_func v1 in
+        check_call_conv exp1 call_conv;
+        check_call_conv_arg env exp v2 call_conv;
+        last_region := exp.at; (* in case the following throws *)
+        let vc = V.Actor (Lib.Option.value env.selves) in
+        f (V.Tup[vc; kv; rv; v2]) k))))
+    | ICCallerPrim, [] ->
+      k (V.Text (Lib.Option.value env.callers))
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -400,10 +420,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i, v1)))
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | DotE (exp1, n)
-  | ActorDotE (exp1, n) ->
+  | DotE (exp1, n) ->
     interpret_exp env exp1 (fun v1 ->
       let fs = V.as_obj v1 in
+      k (try find n fs with _ -> assert false)
+    )
+  | ActorDotE (exp1, n) ->
+    interpret_exp env exp1 (fun v1 ->
+      let fs = V.as_obj (ActorHeap.find (V.as_actor v1)) in
       k (try find n fs with _ -> assert false)
     )
   | AssignE (exp1, exp2) ->
@@ -434,7 +458,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
-        f v2 k
+        let v3 = if T.is_shared_sort call_conv.Call_conv.sort
+          then V.Tup [V.Actor (Lib.Option.value env.selves); v2]
+          else v2
+        in
+        f v3 k
       )
     )
   | BlockE (decs, exp1) ->
@@ -508,7 +536,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp_r (fun rv ->
         let _call_conv, f = V.as_func v in
         last_region := exp.at; (* in case the following throws *)
-        f (V.Tup[kv;rv;V.Tup []]) k))
+        let vc = V.Actor (Lib.Option.value env.selves) in
+        f (V.Tup[vc; kv; rv; V.Tup []]) k))
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
@@ -518,7 +547,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k v
   | FuncE (x, sort, control, _typbinds, args, ret_typs, e) ->
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
-    let f = interpret_func env exp.at x args
+    let f = interpret_func env exp.at sort x args
       (fun env' -> interpret_exp env' e) in
     let v = match cc.sort with
       | T.Shared _ -> make_message env x cc f
@@ -526,14 +555,17 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     in
     k v
   | ActorE (id, ds, fs, _) ->
+    let self = V.fresh_id () in
     let ve0 = declare_id id in
-    let env0 = adjoin_vals env ve0 in
+    let env0 = adjoin_vals {env with selves = Some self} ve0 in
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env0 ve in
     interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
-      define_id env0 id obj;
-      k obj)
+      ActorHeap.add self obj;
+      let actor = V.Actor self in
+      define_id env0 id actor;
+      k actor)
   | NewObjE (sort, fs, _) ->
     k (interpret_fields env fs)
 
@@ -583,7 +615,8 @@ and match_args at args v : val_env =
   | [a] -> match_arg a v
   | _ ->
     let vs = V.as_tup v in
-    assert (List.length vs = List.length args);
+    if (List.length vs <> List.length args) then
+      failwith (Printf.sprintf "%s %s" (Source.string_of_region at) (V.string_of_val 0 v));
     List.fold_left V.Env.adjoin V.Env.empty (List.map2 match_arg args vs)
 
 (* Patterns *)
@@ -760,8 +793,16 @@ and interpret_decs env decs (k : unit V.cont) =
   | [] -> k ()
   | d::ds -> interpret_dec env d (fun () -> interpret_decs env ds k)
 
-and interpret_func env at x args f v (k : V.value V.cont) =
+and interpret_func env at sort x args f v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" x (string_of_arg env v);
+  let callers, v =
+    if T.is_shared_sort sort
+    then match V.as_tup v with
+         | [v_caller; v] ->
+           Some (V.as_actor v_caller), v
+         | _ -> assert false
+    else env.callers, v
+  in
   let ve = match_args at args v in
   incr trace_depth;
   let k' = fun v' ->
@@ -774,13 +815,14 @@ and interpret_func env at x args f v (k : V.value V.cont) =
       vals = V.Env.adjoin env.vals ve;
       labs = V.Env.empty;
       rets = Some k';
-      async = false
+      async = false;
+      callers = callers;
     }
   in f env' k'
 
 and interpret_message env at x args f v (k : V.value V.cont) =
-  let v_reply, v_reject, v = match V.as_tup v with
-    | [v_reply ; v_reject; v] -> v_reply, v_reject, v
+  let v_caller, v_reply, v_reject, v = match V.as_tup v with
+    | [v_caller; v_reply; v_reject; v] -> v_caller, v_reply, v_reject, v
     | _ -> assert false
   in
   if env.flags.trace then trace "%s%s" x (string_of_arg env v);
@@ -800,6 +842,7 @@ and interpret_message env at x args f v (k : V.value V.cont) =
       rets = Some k';
       replies = Some (fun v -> reply v V.as_unit);
       rejects = Some (fun v -> reject v V.as_unit);
+      callers = Some (V.as_actor v_caller);
       async = false
     }
   in f env' k'

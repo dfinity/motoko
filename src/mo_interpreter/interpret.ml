@@ -62,10 +62,6 @@ let env_of_scope flags scope =
     async = false;
   }
 
-(* Helpers *)
-
-let local_sort_pat = { it = T.Local; at = Source.no_region; note = () };
-
 (* Error handling *)
 
 exception Trap of Source.region * string
@@ -345,6 +341,9 @@ let text_len t at =
     k (V.Int (V.Nat.of_int (List.length (Wasm.Utf8.decode t))))
   )
 
+(* Helpers *)
+
+let local_sort_pat = { it = T.Local; at = Source.no_region; note = () }
 
 (* Expressions *)
 

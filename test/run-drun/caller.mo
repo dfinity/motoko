@@ -1,4 +1,4 @@
-actor {
+actor a {
 
   public shared ctxt func c1 ()  : async () {
     let c : Blob = ctxt.caller;
@@ -29,12 +29,12 @@ actor {
     return;
   };
 
-}
+};
 
-//CALL ingress c1 0x4449444C0000
-//CALL ingress c2 0x4449444C0000
-//CALL ingress c3 0x4449444C0000
-//CALL ingress c4 0x4449444C0000
+ignore a.c1(); //OR-CALL ingress c1 0x4449444C0000
+ignore a.c2(); //OR-CALL ingress c2 0x4449444C0000
+ignore a.c3(); //OR-CALL ingress c3 0x4449444C0000
+ignore a.c4(); //OR-CALL ingress c4 0x4449444C0000
 
 
 
