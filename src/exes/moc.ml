@@ -11,7 +11,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | Compile | Run | Interact | Idl
+type mode = Default | Check | Compile | Run | Interact | Idl | PrintDeps
 
 let mode = ref Default
 let args = ref []
@@ -35,6 +35,7 @@ let argspec = Arg.align
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
+  "--print-deps", Arg.Unit (set_mode PrintDeps), " prints the dependencies for a given source file";
   "-o", Arg.Set_string out_file, " output file";
 
   "-v", Arg.Set Flags.verbose, " verbose output";
@@ -108,6 +109,24 @@ let exit_on_none = function
   | None -> exit 1
   | Some x -> x
 
+let print_deps (file : string) : unit =
+  let (prog, _) =  Diag.run (Pipeline.parse_file file) in
+  let imports =
+    List.fold_left
+      (fun acc decl ->
+        match decl.Source.it with
+        | Mo_def.Syntax.LetD(_, exp) -> begin
+            match exp.Source.it with
+            | Mo_def.Syntax.ImportE(path, _) ->
+               path :: acc
+            | _ -> acc
+          end
+        | _ -> acc
+      )
+      []
+      prog.Source.it in
+  List.iter print_endline (List.rev imports)
+
 let process_files files : unit =
   match !mode with
   | Default ->
@@ -140,6 +159,12 @@ let process_files files : unit =
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
     end
+  | PrintDeps ->
+     match files with
+     | [file] -> print_deps file
+     | _ ->
+        (eprintf "--print-deps expects exactly one source file as an argument";
+         exit 1)
 
 (* Copy relevant flags into the profiler library's (global) settings.
    This indirection affords the profiler library an independence from the (hacky) Flags library.

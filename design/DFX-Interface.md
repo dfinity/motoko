@@ -94,3 +94,24 @@ This _reads_ `some/path/input.mo` and any `.mo` file referenced by
 `some/path/input.mo`, either relatively, absolutely or via the provided package aliases.
 
 No constraints are imposed where these imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
+
+Printing module dependencies
+----------------
+
+In order to figure out the direct (not transitive!) dependencies for a Motoko source file `dfx` invokes
+
+    moc --print-deps some/path/file.mo
+
+This reads and parses that file and if the parse succeds, it prints the imported paths one line at a time.
+
+For example for a file `deps.mo`:
+
+    import List "mo:std/list.mo"
+    import Thing "path/to/thing.mo"
+    module {}
+
+Calling the print deps command looks like so:
+
+    $ moc --print-deps deps.mo
+    > mo:std/list.mo
+    > path/to/thing.mo
