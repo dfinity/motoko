@@ -84,13 +84,10 @@ export int text_compare(text_t s1, text_t s2) {
 // returns the character, and updates n
 // based on https://gist.github.com/tylerneylon/9773800
 uint32_t decode_code_point(char *s, size_t *n) {
-  if (s[*n] == 0) {
-    rts_trap_with("decode_code_point: null byte encountered");
-  }
-  int k = __builtin_clz(~(s[*n] << 24));     // Count # of leading 1 bits.
-  int mask = (1 << (8 - k)) - 1;             // All 1's with k leading 0's.
+  int k = s[*n] ? __builtin_clz(~(s[*n] << 24)) : 0; // Count # of leading 1 bits.
+  int mask = (1 << (8 - k)) - 1;                     // All 1's with k leading 0's.
   uint32_t value = s[*n] & mask;
-  for (++*n, --k; k > 0; --k, ++*n) {          // Note that k = #total bytes, or 0.
+  for (++*n, --k; k > 0; --k, ++*n) {                // Note that k = 0 or #total bytes
     value <<= 6;
     value += (s[*n] & 0x3F);
   }
@@ -103,7 +100,7 @@ export uint32_t text_len(text_t s) {
   size_t n = 0;
   uint32_t c = 0;
   while (n < BLOB_LEN(s)) {
-    int k = __builtin_clz(~(p[n] << 24));     // Count # of leading 1 bits.
+    int k = p[n] ? __builtin_clz(~(p[n] << 24)) : 0;     // Count # of leading 1 bits.
     n += k ? k : 1;
     c += 1;
   }
