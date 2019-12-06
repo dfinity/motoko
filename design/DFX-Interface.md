@@ -48,14 +48,20 @@ Compiling Motoko Files to Wasm
 
 In order to compile a motoko file, `dfx` invokes `moc` with
 
-    moc some/path/input.mo -o another/path/output.wasm { --package pkgname pkgpath }
+    moc some/path/input.mo            \
+        -o another/path/output.wasm   \
+	{ --package pkgname pkgpath } \
+	[ --actors actorpath ]
 
 in an environment where `MOC_RTS` points to the location of the Motoko runtime system.
 
-This _reads_ `some/path/input.mo` and any `.mo` file referenced by
-`some/path/input.mo`, either relatively, absolutely or via the provided package aliases. It also reads the given `mo-rts.wasm` file.
+This _reads_ the follwing files
+ * `some/path/input.mo`
+ * any `.mo` file referenced by `some/path/input.mo`, either relatively, absolutely or via the provided package aliases
+ * for every actor import `ic:canisteridoralias` imported by any of the Motoko files, it reads `actorpath/canisteridoralias.mo`, see section Resolving Canister Ids below.
+ * the given `mo-rts.wasm` file.
 
-No constraints are imposed where these imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
+No constraints are imposed where imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
 
 This _writes_ to `another/path/output.wasm`, but has no other effect. It does
 not create `another/path/`.
@@ -64,6 +70,19 @@ Compiling Motoko Files to IDL
 -----------------------------
 
 As the previous point, but passing `--idl` to `moc`.
+
+Resolving Canister IDs
+----------------------
+
+For every actor imported using `import "ic:canisteridoralias"`, the motoko compiler assumes the presence of a file `canisteridoralias.mo` in the actor path specified by `--actors`. This should inform motoko about the concrete id of the canister (if an alias was used), and the type of that canister (likely derived from some locally known or remotely fetched IDL description).
+
+Thus the file is expected to be a single type-annotated actor expression, where the id is the [textual representation] of the concrete canister id, e.g.:
+```
+actor "ic:ABCDE01A7" : actor { … }
+```
+
+[textual representation]: https://docs.dfinity.systems/spec/public/#textual-ids
+
 
 Compiling IDL Files to JS
 -------------------------
@@ -85,7 +104,9 @@ Invoking the IDE
 
 In order to start the language server, `dfx` invokes
 
-    mo-ide --canister-main some/path/main.mo { --package pkgname pkgpath }
+    mo-ide --canister-main some/path/main.mo \
+	{ --package pkgname pkgpath }        \
+	[ --actors actorpath ]
 
 with `stdin` and `stdout` connected to the LSP client.
 
