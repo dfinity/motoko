@@ -8,7 +8,7 @@ the concatentation of two strings.
 The current implementation does not do any this; the first goal is to wire up
 this C code with the RTS that encapsulates the internals of strings.
 
-This encapsulation will never be complete because
+This encapsulation is not complete (and likely never will)
  * the compiler needs to emit static text literals,
  * the garbage collector needs to know some of the internals.
 
@@ -54,6 +54,15 @@ export blob_t blob_of_text(text_t s) {
   return s;
 }
 
+// similarly, but writing into a buffer (must have the right size)
+export void text_to_buf(text_t s, char *buf) {
+  as_memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
+}
+
+export uint32_t text_size(text_t s) {
+  return BLOB_LEN(s);
+}
+
 // Compare
 export int text_compare(text_t s1, text_t s2) {
   uint32_t n1 = BLOB_LEN(s1);
@@ -81,7 +90,7 @@ uint32_t decode_code_point(char *s, size_t *n) {
   int k = __builtin_clz(~(s[*n] << 24));     // Count # of leading 1 bits.
   int mask = (1 << (8 - k)) - 1;             // All 1's with k leading 0's.
   uint32_t value = s[*n] & mask;
-  for (++n, --k; k > 0; --k, ++n) {          // Note that k = #total bytes, or 0.
+  for (++*n, --k; k > 0; --k, ++*n) {          // Note that k = #total bytes, or 0.
     value <<= 6;
     value += (s[*n] & 0x3F);
   }
@@ -151,7 +160,7 @@ export text_iter_t text_iter(text_t s) {
 }
 
 export uint32_t text_iter_done(text_iter_t i) {
-  return TEXT_ITER_POS(i) >= BLOB_LEN(TEXT_ITER_TEXT(i));
+  return (TEXT_ITER_POS(i) >> 2) >= BLOB_LEN(TEXT_ITER_TEXT(i));
 }
 
 export uint32_t text_iter_next(text_iter_t i) {
