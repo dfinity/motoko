@@ -1,4 +1,4 @@
-let s = "hello world!";
+let s = "hello " # "world!";
 assert(s.len() == 12);
 
 debugPrint "via `debugPrint`:";
@@ -24,7 +24,7 @@ for (a in s.chars()) {
 };
 debugPrint "";
 
-let russian = "Приветствую, мир!\n";
+let russian = "Приветствую," # " мир!\n";
 assert(russian.len() == 18);
 
 debugPrint "via iteration and `debugPrintChar` (Unicode): #3";

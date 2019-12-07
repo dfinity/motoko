@@ -23,9 +23,35 @@ From then on, there are stretch goals like:
 #include "rts.h"
 
 typedef as_ptr blob_t; // a skewed pointer to a Blob heap object
-typedef as_ptr text_t; // a skewed pointer to a Blob (or, later, Concat) heap object
+typedef as_ptr text_t; // a skewed pointer to a Blob or Concat heap object
+
+/*
+Layout of a concat node:
+
+     ┌─────┬─────────┬───────┬───────┐
+     │ tag │ n_bytes │ text1 │ text2 │
+     └─────┴─────────┴───────┴───────┘
+
+Note that CONCAT_LEN and BLOB_LEN are the identical, so no need to check the
+tag to know the size of the text.
+*/
+
+#define CONCAT_WORDS 4
+#define CONCAT_LEN(p) (FIELD(p,1))
+#define CONCAT_ARG1(p) (FIELD(p,2))
+#define CONCAT_ARG2(p) (FIELD(p,3))
+
+
+#define MAX_STR_SIZE ((1<<30)-1)
+// strings smaller than this _must_ be blobs
+// You can set this to MAX_STR_SIZE to disable the use of ropes completely,
+// e.g. for debugging
+#define MIN_CONCAT_SIZE (9)
 
 blob_t alloc_blob(size_t n) {
+  if (n > MAX_STR_SIZE) {
+    rts_trap_with("alloc_blob: Text too large");
+  }
   as_ptr r = alloc_bytes (2*sizeof(void*) + n);
   TAG(r) = TAG_BLOB;
   BLOB_LEN(r) = n;
@@ -41,22 +67,52 @@ export text_t text_of_ptr_size(const char *buf, size_t n) {
 
 // Concat
 export text_t text_concat(text_t s1, text_t s2) {
+  // empty strings are ignored
+  if (BLOB_LEN(s1) == 0) return s2;
+  if (BLOB_LEN(s2) == 0) return s1;
   uint32_t n1 = BLOB_LEN(s1);
   uint32_t n2 = BLOB_LEN(s2);
-  as_ptr r = alloc_blob(n1 + n2);
-  as_memcpy(BLOB_PAYLOAD(r), BLOB_PAYLOAD(s1), n1);
-  as_memcpy(BLOB_PAYLOAD(r) + n1, BLOB_PAYLOAD(s2), n2);
+  uint32_t n = n1 + n2;
+  // short text are copied into a single blob
+  if (n < MIN_CONCAT_SIZE) {
+    as_ptr r = alloc_blob(n1 + n2);
+    as_memcpy(BLOB_PAYLOAD(r), BLOB_PAYLOAD(s1), n1);
+    as_memcpy(BLOB_PAYLOAD(r) + n1, BLOB_PAYLOAD(s2), n2);
+    return r;
+  }
+  // Check max size
+  if (n > MAX_STR_SIZE) {
+    rts_trap_with("text_concat: Text too large");
+  }
+  // Create concat node
+  as_ptr r = alloc_words(CONCAT_WORDS);
+  TAG(r) = TAG_CONCAT;
+  CONCAT_LEN(r) = n;
+  CONCAT_ARG1(r) = s1;
+  CONCAT_ARG2(r) = s2;
   return r;
 }
 
-// put into contiguous memory, if needed (e.g. for system calls)
-export blob_t blob_of_text(text_t s) {
-  return s;
+// write all data into a buffer (must have the right size)
+export void text_to_buf(text_t s, char *buf) {
+  if (TAG(s) == TAG_BLOB) {
+    as_memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
+  } else {
+    text_to_buf(CONCAT_ARG1(s), buf);
+    text_to_buf(CONCAT_ARG2(s), buf + BLOB_LEN(CONCAT_ARG1(s)));
+  }
 }
 
-// similarly, but writing into a buffer (must have the right size)
-export void text_to_buf(text_t s, char *buf) {
-  as_memcpy(buf, BLOB_PAYLOAD(s), BLOB_LEN(s));
+
+// put into a contiguous blob (re-using the argument if possible)
+export blob_t blob_of_text(text_t s) {
+  if (TAG(s) == TAG_BLOB) {
+    return s;
+  } else {
+    as_ptr r = alloc_blob(CONCAT_LEN(s));
+    text_to_buf(s, BLOB_PAYLOAD(r));
+    return r;
+  }
 }
 
 export uint32_t text_size(text_t s) {
@@ -64,7 +120,7 @@ export uint32_t text_size(text_t s) {
 }
 
 // Compare
-export int text_compare(text_t s1, text_t s2) {
+export int blob_compare(text_t s1, text_t s2) {
   uint32_t n1 = BLOB_LEN(s1);
   uint32_t n2 = BLOB_LEN(s2);
   uint32_t n = n1 < n2 ? n1 : n2;
@@ -78,12 +134,58 @@ export int text_compare(text_t s1, text_t s2) {
   }
 }
 
+// compares the texts from the given offset on for the given number of bytes
+// all assumed to be in range
+int text_compare_range(text_t s1, size_t offset1, text_t s2, size_t offset2, size_t n) {
+  // strip off left legs if range is in the right leg
+  if (TAG(s1) == TAG_CONCAT && BLOB_LEN(CONCAT_ARG1(s1)) <= offset1) {
+    return text_compare_range(CONCAT_ARG2(s1), offset1 - BLOB_LEN(CONCAT_ARG1(s1)), s2, offset2, n);
+  }
+  if (TAG(s2) == TAG_CONCAT && BLOB_LEN(CONCAT_ARG1(s2)) <= offset2) {
+    return text_compare_range(s1, offset1, CONCAT_ARG2(s2), offset2 - BLOB_LEN(CONCAT_ARG1(s2)), n);
+  }
+  // strip off rights legs if range is in the left leg
+  if (TAG(s1) == TAG_CONCAT && BLOB_LEN(CONCAT_ARG1(s1)) >= offset1 + n ) {
+    return text_compare_range(CONCAT_ARG1(s1), offset1, s2, offset2, n);
+  }
+  if (TAG(s2) == TAG_CONCAT && BLOB_LEN(CONCAT_ARG1(s2)) >= offset2 + n) {
+    return text_compare_range(s1, offset1, CONCAT_ARG1(s2), offset2, n);
+  }
+  // Decompose concats
+  if (TAG(s1) == TAG_CONCAT) {
+    uint32_t n1 = BLOB_LEN(CONCAT_ARG1(s1)) - offset1;
+    int r1 = text_compare_range(CONCAT_ARG1(s1), offset1, s2, offset2, n1);
+    if (r1 != 0) return r1;
+    else return text_compare_range(CONCAT_ARG2(s1), 0, s2, offset2 + n1, n - n1);
+  }
+  if (TAG(s2) == TAG_CONCAT) {
+    uint32_t n1 = BLOB_LEN(CONCAT_ARG1(s2)) - offset2;
+    int r1 = text_compare_range(s1, offset1, CONCAT_ARG1(s2), offset2, n1);
+    if (r1 != 0) return r1;
+    else return text_compare_range(s1, offset1 + n1, CONCAT_ARG2(s2), 0, n - n1);
+  }
+  // now both are blobs
+  return as_memcmp(BLOB_PAYLOAD(s1) + offset1, BLOB_PAYLOAD(s2) + offset2, n);
+}
+
+export int text_compare(text_t s1, text_t s2) {
+  uint32_t n1 = BLOB_LEN(s1);
+  uint32_t n2 = BLOB_LEN(s2);
+  uint32_t n = n1 < n2 ? n1 : n2;
+  int r = text_compare_range(s1, 0, s2, 0, n);
+  if (r != 0) return r;
+  if (n1 > n) return 1;
+  if (n2 > n) return -1;
+  return 0;
+}
+
 // Stuff that deals with characters
 
-// decodes the characater at position in in the array
-// returns the character, and updates n
+// decodes the character at pointer
+// returns the character, the size via the out parameter
 // based on https://gist.github.com/tylerneylon/9773800
 uint32_t decode_code_point(char *s, size_t *n) {
+  *n = 0;
   int k = s[*n] ? __builtin_clz(~(s[*n] << 24)) : 0; // Count # of leading 1 bits.
   int mask = (1 << (8 - k)) - 1;                     // All 1's with k leading 0's.
   uint32_t value = s[*n] & mask;
@@ -96,15 +198,19 @@ uint32_t decode_code_point(char *s, size_t *n) {
 
 // Length in characters
 export uint32_t text_len(text_t s) {
-  char *p = BLOB_PAYLOAD(s);
-  size_t n = 0;
-  uint32_t c = 0;
-  while (n < BLOB_LEN(s)) {
-    int k = p[n] ? __builtin_clz(~(p[n] << 24)) : 0;     // Count # of leading 1 bits.
-    n += k ? k : 1;
-    c += 1;
+  if (TAG(s) == TAG_BLOB) {
+    char *p = BLOB_PAYLOAD(s);
+    size_t n = 0;
+    uint32_t c = 0;
+    while (n < BLOB_LEN(s)) {
+      int k = p[n] ? __builtin_clz(~(p[n] << 24)) : 0;     // Count # of leading 1 bits.
+      n += k ? k : 1;
+      c += 1;
+    }
+    return c;
+  } else {
+    return text_len(CONCAT_ARG1(s)) + text_len(CONCAT_ARG2(s));
   }
-  return c;
 }
 
 // Text from Char
@@ -133,14 +239,16 @@ export text_t text_singleton(uint32_t code) {
 
 // Iterators
 
-// Currently a vanilla tuple:
-// First component the array to the text
-// Second the index into the array (shifted by two for GC's sake)
+// The iterator needs to point to a specific position in the tree
 //
-// TODO: do we have to worry about texts longer than 2^30 bytes
-// (and thus shifting is // bad)
+// This is currently a simple tuple:
+// - First component the array to the whole text
+// - Second the index into the array (shifted by two for GC's sake)
 //
-// Eventually, this will be a pointer into a tree or something.
+// This requires indexing into the tree upon each call to step, which
+// is not great, especially if the trees are not balanced.
+// Ideally, the iterator would contain the whole path from the root to the
+// node… but one step at a time.
 
 typedef as_ptr text_iter_t; // the data structure used to iterate a text value
 #define TEXT_ITER_TEXT(p) (ARRAY_FIELD(p,0))
@@ -148,7 +256,6 @@ typedef as_ptr text_iter_t; // the data structure used to iterate a text value
 
 
 export text_iter_t text_iter(text_t s) {
-  // Maybe use a dedicated heap type instead of a vanilla tuple?
   as_ptr i = alloc_words(ARRAY_HEADER_SIZE + 2);
   TAG(i) = TAG_ARRAY;
   TEXT_ITER_TEXT(i) = s;
@@ -160,12 +267,21 @@ export uint32_t text_iter_done(text_iter_t i) {
   return (TEXT_ITER_POS(i) >> 2) >= BLOB_LEN(TEXT_ITER_TEXT(i));
 }
 
+// pointer into the leave at the given byte position
+char *text_pos(text_t s, size_t offset) {
+  if (TAG(s) == TAG_BLOB) return (BLOB_PAYLOAD(s) + offset);
+  uint32_t n1 = BLOB_LEN(CONCAT_ARG1(s));
+  if (offset < n1) return text_pos(CONCAT_ARG1(s), offset);
+  else             return text_pos(CONCAT_ARG2(s), offset - n1);
+}
+
 export uint32_t text_iter_next(text_iter_t i) {
   if (text_iter_done(i)) {
     rts_trap_with("text_iter_next: Iter already done");
   }
   size_t n = TEXT_ITER_POS(i) >> 2;
-  uint32_t c = decode_code_point(BLOB_PAYLOAD(TEXT_ITER_TEXT(i)), &n);
-  TEXT_ITER_POS(i) = n << 2;
+  size_t step = 0;
+  uint32_t c = decode_code_point(text_pos(TEXT_ITER_TEXT(i), n), &step);
+  TEXT_ITER_POS(i) = (n+step) << 2;
   return c;
 }
