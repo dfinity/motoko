@@ -2,7 +2,7 @@
 The implementation of the Text type in Motoko.
 
 One main goal of this datastructure (inspired by ropes and similar) is to
-support linear time concatenation, but having a dedicated heap object for
+support constant time concatenation, but having a dedicated heap object for
 the concatentation of two strings.
 
 The current implementation does not do any this; the first goal is to wire up
