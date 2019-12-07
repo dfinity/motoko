@@ -150,6 +150,7 @@ let num_relop fnat (fnat8, fnat16, fnat32, fnat64) fint (fint8, fint16, fint32, 
 let ord_relop fnat fnats fint fints fwords ffloat fchar ftext = function
   | T.Char -> fun v1 v2 -> Bool (fchar (as_char v1) (as_char v2))
   | T.Text -> fun v1 v2 -> Bool (ftext (as_text v1) (as_text v2))
+  | T.Blob -> fun v1 v2 -> Bool (ftext (as_text v1) (as_text v2))
   | t -> num_relop fnat fnats fint fints fwords ffloat t
 
 let eq_relop fnat fnats fint fints fwords ffloat fchar ftext fnull fbool = function
@@ -159,7 +160,7 @@ let eq_relop fnat fnats fint fints fwords ffloat fchar ftext fnull fbool = funct
 
 let relop op t =
   match t with
-  | T.Prim p -> 
+  | T.Prim p ->
     (match op with
     | EqOp -> eq_relop Nat.eq (Nat8.eq, Nat16.eq, Nat32.eq, Nat64.eq) Int.eq (Int_8.eq, Int_16.eq, Int_32.eq, Int_64.eq) (Word8.eq, Word16.eq, Word32.eq, Word64.eq) Float.eq (=) (=) (=) (=) p
     | NeqOp -> eq_relop Nat.ne (Nat8.ne, Nat16.ne, Nat32.ne, Nat64.ne) Int.ne (Int_8.ne, Int_16.ne, Int_32.ne, Int_64.ne) (Word8.ne, Word16.ne, Word32.ne, Word64.ne) Float.ne (<>) (<>) (<>) (<>) p

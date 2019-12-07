@@ -725,8 +725,7 @@ and infer_exp'' env exp : T.typ =
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let t1, ve1 = infer_pat_exhaustive env' pat in
-    let ve2 = disjoint_union env pat.at
-                "duplicate binding for %s in shared and parameter pattern" ve ve1 in
+    let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
     let codom = T.codom c ts2 in
     if not env.pre then begin
@@ -1047,8 +1046,7 @@ and check_exp' env0 t exp : T.typ =
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
       error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let ve1 = check_pat_exhaustive env (T.seq ts1) pat in
-    let ve2 = disjoint_union env pat.at
-                "duplicate binding for %s in shared and parameter pattern" ve ve1 in
+    let ve2 = T.Env.adjoin ve ve1 in
     let codom = T.codom c ts2 in
     let t2 =
       match typ_opt with
