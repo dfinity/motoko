@@ -121,10 +121,12 @@ val message_func : Type.shared_sort -> int -> func -> value
 val async_func : Type.shared_sort -> int -> int -> func -> value
 val replies_func : Type.shared_sort -> int -> int -> func -> value
 
-(* Pseudo Ids *)
+
+(* Pseudo actor ids *)
 
 val fresh_id : unit -> actor_id
 val top_id : actor_id
+
 
 (* Projections *)
 
