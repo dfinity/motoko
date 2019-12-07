@@ -73,6 +73,7 @@ function normalize () {
     sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
     sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
+    sed 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
     sed 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' |
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
@@ -91,6 +92,12 @@ function run () {
   shift
 
   if grep -q "^//SKIP $ext" $file; then return 1; fi
+
+  if test -e $out/$base.$ext
+  then
+    echo "Output $ext already exists."
+    exit 1
+  fi
 
   $ECHO -n " [$ext]"
   "$@" >& $out/$base.$ext
@@ -306,27 +313,14 @@ do
       $DIDC --check $out/$base.pp.did > $out/$base.pp.tc 2>&1
       diff_files="$diff_files $base.pp.tc"
 
-      $ECHO -n " [js]"
-      $DIDC --js $base.did -o $out/$base.js >& $out/$base.js.out
+      run didc-js $DIDC --js $base.did -o $out/$base.js
       normalize $out/$base.js
-      normalize $out/$base.js.out
-      diff_files="$diff_files $base.js.out $base.js"
+      diff_files="$diff_files $base.js"
 
       if [ -e $out/$base.js ]
       then
-        $ECHO -n " [node]"
         export NODE_PATH=$NODE_PATH:$ESM
-
-        node -r esm $out/$base.js > $out/$base.node 2>&1
-        normalize $out/$base.node
-        diff_files="$diff_files $base.node"
-
-        node -r esm -e \
-        "import actorInterface from './$out/$base.js';
-        import { makeActor, makeHttpAgent } from '$JS_USER_LIBRARY';
-        const httpAgent = makeHttpAgent({ canisterId: \"ffffffffffffffff\" });
-        const actor = makeActor(actorInterface)(httpAgent);
-        assert(Object.entries(actor).length > 0);"
+        run node node -r esm $out/$base.js
       fi
     fi
   fi

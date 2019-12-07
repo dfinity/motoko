@@ -1,4 +1,18 @@
 module {
+  public func equals<A>(a : [A], b : [A], eq : (A,A) -> Bool) : Bool {
+    if (a.len() != b.len()) { 
+      return false; 
+    };
+    var i = 0;
+    while (i < a.len()) {
+      if (not eq(a[i],b[i])) { 
+        return false; 
+      };
+      i += 1;
+    };
+    return true; 
+  };
+
   public func append<A>(xs : [A], ys : [A]) : [A] {
     switch(xs.len(), ys.len()) {
       case (0, 0) { []; };
@@ -117,5 +131,14 @@ module {
       ys[i] := xs[i];
     };
     ys;
+  };
+
+  public func tabulateVar<A>(len : Nat,  gen : Nat -> A) : [var A] {
+    if (len == 0) { return [var] };
+    let xs = Array_init<A>(len, gen 0);
+    for (i in range(1,len)) {
+      xs[i] := gen i;
+    };
+    return xs;
   };
 }

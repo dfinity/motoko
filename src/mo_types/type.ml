@@ -133,6 +133,7 @@ let prim = function
   | "Float" -> Float
   | "Char" -> Char
   | "Text" -> Text
+  | "Blob" -> Blob
   | "Error" -> Error
   | "Blob" -> Blob
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))

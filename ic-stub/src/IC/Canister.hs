@@ -33,7 +33,7 @@ data CanisterModule = CanisterModule
   { init_method :: InitFunc
   , update_methods :: MethodName ↦ (ExistingCanisters -> EntityId -> Blob -> UpdateFunc)
   , query_methods :: MethodName ↦ (EntityId -> Blob -> QueryFunc)
-  , callbacks :: Callback -> ExistingCanisters -> EntityId -> Response -> UpdateFunc
+  , callbacks :: Callback -> ExistingCanisters -> Response -> UpdateFunc
   }
 
 parseCanister :: Blob -> Either String CanisterModule
@@ -56,6 +56,6 @@ concreteToAbstractModule wasm_mod = CanisterModule
     | n <- exportedFunctions wasm_mod
     , Just m <- return $ stripPrefix "canister_query " n
     ]
-  , callbacks = \cb ex cid res wasm_state ->
-    invoke wasm_state (CI.Callback cb ex cid res)
+  , callbacks = \cb ex res wasm_state ->
+    invoke wasm_state (CI.Callback cb ex res)
   }
