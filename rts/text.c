@@ -183,7 +183,6 @@ export int text_compare(text_t s1, text_t s2) {
 
 // decodes the character at pointer
 // returns the character, the size via the out parameter
-// based on https://gist.github.com/tylerneylon/9773800
 uint32_t decode_code_point(char *s, size_t *n) {
   *n = 0;
   int k = s[*n] ? __builtin_clz(~(s[*n] << 24)) : 0; // Count # of leading 1 bits.
