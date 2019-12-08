@@ -80,7 +80,7 @@ export int text_compare(text_t s1, text_t s2) {
 
 // Stuff that deals with characters
 
-// decodes the characater at position in in the array
+// decodes the character at position n in the array
 // returns the character, and updates n
 // based on https://gist.github.com/tylerneylon/9773800
 uint32_t decode_code_point(char *s, size_t *n) {
