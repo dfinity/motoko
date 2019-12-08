@@ -2914,9 +2914,9 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "msg" "reply" [I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject" [I32Type; I32Type] [];
-      E.add_func_import env "msg" "reject_code" [] [I32Type];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
       ()
     | Flags.StubMode  ->
@@ -3099,21 +3099,13 @@ module Dfinity = struct
     | Flags.ICMode | Flags.StubMode ->
       arg_instrs ^^
       Blob.as_ptr_len env ^^
-      begin match E.mode env with
-      | Flags.ICMode -> system_call env "msg" "reject"
-      | Flags.StubMode -> system_call env "ic0" "msg_reject"
-      | _ -> assert false
-      end
-    | _ -> assert false
+      system_call env "ic0" "msg_reject"
+    | _ ->
+      assert false
 
   let error_code env =
       SR.UnboxedWord32,
-      match E.mode env with
-      | Flags.ICMode ->
-        system_call env "msg" "reject_code"
-      | Flags.StubMode ->
-        system_call env "ic" "msg_reject_code"
-      | _ -> assert false
+      system_call env "ic0" "msg_reject_code"
 
   let reply_with_data env =
     Func.share_code2 env "reply_with_data" (("start", I32Type), ("size", I32Type)) [] (
@@ -3520,7 +3512,15 @@ module Serialization = struct
         List.iter add_idx ts1;
         add_leb128 (List.length ts2);
         List.iter add_idx ts2;
-        add_leb128 0 (* no annotations *)
+        begin match s, c with
+          | _, Returns ->
+            add_leb128 1; add_u8 2; (* oneway *)
+          | Shared Write, _ ->
+            add_leb128 0; (* no annotation *)
+          | Shared Query, _ ->
+            add_leb128 1; add_u8 1; (* query *)
+          | _ -> assert false
+        end
       | Obj (Actor, fs) ->
         add_sleb128 (-23);
         add_leb128 (List.length fs);
@@ -4445,7 +4445,7 @@ module StackRep = struct
     | Prim (Nat64 | Int64 | Word64) -> UnboxedWord64
     | Prim (Nat32 | Int32 | Word32) -> UnboxedWord32
     | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
-    | Prim Text -> Vanilla
+    | Prim (Text|Blob) -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
@@ -5862,7 +5862,7 @@ let compile_binop env t op =
   )
 
 let compile_eq env = function
-  | Type.(Prim Text) -> Blob.compare env Operator.EqOp
+  | Type.(Prim (Text|Blob)) -> Blob.compare env Operator.EqOp
   | Type.(Prim Bool) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
   | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
@@ -5894,7 +5894,7 @@ let compile_relop env t op =
   StackRep.of_type t,
   let open Operator in
   match t, op with
-  | Type.Prim Type.Text, _ -> Blob.compare env op
+  | Type.(Prim (Text|Blob)), _ -> Blob.compare env op
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz))

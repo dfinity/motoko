@@ -8,8 +8,8 @@ nix: subpath:
      }:
        mkDerivation {
          pname = "haskell-lsp-types";
-         version = "0.16.0.0";
-         sha256 = "14wlv54ydbddpw6cwgykcas3rb55w7m78q0s1wdbi594wg1bscqg";
+         version = "0.18.0.0";
+         sha256 = "1ypa3gxxcg7dl905d4nprcqzw2fcl7z7xy1hpg5har1dw3w9fyiq";
          libraryHaskellDepends = [
            aeson base bytestring data-default deepseq filepath hashable lens
            network-uri scientific text unordered-containers
@@ -17,22 +17,6 @@ nix: subpath:
          description = "Haskell library for the Microsoft Language Server Protocol, data types";
          license = stdenv.lib.licenses.mit;
          hydraPlatforms = stdenv.lib.platforms.none;
-       }) {};
-
-  rope-utf16-splay = self.callPackage
-    ({ mkDerivation, base, QuickCheck, tasty, tasty-hunit
-     , tasty-quickcheck, text
-     }:
-       mkDerivation {
-         pname = "rope-utf16-splay";
-         version = "0.3.1.0";
-         sha256 = "1ilcgwmdwqnp95vb7652fc03ji9dnzy6cm24pvbiwi2mhc4piy6b";
-         libraryHaskellDepends = [ base text ];
-         testHaskellDepends = [
-           base QuickCheck tasty tasty-hunit tasty-quickcheck text
-         ];
-         description = "Ropes optimised for updating using UTF-16 code units and row/column pairs";
-         license = stdenv.lib.licenses.bsd3;
        }) {};
 
   haskell-lsp = self.callPackage
@@ -44,8 +28,8 @@ nix: subpath:
      }:
        mkDerivation {
          pname = "haskell-lsp";
-         version = "0.16.0.0";
-         sha256 = "1s04lfnb3c0g9bkwp4j7j59yw8ypps63dq27ayybynrfci4bpj95";
+         version = "0.18.0.0";
+         sha256 = "0q9xpjgr3n7svhd9f7mmkw113avswvfm08fnbijdr1sblipd12sl";
          isLibrary = true;
          isExecutable = true;
          libraryHaskellDepends = [
@@ -74,8 +58,8 @@ nix: subpath:
      }:
        mkDerivation {
          pname = "lsp-test";
-         version = "0.7.0.0";
-         sha256 = "1lm299gbahrnwfrprhhpzxrmjljj33pps1gzz2wzmp3m9gzl1dx5";
+         version = "0.8.2.0";
+         sha256 = "1762avrs4fkkd9v8i76giaf6km5f3lds5laickn7la7zq7ysh8a3";
          libraryHaskellDepends = [
            aeson aeson-pretty ansi-terminal async base bytestring conduit
            conduit-parse containers data-default Diff directory filepath
@@ -98,10 +82,10 @@ nix: subpath:
 
   winter = self.callCabal2nixWithOptions "winter"
     (nix.fetchFromGitHub {
-      owner = "nomeata";
+      owner = "dfinity";
       repo = "winter";
-      rev = "eb8add32c7de95ccdaf1c896f894814833633bbc";
-      sha256 = "05pa6fwvs7galf0gnjngampfdfrki8zjd92f4hzr9yv75jxzv10v";
+      rev = "4295ff98da8ca890e824130152a78892ad6420ba";
+      sha256 = "05wr3066mlz7hh2s49wgf9pgdsh1bsivnhp6j7hklmw2cnj9g0sl";
      }) "--no-check" {};
 
   ic-stub = self.callCabal2nixWithOptions "ic-stub" (subpath "ic-stub") "-frelease" { };

@@ -21,6 +21,7 @@ type Word64 = prim "Word64";
 type Float = prim "Float";
 type Char = prim "Char";
 type Text = prim "Text";
+type Blob = prim "Blob";
 type Error = prim "Error";
 type Blob = prim "Blob";
 
