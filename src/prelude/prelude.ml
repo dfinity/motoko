@@ -23,7 +23,6 @@ type Char = prim "Char";
 type Text = prim "Text";
 type Blob = prim "Blob";
 type Error = prim "Error";
-type Blob = prim "Blob";
 
 type Iter<T_> = {next : () -> ?T_};
 
