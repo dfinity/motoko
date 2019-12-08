@@ -267,7 +267,7 @@ export uint32_t text_iter_done(text_iter_t i) {
   return (TEXT_ITER_POS(i) >> 2) >= BLOB_LEN(TEXT_ITER_TEXT(i));
 }
 
-// pointer into the leave at the given byte position
+// pointer into the leaf at the given byte position
 char *text_pos(text_t s, size_t offset) {
   if (TAG(s) == TAG_BLOB) return (BLOB_PAYLOAD(s) + offset);
   uint32_t n1 = BLOB_LEN(CONCAT_ARG1(s));
