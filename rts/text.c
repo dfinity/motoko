@@ -32,7 +32,7 @@ Layout of a concat node:
      │ tag │ n_bytes │ text1 │ text2 │
      └─────┴─────────┴───────┴───────┘
 
-Note that CONCAT_LEN and BLOB_LEN are the identical, so no need to check the
+Note that CONCAT_LEN and BLOB_LEN are identical, so no need to check the
 tag to know the size of the text.
 */
 
