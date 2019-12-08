@@ -5,8 +5,8 @@ actor a {
     return;
   };
 
-  public shared {caller = c} func c2 () : async () {
-    let c1 : Blob = c;
+  public shared {caller} func c2 () : async () {
+    let c1 : Blob = caller;
     return;
   };
 
@@ -22,20 +22,13 @@ actor a {
     return;
   };
 
-  public shared query {caller = c} func c6 () : async () {
-    let c1 : Blob = c;
+  public shared query {caller} func c6 () : async () {
+    let c1 : Blob = caller;
     return;
   };
 
-  public shared { caller = c } func getCaller()  : async Blob {
-    return c;
-  };
-
-  public shared {caller} func c7 () : async () {
-    let self1 = await getCaller();
-    let self2 = await getCaller();
-    assert caller != self1; // assuming this is an ingress message
-    assert self1 == self2;
+  public shared {caller} func c7()  : async Blob {
+    return caller;
   };
 
 };
