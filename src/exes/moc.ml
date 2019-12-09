@@ -109,24 +109,6 @@ let exit_on_none = function
   | None -> exit 1
   | Some x -> x
 
-let print_deps (file : string) : unit =
-  let (prog, _) =  Diag.run (Pipeline.parse_file file) in
-  let imports =
-    List.fold_left
-      (fun acc decl ->
-        match decl.Source.it with
-        | Mo_def.Syntax.LetD(_, exp) -> begin
-            match exp.Source.it with
-            | Mo_def.Syntax.ImportE(path, _) ->
-               path :: acc
-            | _ -> acc
-          end
-        | _ -> acc
-      )
-      []
-      prog.Source.it in
-  List.iter print_endline (List.rev imports)
-
 let process_files files : unit =
   match !mode with
   | Default ->
@@ -161,7 +143,7 @@ let process_files files : unit =
     end
   | PrintDeps ->
      match files with
-     | [file] -> print_deps file
+     | [file] -> Pipeline.print_deps file
      | _ ->
         (eprintf "--print-deps expects exactly one source file as an argument";
          exit 1)
