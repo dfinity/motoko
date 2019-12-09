@@ -49,7 +49,7 @@ export text_t text_concat(text_t s1, text_t s2) {
   return r;
 }
 
-// put into contiguous memory, if needed (e.g. for system calls)
+// straighten into contiguous memory, if needed (e.g. for system calls)
 export blob_t blob_of_text(text_t s) {
   return s;
 }
