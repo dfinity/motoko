@@ -22,25 +22,17 @@ let dfinity-src =
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
     # ref = "master";
-    rev = "c1cce4a71ddbeaf044ee15c4da3619a24d447edf";
+    rev = "4d09038b09b4ba230205216a0a590b80c33a59cb";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
 
-let sdk = import (builtins.fetchGit {
-  name = "sdk-sources";
-  url = "ssh://git@github.com/dfinity-lab/sdk";
-  ref = "master";
-  rev = "d7559c97edfcdfdb1ded48b551cb51de60e87d04";
-}) { inherit (nixpkgs) system; }; in
-
-let esm = builtins.fetchTarball {
+let esm = nixpkgs.fetchzip {
   sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
 
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
-let js-user-library = sdk.js-user-library; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -246,7 +238,6 @@ rec {
             export DIDC=didc
             export DESER=deser
             export ESM=${esm}
-            export JS_USER_LIBRARY=${js-user-library}
             type -p moc && moc --version
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
@@ -477,7 +468,6 @@ rec {
 
     shellHook = llvmEnv;
     ESM=esm;
-    JS_USER_LIBRARY=js-user-library;
     TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";

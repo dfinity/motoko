@@ -79,7 +79,16 @@ func @mut_array_vals<A>(xs : [var A]) : (() -> Iter<A>) =
 func @text_len(xs : Text) : (() -> Nat) =
   (func () : Nat = (prim "text_len" : Text -> Nat) xs);
 func @text_chars(xs : Text) : (() -> Iter<Char>) =
-  (func () : Iter<Char> = (prim "text_chars" : Text -> Iter<Char>) xs);
+  (func () : Iter<Char> = object {
+    type TextIter = Any; // not exposed
+    let i = (prim "text_iter" : Text -> TextIter) xs;
+    public func next() : ?Char {
+      if ((prim "text_iter_done" : TextIter -> Bool) i)
+        null
+      else
+        ?((prim "text_iter_next" : TextIter -> Char) i)
+    };
+  });
 
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
