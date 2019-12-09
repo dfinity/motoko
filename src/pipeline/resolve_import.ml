@@ -213,7 +213,7 @@ let collect_imports (prog : prog): string list =
     | ImportE (f, _) -> res := f::!res; e
     | _ -> e in
   let _ = List.iter (fun d -> ignore (over_dec f d)) prog.it in
-  !res
+  List.rev !res
 
 let prog env p =
   let f e = match e.it with
