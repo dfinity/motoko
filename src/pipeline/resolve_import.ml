@@ -188,9 +188,9 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
   | IfE (exp1, exp2, exp3) ->
      f { exp with it=IfE(over_exp f exp1, over_exp f exp2, over_exp f exp3) }
   | TryE (exp1, cases) ->
-     f { exp with it=TryE (over_exp f exp1, cases) }
+     f { exp with it=TryE (over_exp f exp1, List.map (over_case f) cases) }
   | SwitchE (exp1, cases) ->
-     f { exp with it=SwitchE (over_exp f exp1, cases) }
+     f { exp with it=SwitchE (over_exp f exp1, List.map (over_case f) cases) }
   | FuncE (a, b, c, d, g, e) ->
     f { exp with it=FuncE (a, b, c, d, g, over_exp f e) }
 
@@ -206,6 +206,9 @@ and over_dec (f : exp -> exp) (d : dec) : dec = match d.it with
 
 and over_exp_field (f : exp -> exp) (ef : exp_field) : exp_field =
   { ef with it={ ef.it with dec=over_dec f ef.it.dec } }
+
+and over_case (f : exp -> exp) (case : case) : case =
+  { case with it={ case.it with exp=over_exp f case.it.exp } }
 
 let collect_imports (prog : prog): string list =
   let res = ref [] in
