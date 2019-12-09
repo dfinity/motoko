@@ -1,12 +1,16 @@
 #include "rts.h"
 
-char *alloc(size_t n) {
-  as_ptr r = alloc_bytes (2*sizeof(void*) + n);
-  FIELD(r, 0) = TAG_BLOB;
-  FIELD(r, 1) = n;
-  return (char *)&FIELD(r,2);
+as_ptr alloc_blob(size_t n) {
+  as_ptr r = alloc_bytes (BLOB_HEADER_SIZE*sizeof(void*) + n);
+  TAG(r) = TAG_BLOB;
+  BLOB_LEN(r) = n;
+  return r;
 }
 
+char *alloc(size_t n) {
+  as_ptr r = alloc_blob(n);
+  return (char *)&FIELD(r,2);
+}
 
 export void as_memcpy(char *str1, const char *str2, size_t n) {
   for (size_t i = 0; i < n; i++) {
@@ -30,11 +34,7 @@ size_t as_strlen(const char* p) {
 
 as_ptr as_str_of_cstr(const char * const s) {
   size_t l = as_strlen(s);
-  as_ptr r = alloc_bytes (2*sizeof(void*) + l);
-  FIELD(r, 0) = TAG_BLOB;
-  FIELD(r, 1) = l;
-  as_memcpy((char *)(&FIELD(r,2)), s, l);
-  return r;
+  return text_of_ptr_size(s, l);
 }
 
 void __attribute__ ((noreturn)) trap_with_prefix(const char* prefix, const char *str) {

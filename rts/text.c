@@ -2,10 +2,10 @@
 The implementation of the Text type in Motoko.
 
 One main goal of this datastructure (inspired by ropes and similar) is to
-support constant time concatenation, but having a dedicated heap object for
+support constant time concatenation, by having a dedicated heap object for
 the concatentation of two strings.
 
-The current implementation does not do any this; the first goal is to wire up
+The current implementation does not do any of this; the first goal is to wire up
 this C code with the RTS that encapsulates the internals of strings.
 
 This encapsulation is not complete (and likely never will)
@@ -15,7 +15,7 @@ This encapsulation is not complete (and likely never will)
 In a subsequent step, the actual concatentation node will be introduced.
 
 From then on, there are stretch goals like:
- - when conctatenating short (<= 8 bytes maybe) strings, just copy them
+ - when concatenating short (<= 8 bytes maybe) strings, just copy them
  - restructure recursive code to not use unbounded C stack
  - maybe rebalancing
 */
@@ -48,19 +48,16 @@ tag to know the size of the text.
 // e.g. for debugging
 #define MIN_CONCAT_SIZE (9)
 
-blob_t alloc_blob(size_t n) {
+blob_t alloc_text_blob(size_t n) {
   if (n > MAX_STR_SIZE) {
     rts_trap_with("alloc_blob: Text too large");
   }
-  as_ptr r = alloc_bytes (2*sizeof(void*) + n);
-  TAG(r) = TAG_BLOB;
-  BLOB_LEN(r) = n;
-  return r;
+  return alloc_blob(n);
 }
 
 // Create
 export text_t text_of_ptr_size(const char *buf, size_t n) {
-  as_ptr r = alloc_blob(n);
+  as_ptr r = alloc_text_blob(n);
   as_memcpy(BLOB_PAYLOAD(r), buf, n);
   return r;
 }
@@ -75,7 +72,7 @@ export text_t text_concat(text_t s1, text_t s2) {
   uint32_t n = n1 + n2;
   // short text are copied into a single blob
   if (n < MIN_CONCAT_SIZE) {
-    as_ptr r = alloc_blob(n1 + n2);
+    as_ptr r = alloc_text_blob(n1 + n2);
     as_memcpy(BLOB_PAYLOAD(r), BLOB_PAYLOAD(s1), n1);
     as_memcpy(BLOB_PAYLOAD(r) + n1, BLOB_PAYLOAD(s2), n2);
     return r;
@@ -103,13 +100,12 @@ export void text_to_buf(text_t s, char *buf) {
   }
 }
 
-
-// put into a contiguous blob (re-using the argument if possible)
+// straighten into contiguous memory, if needed (e.g. for system calls)
 export blob_t blob_of_text(text_t s) {
   if (TAG(s) == TAG_BLOB) {
     return s;
   } else {
-    as_ptr r = alloc_blob(CONCAT_LEN(s));
+    as_ptr r = alloc_text_blob(CONCAT_LEN(s));
     text_to_buf(s, BLOB_PAYLOAD(r));
     return r;
   }
@@ -225,7 +221,7 @@ export text_t text_singleton(uint32_t code) {
   }
   val[val_index++] = (code & lead_byte_max) | (~lead_byte_max << 1);
 
-  as_ptr r = alloc_blob(val_index);
+  as_ptr r = alloc_text_blob(val_index);
   char *p = BLOB_PAYLOAD(r);
   while (val_index--) {
     *p = val[val_index];

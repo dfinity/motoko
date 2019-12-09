@@ -22,12 +22,12 @@ let dfinity-src =
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
     # ref = "master";
-    rev = "0cb40446dbac6623a41180f168aaf528f69de159";
+    rev = "4d09038b09b4ba230205216a0a590b80c33a59cb";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
 
-let esm = builtins.fetchTarball {
+let esm = nixpkgs.fetchzip {
   sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
