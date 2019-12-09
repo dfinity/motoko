@@ -256,12 +256,11 @@ typedef as_ptr text_iter_t; // the data structure used to iterate a text value
 #define TEXT_ITER_TODO(p) (TUPLE_FIELD(p,2,text_iter_cont_t))
 
 
-// A “smart constructor” that ensures finds the left-most leaf,
-// putting all others onto the list, used to enforce the invarinat
-// about TEXT_ITER_BLOB to be a blob.
-as_ptr find_leaf(text_t s, text_iter_cont_t *todo) {
+// Find the left-most leaf of a text, putting all the others onto a list,
+// used to enforce the invarinat about TEXT_ITER_BLOB to be a blob.
+blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
   while (TAG(s) == TAG_CONCAT) {
-    as_ptr c = alloc_words(ARRAY_HEADER_SIZE + 2);
+    as_ptr c = alloc_words(TUPLE_HEADER_SIZE + 2);
     TAG(c) = TAG_ARRAY;
     TEXT_CONT_TEXT(c) = CONCAT_ARG2(s);
     TEXT_CONT_NEXT(c) = *todo;
@@ -272,7 +271,7 @@ as_ptr find_leaf(text_t s, text_iter_cont_t *todo) {
 }
 
 export text_iter_t text_iter(text_t s) {
-  as_ptr i = alloc_words(ARRAY_HEADER_SIZE + 3);
+  as_ptr i = alloc_words(TUPLE_HEADER_SIZE + 3);
   TAG(i) = TAG_ARRAY;
   TEXT_ITER_POS(i) = 0;
   TEXT_ITER_TODO(i) = 0;
@@ -281,16 +280,9 @@ export text_iter_t text_iter(text_t s) {
 }
 
 export uint32_t text_iter_done(text_iter_t i) {
-  return (TEXT_ITER_POS(i) >> 2) >= BLOB_LEN(TEXT_ITER_BLOB(i))
-      && TEXT_ITER_TODO(i) != 0;
-}
-
-// pointer into the leaf at the given byte position
-char *text_pos(text_t s, size_t offset) {
-  if (TAG(s) == TAG_BLOB) return (BLOB_PAYLOAD(s) + offset);
-  uint32_t n1 = BLOB_LEN(CONCAT_ARG1(s));
-  if (offset < n1) return text_pos(CONCAT_ARG1(s), offset);
-  else             return text_pos(CONCAT_ARG2(s), offset - n1);
+  size_t n = TEXT_ITER_POS(i) >> 2;
+  text_t s = TEXT_ITER_BLOB(i);
+  return n >= BLOB_LEN(s) && TEXT_ITER_TODO(i) == 0;
 }
 
 export uint32_t text_iter_next(text_iter_t i) {
@@ -299,28 +291,30 @@ export uint32_t text_iter_next(text_iter_t i) {
 
   // If we are at the end, find the next iterator to use
   if (n >= BLOB_LEN(s)) {
-    text_iter_cont_t c = TEXT_ITER_TODO(i);
     // this one is done, try next
+    text_iter_cont_t c = TEXT_ITER_TODO(i);
     // are we done?
     if (c == 0) rts_trap_with("text_iter_next: Iter already done");
+    text_t s2 = TEXT_CONT_TEXT(c);
     // if next one is a concat node, re-use both text iterator structures
     // (avoids an allocation)
-    if (TAG(s) == TAG_CONCAT) {
+    if (TAG(s2) == TAG_CONCAT) {
       TEXT_ITER_POS(i) = 0;
-      TEXT_CONT_TEXT(i) = CONCAT_ARG2(s);
-      TEXT_ITER_BLOB(i) = find_leaf(CONCAT_ARG1(s), &(TEXT_ITER_TODO(i)));
+      TEXT_CONT_TEXT(i) = CONCAT_ARG2(s2);
+      TEXT_ITER_BLOB(i) = find_leaf(CONCAT_ARG1(s2), &(TEXT_ITER_TODO(i)));
       return text_iter_next(i);
     // else remove that entry from the chain
     } else {
-      TEXT_ITER_BLOB(i) = s;
+      TEXT_ITER_BLOB(i) = s2;
       TEXT_ITER_POS(i) = 0;
       TEXT_ITER_TODO(i) = TEXT_CONT_NEXT(c);
       return text_iter_next(i);
     }
+  } else {
+  // We are not at the end, so read the next character
+    size_t step = 0;
+    uint32_t c = decode_code_point(BLOB_PAYLOAD(s) + n, &step);
+    TEXT_ITER_POS(i) = (n+step) << 2;
+    return c;
   }
-
-  size_t step = 0;
-  uint32_t c = decode_code_point(BLOB_PAYLOAD(s) + n, &step);
-  TEXT_ITER_POS(i) = (n+step) << 2;
-  return c;
 }
