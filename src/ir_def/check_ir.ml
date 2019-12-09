@@ -353,14 +353,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | CPSAwait, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
-      check_exp env a;
-      check_exp env kr
       (* TODO: We can check more here, can we *)
     | CPSAsync t, [exp] ->
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
       check_typ env t;
-      check_exp env exp;
       (* TODO: We can check more here, can we *)
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
@@ -373,12 +370,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: T.text;
       T.Non <: t
     | ICCallPrim, [exp1; exp2; k; r] ->
-      check_exp env k;
-      check_exp env r;
       let t1 = T.promote (typ exp1) in
       begin match t1 with
       | T.Func (sort, T.Replies, _ (*TBR*), arg_tys, ret_tys) ->
-        check_exp env exp2;
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;
         check_concrete env exp.at t_arg;

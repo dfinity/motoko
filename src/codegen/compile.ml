@@ -4593,7 +4593,6 @@ module FuncDec = struct
       mk_body env ae1 ^^
       message_cleanup env sort
     ))
->>>>>>> master
 
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env sort control name args mk_body ret_tys at =
