@@ -25,13 +25,6 @@ From then on, there are stretch goals like:
 typedef as_ptr blob_t; // a skewed pointer to a Blob heap object
 typedef as_ptr text_t; // a skewed pointer to a Blob (or, later, Concat) heap object
 
-blob_t alloc_blob(size_t n) {
-  as_ptr r = alloc_bytes (2*sizeof(void*) + n);
-  TAG(r) = TAG_BLOB;
-  BLOB_LEN(r) = n;
-  return r;
-}
-
 // Create
 export text_t text_of_ptr_size(const char *buf, size_t n) {
   as_ptr r = alloc_blob(n);
