@@ -212,7 +212,7 @@ systemAPI esref =
     putBytes :: BS.ByteString -> HostM s ()
     putBytes bytes =
       stToPrim (readSTRef (fst esref)) >>= \case
-        True -> unsafeIOToPrim (BSC.putStrLn bytes)
+        True -> unsafeIOToPrim $ BSC.putStrLn $ BSC.pack "debug.print: " <> bytes
         False -> return ()
 
     -- The system calls (in the order of the public spec)

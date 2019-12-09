@@ -1,13 +1,13 @@
 → create
 ← completed: canister-id = 0x0000000000000400
 → install
-main actor creating a
-main actor calling a.foo()
-a created
-a.foo() called
-a creating b
-a calling b.foo()
-a.foo() done
-b created
-b.foo() called
+debug.print: main actor creating a
+debug.print: main actor calling a.foo()
+debug.print: a created
+debug.print: a.foo() called
+debug.print: a creating b
+debug.print: a calling b.foo()
+debug.print: a.foo() done
+debug.print: b created
+debug.print: b.foo() called
 ← completed

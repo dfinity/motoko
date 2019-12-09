@@ -132,4 +132,13 @@ module {
     };
     ys;
   };
+
+  public func tabulateVar<A>(len : Nat,  gen : Nat -> A) : [var A] {
+    if (len == 0) { return [var] };
+    let xs = Array_init<A>(len, gen 0);
+    for (i in range(1,len)) {
+      xs[i] := gen i;
+    };
+    return xs;
+  };
 }
