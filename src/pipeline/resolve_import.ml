@@ -207,6 +207,14 @@ and over_dec (f : exp -> exp) (d : dec) : dec = match d.it with
 and over_exp_field (f : exp -> exp) (ef : exp_field) : exp_field =
   { ef with it={ ef.it with dec=over_dec f ef.it.dec } }
 
+let collect_imports (prog : prog): string list =
+  let res = ref [] in
+  let f e = match e.it with
+    | ImportE (f, _) -> res := f::!res; e
+    | _ -> e in
+  let _ = ignore (List.map (over_dec f) prog.it) in
+  !res
+
 let prog env p =
   let f e = match e.it with
     | ImportE (f, fp) -> resolve_import_string env e.at f fp; e
