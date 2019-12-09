@@ -640,7 +640,7 @@ dec_nonvar :
           match t with
           | Some {it = AsyncT _; _} ->
             (match tps with
-             | Some [tb] -> AsyncE(pun_bind tb, e, scope_typ()) @? e.at
+             | Some (tb::_) -> AsyncE(pun_bind tb, e, scope_typ()) @? e.at
              | _ -> AsyncE(scope_bind(), e, scope_typ()) @? e.at)
           | _ -> e
       in

@@ -255,13 +255,17 @@ let check_shared_return env at sort c ts =
       | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `async <typ>`"
       | _ -> ()
 
-let infer_scope env cs cod  =
-    match cs, cod.it with
-    | [c], AsyncT(typ0,_) when is_scope_typ typ0  ->
-      { env with typs = T.Env.add scope_id c env.typs }
-    | _ -> env
+let rec infer_scope env cs cod  =
+   match cod.it with
+   | AsyncT (typ,_) ->
+     let t = check_typ env typ in
+     (match T.close cs t with
+      | T.Var (_, n) ->
+        { env with typs = T.Env.add scope_id (List.nth cs n) env.typs }
+      | _ -> env)
+   | _ -> env
 
-let rec check_typ env typ : T.typ =
+and check_typ env typ : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
   t
@@ -791,13 +795,26 @@ and infer_exp'' env exp : T.typ =
           "expected function type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     in
-    (* only attempt scope inference when no inst, not empty inst (`<>`), provided *)
-    let typs = match !insts, t1 with
-        | None, T.Func(_,T.Promises (T.Var (_,0)),[_],_,_)
-        | None, T.Func(_,T.Returns,[_],_,[T.Async (T.Var (_,0),_)]) ->
-          [Syntax.scope_typ {left=exp1.at.right; right = exp2.at.left}]
-        | None, _ -> []
-        | Some typs, _ -> typs
+    (* scope inference *)
+    let pre_typs =
+      match !insts with
+      | None -> []
+      | Some tys -> tys
+    in
+    let expected = List.length tbs in
+    let rec insert n typ typs = match n, typs with
+      | 0, typs -> typ::typs
+      | n, typ'::typs -> typ'::insert (n-1) typ typs
+      | n, [] -> [typ]
+    in
+    let typs = match t1 with
+        | T.Func(_,T.Promises (T.Var (_, n)), _, _, _)
+        | T.Func(_,T.Returns, _, _, [T.Async (T.Var (_, n),_)])
+           when n < expected && List.length pre_typs = expected - 1 ->
+          insert n
+            (Syntax.scope_typ {left=exp1.at.right; right = exp2.at.left})
+            pre_typs
+        |  _ -> pre_typs
     in
     insts := Some typs;
     let ts = check_inst_bounds env tbs typs exp.at in

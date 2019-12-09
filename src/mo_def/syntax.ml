@@ -248,8 +248,8 @@ let scope_id = "@"
 
 let scope_bind() =
   { var = scope_id @@ no_region;
-    bound = PrimT "Any" @! no_region}
-  @= no_region
+    bound = PrimT "Any" @! no_region
+  } @= no_region
 
 let pun_bind typ_bind =
   { var = typ_bind.it.var.it @@ no_region;
@@ -277,11 +277,19 @@ let funcT(sort, tbs_opt, t1, t2) =
   | Some tbs -> FuncT(sort, tbs, t1, t2)
 
 let funcE (f, s, tbs_opt, p, t_opt, e) =
-  match tbs_opt, t_opt with
-  | None, None -> FuncE(f, s, [], p, t_opt, e)
-  | None, Some t ->
+  let tbs = match tbs_opt with
+    | None -> []
+    | Some tbs -> tbs
+  in
+  match t_opt with
+  | None -> FuncE(f, s, tbs, p, t_opt, e)
+  | Some t ->
     (match t.it with
      | AsyncT (t1, _) when is_scope_typ t1 ->
-       FuncE(f, s, [scope_bind()], p, t_opt, e)
-     | _ -> FuncE(f, s, [], p, t_opt, e))
-  | Some tbs, _ -> FuncE(f, s, tbs, p, t_opt, e)
+       let tbs' =
+         if List.exists (fun tb -> tb.it.var.it = scope_id) tbs
+         then tbs
+         else scope_bind()::tbs
+       in
+       FuncE(f, s, tbs', p, t_opt, e)
+     | _ -> FuncE(f, s, tbs, p, t_opt, e))

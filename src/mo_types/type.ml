@@ -1216,26 +1216,24 @@ and string_of_control_cod sugar c vs ts =
   | Replies, _ -> sprintf "replies %s"  (string_of_cod vs ts)
 
 and can_sugar t = match t with
-  | Func(s,Promises (Var(_,0)),[tb],ts1,ts2) ->
-    can_omit 0 tb.bound &&
-    List.for_all (can_omit 0) ts1 &&
-    List.for_all (can_omit 0) ts2
-  | Func(s,Returns,[tb],ts1,([Async (Var(_,0),_)] as ts2)) ->
-    can_omit 0 tb.bound &&
-    List.for_all (can_omit 0) ts1 &&
-    List.for_all (can_omit 0) ts2
+  | Func(s, Promises (Var(_, n)), tbs, ts1, ts2)
+  | Func(s, Returns, tbs, ts1, ([Async (Var(_, n),_)] as ts2)) ->
+    n = 0 &&
+    List.for_all (fun tb -> can_omit n tb.bound) tbs &&
+    List.for_all (can_omit n) ts1 &&
+    List.for_all (can_omit n) ts2
   | _ -> false
 
-and can_omit i t =
+and can_omit n t =
   let rec go i t  =
     begin
       match t with
-      | Var (_,j) -> i <> j
+      | Var (_, j) -> i <> j
       | Pre -> assert false
       | Prim _ | Any | Non -> true
       | Con (c, ts) -> List.for_all (go i ) ts
       | Array t | Opt t | Mut t -> go i t
-      | Async (Var (_,0), t2)  when i = 0 -> go i t2 (* t1 is a phantom type *)
+      | Async (Var (_, j), t2) when j = i && i <= n -> go i t2 (* t1 is a phantom type *)
       | Async (t1, t2) -> go i t1 && go i t2
       | Tup ts -> List.for_all (go i ) ts
       | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go i f.typ) fs
@@ -1244,17 +1242,32 @@ and can_omit i t =
         List.for_all (fun {var;bound} -> (go i' bound)) tbs &&
         List.for_all (go i') ts1  &&
         List.for_all (go i') ts2
-      | Typ c -> assert false (* TBR *)
+      | Typ c -> true (* assuming type defs are closed *)
     end
-  in go i t
+  in go n t
 
 and string_of_typ' vs t =
   match t with
-  | Func (s, c, [tb], ts1, ts2) when can_sugar t ->
-    let vs' = ("",0)::vs in
-    sprintf "%s%s -> %s" (string_of_func_sort s)
-      (string_of_dom vs' ts1)
-      (string_of_control_cod true c vs' ts2)
+  | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
+    let n = match c, ts2 with
+      | Promises (Var (s,n)), _ -> n
+      | Returns, [Async (Var (s,n),_)] -> n
+      | _ -> assert false
+    in
+    assert (n = 0);
+    let vs' = vars_of_binds vs tbs in
+    let vs'', tbs' = List.tl vs', List.tl tbs in
+    begin
+      match tbs with
+      | [tb] ->
+         sprintf "%s%s -> %s" (string_of_func_sort s)
+          (string_of_dom vs ts1)
+          (string_of_control_cod true c vs ts2)
+      | _ ->
+        sprintf "%s%s%s -> %s"
+          (string_of_func_sort s) (string_of_binds (vs' @ vs) vs'' tbs')
+          (string_of_dom (vs' @ vs) ts1) (string_of_control_cod true c (vs' @ vs) ts2)
+    end
   | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
       (string_of_dom vs ts1)
@@ -1267,8 +1280,8 @@ and string_of_typ' vs t =
   | Opt t ->
     sprintf "?%s"  (string_of_typ_nullary vs t)
   | Async (t1, t2) ->
-    (match t1, vs with
-     | Var(_,0), ("",_)::vs -> sprintf "async %s" (string_of_typ_nullary vs t2)
+    (match t1 with
+     | Var(_, n) when fst (List.nth vs n) = "" -> sprintf "async %s" (string_of_typ_nullary vs t2)
      | _ -> sprintf "async<%s> %s" (string_of_typ' vs t1) (string_of_typ_nullary vs t2))
   | Obj (s, fs) ->
     sprintf "%s%s" (string_of_obj_sort s) (string_of_typ_nullary vs (Obj (Object, fs)))
