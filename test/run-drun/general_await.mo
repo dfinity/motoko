@@ -5,7 +5,8 @@ actor Await {
   };
 
   public shared func Request<@>(i : Int) : async<@> Int {
-    debugPrint("Request(" # debug_show i # ")");
+//   debugPrint("Request(" # debug_show i # ")"); <-- compiler bug
+    debugPrintInt(i);
     return i;
   };
 
@@ -40,9 +41,7 @@ actor Await {
     let as = Array_tabulate<async Int>(10, f);
     let res = Array_init<Int>(as.len(),-1);
     for (i in as.keys()) {
-//      res[i] := (await as[i]); <-- compiler bug (generates incorrect code)
-      let a = await as[i];
-      res[i] := a;
+      res[i] := (await as[i]);
     };
     Array_tabulate<Int>(as.len(),func i = res[i])
   };
@@ -103,7 +102,7 @@ actor Await {
   }
 };
 
-Await.Test<@>();
+Await.Test<@>(); //OR-CALL ingress Test 0x4449444C0000
 
-//SKIP run-drun
+
 //SKIP comp

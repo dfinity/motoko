@@ -88,8 +88,7 @@ public func test() : async () {
 
 };
 
-A.test() //OR-CALL ingress c1 0x4449444C0000
-//SKIP run-drun
+A.test() //OR-CALL ingress test 0x4449444C0000
 //SKIP comp
 
 
