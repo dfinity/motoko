@@ -3,9 +3,9 @@
 → install
 ← completed
 → update go(0x4449444c0000)
-aaab
-babb
-dadb
-eaeb
-cacb
+debug.print: aaab
+debug.print: babb
+debug.print: dadb
+debug.print: eaeb
+debug.print: cacb
 ← completed: 0x4449444c0000
