@@ -71,6 +71,7 @@ val bool : typ
 val nat : typ
 val int : typ
 val text : typ
+val error : typ
 val char : typ
 
 val throwErrorCodes : field list

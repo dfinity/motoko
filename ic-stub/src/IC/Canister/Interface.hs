@@ -21,4 +21,4 @@ data CanisterMethod r where
     Initialize :: ExistingCanisters -> Module -> EntityId -> Blob -> CanisterMethod InitResult
     Query :: MethodName -> EntityId -> Blob -> CanisterMethod Response
     Update :: MethodName -> ExistingCanisters -> EntityId -> Blob -> CanisterMethod UpdateResult
-    Callback :: Callback -> ExistingCanisters -> EntityId -> Response -> CanisterMethod UpdateResult
+    Callback :: Callback -> ExistingCanisters -> Response -> CanisterMethod UpdateResult
