@@ -138,70 +138,80 @@ let resolve_package_url (msgs:Diag.msg_store) (base:filepath) (pname:string) (f:
       };
     None
 
-let rec
-  exp env (e : exp) = match e.it with
-  | ImportE (f, fp) -> resolve_import_string env e.at f fp
-  (* The rest is just a boring syntax traversal *)
-  | (PrimE _ | VarE _ | LitE _) -> ()
-  | UnE (_, _, exp1)
-  | ShowE (_, exp1)
-  | ProjE (exp1, _)
-  | OptE exp1
-  | TagE (_, exp1)
-  | DotE (exp1, _)
-  | NotE exp1
-  | AssertE exp1
-  | LabelE (_, _, exp1)
-  | BreakE (_, exp1)
-  | RetE exp1
-  | AnnotE (exp1, _)
-  | AsyncE exp1
-  | AwaitE exp1
-  | ThrowE exp1
-  | LoopE (exp1, None) ->
-    exp env exp1
-  | BinE (_, exp1, _, exp2)
-  | IdxE (exp1, exp2)
-  | RelE (_, exp1, _, exp2)
-  | AssignE (exp1, exp2)
-  | CallE (exp1, _, exp2)
-  | AndE (exp1, exp2)
-  | OrE (exp1, exp2)
-  | WhileE (exp1, exp2)
-  | LoopE (exp1, Some exp2)
-  | ForE (_, exp1, exp2) ->
-    exp env exp1; exp env exp2
+let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
+  | ImportE _ | PrimE _ | VarE _ | LitE _ -> f exp
+  | UnE (x, y, exp1) -> f { exp with it=UnE (x, y, over_exp f exp1) }
+  | ShowE (x, exp1) -> f { exp with it=ShowE (x, over_exp f exp1) }
+  | ProjE (exp1, x) -> f { exp with it=ProjE (over_exp f exp1, x) }
+  | OptE exp1 -> f { exp with it=OptE (over_exp f exp1) }
+  | TagE (x, exp1) -> f { exp with it=TagE (x, over_exp f exp1) }
+  | DotE (exp1, x) -> f { exp with it=DotE (over_exp f exp1, x) }
+  | NotE exp1 -> f { exp with it=NotE (over_exp f exp1) }
+  | AssertE exp1 -> f { exp with it=AssertE (over_exp f exp1) }
+  | LabelE (x, y, exp1) -> f { exp with it=LabelE (x, y, over_exp f exp1) }
+  | BreakE (x, exp1) -> f { exp with it=BreakE (x, over_exp f exp1) }
+  | RetE exp1 -> f { exp with it=RetE (over_exp f exp1) }
+  | AnnotE (exp1, x) -> f { exp with it=AnnotE (over_exp f exp1, x) }
+  | AsyncE exp1 -> f { exp with it=AsyncE (over_exp f exp1) }
+  | AwaitE exp1 -> f { exp with it=AwaitE (over_exp f exp1) }
+  | ThrowE exp1 -> f { exp with it=ThrowE (over_exp f exp1) }
+  | BinE (x, exp1, y, exp2) ->
+     f { exp with it=BinE (x, over_exp f exp1, y, over_exp f exp2) }
+  | IdxE (exp1, exp2) ->
+     f { exp with it=IdxE (over_exp f exp1, over_exp f exp2) }
+  | RelE (x, exp1, y, exp2) ->
+     f { exp with it=RelE (x, over_exp f exp1, y, over_exp f exp2) }
+  | AssignE (exp1, exp2) ->
+     f { exp with it=AssignE (over_exp f exp1, over_exp f exp2) }
+  | CallE (exp1, x, exp2) ->
+     f { exp with it=CallE (over_exp f exp1, x, over_exp f exp2) }
+  | AndE (exp1, exp2) ->
+     f { exp with it=AndE (over_exp f exp1, over_exp f exp2) }
+  | OrE (exp1, exp2) ->
+     f { exp with it=OrE (over_exp f exp1, over_exp f exp2) }
+  | WhileE (exp1, exp2) ->
+     f { exp with it=WhileE (over_exp f exp1, over_exp f exp2) }
+  | LoopE (exp1, exp2_opt) ->
+     f { exp with it=LoopE (over_exp f exp1, Lib.Option.map (over_exp f) exp2_opt) }
+  | ForE (x, exp1, exp2) ->
+     f { exp with it=ForE (x, over_exp f exp1, over_exp f exp2) }
   | DebugE exp1 ->
-    exp env exp1
-  | TupE exps
-  | ArrayE (_, exps) ->
-    List.iter (exp env) exps
+     f { exp with it=DebugE (over_exp f exp1) }
+  | TupE exps ->
+     f { exp with it=TupE (List.map (over_exp f) exps) }
+  | ArrayE (x, exps) ->
+     f { exp with it=ArrayE (x, List.map (over_exp f) exps) }
   | BlockE ds ->
-    decs env ds
-  | ObjE (_, efs) ->
-    List.iter (fun ef -> dec env ef.it.dec) efs
+     f { exp with it=BlockE (List.map (over_dec f) ds) }
+  | ObjE (x, efs) ->
+     f { exp with it=ObjE (x, List.map (over_exp_field f) efs) }
   | IfE (exp1, exp2, exp3) ->
-    exp env exp1;
-    exp env exp2;
-    exp env exp3
-  | TryE (exp1, cases)
+     f { exp with it=IfE(over_exp f exp1, over_exp f exp2, over_exp f exp3) }
+  | TryE (exp1, cases) ->
+     f { exp with it=TryE (over_exp f exp1, cases) }
   | SwitchE (exp1, cases) ->
-    exp env exp1;
-    List.iter (fun c -> exp env c.it.exp) cases
-  | FuncE (_, _, _ , _ , _, e) ->
-    exp env e
+     f { exp with it=SwitchE (over_exp f exp1, cases) }
+  | FuncE (a, b, c, d, g, e) ->
+    f { exp with it=FuncE (a, b, c, d, g, over_exp f e) }
 
-and decs env = List.iter (dec env)
-and dec env d = match d.it with
-  | TypD _ -> ()
-  | ExpD e
-  | VarD (_, e)
-  | LetD (_, e) ->
-    exp env e
-  | ClassD (_, _, _, _, _ , _, efs) ->
-    List.iter (fun ef -> dec env ef.it.dec) efs
+and over_dec (f : exp -> exp) (d : dec) : dec = match d.it with
+  | TypD _ -> d
+  | ExpD e -> { d with it=ExpD (over_exp f e)}
+  | VarD (x, e) ->
+     { d with it=VarD (x, over_exp f e)}
+  | LetD (x, e) ->
+     { d with it=LetD (x, over_exp f e)}
+  | ClassD (a, b, c, d1, e, g, efs) ->
+     { d with it=ClassD (a, b, c, d1, e, g, List.map (over_exp_field f) efs)}
 
-let prog env p = decs env p.it
+and over_exp_field (f : exp -> exp) (ef : exp_field) : exp_field =
+  { ef with it={ ef.it with dec=over_dec f ef.it.dec } }
+
+let prog env p =
+  let f e = match e.it with
+    | ImportE (f, fp) -> resolve_import_string env e.at f fp; e
+    | _ -> e in
+  ignore (List.map (over_dec f) p.it)
 
 type package_urls = (string * string) list
 
