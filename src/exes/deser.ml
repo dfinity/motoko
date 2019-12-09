@@ -1077,14 +1077,18 @@ and sanitise_type_fields tfs =
   List.map sanitise_type_field tfs'
 and sanitise_type_field tf = { tf with it = { tf.it with typ = sanitise_type tf.it.typ} }
 
-(* given a type, decide if there is a value inhabiting it *)
-(* TODO: Should we relax this to be constructor aware? *)
+(* given a type, decide if the presented value inhabiting it *)
 let rec value_realisable = function
-  | PrimT Empty | PreT -> false
-  | PrimT _ | VarT _ -> true
-  | OptT t' | VecT t' -> value_realisable t'.it
-  | RecordT tfs | VariantT tfs -> List.for_all (fun t -> value_realisable t.it.typ.it) tfs
-  | FuncT _ | ServT _ -> assert false (* TODO *)
+  | t, AnnotV (v, _) -> value_realisable (t, v.it)
+  | PrimT Empty, _ | PreT, _ -> false
+  | PrimT _, _ -> true
+  | OptT _, NullV | VecT _, VecV [] -> true
+  | OptT t' , OptV v -> value_realisable (t'.it, v.it)
+  | VecT t', VecV vs -> List.for_all (fun v -> value_realisable (t'.it, v.it)) vs
+  (*| RecordT tfs | VariantT tfs -> List.for_all (fun t -> value_realisable t.it.typ.it) tfs*)
+  | FuncT _, _ | ServT _, _ | VarT _, _ -> assert false (* TODO *)
+  | _ -> assert false (* TODO *)
+  
 
 end
 
@@ -1111,7 +1115,7 @@ let () =
       let ts = List.map infer vs in
       Wasm.Sexpr.print 80 Arrange_idl.("ArgTy" $$ List.map typ ts);
       Printf.printf "\nDESER, type inferred!\n";
-      if List.for_all (fun t -> Sanitise.value_realisable t.it) ts then
+      if List.for_all2 (fun t v -> Sanitise.value_realisable (t.it, v.it)) ts vs then
         begin
           let open TypeTable in
           let m = List.fold_left (fun m ty -> build_typ_map m ty.it) M.empty ts in

@@ -1,6 +1,6 @@
 ( vec {record {a = 3; b = -5}; record {a = 42; b = -25}}
 , vec {record {a = 3; b = -5}; record {a = 42; b = 25}}
-//, vec {record {a = 3; b = 5}; record {a = 42}} TODO: BOTTOM?
+, vec {record {a = 3; b = 5}; record {a = 42}} // TODO: Warn
 , vec {variant {b = 42}; variant {b = -25}}
 , vec {variant {a = 3}; variant {b = 42}; variant {b = -25}}
 )

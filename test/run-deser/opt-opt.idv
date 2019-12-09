@@ -1,1 +1,3 @@
-(opt opt 6, opt (null : opt nat))
+( opt opt 6
+, opt (null : opt nat)
+, vec {opt (null : opt empty)})
