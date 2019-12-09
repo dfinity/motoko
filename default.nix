@@ -21,7 +21,7 @@ let dfinity-src =
   if env != "" then env else builtins.fetchGit {
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
-    ref = "joachim/drun-wait-for-result,";
+    ref = "joachim/drun-wait-for-result";
     rev = "4860f1b957666851c2f86d5d7fdf791ac54a6429";
   }; in
 
