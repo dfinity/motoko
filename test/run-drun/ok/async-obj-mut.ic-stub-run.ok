@@ -3,12 +3,12 @@
 → install
 ← completed
 → update go(0x4449444c0000)
-1
-2
-3
-done creating
+debug.print: 1
+debug.print: 2
+debug.print: 3
+debug.print: done creating
 
-3
-4
-5
+debug.print: 3
+debug.print: 4
+debug.print: 5
 ← completed: 0x4449444c0000

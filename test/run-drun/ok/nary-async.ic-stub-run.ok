@@ -3,14 +3,14 @@
 → install
 ← completed
 → update go1(0x4449444c0000)
-0_0
-1_0
-2_0
-3_0
+debug.print: 0_0
+debug.print: 1_0
+debug.print: 2_0
+debug.print: 3_0
 ← completed: 0x4449444c0000
 → update go2(0x4449444c0000)
-0_0
-0_1
-0_2
-0_3
+debug.print: 0_0
+debug.print: 0_1
+debug.print: 0_2
+debug.print: 0_3
 ← completed: 0x4449444c0000
