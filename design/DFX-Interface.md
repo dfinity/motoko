@@ -71,18 +71,24 @@ Compiling Motoko Files to IDL
 
 As the previous point, but passing `--idl` to `moc`.
 
-Resolving Canister IDs
-----------------------
 
-For every actor imported using `import "ic:canisteridoralias"`, the motoko compiler assumes the presence of a file `canisteridoralias.mo` in the actor path specified by `--actors`. This should inform motoko about the concrete id of the canister (if an alias was used), and the type of that canister (likely derived from some locally known or remotely fetched IDL description).
+Resolving Canister aliases
+--------------------------
 
-Thus the file is expected to be a single type-annotated actor expression, where the id is the [textual representation] of the concrete canister id, e.g.:
-```
-actor "ic:ABCDE01A7" : actor { … }
-```
+For every actor imported using `import "ic:alias"`, the Motoko compiler treats that as `import "ic:caniserid"`, if the command line flag `--actor-alias alias id` is given.
+
+The relation defined by the set of `--actor-alias` arguments must be left-unique and have disjoint range and domain (i.e. no `--actor-alias a b --actor-alias a c` or `--actor-alias a b --actor-alias b c` or even `--actor-alias a a`).
+
+It is up to `dfx` to determine which urls are aliases that need resolving and which are concrete ids, and to set up `--actor-alias` flags accordingly.
+
+After applying any aliases, the Motoko compiler assume these imports to refer to the [textual representation] of principal ids (e.g. `ic:ABCDE01A7`), and compilation will fail if they are not.
 
 [textual representation]: https://docs.dfinity.systems/spec/public/#textual-ids
 
+Resolving Canister types
+------------------------
+
+For every actor imports using `import "ic:canisterid"` (or `import "ic:canisteralias"` if `canisteralias` resolves to `canisterid` as described above), the motoko compiler assumes the presence of a file `canisterid.did` in the actor idl path specified by `--actor-idl`. This files informs motoko about the interface of that canister, e.g. the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer.
 
 Compiling IDL Files to JS
 -------------------------
