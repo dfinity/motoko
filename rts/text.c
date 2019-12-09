@@ -5,7 +5,7 @@ One main goal of this datastructure (inspired by ropes and similar) is to
 support constant time concatenation, by having a dedicated heap object for
 the concatentation of two strings.
 
-The current implementation does not do any this; the first goal is to wire up
+The current implementation does not do any of this; the first goal is to wire up
 this C code with the RTS that encapsulates the internals of strings.
 
 This encapsulation is not complete (and likely never will)
