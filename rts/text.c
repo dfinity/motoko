@@ -15,7 +15,7 @@ This encapsulation is not complete (and likely never will)
 In a subsequent step, the actual concatentation node will be introduced.
 
 From then on, there are stretch goals like:
- - when conctatenating short (<= 8 bytes maybe) strings, just copy them
+ - when concatenating short (<= 8 bytes maybe) strings, just copy them
  - restructure recursive code to not use unbounded C stack
  - maybe rebalancing
 */
