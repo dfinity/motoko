@@ -1,4 +1,3 @@
-open Mo_config
 open Mo_types
 open Ir_def
 
@@ -25,20 +24,6 @@ module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
 
 (* Helpers *)
 
-let error_codeE mode =
-  match mode with
-  | Flags.ICMode -> callE
-    (idE "@int32ToErrorCode"
-       (T.Func (T.Local, T.Returns, [], [T.Prim T.Int32], [T.Variant T.catchErrorCodes])))
-    []
-    (ic_error_codeE())
-  | _ -> { it = TagE ("error", tupE []);
-           at = no_region;
-           note = {
-               note_typ = T.Variant (T.catchErrorCodes);
-               note_eff = T.Triv }
-         }
-
 let selfcallE ts e1 e2 e3 =
  { it = SelfCallE (ts, e1, e2, e3);
   at = no_region;
@@ -46,17 +31,11 @@ let selfcallE ts e1 e2 e3 =
            note_eff = T.Triv }
 }
 
-let errorMessageE e =
-{ it = PrimE (OtherPrim "errorMessage", [e]);
-  at = no_region;
-  note = { note_typ = T.text; note_eff = eff e }
-}
+let error_ty =
+  T.(Tup [ Variant [{lab = "error"; typ = unit};{lab = "system"; typ = unit}]; text])
 
-let make_errorE e_code e_msg =
-{ it = PrimE (OtherPrim "make_error", [e_code; e_msg]);
-  at = no_region;
-  note = { note_typ = T.Prim T.Error; note_eff = max (eff e_code) (eff e_msg) }
-}
+let errorMessageE e =
+  projE (primE (CastPrim (T.error, error_ty)) [e]) 1
 
 let unary typ = [typ]
 
@@ -119,19 +98,14 @@ let new_nary_async_reply mode ts1 =
     in
     vs -->* (unary_fulfill -*- seq_of_vs)
   in
-  (* construct the n-ary reject callback *)
-  let nary_reject =
-    let v = fresh_var "msg" T.text in
-    [v] -->* (fail -*- (make_errorE (error_codeE mode) v))
-  in
   let async,reply,reject =
     fresh_var "async" (typ nary_async),
     fresh_var "reply" (typ nary_reply),
-    fresh_var "reject" (typ nary_reject)
+    fresh_var "reject" (typ fail)
   in
     (async, reply, reject),
       blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
-        (tupE [nary_async; nary_reply; nary_reject])
+        (tupE [nary_async; nary_reply; fail])
 
 let letEta e scope =
   match e.it with
