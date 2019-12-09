@@ -244,7 +244,8 @@ let as_domT t =
 
 let as_codomT sort t =
   match sort, t.Source.it with
-  | T.Shared _, AsyncT (t1, t2) -> T.Promises t1 , as_domT t2
+  | T.Shared _, AsyncT (None, t2) -> T.Promises (scope_typ no_region) , as_domT t2
+  | T.Shared _, AsyncT (Some t1, t2) -> T.Promises t1 , as_domT t2
   | _ -> T.Returns, as_domT t
 
 let check_shared_return env at sort c ts =
@@ -257,7 +258,8 @@ let check_shared_return env at sort c ts =
 
 let rec infer_scope env cs cod  =
    match cod.it with
-   | AsyncT (typ,_) ->
+   | AsyncT (typ_opt,_) ->
+     let typ = match typ_opt with Some typ -> typ | None -> scope_typ no_region in
      let t = check_typ env typ in
      (match T.close cs t with
       | T.Var (_, n) ->
@@ -265,7 +267,7 @@ let rec infer_scope env cs cod  =
       | _ -> env)
    | _ -> env
 
-and check_typ env typ : T.typ =
+and check_typ env (typ:typ) : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
   t
@@ -330,7 +332,10 @@ and check_typ' env typ : T.typ =
       (List.map (fun (tag : typ_tag) -> tag.it.tag) tags);
     let fs = List.map (check_typ_tag env) tags in
     T.Variant (List.sort T.compare_field fs)
-  | AsyncT (typ0, typ) ->
+  | AsyncT (typ0_opt, typ) ->
+    let typ0 = match typ0_opt with
+      | None -> scope_typ no_region
+      | Some typ0 -> typ0 in
     let t0 = check_typ env typ0 in
     let t = check_typ env typ in
     if not env.pre && not (T.shared t) then
@@ -997,7 +1002,8 @@ and infer_exp'' env exp : T.typ =
     (try
        let (t2, t3) = T.as_async_sub t0 t1 in
        if not (T.eq t0 t2) then
-          error env exp.at "ill-scoped await";
+         error env exp.at "ill-scoped await: expecting index %s, found index %s"
+           (T.string_of_typ t0) (T.string_of_typ t2);
        t3
     with Invalid_argument _ ->
       error env exp1.at "expected async type, but expression has type\n  %s"
@@ -1067,8 +1073,9 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t1)
         (T.string_of_typ_expand t1');
     let c, tb, ce, cs = check_typ_bind env tb in
+    let ce_scope = T.Env.add "@" c ce in (* pun scope identifier @ with c *)
     let env' =
-      {(adjoin_typs env ce cs) with labs = T.Env.empty; rets = Some t'; async = Some c} in
+      {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some t'; async = Some c} in
     check_exp env' t' exp1;
     t
   | BlockE decs, _ ->

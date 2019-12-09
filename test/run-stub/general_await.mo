@@ -1,7 +1,7 @@
 actor Await {
 
   let N = 4;
-  
+
   public shared func Ack<@>() : async<@> (){
     debugPrint "Ack"
   };

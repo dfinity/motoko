@@ -40,7 +40,7 @@ and typ' =
   | VariantT of typ_tag list                       (* variant *)
   | TupT of typ list                               (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
-  | AsyncT of typ * typ                            (* future *)
+  | AsyncT of typ option * typ                     (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
 
 and typ_field = typ_field' Source.phrase
@@ -251,8 +251,8 @@ let scope_bind() =
     bound = PrimT "Any" @! no_region
   } @= no_region
 
-let pun_bind typ_bind =
-  { var = typ_bind.it.var.it @@ no_region;
+let pun_id id =
+  { var = id.it @@ no_region;
     bound = PrimT "Any" @! no_region
   } @= no_region
 
@@ -266,30 +266,34 @@ let rec is_scope_typ t =
   | ParT t -> is_scope_typ t
   | _ -> false
 
-let funcT(sort, tbs_opt, t1, t2) =
-  match tbs_opt with
-  | None ->
-    (match t2.it with
-     | AsyncT (t21, _) when is_scope_typ t21 ->
-       FuncT(sort, [scope_bind ()], t1, t2)
-     | _ ->
-       FuncT(sort, [], t1, t2))
-  | Some tbs -> FuncT(sort, tbs, t1, t2)
+let rec as_idT t  =
+  match t.it with
+  | PathT (p, []) ->
+    (match p.it with
+     | IdH id ->
+       Some id
+     |  _ -> None)
+  | ParT t -> as_idT t
+  | _ -> None
 
-let funcE (f, s, tbs_opt, p, t_opt, e) =
-  let tbs = match tbs_opt with
-    | None -> []
-    | Some tbs -> tbs
-  in
+
+let ensure_scope_bind tbs =
+  if List.exists (fun tb -> tb.it.var.it = scope_id) tbs
+  then tbs
+  else scope_bind()::tbs
+
+let funcT(sort, tbs, t1, t2) =
+  match t2.it with
+  | AsyncT (None, _) ->
+    FuncT(sort, ensure_scope_bind tbs, t1, t2)
+  | _ ->
+    FuncT(sort, tbs, t1, t2)
+
+let funcE (f, s, tbs, p, t_opt, e) =
   match t_opt with
   | None -> FuncE(f, s, tbs, p, t_opt, e)
   | Some t ->
     (match t.it with
-     | AsyncT (t1, _) when is_scope_typ t1 ->
-       let tbs' =
-         if List.exists (fun tb -> tb.it.var.it = scope_id) tbs
-         then tbs
-         else scope_bind()::tbs
-       in
-       FuncE(f, s, tbs', p, t_opt, e)
+     | AsyncT (None, t22) ->
+       FuncE(f, s, ensure_scope_bind tbs, p, t_opt, e)
      | _ -> FuncE(f, s, tbs, p, t_opt, e))

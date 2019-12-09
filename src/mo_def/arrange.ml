@@ -151,8 +151,12 @@ and typ t = match t.it with
   | VariantT cts        -> "VariantT" $$ List.map typ_tag cts
   | TupT ts             -> "TupT" $$ List.map typ ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
-  | AsyncT (t1, t2)     -> "AsyncT" $$ [typ t1; typ t2]
+  | AsyncT (t1_opt, t2)     -> "AsyncT" $$ [typ_opt t1_opt; typ t2]
   | ParT t              -> "ParT" $$ [typ t]
+
+and typ_opt t_opt = match t_opt with
+    Some t -> typ t
+  | None -> Atom "?"
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]

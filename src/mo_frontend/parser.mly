@@ -253,7 +253,7 @@ typ_pre :
 typ :
   | t=typ_pre
     { t }
-  | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ
+  | s=func_sort_opt tps=typ_params t1=typ_un ARROW t2=typ
     { funcT(s, tps, t1, t2) @! at $sloc }
 
 typ_item :
@@ -267,14 +267,10 @@ typ_args :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
-%inline typ_params_opt :
-  | (* empty *) { None }
-  | LT ts=seplist(typ_bind, COMMA) GT { Some ts }
-
 typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
-  | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ
+  | x=id tps=typ_params t1=typ_nullary t2=return_typ
     { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
@@ -293,11 +289,15 @@ typ_bind :
   | LT tb=typ_bind GT
     { tb }
 
-%inline scope_inst_opt :
+%inline scope_inst :
   | LT t=typ GT
     { t }
+
+%inline scope_inst_opt :
+  | t=scope_inst
+    { Some t }
   | (* empty *)
-    { scope_typ () }
+    { None }
 
 (* Expressions *)
 
@@ -451,7 +451,7 @@ exp_nondec(B) :
     { RetE(e) @? at $sloc }
   | ASYNC e=exp(bl)
     { AsyncE(scope_bind(), e, scope_typ()) @? at $sloc }
-  | ASYNC tb = scope_bind e=exp_nullary(bl) t=scope_inst_opt
+  | ASYNC tb = scope_bind e=exp_nullary(bl) t=scope_inst
     { AsyncE(tb, e, t) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
@@ -630,7 +630,7 @@ dec_nonvar :
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
   | s=func_sort_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
+      tps=typ_params p=pat_param t=return_typ? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
@@ -638,10 +638,13 @@ dec_nonvar :
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
           match t with
-          | Some {it = AsyncT _; _} ->
-            (match tps with
-             | Some (tb::_) -> AsyncE(pun_bind tb, e, scope_typ()) @? e.at
-             | _ -> AsyncE(scope_bind(), e, scope_typ()) @? e.at)
+          | Some {it = AsyncT (None,_); _} ->
+	    AsyncE(scope_bind(), e, scope_typ()) @? e.at
+          | Some {it = AsyncT (Some typ,_); _} ->
+            (match as_idT typ with
+            | Some id ->
+              AsyncE(pun_id id, e, typ) @? e.at
+            | _ -> AsyncE(scope_bind(), e, typ) @? e.at)
           | _ -> e
       in
       let named, x = xf "func" $sloc in
