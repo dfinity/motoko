@@ -51,3 +51,7 @@ actor {
 //CALL ingress three "DIDL\x00\x03\x71\x71\x71\x03One\x03Two\x05ThreeEXTRABYTES"
 // extra arguments (ok)
 //CALL ingress four "DIDL\x00\x05\x71\x71\x71\x71\x71\x03One\x03Two\x05Three\x04Four\x04Five"
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low

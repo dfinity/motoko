@@ -1,4 +1,4 @@
-RUNFLAGS = -2
+RUNFLAGS = -d
 
 all:
 	../run.sh $(RUNFLAGS) *.mo

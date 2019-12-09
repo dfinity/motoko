@@ -3,6 +3,7 @@ export default ({ IDL }) => {
  const t2 = IDL.Arr(t)
  const t3 = IDL.Opt(t)
  const t1 = IDL.Obj({'0': t2, '1': t3, '2': t})
- const actor_S = new IDL.ActorInterface({'f': IDL.Func([t, t2, t3], [t1])});
+ const actor_S = new IDL.ActorInterface({'f': IDL.Func([t, t2, t3], [t1], [])
+  });
  return actor_S;
 };

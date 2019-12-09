@@ -6,3 +6,7 @@ actor {
 }
 
 //CALL ingress len2 "DIDL\x00\x02\x71\x71\x02Hi\x05World"
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low

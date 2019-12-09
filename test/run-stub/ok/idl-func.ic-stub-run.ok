@@ -1,8 +1,0 @@
-→ create
-← completed: canister-id = 0x0000000000000400
-→ install
-← completed
-→ query fun(0x4449444c0000)
-← completed: 0x4449444c036e016c02000201716d7b010000
-→ query fun2(0x4449444c026e016a017c0000010000)
-← completed: 0x4449444c0000

@@ -17,6 +17,8 @@ WASM=\
 TESTS=\
 	Array \
 	ArrayTest \
+	BufTest \
+	Buf \
 	AssocList \
 	DocTable \
   Function \
@@ -71,6 +73,12 @@ $(OUTDIR)/Array.out: array.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/ArrayTest.out: arrayTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Buf.out: buf.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/BufTest.out: bufTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Function.out: function.mo | $(OUTDIR)
@@ -154,6 +162,7 @@ docMd: \
 	$(DOCDIR)/README.md \
 	$(DOCDIR)/prelude.md \
 	$(DOCDIR)/array.md \
+	$(DOCDIR)/buf.md \
 	$(DOCDIR)/option.md \
 	$(DOCDIR)/result.md \
 	$(DOCDIR)/hash.md \
@@ -177,6 +186,7 @@ docHtml: \
 	$(DOCDIR)/README.html \
 	$(DOCDIR)/prelude.html \
 	$(DOCDIR)/array.html \
+	$(DOCDIR)/buf.html \
 	$(DOCDIR)/option.html \
 	$(DOCDIR)/result.html \
 	$(DOCDIR)/hash.html \
@@ -227,22 +237,22 @@ PRODUCE_EXCHANGE_SRC=\
 
 $(OUTDIR)/ProduceExchange.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/simpleSetupAndQuery.mo | $(OUTDIR)
-	$(MOC) -ancient-system-api -r examples/produce-exchange/test/simpleSetupAndQuery.mo > $@
+	$(MOC) -stub-system-api -r examples/produce-exchange/test/simpleSetupAndQuery.mo > $@
 
 $(OUTDIR)/retailerReserveMany.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/retailerReserveMany.mo | $(OUTDIR)
-	$(MOC) -ancient-system-api -r examples/produce-exchange/test/retailerReserveMany.mo > $@
+	$(MOC) -stub-system-api -r examples/produce-exchange/test/retailerReserveMany.mo > $@
 
 $(OUTDIR)/producerRemInventory.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/producerRemInventory.mo | $(OUTDIR)
-	$(MOC) -ancient-system-api -r examples/produce-exchange/test/producerRemInventory.mo > $@
+	$(MOC) -stub-system-api -r examples/produce-exchange/test/producerRemInventory.mo > $@
 
 $(OUTDIR)/evalBulk.out: $(PRODUCE_EXCHANGE_SRC) \
 	examples/produce-exchange/test/evalBulk.mo | $(OUTDIR)
-	$(MOC) -ancient-system-api -r examples/produce-exchange/test/evalBulk.mo > $@
+	$(MOC) -stub-system-api -r examples/produce-exchange/test/evalBulk.mo > $@
 
 $(OUTDIR)/ProduceExchange.wasm: $(PRODUCE_EXCHANGE_SRC) | $(OUTDIR)
-	$(MOC) -ancient-system-api -c -o $@ examples/produce-exchange/serverActor.mo
+	$(MOC) -stub-system-api -c -o $@ examples/produce-exchange/serverActor.mo
 
 $(DOCDIR)/%.md: %.mo $(MDofMO) | $(DOCDIR)
 	@echo "<!-- **[ Do not edit; This file was machine-generated on `date`. ]** -->" > $@

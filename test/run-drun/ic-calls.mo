@@ -1,9 +1,6 @@
-actor X {
-
-
+actor a {
   public func A() : async () {
   };
-
 
   public func B(x : Int) : async Int {
    x
@@ -13,12 +10,11 @@ actor X {
    (x,y);
   };
 
-  public func test() : async () {
+  public func go() = ignore async {
     let () = await A();
     let 1 = await B(1);
     let (1,true) = await C(1,true);
   };
 
-}
-//CALL ingress test 0x4449444C0000
-
+};
+a.go(); //OR-CALL ingress go "DIDL\x00\x00"
