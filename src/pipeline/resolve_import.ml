@@ -212,14 +212,14 @@ let collect_imports (prog : prog): string list =
   let f e = match e.it with
     | ImportE (f, _) -> res := f::!res; e
     | _ -> e in
-  let _ = ignore (List.map (over_dec f) prog.it) in
+  let _ = List.iter (fun d -> ignore (over_dec f d)) prog.it in
   !res
 
 let prog env p =
   let f e = match e.it with
     | ImportE (f, fp) -> resolve_import_string env e.at f fp; e
     | _ -> e in
-  ignore (List.map (over_dec f) p.it)
+  List.iter (fun d -> ignore (over_dec f d)) p.it
 
 type package_urls = (string * string) list
 
