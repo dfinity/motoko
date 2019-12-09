@@ -441,6 +441,6 @@ instantiation is desired.
 
 Since users may find it odd that we can instantiate the index at any
 type, it might be better to define "type @ = Non" and always bound
-index-parameters by `Non`. Then the top-level choice really is unique
-since `Non` (and any `Non`-bounded type parameter) ares the only type
+index-parameters by `Non`. Then the top-level choice of index really is unique
+since `Non`, and any `Non`-bounded type parameter, are the only types
 bounded by `Non` and thus suitable for uses as index instantiations.
