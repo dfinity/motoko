@@ -2738,6 +2738,8 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
+      E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
@@ -2897,8 +2899,34 @@ module Dfinity = struct
       assert false
 
   let error_code env =
-      SR.UnboxedWord32,
-      system_call env "ic0" "msg_reject_code"
+    let (set_code, get_code) = new_local env "code" in
+    system_call env "ic0" "msg_reject_code" ^^ set_code ^^
+    get_code ^^ compile_unboxed_const 4l ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    G.if_ (ValBlockType (Some I32Type))
+      (Variant.inject env "error" Tuple.compile_unit)
+      (Variant.inject env "system" Tuple.compile_unit)
+
+  let error_message env =
+    let (set_len, get_len) = new_local env "len" in
+    let (set_blob, get_blob) = new_local env "blob" in
+    system_call env "ic0" "msg_reject_msg_size" ^^
+    set_len ^^
+
+    get_len ^^ Blob.alloc env ^^ set_blob ^^
+    get_blob ^^ Blob.payload_ptr_unskewed ^^
+    compile_unboxed_const 0l ^^
+    get_len ^^
+    system_call env "ic0" "msg_reject_msg_copy" ^^
+
+    get_blob
+
+  let error_value env =
+    Func.share_code0 env "error_value" [I32Type] (fun env ->
+      error_code env ^^
+      error_message env ^^
+      Tuple.from_stack env 2
+    )
 
   let reply_with_data env =
     Func.share_code2 env "reply_with_data" (("start", I32Type), ("size", I32Type)) [] (
@@ -4709,8 +4737,10 @@ module FuncDec = struct
         set_closure ^^
         get_closure ^^
 
-        (* Synthesize value of type `Error` *)
-        E.trap_with env "reject_callback" ^^
+        (* Synthesize value of type `Text`, the error message
+           (The error code is fetched via a prim)
+        *)
+        Dfinity.error_value env ^^
 
         get_closure ^^
         Closure.call_closure env 1 0 ^^
@@ -4866,36 +4896,8 @@ module PatCode = struct
 end (* PatCode *)
 open PatCode
 
-
 (* All the code above is independent of the IR *)
 open Ir
-
-(* Compiling Error primitives *)
-module Error = struct
-
-  (* Opaque type `Error` is represented as concrete type `(ErrorCode,Text)` *)
-
-  let compile_error env arg_instrs =
-      SR.UnboxedTuple 2,
-      Variant.inject env "error" Tuple.compile_unit ^^
-      arg_instrs
-
-  let compile_errorCode arg_instrs =
-      SR.Vanilla,
-      arg_instrs ^^
-      Tuple.load_n (Int32.of_int 0)
-
-  let compile_errorMessage arg_instrs =
-      SR.Vanilla,
-      arg_instrs ^^
-      Tuple.load_n (Int32.of_int 1)
-
-  let compile_make_error arg_instrs1 arg_instrs2 =
-      SR.UnboxedTuple 2,
-      arg_instrs1 ^^
-      arg_instrs2
-
-end
 
 module AllocHow = struct
   (*
@@ -6014,15 +6016,9 @@ and compile_exp (env : E.t) ae exp =
         G.i (Binary (Wasm.Values.I64 I64Op.And))
       )
 
-    (* Error related prims *)
-    | OtherPrim "error", [e] ->
-      Error.compile_error env (compile_exp_vanilla env ae e)
-    | OtherPrim "errorCode", [e] ->
-      Error.compile_errorCode (compile_exp_vanilla env ae e)
-    | OtherPrim "errorMessage", [e] ->
-      Error.compile_errorMessage (compile_exp_vanilla env ae e)
-    | OtherPrim "make_error", [e1; e2] ->
-      Error.compile_make_error (compile_exp_vanilla env ae e1) (compile_exp_vanilla env ae e2)
+    (* Coercions for abstract types *)
+    | CastPrim (_,_), [e] ->
+      compile_exp env ae e
 
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with
@@ -6037,10 +6033,6 @@ and compile_exp (env : E.t) ae exp =
 
     | ICRejectPrim, [e] ->
       SR.unit, Dfinity.reject env (compile_exp_vanilla env ae e)
-
-    | ICErrorCodePrim, [] ->
-      assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
-      Dfinity.error_code env
 
     | ICCallPrim, [f;e;k;r] ->
       SR.unit, begin
