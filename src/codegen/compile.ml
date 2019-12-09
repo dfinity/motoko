@@ -2916,7 +2916,8 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
-      E.add_func_import env "msg" "reply" [I32Type; I32Type] [];
+      E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
+      E.add_func_import env "ic0" "msg_reply" [] [];
       E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
       ()
     | Flags.StubMode  ->
@@ -3094,12 +3095,8 @@ module Dfinity = struct
       fun env get_data_start get_data_size ->
         get_data_start ^^
         get_data_size ^^
-        match E.mode env with
-        | Flags.ICMode -> system_call env "msg" "reply"
-        | Flags.StubMode ->
-          system_call env "ic0" "msg_reply_data_append" ^^
-          system_call env "ic0" "msg_reply"
-        | _ -> assert false
+        system_call env "ic0" "msg_reply_data_append" ^^
+        system_call env "ic0" "msg_reply"
     )
 
   (* Actor reference on the stack *)
