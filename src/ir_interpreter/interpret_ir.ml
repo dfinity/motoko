@@ -363,6 +363,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.prim s arg k
       )
+    | CastPrim _, [e] -> interpret_exp env e k
     | NumConvPrim (t1, t2), exps ->
       interpret_exps env exps [] (fun vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
@@ -377,7 +378,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       assert (not env.flavor.has_async_typ);
       let reject = Lib.Option.value env.rejects in
       interpret_exp env exp1
-        (fun v -> Scheduler.queue (fun () -> reject v))
+        (fun v ->
+          let e = V.Tup [V.Variant ("error", V.unit); v] in
+          Scheduler.queue (fun () -> reject e))
     | ICCallPrim, [exp1; exp2; expk ; expr] ->
       assert (not env.flavor.has_async_typ);
       interpret_exp env exp1 (fun v1 ->
@@ -820,4 +823,3 @@ let interpret_prog flags scope ((ds, exp), flavor) : scope =
     Scheduler.run ();
     !ve
   with exn -> print_exn flags exn; !ve
-

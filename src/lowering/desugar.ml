@@ -103,6 +103,10 @@ and exp' at note = function
       I.PrimE (I.NumConvPrim (p1, p2), [exp e])
     | _ -> assert false
     end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
+    let p1 = e.note.S.note_typ in
+    let p2 = note.S.note_typ in
+    I.PrimE (I.CastPrim (p1, p2), [exp e])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->

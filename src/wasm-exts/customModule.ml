@@ -4,8 +4,6 @@
 
 open Wasm.Ast
 
-type type_ = I32 | DataBuf | ElemBuf | ActorRef | FuncRef
-
 type name_section = {
   module_ : string option;
   function_names : (int32 * string) list;
@@ -33,9 +31,4 @@ type extended_module = {
   name : name_section;
   (* dylib section *)
   dylink : dylink_section option;
-  (* DFINITY Types: *)
-  (* function index, and number of arguments (simplified type system) *)
-  types : (int32 * type_ list) list;
-  (* index of persisted global, and its type *)
-  persist : (int32 * type_) list;
   }

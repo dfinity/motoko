@@ -329,30 +329,25 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
   | PrimE (p, es) ->
+    List.iter (check_exp env) es;
     begin match p, es with
     | UnPrim (ot, op), [exp1] ->
       check (Operator.has_unop op ot) "unary operator is not defined for operand type";
-      check_exp env exp1;
       typ exp1 <: ot;
       ot <: t
     | BinPrim (ot, op), [exp1; exp2] ->
       check (Operator.has_binop op ot) "binary operator is not defined for operand type";
-      check_exp env exp1;
-      check_exp env exp2;
       typ exp1 <: ot;
       typ exp2 <: ot;
       ot <: t
     | RelPrim (ot, op), [exp1; exp2] ->
       check (Operator.has_relop op ot) "relational operator is not defined for operand type";
-      check_exp env exp1;
-      check_exp env exp2;
       typ exp1 <: ot;
       typ exp2 <: ot;
       T.bool <: t
     | ShowPrim ot, [exp1] ->
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";
-      check_exp env exp1;
       typ exp1 <: ot;
       T.Prim T.Text <: t
     | CPSAwait, [a; kr] ->
@@ -371,19 +366,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
       check (T.shared t) "ICReplyPrim is not defined for non-shared operand type";
       (* TODO: check against expected reply typ; note this may not be env.ret_tys. *)
-      check_exp env exp1;
       typ exp1 <: (T.seq ts);
       T.Non <: t
     | ICRejectPrim, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICRejectPrim in async flavor";
-      check_exp env exp1;
       typ exp1 <: T.text;
       T.Non <: t
-    | ICErrorCodePrim, [] ->
-      T.Prim (T.Int32) <: t
     | ICCallPrim, [exp1; exp2; k; r] ->
-      check_exp env exp1;
-      check_exp env exp2;
       check_exp env k;
       check_exp env r;
       let t1 = T.promote (typ exp1) in
@@ -394,12 +383,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
         typ exp2 <: t_arg;
         check_concrete env exp.at t_arg;
         typ k <: T.Func (T.Local, T.Returns, [], ret_tys, []);
-        typ r <: T.Func (T.Local, T.Returns, [], [T.text], []);
+        typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+    | CastPrim (t1, t2), [e] ->
+      typ e <: t1;
+      t2 <: t
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
@@ -444,6 +436,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
           n (T.string_of_typ_expand t1)
     end
   | AssignE (exp1, exp2) ->
+    begin
+      match exp1.it with
+      | (VarE _ | DotE _ | IdxE _) -> ()
+      | _ -> error env exp.at "unexpected assignment target"
+    end;
     check_exp env exp1;
     check_exp env exp2;
     let t2 = try T.as_mut  (typ exp1) with
@@ -633,7 +630,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp_r;
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
-    typ exp_r <: T.Func (T.Local, T.Returns, [], [T.text], []);
+    typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
   | ActorE (id, ds, fs, t0) ->
     let env' = { env with async = None } in
     let ve0 = T.Env.singleton id t0 in

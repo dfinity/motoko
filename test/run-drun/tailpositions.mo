@@ -1,4 +1,4 @@
-/* test tail-position calculation; error would stack overflow in dvm*/
+/* test tail-position calculation; error would stack overflow in drun*/
 
 let bound:Int = 100000;
 

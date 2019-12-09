@@ -606,6 +606,8 @@ pat_field :
     { {id = x; pat = VarP x @! x.at} @@ at $sloc }
   | x=id EQ p=pat
     { {id = x; pat = p} @@ at $sloc }
+  | x=id COLON t=typ
+    { {id = x; pat = AnnotP(VarP x @! x.at, t) @! t.at} @@ at $sloc }
 
 
 (* Declarations *)

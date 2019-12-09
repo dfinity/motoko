@@ -105,6 +105,7 @@ let bool = Prim Bool
 let nat = Prim Nat
 let int = Prim Int
 let text = Prim Text
+let error = Prim Error
 let char = Prim Char
 
 let throwErrorCodes = List.sort compare_field [
@@ -140,6 +141,7 @@ let prim = function
   | "Float" -> Float
   | "Char" -> Char
   | "Text" -> Text
+  | "Blob" -> Blob
   | "Error" -> Error
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 

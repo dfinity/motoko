@@ -16,35 +16,23 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
-let dev = import (builtins.fetchGit {
-  name = "dev-sources";
-  url = "ssh://git@github.com/dfinity-lab/dev";
-  # ref = "master";
-  rev = "6fca1936fcd027aaeaccab0beb51defeee38a0ff";
-}) { inherit (nixpkgs) system; }; in
+let dfinity-src =
+  let env = builtins.getEnv "DFINITY_SRC"; in
+  if env != "" then env else builtins.fetchGit {
+    name = "dfinity-sources";
+    url = "ssh://git@github.com/dfinity-lab/dfinity";
+    # ref = "master";
+    rev = "4d09038b09b4ba230205216a0a590b80c33a59cb";
+  }; in
 
-let dfinity-repo = import (builtins.fetchGit {
-  name = "dfinity-sources";
-  url = "ssh://git@github.com/dfinity-lab/dfinity";
-  # ref = "master";
-  rev = "a77f9b30fa5b1f35bef2913c2329e2c8e81c1af8";
-}) { inherit (nixpkgs) system; }; in
+let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
 
-let sdk = import (builtins.fetchGit {
-  name = "sdk-sources";
-  url = "ssh://git@github.com/dfinity-lab/sdk";
-  ref = "master";
-  rev = "7ee8cc40abab5b33c68bc8a32412e5be33a9f410";
-}) { inherit (nixpkgs) system; }; in
-
-let esm = builtins.fetchTarball {
+let esm = nixpkgs.fetchzip {
   sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
 
-let dvm = dev.dvm; in
-let drun = dfinity-repo.drun or dfinity-repo.dfinity.drun; in
-let js-user-library = sdk.js-user-library; in
+let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -199,91 +187,117 @@ rec {
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko ic-stub;
 
-  tests = stdenv.mkDerivation {
-    name = "tests";
-    src = subpath ./test;
-    buildInputs =
-      [ moc
-        mo-ld
-        didc
-        deser
-        nixpkgs.wabt
-        nixpkgs.bash
-        nixpkgs.perl
-        nixpkgs.getconf
-        nixpkgs.moreutils
-        nixpkgs.nodejs-10_x
-        filecheck
-        js-user-library
-        dvm
-        drun
-        wasmtime
-        haskellPackages.qc-motoko
-        haskellPackages.lsp-int
-        ic-stub
-        esm
-      ] ++
-      llvmBuildInputs;
+  tests =
+    let testDerivationArgs = {
+      # by default, an empty source directory. how to best get an empty directory?
+      src = builtins.path { name = "empty"; path = ./nix; filter = p: t: false; };
+      phases = "unpackPhase checkPhase installPhase";
+      doCheck = true;
+      installPhase = "touch $out";
+    }; in
+    let testDerivation = args:
+      stdenv.mkDerivation (testDerivationArgs // args); in
+    let ocamlTestDerivation = args:
+      ocamlpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
 
-    buildPhase = ''
-        patchShebangs .
-        ${llvmEnv}
-        export MOC=moc
-        export MO_LD=mo-ld
-        export DIDC=didc
-        export DESER=deser
-        export ESM=${esm}
-        export JS_USER_LIBRARY=${js-user-library}
-        moc --version
-        drun --version # run this once to work around self-unpacking-race-condition
-        make parallel
+    # we test each subdirectory of test/ in its own derivation with
+    # cleaner dependencies, for more paralleism, more caching
+    # and better feedback about what aspect broke
+    let test_subdir = dir: deps:
+      testDerivation {
+        name = "test-${dir}";
+        # include from test/ only the common files, plus everything in test/${dir}/
+        src =
+          with nixpkgs.lib;
+          cleanSourceWith {
+            filter = path: type:
+              let relPath = removePrefix (toString ./test + "/") (toString path); in
+              type != "directory" || hasPrefix "${dir}/" "${relPath}/";
+            src = subpath ./test;
+            name = "test-${dir}-src";
+        };
+        buildInputs =
+          deps ++
+          [ nixpkgs.wabt
+            nixpkgs.bash
+            nixpkgs.perl
+            nixpkgs.getconf
+            nixpkgs.moreutils
+            nixpkgs.nodejs-10_x
+            filecheck
+            wasmtime
+            esm
+          ] ++
+          llvmBuildInputs;
+
+        checkPhase = ''
+            patchShebangs .
+            ${llvmEnv}
+            export MOC=moc
+            export MO_LD=mo-ld
+            export DIDC=didc
+            export DESER=deser
+            export ESM=${esm}
+            type -p moc && moc --version
+            # run this once to work around self-unpacking-race-condition
+            type -p drun && drun --version
+            make -C ${dir}
+          '';
+      }; in
+
+    let qc = testDerivation {
+      name = "test-qc";
+      # maybe use wasm instead?
+      buildInputs = [ moc nixpkgs.wabt haskellPackages.qc-motoko ];
+      checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
-          " --quickcheck-replay=${toString replay}"}
-        cp -R ${subpath ./test/lsp-int/test-project} test-project
-        find ./test-project -type d -exec chmod +w {} +
-        lsp-int ${mo-ide}/bin/mo-ide ./test-project
+            " --quickcheck-replay=${toString replay}"}
       '';
+    }; in
 
-    installPhase = ''
-      touch $out
-    '';
-  };
+    let lsp = testDerivation {
+      name = "test-lsp";
+      src = subpath ./test/lsp-int/test-project;
+      buildInputs = [ moc haskellPackages.lsp-int ];
+      checkPhase = ''
+        echo running lsp-int
+        lsp-int ${mo-ide}/bin/mo-ide .
+      '';
+    }; in
 
-  unit-tests = ocamlpkgs.stdenv.mkDerivation {
-    name = "unit-tests";
+    let unit-tests = ocamlTestDerivation {
+      name = "unit-tests";
+      src = subpath ./src;
+      buildInputs = commonBuildInputs ocamlpkgs;
+      checkPhase = ''
+        make DUNE_OPTS="--display=short" unit-tests
+      '';
+      installPhase = ''
+        touch $out
+      '';
+    }; in
 
-    src = subpath ./src;
-
-    buildInputs = commonBuildInputs ocamlpkgs;
-
-    buildPhase = ''
-      make DUNE_OPTS="--display=short" unit-tests
-    '';
-
-    installPhase = ''
-      touch $out
-    '';
-  };
+    { run       = test_subdir "run"       [ moc ] ;
+      run-drun  = test_subdir "run-drun"  [ moc drun ic-stub ];
+      fail      = test_subdir "fail"      [ moc ];
+      repl      = test_subdir "repl"      [ moc ];
+      ld        = test_subdir "ld"        [ mo-ld ];
+      idl       = test_subdir "idl"       [ didc ];
+      mo-idl    = test_subdir "mo-idl"    [ moc didc ];
+      trap      = test_subdir "trap"      [ moc ];
+      run-deser = test_subdir "run-deser" [ deser ];
+      inherit qc lsp unit-tests;
+    };
 
   samples = stdenv.mkDerivation {
     name = "samples";
     src = subpath ./samples;
-    buildInputs =
-      [ moc
-        didc
-        nixpkgs.wabt
-        nixpkgs.bash
-        nixpkgs.perl
-        filecheck
-        drun
-      ] ++
-      llvmBuildInputs;
-
+    buildInputs = [ moc ];
     buildPhase = ''
-        patchShebangs .
-        export MOC=moc
-        make all
-      '';
+      patchShebangs .
+      export MOC=moc
+      make all
+    '';
     installPhase = ''
       touch $out
     '';
@@ -318,7 +332,6 @@ rec {
     '';
   };
 
-  inherit dvm;
   inherit drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
@@ -423,8 +436,6 @@ rec {
       js
       didc
       deser
-      tests
-      unit-tests
       samples
       rts
       stdlib
@@ -433,7 +444,7 @@ rec {
       users-guide
       ic-stub
       shell
-    ];
+    ] ++ builtins.attrValues tests;
   };
 
   shell = nixpkgs.mkShell {
@@ -449,15 +460,14 @@ rec {
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
-        tests.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ]
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ] ++
+        builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
     shellHook = llvmEnv;
     ESM=esm;
-    JS_USER_LIBRARY=js-user-library;
     TOMMATHSRC = libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";

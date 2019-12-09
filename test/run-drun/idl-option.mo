@@ -12,3 +12,7 @@ actor {
 //CALL ingress any 0x4449444C00017f
 //CALL ingress any 0x4449444C016e71010000
 //CALL ingress any 0x4449444C016e7101000103466F6F
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low
