@@ -337,15 +337,13 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
 // these will change
 type ErrorCode = {#error; #system}; /* TBC */
 
-// prims implement abstract type
-func makeError(e : (ErrorCode, Text)) : Error =
-  (prim "cast" : (ErrorCode, Text)-> Error) e;
-
+// creation and inspection of abstract error
 func openError(e : Error) : (ErrorCode, Text) =
   (prim "cast" : Error -> (ErrorCode, Text)) e;
-
-// public functions (ought to go to standard library)
-func error(message : Text) : Error = (makeError (#error, message));
+func error(message : Text) : Error = {
+  let e = (#error, message);
+  ((prim "cast" : (ErrorCode, Text)-> Error) e)
+};
 func errorCode(e : Error) : ErrorCode = (openError e).0;
 func errorMessage(e : Error) : Text = (openError e).1;
 
