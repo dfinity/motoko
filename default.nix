@@ -22,7 +22,7 @@ let dfinity-src =
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
     ref = "joachim/drun-wait-for-result,";
-    rev = "3562b9a987c8de2b003caae4ff0404c8b1529ee0";
+    rev = "4860f1b957666851c2f86d5d7fdf791ac54a6429";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
