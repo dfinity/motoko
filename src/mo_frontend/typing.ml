@@ -816,7 +816,7 @@ and infer_exp'' env exp : T.typ =
         | T.Func(_,T.Returns, _, _, [T.Async (T.Var (_, n),_)])
            when n < expected && List.length pre_typs = expected - 1 ->
           insert n
-            (Syntax.scope_typ {left=exp1.at.right; right = exp2.at.left})
+            (Syntax.scope_typ {left = exp1.at.right; right = exp2.at.left})
             pre_typs
         |  _ -> pre_typs
     in
