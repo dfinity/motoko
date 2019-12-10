@@ -812,7 +812,7 @@ and infer_exp'' env exp : T.typ =
       | n, [] -> [typ]
     in
     let typs = match t1 with
-        | T.Func(_,T.Promises (T.Var (_, n)), _, _, _)
+        | T.Func (_, T.Promises (T.Var (_, n)), _, _, _)
         | T.Func(_,T.Returns, _, _, [T.Async (T.Var (_, n),_)])
            when n < expected && List.length pre_typs = expected - 1 ->
           insert n
