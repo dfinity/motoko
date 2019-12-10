@@ -56,7 +56,7 @@ In order to compile a motoko file, `dfx` invokes `moc` with
 
 in an environment where `MOC_RTS` points to the location of the Motoko runtime system.
 
-This _reads_ the follwing files
+This _reads_ the following files
  * `some/path/input.mo`
  * any `.mo` file referenced by `some/path/input.mo`, either relatively, absolutely or via the provided package aliases
  * for every actor import `ic:canisteridoralias` imported by any of the Motoko files, it reads `actorpath/canisteridoralias.mo`, see section Resolving Canister Ids below.
@@ -82,7 +82,7 @@ The relation defined by the set of `--actor-alias` arguments must be left-unique
 
 It is up to `dfx` to determine which urls are aliases that need resolving and which are concrete ids, and to set up `--actor-alias` flags accordingly.
 
-After applying any aliases, the Motoko compiler assume these imports to refer to the [textual representation] of principal ids (e.g. `ic:ABCDE01A7`), and compilation will fail if they are not.
+After applying any aliases, the Motoko compiler assume these imports to refer to [textual representations] of principal ids (e.g. `ic:ABCDE01A7`), and compilation will fail if they do not.
 
 [textual representation]: https://docs.dfinity.systems/spec/public/#textual-ids
 
