@@ -1,4 +1,4 @@
-open As_frontend
+open Mo_frontend
 module Lsp = Lsp.Lsp_t
 
 type cursor_target =
@@ -37,7 +37,7 @@ let cursor_target_at_pos
         | tkn -> loop tkn)
     | Parser.EOF -> None
     | _ -> loop (next ()) in
-  loop (next ())
+  try loop (next ()) with _ -> None
 
 let import_relative_to_project_root root module_path dependency =
   match Pipeline__.File_path.relative_to root module_path with
@@ -75,7 +75,7 @@ let parse_module_header project_root current_file_path file =
         | tkn -> loop tkn)
     | Parser.EOF -> List.rev !res
     | tkn -> loop (next ()) in
-  loop (next ())
+  try loop (next ()) with _ -> List.rev !res
 
 type unresolved_target =
   { qualifier : string; ident : string }

@@ -1,1 +1,8 @@
-_out/powInt32-raise-neg.wasm:0x___: runtime trap: unreachable executed
+negative power
+
+Error: failed to process main module `_out/powInt32-raise-neg.wasm`
+
+Caused by:
+    0: Instantiation failed during setup
+    1: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:
+

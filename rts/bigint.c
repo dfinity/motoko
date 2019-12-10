@@ -8,17 +8,17 @@ A libtommath arbitrary precision integer is a struct (`mp_int`) that contains a
 pointer to a data array.
 
  * The libtommath library never allocates the struct, so we are in full
-   control. We can embed the struct simply in an ActorScript heap object
+   control. We can embed the struct simply in an Motoko heap object
    with a dedicated tag for it.
 
  * The data array is allocated with mp_calloc and mp_realloc. We provide these
-   calls, allocate ActorScript arrays (using the TAG_TEXT tag for byte arrays,
+   calls, allocate Motoko arrays (using the TAG_BLOB tag for byte arrays,
    not TAG_ARRAY for arrays of pointers) and store the pointer to the
    _payload_ in the `mp_digit* dp` field of the struct. This way, things look all nice
    and dandy from libtommath’s point of view.
 
    Our garbage collector has special knowledge about the dp field of the struct
-   and understands that this pointer points inside the TAG_TEXT heap object. But
+   and understands that this pointer points inside the TAG_BLOB heap object. But
    we can still move them around in the GC without issues.
 
    The length of the byte array is always equal to the allocation asked for by
@@ -29,10 +29,7 @@ pointer to a data array.
 */
 
 void* mp_alloc(size_t l) {
-  as_ptr r = alloc_bytes (2*sizeof(void*) + l);
-  FIELD(r, 0) = TAG_TEXT; // abusing text as byte array here
-  FIELD(r, 1) = l;
-  return &FIELD(r,2);
+  return alloc(l);
 }
 
 export void* mp_calloc(size_t n, size_t size) {
@@ -48,7 +45,7 @@ export void* mp_calloc(size_t n, size_t size) {
 export void* mp_realloc(void *ptr, size_t old_size, size_t new_size) {
   as_ptr r = (as_ptr)(((char *)ptr) - (2 * sizeof(void*) + 1));
 
-  if (FIELD(r, 0) != TAG_TEXT) bigint_trap(); // assert block type
+  if (FIELD(r, 0) != TAG_BLOB) bigint_trap(); // assert block type
 
   if (new_size > FIELD(r, 1)) {
     void *newptr = mp_alloc(new_size);

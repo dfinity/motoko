@@ -3,7 +3,7 @@ export default ({ IDL }) => {
  const t1 = t
  const UserId = IDL.Nat
  const t2 = UserId
- const actor_S = new IDL.ActorInterface({
-  'f': IDL.Func(IDL.Obj({'0': t, '1': t1, '2': t2}), IDL.Obj({}))});
+ const actor_S = new IDL.ActorInterface({'f': IDL.Func([t, t1, t2], [], [])
+  });
  return actor_S;
 };

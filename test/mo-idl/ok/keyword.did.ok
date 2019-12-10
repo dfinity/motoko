@@ -1,0 +1,4 @@
+type record_ = nat;
+service record_ {
+  "record": (record_) -> ();
+}

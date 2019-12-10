@@ -1,10 +1,10 @@
-# ActorScript
+# Motoko
 
 A simple language for writing Dfinity actors.
 
 ## User Documentation & Samples
 
-* [Overview slides](https://hydra.dfinity.systems/job/dfinity-ci-build/actorscript/users-guide/latest/download/1/as-slides.html) ([sources](guide/as-slides.md)).
+* [Overview slides](https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/users-guide/latest/download/1/as-slides.html) ([sources](guide/as-slides.md)).
 * [Draft (incomplete) manual](guide/guide.md).
 * [Prelude](src/prelude/prelude.ml).
 * Beginnings of [standard library](stdlib).
@@ -241,7 +241,7 @@ actor class Client(name : Text, server : Server) = this {
   };
 
   public func send(msg : Text) {
-    print(name # " received " # msg # "\n");
+    debugPrint(name # " received " # msg # "\n");
   };
 };
 

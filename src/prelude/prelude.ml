@@ -21,13 +21,12 @@ type Word64 = prim "Word64";
 type Float = prim "Float";
 type Char = prim "Char";
 type Text = prim "Text";
+type Blob = prim "Blob";
 type Error = prim "Error";
 
 type Iter<T_> = {next : () -> ?T_};
 
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
-
-func ignore(_ : Any) {};
 
 class range(x : Nat, y : Nat) {
   var i = x;
@@ -80,16 +79,29 @@ func @mut_array_vals<A>(xs : [var A]) : (() -> Iter<A>) =
 func @text_len(xs : Text) : (() -> Nat) =
   (func () : Nat = (prim "text_len" : Text -> Nat) xs);
 func @text_chars(xs : Text) : (() -> Iter<Char>) =
-  (func () : Iter<Char> = (prim "text_chars" : Text -> Iter<Char>) xs);
+  (func () : Iter<Char> = object {
+    type TextIter = Any; // not exposed
+    let i = (prim "text_iter" : Text -> TextIter) xs;
+    public func next() : ?Char {
+      if ((prim "text_iter_done" : TextIter -> Bool) i)
+        null
+      else
+        ?((prim "text_iter_next" : TextIter -> Char) i)
+    };
+  });
 
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
 
-func printNat(x : Nat) { print (@text_of_Nat x) };
-func printInt(x : Int) { print (@text_of_Int x) };
-func printChar(x : Char) { print (charToText x) };
-func print(x : Text) { (prim "print" : Text -> ()) x };
+func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
+func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };
+func debugPrintInt(x : Int) { debugPrint (@text_of_Int x) };
+func debugPrintChar(x : Char) { debugPrint (charToText x) };
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
+func rts_heap_size() : Nat { (prim "rts_heap_size" : () -> Nat) () };
+func rts_total_allocation() : Nat { (prim "rts_total_allocation" : () -> Nat) () };
+func rts_callback_table_count() : Nat { (prim "rts_callback_table_count" : () -> Nat) () };
+func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> Nat) () };
 
 // Hashing
 func hashInt(x : Int) : Word32 {
@@ -334,20 +346,16 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
 // these will change
 type ErrorCode = {#error; #system}; /* TBC */
 
-func error(message : Text) : Error =
-  (prim "error" : Text -> Error)(message);
-
-func errorCode(e : Error) : ErrorCode =
-  (prim "errorCode" : Error -> ErrorCode)(e);
-
-func errorMessage(e : Error) : Text =
-  (prim "errorMessage" : Error -> Text)(e);
-
-func @int32ToErrorCode(i : Int32) : ErrorCode {
-  switch (int32ToInt(i)) { /*TODO: conversion only to avoid bug in asc-js, TBR */
-    case 4 /* CANISTER_REJECT */ #error;
-    case _ #system; /* TBC */
-  }
+// creation and inspection of abstract error
+func error(message : Text) : Error = {
+  let e = (#error, message);
+  ((prim "cast" : (ErrorCode, Text)-> Error) e)
+};
+func errorCode(e : Error) : ErrorCode = {
+  ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
+};
+func errorMessage(e : Error) : Text = {
+  ((prim "cast" : Error -> (ErrorCode, Text)) e).1;
 };
 
 type Cont<T> = T -> () ;

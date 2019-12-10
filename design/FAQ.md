@@ -6,7 +6,7 @@ An actor is instantiated as a separate wasm instance, with isolated state. Class
 
 At the moment, anywhere - they get compiled to async message sends to the enclosing (perhaps implicit) actor that return a promise. You might, however, not be able to await the result unless you are in an outer async context! But you could pass in into another async block that can await it.
 
-> 3. What kinds of datatypes are permitted to be declared with the `share` qualifier; and why some but not others (what’s the source of the distinction, and its role in writing actorscript-based systems)
+> 3. What kinds of datatypes are permitted to be declared with the `share` qualifier; and why some but not others (what’s the source of the distinction, and its role in writing motoko-based systems)
 
 Shared means transmittable without losing identity, essentially. So scalars, immutable data, option of shared, shared (immutable objects), shared functions and actor references can be sent/received, but nothing else that might contain or close over mutable state. That's the idea, assuming it isn't broken. Not all restrictions are currently checked (i.e. escape of shared state into actors and shared functions for instance.) Note that serialization is mostly by value, apart from actors and shared functions, which are by reference, so identity can't be preserved for most values, ruling out them containing state.
 

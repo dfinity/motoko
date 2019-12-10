@@ -426,6 +426,23 @@ type tree = variant {
 
 A third form of value are *references*. They represent first-class handles to (possibly remote) *functions* or *services*.
 
+#### Actor References
+
+An *actor reference* points to a service and is described by an actor type. Through this, services can communicate connections to other services.
+
+```
+<reftype> ::= ... | service <actortype>
+```
+
+##### Example
+
+```
+type broker = service {
+  findCounterService : (name : text) ->
+    (service {up : () -> (); current : () -> nat});
+}
+```
+
 #### Function References
 
 A *function reference* is described by its function type. For example, they allow passing callbacks to other functions.
@@ -441,25 +458,6 @@ type engine = service {
   search : (query : text, callback : func (vec result) -> ());
 }
 ```
-
-#### Actor References
-
-An *actor reference* points to a service and is described by an actor type. Through this, services can communicate connections to other services.
-
-```
-<reftype> ::= ... | service <actortype>
-```
-
-
-##### Example
-
-```
-type broker = service {
-  findCounterService : (name : text) ->
-    (service {up : () -> (); current : () -> nat});
-}
-```
-
 
 ### Type Definitions
 
@@ -537,18 +535,6 @@ That is, outbound message results can only be replaced with a subtype (more fiel
 
 Subtyping applies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
 
-**TODO: unsound, fix**
-
-To make these constraints as flexible as possible, two special rules apply:
-
- * An absent record field is considered equivalent to a present field with value `null`. Moreover, a record field of type `null` is a subtype of a field with type `opt <datatype>`. That way,	That way, a field of option (or null) type can always be added to a record type, no matter whether in co- or contra-variant position. If an optional field is added to an inbound record, and he client did not provide it, the service will read it as if its value was null.
-
-  - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;	
-  - in an inbound record, a field of option (or null) type can also be added, in which case the service will read it as if its value was null.
-
-Future extensions: defaults, including for variants?
-
-
 ### Rules
 
 #### Primitive Types
@@ -620,54 +606,7 @@ record { <fieldtype>;* } <: record { <fieldtype'>;* }
 record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
 ```
 
-**TODO: Rules below are unsound as is, need fixing!**
-
-In addition, record fields of `null` or option type can be removed, treating the absent field as having value `null`.
-```
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
--------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
-
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
------------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
-```
-TODO: What we want to achieve: Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
-```
-type T = {};
-actor { f : T -> T };
-```
-can safely be upgraded to
-```
-type T' = {x : opt text};
-actor { f : T' -> T' };
-```
-for all first-order uses of `T`, because both of the following hold:
-```
-upgrade T' <: T
-upgrade T <: T'
-```
-And hence:
-```
-upgrade (T' -> T')  <:  (T -> T)
-```
-for some version of a type `upgrade T`.
-Moreover, this extends to the higher-order case, where e.g. a function of the above type is expected as a parameter:
-```
-actor { g : (h : T -> T) -> ()}
-```
-Upgrading `T` as above contra-variantly requires
-```
-upgrade (T -> T)  <:  (T' -> T')
-```
-which also holds.
-
-Note: Subtyping still needs to be transitive . We must not allow:
-```
-record {x : opt text} <: record {} <: record {x : opt nat}
-```
-**TODO: Sanity continues from here.**
-
+**NOTE**: There is a need for a mechanism to also remove fields (which means adding a field when a record appears as an argument). The precise mechanism is still work in progress.
 
 #### Variants
 
@@ -772,20 +711,6 @@ record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <f
   ~> \x.{f2 x with <nat> = f1 x.<nat>}
 ```
 
-TODO: Fix
-```
-record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
--------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
-  ~> \x.{f x; <nat> = null}
-
-record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
------------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
-  ~> \x.{f x; <nat> = null}
-```
-
-
 #### Variants
 
 ```
@@ -852,7 +777,7 @@ service Server : {
 Note:
 * `TruckTypeId` and `nat` are used interchangeably.
 
-With this IDL file, the server code in ActorScript could be:
+With this IDL file, the server code in Motoko could be:
 ```
 actor Server {
   registrarAddTruckType(truck_info : TruckTypeInfo) : async ?TruckTypeId {
@@ -891,6 +816,21 @@ Note:
 
 
 ### Serialisation
+
+This section describes how abstract *IDL values* of the types described by the IDL are serialised into a binary representation for transfer between actors.
+
+Serialisation is defined by three functions `T`, `M`, and `R` given below.
+
+Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references:
+
+* `ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `id(b)`, indicates a transparent reference to a service addressed by the blob `b`.
+
+Likewise, there are two forms of IDL values for function references:
+
+* `ref(r)` indicates an opaque reference, understood only by the underlying system.
+* `pub(s,n)`, indicates the public method name `n` of the service referenced by `s`.
+
 
 #### Notation
 
@@ -1009,8 +949,11 @@ M : (<nat>, <val>) -> <fieldtype> -> i8*
 M((k,v) : k:<datatype>) = M(v : <datatype>)
 
 M : <val> -> <reftype> -> i8*
-M(r : service <actortype>) = .
-M(r : func <functype>)     = .
+M(ref(r) : service <actortype>) = i8(0)
+M(id(v*) : service <actortype>) = i8(1) M(v* : vec i8)
+
+M(ref(r)   : func <functype>) = i8(0)
+M(pub(s,n) : func <functype>) = i8(1) M(s : service {}) M(n : text)
 ```
 
 
@@ -1034,8 +977,10 @@ R : (<nat>, <val>) -> <fieldtype> -> <ref>*
 R((k,v) : k:<datatype>) = R(v : <datatype>)
 
 R : <val> -> <reftype> -> <ref>*
-R(r : service <actortype>) = r
-R(r : func <functype>)     = r
+R(ref(r) : service <actortype>) = r
+R(id(b*) : service <actortype>) = .
+R(ref(r)   : func <functype>) = r
+R(pub(s,n) : func <functype>) = .
 ```
 
 Note:
@@ -1092,8 +1037,8 @@ The types of these values are assumed to be known from context, so the syntax do
   | <val> : <datatype>
 
 <primval> ::=
-  | <nat> | <int> | <float>     (TODO: same as ActorScript grammar plus sign)
-  | <text>                      (TODO: same as ActorScript grammar)
+  | <nat> | <int> | <float>     (TODO: same as Motoko grammar plus sign)
+  | <text>                      (TODO: same as Motoko grammar)
   | true | false
   | null
 
@@ -1122,8 +1067,8 @@ Analoguous to types, a few syntactic shorthands are supported that can be reduce
   | blob <text>            := vec { N;* }  where N* are of bytes in the string, interpreted [as in the WebAssembly textual format](https://webassembly.github.io/spec/core/text/values.html#strings)
 
 <fieldval> ::= ...
-  | <name> = <val>         :=  <hash(name)> = <val>
-  | <val>                  :=  N = <val>  where N is either 0 or previous + 1  (only in records)
+  | <name> = <annval>      :=  <hash(name)> = <annval>
+  | <annval>               :=  N = <annval>  where N is either 0 or previous + 1  (only in records)
   | <nat>                  :=  <nat> = null   (only in variants)
   | <name>                 :=  <name> = null  (only in variants)
 ```

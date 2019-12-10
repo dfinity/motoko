@@ -11,7 +11,7 @@ type typ_info = {
     typ : typ;
     is_rec : bool;
   }
-          
+
 (* Gather type definitions from actor and sort the definitions in topological order *)              
 let chase_env env actor =
   let new_env = ref [] in
@@ -31,7 +31,7 @@ let chase_env env actor =
     | VecT t -> chase t
     | RecordT fs -> chase_fields fs
     | VariantT fs -> chase_fields fs
-    | FuncT (ms, fs1, fs2) -> chase_fields fs1; chase_fields fs2
+    | FuncT (ms, fs1, fs2) -> List.iter chase fs1; List.iter chase fs2
     | PreT -> assert false
   and chase_fields fs =
     List.iter (fun (f : typ_field) -> chase f.it.typ) fs
@@ -58,7 +58,7 @@ let infer_rec env_list =
     | VecT t -> go t
     | RecordT fs -> go_fields fs
     | VariantT fs -> go_fields fs
-    | FuncT (_, fs1, fs2) -> go_fields fs1; go_fields fs2
+    | FuncT (_, fs1, fs2) -> List.iter go fs1; List.iter go fs2
     | preT -> assert false
   and go_fields fs =
     List.iter (fun (f:typ_field) -> go f.it.typ) fs
@@ -91,7 +91,12 @@ let pp_prim p =
   | Null -> "Unit"
   | Reserved -> "None"
   | Empty -> "Empty"
-  
+
+let pp_mode ppf m =
+  match m.it with
+  | Oneway -> str ppf "'oneway'"
+  | Query -> str ppf "'query'"
+
 let rec concat ppf f sep list =
   match list with
   | [] -> ()
@@ -109,9 +114,11 @@ let rec pp_typ ppf t =
   | VariantT ts -> str ppf "IDL.Variant({"; concat ppf pp_field "," ts; str ppf "})";
   | FuncT (ms, t1, t2) ->
      str ppf "IDL.Func(";
-     pp_fields ppf t1;
+     pp_args ppf t1;
      kwd ppf ",";
-     pp_fields ppf t2;
+     pp_args ppf t2;
+     kwd ppf ",";
+     pp_modes ppf ms;
      str ppf ")";
   | ServT ts ->
      pp_open_hovbox ppf 1;
@@ -123,6 +130,20 @@ let rec pp_typ ppf t =
   | PreT -> assert false
   );
   pp_close_box ppf ()
+
+and pp_args ppf args =
+  pp_open_box ppf 1;
+  str ppf "[";
+  concat ppf pp_typ "," args;
+  str ppf "]";
+  pp_close_box ppf ()
+
+and pp_modes ppf modes =
+  pp_open_box ppf 1;
+  str ppf "[";
+  concat ppf pp_mode "," modes;
+  str ppf "]";
+  pp_close_box ppf ()  
 
 and pp_fields ppf fs =
   pp_open_box ppf 1;
@@ -189,7 +210,7 @@ let pp_actor ppf actor recs =
        | VarT var ->
           id ppf x; space ppf (); kwd ppf "=";
           if TS.mem var.it recs then
-            str ppf (var.it ^ ".__typ;")
+            str ppf (var.it ^ ".getType();")
           else
             str ppf var.it;
        | _ -> assert false

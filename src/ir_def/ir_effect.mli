@@ -1,6 +1,6 @@
 open Source
 open Ir
-open As_types.Type
+open Mo_types.Type
 
 val max_eff : eff -> eff -> eff
 

@@ -1,5 +1,5 @@
-open As_types
-open As_values
+open Mo_types
+open Mo_values
 
 type id = string
 
@@ -88,6 +88,7 @@ and exp' =
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
+  | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
   | ActorE of id * dec list * field list * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
   | ThrowE of exp                              (* throw *)
@@ -105,10 +106,13 @@ and prim =
   | RelPrim of Type.typ * relop       (* relational operator *)
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
+  | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
+  | CPSAwait
+  | CPSAsync
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
-  | ICErrorCodePrim
+  | ICCallPrim
 
 
 (* Declarations *)

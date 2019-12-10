@@ -1,4 +1,5 @@
-open As_def
+open Mo_def
+module Traversals = Mo_frontend.Traversals
 
 (*
 This module traverses the syntax tree. For each `import` statement, it looks
@@ -23,9 +24,10 @@ module M = Map.Make(String)
    which for now is just a filesystem path:
 
    e.g.,
-   packages("std") = "/Users/home/username/.dfinity-sdk/src/as-stdlib/0.1.0/"
+   packages("std") = "/Users/home/username/.dfinity-sdk/src/mo-stdlib/0.1.0/"
    packages("foo") = "/Users/home/username/fooPackage/1.2.3/src"
 *)
+
 type package_map = string M.t
 
 type env = {
@@ -38,16 +40,16 @@ type env = {
 open Syntax
 open Source
 
-(* match `f` against the URL pattern 'as://package-name/path',
+(* match `f` against the URL pattern 'mo://package-name/path',
    optionally returning the package-name and path components as a pair of strings.
 
    e.g.,
-   match_package_name "as:std/list"    = Some("std", "list")
-   match_package_name "as:std/foo/bar" = Some("std", "foo/bar")
-   match_package_name "as:foo/bar"     = Some("foo", "bar")
+   match_package_name "mo:std/list"    = Some("std", "list")
+   match_package_name "mo:std/foo/bar" = Some("std", "foo/bar")
+   match_package_name "mo:foo/bar"     = Some("foo", "bar")
 
-   match_package_name "as:"            = None
-   match_package_name "as:std"         = None
+   match_package_name "mo:"            = None
+   match_package_name "mo:std"         = None
    match_package_name "std/foo"        = None
    match_package_name "std/foo/bar"    = None
 
@@ -72,10 +74,10 @@ let match_package_name (f: string) : (string * string) option =
       )
     in
     match prefix with
-    | "as:" -> loop suffix ""
+    | "mo:" -> loop suffix ""
     | _     -> None
 
-(* using env, resolve import strings of the form "as:package-name/mod1/mod2/item"
+(* using env, resolve import strings of the form "mo:package-name/mod1/mod2/item"
    into the triple ("package-name", "package-url", "mod1/mod2/item") when the package name is defined.
    Does not validate the package url or path.
  *)
@@ -100,7 +102,7 @@ let resolve_import_string env region (f: string) (fp: string ref) =
     else f in
   let f =
     if Sys.file_exists f && Sys.is_directory f
-    then Filename.concat f "lib.as"
+    then Filename.concat f "lib.mo"
     else f in
   let f = File_path.normalise f in
   if Sys.file_exists f
@@ -137,70 +139,19 @@ let resolve_package_url (msgs:Diag.msg_store) (base:filepath) (pname:string) (f:
       };
     None
 
-let rec
-  exp env (e : exp) = match e.it with
-  | ImportE (f, fp) -> resolve_import_string env e.at f fp
-  (* The rest is just a boring syntax traversal *)
-  | (PrimE _ | VarE _ | LitE _) -> ()
-  | UnE (_, _, exp1)
-  | ShowE (_, exp1)
-  | ProjE (exp1, _)
-  | OptE exp1
-  | TagE (_, exp1)
-  | DotE (exp1, _)
-  | NotE exp1
-  | AssertE exp1
-  | LabelE (_, _, exp1)
-  | BreakE (_, exp1)
-  | RetE exp1
-  | AnnotE (exp1, _)
-  | AsyncE exp1
-  | AwaitE exp1
-  | ThrowE exp1
-  | LoopE (exp1, None) ->
-    exp env exp1
-  | BinE (_, exp1, _, exp2)
-  | IdxE (exp1, exp2)
-  | RelE (_, exp1, _, exp2)
-  | AssignE (exp1, exp2)
-  | CallE (exp1, _, exp2)
-  | AndE (exp1, exp2)
-  | OrE (exp1, exp2)
-  | WhileE (exp1, exp2)
-  | LoopE (exp1, Some exp2)
-  | ForE (_, exp1, exp2) ->
-    exp env exp1; exp env exp2
-  | DebugE exp1 ->
-    exp env exp1
-  | TupE exps
-  | ArrayE (_, exps) ->
-    List.iter (exp env) exps
-  | BlockE ds ->
-    decs env ds
-  | ObjE (_, efs) ->
-    List.iter (fun ef -> dec env ef.it.dec) efs
-  | IfE (exp1, exp2, exp3) ->
-    exp env exp1;
-    exp env exp2;
-    exp env exp3
-  | TryE (exp1, cases)
-  | SwitchE (exp1, cases) ->
-    exp env exp1;
-    List.iter (fun c -> exp env c.it.exp) cases
-  | FuncE (_, _, _ , _ , _, e) ->
-    exp env e
+let collect_imports (p : prog): string list =
+  let res = ref [] in
+  let f e = match e.it with
+    | ImportE (f, _) -> res := f::!res; e
+    | _ -> e in
+  let _ = ignore (Traversals.over_prog f p) in
+  List.rev !res
 
-and decs env = List.iter (dec env)
-and dec env d = match d.it with
-  | TypD _ -> ()
-  | ExpD e
-  | VarD (_, e)
-  | LetD (_, e) ->
-    exp env e
-  | ClassD (_, _, _, _, _ , _, efs) ->
-    List.iter (fun ef -> dec env ef.it.dec) efs
-
-let prog env p = decs env p.it
+let prog env p =
+  let f e = match e.it with
+    | ImportE (f, fp) -> resolve_import_string env e.at f fp; e
+    | _ -> e in
+  ignore (Traversals.over_prog f p)
 
 type package_urls = (string * string) list
 
