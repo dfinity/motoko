@@ -126,25 +126,25 @@ let commonBuildInputs = pkgs:
   }; in
 
   [
-    pkgs.ocaml
+    ocamlPackages.ocaml
     pkgs.dune
-    pkgs.ocamlPackages.atdgen
-    pkgs.ocamlPackages.findlib
-    pkgs.ocamlPackages.menhir
-    pkgs.ocamlPackages.num
-    pkgs.ocamlPackages.stdint
+    ocamlPackages.atdgen
+    ocamlPackages.findlib
+    ocamlPackages.menhir
+    ocamlPackages.num
+    ocamlPackages.stdint
     ocaml_wasm
     ocaml_vlq
-    pkgs.ocamlPackages.zarith
-    pkgs.ocamlPackages.yojson
-    pkgs.ocamlPackages.js_of_ocaml
-    pkgs.ocamlPackages.js_of_ocaml-ppx
-    pkgs.ocamlPackages.ppxlib
-    pkgs.ocamlPackages.ppx_inline_test
-    pkgs.ocamlPackages.bisect_ppx
-    pkgs.ocamlPackages.bisect_ppx-ocamlbuild
-    pkgs.ocamlPackages.ocaml-migrate-parsetree
-    pkgs.ocamlPackages.ppx_tools_versioned
+    ocamlPackages.zarith
+    ocamlPackages.yojson
+    ocamlPackages.js_of_ocaml
+    ocamlPackages.js_of_ocaml-ppx
+    ocamlPackages.ppxlib
+    ocamlPackages.ppx_inline_test
+    ocamlPackages.bisect_ppx
+    ocamlPackages.bisect_ppx-ocamlbuild
+    ocamlPackages.ocaml-migrate-parsetree
+    ocamlPackages.ppx_tools_versioned
   ]; in
 
 let darwin_standalone =
