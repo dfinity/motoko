@@ -6,6 +6,8 @@ type parse_fn = string -> (Syntax.prog * string) Diag.result
 val parse_file: parse_fn
 val parse_string: string -> parse_fn
 
+val print_deps: string -> unit
+
 val check_files  : string list -> unit Diag.result
 val check_files' : parse_fn -> string list -> unit Diag.result
 val check_string : string -> string -> unit Diag.result
