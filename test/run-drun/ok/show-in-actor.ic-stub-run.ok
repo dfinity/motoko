@@ -3,4 +3,5 @@
 → install
 debug.print: true
 debug.print: false
+debug.print: 1
 ← completed

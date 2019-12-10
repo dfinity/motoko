@@ -409,7 +409,7 @@ and t_exp' env = function
     (* compare with transform below *)
     let env1 = empty_env () in
     let ds' = t_decs env1 ds in
-    let decls = show_decls !(env.params) in
+    let decls = show_decls !(env1.params) in
     ActorE (id, decls @ ds', fields, typ)
 
 and t_dec env dec = { dec with it = t_dec' env dec.it }
