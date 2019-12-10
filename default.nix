@@ -9,7 +9,7 @@ let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
     # Adding wasmtime
     (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
     # Selecting the ocaml version
-    (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_07; })
+    (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_08; })
     # Additional ocaml package
     (self: super: {
       ocamlPackages = super.ocamlPackages // {
