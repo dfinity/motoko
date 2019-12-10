@@ -51,7 +51,8 @@ In order to compile a motoko file, `dfx` invokes `moc` with
     moc some/path/input.mo            \
         -o another/path/output.wasm   \
 	{ --package pkgname pkgpath } \
-	[ --actors actorpath ]
+      { --actor-alias alias id }
+	[ --actor-idl actorpath ]
 
 in an environment where `MOC_RTS` points to the location of the Motoko runtime system.
 
