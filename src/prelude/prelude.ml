@@ -346,21 +346,15 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
 // these will change
 type ErrorCode = {#error; #system}; /* TBC */
 
-func error(message : Text) : Error =
-  (prim "error" : Text -> Error)(message);
-
-func errorCode(e : Error) : ErrorCode =
-  (prim "errorCode" : Error -> ErrorCode)(e);
-
-func errorMessage(e : Error) : Text =
-  (prim "errorMessage" : Error -> Text)(e);
-
-func @int32ToErrorCode(i : Int32) : ErrorCode {
-  switch (int32ToInt(i)) { /*TODO: conversion only to avoid bug in moc-js, TBR */
-    case 4 /* CANISTER_REJECT */ #error;
-    case _ #system; /* TBC */
-  }
+// creation and inspection of abstract error
+func openError(e : Error) : (ErrorCode, Text) =
+  (prim "cast" : Error -> (ErrorCode, Text)) e;
+func error(message : Text) : Error = {
+  let e = (#error, message);
+  ((prim "cast" : (ErrorCode, Text)-> Error) e)
 };
+func errorCode(e : Error) : ErrorCode = (openError e).0;
+func errorMessage(e : Error) : Text = (openError e).1;
 
 type Cont<T> = T -> () ;
 type Async<T> = (Cont<T>,Cont<Error>) -> ();
