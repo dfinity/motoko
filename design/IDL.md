@@ -535,18 +535,6 @@ That is, outbound message results can only be replaced with a subtype (more fiel
 
 Subtyping applies recursively to the types of the fields themselves. Moreover, the directions get *inverted* for inbound function and actor references, in compliance with standard rules.
 
-**TODO: unsound, fix**
-
-To make these constraints as flexible as possible, two special rules apply:
-
- * An absent record field is considered equivalent to a present field with value `null`. Moreover, a record field of type `null` is a subtype of a field with type `opt <datatype>`. That way,	That way, a field of option (or null) type can always be added to a record type, no matter whether in co- or contra-variant position. If an optional field is added to an inbound record, and he client did not provide it, the service will read it as if its value was null.
-
-  - in an outbound record, a field of option (or null) type can also be removed in an upgrade, in which case the client will read it as if its value was null;	
-  - in an inbound record, a field of option (or null) type can also be added, in which case the service will read it as if its value was null.
-
-Future extensions: defaults, including for variants?
-
-
 ### Rules
 
 #### Primitive Types
@@ -618,54 +606,7 @@ record { <fieldtype>;* } <: record { <fieldtype'>;* }
 record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
 ```
 
-**TODO: Rules below are unsound as is, need fixing!**
-
-In addition, record fields of `null` or option type can be removed, treating the absent field as having value `null`.
-```
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
--------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
-
-record { <fieldtype>;* } <: record { <fieldtype'>;* }
------------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
-```
-TODO: What we want to achieve: Taken together, these rules ensure that adding an optional field creates both a co- and a contra-variant subtype. Consequently, it is always possible to add an optional field. In particular, that allows extending round-tripping record types as well. For example,
-```
-type T = {};
-actor { f : T -> T };
-```
-can safely be upgraded to
-```
-type T' = {x : opt text};
-actor { f : T' -> T' };
-```
-for all first-order uses of `T`, because both of the following hold:
-```
-upgrade T' <: T
-upgrade T <: T'
-```
-And hence:
-```
-upgrade (T' -> T')  <:  (T -> T)
-```
-for some version of a type `upgrade T`.
-Moreover, this extends to the higher-order case, where e.g. a function of the above type is expected as a parameter:
-```
-actor { g : (h : T -> T) -> ()}
-```
-Upgrading `T` as above contra-variantly requires
-```
-upgrade (T -> T)  <:  (T' -> T')
-```
-which also holds.
-
-Note: Subtyping still needs to be transitive . We must not allow:
-```
-record {x : opt text} <: record {} <: record {x : opt nat}
-```
-**TODO: Sanity continues from here.**
-
+**NOTE**: There is a need for a mechanism to also remove fields (which means adding a field when a record appears as an argument). The precise mechanism is still work in progress.
 
 #### Variants
 
@@ -769,20 +710,6 @@ record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f2
 record { <nat> : <datatype>; <fieldtype>;* } <: record { <nat> : <datatype'>; <fieldtype'>;* }
   ~> \x.{f2 x with <nat> = f1 x.<nat>}
 ```
-
-TODO: Fix
-```
-record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
--------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : null; <fieldtype'>;* }
-  ~> \x.{f x; <nat> = null}
-
-record { <fieldtype>;* } <: record { <fieldtype'>;* } ~> f
------------------------------------------------------------------------------
-record { <fieldtype>;* } <: record { <nat> : opt <datatype>; <fieldtype'>;* }
-  ~> \x.{f x; <nat> = null}
-```
-
 
 #### Variants
 
