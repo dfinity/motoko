@@ -369,7 +369,6 @@ and c_exp' context exp k =
       | None -> assert false
     end
   | AsyncE (tb, exp1, typ1) ->
-    (* TODO: this needs more thought *)
      (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) in
     let k_fail = fresh_err_cont () in
@@ -552,4 +551,3 @@ and t_prog (prog, flavor) =
   (t_block LabelEnv.empty prog, { flavor with has_await = false })
 
 let transform prog = t_prog prog
-
