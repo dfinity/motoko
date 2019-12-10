@@ -75,7 +75,7 @@ let ocamlpkgs =
 # This branches on the pkgs, which is either
 # normal nixpkgs (nix-shell, darwin)
 # nixpkgs.pkgsMusl for static building (release builds)
-let commonBuildInputs = pkgs:
+let commonBuildInputs = pkgs: purpose:
   # pick OCaml version here
   let ocamlPackages = pkgs.ocaml-ng.ocamlPackages_4_07; in
 
@@ -101,15 +101,21 @@ let commonBuildInputs = pkgs:
     ocaml_vlq
     ocamlPackages.zarith
     ocamlPackages.yojson
-    ocamlPackages.js_of_ocaml
-    ocamlPackages.js_of_ocaml-ppx
     ocamlPackages.ppxlib
     ocamlPackages.ppx_inline_test
     ocamlPackages.bisect_ppx
     ocamlPackages.bisect_ppx-ocamlbuild
     ocamlPackages.ocaml-migrate-parsetree
     ocamlPackages.ppx_tools_versioned
-  ]; in
+  ] ++ builtins.getAttr purpose
+    { shell = [ ocamlPackages.merlin ocamlPackages.utop ];
+      js = [ ocamlPackages.js_of_ocaml
+             ocamlPackages.js_of_ocaml-ocamlbuild
+             ocamlPackages.js_of_ocaml-ppx
+           ];
+      build = [];
+      test = [];
+    }; in
 
 let darwin_standalone =
   import nix/standalone-darwin.nix {
@@ -131,7 +137,7 @@ let ocaml_exe = name: bin:
 
       src = subpath ./src;
 
-      buildInputs = commonBuildInputs ocamlpkgs;
+      buildInputs = commonBuildInputs ocamlpkgs "build";
 
       buildPhase = ''
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
@@ -275,7 +281,7 @@ rec {
     let unit-tests = ocamlTestDerivation {
       name = "unit-tests";
       src = subpath ./src;
-      buildInputs = commonBuildInputs ocamlpkgs;
+      buildInputs = commonBuildInputs ocamlpkgs "test";
       checkPhase = ''
         make DUNE_OPTS="--display=short" unit-tests
       '';
@@ -315,10 +321,7 @@ rec {
 
     src = subpath ./src;
 
-    buildInputs = commonBuildInputs nixpkgs ++ [
-      # ocamlPackages.js_of_ocaml
-      # ocamlPackages.js_of_ocaml-ocamlbuild
-      # ocamlPackages.js_of_ocaml-ppx
+    buildInputs = commonBuildInputs nixpkgs "js" ++ [
       nixpkgs.nodejs-10_x
     ];
 
@@ -465,11 +468,11 @@ rec {
     buildInputs =
       let dont_build = [ moc mo-ld didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
-        commonBuildInputs nixpkgs ++
+        commonBuildInputs nixpkgs "shell" ++
         rts.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        # [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ] ++
+        [ nixpkgs.ncurses ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
