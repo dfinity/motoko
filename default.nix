@@ -110,7 +110,6 @@ let commonBuildInputs = pkgs: purpose:
   ] ++ builtins.getAttr purpose
     { shell = [ ocamlPackages.merlin ocamlPackages.utop ];
       js = [ ocamlPackages.js_of_ocaml
-             ocamlPackages.js_of_ocaml-ocamlbuild
              ocamlPackages.js_of_ocaml-ppx
            ];
       build = [];
