@@ -32,7 +32,7 @@ let esm = nixpkgs.fetchzip {
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
 
-# Include dvm
+# Include drun
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
