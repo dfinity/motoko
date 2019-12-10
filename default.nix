@@ -201,7 +201,7 @@ rec {
       ocamlpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
 
     # we test each subdirectory of test/ in its own derivation with
-    # cleaner dependencies, for more paralleism, more caching
+    # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
     let test_subdir = dir: deps:
       testDerivation {
@@ -247,8 +247,7 @@ rec {
 
     let qc = testDerivation {
       name = "test-qc";
-      # maybe use wasm instead?
-      buildInputs = [ moc nixpkgs.wabt haskellPackages.qc-motoko ];
+      buildInputs = [ moc nixpkgs.wasm haskellPackages.qc-motoko ];
       checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}

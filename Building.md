@@ -47,7 +47,7 @@ installing all required tools without nix is out of scope).
    cd /tmp/interpreter
    make install
    ```
- * Install various command line tools used by, in particuar, the test suite:
+ * Install various command line tools used by, in particular, the test suite:
    ```
    nix-env -i -f . -A wasmtime
    nix-env -i -f . -A filecheck

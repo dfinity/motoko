@@ -59,8 +59,8 @@ matchingProps = testGroup "Pattern matching"
   , QC.testProperty "inter-actor" $ prop_matchInActor
   ]
 
-(runScriptNoFuzz, runScriptWantFuzz) = (runner id, runner not)
-    where runner relevant name testCase = 
+(runScriptNoFuzz, runScriptWantFuzz) = (runner ExitSuccess id, runner (ExitFailure 1) not)
+    where runner reqOutcome relevant name testCase = 
             let as = name <.> "as"
                 wasm = name <.> "wasm"
                 fileArg = fromString . encodeString
@@ -68,9 +68,9 @@ matchingProps = testGroup "Pattern matching"
                             res@(exitCode, _, _) <- procStrictWithErr "moc"
                                 ["-no-system-api", "-no-check-ir", fileArg as] empty
                             if ExitSuccess == exitCode
-                            then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", fileArg wasm] empty
+                            then (True,) <$> procStrictWithErr "wasm" [fileArg wasm] empty
                             else pure (False, res)
-            in run script >>= assertSuccessNoFuzz relevant
+            in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
 
 prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
@@ -108,17 +108,19 @@ prop_textLength (UTF8 text) = monadicIO $ do
   let testCase = "assert(\"" <> (text >>= escape) <> "\".len() == " <> show (length text) <> ")"
   runScriptNoFuzz "textLength" testCase
 
-assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
+assertOutcomeCheckingFuzz outcome relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
-  when fuzzErr $ do
+      fuzzErrRelevant = relevant fuzzErr
+  when (fuzzErr && fuzzErrRelevant) $ do
     monitor (counterexample "STDERR:")
     monitor (counterexample . Data.Text.unpack $ err)
   let fuzzOut = not $ Data.Text.null out
-  let fuzzOutRelevant = relevant fuzzOut
-  when (fuzzOut && fuzzOutRelevant) $ do
+  when fuzzOut $ do
     monitor (counterexample "STDOUT:")
     monitor (counterexample . Data.Text.unpack $ out)
-  assert (not $ ExitSuccess /= exitCode || (if compiled then fuzzOutRelevant else fuzzOut) || fuzzErr)
+  assert (not $ outcome /= exitCode || (if compiled then fuzzErrRelevant else fuzzErr) || fuzzOut)
+
+assertSuccessNoFuzz = assertOutcomeCheckingFuzz ExitSuccess id
 
 newtype Failing a = Failing a deriving Show
 
@@ -138,9 +140,7 @@ instance Arbitrary TestCase where
   arbitrary = do tests <- infiniteListOf arbitrary
                  let expected = evaluate @Integer <$> tests
                  let paired as = fmap (\res -> "assert (" ++ unparseAS as ++ " == " ++ show res ++ ");")
-                 pure . TestCase . take 100 . catMaybes $ zipWith paired tests expected
-
-
+                 pure . TestCase . take 10 . catMaybes $ zipWith paired tests expected
 
 
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
@@ -148,7 +148,7 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
                         res@(exitCode, _, _) <- procStrictWithErr "moc"
                                  ["-no-system-api", "-no-check-ir", "tests.mo"] empty
                         if ExitSuccess == exitCode
-                        then (True,) <$> procStrictWithErr "wasm-interp" ["--enable-multi", "tests.wasm"] empty
+                        then (True,) <$> procStrictWithErr "wasm" ["tests.wasm"] empty
                         else pure (False, res)
   res@(compiled, (exitCode, out, err)) <- run $ script testCase
   when compiled $ do
@@ -163,7 +163,7 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
                  (_, False) -> bisect $ halve jokers
     let good = Data.Text.null out
     unless good $ (run . bisect $ halve testCase) >>= monitor . (counterexample . Data.Text.unpack $)
-  assertSuccessNoFuzz id res
+  assertSuccessNoFuzz res
 
 
 newtype ConversionTest n = ConversionTest (ASTerm (BitLimited n Word)) deriving Show
