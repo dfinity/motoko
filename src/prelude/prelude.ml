@@ -347,14 +347,16 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
 type ErrorCode = {#error; #system}; /* TBC */
 
 // creation and inspection of abstract error
-func openError(e : Error) : (ErrorCode, Text) =
-  (prim "cast" : Error -> (ErrorCode, Text)) e;
 func error(message : Text) : Error = {
   let e = (#error, message);
   ((prim "cast" : (ErrorCode, Text)-> Error) e)
 };
-func errorCode(e : Error) : ErrorCode = (openError e).0;
-func errorMessage(e : Error) : Text = (openError e).1;
+func errorCode(e : Error) : ErrorCode = {
+  ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
+};
+func errorMessage(e : Error) : Text = {
+  ((prim "cast" : Error -> (ErrorCode, Text)) e).1;
+};
 
 type Cont<T> = T -> () ;
 type Async<T> = (Cont<T>,Cont<Error>) -> ();
