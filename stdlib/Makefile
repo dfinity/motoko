@@ -24,6 +24,8 @@ TESTS=\
   Function \
   FunctionTest \
 	Hash \
+	Hashtbl \
+	HashtblTest \
 	Int \
 	IntTest \
   Iter \
@@ -79,6 +81,12 @@ $(OUTDIR)/Buf.out: buf.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/BufTest.out: bufTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/HashtblTest.out: HashtblTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Hashtbl.out: Hashtbl.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Function.out: function.mo | $(OUTDIR)
