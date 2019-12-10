@@ -21,3 +21,18 @@ prints these pairs, in some order or another:
 ("apple", 1)
 ("avocado", 4)
 */
+
+ignore a.set("apple", 1111);
+ignore a.set("banana", 2222);
+ignore a.remove("pear");
+ignore a.remove("avocado");
+
+for ((k,v) in a.iter()) {
+  debugPrint(debug_show (k,v));
+};
+
+/*
+prints these pairs, in some order or another:
+("banana", 2222)
+("apple", 1111)
+*/

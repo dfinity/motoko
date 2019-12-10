@@ -11,7 +11,7 @@ Hash tables
 
 This module defines imperative hash tables, with general key and value types.
 
-It has a minimal object-oriented interface: get, set and iter.
+It has a minimal object-oriented interface: get, set, remove, count and iter.
 
 The class is parameterized by the key's equality and hash functions,
 and an initial capacity.  However, as with `Buf`, no array allocation
@@ -32,7 +32,26 @@ public class Hashtbl<K,V> (
   keyHash: K -> Hash.Hash) {
 
   var table : [var KVs<K,V>] = [var];
-  var count : Nat = 0;
+  var _count : Nat = 0;
+
+  public func count() : Nat = _count;
+
+  public func remove(k:K) : ?V {
+    let h = word32ToNat(keyHash(k));
+    let m = table.len();
+    let pos = h % m;
+    if (m > 0) {
+      let (kvs2, ov) = AssocList.replace<K,V>(table[pos], k, keyEq, null);
+      table[pos] := kvs2;
+      switch(ov){
+      case null { };
+      case _ { _count -= 1; }
+      };
+      ov
+    } else {
+      null
+    };
+  };
 
   public func get(k:K) : ?V {
     let h = word32ToNat(keyHash(k));
@@ -45,9 +64,9 @@ public class Hashtbl<K,V> (
   };
 
   public func set(k:K, v:V) : ?V {
-    if (count >= table.len() * 4) {
+    if (_count >= table.len() * 4) {
       let size =
-        if (count == 0)
+        if (_count == 0)
           initCapacity
         else table.len() * 2;
       let table2 = Array_init<KVs<K,V>>(size, null);
@@ -61,7 +80,7 @@ public class Hashtbl<K,V> (
     let (kvs2, ov) = AssocList.replace<K,V>(table[pos], k, keyEq, ?v);
     table[pos] := kvs2;
     switch(ov){
-    case null { count += 1 };
+    case null { _count += 1 };
     case _ {}
     };
     ov
