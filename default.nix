@@ -66,8 +66,7 @@ let
 in
 
 # When building for linux (but not in nix-shell) we build statically
-# (We should probably just figure out how to use nix overlays to add this to nixpkgs)
-let ocamlpkgs =
+let staticpkgs =
   if nixpkgs.stdenv.isDarwin
   then nixpkgs
   else nixpkgs.pkgsMusl; in
@@ -120,14 +119,14 @@ let ocaml_exe = name: bin:
       then "release"
       else "release-static";
 
-    drv = ocamlpkgs.stdenv.mkDerivation {
+    drv = staticpkgs.stdenv.mkDerivation {
       inherit name;
 
       ${if nixpkgs.stdenv.isDarwin then null else "allowedRequisites"} = [];
 
       src = subpath ./src;
 
-      buildInputs = commonBuildInputs ocamlpkgs;
+      buildInputs = commonBuildInputs staticpkgs;
 
       buildPhase = ''
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
@@ -201,7 +200,7 @@ rec {
     let testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args); in
     let ocamlTestDerivation = args:
-      ocamlpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
+      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
 
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more paralleism, more caching
@@ -271,7 +270,7 @@ rec {
     let unit-tests = ocamlTestDerivation {
       name = "unit-tests";
       src = subpath ./src;
-      buildInputs = commonBuildInputs ocamlpkgs;
+      buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
         make DUNE_OPTS="--display=short" unit-tests
       '';
