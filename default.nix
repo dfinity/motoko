@@ -6,7 +6,10 @@
 let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
   inherit system;
   overlays = [
+    # Adding wasmtime
     (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
+    # Selecting the ocaml version
+    (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_07; })
   ];
 }; in
 
@@ -32,13 +35,11 @@ let esm = nixpkgs.fetchzip {
   url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
 }; in
 
-# Include drun
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
-
 let
   libtommath = nixpkgs.fetchFromGitHub {
     owner = "libtom";
@@ -75,47 +76,36 @@ let ocamlpkgs =
 # This branches on the pkgs, which is either
 # normal nixpkgs (nix-shell, darwin)
 # nixpkgs.pkgsMusl for static building (release builds)
-let commonBuildInputs = pkgs: purpose:
-  # pick OCaml version here
-  let ocamlPackages = pkgs.ocaml-ng.ocamlPackages_4_07; in
-
+let commonBuildInputs = pkgs:
   let ocaml_wasm = import ./nix/ocaml-wasm.nix {
-    inherit (pkgs) stdenv fetchFromGitHub;
-    inherit (ocamlPackages) findlib ocamlbuild ocaml;
+    inherit (pkgs) stdenv fetchFromGitHub ocaml;
+    inherit (pkgs.ocamlPackages) findlib ocamlbuild;
   }; in
 
   let ocaml_vlq = import ./nix/ocaml-vlq.nix {
-    inherit (pkgs) stdenv fetchFromGitHub dune;
-    inherit (ocamlPackages) findlib ocaml;
+    inherit (pkgs) stdenv fetchFromGitHub ocaml dune;
+    inherit (pkgs.ocamlPackages) findlib;
   }; in
 
   [
-    ocamlPackages.ocaml
+    pkgs.ocaml
     pkgs.dune
-    ocamlPackages.atdgen
-    ocamlPackages.findlib
-    ocamlPackages.menhir
-    ocamlPackages.num
-    ocamlPackages.stdint
+    pkgs.ocamlPackages.atdgen
+    pkgs.ocamlPackages.findlib
+    pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.num
+    pkgs.ocamlPackages.stdint
     ocaml_wasm
     ocaml_vlq
-    ocamlPackages.zarith
-    ocamlPackages.yojson
-    ocamlPackages.ppxlib
-    ocamlPackages.ppx_inline_test
-    ocamlPackages.bisect_ppx
-    ocamlPackages.bisect_ppx-ocamlbuild
-    ocamlPackages.ocaml-migrate-parsetree
-    ocamlPackages.ppx_tools_versioned
-  ] ++ builtins.getAttr purpose
-    { shell = [ ocamlPackages.merlin ocamlPackages.utop ];
-      js = [ ocamlPackages.js_of_ocaml
-             ocamlPackages.js_of_ocaml-ocamlbuild
-             ocamlPackages.js_of_ocaml-ppx
-           ];
-      build = [];
-      test = [];
-    }; in
+    pkgs.ocamlPackages.zarith
+    pkgs.ocamlPackages.yojson
+    pkgs.ocamlPackages.ppxlib
+    pkgs.ocamlPackages.ppx_inline_test
+    pkgs.ocamlPackages.bisect_ppx
+    pkgs.ocamlPackages.bisect_ppx-ocamlbuild
+    pkgs.ocamlPackages.ocaml-migrate-parsetree
+    pkgs.ocamlPackages.ppx_tools_versioned
+  ]; in
 
 let darwin_standalone =
   import nix/standalone-darwin.nix {
@@ -137,7 +127,7 @@ let ocaml_exe = name: bin:
 
       src = subpath ./src;
 
-      buildInputs = commonBuildInputs ocamlpkgs "build";
+      buildInputs = commonBuildInputs ocamlpkgs;
 
       buildPhase = ''
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
@@ -281,7 +271,7 @@ rec {
     let unit-tests = ocamlTestDerivation {
       name = "unit-tests";
       src = subpath ./src;
-      buildInputs = commonBuildInputs ocamlpkgs "test";
+      buildInputs = commonBuildInputs ocamlpkgs;
       checkPhase = ''
         make DUNE_OPTS="--display=short" unit-tests
       '';
@@ -321,7 +311,10 @@ rec {
 
     src = subpath ./src;
 
-    buildInputs = commonBuildInputs nixpkgs "js" ++ [
+    buildInputs = commonBuildInputs nixpkgs ++ [
+      nixpkgs.ocamlPackages.js_of_ocaml
+      nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
+      nixpkgs.ocamlPackages.js_of_ocaml-ppx
       nixpkgs.nodejs-10_x
     ];
 
@@ -468,11 +461,11 @@ rec {
     buildInputs =
       let dont_build = [ moc mo-ld didc deser ]; in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
-        commonBuildInputs nixpkgs "shell" ++
+        commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses ] ++
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
