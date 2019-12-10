@@ -275,7 +275,6 @@ let transform mode env prog =
                nary_async
       ).it
     | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
-      (*      assert (typs = []); *)
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises _,tbs,ts1,ts2) ->
