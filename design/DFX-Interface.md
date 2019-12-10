@@ -113,7 +113,8 @@ In order to start the language server, `dfx` invokes
 
     mo-ide --canister-main some/path/main.mo \
 	{ --package pkgname pkgpath }        \
-	[ --actors actorpath ]
+      { --actor-alias alias id }
+	[ --actor-idl actorpath ]
 
 with `stdin` and `stdout` connected to the LSP client.
 
