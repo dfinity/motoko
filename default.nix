@@ -16,19 +16,6 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
-# pick OCaml version here
-let ocamlPackages = nixpkgs.ocaml-ng.ocamlPackages_4_07; in
-
-let ocaml_wasm = import ./nix/ocaml-wasm.nix {
-  inherit (nixpkgs) stdenv fetchFromGitHub;
-  inherit (ocamlPackages) findlib ocamlbuild ocaml;
-}; in
-
-let ocaml_vlq = import ./nix/ocaml-vlq.nix {
-  inherit (nixpkgs) stdenv fetchFromGitHub dune;
-  inherit (ocamlPackages) findlib ocaml;
-}; in
-
 let dev = import (builtins.fetchGit {
   url = "ssh://git@github.com/dfinity-lab/dev";
   # ref = "master";
@@ -57,26 +44,6 @@ let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
-
-let commonBuildInputs = [
-  ocamlPackages.ocaml
-  nixpkgs.dune
-  ocamlPackages.atdgen
-  ocamlPackages.base
-  ocamlPackages.findlib
-  ocamlPackages.menhir
-  ocamlPackages.num
-  ocamlPackages.stdint
-  ocaml_wasm
-  ocaml_vlq
-  ocamlPackages.yojson
-  ocamlPackages.ppxlib
-  ocamlPackages.ppx_inline_test
-  ocamlPackages.bisect_ppx
-  ocamlPackages.bisect_ppx-ocamlbuild
-  ocamlPackages.ocaml-migrate-parsetree
-  ocamlPackages.ppx_tools_versioned
-]; in
 
 let
   libtommath = nixpkgs.fetchFromGitHub {
@@ -115,14 +82,17 @@ let ocamlpkgs =
 # normal nixpkgs (nix-shell, darwin)
 # nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
+  # pick OCaml version here
+  let ocamlPackages = pkgs.ocaml-ng.ocamlPackages_4_07; in
+
   let ocaml_wasm = import ./nix/ocaml-wasm.nix {
-    inherit (pkgs) stdenv fetchFromGitHub ocaml;
-    inherit (pkgs.ocamlPackages) findlib ocamlbuild;
+    inherit (pkgs) stdenv fetchFromGitHub;
+    inherit (ocamlPackages) findlib ocamlbuild ocaml;
   }; in
 
   let ocaml_vlq = import ./nix/ocaml-vlq.nix {
-    inherit (pkgs) stdenv fetchFromGitHub ocaml dune;
-    inherit (pkgs.ocamlPackages) findlib;
+    inherit (pkgs) stdenv fetchFromGitHub dune;
+    inherit (ocamlPackages) findlib ocaml;
   }; in
 
   [
@@ -352,9 +322,9 @@ rec {
     src = subpath ./src;
 
     buildInputs = commonBuildInputs nixpkgs ++ [
-      ocamlPackages.js_of_ocaml
-      ocamlPackages.js_of_ocaml-ocamlbuild
-      ocamlPackages.js_of_ocaml-ppx
+      # ocamlPackages.js_of_ocaml
+      # ocamlPackages.js_of_ocaml-ocamlbuild
+      # ocamlPackages.js_of_ocaml-ppx
       nixpkgs.nodejs-10_x
     ];
 
@@ -505,7 +475,7 @@ rec {
         rts.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses ocamlPackages.merlin ocamlPackages.utop ] ++
+        # [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
