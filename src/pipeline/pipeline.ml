@@ -114,6 +114,12 @@ let resolve_prog (prog, base) : resolve_result =
 let resolve_progs =
   Diag.traverse resolve_prog
 
+(* Printing dependency information *)
+
+let print_deps (file : string) : unit =
+  let (prog, _) =  Diag.run (parse_file file) in
+  let imports = Resolve_import.collect_imports prog in
+  List.iter print_endline imports
 
 (* Checking *)
 

@@ -123,3 +123,24 @@ This _reads_ `some/path/input.mo` and any `.mo` file referenced by
 `some/path/input.mo`, either relatively, absolutely or via the provided package aliases.
 
 No constraints are imposed where these imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
+
+Listing dependencies
+--------------------
+
+The command
+
+    moc --print-deps some/path/input.mo
+
+prints to the standard output all URLs _directly_ imported by
+`some/path/input.mo`, one per line, e.g.
+
+   mo:stdlib/List
+   mo:other_package/Some/Module
+
+
+This _reads_ only `some/path/input.mo`, and writes no files.
+
+By transitively exploring the dependency graph using this command (and
+resolving URLs appropriately before passing them as files to `moc`), one can
+determine the full set of set of `.mo` files read by the two compilation modes
+described above (to wasm and to IDL).
