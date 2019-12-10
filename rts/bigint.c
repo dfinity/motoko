@@ -29,10 +29,7 @@ pointer to a data array.
 */
 
 void* mp_alloc(size_t l) {
-  as_ptr r = alloc_bytes (2*sizeof(void*) + l);
-  FIELD(r, 0) = TAG_BLOB;
-  FIELD(r, 1) = l;
-  return &FIELD(r,2);
+  return alloc(l);
 }
 
 export void* mp_calloc(size_t n, size_t size) {

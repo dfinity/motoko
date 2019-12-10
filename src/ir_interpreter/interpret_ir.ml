@@ -15,6 +15,8 @@ type val_env = V.def V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
+type reply_env = V.value V.cont option
+type reject_env = V.value V.cont option
 
 type scope = val_env
 
@@ -30,6 +32,8 @@ type env =
     labs : lab_env;
     rets : ret_env;
     throws : throw_env;
+    replies : reply_env;
+    rejects : reject_env;
     async : bool
   }
 
@@ -45,6 +49,8 @@ let env_of_scope flags flavor ve =
     labs = V.Env.empty;
     rets = None;
     throws = None;
+    replies = None;
+    rejects = None;
     async = false;
   }
 
@@ -108,7 +114,6 @@ struct
   let rec run () =
     if not (Queue.is_empty q) then (yield (); run ())
 end
-
 
 (* Async auxiliary functions *)
 
@@ -182,9 +187,8 @@ let actor_msg env id f v (k : V.value V.cont) =
     f v k
   )
 
-let make_unit_message env id v =
+let make_unit_message env id call_conv f =
   let open CC in
-  let call_conv, f = V.as_func v in
   match call_conv with
   | {sort = T.Shared s; n_res = 0; _} ->
     Value.message_func s call_conv.n_args (fun v k ->
@@ -195,10 +199,9 @@ let make_unit_message env id v =
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
 (* assert (false) *)
 
-let make_async_message env id v =
+let make_async_message env id call_conv f =
   assert env.flavor.has_async_typ;
   let open CC in
-  let call_conv, f = V.as_func v in
   match call_conv with
   | {sort = T.Shared s; control = T.Promises; _} ->
     Value.async_func s call_conv.n_args call_conv.n_res (fun v k ->
@@ -212,11 +215,25 @@ let make_async_message env id v =
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
     (* assert (false) *)
 
+let make_replying_message env id call_conv f =
+  assert (not env.flavor.has_async_typ);
+  let open CC in
+  match call_conv with
+  | {sort = T.Shared s; control = T.Replies; _} ->
+    Value.replies_func s call_conv.n_args call_conv.n_res (fun v k ->
+      actor_msg env id f v (fun v -> ());
+      k (V.unit)
+    )
+  | _ ->
+    failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
+    (* assert (false) *)
 
-let make_message env x cc v : V.value =
+
+let make_message env x cc f : V.value =
   match cc.CC.control with
-  | T.Returns -> make_unit_message env x v
-  | T.Promises-> make_async_message env x v
+  | T.Returns -> make_unit_message env x cc f
+  | T.Promises-> make_async_message env x cc f
+  | T.Replies -> make_replying_message env x cc f
 
 (* Literals *)
 
@@ -345,11 +362,35 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.prim s arg k
       )
+    | CastPrim _, [e] -> interpret_exp env e k
     | NumConvPrim (t1, t2), exps ->
       interpret_exps env exps [] (fun vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.num_conv_prim t1 t2 arg k
-      )
+        )
+    | ICReplyPrim ts, [exp1] ->
+      assert (not env.flavor.has_async_typ);
+      let reply = Lib.Option.value env.replies in
+      interpret_exp env exp1
+        (fun v -> Scheduler.queue (fun () -> reply v))
+    | ICRejectPrim, [exp1] ->
+      assert (not env.flavor.has_async_typ);
+      let reject = Lib.Option.value env.rejects in
+      interpret_exp env exp1
+        (fun v ->
+          let e = V.Tup [V.Variant ("error", V.unit); v] in
+          Scheduler.queue (fun () -> reject e))
+    | ICCallPrim, [exp1; exp2; expk ; expr] ->
+      assert (not env.flavor.has_async_typ);
+      interpret_exp env exp1 (fun v1 ->
+      interpret_exp env exp2 (fun v2 ->
+      interpret_exp env expk (fun kv ->
+      interpret_exp env expr (fun rv ->
+          let call_conv, f = V.as_func v1 in
+          check_call_conv exp1 call_conv;
+          check_call_conv_arg env exp v2 call_conv;
+          last_region := exp.at; (* in case the following throws *)
+          f (V.Tup[kv;rv;v2]) k))))
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -458,24 +499,43 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
+  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+    assert (not env.flavor.has_async_typ);
+    (* see code for FuncE *)
+    let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = List.length ts } in
+    let f = interpret_message env exp.at "anon" []
+      (fun env' -> interpret_exp env' exp_f) in
+    let v = make_message env "anon" cc f in
+    (* see code for ICCallPrim *)
+    interpret_exp env exp_k (fun kv ->
+    interpret_exp env exp_r (fun rv ->
+        let _call_conv, f = V.as_func v in
+        last_region := exp.at; (* in case the following throws *)
+        f (V.Tup[kv;rv;V.Tup []]) k))
+  | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
+    assert (not env.flavor.has_async_typ);
+    let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
+    let f = interpret_message env exp.at x args
+      (fun env' -> interpret_exp env' e) in
+    let v = make_message env x cc f in
+    k v
   | FuncE (x, sort, control, _typbinds, args, ret_typs, e) ->
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
-
     let f = interpret_func env exp.at x args
       (fun env' -> interpret_exp env' e) in
-    let v = V.Func (cc, f) in
-    let v =
-      match cc.sort with
-      | T.Shared _ -> make_message env x cc v
-      | _-> v
+    let v = match cc.sort with
+      | T.Shared _ -> make_message env x cc f
+      | _ -> V.Func (cc, f)
     in
     k v
   | ActorE (id, ds, fs, _) ->
-    let ve = declare_decs ds (declare_id id) in
-    let env' = adjoin_vals env ve in
+    let ve0 = declare_id id in
+    let env0 = adjoin_vals env ve0 in
+    let ve = declare_decs ds V.Env.empty in
+    let env' = adjoin_vals env0 ve in
     interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
-      define_id env' id obj;
+      define_id env0 id obj;
       k obj)
   | NewObjE (sort, fs, _) ->
     k (interpret_fields env fs)
@@ -721,6 +781,31 @@ and interpret_func env at x args f v (k : V.value V.cont) =
     }
   in f env' k'
 
+and interpret_message env at x args f v (k : V.value V.cont) =
+  let v_reply, v_reject, v = match V.as_tup v with
+    | [v_reply ; v_reject; v] -> v_reply, v_reject, v
+    | _ -> assert false
+  in
+  if env.flags.trace then trace "%s%s" x (string_of_arg env v);
+  let _, reply = V.as_func v_reply in
+  let _, reject = V.as_func v_reject in
+  let ve = match_args at args v in
+  incr trace_depth;
+  let k' = fun v' ->
+    if env.flags.trace then trace "<= %s" (string_of_val env v');
+    decr trace_depth;
+    k v'
+  in
+  let env' =
+    { env with
+      vals = V.Env.adjoin env.vals ve;
+      labs = V.Env.empty;
+      rets = Some k';
+      replies = Some (fun v -> reply v V.as_unit);
+      rejects = Some (fun v -> reject v V.as_unit);
+      async = false
+    }
+  in f env' k'
 
 (* Programs *)
 
@@ -736,4 +821,3 @@ let interpret_prog flags scope ((ds, exp), flavor) : scope =
     Scheduler.run ();
     !ve
   with exn -> print_exn flags exn; !ve
-

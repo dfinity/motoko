@@ -240,37 +240,29 @@ let prim = function
                                           | c when c <= 0o177 -> String.make 1 (Char.chr c)
                                           | code -> Wasm.Utf8.encode [code]
                                in k (Text str)
-  | "print" -> fun v k -> Printf.printf "%s%!" (as_text v); k unit
+  | "print" -> fun v k -> Printf.printf "%s\n%!" (as_text v); k unit
   | "rts_version" -> fun v k -> as_unit v; k (Text "0.1")
+  | "rts_heap_size" -> fun v k -> as_unit v; k (Int (Int.of_int 0))
+  | "rts_total_allocation" -> fun v k -> as_unit v; k (Int (Int.of_int 0))
+  | "rts_outstanding_callbacks" -> fun v k -> as_unit v; k (Int (Int.of_int 0))
   | "idlHash" -> fun v k -> let s = as_text v in k (Word32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))
-  | "decodeUTF8" -> fun v k ->
-                    let s = as_text v in
-                    let open Int32 in
-                    let take_and_mask bits offset =
-                      logand (sub (shift_left 1l bits) 1l) (of_int (Char.code s.[offset])) in
-                    let open List in
-                    let classify_utf8_leader =
-                      function
-                      | ch when compare ch 0x80l < 0 -> map take_and_mask [7]
-                      | ch when compare ch 0xe0l < 0 -> map take_and_mask [5; 6]
-                      | ch when compare ch 0xf0l < 0 -> map take_and_mask [4; 6; 6]
-                      | ch                           -> map take_and_mask [3; 6; 6; 6] in
-                    let nobbles = mapi (fun i f -> f i) (classify_utf8_leader (of_int (Char.code s.[0]))) in
-                    let code = fold_left (fun acc nobble -> logor (shift_left acc 6) nobble) 0l nobbles in
-                    k (Tup [Word32 (of_int (length nobbles)); Char (to_int code)])
-
   | "array_len" -> fun v k ->
     k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "text_len" -> fun v k ->
     k (Int (Nat.of_int (List.length (Wasm.Utf8.decode (Value.as_text v)))))
-  | "text_chars" -> fun v k ->
-    let i = ref 0 in
+  | "text_iter" -> fun v k ->
     let s = Wasm.Utf8.decode (Value.as_text v) in
-    let next = local_func 0 1 @@ fun v k' ->
-        if !i = List.length s then k' Null else
-          let v = Opt (Char (List.nth s !i)) in incr i; k' v
-    in k (Obj (Env.singleton "next" next))
-
+    let i = ref s in
+    k (TextIter i)
+  | "text_iter_done" -> fun v k ->
+    let i = Value.as_text_iter v in
+    k (Bool (!i = []))
+  | "text_iter_next" -> fun v k ->
+    let i = Value.as_text_iter v in
+    begin match !i with
+    | [] -> assert false
+    | (c::cs) -> i := cs; k (Char c)
+    end
   | "Array.init" -> fun v k ->
     (match Value.as_tup v with
     | [len; x] ->
@@ -289,20 +281,7 @@ let prim = function
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
-  | "error" -> fun v k ->
-     k (Value.Tup [Variant ("error", Tup []); v])
-  | "errorCode" -> fun v k ->
-    (match Value.as_tup v with
-    | [code; _message] ->
-      k code
-    | _ -> assert false
-    )
-  | "errorMessage" -> fun v k ->
-    (match Value.as_tup v with
-    | [_code; message] ->
-      k message
-    | _ -> assert false
-    )
+  | "cast" -> fun v k -> k v
   | p when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with
     | [_;_;s1;s2] ->

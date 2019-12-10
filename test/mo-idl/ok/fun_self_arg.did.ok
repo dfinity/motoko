@@ -1,0 +1,6 @@
+type F = func () -> (F);
+type A_9 = 
+ service {
+   "foo": F;
+ };
+

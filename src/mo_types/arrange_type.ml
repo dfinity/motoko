@@ -6,6 +6,7 @@ let ($$) head inner = Node (head, inner)
 let control c = match c with
   | Returns -> "Returns"
   | Promises -> "Promises"
+  | Replies -> "Replies"
 
 let obj_sort s = match s with
   | Object -> Atom "Object"
@@ -37,6 +38,7 @@ let prim p = match p with
   | Float -> Atom "Float"
   | Char -> Atom "Char"
   | Text -> Atom "Text"
+  | Blob -> Atom "Blob"
   | Error -> Atom "Error"
 
 let con c = Atom (Con.to_string c)

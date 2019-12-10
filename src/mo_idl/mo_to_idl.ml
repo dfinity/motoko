@@ -38,36 +38,37 @@ let string_of_con vs c =
 
 let prim p =
   match p with
-  | Null -> I.Null
-  | Bool -> I.Bool
-  | Nat -> I.Nat
-  | Nat8 -> I.Nat8
-  | Nat16 -> I.Nat16
-  | Nat32 -> I.Nat32
-  | Nat64 -> I.Nat64
-  | Int -> I.Int
-  | Int8 -> I.Int8
-  | Int16 -> I.Int16
-  | Int32 -> I.Int32
-  | Int64 -> I.Int64
-  | Word8 -> I.Nat8
-  | Word16 -> I.Nat16
-  | Word32 -> I.Nat32
-  | Word64 -> I.Nat64
-  | Float -> I.Float64
-  | Char -> I.Nat32
-  | Text -> I.Text
+  | Null -> I.PrimT I.Null
+  | Bool -> I.PrimT I.Bool
+  | Nat -> I.PrimT I.Nat
+  | Nat8 -> I.PrimT I.Nat8
+  | Nat16 -> I.PrimT I.Nat16
+  | Nat32 -> I.PrimT I.Nat32
+  | Nat64 -> I.PrimT I.Nat64
+  | Int -> I.PrimT I.Int
+  | Int8 -> I.PrimT I.Int8
+  | Int16 -> I.PrimT I.Int16
+  | Int32 -> I.PrimT I.Int32
+  | Int64 -> I.PrimT I.Int64
+  | Word8 -> I.PrimT I.Nat8
+  | Word16 -> I.PrimT I.Nat16
+  | Word32 -> I.PrimT I.Nat32
+  | Word64 -> I.PrimT I.Nat64
+  | Float -> I.PrimT I.Float64
+  | Char -> I.PrimT I.Nat32
+  | Text -> I.PrimT I.Text
+  | Blob -> I.VecT (I.PrimT I.Nat8 @@ no_region)
   | Error -> assert false
 
 let rec typ vs t =
   (match t with
   | Any -> I.PrimT I.Reserved
   | Non -> I.PrimT I.Empty
-  | Prim p -> I.PrimT (prim p)
+  | Prim p -> prim p
   | Var (s, i) -> (typ vs (List.nth vs i)).it
   | Con (c, []) ->
      (match Con.kind c with
-     | Def ([], Prim p) -> I.PrimT (prim p)
+     | Def ([], Prim p) -> prim p
      | Def ([], Any) -> I.PrimT I.Reserved
      | Def ([], Non) -> I.PrimT I.Empty
      | _ ->
@@ -104,15 +105,15 @@ let rec typ vs t =
   | Variant fs ->
      I.VariantT (List.map (field vs) fs)
   | Func (Shared s, c, [], ts1, ts2) ->
-     let fs1 = tuple vs ts1 in
+     let t1 = args vs ts1 in
      (match ts2, c with
-     | [], Returns -> I.FuncT ([I.Oneway @@ no_region], fs1, [])
+     | [], Returns -> I.FuncT ([I.Oneway @@ no_region], t1, [])
      | ts, Promises ->
        I.FuncT (
          (match s with
           | Query -> [I.Query @@ no_region]
           | Write -> []),
-         fs1, tuple vs ts)
+         t1, args vs ts)
      | _ -> assert false)
   | Func _ -> assert false
   | Async t -> assert false
@@ -131,6 +132,8 @@ and tuple vs ts =
       let id = Lib.Uint32.of_int i in
       I.{label = I.Unnamed id @@ no_region; typ = typ vs x} @@ no_region
     ) ts
+and args vs ts =
+  List.map (typ vs) ts
 and meths vs fs =
   List.fold_right (fun f list ->
       match f.typ with
@@ -178,7 +181,7 @@ let gather_decs () =
 let actor progs =
   let open E in
   let find_last_actor (prog : prog) =
-    let anon = normalize ("anon_" ^ (Filename.remove_extension prog.note)) in
+    let anon = "anon" in
     let check_dec d t def =
       let rec check_pat p =
         match p.it with

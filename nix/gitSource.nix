@@ -38,6 +38,9 @@ let
 
   has_prefix = prefix: s:
     prefix == builtins.substring 0 (builtins.stringLength prefix) s;
+  has_suffix = suffix: s:
+    let x1 = builtins.stringLength suffix - builtins.stringLength s; in
+    x1 >= 0 && suffix == builtins.substring x1 (builtins.stringLength s) s;
   remove_prefix = prefix: s:
     builtins.substring
       (builtins.stringLength prefix)
@@ -45,12 +48,19 @@ let
       s;
 
   lines = s: filter (x : x != [] && x != "") (split "\n" s);
+
+# On hydra, checkouts are always clean, and we don't want to do IFD
+  isHydra = (builtins.tryEval <src>).success;
+  not_dot_git = p: t: !(has_suffix ".git" p);
 in
 
-if builtins.pathExists ../.git
+# unfortunately this is not completely self-contained,
+# we needs pkgs this to get git and lib.cleanSourceWith
+let nixpkgs = (import ./nixpkgs.nix).nixpkgs {}; in
+
+if !isHydra && builtins.pathExists ../.git
 then
   let
-    nixpkgs = (import ./nixpkgs.nix).nixpkgs {};
 
     git_dir =
       if builtins.pathExists ../.git/index
@@ -78,9 +88,9 @@ then
 
     filter = filter_from_list ../. whitelist;
   in
-    subdir: path {
+    subdir: nixpkgs.lib.cleanSourceWith {
       name = baseNameOf (toString subdir);
-      path = if isString subdir then (../. + "/${subdir}") else subdir;
+      src = if isString subdir then (../. + "/${subdir}") else subdir;
       filter = filter;
     }
 
@@ -91,9 +101,10 @@ else
   # `builtins.fetchGit` then the source is extracted to /nix/store without a
   # .git directory, but in this case we know that it is clean, so do not warn
   warn_unless
-    (has_prefix "/nix/store" (toString ../.))
+    (isHydra || has_prefix "/nix/store" (toString ../.))
     "gitSource.nix: ${toString ../.} does not seem to be a git repository,\nassuming it is a clean checkout."
-    (subdir: path {
+    (subdir: nixpkgs.lib.cleanSourceWith {
       name = baseNameOf (toString subdir);
-      path = if isString subdir then (../. + "/${subdir}") else subdir;
+      src = if isString subdir then (../. + "/${subdir}") else subdir;
+      filter = not_dot_git;
     })

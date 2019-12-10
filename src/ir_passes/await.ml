@@ -125,7 +125,6 @@ and t_exp' context exp' =
        LabelEnv.add Return (Cont (ContVar k_ret))
          (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
      in
-     (* TODO: bind k_fail *)
      (asyncE (typ exp1) ([k_ret; k_fail] -->*
                            c_exp context' exp1 (ContVar k_ret))).it
   | TryE _
@@ -143,6 +142,7 @@ and t_exp' context exp' =
   | ActorE (id, ds, ids, t) ->
     ActorE (id, t_decs context ds, ids, t)
   | NewObjE (sort, ids, typ) -> exp'
+  | SelfCallE _ -> assert false
 
 and t_dec context dec =
   {dec with it = t_dec' context dec.it}
@@ -228,11 +228,26 @@ and c_loop context k e1 =
               (c_exp context e1 (ContVar loop))]
             (loop -*- unitE)
 
+and c_assign context k e exp1 exp2 =
+ match exp1.it with
+ | VarE _ ->
+   unary context k (fun v2 -> e (AssignE(exp1, v2))) exp2
+ | DotE (exp11, id) ->
+   binary context k (fun v11 v2 ->
+    e (AssignE ({exp1 with it = DotE (v11, id)}, v2))) exp11 exp2
+ | IdxE (exp11, exp12) ->
+   nary context k (fun vs -> match vs with
+    | [v11; v12; v2] ->
+      e (AssignE ({exp1 with it = IdxE (v11, v12)}, v2))
+    | _ -> assert false)
+    [exp11; exp12; exp2]
+ | _ -> assert false
+
 and c_exp context exp =
   c_exp' context exp
 
 and c_exp' context exp k =
-  let e exp' = {it=exp'; at = exp.at; note = exp.note} in
+  let e exp' = {exp with it = exp'} in
   match exp.it with
   | _ when is_triv exp ->
     k -@- (t_exp context exp)
@@ -257,7 +272,7 @@ and c_exp' context exp k =
   | ActorDotE (exp1, id) ->
     unary context k (fun v1 -> e (DotE (v1, id))) exp1
   | AssignE (exp1, exp2) ->
-    binary context k (fun v1 v2 -> e (AssignE (v1, v2))) exp1 exp2
+    c_assign context k e exp1 exp2
   | ArrayE (mut, typ, exps) ->
     nary context k (fun vs -> e (ArrayE (mut, typ, vs))) exps
   | IdxE (exp1, exp2) ->
@@ -388,6 +403,7 @@ and c_exp' context exp k =
   | DefineE (id, mut, exp1) ->
     unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
   | NewObjE _ -> exp
+  | SelfCallE _ -> assert false
 
 and c_block context decs exp k =
   let is_typ dec =

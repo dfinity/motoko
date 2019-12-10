@@ -114,6 +114,12 @@ let resolve_prog (prog, base) : resolve_result =
 let resolve_progs =
   Diag.traverse resolve_prog
 
+(* Printing dependency information *)
+
+let print_deps (file : string) : unit =
+  let (prog, _) =  Diag.run (parse_file file) in
+  let imports = Resolve_import.collect_imports prog in
+  List.iter print_endline imports
 
 (* Checking *)
 
@@ -461,8 +467,7 @@ let await_lowering =
   transform_if "Await Lowering" (fun _ -> Await.transform)
 
 let async_lowering mode =
-  let platform = if mode = Flags.ICMode then Async.V2 else Async.V1 in
-  transform_if "Async Lowering" (Async.transform platform)
+  transform_if "Async Lowering" (Async.transform mode)
 
 let tailcall_optimization =
   transform_if "Tailcall optimization" (fun _ -> Tailcall.transform)
@@ -533,8 +538,7 @@ let compile_string mode s name : compile_result =
 let interpret_ir_prog inp_env libs progs =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  Flags.compile_mode := Flags.WasmMode; (* REMOVE THIS HACK *)
-  let prog_ir = lower_prog Flags.WasmMode initial_stat_env inp_env libs progs name in
+  let prog_ir = lower_prog (!Flags.compile_mode) initial_stat_env inp_env libs progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in

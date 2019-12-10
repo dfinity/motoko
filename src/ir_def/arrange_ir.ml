@@ -40,6 +40,8 @@ let rec exp e = match e.it with
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
     "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_@ [ typ (Type.seq ts); exp e]
+  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+    "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
   | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | ThrowE e             -> "ThrowE"    $$ [exp e]
@@ -59,12 +61,13 @@ and prim = function
   | RelPrim (t, ro)   -> "RelPrim"    $$ [typ t; Arrange_ops.relop ro]
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
+  | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
   | CPSAsync          -> Atom "CPSAsync"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
-  | ICErrorCodePrim   -> Atom "ICErrorCodePrim"
+  | ICCallPrim        -> Atom "ICCallPrim"
 
 and mut = function
   | Const -> Atom "Const"
