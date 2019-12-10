@@ -16,12 +16,6 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
 
-let dev = import (builtins.fetchGit {
-  url = "ssh://git@github.com/dfinity-lab/dev";
-  # ref = "master";
-  rev = "6fca1936fcd027aaeaccab0beb51defeee38a0ff";
-}) { system = nixpkgs.system; }; in
-
 let dfinity-src =
   let env = builtins.getEnv "DFINITY_SRC"; in
   if env != "" then env else builtins.fetchGit {
