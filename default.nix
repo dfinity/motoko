@@ -10,6 +10,19 @@ let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
     (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
     # Selecting the ocaml version
     (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_07; })
+    # Additional ocaml package
+    (self: super: {
+      ocamlPackages = super.ocamlPackages // {
+        wasm = import ./nix/ocaml-wasm.nix {
+          inherit (self) stdenv fetchFromGitHub ocaml;
+          inherit (self.ocamlPackages) findlib ocamlbuild;
+        };
+        vlq = import ./nix/ocaml-vlq.nix {
+          inherit (self) stdenv fetchFromGitHub ocaml dune;
+          inherit (self.ocamlPackages) findlib;
+        };
+      };
+    })
   ];
 }; in
 
@@ -76,32 +89,21 @@ let staticpkgs =
 # normal nixpkgs (nix-shell, darwin)
 # nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
-  let ocaml_wasm = import ./nix/ocaml-wasm.nix {
-    inherit (pkgs) stdenv fetchFromGitHub ocaml;
-    inherit (pkgs.ocamlPackages) findlib ocamlbuild;
-  }; in
-
-  let ocaml_vlq = import ./nix/ocaml-vlq.nix {
-    inherit (pkgs) stdenv fetchFromGitHub ocaml dune;
-    inherit (pkgs.ocamlPackages) findlib;
-  }; in
-
   [
-    pkgs.ocaml
     pkgs.dune
+    pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
-    ocaml_wasm
-    ocaml_vlq
+    pkgs.ocamlPackages.wasm
+    pkgs.ocamlPackages.vlq
     pkgs.ocamlPackages.zarith
     pkgs.ocamlPackages.yojson
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_inline_test
     pkgs.ocamlPackages.bisect_ppx
-    pkgs.ocamlPackages.bisect_ppx-ocamlbuild
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
   ]; in
@@ -312,7 +314,6 @@ rec {
 
     buildInputs = commonBuildInputs nixpkgs ++ [
       nixpkgs.ocamlPackages.js_of_ocaml
-      nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
       nixpkgs.ocamlPackages.js_of_ocaml-ppx
       nixpkgs.nodejs-10_x
     ];
