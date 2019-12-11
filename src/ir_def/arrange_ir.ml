@@ -16,7 +16,6 @@ let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
   | LitE l              -> "LitE"    $$ [lit l]
   | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
-  | TupE es             -> "TupE"    $$ List.map exp es
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | DotE (e, n)         -> "DotE"    $$ [exp e; Atom n]
   | ActorDotE (e, n)    -> "ActorDotE" $$ [exp e; Atom n]
@@ -64,6 +63,7 @@ and prim = function
   | UnPrim (t, uo)    -> "UnPrim"     $$ [typ t; Arrange_ops.unop uo]
   | BinPrim (t, bo)   -> "BinPrim"    $$ [typ t; Arrange_ops.binop bo]
   | RelPrim (t, ro)   -> "RelPrim"    $$ [typ t; Arrange_ops.relop ro]
+  | TupPrim           -> Atom "TupPrim"
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]

@@ -68,7 +68,7 @@ and exp' at note = function
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
-  | S.TupE es -> I.TupE (exps es)
+  | S.TupE es -> (tupE (exps es)).it
   | S.ProjE (e, i) -> I.ProjE (exp e, i)
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, es) ->
@@ -128,7 +128,7 @@ and exp' at note = function
     else
       let inst = List.map (fun t -> t.Source.note) inst in
       I.CallE (exp e1, inst, exp e2)
-  | S.BlockE [] -> I.TupE []
+  | S.BlockE [] -> unitE.it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
@@ -141,7 +141,7 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
-  | S.DebugE e -> if !Mo_config.Flags.release_mode then I.TupE [] else (exp e).it
+  | S.DebugE e -> if !Mo_config.Flags.release_mode then unitE.it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
   | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
   | S.RetE e -> I.RetE (exp e)

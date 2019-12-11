@@ -65,7 +65,6 @@ and exp' =
   | PrimE of (prim * exp list)                 (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit                                (* literal *)
-  | TupE of exp list                           (* tuple *)
   | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | TagE of id * exp                           (* variant injection *)
@@ -112,6 +111,7 @@ and prim =
   | UnPrim of Type.typ * unop         (* unary operator *)
   | BinPrim of Type.typ * binop       (* binary operator *)
   | RelPrim of Type.typ * relop       (* relational operator *)
+  | TupPrim                           (* the tuple constructor *)
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)

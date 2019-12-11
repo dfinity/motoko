@@ -227,8 +227,6 @@ let transform mode env prog =
     match exp' with
     | LitE _ -> exp'
     | VarE id -> exp'
-    | TupE exps ->
-      TupE (List.map t_exp exps)
     | OptE exp1 ->
       OptE (t_exp exp1)
     | TagE (i, exp1) ->
@@ -354,7 +352,7 @@ let transform mode env prog =
                 [{ it = LetD (
                   { it = WildP; _},
                   ({ it = PrimE (CPSAsync, _); _} as exp)); _ }],
-                { it = TupE []; _});
+                { it = PrimE (TupPrim, []); _});
                 _ } ->
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in

@@ -34,7 +34,6 @@ and exp' rho e  = match e with
   | VarE i              -> VarE (id rho i)
   | LitE l              -> e
   | PrimE (p, es)       -> PrimE (p, List.map (exp rho) es)
-  | TupE es             -> TupE (List.map (exp rho) es)
   | ProjE (e, i)        -> ProjE (exp rho e, i)
   | ActorE (i, ds, fs, t)-> let i',rho' = id_bind rho i in
                             let ds', rho'' = decs rho' ds

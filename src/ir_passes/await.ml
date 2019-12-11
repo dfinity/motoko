@@ -65,8 +65,6 @@ and t_exp' context exp' =
   | LitE _ -> exp'
   | PrimE (p, exps) ->
     PrimE (p, List.map (t_exp context) exps)
-  | TupE exps ->
-    TupE (List.map (t_exp context) exps)
   | OptE exp1 ->
     OptE (t_exp context exp1)
   | TagE (id, exp1) ->
@@ -263,8 +261,6 @@ and c_exp' context exp k =
     assert false
   | PrimE (p, exps) ->
     nary context k (fun vs -> e (PrimE (p, vs))) exps
-  | TupE exps ->
-    nary context k (fun vs -> e (TupE vs)) exps
   | OptE exp1 ->
     unary context k (fun v1 -> e (OptE v1)) exp1
   | TagE (i, exp1) ->

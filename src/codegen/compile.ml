@@ -5848,7 +5848,12 @@ and compile_exp (env : E.t) ae exp =
       SR.bool,
       compile_exp_as env ae sr e1 ^^
       compile_exp_as env ae sr e2 ^^
+
       code
+    (* Tuples *)
+    | TupPrim, es ->
+      SR.UnboxedTuple (List.length es),
+      G.concat_map (compile_exp_vanilla env ae) es
 
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
@@ -6207,9 +6212,6 @@ and compile_exp (env : E.t) ae exp =
   | TagE (l, e) ->
     SR.Vanilla,
     Variant.inject env l (compile_exp_vanilla env ae e)
-  | TupE es ->
-    SR.UnboxedTuple (List.length es),
-    G.concat_map (compile_exp_vanilla env ae) es
   | ProjE (e1,n) ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* offset to tuple (an array) *)
@@ -6700,7 +6702,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
   let find_last_expr ds e =
     if ds = [] then [], e.it else
     match Lib.List.split_last ds, e.it with
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), TupE [] ->
+    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), PrimE (TupPrim, []) ->
       ds1', e'.it
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), VarE i2 when i1 = i2 ->
       ds1', e'.it

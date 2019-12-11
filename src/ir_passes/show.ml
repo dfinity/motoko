@@ -100,10 +100,7 @@ let invoke_text_of_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
       }
     , [t]
-    , { it = TupE [f; e]
-      ; at = no_region
-      ; note = { note_typ = T.Tup [show_fun_typ_for t; T.Opt t]; note_eff = T.Triv }
-      }
+    , tupE [f; e]
     )
   )
 
@@ -116,10 +113,7 @@ let invoke_text_of_variant : T.typ -> Ir.exp -> T.lab -> Ir.exp -> Ir.exp = fun 
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
       }
     , [t]
-    , { it = TupE [textE l; f; e]
-      ; at = no_region
-      ; note = { note_typ = T.Tup [T.text; show_fun_typ_for t; t]; note_eff = T.Triv }
-      }
+    , tupE [textE l; f; e]
     )
   )
 
@@ -132,10 +126,7 @@ let invoke_text_of_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
       }
     , [t]
-    , { it = TupE [f; e]
-      ; at = no_region
-      ; note = { note_typ = T.Tup [show_fun_typ_for t; T.Array t]; note_eff = T.Triv }
-      }
+    , tupE [f; e]
     )
   )
 
@@ -148,10 +139,7 @@ let invoke_text_of_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e -
       ; note = { note_typ = fun_typ; note_eff = T.Triv }
       }
     , [t]
-    , { it = TupE [f; e]
-      ; at = no_region
-      ; note = { note_typ = T.Tup [show_fun_typ_for t; T.Array (T.Mut t)]; note_eff = T.Triv }
-      }
+    , tupE [f; e]
     )
   )
 
@@ -346,7 +334,6 @@ and t_exp' env = function
     let f = idE (show_name_for t') (show_fun_typ_for t') in
     CallE (f, [], t_exp env exp1)
   | PrimE (p, es) -> PrimE (p, t_exps env es)
-  | TupE exps -> TupE (t_exps env exps)
   | OptE exp1 ->
     OptE (t_exp env exp1)
   | TagE (l, exp1) ->

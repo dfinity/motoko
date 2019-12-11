@@ -46,7 +46,6 @@ let rec infer_effect_exp (exp: exp) : T.eff =
     let t2 = effect_exp exp2 in
     max_eff t1 t2
   | PrimE (_, exps)
-  | TupE exps
   | ArrayE (_, _, exps) ->
     let es = List.map effect_exp exps in
     List.fold_left max_eff T.Triv es

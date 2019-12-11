@@ -322,6 +322,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           k (Operator.relop op ot v1 v2)
         )
       )
+    | TupPrim, exps ->
+      interpret_exps env exps [] (fun vs -> k (V.Tup vs))
     | ShowPrim ot, [exp1] ->
       interpret_exp env exp1 (fun v ->
         if Show.can_show ot
@@ -405,8 +407,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
     end
-  | TupE exps ->
-    interpret_exps env exps [] (fun vs -> k (V.Tup vs))
   | OptE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | TagE (i, exp1) ->

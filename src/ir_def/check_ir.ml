@@ -350,6 +350,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       typ exp2 <: ot;
       T.bool <: t
+    | TupPrim, exps ->
+      T.Tup (List.map typ exps) <: t
     | ShowPrim ot, [exp1] ->
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";
@@ -414,9 +416,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
       error env exp.at "PrimE %s does not work with %d arguments"
         (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p)) (List.length args);
     end
-  | TupE exps ->
-    List.iter (check_exp env) exps;
-    T.Tup (List.map typ exps) <: t
   | OptE exp1 ->
     check_exp env exp1;
     T.Opt (typ exp1) <: t

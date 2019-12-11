@@ -84,7 +84,7 @@ and exp env e  : exp =
 and assignEs vars exp : dec list =
   match vars, exp.it with
   | [v], _ -> [ expD (assignE v exp) ]
-  | _, TupE es when List.length es = List.length vars ->
+  | _, PrimE (TupPrim, es) when List.length es = List.length vars ->
        List.map expD (List.map2 assignE vars es)
   | _, _ ->
     let tup = fresh_var "tup" (typ exp) in
@@ -94,7 +94,6 @@ and assignEs vars exp : dec list =
 and exp' env e  : exp' = match e.it with
   | VarE _ | LitE _     -> e.it
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
-  | TupE es             -> TupE (List.map (exp env) es)
   | ProjE (e, i)        -> ProjE (exp env e, i)
   | DotE (e, sn)        -> DotE (exp env e, sn)
   | ActorDotE (e, sn)   -> ActorDotE (exp env e, sn)

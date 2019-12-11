@@ -151,9 +151,9 @@ let dec_eff dec = match dec.it with
 
 let rec simpl_decs decs = List.concat (List.map simpl_dec decs)
 and simpl_dec dec = match dec.it with
-  | LetD ({it = WildP;_}, {it = TupE [];_}) ->
+  | LetD ({it = WildP;_}, {it = PrimE (TupPrim, []);_}) ->
     []
-  | LetD ({it = TupP ps;_}, {it = TupE es;_}) when List.length ps = List.length es ->
+  | LetD ({it = TupP ps;_}, {it = PrimE (TupPrim, es);_}) when List.length ps = List.length es ->
     simpl_decs (List.map2 (fun p e -> LetD (p, e) @@ p.at) ps es)
   | _ ->
     [ dec ]
@@ -181,12 +181,6 @@ let blobE s =
   { it = LitE (BlobLit s);
     at = no_region;
     note = { note_typ = T.blob; note_eff = T.Triv }
-  }
-
-let unitE =
-  { it = TupE [];
-    at = no_region;
-    note = { note_typ = T.Tup []; note_eff = T.Triv }
   }
 
 let boolE b =
@@ -273,13 +267,15 @@ let switch_variantE exp1 cases typ1 =
 let tupE exps =
   let effs = List.map eff exps in
   let eff = List.fold_left max_eff T.Triv effs in
-  { it = TupE exps;
+  { it = PrimE (TupPrim, exps);
     at = no_region;
     note = {
       note_typ = T.Tup (List.map typ exps);
       note_eff = eff
     }
   }
+
+let unitE = tupE []
 
 let breakE l exp =
   { it = BreakE (l, exp);
