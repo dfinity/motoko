@@ -94,7 +94,6 @@ and assignEs vars exp : dec list =
 and exp' env e  : exp' = match e.it with
   | VarE _ | LitE _     -> e.it
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
-  | ProjE (e, i)        -> ProjE (exp env e, i)
   | DotE (e, sn)        -> DotE (exp env e, sn)
   | ActorDotE (e, sn)   -> ActorDotE (exp env e, sn)
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)

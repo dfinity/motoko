@@ -69,8 +69,6 @@ and t_exp' context exp' =
     OptE (t_exp context exp1)
   | TagE (id, exp1) ->
     TagE (id, t_exp context exp1)
-  | ProjE (exp1, n) ->
-    ProjE (t_exp context exp1, n)
   | DotE (exp1, id) ->
     DotE (t_exp context exp1, id)
   | ActorDotE (exp1, id) ->
@@ -265,8 +263,6 @@ and c_exp' context exp k =
     unary context k (fun v1 -> e (OptE v1)) exp1
   | TagE (i, exp1) ->
     unary context k (fun v1 -> e (TagE (i, v1))) exp1
-  | ProjE (exp1, n) ->
-    unary context k (fun v1 -> e (ProjE (v1, n))) exp1
   | ActorE _ ->
     assert false; (* ActorE fields cannot await *)
   | DotE (exp1, id) ->

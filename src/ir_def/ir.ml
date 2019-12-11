@@ -65,7 +65,6 @@ and exp' =
   | PrimE of (prim * exp list)                 (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit                                (* literal *)
-  | ProjE of exp * int                         (* tuple projection *)
   | OptE of exp                                (* option injection *)
   | TagE of id * exp                           (* variant injection *)
   | DotE of exp * Type.lab                     (* object projection *)
@@ -112,12 +111,14 @@ and prim =
   | BinPrim of Type.typ * binop       (* binary operator *)
   | RelPrim of Type.typ * relop       (* relational operator *)
   | TupPrim                           (* the tuple constructor *)
+  | ProjPrim of int                   (* tuple projection *)
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
   | ActorOfIdBlob of Type.typ
   | BlobOfIcUrl                       (* traps on syntax or checksum failure *)
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
+  (* backend stuff *)
   | CPSAwait
   | CPSAsync
   | ICReplyPrim of Type.typ list

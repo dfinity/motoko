@@ -5854,6 +5854,10 @@ and compile_exp (env : E.t) ae exp =
     | TupPrim, es ->
       SR.UnboxedTuple (List.length es),
       G.concat_map (compile_exp_vanilla env ae) es
+    | ProjPrim n, [e1] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e1 ^^ (* offset to tuple (an array) *)
+      Tuple.load_n (Int32.of_int n)
 
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
@@ -6212,10 +6216,6 @@ and compile_exp (env : E.t) ae exp =
   | TagE (l, e) ->
     SR.Vanilla,
     Variant.inject env l (compile_exp_vanilla env ae e)
-  | ProjE (e1,n) ->
-    SR.Vanilla,
-    compile_exp_vanilla env ae e1 ^^ (* offset to tuple (an array) *)
-    Tuple.load_n (Int32.of_int n)
   | ArrayE (m, t, es) ->
     SR.Vanilla, Arr.lit env (List.map (compile_exp_vanilla env ae) es)
   | CallE (e1, _, e2) ->

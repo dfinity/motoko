@@ -139,7 +139,7 @@ let ic_callE f e k r =
 let projE e n =
   match typ e with
   | T.Tup ts ->
-     { it = ProjE (e, n);
+     { it = PrimE (ProjPrim n, [e]);
        note = { note_typ = List.nth ts n; note_eff = eff e };
        at = no_region;
      }

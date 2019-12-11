@@ -69,7 +69,7 @@ and exp' at note = function
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
   | S.TupE es -> (tupE (exps es)).it
-  | S.ProjE (e, i) -> I.ProjE (exp e, i)
+  | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> I.OptE (exp e)
   | S.ObjE (s, es) ->
     obj at s None es note.I.note_typ

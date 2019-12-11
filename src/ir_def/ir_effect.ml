@@ -28,7 +28,6 @@ let rec infer_effect_exp (exp: exp) : T.eff =
   | VarE _
   | LitE _ ->
     T.Triv
-  | ProjE (exp1, _)
   | OptE exp1
   | TagE (_, exp1)
   | DotE (exp1, _)

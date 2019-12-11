@@ -324,6 +324,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       )
     | TupPrim, exps ->
       interpret_exps env exps [] (fun vs -> k (V.Tup vs))
+    | ProjPrim n, [exp1] ->
+      interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
     | ShowPrim ot, [exp1] ->
       interpret_exp env exp1 (fun v ->
         if Show.can_show ot
@@ -411,8 +413,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i, v1)))
-  | ProjE (exp1, n) ->
-    interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
   | DotE (exp1, n) ->
     interpret_exp env exp1 (fun v1 ->
       let fs = V.as_obj v1 in

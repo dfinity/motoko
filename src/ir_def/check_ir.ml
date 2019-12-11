@@ -352,6 +352,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.bool <: t
     | TupPrim, exps ->
       T.Tup (List.map typ exps) <: t
+    | ProjPrim n, [exp1] ->
+      let t1 = T.promote (immute_typ exp1) in
+      let ts = try T.as_tup_sub n t1
+               with Invalid_argument _ ->
+                 error env exp1.at "expected tuple type, but expression produces type\n  %s"
+                   (T.string_of_typ_expand t1) in
+      let tn = try List.nth ts n with
+               | Invalid_argument _ ->
+                 error env exp.at "tuple projection %n is out of bounds for type\n  %s"
+                   n (T.string_of_typ_expand t1) in
+      tn <: t
     | ShowPrim ot, [exp1] ->
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";
@@ -422,18 +433,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | TagE (i, exp1) ->
     check_exp env exp1;
     T.Variant [{T.lab = i; typ = typ exp1}] <: t
-  | ProjE (exp1, n) ->
-    check_exp env exp1;
-    let t1 = T.promote (immute_typ exp1) in
-    let ts = try T.as_tup_sub n t1
-             with Invalid_argument _ ->
-               error env exp1.at "expected tuple type, but expression produces type\n  %s"
-                 (T.string_of_typ_expand t1) in
-    let tn = try List.nth ts n with
-             | Invalid_argument _ ->
-               error env exp.at "tuple projection %n is out of bounds for type\n  %s"
-                 n (T.string_of_typ_expand t1) in
-    tn <: t
   | ActorDotE(exp1, n)
   | DotE (exp1, n) ->
     begin

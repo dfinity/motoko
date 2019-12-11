@@ -72,7 +72,6 @@ let rec exp e : f = match e.it with
   | VarE i              -> id i
   | LitE l              -> M.empty
   | PrimE (_, es)       -> exps es
-  | ProjE (e, i)        -> exp e
   | DotE (e, i)         -> exp e
   | ActorDotE (e, i)    -> exp e
   | AssignE (e1, e2)    -> lexp e1 ++ exp e2

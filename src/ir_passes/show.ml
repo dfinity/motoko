@@ -235,14 +235,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     define_show t (
       cat_list (list_build
         (textE "(") (textE ", ") (textE ")")
-        (List.mapi (fun i t' ->
-           invoke_generated_show t' (
-             { it = ProjE (argE t, i)
-             ; at = no_region
-             ; note = { note_typ = t'; note_eff = T.Triv }
-             }
-           )
-        ) ts')
+        (List.mapi (fun i t' -> invoke_generated_show t' (projE (argE t) i)) ts')
       )
     ),
     ts'
@@ -338,8 +331,6 @@ and t_exp' env = function
     OptE (t_exp env exp1)
   | TagE (l, exp1) ->
     TagE (l, t_exp env exp1)
-  | ProjE (exp1, n) ->
-    ProjE (t_exp env exp1, n)
   | DotE (exp1, id) ->
     DotE (t_exp env exp1, id)
   | ActorDotE (exp1, id) ->

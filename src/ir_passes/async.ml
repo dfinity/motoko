@@ -231,8 +231,6 @@ let transform mode env prog =
       OptE (t_exp exp1)
     | TagE (i, exp1) ->
       TagE (i, t_exp exp1)
-    | ProjE (exp1, n) ->
-      ProjE (t_exp exp1, n)
     | DotE (exp1, id) ->
       DotE (t_exp exp1, id)
     | ActorDotE (exp1, id) ->
