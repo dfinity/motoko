@@ -142,8 +142,6 @@ public func clone<K,V>
   h2
 };
 
-// clone cannot be an efficient object method,
-// ...but is still useful in tests, and beyond.
 public func mapFilter<K, V1, V2>
   (h:Hashtbl<K,V1>,
    initCapacity: Nat,
