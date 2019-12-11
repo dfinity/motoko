@@ -57,7 +57,7 @@ and exp e =
 
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
-  | S.ActorLitE url -> I.(PrimE (CastPrim (T.(Prim Blob), T.(Obj (Actor, []))), [(*BlobLit url*)]))
+  | S.ActorLitE url -> I.(PrimE (CastPrim (T.(Prim Blob), (* FIXME *) T.(Obj (Actor, []))), [(* FIXME: BlobLit url*)]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
