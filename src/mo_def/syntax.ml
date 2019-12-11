@@ -221,5 +221,6 @@ let string_of_lit = function
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
+  | ActorLit t    -> t (* FIXME *)
   | FloatLit f    -> Value.Float.to_pretty_string f
   | PreLit _      -> assert false
