@@ -58,7 +58,7 @@ and exp e =
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
   | S.ActorLitE url ->
-    I.(PrimE (CastPrim (T.(Prim Blob), note.I.note_typ), [{ it = LitE (BlobLit url); note; at }]))
+    I.(PrimE (CastPrim (T.(Prim Blob), note.I.note_typ), [{ it = LitE (BlobLit url); T.(Prim Blob); at }]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
@@ -452,4 +452,3 @@ let transform p = prog p
 
 let transform_graph imp_env libraries progs =
   prog (combine_files imp_env libraries progs)
-
