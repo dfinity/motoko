@@ -298,6 +298,7 @@ lit :
   | s=FLOAT { PreLit (s, Type.Float) }
   | c=CHAR { CharLit c }
   | t=TEXT { TextLit t }
+  | ACTOR t=TEXT { ActorLit t } (* TODO: needs a better definition *)
 
 %inline unop :
   | ADDOP { PosOp }
