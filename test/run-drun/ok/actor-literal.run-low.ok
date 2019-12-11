@@ -1,5 +1,0 @@
-Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-actor-literal.mo:3.9-3.30: IR type error, subtype violation:
-  Blob
-  actor {}
-
