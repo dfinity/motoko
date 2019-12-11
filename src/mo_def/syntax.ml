@@ -75,6 +75,7 @@ type lit =
   | FloatLit of Value.Float.t
   | CharLit of Value.unicode
   | TextLit of string
+  | ActorLit of string
   | PreLit of string * Type.prim
 
 
