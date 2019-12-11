@@ -5060,7 +5060,7 @@ let compile_lit env lit =
   try match lit with
     (* Booleans are directly in Vanilla representation *)
     | BoolLit false -> SR.bool, Bool.lit false
-    | BoolLit true ->  SR.bool, Bool.lit true
+    | BoolLit true  -> SR.bool, Bool.lit true
     | IntLit n
     | NatLit n      -> SR.Vanilla, BigNum.compile_lit env n
     | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
@@ -5077,8 +5077,9 @@ let compile_lit env lit =
     | Nat64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (nat64_to_int64 n))
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
-    | TextLit t     -> SR.Vanilla, Blob.lit env t
-    | _ -> todo_trap_SR env "compile_lit" (Arrange_ir.lit lit)
+    | TextLit t
+    | BlobLit t     -> SR.Vanilla, Blob.lit env t
+    | FloatLit _    -> todo_trap_SR env "compile_lit" (Arrange_ir.lit lit)
   with Failure _ ->
     Printf.eprintf "compile_lit: Overflow in literal %s\n" (string_of_lit lit);
     SR.Unreachable, E.trap_with env "static literal overflow"
@@ -6001,6 +6002,9 @@ and compile_exp (env : E.t) ae exp =
     (* Coercions for abstract types *)
     | CastPrim (_,_), [e] ->
       compile_exp env ae e
+    (* Actor ids are blobs in the RTS *)
+    | ActorOfIdBlob _, [e] ->
+      compile_exp env ae e
 
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with
@@ -6333,10 +6337,11 @@ and compile_lit_pat env l =
     BoxedWord64.unbox env ^^
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Word64)
-  | TextLit t ->
+  | TextLit t
+  | BlobLit t ->
     Blob.lit env t ^^
     Text.compare env Operator.EqOp
-  | _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
+  | FloatLit _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
 
 and fill_pat env ae pat : patternCode =
   PatCode.with_region pat.at @@
