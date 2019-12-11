@@ -227,8 +227,6 @@ let transform mode env prog =
     match exp' with
     | LitE _ -> exp'
     | VarE id -> exp'
-    | TagE (i, exp1) ->
-      TagE (i, t_exp exp1)
     | DotE (exp1, id) ->
       DotE (t_exp exp1, id)
     | ActorDotE (exp1, id) ->

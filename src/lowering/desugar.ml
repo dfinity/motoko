@@ -73,7 +73,7 @@ and exp' at note = function
   | S.OptE e -> (optE (exp e)).it
   | S.ObjE (s, es) ->
     obj at s None es note.I.note_typ
-  | S.TagE (c, e) -> I.TagE (c.it, exp e)
+  | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
   | S.DotE (e, x) when T.is_prim T.Blob e.note.S.note_typ ->

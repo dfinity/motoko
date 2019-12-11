@@ -28,7 +28,6 @@ let rec infer_effect_exp (exp: exp) : T.eff =
   | VarE _
   | LitE _ ->
     T.Triv
-  | TagE (_, exp1)
   | DotE (exp1, _)
   | ActorDotE (exp1, _)
   | AssertE exp1

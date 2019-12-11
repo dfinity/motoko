@@ -151,6 +151,12 @@ let optE e =
    at = no_region;
  }
 
+let tagE i e =
+ { it = PrimE (TagPrim i, [e]);
+   note = { note_typ = T.Variant [{T.lab = i; typ = typ e}]; note_eff = eff e };
+   at = no_region;
+ }
+
 let dec_eff dec = match dec.it with
   | TypD _ -> T.Triv
   | LetD (_,e) | VarD (_,e) -> eff e

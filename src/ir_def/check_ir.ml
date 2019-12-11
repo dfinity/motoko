@@ -365,6 +365,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       tn <: t
     | OptPrim, [exp1] ->
       T.Opt (typ exp1) <: t
+    | TagPrim i, [exp1] ->
+      T.Variant [{T.lab = i; typ = typ exp1}] <: t
     | ShowPrim ot, [exp1] ->
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";
@@ -429,9 +431,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
       error env exp.at "PrimE %s does not work with %d arguments"
         (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p)) (List.length args);
     end
-  | TagE (i, exp1) ->
-    check_exp env exp1;
-    T.Variant [{T.lab = i; typ = typ exp1}] <: t
   | ActorDotE(exp1, n)
   | DotE (exp1, n) ->
     begin

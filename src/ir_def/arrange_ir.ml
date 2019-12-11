@@ -32,7 +32,6 @@ let rec exp e = match e.it with
   | AsyncE e            -> "AsyncE"  $$ [exp e]
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
-  | TagE (i, e)         -> "TagE" $$ [id i; exp e]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
@@ -64,6 +63,7 @@ and prim = function
   | TupPrim           -> Atom "TupPrim"
   | ProjPrim i        -> "ProjPrim"   $$ [Atom (string_of_int i)]
   | OptPrim           -> Atom "OptPrim"
+  | TagPrim i         -> "TagE" $$ [id i]
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]

@@ -65,7 +65,6 @@ and exp' =
   | PrimE of (prim * exp list)                 (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit                                (* literal *)
-  | TagE of id * exp                           (* variant injection *)
   | DotE of exp * Type.lab                     (* object projection *)
   | ActorDotE of exp * Type.lab                (* actor field access *)
   | AssignE of lexp * exp                      (* assignment *)
@@ -112,6 +111,7 @@ and prim =
   | TupPrim                           (* the tuple constructor *)
   | ProjPrim of int                   (* tuple projection *)
   | OptPrim                           (* option injection *)
+  | TagPrim of id                     (* variant injection *)
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)

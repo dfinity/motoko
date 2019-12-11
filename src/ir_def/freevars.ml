@@ -88,7 +88,6 @@ let rec exp e : f = match e.it with
   | AsyncE e            -> exp e
   | AwaitE e            -> exp e
   | AssertE e           -> exp e
-  | TagE (_, e)         -> exp e
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)

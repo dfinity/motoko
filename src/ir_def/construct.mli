@@ -47,6 +47,7 @@ val ic_rejectE : exp -> exp
 val ic_callE : exp -> exp -> exp -> exp -> exp
 val projE : exp -> int -> exp
 val optE : exp -> exp
+val tagE : id -> exp -> exp
 val blockE : dec list -> exp -> exp
 val textE : string -> exp
 val blobE : string -> exp
