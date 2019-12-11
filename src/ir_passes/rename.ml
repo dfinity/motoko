@@ -55,7 +55,6 @@ and exp' rho e  = match e with
   | AsyncE e            -> AsyncE (exp rho e)
   | AwaitE e            -> AwaitE (exp rho e)
   | AssertE e           -> AssertE (exp rho e)
-  | OptE e              -> OptE (exp rho e)
   | TagE (i, e)         -> TagE (i, exp rho e)
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)

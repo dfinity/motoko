@@ -327,8 +327,6 @@ and t_exp' env = function
     let f = idE (show_name_for t') (show_fun_typ_for t') in
     CallE (f, [], t_exp env exp1)
   | PrimE (p, es) -> PrimE (p, t_exps env es)
-  | OptE exp1 ->
-    OptE (t_exp env exp1)
   | TagE (l, exp1) ->
     TagE (l, t_exp env exp1)
   | DotE (exp1, id) ->

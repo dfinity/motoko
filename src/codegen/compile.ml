@@ -5859,6 +5859,10 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e1 ^^ (* offset to tuple (an array) *)
       Tuple.load_n (Int32.of_int n)
 
+    | OptPrim, [e] ->
+      SR.Vanilla,
+      Opt.inject env (compile_exp_vanilla env ae e)
+
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
       let open Type in
@@ -6210,9 +6214,6 @@ and compile_exp (env : E.t) ae exp =
     compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
     FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
     G.i Return
-  | OptE e ->
-    SR.Vanilla,
-    Opt.inject env (compile_exp_vanilla env ae e)
   | TagE (l, e) ->
     SR.Vanilla,
     Variant.inject env l (compile_exp_vanilla env ae e)

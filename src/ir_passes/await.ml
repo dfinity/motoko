@@ -65,8 +65,6 @@ and t_exp' context exp' =
   | LitE _ -> exp'
   | PrimE (p, exps) ->
     PrimE (p, List.map (t_exp context) exps)
-  | OptE exp1 ->
-    OptE (t_exp context exp1)
   | TagE (id, exp1) ->
     TagE (id, t_exp context exp1)
   | DotE (exp1, id) ->
@@ -259,8 +257,6 @@ and c_exp' context exp k =
     assert false
   | PrimE (p, exps) ->
     nary context k (fun vs -> e (PrimE (p, vs))) exps
-  | OptE exp1 ->
-    unary context k (fun v1 -> e (OptE v1)) exp1
   | TagE (i, exp1) ->
     unary context k (fun v1 -> e (TagE (i, v1))) exp1
   | ActorE _ ->

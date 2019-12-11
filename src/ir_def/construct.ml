@@ -145,6 +145,12 @@ let projE e n =
      }
   | _ -> failwith "projE"
 
+let optE e =
+ { it = PrimE (OptPrim, [e]);
+   note = { note_typ = T.Opt (typ e); note_eff = eff e };
+   at = no_region;
+ }
+
 let dec_eff dec = match dec.it with
   | TypD _ -> T.Triv
   | LetD (_,e) | VarD (_,e) -> eff e
