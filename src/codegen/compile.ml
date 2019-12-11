@@ -4765,7 +4765,7 @@ module FuncDec = struct
       (* done! *)
       Dfinity.system_call env "ic0" "call_simple" ^^
       (* Check error code *)
-      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
       E.else_trap_with env "could not perform call"
     | _ -> assert false
 
