@@ -238,7 +238,7 @@ let transform mode env prog =
     | ActorDotE (exp1, id) ->
       ActorDotE (t_exp exp1, id)
     | AssignE (exp1, exp2) ->
-      AssignE (t_exp exp1, t_exp exp2)
+      AssignE (t_lexp exp1, t_exp exp2)
     | ArrayE (mut, t, exps) ->
       ArrayE (mut, t_typ t, List.map t_exp exps)
     | IdxE (exp1, exp2) ->
@@ -384,6 +384,15 @@ let transform mode env prog =
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
+
+  and t_lexp lexp = { lexp with it = t_lexp' lexp.it }
+  and t_lexp' (lexp':lexp') =
+    match lexp' with
+    | VarLE _ -> lexp'
+    | DotLE (exp1, id) ->
+      DotLE (t_exp exp1, id)
+    | IdxLE (exp1, exp2) ->
+      IdxLE (t_exp exp1, t_exp exp2)
 
   and t_dec dec = { dec with it = t_dec' dec.it }
 
