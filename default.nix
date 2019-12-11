@@ -205,7 +205,7 @@ rec {
       staticpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
 
     # we test each subdirectory of test/ in its own derivation with
-    # cleaner dependencies, for more paralleism, more caching
+    # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
     let test_subdir = dir: deps:
       testDerivation {
