@@ -1,4 +1,5 @@
 open Mo_def
+module Traversals = Mo_frontend.Traversals
 
 (*
 This module traverses the syntax tree. For each `import` statement, it looks
@@ -138,70 +139,19 @@ let resolve_package_url (msgs:Diag.msg_store) (base:filepath) (pname:string) (f:
       };
     None
 
-let rec
-  exp env (e : exp) = match e.it with
-  | ImportE (f, fp) -> resolve_import_string env e.at f fp
-  (* The rest is just a boring syntax traversal *)
-  | (PrimE _ | VarE _ | LitE _) -> ()
-  | UnE (_, _, exp1)
-  | ShowE (_, exp1)
-  | ProjE (exp1, _)
-  | OptE exp1
-  | TagE (_, exp1)
-  | DotE (exp1, _)
-  | NotE exp1
-  | AssertE exp1
-  | LabelE (_, _, exp1)
-  | BreakE (_, exp1)
-  | RetE exp1
-  | AnnotE (exp1, _)
-  | AsyncE exp1
-  | AwaitE exp1
-  | ThrowE exp1
-  | LoopE (exp1, None) ->
-    exp env exp1
-  | BinE (_, exp1, _, exp2)
-  | IdxE (exp1, exp2)
-  | RelE (_, exp1, _, exp2)
-  | AssignE (exp1, exp2)
-  | CallE (exp1, _, exp2)
-  | AndE (exp1, exp2)
-  | OrE (exp1, exp2)
-  | WhileE (exp1, exp2)
-  | LoopE (exp1, Some exp2)
-  | ForE (_, exp1, exp2) ->
-    exp env exp1; exp env exp2
-  | DebugE exp1 ->
-    exp env exp1
-  | TupE exps
-  | ArrayE (_, exps) ->
-    List.iter (exp env) exps
-  | BlockE ds ->
-    decs env ds
-  | ObjE (_, efs) ->
-    List.iter (fun ef -> dec env ef.it.dec) efs
-  | IfE (exp1, exp2, exp3) ->
-    exp env exp1;
-    exp env exp2;
-    exp env exp3
-  | TryE (exp1, cases)
-  | SwitchE (exp1, cases) ->
-    exp env exp1;
-    List.iter (fun c -> exp env c.it.exp) cases
-  | FuncE (_, _, _ , _ , _, e) ->
-    exp env e
+let collect_imports (p : prog): string list =
+  let res = ref [] in
+  let f e = match e.it with
+    | ImportE (f, _) -> res := f::!res; e
+    | _ -> e in
+  let _ = ignore (Traversals.over_prog f p) in
+  List.rev !res
 
-and decs env = List.iter (dec env)
-and dec env d = match d.it with
-  | TypD _ -> ()
-  | ExpD e
-  | VarD (_, e)
-  | LetD (_, e) ->
-    exp env e
-  | ClassD (_, _, _, _, _ , _, efs) ->
-    List.iter (fun ef -> dec env ef.it.dec) efs
-
-let prog env p = decs env p.it
+let prog env p =
+  let f e = match e.it with
+    | ImportE (f, fp) -> resolve_import_string env e.at f fp; e
+    | _ -> e in
+  ignore (Traversals.over_prog f p)
 
 type package_urls = (string * string) list
 

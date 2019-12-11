@@ -3,8 +3,6 @@
 → install
 ← completed
 → update go(0x4449444c0000)
-debug.print: 2
-debug.print: 3
-debug.print: 4
-debug.print: 4
+debug.print: t2 ok
+debug.print: t3 ok
 ← completed: 0x4449444c0000

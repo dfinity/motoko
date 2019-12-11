@@ -61,12 +61,12 @@ and prim = function
   | RelPrim (t, ro)   -> "RelPrim"    $$ [typ t; Arrange_ops.relop ro]
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
+  | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
   | CPSAsync          -> Atom "CPSAsync"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
-  | ICErrorCodePrim   -> Atom "ICErrorCodePrim"
   | ICCallPrim        -> Atom "ICCallPrim"
 
 and mut = function
