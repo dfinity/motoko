@@ -186,7 +186,6 @@ let value_of_lit = function
   | FloatLit z -> V.Float z
   | CharLit c -> V.Char c
   | TextLit t -> V.Text t
-  | ActorLit t -> assert false (* FIXME *)
   | PreLit _ -> assert false
 
 

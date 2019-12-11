@@ -464,7 +464,6 @@ let infer_lit env lit at : T.prim =
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
-  | ActorLit _ -> T.Error (* FIXME: T.Obj (T.Actor, []) is wrong *)
   | PreLit (s, T.Nat) ->
     lit := NatLit (check_nat env at s); (* default *)
     T.Nat
@@ -590,6 +589,7 @@ and infer_exp'' env exp : T.typ =
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
+  | ActorLitE url -> T.Obj (T.Actor, [(* FIXME *)])
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in

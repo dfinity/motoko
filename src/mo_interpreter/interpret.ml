@@ -256,7 +256,6 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
-  | ActorLit s -> assert false (* FIXME *)
   | PreLit _ -> assert false
 
 
@@ -384,6 +383,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (find !fp env.libs)
   | LitE lit ->
     k (interpret_lit env lit)
+  | ActorLitE url -> assert false (* FIXME *)
   | UnE (ot, op, exp1) ->
     interpret_exp env exp1
       (fun v1 ->

@@ -298,7 +298,6 @@ lit :
   | s=FLOAT { PreLit (s, Type.Float) }
   | c=CHAR { CharLit c }
   | t=TEXT { TextLit t }
-  | ACTOR t=TEXT { ActorLit t } (* TODO: needs a better definition *)
 
 %inline unop :
   | ADDOP { PosOp }
@@ -371,6 +370,7 @@ exp_nullary(B) :
     { BlockE(ds) @? at $sloc }
   | x=id
     { VarE(x) @? at $sloc }
+  | ACTOR t=TEXT { ActorLitE t @? at $sloc } (* TODO: needs a better definition *)
   | l=lit
     { LitE(ref l) @? at $sloc }
   | LPAR es=seplist(exp(ob), COMMA) RPAR

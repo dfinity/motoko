@@ -75,7 +75,6 @@ type lit =
   | FloatLit of Value.Float.t
   | CharLit of Value.unicode
   | TextLit of string
-  | ActorLit of string
   | PreLit of string * Type.prim
 
 
@@ -114,6 +113,7 @@ and exp' =
   | PrimE of string                            (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)
+  | ActorLitE of string                        (* actor literal *)
   | UnE of op_typ * unop * exp                 (* unary operator *)
   | BinE of op_typ * exp * binop * exp         (* binary operator *)
   | RelE of op_typ * exp * relop * exp         (* relational operator *)
@@ -221,6 +221,5 @@ let string_of_lit = function
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
-  | ActorLit t    -> t (* FIXME *)
   | FloatLit f    -> Value.Float.to_pretty_string f
   | PreLit _      -> assert false

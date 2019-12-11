@@ -54,3 +54,8 @@ func baz () : Int = switch {a = 42} {
 
 func full_name({first_name : Text; last_name : Text}) : Text =
     first_name # " " # last_name;
+
+
+// actor literals
+
+let _ = actor "ic:D00DC0FEFE";

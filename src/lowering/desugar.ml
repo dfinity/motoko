@@ -57,6 +57,7 @@ and exp e =
 
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
+  | S.ActorLitE url -> I.(PrimE (CastPrim (T.(Prim Blob), T.(Obj (Actor, []))), [(*BlobLit url*)]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
@@ -349,7 +350,6 @@ and lit l = match l with
   | S.FloatLit x -> I.FloatLit x
   | S.CharLit x -> I.CharLit x
   | S.TextLit x -> I.TextLit x
-  | S.ActorLit x -> assert false (* FIXME *)
   | S.PreLit _ -> assert false
 
 and pat_fields pfs = List.map pat_field pfs
