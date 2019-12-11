@@ -1871,14 +1871,13 @@ let check_actors scope progs : unit Diag.result =
       recover_opt (fun progs ->
         let prog = List.concat (List.map (fun prog -> prog.Source.it) progs) in
         let env = env_of_scope msgs scope in
-        match List.filter is_actor_dec prog with
-        | [] -> ()
-        | [d] -> ()
-        | ds ->
-          List.iter (fun d ->
-            recover
-              (error_in [Flags.ICMode; Flags.StubMode] env d.at)
-              "multiple actors in program; there must be at most one actor declaration in a program")
-            ds
-        )
-        progs)
+        let rec go = function
+          | [] -> ()
+          | [d] -> ()
+          | (d::ds) when is_actor_dec d ->
+            recover (error_in [Flags.ICMode] env d.at)
+              "an actor must be the last declaration in a program"
+          | (d::ds) -> go ds in
+        go prog
+      ) progs
+    )
