@@ -464,6 +464,7 @@ let infer_lit env lit at : T.prim =
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
+  | ActorLit _ -> T.Error (* FIXME: T.Obj (T.Actor, []) is wrong *)
   | PreLit (s, T.Nat) ->
     lit := NatLit (check_nat env at s); (* default *)
     T.Nat
