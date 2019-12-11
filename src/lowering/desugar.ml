@@ -453,4 +453,3 @@ let transform p = prog p
 
 let transform_graph imp_env libraries progs =
   prog (combine_files imp_env libraries progs)
-
