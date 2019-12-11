@@ -1,0 +1,2 @@
+scope-example.mo:8.20-11.10: type error, unsupported async block
+  (This is a limitation of the current version.)
