@@ -141,4 +141,26 @@ public func clone<K,V>
   };
   h2
 };
+
+// clone cannot be an efficient object method,
+// ...but is still useful in tests, and beyond.
+public func mapFilter<K, V1, V2>
+  (h:Hashtbl<K,V1>,
+   initCapacity: Nat,
+   keyEq: (K,K) -> Bool,
+   keyHash: K -> Hash.Hash,
+   mapFn: (K, V1) -> ?V2,
+  ) : Hashtbl<K,V2> {
+  let h2 = Hashtbl<K,V2>(h.count(), keyEq, keyHash);
+  for ((k, v1) in h.iter()) {
+    switch (mapFn(k, v1)) {
+      case null { };
+      case (?v2) {
+             ignore h2.set(k,v2);
+           };
+    }
+  };
+  h2
+};
+
 }
