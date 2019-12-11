@@ -12,7 +12,7 @@ import           Control.Monad.IO.Class (liftIO)
 import           Data.Default
 import           Data.Text (Text)
 import           Language.Haskell.LSP.Test hiding (message)
-import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..))
+import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..))
 import           Language.Haskell.LSP.Types.Lens (contents, label, detail, message)
 import           System.Directory (setCurrentDirectory)
 import           System.Environment (getArgs)
@@ -42,6 +42,13 @@ hoverTestCase doc pos expected = do
   actual <- getHover doc pos
   liftIO (shouldBe (fmap (^.contents) actual) expected)
 
+-- | Discards all empty diagnostic reports (as those are merely used
+-- to clear out old reports)
+waitForActualDiagnostics :: Session [Diagnostic]
+waitForActualDiagnostics = do
+  diags <- waitForDiagnostics
+  if null diags then waitForActualDiagnostics else pure diags
+
 plainMarkup :: Text -> Maybe HoverContents
 plainMarkup t =
   Just
@@ -70,7 +77,11 @@ main = handleHUnitFailure $ do
       \the test project it's supposed to run in")
   let [mo_ide, project] = args
   setCurrentDirectory project
-  runSession (mo_ide <> " --canister-main app.mo --debug") fullCaps "." $ do
+  runSession
+    (mo_ide
+     <> " --canister-main app.mo --debug --package mydep " <> project <> "/mydependency/")
+    fullCaps
+    "." $ do
     initRes <- initializeResponse
     doc <- openDoc "ListClient.mo" "motoko"
     hoverTestCase
@@ -121,6 +132,16 @@ main = handleHUnitFailure $ do
     _ <- applyEdit doc edit
     appDoc <- openDoc "app.mo" "motoko"
     sendNotification TextDocumentDidSave (DidSaveTextDocumentParams appDoc)
-    diags <- waitForDiagnostics
-    (diagnostic:_) <- waitForDiagnostics
+    diagnostic:_ <- waitForActualDiagnostics
     liftIO (diagnostic^.message `shouldBe` "unexpected token")
+    closeDoc doc
+    closeDoc appDoc
+
+    -- It knows how to handle package paths for rebuilding, and also
+    -- for completions
+    doc <- openDoc "app.mo" "motoko"
+    let edit = TextEdit (Range (Position 1 0) (Position 1 0)) "\nimport mydep \"mo:mydep/lib.mo\""
+    _ <- applyEdit doc edit
+    sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
+    [diag] <- waitForActualDiagnostics
+    liftIO (diag^.message `shouldBe` "operator not defined for operand types\n  Text\nand\n  Nat")
