@@ -64,14 +64,26 @@ public class Hashtbl<K,V> (
   };
 
   public func set(k:K, v:V) : ?V {
-    if (_count >= table.len() * 4) {
+    if (_count >= table.len()) {
       let size =
         if (_count == 0)
           initCapacity
         else table.len() * 2;
       let table2 = Array_init<KVs<K,V>>(size, null);
       for (i in table.keys()) {
-        table2[i] := table[i];
+        var kvs = table[i];
+        label moveKeyVals : ()
+        loop {
+          switch kvs {
+          case null { break moveKeyVals };
+          case (?((k, v), kvsTail)) {
+                 let h = word32ToNat(keyHash(k));
+                 let pos2 = h % table.len();
+                 table2[pos2] := ?((k,v), table2[pos2]);
+                 kvs := kvsTail;
+               };
+          }
+        };
       };
       table := table2;
     };
@@ -114,5 +126,19 @@ public class Hashtbl<K,V> (
       }
     }
   };
+};
+
+// clone cannot be an efficient object method,
+// ...but is still useful in tests, and beyond.
+public func clone<K,V>
+  (h:Hashtbl<K,V>,
+   initCapacity: Nat,
+   keyEq: (K,K) -> Bool,
+   keyHash: K -> Hash.Hash) : Hashtbl<K,V> {
+  let h2 = Hashtbl<K,V>(h.count(), keyEq, keyHash);
+  for ((k,v) in h.iter()) {
+    ignore h2.set(k,v);
+  };
+  h2
 };
 }
