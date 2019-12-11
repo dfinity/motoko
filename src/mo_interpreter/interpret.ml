@@ -256,6 +256,7 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
+  | ActorLit s -> assert false (* FIXME *)
   | PreLit _ -> assert false
 
 
