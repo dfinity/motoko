@@ -258,6 +258,7 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
+  | BlobLit b -> V.Text b
 
 (* Expressions *)
 
@@ -363,6 +364,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         Prim.prim s arg k
       )
     | CastPrim _, [e] -> interpret_exp env e k
+    | ActorOfIdBlob t, [e] ->
+      assert false; (* probably related to #986 *)
     | NumConvPrim (t1, t2), exps ->
       interpret_exps env exps [] (fun vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
