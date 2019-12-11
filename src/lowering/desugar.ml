@@ -82,8 +82,8 @@ and exp' at note = function
     (text_dotE  x.it (exp e)).it
   | S.DotE (e, x) ->
     begin match T.as_obj_sub [x.it] e.note.S.note_typ with
-    | T.Actor, _ -> I.ActorDotE (exp e, x.it)
-    | _ -> I.DotE (exp e, x.it)
+    | T.Actor, _ -> I.PrimE (I.ActorDotPrim x.it, [exp e])
+    | _ -> I.PrimE (I.DotPrim x.it, [exp e])
     end
   | S.AssignE (e1, e2) -> I.AssignE (lexp e1, exp e2)
   | S.ArrayE (m, es) ->

@@ -37,8 +37,6 @@ and exp' rho e  = match e with
   | ActorE (i, ds, fs, t)-> let i',rho' = id_bind rho i in
                             let ds', rho'' = decs rho' ds
                             in ActorE (i', ds', fields rho'' fs, t)
-  | DotE (e, i)         -> DotE (exp rho e, i)
-  | ActorDotE (e, i)    -> ActorDotE (exp rho e, i)
   | AssignE (e1, e2)    -> AssignE (lexp rho e1, exp rho e2)
   | ArrayE (m, t, es)   -> ArrayE (m, t, exps rho es)
   | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)

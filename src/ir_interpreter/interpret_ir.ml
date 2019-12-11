@@ -330,6 +330,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
     | TagPrim i, [exp1] ->
       interpret_exp env exp1 (fun v1 -> k (V.Variant (i, v1)))
+    | (DotPrim n|ActorDotPrim n), [exp1] ->
+      interpret_exp env exp1 (fun v1 ->
+        let fs = V.as_obj v1 in
+        k (try find n fs with _ -> assert false)
+      )
     | ShowPrim ot, [exp1] ->
       interpret_exp env exp1 (fun v ->
         if Show.can_show ot
@@ -413,12 +418,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
     end
-  | DotE (exp1, n)
-  | ActorDotE (exp1, n) ->
-    interpret_exp env exp1 (fun v1 ->
-      let fs = V.as_obj v1 in
-      k (try find n fs with _ -> assert false)
-    )
   | AssignE (lexp1, exp2) ->
     interpret_lexp env lexp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->

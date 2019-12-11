@@ -65,10 +65,6 @@ and t_exp' context exp' =
   | LitE _ -> exp'
   | PrimE (p, exps) ->
     PrimE (p, List.map (t_exp context) exps)
-  | DotE (exp1, id) ->
-    DotE (t_exp context exp1, id)
-  | ActorDotE (exp1, id) ->
-    ActorDotE (t_exp context exp1, id)
   | AssignE (exp1, exp2) ->
     AssignE (t_lexp context exp1, t_exp context exp2)
   | ArrayE (mut, typ, exps) ->
@@ -257,10 +253,6 @@ and c_exp' context exp k =
     nary context k (fun vs -> e (PrimE (p, vs))) exps
   | ActorE _ ->
     assert false; (* ActorE fields cannot await *)
-  | DotE (exp1, id) ->
-    unary context k (fun v1 -> e (DotE (v1, id))) exp1
-  | ActorDotE (exp1, id) ->
-    unary context k (fun v1 -> e (DotE (v1, id))) exp1
   | AssignE (exp1, exp2) ->
     c_assign context k e exp1 exp2
   | ArrayE (mut, typ, exps) ->

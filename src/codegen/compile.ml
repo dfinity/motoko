@@ -5814,14 +5814,6 @@ and compile_exp (env : E.t) ae exp =
     BigNum.to_word32 env ^^
     Arr.idx env ^^
     load_ptr
-  | DotE (e, name) ->
-    SR.Vanilla,
-    compile_exp_vanilla env ae e ^^
-    Object.load_idx env e.note.note_typ name
-  | ActorDotE (e, name) ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.Vanilla e ^^
-    Dfinity.actor_public_field env name
   | PrimE (p, es) ->
 
     (* for more concise code when all arguments and result use the same sr *)
@@ -5865,6 +5857,15 @@ and compile_exp (env : E.t) ae exp =
     | TagPrim l, [e] ->
       SR.Vanilla,
       Variant.inject env l (compile_exp_vanilla env ae e)
+
+    | DotPrim name, [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Object.load_idx env e.note.note_typ name
+    | ActorDotPrim name, [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Dfinity.actor_public_field env name
 
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin

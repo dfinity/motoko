@@ -227,10 +227,6 @@ let transform mode env prog =
     match exp' with
     | LitE _ -> exp'
     | VarE id -> exp'
-    | DotE (exp1, id) ->
-      DotE (t_exp exp1, id)
-    | ActorDotE (exp1, id) ->
-      ActorDotE (t_exp exp1, id)
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
     | ArrayE (mut, t, exps) ->

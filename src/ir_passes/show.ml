@@ -261,12 +261,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
           let t' = T.as_immut (T.normalize f.Type.typ) in
           catE
             (textE (f.Type.lab ^ " = "))
-            (invoke_generated_show t'
-              { it = DotE (argE t, f.Type.lab)
-              ; at = no_region
-              ; note = { note_typ = t'; note_eff = T.Triv }
-              }
-            )
+            (invoke_generated_show t' (dotE (argE t) f.Type.lab t'))
           ) fs
         )
       )
@@ -327,10 +322,6 @@ and t_exp' env = function
     let f = idE (show_name_for t') (show_fun_typ_for t') in
     CallE (f, [], t_exp env exp1)
   | PrimE (p, es) -> PrimE (p, t_exps env es)
-  | DotE (exp1, id) ->
-    DotE (t_exp env exp1, id)
-  | ActorDotE (exp1, id) ->
-    ActorDotE (t_exp env exp1, id)
   | AssignE (lexp1, exp2) ->
     AssignE (t_lexp env lexp1, t_exp env exp2)
   | ArrayE (mut, t, exps) ->

@@ -16,8 +16,6 @@ let rec exp e = match e.it with
   | VarE i              -> "VarE"    $$ [id i]
   | LitE l              -> "LitE"    $$ [lit l]
   | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
-  | DotE (e, n)         -> "DotE"    $$ [exp e; Atom n]
-  | ActorDotE (e, n)    -> "ActorDotE" $$ [exp e; Atom n]
   | AssignE (le1, e2)   -> "AssignE" $$ [lexp le1; exp e2]
   | ArrayE (m, t, es)   -> "ArrayE"  $$ [mut m; typ t] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
@@ -40,7 +38,7 @@ let rec exp e = match e.it with
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
   | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
-  | ThrowE e             -> "ThrowE"    $$ [exp e]
+  | ThrowE e            -> "ThrowE"    $$ [exp e]
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
 
 and lexp le = match le.it with
@@ -65,6 +63,8 @@ and prim = function
   | OptPrim           -> Atom "OptPrim"
   | TagPrim i         -> "TagE" $$ [id i]
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
+  | DotPrim n         -> "DotPrim" $$ [Atom n]
+  | ActorDotPrim n    -> "ActorDotPrim" $$ [Atom n]
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]

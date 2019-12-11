@@ -224,7 +224,7 @@ let ifE exp1 exp2 exp3 typ =
   }
 
 let dotE exp name typ =
-  { it = DotE (exp, name);
+  { it = PrimE (DotPrim name, [exp]);
     at = no_region;
     note = {
       note_typ = typ;
@@ -316,7 +316,7 @@ let immuteE e =
 in the constructor DSL *)
 let lexp_of_exp' = function
   | VarE i -> VarLE i
-  | DotE (e1,n) -> DotLE (e1, n)
+  | PrimE (DotPrim n, [e1]) -> DotLE (e1, n)
   | IdxE (e1,e2) -> IdxLE (e1, e2)
   | _ -> failwith "Impossible: lexp_of_exp"
 

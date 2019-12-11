@@ -367,6 +367,23 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Opt (typ exp1) <: t
     | TagPrim i, [exp1] ->
       T.Variant [{T.lab = i; typ = typ exp1}] <: t
+    | ActorDotPrim n, [exp1]
+    | DotPrim n, [exp1] ->
+      begin
+        let t1 = typ exp1 in
+        let sort, tfs =
+          try T.as_obj_sub [n] t1 with Invalid_argument _ ->
+            error env exp1.at "expected object type, but expression produces type\n  %s"
+              (T.string_of_typ_expand t1)
+        in
+        check (match p with
+               | ActorDotPrim _ -> sort = T.Actor
+               | DotPrim _ -> sort <> T.Actor
+               | _ -> false) "sort mismatch";
+        try T.lookup_val_field n tfs <~ t with Invalid_argument _ ->
+          error env exp1.at "field name %s does not exist in type\n  %s"
+            n (T.string_of_typ_expand t1)
+      end
     | ShowPrim ot, [exp1] ->
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";
@@ -430,24 +447,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
         (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p)) (List.length args);
-    end
-  | ActorDotE(exp1, n)
-  | DotE (exp1, n) ->
-    begin
-      check_exp env exp1;
-      let t1 = typ exp1 in
-      let sort, tfs =
-        try T.as_obj_sub [n] t1 with Invalid_argument _ ->
-          error env exp1.at "expected object type, but expression produces type\n  %s"
-            (T.string_of_typ_expand t1)
-      in
-      check (match exp.it with
-             | ActorDotE _ -> sort = T.Actor
-             | DotE _ -> sort <> T.Actor
-             | _ -> false) "sort mismatch";
-      try T.lookup_val_field n tfs <~ t with Invalid_argument _ ->
-        error env exp1.at "field name %s does not exist in type\n  %s"
-          n (T.string_of_typ_expand t1)
     end
   | AssignE (lexp1, exp2) ->
     check_lexp env lexp1;
