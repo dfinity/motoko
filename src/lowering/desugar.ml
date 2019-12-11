@@ -349,6 +349,7 @@ and lit l = match l with
   | S.FloatLit x -> I.FloatLit x
   | S.CharLit x -> I.CharLit x
   | S.TextLit x -> I.TextLit x
+  | S.ActorLit x -> assert false (* FIXME *)
   | S.PreLit _ -> assert false
 
 and pat_fields pfs = List.map pat_field pfs
