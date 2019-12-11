@@ -1,3 +1,4 @@
 debug.print: ok1
 debug.print: ok2
 ingress(0) Err: IC0502: Canister 42 trapped: stack overflow
+Error: "Failed to install canister - ignoring message stream"
