@@ -1,2 +1,1 @@
-func.did:10.3-10.8: type error, p is a non-function type
- o
+func.did:5.11-5.12: syntax error, unexpected token
