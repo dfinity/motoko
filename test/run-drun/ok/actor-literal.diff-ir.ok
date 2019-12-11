@@ -1,0 +1,5 @@
+--- actor-literal.run
++++ actor-literal.run-ir
+@@ -0,0 +1,2 @@
++Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
++actor-literal.mo:3.9-3.30: IR type error, PrimE with wrong number of arguments
