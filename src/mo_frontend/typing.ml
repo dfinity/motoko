@@ -589,7 +589,7 @@ and infer_exp'' env exp : T.typ =
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
-  | ActorLitE url -> T.Obj (T.Actor, [(* FIXME *)])
+  | ActorLitE url -> T.Obj (T.Actor, [(* FIXME, OK? *)])
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in
@@ -981,6 +981,7 @@ and check_exp' env0 t exp : T.typ =
   | LitE lit, _ ->
     check_lit env t lit exp.at;
     t
+  | ActorLitE url, (T.(Obj (Actor, _)) as t') -> t'
   | UnE (ot, op, exp1), _ when Operator.has_unop op t ->
     ot := t;
     check_exp env t exp1;
