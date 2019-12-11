@@ -385,7 +385,11 @@ let transform mode env prog =
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
 
-  and t_lexp lexp = { lexp with it = t_lexp' lexp.it }
+  and t_lexp lexp =
+    { it = t_lexp' lexp.it;
+      note = t_typ lexp.note;
+      at = lexp.at;
+    }
   and t_lexp' (lexp':lexp') =
     match lexp' with
     | VarLE _ -> lexp'
