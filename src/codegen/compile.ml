@@ -4764,8 +4764,9 @@ module FuncDec = struct
       get_arg ^^ Serialization.serialize env ts1 ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_simple" ^^
-      (* TODO: Check error code *)
-      G.i Drop
+      (* Check error code *)
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+      E.else_trap_with env "could not perform call"
     | _ -> assert false
 
   let ic_call_one_shot env ts get_meth_pair get_arg =
@@ -4786,7 +4787,7 @@ module FuncDec = struct
       get_arg ^^ Serialization.serialize env ts ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_simple" ^^
-      (* TODO: Check error code *)
+      (* This is a one-shot function: Ignore error code *)
       G.i Drop
     | _ -> assert false
 
