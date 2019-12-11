@@ -2710,25 +2710,9 @@ end (* Tuple *)
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)
 
-  let system_imports env =
-    let i32s n = Lib.List.make n I32Type in
-    match E.mode env with
-    | Flags.ICMode ->
-      E.add_func_import env "debug" "print" [I32Type; I32Type] [];
-      E.add_func_import env "ic0" "call_simple" (i32s 10) [I32Type];
-      E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
-      E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
-      E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
-      E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
-      E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
-      E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
-      E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
-      E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
-      E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
-      E.add_func_import env "ic0" "msg_reply" [] [];
-      E.add_func_import env "ic" "trap" [I32Type; I32Type] [];
-      ()
-    | Flags.StubMode  ->
+  let i32s n = Lib.List.make n I32Type
+
+  let import_ic0 env =
       E.add_func_import env "ic0" "call_simple" (i32s 10) [I32Type];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
@@ -2744,6 +2728,14 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
+      ()
+
+  let system_imports env =
+    match E.mode env with
+    | Flags.ICMode ->
+      import_ic0 env
+    | Flags.StubMode  ->
+      import_ic0 env;
       E.add_func_import env "stub" "create_canister" (i32s 4) [I32Type];
       E.add_func_import env "stub" "created_canister_id_size" (i32s 1) [I32Type];
       E.add_func_import env "stub" "created_canister_id_copy" (i32s 4) [];
@@ -2757,8 +2749,7 @@ module Dfinity = struct
   let print_ptr_len env =
     match E.mode env with
     | Flags.WasmMode -> G.i Drop ^^ G.i Drop
-    | Flags.ICMode -> system_call env "debug" "print"
-    | Flags.StubMode -> system_call env "ic0" "debug_print"
+    | Flags.ICMode | Flags.StubMode -> system_call env "ic0" "debug_print"
     | Flags.WASIMode ->
       Func.share_code2 env "print_ptr" (("ptr", I32Type), ("len", I32Type)) [] (fun env get_ptr get_len ->
         Stack.with_words env "io_vec" 6l (fun get_iovec_ptr ->
@@ -2816,16 +2807,7 @@ module Dfinity = struct
   let compile_static_print env s =
     Blob.lit env s ^^ print_text env
 
-  let _compile_println_int env =
-    system_call env "test" "show_i32" ^^
-    system_call env "test" "print" ^^
-    compile_static_print env "\n"
-
-  let ic_trap env =
-      match E.mode env with
-      | Flags.ICMode -> system_call env "ic" "trap"
-      | Flags.StubMode -> system_call env "ic0" "trap"
-      | _ -> assert false
+  let ic_trap env = system_call env "ic0" "trap"
 
   let ic_trap_str env =
       Func.share_code1 env "ic_trap" ("str", I32Type) [] (fun env get_str ->
