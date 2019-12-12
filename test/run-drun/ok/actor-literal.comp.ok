@@ -1,2 +1,0 @@
-actor-literal.mo:6.25-6.27: type error, shared, async function must be called within an await expression
-  (This is a limitation of the current version.)
