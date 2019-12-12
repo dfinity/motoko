@@ -354,8 +354,8 @@ and t_exp' env = function
     DotE (t_exp env exp1, id)
   | ActorDotE (exp1, id) ->
     ActorDotE (t_exp env exp1, id)
-  | AssignE (exp1, exp2) ->
-    AssignE (t_exp env exp1, t_exp env exp2)
+  | AssignE (lexp1, exp2) ->
+    AssignE (t_lexp env lexp1, t_exp env exp2)
   | ArrayE (mut, t, exps) ->
     ArrayE (mut, t, t_exps env exps)
   | IdxE (exp1, exp2) ->
@@ -411,6 +411,14 @@ and t_exp' env = function
     let ds' = t_decs env1 ds in
     let decls = show_decls !(env1.params) in
     ActorE (id, decls @ ds', fields, typ)
+
+and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
+and t_lexp' env = function
+  | VarLE id -> VarLE id
+  | IdxLE (exp1, exp2) ->
+    IdxLE (t_exp env exp1, t_exp env exp2)
+  | DotLE (exp1, n) ->
+    DotLE (t_exp env exp1, n)
 
 and t_dec env dec = { dec with it = t_dec' env dec.it }
 
