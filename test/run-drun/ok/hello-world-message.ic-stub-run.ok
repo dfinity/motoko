@@ -1,0 +1,7 @@
+→ create
+← completed: canister-id = 0x0000000000000400
+→ install
+← completed
+ic-stub-run: Invalid ingress type hello
+CallStack (from HasCallStack):
+  error, called at src/IC/DRun/Parse.hs:32:15 in main:IC.DRun.Parse
