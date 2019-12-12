@@ -515,6 +515,15 @@ let check_lit env t lit at =
         "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand t)
 
+
+let check_actor_reference env url at : unit =
+  if String.equal url "" then error env at "actor reference must not be empty"
+  else if not (String.contains url ':') then error env at "actor reference must contain a colon"
+  else if String.length url < 3 || String.sub url 0 3 <> "ci:" then error env at "actor reference must use 'ci:' scheme"
+  else begin
+  end
+
+    (*error env exp.at "no type can be inferred for actor reference\n  %s" url*)
 (* Coercions *)
 
 let array_obj t =
@@ -589,7 +598,9 @@ and infer_exp'' env exp : T.typ =
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
-  | ActorUrlE url -> error env exp.at "no type can be inferred for actor reference\n  %s" url
+  | ActorUrlE url ->
+    check_actor_reference env url exp.at;
+    error env exp.at "no type can be inferred for actor reference\n  %s" url
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in

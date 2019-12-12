@@ -1,3 +1,3 @@
 // actor references
 
-let _ = actor "ic:C0FEFED00D" : actor { foo(n : Nat) : async Nat };
+let _ = actor "IC:C0FEFED00D41" : actor { fubar(n : Nat) : async Nat };
