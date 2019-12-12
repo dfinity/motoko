@@ -3,7 +3,8 @@ type list = vec nat;
 import "px.did";
 import "import1.did";
 
-service S {
+service S :
+{
   f: (t, t1, t2) -> (list, IdErr);
   getInventory: (producer_id: nat) -> (Inventory) query;
 }
