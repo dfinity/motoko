@@ -60,15 +60,12 @@ let lookup_module
   match Pipeline__.Resolve_import.match_package_name path with
   | None -> Index.find_opt path index
   | Some (pkg, path) ->
-     begin match
-       List.find_opt
+     Lib.Option.bind
+       (List.find_opt
          (fun (name, _) -> pkg = name)
-         !Mo_config.Flags.package_urls with
-     | None ->
-        None
-     | Some (_, pkg_path) ->
-        Index.find_opt (Filename.concat pkg_path path) index
-     end
+         !Mo_config.Flags.package_urls)
+       (fun (_, pkg_path) ->
+        Index.find_opt (Filename.concat pkg_path path) index)
 
 let empty : t = Index.empty
 
