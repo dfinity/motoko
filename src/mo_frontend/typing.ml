@@ -521,7 +521,7 @@ let check_actor_reference env url at : unit =
   let complain = error env at in
   if equal url "" then complain "actor reference must not be empty"
   else if not (contains url ':') then complain "actor reference must contain a colon"
-  else if length url < 3 || uppercase_ascii (sub url 0 3) <> "CI:" then complain "actor reference must use 'ci:' scheme"
+  else if length url < 3 || uppercase_ascii (sub url 0 3) <> "IC:" then complain "actor reference must use 'ic:' scheme"
   else let hex = sub url 3 (length url - 3) in
   if equal hex "" then complain "principal ID must not be empty"
   else if uppercase_ascii hex <> hex then complain "principal ID must be uppercase"
