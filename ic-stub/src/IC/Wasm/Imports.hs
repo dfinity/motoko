@@ -232,12 +232,12 @@ instance
 toImport ::
     forall a b s.
     (WasmArgs a, WasmArgs b) =>
-    String -> (a -> HostM s b) -> Import s
-toImport name f = (name, stackType @a, stackType @b, f')
+    String -> String -> (a -> HostM s b) -> Import s
+toImport mod_name fun_name  f = (mod_name, fun_name, stackType @a, stackType @b, f')
   where
     f' :: [Value] -> HostFunc s
     f' xs = do
-      a <- withExceptT ((name ++ ": ") ++) $
+      a <- withExceptT ((mod_name ++ "." ++ fun_name ++ ": ") ++) $
         ExceptT $ return (fromValues xs)
       b <- f a
       return $ toValues b
