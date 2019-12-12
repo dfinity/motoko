@@ -145,7 +145,7 @@ int main () {
      assert(closure_count() == i+1, "Closure count wrong\n");
   }
   for (int i = 0; i<N/2; i++) {
-     assert((i<<2)-1 == recall_closure(reference[i]),"Recall went wrong\n");
+     assert((i<<2)-1 == recall_closure(reference[i]), "Recall went wrong\n");
      assert(closure_count() == N-i-1, "Closure count wrong\n");
   }
   for (int i = 0; i<N/2; i++) {
