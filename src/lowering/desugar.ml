@@ -59,7 +59,7 @@ and exp' at note = function
   | S.VarE i -> I.VarE i.it
   | S.ActorUrlE url ->
     let blobT = T.(Prim Blob) in
-    I.(PrimE (CastPrim (blobT, note.note_typ), [{ it = LitE (BlobLit url); note = { note with note_typ = blobT }; at }]))
+    I.(PrimE (ActorOfIdBlob note.note_typ, [ blobE url ]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
