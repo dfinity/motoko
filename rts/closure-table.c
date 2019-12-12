@@ -73,6 +73,10 @@ export uint32_t remember_closure(as_ptr cls) {
   else if (free_slot == FULL)
     double_closure_table();
 
+  if (!IS_SKEWED(cls))
+    // we could support this, but then we couldnt detect a double recall_closure
+    rts_trap_with("remember_closure: Storing unboxed literals not supports");
+
   uint32_t idx = free_slot >> 2;
   free_slot = ARRAY_FIELD(table, idx);
   ARRAY_FIELD(table, idx) = cls;
@@ -90,6 +94,10 @@ export as_ptr recall_closure(uint32_t idx) {
   ARRAY_FIELD(table, idx) = free_slot;
   free_slot = idx << 2;
   n_closures--;
+
+  if (!IS_SKEWED(cls))
+    rts_trap_with("recall_closure: Closure index not in table");
+
   return cls;
 }
 
