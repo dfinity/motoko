@@ -1002,7 +1002,12 @@ and check_exp' env0 t exp : T.typ =
   | LitE lit, _ ->
     check_lit env t lit exp.at;
     t
-  | ActorUrlE url, (T.(Obj (Actor, _)) as t') -> t'
+  | ActorUrlE url, t' ->
+    check_actor_reference env url exp.at;
+    begin match t' with
+    | T.(Obj (Actor, _)) -> t'
+    | _ -> error env exp.at "actor reference must have an actor type"
+    end
   | UnE (ot, op, exp1), _ when Operator.has_unop op t ->
     ot := t;
     check_exp env t exp1;
