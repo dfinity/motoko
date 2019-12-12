@@ -2343,11 +2343,8 @@ module Object = struct
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type s =
-    (* TODO: remove try once array and text accessors are separated *)
-    try
-      let _, fields = Type.as_obj_sub [s] obj_type in
-      Type.is_mut (Type.lookup_val_field s fields)
-    with Invalid_argument _ -> false
+    let _, fields = Type.as_obj_sub [s] obj_type in
+    Type.is_mut (Type.lookup_val_field s fields)
 
   let idx env obj_type name =
     compile_unboxed_const (Mo_types.Hash.hash name) ^^
