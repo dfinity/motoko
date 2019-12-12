@@ -517,12 +517,22 @@ let check_lit env t lit at =
 
 
 let check_actor_reference env url at : unit =
-  if String.equal url "" then error env at "actor reference must not be empty"
-  else if not (String.contains url ':') then error env at "actor reference must contain a colon"
-  else if String.length url < 3 || String.sub url 0 3 <> "ci:" then error env at "actor reference must use 'ci:' scheme"
-  else begin
-  end
-
+  let open String in
+  let complain = error env at in
+  if equal url "" then complain "actor reference must not be empty"
+  else if not (contains url ':') then complain "actor reference must contain a colon"
+  else if length url < 3 || uppercase_ascii (sub url 0 3) <> "CI:" then complain "actor reference must use 'ci:' scheme"
+  else let hex = sub url 3 (length url - 3) in
+  if equal hex "" then complain "principal ID must not be empty"
+  else if uppercase_ascii hex <> hex then complain "principal ID must be uppercase"
+  else let killNonHex = function
+    | c when c >= '0' && c <= '9' -> c
+    | c when c >= 'A' && c <= 'F' -> c
+    | _ -> 'x' in
+  if map killNonHex hex <> hex then complain "principal ID must contain hexadecimal digits"
+  else if length hex mod 2 = 1 then complain "principal ID must contain an even number of hexadecimal digits"
+  else let blob, crc = sub hex 0 (length hex - 2), sub hex (length hex - 2) 2 in
+       warn env at "BLOB: %s, CRC: %s\n" blob crc
     (*error env exp.at "no type can be inferred for actor reference\n  %s" url*)
 (* Coercions *)
 
