@@ -370,7 +370,7 @@ exp_nullary(B) :
     { BlockE(ds) @? at $sloc }
   | x=id
     { VarE(x) @? at $sloc }
-  | ACTOR t=TEXT { ActorLitE t @? at $sloc }
+  | ACTOR t=TEXT { ActorUrlE t @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
   | LPAR es=seplist(exp(ob), COMMA) RPAR

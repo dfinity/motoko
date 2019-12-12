@@ -32,7 +32,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | PrimE _
   | VarE _
   | LitE _
-  | ActorLitE _
+  | ActorUrlE _
   | ImportE _
   | FuncE _ ->
     T.Triv

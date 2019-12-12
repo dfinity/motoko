@@ -57,7 +57,7 @@ and exp e =
 
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
-  | S.ActorLitE url ->
+  | S.ActorUrlE url ->
     let blobT = T.(Prim Blob) in
     I.(PrimE (CastPrim (blobT, note.note_typ), [{ it = LitE (BlobLit url); note = { note with note_typ = blobT }; at }]))
   | S.LitE l -> I.LitE (lit !l)
