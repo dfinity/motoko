@@ -2343,11 +2343,8 @@ module Object = struct
 
   (* Determines whether the field is mutable (and thus needs an indirection) *)
   let is_mut_field env obj_type s =
-    (* TODO: remove try once array and text accessors are separated *)
-    try
-      let _, fields = Type.as_obj_sub [s] obj_type in
-      Type.is_mut (Type.lookup_val_field s fields)
-    with Invalid_argument _ -> false
+    let _, fields = Type.as_obj_sub [s] obj_type in
+    Type.is_mut (Type.lookup_val_field s fields)
 
   let idx env obj_type name =
     compile_unboxed_const (Mo_types.Hash.hash name) ^^
@@ -4764,8 +4761,9 @@ module FuncDec = struct
       get_arg ^^ Serialization.serialize env ts1 ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_simple" ^^
-      (* TODO: Check error code *)
-      G.i Drop
+      (* Check error code *)
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+      E.else_trap_with env "could not perform call"
     | _ -> assert false
 
   let ic_call_one_shot env ts get_meth_pair get_arg =
@@ -4786,7 +4784,7 @@ module FuncDec = struct
       get_arg ^^ Serialization.serialize env ts ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_simple" ^^
-      (* TODO: Check error code *)
+      (* This is a one-shot function: Ignore error code *)
       G.i Drop
     | _ -> assert false
 
@@ -5060,7 +5058,7 @@ let compile_lit env lit =
   try match lit with
     (* Booleans are directly in Vanilla representation *)
     | BoolLit false -> SR.bool, Bool.lit false
-    | BoolLit true ->  SR.bool, Bool.lit true
+    | BoolLit true  -> SR.bool, Bool.lit true
     | IntLit n
     | NatLit n      -> SR.Vanilla, BigNum.compile_lit env n
     | Word8Lit n    -> SR.Vanilla, compile_unboxed_const (Value.Word8.to_bits n)
@@ -5077,8 +5075,9 @@ let compile_lit env lit =
     | Nat64Lit n    -> SR.UnboxedWord64, compile_const_64 (Big_int.int64_of_big_int (nat64_to_int64 n))
     | CharLit c     -> SR.Vanilla, compile_unboxed_const Int32.(shift_left (of_int c) 8)
     | NullLit       -> SR.Vanilla, Opt.null
-    | TextLit t     -> SR.Vanilla, Blob.lit env t
-    | _ -> todo_trap_SR env "compile_lit" (Arrange_ir.lit lit)
+    | TextLit t
+    | BlobLit t     -> SR.Vanilla, Blob.lit env t
+    | FloatLit _    -> todo_trap_SR env "compile_lit" (Arrange_ir.lit lit)
   with Failure _ ->
     Printf.eprintf "compile_lit: Overflow in literal %s\n" (string_of_lit lit);
     SR.Unreachable, E.trap_with env "static literal overflow"
@@ -6000,6 +5999,9 @@ and compile_exp (env : E.t) ae exp =
     (* Coercions for abstract types *)
     | CastPrim (_,_), [e] ->
       compile_exp env ae e
+    (* Actor ids are blobs in the RTS *)
+    | ActorOfIdBlob _, [e] ->
+      compile_exp env ae e
 
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with
@@ -6332,10 +6334,11 @@ and compile_lit_pat env l =
     BoxedWord64.unbox env ^^
     snd (compile_lit env l) ^^
     compile_eq env Type.(Prim Word64)
-  | TextLit t ->
+  | TextLit t
+  | BlobLit t ->
     Blob.lit env t ^^
     Text.compare env Operator.EqOp
-  | _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
+  | FloatLit _ -> todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
 
 and fill_pat env ae pat : patternCode =
   PatCode.with_region pat.at @@

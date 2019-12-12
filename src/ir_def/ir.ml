@@ -25,6 +25,7 @@ type lit =
   | FloatLit of Value.Float.t
   | CharLit of Value.unicode
   | TextLit of string
+  | BlobLit of string
 
 (* Patterns *)
 type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
@@ -114,6 +115,7 @@ and prim =
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
+  | ActorOfIdBlob of Type.typ
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   | CPSAwait
   | CPSAsync
@@ -152,6 +154,7 @@ let string_of_lit = function
   | CharLit c     -> string_of_int c
   | NullLit       -> "null"
   | TextLit t     -> t
+  | BlobLit b     -> Printf.sprintf "%s" b
   | FloatLit f    -> Value.Float.to_pretty_string f
 
 (* Flavor *)

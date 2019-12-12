@@ -298,6 +298,7 @@ let type_lit env lit at : T.prim =
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
+  | BlobLit _ -> T.Blob
 
 
 (* Expressions *)

@@ -169,7 +169,13 @@ let blockE decs exp =
 let textE s =
   { it = LitE (TextLit s);
     at = no_region;
-    note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
+    note = { note_typ = T.text; note_eff = T.Triv }
+  }
+
+let blobE s =
+  { it = LitE (BlobLit s);
+    at = no_region;
+    note = { note_typ = T.blob; note_eff = T.Triv }
   }
 
 let unitE =

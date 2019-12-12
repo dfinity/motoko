@@ -67,6 +67,7 @@ and prim = function
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
+  | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
   | CPSAsync          -> Atom "CPSAsync"
@@ -109,6 +110,7 @@ and lit (l:lit) = match l with
   | FloatLit f    -> "FloatLit"  $$ [ Atom (Value.Float.to_pretty_string f) ]
   | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
   | TextLit t     -> "TextLit"   $$ [ Atom t ]
+  | BlobLit b     -> "BlobLit"   $$ [ Atom (Printf.sprintf "%S" b) ] (* hex might be nicer *)
 
 and pat_field pf = pf.it.name $$ [pat pf.it.pat]
 

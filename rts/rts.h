@@ -20,6 +20,8 @@ _not_ encode that a word is 4 bytes!
 typedef intptr_t as_ptr;
 #define SKEW(p) ((as_ptr)p-1)
 #define UNSKEW(p) ((size_t *)((as_ptr)p+1))
+#define IS_SKEWED(p) ((p & 0x02)==0x02)
+
 #define FIELD(p,n) (UNSKEW(p)[n])
 #define TAG(p) FIELD(p,0)
 
