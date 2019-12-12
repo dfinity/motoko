@@ -589,7 +589,7 @@ and infer_exp'' env exp : T.typ =
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
-  | ActorUrlE url -> T.Obj (T.Actor, [(* FIXME, OK? *)])
+  | ActorUrlE url -> error env exp.at "no type can be inferred for actor reference\n  %s" url
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in
