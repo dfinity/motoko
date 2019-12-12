@@ -49,7 +49,7 @@ let definition_handler
           |> opt_bind (find_named resolved.ident)
           |> Lib.Option.map (fun loc -> (resolved.path, loc))
        | Ident ident ->
-          Pipeline__.File_path.relative_to project_root file_path
+          Pipeline.FilePath.relative_to project_root file_path
           |> opt_bind (fun uri ->
               DI.lookup_module uri index
               |> opt_bind (find_named ident)

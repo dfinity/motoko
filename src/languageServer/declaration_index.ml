@@ -57,7 +57,7 @@ let lookup_module
       (path : path)
       (index : t)
     : ide_decl list option =
-  match Pipeline__.Resolve_import.match_package_name path with
+  match Pipeline.ResolveImport.match_package_name path with
   | None -> Index.find_opt path index
   | Some (pkg, path) ->
      Lib.Option.bind
