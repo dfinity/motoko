@@ -140,8 +140,20 @@ main = handleHUnitFailure $ do
     -- It knows how to handle package paths for rebuilding, and also
     -- for completions
     doc <- openDoc "app.mo" "motoko"
-    let edit = TextEdit (Range (Position 1 0) (Position 1 0)) "\nimport mydep \"mo:mydep/lib.mo\""
+    let edit = TextEdit (Range (Position 1 0) (Position 1 0)) "\nimport MyDep \"mo:mydep/broken.mo\""
     _ <- applyEdit doc edit
     sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
     [diag] <- waitForActualDiagnostics
     liftIO (diag^.message `shouldBe` "operator not defined for operand types\n  Text\nand\n  Nat")
+
+    -- Imports the non-broken dependency module
+    let edit2 = TextEdit (Range (Position 2 0) (Position 3 0)) "\nimport MyDep \"mo:mydep/lib.mo\""
+    _ <- applyEdit doc edit2
+    sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
+    let edit3 = TextEdit (Range (Position 3 0) (Position 3 0)) "\nMyDep."
+    _ <- applyEdit doc edit3
+    completionTestCase
+      doc
+      -- MyDep.|
+      (Position 4 6)
+      [("print_hello", Just "() -> Text")]
