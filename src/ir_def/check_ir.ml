@@ -391,10 +391,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       t2 <: t
     | ActorOfIdBlob actor_typ, [e] ->
       typ e <: T.blob;
-      T.Obj (T.Actor, []) <: actor_typ;
+      t <: T.Obj (T.Actor, []);
       actor_typ <: t;
     | OtherPrim _, _ -> ()
-    | ActorOfIdBlob _, [_] -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
     end
