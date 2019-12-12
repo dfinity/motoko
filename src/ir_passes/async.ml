@@ -207,6 +207,8 @@ let transform mode env prog =
     | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
     | ShowPrim ot -> ShowPrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
+    | CastPrim (t1,t2) -> CastPrim (t_typ t1,t_typ t2)
+    | ActorOfIdBlob t -> ActorOfIdBlob (t_typ t)
     | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
     | p -> p
 

@@ -1,7 +1,9 @@
-{ nixpkgs ? (import ../nix/nixpkgs.nix).nixpkgs {} }:
-
+{ system ? builtins.currentSystem,
+}:
 let
-  ic-stub = (import ../default.nix {inherit nixpkgs;}).ic-stub;
+  ic-stub = (import ../default.nix {inherit system;}).ic-stub;
+
+  nixpkgs = (import ../nix/nixpkgs.nix).nixpkgs { inherit system; };
 
   extra-pkgs = [
     nixpkgs.haskellPackages.cabal-install
