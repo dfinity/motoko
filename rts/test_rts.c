@@ -141,19 +141,19 @@ int main () {
     ret = EXIT_FAILURE;
   }
   for (int i = 0; i<N; i++) {
-     reference[i] = remember_closure(i);
+     reference[i] = remember_closure((i<<2)-1);
      assert(closure_count() == i+1, "Closure count wrong\n");
   }
   for (int i = 0; i<N/2; i++) {
-     assert(reference[i] == recall_closure(i),"Recall went wrong\n");
+     assert((i<<2)-1 == recall_closure(reference[i]),"Recall went wrong\n");
      assert(closure_count() == N-i-1, "Closure count wrong\n");
   }
   for (int i = 0; i<N/2; i++) {
-     reference[i] = remember_closure(i);
+     reference[i] = remember_closure((i<<2)-1);
      assert(closure_count() == N/2 + i+1, "Closure count wrong\n");
   }
   for (int i = N-1; i>=0; i--) {
-     assert(reference[i] == recall_closure(i),"Recall went wrong\n");
+     assert((i<<2)-1 == recall_closure(reference[i]),"Recall went wrong\n");
      assert(closure_count() == i, "Closure count wrong\n");
   }
 
