@@ -16,7 +16,7 @@ import           Data.Text (Text)
 import           Language.Haskell.LSP.Test hiding (message)
 import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..))
 import           Language.Haskell.LSP.Types.Lens (contents, label, detail, message)
-import           System.Directory (setCurrentDirectory)
+import           System.Directory (setCurrentDirectory, makeAbsolute)
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure)
 import           System.IO (hPutStr, stderr)
@@ -82,6 +82,7 @@ main = do
       \the path to the mo-ide binary and the path to\
       \the test project it's supposed to run in")
   let [mo_ide, project] = args
+  project <- makeAbsolute project
   setCurrentDirectory project
   handleHUnitFailure project $ do
     putStrLn "Starting the session"
