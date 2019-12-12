@@ -390,6 +390,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ e <: t1;
       t2 <: t
     | OtherPrim _, _ -> ()
+    | ActorOfIdBlob _, [_] -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
     end
