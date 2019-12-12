@@ -144,29 +144,25 @@ appendNewCanister esref c = modES esref $ \es ->
 
 systemAPI :: forall s. ESRef s -> Imports s
 systemAPI esref =
-    [ (,) "ic0"
-      [ toImport "msg_arg_data_size" msg_arg_data_size
-      , toImport "msg_arg_data_copy" msg_arg_data_copy
-      , toImport "msg_caller_size" msg_caller_size
-      , toImport "msg_caller_copy" msg_caller_copy
-      , toImport "msg_reject_code" msg_reject_code
-      , toImport "msg_reject_msg_size" msg_reject_msg_size
-      , toImport "msg_reject_msg_copy" msg_reject_msg_copy
-      , toImport "msg_reply_data_append" msg_reply_data_append
-      , toImport "msg_reply" msg_reply
-      , toImport "msg_reject" msg_reject
-      , toImport "canister_self_copy" canister_self_copy
-      , toImport "canister_self_size" canister_self_size
-      , toImport "call_simple" call_simple
-      , toImport "debug_print" debug_print
-      , toImport "trap" explicit_trap
-      ]
-    , (,) "stub"
-      [ toImport "create_canister" create_canister
-      , toImport "created_canister_id_size" created_canister_id_size
-      , toImport "created_canister_id_copy" created_canister_id_copy
-      ]
-    ]
+  [ toImport "ic0" "msg_arg_data_size" msg_arg_data_size
+  , toImport "ic0" "msg_arg_data_copy" msg_arg_data_copy
+  , toImport "ic0" "msg_caller_size" msg_caller_size
+  , toImport "ic0" "msg_caller_copy" msg_caller_copy
+  , toImport "ic0" "msg_reject_code" msg_reject_code
+  , toImport "ic0" "msg_reject_msg_size" msg_reject_msg_size
+  , toImport "ic0" "msg_reject_msg_copy" msg_reject_msg_copy
+  , toImport "ic0" "msg_reply_data_append" msg_reply_data_append
+  , toImport "ic0" "msg_reply" msg_reply
+  , toImport "ic0" "msg_reject" msg_reject
+  , toImport "ic0" "canister_self_copy" canister_self_copy
+  , toImport "ic0" "canister_self_size" canister_self_size
+  , toImport "ic0" "call_simple" call_simple
+  , toImport "ic0" "debug_print" debug_print
+  , toImport "ic0" "trap" explicit_trap
+  , toImport "stub" "create_canister" create_canister
+  , toImport "stub" "created_canister_id_size" created_canister_id_size
+  , toImport "stub" "created_canister_id_copy" created_canister_id_copy
+  ]
   where
     -- Utilities
     gets :: (ExecutionState s -> b) -> HostM s b
@@ -221,12 +217,12 @@ systemAPI esref =
     msg_arg_data_size :: () -> HostM s Int32
     msg_arg_data_copy :: (Int32, Int32, Int32) -> HostM s ()
     (msg_arg_data_size, msg_arg_data_copy) = size_and_copy $
-        gets (param_dat . params) >>= maybe (throwError "arg_data_size: No argument") return
+        gets (param_dat . params) >>= maybe (throwError "No argument") return
 
     msg_caller_size :: () -> HostM s Int32
     msg_caller_copy :: (Int32, Int32, Int32) -> HostM s ()
     (msg_caller_size, msg_caller_copy) = size_and_copy $
-        fmap rawEntityId $ gets (param_caller . params) >>= maybe (throwError "arg_data_size: No argument") return
+        fmap rawEntityId $ gets (param_caller . params) >>= maybe (throwError "No argument") return
 
     msg_reject_code :: () -> HostM s Int32
     msg_reject_code () =
@@ -236,7 +232,7 @@ systemAPI esref =
     msg_reject_msg_copy :: (Int32, Int32, Int32) -> HostM s ()
     (msg_reject_msg_size, msg_reject_msg_copy) = size_and_copy $ do
       c <- gets (reject_code . params)
-      when (c == 0) $ throwError "msg_reject_msg: No reject message"
+      when (c == 0) $ throwError "No reject message"
       msg <- gets (reject_message . params)
       return $ BSU.fromString msg
 

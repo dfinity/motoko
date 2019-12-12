@@ -39,15 +39,35 @@ let cursor_target_at_pos
     | _ -> loop (next ()) in
   try loop (next ()) with _ -> None
 
-let import_relative_to_project_root root module_path dependency =
-  match Pipeline__.File_path.relative_to root module_path with
+let is_package_path (path : string) =
+  Lib.Option.is_some (Pipeline.ResolveImport.match_package_name path)
+
+let uri_for_package (path : string) =
+  match Pipeline.ResolveImport.match_package_name path with
   | None -> None
-  | Some root_to_module ->
-     root_to_module
-     |> Filename.dirname
-     |> Lib.Fun.flip Filename.concat dependency
-     |> Pipeline__.File_path.normalise
-     |> Lib.Option.some
+  | Some (pkg, path) ->
+     begin match
+       List.find_opt
+         (fun (name, _) -> pkg = name)
+         !Mo_config.Flags.package_urls with
+     | None -> None
+     | Some (_, pkg_path) ->
+        (* Resolved package paths are always absolute *)
+        Some ("file://" ^ Filename.concat pkg_path path)
+     end
+
+let import_relative_to_project_root root module_path dependency =
+  if is_package_path dependency
+  then Some dependency
+  else
+    match Pipeline.FilePath.relative_to root module_path with
+    | None -> None
+    | Some root_to_module ->
+       root_to_module
+       |> Filename.dirname
+       |> Lib.Fun.flip Filename.concat dependency
+       |> Pipeline.FilePath.normalise
+       |> Lib.Option.some
 
 (* Given the source of a module, figure out under what names what
    modules have been imported. Normalizes the imported modules
