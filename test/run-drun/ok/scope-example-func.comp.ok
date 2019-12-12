@@ -1,0 +1,4 @@
+scope-example-func.mo:16.19-16.20: type error, argument to await must be a call expression
+  (This is a limitation of the current version.)
+scope-example-func.mo:22.23-22.24: type error, calling a shared function not yet supported
+  (This is a limitation of the current version.)
