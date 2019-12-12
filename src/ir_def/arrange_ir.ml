@@ -50,7 +50,7 @@ let rec exp e = match e.it with
 and lexp le = match le.it with
   | VarLE i             -> "VarLE" $$ [id i]
   | IdxLE (e1, e2)      -> "IdxLE" $$ [exp e1; exp e2]
-  | DotLE (e1, n)       -> "IdxLE" $$ [exp e1; Atom n]
+  | DotLE (e1, n)       -> "DotLE" $$ [exp e1; Atom n]
 
 and fields fs = List.fold_left (fun flds (f : field) -> (f.it.name $$ [ id f.it.var ]):: flds) [] fs
 

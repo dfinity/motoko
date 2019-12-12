@@ -5702,12 +5702,12 @@ let compile_load_field env typ name =
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
 let rec compile_lexp (env : E.t) ae lexp =
-  (fun (code,fill_code) -> (G.with_region lexp.at code, G.with_region lexp.at fill_code)) @@
+  (fun (code, fill_code) -> (G.with_region lexp.at code, G.with_region lexp.at fill_code)) @@
   match lexp.it with
   | VarLE var ->
      G.nop,
      Var.set_val env ae var
-  | IdxLE (e1,e2) ->
+  | IdxLE (e1, e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
      BigNum.to_word32 env ^^
