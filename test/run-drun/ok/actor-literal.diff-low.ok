@@ -1,0 +1,8 @@
+--- actor-literal.run
++++ actor-literal.run-low
+@@ -0,0 +1,5 @@
++Ill-typed intermediate code after Async Lowering (use -v to see dumped IR):
++actor-literal.mo:4.9-4.30: IR type error, subtype violation:
++  actor {foo : shared Nat -> async Nat}
++  actor {foo : shared Nat -> replies Nat}
++
