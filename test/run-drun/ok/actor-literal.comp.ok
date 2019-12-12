@@ -1,5 +1,2 @@
-Ill-typed intermediate code after Async Lowering (use -v to see dumped IR):
-actor-literal.mo:4.9-4.30: IR type error, subtype violation:
-  actor {foo : shared Nat -> async Nat}
-  actor {foo : shared Nat -> replies Nat}
-
+actor-literal.mo:6.25-6.27: type error, shared, async function must be called within an await expression
+  (This is a limitation of the current version.)

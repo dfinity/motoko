@@ -1,8 +1,5 @@
 --- actor-literal.run
 +++ actor-literal.run-low
-@@ -0,0 +1,5 @@
-+Ill-typed intermediate code after Async Lowering (use -v to see dumped IR):
-+actor-literal.mo:4.9-4.30: IR type error, subtype violation:
-+  actor {foo : shared Nat -> async Nat}
-+  actor {foo : shared Nat -> replies Nat}
-+
+@@ -0,0 +1,2 @@
++Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
++actor-literal.mo:3.14-3.37: IR type error, PrimE with wrong number of arguments
