@@ -74,7 +74,7 @@ export uint32_t remember_closure(as_ptr cls) {
     double_closure_table();
 
   if (!IS_SKEWED(cls))
-    // we could support this, but then we couldnt detect a double recall_closure
+    // we could support this, but then we couldn't detect a double recall_closure
     rts_trap_with("remember_closure: Storing unboxed literals not supports");
 
   uint32_t idx = free_slot >> 2;
