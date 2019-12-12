@@ -645,7 +645,6 @@ and check_lexp env (lexp:Ir.lexp) : unit =
   (* helpers *)
   let check p = check env lexp.at p in
   let (<:) t1 t2 = check_sub env lexp.at t1 t2 in
-  let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   (* check type annotation *)
   let t = lexp.note in
   check_typ env t;
@@ -655,7 +654,7 @@ and check_lexp env (lexp:Ir.lexp) : unit =
     let t0 = try T.Env.find id env.vals with
              |  Not_found -> error env lexp.at "unbound variable %s" id
     in
-      t0 <~ t
+      t0 <: t
   | DotLE (exp1, n) ->
     begin
       let t1 = typ exp1 in
@@ -665,7 +664,7 @@ and check_lexp env (lexp:Ir.lexp) : unit =
             (T.string_of_typ_expand t1)
       in
       check (sort <> T.Actor) "sort mismatch";
-      try T.lookup_val_field n tfs <~ t with Invalid_argument _ ->
+      try T.lookup_val_field n tfs <: t with Invalid_argument _ ->
         error env exp1.at "field name %s does not exist in type\n  %s"
           n (T.string_of_typ_expand t1)
     end
@@ -679,7 +678,7 @@ and check_lexp env (lexp:Ir.lexp) : unit =
                                        (T.string_of_typ_expand t1)
     in
     typ exp2 <: T.nat;
-    t2 <~ t
+    t2 <: t
 
 (* Cases *)
 
