@@ -50,7 +50,7 @@ let name_of_ide_decl (d : ide_decl) : string =
   | TypeDecl ty -> ty.name
 
 module Index = Map.Make(String)
-type t = (ide_decl list) Index.t
+type t =  ide_decl list Index.t
 
 type path = string
 let lookup_module
