@@ -370,7 +370,6 @@ exp_nullary(B) :
     { BlockE(ds) @? at $sloc }
   | x=id
     { VarE(x) @? at $sloc }
-  | ACTOR t=TEXT { ActorUrlE t @? at $sloc }
   | l=lit
     { LitE(ref l) @? at $sloc }
   | LPAR es=seplist(exp(ob), COMMA) RPAR
@@ -411,6 +410,8 @@ exp_un(B) :
     }
   | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
+  | ACTOR t=TEXT
+    { ActorUrlE t @? at $sloc }
   | NOT e=exp_un(ob)
     { NotE e @? at $sloc }
   | DEBUG_SHOW e=exp_un(ob)
