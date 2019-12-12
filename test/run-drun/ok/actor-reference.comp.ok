@@ -1,2 +1,2 @@
-actor-reference.mo:6.51-6.63: type error, calling a shared function not yet supported
+actor-reference.mo:7.20-7.32: type error, calling a shared function not yet supported
   (This is a limitation of the current version.)
