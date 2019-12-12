@@ -55,8 +55,9 @@ type HostM s = ExceptT String (ST s)
 
 type HostFunc s = HostM s [W.Value]
 
-type Import s = (String, String, W.StackType, W.StackType, [W.Value] -> HostFunc s)
-
+type ModName = String
+type FuncName = String
+type Import s = (ModName, FuncName, W.StackType, W.StackType, [W.Value] -> HostFunc s)
 type Imports s = [Import s]
 
 type Module = W.Module Identity
@@ -97,7 +98,7 @@ initialize mod imps = withExceptT show $ do
   return (mods', ref)
 
 
-exportedFunctions :: Module -> [String]
+exportedFunctions :: Module -> [FuncName]
 exportedFunctions wasm_mod =
   [ T.unpack (W._exportName e)
   | Identity e <- W._moduleExports wasm_mod
@@ -105,7 +106,7 @@ exportedFunctions wasm_mod =
   ]
 
 
-invokeExport :: Instance s -> String -> [W.Value] -> HostM s [W.Value]
+invokeExport :: Instance s -> FuncName -> [W.Value] -> HostM s [W.Value]
 invokeExport (mods', ref) method args = do
   let inst = mods' IM.! ref
   withExceptT show $
