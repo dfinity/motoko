@@ -1,2 +1,11 @@
-actor-reference.mo:3.9-3.32: type error, no type can be inferred for actor reference
-  ic:C0FEFED00D41
+actor-reference.mo:3.9-3.17: type error, actor reference must not be empty
+actor-reference.mo:5.9-5.19: type error, actor reference must contain a colon
+actor-reference.mo:7.9-7.32: type error, actor reference must use 'ic:' scheme
+actor-reference.mo:9.9-9.20: type error, principal ID must not be empty
+actor-reference.mo:11.9-11.32: type error, principal ID must be uppercase
+actor-reference.mo:13.9-13.28: type error, principal ID must contain hexadecimal digits
+actor-reference.mo:15.9-15.31: type error, principal ID must contain an even number of hexadecimal digits
+actor-reference.mo:17.9-17.32: type error, principal ID checksum failure
+  42 (got)
+  41 (expected)
+actor-reference.mo:19.9-19.32: type error, actor reference must have an actor type
