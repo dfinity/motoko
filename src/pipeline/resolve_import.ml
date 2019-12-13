@@ -71,9 +71,7 @@ let parse_import (f: string) : parsed_import =
     | Some suffix -> ActorImport suffix
     | None ->
       (* TODO: Check and reject other URL schemas? *)
-      match Lib.String.chop_prefix "./" f with
-      | Some suffix -> RelativeImport suffix
-      | None -> RelativeImport f
+      RelativeImport (File_path.normalise f)
 
 let append_lib_if_needed f =
   if Sys.file_exists f && Sys.is_directory f
