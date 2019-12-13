@@ -126,7 +126,7 @@ end
 
 module ActorHeap =
 struct
-  let heap  = ref V.Env.empty
+  let heap = ref V.Env.empty
   let add id v = heap := V.Env.add id v (!heap)
   let find id = V.Env.find id (!heap)
 end
