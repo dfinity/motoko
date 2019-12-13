@@ -203,28 +203,28 @@ and gather_decs env decs =
   
 let check_actor env actor_opt =
   match actor_opt with
-  | None -> Env.empty
+  | None -> None
   | Some t ->
      (match as_serv env t with
       | None ->
          error env t.at "%s is a non-service type\n %s" (string_of_typ t) (string_of_typ t)
       | Some {it=ServT meths; _} ->
          let meths' = check_meths env meths in
-         Env.singleton "service" (ServT (List.sort compare_meth meths') @@ t.at)
+         Some (ServT (List.sort compare_meth meths') @@ t.at)
       | Some _ -> assert false
      )
 
 (* Programs *)
 
-let check_prog scope prog : scope Diag.result =
+let check_prog scope prog : (scope * typ option) Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun prog ->
           let env = env_of_scope msgs scope in
           let te = check_decs env prog.it.decs in
-          ignore (check_actor (env_of_scope msgs te) prog.it.actor);
-          te
+          let actor = check_actor (env_of_scope msgs te) prog.it.actor in
+          (te, actor)
         )
         prog
     )
