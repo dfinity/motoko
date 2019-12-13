@@ -514,26 +514,11 @@ let check_lit env t lit at =
       error env at
         "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand t)
-(*
-uint8_t crc8(unsigned char data[], size_t len)
-{
-  uint8_t crc = 0;
-  for (size_t i = 0; i < len; i++) {
-    crc ^= data[i];
-    for (size_t j = 0; j < 8; j++) {
-      if ((crc & 0x80) != 0)
-	crc = (uint8_t)((crc << 1) ^ 0x7);
-      else
-	crc <<= 1;
-    }
-  }
-  return crc;
-}
-*)
 
-let check_actor_reference env url at : unit =
+
+let decode_actor_url complain (report_fail : string -> int -> unit) url : (bytes * int) option =
   let open String in
-  let complain = error env at in
+  let complain msg = complain msg; None in
   if equal url "" then complain "actor reference must not be empty"
   else if not (contains url ':') then complain "actor reference must contain a colon"
   else if length url < 3 || uppercase_ascii (sub url 0 3) <> "IC:" then complain "actor reference must use 'ic:' scheme"
@@ -547,10 +532,18 @@ let check_actor_reference env url at : unit =
   if map killNonHex hex <> hex then complain "principal ID must contain hexadecimal digits"
   else if length hex mod 2 = 1 then complain "principal ID must contain an even number of hexadecimal digits"
   else
-    let open Lib.Hex in
     let blob, crc = sub hex 0 (length hex - 2), sub hex (length hex - 2) 2 in
-    let hash = (crc8 (bytes_of_hex blob)) in
-    if hash <> int_of_hex_byte crc then error env at "principal ID checksum failure\n  %s (got)\n  %2x (expected)" crc hash
+    let open Lib.Hex in
+    let bs = bytes_of_hex blob in
+    let hash = crc8 bs in
+    if hash <> int_of_hex_byte crc then (report_fail crc hash; None)
+    else Some ((bs, hash))
+
+let check_actor_reference env url at : unit =
+  let complain msg = error env at "%s" msg in
+  let report_fail exp_crc actual_crc =
+    error env at "principal ID checksum failure\n  %s (expected)\n  %2x (got)" exp_crc actual_crc in
+  ignore (decode_actor_url complain report_fail url)
 
 (* Coercions *)
 

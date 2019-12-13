@@ -6,6 +6,6 @@ actor-reference.mo:11.9-11.32: type error, principal ID must be uppercase
 actor-reference.mo:13.9-13.28: type error, principal ID must contain hexadecimal digits
 actor-reference.mo:15.9-15.31: type error, principal ID must contain an even number of hexadecimal digits
 actor-reference.mo:17.9-17.32: type error, principal ID checksum failure
-  42 (got)
-  41 (expected)
+  42 (expected)
+  41 (got)
 actor-reference.mo:19.9-19.32: type error, actor reference must have an actor type
