@@ -28,10 +28,12 @@ actor Await {
   // Dynamic parallel waiting for acknowledgements
 
   public shared func DPA<@>() : async<@>() {
-    let as: [async()]  = Array_tabulate<async ()>(10, func (_) { Ack<@>(); });
+/*
+let as: [async()]  = Array_tabulate<async ()>(10, func (_) { Ack<@>(); });
       for (a in as.vals()) {
       await a;
     };
+*/
   };
 
   // Dynamic parallel waiting (with results)

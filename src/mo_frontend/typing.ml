@@ -262,9 +262,22 @@ let rec infer_scope env cs cod  =
      let t = check_typ env typ in
      (match T.close cs t with
       | T.Var (_, n) ->
-        { env with typs = T.Env.add scope_id (List.nth cs n) env.typs }
+        let c = (List.nth cs n) in
+        { env with typs = T.Env.add scope_id (List.nth cs n) env.typs;
+                   async = Some c }
       | _ -> env)
-   | _ -> env
+   | _ ->
+        { env with async = None }
+
+and check_scope env t at =
+  (match env.async with
+  | Some c ->
+    if not (T.eq t (T.Con(c,[]))) then
+       local_error env at "bad scope"
+  | None ->
+    if not (T.eq t T.Any) then
+       local_error env at "bad scope")
+
 
 and check_typ env (typ:typ) : T.typ =
   let t = check_typ' env typ in
@@ -758,7 +771,7 @@ and infer_exp'' env exp : T.typ =
         { env' with
           labs = T.Env.empty;
           rets = Some codom;
-          async = None; }
+          (* async = None; *) }
       in
       check_exp (adjoin_vals env'' ve) codom exp;
       if Type.is_shared_sort sort.it then begin
@@ -822,6 +835,11 @@ and infer_exp'' env exp : T.typ =
     in
     insts := Some typs;
     let ts = check_inst_bounds env tbs typs exp.at in
+    (match t1 with
+        | T.Func (_, T.Promises (T.Var (_, n)), _, _, _)
+        | T.Func (_, T.Returns, _, _, [T.Async (T.Var (_, n),_)]) ->
+          check_scope env (List.nth ts n) (List.nth typs n).at
+        | _ -> ());
     let t_arg = T.open_ ts t_arg in
     let t_ret = T.open_ ts t_ret in
     if not env.pre then begin
@@ -978,6 +996,7 @@ and infer_exp'' env exp : T.typ =
     if not (in_shared_async env || in_oneway_ignore env) then
       error_in [Flags.ICMode] env exp.at "unsupported async block";
     let t1 = check_typ env typ1 in
+    check_scope env t1 typ1.at;
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add "@" c ce in (* pun scope identifier @ with c *)
     let env' =
@@ -1067,6 +1086,7 @@ and check_exp' env0 t exp : T.typ =
     if not (in_shared_async env || in_oneway_ignore env) then
       error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
     let t1 = check_typ env typ1 in
+    check_scope env t1 typ1.at;
     if not (T.eq t1 t1') then
       error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s"
         (T.string_of_typ_expand t1)
