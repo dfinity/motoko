@@ -790,7 +790,7 @@ and match_sort_pat env sort_pat v =
 and interpret_obj env sort fields (k : V.value V.cont) =
   let selves = if sort.it = T.Actor then Some (V.fresh_id ()) else None in
   let ve_ex, ve_in = declare_exp_fields fields V.Env.empty V.Env.empty in
-  let env' = adjoin_vals {env with selves = selves} ve_in in
+  let env' = adjoin_vals {env with selves} ve_in in
   interpret_exp_fields env' sort.it fields ve_ex k
 
 and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
