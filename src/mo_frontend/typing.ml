@@ -530,25 +530,6 @@ uint8_t crc8(unsigned char data[], size_t len)
   return crc;
 }
 *)
-let crc8 (bs : bytes) : int =
-  let inner _ = function
-    | crc when crc land 0x80 <> 0 -> (crc lsl 1) lxor 0x7
-    | crc -> crc lsl 1 in
-  let outer crc b =
-    List.fold_right inner [0;1;2;3;4;5;6;7] (Char.code b lxor crc) land 0xFF in
-  Seq.fold_left outer 0 (Bytes.to_seq bs)
-
-let hexdigit = let open Char in function
-  | c when c >= '0' && c <= '9' -> code c - code '0'
-  | c when c >= 'A' && c <= 'F' -> code c - code 'A' + 10
-  | _ -> assert false
-
-let bytes_of_hex hex : bytes =
-  let junk = Bytes.create (String.length hex / 2) in
-  Bytes.mapi String.(fun i _ -> Char.chr ((hexdigit (get hex (i * 2)) lsl 4) lor hexdigit (get hex (i * 2 + 1)))) junk
-
-let int_of_hex hex : int =
-  hexdigit (String.get hex 0) lsl 4 lor hexdigit (String.get hex 1)
 
 let check_actor_reference env url at : unit =
   let open String in
@@ -566,9 +547,10 @@ let check_actor_reference env url at : unit =
   if map killNonHex hex <> hex then complain "principal ID must contain hexadecimal digits"
   else if length hex mod 2 = 1 then complain "principal ID must contain an even number of hexadecimal digits"
   else
+    let open Lib.Hex in
     let blob, crc = sub hex 0 (length hex - 2), sub hex (length hex - 2) 2 in
     let hash = (crc8 (bytes_of_hex blob)) in
-    if hash <> int_of_hex crc then error env at "principal ID checksum failure\n  %s (got)\n  %2x (expected)" crc hash
+    if hash <> int_of_hex_byte crc then error env at "principal ID checksum failure\n  %s (got)\n  %2x (expected)" crc hash
 
 (* Coercions *)
 

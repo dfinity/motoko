@@ -46,6 +46,33 @@ struct
     else Int32.compare i1 i2
 end
 
+module Hex =
+struct
+  let crc8 (bs : bytes) : int =
+    let inner _ = function
+      | crc when crc land 0x80 <> 0 -> (crc lsl 1) lxor 0x7
+      | crc -> crc lsl 1 in
+    let outer crc b =
+      List.fold_right inner [0;1;2;3;4;5;6;7] (Char.code b lxor crc) land 0xFF in
+    Seq.fold_left outer 0 (Bytes.to_seq bs)
+
+  let hexdigit = let open Char in function
+    | c when c >= '0' && c <= '9' -> code c - code '0'
+    | c when c >= 'A' && c <= 'F' -> code c - code 'A' + 10
+    | c when c >= 'a' && c <= 'f' -> code c - code 'a' + 10
+    | _ -> assert false
+
+  let bytes_of_hex hex : bytes =
+    let open String in
+    let extract i _ =
+      Char.chr (hexdigit (get hex (i * 2)) lsl 4 lor hexdigit (get hex (i * 2 + 1))) in
+    Bytes.mapi extract (Bytes.create (length hex / 2))
+
+  let int_of_hex_byte hex : int =
+    assert (String.length hex = 2);
+    String.(hexdigit (get hex 0) lsl 4 lor hexdigit (get hex 1))
+end
+
 module String =
 struct
   let implode cs =
