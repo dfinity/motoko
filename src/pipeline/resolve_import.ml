@@ -13,11 +13,14 @@ It returns a list of all imported file names.
 
 *)
 
-(* written as a functor so we can allocate some temporary shared state without making it global *)
-
 type filepath = string
 
-module S = Set.Make(String)
+module S = Set.Make
+  (struct
+    type t = Syntax.resolved_import
+    let compare = compare
+  end)
+
 module M = Map.Make(String)
 
 (* a map of type package_map will map each package name to a(n optional) package URL,
@@ -119,12 +122,13 @@ let add_lib_import msgs imported ri_ref at full_path =
   if Sys.file_exists full_path
   then begin
     ri_ref := LibPath full_path;
-    imported := S.add full_path !imported
+    imported := S.add (LibPath full_path) !imported
   end else
     err_file_does_not_exist msgs at full_path
 
 let add_idl_import msgs imported ri_ref at full_path =
-  ri_ref := IDLPath full_path
+  ri_ref := IDLPath full_path;
+  imported := S.add (IDLPath full_path) !imported
   (*
   if Sys.file_exists full_path
   then begin

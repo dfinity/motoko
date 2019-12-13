@@ -1,6 +1,6 @@
 open Mo_def
 
-module S : Set.S with type elt = String.t
+module S : Set.S with type elt = Syntax.resolved_import
 
 type package_urls = (string * string) list
 

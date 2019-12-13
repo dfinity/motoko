@@ -159,7 +159,6 @@ let check_lib senv lib : Scope.scope Diag.result =
     Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
   )
 
-
 (* Imported file loading *)
 
 (*
@@ -225,29 +224,34 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   let senv = ref senv0 in
   let libs = ref [] in
 
-  let rec go f =
-    if Type.Env.mem f !senv.Scope.lib_env then
+  let rec go ri = match ri with
+    | Syntax.Unresolved -> assert false
+    | Syntax.LibPath f ->
+      if Type.Env.mem f !senv.Scope.lib_env then
+        Diag.return ()
+      else if mem ri !pending then
+        Error [{
+          Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
+          text = Printf.sprintf "file %s must not depend on itself" f
+        }]
+      else begin
+        pending := add ri !pending;
+        Diag.bind (parsefn f) (fun (prog, base) ->
+        Diag.bind (Static.prog prog) (fun () ->
+        Diag.bind (ResolveImport.resolve !Flags.package_urls prog base) (fun more_imports ->
+        Diag.bind (go_set more_imports) (fun () ->
+        let lib = lib_of_prog f prog in
+        Diag.bind (check_lib !senv lib) (fun sscope ->
+        libs := lib :: !libs; (* NB: Conceptually an append *)
+        senv := Scope.adjoin !senv sscope;
+        pending := remove ri !pending;
+        Diag.return ()
+        )))))
+      end
+    | Syntax.IDLPath f ->
+      (* TODO: Parse IDL file, and add to an actor_env and to actors *)
       Diag.return ()
-    else if mem f !pending then
-      Error [{
-        Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
-        text = Printf.sprintf "file %s must not depend on itself" f
-      }]
-    else begin
-      pending := add f !pending;
-      Diag.bind (parsefn f) (fun (prog, base) ->
-      Diag.bind (Static.prog prog) (fun () ->
-      Diag.bind (ResolveImport.resolve !Flags.package_urls prog base) (fun more_imports ->
-      Diag.bind (go_set more_imports) (fun () ->
-      let lib = lib_of_prog f prog in
-      Diag.bind (check_lib !senv lib) (fun sscope ->
-      libs := lib :: !libs; (* NB: Conceptually an append *)
-      senv := Scope.adjoin !senv sscope;
-      pending := remove f !pending;
-      Diag.return ()
-      )))))
-    end
-    and go_set todo = Diag.traverse_ go (elements todo)
+  and go_set todo = Diag.traverse_ go (elements todo)
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
 
