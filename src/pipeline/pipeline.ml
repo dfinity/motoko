@@ -249,8 +249,12 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         )))))
       end
     | Syntax.IDLPath f ->
-      (* TODO: Parse IDL file to get the actual scope *)
-      let sscope = Scope.lib f (Type.Obj (Type.Actor, [])) in
+      (* TODO: Parse IDL file to get the actual type *)
+      let every_imported_actor_has_this_type =
+        let open Type in
+        Obj (Actor, [{lab = "foo"; typ = Func (Shared Write, Promises, [], [], [text])}])
+      in
+      let sscope = Scope.lib f every_imported_actor_has_this_type in
       senv := Scope.adjoin !senv sscope;
       Diag.return ()
   and go_set todo = Diag.traverse_ go (elements todo)

@@ -143,7 +143,11 @@ and exp' at note = function
     begin match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath fp -> I.VarE (id_of_full_path fp).it
-    | S.IDLPath _ -> assert false (* build on #1001 *)
+    | S.IDLPath fp ->
+      assert (f = "ic:000000000000040054");
+      let blob_id = "\x00\x00\x00\x00\x00\x00\x04\x00" in
+      (* TODO: Properly decode the URL *)
+      I.(PrimE (ActorOfIdBlob note.note_typ, [blobE blob_id]))
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 

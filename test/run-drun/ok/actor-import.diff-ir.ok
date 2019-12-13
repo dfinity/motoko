@@ -1,0 +1,5 @@
+--- actor-import.run
++++ actor-import.run-ir
+@@ -1 +1 @@
+-actor-import.mo:4.1-4.40: execution error, actor import
++actor-import.mo:4.1-4.40: execution error, ActorOfIdBlob not implemented
