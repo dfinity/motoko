@@ -568,7 +568,8 @@ let check_actor_reference env url at : unit =
   else
     let blob, crc = sub hex 0 (length hex - 2), sub hex (length hex - 2) 2 in
     let hash = (crc8 (bytes_of_hex blob)) in
-    if hash <> int_of_hex crc then warn env at "BLOB: %s, CRC: %s      %x\n" blob crc hash
+    if hash <> int_of_hex crc then error env at "principal ID checksum failure\n  %s (got)\n  %2x (expected)" crc hash
+
 (* Coercions *)
 
 let array_obj t =
