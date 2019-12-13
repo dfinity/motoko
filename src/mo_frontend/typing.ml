@@ -172,19 +172,17 @@ let infer_mut mut : T.typ -> T.typ =
 (* Imports *)
 
 let check_import env at f ri =
-  match !ri with
-  | Unresolved ->
-    error env at "unresolved import %s" f
-  | LibPath fp ->
-    (match T.Env.find_opt fp env.libs with
-    | Some T.Pre ->
-      error env at "cannot infer type of forward import %s" f
-    | Some t -> t
-    | None -> error env at "import %s not loaded" fp
-    )
-  | IDLPath _ ->
-    T.Obj (T.Actor, [])
-
+  let full_path =
+    match !ri with
+    | Unresolved -> error env at "unresolved import %s" f
+    | LibPath fp -> fp
+    | IDLPath fp -> fp
+  in
+  match T.Env.find_opt full_path env.libs with
+  | Some T.Pre ->
+    error env at "cannot infer type of forward import %s" f
+  | Some t -> t
+  | None -> error env at "imported file %s not loaded" full_path
 
 (* Paths *)
 
