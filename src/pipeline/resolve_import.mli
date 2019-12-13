@@ -4,6 +4,11 @@ module S : Set.S with type elt = String.t
 
 type package_urls = (string * string) list
 
+type parsed_import =
+  | PackageImport of (string * string)
+  | RelativeImport of string
+  | ActorImport of string
+
 val collect_imports : Syntax.prog -> string list
 val resolve : package_urls -> Syntax.prog -> string -> S.t Diag.result
-val match_package_name : string -> (string * string) option
+val parse_import : string -> parsed_import

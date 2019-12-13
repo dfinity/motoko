@@ -1,0 +1,2 @@
+actor-import.mo:10.34-10.42: type error, field foo does not exist in type
+  actor {}
