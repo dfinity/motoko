@@ -261,8 +261,11 @@ type unicode = int
 
 type actor_id = string
 
-type func =
-  (value -> value cont -> unit)
+type context = value option
+
+and func =
+  context -> value -> value cont -> unit
+
 and value =
   | Null
   | Bool of bool

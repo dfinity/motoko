@@ -186,20 +186,20 @@ let await env at async k =
     )
 (*;  Scheduler.yield () *)
 
-let actor_msg env id f v (k : V.value V.cont) =
+let actor_msg env id f c v (k : V.value V.cont) =
   if env.flags.trace then trace "-> message %s%s" id (string_of_arg env v);
   Scheduler.queue (fun () ->
     if env.flags.trace then trace "<- message %s%s" id (string_of_arg env v);
     incr trace_depth;
-    f v k
+    f c v k
   )
 
 let make_unit_message env id call_conv f =
   let open CC in
   match call_conv with
   | {sort = T.Shared s; n_res = 0; _} ->
-    Value.message_func s call_conv.n_args (fun v k ->
-      actor_msg env id f v (fun _ -> ());
+    Value.message_func s call_conv.n_args (fun c v k ->
+      actor_msg env id f c v (fun _ -> ());
       k V.unit
     )
   | _ ->
@@ -211,9 +211,9 @@ let make_async_message env id call_conv f =
   let open CC in
   match call_conv with
   | {sort = T.Shared s; control = T.Promises; _} ->
-    Value.async_func s call_conv.n_args call_conv.n_res (fun v k ->
+    Value.async_func s call_conv.n_args call_conv.n_res (fun c v k ->
       let async = make_async () in
-      actor_msg env id f v (fun v_async ->
+      actor_msg env id f c v (fun v_async ->
         get_async (V.as_async v_async) (set_async async) (reject_async async)
       );
       k (V.Async async)
@@ -227,8 +227,8 @@ let make_replying_message env id call_conv f =
   let open CC in
   match call_conv with
   | {sort = T.Shared s; control = T.Replies; _} ->
-    Value.replies_func s call_conv.n_args call_conv.n_res (fun v k ->
-      actor_msg env id f v (fun v -> ());
+    Value.replies_func s call_conv.n_args call_conv.n_res (fun c v k ->
+      actor_msg env id f c v (fun v -> ());
       k (V.unit)
     )
   | _ ->
@@ -343,10 +343,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           let call_conv_r = CC.call_conv_of_typ r_dom in
           async env exp.at
             (fun k' r ->
-              let vk' = Value.Func (call_conv_f, fun v _ -> k' v) in
-              let vr = Value.Func (call_conv_r, fun v _ -> r v) in
+              let vk' = Value.Func (call_conv_f, fun c v _ -> k' v) in
+              let vr = Value.Func (call_conv_r, fun c v _ -> r v) in
               let vc = V.Text (Lib.Option.value env.selves) in
-              f (V.Tup [vc; vk'; vr]) V.as_unit
+              f (Some vc) (V.Tup [vk'; vr]) V.as_unit
             )
             k
         | _ -> assert false
@@ -360,20 +360,20 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
              let (_, f) = V.as_func vf in
              let (_, r) = V.as_func vr in
              await env exp.at (V.as_async v1)
-               (fun v -> f v k)
-               (fun e -> r e k) (* TBR *)
+               (fun v -> f None v k)
+               (fun e -> r None e k) (* TBR *)
           | _ -> assert false
         )
       )
     | OtherPrim s, exps ->
       interpret_exps env exps [] (fun vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        Prim.prim s arg k
+        Prim.prim s None arg k
       )
     | NumConvPrim (t1, t2), exps ->
       interpret_exps env exps [] (fun vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        Prim.num_conv_prim t1 t2 arg k
+        Prim.num_conv_prim t1 t2 None arg k
         )
     | ICReplyPrim ts, [exp1] ->
       assert (not env.flavor.has_async_typ);
@@ -396,7 +396,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let vc = V.Text (Lib.Option.value env.selves) in
-        f (V.Tup[vc; kv; rv; v2]) k))))
+        f (Some (V.Tup[vc; kv; rv])) v2 k))))
     | ICCallerPrim, [] ->
       k (V.Text (Lib.Option.value env.callers))
     | _ ->
@@ -449,11 +449,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
-        let v3 = if T.is_shared_sort call_conv.Call_conv.sort
-          then V.Tup [V.Text (Lib.Option.value env.selves); v2]
-          else v2
+        let c = if T.is_shared_sort call_conv.Call_conv.sort
+          then Some (V.Text (Lib.Option.value env.selves))
+          else None
         in
-        f v3 k
+        f c v2 k
       )
     )
   | BlockE (decs, exp1) ->
@@ -528,7 +528,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let _call_conv, f = V.as_func v in
         last_region := exp.at; (* in case the following throws *)
         let vc = V.Text (Lib.Option.value env.selves) in
-        f (V.Tup[vc; kv; rv; V.Tup []]) k))
+        f (Some (V.Tup[vc; kv; rv])) (V.Tup []) k))
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
@@ -782,15 +782,15 @@ and interpret_decs env decs (k : unit V.cont) =
   | [] -> k ()
   | d::ds -> interpret_dec env d (fun () -> interpret_decs env ds k)
 
-and interpret_func env at sort x args f v (k : V.value V.cont) =
+and interpret_func env at sort x args f c v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" x (string_of_arg env v);
-  let callers, v =
+  let callers =
     if T.is_shared_sort sort
-    then match V.as_tup v with
-         | [v_caller; v] ->
-           Some (V.as_text v_caller), v
+    then match c with
+         | Some v_caller ->
+           Some (V.as_text v_caller)
          | _ -> assert false
-    else env.callers, v
+    else env.callers
   in
   let ve = match_args at args v in
   incr trace_depth;
@@ -809,9 +809,9 @@ and interpret_func env at sort x args f v (k : V.value V.cont) =
     }
   in f env' k'
 
-and interpret_message env at x args f v (k : V.value V.cont) =
-  let v_caller, v_reply, v_reject, v = match V.as_tup v with
-    | [v_caller; v_reply; v_reject; v] -> v_caller, v_reply, v_reject, v
+and interpret_message env at x args f c v (k : V.value V.cont) =
+  let v_caller, v_reply, v_reject = match V.as_tup (Lib.Option.value c) with
+    | [v_caller; v_reply; v_reject] -> v_caller, v_reply, v_reject
     | _ -> assert false
   in
   if env.flags.trace then trace "%s%s" x (string_of_arg env v);
@@ -829,8 +829,8 @@ and interpret_message env at x args f v (k : V.value V.cont) =
       vals = V.Env.adjoin env.vals ve;
       labs = V.Env.empty;
       rets = Some k';
-      replies = Some (fun v -> reply v V.as_unit);
-      rejects = Some (fun v -> reject v V.as_unit);
+      replies = Some (fun v -> reply None v V.as_unit);
+      rejects = Some (fun v -> reject None v V.as_unit);
       callers = Some (V.as_text v_caller);
       async = false
     }

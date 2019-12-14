@@ -192,12 +192,12 @@ let await env at async k =
            r v
          ))
 
-let actor_msg env id f v (k : V.value V.cont) =
+let actor_msg env id f c v (k : V.value V.cont) =
   if env.flags.trace then trace "-> message %s%s" id (string_of_arg env v);
   Scheduler.queue (fun () ->
     if env.flags.trace then trace "<- message %s%s" id (string_of_arg env v);
     incr trace_depth;
-    f v k
+    f c v k
   )
 
 let make_unit_message env id v =
@@ -205,8 +205,8 @@ let make_unit_message env id v =
   let call_conv, f = V.as_func v in
   match call_conv with
   | {sort = T.Shared s; n_res = 0; _} ->
-    Value.message_func s call_conv.n_args (fun v k ->
-      actor_msg env id f v (fun _ -> ());
+    Value.message_func s call_conv.n_args (fun c v k ->
+      actor_msg env id f c v (fun _ -> ());
       k V.unit
     )
   | _ -> (* assert false *)
@@ -217,9 +217,9 @@ let make_async_message env id v =
   let call_conv, f = V.as_func v in
   match call_conv with
   | {sort = T.Shared s; control = T.Promises; _} ->
-    Value.async_func s call_conv.n_args call_conv.n_res (fun v k ->
+    Value.async_func s call_conv.n_args call_conv.n_res (fun c v k ->
       let async = make_async () in
-      actor_msg env id f v (fun v_async ->
+      actor_msg env id f c v (fun v_async ->
         get_async (V.as_async v_async) (set_async async) (reject_async async)
       );
       k (V.Async async)
@@ -265,7 +265,7 @@ let interpret_lit env lit : V.value =
 (* Overloaded dot implementations *)
 
 let array_get a at =
-  V.local_func 1 1 (fun v k ->
+  V.local_func 1 1 (fun c v k ->
     let n = V.as_int v in
     if V.Nat.lt n (V.Nat.of_int (Array.length a))
     then k (a.(V.Nat.to_int n))
@@ -273,7 +273,7 @@ let array_get a at =
   )
 
 let array_set a at =
-  V.local_func 2 0 (fun v k ->
+  V.local_func 2 0 (fun c v k ->
     let v1, v2 = V.as_pair v in
     let n = V.as_int v1 in
     if V.Nat.lt n (V.Nat.of_int (Array.length a))
@@ -282,17 +282,17 @@ let array_set a at =
   )
 
 let array_len a at =
-  V.local_func 0 1 (fun v k ->
+  V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     k (V.Int (V.Nat.of_int (Array.length a)))
   )
 
 let array_keys a at =
-  V.local_func 0 1 (fun v k ->
+  V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     let i = ref 0 in
     let next =
-      V.local_func 0 1 (fun v k' ->
+      V.local_func 0 1 (fun c v k' ->
         if !i = Array.length a
         then k' V.Null
         else let v = V.Opt (V.Int (V.Nat.of_int !i)) in incr i; k' v
@@ -301,11 +301,11 @@ let array_keys a at =
   )
 
 let array_vals a at =
-  V.local_func 0 1 (fun v k ->
+  V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     let i = ref 0 in
     let next =
-      V.local_func 0 1 (fun v k' ->
+      V.local_func 0 1 (fun c v k' ->
         if !i = Array.length a
         then k' V.Null
         else let v = V.Opt a.(!i) in incr i; k' v
@@ -314,12 +314,12 @@ let array_vals a at =
   )
 
 let text_chars t at =
-  V.local_func 0 1 (fun v k ->
+  V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     let i = ref 0 in
     let s = Wasm.Utf8.decode t in
     let next =
-      V.local_func 0 1 (fun v k' ->
+      V.local_func 0 1 (fun c v k' ->
         if !i = List.length s
         then k' V.Null
         else let v = V.Opt (V.Char (List.nth s !i)) in incr i; k' v
@@ -328,7 +328,7 @@ let text_chars t at =
   )
 
 let text_len t at =
-  V.local_func 0 1 (fun v k ->
+  V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     k (V.Int (V.Nat.of_int (List.length (Wasm.Utf8.decode t))))
   )
@@ -479,11 +479,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
-        let v3 = if T.is_shared_sort call_conv.Call_conv.sort
-          then V.Tup [V.Obj(V.Env.singleton "caller" (V.Text (Lib.Option.value env.selves))); v2]
-          else v2
+        let c =
+          if T.is_shared_sort call_conv.Call_conv.sort
+          then Some (V.Obj(V.Env.singleton "caller" (V.Text (Lib.Option.value env.selves))))
+          else None
         in
-        f v3 k
+        f c v2 k
       )
     )
   | BlockE decs ->
@@ -540,7 +541,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       let _, next = V.as_func (find "next" fs) in
       let rec k_continue = fun v ->
         V.as_unit v;
-        next V.unit (fun v' ->
+        next None V.unit (fun v' ->
           match v' with
           | V.Opt v1 ->
             (match match_pat pat v1 with
@@ -762,17 +763,17 @@ and match_pat_fields pfs vs ve : val_env option =
     | None -> None
     end
 
-and match_sort_pat env sort_pat v =
-  match sort_pat.it, v with
-  | T.Local, v -> V.Env.empty, v
-  | T.Shared (_ , None), V.Tup [ctxt; v1] -> V.Env.empty, v1
-  | T.Shared (_, Some pat), V.Tup [ctxt; v1] ->
-    (match match_pat pat ctxt with
+and match_sort_pat env sort_pat c =
+  match sort_pat.it, c with
+  | T.Local, None -> V.Env.empty
+  | T.Shared (_ , None), Some _ -> V.Env.empty
+  | T.Shared (_, Some pat), Some v ->
+    (match match_pat pat v with
      | None ->
        (* shouldn't occur with our irrefutable patterns, but may in future *)
-       trap pat.at "context value %s does not match context pattern" (string_of_val env ctxt)
+       trap pat.at "context value %s does not match context pattern" (string_of_val env v)
      | Some ve1 ->
-       ve1, v1)
+       ve1)
   | _ -> assert false
 
 (* Objects *)
@@ -860,12 +861,12 @@ and interpret_decs env decs (k : V.value V.cont) =
   | dec::decs' ->
     interpret_dec env dec (fun _v -> interpret_decs env decs' k)
 
-and interpret_func env name sort_pat pat f v (k : V.value V.cont) =
+and interpret_func env name sort_pat pat f c v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" name (string_of_arg env v);
-  let (ve1, v1) = match_sort_pat env sort_pat v in
-  match match_pat pat v1 with
+  let ve1 = match_sort_pat env sort_pat c in
+  match match_pat pat v with
   | None ->
-    trap pat.at "argument value %s does not match parameter list" (string_of_val env v1)
+    trap pat.at "argument value %s does not match parameter list" (string_of_val env v)
   | Some ve2 ->
     incr trace_depth;
     let k' = fun v' ->
