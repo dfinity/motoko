@@ -121,16 +121,7 @@ struct
     if not (Queue.is_empty q) then (yield (); run ())
 end
 
-(* Actor Heap *)
-
-module ActorHeap =
-struct
-  let heap  = ref V.Env.empty
-  let add id v = heap := V.Env.add id v (!heap)
-  let find id = V.Env.find id (!heap)
-end
-
-  
+ 
 (* Async auxiliary functions *)
 
 (* Are these just duplicates of the corresponding functions in interpret.ml? If so, refactor *)
@@ -354,7 +345,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             (fun k' r ->
               let vk' = Value.Func (call_conv_f, fun v _ -> k' v) in
               let vr = Value.Func (call_conv_r, fun v _ -> r v) in
-              let vc = V.Actor (Lib.Option.value env.selves) in
+              let vc = V.Text (Lib.Option.value env.selves) in
               f (V.Tup [vc; vk'; vr]) V.as_unit
             )
             k
@@ -404,7 +395,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
-        let vc = V.Actor (Lib.Option.value env.selves) in
+        let vc = V.Text (Lib.Option.value env.selves) in
         f (V.Tup[vc; kv; rv; v2]) k))))
     | ICCallerPrim, [] ->
       k (V.Text (Lib.Option.value env.callers))
@@ -427,7 +418,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | ActorDotE (exp1, n) ->
     interpret_exp env exp1 (fun v1 ->
-      let fs = V.as_obj (ActorHeap.find (V.as_actor v1)) in
+      let fs = V.as_obj v1 in
       k (try find n fs with _ -> assert false)
     )
   | AssignE (exp1, exp2) ->
@@ -459,7 +450,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let v3 = if T.is_shared_sort call_conv.Call_conv.sort
-          then V.Tup [V.Actor (Lib.Option.value env.selves); v2]
+          then V.Tup [V.Text (Lib.Option.value env.selves); v2]
           else v2
         in
         f v3 k
@@ -536,7 +527,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp_r (fun rv ->
         let _call_conv, f = V.as_func v in
         last_region := exp.at; (* in case the following throws *)
-        let vc = V.Actor (Lib.Option.value env.selves) in
+        let vc = V.Text (Lib.Option.value env.selves) in
         f (V.Tup[vc; kv; rv; V.Tup []]) k))
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
@@ -562,10 +553,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let env' = adjoin_vals env0 ve in
     interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
-      ActorHeap.add self obj;
-      let actor = V.Actor self in
-      define_id env0 id actor;
-      k actor)
+      define_id env0 id obj;
+      k obj)
   | NewObjE (sort, fs, _) ->
     k (interpret_fields env fs)
 
@@ -799,7 +788,7 @@ and interpret_func env at sort x args f v (k : V.value V.cont) =
     if T.is_shared_sort sort
     then match V.as_tup v with
          | [v_caller; v] ->
-           Some (V.as_actor v_caller), v
+           Some (V.as_text v_caller), v
          | _ -> assert false
     else env.callers, v
   in
@@ -842,7 +831,7 @@ and interpret_message env at x args f v (k : V.value V.cont) =
       rets = Some k';
       replies = Some (fun v -> reply v V.as_unit);
       rejects = Some (fun v -> reject v V.as_unit);
-      callers = Some (V.as_actor v_caller);
+      callers = Some (V.as_text v_caller);
       async = false
     }
   in f env' k'

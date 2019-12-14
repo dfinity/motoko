@@ -290,7 +290,6 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
-  | Actor of actor_id
 
 and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
@@ -341,7 +340,6 @@ let as_obj = function Obj ve -> ve | _ -> invalid "as_obj"
 let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
-let as_actor = function Actor id -> id | _ -> invalid "as_actor"
 
 
 (* Ordering *)
@@ -371,7 +369,6 @@ let rec compare x1 x2 =
     )
   | Mut r1, Mut r2 -> compare !r1 !r2
   | Async _, Async _ -> raise (Invalid_argument "Value.compare")
-  | Actor b1, Actor b2 -> String.compare b1 b2
   | _ -> generic_compare x1 x2
 
 let equal x1 x2 = compare x1 x2 = 0
@@ -457,7 +454,6 @@ and string_of_val d = function
     sprintf "async[%d] %s"
       (List.length waiters) (string_of_res d result)
   | Mut r -> sprintf "%s" (string_of_val d !r)
-  | Actor a -> sprintf "actor %s" a
   | v -> string_of_val_nullary d v
 
 and string_of_res d result =

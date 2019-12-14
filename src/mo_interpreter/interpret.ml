@@ -122,14 +122,6 @@ struct
     if not (Queue.is_empty q) then (yield (); run ())
 end
 
-(* Actor Heap *)
-
-module ActorHeap =
-struct
-  let heap  = ref V.Env.empty
-  let add id v = heap := V.Env.add id v (!heap)
-  let find id = V.Env.find id (!heap)
-end
 
 (* Async auxiliary functions *)
 
@@ -432,8 +424,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
       match v1 with
-      | V.Actor a ->
-        k (find id.it (V.as_obj (ActorHeap.find a)))
       | V.Obj fs ->
         k (find id.it fs)
       | V.Array vs ->
@@ -806,11 +796,7 @@ and interpret_exp_fields env s fields ve (k : V.value V.cont) =
   match fields with
   | [] ->
     let obj = V.Obj (V.Env.map Lib.Promise.value ve) in
-    if s = T.Actor then
-      let self = Lib.Option.value env.selves in
-      ActorHeap.add self obj;
-      k (V.Actor self)
-    else k obj
+    k obj
   | {it = {dec; _}; _}::fields' ->
     interpret_dec env dec (fun _v -> interpret_exp_fields env s fields' ve k)
 
