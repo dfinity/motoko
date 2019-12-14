@@ -78,7 +78,7 @@ type actor_id = string
 type context = value option
 
 and func =
-   context -> value-> value cont -> unit
+   context -> value -> value cont -> unit
 
 and value =
   | Null
@@ -173,4 +173,3 @@ val compare : value -> value -> int
 
 val string_of_val : int -> value -> string
 val string_of_def : int -> def -> string
-
