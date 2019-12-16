@@ -636,6 +636,7 @@ and infer_exp'' env exp : T.typ =
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
   | ActorUrlE exp' ->
+    if not env.pre then check_exp env T.text exp';
     check_actor_reference env exp' exp'.at;
     error env exp.at "no type can be inferred for actor reference"
   | UnE (ot, op, exp1) ->
@@ -1025,7 +1026,7 @@ and check_exp' env0 t exp : T.typ =
     t
   | ActorUrlE exp', t' ->
     check_actor_reference env exp' exp.at;
-    check_exp env0 T.text exp';
+    check_exp env T.text exp';
     begin match T.normalize t' with
     | T.(Obj (Actor, _)) -> t'
     | _ -> error env exp.at "actor reference must have an actor type"

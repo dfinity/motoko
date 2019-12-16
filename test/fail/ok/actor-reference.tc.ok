@@ -9,3 +9,7 @@ actor-reference.mo:17.9-17.32: type error, principal ID checksum failure
   42 (expected)
   41 (got)
 actor-reference.mo:19.9-19.32: type error, actor reference must have an actor type
+actor-reference.mo:21.16-21.18: type error, literal of type
+  Nat
+does not have expected type
+  Text

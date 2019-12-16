@@ -17,3 +17,5 @@ ignore (actor "ic:C0FEFED00DE");  // not even number of digits
 ignore (actor "ic:C0FEFED00D42");  // does not validate
 
 ignore (actor "IC:C0FEFED00D41" : ());  // must be actor type
+
+ignore (actor (45));  // argument must be text type
