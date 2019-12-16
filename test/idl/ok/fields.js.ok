@@ -1,7 +1,7 @@
 export default ({ IDL }) => {
- const A = IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat})
+ const A = IDL.Record({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat})
  const B =
-  IDL.Obj({'0': IDL.Arr(IDL.Nat8), '35': IDL.Arr(IDL.Nat8), '36': IDL.Nat,
+  IDL.Record({'0': IDL.Vec(IDL.Nat8), '35': IDL.Vec(IDL.Nat8), '36': IDL.Nat,
    '37': IDL.Nat, 'named_files': IDL.None, '3629958706': IDL.Nat,
    '3629958707': IDL.Nat})
  const C =
@@ -10,10 +10,9 @@ export default ({ IDL }) => {
    'red': IDL.Unit, 'blue': IDL.Unit, 'reserved': IDL.Unit, 'green': IDL.Unit
    })
  const nest_record =
-  IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat,
-   '3': IDL.Obj({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat}), '4': IDL.Nat,
+  IDL.Record({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat,
+   '3': IDL.Record({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat}), '4': IDL.Nat,
    '5': IDL.Nat, '6': IDL.Nat, '7': A, '8': B, '9': C, '10': IDL.Nat})
- const actor_S = new IDL.ActorInterface({
-  'f': IDL.Func([A, B, C, nest_record], [], [])});
- return actor_S;
+ return new IDL.ActorInterface({'f': IDL.Func([A, B, C, nest_record], [], [])
+  });
 };

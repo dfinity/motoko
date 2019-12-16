@@ -172,12 +172,16 @@ def :
   | IMPORT file=TEXT
     { ImportD (file, ref "") @@ at $sloc }
 
+id_opt :
+  | (* empty *) { }
+  | id { }
+
 actor :
   | (* empty *) { None }
-  | SERVICE id=id tys=actor_typ
-    { Some (ActorD(id, ServT tys @@ at $loc(tys)) @@ at $sloc) }
-  | SERVICE id=id COLON x=id
-    { Some (ActorD(id, VarT x @@ x.at) @@ at $sloc) }
+  | SERVICE id_opt COLON tys=actor_typ
+    { Some (ServT tys @@ at $loc(tys)) }
+  | SERVICE id_opt COLON x=id
+    { Some (VarT x @@ x.at) }
 
 (* Programs *)
 

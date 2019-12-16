@@ -293,6 +293,7 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
+  | TextIter of int list ref (* internal to t.char() iterator *)
 
 and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
@@ -333,6 +334,7 @@ let as_word64 = function Word64 w -> w | _ -> invalid "as_word64"
 let as_float = function Float f -> f | _ -> invalid "as_float"
 let as_char = function Char c -> c | _ -> invalid "as_char"
 let as_text = function Text s -> s | _ -> invalid "as_text"
+let as_text_iter = function TextIter i -> i | _ -> invalid "as_text_iter"
 let as_array = function Array a -> a | _ -> invalid "as_array"
 let as_opt = function Opt v -> v | _ -> invalid "as_opt"
 let as_variant = function Variant (i, v) -> i, v | _ -> invalid "as_variant"

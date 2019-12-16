@@ -1,22 +1,22 @@
 → create
 ← completed: canister-id = 0x0000000000000400
 → install
-charlie received hello from bob
-alice received hello from bob
-bob received hello from bob
-charlie received goodbye from bob
-alice received goodbye from bob
-bob received goodbye from bob
-charlie received hello from alice
-alice received hello from alice
-bob received hello from alice
-charlie received goodbye from alice
-alice received goodbye from alice
-bob received goodbye from alice
-charlie received hello from charlie
-alice received hello from charlie
-bob received hello from charlie
-charlie received goodbye from charlie
-alice received goodbye from charlie
-bob received goodbye from charlie
+debug.print: charlie received hello from bob
+debug.print: alice received hello from bob
+debug.print: bob received hello from bob
+debug.print: charlie received goodbye from bob
+debug.print: alice received goodbye from bob
+debug.print: bob received goodbye from bob
+debug.print: charlie received hello from alice
+debug.print: alice received hello from alice
+debug.print: bob received hello from alice
+debug.print: charlie received goodbye from alice
+debug.print: alice received goodbye from alice
+debug.print: bob received goodbye from alice
+debug.print: charlie received hello from charlie
+debug.print: alice received hello from charlie
+debug.print: bob received hello from charlie
+debug.print: charlie received goodbye from charlie
+debug.print: alice received goodbye from charlie
+debug.print: bob received goodbye from charlie
 ← completed
