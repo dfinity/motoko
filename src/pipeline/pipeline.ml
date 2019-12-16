@@ -460,9 +460,9 @@ let transform_if transform_name trans flag env prog name =
   if flag then transform transform_name trans env prog name
   else prog
 
-let desugar env lib_env libs progs name =
+let desugar env libs progs name =
   phase "Desugaring" name;
-  let prog_ir' : Ir.prog = Lowering.Desugar.transform_graph lib_env libs progs in
+  let prog_ir' : Ir.prog = Lowering.Desugar.transform_graph libs progs in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose env "Desugaring" prog_ir';
@@ -511,18 +511,18 @@ let name_progs progs =
   then "empty"
   else (Lib.List.last progs).Source.note
 
-let lower_prog mode senv lib_env libs progs name =
-  let prog_ir = desugar senv lib_env libs progs name in
+let lower_prog mode senv libs progs name =
+  let prog_ir = desugar senv libs progs name in
   let prog_ir = await_lowering !Flags.await_lowering initial_stat_env prog_ir name in
   let prog_ir = async_lowering mode !Flags.async_lowering initial_stat_env prog_ir name in
   let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir
 
-let compile_prog mode do_link lib_env libs progs : Wasm_exts.CustomModule.extended_module =
+let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog mode initial_stat_env lib_env libs progs name in
+  let prog_ir = lower_prog mode initial_stat_env libs progs name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts prelude_ir [prog_ir]
@@ -531,19 +531,19 @@ let compile_files mode do_link files : compile_result =
   Diag.bind (load_progs parse_file files initial_stat_env)
     (fun (libs, progs, senv) ->
     Diag.bind (Typing.check_actors senv progs) (fun () ->
-    Diag.return (compile_prog mode do_link senv.Scope.lib_env libs progs)))
+    Diag.return (compile_prog mode do_link libs progs)))
 
 let compile_string mode s name : compile_result =
   Diag.bind (load_decl (parse_string name s) initial_stat_env)
     (fun (libs, prog, senv, _t, _sscope) ->
-    Diag.return (compile_prog mode false senv.Scope.lib_env libs [prog]))
+    Diag.return (compile_prog mode false libs [prog]))
 
 (* Interpretation (IR) *)
 
-let interpret_ir_prog inp_env libs progs =
+let interpret_ir_prog libs progs =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog (!Flags.compile_mode) initial_stat_env inp_env libs progs name in
+  let prog_ir = lower_prog (!Flags.compile_mode) initial_stat_env libs progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
@@ -555,5 +555,5 @@ let interpret_ir_prog inp_env libs progs =
 
 let interpret_ir_files files =
   Lib.Option.map
-    (fun (libs, progs, senv) -> interpret_ir_prog senv.Scope.lib_env libs progs)
+    (fun (libs, progs, senv) -> interpret_ir_prog libs progs)
     (Diag.flush_messages (load_progs parse_file files initial_stat_env))
