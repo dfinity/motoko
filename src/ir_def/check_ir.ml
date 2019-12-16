@@ -392,6 +392,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | CastPrim (t1, t2), [e] ->
       typ e <: t1;
       t2 <: t
+    | ActorOfIdBlob actor_typ, [e] ->
+      typ e <: T.blob;
+      check_typ env actor_typ;
+      begin match T.normalize actor_typ with
+      | T.Obj (T.Actor, _) -> ()
+      | _ -> error env exp.at "ActorOfIdBlob cast to actor object type, not\n   %s"
+           (T.string_of_typ_expand actor_typ)
+      end;
+      actor_typ <: t;
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
