@@ -57,8 +57,8 @@ and exp e =
 
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
-  | S.ActorUrlE url ->
-    I.(PrimE (ActorOfIdBlob note.note_typ, [blobE url]))
+  | S.ActorUrlE e ->
+    I.(PrimE (ActorOfIdBlob note.note_typ, [url e]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
@@ -145,6 +145,15 @@ and exp' at note = function
     if !fp = "" then assert false; (* unresolved import *)
     I.VarE (id_of_full_path !fp).it
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
+
+and url e =
+    (* We short-cut AnnotE here, so that we get the position of the inner expression *)
+    match e.it with
+    | S.AnnotE (e,_) -> url e
+    | _ -> typed_phrase' (url' e) e
+
+and url' e at note _ = I.(PrimE (BlobOfVerifiedUrl, [exp e]))
+
 
 and mut m = match m.it with
   | S.Const -> Ir.Const

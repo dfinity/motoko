@@ -539,11 +539,14 @@ let decode_actor_url complain (report_fail : string -> int -> unit) url : bytes 
     if checksum <> int_of_hex_byte crc then (report_fail crc checksum; None)
     else Some bs
 
-let check_actor_reference env url at : unit =
-  let complain msg = error env at "%s" msg in
-  let report_fail exp_crc actual_crc =
-    error env at "principal ID checksum failure\n  %s (expected)\n  %2x (got)" exp_crc actual_crc in
-  ignore (decode_actor_url complain report_fail url)
+let check_actor_reference env exp at : unit = match exp.it with
+  | LitE ({contents = TextLit url}) ->
+    let complain msg = error env at "%s" msg in
+    let report_fail exp_crc actual_crc =
+      error env at "principal ID checksum failure\n  %s (expected)\n  %2X (got)" exp_crc actual_crc in
+    ignore (decode_actor_url complain report_fail url)
+  | _ -> ()
+
 
 (* Coercions *)
 
@@ -619,9 +622,9 @@ and infer_exp'' env exp : T.typ =
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
-  | ActorUrlE url ->
-    check_actor_reference env url exp.at;
-    error env exp.at "no type can be inferred for actor reference\n  %s" url
+  | ActorUrlE exp' ->
+    check_actor_reference env exp' exp'.at;
+    error env exp.at "no type can be inferred for actor reference"
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in
@@ -1013,8 +1016,9 @@ and check_exp' env0 t exp : T.typ =
   | LitE lit, _ ->
     check_lit env t lit exp.at;
     t
-  | ActorUrlE url, t' ->
-    check_actor_reference env url exp.at;
+  | ActorUrlE exp', t' ->
+    check_actor_reference env exp' exp.at;
+    check_exp env0 T.text exp';
     begin match t' with
     | T.(Obj (Actor, _)) -> t'
     | _ -> error env exp.at "actor reference must have an actor type"

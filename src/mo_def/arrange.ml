@@ -13,7 +13,7 @@ and tag i = Atom ("#" ^ i.it)
 let rec exp e = match e.it with
   | VarE x              -> "VarE"      $$ [id x]
   | LitE l              -> "LitE"      $$ [lit !l]
-  | ActorUrlE url       -> "ActorUrlE" $$ [Atom url]
+  | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
   | UnE (ot, uo, e)     -> "UnE"       $$ [operator_type !ot; Arrange_ops.unop uo; exp e]
   | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
   | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]

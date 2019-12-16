@@ -357,6 +357,10 @@ bl : { fun ds -> BlockE(ds) }
 ob : { fun ds -> ObjE(Type.Object @@ no_region,
          List.map (fun d -> {dec = d; vis = Public @@ d.at} @@ d.at) ds) }
 
+text_like :
+  | t=TEXT { LitE (ref (TextLit t)) @? at $sloc }
+  | LPAR e=exp(bl) RPAR { e }
+
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
@@ -410,8 +414,8 @@ exp_un(B) :
     }
   | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
-  | ACTOR t=TEXT
-    { ActorUrlE t @? at $sloc }
+  | ACTOR e=text_like
+    { ActorUrlE e @? at $sloc }
   | NOT e=exp_un(ob)
     { NotE e @? at $sloc }
   | DEBUG_SHOW e=exp_un(ob)
