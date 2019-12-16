@@ -169,6 +169,20 @@ let infer_mut mut : T.typ -> T.typ =
   | Const -> fun t -> t
   | Var -> fun t -> T.Mut t
 
+(* Imports *)
+
+let check_import env at f ri =
+  let full_path =
+    match !ri with
+    | Unresolved -> error env at "unresolved import %s" f
+    | LibPath fp -> fp
+    | IDLPath fp -> fp
+  in
+  match T.Env.find_opt full_path env.libs with
+  | Some T.Pre ->
+    error env at "cannot infer type of forward import %s" f
+  | Some t -> t
+  | None -> error env at "imported file %s not loaded" full_path
 
 (* Paths *)
 
@@ -955,14 +969,8 @@ and infer_exp'' env exp : T.typ =
     let t = check_typ env typ in
     if not env.pre then check_exp env t exp1;
     t
-  | ImportE (_, fp) ->
-    assert (!fp <> "");
-    (match T.Env.find_opt !fp env.libs with
-    | Some T.Pre ->
-      error env exp.at "cannot infer type of forward import %s" !fp
-    | Some t -> t
-    | None -> error env exp.at "unresolved import %s" !fp
-    )
+  | ImportE (f, ri) ->
+    check_import env exp.at f ri
 
 and check_exp env t exp =
   assert (not env.pre);
@@ -1595,9 +1603,8 @@ and check_dec env t dec =
 
 and infer_val_path env exp : T.typ option =
   match exp.it with
-  | ImportE (_, fp) ->
-    assert (!fp <> "");
-    T.Env.find_opt !fp env.libs
+  | ImportE (f, ri) ->
+    Some (check_import env exp.at f ri)
   | VarE id ->
     T.Env.find_opt id.it env.vals
   | DotE (path, id) ->
@@ -1835,6 +1842,7 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
+
 
 (* Programs *)
 
