@@ -122,6 +122,7 @@ and prim =
   | CPSAsync
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
+  | ICCallerPrim
   | ICCallPrim
 
 

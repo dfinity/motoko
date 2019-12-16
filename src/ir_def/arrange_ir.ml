@@ -74,6 +74,7 @@ and prim = function
   | CPSAsync          -> Atom "CPSAsync"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
+  | ICCallerPrim      -> Atom "ICCallerPrim"
   | ICCallPrim        -> Atom "ICCallPrim"
 
 and mut = function

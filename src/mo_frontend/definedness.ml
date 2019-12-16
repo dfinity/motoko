@@ -11,7 +11,7 @@ here in for blocks (function decs).
 *)
 
 open Mo_def
-
+open Mo_types
 open Source
 open Syntax
 
@@ -86,8 +86,12 @@ let rec exp msgs e : f = match e.it with
   | RetE e              -> eagerify (exp msgs e)
   | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)
-  | FuncE (_, s, tp, p, t, e) -> delayify (exp msgs e /// pat msgs p)
-
+  | FuncE (_, sort_pat, tp, p, t, e) ->
+    (match sort_pat.it with
+     | Type.Local ->
+       delayify (exp msgs e /// pat msgs p)
+     | Type.Shared (_, p1) ->
+      delayify ((exp msgs e /// pat msgs p) /// pat msgs p1))
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE _ | ActorUrlE _
   | PrimE _ | ImportE _ -> M.empty

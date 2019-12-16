@@ -40,12 +40,15 @@ let cursor_target_at_pos
   try loop (next ()) with _ -> None
 
 let is_package_path (path : string) =
-  Lib.Option.is_some (Pipeline.ResolveImport.match_package_name path)
+  let open Pipeline.ResolveImport in
+  match parse_import path with
+  | PackageImport _ -> true
+  | _ -> false
 
 let uri_for_package (path : string) =
-  match Pipeline.ResolveImport.match_package_name path with
-  | None -> None
-  | Some (pkg, path) ->
+  let open Pipeline.ResolveImport in
+  match parse_import path with
+  | PackageImport (pkg, path) ->
      begin match
        List.find_opt
          (fun (name, _) -> pkg = name)
@@ -55,6 +58,7 @@ let uri_for_package (path : string) =
         (* Resolved package paths are always absolute *)
         Some ("file://" ^ Filename.concat pkg_path path)
      end
+  | _ -> None
 
 let import_relative_to_project_root root module_path dependency =
   if is_package_path dependency
