@@ -663,6 +663,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "crc8_decode" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -5999,6 +6000,11 @@ and compile_exp (env : E.t) ae exp =
     (* Coercions for abstract types *)
     | CastPrim (_,_), [e] ->
       compile_exp env ae e
+
+    (* CRC-check and strip "ic:" and checksum *)
+    | BlobOfVerifiedUrl, [_] ->
+      const_sr SR.Vanilla (E.call_import env "rts" "crc8_decode")
+
     (* Actor ids are blobs in the RTS *)
     | ActorOfIdBlob _, [e] ->
       compile_exp env ae e

@@ -392,6 +392,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | CastPrim (t1, t2), [e] ->
       typ e <: t1;
       t2 <: t
+    | BlobOfVerifiedUrl, [e] ->
+      typ e <: T.text;
     | ActorOfIdBlob actor_typ, [e] ->
       typ e <: T.blob;
       check_typ env actor_typ;

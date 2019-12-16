@@ -152,9 +152,11 @@ and url e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
     match e.it with
     | S.AnnotE (e,_) -> url e
-    | _ -> typed_phrase' (url' e) e
+    | _ ->
+      let transformed = typed_phrase' (url' e) e in
+      I.{ transformed with note = { transformed.note with note_typ = T.blob } }
 
-and url' e at note _ = I.(PrimE (BlobOfVerifiedUrl, [exp e]))
+and url' e at _ _ = I.(PrimE (BlobOfVerifiedUrl, [exp e]))
 
 and lexp e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
