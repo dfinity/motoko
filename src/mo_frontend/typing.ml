@@ -529,38 +529,6 @@ let check_lit env t lit at =
         (T.string_of_typ t') (T.string_of_typ_expand t)
 
 
-let decode_actor_url complain (report_fail : string -> int -> unit) url : bytes option =
-  let open String in
-  let complain msg = complain msg; None in
-  if equal url "" then complain "actor reference must not be empty"
-  else if not (contains url ':') then complain "actor reference must contain a colon"
-  else if length url < 3 || uppercase_ascii (sub url 0 3) <> "IC:" then complain "actor reference must use 'ic:' scheme"
-  else let hex = sub url 3 (length url - 3) in
-  if equal hex "" then complain "principal ID must not be empty"
-  else if uppercase_ascii hex <> hex then complain "principal ID must be uppercase"
-  else let killNonHex = function
-    | c when c >= '0' && c <= '9' -> c
-    | c when c >= 'A' && c <= 'F' -> c
-    | _ -> 'x' in
-  if map killNonHex hex <> hex then complain "principal ID must contain hexadecimal digits"
-  else if length hex mod 2 = 1 then complain "principal ID must contain an even number of hexadecimal digits"
-  else
-    let blob, crc = sub hex 0 (length hex - 2), sub hex (length hex - 2) 2 in
-    let open Lib.Hex in
-    let bs = bytes_of_hex blob in
-    let checksum = Lib.CRC.crc8 bs in
-    if checksum <> int_of_hex_byte crc then (report_fail crc checksum; None)
-    else Some bs
-
-let check_actor_reference env exp at : unit = match exp.it with
-  | LitE ({contents = TextLit url}) ->
-    let complain msg = error env at "%s" msg in
-    let report_fail exp_crc actual_crc =
-      error env at "principal ID checksum failure\n  %s (expected)\n  %2X (got)" exp_crc actual_crc in
-    ignore (decode_actor_url complain report_fail url)
-  | _ -> ()
-
-
 (* Coercions *)
 
 let array_obj t =
@@ -637,7 +605,6 @@ and infer_exp'' env exp : T.typ =
     T.Prim (infer_lit env lit exp.at)
   | ActorUrlE exp' ->
     if not env.pre then check_exp env T.text exp';
-    check_actor_reference env exp' exp'.at;
     error env exp.at "no type can be inferred for actor reference"
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
@@ -1025,7 +992,6 @@ and check_exp' env0 t exp : T.typ =
     check_lit env t lit exp.at;
     t
   | ActorUrlE exp', t' ->
-    check_actor_reference env exp' exp.at;
     check_exp env T.text exp';
     begin match T.normalize t' with
     | T.(Obj (Actor, _)) -> t'
