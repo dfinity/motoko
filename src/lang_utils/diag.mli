@@ -22,7 +22,7 @@ An extension of the built-in result type that also reports diagnostic messages.
 Both success and failure can come with messages)
 *)
 
-type 'a result = ('a * messages, messages) Pervasives.result
+type 'a result = ('a * messages, messages) Stdlib.result
 
 val return : 'a -> 'a result
 val bind : 'a result -> ('a -> 'b result) -> 'b result
