@@ -1,4 +1,5 @@
-service Foo {
+service Foo: 
+{
   foo : (record {2 : int}) -> ();
   bar : (record {"2" : int}) -> ();
   // TODO: JS binding treats all field names as string

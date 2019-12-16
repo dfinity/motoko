@@ -169,7 +169,13 @@ let blockE decs exp =
 let textE s =
   { it = LitE (TextLit s);
     at = no_region;
-    note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
+    note = { note_typ = T.text; note_eff = T.Triv }
+  }
+
+let blobE s =
+  { it = LitE (BlobLit s);
+    at = no_region;
+    note = { note_typ = T.blob; note_eff = T.Triv }
   }
 
 let unitE =
@@ -293,11 +299,21 @@ let immuteE e =
   }
 
 
+(* just like we use exp also for vars, we use exp also for lvalues
+in the constructor DSL *)
+let lexp_of_exp' = function
+  | VarE i -> VarLE i
+  | DotE (e1,n) -> DotLE (e1, n)
+  | IdxE (e1,e2) -> IdxLE (e1, e2)
+  | _ -> failwith "Impossible: lexp_of_exp"
+
+let lexp_of_exp (e:exp) = { e with it = lexp_of_exp' e.it; note = typ e }
+
 let assignE exp1 exp2 =
   assert (T.is_mut (typ exp1));
-  { it = AssignE (exp1, exp2);
+  { it = AssignE (lexp_of_exp exp1, exp2);
     at = no_region;
-    note = { note_eff = Ir_effect.max_eff (eff exp1) (eff exp2);
+    note = { note_eff = eff exp2;
              note_typ = T.unit }
   }
 

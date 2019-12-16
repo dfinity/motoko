@@ -2,6 +2,9 @@ open Mo_def
 open Mo_config
 open Mo_types
 
+module ResolveImport = Resolve_import
+module FilePath = File_path
+
 type parse_fn = string -> (Syntax.prog * string) Diag.result
 val parse_file: parse_fn
 val parse_string: string -> parse_fn

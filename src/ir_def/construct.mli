@@ -48,6 +48,7 @@ val ic_callE : exp -> exp -> exp -> exp -> exp
 val projE : exp ->  int -> exp
 val blockE : dec list -> exp -> exp
 val textE : string -> exp
+val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
 val ignoreE : exp -> exp
 

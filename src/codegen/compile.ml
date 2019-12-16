@@ -4761,8 +4761,9 @@ module FuncDec = struct
       get_arg ^^ Serialization.serialize env ts1 ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_simple" ^^
-      (* TODO: Check error code *)
-      G.i Drop
+      (* Check error code *)
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+      E.else_trap_with env "could not perform call"
     | _ -> assert false
 
   let ic_call_one_shot env ts get_meth_pair get_arg =
@@ -4783,7 +4784,7 @@ module FuncDec = struct
       get_arg ^^ Serialization.serialize env ts ^^
       (* done! *)
       Dfinity.system_call env "ic0" "call_simple" ^^
-      (* TODO: Check error code *)
+      (* This is a one-shot function: Ignore error code *)
       G.i Drop
     | _ -> assert false
 
@@ -5699,24 +5700,23 @@ let compile_load_field env typ name =
 
 (* compile_lexp is used for expressions on the left of an
 assignment operator, produces some code (with side effect), and some pure code *)
-let rec compile_lexp (env : E.t) ae exp =
-  (fun (code,fill_code) -> (G.with_region exp.at code, G.with_region exp.at fill_code)) @@
-  match exp.it with
-  | VarE var ->
+let rec compile_lexp (env : E.t) ae lexp =
+  (fun (code, fill_code) -> (G.with_region lexp.at code, G.with_region lexp.at fill_code)) @@
+  match lexp.it with
+  | VarLE var ->
      G.nop,
      Var.set_val env ae var
-  | IdxE (e1,e2) ->
+  | IdxLE (e1, e2) ->
      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
      compile_exp_vanilla env ae e2 ^^ (* idx *)
      BigNum.to_word32 env ^^
      Arr.idx env,
      store_ptr
-  | DotE (e, n) ->
+  | DotLE (e, n) ->
      compile_exp_vanilla env ae e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
      Object.idx env e.note.note_typ n,
      store_ptr
-  | _ -> todo "compile_lexp" (Arrange_ir.exp exp) (E.trap_with env "TODO: compile_lexp", G.nop)
 
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@

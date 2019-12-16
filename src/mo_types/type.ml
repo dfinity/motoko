@@ -92,6 +92,7 @@ let bool = Prim Bool
 let nat = Prim Nat
 let int = Prim Int
 let text = Prim Text
+let blob = Prim Blob
 let error = Prim Error
 let char = Prim Char
 
