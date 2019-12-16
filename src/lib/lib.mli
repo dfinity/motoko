@@ -137,3 +137,11 @@ sig
   val chop_suffix : string -> string -> string option
   val lightweight_escaped : string -> string
 end
+
+module Hex :
+sig
+  val crc8 : bytes -> int
+  val hexdigit : char -> int
+  val bytes_of_hex : string -> bytes
+  val int_of_hex_byte : string -> int
+end
