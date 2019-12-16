@@ -391,7 +391,12 @@ let rec check_exp env (exp:Ir.exp) : unit =
       t2 <: t
     | ActorOfIdBlob actor_typ, [e] ->
       typ e <: T.blob;
-      t <: T.Obj (T.Actor, []);
+      check_typ env actor_typ;
+      begin match actor_typ with
+      | T.Obj (T.Actor, _) -> ()
+      | _ -> error env exp.at "ActorOfIdBlob cast to actor object type, not\n   %s"
+           (T.string_of_typ_expand actor_typ)
+      end;
       actor_typ <: t;
     | OtherPrim _, _ -> ()
     | _ ->
