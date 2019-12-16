@@ -48,9 +48,11 @@ static uint8_t hex_digit(uint8_t c) {
 
 // CRC-8 from IC-URL
 export blob_t crc8_decode(text_t s0) {
-  uint32_t n = BLOB_LEN(s0);
+  extern blob_t blob_of_text(text_t);
+  blob_t b0 = blob_of_text(s0);
+  uint32_t n = BLOB_LEN(b0);
   if (n < 3) rts_trap_with("ic_url_decode: Not an URL");
-  const char* const s = BLOB_PAYLOAD(s0);
+  const char* const s = BLOB_PAYLOAD(b0);
   const char* const e = s + n;
   check_ci_schema(s);
   const char* const hex = s + 3;
