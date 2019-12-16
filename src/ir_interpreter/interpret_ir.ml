@@ -60,6 +60,7 @@ let env_of_scope flags flavor ve =
     async = false;
   }
 
+let context env = V.Text (Lib.Option.value env.selves)
 
 (* Error handling *)
 
@@ -346,7 +347,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
               let vk' = Value.Func (call_conv_f, fun c v _ -> k' v) in
               let vr = Value.Func (call_conv_r, fun c v _ -> r v) in
               let vc = V.Text (Lib.Option.value env.selves) in
-              f (Some vc) (V.Tup [vk'; vr]) V.as_unit
+              f vc (V.Tup [vk'; vr]) V.as_unit
             )
             k
         | _ -> assert false
@@ -360,20 +361,20 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
              let (_, f) = V.as_func vf in
              let (_, r) = V.as_func vr in
              await env exp.at (V.as_async v1)
-               (fun v -> f None v k)
-               (fun e -> r None e k) (* TBR *)
+               (fun v -> f (context env) v k)
+               (fun e -> r (context env) e k) (* TBR *)
           | _ -> assert false
         )
       )
     | OtherPrim s, exps ->
       interpret_exps env exps [] (fun vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        Prim.prim s None arg k
+        Prim.prim s (context env) arg k
       )
     | NumConvPrim (t1, t2), exps ->
       interpret_exps env exps [] (fun vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
-        Prim.num_conv_prim t1 t2 None arg k
+        Prim.num_conv_prim t1 t2 (context env) arg k
         )
     | ICReplyPrim ts, [exp1] ->
       assert (not env.flavor.has_async_typ);
@@ -396,7 +397,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let vc = V.Text (Lib.Option.value env.selves) in
-        f (Some (V.Tup[vc; kv; rv])) v2 k))))
+        f (V.Tup[vc; kv; rv]) v2 k))))
     | ICCallerPrim, [] ->
       k (V.Text (Lib.Option.value env.callers))
     | _ ->
@@ -449,11 +450,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
-        let c = if T.is_shared_sort call_conv.Call_conv.sort
-          then Some (V.Text (Lib.Option.value env.selves))
-          else None
-        in
-        f c v2 k
+        f (context env) v2 k
       )
     )
   | BlockE (decs, exp1) ->
@@ -528,7 +525,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let _call_conv, f = V.as_func v in
         last_region := exp.at; (* in case the following throws *)
         let vc = V.Text (Lib.Option.value env.selves) in
-        f (Some (V.Tup[vc; kv; rv])) (V.Tup []) k))
+        f (V.Tup[vc; kv; rv]) (V.Tup []) k))
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
@@ -786,10 +783,7 @@ and interpret_func env at sort x args f c v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" x (string_of_arg env v);
   let callers =
     if T.is_shared_sort sort
-    then match c with
-         | Some v_caller ->
-           Some (V.as_text v_caller)
-         | _ -> assert false
+    then Some (V.as_text c)
     else env.callers
   in
   let ve = match_args at args v in
@@ -810,7 +804,7 @@ and interpret_func env at sort x args f c v (k : V.value V.cont) =
   in f env' k'
 
 and interpret_message env at x args f c v (k : V.value V.cont) =
-  let v_caller, v_reply, v_reject = match V.as_tup (Lib.Option.value c) with
+  let v_caller, v_reply, v_reject = match V.as_tup c with
     | [v_caller; v_reply; v_reject] -> v_caller, v_reply, v_reject
     | _ -> assert false
   in
@@ -829,8 +823,8 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
       vals = V.Env.adjoin env.vals ve;
       labs = V.Env.empty;
       rets = Some k';
-      replies = Some (fun v -> reply None v V.as_unit);
-      rejects = Some (fun v -> reject None v V.as_unit);
+      replies = Some (fun v -> reply (context env) v V.as_unit);
+      rejects = Some (fun v -> reject (context env) v V.as_unit);
       callers = Some (V.as_text v_caller);
       async = false
     }

@@ -62,6 +62,8 @@ let env_of_scope flags scope =
     async = false;
   }
 
+let context env = V.Text (Lib.Option.value env.selves)
+
 (* Error handling *)
 
 exception Trap of Source.region * string
@@ -479,11 +481,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
-        let c =
-          if T.is_shared_sort call_conv.Call_conv.sort
-          then Some (V.Obj(V.Env.singleton "caller" (V.Text (Lib.Option.value env.selves))))
-          else None
-        in
+        let c = context env in
         f c v2 k
       )
     )
@@ -541,7 +539,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       let _, next = V.as_func (find "next" fs) in
       let rec k_continue = fun v ->
         V.as_unit v;
-        next None V.unit (fun v' ->
+        next (context env) V.unit (fun v' ->
           match v' with
           | V.Opt v1 ->
             (match match_pat pat v1 with
@@ -765,20 +763,19 @@ and match_pat_fields pfs vs ve : val_env option =
 
 and match_sort_pat env sort_pat c =
   match sort_pat.it, c with
-  | T.Local, None -> V.Env.empty
-  | T.Shared (_, pat), Some v ->
+  | T.Local, _ -> V.Env.empty
+  | T.Shared (_, pat), v ->
     (match match_pat pat v with
      | None ->
        (* shouldn't occur with our irrefutable patterns, but may in future *)
        trap pat.at "context value %s does not match context pattern" (string_of_val env v)
      | Some ve1 ->
        ve1)
-  | _ -> assert false
 
 (* Objects *)
 
 and interpret_obj env sort fields (k : V.value V.cont) =
-  let selves = if sort.it = T.Actor then Some (V.fresh_id ()) else None in
+  let selves = if sort.it = T.Actor then Some (V.fresh_id ()) else env.selves in
   let ve_ex, ve_in = declare_exp_fields fields V.Env.empty V.Env.empty in
   let env' = adjoin_vals {env with selves = selves} ve_in in
   interpret_exp_fields env' sort.it fields ve_ex k
@@ -862,7 +859,8 @@ and interpret_decs env decs (k : V.value V.cont) =
 
 and interpret_func env name sort_pat pat f c v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" name (string_of_arg env v);
-  let ve1 = match_sort_pat env sort_pat c in
+  let v1 = V.Obj (V.Env.singleton "caller" c) in
+  let ve1 = match_sort_pat env sort_pat v1 in
   match match_pat pat v with
   | None ->
     trap pat.at "argument value %s does not match parameter list" (string_of_val env v)

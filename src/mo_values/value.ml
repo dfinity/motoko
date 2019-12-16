@@ -261,7 +261,7 @@ type unicode = int
 
 type actor_id = string
 
-type context = value option
+type context = value
 
 and func =
   context -> value -> value cont -> unit

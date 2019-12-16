@@ -280,7 +280,7 @@ let prim = function
       k (Array (Array.init (Int.to_int (as_int len)) (fun _ -> Mut (ref x))))
     | _ -> assert false
     )
-  | "Array.tabulate" -> fun _ v k ->
+  | "Array.tabulate" -> fun c v k ->
     (match Value.as_tup v with
     | [len; g] ->
       let len_nat = Int.to_int (as_int len) in
@@ -288,7 +288,7 @@ let prim = function
       let rec go prefix k i =
         if i == len_nat
         then k (Array (Array.of_list (prefix [])))
-        else g' None (Int (Int.of_int i)) (fun x -> go (fun tl -> prefix (x::tl)) k (i + 1))
+        else g' c (Int (Int.of_int i)) (fun x -> go (fun tl -> prefix (x::tl)) k (i + 1))
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
