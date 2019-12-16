@@ -57,8 +57,6 @@ and exp e =
 
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
-  | S.(ActorUrlE {it = LitE {contents = TextLit url}; _}) ->
-    I.(PrimE (ActorOfIdBlob note.note_typ, [blobE url]))
   | S.ActorUrlE e ->
     I.(PrimE (ActorOfIdBlob note.note_typ, [url e]))
   | S.LitE l -> I.LitE (lit !l)
