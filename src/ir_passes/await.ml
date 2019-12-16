@@ -79,7 +79,7 @@ and t_exp' context exp' =
   | ActorDotE (exp1, id) ->
     ActorDotE (t_exp context exp1, id)
   | AssignE (exp1, exp2) ->
-    AssignE (t_exp context exp1, t_exp context exp2)
+    AssignE (t_lexp context exp1, t_exp context exp2)
   | ArrayE (mut, typ, exps) ->
     ArrayE (mut, typ, List.map (t_exp context) exps)
   | IdxE (exp1, exp2) ->
@@ -143,6 +143,14 @@ and t_exp' context exp' =
     ActorE (id, t_decs context ds, ids, t)
   | NewObjE (sort, ids, typ) -> exp'
   | SelfCallE _ -> assert false
+
+and t_lexp context lexp =
+  { lexp with it = t_lexp' context lexp.it }
+and t_lexp' context lexp' =
+  match lexp' with
+  | VarLE i -> VarLE i
+  | DotLE (exp1, id) -> DotLE (t_exp context exp1, id)
+  | IdxLE (exp1, exp2) -> IdxLE (t_exp context exp1, t_exp context exp2)
 
 and t_dec context dec =
   {dec with it = t_dec' context dec.it}
@@ -228,20 +236,19 @@ and c_loop context k e1 =
               (c_exp context e1 (ContVar loop))]
             (loop -*- unitE)
 
-and c_assign context k e exp1 exp2 =
- match exp1.it with
- | VarE _ ->
-   unary context k (fun v2 -> e (AssignE(exp1, v2))) exp2
- | DotE (exp11, id) ->
+and c_assign context k e lexp1 exp2 =
+ match lexp1.it with
+ | VarLE _ ->
+   unary context k (fun v2 -> e (AssignE(lexp1, v2))) exp2
+ | DotLE (exp11, id) ->
    binary context k (fun v11 v2 ->
-    e (AssignE ({exp1 with it = DotE (v11, id)}, v2))) exp11 exp2
- | IdxE (exp11, exp12) ->
+    e (AssignE ({lexp1 with it = DotLE (v11, id)}, v2))) exp11 exp2
+ | IdxLE (exp11, exp12) ->
    nary context k (fun vs -> match vs with
     | [v11; v12; v2] ->
-      e (AssignE ({exp1 with it = IdxE (v11, v12)}, v2))
+      e (AssignE ({lexp1 with it = IdxLE (v11, v12)}, v2))
     | _ -> assert false)
     [exp11; exp12; exp2]
- | _ -> assert false
 
 and c_exp context exp =
   c_exp' context exp

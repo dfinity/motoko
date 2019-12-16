@@ -46,7 +46,7 @@ struct
     else Int32.compare i1 i2
 end
 
-module Hex =
+module CRC =
 struct
   let crc8 (bs : bytes) : int =
     let inner _ = function
@@ -55,7 +55,10 @@ struct
     let outer crc b =
       List.fold_right inner [0;1;2;3;4;5;6;7] (Char.code b lxor crc) land 0xFF in
     Seq.fold_left outer 0 (Bytes.to_seq bs)
+end
 
+module Hex =
+struct
   let hexdigit = let open Char in function
     | c when c >= '0' && c <= '9' -> code c - code '0'
     | c when c >= 'A' && c <= 'F' -> code c - code 'A' + 10
@@ -149,13 +152,13 @@ struct
           | '\b' ->
              Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'b'
           | '\t' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 't'             
+             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 't'
           | c -> Bytes.set s' !n c
           end;
           n := !n + 1
         done;
         Bytes.unsafe_to_string s'
-      end    
+      end
 end
 
 module List =
@@ -402,4 +405,29 @@ struct
   let is_fulfilled p = !p <> None
   let value_opt p = !p
   let value p = match !p with Some x -> x | None -> raise Promise
+end
+
+[@@@warning "-60"]
+module Test =
+struct
+(* need to put tests in this file because
+   dune does not like it if other files in lib depend on Lib
+   Maybe we should break up lib into its components, now that
+   it is a dune library.
+*)
+  let%test "bytes_of_hex DEADBEEF" =
+    Hex.bytes_of_hex "DEADBEEF" = Bytes.of_string "\xDE\xAD\xBE\xEF"
+  let%test "bytes_of_hex 0000" =
+    Hex.bytes_of_hex "0000" = Bytes.of_string "\x00\x00"
+  let%test "bytes_of_hex empty" =
+    Hex.bytes_of_hex "" = Bytes.of_string ""
+
+  let%test "int_of_hex_byte 00" = Hex.int_of_hex_byte "00" = 0
+  let%test "int_of_hex_byte AB" = Hex.int_of_hex_byte "AB" = 0xAB
+  let%test "int_of_hex_byte FF" = Hex.int_of_hex_byte "FF" = 0xFF
+
+  (* see https://crccalc.com/ *)
+  let %test "crc8 DEADBEEF" = CRC.crc8 (Bytes.of_string "\xDE\xAD\xBE\xEF") = 0xCA
+  let %test "crc8 empty" = CRC.crc8 (Bytes.of_string "") = 0x00
+  let %test "crc8 0000" = CRC.crc8 (Bytes.of_string "\x00\x00") = 0x00
 end

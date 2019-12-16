@@ -53,6 +53,7 @@ data ExecutionState s = ExecutionState
   , params :: Params
   , existing_canisters :: ExistingCanisters
   -- now the mutable parts
+  , responded :: Responded
   , response :: Maybe Response
   , reply_data :: Blob
   , calls :: [MethodCall]
@@ -60,12 +61,13 @@ data ExecutionState s = ExecutionState
   }
 
 
-initalExecutionState :: CanisterId -> Instance s -> ExistingCanisters -> ExecutionState s
-initalExecutionState self_id inst ex = ExecutionState
+initalExecutionState :: CanisterId -> Instance s -> ExistingCanisters -> Responded -> ExecutionState s
+initalExecutionState self_id inst ex responded = ExecutionState
   { inst
   , self_id
   , existing_canisters = ex
   , params = Params Nothing Nothing 0 ""
+  , responded
   , response = Nothing
   , reply_data = mempty
   , calls = mempty
@@ -237,10 +239,13 @@ systemAPI esref =
       return $ BSU.fromString msg
 
     assert_not_responded :: HostM s ()
-    assert_not_responded =
+    assert_not_responded = do
+      gets responded >>= \case
+        Responded False -> return ()
+        Responded True  -> throwError "This call has already been responded to earlier"
       gets response >>= \case
         Nothing -> return ()
-        Just  _ -> throwError "This call has already been responded to"
+        Just  _ -> throwError "This call has already been responded to in this function"
 
     msg_reply_data_append :: (Int32, Int32) -> HostM s ()
     msg_reply_data_append (src, size) = do
@@ -351,15 +356,18 @@ rawInvoke esref (CI.Initialize ex wasm_mod caller dat) =
     rawInitializeMethod esref ex wasm_mod caller dat
 rawInvoke esref (CI.Query name caller dat) =
     rawQueryMethod esref name caller dat
-rawInvoke esref (CI.Update name ex caller dat) =
-    rawUpdateMethod esref name ex caller dat
-rawInvoke esref (CI.Callback cb ex res) =
-    rawCallbackMethod esref cb ex res
+rawInvoke esref (CI.Update name ex caller responded dat) =
+    rawUpdateMethod esref name ex caller responded dat
+rawInvoke esref (CI.Callback cb ex responded res) =
+    rawCallbackMethod esref cb ex responded res
+
+cantRespond :: Responded
+cantRespond = Responded True
 
 rawInitializeMethod :: ImpState s -> ExistingCanisters -> Module -> EntityId -> Blob -> ST s (TrapOr InitResult)
 rawInitializeMethod (esref, cid, inst) ex wasm_mod caller dat = do
   result <- runExceptT $ do
-    let es = (initalExecutionState cid inst ex)
+    let es = (initalExecutionState cid inst ex cantRespond)
               { params = Params
                   { param_dat    = Just dat
                   , param_caller = Just caller
@@ -382,7 +390,7 @@ rawInitializeMethod (esref, cid, inst) ex wasm_mod caller dat = do
 
 rawQueryMethod :: ImpState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr Response)
 rawQueryMethod (esref, cid, inst) method caller dat = do
-  let es = (initalExecutionState cid inst [])
+  let es = (initalExecutionState cid inst [] cantRespond)
             { params = Params
                 { param_dat    = Just dat
                 , param_caller = Just caller
@@ -400,9 +408,9 @@ rawQueryMethod (esref, cid, inst) method caller dat = do
       | Just r <- response es' -> return $ Return r
       | otherwise -> return $ Trap "No response"
 
-rawUpdateMethod :: ImpState s -> MethodName -> ExistingCanisters -> EntityId -> Blob -> ST s (TrapOr UpdateResult)
-rawUpdateMethod (esref, cid, inst) method ex caller dat = do
-  let es = (initalExecutionState cid inst ex)
+rawUpdateMethod :: ImpState s -> MethodName -> ExistingCanisters -> EntityId -> Responded -> Blob -> ST s (TrapOr UpdateResult)
+rawUpdateMethod (esref, cid, inst) method ex caller responded dat = do
+  let es = (initalExecutionState cid inst ex responded)
             { params = Params
                 { param_dat    = Just dat
                 , param_caller = Just caller
@@ -417,14 +425,14 @@ rawUpdateMethod (esref, cid, inst) method ex caller dat = do
     Left  err -> return $ Trap err
     Right (_, es') -> return $ Return (new_canisters es', calls es', response es')
 
-rawCallbackMethod :: ImpState s -> Callback -> ExistingCanisters -> Response -> ST s (TrapOr UpdateResult)
-rawCallbackMethod (esref, cid, inst) callback ex res = do
+rawCallbackMethod :: ImpState s -> Callback -> ExistingCanisters -> Responded -> Response -> ST s (TrapOr UpdateResult)
+rawCallbackMethod (esref, cid, inst) callback ex responded res = do
   let params = case res of
         Reply dat ->
           Params { param_dat = Just dat, param_caller = Nothing, reject_code = 0, reject_message = "" }
         Reject (rc, reject_message) ->
           Params { param_dat = Nothing, param_caller = Nothing, reject_code = rejectCode rc, reject_message }
-  let es = (initalExecutionState cid inst ex) { params }
+  let es = (initalExecutionState cid inst ex responded) { params }
 
   let WasmClosure fun_idx env = case res of
         Reply {}  -> reply_callback callback

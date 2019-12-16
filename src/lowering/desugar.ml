@@ -85,7 +85,7 @@ and exp' at note = function
     | T.Actor, _ -> I.ActorDotE (exp e, x.it)
     | _ -> I.DotE (exp e, x.it)
     end
-  | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
+  | S.AssignE (e1, e2) -> I.AssignE (lexp e1, exp e2)
   | S.ArrayE (m, es) ->
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
@@ -156,6 +156,17 @@ and url e =
 
 and url' e at note _ = I.(PrimE (BlobOfVerifiedUrl, [exp e]))
 
+and lexp e =
+    (* We short-cut AnnotE here, so that we get the position of the inner expression *)
+    match e.it with
+    | S.AnnotE (e,_) -> lexp e
+    | _ -> { e with it = lexp' e.it; note = e.note.S.note_typ }
+
+and lexp' = function
+  | S.VarE i -> I.VarLE i.it
+  | S.DotE (e, x) -> I.DotLE (exp e, x.it)
+  | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
+  | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const

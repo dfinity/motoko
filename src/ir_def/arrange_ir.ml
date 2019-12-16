@@ -20,7 +20,7 @@ let rec exp e = match e.it with
   | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
   | DotE (e, n)         -> "DotE"    $$ [exp e; Atom n]
   | ActorDotE (e, n)    -> "ActorDotE" $$ [exp e; Atom n]
-  | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
+  | AssignE (le1, e2)   -> "AssignE" $$ [lexp le1; exp e2]
   | ArrayE (m, t, es)   -> "ArrayE"  $$ [mut m; typ t] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
   | CallE (e1, ts, e2)  -> "CallE" $$ [exp e1] @ List.map typ ts @ [exp e2]
@@ -46,6 +46,11 @@ let rec exp e = match e.it with
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | ThrowE e             -> "ThrowE"    $$ [exp e]
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
+
+and lexp le = match le.it with
+  | VarLE i             -> "VarLE" $$ [id i]
+  | IdxLE (e1, e2)      -> "IdxLE" $$ [exp e1; exp e2]
+  | DotLE (e1, n)       -> "DotLE" $$ [exp e1; Atom n]
 
 and fields fs = List.fold_left (fun flds (f : field) -> (f.it.name $$ [ id f.it.var ]):: flds) [] fs
 

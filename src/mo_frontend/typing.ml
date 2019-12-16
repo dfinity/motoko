@@ -535,7 +535,7 @@ let decode_actor_url complain (report_fail : string -> int -> unit) url : bytes 
     let blob, crc = sub hex 0 (length hex - 2), sub hex (length hex - 2) 2 in
     let open Lib.Hex in
     let bs = bytes_of_hex blob in
-    let checksum = crc8 bs in
+    let checksum = Lib.CRC.crc8 bs in
     if checksum <> int_of_hex_byte crc then (report_fail crc checksum; None)
     else Some bs
 
@@ -1019,7 +1019,7 @@ and check_exp' env0 t exp : T.typ =
   | ActorUrlE exp', t' ->
     check_actor_reference env exp' exp.at;
     check_exp env0 T.text exp';
-    begin match t' with
+    begin match T.normalize t' with
     | T.(Obj (Actor, _)) -> t'
     | _ -> error env exp.at "actor reference must have an actor type"
     end
