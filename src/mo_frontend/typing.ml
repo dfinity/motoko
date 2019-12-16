@@ -1196,9 +1196,9 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
 and check_sort_pat env sort_pat : T.func_sort * Scope.val_env =
   match sort_pat.it with
   | T.Local -> T.Local, T.Env.empty
-  | T.Shared (ss, None) -> T.Shared ss, T.Env.empty
-  | T.Shared (ss, Some pat) ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "shared function cannot take a context pattern";
+  | T.Shared (ss, pat) ->
+    if pat.it <> WildP then
+      error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "shared function cannot take a context pattern";
     T.Shared ss, check_pat_exhaustive env T.ctxt pat
 
 and check_pat_exhaustive env t pat : Scope.val_env =

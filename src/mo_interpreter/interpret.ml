@@ -766,8 +766,7 @@ and match_pat_fields pfs vs ve : val_env option =
 and match_sort_pat env sort_pat c =
   match sort_pat.it, c with
   | T.Local, None -> V.Env.empty
-  | T.Shared (_ , None), Some _ -> V.Env.empty
-  | T.Shared (_, Some pat), Some v ->
+  | T.Shared (_, pat), Some v ->
     (match match_pat pat v with
      | None ->
        (* shouldn't occur with our irrefutable patterns, but may in future *)

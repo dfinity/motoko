@@ -89,7 +89,9 @@ and exp' at note = function
   | S.FuncE (name, sp, tbs, p, _t_opt, e) ->
     let s, po = match sp.it with
       | T.Local -> (T.Local, None)
-      | T.Shared (ss, po) -> (T.Shared ss, po) in
+      | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
+        (T.Shared ss, None)
+      | T.Shared (ss, sp) -> (T.Shared ss, Some sp) in
     let args, wrap, control, res_tys = to_args note.I.note_typ po p in
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in

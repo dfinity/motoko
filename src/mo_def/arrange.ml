@@ -107,14 +107,11 @@ and obj_sort s = match s.it with
   | Type.Actor -> Atom "Actor"
   | Type.Module -> Atom "Module"
 
-and pat_opt op = match op with
-    None -> []
-  | Some p -> [pat p]
 
 and sort_pat sp = match sp.it with
   | Type.Local -> Atom "Local"
-  | Type.Shared (Type.Write, op) -> "Shared" $$ (pat_opt op)
-  | Type.Shared (Type.Query, op) -> "Query" $$ (pat_opt op)
+  | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
+  | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
 
 and func_sort s = match s.it with
   | Type.Local -> Atom "Local"

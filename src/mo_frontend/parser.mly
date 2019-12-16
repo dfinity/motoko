@@ -76,7 +76,7 @@ let share_typfield (tf : typ_field) =
 let share_exp e =
   match e.it with
   | FuncE (x, ({it = Type.Local; _} as s), tbs, p, t, e) ->
-    FuncE (x, {s with it = Type.Shared (Type.Write, None)}, tbs, p, t, e) @? e.at
+    FuncE (x, {s with it = Type.Shared (Type.Write, WildP @! s.at)}, tbs, p, t, e) @? e.at
   | _ -> e
 
 let share_dec d =
@@ -202,8 +202,8 @@ seplist1(X, SEP) :
 
 %inline sort_pat :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt op=pat_nullary? { Type.Shared (m,op) @@ at $sloc  }
-  | QUERY op=pat_nullary?{ Type.Shared (Type.Query, op) @@ at $sloc }
+  | SHARED m=mode_opt op=sort_pat_opt { Type.Shared (m,op (at $sloc)) @@ at $sloc  }
+  | QUERY op=sort_pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
 
 (* Paths *)
 
@@ -598,6 +598,12 @@ pat_field :
     { {id = x; pat = p} @@ at $sloc }
   | x=id COLON t=typ
     { {id = x; pat = AnnotP(VarP x @! x.at, t) @! t.at} @@ at $sloc }
+
+sort_pat_opt :
+  | p=pat_nullary
+    { fun sloc -> p }
+  | (* Empty *)
+    { fun sloc -> WildP @! sloc }
 
 (* Declarations *)
 

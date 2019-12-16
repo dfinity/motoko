@@ -88,10 +88,9 @@ let rec exp msgs e : f = match e.it with
   (* Uses are delayed by function expressions *)
   | FuncE (_, sort_pat, tp, p, t, e) ->
     (match sort_pat.it with
-     | Type.Local
-     | Type.Shared (_, None) ->
+     | Type.Local ->
        delayify (exp msgs e /// pat msgs p)
-     | Type.Shared (_, Some p1) ->
+     | Type.Shared (_, p1) ->
       delayify ((exp msgs e /// pat msgs p) /// pat msgs p1))
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE l              -> M.empty
