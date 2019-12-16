@@ -516,7 +516,7 @@ let check_lit env t lit at =
         (T.string_of_typ t') (T.string_of_typ_expand t)
 
 
-let decode_actor_url complain (report_fail : string -> int -> unit) url : (bytes * int) option =
+let decode_actor_url complain (report_fail : string -> int -> unit) url : bytes option =
   let open String in
   let complain msg = complain msg; None in
   if equal url "" then complain "actor reference must not be empty"
@@ -537,7 +537,7 @@ let decode_actor_url complain (report_fail : string -> int -> unit) url : (bytes
     let bs = bytes_of_hex blob in
     let checksum = crc8 bs in
     if checksum <> int_of_hex_byte crc then (report_fail crc checksum; None)
-    else Some (bs, checksum)
+    else Some bs
 
 let check_actor_reference env url at : unit =
   let complain msg = error env at "%s" msg in
