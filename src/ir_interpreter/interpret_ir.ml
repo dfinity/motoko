@@ -157,7 +157,6 @@ let reject async v =
 
 let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value V.cont) =
     let async = make_async () in
-    (*    let k' = fun v1 -> set_async async v1 in *)
     let k' = reply async in
     let r = reject async in
     if env.flags.trace then trace "-> async %s" (string_of_region at);
@@ -183,7 +182,7 @@ let await env at async k =
           k v
         )
     )
-(*;  Scheduler.yield () *)
+
 
 let actor_msg env id f c v (k : V.value V.cont) =
   if env.flags.trace then trace "-> message %s%s" id (string_of_arg env v);
@@ -203,7 +202,6 @@ let make_unit_message env id call_conv f =
     )
   | _ ->
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
-(* assert (false) *)
 
 let make_async_message env id call_conv f =
   assert env.flavor.has_async_typ;
@@ -219,7 +217,6 @@ let make_async_message env id call_conv f =
     )
   | _ ->
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
-    (* assert (false) *)
 
 let make_replying_message env id call_conv f =
   assert (not env.flavor.has_async_typ);
@@ -232,8 +229,6 @@ let make_replying_message env id call_conv f =
     )
   | _ ->
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
-    (* assert (false) *)
-
 
 let make_message env x cc f : V.value =
   match cc.CC.control with
