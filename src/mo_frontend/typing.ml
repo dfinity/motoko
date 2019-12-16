@@ -535,9 +535,9 @@ let decode_actor_url complain (report_fail : string -> int -> unit) url : (bytes
     let blob, crc = sub hex 0 (length hex - 2), sub hex (length hex - 2) 2 in
     let open Lib.Hex in
     let bs = bytes_of_hex blob in
-    let hash = crc8 bs in
-    if hash <> int_of_hex_byte crc then (report_fail crc hash; None)
-    else Some ((bs, hash))
+    let checksum = crc8 bs in
+    if checksum <> int_of_hex_byte crc then (report_fail crc checksum; None)
+    else Some (bs, checksum)
 
 let check_actor_reference env url at : unit =
   let complain msg = error env at "%s" msg in
