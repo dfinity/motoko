@@ -108,7 +108,6 @@ let encode (em : extended_module) =
     let vu32 i = vu64 Int64.(logand (of_int32 i) 0xffffffffL)
     let vs7 i = vs64 (Int64.of_int i)
     let vs32 i = vs64 (Int64.of_int32 i)
-    let vs33 i = vs64 (Wasm.I64_convert.extend_i32_s i)
     let f32 x = u32 (Wasm.F32.to_bits x)
     let f64 x = u64 (Wasm.F64.to_bits x)
 
@@ -182,11 +181,6 @@ let encode (em : extended_module) =
 
     let var x = vu32 x.it
 
-    let block_type = function
-      | VarBlockType x -> vs33 x.it
-      | ValBlockType None -> vs7 (-0x40)
-      | ValBlockType (Some t) -> value_type t
-
     let rec instr e =
       if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);
 
@@ -194,10 +188,10 @@ let encode (em : extended_module) =
       | Unreachable -> op 0x00
       | Nop -> op 0x01
 
-      | Block (ts, es) -> op 0x02; block_type ts; list instr es; end_ ()
-      | Loop (ts, es) -> op 0x03; block_type ts; list instr es; end_ ()
+      | Block (ts, es) -> op 0x02; stack_type ts; list instr es; end_ ()
+      | Loop (ts, es) -> op 0x03; stack_type ts; list instr es; end_ ()
       | If (ts, es1, es2) ->
-        op 0x04; block_type ts; list instr es1;
+        op 0x04; stack_type ts; list instr es1;
         if es2 <> [] then op 0x05;
         list instr es2; end_ ()
 

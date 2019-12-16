@@ -112,7 +112,6 @@ let vu1 s = Int64.to_int (vuN 1 s)
 let vu32 s = Int64.to_int32 (vuN 32 s)
 let vs7 s = Int64.to_int (vsN 7 s)
 let vs32 s = Int64.to_int32 (vsN 32 s)
-let vs33 s = I32_convert.wrap_i64 (vsN 33 s)
 let vs64 s = vsN 64 s
 let f32 s = F32.of_bits (u32 s)
 let f64 s = F64.of_bits (u64 s)
@@ -211,12 +210,6 @@ let memop s =
   let offset = vu32 s in
   Int32.to_int align, offset
 
-let block_type s =
-  match peek s with
-  | Some 0x40 -> skip 1 s; ValBlockType None
-  | Some b when b land 0xc0 = 0x40 -> ValBlockType (Some (value_type s))
-  | _ -> VarBlockType (at vs33 s)
-
 let rec instr s =
   let pos = pos s in
   match op s with
@@ -224,17 +217,17 @@ let rec instr s =
   | 0x01 -> nop
 
   | 0x02 ->
-    let bt = block_type s in
+    let bt = stack_type s in
     let es' = instr_block s in
     end_ s;
     block bt es'
   | 0x03 ->
-    let bt = block_type s in
+    let bt = stack_type s in
     let es' = instr_block s in
     end_ s;
     loop bt es'
   | 0x04 ->
-    let bt = block_type s in
+    let bt = stack_type s in
     let es1 = instr_block s in
     if peek s = Some 0x05 then begin
       expect 0x05 s "ELSE or END opcode expected";
