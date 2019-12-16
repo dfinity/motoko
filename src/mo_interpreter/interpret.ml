@@ -383,7 +383,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (find !fp env.libs)
   | LitE lit ->
     k (interpret_lit env lit)
-  | ActorUrlE url -> assert false (* FIXME: #1001 *)
+  | ActorUrlE url -> interpret_exp env url (fun v1 -> assert false (* FIXME: #1001 *))
   | UnE (ot, op, exp1) ->
     interpret_exp env exp1
       (fun v1 ->
