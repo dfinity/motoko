@@ -56,7 +56,7 @@ let rec exp e = match e.it with
   | OptE e              -> "OptE"    $$ [exp e]
   | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
-  | ImportE (f, fp)     -> "ImportE" $$ [Atom (if !fp = "" then f else !fp)]
+  | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
 

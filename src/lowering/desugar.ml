@@ -81,7 +81,7 @@ and exp' at note = function
     | T.Actor, _ -> I.ActorDotE (exp e, x.it)
     | _ -> I.DotE (exp e, x.it)
     end
-  | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
+  | S.AssignE (e1, e2) -> I.AssignE (lexp e1, exp e2)
   | S.ArrayE (m, es) ->
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
@@ -105,6 +105,10 @@ and exp' at note = function
       I.PrimE (I.NumConvPrim (p1, p2), [exp e])
     | _ -> assert false
     end
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
+    let p1 = e.note.S.note_typ in
+    let p2 = note.S.note_typ in
+    I.PrimE (I.CastPrim (p1, p2), [exp e])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
@@ -138,10 +142,29 @@ and exp' at note = function
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
-  | S.ImportE (f, fp) ->
-    if !fp = "" then assert false; (* unresolved import *)
-    I.VarE (id_of_full_path !fp).it
+  | S.ImportE (f, ir) ->
+    begin match !ir with
+    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
+    | S.LibPath fp -> I.VarE (id_of_full_path fp).it
+    | S.IDLPath fp ->
+      assert (f = "ic:000000000000040054");
+      let blob_id = "\x00\x00\x00\x00\x00\x00\x04\x00" in
+      (* TODO: Properly decode the URL *)
+      I.(PrimE (ActorOfIdBlob note.note_typ, [blobE blob_id]))
+    end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
+
+and lexp e =
+    (* We short-cut AnnotE here, so that we get the position of the inner expression *)
+    match e.it with
+    | S.AnnotE (e,_) -> lexp e
+    | _ -> { e with it = lexp' e.it; note = e.note.S.note_typ }
+
+and lexp' = function
+  | S.VarE i -> I.VarLE i.it
+  | S.DotE (e, x) -> I.DotLE (exp e, x.it)
+  | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
+  | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
@@ -443,18 +466,18 @@ and prog (p : Syntax.prog) : Ir.prog =
     }
 
 
-let declare_import imp_env lib =
+let declare_import lib =
   let open Source in
   let f = lib.note in
-  let t = T.Env.find f imp_env in
+  let t = lib.it.note.Syntax.note_typ in
   let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
   let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
   { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
 
-let combine_files imp_env libs progs : Syntax.prog =
+let combine_files libs progs : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
-  { it = List.map (declare_import imp_env) libs
+  { it = List.map declare_import libs
          @ List.concat (List.map (fun p -> p.it) progs)
   ; at = no_region
   ; note = match progs with
@@ -464,6 +487,6 @@ let combine_files imp_env libs progs : Syntax.prog =
 
 let transform p = prog p
 
-let transform_graph imp_env libraries progs =
-  prog (combine_files imp_env libraries progs)
+let transform_graph libraries progs =
+  prog (combine_files libraries progs)
 

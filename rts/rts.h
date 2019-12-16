@@ -20,13 +20,17 @@ _not_ encode that a word is 4 bytes!
 typedef intptr_t as_ptr;
 #define SKEW(p) ((as_ptr)p-1)
 #define UNSKEW(p) ((size_t *)((as_ptr)p+1))
+#define IS_SKEWED(p) ((p & 0x02)==0x02)
+
 #define FIELD(p,n) (UNSKEW(p)[n])
 #define TAG(p) FIELD(p,0)
-#define TEXT_LEN(p) (FIELD(p,1))
-#define TEXT_PAYLOAD(p) ((uint8_t *)(&FIELD(p,2)))
 
-#define ARRAY_LEN(p) (FIELD(p,1))
+#define BLOB_HEADER_SIZE 2
+#define BLOB_LEN(p) (FIELD(p,1))
+#define BLOB_PAYLOAD(p) ((char *)(&FIELD(p,2)))
+
 #define ARRAY_HEADER_SIZE 2
+#define ARRAY_LEN(p) (FIELD(p,1))
 #define ARRAY_FIELD(p,n) (FIELD(p,ARRAY_HEADER_SIZE+n))
 
 /* Heap tags. Needs to stay in sync with compile.ml */
@@ -67,7 +71,6 @@ alloc_bytes from the Motoko RTS:
 */
 from_rts as_ptr alloc_bytes(size_t n);
 from_rts as_ptr alloc_words(size_t n);
-char *alloc(size_t n);
 
 
 /* IDL code */
@@ -77,6 +80,12 @@ from_rts __attribute__ ((noreturn)) void bigint_trap();
 
 /** Functions used in multiple modules of the RTS */
 export void as_memcpy(char *str1, const char *str2, size_t n);
+export int as_memcmp(const char *str1, const char *str2, size_t n);
+
+char *alloc(size_t n);
+as_ptr alloc_blob(size_t n);
+as_ptr text_of_ptr_size(const char *buf, size_t n);
+
 export __attribute__ ((noreturn)) void idl_trap_with(const char *str1);
 export __attribute__ ((noreturn)) void rts_trap_with(const char *str1);
 

@@ -3,8 +3,8 @@
 → install
 ← completed
 → update go(0x4449444c0000)
-go1
-throws()
-ping()
-go2
+debug.print: go1
+debug.print: throws()
+debug.print: ping()
+debug.print: go2
 ← completed: 0x4449444c0000
