@@ -341,8 +341,8 @@ module E = struct
 
   let get_trap_with (env : t) = env.trap_with
   let trap_with env msg = env.trap_with env msg
-  let then_trap_with env msg = G.if_ (ValBlockType None) (trap_with env msg) G.nop
-  let else_trap_with env msg = G.if_ (ValBlockType None) G.nop (trap_with env msg)
+  let then_trap_with env msg = G.if_ [] (trap_with env msg) G.nop
+  let else_trap_with env msg = G.if_ [] G.nop (trap_with env msg)
 
   let reserve_static_memory (env : t) size : int32 =
     if !(env.static_memory_frozen) then assert false (* "Static memory frozen" *);
@@ -469,8 +469,8 @@ let new_local64 env name =
 
 (* Iterates while cond is true. *)
 let compile_while cond body =
-    G.loop_ (ValBlockType None) (
-      cond ^^ G.if_ (ValBlockType None) (body ^^ G.i (Br (nr 1l))) G.nop
+    G.loop_ [] (
+      cond ^^ G.if_ [] (body ^^ G.i (Br (nr 1l))) G.nop
     )
 
 (* Expects a number on the stack. Iterates from zero to below that number. *)
@@ -717,7 +717,7 @@ module Heap = struct
       get_pages_needed ^^
       compile_unboxed_zero ^^
       G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-      G.if_ (ValBlockType None)
+      G.if_ []
         ( get_pages_needed ^^
           G.i MemoryGrow ^^
           (* Check result *)
@@ -1218,14 +1218,14 @@ module BoxedWord64 = struct
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_const_64 (Int64.of_int (1 lsl 5)) ^^
       G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-      G.if_ (ValBlockType (Some I32Type))
+      G.if_ [I32Type]
         (get_n ^^ BitTagged.tag)
         (compile_box env get_n)
     )
 
   let unbox env = Func.share_code1 env "unbox_i64" ("n", I32Type) [I64Type] (fun env get_n ->
       get_n ^^
-      BitTagged.if_unboxed env (ValBlockType (Some I64Type))
+      BitTagged.if_unboxed env [I64Type]
         ( get_n ^^ BitTagged.untag_scalar env)
         ( get_n ^^ Heap.load_field64 payload_field)
     )
@@ -1260,10 +1260,10 @@ module BoxedWord64 = struct
            G.i (Binary (I64 I64Op.ShrU)) ^^
            pow () ^^ set_res ^^ get_res ^^ get_res ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul))
          in get_exp ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-            G.if_ (ValBlockType (Some I64Type))
+            G.if_ [I64Type]
              one
              (get_exp ^^ one ^^ G.i (Binary (I64 I64Op.And)) ^^ G.i (Test (I64 I64Op.Eqz)) ^^
-              G.if_ (ValBlockType (Some I64Type))
+              G.if_ [I64Type]
                 square_recurse_with_shifted
                 (get_n ^^
                  square_recurse_with_shifted ^^
@@ -1303,14 +1303,14 @@ module BoxedSmallWord = struct
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_unboxed_const (Int32.of_int (1 lsl 10)) ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-      G.if_ (ValBlockType (Some I32Type))
+      G.if_ [I32Type]
         (get_n ^^ BitTagged.tag_i32)
         (compile_box env get_n)
     )
 
   let unbox env = Func.share_code1 env "unbox_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
-      BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+      BitTagged.if_unboxed env [I32Type]
         ( get_n ^^ BitTagged.untag_i32 env)
         ( get_n ^^ Heap.load_field payload_field)
     )
@@ -1434,10 +1434,10 @@ module UnboxedSmallWord = struct
           get_n ^^ get_exp ^^ compile_shrU_const 1l ^^ sanitize ^^
           pow () ^^ set_res ^^ get_res ^^ get_res ^^ mul
         in get_exp ^^ G.i (Test (I32 I32Op.Eqz)) ^^
-           G.if_ (ValBlockType (Some I32Type))
+           G.if_ [I32Type]
              one
              (get_exp ^^ one ^^ G.i (Binary (I32 I32Op.And)) ^^ G.i (Test (I32 I32Op.Eqz)) ^^
-              G.if_ (ValBlockType (Some I32Type))
+              G.if_ [I32Type]
                 (square_recurse_with_shifted G.nop)
                 (get_n ^^
                  square_recurse_with_shifted (sanitize_word_result ty) ^^
@@ -1637,7 +1637,7 @@ let signed_dynamics get_x =
 
 module I32Leb = struct
   let compile_size dynamics get_x =
-    get_x ^^ G.if_ (ValBlockType (Some I32Type))
+    get_x ^^ G.if_ [I32Type]
       begin
         compile_unboxed_const 38l ^^
         dynamics get_x ^^
@@ -1761,26 +1761,26 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         let set_res, get_res = new_local env "res" in
         let set_res64, get_res64 = new_local64 env "res64" in
         get_a ^^ get_b ^^
-        BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
+        BitTagged.if_both_unboxed env [I32Type]
           begin
             get_a ^^ extend64 ^^
             get_b ^^ extend64 ^^
             fast env ^^ set_res64 ^^
             get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
-            G.if_ (ValBlockType (Some I32Type))
+            G.if_ [I32Type]
               (get_res64 ^^ compress64)
               (get_res64 ^^ box64 env)
           end
           begin
-            get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+            get_a ^^ BitTagged.if_unboxed env [I32Type]
               (get_a ^^ extend_and_box64 env)
               get_a ^^
-            get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+            get_b ^^ BitTagged.if_unboxed env [I32Type]
               (get_b ^^ extend_and_box64 env)
               get_b ^^
             slow env ^^ set_res ^^ get_res ^^
             fits_in_vanilla env ^^
-            G.if_ (ValBlockType (Some I32Type))
+            G.if_ [I32Type]
               (get_res ^^ Num.truncate_to_word32 env ^^ compress)
               get_res
           end)
@@ -1806,7 +1806,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_b64, get_b64 = new_local64 env "b64" in
     let set_res64, get_res64 = new_local64 env "res64" in
     get_a ^^ get_b ^^
-    BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
+    BitTagged.if_both_unboxed env [I32Type]
       begin
         (* estimate bitcount of result: `bits(a) * b <= 65` guarantees
            the absence of overflow in 64-bit arithmetic *)
@@ -1817,14 +1817,14 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_b ^^ extend64 ^^ set_b64 ^^ get_b64 ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
         compile_const_64 130L ^^ G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-        G.if_ (ValBlockType (Some I32Type))
+        G.if_ [I32Type]
           begin
             get_a64 ^^ compile_shrS64_const 1L ^^
             get_b64 ^^ compile_shrS64_const 1L ^^
             BoxedWord64.compile_unsigned_pow env ^^
             compile_shl64_const 1L ^^ set_res64 ^^
             get_res64 ^^ get_res64 ^^ speculate_compact64 32 ^^
-            G.if_ (ValBlockType (Some I32Type))
+            G.if_ [I32Type]
               (get_res64 ^^ compress64)
               (get_res64 ^^ box64 env)
           end
@@ -1833,21 +1833,21 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             get_b64 ^^ box64 env ^^
             Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
             fits_in_vanilla env ^^
-            G.if_ (ValBlockType (Some I32Type))
+            G.if_ [I32Type]
               (get_res ^^ Num.truncate_to_word32 env ^^ compress)
               get_res
           end
       end
       begin
-        get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+        get_a ^^ BitTagged.if_unboxed env [I32Type]
           (get_a ^^ extend_and_box64 env)
           get_a ^^
-        get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+        get_b ^^ BitTagged.if_unboxed env [I32Type]
           (get_b ^^ extend_and_box64 env)
           get_b ^^
         Num.compile_unsigned_pow env ^^ set_res ^^ get_res ^^
         fits_in_vanilla env ^^
-        G.if_ (ValBlockType (Some I32Type))
+        G.if_ [I32Type]
           (get_res ^^ Num.truncate_to_word32 env ^^ compress)
           get_res
       end)
@@ -1855,7 +1855,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let compile_is_negative env =
     let set_n, get_n = new_local env "n" in
     set_n ^^ get_n ^^
-    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+    BitTagged.if_unboxed env [I32Type]
       (get_n ^^ compile_bitand_const 1l)
       (get_n ^^ Num.compile_is_negative env)
 
@@ -1869,11 +1869,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let compile_neg env =
     Func.share_code1 env "B_neg" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+      get_n ^^ BitTagged.if_unboxed env [I32Type]
         begin
           get_n ^^ compile_unboxed_one ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-          G.if_ (ValBlockType (Some I32Type))
+          G.if_ [I32Type]
             (compile_lit env (Big_int.big_int_of_int 0x40000000))
             begin
               compile_unboxed_zero ^^
@@ -1889,17 +1889,17 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     Func.share_code2 env name (("a", I32Type), ("b", I32Type)) [I32Type]
       (fun env get_a get_b ->
         get_a ^^ get_b ^^
-        BitTagged.if_both_unboxed env (ValBlockType (Some I32Type))
+        BitTagged.if_both_unboxed env [I32Type]
           begin
             get_a ^^ extend64 ^^
             get_b ^^ extend64 ^^
             fast env
           end
           begin
-            get_a ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+            get_a ^^ BitTagged.if_unboxed env [I32Type]
               (get_a ^^ extend_and_box64 env)
               get_a ^^
-            get_b ^^ BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+            get_b ^^ BitTagged.if_unboxed env [I32Type]
               (get_b ^^ extend_and_box64 env)
               get_b ^^
             slow env
@@ -1915,7 +1915,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let try_unbox iN fast slow env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
-    BitTagged.if_unboxed env (ValBlockType (Some iN))
+    BitTagged.if_unboxed env [iN]
       (get_a ^^ fast env)
       (get_a ^^ slow env)
 
@@ -1957,12 +1957,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         let set_a, get_a = new_local env "a" in
         set_a ^^ get_a ^^
         compile_bitand_const 1l ^^
-        G.if_ (ValBlockType (Some I32Type))
+        G.if_ [I32Type]
           begin
             get_a ^^
             compile_unboxed_one ^^ (* i.e. -(2**30) == -1073741824 *)
             G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-            G.if_ (ValBlockType (Some I32Type))
+            G.if_ [I32Type]
               (compile_unboxed_const 0x40000000l ^^ Num.from_word32 env) (* is non-representable *)
               begin
                 get_a ^^
@@ -1980,7 +1980,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     Num.compile_load_from_data_buf env signed ^^
     set_res ^^
     get_res ^^ fits_in_vanilla env ^^
-    G.if_ (ValBlockType (Some I32Type))
+    G.if_ [I32Type]
       (get_res ^^ Num.truncate_to_word32 env ^^ compress)
       get_res
 
@@ -2034,7 +2034,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^ get_a ^^
     speculate_compact ^^
-    G.if_ (ValBlockType (Some I32Type))
+    G.if_ [I32Type]
       (get_a ^^ compress)
       (get_a ^^ Num.from_signed_word32 env)
 
@@ -2042,7 +2042,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local64 env "a" in
     set_a ^^ get_a ^^ get_a ^^
     speculate_compact64 31 ^^
-    G.if_ (ValBlockType (Some I32Type))
+    G.if_ [I32Type]
       (get_a ^^ compile_shl64_const 1L ^^ compress64)
       (get_a ^^ Num.from_signed_word64 env)
 
@@ -2052,7 +2052,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     compile_unboxed_const Int32.(shift_left minus_one 30) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-    G.if_ (ValBlockType (Some I32Type))
+    G.if_ [I32Type]
       (get_a ^^ compile_rotl_const 2l)
       (get_a ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ Num.from_word64 env)
 
@@ -2062,14 +2062,14 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     compile_const_64 Int64.(shift_left minus_one 30) ^^
     G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-    G.if_ (ValBlockType (Some I32Type))
+    G.if_ [I32Type]
       (get_a ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^ compile_rotl_const 2l)
       (get_a ^^ Num.from_word64 env)
 
   let truncate_to_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
-    BitTagged.if_unboxed env (ValBlockType (Some I64Type))
+    BitTagged.if_unboxed env [I64Type]
       begin
         get_a ^^ extend ^^ compile_unboxed_one ^^
         G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
@@ -2079,20 +2079,20 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let truncate_to_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
-    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+    BitTagged.if_unboxed env [I32Type]
       (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
       (get_a ^^ Num.truncate_to_word32 env)
 
   let to_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
-    BitTagged.if_unboxed env (ValBlockType (Some I64Type))
+    BitTagged.if_unboxed env [I64Type]
       (get_a ^^ extend64 ^^ compile_shrS64_const 1L)
       (get_a ^^ Num.to_word64 env)
   let to_word32 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
-    BitTagged.if_unboxed env (ValBlockType (Some I32Type))
+    BitTagged.if_unboxed env [I32Type]
       (get_a ^^ extend ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.ShrS)))
       (get_a ^^ Num.to_word32 env)
 end
@@ -2322,7 +2322,7 @@ module Object = struct
         Heap.load_field 0l ^^ (* the hash field *)
         get_hash ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        G.if_ (ValBlockType None)
+        G.if_ []
           ( get_f ^^
             compile_add_const Heap.word_size ^^
             set_r
@@ -2434,12 +2434,12 @@ module Blob = struct
         begin if op = EqOp then
           (* Early exit for equality *)
           get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-          G.if_ (ValBlockType None) G.nop (Bool.lit false ^^ G.i Return) ^^
+          G.if_ [] G.nop (Bool.lit false ^^ G.i Return) ^^
 
           get_len1 ^^ set_len
         else
           get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
-          G.if_ (ValBlockType None)
+          G.if_ []
             (get_len1 ^^ set_len)
             (get_len2 ^^ set_len)
         end ^^
@@ -2464,7 +2464,7 @@ module Blob = struct
           set_b ^^
 
           get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-          G.if_ (ValBlockType None) G.nop (
+          G.if_ [] G.nop (
             (* first non-equal elements *)
             begin match op with
             | LeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
@@ -2900,7 +2900,7 @@ module Dfinity = struct
     system_call env "ic0" "msg_reject_code" ^^ set_code ^^
     get_code ^^ compile_unboxed_const 4l ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-    G.if_ (ValBlockType (Some I32Type))
+    G.if_ [I32Type]
       (Variant.inject env "error" Tuple.compile_unit)
       (Variant.inject env "system" Tuple.compile_unit)
 
@@ -3015,7 +3015,7 @@ module HeapTraversal = struct
   let object_size env =
     Func.share_code1 env "object_size" ("x", I32Type) [I32Type] (fun env get_x ->
       get_x ^^
-      Tagged.branch env (ValBlockType (Some I32Type))
+      Tagged.branch env [I32Type]
         [ Tagged.Int,
           compile_unboxed_const 3l
         ; Tagged.SmallWord,
@@ -3077,7 +3077,7 @@ module HeapTraversal = struct
     let code = mk_code get_ptr_loc in
     let code_offset = mk_code_offset get_ptr_loc in
     get_x ^^
-    Tagged.branch_default env (ValBlockType None) G.nop
+    Tagged.branch_default env [] G.nop
       [ Tagged.MutBox,
         get_x ^^
         compile_add_const (Int32.mul Heap.word_size MutBox.field) ^^
@@ -3427,12 +3427,12 @@ module Serialization = struct
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
-        G.if_ (ValBlockType None) (get_x ^^ Opt.project ^^ size env t) G.nop
+        G.if_ [] (get_x ^^ Opt.project ^^ size env t) G.nop
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t}) continue ->
             get_x ^^
             Variant.test_is env l ^^
-            G.if_ (ValBlockType None)
+            G.if_ []
               ( size_word env (compile_unboxed_const (Int32.of_int i)) ^^
                 get_x ^^ Variant.project ^^ size env t
               ) continue
@@ -3557,14 +3557,14 @@ module Serialization = struct
       | Opt t ->
         get_x ^^
         Opt.is_some env ^^
-        G.if_ (ValBlockType None)
+        G.if_ []
           ( write_byte (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project ^^ write env t )
           ( write_byte (compile_unboxed_const 0l) )
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t}) continue ->
             get_x ^^
             Variant.test_is env l ^^
-            G.if_ (ValBlockType None)
+            G.if_ []
               ( write_word (compile_unboxed_const (Int32.of_int i)) ^^
                 get_x ^^ Variant.project ^^ write env t)
               continue
@@ -3640,7 +3640,7 @@ module Serialization = struct
           set_b ^^
           get_b ^^
           compile_eq_const 0l ^^
-          G.if_ (ValBlockType (Some I32Type))
+          G.if_ [I32Type]
           begin code0
           end begin
             get_b ^^ compile_eq_const 1l ^^
@@ -3724,7 +3724,7 @@ module Serialization = struct
       | Prim Int ->
         (* Subtyping with nat *)
         check_prim_typ (Prim Nat) ^^
-        G.if_ (ValBlockType (Some I32Type))
+        G.if_ [I32Type]
           begin
             get_data_buf ^^
             BigNum.compile_load_from_data_buf env false
@@ -3832,7 +3832,7 @@ module Serialization = struct
         )
       | Opt t ->
         check_prim_typ (Prim Null) ^^
-        G.if_ (ValBlockType (Some I32Type))
+        G.if_ [I32Type]
           begin
                 Opt.null
           end
@@ -3873,7 +3873,7 @@ module Serialization = struct
 
           List.fold_right (fun (h, {lab = l; typ = t}) continue ->
               get_tag ^^ compile_eq_const (Lib.Uint32.to_int32 h) ^^
-              G.if_ (ValBlockType (Some I32Type))
+              G.if_ [I32Type]
                 ( Variant.inject env l (get_idltyp ^^ go env t) )
                 continue
             )
@@ -4023,7 +4023,7 @@ module Serialization = struct
         ) ts ^^
 
         get_arg_count ^^ compile_eq_const (Int32.of_int (List.length ts)) ^^
-        G.if_ (ValBlockType None)
+        G.if_ []
           begin
             ReadBuf.is_empty env get_data_buf ^^
             E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
@@ -4066,11 +4066,11 @@ module GC = struct
     get_obj ^^
     get_begin_from_space ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    G.if_ (ValBlockType None) (get_end_to_space ^^ G.i Return) G.nop ^^
+    G.if_ [] (get_end_to_space ^^ G.i Return) G.nop ^^
 
     (* If this is an indirection, just use that value *)
     get_obj ^^
-    Tagged.branch_default env (ValBlockType None) G.nop [
+    Tagged.branch_default env [] G.nop [
       Tagged.Indirection,
       update_ptr (get_obj ^^ Heap.load_field 1l) ^^
       get_end_to_space ^^ G.i Return
@@ -4122,7 +4122,7 @@ module GC = struct
 
     (* If this is an unboxed scalar, ignore it *)
     get_obj ^^
-    BitTagged.if_unboxed env (ValBlockType None) (get_end_to_space ^^ G.i Return) G.nop ^^
+    BitTagged.if_unboxed env [] (get_end_to_space ^^ G.i Return) G.nop ^^
 
     let update_ptr new_val_code =
       get_ptr_loc ^^ new_val_code ^^ store_ptr in
@@ -4282,15 +4282,15 @@ module StackRep = struct
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
-    | Vanilla -> ValBlockType (Some I32Type)
-    | UnboxedWord64 -> ValBlockType (Some I64Type)
-    | UnboxedWord32 -> ValBlockType (Some I32Type)
-    | UnboxedTuple 0 -> ValBlockType None
-    | UnboxedTuple 1 -> ValBlockType (Some I32Type)
-    | UnboxedTuple n when not !Flags.multi_value -> assert false
-    | UnboxedTuple n -> VarBlockType (nr (E.func_type env (FuncType ([], Lib.List.make n I32Type))))
-    | StaticThing _ -> ValBlockType None
-    | Unreachable -> ValBlockType None
+    | Vanilla -> [I32Type]
+    | UnboxedWord64 -> [I64Type]
+    | UnboxedWord32 -> [I32Type]
+    | UnboxedTuple 0 -> []
+    | UnboxedTuple 1 -> [I32Type]
+    | UnboxedTuple n ->
+      assert false; (* not supported without muti_value *)
+    | StaticThing _ -> []
+    | Unreachable -> []
 
   let to_string = function
     | Vanilla -> "Vanilla"
@@ -4873,14 +4873,14 @@ module PatCode = struct
       | CanFail is2 -> CanFail (fun fail_code ->
           let inner_fail = G.new_depth_label () in
           let inner_fail_code = Bool.lit false ^^ G.branch_to_ inner_fail in
-          G.labeled_block_ (ValBlockType (Some I32Type)) inner_fail (is1 inner_fail_code ^^ Bool.lit true) ^^
-          G.if_ (ValBlockType None) G.nop (is2 fail_code)
+          G.labeled_block_ [I32Type] inner_fail (is1 inner_fail_code ^^ Bool.lit true) ^^
+          G.if_ [] G.nop (is2 fail_code)
         )
       | CannotFail is2 -> CannotFail (
           let inner_fail = G.new_depth_label () in
           let inner_fail_code = Bool.lit false ^^ G.branch_to_ inner_fail in
-          G.labeled_block_ (ValBlockType (Some I32Type)) inner_fail (is1 inner_fail_code ^^ Bool.lit true) ^^
-          G.if_ (ValBlockType None) G.nop is2
+          G.labeled_block_ [I32Type] inner_fail (is1 inner_fail_code ^^ Bool.lit true) ^^
+          G.if_ [] G.nop is2
         )
 
   let orTrap env : patternCode -> G.t = function
@@ -5183,7 +5183,7 @@ let additiveInt64_shortcut fast env get_a get_b slow =
   get_b ^^ get_b ^^ compile_shl64_const 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^ compile_shrU64_const 63L ^^
   G.i (Binary (Wasm.Values.I64 I64Op.Or)) ^^
   G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-  G.if_ (ValBlockType (Some I64Type))
+  G.if_ [I64Type]
     (get_a ^^ get_b ^^ fast)
     slow
 
@@ -5192,28 +5192,28 @@ let mulInt64_shortcut fast env get_a get_b slow =
   get_b ^^ get_b ^^ compile_shl64_const 1L ^^ G.i (Binary (Wasm.Values.I64 I64Op.Xor)) ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^
   G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
   compile_const_64 65L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
-  G.if_ (ValBlockType (Some I64Type))
+  G.if_ [I64Type]
     (get_a ^^ get_b ^^ fast)
     slow
 
 let powInt64_shortcut fast env get_a get_b slow =
   get_b ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-  G.if_ (ValBlockType (Some I64Type))
+  G.if_ [I64Type]
     (compile_const_64 1L) (* ^0 *)
     begin (* ^(1+n) *)
       get_a ^^ compile_const_64 (-1L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.Eq)) ^^
-      G.if_ (ValBlockType (Some I64Type))
+      G.if_ [I64Type]
         begin (* -1 ** (1+exp) == if even (1+exp) then 1 else -1 *)
           get_b ^^ compile_const_64 1L ^^
           G.i (Binary (Wasm.Values.I64 I64Op.And)) ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-          G.if_ (ValBlockType (Some I64Type))
+          G.if_ [I64Type]
             (compile_const_64 1L)
             get_a
         end
         begin
           get_a ^^ compile_shrS64_const 1L ^^
           G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-          G.if_ (ValBlockType (Some I64Type))
+          G.if_ [I64Type]
             get_a (* {0,1}^(1+n) *)
             begin
               get_b ^^ compile_const_64 64L ^^
@@ -5222,7 +5222,7 @@ let powInt64_shortcut fast env get_a get_b slow =
               G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ compile_sub64_const 63L ^^
               get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
               compile_const_64 (-63L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeS)) ^^
-              G.if_ (ValBlockType (Some I64Type))
+              G.if_ [I64Type]
                 (get_a ^^ get_b ^^ fast)
                 slow
             end
@@ -5257,7 +5257,7 @@ let additiveNat64_shortcut fast env get_a get_b slow =
   get_b ^^ compile_shrU64_const 62L ^^
   G.i (Binary (Wasm.Values.I64 I64Op.Or)) ^^
   G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-  G.if_ (ValBlockType (Some I64Type))
+  G.if_ [I64Type]
     (get_a ^^ get_b ^^ fast)
     slow
 
@@ -5266,24 +5266,24 @@ let mulNat64_shortcut fast env get_a get_b slow =
   get_b ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^
   G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
   compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
-  G.if_ (ValBlockType (Some I64Type))
+  G.if_ [I64Type]
     (get_a ^^ get_b ^^ fast)
     slow
 
 let powNat64_shortcut fast env get_a get_b slow =
   get_b ^^ G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-  G.if_ (ValBlockType (Some I64Type))
+  G.if_ [I64Type]
     (compile_const_64 1L) (* ^0 *)
     begin (* ^(1+n) *)
       get_a ^^ compile_shrU64_const 1L ^^
       G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-      G.if_ (ValBlockType (Some I64Type))
+      G.if_ [I64Type]
         get_a (* {0,1}^(1+n) *)
         begin
           get_b ^^ compile_const_64 64L ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
           get_a ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz)) ^^ compile_sub64_const 64L ^^
           get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^ compile_const_64 (-64L) ^^ G.i (Compare (Wasm.Values.I64 I64Op.GeS)) ^^
-          G.if_ (ValBlockType (Some I64Type))
+          G.if_ [I64Type]
             (get_a ^^ get_b ^^ fast)
             slow
         end
@@ -5489,10 +5489,10 @@ let compile_binop env t op =
         let (set_res, get_res) = new_local env "res" in
         let bits = UnboxedSmallWord.bits_of_type ty in
         get_exp ^^
-        G.if_ (ValBlockType (Some I32Type))
+        G.if_ [I32Type]
           begin
             get_n ^^ compile_shrU_const Int32.(sub 33l (of_int bits)) ^^
-            G.if_ (ValBlockType (Some I32Type))
+            G.if_ [I32Type]
               begin
                 unsigned_dynamics get_n ^^ compile_sub_const (Int32.of_int bits) ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
@@ -5514,10 +5514,10 @@ let compile_binop env t op =
       (fun env get_n get_exp ->
         let (set_res, get_res) = new_local64 env "res" in
         get_exp ^^
-        G.if_ (ValBlockType (Some I32Type))
+        G.if_ [I32Type]
           begin
             get_n ^^ compile_shrU_const 1l ^^
-            G.if_ (ValBlockType (Some I32Type))
+            G.if_ [I32Type]
               begin
                 get_exp ^^ compile_unboxed_const 32l ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^ then_arithmetic_overflow env ^^
@@ -5543,10 +5543,10 @@ let compile_binop env t op =
         get_exp ^^ compile_unboxed_zero ^^
         G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ E.then_trap_with env "negative power" ^^
         get_exp ^^
-        G.if_ (ValBlockType (Some I32Type))
+        G.if_ [I32Type]
           begin
             get_n ^^ compile_shrS_const Int32.(sub 33l (of_int bits)) ^^
-            G.if_ (ValBlockType (Some I32Type))
+            G.if_ [I32Type]
               begin
                 signed_dynamics get_n ^^ compile_sub_const (Int32.of_int (bits - 1)) ^^
                 get_exp ^^ UnboxedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
@@ -5570,19 +5570,19 @@ let compile_binop env t op =
         get_exp ^^ compile_unboxed_zero ^^
         G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ E.then_trap_with env "negative power" ^^
         get_exp ^^
-        G.if_ (ValBlockType (Some I32Type))
+        G.if_ [I32Type]
           begin
             get_n ^^ compile_unboxed_one ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
             get_n ^^ compile_unboxed_const (-1l) ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
             G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-            G.if_ (ValBlockType (Some I32Type))
+            G.if_ [I32Type]
               begin
                 get_n ^^ compile_unboxed_zero ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-                G.if_ (ValBlockType (Some I32Type))
+                G.if_ [I32Type]
                   begin
                     (* -1 ** (1+exp) == if even (1+exp) then 1 else -1 *)
                     get_exp ^^ compile_unboxed_one ^^ G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-                    G.if_ (ValBlockType (Some I32Type))
+                    G.if_ [I32Type]
                       get_n
                       compile_unboxed_one
                   end
@@ -6071,7 +6071,7 @@ and compile_exp (env : E.t) ae exp =
   | AssertE e1 ->
     SR.unit,
     compile_exp_as env ae SR.bool e1 ^^
-    G.if_ (ValBlockType None) G.nop (Dfinity.fail_assert env exp.at)
+    G.if_ [] G.nop (Dfinity.fail_assert env exp.at)
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as env ae SR.bool scrut in
     let sr1, code1 = compile_exp env ae e1 in
@@ -6106,7 +6106,7 @@ and compile_exp (env : E.t) ae exp =
     G.branch_to_ d
   | LoopE e ->
     SR.Unreachable,
-    G.loop_ (ValBlockType None) (compile_exp_unit env ae e ^^ G.i (Br (nr 0l))
+    G.loop_ [] (compile_exp_unit env ae e ^^ G.i (Br (nr 0l))
     )
     ^^
    G.i Unreachable
@@ -6373,7 +6373,7 @@ and fill_pat env ae pat : patternCode =
         set_x ^^
         get_x ^^
         Opt.is_some env ^^
-        G.if_ (ValBlockType None)
+        G.if_ []
           ( get_x ^^
             Opt.project ^^
             with_fail fail_code (fill_pat env ae p)
@@ -6386,7 +6386,7 @@ and fill_pat env ae pat : patternCode =
         set_x ^^
         get_x ^^
         Variant.test_is env l ^^
-        G.if_ (ValBlockType None)
+        G.if_ []
           ( get_x ^^
             Variant.project ^^
             with_fail fail_code (fill_pat env ae p)
@@ -6396,7 +6396,7 @@ and fill_pat env ae pat : patternCode =
   | LitP l ->
       CanFail (fun fail_code ->
         compile_lit_pat env l ^^
-        G.if_ (ValBlockType None) G.nop fail_code)
+        G.if_ [] G.nop fail_code)
   | VarP name ->
       CannotFail (Var.set_val env ae name)
   | TupP ps ->
