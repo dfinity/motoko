@@ -6020,7 +6020,7 @@ and compile_exp (env : E.t) ae exp =
       compile_exp env ae e
 
     (* CRC-check and strip "ic:" and checksum *)
-    | BlobOfVerifiedUrl, [_] ->
+    | BlobOfIcUrl, [_] ->
       const_sr SR.Vanilla (E.call_import env "rts" "crc8_decode")
 
     (* Actor ids are blobs in the RTS *)

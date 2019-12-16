@@ -116,7 +116,7 @@ and prim =
   | NumConvPrim of Type.prim * Type.prim
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
   | ActorOfIdBlob of Type.typ
-  | BlobOfVerifiedUrl                 (* traps on syntax or checksum failure *)
+  | BlobOfIcUrl                       (* traps on syntax or checksum failure *)
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   | CPSAwait
   | CPSAsync
