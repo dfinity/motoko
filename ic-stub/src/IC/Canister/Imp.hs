@@ -53,6 +53,7 @@ data ExecutionState s = ExecutionState
   , params :: Params
   , existing_canisters :: ExistingCanisters
   -- now the mutable parts
+  , responded :: Responded
   , response :: Maybe Response
   , reply_data :: Blob
   , calls :: [MethodCall]
@@ -60,12 +61,13 @@ data ExecutionState s = ExecutionState
   }
 
 
-initalExecutionState :: CanisterId -> Instance s -> ExistingCanisters -> ExecutionState s
-initalExecutionState self_id inst ex = ExecutionState
+initalExecutionState :: CanisterId -> Instance s -> ExistingCanisters -> Responded -> ExecutionState s
+initalExecutionState self_id inst ex responded = ExecutionState
   { inst
   , self_id
   , existing_canisters = ex
   , params = Params Nothing Nothing 0 ""
+  , responded
   , response = Nothing
   , reply_data = mempty
   , calls = mempty
@@ -144,29 +146,25 @@ appendNewCanister esref c = modES esref $ \es ->
 
 systemAPI :: forall s. ESRef s -> Imports s
 systemAPI esref =
-    [ (,) "ic0"
-      [ toImport "msg_arg_data_size" msg_arg_data_size
-      , toImport "msg_arg_data_copy" msg_arg_data_copy
-      , toImport "msg_caller_size" msg_caller_size
-      , toImport "msg_caller_copy" msg_caller_copy
-      , toImport "msg_reject_code" msg_reject_code
-      , toImport "msg_reject_msg_size" msg_reject_msg_size
-      , toImport "msg_reject_msg_copy" msg_reject_msg_copy
-      , toImport "msg_reply_data_append" msg_reply_data_append
-      , toImport "msg_reply" msg_reply
-      , toImport "msg_reject" msg_reject
-      , toImport "canister_self_copy" canister_self_copy
-      , toImport "canister_self_size" canister_self_size
-      , toImport "call_simple" call_simple
-      , toImport "debug_print" debug_print
-      , toImport "trap" explicit_trap
-      ]
-    , (,) "stub"
-      [ toImport "create_canister" create_canister
-      , toImport "created_canister_id_size" created_canister_id_size
-      , toImport "created_canister_id_copy" created_canister_id_copy
-      ]
-    ]
+  [ toImport "ic0" "msg_arg_data_size" msg_arg_data_size
+  , toImport "ic0" "msg_arg_data_copy" msg_arg_data_copy
+  , toImport "ic0" "msg_caller_size" msg_caller_size
+  , toImport "ic0" "msg_caller_copy" msg_caller_copy
+  , toImport "ic0" "msg_reject_code" msg_reject_code
+  , toImport "ic0" "msg_reject_msg_size" msg_reject_msg_size
+  , toImport "ic0" "msg_reject_msg_copy" msg_reject_msg_copy
+  , toImport "ic0" "msg_reply_data_append" msg_reply_data_append
+  , toImport "ic0" "msg_reply" msg_reply
+  , toImport "ic0" "msg_reject" msg_reject
+  , toImport "ic0" "canister_self_copy" canister_self_copy
+  , toImport "ic0" "canister_self_size" canister_self_size
+  , toImport "ic0" "call_simple" call_simple
+  , toImport "ic0" "debug_print" debug_print
+  , toImport "ic0" "trap" explicit_trap
+  , toImport "stub" "create_canister" create_canister
+  , toImport "stub" "created_canister_id_size" created_canister_id_size
+  , toImport "stub" "created_canister_id_copy" created_canister_id_copy
+  ]
   where
     -- Utilities
     gets :: (ExecutionState s -> b) -> HostM s b
@@ -221,12 +219,12 @@ systemAPI esref =
     msg_arg_data_size :: () -> HostM s Int32
     msg_arg_data_copy :: (Int32, Int32, Int32) -> HostM s ()
     (msg_arg_data_size, msg_arg_data_copy) = size_and_copy $
-        gets (param_dat . params) >>= maybe (throwError "arg_data_size: No argument") return
+        gets (param_dat . params) >>= maybe (throwError "No argument") return
 
     msg_caller_size :: () -> HostM s Int32
     msg_caller_copy :: (Int32, Int32, Int32) -> HostM s ()
     (msg_caller_size, msg_caller_copy) = size_and_copy $
-        fmap rawEntityId $ gets (param_caller . params) >>= maybe (throwError "arg_data_size: No argument") return
+        fmap rawEntityId $ gets (param_caller . params) >>= maybe (throwError "No argument") return
 
     msg_reject_code :: () -> HostM s Int32
     msg_reject_code () =
@@ -236,15 +234,18 @@ systemAPI esref =
     msg_reject_msg_copy :: (Int32, Int32, Int32) -> HostM s ()
     (msg_reject_msg_size, msg_reject_msg_copy) = size_and_copy $ do
       c <- gets (reject_code . params)
-      when (c == 0) $ throwError "msg_reject_msg: No reject message"
+      when (c == 0) $ throwError "No reject message"
       msg <- gets (reject_message . params)
       return $ BSU.fromString msg
 
     assert_not_responded :: HostM s ()
-    assert_not_responded =
+    assert_not_responded = do
+      gets responded >>= \case
+        Responded False -> return ()
+        Responded True  -> throwError "This call has already been responded to earlier"
       gets response >>= \case
         Nothing -> return ()
-        Just  _ -> throwError "This call has already been responded to"
+        Just  _ -> throwError "This call has already been responded to in this function"
 
     msg_reply_data_append :: (Int32, Int32) -> HostM s ()
     msg_reply_data_append (src, size) = do
@@ -355,15 +356,18 @@ rawInvoke esref (CI.Initialize ex wasm_mod caller dat) =
     rawInitializeMethod esref ex wasm_mod caller dat
 rawInvoke esref (CI.Query name caller dat) =
     rawQueryMethod esref name caller dat
-rawInvoke esref (CI.Update name ex caller dat) =
-    rawUpdateMethod esref name ex caller dat
-rawInvoke esref (CI.Callback cb ex res) =
-    rawCallbackMethod esref cb ex res
+rawInvoke esref (CI.Update name ex caller responded dat) =
+    rawUpdateMethod esref name ex caller responded dat
+rawInvoke esref (CI.Callback cb ex responded res) =
+    rawCallbackMethod esref cb ex responded res
+
+cantRespond :: Responded
+cantRespond = Responded True
 
 rawInitializeMethod :: ImpState s -> ExistingCanisters -> Module -> EntityId -> Blob -> ST s (TrapOr InitResult)
 rawInitializeMethod (esref, cid, inst) ex wasm_mod caller dat = do
   result <- runExceptT $ do
-    let es = (initalExecutionState cid inst ex)
+    let es = (initalExecutionState cid inst ex cantRespond)
               { params = Params
                   { param_dat    = Just dat
                   , param_caller = Just caller
@@ -386,7 +390,7 @@ rawInitializeMethod (esref, cid, inst) ex wasm_mod caller dat = do
 
 rawQueryMethod :: ImpState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr Response)
 rawQueryMethod (esref, cid, inst) method caller dat = do
-  let es = (initalExecutionState cid inst [])
+  let es = (initalExecutionState cid inst [] cantRespond)
             { params = Params
                 { param_dat    = Just dat
                 , param_caller = Just caller
@@ -404,9 +408,9 @@ rawQueryMethod (esref, cid, inst) method caller dat = do
       | Just r <- response es' -> return $ Return r
       | otherwise -> return $ Trap "No response"
 
-rawUpdateMethod :: ImpState s -> MethodName -> ExistingCanisters -> EntityId -> Blob -> ST s (TrapOr UpdateResult)
-rawUpdateMethod (esref, cid, inst) method ex caller dat = do
-  let es = (initalExecutionState cid inst ex)
+rawUpdateMethod :: ImpState s -> MethodName -> ExistingCanisters -> EntityId -> Responded -> Blob -> ST s (TrapOr UpdateResult)
+rawUpdateMethod (esref, cid, inst) method ex caller responded dat = do
+  let es = (initalExecutionState cid inst ex responded)
             { params = Params
                 { param_dat    = Just dat
                 , param_caller = Just caller
@@ -421,14 +425,14 @@ rawUpdateMethod (esref, cid, inst) method ex caller dat = do
     Left  err -> return $ Trap err
     Right (_, es') -> return $ Return (new_canisters es', calls es', response es')
 
-rawCallbackMethod :: ImpState s -> Callback -> ExistingCanisters -> Response -> ST s (TrapOr UpdateResult)
-rawCallbackMethod (esref, cid, inst) callback ex res = do
+rawCallbackMethod :: ImpState s -> Callback -> ExistingCanisters -> Responded -> Response -> ST s (TrapOr UpdateResult)
+rawCallbackMethod (esref, cid, inst) callback ex responded res = do
   let params = case res of
         Reply dat ->
           Params { param_dat = Just dat, param_caller = Nothing, reject_code = 0, reject_message = "" }
         Reject (rc, reject_message) ->
           Params { param_dat = Nothing, param_caller = Nothing, reject_code = rejectCode rc, reject_message }
-  let es = (initalExecutionState cid inst ex) { params }
+  let es = (initalExecutionState cid inst ex responded) { params }
 
   let WasmClosure fun_idx env = case res of
         Reply {}  -> reply_callback callback

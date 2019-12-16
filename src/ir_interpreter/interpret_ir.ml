@@ -258,6 +258,7 @@ let interpret_lit env lit : V.value =
   | FloatLit f -> V.Float f
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
+  | BlobLit b -> V.Text b
 
 (* Expressions *)
 
@@ -363,6 +364,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         Prim.prim s arg k
       )
     | CastPrim _, [e] -> interpret_exp env e k
+    | ActorOfIdBlob t, [e] ->
+      trap exp.at "ActorOfIdBlob not implemented"
     | NumConvPrim (t1, t2), exps ->
       interpret_exps env exps [] (fun vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
@@ -409,10 +412,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       let fs = V.as_obj v1 in
       k (try find n fs with _ -> assert false)
     )
-  | AssignE (exp1, exp2) ->
-    interpret_exp_mut env exp1 (fun v1 ->
+  | AssignE (lexp1, exp2) ->
+    interpret_lexp env lexp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        V.as_mut v1 := v2; k V.unit
+        v1 := v2; k V.unit
       )
     )
   | ArrayE (mut, _, exps) ->
@@ -539,6 +542,29 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       k obj)
   | NewObjE (sort, fs, _) ->
     k (interpret_fields env fs)
+
+and interpret_lexp env lexp (k : (V.value ref) V.cont) =
+  last_region := lexp.at;
+  last_env := env;
+  match lexp.it with
+  | VarLE id ->
+    (match Lib.Promise.value_opt (find id env.vals) with
+    | Some v -> k (V.as_mut v)
+    | None -> trap lexp.at "accessing identifier before its definition"
+    )
+  | DotLE (exp1, n) ->
+    interpret_exp env exp1 (fun v1 ->
+      let fs = V.as_obj v1 in
+      k (V.as_mut (try find n fs with _ -> assert false))
+    )
+  | IdxLE (exp1, exp2) ->
+    interpret_exp env exp1 (fun v1 ->
+      interpret_exp env exp2 (fun v2 ->
+        k (V.as_mut
+          (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
+           with Invalid_argument s -> trap lexp.at "%s" s))
+      )
+    )
 
 and interpret_fields env fs =
     let ve =

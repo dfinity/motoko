@@ -10,6 +10,9 @@ open Mo_config
 
 open Printf
 
+module ResolveImport = Resolve_import
+module FilePath = File_path
+
 type stat_env = Scope.t
 type dyn_env = Interpret.scope
 type env = stat_env * dyn_env
@@ -104,12 +107,12 @@ let parse_file filename : parse_result =
 
 (* Import file name resolution *)
 
-type resolve_result = (Syntax.prog * Resolve_import.S.t) Diag.result
+type resolve_result = (Syntax.prog * ResolveImport.resolved_imports) Diag.result
 
 let resolve_prog (prog, base) : resolve_result =
   Diag.map
     (fun libs -> (prog, libs))
-    (Resolve_import.resolve !Flags.package_urls prog base)
+    (ResolveImport.resolve !Flags.package_urls prog base)
 
 let resolve_progs =
   Diag.traverse resolve_prog
@@ -118,7 +121,7 @@ let resolve_progs =
 
 let print_deps (file : string) : unit =
   let (prog, _) =  Diag.run (parse_file file) in
-  let imports = Resolve_import.collect_imports prog in
+  let imports = ResolveImport.collect_imports prog in
   List.iter print_endline imports
 
 (* Checking *)
@@ -155,7 +158,6 @@ let check_lib senv lib : Scope.scope Diag.result =
     phase "Definedness" (Filename.basename lib.Source.note);
     Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
   )
-
 
 (* Imported file loading *)
 
@@ -217,34 +219,40 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   * We accumulate the resulting libraries in reverse order, for O(1) appending.
   *)
 
-  let open Resolve_import.S in
+  let open ResolveImport.S in
   let pending = ref empty in
   let senv = ref senv0 in
   let libs = ref [] in
 
-  let rec go f =
-    if Type.Env.mem f !senv.Scope.lib_env then
-      Diag.return ()
-    else if mem f !pending then
-      Error [{
-        Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
-        text = Printf.sprintf "file %s must not depend on itself" f
-      }]
-    else begin
-      pending := add f !pending;
-      Diag.bind (parsefn f) (fun (prog, base) ->
-      Diag.bind (Static.prog prog) (fun () ->
-      Diag.bind (Resolve_import.resolve !Flags.package_urls prog base) (fun more_imports ->
-      Diag.bind (go_set more_imports) (fun () ->
-      let lib = lib_of_prog f prog in
-      Diag.bind (check_lib !senv lib) (fun sscope ->
-      libs := lib :: !libs; (* NB: Conceptually an append *)
+  let rec go ri = match ri.Source.it with
+    | Syntax.Unresolved -> assert false
+    | Syntax.LibPath f ->
+      if Type.Env.mem f !senv.Scope.lib_env then
+        Diag.return ()
+      else if mem ri.Source.it !pending then
+        Error [{
+          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+          text = Printf.sprintf "file %s must not depend on itself" f
+        }]
+      else begin
+        pending := add ri.Source.it !pending;
+        Diag.bind (parsefn f) (fun (prog, base) ->
+        Diag.bind (Static.prog prog) (fun () ->
+        Diag.bind (ResolveImport.resolve !Flags.package_urls prog base) (fun more_imports ->
+        Diag.bind (go_set more_imports) (fun () ->
+        let lib = lib_of_prog f prog in
+        Diag.bind (check_lib !senv lib) (fun sscope ->
+        libs := lib :: !libs; (* NB: Conceptually an append *)
+        senv := Scope.adjoin !senv sscope;
+        pending := remove ri.Source.it !pending;
+        Diag.return ()
+        )))))
+      end
+    | Syntax.IDLPath f ->
+      let sscope = Scope.lib f Type.(Obj (Actor, [])) in
       senv := Scope.adjoin !senv sscope;
-      pending := remove f !pending;
-      Diag.return ()
-      )))))
-    end
-    and go_set todo = Diag.traverse_ go (elements todo)
+      Diag.warn ri.Source.at "import" "imported actors assumed to have type actor {}"
+  and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
 
@@ -252,9 +260,7 @@ let load_progs parsefn files senv : load_result =
   Diag.bind (Diag.traverse parsefn files) (fun parsed ->
   Diag.bind (resolve_progs parsed) (fun rs ->
   let progs' = List.map fst rs in
-  let libs =
-    List.fold_left Resolve_import.S.union Resolve_import.S.empty
-    (List.map snd rs) in
+  let libs = List.concat (List.map snd rs) in
   Diag.bind (chase_imports parsefn senv libs) (fun (libs, senv') ->
   Diag.bind (check_progs senv' progs') (fun senv'' ->
   Diag.return (libs, progs', senv'')

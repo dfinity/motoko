@@ -81,7 +81,7 @@ and exp' at note = function
     | T.Actor, _ -> I.ActorDotE (exp e, x.it)
     | _ -> I.DotE (exp e, x.it)
     end
-  | S.AssignE (e1, e2) -> I.AssignE (exp e1, exp e2)
+  | S.AssignE (e1, e2) -> I.AssignE (lexp e1, exp e2)
   | S.ArrayE (m, es) ->
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
@@ -139,10 +139,29 @@ and exp' at note = function
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
-  | S.ImportE (f, fp) ->
-    if !fp = "" then assert false; (* unresolved import *)
-    I.VarE (id_of_full_path !fp).it
+  | S.ImportE (f, ir) ->
+    begin match !ir with
+    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
+    | S.LibPath fp -> I.VarE (id_of_full_path fp).it
+    | S.IDLPath fp ->
+      assert (f = "ic:000000000000040054");
+      let blob_id = "\x00\x00\x00\x00\x00\x00\x04\x00" in
+      (* TODO: Properly decode the URL *)
+      I.(PrimE (ActorOfIdBlob note.note_typ, [blobE blob_id]))
+    end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
+
+and lexp e =
+    (* We short-cut AnnotE here, so that we get the position of the inner expression *)
+    match e.it with
+    | S.AnnotE (e,_) -> lexp e
+    | _ -> { e with it = lexp' e.it; note = e.note.S.note_typ }
+
+and lexp' = function
+  | S.VarE i -> I.VarLE i.it
+  | S.DotE (e, x) -> I.DotLE (exp e, x.it)
+  | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
+  | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const

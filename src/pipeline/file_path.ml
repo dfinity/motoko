@@ -9,7 +9,7 @@ let normalise file_path =
         | "" -> ()
         | "." -> ()
         | ".." ->
-           if Stack.is_empty acc
+           if Stack.is_empty acc || Stack.top acc = ".."
            then Stack.push ".." acc
            else ignore (Stack.pop acc)
         | segment -> Stack.push segment acc);

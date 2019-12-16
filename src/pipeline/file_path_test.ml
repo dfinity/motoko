@@ -40,6 +40,9 @@ let%test "it applies parent directory traversals" =
 let%test "it keeps parent directory references at the start of a path" =
   normalise_test_case "../foo/lib" "../foo/lib"
 
+let%test "it keeps multiple parent directory references at the start of a path" =
+  normalise_test_case "../../foo/lib" "../../foo/lib"
+
 let%test "it does everything at once" =
   normalise_test_case "../foo//.././lib" "../lib"
 

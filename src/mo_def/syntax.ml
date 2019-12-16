@@ -10,6 +10,12 @@ type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
 let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
+(* Resolved imports (filled in separately after parsing) *)
+
+type resolved_import =
+  | Unresolved
+  | LibPath of string
+  | IDLPath of string
 
 (* Identifiers *)
 
@@ -145,7 +151,7 @@ and exp' =
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
-  | ImportE of (string * string ref)           (* import statement *)
+  | ImportE of (string * resolved_import ref)  (* import statement *)
   | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list                    (* catch exception *)
 (*
@@ -222,3 +228,4 @@ let string_of_lit = function
   | TextLit t     -> t
   | FloatLit f    -> Value.Float.to_pretty_string f
   | PreLit _      -> assert false
+
