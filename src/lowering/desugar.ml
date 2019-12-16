@@ -446,18 +446,18 @@ and prog (p : Syntax.prog) : Ir.prog =
     }
 
 
-let declare_import imp_env lib =
+let declare_import lib =
   let open Source in
   let f = lib.note in
-  let t = T.Env.find f imp_env in
+  let t = lib.it.note.Syntax.note_typ in
   let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
   let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
   { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
 
-let combine_files imp_env libs progs : Syntax.prog =
+let combine_files libs progs : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
-  { it = List.map (declare_import imp_env) libs
+  { it = List.map declare_import libs
          @ List.concat (List.map (fun p -> p.it) progs)
   ; at = no_region
   ; note = match progs with
@@ -467,6 +467,6 @@ let combine_files imp_env libs progs : Syntax.prog =
 
 let transform p = prog p
 
-let transform_graph imp_env libraries progs =
-  prog (combine_files imp_env libraries progs)
+let transform_graph libraries progs =
+  prog (combine_files libraries progs)
 
