@@ -63,6 +63,7 @@ and prim = function
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
+  | BlobOfVerifiedUrl -> Atom "BlobOfVerifiedUrl"
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
   | CPSAsync          -> Atom "CPSAsync"
