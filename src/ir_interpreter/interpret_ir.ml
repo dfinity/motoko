@@ -17,7 +17,6 @@ type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
 type reply_env = V.value V.cont option
 type reject_env = V.value V.cont option
-type self_env = V.actor_id option
 type caller_env = V.actor_id option
 
 type scope = val_env
@@ -38,7 +37,7 @@ type env =
     rejects : reject_env;
     async : bool;
     callers : caller_env;
-    selves : self_env;
+    self : V.actor_id;
   }
 
 let adjoin_scope s ve = V.Env.adjoin s ve
@@ -56,11 +55,11 @@ let env_of_scope flags flavor ve =
     replies = None;
     rejects = None;
     callers = None;
-    selves = Some V.top_id;
+    self = V.top_id;
     async = false;
   }
 
-let context env = V.Text (Lib.Option.value env.selves)
+let context env = V.Text env.self
 
 (* Error handling *)
 
@@ -346,7 +345,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             (fun k' r ->
               let vk' = Value.Func (call_conv_f, fun c v _ -> k' v) in
               let vr = Value.Func (call_conv_r, fun c v _ -> r v) in
-              let vc = V.Text (Lib.Option.value env.selves) in
+              let vc = context env in
               f vc (V.Tup [vk'; vr]) V.as_unit
             )
             k
@@ -396,7 +395,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
-        let vc = V.Text (Lib.Option.value env.selves) in
+        let vc = context env in
         f (V.Tup[vc; kv; rv]) v2 k))))
     | ICCallerPrim, [] ->
       k (V.Text (Lib.Option.value env.callers))
@@ -524,7 +523,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp_r (fun rv ->
         let _call_conv, f = V.as_func v in
         last_region := exp.at; (* in case the following throws *)
-        let vc = V.Text (Lib.Option.value env.selves) in
+        let vc = context env in
         f (V.Tup[vc; kv; rv]) (V.Tup []) k))
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
@@ -545,7 +544,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ActorE (id, ds, fs, _) ->
     let self = V.fresh_id () in
     let ve0 = declare_id id in
-    let env0 = adjoin_vals {env with selves = Some self} ve0 in
+    let env0 = adjoin_vals {env with self = self} ve0 in
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env0 ve in
     interpret_decs env' ds (fun _ ->

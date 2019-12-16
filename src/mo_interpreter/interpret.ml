@@ -16,7 +16,6 @@ type lib_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
-type self_env = V.actor_id option
 
 type flags =
   { trace : bool;
@@ -35,7 +34,7 @@ type env =
     libs : lib_env;
     rets : ret_env;
     throws : throw_env;
-    selves : self_env;
+    self : V.actor_id;
     async : bool
   }
 
@@ -58,11 +57,11 @@ let env_of_scope flags scope =
     labs = V.Env.empty;
     rets = None;
     throws = None;
-    selves = Some V.top_id;
+    self = V.top_id;
     async = false;
   }
 
-let context env = V.Text (Lib.Option.value env.selves)
+let context env = V.Text env.self
 
 (* Error handling *)
 
@@ -775,9 +774,9 @@ and match_sort_pat env sort_pat c =
 (* Objects *)
 
 and interpret_obj env sort fields (k : V.value V.cont) =
-  let selves = if sort.it = T.Actor then Some (V.fresh_id ()) else env.selves in
+  let self = if sort.it = T.Actor then V.fresh_id () else env.self in
   let ve_ex, ve_in = declare_exp_fields fields V.Env.empty V.Env.empty in
-  let env' = adjoin_vals {env with selves = selves} ve_in in
+  let env' = adjoin_vals {env with self = self} ve_in in
   interpret_exp_fields env' sort.it fields ve_ex k
 
 and declare_exp_fields fields ve_ex ve_in : val_env * val_env =
