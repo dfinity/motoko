@@ -130,6 +130,7 @@ i(int<n>) = Int<n> for n = 8, 16, 32, 64
 i(float64) = Float
 i(text) = Text
 i(reserved) = Any
+i(empty) = None
 i(opt <datatype>) = ? i(<datatype>)
 i(vec <datatype>) = [ i(<datatype>) ]
 i(blob) = [ word8 ] // if Motoko had a bytes type, it would show up here
