@@ -139,9 +139,16 @@ and exp' at note = function
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
-  | S.ImportE (f, fp) ->
-    if !fp = "" then assert false; (* unresolved import *)
-    I.VarE (id_of_full_path !fp).it
+  | S.ImportE (f, ir) ->
+    begin match !ir with
+    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
+    | S.LibPath fp -> I.VarE (id_of_full_path fp).it
+    | S.IDLPath fp ->
+      assert (f = "ic:000000000000040054");
+      let blob_id = "\x00\x00\x00\x00\x00\x00\x04\x00" in
+      (* TODO: Properly decode the URL *)
+      I.(PrimE (ActorOfIdBlob note.note_typ, [blobE blob_id]))
+    end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
 and lexp e =

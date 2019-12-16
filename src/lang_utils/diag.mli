@@ -33,6 +33,7 @@ val fold: ('a -> 'b -> 'a result) -> 'a -> 'b list -> 'a result
 val flush_messages : 'a result -> 'a option
 val run : 'a result -> 'a (* Prints messages, and exits upon failure *)
 
+val warn : Source.region -> string -> string -> unit result
 
 (*
 An impure, but more more convenient interface.
