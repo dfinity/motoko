@@ -76,7 +76,7 @@ let share_typfield (tf : typ_field) =
 let share_exp e =
   match e.it with
   | FuncE (x, ({it = Type.Local; _} as s), tbs, p, t, e) ->
-    FuncE (x, {s with it = Type.Shared Type.Write}, tbs, p, t, e) @? e.at
+    FuncE (x, {s with it = Type.Shared (Type.Write, WildP @! s.at)}, tbs, p, t, e) @? e.at
   | _ -> e
 
 let share_dec d =
@@ -200,6 +200,10 @@ seplist1(X, SEP) :
   | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
   | QUERY { Type.Shared Type.Query @@ at $sloc }
 
+%inline sort_pat :
+  | (* empty *) { Type.Local @@ no_region }
+  | SHARED m=mode_opt op=sort_pat_opt { Type.Shared (m,op (at $sloc)) @@ at $sloc  }
+  | QUERY op=sort_pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
 
 (* Paths *)
 
@@ -595,6 +599,11 @@ pat_field :
   | x=id COLON t=typ
     { {id = x; pat = AnnotP(VarP x @! x.at, t) @! t.at} @@ at $sloc }
 
+sort_pat_opt :
+  | p=pat_nullary
+    { fun sloc -> p }
+  | (* Empty *)
+    { fun sloc -> WildP @! sloc }
 
 (* Declarations *)
 
@@ -620,7 +629,7 @@ dec_nonvar :
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
-  | s=func_sort_opt FUNC xf=id_opt
+  | sp=sort_pat FUNC xf=id_opt
       tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
@@ -633,7 +642,7 @@ dec_nonvar :
           | _ -> e
       in
       let named, x = xf "func" $sloc in
-      let_or_exp named x (FuncE(x.it, s, tps, p, t, e)) (at $sloc) }
+      let_or_exp named x (FuncE(x.it, sp, tps, p, t, e)) (at $sloc) }
   | s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in
