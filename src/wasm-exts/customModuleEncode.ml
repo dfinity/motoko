@@ -147,9 +147,8 @@ let encode (em : extended_module) =
     let elem_type = function
       | FuncRefType -> vs7 (-0x10)
 
-    let stack_type = vec value_type
     let func_type = function
-      | FuncType (ins, out) -> vs7 (-0x20); stack_type ins; stack_type out
+      | FuncType (ins, out) -> vs7 (-0x20); vec value_type ins; vec value_type out
 
     let limits vu {min; max} =
       bool (max <> None); vu min; opt vu max
@@ -180,6 +179,13 @@ let encode (em : extended_module) =
     let memop {align; offset; _} = vu32 (Int32.of_int align); vu32 offset
 
     let var x = vu32 x.it
+
+    let stack_type = function
+      | [] -> vs7 (-0x40)
+      | [t] -> value_type t
+      | _ ->
+        Code.error Wasm.Source.no_region
+          "cannot encode stack type with arity > 1 (yet)"
 
     let rec instr e =
       if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);

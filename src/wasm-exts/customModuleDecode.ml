@@ -158,12 +158,16 @@ let elem_type s =
   | -0x10 -> FuncRefType
   | _ -> error s (pos s - 1) "invalid element type"
 
-let stack_type s = vec value_type s
+let stack_type s =
+  match peek s with
+  | Some 0x40 -> skip 1 s; []
+  | _ -> [value_type s]
+
 let func_type s =
   match vs7 s with
   | -0x20 ->
-    let ins = stack_type s in
-    let out = stack_type s in
+    let ins = vec value_type s in
+    let out = vec value_type s in
     FuncType (ins, out)
   | _ -> error s (pos s - 1) "invalid function type"
 
