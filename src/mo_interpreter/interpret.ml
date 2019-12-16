@@ -393,8 +393,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | Some v -> k v
     | None -> trap exp.at "accessing identifier before its definition"
     end
-  | ImportE (f, fp) ->
-    k (find !fp env.libs)
+  | ImportE (f, ri) ->
+    (match !ri with
+    | Unresolved -> assert false
+    | LibPath fp -> k (find fp env.libs)
+    | IDLPath _ -> trap exp.at "actor import"
+    )
   | LitE lit ->
     k (interpret_lit env lit)
   | UnE (ot, op, exp1) ->
