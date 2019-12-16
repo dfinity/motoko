@@ -528,7 +528,6 @@ let check_lit env t lit at =
         "literal of type\n  %s\ndoes not have expected type\n  %s"
         (T.string_of_typ t') (T.string_of_typ_expand t)
 
-
 (* Coercions *)
 
 let array_obj t =
