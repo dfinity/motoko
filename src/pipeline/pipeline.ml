@@ -107,7 +107,7 @@ let parse_file filename : parse_result =
 
 (* Import file name resolution *)
 
-type resolve_result = (Syntax.prog * ResolveImport.S.t) Diag.result
+type resolve_result = (Syntax.prog * ResolveImport.resolved_imports) Diag.result
 
 let resolve_prog (prog, base) : resolve_result =
   Diag.map
@@ -224,18 +224,18 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   let senv = ref senv0 in
   let libs = ref [] in
 
-  let rec go ri = match ri with
+  let rec go ri = match ri.Source.it with
     | Syntax.Unresolved -> assert false
     | Syntax.LibPath f ->
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
-      else if mem ri !pending then
+      else if mem ri.Source.it !pending then
         Error [{
-          Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
+          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
           text = Printf.sprintf "file %s must not depend on itself" f
         }]
       else begin
-        pending := add ri !pending;
+        pending := add ri.Source.it !pending;
         Diag.bind (parsefn f) (fun (prog, base) ->
         Diag.bind (Static.prog prog) (fun () ->
         Diag.bind (ResolveImport.resolve !Flags.package_urls prog base) (fun more_imports ->
@@ -244,20 +244,15 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         Diag.bind (check_lib !senv lib) (fun sscope ->
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
-        pending := remove ri !pending;
+        pending := remove ri.Source.it !pending;
         Diag.return ()
         )))))
       end
     | Syntax.IDLPath f ->
-      (* TODO: Parse IDL file to get the actual type *)
-      let every_imported_actor_has_this_type =
-        let open Type in
-        Obj (Actor, [{lab = "foo"; typ = Func (Shared Write, Promises, [], [], [text])}])
-      in
-      let sscope = Scope.lib f every_imported_actor_has_this_type in
+      let sscope = Scope.lib f Type.(Obj (Actor, [])) in
       senv := Scope.adjoin !senv sscope;
-      Diag.return ()
-  and go_set todo = Diag.traverse_ go (elements todo)
+      Diag.warn ri.Source.at "import" "imported actors assumed to have type actor {}"
+  and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
 
@@ -265,9 +260,7 @@ let load_progs parsefn files senv : load_result =
   Diag.bind (Diag.traverse parsefn files) (fun parsed ->
   Diag.bind (resolve_progs parsed) (fun rs ->
   let progs' = List.map fst rs in
-  let libs =
-    List.fold_left ResolveImport.S.union ResolveImport.S.empty
-    (List.map snd rs) in
+  let libs = List.concat (List.map snd rs) in
   Diag.bind (chase_imports parsefn senv libs) (fun (libs, senv') ->
   Diag.bind (check_progs senv' progs') (fun senv'' ->
   Diag.return (libs, progs', senv'')

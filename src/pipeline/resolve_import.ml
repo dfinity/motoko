@@ -15,13 +15,24 @@ It returns a list of all imported file names.
 
 type filepath = string
 
+type resolved_imports = Syntax.resolved_import Source.phrase list
+
+(* This returns a map from Syntax.resolved_import
+   to the location of the first import of that library
+*)
+module RIM = Map.Make
+  (struct
+    type t = Syntax.resolved_import
+    let compare = compare
+  end)
+
+(* The Set variant is used in the pipeline module *)
 module S = Set.Make
   (struct
     type t = Syntax.resolved_import
     let compare = compare
   end)
 
-module M = Map.Make(String)
 
 (* a map of type package_map will map each package name to a(n optional) package URL,
    which for now is just a filesystem path:
@@ -31,6 +42,7 @@ module M = Map.Make(String)
    packages("foo") = "/Users/home/username/fooPackage/1.2.3/src"
 *)
 
+module M = Map.Make(String)
 type package_map = string M.t
 
 open Syntax
@@ -122,13 +134,13 @@ let add_lib_import msgs imported ri_ref at full_path =
   if Sys.file_exists full_path
   then begin
     ri_ref := LibPath full_path;
-    imported := S.add (LibPath full_path) !imported
+    imported := RIM.add (LibPath full_path) at !imported
   end else
     err_file_does_not_exist msgs at full_path
 
 let add_idl_import msgs imported ri_ref at full_path =
   ri_ref := IDLPath full_path;
-  imported := S.add (IDLPath full_path) !imported
+  imported := RIM.add (IDLPath full_path) at !imported
   (*
   if Sys.file_exists full_path
   then begin
@@ -200,12 +212,14 @@ let resolve_packages : package_urls -> filepath -> package_map Diag.result = fun
   )
   M.empty purls
 
-let resolve : package_urls -> Syntax.prog -> filepath -> S.t Diag.result = fun purls p base ->
+let resolve
+  : package_urls -> Syntax.prog -> filepath -> resolved_imports Diag.result
+  = fun purls p base ->
   Diag.bind (resolve_packages purls base) (fun (packages:package_map) ->
     Diag.with_message_store (fun msgs ->
       let base = if Sys.is_directory base then base else Filename.dirname base in
-      let imported = ref S.empty in
+      let imported = ref RIM.empty in
       List.iter (resolve_import_string msgs base packages imported) (prog_imports p);
-      Some !imported
+      Some (List.map (fun (rim,at) -> Source.(rim @@ at)) (RIM.bindings !imported))
     )
   )

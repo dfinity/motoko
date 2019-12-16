@@ -13,6 +13,8 @@ type 'a result = ('a * messages, messages) Pervasives.result
 
 let return x = Ok (x, [])
 
+let warn at cat text = Ok ((), [{ sev = Warning; at; cat; text}])
+
 let map f = function
   | Pervasives.Error msgs -> Pervasives.Error msgs
   | Ok (x, msgs) -> Ok (f x, msgs)
