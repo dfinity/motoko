@@ -1,5 +1,6 @@
 (library
  (name lib)
  (libraries bigarray)
- (preprocess (pps bisect_ppx -conditional))
+ (inline_tests)
+ (preprocess (pps ppx_inline_test bisect_ppx -conditional))
 )
