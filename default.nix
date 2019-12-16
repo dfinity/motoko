@@ -340,6 +340,7 @@ rec {
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
   wasmtime = nixpkgs.wasmtime;
+  wasm = nixpkgs.wasm;
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";
