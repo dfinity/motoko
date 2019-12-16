@@ -80,6 +80,7 @@ let primE prim es =
     | ShowPrim _ -> T.text
     | ICReplyPrim _ -> T.Non
     | ICRejectPrim -> T.Non
+    | ICCallerPrim -> T.caller
     | CastPrim (t1, t2) -> t2
     | _ -> assert false (* implement more as needed *)
   in

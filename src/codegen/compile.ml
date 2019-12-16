@@ -2868,6 +2868,24 @@ module Dfinity = struct
     | _ ->
       assert false
 
+  let caller env =
+    SR.Vanilla,
+    match E.mode env with
+    | Flags.ICMode | Flags.StubMode ->
+      let (set_len, get_len) = new_local env "len" in
+      let (set_blob, get_blob) = new_local env "blob" in
+      system_call env "ic0" "msg_caller_size" ^^
+      set_len ^^
+
+      get_len ^^ Blob.alloc env ^^ set_blob ^^
+      get_blob ^^ Blob.payload_ptr_unskewed ^^
+      compile_unboxed_const 0l ^^
+      get_len ^^
+      system_call env "ic0" "msg_caller_copy" ^^
+
+      get_blob
+    | _ -> assert false
+
   let reject env arg_instrs =
     match E.mode env with
     | Flags.ICMode | Flags.StubMode ->
@@ -4260,7 +4278,7 @@ module StackRep = struct
     | Prim (Nat64 | Int64 | Word64) -> UnboxedWord64
     | Prim (Nat32 | Int32 | Word32) -> UnboxedWord32
     | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
-    | Prim (Text|Blob) -> Vanilla
+    | Prim (Text | Blob) -> Vanilla
     | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
@@ -6017,6 +6035,10 @@ and compile_exp (env : E.t) ae exp =
     | ICRejectPrim, [e] ->
       SR.unit, Dfinity.reject env (compile_exp_vanilla env ae e)
 
+    | ICCallerPrim, [] ->
+      assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
+      Dfinity.caller env
+
     | ICCallPrim, [f;e;k;r] ->
       SR.unit, begin
       (* TBR: Can we do better than using the notes? *)
@@ -6032,6 +6054,7 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
       FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r
       end
+
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
     end
