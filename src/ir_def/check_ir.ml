@@ -169,7 +169,10 @@ let rec check_typ env typ : unit =
       match control with
       | T.Returns ->
         check env' no_region (sort = T.Shared T.Write)
-          "one-shot query function pointless"
+          "one-shot query function pointless";
+        check env' no_region (ts2 = [])
+          "one-shot function cannot have non-unit return types:\n  %s"
+          (T.string_of_typ_expand (T.seq ts2));
       | T.Promises ->
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
@@ -389,6 +392,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | CastPrim (t1, t2), [e] ->
       typ e <: t1;
       t2 <: t
+    | ActorOfIdBlob actor_typ, [e] ->
+      typ e <: T.blob;
+      check_typ env actor_typ;
+      begin match T.normalize actor_typ with
+      | T.Obj (T.Actor, _) -> ()
+      | _ -> error env exp.at "ActorOfIdBlob cast to actor object type, not\n   %s"
+           (T.string_of_typ_expand actor_typ)
+      end;
+      actor_typ <: t;
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"

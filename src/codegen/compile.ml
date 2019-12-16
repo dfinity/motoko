@@ -18,8 +18,8 @@ open Mo_config
 open Wasm.Ast
 open Wasm.Types
 open Source
-(* Re-shadow Source.(@@), to get Pervasives.(@@) *)
-let (@@) = Pervasives.(@@)
+(* Re-shadow Source.(@@), to get Stdlib.(@@) *)
+let (@@) = Stdlib.(@@)
 
 module G = InstrList
 let (^^) = G.(^^) (* is this how we import a single operator from a module that we otherwise use qualified? *)
