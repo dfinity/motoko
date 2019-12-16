@@ -86,12 +86,17 @@ and exp' at note = function
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
   | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
-  | S.FuncE (name, s, tbs, p, _t_opt, e) ->
-    let args, wrap, control, res_tys = to_args note.I.note_typ p in
+  | S.FuncE (name, sp, tbs, p, _t_opt, e) ->
+    let s, po = match sp.it with
+      | T.Local -> (T.Local, None)
+      | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
+        (T.Shared ss, None)
+      | T.Shared (ss, sp) -> (T.Shared ss, Some sp) in
+    let args, wrap, control, res_tys = to_args note.I.note_typ po p in
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
-    I.FuncE (name, s.it, control, tbs', args, tys, wrap (exp e))
+    I.FuncE (name, s, control, tbs', args, tys, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
@@ -139,9 +144,16 @@ and exp' at note = function
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false
-  | S.ImportE (f, fp) ->
-    if !fp = "" then assert false; (* unresolved import *)
-    I.VarE (id_of_full_path !fp).it
+  | S.ImportE (f, ir) ->
+    begin match !ir with
+    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
+    | S.LibPath fp -> I.VarE (id_of_full_path fp).it
+    | S.IDLPath fp ->
+      assert (f = "ic:000000000000040054");
+      let blob_id = "\x00\x00\x00\x00\x00\x00\x04\x00" in
+      (* TODO: Properly decode the URL *)
+      I.(PrimE (ActorOfIdBlob note.note_typ, [blobE blob_id]))
+    end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
 and lexp e =
@@ -306,7 +318,7 @@ and dec' at n d = match d with
       | _ -> assert false
     in
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
-    let args, wrap, control, _n_res = to_args n.S.note_typ p in
+    let args, wrap, control, _n_res = to_args n.S.note_typ None p in
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
@@ -382,8 +394,7 @@ and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     arg_of_exp v,
     (fun e -> blockE [letP (pat p) v] e)
 
-
-and to_args typ p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
+and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
   let sort, control, n_args, res_tys =
     match typ with
     | Type.Func (sort, control, tbds, dom, res) ->
@@ -411,19 +422,37 @@ and to_args typ p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
       List.fold_right (fun p (args, wrap) ->
         let (a, wrap1) = to_arg p in
         (a::args, fun e -> wrap1 (wrap e))
-      ) ps ([], (fun e -> e))
+      ) ps ([], fun e -> e)
     | _, _ ->
       let vs = fresh_vars "param" tys in
       List.map arg_of_exp vs,
       (fun e -> blockE [letP (pat p) (tupE vs)] e)
   in
 
+  let wrap_po e =
+    match po with
+    | None -> wrap e
+    | Some p ->
+      let v = fresh_var "caller" T.caller in
+      let c = fresh_var "ctxt" T.ctxt in
+      blockE
+        [letD v (primE I.ICCallerPrim []);
+         letD c
+           (newObjE T.Object
+              [{ it = {Ir.name = "caller"; var = id_of_exp v};
+                 at = no_region;
+                 note = T.caller }]
+              T.ctxt);
+         letP (pat p) c]
+        (wrap e)
+  in
+
   let wrap_under_async e =
     if T.is_shared_sort sort && control <> T.Returns
     then match e.it with
-      | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap e') }
+      | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap_po e') }
       | _ -> assert false
-    else wrap e in
+    else wrap_po e in
 
   args, wrap_under_async, control, res_tys
 
@@ -439,18 +468,18 @@ and prog (p : Syntax.prog) : Ir.prog =
     }
 
 
-let declare_import imp_env lib =
+let declare_import lib =
   let open Source in
   let f = lib.note in
-  let t = T.Env.find f imp_env in
+  let t = lib.it.note.Syntax.note_typ in
   let typ_note =  { Syntax.empty_typ_note with Syntax.note_typ = t } in
   let p = { it = Syntax.VarP (id_of_full_path f); at = lib.at; note = t } in
   { it = Syntax.LetD (p, lib.it); at = lib.at; note = typ_note }
 
-let combine_files imp_env libs progs : Syntax.prog =
+let combine_files libs progs : Syntax.prog =
   (* This is a hack until the backend has explicit support for libraries *)
   let open Source in
-  { it = List.map (declare_import imp_env) libs
+  { it = List.map declare_import libs
          @ List.concat (List.map (fun p -> p.it) progs)
   ; at = no_region
   ; note = match progs with
@@ -460,6 +489,6 @@ let combine_files imp_env libs progs : Syntax.prog =
 
 let transform p = prog p
 
-let transform_graph imp_env libraries progs =
-  prog (combine_files imp_env libraries progs)
+let transform_graph libraries progs =
+  prog (combine_files libraries progs)
 
