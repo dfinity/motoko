@@ -17,7 +17,6 @@ type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
 type reply_env = V.value V.cont option
 type reject_env = V.value V.cont option
-type caller_env = V.actor_id option
 
 type scope = val_env
 
@@ -36,7 +35,7 @@ type env =
     replies : reply_env;
     rejects : reject_env;
     async : bool;
-    callers : caller_env;
+    caller : V.value;
     self : V.actor_id;
   }
 
@@ -54,7 +53,7 @@ let env_of_scope flags flavor ve =
     throws = None;
     replies = None;
     rejects = None;
-    callers = None;
+    caller = V.Text V.top_id;
     self = V.top_id;
     async = false;
   }
@@ -398,7 +397,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let vc = context env in
         f (V.Tup[vc; kv; rv]) v2 k))))
     | ICCallerPrim, [] ->
-      k (V.Text (Lib.Option.value env.callers))
+      k env.caller
     | _ ->
       trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
         (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -780,10 +779,10 @@ and interpret_decs env decs (k : unit V.cont) =
 
 and interpret_func env at sort x args f c v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" x (string_of_arg env v);
-  let callers =
+  let caller =
     if T.is_shared_sort sort
-    then Some (V.as_text c)
-    else env.callers
+    then c
+    else env.caller
   in
   let ve = match_args at args v in
   incr trace_depth;
@@ -798,7 +797,7 @@ and interpret_func env at sort x args f c v (k : V.value V.cont) =
       labs = V.Env.empty;
       rets = Some k';
       async = false;
-      callers = callers;
+      caller = caller;
     }
   in f env' k'
 
@@ -824,7 +823,7 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
       rets = Some k';
       replies = Some (fun v -> reply (context env) v V.as_unit);
       rejects = Some (fun v -> reject (context env) v V.as_unit);
-      callers = Some (V.as_text v_caller);
+      caller = v_caller;
       async = false
     }
   in f env' k'
