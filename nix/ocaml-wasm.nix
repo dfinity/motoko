@@ -13,7 +13,7 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "WebAssembly";
     repo = "spec";
-    rev = "v1.1";
+    rev = "v${version}";
     sha256 = "1jsgrjqzsdmm6f5pgd947nikj7pnxx1mqdnz16j7s62rg8x06h7d";
   };
 

@@ -114,6 +114,8 @@ and vis' = Public | Private
 
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
+type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
+
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
@@ -132,7 +134,7 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | FuncE of string * func_sort * typ_bind list * pat * typ option * exp  (* function *)
+  | FuncE of string * sort_pat * typ_bind list * pat * typ option * exp  (* function *)
   | CallE of exp * typ list * exp              (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
