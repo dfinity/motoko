@@ -138,7 +138,9 @@ let in_base base f =
 let resolve_import_string msgs base actor_idl_path packages imported (f, ri_ref, at)  =
   match Url.parse f with
     | Ok (Url.Relative path) ->
-      add_lib_import msgs imported ri_ref at (in_base base path)
+      (match Filename.extension path with
+       | ".did" -> add_idl_import msgs imported ri_ref at (in_base base path) ""
+       | _ -> add_lib_import msgs imported ri_ref at (in_base base path))
     | Ok (Url.Package (pkg,path)) ->
       begin match M.find_opt pkg packages with
       | Some pkg_path ->
