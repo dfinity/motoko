@@ -48,13 +48,13 @@ end
 
 module CRC =
 struct
-  let crc8 (bs : bytes) : int =
+  let crc8 (bs : string) : int =
     let inner _ = function
       | crc when crc land 0x80 <> 0 -> (crc lsl 1) lxor 0x7
       | crc -> crc lsl 1 in
     let outer crc b =
       List.fold_right inner [0;1;2;3;4;5;6;7] (Char.code b lxor crc) land 0xFF in
-    Seq.fold_left outer 0 (Bytes.to_seq bs)
+    Seq.fold_left outer 0 (String.to_seq bs)
 end
 
 module Hex =
@@ -65,11 +65,11 @@ struct
     | c when c >= 'a' && c <= 'f' -> code c - code 'a' + 10
     | _ -> assert false
 
-  let bytes_of_hex hex : bytes =
+  let bytes_of_hex hex : string =
     let open String in
     let extract i _ =
       Char.chr (hexdigit (get hex (i * 2)) lsl 4 lor hexdigit (get hex (i * 2 + 1))) in
-    Bytes.mapi extract (Bytes.create (length hex / 2))
+    Bytes.to_string (Bytes.mapi extract (Bytes.create (length hex / 2)))
 
   let int_of_hex_byte hex : int =
     assert (String.length hex = 2);
@@ -357,6 +357,13 @@ struct
   end
 end
 
+module Seq =
+struct
+  let rec for_all p s = match s () with
+    | Seq.Nil -> true
+    | Seq.Cons (x, s') -> p x && for_all p s'
+end
+
 module Option =
 struct
   let equal p x y =
@@ -407,6 +414,36 @@ struct
   let value p = match !p with Some x -> x | None -> raise Promise
 end
 
+module FilePath =
+struct
+  let normalise file_path =
+    let has_trailing_slash =
+      Option.is_some (String.chop_suffix "/" file_path) in
+    let has_leading_slash = not (Filename.is_relative file_path) in
+    let acc = Stack.create () in
+    String.split file_path '/'
+    |> Stdlib.List.iter
+         (function
+          | "" -> ()
+          | "." -> ()
+          | ".." ->
+             if Stack.is_empty acc || Stack.top acc = ".."
+             then Stack.push ".." acc
+             else ignore (Stack.pop acc)
+          | segment -> Stack.push segment acc);
+    let result = Stack.fold (fun x y -> y ^ "/" ^ x) "" acc in
+    let prefix = if has_leading_slash then "/" else "" in
+    prefix ^ (if has_trailing_slash
+      then result
+      else Option.value (String.chop_suffix "/" result))
+
+  let relative_to base path =
+    String.chop_prefix
+      (normalise (base ^ "/"))
+      (normalise path)
+end
+
+
 [@@@warning "-60"]
 module Test =
 struct
@@ -416,19 +453,117 @@ struct
    it is a dune library.
 *)
   let%test "bytes_of_hex DEADBEEF" =
-    Hex.bytes_of_hex "DEADBEEF" = Bytes.of_string "\xDE\xAD\xBE\xEF"
+    Hex.bytes_of_hex "DEADBEEF" = "\xDE\xAD\xBE\xEF"
   let%test "bytes_of_hex 0000" =
-    Hex.bytes_of_hex "0000" = Bytes.of_string "\x00\x00"
+    Hex.bytes_of_hex "0000" = "\x00\x00"
   let%test "bytes_of_hex empty" =
-    Hex.bytes_of_hex "" = Bytes.of_string ""
+    Hex.bytes_of_hex "" = ""
 
   let%test "int_of_hex_byte 00" = Hex.int_of_hex_byte "00" = 0
   let%test "int_of_hex_byte AB" = Hex.int_of_hex_byte "AB" = 0xAB
   let%test "int_of_hex_byte FF" = Hex.int_of_hex_byte "FF" = 0xFF
 
   (* see https://crccalc.com/ *)
-  let %test "crc8 DEADBEEF" = CRC.crc8 (Bytes.of_string "\xDE\xAD\xBE\xEF") = 0xCA
-  let %test "crc8 empty" = CRC.crc8 (Bytes.of_string "") = 0x00
-  let %test "crc8 0000" = CRC.crc8 (Bytes.of_string "\x00\x00") = 0x00
+  let %test "crc8 DEADBEEF" = CRC.crc8 "\xDE\xAD\xBE\xEF" = 0xCA
+  let %test "crc8 empty" = CRC.crc8 "" = 0x00
+  let %test "crc8 0000" = CRC.crc8 "\x00\x00" = 0x00
+
+
+  (* FilePath tests *)
+  let normalise_test_case input expected =
+    let actual = FilePath.normalise input in
+    Stdlib.String.equal actual expected ||
+      (Printf.printf
+         "\nExpected: %s\nActual: %s\n"
+         expected
+         actual;
+       false)
+
+  let relative_to_test_case root contained expected =
+    let actual = FilePath.relative_to root contained in
+    let show = function
+      | None -> "None"
+      | Some s -> "Some " ^ s in
+    Option.equal Stdlib.String.equal actual expected ||
+      (Printf.printf
+         "\nExpected: %s\nActual: %s\n"
+         (show expected)
+         (show actual);
+       false)
+
+  let%test "it removes leading current directory" =
+    normalise_test_case "./ListClient.mo" "ListClient.mo"
+
+  let%test "it removes leading `./` for relative paths" =
+    normalise_test_case "./lib/foo" "lib/foo"
+
+  let%test "it removes duplicate `//`s" =
+    normalise_test_case ".//lib/foo" "lib/foo"
+
+  let%test "it preserves trailing slashes" =
+    normalise_test_case "lib/foo/" "lib/foo/"
+
+  let%test "it drops intermediate references to the `.` directory" =
+    normalise_test_case "lib/./foo/" "lib/foo/"
+
+  let%test "it applies parent directory traversals" =
+    normalise_test_case "lib/../foo/" "foo/"
+
+  let%test "it keeps parent directory references at the start of a path" =
+    normalise_test_case "../foo/lib" "../foo/lib"
+
+  let%test "it keeps multiple parent directory references at the start of a path" =
+    normalise_test_case "../../foo/lib" "../../foo/lib"
+
+  let%test "it does everything at once" =
+    normalise_test_case "../foo//.././lib" "../lib"
+
+  let%test "it handles absolute paths" =
+    normalise_test_case "/foo" "/foo"
+
+  let%test "it handles absolute directory paths" =
+    normalise_test_case "/foo/./lib/" "/foo/lib/"
+
+  let%test "it makes one absolute path relative to another one" =
+    relative_to_test_case
+      "/home/project"
+      "/home/project/src/main.mo"
+      (Some "src/main.mo")
+
+  let%test "it's robust in the face of trailing slashes" =
+    relative_to_test_case
+      "/home/project/"
+      "/home/project/src/main.mo"
+      (Some "src/main.mo")
+
+  let%test "it makes a file path relative to a path" =
+    relative_to_test_case
+      "/home/project"
+      "/home/project/main.mo"
+      (Some "main.mo")
+
+  let%test "it preserves trailing slashes" =
+    relative_to_test_case
+      "/home/project/"
+      "/home/project/src/"
+      (Some "src/")
+
+  let%test "it handles directory traversals" =
+    relative_to_test_case
+      "/home/project"
+      "/home/project/src/../lib/"
+      (Some "lib/")
+
+  let%test "it fails to make disjoint paths relative to one another" =
+    relative_to_test_case
+      "/home/project"
+      "/home/main.mo"
+      None
+
+  let%test "it handles relative paths" =
+    relative_to_test_case
+      "project/src"
+      "project/src/Main.mo"
+      (Some "Main.mo")
 end
 

@@ -11,7 +11,7 @@ open Mo_config
 open Printf
 
 module ResolveImport = Resolve_import
-module FilePath = File_path
+module URL = Url
 
 type stat_env = Scope.t
 type dyn_env = Interpret.scope
@@ -248,7 +248,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         Diag.return ()
         )))))
       end
-    | Syntax.IDLPath f ->
+    | Syntax.IDLPath (f, _) ->
       let sscope = Scope.lib f Type.(Obj (Actor, [])) in
       senv := Scope.adjoin !senv sscope;
       Diag.warn ri.Source.at "import" "imported actors assumed to have type actor {}"

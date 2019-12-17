@@ -15,7 +15,7 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 type resolved_import =
   | Unresolved
   | LibPath of string
-  | IDLPath of string
+  | IDLPath of (string * string) (* filepath * bytes *)
 
 (* Identifiers *)
 
