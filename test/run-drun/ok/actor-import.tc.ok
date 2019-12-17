@@ -1,1 +1,1 @@
-actor-import.mo:3.1-3.40: warning, imported actors assumed to have type actor {}
+actor-import.mo:8.1-8.40: warning, actor {go : shared () -> async actor {}}

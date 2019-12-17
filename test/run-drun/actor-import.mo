@@ -8,7 +8,7 @@
 import imported "ic:000000000000040054";
 actor a {
   public func go() : async (actor {}) = async imported;
-  public func go2() : async (Nat8) = async await (imported.go());
+  public func go2() : async (actor {}) = async await (imported.go());
 };
 //CALL ingress go2 "DIDL\x00\x00"
 

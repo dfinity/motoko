@@ -54,10 +54,13 @@ let rec check_typ env t =
   | FuncT (ms, ts1, ts2) ->
      let (s, c) = check_modes ms in
      M.Func (M.Shared s, c, [], List.map (check_typ env) ts1, List.map (check_typ env) ts2)
+  | ServT ms ->
+     let fs = List.map (check_meth env) ms in
+     M.Obj (M.Actor, fs)
   | _ -> assert false
 
-let check_meth env (m: typ_meth) =
-  M.{lab = m.it.var.it; typ = check_typ env m.it.meth}
+and check_meth env (m: typ_meth) =
+  M.{lab = Idllib.Escape.escape m.it.var.it; typ = check_typ env m.it.meth}
 
 let prog (env: typ I.Env.t) actor : M.typ * Mo_types.Scope.con_env =
   match actor with
