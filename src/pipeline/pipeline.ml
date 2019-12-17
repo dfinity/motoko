@@ -249,7 +249,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         )))))
       end
     | Syntax.IDLPath f ->
-       let (prog, idl_scope, actor_opt) = Diag.run (Idllib.Pipeline.check_file f) in
+       Diag.bind (Idllib.Pipeline.check_file f) (fun (prog, idl_scope, actor_opt) ->
        let (actor, con_set) = Mo_idl.Idl_to_mo.prog idl_scope actor_opt in
        let sscope = Scope.lib f actor in
        let sscope = Scope.{ sscope with con_env = con_set } in
@@ -257,6 +257,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
        print_ce con_set;
        let pp = Mo_types.Type.string_of_typ actor in
        Diag.warn ri.Source.at "import" pp
+       )
   and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)

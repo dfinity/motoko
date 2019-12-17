@@ -108,15 +108,6 @@ let check_cycle env =
       if has_cycle TS.empty t then error env t.at "%s has a cyclic type definition" x
     ) env.typs
 
-let check_modes env ms t2 =
-  match ms with
-  | [] -> ()
-  | [{it=Oneway; at; _}] ->
-     if List.length t2 > 0 then
-       error env at "oneway function has non-unit return type";
-  | [{it=Query; _}] -> ()
-  | {it; at; _} :: tl -> error env at "cannot have both oneway and query modes"
-  
 let rec check_typ env t =
   match t.it with
   | PrimT prim -> t
@@ -124,7 +115,10 @@ let rec check_typ env t =
   | FuncT (ms, t1, t2) ->
      let t1' = List.map (fun t -> check_typ env t) t1 in
      let t2' = List.map (fun t -> check_typ env t) t2 in
-     check_modes env ms t2;
+     if List.length ms > 1 then
+       error env t.at "cannot have more than one mode"
+     else if List.length ms = 1 && (List.hd ms).it = Oneway && List.length t2 > 0 then
+       error env t.at "oneway function has non-unit return type";
      FuncT (ms, t1', t2') @@ t.at
   | OptT t -> OptT (check_typ env t) @@ t.at
   | VecT t -> VecT (check_typ env t) @@ t.at
