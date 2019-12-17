@@ -38,24 +38,23 @@ static uint8_t hex_byte(const char* h) {
   return hex_digit(h[0]) << 4 | hex_digit(h[1]);
 }
 
-// assumption: uppercase hex
+// assumption: uppercase hex, len is even
 static uint8_t compute_crc8(const char data[], uint32_t len) {
-   uint8_t crc = 0;
-   for (uint32_t i = 0; i < len; i += 2) {
-     crc ^= hex_byte(data + i);
-     for (uint32_t j = 0; j < 8; ++j) {
-       if (crc & 0x80)
-         crc = (uint8_t)((crc << 1) ^ 0x7);
-       else
-         crc <<= 1;
-     }
-   }
-   return crc;
- }
+  uint8_t crc = 0;
+  for (uint32_t i = 0; i < len; i += 2) {
+    crc ^= hex_byte(data + i);
+    for (uint32_t j = 0; j < 8; ++j) {
+      if (crc & 0x80)
+	crc = (uint8_t)((crc << 1) ^ 0x7);
+      else
+	crc <<= 1;
+    }
+  }
+  return crc;
+}
 
 // CRC-8 from IC-URL
 export blob_t crc8_decode(text_t t) {
-  extern blob_t blob_of_text(text_t);
   blob_t b0 = blob_of_text(t);
   uint32_t n = BLOB_LEN(b0);
   if (n < 3) rts_trap_with("ic_url_decode: Not an URL");
