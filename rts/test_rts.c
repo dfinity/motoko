@@ -172,9 +172,10 @@ int main () {
   blob0p[3] = blob0p[4] = blob0p[5] = blob0p[6] = '0';
   (void)crc8_decode(blob0);
 
-  as_ptr blob1 = alloc_blob(15);
+  const int blob1len = 15;
+  as_ptr blob1 = alloc_blob(blob1len);
   char* blob1p = (char*)BLOB_PAYLOAD(blob1);
-  memcpy(blob1p, "ic:C0FEFED00D41", 15);
+  memcpy(blob1p, "ic:C0FEFED00D41", blob1len);
   (void)crc8_decode(blob1);
 
   return ret;
