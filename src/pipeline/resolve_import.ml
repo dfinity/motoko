@@ -107,9 +107,9 @@ let add_lib_import msgs imported ri_ref at full_path =
   end else
     err_file_does_not_exist msgs at full_path
 
-let add_idl_import msgs imported ri_ref at full_path =
-  ri_ref := IDLPath full_path;
-  imported := RIM.add (IDLPath full_path) at !imported
+let add_idl_import msgs imported ri_ref at full_path bytes =
+  ri_ref := IDLPath (full_path, bytes);
+  imported := RIM.add (IDLPath (full_path, bytes)) at !imported
   (*
   if Sys.file_exists full_path
   then begin
@@ -127,19 +127,19 @@ let in_base base f =
   else Filename.concat base f
 
 let resolve_import_string msgs base packages imported (f, ri_ref, at)  =
-  match Lib.URL.parse f with
-    | Ok (Lib.URL.Relative path) ->
+  match Url.parse f with
+    | Ok (Url.Relative path) ->
       add_lib_import msgs imported ri_ref at (in_base base path)
-    | Ok (Lib.URL.Package (pkg,path)) ->
+    | Ok (Url.Package (pkg,path)) ->
       begin match M.find_opt pkg packages with
       | Some pkg_path ->
         add_lib_import msgs imported ri_ref at (in_base pkg_path path)
       | None ->
         err_package_not_defined msgs at pkg
       end
-    | Ok (Lib.URL.Ic bytes) ->
+    | Ok (Url.Ic bytes) ->
       let full_path = (* in_base actor_base *) bytes in
-      add_idl_import msgs imported ri_ref at full_path
+      add_idl_import msgs imported ri_ref at full_path bytes
     | Error msg ->
       err_unrecognized_url msgs at f msg
 

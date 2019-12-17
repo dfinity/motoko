@@ -74,6 +74,11 @@ sig
   end
 end
 
+module Seq :
+sig
+  val for_all : ('a -> bool) -> 'a Seq.t -> bool
+end
+
 module Option :
 sig
   val equal : ('a -> 'a -> bool) -> 'a option -> 'a option -> bool
@@ -168,14 +173,4 @@ sig
    * relative_to "foo/bar" "foo/bar/project" = Some "project"
    *)
   val relative_to : string -> string -> string option
-end
-
-module URL :
-sig
-  type parsed =
-    | Package of (string * string)
-    | Relative of string
-    | Ic of string
-
-  val parse : string -> (parsed, string) result
 end

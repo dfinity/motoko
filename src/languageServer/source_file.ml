@@ -40,13 +40,13 @@ let cursor_target_at_pos
   try loop (next ()) with _ -> None
 
 let is_package_path (path : string) =
-  let open Lib.URL in
+  let open Pipeline.URL in
   match parse path with
   | Ok (Package _) -> true
   | _ -> false
 
 let uri_for_package (path : string) =
-  let open Lib.URL in
+  let open Pipeline.URL in
   match parse path with
   | Ok (Package (pkg, path)) ->
      begin match
