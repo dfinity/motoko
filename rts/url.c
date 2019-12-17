@@ -70,7 +70,7 @@ export blob_t crc8_decode(text_t t) {
   if (crc != exp) {
     rts_trap_with("ic_url_decode: CRC-8 mismatch");
   }
-  as_ptr r = alloc_blob(hex_len >> 1);
+  as_ptr r = alloc_blob(hex_len / 2);
   for (char *bytes = BLOB_PAYLOAD(r); hex_len; hex += 2, hex_len -= 2) {
     *bytes++ = (char)hex_byte(hex);
   }
