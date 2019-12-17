@@ -57,7 +57,7 @@ let lookup_module
       (path : path)
       (index : t)
     : ide_decl list option =
-  let open Lib.URL in
+  let open Pipeline.URL in
   match parse path with
   | Ok (Relative path) -> Index.find_opt path index
   | Ok (Package (pkg, path)) ->

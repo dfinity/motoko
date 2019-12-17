@@ -267,13 +267,6 @@ struct
     | x::ys -> List.iter (fun y -> f x y) ys; iter_pairs f ys
 end
 
-module Seq =
-struct
-  let rec for_all p s = match s () with
-    | Seq.Nil -> true
-    | Seq.Cons (x, s') -> p x && for_all p s'
-end
-
 module List32 =
 struct
   let rec make n x = make' n x []
@@ -364,6 +357,13 @@ struct
   end
 end
 
+module Seq =
+struct
+  let rec for_all p s = match s () with
+    | Seq.Nil -> true
+    | Seq.Cons (x, s') -> p x && for_all p s'
+end
+
 module Option =
 struct
   let equal p x y =
@@ -443,76 +443,6 @@ struct
       (normalise path)
 end
 
-
-module URL =
-struct
-(* Parsing known URLs from mo: and ic: URLs *)
-(* Not really best in lib, but where else (used from pipeline and lowering) *)
-
-(*
-   parse "mo:std/list"    = Ok (Package ("std", "list"))
-   parse "mo:std/foo/bar" = Ok (Package ("std", "foo/bar"))
-   parse "mo:foo/bar"     = Ok (Package ("foo", "bar"))
-   parse "mo:foo"         = Ok (Package ("foo", ""))
-
-   parse "ic:DEADBEEF"    = Ok (Ic "\DE\AD\BE\EF")
-   parse "ic:alias"       = (not yet supported)
-
-   parse "std/foo"        = Ok (Relative "std/foo")
-   parse "foo"            = Ok (Relative "foo")
-   parse "./foo"          = Ok (Relative "foo")
-
-   parse "something:else" = Error …
-
-   TODO: This could be the place to reject things like
-     ic: mo: http:std/foo
-  *)
-
-
-  (* helper (only to be used on "ic:…" urls) *)
-  let decode_actor_url url : (string, string) result =
-    let open Stdlib.String in
-    let hex = Option.value (String.chop_prefix "ic:" url) in
-
-    if equal hex "" then Error "principal ID must not be empty" else
-    if uppercase_ascii hex <> hex then Error "principal ID must be uppercase" else
-    let isHex c = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') in
-    if not (Seq.for_all isHex (to_seq hex)) then Error "principal ID must contain uppercase hexadecimal digits" else
-    if length hex mod 2 = 1 then Error "principal ID must contain an even number of hexadecimal digits" else
-    let blob, crc = sub hex 0 (length hex - 2), sub hex (length hex - 2) 2 in
-    let bs = Hex.bytes_of_hex blob in
-    let checksum = CRC.crc8 bs in
-    if checksum <> Hex.int_of_hex_byte crc then Error "invald checksum in principal ID, please check for typos" else
-    Ok bs
-
-  type parsed =
-    | Package of (string * string)
-    | Relative of string
-    | Ic of string
-
-
-  let parse (f: string) : (parsed, string) result =
-    match String.chop_prefix "mo:" f with
-    | Some suffix ->
-      begin match Stdlib.String.index_opt suffix '/' with
-      | None -> Ok (Package (suffix, ""))
-      | Some i ->
-        let pkg = Stdlib.String.sub suffix 0 i in
-        let path = Stdlib.String.sub suffix (i+1) (Stdlib.String.length suffix - (i+1)) in
-        Ok (Package (pkg, path))
-      end
-    | None ->
-      match String.chop_prefix "ic:" f with
-      | Some _suffix -> begin match decode_actor_url f with
-        | Ok bytes -> Ok (Ic bytes)
-        | Error err -> Error err
-        end
-      | None ->
-        begin match Stdlib.String.index_opt f ':' with
-        | Some _ -> Error "Unrecognized URL"
-        | None -> Ok (Relative (FilePath.normalise f))
-        end
-end
 
 [@@@warning "-60"]
 module Test =
