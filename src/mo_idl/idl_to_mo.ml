@@ -27,10 +27,12 @@ let check_prim p =
   | Empty -> M.Non
 
 let check_modes ms =
-  let s = if List.exists (fun m -> m.it = Query) ms then M.Query else M.Write in
-  let c = if List.exists (fun m -> m.it = Oneway) ms then M.Returns else M.Promises in
-  (s, c)
-           
+  match ms with
+  | [] -> (M.Write, M.Promises)
+  | [{it=Oneway; _}] -> (M.Write, M.Returns)
+  | [{it=Query; _}] -> (M.Query, M.Promises)
+  | _ -> assert false
+
 let rec check_typ env t =
   match t.it with
   | PrimT p -> check_prim p
@@ -45,6 +47,9 @@ let rec check_typ env t =
          m_env := M.Env.add id t' !m_env;
          con_set := M.ConSet.add con !con_set;
          t'
+      | Some M.Pre ->
+         let con = Mo_types.Con.fresh id (M.Def ([], M.Pre)) in
+         M.Con (con, [])
       | Some t -> t
      )
   | OptT t -> M.Opt (check_typ env t)

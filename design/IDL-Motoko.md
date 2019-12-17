@@ -100,7 +100,7 @@ ef : <typ-field> -> <fieldtype>
 ef (<id> : <typ>) = unescape(<id>) : e(<typ>)
 
 efn : <typ> -> <functype>
-efn(shared query? <typ> -> ()) = ea(<typ>) -> () oneway query?
+efn(shared <typ> -> ()) = ea(<typ>) -> () oneway
 efn(shared query? <typ1> -> async <typ2>) = ea(<typ1>) -> ea(<typ2>) query?
 
 ea : <typ> -> <argtype>,*
@@ -145,7 +145,7 @@ if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
 if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
 
 ifn : <functype> -> <typ>
-ifn((<datatype>,*) -> () oneway query?) = shared query? ia(<as>) -> ()
+ifn((<datatype>,*) -> () oneway) = shared ia(<as>) -> ()
 ifn((<datatype1>,*) -> (<datatype2>,*) query?) = shared query? ia(<datatype1>,*) -> async ia(<datatype2>,*)
 
 ia : <argtype>,* -> <typ>
