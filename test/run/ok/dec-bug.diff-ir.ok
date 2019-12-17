@@ -1,0 +1,4 @@
+--- dec-bug.run
++++ dec-bug.run-ir
+@@ -1 +0,0 @@
+-dec-bug.mo:1.45-1.48: execution error, Value.as_unit
