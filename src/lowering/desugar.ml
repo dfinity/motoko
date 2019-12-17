@@ -57,6 +57,8 @@ and exp e =
 
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
+  | S.ActorUrlE e ->
+    I.(PrimE (ActorOfIdBlob note.note_typ, [url e]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
@@ -148,13 +150,19 @@ and exp' at note = function
     begin match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath fp -> I.VarE (id_of_full_path fp).it
-    | S.IDLPath fp ->
-      assert (f = "ic:000000000000040054");
-      let blob_id = "\x00\x00\x00\x00\x00\x00\x04\x00" in
-      (* TODO: Properly decode the URL *)
-      I.(PrimE (ActorOfIdBlob note.note_typ, [blobE blob_id]))
+    | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.note_typ, [blobE blob_id]))
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
+
+and url e =
+    (* We short-cut AnnotE here, so that we get the position of the inner expression *)
+    match e.it with
+    | S.AnnotE (e,_) -> url e
+    | _ ->
+      let transformed = typed_phrase' (url' e) e in
+      I.{ transformed with note = { transformed.note with note_typ = T.blob } }
+
+and url' e at _ _ = I.(PrimE (BlobOfIcUrl, [exp e]))
 
 and lexp e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)

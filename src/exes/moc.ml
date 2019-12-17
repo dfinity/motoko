@@ -58,6 +58,7 @@ let argspec = Arg.align
                      ) :: ! Flags.package_urls
                      end
                  ]), "<args> Specify a package-name-package-URL pair, separated by a space" ;
+  "--actor-idl", Arg.String (fun fp -> Flags.actor_idl_path := Some fp), " path to actor IDL files";
   "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
   "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
   "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, " prefix each profile line with the given string ";
@@ -78,8 +79,11 @@ let argspec = Arg.align
   "-stub-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := StubMode)),
       " use the future DFINITY system API (ic-stub-run)";
+  (* TODO: bring this back (possibly with flipped default)
+           as soon as the multi-value `wasm` library is out.
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
   "-no-multi-value", Arg.Clear Flags.multi_value, " avoid multi-value extension";
+   *)
 
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";

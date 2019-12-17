@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include "rts.h"
 
 typedef intptr_t as_ptr;
 
@@ -156,6 +157,26 @@ int main () {
      assert((i<<2)-1 == recall_closure(reference[i]), "Recall went wrong\n");
      assert(closure_count() == i, "Closure count wrong\n");
   }
+
+  /*
+   * Testing 'IC:' scheme URL decoding
+   */
+  printf("Testing IC: URL...\n");
+
+  extern as_ptr crc8_decode(as_ptr);
+  as_ptr blob0 = alloc_blob(7);
+  char* blob0p = (char*)BLOB_PAYLOAD(blob0);
+  blob0p[0] = 'I';
+  blob0p[1] = 'c';
+  blob0p[2] = ':';
+  blob0p[3] = blob0p[4] = blob0p[5] = blob0p[6] = '0';
+  (void)crc8_decode(blob0);
+
+  const int blob1len = 15;
+  as_ptr blob1 = alloc_blob(blob1len);
+  char* blob1p = (char*)BLOB_PAYLOAD(blob1);
+  memcpy(blob1p, "ic:C0FEFED00D41", blob1len);
+  (void)crc8_decode(blob1);
 
   return ret;
 }

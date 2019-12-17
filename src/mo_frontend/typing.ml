@@ -176,7 +176,7 @@ let check_import env at f ri =
     match !ri with
     | Unresolved -> error env at "unresolved import %s" f
     | LibPath fp -> fp
-    | IDLPath fp -> fp
+    | IDLPath (fp, _) -> fp
   in
   match T.Env.find_opt full_path env.libs with
   | Some T.Pre ->
@@ -602,6 +602,9 @@ and infer_exp'' env exp : T.typ =
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
+  | ActorUrlE exp' ->
+    if not env.pre then check_exp env T.text exp';
+    error env exp.at "no type can be inferred for actor reference"
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in
@@ -792,7 +795,6 @@ and infer_exp'' env exp : T.typ =
         if T.is_async t_ret && not (in_await env) then
           error_in [Flags.ICMode] env exp2.at
             "shared, async function must be called within an await expression";
-        error_in [Flags.ICMode] env exp1.at "calling a shared function not yet supported";
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
@@ -987,6 +989,12 @@ and check_exp' env0 t exp : T.typ =
   | LitE lit, _ ->
     check_lit env t lit exp.at;
     t
+  | ActorUrlE exp', t' ->
+    check_exp env T.text exp';
+    begin match T.normalize t' with
+    | T.(Obj (Actor, _)) -> t'
+    | _ -> error env exp.at "actor reference must have an actor type"
+    end
   | UnE (ot, op, exp1), _ when Operator.has_unop op t ->
     ot := t;
     check_exp env t exp1;

@@ -1,3 +1,5 @@
+//MOC-FLAG  --actor-idl .
+
 import imported "ic:000000000000040054";
 actor a {
   public func go() : async (actor {}) = async imported;
