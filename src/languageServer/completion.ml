@@ -59,13 +59,13 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
 
 
 let import_relative_to_project_root root module_path dependency =
-  match Pipeline.FilePath.relative_to root module_path with
+  match Lib.FilePath.relative_to root module_path with
   | None -> None
   | Some root_to_module ->
      root_to_module
      |> Filename.dirname
      |> Lib.Fun.flip Filename.concat dependency
-     |> Pipeline.FilePath.normalise
+     |> Lib.FilePath.normalise
      |> Lib.Option.some
 
 (* Given a source file and a cursor position in that file, figure out
@@ -121,7 +121,7 @@ let opt_bind f = function
 
 let completions index logger project_root file_path file_contents line column =
   let imported = Source_file.parse_module_header project_root file_path file_contents in
-  let current_uri_opt = Pipeline.FilePath.relative_to project_root file_path in
+  let current_uri_opt = Lib.FilePath.relative_to project_root file_path in
   let module_alias_completion_item alias =
     Lsp_t.{
         completion_item_label = alias;

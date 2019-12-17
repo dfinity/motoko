@@ -11,7 +11,6 @@ open Mo_config
 open Printf
 
 module ResolveImport = Resolve_import
-module FilePath = File_path
 
 type stat_env = Scope.t
 type dyn_env = Interpret.scope
