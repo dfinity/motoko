@@ -74,6 +74,25 @@ struct
   let int_of_hex_byte hex : int =
     assert (String.length hex = 2);
     String.(hexdigit (get hex 0) lsl 4 lor hexdigit (get hex 1))
+
+  let hex_of_nibble =
+    let open Char in
+    function
+    | c when c <= 9 -> chr (code '0' + c)
+    | c when c <= 15 -> chr (code 'A' + (c - 10))
+    | _ -> assert false
+
+  let hex_of_byte i : string =
+    String.init 2 (function
+      | 0 -> hex_of_nibble (i / 16)
+      | 1 -> hex_of_nibble (i mod 16)
+      | _ -> assert false)
+
+  let hex_of_char c = hex_of_byte (Char.code c)
+
+  let hex_of_bytes bytes : string =
+    let open Stdlib.String in
+    of_seq (Stdlib.Seq.flat_map (fun c -> to_seq (hex_of_char c)) (to_seq bytes))
 end
 
 module String =

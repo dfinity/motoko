@@ -16,6 +16,7 @@ let dump_tc = ref false
 let dump_lowering = ref false
 let check_ir = ref true
 let package_urls : (string * string) list ref = ref []
+let actor_idl_path : string option ref = ref None
 let profile = ref false
 let profile_verbose = ref false
 let profile_file = ref "profiling-counters.csv"

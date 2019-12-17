@@ -112,7 +112,7 @@ type resolve_result = (Syntax.prog * ResolveImport.resolved_imports) Diag.result
 let resolve_prog (prog, base) : resolve_result =
   Diag.map
     (fun libs -> (prog, libs))
-    (ResolveImport.resolve !Flags.package_urls prog base)
+    (ResolveImport.resolve !Flags.actor_idl_path !Flags.package_urls prog base)
 
 let resolve_progs =
   Diag.traverse resolve_prog
@@ -238,7 +238,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         pending := add ri.Source.it !pending;
         Diag.bind (parsefn f) (fun (prog, base) ->
         Diag.bind (Static.prog prog) (fun () ->
-        Diag.bind (ResolveImport.resolve !Flags.package_urls prog base) (fun more_imports ->
+        Diag.bind (ResolveImport.resolve !Flags.actor_idl_path !Flags.package_urls prog base) (fun more_imports ->
         Diag.bind (go_set more_imports) (fun () ->
         let lib = lib_of_prog f prog in
         Diag.bind (check_lib !senv lib) (fun sscope ->
