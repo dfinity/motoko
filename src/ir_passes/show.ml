@@ -178,13 +178,13 @@ let cat_list : Ir.exp list -> Ir.exp = fun es ->
 
 let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   match t with
-  | T.Prim T.Bool ->
+  | T.(Prim Bool) ->
     define_show t (invoke_prelude_show "@text_of_Bool" t (argE t)),
     []
-  | T.Prim T.Nat ->
+  | T.(Prim Nat) ->
     define_show t (invoke_prelude_show "@text_of_Nat" t (argE t)),
     []
-  | T.Prim T.Int ->
+  | T.(Prim Int) ->
     define_show t (invoke_prelude_show "@text_of_Int" t (argE t)),
     []
   | T.(Prim Nat8) ->
@@ -226,7 +226,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.(Prim Text) ->
     define_show t (invoke_prelude_show "@text_of_Text" t (argE t)),
     []
-  | T.Prim T.Null ->
+  | T.(Prim Null) ->
     define_show t (textE ("null")),
     []
   | T.Func _ ->
