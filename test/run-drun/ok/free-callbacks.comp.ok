@@ -1,6 +1,0 @@
-free-callbacks.mo:8.11-8.15: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-free-callbacks.mo:10.11-10.15: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-free-callbacks.mo:14.11-14.15: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)

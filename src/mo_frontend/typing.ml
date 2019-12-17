@@ -792,7 +792,6 @@ and infer_exp'' env exp : T.typ =
         if T.is_async t_ret && not (in_await env) then
           error_in [Flags.ICMode] env exp2.at
             "shared, async function must be called within an await expression";
-        error_in [Flags.ICMode] env exp1.at "calling a shared function not yet supported";
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
