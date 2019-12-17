@@ -85,7 +85,7 @@ let parse_import (f: string) : parsed_import =
     match Lib.String.chop_prefix "ic:" f with
     | Some suffix -> ActorImport suffix
     | None ->
-      (* TODO: Check and reject other URL schemas? *)
+      (* TODO: Check and reject other URL schemes? *)
       RelativeImport (File_path.normalise f)
 
 let append_lib_if_needed f =

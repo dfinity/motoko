@@ -17,14 +17,14 @@ static void check_all_uppercase_hex(const char* s, const char* const e) {
   }
 }
 
-static void check_ci_schema(const char* s) {
+static void check_ci_scheme(const char* s) {
   const char c0 = *s++;
   const char c1 = *s++;
   const char c2 = *s;
   if ((c0 == 'i' || c0 == 'I')
    && (c1 == 'c' || c1 == 'C')
    && c2 == ':') return;
-  else rts_trap_with("ic_url_decode: Wrong URL schema (not 'ic:')");
+  else rts_trap_with("ic_url_decode: Wrong URL scheme (not 'ic:')");
 }
 
 // assumption: uppercase hex
@@ -60,9 +60,9 @@ export blob_t crc8_decode(text_t t) {
   if (n < 3) rts_trap_with("ic_url_decode: Not an URL");
   const char* const s = BLOB_PAYLOAD(b0);
   const char* const e = s + n;
-  check_ci_schema(s);
-  const char* hex = s + 3;
-  uint32_t hex_len = n - 5;
+  check_ci_scheme(s);
+  const char* hex = s + 3; // skip over "ic:"
+  uint32_t hex_len = n - 5; // strip "ic:" and 2 last digits
   check_all_uppercase_hex(hex, e);
   if (hex_len & 1) rts_trap_with("ic_url_decode: Not an even number of hex digits");
   uint8_t crc = compute_crc8(hex, hex_len);
