@@ -39,11 +39,11 @@ static uint8_t hex_byte(const char* h) {
 }
 
 // assumption: uppercase hex, len is even
-static uint8_t compute_crc8(const char data[], uint32_t len) {
+static uint8_t compute_crc8(const char data[], size_t len) {
   uint8_t crc = 0;
-  for (uint32_t i = 0; i < len; i += 2) {
+  for (size_t i = 0; i < len; i += 2) {
     crc ^= hex_byte(data + i);
-    for (uint32_t j = 0; j < 8; ++j) {
+    for (size_t j = 0; j < 8; ++j) {
       if (crc & 0x80)
 	crc = (uint8_t)((crc << 1) ^ 0x7);
       else
@@ -56,13 +56,13 @@ static uint8_t compute_crc8(const char data[], uint32_t len) {
 // CRC-8 from IC-URL
 export blob_t crc8_decode(text_t t) {
   blob_t b0 = blob_of_text(t);
-  uint32_t n = BLOB_LEN(b0);
+  size_t n = BLOB_LEN(b0);
   if (n < 3) rts_trap_with("ic_url_decode: Not an URL");
   const char* const s = BLOB_PAYLOAD(b0);
   const char* const e = s + n;
   check_ci_scheme(s);
   const char* hex = s + 3; // skip over "ic:"
-  uint32_t hex_len = n - 5; // strip "ic:" and 2 last digits
+  size_t hex_len = n - 5; // strip "ic:" and 2 last digits
   check_all_uppercase_hex(hex, e);
   if (hex_len & 1) rts_trap_with("ic_url_decode: Not an even number of hex digits");
   uint8_t crc = compute_crc8(hex, hex_len);
