@@ -9,11 +9,12 @@ typedef as_ptr text_t; // a skewed pointer to a Blob (or, later, Concat) heap ob
 typedef unsigned char uint8_t;
 
 static void check_all_uppercase_hex(const char* s, const char* const e) {
-  if (s == e) return;
-  const char c = *s;
-  if ((c >= '0' && c <= '9')
-   || (c >= 'A' && c <= 'F')) check_all_uppercase_hex(s + 1, e);
-  else rts_trap_with("ic_url_decode: Not uppercase hex digit");
+  while (s != e) {
+    const char c = *s++;
+    if ((c >= '0' && c <= '9')
+	|| (c >= 'A' && c <= 'F')) continue;
+    else rts_trap_with("ic_url_decode: Not all uppercase hex digit");
+  }
 }
 
 static void check_ci_schema(const char* s) {
@@ -26,10 +27,22 @@ static void check_ci_schema(const char* s) {
   else rts_trap_with("ic_url_decode: Wrong URL schema (not 'ic:')");
 }
 
-static uint8_t compute_crc8(const uint8_t data[], uint32_t len) {
+// assumption: uppercase hex
+static uint8_t hex_digit(uint8_t c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  else return c - 'A' + 0xA;
+}
+
+// assumption: uppercase hex
+static uint8_t hex_byte(const char* h) {
+  return hex_digit(h[0]) << 4 | hex_digit(h[1]);
+}
+
+// assumption: uppercase hex
+static uint8_t compute_crc8(const char data[], uint32_t len) {
    uint8_t crc = 0;
-   for (uint32_t i = 0; i < len; ++i) {
-     crc ^= data[i];
+   for (uint32_t i = 0; i < len; i += 2) {
+     crc ^= hex_byte(data + i);
      for (uint32_t j = 0; j < 8; ++j) {
        if (crc & 0x80)
          crc = (uint8_t)((crc << 1) ^ 0x7);
@@ -40,31 +53,27 @@ static uint8_t compute_crc8(const uint8_t data[], uint32_t len) {
    return crc;
  }
 
-// assumption: uppercase hex
-static uint8_t hex_digit(uint8_t c) {
-  if (c >= '0' && c <= '9') return c - '0';
-  else return c - 'A';
-}
-
 // CRC-8 from IC-URL
-export blob_t crc8_decode(text_t s0) {
+export blob_t crc8_decode(text_t t) {
   extern blob_t blob_of_text(text_t);
-  blob_t b0 = blob_of_text(s0);
+  blob_t b0 = blob_of_text(t);
   uint32_t n = BLOB_LEN(b0);
   if (n < 3) rts_trap_with("ic_url_decode: Not an URL");
   const char* const s = BLOB_PAYLOAD(b0);
   const char* const e = s + n;
   check_ci_schema(s);
-  const char* const hex = s + 3;
-  uint32_t const hex_len = n - 5;
+  const char* hex = s + 3;
+  uint32_t hex_len = n - 5;
   check_all_uppercase_hex(hex, e);
-  if (hex_len & 1) rts_trap_with("ic_url_decode: Not even number of hex digits");
-  uint8_t crc = compute_crc8((const uint8_t*)hex, hex_len);
-  uint8_t exp = hex_digit(*(e - 2)) << 4 | hex_digit(*(e - 1));
+  if (hex_len & 1) rts_trap_with("ic_url_decode: Not an even number of hex digits");
+  uint8_t crc = compute_crc8(hex, hex_len);
+  uint8_t exp = hex_byte(e - 2);
   if (crc != exp) {
     rts_trap_with("ic_url_decode: CRC-8 mismatch");
   }
-  as_ptr r = alloc_blob(hex_len);
-  as_memcpy(BLOB_PAYLOAD(r), hex, hex_len);
+  as_ptr r = alloc_blob(hex_len >> 1);
+  for (char *bytes = BLOB_PAYLOAD(r); hex_len; hex += 2, hex_len -= 2) {
+    *bytes++ = (char)hex_byte(hex);
+  }
   return r;
 }
