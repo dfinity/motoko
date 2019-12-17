@@ -145,7 +145,7 @@ if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
 if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
 
 ifn : <functype> -> <typ>
-ifn((<datatype>,*) -> () oneway) = shared ia(<as>) -> ()
+ifn((<datatype>,*) -> () oneway) = shared ia(<datatype>) -> ()
 ifn((<datatype1>,*) -> (<datatype2>,*) query?) = shared query? ia(<datatype1>,*) -> async ia(<datatype2>,*)
 
 ia : <argtype>,* -> <typ>
