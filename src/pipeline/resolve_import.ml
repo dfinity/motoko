@@ -63,9 +63,10 @@ type parsed_import =
    parse_import "ic:alias"       = ActorImport "alias"
    parse_import "ic:DEADBEEF"    = ActorImport "DEADBEEF"
 
-   parse_import "std/foo"        = RelativeImport "std/foo"
-   parse_import "foo"            = RelativeImport "foo"
-   parse_import "./foo"          = RelativeImport "foo"
+   parse_import "std/foo.mo"        = RelativeImport "std/foo.mo"
+   parse_import "foo.mo"            = RelativeImport "foo.mo"
+   parse_import "./foo.mo"          = RelativeImport "foo.mo"
+   parse_import "foo.did"           = ActorImport "foo.did"
 
    TODO: This could be the place to reject things like
      ic: mo: http:std/foo
@@ -86,13 +87,15 @@ let parse_import (f: string) : parsed_import =
     | Some suffix -> ActorImport suffix
     | None ->
       (* TODO: Check and reject other URL schemas? *)
-      RelativeImport (File_path.normalise f)
+       (match Filename.extension f with
+        | ".did" -> ActorImport (File_path.normalise f)          
+        | _ -> RelativeImport (File_path.normalise f))
 
 let append_lib_if_needed f =
   if Sys.file_exists f && Sys.is_directory f
   then Filename.concat f "lib.mo"
   else f
-
+  
 let err_file_does_not_exist msgs at full_path =
   let open Diag in
   add_msg msgs {

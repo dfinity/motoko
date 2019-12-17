@@ -106,15 +106,15 @@ let rec typ vs t =
      I.VariantT (List.map (field vs) fs)
   | Func (Shared s, c, [], ts1, ts2) ->
      let t1 = args vs ts1 in
+     let ms = match s with
+       | Query -> [I.Query @@ no_region]
+       | Write -> [] in
      (match ts2, c with
-     | [], Returns -> I.FuncT ([I.Oneway @@ no_region], t1, [])
-     | ts, Promises ->
-       I.FuncT (
-         (match s with
-          | Query -> [I.Query @@ no_region]
-          | Write -> []),
-         t1, args vs ts)
-     | _ -> assert false)
+      | [], Returns ->
+         I.FuncT ((I.Oneway @@ no_region)::ms, t1, [])
+      | ts, Promises ->
+         I.FuncT (ms, t1, args vs ts)
+      | _ -> assert false)
   | Func _ -> assert false
   | Async t -> assert false
   | Mut t -> assert false

@@ -115,7 +115,7 @@ let rec check_typ env t =
   | FuncT (ms, t1, t2) ->
      let t1' = List.map (fun t -> check_typ env t) t1 in
      let t2' = List.map (fun t -> check_typ env t) t2 in
-     if List.exists (fun m -> m.it == Oneway) ms && List.length t2 > 0 then
+     if List.exists (fun m -> m.it = Oneway) ms && List.length t2 > 0 then
        error env t.at "oneway function has non-unit return type";
      FuncT (ms, t1', t2') @@ t.at
   | OptT t -> OptT (check_typ env t) @@ t.at
