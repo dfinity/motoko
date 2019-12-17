@@ -152,13 +152,13 @@ struct
           | '\b' ->
              Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 'b'
           | '\t' ->
-             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 't'             
+             Bytes.set s' !n '\\'; n := !n + 1; Bytes.set s' !n 't'
           | c -> Bytes.set s' !n c
           end;
           n := !n + 1
         done;
         Bytes.unsafe_to_string s'
-      end    
+      end
 end
 
 module List =
@@ -566,4 +566,3 @@ struct
       "project/src/Main.mo"
       (Some "Main.mo")
 end
-

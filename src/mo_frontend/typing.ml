@@ -602,6 +602,9 @@ and infer_exp'' env exp : T.typ =
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
+  | ActorUrlE exp' ->
+    if not env.pre then check_exp env T.text exp';
+    error env exp.at "no type can be inferred for actor reference"
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in
@@ -986,6 +989,12 @@ and check_exp' env0 t exp : T.typ =
   | LitE lit, _ ->
     check_lit env t lit exp.at;
     t
+  | ActorUrlE exp', t' ->
+    check_exp env T.text exp';
+    begin match T.normalize t' with
+    | T.(Obj (Actor, _)) -> t'
+    | _ -> error env exp.at "actor reference must have an actor type"
+    end
   | UnE (ot, op, exp1), _ when Operator.has_unop op t ->
     ot := t;
     check_exp env t exp1;

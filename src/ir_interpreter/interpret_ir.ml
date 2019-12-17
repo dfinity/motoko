@@ -368,6 +368,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | CastPrim _, [e] -> interpret_exp env e k
     | ActorOfIdBlob t, [e] ->
       trap exp.at "ActorOfIdBlob not implemented"
+    | BlobOfIcUrl, [e] ->
+      trap exp.at "BlobOfIcUrl not implemented" (* FIXME: #1001, call Lib.URL.decode_actor_url *)
     | NumConvPrim (t1, t2), exps ->
       interpret_exps env exps [] (fun vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
