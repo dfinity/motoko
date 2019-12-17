@@ -64,6 +64,10 @@ let%test "it handles immediately following single character tokens" =
 let%test "it handles qualifier + partial identifier" =
   prefix_test_case "Stack.so|" (Some ("Stack", "so"))
 
+let%test "it handles qualifiers following the cursor" =
+  prefix_test_case "List.| Option" (Some ("List", ""))
+  && prefix_test_case "List.fil| Option" (Some ("List", "fil"))
+
 let%test "it handles multiline files" =
   prefix_test_case
 {|Stak.
