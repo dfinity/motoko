@@ -364,6 +364,9 @@ rawInvoke esref (CI.Callback cb ex responded res) =
 cantRespond :: Responded
 cantRespond = Responded True
 
+canRespond :: Responded
+canRespond = Responded False
+
 rawInitializeMethod :: ImpState s -> ExistingCanisters -> Module -> EntityId -> Blob -> ST s (TrapOr InitResult)
 rawInitializeMethod (esref, cid, inst) ex wasm_mod caller dat = do
   result <- runExceptT $ do
@@ -390,7 +393,7 @@ rawInitializeMethod (esref, cid, inst) ex wasm_mod caller dat = do
 
 rawQueryMethod :: ImpState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr Response)
 rawQueryMethod (esref, cid, inst) method caller dat = do
-  let es = (initalExecutionState cid inst [] cantRespond)
+  let es = (initalExecutionState cid inst [] canRespond)
             { params = Params
                 { param_dat    = Just dat
                 , param_caller = Just caller
