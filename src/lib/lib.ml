@@ -78,8 +78,8 @@ struct
   let hex_of_nibble =
     let open Char in
     function
-    | c when c <= 9 -> chr (code '0' + c)
-    | c when c <= 15 -> chr (code 'A' + (c - 10))
+    | c when 0 <= c && c <= 9 -> chr (code '0' + c)
+    | c when 10 < c && c <= 15 -> chr (code 'A' + (c - 10))
     | _ -> assert false
 
   let hex_of_byte i : string =
