@@ -1,4 +1,4 @@
-service anon {
+service : {
   "f": (opt nat) -> (variant {
                        "err": text;
                        "ok": nat;

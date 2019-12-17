@@ -55,12 +55,8 @@ and dec' =
   | TypD of id * typ             (* type *)
   | ImportD of string * string ref  (* import *)
 
-and actor = actor' Source.phrase
-and actor' = 
-  | ActorD of id * typ     (* service *)
-               
 (* Program *)
 
 type prog = (prog', string) Source.annotated_phrase
-and prog' = { decs : dec list; actor : actor option }
+and prog' = { decs : dec list; actor : typ option }
 

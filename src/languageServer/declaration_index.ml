@@ -57,15 +57,17 @@ let lookup_module
       (path : path)
       (index : t)
     : ide_decl list option =
-  match Pipeline.ResolveImport.match_package_name path with
-  | None -> Index.find_opt path index
-  | Some (pkg, path) ->
+  let open Pipeline.ResolveImport in
+  match parse_import path with
+  | RelativeImport path -> Index.find_opt path index
+  | PackageImport (pkg, path) ->
      Lib.Option.bind
        (List.find_opt
          (fun (name, _) -> pkg = name)
          !Mo_config.Flags.package_urls)
        (fun (_, pkg_path) ->
         Index.find_opt (Filename.concat pkg_path path) index)
+  | ActorImport _ -> assert false
 
 let empty : t = Index.empty
 

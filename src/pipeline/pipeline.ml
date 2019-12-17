@@ -107,7 +107,7 @@ let parse_file filename : parse_result =
 
 (* Import file name resolution *)
 
-type resolve_result = (Syntax.prog * ResolveImport.S.t) Diag.result
+type resolve_result = (Syntax.prog * ResolveImport.resolved_imports) Diag.result
 
 let resolve_prog (prog, base) : resolve_result =
   Diag.map
@@ -158,7 +158,6 @@ let check_lib senv lib : Scope.scope Diag.result =
     phase "Definedness" (Filename.basename lib.Source.note);
     Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
   )
-
 
 (* Imported file loading *)
 
@@ -225,29 +224,35 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   let senv = ref senv0 in
   let libs = ref [] in
 
-  let rec go f =
-    if Type.Env.mem f !senv.Scope.lib_env then
-      Diag.return ()
-    else if mem f !pending then
-      Error [{
-        Diag.sev = Diag.Error; at = Source.no_region; cat = "import";
-        text = Printf.sprintf "file %s must not depend on itself" f
-      }]
-    else begin
-      pending := add f !pending;
-      Diag.bind (parsefn f) (fun (prog, base) ->
-      Diag.bind (Static.prog prog) (fun () ->
-      Diag.bind (ResolveImport.resolve !Flags.package_urls prog base) (fun more_imports ->
-      Diag.bind (go_set more_imports) (fun () ->
-      let lib = lib_of_prog f prog in
-      Diag.bind (check_lib !senv lib) (fun sscope ->
-      libs := lib :: !libs; (* NB: Conceptually an append *)
+  let rec go ri = match ri.Source.it with
+    | Syntax.Unresolved -> assert false
+    | Syntax.LibPath f ->
+      if Type.Env.mem f !senv.Scope.lib_env then
+        Diag.return ()
+      else if mem ri.Source.it !pending then
+        Error [{
+          Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+          text = Printf.sprintf "file %s must not depend on itself" f
+        }]
+      else begin
+        pending := add ri.Source.it !pending;
+        Diag.bind (parsefn f) (fun (prog, base) ->
+        Diag.bind (Static.prog prog) (fun () ->
+        Diag.bind (ResolveImport.resolve !Flags.package_urls prog base) (fun more_imports ->
+        Diag.bind (go_set more_imports) (fun () ->
+        let lib = lib_of_prog f prog in
+        Diag.bind (check_lib !senv lib) (fun sscope ->
+        libs := lib :: !libs; (* NB: Conceptually an append *)
+        senv := Scope.adjoin !senv sscope;
+        pending := remove ri.Source.it !pending;
+        Diag.return ()
+        )))))
+      end
+    | Syntax.IDLPath f ->
+      let sscope = Scope.lib f Type.(Obj (Actor, [])) in
       senv := Scope.adjoin !senv sscope;
-      pending := remove f !pending;
-      Diag.return ()
-      )))))
-    end
-    and go_set todo = Diag.traverse_ go (elements todo)
+      Diag.warn ri.Source.at "import" "imported actors assumed to have type actor {}"
+  and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
 
@@ -255,9 +260,7 @@ let load_progs parsefn files senv : load_result =
   Diag.bind (Diag.traverse parsefn files) (fun parsed ->
   Diag.bind (resolve_progs parsed) (fun rs ->
   let progs' = List.map fst rs in
-  let libs =
-    List.fold_left ResolveImport.S.union ResolveImport.S.empty
-    (List.map snd rs) in
+  let libs = List.concat (List.map snd rs) in
   Diag.bind (chase_imports parsefn senv libs) (fun (libs, senv') ->
   Diag.bind (check_progs senv' progs') (fun senv'' ->
   Diag.return (libs, progs', senv'')
@@ -458,9 +461,9 @@ let transform_if transform_name trans flag env prog name =
   if flag then transform transform_name trans env prog name
   else prog
 
-let desugar env lib_env libs progs name =
+let desugar env libs progs name =
   phase "Desugaring" name;
-  let prog_ir' : Ir.prog = Lowering.Desugar.transform_graph lib_env libs progs in
+  let prog_ir' : Ir.prog = Lowering.Desugar.transform_graph libs progs in
   dump_ir Flags.dump_lowering prog_ir';
   if !Flags.check_ir
   then Check_ir.check_prog !Flags.verbose env "Desugaring" prog_ir';
@@ -509,18 +512,18 @@ let name_progs progs =
   then "empty"
   else (Lib.List.last progs).Source.note
 
-let lower_prog mode senv lib_env libs progs name =
-  let prog_ir = desugar senv lib_env libs progs name in
+let lower_prog mode senv libs progs name =
+  let prog_ir = desugar senv libs progs name in
   let prog_ir = await_lowering !Flags.await_lowering initial_stat_env prog_ir name in
   let prog_ir = async_lowering mode !Flags.async_lowering initial_stat_env prog_ir name in
   let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
   let prog_ir = show_translation true initial_stat_env prog_ir name in
   prog_ir
 
-let compile_prog mode do_link lib_env libs progs : Wasm_exts.CustomModule.extended_module =
+let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog mode initial_stat_env lib_env libs progs name in
+  let prog_ir = lower_prog mode initial_stat_env libs progs name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
   Codegen.Compile.compile mode name rts prelude_ir [prog_ir]
@@ -529,19 +532,19 @@ let compile_files mode do_link files : compile_result =
   Diag.bind (load_progs parse_file files initial_stat_env)
     (fun (libs, progs, senv) ->
     Diag.bind (Typing.check_actors senv progs) (fun () ->
-    Diag.return (compile_prog mode do_link senv.Scope.lib_env libs progs)))
+    Diag.return (compile_prog mode do_link libs progs)))
 
 let compile_string mode s name : compile_result =
   Diag.bind (load_decl (parse_string name s) initial_stat_env)
     (fun (libs, prog, senv, _t, _sscope) ->
-    Diag.return (compile_prog mode false senv.Scope.lib_env libs [prog]))
+    Diag.return (compile_prog mode false libs [prog]))
 
 (* Interpretation (IR) *)
 
-let interpret_ir_prog inp_env libs progs =
+let interpret_ir_prog libs progs =
   let prelude_ir = Lowering.Desugar.transform prelude in
   let name = name_progs progs in
-  let prog_ir = lower_prog (!Flags.compile_mode) initial_stat_env inp_env libs progs name in
+  let prog_ir = lower_prog (!Flags.compile_mode) initial_stat_env libs progs name in
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
@@ -553,5 +556,5 @@ let interpret_ir_prog inp_env libs progs =
 
 let interpret_ir_files files =
   Lib.Option.map
-    (fun (libs, progs, senv) -> interpret_ir_prog senv.Scope.lib_env libs progs)
+    (fun (libs, progs, senv) -> interpret_ir_prog libs progs)
     (Diag.flush_messages (load_progs parse_file files initial_stat_env))
