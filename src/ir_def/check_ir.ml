@@ -373,6 +373,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (not (env.flavor.has_async_typ)) "ICRejectPrim in async flavor";
       typ exp1 <: T.text;
       T.Non <: t
+    | ICCallerPrim, [] ->
+      T.caller <: t
     | ICCallPrim, [exp1; exp2; k; r] ->
       check_exp env k;
       check_exp env r;
