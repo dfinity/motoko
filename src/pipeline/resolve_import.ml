@@ -62,6 +62,15 @@ let err_unrecognized_url msgs at url msg =
       text = Printf.sprintf "cannot parse import URL %s: %s" url msg
     }
 
+let err_actor_import_without_idl_path msgs at =
+  let open Diag in
+  add_msg msgs {
+      sev = Error;
+      at;
+      cat = "import";
+      text = Printf.sprintf "cannot import canister urls without --actor-idl param"
+    }
+
 let err_file_does_not_exist msgs at full_path =
   let open Diag in
   add_msg msgs {
@@ -126,7 +135,7 @@ let in_base base f =
   then f
   else Filename.concat base f
 
-let resolve_import_string msgs base packages imported (f, ri_ref, at)  =
+let resolve_import_string msgs base actor_idl_path packages imported (f, ri_ref, at)  =
   match Url.parse f with
     | Ok (Url.Relative path) ->
       add_lib_import msgs imported ri_ref at (in_base base path)
@@ -137,9 +146,12 @@ let resolve_import_string msgs base packages imported (f, ri_ref, at)  =
       | None ->
         err_package_not_defined msgs at pkg
       end
-    | Ok (Url.Ic bytes) ->
-      let full_path = (* in_base actor_base *) bytes in
-      add_idl_import msgs imported ri_ref at full_path bytes
+    | Ok (Url.Ic bytes) -> begin match actor_idl_path with
+      | None -> err_actor_import_without_idl_path msgs at
+      | Some actor_base ->
+        let full_path = in_base actor_base (Url.idl_basename_of_blob bytes) in
+        add_idl_import msgs imported ri_ref at full_path bytes
+      end
     | Error msg ->
       err_unrecognized_url msgs at f msg
 
@@ -170,6 +182,7 @@ let collect_imports (p : prog): string list =
   List.map (fun (f, _, _) -> f) (prog_imports p)
 
 
+type actor_idl_path = string option
 type package_urls = (string * string) list
 
 let resolve_packages : package_urls -> filepath -> package_map Diag.result = fun purls base ->
@@ -185,13 +198,13 @@ let resolve_packages : package_urls -> filepath -> package_map Diag.result = fun
   M.empty purls
 
 let resolve
-  : package_urls -> Syntax.prog -> filepath -> resolved_imports Diag.result
-  = fun purls p base ->
+  : actor_idl_path -> package_urls -> Syntax.prog -> filepath -> resolved_imports Diag.result
+  = fun actor_idl_path purls p base ->
   Diag.bind (resolve_packages purls base) (fun (packages:package_map) ->
     Diag.with_message_store (fun msgs ->
       let base = if Sys.is_directory base then base else Filename.dirname base in
       let imported = ref RIM.empty in
-      List.iter (resolve_import_string msgs base packages imported) (prog_imports p);
+      List.iter (resolve_import_string msgs base actor_idl_path packages imported) (prog_imports p);
       Some (List.map (fun (rim,at) -> Source.(rim @@ at)) (RIM.bindings !imported))
     )
   )

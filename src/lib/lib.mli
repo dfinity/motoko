@@ -153,6 +153,10 @@ sig
   val hexdigit : char -> int
   val bytes_of_hex : string -> string
   val int_of_hex_byte : string -> int
+
+  val hex_of_byte  : int -> string
+  val hex_of_char  : char -> string
+  val hex_of_bytes : string -> string
 end
 
 module FilePath :
