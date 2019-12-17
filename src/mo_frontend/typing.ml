@@ -176,7 +176,7 @@ let check_import env at f ri =
     match !ri with
     | Unresolved -> error env at "unresolved import %s" f
     | LibPath fp -> fp
-    | IDLPath fp -> fp
+    | IDLPath (fp, _) -> fp
   in
   match T.Env.find_opt full_path env.libs with
   | Some T.Pre ->
