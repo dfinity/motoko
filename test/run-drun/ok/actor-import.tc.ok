@@ -1,1 +1,0 @@
-actor-import.mo:8.1-8.40: warning, actor {go : shared () -> async actor {}}
