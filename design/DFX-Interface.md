@@ -91,7 +91,7 @@ Resolving Canister types
 
 For every actor import using `import "ic:canisterhexid"` (or `import "ic:canisteralias"` if `canisteralias` resolves to `canisterhexid` as described above), the motoko compiler assumes the presence of a file `canisterhexid.did` in the actor idl path specified by `--actor-idl`.
 
-The `caniserid` here refers the “textual representation“ without the `ic:` prefix, but including the checksum. Note that this representation is unique.
+The `canisterid` here refers the “textual representation“ without the `ic:` prefix, but including the checksum. Note that this representation is unique.
 
 This files informs motoko about the interface of that canister. It could be the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer, or created any other way.
 
