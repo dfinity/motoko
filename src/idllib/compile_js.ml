@@ -36,10 +36,8 @@ let chase_env env actor =
   and chase_fields fs =
     List.iter (fun (f : typ_field) -> chase f.it.typ) fs
   in
-  match actor.it with
-  | ActorD (_, t) ->
-     chase t;
-     List.rev (!new_env)
+  chase actor;
+  List.rev (!new_env)
 
 (* Given a topologically sorted type definition list, infer which types are recursive *)
 let infer_rec env_list =
@@ -84,13 +82,13 @@ let pp_prim p =
   | Int16 -> "Int16"
   | Int32 -> "Int32"
   | Int64 -> "Int64"
-  | Float32 -> "Float"
-  | Float64 -> "Float"
+  | Float32 -> "Float32"
+  | Float64 -> "Float64"
   | Bool -> "Bool"
   | Text -> "Text"
   | Null -> "Unit"
   | Reserved -> "None"
-  | Empty -> "Empty"
+  | Empty -> "None"
 
 let pp_mode ppf m =
   match m.it with
@@ -109,7 +107,7 @@ let rec pp_typ ppf t =
   | VarT s -> id ppf s
   | PrimT p -> str ppf ("IDL."^(pp_prim p))
   | RecordT ts -> pp_fields ppf ts
-  | VecT t -> str ppf "IDL.Arr("; pp_typ ppf t; str ppf ")";
+  | VecT t -> str ppf "IDL.Vec("; pp_typ ppf t; str ppf ")";
   | OptT t -> str ppf "IDL.Opt("; pp_typ ppf t; str ppf ")";
   | VariantT ts -> str ppf "IDL.Variant({"; concat ppf pp_field "," ts; str ppf "})";
   | FuncT (ms, t1, t2) ->
@@ -147,7 +145,7 @@ and pp_modes ppf modes =
 
 and pp_fields ppf fs =
   pp_open_box ppf 1;
-  str ppf "IDL.Obj({";
+  str ppf "IDL.Record({";
   concat ppf pp_field "," fs;
   str ppf "})";
   pp_close_box ppf ()
@@ -195,31 +193,23 @@ let pp_rec ppf x =
   pp_close_box ppf ();
   pp_print_cut ppf ()
 
-let pp_actor ppf actor recs =
-  match actor.it with
-   | ActorD (x, t) ->
-      let x = ("actor_" ^ x.it) @@ x.at in
-      pp_open_hovbox ppf 1;
-      kwd ppf "const";
-      (match t.it with
-       | ServT tp ->
-          id ppf x; space ppf (); kwd ppf "="; kwd ppf "new";
-          str ppf "IDL.ActorInterface({";
-          concat ppf pp_meth "," tp;
-          str ppf "});"
-       | VarT var ->
-          id ppf x; space ppf (); kwd ppf "=";
-          if TS.mem var.it recs then
-            str ppf (var.it ^ ".getType();")
-          else
-            str ppf var.it;
-       | _ -> assert false
-      );
-      pp_close_box ppf ();      
-      pp_force_newline ppf ();
-      pp_open_hovbox ppf 0;
-      kwd ppf "return"; id ppf x; str ppf ";";
-      pp_close_box ppf ()
+let pp_actor ppf t recs =
+  pp_open_hovbox ppf 1;
+  kwd ppf "return";
+  (match t.it with
+   | ServT tp ->
+      kwd ppf "new";
+      str ppf "IDL.ActorInterface({";
+      concat ppf pp_meth "," tp;
+      str ppf "});"
+   | VarT var ->
+      if TS.mem var.it recs then
+        str ppf (var.it ^ ".getType();")
+      else
+        str ppf var.it;
+   | _ -> assert false
+  );
+  pp_close_box ppf ()    
 
 let pp_header ppf () =
   pp_open_vbox ppf 1;

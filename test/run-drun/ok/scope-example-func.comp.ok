@@ -1,0 +1,2 @@
+scope-example-func.mo:16.19-16.20: type error, argument to await must be a call expression
+  (This is a limitation of the current version.)

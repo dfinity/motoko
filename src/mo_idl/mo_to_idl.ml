@@ -186,17 +186,16 @@ let gather_decs () =
 let actor progs =
   let open E in
   let find_last_actor (prog : prog) =
-    let anon = "anon" in
     let check_dec d t def =
       let rec check_pat p =
         match p.it with
-        | WildP -> Some (anon, t)
-        | VarP id -> Some (id.it, t)
+        | WildP -> Some t
+        | VarP id -> Some t
         | ParP p -> check_pat p
         | _ -> def
       in
       match d.it with
-      | ExpD _ -> Some (anon, t)
+      | ExpD _ -> Some t
       | LetD (pat, _) -> check_pat pat
       | _ -> def
     in
@@ -214,7 +213,7 @@ let actor progs =
      let prog = Lib.List.last progs in
      match find_last_actor prog with
      | None -> None
-     | Some (id, t) -> Some (I.ActorD (id @@ no_region, typ [] t) @@ no_region)
+     | Some t -> Some (typ [] t)
 
 let prog (progs, senv) : I.prog =
   env := Env.empty;

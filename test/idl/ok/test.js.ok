@@ -1,7 +1,7 @@
 export default ({ IDL }) => {
  const my_type = IDL.Nat
  const B = my_type
- const message = IDL.Obj({'25': B, '26': IDL.None, 'name': IDL.Text})
+ const message = IDL.Record({'25': B, '26': IDL.None, 'name': IDL.Text})
  const broker =
   new IDL.ActorInterface({
    'find':
@@ -11,11 +11,10 @@ export default ({ IDL }) => {
        'current': IDL.Func([], [IDL.Nat], [])})
       ],
       [])})
- const actor_server = new IDL.ActorInterface({
+ return new IDL.ActorInterface({
   'addUser': IDL.Func([IDL.Text, IDL.Nat8], [IDL.Nat64], []),
   'userName': IDL.Func([IDL.Nat64], [IDL.Text], ['query']),
   'userAge': IDL.Func([IDL.Nat64], [IDL.Nat8], ['query']),
   'deleteUser': IDL.Func([IDL.Nat64], [], ['oneway']),
   'f': IDL.Func([message], [broker], [])});
- return actor_server;
 };

@@ -20,6 +20,8 @@ _not_ encode that a word is 4 bytes!
 typedef intptr_t as_ptr;
 #define SKEW(p) ((as_ptr)p-1)
 #define UNSKEW(p) ((size_t *)((as_ptr)p+1))
+#define IS_SKEWED(p) ((p & 0x02)==0x02)
+
 #define FIELD(p,n) (UNSKEW(p)[n])
 #define TAG(p) FIELD(p,0)
 
@@ -37,7 +39,6 @@ enum as_heap_tag {
   TAG_OBJECT = 1,
   TAG_OBJIND = 2,
   TAG_ARRAY = 3,
-  TAG_REFERENCE = 4,
   TAG_INT = 5,
   TAG_MUTBOX = 6,
   TAG_CLOSURE = 7,
@@ -47,6 +48,7 @@ enum as_heap_tag {
   TAG_INDIRECTION = 11,
   TAG_SMALLWORD = 12,
   TAG_BIGINT = 13,
+  TAG_CONCAT = 14,
   };
 
 /** Functions imported from the Motoko RTS */
@@ -79,12 +81,17 @@ from_rts __attribute__ ((noreturn)) void bigint_trap();
 /** Functions used in multiple modules of the RTS */
 export void as_memcpy(char *str1, const char *str2, size_t n);
 export int as_memcmp(const char *str1, const char *str2, size_t n);
+export size_t as_strlen(const char *str1);
 
 char *alloc(size_t n);
 as_ptr alloc_blob(size_t n);
 as_ptr text_of_ptr_size(const char *buf, size_t n);
+as_ptr text_of_cstr(const char *buf);
+int text_compare(as_ptr s1, as_ptr s2);
 
 export __attribute__ ((noreturn)) void idl_trap_with(const char *str1);
 export __attribute__ ((noreturn)) void rts_trap_with(const char *str1);
+
+export as_ptr blob_of_text(as_ptr);
 
 #endif /* RTS_H */

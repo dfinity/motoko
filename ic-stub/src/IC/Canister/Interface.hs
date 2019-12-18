@@ -20,5 +20,5 @@ import IC.Wasm.Winter (Module)
 data CanisterMethod r where
     Initialize :: ExistingCanisters -> Module -> EntityId -> Blob -> CanisterMethod InitResult
     Query :: MethodName -> EntityId -> Blob -> CanisterMethod Response
-    Update :: MethodName -> ExistingCanisters -> EntityId -> Blob -> CanisterMethod UpdateResult
-    Callback :: Callback -> ExistingCanisters -> Response -> CanisterMethod UpdateResult
+    Update :: MethodName -> ExistingCanisters -> EntityId -> Responded -> Blob -> CanisterMethod UpdateResult
+    Callback :: Callback -> ExistingCanisters -> Responded -> Response -> CanisterMethod UpdateResult

@@ -1,6 +1,0 @@
-ic-calls.mo:14.20-14.21: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-ic-calls.mo:15.19-15.20: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
-ic-calls.mo:16.26-16.27: type error, calling a shared function not yet supported
-  (This is a limitation of the current version.)
