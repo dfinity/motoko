@@ -490,7 +490,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       )
     )
   | BlockE decs ->
-    interpret_block env decs None k
+    let k' =
+      if T.is_unit exp.note.note_typ (* TODO: peeking at types violates erasure semantics, revisit! *)
+      then (fun _v -> k V.unit)
+      else k
+    in
+    interpret_block env decs None k'
   | NotE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Bool (not (V.as_bool v1))))
   | AndE (exp1, exp2) ->
