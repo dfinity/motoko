@@ -53,8 +53,8 @@ static uint8_t compute_crc8(const char data[], size_t len) {
   return crc;
 }
 
-// CRC-8 from IC-URL
-export blob_t crc8_decode(text_t t) {
+// Decode an IC-URL into a Blob
+export blob_t blob_of_ic_url(text_t t) {
   blob_t b0 = blob_of_text(t);
   size_t n = BLOB_LEN(b0);
   if (n < 3) rts_trap_with("ic_url_decode: Not an URL");
