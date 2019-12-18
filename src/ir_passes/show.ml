@@ -17,6 +17,9 @@ open Construct
  - It may fail upon type parameters (i.e. no polymorphism)
 
 We can use string_of_typ here for now, it seems.
+
+Same things is needed Compile.Serialization, so a better solution should be
+used there as well!
 *)
 
 let typ_id : T.typ -> string =
@@ -33,7 +36,7 @@ type env =
   { params : T.typ M.t ref
   }
 
-let empty_env : env = {
+let empty_env () : env = {
   params = ref M.empty;
   }
 
@@ -51,105 +54,10 @@ let show_name_for t =
   "@show<" ^ typ_id t ^ ">"
 
 let show_fun_typ_for t =
-  T.Func (T.Local, T.Returns, [], [t], [T.Prim T.Text])
+  T.Func (T.Local, T.Returns, [], [t], [T.text])
 
 let show_var_for t : Construct.var =
   idE (show_name_for t) (show_fun_typ_for t)
-
-(* The AST traversal *)
-
-let rec t_exps env decs = List.map (t_exp env) decs
-
-and t_exp env (e : Ir.exp) =
-  { e with it = t_exp' env e.it }
-
-and t_exp' env = function
-  | LitE l -> LitE l
-  | VarE id -> VarE id
-  | PrimE (ShowPrim ot, [exp1]) ->
-    let t' = T.normalize ot in
-    add_type env t';
-    let f = idE (show_name_for t') (show_fun_typ_for t') in
-    CallE (f, [], t_exp env exp1)
-  | PrimE (p, es) -> PrimE (p, t_exps env es)
-  | TupE exps -> TupE (t_exps env exps)
-  | OptE exp1 ->
-    OptE (t_exp env exp1)
-  | TagE (l, exp1) ->
-    TagE (l, t_exp env exp1)
-  | ProjE (exp1, n) ->
-    ProjE (t_exp env exp1, n)
-  | ActorE (id, ds, fields, typ) ->
-    ActorE (id, t_decs env ds, fields, typ)
-  | DotE (exp1, id) ->
-    DotE (t_exp env exp1, id)
-  | ActorDotE (exp1, id) ->
-    ActorDotE (t_exp env exp1, id)
-  | AssignE (exp1, exp2) ->
-    AssignE (t_exp env exp1, t_exp env exp2)
-  | ArrayE (mut, t, exps) ->
-    ArrayE (mut, t, t_exps env exps)
-  | IdxE (exp1, exp2) ->
-    IdxE (t_exp env exp1, t_exp env exp2)
-  | FuncE (s, c, id, typbinds, pat, typT, exp) ->
-    FuncE (s, c, id, typbinds, pat, typT, t_exp env exp)
-  | CallE (exp1, typs, exp2)  ->
-    CallE(t_exp env exp1, typs, t_exp env exp2)
-  | BlockE block -> BlockE (t_block env block)
-  | IfE (exp1, exp2, exp3) ->
-    IfE (t_exp env exp1, t_exp env exp2, t_exp env exp3)
-  | SwitchE (exp1, cases) ->
-    let cases' =
-      List.map
-        (fun {it = {pat;exp}; at; note} ->
-          {it = {pat = pat; exp = t_exp env exp}; at; note})
-        cases
-    in
-    SwitchE (t_exp env exp1, cases')
-  | TryE (exp1, cases) ->
-    let cases' =
-      List.map
-        (fun {it = {pat;exp}; at; note} ->
-          {it = {pat = pat; exp = t_exp env exp}; at; note})
-        cases
-    in
-    TryE (t_exp env exp1, cases')
-  | LoopE exp1 ->
-    LoopE (t_exp env exp1)
-  | LabelE (id, typ, exp1) ->
-    LabelE (id, typ, t_exp env exp1)
-  | BreakE (id, exp1) ->
-    BreakE (id, t_exp env exp1)
-  | RetE exp1 ->
-    RetE (t_exp env exp1)
-  | ThrowE exp1 ->
-    ThrowE (t_exp env exp1)
-  | AsyncE (tb, e, typ) -> AsyncE (tb, t_exp env e, typ)
-  | AwaitE e -> AwaitE (t_exp env e)
-  | AssertE exp1 ->
-    AssertE (t_exp env exp1)
-  | DeclareE (id, typ, exp1) ->
-    DeclareE (id, typ, t_exp env exp1)
-  | DefineE (id, mut ,exp1) ->
-    DefineE (id, mut, t_exp env exp1)
-  | NewObjE (sort, ids, t) ->
-    NewObjE (sort, ids, t)
-  | SelfCallE (ts, e1, e2, e3) ->
-    SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
-
-and t_dec env dec = { dec with it = t_dec' env dec.it }
-
-and t_dec' env dec' =
-  match dec' with
-  | TypD con_id -> TypD con_id
-  | LetD (pat,exp) -> LetD (pat,t_exp env exp)
-  | VarD (id,exp) -> VarD (id,t_exp env exp)
-
-and t_decs env decs = List.map (t_dec env) decs
-
-and t_block env (ds, exp) = (t_decs env ds, t_exp env exp)
-
-and t_prog env (prog, flavor) = (t_block env prog, flavor)
 
 
 (* Construction helpers *)
@@ -165,14 +73,14 @@ let define_show : T.typ -> Ir.exp -> Ir.dec = fun t e ->
 let text_exp : Ir.exp' -> Ir.exp = fun e ->
   { it = e;
     at = no_region;
-    note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
+    note = { note_typ = T.text; note_eff = T.Triv }
   }
 
 let invoke_generated_show : T.typ -> Ir.exp -> Ir.exp = fun t e ->
   text_exp (CallE (show_var_for t, [], e))
 
 let invoke_prelude_show : string -> T.typ -> Ir.exp -> Ir.exp = fun n t e ->
-  let fun_typ = T.Func (T.Local, T.Returns, [], [t], [T.Prim T.Text]) in
+  let fun_typ = T.Func (T.Local, T.Returns, [], [t], [T.text]) in
   text_exp (CallE
     ( { it = VarE n
       ; at = no_region
@@ -185,7 +93,7 @@ let invoke_prelude_show : string -> T.typ -> Ir.exp -> Ir.exp = fun n t e ->
 
 let invoke_text_of_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.Prim T.Text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.text]) in
   text_exp (CallE
     ( { it = VarE "@text_of_option"
       ; at = no_region
@@ -201,7 +109,7 @@ let invoke_text_of_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
 
 let invoke_text_of_variant : T.typ -> Ir.exp -> T.lab -> Ir.exp -> Ir.exp = fun t f l e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [T.Prim T.Text; show_fun_typ_for (T.Var ("T",0)); T.Var ("T",0)], [T.Prim T.Text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [T.text; show_fun_typ_for (T.Var ("T",0)); T.Var ("T",0)], [T.text]) in
   text_exp (CallE
     ( { it = VarE "@text_of_variant"
       ; at = no_region
@@ -210,14 +118,14 @@ let invoke_text_of_variant : T.typ -> Ir.exp -> T.lab -> Ir.exp -> Ir.exp = fun 
     , [t]
     , { it = TupE [textE l; f; e]
       ; at = no_region
-      ; note = { note_typ = T.Tup [T.Prim T.Text; show_fun_typ_for t; t]; note_eff = T.Triv }
+      ; note = { note_typ = T.Tup [T.text; show_fun_typ_for t; t]; note_eff = T.Triv }
       }
     )
   )
 
 let invoke_text_of_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.Prim T.Text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.text]) in
   text_exp (CallE
     ( { it = VarE "@text_of_array"
       ; at = no_region
@@ -233,7 +141,7 @@ let invoke_text_of_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
 
 let invoke_text_of_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.Prim T.Text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.text]) in
   text_exp (CallE
     ( { it = VarE "@text_of_array_mut"
       ; at = no_region
@@ -257,7 +165,7 @@ let list_build : 'a -> 'a -> 'a -> 'a list -> 'a list = fun pre sep post xs ->
 let catE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   { it = PrimE (BinPrim (T.text, Operator.CatOp), [e1; e2])
   ; at = no_region
-  ; note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
+  ; note = { note_typ = T.text; note_eff = T.Triv }
   }
 
 let cat_list : Ir.exp list -> Ir.exp = fun es ->
@@ -270,13 +178,13 @@ let cat_list : Ir.exp list -> Ir.exp = fun es ->
 
 let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   match t with
-  | T.Prim T.Bool ->
+  | T.(Prim Bool) ->
     define_show t (invoke_prelude_show "@text_of_Bool" t (argE t)),
     []
-  | T.Prim T.Nat ->
+  | T.(Prim Nat) ->
     define_show t (invoke_prelude_show "@text_of_Nat" t (argE t)),
     []
-  | T.Prim T.Int ->
+  | T.(Prim Int) ->
     define_show t (invoke_prelude_show "@text_of_Int" t (argE t)),
     []
   | T.(Prim Nat8) ->
@@ -315,10 +223,10 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.(Prim Word64) ->
     define_show t (invoke_prelude_show "@text_of_Word64" t (argE t)),
     []
-  | T.Prim T.Text ->
+  | T.(Prim Text) ->
     define_show t (invoke_prelude_show "@text_of_Text" t (argE t)),
     []
-  | T.Prim T.Null ->
+  | T.(Prim Null) ->
     define_show t (textE ("null")),
     []
   | T.Func _ ->
@@ -390,7 +298,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
           (varP (argE t')), (* Shadowing, but that's fine *)
           (invoke_text_of_variant t' (show_var_for t') l (argE t'))
         ) fs)
-        (T.Prim T.Text)
+        (T.text)
     ),
     List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Non ->
@@ -413,10 +321,124 @@ let show_decls : T.typ M.t -> Ir.dec list = fun roots ->
       decl :: go (deps @ todo)
   in go (List.map snd (M.bindings roots))
 
+(* The AST traversal *)
+
+(* Does two things:
+ - collects all uses of `debug_show` in the `env`
+ - for each actor, resets the environment, recurses,
+   and adds the show functions (this keeps closed actors closed)
+*)
+
+let rec t_exps env decs = List.map (t_exp env) decs
+
+and t_exp env (e : Ir.exp) =
+  { e with it = t_exp' env e.it }
+
+and t_exp' env = function
+  | LitE l -> LitE l
+  | VarE id -> VarE id
+  | PrimE (ShowPrim ot, [exp1]) ->
+    let t' = T.normalize ot in
+    add_type env t';
+    let f = idE (show_name_for t') (show_fun_typ_for t') in
+    CallE (f, [], t_exp env exp1)
+  | PrimE (p, es) -> PrimE (p, t_exps env es)
+  | TupE exps -> TupE (t_exps env exps)
+  | OptE exp1 ->
+    OptE (t_exp env exp1)
+  | TagE (l, exp1) ->
+    TagE (l, t_exp env exp1)
+  | ProjE (exp1, n) ->
+    ProjE (t_exp env exp1, n)
+  | DotE (exp1, id) ->
+    DotE (t_exp env exp1, id)
+  | ActorDotE (exp1, id) ->
+    ActorDotE (t_exp env exp1, id)
+  | AssignE (lexp1, exp2) ->
+    AssignE (t_lexp env lexp1, t_exp env exp2)
+  | ArrayE (mut, t, exps) ->
+    ArrayE (mut, t, t_exps env exps)
+  | IdxE (exp1, exp2) ->
+    IdxE (t_exp env exp1, t_exp env exp2)
+  | FuncE (s, c, id, typbinds, pat, typT, exp) ->
+    FuncE (s, c, id, typbinds, pat, typT, t_exp env exp)
+  | CallE (exp1, typs, exp2)  ->
+    CallE(t_exp env exp1, typs, t_exp env exp2)
+  | BlockE block -> BlockE (t_block env block)
+  | IfE (exp1, exp2, exp3) ->
+    IfE (t_exp env exp1, t_exp env exp2, t_exp env exp3)
+  | SwitchE (exp1, cases) ->
+    let cases' =
+      List.map
+        (fun {it = {pat;exp}; at; note} ->
+          {it = {pat = pat; exp = t_exp env exp}; at; note})
+        cases
+    in
+    SwitchE (t_exp env exp1, cases')
+  | TryE (exp1, cases) ->
+    let cases' =
+      List.map
+        (fun {it = {pat;exp}; at; note} ->
+          {it = {pat = pat; exp = t_exp env exp}; at; note})
+        cases
+    in
+    TryE (t_exp env exp1, cases')
+  | LoopE exp1 ->
+    LoopE (t_exp env exp1)
+  | LabelE (id, typ, exp1) ->
+    LabelE (id, typ, t_exp env exp1)
+  | BreakE (id, exp1) ->
+    BreakE (id, t_exp env exp1)
+  | RetE exp1 ->
+    RetE (t_exp env exp1)
+  | ThrowE exp1 ->
+    ThrowE (t_exp env exp1)
+  | AsyncE (tb, e, typ) -> AsyncE (tb, t_exp env e, typ)
+  | AwaitE e -> AwaitE (t_exp env e)
+  | AssertE exp1 ->
+    AssertE (t_exp env exp1)
+  | DeclareE (id, typ, exp1) ->
+    DeclareE (id, typ, t_exp env exp1)
+  | DefineE (id, mut ,exp1) ->
+    DefineE (id, mut, t_exp env exp1)
+  | NewObjE (sort, ids, t) ->
+    NewObjE (sort, ids, t)
+  | SelfCallE (ts, e1, e2, e3) ->
+    SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
+  | ActorE (id, ds, fields, typ) ->
+    (* compare with transform below *)
+    let env1 = empty_env () in
+    let ds' = t_decs env1 ds in
+    let decls = show_decls !(env1.params) in
+    ActorE (id, decls @ ds', fields, typ)
+
+and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
+and t_lexp' env = function
+  | VarLE id -> VarLE id
+  | IdxLE (exp1, exp2) ->
+    IdxLE (t_exp env exp1, t_exp env exp2)
+  | DotLE (exp1, n) ->
+    DotLE (t_exp env exp1, n)
+
+and t_dec env dec = { dec with it = t_dec' env dec.it }
+
+and t_dec' env dec' =
+  match dec' with
+  | TypD con_id -> TypD con_id
+  | LetD (pat,exp) -> LetD (pat,t_exp env exp)
+  | VarD (id,exp) -> VarD (id,t_exp env exp)
+
+and t_decs env decs = List.map (t_dec env) decs
+
+and t_block env (ds, exp) = (t_decs env ds, t_exp env exp)
+
+and t_prog env (prog, flavor) = (t_block env prog, flavor)
+
+
 (* Entry point for the program transformation *)
 
 let transform scope prog =
-  let env = empty_env in
+  let env = empty_env () in
   (* Find all parameters to show in the program *)
   let prog = t_prog env prog in
   (* Create declarations for them *)

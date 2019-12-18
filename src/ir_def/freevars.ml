@@ -64,7 +64,7 @@ let rec exp e : f = match e.it with
   | ProjE (e, i)        -> exp e
   | DotE (e, i)         -> exp e
   | ActorDotE (e, i)    -> exp e
-  | AssignE (e1, e2)    -> exps [e1; e2]
+  | AssignE (e1, e2)    -> lexp e1 ++ exp e2
   | ArrayE (m, t, es)   -> exps es
   | IdxE (e1, e2)       -> exps [e1; e2]
   | CallE (e1, ts, e2)  -> exps [e1; e2]
@@ -96,6 +96,11 @@ and exps es : f = unions exp es
 and arg a : fd = (M.empty, S.singleton a.it)
 
 and args as_ : fd = union_binders arg as_
+
+and lexp le : f = match le.it with
+  | VarLE i              -> M.singleton i {captured = false}
+  | DotLE (e1, _)        -> exp e1
+  | IdxLE (e1, e2)       -> exps [e1; e2]
 
 and pat p : fd = match p.it with
   | WildP           -> (M.empty, S.empty)

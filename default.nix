@@ -6,7 +6,23 @@
 let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
   inherit system;
   overlays = [
+    # Adding wasmtime
     (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
+    # Selecting the ocaml version
+    (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_07; })
+    # Additional ocaml package
+    (self: super: {
+      ocamlPackages = super.ocamlPackages // {
+        wasm = import ./nix/ocaml-wasm.nix {
+          inherit (self) stdenv fetchFromGitHub ocaml;
+          inherit (self.ocamlPackages) findlib ocamlbuild;
+        };
+        vlq = import ./nix/ocaml-vlq.nix {
+          inherit (self) stdenv fetchFromGitHub ocaml dune;
+          inherit (self.ocamlPackages) findlib;
+        };
+      };
+    })
   ];
 }; in
 
@@ -22,7 +38,7 @@ let dfinity-src =
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
     # ref = "master";
-    rev = "4d09038b09b4ba230205216a0a590b80c33a59cb";
+    rev = "dedfec2e294a29f8a1f5f39f1700ebcdad3c6db4";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
@@ -63,8 +79,7 @@ let
 in
 
 # When building for linux (but not in nix-shell) we build statically
-# (We should probably just figure out how to use nix overlays to add this to nixpkgs)
-let ocamlpkgs =
+let staticpkgs =
   if nixpkgs.stdenv.isDarwin
   then nixpkgs
   else nixpkgs.pkgsMusl; in
@@ -74,32 +89,21 @@ let ocamlpkgs =
 # normal nixpkgs (nix-shell, darwin)
 # nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
-  let ocaml_wasm = import ./nix/ocaml-wasm.nix {
-    inherit (pkgs) stdenv fetchFromGitHub ocaml;
-    inherit (pkgs.ocamlPackages) findlib ocamlbuild;
-  }; in
-
-  let ocaml_vlq = import ./nix/ocaml-vlq.nix {
-    inherit (pkgs) stdenv fetchFromGitHub ocaml dune;
-    inherit (pkgs.ocamlPackages) findlib;
-  }; in
-
   [
-    pkgs.ocaml
     pkgs.dune
+    pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
-    ocaml_wasm
-    ocaml_vlq
+    pkgs.ocamlPackages.wasm
+    pkgs.ocamlPackages.vlq
     pkgs.ocamlPackages.zarith
     pkgs.ocamlPackages.yojson
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_inline_test
     pkgs.ocamlPackages.bisect_ppx
-    pkgs.ocamlPackages.bisect_ppx-ocamlbuild
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
   ]; in
@@ -117,14 +121,14 @@ let ocaml_exe = name: bin:
       then "release"
       else "release-static";
 
-    drv = ocamlpkgs.stdenv.mkDerivation {
+    drv = staticpkgs.stdenv.mkDerivation {
       inherit name;
 
       ${if nixpkgs.stdenv.isDarwin then null else "allowedRequisites"} = [];
 
       src = subpath ./src;
 
-      buildInputs = commonBuildInputs ocamlpkgs;
+      buildInputs = commonBuildInputs staticpkgs;
 
       buildPhase = ''
         make DUNE_OPTS="--display=short --profile ${profile}" ${bin}
@@ -198,7 +202,7 @@ rec {
     let testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args); in
     let ocamlTestDerivation = args:
-      ocamlpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
+      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
 
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more paralleism, more caching
@@ -268,7 +272,7 @@ rec {
     let unit-tests = ocamlTestDerivation {
       name = "unit-tests";
       src = subpath ./src;
-      buildInputs = commonBuildInputs ocamlpkgs;
+      buildInputs = commonBuildInputs staticpkgs;
       checkPhase = ''
         make DUNE_OPTS="--display=short" unit-tests
       '';
@@ -310,7 +314,6 @@ rec {
 
     buildInputs = commonBuildInputs nixpkgs ++ [
       nixpkgs.ocamlPackages.js_of_ocaml
-      nixpkgs.ocamlPackages.js_of_ocaml-ocamlbuild
       nixpkgs.ocamlPackages.js_of_ocaml-ppx
       nixpkgs.nodejs-10_x
     ];
@@ -337,6 +340,7 @@ rec {
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
   wasmtime = nixpkgs.wasmtime;
+  wasm = nixpkgs.wasm;
 
   users-guide = stdenv.mkDerivation {
     name = "users-guide";

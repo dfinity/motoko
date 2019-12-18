@@ -41,7 +41,7 @@ and exp' rho e  = match e with
                             in ActorE (i', ds', fields rho'' fs, t)
   | DotE (e, i)         -> DotE (exp rho e, i)
   | ActorDotE (e, i)    -> ActorDotE (exp rho e, i)
-  | AssignE (e1, e2)    -> AssignE (exp rho e1, exp rho e2)
+  | AssignE (e1, e2)    -> AssignE (lexp rho e1, exp rho e2)
   | ArrayE (m, t, es)   -> ArrayE (m, t, exps rho es)
   | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)
   | CallE (e1, ts, e2)  -> CallE  (exp rho e1, ts, exp rho e2)
@@ -71,6 +71,12 @@ and exp' rho e  = match e with
   | TryE (e, cs)        -> TryE (exp rho e, cases rho cs)
   | SelfCallE (ts, e1, e2, e3) ->
      SelfCallE (ts, exp rho e1, exp rho e2, exp rho e3)
+
+and lexp rho le = {le with it = lexp' rho le.it}
+and lexp' rho = function
+  | VarLE i  -> VarLE (id rho i)
+  | DotLE (e, i) -> DotLE (exp rho e, i)
+  | IdxLE (e1, e2) -> IdxLE (exp rho e1, exp rho e2)
 
 and exps rho es  = List.map (exp rho) es
 
