@@ -70,7 +70,7 @@ export text_t text_concat(text_t s1, text_t s2) {
   uint32_t n1 = BLOB_LEN(s1);
   uint32_t n2 = BLOB_LEN(s2);
   uint32_t n = n1 + n2;
-  // short text are copied into a single blob
+  // short texts are copied into a single blob
   if (n < MIN_CONCAT_SIZE) {
     as_ptr r = alloc_text_blob(n1 + n2);
     as_memcpy(BLOB_PAYLOAD(r), BLOB_PAYLOAD(s1), n1);
@@ -132,7 +132,7 @@ export int blob_compare(text_t s1, text_t s2) {
 
 // compares the texts from the given offset on for the given number of bytes
 // all assumed to be in range
-int text_compare_range(text_t s1, size_t offset1, text_t s2, size_t offset2, size_t n) {
+static int text_compare_range(text_t s1, size_t offset1, text_t s2, size_t offset2, size_t n) {
   // strip off left legs if range is in the right leg
   if (TAG(s1) == TAG_CONCAT && BLOB_LEN(CONCAT_ARG1(s1)) <= offset1) {
     return text_compare_range(CONCAT_ARG2(s1), offset1 - BLOB_LEN(CONCAT_ARG1(s1)), s2, offset2, n);
@@ -179,7 +179,7 @@ export int text_compare(text_t s1, text_t s2) {
 
 // decodes the character at pointer
 // returns the character, the size via the out parameter
-uint32_t decode_code_point(char *s, size_t *n) {
+static uint32_t decode_code_point(char *s, size_t *n) {
   *n = 0;
   int k = s[*n] ? __builtin_clz(~(s[*n] << 24)) : 0; // Count # of leading 1 bits.
   int mask = (1 << (8 - k)) - 1;                     // All 1's with k leading 0's.

@@ -1,5 +1,7 @@
 // These are rather long-running tests, not advisable for wasm-run!
 
+//SKIP comp-stub
+
 // Nat*
 
 for (n in range(0, 255)) {

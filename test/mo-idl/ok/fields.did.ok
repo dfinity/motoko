@@ -14,7 +14,7 @@ type Info =
    "name": text;
    "name_": nat;
  };
-service Server {
+service : {
   "f": (Tup) -> ();
   "f_": (opt Tup) -> () oneway;
 }

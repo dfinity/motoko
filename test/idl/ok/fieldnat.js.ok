@@ -1,8 +1,7 @@
 export default ({ IDL }) => {
- const actor_Foo = new IDL.ActorInterface({
-  'foo': IDL.Func([IDL.Obj({'2': IDL.Int})], [], []),
-  'bar': IDL.Func([IDL.Obj({'2': IDL.Int})], [], []),
-  'baz': IDL.Func([IDL.Obj({'2': IDL.Int, '2': IDL.Nat})], [], []),
+ return new IDL.ActorInterface({
+  'foo': IDL.Func([IDL.Record({'2': IDL.Int})], [], []),
+  'bar': IDL.Func([IDL.Record({'2': IDL.Int})], [], []),
+  'baz': IDL.Func([IDL.Record({'2': IDL.Int, '2': IDL.Nat})], [], []),
   'bab': IDL.Func([IDL.Int, IDL.Nat], [], [])});
- return actor_Foo;
 };

@@ -44,11 +44,11 @@ val assertE : exp -> exp
 val awaitE : typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
 val ic_rejectE : exp -> exp
-val ic_error_codeE : unit -> exp
 val ic_callE : exp -> exp -> exp -> exp -> exp
 val projE : exp ->  int -> exp
 val blockE : dec list -> exp -> exp
 val textE : string -> exp
+val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
 val ignoreE : exp -> exp
 

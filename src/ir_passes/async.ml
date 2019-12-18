@@ -1,4 +1,3 @@
-open Mo_config
 open Mo_types
 open Ir_def
 
@@ -25,20 +24,6 @@ module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
 
 (* Helpers *)
 
-let error_codeE mode =
-  match mode with
-  | Flags.ICMode -> callE
-    (idE "@int32ToErrorCode"
-       (T.Func (T.Local, T.Returns, [], [T.Prim T.Int32], [T.Variant T.catchErrorCodes])))
-    []
-    (ic_error_codeE())
-  | _ -> { it = TagE ("error", tupE []);
-           at = no_region;
-           note = {
-               note_typ = T.Variant (T.catchErrorCodes);
-               note_eff = T.Triv }
-         }
-
 let selfcallE ts e1 e2 e3 =
  { it = SelfCallE (ts, e1, e2, e3);
   at = no_region;
@@ -46,17 +31,11 @@ let selfcallE ts e1 e2 e3 =
            note_eff = T.Triv }
 }
 
-let errorMessageE e =
-{ it = PrimE (OtherPrim "errorMessage", [e]);
-  at = no_region;
-  note = { note_typ = T.text; note_eff = eff e }
-}
+let error_ty =
+  T.(Tup [ Variant [{lab = "error"; typ = unit};{lab = "system"; typ = unit}]; text])
 
-let make_errorE e_code e_msg =
-{ it = PrimE (OtherPrim "make_error", [e_code; e_msg]);
-  at = no_region;
-  note = { note_typ = T.Prim T.Error; note_eff = max (eff e_code) (eff e_msg) }
-}
+let errorMessageE e =
+  projE (primE (CastPrim (T.error, error_ty)) [e]) 1
 
 let unary typ = [typ]
 
@@ -119,19 +98,14 @@ let new_nary_async_reply mode ts1 =
     in
     vs -->* (unary_fulfill -*- seq_of_vs)
   in
-  (* construct the n-ary reject callback *)
-  let nary_reject =
-    let v = fresh_var "msg" T.text in
-    [v] -->* (fail -*- (make_errorE (error_codeE mode) v))
-  in
   let async,reply,reject =
     fresh_var "async" (typ nary_async),
     fresh_var "reply" (typ nary_reply),
-    fresh_var "reject" (typ nary_reject)
+    fresh_var "reject" (typ fail)
   in
     (async, reply, reject),
       blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
-        (tupE [nary_async; nary_reply; nary_reject])
+        (tupE [nary_async; nary_reply; fail])
 
 let letEta e scope =
   match e.it with
@@ -233,6 +207,8 @@ let transform mode env prog =
     | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
     | ShowPrim ot -> ShowPrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
+    | CastPrim (t1,t2) -> CastPrim (t_typ t1,t_typ t2)
+    | ActorOfIdBlob t -> ActorOfIdBlob (t_typ t)
     | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
     | p -> p
 
@@ -264,7 +240,7 @@ let transform mode env prog =
     | ActorDotE (exp1, id) ->
       ActorDotE (t_exp exp1, id)
     | AssignE (exp1, exp2) ->
-      AssignE (t_exp exp1, t_exp exp2)
+      AssignE (t_lexp exp1, t_exp exp2)
     | ArrayE (mut, t, exps) ->
       ArrayE (mut, t_typ t, List.map t_exp exps)
     | IdxE (exp1, exp2) ->
@@ -410,6 +386,19 @@ let transform mode env prog =
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
+
+  and t_lexp lexp =
+    { it = t_lexp' lexp.it;
+      note = t_typ lexp.note;
+      at = lexp.at;
+    }
+  and t_lexp' (lexp':lexp') =
+    match lexp' with
+    | VarLE _ -> lexp'
+    | DotLE (exp1, id) ->
+      DotLE (t_exp exp1, id)
+    | IdxLE (exp1, exp2) ->
+      IdxLE (t_exp exp1, t_exp exp2)
 
   and t_dec dec = { dec with it = t_dec' dec.it }
 

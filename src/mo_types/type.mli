@@ -6,7 +6,8 @@ type var = string
 type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
-type func_sort = Local | Shared of shared_sort
+type 'a shared = Local | Shared of 'a
+type func_sort = shared_sort shared
 type eff = Triv | Await
 
 type prim =
@@ -60,7 +61,7 @@ and kind =
 
 (* Function sorts *)
 
-val is_shared_sort : func_sort -> bool
+val is_shared_sort : 'a shared -> bool
 
 (* Short-hands *)
 
@@ -69,6 +70,8 @@ val bool : typ
 val nat : typ
 val int : typ
 val text : typ
+val blob : typ
+val error : typ
 val char : typ
 
 val throwErrorCodes : field list
@@ -76,6 +79,8 @@ val catchErrorCodes : field list
 val throw : typ
 val catch : typ
 
+val caller : typ
+val ctxt: typ
 
 val iter_obj : typ -> typ
 

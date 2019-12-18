@@ -8,7 +8,8 @@ type control =
   | Replies (* (IR only): responds asynchronously using `reply` *)
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
-type func_sort = Local | Shared of shared_sort
+type 'a shared = Local | Shared of 'a
+type func_sort = shared_sort shared
 type eff = Triv | Await
 
 type prim =
@@ -92,6 +93,8 @@ let bool = Prim Bool
 let nat = Prim Nat
 let int = Prim Int
 let text = Prim Text
+let blob = Prim Blob
+let error = Prim Error
 let char = Prim Char
 
 let throwErrorCodes = List.sort compare_field [
@@ -106,6 +109,11 @@ let catchErrorCodes = List.sort compare_field (
 
 let throw = Prim Error
 let catch = Prim Error
+
+(* Shared call context *)
+
+let caller = Prim Blob
+let ctxt = Obj (Object,[{ lab = "caller"; typ = caller }])
 
 let prim = function
   | "Null" -> Null
@@ -1263,4 +1271,3 @@ let rec string_of_typ_expand t =
     )
   | _ -> s
 
-let is_shared_sort sort = sort <> Local

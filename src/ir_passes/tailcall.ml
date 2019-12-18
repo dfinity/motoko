@@ -98,7 +98,7 @@ and exp' env e  : exp' = match e.it with
   | ProjE (e, i)        -> ProjE (exp env e, i)
   | DotE (e, sn)        -> DotE (exp env e, sn)
   | ActorDotE (e, sn)   -> ActorDotE (exp env e, sn)
-  | AssignE (e1, e2)    -> AssignE (exp env e1, exp env e2)
+  | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
   | ArrayE (m,t,es)     -> ArrayE (m,t,(exps env es))
   | IdxE (e1, e2)       -> IdxE (exp env e1, exp env e2)
   | CallE (e1, insts, e2)  ->
@@ -146,6 +146,13 @@ and exp' env e  : exp' = match e.it with
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
 
 and exps env es  = List.map (exp env) es
+
+and lexp env le : lexp = {le with it = lexp' env le}
+
+and lexp' env le : lexp' = match le.it with
+  | VarLE i -> VarLE i
+  | DotLE (e, sn)  -> DotLE (exp env e, sn)
+  | IdxLE (e1, e2) -> IdxLE (exp env e1, exp env e2)
 
 and args env as_ =
   List.fold_left (fun env a -> bind_arg env a None) env as_
