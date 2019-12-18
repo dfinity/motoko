@@ -62,6 +62,12 @@ export text_t text_of_ptr_size(const char *buf, size_t n) {
   return r;
 }
 
+text_t text_of_cstr(const char * const s) {
+  size_t l = as_strlen(s);
+  return text_of_ptr_size(s, l);
+}
+
+
 // Concat
 export text_t text_concat(text_t s1, text_t s2) {
   // empty strings are ignored
@@ -283,6 +289,14 @@ export uint32_t text_iter_done(text_iter_t i) {
   size_t n = TEXT_ITER_POS(i) >> 2;
   text_t s = TEXT_ITER_BLOB(i);
   return n >= BLOB_LEN(s) && TEXT_ITER_TODO(i) == 0;
+}
+
+// pointer into the leaf at the given byte position
+char *text_pos(text_t s, size_t offset) {
+  if (TAG(s) == TAG_BLOB) return (BLOB_PAYLOAD(s) + offset);
+  uint32_t n1 = BLOB_LEN(CONCAT_ARG1(s));
+  if (offset < n1) return text_pos(CONCAT_ARG1(s), offset);
+  else             return text_pos(CONCAT_ARG2(s), offset - n1);
 }
 
 export uint32_t text_iter_next(text_iter_t i) {

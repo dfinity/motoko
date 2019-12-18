@@ -163,20 +163,20 @@ int main () {
    */
   printf("Testing IC: URL...\n");
 
-  extern as_ptr crc8_decode(as_ptr);
-  as_ptr blob0 = alloc_blob(7);
-  char* blob0p = (char*)BLOB_PAYLOAD(blob0);
-  blob0p[0] = 'I';
-  blob0p[1] = 'c';
-  blob0p[2] = ':';
-  blob0p[3] = blob0p[4] = blob0p[5] = blob0p[6] = '0';
-  (void)crc8_decode(blob0);
+  extern as_ptr blob_of_ic_url(as_ptr);
+  assert(
+    text_compare(
+     blob_of_ic_url(text_of_cstr("Ic:0000")),
+     text_of_ptr_size("\0",1)
+    ) == 0,
+    "Ic:0000 not decoded correctly\n");
 
-  const int blob1len = 15;
-  as_ptr blob1 = alloc_blob(blob1len);
-  char* blob1p = (char*)BLOB_PAYLOAD(blob1);
-  memcpy(blob1p, "ic:C0FEFED00D41", blob1len);
-  (void)crc8_decode(blob1);
+  assert(
+    text_compare(
+     blob_of_ic_url(text_of_cstr("ic:C0FEFED00D41")),
+     text_of_ptr_size("\xC0\xFE\xFE\xD0\x0D",5)
+    ) == 0,
+    "ic:C0FEFED00D41 not decoded correctly\n");
 
   return ret;
 }
