@@ -1,4 +1,5 @@
 open Mo_frontend
+open Mo_config
 module Lsp = Lsp.Lsp_t
 
 type cursor_target =
@@ -49,13 +50,11 @@ let uri_for_package (path : string) =
   let open Pipeline.URL in
   match parse path with
   | Ok (Package (pkg, path)) ->
-     begin match
-       List.find_opt
-         (fun (name, _) -> pkg = name)
-         !Mo_config.Flags.package_urls with
+     begin match Flags.M.find_opt pkg !Flags.package_urls with
      | None -> None
-     | Some (_, pkg_path) ->
+     | Some pkg_path ->
         (* Resolved package paths are always absolute *)
+        (* TBR: But Flags.package_urls do not contain the resolved paths! *)
         Some ("file://" ^ Filename.concat pkg_path path)
      end
   | _ -> None
