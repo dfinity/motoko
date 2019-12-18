@@ -143,8 +143,7 @@ let in_shared_async env =
 let in_oneway_ignore env =
   match env.context with
   | _ ::
-    AnnotE  _  ::
-    BlockE [ {it = LetD ({ it = WildP;_}, _); _} ] ::
+    BlockE [ {it = IgnoreD _; _} ] ::
     FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
     _ ->
     (match typ_opt with
@@ -239,16 +238,7 @@ let error_shared env t at fmt =
   | Some t1 ->
     let s = Printf.sprintf "\ntype\n  %s\nis or contains non-shared type\n  %s"
       (T.string_of_typ_expand t) (T.string_of_typ_expand t1) in
-    Printf.ksprintf
-      (fun s1 ->
-        Diag.add_msg env.msgs (type_error at (s1^s));
-        match t1 with
-        | T.Obj (T.Actor, _) ->
-          error_in [Flags.ICMode] env at "actor types are non-shared."
-        | T.Func (T.Shared _, _, _, _, _) ->
-          error_in [Flags.ICMode] env at "shared function types are non-shared."
-        | _ -> raise Recover)
-      fmt
+    Printf.ksprintf (fun s1 -> Diag.add_msg env.msgs (type_error at (s1^s)); raise Recover) fmt
 
 let as_domT t =
   match t.Source.it with
@@ -652,7 +642,7 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t);
       ot := t
     end;
-    T.Prim T.Text
+    T.text
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
@@ -1398,7 +1388,7 @@ and pub_field field xs : region T.Env.t * region T.Env.t =
 
 and pub_dec dec xs : region T.Env.t * region T.Env.t =
   match dec.it with
-  | ExpD _ -> xs
+  | ExpD _ | IgnoreD _ -> xs
   | LetD (pat, _) -> pub_pat pat xs
   | VarD (id, _) -> pub_val_id id xs
   | ClassD (id, _, _, _, _, _, _) ->
@@ -1549,6 +1539,9 @@ and infer_dec env dec : T.typ =
   | ExpD exp
   | LetD (_, exp) ->
     infer_exp env exp
+  | IgnoreD exp ->
+    if not env.pre then check_exp env T.Any exp;
+    T.unit
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
@@ -1647,7 +1640,7 @@ and gather_block_decs env decs : Scope.t =
 
 and gather_dec env scope dec : Scope.t =
   match dec.it with
-  | ExpD _ -> scope
+  | ExpD _ | IgnoreD _ -> scope
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -1742,7 +1735,7 @@ and infer_dec_typdecs env dec : Scope.t =
        | T.Obj (_, _) as t' -> { Scope.empty with val_env = T.Env.singleton id.it t' }
        | _ -> { Scope.empty with val_env = T.Env.singleton id.it T.Pre }
     )
-  | LetD _ | ExpD _ | VarD _ ->
+  | LetD _ | ExpD _ | IgnoreD _ | VarD _ ->
     Scope.empty
   | TypD (id, binds, typ) ->
     let c = T.Env.find id.it env.typs in
@@ -1805,7 +1798,7 @@ and infer_block_valdecs env decs scope : Scope.t =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
-  | ExpD _ ->
+  | ExpD _ | IgnoreD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
