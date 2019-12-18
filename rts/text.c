@@ -264,7 +264,7 @@ typedef as_ptr text_iter_t; // the data structure used to iterate a text value
 
 // Find the left-most leaf of a text, putting all the others onto a list,
 // used to enforce the invarinat about TEXT_ITER_BLOB to be a blob.
-blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
+static blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
   while (TAG(s) == TAG_CONCAT) {
     as_ptr c = alloc_words(TUPLE_HEADER_SIZE + 2);
     TAG(c) = TAG_ARRAY;
@@ -289,14 +289,6 @@ export uint32_t text_iter_done(text_iter_t i) {
   size_t n = TEXT_ITER_POS(i) >> 2;
   text_t s = TEXT_ITER_BLOB(i);
   return n >= BLOB_LEN(s) && TEXT_ITER_TODO(i) == 0;
-}
-
-// pointer into the leaf at the given byte position
-char *text_pos(text_t s, size_t offset) {
-  if (TAG(s) == TAG_BLOB) return (BLOB_PAYLOAD(s) + offset);
-  uint32_t n1 = BLOB_LEN(CONCAT_ARG1(s));
-  if (offset < n1) return text_pos(CONCAT_ARG1(s), offset);
-  else             return text_pos(CONCAT_ARG2(s), offset - n1);
 }
 
 export uint32_t text_iter_next(text_iter_t i) {
