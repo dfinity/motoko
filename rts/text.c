@@ -48,7 +48,7 @@ tag to know the size of the text.
 // e.g. for debugging
 #define MIN_CONCAT_SIZE (9)
 
-blob_t alloc_text_blob(size_t n) {
+static blob_t alloc_text_blob(size_t n) {
   if (n > MAX_STR_SIZE) {
     rts_trap_with("alloc_blob: Text too large");
   }
