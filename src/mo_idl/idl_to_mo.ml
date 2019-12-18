@@ -66,16 +66,16 @@ let rec check_typ env t =
        M.Tup (List.map (fun f -> check_typ env f.it.typ) fs)
      else
        let fs = List.map (check_field env) fs in
-       M.Obj (M.Object, fs)
+       M.Obj (M.Object, List.sort M.compare_field fs)
   | VariantT fs ->
      let fs = List.map (check_field env) fs in
-     M.Variant fs
+     M.Variant (List.sort M.compare_field fs)
   | FuncT (ms, ts1, ts2) ->
      let (s, c) = check_modes ms in
      M.Func (M.Shared s, c, [], List.map (check_typ env) ts1, List.map (check_typ env) ts2)
   | ServT ms ->
      let fs = List.map (check_meth env) ms in
-     M.Obj (M.Actor, fs)
+     M.Obj (M.Actor, List.sort M.compare_field fs)
   | PreT -> assert false
 and check_field env f =
   match f.it.label.it with
@@ -85,10 +85,14 @@ and check_field env f =
 and check_meth env (m: typ_meth) =
   M.{lab = Idllib.Escape.escape m.it.var.it; typ = check_typ env m.it.meth}
 
-let prog (env: typ I.Env.t) actor : M.typ * Mo_types.Scope.con_env =
+let prog (env: typ I.Env.t) actor : M.typ =
   match actor with
   | Some {it=ServT ms; _} ->
      let fs = List.map (check_meth env) ms in
-     (M.Obj (M.Actor, fs), !con_set)
+     let fs = M.Env.fold (fun id t fs ->
+         match t with
+         | M.Con (c, _) -> M.{lab = id; typ = M.Typ c}::fs
+         | _ -> assert false) !m_env fs in
+     M.Obj (M.Actor, List.sort M.compare_field fs)     
   | None -> assert false    
   | Some _ ->  assert false
