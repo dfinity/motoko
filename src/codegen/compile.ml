@@ -663,7 +663,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "crc8_decode" [I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_of_ic_url" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -1381,7 +1381,7 @@ module UnboxedSmallWord = struct
     compile_word_padding ty ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
     msb_adjust ty
-    
+
   (* Kernel for counting trailing zeros, according to the word invariant. *)
   let ctz_kernel ty =
     compile_word_padding ty ^^
@@ -4818,7 +4818,7 @@ module FuncDec = struct
         Dfinity.assert_caller_self env ^^
 
         (* Deserialize and look up closure argument *)
-        Serialization.deserialize env [Type.Prim Type.Word32] ^^
+        Serialization.deserialize env Type.[Prim Word32] ^^
         BoxedSmallWord.unbox env ^^
         ClosureTable.recall env ^^
         set_closure ^^ get_closure ^^ get_closure ^^
@@ -5666,7 +5666,7 @@ let compile_binop env t op =
       get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
       sanitize_word_result ty))
 
-  | Type.Prim Type.Text, CatOp -> Text.concat env
+  | Type.(Prim Text), CatOp -> Text.concat env
   | Type.Non, _ -> G.i Unreachable
   | _ -> todo_trap env "compile_binop" (Arrange_ops.binop op)
   )
@@ -6021,7 +6021,7 @@ and compile_exp (env : E.t) ae exp =
 
     (* CRC-check and strip "ic:" and checksum *)
     | BlobOfIcUrl, [_] ->
-      const_sr SR.Vanilla (E.call_import env "rts" "crc8_decode")
+      const_sr SR.Vanilla (E.call_import env "rts" "blob_of_ic_url")
 
     (* Actor ids are blobs in the RTS *)
     | ActorOfIdBlob _, [e] ->
@@ -6224,7 +6224,7 @@ and compile_exp (env : E.t) ae exp =
     compile_exp_as env ae SR.Vanilla exp_k ^^ set_k ^^
     compile_exp_as env ae SR.Vanilla exp_r ^^ set_r ^^
 
-    FuncDec.ic_call env [Type.Prim Type.Word32] ts
+    FuncDec.ic_call env Type.[Prim Word32] ts
       ( Dfinity.get_self_reference env ^^
         Dfinity.actor_public_field env (Dfinity.async_method_name))
       (get_closure_idx ^^ BoxedSmallWord.box env)
@@ -6650,7 +6650,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
 
 and export_actor_field env  ae (f : Ir.field) =
   let sr, code = Var.get_val env ae f.it.var in
-  (* A public actor field is guaranteed to be compiled as a PublicMethod *) 
+  (* A public actor field is guaranteed to be compiled as a PublicMethod *)
   let fi = match sr with
     | SR.StaticThing (SR.PublicMethod (fi, _)) -> fi
     | _ -> assert false in

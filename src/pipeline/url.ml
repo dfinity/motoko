@@ -63,3 +63,8 @@ let parse (f: string) : (parsed, string) result =
       | Some _ -> Error "Unrecognized URL"
       | None -> Ok (Relative (Lib.FilePath.normalise f))
       end
+
+
+(* Basename of the IDL file searched (see DFX-Interface.md) *)
+let idl_basename_of_blob bytes =
+  Lib.Hex.hex_of_bytes bytes ^ Lib.Hex.hex_of_byte (Lib.CRC.crc8 bytes) ^ ".did"

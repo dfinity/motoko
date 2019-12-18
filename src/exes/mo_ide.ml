@@ -1,3 +1,5 @@
+open Mo_config
+
 let entry_point : string option ref = ref None
 let debug = ref false
 
@@ -19,12 +21,13 @@ let argspec =
            Arg.Set_string package_name_ref ;
            Arg.String begin fun package_url ->
              (* push (package_name, package_url) onto the list. *)
-             Mo_config.Flags.package_urls := (
+             Flags.package_urls := (
                !package_name_ref,
                package_url
-             ) :: ! Mo_config.Flags.package_urls
+             ) :: ! Flags.package_urls
              end
-      ]), "<args> Specify a package-name-package-URL pair, separated by a space" ;
+      ]), "<args> Specify a package-name-package-URL pair, separated by a space"
+    ; "--actor-idl", Arg.String (fun fp -> Flags.actor_idl_path := Some fp), " path to actor IDL files"
     ]
 
 let () =
