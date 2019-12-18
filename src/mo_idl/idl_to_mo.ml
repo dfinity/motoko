@@ -4,7 +4,6 @@ module M = Mo_types.Type
 module I = Idllib.Typing
 
 let m_env = ref M.Env.empty
-let con_set = ref M.ConSet.empty          
 
 let check_prim p =
   match p with
@@ -55,7 +54,6 @@ let rec check_typ env t =
          let t' = I.Env.find id env in
          let t' = check_typ env t' in
          M.set_kind con (M.Def ([], t'));
-         con_set := M.ConSet.add con !con_set;
          res_t
       | Some t -> t
      )

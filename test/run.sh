@@ -321,6 +321,11 @@ do
       $DIDC --check $out/$base.pp.did > $out/$base.pp.tc 2>&1
       diff_files="$diff_files $base.pp.tc"
 
+      if [ -e $base.import.mo ]
+      then
+        run import-did $MOC -stub-system-api -c $base.import.mo -o $out/$base.stub.wasm
+      fi
+      
       run didc-js $DIDC --js $base.did -o $out/$base.js
       normalize $out/$base.js
       diff_files="$diff_files $base.js"

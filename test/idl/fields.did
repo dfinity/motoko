@@ -13,5 +13,5 @@ type nest_record = record {
 
 service S:
 {
-  f : (A,B,C,nest_record) -> ();
+  f : (A,opt B,opt C,opt nest_record) -> ();
 }
