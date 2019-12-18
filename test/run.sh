@@ -91,7 +91,7 @@ function run () {
   local ext="$1"
   shift
 
-  if grep -q "^//SKIP $ext" $file; then return 1; fi
+  if grep -q "^//SKIP $ext$" $file; then return 1; fi
 
   if test -e $out/$base.$ext
   then
@@ -113,6 +113,21 @@ function run () {
   diff_files="$diff_files $base.$ext"
 
   return $ret
+}
+
+function run_if () {
+  # first argument: a file extension
+  # remaining argument: passed to run
+
+  local ext="$1"
+  shift
+
+  if test -e $out/$base.$ext
+  then
+    run "$@"
+  else
+    return 1
+  fi
 }
 
 for file in "$@";
@@ -230,19 +245,14 @@ do
           run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         else
           run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
-          can_use_drun=$?
-
-          if [ "$can_use_drun" -ne 0 ];
-          then
-            run comp-stub $MOC $moc_extra_flags -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
-          fi
+          run comp-stub $MOC $moc_extra_flags -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.stub.wasm
         fi
+
+        run_if wasm valid wasm-validate $out/$base.wasm
+        run_if stub.wasm valid-stub wasm-validate $out/$base.stub.wasm
 
         if [ -e $out/$base.wasm ]
         then
-          # Validate wasm
-          run valid wasm-validate $out/$base.wasm
-
           # Check filecheck
           if [ "$SKIP_RUNNING" != yes ]
           then
@@ -254,20 +264,18 @@ do
               diff_files="$diff_files $base.filecheck"
             fi
           fi
+        fi
 
-          # Run compiled program
-          if [ "$SKIP_RUNNING" != yes ]
+        # Run compiled program
+        if [ "$SKIP_RUNNING" != yes ]
+        then
+          if [ $DRUN = no ]
           then
-            if [ $DRUN = no ]
-            then
-              run wasm-run $WASMTIME --disable-cache $out/$base.wasm
-            elif [ "$can_use_drun" -eq 0 ]
-            then
-              run drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
-            else
-              DRUN=$IC_STUB_RUN \
-              run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $mangled
-            fi
+            run_if wasm wasm-run $WASMTIME --disable-cache $out/$base.wasm
+          else
+            run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
+            DRUN=$IC_STUB_RUN \
+            run_if stub.wasm ic-stub-run $DRUN_WRAPPER $out/$base.stub.wasm $mangled
           fi
         fi
 	rm -f $mangled

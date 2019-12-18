@@ -1,5 +1,5 @@
 module Lsp = Lsp.Lsp_t
-open Declaration_index
+module DI = Declaration_index
 
 let position_of_pos (pos : Source.pos) : Lsp.position = Lsp.
   (* The LSP spec requires zero-based positions *)
@@ -12,15 +12,15 @@ let range_of_region (at : Source.region) : Lsp.range = Lsp.
     range_end_ = position_of_pos at.Source.right;
   }
 
-let find_named (name : string) : ide_decl list -> Source.region option =
+let find_named (name : string) : DI.ide_decl list -> Source.region option =
   Lib.List.first_opt (function
-    | ValueDecl value ->
-        if String.equal value.name name
-        then value.definition
+    | DI.ValueDecl value ->
+        if String.equal value.DI.name name
+        then value.DI.definition
         else None
-    | TypeDecl typ ->
-        if String.equal typ.name name
-        then typ.definition
+    | DI.TypeDecl typ ->
+        if String.equal typ.DI.name name
+        then typ.DI.definition
         else None)
 
 let opt_bind f = function
@@ -34,6 +34,7 @@ let definition_handler
       project_root
       file_path =
   let result =
+    let open Source_file in
     Lib.Option.bind
       (Source_file.identifier_at_pos
          project_root
@@ -41,23 +42,26 @@ let definition_handler
          file_contents
          position)
       (function
-       | Source_file.Alias _ -> None
-       | Source_file.Unresolved _ -> None
-       | Source_file.Resolved resolved ->
-          Index.find_opt resolved.Source_file.path index
-          |> opt_bind (find_named resolved.Source_file.ident)
-          |> Lib.Option.map (fun loc -> (resolved.Source_file.path, loc))
-       | Source_file.Ident ident ->
-          Pipeline__.File_path.relative_to project_root file_path
+       | Alias _ -> None
+       | Unresolved _ -> None
+       | Resolved resolved ->
+          DI.lookup_module resolved.path index
+          |> opt_bind (find_named resolved.ident)
+          |> Lib.Option.map (fun loc -> (resolved.path, loc))
+       | Ident ident ->
+          Lib.FilePath.relative_to project_root file_path
           |> opt_bind (fun uri ->
-              Index.find_opt uri index
+              DI.lookup_module uri index
               |> opt_bind (find_named ident)
               |> Lib.Option.map (fun loc -> (uri, loc))
       )) in
   let location =
     Lib.Option.map (fun (path, region) ->
         Lsp.
-        { location_uri = Vfs.uri_from_file path;
+        { location_uri =
+            if Source_file.is_package_path path
+            then Lib.Option.value (Source_file.uri_for_package path)
+            else Vfs.uri_from_file path;
           location_range = range_of_region region
         }) result in
   `TextDocumentDefinitionResponse location

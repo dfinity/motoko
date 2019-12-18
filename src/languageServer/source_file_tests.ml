@@ -70,6 +70,13 @@ let%test "it parses a simple module header" =
     "import P \"lib/prelude.mo\""
     ["P", "src/lib/prelude.mo"]
 
+let%test "it parses a simple module header with package paths" =
+  parse_module_header_test_case
+    "/project"
+    "/project/src/Main.mo"
+    "import P \"mo:stdlib/prelude.mo\""
+    ["P", "mo:stdlib/prelude.mo"]
+
 let%test "it parses a simple module header" =
   parse_module_header_test_case
     "/project"

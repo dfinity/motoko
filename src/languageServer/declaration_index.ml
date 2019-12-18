@@ -3,8 +3,6 @@ open Mo_def
 open Source
 open Syntax
 
-let flat_map f xs = List.flatten (List.map f xs)
-
 type value_decl = {
     name : string;
     typ: Type.typ;
@@ -52,7 +50,26 @@ let name_of_ide_decl (d : ide_decl) : string =
   | TypeDecl ty -> ty.name
 
 module Index = Map.Make(String)
-type declaration_index = (ide_decl list) Index.t
+type t =  ide_decl list Index.t
+
+type path = string
+let lookup_module
+      (path : path)
+      (index : t)
+    : ide_decl list option =
+  let open Pipeline.URL in
+  match parse path with
+  | Ok (Relative path) -> Index.find_opt path index
+  | Ok (Package (pkg, path)) ->
+     Lib.Option.bind
+       (List.find_opt
+         (fun (name, _) -> pkg = name)
+         !Mo_config.Flags.package_urls)
+       (fun (_, pkg_path) ->
+        Index.find_opt (Filename.concat pkg_path path) index)
+  | _ -> assert false
+
+let empty : t = Index.empty
 
 module PatternMap = Map.Make(String)
 type pattern_map = Source.region PatternMap.t
@@ -153,7 +170,7 @@ let populate_definitions
   | Some lib ->
      List.map (find_def lib) decls
 
-let make_index_inner vfs entry_points : declaration_index Diag.result =
+let make_index_inner vfs entry_points : t Diag.result =
   Pipeline.load_progs
     (Vfs.parse_file vfs)
     entry_points
@@ -171,6 +188,6 @@ let make_index_inner vfs entry_points : declaration_index Diag.result =
         scope.Scope.lib_env
         Index.empty)
 
-let make_index vfs entry_points : declaration_index Diag.result =
+let make_index vfs entry_points : t Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
   try make_index_inner vfs entry_points with _ -> Diag.return Index.empty

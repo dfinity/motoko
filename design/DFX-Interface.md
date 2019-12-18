@@ -76,7 +76,7 @@ As the previous point, but passing `--idl` to `moc`.
 Resolving Canister aliases
 --------------------------
 
-For every actor imported using `import "ic:alias"`, the Motoko compiler treats that as `import "ic:caniserid"`, if the command line flag `--actor-alias alias id` is given.
+For every actor imported using `import "ic:alias"`, the Motoko compiler treats that as `import "ic:canisterid"`, if the command line flag `--actor-alias alias id` is given.
 
 The relation defined by the set of `--actor-alias` arguments must be left-unique and have disjoint range and domain (i.e. no `--actor-alias a b --actor-alias a c` or `--actor-alias a b --actor-alias b c` or even `--actor-alias a a`).
 
