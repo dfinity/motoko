@@ -239,16 +239,7 @@ let error_shared env t at fmt =
   | Some t1 ->
     let s = Printf.sprintf "\ntype\n  %s\nis or contains non-shared type\n  %s"
       (T.string_of_typ_expand t) (T.string_of_typ_expand t1) in
-    Printf.ksprintf
-      (fun s1 ->
-        Diag.add_msg env.msgs (type_error at (s1^s));
-        match t1 with
-        | T.Obj (T.Actor, _) ->
-          error_in [Flags.ICMode] env at "actor types are non-shared."
-        | T.Func (T.Shared _, _, _, _, _) ->
-          error_in [Flags.ICMode] env at "shared function types are non-shared."
-        | _ -> raise Recover)
-      fmt
+    Printf.ksprintf (fun s1 -> Diag.add_msg env.msgs (type_error at (s1^s)); raise Recover) fmt
 
 let as_domT t =
   match t.Source.it with

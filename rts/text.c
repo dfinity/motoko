@@ -62,6 +62,12 @@ export text_t text_of_ptr_size(const char *buf, size_t n) {
   return r;
 }
 
+text_t text_of_cstr(const char * const s) {
+  size_t l = as_strlen(s);
+  return text_of_ptr_size(s, l);
+}
+
+
 // Concat
 export text_t text_concat(text_t s1, text_t s2) {
   // empty strings are ignored
