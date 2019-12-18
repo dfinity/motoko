@@ -31,9 +31,9 @@ type QueryFunc = WasmState -> TrapOr Response
 
 data CanisterModule = CanisterModule
   { init_method :: InitFunc
-  , update_methods :: MethodName ↦ (ExistingCanisters -> EntityId -> Blob -> UpdateFunc)
+  , update_methods :: MethodName ↦ (ExistingCanisters -> EntityId -> Responded -> Blob -> UpdateFunc)
   , query_methods :: MethodName ↦ (EntityId -> Blob -> QueryFunc)
-  , callbacks :: Callback -> ExistingCanisters -> Response -> UpdateFunc
+  , callbacks :: Callback -> ExistingCanisters -> Responded -> Response -> UpdateFunc
   }
 
 parseCanister :: Blob -> Either String CanisterModule
@@ -46,7 +46,9 @@ concreteToAbstractModule :: Module -> CanisterModule
 concreteToAbstractModule wasm_mod = CanisterModule
   { init_method = \ex cid caller dat -> initialize ex wasm_mod cid caller dat
   , update_methods = M.fromList
-    [ (m, \ex caller dat wasm_state -> invoke wasm_state (CI.Update m ex caller dat))
+    [ (m,
+      \ex caller responded dat wasm_state ->
+      invoke wasm_state (CI.Update m ex caller responded dat))
     | n <- exportedFunctions wasm_mod
     , Just m <- return $ stripPrefix "canister_update " n
     ]
@@ -56,6 +58,6 @@ concreteToAbstractModule wasm_mod = CanisterModule
     | n <- exportedFunctions wasm_mod
     , Just m <- return $ stripPrefix "canister_query " n
     ]
-  , callbacks = \cb ex res wasm_state ->
-    invoke wasm_state (CI.Callback cb ex res)
+  , callbacks = \cb ex responded res wasm_state ->
+    invoke wasm_state (CI.Callback cb ex responded res)
   }

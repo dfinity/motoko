@@ -1,18 +1,17 @@
 export default ({ IDL }) => {
- const t = IDL.Arr(IDL.Nat8)
+ const t = IDL.Vec(IDL.Nat8)
  const t1 = t
  const UserId = IDL.Nat
  const t2 = UserId
- const list = IDL.Arr(IDL.Nat)
+ const list = IDL.Vec(IDL.Nat)
  const RegionId = IDL.Nat
  const TruckTypeId = IDL.Nat
  const EntId =
-  IDL.Obj({'region': RegionId, 'user': UserId, 'truckType': TruckTypeId})
+  IDL.Record({'region': RegionId, 'user': UserId, 'truckType': TruckTypeId})
  const OpEntId = IDL.Opt(EntId)
- const IdErr = IDL.Obj({'idErr': OpEntId})
- const Inventory = IDL.Obj({'produce_id': IDL.Nat, 'quantity': IDL.Nat})
- const actor_S = new IDL.ActorInterface({
+ const IdErr = IDL.Record({'idErr': OpEntId})
+ const Inventory = IDL.Record({'produce_id': IDL.Nat, 'quantity': IDL.Nat})
+ return new IDL.ActorInterface({
   'f': IDL.Func([t, t1, t2], [list, IdErr], []),
   'getInventory': IDL.Func([IDL.Nat], [Inventory], ['query'])});
- return actor_S;
 };

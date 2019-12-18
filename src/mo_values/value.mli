@@ -73,8 +73,13 @@ module Env : Env.S with type key = string
 (* Types *)
 
 type unicode = int
+type actor_id = string
 
-type func = value -> value cont -> unit
+type context = value
+
+and func =
+   context -> value -> value cont -> unit
+
 and value =
   | Null
   | Bool of bool
@@ -121,6 +126,12 @@ val async_func : Type.shared_sort -> int -> int -> func -> value
 val replies_func : Type.shared_sort -> int -> int -> func -> value
 
 
+(* Pseudo actor ids *)
+
+val fresh_id : unit -> actor_id
+val top_id : actor_id
+
+
 (* Projections *)
 
 val as_null : value -> unit
@@ -164,4 +175,3 @@ val compare : value -> value -> int
 
 val string_of_val : int -> value -> string
 val string_of_def : int -> def -> string
-

@@ -11,23 +11,24 @@ and id i = Atom i.it
 and tag i = Atom ("#" ^ i.it)
 
 let rec exp e = match e.it with
-  | VarE x              -> "VarE"    $$ [id x]
-  | LitE l              -> "LitE"    $$ [lit !l]
-  | UnE (ot, uo, e)     -> "UnE"     $$ [operator_type !ot; Arrange_ops.unop uo; exp e]
-  | BinE (ot, e1, bo, e2) -> "BinE"  $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
-  | RelE (ot, e1, ro, e2) -> "RelE"  $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
-  | ShowE (ot, e)       -> "ShowE"   $$ [operator_type !ot; exp e]
-  | TupE es             -> "TupE"    $$ List.map exp es
-  | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, efs)       -> "ObjE"    $$ [obj_sort s] @ List.map exp_field efs
-  | DotE (e, x)         -> "DotE"    $$ [exp e; id x]
-  | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
-  | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
-  | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
-  | FuncE (x, s, tp, p, t, e') ->
+  | VarE x              -> "VarE"      $$ [id x]
+  | LitE l              -> "LitE"      $$ [lit !l]
+  | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
+  | UnE (ot, uo, e)     -> "UnE"       $$ [operator_type !ot; Arrange_ops.unop uo; exp e]
+  | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
+  | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
+  | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
+  | TupE es             -> "TupE"      $$ List.map exp es
+  | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
+  | ObjE (s, efs)       -> "ObjE"      $$ [obj_sort s] @ List.map exp_field efs
+  | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
+  | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
+  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
+  | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
+  | FuncE (x, sp, tp, p, t, e') ->
     "FuncE" $$ [
       Atom (Type.string_of_typ e.note.note_typ);
-      func_sort s;
+      sort_pat sp;
       Atom x] @
       List.map typ_bind tp @ [
       pat p;
@@ -56,7 +57,7 @@ let rec exp e = match e.it with
   | OptE e              -> "OptE"    $$ [exp e]
   | TagE (i, e)         -> "TagE"    $$ [id i; exp e]
   | PrimE p             -> "PrimE"   $$ [Atom p]
-  | ImportE (f, fp)     -> "ImportE" $$ [Atom (if !fp = "" then f else !fp)]
+  | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
 
@@ -106,6 +107,12 @@ and obj_sort s = match s.it with
   | Type.Object -> Atom "Object"
   | Type.Actor -> Atom "Actor"
   | Type.Module -> Atom "Module"
+
+
+and sort_pat sp = match sp.it with
+  | Type.Local -> Atom "Local"
+  | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
+  | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
 
 and func_sort s = match s.it with
   | Type.Local -> Atom "Local"
