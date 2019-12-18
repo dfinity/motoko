@@ -143,7 +143,6 @@ let in_shared_async env =
 let in_oneway_ignore env =
   match env.context with
   | _ ::
-    AnnotE  _  ::
     BlockE [ {it = IgnoreD _; _} ] ::
     FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
     _ ->
@@ -1541,7 +1540,7 @@ and infer_dec env dec : T.typ =
   | LetD (_, exp) ->
     infer_exp env exp
   | IgnoreD exp ->
-    if not env.pre then ignore (infer_exp env exp);
+    if not env.pre then check_exp env T.Any exp;
     T.unit
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);

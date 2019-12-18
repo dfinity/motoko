@@ -202,7 +202,7 @@ seplist1(X, SEP) :
 
 %inline sort_pat :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt op=sort_pat_opt { Type.Shared (m,op (at $sloc)) @@ at $sloc  }
+  | SHARED m=mode_opt op=sort_pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
   | QUERY op=sort_pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
 
 (* Paths *)
