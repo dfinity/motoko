@@ -11,7 +11,8 @@ type broker = service {
     (service {up:() -> (); current:() -> (nat)});
 };
 
-service server {
+service server:
+{
   addUser : (name : text, age : nat8) -> (id : nat64);
   userName : (id : nat64) -> (text) query;
   userAge : (id : nat64) -> (nat8) query;

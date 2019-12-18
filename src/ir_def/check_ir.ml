@@ -171,7 +171,10 @@ let rec check_typ env typ : unit =
       match control with
       | T.Returns ->
         check env' no_region (sort = T.Shared T.Write)
-          "one-shot query function pointless"
+          "one-shot query function pointless";
+        check env' no_region (ts2 = [])
+          "one-shot function cannot have non-unit return types:\n  %s"
+          (T.string_of_typ_expand (T.seq ts2));
       | T.Promises t' ->
         check_typ env' t';
         check env no_region env.flavor.Ir.has_async_typ
@@ -297,6 +300,7 @@ let type_lit env lit at : T.prim =
   | FloatLit _ -> T.Float
   | CharLit _ -> T.Char
   | TextLit _ -> T.Text
+  | BlobLit _ -> T.Blob
 
 
 (* Expressions *)
@@ -349,7 +353,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";
       typ exp1 <: ot;
-      T.Prim T.Text <: t
+      T.text <: t
     | CPSAwait, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
@@ -369,6 +373,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (not (env.flavor.has_async_typ)) "ICRejectPrim in async flavor";
       typ exp1 <: T.text;
       T.Non <: t
+    | ICCallerPrim, [] ->
+      T.caller <: t
     | ICCallPrim, [exp1; exp2; k; r] ->
       let t1 = T.promote (typ exp1) in
       begin match t1 with
@@ -386,6 +392,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | CastPrim (t1, t2), [e] ->
       typ e <: t1;
       t2 <: t
+    | BlobOfIcUrl, [e] ->
+      typ e <: T.text;
+    | ActorOfIdBlob actor_typ, [e] ->
+      typ e <: T.blob;
+      check_typ env actor_typ;
+      begin match T.normalize actor_typ with
+      | T.Obj (T.Actor, _) -> ()
+      | _ -> error env exp.at "ActorOfIdBlob cast to actor object type, not\n   %s"
+           (T.string_of_typ_expand actor_typ)
+      end;
+      actor_typ <: t;
     | OtherPrim _, _ -> ()
     | _ ->
       error env exp.at "PrimE with wrong number of arguments"
@@ -429,16 +446,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
         error env exp1.at "field name %s does not exist in type\n  %s"
           n (T.string_of_typ_expand t1)
     end
-  | AssignE (exp1, exp2) ->
-    begin
-      match exp1.it with
-      | (VarE _ | DotE _ | IdxE _) -> ()
-      | _ -> error env exp.at "unexpected assignment target"
-    end;
-    check_exp env exp1;
+  | AssignE (lexp1, exp2) ->
+    check_lexp env lexp1;
     check_exp env exp2;
-    let t2 = try T.as_mut  (typ exp1) with
-               Invalid_argument _ -> error env exp.at "expected mutable assignment target"
+    let t2 = try T.as_mut lexp1.note with
+       Invalid_argument _ -> error env exp.at "expected mutable assignment target"
     in
     typ exp2 <: t2;
     T.unit <: t
@@ -648,6 +660,46 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t1 <: T.Obj (s0, val_tfs0);
 
     t0 <: t
+
+
+and check_lexp env (lexp:Ir.lexp) : unit =
+  (* helpers *)
+  let check p = check env lexp.at p in
+  let (<:) t1 t2 = check_sub env lexp.at t1 t2 in
+  (* check type annotation *)
+  let t = lexp.note in
+  check_typ env t;
+  (* check typing *)
+  match lexp.it with
+  | VarLE id ->
+    let t0 = try T.Env.find id env.vals with
+             |  Not_found -> error env lexp.at "unbound variable %s" id
+    in
+      t0 <: t
+  | DotLE (exp1, n) ->
+    begin
+      let t1 = typ exp1 in
+      let sort, tfs =
+        try T.as_obj_sub [n] t1 with Invalid_argument _ ->
+          error env exp1.at "expected object type, but expression produces type\n  %s"
+            (T.string_of_typ_expand t1)
+      in
+      check (sort <> T.Actor) "sort mismatch";
+      try T.lookup_val_field n tfs <: t with Invalid_argument _ ->
+        error env exp1.at "field name %s does not exist in type\n  %s"
+          n (T.string_of_typ_expand t1)
+    end
+  | IdxLE (exp1, exp2) ->
+    check_exp env exp1;
+    check_exp env exp2;
+    let t1 = T.promote (typ exp1) in
+    let t2 = try T.as_array_sub t1 with
+             | Invalid_argument _ ->
+               error env exp1.at "expected array type, but expression produces type\n  %s"
+                                       (T.string_of_typ_expand t1)
+    in
+    typ exp2 <: T.nat;
+    t2 <: t
 
 (* Cases *)
 

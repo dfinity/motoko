@@ -207,6 +207,8 @@ let transform mode env prog =
     | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
     | ShowPrim ot -> ShowPrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
+    | CastPrim (t1,t2) -> CastPrim (t_typ t1,t_typ t2)
+    | ActorOfIdBlob t -> ActorOfIdBlob (t_typ t)
     | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
     | CPSAsync t -> CPSAsync (t_typ t)
     | p -> p
@@ -239,7 +241,7 @@ let transform mode env prog =
     | ActorDotE (exp1, id) ->
       ActorDotE (t_exp exp1, id)
     | AssignE (exp1, exp2) ->
-      AssignE (t_exp exp1, t_exp exp2)
+      AssignE (t_lexp exp1, t_exp exp2)
     | ArrayE (mut, t, exps) ->
       ArrayE (mut, t_typ t, List.map t_exp exps)
     | IdxE (exp1, exp2) ->
@@ -399,6 +401,19 @@ let transform mode env prog =
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
+
+  and t_lexp lexp =
+    { it = t_lexp' lexp.it;
+      note = t_typ lexp.note;
+      at = lexp.at;
+    }
+  and t_lexp' (lexp':lexp') =
+    match lexp' with
+    | VarLE _ -> lexp'
+    | DotLE (exp1, id) ->
+      DotLE (t_exp exp1, id)
+    | IdxLE (exp1, exp2) ->
+      IdxLE (t_exp exp1, t_exp exp2)
 
   and t_dec dec = { dec with it = t_dec' dec.it }
 

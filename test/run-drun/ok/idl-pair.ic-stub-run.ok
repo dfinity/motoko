@@ -1,0 +1,6 @@
+→ create
+← completed: canister-id = 0x0000000000000400
+→ install
+← completed
+→ update len2(0x4449444c0002717102486905576f726c64)
+← completed: 0x4449444c016c02007c017c01000205

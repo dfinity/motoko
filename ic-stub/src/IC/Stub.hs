@@ -87,7 +87,7 @@ type CallId = Int
 data CallContext = CallContext
   { canister :: CanisterId
   , origin :: CallOrigin
-  , responded :: Bool
+  , responded :: Responded
   , last_trap :: Maybe String
   }
   deriving Show
@@ -158,11 +158,11 @@ nextStarved :: ICT m => m (Maybe CallId)
 nextStarved = gets $ \ic -> listToMaybe
   [ c
   | (c, ctxt) <- M.toList (call_contexts ic)
-  , not $ responded ctxt
+  , Responded False <- return $ responded ctxt
   , null [ () | ResponseMessage { call_context = c' } <- toList (messages ic), c' == c ]
   , null
       [ ()
-      | CallContext { responded = False, origin = FromCanister c' _}
+      | CallContext { responded = Responded False, origin = FromCanister c' _}
           <- M.elems (call_contexts ic)
       , c' == c
       ]
@@ -217,7 +217,7 @@ processRequest r@(InstallRequest canister_id user_id can_mod dat) =
       ctxt_id <- newCallContext $ CallContext
         { canister = canister_id
         , origin = FromInit user_id
-        , responded = True
+        , responded = Responded True
         , last_trap = Nothing
         }
 
@@ -237,7 +237,7 @@ processRequest r@(UpdateRequest canister_id _user_id method arg) = do
   ctxt_id <- newCallContext $ CallContext
     { canister = canister_id
     , origin = FromUser r
-    , responded = False
+    , responded = Responded False
     , last_trap = Nothing
     }
   enqueueMessage $ CallMessage
@@ -268,7 +268,7 @@ modifyCallContext ctxt_id f =
 respondCallContext :: ICT m => CallId -> Response -> m ()
 respondCallContext ctxt_id response = do
   -- TODO: check no prior response
-  modifyCallContext ctxt_id $ \ctxt -> ctxt { responded = True }
+  modifyCallContext ctxt_id $ \ctxt -> ctxt { responded = Responded True }
   enqueueMessage $ ResponseMessage { call_context = ctxt_id, response }
 
 rememberTrap :: ICT m => CallId -> String -> m ()
@@ -289,33 +289,35 @@ callerOfCallID ctxt_id = do
     FromInit entity_id -> return entity_id
 
 calleeOfCallID :: ICT m => CallId -> m EntityId
-calleeOfCallID ctxt_id = do
-  ctxt <- getCallContext ctxt_id
-  return $ canister ctxt
+calleeOfCallID ctxt_id = canister <$> getCallContext ctxt_id
+
+respondedCallID :: ICT m => CallId -> m Responded
+respondedCallID ctxt_id = responded <$> getCallContext ctxt_id
 
 invokeEntry :: ICT m =>
     CallId -> CanState -> EntryPoint ->
     m (TrapOr (WasmState, UpdateResult))
 invokeEntry ctxt_id (CanState wasm_state can_mod) entry = do
+    responded <- respondedCallID ctxt_id
     existing_canisters <- gets (M.keys . canisters)
     case entry of
       Public method dat -> do
         caller <- callerOfCallID ctxt_id
         case M.lookup method (update_methods can_mod) of
           Just f ->
-            return $ f existing_canisters caller dat wasm_state
+            return $ f existing_canisters caller responded dat wasm_state
           Nothing -> do
             let reject = Reject (RC_DESTINATION_INVALID, "update method does not exist: " ++ method)
             return $ Return (wasm_state, ([], [], Just reject))
       Closure cb r ->
-        return $ callbacks can_mod cb existing_canisters r wasm_state
+        return $ callbacks can_mod cb existing_canisters responded r wasm_state
 
 newCall :: ICT m => CallId -> MethodCall -> m ()
 newCall from_ctxt_id call = do
   new_ctxt_id <- newCallContext $ CallContext
     { canister = call_callee call
     , origin = FromCanister from_ctxt_id (call_callback call)
-    , responded = False
+    , responded = Responded False
     , last_trap = Nothing
     }
   enqueueMessage $ CallMessage

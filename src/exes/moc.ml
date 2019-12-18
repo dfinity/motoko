@@ -11,7 +11,7 @@ let usage = "Usage: " ^ name ^ " [option] [file ...]"
 
 (* Argument handling *)
 
-type mode = Default | Check | Compile | Run | Interact | Idl
+type mode = Default | Check | Compile | Run | Interact | Idl | PrintDeps
 
 let mode = ref Default
 let args = ref []
@@ -35,6 +35,7 @@ let argspec = Arg.align
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "--idl", Arg.Unit (set_mode Idl), " generate IDL spec";
+  "--print-deps", Arg.Unit (set_mode PrintDeps), " prints the dependencies for a given source file";
   "-o", Arg.Set_string out_file, " output file";
 
   "-v", Arg.Set Flags.verbose, " verbose output";
@@ -57,6 +58,7 @@ let argspec = Arg.align
                      ) :: ! Flags.package_urls
                      end
                  ]), "<args> Specify a package-name-package-URL pair, separated by a space" ;
+  "--actor-idl", Arg.String (fun fp -> Flags.actor_idl_path := Some fp), " path to actor IDL files";
   "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
   "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
   "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, " prefix each profile line with the given string ";
@@ -77,8 +79,11 @@ let argspec = Arg.align
   "-stub-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := StubMode)),
       " use the future DFINITY system API (ic-stub-run)";
+  (* TODO: bring this back (possibly with flipped default)
+           as soon as the multi-value `wasm` library is out.
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
   "-no-multi-value", Arg.Clear Flags.multi_value, " avoid multi-value extension";
+   *)
 
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";
@@ -140,6 +145,12 @@ let process_files files : unit =
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
     end
+  | PrintDeps ->
+     match files with
+     | [file] -> Pipeline.print_deps file
+     | _ ->
+        (eprintf "--print-deps expects exactly one source file as an argument";
+         exit 1)
 
 (* Copy relevant flags into the profiler library's (global) settings.
    This indirection affords the profiler library an independence from the (hacky) Flags library.

@@ -29,7 +29,7 @@ let sign b s = (if b then "+" else "") ^ s
 let rec show_val t v =
   let t = T.normalize t in
   match t, v with
-  | T.Prim T.Bool, Value.Bool b -> if b then "true" else "false"
+  | T.(Prim Bool), Value.Bool b -> if b then "true" else "false"
   | T.(Prim Nat), Value.Int i -> Value.Int.to_string i
   | T.(Prim Nat8), Value.Nat8 i -> Value.Nat8.to_string i
   | T.(Prim Nat16), Value.Nat16 i -> Value.Nat16.to_string i
@@ -44,8 +44,8 @@ let rec show_val t v =
   | T.(Prim Word16), Value.Word16 i -> "0x" ^ Value.Word16.to_string i
   | T.(Prim Word32), Value.Word32 i -> "0x" ^ Value.Word32.to_string i
   | T.(Prim Word64), Value.Word64 i -> "0x" ^ Value.Word64.to_string i
-  | T.Prim T.Text, Value.Text s -> "\"" ^ s ^ "\""
-  | T.Prim T.Null, Value.Null -> "null"
+  | T.(Prim Text), Value.Text s -> "\"" ^ s ^ "\""
+  | T.(Prim Null), Value.Null -> "null"
   | T.Opt _, Value.Null -> "null"
   | T.Opt t', Value.Opt v -> "?" ^ parens (show_val t' v)
   | T.Tup ts', Value.Tup vs ->
