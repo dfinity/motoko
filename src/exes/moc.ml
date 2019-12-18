@@ -46,19 +46,8 @@ let argspec = Arg.align
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
   "--map", Arg.Set gen_source_map, " output source map";
 
-  "-t", Arg.Set Flags.trace, " activate tracing";
-  "--package", (let package_name_ref = ref "DEADBEEF" in
-               Arg.Tuple [
-                   Arg.Set_string package_name_ref ;
-                   Arg.String begin fun package_url ->
-                     (* push (package_name, package_url) onto the list. *)
-                     Flags.package_urls := (
-                       !package_name_ref,
-                       package_url
-                     ) :: ! Flags.package_urls
-                     end
-                 ]), "<args> Specify a package-name-package-URL pair, separated by a space" ;
-  "--actor-idl", Arg.String (fun fp -> Flags.actor_idl_path := Some fp), " path to actor IDL files";
+  "-t", Arg.Set Flags.trace, " activate tracing"]
+  @ Args.package_args @ [
   "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
   "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
   "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, " prefix each profile line with the given string ";
