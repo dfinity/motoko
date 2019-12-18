@@ -39,7 +39,6 @@ enum as_heap_tag {
   TAG_OBJECT = 1,
   TAG_OBJIND = 2,
   TAG_ARRAY = 3,
-  TAG_REFERENCE = 4,
   TAG_INT = 5,
   TAG_MUTBOX = 6,
   TAG_CLOSURE = 7,
@@ -49,6 +48,7 @@ enum as_heap_tag {
   TAG_INDIRECTION = 11,
   TAG_SMALLWORD = 12,
   TAG_BIGINT = 13,
+  TAG_CONCAT = 14,
   };
 
 /** Functions imported from the Motoko RTS */
