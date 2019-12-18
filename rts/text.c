@@ -70,7 +70,7 @@ export text_t text_concat(text_t s1, text_t s2) {
   uint32_t n1 = BLOB_LEN(s1);
   uint32_t n2 = BLOB_LEN(s2);
   uint32_t n = n1 + n2;
-  // short text are copied into a single blob
+  // short texts are copied into a single blob
   if (n < MIN_CONCAT_SIZE) {
     as_ptr r = alloc_text_blob(n1 + n2);
     as_memcpy(BLOB_PAYLOAD(r), BLOB_PAYLOAD(s1), n1);
