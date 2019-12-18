@@ -652,7 +652,7 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t);
       ot := t
     end;
-    T.Prim T.Text
+    T.text
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
