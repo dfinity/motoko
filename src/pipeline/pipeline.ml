@@ -11,7 +11,7 @@ open Mo_config
 open Printf
 
 module ResolveImport = Resolve_import
-module FilePath = File_path
+module URL = Url
 
 type stat_env = Scope.t
 type dyn_env = Interpret.scope
@@ -112,7 +112,7 @@ type resolve_result = (Syntax.prog * ResolveImport.resolved_imports) Diag.result
 let resolve_prog (prog, base) : resolve_result =
   Diag.map
     (fun libs -> (prog, libs))
-    (ResolveImport.resolve !Flags.package_urls prog base)
+    (ResolveImport.resolve !Flags.actor_idl_path !Flags.package_urls prog base)
 
 let resolve_progs =
   Diag.traverse resolve_prog
@@ -238,7 +238,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         pending := add ri.Source.it !pending;
         Diag.bind (parsefn f) (fun (prog, base) ->
         Diag.bind (Static.prog prog) (fun () ->
-        Diag.bind (ResolveImport.resolve !Flags.package_urls prog base) (fun more_imports ->
+        Diag.bind (ResolveImport.resolve !Flags.actor_idl_path !Flags.package_urls prog base) (fun more_imports ->
         Diag.bind (go_set more_imports) (fun () ->
         let lib = lib_of_prog f prog in
         Diag.bind (check_lib !senv lib) (fun sscope ->
@@ -248,10 +248,20 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         Diag.return ()
         )))))
       end
-    | Syntax.IDLPath f ->
-      let sscope = Scope.lib f Type.(Obj (Actor, [])) in
-      senv := Scope.adjoin !senv sscope;
-      Diag.warn ri.Source.at "import" "imported actors assumed to have type actor {}"
+    | Syntax.IDLPath (f, _) ->
+      Diag.bind (Idllib.Pipeline.check_file f) (fun _ ->
+        let scaffold_type =
+          (* hard-coded for test/run-drun/actor-import.mo *)
+          (* to be replaced with the imported type in #1026 *)
+          let open Type in
+          Obj (Actor, [{lab = "go"; typ = Func (Shared Write, Promises, [], [], [Obj (Actor, [])])}])
+        in
+        let sscope = Scope.lib f scaffold_type in
+        senv := Scope.adjoin !senv sscope;
+        Diag.warn ri.Source.at "import"
+          (Printf.sprintf "imported actors assumed to have type %s"
+            (Type.string_of_typ scaffold_type))
+      )
   and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)

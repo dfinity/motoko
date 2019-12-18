@@ -89,4 +89,6 @@ as_ptr text_of_ptr_size(const char *buf, size_t n);
 export __attribute__ ((noreturn)) void idl_trap_with(const char *str1);
 export __attribute__ ((noreturn)) void rts_trap_with(const char *str1);
 
+export as_ptr blob_of_text(as_ptr);
+
 #endif /* RTS_H */
