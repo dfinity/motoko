@@ -491,7 +491,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | BlockE decs ->
     let k' =
-      if T.is_unit exp.note.note_typ
+      if T.is_unit exp.note.note_typ (* TODO: peeking at types violates erasure semantics, revisit! *)
       then (fun _v -> k V.unit)
       else k
     in
