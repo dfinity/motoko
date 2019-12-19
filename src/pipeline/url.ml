@@ -7,7 +7,8 @@
    parse "mo:foo"         = Ok (Package ("foo", ""))
 
    parse "ic:DEADBEEF"    = Ok (Ic "\DE\AD\BE\EF")
-   parse "ic:alias"       = (not yet supported)
+
+   parse "ic-alias:foo"   = Ok (IcAlias "foo")
 
    parse "std/foo"        = Ok (Relative "std/foo")
    parse "foo"            = Ok (Relative "foo")
@@ -40,6 +41,7 @@ type parsed =
   | Package of (string * string)
   | Relative of string
   | Ic of string
+  | IcAlias of string
 
 
 let parse (f: string) : (parsed, string) result =
@@ -59,10 +61,13 @@ let parse (f: string) : (parsed, string) result =
       | Error err -> Error err
       end
     | None ->
-      begin match Stdlib.String.index_opt f ':' with
-      | Some _ -> Error "Unrecognized URL"
-      | None -> Ok (Relative (Lib.FilePath.normalise f))
-      end
+      match Lib.String.chop_prefix "canister:" f with
+      | Some suffix -> Ok (IcAlias suffix)
+      | None ->
+        begin match Stdlib.String.index_opt f ':' with
+        | Some _ -> Error "Unrecognized URL"
+        | None -> Ok (Relative (Lib.FilePath.normalise f))
+        end
 
 
 (* Basename of the IDL file searched (see DFX-Interface.md) *)
