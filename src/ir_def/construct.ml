@@ -317,7 +317,7 @@ in the constructor DSL *)
 let lexp_of_exp' = function
   | VarE i -> VarLE i
   | PrimE (DotPrim n, [e1]) -> DotLE (e1, n)
-  | IdxE (e1,e2) -> IdxLE (e1, e2)
+  | PrimE (IdxPrim, [e1; e2]) -> IdxLE (e1, e2)
   | _ -> failwith "Impossible: lexp_of_exp"
 
 let lexp_of_exp (e:exp) = { e with it = lexp_of_exp' e.it; note = typ e }

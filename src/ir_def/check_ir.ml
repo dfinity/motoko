@@ -384,6 +384,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
           error env exp1.at "field name %s does not exist in type\n  %s"
             n (T.string_of_typ_expand t1)
       end
+    | IdxPrim, [exp1; exp2] ->
+      let t1 = T.promote (typ exp1) in
+      let t2 = try T.as_array_sub t1 with
+               | Invalid_argument _ ->
+                 error env exp1.at "expected array type, but expression produces type\n  %s"
+                                         (T.string_of_typ_expand t1)
+      in
+      typ exp2 <: T.nat;
+      t2 <~ t
     | ShowPrim ot, [exp1] ->
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";
@@ -461,17 +470,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     List.iter (fun e -> typ e <: t0) exps;
     let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
     t1 <: t
-  | IdxE (exp1, exp2) ->
-    check_exp env exp1;
-    check_exp env exp2;
-    let t1 = T.promote (typ exp1) in
-    let t2 = try T.as_array_sub t1 with
-             | Invalid_argument _ ->
-               error env exp1.at "expected array type, but expression produces type\n  %s"
-                                       (T.string_of_typ_expand t1)
-    in
-    typ exp2 <: T.nat;
-    t2 <~ t
   | CallE (exp1, insts, exp2) ->
     check_exp env exp1;
     check_exp env exp2;

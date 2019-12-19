@@ -96,7 +96,6 @@ and exp' env e  : exp' = match e.it with
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
   | ArrayE (m,t,es)     -> ArrayE (m,t,(exps env es))
-  | IdxE (e1, e2)       -> IdxE (exp env e1, exp env e2)
   | CallE (e1, insts, e2)  ->
     begin
       match e1.it, env with

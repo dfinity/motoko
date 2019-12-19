@@ -74,7 +74,6 @@ let rec exp e : f = match e.it with
   | PrimE (_, es)       -> exps es
   | AssignE (e1, e2)    -> lexp e1 ++ exp e2
   | ArrayE (m, t, es)   -> exps es
-  | IdxE (e1, e2)       -> exps [e1; e2]
   | CallE (e1, ts, e2)  -> exps [e1; e2]
   | BlockE (ds, e1)     -> close (decs ds +++ exp e1)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]

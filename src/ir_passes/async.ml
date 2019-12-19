@@ -231,8 +231,6 @@ let transform mode env prog =
       AssignE (t_lexp exp1, t_exp exp2)
     | ArrayE (mut, t, exps) ->
       ArrayE (mut, t_typ t, List.map t_exp exps)
-    | IdxE (exp1, exp2) ->
-      IdxE (t_exp exp1, t_exp exp2)
     | PrimE (CPSAwait, [a;kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
     | PrimE (CPSAsync, [exp1]) ->

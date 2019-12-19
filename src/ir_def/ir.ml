@@ -67,7 +67,6 @@ and exp' =
   | LitE of lit                                (* literal *)
   | AssignE of lexp * exp                      (* assignment *)
   | ArrayE of mut * Type.typ * exp list        (* array *)
-  | IdxE of exp * exp                          (* array indexing *)
   | CallE of exp * Type.typ list * exp         (* function call *)
   | BlockE of (dec list * exp)                 (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
@@ -112,6 +111,7 @@ and prim =
   | TagPrim of id                     (* variant injection *)
   | DotPrim of Type.lab               (* object projection *)
   | ActorDotPrim of Type.lab          (* actor field access *)
+  | IdxPrim                           (* array indexing *)
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)

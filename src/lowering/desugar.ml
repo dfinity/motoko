@@ -89,7 +89,7 @@ and exp' at note = function
   | S.ArrayE (m, es) ->
     let t = T.as_array note.I.note_typ in
     I.ArrayE (mut m, T.as_immut t, exps es)
-  | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
+  | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
   | S.FuncE (name, sp, tbs, p, _t_opt, e) ->
     let s, po = match sp.it with
       | T.Local -> (T.Local, None)

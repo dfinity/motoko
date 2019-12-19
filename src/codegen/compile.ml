@@ -5807,13 +5807,6 @@ let rec compile_lexp (env : E.t) ae lexp =
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
-  | IdxE (e1, e2)  ->
-    SR.Vanilla,
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    BigNum.to_word32 env ^^
-    Arr.idx env ^^
-    load_ptr
   | PrimE (p, es) ->
 
     (* for more concise code when all arguments and result use the same sr *)
@@ -5866,6 +5859,14 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       Dfinity.actor_public_field env name
+
+    | IdxPrim, [e1; e2]  ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+      compile_exp_vanilla env ae e2 ^^ (* idx *)
+      BigNum.to_word32 env ^^
+      Arr.idx env ^^
+      load_ptr
 
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin

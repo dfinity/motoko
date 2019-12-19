@@ -35,7 +35,6 @@ let rec infer_effect_exp (exp: exp) : T.eff =
   | LoopE exp1
   | AssignE (_, exp1) ->
     effect_exp exp1
-  | IdxE (exp1, exp2)
   | CallE (exp1, _, exp2) ->
     let t1 = effect_exp exp1 in
     let t2 = effect_exp exp2 in

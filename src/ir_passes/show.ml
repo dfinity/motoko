@@ -326,8 +326,6 @@ and t_exp' env = function
     AssignE (t_lexp env lexp1, t_exp env exp2)
   | ArrayE (mut, t, exps) ->
     ArrayE (mut, t, t_exps env exps)
-  | IdxE (exp1, exp2) ->
-    IdxE (t_exp env exp1, t_exp env exp2)
   | FuncE (s, c, id, typbinds, pat, typT, exp) ->
     FuncE (s, c, id, typbinds, pat, typT, t_exp env exp)
   | CallE (exp1, typs, exp2)  ->
