@@ -83,7 +83,7 @@ let is_escaped_num str =
     | Some str
       when String.length str > 0 &&
            List.for_all is_digit (Lib.String.explode str)
-      -> Some (Lib.Uint32.of_string str)
+      -> Lib.Uint32.of_string_opt str
     | _ -> None
     end
   | _ -> None

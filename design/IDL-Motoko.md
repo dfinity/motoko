@@ -110,8 +110,8 @@ ea(<typ>) = ( e(<typ>) )  otherwise
 em : <typ-field> -> <methtype>
 em(<id> : <typ>) = unescape(<id>) : efn(<typ>)
 
-unescape : <id> -> <nat>|<name>
-unescape("_" <nat> "_") = <nat>
+unescape : <id> -> <nat32>|<name>
+unescape("_" <nat32> "_") = <nat32>
 unescape(<id> "_") = <id>
 unescape(<id>) = <id>
 ```

@@ -115,6 +115,7 @@ sig
   type t
   val to_string : t -> string
   val of_string : string -> t
+  val of_string_opt : string -> t option
   val of_int : int -> t
   val to_int : t -> int
   val of_int32 : int32 -> t
