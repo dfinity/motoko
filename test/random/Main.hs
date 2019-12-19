@@ -54,6 +54,7 @@ utf8Props = testGroup "UTF-8 coding"
   , QC.testProperty "length computation" $ prop_textLength
   , QC.testProperty "chunky concat (ropes)" $ prop_ropeConcat
   , QC.testProperty "chunky length (ropes)" $ prop_ropeLength
+  , QC.testProperty "chunky iterator (ropes)" $ prop_ropeIterator
   ]
 
 matchingProps = testGroup "Pattern matching"
@@ -147,6 +148,16 @@ prop_ropeConcat rope = monadicIO $ do
 prop_ropeLength rope = monadicIO $ do
   let testCase = "assert (" <> ropeMot <> ".len() == " <> show len <> ")"
       len = length (asString rope)
+      ropeMot = unparseMO (asMot rope)
+  runScriptNoFuzz "ropeLength" testCase
+
+prop_ropeIterator rope = monadicIO $ do
+  let testCase = "func same(c : ?Char, d : Char) : Bool = switch c { case (?cc) { cc == d }; case null false };"
+              <> "let i = (" <> ropeMot <> ").chars();"
+              <> concatMap testStep string
+              <> "assert (switch (i.next()) { case null true; case _ false })"
+      testStep c = "assert (same(i.next(), '" <> escape c <> "'));"
+      string = asString rope
       ropeMot = unparseMO (asMot rope)
   runScriptNoFuzz "ropeLength" testCase
 
