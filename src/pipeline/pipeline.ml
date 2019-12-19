@@ -263,7 +263,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
            text = Printf.sprintf "file %s does not define a service" f
          }]
        else 
-         let actor = Mo_idl.Idl_to_mo.prog idl_scope actor_opt in
+         let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
          let sscope = Scope.lib f actor in
          senv := Scope.adjoin !senv sscope;
          Diag.return ()

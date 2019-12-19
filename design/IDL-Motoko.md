@@ -136,13 +136,18 @@ i(vec <datatype>) = [ i(<datatype>) ]
 i(blob) = [ word8 ] // if Motoko had a bytes type, it would show up here
 i(record { <datatype>;^N }) = ( i(<datatype>),^N ) if n > 1 // matches tuple short-hand
 i(record { <fieldtype>;* }) = { if(<fieldtype>);* }
-i(variant { <fieldtype>;* }) = variant { if(<typ-field>);* }
+i(variant { <fieldtype>;* }) = variant { ivf(<fieldtype>);* }
 i(func <functype>) = ifn(<functype>)
 i(service { <methtype>;* }) = actor { im(<methtype>);* }
 
 if : <fieldtype> -> <typ>
 if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
 if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
+
+ivf : <fieldtype> -> <typ>
+ivf(<name> : null) = escape(<name>) : ()
+ivf(<nat> : null) = "_" <nat> "_": ()
+ivf(<fieldtype> = if(<fieldtype>) otherwise
 
 ifn : <functype> -> <typ>
 ifn((<datatype>,*) -> () oneway) = shared ia(<datatype>) -> ()
@@ -227,8 +232,8 @@ escape <name> = "_" hash(<name>) "_"  otherwise
    ```
    In other words: Motoko subtyping must be contained in IDL subtyping.
 
- * There is no way to produce `float32` or functions with a `query` annotation.
-   Importing interfaces that contain these types fails.
+ * There is no way to produce `float32`.
+   Importing interfaces that contain `float32` types fails.
 
 ## The value mappings
 
