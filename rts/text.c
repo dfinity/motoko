@@ -243,7 +243,7 @@ export text_t text_singleton(uint32_t code) {
 // The iterator needs to point to a specific position in the tree
 //
 // This is currently a simple triple:
-// 1. a pointer to a current leave (must be a BLOB)
+// 1. a pointer to a current leaf (must be a BLOB)
 // 2. index into that blob (shifted by two for GC's sake)
 // 3. 0, or a pointer to a linked list of non-empty text values to do next
 //
@@ -262,8 +262,8 @@ typedef as_ptr text_iter_t; // the data structure used to iterate a text value
 #define TEXT_ITER_TODO(p) (TUPLE_FIELD(p,2,text_iter_cont_t))
 
 
-// Find the left-most leaf of a text, putting all the others onto a list,
-// used to enforce the invarinat about TEXT_ITER_BLOB to be a blob.
+// Find the leftmost leaf of a text, putting all the others onto a list,
+// used to enforce the invariant about TEXT_ITER_BLOB to be a blob.
 static blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
   while (TAG(s) == TAG_CONCAT) {
     as_ptr c = alloc_words(TUPLE_HEADER_SIZE + 2);
@@ -281,7 +281,7 @@ export text_iter_t text_iter(text_t s) {
   TAG(i) = TAG_ARRAY;
   TEXT_ITER_POS(i) = 0;
   TEXT_ITER_TODO(i) = 0;
-  TEXT_ITER_BLOB(i) = find_leaf(s, &(TEXT_ITER_TODO(i)));
+  TEXT_ITER_BLOB(i) = find_leaf(s, &TEXT_ITER_TODO(i));
   return i;
 }
 
@@ -307,7 +307,7 @@ export uint32_t text_iter_next(text_iter_t i) {
     if (TAG(s2) == TAG_CONCAT) {
       TEXT_ITER_POS(i) = 0;
       TEXT_CONT_TEXT(i) = CONCAT_ARG2(s2);
-      TEXT_ITER_BLOB(i) = find_leaf(CONCAT_ARG1(s2), &(TEXT_ITER_TODO(i)));
+      TEXT_ITER_BLOB(i) = find_leaf(CONCAT_ARG1(s2), &TEXT_ITER_TODO(i));
       return text_iter_next(i);
     // else remove that entry from the chain
     } else {
