@@ -305,8 +305,8 @@ export uint32_t text_iter_next(text_iter_t i) {
     // if next one is a concat node, re-use both text iterator structures
     // (avoids an allocation)
     if (TAG(s2) == TAG_CONCAT) {
+      TEXT_CONT_TEXT(c) = CONCAT_ARG2(s2);
       TEXT_ITER_POS(i) = 0;
-      TEXT_CONT_TEXT(i) = CONCAT_ARG2(s2);
       TEXT_ITER_BLOB(i) = find_leaf(CONCAT_ARG1(s2), &TEXT_ITER_TODO(i));
       return text_iter_next(i);
     // else remove that entry from the chain
