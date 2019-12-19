@@ -306,61 +306,44 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LitE lit ->
     k (interpret_lit env lit)
   | PrimE (p, es) ->
-    begin match p, es with
-    | UnPrim (ot, op), [exp1] ->
-      interpret_exp env exp1 (fun v1 -> k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s))
-    | BinPrim (ot, op), [exp1; exp2] ->
-      interpret_exp env exp1 (fun v1 ->
-        interpret_exp env exp2 (fun v2 ->
-          k (try Operator.binop op ot v1 v2 with _ ->
-            trap exp.at "arithmetic overflow")
-        )
-      )
-    | RelPrim (ot, op), [exp1; exp2] ->
-      interpret_exp env exp1 (fun v1 ->
-        interpret_exp env exp2 (fun v2 ->
-          k (Operator.relop op ot v1 v2)
-        )
-      )
-    | TupPrim, exps ->
-      interpret_exps env exps [] (fun vs -> k (V.Tup vs))
-    | ProjPrim n, [exp1] ->
-      interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-    | OptPrim, [exp1] ->
-      interpret_exp env exp1 (fun v1 -> k (V.Opt v1))
-    | TagPrim i, [exp1] ->
-      interpret_exp env exp1 (fun v1 -> k (V.Variant (i, v1)))
-    | (DotPrim n|ActorDotPrim n), [exp1] ->
-      interpret_exp env exp1 (fun v1 ->
+    interpret_exps env es [] (fun vs ->
+      match p, vs with
+      | UnPrim (ot, op), [v1] ->
+        k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s)
+      | BinPrim (ot, op), [v1; v2] ->
+        k (try Operator.binop op ot v1 v2 with _ ->
+          trap exp.at "arithmetic overflow")
+      | RelPrim (ot, op), [v1; v2] ->
+        k (Operator.relop op ot v1 v2)
+      | TupPrim, exps ->
+        k (V.Tup vs)
+      | ProjPrim n, [v1] ->
+        k (List.nth (V.as_tup v1) n)
+      | OptPrim, [v1] ->
+        k (V.Opt v1)
+      | TagPrim i, [v1] ->
+        k (V.Variant (i, v1))
+      | (DotPrim n|ActorDotPrim n), [v1] ->
         let fs = V.as_obj v1 in
         k (try find n fs with _ -> assert false)
-      )
-    | ArrayPrim (mut, _), exps ->
-      interpret_exps env exps [] (fun vs ->
+      | ArrayPrim (mut, _), vs ->
         let vs' =
           match mut with
           | Var -> List.map (fun v -> V.Mut (ref v)) vs
           | Const -> vs
         in k (V.Array (Array.of_list vs'))
-      )
-    | IdxPrim, [exp1; exp2] ->
-      interpret_exp env exp1 (fun v1 ->
-        interpret_exp env exp2 (fun v2 ->
-          k (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
-             with Invalid_argument s -> trap exp.at "%s" s)
-        )
-      )
-    | ShowPrim ot, [exp1] ->
-      interpret_exp env exp1 (fun v ->
+      | IdxPrim, [v1; v2] ->
+        k (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
+           with Invalid_argument s -> trap exp.at "%s" s)
+      | ShowPrim ot, [v1] ->
         if Show.can_show ot
-        then k (Value.Text (Show.show_val ot v))
-        else raise (Invalid_argument "debug_show"))
-    | CPSAsync, [exp1] ->
-      interpret_exp env exp1 (fun v ->
+        then k (Value.Text (Show.show_val ot v1))
+        else raise (Invalid_argument "debug_show")
+      | CPSAsync, [v1] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
-        let (_, f) = V.as_func v in
+        let (_, f) = V.as_func v1 in
         let typ = exp.note.note_typ in
-        match typ with
+        begin match typ with
         | T.Func(_, _, _, [T.Func(_, _, _, [f_dom], _);T.Func(_, _, _, [r_dom], _)], _) ->
           let call_conv_f = CC.call_conv_of_typ f_dom in
           let call_conv_r = CC.call_conv_of_typ r_dom in
@@ -373,66 +356,52 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             )
             k
         | _ -> assert false
-      )
-    | CPSAwait, [exp1;exp2] ->
-      interpret_exp env exp1 (fun v1 ->
-        interpret_exp env exp2 (fun v2 ->
-          assert (not env.flavor.has_await && env.flavor.has_async_typ);
-          match V.as_tup v2 with
-           | [vf; vr] ->
-             let (_, f) = V.as_func vf in
-             let (_, r) = V.as_func vr in
-             await env exp.at (V.as_async v1)
-               (fun v -> f (context env) v k)
-               (fun e -> r (context env) e k) (* TBR *)
-          | _ -> assert false
-        )
-      )
-    | OtherPrim s, exps ->
-      interpret_exps env exps [] (fun vs ->
+        end
+      | CPSAwait, [v1; v2] ->
+        assert (not env.flavor.has_await && env.flavor.has_async_typ);
+        begin match V.as_tup v2 with
+         | [vf; vr] ->
+           let (_, f) = V.as_func vf in
+           let (_, r) = V.as_func vr in
+           await env exp.at (V.as_async v1)
+             (fun v -> f (context env) v k)
+             (fun e -> r (context env) e k) (* TBR *)
+        | _ -> assert false
+        end
+      | OtherPrim s, vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.prim s (context env) arg k
-      )
-    | CastPrim _, [e] -> interpret_exp env e k
-    | ActorOfIdBlob t, [e] ->
-      trap exp.at "ActorOfIdBlob not implemented"
-    | BlobOfIcUrl, [e] ->
-      trap exp.at "BlobOfIcUrl not implemented" (* FIXME: #1001, call Lib.URL.decode_actor_url *)
-    | NumConvPrim (t1, t2), exps ->
-      interpret_exps env exps [] (fun vs ->
+      | CastPrim _, [v1] ->
+        k v1
+      | ActorOfIdBlob t, [v1] ->
+        trap exp.at "ActorOfIdBlob not implemented"
+      | BlobOfIcUrl, [v1] ->
+        trap exp.at "BlobOfIcUrl not implemented" (* FIXME: #1001, call Lib.URL.decode_actor_url *)
+      | NumConvPrim (t1, t2), vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.num_conv_prim t1 t2 (context env) arg k
-        )
-    | ICReplyPrim ts, [exp1] ->
-      assert (not env.flavor.has_async_typ);
-      let reply = Option.get env.replies in
-      interpret_exp env exp1
-        (fun v -> Scheduler.queue (fun () -> reply v))
-    | ICRejectPrim, [exp1] ->
-      assert (not env.flavor.has_async_typ);
-      let reject = Option.get env.rejects in
-      interpret_exp env exp1
-        (fun v ->
-          let e = V.Tup [V.Variant ("error", V.unit); v] in
-          Scheduler.queue (fun () -> reject e))
-    | ICCallPrim, [exp1; exp2; expk ; expr] ->
-      assert (not env.flavor.has_async_typ);
-      interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-      interpret_exp env expk (fun kv ->
-      interpret_exp env expr (fun rv ->
+      | ICReplyPrim ts, [v1] ->
+        assert (not env.flavor.has_async_typ);
+        let reply = Option.get env.replies in
+        Scheduler.queue (fun () -> reply v1)
+      | ICRejectPrim, [v1] ->
+        assert (not env.flavor.has_async_typ);
+        let reject = Option.get env.rejects in
+        let e = V.Tup [V.Variant ("error", V.unit); v1] in
+        Scheduler.queue (fun () -> reject e)
+      | ICCallPrim, [v1; v2; kv; rv] ->
         let call_conv, f = V.as_func v1 in
-        check_call_conv exp1 call_conv;
+        check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
-        f (V.Tup[vc; kv; rv]) v2 k))))
-    | ICCallerPrim, [] ->
-      k env.caller
-    | _ ->
-      trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
-        (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
-    end
+        f (V.Tup[vc; kv; rv]) v2 k
+      | ICCallerPrim, [] ->
+        k env.caller
+      | _ ->
+        trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
+          (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
+    )
   | AssignE (lexp1, exp2) ->
     interpret_lexp env lexp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
