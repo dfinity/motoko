@@ -1,4 +1,5 @@
 open Mo_types
+open Mo_config
 open Mo_def
 open Source
 open Syntax
@@ -62,10 +63,8 @@ let lookup_module
   | Ok (Relative path) -> Index.find_opt path index
   | Ok (Package (pkg, path)) ->
      Lib.Option.bind
-       (List.find_opt
-         (fun (name, _) -> pkg = name)
-         !Mo_config.Flags.package_urls)
-       (fun (_, pkg_path) ->
+       (Flags.M.find_opt pkg !Flags.package_urls)
+       (fun pkg_path ->
         Index.find_opt (Filename.concat pkg_path path) index)
   | _ -> assert false
 
