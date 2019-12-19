@@ -91,6 +91,6 @@ let prog (env: typ I.Env.t) actor : M.typ =
          match t with
          | M.Con (c, _) -> M.{lab = id; typ = M.Typ c}::fs
          | _ -> assert false) !m_env fs in
-     M.Obj (M.Actor, List.sort M.compare_field fs)     
-  | None -> assert false    
+     M.Obj (M.Actor, List.sort M.compare_field fs)
+  | None -> assert false
   | Some _ ->  assert false

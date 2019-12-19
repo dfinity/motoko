@@ -286,7 +286,7 @@ rec {
       fail      = test_subdir "fail"      [ moc ];
       repl      = test_subdir "repl"      [ moc ];
       ld        = test_subdir "ld"        [ mo-ld ];
-      idl       = test_subdir "idl"       [ didc ];
+      idl       = test_subdir "idl"       [ moc didc ];
       mo-idl    = test_subdir "mo-idl"    [ moc didc ];
       trap      = test_subdir "trap"      [ moc ];
       run-deser = test_subdir "run-deser" [ deser ];
