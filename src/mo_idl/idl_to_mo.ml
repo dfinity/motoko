@@ -34,13 +34,11 @@ let check_modes ms =
 
 let is_tuple fs =
   List.length fs > 1 &&
-  let fs = List.mapi (fun i f -> (i, f)) fs in
-  List.fold_left
-    (fun is_tuple (i, f) -> is_tuple &&
-       match f.it.label.it with
-       | Unnamed id -> Lib.Uint32.to_int id = i
-       | _ -> false
-    ) true fs
+    let fs = List.mapi (fun i f -> (i, f)) fs in
+    List.for_all (fun (i, f) ->
+        match f.it.label.it with
+        | Unnamed id -> Lib.Uint32.to_int id = i
+        | _ -> false) fs
 
 let rec check_typ env t =
   match t.it with
