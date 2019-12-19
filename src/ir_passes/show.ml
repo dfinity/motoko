@@ -226,6 +226,9 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.(Prim Text) ->
     define_show t (invoke_prelude_show "@text_of_Text" t (argE t)),
     []
+  | T.(Prim Char) ->
+    define_show t (invoke_prelude_show "@text_of_Char" t (argE t)),
+    []
   | T.(Prim Null) ->
     define_show t (textE ("null")),
     []
