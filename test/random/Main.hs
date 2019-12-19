@@ -127,14 +127,16 @@ instance Arbitrary (Rope String) where
                         , (7, pure $ LongChunk "The quick brown fox jumps over the lazy dog")
                         , (3, Rope <$> arbitrary <*> arbitrary) ]
 
+instance Semigroup (MOTerm String) where
+  (<>) = Concat
+
+instance Monoid (MOTerm String) where
+  mempty = Text mempty
 
 asString = foldMap id
 
-asMot EmptyChunk = Text mempty
-asMot (Chunk a) = Text a
-asMot (UTF8Chunk a) = Text a
-asMot (LongChunk a) = Text a
-asMot (Rope (asMot -> a) (asMot -> b)) = a `Concat` b
+asMot :: Rope String -> MOTerm String
+asMot = foldMap Text
 
 prop_ropeConcat rope = monadicIO $ do
   let testCase = "assert (" <> ropeMot <> " == " <> string <> ")"
