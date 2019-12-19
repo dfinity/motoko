@@ -78,7 +78,7 @@ Resolving Canister aliases
 
 For every actor imported using `import "canister:alias"`, the Motoko compiler treats that as `import "ic:canisterid"`, if the command line flag `--actor-alias alias ic:canisterid` is given.
 
-The first argument to `--actor-alias` is the alias without the URL scheme. The second argument must be a valid `"ic:"` url according ot the [textual representations] of principal ids.
+The first argument to `--actor-alias` is the alias without the URL scheme. The second argument must be a valid `"ic:"` url according to the [textual representation] of principal ids.
 
 The given aliases must be unique (i.e. no `--actor-alias a ic:00 --actor-alias a ic:ABCDE01A7`).
 
@@ -87,7 +87,7 @@ The given aliases must be unique (i.e. no `--actor-alias a ic:00 --actor-alias a
 Resolving Canister types
 ------------------------
 
-For every actor imports using `import "ic:canisterid"` (or `import "canister:alias"` if `alias` resolves to `ic:canisterid` as described above), the motoko compiler assumes the presence of a file `canisterid.did` in the actor idl path specified by `--actor-idl`. This files informs motoko about the interface of that canister, e.g. the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer.
+For every actor imported using `import "ic:canisterid"` (or `import "canister:alias"` if `alias` resolves to `ic:canisterid` as described above), the motoko compiler assumes the presence of a file `canisterid.did` in the actor idl path specified by `--actor-idl`. This file informs motoko about the interface of that canister, e.g. the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer.
 
 Compiling IDL Files to JS
 -------------------------

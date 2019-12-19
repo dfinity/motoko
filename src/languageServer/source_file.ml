@@ -54,7 +54,7 @@ let uri_for_package (path : string) =
      | None -> None
      | Some pkg_path ->
         (* Resolved package paths are always absolute *)
-        (* TBR: But Flags.package_urls do not contain the resolved paths! *)
+        (* TBR: But Flags.package_urls does not contain the resolved paths! *)
         Some ("file://" ^ Filename.concat pkg_path path)
      end
   | _ -> None

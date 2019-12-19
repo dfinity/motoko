@@ -46,7 +46,7 @@ let argspec = Arg.align
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
   "--map", Arg.Set gen_source_map, " output source map";
 
-  "-t", Arg.Set Flags.trace, " activate tracing"]
+  "-t", Arg.Set Flags.trace, " activate tracing in interpreters"]
   @ Args.package_args @ [
   "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
   "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
