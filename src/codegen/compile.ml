@@ -663,7 +663,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "crc8_decode" [I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_of_ic_url" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -983,6 +983,7 @@ module Tagged = struct
     | Indirection
     | SmallWord (* Contains a 32 bit unsigned number *)
     | BigInt
+    | Concat (* String concatenation, used by rts/text.c *)
 
   (* Let's leave out tag 0 to trap earlier on invalid memory *)
   let int_of_tag = function
@@ -998,6 +999,7 @@ module Tagged = struct
     | Indirection -> 11l
     | SmallWord -> 12l
     | BigInt -> 13l
+    | Concat -> 14l
 
   (* The tag *)
   let header_size = 1l
@@ -2494,6 +2496,18 @@ module Text = struct
   Most of the heavy lifting around text values is in rts/text.c
   *)
 
+  (* The layout of a concatenation node is
+
+     ┌─────┬─────────┬───────┬───────┐
+     │ tag │ n_bytes │ text1 │ text2 │
+     └─────┴─────────┴───────┴───────┘
+
+    This is internal to rts/text.c, with the exception of GC-related code.
+  *)
+
+  let concat_field1 = Int32.add Tagged.header_size 1l
+  let concat_field2 = Int32.add Tagged.header_size 2l
+
   let of_ptr_size env =
     E.call_import env "rts" "text_of_ptr_size"
   let concat env =
@@ -3050,6 +3064,8 @@ module HeapTraversal = struct
           get_x ^^
           Heap.load_field Closure.len_field ^^
           compile_add_const Closure.header_size
+        ; Tagged.Concat,
+          compile_unboxed_const 4l
         ]
         (* Indirections have unknown size. *)
     )
@@ -3143,6 +3159,15 @@ module HeapTraversal = struct
           set_ptr_loc ^^
           code
         )
+      ; Tagged.Concat,
+        get_x ^^
+        compile_add_const (Int32.mul Heap.word_size Text.concat_field1) ^^
+        set_ptr_loc ^^
+        code ^^
+        get_x ^^
+        compile_add_const (Int32.mul Heap.word_size Text.concat_field2) ^^
+        set_ptr_loc ^^
+        code
       ]
 
 end (* HeapTraversal *)
@@ -6021,7 +6046,7 @@ and compile_exp (env : E.t) ae exp =
 
     (* CRC-check and strip "ic:" and checksum *)
     | BlobOfIcUrl, [_] ->
-      const_sr SR.Vanilla (E.call_import env "rts" "crc8_decode")
+      const_sr SR.Vanilla (E.call_import env "rts" "blob_of_ic_url")
 
     (* Actor ids are blobs in the RTS *)
     | ActorOfIdBlob _, [e] ->

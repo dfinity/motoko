@@ -89,6 +89,10 @@ Resolving Canister types
 
 For every actor imported using `import "ic:canisterid"` (or `import "canister:alias"` if `alias` resolves to `ic:canisterid` as described above), the motoko compiler assumes the presence of a file `canisterid.did` in the actor idl path specified by `--actor-idl`. This file informs motoko about the interface of that canister, e.g. the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer.
 
+The `canisterid` here refers the “textual representation“ without the `ic:` prefix, but including the checksum. Note that this representation is unique.
+
+This files informs motoko about the interface of that canister. It could be the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer, or created any other way.
+
 Compiling IDL Files to JS
 -------------------------
 
@@ -116,11 +120,7 @@ In order to start the language server, `dfx` invokes
 
 with `stdin` and `stdout` connected to the LSP client.
 
-
-This _reads_ `some/path/input.mo` and any `.mo` file referenced by
-`some/path/input.mo`, either relatively, absolutely or via the provided package aliases.
-
-No constraints are imposed where these imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
+This may _read_ the same files as `moc` would.
 
 Listing dependencies
 --------------------
@@ -134,7 +134,8 @@ prints to the standard output all URLs _directly_ imported by
 
    mo:stdlib/List
    mo:other_package/Some/Module
-
+   ic:ABCDE01A7
+   ic:alias
 
 This _reads_ only `some/path/input.mo`, and writes no files.
 
