@@ -128,11 +128,7 @@ instance Arbitrary (Rope String) where
                         , (3, Rope <$> arbitrary <*> arbitrary) ]
 
 
-asString EmptyChunk = mempty
-asString (Chunk a) = a
-asString (UTF8Chunk a) = a
-asString (LongChunk a) = a
-asString (Rope (asString -> a) (asString -> b)) = a <> b
+asString = foldMap id
 
 asMot EmptyChunk = Text mempty
 asMot (Chunk a) = Text a
