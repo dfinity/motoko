@@ -1,4 +1,4 @@
-{-# language ConstraintKinds, DataKinds, FlexibleContexts, FlexibleInstances, GADTs
+{-# language ConstraintKinds, DataKinds, DeriveFoldable, FlexibleContexts, FlexibleInstances, GADTs
            , KindSignatures, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving
            , TypeApplications, TypeOperators, TypeFamilies, TupleSections
            , UndecidableInstances, ViewPatterns #-}
@@ -19,7 +19,7 @@ import Data.Bool (bool)
 import Data.Proxy
 import Data.Type.Equality
 import GHC.Natural
-import GHC.TypeLits
+import GHC.TypeLits hiding (Text)
 import qualified Data.Word
 import Data.Bits (Bits(..), FiniteBits(..))
 import Numeric
@@ -52,6 +52,7 @@ utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
   , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
   , QC.testProperty "length computation" $ prop_textLength
+  , QC.testProperty "chunky concat (ropes)" $ prop_ropeConcat
   ]
 
 matchingProps = testGroup "Pattern matching"
@@ -107,6 +108,44 @@ prop_charToText (UTF8 char) = monadicIO $ do
 prop_textLength (UTF8 text) = monadicIO $ do
   let testCase = "assert(\"" <> (text >>= escape) <> "\".len() == " <> show (length text) <> ")"
   runScriptNoFuzz "textLength" testCase
+
+data Rope a = EmptyChunk | Chunk a | UTF8Chunk a | LongChunk a | Rope a `Rope` Rope a deriving (Eq, Show, Foldable)
+
+instance Semigroup (Rope a) where
+  (<>) = Rope
+
+instance Monoid (Rope a) where
+  mempty = EmptyChunk
+
+instance Arbitrary (Rope String) where
+  arbitrary = frequency [ (2, pure mempty)
+                        , (4, Chunk <$> arbitrary)
+                        , (5, elements [ UTF8Chunk "Медве́ди хо́дят по у́лицам. Коне́чно, э́то непра́вда!"
+                                       , UTF8Chunk "Boci, boci tarka, se füle, se farka, oda megyünk lakni, ahol tejet kapni."
+                                       , UTF8Chunk "十年树木，百年树人" ])
+                        , (7, pure $ LongChunk "The quick brown fox jumps over the lazy dog")
+                        , (3, Rope <$> arbitrary <*> arbitrary) ]
+
+
+asString EmptyChunk = mempty
+asString (Chunk a) = a
+asString (UTF8Chunk a) = a
+asString (LongChunk a) = a
+asString (Rope (asString -> a) (asString -> b)) = a <> b
+
+asMot EmptyChunk = Text mempty
+asMot (Chunk a) = Text a
+asMot (UTF8Chunk a) = Text a
+asMot (LongChunk a) = Text a
+asMot (Rope (asMot -> a) (asMot -> b)) = a `Concat` b
+
+prop_ropeConcat :: Rope String -> Property
+prop_ropeConcat rope = monadicIO $ do
+  let testCase = "assert (" <> ropeMot <> " == " <> string <> ")"
+      string = unparseAS (Text (asString rope))
+      ropeMot = unparseAS (asMot rope)
+  runScriptNoFuzz "ropeConcat" testCase
+
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
   let fuzzErr = not $ Data.Text.null err
@@ -370,6 +409,9 @@ data ASTerm :: * -> * where
   -- Numeric
   Neuralgic :: Neuralgic a -> ASTerm a
   Five :: ASTerm a
+  -- Text
+  Text :: String -> ASTerm String
+  Concat :: ASTerm String -> ASTerm String -> ASTerm String
   -- Conditional
   IfThenElse :: ASTerm a -> ASTerm a -> ASTerm Bool -> ASTerm a
   -- Conversion
@@ -818,6 +860,10 @@ instance Evaluatable Bool where
   evaluate (Not a) = not <$> evaluate a
   evaluate (Bool b) = pure b
 
+instance Evaluatable String where
+  evaluate (Text a) = pure a
+  evaluate (a `Concat` b) = (<>) <$> evaluate a <*> evaluate b
+
 type AnnotLit t = (Annot t, Literal t)
 
 class Annot t where
@@ -840,6 +886,8 @@ instance Annot Integer where
 instance Annot Natural where
   annot _ s = "((" <> s <> ") : Nat)"
 
+instance Annot String where
+  annot _ = id
 
 bitWidth :: KnownNat n => Proxy n -> String
 bitWidth p = show (natVal p)
@@ -869,6 +917,9 @@ instance Literal (a, b, c) where
 
 instance Literal (Maybe a) where
   literal _ = error "Literal (Maybe a) makes no sense"
+
+instance Literal String where
+  literal _ = error "Literal String makes no sense"
 
 instance Literal Integer
 instance Literal Natural
@@ -932,6 +983,8 @@ unparseAS (a `Pair` b) = "(" <> unparseAS a <> ", " <> unparseAS b <> ")"
 unparseAS (Triple a b c) = "(" <> unparseAS a <> ", " <> unparseAS b <> ", " <> unparseAS c <> ")"
 unparseAS Null = "null"
 unparseAS (Some a) = '?' : unparseAS a
+unparseAS (Text a) = '"' : (concatMap escape a) <> "\""
+unparseAS (a `Concat` b) = "(" <> unparseAS a <> " # " <> unparseAS b <> ")"
 
 unparseNat :: KnownNat n => Proxy n -> ASTerm (BitLimited n Natural) -> String
 unparseNat p a = "(nat" <> bitWidth p <> "ToNat(" <> unparseAS a <> "))"
