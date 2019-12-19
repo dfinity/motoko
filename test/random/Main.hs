@@ -53,6 +53,7 @@ utf8Props = testGroup "UTF-8 coding"
   , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
   , QC.testProperty "length computation" $ prop_textLength
   , QC.testProperty "chunky concat (ropes)" $ prop_ropeConcat
+  , QC.testProperty "chunky length (ropes)" $ prop_ropeLength
   ]
 
 matchingProps = testGroup "Pattern matching"
@@ -139,12 +140,17 @@ asMot (UTF8Chunk a) = Text a
 asMot (LongChunk a) = Text a
 asMot (Rope (asMot -> a) (asMot -> b)) = a `Concat` b
 
-prop_ropeConcat :: Rope String -> Property
 prop_ropeConcat rope = monadicIO $ do
   let testCase = "assert (" <> ropeMot <> " == " <> string <> ")"
       string = unparseAS (Text (asString rope))
       ropeMot = unparseAS (asMot rope)
   runScriptNoFuzz "ropeConcat" testCase
+
+prop_ropeLength rope = monadicIO $ do
+  let testCase = "assert (" <> ropeMot <> ".len() == " <> show len <> ")"
+      len = length (asString rope)
+      ropeMot = unparseAS (asMot rope)
+  runScriptNoFuzz "ropeLength" testCase
 
 
 assertSuccessNoFuzz relevant (compiled, (exitCode, out, err)) = do
