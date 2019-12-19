@@ -67,8 +67,6 @@ and t_exp' context exp' =
     PrimE (p, List.map (t_exp context) exps)
   | AssignE (exp1, exp2) ->
     AssignE (t_lexp context exp1, t_exp context exp2)
-  | ArrayE (mut, typ, exps) ->
-    ArrayE (mut, typ, List.map (t_exp context) exps)
   | CallE (exp1, typs, exp2) ->
     CallE (t_exp context exp1, typs, t_exp context exp2)
   | BlockE b ->
@@ -253,8 +251,6 @@ and c_exp' context exp k =
     assert false; (* ActorE fields cannot await *)
   | AssignE (exp1, exp2) ->
     c_assign context k e exp1 exp2
-  | ArrayE (mut, typ, exps) ->
-    nary context k (fun vs -> e (ArrayE (mut, typ, vs))) exps
   | CallE (exp1, typs, exp2) ->
     binary context k (fun v1 v2 -> e (CallE (v1, typs, v2))) exp1 exp2
   | BlockE (decs, exp) ->

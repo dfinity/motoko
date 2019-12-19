@@ -95,7 +95,6 @@ and exp' env e  : exp' = match e.it with
   | VarE _ | LitE _     -> e.it
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
-  | ArrayE (m,t,es)     -> ArrayE (m,t,(exps env es))
   | CallE (e1, insts, e2)  ->
     begin
       match e1.it, env with
@@ -137,8 +136,6 @@ and exp' env e  : exp' = match e.it with
     SelfCallE (ts, exp1', exp2', exp3')
   | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: descent into ds *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
-
-and exps env es  = List.map (exp env) es
 
 and lexp env le : lexp = {le with it = lexp' env le}
 

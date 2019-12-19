@@ -384,6 +384,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
           error env exp1.at "field name %s does not exist in type\n  %s"
             n (T.string_of_typ_expand t1)
       end
+    | ArrayPrim (mut, t0), exps ->
+      List.iter (fun e -> typ e <: t0) exps;
+      let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
+      t1 <: t
     | IdxPrim, [exp1; exp2] ->
       let t1 = T.promote (typ exp1) in
       let t2 = try T.as_array_sub t1 with
@@ -465,11 +469,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     in
     typ exp2 <: t2;
     T.unit <: t
-  | ArrayE (mut, t0, exps) ->
-    List.iter (check_exp env) exps;
-    List.iter (fun e -> typ e <: t0) exps;
-    let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
-    t1 <: t
   | CallE (exp1, insts, exp2) ->
     check_exp env exp1;
     check_exp env exp2;

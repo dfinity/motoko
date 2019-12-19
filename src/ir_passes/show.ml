@@ -324,8 +324,6 @@ and t_exp' env = function
   | PrimE (p, es) -> PrimE (p, t_exps env es)
   | AssignE (lexp1, exp2) ->
     AssignE (t_lexp env lexp1, t_exp env exp2)
-  | ArrayE (mut, t, exps) ->
-    ArrayE (mut, t, t_exps env exps)
   | FuncE (s, c, id, typbinds, pat, typT, exp) ->
     FuncE (s, c, id, typbinds, pat, typT, t_exp env exp)
   | CallE (exp1, typs, exp2)  ->

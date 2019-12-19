@@ -17,7 +17,6 @@ let rec exp e = match e.it with
   | LitE l              -> "LitE"    $$ [lit l]
   | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
   | AssignE (le1, e2)   -> "AssignE" $$ [lexp le1; exp e2]
-  | ArrayE (m, t, es)   -> "ArrayE"  $$ [mut m; typ t] @ List.map exp es
   | CallE (e1, ts, e2)  -> "CallE" $$ [exp e1] @ List.map typ ts @ [exp e2]
   | BlockE (ds, e1)     -> "BlockE"  $$ List.map dec ds @ [exp e1]
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
@@ -63,6 +62,7 @@ and prim = function
   | TagPrim i         -> "TagE" $$ [id i]
   | DotPrim n         -> "DotPrim" $$ [Atom n]
   | ActorDotPrim n    -> "ActorDotPrim" $$ [Atom n]
+  | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]

@@ -335,6 +335,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let fs = V.as_obj v1 in
         k (try find n fs with _ -> assert false)
       )
+    | ArrayPrim (mut, _), exps ->
+      interpret_exps env exps [] (fun vs ->
+        let vs' =
+          match mut with
+          | Var -> List.map (fun v -> V.Mut (ref v)) vs
+          | Const -> vs
+        in k (V.Array (Array.of_list vs'))
+      )
     | IdxPrim, [exp1; exp2] ->
       interpret_exp env exp1 (fun v1 ->
         interpret_exp env exp2 (fun v2 ->
@@ -430,14 +438,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       interpret_exp env exp2 (fun v2 ->
         v1 := v2; k V.unit
       )
-    )
-  | ArrayE (mut, _, exps) ->
-    interpret_exps env exps [] (fun vs ->
-      let vs' =
-        match mut with
-        | Var -> List.map (fun v -> V.Mut (ref v)) vs
-        | Const -> vs
-      in k (V.Array (Array.of_list vs'))
     )
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->

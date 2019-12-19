@@ -205,6 +205,7 @@ let transform mode env prog =
     | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
     | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
     | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
+    | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
     | ShowPrim ot -> ShowPrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
     | CastPrim (t1,t2) -> CastPrim (t_typ t1,t_typ t2)
@@ -229,8 +230,6 @@ let transform mode env prog =
     | VarE id -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | ArrayE (mut, t, exps) ->
-      ArrayE (mut, t_typ t, List.map t_exp exps)
     | PrimE (CPSAwait, [a;kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
     | PrimE (CPSAsync, [exp1]) ->

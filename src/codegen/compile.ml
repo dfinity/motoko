@@ -5860,6 +5860,9 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e ^^
       Dfinity.actor_public_field env name
 
+    | ArrayPrim (m, t), es ->
+      SR.Vanilla,
+      Arr.lit env (List.map (compile_exp_vanilla env ae) es)
     | IdxPrim, [e1; e2]  ->
       SR.Vanilla,
       compile_exp_vanilla env ae e1 ^^ (* offset to array *)
@@ -6219,8 +6222,6 @@ and compile_exp (env : E.t) ae exp =
     compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
     FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
     G.i Return
-  | ArrayE (m, t, es) ->
-    SR.Vanilla, Arr.lit env (List.map (compile_exp_vanilla env ae) es)
   | CallE (e1, _, e2) ->
     let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
     let n_args = List.length arg_tys in
