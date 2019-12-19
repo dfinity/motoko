@@ -6,7 +6,6 @@ actor a {
     let name: Text = await imported.userName(id);
     let age: Nat8 = await imported.userAge(id);
     imported.deleteUser(id);
-    let service: actor{} = await imported.f({name="name"; _25_=42; _26_="reserved"});
-    return service;
+    return await imported.f({name="name"; _25_=42; _26_="reserved"});
   };
 }
