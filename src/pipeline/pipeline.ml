@@ -346,7 +346,7 @@ let check_prelude () : Syntax.prog * stat_env =
   match parse_with Lexer.Privileged lexer parse prelude_name with
   | Error e -> prelude_error "parsing" [e]
   | Ok prog ->
-    let senv0 = Scope.empty in
+    let senv0 = Typing.initial_scope in
     match infer_prog senv0 prog with
     | Error es -> prelude_error "checking" es
     | Ok ((_t, sscope), msgs) ->

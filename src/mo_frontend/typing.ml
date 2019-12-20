@@ -1,5 +1,5 @@
 open Mo_def
-open Mo_types
+open Mo_types   
 open Mo_values
 module Flags = Mo_config.Flags
 
@@ -8,12 +8,19 @@ open Source
 
 module T = Type
 module A = Effect
+module C = Async_cap
 
 
 (* Contexts  *)
 
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
+
+let initial_scope =
+  { Scope.empty with
+    Scope.typ_env = T.Env.singleton scope_id C.top_cap;
+    Scope.con_env = T.ConSet.singleton C.top_cap;
+  }
 
 type env =
   { vals : Scope.val_env;
@@ -23,7 +30,7 @@ type env =
     objs : Scope.obj_env;
     labs : lab_env;
     rets : ret_env;
-    async : T.con option;
+    async : C.async_cap;
     in_actor : bool;
     in_prog : bool;
     context : exp' list;
@@ -39,7 +46,7 @@ let env_of_scope msgs scope =
     objs = T.Env.empty;
     labs = T.Env.empty;
     rets = None;
-    async = None;
+    async = C.initial_cap();
     in_actor = false;
     in_prog = true;
     context = [];
@@ -269,20 +276,27 @@ let rec infer_scope env cs cod  =
       | T.Var (_, n) ->
         let c = (List.nth cs n) in
         { env with typs = T.Env.add scope_id (List.nth cs n) env.typs;
-                   async = Some c }
+                   async = C.AsyncCap c }
       | _ -> env)
    | _ ->
-        { env with async = None }
+        { env with async = C.NullCap }
 
 and check_scope env t at =
-  (match env.async with
-  | Some c ->
+  match env.async with
+  | C.AsyncCap c
+  | C.AwaitCap c ->
     if not (T.eq t (T.Con(c,[]))) then
-       local_error env at "bad scope"
-  | None ->
-    if not (T.eq t T.Any) then
-       local_error env at "bad scope")
+      local_error env at "bad scope"
+  | C.NullCap ->
+    if not (T.eq t T.Any) then (* TBR *)
+      local_error env at "bad scope"
 
+and check_AwaitCap env s at =
+   match env.async with
+   | C.AwaitCap c -> T.Con(c, [])
+   | C.AsyncCap c ->
+     error env at "misplaced %s; try enclosing in an async expression" s
+   | C.NullCap -> error env at "misplaced %s" s
 
 and check_typ env (typ:typ) : T.typ =
   let t = check_typ' env typ in
@@ -706,7 +720,7 @@ and infer_exp'' env exp : T.typ =
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
       error_in [Flags.ICMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
-    let env' = if sort.it = T.Actor then {env with async = None; in_actor = true} else env in
+    let env' = if sort.it = T.Actor then {env with async = C.NullCap; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
@@ -917,8 +931,7 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | TryE (exp1, cases) ->
-    if env.async = None then
-      error env exp.at "misplaced try";
+    ignore (check_AwaitCap env "try" exp.at);
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
     if not env.pre then begin
@@ -996,8 +1009,7 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | ThrowE exp1 ->
-    if env.async = None then
-      error env exp.at "misplaced throw";
+    ignore (check_AwaitCap env "throw" exp.at);
     if not env.pre then check_exp env T.throw exp1;
     T.Non
   | AsyncE (typ_bind, exp1, typ1) ->
@@ -1008,7 +1020,7 @@ and infer_exp'' env exp : T.typ =
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add "@" c ce in (* pun scope identifier @ with c *)
     let env' =
-      {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some T.Pre; async = Some c} in
+      {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some T.Pre; async = C.AwaitCap c} in
     let t = infer_exp env' exp1 in
     let t' = T.open_ [t1] (T.close [c] t)  in
     if not (T.shared t') then
@@ -1016,9 +1028,7 @@ and infer_exp'' env exp : T.typ =
         (T.string_of_typ_expand t');
     T.Async (t1, t')
   | AwaitE exp1 ->
-    let t0 = match env.async with
-      | Some c -> T.Con(c, [])
-      | None -> error env exp.at "misplaced await" in
+    let t0 = check_AwaitCap env "await" exp.at in
     let t1 = infer_exp_promote env exp1 in
     (match exp1.it with
      | CallE (f, _, _) ->
@@ -1102,7 +1112,7 @@ and check_exp' env0 t exp : T.typ =
     let c, tb, ce, cs = check_typ_bind env tb in
     let ce_scope = T.Env.add "@" c ce in (* pun scope identifier @ with c *)
     let env' =
-      {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some t'; async = Some c} in
+      {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some t'; async = C.AwaitCap c} in
     check_exp env' t' exp1;
     t
   | BlockE decs, _ ->
@@ -1126,8 +1136,7 @@ and check_exp' env0 t exp : T.typ =
     );
     t
   | TryE (exp1, cases), _ ->
-    if env.async = None then
-      error env exp.at "misplaced try";
+    ignore (check_AwaitCap env "try" exp.at);
     check_exp env t exp1;
     check_cases env T.catch t cases;
     (match Coverage.check_cases cases T.catch with
@@ -1163,7 +1172,7 @@ and check_exp' env0 t exp : T.typ =
       { env with
         labs = T.Env.empty;
         rets = Some t2;
-        async = None; }
+        async = C.NullCap; }
     in
     check_exp (adjoin_vals env' ve2) t2 exp;
     t
@@ -1646,7 +1655,7 @@ and infer_dec env dec : T.typ =
         { (add_val env'' self_id.it self_typ) with
           labs = T.Env.empty;
           rets = None;
-          async = None;
+          async = C.NullCap;
           in_actor = sort.it = T.Actor;
         }
       in

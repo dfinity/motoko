@@ -24,9 +24,6 @@ type Text = prim "Text";
 type Blob = prim "Blob";
 type Error = prim "Error";
 
-// top level scope
-type @ = Any;
-
 type Iter<T_> = {next : () -> ?T_};
 
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
