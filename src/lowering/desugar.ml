@@ -147,7 +147,11 @@ and exp' at note = function
   | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
   | S.RetE e -> I.RetE (exp e)
   | S.ThrowE e -> I.ThrowE (exp e)
-  | S.AsyncE (tb, e, t) -> I.AsyncE (typ_bind tb, exp e, t.Source.note)
+  | S.AsyncE (tb, e) ->
+    I.AsyncE (typ_bind tb, exp e,
+              match note.I.note_typ with
+              | T.Async (t, _) -> t
+              | _ -> assert false)
   | S.AwaitE e -> I.AwaitE (exp e)
   | S.AssertE e -> I.AssertE (exp e)
   | S.AnnotE (e, _) -> assert false

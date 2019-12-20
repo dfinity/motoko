@@ -4,12 +4,14 @@ public func f0 () : async () {};
 
 public func test0 () : async () { await f0 ();};
 
-public func f1 () : async<@> () {};
+/*
+public func f1 () : async<@> () {}; // this is now illegal since f1 not (implicitly) parametric
 
 public func test1 () : async () {
  // f1 not parametric, can call f1(), but can't await f1();
  ignore f1();
 };
+*/
 
 public func f2<@>() : async<@> () {};
 
@@ -76,7 +78,7 @@ public func test7 () : async () {
 };
 
 public func test() : async () {
-  await test1();
+//  await test1();
   await test2();
   await test2b();
   await test3();

@@ -50,7 +50,7 @@ let rec exp e = match e.it with
   | DebugE e            -> "DebugE"  $$ [exp e]
   | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
   | RetE e              -> "RetE"    $$ [exp e]
-  | AsyncE (tb, e, t)   -> "AsyncE"  $$ [typ_bind tb; exp e; typ t]
+  | AsyncE (tb, e)      -> "AsyncE"  $$ [typ_bind tb; exp e]
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]

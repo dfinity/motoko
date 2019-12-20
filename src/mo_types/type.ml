@@ -1225,12 +1225,12 @@ and string_of_control_cod sugar c vs ts =
   | Replies, _ -> sprintf "replies %s"  (string_of_cod vs ts)
 
 and can_sugar t = match t with
-  | Func(s, Promises (Var(_, n)), tbs, ts1, ts2)
-  | Func(s, Returns, tbs, ts1, ([Async (Var(_, n),_)] as ts2)) ->
-    n = 0 &&
-    List.for_all (fun tb -> can_omit n tb.bound) tbs &&
-    List.for_all (can_omit n) ts1 &&
-    List.for_all (can_omit n) ts2
+  | Func(s, Promises (Var(_, 0)), tbs, ts1, ts2)
+  | Func((Shared _ as s), Returns, tbs, ts1, ([] as ts2))
+  | Func(s, Returns, tbs, ts1, ([Async (Var(_, 0),_)] as ts2)) ->
+    List.for_all (fun tb -> can_omit 0 tb.bound) tbs &&
+    List.for_all (can_omit 0) ts1 &&
+    List.for_all (can_omit 0) ts2
   | _ -> false
 
 and can_omit n t =
@@ -1260,6 +1260,7 @@ and string_of_typ' vs t =
   | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
     let n = match c, ts2 with
       | Promises (Var (s,n)), _ -> n
+      | Returns, [] -> 0
       | Returns, [Async (Var (s,n),_)] -> n
       | _ -> assert false
     in

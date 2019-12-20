@@ -267,9 +267,12 @@ let check_shared_return env at sort c ts =
       | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `async <typ>`"
       | _ -> ()
 
-let rec infer_scope env cs cod  =
-   match cod.it with
-   | AsyncT (typ_opt,_) ->
+let rec infer_scope env sort cs cod  =
+  let env = { env with async = C.NullCap } in
+  match sort, cod.it with
+   | T.Shared T.Query, AsyncT (typ_opt, _) (* remove this case to prevent sends from query methods *)
+   | T.Shared T.Write, AsyncT (typ_opt, _)
+   | T.Local, AsyncT (typ_opt, _) ->
      let typ = match typ_opt with Some typ -> typ | None -> scope_typ no_region in
      let t = check_typ env typ in
      (match T.close cs t with
@@ -277,9 +280,15 @@ let rec infer_scope env cs cod  =
         let c = (List.nth cs n) in
         { env with typs = T.Env.add scope_id (List.nth cs n) env.typs;
                    async = C.AsyncCap c }
+      | _ ->
+        env)
+   | T.Shared T.Write, TupT [] ->
+     (match cs with (* we assume the first parameter is the scope parameter *)
+      | c::cs ->
+        { env with typs = T.Env.add scope_id c env.typs;
+                   async = C.AsyncCap c }
       | _ -> env)
-   | _ ->
-        { env with async = C.NullCap }
+   | _ -> env
 
 and check_scope env t at =
   match env.async with
@@ -290,6 +299,12 @@ and check_scope env t at =
   | C.NullCap ->
     if not (T.eq t T.Any) then (* TBR *)
       local_error env at "bad scope"
+
+and check_AsyncCap env s at =
+   match env.async with
+   | C.AwaitCap c -> T.Con(c, [])
+   | C.AsyncCap c -> T.Con(c, [])
+   | C.NullCap -> error env at "misplaced %s" s
 
 and check_AwaitCap env s at =
    match env.async with
@@ -326,7 +341,7 @@ and check_typ' env typ : T.typ =
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, ts, te, ce = check_typ_binds env binds in
     let env' = adjoin_typs env te ce in
-    let env' = infer_scope env' cs typ2 in
+    let env' = infer_scope env' sort.it cs typ2 in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
     let ts1 = List.map (check_typ env') typs1 in
@@ -783,7 +798,7 @@ and infer_exp'' env exp : T.typ =
     check_shared_return env typ.at sort cT ts2;
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
-    let env' = infer_scope env' cs typ in
+    let env' = infer_scope env' sort cs typ in
     let t1, ve1 = infer_pat_exhaustive env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
@@ -852,6 +867,11 @@ and infer_exp'' env exp : T.typ =
         | T.Func (_, T.Returns, _, _, [T.Async (T.Var (_, n),_)])
            when n < expected && List.length pre_typs = expected - 1 ->
           insert n
+            (Syntax.scope_typ {left = exp1.at.right; right = exp2.at.left})
+            pre_typs
+        | T.Func (T.Shared _, T.Returns, _, _, [])
+           when List.length pre_typs = expected - 1 ->
+           insert 0
             (Syntax.scope_typ {left = exp1.at.right; right = exp2.at.left})
             pre_typs
         |  _ -> pre_typs
@@ -1012,11 +1032,10 @@ and infer_exp'' env exp : T.typ =
     ignore (check_AwaitCap env "throw" exp.at);
     if not env.pre then check_exp env T.throw exp1;
     T.Non
-  | AsyncE (typ_bind, exp1, typ1) ->
+  | AsyncE (typ_bind, exp1) ->
     if not (in_shared_async env || in_oneway_ignore env) then
       error_in [Flags.ICMode] env exp.at "unsupported async block";
-    let t1 = check_typ env typ1 in
-    check_scope env t1 typ1.at;
+    let t1 = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add "@" c ce in (* pun scope identifier @ with c *)
     let env' =
@@ -1100,11 +1119,10 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand (T.Array t'));
     List.iter (check_exp env (T.as_immut t')) exps;
     t
-  | AsyncE (tb, exp1, typ1), T.Async (t1', t') ->
+  | AsyncE (tb, exp1), T.Async (t1', t') ->
     if not (in_shared_async env || in_oneway_ignore env) then
       error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
-    let t1 = check_typ env typ1 in
-    check_scope env t1 typ1.at;
+    let t1 = check_AsyncCap env "async expression" exp.at in
     if not (T.eq t1 t1') then
       error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s"
         (T.string_of_typ_expand t1)

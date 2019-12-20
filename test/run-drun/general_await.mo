@@ -29,27 +29,34 @@ actor Await {
 
   public shared func DPA<@>() : async<@>() {
    let os = Array_init<?(async ())>(10, null);
-      for (i in os.keys()) {
-        os[i] := ? (Ack<@>());
-      };
-      for (o in os.vals()) {
-        switch o {
-          case (? a) await a;
-	  case null (assert false);
-        };
-      };
+   for (i in os.keys()) {
+     os[i] := ? (Ack<@>());
+   };
+   for (o in os.vals()) {
+     switch o {
+       case (? a) await a;
+       case null (assert false);
+     };
+   };
   };
 
   // Dynamic parallel waiting (with results)
 
-  public shared func DPR<@>() : async<@>[Int] {
-    func f(i:Nat) : async<@> Int = Request<@>(i);
-    let as = Array_tabulate<async Int>(10, f);
-    let res = Array_init<Int>(as.len(),-1);
-    for (i in as.keys()) {
-      res[i] := (await as[i]);
+  // Dynamic parallel waiting (with results)
+
+  public shared func DPR<@>() : async<@> [Int] {
+    let os = Array_init<?(async Int)>(10, null);
+    for (i in os.keys()) {
+      os[i] := ? (Request<@>(i));
     };
-    Array_tabulate<Int>(as.len(),func i = res[i])
+    let res = Array_init<Int>(os.len(),-1);
+    for (i in os.keys()) {
+      switch (os[i]) {
+        case (? a) res[i] := await a;
+        case null (assert false);
+      };
+    };
+    Array_tabulate<Int>(res.len(),func i { res[i] })
   };
 
   // Recursive parallel waiting

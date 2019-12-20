@@ -63,7 +63,7 @@ let let_or_exp named x e' at =
 let share_typ t =
   match t.it with
   | FuncT ({it = Type.Local; _} as s, tbs, t1, t2) ->
-    { t with it = FuncT ({s with it = Type.Shared Type.Write}, tbs, t1, t2)}
+    { t with it = funcT ({s with it = Type.Shared Type.Write}, tbs, t1, t2)}
   | _ -> t
 
 let share_typfield (tf : typ_field) =
@@ -72,7 +72,7 @@ let share_typfield (tf : typ_field) =
 let share_exp e =
   match e.it with
   | FuncE (x, ({it = Type.Local; _} as s), tbs, p, t, e) ->
-    FuncE (x, {s with it = Type.Shared (Type.Write, WildP @! s.at)}, tbs, p, t, e) @? e.at
+    funcE (x, {s with it = Type.Shared (Type.Write, WildP @! s.at)}, tbs, p, t, e) @? e.at
   | _ -> e
 
 let share_dec d =
@@ -85,9 +85,7 @@ let share_expfield (ef : exp_field) =
   then ef
   else {ef with it = {ef.it with dec = share_dec ef.it.dec}}
 
-let scope_typ() = scope_typ no_region
-
- %}
+%}
 
 %token EOF
 
@@ -257,7 +255,7 @@ typ_pre :
 typ :
   | t=typ_pre
     { t }
-  | s=func_sort_opt tps=typ_params t1=typ_un ARROW t2=typ
+  | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ
     { funcT(s, tps, t1, t2) @! at $sloc }
 
 typ_item :
@@ -267,14 +265,14 @@ typ_item :
 typ_args :
   | LT ts=seplist(typ, COMMA) GT { ts }
 
-%inline typ_params :
+%inline typ_params_opt :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
 typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
-  | x=id tps=typ_params t1=typ_nullary t2=return_typ
+  | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ
     { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
@@ -460,9 +458,9 @@ exp_nondec(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp(bl)
-    { AsyncE(scope_bind(), e, scope_typ()) @? at $sloc }
-  | ASYNC tb = scope_bind e=exp_nullary(bl) t=scope_inst
-    { AsyncE(tb, e, t) @? at $sloc }
+    { AsyncE(scope_bind(), e) @? at $sloc }
+  | ASYNC tb = scope_bind e=exp_nullary(bl)
+    { AsyncE(tb, e) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)
@@ -639,7 +637,7 @@ dec_nonvar :
         | AnnotP (p', t) -> p', AnnotE (e, t) @? p.at
         | _ -> p, e
       in LetD (p', e') @? at $sloc }
-  | TYPE x=typ_id tps=typ_params EQ t=typ
+  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt EQ? efs=obj_body
     { let named, x = xf "object" $sloc in
@@ -647,7 +645,7 @@ dec_nonvar :
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in let_or_exp named x (ObjE(s, efs')) (at $sloc) }
   | sp=sort_pat FUNC xf=id_opt
-      tps=typ_params p=pat_param t=return_typ? fb=func_body
+      tps=typ_params_opt p=pat_param t=return_typ? fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
@@ -656,18 +654,18 @@ dec_nonvar :
         | (true, e) -> (* body declared as immediate block *)
           match t with
           | Some {it = AsyncT (None,_); _} ->
-	    AsyncE(scope_bind(), e, scope_typ()) @? e.at
+	    AsyncE(scope_bind(), e) @? e.at
           | Some {it = AsyncT (Some typ,_); _} ->
             (match as_idT typ with
             | Some id ->
-              AsyncE(pun_id id, e, typ) @? e.at
-            | _ -> AsyncE(scope_bind(), e, typ) @? e.at)
+              AsyncE(pun_id id, e) @? e.at
+            | _ -> AsyncE(scope_bind(), e) @? e.at)
           | _ -> e
       in
       let named, x = xf "func" $sloc in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, e)) (at $sloc) }
   | s=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params p=pat_param t=return_typ? cb=class_body
+      tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in
       let efs' =
         if s.it = Type.Actor then List.map share_expfield efs else efs

@@ -569,7 +569,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Lib.Option.value env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Lib.Option.value env.throws)
-  | AsyncE (_, exp1, _) ->
+  | AsyncE (_, exp1) ->
     async env
       exp.at
       (fun k' r ->

@@ -153,7 +153,7 @@ and exp' =
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
-  | AsyncE of typ_bind * exp * typ             (* async *)
+  | AsyncE of typ_bind * exp                   (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
@@ -293,18 +293,24 @@ let ensure_scope_bind tbs =
   else scope_bind()::tbs
 
 let funcT(sort, tbs, t1, t2) =
-  match t2.it with
-  | AsyncT (None, _) ->
+  match sort.it, t2.it with
+  | _, AsyncT (None, _) ->
+    FuncT(sort, ensure_scope_bind tbs, t1, t2)
+  | Type.Shared _, TupT [] ->
     FuncT(sort, ensure_scope_bind tbs, t1, t2)
   | _ ->
     FuncT(sort, tbs, t1, t2)
 
 let funcE (f, s, tbs, p, t_opt, e) =
-  match t_opt with
-  | None -> FuncE(f, s, tbs, p, t_opt, e)
-  | Some t ->
-    (match t.it with
-     | AsyncT (None, t22) ->
-       FuncE(f, s, ensure_scope_bind tbs, p, t_opt, e)
-     | _ -> FuncE(f, s, tbs, p, t_opt, e))
+  let t = match t_opt with
+    | None -> TupT []
+    | Some t -> t.it
+  in
+  match s.it, t with
+  | _, AsyncT (None, _) ->
+    FuncE(f, s, ensure_scope_bind tbs, p, t_opt, e)
+  | Type.Shared _, TupT [] ->
+    FuncE(f, s, ensure_scope_bind tbs, p, t_opt, e)
+  | _ ->
+    FuncE(f, s, tbs, p, t_opt, e)
 
