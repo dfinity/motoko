@@ -13,5 +13,10 @@ fi
 
 export LANG=C.UTF-8
 
-( if [ -n "$2" ]; then grep '^//CALL ' $2 | cut -c8-; fi;) |
-	$DRUN -c "$CONFIG" $1 /dev/stdin
+# canister id "ic:000000000000040054", in little-endian decimal, is:
+# 1125899906842624
+# (drun currently expects a decimal number for the canister id)
+
+(echo "install 1125899906842624 $1 0x";
+ if [ -n "$2" ]; then perl -ne 'print "$1 1125899906842624 $2\n" if m,^//CALL (ingress|query) (.*),' $2; fi;
+) | $DRUN -c "$CONFIG" /dev/stdin
