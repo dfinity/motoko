@@ -13,6 +13,6 @@ export default ({ IDL }) => {
   IDL.Record({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat,
    '3': IDL.Record({'0': IDL.Nat, '1': IDL.Nat, '2': IDL.Nat}), '4': IDL.Nat,
    '5': IDL.Nat, '6': IDL.Nat, '7': A, '8': B, '9': C, '10': IDL.Nat})
- return new IDL.ActorInterface({
-  'f': IDL.Func([A, IDL.Opt(B), IDL.Opt(C), IDL.Opt(nest_record)], [], [])});
+ return new IDL.ActorInterface({'f': IDL.Func([A, B, C, nest_record], [], [])
+  });
 };
