@@ -1,4 +1,4 @@
 → create
 ← completed: canister-id = 0x0000000000000400
 → install
-← rejected (RC_CANISTER_ERROR): Initialization trapped: EvalLinkError :0.1 "Missing module for import: Import {_importModule = \"rts\", _importItem = \"blob_of_ic_url\", _importDesc = FuncImport (Identity 6)}"
+← completed
