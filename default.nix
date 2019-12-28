@@ -246,6 +246,11 @@ rec {
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
             make -C ${dir}
+
+	    if test -e ${dir}/_out/stats.csv
+	    then
+	      cp ${dir}/_out/stats.csv $out
+	    fi
           '';
       }; in
 
@@ -283,6 +288,7 @@ rec {
 
     { run       = test_subdir "run"       [ moc ] ;
       run-drun  = test_subdir "run-drun"  [ moc drun ic-stub ];
+      perf      = test_subdir "perf"      [ moc drun ];
       fail      = test_subdir "fail"      [ moc ];
       repl      = test_subdir "repl"      [ moc ];
       ld        = test_subdir "ld"        [ mo-ld ];
