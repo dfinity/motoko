@@ -27,13 +27,15 @@ let arg_bind rho a =
   let i' = fresh_id a.it in
   ({a with it = i'}, Renaming.add a.it i' rho)
 
-let rec exp rho e  =
-    {e with it = exp' rho e.it}
+let rec prim rho = function
+  | BreakPrim i -> BreakPrim (id rho i)
+  | p -> p
 
+and exp rho e  =  {e with it = exp' rho e.it}
 and exp' rho e  = match e with
   | VarE i              -> VarE (id rho i)
   | LitE l              -> e
-  | PrimE (p, es)       -> PrimE (p, List.map (exp rho) es)
+  | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
   | ActorE (i, ds, fs, t)-> let i',rho' = id_bind rho i in
                             let ds', rho'' = decs rho' ds
                             in ActorE (i', ds', fields rho'' fs, t)
@@ -46,11 +48,7 @@ and exp' rho e  = match e with
   | LoopE e1            -> LoopE (exp rho e1)
   | LabelE (i, t, e)    -> let i',rho' = id_bind rho i in
                            LabelE(i', t, exp rho' e)
-  | BreakE (i, e)       -> BreakE(id rho i,exp rho e)
-  | RetE e              -> RetE (exp rho e)
   | AsyncE e            -> AsyncE (exp rho e)
-  | AwaitE e            -> AwaitE (exp rho e)
-  | AssertE e           -> AssertE (exp rho e)
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
@@ -59,7 +57,6 @@ and exp' rho e  = match e with
      let e' = exp rho' e in
      FuncE (x, s, c, tp, p', ts, e')
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
-  | ThrowE e            -> ThrowE (exp rho e)
   | TryE (e, cs)        -> TryE (exp rho e, cases rho cs)
   | SelfCallE (ts, e1, e2, e3) ->
      SelfCallE (ts, exp rho e1, exp rho e2, exp rho e3)

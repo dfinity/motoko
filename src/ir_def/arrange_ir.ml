@@ -23,11 +23,7 @@ let rec exp e = match e.it with
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
   | LoopE e1            -> "LoopE"   $$ [exp e1]
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
-  | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
-  | RetE e              -> "RetE"    $$ [exp e]
   | AsyncE e            -> "AsyncE"  $$ [exp e]
-  | AwaitE e            -> "AwaitE"  $$ [exp e]
-  | AssertE e           -> "AssertE" $$ [exp e]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
@@ -36,7 +32,6 @@ let rec exp e = match e.it with
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
   | ActorE (i, ds, fs, t) -> "ActorE"  $$ [id i] @ List.map dec ds @ fields fs @ [typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
-  | ThrowE e            -> "ThrowE"    $$ [exp e]
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
 
 and lexp le = match le.it with
@@ -64,6 +59,11 @@ and prim = function
   | ActorDotPrim n    -> "ActorDotPrim" $$ [Atom n]
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
+  | BreakPrim i       -> "BreakPrim"  $$ [id i]
+  | RetPrim           -> Atom "RetPrim"
+  | AwaitPrim         -> Atom "AwaitPrim"
+  | AssertPrim        -> Atom "AssertPrim"
+  | ThrowPrim         -> Atom "ThrowPrim"
   | ShowPrim t        -> "ShowPrim"   $$ [typ t]
   | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]

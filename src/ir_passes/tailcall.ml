@@ -93,7 +93,6 @@ and assignEs vars exp : dec list =
 
 and exp' env e  : exp' = match e.it with
   | VarE _ | LitE _     -> e.it
-  | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
   | CallE (e1, insts, e2)  ->
     begin
@@ -113,13 +112,10 @@ and exp' env e  : exp' = match e.it with
   | LoopE e1            -> LoopE (exp env e1)
   | LabelE (i, t, e)    -> let env1 = bind env i None in
                            LabelE(i, t, exp env1 e)
-  | BreakE (i, e)       -> BreakE(i,exp env e)
-  | RetE e              -> RetE (tailexp { env with tail_pos = true } e)
+  | PrimE (RetPrim, [e])-> PrimE (RetPrim, [tailexp { env with tail_pos = true } e])
   (* NB:^ e is always in tailposition, regardless of fst env *)
-  | ThrowE e            -> ThrowE (exp env e) (* TODO: make me a tail call *)
+  (* TODO: Make ThrowE a tail call *)
   | AsyncE e            -> AsyncE (exp { tail_pos = true; info = None } e)
-  | AwaitE e            -> AwaitE (exp env e)
-  | AssertE e           -> AssertE (exp env e)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
@@ -136,6 +132,7 @@ and exp' env e  : exp' = match e.it with
     SelfCallE (ts, exp1', exp2', exp3')
   | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: descent into ds *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
+  | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
 
 and lexp env le : lexp = {le with it = lexp' env le}
 

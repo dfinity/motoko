@@ -143,12 +143,12 @@ and exp' at note = function
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then unitE.it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
-  | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
-  | S.RetE e -> I.RetE (exp e)
-  | S.ThrowE e -> I.ThrowE (exp e)
+  | S.BreakE (l, e) -> (breakE l.it (exp e)).it
+  | S.RetE e -> (retE (exp e)).it
+  | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE e -> I.AsyncE (exp e)
-  | S.AwaitE e -> I.AwaitE (exp e)
-  | S.AssertE e -> I.AssertE (exp e)
+  | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
+  | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, ir) ->
     begin match !ir with

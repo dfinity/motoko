@@ -351,16 +351,7 @@ and t_exp' env = function
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->
     LabelE (id, typ, t_exp env exp1)
-  | BreakE (id, exp1) ->
-    BreakE (id, t_exp env exp1)
-  | RetE exp1 ->
-    RetE (t_exp env exp1)
-  | ThrowE exp1 ->
-    ThrowE (t_exp env exp1)
   | AsyncE e -> AsyncE (t_exp env e)
-  | AwaitE e -> AwaitE (t_exp env e)
-  | AssertE exp1 ->
-    AssertE (t_exp env exp1)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp env exp1)
   | DefineE (id, mut ,exp1) ->

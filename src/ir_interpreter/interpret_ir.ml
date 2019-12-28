@@ -335,6 +335,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | IdxPrim, [v1; v2] ->
         k (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap exp.at "%s" s)
+      | BreakPrim id, [v1] -> find id env.labs v1
+      | RetPrim, [v1] -> Option.get env.rets v1
+      | ThrowPrim, [v1] -> Option.get env.throws v1
+      | AwaitPrim, [v1] ->
+        assert env.flavor.has_await;
+        await env exp.at (V.as_async v1) k (Option.get env.throws)
+      | AssertPrim, [v1] ->
+        if V.as_bool v1
+        then k V.unit
+        else trap exp.at "assertion failure"
       | ShowPrim ot, [v1] ->
         if Show.can_show ot
         then k (Value.Text (Show.show_val ot v1))
@@ -439,12 +449,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id k env.labs} in
     interpret_exp env' exp1 k
-  | BreakE (id, exp1) ->
-    interpret_exp env exp1 (find id env.labs)
-  | RetE exp1 ->
-    interpret_exp env exp1 (Option.get env.rets)
-  | ThrowE exp1 ->
-    interpret_exp env exp1 (Option.get env.throws)
   | AsyncE exp1 ->
     assert env.flavor.has_await;
     async env
@@ -454,16 +458,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         in interpret_exp env' exp1 k')
       k
 
-  | AwaitE exp1 ->
-    assert env.flavor.has_await;
-    interpret_exp env exp1
-      (fun v1 -> await env exp.at (V.as_async v1) k (Option.get env.throws))
-  | AssertE exp1 ->
-    interpret_exp env exp1 (fun v ->
-      if V.as_bool v
-      then k V.unit
-      else trap exp.at "assertion failure"
-    )
   | DeclareE (id, typ, exp1) ->
     let env = adjoin_vals env (declare_id id) in
     interpret_exp env exp1 k

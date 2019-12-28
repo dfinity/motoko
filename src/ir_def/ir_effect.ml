@@ -23,15 +23,16 @@ let is_triv phrase  =
 let effect_exp (exp: exp) : T.eff = eff exp
 
 (* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
-let rec infer_effect_exp (exp: exp) : T.eff =
+let rec infer_effect_prim = function
+  | ThrowPrim | AwaitPrim -> T.Await
+  | _ -> T.Triv
+
+ and infer_effect_exp (exp: exp) : T.eff =
   match exp.it with
   | VarE _
   | LitE _ ->
     T.Triv
-  | AssertE exp1
   | LabelE (_, _, exp1)
-  | BreakE (_, exp1)
-  | RetE exp1
   | LoopE exp1
   | AssignE (_, exp1) ->
     effect_exp exp1
@@ -39,9 +40,9 @@ let rec infer_effect_exp (exp: exp) : T.eff =
     let t1 = effect_exp exp1 in
     let t2 = effect_exp exp2 in
     max_eff t1 t2
-  | PrimE (_, exps) ->
+  | PrimE (p, exps) ->
     let es = List.map effect_exp exps in
-    List.fold_left max_eff T.Triv es
+    List.fold_left max_eff (infer_effect_prim p) es
   | BlockE (ds, exp) ->
     let es = List.map effect_dec ds in
     List.fold_left max_eff (effect_exp exp) es
@@ -56,9 +57,7 @@ let rec infer_effect_exp (exp: exp) : T.eff =
     max_eff e1 e2
   | AsyncE exp1 ->
     T.Triv
-  | ThrowE _
-  | TryE _
-  | AwaitE _ ->
+  | TryE _ ->
     T.Await
   | DeclareE (_, _, exp1) ->
     effect_exp exp1

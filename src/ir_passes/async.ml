@@ -289,16 +289,8 @@ let transform mode env prog =
       LoopE (t_exp exp1)
     | LabelE (id, typ, exp1) ->
       LabelE (id, t_typ typ, t_exp exp1)
-    | BreakE (id, exp1) ->
-      BreakE (id, t_exp exp1)
-    | RetE exp1 ->
-      RetE (t_exp exp1)
     | AsyncE _
-    | AwaitE _
-    | TryE _
-    | ThrowE _ -> assert false
-    | AssertE exp1 ->
-      AssertE (t_exp exp1)
+    | TryE _ -> assert false
     | DeclareE (id, typ, exp1) ->
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->

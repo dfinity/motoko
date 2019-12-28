@@ -63,8 +63,6 @@ and t_exp' context exp' =
   match exp' with
   | VarE _
   | LitE _ -> exp'
-  | PrimE (p, exps) ->
-    PrimE (p, List.map (t_exp context) exps)
   | AssignE (exp1, exp2) ->
     AssignE (t_lexp context exp1, t_exp context exp2)
   | CallE (exp1, typs, exp2) ->
@@ -85,18 +83,18 @@ and t_exp' context exp' =
   | LabelE (id, _typ, exp1) ->
     let context' = LabelEnv.add (Named id) Label context in
     LabelE (id, _typ, t_exp context' exp1)
-  | BreakE (id, exp1) ->
+  | PrimE (BreakPrim id, [exp1]) ->
     begin
       match LabelEnv.find_opt (Named id) context with
-      | Some (Cont k) -> RetE (k -@- (t_exp context exp1))
-      | Some Label -> BreakE (id, t_exp context exp1)
+      | Some (Cont k) -> (retE (k -@- (t_exp context exp1))).it
+      | Some Label -> (breakE id (t_exp context exp1)).it
       | None -> assert false
     end
-  | RetE exp1 ->
+  | PrimE (RetPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Return context with
-      | Some (Cont k) -> RetE (k -@- (t_exp context exp1))
-      | Some Label -> RetE (t_exp context exp1)
+      | Some (Cont k) -> (retE (k -@- (t_exp context exp1))).it
+      | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
   | AsyncE exp1 ->
@@ -110,11 +108,7 @@ and t_exp' context exp' =
      in
      (asyncE (typ exp1) ([k_ret; k_fail] -->*
                            c_exp context' exp1 (ContVar k_ret))).it
-  | TryE _
-  | ThrowE _
-  | AwaitE _ -> assert false (* these never have effect T.Triv *)
-  | AssertE exp1 ->
-    AssertE (t_exp context exp1)
+  | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
@@ -126,6 +120,8 @@ and t_exp' context exp' =
     ActorE (id, t_decs context ds, ids, t)
   | NewObjE (sort, ids, typ) -> exp'
   | SelfCallE _ -> assert false
+  | PrimE (p, exps) ->
+    PrimE (p, List.map (t_exp context) exps)
 
 and t_lexp context lexp =
   { lexp with it = t_lexp' context lexp.it }
@@ -245,8 +241,6 @@ and c_exp' context exp k =
   | LitE _
   | FuncE _ ->
     assert false
-  | PrimE (p, exps) ->
-    nary context k (fun vs -> e (PrimE (p, vs))) exps
   | ActorE _ ->
     assert false; (* ActorE fields cannot await *)
   | AssignE (exp1, exp2) ->
@@ -318,23 +312,21 @@ and c_exp' context exp k =
        (fun k ->
          let context' = LabelEnv.add (Named id) (Cont (ContVar k)) context in
          c_exp context' exp1 (ContVar k)) (* TODO optimize me, if possible *)
-  | BreakE (id, exp1) ->
+  | PrimE (BreakPrim id, [exp1]) ->
     begin
       match LabelEnv.find_opt (Named id) context with
-      | Some (Cont k') ->
-         c_exp context exp1 k'
+      | Some (Cont k') -> c_exp context exp1 k'
       | Some Label -> assert false
       | None -> assert false
     end
-  | RetE exp1 ->
+  | PrimE (RetPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Return context with
-      | Some (Cont k') ->
-         c_exp context exp1 k'
+      | Some (Cont k') -> c_exp context exp1 k'
       | Some Label -> assert false
       | None -> assert false
     end
-  | ThrowE exp1 ->
+  | PrimE (ThrowPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Throw context with
       | Some (Cont k') -> c_exp context exp1 k'
@@ -351,33 +343,30 @@ and c_exp' context exp k =
     in
     k -@- (asyncE (typ exp1) ([k_ret; k_fail] -->*
                                    (c_exp context' exp1 (ContVar k_ret))))
-  | AwaitE exp1 ->
+  | PrimE (AwaitPrim, [exp1]) ->
      let r = match LabelEnv.find_opt Throw context with
      | Some (Cont r) -> r
      | Some Label
      | None -> assert false
      in
-     letcont r
-       (fun r ->
-     letcont k
-       (fun k ->
-         let kr = tupE [k;r] in
-         match eff exp1 with
-         | T.Triv ->
-            awaitE (typ exp) (t_exp context exp1) kr
-         | T.Await ->
-            c_exp context  exp1
-              (meta (typ exp1) (fun v1 -> (awaitE (typ exp) v1 kr)))
-       )
-     )
-  | AssertE exp1 ->
-    unary context k (fun v1 -> e (AssertE v1)) exp1
+     letcont r (fun r ->
+     letcont k (fun k ->
+       let kr = tupE [k;r] in
+       match eff exp1 with
+       | T.Triv ->
+          awaitE (typ exp) (t_exp context exp1) kr
+       | T.Await ->
+          c_exp context  exp1
+            (meta (typ exp1) (fun v1 -> (awaitE (typ exp) v1 kr)))
+     ))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1
   | DefineE (id, mut, exp1) ->
     unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
   | NewObjE _ -> exp
   | SelfCallE _ -> assert false
+  | PrimE (p, exps) ->
+    nary context k (fun vs -> e (PrimE (p, vs))) exps
 
 and c_block context decs exp k =
   let is_typ dec =

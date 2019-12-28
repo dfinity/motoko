@@ -5871,6 +5871,21 @@ and compile_exp (env : E.t) ae exp =
       Arr.idx env ^^
       load_ptr
 
+    | BreakPrim name, [e] ->
+      let d = VarEnv.get_label_depth ae name in
+      SR.Unreachable,
+      compile_exp_vanilla env ae e ^^
+      G.branch_to_ d
+    | AssertPrim, [e1] ->
+      SR.unit,
+      compile_exp_as env ae SR.bool e1 ^^
+      G.if_ [] G.nop (Dfinity.fail_assert env exp.at)
+    | RetPrim, [e] ->
+      SR.Unreachable,
+      compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
+      FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
+      G.i Return
+
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
       let open Type in
@@ -6175,10 +6190,6 @@ and compile_exp (env : E.t) ae exp =
     store_code
   | LitE l ->
     compile_lit env l
-  | AssertE e1 ->
-    SR.unit,
-    compile_exp_as env ae SR.bool e1 ^^
-    G.if_ [] G.nop (Dfinity.fail_assert env exp.at)
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as env ae SR.bool scrut in
     let sr1, code1 = compile_exp env ae e1 in
@@ -6206,22 +6217,12 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_vanilla env ae1 e
       )
     )
-  | BreakE (name, e) ->
-    let d = VarEnv.get_label_depth ae name in
-    SR.Unreachable,
-    compile_exp_vanilla env ae e ^^
-    G.branch_to_ d
   | LoopE e ->
     SR.Unreachable,
     G.loop_ [] (compile_exp_unit env ae e ^^ G.i (Br (nr 0l))
     )
     ^^
    G.i Unreachable
-  | RetE e ->
-    SR.Unreachable,
-    compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
-    FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
-    G.i Return
   | CallE (e1, _, e2) ->
     let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
     let n_args = List.length arg_tys in

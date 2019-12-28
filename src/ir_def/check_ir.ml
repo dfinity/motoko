@@ -397,6 +397,38 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       t2 <~ t
+    | BreakPrim id, [exp1] ->
+      begin
+        match T.Env.find_opt id env.labs with
+        | None -> error env exp.at "unbound label %s" id
+        | Some t1 -> typ exp1 <: t1;
+      end;
+      T.Non <: t (* vacuously true *)
+    | RetPrim, [exp1] ->
+      begin
+        match env.rets with
+        | None -> error env exp.at "misplaced return"
+        | Some t0 -> assert (t0 <> T.Pre); typ exp1 <: t0;
+      end;
+      T.Non <: t (* vacuously true *)
+    | ThrowPrim, [exp1] ->
+      check env.flavor.has_await "throw in non-await flavor";
+      check env.async "misplaced throw";
+      typ exp1 <: T.throw;
+      T.Non <: t (* vacuously true *)
+    | AwaitPrim, [exp1] ->
+      check env.flavor.has_await "await in non-await flavor";
+      check env.async "misplaced await";
+      let t1 = T.promote (typ exp1) in
+      let t2 = try T.as_async_sub t1
+               with Invalid_argument _ ->
+                 error env exp1.at "expected async type, but expression has type\n  %s"
+                   (T.string_of_typ_expand t1)
+      in
+      t2 <: t
+    | AssertPrim, [exp1] ->
+      typ exp1 <: T.bool;
+      T.unit <: t
     | ShowPrim ot, [exp1] ->
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";
@@ -527,33 +559,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp (add_lab env id t0) exp1;
     typ exp1 <: t0;
     t0 <: t
-  | BreakE (id, exp1) ->
-    begin
-      match T.Env.find_opt id env.labs with
-      | None ->
-        error env exp.at "unbound label %s" id
-      | Some t1 ->
-        check_exp env exp1;
-        typ exp1 <: t1;
-    end;
-    T.Non <: t (* vacuously true *)
-  | RetE exp1 ->
-    begin
-      match env.rets with
-      | None ->
-        error env exp.at "misplaced return"
-      | Some t0 ->
-        assert (t0 <> T.Pre);
-        check_exp env exp1;
-        typ exp1 <: t0;
-    end;
-    T.Non <: t (* vacuously true *)
-  | ThrowE exp1 ->
-    check env.flavor.has_await "throw in non-await flavor";
-    check env.async "misplaced throw";
-    check_exp env exp1;
-    typ exp1 <: T.throw;
-    T.Non <: t (* vacuously true *)
   | AsyncE exp1 ->
     check env.flavor.has_await "async expression in non-await flavor";
     let t1 = typ exp1 in
@@ -562,21 +567,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env' exp1;
     t1 <: T.Any;
     T.Async t1 <: t
-  | AwaitE exp1 ->
-    check env.flavor.has_await "await in non-await flavor";
-    check env.async "misplaced await";
-    check_exp env exp1;
-    let t1 = T.promote (typ exp1) in
-    let t2 = try T.as_async_sub t1
-             with Invalid_argument _ ->
-               error env exp1.at "expected async type, but expression has type\n  %s"
-                 (T.string_of_typ_expand t1)
-    in
-    t2 <: t
-  | AssertE exp1 ->
-    check_exp env exp1;
-    typ exp1 <: T.bool;
-    T.unit <: t
   | DeclareE (id, t0, exp1) ->
     check_typ env t0;
     let env' = adjoin_vals env (T.Env.singleton id t0) in

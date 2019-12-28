@@ -72,11 +72,7 @@ and exp' =
   | SwitchE of exp * case list                 (* switch *)
   | LoopE of exp                               (* do-while loop *)
   | LabelE of id * Type.typ * exp              (* label *)
-  | BreakE of id * exp                         (* break *)
-  | RetE of exp                                (* return *)
   | AsyncE of exp                              (* async *)
-  | AwaitE of exp                              (* await *)
-  | AssertE of exp                             (* assertion *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
@@ -84,7 +80,6 @@ and exp' =
   | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
   | ActorE of id * dec list * field list * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
-  | ThrowE of exp                              (* throw *)
   | TryE of exp * case list                    (* try/catch *)
 
 and field = (field', Type.typ) Source.annotated_phrase
@@ -112,6 +107,11 @@ and prim =
   | ActorDotPrim of Type.lab          (* actor field access *)
   | ArrayPrim of mut * Type.typ       (* array constructor *)
   | IdxPrim                           (* array indexing *)
+  | BreakPrim of id                   (* break *)
+  | RetPrim                           (* return *)
+  | AwaitPrim                         (* await *)
+  | AssertPrim                        (* assertion *)
+  | ThrowPrim                         (* throw *)
   | ShowPrim of Type.typ              (* debug show *)
   | NumConvPrim of Type.prim * Type.prim
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)

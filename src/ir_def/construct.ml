@@ -98,7 +98,7 @@ let asyncE typ e =
   }
 
 let assertE e =
-  { it = AssertE e;
+  { it = PrimE (AssertPrim, [e]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = eff e}
   }
@@ -290,7 +290,7 @@ let tupE exps =
 let unitE = tupE []
 
 let breakE l exp =
-  { it = BreakE (l, exp);
+  { it = PrimE (BreakPrim l, [exp]);
     at = no_region;
     note = {
       note_eff = eff exp;
@@ -299,7 +299,7 @@ let breakE l exp =
   }
 
 let retE exp =
-  { it = RetE exp;
+  { it = PrimE (RetPrim, [exp]);
     at = no_region;
     note = { note_eff = eff exp;
              note_typ = T.Non }
