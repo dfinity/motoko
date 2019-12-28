@@ -204,7 +204,7 @@ let boolE b =
 let callE exp1 ts exp2 =
   match T.promote (typ exp1) with
   | T.Func (_sort, _control, _, _, ret_tys) ->
-    { it = CallE (exp1, ts, exp2);
+    { it = PrimE (CallPrim ts, [exp1; exp2]);
       at = no_region;
       note = {
         note_typ = T.open_ ts (T.seq ret_tys);
@@ -492,7 +492,7 @@ let (-->*) xs exp =
 let ( -*- ) exp1 exp2 =
   match typ exp1 with
   | T.Func (_, _, [], _, ret_tys) ->
-    { it = CallE (exp1, [], exp2);
+    { it = PrimE (CallPrim [], [exp1; exp2]);
       at = no_region;
       note = {note_typ = T.seq ret_tys;
               note_eff = max_eff (eff exp1) (eff exp2)}

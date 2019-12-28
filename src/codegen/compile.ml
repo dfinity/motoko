@@ -5813,6 +5813,45 @@ and compile_exp (env : E.t) ae exp =
     let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
 
     begin match p, es with
+    (* Calls *)
+    | CallPrim _, [e1; e2] ->
+      let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
+      let n_args = List.length arg_tys in
+      let return_arity = match control with
+        | Type.Returns -> List.length ret_tys
+        | Type.Replies -> 0
+        | Type.Promises -> assert false in
+
+      StackRep.of_arity return_arity,
+      let fun_sr, code1 = compile_exp env ae e1 in
+      begin match fun_sr, sort with
+       | SR.StaticThing (SR.StaticFun fi), _ ->
+          code1 ^^
+          compile_unboxed_zero ^^ (* A dummy closure *)
+          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
+          G.i (Call (nr fi)) ^^
+          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
+       | _, Type.Local ->
+          let (set_clos, get_clos) = new_local env "clos" in
+          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
+          set_clos ^^
+          get_clos ^^
+          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
+          get_clos ^^
+          Closure.call_closure env n_args return_arity
+       | _, Type.Shared _ ->
+          (* Non-one-shot functions have been rewritten in async.ml *)
+          assert (control = Type.Returns);
+
+          let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
+          let (set_arg, get_arg) = new_local env "arg" in
+          let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
+          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
+          set_meth_pair ^^
+          compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
+
+          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg
+      end
 
     (* Operators *)
 
@@ -6223,44 +6262,6 @@ and compile_exp (env : E.t) ae exp =
     )
     ^^
    G.i Unreachable
-  | CallE (e1, _, e2) ->
-    let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
-    let n_args = List.length arg_tys in
-    let return_arity = match control with
-      | Type.Returns -> List.length ret_tys
-      | Type.Replies -> 0
-      | Type.Promises -> assert false in
-
-    StackRep.of_arity return_arity,
-    let fun_sr, code1 = compile_exp env ae e1 in
-    begin match fun_sr, sort with
-     | SR.StaticThing (SR.StaticFun fi), _ ->
-        code1 ^^
-        compile_unboxed_zero ^^ (* A dummy closure *)
-        compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
-        G.i (Call (nr fi)) ^^
-        FakeMultiVal.load env (Lib.List.make return_arity I32Type)
-     | _, Type.Local ->
-        let (set_clos, get_clos) = new_local env "clos" in
-        code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
-        set_clos ^^
-        get_clos ^^
-        compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
-        get_clos ^^
-        Closure.call_closure env n_args return_arity
-     | _, Type.Shared _ ->
-        (* Non-one-shot functions have been rewritten in async.ml *)
-        assert (control = Type.Returns);
-
-        let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
-        let (set_arg, get_arg) = new_local env "arg" in
-        let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
-        code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
-        set_meth_pair ^^
-        compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
-
-        FuncDec.ic_call_one_shot env ts get_meth_pair get_arg
-    end
   | SwitchE (e, cs) ->
     SR.Vanilla,
     let code1 = compile_exp_vanilla env ae e in

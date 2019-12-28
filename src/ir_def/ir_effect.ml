@@ -36,10 +36,6 @@ let rec infer_effect_prim = function
   | LoopE exp1
   | AssignE (_, exp1) ->
     effect_exp exp1
-  | CallE (exp1, _, exp2) ->
-    let t1 = effect_exp exp1 in
-    let t2 = effect_exp exp2 in
-    max_eff t1 t2
   | PrimE (p, exps) ->
     let es = List.map effect_exp exps in
     List.fold_left max_eff (infer_effect_prim p) es

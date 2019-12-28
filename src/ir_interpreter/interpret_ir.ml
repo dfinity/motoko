@@ -308,6 +308,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
+      | CallPrim typs, [v1; v2] ->
+        let call_conv, f = V.as_func v1 in
+        check_call_conv (List.hd es) call_conv;
+        check_call_conv_arg env exp v2 call_conv;
+        last_region := exp.at; (* in case the following throws *)
+        f (context env) v2 k
       | UnPrim (ot, op), [v1] ->
         k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s)
       | BinPrim (ot, op), [v1; v2] ->
@@ -416,16 +422,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_lexp env lexp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
         v1 := v2; k V.unit
-      )
-    )
-  | CallE (exp1, typs, exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
-        let call_conv, f = V.as_func v1 in
-        check_call_conv exp1 call_conv;
-        check_call_conv_arg env exp v2 call_conv;
-        last_region := exp.at; (* in case the following throws *)
-        f (context env) v2 k
       )
     )
   | BlockE (decs, exp1) ->

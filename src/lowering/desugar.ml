@@ -123,11 +123,9 @@ and exp' at note = function
     I.PrimE (I.OtherPrim p, [exp e])
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in
-    if T.is_non t
-    then unreachableE.it
-    else
-      let inst = List.map (fun t -> t.Source.note) inst in
-      I.CallE (exp e1, inst, exp e2)
+    if T.is_non t then unreachableE.it else
+    let inst = List.map (fun t -> t.Source.note) inst in
+    I.PrimE (I.CallPrim inst, [exp e1; exp e2])
   | S.BlockE [] -> unitE.it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)

@@ -65,8 +65,6 @@ and t_exp' context exp' =
   | LitE _ -> exp'
   | AssignE (exp1, exp2) ->
     AssignE (t_lexp context exp1, t_exp context exp2)
-  | CallE (exp1, typs, exp2) ->
-    CallE (t_exp context exp1, typs, t_exp context exp2)
   | BlockE b ->
     BlockE (t_block context b)
   | IfE (exp1, exp2, exp3) ->
@@ -245,8 +243,6 @@ and c_exp' context exp k =
     assert false; (* ActorE fields cannot await *)
   | AssignE (exp1, exp2) ->
     c_assign context k e exp1 exp2
-  | CallE (exp1, typs, exp2) ->
-    binary context k (fun v1 v2 -> e (CallE (v1, typs, v2))) exp1 exp2
   | BlockE (decs, exp) ->
     c_block context decs exp k
   | IfE (exp1, exp2, exp3) ->

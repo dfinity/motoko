@@ -17,7 +17,6 @@ let rec exp e = match e.it with
   | LitE l              -> "LitE"    $$ [lit l]
   | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
   | AssignE (le1, e2)   -> "AssignE" $$ [lexp le1; exp e2]
-  | CallE (e1, ts, e2)  -> "CallE" $$ [exp e1] @ List.map typ ts @ [exp e2]
   | BlockE (ds, e1)     -> "BlockE"  $$ List.map dec ds @ [exp e1]
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
@@ -48,6 +47,7 @@ and args = function
 and arg a = Atom a.it
 
 and prim = function
+  | CallPrim ts       -> "CallPrim" $$ List.map typ ts
   | UnPrim (t, uo)    -> "UnPrim"     $$ [typ t; Arrange_ops.unop uo]
   | BinPrim (t, bo)   -> "BinPrim"    $$ [typ t; Arrange_ops.binop bo]
   | RelPrim (t, ro)   -> "RelPrim"    $$ [typ t; Arrange_ops.relop ro]

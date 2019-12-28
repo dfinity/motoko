@@ -40,7 +40,6 @@ and exp' rho e  = match e with
                             let ds', rho'' = decs rho' ds
                             in ActorE (i', ds', fields rho'' fs, t)
   | AssignE (e1, e2)    -> AssignE (lexp rho e1, exp rho e2)
-  | CallE (e1, ts, e2)  -> CallE  (exp rho e1, ts, exp rho e2)
   | BlockE (ds, e1)     -> let ds', rho' = decs rho ds
                            in BlockE (ds', exp rho' e1)
   | IfE (e1, e2, e3)    -> IfE (exp rho e1, exp rho e2, exp rho e3)

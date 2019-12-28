@@ -66,7 +66,6 @@ and exp' =
   | VarE of id                                 (* variable *)
   | LitE of lit                                (* literal *)
   | AssignE of lexp * exp                      (* assignment *)
-  | CallE of exp * Type.typ list * exp         (* function call *)
   | BlockE of (dec list * exp)                 (* block *)
   | IfE of exp * exp * exp                     (* conditional *)
   | SwitchE of exp * case list                 (* switch *)
@@ -99,6 +98,7 @@ and lexp' =
 all call-by-value. Many passes can treat them uniformly, so they are unified using the
 using the PrimE node. *)
 and prim =
+  | CallPrim of Type.typ list         (* function call *)
   | UnPrim of Type.typ * unop         (* unary operator *)
   | BinPrim of Type.typ * binop       (* binary operator *)
   | RelPrim of Type.typ * relop       (* relational operator *)
