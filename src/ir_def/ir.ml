@@ -95,6 +95,9 @@ and lexp' =
   | DotLE of exp * Type.lab                    (* object projection *)
 
 
+(* In the IR, a prim is any AST node that has expr subexpressions, but they are
+all call-by-value. Many passes can treat them uniformly, so they are unified using the
+using the PrimE node. *)
 and prim =
   | UnPrim of Type.typ * unop         (* unary operator *)
   | BinPrim of Type.typ * binop       (* binary operator *)
