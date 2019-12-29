@@ -67,7 +67,7 @@ This is a summary of the grammar proposed:
 <functype>  ::= ( <argtype>,* ) -> ( <argtype>,* ) <funcann>*
 <funcann>   ::= oneway | query
 <argtype>   ::= <datatype>
-<fieldtype> ::= <nat32> : <datatype>
+<fieldtype> ::= <nat> : <datatype>
 <datatype>  ::= <id> | <primtype> | <constype> | <reftype>
 
 <primtype>  ::=
@@ -323,14 +323,14 @@ A *record* is a *heterogeneous* sequence of values of different data types. Each
 
 ```
 <constype>  ::= ... | record { <fieldtype>;* } | ...
-<fieldtype> ::= <nat32> : <datatype>
+<fieldtype> ::= <nat> : <datatype>
 ```
 We identify `<fieldtype>` lists in a record type up to reordering.
 
 The id is described as a simple unsigned integer that has to fit the 32 bit value range. It can be given in either decimal or hexadecimal notation:
 
 ```
-<nat32> ::= (0..9)(_? 0..9)* | 0x(0..9|a..f|A..F)(_? 0..9|a..f|A..F)*
+<nat> ::= (0..9)(_? 0..9)* | 0x(0..9|a..f|A..F)(_? 0..9|a..f|A..F)*
 ```
 An id value must be smaller than 2^32 and no id may occur twice in the same record type.
 
