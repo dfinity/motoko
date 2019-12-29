@@ -110,8 +110,8 @@ ea(<typ>) = ( e(<typ>) )  otherwise
 em : <typ-field> -> <methtype>
 em(<id> : <typ>) = unescape(<id>) : efn(<typ>)
 
-unescape : <id> -> <nat>|<name>
-unescape("_" <nat> "_") = <nat>
+unescape : <id> -> <nat32>|<name>
+unescape("_" <nat32> "_") = <nat32>
 unescape(<id> "_") = <id>
 unescape(<id>) = <id>
 ```
@@ -142,11 +142,11 @@ i(service { <methtype>;* }) = actor { im(<methtype>);* }
 
 if : <fieldtype> -> <typ>
 if(<name> : <datatype>) = escape(<name>) : i(<datatype>)
-if(<nat> : <datatype>) = "_" <nat> "_": i(<datatype>) // also for implicit labels
+if(<nat32> : <datatype>) = "_" <nat32> "_": i(<datatype>) // also for implicit labels
 
 ivf : <fieldtype> -> <typ>
 ivf(<name> : null) = escape(<name>) : ()
-ivf(<nat> : null) = "_" <nat> "_": ()
+ivf(<nat32> : null) = "_" <nat32> "_": ()
 ivf(<fieldtype> = if(<fieldtype>) otherwise
 
 ifn : <functype> -> <typ>
