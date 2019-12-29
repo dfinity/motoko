@@ -1,9 +1,9 @@
 (*
-This module implements the field name mapping from AS to IDL
+This module implements the field name mapping from Motoko to IDL
 and back.
 
-(It could live in as_idl/, but as_idl depends on as_def/, codegen/ needs this
-encoding, but codegen/ should not depend on as_def/.)
+(It could live in mo_idl/, but mo_idl depends on mo_def/, codegen/ needs this
+encoding, but codegen/ should not depend on mo_def/.)
 *)
 
 (* Utilities (cf. lexer.mll) *)
@@ -64,7 +64,7 @@ let is_keyword = function
   | _
   -> false
 
-(* Escaping (used for IDL → AS) *)
+(* Escaping (used for IDL → Motoko) *)
 
 let escape_num h = Printf.sprintf "_%s_" (Lib.Uint32.to_string h)
 
@@ -74,7 +74,7 @@ let escape str =
   then if ends_with_underscore str then str ^ "_" else str
   else escape_num (IdlHash.idl_hash str)
 
-(* Unescaping (used for AS → IDL) *)
+(* Unescaping (used for Motoko → IDL) *)
 
 let is_escaped_num str =
   match Lib.String.chop_prefix "_" str with
@@ -83,7 +83,7 @@ let is_escaped_num str =
     | Some str
       when String.length str > 0 &&
            List.for_all is_digit (Lib.String.explode str)
-      -> Some (Lib.Uint32.of_string str)
+      -> Lib.Uint32.of_string_opt str
     | _ -> None
     end
   | _ -> None
