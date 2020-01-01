@@ -31,8 +31,7 @@ let letcont k scope =
     blockE [funcD k' v (cont v)] (* at this point, I'm really worried about variable capture *)
             (scope k')
 
-(* The empty identifier names the implicit return label *)
-
+(* Named labels for break, special labels for return and throw *)
 type label = Return | Throw | Named of string
 
 let ( -@- ) k exp2 =
