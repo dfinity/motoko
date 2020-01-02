@@ -51,7 +51,7 @@ debug {
   case (?1111) { };
   case _ { assert false };
   };
-  switch (a.get("apple")) {
+  switch (a.get("banana")) {
   case (?2222) { };
   case _ { assert false };
   };

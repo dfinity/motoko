@@ -78,7 +78,7 @@ public class Hashtbl<K,V> (
           case null { break moveKeyVals };
           case (?((k, v), kvsTail)) {
                  let h = word32ToNat(keyHash(k));
-                 let pos2 = h % table.len();
+                 let pos2 = h % table2.len();
                  table2[pos2] := ?((k,v), table2[pos2]);
                  kvs := kvsTail;
                };
