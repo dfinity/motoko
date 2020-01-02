@@ -20,7 +20,7 @@ debug {
   ignore a.set("AvocadO", 444);
 
   // need to resupply the constructor args; they are private to the object; but, should they be?
-  let b = H.clone<Text, Nat>(a, 3, textIsEq, Hash.Hash.hashOfText);
+  let b = H.clone<Text, Nat>(a, textIsEq, Hash.Hash.hashOfText);
 
   // ensure clone has each key-value pair present in original
   for ((k,v) in a.iter()) {

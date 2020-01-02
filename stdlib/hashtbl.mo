@@ -132,7 +132,6 @@ public class Hashtbl<K,V> (
 // ...but is still useful in tests, and beyond.
 public func clone<K,V>
   (h:Hashtbl<K,V>,
-   initCapacity: Nat,
    keyEq: (K,K) -> Bool,
    keyHash: K -> Hash.Hash) : Hashtbl<K,V> {
   let h2 = Hashtbl<K,V>(h.count(), keyEq, keyHash);
@@ -142,9 +141,20 @@ public func clone<K,V>
   h2
 };
 
+// Clone from any iterator of key-value pairs
+public func fromIter<K, V>(iter:Iter<(K, V)>,
+                           initCapacity: Nat,
+                           keyEq: (K,K) -> Bool,
+                           keyHash: K -> Hash.Hash) : Hashtbl<K,V> {
+  let h = Hashtbl<K,V>(initCapacity, keyEq, keyHash);
+  for ((k,v) in h.iter()) {
+    ignore h.set(k,v);
+  };
+  h
+};
+
 public func map<K, V1, V2>
   (h:Hashtbl<K,V1>,
-   initCapacity: Nat,
    keyEq: (K,K) -> Bool,
    keyHash: K -> Hash.Hash,
    mapFn: (K, V1) -> V2,
@@ -159,7 +169,6 @@ public func map<K, V1, V2>
 
 public func mapFilter<K, V1, V2>
   (h:Hashtbl<K,V1>,
-   initCapacity: Nat,
    keyEq: (K,K) -> Bool,
    keyHash: K -> Hash.Hash,
    mapFn: (K, V1) -> ?V2,
