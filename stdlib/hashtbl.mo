@@ -24,7 +24,7 @@ Internally, table growth policy is very simple, for now:
 */
 
 // key-val list type
-public type KVs<K,V> = AssocList.AssocList<K,V>;
+type KVs<K,V> = AssocList.AssocList<K,V>;
 
 public class Hashtbl<K,V> (
   initCapacity: Nat,
@@ -36,7 +36,7 @@ public class Hashtbl<K,V> (
 
   public func count() : Nat = _count;
 
-  public func remove(k:K) : ?V {
+  public func del(k:K) : ?V {
     let h = word32ToNat(keyHash(k));
     let m = table.len();
     let pos = h % m;
@@ -138,6 +138,21 @@ public func clone<K,V>
   let h2 = Hashtbl<K,V>(h.count(), keyEq, keyHash);
   for ((k,v) in h.iter()) {
     ignore h2.set(k,v);
+  };
+  h2
+};
+
+public func map<K, V1, V2>
+  (h:Hashtbl<K,V1>,
+   initCapacity: Nat,
+   keyEq: (K,K) -> Bool,
+   keyHash: K -> Hash.Hash,
+   mapFn: (K, V1) -> V2,
+  ) : Hashtbl<K,V2> {
+  let h2 = Hashtbl<K,V2>(h.count(), keyEq, keyHash);
+  for ((k, v1) in h.iter()) {
+    let v2 = mapFn(k, v1);
+    ignore h2.set(k,v2);
   };
   h2
 };

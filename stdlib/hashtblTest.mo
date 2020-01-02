@@ -43,8 +43,8 @@ debug {
   // do some more operations:
   ignore a.set("apple", 1111);
   ignore a.set("banana", 2222);
-  ignore a.remove("pear");
-  ignore a.remove("avocado");
+  ignore a.del("pear");
+  ignore a.del("avocado");
 
   // check them:
   switch (a.get("apple")) {
