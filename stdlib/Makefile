@@ -83,7 +83,7 @@ $(OUTDIR)/Buf.out: buf.mo | $(OUTDIR)
 $(OUTDIR)/BufTest.out: bufTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/HashtblTest.out: HashtblTest.mo | $(OUTDIR)
+$(OUTDIR)/HashtblTest.out: hashtblTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Hashtbl.out: hashtbl.mo | $(OUTDIR)
