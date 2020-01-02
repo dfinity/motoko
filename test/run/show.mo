@@ -34,3 +34,4 @@ debugPrint(debug_show (42 : Word16));
 debugPrint(debug_show (42 : Nat8));
 debugPrint(debug_show (42 : Int32));
 debugPrint(debug_show (intToInt64 (-42)));
+debugPrint(debug_show '☃');

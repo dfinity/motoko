@@ -2,6 +2,7 @@
   (name pipeline)
   (libraries
     lib
+    idllib
     lang_utils
     mo_def
     mo_config

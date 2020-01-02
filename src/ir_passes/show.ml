@@ -54,7 +54,7 @@ let show_name_for t =
   "@show<" ^ typ_id t ^ ">"
 
 let show_fun_typ_for t =
-  T.Func (T.Local, T.Returns, [], [t], [T.Prim T.Text])
+  T.Func (T.Local, T.Returns, [], [t], [T.text])
 
 let show_var_for t : Construct.var =
   idE (show_name_for t) (show_fun_typ_for t)
@@ -73,14 +73,14 @@ let define_show : T.typ -> Ir.exp -> Ir.dec = fun t e ->
 let text_exp : Ir.exp' -> Ir.exp = fun e ->
   { it = e;
     at = no_region;
-    note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
+    note = { note_typ = T.text; note_eff = T.Triv }
   }
 
 let invoke_generated_show : T.typ -> Ir.exp -> Ir.exp = fun t e ->
   text_exp (CallE (show_var_for t, [], e))
 
 let invoke_prelude_show : string -> T.typ -> Ir.exp -> Ir.exp = fun n t e ->
-  let fun_typ = T.Func (T.Local, T.Returns, [], [t], [T.Prim T.Text]) in
+  let fun_typ = T.Func (T.Local, T.Returns, [], [t], [T.text]) in
   text_exp (CallE
     ( { it = VarE n
       ; at = no_region
@@ -93,7 +93,7 @@ let invoke_prelude_show : string -> T.typ -> Ir.exp -> Ir.exp = fun n t e ->
 
 let invoke_text_of_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.Prim T.Text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.text]) in
   text_exp (CallE
     ( { it = VarE "@text_of_option"
       ; at = no_region
@@ -109,7 +109,7 @@ let invoke_text_of_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
 
 let invoke_text_of_variant : T.typ -> Ir.exp -> T.lab -> Ir.exp -> Ir.exp = fun t f l e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [T.Prim T.Text; show_fun_typ_for (T.Var ("T",0)); T.Var ("T",0)], [T.Prim T.Text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [T.text; show_fun_typ_for (T.Var ("T",0)); T.Var ("T",0)], [T.text]) in
   text_exp (CallE
     ( { it = VarE "@text_of_variant"
       ; at = no_region
@@ -118,14 +118,14 @@ let invoke_text_of_variant : T.typ -> Ir.exp -> T.lab -> Ir.exp -> Ir.exp = fun 
     , [t]
     , { it = TupE [textE l; f; e]
       ; at = no_region
-      ; note = { note_typ = T.Tup [T.Prim T.Text; show_fun_typ_for t; t]; note_eff = T.Triv }
+      ; note = { note_typ = T.Tup [T.text; show_fun_typ_for t; t]; note_eff = T.Triv }
       }
     )
   )
 
 let invoke_text_of_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.Prim T.Text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.text]) in
   text_exp (CallE
     ( { it = VarE "@text_of_array"
       ; at = no_region
@@ -141,7 +141,7 @@ let invoke_text_of_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
 
 let invoke_text_of_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.Prim T.Text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.text]) in
   text_exp (CallE
     ( { it = VarE "@text_of_array_mut"
       ; at = no_region
@@ -165,7 +165,7 @@ let list_build : 'a -> 'a -> 'a -> 'a list -> 'a list = fun pre sep post xs ->
 let catE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   { it = PrimE (BinPrim (T.text, Operator.CatOp), [e1; e2])
   ; at = no_region
-  ; note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
+  ; note = { note_typ = T.text; note_eff = T.Triv }
   }
 
 let cat_list : Ir.exp list -> Ir.exp = fun es ->
@@ -178,13 +178,13 @@ let cat_list : Ir.exp list -> Ir.exp = fun es ->
 
 let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   match t with
-  | T.Prim T.Bool ->
+  | T.(Prim Bool) ->
     define_show t (invoke_prelude_show "@text_of_Bool" t (argE t)),
     []
-  | T.Prim T.Nat ->
+  | T.(Prim Nat) ->
     define_show t (invoke_prelude_show "@text_of_Nat" t (argE t)),
     []
-  | T.Prim T.Int ->
+  | T.(Prim Int) ->
     define_show t (invoke_prelude_show "@text_of_Int" t (argE t)),
     []
   | T.(Prim Nat8) ->
@@ -223,10 +223,13 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.(Prim Word64) ->
     define_show t (invoke_prelude_show "@text_of_Word64" t (argE t)),
     []
-  | T.Prim T.Text ->
+  | T.(Prim Text) ->
     define_show t (invoke_prelude_show "@text_of_Text" t (argE t)),
     []
-  | T.Prim T.Null ->
+  | T.(Prim Char) ->
+    define_show t (invoke_prelude_show "@text_of_Char" t (argE t)),
+    []
+  | T.(Prim Null) ->
     define_show t (textE ("null")),
     []
   | T.Func _ ->
@@ -298,7 +301,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
           (varP (argE t')), (* Shadowing, but that's fine *)
           (invoke_text_of_variant t' (show_var_for t') l (argE t'))
         ) fs)
-        (T.Prim T.Text)
+        (T.text)
     ),
     List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Non ->
@@ -354,8 +357,8 @@ and t_exp' env = function
     DotE (t_exp env exp1, id)
   | ActorDotE (exp1, id) ->
     ActorDotE (t_exp env exp1, id)
-  | AssignE (exp1, exp2) ->
-    AssignE (t_exp env exp1, t_exp env exp2)
+  | AssignE (lexp1, exp2) ->
+    AssignE (t_lexp env lexp1, t_exp env exp2)
   | ArrayE (mut, t, exps) ->
     ArrayE (mut, t, t_exps env exps)
   | IdxE (exp1, exp2) ->
@@ -411,6 +414,14 @@ and t_exp' env = function
     let ds' = t_decs env1 ds in
     let decls = show_decls !(env1.params) in
     ActorE (id, decls @ ds', fields, typ)
+
+and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
+and t_lexp' env = function
+  | VarLE id -> VarLE id
+  | IdxLE (exp1, exp2) ->
+    IdxLE (t_exp env exp1, t_exp env exp2)
+  | DotLE (exp1, n) ->
+    DotLE (t_exp env exp1, n)
 
 and t_dec env dec = { dec with it = t_dec' env dec.it }
 

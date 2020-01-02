@@ -1,4 +1,5 @@
 open Mo_frontend
+open Mo_config
 module Lsp = Lsp.Lsp_t
 
 type cursor_target =
@@ -39,15 +40,37 @@ let cursor_target_at_pos
     | _ -> loop (next ()) in
   try loop (next ()) with _ -> None
 
+let is_package_path (path : string) =
+  let open Pipeline.URL in
+  match parse path with
+  | Ok (Package _) -> true
+  | _ -> false
+
+let uri_for_package (path : string) =
+  let open Pipeline.URL in
+  match parse path with
+  | Ok (Package (pkg, path)) ->
+     begin match Flags.M.find_opt pkg !Flags.package_urls with
+     | None -> None
+     | Some pkg_path ->
+        (* Resolved package paths are always absolute *)
+        (* TBR: But Flags.package_urls does not contain the resolved paths! *)
+        Some ("file://" ^ Filename.concat pkg_path path)
+     end
+  | _ -> None
+
 let import_relative_to_project_root root module_path dependency =
-  match Pipeline__.File_path.relative_to root module_path with
-  | None -> None
-  | Some root_to_module ->
-     root_to_module
-     |> Filename.dirname
-     |> Lib.Fun.flip Filename.concat dependency
-     |> Pipeline__.File_path.normalise
-     |> Lib.Option.some
+  if is_package_path dependency
+  then Some dependency
+  else
+    match Lib.FilePath.relative_to root module_path with
+    | None -> None
+    | Some root_to_module ->
+       root_to_module
+       |> Filename.dirname
+       |> Lib.Fun.flip Filename.concat dependency
+       |> Lib.FilePath.normalise
+       |> Lib.Option.some
 
 (* Given the source of a module, figure out under what names what
    modules have been imported. Normalizes the imported modules

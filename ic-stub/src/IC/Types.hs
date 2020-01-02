@@ -25,6 +25,8 @@ prettyBlob b = "0x" ++ T.unpack (T.encodeHex (BS.toStrict b))
 prettyID :: EntityId -> String
 prettyID = prettyBlob . rawEntityId -- implement the "ic:…" stuff
 
+newtype Responded = Responded Bool
+    deriving Show
 
 data RejectCode
     = RC_SYS_FATAL

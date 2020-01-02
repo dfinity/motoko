@@ -143,8 +143,7 @@ let in_shared_async env =
 let in_oneway_ignore env =
   match env.context with
   | _ ::
-    AnnotE  _  ::
-    BlockE [ {it = LetD ({ it = WildP;_}, _); _} ] ::
+    BlockE [ {it = IgnoreD _; _} ] ::
     FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
     _ ->
     (match typ_opt with
@@ -169,6 +168,20 @@ let infer_mut mut : T.typ -> T.typ =
   | Const -> fun t -> t
   | Var -> fun t -> T.Mut t
 
+(* Imports *)
+
+let check_import env at f ri =
+  let full_path =
+    match !ri with
+    | Unresolved -> error env at "unresolved import %s" f
+    | LibPath fp -> fp
+    | IDLPath (fp, _) -> fp
+  in
+  match T.Env.find_opt full_path env.libs with
+  | Some T.Pre ->
+    error env at "cannot infer type of forward import %s" f
+  | Some t -> t
+  | None -> error env at "imported file %s not loaded" full_path
 
 (* Paths *)
 
@@ -225,16 +238,7 @@ let error_shared env t at fmt =
   | Some t1 ->
     let s = Printf.sprintf "\ntype\n  %s\nis or contains non-shared type\n  %s"
       (T.string_of_typ_expand t) (T.string_of_typ_expand t1) in
-    Printf.ksprintf
-      (fun s1 ->
-        Diag.add_msg env.msgs (type_error at (s1^s));
-        match t1 with
-        | T.Obj (T.Actor, _) ->
-          error_in [Flags.ICMode] env at "actor types are non-shared."
-        | T.Func (T.Shared _, _, _, _, _) ->
-          error_in [Flags.ICMode] env at "shared function types are non-shared."
-        | _ -> raise Recover)
-      fmt
+    Printf.ksprintf (fun s1 -> Diag.add_msg env.msgs (type_error at (s1^s)); raise Recover) fmt
 
 let as_domT t =
   match t.Source.it with
@@ -287,7 +291,6 @@ and check_typ' env typ : T.typ =
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
-
     if Type.is_shared_sort sort.it then
     if not env.pre then begin
       let t1 = T.seq ts1 in
@@ -589,6 +592,9 @@ and infer_exp'' env exp : T.typ =
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
+  | ActorUrlE exp' ->
+    if not env.pre then check_exp env T.text exp';
+    error env exp.at "no type can be inferred for actor reference"
   | UnE (ot, op, exp1) ->
     let t1 = infer_exp_promote env exp1 in
     let t = Operator.type_unop op t1 in
@@ -636,7 +642,7 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t);
       ot := t
     end;
-    T.Prim T.Text
+    T.text
   | TupE exps ->
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
@@ -712,20 +718,21 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | FuncE (_, sort, typ_binds, pat, typ_opt, exp) ->
-    if not env.pre && not in_actor && T.is_shared_sort sort.it then
+  | FuncE (_, sort_pat, typ_binds, pat, typ_opt, exp) ->
+    if not env.pre && not in_actor && T.is_shared_sort sort_pat.it then
       error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let typ =
       match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
-    let c, ts2 = as_codomT sort.it typ in
-    check_shared_return env typ.at sort.it c ts2;
-
+    let sort, ve = check_sort_pat env sort_pat in
+    let c, ts2 = as_codomT sort typ in
+    check_shared_return env typ.at sort c ts2;
     let cs, ts, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
-    let t1, ve = infer_pat_exhaustive env' pat in
+    let t1, ve1 = infer_pat_exhaustive env' pat in
+    let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
     let codom = T.codom c ts2 in
     if not env.pre then begin
@@ -733,10 +740,9 @@ and infer_exp'' env exp : T.typ =
         { env' with
           labs = T.Env.empty;
           rets = Some codom;
-          async = false }
-      in
-      check_exp (adjoin_vals env'' ve) codom exp;
-      if Type.is_shared_sort sort.it then begin
+          async = false } in
+      check_exp (adjoin_vals env'' ve2) codom exp;
+      if Type.is_shared_sort sort then begin
         if not (T.shared t1) then
           error_shared env t1 pat.at
             "shared function has non-shared parameter type\n  %s"
@@ -748,7 +754,7 @@ and infer_exp'' env exp : T.typ =
               (T.string_of_typ_expand t);
         ) ts2;
         match c, ts2 with
-        | T.Returns,  [] when sort.it = T.Shared T.Write -> ()
+        | T.Returns, [] when sort = T.Shared T.Write -> ()
         | T.Promises, _ ->
           if not (isAsyncE exp) then
             error env exp.at
@@ -760,7 +766,7 @@ and infer_exp'' env exp : T.typ =
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Func (sort.it, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort, c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, insts, exp2) ->
     let t1 = infer_exp_promote env exp1 in
     let sort, tbs, t_arg, t_ret =
@@ -779,7 +785,6 @@ and infer_exp'' env exp : T.typ =
         if T.is_async t_ret && not (in_await env) then
           error_in [Flags.ICMode] env exp2.at
             "shared, async function must be called within an await expression";
-        error_in [Flags.ICMode] env exp1.at "calling a shared function not yet supported";
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
@@ -955,14 +960,8 @@ and infer_exp'' env exp : T.typ =
     let t = check_typ env typ in
     if not env.pre then check_exp env t exp1;
     t
-  | ImportE (_, fp) ->
-    assert (!fp <> "");
-    (match T.Env.find_opt !fp env.libs with
-    | Some T.Pre ->
-      error env exp.at "cannot infer type of forward import %s" !fp
-    | Some t -> t
-    | None -> error env exp.at "unresolved import %s" !fp
-    )
+  | ImportE (f, ri) ->
+    check_import env exp.at f ri
 
 and check_exp env t exp =
   assert (not env.pre);
@@ -980,6 +979,12 @@ and check_exp' env0 t exp : T.typ =
   | LitE lit, _ ->
     check_lit env t lit exp.at;
     t
+  | ActorUrlE exp', t' ->
+    check_exp env T.text exp';
+    begin match T.normalize t' with
+    | T.(Obj (Actor, _)) -> t'
+    | _ -> error env exp.at "actor reference must have an actor type"
+    end
   | UnE (ot, op, exp1), _ when Operator.has_unop op t ->
     ot := t;
     check_exp env t exp1;
@@ -1042,20 +1047,22 @@ and check_exp' env0 t exp : T.typ =
         (String.concat " or\n  " ss)
     );
     t
-  | FuncE (_, s', [], pat, typ_opt, exp), T.Func (s, c, [], ts1, ts2) ->
-    if not env.pre && not env0.in_actor && T.is_shared_sort s'.it then
+  | FuncE (_, sort_pat,  [], pat, typ_opt, exp), T.Func (s, c, [], ts1, ts2) ->
+    let sort, ve = check_sort_pat env sort_pat in
+    if not env.pre && not env0.in_actor && T.is_shared_sort sort then
       error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
-    let ve = check_pat_exhaustive env (T.seq ts1) pat in
+    let ve1 = check_pat_exhaustive env (T.seq ts1) pat in
+    let ve2 = T.Env.adjoin ve ve1 in
     let codom = T.codom c ts2 in
     let t2 =
       match typ_opt with
       | None -> codom
       | Some typ -> check_typ env typ
     in
-    if s'.it <> s then
+    if sort <> s then
       error env exp.at
         "%sshared function does not match expected %sshared function type"
-        (if s'.it = T.Local then "non-" else "")
+        (if sort = T.Local then "non-" else "")
         (if s = T.Local then "non-" else "");
     if not (T.sub t2 codom) then
       error env exp.at
@@ -1067,7 +1074,7 @@ and check_exp' env0 t exp : T.typ =
         rets = Some t2;
         async = false }
     in
-    check_exp (adjoin_vals env' ve) t2 exp;
+    check_exp (adjoin_vals env' ve2) t2 exp;
     t
   | _ ->
     let t' = infer_exp env0 exp in
@@ -1191,6 +1198,14 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
     let typ, ve1 = infer_pat env pf.it.pat in
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ }::ts) ve'
+
+and check_sort_pat env sort_pat : T.func_sort * Scope.val_env =
+  match sort_pat.it with
+  | T.Local -> T.Local, T.Env.empty
+  | T.Shared (ss, pat) ->
+    if pat.it <> WildP then
+      error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "shared function cannot take a context pattern";
+    T.Shared ss, check_pat_exhaustive env T.ctxt pat
 
 and check_pat_exhaustive env t pat : Scope.val_env =
   let ve = check_pat env t pat in
@@ -1373,7 +1388,7 @@ and pub_field field xs : region T.Env.t * region T.Env.t =
 
 and pub_dec dec xs : region T.Env.t * region T.Env.t =
   match dec.it with
-  | ExpD _ -> xs
+  | ExpD _ | IgnoreD _ -> xs
   | LetD (pat, _) -> pub_pat pat xs
   | VarD (id, _) -> pub_val_id id xs
   | ClassD (id, _, _, _, _, _, _) ->
@@ -1454,8 +1469,8 @@ and object_of_scope env sort fields scope at =
       (T.string_of_typ_expand t)
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE (_, sort, _, _, _, _); _}) ->
-    T.is_shared_sort sort.it
+  | LetD ({it = VarP _; _}, {it = FuncE (_, sort_pat, _, _, _, _); _}) ->
+    T.is_shared_sort sort_pat.it
   | _ -> false
 
 and is_typ_dec dec : bool = match dec.it with
@@ -1524,6 +1539,9 @@ and infer_dec env dec : T.typ =
   | ExpD exp
   | LetD (_, exp) ->
     infer_exp env exp
+  | IgnoreD exp ->
+    if not env.pre then check_exp env T.Any exp;
+    T.unit
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
@@ -1595,9 +1613,8 @@ and check_dec env t dec =
 
 and infer_val_path env exp : T.typ option =
   match exp.it with
-  | ImportE (_, fp) ->
-    assert (!fp <> "");
-    T.Env.find_opt !fp env.libs
+  | ImportE (f, ri) ->
+    Some (check_import env exp.at f ri)
   | VarE id ->
     T.Env.find_opt id.it env.vals
   | DotE (path, id) ->
@@ -1623,7 +1640,7 @@ and gather_block_decs env decs : Scope.t =
 
 and gather_dec env scope dec : Scope.t =
   match dec.it with
-  | ExpD _ -> scope
+  | ExpD _ | IgnoreD _ -> scope
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -1718,7 +1735,7 @@ and infer_dec_typdecs env dec : Scope.t =
        | T.Obj (_, _) as t' -> { Scope.empty with val_env = T.Env.singleton id.it t' }
        | _ -> { Scope.empty with val_env = T.Env.singleton id.it T.Pre }
     )
-  | LetD _ | ExpD _ | VarD _ ->
+  | LetD _ | ExpD _ | IgnoreD _ | VarD _ ->
     Scope.empty
   | TypD (id, binds, typ) ->
     let c = T.Env.find id.it env.typs in
@@ -1781,7 +1798,7 @@ and infer_block_valdecs env decs scope : Scope.t =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
-  | ExpD _ ->
+  | ExpD _ | IgnoreD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
@@ -1835,6 +1852,7 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
+
 
 (* Programs *)
 

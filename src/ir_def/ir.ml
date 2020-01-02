@@ -71,7 +71,7 @@ and exp' =
   | TagE of id * exp                           (* variant injection *)
   | DotE of exp * Type.lab                     (* object projection *)
   | ActorDotE of exp * Type.lab                (* actor field access *)
-  | AssignE of exp * exp                       (* assignment *)
+  | AssignE of lexp * exp                      (* assignment *)
   | ArrayE of mut * Type.typ * exp list        (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | CallE of exp * Type.typ list * exp         (* function call *)
@@ -101,6 +101,13 @@ and field' = {name : Type.lab; var : id} (* the var is by reference, not by valu
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
 
+and lexp = (lexp', Type.typ) Source.annotated_phrase
+and lexp' =
+  | VarLE of id                                (* variable *)
+  | IdxLE of exp * exp                         (* array indexing *)
+  | DotLE of exp * Type.lab                    (* object projection *)
+
+
 and prim =
   | UnPrim of Type.typ * unop         (* unary operator *)
   | BinPrim of Type.typ * binop       (* binary operator *)
@@ -109,11 +116,13 @@ and prim =
   | NumConvPrim of Type.prim * Type.prim
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
   | ActorOfIdBlob of Type.typ
+  | BlobOfIcUrl                       (* traps on syntax or checksum failure *)
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   | CPSAwait
   | CPSAsync
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
+  | ICCallerPrim
   | ICCallPrim
 
 
