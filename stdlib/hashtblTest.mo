@@ -1,5 +1,5 @@
-import H "Hashtbl.mo";
-import Hash "Hash.mo";
+import H "hashtbl.mo";
+import Hash "hash.mo";
 
 func textIsEq(x:Text,y:Text):Bool { x == y };
 
