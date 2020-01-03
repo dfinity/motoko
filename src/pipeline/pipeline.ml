@@ -256,19 +256,18 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         )))))
       end
     | Syntax.IDLPath (f, _) ->
-      Diag.bind (Idllib.Pipeline.check_file f) (fun _ ->
-        let scaffold_type =
-          (* hard-coded for test/run-drun/actor-import.mo *)
-          (* to be replaced with the imported type in #1026 *)
-          let open Type in
-          Obj (Actor, [{lab = "go"; typ = Func (Shared Write, Promises, [], [], [Obj (Actor, [])])}])
-        in
-        let sscope = Scope.lib f scaffold_type in
-        senv := Scope.adjoin !senv sscope;
-        Diag.warn ri.Source.at "import"
-          (Printf.sprintf "imported actors assumed to have type %s"
-            (Type.string_of_typ scaffold_type))
-      )
+       Diag.bind (Idllib.Pipeline.check_file f) (fun (prog, idl_scope, actor_opt) ->
+       if actor_opt = None then
+         Error [{
+           Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+           text = Printf.sprintf "file %s does not define a service" f
+         }]
+       else 
+         let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
+         let sscope = Scope.lib f actor in
+         senv := Scope.adjoin !senv sscope;
+         Diag.return ()
+       )
   and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
