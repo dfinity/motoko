@@ -25,7 +25,8 @@ end
 module Uint32 =
 struct
   type t = int32
-  let of_string = Int32.of_string
+  let of_string str = Int32.of_string ("0u" ^ str)
+  let of_string_opt str = Int32.of_string_opt ("0u" ^ str)                    
   let to_string n = Printf.sprintf "%lu" n
   let add = Int32.add
   let sub = Int32.sub

@@ -249,6 +249,13 @@ rec {
           '';
       }; in
 
+    let perf_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+        checkPhase = ''
+          export PERF_OUT=$out
+        '' + args.checkPhase;
+      }); in
+
     let qc = testDerivation {
       name = "test-qc";
       # maybe use wasm instead?
@@ -283,6 +290,7 @@ rec {
 
     { run       = test_subdir "run"       [ moc ] ;
       run-drun  = test_subdir "run-drun"  [ moc drun ic-stub ];
+      perf      = perf_subdir "perf"      [ moc drun ];
       fail      = test_subdir "fail"      [ moc ];
       repl      = test_subdir "repl"      [ moc ];
       ld        = test_subdir "ld"        [ mo-ld ];

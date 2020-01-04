@@ -3,19 +3,18 @@ The implementation of the Text type in Motoko.
 
 One main goal of this datastructure (inspired by ropes and similar) is to
 support constant time concatenation, by having a dedicated heap object for
-the concatentation of two strings.
+the concatenation of two strings.
 
-The current implementation does not do any of this; the first goal is to wire up
+The first goal was to wire up
 this C code with the RTS that encapsulates the internals of strings.
 
 This encapsulation is not complete (and likely never will)
  * the compiler needs to emit static text literals,
  * the garbage collector needs to know some of the internals.
 
-In a subsequent step, the actual concatentation node will be introduced.
+In a subsequent step, the actual concatenation node has been introduced.
 
-From then on, there are stretch goals like:
- - when concatenating short (<= 8 bytes maybe) strings, just copy them
+From here on, there are stretch goals like:
  - restructure recursive code to not use unbounded C stack
  - maybe rebalancing
 */
