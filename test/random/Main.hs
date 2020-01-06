@@ -62,6 +62,20 @@ matchingProps = testGroup "Pattern matching"
   , QC.testProperty "inter-actor" $ prop_matchInActor
   ]
 
+
+data Embedder = Reference | WasmTime
+
+instance Arbitrary Embedder where arbitrary = elements [Reference, WasmTime]
+
+embedderCommand Reference = "wasm"
+embedderCommand WasmTime = "wasmtime"
+
+addEmbedderArgs Reference = id
+addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
+
+embedder :: Embedder
+embedder = Reference
+
 (runScriptNoFuzz, runScriptWantFuzz) = (runner ExitSuccess id, runner (ExitFailure 1) not)
     where runner reqOutcome relevant name testCase =
             let as = name <.> "as"
@@ -71,7 +85,7 @@ matchingProps = testGroup "Pattern matching"
                             res@(exitCode, _, _) <- procStrictWithErr "moc"
                                 ["-no-system-api", "-no-check-ir", fileArg as] empty
                             if ExitSuccess == exitCode
-                            then (True,) <$> procStrictWithErr "wasm" [fileArg wasm] empty
+                            then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
                             else pure (False, res)
             in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
 
@@ -202,7 +216,7 @@ prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
                         res@(exitCode, _, _) <- procStrictWithErr "moc"
                                  ["-no-system-api", "-no-check-ir", "tests.mo"] empty
                         if ExitSuccess == exitCode
-                        then (True,) <$> procStrictWithErr "wasm" ["tests.wasm"] empty
+                        then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder ["tests.wasm"]) empty
                         else pure (False, res)
   res@(compiled, (exitCode, out, err)) <- run $ script testCase
   when compiled $ do
