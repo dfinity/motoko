@@ -74,7 +74,7 @@ addEmbedderArgs Reference = id
 addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
 
 embedder :: Embedder
-embedder = Reference
+embedder = WasmTime
 
 (runScriptNoFuzz, runScriptWantFuzz) = (runner ExitSuccess id, runner (ExitFailure 1) not)
     where runner reqOutcome relevant name testCase =
