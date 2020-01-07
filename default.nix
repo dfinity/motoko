@@ -246,6 +246,11 @@ rec {
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
             make -C ${dir}
+
+	    if test -e ${dir}/_out/stats.csv
+	    then
+	      cp ${dir}/_out/stats.csv $out
+	    fi
           '';
       }; in
 
