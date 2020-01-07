@@ -1,10 +1,10 @@
-import H "hashtbl.mo";
+import H "hashMap.mo";
 import Hash "hash.mo";
 
 func textIsEq(x:Text,y:Text):Bool { x == y };
 
 debug {
-  let a = H.Hashtbl<Text, Nat>(3, textIsEq, Hash.Hash.hashOfText);
+  let a = H.HashMap<Text, Nat>(3, textIsEq, Hash.Hash.hashOfText);
 
   ignore a.set("apple", 1);
   ignore a.set("banana", 2);
@@ -83,6 +83,28 @@ debug {
   for ((k,v) in b.iter()) {
     debugPrint(debug_show (k,v));
     switch (a.get(k)) {
+    case null { assert false };
+    case (?w) { assert v == w };
+    };
+  };
+
+
+  // test fromIter method
+  let c = H.fromIter<Text, Nat>(b.iter(), 0, textIsEq, Hash.Hash.hashOfText);
+
+  // c agrees with each entry of b
+  for ((k,v) in b.iter()) {
+    debugPrint(debug_show (k,v));
+    switch (c.get(k)) {
+    case null { assert false };
+    case (?w) { assert v == w };
+    };
+  };
+
+  // b agrees with each entry of c
+  for ((k,v) in c.iter()) {
+    debugPrint(debug_show (k,v));
+    switch (b.get(k)) {
     case null { assert false };
     case (?w) { assert v == w };
     };

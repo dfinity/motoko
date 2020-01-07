@@ -26,7 +26,7 @@ Internally, table growth policy is very simple, for now:
 // key-val list type
 type KVs<K,V> = AssocList.AssocList<K,V>;
 
-public class Hashtbl<K,V> (
+public class HashMap<K,V> (
   initCapacity: Nat,
   keyEq: (K,K) -> Bool,
   keyHash: K -> Hash.Hash) {
@@ -67,8 +67,12 @@ public class Hashtbl<K,V> (
     if (_count >= table.len()) {
       let size =
         if (_count == 0)
-          initCapacity
-        else table.len() * 2;
+          if (initCapacity > 0)
+            initCapacity
+          else
+            1
+        else
+          table.len() * 2;
       let table2 = Array_init<KVs<K,V>>(size, null);
       for (i in table.keys()) {
         var kvs = table[i];
@@ -131,10 +135,10 @@ public class Hashtbl<K,V> (
 // clone cannot be an efficient object method,
 // ...but is still useful in tests, and beyond.
 public func clone<K,V>
-  (h:Hashtbl<K,V>,
+  (h:HashMap<K,V>,
    keyEq: (K,K) -> Bool,
-   keyHash: K -> Hash.Hash) : Hashtbl<K,V> {
-  let h2 = Hashtbl<K,V>(h.count(), keyEq, keyHash);
+   keyHash: K -> Hash.Hash) : HashMap<K,V> {
+  let h2 = HashMap<K,V>(h.count(), keyEq, keyHash);
   for ((k,v) in h.iter()) {
     ignore h2.set(k,v);
   };
@@ -145,21 +149,21 @@ public func clone<K,V>
 public func fromIter<K, V>(iter:Iter<(K, V)>,
                            initCapacity: Nat,
                            keyEq: (K,K) -> Bool,
-                           keyHash: K -> Hash.Hash) : Hashtbl<K,V> {
-  let h = Hashtbl<K,V>(initCapacity, keyEq, keyHash);
-  for ((k,v) in h.iter()) {
+                           keyHash: K -> Hash.Hash) : HashMap<K,V> {
+  let h = HashMap<K,V>(initCapacity, keyEq, keyHash);
+  for ((k,v) in iter) {
     ignore h.set(k,v);
   };
   h
 };
 
 public func map<K, V1, V2>
-  (h:Hashtbl<K,V1>,
+  (h:HashMap<K,V1>,
    keyEq: (K,K) -> Bool,
    keyHash: K -> Hash.Hash,
    mapFn: (K, V1) -> V2,
-  ) : Hashtbl<K,V2> {
-  let h2 = Hashtbl<K,V2>(h.count(), keyEq, keyHash);
+  ) : HashMap<K,V2> {
+  let h2 = HashMap<K,V2>(h.count(), keyEq, keyHash);
   for ((k, v1) in h.iter()) {
     let v2 = mapFn(k, v1);
     ignore h2.set(k,v2);
@@ -168,12 +172,12 @@ public func map<K, V1, V2>
 };
 
 public func mapFilter<K, V1, V2>
-  (h:Hashtbl<K,V1>,
+  (h:HashMap<K,V1>,
    keyEq: (K,K) -> Bool,
    keyHash: K -> Hash.Hash,
    mapFn: (K, V1) -> ?V2,
-  ) : Hashtbl<K,V2> {
-  let h2 = Hashtbl<K,V2>(h.count(), keyEq, keyHash);
+  ) : HashMap<K,V2> {
+  let h2 = HashMap<K,V2>(h.count(), keyEq, keyHash);
   for ((k, v1) in h.iter()) {
     switch (mapFn(k, v1)) {
       case null { };
