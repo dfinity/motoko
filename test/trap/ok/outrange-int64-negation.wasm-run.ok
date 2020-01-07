@@ -5,4 +5,3 @@ Error: failed to process main module `_out/outrange-int64-negation.wasm`
 Caused by:
     0: Instantiation failed during setup
     1: Trap occurred while invoking start function: wasm trap: unreachable, source location: @___:
-
