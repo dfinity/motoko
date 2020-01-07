@@ -1,8 +1,8 @@
 rec {
-  rev = "96c9578020133fe64feab90c00f3cb880d53ad0d";
+  rev = "6edbe844b258bd26afce8f356f5e3072c2ac4353";
 
   src = builtins.fetchTarball {
-    sha256 = "03rn7gn8r129a8cj527nhs7k28ibzwqw083iirwvas2x4k9mir9z";
+    sha256 = "0sng9yf45ass96hpqrkg3yxsfsgngv5wm5w8b7czr9xcy2z2g56z";
     url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
   };
 
