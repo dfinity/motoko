@@ -11,6 +11,8 @@
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
+#    -p: Produce perf statistics
+#        only compiles and runs drun, writes stats to $PERF_OUT
 #
 
 function realpath() {
@@ -21,6 +23,7 @@ function realpath() {
 ACCEPT=no
 DRUN=no
 IDL=no
+PERF=no
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
@@ -32,13 +35,16 @@ SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "adstir" o; do
+while getopts "adpstir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
             ;;
         d)
             DRUN=yes
+            ;;
+        p)
+            PERF=yes
             ;;
         s)
             ECHO=true
@@ -91,7 +97,7 @@ function run () {
   local ext="$1"
   shift
 
-  if grep -q "^//SKIP $ext" $file; then return 1; fi
+  if grep -q "^//SKIP $ext$" $file; then return 1; fi
 
   if test -e $out/$base.$ext
   then
@@ -114,6 +120,29 @@ function run () {
 
   return $ret
 }
+
+function run_if () {
+  # first argument: a file extension
+  # remaining argument: passed to run
+
+  local ext="$1"
+  shift
+
+  if test -e $out/$base.$ext
+  then
+    run "$@"
+  else
+    return 1
+  fi
+}
+
+if [ "$PERF" = "yes" ]
+then
+  if [ -z "$PERF_OUT" ]
+  then
+    echo "Warning: \$PERF_OUT not set" >&2
+  fi
+fi
 
 for file in "$@";
 do
@@ -178,7 +207,7 @@ do
           run didc $DIDC --check $out/$base.did
         fi
       else
-        if [ "$SKIP_RUNNING" != yes ]
+        if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
           # Interpret
           run run $MOC $moc_extra_flags --hide-warnings -r $base.mo
@@ -225,24 +254,22 @@ do
 
 
         # Compile
-        if [ $DRUN = no ]
+        if [ $DRUN = yes ]
         then
-          run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
-        else
           run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
-          can_use_drun=$?
-
-          if [ "$can_use_drun" -ne 0 ];
-          then
-            run comp-stub $MOC $moc_extra_flags -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
-          fi
+          run comp-stub $MOC $moc_extra_flags -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.stub.wasm
+	elif [ $PERF = yes ]
+	then
+          run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+	else
+          run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
+
+        run_if wasm valid wasm-validate $out/$base.wasm
+        run_if stub.wasm valid-stub wasm-validate $out/$base.stub.wasm
 
         if [ -e $out/$base.wasm ]
         then
-          # Validate wasm
-          run valid wasm-validate $out/$base.wasm
-
           # Check filecheck
           if [ "$SKIP_RUNNING" != yes ]
           then
@@ -254,22 +281,34 @@ do
               diff_files="$diff_files $base.filecheck"
             fi
           fi
+        fi
 
-          # Run compiled program
-          if [ "$SKIP_RUNNING" != yes ]
+        # Run compiled program
+        if [ "$SKIP_RUNNING" != yes ]
+        then
+          if [ $DRUN = yes ]
           then
-            if [ $DRUN = no ]
-            then
-              run wasm-run $WASMTIME --disable-cache $out/$base.wasm
-            elif [ "$can_use_drun" -eq 0 ]
-            then
-              run drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
-            else
-              DRUN=$IC_STUB_RUN \
-              run ic-stub-run $DRUN_WRAPPER $out/$base.wasm $mangled
-            fi
+            run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
+            DRUN=$IC_STUB_RUN \
+            run_if stub.wasm ic-stub-run $DRUN_WRAPPER $out/$base.stub.wasm $mangled
+          elif [ $PERF = yes ]
+          then
+            run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
+          else
+            run_if wasm wasm-run $WASMTIME --disable-cache $out/$base.wasm
           fi
         fi
+
+        # collect size stats
+        if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
+        then
+	   if [ -n "$PERF_OUT" ]
+           then
+             wasm-strip $out/$base.wasm
+             echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
+           fi
+        fi
+
 	rm -f $mangled
       fi
     fi

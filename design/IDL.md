@@ -327,7 +327,7 @@ A *record* is a *heterogeneous* sequence of values of different data types. Each
 ```
 We identify `<fieldtype>` lists in a record type up to reordering.
 
-The id is described as a simple unsigned integer that has to fit the 64 bit value range. It can be given in either decimal or hexadecimal notation:
+The id is described as a simple unsigned integer that has to fit the 32 bit value range. It can be given in either decimal or hexadecimal notation:
 
 ```
 <nat> ::= (0..9)(_? 0..9)* | 0x(0..9|a..f|A..F)(_? 0..9|a..f|A..F)*

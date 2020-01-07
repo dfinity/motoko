@@ -1,5 +1,7 @@
 (* common flags for the moc compiler *)
 
+module M = Map.Make(String)
+
 type compile_mode = WasmMode | ICMode | StubMode | WASIMode
 
 let trace = ref false
@@ -15,7 +17,9 @@ let dump_parse = ref false
 let dump_tc = ref false
 let dump_lowering = ref false
 let check_ir = ref true
-let package_urls : (string * string) list ref = ref []
+let package_urls : string M.t ref = ref M.empty
+let actor_aliases : string M.t ref = ref M.empty
+let actor_idl_path : string option ref = ref None
 let profile = ref false
 let profile_verbose = ref false
 let profile_file = ref "profiling-counters.csv"

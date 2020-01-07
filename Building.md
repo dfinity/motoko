@@ -32,22 +32,13 @@ This invokes `dune` under the hood, which will, as a side effect, also create
 You can get a development environment that is independent of nix (although
 installing all required tools without nix is out of scope).
 
- * Use your system’s package manager to install `ocaml` and
+ * Use your system’s package manager to install `ocaml` (4.07) and
    [`opam`](https://opam.ocaml.org/doc/Install.html)
  * Install the packages:
    ```
-   opam install num vlq yojson menhir
+   opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test bisect_ppx atdgen wasm
    ```
- * Install the `wasm` Ocaml package. We use a newer version than is on opam, and a
-   fork that supports the multi-value extension. See `nix/ocaml-wasm.nix` for
-   the precise repository and version. You can use `nix` to fetch the correct
-   source for you, and run the manual installation inside:
-   ```
-   cp -R $(nix-build --no-out-link -Q -A wasm.src)/interpreter /tmp/interpreter
-   cd /tmp/interpreter
-   make install
-   ```
- * Install various command line tools used by, in particuar, the test suite:
+ * Install various command line tools used by, in particular, the test suite:
    ```
    nix-env -i -f . -A wasmtime
    nix-env -i -f . -A filecheck

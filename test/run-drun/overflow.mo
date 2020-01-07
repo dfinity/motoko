@@ -1,4 +1,4 @@
-// We have theses tests in run-drun because we want to check that certain
+// We have these tests in run-drun because we want to check that certain
 // traps are happening, and a good way to test this is if a message gets
 // aborted.
 

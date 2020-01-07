@@ -80,6 +80,7 @@ let primE prim es =
     | ShowPrim _ -> T.text
     | ICReplyPrim _ -> T.Non
     | ICRejectPrim -> T.Non
+    | ICCallerPrim -> T.caller
     | CastPrim (t1, t2) -> t2
     | _ -> assert false (* implement more as needed *)
   in
@@ -148,13 +149,17 @@ let dec_eff dec = match dec.it with
   | TypD _ -> T.Triv
   | LetD (_,e) | VarD (_,e) -> eff e
 
-let is_useful_dec dec = match dec.it with
-  | LetD ({it = WildP;_}, {it = TupE [];_}) -> false
-  | LetD ({it = TupP [];_}, {it = TupE [];_}) -> false
-  | _ -> true
+let rec simpl_decs decs = List.concat (List.map simpl_dec decs)
+and simpl_dec dec = match dec.it with
+  | LetD ({it = WildP;_}, {it = TupE [];_}) ->
+    []
+  | LetD ({it = TupP ps;_}, {it = TupE es;_}) when List.length ps = List.length es ->
+    simpl_decs (List.map2 (fun p e -> LetD (p, e) @@ p.at) ps es)
+  | _ ->
+    [ dec ]
 
 let blockE decs exp =
-  let decs' = List.filter is_useful_dec decs in
+  let decs' = simpl_decs decs in
   match decs' with
   | [] -> exp
   | _ ->
@@ -169,7 +174,13 @@ let blockE decs exp =
 let textE s =
   { it = LitE (TextLit s);
     at = no_region;
-    note = { note_typ = T.Prim T.Text; note_eff = T.Triv }
+    note = { note_typ = T.text; note_eff = T.Triv }
+  }
+
+let blobE s =
+  { it = LitE (BlobLit s);
+    at = no_region;
+    note = { note_typ = T.blob; note_eff = T.Triv }
   }
 
 let unitE =
@@ -293,11 +304,21 @@ let immuteE e =
   }
 
 
+(* just like we use exp also for vars, we use exp also for lvalues
+in the constructor DSL *)
+let lexp_of_exp' = function
+  | VarE i -> VarLE i
+  | DotE (e1,n) -> DotLE (e1, n)
+  | IdxE (e1,e2) -> IdxLE (e1, e2)
+  | _ -> failwith "Impossible: lexp_of_exp"
+
+let lexp_of_exp (e:exp) = { e with it = lexp_of_exp' e.it; note = typ e }
+
 let assignE exp1 exp2 =
   assert (T.is_mut (typ exp1));
-  { it = AssignE (exp1, exp2);
+  { it = AssignE (lexp_of_exp exp1, exp2);
     at = no_region;
-    note = { note_eff = Ir_effect.max_eff (eff exp1) (eff exp2);
+    note = { note_eff = eff exp2;
              note_typ = T.unit }
   }
 

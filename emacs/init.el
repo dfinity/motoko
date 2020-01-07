@@ -31,7 +31,7 @@
 ;; ide`. If you have a more complicated setup you have to pass the
 ;; proper entry point and library paths to the `mo-ide` binary
 ;; yourself.
-(setq mo/lsp-command '("dfx" "ide"))
+(setq mo/lsp-command '("dfx" "_language-service"))
 
 ;; Change this to point to the directory where you cloned the
 ;; motoko repo

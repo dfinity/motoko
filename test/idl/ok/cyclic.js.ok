@@ -6,7 +6,5 @@ export default ({ IDL }) => {
  const Z = A
  const Y = Z
  const X = Y
- const actor_S = new IDL.ActorInterface({
-  'f': IDL.Func([A, B, C, X, Y, Z], [], [])});
- return actor_S;
+ return new IDL.ActorInterface({'f': IDL.Func([A, B, C, X, Y, Z], [], [])});
 };

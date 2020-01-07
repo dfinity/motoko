@@ -32,6 +32,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | PrimE _
   | VarE _
   | LitE _
+  | ActorUrlE _
   | ImportE _
   | FuncE _ ->
     T.Triv
@@ -106,6 +107,7 @@ and effect_dec dec =
 and infer_effect_dec dec =
   match dec.it with
   | ExpD e
+  | IgnoreD e
   | LetD (_,e)
   | VarD (_, e) ->
     effect_exp e

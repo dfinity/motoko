@@ -13,176 +13,224 @@ It returns a list of all imported file names.
 
 *)
 
-(* written as a functor so we can allocate some temporary shared state without making it global *)
-
 type filepath = string
+type url = string
+type blob = string
 
-module S = Set.Make(String)
-module M = Map.Make(String)
+type resolved_imports = Syntax.resolved_import Source.phrase list
 
-(* a map of type package_map will map each package name to a(n optional) package URL,
-   which for now is just a filesystem path:
+(* This returns a map from Syntax.resolved_import
+   to the location of the first import of that library
+*)
+module RIM = Map.Make
+  (struct
+    type t = Syntax.resolved_import
+    let compare = compare
+  end)
 
-   e.g.,
+(* The Set variant is used in the pipeline module *)
+module S = Set.Make
+  (struct
+    type t = Syntax.resolved_import
+    let compare = compare
+  end)
+
+
+(* a map of type package_map will map each package name to local, non-relative
+   filepath e.g.,
    packages("std") = "/Users/home/username/.dfinity-sdk/src/mo-stdlib/0.1.0/"
    packages("foo") = "/Users/home/username/fooPackage/1.2.3/src"
 *)
-
-type package_map = string M.t
-
-type env = {
-  msgs : Diag.msg_store;
-  base : filepath;
-  packages : package_map;
-  imported : S.t ref;
-}
+module M = Map.Make(String)
+type package_map = filepath M.t
 
 open Syntax
 open Source
 
-(* match `f` against the URL pattern 'mo://package-name/path',
-   optionally returning the package-name and path components as a pair of strings.
+let append_lib_if_needed f =
+  if Sys.file_exists f && Sys.is_directory f
+  then Filename.concat f "lib.mo"
+  else f
 
-   e.g.,
-   match_package_name "mo:std/list"    = Some("std", "list")
-   match_package_name "mo:std/foo/bar" = Some("std", "foo/bar")
-   match_package_name "mo:foo/bar"     = Some("foo", "bar")
+let err_unrecognized_url msgs at url msg =
+  let open Diag in
+  add_msg msgs {
+      sev = Error;
+      at;
+      cat = "import";
+      text = Printf.sprintf "cannot parse import URL \"%s\": %s" url msg
+    }
 
-   match_package_name "mo:"            = None
-   match_package_name "mo:std"         = None
-   match_package_name "std/foo"        = None
-   match_package_name "std/foo/bar"    = None
+let err_unrecognized_alias_url msgs alias url msg =
+  let open Diag in
+  add_msg msgs {
+      sev = Error;
+      at = no_region;
+      cat = "actor-alias";
+      text = Printf.sprintf "cannot parse URL \"%s\" for actor alias \"%s\": %s" url alias msg
+    }
 
-*)
-let match_package_name (f: string) : (string * string) option =
-  let rec loop (f: string) (path_accum:string) : (string * string) option =
-    let (dir, base) = (Filename.dirname f, Filename.basename f) in
-    match dir with
-    | "." -> if path_accum = "" then None else Some (f, path_accum)
-    | _   ->
-      let path_accum =
-        match path_accum with
-        | "" -> base
-        | _  -> Filename.concat base path_accum
-      in
-      loop dir path_accum
-  in
-  if String.length f < 3 then None else
-    let (prefix, suffix) = (
-        String.sub f 0 3,
-        String.sub f 3 ((String.length f) - 3)
-      )
-    in
-    match prefix with
-    | "mo:" -> loop suffix ""
-    | _     -> None
+let err_actor_import_without_idl_path msgs at =
+  let open Diag in
+  add_msg msgs {
+      sev = Error;
+      at;
+      cat = "import";
+      text = Printf.sprintf "cannot import canister urls without --actor-idl param"
+    }
 
-(* using env, resolve import strings of the form "mo:package-name/mod1/mod2/item"
-   into the triple ("package-name", "package-url", "mod1/mod2/item") when the package name is defined.
-   Does not validate the package url or path.
- *)
-let resolve_package env (f: string) : (string * string * string) option =
-  match match_package_name f with
-  | None -> None
-  | Some (name, path) ->
-    if M.mem name env.packages then
-      Some (name, M.find name env.packages, path)
-    else
-      None
+let err_file_does_not_exist msgs at full_path =
+  let open Diag in
+  add_msg msgs {
+      sev = Error;
+      at;
+      cat = "import";
+      text = Printf.sprintf "file \"%s\" does not exist" full_path
+    }
 
-let resolve_import_string env region (f: string) (fp: string ref) =
-  let f =
-    match resolve_package env f with
-    | None -> f
-    | Some (_pname, url, path) -> Filename.concat url path
-  in
-  let f =
-    if Filename.is_relative f
-    then Filename.concat env.base f
-    else f in
-  let f =
-    if Sys.file_exists f && Sys.is_directory f
-    then Filename.concat f "lib.mo"
-    else f in
-  let f = File_path.normalise f in
-  if Sys.file_exists f
+let err_package_not_defined msgs at pkg =
+  let open Diag in
+  add_msg msgs {
+    sev = Error;
+    at;
+    cat = "import";
+    text = Printf.sprintf "package \"%s\" not defined" pkg
+  }
+
+let err_alias_not_defined msgs at alias =
+  let open Diag in
+  add_msg msgs {
+    sev = Error;
+    at;
+    cat = "import";
+    text = Printf.sprintf "canister alias \"%s\" not defined" alias
+  }
+
+let err_alias_wrong_scheme msgs at alias url =
+  let open Diag in
+  add_msg msgs {
+    sev = Error;
+    at;
+    cat = "import";
+    text = Printf.sprintf "canister alias \"%s\" target \"%s\" is not \"ic:\" url" alias url
+  }
+
+
+let err_package_file_does_not_exist msgs f pname =
+  let open Diag in
+  add_msg msgs {
+    sev = Error;
+    at = no_region;
+    cat = "package";
+    text = Printf.sprintf "file \"%s\" (for package `%s`) does not exist" f pname
+  }
+
+let add_lib_import msgs imported ri_ref at full_path =
+  let full_path = append_lib_if_needed full_path in
+  if Sys.file_exists full_path
   then begin
-      fp := f;
-      env.imported := S.add f !(env.imported)
-    end else
-    let open Diag in
-    add_msg env.msgs {
-        sev = Error;
-        at = region;
-        cat = "import";
-        text = Printf.sprintf "File \"%s\" does not exist" f
-      }
+    ri_ref := LibPath full_path;
+    imported := RIM.add (LibPath full_path) at !imported
+  end else
+    err_file_does_not_exist msgs at full_path
 
-(* compare to the filesystem semantics of function `resolve_import_string`:
-   the import-string to filesystem-path resolution semantics are related, but distinct.
- *)
-let resolve_package_url (msgs:Diag.msg_store) (base:filepath) (pname:string) (f: string) : string option =
+let add_idl_import msgs imported ri_ref at full_path bytes =
+  if Sys.file_exists full_path
+  then begin
+    ri_ref := IDLPath (full_path, bytes);
+    imported := RIM.add (IDLPath (full_path, bytes)) at !imported
+  end else
+    err_file_does_not_exist msgs at full_path
+
+
+
+let in_base base f =
+  if base = "."
+  then f
+  else Filename.concat base f
+
+let resolve_import_string msgs base actor_idl_path aliases packages imported (f, ri_ref, at)  =
+  let resolve_ic bytes = match actor_idl_path with
+    | None -> err_actor_import_without_idl_path msgs at
+    | Some actor_base ->
+      let full_path = in_base actor_base (Url.idl_basename_of_blob bytes) in
+      add_idl_import msgs imported ri_ref at full_path bytes
+    in
+  match Url.parse f with
+  | Ok (Url.Relative path) ->
+     (* TODO support importing local .did file *)
+     add_lib_import msgs imported ri_ref at (in_base base path)
+  | Ok (Url.Package (pkg,path)) ->
+     begin match M.find_opt pkg packages with
+     | Some pkg_path -> add_lib_import msgs imported ri_ref at (in_base pkg_path path)
+     | None -> err_package_not_defined msgs at pkg
+     end
+  | Ok (Url.Ic bytes) -> resolve_ic bytes
+  | Ok (Url.IcAlias alias) ->
+     begin match M.find_opt alias aliases with
+     | Some bytes -> resolve_ic bytes
+     | None -> err_alias_not_defined msgs at alias
+     end
+  | Error msg ->
+     err_unrecognized_url msgs at f msg
+
+(* Resolve the argument to --package. These can also be relative to base *)
+let resolve_package_url (msgs:Diag.msg_store) (base:filepath) (pname:string) (f:url) : filepath =
   let f =
     if Filename.is_relative f
-    then Filename.concat base f
+    then in_base base f
     else f in
-  let f = File_path.normalise f in
-  if Sys.file_exists f then
-    Some f
-  else
-    let open Diag in
-    add_msg msgs {
-        sev = Error;
-        at = no_region;
-        cat = "package";
-        text = Printf.sprintf "File \"%s\" (for package `%s`) does not exist" f pname
-      };
-    None
+  let f = Lib.FilePath.normalise f in
+  if Sys.file_exists f
+  then f
+  else (err_package_file_does_not_exist msgs f pname;"")
 
-let collect_imports (p : prog): string list =
+(* Resolve the argument to --actor-alias. Check eagerly for well-formedness *)
+let resolve_alias_url (msgs:Diag.msg_store) (alias:string) (f:url) : blob =
+  match Url.parse f with
+  | Ok (Url.Ic bytes) -> bytes
+  | Ok _ -> err_alias_wrong_scheme msgs no_region alias f; ""
+  | Error msg -> err_unrecognized_alias_url msgs alias f msg; ""
+
+
+let prog_imports (p : prog): (url * resolved_import ref * Source.region) list =
   let res = ref [] in
   let f e = match e.it with
-    | ImportE (f, _) -> res := f::!res; e
+    | ImportE (f, fp) -> res := (f, fp, e.at) ::!res; e
     | _ -> e in
   let _ = ignore (Traversals.over_prog f p) in
   List.rev !res
 
-let prog env p =
-  let f e = match e.it with
-    | ImportE (f, fp) -> resolve_import_string env e.at f fp; e
-    | _ -> e in
-  ignore (Traversals.over_prog f p)
+let collect_imports (p : prog): url list =
+  List.map (fun (f, _, _) -> f) (prog_imports p)
 
-type package_urls = (string * string) list
+
+type actor_idl_path = filepath option
+type package_urls = url M.t
+type actor_aliases = url M.t
+type aliases = blob M.t
 
 let resolve_packages : package_urls -> filepath -> package_map Diag.result = fun purls base ->
-  Diag.fold (fun package_map (package_name, package_url) ->
-      if M.mem package_name package_map then
-        Diag.with_message_store (fun msgs ->
-            let open Diag in
-            Diag.add_msg msgs {
-                sev = Error;
-                at = no_region;
-                cat = "--package";
-                text = Printf.sprintf "Package name \"%s\" already defined" package_name;
-              };
-            None
-          )
-      else
-        Diag.with_message_store (fun msgs ->
-            match resolve_package_url msgs base package_name package_url with
-            | None              -> None
-            | Some resolved_url -> Some (M.add package_name resolved_url package_map)
-          )
-    )
-    M.empty purls
+  Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_package_url msgs base) purls))
 
-let resolve : package_urls -> Syntax.prog -> filepath -> S.t Diag.result = fun purls p base ->
-  Diag.bind (resolve_packages purls base) (fun (packages:package_map) ->
-      Diag.with_message_store (fun msgs ->
-          let base = if Sys.is_directory base then base else Filename.dirname base in
-          let env = { msgs; base; imported = ref S.empty; packages } in
-          prog env p;
-          Some !(env.imported)
-        )
+let resolve_aliases : actor_aliases -> aliases Diag.result = fun alias_urls ->
+  Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_alias_url msgs) alias_urls))
+
+type flags = {
+  package_urls : package_urls;
+  actor_aliases : actor_aliases;
+  actor_idl_path : actor_idl_path;
+}
+
+let resolve
+  : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
+  = fun {actor_idl_path; package_urls; actor_aliases} p base ->
+  Diag.bind (resolve_packages package_urls base) (fun (packages:package_map) ->
+  Diag.bind (resolve_aliases actor_aliases) (fun aliases ->
+    Diag.with_message_store (fun msgs ->
+      let base = if Sys.is_directory base then base else Filename.dirname base in
+      let imported = ref RIM.empty in
+      List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported) (prog_imports p);
+      Some (List.map (fun (rim,at) -> Source.(rim @@ at)) (RIM.bindings !imported))
     )
+  ))
