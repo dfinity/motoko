@@ -11,7 +11,7 @@ open Mo_config
 open Printf
 
 module ResolveImport = Resolve_import
-module FilePath = File_path
+module URL = Url
 
 type stat_env = Scope.t
 type dyn_env = Interpret.scope
@@ -109,10 +109,17 @@ let parse_file filename : parse_result =
 
 type resolve_result = (Syntax.prog * ResolveImport.resolved_imports) Diag.result
 
+let resolve_flags () =
+  ResolveImport.{
+    package_urls = !Flags.package_urls;
+    actor_aliases = !Flags.actor_aliases;
+    actor_idl_path = !Flags.actor_idl_path
+  }
+
 let resolve_prog (prog, base) : resolve_result =
   Diag.map
     (fun libs -> (prog, libs))
-    (ResolveImport.resolve !Flags.package_urls prog base)
+    (ResolveImport.resolve (resolve_flags ()) prog base)
 
 let resolve_progs =
   Diag.traverse resolve_prog
@@ -238,7 +245,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         pending := add ri.Source.it !pending;
         Diag.bind (parsefn f) (fun (prog, base) ->
         Diag.bind (Static.prog prog) (fun () ->
-        Diag.bind (ResolveImport.resolve !Flags.package_urls prog base) (fun more_imports ->
+        Diag.bind (ResolveImport.resolve (resolve_flags ()) prog base) (fun more_imports ->
         Diag.bind (go_set more_imports) (fun () ->
         let lib = lib_of_prog f prog in
         Diag.bind (check_lib !senv lib) (fun sscope ->
@@ -248,10 +255,19 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         Diag.return ()
         )))))
       end
-    | Syntax.IDLPath f ->
-      let sscope = Scope.lib f Type.(Obj (Actor, [])) in
-      senv := Scope.adjoin !senv sscope;
-      Diag.warn ri.Source.at "import" "imported actors assumed to have type actor {}"
+    | Syntax.IDLPath (f, _) ->
+       Diag.bind (Idllib.Pipeline.check_file f) (fun (prog, idl_scope, actor_opt) ->
+       if actor_opt = None then
+         Error [{
+           Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
+           text = Printf.sprintf "file %s does not define a service" f
+         }]
+       else 
+         let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
+         let sscope = Scope.lib f actor in
+         senv := Scope.adjoin !senv sscope;
+         Diag.return ()
+       )
   and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)

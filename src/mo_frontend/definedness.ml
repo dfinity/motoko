@@ -93,9 +93,8 @@ let rec exp msgs e : f = match e.it with
      | Type.Shared (_, p1) ->
       delayify ((exp msgs e /// pat msgs p) /// pat msgs p1))
   (* The rest remaining cases just collect the uses of subexpressions: *)
-  | LitE l              -> M.empty
-  | PrimE _             -> M.empty
-  | ImportE _           -> M.empty
+  | LitE _ | ActorUrlE _
+  | PrimE _ | ImportE _ -> M.empty
   | UnE (_, uo, e)      -> exp msgs e
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
@@ -157,7 +156,7 @@ and exp_fields msgs efs : f =
   decs msgs (List.map (fun ef -> ef.it.dec) efs)
 
 and dec msgs d = match d.it with
-  | ExpD e -> (exp msgs e, S.empty)
+  | ExpD e | IgnoreD e -> (exp msgs e, S.empty)
   | LetD (p, e) -> pat msgs p +++ exp msgs e
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)

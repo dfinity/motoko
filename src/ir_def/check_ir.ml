@@ -354,7 +354,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";
       typ exp1 <: ot;
-      T.Prim T.Text <: t
+      T.text <: t
     | CPSAwait, [a; kr] ->
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
@@ -394,6 +394,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | CastPrim (t1, t2), [e] ->
       typ e <: t1;
       t2 <: t
+    | BlobOfIcUrl, [e] ->
+      typ e <: T.text;
     | ActorOfIdBlob actor_typ, [e] ->
       typ e <: T.blob;
       check_typ env actor_typ;

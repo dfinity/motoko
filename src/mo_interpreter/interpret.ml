@@ -394,6 +394,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | LitE lit ->
     k (interpret_lit env lit)
+  | ActorUrlE url -> interpret_exp env url (fun v1 -> assert false (* FIXME: #1001, call Lib.URL.decode_actor_url *))
   | UnE (ot, op, exp1) ->
     interpret_exp env exp1
       (fun v1 ->
@@ -489,7 +490,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       )
     )
   | BlockE decs ->
-    interpret_block env decs None k
+    let k' =
+      if T.is_unit exp.note.note_typ (* TODO: peeking at types violates erasure semantics, revisit! *)
+      then (fun _v -> k V.unit)
+      else k
+    in
+    interpret_block env decs None k'
   | NotE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Bool (not (V.as_bool v1))))
   | AndE (exp1, exp2) ->
@@ -812,6 +818,7 @@ and interpret_block env decs ro (k : V.value V.cont) =
 and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
+  | IgnoreD _
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
@@ -829,6 +836,8 @@ and interpret_dec env dec (k : V.value V.cont) =
   match dec.it with
   | ExpD exp ->
     interpret_exp env exp k
+  | IgnoreD exp ->
+    interpret_exp env exp (fun _v -> k V.unit)
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;

@@ -32,11 +32,6 @@ size_t as_strlen(const char* p) {
   return i;
 }
 
-as_ptr as_str_of_cstr(const char * const s) {
-  size_t l = as_strlen(s);
-  return text_of_ptr_size(s, l);
-}
-
 void __attribute__ ((noreturn)) trap_with_prefix(const char* prefix, const char *str) {
   int len1 = as_strlen(prefix);
   int len2 = as_strlen(str);
@@ -58,7 +53,7 @@ void __attribute__ ((noreturn)) rts_trap_with(const char *str) {
 const char* RTS_VERSION = "0.1";
 
 // This is mostly to test function pointers
-as_ptr get_version() { return as_str_of_cstr(RTS_VERSION); }
+as_ptr get_version() { return text_of_cstr(RTS_VERSION); }
 as_ptr (*version_getter)() = &get_version;
 
 export as_ptr version() { return (*version_getter)(); }

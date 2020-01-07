@@ -11,19 +11,20 @@ and id i = Atom i.it
 and tag i = Atom ("#" ^ i.it)
 
 let rec exp e = match e.it with
-  | VarE x              -> "VarE"    $$ [id x]
-  | LitE l              -> "LitE"    $$ [lit !l]
-  | UnE (ot, uo, e)     -> "UnE"     $$ [operator_type !ot; Arrange_ops.unop uo; exp e]
-  | BinE (ot, e1, bo, e2) -> "BinE"  $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
-  | RelE (ot, e1, ro, e2) -> "RelE"  $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
-  | ShowE (ot, e)       -> "ShowE"   $$ [operator_type !ot; exp e]
-  | TupE es             -> "TupE"    $$ List.map exp es
-  | ProjE (e, i)        -> "ProjE"   $$ [exp e; Atom (string_of_int i)]
-  | ObjE (s, efs)       -> "ObjE"    $$ [obj_sort s] @ List.map exp_field efs
-  | DotE (e, x)         -> "DotE"    $$ [exp e; id x]
-  | AssignE (e1, e2)    -> "AssignE" $$ [exp e1; exp e2]
-  | ArrayE (m, es)      -> "ArrayE"  $$ [mut m] @ List.map exp es
-  | IdxE (e1, e2)       -> "IdxE"    $$ [exp e1; exp e2]
+  | VarE x              -> "VarE"      $$ [id x]
+  | LitE l              -> "LitE"      $$ [lit !l]
+  | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
+  | UnE (ot, uo, e)     -> "UnE"       $$ [operator_type !ot; Arrange_ops.unop uo; exp e]
+  | BinE (ot, e1, bo, e2) -> "BinE"    $$ [operator_type !ot; exp e1; Arrange_ops.binop bo; exp e2]
+  | RelE (ot, e1, ro, e2) -> "RelE"    $$ [operator_type !ot; exp e1; Arrange_ops.relop ro; exp e2]
+  | ShowE (ot, e)       -> "ShowE"     $$ [operator_type !ot; exp e]
+  | TupE es             -> "TupE"      $$ List.map exp es
+  | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
+  | ObjE (s, efs)       -> "ObjE"      $$ [obj_sort s] @ List.map exp_field efs
+  | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
+  | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
+  | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
+  | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
   | FuncE (x, sp, tp, p, t, e') ->
     "FuncE" $$ [
       Atom (Type.string_of_typ e.note.note_typ);
@@ -158,6 +159,7 @@ and typ t = match t.it with
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]
+  | IgnoreD e -> "IgnoreD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->

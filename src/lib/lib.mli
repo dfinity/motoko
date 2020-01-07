@@ -74,6 +74,11 @@ sig
   end
 end
 
+module Seq :
+sig
+  val for_all : ('a -> bool) -> 'a Seq.t -> bool
+end
+
 module Option :
 sig
   val equal : ('a -> 'a -> bool) -> 'a option -> 'a option -> bool
@@ -110,6 +115,7 @@ sig
   type t
   val to_string : t -> string
   val of_string : string -> t
+  val of_string_opt : string -> t option
   val of_int : int -> t
   val to_int : t -> int
   val of_int32 : int32 -> t
@@ -140,12 +146,36 @@ end
 
 module CRC :
 sig
-  val crc8 : bytes -> int
+  val crc8 : string -> int
 end
 
 module Hex :
 sig
   val hexdigit : char -> int
-  val bytes_of_hex : string -> bytes
+  val bytes_of_hex : string -> string
   val int_of_hex_byte : string -> int
+
+  val hex_of_byte  : int -> string
+  val hex_of_char  : char -> string
+  val hex_of_bytes : string -> string
+end
+
+module FilePath :
+sig
+  (**
+   * Normalises a file path
+   *)
+  val normalise : string -> string
+
+  (**
+   * Makes one path relative to another path.
+   *
+   * Examples:
+   *
+   * relative_to "/home/foo" "/home/foo/project" = Some "project"
+   * relative_to "/home/foo" "/home/foo/project/lib" = Some "project/lib"
+   * relative_to "/home/foo" "/home/bar/project" = None
+   * relative_to "foo/bar" "foo/bar/project" = Some "project"
+   *)
+  val relative_to : string -> string -> string option
 end

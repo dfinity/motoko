@@ -46,18 +46,8 @@ let argspec = Arg.align
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
   "--map", Arg.Set gen_source_map, " output source map";
 
-  "-t", Arg.Set Flags.trace, " activate tracing";
-  "--package", (let package_name_ref = ref "DEADBEEF" in
-               Arg.Tuple [
-                   Arg.Set_string package_name_ref ;
-                   Arg.String begin fun package_url ->
-                     (* push (package_name, package_url) onto the list. *)
-                     Flags.package_urls := (
-                       !package_name_ref,
-                       package_url
-                     ) :: ! Flags.package_urls
-                     end
-                 ]), "<args> Specify a package-name-package-URL pair, separated by a space" ;
+  "-t", Arg.Set Flags.trace, " activate tracing in interpreters"]
+  @ Args.package_args @ [
   "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
   "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
   "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, " prefix each profile line with the given string ";
@@ -78,8 +68,11 @@ let argspec = Arg.align
   "-stub-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := StubMode)),
       " use the future DFINITY system API (ic-stub-run)";
+  (* TODO: bring this back (possibly with flipped default)
+           as soon as the multi-value `wasm` library is out.
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
   "-no-multi-value", Arg.Clear Flags.multi_value, " avoid multi-value extension";
+   *)
 
   "-dp", Arg.Set Flags.dump_parse, " dump parse";
   "-dt", Arg.Set Flags.dump_tc, " dump type-checked AST";

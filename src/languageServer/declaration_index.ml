@@ -1,4 +1,5 @@
 open Mo_types
+open Mo_config
 open Mo_def
 open Source
 open Syntax
@@ -57,17 +58,15 @@ let lookup_module
       (path : path)
       (index : t)
     : ide_decl list option =
-  let open Pipeline.ResolveImport in
-  match parse_import path with
-  | RelativeImport path -> Index.find_opt path index
-  | PackageImport (pkg, path) ->
+  let open Pipeline.URL in
+  match parse path with
+  | Ok (Relative path) -> Index.find_opt path index
+  | Ok (Package (pkg, path)) ->
      Lib.Option.bind
-       (List.find_opt
-         (fun (name, _) -> pkg = name)
-         !Mo_config.Flags.package_urls)
-       (fun (_, pkg_path) ->
+       (Flags.M.find_opt pkg !Flags.package_urls)
+       (fun pkg_path ->
         Index.find_opt (Filename.concat pkg_path path) index)
-  | ActorImport _ -> assert false
+  | _ -> assert false
 
 let empty : t = Index.empty
 

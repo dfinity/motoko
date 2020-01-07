@@ -59,13 +59,13 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
 
 
 let import_relative_to_project_root root module_path dependency =
-  match Pipeline.FilePath.relative_to root module_path with
+  match Lib.FilePath.relative_to root module_path with
   | None -> None
   | Some root_to_module ->
      root_to_module
      |> Filename.dirname
      |> Lib.Fun.flip Filename.concat dependency
-     |> Pipeline.FilePath.normalise
+     |> Lib.FilePath.normalise
      |> Lib.Option.some
 
 (* Given a source file and a cursor position in that file, figure out
@@ -73,37 +73,43 @@ let import_relative_to_project_root root module_path dependency =
 
    List.fi| (where | is the cursor) return `Some ("List", "fi")` *)
 let find_completion_prefix logger file line column: (string * string) option =
+  let open Source in
   (* The LSP sends 0 based line numbers *)
   let line = line + 1 in
   let lexbuf = Lexing.from_string file in
   let next () = Lexer.token Lexer.Normal lexbuf in
   let pos_eq_cursor pos =
-    pos.Source.line = line && pos.Source.column = column in
+    pos.line = line && pos.column = column in
   let pos_past_cursor pos =
-    pos.Source.line > line
-    || (pos.Source.line = line && pos.Source.column > column) in
+    pos.line > line
+    || (pos.line = line && pos.column > column) in
   let rec loop = function
-    | _ when (pos_past_cursor (Lexer.region lexbuf).Source.right) -> None
+    | _ when (pos_past_cursor (Lexer.region lexbuf).right) -> None
     | Parser.ID ident ->
-       let next_token_end = (Lexer.region lexbuf).Source.right in
+       let next_token_end = (Lexer.region lexbuf).right in
        if pos_eq_cursor next_token_end
        then Some("", ident)
        else
        (match next () with
         | Parser.DOT ->
-           (match next () with
-            | Parser.EOF -> Some (ident, "")
-            | Parser.ID prefix ->
-               let next_token_end = (Lexer.region lexbuf).Source.right in
-               if pos_eq_cursor next_token_end
-               then Some (ident, prefix)
-               else loop (Parser.ID prefix)
-            | tkn ->
-               let next_token_start = (Lexer.region lexbuf).Source.left in
-               if pos_eq_cursor next_token_start
-                  || pos_past_cursor next_token_start
-               then Some (ident, "")
-               else loop tkn)
+           let next_token = next () in
+           let next_token_start = (Lexer.region lexbuf).left in
+           if pos_eq_cursor next_token_start
+              || pos_past_cursor next_token_start
+           then Some (ident, "")
+           else
+             (match next_token with
+              | Parser.EOF -> Some (ident, "")
+              | Parser.ID prefix ->
+                 let next_token_start = (Lexer.region lexbuf).left in
+                 let next_token_end = (Lexer.region lexbuf).right in
+                 if pos_eq_cursor next_token_start
+                    || pos_past_cursor next_token_start
+                 then Some (ident, "")
+                 else if pos_eq_cursor next_token_end
+                 then Some (ident, prefix)
+                 else loop (Parser.ID prefix)
+              | tkn -> loop tkn)
         | tkn -> loop tkn)
     | Parser.EOF -> None
     | _ -> loop (next ()) in
@@ -121,7 +127,7 @@ let opt_bind f = function
 
 let completions index logger project_root file_path file_contents line column =
   let imported = Source_file.parse_module_header project_root file_path file_contents in
-  let current_uri_opt = Pipeline.FilePath.relative_to project_root file_path in
+  let current_uri_opt = Lib.FilePath.relative_to project_root file_path in
   let module_alias_completion_item alias =
     Lsp_t.{
         completion_item_label = alias;

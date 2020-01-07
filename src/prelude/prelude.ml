@@ -267,6 +267,12 @@ func @text_of_Text(t : Text) : Text {
   "\"" # t # "\"";
 };
 
+func @text_of_Char(c : Char) : Text {
+  // TODO: Escape properly
+  "\'" # charToText c # "\'";
+};
+
+
 func @text_has_parens(t : Text) : Bool {
   switch (t.chars().next()) {
     case (?'(') true;

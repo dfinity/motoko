@@ -202,7 +202,7 @@ seplist1(X, SEP) :
 
 %inline sort_pat :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt op=sort_pat_opt { Type.Shared (m,op (at $sloc)) @@ at $sloc  }
+  | SHARED m=mode_opt op=sort_pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
   | QUERY op=sort_pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
 
 (* Paths *)
@@ -361,6 +361,10 @@ bl : { fun ds -> BlockE(ds) }
 ob : { fun ds -> ObjE(Type.Object @@ no_region,
          List.map (fun d -> {dec = d; vis = Public @@ d.at} @@ d.at) ds) }
 
+text_like :
+  | t=TEXT { LitE (ref (TextLit t)) @? at $sloc }
+  | LPAR e=exp(bl) RPAR { e }
+
 exp_block :
   | LCURLY ds=seplist(dec, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
@@ -414,6 +418,8 @@ exp_un(B) :
     }
   | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
+  | ACTOR e=text_like
+    { ActorUrlE e @? at $sloc }
   | NOT e=exp_un(ob)
     { NotE e @? at $sloc }
   | DEBUG_SHOW e=exp_un(ob)
@@ -650,7 +656,7 @@ dec_nonvar :
         if s.it = Type.Actor then List.map share_expfield efs else efs
       in ClassD(xf "class" $sloc, tps, p, t, s, x, efs') @? at $sloc }
   | IGNORE e=exp(ob)
-    { LetD(WildP @! no_region, AnnotE (e, PrimT "Any" @! no_region) @? no_region) @? at $sloc }
+    { IgnoreD e @? at $sloc }
 
 dec :
   | d=dec_var

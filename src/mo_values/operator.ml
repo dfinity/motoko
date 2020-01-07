@@ -178,6 +178,6 @@ let has_unop op t = has unop op t
 let has_binop op t = has binop op t
 let has_relop op t = has relop op t
 
-let type_unop op t = if t = T.Prim T.Nat then T.Prim T.Int else t
+let type_unop op t = if t = T.nat then T.int else t
 let type_binop op t = t
 let type_relop op t = t

@@ -15,7 +15,7 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 type resolved_import =
   | Unresolved
   | LibPath of string
-  | IDLPath of string
+  | IDLPath of (string * string) (* filepath * bytes *)
 
 (* Identifiers *)
 
@@ -121,6 +121,7 @@ and exp' =
   | PrimE of string                            (* primitive *)
   | VarE of id                                 (* variable *)
   | LitE of lit ref                            (* literal *)
+  | ActorUrlE of exp                           (* actor reference *)
   | UnE of op_typ * unop * exp                 (* unary operator *)
   | BinE of op_typ * exp * binop * exp         (* binary operator *)
   | RelE of op_typ * exp * relop * exp         (* relational operator *)
@@ -172,7 +173,8 @@ and case' = {pat : pat; exp : exp}
 
 and dec = (dec', typ_note) Source.annotated_phrase
 and dec' =
-  | ExpD of exp                                (* plain expression *)
+  | ExpD of exp                                (* plain unit expression *)
+  | IgnoreD of exp                             (* plain any expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)

@@ -38,7 +38,7 @@ let dfinity-src =
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
     # ref = "master";
-    rev = "dedfec2e294a29f8a1f5f39f1700ebcdad3c6db4";
+    rev = "48ab58e7bf4de892a5c5c926050a350947ed2514";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
@@ -246,8 +246,20 @@ rec {
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
             make -C ${dir}
+
+	    if test -e ${dir}/_out/stats.csv
+	    then
+	      cp ${dir}/_out/stats.csv $out
+	    fi
           '';
       }; in
+
+    let perf_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+        checkPhase = ''
+          export PERF_OUT=$out
+        '' + args.checkPhase;
+      }); in
 
     let qc = testDerivation {
       name = "test-qc";
@@ -283,6 +295,7 @@ rec {
 
     { run       = test_subdir "run"       [ moc ] ;
       run-drun  = test_subdir "run-drun"  [ moc drun ic-stub ];
+      perf      = perf_subdir "perf"      [ moc drun ];
       fail      = test_subdir "fail"      [ moc ];
       repl      = test_subdir "repl"      [ moc ];
       ld        = test_subdir "ld"        [ mo-ld ];

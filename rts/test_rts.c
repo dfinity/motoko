@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include "rts.h"
 
 typedef intptr_t as_ptr;
 
@@ -156,6 +157,26 @@ int main () {
      assert((i<<2)-1 == recall_closure(reference[i]), "Recall went wrong\n");
      assert(closure_count() == i, "Closure count wrong\n");
   }
+
+  /*
+   * Testing 'IC:' scheme URL decoding
+   */
+  printf("Testing IC: URL...\n");
+
+  extern as_ptr blob_of_ic_url(as_ptr);
+  assert(
+    text_compare(
+     blob_of_ic_url(text_of_cstr("Ic:0000")),
+     text_of_ptr_size("\0",1)
+    ) == 0,
+    "Ic:0000 not decoded correctly\n");
+
+  assert(
+    text_compare(
+     blob_of_ic_url(text_of_cstr("ic:C0FEFED00D41")),
+     text_of_ptr_size("\xC0\xFE\xFE\xD0\x0D",5)
+    ) == 0,
+    "ic:C0FEFED00D41 not decoded correctly\n");
 
   return ret;
 }
