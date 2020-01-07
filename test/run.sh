@@ -11,7 +11,8 @@
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
-#    -p: Produce perf statistics (only compiles and runs drun)
+#    -p: Produce perf statistics
+#        only compiles and runs drun, writes stats to $PERF_OUT
 #
 
 function realpath() {
@@ -135,11 +136,12 @@ function run_if () {
   fi
 }
 
-if [ $PERF = yes ]
+if [ "$PERF" = "yes" ]
 then
-  # This only works properly if all files are in the same directory
-  [ -d _out ] || mkdir _out;
-  > _out/stats.csv;
+  if [ -z "$PERF_OUT" ]
+  then
+    echo "Warning: \$PERF_OUT not set" >&2
+  fi
 fi
 
 for file in "$@";
@@ -300,7 +302,10 @@ do
         # collect size stats
         if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
         then
-           echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> _out/stats.csv
+	   if [ -n "$PERF_OUT" ]
+           then
+             echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
+           fi
         fi
 
 	rm -f $mangled
