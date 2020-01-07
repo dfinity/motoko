@@ -11,6 +11,8 @@
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
+#    -p: Produce perf statistics
+#        only compiles and runs drun, writes stats to $PERF_OUT
 #
 
 function realpath() {
@@ -21,24 +23,29 @@ function realpath() {
 ACCEPT=no
 DRUN=no
 IDL=no
+PERF=no
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
 MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
 WASMTIME=${WASMTIME:-wasmtime}
+WASMTIME_OPTIONS="--disable-cache --cranelift"
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "adstir" o; do
+while getopts "adpstir" o; do
     case "${o}" in
         a)
             ACCEPT=yes
             ;;
         d)
             DRUN=yes
+            ;;
+        p)
+            PERF=yes
             ;;
         s)
             ECHO=true
@@ -130,6 +137,14 @@ function run_if () {
   fi
 }
 
+if [ "$PERF" = "yes" ]
+then
+  if [ -z "$PERF_OUT" ]
+  then
+    echo "Warning: \$PERF_OUT not set" >&2
+  fi
+fi
+
 for file in "$@";
 do
   if ! [ -r $file ]
@@ -193,7 +208,7 @@ do
           run didc $DIDC --check $out/$base.did
         fi
       else
-        if [ "$SKIP_RUNNING" != yes ]
+        if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
           # Interpret
           run run $MOC $moc_extra_flags --hide-warnings -r $base.mo
@@ -240,12 +255,15 @@ do
 
 
         # Compile
-        if [ $DRUN = no ]
+        if [ $DRUN = yes ]
         then
-          run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
-        else
           run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
           run comp-stub $MOC $moc_extra_flags -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.stub.wasm
+	elif [ $PERF = yes ]
+	then
+          run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+	else
+          run comp $MOC $moc_extra_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm
@@ -269,15 +287,29 @@ do
         # Run compiled program
         if [ "$SKIP_RUNNING" != yes ]
         then
-          if [ $DRUN = no ]
+          if [ $DRUN = yes ]
           then
-            run_if wasm wasm-run $WASMTIME --disable-cache $out/$base.wasm
-          else
             run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
             DRUN=$IC_STUB_RUN \
             run_if stub.wasm ic-stub-run $DRUN_WRAPPER $out/$base.stub.wasm $mangled
+          elif [ $PERF = yes ]
+          then
+            run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
+          else
+            run_if wasm wasm-run $WASMTIME $WASMTIME_OPTIONS $out/$base.wasm
           fi
         fi
+
+        # collect size stats
+        if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
+        then
+	   if [ -n "$PERF_OUT" ]
+           then
+             wasm-strip $out/$base.wasm
+             echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
+           fi
+        fi
+
 	rm -f $mangled
       fi
     fi
