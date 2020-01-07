@@ -29,6 +29,7 @@ MO_LD=${MO_LD:-$(realpath $(dirname $0)/../src/mo-ld)}
 DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
 WASMTIME=${WASMTIME:-wasmtime}
+WASMTIME_OPTIONS="--disable-cache --cranelift"
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -295,7 +296,7 @@ do
           then
             run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
           else
-            run_if wasm wasm-run $WASMTIME --disable-cache $out/$base.wasm
+            run_if wasm wasm-run $WASMTIME $WASMTIME_OPTIONS $out/$base.wasm
           fi
         fi
 
