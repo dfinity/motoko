@@ -111,7 +111,7 @@ em : <typ-field> -> <methtype>
 em(<id> : <typ>) = unescape(<id>) : efn(<typ>)
 
 unescape : <id> -> <nat>|<name>
-unescape("_" <nat> "_") = <nat>
+unescape("_" <nat> "_") = <nat>  if <nat> is 32-bit
 unescape(<id> "_") = <id>
 unescape(<id>) = <id>
 ```
