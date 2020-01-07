@@ -1,3 +1,3 @@
 ingress(0) System
-ingress(1) Err: IC0503: Canister 42 trapped explicitly: Array index out of bounds
-ingress(2) Err: IC0503: Canister 42 trapped explicitly: Array index out of bounds
+ingress(1) Err: IC0503: Canister 1125899906842624 trapped explicitly: Array index out of bounds
+ingress(2) Err: IC0503: Canister 1125899906842624 trapped explicitly: Array index out of bounds

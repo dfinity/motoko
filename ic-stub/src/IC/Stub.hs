@@ -40,7 +40,7 @@ import IC.Logger
 -- Abstract HTTP Interface
 
 data AsyncRequest
-    = CreateRequest UserId
+    = CreateRequest UserId (Maybe CanisterId)
     | InstallRequest CanisterId UserId Blob Blob
     | UpdateRequest CanisterId UserId MethodName Blob
   deriving (Eq, Ord, Show)
@@ -200,7 +200,16 @@ setCanisterState cid wasm_state =
 
 processRequest :: ICT m => AsyncRequest -> m ()
 
-processRequest r@(CreateRequest _user_id) = do
+processRequest r@(CreateRequest _user_id (Just desired)) = do
+  exists <- gets (M.member desired . canisters)
+  if exists
+  then
+    setReqStatus r $ Rejected (RC_DESTINATION_INVALID, "Desired canister id already exists")
+  else do
+    createEmptyCanister desired
+    setReqStatus r $ Completed $ CompleteCanisterId desired
+
+processRequest r@(CreateRequest _user_id Nothing) = do
   existing_canisters <- gets (M.keys . canisters)
   let new_id = freshId existing_canisters
   createEmptyCanister new_id
@@ -276,7 +285,7 @@ rememberTrap ctxt_id msg =
   modifyCallContext ctxt_id $ \ctxt -> ctxt { last_trap = Just msg }
 
 callerOfRequest :: AsyncRequest -> EntityId
-callerOfRequest (CreateRequest user_id) = user_id
+callerOfRequest (CreateRequest user_id _) = user_id
 callerOfRequest (InstallRequest _ user_id _ _) = user_id
 callerOfRequest (UpdateRequest _ user_id _ _) = user_id
 
