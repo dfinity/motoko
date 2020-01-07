@@ -6,12 +6,12 @@ module {
 
 /**
 
-Hash tables
-===============
+Hash Map (aka Hash table)
+=========================
 
-This module defines imperative hash tables, with general key and value types.
+This module defines an imperative hash map (hash table), with a general key and value type.
 
-It has a minimal object-oriented interface: get, set, remove, count and iter.
+It has a minimal object-oriented interface: get, set, del, count and iter.
 
 The class is parameterized by the key's equality and hash functions,
 and an initial capacity.  However, as with `Buf`, no array allocation
