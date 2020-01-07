@@ -38,7 +38,7 @@ installing all required tools without nix is out of scope).
    ```
    opam install num vlq yojson menhir stdio js_of_ocaml js_of_ocaml-ppx ppx_inline_test bisect_ppx atdgen wasm
    ```
- * Install various command line tools used by, in particuar, the test suite:
+ * Install various command line tools used by, in particular, the test suite:
    ```
    nix-env -i -f . -A wasmtime
    nix-env -i -f . -A filecheck

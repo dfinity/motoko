@@ -13,7 +13,7 @@ import Text.Printf
 
 import IC.Types
 import IC.Stub
-import IC.DRun.Parse (Type(..), parseFile)
+import IC.DRun.Parse (Ingress(..), parseFile)
 
 type DRun = StateT IC IO
 
@@ -68,19 +68,20 @@ submitRead r = do
     lift $ printReqStatus r
     return r
 
-work :: FilePath -> FilePath -> IO ()
-work wasm_file msg_file = do
-  wasm <- B.readFile wasm_file
+work :: FilePath -> IO ()
+work msg_file = do
   msgs <- parseFile msg_file
 
   let user_id = dummyUserId
 
-  flip evalStateT initialIC $ do
-    Completed (CompleteCanisterId cid) <- submitAndRun (CreateRequest user_id)
-    _ <- submitAndRun (InstallRequest cid user_id wasm B.empty)
+  flip evalStateT initialIC $
     forM_ msgs $ \case
-       (Query,  method, arg) -> submitRead  (QueryRequest cid user_id method arg)
-       (Update, method, arg) -> submitAndRun (UpdateRequest cid user_id method arg)
+      Install cid filename arg -> do
+        wasm <- liftIO $ B.readFile filename
+        _ <- submitAndRun (CreateRequest user_id (Just (EntityId cid)))
+        submitAndRun (InstallRequest (EntityId cid) user_id wasm arg)
+      Query  cid method arg -> submitRead  (QueryRequest (EntityId cid) user_id method arg)
+      Update cid method arg -> submitAndRun (UpdateRequest (EntityId cid) user_id method arg)
 
 main :: IO ()
 main = join . customExecParser (prefs showHelpOnError) $
@@ -100,10 +101,6 @@ main = join . customExecParser (prefs showHelpOnError) $
             <> value ""
             )
         <*> strArgument
-            (  metavar "*.wasm"
-            <> help "Wasm module"
-            )
-        <*> strArgument
             (  metavar "script"
-            <> help "messags to execute"
+            <> help "messages to execute"
             )
