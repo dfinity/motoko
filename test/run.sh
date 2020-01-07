@@ -304,6 +304,7 @@ do
         then
 	   if [ -n "$PERF_OUT" ]
            then
+             wasm-strip $out/$base.wasm
              echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
            fi
         fi
