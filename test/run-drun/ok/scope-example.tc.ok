@@ -1,0 +1,1 @@
+scope-example.mo:10.18-10.19: type error, bad scope: expecting scope instantiation Z, found Y/1
