@@ -6,8 +6,6 @@
 let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
   inherit system;
   overlays = [
-    # Adding wasmtime
-    (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
     # Selecting the ocaml version
     (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_07; })
     # Additional ocaml package
