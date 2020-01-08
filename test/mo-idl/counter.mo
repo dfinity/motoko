@@ -32,7 +32,7 @@ func testDec() {
 testDec();
 
 // Issue ten `dec` & `read` messages.
-func testRead() {
+func testRead() : async () {
   var i : Int = 10;
   let _ = async {
     while (i > 0) {
@@ -46,4 +46,4 @@ func testRead() {
   }
 };
 
-testRead();
+ignore testRead();
