@@ -212,12 +212,12 @@ A simple language for writing Dfinity actors.
 ## Example
 
 ```
-import List "as:std/list";
+import List "mo:std/list";
 
 type Post = shared Text -> ();
 
 actor class Server() = {
-  private var clients : List<Client> = List.empty<Client>();
+  private var clients : List.List<Client> = List.empty<Client>();
 
   private func broadcast(msg : Text) {
     for (client in List.iter(clients)) {
