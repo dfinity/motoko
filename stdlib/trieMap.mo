@@ -5,7 +5,7 @@ import List "list.mo";
 
 /**
 
-Hash Map (aka Hash table)
+Trie Map
 =========================
 
 This module defines an imperative hash map, with a general key and value type.  It matches the interface and semantics of HashMap.  Unlike HashMap, its internal representation uses a functional hash trie (see `trie.mo`).
