@@ -13,10 +13,10 @@ nix: subpath:
 
   winter = self.callCabal2nixWithOptions "winter"
     (nix.fetchFromGitHub {
-      owner = "dfinity";
+      owner = "dfinity-side-projects";
       repo = "winter";
-      rev = "4295ff98da8ca890e824130152a78892ad6420ba";
-      sha256 = "05wr3066mlz7hh2s49wgf9pgdsh1bsivnhp6j7hklmw2cnj9g0sl";
+      rev = "1e16b471644be26160cc20c4e2144c643c547ed8";
+      sha256 = "191fk1dv8vp28rwpl75nz9y3pbypc8jv9w669mvl9d2k5f74jirm";
      }) "--no-check" {};
 
   ic-stub = self.callCabal2nixWithOptions "ic-stub" (subpath "ic-stub") "-frelease" { };
