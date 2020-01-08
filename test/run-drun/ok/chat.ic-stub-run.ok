@@ -1,6 +1,8 @@
 → create
 ← completed: canister-id = 0x0000000000000400
 → install
+← completed
+→ update go(0x4449444c0000)
 debug.print: charlie received hello from bob
 debug.print: alice received hello from bob
 debug.print: bob received hello from bob
@@ -19,4 +21,4 @@ debug.print: bob received hello from charlie
 debug.print: charlie received goodbye from charlie
 debug.print: alice received goodbye from charlie
 debug.print: bob received goodbye from charlie
-← completed
+← completed: 0x4449444c0000

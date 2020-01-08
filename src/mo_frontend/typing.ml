@@ -884,6 +884,8 @@ and infer_exp'' env exp : T.typ =
         | T.Func (_, T.Promises (T.Var (_, n)), _, _, _)
         | T.Func (_, T.Returns, _, _, [T.Async (T.Var (_, n),_)]) ->
           check_scope env (List.nth ts n) (List.nth typs n).at
+        | T.Func (T.Shared _, T.Returns, _, _, []) ->
+          check_scope env (List.nth ts 0) (List.nth typs 0).at
         | _ -> ());
     let t_arg = T.open_ ts t_arg in
     let t_ret = T.open_ ts t_ret in

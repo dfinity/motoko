@@ -13,9 +13,9 @@ let a = actor {
   public func debugPrint() { aa.debugPrint() };
 };
 
-a.inc();
-a.inc();
-a.inc();
-a.debugPrint()
+a.inc();  //OR-CALL ingress inc "DIDL\x00\x00"
+a.inc();  //OR-CALL ingress inc "DIDL\x00\x00"
+a.inc();  //OR-CALL ingress inc "DIDL\x00\x00"
+a.debugPrint() //OR-CALL ingress debugPrint "DIDL\x00\x00"
 
 //SKIP comp

@@ -47,13 +47,17 @@ actor class Client() = this {
 };
 
 
-let server = Server();
-let bob = Client();
-let alice = Client();
-let charlie = Client();
-bob.go("bob", server);
-alice.go("alice", server);
-charlie.go("charlie", server);
+actor Test {
+  public func go() {
+    let server = Server();
+    let bob = Client();
+    let alice = Client();
+    let charlie = Client();
+    bob.go("bob", server);
+    alice.go("alice", server);
+    charlie.go("charlie", server);
+  }
+};
 
 
 /* design flaws:
@@ -63,4 +67,5 @@ charlie.go("charlie", server);
      - parameterising Client on s:IServer argument complains about non-closed actor (expected acc. to Joachim, pending system changes)
 */
 
+Test.go(); //OR-CALL ingress go "DIDL\x00\x00"
 //SKIP comp

@@ -21,7 +21,7 @@ func showAsync<@>(note : Text, a : async<@> Int) {};
 let c = Counter(10);
 
 // Issue ten `dec` messages.
-func testDec() {
+func testDec() : async () {
   var i : Int = 10;
   while (i > 0) {
     c.dec();
@@ -29,7 +29,7 @@ func testDec() {
   }
 };
 
-testDec();
+ignore testDec();
 
 // Issue ten `dec` & `read` messages.
 func testRead() : async () {
