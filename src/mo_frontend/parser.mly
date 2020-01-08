@@ -287,9 +287,11 @@ typ_bind :
   | x=id
     { {var = x; bound = PrimT "Any" @! at $sloc} @= at $sloc }
 
-%inline scope_bind :
+%inline scope_bind_opt :
   | LT tb=typ_bind GT
     { tb }
+  | (* empty *)
+    { scope_bind() }
 
 %inline scope_inst :
   | LT t=typ GT
@@ -457,9 +459,7 @@ exp_nondec(B) :
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | ASYNC e=exp(bl)
-    { AsyncE(scope_bind(), e) @? at $sloc }
-  | ASYNC tb = scope_bind e=exp_nullary(bl)
+  | ASYNC tb=scope_bind_opt e=exp(bl)
     { AsyncE(tb, e) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }

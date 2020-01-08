@@ -1,5 +1,5 @@
 open Mo_def
-open Mo_types   
+open Mo_types
 open Mo_values
 module Flags = Mo_config.Flags
 
@@ -295,10 +295,12 @@ and check_scope env t at =
   | C.AsyncCap c
   | C.AwaitCap c ->
     if not (T.eq t (T.Con(c,[]))) then
-      local_error env at "bad scope"
+      local_error env at "bad scope: expecting scope instantiation %s, found %s"
+        (T.string_of_con c)
+        (T.string_of_typ_expand t)
   | C.NullCap ->
-    if not (T.eq t T.Any) then (* TBR *)
-      local_error env at "bad scope"
+    local_error env at "bad scope: expecting no scope instantiation, found %s"
+      (T.string_of_typ_expand t)
 
 and check_AsyncCap env s at =
    match env.async with

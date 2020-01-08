@@ -302,14 +302,10 @@ let funcT(sort, tbs, t1, t2) =
     FuncT(sort, tbs, t1, t2)
 
 let funcE (f, s, tbs, p, t_opt, e) =
-  let t = match t_opt with
-    | None -> TupT []
-    | Some t -> t.it
-  in
-  match s.it, t with
-  | _, AsyncT (None, _) ->
-    FuncE(f, s, ensure_scope_bind tbs, p, t_opt, e)
-  | Type.Shared _, TupT [] ->
+  match s.it, t_opt with
+  | _, Some { it = AsyncT (None, _); _}
+  | Type.Shared _, Some { it = TupT []; _}
+  | Type.Shared _, None ->
     FuncE(f, s, ensure_scope_bind tbs, p, t_opt, e)
   | _ ->
     FuncE(f, s, tbs, p, t_opt, e)

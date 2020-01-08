@@ -5,18 +5,18 @@ actor A {
     var a : (async<Y> Int) = async 0;
 
     func set ()  {
-       a := async<W> {return 666} <Y>;
+       a := async<W> {return 666} /*<Y>*/;
     };
 
     await (async<Z> {
       // current scope: Z
       set(); // this seems well-typed according to “Application (Derived Rule)”;
-    } <Y>);
+    } /*<Y>*/);
 
     let i = await a;
     assert i == 666; // Boom!
     return (0,0)
-  } <X>;
+  } /*<X>*/;
 
   public shared func Test() : async () {
     let (x,y) = await f();
