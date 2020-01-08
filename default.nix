@@ -6,8 +6,6 @@
 let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
   inherit system;
   overlays = [
-    # Adding wasmtime
-    (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
     # Selecting the ocaml version
     (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_07; })
     # Additional ocaml package
@@ -38,7 +36,7 @@ let dfinity-src =
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
     # ref = "master";
-    rev = "48ab58e7bf4de892a5c5c926050a350947ed2514";
+    rev = "dfc8aa148021534ad01d321d1f2a843ab2933fa3";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
