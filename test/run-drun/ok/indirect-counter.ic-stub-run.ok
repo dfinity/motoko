@@ -1,8 +1,0 @@
-→ create
-← completed: canister-id = 0x0000000000000400
-→ install
-debug.print: 2
-debug.print: 3
-debug.print: 4
-debug.print: 4
-← completed

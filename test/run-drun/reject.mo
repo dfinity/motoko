@@ -2,20 +2,20 @@ import Prim "mo:prim";
 actor {
   public func reject1() : async () {
      Prim.debugPrint "1";
-     throw (error("Error"));
+     throw (Prim.error("Error"));
      Prim.debugPrint "wrong";
   };
 
   public func reject2() : async () {
      Prim.debugPrint "1";
-     try { throw (error("Error")) }
+     try { throw (Prim.error("Error")) }
      catch e {};
      Prim.debugPrint "ok";
   };
 
   public func reject3() : async () {
      Prim.debugPrint "1";
-     try { throw (error("Error")) }
+     try { throw (Prim.error("Error")) }
      catch e {
       Prim.debugPrint "ok";
       throw e;
@@ -32,3 +32,4 @@ actor {
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
+

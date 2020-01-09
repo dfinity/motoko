@@ -49,3 +49,4 @@ actor {
   e.send_to(b.say_hi);
 }
 //SKIP comp
+//SKIP comp-stub

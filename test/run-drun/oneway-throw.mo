@@ -4,7 +4,7 @@ actor a {
   public func throws() : () = ignore async {
     Prim.debugPrint "throws()";
     committed := true;
-    throw (error("ignored"));
+    throw (Prim.error("ignored"));
     Prim.debugPrint "unreachable";
   };
   public func ping() : async () {

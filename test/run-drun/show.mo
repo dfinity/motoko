@@ -34,4 +34,4 @@ Prim.debugPrint(debug_show (#foo 42 : {#foo : Int; #bar : Text}));
 Prim.debugPrint(debug_show (42 : Word16));
 Prim.debugPrint(debug_show (42 : Nat8));
 Prim.debugPrint(debug_show (42 : Int32));
-Prim.debugPrint(debug_show (intToInt64 (-42)));
+Prim.debugPrint(debug_show (Prim.intToInt64 (-42)));

@@ -64,4 +64,6 @@ charlie.go("charlie", server);
      - parameterising Client on s:IServer argument complains about non-closed actor (expected acc. to Joachim, pending system changes)
 */
 
+// non-closed actors not allowed
 //SKIP comp
+//SKIP comp-stub

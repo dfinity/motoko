@@ -1,17 +1,17 @@
 import Prim "mo:prim";
 let s = "hello world!";
 
-Prim.debugPrint "via `Prim.debugPrint`:";
+Prim.debugPrint "via `debugPrint`:";
 Prim.debugPrint s;
 Prim.debugPrint "";
 
-Prim.debugPrint "via iteration and `Prim.debugPrintChar`: #1";
+Prim.debugPrint "via iteration and `debugPrintChar`: #1";
 for (a in s.chars()) {
   Prim.debugPrintChar a;
 };
 Prim.debugPrint "";
 
-Prim.debugPrint "via iteration and `Prim.debugPrintChar`: #2";
+Prim.debugPrint "via iteration and `debugPrintChar`: #2";
 var x = 0;
 for (a in s.chars()) {
   x += 1;
@@ -27,7 +27,7 @@ Prim.debugPrint "";
 let russian = "Приветствую, мир!\n";
 assert(russian.len() == 18);
 
-Prim.debugPrint "via iteration and `Prim.debugPrintChar` (Unicode): #3";
+Prim.debugPrint "via iteration and `debugPrintChar` (Unicode): #3";
 x := 0;
 for (a in russian.chars()) {
   x += 1;
@@ -44,7 +44,7 @@ assert(x == 18);
 let emojis = "🙈🎸😋";
 assert(emojis.len() == 3);
 
-Prim.debugPrint "via iteration and `Prim.debugPrintChar` (Unicode): #4";
+Prim.debugPrint "via iteration and `debugPrintChar` (Unicode): #4";
 x := 0;
 for (a in emojis.chars()) {
   x += 1;

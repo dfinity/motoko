@@ -1,9 +1,9 @@
 import Prim "mo:prim";
-let s0 = rts_heap_size();
-let a0 = rts_total_allocation();
-ignore(Array_init<()>(2500, ()));
-let s1 = rts_heap_size();
-let a1 = rts_total_allocation();
+let s0 = Prim.rts_heap_size();
+let a0 = Prim.rts_total_allocation();
+ignore(Prim.Array_init<()>(2500, ()));
+let s1 = Prim.rts_heap_size();
+let a1 = Prim.rts_total_allocation();
 
 // the following are too likey to change to be included in the test output
 // Prim.debugPrint("Size and allocation before: " # debug_show (s0, a0));

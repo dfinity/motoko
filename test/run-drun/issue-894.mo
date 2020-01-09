@@ -33,7 +33,7 @@ actor a {
     };
 
     {
-      let a = Array_init<Nat>(5, 0);
+      let a = Prim.Array_init<Nat>(5, 0);
       for (i in a.keys()) {
         a[await id(i)] := await id(i);
         Prim.debugPrintNat(a[i]);

@@ -52,24 +52,24 @@ actor a {
     Prim.debugPrintInt(c);
   };
   public func incwords(w8 : Word8, w16 : Word16, w32 : Word32, w64 : Word64) : () {
-    c += word8ToInt(w8);
-    c += word16ToInt(w16);
-    c += word32ToInt(w32);
-    c += word64ToInt(w64);
+    c += Prim.word8ToInt(w8);
+    c += Prim.word16ToInt(w16);
+    c += Prim.word32ToInt(w32);
+    c += Prim.word64ToInt(w64);
     Prim.debugPrintInt(c);
   };
   public func incnats(n8 : Nat8, n16 : Nat16, n32 : Nat32, n64 : Nat64) : () {
-    c += nat8ToNat(n8);
-    c += nat16ToNat(n16);
-    c += nat32ToNat(n32);
-    c += nat64ToNat(n64);
+    c += Prim.nat8ToNat(n8);
+    c += Prim.nat16ToNat(n16);
+    c += Prim.nat32ToNat(n32);
+    c += Prim.nat64ToNat(n64);
     Prim.debugPrintInt(c);
   };
   public func incints(i8 : Int8, i16 : Int16, i32 : Int32, i64 : Int64) : () {
-    c += int8ToInt(i8);
-    c += int16ToInt(i16);
-    c += int32ToInt(i32);
-    c += int64ToInt(i64);
+    c += Prim.int8ToInt(i8);
+    c += Prim.int16ToInt(i16);
+    c += Prim.int32ToInt(i32);
+    c += Prim.int64ToInt(i64);
     Prim.debugPrintInt(c);
   };
 

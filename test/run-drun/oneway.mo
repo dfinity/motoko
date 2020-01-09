@@ -6,7 +6,7 @@ actor a {
       async {
         Prim.debugPrint "1";
         try {
-          throw (error("Error"));
+          throw (Prim.error("Error"));
           Prim.debugPrint "unreachable";
         }
         catch e { Prim.debugPrint "2"};
@@ -21,7 +21,7 @@ actor a {
       async {
         Prim.debugPrint "3";
         try {
-          throw (error("Error"));
+          throw (Prim.error("Error"));
           Prim.debugPrint "unreachable";
         }
         catch e { Prim.debugPrint "4"};
@@ -34,7 +34,7 @@ actor a {
     ignore (
       async {
         Prim.debugPrint "5";
-        throw (error("ignored"));
+        throw (Prim.error("ignored"));
         Prim.debugPrint "unreachable";
       }
     )
@@ -46,7 +46,7 @@ actor a {
     ignore (
       async {
         Prim.debugPrint "6";
-        throw (error("ignored"));
+        throw (Prim.error("ignored"));
         Prim.debugPrint "unreachable";
       }
     );

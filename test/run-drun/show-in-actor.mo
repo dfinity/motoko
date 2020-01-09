@@ -5,3 +5,7 @@ let _ = actor {
   Prim.debugPrint (debug_show 1);
 };
 ()
+
+// non-closed actors not allowed
+//SKIP comp
+//SKIP comp-stub

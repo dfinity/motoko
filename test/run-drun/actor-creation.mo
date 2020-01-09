@@ -23,3 +23,4 @@ a.foo();
 
 // certainly won’t work on drun
 //SKIP comp
+//SKIP comp-stub
