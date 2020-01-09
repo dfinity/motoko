@@ -181,7 +181,7 @@ let make_index_inner vfs entry_points : t Diag.result =
             path
             (ty
             |> read_single_module_lib
-            |> Lib.Fun.flip Lib.Option.get []
+            |> Fun.flip Lib.Option.get []
             |> populate_definitions libs path)
             acc)
         scope.Scope.lib_env

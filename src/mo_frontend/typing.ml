@@ -552,7 +552,7 @@ let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
 
 and infer_exp_mut env exp : T.typ =
-  infer_exp' Lib.Fun.id env exp
+  infer_exp' Fun.id env exp
 
 and infer_exp_promote env exp : T.typ =
   let t = infer_exp env exp in

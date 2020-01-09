@@ -68,7 +68,7 @@ let import_relative_to_project_root root module_path dependency =
     | Some root_to_module ->
        root_to_module
        |> Filename.dirname
-       |> Lib.Fun.flip Filename.concat dependency
+       |> Fun.flip Filename.concat dependency
        |> Lib.FilePath.normalise
        |> Option.some
 

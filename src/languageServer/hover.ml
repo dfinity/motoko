@@ -26,7 +26,7 @@ let hover_handler index position file_contents project_root file_path =
            Some Lsp.{ hover_result_contents = markup_content path }
         | Source_file.Resolved resolved ->
            lookup_module resolved.Source_file.path index
-           |> Lib.Fun.flip Option.bind (fun decls ->
+           |> Fun.flip Option.bind (fun decls ->
                 List.find_opt
                   (fun d -> name_of_ide_decl d = resolved.Source_file.ident)
                   decls)

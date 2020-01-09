@@ -2,9 +2,6 @@
 
 module Fun :
 sig
-  val id : 'a -> 'a
-  val flip : ('a -> 'b -> 'c) -> 'b -> 'a -> 'c
-
   val curry : ('a * 'b -> 'c) -> ('a -> 'b -> 'c)
   val uncurry : ('a -> 'b -> 'c) -> ('a * 'b -> 'c)
 
