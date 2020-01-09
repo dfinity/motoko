@@ -391,6 +391,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | Unresolved -> assert false
     | LibPath fp -> k (find fp env.libs)
     | IDLPath _ -> trap exp.at "actor import"
+    | PrimPath -> k (find "@prim" env.libs)
     )
   | LitE lit ->
     k (interpret_lit env lit)

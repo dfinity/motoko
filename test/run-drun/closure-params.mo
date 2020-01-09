@@ -1,14 +1,15 @@
+import Prim "mo:prim";
 let a = actor {
   var c = 0;
   public func incn(n : Nat) : () {
     c += n;
-    debugPrintNat(c);
+    Prim.debugPrintNat(c);
   };
   public func readCounter(f : shared Nat -> ()) : () {
     f(c);
   };
 
-  public func printNat(n: Nat) { debugPrintNat n };
+  public func printNat(n: Nat) { Prim.debugPrintNat n };
 
   public func go() {
     incn(1);

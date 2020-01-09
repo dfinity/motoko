@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 type List<T> = ?{head : T; var tail : List<T>};
 
 type Post = shared Text -> ();
@@ -42,7 +43,7 @@ actor class Client() = this {
   };
 
   public func send(msg : Text) {
-    debugPrint(name # " received " # msg);
+    Prim.debugPrint(name # " received " # msg);
   };
 };
 

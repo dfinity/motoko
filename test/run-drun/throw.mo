@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 // This is like local-throw.as, just not local
 // (Using `await async { … }` around relevant parts
 
@@ -57,14 +58,14 @@ actor a {
   public func go() = ignore async {
     try {
       await t2();
-      debugPrint ("t2 ok");
+      Prim.debugPrint ("t2 ok");
     } catch _ {
       assert false;
     };
 
     try {
       await t3();
-      debugPrint ("t3 ok");
+      Prim.debugPrint ("t3 ok");
     } catch _ {
       assert false;
     };

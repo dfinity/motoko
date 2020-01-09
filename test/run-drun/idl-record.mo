@@ -1,25 +1,26 @@
+import Prim "mo:prim";
 // This test checks that the IDL decoder can
 // do the subtyping from received many-field record
 // to a double-field one (field names are in hash order)
 actor {
     public func pair(o : (Text, Int)) : async () {
      switch o {
-       case (content, num) debugPrint ("ok: " # debug_show num);
+       case (content, num) Prim.debugPrint ("ok: " # debug_show num);
      }
   };
   public func record(o : {content: Text; value : Int}) : async () {
      switch o {
-       case {content} debugPrint ("ok: " # content);
+       case {content} Prim.debugPrint ("ok: " # content);
      }
   };
   public func record1(o : {value : Int; byte : Int8}) : async () {
      switch o {
-       case {byte} debugPrint ("ok: " # debug_show byte);
+       case {byte} Prim.debugPrint ("ok: " # debug_show byte);
      }
   };
     public func record2(o : {content: Text; value : Int}, follower : Int8) : async Int8 {
      switch o {
-       case {content} { debugPrint ("ok: " # " " # content # " " # debug_show follower); follower };
+       case {content} { Prim.debugPrint ("ok: " # " " # content # " " # debug_show follower); follower };
      }
   };
 }

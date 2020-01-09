@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 actor a {
   public func ping() : async () {
   };
@@ -15,7 +16,7 @@ actor a {
     // now a should be freed
     let s3 = rts_heap_size();
 
-    debugPrint(
+    Prim.debugPrint(
       "Ignore Diff: " #
       debug_show s0 # " " #
       debug_show s1 # " " #

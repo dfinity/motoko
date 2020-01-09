@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 actor a {
   public func transpose (data : [(Int,Text)]) : async {ints: [Int]; txts: [Text]} {
     return {
@@ -12,7 +13,7 @@ actor a {
     assert (x.ints[1] == 2);
     assert (x.txts[0] == "Hi");
     assert (x.txts[1] == "Ho");
-    debugPrint("All good");
+    Prim.debugPrint("All good");
   }
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

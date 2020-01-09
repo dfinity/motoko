@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 // This file only exercises local throws that don't cross function boundaries.
 // In principle, it should run on all targets.
 
@@ -51,14 +52,14 @@ actor a {
   public func go() = ignore async {
     try {
       await t2();
-      debugPrint ("t2 ok");
+      Prim.debugPrint ("t2 ok");
     } catch _ {
       assert false;
     };
 
     try {
       await t3();
-      debugPrint ("t3 ok");
+      Prim.debugPrint ("t3 ok");
     } catch _ {
       assert false;
     };

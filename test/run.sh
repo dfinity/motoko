@@ -72,6 +72,7 @@ function normalize () {
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
     sed 's/prelude:[^:]*:/prelude:___:/g' |
+    sed 's/prim:[^:]*:/prim:___:/g' |
     sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
     sed 's/rip_addr: [0-9]*/rip_addr: XXX/g' |
     sed 's,/private/tmp/,/tmp/,g' |

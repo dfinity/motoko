@@ -1,5 +1,6 @@
+import Prim "mo:prim";
 actor a {
-  public func foo() { debugPrint("a"); };
+  public func foo() { Prim.debugPrint("a"); };
 
   public func pass_func(f : shared () -> ()) {
     f();
@@ -11,7 +12,7 @@ actor a {
 
   public func go() {
     actor b {
-      public func foo() { debugPrint("b"); };
+      public func foo() { Prim.debugPrint("b"); };
     };
     pass_func(foo);
     pass_func(b.foo);

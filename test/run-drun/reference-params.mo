@@ -1,7 +1,8 @@
+import Prim "mo:prim";
 actor {
   let a = actor {
     public func hello() {
-      debugPrint("Hello World!");
+      Prim.debugPrint("Hello World!");
     };
   };
   a.hello();
@@ -28,7 +29,7 @@ actor {
       f();
     };
     public func hello() {
-      debugPrint("Hello Universe!");
+      Prim.debugPrint("Hello Universe!");
     };
     public func go() {
       say_hi(hello);
@@ -39,7 +40,7 @@ actor {
   // test passing a self to an actor
   let e = actor this {
     public func hello() {
-      debugPrint("Hello Galaxy!");
+      Prim.debugPrint("Hello Galaxy!");
     };
     public func send_to(f : shared (actor { hello : () -> () }) -> ()) {
       f(this);

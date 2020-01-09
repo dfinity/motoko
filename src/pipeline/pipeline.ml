@@ -166,16 +166,7 @@ let check_lib senv lib : Scope.scope Diag.result =
     Diag.bind (Definedness.check_lib lib) (fun () -> Diag.return sscope)
   )
 
-(* Imported file loading *)
-
-(*
-Loading a file (or string) implies lexing, parsing, resolving imports to
-libraries, and typechecking.
-The resulting prog is typechecked.
-The Typing.scope field in load_result is the accumulated scope.
-When we load a declaration (i.e from the REPL), we also care about the type
-and the newly added scopes, so these are returned separately.
-*)
+(* Parsing libraries *)
 
 let is_import dec =
   let open Source in let open Syntax in
@@ -206,6 +197,65 @@ let lib_of_prog f prog =
   {it = exp; at = prog.at; note = f}
 
 
+(* Prelude *)
+
+let prelude_name = "prelude"
+
+let prelude_error phase (msgs : Diag.messages) =
+  Printf.eprintf "%s prelude failed\n" phase;
+  Diag.print_messages msgs;
+  exit 1
+
+let check_prelude () : Syntax.prog * stat_env =
+  let lexer = Lexing.from_string Prelude.prelude in
+  let parse = Parser.parse_prog in
+  match parse_with Lexer.Privileged lexer parse prelude_name with
+  | Error e -> prelude_error "parsing" [e]
+  | Ok prog ->
+    let senv0 = Scope.empty in
+    match infer_prog senv0 prog with
+    | Error es -> prelude_error "checking" es
+    | Ok ((_t, sscope), msgs) ->
+      let senv1 = Scope.adjoin senv0 sscope in
+      prog, senv1
+
+let prelude, initial_stat_env = check_prelude ()
+
+(* The prim module *)
+
+let prim_name = "prim"
+
+let prim_error phase (msgs : Diag.messages) =
+  Printf.eprintf "%s prim failed\n" phase;
+  Diag.print_messages msgs;
+  exit 1
+
+let check_prim () : Syntax.lib * stat_env =
+  let lexer = Lexing.from_string Prelude.prim_module in
+  let parse = Parser.parse_prog in
+  match parse_with Lexer.Privileged lexer parse prim_name with
+  | Error e -> prim_error "parsing" [e]
+  | Ok prog ->
+    let senv0 = initial_stat_env in
+    let lib = lib_of_prog "@prim" prog in
+    match check_lib senv0 lib with
+    | Error es -> prim_error "checking" es
+    | Ok (sscope, msgs) ->
+      let senv1 = Scope.adjoin senv0 sscope in
+      lib, senv1
+
+(* Imported file loading *)
+
+(*
+Loading a file (or string) implies lexing, parsing, resolving imports to
+libraries, and typechecking.
+The resulting prog is typechecked.
+The Typing.scope field in load_result is the accumulated scope.
+When we load a declaration (i.e from the REPL), we also care about the type
+and the newly added scopes, so these are returned separately.
+*)
+
+
 type load_result =
   (Syntax.lib list * Syntax.prog list * Scope.scope) Diag.result
 
@@ -232,6 +282,15 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   let libs = ref [] in
 
   let rec go ri = match ri.Source.it with
+    | Syntax.PrimPath ->
+      (* a bit of an hack, lib_env should key on resolved_import *)
+      if Type.Env.mem "@prim" !senv.Scope.lib_env then
+        Diag.return ()
+      else
+        let lib, sscope = check_prim () in
+        libs := lib :: !libs; (* NB: Conceptually an append *)
+        senv := Scope.adjoin !senv sscope;
+        Diag.return ()
     | Syntax.Unresolved -> assert false
     | Syntax.LibPath f ->
       if Type.Env.mem f !senv.Scope.lib_env then
@@ -332,31 +391,6 @@ let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) optio
       | None -> None
       | Some denv2 -> Some (senv1, denv2)
     )
-
-
-(* Prelude *)
-
-let prelude_name = "prelude"
-
-let prelude_error phase (msgs : Diag.messages) =
-  Printf.eprintf "%s prelude failed\n" phase;
-  Diag.print_messages msgs;
-  exit 1
-
-let check_prelude () : Syntax.prog * stat_env =
-  let lexer = Lexing.from_string Prelude.prelude in
-  let parse = Parser.parse_prog in
-  match parse_with Lexer.Privileged lexer parse prelude_name with
-  | Error e -> prelude_error "parsing" [e]
-  | Ok prog ->
-    let senv0 = Scope.empty in
-    match infer_prog senv0 prog with
-    | Error es -> prelude_error "checking" es
-    | Ok ((_t, sscope), msgs) ->
-      let senv1 = Scope.adjoin senv0 sscope in
-      prog, senv1
-
-let prelude, initial_stat_env = check_prelude ()
 
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_scope prelude with

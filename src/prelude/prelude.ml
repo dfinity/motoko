@@ -1,3 +1,8 @@
+(*
+The prelude. This stuff is always initially in scope. This should be only
+ * type definitions for primitive types
+ * code with privileged names (@…) that are used by the desugarer or ir-passes
+*)
 let prelude =
 {|
 type Any = prim "Any";
@@ -24,19 +29,10 @@ type Text = prim "Text";
 type Blob = prim "Blob";
 type Error = prim "Error";
 
-type Iter<T_> = {next : () -> ?T_};
+type @Iter<T_> = {next : () -> ?T_};
 
-func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
-
-class range(x : Nat, y : Nat) {
-  var i = x;
-  public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
-};
-
-class revrange(x : Nat, y : Nat) {
-  var i = x + 1;
-  public func next() : ?Nat { if (i <= y) null else {i -= 1; ?i} };
-};
+// The @ in the name ensures that this cannot be shadowed by user code, so
+// compiler passes can rely on them being in scope
 
 // Implementations for overloaded dot operations
 // Note that these return functions!
@@ -52,34 +48,34 @@ func @mut_array_len<A>(xs : [var A]) : (() -> Nat) =
   (func () : Nat = (prim "array_len" : ([var A]) -> Nat) xs);
 func @mut_array_set<A>(xs : [var A]) : ((Nat, A) -> ()) =
   (func (n : Nat, x : A) = (xs[n] := x));
-func @immut_array_keys<A>(xs : [A]) : (() -> Iter<Nat>) =
-  (func () : Iter<Nat> = object {
+func @immut_array_keys<A>(xs : [A]) : (() -> @Iter<Nat>) =
+  (func () : @Iter<Nat> = object {
     var i = 0;
     let l = xs.len();
     public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
   });
-func @mut_array_keys<A>(xs : [var A]) : (() -> Iter<Nat>) =
-  (func () : Iter<Nat> = object {
+func @mut_array_keys<A>(xs : [var A]) : (() -> @Iter<Nat>) =
+  (func () : @Iter<Nat> = object {
     var i = 0;
     let l = xs.len();
     public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
   });
-func @immut_array_vals<A>(xs : [A]) : (() -> Iter<A>) =
-  (func () : Iter<A> = object {
+func @immut_array_vals<A>(xs : [A]) : (() -> @Iter<A>) =
+  (func () : @Iter<A> = object {
     var i = 0;
     let l = xs.len();
     public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   });
-func @mut_array_vals<A>(xs : [var A]) : (() -> Iter<A>) =
-  (func () : Iter<A> = object {
+func @mut_array_vals<A>(xs : [var A]) : (() -> @Iter<A>) =
+  (func () : @Iter<A> = object {
     var i = 0;
     let l = xs.len();
     public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   });
 func @text_len(xs : Text) : (() -> Nat) =
   (func () : Nat = (prim "text_len" : Text -> Nat) xs);
-func @text_chars(xs : Text) : (() -> Iter<Char>) =
-  (func () : Iter<Char> = object {
+func @text_chars(xs : Text) : (() -> @Iter<Char>) =
+  (func () : @Iter<Char> = object {
     type TextIter = Any; // not exposed
     let i = (prim "text_iter" : Text -> TextIter) xs;
     public func next() : ?Char {
@@ -89,6 +85,223 @@ func @text_chars(xs : Text) : (() -> Iter<Char>) =
         ?((prim "text_iter_next" : TextIter -> Char) i)
     };
   });
+
+
+
+// Internal helper functions for the show translation
+
+// The text_of functions do not need to be exposed; the user can just use
+// the show above.
+
+func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : [Text]) : Text {
+  var text = "";
+  var n = x;
+
+  if (n == 0) return "0";
+
+  var i = 0;
+  while (n > 0) {
+    let rem = n % base;
+    if (i == sep) { text := "_" # text; i := 0 };
+    text := digits[rem] # text;
+    n := n / base;
+    i += 1;
+  };
+  return text;
+};
+
+let @decdigits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+func @text_of_Nat(x : Nat) : Text {
+  @text_of_num(x, 10, 3, @decdigits);
+};
+
+func @text_of_Int(x : Int) : Text {
+  if (x == 0) "0" else (if (x < 0) "-" else "+") #
+  @text_of_Nat((prim "abs" : Int -> Nat) x)
+};
+
+let @hexdigits =
+  [ "0", "1", "2", "3", "4", "5", "6", "7",
+    "8", "9", "A", "B", "C", "D", "E", "F" ];
+func @text_of_Word(x : Nat) : Text {
+  return "0x" # @text_of_num(x, 16, 4, @hexdigits);
+};
+
+// Thre is some duplication with the prim_module, but we need these here
+// before we can load the prim module
+func @int64ToInt(n : Int64) : Int = (prim "num_conv_Int64_Int" : Int64 -> Int) n;
+func @int32ToInt(n : Int32) : Int = (prim "num_conv_Int32_Int" : Int32 -> Int) n;
+func @int16ToInt(n : Int16) : Int = (prim "num_conv_Int16_Int" : Int16 -> Int) n;
+func @int8ToInt(n : Int8) : Int = (prim "num_conv_Int8_Int" : Int8 -> Int) n;
+func @nat64ToNat(n : Nat64) : Nat = (prim "num_conv_Nat64_Nat" : Nat64 -> Nat) n;
+func @nat32ToNat(n : Nat32) : Nat = (prim "num_conv_Nat32_Nat" : Nat32 -> Nat) n;
+func @nat16ToNat(n : Nat16) : Nat = (prim "num_conv_Nat16_Nat" : Nat16 -> Nat) n;
+func @nat8ToNat(n : Nat8) : Nat = (prim "num_conv_Nat8_Nat" : Nat8 -> Nat) n;
+func @word64ToNat(n : Word64) : Nat = (prim "num_conv_Word64_Nat" : Word64 -> Nat) n;
+func @word32ToNat(n : Word32) : Nat = (prim "num_conv_Word32_Nat" : Word32 -> Nat) n;
+func @word16ToNat(n : Word16) : Nat = (prim "num_conv_Word16_Nat" : Word16 -> Nat) n;
+func @word8ToNat(n : Word8) : Nat = (prim "num_conv_Word8_Nat" : Word8 -> Nat) n;
+
+func @text_of_Nat8(x : Nat8) : Text = @text_of_Nat (@nat8ToNat x);
+func @text_of_Nat16(x : Nat16) : Text = @text_of_Nat (@nat16ToNat x);
+func @text_of_Nat32(x : Nat32) : Text = @text_of_Nat (@nat32ToNat x);
+func @text_of_Nat64(x : Nat64) : Text = @text_of_Nat (@nat64ToNat x);
+func @text_of_Int8(x : Int8) : Text = @text_of_Int (@int8ToInt x);
+func @text_of_Int16(x : Int16) : Text = @text_of_Int (@int16ToInt x);
+func @text_of_Int32(x : Int32) : Text = @text_of_Int (@int32ToInt x);
+func @text_of_Int64(x : Int64) : Text = @text_of_Int (@int64ToInt x);
+func @text_of_Word8(x : Word8) : Text = @text_of_Word (@word8ToNat x);
+func @text_of_Word16(x : Word16) : Text = @text_of_Word (@word16ToNat x);
+func @text_of_Word32(x : Word32) : Text = @text_of_Word (@word32ToNat x);
+func @text_of_Word64(x : Word64) : Text = @text_of_Word (@word64ToNat x);
+
+
+func @text_of_Bool(b : Bool) : Text {
+  if (b) "true" else "false"
+};
+
+func @text_of_Text(t : Text) : Text {
+  // TODO: Escape properly
+  "\"" # t # "\"";
+};
+
+func @text_of_Char(c : Char) : Text {
+  // TODO: Escape properly
+  "\'" # (prim "conv_Char_Text" : Char -> Text) c # "\'";
+};
+
+
+func @text_has_parens(t : Text) : Bool {
+  switch (t.chars().next()) {
+    case (?'(') true;
+    case _ false;
+  }
+};
+
+func @text_needs_parens(t : Text) : Bool {
+  switch (t.chars().next()) {
+    case (?('+' or '-' or '?' or '#')) true;
+    case _ false;
+  }
+};
+
+func @text_of_option<T>(f : T -> Text, x : ?T) : Text {
+  switch (x) {
+    case (?y) {
+      let fy = f y;
+      if (@text_needs_parens(fy)) "?(" # fy # ")"
+      else "?" # fy
+    };
+    case null {"null"};
+  }
+};
+
+func @text_of_variant<T>(l : Text, f : T -> Text, x : T) : Text {
+  let fx = f x;
+  if (fx == "()") "#" # l
+  else if (@text_has_parens(fx)) "#" # l # fx
+  else "#" # l # "(" # fx # ")"
+};
+
+func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
+  var text = "[";
+  var first = true;
+  for (x in xs.vals()) {
+    if first {
+      first := false;
+    } else {
+      text #= ", ";
+    };
+    text #= f x;
+  };
+  text #= "]";
+  return text;
+};
+
+func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
+  var text = "[var";
+  var first = true;
+  for (x in xs.vals()) {
+    if first {
+      first := false;
+      text #= " ";
+    } else {
+      text #= ", ";
+    };
+    text #= f x;
+  };
+  text #= "]";
+  return text;
+};
+
+
+type @Cont<T> = T -> () ;
+type @Async<T> = (@Cont<T>,@Cont<Error>) -> ();
+
+type @Result<T> = {#ok : T; #error : Error};
+
+func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
+  let k_null = func(_ : T) {};
+  let r_null = func(_ : Error) {};
+  var result : ?(@Result<T>) = null;
+  var ks : @Cont<T> = k_null;
+  var rs : @Cont<Error> = r_null;
+
+  func fulfill(t : T) {
+    switch result {
+      case null {
+        result := ?(#ok t);
+        let ks_ = ks;
+        ks := k_null;
+        rs := r_null;
+        ks_(t);
+      };
+      case (? _) { assert false };
+    };
+  };
+
+  func fail(e : Error) {
+    switch result {
+      case null {
+        result := ?(#error e);
+        let rs_ = rs;
+        ks := k_null;
+        rs := r_null;
+        rs_(e);
+      };
+      case (? _) { assert false };
+    };
+  };
+
+  func enqueue(k : @Cont<T>, r : @Cont<Error>) {
+    switch result {
+      case null {
+        let ks_ = ks;
+        ks := (func(t : T) { ks_(t); k(t) });
+        let rs_ = rs;
+        rs := (func(e : Error) { rs_(e); r(e) });
+      };
+      case (? (#ok t)) { k(t) };
+      case (? (#error e)) { r(e) };
+    };
+  };
+
+  (enqueue, fulfill, fail)
+};
+|}
+
+(*
+The primitive definitions.
+
+This module should contain everything that cannot be implemented in plain
+Motoko. It is available via `import Prim "mo:prim"`. Normal user code would
+usually not import that module directly, but through the stdlib, which takes
+care of providing a prober module structure, e.g. exposing Array_tabulate
+through Array.tabulate.
+*)
+let prim_module =
+{|
+func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
@@ -102,23 +315,6 @@ func rts_heap_size() : Nat { (prim "rts_heap_size" : () -> Nat) () };
 func rts_total_allocation() : Nat { (prim "rts_total_allocation" : () -> Nat) () };
 func rts_callback_table_count() : Nat { (prim "rts_callback_table_count" : () -> Nat) () };
 func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> Nat) () };
-
-// Hashing
-func hashInt(x : Int) : Word32 {
-  var n = x;
-  var hash : Word32 = 0;
-  if (n < 0) {
-    hash := ^hash;
-    n := abs n;
-  };
-  let base = 2**32;
-  while (n > 0) {
-    hash ^= intToWord32(n % base);
-    n /= base;
-  };
-  return hash;
-};
-
 
 // Conversions
 
@@ -203,144 +399,8 @@ func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
 func ctzWord64(w : Word64) : Word64 = (prim "ctz64" : Word64 -> Word64) w;
 func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, Word64) -> Word64) (w, amount) != (0 : Word64);
 
-
-// Internal helper functions for the show translation
-
-// The @ in the name ensures that this cannot be shadowed by user code, so
-// compiler passes can rely on them being in scope
-// The text_of functions do not need to be exposed; the user can just use
-// the show above.
-
-func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : [Text]) : Text {
-  var text = "";
-  var n = x;
-
-  if (n == 0) return "0";
-
-  var i = 0;
-  while (n > 0) {
-    let rem = n % base;
-    if (i == sep) { text := "_" # text; i := 0 };
-    text := digits[rem] # text;
-    n := n / base;
-    i += 1;
-  };
-  return text;
-};
-
-let @decdigits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-func @text_of_Nat(x : Nat) : Text {
-  @text_of_num(x, 10, 3, @decdigits);
-};
-
-func @text_of_Int(x : Int) : Text {
-  if (x == 0) "0" else (if (x < 0) "-" else "+") # @text_of_Nat(abs x)
-};
-
-let @hexdigits =
-  [ "0", "1", "2", "3", "4", "5", "6", "7",
-    "8", "9", "A", "B", "C", "D", "E", "F" ];
-func @text_of_Word(x : Nat) : Text {
-  return "0x" # @text_of_num(x, 16, 4, @hexdigits);
-};
-
-func @text_of_Nat8(x : Nat8) : Text = @text_of_Nat (nat8ToNat x);
-func @text_of_Nat16(x : Nat16) : Text = @text_of_Nat (nat16ToNat x);
-func @text_of_Nat32(x : Nat32) : Text = @text_of_Nat (nat32ToNat x);
-func @text_of_Nat64(x : Nat64) : Text = @text_of_Nat (nat64ToNat x);
-func @text_of_Int8(x : Int8) : Text = @text_of_Int (int8ToInt x);
-func @text_of_Int16(x : Int16) : Text = @text_of_Int (int16ToInt x);
-func @text_of_Int32(x : Int32) : Text = @text_of_Int (int32ToInt x);
-func @text_of_Int64(x : Int64) : Text = @text_of_Int (int64ToInt x);
-func @text_of_Word8(x : Word8) : Text = @text_of_Word (word8ToNat x);
-func @text_of_Word16(x : Word16) : Text = @text_of_Word (word16ToNat x);
-func @text_of_Word32(x : Word32) : Text = @text_of_Word (word32ToNat x);
-func @text_of_Word64(x : Word64) : Text = @text_of_Word (word64ToNat x);
-
-
-func @text_of_Bool(b : Bool) : Text {
-  if (b) "true" else "false"
-};
-
-func @text_of_Text(t : Text) : Text {
-  // TODO: Escape properly
-  "\"" # t # "\"";
-};
-
-func @text_of_Char(c : Char) : Text {
-  // TODO: Escape properly
-  "\'" # charToText c # "\'";
-};
-
-
-func @text_has_parens(t : Text) : Bool {
-  switch (t.chars().next()) {
-    case (?'(') true;
-    case _ false;
-  }
-};
-
-func @text_needs_parens(t : Text) : Bool {
-  switch (t.chars().next()) {
-    case (?('+' or '-' or '?' or '#')) true;
-    case _ false;
-  }
-};
-
-func @text_of_option<T>(f : T -> Text, x : ?T) : Text {
-  switch (x) {
-    case (?y) {
-      let fy = f y;
-      if (@text_needs_parens(fy)) "?(" # fy # ")"
-      else "?" # fy
-    };
-    case null {"null"};
-  }
-};
-
-func @text_of_variant<T>(l : Text, f : T -> Text, x : T) : Text {
-  let fx = f x;
-  if (fx == "()") "#" # l
-  else if (@text_has_parens(fx)) "#" # l # fx
-  else "#" # l # "(" # fx # ")"
-};
-
-func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
-  var text = "[";
-  var first = true;
-  for (x in xs.vals()) {
-    if first {
-      first := false;
-    } else {
-      text #= ", ";
-    };
-    text #= f x;
-  };
-  text #= "]";
-  return text;
-};
-
-func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
-  var text = "[var";
-  var first = true;
-  for (x in xs.vals()) {
-    if first {
-      first := false;
-      text #= " ";
-    } else {
-      text #= ", ";
-    };
-    text #= f x;
-  };
-  text #= "]";
-  return text;
-};
-
-
 // Array utilities
 
-// TODO: These would be nicer as a objects, but lets do them as functions
-// until the compiler has a concept of “static objects”
 func Array_init<T>(len : Nat,  x : T) : [var T] {
   (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
 };
@@ -349,13 +409,14 @@ func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
 
-// these will change
+// Error
+
 type ErrorCode = {#error; #system}; /* TBC */
 
 // creation and inspection of abstract error
 func error(message : Text) : Error = {
   let e = (#error, message);
-  ((prim "cast" : (ErrorCode, Text)-> Error) e)
+  ((prim "cast" : (ErrorCode, Text) -> Error) e)
 };
 func errorCode(e : Error) : ErrorCode = {
   ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
@@ -364,57 +425,5 @@ func errorMessage(e : Error) : Text = {
   ((prim "cast" : Error -> (ErrorCode, Text)) e).1;
 };
 
-type Cont<T> = T -> () ;
-type Async<T> = (Cont<T>,Cont<Error>) -> ();
 
-type Result<T> = {#ok : T; #error : Error};
-
-func @new_async<T <: Any>() : (Async<T>, Cont<T>, Cont<Error>) {
-  let k_null = func(_ : T) {};
-  let r_null = func(_ : Error) {};
-  var result : ?(Result<T>) = null;
-  var ks : Cont<T> = k_null;
-  var rs : Cont<Error> = r_null;
-
-  func fulfill(t : T) {
-    switch result {
-      case null {
-        result := ?(#ok t);
-        let ks_ = ks;
-        ks := k_null;
-        rs := r_null;
-        ks_(t);
-      };
-      case (? _) { assert false };
-    };
-  };
-
-  func fail(e : Error) {
-    switch result {
-      case null {
-        result := ?(#error e);
-        let rs_ = rs;
-        ks := k_null;
-        rs := r_null;
-        rs_(e);
-      };
-      case (? _) { assert false };
-    };
-  };
-
-  func enqueue(k : Cont<T>, r : Cont<Error>) {
-    switch result {
-      case null {
-        let ks_ = ks;
-        ks := (func(t : T) { ks_(t); k(t) });
-        let rs_ = rs;
-        rs := (func(e : Error) { rs_(e); r(e) });
-      };
-      case (? (#ok t)) { k(t) };
-      case (? (#error e)) { r(e) };
-    };
-  };
-
-  (enqueue, fulfill, fail)
-};
 |}
