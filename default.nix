@@ -91,6 +91,7 @@ let commonBuildInputs = pkgs:
     pkgs.dune
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
+    pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
     pkgs.ocamlPackages.num
