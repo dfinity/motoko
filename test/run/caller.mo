@@ -1,7 +1,11 @@
 actor a {
 
-  public shared { caller = c } func getCaller()  : async Blob {
+  public shared { caller = c } func getCaller() : async Blob {
     return c;
+  };
+
+  public shared query { caller = c } func getCallerHash() : async Word32 {
+    hashBlob c;
   };
 
   public shared {caller} func c () : async () {
@@ -14,4 +18,4 @@ actor a {
 };
 
 ignore a.c(); //OR-CALL ingress c 0x4449444C0000
-
+ignore a.getCallerHash(); //OR-CALL ingress getCallerHash 0x4449444C0000
