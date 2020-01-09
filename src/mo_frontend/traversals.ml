@@ -36,7 +36,7 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
   | WhileE (exp1, exp2) ->
      f { exp with it = WhileE (over_exp f exp1, over_exp f exp2) }
   | LoopE (exp1, exp2_opt) ->
-     f { exp with it = LoopE (over_exp f exp1, Lib.Option.map (over_exp f) exp2_opt) }
+     f { exp with it = LoopE (over_exp f exp1, Option.map (over_exp f) exp2_opt) }
   | ForE (x, exp1, exp2) ->
      f { exp with it = ForE (x, over_exp f exp1, over_exp f exp2) }
   | DebugE exp1 ->

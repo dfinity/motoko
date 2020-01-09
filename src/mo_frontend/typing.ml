@@ -1823,7 +1823,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let t = infer_exp {env with pre = true} exp in
     Scope.{empty with val_env = T.Env.singleton id.it (T.Mut t)}
   | TypD (id, _, _) ->
-    let c = Lib.Option.value id.note in
+    let c = Option.get id.note in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c ;

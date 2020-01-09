@@ -285,7 +285,7 @@ and extra_typDs ds =
   | d::ds ->
     match d.it with
     | S.ClassD (id, _, _, _, _, _, _) ->
-      let c = Lib.Option.value id.note in
+      let c = Option.get id.note in
       let typD = I.TypD c @@ d.at in
       typD :: extra_typDs ds
     | _ -> extra_typDs ds
@@ -308,7 +308,7 @@ and dec' at n d = match d with
     end
   | S.VarD (i, e) -> I.VarD (i.it, exp e)
   | S.TypD (id, typ_bind, t) ->
-    let c = Lib.Option.value id.note in
+    let c = Option.get id.note in
     I.TypD c
   | S.ClassD (id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in

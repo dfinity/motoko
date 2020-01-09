@@ -66,7 +66,7 @@ let import_relative_to_project_root root module_path dependency =
      |> Filename.dirname
      |> Lib.Fun.flip Filename.concat dependency
      |> Lib.FilePath.normalise
-     |> Lib.Option.some
+     |> Option.some
 
 (* Given a source file and a cursor position in that file, figure out
    the prefix relevant to searching completions. For example, given:
@@ -119,7 +119,7 @@ let has_prefix (prefix : string) (ide_decl : DI.ide_decl): bool =
   ide_decl
   |> DI.name_of_ide_decl
   |> Lib.String.chop_prefix prefix
-  |> Lib.Option.is_some
+  |> Option.is_some
 
 let opt_bind f = function
   | None -> None
@@ -144,7 +144,7 @@ let completions index logger project_root file_path file_contents line column =
      let toplevel =
        current_uri_opt
        |> opt_bind (fun uri -> DI.lookup_module uri index)
-       |> Lib.Option.map (List.map item_of_ide_decl)
+       |> Option.map (List.map item_of_ide_decl)
        |> Lib.Fun.flip Lib.Option.get [] in
      imported
      |> List.map (fun (alias, _) -> module_alias_completion_item alias)
@@ -154,7 +154,7 @@ let completions index logger project_root file_path file_contents line column =
         idenfiers of the current module *)
        current_uri_opt
        |> opt_bind (fun uri -> DI.lookup_module uri index)
-       |> Lib.Option.map (fun decls ->
+       |> Option.map (fun decls ->
             decls
             |> List.filter (has_prefix prefix)
             |> List.map item_of_ide_decl)

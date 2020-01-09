@@ -24,7 +24,7 @@ let hovered_identifier_test_case file expected =
   let actual =
     Source_file.cursor_target_at_pos
       Lsp.{ position_line = line; position_character = column } file in
-  Lib.Option.equal (=) actual expected ||
+  Option.equal (=) actual expected ||
     (Printf.printf
        "\nExpected: %s\nActual:   %s\n"
        (show expected)

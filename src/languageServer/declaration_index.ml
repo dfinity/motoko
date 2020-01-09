@@ -28,7 +28,7 @@ let string_of_ide_decl = function
        ^ ", typ = "
        ^ Type.string_of_typ value.typ
        ^ Lib.Option.get
-           (Lib.Option.map
+           (Option.map
               (fun pos -> ", definition = " ^ string_of_region pos)
               value.definition)
            ""
@@ -39,7 +39,7 @@ let string_of_ide_decl = function
        ^ ", typ = "
        ^ Type.string_of_con ty.typ
        ^ Lib.Option.get
-           (Lib.Option.map
+           (Option.map
               (fun pos -> ", definition = " ^ string_of_region pos)
               ty.definition)
            ""
@@ -62,7 +62,7 @@ let lookup_module
   match parse path with
   | Ok (Relative path) -> Index.find_opt path index
   | Ok (Package (pkg, path)) ->
-     Lib.Option.bind
+     Option.bind
        (Flags.M.find_opt pkg !Flags.package_urls)
        (fun pkg_path ->
         Index.find_opt (Filename.concat pkg_path path) index)
@@ -110,7 +110,7 @@ let read_single_module_lib (ty: Type.typ): ide_decl list option =
              | typ -> ValueDecl { name; typ; definition = None }
             )
           )
-     |> Lib.Option.some
+     |> Option.some
   | _ -> None
 
 let unwrap_module_ast (lib : Syntax.lib): Syntax.exp_field list option =

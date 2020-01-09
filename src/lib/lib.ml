@@ -386,38 +386,10 @@ end
 
 module Option =
 struct
-  let equal p x y =
-    match x, y with
-    | Some x', Some y' -> p x' y'
-    | None, None -> true
-    | _, _ -> false
-
   let get o x =
     match o with
     | Some y -> y
     | None -> x
-
-  let value = function
-    | Some x -> x
-    | None -> raise Not_found
-
-  let map f = function
-    | Some x -> Some (f x)
-    | None -> None
-
-  let iter f = function
-    | Some x -> f x
-    | None -> ()
-
-  let some x = Some x
-
-  let bind x f = match x with
-    | Some x -> f x
-    | None -> None
-
-  let is_some x = x <> None
-
-  let is_none x = x = None
 end
 
 module Promise =
@@ -438,7 +410,7 @@ module FilePath =
 struct
   let normalise file_path =
     let has_trailing_slash =
-      Option.is_some (String.chop_suffix "/" file_path) in
+      Stdlib.Option.is_some (String.chop_suffix "/" file_path) in
     let has_leading_slash = not (Filename.is_relative file_path) in
     let acc = Stack.create () in
     String.split file_path '/'
@@ -455,7 +427,7 @@ struct
     let prefix = if has_leading_slash then "/" else "" in
     prefix ^ (if has_trailing_slash
       then result
-      else Option.value (String.chop_suffix "/" result))
+      else Stdlib.Option.get (String.chop_suffix "/" result))
 
   let relative_to base path =
     String.chop_prefix
@@ -504,7 +476,7 @@ struct
     let show = function
       | None -> "None"
       | Some s -> "Some " ^ s in
-    Option.equal Stdlib.String.equal actual expected ||
+    Stdlib.Option.equal Stdlib.String.equal actual expected ||
       (Printf.printf
          "\nExpected: %s\nActual: %s\n"
          (show expected)

@@ -467,7 +467,7 @@ let const s =
 
 let id s =
   let bo = peek s in
-  Lib.Option.map
+  Option.map
     (function
     | 0 -> `CustomSection
     | 1 -> `TypeSection

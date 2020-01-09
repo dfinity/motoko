@@ -81,15 +81,7 @@ end
 
 module Option :
 sig
-  val equal : ('a -> 'a -> bool) -> 'a option -> 'a option -> bool
   val get : 'a option -> 'a -> 'a
-  val value : 'a option -> 'a
-  val map : ('a -> 'b) -> 'a option -> 'b option
-  val some : 'a -> 'a option
-  val iter : ('a -> unit) -> 'a option -> unit
-  val bind : 'a option -> ('a -> 'b option) -> 'b option
-  val is_some : 'a option -> bool
-  val is_none : 'a option -> bool
 end
 
 module Promise :
