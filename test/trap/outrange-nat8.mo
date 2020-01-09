@@ -1,1 +1,2 @@
-let _ = natToNat8 256
+import Prim "mo:prim";
+let _ = Prim.natToNat8 256
