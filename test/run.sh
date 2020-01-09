@@ -186,8 +186,8 @@ do
 
   if [ ${file: -3} == ".mo" ]
   then
-    # extra flags
-    moc_extra_flags="$(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' ')"
+    # extra flags (allow shell variables there)
+    moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
 
     # Typecheck
     run tc $MOC $moc_extra_flags --check $base.mo
