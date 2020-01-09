@@ -11,19 +11,6 @@ actor class Server() = {
   var nextId : Nat = 0;
   var clients : L.List<ClientData> = null;
 
-  func broadcast(id : Nat, message : Text) {
-    var next = clients;
-    label sends loop {
-      switch next {
-        case null { break sends };
-        case (?n) {
-          if (n.head.id != id) n.head.client(message);
-          next := n.tail;
-        };
-      };
-    };
-  };
-
   public func subscribe(aclient : shared Text -> ()) : async T.Subscription {
     let c = {id = nextId; client = aclient; var revoked = false};
     nextId += 1;
@@ -31,7 +18,19 @@ actor class Server() = {
     clients := ?cs;
     return object {
       public shared func post(message : Text) {
-        if (not c.revoked) broadcast(c.id, message);
+ 	if (not c.revoked) { // inlined call to broadcast(c.id,message)
+	  let id = c.id;
+	  var next = clients;
+	  label sends loop {
+	    switch next {
+	      case null { break sends };
+	      case (?n) {
+		if (n.head.id != id) n.head.client(message);
+		next := n.tail;
+	      };
+	    };
+	  };
+        }
       };
       public shared func cancel() { unsubscribe(c.id) };
     };
