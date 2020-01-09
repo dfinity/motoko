@@ -270,7 +270,7 @@ rec {
 
     let lsp = testDerivation {
       name = "test-lsp";
-      src = subpath ./test/lsp-int/test-project;
+      src = subpath ./test/lsp-int-test-project;
       buildInputs = [ moc haskellPackages.lsp-int ];
       checkPhase = ''
         echo running lsp-int
