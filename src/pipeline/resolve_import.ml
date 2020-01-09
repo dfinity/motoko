@@ -174,12 +174,8 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
   | Error msg ->
      err_unrecognized_url msgs at f msg
 
-(* Resolve the argument to --package. These can also be relative to base *)
-let resolve_package_url (msgs:Diag.msg_store) (base:filepath) (pname:string) (f:url) : filepath =
-  let f =
-    if Filename.is_relative f
-    then in_base base f
-    else f in
+(* Resolve the argument to --package. *)
+let resolve_package_url (msgs:Diag.msg_store) (pname:string) (f:url) : filepath =
   let f = Lib.FilePath.normalise f in
   if Sys.file_exists f
   then f
@@ -210,8 +206,8 @@ type package_urls = url M.t
 type actor_aliases = url M.t
 type aliases = blob M.t
 
-let resolve_packages : package_urls -> filepath -> package_map Diag.result = fun purls base ->
-  Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_package_url msgs base) purls))
+let resolve_packages : package_urls -> package_map Diag.result = fun purls ->
+  Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_package_url msgs) purls))
 
 let resolve_aliases : actor_aliases -> aliases Diag.result = fun alias_urls ->
   Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_alias_url msgs) alias_urls))
@@ -225,7 +221,7 @@ type flags = {
 let resolve
   : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
   = fun {actor_idl_path; package_urls; actor_aliases} p base ->
-  Diag.bind (resolve_packages package_urls base) (fun (packages:package_map) ->
+  Diag.bind (resolve_packages package_urls) (fun (packages:package_map) ->
   Diag.bind (resolve_aliases actor_aliases) (fun aliases ->
     Diag.with_message_store (fun msgs ->
       let base = if Sys.is_directory base then base else Filename.dirname base in

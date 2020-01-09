@@ -24,6 +24,8 @@ TESTS=\
   Function \
   FunctionTest \
 	Hash \
+	HashMap \
+	HashMapTest \
 	Int \
 	IntTest \
   Iter \
@@ -79,6 +81,12 @@ $(OUTDIR)/Buf.out: buf.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/BufTest.out: bufTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/HashMapTest.out: hashMapTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/HashMap.out: hashMap.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Function.out: function.mo | $(OUTDIR)
