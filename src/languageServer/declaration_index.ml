@@ -144,7 +144,7 @@ let populate_definitions
        let fields = Lib.Option.get (unwrap_module_ast lib) [] in
        let positioned_binder =
          fields
-         |> Lib.List.map_filter is_let_bound
+         |> List.filter_map is_let_bound
          |> List.fold_left extract_binders PatternMap.empty
          |> PatternMap.find_opt value.name
        in
@@ -153,7 +153,7 @@ let populate_definitions
        let fields = Lib.Option.get (unwrap_module_ast lib) [] in
        let type_definition =
          fields
-         |> Lib.List.map_filter is_type_def
+         |> List.filter_map is_type_def
          |> Lib.List.first_opt (fun ty_id ->
                 if ty_id.it = typ.name
                 then Some ty_id.at

@@ -246,13 +246,6 @@ struct
 
   let index_of x = index_where ((=) x)
 
-  let rec map_filter f = function
-    | [] -> []
-    | x::xs ->
-      match f x with
-      | None -> map_filter f xs
-      | Some y -> y :: map_filter f xs
-
   let rec compare f xs ys =
     match xs, ys with
     | [], [] -> 0

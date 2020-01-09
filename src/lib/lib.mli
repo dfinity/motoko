@@ -24,7 +24,6 @@ sig
 
   val index_of : 'a -> 'a list -> int option
   val index_where : ('a -> bool) -> 'a list -> int option
-  val map_filter : ('a -> 'b option) -> 'a list -> 'b list
   val first_opt : ('a -> 'b option) -> 'a list -> 'b option
 
   val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
