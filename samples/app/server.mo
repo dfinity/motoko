@@ -18,7 +18,7 @@ actor class Server() = {
     clients := ?cs;
     return object {
       public shared func post(message : Text) {
- 	if (not c.revoked) { // inlined call to broadcast(c.id,message)
+ 	if (not c.revoked) {
 	  let id = c.id;
 	  var next = clients;
 	  label sends loop {
