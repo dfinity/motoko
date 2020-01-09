@@ -7,7 +7,7 @@ let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
   inherit system;
   overlays = [
     # Selecting the ocaml version
-    (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_07; })
+    (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_08; })
     # Additional ocaml package
     (self: super: {
       ocamlPackages = super.ocamlPackages // {
@@ -91,6 +91,7 @@ let commonBuildInputs = pkgs:
     pkgs.dune
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
+    pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
     pkgs.ocamlPackages.num
