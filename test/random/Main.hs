@@ -76,12 +76,15 @@ addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
 embedder :: Embedder
 embedder = WasmTime
 
+withPrim :: Line -> Line
+withPrim = (fromString "import Prim \"mo:prim\";" <>)
+
 (runScriptNoFuzz, runScriptWantFuzz) = (runner ExitSuccess id, runner (ExitFailure 1) not)
     where runner reqOutcome relevant name testCase =
             let as = name <.> "as"
                 wasm = name <.> "wasm"
                 fileArg = fromString . encodeString
-                script = do Turtle.output as $ fromString testCase
+                script = do Turtle.output as $ withPrim <$> fromString testCase
                             res@(exitCode, _, _) <- procStrictWithErr "moc"
                                 ["-no-system-api", "-no-check-ir", fileArg as] empty
                             if ExitSuccess == exitCode
@@ -93,7 +96,7 @@ prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
   let testCase :: String
       testCase = "{ var str = \"\"; for (c in \""
-                 <> s <> "\".chars()) { str #= charToText c }; assert (str == \"" <> s <> "\") }"
+                 <> s <> "\".chars()) { str #= Prim.charToText c }; assert (str == \"" <> s <> "\") }"
 
       s = concatMap escape str
   runScriptNoFuzz "explodeConcat" testCase
@@ -115,7 +118,7 @@ escape '"' = "\\\""
 escape ch = pure ch
 
 prop_charToText (UTF8 char) = monadicIO $ do
-  let testCase = "assert (switch ((charToText '"
+  let testCase = "assert (switch ((Prim.charToText '"
                  <> c <> "').chars().next()) { case (?'" <> c <> "') true; case _ false })"
 
       c = escape char
@@ -212,7 +215,7 @@ instance Arbitrary TestCase where
 
 
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
-  let script cases = do Turtle.output "tests.mo" $ msum cases
+  let script cases = do Turtle.output "tests.mo" $ withPrim <$> msum cases
                         res@(exitCode, _, _) <- procStrictWithErr "moc"
                                  ["-no-system-api", "-no-check-ir", "tests.mo"] empty
                         if ExitSuccess == exitCode
@@ -971,7 +974,7 @@ unparseMO f@Five = annot f "5"
 unparseMO a@(Neuralgic n) = annot a $ literal n
 unparseMO (Pos n) = "(+" <> unparseMO n <> ")"
 unparseMO (Neg n) = "(-" <> unparseMO n <> ")"
-unparseMO (Abs n) = "(abs " <> unparseMO n <> ")"
+unparseMO (Abs n) = "(Prim.abs " <> unparseMO n <> ")"
 unparseMO (a `Add` b) = inParens unparseMO "+" a b
 unparseMO (a `Sub` b) = annot a $ inParens unparseMO "-" a b
 unparseMO (a `Mul` b) = inParens unparseMO "*" a b
@@ -986,16 +989,16 @@ unparseMO (a `RotR` b) = inParens unparseMO "<>>" a b
 unparseMO (a `ShiftL` b) = inParens unparseMO "<<" a b
 unparseMO (a `ShiftR` b) = inParens unparseMO ">>" a b
 unparseMO (a `ShiftRSigned` b) = inParens unparseMO "+>>" a b
-unparseMO (PopCnt n) = sizeSuffix n "(popcntWord" <> " " <> unparseMO n <> ")"
-unparseMO (Clz n) = sizeSuffix n "(clzWord" <> " " <> unparseMO n <> ")"
-unparseMO (Ctz n) = sizeSuffix n "(ctzWord" <> " " <> unparseMO n <> ")"
+unparseMO (PopCnt n) = sizeSuffix n "(Prim.popcntWord" <> " " <> unparseMO n <> ")"
+unparseMO (Clz n) = sizeSuffix n "(Prim.clzWord" <> " " <> unparseMO n <> ")"
+unparseMO (Ctz n) = sizeSuffix n "(Prim.ctzWord" <> " " <> unparseMO n <> ")"
 unparseMO (Complement a) = "(^ " <> unparseMO a <> ")"
 unparseMO (ConvertNatural a) = "(++++(" <> unparseMO a <> "))"
 unparseMO (ConvertNat a) = unparseNat Proxy a
 unparseMO (ConvertInt a) = unparseInt Proxy a
 unparseMO (ConvertWord a) = unparseWord Proxy a
-unparseMO (ConvertWordToNat a) = sizeSuffix a "(word" <> "ToNat " <> unparseMO a <> ")"
-unparseMO t@(ConvertNatToWord a) = sizeSuffix t "(natToWord" <> " " <> unparseMO a <> ")"
+unparseMO (ConvertWordToNat a) = sizeSuffix a "(Prim.word" <> "ToNat " <> unparseMO a <> ")"
+unparseMO t@(ConvertNatToWord a) = sizeSuffix t "(Prim.natToWord" <> " " <> unparseMO a <> ")"
 unparseMO (IfThenElse a b c) = "(if (" <> unparseMO c <> ") " <> unparseMO a <> " else " <> unparseMO b <> ")"
 unparseMO (a `NotEqual` b) = inParens unparseMO "!=" a b
 unparseMO (a `Equals` b) = inParens unparseMO "==" a b
@@ -1016,13 +1019,13 @@ unparseMO (Text a) = '"' : (concatMap escape a) <> "\""
 unparseMO (a `Concat` b) = "(" <> unparseMO a <> " # " <> unparseMO b <> ")"
 
 unparseNat :: KnownNat n => Proxy n -> MOTerm (BitLimited n Natural) -> String
-unparseNat p a = "(nat" <> bitWidth p <> "ToNat(" <> unparseMO a <> "))"
+unparseNat p a = "(Prim.nat" <> bitWidth p <> "ToNat(" <> unparseMO a <> "))"
 
 unparseInt :: KnownNat n => Proxy n -> MOTerm (BitLimited n Integer) -> String
-unparseInt p a = "(int" <> bitWidth p <> "ToInt(" <> unparseMO a <> "))"
+unparseInt p a = "(Prim.int" <> bitWidth p <> "ToInt(" <> unparseMO a <> "))"
 
 unparseWord :: KnownNat n => Proxy n -> MOTerm (BitLimited n Word) -> String
-unparseWord p a = "(word" <> bitWidth p <> "ToNat(" <> unparseMO a <> "))" -- TODO we want signed too: wordToInt
+unparseWord p a = "(Prim.word" <> bitWidth p <> "ToNat(" <> unparseMO a <> "))" -- TODO we want signed too: wordToInt
 
 -- TODOs:
 --   - wordToInt
