@@ -77,8 +77,8 @@ struct
     let open Char in
     function
     | c when 0 <= c && c <= 9 -> chr (code '0' + c)
-    | c when 10 < c && c <= 15 -> chr (code 'A' + (c - 10))
-    | _ -> assert false
+    | c when 10 <= c && c <= 15 -> chr (code 'A' + (c - 10))
+    | i -> Printf.eprintf "%d\n" i; assert false
 
   let hex_of_byte i : string =
     String.init 2 (function
