@@ -1,10 +1,11 @@
+import Prim "mo:prim";
 actor a {
   public func world() {
-    debugPrint("World!");
+    Prim.debugPrint("World!");
   };
   public func go() {
     a.world();
-    debugPrint("Hello ");
+    Prim.debugPrint("Hello ");
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

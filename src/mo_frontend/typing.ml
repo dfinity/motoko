@@ -176,6 +176,7 @@ let check_import env at f ri =
     | Unresolved -> error env at "unresolved import %s" f
     | LibPath fp -> fp
     | IDLPath (fp, _) -> fp
+    | PrimPath -> "@prim"
   in
   match T.Env.find_opt full_path env.libs with
   | Some T.Pre ->
@@ -552,7 +553,7 @@ let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
 
 and infer_exp_mut env exp : T.typ =
-  infer_exp' Lib.Fun.id env exp
+  infer_exp' Fun.id env exp
 
 and infer_exp_promote env exp : T.typ =
   let t = infer_exp env exp in
@@ -1823,7 +1824,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let t = infer_exp {env with pre = true} exp in
     Scope.{empty with val_env = T.Env.singleton id.it (T.Mut t)}
   | TypD (id, _, _) ->
-    let c = Lib.Option.value id.note in
+    let c = Option.get id.note in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c ;

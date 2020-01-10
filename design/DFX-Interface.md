@@ -62,6 +62,8 @@ This _reads_ the following files
  * for every actor import `ic:canisterid` imported by any of the Motoko files, it reads `actorpath/canisterid.did`, see section Resolving Canister Ids below.
  * the given `mo-rts.wasm` file.
 
+The package name `prim` is special and should not be set using `--package`.
+
 No constraints are imposed where imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
 
 This _writes_ to `another/path/output.wasm`, but has no other effect. It does

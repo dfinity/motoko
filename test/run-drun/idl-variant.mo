@@ -1,8 +1,10 @@
+import Prim "mo:prim";
+
 type Either = { #left: Word32; #right: Char; #fix: Either };
 
 func to_left(e : Either) : Either
   = switch e {
-      case (#right n) #left (charToWord32 n);
+      case (#right n) #left (Prim.charToWord32 n);
       case (#fix t) #fix (to_left t);
       case other other
     };

@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 actor a {
 
   public shared { caller = c } func getCaller() : async Blob {
@@ -5,7 +6,7 @@ actor a {
   };
 
   public shared query { caller = c } func getCallerHash() : async Word32 {
-    hashBlob c;
+    Prim.hashBlob c;
   };
 
   public shared {caller} func c () : async () {

@@ -1,5 +1,7 @@
+import Prim "mo:prim";
+
 // Should allocate 1G
-ignore(Array_init<()>(1024*1024*1024/4, ()));
+ignore(Prim.Array_init<()>(1024*1024*1024/4, ()));
 
 //SKIP run
 //SKIP run-ir

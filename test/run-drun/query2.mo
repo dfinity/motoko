@@ -1,11 +1,12 @@
+import Prim "mo:prim";
 actor counter = {
   var c = 1;
   public func inc() {
     c += 1;
-    debugPrintNat c;
+    Prim.debugPrintNat c;
   };
   public func printCounter () {
-    debugPrintNat c;
+    Prim.debugPrintNat c;
   };
   public func get() : async Nat {
     return c
@@ -13,8 +14,8 @@ actor counter = {
   public query func read() : async Nat {
     let tmp = c;
     c += 1;
-    debugPrint "In read:";
-    debugPrintNat c;
+    Prim.debugPrint "In read:";
+    Prim.debugPrintNat c;
     return tmp;
   };
 
@@ -30,7 +31,7 @@ actor counter = {
    assert c2 == 4;
    let c3 = await counter.read();
    counter.printCounter();
-   debugPrint("The following fails in the intepreter, for lack of query semantics");
+   Prim.debugPrint("The following fails in the intepreter, for lack of query semantics");
    assert c3 == 4;
   };
 };

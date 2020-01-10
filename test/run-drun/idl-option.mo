@@ -1,10 +1,11 @@
+import Prim "mo:prim";
 // This test checks that the IDL decoder can
 // do the subtyping from null to option
 actor {
   public func any(o : ?Text) : async () {
      switch o {
-       case null debugPrint ("ok: null");
-       case (?x) debugPrint ("ok: " # x);
+       case null Prim.debugPrint ("ok: null");
+       case (?x) Prim.debugPrint ("ok: " # x);
      }
   };
 }

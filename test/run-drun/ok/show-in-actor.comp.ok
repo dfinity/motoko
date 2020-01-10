@@ -1,2 +1,0 @@
-show-in-actor.mo:2.1-5.2: type error, an actor must be the last declaration in a program
-  (This is a limitation of the current version.)

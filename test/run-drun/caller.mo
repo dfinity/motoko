@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 actor a {
 
   public shared ctxt func c1 () : async () {
@@ -32,7 +33,7 @@ actor a {
   };
 
   public shared query {caller} func c8() : async Word32 {
-    hashBlob caller;
+    Prim.hashBlob caller;
   };
 
 };

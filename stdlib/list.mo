@@ -609,7 +609,7 @@ public type List<T> = ?(T, List<T>);
   public func toArray<A>(xs : List<A>) : [A] {
     let length = len<A>(xs);
     var list = xs;
-    Array_tabulate<A>(length, func (i) {
+    Array.tabulate<A>(length, func (i) {
       let popped = pop<A>(list);
       list := popped.1;
       Option.unwrap<A>(popped.0);

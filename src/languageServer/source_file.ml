@@ -68,9 +68,9 @@ let import_relative_to_project_root root module_path dependency =
     | Some root_to_module ->
        root_to_module
        |> Filename.dirname
-       |> Lib.Fun.flip Filename.concat dependency
+       |> Fun.flip Filename.concat dependency
        |> Lib.FilePath.normalise
-       |> Lib.Option.some
+       |> Option.some
 
 (* Given the source of a module, figure out under what names what
    modules have been imported. Normalizes the imported modules
@@ -117,7 +117,7 @@ let identifier_at_pos project_root file_path file_contents position =
       file_path
       file_contents in
   cursor_target_at_pos position file_contents
-    |> Lib.Option.map (function
+    |> Option.map (function
         | CIdent s ->
            (match List.find_opt (fun (alias, _) -> alias = s) imported with
             | None -> Ident s

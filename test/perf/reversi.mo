@@ -1,9 +1,16 @@
+import Prim "mo:prim";
 actor {
    // based on https://github.com/dfinity-lab/dapps/blob/75ead35363574f3697e37cd3a0592e51d3253a36/examples/reversi/src/reversi/main.mo
    // with stdlib inlined and board size changed to 8
 
 
   // inline parts of stdlib
+
+  class range(x : Nat, y : Nat) {
+    var i = x;
+    public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
+  };
+
   func unreachable() : None = { assert false ; loop { } };
 
   func toText(x : Int) : Text {
@@ -51,7 +58,7 @@ actor {
 
     // Board is NxN array
     type Board = [var Color];
-    let Board : Board = Array_init<Nat>(N * N, empty);
+    let Board : Board = Prim.Array_init<Nat>(N * N, empty);
 
     // Which color should move next
     var next_color : Color = white;
@@ -121,7 +128,7 @@ actor {
       if (s < 0 or s >= N or t < 0 or t >= N) {
         return false;
       };
-      return (board[abs (s * N + t)] == color);
+      return (board[Prim.abs (s * N + t)] == color);
     };
 
     // Check if a piece of the given color eventually exits on the board
@@ -131,7 +138,7 @@ actor {
     func eventually(board: Board, color: Color, i: Nat, j: Nat, p:Int, q:Int) : Bool {
       if (exists(board, opponent(color),  i, j, p, q)) {
         // the abs below is save because its precondition is already checked
-        return eventually(board, color, abs(i + p), abs(j + q), p, q);
+        return eventually(board, color, Prim.abs(i + p), Prim.abs(j + q), p, q);
       } else {
         return exists(board, color, i, j, p, q);
       }
@@ -142,8 +149,8 @@ actor {
     func flip(board: Board, color: Color, i: Nat, j: Nat, p:Int, q:Int) {
       if (exists(board, opponent(color), i, j, p, q)) {
         // the abs below is save because its precondition is already checked
-        let s = abs(i + p);
-        let t = abs(j + q);
+        let s = Prim.abs(i + p);
+        let t = Prim.abs(j + q);
         board[s * N + t] := color;
         flip(board, color, s, t, p, q);
       }
@@ -152,7 +159,7 @@ actor {
     // Calculate all validate positions for a given color by returning
     // a board that has the cells colored.
     func valid_moves(board: Board, color: Color) : Board {
-        let next : Board = Array_init<Nat>(N * N, empty);
+        let next : Board = Prim.Array_init<Nat>(N * N, empty);
         for (i in range(0, N-1)) {
           for (j in range(0, N-1)) {
             if (board[i * N + j] == empty) {
@@ -219,9 +226,9 @@ actor {
     // It returns "OK" when the move is valid.
     public func place(color_: Int, row_: Int, col_: Int) : async Text {
       // The casting is necessary because dfx has yet to support Nat on commandline
-      let color : Color = abs(color_); 
-      let row : Nat = abs(row_); 
-      let col : Nat = abs(col_); 
+      let color : Color = Prim.abs(color_); 
+      let row : Nat = Prim.abs(row_); 
+      let col : Nat = Prim.abs(col_); 
 
       // Check input validity
       if (row >= N or col >= N) {

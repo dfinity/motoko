@@ -45,7 +45,7 @@ let open_file did_open_params vfs =
 
 let read_file uri vfs =
   VfsStore.find_opt uri vfs
-  |> Lib.Option.map (String.concat "\n")
+  |> Option.map (String.concat "\n")
 
 let close_file did_close_params =
   let uri =

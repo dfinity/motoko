@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 import P "prelude.mo";
 
 module {
@@ -135,8 +136,8 @@ public func assertNull<A>(x: ?A) = assertNullAny(x);
 */
 public func printOpInt(x : ?Int) =
   switch x {
-    case null  { debugPrint "null" };
-    case (?x_) { debugPrint "?"; debugPrintInt x_ };
+    case null  { Prim.debugPrint "null" };
+    case (?x_) { Prim.debugPrint "?"; Prim.debugPrintInt x_ };
   };
 
 public func apply<A, B>(f : ?(A -> B), x : ?A) : ?B {

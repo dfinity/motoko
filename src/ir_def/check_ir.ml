@@ -391,6 +391,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+    | NumConvPrim (p1, p2), [e] ->
+      (* we could check if this conversion is supported *)
+      typ e <: T.Prim p1;
+      T.Prim p2 <: t
     | CastPrim (t1, t2), [e] ->
       typ e <: t1;
       t2 <: t
@@ -406,8 +410,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       end;
       actor_typ <: t;
     | OtherPrim _, _ -> ()
-    | _ ->
-      error env exp.at "PrimE with wrong number of arguments"
+    | p, args ->
+      error env exp.at "PrimE %s does not work with %d arguments"
+        (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p)) (List.length args);
     end
   | TupE exps ->
     List.iter (check_exp env) exps;
@@ -924,4 +929,3 @@ let check_prog verbose scope phase (((ds, exp), flavor) as prog) : unit =
       Printf.eprintf "%s" bt;
     end;
     exit 1
-

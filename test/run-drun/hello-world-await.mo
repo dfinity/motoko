@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 let a = actor {
   public func hello() : async Text {
     "Hello ";
@@ -6,7 +7,7 @@ let a = actor {
     "World!"
   };
   public func go() = ignore async  {
-    debugPrint((await hello()) # (await world()));
+    Prim.debugPrint((await hello()) # (await world()));
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

@@ -1,3 +1,6 @@
+import Prim "mo:prim";
+import Iter "iter.mo";
+
 module {
 /**
 
@@ -55,7 +58,7 @@ public module BitVec {
   // The input type should actually be [Word8].
   // Note: Be sure to explode each Word8 of a Word32 into its own Word32, and to shift into lower 8 bits.
   public func hashWord8s(key:[BitVec]) : BitVec = label profile_hash_hashWord8s : BitVec {
-    var hash = natToWord32(0);
+    var hash = Prim.natToWord32(0);
     for (wordOfKey in key.vals()) { label profile_hash_hashWord8s_forLoop : ()
       hash := hash + wordOfKey;
       hash := hash + hash << 10;
@@ -73,7 +76,7 @@ public module BitVec {
 
   public func hashOfInt(i:Int) : BitVec = label profile_hash_hashOfInt : BitVec {
     //hashInt(i)
-    let j = intToWord32(i);
+    let j = Prim.intToWord32(i);
     hashWord8s(
       [j & (255 << 0),
        j & (255 << 8),
@@ -83,7 +86,7 @@ public module BitVec {
   };
 
   public func hashOfIntAcc(h1:BitVec, i:Int) : BitVec = label profile_hash_hashOfIntAcc : BitVec {
-    let j = intToWord32(i);
+    let j = Prim.intToWord32(i);
     hashWord8s(
       [h1,
        j & (255 << 0),
@@ -96,7 +99,7 @@ public module BitVec {
   public func hashOfText(t:Text) : BitVec  = label profile_hash_hashOfText : BitVec {
     var x = 0 : Word32;
     for (c in t.chars()) {
-      x := x ^ charToWord32(c);
+      x := x ^ Prim.charToWord32(c);
     };
     return x
   };
@@ -104,7 +107,7 @@ public module BitVec {
   /** Project a given bit from the bit vector. */
   public func getHashBit(h:BitVec, pos:Nat) : Bool = label profile_getHashBit : Bool {
     assert (pos <= length());
-    if ((h & (natToWord32(1) << natToWord32(pos))) != natToWord32(0))
+    if ((h & (Prim.natToWord32(1) << Prim.natToWord32(pos))) != Prim.natToWord32(0))
     { label profile_getHashBit_true : Bool
       true
     }
@@ -121,21 +124,21 @@ public module BitVec {
   };
 
   public func bitsPrintRev(bits:BitVec) {
-    for (j in range(0, length() - 1)) {
+    for (j in Iter.range(0, length() - 1)) {
       if (getHashBit(bits, j)) {
-        debugPrint "1"
+        Prim.debugPrint "1"
       } else {
-        debugPrint "0"
+        Prim.debugPrint "0"
       }
     }
   };
 
   public func hashPrintRev(bits:BitVec) {
-    for (j in range(length() - 1, 0)) {
+    for (j in Iter.range(length() - 1, 0)) {
       if (getHashBit(bits, j)) {
-        debugPrint "1"
+        Prim.debugPrint "1"
       } else {
-        debugPrint "0"
+        Prim.debugPrint "0"
       }
     }
   };
@@ -200,22 +203,22 @@ public module BitList {
 
   public func bitsPrintRev(bits:BitList) {
 	  switch bits {
-	  case null { debugPrint "" };
+	  case null { Prim.debugPrint "" };
 	  case (?(bit,bits_)) {
 		       bitsPrintRev(bits_);
-		       if bit { debugPrint "1R." }
-		       else   { debugPrint "0L." }
+		       if bit { Prim.debugPrint "1R." }
+		       else   { Prim.debugPrint "0L." }
 	       }
 	  }
   };
 
   public func hashPrintRev(bits:BitList) {
 	  switch bits {
-	  case null { debugPrint "" };
+	  case null { Prim.debugPrint "" };
 	  case (?(bit,bits_)) {
 		       hashPrintRev(bits_);
-		       if bit { debugPrint "1" }
-		       else   { debugPrint "0" }
+		       if bit { Prim.debugPrint "1" }
+		       else   { Prim.debugPrint "0" }
 	       }
 	  }
   };

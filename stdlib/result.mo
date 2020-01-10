@@ -1,4 +1,5 @@
 import P "prelude.mo";
+import Array "array.mo";
 
 module {
 /**
@@ -163,6 +164,6 @@ public func joinArrayIfOk<R,E>(x:[Result<R,E>]) : Result<[R],E> {
     }
   };
   /**- all of the results are Ok; tabulate them. */
-  #ok(Array_tabulate<R>(x.len(), func (i:Nat):R { assertUnwrap<R,E>(x[i]) }))
+  #ok(Array.tabulate<R>(x.len(), func (i:Nat):R { assertUnwrap<R,E>(x[i]) }))
 };
 }

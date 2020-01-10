@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 import H "hashMap.mo";
 import Hash "hash.mo";
 
@@ -24,7 +25,7 @@ debug {
 
   // ensure clone has each key-value pair present in original
   for ((k,v) in a.iter()) {
-    debugPrint(debug_show (k,v));
+    Prim.debugPrint(debug_show (k,v));
     switch (b.get(k)) {
     case null { assert false };
     case (?w) { assert v == w };
@@ -33,7 +34,7 @@ debug {
 
   // ensure original has each key-value pair present in clone
   for ((k,v) in b.iter()) {
-    debugPrint(debug_show (k,v));
+    Prim.debugPrint(debug_show (k,v));
     switch (a.get(k)) {
     case null { assert false };
     case (?w) { assert v == w };
@@ -72,7 +73,7 @@ debug {
 
   // ensure clone has each key-value pair present in original
   for ((k,v) in a.iter()) {
-    debugPrint(debug_show (k,v));
+    Prim.debugPrint(debug_show (k,v));
     switch (b.get(k)) {
     case null { assert false };
     case (?w) { assert v == w };
@@ -81,7 +82,7 @@ debug {
 
   // ensure original has each key-value pair present in clone
   for ((k,v) in b.iter()) {
-    debugPrint(debug_show (k,v));
+    Prim.debugPrint(debug_show (k,v));
     switch (a.get(k)) {
     case null { assert false };
     case (?w) { assert v == w };
@@ -94,7 +95,7 @@ debug {
 
   // c agrees with each entry of b
   for ((k,v) in b.iter()) {
-    debugPrint(debug_show (k,v));
+    Prim.debugPrint(debug_show (k,v));
     switch (c.get(k)) {
     case null { assert false };
     case (?w) { assert v == w };
@@ -103,7 +104,7 @@ debug {
 
   // b agrees with each entry of c
   for ((k,v) in c.iter()) {
-    debugPrint(debug_show (k,v));
+    Prim.debugPrint(debug_show (k,v));
     switch (b.get(k)) {
     case null { assert false };
     case (?w) { assert v == w };

@@ -31,6 +31,7 @@ export MO_LD
 WASMTIME=${WASMTIME:-wasmtime}
 WASMTIME_OPTIONS="--disable-cache --cranelift"
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
+IC_STUB_RUN_WRAPPER=$(realpath $(dirname $0)/ic-stub-run-wrapper.sh)
 IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
@@ -72,6 +73,7 @@ function normalize () {
     sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
     sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
     sed 's/prelude:[^:]*:/prelude:___:/g' |
+    sed 's/prim:[^:]*:/prim:___:/g' |
     sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
     sed 's/rip_addr: [0-9]*/rip_addr: XXX/g' |
     sed 's,/private/tmp/,/tmp/,g' |
@@ -290,8 +292,7 @@ do
           if [ $DRUN = yes ]
           then
             run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
-            DRUN=$IC_STUB_RUN \
-            run_if stub.wasm ic-stub-run $DRUN_WRAPPER $out/$base.stub.wasm $mangled
+            run_if stub.wasm ic-stub-run $IC_STUB_RUN_WRAPPER $out/$base.stub.wasm $mangled
           elif [ $PERF = yes ]
           then
             run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled

@@ -1,2 +1,2 @@
-async-obj-mut.mo:4.30-4.41: type error, unsupported async block
+async-obj-mut.mo:5.30-5.41: type error, unsupported async block
   (This is a limitation of the current version.)

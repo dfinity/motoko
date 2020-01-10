@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 import L "list.mo";
 import T "types.mo";
 
@@ -49,7 +50,7 @@ actor class Server() = {
               case null { clients := n.tail };
               case (?p) { p.tail := n.tail };
             };
-            debugPrint "(unsubscribe "; debugPrintInt id; debugPrint ")\n";
+            Prim.debugPrint "(unsubscribe "; Prim.debugPrintInt id; Prim.debugPrint ")\n";
             return;
           };
           prev := next;

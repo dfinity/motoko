@@ -1,3 +1,5 @@
+import Prim "mo:prim";
+
 // Testing utility
 
 // expects 2 elements in results for each one in etalon
@@ -62,10 +64,10 @@ verify<Int>([-31, 31, -20, -42, -341, -2, -9, -25408476896404831], testInt(-31, 
 verify<Int>([-1500000000, 1500000000, -1499999998, -1500000002, -3000000000, -750000000, 0, 2250000000000000000], testInt(-1500000000, 2), intCompare);
 
 func testIntAbs(a : Int) : [Int] {
-  let abs1 = abs a;
-  let abs2 = (abs a) : Int;
-  let abs3 = abs (-a);
-  let abs4 = (abs (-a)) : Int;
+  let abs1 = Prim.abs a;
+  let abs2 = (Prim.abs a) : Int;
+  let abs3 = Prim.abs (-a);
+  let abs4 = (Prim.abs (-a)) : Int;
   [abs1, abs2, abs3, abs4]
 };
 

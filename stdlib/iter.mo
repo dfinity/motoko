@@ -2,6 +2,13 @@ import Array "array.mo";
 import List "list.mo";
 
 module {
+  public type Iter<T> = {next : () -> ?T};
+
+  public class range(x : Nat, y : Nat) {
+    var i = x;
+    public func next() : ?Nat { if (i > y) null else {let j = i; i += 1; ?j} };
+  };
+
   public func forIn<A>(
     f : (A, Nat) -> (),
     xs : Iter<A>

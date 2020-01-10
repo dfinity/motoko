@@ -16,6 +16,8 @@ WASM=\
 
 TESTS=\
 	Array \
+	Blob \
+	Debug \
 	ArrayTest \
 	BufTest \
 	Buf \
@@ -26,6 +28,8 @@ TESTS=\
 	Hash \
 	HashMap \
 	HashMapTest \
+	TrieMap \
+	TrieMapTest \
 	Int \
 	IntTest \
   Iter \
@@ -71,6 +75,12 @@ clean:
 $(OUTDIR):
 	@mkdir $@
 
+$(OUTDIR)/Debug.out: debug.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Blob.out: blob.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
 $(OUTDIR)/Array.out: array.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
@@ -87,6 +97,12 @@ $(OUTDIR)/HashMapTest.out: hashMapTest.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/HashMap.out: hashMap.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/TrieMapTest.out: trieMapTest.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/TrieMap.out: trieMap.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Function.out: function.mo | $(OUTDIR)
