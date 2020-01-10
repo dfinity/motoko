@@ -143,6 +143,9 @@ let add_idl_import msgs imported ri_ref at full_path bytes =
     err_file_does_not_exist msgs at full_path
 
 
+let add_prim_import imported ri_ref at =
+  ri_ref := PrimPath;
+  imported := RIM.add PrimPath at !imported
 
 let in_base base f =
   if base = "."
@@ -171,6 +174,8 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
      | Some bytes -> resolve_ic bytes
      | None -> err_alias_not_defined msgs at alias
      end
+  | Ok Url.Prim ->
+    add_prim_import imported ri_ref at
   | Error msg ->
      err_unrecognized_url msgs at f msg
 

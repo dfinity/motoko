@@ -1,3 +1,9 @@
+(*
+The prelude. This stuff is always initially in scope. This should be only
+ * type definitions for primitive types
+ * code with privileged names (@…) that are used by the desugarer or ir-passes
+ (the moving of the definitions is done in #1088)
+*)
 let prelude =
 {|
 type Any = prim "Any";
@@ -418,4 +424,19 @@ func @new_async<T <: Any>() : (Async<T>, Cont<T>, Cont<Error>) {
 
   (enqueue, fulfill, fail)
 };
+|}
+
+(*
+The primitive definitions.
+
+This module should contain everything that cannot be implemented in plain
+Motoko. It is available via `import Prim "mo:prim"`. Normal user code would
+usually not import that module directly, but through the stdlib, which takes
+care of providing a prober module structure, e.g. exposing Array_tabulate
+through Array.tabulate.
+*)
+let prim_module =
+{|
+
+
 |}

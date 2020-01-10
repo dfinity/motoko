@@ -150,6 +150,7 @@ and exp' at note = function
     begin match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath fp -> I.VarE (id_of_full_path fp).it
+    | S.PrimPath -> I.VarE (id_of_full_path "@prim").it
     | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.note_typ, [blobE blob_id]))
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
