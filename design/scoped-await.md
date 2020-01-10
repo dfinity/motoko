@@ -47,7 +47,7 @@ Ys := Y, Ys
 
 <exp> :=
     | async<X> e                                         // async (scope X bound in e)
-	| shared? f<Xs>(x:T) : U = e                         // functions
+    |shared? f<Xs>(x:T) : U = e                         // functions
     | f <Ts> e                                           // application
     | ...
 
@@ -58,12 +58,12 @@ Ctxt := E; Cap        // Environment and capability C
 Cap :=
     | NullCap            // no async capability (top-level, in constructors, some local functions)
     | AsyncCap<T>        // capability to async/send at T
-	| AwaitCap<T>        // capability to async/send at T and await an async<T>
+    | AwaitCap<T>        // capability to async/send at T and await an async<T>
 
 Env :=                // the usual suspects
     | E, x : T          // term va
     | E, X              // scope var
-	| E, Y              // type var
+    | E, Y              // type var
     | <emp>
 
 scope(AsyncCap<T>) = Some T
@@ -151,8 +151,6 @@ Application of an async (or, in the full system, shared
 oneway) uses the current scope `T` as the instantiation of the scope
 parameter and is rejected when no such parameter exists (`scope(cap) = None`).
 
-One cannot specify the instantiation of the initial scope parameter, it
-is determined by the context if at all.
 
 
 ```
@@ -163,6 +161,9 @@ E; cap |- e': U[T/X,Ts/Ys]
 -------------------------------------------------------
 E; cap |-  f <Ts> e' : V[T/X,Ts/Ys]
 ```
+One cannot specify the instantiation of an initial scope parameter, it
+is determined by the context, if at all (as per async expressions).
+
 
 (Local) Functions with no scope parameters are instantiated as usual and can be invoked with any capability.
 
@@ -207,7 +208,7 @@ E; _ |- shared? f<X,Ys>(x:T) : async<X>U = async<Y> e :
 ```
 Notice that the context transitions from `AsyncCap<X>` to `AwaitCap<X>` to allow awaits from within `e`.
 
-Applying the sugar below, which implicitly introduces scope parameters in types and terms we get the more manageable:
+Applying the sugar above, which implicitly introduces scope parameters in types and terms we get the more manageable:
 
 ```
 E; _ |- shared? f<Ys>(x:T) : async U { e } :
@@ -235,7 +236,7 @@ Assuming the following requests:
     debugPrint "Ack"
   };
 
-  public shared func Request<@>(i : Int) : async<@> Int {
+x  public shared func Request<@>(i : Int) : async<@> Int {
     debugPrint("Request(" # debug_show i # ")");
     return i;
   };
