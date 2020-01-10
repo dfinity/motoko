@@ -81,7 +81,7 @@ withPrim = (fromString "import Prim \"mo:prim\";" <>)
 
 (runScriptNoFuzz, runScriptWantFuzz) = (runner ExitSuccess id, runner (ExitFailure 1) not)
     where runner reqOutcome relevant name testCase =
-            let as = name <.> "as"
+            let as = name <.> "mo"
                 wasm = name <.> "wasm"
                 fileArg = fromString . encodeString
                 script = do Turtle.output as $ withPrim <$> fromString testCase
