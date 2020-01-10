@@ -6,6 +6,9 @@
    parse "mo:foo/bar"     = Ok (Package ("foo", "bar"))
    parse "mo:foo"         = Ok (Package ("foo", ""))
 
+   parse "mo:prim"        = Ok (Prim)
+   parse "mo:prim/bar"    = Error…
+
    parse "ic:DEADBEEF"    = Ok (Ic "\DE\AD\BE\EF")
 
    parse "ic-alias:foo"   = Ok (IcAlias "foo")
@@ -13,6 +16,7 @@
    parse "std/foo"        = Ok (Relative "std/foo")
    parse "foo"            = Ok (Relative "foo")
    parse "./foo"          = Ok (Relative "foo")
+
 
    parse "something:else" = Error …
 
@@ -42,17 +46,24 @@ type parsed =
   | Relative of string
   | Ic of string
   | IcAlias of string
+  | Prim
 
 
 let parse (f: string) : (parsed, string) result =
   match Lib.String.chop_prefix "mo:" f with
   | Some suffix ->
     begin match Stdlib.String.index_opt suffix '/' with
-    | None -> Ok (Package (suffix, ""))
+    | None ->
+      if suffix = "prim"
+      then Ok Prim
+      else Ok (Package (suffix, ""))
     | Some i ->
-      let pkg = Stdlib.String.sub suffix 0 i in
-      let path = Stdlib.String.sub suffix (i+1) (Stdlib.String.length suffix - (i+1)) in
-      Ok (Package (pkg, path))
+      if suffix = "prim"
+      then Error "The prim package has no modules"
+      else
+        let pkg = Stdlib.String.sub suffix 0 i in
+        let path = Stdlib.String.sub suffix (i+1) (Stdlib.String.length suffix - (i+1)) in
+        Ok (Package (pkg, path))
     end
   | None ->
     match Lib.String.chop_prefix "ic:" f with
