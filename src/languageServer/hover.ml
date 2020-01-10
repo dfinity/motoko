@@ -20,8 +20,8 @@ let hover_handler index position file_contents project_root file_path =
        Lib.Option.get (lookup_module "prim" index) [] in
      let current_module_decls =
        current_uri_opt
-       |> Lib.Fun.flip Option.bind (fun uri -> lookup_module uri index)
-       |> Lib.Fun.flip Lib.Option.get [] in
+       |> Fun.flip Option.bind (fun uri -> lookup_module uri index)
+       |> Fun.flip Lib.Option.get [] in
      current_module_decls @ prim_decls in
   let mk_hover_result ide_decl =
     Lsp.{ hover_result_contents = markup_content (hover_detail ide_decl) } in

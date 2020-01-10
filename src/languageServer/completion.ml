@@ -136,7 +136,7 @@ let completions index logger project_root file_path file_contents line column =
      let current_module_decls =
        current_uri_opt
        |> opt_bind (fun uri -> DI.lookup_module uri index)
-       |> Lib.Fun.flip Lib.Option.get [] in
+       |> Fun.flip Lib.Option.get [] in
      current_module_decls @ prim_decls
   in
   let module_alias_completion_item alias =
@@ -156,7 +156,7 @@ let completions index logger project_root file_path file_contents line column =
      decls @ List.map (fun (alias, _) -> module_alias_completion_item alias) imported
   | Some ("", prefix) ->
      (* Without an alias but with a prefix we filter the toplevel
-        identfiers of the current module as well as prelude functions *)
+        identfiers of the current module as well as prim functions *)
      toplevel_decls
      |> List.filter (has_prefix prefix)
      |> List.map item_of_ide_decl
