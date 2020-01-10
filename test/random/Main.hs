@@ -215,7 +215,7 @@ instance Arbitrary TestCase where
 
 
 prop_verifies (TestCase (map fromString -> testCase)) = monadicIO $ do
-  let script cases = do Turtle.output "tests.mo" $ withPrim <$> msum cases
+  let script cases = do Turtle.output "tests.mo" $ msum (pure (withPrim mempty) : cases)
                         res@(exitCode, _, _) <- procStrictWithErr "moc"
                                  ["-no-system-api", "-no-check-ir", "tests.mo"] empty
                         if ExitSuccess == exitCode
