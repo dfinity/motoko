@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Debug "../../../debug.mo";
 import Array "../../../array.mo";
 import Int "../../../int.mo";
 import Text "../../../text.mo";
@@ -43,10 +43,10 @@ module {
   public func run(groups_ : [Group]) : Bool {
     let (groups, status) = getGroups(groups_);
     printGroups(groups, "");
-    Prim.debugPrint("\n");
-    Prim.debugPrint(printStatus(status));
-    Prim.debugPrint("\n");
-    Prim.debugPrint("\n");
+    Debug.print("\n");
+    Debug.print(printStatus(status));
+    Debug.print("\n");
+    Debug.print("\n");
     status.failed == 0;
   };
 
@@ -87,7 +87,7 @@ module {
           case (_, _, _) { ":" # printStatus(status); };
         };
       };
-      Prim.debugPrint(newline # indent # group.name # statusText # "\n");
+      Debug.print(newline # indent # group.name # statusText # "\n");
       printGroups(group.groups, indent # "  ");
     };
   };
