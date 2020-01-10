@@ -1,2 +1,2 @@
 import Prim "mo:prim";
-let _ = Prim.Prim.natToNat64 (2 ** 64);
+let _ = Prim.natToNat64 (2 ** 64);
