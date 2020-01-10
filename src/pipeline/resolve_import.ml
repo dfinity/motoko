@@ -125,6 +125,15 @@ let err_package_file_does_not_exist msgs f pname =
     text = Printf.sprintf "file \"%s\" (for package `%s`) does not exist" f pname
   }
 
+let err_prim_pkg msgs =
+  let open Diag in
+  add_msg msgs {
+    sev = Error;
+    at = no_region;
+    cat = "package";
+    text = "the \"prim\" package is built-in, and cannot be mapped to a directory"
+  }
+
 let add_lib_import msgs imported ri_ref at full_path =
   let full_path = append_lib_if_needed full_path in
   if Sys.file_exists full_path
@@ -181,6 +190,7 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
 
 (* Resolve the argument to --package. *)
 let resolve_package_url (msgs:Diag.msg_store) (pname:string) (f:url) : filepath =
+  if pname = "prim" then (err_prim_pkg msgs ;"") else
   let f = Lib.FilePath.normalise f in
   if Sys.file_exists f
   then f
