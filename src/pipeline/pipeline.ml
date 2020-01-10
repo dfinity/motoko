@@ -290,7 +290,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
 
   let rec go ri = match ri.Source.it with
     | Syntax.PrimPath ->
-      (* a bit of an hack, lib_env should key on resolved_import *)
+      (* a bit of a hack, lib_env should key on resolved_import *)
       if Type.Env.mem "@prim" !senv.Scope.lib_env then
         Diag.return ()
       else
