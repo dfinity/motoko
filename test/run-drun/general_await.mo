@@ -5,7 +5,6 @@ actor Await {
   };
 
   public shared func Request<@>(i : Int) : async<@> Int {
-//   debugPrint("Request(" # debug_show i # ")"); <-- compiler bug
     debugPrintInt(i);
     return i;
   };
@@ -13,15 +12,15 @@ actor Await {
   // Static parallel waiting:
 
   public shared func PA<@>() : async<@> () {
-    let a1 = Ack<@>();
-    let a2 = Ack<@>();
+    let a1 = Ack();
+    let a2 = Ack();
     await a1;
     await a2;
   };
 
   public shared func PR<@>() : async<@>(Int,Int) {
-    let a1 = Request<@>(1);
-    let a2 = Request<@>(2);
+    let a1 = Request(1);
+    let a2 = Request(2);
     (await a1, await a2)
   };
 
@@ -30,7 +29,7 @@ actor Await {
   public shared func DPA<@>() : async<@>() {
    let os = Array_init<?(async ())>(10, null);
    for (i in os.keys()) {
-     os[i] := ? (Ack<@>());
+     os[i] := ? (Ack());
    };
    for (o in os.vals()) {
      switch o {
@@ -42,12 +41,10 @@ actor Await {
 
   // Dynamic parallel waiting (with results)
 
-  // Dynamic parallel waiting (with results)
-
   public shared func DPR<@>() : async<@> [Int] {
     let os = Array_init<?(async Int)>(10, null);
     for (i in os.keys()) {
-      os[i] := ? (Request<@>(i));
+      os[i] := ? (Request(i));
     };
     let res = Array_init<Int>(os.len(),-1);
     for (i in os.keys()) {
@@ -64,8 +61,8 @@ actor Await {
   public shared func RPA<@>(n:Nat) : async<@>() {
     if (n == 0) ()
     else {
-      let a = Ack<@>();
-      await RPA<@>(n-1); // recurse
+      let a = Ack();
+      await RPA(n-1); // recurse
       await a;
     };
   };
@@ -77,8 +74,8 @@ actor Await {
   public shared func RPR<@>(n:Nat) : async<@> List<Int> {
     if (n == 0) null
     else {
-      let a = Request<@>(n);
-      let tl = await RPR<@>(n-1); // recurse
+      let a = Request(n);
+      let tl = await RPR(n-1); // recurse
       ?(await a,tl)
     }
   };
@@ -86,23 +83,23 @@ actor Await {
 
   public shared func Test<@>() : async<@>() {
 
-      await PA<@>();
+      await PA();
 
-      switch (await PR<@>()) {
+      switch (await PR()) {
         case (1,2) ();
         case _ (assert false);
       };
 
-      await DPA<@>();
+      await DPA();
 
-      let rs = await DPR<@>();
+      let rs = await DPR();
       for (i in rs.keys()) {
           assert rs[i] == i;
       };
 
-      await RPA<@>(10);
+      await RPA(10);
 
-      var l = await RPR<@>(10);
+      var l = await RPR(10);
       for (i in revrange(10, 1)) {
         switch (l) {
           case (?(h, t)) {
@@ -115,7 +112,7 @@ actor Await {
   }
 };
 
-Await.Test<@>(); //OR-CALL ingress Test 0x4449444C0000
+Await.Test(); //OR-CALL ingress Test 0x4449444C0000
 
 
 //SKIP comp

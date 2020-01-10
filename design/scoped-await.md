@@ -34,80 +34,148 @@ _Please break it_
 
 ```bnf
 <typ> := ...
-    | async<T>U          // T is an index, typically a type parameter
+    | async<T>U            // T is an index, typically a scope parameter X
+    | shared? <Xs> T -> U  // function types (with optional scope parameter X)
+
+
+Xs := X,Ys
+   | Ys
+
+Ys := Y, Ys
+
+(type parameters are an optional scope parameter X followed by ordinary type parameters Y(s))
 
 <exp> :=
-    | async<X> e <U>                                  // index abstraction plus application in one (parameter X free in e, but not in instantiation U)
-    | shared f<X>(x:T) : async<X>U = async<Y> e <X>;  // requests
-    | shared f<X>(x:T) : async<X>U { e; }             // sugar (for the above)
-    | f <T> e                                         // (indexed) application
+    | async<X> e                                         // async (scope X bound in e)
+	| shared? f<Xs>(x:T) : U = e                         // functions
+    | f <Ts> e                                           // application
+    | ...
 
-Ctxt := E; async<T>   // async context with index U
-    |  E; -           // non-async context
+Ctxt := E; Cap        // Environment and capability C
+
+// capabilites
+
+Cap :=
+    | NullCap            // no async capability (top-level, in constructors, some local functions)
+    | AsyncCap<T>        // capability to async/send at T
+	| AwaitCap<T>        // capability to async/send at T and await an async<T>
 
 Env :=                // the usual suspects
-    | E, x : T
-    | E, X <: T
+    | E, x : T          // term va
+    | E, X              // scope var
+	| E, Y              // type var
     | <emp>
+
+scope(AsyncCap<T>) = Some T
+scope(AwaitCap<T>) = Some T
+scope(NullCap) = None
+
+cap(@ X,Ys) = AsyncCap<X>
+cap(Ys) = NullCap
 ```
-
-# Concrete Syntax
-
-TBD, but hopefully the explicit parameterization/instantiation can be supressed, much as Rust *lifetimes* are largely implicit.
-Here, the simplist might be to use the function name itself for the implicit index parameter
-(although not all motoko functions are named) and always instantiate with the ambient index (or `Any` if none).
 
 ### Parameterized async expressions
 
 ```
-E, X; async<X> |- e : T   E |- U :: *   (X fresh)
--------------------------------------------------
-E; - |- async<X> e <U>: async<U> T[U/X]
+E, X; AwaitCap<X> |- e : U  (X not in E,cap)
+scope(cap) = Some T
+----------------------------------------------------------
+E; cap |- async<X> e: async<T> U[T/X]
 ```
 
-An `async` expression at index `X` provides the scoped ability to await asyncs with index `X`.
+An `async` expression at index `X` provides the scoped capability, `AwaitCap<X>`, to await asyncs with index `X`, provided
+the current capability is `AwaitCap<T>` or `AsyncCap<T>`. That is, async expressions are only allowed in async or await contexts,
+and the body of async expressions can await, spawn an async or send a message (at scope `X`).
 
-The body `e` of an async must be parametric in the index but the index
-parameter is immediately eliminated at some index `U` (not mentioning `X`).
+The body `e` of an async must be parametric in the index but the index parameter is immediately eliminated at the current scope `T`.
 
-### (restricted) await expressions
+Async expressions are illegal if the current capability is `NullCap` (e.g. at top-level, or in a constructor or vanilla function).
+
+### (restricted) Await expressions
 
 ```
-E; async<U> |- e : async<U> T
+E; AwaitCap<T> |- e : async<T> U
 ------------------------------
-E; async<U> |- await e : T
+E; AwaitCap<T> |- await e : U
 ```
 
-We can only await things of the current index `U`, recorded in the context as `_ ; async<U>`.
+We can only await things of the current index `T`, recorded in the context as `_ ; AwaitCap<T>`.
+
+In particular, you cannot await anything unless you've entered an async expression.
 
 (For *closure under type substitution* of contexts, note that we need the annotation in the context to be a type, not just a type parameter).
 
+### Formation
 
-### Application (Derived Rule)
+Function types are only well-formed if async and oneway functions have an initial scope type parameter (our sugar will ensure this).
 
-In the explicit system, the rules for function abstraction and application are *unchanged*. But
-to illustrate how this works, we consider the derived rules:
+```
+E,Xs; cap |- T   E,Xs; cap(Xs) |- U
+shared? = shared implies Xs = X,Ys and (U = () or U = async<V>W) ...
+Xs = X,Ys and U = async<V>W implies V = X and
+----------------------------------------------------[func ok]
+E; cap |- shared? <Xs> T -> U
+```
+The first side condition ensures that a shared function has a scope parameter `X` (invokation requires a capability and scope instantiation).
+The second side condition ensures that an async return is parametric in `X` (local or shared).
+
+Note that a local function may or may not take a scope parameter.
+
+
+### Abstraction
+
+The rules for async/oneway function abstraction are as follows:
+
+```
+E,Xs,x:T; cap(Xs) |- e : U
+E, cap |- shared? <Xs> T -> U
+shared? = shared implies U = () or e == async<Y>e' (some e')
+-----------------------------------------------------------------------------------------[func]
+E; cap |- shared? f<Xs> (x:T) : U = e : shared? <X::Xs>T -> U
+```
+
+The second premise ensure the initial parameter of a oneway or async function must be a scope parameter `X` (see formation [func ok]).
+In this way, regardless, of the current capability, the body of an (shared/local) async function or shared oneway
+is granted the capability to enter an async expression and send messages.
+
+Without a scope parameter in `Xs` (`Xs` = `Ys`), the abstraction rule simple introduces the null capability, `NullCap`, to prevent sends and async expressions in the body.
+
+Not that a local function is may or may not introduce a scope parameter, affecting the capabilities of its body (and the ability to invoke that function).
+This means that a local function *can* be used to abstract out async and sends, provided it has a scope parameter that is supplied when called.
+
+### Application
+
+Async and oneway functions:
+
+Application of an async (or, in the full system, shared
+oneway) uses the current scope `T` as the instantiation of the scope
+parameter and is rejected when no such parameter exists (`scope(cap) = None`).
+
+One cannot specify the instantiation of the initial scope parameter, it
+is determined by the context if at all.
 
 
 ```
-E; _ |- f : shared <X> U -> async<U> V
-E; _ |- e': [T/X] U
--------------------------------------
-E; _ |-  f <T> e' : async<T>([T/X]V)
+E; cap |- f : shared? <Xs> U -> V
+Xs = X,Ys
+scope(cap) = Some T
+E; cap |- e': U[T/X,Ts/Ys]
+-------------------------------------------------------
+E; cap |-  f <Ts> e' : V[T/X,Ts/Ys]
 ```
 
-Application must provide an instantiation, typically the nearest
-enclosing index parameter if want to await the result, but it could be
-any type.
+(Local) Functions with no scope parameters are instantiated as usual and can be invoked with any capability.
 
-In the implicit system, we change the rule for application to (if
-necessary) insert a single missing scope parameter (`@`) amongst the
-remaining explicit type parameters, driven by the expected async
-returning function type and the 1-deficit of type arguments. This is a
-simple check to see if the index of the return type is a type
-parameter and the number of arguments is 1 less than the number of
-parameters, and then inserting '@' at the correct index in the type
-arguments (otherwise the arguments are as given).
+```
+E; cap |- f : <Ys> U -> V
+E; cap |- e': U[Ts/Ys]
+----------------------------------------------
+E; cap |-  f <Ts> e' : V[Ts/Ys]
+```
+
+By construction, shared functions must have a scope parameter and can never be invoked in a `NullCap` context.
+
+For local functions, it depends on the type of the function (i.e. whether it has a scope parameter).
 
 
 ### Abstraction (Derived Rule)
@@ -118,50 +186,46 @@ Derivation for (desugared) shared functions (ignoring recursion).
 Consider the desugared async function:
 
 ```
-shared f<X>(x:T) : async<X>U = async<Y> e <X>;
+shared? f<Ys>(X:T) : async U { e } :=
+shared? f<X,Ys>(x:T) : async<X>U = async<X> e;
 ```
 
 For reusability in different async contexts, every shared function
-should introduce a new index parameter, immediately supplied to the
-inner async expression.  Using non-generic shared functions is ok, but
-less useful (typically only locally useful): the result type needs to
-be generic if we want to await it from other async contexts.
+should introduce a new index parameter, implicitly supplied to the
+inner async expression.  The result type needs to
+be generic if we want to invoke and await it from other async contexts.
 
-Using the above rules and ordinary lambda abstraction we get:
+Using the above rules we get:
 
 ```
-E, X, x : T, Y;  async<Y> |- e : U[Y]  Y fresh
+E, X, Ys, x : T, Y;  AwaitCap<X> |- e : U
 -------------------------------------------------------------
-E, X, x : T |- async <Y> e <X> : U[Y] : (U[Y])[X/Y]  X fresh
+E, X, Ys, x : T; AsyncCap<X> |- async <X> e
 -------------------------------------------------------------
-E; _ |- shared f<X>(x:T) : async<X>U[X] = async<Y> e <X>;
-        shared <X>(x:T) : async<X>U[X]
+E; _ |- shared? f<X,Ys>(x:T) : async<X>U = async<Y> e :
+          shared? <X,Ys>(x:T) : async<X>U
 ```
+Notice that the context transitions from `AsyncCap<X>` to `AwaitCap<X>` to allow awaits from within `e`.
 
-
-If we explicitly pun `X` and `Y` in our *implicit* syntax desugaring we get:
-
-```
-shared f(x:T) : async U :=
-  shared f<X>(x:T) : async<X>U = async<X> e <X>;
+Applying the sugar below, which implicitly introduces scope parameters in types and terms we get the more manageable:
 
 ```
-
-Then we get the derived rule:
-
+E; _ |- shared? f<Ys>(x:T) : async U { e } :
+         shared? <Ys>(x:T) : async U
 ```
-E, X, x : T; async<X> |- e : U  (X fresh)
-----------------------------------------------------------------------
-----------------------------------------------------------------------
-E; _ |- shared f(x:T) : async U { e; } : shared <X> T -> async<X> U
-```
+
+(in which the scope parameters `X` are completely elided).
+
+
+
+### DON'T READ TOO CLOSELY BELOW HERE, needs revising
 
 ## Examples:
 
 (These examples and more are all coded in
 
-* [general_await.mo](../test/run-stub/general_await.mo) (no-sugar)
-* [general_await_implicit.mo](../test/run-stub/general_await_implicit.mo) (with sugar)
+* [general_await.mo](../test/run-drun/general_await.mo) (no-sugar)
+* [general_await_implicit.mo](../test/run-drun/general_await_implicit.mo) (with sugar)
 )
 
 Assuming the following requests:
@@ -177,12 +241,12 @@ Assuming the following requests:
   };
 ```
 
-### Static parralel waiting:
+### Static parallel waiting:
 
 ```
   public shared func PA<@>() : async<@> () {
-    let a1 = Ack<@>();
-    let a2 = Ack<@>();
+    let a1 = Ack();
+    let a2 = Ack();
     await a1;
     await a2;
   };
@@ -315,54 +379,51 @@ Note that simply renaming `S` to `R` would not circumvent the error.)
 Principle: Desugaring should be:
 
 * simple and unambiguous
-* expressible in the syntax (as explicit binders and instantiations).
-* avoidable (by supplying explicit binders and instantations).
+* expressible in the syntax (as explicit binders).
+* avoidable (by supplying explicit binders).
 
 
 ### Basic idea:
 
-Prelude:
-
-Defines default scope `@ = Any` (non-awaitable in any async context) and instantiation:
-
-```
-type @ = Any
-```
-
-(`@` is a newly legal scope identifier)
+(`@` is a new type identifier, used for scopes)
 
 Parsing:
 
-* inserts `<@>` type binders for missing `async` binders and instantiations (in types and terms) and `async` binders (in terms);
+* inserts `<@,...>` type binders for missing scope binders (in types and terms);
 * adds missing `<@>` bindings to async returning functions with missing async indices.
 
 Elaboration:
 
 * Elaboration ensures `@` is bound to an appropriate constructor, shadowing any previous `@`-binding to ensure lexical scoping.
-* Elaboration adds missing scope instantiations to function applications that require them, guided by the synthesized function type.
 
 Syntactic sugar (during parse, applied bottom up as we construct types and terms)
 
 ```
-<...>T1 -> async T2 :=                         (@ not in ...)
-  <@,...>T1 -> async T1
+(async T)^ := async<@> (T^)
 
-func f<...>(<pat>) : async T = e :=           (@ not in ...)
-  func f<@,...> f(<pat>) : async T = e
+(<...>T1 -> async T2)^ :=                           (@ not in ...)
+  <@,...^>T1^ -> (async T2)^
 
-func f<...>(<pat>) : async T { e } :=
-  func f<@,...>(<pat>) : async T = async<@> e <@>
+(shared? f<...>(<pat>) : async T = e)^ :=           (@ not in ...)
+  shared? f<@,...^>(<pat>^) : (async T)^ = e^
 
-func f<...>(<pat>) : async<X> T { e } :=
-  func f<...>(<pat>) : async<X> T = async <X> e <X>
+(shared? f<...>(<pat>) : async T { e })^ :=         (@ not in ...)
+  shared? f<@,...^>(<pat>^) : (async T)^ = async<@> e^
+
+(shared? f<...>(<pat>) : async<X> T { e }) :=
+  shared? f<...^>(<pat>^) : async<X> T^ = async<X> e ^
 
   (binds inner scope as X, not @, to pun X in e)
 
-func f<...>(<pat>) : async<U> T { e } :=      (U <> X)
-  func f<...>(<pat>) : async<U> T = async <@> e <U>
+(shared f<...>(<pat>) : () = e)^ :=           (@ not in ...)
+  shared f<@,...^>(<pat>^) : () = e^
 
-async e :=
-  async<@> e <@>
+(shared f<...>(<pat>) { e })^ :=              (@ not in ...)
+  shared f<@,...^>(<pat>^) : () =  e^
+
+
+(async e)^ :=
+  async<@> e^
 
 ```
 
@@ -379,7 +440,7 @@ Types:
 (async t)* ~~>
   async<@*> t*
 
-(async<t1> t1)*
+(async<t1> t2)*
   ~~> async<t1*> t2*
 
 <...>T1 -> async T2 ~~>                        (* syntax sugaring ensures @ bound in ... *)
@@ -398,7 +459,7 @@ async <X> e <U> ~~> async <X> e[X/@] <U>
 f <Ts1,Ts2> e ~~>
  f <Ts1*,@,Ts2*> e when f : <...,Xi,...> T1 ~~> async<Xi> T1
 
- (note inference can infer a missing scope parameter at any position, not just position 0)
+(note inference can infer a missing scope parameter at any position, not just position 0)
 
 func<...>f() : async T = e ~~>               (* syntax sugaring ensures @ bound in ... *)
  func<...*>f() : (async T)* = e*
