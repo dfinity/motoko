@@ -70,7 +70,7 @@ scope(AsyncCap<T>) = Some T
 scope(AwaitCap<T>) = Some T
 scope(NullCap) = None
 
-cap(@ X,Ys) = AsyncCap<X>
+cap(X,Ys) = AsyncCap<X>
 cap(Ys) = NullCap
 ```
 
@@ -140,7 +140,7 @@ is granted the capability to enter an async expression and send messages.
 
 Without a scope parameter in `Xs` (`Xs` = `Ys`), the abstraction rule simple introduces the null capability, `NullCap`, to prevent sends and async expressions in the body.
 
-Not that a local function is may or may not introduce a scope parameter, affecting the capabilities of its body (and the ability to invoke that function).
+Note that a local function may or may not introduce a scope parameter, affecting the capabilities of its body (and the ability to invoke that function).
 This means that a local function *can* be used to abstract out async and sends, provided it has a scope parameter that is supplied when called.
 
 ### Application
