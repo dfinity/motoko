@@ -36,4 +36,13 @@ module {
 
     return if isNegative ("-" # text) else text;
   };
+
+  public func fromInt8 (x : Int8):  Int = int8ToInt x;
+  public func fromInt16(x : Int16): Int = int16ToInt x;
+  public func fromInt32(x : Int32): Int = int32ToInt x;
+  public func fromInt64(x : Int64): Int = int64ToInt x;
+  public func toInt8 (x : Int) : Int8   = intToInt8  x;
+  public func toInt16(x : Int) : Int16  = intToInt16 x;
+  public func toInt32(x : Int) : Int32  = intToInt32 x;
+  public func toInt64(x : Int) : Int64  = intToInt64 x;
 }
