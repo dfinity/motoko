@@ -40,11 +40,18 @@ let print_stat_ve =
 
 let print_dyn_ve scope =
   Value.Env.iter (fun x d ->
-    let t = Type.Env.find x scope.Scope.val_env in
-    let t' = Type.as_immut t in
-    printf "%s %s : %s = %s\n"
-      (if t == t' then "let" else "var") x
-      (Type.string_of_typ t') (Value.string_of_def !Flags.print_depth d)
+    let open Type in
+    let t = Env.find x scope.Scope.val_env in
+    let t' = as_immut t in
+    match normalize t' with
+    | Obj (Module, fs) ->
+      printf "%s %s : module {...}\n"
+        (if t == t' then "let" else "var") x
+    | _ ->
+      printf "%s %s : %s = %s\n"
+        (if t == t' then "let" else "var") x
+        (Type.string_of_typ t')
+        (Value.string_of_def !Flags.print_depth d)
   )
 
 let print_scope senv scope dve =
