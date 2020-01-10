@@ -34,4 +34,3 @@ let to_string c =
 
 let eq c1 c2 = (c1.name, c1.stamp) = (c2.name, c2.stamp)
 let compare c1 c2 = compare (c1.name, c1.stamp) (c2.name, c2.stamp)
-

@@ -3652,7 +3652,7 @@ module Serialization = struct
 
       let check_prim_typ t =
         get_idltyp ^^
-        compile_eq_const (Int32.of_int (- (Lib.Option.value (to_idl_prim t))))
+        compile_eq_const (Int32.of_int (- (Option.get (to_idl_prim t))))
       in
 
       let assert_prim_typ t =

@@ -15,7 +15,7 @@ let markup_content (msg : string) : Lsp.markup_content =
 
 let hover_handler index position file_contents project_root file_path =
   let hover_result =
-    Lib.Option.bind
+    Option.bind
       (Source_file.identifier_at_pos
          project_root
          file_path
@@ -26,11 +26,11 @@ let hover_handler index position file_contents project_root file_path =
            Some Lsp.{ hover_result_contents = markup_content path }
         | Source_file.Resolved resolved ->
            lookup_module resolved.Source_file.path index
-           |> Lib.Fun.flip Lib.Option.bind (fun decls ->
+           |> Fun.flip Option.bind (fun decls ->
                 List.find_opt
                   (fun d -> name_of_ide_decl d = resolved.Source_file.ident)
                   decls)
-           |> Lib.Option.map (fun ide_decl ->
+           |> Option.map (fun ide_decl ->
                   Lsp.{ hover_result_contents =
                           markup_content (hover_detail ide_decl) })
         | Source_file.Ident _ ->
