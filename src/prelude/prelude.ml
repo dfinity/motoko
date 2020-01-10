@@ -119,6 +119,7 @@ func hashInt(x : Int) : Word32 {
   return hash;
 };
 
+func hashBlob(b : Blob) : Word32 { (prim "crc32Hash" : Blob -> Word32) b };
 
 // Conversions
 

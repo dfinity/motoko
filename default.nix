@@ -36,7 +36,7 @@ let dfinity-src =
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
     # ref = "master";
-    rev = "dfc8aa148021534ad01d321d1f2a843ab2933fa3";
+    rev = "502ff80e26ac5a6cf10ae3f92fdea70de7d1f58e";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
@@ -91,6 +91,7 @@ let commonBuildInputs = pkgs:
     pkgs.dune
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
+    pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
     pkgs.ocamlPackages.num
