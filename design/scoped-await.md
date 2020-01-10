@@ -47,7 +47,7 @@ Ys := Y, Ys
 
 <exp> :=
     | async<X> e                                         // async (scope X bound in e)
-    |shared? f<Xs>(x:T) : U = e                         // functions
+    | shared? f<Xs>(x:T) : U = e                         // functions
     | f <Ts> e                                           // application
     | ...
 
