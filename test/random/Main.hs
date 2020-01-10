@@ -63,18 +63,24 @@ matchingProps = testGroup "Pattern matching"
   ]
 
 
-data Embedder = Reference | WasmTime
+data Embedder = Reference | WasmTime | Drun
 
 instance Arbitrary Embedder where arbitrary = elements [Reference, WasmTime]
 
 embedderCommand Reference = "wasm"
 embedderCommand WasmTime = "wasmtime"
+embedderCommand Drun = "drun"
+
+addCompilerArgs Reference = ("-no-system-api" :)
+addCompilerArgs WasmTime = ("-no-system-api" :)
+addCompilerArgs Drun = id
 
 addEmbedderArgs Reference = id
 addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
+addEmbedderArgs Drun = id
 
 embedder :: Embedder
-embedder = WasmTime
+embedder = Drun
 
 withPrim :: Line -> Line
 withPrim = (fromString "import Prim \"mo:prim\";" <>)
@@ -86,7 +92,7 @@ withPrim = (fromString "import Prim \"mo:prim\";" <>)
                 fileArg = fromString . encodeString
                 script = do Turtle.output as $ withPrim <$> fromString testCase
                             res@(exitCode, _, _) <- procStrictWithErr "moc"
-                                ["-no-system-api", "-no-check-ir", fileArg as] empty
+                                (addCompilerArgs embedder ["-no-check-ir", fileArg as]) empty
                             if ExitSuccess == exitCode
                             then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
                             else pure (False, res)
@@ -300,7 +306,7 @@ prop_matchInActor (Matching a) = mobile a
 
 mobile :: (AnnotLit t, MOValue t) => (MOTerm t, t) -> Property
 mobile (tm, v) = monadicIO $ do
-  let testCase = "actor a { public func match (b : " <> typed <> ") : async Bool = async { true } }; assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false })"
+  let testCase = "actor a { public func match (b : " <> typed <> ") : async Bool = async { true }; func do () { assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false }) } };"
 
       eval'd = unparse v
       typed = unparseType v

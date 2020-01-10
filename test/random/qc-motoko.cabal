@@ -1,7 +1,7 @@
 cabal-version:       2.4
 
 name:                qc-motoko
-version:             0
+version:             1
 synopsis:            generate randomised tests for Motoko
 -- description:
 author:              Gabor Greif
