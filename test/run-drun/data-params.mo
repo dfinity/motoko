@@ -1,75 +1,76 @@
+import Prim "mo:prim";
 actor a {
   var c : Int = 0;
   public func inci(n : Int) : () {
     c += n;
-    debugPrintInt(c);
+    Prim.debugPrintInt(c);
   };
   public func incn(n : Nat) : () {
     c += n;
-    debugPrintInt(c);
+    Prim.debugPrintInt(c);
   };
   public func incnn(n1 : Nat, n2 : Nat) : () {
     c += n1 + n2;
-    debugPrintInt(c);
+    Prim.debugPrintInt(c);
   };
   public func incnested(n1 : Nat, (n2 : Nat, n3 : Nat)) : () {
     c += n1 + n2 + n3;
-    debugPrintInt(c);
+    Prim.debugPrintInt(c);
   };
   public func incarray(a : [Nat]) : () {
     for (i in a.vals()) { c += i };
-    debugPrintInt(c);
+    Prim.debugPrintInt(c);
   };
   public func incopt(a : ?Nat) : () {
     switch a {
       case null { c += 1000000 };
       case (?a) { c += a };
     };
-    debugPrintInt(c);
+    Prim.debugPrintInt(c);
   };
   public func increcord(a : { x : Nat; y : Nat }) : () {
     c += a.x;
     c += a.y;
-    debugPrintInt(c);
+    Prim.debugPrintInt(c);
   };
   public func incVariant(v : { #foo : Nat; #bar : Nat }) {
     c += (switch v {
       case (#foo n) n;
       case (#bar n) n;
     });
-    debugPrintInt(c);
+    Prim.debugPrintInt(c);
   };
   public func printCounter() {
-    debugPrintInt(c);
+    Prim.debugPrintInt(c);
   };
   public func printLabeled(l:Text) {
-    debugPrint l;
-    debugPrintInt(c);
+    Prim.debugPrint l;
+    Prim.debugPrintInt(c);
   };
   public func printLabeledOpt(?l:?Text) {
-    debugPrint l;
-    debugPrintInt(c);
+    Prim.debugPrint l;
+    Prim.debugPrintInt(c);
   };
   public func incwords(w8 : Word8, w16 : Word16, w32 : Word32, w64 : Word64) : () {
-    c += word8ToInt(w8);
-    c += word16ToInt(w16);
-    c += word32ToInt(w32);
-    c += word64ToInt(w64);
-    debugPrintInt(c);
+    c += Prim.word8ToInt(w8);
+    c += Prim.word16ToInt(w16);
+    c += Prim.word32ToInt(w32);
+    c += Prim.word64ToInt(w64);
+    Prim.debugPrintInt(c);
   };
   public func incnats(n8 : Nat8, n16 : Nat16, n32 : Nat32, n64 : Nat64) : () {
-    c += nat8ToNat(n8);
-    c += nat16ToNat(n16);
-    c += nat32ToNat(n32);
-    c += nat64ToNat(n64);
-    debugPrintInt(c);
+    c += Prim.nat8ToNat(n8);
+    c += Prim.nat16ToNat(n16);
+    c += Prim.nat32ToNat(n32);
+    c += Prim.nat64ToNat(n64);
+    Prim.debugPrintInt(c);
   };
   public func incints(i8 : Int8, i16 : Int16, i32 : Int32, i64 : Int64) : () {
-    c += int8ToInt(i8);
-    c += int16ToInt(i16);
-    c += int32ToInt(i32);
-    c += int64ToInt(i64);
-    debugPrintInt(c);
+    c += Prim.int8ToInt(i8);
+    c += Prim.int16ToInt(i16);
+    c += Prim.int32ToInt(i32);
+    c += Prim.int64ToInt(i64);
+    Prim.debugPrintInt(c);
   };
 
   public func go() : () {

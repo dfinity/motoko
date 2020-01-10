@@ -154,9 +154,8 @@ and pp_field ppf tf =
   pp_open_box ppf 1;
   let f_name =
     match tf.it.label.it with
-    | Id n -> Lib.Uint32.to_string n
     | Named name -> name
-    | Unnamed n -> Lib.Uint32.to_string n
+    | Id n | Unnamed n -> "_" ^ (Lib.Uint32.to_string n) ^ "_"
   in quote_name ppf f_name; kwd ppf ":"; pp_typ ppf tf.it.typ;
   pp_close_box ppf ()
 
@@ -235,7 +234,7 @@ let pp_prog ppf env prog =
      List.iter (pp_dec ppf) env_list;
      pp_actor ppf actor recs;
      pp_footer ppf ()
-   
+
 let compile (scope : Typing.scope) (prog : Syntax.prog) =
   let buf = Buffer.create 100 in
   let ppf = formatter_of_buffer buf in

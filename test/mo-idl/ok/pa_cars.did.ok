@@ -4,11 +4,11 @@ type TimeSpan =
    "end": int;
    "start": int;
  };
-type Result_1 = opt record {"reservationId": text;};
+type Result = opt record {"reservationId": text;};
 type PACars = 
  service {
    "verifyCarInformation": (User, Car) ->
-    (opt func (Location, TimeSpan) -> (Result_1));
+    (opt func (Location, TimeSpan) -> (Result));
  };
 type Location = 
  record {

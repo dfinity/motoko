@@ -5,5 +5,6 @@
 → update go(0x4449444c0000)
 debug.print: a
 debug.print: b
+debug.print: a
 debug.print: b
 ← completed: 0x4449444c0000

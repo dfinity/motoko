@@ -1,6 +1,8 @@
+import Prim "mo:prim";
 import P "prelude.mo";
 import Option "option.mo";
 import H "hash.mo";
+import A "array.mo";
 
 import List "list.mo";
 import AssocList "assocList.mo";
@@ -142,31 +144,31 @@ public func isValid<K,V> (t:Trie<K,V>, enforceNormal:Bool) : Bool {
            ( List.all<(Key<K>,V)>(
                l.keyvals,
                func ((k:Key<K>,v:V)):Bool{
-                 //{ debugPrint "testing hash..."; true }
+                 //{ Prim.debugPrint "testing hash..."; true }
                  //and
                  ((k.hash & mask) == bits)
                  or
-                 { debugPrint "\nmalformed hash!:\n";
-                   debugPrintInt (word32ToNat(k.hash));
-                   debugPrint "\n (key hash) != (path bits): \n";
-                   debugPrintInt (word32ToNat(bits));
-                   debugPrint "\nmask  : "; debugPrintInt (word32ToNat(mask));
-                   debugPrint "\n";
+                 { Prim.debugPrint "\nmalformed hash!:\n";
+                   Prim.debugPrintInt (Prim.word32ToNat(k.hash));
+                   Prim.debugPrint "\n (key hash) != (path bits): \n";
+                   Prim.debugPrintInt (Prim.word32ToNat(bits));
+                   Prim.debugPrint "\nmask  : "; Prim.debugPrintInt (Prim.word32ToNat(mask));
+                   Prim.debugPrint "\n";
                    false }
                }
              ) or
-           { debugPrint "one or more hashes are malformed"; false }
+           { Prim.debugPrint "one or more hashes are malformed"; false }
            )
          };
     case (#branch b) {
            let bitpos1 = switch bitpos {
-           case null  (natToWord32(0));
-           case (?bp) (natToWord32(word32ToNat(bp) + 1))
+           case null  (Prim.natToWord32(0));
+           case (?bp) (Prim.natToWord32(Prim.word32ToNat(bp) + 1))
            };
-           let mask1 = mask | (natToWord32(1) << bitpos1);
-           let bits1 = bits | (natToWord32(1) << bitpos1);
+           let mask1 = mask | (Prim.natToWord32(1) << bitpos1);
+           let bits1 = bits | (Prim.natToWord32(1) << bitpos1);
            let sum = count<K,V>(b.left) + count<K,V>(b.right);
-           (b.count == sum or { debugPrint "malformed count"; false })
+           (b.count == sum or { Prim.debugPrint "malformed count"; false })
            and
            rec(b.left,  ?bitpos1, bits,  mask1)
            and
@@ -976,7 +978,7 @@ public func disj<K,V,W,X>(
      */
     public func buildToArray<K,V,W>(tb:TrieBuild<K,V>,f:(K,V)->W):[W] =
       label profile_triebuild_toArray_begin : [W] {
-      let a = Array_tabulate<W> (
+      let a = A.tabulate<W> (
         buildCount<K,V>(tb),
         func (i:Nat) : W = label profile_triebuild_toArray_nth : W {
           let (k,_,v) = Option.unwrap<(K,?Hash,V)>(buildNth<K,V>(tb, i));
@@ -996,7 +998,7 @@ public func disj<K,V,W,X>(
      */
     public func buildToArray2<K,V,W>(tb:TrieBuild<K,V>,f:(K,V)->W):[W] {
       let c = buildCount<K,V>(tb);
-      let a = Array_init<?W>(c, null);
+      let a = A.init<?W>(c, null);
       var i = 0;
       func rec(tb:TrieBuild<K,V>) = label profile_triebuild_toArray2_rec {
         switch tb {
@@ -1006,7 +1008,7 @@ public func disj<K,V,W,X>(
         }
       };
       rec(tb);
-      Array_tabulate<W>(c, func(i:Nat) : W = Option.unwrap<W>(a[i]))
+      A.tabulate<W>(c, func(i:Nat) : W = Option.unwrap<W>(a[i]))
     };
 
   };
@@ -1080,7 +1082,7 @@ public func disj<K,V,W,X>(
    Project the nth key-value pair from the trie.
 
    Note: This position is not meaningful; it's only here so that we
-   can inject tries into arrays given the Array_tabulate interface for
+   can inject tries into arrays given the A.tabulate interface for
    doing so.
    */
   public func nth<K,V>(t:Trie<K,V>, i:Nat) : ?(Key<K>, V) = label profile_trie_nth : (?(Key<K>, V)) {
@@ -1120,7 +1122,7 @@ public func disj<K,V,W,X>(
    project each element with an independent trie traversal.
 
    This approach is somewhat forced on us by the type signature of
-   Array_tabulate, and the desire to only allocate one array; that requirement rules
+   A.tabulate, and the desire to only allocate one array; that requirement rules
    out iterative mutation of an optionally-null array, since an imperative
    approach which would give us the wrong return type.
 
@@ -1131,7 +1133,7 @@ public func disj<K,V,W,X>(
    */
   public func toArray<K,V,W>(t:Trie<K,V>,f:(K,V)->W):[W] =
     label profile_trie_toArray_begin : [W] {
-    let a = Array_tabulate<W> (
+    let a = A.tabulate<W> (
       count<K,V>(t),
       func (i:Nat) : W = label profile_trie_toArray_nth : W {
         let (k,v) = Option.unwrap<(Key<K>,V)>(nth<K,V>(t, i));

@@ -4,6 +4,7 @@
  --------------------
 */
 
+import Prim "mo:prim";
 import P = "../../prelude.mo";
 import Option = "../../option.mo";
 import T = "serverTypes.mo";
@@ -1048,7 +1049,7 @@ been processed
 
 
   public func loadWorkload(params:T.WorkloadParams) : () {
-    func db(s:Text) = if false {debugPrint "Model::loadWorkload: "; debugPrint s; debugPrint "\n"};
+    func db(s:Text) = if false {Prim.debugPrint "Model::loadWorkload: "; Prim.debugPrint s; Prim.debugPrint "\n"};
     getModel().loadWorkload(params)
   };
 

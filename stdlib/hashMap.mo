@@ -1,5 +1,8 @@
+import Prim "mo:prim";
 import P "prelude.mo";
+import A "array.mo";
 import Hash "hash.mo";
+import Iter "iter.mo";
 import AssocList "assocList.mo";
 
 module {
@@ -37,7 +40,7 @@ public class HashMap<K,V> (
   public func count() : Nat = _count;
 
   public func del(k:K) : ?V {
-    let h = word32ToNat(keyHash(k));
+    let h = Prim.word32ToNat(keyHash(k));
     let m = table.len();
     let pos = h % m;
     if (m > 0) {
@@ -54,7 +57,7 @@ public class HashMap<K,V> (
   };
 
   public func get(k:K) : ?V {
-    let h = word32ToNat(keyHash(k));
+    let h = Prim.word32ToNat(keyHash(k));
     let m = table.len();
     let v = if (m > 0) {
       AssocList.find<K,V>(table[h % m], k, keyEq)
@@ -73,7 +76,7 @@ public class HashMap<K,V> (
             1
         else
           table.len() * 2;
-      let table2 = Array_init<KVs<K,V>>(size, null);
+      let table2 = A.init<KVs<K,V>>(size, null);
       for (i in table.keys()) {
         var kvs = table[i];
         label moveKeyVals : ()
@@ -81,7 +84,7 @@ public class HashMap<K,V> (
           switch kvs {
           case null { break moveKeyVals };
           case (?((k, v), kvsTail)) {
-                 let h = word32ToNat(keyHash(k));
+                 let h = Prim.word32ToNat(keyHash(k));
                  let pos2 = h % table2.len();
                  table2[pos2] := ?((k,v), table2[pos2]);
                  kvs := kvsTail;
@@ -91,7 +94,7 @@ public class HashMap<K,V> (
       };
       table := table2;
     };
-    let h = word32ToNat(keyHash(k));
+    let h = Prim.word32ToNat(keyHash(k));
     let pos = h % table.len();
     let (kvs2, ov) = AssocList.replace<K,V>(table[pos], k, keyEq, ?v);
     table[pos] := kvs2;
@@ -102,7 +105,7 @@ public class HashMap<K,V> (
     ov
   };
 
-  public func iter() : Iter<(K,V)> {
+  public func iter() : Iter.Iter<(K,V)> {
     if (table.len() == 0) {
       object { public func next() : ?(K,V) { null } }
     }
@@ -146,7 +149,7 @@ public func clone<K,V>
 };
 
 // Clone from any iterator of key-value pairs
-public func fromIter<K, V>(iter:Iter<(K, V)>,
+public func fromIter<K, V>(iter:Iter.Iter<(K, V)>,
                            initCapacity: Nat,
                            keyEq: (K,K) -> Bool,
                            keyHash: K -> Hash.Hash) : HashMap<K,V> {

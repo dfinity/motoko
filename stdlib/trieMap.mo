@@ -1,5 +1,6 @@
 import T "trie.mo";
 import P "prelude.mo";
+import I "iter.mo";
 import Hash "hash.mo";
 import List "list.mo";
 
@@ -54,7 +55,7 @@ public class TrieMap<K,V> (isEq:(K, K) -> Bool, hashOf: K -> T.Hash) {
 
   // notably, each iterator gets a _persistent view_ of the mapping,
   // by virtue of the trie being a persistent data structure.
-  public func iter() : Iter<(K,V)> = object {
+  public func iter() : I.Iter<(K,V)> = object {
     var stack = ?(map, null) : List.List<T.Trie<K,V>>;
     public func next() : ?(K,V) {
       switch stack {
@@ -100,7 +101,7 @@ public func clone<K,V>
 };
 
 // Clone from any iterator of key-value pairs
-public func fromIter<K, V>(iter:Iter<(K, V)>,
+public func fromIter<K, V>(iter:I.Iter<(K, V)>,
                            keyEq: (K,K) -> Bool,
                            keyHash: K -> Hash.Hash) : TrieMap<K,V> {
   let h = TrieMap<K,V>(keyEq, keyHash);

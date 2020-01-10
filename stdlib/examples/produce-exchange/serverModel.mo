@@ -1,3 +1,4 @@
+import Prim = "mo:prim";
 import P = "../../prelude.mo";
 
 import T = "serverTypes.mo";
@@ -8,6 +9,8 @@ import List = "../../list.mo";
 import Hash_ = "../../hash.mo";
 import Option = "../../option.mo";
 import Trie = "../../trie.mo";
+import Iter = "../../iter.mo";
+import Array = "../../array.mo";
 
 import DT = "../../docTable.mo";
 import Result = "../../result.mo";
@@ -82,7 +85,7 @@ public class Model() {
    */
 
   public func loadWorkload(params:T.WorkloadParams) : () {
-    func db(s:Text) = if false {debugPrint "Model::loadWorkload: "; debugPrint s; debugPrint "\n"};
+    func db(s:Text) = if false {Prim.debugPrint "Model::loadWorkload: "; Prim.debugPrint s; Prim.debugPrint "\n"};
 
     /**- generate add requests for these params: */
     db "generate requests for workload...";
@@ -130,7 +133,7 @@ public class Model() {
 
    */
   public func evalReq(req:L.Req) : Result<L.Resp, T.IdErr> {
-    if false {debugPrint "Model::evalReq: "; debugPrint (debug_show req); debugPrint "\n"; };
+    if false {Prim.debugPrint "Model::evalReq: "; Prim.debugPrint (debug_show req); Prim.debugPrint "\n"; };
     switch req {
     case (#reset) {
            /**- 1. reset each entity table: */
@@ -334,7 +337,7 @@ public class Model() {
     switch req {
       case (#add reqs)
       #add (
-        Array_tabulate<Result<T.EntId, T.IdErr>>(
+        Array.tabulate<Result<T.EntId, T.IdErr>>(
           reqs.len(),
           func(i:Nat):Result<T.EntId, T.IdErr> =
             Result.mapOk<L.Resp, T.EntId, T.IdErr>(
@@ -361,7 +364,7 @@ public class Model() {
    - Each bulk request in this array consists of an array of similar requests (adds, updates, or removes).
    */
   public func evalBulkArray(reqs:[L.BulkReq]) : [L.BulkResp] {
-    Array_tabulate<L.BulkResp>(
+    Array.tabulate<L.BulkResp>(
       reqs.len(),
       func(i:Nat):L.BulkResp = evalBulk(reqs[i])
     )
@@ -387,23 +390,23 @@ public class Model() {
     func min(x:Nat, y:Nat) : Nat = if (x < y) { x } else { y };
 
     /**- add routes and inventory, across time and space: */
-    for (start_day in range(0, day_count-1)) {
+    for (start_day in Iter.range(0, day_count-1)) {
 
       let max_end_day =
         min( start_day + max_route_duration,
              day_count - 1 );
 
-      for (end_day in range(start_day, max_end_day)) {
+      for (end_day in Iter.range(start_day, max_end_day)) {
 
         /**- consider all pairs of start and end region: */
-        for (start_reg in range(0, region_count - 1)) {
-          for (end_reg in range(0, region_count - 1)) {
+        for (start_reg in Iter.range(0, region_count - 1)) {
+          for (end_reg in Iter.range(0, region_count - 1)) {
 
             /**- for each producer we choose,
              add inventory that will be ready on "start_day", but not beforehand.
              It will remain ready until the end of the day count. */
 
-            for (p in range(0, producer_count - 1)) {
+            for (p in Iter.range(0, producer_count - 1)) {
               /**- choose this producer iff they are located in the start region: */
               if ((p % region_count) == start_reg) {
                 inventoryCount := inventoryCount + 1;
@@ -414,7 +417,7 @@ public class Model() {
              add a route that will start and end on the current values
              of `start_day`, `end_day`, `start_reg`, `end_reg`, respectively: */
 
-            for (t in range(0, transporter_count - 1)) {
+            for (t in Iter.range(0, transporter_count - 1)) {
               /**- choose this transporter iff their id matches the id of the region, modulo the number of regions: */
               if ((t % region_count) == start_reg) {
                 routeCount := routeCount + 1;
@@ -451,7 +454,7 @@ public class Model() {
     /**- `reqs` accumulates the add requests that we form below: */
     var reqs : List<L.AddReq> = null;
     /**- add truck types; for now, just 2. */
-    for (i in range(0, 1)) {
+    for (i in Iter.range(0, 1)) {
       reqs := ?(
         #truckType (
           {
@@ -462,19 +465,19 @@ public class Model() {
         ), reqs);
     };
     /**- add regions */
-    for (i in range(0, region_count - 1)) {
+    for (i in Iter.range(0, region_count - 1)) {
       reqs := ?(#region {
                            id=i; short_name=""; description=""
                         }, reqs);
     };
     /**- add produce types, one per region. */
-    for (i in range(0, region_count - 1)) {
+    for (i in Iter.range(0, region_count - 1)) {
       reqs := ?(#produce {
                            id=i; short_name=""; description=""; grade=1;
                          }, reqs);
     };
     /**- add producers  */
-    for (i in range(0, producer_count - 1)) {
+    for (i in Iter.range(0, producer_count - 1)) {
       reqs := ?(#producer {
                             id=i; public_key=""; short_name=""; description="";
                             region=(i % region_count);
@@ -482,37 +485,37 @@ public class Model() {
                           }, reqs);
     };
     /**- add transporters  */
-    for (i in range(0, producer_count - 1)) {
+    for (i in Iter.range(0, producer_count - 1)) {
       reqs := ?(#transporter {
                                 id=i; public_key=""; short_name=""; description="";
                                 routes=[]; reserved=[];
                              }, reqs);
     };
     /**- add retailers  */
-    for (i in range(0, retailer_count - 1)) {
+    for (i in Iter.range(0, retailer_count - 1)) {
       reqs := ?(#retailer {
                             id=i; public_key=""; short_name=""; description="";
                             region=(i % region_count);
                           }, reqs);
     };
     /**- add routes and inventory, across time and space: */
-    for (start_day in range(0, day_count-1)) {
+    for (start_day in Iter.range(0, day_count-1)) {
 
       let max_end_day =
         min( start_day + max_route_duration,
              day_count - 1 );
 
-      for (end_day in range(start_day, max_end_day)) {
+      for (end_day in Iter.range(start_day, max_end_day)) {
 
         /**- consider all pairs of start and end region: */
-        for (start_reg in range(0, region_count - 1)) {
-          for (end_reg in range(0, region_count - 1)) {
+        for (start_reg in Iter.range(0, region_count - 1)) {
+          for (end_reg in Iter.range(0, region_count - 1)) {
 
             /**- for each producer we choose,
              add inventory that will be ready on "start_day", but not beforehand.
              It will remain ready until the end of the day count. */
 
-            for (p in range(0, producer_count)) {
+            for (p in Iter.range(0, producer_count)) {
               /**- choose this producer iff they are located in the start region: */
               if ((p % region_count) == start_reg) {
                 reqs := ?(#inventory
@@ -534,7 +537,7 @@ public class Model() {
              add a route that will start and end on the current values
              of `start_day`, `end_day`, `start_reg`, `end_reg`, respectively: */
 
-            for (t in range(0, transporter_count - 1)) {
+            for (t in Iter.range(0, transporter_count - 1)) {
               /**- choose this transporter iff their id matches the id of the region, modulo the number of regions: */
               if ((t % region_count) == start_reg) {
                 reqs := ?(#route
@@ -604,8 +607,8 @@ public class Model() {
    ==================
    */
 
-  func debugOut (t:Text)   { debug { debugPrint t } };
-  func debugInt (i:Int)    { debug { debugPrintInt i } };
+  func debugOut (t:Text)   { debug { Prim.debugPrint t } };
+  func debugInt (i:Int)    { debug { Prim.debugPrintInt i } };
 
   func debugOff (t:Text)   { debug {  } };
   func debugIntOff (i:Int) { debug {  } };
@@ -2287,7 +2290,7 @@ than the MVP goals, however.
     array:[(T.InventoryId,T.RouteId)])
     : [Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>]
   {
-    let a = Array_init<?(Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>)>(
+    let a = Array.init<?(Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>)>(
       array.len(),
       null
     );
@@ -2297,7 +2300,7 @@ than the MVP goals, however.
       a[i] := ?x;
     };
     let results =
-      Array_tabulate<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>>(
+      Array.tabulate<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>>(
         array.len(),
         func(i:Nat):Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>{
           Option.unwrap<Result<(T.ReservedRouteId, T.ReservedInventoryId), T.IdErr>>(a[i])
