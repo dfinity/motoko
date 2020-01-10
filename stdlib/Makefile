@@ -16,6 +16,7 @@ WASM=\
 
 TESTS=\
 	Array \
+	Blob \
 	Debug \
 	ArrayTest \
 	BufTest \
@@ -75,6 +76,9 @@ $(OUTDIR):
 	@mkdir $@
 
 $(OUTDIR)/Debug.out: debug.mo | $(OUTDIR)
+	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
+
+$(OUTDIR)/Blob.out: blob.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Array.out: array.mo | $(OUTDIR)

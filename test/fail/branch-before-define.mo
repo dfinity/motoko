@@ -1,3 +1,5 @@
+import Prim "mo:prim";
+
 func f():() -> Int {
   { label exit : (() -> Int) {
       func g() : Int = x; // reference x
@@ -8,8 +10,8 @@ func f():() -> Int {
   };
 };
 
-debugPrint "1";
+Prim.debugPrint "1";
 let h = f();
 
-debugPrint "2";
+Prim.debugPrint "2";
 let wrong = h();

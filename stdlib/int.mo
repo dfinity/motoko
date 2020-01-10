@@ -1,6 +1,9 @@
+import Prim "mo:prim";
 import Prelude "prelude.mo";
 
 module {
+  public func abs(x : Int) : Nat = Prim.abs x;
+
   public func add(x : Int, y : Int) : Int {
     x + y;
   };
@@ -37,12 +40,12 @@ module {
     return if isNegative ("-" # text) else text;
   };
 
-  public func fromInt8 (x : Int8):  Int = int8ToInt x;
-  public func fromInt16(x : Int16): Int = int16ToInt x;
-  public func fromInt32(x : Int32): Int = int32ToInt x;
-  public func fromInt64(x : Int64): Int = int64ToInt x;
-  public func toInt8 (x : Int) : Int8   = intToInt8  x;
-  public func toInt16(x : Int) : Int16  = intToInt16 x;
-  public func toInt32(x : Int) : Int32  = intToInt32 x;
-  public func toInt64(x : Int) : Int64  = intToInt64 x;
+  public func fromInt8 (x : Int8):  Int = Prim.int8ToInt x;
+  public func fromInt16(x : Int16): Int = Prim.int16ToInt x;
+  public func fromInt32(x : Int32): Int = Prim.int32ToInt x;
+  public func fromInt64(x : Int64): Int = Prim.int64ToInt x;
+  public func toInt8 (x : Int) : Int8   = Prim.intToInt8  x;
+  public func toInt16(x : Int) : Int16  = Prim.intToInt16 x;
+  public func toInt32(x : Int) : Int32  = Prim.intToInt32 x;
+  public func toInt64(x : Int) : Int64  = Prim.intToInt64 x;
 }

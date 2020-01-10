@@ -1,4 +1,6 @@
 import P "prelude.mo";
+import I "iter.mo";
+import A "array.mo";
 
 module {
 
@@ -48,7 +50,7 @@ public class Buf<X> (initCapacity : Nat) {
           initCapacity
         else
           2 * elems.len();
-      let elems2 = Array_init<X>(size, elem);
+      let elems2 = A.init<X>(size, elem);
       for (i in elems.keys()) {
         elems2[i] := elems[i];
       };
@@ -82,7 +84,7 @@ public class Buf<X> (initCapacity : Nat) {
     c
   };
 
-  public func iter() : Iter<X> = object {
+  public func iter() : I.Iter<X> = object {
     var pos = 0;
     public func next() : ?X {
       if (pos == count) { null } else {
@@ -95,14 +97,14 @@ public class Buf<X> (initCapacity : Nat) {
 
   public func toArray() : [X] =
     // immutable clone of array
-    Array_tabulate<X>(
+    A.tabulate<X>(
       elems.len(),
       func(x: Nat): X { elems[x] }
     );
 
   public func toVarArray() : [var X] = {
     if (count == 0) { [var] } else {
-      let a = Array_init<X>(count, elems[0]);
+      let a = A.init<X>(count, elems[0]);
       for (i in elems.keys()) {
         a[i] := elems[i]
       };

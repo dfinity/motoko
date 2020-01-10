@@ -1,16 +1,16 @@
-count-callbacks.mo:9.18-9.20: type error, shared, async function must be called within an await expression
+count-callbacks.mo:10.18-10.20: type error, shared, async function must be called within an await expression
   (This is a limitation of the current version.)
-count-callbacks.mo:11.18-11.20: type error, shared, async function must be called within an await expression
+count-callbacks.mo:12.18-12.20: type error, shared, async function must be called within an await expression
   (This is a limitation of the current version.)
-count-callbacks.mo:13.18-13.20: type error, shared, async function must be called within an await expression
+count-callbacks.mo:14.18-14.20: type error, shared, async function must be called within an await expression
   (This is a limitation of the current version.)
-count-callbacks.mo:15.18-15.20: type error, shared, async function must be called within an await expression
+count-callbacks.mo:16.18-16.20: type error, shared, async function must be called within an await expression
   (This is a limitation of the current version.)
-count-callbacks.mo:18.11-18.13: type error, argument to await must be a call expression
+count-callbacks.mo:19.11-19.13: type error, argument to await must be a call expression
   (This is a limitation of the current version.)
-count-callbacks.mo:20.11-20.13: type error, argument to await must be a call expression
+count-callbacks.mo:21.11-21.13: type error, argument to await must be a call expression
   (This is a limitation of the current version.)
-count-callbacks.mo:22.11-22.13: type error, argument to await must be a call expression
+count-callbacks.mo:23.11-23.13: type error, argument to await must be a call expression
   (This is a limitation of the current version.)
-count-callbacks.mo:24.11-24.13: type error, argument to await must be a call expression
+count-callbacks.mo:25.11-25.13: type error, argument to await must be a call expression
   (This is a limitation of the current version.)

@@ -103,16 +103,18 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with
-    | [_;_;s1;s2] ->
+    | ["num";"conv";s1;s2] ->
       let p1 = Type.prim s1 in
       let p2 = Type.prim s2 in
       I.PrimE (I.NumConvPrim (p1, p2), [exp e])
     | _ -> assert false
     end
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
-    let p1 = e.note.S.note_typ in
-    let p2 = note.S.note_typ in
-    I.PrimE (I.CastPrim (p1, p2), [exp e])
+    begin match note.S.note_typ with
+    | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
+      I.PrimE (I.CastPrim (T.seq ts1, T.seq ts2), [exp e])
+    | _ -> assert false
+    end
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->

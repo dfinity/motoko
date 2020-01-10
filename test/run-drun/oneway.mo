@@ -1,14 +1,15 @@
+import Prim "mo:prim";
 actor a {
   // test that oneways can locally try/throw
   public func oneway() : () {
     ignore (
       async {
-        debugPrint "1";
+        Prim.debugPrint "1";
         try {
-          throw (error("Error"));
-          debugPrint "unreachable";
+          throw (Prim.error("Error"));
+          Prim.debugPrint "unreachable";
         }
-        catch e { debugPrint "2"};
+        catch e { Prim.debugPrint "2"};
       }
     )
   };
@@ -18,12 +19,12 @@ actor a {
   public func onewayAlt() : () =
     ignore (
       async {
-        debugPrint "3";
+        Prim.debugPrint "3";
         try {
-          throw (error("Error"));
-          debugPrint "unreachable";
+          throw (Prim.error("Error"));
+          Prim.debugPrint "unreachable";
         }
-        catch e { debugPrint "4"};
+        catch e { Prim.debugPrint "4"};
       }
     );
 
@@ -32,9 +33,9 @@ actor a {
   public func discard() : () {
     ignore (
       async {
-        debugPrint "5";
-        throw (error("ignored"));
-        debugPrint "unreachable";
+        Prim.debugPrint "5";
+        throw (Prim.error("ignored"));
+        Prim.debugPrint "unreachable";
       }
     )
   };
@@ -44,24 +45,24 @@ actor a {
   public func discardAlt() : () =
     ignore (
       async {
-        debugPrint "6";
-        throw (error("ignored"));
-        debugPrint "unreachable";
+        Prim.debugPrint "6";
+        throw (Prim.error("ignored"));
+        Prim.debugPrint "unreachable";
       }
     );
 
   // TODO test await and calls to shared functions
 
   public func go() = ignore async {
-    debugPrint("A");
+    Prim.debugPrint("A");
     oneway();
-    debugPrint("B");
+    Prim.debugPrint("B");
     onewayAlt();
-    debugPrint("C");
+    Prim.debugPrint("C");
     discard();
-    debugPrint("D");
+    Prim.debugPrint("D");
     discardAlt();
-    debugPrint("E");
+    Prim.debugPrint("E");
   };
 };
 a.go(); //OR-CALL ingress go 0x4449444C0000

@@ -1,8 +1,9 @@
+import Prim "mo:prim";
 actor a {
   public func transpose (data : [(Int,Text)]) : async {ints: [Int]; txts: [Text]} {
     return {
-      ints = Array_tabulate<Int>(data.len(), func (i:Nat) : Int = (data[i].0));
-      txts = Array_tabulate<Text>(data.len(), func (i:Nat) : Text = (data[i].1))
+      ints = Prim.Array_tabulate<Int>(data.len(), func (i:Nat) : Int = (data[i].0));
+      txts = Prim.Array_tabulate<Text>(data.len(), func (i:Nat) : Text = (data[i].1))
     }
   };
 
@@ -12,7 +13,7 @@ actor a {
     assert (x.ints[1] == 2);
     assert (x.txts[0] == "Hi");
     assert (x.txts[1] == "Ho");
-    debugPrint("All good");
+    Prim.debugPrint("All good");
   }
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

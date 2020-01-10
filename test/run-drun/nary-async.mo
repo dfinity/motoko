@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 /* test n-ary async/await */
 
 actor a {
@@ -21,7 +22,7 @@ actor a {
       let t = "0_0";
       ignore async {
         await f0_0();
-        debugPrint t;
+        Prim.debugPrint t;
       };
     };
 
@@ -29,7 +30,7 @@ actor a {
       let t = "1_0";
       ignore async {
         await f1_0(1);
-        debugPrint t;
+        Prim.debugPrint t;
       };
     };
 
@@ -37,7 +38,7 @@ actor a {
       let t = "2_0";
       ignore async {
         await f2_0(1,true);
-        debugPrint t;
+        Prim.debugPrint t;
       };
     };
 
@@ -45,7 +46,7 @@ actor a {
     let t = "3_0";
       ignore async {
         await f3_0(1,true,"a");
-        debugPrint t;
+        Prim.debugPrint t;
       };
     };
   };
@@ -67,7 +68,7 @@ actor a {
       let t = "0_0";
       ignore async {
         await g0_0();
-        debugPrint t;
+        Prim.debugPrint t;
       };
     };
 
@@ -76,7 +77,7 @@ actor a {
       ignore async {
         let x = await g0_1();
         assert(x == 1);
-        debugPrint t;
+        Prim.debugPrint t;
         x;
       };
     };
@@ -87,7 +88,7 @@ actor a {
         let (x,y) = await g0_2();
         assert(x==1);
         assert(y==true);
-        debugPrint t;
+        Prim.debugPrint t;
         (x,y);
       };
     };
@@ -100,7 +101,7 @@ actor a {
         assert(x==1);
         assert(y==true);
         assert(z=="a");
-        debugPrint t;
+        Prim.debugPrint t;
         (x,y,z);
       };
     };

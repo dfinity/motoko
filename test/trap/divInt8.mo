@@ -1,1 +1,2 @@
-let _ = intToInt8 (-128) / (-1 : Int8)
+import Prim "mo:prim";
+let _ = Prim.intToInt8 (-128) / (-1 : Int8)
