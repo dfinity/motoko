@@ -277,7 +277,7 @@ let rename_funcs rn : module_' -> module_' = fun m ->
   { m with
     funcs = funcs m.funcs;
     exports = exports m.exports;
-    start = Lib.Option.map var m.start;
+    start = Option.map var m.start;
     elems = List.map (segment (List.map var)) m.elems;
   }
 

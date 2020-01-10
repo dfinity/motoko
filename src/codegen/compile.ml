@@ -664,6 +664,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
     E.add_func_import env "rts" "blob_of_ic_url" [I32Type] [I32Type];
+    E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -3651,7 +3652,7 @@ module Serialization = struct
 
       let check_prim_typ t =
         get_idltyp ^^
-        compile_eq_const (Int32.of_int (- (Lib.Option.value (to_idl_prim t))))
+        compile_eq_const (Int32.of_int (- (Option.get (to_idl_prim t))))
       in
 
       let assert_prim_typ t =
@@ -5979,6 +5980,10 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       ClosureTable.size env ^^ Prim.prim_word32toNat env
 
+    | OtherPrim "crc32Hash", [e] ->
+      SR.UnboxedWord32,
+      compile_exp_vanilla env ae e ^^
+      E.call_import env "rts" "compute_crc32"
 
     | OtherPrim "idlHash", [e] ->
       SR.Vanilla,

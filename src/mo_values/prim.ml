@@ -246,6 +246,8 @@ let prim = function
   | "rts_total_allocation" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_outstanding_callbacks" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "idlHash" -> fun _ v k -> let s = as_text v in k (Word32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))
+  | "crc32Hash" -> fun _ v k -> let s = as_text v in
+    k (Word32 Optint.(to_int32 (Checkseum.Crc32.digest_string s 0 (String.length s) zero)))
   | "array_len" -> fun _ v k ->
     k (Int (Int.of_int (Array.length (Value.as_array v))))
   | "text_len" -> fun _ v k ->

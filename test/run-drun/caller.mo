@@ -1,6 +1,7 @@
+import Prim "mo:prim";
 actor a {
 
-  public shared ctxt func c1 ()  : async () {
+  public shared ctxt func c1 () : async () {
     let c : Blob = ctxt.caller;
     return;
   };
@@ -27,8 +28,12 @@ actor a {
     return;
   };
 
-  public shared {caller} func c7()  : async Blob {
+  public shared {caller} func c7() : async Blob {
     return caller;
+  };
+
+  public shared query {caller} func c8() : async Word32 {
+    Prim.hashBlob caller;
   };
 
 };
@@ -39,6 +44,7 @@ ignore a.c3(); //OR-CALL ingress c3 0x4449444C0000
 ignore a.c4(); //OR-CALL ingress c4 0x4449444C0000
 ignore a.c6(); //OR-CALL query c6 0x4449444C0000
 ignore a.c7(); //OR-CALL ingress c7 0x4449444C0000
+ignore a.c8(); //OR-CALL query c8 0x4449444C0000
 
 
 

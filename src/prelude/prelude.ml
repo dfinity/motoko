@@ -87,7 +87,6 @@ func @text_chars(xs : Text) : (() -> @Iter<Char>) =
   });
 
 
-
 // Internal helper functions for the show translation
 
 // The text_of functions do not need to be exposed; the user can just use
@@ -306,15 +305,24 @@ func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
 
+// Priting
+
 func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
 func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };
 func debugPrintInt(x : Int) { debugPrint (@text_of_Int x) };
 func debugPrintChar(x : Char) { debugPrint (charToText x) };
+
+// RTS stats
+
 func rts_version() : Text { (prim "rts_version" : () -> Text) () };
 func rts_heap_size() : Nat { (prim "rts_heap_size" : () -> Nat) () };
 func rts_total_allocation() : Nat { (prim "rts_total_allocation" : () -> Nat) () };
 func rts_callback_table_count() : Nat { (prim "rts_callback_table_count" : () -> Nat) () };
 func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> Nat) () };
+
+// Hashing
+
+func hashBlob(b : Blob) : Word32 { (prim "crc32Hash" : Blob -> Word32) b };
 
 // Conversions
 

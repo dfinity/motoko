@@ -377,12 +377,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         )
     | ICReplyPrim ts, [exp1] ->
       assert (not env.flavor.has_async_typ);
-      let reply = Lib.Option.value env.replies in
+      let reply = Option.get env.replies in
       interpret_exp env exp1
         (fun v -> Scheduler.queue (fun () -> reply v))
     | ICRejectPrim, [exp1] ->
       assert (not env.flavor.has_async_typ);
-      let reject = Lib.Option.value env.rejects in
+      let reject = Option.get env.rejects in
       interpret_exp env exp1
         (fun v ->
           let e = V.Tup [V.Variant ("error", V.unit); v] in
@@ -478,9 +478,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | BreakE (id, exp1) ->
     interpret_exp env exp1 (find id env.labs)
   | RetE exp1 ->
-    interpret_exp env exp1 (Lib.Option.value env.rets)
+    interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
-    interpret_exp env exp1 (Lib.Option.value env.throws)
+    interpret_exp env exp1 (Option.get env.throws)
   | AsyncE exp1 ->
     assert env.flavor.has_await;
     async env
@@ -493,7 +493,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | AwaitE exp1 ->
     assert env.flavor.has_await;
     interpret_exp env exp1
-      (fun v1 -> await env exp.at (V.as_async v1) k (Lib.Option.value env.throws))
+      (fun v1 -> await env exp.at (V.as_async v1) k (Option.get env.throws))
   | AssertE exp1 ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v
@@ -610,7 +610,7 @@ and interpret_cases env cases at v (k : V.value V.cont) =
 and interpret_catches env cases at v (k : V.value V.cont) =
   match cases with
   | [] ->
-    Lib.Option.value env.throws v (* re-throw v *)
+    Option.get env.throws v (* re-throw v *)
   | {it = {pat; exp}; at; _}::cases' ->
     match match_pat pat v with
     | Some ve -> interpret_exp (adjoin_vals env ve) exp k
@@ -766,7 +766,7 @@ and match_pat_fields pfs vs ve : val_env option =
 
 and interpret_block env ro decs exp k =
   let ve = declare_decs decs V.Env.empty in
-  Lib.Option.iter (fun r -> r := ve) ro;
+  Option.iter (fun r -> r := ve) ro;
   let env' = adjoin_vals env ve in
   interpret_decs env' decs (fun _ -> interpret_exp env' exp k)
 

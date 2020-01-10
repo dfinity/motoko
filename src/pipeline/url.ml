@@ -28,7 +28,7 @@
 (* helper (only to be used on "ic:…" urls) *)
 let decode_actor_url url : (string, string) result =
   let open Stdlib.String in
-  let hex = Lib.Option.value (Lib.String.chop_prefix "ic:" url) in
+  let hex = Option.get (Lib.String.chop_prefix "ic:" url) in
 
   if equal hex "" then Error "principal ID must not be empty" else
   if uppercase_ascii hex <> hex then Error "principal ID must be uppercase" else

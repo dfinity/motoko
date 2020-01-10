@@ -35,7 +35,7 @@ let definition_handler
       file_path =
   let result =
     let open Source_file in
-    Lib.Option.bind
+    Option.bind
       (Source_file.identifier_at_pos
          project_root
          file_path
@@ -47,20 +47,20 @@ let definition_handler
        | Resolved resolved ->
           DI.lookup_module resolved.path index
           |> opt_bind (find_named resolved.ident)
-          |> Lib.Option.map (fun loc -> (resolved.path, loc))
+          |> Option.map (fun loc -> (resolved.path, loc))
        | Ident ident ->
           Lib.FilePath.relative_to project_root file_path
           |> opt_bind (fun uri ->
               DI.lookup_module uri index
               |> opt_bind (find_named ident)
-              |> Lib.Option.map (fun loc -> (uri, loc))
+              |> Option.map (fun loc -> (uri, loc))
       )) in
   let location =
-    Lib.Option.map (fun (path, region) ->
+    Option.map (fun (path, region) ->
         Lsp.
         { location_uri =
             if Source_file.is_package_path path
-            then Lib.Option.value (Source_file.uri_for_package path)
+            then Option.get (Source_file.uri_for_package path)
             else Vfs.uri_from_file path;
           location_range = range_of_region region
         }) result in

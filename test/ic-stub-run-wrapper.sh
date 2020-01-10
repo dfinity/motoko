@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DRUN=${DRUN:-drun}
+IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
 CONFIG=$(realpath $(dirname $0)/drun.toml)
 
 
@@ -19,4 +19,4 @@ export LANG=C.UTF-8
 
 (echo "install 1125899906842624 $1 0x";
  if [ -n "$2" ]; then LANG=C perl -ne 'print "$1 1125899906842624 $2\n" if m,^//CALL (ingress|query) (.*),' $2; fi;
-) | $DRUN -c "$CONFIG" --extra-batches 1 /dev/stdin
+) | $IC_STUB_RUN -c "$CONFIG" /dev/stdin

@@ -121,7 +121,7 @@ let encode (em : extended_module) =
     let string bs = len (String.length bs); put_string s bs
     let name n = string (Wasm.Utf8.encode n)
     let list f xs = List.iter f xs
-    let opt f xo = Lib.Option.iter f xo
+    let opt f xo = Option.iter f xo
     let vec f xs = len (List.length xs); list f xs
 
     let gap32 () = let p = pos s in u32 0l; u8 0; p

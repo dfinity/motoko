@@ -184,7 +184,7 @@ let await env at async k =
       k v
       )
     )
-    (let r = Lib.Option.value (env.throws) in
+    (let r = Option.get (env.throws) in
      fun v ->
        Scheduler.queue (fun () ->
            if env.flags.trace then
@@ -572,9 +572,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | DebugE exp1 ->
     if !Mo_config.Flags.release_mode then k V.unit else interpret_exp env exp1 k
   | RetE exp1 ->
-    interpret_exp env exp1 (Lib.Option.value env.rets)
+    interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
-    interpret_exp env exp1 (Lib.Option.value env.throws)
+    interpret_exp env exp1 (Option.get env.throws)
   | AsyncE exp1 ->
     async env
       exp.at
@@ -617,7 +617,7 @@ and interpret_cases env cases at v (k : V.value V.cont) =
 and interpret_catches env cases at v (k : V.value V.cont) =
   match cases with
   | [] ->
-    Lib.Option.value env.throws v (* re-throw v *)
+    Option.get env.throws v (* re-throw v *)
   | {it = {pat; exp}; at; _}::cases' ->
     match match_pat pat v with
     | Some ve -> interpret_exp (adjoin_vals env ve) exp k
@@ -812,7 +812,7 @@ and interpret_exp_fields env s fields ve (k : V.value V.cont) =
 
 and interpret_block env decs ro (k : V.value V.cont) =
   let ve = declare_decs decs V.Env.empty in
-  Lib.Option.iter (fun r -> r := ve) ro;
+  Option.iter (fun r -> r := ve) ro;
   interpret_decs (adjoin_vals env ve) decs k
 
 
@@ -927,4 +927,4 @@ let interpret_lib flags scope lib : scope =
     interpret_exp env lib.it (fun v -> vo := Some v)
   );
   Scheduler.run ();
-  lib_scope lib.note (Lib.Option.value !vo) scope
+  lib_scope lib.note (Option.get !vo) scope

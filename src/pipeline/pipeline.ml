@@ -383,7 +383,7 @@ let rec interpret_progs denv progs : Interpret.scope option =
     | None -> None
 
 let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) option =
-  Lib.Option.bind
+  Option.bind
     (Diag.flush_messages (load_progs parse_file files senv0))
     (fun (libs, progs, senv1) ->
       let denv1 = interpret_libs denv0 libs in
@@ -426,7 +426,7 @@ let generate_idl files : Idllib.Syntax.prog Diag.result =
 (* Running *)
 
 let run_files files : unit option =
-  Lib.Option.map ignore (interpret_files initial_env files)
+  Option.map ignore (interpret_files initial_env files)
 
 (* Interactively *)
 
@@ -489,7 +489,7 @@ let run_stdin lexer (senv, denv) : env option =
 
 let run_files_and_stdin files =
   let lexer = Lexing.from_function lexer_stdin in
-  Lib.Option.bind (interpret_files initial_env files) (fun env ->
+  Option.bind (interpret_files initial_env files) (fun env ->
     let rec loop env = loop (Lib.Option.get (run_stdin lexer env) env) in
     try loop env with End_of_file ->
       printf "\n%!";
@@ -605,6 +605,6 @@ let interpret_ir_prog libs progs =
   ()
 
 let interpret_ir_files files =
-  Lib.Option.map
+  Option.map
     (fun (libs, progs, senv) -> interpret_ir_prog libs progs)
     (Diag.flush_messages (load_progs parse_file files initial_stat_env))
