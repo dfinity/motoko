@@ -111,6 +111,12 @@ main = do
           doc
           (Position 50 50)
           Nothing
+        appDoc <- openDoc "app.mo" "motoko"
+        hoverTestCase
+          appDoc
+          (Position 6 33)
+          (plainMarkup "natToWord8 : Nat -> Word8")
+        closeDoc appDoc
         log "Completion tests"
         -- Completing primitives:
         actual <- getCompletions doc (Position 7 0)
