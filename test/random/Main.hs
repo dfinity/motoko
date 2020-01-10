@@ -300,7 +300,7 @@ prop_matchInActor (Matching a) = mobile a
 
 mobile :: (AnnotLit t, MOValue t) => (MOTerm t, t) -> Property
 mobile (tm, v) = monadicIO $ do
-  let testCase = "/*let a = actor { public func match (b : " <> typed <> ") : async Bool = async { true } };*/ assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false })"
+  let testCase = "actor a { public func match (b : " <> typed <> ") : async Bool = async { true } }; assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false })"
 
       eval'd = unparse v
       typed = unparseType v
