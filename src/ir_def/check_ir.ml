@@ -392,7 +392,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (T.string_of_typ_expand t1)
       end
     | NumConvPrim (p1, p2), [e] ->
-      (* we could check if this converion is supported *)
+      (* we could check if this conversion is supported *)
       typ e <: T.Prim p1;
       T.Prim p2 <: t
     | CastPrim (t1, t2), [e] ->
@@ -929,4 +929,3 @@ let check_prog verbose scope phase (((ds, exp), flavor) as prog) : unit =
       Printf.eprintf "%s" bt;
     end;
     exit 1
-
