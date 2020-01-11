@@ -4420,7 +4420,13 @@ module VarEnv = struct
   *)
 
   let mk_fun_ae ae = { ae with
-    vars = NameEnv.filter (fun _ -> VarLoc.is_non_local) ae.vars;
+    vars = NameEnv.filter (fun v l ->
+      let non_local = VarLoc.is_non_local l in
+      (* For debugging, enable this:
+      (if not non_local then Printf.eprintf "VarEnv.mk_fun_ae: Removing %s\n" v);
+      *)
+      non_local
+    ) ae.vars;
   }
   let lookup_var ae var =
     match NameEnv.find_opt var ae.vars with
@@ -4941,11 +4947,6 @@ module AllocHow = struct
 
   These rules require a fixed-point analysis.
 
-  For the top-level blocks the rules are simpler
-  - all functions are static
-  - everything that is captured in a function is statically heap allocated
-  - everything else is a local
-
   We represent this as a lattice as follows:
   *)
 
@@ -4973,6 +4974,15 @@ module AllocHow = struct
   let map_of_set x s = S.fold (fun v m -> M.add v x m) s M.empty
   let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
 
+  let is_local_mut _ = function
+    | LocalMut -> true
+    | _ -> false
+
+  let is_not_static _ = function
+    | StoreStatic -> false
+    | _ -> true
+
+
   let is_static ae how f =
     (* Does this capture nothing from outside? *)
     (S.is_empty (S.inter
@@ -4981,23 +4991,37 @@ module AllocHow = struct
     (* Does this capture nothing non-static from here? *)
     (S.is_empty (S.inter
       (Freevars.captured_vars f)
-      (set_of_map (M.filter (fun _ h -> h != StoreStatic) how))))
+      (set_of_map (M.filter is_not_static how))))
 
   let is_func_exp exp = match exp.it with
     | FuncE _ -> true
     | _ -> false
 
-  let is_static_exp env how0 exp =
-    (* Functions are static when they do not capture anything *)
+  let is_static_exp env lvl how0 exp =
+    (* Functions are static when they are on the top-level or do not capture anything *)
     if is_func_exp exp
-    then is_static env how0 (Freevars.exp exp)
+    then lvl = TopLvl || is_static env how0 (Freevars.exp exp)
     else false
 
-  let is_local_mut _ = function
-    | LocalMut -> true
-    | _ -> false
+  let store_heap lvl = match lvl with
+    (* In the top level, never store in the dynamic heap; either use
+       locals or static heap *)
+    | TopLvl -> StoreStatic
+    | NotTopLvl -> StoreHeap
 
-  let dec_local env (seen, how0) dec =
+  let how_captured how lvl captured =
+    (* Some captured variables must be on the hewp
+       * For local blocks, mutable things suffice (the others can be copied to the closure
+         by value)
+       * For top-level blocks, everything non-static should be statically allocated
+    *)
+    let force_to_heap = match lvl with
+      | TopLvl -> is_not_static
+      | NotTopLvl -> is_local_mut in
+    map_of_set (store_heap lvl)
+      (S.inter (set_of_map (M.filter force_to_heap how)) captured)
+
+  let dec env lvl (seen, how0) dec =
     let (f,d) = Freevars.dec dec in
     let captured = Freevars.captured_vars f in
 
@@ -5007,7 +5031,7 @@ module AllocHow = struct
       | VarD _ ->
       map_of_set LocalMut d
       (* Static functions in an let-expression *)
-      | LetD ({it = VarP _; _}, e) when is_static_exp env how0 e ->
+      | LetD ({it = VarP _; _}, e) when is_static_exp env lvl how0 e ->
       M.empty
       (* Everything else needs at least a local *)
       | _ ->
@@ -5017,54 +5041,25 @@ module AllocHow = struct
        These need to be heap-allocated.
     *)
     let how2 =
-      map_of_set StoreHeap
+      map_of_set (store_heap lvl)
         (S.inter
           (set_of_map how0)
           (S.diff (Freevars.captured_vars f) seen)) in
 
-    (* Do we capture anything else?
-       For local blocks, mutable things must be heap allocated.
-    *)
-    let how3 =
-      map_of_set StoreHeap
-        (S.inter (set_of_map (M.filter is_local_mut how0)) captured) in
+    (* More captures? *)
+    let how3 = how_captured how0 lvl captured in
 
     let how = List.fold_left join M.empty [how0; how1; how2; how3] in
     let seen' = S.union seen d
     in (seen', how)
 
-  let decs_local env decs captured_in_body : allocHow =
+  let decs env lvl decs captured_in_body : allocHow =
     let rec go how =
-      let _seen, how1 = List.fold_left (dec_local env) (S.empty, how) decs in
-      let how2 = map_of_set StoreHeap
-        (S.inter (set_of_map (M.filter is_local_mut how1)) captured_in_body) in
+      let _seen, how1 = List.fold_left (dec env lvl) (S.empty, how) decs in
+      let how2 = how_captured how1 lvl captured_in_body in
       let how' = join how1 how2 in
-      if M.equal (=) how how' then how else go how' in
+      if M.equal (=) how how' then how' else go how' in
     go M.empty
-
-  let decs_top_lvl env decs captured_in_body : allocHow =
-    let how0 = M.empty in
-    (* All non-function are at least locals *)
-    let how1 =
-      let go how dec =
-        let (f,d) = Freevars.dec dec in
-        match dec.it with
-          | LetD ({it = VarP _; _}, e) when is_func_exp e -> how
-          | _ -> join how (map_of_set LocalMut d) in
-      List.fold_left go how0 decs in
-    (* All captured non-functions are heap allocated *)
-    let how2 = join how1 (map_of_set StoreStatic (S.inter (set_of_map how1) captured_in_body)) in
-    let how3 =
-      let go how dec =
-        let (f,d) = Freevars.dec dec in
-        let captured = Freevars.captured_vars f in
-        join how (map_of_set StoreStatic (S.inter (set_of_map how1) captured)) in
-      List.fold_left go how2 decs in
-    how3
-
-  let decs env lvl decs captured_in_body : allocHow = match lvl with
-    | TopLvl -> decs_top_lvl env decs captured_in_body
-    | NotTopLvl -> decs_local env decs captured_in_body
 
   (* Functions to extend the environment (and possibly allocate memory)
      based on how we want to store them. *)
@@ -6546,6 +6541,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
     let pre_ae1 = VarEnv.add_local_deferred pre_ae v
       (SR.StaticThing static_thing) (fun _ -> G.nop) false in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
+
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
     ( pre_ae1, alloc_code, fun ae ->
@@ -6563,11 +6559,8 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
         Var.set_val env ae name
       )
 
-and compile_decs env ae lvl decs captured_in_body : VarEnv.t * G.t =
-  compile_decs_public env ae lvl decs E.NameEnv.empty captured_in_body
-
-and compile_decs_public env ae lvl decs v2en captured_in_body : VarEnv.t * G.t =
-  let how = AllocHow.decs ae lvl decs captured_in_body in
+and compile_decs_open env pre_ae lvl decs v2en captured_in_body : VarEnv.t * G.t * (VarEnv.t -> G.t)=
+  let how = AllocHow.decs pre_ae lvl decs captured_in_body in
   let rec go pre_ae decs = match decs with
     | []          -> (pre_ae, G.nop, fun _ -> G.nop)
     | [dec]       -> compile_dec env pre_ae how v2en dec
@@ -6576,13 +6569,19 @@ and compile_decs_public env ae lvl decs v2en captured_in_body : VarEnv.t * G.t =
         let (pre_ae2, alloc_code2, mk_code2) = go              pre_ae1 decs in
         ( pre_ae2,
           alloc_code1 ^^ alloc_code2,
-          fun env -> let code1 = mk_code1 env in
-                     let code2 = mk_code2 env in
-                     code1 ^^ code2
+          fun ae -> let code1 = mk_code1 ae in
+                    let code2 = mk_code2 ae in
+                    code1 ^^ code2
         ) in
-  let (ae1, alloc_code, mk_code) = go ae decs in
+  go pre_ae decs
+
+and compile_decs_public env ae lvl decs v2en captured_in_body : VarEnv.t * G.t =
+  let (ae1, alloc_code, mk_code) = compile_decs_open env ae lvl decs v2en captured_in_body in
   let code = mk_code ae1 in
   (ae1, alloc_code ^^ code)
+
+and compile_decs env ae lvl decs captured_in_body : VarEnv.t * G.t =
+  compile_decs_public env ae lvl decs E.NameEnv.empty captured_in_body
 
 and compile_top_lvl_expr env ae e = match e.it with
   | BlockE (decs, exp) ->
@@ -6608,8 +6607,12 @@ and compile_static_exp env pre_ae how exp = match exp.it with
         | Type.Promises -> assert false in
       let mk_body env ae =
         assert begin (* Is this really closed? *)
-          List.for_all (fun v -> VarEnv.NameEnv.mem v ae.VarEnv.vars)
-            (Freevars.M.keys (Freevars.exp e))
+          List.for_all (fun v ->
+            let found = VarEnv.NameEnv.mem v ae.VarEnv.vars in
+            (if not found then Printf.eprintf "internal error: static %s captures %s, not found in static environment\n"
+              name v);
+            found
+          ) (Freevars.M.keys (Freevars.exp e))
         end;
         compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
       FuncDec.closed env sort control name args mk_body return_tys exp.at
