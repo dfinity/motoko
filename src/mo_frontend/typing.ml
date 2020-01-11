@@ -534,6 +534,13 @@ let array_obj t =
   Object,
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
+let blob_obj () =
+  let open T in
+  Object,
+  [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)])};
+    {lab = "len";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+  ]
+
 let text_obj () =
   let open T in
   Object,
@@ -676,6 +683,7 @@ and infer_exp'' env exp : T.typ =
     let _s, tfs =
       try T.as_obj_sub [id.it] t1 with Invalid_argument _ ->
       try array_obj (T.as_array_sub t1) with Invalid_argument _ ->
+      try blob_obj (T.as_prim_sub T.Blob t1) with Invalid_argument _ ->
       try text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
         error env exp1.at
           "expected object type, but expression produces type\n  %s"
