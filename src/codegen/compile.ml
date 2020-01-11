@@ -2491,7 +2491,8 @@ module Blob = struct
       end
   )
 
-  let len env = Heap.load_field len_field
+  let len env =
+    Heap.load_field len_field ^^ BigNum.from_word32 env
   let iter env =
     E.call_import env "rts" "blob_iter"
   let iter_done env =
