@@ -1,4 +1,4 @@
-import Prim = "mo:prim";
+import Debug = "../../debug.mo";
 import P = "../../prelude.mo";
 
 import T = "serverTypes.mo";
@@ -85,7 +85,7 @@ public class Model() {
    */
 
   public func loadWorkload(params:T.WorkloadParams) : () {
-    func db(s:Text) = if false {Prim.debugPrint "Model::loadWorkload: "; Prim.debugPrint s; Prim.debugPrint "\n"};
+    func db(s:Text) = if false {Debug.print "Model::loadWorkload: "; Debug.print s; Debug.print "\n"};
 
     /**- generate add requests for these params: */
     db "generate requests for workload...";
@@ -133,7 +133,7 @@ public class Model() {
 
    */
   public func evalReq(req:L.Req) : Result<L.Resp, T.IdErr> {
-    if false {Prim.debugPrint "Model::evalReq: "; Prim.debugPrint (debug_show req); Prim.debugPrint "\n"; };
+    if false {Debug.print "Model::evalReq: "; Debug.print (debug_show req); Debug.print "\n"; };
     switch req {
     case (#reset) {
            /**- 1. reset each entity table: */
@@ -607,8 +607,8 @@ public class Model() {
    ==================
    */
 
-  func debugOut (t:Text)   { debug { Prim.debugPrint t } };
-  func debugInt (i:Int)    { debug { Prim.debugPrintInt i } };
+  func debugOut (t:Text)   { debug { Debug.print t } };
+  func debugInt (i:Int)    { debug { Debug.print (debug_show i) } };
 
   func debugOff (t:Text)   { debug {  } };
   func debugIntOff (i:Int) { debug {  } };

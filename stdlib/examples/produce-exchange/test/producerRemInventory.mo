@@ -1,19 +1,15 @@
-import Prim "mo:prim";
+import Debug "../../../debug.mo";
 import T = "../serverTypes.mo";
 import A = "../serverActor.mo";
 import Result = "../../../result.mo";
 import Option = "../../../option.mo";
 
 func printEntityCount(entname:Text, count:Nat) {
-  Prim.debugPrint ("- " # entname # " count: ");
-  Prim.debugPrintInt count;
-  Prim.debugPrint "\n";
+  Debug.print ("- " # entname # " count: " # debug_show count # "\n");
 };
 
 func printLabeledCost(lab:Text, cost:Nat) {
-  Prim.debugPrint ("- " # lab # " cost: ");
-  Prim.debugPrintInt cost;
-  Prim.debugPrint "\n";
+  Debug.print ("- " # lab # " cost: " # debug_show cost # "\n");
 };
 
 actor class Test() = this {
@@ -22,7 +18,7 @@ actor class Test() = this {
     {
       let s = A.Server();
 
-      Prim.debugPrint "\nExchange setup: Begin...\n====================================\n";
+      Debug.print "\nExchange setup: Begin...\n====================================\n";
 
       let pka = "beef";
       let pkb = "dead";
@@ -125,22 +121,22 @@ actor class Test() = this {
       await debugDumpInventory(s, pka, 0);
       await debugDumpAll(s);
       
-      Prim.debugPrint "\n First time: Producer remove query\n====================================\n";
+      Debug.print "\n First time: Producer remove query\n====================================\n";
       
       let rem0 = await s.producerRemInventory(pka, 0);
-      Prim.debugPrint "- first producerRemInventory(pka, 0) result:";
-      Prim.debugPrint (debug_show rem0);
-      Prim.debugPrint "\n";
+      Debug.print "- first producerRemInventory(pka, 0) result:";
+      Debug.print (debug_show rem0);
+      Debug.print "\n";
 
       await debugDumpInventory(s, pka, 0);
       await debugDumpAll(s);
 
-      Prim.debugPrint "\n Second time: Producer remove query\n====================================\n";
+      Debug.print "\n Second time: Producer remove query\n====================================\n";
 
       let rem0b = await s.producerRemInventory(pka, 0);
-      Prim.debugPrint "- second producerRemInventory(pka, 0) result:";
-      Prim.debugPrint (debug_show rem0b);
-      Prim.debugPrint "\n";
+      Debug.print "- second producerRemInventory(pka, 0) result:";
+      Debug.print (debug_show rem0b);
+      Debug.print "\n";
 
       await debugDumpInventory(s, pka, 0);
       await debugDumpAll(s);
@@ -149,75 +145,70 @@ actor class Test() = this {
 };
 
 func debugDumpInventory(server:A.Server, pk:T.PublicKey, p:T.ProducerId) : async () {
-  Prim.debugPrint "\nProducer ";
-  Prim.debugPrintInt p;
-  Prim.debugPrint "'s inventory:\n--------------------------------\n";
+  Debug.print ("\nProducer " # debug_show p # "'s inventory:\n--------------------------------\n");
   let res = await server.producerAllInventoryInfo(pk, p);
   let items = Result.assertUnwrapAny<[T.InventoryInfo]>(res);
   for (i in items.keys()) {
-    Prim.debugPrintInt i;
-    Prim.debugPrint ". ";
-    Prim.debugPrint (debug_show (items[i]));
-    Prim.debugPrint "\n";
+    Debug.print (debug_show i # ". " # debug_show (items[i]) # "\n");
   }
 };
 
 func debugDumpAll(server:A.Server) : async () {
 
-  Prim.debugPrint "\nTruck type info\n----------------\n";
+  Debug.print "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nRegion info\n----------------\n";
+  Debug.print "\nRegion info\n----------------\n";
   for ( info in ((await server.allRegionInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nProduce info\n----------------\n";
+  Debug.print "\nProduce info\n----------------\n";
   for ( info in ((await server.allProduceInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nProducer info\n----------------\n";
+  Debug.print "\nProducer info\n----------------\n";
   for ( info in ((await server.allProducerInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nTransporter info\n----------------\n";
+  Debug.print "\nTransporter info\n----------------\n";
   for ( info in ((await server.allTransporterInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nRetailer info\n----------------\n";
+  Debug.print "\nRetailer info\n----------------\n";
   for ( info in ((await server.allRetailerInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nInventory info\n----------------\n";
+  Debug.print "\nInventory info\n----------------\n";
   for ( info in ((await server.allInventoryInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nRoute info\n----------------\n";
+  Debug.print "\nRoute info\n----------------\n";
   for ( info in ((await server.allRouteInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 };
 

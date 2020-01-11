@@ -1,20 +1,17 @@
-import Prim "mo:prim";
+import Debug "../../../debug.mo";
 import T = "../serverTypes.mo";
 import A = "../serverActor.mo";
 import Result = "../../../result.mo";
 import Option = "../../../option.mo";
 
 func printEntityCount(entname:Text, count:Nat) {
-  Prim.debugPrint ("- " # entname # " count: ");
-  Prim.debugPrintInt count;
-  Prim.debugPrint "\n";
+  Debug.print ("- " # entname # " count: " # debug_show count # "\n");
 };
 
 func printLabeledCost(lab:Text, cost:Nat) {
-  Prim.debugPrint ("- " # lab # " cost: ");
-  Prim.debugPrintInt cost;
-  Prim.debugPrint "\n";
+  Debug.print ("- " # lab # " cost: " # debug_show cost # "\n");
 };
+
 
 actor class Test() = this {
   public func go() {
@@ -22,7 +19,7 @@ actor class Test() = this {
     {
       let s = A.Server();
 
-      Prim.debugPrint "\nExchange setup: Begin...\n====================================\n";
+      Debug.print "\nExchange setup: Begin...\n====================================\n";
 
       let pka = "beef";
       let pkb = "dead";
@@ -98,7 +95,7 @@ actor class Test() = this {
 
       //////////////////////////////////////////////////////////////////
 
-      Prim.debugPrint "\nExchange setup: Done.\n====================================\n";
+      Debug.print "\nExchange setup: Done.\n====================================\n";
 
       let inventoryCount1 = await debugDumpInventory(s, pka, 0);
       let routeCount1 = await debugDumpRoutes(s, pka, 0);
@@ -106,7 +103,7 @@ actor class Test() = this {
 
       //////////////////////////////////////////////////////////////////
 
-      Prim.debugPrint "\nRetailer queries\n====================================\n";
+      Debug.print "\nRetailer queries\n====================================\n";
 
       // do some queries
       await retailerQueryAll(s, pka, ? Result.assertUnwrapAny<T.UserId>(uida));
@@ -115,17 +112,17 @@ actor class Test() = this {
       await retailerQueryAll(s, pkd, ? Result.assertUnwrapAny<T.UserId>(uidd));
       await retailerQueryAll(s, pke, ? Result.assertUnwrapAny<T.UserId>(uide));
 
-      Prim.debugPrint "\nQuery counts\n----------------\n";
+      Debug.print "\nQuery counts\n----------------\n";
       let counts = await s.getCounts();
 
       printEntityCount("Retailer join", counts.retailer_join_count);
       printEntityCount("Retailer query", counts.retailer_query_count);
       printLabeledCost("Retailer query", counts.retailer_query_cost);
 
-      Prim.debugPrint "\nRetailer reservations\n====================================\n";
+      Debug.print "\nRetailer reservations\n====================================\n";
 
 
-      Prim.debugPrint "\nRetailer reservations: begin...\n------------------------\n";
+      Debug.print "\nRetailer reservations: begin...\n------------------------\n";
 
       let rrm =
         await s.retailerReserveMany(pka,
@@ -136,24 +133,21 @@ actor class Test() = this {
 
       let urrm = Result.assertUnwrapAny<[Result.Result<(T.ReservedInventoryId, T.ReservedRouteId), T.ServerErr>]>(rrm);
 
-      Prim.debugPrint "\nRetailer reservations: results:\n---------------------------------\n";
+      Debug.print "\nRetailer reservations: results:\n---------------------------------\n";
 
       for (i in urrm.keys()) {
-        Prim.debugPrintInt i;
-        Prim.debugPrint ". ";
-        Prim.debugPrint (debug_show urrm[i]);
-        Prim.debugPrint "\n";
+        Debug.print (debug_show i # ". " # debug_show urrm[i] # "\n");
       };
 
-      Prim.debugPrint "\nRetailer reservations: results[0]: expect success.\n---------------------------------\n";
+      Debug.print "\nRetailer reservations: results[0]: expect success.\n---------------------------------\n";
 
       let (ri0, rr0) = Result.assertUnwrapAny<(T.ReservedInventoryId, T.ReservedRouteId)>(urrm[0]);
 
-      Prim.debugPrint "- ";
-      Prim.debugPrint (debug_show (ri0, rr0));
-      Prim.debugPrint "\n";
+      Debug.print "- ";
+      Debug.print (debug_show (ri0, rr0));
+      Debug.print "\n";
 
-      Prim.debugPrint "\nRetailer reservations: results[1]: expect error: already reserved by us!\n---------------------------------\n";
+      Debug.print "\nRetailer reservations: results[1]: expect error: already reserved by us!\n---------------------------------\n";
 
       Result.assertErrAs<T.ServerErr, ()>
       (urrm[1],
@@ -161,7 +155,7 @@ actor class Test() = this {
          switch err {
          case (#idErr entid) {
                 switch entid {
-                case (?(#inventory 0)) Prim.debugPrint "- error is `#idErr(?(#inventory 0))`\n";
+                case (?(#inventory 0)) Debug.print "- error is `#idErr(?(#inventory 0))`\n";
                 case _ assert false;
                 }
               };
@@ -169,9 +163,9 @@ actor class Test() = this {
          }
        });
 
-      Prim.debugPrint "\nRetailer reservations: done.\n---------------------------------\n";
+      Debug.print "\nRetailer reservations: done.\n---------------------------------\n";
 
-      Prim.debugPrint "\nExchange interactions: Done.\n====================================\n";
+      Debug.print "\nExchange interactions: Done.\n====================================\n";
 
       let inventoryCount2 = await debugDumpInventory(s, pka, 0);
       let routeCount2 = await debugDumpRoutes(s, pka, 0);
@@ -184,117 +178,101 @@ actor class Test() = this {
 };
 
 func debugDumpInventory(server:A.Server, pk:T.PublicKey, p:T.ProducerId) : async Nat {
-  Prim.debugPrint "\nProducer ";
-  Prim.debugPrintInt p;
-  Prim.debugPrint "'s inventory:\n--------------------------------\n";
+  Debug.print ("\nProducer " # debug_show p # "'s inventory:\n--------------------------------\n");
   let res = await server.producerAllInventoryInfo(pk, p);
   let items = Result.assertUnwrapAny<[T.InventoryInfo]>(res);
   for (i in items.keys()) {
-    Prim.debugPrintInt i;
-    Prim.debugPrint ". ";
-    Prim.debugPrint (debug_show (items[i]));
-    Prim.debugPrint "\n";
+    Debug.print (debug_show i # ". " # debug_show items[i] # "\n");
   };
-  Prim.debugPrint "(list end)\n";
+  Debug.print "(list end)\n";
   items.len()
 };
 
 func debugDumpRoutes(server:A.Server, pk:T.PublicKey, t:T.TransporterId) : async Nat {
-  Prim.debugPrint "\nTransporter ";
-  Prim.debugPrintInt t;
-  Prim.debugPrint "'s routes:\n--------------------------------\n";
+  Debug.print ("\nTransporter " # debug_show t # "'s routes:\n--------------------------------\n");
   let res = await server.transporterAllRouteInfo(pk, t);
   let items = Result.assertUnwrapAny<[T.RouteInfo]>(res);
   for (i in items.keys()) {
-    Prim.debugPrintInt i;
-    Prim.debugPrint ". ";
-    Prim.debugPrint (debug_show (items[i]));
-    Prim.debugPrint "\n";
+    Debug.print (debug_show i # ". " # debug_show items[i] # "\n");
   };
-  Prim.debugPrint "(list end)\n";
+  Debug.print "(list end)\n";
   items.len()
 };
 
 func retailerQueryAll(server:A.Server, pk:Text, r:?T.UserId) : async () {
-
-  Prim.debugPrint "\nRetailer ";
   let retailerId: T.UserId = Option.unwrap<T.UserId>(r);
-  Prim.debugPrintInt retailerId;
-  Prim.debugPrint " sends `retailerQueryAll`\n";
-  Prim.debugPrint "------------------------------------\n";
+  Debug.print ("\nRetailer " # debug_show retailerId # " sends `retailerQueryAll`\n");
 
-  Prim.debugPrint "\n## Query begin:\n";
+  Debug.print "\n## Query begin:\n";
   let res = Result.assertUnwrapAny<T.QueryAllResults>(
     await server.retailerQueryAll(pk, retailerId, null, null)
   );
-  Prim.debugPrint "\n## Query end.";
+  Debug.print "\n## Query end.";
 
-  Prim.debugPrint "\n## Query results (";
-  Prim.debugPrintInt (res.len());
-  Prim.debugPrint ")\n";
+  Debug.print ("\n## Query results (" # debug_show res.len() # ")\n");
   for (info in res.vals()) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   }
 };
 
 func debugDumpAll(server:A.Server) : async () {
 
-  Prim.debugPrint "\nTruck type info\n----------------\n";
+  Debug.print "\nTruck type info\n----------------\n";
   for ( info in ((await server.allTruckTypeInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nRegion info\n----------------\n";
+  Debug.print "\nRegion info\n----------------\n";
   for ( info in ((await server.allRegionInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nProduce info\n----------------\n";
+  Debug.print "\nProduce info\n----------------\n";
   for ( info in ((await server.allProduceInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nProducer info\n----------------\n";
+  Debug.print "\nProducer info\n----------------\n";
   for ( info in ((await server.allProducerInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nTransporter info\n----------------\n";
+  Debug.print "\nTransporter info\n----------------\n";
   for ( info in ((await server.allTransporterInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nRetailer info\n----------------\n";
+  Debug.print "\nRetailer info\n----------------\n";
   for ( info in ((await server.allRetailerInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nInventory info\n----------------\n";
+  Debug.print "\nInventory info\n----------------\n";
   for ( info in ((await server.allInventoryInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 
-  Prim.debugPrint "\nRoute info\n----------------\n";
+  Debug.print "\nRoute info\n----------------\n";
   for ( info in ((await server.allRouteInfo()).vals()) ) {
-    Prim.debugPrint "- ";
-    Prim.debugPrint (debug_show info);
-    Prim.debugPrint "\n";
+    Debug.print "- ";
+    Debug.print (debug_show info);
+    Debug.print "\n";
   };
 };
 
