@@ -16,3 +16,5 @@
 ← completed: 0x4449444c016d7b010003caffee
 → query c8(0x4449444c0000)
 ← completed: 0x4449444c00017989f8efb7
+→ query c9(0x4449444c0000)
+← completed: 0x4449444c00017d00

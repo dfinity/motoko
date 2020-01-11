@@ -76,6 +76,8 @@ and exp' at note = function
   | S.TagE (c, e) -> I.TagE (c.it, exp e)
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
+  | S.DotE (e, x) when T.is_prim T.Blob e.note.S.note_typ ->
+    (blob_dotE  x.it (exp e)).it
   | S.DotE (e, x) when T.is_prim T.Text e.note.S.note_typ ->
     (text_dotE  x.it (exp e)).it
   | S.DotE (e, x) ->
@@ -256,6 +258,16 @@ and array_dotE array_ty proj e =
     | true,  "vals" -> call "@mut_array_vals"   [] [T.iter_obj varA]
     | false, "vals" -> call "@immut_array_vals" [] [T.iter_obj varA]
     | _, _ -> assert false
+
+and blob_dotE proj e =
+  let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
+  let call name t1 t2 =
+    let f = idE name (fun_ty [T.blob] [fun_ty t1 t2]) in
+    callE f [] e in
+  match proj with
+    | "len"   -> call "@blob_len"   [] [T.nat]
+    | "bytes" -> call "@blob_bytes" [] [T.iter_obj T.(Prim Word8)]
+    |  _ -> assert false
 
 and text_dotE proj e =
   let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
