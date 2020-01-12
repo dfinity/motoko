@@ -40,6 +40,10 @@ actor a {
       caller.len();
   };
 
+  public shared query {caller} func c10() : async ?Word8 {
+      caller.bytes().next();
+  };
+
 };
 
 ignore a.c1(); //OR-CALL ingress c1 0x4449444C0000
@@ -50,6 +54,7 @@ ignore a.c6(); //OR-CALL query c6 0x4449444C0000
 ignore a.c7(); //OR-CALL ingress c7 0x4449444C0000
 ignore a.c8(); //OR-CALL query c8 0x4449444C0000
 ignore a.c9(); //OR-CALL query c9 0x4449444C0000
+ignore a.c10(); //OR-CALL query c10 0x4449444C0000
 
 
 
