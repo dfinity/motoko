@@ -107,8 +107,7 @@ and value =
   | Func of Call_conv.t * func
   | Async of async
   | Mut of value ref
-  | Iter of value Seq.t ref (* internal to b.bytes() iterator *)
-  | TextIter of int list ref (* internal to t.chars() iterator *)
+  | Iter of value Seq.t ref (* internal to {b.bytes(), t.chars()} iterator *)
 
 and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
@@ -154,7 +153,6 @@ val as_float : value -> Float.t
 val as_char : value -> unicode
 val as_text : value -> string
 val as_iter : value -> value Seq.t ref
-val as_text_iter : value -> int list ref
 val as_array : value -> value array
 val as_tup : value -> value list
 val as_unit : value -> unit
