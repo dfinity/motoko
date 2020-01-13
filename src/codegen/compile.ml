@@ -5010,7 +5010,7 @@ module AllocHow = struct
     | NotTopLvl -> StoreHeap
 
   let how_captured how lvl captured =
-    (* Some captured variables must be on the hewp
+    (* Some captured variables must be on the heap
        * For local blocks, mutable things suffice (the others can be copied to the closure
          by value)
        * For top-level blocks, everything non-static should be statically allocated
