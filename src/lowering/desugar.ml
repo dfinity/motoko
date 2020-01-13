@@ -119,16 +119,11 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
     I.PrimE (I.OtherPrim p, [exp e])
   | S.CallE (e1, inst, e2) ->
-    begin
-      match !inst with
-      | None -> assert false
-      | Some typs ->
-        let t = e1.Source.note.S.note_typ in
-        let ts = List.map (fun t -> t.Source.note) typs in
-        if T.is_non t
-        then unreachableE.it (* BUG?, why should we discard the code for e1 just because e1 has type non (Issue #945) *)
-        else I.CallE (exp e1, ts, exp e2)
-    end
+    let t = e1.Source.note.S.note_typ in
+    let ts = inst.note (*List.map (fun t -> t.Source.note) inst.it*) in
+    if T.is_non t
+    then unreachableE.it (* BUG?, why should we discard the code for e1 just because e1 has type non (Issue #945) *)
+    else I.CallE (exp e1, ts, exp e2)
   | S.BlockE [] -> I.TupE []
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)

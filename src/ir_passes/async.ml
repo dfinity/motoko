@@ -178,6 +178,7 @@ let transform mode env prog =
     | Non -> Non
     | Pre -> Pre
     | Typ c -> Typ (t_con c)
+    | Scope -> Scope
 
   and t_bind {var; bound} =
     {var; bound = t_typ bound}

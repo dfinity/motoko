@@ -52,6 +52,7 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
+  | Scope                                     (* Scope pseudo type *)
   | Pre                                       (* pre-type *)
 
 and bind = {var : var; bound : typ}
@@ -187,6 +188,7 @@ let rec shift i n t =
   | Non -> Non
   | Pre -> Pre
   | Typ c -> Typ c
+  | Scope -> Scope
 
 and shift_bind i n {var; bound} =
   {var; bound = shift i n bound}
@@ -237,7 +239,8 @@ let rec subst sigma t =
                       in particular, type components defined within the scope of an enclosing
                       type parameter cannot mention that parameter
                       (but can mention other (closed) type constructors).
-                   *)
+                    *)
+  | Scope -> Scope
 
 and subst_bind sigma {var; bound} =
   {var; bound = subst sigma bound}
@@ -288,6 +291,7 @@ let rec open' i ts t =
   | Non -> Non
   | Pre -> Pre
   | Typ c -> Typ c
+  | Scope -> Scope
 
 and open_bind i ts {var; bound} =
   {var; bound = open' i ts bound}
@@ -465,6 +469,7 @@ let rec span = function
   | Mut t -> span t
   | Non -> Some 0
   | Typ _ -> Some 1
+  | Scope -> Some 0
 
 
 (* Avoiding local constructors *)
@@ -472,7 +477,7 @@ let rec span = function
 exception Unavoidable of con
 
 let rec avoid' cons seen = function
-  | (Prim _ | Var _ | Any | Non | Pre) as t -> t
+  | (Prim _ | Var _ | Any | Non | Pre | Scope) as t -> t
   | Con (c, ts) ->
     if ConSet.mem c seen then raise (Unavoidable c) else
     if ConSet.mem c cons then
@@ -501,6 +506,7 @@ let rec avoid' cons seen = function
   | Mut t -> Mut (avoid' cons seen t)
   | Typ c ->
     if ConSet.mem c cons then raise (Unavoidable c) else Typ c (* TBR *)
+  
 
 and avoid_bind cons seen {var; bound} =
   {var; bound = avoid' cons seen bound}
@@ -530,7 +536,7 @@ let avoid cons t =
 let rec cons t cs =
   match t with
   | Var _ ->  cs
-  | (Prim _ | Any | Non | Pre) -> cs
+  | (Prim _ | Any | Non | Pre | Scope) -> cs
   | Con (c, ts) ->
     List.fold_right cons ts (ConSet.add c cs)
   | (Opt t | Mut t | Array t) ->
@@ -576,7 +582,7 @@ let concrete t =
       seen := S.add t !seen;
       match t with
       | Var _ | Pre -> assert false
-      | Prim _ | Any | Non -> true
+      | Prim _ | Any | Non | Scope -> true
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
@@ -602,7 +608,7 @@ let shared t =
       seen := S.add t !seen;
       match t with
       | Var _ | Pre -> assert false
-      | Prim Error -> false
+      | Prim Error | Scope -> false
       | Any | Non | Prim _ | Typ _ -> true
       | Async _ | Mut _ -> false
       | Con (c, ts) ->
@@ -629,7 +635,7 @@ let find_unshared t =
       seen := S.add t !seen;
       match t with
       | Var _ | Pre -> assert false
-      | Prim Error -> Some t
+      | Prim Error | Scope -> Some t
       | Any | Non | Prim _ | Typ _ -> None
       | Async _ | Mut _ -> Some t
       | Con (c, ts) ->
@@ -656,6 +662,9 @@ let is_shared_func t =
   | Func (Shared _, _, _, _, _) -> true
   | _ -> false
 
+(* Forward declare
+   TODO: haul string_of_typ before the lub/glb business, if possible *)
+let str = ref (fun _ -> failwith "")
 
 (* Equivalence & Subtyping *)
 
@@ -667,6 +676,7 @@ let rel_list p rel eq xs1 xs2 =
 let rec rel_typ rel eq t1 t2 =
   t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
+  (*  Printf.printf "%s %s\n" (!str t1) (!str t2); *)
   match t1, t2 with
   | Pre, _ | _, Pre ->
     assert false
@@ -738,6 +748,7 @@ let rec rel_typ rel eq t1 t2 =
     eq_typ rel eq t1' t2'
   | Typ c1, Typ c2 ->
     eq_con eq c1 c2
+  | Scope, Scope -> true
   | _, _ -> false
   end
 
@@ -909,7 +920,7 @@ let rec inhabited_typ co t =
   co := S.add t !co;
   match promote t with
   | Pre -> assert false
-  | Non -> false
+  | Non | Scope -> false
   | Any | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> true
   | Mut t' -> inhabited_typ co t'
   | Tup ts -> List.for_all (inhabited_typ co) ts
@@ -932,10 +943,6 @@ and inhabited t : bool = inhabited_typ (ref S.empty) t
 (* Least upper bound and greatest lower bound *)
 
 module M = Map.Make (struct type t = typ * typ let compare = compare end)
-
-(* Forward declare
-   TODO: haul string_of_typ before the lub/glb business, if possible *)
-let str = ref (fun _ -> failwith "")
 
 let rec lub' lubs glbs t1 t2 =
   if t1 == t2 then t1 else
@@ -965,6 +972,7 @@ let rec lub' lubs glbs t1 t2 =
       Obj (s1, lub_fields lubs glbs tf1 tf2)
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
         s1 = s2 && eq_control c1 c2 && List.(length bs1 = length bs2) &&
+        List.for_all2 (fun b1 b2 -> (b1.bound = Scope) = (b2.bound = Scope)) bs1 bs2 &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
@@ -1038,6 +1046,7 @@ and glb' lubs glbs t1 t2 =
       )
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
         s1 = s2 && eq_control c1 c2 && List.(length bs1 = length bs2) &&
+        List.for_all2 (fun b1 b2 -> (b1.bound = Scope) = (b2.bound = Scope)) bs1 bs2 &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
@@ -1174,6 +1183,7 @@ let rec string_of_typ_nullary vs = function
   | Pre -> "???"
   | Any -> "Any"
   | Non -> "None"
+  | Scope -> "Scope"
   | Prim p -> string_of_prim p
   | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
   | Con (c, []) -> string_of_con' vs c
@@ -1252,6 +1262,7 @@ and can_omit n t =
         List.for_all (go i') ts1  &&
         List.for_all (go i') ts2
       | Typ c -> true (* assuming type defs are closed *)
+      | Scope -> true
     end
   in go n t
 

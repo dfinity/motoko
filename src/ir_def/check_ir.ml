@@ -210,6 +210,7 @@ let rec check_typ env typ : unit =
     check_typ env typ
   | T.Typ c ->
     check_con env c
+  | T.Scope -> ()
 
 and check_con env c =
   let env = {env with cons = T.ConSet.add c env.cons} in

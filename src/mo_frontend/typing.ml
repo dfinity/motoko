@@ -290,18 +290,6 @@ let rec infer_scope env sort cs cod  =
       | _ -> env)
    | _ -> env
 
-and check_scope env t at =
-  match env.async with
-  | C.AsyncCap c
-  | C.AwaitCap c ->
-    if not (T.eq t (T.Con(c,[]))) then
-      local_error env at "bad scope: expecting scope instantiation %s, found %s"
-        (T.string_of_con c)
-        (T.string_of_typ_expand t)
-  | C.NullCap ->
-    local_error env at "bad scope: expecting no scope instantiation, found %s"
-      (T.string_of_typ_expand t)
-
 and check_AsyncCap env s at =
    match env.async with
    | C.AwaitCap c -> T.Con(c, [])
@@ -329,6 +317,7 @@ and check_typ' env typ : T.typ =
     let tbs' = List.map (fun {T.var; T.bound} -> {T.var; bound = T.open_ ts bound}) tbs in
     check_typ_bounds env tbs' ts typs typ.at;
     T.Con (c, ts)
+  | PrimT "Scope" -> T.Scope
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
   | PrimT s ->
@@ -486,10 +475,45 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) typs at =
     | _  -> assert false
   in go tbs ts typs
 
-and check_inst_bounds env tbs typs at =
-  let ts = List.map (check_typ env) typs in
-  check_typ_bounds env tbs ts typs at;
-  ts
+and infer_inst env tbs typs at =
+  match tbs,typs with
+  | {T.bound = T.Scope; _}::tbs', typs' ->
+    (match env.async with
+     | C.NullCap -> error env at "scope required, but non available"
+     | C.AwaitCap c
+     | C.AsyncCap c ->
+      let (ts,typs'') = infer_inst env tbs' typs' at in
+      (T.Con(c,[])::ts,
+       { (scope_typ no_region) with note = T.Con(c, []) }
+         ::typs'')
+    )
+  | _::tbs', typ::typs' ->
+    let (ts,typs'') = infer_inst env tbs' typs' at in
+    (check_typ env typ::ts,
+     typ::typs'')
+  | _::tbs', [] ->
+    ([], [])
+  | [], typs' ->
+    (List.map (check_typ env) typs',
+     typs')
+
+(*and infer_inst env tbs typs at =
+  let ts = List.map (check_typ env typ::ts) in
+  match List.find_opt (fun {T.Bound = Scope; _} -> true | _ -> false) tbs with
+  | Some i ->
+ *)
+
+and check_inst_bounds env tbs inst at =
+  let ts, inst' = infer_inst env tbs inst at in
+(*  if List.length tbs <> List.length inst' then
+  ( List.iter (fun t -> Printf.printf "%s" (T.string_of_typ t)) ts;
+    Printf.printf "\n";
+    List.iter (fun t -> Printf.printf "%s " (T.string_of_typ t.note)) inst';
+    Printf.printf "\n\n"
+  );
+ *)
+  check_typ_bounds env tbs ts inst' at;
+  ts, inst'
 
 (* Literals *)
 
@@ -839,54 +863,18 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
     T.Func (sort, T.map_control (T.close cs) c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
-  | CallE (exp1, insts, exp2) ->
-    let n_insts = match !insts with
-      | Some ts -> List.length ts
-      | None -> 0
-    in
+  | CallE (exp1, inst, exp2) ->
+    let typs = inst.it in
     let t1 = infer_exp_promote env exp1 in
     let sort, tbs, t_arg, t_ret =
-      try T.as_func_sub T.Local n_insts t1
+      try T.as_func_sub T.Local (List.length typs) t1
       with Invalid_argument _ ->
         error env exp1.at
           "expected function type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     in
-    (* scope inference *)
-    let pre_typs =
-      match !insts with
-      | None -> []
-      | Some tys -> tys
-    in
-    let expected = List.length tbs in
-    let rec insert n typ typs = match n, typs with
-      | 0, typs -> typ::typs
-      | n, typ'::typs -> typ'::insert (n-1) typ typs
-      | n, [] -> [typ]
-    in
-    let typs = match t1 with
-        | T.Func (_, T.Promises (T.Var (_, n)), _, _, _)
-        | T.Func (_, T.Returns, _, _, [T.Async (T.Var (_, n),_)])
-           when n < expected && List.length pre_typs = expected - 1 ->
-          insert n
-            (Syntax.scope_typ {left = exp1.at.right; right = exp2.at.left})
-            pre_typs
-        | T.Func (T.Shared _, T.Returns, _, _, [])
-           when List.length pre_typs = expected - 1 ->
-           insert 0
-            (Syntax.scope_typ {left = exp1.at.right; right = exp2.at.left})
-            pre_typs
-        |  _ -> pre_typs
-    in
-    insts := Some typs;
-    let ts = check_inst_bounds env tbs typs exp.at in
-    (match t1 with
-        | T.Func (_, T.Promises (T.Var (_, n)), _, _, _)
-        | T.Func (_, T.Returns, _, _, [T.Async (T.Var (_, n),_)]) ->
-          check_scope env (List.nth ts n) (List.nth typs n).at
-        | T.Func (T.Shared _, T.Returns, _, _, []) ->
-          check_scope env (List.nth ts 0) (List.nth typs 0).at
-        | _ -> ());
+    let ts, inst' = check_inst_bounds env tbs typs exp.at in
+    inst.note <- ts;
     let t_arg = T.open_ ts t_arg in
     let t_ret = T.open_ ts t_ret in
     if not env.pre then begin

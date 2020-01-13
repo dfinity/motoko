@@ -407,7 +407,7 @@ exp_post(B) :
   | e=exp_post(ob) DOT x=id
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(ob) tso=typ_args? e2=exp_nullary(ob)
-    { CallE(e1, ref tso, e2) @? at $sloc }
+    { CallE(e1, {it = Lib.Option.get tso []; at = no_region; note = []}, e2) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)

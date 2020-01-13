@@ -49,6 +49,7 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
+  | Scope                                     (* scope pseudo type *)
   | Pre                                       (* pre-type *)
 
 and bind = {var : var; bound : typ}

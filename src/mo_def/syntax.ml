@@ -115,7 +115,7 @@ and vis' = Public | Private
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
 
-type inst = typ list option ref (* For implicit scope instantiation *)
+type inst = (typ list, Type.typ list) Source.annotated_phrase (* For implicit scope instantiation *)
 
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
@@ -258,12 +258,12 @@ let scope_id = "@"
 
 let scope_bind() =
   { var = scope_id @@ no_region;
-    bound = PrimT "Any" @! no_region
+    bound = PrimT "Scope" @! no_region
   } @= no_region
 
 let pun_id id =
   { var = id.it @@ no_region;
-    bound = PrimT "Any" @! no_region
+    bound = PrimT "Scope" @! no_region
   } @= no_region
 
 let rec is_scope_typ t =
