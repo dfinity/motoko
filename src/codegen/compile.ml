@@ -5968,7 +5968,7 @@ and compile_exp (env : E.t) ae exp =
     | OtherPrim "text_iter_next", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter_next env
 
-    | OtherPrim "blob_len", [e] ->
+    | OtherPrim "blob_size", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env
     | OtherPrim "blob_iter", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env

@@ -327,7 +327,7 @@ let blob_bytes t at =
     in k (V.Obj (V.Env.singleton "next" next))
   )
 
-let blob_len t at =
+let blob_size t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     k (V.Int (V.Nat.of_int (String.length t)))
@@ -461,16 +461,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | "vals" -> array_vals
           | _ -> assert false
         in k (f vs exp.at)
-      | V.Text s when T.blob = exp.note.note_typ (* TODO: peeking at types violates erasure semantics, revisit! *) ->
-        let f = match id.it with
-          | "len" -> blob_len
-          | "bytes" -> blob_bytes
-          | _ -> assert false
-        in k (f s exp.at)
       | V.Text s ->
         let f = match id.it with
           | "len" -> text_len
           | "chars" -> text_chars
+          | "size" -> blob_size
+          | "bytes" -> blob_bytes
           | _ -> assert false
         in k (f s exp.at)
       | _ -> assert false

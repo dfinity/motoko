@@ -265,7 +265,7 @@ and blob_dotE proj e =
     let f = idE name (fun_ty [T.blob] [fun_ty t1 t2]) in
     callE f [] e in
   match proj with
-    | "len"   -> call "@blob_len"   [] [T.nat]
+    | "size"   -> call "@blob_size"   [] [T.nat]
     | "bytes" -> call "@blob_bytes" [] [T.iter_obj T.(Prim Word8)]
     |  _ -> assert false
 

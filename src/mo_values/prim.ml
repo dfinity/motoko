@@ -250,7 +250,7 @@ let prim = function
     k (Word32 Optint.(to_int32 (Checkseum.Crc32.digest_string s 0 (String.length s) zero)))
   | "array_len" -> fun _ v k ->
     k (Int (Int.of_int (Array.length (Value.as_array v))))
-  | "blob_len" -> fun _ v k ->
+  | "blob_size" -> fun _ v k ->
     k (Int (Nat.of_int (String.length (Value.as_text v))))
   | "blob_iter" -> fun _ v k ->
     let s = String.to_seq (Value.as_text v) in

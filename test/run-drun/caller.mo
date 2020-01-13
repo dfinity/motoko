@@ -37,7 +37,7 @@ actor a {
   };
 
   public shared query {caller} func c9() : async Nat {
-      caller.len();
+      caller.size();
   };
 
   public shared query {caller} func c10() : async ?Word8 {
