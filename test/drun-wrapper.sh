@@ -3,6 +3,15 @@
 DRUN=${DRUN:-drun}
 CONFIG=$(realpath $(dirname $0)/drun.toml)
 
+#
+# This script wraps drun to
+#
+# * extract the methods calls from comments in the second argument
+#   (typicall the test source files)
+# * adds "ic:000000000000040054" as the destination to these calls
+# * writes prometheus metrics to file descriptor 222
+#   (for run.sh -p; post-processing happening in run.sh)
+#
 
 
 if [ -z "$1" ]
