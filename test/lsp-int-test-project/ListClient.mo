@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 import List "lib/list.mo";
 import Option "lib/option.mo";
 import P "lib/prelude.mo";
