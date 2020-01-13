@@ -665,6 +665,9 @@ module RTS = struct
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
     E.add_func_import env "rts" "blob_of_ic_url" [I32Type] [I32Type];
     E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_iter_done" [I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_iter" [I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_iter_next" [I32Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -2488,6 +2491,16 @@ module Blob = struct
       end
   )
 
+  let len env =
+    Heap.load_field len_field ^^ BigNum.from_word32 env
+  let iter env =
+    E.call_import env "rts" "blob_iter"
+  let iter_done env =
+    E.call_import env "rts" "blob_iter_done"
+  let iter_next env =
+    E.call_import env "rts" "blob_iter_next" ^^
+    UnboxedSmallWord.msb_adjust Type.Word8
+
   let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed
 
 end (* Blob *)
@@ -2812,7 +2825,7 @@ module Dfinity = struct
       let (set_blob, get_blob) = new_local env "blob" in
       get_str ^^ Text.to_blob env ^^ set_blob ^^
       get_blob ^^ Blob.payload_ptr_unskewed ^^
-      get_blob ^^ Heap.load_field (Blob.len_field) ^^
+      get_blob ^^ Heap.load_field Blob.len_field ^^
       print_ptr_len env
     )
 
@@ -2825,7 +2838,7 @@ module Dfinity = struct
   let ic_trap_str env =
       Func.share_code1 env "ic_trap" ("str", I32Type) [] (fun env get_str ->
         get_str ^^ Blob.payload_ptr_unskewed ^^
-        get_str ^^ Heap.load_field (Blob.len_field) ^^
+        get_str ^^ Heap.load_field Blob.len_field ^^
         ic_trap env
       )
 
@@ -5947,6 +5960,15 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter_done env
     | OtherPrim "text_iter_next", [e] ->
       SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter_next env
+
+    | OtherPrim "blob_size", [e] ->
+      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env
+    | OtherPrim "blob_iter", [e] ->
+      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
+    | OtherPrim "blob_iter_done", [e] ->
+      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_done env
+    | OtherPrim "blob_iter_next", [e] ->
+      SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_next env
 
     | OtherPrim "abs", [e] ->
       SR.Vanilla,
