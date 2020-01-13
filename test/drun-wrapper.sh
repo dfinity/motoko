@@ -26,9 +26,9 @@ export LANG=C.UTF-8
 # 1125899906842624
 # (drun currently expects a decimal number for the canister id)
 
-# this number is determines empirically: how many extra batches are needed
+# this number is determined empirically: how many extra batches are needed
 # until all call-trees have finished (even those that return early).
-# usually darwin needs more! (Should go away with DFN-1269)
+# Usually darwin needs more! (Should go away with DFN-1269)
 EXTRA_BATCHES=100
 
 (echo "install 1125899906842624 $1 0x";
