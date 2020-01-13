@@ -4,3 +4,10 @@ debug.print: 2
 debug.print: 3
 debug.print: 4
 debug.print: 4
+debug.print: In read:
+debug.print: 5
+debug.print: 4
+debug.print: In read:
+debug.print: 5
+debug.print: The following fails in the intepreter, for lack of query semantics
+debug.print: 4
