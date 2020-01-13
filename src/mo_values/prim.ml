@@ -254,7 +254,7 @@ let prim = function
     k (Int (Nat.of_int (String.length (Value.as_text v))))
   | "blob_iter" -> fun _ v k ->
     let s = String.to_seq (Value.as_text v) in
-    let valuation b = Value.(Word8 (Word8.of_int_u (Char.code b))) in
+    let valuation b = Word8 (Word8.of_int_u (Char.code b)) in
     k (Iter (ref (Seq.map valuation s)))
   | "blob_iter_done" | "text_iter_done" -> fun _ v k ->
     let i = Value.as_iter v in
