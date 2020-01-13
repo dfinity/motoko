@@ -44,6 +44,7 @@ let is_package_path (path : string) =
   let open Pipeline.URL in
   match parse path with
   | Ok (Package _) -> true
+  | Ok Prim -> true
   | _ -> false
 
 let uri_for_package (path : string) =

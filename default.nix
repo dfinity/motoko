@@ -36,7 +36,7 @@ let dfinity-src =
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
     # ref = "master";
-    rev = "91ff7b663820e6f9ba3aab3993b6f613482465ca";
+    rev = "947195fb1395eac397b8490fc8000e3afe5ef820";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in

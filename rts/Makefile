@@ -81,7 +81,7 @@ TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 # Our part of the RTS, Wasm and native
 #
 
-RTSFILES=rts idl bigint buf utf8_valid closure-table text url
+RTSFILES=rts idl bigint buf utf8_valid closure-table text blob url
 
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@

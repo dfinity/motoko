@@ -18,6 +18,7 @@ executable lsp-int
                      , text ^>=1.2
                      , hspec
                      , HUnit
+                     , filepath
                      , directory
                      , lens
                      , data-default
