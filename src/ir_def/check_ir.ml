@@ -881,8 +881,7 @@ and gather_dec env scope dec : scope =
   match dec.it with
   | LetD (pat, exp) ->
     let ve = gather_pat env scope.val_env pat in
-    let ce' = gather_typ env scope.con_env exp.note.note_typ in
-    { val_env = ve; con_env = ce'}
+    { scope with val_env = ve }
   | VarD (id, exp) ->
     check env dec.at
       (not (T.Env.mem id scope.val_env))
@@ -892,19 +891,9 @@ and gather_dec env scope dec : scope =
   | TypD c ->
     check env dec.at
       (not (T.ConSet.mem c scope.con_env))
-      "duplicate definition of type in block";
+      "duplicate definition of type \"%s\" in block" (Con.name c);
     let ce' = T.ConSet.disjoint_add c scope.con_env in
     { scope with con_env = ce' }
-
-and gather_typ env ce typ =
-   match typ with
-   | T.Obj(_, fs) ->
-     List.fold_right (fun {T.lab;T.typ = typ1} ce ->
-         match typ1 with
-         | T.Typ c -> T.ConSet.add c ce
-         | _ -> gather_typ env ce typ1
-       ) fs ce
-   | _ -> ce
 
 (* Programs *)
 
