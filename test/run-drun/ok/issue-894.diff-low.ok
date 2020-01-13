@@ -1,0 +1,13 @@
+--- issue-894.run
++++ issue-894.run-low
+@@ -1,9 +1 @@
+-1
+-1
+-1
+-1
+-0
+-1
+-2
+-3
+-4
++(unknown location): execution error, SelfRef not implemented

@@ -1,0 +1,9 @@
+--- reference-params.run
++++ reference-params.run-low
+@@ -1,5 +1 @@
+-Hello World!
+-Hello World!
+-Hello World!
+-Hello Universe!
+-Hello Galaxy!
++(unknown location): execution error, SelfRef not implemented

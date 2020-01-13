@@ -1,0 +1,4 @@
+--- async-any.run
++++ async-any.run-ir
+@@ -0,0 +1 @@
++(unknown location): execution error, SelfRef not implemented

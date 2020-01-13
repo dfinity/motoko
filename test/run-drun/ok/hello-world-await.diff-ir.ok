@@ -1,0 +1,5 @@
+--- hello-world-await.run
++++ hello-world-await.run-ir
+@@ -1 +1 @@
+-Hello World!
++(unknown location): execution error, SelfRef not implemented

@@ -1,0 +1,6 @@
+--- local-throw.run
++++ local-throw.run-ir
+@@ -1,2 +1 @@
+-t2 ok
+-t3 ok
++(unknown location): execution error, SelfRef not implemented

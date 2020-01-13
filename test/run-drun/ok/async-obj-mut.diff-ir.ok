@@ -1,0 +1,12 @@
+--- async-obj-mut.run
++++ async-obj-mut.run-ir
+@@ -1,8 +1 @@
+-1
+-2
+-3
+-done creating
+-
+-3
+-4
+-5
++(unknown location): execution error, SelfRef not implemented

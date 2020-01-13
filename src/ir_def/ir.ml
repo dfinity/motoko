@@ -90,7 +90,7 @@ and exp' =
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
   | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
-  | ActorE of id * dec list * field list * Type.typ (* actor *)
+  | ActorE of dec list * field list * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
   | ThrowE of exp                              (* throw *)
   | TryE of exp * case list                    (* try/catch *)
@@ -117,6 +117,7 @@ and prim =
   | CastPrim of Type.typ * Type.typ   (* representationally a noop *)
   | ActorOfIdBlob of Type.typ
   | BlobOfIcUrl                       (* traps on syntax or checksum failure *)
+  | SelfRef of Type.typ               (* returns the self actor ref *)
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   | CPSAwait
   | CPSAsync

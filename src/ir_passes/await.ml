@@ -138,8 +138,8 @@ and t_exp' context exp' =
   | FuncE (x, s, c, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)
-  | ActorE (id, ds, ids, t) ->
-    ActorE (id, t_decs context ds, ids, t)
+  | ActorE (ds, ids, t) ->
+    ActorE (t_decs context ds, ids, t)
   | NewObjE (sort, ids, typ) -> exp'
   | SelfCallE _ -> assert false
 

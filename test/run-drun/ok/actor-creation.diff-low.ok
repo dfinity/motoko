@@ -1,0 +1,13 @@
+--- actor-creation.run
++++ actor-creation.run-low
+@@ -1,9 +1,2 @@
+ main actor creating a
+-a created
+-main actor calling a.foo()
+-a.foo() called
+-a creating b
+-b created
+-a calling b.foo()
+-a.foo() done
+-b.foo() called
++(unknown location): execution error, SelfRef not implemented

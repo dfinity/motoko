@@ -1,0 +1,9 @@
+--- async-new-obj.run
++++ async-new-obj.run-low
+@@ -1,5 +1 @@
+-aaab
+-babb
+-dadb
+-eaeb
+-cacb
++(unknown location): execution error, SelfRef not implemented

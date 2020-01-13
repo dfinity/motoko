@@ -1,0 +1,4 @@
+--- general-type-components.run
++++ general-type-components.run-low
+@@ -0,0 +1 @@
++(unknown location): execution error, SelfRef not implemented
