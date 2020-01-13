@@ -154,7 +154,7 @@ let completions index logger project_root file_path file_contents line column =
      decls @ List.map (fun (alias, _) -> module_alias_completion_item alias) imported
   | Some ("", prefix) ->
      (* Without an alias but with a prefix we filter the toplevel
-        identfiers of the current module *)
+        identifiers of the current module *)
      toplevel_decls
      |> List.filter (has_prefix prefix)
      |> List.map item_of_ide_decl
