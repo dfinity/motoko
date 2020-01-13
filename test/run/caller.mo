@@ -9,6 +9,10 @@ actor a {
     Prim.hashBlob c;
   };
 
+  public shared query { caller = c } func getCallerSize() : async Nat {
+      c.size();
+  };
+
   public shared {caller} func c () : async () {
     let self1 = await getCaller();
     let self2 = await getCaller();
@@ -20,3 +24,4 @@ actor a {
 
 ignore a.c(); //OR-CALL ingress c 0x4449444C0000
 ignore a.getCallerHash(); //OR-CALL ingress getCallerHash 0x4449444C0000
+ignore a.getCallerSize(); //OR-CALL ingress getCallerSize 0x4449444C0000

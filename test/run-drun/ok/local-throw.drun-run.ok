@@ -1,4 +1,4 @@
 ingress(0) System
-ingress(1) Completed: Canister: Payload: 0x4449444c0000
 debug.print: t2 ok
 debug.print: t3 ok
+ingress(1) Completed: Canister: Payload: 0x4449444c0000
