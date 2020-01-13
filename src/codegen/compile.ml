@@ -4975,8 +4975,6 @@ module AllocHow = struct
   let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
 
   let is_local_mut _ b = LocalMut = b
-    | LocalMut -> true
-    | _ -> false
 
   let is_not_static _ = function
     | StoreStatic -> false
