@@ -1,5 +1,5 @@
 ingress(0) System
 debug.print: go1
-ingress(1) Completed: Canister: Payload: 0x4449444c0000
 debug.print: throws()
 debug.print: ping()
+ingress(1) Completed: Canister: Payload: 0x4449444c0000
