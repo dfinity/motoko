@@ -179,6 +179,7 @@ let start entry_point debug =
          | Some file_content ->
             let result =
               Hover.hover_handler
+                log_to_file
                 !decl_index
                 position
                 file_content

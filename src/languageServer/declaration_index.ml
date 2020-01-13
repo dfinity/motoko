@@ -66,6 +66,9 @@ let lookup_module
        (Flags.M.find_opt pkg !Flags.package_urls)
        (fun pkg_path ->
         Index.find_opt (Filename.concat pkg_path path) index)
+  | Ok Prim ->
+     Index.find_opt "@prim" index
+  | Error _ -> None
   | _ -> assert false
 
 let empty : t = Index.empty
@@ -175,24 +178,17 @@ let make_index_inner logger vfs entry_points : t Diag.result =
     entry_points
     Pipeline.initial_stat_env
   |> Diag.map (fun (libs, _, scope) ->
-         let prim_defs =
-           Type.Env.fold(fun k v acc ->
-               if String.get k 0 = '@' then
-                 acc
-               else
-                 ValueDecl { name = k; typ = v; definition = None } :: acc
-             ) Pipeline.initial_stat_env.Scope.val_env [] in
-      Type.Env.fold
-        (fun path ty acc ->
-        Index.add
-            path
-            (ty
-            |> read_single_module_lib
-            |> Fun.flip Lib.Option.get []
-            |> populate_definitions libs path)
-            acc)
-        scope.Scope.lib_env
-        (Index.singleton "prim" prim_defs))
+         Type.Env.fold
+           (fun path ty acc ->
+             Index.add
+               path
+               (ty
+                |> read_single_module_lib
+                |> Fun.flip Lib.Option.get []
+                |> populate_definitions libs path)
+               acc)
+           scope.Scope.lib_env
+           Index.empty)
 
 let make_index logger vfs entry_points : t Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
