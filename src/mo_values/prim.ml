@@ -254,17 +254,17 @@ let prim = function
     k (Int (Nat.of_int (String.length (Value.as_text v))))
   | "blob_iter" -> fun _ v k ->
     let s = String.to_seq (Value.as_text v) in
-    let i = ref s in
-    k (BlobIter i)
+    let valuation b = Value.(Word8 (Word8.of_int_u (Char.code b))) in
+    k (Iter (ref (Seq.map valuation s)))
   | "blob_iter_done" -> fun _ v k ->
-    let i = Value.as_blob_iter v in
+    let i = Value.as_iter v in
     k (Bool (!i () <> Seq.Nil))
   | "blob_iter_next" -> fun _ v k ->
-    let i = Value.as_blob_iter v in
+    let i = Value.as_iter v in
     begin match !i () with
     | Seq.Nil -> assert false
-    | Seq.Cons (c, cs) ->
-      i := cs; k Value.(Word8 (Word8.of_int_u (Char.code c)))
+    | Seq.Cons (v, vs) ->
+      i := vs; k v
     end
   | "text_len" -> fun _ v k ->
     k (Int (Nat.of_int (List.length (Wasm.Utf8.decode (Value.as_text v)))))
