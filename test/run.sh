@@ -295,7 +295,11 @@ do
             run_if stub.wasm ic-stub-run $IC_STUB_RUN_WRAPPER $out/$base.stub.wasm $mangled
           elif [ $PERF = yes ]
           then
-            run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
+            run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled 222> $out/$base.metrics
+	    if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
+	    then
+              LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+            fi
           else
             run_if wasm wasm-run $WASMTIME $WASMTIME_OPTIONS $out/$base.wasm
           fi
