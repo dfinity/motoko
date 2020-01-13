@@ -4974,7 +4974,7 @@ module AllocHow = struct
   let map_of_set x s = S.fold (fun v m -> M.add v x m) s M.empty
   let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
 
-  let is_local_mut _ = function
+  let is_local_mut _ b = LocalMut = b
     | LocalMut -> true
     | _ -> false
 
