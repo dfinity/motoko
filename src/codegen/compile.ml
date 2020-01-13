@@ -4447,10 +4447,13 @@ module VarEnv = struct
       let d = {stack_rep; materialize; is_local} in
       { ae with vars = NameEnv.add name (VarLoc.Deferred d) ae.vars }
 
+  let add_local_local env (ae : t) name i =
+      { ae with vars = NameEnv.add name (VarLoc.Local i) ae.vars }
+
   let add_direct_local env (ae : t) name =
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      ({ ae with vars = NameEnv.add name (VarLoc.Local i) ae.vars }, i)
+      (add_local_local env ae name i, i)
 
   (* Adds the names to the environment and returns a list of setters *)
   let rec add_argument_locals env (ae : t) = function
@@ -4562,14 +4565,13 @@ end (* Var *)
 
 (* This comes late because it also deals with messages *)
 module FuncDec = struct
-  let bind_args ae0 first_arg as_ bind_arg =
+  let bind_args env ae0 first_arg args =
     let rec go i ae = function
     | [] -> ae
-    | a::as_ ->
-      let get = G.i (LocalGet (nr (Int32.of_int i))) in
-      let ae' = bind_arg ae a get in
-      go (i+1) ae' as_ in
-    go first_arg ae0 as_
+    | a::args ->
+      let ae' = VarEnv.add_local_local env ae a.it (Int32.of_int i) in
+      go (i+1) ae' args in
+    go first_arg ae0 args
 
   (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
@@ -4584,10 +4586,8 @@ module FuncDec = struct
 
       let (ae1, closure_code) = restore_env env ae0 get_closure in
 
-      (* Add arguments to the environment *)
-      let ae2 = bind_args ae1 1 args (fun env a get ->
-        VarEnv.add_local_deferred env a.it SR.Vanilla (fun _ -> get) true
-      ) in
+      (* Add arguments to the environment (shifted by 1) *)
+      let ae2 = bind_args env ae1 1 args in
 
       closure_code ^^
       mk_body env ae2
