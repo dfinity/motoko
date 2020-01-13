@@ -258,13 +258,12 @@ let prim = function
     k (Iter (ref (Seq.map valuation s)))
   | "blob_iter_done" | "text_iter_done" -> fun _ v k ->
     let i = Value.as_iter v in
-    k (Bool (!i () <> Seq.Nil))
+    k (Bool (!i () = Seq.Nil))
   | "blob_iter_next" | "text_iter_next" -> fun _ v k ->
     let i = Value.as_iter v in
     begin match !i () with
     | Seq.Nil -> assert false
-    | Seq.Cons (v, vs) ->
-      i := vs; k v
+    | Seq.Cons (v, vs) -> i := vs; k v
     end
   | "text_len" -> fun _ v k ->
     k (Int (Nat.of_int (List.length (Wasm.Utf8.decode (Value.as_text v)))))
