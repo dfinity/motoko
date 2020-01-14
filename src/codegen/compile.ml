@@ -5100,7 +5100,7 @@ module AllocHow = struct
 
   let decs (ae : VarEnv.t) lvl decs captured_in_body : allocHow =
     let how_outer = how_of_ae ae in
-    let defined_here = snd (Freevars.decs decs) in (* implement more direct *)
+    let defined_here = snd (Freevars.decs decs) in (* TODO: implement gather_decs more directly *)
     let how_outer = Freevars.diff how_outer defined_here in (* shadowing *)
     let how0 = map_of_set Static defined_here in
     let captured = S.inter defined_here captured_in_body in
