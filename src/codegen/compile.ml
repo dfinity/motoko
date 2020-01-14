@@ -4954,7 +4954,7 @@ module AllocHow = struct
             (no need to mention in a closure)
   - local:  only needed locally, stored in a Wasm local, immutable
             (can be copied into a closure by value)
-  - local:  only needed locally, stored in a Wasm local, mutable
+  - local mutable: only needed locally, stored in a Wasm local, mutable
             (cannot be copied into a closure)
   - heap allocated: stored on the dynamic heap, address in Wasm local
             (can be copied into a closure by reference)
