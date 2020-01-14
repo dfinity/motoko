@@ -4989,17 +4989,14 @@ module AllocHow = struct
 
   let join : allocHow -> allocHow -> allocHow =
     M.union (fun _ x y -> Some (match x, y with
-      | StoreStatic, StoreHeap
-      | StoreHeap, StoreStatic ->
-        fatal "AllocHow.join: cannot join StoreStatic and StoreHeap"
-      | _, StoreHeap -> StoreHeap
-      | StoreHeap, _  -> StoreHeap
-      | _, StoreStatic -> StoreStatic
-      | StoreStatic, _  -> StoreStatic
-      | LocalMut, _ -> LocalMut
-      | _, LocalMut -> LocalMut
-      | LocalImmut, _ -> LocalImmut
-      | _, LocalImmut -> LocalImmut
+      | StoreStatic, StoreHeap | StoreHeap, StoreStatic
+      ->  fatal "AllocHow.join: cannot join StoreStatic and StoreHeap"
+
+      | _, StoreHeap   | StoreHeap,   _ -> StoreHeap
+      | _, StoreStatic | StoreStatic, _ -> StoreStatic
+      | _, LocalMut    | LocalMut,    _ -> LocalMut
+      | _, LocalImmut  | LocalImmut,  _ -> LocalImmut
+
       | Static, Static -> Static
     ))
   let joins = List.fold_left join M.empty
