@@ -139,6 +139,8 @@ let populate_definitions
     match exp_field.it.Syntax.dec.it with
     | Syntax.TypD (typ_id, _, _) ->
        Some typ_id
+    | Syntax.ClassD (typ_id, _, _, _, _, _, _) ->
+       Some typ_id
     | _ -> None in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
   let find_def (lib : Syntax.lib) def =
