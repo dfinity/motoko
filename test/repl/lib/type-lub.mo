@@ -54,6 +54,7 @@ type C = async(?Int);
 type D = async(?Nat);
 
 func c0(c : C, d : D) : [C] { ignore([c, d]); [c, d] };
+
 let c1s = [async ?4, async ?-42];
 
 

@@ -8,6 +8,6 @@ type async_cap =
   | AsyncCap of T.con
   | AwaitCap of T.con
 
-let top_cap = Con.fresh "@" (T.Abs([],T.Scope))
+let top_cap = Con.fresh "@" (T.Def([],T.Scope))
 
 let initial_cap () = if !Flags.compiled then NullCap else AsyncCap top_cap

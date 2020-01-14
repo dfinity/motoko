@@ -315,7 +315,7 @@ and check_typ' env typ : T.typ =
     let ts = List.map (check_typ env) typs in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
     let tbs' = List.map (fun {T.var; T.bound} -> {T.var; bound = T.open_ ts bound}) tbs in
-    check_typ_bounds env tbs' ts typs typ.at;
+    check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
     T.Con (c, ts)
   | PrimT "Scope" -> T.Scope
   | PrimT "Any" -> T.Any
@@ -453,68 +453,47 @@ and check_typ_bind env typ_bind : T.con * T.typ * Scope.typ_env * Scope.con_env 
   | [c], [t], te, cs -> c, t, te, cs
   | _ -> assert false
 
-and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) typs at =
+and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
   let pars = List.length tbs in
   let args = List.length ts in
   if pars > args then
     error env at "too few type arguments";
   if pars < args then
     error env at "too many type arguments";
-  let rec go tbs' ts' typs' =
-    match tbs', ts', typs' with
-    | tb::tbs', t::ts', typ::typs' ->
+  let rec go tbs' ts' ats' =
+    match tbs', ts', ats' with
+    | tb::tbs', t::ts', at'::ats' ->
       if not env.pre then
         let u = T.open_ ts tb.T.bound in
         if not (T.sub t u) then
-          local_error env typ.at
+          local_error env at'
             "type argument\n  %s\ndoes not match parameter bound\n  %s"
             (T.string_of_typ_expand t)
             (T.string_of_typ_expand u);
-        go tbs' ts' typs'
+        go tbs' ts' ats'
     | [], [], [] -> ()
     | _  -> assert false
-  in go tbs ts typs
+  in go tbs ts ats
 
 and infer_inst env tbs typs at =
+  let ts = List.map (check_typ env) typs in
+  let ats = List.map (fun typ -> typ.at) typs in
   match tbs,typs with
-  | {T.bound; _}::tbs', typs' when T.eq bound = T.Scope ->
+  | {T.bound; _}::tbs', typs' when T.eq bound T.Scope ->
     (match env.async with
      | C.NullCap -> error env at "scope required, but non available"
      | C.AwaitCap c
      | C.AsyncCap c ->
-      let (ts,typs'') = infer_inst env tbs' typs' at in
-      (T.Con(c,[])::ts,
-       { (scope_typ no_region) with note = T.Con(c, []) }
-         ::typs'')
+      (T.Con(c,[])::ts, at::ats)
     )
-  | _::tbs', typ::typs' ->
-    let (ts,typs'') = infer_inst env tbs' typs' at in
-    (check_typ env typ::ts,
-     typ::typs'')
-  | _::tbs', [] ->
-    ([], [])
-  | [], typs' ->
-    (List.map (check_typ env) typs',
-     typs')
-
-(*and infer_inst env tbs typs at =
-  let ts = List.map (check_typ env typ::ts) in
-  match List.find_opt (fun {T.Bound = Scope; _} -> true | _ -> false) tbs with
-  | Some i ->
- *)
+  | tbs', typs' ->
+    ts, ats
 
 and check_inst_bounds env tbs inst at =
-  let ts, inst' = infer_inst env tbs inst at in
-(*  if List.length tbs <> List.length inst' then
-  ( List.iter (fun t -> Printf.printf "%s" (T.string_of_typ t)) ts;
-    Printf.printf "\n";
-    List.iter (fun t -> Printf.printf "%s " (T.string_of_typ t.note)) inst';
-    Printf.printf "\n\n"
-  );
- *)
-  check_typ_bounds env tbs ts inst' at;
+  let ts, ats = infer_inst env tbs inst at in
+  check_typ_bounds env tbs ts ats at;
   ts
-  
+
 (* Literals *)
 
 let check_lit_val env t of_string at s =

@@ -1,13 +1,15 @@
+// version of scope-example-implicit.mo that
+// uses explicit scope parameters/instantiation (commented out for now until supported)
 actor A {
-  public shared func ping<X <: Scope>() : async<X> Int = async <Y> {666;} /*<X>*/; // normal remote function
+  public shared func ping/*<X>*/() : async/*<X>*/ Int = async /*<Y>*/ {666;} /*<X>*/; // normal remote function
 
-  public shared func f<X <: Scope>() : async<X> (Int,Int) = async <Y> {
+  public shared func f/*<X>*/() : async/*<X>*/ (Int,Int) = async /*<Y>*/ {
     // current scope: Y
-    var a : (async<Y> Int) = async 0;
+    var a : (async/*<Y>*/ Int) = async 0;
 
-    await (async<Z> {
+    await (async/*<Z>*/ {
       // current scope: Z
-      a :=  ping<Y> (); // this seems well-typed according to “Application (Derived Rule)”;
+      a :=  ping/*<Y>*/ (); // this seems well-typed according to “Application (Derived Rule)”;
     } /*<Y>*/);
 
     let i = await a;
