@@ -5,10 +5,16 @@ open Ir
 
 (* We want to know:
    Is this variable used (potentially) captured?
-*)
-type usage_info = { captured : bool }
+   Is this variable used eagerly.
 
-let join u1 u2 = { captured = u1.captured || u2.captured }
+   capture = true; eager = false means it is _only_ used under lambdas
+*)
+type usage_info = { captured : bool; eager : bool }
+
+let join u1 u2 = {
+  captured = u1.captured || u2.captured;
+  eager = u1.captured || u2.captured
+}
 
 module M = Env.Make(String)
 module S = Set.Make(String)
@@ -49,10 +55,13 @@ let (///) (x : f) ((f,d) : fd) = f ++ diff x d
    Initially, variables are not captured.
    All variables under a lambda become captured.
 *)
-let under_lambda : f -> f = M.map (fun _ -> { captured = true })
+let under_lambda : f -> f = M.map (fun _ -> { captured = true; eager = false })
 
+(* Projections *)
 let captured_vars : f -> S.t =
   fun f -> set_of_map (M.filter (fun _ u -> u.captured) f)
+let eager_vars : f -> S.t =
+  fun f -> set_of_map (M.filter (fun _ u -> u.eager) f)
 
 (* This closes a combined set over itself (recursion or mutual recursion) *)
 let close (f,d) = diff f d
@@ -60,7 +69,7 @@ let close (f,d) = diff f d
 (* One traversal for each syntactic category, named by that category *)
 
 let rec exp e : f = match e.it with
-  | VarE i              -> M.singleton i {captured = false}
+  | VarE i              -> id i
   | LitE l              -> M.empty
   | PrimE (_, es)       -> exps es
   | TupE es             -> exps es
@@ -101,7 +110,7 @@ and arg a : fd = (M.empty, S.singleton a.it)
 and args as_ : fd = union_binders arg as_
 
 and lexp le : f = match le.it with
-  | VarLE i              -> M.singleton i {captured = false}
+  | VarLE i              -> id i
   | DotLE (e1, _)        -> exp e1
   | IdxLE (e1, e2)       -> exps [e1; e2]
 
@@ -121,7 +130,7 @@ and case (c : case) = exp c.it.exp /// pat c.it.pat
 
 and cases cs : f = unions case cs
 
-and id i = M.singleton i {captured = false}
+and id i = M.singleton i {captured = false; eager = true}
 
 and dec d = match d.it with
   | LetD (p, e) -> pat p +++ exp e

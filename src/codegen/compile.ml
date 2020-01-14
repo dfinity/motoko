@@ -5010,11 +5010,21 @@ module AllocHow = struct
   let set_of_map = Freevars.set_of_map
   let disjoint s1 s2 = S.is_empty (S.inter s1 s2)
 
+  (* Various filters used in the set operations below *)
   let is_local_mut _ = function
     | LocalMut -> true
     | _ -> false
 
+  let is_local _ = function
+    | LocalImmut -> true
+    | LocalMut -> true
+    | _ -> false
+
   let is_not_static _ = function
+    | Static -> false
+    | _ -> true
+
+  let require_closure _ = function
     | Static -> false
     | StoreStatic -> false
     | _ -> true
@@ -5028,15 +5038,14 @@ module AllocHow = struct
          - everything that is non-static (i.e. still in locals)
     *)
     match lvl with
-    | TopLvl ->
-      map_of_set StoreStatic
-        (S.inter (set_of_map (M.filter is_not_static how)) captured)
-
     | NotTopLvl ->
       map_of_set StoreHeap (S.union
         (S.inter (set_of_map (M.filter is_local_mut how)) captured)
-        (S.inter (set_of_map (M.filter is_not_static how)) (S.diff captured seen))
+        (S.inter (set_of_map (M.filter is_local how)) (S.diff captured seen))
       )
+    | TopLvl ->
+      map_of_set StoreStatic
+        (S.inter (set_of_map (M.filter is_local how)) captured)
 
   let is_static_exp exp = match exp.it with
     | FuncE _ -> true
@@ -5053,19 +5062,20 @@ module AllocHow = struct
       (* Mutable variables are, well, mutable *)
       | VarD _ ->
       map_of_set LocalMut d
-      (* Static expressions:
+
+      (* Static expressions on the top-level:
         - need to be static forms
         - all non-captured free variables must be static
-        - all captured variables must be static, unless on the top-level
-          (there, they will all become static by construction)
+        - all captured variables must be static or static-heap, if not on top level
+          (top level captures variables will be forced to be static-heap below, via how2)
       *)
-      | LetD ({it = VarP _; _}, e)
-      when is_static_exp e &&
-        let relevant = match lvl with
-          | TopLvl -> S.diff (set_of_map f) (Freevars.captured_vars f)
-          | NotTopLvl -> set_of_map f in
-        disjoint relevant (set_of_map (M.filter is_not_static how_all))
-      -> M.empty
+      | LetD ({it = VarP _; _}, e) when
+        is_static_exp e &&
+        disjoint (Freevars.eager_vars f) (set_of_map (M.filter is_not_static how_all)) &&
+        (lvl = TopLvl || disjoint (Freevars.captured_vars f) (set_of_map (M.filter require_closure how_all)))
+      -> map_of_set Static d
+
+
       (* Everything else needs at least a local *)
       | _ ->
       map_of_set LocalImmut d in
