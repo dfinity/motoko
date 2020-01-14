@@ -5044,9 +5044,16 @@ module AllocHow = struct
       map_of_set StoreStatic
         (S.inter (set_of_map (M.filter is_local how)) captured)
 
-  let is_static_exp exp = match exp.it with
+  let rec is_static_exp exp = match exp.it with
     | FuncE _ -> true
+    | VarE _ -> true
+    | BlockE (ds, e) ->
+      List.for_all is_static_dec ds && is_static_exp e
     | _ -> false
+  and is_static_dec dec = match dec.it with
+    | VarD _ -> false
+    | LetD (_, e) -> is_static_exp e
+    | TypD _ -> true
 
   let dec lvl how_outer (seen, how0) dec =
     let how_all = disjoint_union how_outer how0 in
@@ -5060,7 +5067,7 @@ module AllocHow = struct
       | VarD _ ->
       map_of_set LocalMut d
 
-      (* Static expressions on the top-level:
+      (* Static expressions:
         - need to be static forms
         - all non-captured free variables must be static
         - all captured variables must be static or static-heap, if not on top level
@@ -6582,7 +6589,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
-    let (static_thing, fill) = compile_static_exp env pre_ae how e in
+    let (static_thing, fill) = compile_static_exp env pre_ae e in
     let fi = match static_thing with
       | SR.StaticMessage fi -> fi
       | _ -> assert false in
@@ -6593,7 +6600,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
 
   (* A special case for static expressions *)
   | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Static ->
-    let (static_thing, fill) = compile_static_exp env pre_ae how e in
+    let (static_thing, fill) = compile_static_exp env pre_ae e in
     let pre_ae1 = VarEnv.add_local_deferred pre_ae v
       (SR.StaticThing static_thing) (fun _ -> G.nop) false in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
@@ -6655,19 +6662,35 @@ and compile_prog env ae (ds, e) =
     let code2 = compile_top_lvl_expr env ae' e in
     (ae', code1 ^^ code2)
 
-and compile_static_exp env pre_ae how exp = match exp.it with
+and compile_static_exp env pre_ae exp = match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
-      let return_tys = match control with
-        | Type.Returns -> res_tys
-        | Type.Replies -> []
-        | Type.Promises -> assert false in
-      let mk_body env ae =
-        List.iter (fun v ->
-          if not (VarEnv.NameEnv.mem v ae.VarEnv.vars)
-          then fatal "internal error: static \"%s\": captures \"%s\", not found in static environment\n" name v
-        ) (Freevars.M.keys (Freevars.exp e));
-        compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
-      FuncDec.closed env sort control name args mk_body return_tys exp.at
+    let return_tys = match control with
+      | Type.Returns -> res_tys
+      | Type.Replies -> []
+      | Type.Promises -> assert false in
+    let mk_body env ae =
+      List.iter (fun v ->
+        if not (VarEnv.NameEnv.mem v ae.VarEnv.vars)
+        then fatal "internal error: static \"%s\": captures \"%s\", not found in static environment\n" name v
+      ) (Freevars.M.keys (Freevars.exp e));
+      compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
+    FuncDec.closed env sort control name args mk_body return_tys exp.at
+  | BlockE (decs, e) ->
+    let captured = Freevars.captured_vars (Freevars.exp e) in
+    let (ae', alloc_code, mk_code) = compile_decs_open env pre_ae AllocHow.TopLvl decs E.NameEnv.empty captured in
+    assert (G.is_nop alloc_code);
+    let (st, fill2) = compile_static_exp env ae' e in
+    (st, fun env ae ->
+      let code1 = mk_code ae in
+      assert (G.is_nop code1);
+      fill2 env ae)
+  | VarE v ->
+    let st =
+      match VarEnv.lookup_var pre_ae v with
+      | Some (VarLoc.Deferred { VarLoc.stack_rep = SR.StaticThing st; _ }) -> st
+      | _ -> fatal "compile_static_exp/VarE: \"%s\" not found" v
+    in
+    (st, fun _ _ -> ())
   | _ -> assert false
 
 and compile_prelude env ae =
