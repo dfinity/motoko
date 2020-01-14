@@ -4982,7 +4982,7 @@ module AllocHow = struct
   We represent this as a lattice as follows:
   *)
   type how = Static | LocalImmut | LocalMut | StoreHeap | StoreStatic
-  type allocHow = how M.t (* absent means static *)
+  type allocHow = how M.t
 
   let disjoint_union : allocHow -> allocHow -> allocHow =
     M.union (fun v _ _ -> fatal "AllocHow.disjoint_union: %s" v)
