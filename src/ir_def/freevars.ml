@@ -37,6 +37,9 @@ let union_binders f xs = List.fold_left (++++) (M.empty, S.empty) (List.map f xs
 
 let diff f d = M.filter (fun k _ -> not (S.mem k d)) f
 
+let map_of_set x s = S.fold (fun v m -> M.add v x m) s M.empty
+let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
+
 (* The bound variables from the second argument scope over the first *)
 let (///) (x : f) ((f,d) : fd) = f ++ diff x d
 
@@ -49,7 +52,7 @@ let (///) (x : f) ((f,d) : fd) = f ++ diff x d
 let under_lambda : f -> f = M.map (fun _ -> { captured = true })
 
 let captured_vars : f -> S.t =
-  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u.captured) (M.bindings f)))
+  fun f -> set_of_map (M.filter (fun _ u -> u.captured) f)
 
 (* This closes a combined set over itself (recursion or mutual recursion) *)
 let close (f,d) = diff f d

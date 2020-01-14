@@ -5006,8 +5006,9 @@ module AllocHow = struct
 
   type lvl = TopLvl | NotTopLvl
 
-  let map_of_set x s = S.fold (fun v m -> M.add v x m) s M.empty
-  let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
+  let map_of_set = Freevars.map_of_set
+  let set_of_map = Freevars.set_of_map
+  let disjoint s1 s2 = S.is_empty (S.inter s1 s2)
 
   let is_local_mut _ = function
     | LocalMut -> true
@@ -5017,22 +5018,6 @@ module AllocHow = struct
     | Static -> false
     | StoreStatic -> false
     | _ -> true
-
-  let is_static how f =
-    (* Does this capture nothing non-static from here? *)
-    (S.is_empty (S.inter
-      (Freevars.captured_vars f)
-      (set_of_map (M.filter is_not_static how))))
-
-  let is_func_exp exp = match exp.it with
-    | FuncE _ -> true
-    | _ -> false
-
-  let is_static_exp lvl how0 exp =
-    (* Functions are static when they are on the top-level or do not capture anything *)
-    if is_func_exp exp
-    then lvl = TopLvl || is_static how0 (Freevars.exp exp)
-    else false
 
   let how_captured lvl how seen captured =
     (* What to do so that we can capture something?
@@ -5053,6 +5038,10 @@ module AllocHow = struct
         (S.inter (set_of_map (M.filter is_not_static how)) (S.diff captured seen))
       )
 
+  let is_static_exp exp = match exp.it with
+    | FuncE _ -> true
+    | _ -> false
+
   let dec lvl how_outer (seen, how0) dec =
     let how_all = disjoint_union how_outer how0 in
 
@@ -5064,9 +5053,19 @@ module AllocHow = struct
       (* Mutable variables are, well, mutable *)
       | VarD _ ->
       map_of_set LocalMut d
-      (* Static functions in an let-expression *)
-      | LetD ({it = VarP _; _}, e) when is_static_exp lvl how_all e ->
-      M.empty
+      (* Static expressions:
+        - need to be static forms
+        - all non-captured free variables must be static
+        - all captured variables must be static, unless on the top-level
+          (there, they will all become static by construction)
+      *)
+      | LetD ({it = VarP _; _}, e)
+      when is_static_exp e &&
+        let relevant = match lvl with
+          | TopLvl -> S.diff (set_of_map f) (Freevars.captured_vars f)
+          | NotTopLvl -> set_of_map f in
+        disjoint relevant (set_of_map (M.filter is_not_static how_all))
+      -> M.empty
       (* Everything else needs at least a local *)
       | _ ->
       map_of_set LocalImmut d in
@@ -6656,14 +6655,10 @@ and compile_static_exp env pre_ae how exp = match exp.it with
         | Type.Replies -> []
         | Type.Promises -> assert false in
       let mk_body env ae =
-        assert begin (* Is this really closed? *)
-          List.for_all (fun v ->
-            let found = VarEnv.NameEnv.mem v ae.VarEnv.vars in
-            (if not found then Printf.eprintf "internal error: static %s captures %s, not found in static environment\n"
-              name v);
-            found
-          ) (Freevars.M.keys (Freevars.exp e))
-        end;
+        List.iter (fun v ->
+          if not (VarEnv.NameEnv.mem v ae.VarEnv.vars)
+          then fatal "internal error: static \"%s\": captures \"%s\", not found in static environment\n" name v
+        ) (Freevars.M.keys (Freevars.exp e));
         compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
       FuncDec.closed env sort control name args mk_body return_tys exp.at
   | _ -> assert false
