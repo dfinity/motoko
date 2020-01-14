@@ -1,7 +1,7 @@
 actor A {
-  public shared func ping<X>() : async<X> Int = async <Y> {666;} /*<X>*/; // normal remote function
+  public shared func ping<X <: Scope>() : async<X> Int = async <Y> {666;} /*<X>*/; // normal remote function
 
-  public shared func f<X>() : async<X> (Int,Int) = async <Y> {
+  public shared func f<X <: Scope>() : async<X> (Int,Int) = async <Y> {
     // current scope: Y
     var a : (async<Y> Int) = async 0;
 

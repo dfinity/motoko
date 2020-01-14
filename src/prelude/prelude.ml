@@ -1,5 +1,6 @@
 let prelude =
 {|
+type Scope = prim "Scope";
 type Any = prim "Any";
 type None = prim "None";
 type Null = prim "Null";

@@ -477,7 +477,7 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) typs at =
 
 and infer_inst env tbs typs at =
   match tbs,typs with
-  | {T.bound = T.Scope; _}::tbs', typs' ->
+  | {T.bound; _}::tbs', typs' when T.eq bound = T.Scope ->
     (match env.async with
      | C.NullCap -> error env at "scope required, but non available"
      | C.AwaitCap c
@@ -513,8 +513,8 @@ and check_inst_bounds env tbs inst at =
   );
  *)
   check_typ_bounds env tbs ts inst' at;
-  ts, inst'
-
+  ts
+  
 (* Literals *)
 
 let check_lit_val env t of_string at s =
@@ -873,7 +873,7 @@ and infer_exp'' env exp : T.typ =
           "expected function type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     in
-    let ts, inst' = check_inst_bounds env tbs typs exp.at in
+    let ts = check_inst_bounds env tbs typs exp.at in
     inst.note <- ts;
     let t_arg = T.open_ ts t_arg in
     let t_ret = T.open_ ts t_ret in
