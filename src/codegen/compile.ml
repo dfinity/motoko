@@ -6182,6 +6182,10 @@ and compile_exp (env : E.t) ae exp =
     | ActorOfIdBlob _, [e] ->
       compile_exp env ae e
 
+    | SelfRef _, [] ->
+      SR.Vanilla,
+      Dfinity.get_self_reference env
+
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with
       | Flags.ICMode | Flags.StubMode ->
@@ -6318,12 +6322,12 @@ and compile_exp (env : E.t) ae exp =
       (get_closure_idx ^^ BoxedSmallWord.box env)
       get_k
       get_r
-  | ActorE (i, ds, fs, _) ->
+  | ActorE (ds, fs, _) ->
     SR.Vanilla,
     let captured = Freevars.exp exp in
     let prelude_names = find_prelude_names env in
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
-    then actor_lit env i ds fs exp.at
+    then actor_lit env ds fs exp.at
     else todo_trap env "non-closed actor" (Arrange_ir.exp exp)
   | NewObjE ((Type.Object | Type.Module), fs, _) ->
     SR.Vanilla,
@@ -6712,10 +6716,10 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
     | _ -> ds, e.it in
 
   let find_last_actor (ds,e) = match find_last_expr ds e with
-    | ds1, ActorE (i, ds2, fs, _) ->
-      Some (i, ds1 @ ds2, fs)
-    | ds1, FuncE (_name, _sort, _control, [], [], _, {it = ActorE (i, ds2, fs, _);_}) ->
-      Some (i, ds1 @ ds2, fs)
+    | ds1, ActorE (ds2, fs, _) ->
+      Some (ds1 @ ds2, fs)
+    | ds1, FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, _);_}) ->
+      Some (ds1 @ ds2, fs)
     | _, _ ->
       None
   in
@@ -6726,7 +6730,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
       (* If the last program ends with an actor, then consider this the current actor  *)
       | [(prog, _flavor)] ->
         begin match find_last_actor prog with
-        | Some (i, ds, fs) -> main_actor env ae i ds fs
+        | Some (ds, fs) -> main_actor env ae ds fs
         | None ->
           let (_ae, code) = compile_prog env ae prog in
           code
@@ -6762,7 +6766,7 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Local actor *)
-and actor_lit outer_env this ds fs at =
+and actor_lit outer_env ds fs at =
   let wasm_binary =
     let mod_env = E.mk_global
       (E.mode outer_env)
@@ -6784,14 +6788,11 @@ and actor_lit outer_env this ds fs at =
       (* Compile the prelude *)
       let (ae1, prelude_code) = compile_prelude env ae0 in
 
-      (* Add this pointer *)
-      let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
-
       (* Reverse the fs, to a map from variable to exported name *)
       let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
       (* Compile the declarations *)
-      let (ae3, decls_code) = compile_decs_public env ae2 AllocHow.TopLvl ds v2en Freevars.S.empty in
+      let (ae3, decls_code) = compile_decs_public env ae1 AllocHow.TopLvl ds v2en Freevars.S.empty in
 
       (* Export the public functions *)
       List.iter (export_actor_field env ae3) fs;
@@ -6802,7 +6803,7 @@ and actor_lit outer_env this ds fs at =
     if E.mode mod_env = Flags.ICMode then Dfinity.export_start mod_env start_fi;
     if E.mode mod_env = Flags.StubMode then Dfinity.export_start mod_env start_fi;
 
-    let m = conclude_module mod_env this None in
+    let m = conclude_module mod_env None in
     let (_map, wasm_binary) = Wasm_exts.CustomModuleEncode.encode m in
     wasm_binary in
 
@@ -6837,22 +6838,19 @@ and actor_lit outer_env this ds fs at =
 
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
-and main_actor env ae1 this ds fs =
-  (* Add this pointer *)
-  let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
-
+and main_actor env ae1 ds fs =
   (* Reverse the fs, to a map from variable to exported name *)
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Compile the declarations *)
-  let (ae3, decls_code) = compile_decs_public env ae2 AllocHow.TopLvl ds v2en Freevars.S.empty in
+  let (ae2, decls_code) = compile_decs_public env ae1 AllocHow.TopLvl ds v2en Freevars.S.empty in
 
   (* Export the public functions *)
-  List.iter (export_actor_field env ae3) fs;
+  List.iter (export_actor_field env ae2) fs;
 
   decls_code
 
-and conclude_module env module_name start_fi_o =
+and conclude_module env start_fi_o =
 
   FuncDec.export_async_method env;
 
@@ -6914,7 +6912,7 @@ and conclude_module env module_name start_fi_o =
     { module_;
       dylink = None;
       name = {
-        module_ = Some module_name;
+        module_ = None;
         function_names =
             List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
         locals_names =
@@ -6942,4 +6940,4 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
     | Flags.ICMode | Flags.StubMode -> Dfinity.export_start env start_fi; None
     | Flags.WasmMode | Flags.WASIMode-> Some (nr start_fi) in
 
-  conclude_module env module_name start_fi_o
+  conclude_module env start_fi_o

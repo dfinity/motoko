@@ -204,13 +204,16 @@ and build_fields obj_typ =
       List.map build_field val_fields
     | _ -> assert false
 
+and with_self i typ decs =
+  let_no_shadow (idE i typ) (selfRefE typ) decs
+
 and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
-  let name = match self_id with
-    | Some n -> n.it
-    | None -> "anon-actor-" ^ string_of_pos at.left in
-  I.ActorE (name, ds, fs, obj_typ)
+  let ds' = match self_id with
+    | Some n -> with_self n.it obj_typ ds
+    | None -> ds in
+  I.ActorE (ds', fs, obj_typ)
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in
@@ -305,8 +308,8 @@ and dec' at n d = match d with
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it with
-    | I.VarP i, I.ActorE (_, ds, fs, t) ->
-      I.LetD (p', {e' with it = I.ActorE (i, ds, fs, t)})
+    | I.VarP i, I.ActorE (ds, fs, t) ->
+      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, t)})
     | _ -> I.LetD (p', e')
     end
   | S.VarD (i, e) -> I.VarD (i.it, exp e)
