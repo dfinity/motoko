@@ -330,7 +330,6 @@ and t_dec env dec = { dec with it = t_dec' env dec.it }
 
 and t_dec' env dec' =
   match dec' with
-  | TypD con_id -> TypD con_id
   | LetD (pat,exp) -> LetD (pat,t_exp env exp)
   | VarD (id,exp) -> VarD (id,t_exp env exp)
 

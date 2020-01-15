@@ -126,7 +126,6 @@ and control s = Atom (Arrange_type.control s)
 and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, e) -> "VarD" $$ [id i; exp e]
-  | TypD c -> "TypD" $$ [Arrange_type.con c; kind (Con.kind c)]
 
 and typ_bind (tb : typ_bind) =
   Con.to_string tb.it.con $$ [typ tb.it.bound]

@@ -164,7 +164,6 @@ let tagE i e =
  }
 
 let dec_eff dec = match dec.it with
-  | TypD _ -> T.Triv
   | LetD (_,e) | VarD (_,e) -> eff e
 
 let rec simpl_decs decs = List.concat (List.map simpl_dec decs)

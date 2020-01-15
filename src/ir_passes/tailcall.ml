@@ -231,9 +231,6 @@ and dec' env d =
     let env = bind env i None in
     (fun env1 -> VarD(i,exp env1 e)),
     env
-  | TypD _ ->
-    (fun env -> d.it),
-    env
 
 and block env ds exp =
   let rec decs_aux env ds =
