@@ -17,6 +17,11 @@ type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
 type reply_env = V.value V.cont option
 type reject_env = V.value V.cont option
+type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
+
+type state = actor_env
+
+let initial_state () = ref V.Env.empty
 
 type scope = val_env
 
@@ -37,14 +42,16 @@ type env =
     async : bool;
     caller : V.value;
     self : V.actor_id;
+    actor_env : actor_env;
   }
 
 let adjoin_scope s ve = V.Env.adjoin s ve
-let adjoin_vals c ve = {c with vals = adjoin_scope c.vals ve}
+
+let adjoin_vals c ve = {c with vals = V.Env.adjoin c.vals ve}
 
 let empty_scope = V.Env.empty
 
-let env_of_scope flags flavor ve =
+let env_of_scope flags flavor ae ve =
   { flags;
     flavor;
     vals = ve;
@@ -56,6 +63,7 @@ let env_of_scope flags flavor ve =
     caller = V.Text V.top_id;
     self = V.top_id;
     async = false;
+    actor_env = ae;
   }
 
 let context env = V.Text env.self
@@ -89,7 +97,7 @@ let string_of_arg env = function
 
 (* Debugging aids *)
 
-let last_env = ref (env_of_scope { trace = false; print_depth = 2} Ir.full_flavor empty_scope)
+let last_env = ref (env_of_scope { trace = false; print_depth = 2} Ir.full_flavor (initial_state ()) empty_scope)
 let last_region = ref Source.no_region
 
 let print_exn flags exn =
@@ -329,9 +337,20 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (V.Opt v1)
       | TagPrim i, [v1] ->
         k (V.Variant (i, v1))
-      | (DotPrim n|ActorDotPrim n), [v1] ->
+      | DotPrim n, [v1] ->
         let fs = V.as_obj v1 in
         k (try find n fs with _ -> assert false)
+      | ActorDotPrim n, [v1] ->
+        let id = V.as_text v1 in
+        begin match V.Env.find_opt id !(env.actor_env) with
+        (* not quite correct: On the platform, you can invoke and get a reject *)
+        | None -> trap exp.at "Unkown actor \"%s\"" id
+        | Some actor_value ->
+          let fs = V.as_obj actor_value in
+          match V.Env.find_opt n fs with
+          | None -> trap exp.at "Actor \"%s\ has no method \"%s\"" id n
+          | Some field_value -> k field_value
+        end
       | ArrayPrim (mut, _), vs ->
         let vs' =
           match mut with
@@ -390,7 +409,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | CastPrim _, [v1] ->
         k v1
       | ActorOfIdBlob t, [v1] ->
-        trap exp.at "ActorOfIdBlob not implemented"
+        k v1
       | BlobOfIcUrl, [v1] ->
         trap exp.at "BlobOfIcUrl not implemented" (* FIXME: #1001, call Lib.URL.decode_actor_url *)
       | NumConvPrim (t1, t2), vs ->
@@ -505,8 +524,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let env' = adjoin_vals env0 ve in
     interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
-      define_id env0 id obj;
-      k obj)
+      env.actor_env := V.Env.add self obj !(env.actor_env);
+      let id_value = V.Text self in
+      define_id env0 id id_value;
+      k id_value)
   | NewObjE (sort, fs, _) ->
     k (interpret_fields env fs)
 
@@ -810,8 +831,8 @@ and interpret_message env at x args f c v (k : V.value V.cont) =
 
 (* Programs *)
 
-let interpret_prog flags scope ((ds, exp), flavor) : scope =
-  let env = env_of_scope flags flavor scope in
+let interpret_prog flags state scope ((ds, exp), flavor) : scope =
+  let env = env_of_scope flags flavor state scope in
   trace_depth := 0;
   let ve = ref V.Env.empty in
   try
