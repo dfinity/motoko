@@ -1,6 +1,0 @@
---- array-out-of-bounds.run
-+++ array-out-of-bounds.run-ir
-@@ -1,2 +1 @@
--array-out-of-bounds.mo:7.12-7.17: execution error, index out of bounds
--array-out-of-bounds.mo:11.12-11.17: execution error, index out of bounds
-+(unknown location): execution error, SelfRef not implemented

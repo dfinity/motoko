@@ -1,6 +1,0 @@
---- throw.run
-+++ throw.run-low
-@@ -1,2 +1 @@
--t2 ok
--t3 ok
-+(unknown location): execution error, SelfRef not implemented

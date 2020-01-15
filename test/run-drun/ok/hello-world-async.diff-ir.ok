@@ -1,6 +1,0 @@
---- hello-world-async.run
-+++ hello-world-async.run-ir
-@@ -1,2 +1 @@
--Hello 
--World!
-+(unknown location): execution error, SelfRef not implemented

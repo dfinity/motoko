@@ -1,8 +1,0 @@
---- oneway-throw.run
-+++ oneway-throw.run-ir
-@@ -1,4 +1 @@
--go1
--throws()
--ping()
--go2
-+(unknown location): execution error, SelfRef not implemented

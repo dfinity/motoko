@@ -1,8 +1,0 @@
---- pass-references.run
-+++ pass-references.run-ir
-@@ -1,4 +1 @@
--a
--b
--a
--b
-+(unknown location): execution error, SelfRef not implemented

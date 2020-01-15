@@ -1,1 +1,4 @@
-(unknown location): execution error, SelfRef not implemented
+go1
+throws()
+ping()
+go2

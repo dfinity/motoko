@@ -1,6 +1,0 @@
---- create-then-trap.run
-+++ create-then-trap.run-low
-@@ -1,2 +1 @@
--create-then-trap.mo:10.5-10.17: execution error, assertion failure
--b.bad() called (should not happen)
-+(unknown location): execution error, SelfRef not implemented

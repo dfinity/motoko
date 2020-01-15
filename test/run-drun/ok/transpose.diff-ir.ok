@@ -1,5 +1,0 @@
---- transpose.run
-+++ transpose.run-ir
-@@ -1 +1 @@
--All good
-+(unknown location): execution error, SelfRef not implemented
