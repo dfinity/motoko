@@ -27,24 +27,19 @@ let arg_bind rho a =
   let i' = fresh_id a.it in
   ({a with it = i'}, Renaming.add a.it i' rho)
 
-let rec exp rho e  =
-    {e with it = exp' rho e.it}
+let rec prim rho = function
+  | BreakPrim i -> BreakPrim (id rho i)
+  | p -> p
 
+and exp rho e  =  {e with it = exp' rho e.it}
 and exp' rho e  = match e with
   | VarE i              -> VarE (id rho i)
   | LitE l              -> e
-  | PrimE (p, es)       -> PrimE (p, List.map (exp rho) es)
-  | TupE es             -> TupE (List.map (exp rho) es)
-  | ProjE (e, i)        -> ProjE (exp rho e, i)
+  | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
   | ActorE (i, ds, fs, t)-> let i',rho' = id_bind rho i in
                             let ds', rho'' = decs rho' ds
                             in ActorE (i', ds', fields rho'' fs, t)
-  | DotE (e, i)         -> DotE (exp rho e, i)
-  | ActorDotE (e, i)    -> ActorDotE (exp rho e, i)
   | AssignE (e1, e2)    -> AssignE (lexp rho e1, exp rho e2)
-  | ArrayE (m, t, es)   -> ArrayE (m, t, exps rho es)
-  | IdxE (e1, e2)       -> IdxE (exp rho e1, exp rho e2)
-  | CallE (e1, ts, e2)  -> CallE  (exp rho e1, ts, exp rho e2)
   | BlockE (ds, e1)     -> let ds', rho' = decs rho ds
                            in BlockE (ds', exp rho' e1)
   | IfE (e1, e2, e3)    -> IfE (exp rho e1, exp rho e2, exp rho e3)
@@ -52,13 +47,7 @@ and exp' rho e  = match e with
   | LoopE e1            -> LoopE (exp rho e1)
   | LabelE (i, t, e)    -> let i',rho' = id_bind rho i in
                            LabelE(i', t, exp rho' e)
-  | BreakE (i, e)       -> BreakE(id rho i,exp rho e)
-  | RetE e              -> RetE (exp rho e)
   | AsyncE e            -> AsyncE (exp rho e)
-  | AwaitE e            -> AwaitE (exp rho e)
-  | AssertE e           -> AssertE (exp rho e)
-  | OptE e              -> OptE (exp rho e)
-  | TagE (i, e)         -> TagE (i, exp rho e)
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
@@ -67,7 +56,6 @@ and exp' rho e  = match e with
      let e' = exp rho' e in
      FuncE (x, s, c, tp, p', ts, e')
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
-  | ThrowE e            -> ThrowE (exp rho e)
   | TryE (e, cs)        -> TryE (exp rho e, cases rho cs)
   | SelfCallE (ts, e1, e2, e3) ->
      SelfCallE (ts, exp rho e1, exp rho e2, exp rho e3)

@@ -5807,27 +5807,51 @@ let rec compile_lexp (env : E.t) ae lexp =
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
-  | IdxE (e1, e2)  ->
-    SR.Vanilla,
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    BigNum.to_word32 env ^^
-    Arr.idx env ^^
-    load_ptr
-  | DotE (e, name) ->
-    SR.Vanilla,
-    compile_exp_vanilla env ae e ^^
-    Object.load_idx env e.note.note_typ name
-  | ActorDotE (e, name) ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.Vanilla e ^^
-    Dfinity.actor_public_field env name
   | PrimE (p, es) ->
 
     (* for more concise code when all arguments and result use the same sr *)
     let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
 
     begin match p, es with
+    (* Calls *)
+    | CallPrim _, [e1; e2] ->
+      let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
+      let n_args = List.length arg_tys in
+      let return_arity = match control with
+        | Type.Returns -> List.length ret_tys
+        | Type.Replies -> 0
+        | Type.Promises -> assert false in
+
+      StackRep.of_arity return_arity,
+      let fun_sr, code1 = compile_exp env ae e1 in
+      begin match fun_sr, sort with
+       | SR.StaticThing (SR.StaticFun fi), _ ->
+          code1 ^^
+          compile_unboxed_zero ^^ (* A dummy closure *)
+          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
+          G.i (Call (nr fi)) ^^
+          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
+       | _, Type.Local ->
+          let (set_clos, get_clos) = new_local env "clos" in
+          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
+          set_clos ^^
+          get_clos ^^
+          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
+          get_clos ^^
+          Closure.call_closure env n_args return_arity
+       | _, Type.Shared _ ->
+          (* Non-one-shot functions have been rewritten in async.ml *)
+          assert (control = Type.Returns);
+
+          let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
+          let (set_arg, get_arg) = new_local env "arg" in
+          let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
+          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
+          set_meth_pair ^^
+          compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
+
+          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg
+      end
 
     (* Operators *)
 
@@ -5848,7 +5872,58 @@ and compile_exp (env : E.t) ae exp =
       SR.bool,
       compile_exp_as env ae sr e1 ^^
       compile_exp_as env ae sr e2 ^^
+
       code
+    (* Tuples *)
+    | TupPrim, es ->
+      SR.UnboxedTuple (List.length es),
+      G.concat_map (compile_exp_vanilla env ae) es
+    | ProjPrim n, [e1] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e1 ^^ (* offset to tuple (an array) *)
+      Tuple.load_n (Int32.of_int n)
+
+    | OptPrim, [e] ->
+      SR.Vanilla,
+      Opt.inject env (compile_exp_vanilla env ae e)
+    | TagPrim l, [e] ->
+      SR.Vanilla,
+      Variant.inject env l (compile_exp_vanilla env ae e)
+
+    | DotPrim name, [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Object.load_idx env e.note.note_typ name
+    | ActorDotPrim name, [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Dfinity.actor_public_field env name
+
+    | ArrayPrim (m, t), es ->
+      SR.Vanilla,
+      Arr.lit env (List.map (compile_exp_vanilla env ae) es)
+    | IdxPrim, [e1; e2]  ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+      compile_exp_vanilla env ae e2 ^^ (* idx *)
+      BigNum.to_word32 env ^^
+      Arr.idx env ^^
+      load_ptr
+
+    | BreakPrim name, [e] ->
+      let d = VarEnv.get_label_depth ae name in
+      SR.Unreachable,
+      compile_exp_vanilla env ae e ^^
+      G.branch_to_ d
+    | AssertPrim, [e1] ->
+      SR.unit,
+      compile_exp_as env ae SR.bool e1 ^^
+      G.if_ [] G.nop (Dfinity.fail_assert env exp.at)
+    | RetPrim, [e] ->
+      SR.Unreachable,
+      compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
+      FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
+      G.i Return
 
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
@@ -6154,10 +6229,6 @@ and compile_exp (env : E.t) ae exp =
     store_code
   | LitE l ->
     compile_lit env l
-  | AssertE e1 ->
-    SR.unit,
-    compile_exp_as env ae SR.bool e1 ^^
-    G.if_ [] G.nop (Dfinity.fail_assert env exp.at)
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as env ae SR.bool scrut in
     let sr1, code1 = compile_exp env ae e1 in
@@ -6185,75 +6256,12 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_vanilla env ae1 e
       )
     )
-  | BreakE (name, e) ->
-    let d = VarEnv.get_label_depth ae name in
-    SR.Unreachable,
-    compile_exp_vanilla env ae e ^^
-    G.branch_to_ d
   | LoopE e ->
     SR.Unreachable,
     G.loop_ [] (compile_exp_unit env ae e ^^ G.i (Br (nr 0l))
     )
     ^^
    G.i Unreachable
-  | RetE e ->
-    SR.Unreachable,
-    compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
-    FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
-    G.i Return
-  | OptE e ->
-    SR.Vanilla,
-    Opt.inject env (compile_exp_vanilla env ae e)
-  | TagE (l, e) ->
-    SR.Vanilla,
-    Variant.inject env l (compile_exp_vanilla env ae e)
-  | TupE es ->
-    SR.UnboxedTuple (List.length es),
-    G.concat_map (compile_exp_vanilla env ae) es
-  | ProjE (e1,n) ->
-    SR.Vanilla,
-    compile_exp_vanilla env ae e1 ^^ (* offset to tuple (an array) *)
-    Tuple.load_n (Int32.of_int n)
-  | ArrayE (m, t, es) ->
-    SR.Vanilla, Arr.lit env (List.map (compile_exp_vanilla env ae) es)
-  | CallE (e1, _, e2) ->
-    let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
-    let n_args = List.length arg_tys in
-    let return_arity = match control with
-      | Type.Returns -> List.length ret_tys
-      | Type.Replies -> 0
-      | Type.Promises -> assert false in
-
-    StackRep.of_arity return_arity,
-    let fun_sr, code1 = compile_exp env ae e1 in
-    begin match fun_sr, sort with
-     | SR.StaticThing (SR.StaticFun fi), _ ->
-        code1 ^^
-        compile_unboxed_zero ^^ (* A dummy closure *)
-        compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
-        G.i (Call (nr fi)) ^^
-        FakeMultiVal.load env (Lib.List.make return_arity I32Type)
-     | _, Type.Local ->
-        let (set_clos, get_clos) = new_local env "clos" in
-        code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
-        set_clos ^^
-        get_clos ^^
-        compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
-        get_clos ^^
-        Closure.call_closure env n_args return_arity
-     | _, Type.Shared _ ->
-        (* Non-one-shot functions have been rewritten in async.ml *)
-        assert (control = Type.Returns);
-
-        let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
-        let (set_arg, get_arg) = new_local env "arg" in
-        let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
-        code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
-        set_meth_pair ^^
-        compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
-
-        FuncDec.ic_call_one_shot env ts get_meth_pair get_arg
-    end
   | SwitchE (e, cs) ->
     SR.Vanilla,
     let code1 = compile_exp_vanilla env ae e in
@@ -6700,7 +6708,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
   let find_last_expr ds e =
     if ds = [] then [], e.it else
     match Lib.List.split_last ds, e.it with
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), TupE [] ->
+    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), PrimE (TupPrim, []) ->
       ds1', e'.it
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), VarE i2 when i1 = i2 ->
       ds1', e'.it
