@@ -292,7 +292,7 @@ and block force_unit ds =
     (decs ds, tupE [])
 
 and decs ds =
-  let is_not_typD d = match d.it with | S.TypD _ -> true | _ -> false in
+  let is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true in
   List.map dec (List.filter is_not_typD ds)
 
 and dec d = { (phrase' dec' d) with note = () }
