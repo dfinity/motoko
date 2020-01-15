@@ -1,4 +1,0 @@
---- multi-caller.run
-+++ multi-caller.run-low
-@@ -0,0 +1 @@
-+(unknown location): execution error, SelfRef not implemented
