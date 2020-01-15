@@ -605,10 +605,11 @@ let interpret_ir_prog libs progs =
   phase "Interpreting" name;
   let open Interpret_ir in
   let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
+  let interpreter_state = initial_state () in 
   let denv0 = empty_scope in
-  let dscope = interpret_prog flags denv0 prelude_ir in
+  let dscope = interpret_prog flags interpreter_state denv0 prelude_ir in
   let denv1 = adjoin_scope denv0 dscope in
-  let _ = interpret_prog flags denv1 prog_ir in
+  let _ = interpret_prog flags interpreter_state denv1 prog_ir in
   ()
 
 let interpret_ir_files files =
