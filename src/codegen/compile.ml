@@ -4260,29 +4260,6 @@ module GC = struct
 
 end (* GC *)
 
-module VarLoc = struct
-  (* A type to record where Motoko names are stored. *)
-  type varloc =
-    (* A Wasm Local of the current function, directly containing the value
-       (note that most values are pointers, but not all)
-       Used for immutable and mutable, non-captured data *)
-    | Local of int32
-    (* A Wasm Local of the current function, that points to memory location,
-       with an offset (in words) to value.
-       Used for mutable captured data *)
-    | HeapInd of (int32 * int32)
-    (* A static mutable memory location (static address of a MutBox field) *)
-    | HeapStatic of int32
-    (* Not materialized (yet), statically known constant *)
-    | Static of SR.static_thing
-
-  let is_non_local : varloc -> bool = function
-    | Local _ -> false
-    | HeapInd _ -> false
-    | HeapStatic _ -> true
-    | Static _ -> true
-end
-
 module StackRep = struct
   open SR
 
@@ -4402,6 +4379,28 @@ module StackRep = struct
 end (* StackRep *)
 
 module VarEnv = struct
+
+  (* A type to record where Motoko names are stored. *)
+  type varloc =
+    (* A Wasm Local of the current function, directly containing the value
+       (note that most values are pointers, but not all)
+       Used for immutable and mutable, non-captured data *)
+    | Local of int32
+    (* A Wasm Local of the current function, that points to memory location,
+       with an offset (in words) to value.
+       Used for mutable captured data *)
+    | HeapInd of (int32 * int32)
+    (* A static mutable memory location (static address of a MutBox field) *)
+    | HeapStatic of int32
+    (* Not materialized (yet), statically known constant *)
+    | Static of SR.static_thing
+
+  let is_non_local : varloc -> bool = function
+    | Local _ -> false
+    | HeapInd _ -> false
+    | HeapStatic _ -> true
+    | Static _ -> true
+
   (*
   The source variable environment:
   In scope variables and in-scope jump labels
@@ -4409,7 +4408,7 @@ module VarEnv = struct
 
   module NameEnv = Env.Make(String)
   type t = {
-    vars : VarLoc.varloc NameEnv.t; (* variables ↦ their location *)
+    vars : varloc NameEnv.t; (* variables ↦ their location *)
     labels : G.depth NameEnv.t; (* jump label ↦ their depth *)
   }
 
@@ -4424,7 +4423,7 @@ module VarEnv = struct
 
   let mk_fun_ae ae = { ae with
     vars = NameEnv.filter (fun v l ->
-      let non_local = VarLoc.is_non_local l in
+      let non_local = is_non_local l in
       (* For debugging, enable this:
       (if not non_local then Printf.eprintf "VarEnv.mk_fun_ae: Removing %s\n" v);
       *)
@@ -4437,11 +4436,11 @@ module VarEnv = struct
       | None   -> Printf.eprintf "Could not find %s\n" var; None
 
   let needs_capture ae var = match lookup_var ae var with
-    | Some l -> not (VarLoc.is_non_local l)
+    | Some l -> not (is_non_local l)
     | None -> assert false
 
   let reuse_local_with_offset (ae : t) name i off =
-      { ae with vars = NameEnv.add name (VarLoc.HeapInd (i, off)) ae.vars }
+      { ae with vars = NameEnv.add name (HeapInd (i, off)) ae.vars }
 
   let add_local_with_offset env (ae : t) name off =
       let i = E.add_anon_local env I32Type in
@@ -4449,13 +4448,13 @@ module VarEnv = struct
       (reuse_local_with_offset ae name i off, i)
 
   let add_local_heap_static (ae : t) name ptr =
-      { ae with vars = NameEnv.add name (VarLoc.HeapStatic ptr) ae.vars }
+      { ae with vars = NameEnv.add name (HeapStatic ptr) ae.vars }
 
   let add_local_static (ae : t) name st =
-      { ae with vars = NameEnv.add name (VarLoc.Static st) ae.vars }
+      { ae with vars = NameEnv.add name (Static st) ae.vars }
 
   let add_local_local env (ae : t) name i =
-      { ae with vars = NameEnv.add name (VarLoc.Local i) ae.vars }
+      { ae with vars = NameEnv.add name (Local i) ae.vars }
 
   let add_direct_local env (ae : t) name =
       let i = E.add_anon_local env I32Type in
@@ -4468,7 +4467,7 @@ module VarEnv = struct
     | (name :: names) ->
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      let ae' = { ae with vars = NameEnv.add name (VarLoc.Local i) ae.vars } in
+      let ae' = { ae with vars = NameEnv.add name (Local i) ae.vars } in
       let (ae_final, setters) = add_argument_locals env ae' names
       in (ae_final, G.i (LocalSet (nr i)) :: setters)
 
@@ -4489,7 +4488,7 @@ module Var = struct
   (* This module is all about looking up Motoko variables in the environment,
      and dealing with mutable variables *)
 
-  open VarLoc
+  open VarEnv
 
   (* Stores the payload (which is found on the stack) *)
   let set_val env ae var = match VarEnv.lookup_var ae var with
@@ -5064,10 +5063,10 @@ module AllocHow = struct
   (* we assume things are mutable, as we do not know better here *)
   let how_of_ae ae : allocHow = M.map (fun l ->
     match l with
-    | VarLoc.Static _ -> Static
-    | VarLoc.HeapStatic _ -> StoreStatic
-    | VarLoc.Local _ -> LocalMut (* conservatively assume immutable *)
-    | VarLoc.HeapInd _ -> StoreHeap
+    | VarEnv.Static _ -> Static
+    | VarEnv.HeapStatic _ -> StoreStatic
+    | VarEnv.Local _ -> LocalMut (* conservatively assume immutable *)
+    | VarEnv.HeapInd _ -> StoreHeap
     ) ae.VarEnv.vars
 
   let decs (ae : VarEnv.t) lvl decs captured_in_body : allocHow =
