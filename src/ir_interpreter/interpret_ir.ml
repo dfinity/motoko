@@ -435,7 +435,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k env.caller
       | SelfRef _, [] ->
         (* essentially k (env.self), but casting id to ref (see ActorOfIdBlob) *)
-        trap exp.at "SelfRef not implemented"
+        k (V.Text env.self)
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
           (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
