@@ -726,7 +726,6 @@ and interpret_block env ro decs exp k =
 
 and declare_dec dec : val_env =
   match dec.it with
-  | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
 
@@ -750,7 +749,6 @@ and interpret_dec env dec k =
       define_id env id (V.Mut (ref v));
       k ()
     )
-  | TypD _ -> k ()
 
 and interpret_decs env decs (k : unit V.cont) =
   match decs with

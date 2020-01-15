@@ -134,9 +134,6 @@ and dec' rho d = match d with
      let i', rho = id_bind rho i in
      (fun rho' -> VarD (i',exp rho' e)),
      rho
-  | TypD c -> (* we don't rename type names *)
-     (fun rho -> d),
-     rho
 
 and decs rho ds =
   let rec decs_aux rho ds =

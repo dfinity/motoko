@@ -79,13 +79,6 @@ and effect_cases cases =
     max_eff e (effect_cases cases')
 
 and effect_dec dec = match dec.it with
-  | TypD _ -> T.Triv
   | LetD (_,e) | VarD (_,e) -> effect_exp e
 
-and infer_effect_dec (dec:Ir.dec) =
-  match dec.it with
-  | LetD (_,e)
-  | VarD (_, e) ->
-    effect_exp e
-  | TypD _ ->
-    T.Triv
+let infer_effect_dec = effect_dec
