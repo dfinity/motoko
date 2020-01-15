@@ -29,22 +29,24 @@ let immute_typ p =
 (* Scope *)
 
 type val_env = T.typ T.Env.t
-type con_env = T.ConSet.t
 
 type scope =
   { val_env : val_env;
-    con_env : con_env;
   }
 
 let empty_scope : scope =
   { val_env = T.Env.empty;
-    con_env = T.ConSet.empty
   }
 
 (* Contexts (internal) *)
 
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
+(* the con_env tracks
+   - which abstract types (type parameters) are in scope
+   - which type aliases we are currently unfolding (to break recursion)
+*)
+type con_env = T.ConSet.t
 
 type env =
   { flavor : Ir.flavor;
@@ -58,7 +60,7 @@ type env =
 let env_of_scope scope flavor : env =
   { flavor;
     vals = scope.Scope.val_env;
-    cons = scope.Scope.con_env;
+    cons = T.ConSet.empty;
     labs = T.Env.empty;
     rets = None;
     async = false;
@@ -91,7 +93,6 @@ let add_typs c cs =
 let adjoin c scope =
   { c with
     vals = T.Env.adjoin c.vals scope.val_env;
-    cons = T.ConSet.(*disjoint_*)union c.cons scope.con_env;
   }
 
 let adjoin_vals c ve = {c with vals = T.Env.adjoin c.vals ve}
@@ -158,37 +159,37 @@ let rec check_typ env typ : unit =
     List.iter (check_typ env) typs
   | T.Func (sort, control, binds, ts1, ts2) ->
     let cs, ce = check_typ_binds env binds in
-    let env' = adjoin_cons env ce in
+    let env = adjoin_cons env ce in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
-    List.iter (check_typ env') ts1;
-    List.iter (check_typ env') ts2;
+    List.iter (check_typ env) ts1;
+    List.iter (check_typ env) ts2;
     if T.is_shared_sort sort then begin
       List.iter (fun t -> check_shared env no_region t) ts1;
       match control with
       | T.Returns ->
-        check env' no_region (sort = T.Shared T.Write)
+        check env no_region (sort = T.Shared T.Write)
           "one-shot query function pointless";
-        check env' no_region (ts2 = [])
+        check env no_region (ts2 = [])
           "one-shot function cannot have non-unit return types:\n  %s"
           (T.string_of_typ_expand (T.seq ts2));
       | T.Promises ->
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
-        check env' no_region (sort <> T.Local)
+        check env no_region (sort <> T.Local)
           "promising function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
-        check env' no_region (List.for_all T.shared ts)
+        check env no_region (List.for_all T.shared ts)
           "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
       | T.Replies ->
         check env no_region (not env.flavor.Ir.has_async_typ)
           "replying function in pre-async flavor";
-        check env' no_region (sort <> T.Local)
+        check env no_region (sort <> T.Local)
           "replying function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
-        check env' no_region (List.for_all T.shared ts)
+        check env no_region (List.for_all T.shared ts)
           "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
     end else
-        check env' no_region (control = T.Returns)
+        check env no_region (control = T.Returns)
           "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
   | T.Opt typ ->
     check_typ env typ
@@ -845,8 +846,7 @@ and check_dec env dec  =
     check_exp env exp;
     typ exp <: T.as_immut t0
   | TypD c ->
-    check (T.ConSet.mem c env.cons) "free type constructor";
-    check_con env c
+    check_con {env with cons = T.ConSet.add c env.cons} c;
 
 and check_decs env decs  =
   List.iter (check_dec env) decs;
@@ -858,30 +858,14 @@ and gather_dec env scope dec : scope =
   match dec.it with
   | LetD (pat, exp) ->
     let ve = gather_pat env scope.val_env pat in
-    let ce' = gather_typ env scope.con_env exp.note.note_typ in
-    { val_env = ve; con_env = ce'}
+    { val_env = ve }
   | VarD (id, exp) ->
     check env dec.at
       (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
     let ve =  T.Env.add id (T.Mut (typ exp)) scope.val_env in
-    { scope with val_env = ve}
-  | TypD c ->
-    check env dec.at
-      (not (T.ConSet.mem c scope.con_env))
-      "duplicate definition of type in block";
-    let ce' = T.ConSet.disjoint_add c scope.con_env in
-    { scope with con_env = ce' }
-
-and gather_typ env ce typ =
-   match typ with
-   | T.Obj(_, fs) ->
-     List.fold_right (fun {T.lab;T.typ = typ1} ce ->
-         match typ1 with
-         | T.Typ c -> T.ConSet.add c ce
-         | _ -> gather_typ env ce typ1
-       ) fs ce
-   | _ -> ce
+    { val_env = ve}
+  | TypD c -> scope
 
 (* Programs *)
 
