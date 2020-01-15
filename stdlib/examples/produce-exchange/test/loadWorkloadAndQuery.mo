@@ -19,7 +19,7 @@ actor class Test() = this {
       // Vary the choice of region count and scaling factor here;
       // Each choice leads to a different count of (InventoryCount, RouteCount), and load time:
       let params = {
-        //scaledParams(2, 2);   // (40,    40   ), loads in 0.7s in my AS intepreter
+        //scaledParams(2, 2);   // (40,    40   ), loads in 0.7s in my AS interpreter
         //scaledParams(5, 5);   // (625  , 625  ), loads in 8.8s in my AS interpreter
         //scaledParams(8, 10);  // (3_200, 3_200), loads in 1:07min in my AS interpreter
         //scaledParams(10, 10); // (5_000, 5_000), loads in 2:13min in my AS interpreter

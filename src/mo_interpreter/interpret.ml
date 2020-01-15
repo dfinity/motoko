@@ -314,6 +314,25 @@ let array_vals a at =
     in k (V.Obj (V.Env.singleton "next" next))
   )
 
+let blob_bytes t at =
+  V.local_func 0 1 (fun c v k ->
+    V.as_unit v;
+    let i = ref 0 in
+    let next =
+      V.local_func 0 1 (fun c v k' ->
+        if !i = String.length t
+        then k' V.Null
+        else let v = V.Opt V.(Word8 (Word8.of_int_u (Char.code (String.get t !i)))) in incr i; k' v
+      )
+    in k (V.Obj (V.Env.singleton "next" next))
+  )
+
+let blob_size t at =
+  V.local_func 0 1 (fun c v k ->
+    V.as_unit v;
+    k (V.Int (V.Nat.of_int (String.length t)))
+  )
+
 let text_chars t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
@@ -446,6 +465,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let f = match id.it with
           | "len" -> text_len
           | "chars" -> text_chars
+          | "size" -> blob_size
+          | "bytes" -> blob_bytes
           | _ -> assert false
         in k (f s exp.at)
       | _ -> assert false

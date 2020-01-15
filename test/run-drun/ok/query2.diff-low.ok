@@ -10,7 +10,7 @@
 -5
 -In read:
 -6
--The following fails in the intepreter, for lack of query semantics
+-The following fails in the interpreter, for lack of query semantics
 -query2.mo:35.4-35.18: execution error, assertion failure
 -6
 +(unknown location): execution error, SelfRef not implemented

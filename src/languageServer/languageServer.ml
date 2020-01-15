@@ -106,7 +106,7 @@ let start entry_point debug =
 
   let vfs = ref Vfs.empty in
   let decl_index =
-    let ix = match Declaration_index.make_index !vfs [entry_point] with
+    let ix = match Declaration_index.make_index log_to_file !vfs [entry_point] with
       | Error(err) ->
         List.iter (fun e -> log_to_file "Error" (Diag.string_of_message e))  err;
         Declaration_index.empty
@@ -179,6 +179,7 @@ let start entry_point debug =
          | Some file_content ->
             let result =
               Hover.hover_handler
+                log_to_file
                 !decl_index
                 position
                 file_content
@@ -216,7 +217,7 @@ let start entry_point debug =
     | (_, `TextDocumentDidClose params) ->
        vfs := Vfs.close_file params !vfs
     | (_, `TextDocumentDidSave _) ->
-       let msgs = match Declaration_index.make_index !vfs [entry_point] with
+       let msgs = match Declaration_index.make_index log_to_file !vfs [entry_point] with
         | Error msgs' -> msgs'
         | Ok((ix, msgs')) ->
            decl_index := ix;
