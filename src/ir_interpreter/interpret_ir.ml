@@ -434,7 +434,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | ICCallerPrim, [] ->
         k env.caller
       | SelfRef _, [] ->
-        (* essentially k (env.self), but casting id to ref (see ActorOfIdBlob) *)
         k (V.Text env.self)
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
