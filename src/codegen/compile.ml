@@ -4284,7 +4284,9 @@ module VarLoc = struct
        Used for mutable captured data *)
     | HeapInd of (int32 * int32)
     (* A static mutable memory location (static address of a MutBox field) *)
-    | Static of int32
+    | HeapStatic of int32
+    (* Not materialized (yet), statically known constant *)
+    | Static of SR.static_thing
     (* Dynamic code to put the value on the heap.
        May be local to the current function or module (see is_local) *)
     | Deferred of deferred_loc
@@ -4292,6 +4294,7 @@ module VarLoc = struct
   let is_non_local : varloc -> bool = function
     | Local _ -> false
     | HeapInd _ -> false
+    | HeapStatic _ -> true
     | Static _ -> true
     | Deferred d -> not d.is_local
 end
@@ -4461,8 +4464,11 @@ module VarEnv = struct
       E.add_local_name env i name;
       (reuse_local_with_offset ae name i off, i)
 
-  let add_local_static (ae : t) name ptr =
-      { ae with vars = NameEnv.add name (VarLoc.Static ptr) ae.vars }
+  let add_local_heap_static (ae : t) name ptr =
+      { ae with vars = NameEnv.add name (VarLoc.HeapStatic ptr) ae.vars }
+
+  let add_local_static (ae : t) name st =
+      { ae with vars = NameEnv.add name (VarLoc.Static st) ae.vars }
 
   let add_local_deferred (ae : t) name stack_rep materialize is_local =
       let open VarLoc in
@@ -4516,12 +4522,13 @@ module Var = struct
       G.i (LocalGet (nr i)) ^^
       get_new_val ^^
       Heap.store_field off
-    | Some (Static ptr) ->
+    | Some (HeapStatic ptr) ->
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
       compile_unboxed_const ptr ^^
       get_new_val ^^
       Heap.store_field 1l
+    | Some (Static _) -> fatal "set_val: %s is static" var
     | Some (Deferred d) -> fatal "set_val: %s is deferred" var
     | None   -> fatal "set_val: %s missing" var
 
@@ -4531,8 +4538,10 @@ module Var = struct
       SR.Vanilla, G.i (LocalGet (nr i))
     | Some (HeapInd (i, off)) ->
       SR.Vanilla, G.i (LocalGet (nr i)) ^^ Heap.load_field off
-    | Some (Static i) ->
+    | Some (HeapStatic i) ->
       SR.Vanilla, compile_unboxed_const i ^^ Heap.load_field 1l
+    | Some (Static st) ->
+      SR.StaticThing st, G.nop
     | Some (Deferred d) ->
       d.stack_rep, d.materialize env
     | None -> assert false
@@ -4580,7 +4589,7 @@ module Var = struct
 
   let get_val_ptr env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd (i, 1l)) -> G.i (LocalGet (nr i))
-    | Some (Static _) -> assert false (* we never do this on the toplevel *)
+    | Some (HeapStatic _) -> assert false (* we never do this on the toplevel *)
     | _  -> field_box env (get_val_vanilla env ae var)
 
 end (* Var *)
@@ -5090,7 +5099,8 @@ module AllocHow = struct
     match l with
     | VarLoc.Deferred d when d.VarLoc.is_local -> LocalMut (* conservatively assumes immutable *)
     | VarLoc.Deferred d -> Static
-    | VarLoc.Static _ -> StoreStatic
+    | VarLoc.Static _ -> Static
+    | VarLoc.HeapStatic _ -> StoreStatic
     | VarLoc.Local _ -> LocalMut (* conservatively assume immutable *)
     | VarLoc.HeapInd _ -> StoreHeap
     ) ae.VarEnv.vars
@@ -5127,7 +5137,7 @@ module AllocHow = struct
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
       let zero = bytes_of_int32 0l in
       let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
-      let ae1 = VarEnv.add_local_static ae name ptr in
+      let ae1 = VarEnv.add_local_heap_static ae name ptr in
       (ae1, G.nop)
 
 end (* AllocHow *)
@@ -6591,16 +6601,14 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
     let fi = match static_thing with
       | SR.StaticMessage fi -> fi
       | _ -> assert false in
-    let pre_ae1 = VarEnv.add_local_deferred pre_ae v
-      (SR.StaticThing (SR.PublicMethod (fi, (E.NameEnv.find v v2en))))
-      (fun _ -> G.nop) false in
+    let st = SR.PublicMethod (fi, (E.NameEnv.find v v2en)) in
+    let pre_ae1 = VarEnv.add_local_static pre_ae v st in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
   (* A special case for static expressions *)
   | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Static ->
     let (static_thing, fill) = compile_static_exp env pre_ae how e in
-    let pre_ae1 = VarEnv.add_local_deferred pre_ae v
-      (SR.StaticThing static_thing) (fun _ -> G.nop) false in
+    let pre_ae1 = VarEnv.add_local_static pre_ae v static_thing in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
   | LetD (p, e) ->
