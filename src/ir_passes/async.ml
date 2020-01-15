@@ -54,7 +54,7 @@ let new_asyncT =
   T.Func (
       T.Local,
       T.Returns,
-      [ { var = "T"; bound = T.Any } ],
+      [ { var = "T"; sort=T.Scope; bound = T.Any } ],
       [],
       new_async_ret unary (T.Var ("T", 0))
     )
@@ -178,10 +178,9 @@ let transform mode env prog =
     | Non -> Non
     | Pre -> Pre
     | Typ c -> Typ (t_con c)
-    | Scope -> Scope
 
-  and t_bind {var; bound} =
-    {var; bound = t_typ bound}
+  and t_bind tb =
+    { tb with bound = t_typ tb.bound }
 
   and t_binds typbinds = List.map t_bind typbinds
 
@@ -456,8 +455,8 @@ let transform mode env prog =
     | AltP (pat1, pat2) ->
       AltP (t_pat pat1, t_pat pat2)
 
-  and t_typ_bind' {con; bound} =
-    {con = t_con con; bound = t_typ bound}
+  and t_typ_bind' tb =
+    { tb with con = t_con tb.con; bound = t_typ tb.bound }
 
   and t_typ_bind typ_bind =
     { typ_bind with it = t_typ_bind' typ_bind.it }

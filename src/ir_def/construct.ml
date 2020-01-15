@@ -476,7 +476,7 @@ let (-->*) xs exp =
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
-  List.map (fun {it = {con; bound}; _} -> {T.var = Con.name con; bound = T.close cs bound}) tbs
+  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Con.name con; sort=sort; bound = T.close cs bound}) tbs
 
 (* polymorphic, n-ary local lambda *)
 let forall tbs e =

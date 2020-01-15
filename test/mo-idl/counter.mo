@@ -13,9 +13,8 @@ actor class Counter(i : Int) {
   public func read() : async Int { c };
 };
 
-// Dummy functions to show intermediate value in trace.
+// Dummy function to show intermediate value in trace.
 func show(note : Text, c : Int) {};
-func showAsync<@>(note : Text, a : async<@> Int) {};
 
 // Create an actor.
 let c = Counter(10);
@@ -35,12 +34,14 @@ ignore testDec();
 func testRead() : async () {
   var i : Int = 10;
   let _ = async {
+    // Dummy function to show intermediate value in trace.
+    func showAsync(note : Text, a : async Int) {};
     while (i > 0) {
       c.dec();
       let t = c.read();
-      showAsync<@>("before", t);
+      showAsync("before", t);
       show("await", await t);
-      showAsync<@>("after", t);
+      showAsync("after", t);
       i -= 1;
     }
   }

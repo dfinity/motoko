@@ -210,7 +210,6 @@ let rec check_typ env typ : unit =
     check_typ env typ
   | T.Typ c ->
     check_con env c
-  | T.Scope -> ()
 
 and check_con env c =
   let env = {env with cons = T.ConSet.add c env.cons} in
@@ -854,7 +853,7 @@ and check_open_typ_bind env typ_bind =
   | _ -> assert false
 
 and close_typ_binds cs tbs =
-  List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
+  List.map (fun {con; sort; bound} -> {Type.var = Con.name con; sort = sort; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)

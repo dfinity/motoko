@@ -256,7 +256,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
           let open Type in
           Obj (Actor,
            [{lab = "go";
-             typ = Func (Shared Write, Promises (Var ("@", 0)), [{var = "@"; bound = Scope}],
+             typ = Func (Shared Write, Promises (Var ("@", 0)), [{var = "@"; sort = Scope; bound = Any}],
                          [], [Obj (Actor, [])])}])
         in
         let sscope = Scope.lib f scaffold_type in

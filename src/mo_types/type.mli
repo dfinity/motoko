@@ -49,10 +49,12 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
-  | Scope                                     (* scope pseudo type *)
   | Pre                                       (* pre-type *)
 
-and bind = {var : var; bound : typ}
+
+and bind_sort = Scope | Type
+and bind = {var : var; sort: bind_sort; bound : typ}
+
 and field = {lab : lab; typ : typ}
 
 and con = kind Con.t

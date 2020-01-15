@@ -314,10 +314,9 @@ and check_typ' env typ : T.typ =
     let c = check_typ_path env path in
     let ts = List.map (check_typ env) typs in
     let T.Def (tbs, _) | T.Abs (tbs, _) = Con.kind c in
-    let tbs' = List.map (fun {T.var; T.bound} -> {T.var; bound = T.open_ ts bound}) tbs in
+    let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
     check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
     T.Con (c, ts)
-  | PrimT "Scope" -> T.Scope
   | PrimT "Any" -> T.Any
   | PrimT "None" -> T.Non
   | PrimT s ->
@@ -330,7 +329,7 @@ and check_typ' env typ : T.typ =
   | TupT typs ->
     T.Tup (List.map (check_typ env) typs)
   | FuncT (sort, binds, typ1, typ2) ->
-    let cs, ts, te, ce = check_typ_binds env binds in
+    let cs, tbs, te, ce = check_typ_binds env binds in
     let env' = adjoin_typs env te ce in
     let env' = infer_scope env' sort.it cs typ2 in
     let typs1 = as_domT typ1 in
@@ -358,8 +357,6 @@ and check_typ' env typ : T.typ =
           "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
       end;
-
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = t}) cs ts in
     T.Func (sort.it, T.map_control (T.close cs) c', T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
     T.Opt (check_typ env typ)
@@ -421,7 +418,7 @@ and check_typ_binds_acyclic env typ_binds cs ts  =
     in chase 0 [] c
   in List.iter2 chase typ_binds cs
 
-and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Scope.con_env =
+and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * Scope.con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs =
     List.map2 (fun x tb ->
@@ -435,7 +432,12 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Sc
       T.Env.add id.it c te
     ) T.Env.empty typ_binds cs in
   let pre_env' = add_typs {env with pre = true} xs cs  in
-  let ts = List.map (fun typ_bind -> check_typ pre_env' typ_bind.it.bound) typ_binds in
+  let tbs = List.map (fun typ_bind ->
+    { T.var = typ_bind.it.var.it;
+      T.sort = if typ_bind.it.var.it = Syntax.scope_id then T.Scope else T.Type; (* HACK *)
+      T.bound = check_typ pre_env' typ_bind.it.bound }) typ_binds
+  in
+  let ts = List.map (fun tb -> tb.T.bound) tbs in
   check_typ_binds_acyclic env typ_binds cs ts;
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
   List.iter2 (fun c k ->
@@ -446,11 +448,11 @@ and check_typ_binds env typ_binds : T.con list * T.typ list * Scope.typ_env * Sc
   let env' = add_typs env xs cs in
   let _ = List.map (fun typ_bind -> check_typ env' typ_bind.it.bound) typ_binds in
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
-  cs, ts, te, T.ConSet.of_list cs
+  cs, tbs, te, T.ConSet.of_list cs
 
-and check_typ_bind env typ_bind : T.con * T.typ * Scope.typ_env * Scope.con_env =
+and check_typ_bind env typ_bind : T.con * T.bind * Scope.typ_env * Scope.con_env =
   match check_typ_binds env [typ_bind] with
-  | [c], [t], te, cs -> c, t, te, cs
+  | [c], [tb], te, cs -> c, tb, te, cs
   | _ -> assert false
 
 and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
@@ -479,7 +481,8 @@ and infer_inst env tbs typs at =
   let ts = List.map (check_typ env) typs in
   let ats = List.map (fun typ -> typ.at) typs in
   match tbs,typs with
-  | {T.bound; _}::tbs', typs' when T.eq bound T.Scope ->
+  | {T.bound; sort = T.Scope; _}::tbs', typs' ->
+    assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
      | C.NullCap -> error env at "scope required, but non available"
      | C.AwaitCap c
@@ -487,6 +490,7 @@ and infer_inst env tbs typs at =
       (T.Con(c,[])::ts, at::ats)
     )
   | tbs', typs' ->
+    assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     ts, ats
 
 and check_inst_bounds env tbs inst at =
@@ -801,7 +805,7 @@ and infer_exp'' env exp : T.typ =
     let sort, ve = check_sort_pat env sort_pat in
     let cT, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort cT ts2;
-    let cs, ts, te, ce = check_typ_binds env typ_binds in
+    let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let env' = infer_scope env' sort cs typ in
     let t1, ve1 = infer_pat_exhaustive env' pat in
@@ -840,8 +844,7 @@ and infer_exp'' env exp : T.typ =
       end
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    T.Func (sort, T.map_control (T.close cs) c, tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort, T.map_control (T.close cs) c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, inst, exp2) ->
     let typs = inst.it in
     let t1 = infer_exp_promote env exp1 in
@@ -1751,7 +1754,11 @@ and gather_dec env scope dec : Scope.t =
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error env dec.at "duplicate definition for type %s in block" id.it;
-    let pre_tbs = List.map (fun bind -> {T.var = bind.it.var.it; bound = T.Pre}) binds in
+    let pre_tbs = List.map (fun bind ->
+                      {T.var = bind.it.var.it;
+                       T.sort = if bind.it.var.it = scope_id then T.Scope else T.Type;
+                       T.bound = T.Pre}
+                    ) binds in
     let pre_k = T.Abs (pre_tbs, T.Pre) in
     let c = match id.note with
       | None -> let c = Con.fresh id.it pre_k in id.note <- Some c; c
@@ -1825,11 +1832,10 @@ and infer_dec_typdecs env dec : Scope.t =
     Scope.empty
   | TypD (id, binds, typ) ->
     let c = T.Env.find id.it env.typs in
-    let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
+    let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs env te ce in
     let t = check_typ env' typ in
-    let tbs = List.map2 (fun c' t -> {T.var = Con.name c'; bound = T.close cs t}) cs ts in
-    let k = T.Def (tbs, T.close cs t) in
+    let k = T.Def (T.close_binds cs tbs, T.close cs t) in
     begin
       let is_typ_param c =
         match Con.kind c with
@@ -1852,14 +1858,13 @@ and infer_dec_typdecs env dec : Scope.t =
     }
   | ClassD (id, binds, pat, _typ_opt, sort, self_id, fields) ->
     let c = T.Env.find id.it env.typs in
-    let cs, ts, te, ce = check_typ_binds {env with pre = true} binds in
+    let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs {env with pre = true} te ce in
     let _, ve = infer_pat env' pat in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ in
     let t = infer_obj env'' sort.it fields dec.at in
-    let tbs = List.map2 (fun c' t -> {T.var = Con.name c'; bound = T.close cs t}) cs ts in
-    let k = T.Def (tbs, T.close cs t) in
+    let k = T.Def (T.close_binds cs tbs, T.close cs t) in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
@@ -1925,14 +1930,13 @@ and infer_dec_valdecs env dec : Scope.t =
     if sort.it = T.Actor && not (is_unit_pat pat) then
       error_in [Flags.StubMode] env dec.at
         "actor classes with parameters are not supported; use an actor declaration instead";
-    let cs, ts, te, ce = check_typ_binds env typ_binds in
+    let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let t2 = T.Con (c, List.map (fun c -> T.Con (c, [])) cs) in
-    let tbs = List.map2 (fun c t -> {T.var = Con.name c; bound = T.close cs t}) cs ts in
-    let t = T.Func (T.Local, T.Returns, tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
+    let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs, List.map (T.close cs) ts1, [T.close cs t2]) in
     Scope.{ empty with
       val_env = T.Env.singleton id.it t;
       typ_env = T.Env.singleton id.it c;

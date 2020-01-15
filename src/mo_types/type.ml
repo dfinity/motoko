@@ -52,10 +52,11 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
-  | Scope                                     (* Scope pseudo type *)
   | Pre                                       (* pre-type *)
 
-and bind = {var : var; bound : typ}
+and bind_sort = Scope | Type
+
+and bind = {var : var; sort: bind_sort; bound : typ}
 and field = {lab : lab; typ : typ}
 
 and con = kind Con.t
@@ -188,10 +189,9 @@ let rec shift i n t =
   | Non -> Non
   | Pre -> Pre
   | Typ c -> Typ c
-  | Scope -> Scope
 
-and shift_bind i n {var; bound} =
-  {var; bound = shift i n bound}
+and shift_bind i n tb =
+  {tb with bound = shift i n tb.bound}
 
 and shift_field i n {lab; typ} =
   {lab; typ = shift i n typ}
@@ -240,10 +240,9 @@ let rec subst sigma t =
                       type parameter cannot mention that parameter
                       (but can mention other (closed) type constructors).
                     *)
-  | Scope -> Scope
 
-and subst_bind sigma {var; bound} =
-  {var; bound = subst sigma bound}
+and subst_bind sigma tb =
+  { tb with bound = subst sigma tb.bound}
 
 and subst_field sigma {lab; typ} =
   {lab; typ = subst sigma typ}
@@ -269,7 +268,7 @@ let close cs t =
 
 let close_binds cs tbs =
   if cs = [] then tbs else
-  List.map (fun {var; bound} -> {var; bound = close cs bound}) tbs
+  List.map (fun tb -> { tb with bound = close cs tb.bound })  tbs
 
 
 let rec open' i ts t =
@@ -291,10 +290,9 @@ let rec open' i ts t =
   | Non -> Non
   | Pre -> Pre
   | Typ c -> Typ c
-  | Scope -> Scope
 
-and open_bind i ts {var; bound} =
-  {var; bound = open' i ts bound}
+and open_bind i ts tb  =
+  {tb with bound = open' i ts tb.bound}
 
 and open_field i ts {lab; typ} =
   {lab; typ = open' i ts typ}
@@ -426,7 +424,7 @@ let as_pair_sub t = match promote t with
   | _ -> invalid "as_pair_sub"
 let as_func_sub default_s default_arity t = match promote t with
   | Func (s, c, tbs, ts1, ts2) -> s, tbs, seq ts1, codom c ts2
-  | Non -> default_s, Lib.List.make default_arity {var = "X"; bound = Any}, Any, Non
+  | Non -> default_s, Lib.List.make default_arity {var = "X"; sort = Type; bound = Any}, Any, Non
   | _ -> invalid "as_func_sub"
 let as_mono_func_sub t = match promote t with
   | Func (_, _, [], ts1, ts2) -> seq ts1, seq ts2
@@ -469,15 +467,13 @@ let rec span = function
   | Mut t -> span t
   | Non -> Some 0
   | Typ _ -> Some 1
-  | Scope -> Some 0
-
 
 (* Avoiding local constructors *)
 
 exception Unavoidable of con
 
 let rec avoid' cons seen = function
-  | (Prim _ | Var _ | Any | Non | Pre | Scope) as t -> t
+  | (Prim _ | Var _ | Any | Non | Pre) as t -> t
   | Con (c, ts) ->
     if ConSet.mem c seen then raise (Unavoidable c) else
     if ConSet.mem c cons then
@@ -506,10 +502,9 @@ let rec avoid' cons seen = function
   | Mut t -> Mut (avoid' cons seen t)
   | Typ c ->
     if ConSet.mem c cons then raise (Unavoidable c) else Typ c (* TBR *)
-  
 
-and avoid_bind cons seen {var; bound} =
-  {var; bound = avoid' cons seen bound}
+and avoid_bind cons seen tb=
+  { tb with bound = avoid' cons seen tb.bound}
 
 and avoid_field cons seen {lab; typ} =
   {lab; typ = avoid' cons seen typ}
@@ -536,7 +531,7 @@ let avoid cons t =
 let rec cons t cs =
   match t with
   | Var _ ->  cs
-  | (Prim _ | Any | Non | Pre | Scope) -> cs
+  | (Prim _ | Any | Non | Pre ) -> cs
   | Con (c, ts) ->
     List.fold_right cons ts (ConSet.add c cs)
   | (Opt t | Mut t | Array t) ->
@@ -552,8 +547,8 @@ let rec cons t cs =
     List.fold_right cons_field fs cs
   | Typ c -> ConSet.add c cs
 
-and cons_bind {var; bound} cs =
-  cons bound cs
+and cons_bind tb cs =
+  cons tb.bound cs
 
 and cons_field {lab; typ} cs =
   cons typ cs
@@ -582,7 +577,7 @@ let concrete t =
       seen := S.add t !seen;
       match t with
       | Var _ | Pre -> assert false
-      | Prim _ | Any | Non | Scope -> true
+      | Prim _ | Any | Non -> true
       | Con (c, ts) ->
         (match Con.kind c with
         | Abs _ -> false
@@ -608,7 +603,7 @@ let shared t =
       seen := S.add t !seen;
       match t with
       | Var _ | Pre -> assert false
-      | Prim Error | Scope -> false
+      | Prim Error -> false
       | Any | Non | Prim _ | Typ _ -> true
       | Async _ | Mut _ -> false
       | Con (c, ts) ->
@@ -635,7 +630,7 @@ let find_unshared t =
       seen := S.add t !seen;
       match t with
       | Var _ | Pre -> assert false
-      | Prim Error | Scope -> Some t
+      | Prim Error -> Some t
       | Any | Non | Prim _ | Typ _ -> None
       | Async _ | Mut _ -> Some t
       | Con (c, ts) ->
@@ -748,7 +743,6 @@ let rec rel_typ rel eq t1 t2 =
     eq_typ rel eq t1' t2'
   | Typ c1, Typ c2 ->
     eq_con eq c1 c2
-  | Scope, Scope -> true
   | _, _ -> false
   end
 
@@ -920,7 +914,7 @@ let rec inhabited_typ co t =
   co := S.add t !co;
   match promote t with
   | Pre -> assert false
-  | Non | Scope -> false
+  | Non -> false
   | Any | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> true
   | Mut t' -> inhabited_typ co t'
   | Tup ts -> List.for_all (inhabited_typ co) ts
@@ -972,7 +966,7 @@ let rec lub' lubs glbs t1 t2 =
       Obj (s1, lub_fields lubs glbs tf1 tf2)
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
         s1 = s2 && eq_control c1 c2 && List.(length bs1 = length bs2) &&
-        List.for_all2 (fun b1 b2 -> (b1.bound = Scope) = (b2.bound = Scope)) bs1 bs2 &&
+        List.for_all2 (fun b1 b2 -> b1.sort = b2.sort) bs1 bs2 &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs glb' lub'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
@@ -1046,7 +1040,7 @@ and glb' lubs glbs t1 t2 =
       )
     | Func (s1, c1, bs1, args1, res1), Func (s2, c2, bs2, args2, res2) when
         s1 = s2 && eq_control c1 c2 && List.(length bs1 = length bs2) &&
-        List.for_all2 (fun b1 b2 -> (b1.bound = Scope) = (b2.bound = Scope)) bs1 bs2 &&
+        List.for_all2 (fun b1 b2 -> b1.sort = b2.sort) bs1 bs2 &&
         List.(length args1 = length args2 && length res1 = length res2) ->
       combine_func_parts s1 c1 bs1 args1 res1 bs2 args2 res2 lubs glbs lub' glb'
     | Async (t11, t12), Async (t21, t22) when eq t11 t21 ->
@@ -1183,7 +1177,6 @@ let rec string_of_typ_nullary vs = function
   | Pre -> "???"
   | Any -> "Any"
   | Non -> "None"
-  | Scope -> "Scope"
   | Prim p -> string_of_prim p
   | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> assert false)
   | Con (c, []) -> string_of_con' vs c
@@ -1258,11 +1251,10 @@ and can_omit n t =
       | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go i f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         let i' = i+List.length tbs in
-        List.for_all (fun {var;bound} -> (go i' bound)) tbs &&
+        List.for_all (fun tb -> (go i' tb.bound)) tbs &&
         List.for_all (go i') ts1  &&
         List.for_all (go i') ts2
       | Typ c -> true (* assuming type defs are closed *)
-      | Scope -> true
     end
   in go n t
 

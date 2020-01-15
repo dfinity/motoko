@@ -229,7 +229,7 @@ and typ_bind tb =
     | Some c -> c
     | _ -> assert false
   in
-  { it = { Ir.con = c; Ir.bound = tb.it.S.bound.note}
+  { it = { Ir.con = c; Ir.sort = T.Type; Ir.bound = tb.it.S.bound.note}
   ; at = tb.at
   ; note = ()
   }
@@ -243,7 +243,7 @@ and array_dotE array_ty proj e =
       if T.is_mut (T.as_array array_ty)
       then T.Array (T.Mut varA)
       else T.Array varA in
-    let ty_param = {T.var = "A"; T.bound = T.Any} in
+    let ty_param = {T.var = "A"; sort = T.Type; T.bound = T.Any} in
     let f = idE name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
     callE f [element_ty] e in
   match T.is_mut (T.as_array array_ty), proj with

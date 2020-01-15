@@ -258,12 +258,12 @@ let scope_id = "@"
 
 let scope_bind() =
   { var = scope_id @@ no_region;
-    bound = PrimT "Scope" @! no_region
+    bound = PrimT "Any" @! no_region
   } @= no_region
 
 let pun_id id =
   { var = id.it @@ no_region;
-    bound = PrimT "Scope" @! no_region
+    bound = PrimT "Any" @! no_region
   } @= no_region
 
 let rec is_scope_typ t =
