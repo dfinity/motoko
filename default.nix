@@ -24,7 +24,9 @@ let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
   ];
 }; in
 
-let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; }; in
+let sources = import ./nix/sources.nix { pkgs = nixpkgs; }; in
+
+let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; inherit sources; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -32,19 +34,11 @@ let subpath = p: import ./nix/gitSource.nix p; in
 
 let dfinity-src =
   let env = builtins.getEnv "DFINITY_SRC"; in
-  if env != "" then env else builtins.fetchGit {
-    name = "dfinity-sources";
-    url = "ssh://git@github.com/dfinity-lab/dfinity";
-    # ref = "master";
-    rev = "947195fb1395eac397b8490fc8000e3afe5ef820";
-  }; in
+  if env != "" then env else sources.dfinity; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
 
-let esm = nixpkgs.fetchzip {
-  sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
-  url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
-}; in
+let inherit (sources) esm; in
 
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
