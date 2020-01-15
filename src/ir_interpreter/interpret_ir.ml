@@ -348,7 +348,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         | Some actor_value ->
           let fs = V.as_obj actor_value in
           match V.Env.find_opt n fs with
-          | None -> trap exp.at "Actor \"%s\ has no method \"%s\"" id n
+          | None -> trap exp.at "Actor \"%s\" has no method \"%s\"" id n
           | Some field_value -> k field_value
         end
       | ArrayPrim (mut, _), vs ->
