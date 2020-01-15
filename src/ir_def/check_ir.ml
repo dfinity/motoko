@@ -845,8 +845,6 @@ and check_dec env dec  =
     check (T.is_mut t0) "variable in VarD is not immutable";
     check_exp env exp;
     typ exp <: T.as_immut t0
-  | TypD c ->
-    check_con {env with cons = T.ConSet.add c env.cons} c;
 
 and check_decs env decs  =
   List.iter (check_dec env) decs;
@@ -865,7 +863,6 @@ and gather_dec env scope dec : scope =
       "duplicate variable definition in block";
     let ve =  T.Env.add id (T.Mut (typ exp)) scope.val_env in
     { val_env = ve}
-  | TypD c -> scope
 
 (* Programs *)
 

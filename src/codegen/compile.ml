@@ -6584,9 +6584,6 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
        (pre_ae, G.with_region dec.at alloc_code, fun ae ->
          G.with_region dec.at (mk_code ae))) @@
   match dec.it with
-  | TypD _ ->
-    (pre_ae, G.nop, fun _ -> G.nop)
-
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->

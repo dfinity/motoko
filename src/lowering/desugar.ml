@@ -278,32 +278,22 @@ and text_dotE proj e =
     |  _ -> assert false
 
 and block force_unit ds =
-  let extra = extra_typDs ds in
   let prefix, last = Lib.List.split_last ds in
   match force_unit, last.it with
   | _, S.ExpD e ->
-    (extra @ List.map dec prefix, exp e)
+    (decs prefix, exp e)
   | false, S.LetD ({it = S.VarP x; _}, e) ->
-    (extra @ List.map dec ds, idE x.it e.note.S.note_typ)
+    (decs ds, idE x.it e.note.S.note_typ)
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
-    (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
+    (decs prefix @ [letD x (exp e'); letP (pat p') x], x)
   | _ , S.IgnoreD _ (* redundant, but explicit *)
   | _, _ ->
-    (extra @ List.map dec ds, tupE [])
+    (decs ds, tupE [])
 
-and extra_typDs ds =
-  match ds with
-  | [] -> []
-  | d::ds ->
-    match d.it with
-    | S.ClassD (id, _, _, _, _, _, _) ->
-      let c = Option.get id.note in
-      let typD = I.TypD c @@ d.at in
-      typD :: extra_typDs ds
-    | _ -> extra_typDs ds
-
-and decs ds = extra_typDs ds @ List.map dec ds
+and decs ds =
+  let is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true in
+  List.map dec (List.filter is_not_typD ds)
 
 and dec d = { (phrase' dec' d) with note = () }
 
@@ -320,9 +310,7 @@ and dec' at n d = match d with
     | _ -> I.LetD (p', e')
     end
   | S.VarD (i, e) -> I.VarD (i.it, exp e)
-  | S.TypD (id, typ_bind, t) ->
-    let c = Option.get id.note in
-    I.TypD c
+  | S.TypD _ -> assert false
   | S.ClassD (id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in

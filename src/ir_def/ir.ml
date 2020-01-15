@@ -136,7 +136,6 @@ and dec = dec' Source.phrase
 and dec' =
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
-  | TypD of Type.con                           (* type *)
 
 (* Literals *)
 
