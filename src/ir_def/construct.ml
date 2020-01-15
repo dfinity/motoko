@@ -104,7 +104,7 @@ let asyncE typ e =
   }
 
 let assertE e =
-  { it = AssertE e;
+  { it = PrimE (AssertPrim, [e]);
     at = no_region;
     note = { note_typ = T.unit; note_eff = eff e}
   }
@@ -145,11 +145,23 @@ let ic_callE f e k r =
 let projE e n =
   match typ e with
   | T.Tup ts ->
-     { it = ProjE (e, n);
+     { it = PrimE (ProjPrim n, [e]);
        note = { note_typ = List.nth ts n; note_eff = eff e };
        at = no_region;
      }
   | _ -> failwith "projE"
+
+let optE e =
+ { it = PrimE (OptPrim, [e]);
+   note = { note_typ = T.Opt (typ e); note_eff = eff e };
+   at = no_region;
+ }
+
+let tagE i e =
+ { it = PrimE (TagPrim i, [e]);
+   note = { note_typ = T.Variant [{T.lab = i; typ = typ e}]; note_eff = eff e };
+   at = no_region;
+ }
 
 let dec_eff dec = match dec.it with
   | TypD _ -> T.Triv
@@ -157,9 +169,9 @@ let dec_eff dec = match dec.it with
 
 let rec simpl_decs decs = List.concat (List.map simpl_dec decs)
 and simpl_dec dec = match dec.it with
-  | LetD ({it = WildP;_}, {it = TupE [];_}) ->
+  | LetD ({it = WildP;_}, {it = PrimE (TupPrim, []);_}) ->
     []
-  | LetD ({it = TupP ps;_}, {it = TupE es;_}) when List.length ps = List.length es ->
+  | LetD ({it = TupP ps;_}, {it = PrimE (TupPrim, es);_}) when List.length ps = List.length es ->
     simpl_decs (List.map2 (fun p e -> LetD (p, e) @@ p.at) ps es)
   | _ ->
     [ dec ]
@@ -189,12 +201,6 @@ let blobE s =
     note = { note_typ = T.blob; note_eff = T.Triv }
   }
 
-let unitE =
-  { it = TupE [];
-    at = no_region;
-    note = { note_typ = T.Tup []; note_eff = T.Triv }
-  }
-
 let boolE b =
   { it = LitE (BoolLit b);
     at = no_region;
@@ -204,7 +210,7 @@ let boolE b =
 let callE exp1 ts exp2 =
   match T.promote (typ exp1) with
   | T.Func (_sort, _control, _, _, ret_tys) ->
-    { it = CallE (exp1, ts, exp2);
+    { it = PrimE (CallPrim ts, [exp1; exp2]);
       at = no_region;
       note = {
         note_typ = T.open_ ts (T.seq ret_tys);
@@ -224,7 +230,7 @@ let ifE exp1 exp2 exp3 typ =
   }
 
 let dotE exp name typ =
-  { it = DotE (exp, name);
+  { it = PrimE (DotPrim name, [exp]);
     at = no_region;
     note = {
       note_typ = typ;
@@ -279,7 +285,7 @@ let switch_variantE exp1 cases typ1 =
 let tupE exps =
   let effs = List.map eff exps in
   let eff = List.fold_left max_eff T.Triv effs in
-  { it = TupE exps;
+  { it = PrimE (TupPrim, exps);
     at = no_region;
     note = {
       note_typ = T.Tup (List.map typ exps);
@@ -287,8 +293,10 @@ let tupE exps =
     }
   }
 
+let unitE = tupE []
+
 let breakE l exp =
-  { it = BreakE (l, exp);
+  { it = PrimE (BreakPrim l, [exp]);
     at = no_region;
     note = {
       note_eff = eff exp;
@@ -297,7 +305,7 @@ let breakE l exp =
   }
 
 let retE exp =
-  { it = RetE exp;
+  { it = PrimE (RetPrim, [exp]);
     at = no_region;
     note = { note_eff = eff exp;
              note_typ = T.Non }
@@ -314,8 +322,8 @@ let immuteE e =
 in the constructor DSL *)
 let lexp_of_exp' = function
   | VarE i -> VarLE i
-  | DotE (e1,n) -> DotLE (e1, n)
-  | IdxE (e1,e2) -> IdxLE (e1, e2)
+  | PrimE (DotPrim n, [e1]) -> DotLE (e1, n)
+  | PrimE (IdxPrim, [e1; e2]) -> IdxLE (e1, e2)
   | _ -> failwith "Impossible: lexp_of_exp"
 
 let lexp_of_exp (e:exp) = { e with it = lexp_of_exp' e.it; note = typ e }
@@ -498,7 +506,7 @@ let (-->*) xs exp =
 let ( -*- ) exp1 exp2 =
   match typ exp1 with
   | T.Func (_, _, [], _, ret_tys) ->
-    { it = CallE (exp1, [], exp2);
+    { it = PrimE (CallPrim [], [exp1; exp2]);
       at = no_region;
       note = {note_typ = T.seq ret_tys;
               note_eff = max_eff (eff exp1) (eff exp2)}

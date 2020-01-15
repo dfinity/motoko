@@ -202,9 +202,11 @@ let transform mode env prog =
       clone
 
   and prim = function
+    | CallPrim typs -> CallPrim (List.map t_typ typs)
     | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
     | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
     | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
+    | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
     | ShowPrim ot -> ShowPrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
     | CastPrim (t1,t2) -> CastPrim (t_typ t1,t_typ t2)
@@ -228,24 +230,8 @@ let transform mode env prog =
     match exp' with
     | LitE _ -> exp'
     | VarE id -> exp'
-    | TupE exps ->
-      TupE (List.map t_exp exps)
-    | OptE exp1 ->
-      OptE (t_exp exp1)
-    | TagE (i, exp1) ->
-      TagE (i, t_exp exp1)
-    | ProjE (exp1, n) ->
-      ProjE (t_exp exp1, n)
-    | DotE (exp1, id) ->
-      DotE (t_exp exp1, id)
-    | ActorDotE (exp1, id) ->
-      ActorDotE (t_exp exp1, id)
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | ArrayE (mut, t, exps) ->
-      ArrayE (mut, t_typ t, List.map t_exp exps)
-    | IdxE (exp1, exp2) ->
-      IdxE (t_exp exp1, t_exp exp2)
     | PrimE (CPSAwait, [a;kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
     | PrimE (CPSAsync, [exp1]) ->
@@ -264,7 +250,7 @@ let transform mode env prog =
                ]
                nary_async
       ).it
-    | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
+    | PrimE (CallPrim typs, [exp1; exp2]) when isAwaitableFunc exp1 ->
       assert (typs = []);
       let ts1,ts2 =
         match typ exp1 with
@@ -287,9 +273,6 @@ let transform mode env prog =
         .it
     | PrimE (p, exps) ->
       PrimE (prim p, List.map t_exp exps)
-    | CallE (exp1, typs, exp2)  ->
-      assert (not (isAwaitableFunc exp1));
-      CallE (t_exp exp1, List.map t_typ typs, t_exp exp2)
     | BlockE b ->
       BlockE (t_block b)
     | IfE (exp1, exp2, exp3) ->
@@ -305,16 +288,8 @@ let transform mode env prog =
       LoopE (t_exp exp1)
     | LabelE (id, typ, exp1) ->
       LabelE (id, t_typ typ, t_exp exp1)
-    | BreakE (id, exp1) ->
-      BreakE (id, t_exp exp1)
-    | RetE exp1 ->
-      RetE (t_exp exp1)
     | AsyncE _
-    | AwaitE _
-    | TryE _
-    | ThrowE _ -> assert false
-    | AssertE exp1 ->
-      AssertE (t_exp exp1)
+    | TryE _ -> assert false
     | DeclareE (id, typ, exp1) ->
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
@@ -355,7 +330,7 @@ let transform mode env prog =
                 [{ it = LetD (
                   { it = WildP; _},
                   ({ it = PrimE (CPSAsync, _); _} as exp)); _ }],
-                { it = TupE []; _});
+                { it = PrimE (TupPrim, []); _});
                 _ } ->
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in

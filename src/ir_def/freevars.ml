@@ -72,32 +72,18 @@ let rec exp e : f = match e.it with
   | VarE i              -> id i
   | LitE l              -> M.empty
   | PrimE (_, es)       -> exps es
-  | TupE es             -> exps es
-  | ProjE (e, i)        -> exp e
-  | DotE (e, i)         -> exp e
-  | ActorDotE (e, i)    -> exp e
   | AssignE (e1, e2)    -> lexp e1 ++ exp e2
-  | ArrayE (m, t, es)   -> exps es
-  | IdxE (e1, e2)       -> exps [e1; e2]
-  | CallE (e1, ts, e2)  -> exps [e1; e2]
   | BlockE (ds, e1)     -> close (decs ds +++ exp e1)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | LoopE e1            -> exp e1
   | LabelE (i, t, e)    -> exp e
-  | BreakE (i, e)       -> exp e
-  | RetE e              -> exp e
   | AsyncE e            -> exp e
-  | AwaitE e            -> exp e
-  | AssertE e           -> exp e
-  | OptE e              -> exp e
-  | TagE (_, e)         -> exp e
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
   | ActorE (ds, fs, _)  -> close (decs ds +++ fields fs)
   | NewObjE (_, fs, _)  -> fields fs
-  | ThrowE e            -> exp e
   | TryE (e, cs)        -> exp e ++ cases cs
   | SelfCallE (_, e1, e2, e3) -> under_lambda (exp e1) ++ exp e2 ++ exp e3
 

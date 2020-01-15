@@ -337,6 +337,22 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | PrimE (p, es) ->
     List.iter (check_exp env) es;
     begin match p, es with
+    | CallPrim insts, [exp1; exp2] ->
+      begin match T.promote (typ exp1) with
+        | T.Func (sort, control, tbs, arg_tys, ret_tys) ->
+          check_inst_bounds env tbs insts exp.at;
+          let t_arg = T.open_ insts (T.seq arg_tys) in
+          let t_ret = T.open_ insts (T.codom control ret_tys) in
+          if T.is_shared_sort sort then begin
+            check_concrete env exp.at t_arg;
+            check_concrete env exp.at t_ret;
+          end;
+          typ exp2 <: t_arg;
+          t_ret <: t
+        | T.Non -> () (* dead code, not much to check here *)
+        | t1 -> error env exp1.at "expected function type, but expression produces type\n  %s"
+             (T.string_of_typ_expand t1)
+      end
     | UnPrim (ot, op), [exp1] ->
       check (Operator.has_unop op ot) "unary operator is not defined for operand type";
       typ exp1 <: ot;
@@ -351,6 +367,85 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: ot;
       typ exp2 <: ot;
       T.bool <: t
+    | TupPrim, exps ->
+      T.Tup (List.map typ exps) <: t
+    | ProjPrim n, [exp1] ->
+      let t1 = T.promote (immute_typ exp1) in
+      let ts = try T.as_tup_sub n t1
+               with Invalid_argument _ ->
+                 error env exp1.at "expected tuple type, but expression produces type\n  %s"
+                   (T.string_of_typ_expand t1) in
+      let tn = try List.nth ts n with
+               | Invalid_argument _ ->
+                 error env exp.at "tuple projection %n is out of bounds for type\n  %s"
+                   n (T.string_of_typ_expand t1) in
+      tn <: t
+    | OptPrim, [exp1] ->
+      T.Opt (typ exp1) <: t
+    | TagPrim i, [exp1] ->
+      T.Variant [{T.lab = i; typ = typ exp1}] <: t
+    | ActorDotPrim n, [exp1]
+    | DotPrim n, [exp1] ->
+      begin
+        let t1 = typ exp1 in
+        let sort, tfs =
+          try T.as_obj_sub [n] t1 with Invalid_argument _ ->
+            error env exp1.at "expected object type, but expression produces type\n  %s"
+              (T.string_of_typ_expand t1)
+        in
+        check (match p with
+               | ActorDotPrim _ -> sort = T.Actor
+               | DotPrim _ -> sort <> T.Actor
+               | _ -> false) "sort mismatch";
+        try T.lookup_val_field n tfs <~ t with Invalid_argument _ ->
+          error env exp1.at "field name %s does not exist in type\n  %s"
+            n (T.string_of_typ_expand t1)
+      end
+    | ArrayPrim (mut, t0), exps ->
+      List.iter (fun e -> typ e <: t0) exps;
+      let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
+      t1 <: t
+    | IdxPrim, [exp1; exp2] ->
+      let t1 = T.promote (typ exp1) in
+      let t2 = try T.as_array_sub t1 with
+               | Invalid_argument _ ->
+                 error env exp1.at "expected array type, but expression produces type\n  %s"
+                                         (T.string_of_typ_expand t1)
+      in
+      typ exp2 <: T.nat;
+      t2 <~ t
+    | BreakPrim id, [exp1] ->
+      begin
+        match T.Env.find_opt id env.labs with
+        | None -> error env exp.at "unbound label %s" id
+        | Some t1 -> typ exp1 <: t1;
+      end;
+      T.Non <: t (* vacuously true *)
+    | RetPrim, [exp1] ->
+      begin
+        match env.rets with
+        | None -> error env exp.at "misplaced return"
+        | Some t0 -> assert (t0 <> T.Pre); typ exp1 <: t0;
+      end;
+      T.Non <: t (* vacuously true *)
+    | ThrowPrim, [exp1] ->
+      check env.flavor.has_await "throw in non-await flavor";
+      check env.async "misplaced throw";
+      typ exp1 <: T.throw;
+      T.Non <: t (* vacuously true *)
+    | AwaitPrim, [exp1] ->
+      check env.flavor.has_await "await in non-await flavor";
+      check env.async "misplaced await";
+      let t1 = T.promote (typ exp1) in
+      let t2 = try T.as_async_sub t1
+               with Invalid_argument _ ->
+                 error env exp1.at "expected async type, but expression has type\n  %s"
+                   (T.string_of_typ_expand t1)
+      in
+      t2 <: t
+    | AssertPrim, [exp1] ->
+      typ exp1 <: T.bool;
+      T.unit <: t
     | ShowPrim ot, [exp1] ->
       check env.flavor.has_show "show expression in non-show flavor";
       check (Show.can_show ot) "show is not defined for operand type";
@@ -419,45 +514,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
       error env exp.at "PrimE %s does not work with %d arguments"
         (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p)) (List.length args);
     end
-  | TupE exps ->
-    List.iter (check_exp env) exps;
-    T.Tup (List.map typ exps) <: t
-  | OptE exp1 ->
-    check_exp env exp1;
-    T.Opt (typ exp1) <: t
-  | TagE (i, exp1) ->
-    check_exp env exp1;
-    T.Variant [{T.lab = i; typ = typ exp1}] <: t
-  | ProjE (exp1, n) ->
-    check_exp env exp1;
-    let t1 = T.promote (immute_typ exp1) in
-    let ts = try T.as_tup_sub n t1
-             with Invalid_argument _ ->
-               error env exp1.at "expected tuple type, but expression produces type\n  %s"
-                 (T.string_of_typ_expand t1) in
-    let tn = try List.nth ts n with
-             | Invalid_argument _ ->
-               error env exp.at "tuple projection %n is out of bounds for type\n  %s"
-                 n (T.string_of_typ_expand t1) in
-    tn <: t
-  | ActorDotE(exp1, n)
-  | DotE (exp1, n) ->
-    begin
-      check_exp env exp1;
-      let t1 = typ exp1 in
-      let sort, tfs =
-        try T.as_obj_sub [n] t1 with Invalid_argument _ ->
-          error env exp1.at "expected object type, but expression produces type\n  %s"
-            (T.string_of_typ_expand t1)
-      in
-      check (match exp.it with
-             | ActorDotE _ -> sort = T.Actor
-             | DotE _ -> sort <> T.Actor
-             | _ -> false) "sort mismatch";
-      try T.lookup_val_field n tfs <~ t with Invalid_argument _ ->
-        error env exp1.at "field name %s does not exist in type\n  %s"
-          n (T.string_of_typ_expand t1)
-    end
   | AssignE (lexp1, exp2) ->
     check_lexp env lexp1;
     check_exp env exp2;
@@ -466,43 +522,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     in
     typ exp2 <: t2;
     T.unit <: t
-  | ArrayE (mut, t0, exps) ->
-    List.iter (check_exp env) exps;
-    List.iter (fun e -> typ e <: t0) exps;
-    let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in
-    t1 <: t
-  | IdxE (exp1, exp2) ->
-    check_exp env exp1;
-    check_exp env exp2;
-    let t1 = T.promote (typ exp1) in
-    let t2 = try T.as_array_sub t1 with
-             | Invalid_argument _ ->
-               error env exp1.at "expected array type, but expression produces type\n  %s"
-                                       (T.string_of_typ_expand t1)
-    in
-    typ exp2 <: T.nat;
-    t2 <~ t
-  | CallE (exp1, insts, exp2) ->
-    check_exp env exp1;
-    check_exp env exp2;
-    let t1 = T.promote (typ exp1) in
-    begin match t1 with
-      | T.Func (sort, control, tbs, arg_tys, ret_tys) ->
-        check_inst_bounds env tbs insts exp.at;
-        check_exp env exp2;
-        let t_arg = T.open_ insts (T.seq arg_tys) in
-        let t_ret = T.open_ insts (T.codom control ret_tys) in
-        if T.is_shared_sort sort then begin
-          check_concrete env exp.at t_arg;
-          check_concrete env exp.at t_ret;
-        end;
-        typ exp2 <: t_arg;
-        t_ret <: t
-      | T.Non -> () (* dead code, not much to check here *)
-      | _ ->
-         error env exp1.at "expected function type, but expression produces type\n  %s"
-           (T.string_of_typ_expand t1)
-    end
   | BlockE (ds, exp1) ->
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in
@@ -540,33 +559,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp (add_lab env id t0) exp1;
     typ exp1 <: t0;
     t0 <: t
-  | BreakE (id, exp1) ->
-    begin
-      match T.Env.find_opt id env.labs with
-      | None ->
-        error env exp.at "unbound label %s" id
-      | Some t1 ->
-        check_exp env exp1;
-        typ exp1 <: t1;
-    end;
-    T.Non <: t (* vacuously true *)
-  | RetE exp1 ->
-    begin
-      match env.rets with
-      | None ->
-        error env exp.at "misplaced return"
-      | Some t0 ->
-        assert (t0 <> T.Pre);
-        check_exp env exp1;
-        typ exp1 <: t0;
-    end;
-    T.Non <: t (* vacuously true *)
-  | ThrowE exp1 ->
-    check env.flavor.has_await "throw in non-await flavor";
-    check env.async "misplaced throw";
-    check_exp env exp1;
-    typ exp1 <: T.throw;
-    T.Non <: t (* vacuously true *)
   | AsyncE exp1 ->
     check env.flavor.has_await "async expression in non-await flavor";
     let t1 = typ exp1 in
@@ -575,21 +567,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env' exp1;
     t1 <: T.Any;
     T.Async t1 <: t
-  | AwaitE exp1 ->
-    check env.flavor.has_await "await in non-await flavor";
-    check env.async "misplaced await";
-    check_exp env exp1;
-    let t1 = T.promote (typ exp1) in
-    let t2 = try T.as_async_sub t1
-             with Invalid_argument _ ->
-               error env exp1.at "expected async type, but expression has type\n  %s"
-                 (T.string_of_typ_expand t1)
-    in
-    t2 <: t
-  | AssertE exp1 ->
-    check_exp env exp1;
-    typ exp1 <: T.bool;
-    T.unit <: t
   | DeclareE (id, t0, exp1) ->
     check_typ env t0;
     let env' = adjoin_vals env (T.Env.singleton id t0) in
