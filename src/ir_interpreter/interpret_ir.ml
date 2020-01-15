@@ -433,6 +433,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         f (V.Tup[vc; kv; rv]) v2 k
       | ICCallerPrim, [] ->
         k env.caller
+      | SelfRef _, [] ->
+        k (V.Text env.self)
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
           (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))
@@ -516,18 +518,16 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> V.Func (cc, f)
     in
     k v
-  | ActorE (id, ds, fs, _) ->
+  | ActorE (ds, fs, _) ->
     let self = V.fresh_id () in
-    let ve0 = declare_id id in
-    let env0 = adjoin_vals {env with self = self} ve0 in
+    let env0 = {env with self = self} in
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env0 ve in
     interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
       env.actor_env := V.Env.add self obj !(env.actor_env);
-      let id_value = V.Text self in
-      define_id env0 id id_value;
-      k id_value)
+      k (V.Text self)
+    )
   | NewObjE (sort, fs, _) ->
     k (interpret_fields env fs)
 

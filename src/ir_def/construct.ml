@@ -91,6 +91,12 @@ let primE prim es =
     note = { note_typ = ty; note_eff = e }
   }
 
+let selfRefE typ =
+  { it = PrimE (SelfRef typ, []);
+    at = no_region;
+    note = { note_typ = typ; note_eff = T.Triv }
+  }
+
 let asyncE typ e =
   { it = PrimE (CPSAsync, [e]);
     at = no_region;
@@ -377,6 +383,14 @@ let varD x exp =
 let expD exp =
   let pat = { it = WildP; at = exp.at; note = exp.note.note_typ } in
   LetD (pat, exp) @@ exp.at
+
+let let_no_shadow x exp decs =
+  let id = id_of_exp x in
+  (* could be replaced by a more simple “defined by this decs” function *)
+  let (_,f) = Freevars.decs decs in
+  if Freevars.S.mem id f
+  then decs
+  else [ letD x exp ] @ decs
 
 (* Derived expressions *)
 

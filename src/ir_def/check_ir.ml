@@ -505,6 +505,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (T.string_of_typ_expand actor_typ)
       end;
       actor_typ <: t;
+    | SelfRef t1, [] ->
+      (* We could additionally keep track of the type of the current actor in
+         the environment and see if this lines up. *)
+      t1 <: t;
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -616,11 +620,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-  | ActorE (id, ds, fs, t0) ->
+  | ActorE (ds, fs, t0) ->
     let env' = { env with async = false } in
-    let ve0 = T.Env.singleton id t0 in
-    let scope1 = List.fold_left (gather_dec env') empty_scope ds in
-    let env'' = adjoin (adjoin_vals env' ve0) scope1 in
+    let scope1 = gather_block_decs env' ds in
+    let env'' = adjoin env' scope1 in
     check_decs env'' ds;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
