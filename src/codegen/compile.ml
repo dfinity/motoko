@@ -4261,18 +4261,6 @@ module GC = struct
 end (* GC *)
 
 module VarLoc = struct
-  (* Most names are stored in heap locations or in locals.
-     But some are special (static functions, the current actor, static messages of
-     the current actor). These have no real location (yet), but we still need to
-     produce a value on demand:
-   *)
-
-  type deferred_loc =
-    { stack_rep : SR.t
-    ; materialize : E.t -> G.t
-    ; is_local : bool (* Only valid within the current function *)
-    }
-
   (* A type to record where Motoko names are stored. *)
   type varloc =
     (* A Wasm Local of the current function, directly containing the value
@@ -4287,16 +4275,12 @@ module VarLoc = struct
     | HeapStatic of int32
     (* Not materialized (yet), statically known constant *)
     | Static of SR.static_thing
-    (* Dynamic code to put the value on the heap.
-       May be local to the current function or module (see is_local) *)
-    | Deferred of deferred_loc
 
   let is_non_local : varloc -> bool = function
     | Local _ -> false
     | HeapInd _ -> false
     | HeapStatic _ -> true
     | Static _ -> true
-    | Deferred d -> not d.is_local
 end
 
 module StackRep = struct
@@ -4470,11 +4454,6 @@ module VarEnv = struct
   let add_local_static (ae : t) name st =
       { ae with vars = NameEnv.add name (VarLoc.Static st) ae.vars }
 
-  let add_local_deferred (ae : t) name stack_rep materialize is_local =
-      let open VarLoc in
-      let d = {stack_rep; materialize; is_local} in
-      { ae with vars = NameEnv.add name (VarLoc.Deferred d) ae.vars }
-
   let add_local_local env (ae : t) name i =
       { ae with vars = NameEnv.add name (VarLoc.Local i) ae.vars }
 
@@ -4529,7 +4508,6 @@ module Var = struct
       get_new_val ^^
       Heap.store_field 1l
     | Some (Static _) -> fatal "set_val: %s is static" var
-    | Some (Deferred d) -> fatal "set_val: %s is deferred" var
     | None   -> fatal "set_val: %s missing" var
 
   (* Returns the payload (optimized representation) *)
@@ -4542,8 +4520,6 @@ module Var = struct
       SR.Vanilla, compile_unboxed_const i ^^ Heap.load_field 1l
     | Some (Static st) ->
       SR.StaticThing st, G.nop
-    | Some (Deferred d) ->
-      d.stack_rep, d.materialize env
     | None -> assert false
 
   (* Returns the payload (vanilla representation) *)
@@ -4567,15 +4543,6 @@ module Var = struct
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let (ae2, j) = VarEnv.add_local_with_offset new_env ae1 var off in
-        let restore_code = G.i (LocalSet (nr j))
-        in (ae2, restore_code)
-      )
-    | Some (Deferred d) ->
-      assert d.is_local;
-      ( d.materialize old_env ^^
-        StackRep.adjust old_env d.stack_rep SR.Vanilla
-      , fun new_env ae1 ->
-        let (ae2, j) = VarEnv.add_direct_local new_env ae1 var in
         let restore_code = G.i (LocalSet (nr j))
         in (ae2, restore_code)
       )
@@ -5097,8 +5064,6 @@ module AllocHow = struct
   (* we assume things are mutable, as we do not know better here *)
   let how_of_ae ae : allocHow = M.map (fun l ->
     match l with
-    | VarLoc.Deferred d when d.VarLoc.is_local -> LocalMut (* conservatively assumes immutable *)
-    | VarLoc.Deferred d -> Static
     | VarLoc.Static _ -> Static
     | VarLoc.HeapStatic _ -> StoreStatic
     | VarLoc.Local _ -> LocalMut (* conservatively assume immutable *)
