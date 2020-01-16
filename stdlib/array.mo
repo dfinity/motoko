@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import Buf "mo:buf.mo";
+import Buf "buf.mo";
 module {
   public func equals<A>(a : [A], b : [A], eq : (A,A) -> Bool) : Bool {
     if (a.len() != b.len()) { 
