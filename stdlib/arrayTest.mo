@@ -188,6 +188,28 @@ Prelude.printLn("Array");
 };
 
 {
+  Prelude.printLn("  mapFilter");
+
+  let pairThird = func (x : Int) : ?(Int, Int) {
+    if (x <> 0) { ?(x, x * 3) } else { null };
+  };
+
+  let actual = Array.mapFilter<Int, Bool>(pairThird, [ 0, 1, 0, 3, 0, 5, 6 ]);
+  let expected = [ null, ?(1, 0), null, ?(3, 1), null, ?(5, 1), ?(6, 2) ];
+
+  assert(actual.len() == expected.len());
+
+  // assert( for all i, actual[i] = expected[i] ):
+  for (i in actual.keys()) {
+    switch(actual[i], expected[i]) {
+      case (null, null) { assert true };
+      case (?(a,b), ?(aa,bb)) { assert a == aa; assert b == bb; };
+      case _ { assert false };
+    }
+  };
+};
+
+{
   Prelude.printLn("  mapWithIndex");
 
   let isEven = func (x : Int) : Bool {

@@ -1,4 +1,5 @@
 import Prim "mo:prim";
+import Buf "mo:buf.mo";
 module {
   public func equals<A>(a : [A], b : [A], eq : (A,A) -> Bool) : Bool {
     if (a.len() != b.len()) { 
@@ -15,20 +16,10 @@ module {
   };
 
   public func append<A>(xs : [A], ys : [A]) : [A] {
-    switch(xs.len(), ys.len()) {
-      case (0, 0) { []; };
-      case (0, _) { ys; };
-      case (_, 0) { xs; };
-      case (xsLen, ysLen) {
-        Prim.Array_tabulate<A>(xsLen + ysLen, func (i : Nat) : A {
-          if (i < xsLen) {
-            xs[i];
-          } else {
-            ys[i - xsLen];
-          };
-        });
-      };
-    };
+    let b = Buf(xs.len() + ys.len());
+    b.append(xs);
+    b.append(ys);
+    b.toArray()
   };
 
   public func apply<A, B>(fs : [A -> B], xs : [A]) : [B] {
@@ -54,13 +45,23 @@ module {
   };
 
   public func filter<A>(f : A -> Bool, xs : [A]) : [A] {
-    var ys : [A] = [];
-    for (x in xs.vals()) {
-      if (f(x)) {
-        ys := append<A>(ys, [x]);
-      };
+    let b = Buf(xs.len());
+    for (i in xs.keys()) {
+      let x = xs[i];
+      if f(x) { b.add(x) };
     };
-    ys;
+    b.toArray()
+  };
+
+  public func mapFilter<A, B>(f : A -> ?B, xs : [A]) : [B] {
+    let b = Buf(xs.len());
+    for (i in xs.keys()) {
+      switch (f(xs[i])) {
+      case null { };
+      case (?y) { b.add(y) }
+      }
+    };
+    b.toArray()
   };
 
   public func foldl<A, B>(f : (B, A) -> B, initial : B, xs : [A]) : B {

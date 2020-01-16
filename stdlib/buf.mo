@@ -1,6 +1,5 @@
 import P "prelude.mo";
 import I "iter.mo";
-import A "array.mo";
 
 module {
 
