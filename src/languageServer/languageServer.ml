@@ -102,6 +102,7 @@ let start entry_point debug =
   let shutdown = ref false in
   let client_capabilities = ref None in
   let project_root = Sys.getcwd () in
+  let _ = log_to_file "project_root" project_root in
   let files_with_diags = ref [] in
 
   let vfs = ref Vfs.empty in
@@ -218,8 +219,9 @@ let start entry_point debug =
        vfs := Vfs.close_file params !vfs
     | (_, `TextDocumentDidSave _) ->
        let msgs = match Declaration_index.make_index log_to_file !vfs [entry_point] with
-        | Error msgs' -> msgs'
+        | Error msgs' -> List.iter (fun msg -> log_to_file "rebuild_error" (Diag.string_of_message msg)) msgs'; msgs'
         | Ok((ix, msgs')) ->
+           log_to_file "Success!" "Sucessful_rebuild";
            decl_index := ix;
            msgs' in
        let diags_by_file =
