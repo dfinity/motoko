@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 import P "prelude.mo";
 import I "iter.mo";
 
@@ -49,7 +50,7 @@ public class Buf<X> (initCapacity : Nat) {
           initCapacity
         else
           2 * elems.len();
-      let elems2 = A.init<X>(size, elem);
+      let elems2 = Prim.Array_init<X>(size, elem);
       for (i in elems.keys()) {
         elems2[i] := elems[i];
       };
@@ -95,15 +96,14 @@ public class Buf<X> (initCapacity : Nat) {
   };
 
   public func toArray() : [X] =
-    // immutable clone of array
-    A.tabulate<X>(
+    Prim.Array_tabulate<X>(
       elems.len(),
       func(x: Nat): X { elems[x] }
     );
 
   public func toVarArray() : [var X] = {
     if (count == 0) { [var] } else {
-      let a = A.init<X>(count, elems[0]);
+      let a = Prim.Array_init<A>(count, elems[0]);
       for (i in elems.keys()) {
         a[i] := elems[i]
       };
