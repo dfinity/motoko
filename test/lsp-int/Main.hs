@@ -12,11 +12,12 @@ import qualified Control.Exception as Exception
 import           Control.Lens ((^.))
 import           Control.Monad (unless, guard)
 import           Control.Monad.IO.Class (liftIO)
-import           Data.Default
+import           Data.Bifunctor (first)
 import           Data.Maybe (mapMaybe)
 import           Data.Text (Text)
+import qualified Data.Text as Text
 import           Language.Haskell.LSP.Test hiding (message)
-import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..))
+import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..), Location(..), Uri(..), filePathToUri)
 import           Language.Haskell.LSP.Types.Lens (contents, label, detail, message)
 import           System.Directory (setCurrentDirectory, makeAbsolute, removeFile)
 import           System.Environment (getArgs)
@@ -24,19 +25,16 @@ import           System.Exit (exitFailure)
 import           System.FilePath ((</>))
 import           System.IO (hPutStr, stderr)
 import           Test.HUnit.Lang (HUnitFailure(..), formatFailureReason)
-import           Test.Hspec (shouldBe, shouldMatchList)
+import           Test.Hspec (shouldBe, shouldMatchList, shouldContain)
 
 completionTestCase
   :: TextDocumentIdentifier
   -> Position
-  -> [(Text, Maybe Text)]
+  -> ([(Text, Maybe Text)] -> IO ())
   -> Session ()
-completionTestCase doc pos expected = do
+completionTestCase doc pos pred = do
   actual <- getCompletions doc pos
-  liftIO
-    (shouldMatchList
-      (map (\c -> (c^.label, c^.detail)) actual)
-      expected)
+  liftIO (pred (map (\c -> (c^.label, c^.detail)) actual))
 
 hoverTestCase
   :: TextDocumentIdentifier
@@ -46,6 +44,19 @@ hoverTestCase
 hoverTestCase doc pos expected = do
   actual <- getHover doc pos
   liftIO (shouldBe (fmap (^.contents) actual) expected)
+
+definitionsTestCase
+  :: FilePath
+  -> TextDocumentIdentifier
+  -> Position
+  -> [(FilePath, Range)]
+  -> Session ()
+definitionsTestCase project doc pos expected = do
+  response <- getDefinitions doc pos
+  let expected' = map (first (filePathToUri . (project </>))) expected
+  let actual = map (\(Location uri range) -> (uri, range)) response
+  liftIO (shouldMatchList actual expected')
+
 
 -- | Discards all empty diagnostic reports (as those are merely used
 -- to clear out old reports)
@@ -123,8 +134,26 @@ main = do
         withDoc "app.mo" \doc -> do
           hoverTestCase
             doc
-            (Position 7 39)
+            (Position 8 39)
             (plainMarkup "natToWord8 : Nat -> Word8")
+
+        log "Definition tests"
+        withDoc "definitions.mo" \doc -> do
+
+          log "Definition for a function"
+          definitionsTestCase
+            project
+            doc
+            (Position 6 25)
+            [("lib/list.mo", Range (Position 31 14) (Position 31 17))]
+
+          log "Definition for a Class"
+          definitionsTestCase
+            project
+            doc
+            (Position 5 31)
+            [("mydependency/lib.mo", Range (Position 5 17) (Position 5 24))]
+
         log "Completion tests"
         -- Completing top level definitions:
         withDoc "ListClient.mo" \doc -> do
@@ -142,7 +171,7 @@ main = do
             doc
           -- 15 | List.pus|
             (Position 14 14)
-            [("push",Just "<T>(T, List<T>) -> List<T>")]
+            (`shouldMatchList` [("push",Just "<T>(T, List<T>) -> List<T>")])
 
         -- Completing primitives:
         withDoc "ListClient.mo" \doc -> do
@@ -189,7 +218,7 @@ main = do
         withDoc "app.mo" \doc -> do
           -- It knows how to handle package paths for rebuilding, and also
           -- for completions
-          let edit = TextEdit (Range (Position 3 0) (Position 3 0)) "\nimport MyDep \"mo:mydep/broken.mo\""
+          let edit = TextEdit (Range (Position 4 0) (Position 4 0)) "\nimport MyDep \"mo:mydep/broken.mo\""
           _ <- applyEdit doc edit
           sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
           [diag] <- waitForActualDiagnostics
@@ -198,13 +227,13 @@ main = do
         log "Completions from package paths"
         withDoc "app.mo" \doc -> do
           -- Imports the non-broken dependency module
-          let edit2 = TextEdit (Range (Position 3 0) (Position 3 0)) "\nimport MyDep \"mo:mydep/lib.mo\""
-          _ <- applyEdit doc edit2
+          let edit = TextEdit (Range (Position 4 0) (Position 4 0)) "\nimport MyDep \"mo:mydep/lib.mo\""
+          _ <- applyEdit doc edit
           sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
-          let edit3 = TextEdit (Range (Position 4 0) (Position 4 0)) "\nMyDep."
-          _ <- applyEdit doc edit3
+          let edit2 = TextEdit (Range (Position 5 0) (Position 5 0)) "\nMyDep."
+          _ <- applyEdit doc edit2
           completionTestCase
             doc
             -- MyDep.|
-            (Position 5 6)
-            [("print_hello", Just "() -> Text")]
+            (Position 6 6)
+            (`shouldContain` [("print_hello", Just "() -> Text")])
