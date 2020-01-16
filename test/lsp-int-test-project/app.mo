@@ -1,5 +1,6 @@
 import Stack "ListClient.mo";
 import Prim "mo:prim";
+import Entry "entrypoint.mo";
 
 actor {
     func main(): () {
