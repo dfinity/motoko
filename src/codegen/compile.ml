@@ -6596,9 +6596,8 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
 
   (* A special case for constant expressions *)
   | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Const ->
-    let (const, fill) = compile_const_exp env pre_ae e in
-    let pre_ae1 = VarEnv.add_local_const pre_ae v const in
-    ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
+    let (extend, fill) = compile_const_dec env pre_ae dec in
+    ( extend pre_ae, G.nop, fun ae -> fill env ae; G.nop)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
