@@ -1,5 +1,5 @@
-import Array "array.mo";
-import List "list.mo";
+//import Array "array.mo";
+//import List "list.mo";
 
 module {
   public type Iter<T> = {next : () -> ?T};
@@ -59,6 +59,7 @@ module {
     };
   };
 
+/*
   public func fromArray<A>(xs : [A]) : Iter<A> {
     fromList<A>(List.fromArray<A>(xs));
   };
@@ -97,4 +98,5 @@ module {
     }, xs);
     { length = _length; list = List.rev<A>(_list); };
   };
+*/
 }
