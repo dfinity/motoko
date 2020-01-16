@@ -5033,15 +5033,16 @@ module AllocHow = struct
       map_of_set StoreStatic
         (S.inter (set_of_map (M.filter is_local how)) captured)
 
-  let rec is_static_exp exp = match exp.it with
+  let rec is_const_exp exp = match exp.it with
     | FuncE _ -> true
     | VarE _ -> true
     | BlockE (ds, e) ->
-      List.for_all is_static_dec ds && is_static_exp e
+      List.for_all is_const_dec ds && is_const_exp e
     | _ -> false
-  and is_static_dec dec = match dec.it with
+  and is_const_dec dec = match dec.it with
     | VarD _ -> false
-    | LetD (_, e) -> is_static_exp e
+    | LetD ({it = VarP v; _}, e) -> is_const_exp e
+    | LetD _ -> false
 
   let dec lvl how_outer (seen, how0) dec =
     let how_all = disjoint_union how_outer how0 in
@@ -5062,7 +5063,7 @@ module AllocHow = struct
           (top level captures variables will be forced to be static-heap below, via how2)
       *)
       | LetD ({it = VarP _; _}, e) when
-        is_static_exp e &&
+        is_const_exp e &&
         disjoint (Freevars.eager_vars f) (set_of_map (M.filter is_not_const how_all)) &&
         (lvl = TopLvl || disjoint (Freevars.captured_vars f) (set_of_map (M.filter require_closure how_all)))
       -> map_of_set (Const : how) d
@@ -6656,7 +6657,8 @@ and compile_prog env ae (ds, e) =
     let code2 = compile_top_lvl_expr env ae' e in
     (ae', code1 ^^ code2)
 
-and compile_const_exp env pre_ae exp = match exp.it with
+and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
+  match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
       let return_tys = match control with
         | Type.Returns -> res_tys
@@ -6670,14 +6672,13 @@ and compile_const_exp env pre_ae exp = match exp.it with
         compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
       FuncDec.closed env sort control name args mk_body return_tys exp.at
   | BlockE (decs, e) ->
-    let captured = Freevars.captured_vars (Freevars.exp e) in
-    let (ae', alloc_code, mk_code) = compile_decs_open env pre_ae AllocHow.TopLvl decs E.NameEnv.empty captured in
-    assert (G.is_nop alloc_code);
+    let (extend, fill1) = compile_const_decs env pre_ae decs in
+    let ae' = extend pre_ae in
     let (c, fill2) = compile_const_exp env ae' e in
     (c, fun env ae ->
-      let code1 = mk_code ae in
-      assert (G.is_nop code1);
-      fill2 env ae)
+      let ae' = extend ae in
+      fill1 env ae';
+      fill2 env ae')
   | VarE v ->
     let c =
       match VarEnv.lookup_var pre_ae v with
@@ -6686,6 +6687,32 @@ and compile_const_exp env pre_ae exp = match exp.it with
     in
     (c, fun _ _ -> ())
   | _ -> assert false
+
+and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
+  let rec go pre_ae decs = match decs with
+    | []          -> (fun ae -> ae), (fun _ _ -> ())
+    | [dec]       -> compile_const_dec env pre_ae dec
+    | (dec::decs) ->
+        let (extend1, fill1) = compile_const_dec env pre_ae dec in
+        let pre_ae1 = extend1 pre_ae in
+        let (extend2, fill2) = go                    pre_ae1 decs in
+        (fun ae -> extend2 (extend1 ae)),
+        (fun env ae -> fill1 env ae; fill2 env ae) in
+  go pre_ae decs
+
+and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
+  (* This returns a _function_ to extend the VarEnv, instead of doing it, because
+  it needs to be extended twice: Once during the pass that gets the outer, static values
+  (no forward references), and the to implement the `fill`, which compiles the body
+  of functions (may contain forward references.) *)
+  match dec.it with
+  (* This should only contain constants (cf. is_const_exp) *)
+  | LetD ({it = VarP v; _}, e) ->
+    let (const, fill) = compile_const_exp env pre_ae e in
+    (fun ae -> VarEnv.add_local_const ae v const),
+    (fun env ae -> fill env ae)
+
+  | _ -> fatal "compile_const_dec: Unexpected dec form"
 
 and compile_prelude env ae =
   (* Allocate the primitive functions *)
