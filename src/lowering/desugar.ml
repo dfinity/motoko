@@ -68,12 +68,12 @@ and exp' at note = function
     I.PrimE (I.RelPrim (!ot, o), [exp e1; exp e2])
   | S.ShowE (ot, e) ->
     I.PrimE (I.ShowPrim !ot, [exp e])
-  | S.TupE es -> I.TupE (exps es)
-  | S.ProjE (e, i) -> I.ProjE (exp e, i)
-  | S.OptE e -> I.OptE (exp e)
+  | S.TupE es -> (tupE (exps es)).it
+  | S.ProjE (e, i) -> (projE (exp e) i).it
+  | S.OptE e -> (optE (exp e)).it
   | S.ObjE (s, es) ->
     obj at s None es note.I.note_typ
-  | S.TagE (c, e) -> I.TagE (c.it, exp e)
+  | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
   | S.DotE (e, x) when T.is_prim T.Blob e.note.S.note_typ ->
@@ -82,14 +82,14 @@ and exp' at note = function
     (text_dotE  x.it (exp e)).it
   | S.DotE (e, x) ->
     begin match T.as_obj_sub [x.it] e.note.S.note_typ with
-    | T.Actor, _ -> I.ActorDotE (exp e, x.it)
-    | _ -> I.DotE (exp e, x.it)
+    | T.Actor, _ -> I.PrimE (I.ActorDotPrim x.it, [exp e])
+    | _ -> I.PrimE (I.DotPrim x.it, [exp e])
     end
   | S.AssignE (e1, e2) -> I.AssignE (lexp e1, exp e2)
   | S.ArrayE (m, es) ->
     let t = T.as_array note.I.note_typ in
-    I.ArrayE (mut m, T.as_immut t, exps es)
-  | S.IdxE (e1, e2) -> I.IdxE (exp e1, exp e2)
+    I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
+  | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
   | S.FuncE (name, sp, tbs, p, _t_opt, e) ->
     let s, po = match sp.it with
       | T.Local -> (T.Local, None)
@@ -123,12 +123,10 @@ and exp' at note = function
     I.PrimE (I.OtherPrim p, [exp e])
   | S.CallE (e1, inst, e2) ->
     let t = e1.Source.note.S.note_typ in
-    if T.is_non t
-    then unreachableE.it
-    else
-      let inst = List.map (fun t -> t.Source.note) inst in
-      I.CallE (exp e1, inst, exp e2)
-  | S.BlockE [] -> I.TupE []
+    if T.is_non t then unreachableE.it else
+    let inst = List.map (fun t -> t.Source.note) inst in
+    I.PrimE (I.CallPrim inst, [exp e1; exp e2])
+  | S.BlockE [] -> unitE.it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
@@ -141,14 +139,14 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
-  | S.DebugE e -> if !Mo_config.Flags.release_mode then I.TupE [] else (exp e).it
+  | S.DebugE e -> if !Mo_config.Flags.release_mode then unitE.it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
-  | S.BreakE (l, e) -> I.BreakE (l.it, exp e)
-  | S.RetE e -> I.RetE (exp e)
-  | S.ThrowE e -> I.ThrowE (exp e)
+  | S.BreakE (l, e) -> (breakE l.it (exp e)).it
+  | S.RetE e -> (retE (exp e)).it
+  | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE e -> I.AsyncE (exp e)
-  | S.AwaitE e -> I.AwaitE (exp e)
-  | S.AssertE e -> I.AssertE (exp e)
+  | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
+  | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
   | S.AnnotE (e, _) -> assert false
   | S.ImportE (f, ir) ->
     begin match !ir with
@@ -206,13 +204,16 @@ and build_fields obj_typ =
       List.map build_field val_fields
     | _ -> assert false
 
+and with_self i typ decs =
+  let_no_shadow (idE i typ) (selfRefE typ) decs
+
 and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
-  let name = match self_id with
-    | Some n -> n.it
-    | None -> "anon-actor-" ^ string_of_pos at.left in
-  I.ActorE (name, ds, fs, obj_typ)
+  let ds' = match self_id with
+    | Some n -> with_self n.it obj_typ ds
+    | None -> ds in
+  I.ActorE (ds', fs, obj_typ)
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in
@@ -265,7 +266,7 @@ and blob_dotE proj e =
     let f = idE name (fun_ty [T.blob] [fun_ty t1 t2]) in
     callE f [] e in
   match proj with
-    | "len"   -> call "@blob_len"   [] [T.nat]
+    | "size"   -> call "@blob_size"   [] [T.nat]
     | "bytes" -> call "@blob_bytes" [] [T.iter_obj T.(Prim Word8)]
     |  _ -> assert false
 
@@ -280,32 +281,22 @@ and text_dotE proj e =
     |  _ -> assert false
 
 and block force_unit ds =
-  let extra = extra_typDs ds in
   let prefix, last = Lib.List.split_last ds in
   match force_unit, last.it with
   | _, S.ExpD e ->
-    (extra @ List.map dec prefix, exp e)
+    (decs prefix, exp e)
   | false, S.LetD ({it = S.VarP x; _}, e) ->
-    (extra @ List.map dec ds, idE x.it e.note.S.note_typ)
+    (decs ds, idE x.it e.note.S.note_typ)
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
-    (extra @ List.map dec prefix @ [letD x (exp e'); letP (pat p') x], x)
+    (decs prefix @ [letD x (exp e'); letP (pat p') x], x)
   | _ , S.IgnoreD _ (* redundant, but explicit *)
   | _, _ ->
-    (extra @ List.map dec ds, tupE [])
+    (decs ds, tupE [])
 
-and extra_typDs ds =
-  match ds with
-  | [] -> []
-  | d::ds ->
-    match d.it with
-    | S.ClassD (id, _, _, _, _, _, _) ->
-      let c = Option.get id.note in
-      let typD = I.TypD c @@ d.at in
-      typD :: extra_typDs ds
-    | _ -> extra_typDs ds
-
-and decs ds = extra_typDs ds @ List.map dec ds
+and decs ds =
+  let is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true in
+  List.map dec (List.filter is_not_typD ds)
 
 and dec d = { (phrase' dec' d) with note = () }
 
@@ -317,14 +308,12 @@ and dec' at n d = match d with
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it with
-    | I.VarP i, I.ActorE (_, ds, fs, t) ->
-      I.LetD (p', {e' with it = I.ActorE (i, ds, fs, t)})
+    | I.VarP i, I.ActorE (ds, fs, t) ->
+      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, t)})
     | _ -> I.LetD (p', e')
     end
   | S.VarD (i, e) -> I.VarD (i.it, exp e)
-  | S.TypD (id, typ_bind, t) ->
-    let c = Option.get id.note in
-    I.TypD c
+  | S.TypD _ -> assert false
   | S.ClassD (id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in

@@ -31,7 +31,7 @@ actor counter = {
    assert c2 == 4;
    let c3 = await counter.read();
    counter.printCounter();
-   Prim.debugPrint("The following fails in the intepreter, for lack of query semantics");
+   Prim.debugPrint("The following fails in the interpreter, for lack of query semantics");
    assert c3 == 4;
   };
 };

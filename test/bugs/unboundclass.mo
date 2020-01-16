@@ -5,6 +5,6 @@ class Bar () {
 
   let Bar = Foo(g, g);
 
-  private g(n:Int) : Int = n + 1;
+  private func g(n:Int) : Int = n + 1;
 
 }

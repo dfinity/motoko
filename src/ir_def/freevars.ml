@@ -5,10 +5,16 @@ open Ir
 
 (* We want to know:
    Is this variable used (potentially) captured?
-*)
-type usage_info = { captured : bool }
+   Is this variable used eagerly.
 
-let join u1 u2 = { captured = u1.captured || u2.captured }
+   capture = true; eager = false means it is _only_ used under lambdas
+*)
+type usage_info = { captured : bool; eager : bool }
+
+let join u1 u2 = {
+  captured = u1.captured || u2.captured;
+  eager = u1.captured || u2.captured
+}
 
 module M = Env.Make(String)
 module S = Set.Make(String)
@@ -37,6 +43,9 @@ let union_binders f xs = List.fold_left (++++) (M.empty, S.empty) (List.map f xs
 
 let diff f d = M.filter (fun k _ -> not (S.mem k d)) f
 
+let map_of_set x s = S.fold (fun v m -> M.add v x m) s M.empty
+let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
+
 (* The bound variables from the second argument scope over the first *)
 let (///) (x : f) ((f,d) : fd) = f ++ diff x d
 
@@ -46,10 +55,13 @@ let (///) (x : f) ((f,d) : fd) = f ++ diff x d
    Initially, variables are not captured.
    All variables under a lambda become captured.
 *)
-let under_lambda : f -> f = M.map (fun _ -> { captured = true })
+let under_lambda : f -> f = M.map (fun _ -> { captured = true; eager = false })
 
+(* Projections *)
 let captured_vars : f -> S.t =
-  fun f -> S.of_list (List.map fst (List.filter (fun (k,u) -> u.captured) (M.bindings f)))
+  fun f -> set_of_map (M.filter (fun _ u -> u.captured) f)
+let eager_vars : f -> S.t =
+  fun f -> set_of_map (M.filter (fun _ u -> u.eager) f)
 
 (* This closes a combined set over itself (recursion or mutual recursion) *)
 let close (f,d) = diff f d
@@ -57,35 +69,21 @@ let close (f,d) = diff f d
 (* One traversal for each syntactic category, named by that category *)
 
 let rec exp e : f = match e.it with
-  | VarE i              -> M.singleton i {captured = false}
+  | VarE i              -> id i
   | LitE l              -> M.empty
   | PrimE (_, es)       -> exps es
-  | TupE es             -> exps es
-  | ProjE (e, i)        -> exp e
-  | DotE (e, i)         -> exp e
-  | ActorDotE (e, i)    -> exp e
   | AssignE (e1, e2)    -> lexp e1 ++ exp e2
-  | ArrayE (m, t, es)   -> exps es
-  | IdxE (e1, e2)       -> exps [e1; e2]
-  | CallE (e1, ts, e2)  -> exps [e1; e2]
   | BlockE (ds, e1)     -> close (decs ds +++ exp e1)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | LoopE e1            -> exp e1
   | LabelE (i, t, e)    -> exp e
-  | BreakE (i, e)       -> exp e
-  | RetE e              -> exp e
   | AsyncE e            -> exp e
-  | AwaitE e            -> exp e
-  | AssertE e           -> exp e
-  | OptE e              -> exp e
-  | TagE (_, e)         -> exp e
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
-  | ActorE (i, ds, fs, _) -> close (decs ds +++ fields fs) // i
+  | ActorE (ds, fs, _)  -> close (decs ds +++ fields fs)
   | NewObjE (_, fs, _)  -> fields fs
-  | ThrowE e            -> exp e
   | TryE (e, cs)        -> exp e ++ cases cs
   | SelfCallE (_, e1, e2, e3) -> under_lambda (exp e1) ++ exp e2 ++ exp e3
 
@@ -98,7 +96,7 @@ and arg a : fd = (M.empty, S.singleton a.it)
 and args as_ : fd = union_binders arg as_
 
 and lexp le : f = match le.it with
-  | VarLE i              -> M.singleton i {captured = false}
+  | VarLE i              -> id i
   | DotLE (e1, _)        -> exp e1
   | IdxLE (e1, e2)       -> exps [e1; e2]
 
@@ -118,12 +116,11 @@ and case (c : case) = exp c.it.exp /// pat c.it.pat
 
 and cases cs : f = unions case cs
 
-and id i = M.singleton i {captured = false}
+and id i = M.singleton i {captured = false; eager = true}
 
 and dec d = match d.it with
   | LetD (p, e) -> pat p +++ exp e
   | VarD (i, e) -> (M.empty, S.singleton i) +++ exp e
-  | TypD c -> (M.empty, S.empty)
 
 (* The variables captured by a function. May include the function itself! *)
 and captured e =

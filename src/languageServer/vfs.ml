@@ -11,7 +11,8 @@ type t = virtual_file VfsStore.t
 type uri = string
 
 let file_uri_prefix = "file://" ^ Sys.getcwd () ^ "/"
-let uri_from_file path = file_uri_prefix ^ path
+let uri_from_file path =
+  if Filename.is_relative path then file_uri_prefix ^ path else "file://" ^ path
 let file_from_uri logger uri =
   match Lib.String.chop_prefix file_uri_prefix uri with
    | Some file -> file
