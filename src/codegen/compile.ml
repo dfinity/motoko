@@ -42,16 +42,29 @@ let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 exception CodegenError of string
 let fatal fmt = Printf.ksprintf (fun s -> raise (CodegenError s)) fmt
 
+module Const = struct
+
+  (* Constant known values.
+
+     These are values that
+     * are completely known constantly
+     * do not require Wasm code to be be executed (e.g. in `start`)
+     * can be used directly (e.g. Call, not CallIndirect)
+     * can be turned into Vanilla heap data on demand
+     * (future work)
+       vanilla heap representation may be placed in static heap and shared
+  *)
+
+  type t =
+    | Fun of int32
+    | Message of int32 (* anonymous message, only temporary *)
+    | PublicMethod of int32 * string
+
+end (* Const *)
+
 module SR = struct
   (* This goes with the StackRep module, but we need the types earlier *)
 
-  (* Statically known values: They are not put on the stack, but the
-     “stack representation“ carries the static information.
-  *)
-  type static_thing =
-    | StaticFun of int32
-    | StaticMessage of int32 (* anonymous message, only temporary *)
-    | PublicMethod of int32 * string
 
   (* Value representation on the stack:
 
@@ -65,7 +78,7 @@ module SR = struct
     | UnboxedWord64
     | UnboxedWord32
     | Unreachable
-    | StaticThing of static_thing
+    | Const of Const.t
 
   let unit = UnboxedTuple 0
 
@@ -4296,7 +4309,7 @@ module StackRep = struct
     | UnboxedTuple 1 -> [I32Type]
     | UnboxedTuple n ->
       assert false; (* not supported without muti_value *)
-    | StaticThing _ -> []
+    | Const _ -> []
     | Unreachable -> []
 
   let to_string = function
@@ -4305,7 +4318,7 @@ module StackRep = struct
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
-    | StaticThing _ -> "StaticThing"
+    | Const _ -> "StaticThing"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
     | _, _ when sr1 = sr2 -> sr1
@@ -4315,7 +4328,7 @@ module StackRep = struct
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
-    | StaticThing _, StaticThing _ -> Vanilla
+    | Const _, Const _ -> Vanilla
     | _, _ ->
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
@@ -4335,20 +4348,20 @@ module StackRep = struct
     | UnboxedWord64 -> G.i Drop
     | UnboxedWord32 -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
-    | StaticThing _ -> G.nop
+    | Const _ -> G.nop
     | Unreachable -> G.nop
 
   let materialize env = function
-    | StaticFun fi ->
-      (* When accessing a variable that is a static function, then we need to
+    | Const.Fun fi ->
+      (* When accessing a variable that is a constant function, then we need to
          create a heap-allocated closure-like thing on the fly. *)
       Tagged.obj env Tagged.Closure [
         compile_unboxed_const fi;
         compile_unboxed_zero (* number of parameters: none *)
       ]
-    | StaticMessage fi ->
+    | Const.Message fi ->
       assert false
-    | PublicMethod (_, name) ->
+    | Const.PublicMethod (_, name) ->
       Dfinity.get_self_reference env ^^
       Dfinity.actor_public_field env name
 
@@ -4368,8 +4381,8 @@ module StackRep = struct
     | UnboxedWord32, Vanilla -> BoxedSmallWord.box env
     | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env
 
-    | StaticThing s, Vanilla -> materialize env s
-    | StaticThing s, UnboxedTuple 0 -> G.nop
+    | Const s, Vanilla -> materialize env s
+    | Const s, UnboxedTuple 0 -> G.nop
 
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
@@ -4391,15 +4404,16 @@ module VarEnv = struct
        Used for mutable captured data *)
     | HeapInd of (int32 * int32)
     (* A static mutable memory location (static address of a MutBox field) *)
+    (* TODO: Do we need static immutable? *)
     | HeapStatic of int32
     (* Not materialized (yet), statically known constant *)
-    | Static of SR.static_thing
+    | Const of Const.t
 
   let is_non_local : varloc -> bool = function
     | Local _ -> false
     | HeapInd _ -> false
     | HeapStatic _ -> true
-    | Static _ -> true
+    | Const _ -> true
 
   (*
   The source variable environment:
@@ -4450,8 +4464,8 @@ module VarEnv = struct
   let add_local_heap_static (ae : t) name ptr =
       { ae with vars = NameEnv.add name (HeapStatic ptr) ae.vars }
 
-  let add_local_static (ae : t) name st =
-      { ae with vars = NameEnv.add name (Static st) ae.vars }
+  let add_local_const (ae : t) name c =
+      { ae with vars = NameEnv.add name (Const c : varloc) ae.vars }
 
   let add_local_local env (ae : t) name i =
       { ae with vars = NameEnv.add name (Local i) ae.vars }
@@ -4506,7 +4520,7 @@ module Var = struct
       compile_unboxed_const ptr ^^
       get_new_val ^^
       Heap.store_field 1l
-    | Some (Static _) -> fatal "set_val: %s is static" var
+    | Some (Const _) -> fatal "set_val: %s is const" var
     | None   -> fatal "set_val: %s missing" var
 
   (* Returns the payload (optimized representation) *)
@@ -4517,8 +4531,8 @@ module Var = struct
       SR.Vanilla, G.i (LocalGet (nr i)) ^^ Heap.load_field off
     | Some (HeapStatic i) ->
       SR.Vanilla, compile_unboxed_const i ^^ Heap.load_field 1l
-    | Some (Static st) ->
-      SR.StaticThing st, G.nop
+    | Some (Const c) ->
+      SR.Const c, G.nop
     | None -> assert false
 
   (* Returns the payload (vanilla representation) *)
@@ -4595,7 +4609,7 @@ module FuncDec = struct
       | Type.Shared Type.Query -> G.i Nop
       | _ -> assert false
 
-  let compile_static_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
+  let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env [] [] (fun env -> G.with_region at (
       (* reply early for a oneway *)
@@ -4620,12 +4634,12 @@ module FuncDec = struct
     let (fi, fill) = E.reserve_fun pre_env name in
     if Type.is_shared_sort sort
     then begin
-      ( SR.StaticMessage fi, fun env ae ->
-        fill (compile_static_message env ae sort control args mk_body ret_tys at)
+      ( Const.Message fi, fun env ae ->
+        fill (compile_const_message env ae sort control args mk_body ret_tys at)
       )
     end else begin
       assert (control = Type.Returns);
-      ( SR.StaticFun fi, fun env ae ->
+      ( Const.Fun fi, fun env ae ->
         let restore_no_env _env ae _ = (ae, G.nop) in
         fill (compile_local_function env ae restore_no_env args mk_body ret_tys at)
       )
@@ -4704,9 +4718,9 @@ module FuncDec = struct
 
     if captured = []
     then
-      let (st, fill) = closed env sort control name args mk_body ret_tys at in
+      let (c, fill) = closed env sort control name args mk_body ret_tys at in
       fill env ae;
-      (SR.StaticThing st, G.nop)
+      (SR.Const c, G.nop)
     else closure env ae sort control name captured args mk_body ret_tys at
 
   (* Returns the index of a saved closure *)
@@ -4925,7 +4939,7 @@ module AllocHow = struct
   (*
   When compiling a (recursive) block, we need to do a dependency analysis, to
   find out how the things are allocated. The options are:
-  - static: completely known, constant, not stored anywhere (think static function)
+  - const:  completely known, constant, not stored anywhere (think static function)
             (no need to mention in a closure)
   - local:  only needed locally, stored in a Wasm local, immutable
             (can be copied into a closure by value)
@@ -4940,9 +4954,9 @@ module AllocHow = struct
   to avoid turning function references into closures.
 
   The rules are:
-  - functions are static, unless they capture something that is not a static
+  - functions are const, unless they capture something that is not a const
     function or a static heap allocation.
-    in particular, top-level functions are always static
+    in particular, top-level functions are always const
   - everything that is captured on the top-level needs to be statically
     heap-allocated
   - everything that is captured before it is defined, or is captured and mutable
@@ -4956,8 +4970,8 @@ module AllocHow = struct
   (*
   We represent this as a lattice as follows:
   *)
-  type how = Static | LocalImmut | LocalMut | StoreHeap | StoreStatic
-  type allocHow = how M.t (* absent means static *)
+  type how = Const | LocalImmut | LocalMut | StoreHeap | StoreStatic
+  type allocHow = how M.t
 
   let disjoint_union : allocHow -> allocHow -> allocHow =
     M.union (fun v _ _ -> fatal "AllocHow.disjoint_union: %s" v)
@@ -4972,7 +4986,7 @@ module AllocHow = struct
       | _, LocalMut    | LocalMut,    _ -> LocalMut
       | _, LocalImmut  | LocalImmut,  _ -> LocalImmut
 
-      | Static, Static -> Static
+      | Const, Const -> Const
     ))
   let joins = List.fold_left join M.empty
 
@@ -4992,12 +5006,12 @@ module AllocHow = struct
     | LocalMut -> true
     | _ -> false
 
-  let is_not_static _ = function
-    | Static -> false
+  let is_not_const _ : how -> bool = function
+    | Const -> false
     | _ -> true
 
-  let require_closure _ = function
-    | Static -> false
+  let require_closure _ : how -> bool = function
+    | Const -> false
     | StoreStatic -> false
     | _ -> true
 
@@ -5019,7 +5033,7 @@ module AllocHow = struct
       map_of_set StoreStatic
         (S.inter (set_of_map (M.filter is_local how)) captured)
 
-  let is_static_exp exp = match exp.it with
+  let is_const_exp exp = match exp.it with
     | FuncE _ -> true
     | _ -> false
 
@@ -5036,16 +5050,16 @@ module AllocHow = struct
       map_of_set LocalMut d
 
       (* Static expressions on the top-level:
-        - need to be static forms
+        - need to be constant forms
         - all non-captured free variables must be static
         - all captured variables must be static or static-heap, if not on top level
           (top level captures variables will be forced to be static-heap below, via how2)
       *)
       | LetD ({it = VarP _; _}, e) when
-        is_static_exp e &&
-        disjoint (Freevars.eager_vars f) (set_of_map (M.filter is_not_static how_all)) &&
+        is_const_exp e &&
+        disjoint (Freevars.eager_vars f) (set_of_map (M.filter is_not_const how_all)) &&
         (lvl = TopLvl || disjoint (Freevars.captured_vars f) (set_of_map (M.filter require_closure how_all)))
-      -> map_of_set Static d
+      -> map_of_set (Const : how) d
 
 
       (* Everything else needs at least a local *)
@@ -5063,7 +5077,7 @@ module AllocHow = struct
   (* we assume things are mutable, as we do not know better here *)
   let how_of_ae ae : allocHow = M.map (fun l ->
     match l with
-    | VarEnv.Static _ -> Static
+    | VarEnv.Const _ -> (Const : how)
     | VarEnv.HeapStatic _ -> StoreStatic
     | VarEnv.Local _ -> LocalMut (* conservatively assume immutable *)
     | VarEnv.HeapInd _ -> StoreHeap
@@ -5073,7 +5087,7 @@ module AllocHow = struct
     let how_outer = how_of_ae ae in
     let defined_here = snd (Freevars.decs decs) in (* TODO: implement gather_decs more directly *)
     let how_outer = Freevars.diff how_outer defined_here in (* shadowing *)
-    let how0 = map_of_set Static defined_here in
+    let how0 = map_of_set (Const : how) defined_here in
     let captured = S.inter defined_here captured_in_body in
     let rec go how =
       let seen, how1 = List.fold_left (dec lvl how_outer) (S.empty, how) decs in
@@ -5087,7 +5101,7 @@ module AllocHow = struct
      based on how we want to store them. *)
   let add_local env ae how name : VarEnv.t * G.t =
     match M.find name how with
-    | Static -> (ae, G.nop)
+    | (Const : how) -> (ae, G.nop)
     | LocalImmut | LocalMut ->
       let (ae1, i) = VarEnv.add_direct_local env ae name in
       (ae1, G.nop)
@@ -5799,7 +5813,7 @@ and compile_exp (env : E.t) ae exp =
       StackRep.of_arity return_arity,
       let fun_sr, code1 = compile_exp env ae e1 in
       begin match fun_sr, sort with
-       | SR.StaticThing (SR.StaticFun fi), _ ->
+       | SR.Const (Const.Fun fi), _ ->
           code1 ^^
           compile_unboxed_zero ^^ (* A dummy closure *)
           compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
@@ -6565,18 +6579,18 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
-    let (static_thing, fill) = compile_static_exp env pre_ae how e in
-    let fi = match static_thing with
-      | SR.StaticMessage fi -> fi
+    let (const, fill) = compile_const_exp env pre_ae how e in
+    let fi = match const with
+      | Const.Message fi -> fi
       | _ -> assert false in
-    let st = SR.PublicMethod (fi, (E.NameEnv.find v v2en)) in
-    let pre_ae1 = VarEnv.add_local_static pre_ae v st in
+    let c = Const.PublicMethod (fi, (E.NameEnv.find v v2en)) in
+    let pre_ae1 = VarEnv.add_local_const pre_ae v c in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
-  (* A special case for static expressions *)
-  | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Static ->
-    let (static_thing, fill) = compile_static_exp env pre_ae how e in
-    let pre_ae1 = VarEnv.add_local_static pre_ae v static_thing in
+  (* A special case for constant expressions *)
+  | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Const ->
+    let (const, fill) = compile_const_exp env pre_ae how e in
+    let pre_ae1 = VarEnv.add_local_const pre_ae v const in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
   | LetD (p, e) ->
@@ -6636,7 +6650,7 @@ and compile_prog env ae (ds, e) =
     let code2 = compile_top_lvl_expr env ae' e in
     (ae', code1 ^^ code2)
 
-and compile_static_exp env pre_ae how exp = match exp.it with
+and compile_const_exp env pre_ae how exp = match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
       let return_tys = match control with
         | Type.Returns -> res_tys
@@ -6645,7 +6659,7 @@ and compile_static_exp env pre_ae how exp = match exp.it with
       let mk_body env ae =
         List.iter (fun v ->
           if not (VarEnv.NameEnv.mem v ae.VarEnv.vars)
-          then fatal "internal error: static \"%s\": captures \"%s\", not found in static environment\n" name v
+          then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
         ) (Freevars.M.keys (Freevars.exp e));
         compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
       FuncDec.closed env sort control name args mk_body return_tys exp.at
@@ -6718,7 +6732,7 @@ and export_actor_field env  ae (f : Ir.field) =
   let sr, code = Var.get_val env ae f.it.var in
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
   let fi = match sr with
-    | SR.StaticThing (SR.PublicMethod (fi, _)) -> fi
+    | SR.Const (Const.PublicMethod (fi, _)) -> fi
     | _ -> assert false in
   (* There should be no code associated with this *)
   assert (G.is_nop code);
