@@ -16,9 +16,9 @@ module {
   };
 
   public func append<A>(xs : [A], ys : [A]) : [A] {
-    let b = Buf(xs.len() + ys.len());
-    b.append(xs);
-    b.append(ys);
+    let b = Buf.Buf<A>(xs.len() + ys.len());
+    for (x in xs.vals()) { b.add(x) };
+    for (y in ys.vals()) { b.add(y) };
     b.toArray()
   };
 
@@ -45,16 +45,15 @@ module {
   };
 
   public func filter<A>(f : A -> Bool, xs : [A]) : [A] {
-    let b = Buf(xs.len());
-    for (i in xs.keys()) {
-      let x = xs[i];
-      if f(x) { b.add(x) };
+    let b = Buf.Buf<A>(xs.len());
+    for (x in xs.vals()) {
+      if (f(x)) { b.add(x) };
     };
     b.toArray()
   };
 
   public func mapFilter<A, B>(f : A -> ?B, xs : [A]) : [B] {
-    let b = Buf(xs.len());
+    let b = Buf.Buf<B>(xs.len());
     for (i in xs.keys()) {
       switch (f(xs[i])) {
       case null { };

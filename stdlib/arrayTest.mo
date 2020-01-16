@@ -1,6 +1,8 @@
 import Array "array.mo";
 import Prelude "prelude.mo";
 import Text "text.mo";
+import Nat "nat.mo";
+import Debug "debug.mo";
 
 Prelude.printLn("Array");
 
@@ -190,22 +192,23 @@ Prelude.printLn("Array");
 {
   Prelude.printLn("  mapFilter");
 
-  let pairThird = func (x : Int) : ?(Int, Int) {
-    if (x <> 0) { ?(x, x * 3) } else { null };
+  func pairThird (x : Int) : ?(Int, Int) {
+    if (x != 0) {
+      ?(x, x / 3)
+    } else {
+      null
+    }
   };
 
-  let actual = Array.mapFilter<Int, Bool>(pairThird, [ 0, 1, 0, 3, 0, 5, 6 ]);
-  let expected = [ null, ?(1, 0), null, ?(3, 1), null, ?(5, 1), ?(6, 2) ];
+  let actual = Array.mapFilter<Int, (Int, Int)>(pairThird, [ 0, 1, 0, 3, 0, 5, 6 ]);
+  let expected = [ (1, 0), (3, 1), (5, 1), (6, 2) ];
 
   assert(actual.len() == expected.len());
 
-  // assert( for all i, actual[i] = expected[i] ):
   for (i in actual.keys()) {
-    switch(actual[i], expected[i]) {
-      case (null, null) { assert true };
-      case (?(a,b), ?(aa,bb)) { assert a == aa; assert b == bb; };
-      case _ { assert false };
-    }
+    let ((a,b), (aa, bb)) = (actual[i], expected[i]);
+    assert a == aa;
+    assert b == bb;
   };
 };
 

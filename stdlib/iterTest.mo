@@ -51,6 +51,7 @@ Prelude.printLn("Iter");
   };
 };
 
+/*
 {
   Prelude.printLn("  fromArray");
 
@@ -144,3 +145,5 @@ Prelude.printLn("Iter");
   assert (expected.length == actual.length);
   assert List.isEq<Nat>(expected.list, actual.list, func (x1, x2) { x1 == x2 });
 };
+
+*/

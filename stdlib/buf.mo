@@ -97,7 +97,7 @@ public class Buf<X> (initCapacity : Nat) {
 
   public func toArray() : [X] =
     Prim.Array_tabulate<X>(
-      elems.len(),
+      count,
       func(x: Nat): X { elems[x] }
     );
 
