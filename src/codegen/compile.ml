@@ -6616,7 +6616,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
         Var.set_val env ae name
       )
 
-and compile_decs_open env pre_ae lvl decs v2en captured_in_body : VarEnv.t * G.t * (VarEnv.t -> G.t)=
+and compile_decs_public env pre_ae lvl decs v2en captured_in_body : VarEnv.t * G.t =
   let how = AllocHow.decs pre_ae lvl decs captured_in_body in
   let rec go pre_ae decs = match decs with
     | []          -> (pre_ae, G.nop, fun _ -> G.nop)
@@ -6630,10 +6630,7 @@ and compile_decs_open env pre_ae lvl decs v2en captured_in_body : VarEnv.t * G.t
                     let code2 = mk_code2 ae in
                     code1 ^^ code2
         ) in
-  go pre_ae decs
-
-and compile_decs_public env ae lvl decs v2en captured_in_body : VarEnv.t * G.t =
-  let (ae1, alloc_code, mk_code) = compile_decs_open env ae lvl decs v2en captured_in_body in
+  let (ae1, alloc_code, mk_code) = go pre_ae decs in
   let code = mk_code ae1 in
   (ae1, alloc_code ^^ code)
 
