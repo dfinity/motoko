@@ -2,12 +2,12 @@
 ← completed: canister-id = 0x0000000000000400
 → install
 ← completed
-→ update any(0x4449444c00017f)
+→ query any(0x4449444c00017f)
 debug.print: ok: null
 ← completed: 0x4449444c0000
-→ update any(0x4449444c016e71010000)
+→ query any(0x4449444c016e71010000)
 debug.print: ok: null
 ← completed: 0x4449444c0000
-→ update any(0x4449444c016e7101000103466f6f)
+→ query any(0x4449444c016e7101000103466f6f)
 debug.print: ok: Foo
 ← completed: 0x4449444c0000
