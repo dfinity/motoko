@@ -103,7 +103,7 @@ public class Buf<X> (initCapacity : Nat) {
 
   public func toVarArray() : [var X] = {
     if (count == 0) { [var] } else {
-      let a = Prim.Array_init<A>(count, elems[0]);
+      let a = Prim.Array_init<X>(count, elems[0]);
       for (i in elems.keys()) {
         a[i] := elems[i]
       };
