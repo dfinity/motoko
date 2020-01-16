@@ -221,7 +221,6 @@ let start entry_point debug =
        let msgs = match Declaration_index.make_index log_to_file !vfs [entry_point] with
         | Error msgs' -> List.iter (fun msg -> log_to_file "rebuild_error" (Diag.string_of_message msg)) msgs'; msgs'
         | Ok((ix, msgs')) ->
-           log_to_file "Success!" "Sucessful_rebuild";
            decl_index := ix;
            msgs' in
        let diags_by_file =
