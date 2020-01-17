@@ -1,6 +1,6 @@
 import Prim "mo:prim";
-import H "trieMap.mo";
-import Hash "hash.mo";
+import H "trieMap";
+import Hash "hash";
 
 func textIsEq(x:Text,y:Text):Bool { x == y };
 

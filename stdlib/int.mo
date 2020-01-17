@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import Prelude "prelude.mo";
+import Prelude "prelude";
 
 module {
   public func abs(x : Int) : Nat = Prim.abs x;

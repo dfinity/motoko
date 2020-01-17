@@ -1,6 +1,6 @@
-import T = "serverTypes.mo";
-import Trie = "../../trie.mo";
-import DocTable = "../../docTable.mo";
+import T = "serverTypes";
+import Trie = "../../trie";
+import DocTable = "../../docTable";
 
 
 module {

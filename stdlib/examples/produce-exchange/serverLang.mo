@@ -1,5 +1,5 @@
-import Result = "../../result.mo";
-import T = "serverTypes.mo";
+import Result = "../../result";
+import T = "serverTypes";
 
 
 module {

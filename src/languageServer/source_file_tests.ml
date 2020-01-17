@@ -67,7 +67,7 @@ let%test "it parses a simple module header" =
   parse_module_header_test_case
     "/project"
     "/project/src/Main.mo"
-    "import P \"lib/prelude.mo\""
+    "import P \"lib/prelude\""
     ["P", "src/lib/prelude.mo"]
 
 let%test "it parses a simple module header that contains a prim import" =
@@ -81,7 +81,7 @@ let%test "it parses a simple module header with package paths" =
   parse_module_header_test_case
     "/project"
     "/project/src/Main.mo"
-    "import P \"mo:stdlib/prelude.mo\""
+    "import P \"mo:stdlib/prelude\""
     ["P", "mo:stdlib/prelude.mo"]
 
 let%test "it parses a simple module header" =
@@ -91,8 +91,8 @@ let%test "it parses a simple module header" =
     {|
 module {
 
-private import List "lib/ListLib.mo";
-private import ListFuncs "lib/ListFuncs.mo";
+private import List "lib/ListLib";
+private import ListFuncs "lib/ListFuncs";
 
 type Stack = List.List<Int>;
 

@@ -1,4 +1,4 @@
-import P "prelude.mo";
+import P "prelude";
 
 module {
 /**

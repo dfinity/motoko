@@ -1,6 +1,6 @@
-import Hash "hash.mo";
+import Hash "hash";
 
-import Trie "trie.mo";
+import Trie "trie";
 
 module {
 /**

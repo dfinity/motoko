@@ -1,3 +1,3 @@
-import Definitions "definitions.mo";
+import Definitions "definitions";
 
 module {}

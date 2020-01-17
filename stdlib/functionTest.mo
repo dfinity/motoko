@@ -1,6 +1,6 @@
-import Function "function.mo";
-import Prelude "prelude.mo";
-import Text "text.mo";
+import Function "function";
+import Prelude "prelude";
+import Text "text";
 
 Prelude.printLn("Function");
 

@@ -1,5 +1,5 @@
-import P "prelude.mo";
-import Array "array.mo";
+import P "prelude";
+import Array "array";
 
 module {
 /**

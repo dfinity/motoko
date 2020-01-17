@@ -1,6 +1,6 @@
-import Array "array.mo";
-import None "none.mo";
-import Prelude "prelude.mo";
+import Array "array";
+import None "none";
+import Prelude "prelude";
 
 Prelude.printLn("None");
 

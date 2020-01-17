@@ -1,19 +1,19 @@
-import Debug = "../../debug.mo";
-import P = "../../prelude.mo";
+import Debug = "../../debug";
+import P = "../../prelude";
 
-import T = "serverTypes.mo";
-import L = "serverLang.mo";
-import M = "serverModelTypes.mo";
+import T = "serverTypes";
+import L = "serverLang";
+import M = "serverModelTypes";
 
-import List = "../../list.mo";
-import Hash_ = "../../hash.mo";
-import Option = "../../option.mo";
-import Trie = "../../trie.mo";
-import Iter = "../../iter.mo";
-import Array = "../../array.mo";
+import List = "../../list";
+import Hash_ = "../../hash";
+import Option = "../../option";
+import Trie = "../../trie";
+import Iter = "../../iter";
+import Array = "../../array";
 
-import DT = "../../docTable.mo";
-import Result = "../../result.mo";
+import DT = "../../docTable";
+import Result = "../../result";
 
 
 module {

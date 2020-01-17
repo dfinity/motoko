@@ -1,6 +1,6 @@
 import Prim "mo:prim";
-import Int "int.mo";
-import Prelude "prelude.mo";
+import Int "int";
+import Prelude "prelude";
 
 module {
   public func add(x : Nat, y : Nat) : Nat {

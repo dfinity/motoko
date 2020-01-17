@@ -1,5 +1,5 @@
-import Prelude "prelude.mo";
-import Int "int.mo";
+import Prelude "prelude";
+import Int "int";
 
 Prelude.printLn("Int");
 

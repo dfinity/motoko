@@ -1,6 +1,6 @@
-import P "prelude.mo";
-import I "iter.mo";
-import A "array.mo";
+import P "prelude";
+import I "iter";
+import A "array";
 
 module {
 
