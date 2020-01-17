@@ -1,16 +1,9 @@
-{ stdenv, fetchFromGitHub, ocaml, findlib, dune }:
+{ stdenv, ocaml, findlib, dune, sources }:
 
-let version = "v0.2.0"; in
+stdenv.mkDerivation rec {
+  name = "ocaml${ocaml.version}-vlq-${src.version}";
 
-stdenv.mkDerivation {
-  name = "ocaml${ocaml.version}-vlq-${version}";
-
-  src = fetchFromGitHub {
-    owner = "flowtype";
-    repo = "ocaml-vlq";
-    rev = version;
-    sha256 = "09jdgih2n2qwpxnlbcca4xa193rwbd1nw7prxaqlg134l4mbya83";
-  };
+  src = sources.ocaml-vlq;
 
   buildInputs = [ ocaml findlib dune ];
 

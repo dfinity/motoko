@@ -49,6 +49,21 @@
         "type": "tarball",
         "url": "https://github.com/NixOS/nixpkgs/archive/42710203b04738b8f19ae51f0fd21d22fddf3f39.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ocaml-vlq": {
+        "branch": "v0.2.0",
+        "builtin": false,
+        "description": "A library to encode/decode numbers in OCaml.",
+        "homepage": null,
+        "owner": "flowtype",
+        "repo": "ocaml-vlq",
+        "rev": "115bf0fef38018f31ac6386fef17a00bd8307218",
+        "sha256": "09jdgih2n2qwpxnlbcca4xa193rwbd1nw7prxaqlg134l4mbya83",
+        "type": "tarball",
+        "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "version": "v0.2.0"
+    },
     "winter": {
         "branch": "master",
         "builtin": false,

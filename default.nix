@@ -17,7 +17,7 @@ let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
           inherit (self.ocamlPackages) findlib ocamlbuild;
         };
         vlq = import ./nix/ocaml-vlq.nix {
-          inherit (self) stdenv fetchFromGitHub ocaml dune sources;
+          inherit (self) stdenv ocaml dune sources;
           inherit (self.ocamlPackages) findlib;
         };
       };
