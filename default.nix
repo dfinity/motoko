@@ -17,8 +17,6 @@ let dfinity-src =
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
 
-let inherit (nixpkgs.sources) esm; in
-
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
@@ -195,7 +193,7 @@ rec {
             nixpkgs.nodejs-10_x
             filecheck
             wasmtime
-            esm
+            nixpkgs.sources.esm
           ] ++
           llvmBuildInputs;
 
@@ -206,7 +204,7 @@ rec {
             export MO_LD=mo-ld
             export DIDC=didc
             export DESER=deser
-            export ESM=${esm}
+            export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
@@ -448,7 +446,7 @@ rec {
       ));
 
     shellHook = llvmEnv;
-    ESM=esm;
+    ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
