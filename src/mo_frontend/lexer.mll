@@ -107,7 +107,7 @@ let float =
   | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
 let char = '\'' character '\''
 let text = '"' character* '"'
-let id = '@' | ((letter  | '_') ((letter | digit | '_')*))
+let id = ((letter  | '_') ((letter | digit | '_')*))
 let privileged_id = "@" id
 
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
