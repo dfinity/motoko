@@ -3,12 +3,12 @@
 actor a {
 
   // returns caller id
-  public shared { caller = c } func getCaller()  : async Blob {
+  public shared { caller = c } func getCaller() : async PrincipalId {
     c
   };
 
   // returns self id when called (internally or externally)
-  public shared func getSelf()  : async Blob {
+  public shared func getSelf()  : async PrincipalId {
     await getCaller();
   };
 
@@ -18,12 +18,12 @@ actor a {
 actor class C () {
 
   // returns caller id
-  public shared { caller = c } func getCaller()  : async Blob {
+  public shared { caller = c } func getCaller()  : async PrincipalId {
     c
   };
 
   // returns self id when called (internally or externally)
-  public shared func getSelf()  : async Blob {
+  public shared func getSelf()  : async PrincipalId {
     await getCaller();
   };
 
@@ -51,12 +51,12 @@ ignore async {
 actor Ping {
 
   // returns caller id
-  public shared { caller = c } func getCaller()  : async Blob {
+  public shared { caller = c } func getCaller()  : async PrincipalId {
     c
   };
 
   // returns self id when called (internally or externally)
-  public func getSelf() : async Blob {
+  public func getSelf() : async PrincipalId {
     await getCaller();
   };
 
@@ -71,12 +71,12 @@ actor Ping {
 actor Pong {
 
   // returns caller id
-  public shared { caller = c } func getCaller()  : async Blob {
+  public shared { caller = c } func getCaller()  : async PrincipalId {
     c
   };
 
   // returns self id when called (internally or externally)
-  public func getSelf()  : async Blob {
+  public func getSelf()  : async PrincipalId {
     await getCaller();
   };
 

@@ -3299,6 +3299,7 @@ module Serialization = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
+          | Prim PrincipalId -> ()
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
             assert false
@@ -3348,7 +3349,7 @@ module Serialization = struct
     let rec add_typ t =
       match t with
       | Non -> assert false
-      | Prim Blob ->
+      | Prim Blob | Prim PrincipalId ->
         add_typ Type.(Array (Prim Word8))
       | Prim _ -> assert false
       | Tup ts ->
@@ -3470,7 +3471,7 @@ module Serialization = struct
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
         )
-      | Prim Blob ->
+      | Prim Blob | Prim PrincipalId ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         size_word env get_len ^^
@@ -3627,7 +3628,7 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
-      | Prim Blob ->
+      | Prim (Blob | PrincipalId) ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         write_word get_len ^^
