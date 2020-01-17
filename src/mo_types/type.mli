@@ -3,7 +3,7 @@
 type lab = string
 type var = string
 
-type 'a control = Returns | Promises of 'a | Replies
+type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module
 type shared_sort = Query | Write
 type 'a shared = Local | Shared of 'a
@@ -43,7 +43,7 @@ and typ =
   | Array of typ                              (* array *)
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
-  | Func of func_sort * typ control * bind list * typ list * typ list  (* function *)
+  | Func of func_sort * control * bind list * typ list * typ list  (* function *)
   | Async of typ * typ                        (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
@@ -65,8 +65,7 @@ and kind =
 (* Function sorts *)
 
 val is_shared_sort : 'a shared -> bool
-val is_promising : 'a control -> bool
-val map_control : ('a -> 'b) -> 'a control -> 'b control
+val is_promising : control -> bool
 
 (* Short-hands *)
 
@@ -116,7 +115,7 @@ val as_opt : typ -> typ
 val as_tup : typ -> typ list
 val as_unit : typ -> unit
 val as_pair : typ -> typ * typ
-val as_func : typ -> func_sort * typ control * bind list * typ list * typ list
+val as_func : typ -> func_sort * control * bind list * typ list * typ list
 val as_async : typ -> typ * typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
@@ -138,7 +137,7 @@ val as_async_sub : typ -> typ -> typ * typ
 (* Argument/result sequences *)
 
 val seq : typ list -> typ
-val codom : typ control -> typ list -> typ
+val codom : control -> (unit -> typ) -> typ list -> typ
 val as_seq : typ -> typ list (* This needs to go away *)
 val seq_of_tup : typ -> typ list
 val arity : typ -> int

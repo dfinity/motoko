@@ -6167,7 +6167,7 @@ and compile_exp (env : E.t) ae exp =
     let return_arity = match control with
       | Type.Returns -> List.length ret_tys
       | Type.Replies -> 0
-      | Type.Promises _ -> assert false in
+      | Type.Promises -> assert false in
 
     StackRep.of_arity return_arity,
     let fun_sr, code1 = compile_exp env ae e1 in
@@ -6232,7 +6232,7 @@ and compile_exp (env : E.t) ae exp =
     let return_tys = match control with
       | Type.Returns -> res_tys
       | Type.Replies -> []
-      | Type.Promises _ -> assert false in
+      | Type.Promises -> assert false in
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
@@ -6600,7 +6600,7 @@ and compile_static_exp env pre_ae how exp = match exp.it with
       let return_tys = match control with
         | Type.Returns -> res_tys
         | Type.Replies -> []
-        | Type.Promises _ -> assert false in
+        | Type.Promises -> assert false in
       let mk_body env ae =
         assert begin (* Is this really closed? *)
           List.for_all (fun v -> VarEnv.NameEnv.mem v ae.VarEnv.vars)

@@ -256,24 +256,24 @@ let as_domT t =
 let as_codomT sort t =
   match sort, t.Source.it with
   | T.Shared _,  AsyncT (Some t1, t2) ->
-    T.Promises t1, as_domT t2
+    T.Promises, as_domT t2
   | T.Shared _,  AsyncT (None, t2) ->
-    T.Promises (scope_typ no_region), as_domT t2
+    T.Promises, as_domT t2
   | _ -> T.Returns, as_domT t
 
 let check_shared_return env at sort c ts =
   match sort, c, ts with
-      | T.Shared _, T.Promises _, _ -> ()
-      | T.Shared T.Write, T.Returns, [] -> ()
-      | T.Shared T.Write, _, _ -> error env at "shared function must have syntactic return type `()` or `async <typ>`"
-      | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `async <typ>`"
-      | _ -> ()
+  | T.Shared _, T.Promises,  _ -> ()
+  | T.Shared T.Write, T.Returns, [] -> ()
+  | T.Shared T.Write, _, _ -> error env at "shared function must have syntactic return type `()` or `async <typ>`"
+  | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `async <typ>`"
+  | _ -> ()
 
 let rec infer_async_cap env sort cs tbs =
   let env = { env with async = C.NullCap } in
   match sort, cs, tbs with
    (* TODO: refine T.Query *)
-   | (T.Shared _ | T.Local) , c::_,  T.{sort = Scope; _}::_ ->
+  | (T.Shared _ | T.Local) , c::_,  {T.sort = _ (*T.Scope*); _}::_ ->
      { env with typs = T.Env.add scope_id c env.typs;
                 async = C.AsyncCap c }
    | T.Shared _, _, _ -> assert false (* impossible given sugaring *)
@@ -321,10 +321,9 @@ and check_typ' env typ : T.typ =
     let cs, tbs, te, ce = check_typ_binds env binds in
     let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs in
     let typs1 = as_domT typ1 in
-    let cT, typs2 = as_codomT sort.it typ2 in
+    let c, typs2 = as_codomT sort.it typ2 in
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
-    let c = T.map_control (check_typ env') cT in
     check_shared_return env typ2.at sort.it c ts2;
     if Type.is_shared_sort sort.it then
     if not env.pre then begin
@@ -339,13 +338,13 @@ and check_typ' env typ : T.typ =
       ) ts2;
       match c, ts2 with
       | T.Returns, [] when sort.it = T.Shared T.Write -> ()
-      | T.Promises _, _ -> ()
+      | T.Promises, _ -> ()
       | _ ->
         error env typ2.at
           "shared function has non-async result type\n  %s"
           (T.string_of_typ_expand (T.seq ts2))
       end;
-    T.Func (sort.it, T.map_control (T.close cs) c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
     T.Opt (check_typ env typ)
   | VariantT tags ->
@@ -422,10 +421,10 @@ and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * S
   let pre_env' = add_typs {env with pre = true} xs cs  in
   let tbs = List.map (fun typ_bind ->
     { T.var = typ_bind.it.var.it;
-      T.sort = if typ_bind.it.var.it = Syntax.scope_id then T.Scope else T.Type; (* HACK *)
+      T.sort = typ_bind.it.sort.it;
       T.bound = check_typ pre_env' typ_bind.it.bound }) typ_binds
   in
-  List.iteri (fun i tb -> assert (i == 0 || T.(tb.sort = Type))) tbs;
+  List.iteri (fun i tb -> assert (i == 0 || (tb.T.sort = T.Type))) tbs;
   let ts = List.map (fun tb -> tb.T.bound) tbs in
   check_typ_binds_acyclic env typ_binds cs ts;
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
@@ -793,14 +792,14 @@ and infer_exp'' env exp : T.typ =
     in
     let sort, ve = check_sort_pat env sort_pat in
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
-    let cT, ts2 = as_codomT sort typ in
-    check_shared_return env typ.at sort cT ts2;
+    let ts = List.map (fun c -> T.Con(c,[])) cs in
+    let c, ts2 = as_codomT sort typ in
+    check_shared_return env typ.at sort c ts2;
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs in
     let t1, ve1 = infer_pat_exhaustive env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
-    let c = T.map_control (check_typ env') cT in
-    let codom = T.codom c ts2 in
+    let codom = T.codom c (fun () -> List.hd ts) ts2 in
     if not env.pre then begin
       let env'' =
         { env' with
@@ -821,8 +820,8 @@ and infer_exp'' env exp : T.typ =
               (T.string_of_typ_expand t);
         ) ts2;
         match c, ts2 with
-        | T.Returns,  [] when sort = T.Shared T.Write -> ()
-        | T.Promises _, _ ->
+        | T.Returns, [] when sort = T.Shared T.Write -> ()
+        | T.Promises, _ ->
           if not (isAsyncE exp) then
             error env exp.at
               "shared function with async result type has non-async body"
@@ -832,7 +831,7 @@ and infer_exp'' env exp : T.typ =
       end
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
-    T.Func (sort, T.map_control (T.close cs) c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, inst, exp2) ->
     let typs = inst.it in
     let t1 = infer_exp_promote env exp1 in
@@ -1127,13 +1126,14 @@ and check_exp' env0 t exp : T.typ =
         (String.concat " or\n  " ss)
     );
     t
+  (* TODO: allow mono shared with one scope par *)
   | FuncE (_, sort_pat,  [], pat, typ_opt, exp), T.Func (s, c, [], ts1, ts2) ->
     let sort, ve = check_sort_pat env sort_pat in
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
       error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let ve1 = check_pat_exhaustive env (T.seq ts1) pat in
     let ve2 = T.Env.adjoin ve ve1 in
-    let codom = T.codom c ts2 in
+    let codom = T.codom c (fun () -> assert false) ts2 in
     let t2 =
       match typ_opt with
       | None -> codom

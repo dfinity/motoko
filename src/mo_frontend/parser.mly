@@ -283,9 +283,9 @@ typ_tag :
 
 typ_bind :
   | x=id SUB t=typ
-    { {var = x; bound = t} @= at $sloc }
+    { {var = x; sort = Type.Type @@ no_region; bound = t} @= at $sloc }
   | x=id
-    { {var = x; bound = PrimT "Any" @! at $sloc} @= at $sloc }
+    { {var = x; sort = Type.Type @@ no_region; bound = PrimT "Any" @! at $sloc} @= at $sloc }
 
 %inline scope_bind_opt :
   | LT tb=typ_bind GT
@@ -653,13 +653,8 @@ dec_nonvar :
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
           match t with
-          | Some {it = AsyncT (None,_); _} ->
+          | Some {it = AsyncT _; _} ->
 	    AsyncE(scope_bind(), e) @? e.at
-          | Some {it = AsyncT (Some typ,_); _} ->
-            (match as_idT typ with
-            | Some id ->
-              AsyncE(pun_id id, e) @? e.at
-            | _ -> AsyncE(scope_bind(), e) @? e.at)
           | _ -> e
       in
       let named, x = xf "func" $sloc in

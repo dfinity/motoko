@@ -487,7 +487,7 @@ let forall tbs e =
    { e with
      it = FuncE(n, s, c1, tbs, xs, ts, exp);
      note = { e.note with
-              note_typ = T.Func(s, T.map_control (T.close cs) c2, close_typ_binds cs tbs,
+              note_typ = T.Func(s, c2, close_typ_binds cs tbs,
                                 List.map (T.close cs) ts1,
                                 List.map (T.close cs) ts2)
    }}

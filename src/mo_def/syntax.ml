@@ -55,8 +55,9 @@ and typ_field' = {id : id; typ : typ; mut : mut}
 and typ_tag = typ_tag' Source.phrase
 and typ_tag' = {tag : id; typ : typ}
 
+and bind_sort = Type.bind_sort Source.phrase
 and typ_bind = (typ_bind', Type.con option) Source.annotated_phrase
-and typ_bind' = {var : id; bound : typ}
+and typ_bind' = {var : id; sort : bind_sort; bound : typ;}
 
 
 (* Literals *)
@@ -254,59 +255,28 @@ let scope_typ region =
     at = region;
     note = Type.Pre })
 
-let scope_id = "@"
-
 let scope_bind() =
   { var = scope_id @@ no_region;
+    sort = Type.Scope @@ no_region;
     bound = PrimT "Any" @! no_region
   } @= no_region
 
-let pun_id id =
-  { var = id.it @@ no_region;
-    bound = PrimT "Any" @! no_region
-  } @= no_region
-
-let rec is_scope_typ t =
-  match t.it with
-  | PathT (p, []) ->
-    (match p.it with
-     | IdH id ->
-       id.it = scope_id
-     |  _ -> false)
-  | ParT t -> is_scope_typ t
-  | _ -> false
-
-let rec as_idT t  =
-  match t.it with
-  | PathT (p, []) ->
-    (match p.it with
-     | IdH id ->
-       Some id
-     |  _ -> None)
-  | ParT t -> as_idT t
-  | _ -> None
-
-
-let ensure_scope_bind tbs =
-  if List.exists (fun tb -> tb.it.var.it = scope_id) tbs
-  then tbs
-  else scope_bind()::tbs
+let add_scope_bind tbs = scope_bind()::tbs
 
 let funcT(sort, tbs, t1, t2) =
   match sort.it, t2.it with
-  | _, AsyncT (None, _) ->
-    FuncT(sort, ensure_scope_bind tbs, t1, t2)
-  | Type.Shared _, TupT [] ->
-    FuncT(sort, ensure_scope_bind tbs, t1, t2)
+  | Type.Local, AsyncT _ ->
+    FuncT(sort, add_scope_bind tbs, t1, t2)
+  | Type.Shared _, _ ->
+    FuncT(sort, add_scope_bind tbs, t1, t2)
   | _ ->
     FuncT(sort, tbs, t1, t2)
 
-let funcE (f, s, tbs, p, t_opt, e) =
-  match s.it, t_opt with
-  | _, Some { it = AsyncT (None, _); _}
-  | Type.Shared _, Some { it = TupT []; _}
-  | Type.Shared _, None ->
-    FuncE(f, s, ensure_scope_bind tbs, p, t_opt, e)
+let funcE(f, s, tbs, p, t_opt, e) =
+  match s.it, t_opt, e with
+  | Type.Local, Some { it = AsyncT _; _}, {it = AsyncE _; _}
+  | Type.Shared _, _, _ ->
+    FuncE(f, s, add_scope_bind tbs, p, t_opt, e)
   | _ ->
     FuncE(f, s, tbs, p, t_opt, e)
 

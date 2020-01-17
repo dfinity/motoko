@@ -98,8 +98,7 @@ and exp' at note = function
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
-    let control' = T.map_control (T.open_ vars) control in
-    I.FuncE (name, s, control', tbs', args, tys, wrap (exp e))
+    I.FuncE (name, s, control, tbs', args, tys, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
@@ -331,9 +330,8 @@ and dec' at n d = match d with
     in
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
     let args, wrap, control, _n_res = to_args n.S.note_typ None p in
-    let control' = T.map_control (T.open_ inst) control in
     let fn = {
-      it = I.FuncE (id.it, sort, control', typ_binds tbs, args, [obj_typ], wrap
+      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
            at = at;
            note = { I.note_typ = obj_typ; I.note_eff = T.Triv } });
@@ -407,7 +405,7 @@ and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     arg_of_exp v,
     (fun e -> blockE [letP (pat p) v] e)
 
-and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.typ T.control * T.typ list =
+and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
   let sort, control, n_args, res_tys =
     match typ with
     | Type.Func (sort, control, tbds, dom, res) ->
