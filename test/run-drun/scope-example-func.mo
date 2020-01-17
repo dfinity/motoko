@@ -7,7 +7,7 @@ actor A {
     var a : (async/*<Y>*/ Int) = async 0;
 
     func set ()  {
-       a := async<W> {return 666} /*<Y>*/;
+       a := async/*<W>*/ {return 666} /*<Y>*/;
     };
 
     await (async/*<Z>*/ {

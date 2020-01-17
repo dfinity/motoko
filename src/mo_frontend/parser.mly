@@ -245,8 +245,8 @@ typ_pre :
     { t }
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
-  | ASYNC t1 = scope_inst_opt t2=typ_pre
-    { AsyncT(t1, t2) @! at $sloc }
+  | ASYNC t=typ_pre
+    { AsyncT(scope_typ no_region, t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -286,22 +286,6 @@ typ_bind :
     { {var = x; sort = Type.Type @@ no_region; bound = t} @= at $sloc }
   | x=id
     { {var = x; sort = Type.Type @@ no_region; bound = PrimT "Any" @! at $sloc} @= at $sloc }
-
-%inline scope_bind_opt :
-  | LT tb=typ_bind GT
-    { tb }
-  | (* empty *)
-    { scope_bind() }
-
-%inline scope_inst :
-  | LT t=typ GT
-    { t }
-
-%inline scope_inst_opt :
-  | t=scope_inst
-    { Some t }
-  | (* empty *)
-    { None }
 
 (* Expressions *)
 
@@ -459,8 +443,8 @@ exp_nondec(B) :
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | ASYNC tb=scope_bind_opt e=exp(bl)
-    { AsyncE(tb, e) @? at $sloc }
+  | ASYNC e=exp(bl)
+    { AsyncE(scope_bind(), e) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)

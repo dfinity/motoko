@@ -255,10 +255,8 @@ let as_domT t =
 
 let as_codomT sort t =
   match sort, t.Source.it with
-  | T.Shared _,  AsyncT (Some t1, t2) ->
-    T.Promises, as_domT t2
-  | T.Shared _,  AsyncT (None, t2) ->
-    T.Promises, as_domT t2
+  | T.Shared _,  AsyncT (_, t1) ->
+    T.Promises, as_domT t1
   | _ -> T.Returns, as_domT t
 
 let check_shared_return env at sort c ts =
@@ -352,10 +350,7 @@ and check_typ' env typ : T.typ =
       (List.map (fun (tag : typ_tag) -> tag.it.tag) tags);
     let fs = List.map (check_typ_tag env) tags in
     T.Variant (List.sort T.compare_field fs)
-  | AsyncT (typ0_opt, typ) ->
-    let typ0 = match typ0_opt with
-      | None -> scope_typ no_region
-      | Some typ0 -> typ0 in
+  | AsyncT (typ0, typ) ->
     let t0 = check_typ env typ0 in
     let t = check_typ env typ in
     if not env.pre && not (T.shared t) then
@@ -785,8 +780,7 @@ and infer_exp'' env exp : T.typ =
   | FuncE (_, sort_pat, typ_binds, pat, typ_opt, exp) ->
     if not env.pre && not in_actor && T.is_shared_sort sort_pat.it then
       error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
-    let typ =
-      match typ_opt with
+    let typ = match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
@@ -1134,8 +1128,7 @@ and check_exp' env0 t exp : T.typ =
     let ve1 = check_pat_exhaustive env (T.seq ts1) pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let codom = T.codom c (fun () -> assert false) ts2 in
-    let t2 =
-      match typ_opt with
+    let t2 = match typ_opt with
       | None -> codom
       | Some typ -> check_typ env typ
     in

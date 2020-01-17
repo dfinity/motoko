@@ -46,9 +46,9 @@ and typ' =
   | VariantT of typ_tag list                       (* variant *)
   | TupT of typ list                               (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
-  | AsyncT of typ option * typ                     (* future *)
+  | AsyncT of scope * typ                          (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
-
+and scope = typ
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
 
@@ -261,14 +261,19 @@ let scope_bind() =
     bound = PrimT "Any" @! no_region
   } @= no_region
 
-let add_scope_bind tbs = scope_bind()::tbs
+let ensure_scope_bind tbs =
+  match tbs with
+  | tb::_ when tb.it.sort.it = Type.Scope ->
+    tbs
+  | _ ->
+    scope_bind()::tbs
 
 let funcT(sort, tbs, t1, t2) =
   match sort.it, t2.it with
   | Type.Local, AsyncT _ ->
-    FuncT(sort, add_scope_bind tbs, t1, t2)
+    FuncT(sort, ensure_scope_bind tbs, t1, t2)
   | Type.Shared _, _ ->
-    FuncT(sort, add_scope_bind tbs, t1, t2)
+    FuncT(sort, ensure_scope_bind tbs, t1, t2)
   | _ ->
     FuncT(sort, tbs, t1, t2)
 
@@ -276,7 +281,7 @@ let funcE(f, s, tbs, p, t_opt, e) =
   match s.it, t_opt, e with
   | Type.Local, Some { it = AsyncT _; _}, {it = AsyncE _; _}
   | Type.Shared _, _, _ ->
-    FuncE(f, s, add_scope_bind tbs, p, t_opt, e)
+    FuncE(f, s, ensure_scope_bind tbs, p, t_opt, e)
   | _ ->
     FuncE(f, s, tbs, p, t_opt, e)
 
