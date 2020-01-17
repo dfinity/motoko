@@ -378,7 +378,7 @@ module E = struct
     Int32.(add ptr ptr_skew) (* Return a skewed pointer *)
 
   let add_fun_ptr (env : t) fi : int32 =
-    match FunEnv.find_opt fi !(env.func_ptrs)  with
+    match FunEnv.find_opt fi !(env.func_ptrs) with
     | Some fp -> fp
     | None ->
       let fp = !(env.end_of_table) in
