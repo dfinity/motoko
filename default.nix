@@ -2,11 +2,15 @@
   replay ? 0,
   system ? builtins.currentSystem,
 }:
+let
+  sourcesnix = builtins.fetchurl https://raw.githubusercontent.com/nmattia/niv/506b896788d9705899592a303de95d8819504c55/nix/sources.nix;
+  nixpkgs_src = (import sourcesnix { sourcesFile = ./nix/sources.json; pkgs = abort "This (rigid, skolem) type variable is bound by aadvarks"; }).nixpkgs;
+in
 
-let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
+let nixpkgs = import nixpkgs_src {
   inherit system;
   overlays = [
-    (self: super: { sources = import ./nix/sources.nix { pkgs = super; }; })
+    (self: super: { sources = import sourcesnix { sourcesFile = ./nix/sources.json; pkgs = super; }; })
     # Selecting the ocaml version
     (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_08; })
     # Additional ocaml package
