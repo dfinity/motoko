@@ -1,7 +1,7 @@
-import Debug "../../../debug.mo";
-import Array "../../../array.mo";
-import Int "../../../int.mo";
-import Text "../../../text.mo";
+import Debug "mo:stdlib/debug.mo";
+import Array "mo:stdlib/array.mo";
+import Int "mo:stdlib/int.mo";
+import Text "mo:stdlib/text.mo";
 
 module {
   public type Group = {

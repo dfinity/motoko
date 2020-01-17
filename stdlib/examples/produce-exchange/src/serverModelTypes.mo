@@ -1,6 +1,6 @@
 import T = "serverTypes.mo";
-import Trie = "../../trie.mo";
-import DocTable = "../../docTable.mo";
+import Trie = "mo:stdlib/trie.mo";
+import DocTable = "mo:stdlib/docTable.mo";
 
 
 module {
