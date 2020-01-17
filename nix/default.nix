@@ -15,11 +15,11 @@ let
           self: super: {
             ocamlPackages = super.ocamlPackages // {
               wasm = import ./ocaml-wasm.nix {
-                inherit (self) stdenv ocaml sources;
+                inherit (self) stdenv fetchFromGitHub ocaml;
                 inherit (self.ocamlPackages) findlib ocamlbuild;
               };
               vlq = import ./ocaml-vlq.nix {
-                inherit (self) stdenv ocaml dune sources;
+                inherit (self) stdenv fetchFromGitHub ocaml dune;
                 inherit (self.ocamlPackages) findlib;
               };
             };
