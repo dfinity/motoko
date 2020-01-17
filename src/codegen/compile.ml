@@ -6904,10 +6904,10 @@ and conclude_module env start_fi_o =
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
-      elems = elems;
+      elems;
       start = Some (nr rts_start_fi);
       globals = E.get_globals env;
-      memories = memories;
+      memories;
       imports = func_imports @ other_imports;
       exports = E.get_exports env;
       data
