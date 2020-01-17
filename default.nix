@@ -6,6 +6,7 @@
 let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
   inherit system;
   overlays = [
+    (self: super: { sources = import ./nix/sources.nix { pkgs = super; }; })
     # Selecting the ocaml version
     (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_08; })
     # Additional ocaml package
@@ -16,7 +17,7 @@ let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
           inherit (self.ocamlPackages) findlib ocamlbuild;
         };
         vlq = import ./nix/ocaml-vlq.nix {
-          inherit (self) stdenv fetchFromGitHub ocaml dune;
+          inherit (self) stdenv fetchFromGitHub ocaml dune sources;
           inherit (self.ocamlPackages) findlib;
         };
       };
@@ -24,9 +25,7 @@ let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
   ];
 }; in
 
-let sources = import ./nix/sources.nix { pkgs = nixpkgs; }; in
-
-let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; inherit sources; }; in
+let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system sources; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -34,11 +33,11 @@ let subpath = p: import ./nix/gitSource.nix p; in
 
 let dfinity-src =
   let env = builtins.getEnv "DFINITY_SRC"; in
-  if env != "" then env else sources.dfinity; in
+  if env != "" then env else nixpkgs.sources.dfinity; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
 
-let inherit (sources) esm; in
+let inherit (nixpkgs.sources) esm; in
 
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
@@ -46,8 +45,6 @@ let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
-  libtommath = sources.libtommath;
-
   llvmBuildInputs = [
     nixpkgs.clang # for native building
     llvm.clang_9 # for wasm building
@@ -145,7 +142,7 @@ rec {
 
     preBuild = ''
       ${llvmEnv}
-      export TOMMATHSRC=${libtommath}
+      export TOMMATHSRC=${nixpkgs.sources.libtommath}
     '';
 
     doCheck = true;
@@ -472,7 +469,7 @@ rec {
 
     shellHook = llvmEnv;
     ESM=esm;
-    TOMMATHSRC = libtommath;
+    TOMMATHSRC = nixpkgs.sources.libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 
