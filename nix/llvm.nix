@@ -1,6 +1,6 @@
-{ system } :
+{ system, sources } :
 
-let pkgs = (import ./nixpkgs-llvm.nix) {
+let pkgs = (import sources.nixpkgs-llvm) {
   system = system;
  }; in
 

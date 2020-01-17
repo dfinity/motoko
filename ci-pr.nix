@@ -1,6 +1,6 @@
 { src ? { rev = null; }, base ? null }:
 let
-  nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs { };
+  nixpkgs = import ./nix { };
 
   # Wrap in a derivation to fix path to perl in shebang
   diff-stats = nixpkgs.stdenvNoCC.mkDerivation {
