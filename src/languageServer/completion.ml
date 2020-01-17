@@ -31,6 +31,9 @@ let template_of_ide_decl decl =
   | DI.TypeDecl ty ->
      ty.DI.name
 
+let string_of_item (item : Lsp_t.completion_item) : string =
+  item.Lsp_t.completion_item_label
+
 let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
   let tmpl = template_of_ide_decl d in
   match d with
@@ -58,16 +61,15 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
                params);
      }
 
-
 let import_relative_to_project_root root module_path dependency =
   match Lib.FilePath.relative_to root module_path with
   | None -> None
   | Some root_to_module ->
      root_to_module
      |> Filename.dirname
-     |> Lib.Fun.flip Filename.concat dependency
+     |> Fun.flip Filename.concat dependency
      |> Lib.FilePath.normalise
-     |> Lib.Option.some
+     |> Option.some
 
 (* Given a source file and a cursor position in that file, figure out
    the prefix relevant to searching completions. For example, given:
@@ -120,7 +122,7 @@ let has_prefix (prefix : string) (ide_decl : DI.ide_decl): bool =
   ide_decl
   |> DI.name_of_ide_decl
   |> Lib.String.chop_prefix prefix
-  |> Lib.Option.is_some
+  |> Option.is_some
 
 let opt_bind f = function
   | None -> None
@@ -129,6 +131,13 @@ let opt_bind f = function
 let completions index logger project_root file_path file_contents line column =
   let imported = Source_file.parse_module_header project_root file_path file_contents in
   let current_uri_opt = Lib.FilePath.relative_to project_root file_path in
+  let toplevel_decls =
+     let current_module_decls =
+       current_uri_opt
+       |> opt_bind (fun uri -> DI.lookup_module uri index)
+       |> Fun.flip Lib.Option.get [] in
+     current_module_decls
+  in
   let module_alias_completion_item alias =
     Lsp_t.{
         completion_item_label = alias;
@@ -142,24 +151,14 @@ let completions index logger project_root file_path file_contents line column =
      (* If we don't have any prefix to work with, just suggest the
         imported module aliases, as well as top-level definitions in
         the current file *)
-     let toplevel =
-       current_uri_opt
-       |> opt_bind (fun uri -> DI.lookup_module uri index)
-       |> Lib.Option.map (List.map item_of_ide_decl)
-       |> Lib.Fun.flip Lib.Option.get [] in
-     imported
-     |> List.map (fun (alias, _) -> module_alias_completion_item alias)
-     |> List.append toplevel
+     let decls = List.map item_of_ide_decl toplevel_decls  in
+     decls @ List.map (fun (alias, _) -> module_alias_completion_item alias) imported
   | Some ("", prefix) ->
      (* Without an alias but with a prefix we filter the toplevel
-        idenfiers of the current module *)
-       current_uri_opt
-       |> opt_bind (fun uri -> DI.lookup_module uri index)
-       |> Lib.Option.map (fun decls ->
-            decls
-            |> List.filter (has_prefix prefix)
-            |> List.map item_of_ide_decl)
-       |> Lib.Fun.flip Lib.Option.get []
+        identifiers of the current module *)
+     toplevel_decls
+     |> List.filter (has_prefix prefix)
+     |> List.map item_of_ide_decl
   | Some (alias, prefix) ->
      let module_path =
        imported

@@ -1,16 +1,24 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module IC.DRun.Parse where
 
 import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Builder as B
 import qualified Text.Hex as H
 import qualified Data.Text as T
 import Data.Char
 import Control.Exception
+import Data.Word
+import Text.Read
 
-data Type = Query | Update deriving Show
 type MethodName = String
 type Payload = B.ByteString
+type Id = B.ByteString
 
-type Ingress = (Type, String, Payload)
+data Ingress
+    = Install Id FilePath Payload
+    | Update Id MethodName Payload
+    | Query Id MethodName Payload
+    deriving Show
 
 parseFile :: FilePath -> IO [Ingress]
 parseFile input = do
@@ -23,13 +31,15 @@ parse = map parseLine . lines
 
 parseLine :: String -> Ingress
 parseLine l = case words l of
-    [t,m,a] -> (parseType t, m, parseArg a)
+    ["install", i, f, a] -> Install (parseId i) f (parseArg a)
+    ["ingress", i, m, a] -> Update (parseId i) m (parseArg a)
+    ["query", i, m, a] -> Query (parseId i) m (parseArg a)
     _ -> error $ "Cannot parse: " ++ show l
 
-parseType :: String -> Type
-parseType "ingress" = Update
-parseType "query" = Query
-parseType x = error $ "Invalid ingress type " ++ x
+parseId :: String -> Id
+parseId x = case readMaybe x of
+    Just (n::Word64) -> B.toLazyByteString $ B.word64LE n
+    Nothing -> error "Invalid canister id (decimal number)"
 
 parseArg :: String -> Payload
 parseArg ('0':'x':xs)

@@ -45,7 +45,7 @@ let process_file file : unit =
   | Check ->
      ignore (Diag.run (Pipeline.check_file file))
   | PrettyPrint ->
-     let (ast, _) = Diag.run (Pipeline.check_file file) in
+     let (ast, _, _) = Diag.run (Pipeline.check_file file) in
      printf "%s" (Idllib.Arrange_idl.string_of_prog ast);
   | Js ->
      if !out_file = "" then

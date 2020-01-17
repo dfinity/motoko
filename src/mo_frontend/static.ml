@@ -82,7 +82,7 @@ and fields m efs = List.iter (fun ef -> dec m ef.it.dec) efs
 
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
-  | ExpD e -> exp m e
+  | ExpD e | IgnoreD e -> exp m e
   | LetD (p, e) -> triv m p; exp m e
   | VarD _ -> err m d.at
 

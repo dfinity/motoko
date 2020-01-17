@@ -161,6 +161,7 @@ and typ t = match t.it with
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]
+  | IgnoreD e -> "IgnoreD" $$ [exp e ]
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (x, e) -> "VarD" $$ [id x; exp e]
   | TypD (x, tp, t) ->

@@ -39,13 +39,16 @@ val seqP : pat list -> pat
 (* Expressions *)
 
 val primE : Ir.prim -> exp list -> exp
+val selfRefE : typ -> exp
 val asyncE : typ -> typ -> exp -> exp
 val assertE : exp -> exp
 val awaitE : typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
 val ic_rejectE : exp -> exp
 val ic_callE : exp -> exp -> exp -> exp -> exp
-val projE : exp ->  int -> exp
+val projE : exp -> int -> exp
+val optE : exp -> exp
+val tagE : id -> exp -> exp
 val blockE : dec list -> exp -> exp
 val textE : string -> exp
 val blobE : string -> exp
@@ -86,6 +89,8 @@ val varD : id -> exp -> dec
 val expD : exp -> dec
 val funcD : var -> var -> exp -> dec
 val nary_funcD : var  -> var list -> exp -> dec
+
+val let_no_shadow : var -> exp -> dec list -> dec list
 
 (* Continuations *)
 

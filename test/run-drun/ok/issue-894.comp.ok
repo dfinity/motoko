@@ -1,6 +1,6 @@
-issue-894.mo:15.20-15.27: type error, unsupported async block
+issue-894.mo:16.20-16.27: type error, unsupported async block
   (This is a limitation of the current version.)
-issue-894.mo:22.15-22.22: type error, unsupported async block
+issue-894.mo:23.15-23.22: type error, unsupported async block
   (This is a limitation of the current version.)
-issue-894.mo:29.15-29.22: type error, unsupported async block
+issue-894.mo:30.15-30.22: type error, unsupported async block
   (This is a limitation of the current version.)

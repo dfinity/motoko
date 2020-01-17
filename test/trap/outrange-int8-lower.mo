@@ -1,1 +1,2 @@
-let _ = intToInt8 (-129);
+import Prim "mo:prim";
+let _ = Prim.intToInt8 (-129);

@@ -27,4 +27,4 @@ val name_of_ide_decl : ide_decl -> string
 type path = string
 val lookup_module : path -> t -> ide_decl list option
 
-val make_index : Vfs.t -> string list -> t Diag.result
+val make_index : (string -> string -> unit) -> Vfs.t -> string list -> t Diag.result

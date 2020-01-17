@@ -246,23 +246,31 @@ let prim = function
   | "rts_total_allocation" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "rts_outstanding_callbacks" -> fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "idlHash" -> fun _ v k -> let s = as_text v in k (Word32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))
+  | "crc32Hash" -> fun _ v k -> let s = as_text v in
+    k (Word32 Optint.(to_int32 (Checkseum.Crc32.digest_string s 0 (String.length s) zero)))
   | "array_len" -> fun _ v k ->
     k (Int (Int.of_int (Array.length (Value.as_array v))))
+  | "blob_size" -> fun _ v k ->
+    k (Int (Nat.of_int (String.length (Value.as_text v))))
+  | "blob_iter" -> fun _ v k ->
+    let s = String.to_seq (Value.as_text v) in
+    let valuation b = Word8 (Word8.of_int_u (Char.code b)) in
+    k (Iter (ref (Seq.map valuation s)))
+  | "blob_iter_done" | "text_iter_done" -> fun _ v k ->
+    let i = Value.as_iter v in
+    k (Bool (!i () = Seq.Nil))
+  | "blob_iter_next" | "text_iter_next" -> fun _ v k ->
+    let i = Value.as_iter v in
+    begin match !i () with
+    | Seq.Nil -> assert false
+    | Seq.Cons (v, vs) -> i := vs; k v
+    end
   | "text_len" -> fun _ v k ->
     k (Int (Nat.of_int (List.length (Wasm.Utf8.decode (Value.as_text v)))))
   | "text_iter" -> fun _ v k ->
     let s = Wasm.Utf8.decode (Value.as_text v) in
-    let i = ref s in
-    k (TextIter i)
-  | "text_iter_done" -> fun _ v k ->
-    let i = Value.as_text_iter v in
-    k (Bool (!i = []))
-  | "text_iter_next" -> fun _ v k ->
-    let i = Value.as_text_iter v in
-    begin match !i with
-    | [] -> assert false
-    | (c::cs) -> i := cs; k (Char c)
-    end
+    let i = Seq.map (fun c -> Char c) (List.to_seq s) in
+    k (Iter (ref i))
   | "Array.init" -> fun _ v k ->
     (match Value.as_tup v with
     | [len; x] ->

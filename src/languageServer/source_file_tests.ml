@@ -24,7 +24,7 @@ let hovered_identifier_test_case file expected =
   let actual =
     Source_file.cursor_target_at_pos
       Lsp.{ position_line = line; position_character = column } file in
-  Lib.Option.equal (=) actual expected ||
+  Option.equal (=) actual expected ||
     (Printf.printf
        "\nExpected: %s\nActual:   %s\n"
        (show expected)
@@ -69,6 +69,13 @@ let%test "it parses a simple module header" =
     "/project/src/Main.mo"
     "import P \"lib/prelude.mo\""
     ["P", "src/lib/prelude.mo"]
+
+let%test "it parses a simple module header that contains a prim import" =
+  parse_module_header_test_case
+    "/project"
+    "/project/src/Main.mo"
+    "import Prim \"mo:prim\""
+    ["Prim", "mo:prim"]
 
 let%test "it parses a simple module header with package paths" =
   parse_module_header_test_case

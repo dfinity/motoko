@@ -1,10 +1,12 @@
+import Prim "mo:prim";
 actor Test {
   public func go () {
     let a = actor {
       public func hello() {
-	debugPrint("Hello World!");
+	Prim.debugPrint("Hello World!");
       };
     };
+
     a.hello();
 
     // test passing an actor to an actor
@@ -29,7 +31,7 @@ actor Test {
 	f();
       };
       public func hello() {
-	debugPrint("Hello Universe!");
+	Prim.debugPrint("Hello Universe!");
       };
       public func go() {
 	say_hi(hello);
@@ -40,7 +42,7 @@ actor Test {
     // test passing a self to an actor
     let e = actor this {
       public func hello() {
-	debugPrint("Hello Galaxy!");
+	Prim.debugPrint("Hello Galaxy!");
       };
       public func send_to(f : shared (actor { hello : () -> () }) -> ()) {
 	f(this);
@@ -50,5 +52,6 @@ actor Test {
   }
 };
 
-Test.go() //OR-CALL ingress go "DIDL\x00\x00"
+Test.go(); //OR-CALL ingress go "DIDL\x00\x00"
 //SKIP comp
+//SKIP comp-stub

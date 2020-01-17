@@ -3,19 +3,18 @@ The implementation of the Text type in Motoko.
 
 One main goal of this datastructure (inspired by ropes and similar) is to
 support constant time concatenation, by having a dedicated heap object for
-the concatentation of two strings.
+the concatenation of two strings.
 
-The current implementation does not do any of this; the first goal is to wire up
+The first goal was to wire up
 this C code with the RTS that encapsulates the internals of strings.
 
 This encapsulation is not complete (and likely never will)
  * the compiler needs to emit static text literals,
  * the garbage collector needs to know some of the internals.
 
-In a subsequent step, the actual concatentation node will be introduced.
+In a subsequent step, the actual concatenation node has been introduced.
 
-From then on, there are stretch goals like:
- - when concatenating short (<= 8 bytes maybe) strings, just copy them
+From here on, there are stretch goals like:
  - restructure recursive code to not use unbounded C stack
  - maybe rebalancing
 */
@@ -48,7 +47,7 @@ tag to know the size of the text.
 // e.g. for debugging
 #define MIN_CONCAT_SIZE (9)
 
-blob_t alloc_text_blob(size_t n) {
+static blob_t alloc_text_blob(size_t n) {
   if (n > MAX_STR_SIZE) {
     rts_trap_with("alloc_blob: Text too large");
   }
@@ -242,47 +241,85 @@ export text_t text_singleton(uint32_t code) {
 
 // The iterator needs to point to a specific position in the tree
 //
-// This is currently a simple tuple:
-// - First component the array to the whole text
-// - Second the index into the array (shifted by two for GC's sake)
+// This is currently a simple triple:
+// 1. a pointer to a current leaf (must be a BLOB)
+// 2. index into that blob (shifted by two for GC's sake)
+// 3. 0, or a pointer to a linked list of non-empty text values to do next
 //
-// This requires indexing into the tree upon each call to step, which
-// is not great, especially if the trees are not balanced.
-// Ideally, the iterator would contain the whole path from the root to the
-// node… but one step at a time.
+// The linked list (text_cont_t) is a tuple with
+// 1. a pointer to the text_t
+// 2. 0, or a pointer to the next list entry
+//
+
+typedef as_ptr text_iter_cont_t;
+#define TEXT_CONT_TEXT(p) (TUPLE_FIELD(p,0,text_t))
+#define TEXT_CONT_NEXT(p) (TUPLE_FIELD(p,1,text_iter_cont_t))
 
 typedef as_ptr text_iter_t; // the data structure used to iterate a text value
-#define TEXT_ITER_TEXT(p) (ARRAY_FIELD(p,0))
-#define TEXT_ITER_POS(p) (ARRAY_FIELD(p,1))
+#define TEXT_ITER_BLOB(p) (TUPLE_FIELD(p,0,blob_t))
+#define TEXT_ITER_POS(p) (TUPLE_FIELD(p,1,uint32_t))
+#define TEXT_ITER_TODO(p) (TUPLE_FIELD(p,2,text_iter_cont_t))
 
+
+// Find the leftmost leaf of a text, putting all the others onto a list,
+// used to enforce the invariant about TEXT_ITER_BLOB to be a blob.
+static blob_t find_leaf(text_t s, text_iter_cont_t *todo) {
+  while (TAG(s) == TAG_CONCAT) {
+    as_ptr c = alloc_words(TUPLE_HEADER_SIZE + 2);
+    TAG(c) = TAG_ARRAY;
+    TEXT_CONT_TEXT(c) = CONCAT_ARG2(s);
+    TEXT_CONT_NEXT(c) = *todo;
+    *todo = c;
+    s = CONCAT_ARG1(s);
+  }
+  return s;
+}
 
 export text_iter_t text_iter(text_t s) {
-  as_ptr i = alloc_words(ARRAY_HEADER_SIZE + 2);
+  as_ptr i = alloc_words(TUPLE_HEADER_SIZE + 3);
   TAG(i) = TAG_ARRAY;
-  TEXT_ITER_TEXT(i) = s;
   TEXT_ITER_POS(i) = 0;
+  TEXT_ITER_TODO(i) = 0;
+  TEXT_ITER_BLOB(i) = find_leaf(s, &TEXT_ITER_TODO(i));
   return i;
 }
 
 export uint32_t text_iter_done(text_iter_t i) {
-  return (TEXT_ITER_POS(i) >> 2) >= BLOB_LEN(TEXT_ITER_TEXT(i));
-}
-
-// pointer into the leaf at the given byte position
-char *text_pos(text_t s, size_t offset) {
-  if (TAG(s) == TAG_BLOB) return (BLOB_PAYLOAD(s) + offset);
-  uint32_t n1 = BLOB_LEN(CONCAT_ARG1(s));
-  if (offset < n1) return text_pos(CONCAT_ARG1(s), offset);
-  else             return text_pos(CONCAT_ARG2(s), offset - n1);
+  size_t n = TEXT_ITER_POS(i) >> 2;
+  text_t s = TEXT_ITER_BLOB(i);
+  return n >= BLOB_LEN(s) && TEXT_ITER_TODO(i) == 0;
 }
 
 export uint32_t text_iter_next(text_iter_t i) {
-  if (text_iter_done(i)) {
-    rts_trap_with("text_iter_next: Iter already done");
-  }
   size_t n = TEXT_ITER_POS(i) >> 2;
-  size_t step = 0;
-  uint32_t c = decode_code_point(text_pos(TEXT_ITER_TEXT(i), n), &step);
-  TEXT_ITER_POS(i) = (n+step) << 2;
-  return c;
+  text_t s = TEXT_ITER_BLOB(i);
+
+  // If we are at the end, find the next iterator to use
+  if (n >= BLOB_LEN(s)) {
+    // this one is done, try next
+    text_iter_cont_t c = TEXT_ITER_TODO(i);
+    // are we done?
+    if (c == 0) rts_trap_with("text_iter_next: Iter already done");
+    text_t s2 = TEXT_CONT_TEXT(c);
+    // if next one is a concat node, re-use both text iterator structures
+    // (avoids an allocation)
+    if (TAG(s2) == TAG_CONCAT) {
+      TEXT_CONT_TEXT(c) = CONCAT_ARG2(s2);
+      TEXT_ITER_POS(i) = 0;
+      TEXT_ITER_BLOB(i) = find_leaf(CONCAT_ARG1(s2), &TEXT_ITER_TODO(i));
+      return text_iter_next(i);
+    // else remove that entry from the chain
+    } else {
+      TEXT_ITER_BLOB(i) = s2;
+      TEXT_ITER_POS(i) = 0;
+      TEXT_ITER_TODO(i) = TEXT_CONT_NEXT(c);
+      return text_iter_next(i);
+    }
+  } else {
+  // We are not at the end, so read the next character
+    size_t step = 0;
+    uint32_t c = decode_code_point(BLOB_PAYLOAD(s) + n, &step);
+    TEXT_ITER_POS(i) = (n+step) << 2;
+    return c;
+  }
 }

@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 actor {
   // top-level tuple
   public query func len2(x:Text, y:Text) : async (Int,Int) {
@@ -5,11 +6,11 @@ actor {
   };
   // a pair embedded in top-level tuple
   public query func len3((x:Text, i:Int32), y:Text) : async (Int,Int,Int) {
-    (x.len(), y.len(), int32ToInt i)
+    (x.len(), y.len(), Prim.int32ToInt i)
   };
   // a triple embedded in top-level tuple
   public query func len3a((x:Text, i:Int32, z:?(Text,Int32)), y:Text) : async (Int,Int,Int) {
-    (x.len(), y.len(), int32ToInt i)
+    (x.len(), y.len(), Prim.int32ToInt i)
   }
 }
 

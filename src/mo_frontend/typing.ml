@@ -150,8 +150,7 @@ let in_shared_async env =
 let in_oneway_ignore env =
   match env.context with
   | _ ::
-    AnnotE  _  ::
-    BlockE [ {it = LetD ({ it = WildP;_}, _); _} ] ::
+    BlockE [ {it = IgnoreD _; _} ] ::
     FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
     _ ->
     (match typ_opt with
@@ -184,6 +183,7 @@ let check_import env at f ri =
     | Unresolved -> error env at "unresolved import %s" f
     | LibPath fp -> fp
     | IDLPath (fp, _) -> fp
+    | PrimPath -> "@prim"
   in
   match T.Env.find_opt full_path env.libs with
   | Some T.Pre ->
@@ -592,6 +592,13 @@ let array_obj t =
   Object,
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
+let blob_obj () =
+  let open T in
+  Object,
+  [ {lab = "bytes"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Word8)])};
+    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat])};
+  ]
+
 let text_obj () =
   let open T in
   Object,
@@ -611,7 +618,7 @@ let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
 
 and infer_exp_mut env exp : T.typ =
-  infer_exp' Lib.Fun.id env exp
+  infer_exp' Fun.id env exp
 
 and infer_exp_promote env exp : T.typ =
   let t = infer_exp env exp in
@@ -734,6 +741,7 @@ and infer_exp'' env exp : T.typ =
     let _s, tfs =
       try T.as_obj_sub [id.it] t1 with Invalid_argument _ ->
       try array_obj (T.as_array_sub t1) with Invalid_argument _ ->
+      try blob_obj (T.as_prim_sub T.Blob t1) with Invalid_argument _ ->
       try text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
         error env exp1.at
           "expected object type, but expression produces type\n  %s"
@@ -1460,7 +1468,7 @@ and pub_field field xs : region T.Env.t * region T.Env.t =
 
 and pub_dec dec xs : region T.Env.t * region T.Env.t =
   match dec.it with
-  | ExpD _ -> xs
+  | ExpD _ | IgnoreD _ -> xs
   | LetD (pat, _) -> pub_pat pat xs
   | VarD (id, _) -> pub_val_id id xs
   | ClassD (id, _, _, _, _, _, _) ->
@@ -1611,6 +1619,9 @@ and infer_dec env dec : T.typ =
   | ExpD exp
   | LetD (_, exp) ->
     infer_exp env exp
+  | IgnoreD exp ->
+    if not env.pre then check_exp env T.Any exp;
+    T.unit
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
@@ -1709,7 +1720,7 @@ and gather_block_decs env decs : Scope.t =
 
 and gather_dec env scope dec : Scope.t =
   match dec.it with
-  | ExpD _ -> scope
+  | ExpD _ | IgnoreD _ -> scope
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -1808,7 +1819,7 @@ and infer_dec_typdecs env dec : Scope.t =
        | T.Obj (_, _) as t' -> { Scope.empty with val_env = T.Env.singleton id.it t' }
        | _ -> { Scope.empty with val_env = T.Env.singleton id.it T.Pre }
     )
-  | LetD _ | ExpD _ | VarD _ ->
+  | LetD _ | ExpD _ | IgnoreD _ | VarD _ ->
     Scope.empty
   | TypD (id, binds, typ) ->
     let c = T.Env.find id.it env.typs in
@@ -1869,7 +1880,7 @@ and infer_block_valdecs env decs scope : Scope.t =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
-  | ExpD _ ->
+  | ExpD _ | IgnoreD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
@@ -1894,7 +1905,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let t = infer_exp {env with pre = true} exp in
     Scope.{empty with val_env = T.Env.singleton id.it (T.Mut t)}
   | TypD (id, _, _) ->
-    let c = Lib.Option.value id.note in
+    let c = Option.get id.note in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c ;

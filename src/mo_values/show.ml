@@ -5,7 +5,7 @@ module T = Mo_types.Type
 let rec can_show t =
   let open T in
   match normalize t with
-  | Prim (Bool|Nat|Int|Text|Null) -> true
+  | Prim (Bool|Nat|Int|Text|Char|Null) -> true
   | Prim (Nat8|Int8|Word8)
   | Prim (Nat16|Int16|Word16)
   | Prim (Nat32|Int32|Word32)
@@ -45,6 +45,7 @@ let rec show_val t v =
   | T.(Prim Word32), Value.Word32 i -> "0x" ^ Value.Word32.to_string i
   | T.(Prim Word64), Value.Word64 i -> "0x" ^ Value.Word64.to_string i
   | T.(Prim Text), Value.Text s -> "\"" ^ s ^ "\""
+  | T.(Prim Char), Value.Char c -> "\'" ^ Wasm.Utf8.encode [c] ^ "\'"
   | T.(Prim Null), Value.Null -> "null"
   | T.Opt _, Value.Null -> "null"
   | T.Opt t', Value.Opt v -> "?" ^ parens (show_val t' v)

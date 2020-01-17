@@ -50,17 +50,19 @@ In order to compile a motoko file, `dfx` invokes `moc` with
 
     moc some/path/input.mo            \
         -o another/path/output.wasm   \
-	{ --package pkgname pkgpath } \
-      { --actor-alias alias id }
-	[ --actor-idl actorpath ]
+        { --package pkgname pkgpath } \
+        { --actor-alias alias url }
+        [ --actor-idl actorpath ]
 
 in an environment where `MOC_RTS` points to the location of the Motoko runtime system.
 
 This _reads_ the following files
  * `some/path/input.mo`
  * any `.mo` file referenced by `some/path/input.mo`, either relatively, absolutely or via the provided package aliases
- * for every actor import `ic:canisteridoralias` imported by any of the Motoko files, it reads `actorpath/canisteridoralias.mo`, see section Resolving Canister Ids below.
+ * for every actor import `ic:canisterid` imported by any of the Motoko files, it reads `actorpath/canisterid.did`, see section Resolving Canister Ids below.
  * the given `mo-rts.wasm` file.
+
+The package name `prim` is special and should not be set using `--package`.
 
 No constraints are imposed where imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
 
@@ -76,20 +78,22 @@ As the previous point, but passing `--idl` to `moc`.
 Resolving Canister aliases
 --------------------------
 
-For every actor imported using `import "ic:alias"`, the Motoko compiler treats that as `import "ic:canisterid"`, if the command line flag `--actor-alias alias id` is given.
+For every actor imported using `import "canister:alias"`, the Motoko compiler treats that as `import "ic:canisterid"`, if the command line flag `--actor-alias alias ic:canisterid` is given.
 
-The relation defined by the set of `--actor-alias` arguments must be left-unique and have disjoint range and domain (i.e. no `--actor-alias a b --actor-alias a c` or `--actor-alias a b --actor-alias b c` or even `--actor-alias a a`).
+The first argument to `--actor-alias` is the alias without the URL scheme. The second argument must be a valid `"ic:"` url according to the [textual representation] of principal ids.
 
-It is up to `dfx` to determine which urls are aliases that need resolving and which are concrete ids, and to set up `--actor-alias` flags accordingly.
-
-After applying any aliases, the Motoko compiler assume these imports to refer to [textual representations] of principal ids (e.g. `ic:ABCDE01A7`), and compilation will fail if they do not.
+The given aliases must be unique (i.e. no `--actor-alias a ic:00 --actor-alias a ic:ABCDE01A7`).
 
 [textual representation]: https://docs.dfinity.systems/spec/public/#textual-ids
 
 Resolving Canister types
 ------------------------
 
-For every actor imports using `import "ic:canisterid"` (or `import "ic:canisteralias"` if `canisteralias` resolves to `canisterid` as described above), the motoko compiler assumes the presence of a file `canisterid.did` in the actor idl path specified by `--actor-idl`. This files informs motoko about the interface of that canister, e.g. the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer.
+For every actor imported using `import "ic:canisterid"` (or `import "canister:alias"` if `alias` resolves to `ic:canisterid` as described above), the motoko compiler assumes the presence of a file `canisterid.did` in the actor idl path specified by `--actor-idl`. This file informs motoko about the interface of that canister, e.g. the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer.
+
+The `canisterid` here refers the “textual representation“ without the `ic:` prefix, but including the checksum. Note that this representation is unique.
+
+This files informs motoko about the interface of that canister. It could be the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer, or created any other way.
 
 Compiling IDL Files to JS
 -------------------------
@@ -112,17 +116,13 @@ Invoking the IDE
 In order to start the language server, `dfx` invokes
 
     mo-ide --canister-main some/path/main.mo \
-	{ --package pkgname pkgpath }        \
-      { --actor-alias alias id }
-	[ --actor-idl actorpath ]
+        { --package pkgname pkgpath }        \
+        { --actor-alias alias url }
+        [ --actor-idl actorpath ]
 
 with `stdin` and `stdout` connected to the LSP client.
 
-
-This _reads_ `some/path/input.mo` and any `.mo` file referenced by
-`some/path/input.mo`, either relatively, absolutely or via the provided package aliases.
-
-No constraints are imposed where these imported files reside (this may be refined to prevent relative imports from looking outside the project and the declared packages)
+This may _read_ the same files as `moc` would.
 
 Listing dependencies
 --------------------
@@ -136,7 +136,8 @@ prints to the standard output all URLs _directly_ imported by
 
    mo:stdlib/List
    mo:other_package/Some/Module
-
+   ic:ABCDE01A7
+   ic:alias
 
 This _reads_ only `some/path/input.mo`, and writes no files.
 

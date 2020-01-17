@@ -1,12 +1,14 @@
+import Prim "mo:prim";
+
 // test for explicit scope parameterization (disabled for now, uncomment /*<@>*/ once supported)
 actor Await {
 
   public shared func Ack/*<@>*/() : async/*<@>*/ (){
-    debugPrint "Ack"
+    Prim.debugPrint "Ack"
   };
 
   public shared func Request/*<@>*/(i : Int) : async/*<@>*/ Int {
-    debugPrintInt(i);
+    Prim.debugPrintInt(i);
     return i;
   };
 
@@ -28,7 +30,7 @@ actor Await {
   // Dynamic parallel waiting for acknowledgements
 
   public shared func DPA/*<@>*/() : async/*<@>*/() {
-   let os = Array_init<?(async ())>(10, null);
+   let os = Prim.Array_init<?(async ())>(10, null);
    for (i in os.keys()) {
      os[i] := ? (Ack());
    };
@@ -43,18 +45,18 @@ actor Await {
   // Dynamic parallel waiting (with results)
 
   public shared func DPR/*<@>*/() : async/*<@>*/ [Int] {
-    let os = Array_init<?(async Int)>(10, null);
+    let os = Prim.Array_init<?(async Int)>(10, null);
     for (i in os.keys()) {
       os[i] := ? (Request(i));
     };
-    let res = Array_init<Int>(os.len(),-1);
+    let res = Prim.Array_init<Int>(os.len(),-1);
     for (i in os.keys()) {
       switch (os[i]) {
         case (? a) res[i] := await a;
         case null (assert false);
       };
     };
-    Array_tabulate<Int>(res.len(),func i { res[i] })
+    Prim.Array_tabulate<Int>(res.len(),func i { res[i] })
   };
 
   // Recursive parallel waiting
@@ -101,14 +103,16 @@ actor Await {
       await RPA(10);
 
       var l = await RPR(10);
-      for (i in revrange(10, 1)) {
+      var i = 10;
+      while (i > 0) {
         switch (l) {
           case (?(h, t)) {
             assert (h == i);
             l := t;
           };
           case null (assert false);
-        }
+        };
+	i -= 1;
       };
   }
 };

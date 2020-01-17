@@ -202,15 +202,17 @@ let transform mode env prog =
       clone
 
   and prim = function
+    | CallPrim typs -> CallPrim (List.map t_typ typs)
     | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
     | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
     | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
+    | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
     | ShowPrim ot -> ShowPrim (t_typ ot)
     | NumConvPrim (t1,t2) -> NumConvPrim (t1,t2)
     | CastPrim (t1,t2) -> CastPrim (t_typ t1,t_typ t2)
     | ActorOfIdBlob t -> ActorOfIdBlob (t_typ t)
     | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
-    | CPSAsync t -> CPSAsync (t_typ t)
+    | SelfRef t -> SelfRef (t_typ t)
     | p -> p
 
   and t_field {lab; typ} =
@@ -228,24 +230,8 @@ let transform mode env prog =
     match exp' with
     | LitE _ -> exp'
     | VarE id -> exp'
-    | TupE exps ->
-      TupE (List.map t_exp exps)
-    | OptE exp1 ->
-      OptE (t_exp exp1)
-    | TagE (i, exp1) ->
-      TagE (i, t_exp exp1)
-    | ProjE (exp1, n) ->
-      ProjE (t_exp exp1, n)
-    | DotE (exp1, id) ->
-      DotE (t_exp exp1, id)
-    | ActorDotE (exp1, id) ->
-      ActorDotE (t_exp exp1, id)
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | ArrayE (mut, t, exps) ->
-      ArrayE (mut, t_typ t, List.map t_exp exps)
-    | IdxE (exp1, exp2) ->
-      IdxE (t_exp exp1, t_exp exp2)
     | PrimE (CPSAwait, [a; kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
     | PrimE (CPSAsync t0, [exp1]) ->
@@ -276,7 +262,7 @@ let transform mode env prog =
                ]
                nary_async
       ).it
-    | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
+    | PrimE (CallPrim typs, [exp1; exp2]) when isAwaitableFunc exp1 ->
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
@@ -299,9 +285,6 @@ let transform mode env prog =
         .it
     | PrimE (p, exps) ->
       PrimE (prim p, List.map t_exp exps)
-    | CallE (exp1, typs, exp2)  ->
-      assert (not (isAwaitableFunc exp1));
-      CallE (t_exp exp1, List.map t_typ typs, t_exp exp2)
     | BlockE b ->
       BlockE (t_block b)
     | IfE (exp1, exp2, exp3) ->
@@ -317,16 +300,8 @@ let transform mode env prog =
       LoopE (t_exp exp1)
     | LabelE (id, typ, exp1) ->
       LabelE (id, t_typ typ, t_exp exp1)
-    | BreakE (id, exp1) ->
-      BreakE (id, t_exp exp1)
-    | RetE exp1 ->
-      RetE (t_exp exp1)
     | AsyncE _
-    | AwaitE _
-    | TryE _
-    | ThrowE _ -> assert false
-    | AssertE exp1 ->
-      AssertE (t_exp exp1)
+    | TryE _ -> assert false
     | DeclareE (id, typ, exp1) ->
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
@@ -367,7 +342,7 @@ let transform mode env prog =
                 [{ it = LetD (
                   { it = WildP; _},
                   ({ it = PrimE (CPSAsync _, _); _} as exp)); _ }],
-                { it = TupE []; _});
+                { it = PrimE (TupPrim, []); _});
                 _ } ->
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in
@@ -394,8 +369,8 @@ let transform mode env prog =
             | Replies,_ -> assert false
           end
       end
-    | ActorE (id, ds, fs, typ) ->
-      ActorE (id, t_decs ds, t_fields fs, t_typ typ)
+    | ActorE (ds, fs, typ) ->
+      ActorE (t_decs ds, t_fields fs, t_typ typ)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
@@ -417,7 +392,6 @@ let transform mode env prog =
 
   and t_dec' dec' =
     match dec' with
-    | TypD con_id -> TypD (t_con con_id)
     | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
     | VarD (id,exp) -> VarD (id,t_exp exp)
 

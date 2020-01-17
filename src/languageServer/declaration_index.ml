@@ -1,4 +1,5 @@
 open Mo_types
+open Mo_config
 open Mo_def
 open Source
 open Syntax
@@ -27,7 +28,7 @@ let string_of_ide_decl = function
        ^ ", typ = "
        ^ Type.string_of_typ value.typ
        ^ Lib.Option.get
-           (Lib.Option.map
+           (Option.map
               (fun pos -> ", definition = " ^ string_of_region pos)
               value.definition)
            ""
@@ -38,7 +39,7 @@ let string_of_ide_decl = function
        ^ ", typ = "
        ^ Type.string_of_con ty.typ
        ^ Lib.Option.get
-           (Lib.Option.map
+           (Option.map
               (fun pos -> ", definition = " ^ string_of_region pos)
               ty.definition)
            ""
@@ -61,12 +62,13 @@ let lookup_module
   match parse path with
   | Ok (Relative path) -> Index.find_opt path index
   | Ok (Package (pkg, path)) ->
-     Lib.Option.bind
-       (List.find_opt
-         (fun (name, _) -> pkg = name)
-         !Mo_config.Flags.package_urls)
-       (fun (_, pkg_path) ->
+     Option.bind
+       (Flags.M.find_opt pkg !Flags.package_urls)
+       (fun pkg_path ->
         Index.find_opt (Filename.concat pkg_path path) index)
+  | Ok Prim ->
+     Index.find_opt "@prim" index
+  | Error _ -> None
   | _ -> assert false
 
 let empty : t = Index.empty
@@ -111,7 +113,7 @@ let read_single_module_lib (ty: Type.typ): ide_decl list option =
              | typ -> ValueDecl { name; typ; definition = None }
             )
           )
-     |> Lib.Option.some
+     |> Option.some
   | _ -> None
 
 let unwrap_module_ast (lib : Syntax.lib): Syntax.exp_field list option =
@@ -137,6 +139,8 @@ let populate_definitions
     match exp_field.it.Syntax.dec.it with
     | Syntax.TypD (typ_id, _, _) ->
        Some typ_id
+    | Syntax.ClassD (typ_id, _, _, _, _, _, _) ->
+       Some typ_id
     | _ -> None in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
   let find_def (lib : Syntax.lib) def =
@@ -145,7 +149,7 @@ let populate_definitions
        let fields = Lib.Option.get (unwrap_module_ast lib) [] in
        let positioned_binder =
          fields
-         |> Lib.List.map_filter is_let_bound
+         |> List.filter_map is_let_bound
          |> List.fold_left extract_binders PatternMap.empty
          |> PatternMap.find_opt value.name
        in
@@ -154,7 +158,7 @@ let populate_definitions
        let fields = Lib.Option.get (unwrap_module_ast lib) [] in
        let type_definition =
          fields
-         |> Lib.List.map_filter is_type_def
+         |> List.filter_map is_type_def
          |> Lib.List.first_opt (fun ty_id ->
                 if ty_id.it = typ.name
                 then Some ty_id.at
@@ -170,24 +174,25 @@ let populate_definitions
   | Some lib ->
      List.map (find_def lib) decls
 
-let make_index_inner vfs entry_points : t Diag.result =
+let make_index_inner logger vfs entry_points : t Diag.result =
   Pipeline.load_progs
     (Vfs.parse_file vfs)
     entry_points
     Pipeline.initial_stat_env
   |> Diag.map (fun (libs, _, scope) ->
-      Type.Env.fold
-        (fun path ty acc ->
-        Index.add
-            path
-            (ty
-            |> read_single_module_lib
-            |> Lib.Fun.flip Lib.Option.get []
-            |> populate_definitions libs path)
-            acc)
-        scope.Scope.lib_env
-        Index.empty)
+         Type.Env.fold
+           (fun path ty acc ->
+             Index.add
+               path
+               (ty
+                |> read_single_module_lib
+                |> Fun.flip Lib.Option.get []
+                |> populate_definitions libs path)
+               acc)
+           scope.Scope.lib_env
+           Index.empty)
 
-let make_index vfs entry_points : t Diag.result =
+let make_index logger vfs entry_points : t Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
-  try make_index_inner vfs entry_points with _ -> Diag.return Index.empty
+  try make_index_inner logger vfs entry_points
+  with _ -> Diag.return Index.empty

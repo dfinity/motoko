@@ -4,4 +4,10 @@ debug.print: B
 debug.print: C
 debug.print: D
 debug.print: E
+debug.print: 1
+debug.print: 2
+debug.print: 3
+debug.print: 4
+debug.print: 5
+debug.print: 6
 ingress(1) Completed: Canister: Payload: 0x4449444c0000

@@ -1,8 +1,5 @@
 module Fun =
 struct
-  let id x = x
-  let flip f x y = f y x
-
   let curry f x y = f (x, y)
   let uncurry f (x, y) = f x y
 
@@ -25,7 +22,8 @@ end
 module Uint32 =
 struct
   type t = int32
-  let of_string = Int32.of_string
+  let of_string str = Int32.of_string ("0u" ^ str)
+  let of_string_opt str = Int32.of_string_opt ("0u" ^ str)
   let to_string n = Printf.sprintf "%lu" n
   let add = Int32.add
   let sub = Int32.sub
@@ -79,7 +77,7 @@ struct
     let open Char in
     function
     | c when 0 <= c && c <= 9 -> chr (code '0' + c)
-    | c when 10 < c && c <= 15 -> chr (code 'A' + (c - 10))
+    | c when 10 <= c && c <= 15 -> chr (code 'A' + (c - 10))
     | _ -> assert false
 
   let hex_of_byte i : string =
@@ -248,13 +246,6 @@ struct
 
   let index_of x = index_where ((=) x)
 
-  let rec map_filter f = function
-    | [] -> []
-    | x::xs ->
-      match f x with
-      | None -> map_filter f xs
-      | Some y -> y :: map_filter f xs
-
   let rec compare f xs ys =
     match xs, ys with
     | [], [] -> 0
@@ -385,38 +376,10 @@ end
 
 module Option =
 struct
-  let equal p x y =
-    match x, y with
-    | Some x', Some y' -> p x' y'
-    | None, None -> true
-    | _, _ -> false
-
   let get o x =
     match o with
     | Some y -> y
     | None -> x
-
-  let value = function
-    | Some x -> x
-    | None -> raise Not_found
-
-  let map f = function
-    | Some x -> Some (f x)
-    | None -> None
-
-  let iter f = function
-    | Some x -> f x
-    | None -> ()
-
-  let some x = Some x
-
-  let bind x f = match x with
-    | Some x -> f x
-    | None -> None
-
-  let is_some x = x <> None
-
-  let is_none x = x = None
 end
 
 module Promise =
@@ -437,7 +400,7 @@ module FilePath =
 struct
   let normalise file_path =
     let has_trailing_slash =
-      Option.is_some (String.chop_suffix "/" file_path) in
+      Stdlib.Option.is_some (String.chop_suffix "/" file_path) in
     let has_leading_slash = not (Filename.is_relative file_path) in
     let acc = Stack.create () in
     String.split file_path '/'
@@ -454,7 +417,7 @@ struct
     let prefix = if has_leading_slash then "/" else "" in
     prefix ^ (if has_trailing_slash
       then result
-      else Option.value (String.chop_suffix "/" result))
+      else Stdlib.Option.get (String.chop_suffix "/" result))
 
   let relative_to base path =
     String.chop_prefix
@@ -503,7 +466,7 @@ struct
     let show = function
       | None -> "None"
       | Some s -> "Some " ^ s in
-    Option.equal Stdlib.String.equal actual expected ||
+    Stdlib.Option.equal Stdlib.String.equal actual expected ||
       (Printf.printf
          "\nExpected: %s\nActual: %s\n"
          (show expected)

@@ -31,8 +31,7 @@ let letcont k scope =
     blockE [funcD k' v (cont v)] (* at this point, I'm really worried about variable capture *)
             (scope k')
 
-(* The empty identifier names the implicit return label *)
-
+(* Named labels for break, special labels for return and throw *)
 type label = Return | Throw | Named of string
 
 let ( -@- ) k exp2 =
@@ -64,28 +63,8 @@ and t_exp' context exp' =
   match exp' with
   | VarE _
   | LitE _ -> exp'
-  | PrimE (p, exps) ->
-    PrimE (p, List.map (t_exp context) exps)
-  | TupE exps ->
-    TupE (List.map (t_exp context) exps)
-  | OptE exp1 ->
-    OptE (t_exp context exp1)
-  | TagE (id, exp1) ->
-    TagE (id, t_exp context exp1)
-  | ProjE (exp1, n) ->
-    ProjE (t_exp context exp1, n)
-  | DotE (exp1, id) ->
-    DotE (t_exp context exp1, id)
-  | ActorDotE (exp1, id) ->
-    ActorDotE (t_exp context exp1, id)
   | AssignE (exp1, exp2) ->
     AssignE (t_lexp context exp1, t_exp context exp2)
-  | ArrayE (mut, typ, exps) ->
-    ArrayE (mut, typ, List.map (t_exp context) exps)
-  | IdxE (exp1, exp2) ->
-    IdxE (t_exp context exp1, t_exp context exp2)
-  | CallE (exp1, typs, exp2) ->
-    CallE (t_exp context exp1, typs, t_exp context exp2)
   | BlockE b ->
     BlockE (t_block context b)
   | IfE (exp1, exp2, exp3) ->
@@ -102,18 +81,18 @@ and t_exp' context exp' =
   | LabelE (id, _typ, exp1) ->
     let context' = LabelEnv.add (Named id) Label context in
     LabelE (id, _typ, t_exp context' exp1)
-  | BreakE (id, exp1) ->
+  | PrimE (BreakPrim id, [exp1]) ->
     begin
       match LabelEnv.find_opt (Named id) context with
-      | Some (Cont k) -> RetE (k -@- (t_exp context exp1))
-      | Some Label -> BreakE (id, t_exp context exp1)
+      | Some (Cont k) -> (retE (k -@- (t_exp context exp1))).it
+      | Some Label -> (breakE id (t_exp context exp1)).it
       | None -> assert false
     end
-  | RetE exp1 ->
+  | PrimE (RetPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Return context with
-      | Some (Cont k) -> RetE (k -@- (t_exp context exp1))
-      | Some Label -> RetE (t_exp context exp1)
+      | Some (Cont k) -> (retE (k -@- (t_exp context exp1))).it
+      | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
   | AsyncE (tb, exp1, typ1) ->
@@ -128,11 +107,7 @@ and t_exp' context exp' =
      (asyncE typ1 (typ exp1)
         (forall [tb] ([k_ret; k_fail] -->*
                        c_exp context' exp1 (ContVar k_ret)))).it
-  | TryE _
-  | ThrowE _
-  | AwaitE _ -> assert false (* these never have effect T.Triv *)
-  | AssertE exp1 ->
-    AssertE (t_exp context exp1)
+  | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
@@ -140,10 +115,12 @@ and t_exp' context exp' =
   | FuncE (x, s, c, typbinds, pat, typ, exp) ->
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typ,t_exp context' exp)
-  | ActorE (id, ds, ids, t) ->
-    ActorE (id, t_decs context ds, ids, t)
+  | ActorE (ds, ids, t) ->
+    ActorE (t_decs context ds, ids, t)
   | NewObjE (sort, ids, typ) -> exp'
   | SelfCallE _ -> assert false
+  | PrimE (p, exps) ->
+    PrimE (p, List.map (t_exp context) exps)
 
 and t_lexp context lexp =
   { lexp with it = t_lexp' context lexp.it }
@@ -157,7 +134,6 @@ and t_dec context dec =
   {dec with it = t_dec' context dec.it}
 and t_dec' context dec' =
   match dec' with
-  | TypD _ -> dec'
   | LetD (pat, exp) -> LetD (pat, t_exp context exp)
   | VarD (id, exp) -> VarD (id, t_exp context exp)
 
@@ -263,30 +239,10 @@ and c_exp' context exp k =
   | LitE _
   | FuncE _ ->
     assert false
-  | PrimE (p, exps) ->
-    nary context k (fun vs -> e (PrimE (p, vs))) exps
-  | TupE exps ->
-    nary context k (fun vs -> e (TupE vs)) exps
-  | OptE exp1 ->
-    unary context k (fun v1 -> e (OptE v1)) exp1
-  | TagE (i, exp1) ->
-    unary context k (fun v1 -> e (TagE (i, v1))) exp1
-  | ProjE (exp1, n) ->
-    unary context k (fun v1 -> e (ProjE (v1, n))) exp1
   | ActorE _ ->
     assert false; (* ActorE fields cannot await *)
-  | DotE (exp1, id) ->
-    unary context k (fun v1 -> e (DotE (v1, id))) exp1
-  | ActorDotE (exp1, id) ->
-    unary context k (fun v1 -> e (DotE (v1, id))) exp1
   | AssignE (exp1, exp2) ->
     c_assign context k e exp1 exp2
-  | ArrayE (mut, typ, exps) ->
-    nary context k (fun vs -> e (ArrayE (mut, typ, vs))) exps
-  | IdxE (exp1, exp2) ->
-    binary context k (fun v1 v2 -> e (IdxE (v1, v2))) exp1 exp2
-  | CallE (exp1, typs, exp2) ->
-    binary context k (fun v1 v2 -> e (CallE (v1, typs, v2))) exp1 exp2
   | BlockE (decs, exp) ->
     c_block context decs exp k
   | IfE (exp1, exp2, exp3) ->
@@ -352,23 +308,21 @@ and c_exp' context exp k =
        (fun k ->
          let context' = LabelEnv.add (Named id) (Cont (ContVar k)) context in
          c_exp context' exp1 (ContVar k)) (* TODO optimize me, if possible *)
-  | BreakE (id, exp1) ->
+  | PrimE (BreakPrim id, [exp1]) ->
     begin
       match LabelEnv.find_opt (Named id) context with
-      | Some (Cont k') ->
-         c_exp context exp1 k'
+      | Some (Cont k') -> c_exp context exp1 k'
       | Some Label -> assert false
       | None -> assert false
     end
-  | RetE exp1 ->
+  | PrimE (RetPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Return context with
-      | Some (Cont k') ->
-         c_exp context exp1 k'
+      | Some (Cont k') -> c_exp context exp1 k'
       | Some Label -> assert false
       | None -> assert false
     end
-  | ThrowE exp1 ->
+  | PrimE (ThrowPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Throw context with
       | Some (Cont k') -> c_exp context exp1 k'
@@ -386,48 +340,36 @@ and c_exp' context exp k =
     k -@- (asyncE typ1 (typ exp1)
             (forall [tb] ([k_ret; k_fail] -->*
                                    (c_exp context' exp1 (ContVar k_ret)))))
-  | AwaitE exp1 ->
+  | PrimE (AwaitPrim, [exp1]) ->
      let r = match LabelEnv.find_opt Throw context with
      | Some (Cont r) -> r
      | Some Label
      | None -> assert false
      in
-     letcont r
-       (fun r ->
-     letcont k
-       (fun k ->
-         let kr = tupE [k;r] in
-         match eff exp1 with
-         | T.Triv ->
-            awaitE (typ exp) (t_exp context exp1) kr
-         | T.Await ->
-            c_exp context  exp1
-              (meta (typ exp1) (fun v1 -> (awaitE (typ exp) v1 kr)))
-       )
-     )
-  | AssertE exp1 ->
-    unary context k (fun v1 -> e (AssertE v1)) exp1
+     letcont r (fun r ->
+     letcont k (fun k ->
+       let kr = tupE [k;r] in
+       match eff exp1 with
+       | T.Triv ->
+          awaitE (typ exp) (t_exp context exp1) kr
+       | T.Await ->
+          c_exp context  exp1
+            (meta (typ exp1) (fun v1 -> (awaitE (typ exp) v1 kr)))
+     ))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1
   | DefineE (id, mut, exp1) ->
     unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
   | NewObjE _ -> exp
   | SelfCallE _ -> assert false
+  | PrimE (p, exps) ->
+    nary context k (fun vs -> e (PrimE (p, vs))) exps
 
 and c_block context decs exp k =
-  let is_typ dec =
-    match dec.it with
-    | TypD _ -> true
-    | _ -> false
-  in
-  let (typ_decs,val_decs) = List.partition is_typ decs in
-  blockE typ_decs
-    (declare_decs val_decs (c_decs context val_decs (meta T.unit (fun _ -> c_exp context exp k))))
+  declare_decs decs (c_decs context decs (meta T.unit (fun _ -> c_exp context exp k)))
 
 and c_dec context dec (k:kont) =
   match dec.it with
-  | TypD _ ->
-    assert false
   | LetD (pat,exp) ->
     let patenv,pat' = rename_pat pat in
     let block exp =
@@ -466,7 +408,6 @@ and c_decs context decs k =
 
 and declare_dec dec exp : exp =
   match dec.it with
-  | TypD _ -> assert false
   | LetD (pat, _) -> declare_pat pat exp
   | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp
 

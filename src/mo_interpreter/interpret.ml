@@ -184,7 +184,7 @@ let await env at async k =
       k v
       )
     )
-    (let r = Lib.Option.value (env.throws) in
+    (let r = Option.get (env.throws) in
      fun v ->
        Scheduler.queue (fun () ->
            if env.flags.trace then
@@ -314,6 +314,25 @@ let array_vals a at =
     in k (V.Obj (V.Env.singleton "next" next))
   )
 
+let blob_bytes t at =
+  V.local_func 0 1 (fun c v k ->
+    V.as_unit v;
+    let i = ref 0 in
+    let next =
+      V.local_func 0 1 (fun c v k' ->
+        if !i = String.length t
+        then k' V.Null
+        else let v = V.Opt V.(Word8 (Word8.of_int_u (Char.code (String.get t !i)))) in incr i; k' v
+      )
+    in k (V.Obj (V.Env.singleton "next" next))
+  )
+
+let blob_size t at =
+  V.local_func 0 1 (fun c v k ->
+    V.as_unit v;
+    k (V.Int (V.Nat.of_int (String.length t)))
+  )
+
 let text_chars t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
@@ -391,6 +410,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | Unresolved -> assert false
     | LibPath fp -> k (find fp env.libs)
     | IDLPath _ -> trap exp.at "actor import"
+    | PrimPath -> k (find "@prim" env.libs)
     )
   | LitE lit ->
     k (interpret_lit env lit)
@@ -445,6 +465,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let f = match id.it with
           | "len" -> text_len
           | "chars" -> text_chars
+          | "size" -> blob_size
+          | "bytes" -> blob_bytes
           | _ -> assert false
         in k (f s exp.at)
       | _ -> assert false
@@ -490,7 +512,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       )
     )
   | BlockE decs ->
-    interpret_block env decs None k
+    let k' =
+      if T.is_unit exp.note.note_typ (* TODO: peeking at types violates erasure semantics, revisit! *)
+      then (fun _v -> k V.unit)
+      else k
+    in
+    interpret_block env decs None k'
   | NotE exp1 ->
     interpret_exp env exp1 (fun v1 -> k (V.Bool (not (V.as_bool v1))))
   | AndE (exp1, exp2) ->
@@ -566,9 +593,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | DebugE exp1 ->
     if !Mo_config.Flags.release_mode then k V.unit else interpret_exp env exp1 k
   | RetE exp1 ->
-    interpret_exp env exp1 (Lib.Option.value env.rets)
+    interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
-    interpret_exp env exp1 (Lib.Option.value env.throws)
+    interpret_exp env exp1 (Option.get env.throws)
   | AsyncE (_, exp1) ->
     async env
       exp.at
@@ -576,7 +603,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r; async = true}
         in interpret_exp env' exp1 k')
       k
-
   | AwaitE exp1 ->
     interpret_exp env exp1
       (fun v1 -> await env exp.at (V.as_async v1) k)
@@ -611,7 +637,7 @@ and interpret_cases env cases at v (k : V.value V.cont) =
 and interpret_catches env cases at v (k : V.value V.cont) =
   match cases with
   | [] ->
-    Lib.Option.value env.throws v (* re-throw v *)
+    Option.get env.throws v (* re-throw v *)
   | {it = {pat; exp}; at; _}::cases' ->
     match match_pat pat v with
     | Some ve -> interpret_exp (adjoin_vals env ve) exp k
@@ -806,13 +832,14 @@ and interpret_exp_fields env s fields ve (k : V.value V.cont) =
 
 and interpret_block env decs ro (k : V.value V.cont) =
   let ve = declare_decs decs V.Env.empty in
-  Lib.Option.iter (fun r -> r := ve) ro;
+  Option.iter (fun r -> r := ve) ro;
   interpret_decs (adjoin_vals env ve) decs k
 
 
 and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
+  | IgnoreD _
   | TypD _ -> V.Env.empty
   | LetD (pat, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
@@ -830,6 +857,8 @@ and interpret_dec env dec (k : V.value V.cont) =
   match dec.it with
   | ExpD exp ->
     interpret_exp env exp k
+  | IgnoreD exp ->
+    interpret_exp env exp (fun _v -> k V.unit)
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
       define_pat env pat v;
@@ -918,4 +947,4 @@ let interpret_lib flags scope lib : scope =
     interpret_exp env lib.it (fun v -> vo := Some v)
   );
   Scheduler.run ();
-  lib_scope lib.note (Lib.Option.value !vo) scope
+  lib_scope lib.note (Option.get !vo) scope

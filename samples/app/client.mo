@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 import S "server.mo";
 
 actor class Client() = this {
@@ -17,7 +18,7 @@ actor class Client() = this {
   };
 
   public func send(msg : Text) {
-    debugPrint(name # " received " # msg # "\n");
+    Prim.debugPrint(name # " received " # msg # "\n");
   };
 };
 

@@ -1,3 +1,5 @@
+import Prim "mo:prim";
+
 module {
 /**
 
@@ -19,7 +21,7 @@ some further experience and discussion.  Until then, they live here.
 
 */
 public func printLn(x : Text) {
-  debugPrint(x # "\n");
+  Prim.debugPrint(x # "\n");
 };
 
 /***

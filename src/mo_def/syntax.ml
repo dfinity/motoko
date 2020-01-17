@@ -16,6 +16,7 @@ type resolved_import =
   | Unresolved
   | LibPath of string
   | IDLPath of (string * string) (* filepath * bytes *)
+  | PrimPath (* the built-in prim module *)
 
 (* Identifiers *)
 
@@ -178,7 +179,8 @@ and case' = {pat : pat; exp : exp}
 
 and dec = (dec', typ_note) Source.annotated_phrase
 and dec' =
-  | ExpD of exp                                (* plain expression *)
+  | ExpD of exp                                (* plain unit expression *)
+  | IgnoreD of exp                             (* plain any expression *)
   | LetD of pat * exp                          (* immutable *)
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)

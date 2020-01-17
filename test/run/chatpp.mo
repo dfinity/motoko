@@ -1,3 +1,5 @@
+import Prim "mo:prim";
+
 type List<T> = ?{head : T; var tail : List<T>};
 
 type Subscription = {
@@ -69,8 +71,8 @@ actor class Server() = {
               case null { clients := n.tail };
               case (?p) { p.tail := n.tail };
             };
-            debugPrint "unsubscribe ";
-	    debugPrintInt id;
+            Prim.debugPrint "unsubscribe ";
+	    Prim.debugPrintInt id;
             return;
           };
           prev := next;
@@ -98,7 +100,7 @@ actor class Client() = this {
   };
 
   public func send(msg : Text) {
-    debugPrint(name # " received " # msg);
+    Prim.debugPrint(name # " received " # msg);
   };
 };
 

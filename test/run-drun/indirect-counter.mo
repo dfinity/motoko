@@ -1,12 +1,14 @@
+import Prim "mo:prim";
+
 let a = actor {
   let aa = actor {
     var c = 1;
     public func inc() {
       c += 1;
-      debugPrintNat(c)
+//      Prim.debugPrintNat(c)
     };
     public func debugPrint() {
-      debugPrintNat(c)
+//      Prim.debugPrintNat(c)
     };
   };
   public func inc() { aa.inc() };

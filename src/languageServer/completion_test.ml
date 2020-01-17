@@ -23,7 +23,7 @@ let prefix_test_case file expected =
     | Some (m, p) -> "Some (" ^ m ^ ", " ^ p ^ ")" in
   let actual =
     Completion.find_completion_prefix dummy_logger file line column in
-  Lib.Option.equal (=) actual expected ||
+  Option.equal (=) actual expected ||
     (Printf.printf
        "\nExpected: %s\nActual:   %s\n"
        (show expected)
@@ -36,7 +36,7 @@ let import_relative_test_case root module_path import expected =
   let show = function
     | None -> "None"
     | Some s -> "Some " ^ s in
-  Lib.Option.equal String.equal actual expected ||
+  Option.equal String.equal actual expected ||
     (Printf.printf
        "\nExpected: %s\nActual:   %s\n"
        (show expected)

@@ -6,10 +6,8 @@
 let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
   inherit system;
   overlays = [
-    # Adding wasmtime
-    (self: super: { wasmtime = self.callPackage ./nix/wasmtime {}; })
     # Selecting the ocaml version
-    (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_07; })
+    (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_08; })
     # Additional ocaml package
     (self: super: {
       ocamlPackages = super.ocamlPackages // {
@@ -38,7 +36,7 @@ let dfinity-src =
     name = "dfinity-sources";
     url = "ssh://git@github.com/dfinity-lab/dfinity";
     # ref = "master";
-    rev = "dedfec2e294a29f8a1f5f39f1700ebcdad3c6db4";
+    rev = "947195fb1395eac397b8490fc8000e3afe5ef820";
   }; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
@@ -93,6 +91,7 @@ let commonBuildInputs = pkgs:
     pkgs.dune
     pkgs.ocamlPackages.ocaml
     pkgs.ocamlPackages.atdgen
+    pkgs.ocamlPackages.checkseum
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
     pkgs.ocamlPackages.num
@@ -205,7 +204,7 @@ rec {
       staticpkgs.stdenv.mkDerivation (testDerivationArgs // args); in
 
     # we test each subdirectory of test/ in its own derivation with
-    # cleaner dependencies, for more paralleism, more caching
+    # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
     let test_subdir = dir: deps:
       testDerivation {
@@ -246,13 +245,24 @@ rec {
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
             make -C ${dir}
+
+	    if test -e ${dir}/_out/stats.csv
+	    then
+	      cp ${dir}/_out/stats.csv $out
+	    fi
           '';
       }; in
 
+    let perf_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+        checkPhase = ''
+          export PERF_OUT=$out
+        '' + args.checkPhase;
+      }); in
+
     let qc = testDerivation {
       name = "test-qc";
-      # maybe use wasm instead?
-      buildInputs = [ moc nixpkgs.wabt haskellPackages.qc-motoko ];
+      buildInputs = [ moc /* nixpkgs.wasm */ wasmtime haskellPackages.qc-motoko ];
       checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
@@ -261,7 +271,7 @@ rec {
 
     let lsp = testDerivation {
       name = "test-lsp";
-      src = subpath ./test/lsp-int/test-project;
+      src = subpath ./test/lsp-int-test-project;
       buildInputs = [ moc haskellPackages.lsp-int ];
       checkPhase = ''
         echo running lsp-int
@@ -283,6 +293,7 @@ rec {
 
     { run       = test_subdir "run"       [ moc ] ;
       run-drun  = test_subdir "run-drun"  [ moc drun ic-stub ];
+      perf      = perf_subdir "perf"      [ moc drun ];
       fail      = test_subdir "fail"      [ moc ];
       repl      = test_subdir "repl"      [ moc ];
       ld        = test_subdir "ld"        [ mo-ld ];

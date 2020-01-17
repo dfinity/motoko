@@ -1,4 +1,5 @@
 open Mo_frontend
+open Mo_config
 module Lsp = Lsp.Lsp_t
 
 type cursor_target =
@@ -43,19 +44,18 @@ let is_package_path (path : string) =
   let open Pipeline.URL in
   match parse path with
   | Ok (Package _) -> true
+  | Ok Prim -> true
   | _ -> false
 
 let uri_for_package (path : string) =
   let open Pipeline.URL in
   match parse path with
   | Ok (Package (pkg, path)) ->
-     begin match
-       List.find_opt
-         (fun (name, _) -> pkg = name)
-         !Mo_config.Flags.package_urls with
+     begin match Flags.M.find_opt pkg !Flags.package_urls with
      | None -> None
-     | Some (_, pkg_path) ->
+     | Some pkg_path ->
         (* Resolved package paths are always absolute *)
+        (* TBR: But Flags.package_urls does not contain the resolved paths! *)
         Some ("file://" ^ Filename.concat pkg_path path)
      end
   | _ -> None
@@ -69,9 +69,9 @@ let import_relative_to_project_root root module_path dependency =
     | Some root_to_module ->
        root_to_module
        |> Filename.dirname
-       |> Lib.Fun.flip Filename.concat dependency
+       |> Fun.flip Filename.concat dependency
        |> Lib.FilePath.normalise
-       |> Lib.Option.some
+       |> Option.some
 
 (* Given the source of a module, figure out under what names what
    modules have been imported. Normalizes the imported modules
@@ -118,7 +118,7 @@ let identifier_at_pos project_root file_path file_contents position =
       file_path
       file_contents in
   cursor_target_at_pos position file_contents
-    |> Lib.Option.map (function
+    |> Option.map (function
         | CIdent s ->
            (match List.find_opt (fun (alias, _) -> alias = s) imported with
             | None -> Ident s
