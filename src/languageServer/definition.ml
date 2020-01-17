@@ -63,5 +63,5 @@ let definition_handler
             then Option.get (Source_file.uri_for_package path)
             else Vfs.uri_from_file path;
           location_range = range_of_region region
-        }) result in
-  `TextDocumentDefinitionResponse location
+      }) result in
+  `TextDocumentDefinitionResponse (Option.to_list location)
