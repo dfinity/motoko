@@ -459,11 +459,11 @@ rec {
       stdlib
       stdlib-tests
       stdlib-doc
-      examples
       users-guide
       ic-stub
       shell
-    ] ++ builtins.attrValues tests;
+    ] ++ builtins.attrValues tests
+      ++ builtins.attrValues examples;
   };
 
   shell = nixpkgs.mkShell {
