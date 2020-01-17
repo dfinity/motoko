@@ -46,12 +46,7 @@ let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
-  libtommath = nixpkgs.fetchFromGitHub {
-    owner = "libtom";
-    repo = "libtommath";
-    rev = "584405ff8e357290362671b5e7db6110a959cbaa";
-    sha256 = "1vl606rm8ba7vjhr0rbdqvih5d4r5iqalqlj5mnz6j3bnsn83b2a";
-  };
+  libtommath = sources.libtommath;
 
   llvmBuildInputs = [
     nixpkgs.clang # for native building
