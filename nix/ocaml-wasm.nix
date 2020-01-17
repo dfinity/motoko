@@ -8,10 +8,7 @@ else
 
 stdenv.mkDerivation rec {
   name = "ocaml${ocaml.version}-wasm-${version}";
-  version =
-    # Strip of the "v" prefix
-    let v = src.version;
-    in builtins.substring 1 (builtins.stringLength v) v;
+  version = stdenv.lib.removePrefix "v" src.version;
 
   src = sources.WebAssembly-spec;
 
