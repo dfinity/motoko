@@ -4376,7 +4376,7 @@ module StackRep = struct
       (* When accessing a variable that is a constant function, then we need to
          create a heap-allocated closure-like thing on the fly. *)
       Tagged.obj env Tagged.Closure [
-        compile_unboxed_const (E.add_fun_ptr env fi) ^^
+        compile_unboxed_const (E.add_fun_ptr env fi);
         compile_unboxed_zero (* number of parameters: none *)
       ]
     | Const.Message fi ->
