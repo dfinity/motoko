@@ -68,7 +68,7 @@ let%test "it parses a simple module header" =
     "/project"
     "/project/src/Main.mo"
     "import P \"lib/prelude\""
-    ["P", "src/lib/prelude.mo"]
+    ["P", "src/lib/prelude"]
 
 let%test "it parses a simple module header that contains a prim import" =
   parse_module_header_test_case
@@ -82,7 +82,7 @@ let%test "it parses a simple module header with package paths" =
     "/project"
     "/project/src/Main.mo"
     "import P \"mo:stdlib/prelude\""
-    ["P", "mo:stdlib/prelude.mo"]
+    ["P", "mo:stdlib/prelude"]
 
 let%test "it parses a simple module header" =
   parse_module_header_test_case
@@ -106,6 +106,6 @@ func singleton(x: Int): Stack =
   ListFuncs.doubleton<Int>(x, x);
 }
 |}
-    [ ("List", "lib/ListLib.mo")
-    ; ("ListFuncs", "lib/ListFuncs.mo")
+    [ ("List", "lib/ListLib")
+    ; ("ListFuncs", "lib/ListFuncs")
     ]
