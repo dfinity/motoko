@@ -4813,15 +4813,15 @@ module FuncDec = struct
       set_cb_index ^^
 
       (* return arguments for the ic.call *)
-      compile_unboxed_const (E.built_in env reply_name) ^^
+      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
       get_cb_index ^^
-      compile_unboxed_const (E.built_in env reject_name) ^^
+      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
       get_cb_index
 
   let ignoring_callback env =
     let name = "@ignore_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
-    compile_unboxed_const (E.built_in env name)
+    compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
     match E.mode env with
