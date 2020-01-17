@@ -3,28 +3,9 @@
   system ? builtins.currentSystem,
 }:
 
-let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
-  inherit system;
-  overlays = [
-    # Selecting the ocaml version
-    (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_08; })
-    # Additional ocaml package
-    (self: super: {
-      ocamlPackages = super.ocamlPackages // {
-        wasm = import ./nix/ocaml-wasm.nix {
-          inherit (self) stdenv fetchFromGitHub ocaml;
-          inherit (self.ocamlPackages) findlib ocamlbuild;
-        };
-        vlq = import ./nix/ocaml-vlq.nix {
-          inherit (self) stdenv fetchFromGitHub ocaml dune;
-          inherit (self.ocamlPackages) findlib;
-        };
-      };
-    })
-  ];
-}; in
+let nixpkgs = import ./nix { inherit system; }; in
 
-let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; }; in
+let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system sources; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -32,19 +13,9 @@ let subpath = p: import ./nix/gitSource.nix p; in
 
 let dfinity-src =
   let env = builtins.getEnv "DFINITY_SRC"; in
-  if env != "" then env else builtins.fetchGit {
-    name = "dfinity-sources";
-    url = "ssh://git@github.com/dfinity-lab/dfinity";
-    # ref = "master";
-    rev = "947195fb1395eac397b8490fc8000e3afe5ef820";
-  }; in
+  if env != "" then env else nixpkgs.sources.dfinity; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
-
-let esm = nixpkgs.fetchzip {
-  sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
-  url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
-}; in
 
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
@@ -52,13 +23,6 @@ let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
-  libtommath = nixpkgs.fetchFromGitHub {
-    owner = "libtom";
-    repo = "libtommath";
-    rev = "584405ff8e357290362671b5e7db6110a959cbaa";
-    sha256 = "1vl606rm8ba7vjhr0rbdqvih5d4r5iqalqlj5mnz6j3bnsn83b2a";
-  };
-
   llvmBuildInputs = [
     nixpkgs.clang # for native building
     llvm.clang_9 # for wasm building
@@ -156,7 +120,7 @@ rec {
 
     preBuild = ''
       ${llvmEnv}
-      export TOMMATHSRC=${libtommath}
+      export TOMMATHSRC=${nixpkgs.sources.libtommath}
     '';
 
     doCheck = true;
@@ -229,7 +193,7 @@ rec {
             nixpkgs.nodejs-10_x
             filecheck
             wasmtime
-            esm
+            nixpkgs.sources.esm
           ] ++
           llvmBuildInputs;
 
@@ -240,7 +204,7 @@ rec {
             export MO_LD=mo-ld
             export DIDC=didc
             export DESER=deser
-            export ESM=${esm}
+            export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
@@ -482,8 +446,8 @@ rec {
       ));
 
     shellHook = llvmEnv;
-    ESM=esm;
-    TOMMATHSRC = libtommath;
+    ESM=nixpkgs.sources.esm;
+    TOMMATHSRC = nixpkgs.sources.libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 
