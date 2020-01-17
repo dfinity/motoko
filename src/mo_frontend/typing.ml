@@ -786,14 +786,13 @@ and infer_exp'' env exp : T.typ =
     in
     let sort, ve = check_sort_pat env sort_pat in
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
-    let ts = List.map (fun c -> T.Con(c,[])) cs in
     let c, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort c ts2;
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs in
     let t1, ve1 = infer_pat_exhaustive env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
-    let codom = T.codom c (fun () -> List.hd ts) ts2 in
+    let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
       let env'' =
         { env' with
@@ -1120,7 +1119,7 @@ and check_exp' env0 t exp : T.typ =
         (String.concat " or\n  " ss)
     );
     t
-  (* TODO: allow mono shared with one scope par *)
+  (* TODO: allow shared with one scope par *)
   | FuncE (_, sort_pat,  [], pat, typ_opt, exp), T.Func (s, c, [], ts1, ts2) ->
     let sort, ve = check_sort_pat env sort_pat in
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then

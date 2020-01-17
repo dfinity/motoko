@@ -24,11 +24,6 @@ let replies_cc s n m = { sort = Shared s; control = Replies; n_args = n; n_res =
 let call_conv_of_typ typ =
   match typ with
   | Func (sort, control, tbds, dom, res) ->
-    let control = match control with
-      | Promises -> Promises
-      | Returns -> Returns
-      | Replies -> Replies
-    in
     { sort; control; n_args = List.length dom; n_res = List.length res }
   | Non ->
     { sort = Local; control = Returns; n_args = 1; n_res = 1 }
