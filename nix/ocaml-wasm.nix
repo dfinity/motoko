@@ -1,6 +1,6 @@
 # copied from https://raw.githubusercontent.com/NixOS/nixpkgs/master/pkgs/development/ocaml-modules/wasm/default.nix
 
-{ stdenv, fetchFromGitHub, ocaml, findlib, ocamlbuild }:
+{ stdenv, ocaml, findlib, ocamlbuild, sources }:
 
 if !stdenv.lib.versionAtLeast ocaml.version "4.02"
 then throw "wasm is not available for OCaml ${ocaml.version}"
@@ -8,14 +8,12 @@ else
 
 stdenv.mkDerivation rec {
   name = "ocaml${ocaml.version}-wasm-${version}";
-  version = "1.1";
+  version =
+    # Strip of the "v" prefix
+    let v = src.version;
+    in builtins.substring 1 (builtins.stringLength v) v;
 
-  src = fetchFromGitHub {
-    owner = "WebAssembly";
-    repo = "spec";
-    rev = "v${version}";
-    sha256 = "1jsgrjqzsdmm6f5pgd947nikj7pnxx1mqdnz16j7s62rg8x06h7d";
-  };
+  src = sources.WebAssembly-spec;
 
   buildInputs = [ ocaml findlib ocamlbuild ];
 

@@ -1,4 +1,18 @@
 {
+    "WebAssembly-spec": {
+        "branch": "v1.1",
+        "builtin": false,
+        "description": "WebAssembly specification, reference interpreter, and test suite.",
+        "homepage": "https://webassembly.github.io/spec/",
+        "owner": "WebAssembly",
+        "repo": "spec",
+        "rev": "e3a3c12f51221daaa901691e674d7ff990029122",
+        "sha256": "1jsgrjqzsdmm6f5pgd947nikj7pnxx1mqdnz16j7s62rg8x06h7d",
+        "type": "tarball",
+        "url": "https://github.com/WebAssembly/spec/archive/e3a3c12f51221daaa901691e674d7ff990029122.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "version": "v1.1"
+    },
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",

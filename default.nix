@@ -13,7 +13,7 @@ let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
     (self: super: {
       ocamlPackages = super.ocamlPackages // {
         wasm = import ./nix/ocaml-wasm.nix {
-          inherit (self) stdenv fetchFromGitHub ocaml;
+          inherit (self) stdenv ocaml sources;
           inherit (self.ocamlPackages) findlib ocamlbuild;
         };
         vlq = import ./nix/ocaml-vlq.nix {
