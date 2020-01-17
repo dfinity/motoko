@@ -35,7 +35,7 @@ let rec exp e = match e.it with
       (match t with None -> Atom "_" | Some t -> typ t);
       exp e'
     ]
-  | CallE (e1, ts_opt_ref, e2)  -> "CallE"   $$ [exp e1] @ inst ts_opt_ref @ [exp e2]
+  | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds
   | NotE e              -> "NotE"    $$ [exp e]
   | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
@@ -61,9 +61,7 @@ let rec exp e = match e.it with
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
 
-and inst ts_opt_ref = match !ts_opt_ref with
-  | None -> [Atom ("?")]
-  | Some ts -> List.map typ ts
+and inst ts = List.map typ ts.it
 
 and pat p = match p.it with
   | WildP           -> Atom "WildP"
@@ -158,12 +156,8 @@ and typ t = match t.it with
   | VariantT cts        -> "VariantT" $$ List.map typ_tag cts
   | TupT ts             -> "TupT" $$ List.map typ ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
-  | AsyncT (t1_opt, t2)     -> "AsyncT" $$ [typ_opt t1_opt; typ t2]
+  | AsyncT (t1, t2)     -> "AsyncT" $$ [typ t1; typ t2]
   | ParT t              -> "ParT" $$ [typ t]
-
-and typ_opt t_opt = match t_opt with
-    Some t -> typ t
-  | None -> Atom "?"
 
 and dec d = match d.it with
   | ExpD e -> "ExpD" $$ [exp e ]

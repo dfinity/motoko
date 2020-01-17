@@ -161,7 +161,6 @@ let rec check_typ env typ : unit =
     let cs, ce = check_typ_binds env binds in
     let env' = adjoin_cons env ce in
     let ts = List.map (fun c -> T.Con (c, [])) cs in
-    let control = T.map_control (T.open_ ts) control in
     let ts1 = List.map (T.open_ ts) ts1 in
     let ts2 = List.map (T.open_ ts) ts2 in
     List.iter (check_typ env') ts1;
@@ -175,8 +174,7 @@ let rec check_typ env typ : unit =
         check env' no_region (ts2 = [])
           "one-shot function cannot have non-unit return types:\n  %s"
           (T.string_of_typ_expand (T.seq ts2));
-      | T.Promises t' ->
-        check_typ env' t';
+      | T.Promises ->
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
         check env' no_region (List.for_all T.shared ts2)
@@ -479,7 +477,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         check_inst_bounds env tbs insts exp.at;
         check_exp env exp2;
         let t_arg = T.open_ insts (T.seq arg_tys) in
-        let t_ret = T.open_ insts (T.codom control ret_tys) in
+        let t_ret = T.codom control (fun () -> List.hd insts) (List.map (T.open_ insts) ret_tys) in
         if T.is_shared_sort sort then begin
           check_concrete env exp.at t_arg;
           check_concrete env exp.at t_ret;
@@ -609,13 +607,14 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.unit <: t
   | FuncE (x, sort, control, typ_binds, args, ret_tys, exp) ->
     let cs, tbs, ce = check_open_typ_binds env typ_binds in
+    let ts = List.map (fun c -> T.Con(c, [])) cs in
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
     check ((T.is_shared_sort sort && T.is_promising control) ==> isAsyncE exp)
       "shared function with async type has non-async body";
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
-    let codom = T.codom control ret_tys in
+    let codom = T.codom control (fun () -> List.hd ts) ret_tys in
     let env'' =
       {env' with labs = T.Env.empty; rets = Some codom; async = None} in
     check_exp (adjoin_vals env'' ve) exp;
@@ -624,7 +623,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let ts1 = List.map (fun a -> a.note) args in
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ts1;
     let fun_ty = T.Func
-      ( sort, T.map_control (T.close cs) control
+      ( sort, control
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
@@ -853,7 +852,7 @@ and check_open_typ_bind env typ_bind =
   | _ -> assert false
 
 and close_typ_binds cs tbs =
-  List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
+  List.map (fun {con; sort; bound} -> {Type.var = Con.name con; sort = sort; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)

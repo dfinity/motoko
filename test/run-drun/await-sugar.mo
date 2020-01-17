@@ -1,3 +1,6 @@
+// test scoping sugar - most tests disabled until we support explicit
+// scope parameterisation/instantiation
+
 actor A {
 
 public func f0 () : async () {};
@@ -13,6 +16,7 @@ public func test1 () : async () {
 };
 */
 
+/*
 public func f2<@>() : async<@> () {};
 
 public func test2(): async () {
@@ -26,15 +30,16 @@ public func test2b() : async () {
  await f2b();
  await f2b<@>();
 };
-
+*/
 
 public func f3<A<:Int>() : async () {};
 
 public func test3 () : async () {
  await f3<Int>();   // scope passed as implicit first argument
- await f3<@,Int>(); // scope passed as explicit first argument
+/* await f3<@,Int>(); // scope passed as explicit first argument */
 };
 
+/*
 public func f4<@,B<:Int>() : async<@> () {}; // explict scope parameter 1
 
 public func test4() : async () {
@@ -47,11 +52,12 @@ public func f5<A<:Int,@>() : async<@> () {}; // explict scope parameter 2
 
 public func test5() : async () {
  await f5<Int>();   // scope passed as implicit second argument
- await f5<Int,@>();
+// await f5<Int,@>();
 }
 ;
+*/
 
-
+/*
 public func f6<A<:Int,@>() : async () {}; // explict scope parameter 2, implicit index
 
 public func test6() : async () {
@@ -59,8 +65,9 @@ public func test6() : async () {
  await f6<Int,@>();
 }
 ;
+*/
 
-
+/*
 public func f7<X,A<:Int>(n:Int) : async<X>() {
    if (n == 0) ()
    else
@@ -73,26 +80,26 @@ public func f7<X,A<:Int>(n:Int) : async<X>() {
 };
 
 public func test7 () : async () {
- await f7<Int>(1);   // scope passed as implicit second argument
- await f7<@,Int>(1);
+ await f7<Int>(1);   // scope passed as implicit  argument
+/* await f7<@,Int>(1); */
 };
+
+*/
 
 public func test() : async () {
-//  await test1();
-  await test2();
-  await test2b();
+  await test0();
+//  await test2();
+//  await test2b();
   await test3();
-  await test4();
-  await test5();
-  await test6();
-  await test7();
+//  await test4();
+//  await test5();
+//  await test6();
+//  await test7();
 };
 
 };
 
-A.test() //OR-CALL ingress test 0x4449444C0000
+A.test(); //OR-CALL ingress test 0x4449444C0000
 //SKIP comp
-
-
 
 

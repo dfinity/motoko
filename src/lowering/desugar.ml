@@ -98,8 +98,7 @@ and exp' at note = function
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
-    let control' = T.map_control (T.open_ vars) control in
-    I.FuncE (name, s, control', tbs', args, tys, wrap (exp e))
+    I.FuncE (name, s, control, tbs', args, tys, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
@@ -119,16 +118,11 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
     I.PrimE (I.OtherPrim p, [exp e])
   | S.CallE (e1, inst, e2) ->
-    begin
-      match !inst with
-      | None -> assert false
-      | Some typs ->
-        let t = e1.Source.note.S.note_typ in
-        let ts = List.map (fun t -> t.Source.note) typs in
-        if T.is_non t
-        then unreachableE.it (* BUG?, why should we discard the code for e1 just because e1 has type non (Issue #945) *)
-        else I.CallE (exp e1, ts, exp e2)
-    end
+    let t = e1.Source.note.S.note_typ in
+    let ts = inst.note (*List.map (fun t -> t.Source.note) inst.it*) in
+    if T.is_non t
+    then unreachableE.it (* BUG?, why should we discard the code for e1 just because e1 has type non (Issue #945) *)
+    else I.CallE (exp e1, ts, exp e2)
   | S.BlockE [] -> I.TupE []
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)
@@ -234,7 +228,7 @@ and typ_bind tb =
     | Some c -> c
     | _ -> assert false
   in
-  { it = { Ir.con = c; Ir.bound = tb.it.S.bound.note}
+  { it = { Ir.con = c; Ir.sort = T.Type; Ir.bound = tb.it.S.bound.note}
   ; at = tb.at
   ; note = ()
   }
@@ -248,7 +242,7 @@ and array_dotE array_ty proj e =
       if T.is_mut (T.as_array array_ty)
       then T.Array (T.Mut varA)
       else T.Array varA in
-    let ty_param = {T.var = "A"; T.bound = T.Any} in
+    let ty_param = {T.var = "A"; sort = T.Type; T.bound = T.Any} in
     let f = idE name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
     callE f [element_ty] e in
   match T.is_mut (T.as_array array_ty), proj with
@@ -336,9 +330,8 @@ and dec' at n d = match d with
     in
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
     let args, wrap, control, _n_res = to_args n.S.note_typ None p in
-    let control' = T.map_control (T.open_ inst) control in
     let fn = {
-      it = I.FuncE (id.it, sort, control', typ_binds tbs, args, [obj_typ], wrap
+      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
            at = at;
            note = { I.note_typ = obj_typ; I.note_eff = T.Triv } });
@@ -412,7 +405,7 @@ and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     arg_of_exp v,
     (fun e -> blockE [letP (pat p) v] e)
 
-and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.typ T.control * T.typ list =
+and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
   let sort, control, n_args, res_tys =
     match typ with
     | Type.Func (sort, control, tbds, dom, res) ->

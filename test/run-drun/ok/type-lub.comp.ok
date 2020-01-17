@@ -1,2 +1,2 @@
-type-lub.mo:59.16-59.24: type error, unsupported async block
+type-lub.mo:57.16-57.24: type error, unsupported async block
   (This is a limitation of the current version.)

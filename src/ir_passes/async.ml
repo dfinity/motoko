@@ -54,7 +54,7 @@ let new_asyncT =
   T.Func (
       T.Local,
       T.Returns,
-      [ { var = "T"; bound = T.Any } ],
+      [ { var = "T"; sort=T.Scope; bound = T.Any } ],
       [],
       new_async_ret unary (T.Var ("T", 0))
     )
@@ -115,7 +115,7 @@ let letEta e scope =
 
 let isAwaitableFunc exp =
   match typ exp with
-  | T.Func (T.Shared _,T.Promises _,_,_,_) -> true
+  | T.Func (T.Shared _, T.Promises, _, _, _) -> true
   | _ -> false
 
 (* Given sequence type ts, bind e of type (seq ts) to a
@@ -167,7 +167,7 @@ let transform mode env prog =
     | Array t -> Array (t_typ t)
     | Tup ts -> Tup (List.map t_typ ts)
     | Func (s, c, tbs, ts1, ts2) ->
-      let c' =  match c with T.Promises _ -> T.Replies | _ -> c in
+      let c' =  match c with T.Promises -> T.Replies | _ -> c in
       Func (s, c', List.map t_bind tbs, List.map t_typ ts1, List.map t_typ ts2)
     | Opt t -> Opt (t_typ t)
     | Variant fs -> Variant (List.map t_field fs)
@@ -179,8 +179,8 @@ let transform mode env prog =
     | Pre -> Pre
     | Typ c -> Typ (t_con c)
 
-  and t_bind {var; bound} =
-    {var; bound = t_typ bound}
+  and t_bind tb =
+    { tb with bound = t_typ tb.bound }
 
   and t_binds typbinds = List.map t_bind typbinds
 
@@ -279,7 +279,7 @@ let transform mode env prog =
     | CallE (exp1, typs, exp2) when isAwaitableFunc exp1 ->
       let ts1,ts2 =
         match typ exp1 with
-        | T.Func (T.Shared _, T.Promises _,tbs,ts1,ts2) ->
+        | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
           List.map (fun t -> t_typ (T.open_ typs t)) ts1,
           List.map (fun t -> t_typ (T.open_ typs t)) ts2
         | _ -> assert(false)
@@ -339,8 +339,7 @@ let transform mode env prog =
         | T.Shared s' ->
           begin
             match c, exp with
-            | Promises _t0, exp ->
-              (* TODO maybe check _t0 = t0 below *)
+            | Promises, exp ->
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in
@@ -455,8 +454,8 @@ let transform mode env prog =
     | AltP (pat1, pat2) ->
       AltP (t_pat pat1, t_pat pat2)
 
-  and t_typ_bind' {con; bound} =
-    {con = t_con con; bound = t_typ bound}
+  and t_typ_bind' tb =
+    { tb with con = t_con tb.con; bound = t_typ tb.bound }
 
   and t_typ_bind typ_bind =
     { typ_bind with it = t_typ_bind' typ_bind.it }

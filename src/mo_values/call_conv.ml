@@ -10,7 +10,7 @@ with their “calling convention”, and check them in calls.
 
 type call_conv = {
   sort: func_sort;
-  control : unit control;
+  control : control;
   n_args : int;
   n_res : int;
 }
@@ -18,14 +18,14 @@ type t = call_conv
 
 let local_cc n m = { sort = Local; control = Returns; n_args = n; n_res = m}
 let message_cc s n = { sort = Shared s; control = Returns; n_args = n; n_res = 0}
-let async_cc s n m = { sort = Shared s; control = Promises (); n_args = n; n_res = m}
+let async_cc s n m = { sort = Shared s; control = Promises; n_args = n; n_res = m}
 let replies_cc s n m = { sort = Shared s; control = Replies; n_args = n; n_res = m}
 
 let call_conv_of_typ typ =
   match typ with
   | Func (sort, control, tbds, dom, res) ->
     let control = match control with
-      | Promises t -> Promises ()
+      | Promises -> Promises
       | Returns -> Returns
       | Replies -> Replies
     in
@@ -38,6 +38,6 @@ let string_of_call_conv {sort;control;n_args;n_res} =
   Printf.sprintf "(%s%i %s %i)"
     (string_of_func_sort sort)
     n_args
-    (match control with Returns -> "->" | Promises _ -> "@>" | Replies -> "#>")
+    (match control with Returns -> "->" | Promises -> "@>" | Replies -> "#>")
     n_res
 

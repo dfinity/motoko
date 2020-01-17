@@ -207,7 +207,7 @@ let make_async_message env id call_conv f =
   assert env.flavor.has_async_typ;
   let open CC in
   match call_conv with
-  | {sort = T.Shared s; control = T.Promises _; _} ->
+  | {sort = T.Shared s; control = T.Promises; _} ->
     Value.async_func s call_conv.n_args call_conv.n_res (fun c v k ->
       let async = make_async () in
       actor_msg env id f c v (fun v_async ->
@@ -233,7 +233,7 @@ let make_replying_message env id call_conv f =
 let make_message env x cc f : V.value =
   match cc.CC.control with
   | T.Returns -> make_unit_message env x cc f
-  | T.Promises _ -> make_async_message env x cc f
+  | T.Promises -> make_async_message env x cc f
   | T.Replies -> make_replying_message env x cc f
 
 
@@ -535,8 +535,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       (fun env' -> interpret_exp env' e) in
     let v = make_message env x cc f in
     k v
-  | FuncE (x, sort, controlT, _typbinds, args, ret_typs, e) ->
-    let control = Type.map_control (fun _ -> ()) controlT in
+  | FuncE (x, sort, control, _typbinds, args, ret_typs, e) ->
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
     let f = interpret_func env exp.at sort x args
       (fun env' -> interpret_exp env' e) in
