@@ -84,7 +84,7 @@ and exp env e  : exp =
 and assignEs vars exp : dec list =
   match vars, exp.it with
   | [v], _ -> [ expD (assignE v exp) ]
-  | _, TupE es when List.length es = List.length vars ->
+  | _, PrimE (TupPrim, es) when List.length es = List.length vars ->
        List.map expD (List.map2 assignE vars es)
   | _, _ ->
     let tup = fresh_var "tup" (typ exp) in
@@ -93,24 +93,15 @@ and assignEs vars exp : dec list =
 
 and exp' env e  : exp' = match e.it with
   | VarE _ | LitE _     -> e.it
-  | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
-  | TupE es             -> TupE (List.map (exp env) es)
-  | ProjE (e, i)        -> ProjE (exp env e, i)
-  | DotE (e, sn)        -> DotE (exp env e, sn)
-  | ActorDotE (e, sn)   -> ActorDotE (exp env e, sn)
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
-  | ArrayE (m,t,es)     -> ArrayE (m,t,(exps env es))
-  | IdxE (e1, e2)       -> IdxE (exp env e1, exp env e2)
-  | CallE (e1, insts, e2)  ->
-    begin
-      match e1.it, env with
-      | VarE f1, { tail_pos = true;
-                   info = Some { func; typ_binds; temps; label; tail_called } }
-           when f1 = func && are_generic_insts typ_binds insts  ->
-        tail_called := true;
-        (blockE (assignEs temps (exp env e2))
-                 (breakE label (tupE []))).it
-      | _,_-> CallE (exp env e1, insts, exp env e2)
+  | PrimE (CallPrim insts, [e1; e2])  ->
+    begin match e1.it, env with
+    | VarE f1, { tail_pos = true;
+                 info = Some { func; typ_binds; temps; label; tail_called } }
+         when f1 = func && are_generic_insts typ_binds insts  ->
+      tail_called := true;
+      (blockE (assignEs temps (exp env e2)) (breakE label unitE)).it
+    | _,_-> PrimE (CallPrim insts, [exp env e1; exp env e2])
     end
   | BlockE (ds, e)      -> BlockE (block env ds e)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)
@@ -119,15 +110,10 @@ and exp' env e  : exp' = match e.it with
   | LoopE e1            -> LoopE (exp env e1)
   | LabelE (i, t, e)    -> let env1 = bind env i None in
                            LabelE(i, t, exp env1 e)
-  | BreakE (i, e)       -> BreakE(i,exp env e)
-  | RetE e              -> RetE (tailexp { env with tail_pos = true } e)
+  | PrimE (RetPrim, [e])-> PrimE (RetPrim, [tailexp { env with tail_pos = true } e])
   (* NB:^ e is always in tailposition, regardless of fst env *)
-  | ThrowE e            -> ThrowE (exp env e) (* TODO: make me a tail call *)
+  (* TODO: Make ThrowE a tail call *)
   | AsyncE e            -> AsyncE (exp { tail_pos = true; info = None } e)
-  | AwaitE e            -> AwaitE (exp env e)
-  | AssertE e           -> AssertE (exp env e)
-  | OptE e              -> OptE (exp env e)
-  | TagE (i, e)         -> TagE (i, exp env e)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
@@ -142,10 +128,9 @@ and exp' env e  : exp' = match e.it with
     let exp2' = exp env exp2 in
     let exp3' = exp env exp3 in
     SelfCallE (ts, exp1', exp2', exp3')
-  | ActorE (i, ds, fs, t) -> ActorE (i, ds, fs, t) (* TODO: descent into ds *)
+  | ActorE (ds, fs, t)  -> ActorE (ds, fs, t) (* TODO: descent into ds *)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
-
-and exps env es  = List.map (exp env) es
+  | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
 
 and lexp env le : lexp = {le with it = lexp' env le}
 
@@ -245,9 +230,6 @@ and dec' env d =
   | VarD (i, e) ->
     let env = bind env i None in
     (fun env1 -> VarD(i,exp env1 e)),
-    env
-  | TypD _ ->
-    (fun env -> d.it),
     env
 
 and block env ds exp =

@@ -39,16 +39,32 @@ let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
+exception CodegenError of string
+let fatal fmt = Printf.ksprintf (fun s -> raise (CodegenError s)) fmt
+
+module Const = struct
+
+  (* Constant known values.
+
+     These are values that
+     * are completely known constantly
+     * do not require Wasm code to be be executed (e.g. in `start`)
+     * can be used directly (e.g. Call, not CallIndirect)
+     * can be turned into Vanilla heap data on demand
+     * (future work)
+       vanilla heap representation may be placed in static heap and shared
+  *)
+
+  type t =
+    | Fun of int32
+    | Message of int32 (* anonymous message, only temporary *)
+    | PublicMethod of int32 * string
+
+end (* Const *)
+
 module SR = struct
   (* This goes with the StackRep module, but we need the types earlier *)
 
-  (* Statically known values: They are not put on the stack, but the
-     “stack representation“ carries the static information.
-  *)
-  type static_thing =
-    | StaticFun of int32
-    | StaticMessage of int32 (* anonymous message, only temporary *)
-    | PublicMethod of int32 * string
 
   (* Value representation on the stack:
 
@@ -62,7 +78,7 @@ module SR = struct
     | UnboxedWord64
     | UnboxedWord32
     | Unreachable
-    | StaticThing of static_thing
+    | Const of Const.t
 
   let unit = UnboxedTuple 0
 
@@ -4257,42 +4273,6 @@ module GC = struct
 
 end (* GC *)
 
-module VarLoc = struct
-  (* Most names are stored in heap locations or in locals.
-     But some are special (static functions, the current actor, static messages of
-     the current actor). These have no real location (yet), but we still need to
-     produce a value on demand:
-   *)
-
-  type deferred_loc =
-    { stack_rep : SR.t
-    ; materialize : E.t -> G.t
-    ; is_local : bool (* Only valid within the current function *)
-    }
-
-  (* A type to record where Motoko names are stored. *)
-  type varloc =
-    (* A Wasm Local of the current function, directly containing the value
-       (note that most values are pointers, but not all)
-       Used for immutable and mutable, non-captured data *)
-    | Local of int32
-    (* A Wasm Local of the current function, that points to memory location,
-       with an offset (in words) to value.
-       Used for mutable captured data *)
-    | HeapInd of (int32 * int32)
-    (* A static mutable memory location (static address of a MutBox field) *)
-    | Static of int32
-    (* Dynamic code to put the value on the heap.
-       May be local to the current function or module (see is_local) *)
-    | Deferred of deferred_loc
-
-  let is_non_local : varloc -> bool = function
-    | Local _ -> false
-    | HeapInd _ -> false
-    | Static _ -> true
-    | Deferred d -> not d.is_local
-end
-
 module StackRep = struct
   open SR
 
@@ -4329,7 +4309,7 @@ module StackRep = struct
     | UnboxedTuple 1 -> [I32Type]
     | UnboxedTuple n ->
       assert false; (* not supported without muti_value *)
-    | StaticThing _ -> []
+    | Const _ -> []
     | Unreachable -> []
 
   let to_string = function
@@ -4338,7 +4318,7 @@ module StackRep = struct
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
-    | StaticThing _ -> "StaticThing"
+    | Const _ -> "StaticThing"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
     | _, _ when sr1 = sr2 -> sr1
@@ -4348,7 +4328,7 @@ module StackRep = struct
     | UnboxedTuple n, UnboxedTuple m when n = m -> sr1
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
-    | StaticThing _, StaticThing _ -> Vanilla
+    | Const _, Const _ -> Vanilla
     | _, _ ->
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
@@ -4368,20 +4348,20 @@ module StackRep = struct
     | UnboxedWord64 -> G.i Drop
     | UnboxedWord32 -> G.i Drop
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
-    | StaticThing _ -> G.nop
+    | Const _ -> G.nop
     | Unreachable -> G.nop
 
   let materialize env = function
-    | StaticFun fi ->
-      (* When accessing a variable that is a static function, then we need to
+    | Const.Fun fi ->
+      (* When accessing a variable that is a constant function, then we need to
          create a heap-allocated closure-like thing on the fly. *)
       Tagged.obj env Tagged.Closure [
         compile_unboxed_const fi;
         compile_unboxed_zero (* number of parameters: none *)
       ]
-    | StaticMessage fi ->
+    | Const.Message fi ->
       assert false
-    | PublicMethod (_, name) ->
+    | Const.PublicMethod (_, name) ->
       Dfinity.get_self_reference env ^^
       Dfinity.actor_public_field env name
 
@@ -4401,8 +4381,8 @@ module StackRep = struct
     | UnboxedWord32, Vanilla -> BoxedSmallWord.box env
     | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env
 
-    | StaticThing s, Vanilla -> materialize env s
-    | StaticThing s, UnboxedTuple 0 -> G.nop
+    | Const s, Vanilla -> materialize env s
+    | Const s, UnboxedTuple 0 -> G.nop
 
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
@@ -4412,6 +4392,29 @@ module StackRep = struct
 end (* StackRep *)
 
 module VarEnv = struct
+
+  (* A type to record where Motoko names are stored. *)
+  type varloc =
+    (* A Wasm Local of the current function, directly containing the value
+       (note that most values are pointers, but not all)
+       Used for immutable and mutable, non-captured data *)
+    | Local of int32
+    (* A Wasm Local of the current function, that points to memory location,
+       with an offset (in words) to value.
+       Used for mutable captured data *)
+    | HeapInd of (int32 * int32)
+    (* A static mutable memory location (static address of a MutBox field) *)
+    (* TODO: Do we need static immutable? *)
+    | HeapStatic of int32
+    (* Not materialized (yet), statically known constant *)
+    | Const of Const.t
+
+  let is_non_local : varloc -> bool = function
+    | Local _ -> false
+    | HeapInd _ -> false
+    | HeapStatic _ -> true
+    | Const _ -> true
+
   (*
   The source variable environment:
   In scope variables and in-scope jump labels
@@ -4419,7 +4422,7 @@ module VarEnv = struct
 
   module NameEnv = Env.Make(String)
   type t = {
-    vars : VarLoc.varloc NameEnv.t; (* variables ↦ their location *)
+    vars : varloc NameEnv.t; (* variables ↦ their location *)
     labels : G.depth NameEnv.t; (* jump label ↦ their depth *)
   }
 
@@ -4434,7 +4437,7 @@ module VarEnv = struct
 
   let mk_fun_ae ae = { ae with
     vars = NameEnv.filter (fun v l ->
-      let non_local = VarLoc.is_non_local l in
+      let non_local = is_non_local l in
       (* For debugging, enable this:
       (if not non_local then Printf.eprintf "VarEnv.mk_fun_ae: Removing %s\n" v);
       *)
@@ -4447,27 +4450,25 @@ module VarEnv = struct
       | None   -> Printf.eprintf "Could not find %s\n" var; None
 
   let needs_capture ae var = match lookup_var ae var with
-    | Some l -> not (VarLoc.is_non_local l)
+    | Some l -> not (is_non_local l)
     | None -> assert false
 
   let reuse_local_with_offset (ae : t) name i off =
-      { ae with vars = NameEnv.add name (VarLoc.HeapInd (i, off)) ae.vars }
+      { ae with vars = NameEnv.add name (HeapInd (i, off)) ae.vars }
 
   let add_local_with_offset env (ae : t) name off =
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
       (reuse_local_with_offset ae name i off, i)
 
-  let add_local_static (ae : t) name ptr =
-      { ae with vars = NameEnv.add name (VarLoc.Static ptr) ae.vars }
+  let add_local_heap_static (ae : t) name ptr =
+      { ae with vars = NameEnv.add name (HeapStatic ptr) ae.vars }
 
-  let add_local_deferred (ae : t) name stack_rep materialize is_local =
-      let open VarLoc in
-      let d = {stack_rep; materialize; is_local} in
-      { ae with vars = NameEnv.add name (VarLoc.Deferred d) ae.vars }
+  let add_local_const (ae : t) name c =
+      { ae with vars = NameEnv.add name (Const c : varloc) ae.vars }
 
   let add_local_local env (ae : t) name i =
-      { ae with vars = NameEnv.add name (VarLoc.Local i) ae.vars }
+      { ae with vars = NameEnv.add name (Local i) ae.vars }
 
   let add_direct_local env (ae : t) name =
       let i = E.add_anon_local env I32Type in
@@ -4480,7 +4481,7 @@ module VarEnv = struct
     | (name :: names) ->
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      let ae' = { ae with vars = NameEnv.add name (VarLoc.Local i) ae.vars } in
+      let ae' = { ae with vars = NameEnv.add name (Local i) ae.vars } in
       let (ae_final, setters) = add_argument_locals env ae' names
       in (ae_final, G.i (LocalSet (nr i)) :: setters)
 
@@ -4501,7 +4502,7 @@ module Var = struct
   (* This module is all about looking up Motoko variables in the environment,
      and dealing with mutable variables *)
 
-  open VarLoc
+  open VarEnv
 
   (* Stores the payload (which is found on the stack) *)
   let set_val env ae var = match VarEnv.lookup_var ae var with
@@ -4513,14 +4514,14 @@ module Var = struct
       G.i (LocalGet (nr i)) ^^
       get_new_val ^^
       Heap.store_field off
-    | Some (Static ptr) ->
+    | Some (HeapStatic ptr) ->
       let (set_new_val, get_new_val) = new_local env "new_val" in
       set_new_val ^^
       compile_unboxed_const ptr ^^
       get_new_val ^^
       Heap.store_field 1l
-    | Some (Deferred d) -> assert false
-    | None   -> assert false
+    | Some (Const _) -> fatal "set_val: %s is const" var
+    | None   -> fatal "set_val: %s missing" var
 
   (* Returns the payload (optimized representation) *)
   let get_val (env : E.t) (ae : VarEnv.t) var = match VarEnv.lookup_var ae var with
@@ -4528,10 +4529,10 @@ module Var = struct
       SR.Vanilla, G.i (LocalGet (nr i))
     | Some (HeapInd (i, off)) ->
       SR.Vanilla, G.i (LocalGet (nr i)) ^^ Heap.load_field off
-    | Some (Static i) ->
+    | Some (HeapStatic i) ->
       SR.Vanilla, compile_unboxed_const i ^^ Heap.load_field 1l
-    | Some (Deferred d) ->
-      d.stack_rep, d.materialize env
+    | Some (Const c) ->
+      SR.Const c, G.nop
     | None -> assert false
 
   (* Returns the payload (vanilla representation) *)
@@ -4558,15 +4559,6 @@ module Var = struct
         let restore_code = G.i (LocalSet (nr j))
         in (ae2, restore_code)
       )
-    | Some (Deferred d) ->
-      assert d.is_local;
-      ( d.materialize old_env ^^
-        StackRep.adjust old_env d.stack_rep SR.Vanilla
-      , fun new_env ae1 ->
-        let (ae2, j) = VarEnv.add_direct_local new_env ae1 var in
-        let restore_code = G.i (LocalSet (nr j))
-        in (ae2, restore_code)
-      )
     | _ -> assert false
 
   (* Returns a pointer to a heap allocated box for this.
@@ -4577,7 +4569,7 @@ module Var = struct
 
   let get_val_ptr env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd (i, 1l)) -> G.i (LocalGet (nr i))
-    | Some (Static _) -> assert false (* we never do this on the toplevel *)
+    | Some (HeapStatic _) -> assert false (* we never do this on the toplevel *)
     | _  -> field_box env (get_val_vanilla env ae var)
 
 end (* Var *)
@@ -4617,7 +4609,7 @@ module FuncDec = struct
       | Type.Shared Type.Query -> G.i Nop
       | _ -> assert false
 
-  let compile_static_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
+  let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env [] [] (fun env -> G.with_region at (
       (* reply early for a oneway *)
@@ -4642,12 +4634,12 @@ module FuncDec = struct
     let (fi, fill) = E.reserve_fun pre_env name in
     if Type.is_shared_sort sort
     then begin
-      ( SR.StaticMessage fi, fun env ae ->
-        fill (compile_static_message env ae sort control args mk_body ret_tys at)
+      ( Const.Message fi, fun env ae ->
+        fill (compile_const_message env ae sort control args mk_body ret_tys at)
       )
     end else begin
       assert (control = Type.Returns);
-      ( SR.StaticFun fi, fun env ae ->
+      ( Const.Fun fi, fun env ae ->
         let restore_no_env _env ae _ = (ae, G.nop) in
         fill (compile_local_function env ae restore_no_env args mk_body ret_tys at)
       )
@@ -4726,9 +4718,9 @@ module FuncDec = struct
 
     if captured = []
     then
-      let (st, fill) = closed env sort control name args mk_body ret_tys at in
+      let (c, fill) = closed env sort control name args mk_body ret_tys at in
       fill env ae;
-      (SR.StaticThing st, G.nop)
+      (SR.Const c, G.nop)
     else closure env ae sort control name captured args mk_body ret_tys at
 
   (* Returns the index of a saved closure *)
@@ -4946,154 +4938,185 @@ open Ir
 module AllocHow = struct
   (*
   When compiling a (recursive) block, we need to do a dependency analysis, to
-  find out which names need to be heap-allocated, which local-allocated and which
-  are simply static functions. The goal is to avoid dynamic allocation where
-  possible (and use locals), and to avoid turning function references into closures.
+  find out how the things are allocated. The options are:
+  - const:  completely known, constant, not stored anywhere (think static function)
+            (no need to mention in a closure)
+  - local:  only needed locally, stored in a Wasm local, immutable
+            (can be copied into a closure by value)
+  - local mutable: only needed locally, stored in a Wasm local, mutable
+            (cannot be copied into a closure)
+  - heap allocated: stored on the dynamic heap, address in Wasm local
+            (can be copied into a closure by reference)
+  - static heap: stored on the static heap, address known statically
+            (no need to mention in a closure)
 
-  The rules for non-top-level-blocks are:
-  - functions are static, unless they capture something that is not a static
+  The goal is to avoid dynamic allocation where possible (and use locals), and
+  to avoid turning function references into closures.
+
+  The rules are:
+  - functions are const, unless they capture something that is not a const
     function or a static heap allocation.
-  - everything that is captured before it is defined needs to be dynamically
-    heap-allocated, unless it is a static function
-  - everything that is mutable and captured needs to be dynamically heap-allocated
-  - the rest can be local (immutable things can be put into closures by values)
-
-  These rules require a fixed-point analysis.
-
-  We represent this as a lattice as follows:
+    in particular, top-level functions are always const
+  - everything that is captured on the top-level needs to be statically
+    heap-allocated
+  - everything that is captured before it is defined, or is captured and mutable
+    needs to be dynamically heap-allocated
+  - the rest can be local
   *)
 
   module M = Freevars.M
   module S = Freevars.S
 
-  type nonStatic = LocalImmut | LocalMut | StoreHeap | StoreStatic
-  type allocHow = nonStatic M.t (* absent means static *)
+  (*
+  We represent this as a lattice as follows:
+  *)
+  type how = Const | LocalImmut | LocalMut | StoreHeap | StoreStatic
+  type allocHow = how M.t
+
+  let disjoint_union : allocHow -> allocHow -> allocHow =
+    M.union (fun v _ _ -> fatal "AllocHow.disjoint_union: %s" v)
 
   let join : allocHow -> allocHow -> allocHow =
     M.union (fun _ x y -> Some (match x, y with
-      | StoreStatic, StoreHeap -> assert false
-      | StoreHeap, StoreStatic -> assert false
-      | _, StoreHeap -> StoreHeap
-      | StoreHeap, _  -> StoreHeap
-      | _, StoreStatic -> StoreStatic
-      | StoreStatic, _  -> StoreStatic
-      | LocalMut, _ -> LocalMut
-      | _, LocalMut -> LocalMut
-      | LocalImmut, LocalImmut -> LocalImmut
+      | StoreStatic, StoreHeap | StoreHeap, StoreStatic
+      ->  fatal "AllocHow.join: cannot join StoreStatic and StoreHeap"
+
+      | _, StoreHeap   | StoreHeap,   _ -> StoreHeap
+      | _, StoreStatic | StoreStatic, _ -> StoreStatic
+      | _, LocalMut    | LocalMut,    _ -> LocalMut
+      | _, LocalImmut  | LocalImmut,  _ -> LocalImmut
+
+      | Const, Const -> Const
     ))
+  let joins = List.fold_left join M.empty
 
   type lvl = TopLvl | NotTopLvl
 
-  let map_of_set x s = S.fold (fun v m -> M.add v x m) s M.empty
-  let set_of_map m = M.fold (fun v _ m -> S.add v m) m S.empty
+  let map_of_set = Freevars.map_of_set
+  let set_of_map = Freevars.set_of_map
+  let disjoint s1 s2 = S.is_empty (S.inter s1 s2)
 
-  let is_local_mut _ b = LocalMut = b
+  (* Various filters used in the set operations below *)
+  let is_local_mut _ = function
+    | LocalMut -> true
+    | _ -> false
 
-  let is_not_static _ = function
+  let is_local _ = function
+    | LocalImmut -> true
+    | LocalMut -> true
+    | _ -> false
+
+  let is_not_const _ : how -> bool = function
+    | Const -> false
+    | _ -> true
+
+  let require_closure _ : how -> bool = function
+    | Const -> false
     | StoreStatic -> false
     | _ -> true
 
+  let how_captured lvl how seen captured =
+    (* What to do so that we can capture something?
+       * For local blocks, put on the dynamic heap:
+         - mutable things
+         - not yet defined things
+       * For top-level blocks, put on the static heap:
+         - everything that is non-static (i.e. still in locals)
+    *)
+    match lvl with
+    | NotTopLvl ->
+      map_of_set StoreHeap (S.union
+        (S.inter (set_of_map (M.filter is_local_mut how)) captured)
+        (S.inter (set_of_map (M.filter is_local how)) (S.diff captured seen))
+      )
+    | TopLvl ->
+      map_of_set StoreStatic
+        (S.inter (set_of_map (M.filter is_local how)) captured)
 
-  let is_static ae how f =
-    (* Does this capture nothing from outside? *)
-    (S.is_empty (S.inter
-      (Freevars.captured_vars f)
-      (set_of_map (M.filter (fun _ x -> not (VarLoc.is_non_local x)) (ae.VarEnv.vars))))) &&
-    (* Does this capture nothing non-static from here? *)
-    (S.is_empty (S.inter
-      (Freevars.captured_vars f)
-      (set_of_map (M.filter is_not_static how))))
-
-  let is_func_exp exp = match exp.it with
+  let is_const_exp exp = match exp.it with
     | FuncE _ -> true
     | _ -> false
 
-  let is_static_exp env lvl how0 exp =
-    (* Functions are static when they are on the top-level or do not capture anything *)
-    if is_func_exp exp
-    then lvl = TopLvl || is_static env how0 (Freevars.exp exp)
-    else false
+  let dec lvl how_outer (seen, how0) dec =
+    let how_all = disjoint_union how_outer how0 in
 
-  let store_heap lvl = match lvl with
-    (* In the top level, never store in the dynamic heap; either use
-       locals or static heap *)
-    | TopLvl -> StoreStatic
-    | NotTopLvl -> StoreHeap
-
-  let how_captured how lvl captured =
-    (* Some captured variables must be on the heap
-       * For local blocks, mutable things suffice (the others can be copied to the closure
-         by value)
-       * For top-level blocks, everything non-static should be statically allocated
-    *)
-    let force_to_heap = match lvl with
-      | TopLvl -> is_not_static
-      | NotTopLvl -> is_local_mut in
-    map_of_set (store_heap lvl)
-      (S.inter (set_of_map (M.filter force_to_heap how)) captured)
-
-  let dec env lvl (seen, how0) dec =
     let (f,d) = Freevars.dec dec in
-    let captured = Freevars.captured_vars f in
+    let captured = S.inter (set_of_map how0) (Freevars.captured_vars f) in
 
     (* Which allocation is required for the things defined here? *)
     let how1 = match dec.it with
       (* Mutable variables are, well, mutable *)
       | VarD _ ->
       map_of_set LocalMut d
-      (* Static functions in an let-expression *)
-      | LetD ({it = VarP _; _}, e) when is_static_exp env lvl how0 e ->
-      M.empty
+
+      (* Static expressions on the top-level:
+        - need to be constant forms
+        - all non-captured free variables must be static
+        - all captured variables must be static or static-heap, if not on top level
+          (top level captures variables will be forced to be static-heap below, via how2)
+      *)
+      | LetD ({it = VarP _; _}, e) when
+        is_const_exp e &&
+        disjoint (Freevars.eager_vars f) (set_of_map (M.filter is_not_const how_all)) &&
+        (lvl = TopLvl || disjoint (Freevars.captured_vars f) (set_of_map (M.filter require_closure how_all)))
+      -> map_of_set (Const : how) d
+
+
       (* Everything else needs at least a local *)
       | _ ->
       map_of_set LocalImmut d in
 
-    (* Do we capture anything unseen, but non-static?
-       These need to be heap-allocated.
-    *)
-    let how2 =
-      map_of_set (store_heap lvl)
-        (S.inter
-          (set_of_map how0)
-          (S.diff (Freevars.captured_vars f) seen)) in
+    (* Which allocation does this require for its captured things? *)
+    let how2 = how_captured lvl how_all seen captured in
 
-    (* More captures? *)
-    let how3 = how_captured how0 lvl captured in
-
-    let how = List.fold_left join M.empty [how0; how1; how2; how3] in
+    let how = joins [how0; how1; how2] in
     let seen' = S.union seen d
     in (seen', how)
 
-  let decs env lvl decs captured_in_body : allocHow =
+  (* find the allocHow for the variables currently in scope *)
+  (* we assume things are mutable, as we do not know better here *)
+  let how_of_ae ae : allocHow = M.map (fun l ->
+    match l with
+    | VarEnv.Const _ -> (Const : how)
+    | VarEnv.HeapStatic _ -> StoreStatic
+    | VarEnv.Local _ -> LocalMut (* conservatively assume immutable *)
+    | VarEnv.HeapInd _ -> StoreHeap
+    ) ae.VarEnv.vars
+
+  let decs (ae : VarEnv.t) lvl decs captured_in_body : allocHow =
+    let how_outer = how_of_ae ae in
+    let defined_here = snd (Freevars.decs decs) in (* TODO: implement gather_decs more directly *)
+    let how_outer = Freevars.diff how_outer defined_here in (* shadowing *)
+    let how0 = map_of_set (Const : how) defined_here in
+    let captured = S.inter defined_here captured_in_body in
     let rec go how =
-      let _seen, how1 = List.fold_left (dec env lvl) (S.empty, how) decs in
-      let how2 = how_captured how1 lvl captured_in_body in
+      let seen, how1 = List.fold_left (dec lvl how_outer) (S.empty, how) decs in
+      assert (S.equal seen defined_here);
+      let how2 = how_captured lvl how1 seen captured in
       let how' = join how1 how2 in
       if M.equal (=) how how' then how' else go how' in
-    go M.empty
+    go how0
 
   (* Functions to extend the environment (and possibly allocate memory)
      based on how we want to store them. *)
-  let add_how env ae name : nonStatic option -> VarEnv.t * G.t = function
-    | Some LocalImmut | Some LocalMut ->
+  let add_local env ae how name : VarEnv.t * G.t =
+    match M.find name how with
+    | (Const : how) -> (ae, G.nop)
+    | LocalImmut | LocalMut ->
       let (ae1, i) = VarEnv.add_direct_local env ae name in
       (ae1, G.nop)
-    | Some StoreHeap ->
+    | StoreHeap ->
       let (ae1, i) = VarEnv.add_local_with_offset env ae name 1l in
       let alloc_code =
         Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ] ^^
         G.i (LocalSet (nr i)) in
       (ae1, alloc_code)
-    | Some StoreStatic ->
+    | StoreStatic ->
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
       let zero = bytes_of_int32 0l in
       let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
-      let ae1 = VarEnv.add_local_static ae name ptr in
+      let ae1 = VarEnv.add_local_heap_static ae name ptr in
       (ae1, G.nop)
-    | None -> (ae, G.nop)
-
-  let add_local env ae how name =
-    add_how env ae name (M.find_opt name how)
 
 end (* AllocHow *)
 
@@ -5772,27 +5795,51 @@ let rec compile_lexp (env : E.t) ae lexp =
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
-  | IdxE (e1, e2)  ->
-    SR.Vanilla,
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    BigNum.to_word32 env ^^
-    Arr.idx env ^^
-    load_ptr
-  | DotE (e, name) ->
-    SR.Vanilla,
-    compile_exp_vanilla env ae e ^^
-    Object.load_idx env e.note.note_typ name
-  | ActorDotE (e, name) ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.Vanilla e ^^
-    Dfinity.actor_public_field env name
   | PrimE (p, es) ->
 
     (* for more concise code when all arguments and result use the same sr *)
     let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
 
     begin match p, es with
+    (* Calls *)
+    | CallPrim _, [e1; e2] ->
+      let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
+      let n_args = List.length arg_tys in
+      let return_arity = match control with
+        | Type.Returns -> List.length ret_tys
+        | Type.Replies -> 0
+        | Type.Promises -> assert false in
+
+      StackRep.of_arity return_arity,
+      let fun_sr, code1 = compile_exp env ae e1 in
+      begin match fun_sr, sort with
+       | SR.Const (Const.Fun fi), _ ->
+          code1 ^^
+          compile_unboxed_zero ^^ (* A dummy closure *)
+          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
+          G.i (Call (nr fi)) ^^
+          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
+       | _, Type.Local ->
+          let (set_clos, get_clos) = new_local env "clos" in
+          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
+          set_clos ^^
+          get_clos ^^
+          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
+          get_clos ^^
+          Closure.call_closure env n_args return_arity
+       | _, Type.Shared _ ->
+          (* Non-one-shot functions have been rewritten in async.ml *)
+          assert (control = Type.Returns);
+
+          let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
+          let (set_arg, get_arg) = new_local env "arg" in
+          let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
+          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
+          set_meth_pair ^^
+          compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
+
+          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg
+      end
 
     (* Operators *)
 
@@ -5813,7 +5860,58 @@ and compile_exp (env : E.t) ae exp =
       SR.bool,
       compile_exp_as env ae sr e1 ^^
       compile_exp_as env ae sr e2 ^^
+
       code
+    (* Tuples *)
+    | TupPrim, es ->
+      SR.UnboxedTuple (List.length es),
+      G.concat_map (compile_exp_vanilla env ae) es
+    | ProjPrim n, [e1] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e1 ^^ (* offset to tuple (an array) *)
+      Tuple.load_n (Int32.of_int n)
+
+    | OptPrim, [e] ->
+      SR.Vanilla,
+      Opt.inject env (compile_exp_vanilla env ae e)
+    | TagPrim l, [e] ->
+      SR.Vanilla,
+      Variant.inject env l (compile_exp_vanilla env ae e)
+
+    | DotPrim name, [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Object.load_idx env e.note.note_typ name
+    | ActorDotPrim name, [e] ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      Dfinity.actor_public_field env name
+
+    | ArrayPrim (m, t), es ->
+      SR.Vanilla,
+      Arr.lit env (List.map (compile_exp_vanilla env ae) es)
+    | IdxPrim, [e1; e2]  ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+      compile_exp_vanilla env ae e2 ^^ (* idx *)
+      BigNum.to_word32 env ^^
+      Arr.idx env ^^
+      load_ptr
+
+    | BreakPrim name, [e] ->
+      let d = VarEnv.get_label_depth ae name in
+      SR.Unreachable,
+      compile_exp_vanilla env ae e ^^
+      G.branch_to_ d
+    | AssertPrim, [e1] ->
+      SR.unit,
+      compile_exp_as env ae SR.bool e1 ^^
+      G.if_ [] G.nop (Dfinity.fail_assert env exp.at)
+    | RetPrim, [e] ->
+      SR.Unreachable,
+      compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
+      FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
+      G.i Return
 
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin
@@ -6072,6 +6170,10 @@ and compile_exp (env : E.t) ae exp =
     | ActorOfIdBlob _, [e] ->
       compile_exp env ae e
 
+    | SelfRef _, [] ->
+      SR.Vanilla,
+      Dfinity.get_self_reference env
+
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with
       | Flags.ICMode | Flags.StubMode ->
@@ -6119,10 +6221,6 @@ and compile_exp (env : E.t) ae exp =
     store_code
   | LitE l ->
     compile_lit env l
-  | AssertE e1 ->
-    SR.unit,
-    compile_exp_as env ae SR.bool e1 ^^
-    G.if_ [] G.nop (Dfinity.fail_assert env exp.at)
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as env ae SR.bool scrut in
     let sr1, code1 = compile_exp env ae e1 in
@@ -6150,75 +6248,12 @@ and compile_exp (env : E.t) ae exp =
         compile_exp_vanilla env ae1 e
       )
     )
-  | BreakE (name, e) ->
-    let d = VarEnv.get_label_depth ae name in
-    SR.Unreachable,
-    compile_exp_vanilla env ae e ^^
-    G.branch_to_ d
   | LoopE e ->
     SR.Unreachable,
     G.loop_ [] (compile_exp_unit env ae e ^^ G.i (Br (nr 0l))
     )
     ^^
    G.i Unreachable
-  | RetE e ->
-    SR.Unreachable,
-    compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
-    FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
-    G.i Return
-  | OptE e ->
-    SR.Vanilla,
-    Opt.inject env (compile_exp_vanilla env ae e)
-  | TagE (l, e) ->
-    SR.Vanilla,
-    Variant.inject env l (compile_exp_vanilla env ae e)
-  | TupE es ->
-    SR.UnboxedTuple (List.length es),
-    G.concat_map (compile_exp_vanilla env ae) es
-  | ProjE (e1,n) ->
-    SR.Vanilla,
-    compile_exp_vanilla env ae e1 ^^ (* offset to tuple (an array) *)
-    Tuple.load_n (Int32.of_int n)
-  | ArrayE (m, t, es) ->
-    SR.Vanilla, Arr.lit env (List.map (compile_exp_vanilla env ae) es)
-  | CallE (e1, _, e2) ->
-    let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
-    let n_args = List.length arg_tys in
-    let return_arity = match control with
-      | Type.Returns -> List.length ret_tys
-      | Type.Replies -> 0
-      | Type.Promises -> assert false in
-
-    StackRep.of_arity return_arity,
-    let fun_sr, code1 = compile_exp env ae e1 in
-    begin match fun_sr, sort with
-     | SR.StaticThing (SR.StaticFun fi), _ ->
-        code1 ^^
-        compile_unboxed_zero ^^ (* A dummy closure *)
-        compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
-        G.i (Call (nr fi)) ^^
-        FakeMultiVal.load env (Lib.List.make return_arity I32Type)
-     | _, Type.Local ->
-        let (set_clos, get_clos) = new_local env "clos" in
-        code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
-        set_clos ^^
-        get_clos ^^
-        compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
-        get_clos ^^
-        Closure.call_closure env n_args return_arity
-     | _, Type.Shared _ ->
-        (* Non-one-shot functions have been rewritten in async.ml *)
-        assert (control = Type.Returns);
-
-        let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
-        let (set_arg, get_arg) = new_local env "arg" in
-        let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
-        code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
-        set_meth_pair ^^
-        compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
-
-        FuncDec.ic_call_one_shot env ts get_meth_pair get_arg
-    end
   | SwitchE (e, cs) ->
     SR.Vanilla,
     let code1 = compile_exp_vanilla env ae e in
@@ -6275,12 +6310,12 @@ and compile_exp (env : E.t) ae exp =
       (get_closure_idx ^^ BoxedSmallWord.box env)
       get_k
       get_r
-  | ActorE (i, ds, fs, _) ->
+  | ActorE (ds, fs, _) ->
     SR.Vanilla,
     let captured = Freevars.exp exp in
     let prelude_names = find_prelude_names env in
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
-    then actor_lit env i ds fs exp.at
+    then actor_lit env ds fs exp.at
     else todo_trap env "non-closed actor" (Arrange_ir.exp exp)
   | NewObjE ((Type.Object | Type.Module), fs, _) ->
     SR.Vanilla,
@@ -6541,25 +6576,21 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
        (pre_ae, G.with_region dec.at alloc_code, fun ae ->
          G.with_region dec.at (mk_code ae))) @@
   match dec.it with
-  | TypD _ ->
-    (pre_ae, G.nop, fun _ -> G.nop)
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
-    let (static_thing, fill) = compile_static_exp env pre_ae how e in
-    let fi = match static_thing with
-      | SR.StaticMessage fi -> fi
+    let (const, fill) = compile_const_exp env pre_ae how e in
+    let fi = match const with
+      | Const.Message fi -> fi
       | _ -> assert false in
-    let pre_ae1 = VarEnv.add_local_deferred pre_ae v
-      (SR.StaticThing (SR.PublicMethod (fi, (E.NameEnv.find v v2en))))
-      (fun _ -> G.nop) false in
+    let c = Const.PublicMethod (fi, (E.NameEnv.find v v2en)) in
+    let pre_ae1 = VarEnv.add_local_const pre_ae v c in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
-  (* A special case for static expressions *)
-  | LetD ({it = VarP v; _}, e) when not (AllocHow.M.mem v how) ->
-    let (static_thing, fill) = compile_static_exp env pre_ae how e in
-    let pre_ae1 = VarEnv.add_local_deferred pre_ae v
-      (SR.StaticThing static_thing) (fun _ -> G.nop) false in
+  (* A special case for constant expressions *)
+  | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Const ->
+    let (const, fill) = compile_const_exp env pre_ae how e in
+    let pre_ae1 = VarEnv.add_local_const pre_ae v const in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
   | LetD (p, e) ->
@@ -6619,21 +6650,17 @@ and compile_prog env ae (ds, e) =
     let code2 = compile_top_lvl_expr env ae' e in
     (ae', code1 ^^ code2)
 
-and compile_static_exp env pre_ae how exp = match exp.it with
+and compile_const_exp env pre_ae how exp = match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
       let return_tys = match control with
         | Type.Returns -> res_tys
         | Type.Replies -> []
         | Type.Promises -> assert false in
       let mk_body env ae =
-        assert begin (* Is this really closed? *)
-          List.for_all (fun v ->
-            let found = VarEnv.NameEnv.mem v ae.VarEnv.vars in
-            (if not found then Printf.eprintf "internal error: static %s captures %s, not found in static environment\n"
-              name v);
-            found
-          ) (Freevars.M.keys (Freevars.exp e))
-        end;
+        List.iter (fun v ->
+          if not (VarEnv.NameEnv.mem v ae.VarEnv.vars)
+          then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
+        ) (Freevars.M.keys (Freevars.exp e));
         compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
       FuncDec.closed env sort control name args mk_body return_tys exp.at
   | _ -> assert false
@@ -6668,17 +6695,17 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
   let find_last_expr ds e =
     if ds = [] then [], e.it else
     match Lib.List.split_last ds, e.it with
-    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), TupE [] ->
+    | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), PrimE (TupPrim, []) ->
       ds1', e'.it
     | (ds1', {it = LetD ({it = VarP i1; _}, e'); _}), VarE i2 when i1 = i2 ->
       ds1', e'.it
     | _ -> ds, e.it in
 
   let find_last_actor (ds,e) = match find_last_expr ds e with
-    | ds1, ActorE (i, ds2, fs, _) ->
-      Some (i, ds1 @ ds2, fs)
-    | ds1, FuncE (_name, _sort, _control, [], [], _, {it = ActorE (i, ds2, fs, _);_}) ->
-      Some (i, ds1 @ ds2, fs)
+    | ds1, ActorE (ds2, fs, _) ->
+      Some (ds1 @ ds2, fs)
+    | ds1, FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, _);_}) ->
+      Some (ds1 @ ds2, fs)
     | _, _ ->
       None
   in
@@ -6689,7 +6716,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
       (* If the last program ends with an actor, then consider this the current actor  *)
       | [(prog, _flavor)] ->
         begin match find_last_actor prog with
-        | Some (i, ds, fs) -> main_actor env ae i ds fs
+        | Some (ds, fs) -> main_actor env ae ds fs
         | None ->
           let (_ae, code) = compile_prog env ae prog in
           code
@@ -6705,7 +6732,7 @@ and export_actor_field env  ae (f : Ir.field) =
   let sr, code = Var.get_val env ae f.it.var in
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
   let fi = match sr with
-    | SR.StaticThing (SR.PublicMethod (fi, _)) -> fi
+    | SR.Const (Const.PublicMethod (fi, _)) -> fi
     | _ -> assert false in
   (* There should be no code associated with this *)
   assert (G.is_nop code);
@@ -6725,7 +6752,7 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Local actor *)
-and actor_lit outer_env this ds fs at =
+and actor_lit outer_env ds fs at =
   let wasm_binary =
     let mod_env = E.mk_global
       (E.mode outer_env)
@@ -6747,14 +6774,11 @@ and actor_lit outer_env this ds fs at =
       (* Compile the prelude *)
       let (ae1, prelude_code) = compile_prelude env ae0 in
 
-      (* Add this pointer *)
-      let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
-
       (* Reverse the fs, to a map from variable to exported name *)
       let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
       (* Compile the declarations *)
-      let (ae3, decls_code) = compile_decs_public env ae2 AllocHow.TopLvl ds v2en Freevars.S.empty in
+      let (ae3, decls_code) = compile_decs_public env ae1 AllocHow.TopLvl ds v2en Freevars.S.empty in
 
       (* Export the public functions *)
       List.iter (export_actor_field env ae3) fs;
@@ -6765,7 +6789,7 @@ and actor_lit outer_env this ds fs at =
     if E.mode mod_env = Flags.ICMode then Dfinity.export_start mod_env start_fi;
     if E.mode mod_env = Flags.StubMode then Dfinity.export_start mod_env start_fi;
 
-    let m = conclude_module mod_env this None in
+    let m = conclude_module mod_env None in
     let (_map, wasm_binary) = Wasm_exts.CustomModuleEncode.encode m in
     wasm_binary in
 
@@ -6800,22 +6824,19 @@ and actor_lit outer_env this ds fs at =
 
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
-and main_actor env ae1 this ds fs =
-  (* Add this pointer *)
-  let ae2 = VarEnv.add_local_deferred ae1 this SR.Vanilla Dfinity.get_self_reference false in
-
+and main_actor env ae1 ds fs =
   (* Reverse the fs, to a map from variable to exported name *)
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Compile the declarations *)
-  let (ae3, decls_code) = compile_decs_public env ae2 AllocHow.TopLvl ds v2en Freevars.S.empty in
+  let (ae2, decls_code) = compile_decs_public env ae1 AllocHow.TopLvl ds v2en Freevars.S.empty in
 
   (* Export the public functions *)
-  List.iter (export_actor_field env ae3) fs;
+  List.iter (export_actor_field env ae2) fs;
 
   decls_code
 
-and conclude_module env module_name start_fi_o =
+and conclude_module env start_fi_o =
 
   FuncDec.export_async_method env;
 
@@ -6877,7 +6898,7 @@ and conclude_module env module_name start_fi_o =
     { module_;
       dylink = None;
       name = {
-        module_ = Some module_name;
+        module_ = None;
         function_names =
             List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
         locals_names =
@@ -6905,4 +6926,4 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
     | Flags.ICMode | Flags.StubMode -> Dfinity.export_start env start_fi; None
     | Flags.WasmMode | Flags.WASIMode-> Some (nr start_fi) in
 
-  conclude_module env module_name start_fi_o
+  conclude_module env start_fi_o
