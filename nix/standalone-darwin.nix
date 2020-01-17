@@ -2,30 +2,31 @@
 , stdenv
 , grep
 , removeReferencesTo
+, callPackage
 , lib
 }:
 
 { drv
 , exename
 , extraBins ? []
-}:
+, allowedStrippedRefs ? [ "*-crates-io" "*-swift-corefoundation" ]
+, usePackager ? true
 
-# on darwin we don't support shipping extra binaries
-assert extraBins == [];
+  # this arg isn't used on darwin, but needs to be present for linux compatibility
+, allowedBundledDeps ? []
+}:
 
 # these are (1) the references we're okay with getting rid of and the dynamic
 # libs that we're fine with pulling from /usr/lib. These should be passed as
 # arguments, but they're very generic and for now it's simpler to have them
 # here.
 let
-  allowStrippedRefs = [ "*-crates-io" "*-swift-corefoundation" ];
-  allowBundledDeps = [ "libSystem*.dylib" "libresolv*.dylib" "libc++*.dylib" ];
-in
 
-# For simplicity we assume those aren't empty. Empty lists would be the case
-# analysis.
-assert allowStrippedRefs != [];
-assert allowBundledDeps != [];
+  inherit (callPackage ./common.nix { inherit drv exename; })
+    fingerprint builder strip-references relocate-darwin-syslibs
+    ;
+
+  stripDependencies = [ stdenv.cc removeReferencesTo strip-references relocate-darwin-syslibs ];
 
   # Create a standalone executable from the given rust executable.
   # * drv: the base derivation
@@ -34,69 +35,54 @@ assert allowBundledDeps != [];
   # This works in two steps:
   # 1. Strip out dynamic libraries
   # 2. Strip out other nix store references
-runCommandNoCC "${exename}-mkstandalone"
-    { buildInputs = [ grep stdenv.cc removeReferencesTo ];
-      inherit exename;
-      allowedRequisites = [];
-    }
-    ''
-      dir=$(mktemp -d)
-      exe=$dir/$exename
+  bundle =
+    runCommandNoCC "${exename}-mkstandalone"
+      {
+        buildInputs = [ grep ] ++ stripDependencies;
+        inherit exename extraBins;
+        inherit allowedStrippedRefs;
+        allowedRequisites = [];
+      }
+      ''
+        bundle=$(mktemp -d)
 
-      cp ${drv}/bin/$exename $exe
+        # rewrite the mach-o header to point to /usr/lib for system libraries
+        # (as opposed to the nix store) and strips all other references to the
+        # nix store
+        patchbin() {
+          relocate-darwin-syslibs "$1"
+          strip-references "$1"
+        }
 
-      # Make sure we can patch the exe
-      chmod +w $exe
+        mkdir -p $bundle/b
+        for bin in $extraBins; do
+          echo bundling binary $bin
+          cp $bin $bundle/b
+          patchbin "$bundle/b/$(basename "$bin")"
+        done
 
-      # For all dynamic dependencies...
-      otool -L $exe \
-        | grep --only-match '${builtins.storeDir}/\S*' > libs
-      while read lib; do
-        libname=$(basename $lib)
+        exe="$bundle/$exename"
+        cp ${drv}/bin/$exename "$exe"
+        patchbin "$exe"
 
-        case $libname in
-          # ... strip out the widespread ones by making the RPATH entries
-          # point to /usr/lib.
-          # XXX: We should be able to statically link libc++ although we've
-          # wasted ~ 2 eng/days already, so this is good enough for now.
-          # See: https://github.com/rust-lang/rust/issues/64612
-          ${lib.concatStringsSep "|" allowBundledDeps})
-            newlibname=/usr/lib/''${libname%%\.*}.''${libname##*\.}
-            echo "Found $libname:"
-            echo "    $lib -> $newlibname"
-            install_name_tool -change "$lib" "$newlibname" $exe
-            ;;
-          *)
-            echo "Found unknown library: $libname ($lib)"
-            echo "Please handle this case."
-            exit 1
-            ;;
-        esac
-      done <libs
+        tar cf $out -C $bundle .
+      '';
+in
 
-      echo "$exename was patched:"
-      otool -L $exe
-
-      # Now grab all the other references to the nix store. If it's a reference
-      # to source code (crates-io) then strip it out.
-      (grep --only-matching -a '${builtins.storeDir}/[^/]*' $exe || true) \
-        | uniq > deps
-
-      while read dep; do
-        depname=$(basename $dep)
-
-        case "$depname" in
-          ${lib.concatStringsSep "|" allowStrippedRefs})
-            remove-references-to -t /nix/store/$depname $exe
-            ;;
-          *)
-            echo "Unknown dependency: $dep"
-            exit 1
-            ;;
-        esac
-      done <deps
-
-
-      mkdir -p $out/bin
-      cp $exe $out/bin/$exename
-    ''
+if usePackager
+then runCommandNoCC exename { allowedRequisites = []; }
+  ''
+    mkdir -p $out/bin
+    cp ${builder bundle}/bin/packager $out/bin/${exename}
+  ''
+else runCommandNoCC exename {
+  allowedRequisites = [];
+  inherit allowedStrippedRefs;
+  nativeBuildInputs = stripDependencies;
+}
+  ''
+    mkdir -p $out/bin
+    cp ${drv}/bin/${exename} $out/bin/${exename}
+    relocate-darwin-syslibs $out/bin/${exename}
+    strip-references $out/bin/${exename}
+  ''
