@@ -5,8 +5,6 @@
 
 let nixpkgs = import ./nix { inherit system; }; in
 
-let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system sources; }; in
-
 let stdenv = nixpkgs.stdenv; in
 
 let subpath = p: import ./nix/gitSource.nix p; in
@@ -25,8 +23,8 @@ let haskellPackages = nixpkgs.haskellPackages.override {
 let
   llvmBuildInputs = [
     nixpkgs.clang # for native building
-    llvm.clang_9 # for wasm building
-    llvm.lld_9 # for wasm building
+    nixpkgs.clang_9 # for wasm building
+    nixpkgs.lld_9 # for wasm building
   ];
 
   # When compiling natively, we want to use `clang` (which is a nixpkgs
