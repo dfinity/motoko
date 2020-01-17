@@ -17,7 +17,7 @@ WASM=\
 TESTS=\
 	Array \
 	Blob \
-	PrincipalId \
+	Principal \
 	Debug \
 	ArrayTest \
 	BufTest \
@@ -82,7 +82,7 @@ $(OUTDIR)/Debug.out: debug.mo | $(OUTDIR)
 $(OUTDIR)/Blob.out: blob.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
-$(OUTDIR)/PrincipalId.out: principalId.mo | $(OUTDIR)
+$(OUTDIR)/Principal.out: principalId.mo | $(OUTDIR)
 	$(MOC) -r $(filter-out $(OUTDIR), $^) > $@
 
 $(OUTDIR)/Array.out: array.mo | $(OUTDIR)

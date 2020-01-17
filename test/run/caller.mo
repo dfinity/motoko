@@ -1,16 +1,16 @@
 import Prim "mo:prim";
 actor a {
 
-  public shared { caller = c } func getCaller() : async PrincipalId {
+  public shared { caller = c } func getCaller() : async Principal {
     return c;
   };
 
   public shared query { caller = c } func getCallerHash() : async Word32 {
-    Prim.hashBlob (Prim.blobOfPrincipalId c);
+    Prim.hashBlob (Prim.blobOfPrincipal c);
   };
 
   public shared query { caller = c } func getCallerSize() : async Nat {
-      (Prim.blobOfPrincipalId c).size();
+      (Prim.blobOfPrincipal c).size();
   };
 
   public shared {caller} func c () : async () {

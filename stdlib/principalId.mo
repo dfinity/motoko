@@ -1,5 +1,5 @@
 import Prim "mo:prim";
 import Blob "blob.mo";
 module {
-  public func hash(x : PrincipalId) : Word32 = Blob.hash (Prim.blobOfPrincipalId x);
+  public func hash(x : Principal) : Word32 = Blob.hash (Prim.blobOfPrincipal x);
 }
