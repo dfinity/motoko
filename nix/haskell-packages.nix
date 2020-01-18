@@ -11,13 +11,7 @@ nix: subpath:
 
   qc-motoko = self.callCabal2nix "qc-motoko" (subpath "test/random") { };
 
-  winter = self.callCabal2nixWithOptions "winter"
-    (nix.fetchFromGitHub {
-      owner = "dfinity-side-projects";
-      repo = "winter";
-      rev = "1e16b471644be26160cc20c4e2144c643c547ed8";
-      sha256 = "191fk1dv8vp28rwpl75nz9y3pbypc8jv9w669mvl9d2k5f74jirm";
-     }) "--no-check" {};
+  winter = self.callCabal2nixWithOptions "winter" nix.sources.winter "--no-check" {};
 
   ic-stub = self.callCabal2nixWithOptions "ic-stub" (subpath "ic-stub") "-frelease" { };
 }
