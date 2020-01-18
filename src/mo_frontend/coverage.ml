@@ -104,6 +104,7 @@ let pick_val vs = function
   | T.Text
   | T.Blob
   | T.Error
+  | T.Principal
   | T.Float -> Any
 
 let rec expand_notval t n vs : desc list =
