@@ -34,6 +34,7 @@ type prim =
   | Text
   | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
+  | Principal
 
 type t = typ
 and typ =
@@ -112,7 +113,7 @@ let catch = Prim Error
 
 (* Shared call context *)
 
-let caller = Prim Blob
+let caller = Prim Principal
 let ctxt = Obj (Object,[{ lab = "caller"; typ = caller }])
 
 let prim = function
@@ -137,6 +138,7 @@ let prim = function
   | "Text" -> Text
   | "Blob" -> Blob
   | "Error" -> Error
+  | "Principal" -> Principal
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 
 let seq = function [t] -> t | ts -> Tup ts
@@ -441,7 +443,7 @@ let rec span = function
   | Con _ as t -> span (promote t)
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
-  | Prim (Nat | Int | Float | Text | Blob | Error) -> None
+  | Prim (Nat | Int | Float | Text | Blob | Error | Principal) -> None
   | Prim (Nat8 | Int8 | Word8) -> Some 0x100
   | Prim (Nat16 | Int16 | Word16) -> Some 0x10000
   | Prim (Nat32 | Int32 | Word32 | Nat64 | Int64 | Word64 | Char) -> None  (* for all practical purposes *)
@@ -1121,6 +1123,7 @@ let string_of_prim = function
   | Text -> "Text"
   | Blob -> "Blob"
   | Error -> "Error"
+  | Principal -> "Principal"
 
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
