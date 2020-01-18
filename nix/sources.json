@@ -1,0 +1,68 @@
+{
+    "dfinity": {
+        "ref": "master",
+        "repo": "ssh://git@github.com/dfinity-lab/dfinity",
+        "rev": "791d90bb7ca57d7afab4fd045025877acb892c00",
+        "type": "git"
+    },
+    "esm": {
+        "builtin": false,
+        "sha256": "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q",
+        "type": "tarball",
+        "url": "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz",
+        "url_template": "https://registry.npmjs.org/esm/-/esm-<version>.tgz",
+        "version": "3.2.25"
+    },
+    "libtommath": {
+        "branch": "develop",
+        "builtin": false,
+        "description": "LibTomMath is a free open source portable number theoretic multiple-precision integer library written entirely in C.",
+        "homepage": "https://www.libtom.net",
+        "owner": "libtom",
+        "repo": "libtommath",
+        "rev": "584405ff8e357290362671b5e7db6110a959cbaa",
+        "sha256": "1vl606rm8ba7vjhr0rbdqvih5d4r5iqalqlj5mnz6j3bnsn83b2a",
+        "type": "tarball",
+        "url": "https://github.com/libtom/libtommath/archive/584405ff8e357290362671b5e7db6110a959cbaa.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "master",
+        "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
+        "homepage": "https://github.com/NixOS/nixpkgs",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "82875a20ba444110396f95537b18247898e40e22",
+        "sha256": "1xy2zn3hkcv66ddvscr3l32jcx1qg9h14zvhmy5zf0pcfb8gn42i",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/82875a20ba444110396f95537b18247898e40e22.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ocaml-vlq": {
+        "branch": "v0.2.0",
+        "builtin": false,
+        "description": "A library to encode/decode numbers in OCaml.",
+        "homepage": null,
+        "owner": "flowtype",
+        "repo": "ocaml-vlq",
+        "rev": "115bf0fef38018f31ac6386fef17a00bd8307218",
+        "sha256": "09jdgih2n2qwpxnlbcca4xa193rwbd1nw7prxaqlg134l4mbya83",
+        "type": "tarball",
+        "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "version": "v0.2.0"
+    },
+    "winter": {
+        "branch": "master",
+        "builtin": false,
+        "description": "Haskell port of the WebAssembly OCaml reference interpreter",
+        "homepage": "https://github.com/WebAssembly/spec/tree/master/interpreter",
+        "owner": "dfinity-side-projects",
+        "repo": "winter",
+        "rev": "1e16b471644be26160cc20c4e2144c643c547ed8",
+        "sha256": "191fk1dv8vp28rwpl75nz9y3pbypc8jv9w669mvl9d2k5f74jirm",
+        "type": "tarball",
+        "url": "https://github.com/dfinity-side-projects/winter/archive/1e16b471644be26160cc20c4e2144c643c547ed8.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    }
+}

@@ -1,6 +1,6 @@
 { src ? { rev = null; } }:
 let
-  nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs { };
+  nixpkgs = import ./nix { };
   inject-rev = drv: drv.overrideAttrs (attrs: { rev = src.rev; });
 
   linux = import ./default.nix { system = "x86_64-linux"; };
