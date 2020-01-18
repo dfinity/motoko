@@ -386,7 +386,7 @@ rec {
     }; in
     {
       actorspec        = example_subdir "actorspec";
-      rs               = example_subdir "rx";
+      rx               = example_subdir "rx";
       produce-exchange = example_subdir "produce-exchange";
     };
 
