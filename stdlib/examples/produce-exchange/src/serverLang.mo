@@ -1,4 +1,4 @@
-import Result = "../../result.mo";
+import Result = "mo:stdlib/result.mo";
 import T = "serverTypes.mo";
 
 
