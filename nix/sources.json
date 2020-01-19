@@ -14,13 +14,11 @@
         "version": "3.2.25"
     },
     "libtommath": {
-        "branch": "v1.2.0",
         "builtin": false,
         "description": "LibTomMath is a free open source portable number theoretic multiple-precision integer library written entirely in C.",
         "homepage": "https://www.libtom.net",
         "owner": "libtom",
         "repo": "libtommath",
-        "rev": "6ca6898bf37f583c4cc9943441cd60dd69f4b8f2",
         "sha256": "0cj4xdbh874hi8hx9ajygqk5411cnv260mfjrn68fsi9a6dw56ff",
         "type": "tarball",
         "url": "https://github.com/libtom/libtommath/archive/v1.2.0.tar.gz",
