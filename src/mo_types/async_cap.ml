@@ -5,6 +5,7 @@ module T = Type
 
 type async_cap =
   | NullCap
+  | QueryCap of T.con
   | AsyncCap of T.con
   | AwaitCap of T.con
 

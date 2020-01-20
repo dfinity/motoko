@@ -1,0 +1,7 @@
+queries.mo:11.5-11.20: type error, misplaced await
+queries.mo:15.5-15.13: type error, scope required, but non available
+queries.mo:19.13-19.22: type error, scope required, but non available
+queries.mo:20.5-20.20: type error, misplaced await
+queries.mo:24.5-24.14: type error, misplaced async expression
+queries.mo:29.5-29.21: type error, misplaced throw
+queries.mo:33.5-33.22: type error, misplaced try
