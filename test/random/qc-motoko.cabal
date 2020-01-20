@@ -17,6 +17,7 @@ executable qc-motoko
   build-depends:       base ^>=4.12.0.0
                      , text ^>=1.2.3.1
                      , process
+                     , exceptions
                      , QuickCheck
                      , quickcheck-text
                      , quickcheck-unicode

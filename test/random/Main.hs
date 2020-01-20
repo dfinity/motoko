@@ -9,6 +9,7 @@ module Main where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Catch
 import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
@@ -25,9 +26,10 @@ import Data.Bits (Bits(..), FiniteBits(..))
 import Numeric
 
 import System.Process hiding (proc)
+import GHC.IO.Exception (IOException)
 import Control.Concurrent.MVar
 import Turtle
--- import Debug.Trace (traceShowId)
+import Debug.Trace (traceShowId, traceShow)
 
 main = defaultMain tests
   where tests :: TestTree
@@ -35,27 +37,27 @@ main = defaultMain tests
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
-  , QC.testProperty "expected successes" $ prop_verifies
+  -- , QC.testProperty "expected successes" $ prop_verifies
   ]
 
 conversionProps = testGroup "Numeric conversions"
   [ QC.testProperty "roundtrip Word64 Nat Word64 " $ prop_roundtripWNW @64
-  , QC.testProperty "roundtrip Word32 Nat Word32 " $ prop_roundtripWNW @32
-  , QC.testProperty "roundtrip Word16 Nat Word16 " $ prop_roundtripWNW @16
-  , QC.testProperty "roundtrip Word8 Nat Word8 " $ prop_roundtripWNW @8
-  , QC.testProperty "modulo Nat Word64 Nat" $ prop_moduloNWN @64
-  , QC.testProperty "modulo Nat Word32 Nat" $ prop_moduloNWN @32
-  , QC.testProperty "modulo Nat Word16 Nat" $ prop_moduloNWN @16
-  , QC.testProperty "modulo Nat Word8 Nat" $ prop_moduloNWN @8
+  -- , QC.testProperty "roundtrip Word32 Nat Word32 " $ prop_roundtripWNW @32
+  -- , QC.testProperty "roundtrip Word16 Nat Word16 " $ prop_roundtripWNW @16
+  -- , QC.testProperty "roundtrip Word8 Nat Word8 " $ prop_roundtripWNW @8
+  -- , QC.testProperty "modulo Nat Word64 Nat" $ prop_moduloNWN @64
+  -- , QC.testProperty "modulo Nat Word32 Nat" $ prop_moduloNWN @32
+  -- , QC.testProperty "modulo Nat Word16 Nat" $ prop_moduloNWN @16
+  -- , QC.testProperty "modulo Nat Word8 Nat" $ prop_moduloNWN @8
   ]
 
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
-  , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
-  , QC.testProperty "length computation" $ prop_textLength
-  , QC.testProperty "chunky concat (ropes)" $ prop_ropeConcat
-  , QC.testProperty "chunky length (ropes)" $ prop_ropeLength
-  , QC.testProperty "chunky iterator (ropes)" $ prop_ropeIterator
+  -- , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
+  -- , QC.testProperty "length computation" $ prop_textLength
+  -- , QC.testProperty "chunky concat (ropes)" $ prop_ropeConcat
+  -- , QC.testProperty "chunky length (ropes)" $ prop_ropeLength
+  -- , QC.testProperty "chunky iterator (ropes)" $ prop_ropeIterator
   ]
 
 matchingProps = testGroup "Pattern matching"
@@ -88,23 +90,25 @@ invokeEmbedder embedder wasm = go embedder
         go Drun = (sh $ do
           let Right w = toText wasm
               control = wasm <.> "fifo"
-          rm (fileArg control)
+          liftIO $ putStrLn (traceShowId "RM")
+          rm (fileArg control) `catch` \(_ :: GHC.IO.Exception.IOException) -> traceShow "RM CATCH" (pure ()) -- rm -f
+          liftIO $ putStrLn (traceShowId "RM EX")
           let Right c = toText control
+          liftIO $ putStrLn (traceShowId "MKFIFO")
           procs "mkfifo" [c] empty
-          liftIO $ putStrLn "CONSUMER"
+          liftIO $ putStrLn (traceShowId "CONSUMER")
           consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
           liftIO $ putStrLn "SLEEPING"
           sleep 1 -- FIXME!
           liftIO $ putStrLn "PRODUCER"
           let install = unsafeTextToLine $ "install 1125899906842624 " <> w <> " 0x"
           Turtle.output (fileArg control) (pure install
-                                          <|> "query 1125899906842624 test 0x4449444c0000"
-                                          <|> "query 1125899906842624 test 0x4449444c0000")
+                                          <|> "query 1125899906842624 do 0x4449444c0000")
 
           liftIO $ putStrLn "WAITING"
           lns <- wait consumer
           liftIO $ putStrLn "WAITED"
-          view lns
+          view $ traceShowId <$> lns
           liftIO $ putStrLn "DONE"
                   )
           >> pure (ExitSuccess, "", "")
@@ -120,8 +124,8 @@ embedder = WasmTime
 withPrim :: Line -> Line
 withPrim = (fromString "import Prim \"mo:prim\";" <>)
 
-runner :: ExitCode -> (Bool -> Bool) -> Turtle.FilePath -> String -> PropertyM IO ()
-runner reqOutcome relevant name testCase =
+runner :: Embedder -> ExitCode -> (Bool -> Bool) -> Turtle.FilePath -> String -> PropertyM IO ()
+runner embedder reqOutcome relevant name testCase =
     let as = name <.> "mo"
         wasm = name <.> "wasm"
         fileArg = fromString . encodeString
@@ -133,7 +137,10 @@ runner reqOutcome relevant name testCase =
                     else pure (False, res)
     in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
 
-(runScriptNoFuzz, runScriptWantFuzz) = (runner ExitSuccess id, runner (ExitFailure 1) not)
+(runScriptNoFuzz, runScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
+    where runEmbedder = runner embedder
+(drunScriptNoFuzz, drunScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
+    where runEmbedder = runner Drun
 
 prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
@@ -343,12 +350,12 @@ prop_matchInActor (Matching a) = mobile a
 
 mobile :: (AnnotLit t, MOValue t) => (MOTerm t, t) -> Property
 mobile (tm, v) = monadicIO $ do
-  let testCase = "actor a { public func match (b : " <> typed <> ") : async Bool = async { true }; func do () { assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false }) } };"
+  let testCase = "actor a { public func match (b : " <> typed <> ") : async Bool = async { true }; public query func do () : async () { assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false }) } };"
 
       eval'd = unparse v
       typed = unparseType v
       expr = unparseMO tm
-  runScriptNoFuzz "matchMobile" testCase
+  drunScriptNoFuzz "matchMobile" testCase
 
 -- instances of MOValue describe "ground values" in
 -- Motoko. These can appear in patterns and have
