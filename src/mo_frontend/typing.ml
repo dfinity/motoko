@@ -270,12 +270,11 @@ let check_shared_return env at sort c ts =
 let rec infer_async_cap env sort cs tbs =
   let env = { env with async = C.NullCap } in
   match sort, cs, tbs with
-   (* TODO: refine T.Query *)
-  | (T.Shared _ | T.Local) , c::_,  {T.sort = _ (*T.Scope*); _}::_ ->
-     { env with typs = T.Env.add scope_id c env.typs;
-                async = C.AsyncCap c }
-   | T.Shared _, _, _ -> assert false (* impossible given sugaring *)
-   | _ -> env
+  | (T.Shared _ | T.Local) , c::_,  { T.sort = T.Scope; _ }::_ ->
+    { env with typs = T.Env.add scope_id c env.typs;
+               async = C.AsyncCap c }
+  | T.Shared _, _, _ -> assert false (* impossible given sugaring *)
+  | _ -> env
 
 and check_AsyncCap env s at =
    match env.async with
