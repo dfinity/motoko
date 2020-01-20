@@ -23,4 +23,4 @@ type flags = {
 val resolve : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
 
 (* Exported for tests *)
-val append_extension : filepath -> filepath option
+val append_extension : (filepath -> bool) -> filepath -> filepath option

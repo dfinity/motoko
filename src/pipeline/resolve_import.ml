@@ -47,12 +47,16 @@ type package_map = filepath M.t
 open Syntax
 open Source
 
-let append_extension f =
-  if Option.is_some (Lib.String.chop_suffix "/" f)
-  then Some (Filename.concat f "lib.mo")
-  else if Filename.extension f = ""
-  then Some (f ^ ".mo")
-  else None
+let append_extension file_exists f =
+  if Option.is_some (Lib.String.chop_suffix "/" f) then
+    Some (Filename.concat f "lib.mo")
+  else if Filename.extension f = "" then
+    if file_exists (f ^ ".mo") then
+      Some (f ^ ".mo")
+    else
+      Some (Filename.concat f "lib.mo")
+  else
+    None
 
 let err_unrecognized_url msgs at url msg =
   let open Diag in
@@ -146,7 +150,7 @@ let err_prim_pkg msgs =
   }
 
 let add_lib_import msgs imported ri_ref at full_path =
-  match append_extension full_path with
+  match append_extension Sys.file_exists full_path with
   | Some full_path ->
      if Sys.file_exists full_path
      then begin
