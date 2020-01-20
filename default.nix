@@ -71,7 +71,7 @@ let commonBuildInputs = pkgs:
 
 let darwin_standalone =
   import nix/standalone-darwin.nix {
-    inherit (nixpkgs) runCommandNoCC stdenv removeReferencesTo lib;
+    inherit (nixpkgs) runCommandNoCC stdenv removeReferencesTo callPackage lib;
     grep = nixpkgs.gnugrep;
   }; in
 
