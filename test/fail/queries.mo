@@ -1,3 +1,5 @@
+import Prim "mo:prim";
+
 actor a {
 
   public shared func oneway() { };
@@ -24,13 +26,12 @@ actor a {
     async { }; // can't enter an async expression
   };
 
-  // collateral damage (consider relaxing to allow throw and perhaps try/catch from queries)
   public shared query func badquery4() : async () {
-    throw (error ""); // can't throw
+    throw (Prim.error ""); // can throw
   };
 
   public shared query func badquery5() : async () {
-    try {} catch _ {}; // can't catch
+    try ()  catch _  {}; // can catch
   };
 
 };

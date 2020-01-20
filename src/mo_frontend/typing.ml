@@ -283,8 +283,9 @@ and check_AsyncCap env s at =
    match env.async with
    | C.AwaitCap c
    | C.AsyncCap c -> T.Con(c, []), fun c' -> C.AwaitCap c'
-   | C.QueryCap c -> T.Con(c, []), fun _c' -> C.NullCap
-   | C.NullCap -> error env at "misplaced %s" s
+   | C.QueryCap c -> T.Con(c, []), fun _c' -> C.ErrorCap
+   | C.ErrorCap
+   | C.NullCap -> error env at "misplaced %s; try enclosing in an async function" s
 
 and check_AwaitCap env s at =
    match env.async with
@@ -292,6 +293,16 @@ and check_AwaitCap env s at =
    | C.AsyncCap _
    | C.QueryCap _ ->
      error env at "misplaced %s; try enclosing in an async expression" s
+   | C.ErrorCap
+   | C.NullCap -> error env at "misplaced %s" s
+
+and check_ErrorCap env s at =
+   match env.async with
+   | C.AwaitCap c -> ()
+   | C.ErrorCap -> ()
+   | C.AsyncCap _
+   | C.QueryCap _ ->
+     error env at "misplaced %s; try enclosing in an async expression or query function" s
    | C.NullCap -> error env at "misplaced %s" s
 
 and check_typ env (typ:typ) : T.typ =
@@ -471,8 +482,9 @@ and infer_inst env tbs typs at =
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
-     | C.NullCap -> error env at "scope required, but non available"
-     | C.QueryCap c
+     | C.ErrorCap
+     | C.QueryCap _
+     | C.NullCap -> error env at "send capability required, but not available (need an enclosing async expression or function body"
      | C.AwaitCap c
      | C.AsyncCap c ->
       (T.Con(c,[])::ts, at::ats)
@@ -918,7 +930,7 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | TryE (exp1, cases) ->
-    ignore (check_AwaitCap env "try" exp.at);
+    check_ErrorCap env "try" exp.at;
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
     if not env.pre then begin
@@ -996,7 +1008,7 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | ThrowE exp1 ->
-    ignore (check_AwaitCap env "throw" exp.at);
+    check_ErrorCap env "throw" exp.at;
     if not env.pre then check_exp env T.throw exp1;
     T.Non
   | AsyncE (typ_bind, exp1) ->
@@ -1121,7 +1133,7 @@ and check_exp' env0 t exp : T.typ =
     );
     t
   | TryE (exp1, cases), _ ->
-    ignore (check_AwaitCap env "try" exp.at);
+    check_ErrorCap env "try" exp.at;
     check_exp env t exp1;
     check_cases env T.catch t cases;
     (match Coverage.check_cases cases T.catch with
