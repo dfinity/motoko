@@ -675,7 +675,7 @@ and infer_exp'' env exp : T.typ =
     )
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
-      error_in [Flags.ICMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
+      error_in [Flags.ICMode; Flags.StubMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
     let env' = if sort.it = T.Actor then {env with async = false; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
@@ -1839,7 +1839,7 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (id, typ_binds, pat, _, sort, _, _) ->
     if sort.it = T.Actor then
-      error_in [Flags.ICMode] env dec.at
+      error_in [Flags.ICMode; Flags.StubMode] env dec.at
         "actor classes are not supported; use an actor declaration instead";
      let rec is_unit_pat p = match p.it with
       | ParP p -> is_unit_pat p
@@ -1902,7 +1902,7 @@ let check_actors scope progs : unit Diag.result =
           | [] -> ()
           | [d] -> ()
           | (d::ds) when is_actor_dec d ->
-            recover (error_in [Flags.ICMode] env d.at)
+            recover (error_in [Flags.ICMode; Flags.StubMode] env d.at)
               "an actor must be the last declaration in a program"
           | (d::ds) -> go ds in
         go prog
