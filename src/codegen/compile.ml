@@ -175,6 +175,8 @@ module E = struct
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
+    static_roots : int32 list ref;
+      (* GC roots in static memory. (Everything that may be mutable.) *)
 
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
@@ -209,6 +211,7 @@ module E = struct
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
+    static_roots = ref [];
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
     return_arity = 0;
@@ -403,6 +406,12 @@ module E = struct
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
     !(env.end_of_static_memory)
+
+  let add_static_root (env : t) ptr =
+    env.static_roots := ptr :: !(env.static_roots)
+
+  let get_static_roots (env : t) =
+    !(env.static_roots)
 
   let get_static_memory env =
     !(env.static_memory)
@@ -3136,6 +3145,17 @@ module HeapTraversal = struct
           set_x
         )
 
+  let for_each_array_elem env get_array mk_code =
+      get_array ^^
+      Heap.load_field Arr.len_field ^^
+      from_0_to_n env (fun get_i ->
+        mk_code (
+          get_array ^^
+          get_i ^^
+          Arr.idx env
+        )
+      )
+
   (* Calls mk_code for each pointer in the object pointed to by get_x,
      passing code get the address of the pointer,
      and code to get the offset of the pointer (for the BigInt payload field). *)
@@ -3171,13 +3191,8 @@ module HeapTraversal = struct
         set_ptr_loc ^^
         code
       ; Tagged.Array,
-        get_x ^^
-        Heap.load_field Arr.len_field ^^
-        (* Adjust fields *)
-        from_0_to_n env (fun get_i ->
-          get_x ^^
-          get_i ^^
-          Arr.idx env ^^
+        for_each_array_elem env get_x (fun get_elem_ptr ->
+          get_elem_ptr ^^
           set_ptr_loc ^^
           code
         )
@@ -4224,7 +4239,7 @@ module GC = struct
         get_begin_from_space get_begin_to_space get_end_to_space
   )
 
-  let register env (end_of_static_space : int32) =
+  let register env static_roots (end_of_static_space : int32) =
     Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
       Heap.get_heap_ptr env ^^
       Heap.get_heap_base env ^^
@@ -4262,11 +4277,12 @@ module GC = struct
           set_end_to_space in
 
       (* Go through the roots, and evacuate them *)
+      HeapTraversal.for_each_array_elem env (compile_unboxed_const static_roots) (fun get_elem_ptr ->
+        let (set_static, get_static) = new_local env "static_obj" in
+        get_elem_ptr ^^ load_ptr ^^ set_static ^^
+        HeapTraversal.for_each_pointer env get_static evac evac_offset
+      ) ^^
       evac (ClosureTable.root env) ^^
-      HeapTraversal.walk_heap_from_to env
-        (compile_unboxed_const Int32.(add Stack.end_of_stack ptr_skew))
-        (compile_unboxed_const Int32.(add end_of_static_space ptr_skew))
-        (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
 
       (* Go through the to-space, and evacuate that.
          Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
@@ -4291,6 +4307,17 @@ module GC = struct
 
   let get_heap_size env =
     G.i (Call (nr (E.built_in env "get_heap_size")))
+
+  let store_static_roots env =
+    let roots = E.get_static_roots env in
+
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
+    let len = bytes_of_int32 (Int32.of_int (List.length roots)) in
+    let payload = String.concat "" (List.map bytes_of_int32 roots) in
+    let data = tag ^ len ^ payload in
+    let ptr = E.add_static_bytes env data in
+    ptr
+
 
 end (* GC *)
 
@@ -5136,6 +5163,7 @@ module AllocHow = struct
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
       let zero = bytes_of_int32 0l in
       let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
+      E.add_static_root env ptr;
       let ae1 = VarEnv.add_local_heap_static ae name ptr in
       (ae1, G.nop)
 
@@ -6861,6 +6889,8 @@ and conclude_module env start_fi_o =
 
   FuncDec.export_async_method env;
 
+  let static_roots = GC.store_static_roots env in
+
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
   E.add_global32 env "__heap_base" Immutable (E.get_end_of_static_memory env);
@@ -6875,7 +6905,8 @@ and conclude_module env start_fi_o =
   )) in
 
   Dfinity.default_exports env;
-  GC.register env (E.get_end_of_static_memory env);
+
+  GC.register env static_roots (E.get_end_of_static_memory env);
 
   let func_imports = E.get_func_imports env in
   let ni = List.length func_imports in
