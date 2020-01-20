@@ -2,13 +2,11 @@
 module IC.DRun.Parse where
 
 import qualified Data.ByteString.Lazy as B
-import qualified Data.ByteString.Builder as B
 import qualified Text.Hex as H
 import qualified Data.Text as T
 import Data.Char
+import Data.List
 import Control.Exception
-import Data.Word
-import Text.Read
 
 type MethodName = String
 type Payload = B.ByteString
@@ -36,10 +34,15 @@ parseLine l = case words l of
     ["query", i, m, a] -> Query (parseId i) m (parseArg a)
     _ -> error $ "Cannot parse: " ++ show l
 
+-- TODO: Implement proper and extract in own module
 parseId :: String -> Id
-parseId x = case readMaybe x of
-    Just (n::Word64) -> B.toLazyByteString $ B.word64LE n
-    Nothing -> error "Invalid canister id (decimal number)"
+parseId s
+    | "ic:" `isPrefixOf` s
+    , Just bs <- B.fromStrict <$> H.decodeHex (T.pack (drop 3 s))
+    , B.length bs > 1
+    = B.init bs
+    | otherwise
+    = error "Invalid canister id"
 
 parseArg :: String -> Payload
 parseArg ('0':'x':xs)
