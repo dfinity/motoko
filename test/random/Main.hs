@@ -1,7 +1,7 @@
 {-# language ConstraintKinds, DataKinds, DeriveFoldable, FlexibleContexts, FlexibleInstances, GADTs
            , KindSignatures, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving
            , TypeApplications, TypeOperators, TypeFamilies, TupleSections
-           , UndecidableInstances, ViewPatterns #-}
+           , UndecidableInstances, ViewPatterns, PartialTypeSignatures #-}
 
 {-# options_ghc -Wno-missing-methods #-}
 
@@ -79,14 +79,34 @@ addEmbedderArgs Reference = id
 addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
 addEmbedderArgs Drun = id
 
+invokeEmbedder :: Embedder -> Turtle.FilePath -> IO (ExitCode, Text, Text)
 invokeEmbedder embedder wasm = go embedder
   where fileArg = fromString . encodeString
-        {-go Drun = do
+        Right wasmFile = toText wasm
+        go :: Embedder -> IO (ExitCode, Text, Text)
+        go Drun = (sh $ do
           let control = wasm <.> "fifo"
           rm (fileArg control)
-          undefined --procs "mkfifo" [Text.pack control]
-          -}
-        go _ = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
+          let Right c = toText control
+          procs "mkfifo" [c] empty
+          --consumer <- forkShell $ view (input $ fileArg control)
+          --inshell (input $ fileArg control)
+          consumer <- forkShell $ (view $ inshell "cat wasm.fifo" empty)
+          --view (input $ fileArg control)
+          sleep 2
+          --writer <- forkShell (Turtle.output (fileArg control) "HEY!")
+          Turtle.output (fileArg control) "HEY!"
+
+          
+          wait consumer
+          --wait writer
+                  )
+          >> pure (ExitSuccess, "", "")
+        --go _ = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [wasmFile]) empty
+        forkShell :: Shell a -> Shell _
+        forkShell shell = fork $ sh shell
+
+
 
 embedder :: Embedder
 embedder = WasmTime
@@ -103,7 +123,7 @@ withPrim = (fromString "import Prim \"mo:prim\";" <>)
                             res@(exitCode, _, _) <- procStrictWithErr "moc"
                                 (addCompilerArgs embedder ["-no-check-ir", fileArg as]) empty
                             if ExitSuccess == exitCode
-                            then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
+                            then (True,) <$> invokeEmbedder embedder wasm -- procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
                             else pure (False, res)
             in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
 
