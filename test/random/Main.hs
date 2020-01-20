@@ -79,8 +79,12 @@ addEmbedderArgs Reference = id
 addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
 addEmbedderArgs Drun = id
 
+invokeEmbedder embedder wasm = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
+  where fileArg = fromString . encodeString
+
+
 embedder :: Embedder
-embedder = Drun
+embedder = WasmTime
 
 withPrim :: Line -> Line
 withPrim = (fromString "import Prim \"mo:prim\";" <>)
