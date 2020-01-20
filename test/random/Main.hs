@@ -25,6 +25,9 @@ import Data.Bits (Bits(..), FiniteBits(..))
 import Numeric
 
 import System.Process hiding (proc)
+import Control.Concurrent.MVar
+import qualified Control.Concurrent.Async (wait)
+import Control.Concurrent.Async (Async, async)
 import Turtle
 -- import Debug.Trace (traceShowId)
 
@@ -77,7 +80,7 @@ addCompilerArgs Drun = id
 
 addEmbedderArgs Reference = id
 addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
-addEmbedderArgs Drun = id
+addEmbedderArgs Drun = ("--extra-batches" :) . ("100" :)
 
 invokeEmbedder :: Embedder -> Turtle.FilePath -> IO (ExitCode, Text, Text)
 invokeEmbedder embedder wasm = go embedder
@@ -85,27 +88,49 @@ invokeEmbedder embedder wasm = go embedder
         Right wasmFile = toText wasm
         go :: Embedder -> IO (ExitCode, Text, Text)
         go Drun = (sh $ do
-          let control = wasm <.> "fifo"
+          let Right w = toText wasm
+              control = wasm <.> "fifo"
           rm (fileArg control)
           let Right c = toText control
           procs "mkfifo" [c] empty
           --consumer <- forkShell $ view (input $ fileArg control)
           --inshell (input $ fileArg control)
-          consumer <- forkShell $ (view $ inshell "cat wasm.fifo" empty)
+          liftIO $ putStrLn "CONSUMER"
+          consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
+          -- consumer <- forkShell $ inshell ("cat wombat.mo") empty
           --view (input $ fileArg control)
-          sleep 2
+          liftIO $ putStrLn "SLEEPING"
+          sleep 1
+          liftIO $ putStrLn "SLEPT"
           --writer <- forkShell (Turtle.output (fileArg control) "HEY!")
-          Turtle.output (fileArg control) "HEY!"
+          let install = unsafeTextToLine $ "install 1125899906842624 " <> w <> " 0x"
+          Turtle.output (fileArg control) (pure install
+                                          <|> "query 1125899906842624 test 0x4449444c0000"
+                                          <|> "query 1125899906842624 test 0x4449444c0000"
+                                          <|> "query 1125899906842624 test 0x4449444c0000"
+                                          <|> "query 1125899906842624 test 0x4449444c0000")
+          
+          sleep 1
 
           
-          wait consumer
+          liftIO $ putStrLn "WAITING"
+          lns <- wait consumer
+          liftIO $ putStrLn "WAITED"
+          view lns
           --wait writer
+          liftIO $ putStrLn "DONE"
                   )
           >> pure (ExitSuccess, "", "")
         --go _ = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [wasmFile]) empty
-        forkShell :: Shell a -> Shell _
-        forkShell shell = fork $ sh shell
-
+        forkShell :: Show a => Shell a -> Shell (Async (Shell a))
+        --forkShell shell = liftIO $ do v <- newEmptyMVar; a <- fork (sh (shell >>= liftIO <$> putMVar v)); Control.Concurrent.Async.wait a; async (takeMVar v)
+        forkShell shell = do --v <- liftIO $ newEmptyMVar
+                             --a <- fork ( (view shell))
+                             -- a <- fork (sh (shell >>= liftIO <$> print))
+                             a <- fork (fold shell $ Fold (flip (:)) [] id)
+                             --liftIO $ Control.Concurrent.Async.wait a
+                             pure (select <$> a)
+                             --liftIO (async $ takeMVar v)
 
 
 embedder :: Embedder
