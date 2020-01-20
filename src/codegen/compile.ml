@@ -98,7 +98,7 @@ in one big record, for convenience).
 The fields fall into the following categories:
 
  1. Static global fields. Never change.
-    Example: whether we are compiling with -no-system-api; the prelude code
+    Example: whether we are compiling with -no-system-api
 
  2. Immutable global fields. Change in a well-scoped manner.
     Example: Mapping from Motoko names to their location.
@@ -152,7 +152,6 @@ module E = struct
     (* Global fields *)
     (* Static *)
     mode : Flags.compile_mode;
-    prelude : Ir.prog; (* The prelude. Re-used when compiling actors *)
     rts : Wasm_exts.CustomModule.extended_module option; (* The rts. Re-used when compiling actors *)
     trap_with : t -> string -> G.t;
       (* Trap with message; in the env for dependency injection *)
@@ -190,10 +189,9 @@ module E = struct
 
 
   (* The initial global environment *)
-  let mk_global mode rts prelude trap_with dyn_mem : t = {
+  let mk_global mode rts trap_with dyn_mem : t = {
     mode;
     rts;
-    prelude;
     trap_with;
     func_types = ref [];
     func_imports = ref [];
@@ -357,10 +355,8 @@ module E = struct
         Printf.eprintf "Function import not declared: %s\n" name;
         G.i Unreachable
 
-  let get_prelude (env : t) = env.prelude
   let get_rts (env : t) = env.rts
 
-  let get_trap_with (env : t) = env.trap_with
   let trap_with env msg = env.trap_with env msg
   let then_trap_with env msg = G.if_ [] (trap_with env msg) G.nop
   let else_trap_with env msg = G.if_ [] G.nop (trap_with env msg)
@@ -4506,9 +4502,6 @@ module VarEnv = struct
       let (ae_final, setters) = add_argument_locals env ae' names
       in (ae_final, G.i (LocalSet (nr i)) :: setters)
 
-  let in_scope_set (ae : t) =
-    NameEnv.fold (fun k _ -> Freevars.S.add k) ae.vars Freevars.S.empty
-
   let add_label (ae : t) name (d : G.depth) =
       { ae with labels = NameEnv.add name d ae.labels }
 
@@ -6332,12 +6325,7 @@ and compile_exp (env : E.t) ae exp =
       get_k
       get_r
   | ActorE (ds, fs, _) ->
-    SR.Vanilla,
-    let captured = Freevars.exp exp in
-    let prelude_names = find_prelude_names env in
-    if Freevars.M.is_empty (Freevars.diff captured prelude_names)
-    then actor_lit env ds fs exp.at
-    else todo_trap env "non-closed actor" (Arrange_ir.exp exp)
+    fatal "Local actors not supported by backend"
   | NewObjE ((Type.Object | Type.Module), fs, _) ->
     SR.Vanilla,
     let fs' = fs |> List.map
@@ -6686,31 +6674,6 @@ and compile_const_exp env pre_ae how exp = match exp.it with
       FuncDec.closed env sort control name args mk_body return_tys exp.at
   | _ -> assert false
 
-and compile_prelude env ae =
-  (* Allocate the primitive functions *)
-  let (decs, _flavor) = E.get_prelude env in
-  let (ae1, code) = compile_prog env ae decs in
-  (ae1, code)
-
-(*
-This is a horrible hack
-When determining whether an actor is closed, we disregard the prelude, because
-every actor is compiled with the prelude.
-This breaks with shadowing.
-This function compiles the prelude, just to find out the bound names.
-*)
-and find_prelude_names env =
-  (* Create a throw-away environment *)
-  let env0 = E.mk_global (E.mode env) None (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
-  Heap.register_globals env0;
-  Stack.register_globals env0;
-  Dfinity.system_imports env0;
-  RTS.system_imports env0;
-  let env1 = E.mk_fun_env env0 0l 0 in
-  let ae = VarEnv.empty_ae in
-  let (env2, _) = compile_prelude env1 ae in
-  VarEnv.in_scope_set env2
-
 
 and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
   let find_last_expr ds e =
@@ -6771,78 +6734,6 @@ and export_actor_field env  ae (f : Ir.field) =
       | _ -> assert false);
     edesc = nr (FuncExport (nr fi))
   })
-
-(* Local actor *)
-and actor_lit outer_env ds fs at =
-  let wasm_binary =
-    let mod_env = E.mk_global
-      (E.mode outer_env)
-      (E.get_rts outer_env)
-      (E.get_prelude outer_env)
-      (E.get_trap_with outer_env)
-      Stack.end_of_stack in
-
-    Heap.register_globals mod_env;
-    Stack.register_globals mod_env;
-
-    Dfinity.system_imports mod_env;
-    RTS.system_imports mod_env;
-    RTS_Exports.system_exports mod_env;
-
-    let start_fun = Func.of_body mod_env [] [] (fun env -> G.with_region at @@
-      let ae0 = VarEnv.empty_ae in
-
-      (* Compile the prelude *)
-      let (ae1, prelude_code) = compile_prelude env ae0 in
-
-      (* Reverse the fs, to a map from variable to exported name *)
-      let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
-
-      (* Compile the declarations *)
-      let (ae3, decls_code) = compile_decs_public env ae1 AllocHow.TopLvl ds v2en Freevars.S.empty in
-
-      (* Export the public functions *)
-      List.iter (export_actor_field env ae3) fs;
-
-      prelude_code ^^ decls_code) in
-    let start_fi = E.add_fun mod_env "start" start_fun in
-
-    if E.mode mod_env = Flags.ICMode then Dfinity.export_start mod_env start_fi;
-    if E.mode mod_env = Flags.StubMode then Dfinity.export_start mod_env start_fi;
-
-    let m = conclude_module mod_env None in
-    let (_map, wasm_binary) = Wasm_exts.CustomModuleEncode.encode m in
-    wasm_binary in
-
-    match E.mode outer_env with
-    | Flags.StubMode ->
-      let (set_idx, get_idx) = new_local outer_env "idx" in
-      let (set_len, get_len) = new_local outer_env "len" in
-      let (set_id, get_id) = new_local outer_env "id" in
-      (* the module *)
-      Blob.lit outer_env wasm_binary ^^
-      Blob.as_ptr_len outer_env ^^
-      (* the arg (not used in motoko yet) *)
-      compile_unboxed_const 0l ^^
-      compile_unboxed_const 0l ^^
-      Dfinity.system_call outer_env "stub" "create_canister" ^^
-      set_idx ^^
-
-      get_idx ^^
-      Dfinity.system_call outer_env "stub" "created_canister_id_size" ^^
-      set_len ^^
-
-      get_len ^^ Blob.alloc outer_env ^^ set_id ^^
-
-      get_idx ^^
-      get_id ^^ Blob.payload_ptr_unskewed ^^
-      compile_unboxed_const 0l ^^
-      get_len ^^
-      Dfinity.system_call outer_env "stub" "created_canister_id_copy" ^^
-
-      get_id
-    | _ -> assert false
-
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 ds fs =
@@ -6931,8 +6822,8 @@ and conclude_module env start_fi_o =
   | None -> emodule
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
-let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts prelude Dfinity.trap_with Stack.end_of_stack in
+let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
+  let env = E.mk_global mode rts Dfinity.trap_with Stack.end_of_stack in
 
   Heap.register_globals env;
   Stack.register_globals env;
@@ -6941,7 +6832,7 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
   RTS.system_imports env;
   RTS_Exports.system_exports env;
 
-  let start_fun = compile_start_func env (prelude :: progs) in
+  let start_fun = compile_start_func env progs in
   let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o = match E.mode env with
     | Flags.ICMode | Flags.StubMode -> Dfinity.export_start env start_fi; None
