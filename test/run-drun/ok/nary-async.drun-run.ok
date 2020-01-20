@@ -1,0 +1,11 @@
+ingress(0) System
+debug.print: 0_0
+debug.print: 1_0
+debug.print: 2_0
+debug.print: 3_0
+ingress(1) Completed: Canister: Payload: 0x4449444c0000
+debug.print: 0_0
+debug.print: 0_1
+debug.print: 0_2
+debug.print: 0_3
+ingress(2) Completed: Canister: Payload: 0x4449444c0000

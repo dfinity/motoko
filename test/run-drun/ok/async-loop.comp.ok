@@ -1,6 +1,0 @@
-async-loop.mo:27.19-27.33: type error, unsupported async block
-  (This is a limitation of the current version.)
-async-loop.mo:40.15-40.29: type error, unsupported async block
-  (This is a limitation of the current version.)
-async-loop.mo:59.15-59.29: type error, unsupported async block
-  (This is a limitation of the current version.)
