@@ -1,5 +1,6 @@
 .database
 .dvm
+_out
 /result*
 
 **/*~
