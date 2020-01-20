@@ -70,10 +70,8 @@ let commonBuildInputs = pkgs:
   ]; in
 
 let darwin_standalone =
-  import nix/standalone-darwin.nix {
-    inherit (nixpkgs) runCommandNoCC stdenv removeReferencesTo callPackage lib;
-    grep = nixpkgs.gnugrep;
-  }; in
+  let common = import nixpkgs.sources.common { inherit (nixpkgs) system; }; in
+  common.lib.standaloneRust; in
 
 let ocaml_exe = name: bin:
   let
