@@ -94,7 +94,7 @@ invokeEmbedder embedder wasm = go embedder
           liftIO $ putStrLn "CONSUMER"
           consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
           liftIO $ putStrLn "SLEEPING"
-          sleep 1
+          sleep 1 -- FIXME!
           liftIO $ putStrLn "PRODUCER"
           let install = unsafeTextToLine $ "install 1125899906842624 " <> w <> " 0x"
           Turtle.output (fileArg control) (pure install
@@ -111,7 +111,7 @@ invokeEmbedder embedder wasm = go embedder
         go _ = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [wasmFile]) empty
         forkShell :: Show a => Shell a -> Shell (_ (Shell a))
         forkShell shell = do a <- fork (fold shell $ Fold (flip (:)) [] id)
-                             pure (select <$> a)
+                             pure (select . reverse <$> a)
 
 
 embedder :: Embedder
@@ -120,18 +120,20 @@ embedder = WasmTime
 withPrim :: Line -> Line
 withPrim = (fromString "import Prim \"mo:prim\";" <>)
 
+runner :: ExitCode -> (Bool -> Bool) -> Turtle.FilePath -> String -> PropertyM IO ()
+runner reqOutcome relevant name testCase =
+    let as = name <.> "mo"
+        wasm = name <.> "wasm"
+        fileArg = fromString . encodeString
+        script = do Turtle.output as $ withPrim <$> fromString testCase
+                    res@(exitCode, _, _) <- procStrictWithErr "moc"
+                      (addCompilerArgs embedder ["-no-check-ir", fileArg as]) empty
+                    if ExitSuccess == exitCode
+                    then (True,) <$> invokeEmbedder embedder wasm -- procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
+                    else pure (False, res)
+    in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
+
 (runScriptNoFuzz, runScriptWantFuzz) = (runner ExitSuccess id, runner (ExitFailure 1) not)
-    where runner reqOutcome relevant name testCase =
-            let as = name <.> "mo"
-                wasm = name <.> "wasm"
-                fileArg = fromString . encodeString
-                script = do Turtle.output as $ withPrim <$> fromString testCase
-                            res@(exitCode, _, _) <- procStrictWithErr "moc"
-                                (addCompilerArgs embedder ["-no-check-ir", fileArg as]) empty
-                            if ExitSuccess == exitCode
-                            then (True,) <$> invokeEmbedder embedder wasm -- procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
-                            else pure (False, res)
-            in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
 
 prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
