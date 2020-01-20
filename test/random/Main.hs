@@ -29,7 +29,7 @@ import System.Process hiding (proc)
 import GHC.IO.Exception (IOException)
 import Control.Concurrent.MVar
 import Turtle
-import Debug.Trace (traceShowId, traceShow)
+-- import Debug.Trace (traceShowId, traceShow)
 
 main = defaultMain tests
   where tests :: TestTree
@@ -90,26 +90,19 @@ invokeEmbedder embedder wasm = go embedder
         go Drun = (sh $ do
           let Right w = toText wasm
               control = wasm <.> "fifo"
-          liftIO $ putStrLn (traceShowId "RM")
-          rm (fileArg control) `catch` \(_ :: GHC.IO.Exception.IOException) -> traceShow "RM CATCH" (pure ()) -- rm -f
-          liftIO $ putStrLn (traceShowId "RM EX")
+          rm (fileArg control) `catch` \(_ :: GHC.IO.Exception.IOException) -> pure () -- rm -f
           let Right c = toText control
-          liftIO $ putStrLn (traceShowId "MKFIFO")
           procs "mkfifo" [c] empty
-          liftIO $ putStrLn (traceShowId "CONSUMER")
           consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
           liftIO $ putStrLn "SLEEPING"
           sleep 1 -- FIXME!
-          liftIO $ putStrLn "PRODUCER"
           let install = unsafeTextToLine $ "install 1125899906842624 " <> w <> " 0x"
           Turtle.output (fileArg control) (pure install
                                           <|> "query 1125899906842624 do 0x4449444c0000")
 
-          liftIO $ putStrLn "WAITING"
           lns <- wait consumer
           liftIO $ putStrLn "WAITED"
-          view $ traceShowId <$> lns
-          liftIO $ putStrLn "DONE"
+          view lns
                   )
           >> pure (ExitSuccess, "", "")
         go _ = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [wasmFile]) empty

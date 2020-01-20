@@ -224,12 +224,8 @@ rec {
 
     let qc = testDerivation {
       name = "test-qc";
-      buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun nixpkgs.coreutils haskellPackages.qc-motoko ];
+      buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
       checkPhase = ''
-
-        echo WHICH
-        /usr/bin/which mkfifo
-        echo WHICH EX
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
       '';
