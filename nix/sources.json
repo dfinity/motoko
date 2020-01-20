@@ -5,6 +5,12 @@
         "rev": "791d90bb7ca57d7afab4fd045025877acb892c00",
         "type": "git"
     },
+    "common": {
+        "ref": "master",
+        "repo": "ssh://git@github.com/dfinity-lab/common",
+        "rev": "8c07b4a592e7c54ff43adf0420575d4069bfe8a9",
+        "type": "git"
+    },
     "esm": {
         "builtin": false,
         "sha256": "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q",
