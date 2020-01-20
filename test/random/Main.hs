@@ -79,9 +79,14 @@ addEmbedderArgs Reference = id
 addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
 addEmbedderArgs Drun = id
 
-invokeEmbedder embedder wasm = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
+invokeEmbedder embedder wasm = go embedder
   where fileArg = fromString . encodeString
-
+        {-go Drun = do
+          let control = wasm <.> "fifo"
+          rm (fileArg control)
+          undefined --procs "mkfifo" [Text.pack control]
+          -}
+        go _ = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
 
 embedder :: Embedder
 embedder = WasmTime
