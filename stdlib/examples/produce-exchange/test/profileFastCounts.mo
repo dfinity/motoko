@@ -2,9 +2,9 @@
 // we correlate these numbers with times that we
 // measure elsewhere, where these numbers are not available.
 
-import Debug "../../../debug";
-import T = "../serverTypes";
-import Model = "../serverModel";
+import Debug "mo:stdlib/debug";
+import T "../src/serverTypes";
+import Model "../src/serverModel";
 
 let m = Model.Model();
 

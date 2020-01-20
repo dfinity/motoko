@@ -1,5 +1,5 @@
-import Prelude "prelude";
-import Nat "nat";
+import Prelude "mo:stdlib/prelude";
+import Nat "mo:stdlib/nat";
 
 Prelude.printLn("Nat");
 

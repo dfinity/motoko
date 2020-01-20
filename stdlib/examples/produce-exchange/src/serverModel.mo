@@ -1,19 +1,19 @@
-import Debug = "../../debug";
-import P = "../../prelude";
+import Debug "mo:stdlib/debug";
+import P "mo:stdlib/prelude";
 
-import T = "serverTypes";
-import L = "serverLang";
-import M = "serverModelTypes";
+import T "serverTypes";
+import L "serverLang";
+import M "serverModelTypes";
 
-import List = "../../list";
-import Hash_ = "../../hash";
-import Option = "../../option";
-import Trie = "../../trie";
-import Iter = "../../iter";
-import Array = "../../array";
+import List "mo:stdlib/list";
+import Hash_ "mo:stdlib/hash";
+import Option "mo:stdlib/option";
+import Trie "mo:stdlib/trie";
+import Iter "mo:stdlib/iter";
+import Array "mo:stdlib/array";
 
-import DT = "../../docTable";
-import Result = "../../result";
+import DT "mo:stdlib/docTable";
+import Result "mo:stdlib/result";
 
 
 module {

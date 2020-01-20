@@ -1,6 +1,6 @@
-import Array "array";
-import Prelude "prelude";
-import Text "text";
+import Array "mo:stdlib/array";
+import Prelude "mo:stdlib/prelude";
+import Text "mo:stdlib/text";
 
 Prelude.printLn("Array");
 

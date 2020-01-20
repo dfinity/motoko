@@ -3,7 +3,7 @@
 let
   ic-stub = (import ../default.nix {inherit system;}).ic-stub;
 
-  nixpkgs = (import ../nix/nixpkgs.nix).nixpkgs { inherit system; };
+  nixpkgs = import ../nix { inherit system; };
 
   extra-pkgs = [
     nixpkgs.haskellPackages.cabal-install

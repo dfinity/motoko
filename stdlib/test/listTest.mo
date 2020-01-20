@@ -1,5 +1,5 @@
-import List "list";
-import Prelude "prelude";
+import List "mo:stdlib/list";
+import Prelude "mo:stdlib/prelude";
 
 type X = Nat;
 

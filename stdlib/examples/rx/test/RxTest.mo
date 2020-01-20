@@ -1,4 +1,4 @@
-import Array "../../../array";
+import Array "mo:stdlib/array";
 import Rx "../src/Rx";
 
 type Error = {

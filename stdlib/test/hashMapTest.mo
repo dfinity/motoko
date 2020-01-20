@@ -1,11 +1,11 @@
 import Prim "mo:prim";
-import H "trieMap";
-import Hash "hash";
+import H "mo:stdlib/hashMap";
+import Hash "mo:stdlib/hash";
 
 func textIsEq(x:Text,y:Text):Bool { x == y };
 
 debug {
-  let a = H.TrieMap<Text, Nat>(textIsEq, Hash.Hash.hashOfText);
+  let a = H.HashMap<Text, Nat>(3, textIsEq, Hash.Hash.hashOfText);
 
   ignore a.set("apple", 1);
   ignore a.set("banana", 2);
@@ -91,7 +91,7 @@ debug {
 
 
   // test fromIter method
-  let c = H.fromIter<Text, Nat>(b.iter(), textIsEq, Hash.Hash.hashOfText);
+  let c = H.fromIter<Text, Nat>(b.iter(), 0, textIsEq, Hash.Hash.hashOfText);
 
   // c agrees with each entry of b
   for ((k,v) in b.iter()) {
