@@ -1,6 +1,6 @@
 import T = "serverTypes.mo";
 import Trie = "mo:stdlib/trie.mo";
-import DocTable = "mo:stdlib/docTable.mo";
+import DocTable = "docTable.mo";
 
 
 module {

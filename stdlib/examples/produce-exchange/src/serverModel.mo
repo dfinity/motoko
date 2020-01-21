@@ -12,8 +12,8 @@ import Trie = "mo:stdlib/trie.mo";
 import Iter = "mo:stdlib/iter.mo";
 import Array = "mo:stdlib/array.mo";
 
-import DT = "mo:stdlib/docTable.mo";
 import Result = "mo:stdlib/result.mo";
+import DT = "docTable.mo";
 
 
 module {
