@@ -65,7 +65,8 @@ utf8Props = testGroup "UTF-8 coding"
 
 matchingProps = testGroup "Pattern matching"
   [ QC.testProperty "intra-actor" $ prop_matchStructured
-  , QC.testProperty "inter-actor" $ prop_matchInActor
+  --, QC.testProperty "inter-actor" $ prop_matchInActor
+  , QC.testProperty "encoded-Nat" $ prop_matchActorNat
   ]
 
 
@@ -109,7 +110,7 @@ invokeEmbedder embedder wasm = go embedder
                                    <|> "ingress ic:2A012B do 0x4449444c0000")
             lns <- wait consumer
             view lns
-            let errors = grep (invert $ has "trapped explicitly: data buffer not filled") $ grep (has "Err: ") lns
+            let errors = grep (has "Err: ") lns
             linesToText . reverse <$> fold errors revconcating >>= liftIO <$> writeIORef fuzz
 
           (ExitSuccess, "",) <$> readIORef fuzz
@@ -358,6 +359,12 @@ mobile (tm, v) = monadicIO $ do
       typed = unparseType v
       expr = unparseMO tm
   drunScriptNoFuzz "matchMobile" testCase
+
+
+prop_matchActorNat :: Neuralgic Natural -> Property
+prop_matchActorNat nat = monadicIO $ do
+    let testCase = format ("actor { public func match (n : Nat) : async () { assert (switch n { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Nat); return res } };") (evalN nat) (evalN nat)
+    drunScriptNoFuzz "matchActorNat" (Data.Text.unpack testCase)
 
 -- instances of MOValue describe "ground values" in
 -- Motoko. These can appear in patterns and have
