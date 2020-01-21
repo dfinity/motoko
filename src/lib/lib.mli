@@ -166,4 +166,6 @@ sig
    * relative_to "foo/bar" "foo/bar/project" = Some "project"
    *)
   val relative_to : string -> string -> string option
+
+  val make_absolute : string -> string -> string
 end
