@@ -70,10 +70,8 @@ let commonBuildInputs = pkgs:
   ]; in
 
 let darwin_standalone =
-  import nix/standalone-darwin.nix {
-    inherit (nixpkgs) runCommandNoCC stdenv removeReferencesTo lib;
-    grep = nixpkgs.gnugrep;
-  }; in
+  let common = import nixpkgs.sources.common { inherit (nixpkgs) system; }; in
+  common.lib.standaloneRust; in
 
 let ocaml_exe = name: bin:
   let
@@ -345,63 +343,66 @@ rec {
 
   stdlib = stdenv.mkDerivation {
     name = "stdlib";
-    src = subpath ./stdlib;
-    buildInputs = with nixpkgs;
-      [ bash ];
-    buildPhase = ''
-      patchShebangs .
-    '';
-    doCheck = true;
-    checkInputs = [
-      moc
-      nixpkgs.python
-    ];
-    checkPhase = ''
-      make MOC=${moc}/bin/moc alltests
-    '';
+    src = subpath ./stdlib/src;
+    phases = "unpackPhase installPhase";
     installPhase = ''
       mkdir -p $out
       cp ./*.mo $out
-      rm $out/*Test.mo
     '';
-    forceShare = ["man"];
   };
+
+  stdlib-tests = stdenv.mkDerivation {
+    name = "stdlib-tests";
+    src = subpath ./stdlib/test;
+    phases = "unpackPhase checkPhase installPhase";
+    doCheck = true;
+    installPhase = "touch $out";
+    checkInputs = [
+      nixpkgs.wasmtime
+      moc
+    ];
+    checkPhase = ''
+      make MOC=moc STDLIB=${stdlib}
+    '';
+  };
+
+  examples =
+    let example_subdir = dir: stdenv.mkDerivation {
+      name = dir;
+      src = subpath "./stdlib/examples/${dir}";
+      phases = "unpackPhase checkPhase installPhase";
+      doCheck = true;
+      installPhase = "touch $out";
+      buildInputs = [
+        nixpkgs.bash
+        moc
+        nixpkgs.wasmtime
+      ];
+      checkPhase = ''
+        make MOC=moc STDLIB=${stdlib}
+      '';
+    }; in
+    {
+      actorspec        = example_subdir "actorspec";
+      rx               = example_subdir "rx";
+      produce-exchange = example_subdir "produce-exchange";
+    };
+
 
   stdlib-doc = stdenv.mkDerivation {
     name = "stdlib-doc";
-    src = subpath ./stdlib;
+    src = subpath ./stdlib/doc;
     buildInputs = with nixpkgs;
       [ pandoc bash python ];
     buildPhase = ''
       patchShebangs .
-      make alldoc
+      make STDLIB=${stdlib}
     '';
     installPhase = ''
       mkdir -p $out
-      mv doc $out/
+      mv _out/* $out/
       mkdir -p $out/nix-support
-      echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
-    '';
-    forceShare = ["man"];
-  };
-
-  produce-exchange = stdenv.mkDerivation {
-    name = "produce-exchange";
-    src = subpath ./stdlib;
-    buildInputs = [
-      moc
-    ];
-
-    doCheck = true;
-    buildPhase = ''
-      make MOC=moc OUTDIR=_out _out/ProduceExchange.wasm
-    '';
-    checkPhase = ''
-      make MOC=moc OUTDIR=_out _out/ProduceExchange.out
-    '';
-    installPhase = ''
-      mkdir -p $out
-      cp _out/ProduceExchange.wasm $out
+      echo "report docs $out README.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -416,12 +417,13 @@ rec {
       samples
       rts
       stdlib
+      stdlib-tests
       stdlib-doc
-      produce-exchange
       users-guide
       ic-stub
       shell
-    ] ++ builtins.attrValues tests;
+    ] ++ builtins.attrValues tests
+      ++ builtins.attrValues examples;
   };
 
   shell = nixpkgs.mkShell {

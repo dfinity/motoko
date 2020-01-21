@@ -1,6 +1,6 @@
 import Prim "mo:prim";
-import B "buf.mo";
-import I "iter.mo";
+import B "mo:stdlib/buf.mo";
+import I "mo:stdlib/iter.mo";
 
 // test repeated growing
 let a = B.Buf<Nat>(3);
