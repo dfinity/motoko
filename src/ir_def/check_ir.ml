@@ -195,6 +195,8 @@ let rec check_typ env typ : unit =
   | T.Opt typ ->
     check_typ env typ
   | T.Async (typ1, typ2) ->
+    check_typ env typ1;
+    check_typ env typ2;
     check env no_region env.flavor.Ir.has_async_typ "async in non-async flavor";
     let t' = T.promote typ2 in
     check_shared env no_region t'
@@ -602,7 +604,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
-    check ((T.is_shared_sort sort && T.is_promising control) ==> isAsyncE exp)
+    check ((T.is_shared_sort sort && control = T.Promises) ==> isAsyncE exp)
       "shared function with async type has non-async body";
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
     let codom = T.codom control (fun () -> List.hd ts) ret_tys in

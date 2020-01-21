@@ -66,7 +66,6 @@ and kind =
 (* Function sorts *)
 
 val is_shared_sort : 'a shared -> bool
-val is_promising : control -> bool
 
 (* Short-hands *)
 
@@ -206,6 +205,14 @@ val open_binds : bind list -> typ list
 (* Environments *)
 
 module Env : Env.S with type key = string
+
+
+(* Scope bindings *)
+
+val scope_var : var
+val scope_bound : typ
+val scope_bind : bind
+
 
 (* Pretty printing *)
 

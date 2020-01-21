@@ -18,7 +18,7 @@ type ret_env = T.typ option
 
 let initial_scope =
   { Scope.empty with
-    Scope.typ_env = T.Env.singleton scope_id C.top_cap;
+    Scope.typ_env = T.Env.singleton T.scope_var C.top_cap;
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
@@ -268,16 +268,15 @@ let check_shared_return env at sort c ts =
   | _ -> ()
 
 let rec infer_async_cap env sort cs tbs =
-  let env = { env with async = C.NullCap } in
   match sort, cs, tbs with
   | (T.Shared T.Write | T.Local) , c::_,  { T.sort = T.Scope; _ }::_ ->
-    { env with typs = T.Env.add scope_id c env.typs;
+    { env with typs = T.Env.add T.scope_var c env.typs;
                async = C.AsyncCap c }
   | (T.Shared T.Query) , c::_,  { T.sort = T.Scope; _ }::_ ->
-    { env with typs = T.Env.add scope_id c env.typs;
+    { env with typs = T.Env.add T.scope_var c env.typs;
                async = C.QueryCap c }
   | T.Shared _, _, _ -> assert false (* impossible given sugaring *)
-  | _ -> env
+  | _ -> { env with async = C.NullCap }
 
 and check_AsyncCap env s at =
    match env.async with
@@ -415,6 +414,10 @@ and check_typ_binds_acyclic env typ_binds cs ts  =
     in chase 0 [] c
   in List.iter2 chase typ_binds cs
 
+and check_typ_bind_sorts env typs tbs =
+  (* assert, don't error, since this should be a syntactic invariant of parsing *)
+  List.iteri (fun i tb -> assert (i == 0 || (tb.T.sort = T.Type))) tbs;
+
 and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * Scope.con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs =
@@ -434,7 +437,7 @@ and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * S
       T.sort = typ_bind.it.sort.it;
       T.bound = check_typ pre_env' typ_bind.it.bound }) typ_binds
   in
-  List.iteri (fun i tb -> assert (i == 0 || (tb.T.sort = T.Type))) tbs;
+  check_typ_bind_sorts env typ_binds;
   let ts = List.map (fun tb -> tb.T.bound) tbs in
   check_typ_binds_acyclic env typ_binds cs ts;
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
@@ -1016,7 +1019,7 @@ and infer_exp'' env exp : T.typ =
       error_in [Flags.ICMode] env exp.at "unsupported async block";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
-    let ce_scope = T.Env.add "@" c ce in (* pun scope identifier @ with c *)
+    let ce_scope = T.Env.add T.scope_var c ce in (* pun scope var with c *)
     let env' =
       {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some T.Pre; async = next_cap c} in
     let t = infer_exp env' exp1 in
@@ -1107,7 +1110,7 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t1)
         (T.string_of_typ_expand t1');
     let c, tb, ce, cs = check_typ_bind env tb in
-    let ce_scope = T.Env.add "@" c ce in (* pun scope identifier @ with c *)
+    let ce_scope = T.Env.add T.scope_var c ce in (* pun scope var with c *)
     let env' =
       {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some t'; async = next_cap c} in
     check_exp env' t' exp1;
@@ -1764,7 +1767,7 @@ and gather_dec env scope dec : Scope.t =
       error env dec.at "duplicate definition for type %s in block" id.it;
     let pre_tbs = List.map (fun bind ->
                       {T.var = bind.it.var.it;
-                       T.sort = if bind.it.var.it = scope_id then T.Scope else T.Type;
+                       T.sort = T.Type;
                        T.bound = T.Pre}
                     ) binds in
     let pre_k = T.Abs (pre_tbs, T.Pre) in

@@ -48,13 +48,14 @@ and typ =
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
   | Func of func_sort * control * bind list * typ list * typ list  (* function *)
-  | Async of typ * typ                        (* future *)
+  | Async of scope * typ                      (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Pre                                       (* pre-type *)
 
+and scope = typ
 and bind_sort = Scope | Type
 
 and bind = {var : var; sort: bind_sort; bound : typ}
@@ -68,10 +69,6 @@ and kind =
 (* Function sorts *)
 
 let is_shared_sort sort = sort <> Local
-let is_promising c =
-  match c with
-  | Promises -> true
-  | _ -> false
 
 (* Constructors *)
 
@@ -149,7 +146,6 @@ let prim = function
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 
 let seq = function [t] -> t | ts -> Tup ts
-
 
 let codom c to_scope ts2 =  match c with
   | Promises -> Async (to_scope(), seq ts2)
@@ -1113,6 +1109,12 @@ let glb t1 t2 = glb' (ref M.empty) (ref M.empty) t1 t2
 
 module Env = Env.Make(String)
 
+
+(* Scopes *)
+
+let scope_var = "@"
+let scope_bound = Any
+let scope_bind = { var = scope_var; sort = Scope; bound = scope_bound }
 
 (* Pretty printing *)
 
