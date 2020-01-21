@@ -102,7 +102,7 @@ invokeEmbedder embedder wasm = go embedder
 
           lns <- wait consumer
           liftIO $ putStrLn "WAITED"
-          view lns
+          view (grep (has "Err: ") lns)
                   )
           >> pure (ExitSuccess, "", "")
         go _ = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [wasmFile]) empty
