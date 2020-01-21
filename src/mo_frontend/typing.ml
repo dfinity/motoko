@@ -278,7 +278,7 @@ let rec infer_async_cap env sort cs tbs =
   | T.Shared _, _, _ -> assert false (* impossible given sugaring *)
   | _ -> { env with async = C.NullCap }
 
-and check_AsyncCap env s at =
+and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
    match env.async with
    | C.AwaitCap c
    | C.AsyncCap c -> T.Con(c, []), fun c' -> C.AwaitCap c'
