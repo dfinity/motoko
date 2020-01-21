@@ -2038,7 +2038,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_unsigned env get_x get_buf
       )
-      (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
+      (fun env ->
+        G.i Drop ^^
+        get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
       env
 
   let compile_store_to_data_buf_signed env =
@@ -2051,7 +2053,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_signed env get_x get_buf
       )
-      (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
+      (fun env ->
+        G.i Drop ^^
+        get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
 
   let compile_data_size_unsigned env =
@@ -2071,7 +2075,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_sleb128_size get_x
       )
-      (fun env -> Num.compile_data_size_unsigned env)
+      (fun env -> Num.compile_data_size_signed env)
       env
 
   let from_signed_word32 env =
