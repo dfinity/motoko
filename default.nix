@@ -3,28 +3,7 @@
   system ? builtins.currentSystem,
 }:
 
-let nixpkgs = (import ./nix/nixpkgs.nix).nixpkgs {
-  inherit system;
-  overlays = [
-    # Selecting the ocaml version
-    (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_08; })
-    # Additional ocaml package
-    (self: super: {
-      ocamlPackages = super.ocamlPackages // {
-        wasm = import ./nix/ocaml-wasm.nix {
-          inherit (self) stdenv fetchFromGitHub ocaml;
-          inherit (self.ocamlPackages) findlib ocamlbuild;
-        };
-        vlq = import ./nix/ocaml-vlq.nix {
-          inherit (self) stdenv fetchFromGitHub ocaml dune;
-          inherit (self.ocamlPackages) findlib;
-        };
-      };
-    })
-  ];
-}; in
-
-let llvm = import ./nix/llvm.nix { inherit (nixpkgs) system; }; in
+let nixpkgs = import ./nix { inherit system; }; in
 
 let stdenv = nixpkgs.stdenv; in
 
@@ -32,19 +11,9 @@ let subpath = p: import ./nix/gitSource.nix p; in
 
 let dfinity-src =
   let env = builtins.getEnv "DFINITY_SRC"; in
-  if env != "" then env else builtins.fetchGit {
-    name = "dfinity-sources";
-    url = "ssh://git@github.com/dfinity-lab/dfinity";
-    # ref = "master";
-    rev = "947195fb1395eac397b8490fc8000e3afe5ef820";
-  }; in
+  if env != "" then env else nixpkgs.sources.dfinity; in
 
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
-
-let esm = nixpkgs.fetchzip {
-  sha256 = "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q";
-  url = "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz";
-}; in
 
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
 
@@ -52,17 +21,10 @@ let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
 let
-  libtommath = nixpkgs.fetchFromGitHub {
-    owner = "libtom";
-    repo = "libtommath";
-    rev = "584405ff8e357290362671b5e7db6110a959cbaa";
-    sha256 = "1vl606rm8ba7vjhr0rbdqvih5d4r5iqalqlj5mnz6j3bnsn83b2a";
-  };
-
   llvmBuildInputs = [
     nixpkgs.clang # for native building
-    llvm.clang_9 # for wasm building
-    llvm.lld_9 # for wasm building
+    nixpkgs.clang_9 # for wasm building
+    nixpkgs.lld_9 # for wasm building
   ];
 
   # When compiling natively, we want to use `clang` (which is a nixpkgs
@@ -108,10 +70,8 @@ let commonBuildInputs = pkgs:
   ]; in
 
 let darwin_standalone =
-  import nix/standalone-darwin.nix {
-    inherit (nixpkgs) runCommandNoCC stdenv removeReferencesTo lib;
-    grep = nixpkgs.gnugrep;
-  }; in
+  let common = import nixpkgs.sources.common { inherit (nixpkgs) system; }; in
+  common.lib.standaloneRust; in
 
 let ocaml_exe = name: bin:
   let
@@ -156,7 +116,7 @@ rec {
 
     preBuild = ''
       ${llvmEnv}
-      export TOMMATHSRC=${libtommath}
+      export TOMMATHSRC=${nixpkgs.sources.libtommath}
     '';
 
     doCheck = true;
@@ -229,7 +189,7 @@ rec {
             nixpkgs.nodejs-10_x
             filecheck
             wasmtime
-            esm
+            nixpkgs.sources.esm
           ] ++
           llvmBuildInputs;
 
@@ -240,7 +200,7 @@ rec {
             export MO_LD=mo-ld
             export DIDC=didc
             export DESER=deser
-            export ESM=${esm}
+            export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
@@ -383,63 +343,66 @@ rec {
 
   stdlib = stdenv.mkDerivation {
     name = "stdlib";
-    src = subpath ./stdlib;
-    buildInputs = with nixpkgs;
-      [ bash ];
-    buildPhase = ''
-      patchShebangs .
-    '';
-    doCheck = true;
-    checkInputs = [
-      moc
-      nixpkgs.python
-    ];
-    checkPhase = ''
-      make MOC=${moc}/bin/moc alltests
-    '';
+    src = subpath ./stdlib/src;
+    phases = "unpackPhase installPhase";
     installPhase = ''
       mkdir -p $out
       cp ./*.mo $out
-      rm $out/*Test.mo
     '';
-    forceShare = ["man"];
   };
+
+  stdlib-tests = stdenv.mkDerivation {
+    name = "stdlib-tests";
+    src = subpath ./stdlib/test;
+    phases = "unpackPhase checkPhase installPhase";
+    doCheck = true;
+    installPhase = "touch $out";
+    checkInputs = [
+      nixpkgs.wasmtime
+      moc
+    ];
+    checkPhase = ''
+      make MOC=moc STDLIB=${stdlib}
+    '';
+  };
+
+  examples =
+    let example_subdir = dir: stdenv.mkDerivation {
+      name = dir;
+      src = subpath "./stdlib/examples/${dir}";
+      phases = "unpackPhase checkPhase installPhase";
+      doCheck = true;
+      installPhase = "touch $out";
+      buildInputs = [
+        nixpkgs.bash
+        moc
+        nixpkgs.wasmtime
+      ];
+      checkPhase = ''
+        make MOC=moc STDLIB=${stdlib}
+      '';
+    }; in
+    {
+      actorspec        = example_subdir "actorspec";
+      rx               = example_subdir "rx";
+      produce-exchange = example_subdir "produce-exchange";
+    };
+
 
   stdlib-doc = stdenv.mkDerivation {
     name = "stdlib-doc";
-    src = subpath ./stdlib;
+    src = subpath ./stdlib/doc;
     buildInputs = with nixpkgs;
       [ pandoc bash python ];
     buildPhase = ''
       patchShebangs .
-      make alldoc
+      make STDLIB=${stdlib}
     '';
     installPhase = ''
       mkdir -p $out
-      mv doc $out/
+      mv _out/* $out/
       mkdir -p $out/nix-support
-      echo "report docs $out/doc README.html" >> $out/nix-support/hydra-build-products
-    '';
-    forceShare = ["man"];
-  };
-
-  produce-exchange = stdenv.mkDerivation {
-    name = "produce-exchange";
-    src = subpath ./stdlib;
-    buildInputs = [
-      moc
-    ];
-
-    doCheck = true;
-    buildPhase = ''
-      make MOC=moc OUTDIR=_out _out/ProduceExchange.wasm
-    '';
-    checkPhase = ''
-      make MOC=moc OUTDIR=_out _out/ProduceExchange.out
-    '';
-    installPhase = ''
-      mkdir -p $out
-      cp _out/ProduceExchange.wasm $out
+      echo "report docs $out README.html" >> $out/nix-support/hydra-build-products
     '';
   };
 
@@ -454,12 +417,13 @@ rec {
       samples
       rts
       stdlib
+      stdlib-tests
       stdlib-doc
-      produce-exchange
       users-guide
       ic-stub
       shell
-    ] ++ builtins.attrValues tests;
+    ] ++ builtins.attrValues tests
+      ++ builtins.attrValues examples;
   };
 
   shell = nixpkgs.mkShell {
@@ -482,8 +446,8 @@ rec {
       ));
 
     shellHook = llvmEnv;
-    ESM=esm;
-    TOMMATHSRC = libtommath;
+    ESM=nixpkgs.sources.esm;
+    TOMMATHSRC = nixpkgs.sources.libtommath;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 

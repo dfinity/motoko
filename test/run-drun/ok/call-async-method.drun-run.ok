@@ -1,2 +1,2 @@
 ingress(0) System
-ingress(1) Err: IC0503: Canister 1125899906842624 trapped explicitly: not a self-call
+ingress(1) Err: IC0503: Canister ic:2A012B trapped explicitly: not a self-call
