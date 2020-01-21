@@ -37,7 +37,7 @@ $(OUTDIR)/%.html: $(OUTDIR)/%.md
 	$(PANDOC) -f gfm $^ > $@
 
 
-DOCS = README prelude array buf option result hash list assocList trie trieSet docTable
+DOCS = README prelude array buf option result hash list assocList trie trieSet
 
 # Markdown documentation, extracted from the source directory
 docMd: $(patsubst %,$(OUTDIR)/%.md,$(DOCS)) | $(OUTDIR)
