@@ -148,6 +148,7 @@ module E = struct
   (* The environment type *)
   module NameEnv = Env.Make(String)
   module StringEnv = Env.Make(String)
+  module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
   type lazy_built_in =
@@ -171,6 +172,8 @@ module E = struct
     other_imports : import list ref;
     exports : export list ref;
     funcs : (func * string * local_names) Lib.Promise.t list ref;
+    func_ptrs : int32 FunEnv.t ref;
+    end_of_table : int32 ref;
     globals : (global * string) list ref;
     global_names : int32 NameEnv.t ref;
     built_in_funcs : lazy_built_in NameEnv.t ref;
@@ -204,6 +207,8 @@ module E = struct
     other_imports = ref [];
     exports = ref [];
     funcs = ref [];
+    func_ptrs = ref FunEnv.empty;
+    end_of_table = ref 0l;
     globals = ref [];
     global_names = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
@@ -378,6 +383,21 @@ module E = struct
     let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
     Int32.(add ptr ptr_skew) (* Return a skewed pointer *)
+
+  let add_fun_ptr (env : t) fi : int32 =
+    match FunEnv.find_opt fi !(env.func_ptrs) with
+    | Some fp -> fp
+    | None ->
+      let fp = !(env.end_of_table) in
+      env.func_ptrs := FunEnv.add fi fp !(env.func_ptrs);
+      env.end_of_table := Int32.add !(env.end_of_table) 1l;
+      fp
+
+  let get_elems env =
+    FunEnv.bindings !(env.func_ptrs)
+
+  let get_end_of_table env : int32 =
+    !(env.end_of_table)
 
   let add_static_bytes (env : t) data : int32 =
     match StringEnv.find_opt data !(env.static_strings)  with
@@ -1220,7 +1240,7 @@ module Closure = struct
 
   let static_closure env fi : int32 =
     let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Closure) in
-    let len = bytes_of_int32 fi in
+    let len = bytes_of_int32 (E.add_fun_ptr env fi) in
     let zero = bytes_of_int32 0l in
     let data = tag ^ len ^ zero in
     E.add_static_bytes env data
@@ -3313,6 +3333,7 @@ module Serialization = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
+          | Prim Principal -> ()
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
             assert false
@@ -3362,7 +3383,7 @@ module Serialization = struct
     let rec add_typ t =
       match t with
       | Non -> assert false
-      | Prim Blob ->
+      | Prim Blob | Prim Principal ->
         add_typ Type.(Array (Prim Word8))
       | Prim _ -> assert false
       | Tup ts ->
@@ -3484,7 +3505,7 @@ module Serialization = struct
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
         )
-      | Prim Blob ->
+      | Prim Blob | Prim Principal ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         size_word env get_len ^^
@@ -3641,7 +3662,7 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
-      | Prim Blob ->
+      | Prim (Blob | Principal) ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         write_word get_len ^^
@@ -4705,9 +4726,9 @@ module FuncDec = struct
         get_clos ^^
         Tagged.store Tagged.Closure ^^
 
-        (* Store the function number: *)
+        (* Store the function pointer number: *)
         get_clos ^^
-        compile_unboxed_const fi ^^
+        compile_unboxed_const (E.add_fun_ptr env fi) ^^
         Heap.store_field Closure.funptr_field ^^
 
         (* Store the length *)
@@ -4807,15 +4828,15 @@ module FuncDec = struct
       set_cb_index ^^
 
       (* return arguments for the ic.call *)
-      compile_unboxed_const (E.built_in env reply_name) ^^
+      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reply_name)) ^^
       get_cb_index ^^
-      compile_unboxed_const (E.built_in env reject_name) ^^
+      compile_unboxed_const (E.add_fun_ptr env (E.built_in env reject_name)) ^^
       get_cb_index
 
   let ignoring_callback env =
     let name = "@ignore_callback" in
     Func.define_built_in env name ["env", I32Type] [] (fun env -> G.nop);
-    compile_unboxed_const (E.built_in env name)
+    compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
     match E.mode env with
@@ -6876,14 +6897,9 @@ and conclude_module env start_fi_o =
 
   let other_imports = E.get_other_imports env in
 
-  let funcs = E.get_funcs env in
-  let nf = List.length funcs in
-  let nf' = Wasm.I32.of_int_u nf in
-
-  let table_sz = Int32.add nf' ni' in
-
   let memories = [nr {mtype = MemoryType {min = E.mem_size env; max = None}} ] in
 
+  let funcs = E.get_funcs env in
 
   let data = List.map (fun (offset, init) -> nr {
     index = nr 0l;
@@ -6891,17 +6907,22 @@ and conclude_module env start_fi_o =
     init;
     }) (E.get_static_memory env) in
 
+  let elems = List.map (fun (fi, fp) -> nr {
+    index = nr 0l;
+    offset = nr (G.to_instr_list (compile_unboxed_const fp));
+    init = [ nr fi ];
+    }) (E.get_elems env) in
+
+  let table_sz = E.get_end_of_table env in
+
   let module_ = {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
-      elems = [ nr {
-        index = nr 0l;
-        offset = nr (G.to_instr_list (compile_unboxed_const ni'));
-        init = List.mapi (fun i _ -> nr (Wasm.I32.of_int_u (ni + i))) funcs } ];
+      elems;
       start = Some (nr rts_start_fi);
       globals = E.get_globals env;
-      memories = memories;
+      memories;
       imports = func_imports @ other_imports;
       exports = E.get_exports env;
       data
