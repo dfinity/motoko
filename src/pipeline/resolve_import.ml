@@ -231,17 +231,28 @@ type flags = {
   package_urls : package_urls;
   actor_aliases : actor_aliases;
   actor_idl_path : actor_idl_path;
-}
+  }
+
+type resolved_flags = {
+  packages : package_map;
+  aliases : aliases;
+  actor_idl_path : actor_idl_path;
+  }
+
+let resolve_flags : flags -> resolved_flags Diag.result
+  = fun { actor_idl_path; package_urls; actor_aliases } ->
+  Diag.bind (resolve_packages package_urls) (fun packages ->
+  Diag.bind (resolve_aliases actor_aliases) (fun aliases ->
+      Diag.return { packages; aliases; actor_idl_path }))
 
 let resolve
   : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
-  = fun {actor_idl_path; package_urls; actor_aliases} p base ->
-  Diag.bind (resolve_packages package_urls) (fun (packages:package_map) ->
-  Diag.bind (resolve_aliases actor_aliases) (fun aliases ->
+  = fun flags p base ->
+  Diag.bind (resolve_flags flags) (fun { packages; aliases; actor_idl_path } ->
     Diag.with_message_store (fun msgs ->
       let base = if Sys.is_directory base then base else Filename.dirname base in
       let imported = ref RIM.empty in
       List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported) (prog_imports p);
       Some (List.map (fun (rim,at) -> Source.(rim @@ at)) (RIM.bindings !imported))
     )
-  ))
+  )
