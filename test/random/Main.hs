@@ -103,18 +103,13 @@ invokeEmbedder embedder wasm = go embedder
             let Right c = toText control
             procs "mkfifo" [c] empty
             consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
-            --liftIO $ putStrLn "SLEEPING"
-            --sleep 1 -- FIXME! See https://github.com/Gabriel439/Haskell-Turtle-Library/issues/368
             let install = unsafeTextToLine $ format ("install ic:2A012B "%s%" 0x") w
-            -- Turtle.output (fileArg control) (pure install
-            --                                 <|> "ingress ic:2A012B do 0x4449444c0000")
 
             pipe (fileArg control) (pure install
                                    <|> "ingress ic:2A012B do 0x4449444c0000")
             lns <- wait consumer
-            --liftIO $ putStrLn "WAITED"
             view lns
-            let errors = grep (has "Err: ") lns
+            let errors = grep (invert $ has "trapped explicitly: data buffer not filled") $ grep (has "Err: ") lns
             linesToText . reverse <$> fold errors revconcating >>= liftIO <$> writeIORef fuzz
 
           (ExitSuccess, "",) <$> readIORef fuzz
