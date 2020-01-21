@@ -111,7 +111,7 @@ invokeEmbedder embedder wasm = go embedder
                                    <|> "ingress ic:2A012B do 0x4449444c0000")
             lns <- wait consumer
             view lns
-            let errors = grep (has "Err: ") lns
+            let errors = grep (has "Err: " <|> has "Reject: ") lns
             linesToText . reverse <$> fold errors revconcating >>= liftIO <$> writeIORef fuzz
 
           (ExitSuccess, "",) <$> readIORef fuzz
