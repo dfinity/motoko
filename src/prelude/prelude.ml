@@ -28,6 +28,7 @@ type Char = prim "Char";
 type Text = prim "Text";
 type Blob = prim "Blob";
 type Error = prim "Error";
+type Principal = prim "Principal";
 
 type @Iter<T_> = {next : () -> ?T_};
 
@@ -446,5 +447,10 @@ func errorMessage(e : Error) : Text = {
   ((prim "cast" : Error -> (ErrorCode, Text)) e).1;
 };
 
+// Principal
+
+func blobOfPrincipal(id : Principal) : Blob = {
+  ((prim "cast" : Principal -> Blob) id)
+};
 
 |}
