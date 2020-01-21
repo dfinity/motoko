@@ -102,7 +102,7 @@ invokeEmbedder embedder wasm = go embedder
             consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
             liftIO $ putStrLn "SLEEPING"
             sleep 1 -- FIXME! See https://github.com/Gabriel439/Haskell-Turtle-Library/issues/368
-            let install = unsafeTextToLine $ "install ic:2A012B " <> w <> " 0x"
+            let install = unsafeTextToLine $ format ("install ic:2A012B "%s%" 0x") w
             Turtle.output (fileArg control) (pure install
                                             <|> "ingress ic:2A012B do 0x4449444c0000")
             lns <- wait consumer
