@@ -74,7 +74,7 @@ let rec check_typ env t =
      M.Variant (List.sort M.compare_field fs)
   | FuncT (ms, ts1, ts2) ->
      let (s, c) = check_modes ms in
-     M.Func (M.Shared s, c, [{ M.var= "@"; M.sort = M.Scope; M.bound = M.Any }], List.map (check_typ env) ts1, List.map (check_typ env) ts2)
+     M.Func (M.Shared s, c, [M.scope_bind], List.map (check_typ env) ts1, List.map (check_typ env) ts2)
   | ServT ms ->
      let fs = List.map (check_meth env) ms in
      M.Obj (M.Actor, List.sort M.compare_field fs)

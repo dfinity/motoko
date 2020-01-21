@@ -12,10 +12,9 @@ await async values it has created, hopefully ruling out:
 
 while still allowing local uses of first-class async values.
 
-Deadlock is (hopefully) prevented because an async can't await itself, since
+Deadlock is prevented because an async can't await itself, since
 it can only await asyncs it has created. Similarly, a sequence of
 asyncs can only be awaited by the async that created them, not by each other.
-That's the hope anyway.
 
 The idea behind ruling out *reply-to-wrong-sender* is that an async
 value cannot be stored in a non-local var or other mutable
@@ -225,31 +224,38 @@ E; _ |- shared? f<Ys>(x:T) : async U { e } :
 
 (These examples and more are all coded in
 
-* [general_await.mo](../test/run-drun/general_await.mo) (no-sugar)
-* [general_await_implicit.mo](../test/run-drun/general_await_implicit.mo) (with sugar)
+* [general_await.mo](../test/run-drun/general_await.mo) (annotated with desugaring)
+* [general_await_implicit.mo](../test/run-drun/general_await_implicit.mo) (sugar only)
 )
 
 Assuming the following requests:
 
 ```
-  public shared func Ack<@>() : async<@> (){
-    debugPrint "Ack"
+  public shared func Ack() : async(){
+    Prim.debugPrint "Ack"
   };
 
-x  public shared func Request<@>(i : Int) : async<@> Int {
-    debugPrint("Request(" # debug_show i # ")");
-    return i;
+  public shared func Request(i : Int) : async Int {
+    Prim.debugPrintInt(i);
+    return i
   };
+
 ```
 
 ### Static parallel waiting:
 
 ```
-  public shared func PA<@>() : async<@> () {
+  public shared func PA() : async () {
     let a1 = Ack();
     let a2 = Ack();
     await a1;
     await a2;
+  };
+
+  public shared func PR() : async (Int,Int) {
+    let a1 = Request(1);
+    let a2 = Request(2);
+    (await a1, await a2)
   };
 ```
 
@@ -258,41 +264,51 @@ x  public shared func Request<@>(i : Int) : async<@> Int {
 ```
   // Dynamic parallel waiting for acknowledgements
 
-  public shared func DPA<@>() : async<@>() {
-    let as: [async()]  = Array_tabulate<async ()>(N, func (_) { Ack<@>(); });
-    for (a in as.vals()) {
-      await a;
-    };
+  public shared func DPA() : async() {
+   let os = Prim.Array_init<?(async ())>(10, null);
+   for (i in os.keys()) {
+     os[i] := ? (Ack());
+   };
+   for (o in os.vals()) {
+     switch o {
+      case (? a) await a;
+      case null (assert false);
+     };
+   };
   };
 ```
 
 ### Dynamic parallel waiting (with results)
 
 ```
-  // Dynamic parallel waiting (with results)
-
-  public shared func DPR<@>() : async<@>[Int] {
-    func f<>(i:Nat) : async Int = Request<@>(i);
-    let as = Array_tabulate<async Int>(N, f);
-    let res = Array_init<Int>(as.len(),-1);
-    for (i in as.keys()) {
-      res[i] := (await as[i]);
+  public shared func DPR() : async [Int] {
+    let os = Prim.Array_init<?(async Int)>(10, null);
+    for (i in os.keys()) {
+      os[i] := ? (Request(i));
     };
-    Array_tabulate<Int>(as.len(),func i = res[i])
+    let res = Prim.Array_init<Int>(os.len(),-1);
+    for (i in os.keys()) {
+      switch (os[i]) {
+        case (? a) res[i] := await a;
+        case null (assert false);
+      };
+    };
+    Prim.Array_tabulate<Int>(res.len(),func i { res[i] })
   };
 ```
 
 ### Recursive parallel waiting
 
 ```
-  public shared func RPA<@>(n:Nat) : async<@>() {
+  public shared func RPA(n:Nat) : async () {
     if (n == 0) ()
     else {
-      let a = Ack<@>();
-      await RPA<@>(n-1); // recurse
+      let a = Ack();
+      await RPA(n-1); // recurse
       await a;
     };
   };
+
 ```
 
 ### Recursive parallel waiting (with results)
@@ -300,11 +316,11 @@ x  public shared func Request<@>(i : Int) : async<@> Int {
 ```
   public type List<Int> = ?(Int,List<Int>);
 
-  public shared func RPR<@>(n:Nat) : async<@> List<Int> {
+  public shared func RPR(n:Nat) : async List<Int> {
     if (n == 0) null
     else {
-      let a = Request<@>(n);
-      let tl = await RPR<@>(n-1); // recurse
+      let a = Request(n);
+      let tl = await RPR(n-1); // recurse
       ?(await a,tl)
     }
   };
@@ -322,30 +338,30 @@ x  public shared func Request<@>(i : Int) : async<@> Int {
 is rejected because, once annotated:
 
 ```
-  let t:async<@>U = async<X>{ await t;} <@>; // bad await since t : Async<@>U  </: Async<X>U
+  let t:async<@>U = async<@1>{ await t;}; // bad await since t : Async<@>U  </: Async<@1>U
 ```
 
-Ruled out by index scoping (`X != @`, any `@`)
+Ruled out by index scoping (`@1 <> @ `)
 
 #### Indirect deadlock
 
 ```
   async {
-    let a1 : async () = async { await a2; }; // illegal await since a1 : Async<X>() </: Async<Y>()
-    let a2 : async () = async { await a1; }; // illegal await since a2 : Async<X>() </: Async<Z>()
+    let a1 : async () = async { await a2; };
+    let a2 : async () = async { await a1; };
   };
 ```
 
 is rejected because, once annotated:
 
 ```
-  async<X> {
-    let a1 : async<X> = async<Y> { await a2; }<X>; // bad await since a1 : Async<X>() </: Async<Y>()
-    let a2 : async<X> = async<Z> { await a1; }<X>; // bad await since a2 : Async<X>() </: Async<Z>()
-  }<@>
+  async<@> {
+    let a1 : async<@> = async<@1> { await a2; }; // bad await since a2 : Async<@>() </: Async<@1>()
+	let a2 : async<@> = async<@2> { await a1; }; // bad await since a1 : Async<@>() </: Async<@2>()
+  }
 ```
 
-since `X != Y,Z`, any `Y,Z`.
+since `@1 <> @` and `@2` <> `@`.
 
 ### Imperative deadlock
 
@@ -354,26 +370,25 @@ The informal example:
 ```
   async {
     var x = async { 0 };
-    x := (async {
-      await x // illegal: await _ : async<S>T -> T (not async<R> T -> T) (any T))
-    });
+    x := async {
+      await x
+    };
   }
 ```
 
 that attempts to tie an imperative knot, is rejected by this system.
 
-Explicitly, the outer and nested async would have distinct parameters `<R>` and `<S>`, so the await for type `async<S>Nat` on `x` (of type async<R>Nat (with the outer parameter) would actually be illegal:
+Explicitly, the outer and nested async would have distinct parameters `<@>` and `<@2>`, so the await at type `async<@2>Nat` on `x`
+(of type `async<@>Nat` (with the outer parameter) would actually be illegal:
 
 ```
-async<R> {
-  var x : async<R> Nat = async<_> 0 <R>;
-  x := async<S>{
-    await x // illegal: await _ : async<S>T -> T (not async<R> T -> T) (any T)
-  } <R>;
-}<@>
+async<@> {
+  var x : async<@> Nat = async<@1> 0;
+  x := async<@2>{
+    await x // illegal: this await requires async<@2>Nat (not async<@>Nat)
+  };
+}
 ```
-
-Note that simply renaming `S` to `R` would not circumvent the error.)
 
 ## Sugar
 
@@ -386,7 +401,7 @@ Principle: Desugaring should be:
 
 ### Basic idea:
 
-(`@` is a new type identifier, used for scopes)
+(`@` is a new type identifier, reserved for scopes only, intially defined as 'Any')
 
 Parsing:
 
@@ -411,11 +426,6 @@ Syntactic sugar (during parse, applied bottom up as we construct types and terms
 (shared? f<...>(<pat>) : async T { e })^ :=         (@ not in ...)
   shared? f<@,...^>(<pat>^) : (async T)^ = async<@> e^
 
-(shared? f<...>(<pat>) : async<X> T { e }) :=
-  shared? f<...^>(<pat>^) : async<X> T^ = async<X> e ^
-
-  (binds inner scope as X, not @, to pun X in e)
-
 (shared f<...>(<pat>) : () = e)^ :=           (@ not in ...)
   shared f<@,...^>(<pat>^) : () = e^
 
@@ -428,64 +438,16 @@ Syntactic sugar (during parse, applied bottom up as we construct types and terms
 
 ```
 
-Syntax elaboration (applied during type checking)
+### Elaboration
 
-```
-Types:
-
-@* ~~>
-  @*
-
-  (* interprets @ at its current binding (which may be some X) *)
-
-(async t)* ~~>
-  async<@*> t*
-
-(async<t1> t2)*
-  ~~> async<t1*> t2*
-
-<...>T1 -> async T2 ~~>                        (* syntax sugaring ensures @ bound in ... *)
-  <...>T1* -> async<@*> T2*
-
-<...,X,...>T1 -> async<X> T2 ~~>
-  <...*,X,...*>T1*[X/@] -> async<X> T2*[X/@],  (* rebind @ to X *)
-
-<...>T1 -> async<U> T2 ~~>  (* U <> X in ... *)
-  <...*>T1* -> async<U*> T2*
-
-Terms:
-
-async <X> e <U> ~~> async <X> e[X/@] <U>
-
-f <Ts1,Ts2> e ~~>
- f <Ts1*,@,Ts2*> e when f : <...,Xi,...> T1 ~~> async<Xi> T1
-
-(note inference can infer a missing scope parameter at any position, not just position 0)
-
-func<...>f() : async T = e ~~>               (* syntax sugaring ensures @ bound in ... *)
- func<...*>f() : (async T)* = e*
-
-func<...,X,...>f() : async<X> T = e          (* rebind @ to X *)
- func<...*,X,...*>f() : (async<X> T)*[X/@] = e*[X/@]
-
-func<...>f() : async<U> T = e ~~>            (* U <> X in ... *)
- func<...*>f() : async<U*> T* = e*
-
-```
-
-Basically, during elaboration, we rebind `@` to the current scope
+During elaboration, we rebind `@` to the current scope
 identifier (aliasing `@` with some type parameter `X` if necessary) so
 that:
  * references inserted during parsing elaborate to the nearest appropiate binding
- * missing scope instantiations default to the current binding of `@`.
 
-Note that in a function type or definition with n>1 type parameters,
-`@` either shadows one of those eponymous type parameters or it
-retains its outer meaning.  In the latter case (outer binding), we
-might either warn appropriately or reject as ambiguous, requiring the
-user to give the missing instantiation of the `async T` return type.
-
-(The implementation is currently silent and defaults `@` to the enclosing interpretation.)
+Note that in a function type or definition with type parameters, `@`
+either shadows one of those eponymous type parameters (if introduced by
+de-sugaring) or it retains its outer meaning.
 
 ### Sugaring types (for pretty printing)
 
@@ -494,15 +456,44 @@ function type if it only occurs as an `async` type instantiation at
 DeBruijn level 0, in which case we elide all those `async` type
 instantiations too.
 
-Binders with async instantiations at DeBruijn levels other than 0 must
-be shown to avoid ambiguity, in particular so that the user knows
-which parameter is the scope parameter if explicit (not implicit)
-instantiation is desired.
+Binders with async instantiations at DeBruijn levels other than 0
+cannot arise by construction (this is an invariant of desugaring and
+the fact that we don't support explicit binding).
+
+
+### Initial Context
+
+For compiled programs we restrict the inital capability to `NullCap`,
+so that sends and async can only occur in shared functions.
+
+For interpreted programs we use the initial capability `Async @` so
+that programs can `async` and `send` at top-level (but not `await`).
+
+### Queries
+
+In Motoko, expressions that `await` can also `throw/try-catch`, but
+`query` functions are not allowed to spawn async expressions or send
+message (but can return errors).
+
+Query functions that may `throw/try/catch` but not send or `async` are
+easily accomodated by:
+
+* refining the notion of capabilities, addinq `QueryCap<c>` and
+  `ErrorCap`, where `AwaitCap<C>` entails `ErrorCap`.
+* making helper `cap` depend on the query modifer, returning
+  `QueryCap<c>` for a query.
+* conditionally transitioning the current capability accordingly when
+  entering an `async` expression (from `QueryCap<T>` to `ErrorCap`
+  rather than `AsyncCap<T>` to `AwaitCap<U>`)
+
+See the code for details.
+
 
 ### Refinements
 
 Since users may find it odd that we can instantiate the index at any
 type, it might be better to define "type @ = Non" and always bound
-index-parameters by `Non`. Then the top-level choice of index really is unique
-since `Non`, and any `Non`-bounded type parameter, are the only types
-bounded by `Non` and thus suitable for uses as index instantiations.
+index-parameters by `Non`. Then the top-level choice of index really
+is unique since `Non`, and any `Non`-bounded type parameter, are the
+only types bounded by `Non` and thus suitable for uses as index
+instantiations.

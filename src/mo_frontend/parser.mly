@@ -444,7 +444,7 @@ exp_nondec(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp(bl)
-    { AsyncE(scope_bind(), e) @? at $sloc }
+    { AsyncE(scope_bind (anon "async" (at $sloc)), e) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)
@@ -633,15 +633,15 @@ dec_nonvar :
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
+      let named, x = xf "func" $sloc in
       let e = match fb with
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
           match t with
           | Some {it = AsyncT _; _} ->
-	    AsyncE(scope_bind(), e) @? e.at
+	    AsyncE(scope_bind x.it, e) @? e.at
           | _ -> e
       in
-      let named, x = xf "func" $sloc in
       let_or_exp named x (funcE(x.it, sp, tps, p, t, e)) (at $sloc) }
   | s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
