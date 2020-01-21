@@ -98,7 +98,7 @@ invokeEmbedder embedder wasm = go embedder
           sleep 1 -- FIXME!
           let install = unsafeTextToLine $ "install 1125899906842624 " <> w <> " 0x"
           Turtle.output (fileArg control) (pure install
-                                          <|> "query 1125899906842624 do 0x4449444c0000")
+                                          <|> "ingress 1125899906842624 do 0x4449444c0000")
 
           lns <- wait consumer
           liftIO $ putStrLn "WAITED"
@@ -343,7 +343,7 @@ prop_matchInActor (Matching a) = mobile a
 
 mobile :: (AnnotLit t, MOValue t) => (MOTerm t, t) -> Property
 mobile (tm, v) = monadicIO $ do
-  let testCase = "actor a { public func match (b : " <> typed <> ") : async Bool = async { true }; public query func do () : async () { assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false }) } };"
+  let testCase = "actor { public func match (b : " <> typed <> ") : async () { assert (switch b { case (" <> eval'd <> ") true; case _ false }) }; public func do () : async () { let res = await match (" <> expr <> " : " <> typed <> "); return res } };"
 
       eval'd = unparse v
       typed = unparseType v
