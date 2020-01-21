@@ -256,25 +256,25 @@ let scope_typ region =
     at = region;
     note = Type.Pre })
 
-let scope_bind() =
-  { var = Type.scope_var @@ no_region;
+let scope_bind var =
+  { var = (Type.scope_var ^ var) @@ no_region;
     sort = Type.Scope @@ no_region;
     bound = PrimT "Any" @! no_region
   } @= no_region
 
-let ensure_scope_bind tbs =
+let ensure_scope_bind var tbs =
   match tbs with
   | tb::_ when tb.it.sort.it = Type.Scope ->
     tbs
   | _ ->
-    scope_bind()::tbs
+    scope_bind var::tbs
 
 let funcT(sort, tbs, t1, t2) =
   match sort.it, t2.it with
   | Type.Local, AsyncT _ ->
-    FuncT(sort, ensure_scope_bind tbs, t1, t2)
+    FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
   | Type.Shared _, _ ->
-    FuncT(sort, ensure_scope_bind tbs, t1, t2)
+    FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
   | _ ->
     FuncT(sort, tbs, t1, t2)
 
@@ -282,7 +282,7 @@ let funcE(f, s, tbs, p, t_opt, e) =
   match s.it, t_opt, e with
   | Type.Local, Some { it = AsyncT _; _}, {it = AsyncE _; _}
   | Type.Shared _, _, _ ->
-    FuncE(f, s, ensure_scope_bind tbs, p, t_opt, e)
+    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, e)
   | _ ->
     FuncE(f, s, tbs, p, t_opt, e)
 
