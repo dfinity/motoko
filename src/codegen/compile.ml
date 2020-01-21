@@ -5066,7 +5066,7 @@ module AllocHow = struct
     | VarE _ -> true
     | BlockE (ds, e) ->
       List.for_all is_const_dec ds && is_const_exp e
-    | NewObjE ((Type.Object | Type.Module), _, t) ->
+    | NewObjE (Type.(Object | Module), _, t) ->
       Object.is_immutable t
     | _ -> false
 
@@ -6362,7 +6362,7 @@ and compile_exp (env : E.t) ae exp =
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
     then actor_lit env ds fs exp.at
     else todo_trap env "non-closed actor" (Arrange_ir.exp exp)
-  | NewObjE ((Type.Object | Type.Module) as _sort, fs, _) ->
+  | NewObjE (Type.(Object | Module) as _sort, fs, _) ->
     (*
     We can enable this warning once we treat everything as static that
     mo_frontend/static.ml accepts, including _all_ literals.
@@ -6725,7 +6725,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/VarE: \"%s\" not found" v
     in
     (c, fun _ _ -> ())
-  | NewObjE ((Type.Object | Type.Module), fs, _) ->
+  | NewObjE (Type.(Object | Module), fs, _) ->
     let static_fs = List.map (fun f ->
           let st =
             match VarEnv.lookup_var pre_ae f.it.var with
