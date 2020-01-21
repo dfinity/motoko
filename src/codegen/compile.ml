@@ -5058,9 +5058,9 @@ module AllocHow = struct
 
       (* Constant expressions on the top-level:
         - need to be constant forms
-        - all non-captured free variables must be static
-        - all captured variables must be static or static-heap, if not on top level
-          (top level captures variables will be forced to be static-heap below, via how2)
+        - all non-captured free variables must be constant
+        - all captured variables must be constant or static-heap, if not on top level
+          (stuff captured on the top level will always be static-heap, via how2 below)
       *)
       | LetD ({it = VarP _; _}, e) when
         is_const_exp e &&
