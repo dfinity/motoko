@@ -59,6 +59,7 @@ module Const = struct
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
     | PublicMethod of int32 * string
+    | Obj of (string * t) list
 
 end (* Const *)
 
@@ -2389,6 +2390,10 @@ module Object = struct
     let _, fields = Type.as_obj_sub [s] obj_type in
     Type.is_mut (Type.lookup_val_field s fields)
 
+  let is_immutable obj_type =
+    let _, fields = Type.as_obj_sub [] obj_type in
+    List.for_all (fun f -> not (Type.is_mut f.Type.typ)) fields
+
   let idx env obj_type name =
     compile_unboxed_const (Mo_types.Hash.hash name) ^^
     idx_hash env (is_mut_field env obj_type name)
@@ -4372,7 +4377,7 @@ module StackRep = struct
     | Const _ -> G.nop
     | Unreachable -> G.nop
 
-  let materialize env = function
+  let rec materialize env = function
     | Const.Fun fi ->
       (* When accessing a variable that is a constant function, then we need to
          create a heap-allocated closure-like thing on the fly. *)
@@ -4385,6 +4390,8 @@ module StackRep = struct
     | Const.PublicMethod (_, name) ->
       Dfinity.get_self_reference env ^^
       Dfinity.actor_public_field env name
+    | Const.Obj fs ->
+      Object.lit_raw env (List.map (fun (n, st) -> (n, fun () -> materialize env st)) fs)
 
   let adjust env (sr_in : t) sr_out =
     if sr_in = sr_out
@@ -5059,7 +5066,10 @@ module AllocHow = struct
     | VarE _ -> true
     | BlockE (ds, e) ->
       List.for_all is_const_dec ds && is_const_exp e
+    | NewObjE (Type.(Object | Module), _, t) ->
+      Object.is_immutable t
     | _ -> false
+
   and is_const_dec dec = match dec.it with
     | VarD _ -> false
     | LetD ({it = VarP v; _}, e) -> is_const_exp e
@@ -5907,9 +5917,16 @@ and compile_exp (env : E.t) ae exp =
       Variant.inject env l (compile_exp_vanilla env ae e)
 
     | DotPrim name, [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Object.load_idx env e.note.note_typ name
+      let sr, code1 = compile_exp env ae e in
+      begin match sr with
+      | SR.Const (Const.Obj fs) ->
+        let c = List.assoc name fs in
+        SR.Const c, code1
+      | _ ->
+        SR.Vanilla,
+        code1 ^^ StackRep.adjust env sr SR.Vanilla ^^
+        Object.load_idx env e.note.note_typ name
+      end
     | ActorDotPrim name, [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
@@ -6345,7 +6362,12 @@ and compile_exp (env : E.t) ae exp =
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
     then actor_lit env ds fs exp.at
     else todo_trap env "non-closed actor" (Arrange_ir.exp exp)
-  | NewObjE ((Type.Object | Type.Module), fs, _) ->
+  | NewObjE (Type.(Object | Module) as _sort, fs, _) ->
+    (*
+    We can enable this warning once we treat everything as static that
+    mo_frontend/static.ml accepts, including _all_ literals.
+    if sort = Type.Module then Printf.eprintf "%s" "Warning: Non-static module\n";
+    *)
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
@@ -6703,6 +6725,15 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _ -> fatal "compile_const_exp/VarE: \"%s\" not found" v
     in
     (c, fun _ _ -> ())
+  | NewObjE (Type.(Object | Module), fs, _) ->
+    let static_fs = List.map (fun f ->
+          let st =
+            match VarEnv.lookup_var pre_ae f.it.var with
+            | Some (VarEnv.Const c) -> c
+            | _ -> fatal "compile_const_exp/ObjE: \"%s\" not found" f.it.var
+          in f.it.name, st) fs
+    in
+    (Const.Obj static_fs, fun _ _ -> ())
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
