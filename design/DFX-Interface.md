@@ -140,14 +140,17 @@ The command
     moc --print-deps some/path/input.mo
 
 prints to the standard output all URLs _directly_ imported by
-`some/path/input.mo`, after resolving file extensions, one per line, e.g.
+`some/path/input.mo`, one per line. The import will be a full
+path if `moc` can resolve the URL. Unresolved imports (URLs)
+becomes the obligation of dfx to supply appropriate flags.
+For example,
 
     mo:stdlib/List
     mo:other_package/Some/Module
     ic:ABCDE01A7
     canister:alias
-    local_import.mo
-    local_import.wasm
+    some/path/local_import.mo
+    some/path/local_import.wasm
 
 This _reads_ only `some/path/input.mo`, and writes no files.
 
