@@ -145,10 +145,13 @@ path if `moc` can resolve the URL. Unresolved imports (URLs)
 becomes the obligation of dfx to supply appropriate flags.
 For example,
 
+    // Unresolved imports
+    // e.g., mo:package stays unresolved unless --package flag is supplied
     mo:stdlib/List
     mo:other_package/Some/Module
     ic:ABCDE01A7
     canister:alias
+    // Resolved imports
     some/path/local_import.mo
     some/path/local_import.wasm
 
