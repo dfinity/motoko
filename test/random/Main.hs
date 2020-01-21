@@ -28,6 +28,7 @@ import Numeric
 import System.Process hiding (proc)
 import GHC.IO.Exception (IOException)
 import Control.Concurrent.MVar
+import Data.IORef
 import Turtle
 -- import Debug.Trace (traceShowId, traceShow)
 
@@ -65,6 +66,7 @@ matchingProps = testGroup "Pattern matching"
   , QC.testProperty "inter-actor" $ prop_matchInActor
   ]
 
+-- ######## Embedder.hs
 
 data Embedder = Reference | WasmTime | Drun
 
@@ -86,28 +88,34 @@ invokeEmbedder :: Embedder -> Turtle.FilePath -> IO (ExitCode, Text, Text)
 invokeEmbedder embedder wasm = go embedder
   where fileArg = fromString . encodeString
         Right wasmFile = toText wasm
+        revconcating = Fold (flip (:)) [] id
         go :: Embedder -> IO (ExitCode, Text, Text)
-        go Drun = (sh $ do
-          let Right w = toText wasm
-              control = wasm <.> "fifo"
-          rm (fileArg control) `catch` \(_ :: GHC.IO.Exception.IOException) -> pure () -- rm -f
-          let Right c = toText control
-          procs "mkfifo" [c] empty
-          consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
-          liftIO $ putStrLn "SLEEPING"
-          sleep 1 -- FIXME! See https://github.com/Gabriel439/Haskell-Turtle-Library/issues/368
-          let install = unsafeTextToLine $ "install ic:2A012B " <> w <> " 0x"
-          Turtle.output (fileArg control) (pure install
-                                          <|> "ingress ic:2A012B do 0x4449444c0000")
+        go Drun = do
+          fuzz <- newIORef ""
 
-          lns <- wait consumer
-          liftIO $ putStrLn "WAITED"
-          view (grep (has "Err: ") lns)
-                  )
-          >> pure (ExitSuccess, "", "")
+          sh $ do
+            let Right w = toText wasm
+                control = wasm <.> "fifo"
+            rm (fileArg control) `catch` \(_ :: GHC.IO.Exception.IOException) -> pure () -- rm -f
+            let Right c = toText control
+            procs "mkfifo" [c] empty
+            consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
+            liftIO $ putStrLn "SLEEPING"
+            sleep 1 -- FIXME! See https://github.com/Gabriel439/Haskell-Turtle-Library/issues/368
+            let install = unsafeTextToLine $ "install ic:2A012B " <> w <> " 0x"
+            Turtle.output (fileArg control) (pure install
+                                            <|> "ingress ic:2A012B do 0x4449444c0000")
+            lns <- wait consumer
+            liftIO $ putStrLn "WAITED"
+            view lns
+            let errors = grep (has "Err: ") lns
+            linesToText . reverse <$> fold errors revconcating >>= liftIO <$> writeIORef fuzz
+
+          (ExitSuccess, "",) <$> readIORef fuzz
+
         go _ = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [wasmFile]) empty
         forkShell :: Show a => Shell a -> Shell (_ (Shell a))
-        forkShell shell = do a <- fork (fold shell $ Fold (flip (:)) [] id)
+        forkShell shell = do a <- fork (fold shell revconcating)
                              pure (select . reverse <$> a)
 
 
@@ -126,7 +134,7 @@ runner embedder reqOutcome relevant name testCase =
                     res@(exitCode, _, _) <- procStrictWithErr "moc"
                       (addCompilerArgs embedder ["-no-check-ir", fileArg as]) empty
                     if ExitSuccess == exitCode
-                    then (True,) <$> invokeEmbedder embedder wasm -- procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
+                    then (True,) <$> invokeEmbedder embedder wasm
                     else pure (False, res)
     in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
 
