@@ -414,7 +414,7 @@ and check_typ_binds_acyclic env typ_binds cs ts  =
     in chase 0 [] c
   in List.iter2 chase typ_binds cs
 
-and check_typ_bind_sorts env typs tbs =
+and check_typ_bind_sorts env tbs =
   (* assert, don't error, since this should be a syntactic invariant of parsing *)
   List.iteri (fun i tb -> assert (i == 0 || (tb.T.sort = T.Type))) tbs;
 
@@ -437,7 +437,7 @@ and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * S
       T.sort = typ_bind.it.sort.it;
       T.bound = check_typ pre_env' typ_bind.it.bound }) typ_binds
   in
-  check_typ_bind_sorts env typ_binds;
+  check_typ_bind_sorts env tbs;
   let ts = List.map (fun tb -> tb.T.bound) tbs in
   check_typ_binds_acyclic env typ_binds cs ts;
   let ks = List.map (fun t -> T.Abs ([], t)) ts in
