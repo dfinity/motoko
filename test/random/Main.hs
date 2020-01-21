@@ -66,7 +66,8 @@ utf8Props = testGroup "UTF-8 coding"
 matchingProps = testGroup "Pattern matching"
   [ QC.testProperty "intra-actor" $ prop_matchStructured
   --, QC.testProperty "inter-actor" $ prop_matchInActor
-  , QC.testProperty "encoded-Nat" $ prop_matchActorNat
+  --, QC.testProperty "encoded-Nat" $ prop_matchActorNat
+  , QC.testProperty "encoded-Int" $ prop_matchActorInt
   ]
 
 
@@ -363,8 +364,15 @@ mobile (tm, v) = monadicIO $ do
 
 prop_matchActorNat :: Neuralgic Natural -> Property
 prop_matchActorNat nat = monadicIO $ do
-    let testCase = format ("actor { public func match (n : Nat) : async () { assert (switch n { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Nat); return res } };") (evalN nat) (evalN nat)
+    let testCase = format ("actor { public func match (n : Nat) : async () { assert (switch n { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Nat); return res } };") eval'd eval'd
+        eval'd = evalN nat
     drunScriptNoFuzz "matchActorNat" (Data.Text.unpack testCase)
+
+prop_matchActorInt :: Neuralgic Integer -> Property
+prop_matchActorInt int = monadicIO $ do
+    let testCase = format ("actor { public func match (i : Int) : async () { assert (switch i { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Int); return res } };") eval'd eval'd
+        eval'd = evalN int
+    drunScriptNoFuzz "matchActorInt" (Data.Text.unpack testCase)
 
 -- instances of MOValue describe "ground values" in
 -- Motoko. These can appear in patterns and have
