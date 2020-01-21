@@ -51,27 +51,49 @@ let name_of_ide_decl (d : ide_decl) : string =
   | TypeDecl ty -> ty.name
 
 module Index = Map.Make(String)
-type t =  ide_decl list Index.t
 
-type path = string
+type declaration_index = {
+    modules: ide_decl list Index.t;
+    actors: ide_decl list Index.t;
+    package_map: Pipeline.ResolveImport.package_map;
+    (* TODO: Add the mapping for IC urls here  *)
+  }
+type t = declaration_index
+let add_module : string -> ide_decl list -> declaration_index -> declaration_index =
+  fun path decls ix -> { ix with modules = Index.add path decls ix.modules}
+
 let lookup_module
-      (path : path)
+      (path : string)
       (index : t)
     : ide_decl list option =
   let open Pipeline.URL in
   match parse path with
-  | Ok (Relative path) -> Index.find_opt path index
+  | Ok (Relative path) ->
+     Index.find_opt (Lib.FilePath.make_absolute path) index.modules
   | Ok (Package (pkg, path)) ->
      Option.bind
-       (Flags.M.find_opt pkg !Flags.package_urls)
+       (Flags.M.find_opt pkg index.package_map)
        (fun pkg_path ->
-        Index.find_opt (Filename.concat pkg_path path) index)
-  | Ok Prim ->
-     Index.find_opt "@prim" index
+         Index.find_opt
+           (Lib.FilePath.make_absolute (Filename.concat pkg_path path))
+           index.modules)
+  | Ok Prim -> Index.find_opt "@prim" index.modules
+  | Ok (Ic _ | IcAlias _) -> (* TODO *) None
   | Error _ -> None
-  | _ -> assert false
 
-let empty : t = Index.empty
+let empty : unit -> t = fun _ ->
+  let open Pipeline.ResolveImport in
+  let resolved_flags =
+    Diag.run
+      (resolve_flags
+         { package_urls = !Flags.package_urls;
+           actor_aliases = !Flags.actor_aliases;
+           actor_idl_path = !Flags.actor_idl_path;
+      }) in
+  { modules = Index.empty;
+    actors = Index.empty;
+    package_map = resolved_flags.packages
+  }
 
 module PatternMap = Map.Make(String)
 type pattern_map = Source.region PatternMap.t
@@ -93,8 +115,9 @@ let string_of_list f xs =
   |> String.concat "; "
   |> fun x -> "[ " ^ x ^ " ]"
 
-let string_of_index index =
-  Index.bindings index
+let string_of_index : declaration_index -> string =
+  fun index ->
+  Index.bindings index.modules
   |> string_of_list
        (fun (path, decls) ->
          path
@@ -167,7 +190,7 @@ let populate_definitions
        TypeDecl { typ with definition = type_definition } in
   let opt_lib =
     List.find_opt
-      (fun lib -> String.equal path lib.note)
+      (fun lib -> String.equal path (Lib.FilePath.make_absolute lib.note))
       libs in
   match opt_lib with
   | None -> decls
@@ -182,7 +205,12 @@ let make_index_inner logger vfs entry_points : t Diag.result =
   |> Diag.map (fun (libs, _, scope) ->
          Type.Env.fold
            (fun path ty acc ->
-             Index.add
+             let path =
+               if path = "@prim" then
+                 path
+               else
+                 Lib.FilePath.make_absolute path in
+             add_module
                path
                (ty
                 |> read_single_module_lib
@@ -190,9 +218,9 @@ let make_index_inner logger vfs entry_points : t Diag.result =
                 |> populate_definitions libs path)
                acc)
            scope.Scope.lib_env
-           Index.empty)
+           (empty ()))
 
 let make_index logger vfs entry_points : t Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
   try make_index_inner logger vfs entry_points
-  with _ -> Diag.return Index.empty
+  with _ -> Diag.return (empty ())
