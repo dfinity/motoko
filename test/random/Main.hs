@@ -95,7 +95,7 @@ invokeEmbedder embedder wasm = go embedder
           procs "mkfifo" [c] empty
           consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
           liftIO $ putStrLn "SLEEPING"
-          sleep 1 -- FIXME!
+          sleep 1 -- FIXME! See https://github.com/Gabriel439/Haskell-Turtle-Library/issues/368
           let install = unsafeTextToLine $ "install 1125899906842624 " <> w <> " 0x"
           Turtle.output (fileArg control) (pure install
                                           <|> "ingress 1125899906842624 do 0x4449444c0000")
