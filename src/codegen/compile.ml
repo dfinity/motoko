@@ -6699,7 +6699,7 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
 and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
   (* This returns a _function_ to extend the VarEnv, instead of doing it, because
   it needs to be extended twice: Once during the pass that gets the outer, static values
-  (no forward references), and the to implement the `fill`, which compiles the body
+  (no forward references), and then to implement the `fill`, which compiles the body
   of functions (may contain forward references.) *)
   match dec.it with
   (* This should only contain constants (cf. is_const_exp) *)
