@@ -67,15 +67,16 @@ let lookup_module
       (index : t)
     : ide_decl list option =
   let open Pipeline.URL in
+  let make_absolute = Lib.FilePath.make_absolute (Sys.getcwd ()) in
   match parse path with
   | Ok (Relative path) ->
-     Index.find_opt (Lib.FilePath.make_absolute path) index.modules
+     Index.find_opt (make_absolute path) index.modules
   | Ok (Package (pkg, path)) ->
      Option.bind
        (Flags.M.find_opt pkg index.package_map)
        (fun pkg_path ->
          Index.find_opt
-           (Lib.FilePath.make_absolute (Filename.concat pkg_path path))
+           (make_absolute (Filename.concat pkg_path path))
            index.modules)
   | Ok Prim -> Index.find_opt "@prim" index.modules
   | Ok (Ic _ | IcAlias _) -> (* TODO *) None
@@ -190,7 +191,7 @@ let populate_definitions
        TypeDecl { typ with definition = type_definition } in
   let opt_lib =
     List.find_opt
-      (fun lib -> String.equal path (Lib.FilePath.make_absolute lib.note))
+      (fun lib -> String.equal path (Lib.FilePath.make_absolute (Sys.getcwd ()) lib.note))
       libs in
   match opt_lib with
   | None -> decls
@@ -209,7 +210,7 @@ let make_index_inner logger vfs entry_points : t Diag.result =
                if path = "@prim" then
                  path
                else
-                 Lib.FilePath.make_absolute path in
+                 Lib.FilePath.make_absolute (Sys.getcwd ()) path in
              add_module
                path
                (ty

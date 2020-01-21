@@ -167,5 +167,5 @@ sig
    *)
   val relative_to : string -> string -> string option
 
-  val make_absolute : string -> string
+  val make_absolute : string -> string -> string
 end

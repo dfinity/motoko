@@ -423,10 +423,10 @@ struct
     String.chop_prefix
       (normalise (base ^ "/"))
       (normalise path)
-  let make_absolute path =
+  let make_absolute base path =
     if not (Filename.is_relative path)
     then path
-    else normalise (Filename.concat (Sys.getcwd ()) path)
+    else normalise (Filename.concat base path)
 end
 
 
