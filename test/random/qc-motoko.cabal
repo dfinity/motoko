@@ -18,6 +18,7 @@ executable qc-motoko
                      , text ^>=1.2.3.1
                      , process
                      , exceptions
+                     , managed
                      , QuickCheck
                      , quickcheck-text
                      , quickcheck-unicode
