@@ -2,7 +2,7 @@ import Prim "mo:prim";
 import Prelude "prelude.mo";
 
 module {
-  public func abs(x : Int) : Nat = Prim.abs x;
+  public let abs = Prim.abs;
 
   public func add(x : Int, y : Int) : Int {
     x + y;
@@ -40,12 +40,12 @@ module {
     return if isNegative ("-" # text) else text;
   };
 
-  public func fromInt8 (x : Int8):  Int = Prim.int8ToInt x;
-  public func fromInt16(x : Int16): Int = Prim.int16ToInt x;
-  public func fromInt32(x : Int32): Int = Prim.int32ToInt x;
-  public func fromInt64(x : Int64): Int = Prim.int64ToInt x;
-  public func toInt8 (x : Int) : Int8   = Prim.intToInt8  x;
-  public func toInt16(x : Int) : Int16  = Prim.intToInt16 x;
-  public func toInt32(x : Int) : Int32  = Prim.intToInt32 x;
-  public func toInt64(x : Int) : Int64  = Prim.intToInt64 x;
+  public let fromInt8  = Prim.int8ToInt;
+  public let fromInt16 = Prim.int16ToInt;
+  public let fromInt32 = Prim.int32ToInt;
+  public let fromInt64 = Prim.int64ToInt;
+  public let toInt8  = Prim.intToInt8;
+  public let toInt16 = Prim.intToInt16;
+  public let toInt32 = Prim.intToInt32;
+  public let toInt64 = Prim.intToInt64;
 }
