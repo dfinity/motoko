@@ -1,4 +1,5 @@
 // Tests that GC properly looks through mutable things in global memory 
+// (This uses messages to trigger GC. If we don’t run GC after message, other ways need to be found.)
 
 actor a {
   var x = ("Foo", "Bar");
