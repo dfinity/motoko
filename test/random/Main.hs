@@ -34,33 +34,33 @@ main = defaultMain tests
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects
-  -- , QC.testProperty "expected successes" $ prop_verifies
+  , QC.testProperty "expected successes" $ prop_verifies
   ]
 
 conversionProps = testGroup "Numeric conversions"
   [ QC.testProperty "roundtrip Word64 Nat Word64 " $ prop_roundtripWNW @64
-  -- , QC.testProperty "roundtrip Word32 Nat Word32 " $ prop_roundtripWNW @32
-  -- , QC.testProperty "roundtrip Word16 Nat Word16 " $ prop_roundtripWNW @16
-  -- , QC.testProperty "roundtrip Word8 Nat Word8 " $ prop_roundtripWNW @8
-  -- , QC.testProperty "modulo Nat Word64 Nat" $ prop_moduloNWN @64
-  -- , QC.testProperty "modulo Nat Word32 Nat" $ prop_moduloNWN @32
-  -- , QC.testProperty "modulo Nat Word16 Nat" $ prop_moduloNWN @16
-  -- , QC.testProperty "modulo Nat Word8 Nat" $ prop_moduloNWN @8
+  , QC.testProperty "roundtrip Word32 Nat Word32 " $ prop_roundtripWNW @32
+  , QC.testProperty "roundtrip Word16 Nat Word16 " $ prop_roundtripWNW @16
+  , QC.testProperty "roundtrip Word8 Nat Word8 " $ prop_roundtripWNW @8
+  , QC.testProperty "modulo Nat Word64 Nat" $ prop_moduloNWN @64
+  , QC.testProperty "modulo Nat Word32 Nat" $ prop_moduloNWN @32
+  , QC.testProperty "modulo Nat Word16 Nat" $ prop_moduloNWN @16
+  , QC.testProperty "modulo Nat Word8 Nat" $ prop_moduloNWN @8
   ]
 
 utf8Props = testGroup "UTF-8 coding"
   [ QC.testProperty "explode >>> concat roundtrips" $ prop_explodeConcat
-  -- , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
-  -- , QC.testProperty "length computation" $ prop_textLength
-  -- , QC.testProperty "chunky concat (ropes)" $ prop_ropeConcat
-  -- , QC.testProperty "chunky length (ropes)" $ prop_ropeLength
-  -- , QC.testProperty "chunky iterator (ropes)" $ prop_ropeIterator
+  , QC.testProperty "charToText >>> head roundtrips" $ prop_charToText
+  , QC.testProperty "length computation" $ prop_textLength
+  , QC.testProperty "chunky concat (ropes)" $ prop_ropeConcat
+  , QC.testProperty "chunky length (ropes)" $ prop_ropeLength
+  , QC.testProperty "chunky iterator (ropes)" $ prop_ropeIterator
   ]
 
 matchingProps = testGroup "Pattern matching"
   [ QC.testProperty "intra-actor" $ prop_matchStructured
-  --, QC.testProperty "inter-actor" $ prop_matchInActor
-  --, QC.testProperty "encoded-Nat" $ prop_matchActorNat
+  , QC.testProperty "inter-actor" $ prop_matchInActor
+  , QC.testProperty "encoded-Nat" $ prop_matchActorNat
   , QC.testProperty "encoded-Int" $ prop_matchActorInt
   ]
 
