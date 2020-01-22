@@ -2799,14 +2799,8 @@ module Dfinity = struct
 
   let system_imports env =
     match E.mode env with
-    | Flags.ICMode ->
+    | Flags.ICMode | Flags.StubMode  ->
       import_ic0 env
-    | Flags.StubMode  ->
-      import_ic0 env;
-      E.add_func_import env "stub" "create_canister" (i32s 4) [I32Type];
-      E.add_func_import env "stub" "created_canister_id_size" (i32s 1) [I32Type];
-      E.add_func_import env "stub" "created_canister_id_copy" (i32s 4) [];
-      ()
     | Flags.WASIMode ->
       E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
