@@ -1,14 +1,14 @@
 {
-    "dfinity": {
-        "ref": "master",
-        "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "791d90bb7ca57d7afab4fd045025877acb892c00",
-        "type": "git"
-    },
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
         "rev": "8c07b4a592e7c54ff43adf0420575d4069bfe8a9",
+        "type": "git"
+    },
+    "dfinity": {
+        "ref": "master",
+        "repo": "ssh://git@github.com/dfinity-lab/dfinity",
+        "rev": "8224bf469c80ade492083461e7ee3c2cfdf3ec02",
         "type": "git"
     },
     "esm": {
@@ -20,17 +20,16 @@
         "version": "3.2.25"
     },
     "libtommath": {
-        "branch": "develop",
         "builtin": false,
         "description": "LibTomMath is a free open source portable number theoretic multiple-precision integer library written entirely in C.",
         "homepage": "https://www.libtom.net",
         "owner": "libtom",
         "repo": "libtommath",
-        "rev": "584405ff8e357290362671b5e7db6110a959cbaa",
-        "sha256": "1vl606rm8ba7vjhr0rbdqvih5d4r5iqalqlj5mnz6j3bnsn83b2a",
+        "sha256": "0cj4xdbh874hi8hx9ajygqk5411cnv260mfjrn68fsi9a6dw56ff",
         "type": "tarball",
-        "url": "https://github.com/libtom/libtommath/archive/584405ff8e357290362671b5e7db6110a959cbaa.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+        "url": "https://github.com/libtom/libtommath/archive/v1.2.0.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<version>.tar.gz",
+        "version": "v1.2.0"
     },
     "nixpkgs": {
         "branch": "master",

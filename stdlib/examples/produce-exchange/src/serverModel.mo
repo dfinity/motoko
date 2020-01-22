@@ -12,9 +12,8 @@ import Trie "mo:stdlib/trie";
 import Iter "mo:stdlib/iter";
 import Array "mo:stdlib/array";
 
-import DT "mo:stdlib/docTable";
 import Result "mo:stdlib/result";
-
+import DT = "docTable";
 
 module {
 /**
