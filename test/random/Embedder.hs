@@ -20,7 +20,7 @@ embedderCommand WasmTime = "wasmtime"
 embedderCommand Drun = "drun"
 
 addCompilerArgs Reference = ("-no-system-api" :)
-addCompilerArgs WasmTime = ("-no-system-api" :)
+addCompilerArgs WasmTime = ("-wasi-system-api" :)
 addCompilerArgs Drun = id
 
 addEmbedderArgs Reference = id
