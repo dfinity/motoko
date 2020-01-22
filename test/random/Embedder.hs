@@ -1,6 +1,6 @@
 {-# language OverloadedStrings, {-PartialTypeSignatures,-} ScopedTypeVariables, TupleSections #-}
 
-module Embedder (Embedder(..), embedder, embedderCommand, addCompilerArgs, addEmbedderArgs, invokeEmbedder) where
+module Embedder (Embedder(..), WasmAPI(..), embedder, embedderCommand, addCompilerArgs, addEmbedderArgs, invokeEmbedder) where
 
 import Test.QuickCheck
 
@@ -11,20 +11,24 @@ import Control.Monad.Catch
 import GHC.IO.Exception (IOException)
 import Data.IORef
 
-data Embedder = Reference | WasmTime | Drun
+data WasmAPI = DontPrint | WASI
 
-instance Arbitrary Embedder where arbitrary = elements [Reference, WasmTime]
+data Embedder = Reference | WasmTime WasmAPI | Drun
+
+instance Arbitrary Embedder where arbitrary = elements [Reference, WasmTime DontPrint, WasmTime WASI, Drun]
+instance Arbitrary WasmAPI where arbitrary = elements [DontPrint, WASI]
 
 embedderCommand Reference = "wasm"
-embedderCommand WasmTime = "wasmtime"
+embedderCommand (WasmTime _) = "wasmtime"
 embedderCommand Drun = "drun"
 
 addCompilerArgs Reference = ("-no-system-api" :)
-addCompilerArgs WasmTime = ("-wasi-system-api" :)
+addCompilerArgs (WasmTime DontPrint) = ("-no-system-api" :)
+addCompilerArgs (WasmTime WASI) = ("-wasi-system-api" :)
 addCompilerArgs Drun = id
 
 addEmbedderArgs Reference = id
-addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
+addEmbedderArgs (WasmTime _) = ("--disable-cache" :) . ("--cranelift" :)
 addEmbedderArgs Drun = ("--extra-batches" :) . ("100" :)
 
 invokeEmbedder :: Embedder -> Turtle.FilePath -> IO (ExitCode, Text, Text)
@@ -61,4 +65,4 @@ invokeEmbedder embedder wasm = go embedder
 
 
 embedder :: Embedder
-embedder = WasmTime
+embedder = WasmTime DontPrint

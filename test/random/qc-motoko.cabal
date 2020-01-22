@@ -12,7 +12,7 @@ extra-source-files:  CHANGELOG.md
 
 executable qc-motoko
   main-is:             Main.hs
-  other-modules:       Turtle.Pipe
+  other-modules:       Embedder, Turtle.Pipe
   other-extensions:    ConstraintKinds, StandaloneDeriving, DataKinds, KindSignatures, GADTs, MultiParamTypeClasses
   build-depends:       base ^>=4.12.0.0
                      , text ^>=1.2.3.1
