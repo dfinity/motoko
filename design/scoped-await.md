@@ -338,10 +338,10 @@ Assuming the following requests:
 is rejected because, once annotated:
 
 ```
-  let t:async<@>U = async<@1>{ await t;}; // bad await since t : Async<@>U  </: Async<@1>U
+  let t:async<$>U = async<$1>{ await t;}; // bad await since t : Async<$>U  </: Async<$1>U
 ```
 
-Ruled out by index scoping (`@1 <> @ `)
+Ruled out by index scoping (`$1 <> $ `)
 
 #### Indirect deadlock
 
@@ -355,13 +355,13 @@ Ruled out by index scoping (`@1 <> @ `)
 is rejected because, once annotated:
 
 ```
-  async<@> {
-    let a1 : async<@> = async<@1> { await a2; }; // bad await since a2 : Async<@>() </: Async<@1>()
-	let a2 : async<@> = async<@2> { await a1; }; // bad await since a1 : Async<@>() </: Async<@2>()
+  async<$> {
+    let a1 : async<$> = async<$1> { await a2; }; // bad await since a2 : Async<$>() </: Async<$1>()
+	let a2 : async<$> = async<$2> { await a1; }; // bad await since a1 : Async<$>() </: Async<$2>()
   }
 ```
 
-since `@1 <> @` and `@2` <> `@`.
+since `$1 <> $` and `$2` <> `$`.
 
 ### Imperative deadlock
 
@@ -378,14 +378,14 @@ The informal example:
 
 that attempts to tie an imperative knot, is rejected by this system.
 
-Explicitly, the outer and nested async would have distinct parameters `<@>` and `<@2>`, so the await at type `async<@2>Nat` on `x`
-(of type `async<@>Nat` (with the outer parameter) would actually be illegal:
+Explicitly, the outer and nested async would have distinct parameters `<$>` and `<$2>`, so the await at type `async<$2>Nat` on `x`
+(of type `async<$>Nat` (with the outer parameter) would actually be illegal:
 
 ```
-async<@> {
-  var x : async<@> Nat = async<@1> 0;
-  x := async<@2>{
-    await x // illegal: this await requires async<@2>Nat (not async<@>Nat)
+async<$> {
+  var x : async<$> Nat = async<$1> 0;
+  x := async<$2>{
+    await x // illegal: this await requires async<$2>Nat (not async<$>Nat)
   };
 }
 ```
@@ -401,51 +401,51 @@ Principle: Desugaring should be:
 
 ### Basic idea:
 
-(`@` is a new type identifier, reserved for scopes only, intially defined as 'Any')
+(`$` is a new type identifier, reserved for scopes only, intially defined as 'Any')
 
 Parsing:
 
-* inserts `<@,...>` type binders for missing scope binders (in types and terms);
-* adds missing `<@>` bindings to async returning functions with missing async indices.
+* inserts `<$,...>` type binders for missing scope binders (in types and terms);
+* adds missing `<$>` bindings to async returning functions with missing async indices.
 
 Elaboration:
 
-* Elaboration ensures `@` is bound to an appropriate constructor, shadowing any previous `@`-binding to ensure lexical scoping.
+* Elaboration ensures `$` is bound to an appropriate constructor, shadowing any previous `$`-binding to ensure lexical scoping.
 
 Syntactic sugar (during parse, applied bottom up as we construct types and terms)
 
 ```
-(async T)^ := async<@> (T^)
+(async T)^ := async<$> (T^)
 
-(<...>T1 -> async T2)^ :=                           (@ not in ...)
-  <@,...^>T1^ -> (async T2)^
+(<...>T1 -> async T2)^ :=                           ($ not in ...)
+  <$,...^>T1^ -> (async T2)^
 
-(shared? f<...>(<pat>) : async T = e)^ :=           (@ not in ...)
-  shared? f<@,...^>(<pat>^) : (async T)^ = e^
+(shared? f<...>(<pat>) : async T = e)^ :=           ($ not in ...)
+  shared? f<$,...^>(<pat>^) : (async T)^ = e^
 
-(shared? f<...>(<pat>) : async T { e })^ :=         (@ not in ...)
-  shared? f<@,...^>(<pat>^) : (async T)^ = async<@> e^
+(shared? f<...>(<pat>) : async T { e })^ :=         ($ not in ...)
+  shared? f<$,...^>(<pat>^) : (async T)^ = async<$> e^
 
-(shared f<...>(<pat>) : () = e)^ :=           (@ not in ...)
-  shared f<@,...^>(<pat>^) : () = e^
+(shared f<...>(<pat>) : () = e)^ :=           ($ not in ...)
+  shared f<$,...^>(<pat>^) : () = e^
 
-(shared f<...>(<pat>) { e })^ :=              (@ not in ...)
-  shared f<@,...^>(<pat>^) : () =  e^
+(shared f<...>(<pat>) { e })^ :=              ($ not in ...)
+  shared f<$,...^>(<pat>^) : () =  e^
 
 
 (async e)^ :=
-  async<@> e^
+  async<$> e^
 
 ```
 
 ### Elaboration
 
-During elaboration, we rebind `@` to the current scope
-identifier (aliasing `@` with some type parameter `X` if necessary) so
+During elaboration, we rebind `$` to the current scope
+identifier (aliasing `$` with some type parameter `X` if necessary) so
 that:
  * references inserted during parsing elaborate to the nearest appropiate binding
 
-Note that in a function type or definition with type parameters, `@`
+Note that in a function type or definition with type parameters, `$`
 either shadows one of those eponymous type parameters (if introduced by
 de-sugaring) or it retains its outer meaning.
 
@@ -466,7 +466,7 @@ the fact that we don't support explicit binding).
 For compiled programs we restrict the inital capability to `NullCap`,
 so that sends and async can only occur in shared functions.
 
-For interpreted programs we use the initial capability `Async @` so
+For interpreted programs we use the initial capability `Async $` so
 that programs can `async` and `send` at top-level (but not `await`).
 
 ### Queries
@@ -492,7 +492,7 @@ See the code for details.
 ### Refinements
 
 Since users may find it odd that we can instantiate the index at any
-type, it might be better to define "type @ = Non" and always bound
+type, it might be better to define "type $ = Non" and always bound
 index-parameters by `Non`. Then the top-level choice of index really
 is unique since `Non`, and any `Non`-bounded type parameter, are the
 only types bounded by `Non` and thus suitable for uses as index

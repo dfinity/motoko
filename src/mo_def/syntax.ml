@@ -249,7 +249,7 @@ let (@=) it at = Source.({it; at; note = None})
 let scope_typ region =
   Source.(
     { it = PathT (
-      { it = IdH { it = Type.scope_var; at = region; note = () };
+      { it = IdH { it = Type.default_scope_var; at = region; note = () };
         at = no_region;
         note = Type.Pre },
       []);
@@ -257,7 +257,7 @@ let scope_typ region =
     note = Type.Pre })
 
 let scope_bind var =
-  { var = (Type.scope_var ^ var) @@ no_region;
+  { var = Type.scope_var var @@ no_region;
     sort = Type.Scope @@ no_region;
     bound = PrimT "Any" @! no_region
   } @= no_region
