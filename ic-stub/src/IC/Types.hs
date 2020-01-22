@@ -72,7 +72,6 @@ data MethodCall = MethodCall
   deriving Show
 
 type ExistingCanisters = [CanisterId]
-type NewCanisters = [(CanisterId, Blob, Blob)]
 
-type InitResult = (NewCanisters, [MethodCall])
-type UpdateResult = (NewCanisters, [MethodCall], Maybe Response)
+type InitResult = [MethodCall]
+type UpdateResult = ([MethodCall], Maybe Response)
