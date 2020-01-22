@@ -1,5 +1,5 @@
-import MyDependency "mo:mydep/lib.mo";
-import List "lib/list.mo";
+import MyDependency "mo:mydep/lib";
+import List "lib/list";
 
 module {
     public func myFunc() {

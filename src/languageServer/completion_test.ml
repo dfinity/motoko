@@ -77,7 +77,7 @@ List.|
 let%test "it handles a full module" =
   prefix_test_case
 {|module {
-  private import List = "./ListLib.mo";
+  private import List = "./ListLib";
 
   func singleton<T>(x: T): List.List<T> =
     List.cons<T>(x, Test.|<T>());
@@ -89,8 +89,8 @@ let%test "it handles a full module" =
 let%test "it doesn't fall through to the next valid prefix" =
   prefix_test_case
 {|module {
-private import List = "lib/ListLib.mo"; // private, so we don't re-export List
-private import ListFns = "lib/ListFuncs.mo"; // private, so we don't re-export List
+private import List = "lib/ListLib"; // private, so we don't re-export List
+private import ListFns = "lib/ListFuncs"; // private, so we don't re-export List
 type Stack = List.List<Int>;
 func push(x : Int, s : Stack) : Stack = List.cons<Int>(x, s);
 func empty():Stack = List.nil<Int>();

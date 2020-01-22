@@ -2038,7 +2038,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_unsigned env get_x get_buf
       )
-      (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
+      (fun env ->
+        G.i Drop ^^
+        get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
       env
 
   let compile_store_to_data_buf_signed env =
@@ -2051,7 +2053,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_signed env get_x get_buf
       )
-      (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
+      (fun env ->
+        G.i Drop ^^
+        get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
 
   let compile_data_size_unsigned env =
@@ -2071,7 +2075,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_sleb128_size get_x
       )
-      (fun env -> Num.compile_data_size_unsigned env)
+      (fun env -> Num.compile_data_size_signed env)
       env
 
   let from_signed_word32 env =
@@ -5068,6 +5072,8 @@ module AllocHow = struct
       List.for_all is_const_dec ds && is_const_exp e
     | NewObjE (Type.(Object | Module), _, t) ->
       Object.is_immutable t
+    | PrimE (DotPrim n, [e]) ->
+      is_const_exp e
     | _ -> false
 
   and is_const_dec dec = match dec.it with
@@ -6744,6 +6750,13 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
           in f.it.name, st) fs
     in
     (Const.Obj static_fs, fun _ _ -> ())
+  | PrimE (DotPrim name, [e]) ->
+    let (object_ct, fill) = compile_const_exp env pre_ae e in
+    let fs = match object_ct with
+      | Const.Obj fs -> fs
+      | _ -> fatal "compile_const_exp/DotE: not a static object" in
+    let member_ct = List.assoc name fs in
+    (member_ct, fill)
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =

@@ -1,7 +1,7 @@
-import DisposableLib = "Disposable.mo";
-import EventLib = "Event.mo";
-import ObservableLib = "Observable.mo";
-import ObserverLib = "Observer.mo";
+import DisposableLib = "Disposable";
+import EventLib = "Event";
+import ObservableLib = "Observable";
+import ObserverLib = "Observer";
 
 module {
   public let Disposable = DisposableLib; 

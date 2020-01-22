@@ -1,5 +1,5 @@
-import T = "../src/serverTypes.mo";
-import Model = "../src/serverModel.mo";
+import T = "../src/serverTypes";
+import Model = "../src/serverModel";
 
 actor server {
   // morally: loadQuery (region_count:Nat, scale_factor:Nat) {

@@ -1,4 +1,4 @@
-import List = "./ListLib.mo";
+import List = "./ListLib";
 
 module {
   public func singleton<T>(x: T): List.List<T> =
