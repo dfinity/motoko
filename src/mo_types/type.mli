@@ -209,7 +209,8 @@ module Env : Env.S with type key = string
 
 (* Scope bindings *)
 
-val scope_var : var
+val scope_var : var -> var
+val default_scope_var : var
 val scope_bound : typ
 val scope_bind : bind
 

@@ -1112,9 +1112,10 @@ module Env = Env.Make(String)
 
 (* Scopes *)
 
-let scope_var = "@"
+let scope_var var = "$" ^ var
+let default_scope_var = scope_var ""
 let scope_bound = Any
-let scope_bind = { var = scope_var; sort = Scope; bound = scope_bound }
+let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
 (* Pretty printing *)
 

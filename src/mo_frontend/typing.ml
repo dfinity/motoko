@@ -18,7 +18,7 @@ type ret_env = T.typ option
 
 let initial_scope =
   { Scope.empty with
-    Scope.typ_env = T.Env.singleton T.scope_var C.top_cap;
+    Scope.typ_env = T.Env.singleton T.default_scope_var C.top_cap;
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
@@ -241,10 +241,10 @@ let check_shared_return env at sort c ts =
 let rec infer_async_cap env sort cs tbs =
   match sort, cs, tbs with
   | (T.Shared T.Write | T.Local) , c::_,  { T.sort = T.Scope; _ }::_ ->
-    { env with typs = T.Env.add T.scope_var c env.typs;
+    { env with typs = T.Env.add T.default_scope_var c env.typs;
                async = C.AsyncCap c }
   | (T.Shared T.Query) , c::_,  { T.sort = T.Scope; _ }::_ ->
-    { env with typs = T.Env.add T.scope_var c env.typs;
+    { env with typs = T.Env.add T.default_scope_var c env.typs;
                async = C.QueryCap c }
   | T.Shared _, _, _ -> assert false (* impossible given sugaring *)
   | _ -> { env with async = C.NullCap }
@@ -985,7 +985,7 @@ and infer_exp'' env exp : T.typ =
   | AsyncE (typ_bind, exp1) ->
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
-    let ce_scope = T.Env.add T.scope_var c ce in (* pun scope var with c *)
+    let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
     let env' =
       {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some T.Pre; async = next_cap c} in
     let t = infer_exp env' exp1 in
@@ -1069,7 +1069,7 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t1)
         (T.string_of_typ_expand t1');
     let c, tb, ce, cs = check_typ_bind env tb in
-    let ce_scope = T.Env.add T.scope_var c ce in (* pun scope var with c *)
+    let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
     let env' =
       {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some t'; async = next_cap c} in
     check_exp env' t' exp1;
