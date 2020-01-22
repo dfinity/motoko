@@ -122,10 +122,7 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
     I.PrimE (I.OtherPrim p, [exp e])
   | S.CallE (e1, inst, e2) ->
-    let t = e1.Source.note.S.note_typ in
-    if T.is_non t
-    then unreachableE.it (* BUG?, why should we discard the code for e1 just because e1 has type non (Issue #945) *)
-    else I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
+    I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
   | S.BlockE [] -> unitE.it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)
