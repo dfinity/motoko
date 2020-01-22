@@ -30,5 +30,8 @@ import ./ci.nix { inherit src; } // nixpkgs.lib.optionalAttrs (base != null) {
       diff-stats $baseStats $prStats > $out/report;
       mkdir -p $out/nix-support
       echo "report perf-delta $out report" >> $out/nix-support/hydra-build-products
+      echo '{{{! comment:edit-one }}}' >> $out/comment
+      cat $out/report >> $out/comment
+      echo "comment manifest $out/comment" >> $out/nix-support/hydra-build-products
     '';
   }
