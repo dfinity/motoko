@@ -1,5 +1,5 @@
-import Option "mo:stdlib/option.mo";
-import Prelude "mo:stdlib/prelude.mo";
+import Option "mo:stdlib/option";
+import Prelude "mo:stdlib/prelude";
 
 Prelude.printLn("Option");
 

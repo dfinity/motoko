@@ -1,5 +1,5 @@
 → create
-← completed: canister-id = 0x0000000000000400
+← completed: canister-id = 0x2a01
 → install
 ← completed
 → update __motoko_async_helper(0x4449444c0000)

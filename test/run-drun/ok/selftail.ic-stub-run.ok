@@ -1,5 +1,5 @@
 → create
-← completed: canister-id = 0x0000000000000400
+← completed: canister-id = 0x2a01
 → install
 debug.print: ok1
 debug.print: ok2

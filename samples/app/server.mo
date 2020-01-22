@@ -1,6 +1,6 @@
 import Prim "mo:prim";
-import L "list.mo";
-import T "types.mo";
+import L "list";
+import T "types";
 
 type ClientData = {
   id : Nat;

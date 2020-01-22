@@ -1,3 +1,3 @@
-import M "oneway.mo";
+import M "oneway";
 
 //SKIP comp
