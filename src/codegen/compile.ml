@@ -5072,6 +5072,8 @@ module AllocHow = struct
       List.for_all is_const_dec ds && is_const_exp e
     | NewObjE (Type.(Object | Module), _, t) ->
       Object.is_immutable t
+    | PrimE (DotPrim n, [e]) ->
+      is_const_exp e
     | _ -> false
 
   and is_const_dec dec = match dec.it with
@@ -6738,6 +6740,13 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
           in f.it.name, st) fs
     in
     (Const.Obj static_fs, fun _ _ -> ())
+  | PrimE (DotPrim name, [e]) ->
+    let (object_ct, fill) = compile_const_exp env pre_ae e in
+    let fs = match object_ct with
+      | Const.Obj fs -> fs
+      | _ -> fatal "compile_const_exp/DotE: not a static object" in
+    let member_ct = List.assoc name fs in
+    (member_ct, fill)
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
