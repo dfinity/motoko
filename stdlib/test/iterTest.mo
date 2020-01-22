@@ -1,6 +1,6 @@
-import Iter "mo:stdlib/iter.mo";
-import List "mo:stdlib/list.mo";
-import Prelude "mo:stdlib/prelude.mo";
+import Iter "mo:stdlib/iter";
+import List "mo:stdlib/list";
+import Prelude "mo:stdlib/prelude";
 
 Prelude.printLn("Iter");
 

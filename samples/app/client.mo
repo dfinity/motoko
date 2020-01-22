@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import S "server.mo";
+import S "server";
 
 actor class Client() = this {
   // TODO: these should be constructor params once we can compile them

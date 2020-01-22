@@ -1,5 +1,5 @@
-import Array "array.mo";
-import List "list.mo";
+import Array "array";
+import List "list";
 
 module {
   public type Iter<T> = {next : () -> ?T};

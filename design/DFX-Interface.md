@@ -138,6 +138,7 @@ prints to the standard output all URLs _directly_ imported by
    mo:other_package/Some/Module
    ic:ABCDE01A7
    ic:alias
+   relative/path
 
 This _reads_ only `some/path/input.mo`, and writes no files.
 
