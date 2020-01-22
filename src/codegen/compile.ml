@@ -59,6 +59,7 @@ module Const = struct
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
     | PublicMethod of int32 * string
+    | Obj of (string * t) list
 
 end (* Const *)
 
@@ -2398,6 +2399,10 @@ module Object = struct
     let _, fields = Type.as_obj_sub [s] obj_type in
     Type.is_mut (Type.lookup_val_field s fields)
 
+  let is_immutable obj_type =
+    let _, fields = Type.as_obj_sub [] obj_type in
+    List.for_all (fun f -> not (Type.is_mut f.Type.typ)) fields
+
   let idx env obj_type name =
     compile_unboxed_const (Mo_types.Hash.hash name) ^^
     idx_hash env (is_mut_field env obj_type name)
@@ -4399,7 +4404,7 @@ module StackRep = struct
     | Const _ -> G.nop
     | Unreachable -> G.nop
 
-  let materialize env = function
+  let rec materialize env = function
     | Const.Fun fi ->
       (* When accessing a variable that is a constant function, then we need to
          create a heap-allocated closure-like thing on the fly. *)
@@ -4412,6 +4417,8 @@ module StackRep = struct
     | Const.PublicMethod (_, name) ->
       Dfinity.get_self_reference env ^^
       Dfinity.actor_public_field env name
+    | Const.Obj fs ->
+      Object.lit_raw env (List.map (fun (n, st) -> (n, fun () -> materialize env st)) fs)
 
   let adjust env (sr_in : t) sr_out =
     if sr_in = sr_out
@@ -5081,9 +5088,19 @@ module AllocHow = struct
       map_of_set StoreStatic
         (S.inter (set_of_map (M.filter is_local how)) captured)
 
-  let is_const_exp exp = match exp.it with
+  let rec is_const_exp exp = match exp.it with
     | FuncE _ -> true
+    | VarE _ -> true
+    | BlockE (ds, e) ->
+      List.for_all is_const_dec ds && is_const_exp e
+    | NewObjE (Type.(Object | Module), _, t) ->
+      Object.is_immutable t
     | _ -> false
+
+  and is_const_dec dec = match dec.it with
+    | VarD _ -> false
+    | LetD ({it = VarP v; _}, e) -> is_const_exp e
+    | LetD _ -> false
 
   let dec lvl how_outer (seen, how0) dec =
     let how_all = disjoint_union how_outer how0 in
@@ -5097,11 +5114,11 @@ module AllocHow = struct
       | VarD _ ->
       map_of_set LocalMut d
 
-      (* Static expressions on the top-level:
+      (* Constant expressions on the top-level:
         - need to be constant forms
-        - all non-captured free variables must be static
-        - all captured variables must be static or static-heap, if not on top level
-          (top level captures variables will be forced to be static-heap below, via how2)
+        - all non-captured free variables must be constant
+        - all captured variables must be constant or static-heap, if not on top level
+          (stuff captured on the top level will always be static-heap, via how2 below)
       *)
       | LetD ({it = VarP _; _}, e) when
         is_const_exp e &&
@@ -5928,9 +5945,16 @@ and compile_exp (env : E.t) ae exp =
       Variant.inject env l (compile_exp_vanilla env ae e)
 
     | DotPrim name, [e] ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Object.load_idx env e.note.note_typ name
+      let sr, code1 = compile_exp env ae e in
+      begin match sr with
+      | SR.Const (Const.Obj fs) ->
+        let c = List.assoc name fs in
+        SR.Const c, code1
+      | _ ->
+        SR.Vanilla,
+        code1 ^^ StackRep.adjust env sr SR.Vanilla ^^
+        Object.load_idx env e.note.note_typ name
+      end
     | ActorDotPrim name, [e] ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
@@ -6366,7 +6390,12 @@ and compile_exp (env : E.t) ae exp =
     if Freevars.M.is_empty (Freevars.diff captured prelude_names)
     then actor_lit env ds fs exp.at
     else todo_trap env "non-closed actor" (Arrange_ir.exp exp)
-  | NewObjE ((Type.Object | Type.Module), fs, _) ->
+  | NewObjE (Type.(Object | Module) as _sort, fs, _) ->
+    (*
+    We can enable this warning once we treat everything as static that
+    mo_frontend/static.ml accepts, including _all_ literals.
+    if sort = Type.Module then Printf.eprintf "%s" "Warning: Non-static module\n";
+    *)
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
@@ -6628,7 +6657,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
-    let (const, fill) = compile_const_exp env pre_ae how e in
+    let (const, fill) = compile_const_exp env pre_ae e in
     let fi = match const with
       | Const.Message fi -> fi
       | _ -> assert false in
@@ -6638,9 +6667,8 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
 
   (* A special case for constant expressions *)
   | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Const ->
-    let (const, fill) = compile_const_exp env pre_ae how e in
-    let pre_ae1 = VarEnv.add_local_const pre_ae v const in
-    ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
+    let (extend, fill) = compile_const_dec env pre_ae dec in
+    ( extend pre_ae, G.nop, fun ae -> fill env ae; G.nop)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
@@ -6659,7 +6687,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
         Var.set_val env ae name
       )
 
-and compile_decs_open env pre_ae lvl decs v2en captured_in_body : VarEnv.t * G.t * (VarEnv.t -> G.t)=
+and compile_decs_public env pre_ae lvl decs v2en captured_in_body : VarEnv.t * G.t =
   let how = AllocHow.decs pre_ae lvl decs captured_in_body in
   let rec go pre_ae decs = match decs with
     | []          -> (pre_ae, G.nop, fun _ -> G.nop)
@@ -6673,10 +6701,7 @@ and compile_decs_open env pre_ae lvl decs v2en captured_in_body : VarEnv.t * G.t
                     let code2 = mk_code2 ae in
                     code1 ^^ code2
         ) in
-  go pre_ae decs
-
-and compile_decs_public env ae lvl decs v2en captured_in_body : VarEnv.t * G.t =
-  let (ae1, alloc_code, mk_code) = compile_decs_open env ae lvl decs v2en captured_in_body in
+  let (ae1, alloc_code, mk_code) = go pre_ae decs in
   let code = mk_code ae1 in
   (ae1, alloc_code ^^ code)
 
@@ -6699,7 +6724,8 @@ and compile_prog env ae (ds, e) =
     let code2 = compile_top_lvl_expr env ae' e in
     (ae', code1 ^^ code2)
 
-and compile_const_exp env pre_ae how exp = match exp.it with
+and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
+  match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
       let return_tys = match control with
         | Type.Returns -> res_tys
@@ -6712,7 +6738,57 @@ and compile_const_exp env pre_ae how exp = match exp.it with
         ) (Freevars.M.keys (Freevars.exp e));
         compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
       FuncDec.closed env sort control name args mk_body return_tys exp.at
+  | BlockE (decs, e) ->
+    let (extend, fill1) = compile_const_decs env pre_ae decs in
+    let ae' = extend pre_ae in
+    let (c, fill2) = compile_const_exp env ae' e in
+    (c, fun env ae ->
+      let ae' = extend ae in
+      fill1 env ae';
+      fill2 env ae')
+  | VarE v ->
+    let c =
+      match VarEnv.lookup_var pre_ae v with
+      | Some (VarEnv.Const c) -> c
+      | _ -> fatal "compile_const_exp/VarE: \"%s\" not found" v
+    in
+    (c, fun _ _ -> ())
+  | NewObjE (Type.(Object | Module), fs, _) ->
+    let static_fs = List.map (fun f ->
+          let st =
+            match VarEnv.lookup_var pre_ae f.it.var with
+            | Some (VarEnv.Const c) -> c
+            | _ -> fatal "compile_const_exp/ObjE: \"%s\" not found" f.it.var
+          in f.it.name, st) fs
+    in
+    (Const.Obj static_fs, fun _ _ -> ())
   | _ -> assert false
+
+and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
+  let rec go pre_ae decs = match decs with
+    | []          -> (fun ae -> ae), (fun _ _ -> ())
+    | [dec]       -> compile_const_dec env pre_ae dec
+    | (dec::decs) ->
+        let (extend1, fill1) = compile_const_dec env pre_ae dec in
+        let pre_ae1 = extend1 pre_ae in
+        let (extend2, fill2) = go                    pre_ae1 decs in
+        (fun ae -> extend2 (extend1 ae)),
+        (fun env ae -> fill1 env ae; fill2 env ae) in
+  go pre_ae decs
+
+and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
+  (* This returns a _function_ to extend the VarEnv, instead of doing it, because
+  it needs to be extended twice: Once during the pass that gets the outer, static values
+  (no forward references), and then to implement the `fill`, which compiles the body
+  of functions (may contain forward references.) *)
+  match dec.it with
+  (* This should only contain constants (cf. is_const_exp) *)
+  | LetD ({it = VarP v; _}, e) ->
+    let (const, fill) = compile_const_exp env pre_ae e in
+    (fun ae -> VarEnv.add_local_const ae v const),
+    (fun env ae -> fill env ae)
+
+  | _ -> fatal "compile_const_dec: Unexpected dec form"
 
 and compile_prelude env ae =
   (* Allocate the primitive functions *)
