@@ -218,7 +218,7 @@ main = do
         withDoc "app.mo" \doc -> do
           -- It knows how to handle package paths for rebuilding, and also
           -- for completions
-          let edit = TextEdit (Range (Position 4 0) (Position 4 0)) "\nimport MyDep \"mo:mydep/broken.mo\""
+          let edit = TextEdit (Range (Position 4 0) (Position 4 0)) "\nimport MyDep \"mo:mydep/broken\""
           _ <- applyEdit doc edit
           sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
           [diag] <- waitForActualDiagnostics
@@ -227,7 +227,7 @@ main = do
         log "Completions from package paths"
         withDoc "app.mo" \doc -> do
           -- Imports the non-broken dependency module
-          let edit = TextEdit (Range (Position 4 0) (Position 4 0)) "\nimport MyDep \"mo:mydep/lib.mo\""
+          let edit = TextEdit (Range (Position 4 0) (Position 4 0)) "\nimport MyDep \"mo:mydep/lib\""
           _ <- applyEdit doc edit
           sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
           let edit2 = TextEdit (Range (Position 5 0) (Position 5 0)) "\nMyDep."

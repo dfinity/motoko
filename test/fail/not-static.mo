@@ -1,1 +1,1 @@
-import "lib/not-static.mo"
+import "lib/not-static"

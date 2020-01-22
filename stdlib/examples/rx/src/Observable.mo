@@ -1,5 +1,5 @@
-import Disposable "Disposable.mo";
-import Observer "Observer.mo";
+import Disposable "Disposable";
+import Observer "Observer";
 
 module {
   type Subscriber<Value, Error> = Observer.Type<Value, Error> -> Disposable.Type;

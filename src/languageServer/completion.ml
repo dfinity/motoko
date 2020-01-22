@@ -134,7 +134,7 @@ let completions index logger project_root file_path file_contents line column =
      let current_module_decls =
        current_uri_opt
        |> opt_bind (fun uri -> DI.lookup_module uri index)
-       |> Fun.flip Lib.Option.get [] in
+       |> Option.fold ~none:[] ~some:snd in
      current_module_decls
   in
   let module_alias_completion_item alias =
@@ -165,7 +165,7 @@ let completions index logger project_root file_path file_contents line column =
      match module_path with
      | Some mp ->
         (match DI.lookup_module (snd mp) index with
-         | Some decls ->
+         | Some (_, decls) ->
             decls
             |> List.filter (has_prefix prefix)
             |> List.map item_of_ide_decl

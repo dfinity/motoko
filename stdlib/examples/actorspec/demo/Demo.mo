@@ -1,4 +1,4 @@
-import ActorSpec "../src/ActorSpec.mo";
+import ActorSpec "../src/ActorSpec";
 
 type Group = ActorSpec.Group;
 

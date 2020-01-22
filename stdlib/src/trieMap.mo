@@ -1,8 +1,8 @@
-import T "trie.mo";
-import P "prelude.mo";
-import I "iter.mo";
-import Hash "hash.mo";
-import List "list.mo";
+import T "trie";
+import P "prelude";
+import I "iter";
+import Hash "hash";
+import List "list";
 
 /**
 

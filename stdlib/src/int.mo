@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import Prelude "prelude.mo";
+import Prelude "prelude";
 
 module {
   public let abs = Prim.abs;
