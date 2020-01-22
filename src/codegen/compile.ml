@@ -5833,8 +5833,14 @@ let rec compile_lexp (env : E.t) ae lexp =
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
-  | PrimE (p, es) ->
+  | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.note_typ) es ->
+    (* Handle dead code separately, so that we can rely on useful type
+       annotations below *)
+    SR.Unreachable,
+    G.concat_map (compile_exp_ignore env ae) es ^^
+    G.i Unreachable
 
+  | PrimE (p, es) ->
     (* for more concise code when all arguments and result use the same sr *)
     let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
 
@@ -6391,6 +6397,10 @@ and compile_exp_as env ae sr_out e =
       let sr_in, code = compile_exp env ae e in
       code ^^ StackRep.adjust env sr_in sr_out
   )
+
+and compile_exp_ignore env ae e =
+  let sr, code = compile_exp env ae e in
+  code ^^ StackRep.drop env sr
 
 and compile_exp_as_opt env ae sr_out_o e =
   let sr_in, code = compile_exp env ae e in
