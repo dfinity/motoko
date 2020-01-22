@@ -1,15 +1,13 @@
 {-# language ConstraintKinds, DataKinds, DeriveFoldable, FlexibleContexts, FlexibleInstances, GADTs
            , KindSignatures, MultiParamTypeClasses, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving
            , TypeApplications, TypeOperators, TypeFamilies, TupleSections
-           , UndecidableInstances, ViewPatterns, PartialTypeSignatures #-}
+           , UndecidableInstances, ViewPatterns #-}
 
 {-# options_ghc -Wno-missing-methods #-}
 
 module Main where
 
 import Control.Applicative
-import Control.Monad
-import Control.Monad.Catch
 import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
@@ -25,12 +23,8 @@ import qualified Data.Word
 import Data.Bits (Bits(..), FiniteBits(..))
 import Numeric
 
-import System.Process hiding (proc)
-import GHC.IO.Exception (IOException)
-import Control.Concurrent.MVar
-import Data.IORef
 import Turtle
-import Turtle.Pipe
+import Embedder
 -- import Debug.Trace (traceShowId, traceShow)
 
 
@@ -70,60 +64,6 @@ matchingProps = testGroup "Pattern matching"
   , QC.testProperty "encoded-Int" $ prop_matchActorInt
   ]
 
-
--- ######## Embedder.hs
-
-data Embedder = Reference | WasmTime | Drun
-
-instance Arbitrary Embedder where arbitrary = elements [Reference, WasmTime]
-
-embedderCommand Reference = "wasm"
-embedderCommand WasmTime = "wasmtime"
-embedderCommand Drun = "drun"
-
-addCompilerArgs Reference = ("-no-system-api" :)
-addCompilerArgs WasmTime = ("-no-system-api" :)
-addCompilerArgs Drun = id
-
-addEmbedderArgs Reference = id
-addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
-addEmbedderArgs Drun = ("--extra-batches" :) . ("100" :)
-
-invokeEmbedder :: Embedder -> Turtle.FilePath -> IO (ExitCode, Text, Text)
-invokeEmbedder embedder wasm = go embedder
-  where fileArg = fromString . encodeString
-        Right wasmFile = toText wasm
-        revconcating = Fold (flip (:)) [] id
-        go :: Embedder -> IO (ExitCode, Text, Text)
-        go Drun = do
-          fuzz <- newIORef ""
-
-          sh $ do
-            let Right w = toText wasm
-                control = wasm <.> "fifo"
-            rm (fileArg control) `catch` \(_ :: GHC.IO.Exception.IOException) -> pure () -- rm -f
-            let Right c = toText control
-            procs "mkfifo" [c] empty
-            consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
-            let install = unsafeTextToLine $ format ("install ic:2A012B "%s%" 0x") w
-
-            pipe (fileArg control) (pure install
-                                   <|> "ingress ic:2A012B do 0x4449444c0000")
-            lns <- wait consumer
-            view lns
-            let errors = grep (has "Err: " <|> has "Reject: ") lns
-            linesToText . reverse <$> fold errors revconcating >>= liftIO <$> writeIORef fuzz
-
-          (ExitSuccess, "",) <$> readIORef fuzz
-
-        go _ = procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [wasmFile]) empty
-        forkShell :: Show a => Shell a -> Shell (_ (Shell a))
-        forkShell shell = do a <- fork (fold shell revconcating)
-                             pure (select . reverse <$> a)
-
-
-embedder :: Embedder
-embedder = WasmTime
 
 withPrim :: Line -> Line
 withPrim = (fromString "import Prim \"mo:prim\";" <>)
