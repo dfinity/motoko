@@ -19,11 +19,11 @@ as_ptr alloc_words(size_t n) {
 };
 
 void rts_trap(const char* str, size_t n) {
-  printf("RTS trap\n");
+   printf("RTS trap: %.*s\n", (int)n, str);
   abort();
 }
 void bigint_trap(const char* str, size_t n) {
-  printf("Bigint trap\n");
+   printf("Bigint trap: %.*s\n", (int)n, str);
   abort();
 }
 
@@ -86,5 +86,4 @@ int main(int argc, char** argv) {
   free(input);
   return 0;
 }
-
 
