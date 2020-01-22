@@ -1,4 +1,4 @@
-module Turtle.Pipe (pipe, writeonlyblocking, ) where
+module Turtle.Pipe (pipe, writeonlyblocking) where
 
 import Turtle
 
@@ -51,7 +51,3 @@ openBlockingTextFile path = GHC.IO.Handle.FD.openFileBlocking (encodeString path
 
 
 -- See discussion https://mail.haskell.org/pipermail/haskell-cafe/2012-October/104030.html
-
--- import GHC.IO.Handle.FD
--- openFileBlocking :: FilePath -> IOMode -> IO Handle
-
