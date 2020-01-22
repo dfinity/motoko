@@ -1,1 +1,1 @@
-import "self-import.mo";
+import "self-import";

@@ -1,5 +1,5 @@
-import Array "mo:stdlib/array.mo";
-import Rx "../src/Rx.mo";
+import Array "mo:stdlib/array";
+import Rx "../src/Rx";
 
 type Error = {
   description : Text;

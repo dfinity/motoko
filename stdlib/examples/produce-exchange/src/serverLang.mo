@@ -1,5 +1,5 @@
-import Result = "mo:stdlib/result.mo";
-import T = "serverTypes.mo";
+import Result = "mo:stdlib/result";
+import T = "serverTypes";
 
 
 module {

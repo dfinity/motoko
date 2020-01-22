@@ -6,6 +6,10 @@ type cursor_target =
    | CIdent of string
    | CQualified of string * string
 
+let string_of_cursor_target = function
+  | CIdent i -> "(CIdent " ^ i ^ ")"
+  | CQualified (q, i) -> "CQUalified (" ^ q ^ ", " ^ i ^ ")"
+
 let cursor_target_at_pos
     (position : Lsp.position)
     (file_contents : string)
@@ -118,7 +122,7 @@ let identifier_at_pos project_root file_path file_contents position =
       file_path
       file_contents in
   cursor_target_at_pos position file_contents
-    |> Option.map (function
+  |> Option.map (function
         | CIdent s ->
            (match List.find_opt (fun (alias, _) -> alias = s) imported with
             | None -> Ident s
