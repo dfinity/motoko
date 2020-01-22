@@ -122,8 +122,7 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
     I.PrimE (I.OtherPrim p, [exp e])
   | S.CallE (e1, inst, e2) ->
-    let inst = List.map (fun t -> t.Source.note) inst in
-    I.PrimE (I.CallPrim inst, [exp e1; exp e2])
+    I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
   | S.BlockE [] -> unitE.it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)
@@ -142,7 +141,11 @@ and exp' at note = function
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
-  | S.AsyncE e -> I.AsyncE (exp e)
+  | S.AsyncE (tb, e) ->
+    I.AsyncE (typ_bind tb, exp e,
+              match note.I.note_typ with
+              | T.Async (t, _) -> t
+              | _ -> assert false)
   | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
   | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
   | S.AnnotE (e, _) -> assert false
@@ -229,7 +232,7 @@ and typ_bind tb =
     | Some c -> c
     | _ -> assert false
   in
-  { it = { Ir.con = c; Ir.bound = tb.it.S.bound.note}
+  { it = { Ir.con = c; Ir.sort = T.Type; Ir.bound = tb.it.S.bound.note}
   ; at = tb.at
   ; note = ()
   }
@@ -243,7 +246,7 @@ and array_dotE array_ty proj e =
       if T.is_mut (T.as_array array_ty)
       then T.Array (T.Mut varA)
       else T.Array varA in
-    let ty_param = {T.var = "A"; T.bound = T.Any} in
+    let ty_param = {T.var = "A"; sort = T.Type; T.bound = T.Any} in
     let f = idE name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
     callE f [element_ty] e in
   match T.is_mut (T.as_array array_ty), proj with
@@ -462,7 +465,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   let wrap_under_async e =
     if T.is_shared_sort sort && control <> T.Returns
     then match e.it with
-      | Ir.AsyncE e' -> { e with it = Ir.AsyncE (wrap_po e') }
+      | Ir.AsyncE (tb, e', t) -> { e with it = Ir.AsyncE (tb, wrap_po e', t) }
       | _ -> assert false
     else wrap_po e in
 

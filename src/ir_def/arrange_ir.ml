@@ -22,7 +22,7 @@ let rec exp e = match e.it with
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
   | LoopE e1            -> "LoopE"   $$ [exp e1]
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
-  | AsyncE e            -> "AsyncE"  $$ [exp e]
+  | AsyncE (tb, e, t)   -> "AsyncE"  $$ [typ_bind tb; exp e; typ t]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
@@ -72,7 +72,7 @@ and prim = function
   | SelfRef t         -> "SelfRef"    $$ [typ t]
   | OtherPrim s       -> Atom s
   | CPSAwait          -> Atom "CPSAwait"
-  | CPSAsync          -> Atom "CPSAsync"
+  | CPSAsync t        -> "CPSAsync" $$ [typ t]
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICCallerPrim      -> Atom "ICCallerPrim"

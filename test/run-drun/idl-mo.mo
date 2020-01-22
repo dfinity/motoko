@@ -5,8 +5,8 @@ import imported "ic:00";
 type node = {head : Nat; tail : list};
 type list = ?node;
 type o = ?o;
-type stream = ?{head : Nat; next : shared query () -> async stream};  
-type tree = {#branch : {left : tree; right : tree; val : Int}; #leaf : Int};  
+type stream = ?{head : Nat; next : shared query () -> async stream};
+type tree = {#branch : {left : tree; right : tree; val : Int}; #leaf : Int};
 type s = actor {f : t; g : shared list -> async (tree, stream)};
 type t = shared s -> async ();
 

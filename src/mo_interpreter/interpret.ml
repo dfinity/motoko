@@ -596,14 +596,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
-  | AsyncE exp1 ->
+  | AsyncE (_, exp1) ->
     async env
       exp.at
       (fun k' r ->
         let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r; async = true}
         in interpret_exp env' exp1 k')
       k
-
   | AwaitE exp1 ->
     interpret_exp env exp1
       (fun v1 -> await env exp.at (V.as_async v1) k)

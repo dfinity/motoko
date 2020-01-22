@@ -241,8 +241,9 @@ let make_replying_message env id call_conv f =
 let make_message env x cc f : V.value =
   match cc.CC.control with
   | T.Returns -> make_unit_message env x cc f
-  | T.Promises-> make_async_message env x cc f
+  | T.Promises -> make_async_message env x cc f
   | T.Replies -> make_replying_message env x cc f
+
 
 (* Literals *)
 
@@ -374,7 +375,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         if Show.can_show ot
         then k (Value.Text (Show.show_val ot v1))
         else raise (Invalid_argument "debug_show")
-      | CPSAsync, [v1] ->
+      | CPSAsync _, [v1] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
         let (_, f) = V.as_func v1 in
         let typ = exp.note.note_typ in
@@ -466,7 +467,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id k env.labs} in
     interpret_exp env' exp1 k
-  | AsyncE exp1 ->
+  | AsyncE (_, exp1, _) ->
     assert env.flavor.has_await;
     async env
       exp.at
@@ -474,7 +475,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r; async = true}
         in interpret_exp env' exp1 k')
       k
-
   | DeclareE (id, typ, exp1) ->
     let env = adjoin_vals env (declare_id id) in
     interpret_exp env exp1 k

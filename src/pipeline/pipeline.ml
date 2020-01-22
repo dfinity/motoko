@@ -219,7 +219,7 @@ let check_prelude () : Syntax.prog * stat_env =
   match parse_with Lexer.Privileged lexer parse prelude_name with
   | Error e -> prelude_error "parsing" [e]
   | Ok prog ->
-    let senv0 = Scope.empty in
+    let senv0 = Typing.initial_scope in
     match infer_prog senv0 prog with
     | Error es -> prelude_error "checking" es
     | Ok ((_t, sscope), msgs) ->
@@ -328,12 +328,13 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
            Diag.sev = Diag.Error; at = ri.Source.at; cat = "import";
            text = Printf.sprintf "file %s does not define a service" f
          }]
-       else 
+       else
          let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
          let sscope = Scope.lib f actor in
          senv := Scope.adjoin !senv sscope;
          Diag.return ()
        )
+
   and go_set todo = Diag.traverse_ go todo
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)

@@ -45,14 +45,17 @@ and typ =
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
   | Func of func_sort * control * bind list * typ list * typ list  (* function *)
-  | Async of typ                              (* future *)
+  | Async of typ * typ                        (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Pre                                       (* pre-type *)
 
-and bind = {var : var; bound : typ}
+
+and bind_sort = Scope | Type
+and bind = {var : var; sort: bind_sort; bound : typ}
+
 and field = {lab : lab; typ : typ}
 
 and con = kind Con.t
@@ -113,7 +116,7 @@ val as_tup : typ -> typ list
 val as_unit : typ -> unit
 val as_pair : typ -> typ * typ
 val as_func : typ -> func_sort * control * bind list * typ list * typ list
-val as_async : typ -> typ
+val as_async : typ -> typ * typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
 val as_typ : typ -> con
@@ -128,13 +131,13 @@ val as_unit_sub : typ -> unit
 val as_pair_sub : typ -> typ * typ
 val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
-val as_async_sub : typ -> typ
+val as_async_sub : typ -> typ -> typ * typ
 
 
 (* Argument/result sequences *)
 
 val seq : typ list -> typ
-val codom : control -> typ list -> typ
+val codom : control -> (unit -> typ) -> typ list -> typ
 val as_seq : typ -> typ list (* This needs to go away *)
 val seq_of_tup : typ -> typ list
 val arity : typ -> int
@@ -202,6 +205,15 @@ val open_binds : bind list -> typ list
 (* Environments *)
 
 module Env : Env.S with type key = string
+
+
+(* Scope bindings *)
+
+val scope_var : var -> var
+val default_scope_var : var
+val scope_bound : typ
+val scope_bind : bind
+
 
 (* Pretty printing *)
 

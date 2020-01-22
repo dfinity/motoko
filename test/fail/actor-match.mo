@@ -4,7 +4,7 @@ let a : actor {f : () -> (); g : () -> ()} = actor {
 };
 
 func foo() = switch a {
-  case {f; g} { f() }
+  case {f; g} { () }
 };
 
 assert ((switch (foo()) { case () 0 }) == 0)

@@ -40,7 +40,7 @@ val seqP : pat list -> pat
 
 val primE : Ir.prim -> exp list -> exp
 val selfRefE : typ -> exp
-val asyncE : typ -> exp -> exp
+val asyncE : typ -> typ -> exp -> exp
 val assertE : exp -> exp
 val awaitE : typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
@@ -109,4 +109,5 @@ val seqE : exp list -> exp
 
 val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
+val forall : typ_bind list -> exp -> exp (* generalization *)
 val (-*-) : exp -> exp -> exp       (* application *)

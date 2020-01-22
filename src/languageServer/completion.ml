@@ -17,7 +17,8 @@ let template_of_ide_decl decl =
       | Type.Func(_, _, binds, ty_list1, ty_list2) ->
          let ty_args =
            binds
-           |> List.map (fun Type.{ var = var; bound = bound} ->
+           |> List.filter Type.(fun { sort; _ } -> sort = Type)
+           |> List.map (fun Type.{ var = var; bound = bound; _} ->
                   Printf.sprintf "${%s:%s}" (fresh ()) var)
            |> String.concat ", " in
          let args =
