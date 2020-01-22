@@ -12,6 +12,7 @@ import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
 import Test.QuickCheck.Unicode
+import System.Environment
 import qualified Data.Text (null, unpack)
 import Data.Maybe
 import Data.Bool (bool)
@@ -28,7 +29,7 @@ import Embedder
 -- import Debug.Trace (traceShowId, traceShow)
 
 
-main = defaultMain tests
+main = setEnv "TASTY_NUM_THREADS" "1" >> defaultMain tests
   where tests :: TestTree
         tests = testGroup "Motoko tests" [arithProps, conversionProps, utf8Props, matchingProps]
 
