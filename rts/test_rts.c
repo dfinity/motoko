@@ -46,6 +46,7 @@ extern as_ptr bigint_sub(as_ptr a, as_ptr b);
 extern as_ptr bigint_add(as_ptr a, as_ptr b);
 extern as_ptr bigint_mul(as_ptr a, as_ptr b);
 extern as_ptr bigint_pow(as_ptr a, as_ptr b);
+extern as_ptr bigint_neg(as_ptr a);
 extern bool bigint_eq(as_ptr a, as_ptr b);
 extern int bigint_leb128_size(as_ptr n);
 extern void bigint_leb128_encode(as_ptr n, unsigned char *buf);
@@ -111,12 +112,18 @@ int main () {
 
   for (uint32_t i = 0; i < 100; i++){
     as_ptr two_pow_i = bigint_pow(two, bigint_of_word32(i));
-    printf("sleb128 2^%u-1: ", i);
+    printf("sleb128  2^%u-1: ", i);
     test_bigint_sleb128(bigint_sub(two_pow_i, one));
-    printf("sleb128 2^%u:   ", i);
+    printf("sleb128  2^%u:   ", i);
     test_bigint_sleb128(two_pow_i);
-    printf("sleb128 2^%u+1: ", i);
+    printf("sleb128  2^%u+1: ", i);
     test_bigint_sleb128(bigint_add(two_pow_i, one));
+    printf("sleb128 -2^%u-1: ", i);
+    test_bigint_sleb128(bigint_neg(bigint_sub(two_pow_i, one)));
+    printf("sleb128 -2^%u:   ", i);
+    test_bigint_sleb128(bigint_neg(two_pow_i));
+    printf("sleb128 -2^%u+1: ", i);
+    test_bigint_sleb128(bigint_neg(bigint_add(two_pow_i, one)));
   }
 
   /*
