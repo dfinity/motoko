@@ -87,6 +87,7 @@ function normalize () {
     sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
     sed 's/source location: @[a-f0-9]*/source location: @___:/g' |
     sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
+    awk '/ingress\(0x/ {sub(/0+\) /, "0) ")} {print}' |
     cat > $1.norm
     mv $1.norm $1
   fi
