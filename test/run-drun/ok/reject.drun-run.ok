@@ -1,9 +1,9 @@
-ingress(0x0000000000000000000000000000000000000000000000000000000000000000) System
+ingress(0x0) System
 debug.print: 1
-ingress(0x0100000000000000000000000000000000000000000000000000000000000000) Completed: Canister: Reject: Error
-debug.print: 1
-debug.print: ok
-ingress(0x0200000000000000000000000000000000000000000000000000000000000000) Completed: Canister: Payload: 0x4449444c0000
+ingress(0x010) Completed: Canister: Reject: Error
 debug.print: 1
 debug.print: ok
-ingress(0x0300000000000000000000000000000000000000000000000000000000000000) Completed: Canister: Reject: Error
+ingress(0x020) Completed: Canister: Payload: 0x4449444c0000
+debug.print: 1
+debug.print: ok
+ingress(0x030) Completed: Canister: Reject: Error

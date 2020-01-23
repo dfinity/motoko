@@ -33,4 +33,4 @@ debug.print: 0x2A
 debug.print: 42
 debug.print: +42
 debug.print: -42
-ingress(0x0000000000000000000000000000000000000000000000000000000000000000) System
+ingress(0x0) System

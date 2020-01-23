@@ -1,4 +1,4 @@
-ingress(0x0000000000000000000000000000000000000000000000000000000000000000) System
+ingress(0x0) System
 debug.print: ok: Foo
 Ok: Payload: 0x4449444c0000
 debug.print: ok: Foo

@@ -1,4 +1,4 @@
-ingress(0x0000000000000000000000000000000000000000000000000000000000000000) System
+ingress(0x0) System
 debug.print: first-order
 debug.print: 0
 debug.print: 1
@@ -33,4 +33,4 @@ debug.print: 12
 debug.print: 13
 debug.print: 14
 debug.print: 15
-ingress(0x0100000000000000000000000000000000000000000000000000000000000000) Completed: Canister: Payload: 0x4449444c0000
+ingress(0x010) Completed: Canister: Payload: 0x4449444c0000

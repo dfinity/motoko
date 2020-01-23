@@ -1,2 +1,2 @@
-ingress(0x0000000000000000000000000000000000000000000000000000000000000000) System
-ingress(0x0100000000000000000000000000000000000000000000000000000000000000) Err: IC0503: Canister ic:2A012B trapped explicitly: not a self-call
+ingress(0x0) System
+ingress(0x010) Err: IC0503: Canister ic:2A012B trapped explicitly: not a self-call
