@@ -1,7 +1,7 @@
-ingress(0) System
+ingress(0x0000000000000000000000000000000000000000000000000000000000000000) System
 debug.print: aaab
 debug.print: babb
 debug.print: dadb
 debug.print: eaeb
 debug.print: cacb
-ingress(1) Completed: Canister: Payload: 0x4449444c0000
+ingress(0x0100000000000000000000000000000000000000000000000000000000000000) Completed: Canister: Payload: 0x4449444c0000

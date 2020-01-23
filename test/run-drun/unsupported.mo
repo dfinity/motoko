@@ -7,9 +7,7 @@ actor Counter {
 
     public func badfunctionarg(f:shared()->async ()) : async () {};
 
-    /* TODO
     public func badoneway(){}; // unsupported oneway
-    */
 
     public func ok() : async () {};
 
@@ -37,10 +35,6 @@ actor Counter {
 
 shared func bad_shared() { }; // not actor enclosed
 
-func local_spawn() {
-  ignore(async ()); // no async capability
-};
-
 {
     // shared function types aren't sharable
     type illformed_1 = shared (shared () -> ()) -> async ();
@@ -51,12 +45,6 @@ func local_spawn() {
     type illformed_2 = shared (actor {}) -> async ();
 };
 
-/* TODO
-{
-    // oneway functions aren't supported
-    type illformed_3 = shared () -> ();
-};
-*/
 
 {
   actor class BadActorClass () { }; // no actor classes

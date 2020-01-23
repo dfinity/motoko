@@ -1,4 +1,4 @@
-ingress(0) System
+ingress(0x0000000000000000000000000000000000000000000000000000000000000000) System
 debug.print: A
 debug.print: A
 debug.print: C
@@ -6,4 +6,4 @@ debug.print: Now in async
 debug.print: C
 debug.print: B
 debug.print: B
-ingress(1) Completed: Canister: Payload: 0x4449444c0000
+ingress(0x0100000000000000000000000000000000000000000000000000000000000000) Completed: Canister: Payload: 0x4449444c0000
