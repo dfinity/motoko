@@ -1,4 +1,4 @@
-ingress(0x0) System
+ingress(0x00) System
 debug.print: 0
 debug.print: +1
 debug.print: +3
@@ -40,4 +40,4 @@ debug.print: +2_148_489_869
 debug.print: +2_148_489_911
 debug.print: +2_148_489_869
 debug.print: +4_295_973_516
-ingress(0x010) Completed: Canister: Payload: 0x4449444c0000
+ingress(0x01) Completed: Canister: Payload: 0x4449444c0000

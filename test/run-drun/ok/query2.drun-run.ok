@@ -1,4 +1,4 @@
-ingress(0x0) System
+ingress(0x00) System
 debug.print: 2
 debug.print: 3
 debug.print: 4
@@ -10,4 +10,4 @@ debug.print: In read:
 debug.print: 5
 debug.print: The following fails in the interpreter, for lack of query semantics
 debug.print: 4
-ingress(0x010) Completed: Canister: Payload: 0x4449444c0000
+ingress(0x01) Completed: Canister: Payload: 0x4449444c0000

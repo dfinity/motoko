@@ -1,10 +1,10 @@
-ingress(0x0) System
+ingress(0x00) System
 debug.print: 2
-ingress(0x010) Completed: Canister: Payload: 0x4449444c0000
+ingress(0x01) Completed: Canister: Payload: 0x4449444c0000
 debug.print: 3
-ingress(0x020) Completed: Canister: Payload: 0x4449444c0000
+ingress(0x02) Completed: Canister: Payload: 0x4449444c0000
 debug.print: 4
-ingress(0x030) Completed: Canister: Payload: 0x4449444c0000
+ingress(0x03) Completed: Canister: Payload: 0x4449444c0000
 debug.print: 4
-ingress(0x040) Completed: Canister: Payload: 0x4449444c0000
-ingress(0x050) Completed: Canister: Payload: 0x4449444c00017d04
+ingress(0x04) Completed: Canister: Payload: 0x4449444c0000
+ingress(0x05) Completed: Canister: Payload: 0x4449444c00017d04
