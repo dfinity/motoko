@@ -27,9 +27,7 @@ import Control.Monad.Except
 import Data.STRef
 import Data.Maybe
 import Data.Int
-import Text.Printf
 
-import IC.Id
 import IC.Types
 import IC.Wasm.Winter
 import IC.Wasm.Imports
@@ -51,27 +49,23 @@ data ExecutionState s = ExecutionState
   { inst :: Instance s
   , self_id :: CanisterId
   , params :: Params
-  , existing_canisters :: ExistingCanisters
   -- now the mutable parts
   , responded :: Responded
   , response :: Maybe Response
   , reply_data :: Blob
   , calls :: [MethodCall]
-  , new_canisters :: NewCanisters
   }
 
 
-initalExecutionState :: CanisterId -> Instance s -> ExistingCanisters -> Responded -> ExecutionState s
-initalExecutionState self_id inst ex responded = ExecutionState
+initalExecutionState :: CanisterId -> Instance s -> Responded -> ExecutionState s
+initalExecutionState self_id inst responded = ExecutionState
   { inst
   , self_id
-  , existing_canisters = ex
   , params = Params Nothing Nothing 0 ""
   , responded
   , response = Nothing
   , reply_data = mempty
   , calls = mempty
-  , new_canisters = mempty
   }
 
 -- Some bookkeeping to access the ExecutionState
@@ -136,10 +130,6 @@ appendCall :: ESRef s -> MethodCall -> HostM s ()
 appendCall esref c = modES esref $ \es ->
   es { calls = calls es ++ [c] }
 
-appendNewCanister :: ESRef s -> (CanisterId, Blob, Blob) -> HostM s ()
-appendNewCanister esref c = modES esref $ \es ->
-  es { new_canisters = new_canisters es ++ [c] }
-
 -- The System API, with all imports
 
 -- The code is defined in the where clause to scope over the 'ESRef'
@@ -161,9 +151,6 @@ systemAPI esref =
   , toImport "ic0" "call_simple" call_simple
   , toImport "ic0" "debug_print" debug_print
   , toImport "ic0" "trap" explicit_trap
-  , toImport "stub" "create_canister" create_canister
-  , toImport "stub" "created_canister_id_size" created_canister_id_size
-  , toImport "stub" "created_canister_id_copy" created_canister_id_copy
   ]
   where
     -- Utilities
@@ -194,16 +181,6 @@ systemAPI esref =
         get_blob >>= \blob -> return $ fromIntegral (BS.length blob)
       , \(dst, offset, size) ->
         get_blob >>= \blob -> copy_to_canister dst offset size blob
-      )
-    size_and_copy1 :: (a -> HostM s Blob) ->
-      ( a -> HostM s Int32
-      , (a, Int32, Int32, Int32) -> HostM s ()
-      )
-    size_and_copy1 get_blob =
-      ( \x ->
-        get_blob x >>= \blob -> return $ fromIntegral (BS.length blob)
-      , \(x, dst, offset, size) ->
-        get_blob x >>= \blob -> copy_to_canister dst offset size blob
       )
 
     -- Unsafely print (if not in silent mode)
@@ -314,30 +291,6 @@ systemAPI esref =
       let msg = BSU.toString bytes
       throwError $ "canister trapped explicitly: " ++ msg
 
-    -- These system calls are not specified, and are backdoors for use
-    -- by the Motoko test suite
-
-    create_canister :: (Int32, Int32, Int32, Int32) -> HostM s Int32
-    create_canister (mod_src, mod_size, arg_src, arg_size) = do
-      ex <- gets existing_canisters
-      new <- gets new_canisters
-      let can_id = freshId (map (\(i,_,_) -> i) new ++ ex)
-      let idx = fromIntegral $ length new
-      mod <- copy_from_canister "create_canister" mod_src mod_size
-      arg <- copy_from_canister "create_canister" arg_src arg_size
-      appendNewCanister esref (can_id, mod, arg)
-      return idx
-
-    created_canister_id_size :: Int32 -> HostM s Int32
-    created_canister_id_copy :: (Int32, Int32, Int32, Int32) -> HostM s ()
-    (created_canister_id_size, created_canister_id_copy) = size_and_copy1 $ \idx' -> do
-      let idx = fromIntegral idx'
-      new <- gets new_canisters
-      unless (idx >= 0 && idx < length new) $
-        throwError $ printf "created_canister_id index (%d) out of bounds (%d)" idx (length new)
-      let (i,_,_) = new !! idx
-      return (rawEntityId i)
-
 -- The state of an instance, consistig of the underlying Wasm state,
 -- additional remembered information like the CanisterId
 -- and the 'ESRef' that the system api functions are accessing
@@ -352,14 +305,14 @@ rawInitialize esref cid wasm_mod = do
     Right inst -> return $ Return (esref, cid, inst)
 
 rawInvoke :: ImpState s -> CI.CanisterMethod r -> ST s (TrapOr r)
-rawInvoke esref (CI.Initialize ex wasm_mod caller dat) =
-    rawInitializeMethod esref ex wasm_mod caller dat
+rawInvoke esref (CI.Initialize wasm_mod caller dat) =
+    rawInitializeMethod esref wasm_mod caller dat
 rawInvoke esref (CI.Query name caller dat) =
     rawQueryMethod esref name caller dat
-rawInvoke esref (CI.Update name ex caller responded dat) =
-    rawUpdateMethod esref name ex caller responded dat
-rawInvoke esref (CI.Callback cb ex responded res) =
-    rawCallbackMethod esref cb ex responded res
+rawInvoke esref (CI.Update name caller responded dat) =
+    rawUpdateMethod esref name caller responded dat
+rawInvoke esref (CI.Callback cb responded res) =
+    rawCallbackMethod esref cb responded res
 
 cantRespond :: Responded
 cantRespond = Responded True
@@ -367,10 +320,10 @@ cantRespond = Responded True
 canRespond :: Responded
 canRespond = Responded False
 
-rawInitializeMethod :: ImpState s -> ExistingCanisters -> Module -> EntityId -> Blob -> ST s (TrapOr InitResult)
-rawInitializeMethod (esref, cid, inst) ex wasm_mod caller dat = do
+rawInitializeMethod :: ImpState s -> Module -> EntityId -> Blob -> ST s (TrapOr InitResult)
+rawInitializeMethod (esref, cid, inst) wasm_mod caller dat = do
   result <- runExceptT $ do
-    let es = (initalExecutionState cid inst ex cantRespond)
+    let es = (initalExecutionState cid inst cantRespond)
               { params = Params
                   { param_dat    = Just dat
                   , param_caller = Just caller
@@ -389,11 +342,11 @@ rawInitializeMethod (esref, cid, inst) ex wasm_mod caller dat = do
     Left  err -> return $ Trap err
     Right (_, es') -> return $
       -- TODO: extract canisters and calls here
-      Return (new_canisters es', calls es')
+      Return (calls es')
 
 rawQueryMethod :: ImpState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr Response)
 rawQueryMethod (esref, cid, inst) method caller dat = do
-  let es = (initalExecutionState cid inst [] canRespond)
+  let es = (initalExecutionState cid inst canRespond)
             { params = Params
                 { param_dat    = Just dat
                 , param_caller = Just caller
@@ -411,9 +364,9 @@ rawQueryMethod (esref, cid, inst) method caller dat = do
       | Just r <- response es' -> return $ Return r
       | otherwise -> return $ Trap "No response"
 
-rawUpdateMethod :: ImpState s -> MethodName -> ExistingCanisters -> EntityId -> Responded -> Blob -> ST s (TrapOr UpdateResult)
-rawUpdateMethod (esref, cid, inst) method ex caller responded dat = do
-  let es = (initalExecutionState cid inst ex responded)
+rawUpdateMethod :: ImpState s -> MethodName -> EntityId -> Responded -> Blob -> ST s (TrapOr UpdateResult)
+rawUpdateMethod (esref, cid, inst) method caller responded dat = do
+  let es = (initalExecutionState cid inst responded)
             { params = Params
                 { param_dat    = Just dat
                 , param_caller = Just caller
@@ -426,16 +379,16 @@ rawUpdateMethod (esref, cid, inst) method ex caller responded dat = do
     invokeExport inst ("canister_update " ++ method) []
   case result of
     Left  err -> return $ Trap err
-    Right (_, es') -> return $ Return (new_canisters es', calls es', response es')
+    Right (_, es') -> return $ Return (calls es', response es')
 
-rawCallbackMethod :: ImpState s -> Callback -> ExistingCanisters -> Responded -> Response -> ST s (TrapOr UpdateResult)
-rawCallbackMethod (esref, cid, inst) callback ex responded res = do
+rawCallbackMethod :: ImpState s -> Callback -> Responded -> Response -> ST s (TrapOr UpdateResult)
+rawCallbackMethod (esref, cid, inst) callback responded res = do
   let params = case res of
         Reply dat ->
           Params { param_dat = Just dat, param_caller = Nothing, reject_code = 0, reject_message = "" }
         Reject (rc, reject_message) ->
           Params { param_dat = Nothing, param_caller = Nothing, reject_code = rejectCode rc, reject_message }
-  let es = (initalExecutionState cid inst ex responded) { params }
+  let es = (initalExecutionState cid inst responded) { params }
 
   let WasmClosure fun_idx env = case res of
         Reply {}  -> reply_callback callback
@@ -445,6 +398,5 @@ rawCallbackMethod (esref, cid, inst) callback ex responded res = do
     invokeTable inst fun_idx [I32 env]
   case result of
     Left  err -> return $ Trap err
-    Right (_, es') -> return $
-        Return (new_canisters es', calls es', response es')
+    Right (_, es') -> return $ Return (calls es', response es')
 
