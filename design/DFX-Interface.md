@@ -139,25 +139,17 @@ The command
 
     moc --print-deps some/path/input.mo
 
-prints to the standard output all URLs _directly_ imported by
-`some/path/input.mo`, one per line. The import will be a full
-path if `moc` can resolve the URL. Unresolved imports (URLs)
-becomes the obligation of dfx to supply appropriate flags.
+prints to the standard output all URLs _transitively_ imported by
+`some/path/input.mo`, one per line. Each line outputs the original
+URL, and optionally a full path if `moc` can resolve the URL, separated by a space.
 For example,
 
-    // Unresolved imports
-    // e.g., mo:package stays unresolved unless --package flag is supplied
     mo:stdlib/List
     mo:other_package/Some/Module
     ic:ABCDE01A7
     canister:alias
-    // Resolved imports
-    some/path/local_import.mo
-    some/path/local_import.wasm
+    ./local_import some/path/local_import.mo
+    ./runtime some/path/runtime.wasm
 
-This _reads_ only `some/path/input.mo`, and writes no files.
+This may _read_ the same files as `moc -c` would, and writes no files.
 
-By transitively exploring the dependency graph using this command (and
-resolving URLs appropriately before passing them as files to `moc`), one can
-determine the full set of set of `.mo` files read by the two compilation modes
-described above (to wasm and to IDL).
