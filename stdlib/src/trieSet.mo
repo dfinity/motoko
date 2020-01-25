@@ -17,8 +17,8 @@
    in the future, we might avoid this via https://dfinity.atlassian.net/browse/AST-32
 
 */
-import Trie "trie.mo";
-import Hash "hash.mo";
+import Trie "trie";
+import Hash "hash";
 
 module {
 public type Hash = Hash.Hash;

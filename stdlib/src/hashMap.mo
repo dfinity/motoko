@@ -1,9 +1,9 @@
 import Prim "mo:prim";
-import P "prelude.mo";
-import A "array.mo";
-import Hash "hash.mo";
-import Iter "iter.mo";
-import AssocList "assocList.mo";
+import P "prelude";
+import A "array";
+import Hash "hash";
+import Iter "iter";
+import AssocList "assocList";
 
 module {
 

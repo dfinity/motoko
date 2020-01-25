@@ -1,11 +1,11 @@
 import Prim "mo:prim";
-import P "prelude.mo";
-import Option "option.mo";
-import H "hash.mo";
-import A "array.mo";
+import P "prelude";
+import Option "option";
+import H "hash";
+import A "array";
 
-import List "list.mo";
-import AssocList "assocList.mo";
+import List "list";
+import AssocList "assocList";
 
 module {
 /**

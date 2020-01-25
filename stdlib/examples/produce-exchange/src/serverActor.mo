@@ -4,16 +4,16 @@
  --------------------
 */
 
-import Debug "mo:stdlib/debug.mo";
-import P = "mo:stdlib/prelude.mo";
-import Option = "mo:stdlib/option.mo";
-import T = "serverTypes.mo";
-import L = "serverLang.mo";
-import Model = "serverModel.mo";
-import Result = "mo:stdlib/result.mo";
+import Debug "mo:stdlib/debug";
+import P = "mo:stdlib/prelude";
+import Option = "mo:stdlib/option";
+import T = "serverTypes";
+import L = "serverLang";
+import Model = "serverModel";
+import Result = "mo:stdlib/result";
 
-import Trie = "mo:stdlib/trie.mo";
-import List = "mo:stdlib/list.mo";
+import Trie = "mo:stdlib/trie";
+import List = "mo:stdlib/list";
 
 type List<T> = List.List<T>;
 

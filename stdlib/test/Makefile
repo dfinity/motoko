@@ -18,7 +18,7 @@ $(OUTDIR):
 $(OUTDIR)/import_all.mo: $(STDLIB_FILES) | $(OUTDIR)
 	> $@
 	for f in $(patsubst $(STDLIB)/%.mo,%,$(STDLIB_FILES)); do \
-	  echo "import Import_$$f \"mo:stdlib/$$f.mo\";" >> $@; \
+	  echo "import Import_$$f \"mo:stdlib/$$f\";" >> $@; \
 	done
 
 $(OUTDIR)/%.wasm: %.mo | $(OUTDIR)

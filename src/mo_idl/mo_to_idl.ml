@@ -105,7 +105,11 @@ let rec typ vs t =
   | Obj (Module, _) -> assert false
   | Variant fs ->
      I.VariantT (List.map (field vs) fs)
-  | Func (Shared s, c, [], ts1, ts2) ->
+  | Func (Shared s, c, tbs, ts1, ts2) ->
+     let nons = List.map (fun _ -> Non) tbs in
+     let ts1, ts2 =
+       (List.map (open_ nons) ts1,
+        List.map (open_ nons) ts2) in
      let t1 = args vs ts1 in
      (match ts2, c with
      | [], Returns -> I.FuncT ([I.Oneway @@ no_region], t1, [])
@@ -117,7 +121,7 @@ let rec typ vs t =
          t1, args vs ts)
      | _ -> assert false)
   | Func _ -> assert false
-  | Async t -> assert false
+  | Async _ -> assert false
   | Mut t -> assert false
   | Pre -> assert false
   ) @@ no_region

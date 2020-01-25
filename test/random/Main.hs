@@ -8,11 +8,11 @@
 module Main where
 
 import Control.Applicative
-import Control.Monad
 import Test.QuickCheck.Monadic
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
 import Test.QuickCheck.Unicode
+import System.Environment
 import qualified Data.Text (null, unpack)
 import Data.Maybe
 import Data.Bool (bool)
@@ -24,11 +24,12 @@ import qualified Data.Word
 import Data.Bits (Bits(..), FiniteBits(..))
 import Numeric
 
-import System.Process hiding (proc)
 import Turtle
--- import Debug.Trace (traceShowId)
+import Embedder
+-- import Debug.Trace (traceShowId, traceShow)
 
-main = defaultMain tests
+
+main = setEnv "TASTY_NUM_THREADS" "1" >> defaultMain tests
   where tests :: TestTree
         tests = testGroup "Motoko tests" [arithProps, conversionProps, utf8Props, matchingProps]
 
@@ -60,37 +61,31 @@ utf8Props = testGroup "UTF-8 coding"
 matchingProps = testGroup "Pattern matching"
   [ QC.testProperty "intra-actor" $ prop_matchStructured
   , QC.testProperty "inter-actor" $ prop_matchInActor
+  , QC.testProperty "encoded-Nat" $ prop_matchActorNat
+  , QC.testProperty "encoded-Int" $ prop_matchActorInt
   ]
 
-
-data Embedder = Reference | WasmTime
-
-instance Arbitrary Embedder where arbitrary = elements [Reference, WasmTime]
-
-embedderCommand Reference = "wasm"
-embedderCommand WasmTime = "wasmtime"
-
-addEmbedderArgs Reference = id
-addEmbedderArgs WasmTime = ("--disable-cache" :) . ("--cranelift" :)
-
-embedder :: Embedder
-embedder = WasmTime
 
 withPrim :: Line -> Line
 withPrim = (fromString "import Prim \"mo:prim\";" <>)
 
-(runScriptNoFuzz, runScriptWantFuzz) = (runner ExitSuccess id, runner (ExitFailure 1) not)
-    where runner reqOutcome relevant name testCase =
-            let as = name <.> "mo"
-                wasm = name <.> "wasm"
-                fileArg = fromString . encodeString
-                script = do Turtle.output as $ withPrim <$> fromString testCase
-                            res@(exitCode, _, _) <- procStrictWithErr "moc"
-                                ["-no-system-api", "-no-check-ir", fileArg as] empty
-                            if ExitSuccess == exitCode
-                            then (True,) <$> procStrictWithErr (embedderCommand embedder) (addEmbedderArgs embedder [fileArg wasm]) empty
-                            else pure (False, res)
-            in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
+runner :: Embedder -> ExitCode -> (Bool -> Bool) -> Turtle.FilePath -> String -> PropertyM IO ()
+runner embedder reqOutcome relevant name testCase =
+    let as = name <.> "mo"
+        wasm = name <.> "wasm"
+        fileArg = fromString . encodeString
+        script = do Turtle.output as $ withPrim <$> fromString testCase
+                    res@(exitCode, _, _) <- procStrictWithErr "moc"
+                      (addCompilerArgs embedder ["-no-check-ir", fileArg as]) empty
+                    if ExitSuccess == exitCode
+                    then (True,) <$> invokeEmbedder embedder wasm
+                    else pure (False, res)
+    in run script >>= assertOutcomeCheckingFuzz reqOutcome relevant
+
+(runScriptNoFuzz, runScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
+    where runEmbedder = runner embedder
+(drunScriptNoFuzz, drunScriptWantFuzz) = (runEmbedder ExitSuccess id, runEmbedder (ExitFailure 1) not)
+    where runEmbedder = runner Drun
 
 prop_explodeConcat :: UTF8 String -> Property
 prop_explodeConcat (UTF8 str) = monadicIO $ do
@@ -300,12 +295,25 @@ prop_matchInActor (Matching a) = mobile a
 
 mobile :: (AnnotLit t, MOValue t) => (MOTerm t, t) -> Property
 mobile (tm, v) = monadicIO $ do
-  let testCase = "/*let a = actor { public func match (b : " <> typed <> ") : async Bool = async { true } };*/ assert (switch (" <> expr <> " : " <> typed <> ") { case (" <> eval'd <> ") true; case _ false })"
+  let testCase = "actor { public func match (b : " <> typed <> ") : async () { assert (switch b { case (" <> eval'd <> ") true; case _ false }) }; public func do () : async () { let res = await match (" <> expr <> " : " <> typed <> "); return res } };"
 
       eval'd = unparse v
       typed = unparseType v
       expr = unparseMO tm
-  runScriptNoFuzz "matchMobile" testCase
+  drunScriptNoFuzz "matchMobile" testCase
+
+
+prop_matchActorNat :: Neuralgic Natural -> Property
+prop_matchActorNat nat = monadicIO $ do
+    let testCase = format ("actor { public func match (n : Nat) : async () { assert (switch n { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Nat); return res } };") eval'd eval'd
+        eval'd = evalN nat
+    drunScriptNoFuzz "matchActorNat" (Data.Text.unpack testCase)
+
+prop_matchActorInt :: Neuralgic Integer -> Property
+prop_matchActorInt int = monadicIO $ do
+    let testCase = format ("actor { public func match (i : Int) : async () { assert (switch i { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Int); return res } };") eval'd eval'd
+        eval'd = evalN int
+    drunScriptNoFuzz "matchActorInt" (Data.Text.unpack testCase)
 
 -- instances of MOValue describe "ground values" in
 -- Motoko. These can appear in patterns and have

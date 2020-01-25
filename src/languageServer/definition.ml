@@ -12,7 +12,11 @@ let range_of_region (at : Source.region) : Lsp.range = Lsp.
     range_end_ = position_of_pos at.Source.right;
   }
 
-let find_named (name : string) : DI.ide_decl list -> Source.region option =
+let find_named
+    : string ->
+      (string * DI.ide_decl list) ->
+      (string * Source.region) option =
+  fun name (path, decls) ->
   Lib.List.first_opt (function
     | DI.ValueDecl value ->
         if String.equal value.DI.name name
@@ -21,7 +25,8 @@ let find_named (name : string) : DI.ide_decl list -> Source.region option =
     | DI.TypeDecl typ ->
         if String.equal typ.DI.name name
         then typ.DI.definition
-        else None)
+        else None) decls
+  |> Option.map (fun x -> (path, x))
 
 let opt_bind f = function
   | Some x -> f x
@@ -47,13 +52,11 @@ let definition_handler
        | Resolved resolved ->
           DI.lookup_module resolved.path index
           |> opt_bind (find_named resolved.ident)
-          |> Option.map (fun loc -> (resolved.path, loc))
        | Ident ident ->
           Lib.FilePath.relative_to project_root file_path
           |> opt_bind (fun uri ->
               DI.lookup_module uri index
               |> opt_bind (find_named ident)
-              |> Option.map (fun loc -> (uri, loc))
       )) in
   let location =
     Option.map (fun (path, region) ->

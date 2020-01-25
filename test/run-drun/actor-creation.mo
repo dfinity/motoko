@@ -16,11 +16,11 @@ actor a {
     b.foo();
     Prim.debugPrint ("a.foo() done");
   };
+
   Prim.debugPrint ("a created");
 };
-Prim.debugPrint ("main actor calling a.foo()");
-a.foo();
 
+a.foo(); //OR-CALL ingress foo "DIDL\x00\x00"
 // certainly won’t work on drun
 //SKIP comp
 //SKIP comp-stub

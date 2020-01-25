@@ -35,7 +35,7 @@ let rec exp e = match e.it with
       (match t with None -> Atom "_" | Some t -> typ t);
       exp e'
     ]
-  | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ List.map typ ts @ [exp e2]
+  | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
   | BlockE ds           -> "BlockE"  $$ List.map dec ds
   | NotE e              -> "NotE"    $$ [exp e]
   | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
@@ -50,7 +50,7 @@ let rec exp e = match e.it with
   | DebugE e            -> "DebugE"  $$ [exp e]
   | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
   | RetE e              -> "RetE"    $$ [exp e]
-  | AsyncE e            -> "AsyncE"  $$ [exp e]
+  | AsyncE (tb, e)      -> "AsyncE"  $$ [typ_bind tb; exp e]
   | AwaitE e            -> "AwaitE"  $$ [exp e]
   | AssertE e           -> "AssertE" $$ [exp e]
   | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
@@ -60,6 +60,8 @@ let rec exp e = match e.it with
   | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
+
+and inst ts = List.map typ ts.it
 
 and pat p = match p.it with
   | WildP           -> Atom "WildP"
@@ -154,7 +156,7 @@ and typ t = match t.it with
   | VariantT cts        -> "VariantT" $$ List.map typ_tag cts
   | TupT ts             -> "TupT" $$ List.map typ ts
   | FuncT (s, tbs, at, rt) -> "FuncT" $$ [func_sort s] @ List.map typ_bind tbs @ [ typ at; typ rt]
-  | AsyncT t            -> "AsyncT" $$ [typ t]
+  | AsyncT (t1, t2)     -> "AsyncT" $$ [typ t1; typ t2]
   | ParT t              -> "ParT" $$ [typ t]
 
 and dec d = match d.it with

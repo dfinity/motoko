@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import Iter "iter.mo";
+import Iter "iter";
 
 module {
 /**
