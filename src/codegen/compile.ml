@@ -55,11 +55,18 @@ module Const = struct
        vanilla heap representation may be placed in static heap and shared
   *)
 
-  type t =
+  type v =
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
     | PublicMethod of int32 * string
     | Obj of (string * t) list
+
+  (* A constant known value together with a static memory location
+     (filled on demand)
+   *)
+  and t = (int32 Lib.Promise.t * v)
+
+  let t_of_v v = (Lib.Promise.make (), v)
 
 end (* Const *)
 
@@ -1236,6 +1243,13 @@ module Closure = struct
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
+
+  let static_closure env fi : int32 =
+    let tag = bytes_of_int32 Tagged.(int_of_tag Closure) in
+    let len = bytes_of_int32 (E.add_fun_ptr env fi) in
+    let zero = bytes_of_int32 0l in
+    let data = tag ^ len ^ zero in
+    E.add_static_bytes env data
 
 end (* Closure *)
 
@@ -4398,14 +4412,14 @@ module StackRep = struct
     | Const _ -> G.nop
     | Unreachable -> G.nop
 
-  let rec materialize env = function
+  let rec materialize env (p, cv) =
+    if Lib.Promise.is_fulfilled p
+    then compile_unboxed_const (Lib.Promise.value p)
+    else match cv with
     | Const.Fun fi ->
-      (* When accessing a variable that is a constant function, then we need to
-         create a heap-allocated closure-like thing on the fly. *)
-      Tagged.obj env Tagged.Closure [
-        compile_unboxed_const (E.add_fun_ptr env fi);
-        compile_unboxed_zero (* number of parameters: none *)
-      ]
+      let ptr = Closure.static_closure env fi in
+      Lib.Promise.fulfill p ptr;
+      compile_unboxed_const ptr
     | Const.Message fi ->
       assert false
     | Const.PublicMethod (_, name) ->
@@ -4430,8 +4444,8 @@ module StackRep = struct
     | UnboxedWord32, Vanilla -> BoxedSmallWord.box env
     | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env
 
-    | Const s, Vanilla -> materialize env s
-    | Const s, UnboxedTuple 0 -> G.nop
+    | Const c, Vanilla -> materialize env c
+    | Const c, UnboxedTuple 0 -> G.nop
 
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
@@ -4455,7 +4469,7 @@ module VarEnv = struct
     (* A static mutable memory location (static address of a MutBox field) *)
     (* TODO: Do we need static immutable? *)
     | HeapStatic of int32
-    (* Not materialized (yet), statically known constant *)
+    (* Not materialized (yet), statically known constant, static location on demand *)
     | Const of Const.t
 
   let is_non_local : varloc -> bool = function
@@ -4513,8 +4527,8 @@ module VarEnv = struct
   let add_local_heap_static (ae : t) name ptr =
       { ae with vars = NameEnv.add name (HeapStatic ptr) ae.vars }
 
-  let add_local_const (ae : t) name c =
-      { ae with vars = NameEnv.add name (Const c : varloc) ae.vars }
+  let add_local_const (ae : t) name cv =
+      { ae with vars = NameEnv.add name (Const cv : varloc) ae.vars }
 
   let add_local_local env (ae : t) name i =
       { ae with vars = NameEnv.add name (Local i) ae.vars }
@@ -4680,12 +4694,12 @@ module FuncDec = struct
     let (fi, fill) = E.reserve_fun pre_env name in
     if Type.is_shared_sort sort
     then begin
-      ( Const.Message fi, fun env ae ->
+      ( Const.t_of_v (Const.Message fi), fun env ae ->
         fill (compile_const_message env ae sort control args mk_body ret_tys at)
       )
     end else begin
       assert (control = Type.Returns);
-      ( Const.Fun fi, fun env ae ->
+      ( Const.t_of_v (Const.Fun fi), fun env ae ->
         let restore_no_env _env ae _ = (ae, G.nop) in
         fill (compile_local_function env ae restore_no_env args mk_body ret_tys at)
       )
@@ -4764,9 +4778,9 @@ module FuncDec = struct
 
     if captured = []
     then
-      let (c, fill) = closed env sort control name args mk_body ret_tys at in
+      let (ct, fill) = closed env sort control name args mk_body ret_tys at in
       fill env ae;
-      (SR.Const c, G.nop)
+      (SR.Const ct, G.nop)
     else closure env ae sort control name captured args mk_body ret_tys at
 
   (* Returns the index of a saved closure *)
@@ -5878,7 +5892,7 @@ and compile_exp (env : E.t) ae exp =
       StackRep.of_arity return_arity,
       let fun_sr, code1 = compile_exp env ae e1 in
       begin match fun_sr, sort with
-       | SR.Const (Const.Fun fi), _ ->
+       | SR.Const (_, Const.Fun fi), _ ->
           code1 ^^
           compile_unboxed_zero ^^ (* A dummy closure *)
           compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
@@ -5946,7 +5960,7 @@ and compile_exp (env : E.t) ae exp =
     | DotPrim name, [e] ->
       let sr, code1 = compile_exp env ae e in
       begin match sr with
-      | SR.Const (Const.Obj fs) ->
+      | SR.Const (_, Const.Obj fs) ->
         let c = List.assoc name fs in
         SR.Const c, code1
       | _ ->
@@ -6657,10 +6671,10 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
     let (const, fill) = compile_const_exp env pre_ae e in
     let fi = match const with
-      | Const.Message fi -> fi
+      | (_, Const.Message fi) -> fi
       | _ -> assert false in
-    let c = Const.PublicMethod (fi, (E.NameEnv.find v v2en)) in
-    let pre_ae1 = VarEnv.add_local_const pre_ae v c in
+    let cv = Const.t_of_v (Const.PublicMethod (fi, (E.NameEnv.find v v2en))) in
+    let pre_ae1 = VarEnv.add_local_const pre_ae v cv in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
   (* A special case for constant expressions *)
@@ -6759,11 +6773,11 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
             | _ -> fatal "compile_const_exp/ObjE: \"%s\" not found" f.it.var
           in f.it.name, st) fs
     in
-    (Const.Obj static_fs, fun _ _ -> ())
+    (Const.t_of_v (Const.Obj static_fs), fun _ _ -> ())
   | PrimE (DotPrim name, [e]) ->
     let (object_ct, fill) = compile_const_exp env pre_ae e in
     let fs = match object_ct with
-      | Const.Obj fs -> fs
+      | _, Const.Obj fs -> fs
       | _ -> fatal "compile_const_exp/DotE: not a static object" in
     let member_ct = List.assoc name fs in
     (member_ct, fill)
@@ -6836,7 +6850,7 @@ and export_actor_field env  ae (f : Ir.field) =
   let sr, code = Var.get_val env ae f.it.var in
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
   let fi = match sr with
-    | SR.Const (Const.PublicMethod (fi, _)) -> fi
+    | SR.Const (_, Const.PublicMethod (fi, _)) -> fi
     | _ -> assert false in
   (* There should be no code associated with this *)
   assert (G.is_nop code);
