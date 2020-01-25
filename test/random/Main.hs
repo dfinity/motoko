@@ -60,9 +60,9 @@ utf8Props = testGroup "UTF-8 coding"
 
 matchingProps = testGroup "Pattern matching"
   [ QC.testProperty "intra-actor" $ prop_matchStructured
-  , QC.testProperty "inter-actor" $ prop_matchInActor
-  , QC.testProperty "encoded-Nat" $ prop_matchActorNat
-  , QC.testProperty "encoded-Int" $ prop_matchActorInt
+  , QC.testProperty "inter-actor" $ withMaxSuccess 20 prop_matchInActor
+  , QC.testProperty "encoded-Nat" $ withMaxSuccess 10 prop_matchActorNat
+  , QC.testProperty "encoded-Int" $ withMaxSuccess 10 prop_matchActorInt
   ]
 
 
