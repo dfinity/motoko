@@ -1,5 +1,5 @@
 import Prim "mo:prim";
-import P "prelude.mo";
+import P "prelude";
 
 module {
 /**

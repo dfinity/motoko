@@ -106,7 +106,7 @@ in one big record, for convenience).
 The fields fall into the following categories:
 
  1. Static global fields. Never change.
-    Example: whether we are compiling with -no-system-api; the prelude code
+    Example: whether we are compiling with -no-system-api
 
  2. Immutable global fields. Change in a well-scoped manner.
     Example: Mapping from Motoko names to their location.
@@ -160,7 +160,6 @@ module E = struct
     (* Global fields *)
     (* Static *)
     mode : Flags.compile_mode;
-    prelude : Ir.prog; (* The prelude. Re-used when compiling actors *)
     rts : Wasm_exts.CustomModule.extended_module option; (* The rts. Re-used when compiling actors *)
     trap_with : t -> string -> G.t;
       (* Trap with message; in the env for dependency injection *)
@@ -198,10 +197,9 @@ module E = struct
 
 
   (* The initial global environment *)
-  let mk_global mode rts prelude trap_with dyn_mem : t = {
+  let mk_global mode rts trap_with dyn_mem : t = {
     mode;
     rts;
-    prelude;
     trap_with;
     func_types = ref [];
     func_imports = ref [];
@@ -365,10 +363,8 @@ module E = struct
         Printf.eprintf "Function import not declared: %s\n" name;
         G.i Unreachable
 
-  let get_prelude (env : t) = env.prelude
   let get_rts (env : t) = env.rts
 
-  let get_trap_with (env : t) = env.trap_with
   let trap_with env msg = env.trap_with env msg
   let then_trap_with env msg = G.if_ [] (trap_with env msg) G.nop
   let else_trap_with env msg = G.if_ [] G.nop (trap_with env msg)
@@ -2052,7 +2048,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_unsigned env get_x get_buf
       )
-      (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
+      (fun env ->
+        G.i Drop ^^
+        get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
       env
 
   let compile_store_to_data_buf_signed env =
@@ -2065,7 +2063,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_signed env get_x get_buf
       )
-      (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
+      (fun env ->
+        G.i Drop ^^
+        get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
 
   let compile_data_size_unsigned env =
@@ -2085,7 +2085,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_sleb128_size get_x
       )
-      (fun env -> Num.compile_data_size_unsigned env)
+      (fun env -> Num.compile_data_size_signed env)
       env
 
   let from_signed_word32 env =
@@ -2813,14 +2813,8 @@ module Dfinity = struct
 
   let system_imports env =
     match E.mode env with
-    | Flags.ICMode ->
+    | Flags.ICMode | Flags.StubMode  ->
       import_ic0 env
-    | Flags.StubMode  ->
-      import_ic0 env;
-      E.add_func_import env "stub" "create_canister" (i32s 4) [I32Type];
-      E.add_func_import env "stub" "created_canister_id_size" (i32s 1) [I32Type];
-      E.add_func_import env "stub" "created_canister_id_copy" (i32s 4) [];
-      ()
     | Flags.WASIMode ->
       E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
@@ -4527,9 +4521,6 @@ module VarEnv = struct
       let (ae_final, setters) = add_argument_locals env ae' names
       in (ae_final, G.i (LocalSet (nr i)) :: setters)
 
-  let in_scope_set (ae : t) =
-    NameEnv.fold (fun k _ -> Freevars.S.add k) ae.vars Freevars.S.empty
-
   let add_label (ae : t) name (d : G.depth) =
       { ae with labels = NameEnv.add name d ae.labels }
 
@@ -5082,6 +5073,8 @@ module AllocHow = struct
       List.for_all is_const_dec ds && is_const_exp e
     | NewObjE (Type.(Object | Module), _, t) ->
       Object.is_immutable t
+    | PrimE (DotPrim n, [e]) ->
+      is_const_exp e
     | _ -> false
 
   and is_const_dec dec = match dec.it with
@@ -5847,8 +5840,14 @@ let rec compile_lexp (env : E.t) ae lexp =
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
-  | PrimE (p, es) ->
+  | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.note_typ) es ->
+    (* Handle dead code separately, so that we can rely on useful type
+       annotations below *)
+    SR.Unreachable,
+    G.concat_map (compile_exp_ignore env ae) es ^^
+    G.i Unreachable
 
+  | PrimE (p, es) ->
     (* for more concise code when all arguments and result use the same sr *)
     let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
 
@@ -6370,12 +6369,7 @@ and compile_exp (env : E.t) ae exp =
       get_k
       get_r
   | ActorE (ds, fs, _) ->
-    SR.Vanilla,
-    let captured = Freevars.exp exp in
-    let prelude_names = find_prelude_names env in
-    if Freevars.M.is_empty (Freevars.diff captured prelude_names)
-    then actor_lit env ds fs exp.at
-    else todo_trap env "non-closed actor" (Arrange_ir.exp exp)
+    fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module) as _sort, fs, _) ->
     (*
     We can enable this warning once we treat everything as static that
@@ -6405,6 +6399,10 @@ and compile_exp_as env ae sr_out e =
       let sr_in, code = compile_exp env ae e in
       code ^^ StackRep.adjust env sr_in sr_out
   )
+
+and compile_exp_ignore env ae e =
+  let sr, code = compile_exp env ae e in
+  code ^^ StackRep.drop env sr
 
 and compile_exp_as_opt env ae sr_out_o e =
   let sr_in, code = compile_exp env ae e in
@@ -6748,6 +6746,13 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
           in f.it.name, st) fs
     in
     (Const.t_of_v (Const.Obj static_fs), fun _ _ -> ())
+  | PrimE (DotPrim name, [e]) ->
+    let (object_ct, fill) = compile_const_exp env pre_ae e in
+    let fs = match object_ct with
+      | _, Const.Obj fs -> fs
+      | _ -> fatal "compile_const_exp/DotE: not a static object" in
+    let member_ct = List.assoc name fs in
+    (member_ct, fill)
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
@@ -6775,32 +6780,6 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
     (fun env ae -> fill env ae)
 
   | _ -> fatal "compile_const_dec: Unexpected dec form"
-
-and compile_prelude env ae =
-  (* Allocate the primitive functions *)
-  let (decs, _flavor) = E.get_prelude env in
-  let (ae1, code) = compile_prog env ae decs in
-  (ae1, code)
-
-(*
-This is a horrible hack
-When determining whether an actor is closed, we disregard the prelude, because
-every actor is compiled with the prelude.
-This breaks with shadowing.
-This function compiles the prelude, just to find out the bound names.
-*)
-and find_prelude_names env =
-  (* Create a throw-away environment *)
-  let env0 = E.mk_global (E.mode env) None (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
-  Heap.register_globals env0;
-  Stack.register_globals env0;
-  Dfinity.system_imports env0;
-  RTS.system_imports env0;
-  let env1 = E.mk_fun_env env0 0l 0 in
-  let ae = VarEnv.empty_ae in
-  let (env2, _) = compile_prelude env1 ae in
-  VarEnv.in_scope_set env2
-
 
 and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
   let find_last_expr ds e =
@@ -6861,78 +6840,6 @@ and export_actor_field env  ae (f : Ir.field) =
       | _ -> assert false);
     edesc = nr (FuncExport (nr fi))
   })
-
-(* Local actor *)
-and actor_lit outer_env ds fs at =
-  let wasm_binary =
-    let mod_env = E.mk_global
-      (E.mode outer_env)
-      (E.get_rts outer_env)
-      (E.get_prelude outer_env)
-      (E.get_trap_with outer_env)
-      Stack.end_of_stack in
-
-    Heap.register_globals mod_env;
-    Stack.register_globals mod_env;
-
-    Dfinity.system_imports mod_env;
-    RTS.system_imports mod_env;
-    RTS_Exports.system_exports mod_env;
-
-    let start_fun = Func.of_body mod_env [] [] (fun env -> G.with_region at @@
-      let ae0 = VarEnv.empty_ae in
-
-      (* Compile the prelude *)
-      let (ae1, prelude_code) = compile_prelude env ae0 in
-
-      (* Reverse the fs, to a map from variable to exported name *)
-      let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
-
-      (* Compile the declarations *)
-      let (ae3, decls_code) = compile_decs_public env ae1 AllocHow.TopLvl ds v2en Freevars.S.empty in
-
-      (* Export the public functions *)
-      List.iter (export_actor_field env ae3) fs;
-
-      prelude_code ^^ decls_code) in
-    let start_fi = E.add_fun mod_env "start" start_fun in
-
-    if E.mode mod_env = Flags.ICMode then Dfinity.export_start mod_env start_fi;
-    if E.mode mod_env = Flags.StubMode then Dfinity.export_start mod_env start_fi;
-
-    let m = conclude_module mod_env None in
-    let (_map, wasm_binary) = Wasm_exts.CustomModuleEncode.encode m in
-    wasm_binary in
-
-    match E.mode outer_env with
-    | Flags.StubMode ->
-      let (set_idx, get_idx) = new_local outer_env "idx" in
-      let (set_len, get_len) = new_local outer_env "len" in
-      let (set_id, get_id) = new_local outer_env "id" in
-      (* the module *)
-      Blob.lit outer_env wasm_binary ^^
-      Blob.as_ptr_len outer_env ^^
-      (* the arg (not used in motoko yet) *)
-      compile_unboxed_const 0l ^^
-      compile_unboxed_const 0l ^^
-      Dfinity.system_call outer_env "stub" "create_canister" ^^
-      set_idx ^^
-
-      get_idx ^^
-      Dfinity.system_call outer_env "stub" "created_canister_id_size" ^^
-      set_len ^^
-
-      get_len ^^ Blob.alloc outer_env ^^ set_id ^^
-
-      get_idx ^^
-      get_id ^^ Blob.payload_ptr_unskewed ^^
-      compile_unboxed_const 0l ^^
-      get_len ^^
-      Dfinity.system_call outer_env "stub" "created_canister_id_copy" ^^
-
-      get_id
-    | _ -> assert false
-
 
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 ds fs =
@@ -7021,8 +6928,8 @@ and conclude_module env start_fi_o =
   | None -> emodule
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
-let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts prelude Dfinity.trap_with Stack.end_of_stack in
+let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
+  let env = E.mk_global mode rts Dfinity.trap_with Stack.end_of_stack in
 
   Heap.register_globals env;
   Stack.register_globals env;
@@ -7031,7 +6938,7 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
   RTS.system_imports env;
   RTS_Exports.system_exports env;
 
-  let start_fun = compile_start_func env (prelude :: progs) in
+  let start_fun = compile_start_func env progs in
   let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o = match E.mode env with
     | Flags.ICMode | Flags.StubMode -> Dfinity.export_start env start_fi; None

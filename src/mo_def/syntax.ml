@@ -47,17 +47,19 @@ and typ' =
   | VariantT of typ_tag list                       (* variant *)
   | TupT of typ list                               (* tuple *)
   | FuncT of func_sort * typ_bind list * typ * typ (* function *)
-  | AsyncT of typ                                  (* future *)
+  | AsyncT of scope * typ                          (* future *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
 
+and scope = typ
 and typ_field = typ_field' Source.phrase
 and typ_field' = {id : id; typ : typ; mut : mut}
 
 and typ_tag = typ_tag' Source.phrase
 and typ_tag' = {tag : id; typ : typ}
 
+and bind_sort = Type.bind_sort Source.phrase
 and typ_bind = (typ_bind', Type.con option) Source.annotated_phrase
-and typ_bind' = {var : id; bound : typ}
+and typ_bind' = {var : id; sort : bind_sort; bound : typ;}
 
 
 (* Literals *)
@@ -115,6 +117,9 @@ and vis' = Public | Private
 
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
+
+type inst = (typ list, Type.typ list) Source.annotated_phrase (* For implicit scope instantiation *)
+
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
 type exp = (exp', typ_note) Source.annotated_phrase
@@ -137,7 +142,7 @@ and exp' =
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * sort_pat * typ_bind list * pat * typ option * exp  (* function *)
-  | CallE of exp * typ list * exp              (* function call *)
+  | CallE of exp * inst * exp                  (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
@@ -151,7 +156,7 @@ and exp' =
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
-  | AsyncE of exp                              (* async *)
+  | AsyncE of typ_bind * exp                   (* async *)
   | AwaitE of exp                              (* await *)
   | AssertE of exp                             (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
@@ -233,4 +238,51 @@ let string_of_lit = function
   | TextLit t     -> t
   | FloatLit f    -> Value.Float.to_pretty_string f
   | PreLit _      -> assert false
+
+
+open Source
+let (@@) = Source.(@@)
+let (@?) it at = Source.({it; at; note = empty_typ_note})
+let (@!) it at = Source.({it; at; note = Type.Pre})
+let (@=) it at = Source.({it; at; note = None})
+
+let scope_typ region =
+  Source.(
+    { it = PathT (
+      { it = IdH { it = Type.default_scope_var; at = region; note = () };
+        at = no_region;
+        note = Type.Pre },
+      []);
+    at = region;
+    note = Type.Pre })
+
+let scope_bind var =
+  { var = Type.scope_var var @@ no_region;
+    sort = Type.Scope @@ no_region;
+    bound = PrimT "Any" @! no_region
+  } @= no_region
+
+let ensure_scope_bind var tbs =
+  match tbs with
+  | tb::_ when tb.it.sort.it = Type.Scope ->
+    tbs
+  | _ ->
+    scope_bind var::tbs
+
+let funcT(sort, tbs, t1, t2) =
+  match sort.it, t2.it with
+  | Type.Local, AsyncT _ ->
+    FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
+  | Type.Shared _, _ ->
+    FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
+  | _ ->
+    FuncT(sort, tbs, t1, t2)
+
+let funcE(f, s, tbs, p, t_opt, e) =
+  match s.it, t_opt, e with
+  | Type.Local, Some { it = AsyncT _; _}, {it = AsyncE _; _}
+  | Type.Shared _, _, _ ->
+    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, e)
+  | _ ->
+    FuncE(f, s, tbs, p, t_opt, e)
 

@@ -54,7 +54,7 @@ let new_asyncT =
   T.Func (
       T.Local,
       T.Returns,
-      [ { var = "T"; bound = T.Any } ],
+      [ { var = "T"; sort=T.Scope; bound = T.Any } ],
       [],
       new_async_ret unary (T.Var ("T", 0))
     )
@@ -115,7 +115,7 @@ let letEta e scope =
 
 let isAwaitableFunc exp =
   match typ exp with
-  | T.Func (T.Shared _,T.Promises,_,_,_) -> true
+  | T.Func (T.Shared _, T.Promises, _, _, _) -> true
   | _ -> false
 
 (* Given sequence type ts, bind e of type (seq ts) to a
@@ -167,11 +167,11 @@ let transform mode env prog =
     | Array t -> Array (t_typ t)
     | Tup ts -> Tup (List.map t_typ ts)
     | Func (s, c, tbs, ts1, ts2) ->
-      let c' = if c = T.Promises then T.Replies else c in
+      let c' =  match c with T.Promises -> T.Replies | _ -> c in
       Func (s, c', List.map t_bind tbs, List.map t_typ ts1, List.map t_typ ts2)
     | Opt t -> Opt (t_typ t)
     | Variant fs -> Variant (List.map t_field fs)
-    | Async t -> t_async nary (t_typ t)
+    | Async (_, t) -> t_async nary (t_typ t) (* TBR exploit the index _ *)
     | Obj (s, fs) -> Obj (s, List.map t_field fs)
     | Mut t -> Mut (t_typ t)
     | Any -> Any
@@ -179,8 +179,8 @@ let transform mode env prog =
     | Pre -> Pre
     | Typ c -> Typ (t_con c)
 
-  and t_bind {var; bound} =
-    {var; bound = t_typ bound}
+  and t_bind tb =
+    { tb with bound = t_typ tb.bound }
 
   and t_binds typbinds = List.map t_bind typbinds
 
@@ -232,30 +232,32 @@ let transform mode env prog =
     | VarE id -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | PrimE (CPSAwait, [a;kr]) ->
+    | PrimE (CPSAwait, [a; kr]) ->
       ((t_exp a) -*- (t_exp kr)).it
-    | PrimE (CPSAsync, [exp1]) ->
-      let ts1 = match typ exp1 with
-        | Func(_,_, [], [Func(_, _, [], ts1, []); _], []) -> List.map t_typ ts1
+    | PrimE (CPSAsync t0, [exp1]) ->
+      let t0 = t_typ t0 in
+      let tb, ts1 = match typ exp1 with
+        | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
+          tb, List.map t_typ (List.map (T.open_ [t0]) ts1)
         | t -> assert false in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply mode ts1 in
       (blockE [
                letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
-               let v = fresh_var "v" (T.seq ts1) in
+               let v = fresh_var "v" (T.seq ts1) in (* flatten v, here and below? *)
                let ic_reply = v --> (ic_replyE ts1 v) in
                let e = fresh_var "e" T.catch in
                let ic_reject = [e] -->* (ic_rejectE (errorMessageE e)) in
-               let exp' = t_exp exp1 -*- tupE [ic_reply; ic_reject] in
+               let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject]) in
                expD (selfcallE ts1 exp' nary_reply reject)
                ]
                nary_async
       ).it
     | PrimE (CallPrim typs, [exp1; exp2]) when isAwaitableFunc exp1 ->
-      assert (typs = []);
       let ts1,ts2 =
         match typ exp1 with
-        | T.Func (T.Shared _, T.Promises,tbs,ts1,ts2) ->
-          List.map t_typ ts1, List.map t_typ ts2
+        | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
+          List.map (fun t -> t_typ (T.open_ typs t)) ts1,
+          List.map (fun t -> t_typ (T.open_ typs t)) ts2
         | _ -> assert(false)
       in
       let exp1' = t_exp exp1 in
@@ -306,21 +308,21 @@ let transform mode env prog =
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in
-              let cps = match exp.it with
-                | PrimE (CPSAsync, [cps]) -> cps
+              let t0, cps = match exp.it with
+                | PrimE (CPSAsync t0, [cps]) -> t_typ t0, cps
                 | _ -> assert false in
               let t1, contT = match typ cps with
                 | Func(_,_,
-                       [],
+                       [tb],
                        [Func(_, _, [], ts1, []) as contT; _],
                        []) ->
-                  (t_typ (T.seq ts1),t_typ contT)
+                  (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
                 | t -> assert false in
               let v = fresh_var "v" t1 in
               let k = v --> (ic_replyE ret_tys v) in
               let e = fresh_var "e" T.catch in
               let r = [e] -->* (ic_rejectE (errorMessageE e)) in
-              let exp' = (t_exp cps) -*- tupE [k;r] in
+              let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
             (* oneway with an `ignore(async _)` body
                TODO: remove this special casing once async fully supported
@@ -329,27 +331,27 @@ let transform mode env prog =
               { it = BlockE (
                 [{ it = LetD (
                   { it = WildP; _},
-                  ({ it = PrimE (CPSAsync, _); _} as exp)); _ }],
+                  ({ it = PrimE (CPSAsync _, _); _} as exp)); _ }],
                 { it = PrimE (TupPrim, []); _});
                 _ } ->
               let ret_tys = List.map t_typ ret_tys in
               let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in
-              let cps = match exp.it with
-                | PrimE (CPSAsync, [cps]) -> cps
+              let t0, cps = match exp.it with
+                | PrimE (CPSAsync t0, [cps]) -> t_typ t0, cps
                 | _ -> assert false in
               let t1, contT = match typ cps with
                 | Func(_,_,
-                       [],
+                       [tb],
                        [Func(_, _, [], ts1, []) as contT; _],
                        []) ->
-                  (t_typ (T.seq ts1),t_typ contT)
+                  (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
                 | t -> assert false in
               let v = fresh_var "v" t1 in
               let k = v --> tupE [] in (* discard return *)
               let e = fresh_var "e" T.catch in
               let r = [e] -->* tupE [] in (* discard error *)
-              let exp' = (t_exp cps) -*- tupE [k;r] in
+              let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
               FuncE (x, T.Shared s', Returns, typbinds', args', ret_tys, exp')
             (* sequential oneway *)
             | Returns, _ ->
@@ -416,8 +418,8 @@ let transform mode env prog =
     | AltP (pat1, pat2) ->
       AltP (t_pat pat1, t_pat pat2)
 
-  and t_typ_bind' {con; bound} =
-    {con = t_con con; bound = t_typ bound}
+  and t_typ_bind' tb =
+    { tb with con = t_con tb.con; bound = t_typ tb.bound }
 
   and t_typ_bind typ_bind =
     { typ_bind with it = t_typ_bind' typ_bind.it }

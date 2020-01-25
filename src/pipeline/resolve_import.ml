@@ -47,10 +47,16 @@ type package_map = filepath M.t
 open Syntax
 open Source
 
-let append_lib_if_needed f =
-  if Sys.file_exists f && Sys.is_directory f
-  then Filename.concat f "lib.mo"
-  else f
+let append_extension file_exists f =
+  if Option.is_some (Lib.String.chop_suffix "/" f) then
+    Some (Filename.concat f "lib.mo")
+  else if Filename.extension f = "" then
+    if file_exists (f ^ ".mo") then
+      Some (f ^ ".mo")
+    else
+      Some (Filename.concat f "lib.mo")
+  else
+    None
 
 let err_unrecognized_url msgs at url msg =
   let open Diag in
@@ -87,6 +93,15 @@ let err_file_does_not_exist msgs at full_path =
       cat = "import";
       text = Printf.sprintf "file \"%s\" does not exist" full_path
     }
+
+let err_import_musnt_have_extension msgs at full_path =
+  let open Diag in
+  add_msg msgs {
+    sev = Error;
+    at;
+    cat = "import";
+    text = Printf.sprintf "an import must not have an extension, try importing %s as %s instead" full_path (Filename.chop_extension full_path)
+  }
 
 let err_package_not_defined msgs at pkg =
   let open Diag in
@@ -135,13 +150,17 @@ let err_prim_pkg msgs =
   }
 
 let add_lib_import msgs imported ri_ref at full_path =
-  let full_path = append_lib_if_needed full_path in
-  if Sys.file_exists full_path
-  then begin
-    ri_ref := LibPath full_path;
-    imported := RIM.add (LibPath full_path) at !imported
-  end else
-    err_file_does_not_exist msgs at full_path
+  match append_extension Sys.file_exists full_path with
+  | Some full_path ->
+     if Sys.file_exists full_path
+     then begin
+         ri_ref := LibPath full_path;
+         imported := RIM.add (LibPath full_path) at !imported
+       end else
+       err_file_does_not_exist msgs at full_path
+  | None ->
+       err_import_musnt_have_extension msgs at full_path
+
 
 let add_idl_import msgs imported ri_ref at full_path bytes =
   if Sys.file_exists full_path
@@ -221,6 +240,7 @@ type package_urls = url M.t
 type actor_aliases = url M.t
 type aliases = blob M.t
 
+
 let resolve_packages : package_urls -> package_map Diag.result = fun purls ->
   Diag.with_message_store (fun msgs -> Some (M.mapi (resolve_package_url msgs) purls))
 
@@ -231,17 +251,28 @@ type flags = {
   package_urls : package_urls;
   actor_aliases : actor_aliases;
   actor_idl_path : actor_idl_path;
-}
+  }
+
+type resolved_flags = {
+  packages : package_map;
+  aliases : aliases;
+  actor_idl_path : actor_idl_path;
+  }
+
+let resolve_flags : flags -> resolved_flags Diag.result
+  = fun { actor_idl_path; package_urls; actor_aliases } ->
+  Diag.bind (resolve_packages package_urls) (fun packages ->
+  Diag.bind (resolve_aliases actor_aliases) (fun aliases ->
+      Diag.return { packages; aliases; actor_idl_path }))
 
 let resolve
   : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
-  = fun {actor_idl_path; package_urls; actor_aliases} p base ->
-  Diag.bind (resolve_packages package_urls) (fun (packages:package_map) ->
-  Diag.bind (resolve_aliases actor_aliases) (fun aliases ->
+  = fun flags p base ->
+  Diag.bind (resolve_flags flags) (fun { packages; aliases; actor_idl_path } ->
     Diag.with_message_store (fun msgs ->
       let base = if Sys.is_directory base then base else Filename.dirname base in
       let imported = ref RIM.empty in
       List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported) (prog_imports p);
       Some (List.map (fun (rim,at) -> Source.(rim @@ at)) (RIM.bindings !imported))
     )
-  ))
+  )

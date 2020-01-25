@@ -1,3 +1,4 @@
+open Mo_config
 module Lsp_j = Lsp.Lsp_j
 module Lsp_t = Lsp.Lsp_t
 
@@ -95,6 +96,10 @@ let start entry_point debug =
       open_out "/dev/null" in
   let log_to_file = Channel.log_to_file oc in
   let _ = log_to_file "entry_point" entry_point in
+  let _ = Flags.M.iter
+            (fun k v -> log_to_file "package" (Printf.sprintf "%s => %s" k v))
+            !Flags.package_urls in
+  let _ = Debug.logger := log_to_file "debug" in
   let publish_diagnostics = Channel.publish_diagnostics oc in
   let clear_diagnostics = Channel.clear_diagnostics oc in
   let send_response = Channel.send_response oc in
@@ -110,7 +115,7 @@ let start entry_point debug =
     let ix = match Declaration_index.make_index log_to_file !vfs [entry_point] with
       | Error(err) ->
         List.iter (fun e -> log_to_file "Error" (Diag.string_of_message e))  err;
-        Declaration_index.empty
+        Declaration_index.empty ()
       | Ok((ix, _)) -> ix in
     ref ix in
   let rec loop () =

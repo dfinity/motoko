@@ -25,10 +25,6 @@ let positions_to_region position1 position2 =
 
 let at (startpos, endpos) = positions_to_region startpos endpos
 
-let (@?) it at = {it; at; note = empty_typ_note}
-let (@!) it at = {it; at; note = Type.Pre}
-let (@=) it at = {it; at; note = None}
-
 let dup_var x = VarE (x.it @@ x.at) @? x.at
 
 let anon sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
@@ -67,7 +63,7 @@ let let_or_exp named x e' at =
 let share_typ t =
   match t.it with
   | FuncT ({it = Type.Local; _} as s, tbs, t1, t2) ->
-    { t with it = FuncT ({s with it = Type.Shared Type.Write}, tbs, t1, t2)}
+    { t with it = funcT ({s with it = Type.Shared Type.Write}, tbs, t1, t2)}
   | _ -> t
 
 let share_typfield (tf : typ_field) =
@@ -76,7 +72,7 @@ let share_typfield (tf : typ_field) =
 let share_exp e =
   match e.it with
   | FuncE (x, ({it = Type.Local; _} as s), tbs, p, t, e) ->
-    FuncE (x, {s with it = Type.Shared (Type.Write, WildP @! s.at)}, tbs, p, t, e) @? e.at
+    funcE (x, {s with it = Type.Shared (Type.Write, WildP @! s.at)}, tbs, p, t, e) @? e.at
   | _ -> e
 
 let share_dec d =
@@ -250,7 +246,7 @@ typ_pre :
   | PRIM s=TEXT
     { PrimT(s) @! at $sloc }
   | ASYNC t=typ_pre
-    { AsyncT(t) @! at $sloc }
+    { AsyncT(scope_typ no_region, t) @! at $sloc }
   | s=obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
@@ -260,7 +256,7 @@ typ :
   | t=typ_pre
     { t }
   | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ
-    { FuncT(s, tps, t1, t2) @! at $sloc }
+    { funcT(s, tps, t1, t2) @! at $sloc }
 
 typ_item :
   | id COLON t=typ { t }
@@ -277,7 +273,7 @@ typ_field :
   | mut=var_opt x=id COLON t=typ
     { {id = x; typ = t; mut} @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary t2=return_typ
-    { let t = FuncT(Type.Local @@ no_region, tps, t1, t2)
+    { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       {id = x; typ = t; mut = Const @@ no_region} @@ at $sloc }
 
@@ -287,11 +283,9 @@ typ_tag :
 
 typ_bind :
   | x=id SUB t=typ
-    { {var = x; bound = t} @= at $sloc }
+    { {var = x; sort = Type.Type @@ no_region; bound = t} @= at $sloc }
   | x=id
-    { {var = x; bound = PrimT "Any" @! at $sloc} @= at $sloc }
-
-
+    { {var = x; sort = Type.Type @@ no_region; bound = PrimT "Any" @! at $sloc} @= at $sloc }
 
 (* Expressions *)
 
@@ -397,8 +391,7 @@ exp_post(B) :
   | e=exp_post(ob) DOT x=id
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(ob) tso=typ_args? e2=exp_nullary(ob)
-    { let typ_args = Lib.Option.get tso [] in
-      CallE(e1, typ_args, e2) @? at $sloc }
+    { CallE(e1, {it = Lib.Option.get tso []; at = no_region; note = []}, e2) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
@@ -451,7 +444,7 @@ exp_nondec(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp(bl)
-    { AsyncE(e) @? at $sloc }
+    { AsyncE(scope_bind (anon "async" (at $sloc)), e) @? at $sloc }
   | AWAIT e=exp(bl)
     { AwaitE(e) @? at $sloc }
   | ASSERT e=exp(bl)
@@ -640,15 +633,16 @@ dec_nonvar :
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
+      let named, x = xf "func" $sloc in
       let e = match fb with
         | (false, e) -> e (* body declared as EQ e *)
         | (true, e) -> (* body declared as immediate block *)
           match t with
-          | Some {it = AsyncT _; _} -> AsyncE(e) @? e.at
+          | Some {it = AsyncT _; _} ->
+	    AsyncE(scope_bind x.it, e) @? e.at
           | _ -> e
       in
-      let named, x = xf "func" $sloc in
-      let_or_exp named x (FuncE(x.it, sp, tps, p, t, e)) (at $sloc) }
+      let_or_exp named x (funcE(x.it, sp, tps, p, t, e)) (at $sloc) }
   | s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_param t=return_typ? cb=class_body
     { let x, efs = cb in

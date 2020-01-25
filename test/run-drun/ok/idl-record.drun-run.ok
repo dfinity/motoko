@@ -1,4 +1,4 @@
-ingress(0) System
+ingress System
 debug.print: ok: +42
 Ok: Payload: 0x4449444c0000
 debug.print: ok: Hey!

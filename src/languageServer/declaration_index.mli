@@ -2,7 +2,7 @@ open Source
 open Mo_types
 
 type t
-val empty : t
+val empty : unit -> t
 val string_of_index : t -> string
 
 type value_decl = {
@@ -24,7 +24,6 @@ type ide_decl =
 val string_of_ide_decl : ide_decl -> string
 val name_of_ide_decl : ide_decl -> string
 
-type path = string
-val lookup_module : path -> t -> ide_decl list option
+val lookup_module : string -> t -> (string * ide_decl list) option
 
 val make_index : (string -> string -> unit) -> Vfs.t -> string list -> t Diag.result

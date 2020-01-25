@@ -95,7 +95,7 @@ and t_exp' context exp' =
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
-  | AsyncE exp1 ->
+  | AsyncE (tb, exp1, typ1) ->
      let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
      (* add the implicit return/throw label *)
      let k_ret = fresh_cont (typ exp1) in
@@ -104,8 +104,9 @@ and t_exp' context exp' =
        LabelEnv.add Return (Cont (ContVar k_ret))
          (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
      in
-     (asyncE (typ exp1) ([k_ret; k_fail] -->*
-                           c_exp context' exp1 (ContVar k_ret))).it
+     (asyncE typ1 (typ exp1)
+        (forall [tb] ([k_ret; k_fail] -->*
+                       c_exp context' exp1 (ContVar k_ret)))).it
   | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp context exp1)
@@ -328,7 +329,7 @@ and c_exp' context exp k =
       | Some Label
       | None -> assert false
     end
-  | AsyncE exp1 ->
+  | AsyncE (tb, exp1, typ1) ->
      (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) in
     let k_fail = fresh_err_cont () in
@@ -336,8 +337,9 @@ and c_exp' context exp k =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
     in
-    k -@- (asyncE (typ exp1) ([k_ret; k_fail] -->*
-                                   (c_exp context' exp1 (ContVar k_ret))))
+    k -@- (asyncE typ1 (typ exp1)
+            (forall [tb] ([k_ret; k_fail] -->*
+                                   (c_exp context' exp1 (ContVar k_ret)))))
   | PrimE (AwaitPrim, [exp1]) ->
      let r = match LabelEnv.find_opt Throw context with
      | Some (Cont r) -> r
@@ -497,5 +499,3 @@ and t_prog (prog, flavor) =
   (t_block LabelEnv.empty prog, { flavor with has_await = false })
 
 let transform prog = t_prog prog
-
-

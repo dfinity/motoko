@@ -319,7 +319,7 @@ func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 // for testing
 func idlHash(x : Text) : Word32 { (prim "idlHash" : Text -> Word32) x };
 
-// Priting
+// Printing
 
 func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
 func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };

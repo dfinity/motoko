@@ -4,7 +4,7 @@ module M = Mo_types.Type
 module I = Idllib.Typing
 
 let m_env = ref M.Env.empty
- 
+
 let check_prim p =
   match p with
   | Null -> M.Prim M.Null
@@ -74,11 +74,11 @@ let rec check_typ env t =
      M.Variant (List.sort M.compare_field fs)
   | FuncT (ms, ts1, ts2) ->
      let (s, c) = check_modes ms in
-     M.Func (M.Shared s, c, [], List.map (check_typ env) ts1, List.map (check_typ env) ts2)
+     M.Func (M.Shared s, c, [M.scope_bind], List.map (check_typ env) ts1, List.map (check_typ env) ts2)
   | ServT ms ->
      let fs = List.map (check_meth env) ms in
      M.Obj (M.Actor, List.sort M.compare_field fs)
-  | PreT -> assert false          
+  | PreT -> assert false
 and check_field env f =
   M.{lab = check_label f.it.label; typ = check_typ env f.it.typ}
 and check_variant_field env f =

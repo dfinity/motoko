@@ -32,7 +32,7 @@ type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
 type 'a phrase = ('a, typ_note) Source.annotated_phrase
 
-type typ_bind' = {con : Type.con; bound : Type.typ}
+type typ_bind' = {con : Type.con; sort: Type.bind_sort; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
 
 type unop = Operator.unop
@@ -71,7 +71,7 @@ and exp' =
   | SwitchE of exp * case list                 (* switch *)
   | LoopE of exp                               (* do-while loop *)
   | LabelE of id * Type.typ * exp              (* label *)
-  | AsyncE of exp                              (* async *)
+  | AsyncE of typ_bind * exp * Type.typ        (* async *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
@@ -124,7 +124,7 @@ and prim =
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
   | CPSAwait
-  | CPSAsync
+  | CPSAsync of Type.typ
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICCallerPrim
