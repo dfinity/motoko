@@ -54,7 +54,7 @@ type env =
     cons : con_env;
     labs : lab_env;
     rets : ret_env;
-    async : bool;
+    async : T.con option;
   }
 
 let env_of_scope scope flavor : env =
@@ -63,7 +63,7 @@ let env_of_scope scope flavor : env =
     cons = T.ConSet.empty;
     labs = T.Env.empty;
     rets = None;
-    async = false;
+    async = None;
   }
 
 
@@ -147,7 +147,8 @@ let rec check_typ env typ : unit =
           check_con {env with cons = T.ConSet.add c env.cons} c;
         check_typ_bounds env tbs typs no_region
       | T.Abs (tbs, _) ->
-        check env no_region (T.ConSet.mem c env.cons) "free type constructor";
+        check env no_region (T.ConSet.mem c env.cons) "free type constructor %s "
+          (T.string_of_typ typ);
         check_typ_bounds env tbs typs no_region
     end
   | T.Any -> ()
@@ -178,24 +179,26 @@ let rec check_typ env typ : unit =
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
         check env no_region (sort <> T.Local)
-          "promising function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
-        check env no_region (List.for_all T.shared ts)
-          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
+          "promising function cannot be local:\n  %s" (T.string_of_typ typ);
+        check env no_region (List.for_all T.shared ts2)
+          "message result is not sharable:\n  %s" (T.string_of_typ typ)
       | T.Replies ->
         check env no_region (not env.flavor.Ir.has_async_typ)
           "replying function in pre-async flavor";
         check env no_region (sort <> T.Local)
-          "replying function cannot be local:\n  %s" (T.string_of_typ_expand (T.seq ts));
-        check env no_region (List.for_all T.shared ts)
-          "message result is not sharable:\n  %s" (T.string_of_typ_expand (T.seq ts))
+          "replying function cannot be local:\n  %s" (T.string_of_typ typ);
+        check env no_region (List.for_all T.shared ts2)
+          "message result is not sharable:\n  %s" (T.string_of_typ typ)
     end else
         check env no_region (control = T.Returns)
           "promising function cannot be local:\n  %s" (T.string_of_typ_expand typ);
   | T.Opt typ ->
     check_typ env typ
-  | T.Async typ ->
+  | T.Async (typ1, typ2) ->
+    check_typ env typ1;
+    check_typ env typ2;
     check env no_region env.flavor.Ir.has_async_typ "async in non-async flavor";
-    let t' = T.promote typ in
+    let t' = T.promote typ2 in
     check_shared env no_region t'
   | T.Obj (sort, fields) ->
     List.iter (check_typ_field env (Some sort)) fields;
@@ -310,7 +313,7 @@ let type_lit env lit at : T.prim =
 let isAsyncE exp =
   match exp.it with
   | AsyncE _ (* pre await transformation *)
-  | PrimE (CPSAsync, [_]) (* post await transformation *)
+  | PrimE (CPSAsync _, [_]) (* post await transformation *)
     -> true
   | _ -> false
 
@@ -342,7 +345,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         | T.Func (sort, control, tbs, arg_tys, ret_tys) ->
           check_inst_bounds env tbs insts exp.at;
           let t_arg = T.open_ insts (T.seq arg_tys) in
-          let t_ret = T.open_ insts (T.codom control ret_tys) in
+          let t_ret = T.codom control (fun () -> List.hd insts) (List.map (T.open_ insts) ret_tys) in
           if T.is_shared_sort sort then begin
             check_concrete env exp.at t_arg;
             check_concrete env exp.at t_ret;
@@ -430,19 +433,22 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Non <: t (* vacuously true *)
     | ThrowPrim, [exp1] ->
       check env.flavor.has_await "throw in non-await flavor";
-      check env.async "misplaced throw";
+      check (env.async <> None) "misplaced throw";
       typ exp1 <: T.throw;
       T.Non <: t (* vacuously true *)
     | AwaitPrim, [exp1] ->
       check env.flavor.has_await "await in non-await flavor";
-      check env.async "misplaced await";
+      let t0 = match env.async with
+      | Some c -> T.Con(c, [])
+      | None -> error env exp.at "misplaced await" in
       let t1 = T.promote (typ exp1) in
-      let t2 = try T.as_async_sub t1
-               with Invalid_argument _ ->
-                 error env exp1.at "expected async type, but expression has type\n  %s"
-                   (T.string_of_typ_expand t1)
+      let (t2, t3) = try T.as_async_sub t0 t1
+             with Invalid_argument _ ->
+               error env exp1.at "expected async type, but expression has type\n  %s"
+                 (T.string_of_typ_expand t1)
       in
-      t2 <: t
+      check (T.eq t0 t2) "ill-scoped async";
+      t3 <: t
     | AssertPrim, [exp1] ->
       typ exp1 <: T.bool;
       T.unit <: t
@@ -455,9 +461,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
       (* TODO: We can check more here, can we *)
-    | CPSAsync, [exp] ->
+    | CPSAsync t, [exp] ->
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
+      check_typ env t;
       (* TODO: We can check more here, can we *)
     | ICReplyPrim ts, [exp1] ->
       check (not (env.flavor.has_async_typ)) "ICReplyPrim in async flavor";
@@ -472,11 +479,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | ICCallerPrim, [] ->
       T.caller <: t
     | ICCallPrim, [exp1; exp2; k; r] ->
-      check_exp env k;
-      check_exp env r;
       let t1 = T.promote (typ exp1) in
       begin match t1 with
-      | T.Func (sort, T.Replies, [], arg_tys, ret_tys) ->
+      | T.Func (sort, T.Replies, _ (*TBR*), arg_tys, ret_tys) ->
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;
         check_concrete env exp.at t_arg;
@@ -545,7 +550,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_cases env t1 t cases
   | TryE (exp1, cases) ->
     check env.flavor.has_await "try in non-await flavor";
-    check env.async "misplaced try";
+    check (env.async <> None) "misplaced try";
     check_exp env exp1;
     typ exp1 <: t;
     check_cases env T.catch t cases;
@@ -559,14 +564,18 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp (add_lab env id t0) exp1;
     typ exp1 <: t0;
     t0 <: t
-  | AsyncE exp1 ->
+  | AsyncE (tb, exp1, t0) ->
     check env.flavor.has_await "async expression in non-await flavor";
+    check_typ env t0;
+    let c, tb, ce = check_open_typ_bind env tb in
     let t1 = typ exp1 in
     let env' =
-      {env with labs = T.Env.empty; rets = Some t1; async = true} in
+      {(adjoin_cons env ce)
+       with labs = T.Env.empty; rets = Some t1; async = Some c} in
     check_exp env' exp1;
-    t1 <: T.Any;
-    T.Async t1 <: t
+    let t1' = T.open_ [t0] (T.close [c] t1)  in
+    t1' <: T.Any; (* vacuous *)
+    T.Async (t0, t1') <: t
   | DeclareE (id, t0, exp1) ->
     check_typ env t0;
     let env' = adjoin_vals env (T.Env.singleton id t0) in
@@ -591,16 +600,16 @@ let rec check_exp env (exp:Ir.exp) : unit =
     T.unit <: t
   | FuncE (x, sort, control, typ_binds, args, ret_tys, exp) ->
     let cs, tbs, ce = check_open_typ_binds env typ_binds in
+    let ts = List.map (fun c -> T.Con(c, [])) cs in
     let env' = adjoin_cons env ce in
     let ve = check_args env' args in
     List.iter (check_typ env') ret_tys;
     check ((T.is_shared_sort sort && control = T.Promises) ==> isAsyncE exp)
       "shared function with async type has non-async body";
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
-    let codom = T.codom control ret_tys in
-    let is_oneway = T.is_shared_sort sort && control = T.Returns in
+    let codom = T.codom control (fun () -> List.hd ts) ret_tys in
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some codom; async = is_oneway} in
+      {env' with labs = T.Env.empty; rets = Some codom; async = None} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) codom;
     (* Now construct the function type and compare with the annotation *)
@@ -621,7 +630,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
   | ActorE (ds, fs, t0) ->
-    let env' = { env with async = false } in
+    let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
     let env'' = adjoin env' scope1 in
     check_decs env'' ds;
@@ -829,8 +838,13 @@ and check_open_typ_binds env typ_binds =
   let _ = check_typ_binds env tbs in
   cs, tbs, ce
 
+and check_open_typ_bind env typ_bind =
+  match check_open_typ_binds env [typ_bind] with
+  | [c], [tb], ce -> c, tb, ce
+  | _ -> assert false
+
 and close_typ_binds cs tbs =
-  List.map (fun {con; bound} -> {Type.var = Con.name con; bound = Type.close cs bound}) tbs
+  List.map (fun {con; sort; bound} -> {Type.var = Con.name con; sort = sort; bound = Type.close cs bound}) tbs
 
 and check_dec env dec  =
   (* helpers *)

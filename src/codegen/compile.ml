@@ -55,11 +55,18 @@ module Const = struct
        vanilla heap representation may be placed in static heap and shared
   *)
 
-  type t =
+  type v =
     | Fun of int32
     | Message of int32 (* anonymous message, only temporary *)
     | PublicMethod of int32 * string
     | Obj of (string * t) list
+
+  (* A constant known value together with a static memory location
+     (filled on demand)
+   *)
+  and t = (int32 Lib.Promise.t * v)
+
+  let t_of_v v = (Lib.Promise.make (), v)
 
 end (* Const *)
 
@@ -99,7 +106,7 @@ in one big record, for convenience).
 The fields fall into the following categories:
 
  1. Static global fields. Never change.
-    Example: whether we are compiling with -no-system-api; the prelude code
+    Example: whether we are compiling with -no-system-api
 
  2. Immutable global fields. Change in a well-scoped manner.
     Example: Mapping from Motoko names to their location.
@@ -153,7 +160,6 @@ module E = struct
     (* Global fields *)
     (* Static *)
     mode : Flags.compile_mode;
-    prelude : Ir.prog; (* The prelude. Re-used when compiling actors *)
     rts : Wasm_exts.CustomModule.extended_module option; (* The rts. Re-used when compiling actors *)
     trap_with : t -> string -> G.t;
       (* Trap with message; in the env for dependency injection *)
@@ -176,6 +182,8 @@ module E = struct
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
+    static_roots : int32 list ref;
+      (* GC roots in static memory. (Everything that may be mutable.) *)
 
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
@@ -191,10 +199,9 @@ module E = struct
 
 
   (* The initial global environment *)
-  let mk_global mode rts prelude trap_with dyn_mem : t = {
+  let mk_global mode rts trap_with dyn_mem : t = {
     mode;
     rts;
-    prelude;
     trap_with;
     func_types = ref [];
     func_imports = ref [];
@@ -210,6 +217,7 @@ module E = struct
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
+    static_roots = ref [];
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
     return_arity = 0;
@@ -358,10 +366,8 @@ module E = struct
         Printf.eprintf "Function import not declared: %s\n" name;
         G.i Unreachable
 
-  let get_prelude (env : t) = env.prelude
   let get_rts (env : t) = env.rts
 
-  let get_trap_with (env : t) = env.trap_with
   let trap_with env msg = env.trap_with env msg
   let then_trap_with env msg = G.if_ [] (trap_with env msg) G.nop
   let else_trap_with env msg = G.if_ [] G.nop (trap_with env msg)
@@ -404,6 +410,12 @@ module E = struct
   let get_end_of_static_memory env : int32 =
     env.static_memory_frozen := true;
     !(env.end_of_static_memory)
+
+  let add_static_root (env : t) ptr =
+    env.static_roots := ptr :: !(env.static_roots)
+
+  let get_static_roots (env : t) =
+    !(env.static_roots)
 
   let get_static_memory env =
     !(env.static_memory)
@@ -1232,6 +1244,13 @@ module Closure = struct
     G.i (CallIndirect (nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
 
+  let static_closure env fi : int32 =
+    let tag = bytes_of_int32 Tagged.(int_of_tag Closure) in
+    let len = bytes_of_int32 (E.add_fun_ptr env fi) in
+    let zero = bytes_of_int32 0l in
+    let data = tag ^ len ^ zero in
+    E.add_static_bytes env data
+
 end (* Closure *)
 
 
@@ -2038,7 +2057,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_unsigned env get_x get_buf
       )
-      (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
+      (fun env ->
+        G.i Drop ^^
+        get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_unsigned env)
       env
 
   let compile_store_to_data_buf_signed env =
@@ -2051,7 +2072,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_signed env get_x get_buf
       )
-      (fun env -> G.i Drop ^^ get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
+      (fun env ->
+        G.i Drop ^^
+        get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
 
   let compile_data_size_unsigned env =
@@ -2071,7 +2094,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         extend ^^ compile_shrS_const 1l ^^ set_x ^^
         I32Leb.compile_sleb128_size get_x
       )
-      (fun env -> Num.compile_data_size_unsigned env)
+      (fun env -> Num.compile_data_size_signed env)
       env
 
   let from_signed_word32 env =
@@ -2799,14 +2822,8 @@ module Dfinity = struct
 
   let system_imports env =
     match E.mode env with
-    | Flags.ICMode ->
+    | Flags.ICMode | Flags.StubMode  ->
       import_ic0 env
-    | Flags.StubMode  ->
-      import_ic0 env;
-      E.add_func_import env "stub" "create_canister" (i32s 4) [I32Type];
-      E.add_func_import env "stub" "created_canister_id_size" (i32s 1) [I32Type];
-      E.add_func_import env "stub" "created_canister_id_copy" (i32s 4) [];
-      ()
     | Flags.WASIMode ->
       E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
@@ -3141,6 +3158,17 @@ module HeapTraversal = struct
           set_x
         )
 
+  let for_each_array_elem env get_array mk_code =
+      get_array ^^
+      Heap.load_field Arr.len_field ^^
+      from_0_to_n env (fun get_i ->
+        mk_code (
+          get_array ^^
+          get_i ^^
+          Arr.idx env
+        )
+      )
+
   (* Calls mk_code for each pointer in the object pointed to by get_x,
      passing code get the address of the pointer,
      and code to get the offset of the pointer (for the BigInt payload field). *)
@@ -3176,13 +3204,8 @@ module HeapTraversal = struct
         set_ptr_loc ^^
         code
       ; Tagged.Array,
-        get_x ^^
-        Heap.load_field Arr.len_field ^^
-        (* Adjust fields *)
-        from_0_to_n env (fun get_i ->
-          get_x ^^
-          get_i ^^
-          Arr.idx env ^^
+        for_each_array_elem env get_x (fun get_elem_ptr ->
+          get_elem_ptr ^^
           set_ptr_loc ^^
           code
         )
@@ -4229,7 +4252,7 @@ module GC = struct
         get_begin_from_space get_begin_to_space get_end_to_space
   )
 
-  let register env (end_of_static_space : int32) =
+  let register env static_roots (end_of_static_space : int32) =
     Func.define_built_in env "get_heap_size" [] [I32Type] (fun env ->
       Heap.get_heap_ptr env ^^
       Heap.get_heap_base env ^^
@@ -4267,11 +4290,12 @@ module GC = struct
           set_end_to_space in
 
       (* Go through the roots, and evacuate them *)
+      HeapTraversal.for_each_array_elem env (compile_unboxed_const static_roots) (fun get_elem_ptr ->
+        let (set_static, get_static) = new_local env "static_obj" in
+        get_elem_ptr ^^ load_ptr ^^ set_static ^^
+        HeapTraversal.for_each_pointer env get_static evac evac_offset
+      ) ^^
       evac (ClosureTable.root env) ^^
-      HeapTraversal.walk_heap_from_to env
-        (compile_unboxed_const Int32.(add Stack.end_of_stack ptr_skew))
-        (compile_unboxed_const Int32.(add end_of_static_space ptr_skew))
-        (fun get_x -> HeapTraversal.for_each_pointer env get_x evac evac_offset) ^^
 
       (* Go through the to-space, and evacuate that.
          Note that get_end_to_space changes as we go, but walk_heap_from_to can handle that.
@@ -4296,6 +4320,17 @@ module GC = struct
 
   let get_heap_size env =
     G.i (Call (nr (E.built_in env "get_heap_size")))
+
+  let store_static_roots env =
+    let roots = E.get_static_roots env in
+
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Array) in
+    let len = bytes_of_int32 (Int32.of_int (List.length roots)) in
+    let payload = String.concat "" (List.map bytes_of_int32 roots) in
+    let data = tag ^ len ^ payload in
+    let ptr = E.add_static_bytes env data in
+    ptr
+
 
 end (* GC *)
 
@@ -4377,14 +4412,14 @@ module StackRep = struct
     | Const _ -> G.nop
     | Unreachable -> G.nop
 
-  let rec materialize env = function
+  let rec materialize env (p, cv) =
+    if Lib.Promise.is_fulfilled p
+    then compile_unboxed_const (Lib.Promise.value p)
+    else match cv with
     | Const.Fun fi ->
-      (* When accessing a variable that is a constant function, then we need to
-         create a heap-allocated closure-like thing on the fly. *)
-      Tagged.obj env Tagged.Closure [
-        compile_unboxed_const (E.add_fun_ptr env fi);
-        compile_unboxed_zero (* number of parameters: none *)
-      ]
+      let ptr = Closure.static_closure env fi in
+      Lib.Promise.fulfill p ptr;
+      compile_unboxed_const ptr
     | Const.Message fi ->
       assert false
     | Const.PublicMethod (_, name) ->
@@ -4409,8 +4444,8 @@ module StackRep = struct
     | UnboxedWord32, Vanilla -> BoxedSmallWord.box env
     | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env
 
-    | Const s, Vanilla -> materialize env s
-    | Const s, UnboxedTuple 0 -> G.nop
+    | Const c, Vanilla -> materialize env c
+    | Const c, UnboxedTuple 0 -> G.nop
 
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
@@ -4434,7 +4469,7 @@ module VarEnv = struct
     (* A static mutable memory location (static address of a MutBox field) *)
     (* TODO: Do we need static immutable? *)
     | HeapStatic of int32
-    (* Not materialized (yet), statically known constant *)
+    (* Not materialized (yet), statically known constant, static location on demand *)
     | Const of Const.t
 
   let is_non_local : varloc -> bool = function
@@ -4492,8 +4527,8 @@ module VarEnv = struct
   let add_local_heap_static (ae : t) name ptr =
       { ae with vars = NameEnv.add name (HeapStatic ptr) ae.vars }
 
-  let add_local_const (ae : t) name c =
-      { ae with vars = NameEnv.add name (Const c : varloc) ae.vars }
+  let add_local_const (ae : t) name cv =
+      { ae with vars = NameEnv.add name (Const cv : varloc) ae.vars }
 
   let add_local_local env (ae : t) name i =
       { ae with vars = NameEnv.add name (Local i) ae.vars }
@@ -4512,9 +4547,6 @@ module VarEnv = struct
       let ae' = { ae with vars = NameEnv.add name (Local i) ae.vars } in
       let (ae_final, setters) = add_argument_locals env ae' names
       in (ae_final, G.i (LocalSet (nr i)) :: setters)
-
-  let in_scope_set (ae : t) =
-    NameEnv.fold (fun k _ -> Freevars.S.add k) ae.vars Freevars.S.empty
 
   let add_label (ae : t) name (d : G.depth) =
       { ae with labels = NameEnv.add name d ae.labels }
@@ -4662,12 +4694,12 @@ module FuncDec = struct
     let (fi, fill) = E.reserve_fun pre_env name in
     if Type.is_shared_sort sort
     then begin
-      ( Const.Message fi, fun env ae ->
+      ( Const.t_of_v (Const.Message fi), fun env ae ->
         fill (compile_const_message env ae sort control args mk_body ret_tys at)
       )
     end else begin
       assert (control = Type.Returns);
-      ( Const.Fun fi, fun env ae ->
+      ( Const.t_of_v (Const.Fun fi), fun env ae ->
         let restore_no_env _env ae _ = (ae, G.nop) in
         fill (compile_local_function env ae restore_no_env args mk_body ret_tys at)
       )
@@ -4746,9 +4778,9 @@ module FuncDec = struct
 
     if captured = []
     then
-      let (c, fill) = closed env sort control name args mk_body ret_tys at in
+      let (ct, fill) = closed env sort control name args mk_body ret_tys at in
       fill env ae;
-      (SR.Const c, G.nop)
+      (SR.Const ct, G.nop)
     else closure env ae sort control name captured args mk_body ret_tys at
 
   (* Returns the index of a saved closure *)
@@ -5068,6 +5100,8 @@ module AllocHow = struct
       List.for_all is_const_dec ds && is_const_exp e
     | NewObjE (Type.(Object | Module), _, t) ->
       Object.is_immutable t
+    | PrimE (DotPrim n, [e]) ->
+      is_const_exp e
     | _ -> false
 
   and is_const_dec dec = match dec.it with
@@ -5153,6 +5187,7 @@ module AllocHow = struct
       let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
       let zero = bytes_of_int32 0l in
       let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
+      E.add_static_root env ptr;
       let ae1 = VarEnv.add_local_heap_static ae name ptr in
       (ae1, G.nop)
 
@@ -5833,8 +5868,14 @@ let rec compile_lexp (env : E.t) ae lexp =
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
-  | PrimE (p, es) ->
+  | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.note_typ) es ->
+    (* Handle dead code separately, so that we can rely on useful type
+       annotations below *)
+    SR.Unreachable,
+    G.concat_map (compile_exp_ignore env ae) es ^^
+    G.i Unreachable
 
+  | PrimE (p, es) ->
     (* for more concise code when all arguments and result use the same sr *)
     let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
 
@@ -5851,7 +5892,7 @@ and compile_exp (env : E.t) ae exp =
       StackRep.of_arity return_arity,
       let fun_sr, code1 = compile_exp env ae e1 in
       begin match fun_sr, sort with
-       | SR.Const (Const.Fun fi), _ ->
+       | SR.Const (_, Const.Fun fi), _ ->
           code1 ^^
           compile_unboxed_zero ^^ (* A dummy closure *)
           compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
@@ -5919,7 +5960,7 @@ and compile_exp (env : E.t) ae exp =
     | DotPrim name, [e] ->
       let sr, code1 = compile_exp env ae e in
       begin match sr with
-      | SR.Const (Const.Obj fs) ->
+      | SR.Const (_, Const.Obj fs) ->
         let c = List.assoc name fs in
         SR.Const c, code1
       | _ ->
@@ -6356,12 +6397,7 @@ and compile_exp (env : E.t) ae exp =
       get_k
       get_r
   | ActorE (ds, fs, _) ->
-    SR.Vanilla,
-    let captured = Freevars.exp exp in
-    let prelude_names = find_prelude_names env in
-    if Freevars.M.is_empty (Freevars.diff captured prelude_names)
-    then actor_lit env ds fs exp.at
-    else todo_trap env "non-closed actor" (Arrange_ir.exp exp)
+    fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module) as _sort, fs, _) ->
     (*
     We can enable this warning once we treat everything as static that
@@ -6391,6 +6427,10 @@ and compile_exp_as env ae sr_out e =
       let sr_in, code = compile_exp env ae e in
       code ^^ StackRep.adjust env sr_in sr_out
   )
+
+and compile_exp_ignore env ae e =
+  let sr, code = compile_exp env ae e in
+  code ^^ StackRep.drop env sr
 
 and compile_exp_as_opt env ae sr_out_o e =
   let sr_in, code = compile_exp env ae e in
@@ -6631,10 +6671,10 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
     let (const, fill) = compile_const_exp env pre_ae e in
     let fi = match const with
-      | Const.Message fi -> fi
+      | (_, Const.Message fi) -> fi
       | _ -> assert false in
-    let c = Const.PublicMethod (fi, (E.NameEnv.find v v2en)) in
-    let pre_ae1 = VarEnv.add_local_const pre_ae v c in
+    let cv = Const.t_of_v (Const.PublicMethod (fi, (E.NameEnv.find v v2en))) in
+    let pre_ae1 = VarEnv.add_local_const pre_ae v cv in
     ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
   (* A special case for constant expressions *)
@@ -6733,7 +6773,14 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
             | _ -> fatal "compile_const_exp/ObjE: \"%s\" not found" f.it.var
           in f.it.name, st) fs
     in
-    (Const.Obj static_fs, fun _ _ -> ())
+    (Const.t_of_v (Const.Obj static_fs), fun _ _ -> ())
+  | PrimE (DotPrim name, [e]) ->
+    let (object_ct, fill) = compile_const_exp env pre_ae e in
+    let fs = match object_ct with
+      | _, Const.Obj fs -> fs
+      | _ -> fatal "compile_const_exp/DotE: not a static object" in
+    let member_ct = List.assoc name fs in
+    (member_ct, fill)
   | _ -> assert false
 
 and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
@@ -6761,32 +6808,6 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
     (fun env ae -> fill env ae)
 
   | _ -> fatal "compile_const_dec: Unexpected dec form"
-
-and compile_prelude env ae =
-  (* Allocate the primitive functions *)
-  let (decs, _flavor) = E.get_prelude env in
-  let (ae1, code) = compile_prog env ae decs in
-  (ae1, code)
-
-(*
-This is a horrible hack
-When determining whether an actor is closed, we disregard the prelude, because
-every actor is compiled with the prelude.
-This breaks with shadowing.
-This function compiles the prelude, just to find out the bound names.
-*)
-and find_prelude_names env =
-  (* Create a throw-away environment *)
-  let env0 = E.mk_global (E.mode env) None (E.get_prelude env) (fun _ _ -> G.i Unreachable) 0l in
-  Heap.register_globals env0;
-  Stack.register_globals env0;
-  Dfinity.system_imports env0;
-  RTS.system_imports env0;
-  let env1 = E.mk_fun_env env0 0l 0 in
-  let ae = VarEnv.empty_ae in
-  let (env2, _) = compile_prelude env1 ae in
-  VarEnv.in_scope_set env2
-
 
 and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
   let find_last_expr ds e =
@@ -6829,7 +6850,7 @@ and export_actor_field env  ae (f : Ir.field) =
   let sr, code = Var.get_val env ae f.it.var in
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
   let fi = match sr with
-    | SR.Const (Const.PublicMethod (fi, _)) -> fi
+    | SR.Const (_, Const.PublicMethod (fi, _)) -> fi
     | _ -> assert false in
   (* There should be no code associated with this *)
   assert (G.is_nop code);
@@ -6848,78 +6869,6 @@ and export_actor_field env  ae (f : Ir.field) =
     edesc = nr (FuncExport (nr fi))
   })
 
-(* Local actor *)
-and actor_lit outer_env ds fs at =
-  let wasm_binary =
-    let mod_env = E.mk_global
-      (E.mode outer_env)
-      (E.get_rts outer_env)
-      (E.get_prelude outer_env)
-      (E.get_trap_with outer_env)
-      Stack.end_of_stack in
-
-    Heap.register_globals mod_env;
-    Stack.register_globals mod_env;
-
-    Dfinity.system_imports mod_env;
-    RTS.system_imports mod_env;
-    RTS_Exports.system_exports mod_env;
-
-    let start_fun = Func.of_body mod_env [] [] (fun env -> G.with_region at @@
-      let ae0 = VarEnv.empty_ae in
-
-      (* Compile the prelude *)
-      let (ae1, prelude_code) = compile_prelude env ae0 in
-
-      (* Reverse the fs, to a map from variable to exported name *)
-      let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
-
-      (* Compile the declarations *)
-      let (ae3, decls_code) = compile_decs_public env ae1 AllocHow.TopLvl ds v2en Freevars.S.empty in
-
-      (* Export the public functions *)
-      List.iter (export_actor_field env ae3) fs;
-
-      prelude_code ^^ decls_code) in
-    let start_fi = E.add_fun mod_env "start" start_fun in
-
-    if E.mode mod_env = Flags.ICMode then Dfinity.export_start mod_env start_fi;
-    if E.mode mod_env = Flags.StubMode then Dfinity.export_start mod_env start_fi;
-
-    let m = conclude_module mod_env None in
-    let (_map, wasm_binary) = Wasm_exts.CustomModuleEncode.encode m in
-    wasm_binary in
-
-    match E.mode outer_env with
-    | Flags.StubMode ->
-      let (set_idx, get_idx) = new_local outer_env "idx" in
-      let (set_len, get_len) = new_local outer_env "len" in
-      let (set_id, get_id) = new_local outer_env "id" in
-      (* the module *)
-      Blob.lit outer_env wasm_binary ^^
-      Blob.as_ptr_len outer_env ^^
-      (* the arg (not used in motoko yet) *)
-      compile_unboxed_const 0l ^^
-      compile_unboxed_const 0l ^^
-      Dfinity.system_call outer_env "stub" "create_canister" ^^
-      set_idx ^^
-
-      get_idx ^^
-      Dfinity.system_call outer_env "stub" "created_canister_id_size" ^^
-      set_len ^^
-
-      get_len ^^ Blob.alloc outer_env ^^ set_id ^^
-
-      get_idx ^^
-      get_id ^^ Blob.payload_ptr_unskewed ^^
-      compile_unboxed_const 0l ^^
-      get_len ^^
-      Dfinity.system_call outer_env "stub" "created_canister_id_copy" ^^
-
-      get_id
-    | _ -> assert false
-
-
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 ds fs =
   (* Reverse the fs, to a map from variable to exported name *)
@@ -6937,6 +6886,8 @@ and conclude_module env start_fi_o =
 
   FuncDec.export_async_method env;
 
+  let static_roots = GC.store_static_roots env in
+
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
   E.add_global32 env "__heap_base" Immutable (E.get_end_of_static_memory env);
@@ -6951,7 +6902,8 @@ and conclude_module env start_fi_o =
   )) in
 
   Dfinity.default_exports env;
-  GC.register env (E.get_end_of_static_memory env);
+
+  GC.register env static_roots (E.get_end_of_static_memory env);
 
   let func_imports = E.get_func_imports env in
   let ni = List.length func_imports in
@@ -7007,8 +6959,8 @@ and conclude_module env start_fi_o =
   | None -> emodule
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
-let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts prelude Dfinity.trap_with Stack.end_of_stack in
+let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
+  let env = E.mk_global mode rts Dfinity.trap_with Stack.end_of_stack in
 
   Heap.register_globals env;
   Stack.register_globals env;
@@ -7017,7 +6969,7 @@ let compile mode module_name rts (prelude : Ir.prog) (progs : Ir.prog list) : Wa
   RTS.system_imports env;
   RTS_Exports.system_exports env;
 
-  let start_fun = compile_start_func env (prelude :: progs) in
+  let start_fun = compile_start_func env progs in
   let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o = match E.mode env with
     | Flags.ICMode | Flags.StubMode -> Dfinity.export_start env start_fi; None

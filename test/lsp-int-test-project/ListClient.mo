@@ -1,7 +1,7 @@
 import Prim "mo:prim";
-import List "lib/list.mo";
-import Option "lib/option.mo";
-import P "lib/prelude.mo";
+import List "lib/list";
+import Option "lib/option";
+import P "lib/prelude";
 
 module {
     public type Stack = List.List<Int>;

@@ -1,4 +1,4 @@
-import List "list.mo";
+import List "list";
 
 module {
 /**

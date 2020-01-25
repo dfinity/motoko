@@ -2,9 +2,7 @@
 ← completed: canister-id = 0x2a01
 → install
 ← completed
-→ update go(0x4449444c0000)
-debug.print: a
-debug.print: b
-debug.print: a
-debug.print: b
+→ update foo1(0x4449444c0000)
+← completed: 0x4449444c0000
+→ update foo2(0x4449444c0000)
 ← completed: 0x4449444c0000

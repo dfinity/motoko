@@ -1,4 +1,4 @@
-ingress(0) System
+ingress System
 debug.print: A
 debug.print: B
 debug.print: C
@@ -10,4 +10,4 @@ debug.print: 3
 debug.print: 4
 debug.print: 5
 debug.print: 6
-ingress(1) Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Payload: 0x4449444c0000

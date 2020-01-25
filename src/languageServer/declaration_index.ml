@@ -65,20 +65,32 @@ let add_module : string -> ide_decl list -> declaration_index -> declaration_ind
 let lookup_module
       (path : string)
       (index : t)
-    : ide_decl list option =
+    : (string * ide_decl list) option =
   let open Pipeline.URL in
   let make_absolute = Lib.FilePath.make_absolute (Sys.getcwd ()) in
   match parse path with
   | Ok (Relative path) ->
+     let path =
+       Pipeline.ResolveImport.append_extension Sys.file_exists path
+       |> Option.value ~default:path in
      Index.find_opt (make_absolute path) index.modules
+     |> Option.map (fun decls -> (path, decls))
   | Ok (Package (pkg, path)) ->
      Option.bind
        (Flags.M.find_opt pkg index.package_map)
        (fun pkg_path ->
+         let path =
+           Pipeline.ResolveImport.append_extension
+             Sys.file_exists (Filename.concat pkg_path path)
+           |> Option.value ~default:path in
          Index.find_opt
-           (make_absolute (Filename.concat pkg_path path))
-           index.modules)
-  | Ok Prim -> Index.find_opt "@prim" index.modules
+           (make_absolute path)
+           index.modules
+         |> Option.map (fun decls -> (path, decls))
+       )
+  | Ok Prim ->
+     Index.find_opt "@prim" index.modules
+     |> Option.map (fun decls -> ("@prim", decls))
   | Ok (Ic _ | IcAlias _) -> (* TODO *) None
   | Error _ -> None
 

@@ -16,7 +16,7 @@ type XYU = X.Y.U;
 
 actor A = {
   public func f() { g();};
-  func g() { f();};
+  shared func g() { f();};
   object Y = {
     public type U = Int;
   };

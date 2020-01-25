@@ -1,5 +1,5 @@
-import Array "array.mo";
-import Option "option.mo";
+import Array "array";
+import Option "option";
 
 module {
 /**

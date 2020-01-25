@@ -79,22 +79,22 @@ let invoke_prelude_show : string -> T.typ -> Ir.exp -> Ir.exp = fun n t e ->
 
 let invoke_text_of_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.text]) in
   callE (idE "@text_of_option" fun_typ) [t] (tupE [f; e])
 
 let invoke_text_of_variant : T.typ -> Ir.exp -> T.lab -> Ir.exp -> Ir.exp = fun t f l e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [T.text; show_fun_typ_for (T.Var ("T",0)); T.Var ("T",0)], [T.text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [T.text; show_fun_typ_for (T.Var ("T",0)); T.Var ("T",0)], [T.text]) in
   callE (idE "@text_of_variant" fun_typ) [t] (tupE [textE l; f; e])
 
 let invoke_text_of_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.text]) in
   callE (idE "@text_of_array" fun_typ) [t] (tupE [f; e])
 
 let invoke_text_of_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.text]) in
+    T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.text]) in
   callE (idE "@text_of_array_mut" fun_typ) [t] (tupE [f; e])
 
 let list_build : 'a -> 'a -> 'a -> 'a list -> 'a list = fun pre sep post xs ->
@@ -302,7 +302,7 @@ and t_exp' env = function
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->
     LabelE (id, typ, t_exp env exp1)
-  | AsyncE e -> AsyncE (t_exp env e)
+  | AsyncE (tb, e, typ) -> AsyncE (tb, t_exp env e, typ)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp env exp1)
   | DefineE (id, mut ,exp1) ->

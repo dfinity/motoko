@@ -230,15 +230,11 @@ processRequest r@(InstallRequest canister_id user_id can_mod dat) =
         , last_trap = Nothing
         }
 
-      existing_canisters <- gets (M.keys . canisters)
-
-      case init_method can_mod existing_canisters canister_id user_id dat of
+      case init_method can_mod canister_id user_id dat of
         Trap msg ->
           setReqStatus r $ Rejected (RC_CANISTER_ERROR, "Initialization trapped: " ++ msg)
-        Return ((new_canisters, new_calls), wasm_state) -> do
+        Return (new_calls, wasm_state) -> do
           installCanister canister_id can_mod wasm_state
-          mapM_ (\(i,_,_) -> createEmptyCanister i) new_canisters
-          mapM_ (\(i,mod,dat) -> submitRequest (InstallRequest i canister_id mod dat)) new_canisters
           mapM_ (newCall ctxt_id) new_calls
           setReqStatus r $ Completed CompleteUnit
 
@@ -308,18 +304,17 @@ invokeEntry :: ICT m =>
     m (TrapOr (WasmState, UpdateResult))
 invokeEntry ctxt_id (CanState wasm_state can_mod) entry = do
     responded <- respondedCallID ctxt_id
-    existing_canisters <- gets (M.keys . canisters)
     case entry of
       Public method dat -> do
         caller <- callerOfCallID ctxt_id
         case M.lookup method (update_methods can_mod) of
           Just f ->
-            return $ f existing_canisters caller responded dat wasm_state
+            return $ f caller responded dat wasm_state
           Nothing -> do
             let reject = Reject (RC_DESTINATION_INVALID, "update method does not exist: " ++ method)
-            return $ Return (wasm_state, ([], [], Just reject))
+            return $ Return (wasm_state, ([], Just reject))
       Closure cb r ->
-        return $ callbacks can_mod cb existing_canisters responded r wasm_state
+        return $ callbacks can_mod cb responded r wasm_state
 
 newCall :: ICT m => CallId -> MethodCall -> m ()
 newCall from_ctxt_id call = do
@@ -346,10 +341,8 @@ processMessage (CallMessage ctxt_id entry) = do
         Trap msg -> do
           logTrap msg
           rememberTrap ctxt_id msg
-        Return (new_state, (new_canisters, new_calls, mb_response)) -> do
+        Return (new_state, (new_calls, mb_response)) -> do
           setCanisterState callee new_state
-          mapM_ (\(i,_,_) -> createEmptyCanister i) new_canisters
-          mapM_ (\(i,mod,dat) -> submitRequest (InstallRequest i callee mod dat)) new_canisters
           mapM_ (newCall ctxt_id) new_calls
           mapM_ res mb_response
 

@@ -1,10 +1,10 @@
-ingress(0) System
-ingress(1) Completed: Canister: Payload: 0x4449444c0000
-ingress(2) Completed: Canister: Payload: 0x4449444c0000
-ingress(3) Completed: Canister: Payload: 0x4449444c0000
-ingress(4) Completed: Canister: Payload: 0x4449444c0000
+ingress System
+ingress Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Payload: 0x4449444c0000
 Ok: Payload: 0x4449444c0000
-ingress(6) Completed: Canister: Payload: 0x4449444c016d7b0100080000000000000000
-Ok: Payload: 0x4449444c00017969df2265
-Ok: Payload: 0x4449444c00017d08
+ingress Completed: Canister: Payload: 0x4449444c016d7b010021000000000000000000000000000000000000000000000000000000000000000000
+Ok: Payload: 0x4449444c0001798d3a7c7a
+Ok: Payload: 0x4449444c00017d21
 Ok: Payload: 0x4449444c016e7b01000100
