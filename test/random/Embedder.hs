@@ -29,7 +29,7 @@ addCompilerArgs Drun = id
 
 addEmbedderArgs Reference = id
 addEmbedderArgs (WasmTime _) = ("--disable-cache" :) . ("--cranelift" :)
-addEmbedderArgs Drun = ("--extra-batches" :) . ("100" :)
+addEmbedderArgs Drun = ("--extra-batches" :) . ("10" :)
 
 invokeEmbedder :: Embedder -> Turtle.FilePath -> IO (ExitCode, Text, Text)
 invokeEmbedder embedder wasm = go embedder
