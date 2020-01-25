@@ -1240,7 +1240,7 @@ module Closure = struct
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
 
   let static_closure env fi : int32 =
-    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.Closure) in
+    let tag = bytes_of_int32 Tagged.(int_of_tag Closure) in
     let len = bytes_of_int32 (E.add_fun_ptr env fi) in
     let zero = bytes_of_int32 0l in
     let data = tag ^ len ^ zero in
