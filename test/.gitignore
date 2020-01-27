@@ -3,6 +3,8 @@ _out
 new-moc
 old-moc
 compare-out
+new-perf
+old-perf
 
 coverage
 _coverage
