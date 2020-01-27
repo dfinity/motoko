@@ -1,6 +1,6 @@
-CLANG ?= clang-10
-WASM_CLANG ?= clang-10
-WASM_LD ?= wasm-ld-10
+CLANG ?= clang
+WASM_CLANG ?= clang-11
+WASM_LD ?= wasm-ld
 
 #
 # We manually list all the .c files of libtommath that we care about.
