@@ -324,7 +324,36 @@ let transform mode env prog =
               let r = [e] -->* (ic_rejectE (errorMessageE e)) in
               let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
-            (* oneway *)
+            (* oneway with an `ignore(async _)` body
+               TODO: remove this special casing once async fully supported
+              *)
+            | Returns,
+              { it = BlockE (
+                [{ it = LetD (
+                  { it = WildP; _},
+                  ({ it = PrimE (CPSAsync _, _); _} as exp)); _ }],
+                { it = PrimE (TupPrim, []); _});
+                _ } ->
+              let ret_tys = List.map t_typ ret_tys in
+              let args' = t_args args in
+              let typbinds' = t_typ_binds typbinds in
+              let t0, cps = match exp.it with
+                | PrimE (CPSAsync t0, [cps]) -> t_typ t0, cps
+                | _ -> assert false in
+              let t1, contT = match typ cps with
+                | Func(_,_,
+                       [tb],
+                       [Func(_, _, [], ts1, []) as contT; _],
+                       []) ->
+                  (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
+                | t -> assert false in
+              let v = fresh_var "v" t1 in
+              let k = v --> tupE [] in (* discard return *)
+              let e = fresh_var "e" T.catch in
+              let r = [e] -->* tupE [] in (* discard error *)
+              let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
+              FuncE (x, T.Shared s', Returns, typbinds', args', ret_tys, exp')
+            (* sequential oneway *)
             | Returns, _ ->
               FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
             | Replies,_ -> assert false
