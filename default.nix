@@ -22,19 +22,19 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 let
   llvmBuildInputs = [
-    nixpkgs.clang # for native building
-    nixpkgs.clang_9 # for wasm building
-    nixpkgs.lld_9 # for wasm building
+    # nixpkgs.llvmPackages_10.clang-wrapper # for native building
+    nixpkgs.clang_10 # for wasm building
+    nixpkgs.lld_10 # for wasm building
   ];
 
-  # When compiling natively, we want to use `clang` (which is a nixpkgs
+  # When compiling natively, we want to use `clang-10` (which is a nixpkgs
   # provided wrapper that sets various include paths etc).
   # But for some reason it does not handle building for Wasm well, so
-  # there we use plain clang-9. There is no stdlib there anyways.
+  # there we use plain clang-10. There is no stdlib there anyways.
   llvmEnv = ''
-    export CLANG="clang"
-    export WASM_CLANG="clang-9"
-    export WASM_LD=wasm-ld
+    export CLANG="clang-10"
+    export WASM_CLANG="clang-10"
+    export WASM_LD=wasm-ld-10
   '';
 in
 

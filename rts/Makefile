@@ -1,6 +1,6 @@
-CLANG ?= clang-9
-WASM_CLANG ?= clang-9
-WASM_LD ?= wasm-ld-9
+CLANG ?= clang-10
+WASM_CLANG ?= clang-10
+WASM_LD ?= wasm-ld-10
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -38,16 +38,16 @@ TOMMATH_FLAGS = \
 #
 
 CLANG_FLAGS = \
-   --compile  \
    -fpic \
    -fvisibility=hidden \
+   -g \
 
 #
 # clang flags only used during Wasm compilation
 #
 
 WASM_FLAGS = \
-   --target=wasm32-unknown-emscripten-wasm -fvisibility=hidden \
+   --target=wasm32-unknown-emscripten -fvisibility=hidden \
    -fno-builtin -ffreestanding \
    --optimize=3 \
 
@@ -68,11 +68,11 @@ _build/wasm _build/native:
 
 
 _build/wasm/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/wasm
-	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+	$(WASM_CLANG) --compile $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 
 _build/native/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/native
-	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+	$(CLANG) --compile $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
@@ -84,10 +84,10 @@ TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 RTSFILES=rts idl bigint buf utf8_valid closure-table text blob url
 
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
+	$(WASM_CLANG) --compile $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
 
 _build/native/%.o: %.c rts.h buf.h | _build/native
-	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
+	$(CLANG) --compile $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
 
 RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
