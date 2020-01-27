@@ -1,4 +1,4 @@
-ingress(0x0000000000000000000000000000000000000000000000000000000000000000) System
+ingress System
 debug.print: g
 debug.print:   e-while
 
@@ -18,4 +18,4 @@ debug.print:   e-exit
 
 debug.print: g-exit
 
-ingress(0x0100000000000000000000000000000000000000000000000000000000000000) Completed: Canister: Payload: 0x4449444c0000
+ingress Completed: Canister: Payload: 0x4449444c0000
