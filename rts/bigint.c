@@ -271,7 +271,7 @@ void bigint_leb128_encode_go(mp_int *tmp, unsigned char *buf, bool add_bit) {
   while (true) {
     buf[0] = (unsigned char)(mp_get_u32(tmp)); // get low bits
     CHECK(mp_div_2d(tmp, 7, tmp, NULL));
-    if (!mp_iszero(tmp) || add_bit && (buf[0] & 1<<6)) {
+    if (!mp_iszero(tmp) || (add_bit && (buf[0] & 1<<6))) {
       // more bytes to come, set high bit and continue
       buf[0] |= 1<<7;
       buf++;
