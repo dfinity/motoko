@@ -4,7 +4,7 @@
 ← completed
 → update go(0x4449444c0000)
 debug.print: go1
-debug.print: throws()
 debug.print: ping()
+debug.print: throws()
 debug.print: go2
 ← completed: 0x4449444c0000
