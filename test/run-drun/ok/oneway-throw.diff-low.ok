@@ -1,0 +1,8 @@
+--- oneway-throw.run
++++ oneway-throw.run-low
+@@ -1,4 +1,4 @@
+ go1
+-throws()
+ ping()
++throws()
+ go2
