@@ -6,4 +6,4 @@ open Parser.MenhirInterpreter
 val print: string -> unit
 val print_symbol: xsymbol -> unit
 val print_element: (element -> unit) option
-
+val to_string : unit -> string

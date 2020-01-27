@@ -81,6 +81,35 @@ type parse_result = (Syntax.prog * rel_path) Diag.result
 
 type parse_fn = rel_path -> parse_result
 
+module P =
+  MenhirLib.Printers.Make
+    (Parser.MenhirInterpreter)
+    (MoPrinters)
+
+(* Instantiate [ErrorReporting] for our parser. This requires
+   providing a few functions -- see [CalcErrorReporting]. *)
+
+module E =
+  ErrorReporting.Make
+    (Parser.MenhirInterpreter)
+    (MoErrorReporting)
+
+(* Define a printer for explanations. We treat an explanation as if it
+   were just an item: that is, we ignore the position information that
+   is provided in the explanation. Indeed, this information is hard to
+   show in text mode. *)
+
+let print_explanation explanation =
+  P.print_item (E.item explanation)
+
+let print_explanations startp explanations =
+  MoPrinters.print (Printf.sprintf "At line %d, column %d: syntax error.\n"
+    startp.Lexing.pos_lnum
+    startp.Lexing.pos_cnum);
+  List.iter print_explanation explanations;
+  flush stderr
+
+(*
 let parse_with mode lexer parse name =
   try
     phase "Parsing" name;
@@ -94,10 +123,26 @@ let parse_with mode lexer parse name =
       error at "syntax" msg
     | Parser.Error ->
       error (Lexer.region lexer) "syntax" "unexpected token"
+ *)
+
+let parse_with mode lexer parse name =
+  try
+    phase "Parsing" name;
+    lexer.Lexing.lex_curr_p <-
+      {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
+    let prog = E.entry (parse lexer.Lexing.lex_curr_p) (Lexer.token mode) lexer name in
+    dump_prog Flags.dump_parse prog;
+    Ok prog
+  with
+    | Lexer.Error (at, msg) ->
+      error at "syntax" msg
+    | E.Error ((startp, _), explanations) ->
+      (print_explanations startp explanations;
+       error (Lexer.region lexer) "syntax" ("unexpected token\n"^MoPrinters.to_string()))
 
 let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
-  let parse = Parser.parse_prog in
+  let parse = Parser.Incremental.parse_prog in
   match parse_with Lexer.Normal lexer parse name with
   | Ok prog -> Diag.return (prog, name)
   | Error e -> Error [e]
@@ -105,7 +150,7 @@ let parse_string name s : parse_result =
 let parse_file filename : parse_result =
   let ic = open_in filename in
   let lexer = Lexing.from_channel ic in
-  let parse = Parser.parse_prog in
+  let parse = Parser.Incremental.parse_prog in
   let result = parse_with Lexer.Normal lexer parse filename in
   close_in ic;
   match result with
@@ -215,7 +260,7 @@ let prelude_error phase (msgs : Diag.messages) =
 
 let check_prelude () : Syntax.prog * stat_env =
   let lexer = Lexing.from_string Prelude.prelude in
-  let parse = Parser.parse_prog in
+  let parse = Parser.Incremental.parse_prog in
   match parse_with Lexer.Privileged lexer parse prelude_name with
   | Error e -> prelude_error "parsing" [e]
   | Ok prog ->
@@ -239,7 +284,7 @@ let prim_error phase (msgs : Diag.messages) =
 
 let check_prim () : Syntax.lib * stat_env =
   let lexer = Lexing.from_string Prelude.prim_module in
-  let parse = Parser.parse_prog in
+  let parse = Parser.Incremental.parse_prog in
   match parse_with Lexer.Privileged lexer parse prim_name with
   | Error e -> prim_error "parsing" [e]
   | Ok prog ->
@@ -454,7 +499,7 @@ let lexer_stdin buf len =
 let parse_lexer lexer : parse_result =
   let open Lexing in
   if lexer.lex_curr_pos >= lexer.lex_buffer_len - 1 then continuing := false;
-  match parse_with Lexer.Normal lexer Parser.parse_prog_interactive "stdin" with
+  match parse_with Lexer.Normal lexer Parser.Incremental.parse_prog_interactive "stdin" with
   | Error e ->
     Lexing.flush_input lexer;
     (* Reset beginning-of-line, too, to sync consecutive positions. *)
