@@ -69,10 +69,14 @@ No constraints are imposed where imported files reside (this may be refined to p
 This _writes_ to `another/path/output.wasm`, but has no other effect. It does
 not create `another/path/`.
 
+Compiler warnings and errors are reported to `stderr`. Nothing writes to `stdout`.
+
 Compiling Motoko Files to IDL
 -----------------------------
 
 As the previous point, but passing `--idl` to `moc`.
+
+The IDL generation does not issue any warnings.
 
 
 Resolving Canister aliases
@@ -95,6 +99,8 @@ The `canisterid` here refers the “textual representation“ without the `ic:` 
 
 This files informs motoko about the interface of that canister. It could be the output of `moc --idl` for a locally known canister, or the IDL file as fetched from the Internet Computer, or created any other way.
 
+Open problem: how to resolve mutual canister imports.
+
 Compiling IDL Files to JS
 -------------------------
 
@@ -109,6 +115,8 @@ No constraints are imposed where these imported files reside (this may be refine
 
 This _writes_ to `another/path/output.js`, but has no other effect. It does
 not create `another/path/`.
+
+Compiler warnings and errors are reported to `stderr`. Nothing writes to `stdout`.
 
 Invoking the IDE
 ----------------
@@ -131,18 +139,17 @@ The command
 
     moc --print-deps some/path/input.mo
 
-prints to the standard output all URLs _directly_ imported by
-`some/path/input.mo`, one per line, e.g.
+prints to the standard output all URLs _transitively_ imported by
+`some/path/input.mo`, one per line. Each line outputs the original
+URL, and optionally a full path if `moc` can resolve the URL, separated by a space.
+For example,
 
-   mo:stdlib/List
-   mo:other_package/Some/Module
-   ic:ABCDE01A7
-   ic:alias
-   relative/path
+    mo:stdlib/List
+    mo:other_package/Some/Module
+    ic:ABCDE01A7
+    canister:alias
+    ./local_import some/path/local_import.mo
+    ./runtime some/path/runtime.wasm
 
-This _reads_ only `some/path/input.mo`, and writes no files.
+This may _read_ the same files as `moc -c` would, and writes no files.
 
-By transitively exploring the dependency graph using this command (and
-resolving URLs appropriately before passing them as files to `moc`), one can
-determine the full set of set of `.mo` files read by the two compilation modes
-described above (to wasm and to IDL).
