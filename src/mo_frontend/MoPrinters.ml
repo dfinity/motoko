@@ -3,14 +3,25 @@ open Parser.MenhirInterpreter
 (* In order to print syntax error messages and/or debugging information, we
    need a symbol printer. *)
 
+let abstract abs con = abs
+
+let binop = abstract "<binop>"
+let relop = abstract "<relop>"
+let binassign = abstract "<binassign>"
+
+(* all unary operators are also binary operators, so keep them unary *)
+let unop = abstract "<unop>"
+let unassign = abstract "<unassign>"
+
+
 let print_symbol symbol : string =
   match symbol with
   | X (T T_error) -> "error"
-  | X (T T_XOROP) -> "^"
-  | X (T T_XORASSIGN) -> "^="
+  | X (T T_XOROP) -> unop "^"
+  | X (T T_XORASSIGN) -> unassign "^="
   | X (T T_WHILE) -> "while"
   | X (T T_VAR) -> "var"
-  | X (T T_USHROP) -> " >>"
+  | X (T T_USHROP) -> binop " >>"
   | X (T T_USHRASSIGN) -> ">>="
   | X (T T_UNDERSCORE) -> "_"
   | X (T T_TYPE) -> "type"
@@ -18,20 +29,20 @@ let print_symbol symbol : string =
   | X (T T_THROW) -> "throw"
   | X (T T_TEXT) -> "<text>"
   | X (T T_SWITCH) -> "switch"
-  | X (T T_SUBOP) -> "-"
+  | X (T T_SUBOP) -> unop "-"
   | X (T T_SUB) -> "<:"
-  | X (T T_SSHROP) -> "+>>"
-  | X (T T_SSHRASSIGN) -> "+>>="
-  | X (T T_SHLOP) -> "<<"
-  | X (T T_SHLASSIGN) -> "<<="
+  | X (T T_SSHROP) -> binop "+>>"
+  | X (T T_SSHRASSIGN) -> binassign "+>>="
+  | X (T T_SHLOP) -> binop "<<"
+  | X (T T_SHLASSIGN) -> binassign "<<="
   | X (T T_SHARED) -> "shared"
   | X (T T_SEMICOLON_EOL) -> ";\\n"
   | X (T T_SEMICOLON) -> ";"
   | X (T T_RPAR) -> ")"
-  | X (T T_ROTROP) -> "<>>"
-  | X (T T_ROTRASSIGN) -> "<>>="
-  | X (T T_ROTLOP) -> "<<>"
-  | X (T T_ROTLASSIGN) -> "<<>="
+  | X (T T_ROTROP) -> binop "<>>"
+  | X (T T_ROTRASSIGN) -> binassign "<>>="
+  | X (T T_ROTLOP) -> binop "<<>"
+  | X (T T_ROTLASSIGN) -> binassign "<<>="
   | X (T T_RETURN) -> "return"
   | X (T T_RCURLY) -> "}"
   | X (T T_RBRACKET) -> "]"
@@ -40,29 +51,29 @@ let print_symbol symbol : string =
   | X (T T_PUBLIC) -> "public"
   | X (T T_PRIVATE) -> "private"
   | X (T T_PRIM) -> "prim"
-  | X (T T_POWOP) -> "**"
-  | X (T T_POWASSIGN) -> "**-"
-  | X (T T_PLUSASSIGN) -> "+="
-  | X (T T_OROP) -> "|"
-  | X (T T_ORASSIGN) -> "|="
+  | X (T T_POWOP) -> binop "**"
+  | X (T T_POWASSIGN) -> binassign "**-"
+  | X (T T_PLUSASSIGN) -> unassign "+="
+  | X (T T_OROP) -> binop "|"
+  | X (T T_ORASSIGN) -> binassign "|="
   | X (T T_OR) -> "or"
   | X (T T_OBJECT) -> "object"
   | X (T T_NULL) -> "null"
   | X (T T_NOT) -> "not"
-  | X (T T_NEQOP) -> "!="
+  | X (T T_NEQOP) -> binop "!="
   | X (T T_NAT) -> "<nat>"
-  | X (T T_MULOP) -> "*"
-  | X (T T_MULASSIGN) -> "*="
+  | X (T T_MULOP) -> binop "*"
+  | X (T T_MULASSIGN) -> binassign "*="
   | X (T T_MODULE) -> "module"
-  | X (T T_MODOP) -> "%"
-  | X (T T_MODASSIGN) -> "%="
-  | X (T T_MINUSASSIGN) -> "-="
-  | X (T T_LTOP) -> " < "
+  | X (T T_MODOP) -> binop "%"
+  | X (T T_MODASSIGN) -> binassign "%="
+  | X (T T_MINUSASSIGN) -> unassign "-="
+  | X (T T_LTOP) -> relop " < "
   | X (T T_LT) -> "<"
   | X (T T_LPAR) -> "("
   | X (T T_LOOP) -> "loop"
   | X (T T_LET) -> "let"
-  | X (T T_LEOP) -> "<="
+  | X (T T_LEOP) -> relop "<="
   | X (T T_LCURLY) -> "{"
   | X (T T_LBRACKET) -> "["
   | X (T T_LABEL) -> "label"
@@ -72,20 +83,20 @@ let print_symbol symbol : string =
   | X (T T_IF) -> "if"
   | X (T T_ID) -> "<id>"
   | X (T T_HASH) -> "#"
-  | X (T T_GTOP) -> " > "
+  | X (T T_GTOP) -> relop " > "
   | X (T T_GT) -> ">"
-  | X (T T_GEOP) -> ">="
+  | X (T T_GEOP) -> relop ">="
   | X (T T_FUNC) -> "func"
   | X (T T_FOR) -> "for"
   | X (T T_FLOAT) -> "<float>"
-  | X (T T_EQOP) -> "=="
+  | X (T T_EQOP) -> relop "=="
   | X (T T_EQ) -> "="
   | X (T T_EOF) -> "<eof>"
   | X (T T_ELSE) -> "else"
   | X (T T_DOT_NUM) -> ".<num>"
   | X (T T_DOT) -> "."
-  | X (T T_DIVOP) -> "/"
-  | X (T T_DIVASSIGN) -> "/="
+  | X (T T_DIVOP) -> binop "/"
+  | X (T T_DIVASSIGN) -> binassign "/="
   | X (T T_DEBUG_SHOW) -> "debug_show"
   | X (T T_DEBUG) -> "debug"
   | X (T T_CONTINUE) -> "continue"
@@ -94,19 +105,19 @@ let print_symbol symbol : string =
   | X (T T_CLASS) -> "class"
   | X (T T_CHAR) ->  "<char>"
   | X (T T_CATCH) -> "catch"
-  | X (T T_CATASSIGN) -> "@="
+  | X (T T_CATASSIGN) -> binassign "@="
   | X (T T_CASE) -> "case"
   | X (T T_BREAK) -> "break"
   | X (T T_BOOL) -> "<bool>"
   | X (T T_AWAIT) -> "await"
   | X (T T_ASYNC) -> "async"
-  | X (T T_ASSIGN) -> "assign"
+  | X (T T_ASSIGN) -> binassign "assign"
   | X (T T_ASSERT) -> "assert"
   | X (T T_ARROW) -> "->"
-  | X (T T_ANDOP) -> "&"
-  | X (T T_ANDASSIGN) -> "&="
+  | X (T T_ANDOP) -> binop "&"
+  | X (T T_ANDASSIGN) -> binassign "&="
   | X (T T_AND) -> "and"
-  | X (T T_ADDOP) -> "+"
+  | X (T T_ADDOP) -> unop "+"
   | X (T T_ACTOR) -> "actor"
   (* non-terminals *)
   | X (N N_bl) -> "<bl>"
@@ -198,31 +209,7 @@ let print_symbol symbol : string =
 let print_element e : string =
   match e with
   | Element (s, v, _, _) ->
-      match incoming_symbol s with
-(*      | T T_TIMES ->
-          "*"
-      | T T_RPAREN ->
-          ")"
-      | T T_PLUS ->
-          "+"
-      | T T_MINUS ->
-          "-"
-      | T T_LPAREN ->
-          "("
-      | T T_INT ->
-          string_of_int v
-      | N N_expr ->
-          string_of_int v
-      | N N_main ->
-          string_of_int v
-      | T T_EOL ->
-          ""
-      | T T_DIV ->
-          "/"
-      | T T_error ->
-          "error"
- *)
-    _ -> assert false
+      print_symbol (X (incoming_symbol s))
 
 (* The public functions. *)
 
