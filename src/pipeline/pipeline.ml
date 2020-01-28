@@ -427,15 +427,6 @@ let check_files files : check_result =
 
 let check_string s name : check_result =
   Diag.map ignore (load_decl (parse_string name s) initial_stat_env)
-(*
-let print_deps (file : string) : unit =
-  let (libs, _, _) = Diag.run (load_progs parse_file [file] initial_stat_env) in
-  let open Source in
-  List.iter (fun lib ->
-      let exp = Arrange.exp lib.it in
-      Wasm.Sexpr.print 80 exp;
-      Printf.printf "%s\n" lib.note
-    ) libs*)
   
 (* Generate IDL *)
 
