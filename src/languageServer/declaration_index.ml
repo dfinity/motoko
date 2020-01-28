@@ -72,7 +72,7 @@ let lookup_module
   | Ok (Relative path) ->
      let path =
        Pipeline.ResolveImport.append_extension Sys.file_exists path
-       |> Option.value ~default:path in
+       |> Result.value ~default:path in
      Index.find_opt (make_absolute path) index.modules
      |> Option.map (fun decls -> (path, decls))
   | Ok (Package (pkg, path)) ->
@@ -82,7 +82,7 @@ let lookup_module
          let path =
            Pipeline.ResolveImport.append_extension
              Sys.file_exists (Filename.concat pkg_path path)
-           |> Option.value ~default:path in
+           |> Result.value ~default:path in
          Index.find_opt
            (make_absolute path)
            index.modules

@@ -47,17 +47,6 @@ type package_map = filepath M.t
 open Syntax
 open Source
 
-let append_extension file_exists f =
-  if Option.is_some (Lib.String.chop_suffix "/" f) then
-    Some (Filename.concat f "lib.mo")
-  else if Filename.extension f = "" then
-    if file_exists (f ^ ".mo") then
-      Some (f ^ ".mo")
-    else
-      Some (Filename.concat f "lib.mo")
-  else
-    None
-
 let err_unrecognized_url msgs at url msg =
   let open Diag in
   add_msg msgs {
@@ -85,18 +74,19 @@ let err_actor_import_without_idl_path msgs at =
       text = Printf.sprintf "cannot import canister urls without --actor-idl param"
     }
 
-let err_file_does_not_exist msgs at full_path =
-  let open Diag in
-  add_msg msgs {
+let err_file_does_not_exist' at full_path =
+  Diag.{
       sev = Error;
       at;
       cat = "import";
       text = Printf.sprintf "file \"%s\" does not exist" full_path
     }
 
-let err_import_musnt_have_extension msgs at full_path =
-  let open Diag in
-  add_msg msgs {
+let err_file_does_not_exist msgs at full_path =
+  Diag.add_msg msgs (err_file_does_not_exist' at full_path)
+
+let err_import_musnt_have_extension at full_path =
+  Diag.{
     sev = Error;
     at;
     cat = "import";
@@ -147,20 +137,40 @@ let err_prim_pkg msgs =
     at = no_region;
     cat = "package";
     text = "the \"prim\" package is built-in, and cannot be mapped to a directory"
-  }
+    }
+
+let append_extension :
+      (string -> bool) ->
+      string ->
+      (string, Source.region -> Diag.message) result =
+  fun file_exists f ->
+  if Option.is_some (Lib.String.chop_suffix "/" f) then
+    Ok (Filename.concat f "lib.mo")
+  else if Filename.extension f = "" then
+    if file_exists (f ^ ".mo") then
+      Ok (f ^ ".mo")
+    else
+      Ok (Filename.concat f "lib.mo")
+  else
+    Error (fun at -> err_import_musnt_have_extension at f)
+
+let resolve_lib_import at full_path : (string, Diag.message) result =
+  match append_extension Sys.file_exists full_path with
+  | Ok full_path ->
+     if Sys.file_exists full_path
+     then Ok full_path
+     else Error (err_file_does_not_exist' at full_path)
+  | Error mk_err ->
+     Error (mk_err at)
 
 let add_lib_import msgs imported ri_ref at full_path =
-  match append_extension Sys.file_exists full_path with
-  | Some full_path ->
-     if Sys.file_exists full_path
-     then begin
-         ri_ref := LibPath full_path;
-         imported := RIM.add (LibPath full_path) at !imported
-       end else
-       err_file_does_not_exist msgs at full_path
-  | None ->
-       err_import_musnt_have_extension msgs at full_path
-
+  match resolve_lib_import at full_path with
+  | Ok full_path -> begin
+      ri_ref := LibPath full_path;
+      imported := RIM.add (LibPath full_path) at !imported
+    end
+  | Error err ->
+     Diag.add_msg msgs err
 
 let add_idl_import msgs imported ri_ref at full_path bytes =
   if Sys.file_exists full_path
@@ -231,10 +241,6 @@ let prog_imports (p : prog): (url * resolved_import ref * Source.region) list =
   let _ = ignore (Traversals.over_prog f p) in
   List.rev !res
 
-let collect_imports (p : prog): url list =
-  List.map (fun (f, _, _) -> f) (prog_imports p)
-
-
 type actor_idl_path = filepath option
 type package_urls = url M.t
 type actor_aliases = url M.t
@@ -276,3 +282,24 @@ let resolve
       Some (List.map (fun (rim,at) -> Source.(rim @@ at)) (RIM.bindings !imported))
     )
   )
+
+
+let collect_imports (p:prog) base : ((url * url option) list) Diag.result =
+  (* TODO unify the code path for resolve and collect_imports *)
+  let base = if Sys.is_directory base then base else Filename.dirname base in
+  Diag.with_message_store (fun msgs ->
+      let imports =
+        List.map (fun (f, _, at) ->
+            match Url.parse f with
+            | Ok (Url.Relative path) -> begin
+               match resolve_lib_import at (in_base base path) with
+               | Ok full_path ->
+                  (f, Some full_path)
+               | Error err ->
+                  Diag.add_msg msgs err;
+                  (f, None)
+              end
+            | _ -> (f, None)
+          ) (prog_imports p) in
+       Some imports
+    )
