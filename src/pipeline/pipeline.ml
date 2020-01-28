@@ -103,9 +103,6 @@ let print_explanation explanation =
   P.print_item (E.item explanation)
 
 let print_explanations startp explanations =
-  MoPrinters.print (Printf.sprintf "At line %d, column %d: syntax error.\n"
-    startp.Lexing.pos_lnum
-    startp.Lexing.pos_cnum);
   List.iter print_explanation explanations;
   flush stderr
 
@@ -138,7 +135,10 @@ let parse_with mode lexer parse name =
       error at "syntax" msg
     | E.Error ((startp, _), explanations) ->
       (print_explanations startp explanations;
-       error (Lexer.region lexer) "syntax" ("unexpected token\n"^MoPrinters.to_string()))
+       error (Lexer.region lexer) "syntax"
+         (Printf.sprintf
+            "unexpected token %s \n %s" (Lexing.lexeme lexer) (MoPrinters.to_string())
+      ))
 
 let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in

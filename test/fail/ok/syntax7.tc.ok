@@ -1,0 +1,5 @@
+syntax7.mo:30.1-30.4: syntax error, unexpected token 'let'
+<parse_prog> ->  seplist(<imp>,<semicolon>) seplist(<dec>,<semicolon>) . <eof> 
+seplist(<dec>,<semicolon>) -> <dec> . ; seplist(<dec>,<semicolon>) 
+seplist(<dec>,<semicolon>) -> <dec> . ;\n seplist(<dec>,<semicolon>) 
+
