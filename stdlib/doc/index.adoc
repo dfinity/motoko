@@ -13,7 +13,7 @@ or
 import L "stdlib:list"
 ....
 
-For most basic types (`Int`, `Char`) there is one module with common operations on them. Additionally, there are more advanced data structures (`Trie`) and utility modules (`Iter`, `Debug`).
+For most basic types (<<mod-int,`int`>>, <<mod-char,`char`>>) there is one module with common operations on them. Additionally, there are more advanced data structures (<<mod-trie,`trie`>>) and utility modules (<<mod-iter,`iter`>>, <<mod-debug,`debug`>>).
 
 // Primitive data types
 
@@ -44,3 +44,8 @@ include::_build/trieSet.adoc[leveloffset=+1]
 // Utilities
 include::_build/prelude.adoc[leveloffset=+1]
 include::_build/debug.adoc[leveloffset=+1]
+
+
+// At this point I’d like to include a proper index,
+// auto-generated with all functions. But that’s waiting for
+// https://github.com/asciidoctor/asciidoctor/pull/3160

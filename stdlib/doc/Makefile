@@ -20,7 +20,7 @@ _build:
 	@mkdir -p $@
 
 _build/%.adoc: $(STDLIB)/%.mo $(ADocOfMo) | _build
-	$(ADocOfMo) $< > $@.tmp
+	$(ADocOfMo) $* $< > $@.tmp
 	@echo "// Do not edit; This file was machine-generated" > $@
 	@echo "" >> $@
 	@echo "" >> $@

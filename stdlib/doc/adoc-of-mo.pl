@@ -31,6 +31,7 @@ use strict;
 use warnings;
 
 my $block = '';
+my $mod = shift @ARGV;
 
 OUTER: while (<>) {
   if (m,^(\s*)/\*\*$,) {
@@ -49,7 +50,8 @@ OUTER: while (<>) {
     my $name = $1;
     my $type = $2;
     print <<__END__;
-== `$1`
+[#${mod}_$name]
+== `$name`
 $block
 
 [listing]
