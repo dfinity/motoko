@@ -1,7 +1,9 @@
 (** Given a list of filenames that should be reported as existing
    tests what a given import path resolves to *)
 let import_relative_test_case files import expected =
-  let actual = Resolve_import.append_extension (fun x -> List.mem x files) import in
+  let actual =
+    Resolve_import.append_extension (fun x -> List.mem x files) import
+    |> Result.to_option in
   let show = function
     | None -> "None"
     | Some s -> "Some " ^ s in
