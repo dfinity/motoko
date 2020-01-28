@@ -14,7 +14,7 @@ let unop = abstract "<unop>"
 let unassign = abstract "<unassign>"
 
 
-let print_symbol symbol : string =
+let string_of_symbol symbol : string =
   match symbol with
   | X (T T_error) -> "error"
   | X (T T_XOROP) -> unop "^"
@@ -206,17 +206,12 @@ let print_symbol symbol : string =
    we need an element printer. (If we don't need this feature, then
    [print_symbol] above suffices.) *)
 
-let print_element e : string =
-  match e with
-  | Element (s, v, _, _) ->
-      print_symbol (X (incoming_symbol s))
-
 (* The public functions. *)
 
 let buff :string list ref = ref []
 let print s = buff := s::!buff
-let print_symbol s = print (print_symbol s)
-let print_element = Some (fun s -> print (print_element s))
+let print_symbol s = print (string_of_symbol s)
+let print_element = None
 let to_string() = let s = String.concat "" (List.rev (!buff)) in
                   buff := [];
                   s

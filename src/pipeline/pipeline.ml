@@ -101,13 +101,25 @@ module E =
 
 module Explanations = Set.Make(String)
 
+let verbose = false
+
 let abstract explanation =
-  MoPrinters.to_string (P.print_item (E.item explanation))
+  P.print_item (E.item explanation);
+  MoPrinters.to_string()
 
 let abstract_explanations explanations =
   let s = Explanations.of_list (List.map abstract explanations) in
   let ss = Explanations.fold List.cons s [] in
-  String.concat "" ss
+  String.concat "  " ss
+
+let abstract_symbol explanation =
+  let symbol = List.hd (E.future explanation) in
+  MoPrinters.string_of_symbol symbol
+
+let abstract_symbols explanations =
+  let s = Explanations.of_list (List.map abstract_symbol explanations) in
+  let ss = Explanations.fold List.cons s [] in
+  String.concat "\n  " ss
 
 (*
 let parse_with mode lexer parse name =
@@ -136,11 +148,17 @@ let parse_with mode lexer parse name =
   with
     | Lexer.Error (at, msg) ->
       error at "syntax" msg
-    | E.Error ((startp, _), explanations) ->
+    | E.Error ((startp, _), explanations) when verbose ->
       (error (Lexer.region lexer) "syntax"
          (Printf.sprintf
-            "unexpected token '%s'\n in position marked . of partially parsed item(s)\n%s"
-            (Lexing.lexeme lexer) (abstract_explanations explanations)
+            "unexpected token '%s'\n in position marked . of partially parsed item(s):\n%s"
+            (String.escaped (Lexing.lexeme lexer)) (abstract_explanations explanations)
+      ))
+    | E.Error ((startp, _), explanations) when not verbose ->
+      (error (Lexer.region lexer) "syntax"
+         (Printf.sprintf
+            "unexpected token '%s', \nexpected one of token or <phrase>:\n  %s"
+            (String.escaped (Lexing.lexeme lexer)) (abstract_symbols explanations)
       ))
 
 let parse_string name s : parse_result =
