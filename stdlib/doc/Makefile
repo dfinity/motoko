@@ -8,7 +8,7 @@ STDLIB_FILES= $(patsubst $(STDLIB)/%.mo,%,$(wildcard $(STDLIB)/*.mo))
 
 DOCS = $(patsubst %,_build/%.adoc,$(STDLIB_FILES))
 
-all: _out/stdlib.html
+all: _out/index.html
 
 clean:
 	rm -rf _out _build
@@ -27,7 +27,7 @@ _build/%.adoc: $(STDLIB)/%.mo $(ADocOfMo) | _build
 	cat $@.tmp >> $@
 	rm -f $@.tmp
 
-_out/stdlib.html: index.adoc $(DOCS) | _out
+_out/index.html: index.adoc $(DOCS) | _out
 	# checking if all files are included
 	@diff -u \
 	  --label "Present" \

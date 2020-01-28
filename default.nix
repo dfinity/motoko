@@ -393,7 +393,7 @@ rec {
     name = "stdlib-doc";
     src = subpath ./stdlib/doc;
     buildInputs = with nixpkgs;
-      [ pandoc bash python ];
+      [ bash perl asciidoctor ];
     buildPhase = ''
       patchShebangs .
       make STDLIB=${stdlib}
