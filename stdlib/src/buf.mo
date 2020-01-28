@@ -1,10 +1,15 @@
+/**
+[#mod-buf]
+= `buf` -- Growing buffers
+*/
+
 import P "prelude";
 import I "iter";
 import A "array";
 
 module {
 
-/**
+/*
 
 Buffers
 ===================

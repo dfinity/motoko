@@ -1,4 +1,14 @@
+/**
+[#mod-debug]
+= `debug` -- Debugging aids
+*/
+
 import Prim "mo:prim";
 module {
-  public let print = Prim.debugPrint;
+  /**
+  This prints a text (which typically does not include a final newline) to the
+  debug output. Where this debug output is stored and shown depends on the
+  environment the program runs in.
+  */
+  public let print : Text -> () = Prim.debugPrint;
 }

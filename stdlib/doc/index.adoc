@@ -1,0 +1,46 @@
+= The Motoko Standard Library
+:toc:
+:toc: right
+
+This is the reference manual for the Motoko standard library. The following chapters each describe one module provided by the standard library. You can import the module under a name of your choice, e.g.
+....
+import List "stdlib:list"
+....
+
+or
+
+....
+import L "stdlib:list"
+....
+
+For most basic types (`Int`, `Char`) there is one module with common operations on them. Additionally, there are more advanced data structures (`Trie`) and utility modules (`Iter`, `Debug`).
+
+// Primitive data types
+
+include::_build/nat.adoc[leveloffset=+1]
+include::_build/int.adoc[leveloffset=+1]
+include::_build/char.adoc[leveloffset=+1]
+include::_build/text.adoc[leveloffset=+1]
+include::_build/none.adoc[leveloffset=+1]
+include::_build/option.adoc[leveloffset=+1]
+include::_build/function.adoc[leveloffset=+1]
+include::_build/array.adoc[leveloffset=+1]
+include::_build/blob.adoc[leveloffset=+1]
+include::_build/principalId.adoc[leveloffset=+1]
+
+// Complex data structures
+
+include::_build/result.adoc[leveloffset=+1]
+include::_build/iter.adoc[leveloffset=+1]
+include::_build/buf.adoc[leveloffset=+1]
+include::_build/list.adoc[leveloffset=+1]
+include::_build/assocList.adoc[leveloffset=+1]
+include::_build/hash.adoc[leveloffset=+1]
+include::_build/hashMap.adoc[leveloffset=+1]
+include::_build/trie.adoc[leveloffset=+1]
+include::_build/trieMap.adoc[leveloffset=+1]
+include::_build/trieSet.adoc[leveloffset=+1]
+
+// Utilities
+include::_build/prelude.adoc[leveloffset=+1]
+include::_build/debug.adoc[leveloffset=+1]

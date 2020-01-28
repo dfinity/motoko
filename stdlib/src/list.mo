@@ -1,16 +1,21 @@
+/**
+[#mod-list]
+= `list` -- Lists
+*/
+
 import Array "array";
 import Option "option";
 
 module {
-/**
+/*
 
-# List
+= List
 
 Purely-functional, singly-linked lists.
 
 */
 
-/**
+/*
  Representation
  =================
 
@@ -22,12 +27,12 @@ remainder of the list (the cell's _tail_).
 
 public type List<T> = ?(T, List<T>);
 
-/**
+/*
  Interface
  ==============
 */
 
-  /**
+  /*
    `nil`
    ------
    empty list
@@ -36,7 +41,7 @@ public type List<T> = ?(T, List<T>);
     null;
 
 
-  /**
+  /*
    `isNil`
    --------
    test for empty list
@@ -48,7 +53,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
+  /*
    `push`
    -------------
    aka "list cons"
@@ -56,7 +61,7 @@ public type List<T> = ?(T, List<T>);
   public func push<T>(x : T, l : List<T>) : List<T> =
     ?(x, l);
 
-  /**
+  /*
    `last`
    ----------
    last element, optionally; tail recursive
@@ -69,7 +74,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
+  /*
    `pop`
    --------
    treat the list as a stack; combines the usual operations `head` and (non-failing) `tail` into one operation
@@ -81,7 +86,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
+  /*
    `len`
   --------
    length; tail recursive
@@ -89,14 +94,14 @@ public type List<T> = ?(T, List<T>);
   public func len<T>(l : List<T>) : Nat = label profile_list_len : Nat {
     func rec(l : List<T>, n : Nat) : Nat = label profile_list_len_rec : Nat {
       switch l {
-	    case null     { n };
-	    case (?(_,t)) { rec(t,n+1) };
+            case null     { n };
+            case (?(_,t)) { rec(t,n+1) };
       }
     };
     rec(l,0)
   };
 
-  /**
+  /*
    `lenIsLessThan`
   --------
    test length against a maximum value; tail recursive
@@ -105,8 +110,8 @@ public type List<T> = ?(T, List<T>);
     label profile_list_lenIsEqLessThan_begin : Bool {
     func rec(l : List<T>, i : Nat) : Bool = label profile_list_lenIsEqLessThan_rec : Bool {
       switch l {
-	    case null label profile_list_lenIsEqLessThan_end_true : Bool true;
-	    case (?(_, t)) {
+            case null label profile_list_lenIsEqLessThan_end_true : Bool true;
+            case (?(_, t)) {
              if ( i == 0 ) {
                label profile_list_lenIsEqLessThan_end_false : Bool
                false
@@ -120,7 +125,7 @@ public type List<T> = ?(T, List<T>);
     rec(l, i)
   };
 
-  /**
+  /*
    `lenClamp`
   --------
    get the length, unless greater than a maximum value, in which return null; tail recursive
@@ -129,8 +134,8 @@ public type List<T> = ?(T, List<T>);
     label profile_list_lenClamp : (?Nat) {
     func rec(l : List<T>, i : Nat) : ?Nat = label profile_list_lenClamp_rec : (?Nat) {
       switch l {
-	    case null { label profile_list_lenClamp_end_some : (?Nat) ?(i0 - i) };
-	    case (?(_, t)) {
+            case null { label profile_list_lenClamp_end_some : (?Nat) ?(i0 - i) };
+            case (?(_, t)) {
              if ( i == 0 ) {
                label profile_list_lenClamp_end_null : (?Nat)
                null
@@ -144,7 +149,7 @@ public type List<T> = ?(T, List<T>);
     rec(l, i0)
   };
 
-  /**
+  /*
    `nth`
    ---------
    array-like list access, but in linear time; tail recursive
@@ -157,7 +162,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
+  /*
    `rev`
    --------
    reverse the list; tail recursive
@@ -165,14 +170,14 @@ public type List<T> = ?(T, List<T>);
   public func rev<T>(l : List<T>) : List<T> = {
     func rec(l : List<T>, r : List<T>) : List<T> {
       switch l {
-	    case null     { r };
-	    case (?(h,t)) { rec(t,?(h,r)) };
+            case null     { r };
+            case (?(h,t)) { rec(t,?(h,r)) };
       }
     };
     rec(l, null)
   };
 
-  /**
+  /*
    `iter`
    ---------
    Called `app` in SML Basis, and `iter` in OCaml; tail recursive
@@ -180,14 +185,14 @@ public type List<T> = ?(T, List<T>);
   public func iter<T>(l : List<T>, f:T -> ()) : () = {
     func rec(l : List<T>) : () {
       switch l {
-	    case null     { () };
-	    case (?(h,t)) { f(h) ; rec(t) };
+            case null     { () };
+            case (?(h,t)) { f(h) ; rec(t) };
       }
     };
     rec(l)
   };
 
-  /**
+  /*
    `map`
    ---------
    map the list elements; non-tail recursive
@@ -197,14 +202,14 @@ public type List<T> = ?(T, List<T>);
   public func map<T,S>(l : List<T>, f:T -> S) : List<S> = {
     func rec(l : List<T>) : List<S> {
       switch l {
-	    case null     { null };
-	    case (?(h,t)) { ?(f(h),rec(t)) };
+            case null     { null };
+            case (?(h,t)) { ?(f(h),rec(t)) };
       }
     };
     rec(l)
   };
 
-  /**
+  /*
    `filter`
    ----------
    filter the list elements; non-tail recursive
@@ -212,14 +217,14 @@ public type List<T> = ?(T, List<T>);
   public func filter<T>(l : List<T>, f:T -> Bool) : List<T> = {
     func rec(l : List<T>) : List<T> {
       switch l {
-	    case null     { null };
-	    case (?(h,t)) { if (f(h)){ ?(h,rec(t)) } else { rec(t) } };
+            case null     { null };
+            case (?(h,t)) { if (f(h)){ ?(h,rec(t)) } else { rec(t) } };
       }
     };
     rec(l)
   };
 
-  /**
+  /*
    `split`
    ----------
    split the list elements; non-tail recursive
@@ -228,8 +233,8 @@ public type List<T> = ?(T, List<T>);
     func rec(l : List<T>) : (List<T>, List<T>) =
       label profile_list_split_rec : (List<T>, List<T>) {
       switch l {
-	    case null     { (null, null) };
-	    case (?(h,t)) { let (l,r) = rec(t) ;
+            case null     { (null, null) };
+            case (?(h,t)) { let (l,r) = rec(t) ;
                       if (f(h)){ (?(h,l), r) } else { (l, ?(h,r)) } };
       }
     };
@@ -237,7 +242,7 @@ public type List<T> = ?(T, List<T>);
     rec(l)
   };
 
-  /**
+  /*
    `mapFilter`
    --------------
    map and filter the list elements; non-tail recursive
@@ -245,19 +250,19 @@ public type List<T> = ?(T, List<T>);
   public func mapFilter<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
     func rec(l : List<T>) : List<S> {
       switch l {
-	    case null     { null };
-	    case (?(h,t)) {
-	           switch (f(h)) {
-	           case null { rec(t) };
-	           case (?h_){ ?(h_,rec(t)) };
-	           }
-	         };
+            case null     { null };
+            case (?(h,t)) {
+                   switch (f(h)) {
+                   case null { rec(t) };
+                   case (?h_){ ?(h_,rec(t)) };
+                   }
+                 };
       }
     };
     rec(l)
   };
 
-  /**
+  /*
    `append`
    ---------
    append two lists; non-tail recursive
@@ -272,7 +277,7 @@ public type List<T> = ?(T, List<T>);
     rec(l)
   };
 
-  /**
+  /*
    `concat`
    -----------
    concat (aka "list join"); tail recursive, but requires "two passes"
@@ -281,13 +286,13 @@ public type List<T> = ?(T, List<T>);
     // 1/2: fold from left to right, reverse-appending the sublists...
     let r =
       { let f = func(a:List<T>, b:List<T>) : List<T> { revAppend<T>(a,b) };
-	      foldLeft<List<T>, List<T>>(l, null, f)
+              foldLeft<List<T>, List<T>>(l, null, f)
       };
     // 2/2: ...re-reverse the elements, to their original order:
     rev<T>(r)
   };
 
-  /**
+  /*
    `revAppend`
    -------------
    See SML Basis library; tail recursive
@@ -299,7 +304,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
+  /*
    `take`
    ---------
    "take" `n` elements from the prefix of the given list.
@@ -313,7 +318,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
+  /*
    `drop`
    ----------
    */
@@ -325,7 +330,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
+  /*
    `foldLeft`
    ---------------
    fold list left-to-right using function `f`; tail recursive
@@ -340,7 +345,7 @@ public type List<T> = ?(T, List<T>);
     rec(l,a)
   };
 
-  /***
+  /*
    `foldRight`
    ------------
    fold the list right-to-left using function `f`; non-tail recursive
@@ -355,7 +360,7 @@ public type List<T> = ?(T, List<T>);
     rec(l)
   };
 
-  /**
+  /*
    `find`
    -----------
    test if there exists list element for which given predicate is true
@@ -363,14 +368,14 @@ public type List<T> = ?(T, List<T>);
   public func find<T>(l: List<T>, f:T -> Bool) : ?T = {
     func rec(l:List<T>) : ?T {
       switch l {
-	    case null     { null };
-	    case (?(h,t)) { if (f(h)) { ?h } else { rec(t) } };
+            case null     { null };
+            case (?(h,t)) { if (f(h)) { ?h } else { rec(t) } };
       }
     };
     rec(l)
   };
 
-  /**
+  /*
    `exists`
    ---------
    test if there exists list element for which given predicate is true
@@ -378,16 +383,16 @@ public type List<T> = ?(T, List<T>);
   public func exists<T>(l: List<T>, f:T -> Bool) : Bool = {
     func rec(l:List<T>) : Bool {
       switch l {
-	    case null     { false };
-	    // XXX/minor --- Missing parens on condition leads to unhelpful error:
-	    //case (?(h,t)) { if f(h) { true } else { rec(t) } };
-	    case (?(h,t)) { if (f(h)) { true } else { rec(t) } };
+            case null     { false };
+            // XXX/minor --- Missing parens on condition leads to unhelpful error:
+            //case (?(h,t)) { if f(h) { true } else { rec(t) } };
+            case (?(h,t)) { if (f(h)) { true } else { rec(t) } };
       }
     };
     rec(l)
   };
 
-  /**
+  /*
    `all`
    -------
    test if given predicate is true for all list elements
@@ -395,14 +400,14 @@ public type List<T> = ?(T, List<T>);
   public func all<T>(l: List<T>, f:T -> Bool) : Bool = {
     func rec(l:List<T>) : Bool {
       switch l {
-	    case null     { true };
-	    case (?(h,t)) { if (not f(h)) { false } else { rec(t) } };
+            case null     { true };
+            case (?(h,t)) { if (not f(h)) { false } else { rec(t) } };
       }
     };
     rec(l)
   };
 
-  /**
+  /*
    `merge`
    ---------
    Given two ordered lists, merge them into a single ordered list
@@ -410,21 +415,21 @@ public type List<T> = ?(T, List<T>);
   public func merge<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
     func rec(l1: List<T>, l2: List<T>) : List<T> {
       switch (l1, l2) {
-	    case (null, _) { l2 };
-	    case (_, null) { l1 };
-	    case (?(h1,t1), ?(h2,t2)) {
-	           if (lte(h1,h2)) {
-		           ?(h1, rec(t1, ?(h2,t2)))
-	           } else {
-		           ?(h2, rec(?(h1,t1), t2))
-	           }
-	         };
+            case (null, _) { l2 };
+            case (_, null) { l1 };
+            case (?(h1,t1), ?(h2,t2)) {
+                   if (lte(h1,h2)) {
+                           ?(h1, rec(t1, ?(h2,t2)))
+                   } else {
+                           ?(h2, rec(?(h1,t1), t2))
+                   }
+                 };
       }
     };
     rec(l1, l2)
   };
 
-  /**
+  /*
    `lessThanEq`
    --------------
 
@@ -435,15 +440,15 @@ public type List<T> = ?(T, List<T>);
   public func lessThanEq<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : Bool {
     func rec(l1: List<T>, l2: List<T>) : Bool {
       switch (l1, l2) {
-	    case (null, _) { true };
-	    case (_, null) { false };
-	    case (?(h1,t1), ?(h2,t2)) { lte(h1,h2) and rec(t1, t2) };
+            case (null, _) { true };
+            case (_, null) { false };
+            case (?(h1,t1), ?(h2,t2)) { lte(h1,h2) and rec(t1, t2) };
       }
     };
     rec(l1, l2)
   };
 
-  /**
+  /*
    `isEq`
    ---------
    Compare two lists for equality. tail recursive.
@@ -453,16 +458,16 @@ public type List<T> = ?(T, List<T>);
   public func isEq<T>(l1: List<T>, l2: List<T>, eq:(T,T) -> Bool) : Bool {
     func rec(l1: List<T>, l2: List<T>) : Bool {
       switch (l1, l2) {
-	    case (null, null) { true };
-	    case (null, _)    { false };
-	    case (_,    null) { false };
-	    case (?(h1,t1), ?(h2,t2)) { eq(h1,h2) and rec(t1, t2) };
+            case (null, null) { true };
+            case (null, _)    { false };
+            case (_,    null) { false };
+            case (?(h1,t1), ?(h2,t2)) { eq(h1,h2) and rec(t1, t2) };
       }
     };
     rec(l1, l2)
   };
 
-  /**
+  /*
    `partition`
    ---------------
    using a predicate, create two lists from one: the "true" list, and the "false" list.
@@ -471,21 +476,21 @@ public type List<T> = ?(T, List<T>);
   public func partition<T>(l: List<T>, f:T -> Bool) : (List<T>, List<T>) {
     func rec(l: List<T>) : (List<T>, List<T>) {
       switch l {
-	    case null { (null, null) };
-	    case (?(h,t)) {
-	           let (pl,pr) = rec(t);
-	           if (f(h)) {
-		           (?(h, pl), pr)
-	           } else {
-		           (pl, ?(h, pr))
-	           }
-	         };
+            case null { (null, null) };
+            case (?(h,t)) {
+                   let (pl,pr) = rec(t);
+                   if (f(h)) {
+                           (?(h, pl), pr)
+                   } else {
+                           (pl, ?(h, pr))
+                   }
+                 };
       }
     };
     rec(l)
   };
 
-  /**
+  /*
    `tabulate`
    --------------
    generate a list based on a length, and a function from list index to list element.
@@ -498,7 +503,7 @@ public type List<T> = ?(T, List<T>);
     rec(0)
   };
 
-  /**
+  /*
    `singleton`
    ----------------
    Creates a list with exactly one element.
@@ -507,7 +512,7 @@ public type List<T> = ?(T, List<T>);
     ?(x, null)
   };
 
-  /**
+  /*
    `replicate`
    ----------------
    Creates a list of the given length with the same value in each position.
@@ -516,7 +521,7 @@ public type List<T> = ?(T, List<T>);
     tabulate<X>(n, func _ { x })
   };
 
-  /**
+  /*
    `zip`
    -------------
    Creates a list of pairs from a pair of lists. If the given lists have
@@ -527,7 +532,7 @@ public type List<T> = ?(T, List<T>);
     zipWith<X, Y, (X, Y)>(xs, ys, func (x, y) { (x, y) })
   };
 
-  /**
+  /*
    `zipWith`
    -------------
    Creates a list whose elements are calculated from the given function and
@@ -553,7 +558,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
+  /*
    `splitAt`
    -----------
    Split the given list at the given zero-based index.
@@ -581,7 +586,7 @@ public type List<T> = ?(T, List<T>);
     }
   };
 
-  /**
+  /*
    `chunksOf`
    -----------
     Split the given list into length-n chunks. The last chunk will be shorter if
@@ -620,7 +625,7 @@ public type List<T> = ?(T, List<T>);
     Array.thaw<A>(toArray<A>(xs));
   };
 
-/**
+/*
 
 To do:
 --------

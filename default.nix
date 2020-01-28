@@ -402,7 +402,7 @@ rec {
       mkdir -p $out
       mv _out/* $out/
       mkdir -p $out/nix-support
-      echo "report docs $out README.html" >> $out/nix-support/hydra-build-products
+      echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
     '';
   };
 

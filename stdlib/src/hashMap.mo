@@ -1,3 +1,8 @@
+/**
+[#mod-hashMap]
+= `hashMap` -- Mutable hash map
+*/
+
 import Prim "mo:prim";
 import P "prelude";
 import A "array";
@@ -7,7 +12,7 @@ import AssocList "assocList";
 
 module {
 
-/**
+/*
 
 Hash Map (aka Hash table)
 =========================
