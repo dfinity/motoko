@@ -137,7 +137,8 @@ let parse_with mode lexer parse name =
       (print_explanations startp explanations;
        error (Lexer.region lexer) "syntax"
          (Printf.sprintf
-            "unexpected token %s \n %s" (Lexing.lexeme lexer) (MoPrinters.to_string())
+            "unexpected token '%s'\n at position(s) marked . in partially parsed item(s)\n%s"
+            (Lexing.lexeme lexer) (MoPrinters.to_string())
       ))
 
 let parse_string name s : parse_result =
