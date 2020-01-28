@@ -231,10 +231,6 @@ let prog_imports (p : prog): (url * resolved_import ref * Source.region) list =
   let _ = ignore (Traversals.over_prog f p) in
   List.rev !res
 
-let collect_imports (p : prog): url list =
-  List.map (fun (f, _, _) -> f) (prog_imports p)
-
-
 type actor_idl_path = filepath option
 type package_urls = url M.t
 type actor_aliases = url M.t
@@ -276,3 +272,27 @@ let resolve
       Some (List.map (fun (rim,at) -> Source.(rim @@ at)) (RIM.bindings !imported))
     )
   )
+
+ let collect_imports (p:prog) base : ((url * url option) list) Diag.result =
+   let base = if Sys.is_directory base then base else Filename.dirname base in
+   Diag.with_message_store (fun msgs ->
+       let imports =
+        List.map (fun (f, _, at) ->
+            match Url.parse f with
+            | Ok (Url.Relative path) ->
+               (match append_extension Sys.file_exists (in_base base path) with
+                | Some full_path ->
+                   if Sys.file_exists full_path
+                   then (f, Some full_path)
+                   else begin
+                     err_file_does_not_exist msgs at full_path;
+                     (f, None)
+                     end
+                | None ->
+                   err_import_musnt_have_extension msgs at f;
+                   (f, None)
+               )
+            | _ -> (f, None)
+          ) (prog_imports p) in
+       Some imports
+     )

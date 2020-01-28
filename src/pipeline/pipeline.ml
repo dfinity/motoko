@@ -135,8 +135,12 @@ let resolve_progs =
 
 let print_deps (file : string) : unit =
   let (prog, _) =  Diag.run (parse_file file) in
-  let imports = ResolveImport.collect_imports prog in
-  List.iter print_endline imports
+  let imports = Diag.run (ResolveImport.collect_imports prog file) in
+  List.iter (fun (url, path) ->
+      match path with
+      | None -> Printf.printf "%s\n" url
+      | Some path -> Printf.printf "%s %s\n" url path
+    ) imports
 
 (* Checking *)
 
@@ -423,7 +427,16 @@ let check_files files : check_result =
 
 let check_string s name : check_result =
   Diag.map ignore (load_decl (parse_string name s) initial_stat_env)
-
+(*
+let print_deps (file : string) : unit =
+  let (libs, _, _) = Diag.run (load_progs parse_file [file] initial_stat_env) in
+  let open Source in
+  List.iter (fun lib ->
+      let exp = Arrange.exp lib.it in
+      Wasm.Sexpr.print 80 exp;
+      Printf.printf "%s\n" lib.note
+    ) libs*)
+  
 (* Generate IDL *)
 
 let generate_idl files : Idllib.Syntax.prog Diag.result =

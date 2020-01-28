@@ -12,7 +12,7 @@ type actor_aliases = string Flags.M.t
 
 type resolved_imports = Syntax.resolved_import Source.phrase list
 
-val collect_imports : Syntax.prog -> string list
+val collect_imports : Syntax.prog -> string -> ((string * string option) list) Diag.result
 
 type flags = {
   package_urls : package_urls;
