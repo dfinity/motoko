@@ -99,12 +99,15 @@ module E =
    is provided in the explanation. Indeed, this information is hard to
    show in text mode. *)
 
-let print_explanation explanation =
-  P.print_item (E.item explanation)
+module Explanations = Set.Make(String)
 
-let print_explanations startp explanations =
-  List.iter print_explanation explanations;
-  flush stderr
+let abstract explanation =
+  MoPrinters.to_string (P.print_item (E.item explanation))
+
+let abstract_explanations explanations =
+  let s = Explanations.of_list (List.map abstract explanations) in
+  let ss = Explanations.fold List.cons s [] in
+  String.concat "" ss
 
 (*
 let parse_with mode lexer parse name =
@@ -134,11 +137,10 @@ let parse_with mode lexer parse name =
     | Lexer.Error (at, msg) ->
       error at "syntax" msg
     | E.Error ((startp, _), explanations) ->
-      (print_explanations startp explanations;
-       error (Lexer.region lexer) "syntax"
+      (error (Lexer.region lexer) "syntax"
          (Printf.sprintf
-            "unexpected token '%s'\n at position(s) marked . in partially parsed item(s)\n%s"
-            (Lexing.lexeme lexer) (MoPrinters.to_string())
+            "unexpected token '%s'\n at position marked . in partially parsed item(s)\n%s"
+            (Lexing.lexeme lexer) (abstract_explanations explanations)
       ))
 
 let parse_string name s : parse_result =
