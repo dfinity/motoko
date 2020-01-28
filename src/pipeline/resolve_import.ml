@@ -283,10 +283,12 @@ let resolve
     )
   )
 
- let collect_imports (p:prog) base : ((url * url option) list) Diag.result =
-   let base = if Sys.is_directory base then base else Filename.dirname base in
-   Diag.with_message_store (fun msgs ->
-       let imports =
+
+let collect_imports (p:prog) base : ((url * url option) list) Diag.result =
+  (* TODO unify the code path for resolve and collect_imports *)
+  let base = if Sys.is_directory base then base else Filename.dirname base in
+  Diag.with_message_store (fun msgs ->
+      let imports =
         List.map (fun (f, _, at) ->
             match Url.parse f with
             | Ok (Url.Relative path) -> begin
@@ -300,4 +302,4 @@ let resolve
             | _ -> (f, None)
           ) (prog_imports p) in
        Some imports
-     )
+    )
