@@ -171,9 +171,11 @@ let share_expfield (ef : exp_field) =
 %type<Mo_def.Syntax.case> catch case
 %type<Mo_def.Syntax.dec list -> Mo_def.Syntax.exp'> bl ob
 
+%type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
 
+%on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%
 
 (* Helpers *)
@@ -728,12 +730,15 @@ imp :
     { let _, x = xf "import" $sloc in
       let_or_exp true x (ImportE (f, ref Unresolved)) (at $sloc) }
 
+start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-empty parse stack *)
+  | /* Empty */ { () }
+
 parse_prog :
-  | is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
+  | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
     { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
 
 parse_prog_interactive :
-  | is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
+  | start is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
     { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
 
 %%

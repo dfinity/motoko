@@ -189,6 +189,7 @@ let print_symbol symbol : string =
   | X (N N_typ_un) -> "<typ_un>"
   | X (N N_typ_variant) -> "<typ_variant>"
   | X (N N_vis) -> "<vis>"
+  | X (N N_start) -> "" (* dummy non-terminal, don't display *)
 
 (* In order to print a view of the stack that includes semantic values,
    we need an element printer. (If we don't need this feature, then
