@@ -1,10 +1,18 @@
 /**
 [#mod-none]
 = `none` -- The absent value
+
+The `None` type represents a type with _no_ value, often used to mark dead
+code.
+
+For example, the type `[None]` has only empty lists.
 */
 
 module {
-  public func absurd<A>(x : None) : A {
+  /**
+  Turns an absurd value into an arbitrary type.
+  */
+  public let absurd : <A> None -> A = func (x) {
     switch (x) {};
   };
 }
