@@ -67,6 +67,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.ocaml-migrate-parsetree
     pkgs.ocamlPackages.ppx_tools_versioned
+    pkgs.ocamlPackages.fix
   ]; in
 
 let darwin_standalone =

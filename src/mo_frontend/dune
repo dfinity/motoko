@@ -1,11 +1,17 @@
 (library
   (name mo_frontend)
-  (libraries lib lang_utils mo_config mo_def mo_types mo_values)
-)
-(menhir
-  (modules parser)
-  (flags -v --strict)
-  (infer false)
-)
+  (libraries lib lang_utils mo_config mo_def mo_types mo_values menhirLib))
+
 (ocamllex lexer)
 
+(menhir
+  (modules parser)
+  (flags --strict --inspection --unused-tokens --table --cmly))
+
+(rule
+ (targets parser_recover.ml)
+ (deps parser.cmly)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run ../menhir-recover/main.exe parser.cmly))))
