@@ -7,7 +7,7 @@ The changes are:
  * Support for additional custom sections
 
 The code is otherwise as untouched as possible, so that we can relatively
-easily apply diffs froim the original code (possibly manually).
+easily apply diffs from the original code (possibly manually).
 *)
 
 open CustomModule
@@ -58,12 +58,12 @@ let encode (em : extended_module) =
   let prev_il = ref 0 in
   let prev_ic = ref 0 in
 
-  let rec add_source x lst = match lst with
+  let rec add_source x = function
     | [] ->
       sources := !sources @ [ x ];
       sourcesContent := !sourcesContent @ [ "" ];
       0
-    | h :: t -> if x = h then 0 else 1 + (add_source x t)
+    | h :: t -> if x = h then 0 else 1 + add_source x t
   in
 
   sources := !sources @ [ "prelude" ];

@@ -87,13 +87,15 @@ let table n f = List.fold_right (^^) (Lib.List.table n f) nop
 (* Region-managing combinator *)
 
 let cr at =
-  let left = { Wasm.Source.file = at.Source.left.Source.file;
-    Wasm.Source.line = at.Source.left.Source.line;
-    Wasm.Source.column = at.Source.left.Source.column } in
-  let right = { Wasm.Source.file = at.Source.right.Source.file;
-    Wasm.Source.line = at.Source.right.Source.line;
-    Wasm.Source.column = at.Source.right.Source.column } in
-  { Wasm.Source.left = left; Wasm.Source.right = right }
+  let left = Wasm.Source.{
+    file = at.Source.left.Source.file;
+    line = at.Source.left.Source.line;
+    column = at.Source.left.Source.column } in
+  let right = Wasm.Source.{
+    file = at.Source.right.Source.file;
+    line = at.Source.right.Source.line;
+    column = at.Source.right.Source.column } in
+  Wasm.Source.{ left; right }
 
 let with_region (pos : Source.region) (body : t) : t =
   fun d _pos rest -> body d (cr pos) rest
@@ -140,5 +142,5 @@ let labeled_block_ (ty : stack_type) depth (body : t) : t =
 
 (* Intended to be used within assert *)
 
-let is_nop (is :t) =
+let is_nop (is : t) =
   is 0l Wasm.Source.no_region [] = []

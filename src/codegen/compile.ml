@@ -6972,7 +6972,7 @@ let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule
   let start_fun = compile_start_func env progs in
   let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o = match E.mode env with
-    | Flags.ICMode | Flags.StubMode -> Dfinity.export_start env start_fi; None
-    | Flags.WasmMode | Flags.WASIMode-> Some (nr start_fi) in
+    | Flags.(ICMode | StubMode) -> Dfinity.export_start env start_fi; None
+    | Flags.(WasmMode | WASIMode) -> Some (nr start_fi) in
 
   conclude_module env start_fi_o
