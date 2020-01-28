@@ -1,4 +1,5 @@
 syntax6.mo:1.5-1.6: syntax error, unexpected token '}'
+ in position marked . of partially parsed item(s)
 seplist(<dec>,<semicolon>) -> <dec> . ;\n seplist(<dec>,<semicolon>) 
 seplist(<dec>,<semicolon>) -> <dec> . ; seplist(<dec>,<semicolon>) 
 <parse_prog> ->  seplist(<imp>,<semicolon>) seplist(<dec>,<semicolon>) . <eof> 

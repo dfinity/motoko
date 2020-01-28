@@ -139,7 +139,7 @@ let parse_with mode lexer parse name =
     | E.Error ((startp, _), explanations) ->
       (error (Lexer.region lexer) "syntax"
          (Printf.sprintf
-            "unexpected token '%s'\n at position marked . in partially parsed item(s)\n%s"
+            "unexpected token '%s'\n in position marked . of partially parsed item(s)\n%s"
             (Lexing.lexeme lexer) (abstract_explanations explanations)
       ))
 
