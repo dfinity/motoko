@@ -1,3 +1,4 @@
 syntax1.mo:1.8-1.9: syntax error, unexpected token ';'
+ in position marked . of partially parsed item(s)
 <exp_bin(ob)> -> <exp_bin(ob)> <binop> . <exp_bin(ob)> 
 
