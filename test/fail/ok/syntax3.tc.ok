@@ -4,7 +4,6 @@ expected one of token or <phrase>:
   and
   ]
   [
-  >>=
   <unop>
   <unassign>
   <typ_args>?
@@ -16,4 +15,3 @@ expected one of token or <phrase>:
   .<num>
   .
   ,
-  #

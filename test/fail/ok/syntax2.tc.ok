@@ -3,7 +3,6 @@ expected one of token or <phrase>:
   or
   and
   [
-  >>=
   <unop>
   <unassign>
   <typ_args>?
@@ -17,4 +16,3 @@ expected one of token or <phrase>:
   :
   .<num>
   .
-  #
