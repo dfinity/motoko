@@ -32,15 +32,15 @@
         "version": "v1.2.0"
     },
     "nixpkgs": {
-        "branch": "dfinity",
+        "branch": "master",
         "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
         "homepage": "https://github.com/NixOS/nixpkgs",
         "owner": "ggreif",
         "repo": "nixpkgs",
-        "rev": "69b99132a13fa7ee96ba90693bc173b9a9ec187b",
-        "sha256": "03w59xqsb65kxkz19bad07zbc8g65ap075101ycyfq8h6qmzs3js",
+        "rev": "24e25ffada68e1d49587cdf3896e4d6b566dd684",
+        "sha256": "0j54089xsabr30ljgpns5snf6dn432l0qnb2i9fl6a5x4w3lnq6i",
         "type": "tarball",
-        "url": "https://github.com/ggreif/nixpkgs/archive/69b99132a13fa7ee96ba90693bc173b9a9ec187b.tar.gz",
+        "url": "https://github.com/ggreif/nixpkgs/archive/24e25ffada68e1d49587cdf3896e4d6b566dd684.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
