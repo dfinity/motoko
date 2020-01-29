@@ -22,18 +22,20 @@ module {
   /**
   The empty list
   */
-  public let nil : <T> () -> List<T> = func<T>() : List<T> = null;
+  public let nil : <T> () -> List<T> =
+    func<T>() : List<T> = null;
 
 
   /**
   Returns true if the list is empty.
   */
-  public let isNil : <T> List<T> -> Bool = func<T>(l : List<T>) : Bool {
-    switch l {
-    case null { true  };
-    case _    { false };
-    }
-  };
+  public let isNil : <T> List<T> -> Bool =
+    func<T>(l : List<T>) : Bool {
+      switch l {
+      case null { true  };
+      case _    { false };
+      }
+    };
 
   /**
   also known as "list cons"
@@ -44,13 +46,14 @@ module {
   /**
   The last element of the list, if present.
   */
-  public let last : <T> List<T> -> ?T = func<T>(l : List<T>) : ?T {
-    switch l {
-    case null        { null };
-    case (?(x,null)) { ?x };
-    case (?(_,t))    { last<T>(t) };
-    }
-  };
+  public let last : <T> List<T> -> ?T =
+    func<T>(l : List<T>) : ?T {
+      switch l {
+      case null        { null };
+      case (?(x,null)) { ?x };
+      case (?(_,t))    { last<T>(t) };
+      }
+    };
 
   /**
   Treating the list as a stack; this combines the usual operations `head` and (non-failing) `tail` into one operation.
@@ -240,16 +243,13 @@ module {
     // tail recursive, but requires "two passes"
     func<T>(l : List<List<T>>) : List<T> = {
       // 1/2: fold from left to right, reverse-appending the sublists...
-      let r =
-        { let f = func(a:List<T>, b:List<T>) : List<T> { revAppend<T>(a,b) };
-                foldLeft<List<T>, List<T>>(l, null, f)
-        };
+      let r = foldLeft<List<T>, List<T>>(l, null, func(a,b) { revAppend<T>(a,b) });
       // 2/2: ...re-reverse the elements, to their original order:
       rev<T>(r)
     };
 
   // Internal utility-function
-  func revAppend<T>(l1 : List<T>, l2 : List<T>) : List<T> = {
+  func revAppend<T>(l1 : List<T>, l2 : List<T>) : List<T> {
     switch l1 {
     case null     { l2 };
     case (?(h,t)) { revAppend<T>(t, ?(h,l2)) };
