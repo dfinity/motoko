@@ -12,7 +12,7 @@ type actor_aliases = string Flags.M.t
 
 type resolved_imports = Syntax.resolved_import Source.phrase list
 
-val collect_imports : Syntax.prog -> string list
+val collect_imports : Syntax.prog -> string -> ((string * string option) list) Diag.result
 
 type flags = {
   package_urls : package_urls;
@@ -33,4 +33,7 @@ val resolve_flags : flags -> resolved_flags Diag.result
 val resolve : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
 
 (* Exported for tests *)
-val append_extension : (filepath -> bool) -> filepath -> filepath option
+val append_extension :
+  (filepath -> bool) ->
+  filepath ->
+  (filepath, Source.region -> Diag.message) result
