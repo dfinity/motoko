@@ -66,8 +66,8 @@ module {
   The length of the list
   */
   public let len : <T> List<T> -> Nat =
-    func<T>(l : List<T>) : Nat = label profile_list_len : Nat {
-      func rec(l : List<T>, n : Nat) : Nat = label profile_list_len_rec : Nat {
+    func<T>(l : List<T>) : Nat {
+      func rec(l : List<T>, n : Nat) : Nat {
         switch l {
           case null     { n };
           case (?(_,t)) { rec(t,n+1) };
@@ -80,47 +80,32 @@ module {
   Tests the length against a maximum value
   */
   public let lenIsEqLessThan : <T> (List<T>, Nat) -> Bool =
-    func<T>(l : List <T>, i : Nat) : Bool =
-      label profile_list_lenIsEqLessThan_begin : Bool {
-        func rec(l : List<T>, i : Nat) : Bool = label profile_list_lenIsEqLessThan_rec : Bool {
-          switch l {
-                case null label profile_list_lenIsEqLessThan_end_true : Bool true;
-                case (?(_, t)) {
-                 if ( i == 0 ) {
-                   label profile_list_lenIsEqLessThan_end_false : Bool
-                   false
-                 }
-                 else {
-                   rec(t, i - 1)
-                 }
-               };
-          }
+    func<T>(l : List <T>, i : Nat) : Bool {
+      switch l {
+        case null true;
+        case (?(_, t)) {
+          if (i == 0) { false }
+          else { lenIsEqLessThan<T>(t, i - 1) }
         };
-        rec(l, i)
       };
+    };
 
   /**
-  Get the length, unless greater than a maximum value, in which return null.
+  Get the length, unless greater than a maximum value, in which return `null`.
   */
-  public let lenClamp : <T> (List<T>, Nat) -> ?Nat =
-    func<T>(l : List<T>, i0 : Nat) : ?Nat =
-      label profile_list_lenClamp : (?Nat) {
-        func rec(l : List<T>, i : Nat) : ?Nat = label profile_list_lenClamp_rec : (?Nat) {
-          switch l {
-                case null { label profile_list_lenClamp_end_some : (?Nat) ?(i0 - i) };
-                case (?(_, t)) {
-                 if ( i == 0 ) {
-                   label profile_list_lenClamp_end_null : (?Nat)
-                   null
-                 }
-                 else {
-                   rec(t, i - 1)
-                 }
-               };
-          }
-        };
-        rec(l, i0)
+  public let lenClamp : <T> (List<T>, max : Nat) -> ?Nat =
+    func<T>(l : List<T>, max : Nat) : ?Nat {
+      func rec(l : List<T>, max : Nat, i : Nat) : ?Nat {
+        switch l {
+          case null { ?i };
+          case (?(_, t)) {
+            if ( i > max ) { null }
+            else { rec(t, max, i + 1) }
+          };
+        }
       };
+      rec(l, max, 0)
+    };
 
   /**
   Random list access, zero-based.
@@ -157,14 +142,11 @@ module {
   This is called `app` in SML Basis, and `iter` in OCaml.
   */
   public let iter : <T>(List<T>, f : T -> ()) -> () =
-    func iter<T>(l : List<T>, f:T -> ()) : () = {
-      func rec(l : List<T>) : () {
-        switch l {
-              case null     { () };
-              case (?(h,t)) { f(h) ; rec(t) };
-        }
-      };
-      rec(l)
+    func iter<T>(l : List<T>, f : T -> ()) {
+      switch l {
+        case null     { () };
+        case (?(h,t)) { f(h) ; iter<T>(t, f) };
+      }
     };
 
   /**
@@ -173,13 +155,10 @@ module {
   */
   public let map : <T,S>(List<T>, f : T -> S) -> List<S> =
     func<T,S>(l : List<T>, f:T -> S) : List<S> = {
-      func rec(l : List<T>) : List<S> {
-        switch l {
-              case null     { null };
-              case (?(h,t)) { ?(f(h),rec(t)) };
-        }
-      };
-      rec(l)
+      switch l {
+            case null     { null };
+            case (?(h,t)) { ?(f(h),map<T,S>(t,f)) };
+      }
     };
 
   /**
@@ -188,13 +167,16 @@ module {
   */
   public let filter : <T>(List<T>, p : T -> Bool) -> List<T> =
     func<T>(l : List<T>, f:T -> Bool) : List<T> = {
-      func rec(l : List<T>) : List<T> {
-        switch l {
-              case null     { null };
-              case (?(h,t)) { if (f(h)){ ?(h,rec(t)) } else { rec(t) } };
-        }
+      switch l {
+        case null { null };
+        case (?(h,t)) {
+          if (f(h)) {
+            ?(h,filter<T>(t, f))
+          } else {
+            filter<T>(t, f)
+          }
+        };
       };
-      rec(l)
     };
 
   /**
@@ -205,18 +187,18 @@ module {
   */
   public let split : <T>(List<T>, f : T -> Bool) -> (List<T>, List<T>) =
     func<T>(l : List<T>, f:T -> Bool) : (List<T>, List<T>) = {
-      func rec(l : List<T>) : (List<T>, List<T>) =
-        label profile_list_split_rec : (List<T>, List<T>) {
-        switch l {
-          case null     { (null, null) };
-          case (?(h,t)) {
-            let (l,r) = rec(t) ;
-             if (f(h)) { (?(h,l), r) } else { (l, ?(h,r)) }
-          };
-        }
+      switch l {
+        case null { (null, null) };
+        case (?(h,t)) {
+          if (f(h)) { // call f in-order
+            let (l,r) = split<T>(t, f);
+            (?(h,l), r)
+          } else {
+            let (l,r) = split<T>(t, f);
+            (l, ?(h,r))
+          }
+        };
       };
-      label profile_list_split_begin : (List<T>, List<T>)
-      rec(l)
     };
 
   /**
@@ -225,18 +207,15 @@ module {
   */
   public let mapFilter : <T,S>(List<T>, f : T -> ?S) -> List<S> =
     func<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
-      func rec(l : List<T>) : List<S> {
-        switch l {
-              case null     { null };
-              case (?(h,t)) {
-                     switch (f(h)) {
-                     case null { rec(t) };
-                     case (?h_){ ?(h_,rec(t)) };
-                     }
-                   };
-        }
+      switch l {
+        case null { null };
+        case (?(h,t)) {
+          switch (f(h)) {
+            case null { mapFilter<T,S>(t, f) };
+            case (?h_){ ?(h_,mapFilter<T,S>(t, f)) };
+          }
+        };
       };
-      rec(l)
     };
 
   /**
@@ -296,9 +275,9 @@ module {
   public let drop : <T>(List<T>, n:Nat) -> List<T> =
     func<T>(l : List<T>, n:Nat) : List<T> = {
       switch (l, n) {
-      case (l_,     0) { l_ };
-      case (null,   _) { null };
-      case ((?(h,t)), m) { drop<T>(t, m - 1) };
+        case (l_,     0) { l_ };
+        case (null,   _) { null };
+        case ((?(h,t)), m) { drop<T>(t, m - 1) };
       }
     };
 
@@ -307,13 +286,10 @@ module {
   */
   public let foldLeft : <T,S>(List<T>, S, f : (T,S) -> S) -> S =
     func<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
-      func rec(l:List<T>, a:S) : S = {
-        switch l {
+      switch l {
         case null     { a };
-        case (?(h,t)) { rec(t, f(h,a)) };
-        }
+        case (?(h,t)) { foldLeft<T,S>(t, f(h,a), f) };
       };
-      rec(l,a)
     };
 
   /**
@@ -321,13 +297,10 @@ module {
   */
   public let foldRight : <T,S>(List<T>, S, f : (T,S) -> S) -> S =
     func<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
-      func rec(l:List<T>) : S = {
-        switch l {
+      switch l {
         case null     { a };
-        case (?(h,t)) { f(h, rec(t)) };
-        }
+        case (?(h,t)) { f(h, foldRight<T,S>(t, a, f)) };
       };
-      rec(l)
     };
 
   /**
@@ -335,13 +308,10 @@ module {
   */
   public let find : <T>(l: List<T>, f : T -> Bool) -> ?T =
     func<T>(l: List<T>, f:T -> Bool) : ?T = {
-      func rec(l:List<T>) : ?T {
-        switch l {
-              case null     { null };
-              case (?(h,t)) { if (f(h)) { ?h } else { rec(t) } };
-        }
+      switch l {
+        case null     { null };
+        case (?(h,t)) { if (f(h)) { ?h } else { find<T>(t, f) } };
       };
-      rec(l)
     };
 
   /**
@@ -349,15 +319,10 @@ module {
   */
   public let exists : <T>(List<T>, f : T -> Bool) -> Bool =
     func<T>(l: List<T>, f:T -> Bool) : Bool = {
-      func rec(l:List<T>) : Bool {
-        switch l {
-              case null     { false };
-              // XXX/minor --- Missing parens on condition leads to unhelpful error:
-              //case (?(h,t)) { if f(h) { true } else { rec(t) } };
-              case (?(h,t)) { if (f(h)) { true } else { rec(t) } };
-        }
+      switch l {
+        case null     { false };
+        case (?(h,t)) { f(h) or exists<T>(t, f)};
       };
-      rec(l)
     };
 
   /**
@@ -365,13 +330,10 @@ module {
   */
   public let all : <T>(List<T>, f : T -> Bool) -> Bool =
     func<T>(l: List<T>, f:T -> Bool) : Bool = {
-      func rec(l:List<T>) : Bool {
-        switch l {
-              case null     { true };
-              case (?(h,t)) { if (not f(h)) { false } else { rec(t) } };
-        }
-      };
-      rec(l)
+      switch l {
+        case null     { true };
+        case (?(h,t)) { f(h) and all<T>(t, f) };
+      }
     };
 
   /**
@@ -380,20 +342,17 @@ module {
   */
   public let merge : <T>(List<T>, List<T>, lte : (T,T) -> Bool) -> List<T> =
     func<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
-      func rec(l1: List<T>, l2: List<T>) : List<T> {
-        switch (l1, l2) {
-          case (null, _) { l2 };
-          case (_, null) { l1 };
-          case (?(h1,t1), ?(h2,t2)) {
-            if (lte(h1,h2)) {
-              ?(h1, rec(t1, ?(h2,t2)))
-            } else {
-              ?(h2, rec(?(h1,t1), t2))
-            }
-          };
-        }
-      };
-      rec(l1, l2)
+      switch (l1, l2) {
+        case (null, _) { l2 };
+        case (_, null) { l1 };
+        case (?(h1,t1), ?(h2,t2)) {
+          if (lte(h1,h2)) {
+            ?(h1, merge<T>(t1, l2, lte))
+          } else {
+            ?(h2, merge<T>(l1, t2, lte))
+          }
+        };
+      }
     };
 
   /**
@@ -404,14 +363,11 @@ module {
   */
   public let lessThanEq : <T>(List<T>, List<T>, lte: (T,T) -> Bool) -> Bool =
     func<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : Bool {
-      func rec(l1: List<T>, l2: List<T>) : Bool {
-        switch (l1, l2) {
-              case (null, _) { true };
-              case (_, null) { false };
-              case (?(h1,t1), ?(h2,t2)) { lte(h1,h2) and rec(t1, t2) };
-        }
+      switch (l1, l2) {
+        case (null, _) { true };
+        case (_, null) { false };
+        case (?(h1,t1), ?(h2,t2)) { lte(h1,h2) and lessThanEq<T>(t1, t2, lte) };
       };
-      rec(l1, l2)
     };
 
   /**
@@ -421,15 +377,12 @@ module {
   */
   public let isEq : <T>(List<T>, List<T>, eq : (T,T) -> Bool) -> Bool =
     func<T>(l1: List<T>, l2: List<T>, eq:(T,T) -> Bool) : Bool {
-      func rec(l1: List<T>, l2: List<T>) : Bool {
-        switch (l1, l2) {
-              case (null, null) { true };
-              case (null, _)    { false };
-              case (_,    null) { false };
-              case (?(h1,t1), ?(h2,t2)) { eq(h1,h2) and rec(t1, t2) };
-        }
-      };
-      rec(l1, l2)
+      switch (l1, l2) {
+        case (null, null) { true };
+        case (null, _)    { false };
+        case (_,    null) { false };
+        case (?(h1,t1), ?(h2,t2)) { eq(h1,h2) and isEq<T>(t1, t2, eq) };
+      }
     };
 
   /**
@@ -437,10 +390,10 @@ module {
   */
   public let tabulate : <T>(Nat, f : Nat -> T) -> List<T> =
     func<T>(n:Nat, f:Nat -> T) : List<T> {
-      func rec(i:Nat) : List<T> {
-        if (i == n) { null } else { ?(f(i), rec(i+1)) }
+      func rec(i:Nat, n: Nat, f : Nat -> T) : List<T> {
+        if (i == n) { null } else { ?(f(i), rec(i+1, n, f)) }
       };
-      rec(0)
+      rec(0, n, f)
     };
 
   /**
