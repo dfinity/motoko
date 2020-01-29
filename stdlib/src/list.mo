@@ -55,12 +55,13 @@ module {
   /**
   Treating the list as a stack; this combines the usual operations `head` and (non-failing) `tail` into one operation.
   */
-  public let pop : <T> List<T> -> (?T, List<T>) = func<T>(l : List<T>) : (?T, List<T>) {
-    switch l {
-    case null      { (null, null) };
-    case (?(h, t)) { (?h, t) };
-    }
-  };
+  public let pop : <T> List<T> -> (?T, List<T>) =
+    func<T>(l : List<T>) : (?T, List<T>) {
+      switch l {
+      case null      { (null, null) };
+      case (?(h, t)) { (?h, t) };
+      }
+    };
 
   /**
   The length of the list
