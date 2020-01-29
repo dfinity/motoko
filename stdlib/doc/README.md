@@ -40,7 +40,8 @@ shape:
        */
 
    The common indentation is removed. The body should be indented no further
-   than the opening `/`.
+   than the opening `/` (unless you want the indentation to carry over to the
+   ascii document, e.g. for inline code blocks).
 
  * A documentation comment must be followed by either
 
