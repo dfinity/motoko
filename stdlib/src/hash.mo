@@ -15,29 +15,9 @@ module {
   public type t = Hash;
 
   /**
-  Jenkin's one at a time:
-  https://en.wikipedia.org/wiki/Jenkins_hash_function#one_at_a_time
-
-  The input type should actually be `[Word8]`.
-  Note: Be sure to explode each `Word8` of a `Word32` into its own `Word32`, and to shift into lower 8 bits.
-  // should this really be public?
-  */
-  public let hashWord8s : [Hash] -> Hash = func(key) {
-    var hash = Prim.natToWord32(0);
-    for (wordOfKey in key.vals()) {
-      hash := hash + wordOfKey;
-      hash := hash + hash << 10;
-      hash := hash ^ (hash >> 6);
-    };
-    hash := hash + hash << 3;
-    hash := hash ^ (hash >> 11);
-    hash := hash + hash << 15;
-    return hash;
-  };
-
-  /**
   The hash length, always 31.
   */
+  // Why not 32?
   public let length : Nat = 31;
 
   public let hashOfInt : Int -> Hash = func(i) {
@@ -50,6 +30,9 @@ module {
       ]);
   };
 
+  /**
+  WARNING: This only hashes the lowest 32 bits of the `Int`
+  */
   public let hashOfIntAcc : (Hash, Int) -> Hash = func(h1, i) {
     let j = Prim.intToWord32(i);
     hashWord8s(
@@ -61,6 +44,9 @@ module {
       ]);
   };
 
+  /**
+  WARNING: This only hashes the lowest 32 bits of the `Int`
+  */
   public let hashOfText : Text -> Hash = func(t) {
     var x = 0 : Word32;
     for (c in t.chars()) {
@@ -103,4 +89,26 @@ module {
       }
     }
   };
+
+  /**
+  Jenkin's one at a time:
+  https://en.wikipedia.org/wiki/Jenkins_hash_function#one_at_a_time
+
+  The input type should actually be `[Word8]`.
+  Note: Be sure to explode each `Word8` of a `Word32` into its own `Word32`, and to shift into lower 8 bits.
+  // should this really be public?
+  */
+  public let hashWord8s : [Hash] -> Hash = func(key) {
+    var hash = Prim.natToWord32(0);
+    for (wordOfKey in key.vals()) {
+      hash := hash + wordOfKey;
+      hash := hash + hash << 10;
+      hash := hash ^ (hash >> 6);
+    };
+    hash := hash + hash << 3;
+    hash := hash ^ (hash >> 11);
+    hash := hash + hash << 15;
+    return hash;
+  };
+
 }
