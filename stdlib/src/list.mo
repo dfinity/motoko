@@ -1,47 +1,34 @@
+/**
+[#mod-list]
+= `list` -- Lists
+
+This module provides purely-functional, singly-linked lists.
+
+
+*/
+
 import Array "array";
 import Option "option";
 
 module {
-/**
-
-# List
-
-Purely-functional, singly-linked lists.
-
-*/
-
-/**
- Representation
- =================
-
- A singly-linked list consists of zero or more _cons cells_, wherein
-each cell contains a single list element (the cell's _head_), and a pointer to the
-remainder of the list (the cell's _tail_).
-
-*/
-
-public type List<T> = ?(T, List<T>);
-
-/**
- Interface
- ==============
-*/
 
   /**
-   `nil`
-   ------
-   empty list
-   */
-  public func nil<T>() : List<T> =
-    null;
+  A singly-linked list consists of zero or more _cons cells_, wherein
+  each cell contains a single list element (the cell's _head_), and a pointer to the
+  remainder of the list (the cell's _tail_).
+  */
+  public type List<T> = ?(T, List<T>);
+
+  /**
+  The empty list
+  */
+  public let nil : <T> () -> List<T> = func<T>() : List<T> = null;
 
 
   /**
-   `isNil`
-   --------
-   test for empty list
-   */
-  public func isNil<T>(l : List<T>) : Bool {
+  Returns true if the list is empty.
+  */
+  public let isNil : <T> List<T> -> Bool = func<T>(l : List<T>) : Bool {
     switch l {
     case null { true  };
     case _    { false };
@@ -49,19 +36,15 @@ public type List<T> = ?(T, List<T>);
   };
 
   /**
-   `push`
-   -------------
-   aka "list cons"
-   */
-  public func push<T>(x : T, l : List<T>) : List<T> =
-    ?(x, l);
+  also known as "list cons"
+  */
+  public let push : <T> (T, List<T>) -> List<T> =
+    func<T>(x : T, l : List<T>) : List<T> = ?(x, l);
 
   /**
-   `last`
-   ----------
-   last element, optionally; tail recursive
-   */
-  public func last<T>(l : List<T>) : ?T = {
+  The last element of the list, if present.
+  */
+  public let last : <T> List<T> -> ?T = func<T>(l : List<T>) : ?T {
     switch l {
     case null        { null };
     case (?(x,null)) { ?x };
@@ -70,11 +53,9 @@ public type List<T> = ?(T, List<T>);
   };
 
   /**
-   `pop`
-   --------
-   treat the list as a stack; combines the usual operations `head` and (non-failing) `tail` into one operation
-   */
-  public func pop<T>(l : List<T>) : (?T, List<T>) = {
+  Treating the list as a stack; this combines the usual operations `head` and (non-failing) `tail` into one operation.
+  */
+  public let pop : <T> List<T> -> (?T, List<T>) = func<T>(l : List<T>) : (?T, List<T>) {
     switch l {
     case null      { (null, null) };
     case (?(h, t)) { (?h, t) };
@@ -82,217 +63,213 @@ public type List<T> = ?(T, List<T>);
   };
 
   /**
-   `len`
-  --------
-   length; tail recursive
-   */
-  public func len<T>(l : List<T>) : Nat = label profile_list_len : Nat {
-    func rec(l : List<T>, n : Nat) : Nat = label profile_list_len_rec : Nat {
-      switch l {
-	    case null     { n };
-	    case (?(_,t)) { rec(t,n+1) };
-      }
-    };
-    rec(l,0)
-  };
-
-  /**
-   `lenIsLessThan`
-  --------
-   test length against a maximum value; tail recursive
-   */
-  public func lenIsEqLessThan<T>(l : List<T>, i : Nat) : Bool =
-    label profile_list_lenIsEqLessThan_begin : Bool {
-    func rec(l : List<T>, i : Nat) : Bool = label profile_list_lenIsEqLessThan_rec : Bool {
-      switch l {
-	    case null label profile_list_lenIsEqLessThan_end_true : Bool true;
-	    case (?(_, t)) {
-             if ( i == 0 ) {
-               label profile_list_lenIsEqLessThan_end_false : Bool
-               false
-             }
-             else {
-               rec(t, i - 1)
-             }
-           };
-      }
-    };
-    rec(l, i)
-  };
-
-  /**
-   `lenClamp`
-  --------
-   get the length, unless greater than a maximum value, in which return null; tail recursive
-   */
-  public func lenClamp<T>(l : List<T>, i0 : Nat) : ?Nat =
-    label profile_list_lenClamp : (?Nat) {
-    func rec(l : List<T>, i : Nat) : ?Nat = label profile_list_lenClamp_rec : (?Nat) {
-      switch l {
-	    case null { label profile_list_lenClamp_end_some : (?Nat) ?(i0 - i) };
-	    case (?(_, t)) {
-             if ( i == 0 ) {
-               label profile_list_lenClamp_end_null : (?Nat)
-               null
-             }
-             else {
-               rec(t, i - 1)
-             }
-           };
-      }
-    };
-    rec(l, i0)
-  };
-
-  /**
-   `nth`
-   ---------
-   array-like list access, but in linear time; tail recursive
-   */
-  public func nth<T>(l : List<T>, n : Nat) : ?T = {
-    switch (n, l) {
-    case (_, null)     { null };
-    case (0, (?(h,t))) { ?h };
-    case (_, (?(_,t))) { nth<T>(t, n - 1) };
-    }
-  };
-
-  /**
-   `rev`
-   --------
-   reverse the list; tail recursive
-   */
-  public func rev<T>(l : List<T>) : List<T> = {
-    func rec(l : List<T>, r : List<T>) : List<T> {
-      switch l {
-	    case null     { r };
-	    case (?(h,t)) { rec(t,?(h,r)) };
-      }
-    };
-    rec(l, null)
-  };
-
-  /**
-   `iter`
-   ---------
-   Called `app` in SML Basis, and `iter` in OCaml; tail recursive
-   */
-  public func iter<T>(l : List<T>, f:T -> ()) : () = {
-    func rec(l : List<T>) : () {
-      switch l {
-	    case null     { () };
-	    case (?(h,t)) { f(h) ; rec(t) };
-      }
-    };
-    rec(l)
-  };
-
-  /**
-   `map`
-   ---------
-   map the list elements; non-tail recursive
-
-   Note: need mutable Cons tails for tail-recursive map.
-   */
-  public func map<T,S>(l : List<T>, f:T -> S) : List<S> = {
-    func rec(l : List<T>) : List<S> {
-      switch l {
-	    case null     { null };
-	    case (?(h,t)) { ?(f(h),rec(t)) };
-      }
-    };
-    rec(l)
-  };
-
-  /**
-   `filter`
-   ----------
-   filter the list elements; non-tail recursive
-   */
-  public func filter<T>(l : List<T>, f:T -> Bool) : List<T> = {
-    func rec(l : List<T>) : List<T> {
-      switch l {
-	    case null     { null };
-	    case (?(h,t)) { if (f(h)){ ?(h,rec(t)) } else { rec(t) } };
-      }
-    };
-    rec(l)
-  };
-
-  /**
-   `split`
-   ----------
-   split the list elements; non-tail recursive
-   */
-  public func split<T>(l : List<T>, f:T -> Bool) : (List<T>, List<T>) = {
-    func rec(l : List<T>) : (List<T>, List<T>) =
-      label profile_list_split_rec : (List<T>, List<T>) {
-      switch l {
-	    case null     { (null, null) };
-	    case (?(h,t)) { let (l,r) = rec(t) ;
-                      if (f(h)){ (?(h,l), r) } else { (l, ?(h,r)) } };
-      }
-    };
-    label profile_list_split_begin : (List<T>, List<T>)
-    rec(l)
-  };
-
-  /**
-   `mapFilter`
-   --------------
-   map and filter the list elements; non-tail recursive
-   */
-  public func mapFilter<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
-    func rec(l : List<T>) : List<S> {
-      switch l {
-	    case null     { null };
-	    case (?(h,t)) {
-	           switch (f(h)) {
-	           case null { rec(t) };
-	           case (?h_){ ?(h_,rec(t)) };
-	           }
-	         };
-      }
-    };
-    rec(l)
-  };
-
-  /**
-   `append`
-   ---------
-   append two lists; non-tail recursive
-   */
-  public func append<T>(l : List<T>, m : List<T>) : List<T> = {
-    func rec(l : List<T>) : List<T> {
-      switch l {
-      case null     { m };
-      case (?(h,t)) {?(h,rec(t))};
-      }
-    };
-    rec(l)
-  };
-
-  /**
-   `concat`
-   -----------
-   concat (aka "list join"); tail recursive, but requires "two passes"
-   */
-  public func concat<T>(l : List<List<T>>) : List<T> = {
-    // 1/2: fold from left to right, reverse-appending the sublists...
-    let r =
-      { let f = func(a:List<T>, b:List<T>) : List<T> { revAppend<T>(a,b) };
-	      foldLeft<List<T>, List<T>>(l, null, f)
+  The length of the list
+  */
+  public let len : <T> List<T> -> Nat =
+    func<T>(l : List<T>) : Nat = label profile_list_len : Nat {
+      func rec(l : List<T>, n : Nat) : Nat = label profile_list_len_rec : Nat {
+        switch l {
+          case null     { n };
+          case (?(_,t)) { rec(t,n+1) };
+        }
       };
-    // 2/2: ...re-reverse the elements, to their original order:
-    rev<T>(r)
-  };
+      rec(l,0)
+    };
 
   /**
-   `revAppend`
-   -------------
-   See SML Basis library; tail recursive
-   */
-  public func revAppend<T>(l1 : List<T>, l2 : List<T>) : List<T> = {
+  Tests the length against a maximum value
+  */
+  public let lenIsEqLessThan : <T> (List<T>, Nat) -> Bool =
+    func<T>(l : List <T>, i : Nat) : Bool =
+      label profile_list_lenIsEqLessThan_begin : Bool {
+        func rec(l : List<T>, i : Nat) : Bool = label profile_list_lenIsEqLessThan_rec : Bool {
+          switch l {
+                case null label profile_list_lenIsEqLessThan_end_true : Bool true;
+                case (?(_, t)) {
+                 if ( i == 0 ) {
+                   label profile_list_lenIsEqLessThan_end_false : Bool
+                   false
+                 }
+                 else {
+                   rec(t, i - 1)
+                 }
+               };
+          }
+        };
+        rec(l, i)
+      };
+
+  /**
+  Get the length, unless greater than a maximum value, in which return null.
+  */
+  public let lenClamp : <T> (List<T>, Nat) -> ?Nat =
+    func<T>(l : List<T>, i0 : Nat) : ?Nat =
+      label profile_list_lenClamp : (?Nat) {
+        func rec(l : List<T>, i : Nat) : ?Nat = label profile_list_lenClamp_rec : (?Nat) {
+          switch l {
+                case null { label profile_list_lenClamp_end_some : (?Nat) ?(i0 - i) };
+                case (?(_, t)) {
+                 if ( i == 0 ) {
+                   label profile_list_lenClamp_end_null : (?Nat)
+                   null
+                 }
+                 else {
+                   rec(t, i - 1)
+                 }
+               };
+          }
+        };
+        rec(l, i0)
+      };
+
+  /**
+  Random list access, zero-based.
+
+  NOTE: Indexing into a list is a linear operation, and usually an indication
+  that a list might not be the best data structure to use.
+  */
+  public let nth : <T>(List<T>, Nat) -> ?T =
+    func<T>(l : List<T>, n : Nat) : ?T {
+      switch (n, l) {
+      case (_, null)     { null };
+      case (0, (?(h,t))) { ?h };
+      case (_, (?(_,t))) { nth<T>(t, n - 1) };
+      }
+    };
+
+  /**
+  reverse the list; tail recursive
+  */
+  public let rev : <T> List<T> -> List<T> =
+    func<T>(l : List<T>) : List<T> = {
+      func rec(l : List<T>, r : List<T>) : List<T> {
+        switch l {
+              case null     { r };
+              case (?(h,t)) { rec(t,?(h,r)) };
+        }
+      };
+      rec(l, null)
+    };
+
+  /**
+  Calls the given function with each list element in turn.
+
+  This is called `app` in SML Basis, and `iter` in OCaml.
+  */
+  public let iter : <T>(List<T>, f : T -> ()) -> () =
+    func iter<T>(l : List<T>, f:T -> ()) : () = {
+      func rec(l : List<T>) : () {
+        switch l {
+              case null     { () };
+              case (?(h,t)) { f(h) ; rec(t) };
+        }
+      };
+      rec(l)
+    };
+
+  /**
+  Calls the given function on each list element, collecing the results in a new
+  list.
+  */
+  public let map : <T,S>(List<T>, f : T -> S) -> List<S> =
+    func<T,S>(l : List<T>, f:T -> S) : List<S> = {
+      func rec(l : List<T>) : List<S> {
+        switch l {
+              case null     { null };
+              case (?(h,t)) { ?(f(h),rec(t)) };
+        }
+      };
+      rec(l)
+    };
+
+  /**
+  Creates a new list with only those elements of the original list for which
+  the given function (often called the _predicate_) is returns true.
+  */
+  public let filter : <T>(List<T>, p : T -> Bool) -> List<T> =
+    func<T>(l : List<T>, f:T -> Bool) : List<T> = {
+      func rec(l : List<T>) : List<T> {
+        switch l {
+              case null     { null };
+              case (?(h,t)) { if (f(h)){ ?(h,rec(t)) } else { rec(t) } };
+        }
+      };
+      rec(l)
+    };
+
+  /**
+  Creates two new lists. The first has those elements for which the given
+  function `f` returns true, the second those for which it returns false.
+
+  Also known as `partition`.
+  */
+  public let split : <T>(List<T>, f : T -> Bool) -> (List<T>, List<T>) =
+    func<T>(l : List<T>, f:T -> Bool) : (List<T>, List<T>) = {
+      func rec(l : List<T>) : (List<T>, List<T>) =
+        label profile_list_split_rec : (List<T>, List<T>) {
+        switch l {
+          case null     { (null, null) };
+          case (?(h,t)) {
+            let (l,r) = rec(t) ;
+             if (f(h)) { (?(h,l), r) } else { (l, ?(h,r)) }
+          };
+        }
+      };
+      label profile_list_split_begin : (List<T>, List<T>)
+      rec(l)
+    };
+
+  /**
+  Calls the given function on each list element, collecing the non-null results
+  in a new list.
+  */
+  public let mapFilter : <T,S>(List<T>, f : T -> ?S) -> List<S> =
+    func<T,S>(l : List<T>, f:T -> ?S) : List<S> = {
+      func rec(l : List<T>) : List<S> {
+        switch l {
+              case null     { null };
+              case (?(h,t)) {
+                     switch (f(h)) {
+                     case null { rec(t) };
+                     case (?h_){ ?(h_,rec(t)) };
+                     }
+                   };
+        }
+      };
+      rec(l)
+    };
+
+  /**
+  Appends two lists.
+  */
+  public let append : <T>(List<T>, List<T>) -> List<T> =
+    func <T>(l : List<T>, m : List<T>) : List<T> = {
+      func rec(l : List<T>) : List<T> {
+        switch l {
+        case null     { m };
+        case (?(h,t)) {?(h,rec(t))};
+        }
+      };
+      rec(l)
+    };
+
+  /**
+  concatenations a list of lists (Also known as "list join")
+  */
+  public let concat : <T>(List<List<T>>) -> List<T> =
+    // tail recursive, but requires "two passes"
+    func<T>(l : List<List<T>>) : List<T> = {
+      // 1/2: fold from left to right, reverse-appending the sublists...
+      let r =
+        { let f = func(a:List<T>, b:List<T>) : List<T> { revAppend<T>(a,b) };
+                foldLeft<List<T>, List<T>>(l, null, f)
+        };
+      // 2/2: ...re-reverse the elements, to their original order:
+      rev<T>(r)
+    };
+
+  // Internal utility-function
+  func revAppend<T>(l1 : List<T>, l2 : List<T>) : List<T> = {
     switch l1 {
     case null     { l2 };
     case (?(h,t)) { revAppend<T>(t, ?(h,l2)) };
@@ -300,327 +277,303 @@ public type List<T> = ?(T, List<T>);
   };
 
   /**
-   `take`
-   ---------
-   "take" `n` elements from the prefix of the given list.
-   If the given list has fewer than `n` elements, we return the full input list.
-   */
-  public func take<T>(l : List<T>, n:Nat) : List<T> = {
-    switch (l, n) {
-    case (_, 0) { null };
-    case (null,_) { null };
-    case (?(h, t), m) {?(h, take<T>(t, m - 1))};
-    }
-  };
-
-  /**
-   `drop`
-   ----------
-   */
-  public func drop<T>(l : List<T>, n:Nat) : List<T> = {
-    switch (l, n) {
-    case (l_,     0) { l_ };
-    case (null,   _) { null };
-    case ((?(h,t)), m) { drop<T>(t, m - 1) };
-    }
-  };
-
-  /**
-   `foldLeft`
-   ---------------
-   fold list left-to-right using function `f`; tail recursive
-   */
-  public func foldLeft<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
-    func rec(l:List<T>, a:S) : S = {
-      switch l {
-      case null     { a };
-      case (?(h,t)) { rec(t, f(h,a)) };
-      }
-    };
-    rec(l,a)
-  };
-
-  /***
-   `foldRight`
-   ------------
-   fold the list right-to-left using function `f`; non-tail recursive
-   */
-  public func foldRight<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
-    func rec(l:List<T>) : S = {
-      switch l {
-      case null     { a };
-      case (?(h,t)) { f(h, rec(t)) };
-      }
-    };
-    rec(l)
-  };
-
-  /**
-   `find`
-   -----------
-   test if there exists list element for which given predicate is true
-   */
-  public func find<T>(l: List<T>, f:T -> Bool) : ?T = {
-    func rec(l:List<T>) : ?T {
-      switch l {
-	    case null     { null };
-	    case (?(h,t)) { if (f(h)) { ?h } else { rec(t) } };
-      }
-    };
-    rec(l)
-  };
-
-  /**
-   `exists`
-   ---------
-   test if there exists list element for which given predicate is true
-   */
-  public func exists<T>(l: List<T>, f:T -> Bool) : Bool = {
-    func rec(l:List<T>) : Bool {
-      switch l {
-	    case null     { false };
-	    // XXX/minor --- Missing parens on condition leads to unhelpful error:
-	    //case (?(h,t)) { if f(h) { true } else { rec(t) } };
-	    case (?(h,t)) { if (f(h)) { true } else { rec(t) } };
-      }
-    };
-    rec(l)
-  };
-
-  /**
-   `all`
-   -------
-   test if given predicate is true for all list elements
-   */
-  public func all<T>(l: List<T>, f:T -> Bool) : Bool = {
-    func rec(l:List<T>) : Bool {
-      switch l {
-	    case null     { true };
-	    case (?(h,t)) { if (not f(h)) { false } else { rec(t) } };
-      }
-    };
-    rec(l)
-  };
-
-  /**
-   `merge`
-   ---------
-   Given two ordered lists, merge them into a single ordered list
-   */
-  public func merge<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
-    func rec(l1: List<T>, l2: List<T>) : List<T> {
-      switch (l1, l2) {
-	    case (null, _) { l2 };
-	    case (_, null) { l1 };
-	    case (?(h1,t1), ?(h2,t2)) {
-	           if (lte(h1,h2)) {
-		           ?(h1, rec(t1, ?(h2,t2)))
-	           } else {
-		           ?(h2, rec(?(h1,t1), t2))
-	           }
-	         };
-      }
-    };
-    rec(l1, l2)
-  };
-
-  /**
-   `lessThanEq`
-   --------------
-
-   Compare two lists lexicographic` ordering. tail recursive.
-
-   To do: Eventually, follow `collate` design from SML Basis, with real sum types, use 3-valued `order` type here.
+  "takes" `n` elements from the prefix of the given list.
+  If the given list has fewer than `n` elements, this returns (a copy of) the
+  full input list.
   */
-  public func lessThanEq<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : Bool {
-    func rec(l1: List<T>, l2: List<T>) : Bool {
-      switch (l1, l2) {
-	    case (null, _) { true };
-	    case (_, null) { false };
-	    case (?(h1,t1), ?(h2,t2)) { lte(h1,h2) and rec(t1, t2) };
+  public let take : <T>(List<T>, n:Nat) -> List<T> =
+    func<T>(l : List<T>, n:Nat) : List<T> = {
+      switch (l, n) {
+      case (_, 0) { null };
+      case (null,_) { null };
+      case (?(h, t), m) {?(h, take<T>(t, m - 1))};
       }
     };
-    rec(l1, l2)
-  };
 
   /**
-   `isEq`
-   ---------
-   Compare two lists for equality. tail recursive.
-
-   `isEq(l1, l2)` is equivalent to `lessThanEq(l1,l2) && lessThanEq(l2,l1)`, but the former is more efficient.
-   */
-  public func isEq<T>(l1: List<T>, l2: List<T>, eq:(T,T) -> Bool) : Bool {
-    func rec(l1: List<T>, l2: List<T>) : Bool {
-      switch (l1, l2) {
-	    case (null, null) { true };
-	    case (null, _)    { false };
-	    case (_,    null) { false };
-	    case (?(h1,t1), ?(h2,t2)) { eq(h1,h2) and rec(t1, t2) };
+  "drops" an `n` element prefix from the given list.
+  */
+  public let drop : <T>(List<T>, n:Nat) -> List<T> =
+    func<T>(l : List<T>, n:Nat) : List<T> = {
+      switch (l, n) {
+      case (l_,     0) { l_ };
+      case (null,   _) { null };
+      case ((?(h,t)), m) { drop<T>(t, m - 1) };
       }
     };
-    rec(l1, l2)
-  };
 
   /**
-   `partition`
-   ---------------
-   using a predicate, create two lists from one: the "true" list, and the "false" list.
-   (See SML basis library); non-tail recursive.
-   */
-  public func partition<T>(l: List<T>, f:T -> Bool) : (List<T>, List<T>) {
-    func rec(l: List<T>) : (List<T>, List<T>) {
-      switch l {
-	    case null { (null, null) };
-	    case (?(h,t)) {
-	           let (pl,pr) = rec(t);
-	           if (f(h)) {
-		           (?(h, pl), pr)
-	           } else {
-		           (pl, ?(h, pr))
-	           }
-	         };
-      }
-    };
-    rec(l)
-  };
-
-  /**
-   `tabulate`
-   --------------
-   generate a list based on a length, and a function from list index to list element.
-   (See SML basis library); non-tail recursive.
-   */
-  public func tabulate<T>(n:Nat, f:Nat -> T) : List<T> {
-    func rec(i:Nat) : List<T> {
-      if (i == n) { null } else { ?(f(i), rec(i+1)) }
-    };
-    rec(0)
-  };
-
-  /**
-   `singleton`
-   ----------------
-   Creates a list with exactly one element.
-   */
-  public func singleton<X>(x : X) : List<X> {
-    ?(x, null)
-  };
-
-  /**
-   `replicate`
-   ----------------
-   Creates a list of the given length with the same value in each position.
-   */
-  public func replicate<X>(n : Nat, x : X) : List<X> {
-    tabulate<X>(n, func _ { x })
-  };
-
-  /**
-   `zip`
-   -------------
-   Creates a list of pairs from a pair of lists. If the given lists have
-   inconsistent lengths, then the list created will have a length equal to their
-   minimum.
-   */
-  public func zip<X, Y>(xs : List<X>, ys : List<Y>) : List<(X, Y)> {
-    zipWith<X, Y, (X, Y)>(xs, ys, func (x, y) { (x, y) })
-  };
-
-  /**
-   `zipWith`
-   -------------
-   Creates a list whose elements are calculated from the given function and
-   elements occuring at the same position in the given lists. If the given lists
-   have inconsistent lengths, then the list created will have a length equal to 
-   their minimum.
-   */
-  public func zipWith<X, Y, Z>(
-    xs : List<X>,
-    ys : List<Y>,
-    f : (X, Y) -> Z
-  ) : List<Z> {
-    switch (pop<X>(xs)) {
-      case (null, _) null;
-      case (?x, xt) {
-        switch (pop<Y>(ys)) {
-          case (null, _) null;
-          case (?y, yt) {
-            push<Z>(f(x, y), zipWith<X, Y, Z>(xt, yt, f))
-          }
+  fold list left-to-right using function `f`.
+  */
+  public let foldLeft : <T,S>(List<T>, S, f : (T,S) -> S) -> S =
+    func<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
+      func rec(l:List<T>, a:S) : S = {
+        switch l {
+        case null     { a };
+        case (?(h,t)) { rec(t, f(h,a)) };
         }
-      }
-    }
-  };
+      };
+      rec(l,a)
+    };
 
   /**
-   `splitAt`
-   -----------
-   Split the given list at the given zero-based index.
-   */
-  public func splitAt<X>(n : Nat, xs : List<X>) : (List<X>, List<X>) {
-    if (n == 0) {
-      (null, xs)
-    } else {
-      func rec(n : Nat, xs : List<X>) : (List<X>, List<X>) {
-        switch (pop<X>(xs)) {
-          case (null, _) {
-            (null, null)
-          };
-          case (?h, t) {
-            if (n == 1) {
-              (singleton<X>(h), t)
+  fold the list right-to-left using function `f`.
+  */
+  public let foldRight : <T,S>(List<T>, S, f : (T,S) -> S) -> S =
+    func<T,S>(l : List<T>, a:S, f:(T,S) -> S) : S = {
+      func rec(l:List<T>) : S = {
+        switch l {
+        case null     { a };
+        case (?(h,t)) { f(h, rec(t)) };
+        }
+      };
+      rec(l)
+    };
+
+  /**
+  Returns the first element for which given predicate `f` is true, if such an element exists.
+  */
+  public let find : <T>(l: List<T>, f : T -> Bool) -> ?T =
+    func<T>(l: List<T>, f:T -> Bool) : ?T = {
+      func rec(l:List<T>) : ?T {
+        switch l {
+              case null     { null };
+              case (?(h,t)) { if (f(h)) { ?h } else { rec(t) } };
+        }
+      };
+      rec(l)
+    };
+
+  /**
+  Returns true if there exists list element for which given predicate `f` is true
+  */
+  public let exists : <T>(List<T>, f : T -> Bool) -> Bool =
+    func<T>(l: List<T>, f:T -> Bool) : Bool = {
+      func rec(l:List<T>) : Bool {
+        switch l {
+              case null     { false };
+              // XXX/minor --- Missing parens on condition leads to unhelpful error:
+              //case (?(h,t)) { if f(h) { true } else { rec(t) } };
+              case (?(h,t)) { if (f(h)) { true } else { rec(t) } };
+        }
+      };
+      rec(l)
+    };
+
+  /**
+  Returns true if for all list element the given predicate `f` is true
+  */
+  public let all : <T>(List<T>, f : T -> Bool) -> Bool =
+    func<T>(l: List<T>, f:T -> Bool) : Bool = {
+      func rec(l:List<T>) : Bool {
+        switch l {
+              case null     { true };
+              case (?(h,t)) { if (not f(h)) { false } else { rec(t) } };
+        }
+      };
+      rec(l)
+    };
+
+  /**
+  Given two lists that are orderd (with regard to the given relation `lte`),
+  merge them into a single ordered list
+  */
+  public let merge : <T>(List<T>, List<T>, lte : (T,T) -> Bool) -> List<T> =
+    func<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : List<T> {
+      func rec(l1: List<T>, l2: List<T>) : List<T> {
+        switch (l1, l2) {
+          case (null, _) { l2 };
+          case (_, null) { l1 };
+          case (?(h1,t1), ?(h2,t2)) {
+            if (lte(h1,h2)) {
+              ?(h1, rec(t1, ?(h2,t2)))
             } else {
-              let (l, r) = rec(n - 1, t);
-              (push<X>(h, l), r)
+              ?(h2, rec(?(h1,t1), t2))
+            }
+          };
+        }
+      };
+      rec(l1, l2)
+    };
+
+  /**
+  Compares two lists using lexicographic ordering (with regard to the given relation `lte`).
+
+  // To do: Eventually, follow `collate` design from SML Basis, with real sum
+  // types, use 3-valued `order` type here.
+  */
+  public let lessThanEq : <T>(List<T>, List<T>, lte: (T,T) -> Bool) -> Bool =
+    func<T>(l1: List<T>, l2: List<T>, lte:(T,T) -> Bool) : Bool {
+      func rec(l1: List<T>, l2: List<T>) : Bool {
+        switch (l1, l2) {
+              case (null, _) { true };
+              case (_, null) { false };
+              case (?(h1,t1), ?(h2,t2)) { lte(h1,h2) and rec(t1, t2) };
+        }
+      };
+      rec(l1, l2)
+    };
+
+  /**
+  Compares two lists for equality (with regard to the given relation `eq` on elements).
+
+  // `isEq(l1, l2)` is equivalent to `lessThanEq(l1,l2) && lessThanEq(l2,l1)`, but the former is more efficient.
+  */
+  public let isEq : <T>(List<T>, List<T>, eq : (T,T) -> Bool) -> Bool =
+    func<T>(l1: List<T>, l2: List<T>, eq:(T,T) -> Bool) : Bool {
+      func rec(l1: List<T>, l2: List<T>) : Bool {
+        switch (l1, l2) {
+              case (null, null) { true };
+              case (null, _)    { false };
+              case (_,    null) { false };
+              case (?(h1,t1), ?(h2,t2)) { eq(h1,h2) and rec(t1, t2) };
+        }
+      };
+      rec(l1, l2)
+    };
+
+  /**
+  generates a list based on a length, and a function from list index to list element.
+  */
+  public let tabulate : <T>(Nat, f : Nat -> T) -> List<T> =
+    func<T>(n:Nat, f:Nat -> T) : List<T> {
+      func rec(i:Nat) : List<T> {
+        if (i == n) { null } else { ?(f(i), rec(i+1)) }
+      };
+      rec(0)
+    };
+
+  /**
+  creates a list with exactly one element.
+  */
+  public let singleton : <X> X -> List<X> =
+    func<X>(x : X) : List<X> {
+      ?(x, null)
+    };
+
+  /**
+  creates a list of the given length with the same value in each position.
+  */
+  public let replicate : <X>(Nat, X) -> List<X> =
+    func<X>(n : Nat, x : X) : List<X> {
+      tabulate<X>(n, func _ { x })
+    };
+
+  /**
+  creates a list of pairs from a pair of lists.
+
+  If the given lists have different lengths, then the created list will have a
+  length equal to the lenght of the smaller list.
+  */
+  public let zip : <X, Y>(List<X>, List<Y>) -> List<(X, Y)> =
+    func<X, Y>(xs : List<X>, ys : List<Y>) : List<(X, Y)> {
+      zipWith<X, Y, (X, Y)>(xs, ys, func (x, y) { (x, y) })
+    };
+
+  /**
+  Creates a list whose elements are calculated from the function `f` and
+  elements occuring at the same position in the given lists.
+
+  If the given lists have different lengths, then the created list will have a
+  length equal to the length of the smaller list.
+  */
+  public let zipWith : <X, Y, Z>(List<X>, List<Y>, f : (X, Y) -> Z) -> List<Z> =
+    func<X, Y, Z>(xs : List<X>, ys : List<Y>, f : (X, Y) -> Z) : List<Z> {
+      switch (pop<X>(xs)) {
+        case (null, _) null;
+        case (?x, xt) {
+          switch (pop<Y>(ys)) {
+            case (null, _) null;
+            case (?y, yt) {
+              push<Z>(f(x, y), zipWith<X, Y, Z>(xt, yt, f))
             }
           }
         }
-      };
-      rec(n, xs)
-    }
-  };
+      }
+    };
 
   /**
-   `chunksOf`
-   -----------
-    Split the given list into length-n chunks. The last chunk will be shorter if
-    n does not evenly divide the length of the given list.
-   */
-  public func chunksOf<X>(n : Nat, xs : List<X>) : List<List<X>> {
-    let (l, r) = splitAt<X>(n, xs);
-    if (isNil<X>(l)) {
-      null
-    } else {
-      push<List<X>>(l, chunksOf<X>(n, r))
-    }
-  };
+  splits the given list at the given zero-based index.
+  */
+  public let splitAt : <X>(Nat, List<X>) -> (List<X>, List<X>) =
+    func<X>(n : Nat, xs : List<X>) : (List<X>, List<X>) {
+      if (n == 0) {
+        (null, xs)
+      } else {
+        func rec(n : Nat, xs : List<X>) : (List<X>, List<X>) {
+          switch (pop<X>(xs)) {
+            case (null, _) {
+              (null, null)
+            };
+            case (?h, t) {
+              if (n == 1) {
+                (singleton<X>(h), t)
+              } else {
+                let (l, r) = rec(n - 1, t);
+                (push<X>(h, l), r)
+              }
+            }
+          }
+        };
+        rec(n, xs)
+      }
+    };
 
-  public func fromArray<A>(xs : [A]) : List<A> {
-    Array.foldr<A, List<A>>(func (x : A, ys : List<A>) : List<A> {
-      push<A>(x, ys);
-    }, nil<A>(), xs);
-  };
+  /**
+  split the given list into length-n chunks. The last chunk will be shorter if
+  n does not evenly divide the length of the given list.
+  */
+  public let chunksOf : <X>(Nat, List<X>) -> List<List<X>> =
+    func<X>(n : Nat, xs : List<X>) : List<List<X>> {
+      let (l, r) = splitAt<X>(n, xs);
+      if (isNil<X>(l)) {
+        null
+      } else {
+        push<List<X>>(l, chunksOf<X>(n, r))
+      }
+    };
 
-  public func fromArrayMut<A>(xs : [var A]) : List<A> {
-    fromArray<A>(Array.freeze<A>(xs));
-  };
+  /**
+  converts an array into a list.
+  */
+  public let fromArray : <A>[A] -> List<A> =
+    func<A>(xs : [A]) : List<A> {
+      Array.foldr<A, List<A>>(func (x : A, ys : List<A>) : List<A> {
+        push<A>(x, ys);
+      }, nil<A>(), xs);
+    };
 
-  public func toArray<A>(xs : List<A>) : [A] {
-    let length = len<A>(xs);
-    var list = xs;
-    Array.tabulate<A>(length, func (i) {
-      let popped = pop<A>(list);
-      list := popped.1;
-      Option.unwrap<A>(popped.0);
-    });
-  };
+  /**
+  converts a mutable array into a list.
+  */
+  public let fromArrayMut : <A>[var A] -> List<A> =
+    func<A>(xs : [var A]) : List<A> {
+      fromArray<A>(Array.freeze<A>(xs));
+    };
 
-  public func toArrayMut<A>(xs : List<A>) : [var A] {
-    Array.thaw<A>(toArray<A>(xs));
-  };
+  /**
+  creates an array from the list
+  */
+  public let toArray : <A> List<A> -> [A] =
+    func<A>(xs : List<A>) : [A] {
+      let length = len<A>(xs);
+      var list = xs;
+      Array.tabulate<A>(length, func (i) {
+        let popped = pop<A>(list);
+        list := popped.1;
+        Option.unwrap<A>(popped.0);
+      });
+    };
 
-/**
+  /**
+  creates a mutable array from the list
+  */
+  public let toArrayMut : <A> List<A> -> [var A] =
+    func<A>(xs : List<A>) : [var A] {
+      Array.thaw<A>(toArray<A>(xs));
+    };
+
+/*
 
 To do:
 --------

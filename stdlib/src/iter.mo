@@ -1,3 +1,8 @@
+/**
+[#mod-iter]
+= `iter` -- Iterators
+*/
+
 import Array "array";
 import List "list";
 
