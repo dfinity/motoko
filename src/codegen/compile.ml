@@ -6842,7 +6842,9 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
       | ((prog, _flavor) :: progs) ->
         let (ae1, code1) = compile_prog env ae prog in
         let code2 = go ae1 progs in
-        code1 ^^ code2 in
+        G.(dw_tag (Compile_unit ("dir/.", "motoko.mo"))) ^^
+        code1 ^^ code2 ^^
+        G.dw_tag_children_done in
     go VarEnv.empty_ae progs
     )
 

@@ -373,21 +373,25 @@ let dw_AT_loclists_base = 0x8c
 let dw_AT_lo_user = 0x2000
 let dw_AT_hi_user = 0x3fff
 
+
+(* FIXME: we cheat for now *)
+let dw_LANG_Swift = 0x001e
+
 end
 
 (* DWARF attributes *)
 
-type dw_AT = Producer
-           | Language
-           | Name
-           | Stmt_list
-           | Comp_dir
-           | Low_pc
-           | High_pc
+type dw_AT = Producer of string
+           | Language of int
+           | Name of string
+           | Stmt_list of int
+           | Comp_dir of string
+           | Low_pc of int
+           | High_pc of int
 
 (* DWARF tags *)
 
-type dw_TAG = Compile_unit
+type dw_TAG = Compile_unit of string * string (* compilation directory, file name *)
             | Subprogram
             | Formal_parameter
             | Variable
@@ -396,9 +400,51 @@ type dw_TAG = Compile_unit
             | Member
 
 (* DWARF high-level structures *)
-let dw_attr : dw_AT -> t = function
+
+(* fakeFile gives a fake instruction that encodes a string for a
+   DWARF attribute *)
+let fakeFile (file : string) attr instr' : t =
+  let fakeLoc = Wasm.Source.{ file; line = -attr; column = 0 } in
+  fun _ _ instrs ->
+  (instr' @@ Wasm.Source.{ left = fakeLoc; right = no_pos }) :: instrs
+
+(* fakeColumn gives a fake instruction that encodes a single integer for a
+   DWARF attribute *)
+let fakeColumn (column : int) attr instr' : t =
+  let fakeLoc = Wasm.Source.{ file = ""; line = -attr; column } in
+  fun _ _ instrs ->
+  (instr' @@ Wasm.Source.{ left = fakeLoc; right = no_pos }) :: instrs
+
+let dw_attr : dw_AT -> t =
+  let open Dwarf5 in
+  function
+  | Producer p -> fakeFile p dw_AT_producer Nop
+  | Language l -> fakeColumn l dw_AT_language Nop
+  | Name n -> fakeFile n dw_AT_name Nop
+  | Stmt_list l -> fakeColumn l dw_AT_stmt_list Nop
+  | Comp_dir n -> fakeFile n dw_AT_comp_dir Nop
+  | Low_pc l -> fakeColumn l dw_AT_low_pc Nop
+  | High_pc h -> fakeColumn h dw_AT_high_pc Nop
   | _ -> assert false
 
+(* emit a DW_TAG
+   When it admits children, these follow sequentially,
+   closed by dw_tag_children_done.
+   Otherwise siblings follow.
+ *)
+
 let dw_tag : dw_TAG -> t = function
-  | Compile_unit -> block_ [] nop
+  | Compile_unit (dir, file) ->
+    block_ []
+      (dw_attr (Producer "Motoko version 0.1") ^^
+       dw_attr (Language Dwarf5.dw_LANG_Swift) ^^ (* FIXME *)
+       dw_attr (Name file) ^^
+       dw_attr (Stmt_list 0) ^^ (* FIXME *)
+       dw_attr (Comp_dir dir) ^^
+       dw_attr (Low_pc 0) ^^
+       dw_attr (High_pc 0xFF) (* FIXME *)
+      )
   | _ -> assert false
+
+let dw_tag_children_done : t =
+  block_ [] (fun _ _ x -> (Nop @@ Wasm.Source.no_region) :: x)
