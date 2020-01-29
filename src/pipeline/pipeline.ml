@@ -81,113 +81,20 @@ type parse_result = (Syntax.prog * rel_path) Diag.result
 
 type parse_fn = rel_path -> parse_result
 
-module P =
-  MenhirLib.Printers.Make
-    (Parser.MenhirInterpreter)
-    (MoPrinters)
-
-(* Instantiate [ErrorReporting] for our parser. This requires
-   providing a few functions -- see [CalcErrorReporting]. *)
-
-module E =
-  ErrorReporting.Make
-    (Parser.MenhirInterpreter)
-    (MoErrorReporting)
-
-(* Define a printer for explanations. We treat an explanation as if it
-   were just an item: that is, we ignore the position information that
-   is provided in the explanation. Indeed, this information is hard to
-   show in text mode. *)
-
-let error_detail = 2
-
-let uniq xs = List.fold_right (fun x ys -> if List.mem x ys then ys else x::ys) xs []
-
-let abstract_symbols explanations =
-  let symbols = List.sort Parser.MenhirInterpreter.compare_symbols
-    (List.map (fun e -> List.hd (E.future e))  explanations) in
-  let ss = List.map MoPrinters.string_of_symbol symbols in
-  String.concat "\n  " (uniq ss)
-
-let abstract_future future =
-  let ss = List.map MoPrinters.string_of_symbol future  in
-  String.concat " " ss
-
-let rec lex_compare_futures f1 f2 =
-  match f1,f2 with
-  | [], [] -> 0
-  | s1::ss1,s2::ss2 ->
-    (match Parser.MenhirInterpreter.compare_symbols s1 s2 with
-     | 0 -> lex_compare_futures ss1 ss2
-     | c -> c)
-  | _ -> assert false
-
-let compare_futures f1 f2 = match compare (List.length f1) (List.length f2) with
-      | 0 -> lex_compare_futures f1 f2
-      | c -> c
-
-let abstract_futures explanations =
-  let futures = List.sort compare_futures (List.map E.future explanations) in
-  let ss = List.map abstract_future futures in
-  String.concat "\n  " (uniq ss)
-
-let abstract_item item =
-  P.print_item item;
-  MoPrinters.to_string()
-
-let abstract_items explanations =
-  let items = List.sort Parser.MenhirInterpreter.compare_items (List.map E.item explanations) in
-  let ss = List.map abstract_item items in
-  String.concat "  " (uniq ss)
-
-(*
-let parse_with mode lexer parse name =
+let parse_with mode lexer parser name =
   try
     phase "Parsing" name;
     lexer.Lexing.lex_curr_p <-
       {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    let prog = parse (Lexer.token mode) lexer name in
+    let prog = Parsing.parse (parser lexer.Lexing.lex_curr_p) (Lexer.token mode) lexer name in
     dump_prog Flags.dump_parse prog;
     Ok prog
   with
     | Lexer.Error (at, msg) ->
       error at "syntax" msg
-    | Parser.Error ->
-      error (Lexer.region lexer) "syntax" "unexpected token"
- *)
-
-let parse_with mode lexer parse name =
-  try
-    phase "Parsing" name;
-    lexer.Lexing.lex_curr_p <-
-      {lexer.Lexing.lex_curr_p with Lexing.pos_fname = name};
-    let prog = E.entry (parse lexer.Lexing.lex_curr_p) (Lexer.token mode) lexer name in
-    dump_prog Flags.dump_parse prog;
-    Ok prog
-  with
-    | Lexer.Error (at, msg) ->
-      error at "syntax" msg
-    | E.Error ((startp, _), explanations) ->
-      let token = String.escaped (Lexing.lexeme lexer) in
-      match error_detail with
-      | 1 ->
-        error (Lexer.region lexer) "syntax"
-          (Printf.sprintf
-             "unexpected token '%s', \nexpected one of token or <phrase>:\n  %s"
-             token (abstract_symbols explanations))
-      | 2 ->
-        error (Lexer.region lexer) "syntax"
-          (Printf.sprintf
-             "unexpected token '%s', \nexpected one of token or <phrase> sequence:\n  %s"
-             token (abstract_futures explanations))
-      | 3 ->
-        error (Lexer.region lexer) "syntax"
-          (Printf.sprintf
-             "unexpected token '%s'\n in position marked . of partially parsed item(s):\n%s"
-             token (abstract_items explanations))
-      | _ ->
-         error (Lexer.region lexer) "syntax"
-           (Printf.sprintf "unexpected token '%s'" token)
+    | Parsing.Error (_, explanations) ->
+      error (Lexer.region lexer) "syntax"
+        (Parsing.error_message 2 (Lexing.lexeme lexer) explanations)
 
 let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
@@ -497,6 +404,7 @@ let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) optio
       | None -> None
       | Some denv2 -> Some (senv1, denv2)
     )
+  
 
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_scope prelude with
