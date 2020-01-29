@@ -1,31 +1,7 @@
 #!/usr/bin/env perl
 #
-# This pipe replaces:
+# See README.md for the expected format
 #
-#     /**
-#     Foobar
-#     */
-#
-# with
-#
-#   Foobar
-#
-# with extra indentation removed.
-#
-# The next line must be blank or begin with
-#
-#   public let something : type = …
-#
-# In the latter case it prints
-#
-#   == `something`
-#
-#   Foobar
-#
-#   [listing]
-#   foobar : type
-#
-# TODO: Automatically add anchor, index entries
 
 use strict;
 use warnings;
@@ -42,7 +18,7 @@ OUTER: while (<>) {
     while (<>) {
       if    (m,^$indent ?\*/$,) { $block .= "\n"; next OUTER; }
       elsif (m,^$indent(.*)$,) { $block .= "$1\n" }
-      elsif (m,^\s*$,) { print "\n" }
+      elsif (m,^\s*$,) { $block .= "\n" }
       else { die "Wrong indentation in doc comment at line $..\n" };
     }
     die "Doc comment in line $start not closed.\n";
@@ -59,6 +35,26 @@ $name : $type
 
 __END__
     $block = ''
+  } elsif (m,^(\s*)public type\s*([a-zA-Z0-9]*)(.*)$,) {
+    my $indent = $1;
+    my $name = $2;
+    my $def = $3;
+    while (<>) {
+      if (m,^\s*$,) { last }
+      elsif (m,^$indent(.*)$,) { $def .= "$1\n" }
+      else { die "Wrong indentation in type def at line $..\n" };
+    }
+    print <<__END__;
+[#${mod}_$name]
+== `$name` (type)
+$block
+
+....
+type $name$def
+....
+
+__END__
+    $block = '';
   } elsif ($block and m,^\s*$,) {
     print "$block\n";
     $block = ''

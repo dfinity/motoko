@@ -392,6 +392,7 @@ rec {
   stdlib-doc = stdenv.mkDerivation {
     name = "stdlib-doc";
     src = subpath ./stdlib/doc;
+    outputs = [ "out" "adocs" ];
     buildInputs = with nixpkgs;
       [ bash perl asciidoctor ];
     buildPhase = ''
@@ -403,8 +404,12 @@ rec {
       mv _out/* $out/
       mkdir -p $out/nix-support
       echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
+
+      mkdir -p $adocs
+      mv _build/*.adoc $adocs/
     '';
   };
+  stdlib-adocs = stdlib-doc.adocs;
 
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
@@ -419,6 +424,7 @@ rec {
       stdlib
       stdlib-tests
       stdlib-doc
+      stdlib-adocs
       users-guide
       ic-stub
       shell

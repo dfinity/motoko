@@ -12,7 +12,7 @@ module {
   /**
   Turns an absurd value into an arbitrary type.
   */
-  public let absurd : <A> None -> A = func (x) {
+  public let absurd : <A> None -> A = func<A>(x: None) : A {
     switch (x) {};
   };
 }

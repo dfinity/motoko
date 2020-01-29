@@ -36,6 +36,9 @@ the top-level `default.nix`:
 * `rts`: contains `rts/mo-rts.wasm`, the Motoko runtime system
 * `stdlib`: contains the standard library, directly in the top level directory,
   as `*.mo` files. It does not contain extra files (test files, for example)
+* `stdlib-adocs`: contains the documentation of the standard library, directly
+  in the top level directory, as `*.adoc` files. There is an `index.adoc`
+  file.
 
 The `default.nix` file itself takes an optional `system` parameter which is
 either `"x86_64-linux"` or `"x86_64-darwin"`, and defaults to
