@@ -99,27 +99,46 @@ module E =
    is provided in the explanation. Indeed, this information is hard to
    show in text mode. *)
 
-module Explanations = Set.Make(String)
+let error_detail = 2
 
-let verbose = false
-
-let abstract explanation =
-  P.print_item (E.item explanation);
-  MoPrinters.to_string()
-
-let abstract_explanations explanations =
-  let s = Explanations.of_list (List.map abstract explanations) in
-  let ss = Explanations.fold List.cons s [] in
-  String.concat "  " ss
-
-let abstract_symbol explanation =
-  let symbol = List.hd (E.future explanation) in
-  MoPrinters.string_of_symbol symbol
+let uniq xs = List.fold_right (fun x ys -> if List.mem x ys then ys else x::ys) xs []
 
 let abstract_symbols explanations =
-  let s = Explanations.of_list (List.map abstract_symbol explanations) in
-  let ss = Explanations.fold List.cons s [] in
-  String.concat "\n  " ss
+  let symbols = List.sort Parser.MenhirInterpreter.compare_symbols
+    (List.map (fun e -> List.hd (E.future e))  explanations) in
+  let ss = List.map MoPrinters.string_of_symbol symbols in
+  String.concat "\n  " (uniq ss)
+
+let abstract_future future =
+  let ss = List.map MoPrinters.string_of_symbol future  in
+  String.concat " " ss
+
+let rec lex_compare_futures f1 f2 =
+  match f1,f2 with
+  | [], [] -> 0
+  | s1::ss1,s2::ss2 ->
+    (match Parser.MenhirInterpreter.compare_symbols s1 s2 with
+     | 0 -> lex_compare_futures ss1 ss2
+     | c -> c)
+  | _ -> assert false
+
+let compare_futures f1 f2 = match compare (List.length f1) (List.length f2) with
+      | 0 -> lex_compare_futures f1 f2
+      | c -> c
+
+let abstract_futures explanations =
+  let futures = List.sort compare_futures (List.map E.future explanations) in
+  let ss = List.map abstract_future futures in
+  String.concat "\n  " (uniq ss)
+
+let abstract_item item =
+  P.print_item item;
+  MoPrinters.to_string()
+
+let abstract_items explanations =
+  let items = List.sort Parser.MenhirInterpreter.compare_items (List.map E.item explanations) in
+  let ss = List.map abstract_item items in
+  String.concat "  " (uniq ss)
 
 (*
 let parse_with mode lexer parse name =
@@ -148,18 +167,27 @@ let parse_with mode lexer parse name =
   with
     | Lexer.Error (at, msg) ->
       error at "syntax" msg
-    | E.Error ((startp, _), explanations) when verbose ->
-      (error (Lexer.region lexer) "syntax"
-         (Printf.sprintf
-            "unexpected token '%s'\n in position marked . of partially parsed item(s):\n%s"
-            (String.escaped (Lexing.lexeme lexer)) (abstract_explanations explanations)
-      ))
-    | E.Error ((startp, _), explanations) when not verbose ->
-      (error (Lexer.region lexer) "syntax"
-         (Printf.sprintf
-            "unexpected token '%s', \nexpected one of token or <phrase>:\n  %s"
-            (String.escaped (Lexing.lexeme lexer)) (abstract_symbols explanations)
-      ))
+    | E.Error ((startp, _), explanations) ->
+      let token = String.escaped (Lexing.lexeme lexer) in
+      match error_detail with
+      | 1 ->
+        error (Lexer.region lexer) "syntax"
+          (Printf.sprintf
+             "unexpected token '%s', \nexpected one of token or <phrase>:\n  %s"
+             token (abstract_symbols explanations))
+      | 2 ->
+        error (Lexer.region lexer) "syntax"
+          (Printf.sprintf
+             "unexpected token '%s', \nexpected one of token or <phrase> sequence:\n  %s"
+             token (abstract_futures explanations))
+      | 3 ->
+        error (Lexer.region lexer) "syntax"
+          (Printf.sprintf
+             "unexpected token '%s'\n in position marked . of partially parsed item(s):\n%s"
+             token (abstract_items explanations))
+      | _ ->
+         error (Lexer.region lexer) "syntax"
+           (Printf.sprintf "unexpected token '%s'" token)
 
 let parse_string name s : parse_result =
   let lexer = Lexing.from_string s in
