@@ -26,4 +26,4 @@ let profile_file = ref "profiling-counters.csv"
 let profile_line_prefix = ref ""
 let profile_field_names : string list ref = ref []
 let compiled = ref false
-let error_detail = ref 0;
+let error_detail = ref 2;
