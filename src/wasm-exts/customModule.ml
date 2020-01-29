@@ -31,4 +31,4 @@ type extended_module = {
   name : name_section;
   (* dylib section *)
   dylink : dylink_section option;
-  }
+}
