@@ -475,7 +475,7 @@ module {
   elements occuring at the same position in the given lists.
 
   If the given lists have different lengths, then the created list will have a
-  length equal to the lenght of the smaller list.
+  length equal to the length of the smaller list.
   */
   public let zipWith : <X, Y, Z>(List<X>, List<Y>, f : (X, Y) -> Z) -> List<Z> =
     func<X, Y, Z>(xs : List<X>, ys : List<Y>, f : (X, Y) -> Z) : List<Z> {
