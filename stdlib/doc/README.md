@@ -54,28 +54,28 @@ shape:
 
 To appease this rigid regine, one has to rewrite
 
-   public func foo(a : Bool) : Text = {
-     body
-   };
+    public func foo(a : Bool) : Text = {
+      body
+    };
 
 into
 
-   public let foo : Bool -> Text = func(a) {
-     body
-   };
+    public let foo : Bool -> Text = func(a) {
+      body
+    };
 
 If the function is polymorphic, one also has to repeat the types, turning
 
-   public func foo<T>(a : T, f : T -> T) : T = {
-     body
-   };
+    public func foo<T>(a : T, f : T -> T) : T = {
+      body
+    };
 
 into
 
-   public let foo : <T> (T, f : T -> T) -> T = {
-     func<T>(a : T, f : T -> T) : T = {
-       body
-     };
+    public let foo : <T> (T, f : T -> T) -> T = {
+      func<T>(a : T, f : T -> T) : T = {
+        body
+      };
 
 Note that one can still _optionally_ name parameters. By convention, this is
 only necessary when the name indicates semantic meaning (e.g. `eq : (T,T) ->
