@@ -40,6 +40,7 @@ let argspec = Arg.align
 
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
+  "--error-detail", Arg.Set_int Flags.error_detail, " set error message detail for syntax errors";
   "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
 
   "--version",

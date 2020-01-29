@@ -76,6 +76,10 @@ let error_message error_detail lexeme explanations =
   | _ ->
     Printf.sprintf "unexpected token '%s'" token
 
-exception Error = E.Error
+type error_detail = int
 
-let parse = E.entry
+exception Error of string
+
+let parse error_detail checkpoint lexer lexbuf =
+  try E.entry checkpoint lexer lexbuf with E.Error (_, explanations) ->
+    raise (Error (error_message error_detail (Lexing.lexeme lexbuf) explanations))
