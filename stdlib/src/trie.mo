@@ -87,7 +87,7 @@ public let MAX_LEAF_COUNT = 8; // <-- beats both 4 and 16 for me, now
 //let MAX_LEAF_COUNT = 16;
 //let MAX_LEAF_COUNT = 32;
 
-public let Hash = H.BitVec;
+public let Hash = H;
 public type Hash = Hash.t;
 
 public type List<T> = List.List<T>;
