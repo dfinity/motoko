@@ -6,7 +6,7 @@ import L "serverLang";
 import M "serverModelTypes";
 
 import List "mo:stdlib/list";
-import Hash_ "mo:stdlib/hash";
+import Hash "mo:stdlib/hash";
 import Option "mo:stdlib/option";
 import Trie "mo:stdlib/trie";
 import Iter "mo:stdlib/iter";
@@ -40,10 +40,7 @@ uses are is not.
 
 
 public type List<T> = List.List<T>;
-
-public let Hash = Hash_.BitVec;
 public type Hash = Hash.t;
-
 public type Trie<K,V> = Trie.Trie<K,V>;
 public type TrieBuild<K,V> = Trie.Build.TrieBuild<K,V>;
 public type Key<K> = Trie.Key<K>;
