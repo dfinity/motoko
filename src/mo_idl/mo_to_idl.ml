@@ -8,8 +8,11 @@ module I = Idllib.Syntax
 let env = ref Env.empty
 (* For monomorphization *)
 let stamp = ref Env.empty
-let type_map = ref Env.empty
+(* can you replace this by a map with domain con, ordered by Con.compare and implicit codomain int (or even int ref) *)
 
+let type_map = ref Env.empty
+(* can you replace this by a map with domain (con * typ list), ordered by compare and implicit codomain int *)
+             
 let normalize str =
   let illegal_chars = ['-'; '/';] in
   String.map (fun c -> if List.mem c illegal_chars then '_' else c) str
@@ -66,7 +69,11 @@ let rec typ vs t =
   | Any -> I.PrimT I.Reserved
   | Non -> I.PrimT I.Empty
   | Prim p -> prim p
-  | Var (s, i) -> (typ vs (List.nth vs i)).it
+  | Var (s, i) ->
+    (* matching on Var is dubious -
+       ideally we should use [Type.open_ ts typ] to go under binders
+       [Type.close cs typ] to introduce binders *)
+    (typ vs (List.nth vs i)).it
   | Con (c, []) ->
      (match Con.kind c with
      | Def ([], Prim p) -> prim p
@@ -77,20 +84,22 @@ let rec typ vs t =
         I.VarT (string_of_con vs c @@ no_region)
      )
   | Con (c, ts) ->
-     let ts =
-       List.map (fun t ->
+    let ts =
+      (* this looks like a broken attempt at subsitution, but only when the arguments are variables - why? *)
+      List.map (fun t ->
            match t with
-           | Var (s, i) -> List.nth vs i
+           | Var (s, i) -> List.nth vs i (* see above *)
            | _ -> t
-         ) ts in
-     (match Con.kind c with
-      | Def (tbs, t) ->
-         (* use this for inlining defs, doesn't work with recursion
-         (typ ts t).it
-          *)
-         chase_con ts c;
-         I.VarT (string_of_con ts c @@ no_region)
-      | _ -> assert false)
+         ) ts
+    in
+    (match Con.kind c with
+     | Def (tbs, t) ->
+       (* use this for inlining defs, doesn't work with recursion
+          (typ ts t).it
+        *)
+       chase_con ts c;
+       I.VarT (string_of_con ts c @@ no_region)
+     | _ -> assert false)
   | Typ c -> assert false
   | Tup ts ->
      if ts = [] then
@@ -143,7 +152,6 @@ and meths vs fs =
   List.fold_right (fun f list ->
       match f.typ with
       | Typ c ->
-         chase_con vs c;
          list
       | _ ->
          let meth =
