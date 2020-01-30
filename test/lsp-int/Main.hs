@@ -111,7 +111,7 @@ main = do
     putStrLn "Starting the session"
     runSession
       (mo_ide
-       <> " --canister-main app.mo --debug"
+       <> " --canister-main app.mo --debug --error-detail 0"
        <> " --package mydep " <> project <> "/mydependency/")
       fullCaps
       "." $ do
@@ -191,7 +191,7 @@ main = do
           _ <- applyEdit doc edit
           sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
           (diagnostic:_) <- waitForDiagnostics
-          liftIO (diagnostic^.message `shouldBe` "unexpected token")
+          liftIO (diagnostic^.message `shouldBe` "unexpected token 'import'")
 
         log "Lexer failures don't crash the server"
         withDoc "ListClient.mo" \doc -> do
@@ -212,7 +212,7 @@ main = do
           withDoc "app.mo" \appDoc -> do
             sendNotification TextDocumentDidSave (DidSaveTextDocumentParams appDoc)
             diagnostic:_ <- waitForActualDiagnostics
-            liftIO (diagnostic^.message `shouldBe` "unexpected token")
+            liftIO (diagnostic^.message `shouldBe` "unexpected token 'import'")
 
         log "Rebuilding with package paths"
         withDoc "app.mo" \doc -> do
