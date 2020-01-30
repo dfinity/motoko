@@ -438,8 +438,7 @@ let dw_tag : dw_TAG -> t =
     fakeColumn 0 dw_TAG_compile_unit
       (Block
          ([],
-          (dw_attr (Producer "Motoko version 0.1") ^^
-           dw_attr (Producer "Motoko compiler version 0.1") ^^
+          (dw_attr (Producer "DFINITY Motoko compiler, version 0.1") ^^
            dw_attr (Language Dwarf5.dw_LANG_Swift) ^^ (* FIXME *)
            dw_attr (Name file) ^^
            dw_attr (Stmt_list 0) ^^ (* FIXME *)

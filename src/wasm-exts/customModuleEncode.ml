@@ -71,12 +71,15 @@ let encode (em : extended_module) =
 
   let dwarf_strings = ref [] in
 
-  let rec add_dwarf_string str = function
-    | [] ->
-      dwarf_strings := str :: !dwarf_strings;
-      0
-    | h :: _ when str = h -> 0
-    | h :: t -> String.length h + 1 + add_dwarf_string str t
+  let add_dwarf_string str =
+    let rec find_dwarf_string str = function
+      | [] -> false, 0
+      | h :: t when str = h -> let _, offs = find_dwarf_string str t in true, offs
+      | h :: t -> let fnd, offs = find_dwarf_string str t in fnd, String.length h + 1 + offs
+    in
+    let fnd, offs = find_dwarf_string str !dwarf_strings in
+    if not fnd then dwarf_strings := str :: !dwarf_strings;
+    offs
   in
 
   let dwarf_like Wasm.Source.{ left; right } = left.Wasm.Source.line < 0 in
@@ -85,7 +88,14 @@ let encode (em : extended_module) =
     let open Wasm.Ast in
     let open Wasm.Source in
     let extract = function
-      | (Nop, {line; file; _}) when line = - (* dw_AT_producer *) 0x25 -> ignore (add_dwarf_string file !dwarf_strings)
+      | (Nop, {line; file; _}) when line = - (* dw_AT_producer *) 0x25 ->
+        let offs = add_dwarf_string file in
+        Printf.printf "String dw_AT_producer offset: %d\n" offs
+
+      | (Nop, {line; file; _}) when line = - (* dw_AT_name *) 0x03 ->
+        let offs = add_dwarf_string file in
+        Printf.printf "String dw_AT_name offset: %d\n" offs
+
       | (Nop, {line; column; _}) when true -> ()
       | _ -> ()
     in
