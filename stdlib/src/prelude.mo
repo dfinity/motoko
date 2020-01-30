@@ -1,7 +1,12 @@
+/**
+[#mod-prelude]
+= `prelude` -- General utilities
+*/
+
 import Prim "mo:prim";
 
 module {
-/**
+/*
 
 Stdlib prelude
 ===============
@@ -12,7 +17,7 @@ some further experience and discussion.  Until then, they live here.
 
 */
 
-/***
+/*
 
   `printLn`
   ---------
@@ -24,7 +29,7 @@ public func printLn(x : Text) {
   Prim.debugPrint(x # "\n");
 };
 
-/***
+/*
 
  `nyi`: Not yet implemented
  -----------------------------
@@ -42,7 +47,7 @@ public func nyi() : None =
 public func xxx() : None =
   { assert false ; loop { } };
 
-/***
+/*
 
  `unreachable`
  --------------------

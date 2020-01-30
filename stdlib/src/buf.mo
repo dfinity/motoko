@@ -1,10 +1,15 @@
+/**
+[#mod-buf]
+= `buf` -- Growing buffers
+*/
+
 import P "prelude";
 import I "iter";
 import A "array";
 
 module {
 
-/**
+/*
 
 Buffers
 ===================
@@ -98,14 +103,14 @@ public class Buf<X> (initCapacity : Nat) {
   public func toArray() : [X] =
     // immutable clone of array
     A.tabulate<X>(
-      elems.len(),
+      count,
       func(x: Nat): X { elems[x] }
     );
 
   public func toVarArray() : [var X] = {
     if (count == 0) { [var] } else {
       let a = A.init<X>(count, elems[0]);
-      for (i in elems.keys()) {
+      for (i in I.range(0, count - 1)) {
         a[i] := elems[i]
       };
       a

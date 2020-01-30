@@ -1,4 +1,9 @@
 /**
+[#mod-trieSet]
+= `trieSet` -- Functional set
+*/
+
+/*
 
  Trie-based Sets
  ================
