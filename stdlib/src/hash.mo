@@ -17,8 +17,7 @@ module {
   /**
   The hash length, always 31.
   */
-  // Why not 32?
-  public let length : Nat = 31;
+  public let length : Nat = 31; // Why not 32?
 
   public let hashOfInt : Int -> Hash = func(i) {
     let j = Prim.intToWord32(i);
