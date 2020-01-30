@@ -88,8 +88,7 @@ let encode (em : extended_module) =
   in
 
   let dwarf_like Wasm.Source.{ left; right } =
-    Wasm.Source.(left.line < 0 && String.length left.file = 0) in
-
+    Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos) in
 
   let dwarf_tags = ref [] in
   let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: !dwarf_tags in
@@ -108,17 +107,17 @@ let encode (em : extended_module) =
     let extract = function
       | (Nop, {line; file; _}) when -line = dw_AT_producer ->
         let offs = add_dwarf_string file in
-        Printf.printf "String dw_AT_producer offset: %d\n" offs;
+        (* Printf.printf "String dw_AT_producer offset: %d\n" offs; *)
         add_dwarf_attribute (StringAttribute (-line, file))
 
       | (Nop, {line; file; _}) when -line = dw_AT_name ->
         let offs = add_dwarf_string file in
-        Printf.printf "String dw_AT_name offset: %d\n" offs;
+        (* Printf.printf "String dw_AT_name offset: %d\n" offs; *)
         add_dwarf_attribute (StringAttribute (-line, file))
 
       | (Nop, {line; file; _}) when -line = dw_AT_comp_dir ->
         let offs = add_dwarf_string file in
-        Printf.printf "String dw_AT_comp_dir offset: %d\n" offs;
+        (* Printf.printf "String dw_AT_comp_dir offset: %d\n" offs; *)
         add_dwarf_attribute (StringAttribute (-line, file))
 
       | (Nop, {line; column; _}) when -line = dw_AT_language ->
