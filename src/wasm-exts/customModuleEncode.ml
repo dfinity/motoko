@@ -87,14 +87,20 @@ let encode (em : extended_module) =
   let rec extract_dwarf =
     let open Wasm.Ast in
     let open Wasm.Source in
+    let open Dwarf5.Dwarf5 in
+
     let extract = function
-      | (Nop, {line; file; _}) when line = - (* dw_AT_producer *) 0x25 ->
+      | (Nop, {line; file; _}) when line = -dw_AT_producer ->
         let offs = add_dwarf_string file in
         Printf.printf "String dw_AT_producer offset: %d\n" offs
 
-      | (Nop, {line; file; _}) when line = - (* dw_AT_name *) 0x03 ->
+      | (Nop, {line; file; _}) when line = -dw_AT_name ->
         let offs = add_dwarf_string file in
         Printf.printf "String dw_AT_name offset: %d\n" offs
+
+      | (Nop, {line; file; _}) when line = -dw_AT_comp_dir ->
+        let offs = add_dwarf_string file in
+        Printf.printf "String dw_AT_comp_dir offset: %d\n" offs
 
       | (Nop, {line; column; _}) when true -> ()
       | _ -> ()
