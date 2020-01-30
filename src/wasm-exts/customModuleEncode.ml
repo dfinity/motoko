@@ -69,6 +69,31 @@ let encode (em : extended_module) =
   sources := !sources @ [ "prelude" ];
   sourcesContent := !sourcesContent @ [ Prelude.prelude ];
 
+  let dwarf_strings = ref [] in
+
+  let rec add_dwarf_string str = function
+    | [] ->
+      dwarf_strings := str :: !dwarf_strings;
+      0
+    | h :: _ when str = h -> 0
+    | h :: t -> String.length h + 1 + add_dwarf_string str t
+  in
+
+  let dwarf_like Wasm.Source.{ left; right } = left.Wasm.Source.line < 0 in
+
+  let rec extract_dwarf =
+    let open Wasm.Ast in
+    let open Wasm.Source in
+    let extract = function
+      | (Nop, {line; file; _}) when line = - (* dw_AT_producer *) 0x25 -> ignore (add_dwarf_string file !dwarf_strings)
+      | (Nop, {line; column; _}) when true -> ()
+      | _ -> ()
+    in
+    function
+    | [] -> ()
+    | e :: es -> extract (e.it, e.at.left); extract_dwarf es
+  in
+
   let add_to_map file il ic ol oc =
     let il = il - 1 in
     let if_ = add_source file !sources in
@@ -194,6 +219,7 @@ let encode (em : extended_module) =
       | Unreachable -> op 0x00
       | Nop -> op 0x01
 
+      | Block (_, es) when dwarf_like e.at -> extract_dwarf es
       | Block (ts, es) -> op 0x02; stack_type ts; list instr es; end_ ()
       | Loop (ts, es) -> op 0x03; stack_type ts; list instr es; end_ ()
       | If (ts, es1, es2) ->
@@ -560,6 +586,13 @@ let encode (em : extended_module) =
       custom_section "name" name_section_body ns
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
+    let debug_strings_section dss =
+      let rec debug_strings_section_body = function
+        | [] -> ()
+        | h :: t -> debug_strings_section_body t; put_string s h; u8 0
+      in
+      custom_section ".debug_str" debug_strings_section_body dss (dss <> [])
+
     (* Module *)
 
     let module_ (em : extended_module) =
@@ -582,6 +615,7 @@ let encode (em : extended_module) =
       data_section m.data;
       (* other optional sections *)
       name_section em.name;
+      debug_strings_section !dwarf_strings
   end
   in E.module_ em;
 

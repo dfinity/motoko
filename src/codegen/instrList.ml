@@ -416,8 +416,7 @@ let fakeColumn (column : int) attr instr' : t =
   (instr' @@ Wasm.Source.{ left = fakeLoc; right = no_pos }) :: instrs
 
 let dw_attr : dw_AT -> t =
-  let open Dwarf5 in
-  function
+  let open Dwarf5 in function
   | Producer p -> fakeFile p dw_AT_producer Nop
   | Language l -> fakeColumn l dw_AT_language Nop
   | Name n -> fakeFile n dw_AT_name Nop
@@ -433,17 +432,21 @@ let dw_attr : dw_AT -> t =
    Otherwise siblings follow.
  *)
 
-let dw_tag : dw_TAG -> t = function
+let dw_tag : dw_TAG -> t =
+  let open Dwarf5 in function
   | Compile_unit (dir, file) ->
-    block_ []
-      (dw_attr (Producer "Motoko version 0.1") ^^
-       dw_attr (Language Dwarf5.dw_LANG_Swift) ^^ (* FIXME *)
-       dw_attr (Name file) ^^
-       dw_attr (Stmt_list 0) ^^ (* FIXME *)
-       dw_attr (Comp_dir dir) ^^
-       dw_attr (Low_pc 0) ^^
-       dw_attr (High_pc 0xFF) (* FIXME *)
-      )
+    fakeColumn 0 dw_TAG_compile_unit
+      (Block
+         ([],
+          (dw_attr (Producer "Motoko version 0.1") ^^
+           dw_attr (Producer "Motoko compiler version 0.1") ^^
+           dw_attr (Language Dwarf5.dw_LANG_Swift) ^^ (* FIXME *)
+           dw_attr (Name file) ^^
+           dw_attr (Stmt_list 0) ^^ (* FIXME *)
+           dw_attr (Comp_dir dir) ^^
+           dw_attr (Low_pc 0) ^^
+           dw_attr (High_pc 0xFF) (* FIXME *)
+          ) 0l Wasm.Source.no_region []))
   | _ -> assert false
 
 let dw_tag_children_done : t =
