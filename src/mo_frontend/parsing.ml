@@ -17,8 +17,6 @@ module E =
    is provided in the explanation. Indeed, this information is hard to
    show in text mode. *)
 
-let error_detail = 2
-
 let uniq xs = List.fold_right (fun x ys -> if List.mem x ys then ys else x::ys) xs []
 
 let abstract_symbols explanations =
