@@ -110,7 +110,7 @@ public class Buf<X> (initCapacity : Nat) {
   public func toVarArray() : [var X] = {
     if (count == 0) { [var] } else {
       let a = A.init<X>(count, elems[0]);
-      for (i in elems.keys()) {
+      for (i in I.range(0, count - 1)) {
         a[i] := elems[i]
       };
       a
