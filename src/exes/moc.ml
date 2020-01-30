@@ -28,8 +28,7 @@ let link = ref true
 let interpret_ir = ref false
 let gen_source_map = ref false
 
-let argspec = Arg.align
-[
+let argspec = Arg.align [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
   "-i", Arg.Unit (set_mode Interact), " run interactive REPL (implies -r)";
@@ -40,15 +39,21 @@ let argspec = Arg.align
 
   "-v", Arg.Set Flags.verbose, " verbose output";
   "-p", Arg.Set_int Flags.print_depth, " set print depth";
-  "--error-detail", Arg.Set_int Flags.error_detail, " set error message detail for syntax errors";
-  "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
+  "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings"; ]
+
+  @ Args.error_args
+
+  @ [
 
   "--version",
     Arg.Unit (fun () -> printf "%s\n%!" banner; exit 0), " show version";
   "--map", Arg.Set gen_source_map, " output source map";
 
   "-t", Arg.Set Flags.trace, " activate tracing in interpreters"]
-  @ Args.package_args @ [
+
+  @ Args.package_args
+
+  @ [
   "--profile", Arg.Set Flags.profile, " activate profiling counters in interpreters ";
   "--profile-file", Arg.Set_string Flags.profile_file, " set profiling output file ";
   "--profile-line-prefix", Arg.Set_string Flags.profile_line_prefix, " prefix each profile line with the given string ";

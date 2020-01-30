@@ -16,6 +16,7 @@ let argspec =
       Arg.String set_entry_point,
       " specifies the entry point for the current project"
     ]
+    @ Args.error_args
     @ Args.package_args
 
 let () =
