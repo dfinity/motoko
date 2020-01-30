@@ -1,4 +1,4 @@
-// RUN: /nix/store/qns5jqkwnrbfj10z2n03c67ljy6a2n2j-llvm-10.0.0-branch/bin/llvm-dwarfdump %s -all | FileCheck %s -check-prefix=CHECK-DWARF
+// RUN: /nix/store/qns5jqkwnrbfj10z2n03c67ljy6a2n2j-llvm-10.0.0-branch/bin/llvm-dwarfdump %s -all | FileCheck %s -check-prefix=DWARF
 
 // CHECK-DWARF: charToText.wasm:        file format WASM
 
@@ -16,3 +16,5 @@
 import Prim "mo:prim"
 
 assert (1 == 1)
+
+// CHECK: to trigger the test
