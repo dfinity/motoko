@@ -602,12 +602,13 @@ let encode (em : extended_module) =
       custom_section "name" name_section_body ns
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
+    let uleb128 n = assert (0 <= n && n < 128); u8 n
+
     let debug_abbrev_section () =
       let abbrev i abs =
-        if i > 0 then u8 0x00; (* FIXME: pad to even? *)
-        u8 (i + 1);
-        List.iter (fun (k, v) -> u8 k; u8 v) abs;
-        u8 0x00 in
+        uleb128 (i + 1);
+        List.iter (fun (k, v) -> uleb128 k; uleb128 v) abs;
+        u8 0x00; u8 0x00 in
       let section_body abs = List.iteri abbrev abs; u8 0x00 in
       let abbrevs =
         let open Dwarf5 in
