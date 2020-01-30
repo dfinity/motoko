@@ -1,4 +1,4 @@
-syntax5.mo:1.36: syntax error, unexpected token '', 
+syntax5.mo:3.1: syntax error, unexpected token '', 
 expected one of token or <phrase> sequence:
   )
   .<nat>
