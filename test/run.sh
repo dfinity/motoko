@@ -279,8 +279,9 @@ do
             if grep -F -q CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
-              wasm2wat --no-check --enable-multi-value $out/$base.wasm > $out/$base.wat
-              cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
+              wasm2wat --no-check --enable-multi-value $out/$base.wasm \
+              | tee $out/$base.wat \
+              | FileCheck $mangled > $out/$base.filecheck 2>&1
               diff_files="$diff_files $base.filecheck"
             fi
           fi
