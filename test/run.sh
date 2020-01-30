@@ -283,6 +283,15 @@ do
               | tee $out/$base.wat \
               | FileCheck $mangled > $out/$base.filecheck 2>&1
               diff_files="$diff_files $base.filecheck"
+            elif grep -F -q RUN: $mangled; then
+              $ECHO -n " [FileCheck]"
+              cat $mangled > /dev/tty
+	      grep RUN: $mangled \
+              | head -n 1 \
+              | sed -e "s/.*RUN://g" -e "s,%\.mo,$mangled,g" -e "s,%\.wasm,$out/$base.wasm,g" \
+              | tee /dev/tty \
+              | bash > $out/$base.filecheck 2>&1
+              diff_files="$diff_files $base.filecheck"
             fi
           fi
         fi
