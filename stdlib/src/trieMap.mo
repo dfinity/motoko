@@ -23,7 +23,7 @@ For now, this class does not permit a direct `clone` operation (neither does `Ha
 */
 
 module {
-public class TrieMap<K,V> (isEq:(K, K) -> Bool, hashOf: K -> T.Hash) {
+public class TrieMap<K,V> (isEq:(K, K) -> Bool, hashOf: K -> Hash.t) {
 
   var map = T.empty<K, V>();
   var _count : Nat = 0;

@@ -6,7 +6,7 @@
 import Prim "mo:prim";
 import P "prelude";
 import Option "option";
-import H "hash";
+import Hash "hash";
 import A "array";
 
 import List "list";
@@ -87,16 +87,13 @@ public let MAX_LEAF_COUNT = 8; // <-- beats both 4 and 16 for me, now
 //let MAX_LEAF_COUNT = 16;
 //let MAX_LEAF_COUNT = 32;
 
-public let Hash = H;
-public type Hash = Hash.t;
-
 public type List<T> = List.List<T>;
 public type AssocList<K,V> = AssocList.AssocList<K,V>;
 
 /* A `Key` for the trie has an associated hash value */
 public type Key<K> = {
   /* `hash` permits fast inequality checks, and permits collisions */
-  hash: Hash;
+  hash: Hash.t;
   /* `key` permits percise equality checks, but only used after equal hashes. */
   key: K;
 };
@@ -132,7 +129,7 @@ public type Trie<K,V> = {
 };
 
 public func isValid<K,V> (t:Trie<K,V>, enforceNormal:Bool) : Bool {
-  func rec(t:Trie<K,V>, bitpos:?Hash, bits:Hash, mask:Hash) : Bool {
+  func rec(t:Trie<K,V>, bitpos:?Hash.t, bits:Hash.t, mask:Hash.t) : Bool {
     switch t {
     case (#empty) {
            switch bitpos {
@@ -853,7 +850,7 @@ public func disj<K,V,W,X>(
      but where global memory consists of a single (anonymous) global trie */
     public type TrieBuild<K,V> = {
       #skip ;
-      #insert : (K, ?Hash, V) ;
+      #insert : (K, ?Hash.t, V) ;
       #seq : {
         count : Nat ;
         left  : TrieBuild<K,V> ;
@@ -937,15 +934,15 @@ public func disj<K,V,W,X>(
 
      This position is meaningful only when the build contains multiple uses of one or more keys, otherwise it is not.
      */
-    public func buildNth<K,V>(tb:TrieBuild<K,V>, i:Nat) : ?(K, ?Hash, V) = label profile_triebuild_nth : (?(K, ?Hash, V)) {
-      func rec(tb:TrieBuild<K,V>, i:Nat) : ?(K, ?Hash, V) = label profile_triebuild_nth_rec : (?(K, ?Hash, V)) {
+    public func buildNth<K,V>(tb:TrieBuild<K,V>, i:Nat) : ?(K, ?Hash.t, V) = label profile_triebuild_nth : (?(K, ?Hash.t, V)) {
+      func rec(tb:TrieBuild<K,V>, i:Nat) : ?(K, ?Hash.t, V) = label profile_triebuild_nth_rec : (?(K, ?Hash.t, V)) {
         switch tb {
         case (#skip) P.unreachable();
-        case (#insert (k,h,v)) label profile_trie_buildNth_rec_end : (?(K, ?Hash, V)) {
+        case (#insert (k,h,v)) label profile_trie_buildNth_rec_end : (?(K, ?Hash.t, V)) {
                assert(i == 0);
                ?(k,h,v)
              };
-        case (#seq s) label profile_trie_buildNth_rec_seq : (?(K, ?Hash, V)) {
+        case (#seq s) label profile_trie_buildNth_rec_seq : (?(K, ?Hash.t, V)) {
                let count_left = buildCount<K,V>(s.left);
                if (i < count_left) { rec(s.left,  i) }
                else                { rec(s.right, i - count_left) }
@@ -986,7 +983,7 @@ public func disj<K,V,W,X>(
       let a = A.tabulate<W> (
         buildCount<K,V>(tb),
         func (i:Nat) : W = label profile_triebuild_toArray_nth : W {
-          let (k,_,v) = Option.unwrap<(K,?Hash,V)>(buildNth<K,V>(tb, i));
+          let (k,_,v) = Option.unwrap<(K,?Hash.t,V)>(buildNth<K,V>(tb, i));
           f(k, v)
         }
       );
