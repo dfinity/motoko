@@ -8,17 +8,18 @@ module I = Idllib.Syntax
 let env = ref Env.empty
 (* For monomorphization *)
 let stamp = ref Env.empty
-(* can you replace this by a map with domain con, ordered by Con.compare and implicit codomain int (or even int ref) *)
+(* can you replace this by a map with domain (Con.name) = string, ordered by Con.compare and implicit codomain int (or even int ref) *)
 
 let type_map = ref Env.empty
-(* can you replace this by a map with domain (con * typ list), ordered by compare and implicit codomain int *)
+(* can you replace this by a map with domain (con * typ list), ordered by 
+compare and implicit codomain int *)
              
 let normalize str =
   let illegal_chars = ['-'; '/';] in
   String.map (fun c -> if List.mem c illegal_chars then '_' else c) str
 
 let string_of_con vs c =
-  let name = string_of_con c in
+  let name = string_of_con c in (* maybe use Con.name instead, excluding the stamp *)
   match Con.kind c with
   | Def ([], _) -> normalize name
   | Def (tbs, _) ->
