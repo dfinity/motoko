@@ -602,7 +602,7 @@ let encode (em : extended_module) =
       custom_section "name" name_section_body ns
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
-    let uleb128 n = assert (0 <= n && n < 128); u8 n
+    let uleb128 n = vu64 (Int64.of_int n)
 
     let debug_abbrev_section () =
       let abbrev i abs =
