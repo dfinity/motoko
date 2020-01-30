@@ -184,7 +184,7 @@ let fakeColumn (column : int) attr instr' : t =
   (instr' @@ Wasm.Source.{ left = fakeLoc; right = no_pos }) :: instrs
 
 let dw_attr : dw_AT -> t =
-  let open Dwarf5 in function
+  function
   | Producer p -> fakeFile p dw_AT_producer Nop
   | Language l -> fakeColumn l dw_AT_language Nop
   | Name n -> fakeFile n dw_AT_name Nop
@@ -201,13 +201,13 @@ let dw_attr : dw_AT -> t =
  *)
 
 let dw_tag : dw_TAG -> t =
-  let open Dwarf5 in function
+  function
   | Compile_unit (dir, file) ->
     fakeColumn 0 dw_TAG_compile_unit
       (Block
          ([],
           (dw_attr (Producer "DFINITY Motoko compiler, version 0.1") ^^
-           dw_attr (Language Dwarf5.dw_LANG_Swift) ^^ (* FIXME *)
+           dw_attr (Language dw_LANG_Swift) ^^ (* FIXME *)
            dw_attr (Name file) ^^
            dw_attr (Stmt_list 0) ^^ (* FIXME *)
            dw_attr (Comp_dir dir) ^^

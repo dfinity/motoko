@@ -87,7 +87,7 @@ let encode (em : extended_module) =
   let rec extract_dwarf =
     let open Wasm.Ast in
     let open Wasm.Source in
-    let open Dwarf5.Dwarf5 in
+    let open Dwarf5 in
 
     let extract = function
       | (Nop, {line; file; _}) when line = -dw_AT_producer ->
