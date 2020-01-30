@@ -216,5 +216,5 @@ let dw_tag : dw_TAG -> t =
           ) 0l Wasm.Source.no_region []))
   | _ -> assert false
 
-let dw_tag_children_done : t =
+let dw_tag_children_done : t = (* FIXME: only Nop! *)
   block_ [] (fun _ _ x -> (Nop @@ Wasm.Source.no_region) :: x)

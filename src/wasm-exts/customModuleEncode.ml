@@ -41,6 +41,11 @@ let to_string s =
   List.iter (fun (pos, b) -> Bytes.set bs pos b) !(s.patches);
   Bytes.to_string bs
 
+(* DWARF factlets *)
+
+type dwarf_artifact = Tag of int * dwarf_artifact list
+                    | IntAttribute of int * int
+                    | StringAttribute of int * string
 
 (* Encoding *)
 
@@ -82,32 +87,56 @@ let encode (em : extended_module) =
     offs
   in
 
-  let dwarf_like Wasm.Source.{ left; right } = left.Wasm.Source.line < 0 in
+  let dwarf_like Wasm.Source.{ left; right } =
+    Wasm.Source.(left.line < 0 && String.length left.file = 0) in
 
-  let rec extract_dwarf =
+
+  let dwarf_tags = ref [] in
+  let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: !dwarf_tags in
+  let close_dwarf tag = failwith "TBI: close_dwarf" in
+  let add_dwarf_attribute attr =
+    dwarf_tags := match !dwarf_tags with
+                  | Tag (tag, arts) :: t -> Tag (tag, attr :: arts) :: t
+                  | _ -> assert false
+  in
+
+  let extract_dwarf tag =
     let open Wasm.Ast in
     let open Wasm.Source in
     let open Dwarf5 in
 
     let extract = function
-      | (Nop, {line; file; _}) when line = -dw_AT_producer ->
+      | (Nop, {line; file; _}) when -line = dw_AT_producer ->
         let offs = add_dwarf_string file in
-        Printf.printf "String dw_AT_producer offset: %d\n" offs
+        Printf.printf "String dw_AT_producer offset: %d\n" offs;
+        add_dwarf_attribute (StringAttribute (-line, file))
 
-      | (Nop, {line; file; _}) when line = -dw_AT_name ->
+      | (Nop, {line; file; _}) when -line = dw_AT_name ->
         let offs = add_dwarf_string file in
-        Printf.printf "String dw_AT_name offset: %d\n" offs
+        Printf.printf "String dw_AT_name offset: %d\n" offs;
+        add_dwarf_attribute (StringAttribute (-line, file))
 
-      | (Nop, {line; file; _}) when line = -dw_AT_comp_dir ->
+      | (Nop, {line; file; _}) when -line = dw_AT_comp_dir ->
         let offs = add_dwarf_string file in
-        Printf.printf "String dw_AT_comp_dir offset: %d\n" offs
+        Printf.printf "String dw_AT_comp_dir offset: %d\n" offs;
+        add_dwarf_attribute (StringAttribute (-line, file))
 
-      | (Nop, {line; column; _}) when true -> ()
-      | _ -> ()
+      | (Nop, {line; column; _}) when -line = dw_AT_language ->
+        add_dwarf_attribute (IntAttribute (-line, column))
+      | (Nop, {line; column; _}) when -line = dw_AT_stmt_list ->
+        add_dwarf_attribute (IntAttribute (-line, column))
+      | (Nop, {line; column; _}) when -line = dw_AT_low_pc ->
+        add_dwarf_attribute (IntAttribute (-line, column))
+      | (Nop, {line; column; _}) when -line = dw_AT_high_pc ->
+        add_dwarf_attribute (IntAttribute (-line, column))
+      | (Nop, {line; _}) -> Printf.printf "TAG: %x; ATTR extract: %x\n" tag (-line); failwith "extract"
+      | (instr, {line; file; _}) -> Printf.printf "TAG: %x (a.k.a. %d, from: %s); extract: %x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))) (*; failwith "extract UNKNOWN"*)
     in
-    function
+    add_dwarf_tag tag;
+    let rec add_artifacts = function
     | [] -> ()
-    | e :: es -> extract (e.it, e.at.left); extract_dwarf es
+    | e :: es -> extract (e.it, e.at.left); add_artifacts es in
+    add_artifacts
   in
 
   let add_to_map file il ic ol oc =
@@ -232,10 +261,11 @@ let encode (em : extended_module) =
       if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);
 
       match e.it with
+      | Nop when dwarf_like e.at -> close_dwarf e.at.left.line
+      | Block (_, es) when dwarf_like e.at -> extract_dwarf e.at.left.line es
       | Unreachable -> op 0x00
       | Nop -> op 0x01
 
-      | Block (_, es) when dwarf_like e.at -> extract_dwarf es
       | Block (ts, es) -> op 0x02; stack_type ts; list instr es; end_ ()
       | Loop (ts, es) -> op 0x03; stack_type ts; list instr es; end_ ()
       | If (ts, es1, es2) ->
@@ -603,13 +633,14 @@ let encode (em : extended_module) =
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
     let uleb128 n = vu64 (Int64.of_int n)
+    let close_section () = u8 0x00
 
     let debug_abbrev_section () =
       let abbrev i abs =
         uleb128 (i + 1);
         List.iter (fun (k, v) -> uleb128 k; uleb128 v) abs;
-        u8 0x00; u8 0x00 in
-      let section_body abs = List.iteri abbrev abs; u8 0x00 in
+        close_section (); close_section () in
+      let section_body abs = List.iteri abbrev abs; close_section () in
       let abbrevs =
         let open Dwarf5 in
         [ [ dw_TAG_compile_unit, dw_CHILDREN_yes;
@@ -646,7 +677,7 @@ let encode (em : extended_module) =
     let debug_strings_section dss =
       let rec debug_strings_section_body = function
         | [] -> ()
-        | h :: t -> debug_strings_section_body t; put_string s h; u8 0
+        | h :: t -> debug_strings_section_body t; put_string s h; close_section ()
       in
       custom_section ".debug_str" debug_strings_section_body dss (dss <> [])
 
