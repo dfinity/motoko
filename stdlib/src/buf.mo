@@ -103,7 +103,7 @@ public class Buf<X> (initCapacity : Nat) {
   public func toArray() : [X] =
     // immutable clone of array
     A.tabulate<X>(
-      elems.len(),
+      count,
       func(x: Nat): X { elems[x] }
     );
 
