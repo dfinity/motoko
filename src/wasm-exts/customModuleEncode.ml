@@ -602,6 +602,27 @@ let encode (em : extended_module) =
       custom_section "name" name_section_body ns
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
+    let debug_abbrev_section () =
+      let abbrevs = let open Dwarf5 in [
+          dw_TAG_compile_unit, dw_CHILDREN_yes;
+          dw_AT_producer, dw_FORM_strp;
+          dw_AT_language, dw_FORM_data2;
+          dw_AT_name, dw_FORM_strp;
+          dw_AT_stmt_list, dw_FORM_sec_offset;
+          dw_AT_comp_dir, dw_FORM_strp;
+          dw_AT_low_pc, dw_FORM_addr;
+          dw_AT_high_pc, dw_FORM_data4
+
+
+      ] in
+      custom_section
+        ".debug_abbrev"
+        (fun abs -> u8 0x01;
+                    List.iter (fun (k, v) -> u8 k; u8 v) abs;
+                    u8 0x00)
+        abbrevs
+        true
+
     let debug_strings_section dss =
       let rec debug_strings_section_body = function
         | [] -> ()
@@ -631,6 +652,7 @@ let encode (em : extended_module) =
       data_section m.data;
       (* other optional sections *)
       name_section em.name;
+      debug_abbrev_section ();
       debug_strings_section !dwarf_strings
   end
   in E.module_ em;
