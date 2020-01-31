@@ -195,11 +195,7 @@ let await env at async k =
 
 let actor_msg env id f c v (k : V.value V.cont) =
   if env.flags.trace then trace "-> message %s%s" id (string_of_arg env v);
-  Scheduler.queue (fun () ->
-    if env.flags.trace then trace "<- message %s%s" id (string_of_arg env v);
-    incr trace_depth;
-    f c v k
-  )
+  f c v k
 
 let make_unit_message env id v =
   let open CC in
@@ -207,8 +203,7 @@ let make_unit_message env id v =
   match call_conv with
   | {sort = T.Shared s; n_res = 0; _} ->
     Value.message_func s call_conv.n_args (fun c v k ->
-      actor_msg env id f c v (fun _ -> ());
-      k V.unit
+      actor_msg env id f c v k
     )
   | _ -> (* assert false *)
     failwith ("unexpected call_conv " ^ (string_of_call_conv call_conv))
@@ -219,11 +214,7 @@ let make_async_message env id v =
   match call_conv with
   | {sort = T.Shared s; control = T.Promises; _} ->
     Value.async_func s call_conv.n_args call_conv.n_res (fun c v k ->
-      let async = make_async () in
-      actor_msg env id f c v (fun v_async ->
-        get_async (V.as_async v_async) (set_async async) (reject_async async)
-      );
-      k (V.Async async)
+      actor_msg env id f c v k
     )
   | _ -> (* assert false *)
     failwith ("unexpected call_conv " ^ (string_of_call_conv call_conv))
