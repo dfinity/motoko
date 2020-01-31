@@ -633,6 +633,8 @@ let encode (em : extended_module) =
 
     let uleb128 n = vu64 (Int64.of_int n)
     let close_section () = u8 0x00
+    let _write16 = Buffer.add_int16_be s.buf
+    let write32 i = Buffer.add_int32_be s.buf (Int32.of_int i)
 
     let debug_abbrev_section () =
       let abbrev i abs =
@@ -641,6 +643,39 @@ let encode (em : extended_module) =
         close_section (); close_section () in
       let section_body abs = List.iteri abbrev abs; close_section () in
       custom_section ".debug_abbrev" section_body Abbreviation.abbreviations true
+
+    (* dw_FORM writers *)
+    let write : int -> dwarf_artifact -> unit = function
+      | dw_FORM_strp ->
+        begin function
+          | StringAttribute (attr, str) ->
+            write32 attr;
+            write32 (add_dwarf_string str)
+          | _ -> failwith "dw_FORM_strp"
+        end
+
+    let debug_info_section () =
+      let section_body abs =
+        (* 0x00000000: Compile Unit: length = 0x000000d0 version = 0x0004 abbr_offset = 0x0000 addr_size = 0x04 (next unit at 0x000000d4) *)
+
+
+        u8 0;u8 0;u8 0;u8 1;
+        u8 0;u8 5;
+        u8 Dwarf5.dw_UT_compile; (* unit_type *)
+        u8 4; (* address_size *)
+
+(*
+
+        u32 1l; (* length *)
+        u16 0x0005; (* version *)
+        u8 Dwarf5.dw_UT_compile; (* unit_type *)
+        u8 4; (* address_size *)
+        u16 0x0000; (* abbr_offset *)
+ *)
+
+        write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_producer, "BLBLAB"));
+        close_section () in
+      custom_section ".debug_info" section_body dwarf_tags true
 
     let debug_strings_section dss =
       let rec debug_strings_section_body = function
@@ -672,6 +707,7 @@ let encode (em : extended_module) =
       (* other optional sections *)
       name_section em.name;
       debug_abbrev_section ();
+      debug_info_section ();
       debug_strings_section !dwarf_strings
   end
   in E.module_ em;

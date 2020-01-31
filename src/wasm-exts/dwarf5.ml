@@ -272,3 +272,13 @@ let dw_FORM_addrx4 = 0x2c
 
 (* FIXME: we cheat for now *)
 let dw_LANG_Swift = 0x001e
+
+
+let dw_UT_compile = 0x01
+let dw_UT_type = 0x02
+let dw_UT_partial = 0x03
+let dw_UT_skeleton = 0x04
+let dw_UT_split_compile = 0x05
+let dw_UT_split_type = 0x06
+let dw_UT_lo_user = 0x80
+let dw_UT_hi_user = 0xff
