@@ -68,7 +68,7 @@ func natIterEq(a:I.Iter<Nat>, b:I.Iter<Nat>) : Bool {
   };
   assert (c.len() == len);
   assert (c.toArray().len() == len);
-  assert (natIterEq(c.iter(), natArrayIter(c.toArray())));
+  assert (natIterEq(c.iter(), natArrayIter(c.clone().toArray())));
   assert (c.toVarArray().len() == len);
-  assert (natIterEq(c.iter(), natVarArrayIter(c.toVarArray())));
+  assert (natIterEq(c.iter(), natVarArrayIter(c.clone().toVarArray())));
 }
