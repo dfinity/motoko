@@ -640,35 +640,7 @@ let encode (em : extended_module) =
         List.iter (fun (k, v) -> uleb128 k; uleb128 v) abs;
         close_section (); close_section () in
       let section_body abs = List.iteri abbrev abs; close_section () in
-      let abbrevs =
-        let open Dwarf5 in
-        [ [ dw_TAG_compile_unit, dw_CHILDREN_yes;
-            dw_AT_producer, dw_FORM_strp;
-            dw_AT_language, dw_FORM_data2;
-            dw_AT_name, dw_FORM_strp;
-            dw_AT_stmt_list, dw_FORM_sec_offset;
-            dw_AT_comp_dir, dw_FORM_strp;
-            dw_AT_low_pc, dw_FORM_addr;
-            dw_AT_high_pc, dw_FORM_data4
-          ];
-          [ dw_TAG_subprogram, dw_CHILDREN_yes;
-            dw_AT_low_pc, dw_FORM_addr;
-            dw_AT_high_pc, dw_FORM_data4;
-            (* dw_AT_GNU_all_call_sites, dw_FORM_flag_present; *)
-            dw_AT_name, dw_FORM_strp;
-            dw_AT_decl_file, dw_FORM_data1;
-            dw_AT_decl_line, dw_FORM_data1;
-            dw_AT_prototyped, dw_FORM_flag_present;
-            dw_AT_external, dw_FORM_flag_present
-          ];
-          [ dw_TAG_formal_parameter, dw_CHILDREN_no;
-            dw_AT_name, dw_FORM_strp;
-            dw_AT_decl_file, dw_FORM_data1;
-            dw_AT_decl_line, dw_FORM_data1;
-            dw_AT_type, dw_FORM_ref4;
-          ]
-      ] in
-      custom_section ".debug_abbrev" section_body abbrevs true
+      custom_section ".debug_abbrev" section_body Abbreviation.abbreviations true
 
     let debug_strings_section dss =
       let rec debug_strings_section_body = function
