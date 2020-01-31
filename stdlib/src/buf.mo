@@ -58,7 +58,6 @@ public class Buf<X> (initCapacity : Nat) {
       let elems2 = A.init<X>(size, elem);
       if (count > 0) {
         for (i in I.range(0, count - 1)) {
-          //for (i in elems.keys()) { // this is a bug-fix
           elems2[i] := elems[i];
         };
       };
@@ -88,7 +87,6 @@ public class Buf<X> (initCapacity : Nat) {
     let c = Buf<X>(initCapacity);
     if (count > 0) {
       for (i in I.range(0, count - 1)) {
-        //for (i in elems.keys()) { // this is a bug-fix
         c.add(elems[i])
       };
     };
