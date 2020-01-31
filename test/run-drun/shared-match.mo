@@ -8,7 +8,7 @@ actor a {
   public func match_true(true) : async () {
     Prim.debugPrint "match_true";
   };
-  public func go() = ignore async {
+  public func go() {
     Prim.debugPrint "go1";
     try { await match_true(true) }
     catch e {};

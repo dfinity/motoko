@@ -53,7 +53,7 @@ actor a {
 
   // TODO test await and calls to shared functions
 
-  public func go() = ignore async {
+  public func go() {
     Prim.debugPrint("A");
     oneway();
     Prim.debugPrint("B");
