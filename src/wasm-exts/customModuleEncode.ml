@@ -668,6 +668,7 @@ let encode (em : extended_module) =
           | IntAttribute (attr, i) -> write32 i
           | _ -> failwith "dw_FORM_addr"
         end
+      | _ -> failwith("cannot write form")
 
     let unit f =
       let dw_gap32 () = let p = pos s in write32 0x0; p in
