@@ -129,7 +129,7 @@ let encode (em : extended_module) =
       | (Nop, {line; column; _}) when -line = dw_AT_high_pc ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | (Nop, {line; _}) -> Printf.printf "TAG: %x; ATTR extract: %x\n" tag (-line); failwith "extract"
-      | (instr, {line; file; _}) -> Printf.printf "TAG: %x (a.k.a. %d, from: %s); extract: %x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))) (*; failwith "extract UNKNOWN"*)
+      | (instr, {line; file; _}) -> Printf.printf "TAG: %x (a.k.a. %d, from: %s); extract: %x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
     add_dwarf_tag tag;
     let rec add_artifacts = function
@@ -661,14 +661,11 @@ let encode (em : extended_module) =
             dw_AT_prototyped, dw_FORM_flag_present;
             dw_AT_external, dw_FORM_flag_present
           ];
-          [ dw_TAG_inheritance, dw_CHILDREN_yes; (* FIXME: fake *)
-            dw_AT_producer, dw_FORM_strp;
-            dw_AT_language, dw_FORM_data2;
+          [ dw_TAG_formal_parameter, dw_CHILDREN_no;
             dw_AT_name, dw_FORM_strp;
-            dw_AT_stmt_list, dw_FORM_sec_offset;
-            dw_AT_comp_dir, dw_FORM_strp;
-            dw_AT_low_pc, dw_FORM_addr;
-            dw_AT_high_pc, dw_FORM_data4
+            dw_AT_decl_file, dw_FORM_data1;
+            dw_AT_decl_line, dw_FORM_data1;
+            dw_AT_type, dw_FORM_ref4;
           ]
       ] in
       custom_section ".debug_abbrev" section_body abbrevs true
