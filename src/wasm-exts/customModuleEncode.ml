@@ -633,8 +633,8 @@ let encode (em : extended_module) =
 
     let uleb128 n = vu64 (Int64.of_int n)
     let close_section () = u8 0x00
-    let _write16 = Buffer.add_int16_be s.buf
-    let write32 i = Buffer.add_int32_be s.buf (Int32.of_int i)
+    let write16 = Buffer.add_int16_le s.buf
+    let write32 i = Buffer.add_int32_le s.buf (Int32.of_int i)
 
     let debug_abbrev_section () =
       let abbrev i abs =
@@ -645,13 +645,28 @@ let encode (em : extended_module) =
       custom_section ".debug_abbrev" section_body Abbreviation.abbreviations true
 
     (* dw_FORM writers *)
-    let write : int -> dwarf_artifact -> unit = function
-      | dw_FORM_strp ->
+    let write : int -> dwarf_artifact -> unit =
+      let open Dwarf5 in
+      function
+      | f when dw_FORM_strp = f ->
         begin function
-          | StringAttribute (attr, str) ->
-            write32 attr;
-            write32 (add_dwarf_string str)
+          | StringAttribute (attr, str) -> write32 (add_dwarf_string str)
           | _ -> failwith "dw_FORM_strp"
+        end
+      | f when dw_FORM_data2 = f ->
+        begin function
+          | IntAttribute (attr, i) -> write16 i
+          | _ -> failwith "dw_FORM_data2"
+        end
+      | f when dw_FORM_data4 = f ->
+        begin function
+          | IntAttribute (attr, i) -> write32 i
+          | _ -> failwith "dw_FORM_data4"
+        end
+      | f when dw_FORM_addr = f ->
+        begin function
+          | IntAttribute (attr, i) -> write32 i
+          | _ -> failwith "dw_FORM_addr"
         end
 
     let debug_info_section () =
@@ -659,21 +674,19 @@ let encode (em : extended_module) =
         (* 0x00000000: Compile Unit: length = 0x000000d0 version = 0x0004 abbr_offset = 0x0000 addr_size = 0x04 (next unit at 0x000000d4) *)
 
 
-        u8 0;u8 0;u8 0;u8 1;
-        u8 0;u8 5;
+        write32 (0x0024 - 0x4); (* unit_length *)
+        write16 0x0005; (* version *)
         u8 Dwarf5.dw_UT_compile; (* unit_type *)
         u8 4; (* address_size *)
+        write32 0x0000; (* debug_abbrev_offset *)
 
-(*
-
-        u32 1l; (* length *)
-        u16 0x0005; (* version *)
-        u8 Dwarf5.dw_UT_compile; (* unit_type *)
-        u8 4; (* address_size *)
-        u16 0x0000; (* abbr_offset *)
- *)
-
+        uleb128 1;(*abbrev_of dw_TAG_compile_unit*)
         write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_producer, "BLBLAB"));
+        write Dwarf5.dw_FORM_data2 Dwarf5.(IntAttribute (dw_AT_language, dw_LANG_Swift));
+        write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_name, "filename.mo"));
+        write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_comp_dir, "var/log/info/"));
+        write Dwarf5.dw_FORM_addr Dwarf5.(IntAttribute (dw_AT_low_pc, 0));
+        write Dwarf5.dw_FORM_data4 Dwarf5.(IntAttribute (dw_AT_high_pc, 0x10000));
         close_section () in
       custom_section ".debug_info" section_body dwarf_tags true
 
