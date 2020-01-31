@@ -56,8 +56,11 @@ public class Buf<X> (initCapacity : Nat) {
         else
           2 * elems.len();
       let elems2 = A.init<X>(size, elem);
-      for (i in elems.keys()) {
-        elems2[i] := elems[i];
+      if (count > 0) {
+        for (i in I.range(0, count - 1)) {
+          //for (i in elems.keys()) { // this is a bug-fix
+          elems2[i] := elems[i];
+        };
       };
       elems := elems2;
     };
@@ -83,8 +86,11 @@ public class Buf<X> (initCapacity : Nat) {
 
   public func clone() : Buf<X> {
     let c = Buf<X>(initCapacity);
-    for (i in elems.keys()) {
-      c.add(elems[i])
+    if (count > 0) {
+      for (i in I.range(0, count - 1)) {
+        //for (i in elems.keys()) { // this is a bug-fix
+        c.add(elems[i])
+      };
     };
     c
   };

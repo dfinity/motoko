@@ -21,6 +21,41 @@ for (i in I.range(0, 123)) {
 Prim.debugPrint(debug_show(a.toArray()));
 Prim.debugPrint(debug_show(b.toArray()));
 
+func natArrayIter(elems:[Nat]) : I.Iter<Nat> = object {
+  var pos = 0;
+  let count = elems.len();
+  public func next() : ?Nat {
+    if (pos == count) { null } else {
+      let elem = ?elems[pos];
+      pos += 1;
+      elem
+    }
+  }
+};
+
+func natVarArrayIter(elems:[var Nat]) : I.Iter<Nat> = object {
+  var pos = 0;
+  let count = elems.len();
+  public func next() : ?Nat {
+    if (pos == count) { null } else {
+      let elem = ?elems[pos];
+      pos += 1;
+      elem
+    }
+  }
+};
+
+func natIterEq(a:I.Iter<Nat>, b:I.Iter<Nat>) : Bool {
+   switch (a.next(), b.next()) {
+     case (null, null) { true };
+     case (?x, ?y) {
+       if (x == y) { natIterEq(a, b) }
+       else { false }
+     };
+     case (_, _) { false };
+   }
+};
+
 // regression test: buffers with extra space are converted to arrays of the correct length
 {
   let bigLen = 100;
@@ -31,10 +66,9 @@ Prim.debugPrint(debug_show(b.toArray()));
     Prim.debugPrint(debug_show(i));
     c.add(i);
   };
-  Prim.debugPrint(debug_show(c.len()));
   assert (c.len() == len);
-  Prim.debugPrint(debug_show(c.len()));
   assert (c.toArray().len() == len);
-  Prim.debugPrint(debug_show(c.len()));
+  assert (natIterEq(c.iter(), natArrayIter(c.toArray())));
   assert (c.toVarArray().len() == len);
+  assert (natIterEq(c.iter(), natVarArrayIter(c.toVarArray())));
 }
