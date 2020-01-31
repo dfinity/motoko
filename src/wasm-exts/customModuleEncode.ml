@@ -669,25 +669,38 @@ let encode (em : extended_module) =
           | _ -> failwith "dw_FORM_addr"
         end
 
+    let unit f =
+      let dw_gap32 () = let p = pos s in write32 0x0; p in
+      let dw_patch_gap32 p n =
+        let lsb i = Char.chr (i land 0xff) in
+        patch s p (lsb n);
+        patch s (p + 1) (lsb (n lsr 8));
+        patch s (p + 2) (lsb (n lsr 16));
+        patch s (p + 3) (lsb (n lsr 24)) in
+      let g = dw_gap32 () in (* unit_length *)
+      let p = pos s in
+      f (); dw_patch_gap32 g (pos s - p)
+
     let debug_info_section () =
       let section_body abs =
-        (* 0x00000000: Compile Unit: length = 0x000000d0 version = 0x0004 abbr_offset = 0x0000 addr_size = 0x04 (next unit at 0x000000d4) *)
 
+        unit(fun () ->
+            write16 0x0005; (* version *)
+            u8 Dwarf5.dw_UT_compile; (* unit_type *)
+            u8 4; (* address_size *)
+            write32 0x0000; (* debug_abbrev_offset *)
 
-        write32 (0x0024 - 0x4); (* unit_length *)
-        write16 0x0005; (* version *)
-        u8 Dwarf5.dw_UT_compile; (* unit_type *)
-        u8 4; (* address_size *)
-        write32 0x0000; (* debug_abbrev_offset *)
+            uleb128 1;(*abbrev_of dw_TAG_compile_unit*)
+            write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_producer, "BLBLAB"));
+            write Dwarf5.dw_FORM_data2 Dwarf5.(IntAttribute (dw_AT_language, dw_LANG_Swift));
+            write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_name, "filename.mo"));
+            write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_comp_dir, "var/log/info/"));
+            write Dwarf5.dw_FORM_addr Dwarf5.(IntAttribute (dw_AT_low_pc, 0));
+            write Dwarf5.dw_FORM_data4 Dwarf5.(IntAttribute (dw_AT_high_pc, 0x10000));
+            close_section ()
+        )
 
-        uleb128 1;(*abbrev_of dw_TAG_compile_unit*)
-        write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_producer, "BLBLAB"));
-        write Dwarf5.dw_FORM_data2 Dwarf5.(IntAttribute (dw_AT_language, dw_LANG_Swift));
-        write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_name, "filename.mo"));
-        write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_comp_dir, "var/log/info/"));
-        write Dwarf5.dw_FORM_addr Dwarf5.(IntAttribute (dw_AT_low_pc, 0));
-        write Dwarf5.dw_FORM_data4 Dwarf5.(IntAttribute (dw_AT_high_pc, 0x10000));
-        close_section () in
+        in
       custom_section ".debug_info" section_body dwarf_tags true
 
     let debug_strings_section dss =
