@@ -34,7 +34,7 @@ let
   # there we use plain clang-10. There is no stdlib there anyways.
   llvmEnv = ''
     export CLANG="clang"
-    export WASM_CLANG="clang-11"
+    export WASM_CLANG="clang-10"
     export WASM_LD=wasm-ld
   '';
 in

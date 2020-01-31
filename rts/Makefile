@@ -1,5 +1,5 @@
 CLANG ?= clang
-WASM_CLANG ?= clang-11
+WASM_CLANG ?= clang-10
 WASM_LD ?= wasm-ld
 
 #
