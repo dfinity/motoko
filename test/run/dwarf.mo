@@ -1,4 +1,4 @@
-// RUN: /nix/store/qns5jqkwnrbfj10z2n03c67ljy6a2n2j-llvm-10.0.0-branch/bin/llvm-dwarfdump %.wasm -all | FileCheck %.mo -check-prefix=DWARF
+// RUN: llvm-dwarfdump %.wasm -all | FileCheck %.mo -check-prefix=DWARF
 
 // DWARF: dwarf.wasm: file format WASM
 

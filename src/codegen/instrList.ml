@@ -156,6 +156,7 @@ type dw_AT = Producer of string
            | Comp_dir of string
            | Low_pc of int
            | High_pc of int
+           | OtherS of int (* REMOVE *)
 
 (* DWARF tags *)
 

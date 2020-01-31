@@ -106,17 +106,17 @@ let encode (em : extended_module) =
 
     let extract = function
       | (Nop, {line; file; _}) when -line = dw_AT_producer ->
-        let offs = add_dwarf_string file in
+        let _offs = add_dwarf_string file in
         (* Printf.printf "String dw_AT_producer offset: %d\n" offs; *)
         add_dwarf_attribute (StringAttribute (-line, file))
 
       | (Nop, {line; file; _}) when -line = dw_AT_name ->
-        let offs = add_dwarf_string file in
+        let _offs = add_dwarf_string file in
         (* Printf.printf "String dw_AT_name offset: %d\n" offs; *)
         add_dwarf_attribute (StringAttribute (-line, file))
 
       | (Nop, {line; file; _}) when -line = dw_AT_comp_dir ->
-        let offs = add_dwarf_string file in
+        let _offs = add_dwarf_string file in
         (* Printf.printf "String dw_AT_comp_dir offset: %d\n" offs; *)
         add_dwarf_attribute (StringAttribute (-line, file))
 
