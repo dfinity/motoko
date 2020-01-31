@@ -51,7 +51,7 @@ assert.deepStrictEqual(bad_result, {
       },
       "severity": 1,
       "source": "motoko",
-      "message": "unexpected token"
+      "message": "unexpected token \'\', \nexpected one of token or <phrase> sequence:\n  <exp_bin(ob)>"
     }
   ],
   "code": null,
@@ -79,7 +79,7 @@ assert.deepStrictEqual(m.Motoko.check('1+'), {
       },
       "severity": 1,
       "source": "motoko",
-      "message": "unexpected token"
+      "message": "unexpected token \'\', \nexpected one of token or <phrase> sequence:\n  <exp_bin(ob)>"
     }
   ],
   "code": null
