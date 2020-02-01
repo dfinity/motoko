@@ -91,8 +91,13 @@ let encode (em : extended_module) =
     Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos) in
 
   let dwarf_tags = ref [] in
-  let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: !dwarf_tags in
-  let close_dwarf tag = failwith "TBI: close_dwarf" in
+  let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: !dwarf_tags in (* TODO: check has_children *)
+  let close_dwarf () =
+    match !dwarf_tags with
+    | [] -> failwith "no open DW_TAG"
+    | Tag _ :: [] -> ()
+    | Tag _ as nested :: Tag (tag, arts) :: t -> dwarf_tags := Tag (tag, nested :: arts) :: t
+    | _ -> failwith "cannot close DW_AT" in
   let add_dwarf_attribute attr =
     dwarf_tags := match !dwarf_tags with
                   | Tag (tag, arts) :: t -> Tag (tag, attr :: arts) :: t
@@ -260,7 +265,7 @@ let encode (em : extended_module) =
       if e.at <> no_region then add_to_map e.at.left.file e.at.left.line e.at.left.column 0 (pos s);
 
       match e.it with
-      | Nop when dwarf_like e.at -> close_dwarf e.at.left.line
+      | Nop when dwarf_like e.at -> close_dwarf ()
       | Block (_, es) when dwarf_like e.at -> extract_dwarf e.at.left.line es
       | Unreachable -> op 0x00
       | Nop -> op 0x01
