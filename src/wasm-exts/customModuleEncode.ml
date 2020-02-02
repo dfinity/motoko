@@ -266,7 +266,7 @@ let encode (em : extended_module) =
 
       match e.it with
       | Nop when dwarf_like e.at -> close_dwarf ()
-      | Block (_, es) when dwarf_like e.at -> extract_dwarf e.at.left.line es
+      | Block (_, es) when dwarf_like e.at -> extract_dwarf (-e.at.left.line) es
       | Unreachable -> op 0x00
       | Nop -> op 0x01
 
@@ -673,6 +673,24 @@ let encode (em : extended_module) =
         end
       | _ -> failwith("cannot write form")
 
+    let writeTag = function
+      | Tag (t, contentsRevd) ->
+        let contents = List.rev contentsRevd in
+        let isTag (t', _, _) = t = t' in
+        let (_, has_children, forms) = List.find isTag Abbreviation.abbreviations in
+        let pairing (attr, form) = function
+          | Tag _ -> failwith "Attribute expected"
+          | IntAttribute (a, _) as art -> Printf.printf "IntAttribute is %x vs. %x" attr a;assert (attr = a); writeForm form art
+          | StringAttribute (a, _) as art -> Printf.printf "StringAttribute is %x vs. %x" attr a;assert (attr = a); writeForm form art in
+        let rec indexOf cnt = function
+          | h :: t when isTag h -> cnt
+          | _ :: t -> indexOf (cnt + 1) t
+          | _ -> failwith "not encountered" in
+        uleb128 (indexOf 1 Abbreviation.abbreviations);
+        List.iter2 pairing forms contents;
+        close_section ()
+      | _ -> failwith "Tag expected"
+
     let unit f =
       let dw_gap32 () = let p = pos s in write32 0x0; p in
       let dw_patch_gap32 p n =
@@ -694,6 +712,11 @@ let encode (em : extended_module) =
             u8 4; (* address_size *)
             write32 0x0000; (* debug_abbrev_offset *)
 
+            match !dwarf_tags with
+            | [toplevel] -> writeTag toplevel
+            | _ -> failwith "expected one toplevel tag"
+
+              (*
             uleb128 1;(*abbrev_of dw_TAG_compile_unit*)
             writeForm Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_producer, "BLBLAB"));
             writeForm Dwarf5.dw_FORM_data2 Dwarf5.(IntAttribute (dw_AT_language, dw_LANG_Swift));
@@ -702,6 +725,7 @@ let encode (em : extended_module) =
             writeForm Dwarf5.dw_FORM_addr Dwarf5.(IntAttribute (dw_AT_low_pc, 0));
             writeForm Dwarf5.dw_FORM_data4 Dwarf5.(IntAttribute (dw_AT_high_pc, 0x10000));
             close_section ()
+               *)
         )
 
         in
