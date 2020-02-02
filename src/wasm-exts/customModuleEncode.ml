@@ -680,8 +680,8 @@ let encode (em : extended_module) =
         let (_, has_children, forms) = List.find isTag Abbreviation.abbreviations in
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
-          | IntAttribute (a, _) as art -> Printf.printf "IntAttribute is %x vs. %x" attr a;assert (attr = a); writeForm form art
-          | StringAttribute (a, _) as art -> Printf.printf "StringAttribute is %x vs. %x" attr a;assert (attr = a); writeForm form art in
+          | IntAttribute (a, _) as art -> assert (attr = a); writeForm form art
+          | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art in
         let rec indexOf cnt = function
           | h :: t when isTag h -> cnt
           | _ :: t -> indexOf (cnt + 1) t
@@ -705,7 +705,6 @@ let encode (em : extended_module) =
 
     let debug_info_section () =
       let section_body abs =
-
         unit(fun () ->
             write16 0x0005; (* version *)
             u8 Dwarf5.dw_UT_compile; (* unit_type *)
@@ -715,20 +714,7 @@ let encode (em : extended_module) =
             match !dwarf_tags with
             | [toplevel] -> writeTag toplevel
             | _ -> failwith "expected one toplevel tag"
-
-              (*
-            uleb128 1;(*abbrev_of dw_TAG_compile_unit*)
-            writeForm Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_producer, "BLBLAB"));
-            writeForm Dwarf5.dw_FORM_data2 Dwarf5.(IntAttribute (dw_AT_language, dw_LANG_Swift));
-            writeForm Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_name, "filename.mo"));
-            writeForm Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_comp_dir, "var/log/info/"));
-            writeForm Dwarf5.dw_FORM_addr Dwarf5.(IntAttribute (dw_AT_low_pc, 0));
-            writeForm Dwarf5.dw_FORM_data4 Dwarf5.(IntAttribute (dw_AT_high_pc, 0x10000));
-            close_section ()
-               *)
-        )
-
-        in
+        ) in
       custom_section ".debug_info" section_body dwarf_tags true
 
     let debug_strings_section dss =
