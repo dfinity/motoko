@@ -80,7 +80,7 @@ let encode (em : extended_module) =
     let rec find_dwarf_string str = function
       | [] -> false, 0
       | h :: t when str = h -> let _, offs = find_dwarf_string str t in true, offs
-      | h :: t -> let fnd, offs = find_dwarf_string str t in fnd, String.length h + 1 + offs
+      | h :: t -> let fnd, offs = find_dwarf_string str t in fnd, if fnd then offs else String.length h + 1 + offs
     in
     let fnd, offs = find_dwarf_string str !dwarf_strings in
     if not fnd then dwarf_strings := str :: !dwarf_strings;
