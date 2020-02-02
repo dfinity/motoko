@@ -642,15 +642,13 @@ let encode (em : extended_module) =
     let write32 i = Buffer.add_int32_le s.buf (Int32.of_int i)
 
     let debug_abbrev_section () =
-      let abbrev i abs =
-        uleb128 (i + 1);
-        List.iter (fun (k, v) -> uleb128 k; uleb128 v) abs;
-        close_section (); close_section () in
+      let tag (t, ch, kvs) = uleb128 t; u8 ch; List.iter (fun (k, v) -> uleb128 k; uleb128 v) kvs in
+      let abbrev i abs = uleb128 (i + 1); tag abs; close_section (); close_section () in
       let section_body abs = List.iteri abbrev abs; close_section () in
       custom_section ".debug_abbrev" section_body Abbreviation.abbreviations true
 
     (* dw_FORM writers *)
-    let write : int -> dwarf_artifact -> unit =
+    let writeForm : int -> dwarf_artifact -> unit =
       let open Dwarf5 in
       function
       | f when dw_FORM_strp = f ->
@@ -697,12 +695,12 @@ let encode (em : extended_module) =
             write32 0x0000; (* debug_abbrev_offset *)
 
             uleb128 1;(*abbrev_of dw_TAG_compile_unit*)
-            write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_producer, "BLBLAB"));
-            write Dwarf5.dw_FORM_data2 Dwarf5.(IntAttribute (dw_AT_language, dw_LANG_Swift));
-            write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_name, "filename.mo"));
-            write Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_comp_dir, "var/log/info/"));
-            write Dwarf5.dw_FORM_addr Dwarf5.(IntAttribute (dw_AT_low_pc, 0));
-            write Dwarf5.dw_FORM_data4 Dwarf5.(IntAttribute (dw_AT_high_pc, 0x10000));
+            writeForm Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_producer, "BLBLAB"));
+            writeForm Dwarf5.dw_FORM_data2 Dwarf5.(IntAttribute (dw_AT_language, dw_LANG_Swift));
+            writeForm Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_name, "filename.mo"));
+            writeForm Dwarf5.dw_FORM_strp (StringAttribute (Dwarf5.dw_AT_comp_dir, "var/log/info/"));
+            writeForm Dwarf5.dw_FORM_addr Dwarf5.(IntAttribute (dw_AT_low_pc, 0));
+            writeForm Dwarf5.dw_FORM_data4 Dwarf5.(IntAttribute (dw_AT_high_pc, 0x10000));
             close_section ()
         )
 
