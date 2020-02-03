@@ -1,8 +1,13 @@
+/**
+[#mod-hash]
+= `hash` -- Lists of bits
+*/
+
 import Prim "mo:prim";
 import Iter "iter";
 
 module {
-/**
+/*
 
 Hash values
 ===============================
@@ -34,13 +39,13 @@ going forward.
 
 */
 
-/** A "bit string" as a linked list of bits: */
+/* A "bit string" as a linked list of bits: */
 public type BitList = ?(Bool, BitList);
 
-/** A "bit vector" is a bounded-length bit string packed into a single word: */
+/* A "bit vector" is a bounded-length bit string packed into a single word: */
 public type BitVec = Word32;
 
-/**
+/*
 
  `BitVec`
  ----------------------
@@ -104,7 +109,7 @@ public module BitVec {
     return x
   };
 
-  /** Project a given bit from the bit vector. */
+  /* Project a given bit from the bit vector. */
   public func getHashBit(h:BitVec, pos:Nat) : Bool = label profile_getHashBit : Bool {
     assert (pos <= length());
     if ((h & (Prim.natToWord32(1) << Prim.natToWord32(pos))) != Prim.natToWord32(0))
@@ -117,7 +122,7 @@ public module BitVec {
     }
   };
 
-  /** Test if two lists of bits are equal. */
+  /* Test if two lists of bits are equal. */
   public func hashEq(ha:BitVec, hb:BitVec) : Bool {
     label profile_hashEq : Bool
     ha == hb
@@ -157,7 +162,7 @@ public module BitVec {
 
 };
 
-/**
+/*
 
  `BitList`
  ----------
@@ -174,7 +179,7 @@ public module BitList {
     BitVec.toList(BitVec.hashOfInt(i))
   };
 
-  /** Test if two lists of bits are equal. */
+  /* Test if two lists of bits are equal. */
   public func getHashBit(h:BitList, pos:Nat) : Bool {
     switch h {
     case null {
@@ -188,7 +193,7 @@ public module BitList {
     }
   };
 
-  /** Test if two lists of bits are equal. */
+  /* Test if two lists of bits are equal. */
   public func hashEq(ha:BitList, hb:BitList) : Bool {
     switch (ha, hb) {
     case (null, null) true;
@@ -226,7 +231,7 @@ public module BitList {
 };
 
 
-/**
+/*
  Canonical representations
  ---------------------------
 

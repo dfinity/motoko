@@ -1,4 +1,4 @@
-nested/a
-nested/b
+nested/a lib/nested/a.mo
+nested/b lib/nested/b.mo
 ic:ABCDE01A7
 ic:alias

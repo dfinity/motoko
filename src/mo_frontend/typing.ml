@@ -131,35 +131,6 @@ let disjoint_union env at fmt env1 env2 =
   try T.Env.disjoint_union env1 env2
   with T.Env.Clash k -> error env at fmt k
 
-
-(* Syntactic predicates for context dependent restrictions *)
-
-let in_await env =
-  match env.context with
-  | _ :: AwaitE _ :: _ -> true
-  | _ -> false
-
-let in_shared_async env =
-  match env.context with
-  | _ :: FuncE (_, {it = T.Shared _; _}, _, _, typ_opt, _) :: _ ->
-    (match typ_opt with
-     | Some {it = AsyncT _; _} -> true
-     | _ -> false)
-  | _ -> false
-
-let in_oneway_ignore env =
-  match env.context with
-  | _ ::
-    BlockE [ {it = IgnoreD _; _} ] ::
-    FuncE (_, {it = T.Shared _; _} , _, _, typ_opt, _) ::
-    _ ->
-    (match typ_opt with
-     | Some { it = TupT []; _}
-     | None -> true
-     | _ -> false)
-  | _ -> false
-
-
 (* Types *)
 
 let check_ids env kind member ids = Lib.List.iter_pairs
@@ -870,9 +841,6 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       check_exp env t_arg exp2;
       if Type.is_shared_sort sort then begin
-        if T.is_async t_ret && not (in_await env) then
-          error_in [Flags.ICMode] env exp2.at
-            "shared, async function must be called within an await expression";
         if not (T.concrete t_arg) then
           error env exp1.at
             "shared function argument contains abstract type\n  %s"
@@ -1015,8 +983,6 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then check_exp env T.throw exp1;
     T.Non
   | AsyncE (typ_bind, exp1) ->
-    if not (in_shared_async env || in_oneway_ignore env) then
-      error_in [Flags.ICMode] env exp.at "unsupported async block";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
@@ -1031,11 +997,6 @@ and infer_exp'' env exp : T.typ =
   | AwaitE exp1 ->
     let t0 = check_AwaitCap env "await" exp.at in
     let t1 = infer_exp_promote env exp1 in
-    (match exp1.it with
-     | CallE (f, _, _) ->
-         if not env.pre && (Call_conv.call_conv_of_typ f.note.note_typ).Call_conv.control = T.Returns then
-           error_in [Flags.ICMode] env f.at "expecting call to shared async function in await";
-     | _ -> error_in [Flags.ICMode] env exp1.at "argument to await must be a call expression");
     (try
        let (t2, t3) = T.as_async_sub t0 t1 in
        if not (T.eq t0 t2) then
@@ -1102,8 +1063,6 @@ and check_exp' env0 t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE (tb, exp1), T.Async (t1', t') ->
-    if not (in_shared_async env || in_oneway_ignore env) then
-      error_in [Flags.ICMode] env exp.at "freestanding async expression not yet supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if not (T.eq t1 t1') then
       error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s"

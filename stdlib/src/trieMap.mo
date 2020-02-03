@@ -1,10 +1,15 @@
+/**
+[#mod-trieMap]
+= `trieMap` -- Functional map
+*/
+
 import T "trie";
 import P "prelude";
 import I "iter";
 import Hash "hash";
 import List "list";
 
-/**
+/*
 
 Trie Map
 =========================

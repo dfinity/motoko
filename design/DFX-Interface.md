@@ -36,6 +36,9 @@ the top-level `default.nix`:
 * `rts`: contains `rts/mo-rts.wasm`, the Motoko runtime system
 * `stdlib`: contains the standard library, directly in the top level directory,
   as `*.mo` files. It does not contain extra files (test files, for example)
+* `stdlib-adocs`: contains the documentation of the standard library, directly
+  in the top level directory, as `*.adoc` files. There is an `index.adoc`
+  file.
 
 The `default.nix` file itself takes an optional `system` parameter which is
 either `"x86_64-linux"` or `"x86_64-darwin"`, and defaults to
@@ -139,17 +142,21 @@ The command
 
     moc --print-deps some/path/input.mo
 
-prints to the standard output all URLs _transitively_ imported by
+prints to the standard output all URLs _directly_ imported by
 `some/path/input.mo`, one per line. Each line outputs the original
 URL, and optionally a full path if `moc` can resolve the URL, separated by a space.
 For example,
 
-    mo:stdlib/List
+    mo:stdlib/list
     mo:other_package/Some/Module
     ic:ABCDE01A7
     canister:alias
     ./local_import some/path/local_import.mo
     ./runtime some/path/runtime.wasm
 
-This may _read_ the same files as `moc -c` would, and writes no files.
+This _reads_ only `some/path/input.mo`, and writes no files.
 
+By transitively exploring the dependency graph using this command (and
+resolving URLs appropriately before passing them as files to `moc`), one can
+determine the full set of set of `.mo` files read by the two compilation modes
+described above (to wasm and to IDL).

@@ -1,8 +1,13 @@
+/**
+[#mod-result]
+= `result` -- Error-annotated values
+*/
+
 import P "prelude";
 import Array "array";
 
 module {
-/**
+/*
 
  Result
  =========
@@ -22,7 +27,7 @@ public type Result<Ok,Err> = {
 
 
 
-/**
+/*
  `assertUnwrap`
  ---------------
  assert that we can unwrap the result; should only be used in tests, not in canister implementations. This will trap.
@@ -34,7 +39,7 @@ public func assertUnwrap<Ok,Error>(r:Result<Ok,Error>):Ok {
   }
 };
 
-/**
+/*
  `assertUnwrapAny`
  ---------------
  */
@@ -45,7 +50,7 @@ public func assertUnwrapAny<Ok>(r:Result<Ok,Any>):Ok {
   }
 };
 
-/**
+/*
  `assertOk`
  ---------------
 */
@@ -56,7 +61,7 @@ public func assertOk(r:Result<Any,Any>) {
   }
 };
 
-/**
+/*
  `assertErr`
  ---------------
 */
@@ -67,14 +72,14 @@ public func assertErr(r:Result<Any,Any>) {
   }
 };
 
-/**
+/*
  `assertErrIs`
  ---------------
 */
 public func assertErrIs<E>(r:Result<Any,E>, f:E->Bool) : Bool =
   assertErrAs<E,Bool>(r, f);
 
-/**
+/*
  `assertErrAs`
  ---------------
 */
@@ -85,7 +90,7 @@ public func assertErrAs<E,X>(r:Result<Any,E>, f:E->X) : X {
   }
 };
 
-/**
+/*
  `bind`
  -------
  bind operation in result monad.
@@ -100,7 +105,7 @@ public func bind<R1,R2,Error>(
 };
 
 
-/**
+/*
  `mapOk`
  -------
  map the `Ok` type/value, leaving any `Error` type/value unchanged.
@@ -114,7 +119,7 @@ public func mapOk<Ok1,Ok2,Error>(
   }
 };
 
-/**
+/*
  `fromOption`
  --------------
  create a result from an option, including an error value to handle the `null` case.
@@ -126,7 +131,7 @@ public func fromOption<R,E>(x:?R, err:E):Result<R,E> {
   }
 };
 
-/**
+/*
  `fromSomeMap`
  --------------
  map the `Ok` type/value from the optional value, or else use the given error value.
@@ -138,7 +143,7 @@ public func fromSomeMap<R1,R2,E>(x:?R1, f:R1->R2, err:E):Result<R2,E> {
   }
 };
 
-/**
+/*
  `fromSome`
  ---------------
  asserts that the option is Some(_) form.
@@ -150,7 +155,7 @@ public func fromSome<Ok>(o:?Ok):Result<Ok,None> {
   }
 };
 
-/**
+/*
  `joinArrayIfOk`
  ---------------
  a result that consists of an array of Ok results from an array of results, or the first error in the result array, if any.

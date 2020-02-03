@@ -1,4 +1,0 @@
-throw.mo:8.14-11.8: type error, unsupported async block
-  (This is a limitation of the current version.)
-throw.mo:23.13-42.8: type error, unsupported async block
-  (This is a limitation of the current version.)

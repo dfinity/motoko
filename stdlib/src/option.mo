@@ -1,7 +1,12 @@
+/**
+[#mod-option]
+= `option` -- Optional values
+*/
+
 import P "prelude";
 
 module {
-/**
+/*
 
 Functions for Option types.
 
@@ -9,7 +14,7 @@ Functions for Option types.
 
 public type t<A> = ?A;
 
-/***
+/*
 
  `isSome`
  --------------------
@@ -25,7 +30,7 @@ public func isSomeAny(x: ?Any): Bool =
 
 public func isSome<A>(x: t<A>): Bool = isSomeAny(x);
 
-/***
+/*
 
  `isNull`
  --------------------
@@ -37,7 +42,7 @@ public func isNullAny(x: ?Any): Bool = not isSome<Any>(x);
 
 public func isNull<A>(x: t<A>): Bool = not isSome<A>(x);
 
-/***
+/*
 
  `unwrap`
  --------------------
@@ -51,7 +56,7 @@ public func unwrap<T>(x: ?T): T =
     case (?x_) x_;
   };
 
-/***
+/*
 
  `unwrapOr`
  --------------------
@@ -65,7 +70,7 @@ public func unwrapOr<T>(x: ?T, d: T): T =
     case (?x_) x_;
   };
 
-/***
+/*
 
  `option`
  --------------------
@@ -79,7 +84,7 @@ public func option<A, B>(x: ?A, f: A->B, d: B): B =
     case (?x_) f(x_);
   };
 
-/***
+/*
 
  `map`
  --------------------
@@ -93,7 +98,7 @@ public func map<A, B>(f: A->B, x: ?A): ?B =
     case (?x_) ?f(x_);
   };
 
-/***
+/*
 
  `assertSome`
  --------------------
@@ -109,7 +114,7 @@ public func assertSomeAny(x: ?Any) =
 
 public func assertSome<A>(x: ?A) = assertSomeAny(x);
 
-/***
+/*
 
  `assertNull`
  --------------------
