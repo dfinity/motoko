@@ -420,7 +420,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
   let to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     match (pat_unannot p).it with
-    | S.AnnotP _ -> assert false
+    | S.AnnotP _ | S.ParP _ -> assert false
     | S.VarP i when not must_wrap ->
       { i with note = p.note },
       (fun e -> e)
@@ -436,7 +436,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
   let args, wrap =
     match n_args, (pat_unannot p).it with
-    | _, S.AnnotP _ -> assert false
+    | _, (S.AnnotP _ | S.ParP _) -> assert false
     | _, S.WildP ->
       let vs = fresh_vars "ignored" tys in
       List.map arg_of_exp vs,
