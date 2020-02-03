@@ -5,5 +5,5 @@ duplicate-field.mo:16.23-16.34: type error, tag names foo and nxnnbkddcv in vari
 duplicate-field.mo:20.18-20.21: type error, duplicate definition for foo in block
 duplicate-field.mo:24.8-24.36: type error, field names nxnnbkddcv and foo in object type have colliding hashes
 duplicate-field.mo:28.8-28.70: type error, field names nxnnbkddcv and foo in object type have colliding hashes
-duplicate-field.mo:32.8-32.69: type error, field names nxnnbkddcv and foo in actor object type have colliding hashes
+duplicate-field.mo:32.8-32.65: type error, field names nxnnbkddcv and foo in actor object type have colliding hashes
 duplicate-field.mo:36.8-36.70: type error, field names nxnnbkddcv and foo in module object type have colliding hashes

@@ -122,6 +122,8 @@ type inst = (typ list, Type.typ list) Source.annotated_phrase (* For implicit sc
 
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
+type sugar = bool
+
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
@@ -141,7 +143,7 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | FuncE of string * sort_pat * typ_bind list * pat * typ option * exp  (* function *)
+  | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
   | CallE of exp * inst * exp                  (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
@@ -279,6 +281,11 @@ let funcT (sort, tbs, t1, t2) =
   | _ ->
     FuncT(sort, tbs, t1, t2)
 
+let is_Async e =
+  match e.it with
+  | AsyncE _ -> true
+  | _ -> false
+
 let is_IgnoreAsync e =
   match e.it with
   | BlockE [ { it = IgnoreD
@@ -287,25 +294,30 @@ let is_IgnoreAsync e =
     true
   | _ -> false
 
+let async f e =
+  AsyncE (scope_bind f, e)  @? e.at
+
 let ignoreAsync f e =
   BlockE [ IgnoreD (
     AnnotE (AsyncE (scope_bind f, e)  @? e.at,
       AsyncT (scope_typ e.at,TupT[] @! e.at) @! e.at) @? e.at ) @? e.at] @? e.at
 
-let ensure_ignore_async f sort t_opt e =
-  match sort.it, t_opt with
-  | Type.Shared _, (None | Some { it = TupT []; _}) ->
-    if is_IgnoreAsync e
-    then e
-    else ignoreAsync f e
-  | _ -> e
+let desugar sp f t_opt (sugar, e) =
+  match sugar, e with
+  | (false, e) -> false, e (* body declared as EQ e *)
+  | (true, e) -> (* body declared as immediate block *)
+    match sp.it, t_opt with
+    | _, Some {it = AsyncT _; _} ->
+      true, async f.it e
+    | Type.Shared _, (None | Some { it = TupT []; _}) ->
+      true, ignoreAsync f.it e
+    | _, _ -> (true, e)
 
-let funcE (f, s, tbs, p, t_opt, e) =
+let funcE (f, s, tbs, p, t_opt, sugar, e) =
   match s.it, t_opt, e with
   | Type.Local, Some { it = AsyncT _; _}, {it = AsyncE _; _}
   | Type.Shared _, _, _ ->
-    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt,
-      ensure_ignore_async f s t_opt e)
+    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, sugar, e)
   | _ ->
-    FuncE(f, s, tbs, p, t_opt, e)
+    FuncE(f, s, tbs, p, t_opt, sugar, e)
 

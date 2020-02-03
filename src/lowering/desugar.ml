@@ -90,7 +90,7 @@ and exp' at note = function
     let t = T.as_array note.I.note_typ in
     I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
-  | S.FuncE (name, sp, tbs, p, _t_opt, e) ->
+  | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
     let s, po = match sp.it with
       | T.Local -> (T.Local, None)
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
