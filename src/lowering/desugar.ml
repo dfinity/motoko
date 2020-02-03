@@ -394,9 +394,14 @@ and pat_fields pfs = List.map pat_field pfs
 
 and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
 
+and pat_unannot p = match p.it with
+  | S.AnnotP (p, _) -> pat_unannot p
+  | S.ParP p -> pat_unannot p
+  | _ -> p
+
 and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
-  match p.it with
-  | S.AnnotP (p, _) -> to_arg p
+  match (pat_unannot p).it with
+  | S.AnnotP _ -> assert false
   | S.VarP i ->
     { i with note = p.note },
     (fun e -> e)
@@ -422,7 +427,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   let tys = if n_args = 1 then [p.note] else T.seq_of_tup p.note in
 
   let args, wrap =
-    match n_args, p.it with
+    match n_args, (pat_unannot p).it with
+    | _, S.AnnotP _ -> assert false
     | _, S.WildP ->
       let vs = fresh_vars "param" tys in
       List.map arg_of_exp vs,
