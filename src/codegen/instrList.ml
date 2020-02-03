@@ -36,8 +36,13 @@ let optimize : instr list -> instr list = fun is ->
     | ({ it = LocalTee n; _} as i) :: l', { it = Drop; _ } :: r' ->
       go l' ({i with it = LocalSet n } :: r')
     (* Code after Return, Br or Unreachable is dead *)
-    | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: _ ->
-      List.rev (i::l)
+    | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: t ->
+      let dwarf_like Wasm.Source.{ left; right } = (* FIXME: Dedup *)
+        Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos) in
+      let fishDwarf = List.find_opt (fun i -> dwarf_like i.at) in
+      List.rev (match fishDwarf t with
+                | Some dw -> dw::i::l
+                | None -> i::l)
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
