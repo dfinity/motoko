@@ -4662,6 +4662,7 @@ module FuncDec = struct
 
       (* Add nested DWARF *)
       G.(dw_tag (Subprogram name)) ^^
+      G.(concat_map (fun arg -> dw_tag(* FIXME: _no_children *) (Formal_parameter arg.it) ^^ dw_tag_children_done) args) ^^
       closure_code ^^
       mk_body env ae2 ^^
       G.dw_tag_children_done

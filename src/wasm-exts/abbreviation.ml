@@ -22,8 +22,8 @@ let abbreviations =
       ] );
     ( dw_TAG_formal_parameter, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
-      dw_AT_decl_file, dw_FORM_data1;
+      (*dw_AT_decl_file, dw_FORM_data1;
       dw_AT_decl_line, dw_FORM_data1;
-      dw_AT_type, dw_FORM_ref4;
+      dw_AT_type, dw_FORM_ref4*)
       ] )
   ]

@@ -678,7 +678,7 @@ let encode (em : extended_module) =
       | Tag (t, contentsRevd) ->
         let contents = List.rev contentsRevd in
         let isTag (t', _, _) = t = t' in
-        let (_, _, forms) = List.find isTag Abbreviation.abbreviations in
+        let (_, has_children, forms) = List.find isTag Abbreviation.abbreviations in
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
           | IntAttribute (a, _) as art -> assert (attr = a); writeForm form art
@@ -691,7 +691,7 @@ let encode (em : extended_module) =
         let nested_tags, attrs = List.partition (function Tag _ -> true | _ -> false) contents in
         List.iter2 pairing forms attrs;
         List.iter writeTag nested_tags;
-        close_section ()
+        if has_children <> 0 then close_section ()
       | _ -> failwith "Tag expected"
 
     let unit f =

@@ -167,7 +167,7 @@ type dw_AT = Producer of string
 
 type dw_TAG = Compile_unit of string * string (* compilation directory, file name *)
             | Subprogram of string
-            | Formal_parameter
+            | Formal_parameter of string
             | Variable
             | Typedef
             | Structure_type
@@ -222,6 +222,12 @@ let dw_tag : dw_TAG -> t =
           ) 0l Wasm.Source.no_region []))
   | Subprogram name ->
     fakeColumn 0 dw_TAG_subprogram
+      (Block
+         ([],
+           (dw_attr (Name name)
+          ) 0l Wasm.Source.no_region []))
+  | Formal_parameter name ->
+    fakeColumn 0 dw_TAG_formal_parameter
       (Block
          ([],
            (dw_attr (Name name)
