@@ -161,13 +161,17 @@ type dw_AT = Producer of string
            | Comp_dir of string
            | Low_pc of int
            | High_pc of int
+           | Decl_line of int
+           | Decl_column of int
+           | Prototyped of bool
+           | External of bool
            | OtherS of int (* REMOVE *)
 
 (* DWARF tags *)
 
 type dw_TAG = Compile_unit of string * string (* compilation directory, file name *)
             | Subprogram of string
-            | Formal_parameter of string
+            | Formal_parameter of string * Source.pos
             | Variable
             | Typedef
             | Structure_type
@@ -198,6 +202,10 @@ let dw_attr : dw_AT -> t =
   | Comp_dir n -> fakeFile n dw_AT_comp_dir Nop
   | Low_pc l -> fakeColumn l dw_AT_low_pc Nop
   | High_pc h -> fakeColumn h dw_AT_high_pc Nop
+  | Decl_line l -> fakeColumn l dw_AT_decl_line Nop
+  | Decl_column c -> fakeColumn c dw_AT_decl_column Nop
+  | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped Nop
+  | External b -> fakeColumn (if b then 1 else 0) dw_AT_external Nop
   | _ -> assert false
 
 (* emit a DW_TAG
@@ -224,13 +232,17 @@ let dw_tag : dw_TAG -> t =
     fakeColumn 0 dw_TAG_subprogram
       (Block
          ([],
-           (dw_attr (Name name)
+           (dw_attr (Name name) ^^
+            dw_attr (Prototyped true) ^^
+            dw_attr (External false)
           ) 0l Wasm.Source.no_region []))
-  | Formal_parameter name ->
+  | Formal_parameter (name, pos) ->
     fakeColumn 0 dw_TAG_formal_parameter
       (Block
          ([],
-           (dw_attr (Name name)
+           (dw_attr (Name name) ^^
+            dw_attr (Decl_line pos.Source.line) ^^
+            dw_attr (Decl_column pos.Source.column)
           ) 0l Wasm.Source.no_region []))
   | _ -> assert false
 

@@ -134,6 +134,14 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | (Nop, {line; column; _}) when -line = dw_AT_high_pc ->
         add_dwarf_attribute (IntAttribute (-line, column))
+      | (Nop, {line; column; _}) when -line = dw_AT_decl_line ->
+        add_dwarf_attribute (IntAttribute (-line, column))
+      | (Nop, {line; column; _}) when -line = dw_AT_decl_column ->
+        add_dwarf_attribute (IntAttribute (-line, column))
+      | (Nop, {line; column; _}) when -line = dw_AT_prototyped ->
+        add_dwarf_attribute (IntAttribute (-line, column))
+      | (Nop, {line; column; _}) when -line = dw_AT_external ->
+        add_dwarf_attribute (IntAttribute (-line, column))
       | (Nop, {line; _}) -> Printf.printf "TAG: %x; ATTR extract: %x\n" tag (-line); failwith "extract"
       | (instr, {line; file; _}) -> Printf.printf "TAG: %x (a.k.a. %d, from: %s); extract: %x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
@@ -657,6 +665,11 @@ let encode (em : extended_module) =
           | StringAttribute (attr, str) -> write32 (add_dwarf_string str)
           | _ -> failwith "dw_FORM_strp"
         end
+      | f when dw_FORM_data1 = f ->
+        begin function
+          | IntAttribute (attr, i) -> u8 i
+          | _ -> failwith "dw_FORM_data1"
+        end
       | f when dw_FORM_data2 = f ->
         begin function
           | IntAttribute (attr, i) -> write16 i
@@ -671,6 +684,11 @@ let encode (em : extended_module) =
         begin function
           | IntAttribute (attr, i) -> write32 i
           | _ -> failwith "dw_FORM_addr"
+        end
+      | f when dw_FORM_flag = f ->
+        begin function
+          | IntAttribute (attr, b) -> u8 b
+          | _ -> failwith "dw_FORM_flag"
         end
       | _ -> failwith("cannot write form")
 

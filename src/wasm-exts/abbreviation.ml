@@ -17,13 +17,15 @@ let abbreviations =
       dw_AT_name, dw_FORM_strp;
       (*dw_AT_decl_file, dw_FORM_data1;
       dw_AT_decl_line, dw_FORM_data1;
-      dw_AT_prototyped, dw_FORM_flag_present;
-      dw_AT_external, dw_FORM_flag_present*)
+      dw_AT_decl_column, dw_FORM_data1;*)
+      dw_AT_prototyped, dw_FORM_flag(*_present*);
+      dw_AT_external, dw_FORM_flag(*_present*)
       ] );
     ( dw_TAG_formal_parameter, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
-      (*dw_AT_decl_file, dw_FORM_data1;
-      dw_AT_decl_line, dw_FORM_data1;
-      dw_AT_type, dw_FORM_ref4*)
+        (*dw_AT_decl_file, dw_FORM_data1;*)
+        dw_AT_decl_line, dw_FORM_data1;
+        dw_AT_decl_column, dw_FORM_data1;
+      (*dw_AT_type, dw_FORM_ref4*)
       ] )
   ]
