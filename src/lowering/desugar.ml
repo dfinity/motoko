@@ -394,26 +394,6 @@ and pat_fields pfs = List.map pat_field pfs
 
 and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
 
-and pat_unannot p = match p.it with
-  | S.AnnotP (p, _) -> pat_unannot p
-  | S.ParP p -> pat_unannot p
-  | _ -> p
-
-and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
-  match (pat_unannot p).it with
-  | S.AnnotP _ -> assert false
-  | S.VarP i ->
-    { i with note = p.note },
-    (fun e -> e)
-  | S.WildP ->
-    let v = fresh_var "param" p.note in
-    arg_of_exp v,
-    (fun e -> e)
-  |  _ ->
-    let v = fresh_var "param" p.note in
-    arg_of_exp v,
-    (fun e -> blockE [letP (pat p) v] e)
-
 and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
   let sort, control, n_args, res_tys =
     match typ with
@@ -425,6 +405,28 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   in
 
   let tys = if n_args = 1 then [p.note] else T.seq_of_tup p.note in
+
+  let rec pat_unannot p = match p.it with
+    | S.AnnotP (p, _) -> pat_unannot p
+    | S.ParP p -> pat_unannot p
+    | _ -> p
+  in
+
+  let to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
+    match (pat_unannot p).it with
+    | S.AnnotP _ -> assert false
+    | S.VarP i ->
+      { i with note = p.note },
+      (fun e -> e)
+    | S.WildP ->
+      let v = fresh_var "param" p.note in
+      arg_of_exp v,
+      (fun e -> e)
+    |  _ ->
+      let v = fresh_var "param" p.note in
+      arg_of_exp v,
+      (fun e -> blockE [letP (pat p) v] e)
+  in
 
   let args, wrap =
     match n_args, (pat_unannot p).it with
