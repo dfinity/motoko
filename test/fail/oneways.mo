@@ -1,4 +1,4 @@
-// patterns on shared functions must be exhaustive
+// check explicit oneway declarations
 
 actor a {
 
@@ -14,3 +14,4 @@ shared func ok2() = ignore ((async ()) : async ()) ;
 shared func ok3() = ignore ((async return) : async ()) ;
 shared func wrong1() = ();
 shared func wrong2() = ignore async ();
+
