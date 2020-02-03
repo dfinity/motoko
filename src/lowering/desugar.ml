@@ -412,10 +412,16 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | _ -> p
   in
 
+  (* In source, the context pattern is outside the argument pattern,
+  but in the IR, paramteres are bound first. So if there is a context pattern,
+  we _must_ create fresh names for the parameters and bind the actual paramters
+  inside the wrapper. *)
+  let must_wrap = po != None in
+
   let to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     match (pat_unannot p).it with
     | S.AnnotP _ -> assert false
-    | S.VarP i ->
+    | S.VarP i when not must_wrap ->
       { i with note = p.note },
       (fun e -> e)
     | S.WildP ->
@@ -432,7 +438,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     match n_args, (pat_unannot p).it with
     | _, S.AnnotP _ -> assert false
     | _, S.WildP ->
-      let vs = fresh_vars "param" tys in
+      let vs = fresh_vars "ignored" tys in
       List.map arg_of_exp vs,
       (fun e -> e)
     | 1, _ ->
@@ -457,16 +463,14 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | None -> wrap e
     | Some p ->
       let v = fresh_var "caller" T.caller in
-      let c = fresh_var "ctxt" T.ctxt in
       blockE
         [letD v (primE I.ICCallerPrim []);
-         letD c
+         letP (pat p)
            (newObjE T.Object
               [{ it = {Ir.name = "caller"; var = id_of_exp v};
                  at = no_region;
                  note = T.caller }]
-              T.ctxt);
-         letP (pat p) c]
+              T.ctxt)]
         (wrap e)
   in
 
