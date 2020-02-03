@@ -20,7 +20,7 @@ assert (1 == 1);
 // DWARF:          : DW_TAG_compile_unit [1] *
 // DWARF-NEXT:         DW_AT_producer [DW_FORM_strp] {{.*}} "DFINITY Motoko compiler, version 0.1"
 // DWARF-NEXT:         DW_AT_language [DW_FORM_data2] (DW_LANG_Swift)
-// DWARF-NEXT:         DW_AT_name     [DW_FORM_strp]
+// DWARF-NEXT:         DW_AT_name     [DW_FORM_strp] {{.*}} "motoko.mo"
 // DWARF-NEXT:         DW_AT_comp_dir [DW_FORM_strp]
 // DWARF-NEXT:         DW_AT_low_pc   [DW_FORM_addr]
 // DWARF-NEXT:         DW_AT_high_pc  [DW_FORM_data4]
@@ -30,4 +30,7 @@ assert (1 == 1);
 func foo (a : Int) : Bool {
   return a == 42
 }
-// DWARF:           XYZ
+// DWARF:          : DW_TAG_subprogram [2] *
+// DWARF-LABEL:        DW_AT_name     [DW_FORM_strp] {{.*}} "foo"
+// DWARF:          NULL
+// DWARF:        NULL

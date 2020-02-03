@@ -4694,7 +4694,7 @@ module FuncDec = struct
 
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env sort control name args mk_body ret_tys at =
-    let (fi, fill) = E.reserve_fun pre_env name in  Printf.printf "CLOSED name: %s\n" name; List.iter (fun a -> Printf.printf "\targ: %s\n" a.it) args;
+    let (fi, fill) = E.reserve_fun pre_env name in
     if Type.is_shared_sort sort
     then begin
       ( Const.t_of_v (Const.Message fi), fun env ae ->
@@ -4710,7 +4710,7 @@ module FuncDec = struct
 
   (* Compile a closure declaration (captures local variables) *)
   let closure env ae sort control name captured args mk_body ret_tys at =
-      let is_local = Printf.printf "CLOSURE name: %s\n" name;sort = Type.Local in
+      let is_local = (*Printf.printf "CLOSURE name: %s\n" name;*)sort = Type.Local in
 
       let (set_clos, get_clos) = new_local env (name ^ "_clos") in
 

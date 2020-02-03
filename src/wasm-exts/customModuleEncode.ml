@@ -90,16 +90,14 @@ let encode (em : extended_module) =
   let dwarf_like Wasm.Source.{ left; right } =
     Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos) in
 
-  let dwarf_tags = ref [] in
-  let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: (Printf.printf "ADDING a %d\n" tag; !dwarf_tags) in
-(*    match !dwarf_tags with
-    | Tag (t, arts) : tail when has_children t -> Tag (t, arts) : tail
-    | tags -> Tag (tag, []) :: tags in*)
+  let dwarf_tags = ref [Tag (0, [])] in
+  let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: ((*Printf.printf "ADDING a %d\n" tag; *)!dwarf_tags) in
   let close_dwarf () =
     match !dwarf_tags with
     | [] -> failwith "no open DW_TAG"
-    | Tag _ :: [] -> ()
-    | Tag _ as nested :: Tag (tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING into %d\n" tag; Tag (tag, nested :: arts) :: t)
+    | Tag _ :: [] -> Printf.printf "TOPLEVEL: NOT NESTING\n"; ()
+    | Tag (s, attrs) :: Tag (0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s -> (*Printf.printf "TOPLEVEL: EATING\n"; *)dwarf_tags := Tag (s, tags @ attrs) :: []
+    | Tag _ as nested :: Tag (tag, arts) :: t -> dwarf_tags := ((*Printf.printf "NESTING into %d\n" tag; *)Tag (tag, nested :: arts) :: t)
     | _ -> failwith "cannot close DW_AT" in
   let add_dwarf_attribute attr =
     dwarf_tags := match !dwarf_tags with
@@ -676,11 +674,11 @@ let encode (em : extended_module) =
         end
       | _ -> failwith("cannot write form")
 
-    let writeTag = function
+    let rec writeTag = function
       | Tag (t, contentsRevd) ->
         let contents = List.rev contentsRevd in
         let isTag (t', _, _) = t = t' in
-        let (_, has_children, forms) = List.find isTag Abbreviation.abbreviations in
+        let (_, _, forms) = List.find isTag Abbreviation.abbreviations in
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
           | IntAttribute (a, _) as art -> assert (attr = a); writeForm form art
@@ -690,7 +688,9 @@ let encode (em : extended_module) =
           | _ :: t -> indexOf (cnt + 1) t
           | _ -> failwith "not encountered" in
         uleb128 (indexOf 1 Abbreviation.abbreviations);
-        List.iter2 pairing forms contents;
+        let nested_tags, attrs = List.partition (function Tag _ -> true | _ -> false) contents in
+        List.iter2 pairing forms attrs;
+        List.iter writeTag nested_tags;
         close_section ()
       | _ -> failwith "Tag expected"
 
