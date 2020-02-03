@@ -690,6 +690,12 @@ let encode (em : extended_module) =
           | IntAttribute (attr, b) -> u8 b
           | _ -> failwith "dw_FORM_flag"
         end
+      | f when dw_FORM_flag_present = f ->
+        begin function
+          | IntAttribute (attr, 0) -> failwith "dw_FORM_flag_present with false"
+          | IntAttribute (attr, _) -> ()
+          | _ -> failwith "dw_FORM_flag_presentdw_FORM_flag"
+        end
       | _ -> failwith("cannot write form")
 
     let rec writeTag = function
