@@ -91,12 +91,15 @@ let encode (em : extended_module) =
     Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos) in
 
   let dwarf_tags = ref [] in
-  let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: !dwarf_tags in (* TODO: check has_children *)
+  let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: (Printf.printf "ADDING a %d\n" tag; !dwarf_tags) in
+(*    match !dwarf_tags with
+    | Tag (t, arts) : tail when has_children t -> Tag (t, arts) : tail
+    | tags -> Tag (tag, []) :: tags in*)
   let close_dwarf () =
     match !dwarf_tags with
     | [] -> failwith "no open DW_TAG"
     | Tag _ :: [] -> ()
-    | Tag _ as nested :: Tag (tag, arts) :: t -> dwarf_tags := Tag (tag, nested :: arts) :: t
+    | Tag _ as nested :: Tag (tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING into %d\n" tag; Tag (tag, nested :: arts) :: t)
     | _ -> failwith "cannot close DW_AT" in
   let add_dwarf_attribute attr =
     dwarf_tags := match !dwarf_tags with

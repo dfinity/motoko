@@ -161,7 +161,7 @@ type dw_AT = Producer of string
 (* DWARF tags *)
 
 type dw_TAG = Compile_unit of string * string (* compilation directory, file name *)
-            | Subprogram
+            | Subprogram of string
             | Formal_parameter
             | Variable
             | Typedef
@@ -214,6 +214,12 @@ let dw_tag : dw_TAG -> t =
            dw_attr (Comp_dir dir) ^^
            dw_attr (Low_pc 0) ^^
            dw_attr (High_pc 0xFF) (* FIXME *)
+          ) 0l Wasm.Source.no_region []))
+  | Subprogram name ->
+    fakeColumn 0 dw_TAG_subprogram
+      (Block
+         ([],
+           (dw_attr (Name name)
           ) 0l Wasm.Source.no_region []))
   | _ -> assert false
 

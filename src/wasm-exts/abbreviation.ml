@@ -7,7 +7,8 @@ let abbreviations =
         (* dw_AT_stmt_list, dw_FORM_sec_offset; *)
         dw_AT_comp_dir, dw_FORM_strp;
         dw_AT_low_pc, dw_FORM_addr;
-        dw_AT_high_pc, dw_FORM_data4
+        dw_AT_high_pc, dw_FORM_data4;
+        (* dw_AT_addr_base, dw_FORM_sec_offset *)
       ] );
     ( dw_TAG_subprogram, dw_CHILDREN_yes,
       [ dw_AT_low_pc, dw_FORM_addr;

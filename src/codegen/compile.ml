@@ -4647,7 +4647,7 @@ module FuncDec = struct
   (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
-  let compile_local_function outer_env outer_ae restore_env args mk_body ret_tys at =
+  let compile_local_function outer_env outer_ae restore_env name args mk_body ret_tys at =
     let arg_names = List.map (fun a -> a.it, I32Type) args in
     let return_arity = List.length ret_tys in
     let retty = Lib.List.make return_arity I32Type in
@@ -4660,8 +4660,11 @@ module FuncDec = struct
       (* Add arguments to the environment (shifted by 1) *)
       let ae2 = bind_args env ae1 1 args in
 
+      (* Add nested DWARF *)
+      G.(dw_tag (Subprogram name)) ^^
       closure_code ^^
-      mk_body env ae2
+      mk_body env ae2 ^^
+      G.dw_tag_children_done
     ))
 
   let message_cleanup env sort = match sort with
@@ -4669,7 +4672,7 @@ module FuncDec = struct
       | Type.Shared Type.Query -> G.i Nop
       | _ -> assert false
 
-  let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
+  let compile_const_message outer_env outer_ae sort control name args mk_body ret_tys at : E.func_with_names =
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env [] [] (fun env -> G.with_region at (
       (* reply early for a oneway *)
@@ -4691,23 +4694,23 @@ module FuncDec = struct
 
   (* Compile a closed function declaration (captures no local variables) *)
   let closed pre_env sort control name args mk_body ret_tys at =
-    let (fi, fill) = E.reserve_fun pre_env name in
+    let (fi, fill) = E.reserve_fun pre_env name in  Printf.printf "CLOSED name: %s\n" name; List.iter (fun a -> Printf.printf "\targ: %s\n" a.it) args;
     if Type.is_shared_sort sort
     then begin
       ( Const.t_of_v (Const.Message fi), fun env ae ->
-        fill (compile_const_message env ae sort control args mk_body ret_tys at)
+        fill (compile_const_message env ae sort control name args mk_body ret_tys at)
       )
     end else begin
       assert (control = Type.Returns);
       ( Const.t_of_v (Const.Fun fi), fun env ae ->
         let restore_no_env _env ae _ = (ae, G.nop) in
-        fill (compile_local_function env ae restore_no_env args mk_body ret_tys at)
+        fill (compile_local_function env ae restore_no_env name args mk_body ret_tys at)
       )
     end
 
   (* Compile a closure declaration (captures local variables) *)
   let closure env ae sort control name captured args mk_body ret_tys at =
-      let is_local = sort = Type.Local in
+      let is_local = Printf.printf "CLOSURE name: %s\n" name;sort = Type.Local in
 
       let (set_clos, get_clos) = new_local env (name ^ "_clos") in
 
@@ -4737,7 +4740,7 @@ module FuncDec = struct
 
       let f =
         if is_local
-        then compile_local_function env ae restore_env args mk_body ret_tys at
+        then compile_local_function env ae restore_env name args mk_body ret_tys at
         else assert false (* no first class shared functions yet *) in
 
       let fi = E.add_fun env name f in
