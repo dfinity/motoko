@@ -4661,7 +4661,7 @@ module FuncDec = struct
       let ae2 = bind_args env ae1 1 args in
 
       (* Add nested DWARF *)
-      G.(dw_tag (Subprogram name)) ^^
+      G.(dw_tag (Subprogram (name, at.left))) ^^
       G.(concat_map (fun arg -> dw_tag_no_children (Formal_parameter (arg.it, arg.at.left))) args) ^^
       closure_code ^^
       mk_body env ae2 ^^

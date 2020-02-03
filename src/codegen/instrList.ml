@@ -170,7 +170,7 @@ type dw_AT = Producer of string
 (* DWARF tags *)
 
 type dw_TAG = Compile_unit of string * string (* compilation directory, file name *)
-            | Subprogram of string
+            | Subprogram of string * Source.pos
             | Formal_parameter of string * Source.pos
             | Variable
             | Typedef
@@ -211,7 +211,6 @@ let dw_attr : dw_AT -> t =
 (* emit a DW_TAG
    When it admits children, these follow sequentially,
    closed by dw_tag_children_done.
-   Otherwise siblings follow.
  *)
 
 let dw_tag : dw_TAG -> t =
@@ -228,11 +227,13 @@ let dw_tag : dw_TAG -> t =
            dw_attr (Low_pc 0) ^^
            dw_attr (High_pc 0xFF) (* FIXME *)
           ) 0l Wasm.Source.no_region []))
-  | Subprogram name ->
+  | Subprogram (name, pos) ->
     fakeColumn 0 dw_TAG_subprogram
       (Block
          ([],
            (dw_attr (Name name) ^^
+            dw_attr (Decl_line pos.Source.line) ^^
+            dw_attr (Decl_column pos.Source.column) ^^
             dw_attr (Prototyped true) ^^
             dw_attr (External false)
           ) 0l Wasm.Source.no_region []))

@@ -15,9 +15,9 @@ let abbreviations =
       dw_AT_high_pc, dw_FORM_data4;
          (* dw_AT_GNU_all_call_sites, dw_FORM_flag_present; *) *)
       dw_AT_name, dw_FORM_strp;
-      (*dw_AT_decl_file, dw_FORM_data1;
+      (*dw_AT_decl_file, dw_FORM_data1;*)
       dw_AT_decl_line, dw_FORM_data1;
-      dw_AT_decl_column, dw_FORM_data1;*)
+      dw_AT_decl_column, dw_FORM_data1;
       dw_AT_prototyped, dw_FORM_flag_present;
       dw_AT_external, dw_FORM_flag(*_present*)
       ] );
