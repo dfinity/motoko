@@ -32,5 +32,9 @@ func foo (a : Int) : Bool {
 }
 // DWARF:          : DW_TAG_subprogram [2] *
 // DWARF-LABEL:        DW_AT_name     [DW_FORM_strp] {{.*}} "foo"
+
+// DWARF:          :   DW_TAG_formal_parameter [3]
+// DWARF-NEXT:           DW_AT_name     [DW_FORM_strp] {{.*}} "a"
+
 // DWARF:          NULL
 // DWARF:        NULL

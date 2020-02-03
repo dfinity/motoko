@@ -238,3 +238,5 @@ let dw_tag_children_done : t =
   let left = { Wasm.Source.no_pos with line = -1 } in
   let right = Wasm.Source.no_pos in
   fun _ _ x -> (Nop @@ { left; right }) :: x
+
+let dw_tag_no_children t = dw_tag t ^^ dw_tag_children_done
