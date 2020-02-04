@@ -649,6 +649,7 @@ let encode (em : extended_module) =
     let close_section () = u8 0x00
     let write16 = Buffer.add_int16_le s.buf
     let write32 i = Buffer.add_int32_le s.buf (Int32.of_int i)
+    let zero_terminated str = put_string s str; u8 0
 
     let debug_abbrev_section () =
       let tag (t, ch, kvs) = uleb128 t; u8 ch; List.iter (fun (k, v) -> uleb128 k; uleb128 v) kvs in
@@ -747,7 +748,7 @@ let encode (em : extended_module) =
     let debug_strings_section dss =
       let rec debug_strings_section_body = function
         | [] -> ()
-        | h :: t -> debug_strings_section_body t; put_string s h; close_section ()
+        | h :: t -> debug_strings_section_body t; zero_terminated h
       in
       custom_section ".debug_str" debug_strings_section_body dss (dss <> [])
 
@@ -779,14 +780,18 @@ standard_opcode_lengths[DW_LNS_set_epilogue_begin] = 0
 standard_opcode_lengths[DW_LNS_set_isa] = 1
                  *)
                 List.iter u8 [0; 1; 1; 1; 1; 0; 0; 0; 1; 0; 0; 1];
-                u8 0; (* directory_entry_format_count *)
-                (* uleb128 0; directory_entry_format *)
-                uleb128 0; (* directories_count *)
-                (* uleb128 0; directories *)
-                u8 0; (* file_name_entry_format_count *)
-                (* uleb128 0; file_name_entry_format *)
-                uleb128 0; (* file_names_count *)
-                (* uleb128 0; file_names *)
+
+                u8 1; (* directory_entry_format_count *)
+                List.iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
+
+                uleb128 1; (* directories_count *)
+                List.iter zero_terminated ["directory/inner/."];
+
+                u8 1; (* file_name_entry_format_count *)
+                List.iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
+
+                uleb128 1; (* file_names_count *)
+                List.iter zero_terminated ["charToText.mo"];
             );
 
              u8 Dwarf5.dw_LNE_end_sequence
