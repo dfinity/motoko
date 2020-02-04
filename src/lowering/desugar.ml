@@ -90,7 +90,7 @@ and exp' at note = function
     let t = T.as_array note.I.note_typ in
     I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
-  | S.FuncE (name, sp, tbs, p, _t_opt, e) ->
+  | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
     let s, po = match sp.it with
       | T.Local -> (T.Local, None)
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
@@ -394,21 +394,6 @@ and pat_fields pfs = List.map pat_field pfs
 
 and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
 
-and to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
-  match p.it with
-  | S.AnnotP (p, _) -> to_arg p
-  | S.VarP i ->
-    { i with note = p.note },
-    (fun e -> e)
-  | S.WildP ->
-    let v = fresh_var "param" p.note in
-    arg_of_exp v,
-    (fun e -> e)
-  |  _ ->
-    let v = fresh_var "param" p.note in
-    arg_of_exp v,
-    (fun e -> blockE [letP (pat p) v] e)
-
 and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
   let sort, control, n_args, res_tys =
     match typ with
@@ -421,10 +406,39 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
 
   let tys = if n_args = 1 then [p.note] else T.seq_of_tup p.note in
 
+  let rec pat_unannot p = match p.it with
+    | S.AnnotP (p, _) -> pat_unannot p
+    | S.ParP p -> pat_unannot p
+    | _ -> p
+  in
+
+  (* In source, the context pattern is outside the argument pattern,
+  but in the IR, paramteres are bound first. So if there is a context pattern,
+  we _must_ create fresh names for the parameters and bind the actual paramters
+  inside the wrapper. *)
+  let must_wrap = po != None in
+
+  let to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
+    match (pat_unannot p).it with
+    | S.AnnotP _ | S.ParP _ -> assert false
+    | S.VarP i when not must_wrap ->
+      { i with note = p.note },
+      (fun e -> e)
+    | S.WildP ->
+      let v = fresh_var "param" p.note in
+      arg_of_exp v,
+      (fun e -> e)
+    |  _ ->
+      let v = fresh_var "param" p.note in
+      arg_of_exp v,
+      (fun e -> blockE [letP (pat p) v] e)
+  in
+
   let args, wrap =
-    match n_args, p.it with
+    match n_args, (pat_unannot p).it with
+    | _, (S.AnnotP _ | S.ParP _) -> assert false
     | _, S.WildP ->
-      let vs = fresh_vars "param" tys in
+      let vs = fresh_vars "ignored" tys in
       List.map arg_of_exp vs,
       (fun e -> e)
     | 1, _ ->
@@ -449,16 +463,14 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | None -> wrap e
     | Some p ->
       let v = fresh_var "caller" T.caller in
-      let c = fresh_var "ctxt" T.ctxt in
       blockE
         [letD v (primE I.ICCallerPrim []);
-         letD c
+         letP (pat p)
            (newObjE T.Object
               [{ it = {Ir.name = "caller"; var = id_of_exp v};
                  at = no_region;
                  note = T.caller }]
-              T.ctxt);
-         letP (pat p) c]
+              T.ctxt)]
         (wrap e)
   in
 

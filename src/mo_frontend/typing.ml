@@ -600,11 +600,6 @@ let text_obj () =
 
 (* Expressions *)
 
-let isAsyncE exp =
-  match exp.it with
-  | AsyncE _ -> true
-  | _ -> false
-
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
 
@@ -776,7 +771,7 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | FuncE (_, sort_pat, typ_binds, pat, typ_opt, exp) ->
+  | FuncE (_, sort_pat, typ_binds, pat, typ_opt, _sugar, exp) ->
     if not env.pre && not in_actor && T.is_shared_sort sort_pat.it then
       error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let typ = match typ_opt with
@@ -788,7 +783,7 @@ and infer_exp'' env exp : T.typ =
     let c, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort c ts2;
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs in
-    let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then error else warn) env' pat in
+    let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
@@ -813,13 +808,11 @@ and infer_exp'' env exp : T.typ =
         ) ts2;
         match c, ts2 with
         | T.Returns, [] when sort = T.Shared T.Write ->
-          (* this error should not happen for parsed syntax, but may occur in
-             constructed syntax *)
           if not (is_IgnoreAsync exp) then
             error env exp.at
-              "shared function with () result type has non-`ignore async ...` body"
+              "shared function with () result type has unexpected body:\n  the body must either be of sugared form '{ ... }' \n  or explicit form '= ignore ((async ...) : async ())'"
         | T.Promises, _ ->
-          if not (isAsyncE exp) then
+          if not (is_Async exp) then
             error env exp.at
               "shared function with async result type has non-async body"
         | _ ->
@@ -1112,11 +1105,11 @@ and check_exp' env0 t exp : T.typ =
     );
     t
   (* TODO: allow shared with one scope par *)
-  | FuncE (_, sort_pat,  [], pat, typ_opt, exp), T.Func (s, c, [], ts1, ts2) ->
+  | FuncE (_, sort_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
     let sort, ve = check_sort_pat env sort_pat in
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
       error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
-    let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then error else warn) env (T.seq ts1) pat in
+    let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let codom = T.codom c (fun () -> assert false) ts2 in
     let t2 = match typ_opt with
@@ -1269,7 +1262,7 @@ and check_sort_pat env sort_pat : T.func_sort * Scope.val_env =
   | T.Shared (ss, pat) ->
     if pat.it <> WildP then
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "shared function cannot take a context pattern";
-    T.Shared ss, check_pat_exhaustive error env T.ctxt pat
+    T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat
 
 and check_pat_exhaustive warnOrError env t pat : Scope.val_env =
   let ve = check_pat env t pat in
@@ -1533,7 +1526,7 @@ and object_of_scope env sort fields scope at =
       (T.string_of_typ_expand t)
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE (_, sort_pat, _, _, _, _); _}) ->
+  | LetD ({it = VarP _; _}, {it = FuncE (_, sort_pat, _, _, _, _, _); _}) ->
     T.is_shared_sort sort_pat.it
   | _ -> false
 
