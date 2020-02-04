@@ -149,6 +149,8 @@ module E = struct
   (* The environment type *)
   module NameEnv = Env.Make(String)
   module StringEnv = Env.Make(String)
+  module LabSet = Set.Make(String)
+
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
@@ -195,6 +197,7 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
+    labs : LabSet.t ref; (* used labels (fields and variants) *)
   }
 
 
@@ -223,8 +226,16 @@ module E = struct
     return_arity = 0;
     locals = ref [];
     local_names = ref [];
+    labs = ref LabSet.empty;
   }
 
+  (* record an object or variant field label, for debugging *)
+  let hash (env : t) lab =
+    env.labs := LabSet.add lab (!(env.labs));
+    Mo_types.Hash.hash lab
+
+  let get_labs env =
+    LabSet.fold (fun lab ls -> (Mo_types.Hash.hash lab, lab) :: ls) (!(env.labs)) []
 
   let mk_fun_env env n_param return_arity =
     { env with
@@ -1191,11 +1202,11 @@ module Variant = struct
   let tag_field = Tagged.header_size
   let payload_field = Int32.add Tagged.header_size 1l
 
-  let hash_variant_label : Mo_types.Type.lab -> int32 =
-    Mo_types.Hash.hash
+  let hash_variant_label env : Mo_types.Type.lab -> int32 =
+    E.hash env
 
   let inject env l e =
-    Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label l); e]
+    Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
 
   let get_tag = Heap.load_field tag_field
   let project = Heap.load_field payload_field
@@ -1203,7 +1214,7 @@ module Variant = struct
   (* Test if the top of the stacks points to a variant with this label *)
   let test_is env l =
     get_tag ^^
-    compile_eq_const (hash_variant_label l)
+    compile_eq_const (hash_variant_label env l)
 
 end (* Variant *)
 
@@ -2323,7 +2334,7 @@ module Object = struct
          then we need to allocate separate boxes for the non-public ones:
          List.filter (fun (_, vis, f) -> vis.it = Public) |>
       *)
-      List.map (fun (n,_) -> (Mo_types.Hash.hash n, n)) |>
+      List.map (fun (n,_) -> (E.hash env n, n)) |>
       List.sort compare |>
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -2355,7 +2366,7 @@ module Object = struct
      let init_field (name, mk_is) : G.t =
        (* Write the hash *)
        get_ri ^^
-       compile_unboxed_const (Mo_types.Hash.hash name) ^^
+       compile_unboxed_const (E.hash env name) ^^
        Heap.store_field (hash_position env name) ^^
        (* Write the pointer to the indirection *)
        get_ri ^^
@@ -2418,7 +2429,7 @@ module Object = struct
     List.for_all (fun f -> not (Type.is_mut f.Type.typ)) fields
 
   let idx env obj_type name =
-    compile_unboxed_const (Mo_types.Hash.hash name) ^^
+    compile_unboxed_const (E.hash env name) ^^
     idx_hash env (is_mut_field env obj_type name)
 
   let load_idx env obj_type f =
@@ -6952,8 +6963,11 @@ and conclude_module env start_fi_o =
             List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
         locals_names =
             List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs;
-      };
-    } in
+        };
+      motoko = {
+        labels = E.get_labs env;
+      }
+   } in
 
   match E.get_rts env with
   | None -> emodule

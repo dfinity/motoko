@@ -560,6 +560,13 @@ let encode (em : extended_module) =
       custom_section "name" name_section_body ns
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
+    let motoko_section_body labels =
+      section 0 (fun _ -> assoc_list string labels) (labels <> [])
+
+    let motoko_sections motoko =
+      custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> [])
+
+
     (* Module *)
 
     let module_ (em : extended_module) =
@@ -582,6 +589,8 @@ let encode (em : extended_module) =
       data_section m.data;
       (* other optional sections *)
       name_section em.name;
+      motoko_sections em.motoko
+
   end
   in E.module_ em;
 
