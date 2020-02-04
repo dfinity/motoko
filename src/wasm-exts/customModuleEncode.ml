@@ -751,6 +751,50 @@ let encode (em : extended_module) =
       in
       custom_section ".debug_str" debug_strings_section_body dss (dss <> [])
 
+    let debug_line_section dss =
+      let debug_line_section_body () =
+        unit(fun () ->
+            write16 0x0005;
+            u8 4;
+            u8 0; (* segment_selector_size *)
+            unit(fun () ->
+                u8 1; (* min_inst_length *)
+                u8 1; (* max_ops_per_inst *)
+                u8 1; (* default_is_stmt *)
+                u8 0; (* line_base *)
+                u8 12; (* line_range *)
+                u8 13; (* opcode_base *)
+                (*
+standard_opcode_lengths[DW_LNS_copy] = 0
+standard_opcode_lengths[DW_LNS_advance_pc] = 1
+standard_opcode_lengths[DW_LNS_advance_line] = 1
+standard_opcode_lengths[DW_LNS_set_file] = 1
+standard_opcode_lengths[DW_LNS_set_column] = 1
+standard_opcode_lengths[DW_LNS_negate_stmt] = 0
+standard_opcode_lengths[DW_LNS_set_basic_block] = 0
+standard_opcode_lengths[DW_LNS_const_add_pc] = 0
+standard_opcode_lengths[DW_LNS_fixed_advance_pc] = 1
+standard_opcode_lengths[DW_LNS_set_prologue_end] = 0
+standard_opcode_lengths[DW_LNS_set_epilogue_begin] = 0
+standard_opcode_lengths[DW_LNS_set_isa] = 1
+                 *)
+                List.iter u8 [0; 1; 1; 1; 1; 0; 0; 0; 1; 0; 0; 1];
+                u8 0; (* directory_entry_format_count *)
+                (* uleb128 0; directory_entry_format *)
+                uleb128 0; (* directories_count *)
+                (* uleb128 0; directories *)
+                u8 0; (* file_name_entry_format_count *)
+                (* uleb128 0; file_name_entry_format *)
+                uleb128 0; (* file_names_count *)
+                (* uleb128 0; file_names *)
+            );
+
+             u8 Dwarf5.dw_LNE_end_sequence
+
+        )
+      in
+      custom_section ".debug_line" debug_line_section_body () true
+
     (* Module *)
 
     let module_ (em : extended_module) =
@@ -775,6 +819,7 @@ let encode (em : extended_module) =
       name_section em.name;
       debug_abbrev_section ();
       debug_info_section ();
+      debug_line_section ();
       debug_strings_section !dwarf_strings
   end
   in E.module_ em;
