@@ -123,7 +123,13 @@ type inst = (typ list, Type.typ list) Source.annotated_phrase (* For implicit sc
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
 type sugar = bool (* Is the source of a function body a block `<block>`,
-                     subject to desugaring, or the sugar-free form `= <exp>` *)
+                     subject to further desugaring during parse,
+                     or the invariant form `= <exp>`.
+                     In the final output of the parser, the exp in FuncE is
+                     always in its fully desugared form and the
+                     value of the sugar field is irrelevant.
+                     This flag is used to correctly desugar an actor's
+                     public functions as oneway, shared functions *)
 
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
