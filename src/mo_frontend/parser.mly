@@ -136,10 +136,49 @@ let share_expfield (ef : exp_field) =
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
 %left POWOP
 
-%type<Syntax.exp> exp(ob) exp_nullary(ob)
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) text_like
+%type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_item
+%type<Mo_def.Syntax.vis> vis
+%type<Mo_def.Syntax.typ_tag> typ_tag
+%type<Mo_def.Syntax.typ_tag list> typ_variant
+%type<Mo_def.Syntax.typ_field> typ_field
+%type<Mo_def.Syntax.typ_bind> typ_bind
+%type<Mo_def.Syntax.typ list> typ_args
+%type<Source.region -> Mo_def.Syntax.pat> sort_pat_opt
+%type<Mo_def.Syntax.typ_tag list> seplist1(typ_tag,semicolon) seplist(typ_tag,semicolon)
+%type<Mo_def.Syntax.typ list> seplist(typ_item,COMMA)
+%type<Mo_def.Syntax.typ_field list> typ_obj seplist(typ_field,semicolon)
+%type<Mo_def.Syntax.typ_bind list> seplist(typ_bind,COMMA)
+%type<Mo_def.Syntax.typ list> seplist(typ,COMMA)
+%type<Mo_def.Syntax.pat_field list> seplist(pat_field,semicolon)
+%type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
+%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec_var,semicolon) seplist(dec,semicolon) seplist(dec,SEMICOLON)
+%type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
+%type<Mo_def.Syntax.exp_field list> seplist(exp_field,semicolon) seplist(dec_field,semicolon) obj_body exp_field_list_unamb
+%type<Mo_def.Syntax.case list> seplist(case,semicolon)
+%type<Mo_def.Syntax.typ> return_typ_nullary return_typ
+%type<Mo_def.Syntax.typ option> option(return_typ_nullary) option(return_typ)
+%type<Mo_def.Syntax.path> path
+%type<Mo_def.Syntax.pat> pat pat_un pat_param pat_nullary pat_bin
+%type<Mo_def.Syntax.pat_field> pat_field
+%type<Mo_def.Syntax.typ list option> option(typ_args)
+%type<Mo_def.Syntax.exp option> option(exp_nullary(ob))
+%type<unit option> option(EQ)
+%type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) exp_block exp_bin(ob) exp_bin(bl) exp(bl)
+%type<bool * Mo_def.Syntax.exp> func_body
+%type<Mo_def.Syntax.lit> lit
+%type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
+%type<Mo_def.Syntax.exp_field> exp_field exp_field_nonvar dec_field
+%type<Mo_def.Syntax.dec list> dec_list_unamb
+%type<Mo_def.Syntax.id * Mo_def.Syntax.exp_field list> class_body
+%type<Mo_def.Syntax.case> catch case
+%type<Mo_def.Syntax.dec list -> Mo_def.Syntax.exp'> bl ob
+
+%type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
 
+%on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%
 
 (* Helpers *)
@@ -687,12 +726,15 @@ imp :
     { let _, x = xf "import" $sloc in
       let_or_exp true x (ImportE (f, ref Unresolved)) (at $sloc) }
 
+start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-empty parse stack *)
+  | /* Empty */ { () }
+
 parse_prog :
-  | is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
+  | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
     { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
 
 parse_prog_interactive :
-  | is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
+  | start is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
     { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
 
 %%
