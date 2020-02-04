@@ -122,7 +122,8 @@ type inst = (typ list, Type.typ list) Source.annotated_phrase (* For implicit sc
 
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
-type sugar = bool
+type sugar = bool (* Is the source of a function body a block `<block>`,
+                     subject to desugaring, or the sugar-free form `= <exp>` *)
 
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =

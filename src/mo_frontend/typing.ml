@@ -808,8 +808,6 @@ and infer_exp'' env exp : T.typ =
         ) ts2;
         match c, ts2 with
         | T.Returns, [] when sort = T.Shared T.Write ->
-          (* this error should not happen for parsed syntax, but may occur in
-             constructed syntax *)
           if not (is_IgnoreAsync exp) then
             error env exp.at
               "shared function with () result type has unexpected body:\n  the body must either be of sugared form '{ ... }' \n  or explicit form '= ignore ((async ...) : async ())'"
