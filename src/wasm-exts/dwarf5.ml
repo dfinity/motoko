@@ -282,3 +282,88 @@ let dw_UT_split_compile = 0x05
 let dw_UT_split_type = 0x06
 let dw_UT_lo_user = 0x80
 let dw_UT_hi_user = 0xff
+
+
+
+(* Line number header entry format name *)
+let dw_LNCT_path = 0x1
+let dw_LNCT_directory_index = 0x2
+let dw_LNCT_timestamp = 0x3
+let dw_LNCT_size = 0x4
+let dw_LNCT_MD5 = 0x5
+let dw_LNCT_lo_user = 0x2000
+let dw_LNCT_hi_user = 0x3fff
+
+(* Line number standard opcode encodings *)
+let dw_LNS_copy = 0x01
+let dw_LNS_advance_pc = 0x02
+let dw_LNS_advance_line = 0x03
+let dw_LNS_set_file = 0x04
+let dw_LNS_set_column = 0x05
+let dw_LNS_negate_stmt = 0x06
+let dw_LNS_set_basic_block = 0x07
+let dw_LNS_const_add_pc = 0x08
+let dw_LNS_fixed_advance_pc = 0x09
+let dw_LNS_set_prologue_end = 0x0a
+let dw_LNS_set_epilogue_begin = 0x0b
+let dw_LNS_set_isa = 0x0c
+
+(* Line number extended opcode encodings *)
+let dw_LNE_end_sequence = 0x01
+let dw_LNE_set_address = 0x02
+(* let Reserved 0x03 *)
+let dw_LNE_set_discriminator = 0x04
+let dw_LNE_lo_user = 0x80
+let dw_LNE_hi_user = 0xff
+
+module Machine =
+struct
+
+(* Assumptions:
+- op_index = 0 (const)
+- maximum_operations_per_instruction = 1 (non-VLIW)
+- minimum_instruction_length = 1 (bytecode)
+ *)
+
+let default_is_stmt = true
+let line_base = 0
+let line_range = 7
+let opcode_base = dw_LNS_set_isa
+
+type state = int * (int * int * int) * int * (bool * bool * bool * bool)
+let default_loc = (0, 0, 0)
+
+let interpret (out : state -> unit) : int list -> state -> state =
+  function
+  | c :: t when dw_LNS_copy = c ->
+    fun ((op, loc, disc, (s, _, _, _)) as st) ->
+    out st; (op, loc, 0, (s, false, false, false))
+  | c :: offs :: t when dw_LNS_advance_pc = c ->
+    fun (op, loc, disc, flags) -> (op + offs, loc, disc, flags)
+  | c :: offs :: t when dw_LNS_advance_line = c ->
+    fun (op, (line, col, file), disc, flags) -> (op, (line + offs, col, file), disc, flags)
+  | c :: file :: t when dw_LNS_set_file = c ->
+    fun (op, (line, col, _), disc, flags) -> (op, (line, col, file), disc, flags)
+  | c :: col :: t when dw_LNS_set_column = c ->
+    fun (op, (line, _, file), disc, flags) -> (op, (line, col, file), disc, flags)
+  | c :: t when dw_LNS_negate_stmt = c ->
+    fun (op, loc, disc, (s, bb, pe, eb)) -> (op, loc, disc, (not s, bb, pe, eb))
+  | c :: t when dw_LNS_set_basic_block = c ->
+    fun (op, loc, disc, (s, _, pe, eb)) -> (op, loc, disc, (s, true, pe, eb))
+(* dw_LNS_const_add_pc, dw_LNS_fixed_advance_pc NOT YET *)
+  | c :: t when dw_LNS_set_prologue_end = c ->
+    fun (op, loc, disc, (s, bb, _, eb)) -> (op, loc, disc, (s, bb, true, eb))
+  | c :: t when dw_LNS_set_epilogue_begin = c ->
+    fun (op, loc, disc, (s, bb, pe, _)) -> (op, loc, disc, (s, bb, pe, true))
+
+  | [c] when dw_LNE_end_sequence = c -> (* FIXME: model end_sequence *)
+    fun ((op, _, disc, _) as st) ->
+    out st; (0, default_loc, 0, (default_is_stmt, false, false, false))
+
+  | c :: op :: t when dw_LNE_set_address = c ->
+    fun (_, loc, disc, flags) -> (op, loc, disc, flags)
+  | c :: disc :: t when dw_LNE_set_discriminator = c ->
+    fun (op, loc, _, flags) -> (op, loc, disc, flags)
+
+  | prg -> failwith "invalid program"
+end
