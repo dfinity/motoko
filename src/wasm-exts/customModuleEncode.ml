@@ -794,8 +794,10 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 List.iter zero_terminated ["charToText.mo"];
             );
 
-             u8 Dwarf5.dw_LNE_end_sequence
-
+            let standard lns = u8 lns in
+            let extended lne = u8 0; u8 1; u8 lne in
+            standard Dwarf5.dw_LNS_copy;
+            extended Dwarf5.dw_LNE_end_sequence
         )
       in
       custom_section ".debug_line" debug_line_section_body () true
