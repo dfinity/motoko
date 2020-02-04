@@ -1,0 +1,5 @@
+service A:
+{
+  f : (nat) -> ();
+  g : f;
+}

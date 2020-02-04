@@ -1,0 +1,20 @@
+type Tup = 
+ record {
+   text;
+   Info;
+   text;
+   nat;
+ };
+type Info = 
+ record {
+   1: Info;
+   345: text;
+   "_34_5": bool;
+   "_name": int;
+   "name": text;
+   "name_": nat;
+ };
+service : {
+  "f": (Tup) -> ();
+  "f_": (opt Tup) -> () oneway;
+}

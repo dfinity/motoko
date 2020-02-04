@@ -1,0 +1,7 @@
+(library
+  (name languageServer)
+  (libraries lib lang_utils lsp pipeline mo_config)
+  (inline_tests)
+  (preprocess (pps ppx_inline_test))
+  (flags (:standard -w -48))
+)

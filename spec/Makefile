@@ -1,4 +1,4 @@
-NAME = actorscript
+NAME = motoko
 MAIN = main
 DIRS = figures
 SRCFILES = $(wildcard *.cls *.tex *.bib Makefile)

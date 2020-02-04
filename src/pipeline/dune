@@ -1,0 +1,23 @@
+(library
+  (name pipeline)
+  (libraries
+    lib
+    idllib
+    lang_utils
+    mo_def
+    mo_config
+    mo_types
+    mo_values
+    mo_frontend
+    mo_idl
+    mo_interpreter
+    lowering
+    wasm_exts
+    ir_def
+    ir_interpreter
+    ir_passes
+    codegen
+  )
+  (inline_tests)
+  (preprocess (pps ppx_inline_test))
+)

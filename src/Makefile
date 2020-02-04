@@ -1,64 +1,66 @@
-NAME = asc
-BUILD = byte
-MAIN = main
-JS_MAIN = js_main
+# This Makefile is not really a
+# dependency tracking makefile, it just
+# calls `dune`
 
-ASC = `pwd`/$(NAME)
+MO_IDE_TARGET = _build/default/exes/mo_ide.exe
+MO_LD_TARGET = _build/default/exes/mo_ld.exe
+MOC_TARGET = _build/default/exes/moc.exe
+DIDC_TARGET = _build/default/exes/didc.exe
+MOC_JS_TARGET = _build/default/js/mo_js.bc.js
+DESER_TARGET = _build/default/exes/deser.exe
 
-OPAM_PACKAGES = wasm num vlq yojson
-JS_OPAM_PACKAGES = js_of_ocaml js_of_ocaml-ppx
+DUNE_OPTS ?=
 
-MENHIR = menhir
-MENHIR_FLAGS = --infer --dump --explain --strict
+ALL_TARGETS = $(MO_IDE_TARGET) $(MO_LD_TARGET) $(MOC_TARGET) $(MOC_JS_TARGET) $(DIDC_TARGET) $(DESER_TARGET)
 
-OCAML_FLAGS = -cflags '-w +a-4-27-30-42-44-45-58 -warn-error +a'
-OCAMLBUILD = ocamlbuild $(OCAML_FLAGS) \
- -use-ocamlfind \
- -plugin-tag 'package(bisect_ppx-ocamlbuild)' \
- -use-menhir -menhir "$(MENHIR) $(MENHIR_FLAGS)" \
- -I src \
- -I lib \
- $(OPAM_PACKAGES:%=-pkg %) \
- -tags debug
+.PHONY: all clean moc mo-ide mo-ld moc.js didc deser unit-tests
 
-.PHONY: all parallel quick clean test test-parallel test-quick
+# This targets is spelled out so that `make`
+# only invokes `dune` once, much faster
+all:
+	dune build $(DUNE_OPTS) $(ALL_TARGETS)
+	@ln -fs $(MOC_TARGET) moc
+	@ln -fs $(MO_IDE_TARGET) mo-ide
+	@ln -fs $(MO_LD_TARGET) mo-ld
+	@ln -fs $(MOC_JS_TARGET) moc.js
+	@ln -fs $(DIDC_TARGET) didc
+	@ln -fs $(DESER_TARGET) deser
 
-all: $(NAME) test
+moc:
+	dune build $(DUNE_OPTS) $(MOC_TARGET)
+	@ln -fs $(MOC_TARGET) moc
 
-parallel: $(NAME) test-parallel
-quick: $(NAME) test-quick
+mo-ide:
+	dune build $(DUNE_OPTS) $(MO_IDE_TARGET)
+	@ln -fs $(MO_IDE_TARGET) mo-ide
 
-$(NAME): $(MAIN).$(BUILD)
-	mv $< $@
+mo-ld:
+	dune build $(DUNE_OPTS) $(MO_LD_TARGET)
+	@ln -fs $(MO_LD_TARGET) mo-ld
 
-$(NAME).js: $(JS_MAIN).byte
-	js_of_ocaml +nat.js $< -o $@
+moc.js:
+	dune build $(DUNE_OPTS) $(MOC_JS_TARGET)
+	@ln -fs $(MOC_JS_TARGET) moc.js
 
-$(MAIN).$(BUILD): sanity
-	$(OCAMLBUILD) $@
+didc:
+	dune build $(DUNE_OPTS) $(DIDC_TARGET)
+	@ln -fs $(DIDC_TARGET) didc
 
-$(JS_MAIN).byte: $(JS_MAIN).ml sanity
-	$(OCAMLBUILD) $(JS_OPAM_PACKAGES:%=-pkg %) $@
+deser:
+	dune build $(DUNE_OPTS) $(DESER_TARGET)
+	@ln -fs $(DESER_TARGET) deser
 
-
-sanity:
-	ocamlfind query $(OPAM_PACKAGES)
+unit-tests:
+	dune runtest $(DUNE_OPTS)
 
 clean:
-	rm -f *~ .*~
-	$(OCAMLBUILD) -clean
-	$(MAKE) -C ../test clean
+	rm -f moc mo-ide mo-ld moc.js didc deser
+	dune clean
 
 test: $(NAME)
-	$(MAKE) -C ../stdlib ASC=$(ASC) all
-	$(MAKE) -C ../test ASC=$(ASC) all
-	$(MAKE) -C ../samples ASC=$(ASC) all
-
-accept: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) accept
-
-test-parallel: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) parallel
+	make -C ../test MOC=$(MOC) all
+	make -C ../stdlib MOC=$(MOC) all
+	make -C ../samples MOC=$(MOC) all
 
 test-quick: $(NAME)
-	$(MAKE) -C ../test ASC=$(ASC) quick
+	make -C ../test MOC=$(MOC) quick

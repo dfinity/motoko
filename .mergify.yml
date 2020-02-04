@@ -2,7 +2,8 @@ pull_request_rules:
   - name: Automatic merge
     conditions:
       - "#approved-reviews-by>=1"
-      - status-success=hydra:dfinity-ci-build:actorscript:all-systems-go
+      - "#changes-requested-reviews-by=0"
+      - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
       - base=master
       - label=automerge
     actions:
@@ -13,7 +14,8 @@ pull_request_rules:
   - name: Automatic merge (squash)
     conditions:
       - "#approved-reviews-by>=1"
-      - status-success=hydra:dfinity-ci-build:actorscript:all-systems-go
+      - "#changes-requested-reviews-by=0"
+      - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
       - base=master
       - label=automerge-squash
     actions:
@@ -24,7 +26,8 @@ pull_request_rules:
   - name: Automatic merge (rebase)
     conditions:
       - "#approved-reviews-by>=1"
-      - status-success=hydra:dfinity-ci-build:actorscript:all-systems-go
+      - "#changes-requested-reviews-by=0"
+      - status-success=hydra:dfinity-ci-build:motoko:all-systems-go
       - base=master
       - label=automerge-rebase
     actions:

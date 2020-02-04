@@ -1,12 +1,9 @@
--- Parsing ListClient.as:
--- Parsing ListLib.as:
--- Checking ListLib.as:
--- Checking ListClient.as:
-type Stack = List<Int>
+-- Parsing ListClient.mo:
+-- Parsing ListLib.mo:
+-- Checking ListLib.mo:
+-- Definedness ListLib.mo:
+-- Checking ListClient.mo:
 let List : module {type List<T> = ?(T, List<T>); cons : <T>(T, List<T>) -> List<T>; nil : <T>() -> List<T>}
-let empty : ?(Int, List<Int>)
-let push : (Int, Stack) -> Stack
--- Interpreting ListLib.as:
--- Interpreting ListClient.as:
-nil()
-  <= null
+-- Definedness ListClient.mo:
+-- Interpreting ListLib.mo:
+-- Interpreting ListClient.mo:

@@ -1,109 +1,16 @@
-# ActorScript
+# Motoko
 
 A simple language for writing Dfinity actors.
 
+## User Documentation & Samples
 
-## Installation using Nix
-
-To install the `asc` binary into your nix environment, use
-
-```
-$ nix-env -i -f . -A native
-```
-
-## Development using Nix
-
-This is the command that should always pass on master is the following, which builds everything:
-```
-$ nix-build
-```
-
-To enter a shell with the necessary dependencies, you can use
-
-```
-$ nix-shell
-```
-within this shell you can run `make asc` in `src/` to build the `asc` binary,
-and use the test suite in `src/test`.
-
-
-To build `asc.js`, the JavaScript library, use
-```
-nix-build -A js
-```
-
-
-By default, `dvm` is built using the V8 engine. To build with the Haskell
-engine, pass `--arg v8 false` to any of the above `nix-*` commands.
-
-
-## Development without Nix
-
-You can get a development environment that is independent of nix (although
-installing all required tools without nix is out of scope).
-
- * Use your system’s package manager to install `ocaml` and
-   [`opam`](https://opam.ocaml.org/doc/Install.html)
- * Install the packages listed as `OPAM_PACKAGES` in `src/Makefile`:
-   ```
-   opam install num vlq yojson bisect_ppx bisect_ppx-ocamlbuild menhir
-   ```
- * Install the `wasm` Ocaml package. We use a newer version than is on opam, and a
-   fork that supports the multi-value extension. See `nix/ocaml-wasm.nix` for
-   the precise repository and version. You can use `nix` to fetch the correct
-   source for you, and run the manual installation inside:
-   ```
-   cd $(nix-build -Q -A wasm.src)/interpreter
-   make install
-   ```
- * Install various command line tools used by, in particuar, the test suite:
-   ```
-   nix-env -i -f . -A wasm
-   nix-env -i -f . -A filecheck
-   nix-env -i -f . -A wabt
-   nix-env -i -f . -A dvm
-   ```
-
-
-## Create a coverage report
-
-Three ways of obtaining the coverage report:
-
- * Run
-   ```
-   BISECT_COVERAGE=YES make -C src asc
-   make -C test coverage
-   ```
-   and open `test/coverage/index.html` in the browser.
-
- * Alternatively, you can run
-   ```
-   nix-build -A coverage-report
-   ```
-   and open the path printed on the last line of that command.
- * On the VPN, simply go to
-   <https://hydra.oregon.dfinity.build//job/dfinity-ci-build/actorscript/coverage-report/latest/download/1/coverage/index.html>
-   for the report for the latest version on `master`.
-
-## Profile the compiler
-
-1. Build with profiling
-   ```
-   make -C src clean
-   make BUILD=p.native -C src asc
-   ```
-2. Run `asc` as normal, e.g.
-   ```
-   ./src/asc --dfinity -c foo.as -o foo.wasm
-   ```
-   this should dump a `gmon.out` file in the current directory.
-3. Create the report, e.g. using
-   ```
-   gprof --graph src/asc
-   ```
-   (Note that you have to _run_ this in the directory with `gmon.out`, but
-   _pass_ it the path to the binary.)
-
+* [Building, installing, developing on Motoko](Building.md).
+* [Overview slides](https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/users-guide/latest/download/1/as-slides.html) ([sources](guide/as-slides.md)).
+* [Draft (incomplete) manual](guide/guide.md).
+* [Prelude](src/prelude/prelude.ml).
+* Beginnings of [standard library](stdlib).
+* [Small samples](samples).
+* [Produce Exchange](stdlib/examples/produce-exchange).
 
 ## Introduction
 
@@ -141,17 +48,13 @@ Three ways of obtaining the coverage report:
 
 * Gas-related features?
 
-* Infinite-precision integers
-
-* Richer destructuring and pattern matching
-
 * Exception handling
 
 * Tail calls
 
 * Mixin composition for inheritance
 
-* Fancier types (generic bounds, top type?, union types?, co/contra-variance?)
+* Fancier types (co/contra-variance annotations?)
 
 * Linear types?
 
@@ -165,8 +68,9 @@ Three ways of obtaining the coverage report:
 ### Types
 
 * Primitive types: integers, naturals, words, floats, characters, (unicode) text, bool, null
-  - `Int`, `Nat` (trap on overflow)
+  - `Int`, `Nat` (arbitrary precision)
   - `Word8`, `Word16`, `Word32`, `Word64` (wrap around)
+  - `Int8`, `Int16`, `Int32`, `Int64`, `Nat8`, `Nat16`, `Nat32`, `Nat64` (trap on over/underflow)
   - `Float`
   - `Char`, `Text`
   - `Bool`, `Null`
@@ -195,9 +99,6 @@ Three ways of obtaining the coverage report:
 
 * Async types: like futures/promises
   - `async T`
-
-* Like types: structural expansions of nominal types
-  - `like T`
 
 * Structural equi-recursive subtyping
 
@@ -311,62 +212,48 @@ Three ways of obtaining the coverage report:
 ## Example
 
 ```
-type List<T> = ?{head : T; var tail : List<T>};
+import List "mo:std/list";
 
 type Post = shared Text -> ();
 
 actor class Server() = {
-  private var clients : List<Client> = null;
+  private var clients : List.List<Client> = List.empty<Client>();
 
-  private shared broadcast(message : Text) {
-    var next = clients;
-    loop {
-      switch next {
-        case null return;
-        case (?l) {
-          l.head.send(message);
-          next := l.tail;
-        };
-      };
+  private func broadcast(msg : Text) {
+    for (client in List.iter(clients)) {
+      client.send(msg);
     };
   };
 
-  subscribe(client : Client) : async Post {
-    let cs = new {head = client; var tail = clients};
-    clients := ?cs;
-    return broadcast;
+  public func subscribe(name : Text, client : Client) : async Post {
+    clients := List.cons(client, clients);
+    return shared func(msg) { broadcast(name # "> " # msg) };
   };
 };
 
 
-actor class Client() = this {
-  // TODO: these should be constructor params once we can compile them
-  private var name : Text = "";
-  private var server : ?Server  = null;
-
-  go(n : Text, s : Server) {
-    name := n;
-    server := ?s;
+actor class Client(name : Text, server : Server) = this {
+  public func go() {
     ignore(async {
-      let post = await s.subscribe(this);
-      post("hello from " # name);
-      post("goodbye from " # name);
+      let post = await s.subscribe(name, this);
+      post("hello");
+      post("goodbye");
     });
   };
 
-  send(msg : Text) {
-    print(name # " received " # msg # "\n");
+  public func send(msg : Text) {
+    debugPrint(name # " received " # msg # "\n");
   };
 };
 
 
 let server = Server();
-let bob = Client();
-let alice = Client();
-let charlie = Client();
-bob.go("bob", server);
-alice.go("alice", server);
-charlie.go("charlie", server);
+let bob = Client("bob", server);
+let alice = Client("bob", server);
+let charlie = Client("charlie", server);
+bob.go();
+alice.go();
+charlie.go();
 ```
 
 
@@ -377,7 +264,7 @@ See [here](design/Syntax.html).
 
 ## Semantics
 
-TODO...
+TODO ...
 
 
 ## Implementation

@@ -1,8 +1,11 @@
 # Note: this rule collection is included from one level deeper
 
 TO-TEST = \
-  $(patsubst %.as,_out/%.done,$(wildcard *.as)) \
-  $(patsubst %.sh,_out/%.done,$(wildcard *.sh))
+  $(patsubst %.mo,_out/%_done,$(wildcard *.mo)) \
+  $(patsubst %.sh,_out/%_done,$(wildcard *.sh)) \
+  $(patsubst %.wat,_out/%_done,$(wildcard *.wat)) \
+  $(patsubst %.did,_out/%_done,$(wildcard *.did)) \
+
 
 .PHONY: quick
 
@@ -11,8 +14,17 @@ quick: $(TO-TEST)
 _out:
 	@ mkdir -p $@
 
-# run single test, e.g. make _out/AST-56.done
-_out/%.done: %.as $(wildcard ../../src/asc) ../run.sh  | _out
-	@ (../run.sh $(RUNFLAGS) $< > $@.tmp && mv $@.tmp $@) || (cat $@.tmp; rm -f $@.tmp; false)
-_out/%.done: %.sh $(wildcard ../../src/asc) ../run.sh  | _out
-	@ (../run.sh $(RUNFLAGS) $< > $@.tmp && mv $@.tmp $@) || (cat $@.tmp; rm -f $@.tmp; false)
+# run single test, e.g. make _out/AST-56_done
+# _done, not .done, because run.sh likes to clean $base.*
+_out/%_done: %.mo $(wildcard ../../src/moc) ../run.sh  | _out
+	@+ chronic ../run.sh $(RUNFLAGS) $<
+	@+ touch $@
+_out/%_done: %.sh $(wildcard ../../src/moc) ../run.sh  | _out
+	@+ chronic ../run.sh $(RUNFLAGS) $<
+	@+ touch $@
+_out/%_done: %.wat $(wildcard ../../src/moc) ../run.sh  | _out
+	@+ chronic ../run.sh $(RUNFLAGS) $<
+	@+ touch $@
+_out/%_done: %.did $(wildcard ../../src/didc) ../run.sh  | _out
+	@+ chronic ../run.sh $(RUNFLAGS) $<
+	@+ touch $@
