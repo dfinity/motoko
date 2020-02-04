@@ -21,3 +21,8 @@ let package_args = [
   "--actor-idl", Arg.String (fun fp -> Flags.actor_idl_path := Some fp), " path to actor IDL files";
   string_map "--actor-alias" Flags.actor_aliases " actor import alias"
   ]
+
+let error_args = [
+  "--error-detail", Arg.Set_int Flags.error_detail, " set error message detail for syntax errors"
+  (* TODO move --hide-warnings here? *)
+  ]

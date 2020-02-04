@@ -1,0 +1,8 @@
+type List_1 = 
+ opt record {
+       int;
+       List_1;
+     };
+service : {
+  "f": (List_1) -> (List_1);
+}
