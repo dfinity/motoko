@@ -86,7 +86,7 @@ let rec exp msgs e : f = match e.it with
   | RetE e              -> eagerify (exp msgs e)
   | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)
-  | FuncE (_, sort_pat, tp, p, t, e) ->
+  | FuncE (_, sort_pat, tp, p, t, _, e) ->
     (match sort_pat.it with
      | Type.Local ->
        delayify (exp msgs e /// pat msgs p)

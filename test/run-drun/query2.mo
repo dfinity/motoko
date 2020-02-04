@@ -19,7 +19,7 @@ actor counter = {
     return tmp;
   };
 
-  public func go() = ignore async {
+  public func go() {
    counter.inc();
    counter.inc();
    counter.inc();

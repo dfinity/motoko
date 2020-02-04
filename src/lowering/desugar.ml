@@ -90,7 +90,7 @@ and exp' at note = function
     let t = T.as_array note.I.note_typ in
     I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
-  | S.FuncE (name, sp, tbs, p, _t_opt, e) ->
+  | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
     let s, po = match sp.it with
       | T.Local -> (T.Local, None)
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
@@ -475,9 +475,13 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   in
 
   let wrap_under_async e =
-    if T.is_shared_sort sort && control <> T.Returns
-    then match e.it with
-      | Ir.AsyncE (tb, e', t) -> { e with it = Ir.AsyncE (tb, wrap_po e', t) }
+    if T.is_shared_sort sort
+    then match control, e.it with
+      | T.Promises, Ir.AsyncE (tb, e', t) -> { e with it = Ir.AsyncE (tb, wrap_po e', t) }
+      | T.Returns, Ir.BlockE (
+          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (tb,e',t); _} as exp)); _ }],
+          ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
+        blockE [letP pat {exp with it = Ir.AsyncE (tb,wrap_po e',t)} ] unit
       | _ -> assert false
     else wrap_po e in
 
