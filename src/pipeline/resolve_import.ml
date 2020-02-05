@@ -144,15 +144,23 @@ let append_extension :
       string ->
       (string, Source.region -> Diag.message) result =
   fun file_exists f ->
+  let file_path = f ^ ".mo" in
+  let lib_path = Filename.concat f "lib.mo" in
   if Option.is_some (Lib.String.chop_suffix "/" f) then
-    Ok (Filename.concat f "lib.mo")
-  else if Filename.extension f = "" then
-    if file_exists (f ^ ".mo") then
-      Ok (f ^ ".mo")
-    else
-      Ok (Filename.concat f "lib.mo")
-  else
+    Ok lib_path
+  else if file_exists file_path then
+    Ok file_path
+  else if file_exists lib_path then
+    Ok lib_path
+  else if not (Filename.extension f = "") then
+    (* TODO(Christoph): Maybe this should be some sort of Error hint instead? *)
     Error (fun at -> err_import_musnt_have_extension at f)
+  else
+    (* If the import doesn't have an extension and we still couldn't
+       find it we're just going to assume the user meant to import a
+       <path>/lib.mo file (which is going to fail with a file does not
+       exist later on) *)
+    Ok lib_path
 
 let resolve_lib_import at full_path : (string, Diag.message) result =
   match append_extension Sys.file_exists full_path with

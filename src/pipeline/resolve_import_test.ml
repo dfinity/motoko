@@ -17,11 +17,17 @@ let import_relative_test_case files import expected =
 let%test "it resolves a relative file import" =
   import_relative_test_case ["list.mo"] "list" (Some "list.mo")
 
+let%test "it resolves a relative file import for a file with an extension" =
+  import_relative_test_case ["list.mo.mo"] "list.mo" (Some "list.mo.mo")
+
 let%test "it resolves a relative directory import" =
   import_relative_test_case [] "list/" (Some "list/lib.mo")
 
 let%test "it resolves to a relative directory import if no .mo file is found" =
   import_relative_test_case [] "list" (Some "list/lib.mo")
+
+let%test "it succeeds on a relative import with an extension if the corresponding lib.mo import exists" =
+  import_relative_test_case ["list.mo/lib.mo"] "list.mo" (Some "list.mo/lib.mo")
 
 let%test "it fails on a relative import with an extension" =
   import_relative_test_case [] "list.mo" None
