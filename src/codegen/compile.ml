@@ -6317,15 +6317,16 @@ and compile_exp (env : E.t) ae exp =
     let sr2, code2 = compile_exp env ae e2 in
     let sr = StackRep.relax (StackRep.join sr1 sr2) in
     sr,
+    G.dw_statement scrut.at ^^
     code_scrut ^^ G.if_
       (StackRep.to_block_type env sr)
-      (code1 ^^ StackRep.adjust env sr1 sr)
-      (code2 ^^ StackRep.adjust env sr2 sr)
+      (G.dw_statement e1.at ^^ code1 ^^ StackRep.adjust env sr1 sr)
+      (G.dw_statement e2.at ^^ code2 ^^ StackRep.adjust env sr2 sr)
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
     let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs captured in
     let (sr, code2) = compile_exp env ae' exp in
-    (sr, code1 ^^ code2)
+    (sr, code1 ^^ G.dw_statement exp.at ^^ code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
@@ -6666,30 +6667,30 @@ and compile_n_ary_pat env ae how pat =
   in (ae1, alloc_code, arity, fill_code)
 
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
-  (fun (pre_ae,alloc_code,mk_code) ->
+  (fun (pre_ae, alloc_code, mk_code) ->
        (pre_ae, G.with_region dec.at alloc_code, fun ae ->
          G.with_region dec.at (mk_code ae))) @@
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
-    let (const, fill) = compile_const_exp env pre_ae e in
+    let (const, fill) = Printf.printf "compile_dec LetD public\n"; compile_const_exp env pre_ae e in
     let fi = match const with
       | (_, Const.Message fi) -> fi
       | _ -> assert false in
     let cv = Const.t_of_v (Const.PublicMethod (fi, (E.NameEnv.find v v2en))) in
     let pre_ae1 = VarEnv.add_local_const pre_ae v cv in
-    ( pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
+    (pre_ae1, G.nop, fun ae -> fill env ae; G.nop)
 
   (* A special case for constant expressions *)
   | LetD ({it = VarP v; _}, e) when AllocHow.M.find v how = AllocHow.Const ->
-    let (extend, fill) = compile_const_dec env pre_ae dec in
-    ( extend pre_ae, G.nop, fun ae -> fill env ae; G.nop)
+    let (extend, fill) = Printf.printf "compile_dec LetD constant  %s %d %d  (%s %d %d)\n" dec.at.left.file dec.at.left.line dec.at.left.column dec.at.right.file dec.at.right.line dec.at.right.column; compile_const_dec env pre_ae dec in
+    (extend pre_ae, G.nop, fun ae -> fill env ae; G.nop)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pat_arity, fill_code) = compile_n_ary_pat env pre_ae how p in
     ( pre_ae1, alloc_code, fun ae ->
-      compile_exp_as_opt env ae pat_arity e ^^
+      G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^
       fill_code
     )
   | VarD (name, e) ->
@@ -6699,7 +6700,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
       let (pre_ae1, alloc_code) = AllocHow.add_local env pre_ae how name in
 
       ( pre_ae1, alloc_code, fun ae ->
-        compile_exp_vanilla env ae e ^^
+        G.dw_statement dec.at ^^ compile_exp_vanilla env ae e ^^
         Var.set_val env ae name
       )
 
@@ -6846,7 +6847,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
       | ((prog, _flavor) :: progs) ->
         let (ae1, code1) = compile_prog env ae prog in
         let code2 = go ae1 progs in
-        G.(dw_tag (Compile_unit ("dir/.", "motoko.mo"))) ^^
+        G.(dw_tag (Compile_unit ("./."(* FIXME *), (snd prog).at.left.file(* FIXME: empty? *)))) ^^
         code1 ^^ code2 ^^
         G.dw_tag_children_done in
     go VarEnv.empty_ae progs

@@ -28,7 +28,7 @@ assert (1 == 1);
 
 func foo (a : Int) : Bool {
   return a == 42
-}
+};
 
 // DWARF:          : DW_TAG_subprogram [2] *
 // DWARF-LABEL:        DW_AT_name     [DW_FORM_strp] {{.*}} "foo"
@@ -42,3 +42,9 @@ func foo (a : Int) : Bool {
 
 // DWARF:          NULL
 // DWARF:        NULL
+
+
+func bar (a : Int) : Int {
+    let b = a + 42;
+    if (foo b) { b } else { ignore b; assert (a != 42); b }
+}

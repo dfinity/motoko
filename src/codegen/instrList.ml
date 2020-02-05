@@ -253,3 +253,6 @@ let dw_tag_children_done : t =
   fun _ _ x -> (Nop @@ { left; right }) :: x
 
 let dw_tag_no_children t = dw_tag t ^^ dw_tag_children_done
+
+(* Marker for statement boundaries *)
+let dw_statement loc = let open Source in Printf.printf "\tSTATEMENT %s %d %d\n" loc.left.file loc.left.line loc.left.column; nop
