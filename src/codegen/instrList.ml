@@ -56,6 +56,11 @@ let optimize : instr list -> instr list = fun is ->
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
       go l' r'
+
+    | l', ({it = Nop; _} as n1) :: (({it = Nop; _} as n2) :: _ as r') when
+          Wasm_exts.CustomModuleEncode.is_dwarf_statement n1.at
+          && Wasm_exts.CustomModuleEncode.is_dwarf_statement n2.at ->
+      go l' r'
     (* Look further *)
     | _, i::r' -> go (i::l) r'
     (* Done looking *)
@@ -258,5 +263,5 @@ let dw_statement { Source.left; Source.right } =
   let left = { file = left.Source.file; line = left.Source.line; column = left.Source.column } in
   (* right is only differing in the negated line *)
   let right = { left with line = - left.line } in
-  Printf.printf "\tSTATEMENT %s %d %d\n" left.file left.line left.column;
+  assert (left.file = "" || Wasm_exts.CustomModuleEncode.is_dwarf_statement { left; right }); Printf.printf "\tSTATEMENT %s %d %d\n" left.file left.line left.column;
   fun _ _ x -> (Nop @@ { left; right }) :: x

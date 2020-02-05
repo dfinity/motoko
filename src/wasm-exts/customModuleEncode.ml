@@ -10,8 +10,18 @@ The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
 *)
 
+(* Utility predicates *)
+
 let dwarf_like Wasm.Source.{ left; right } =
   Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos)
+
+let is_dwarf_statement Wasm.Source.{ left; right } =
+  let open Wasm.Source in
+  (* we require physical equality for the filename *)
+  left.file == right.file
+  && right.line < 0 (* special marker *)
+  && left.line = - right.line
+  && left.column = right.column
 
 open CustomModule
 
