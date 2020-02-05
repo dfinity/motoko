@@ -55,7 +55,7 @@ actor a {
   };
 
 
-  public func go() = ignore async {
+  public func go() {
     try {
       await t2();
       Prim.debugPrint ("t2 ok");
