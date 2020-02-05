@@ -153,7 +153,7 @@ module E = struct
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
   type lazy_built_in =
-    | Declared of (int32 * (func_with_names -> unit))
+    | Declared of int32 * (func_with_names -> unit)
     | Defined of int32
     | Pending of (unit -> func_with_names)
   type t = {
@@ -4465,7 +4465,7 @@ module VarEnv = struct
     (* A Wasm Local of the current function, that points to memory location,
        with an offset (in words) to value.
        Used for mutable captured data *)
-    | HeapInd of (int32 * int32)
+    | HeapInd of int32 * int32
     (* A static mutable memory location (static address of a MutBox field) *)
     (* TODO: Do we need static immutable? *)
     | HeapStatic of int32
@@ -6823,7 +6823,7 @@ and compile_start_func mod_env (progs : Ir.prog list) : E.func_with_names =
       ds1', e'.it
     | _ -> ds, e.it in
 
-  let find_last_actor (ds,e) = match find_last_expr ds e with
+  let find_last_actor (ds, e) = match find_last_expr ds e with
     | ds1, ActorE (ds2, fs, _) ->
       Some (ds1 @ ds2, fs)
     | ds1, FuncE (_name, _sort, _control, [], [], _, {it = ActorE (ds2, fs, _);_}) ->
