@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 actor a {
-  public func go() = ignore async {
+  public func go() {
     /* Test asynchronous construction of an object */
 
     let a = async {

@@ -25,7 +25,7 @@ let rec exp e = match e.it with
   | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
   | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ List.map exp es
   | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
-  | FuncE (x, sp, tp, p, t, e') ->
+  | FuncE (x, sp, tp, p, t, sugar, e') ->
     "FuncE" $$ [
       Atom (Type.string_of_typ e.note.note_typ);
       sort_pat sp;
@@ -33,6 +33,7 @@ let rec exp e = match e.it with
       List.map typ_bind tp @ [
       pat p;
       (match t with None -> Atom "_" | Some t -> typ t);
+      Atom (if sugar then "" else "=");
       exp e'
     ]
   | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
