@@ -12,8 +12,6 @@ module {
   */
   public type Hash = Word32;
 
-  public type t = Hash;
-
   /**
   The hash length, always 31.
   */
