@@ -6753,7 +6753,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
           if not (VarEnv.NameEnv.mem v ae.VarEnv.vars)
           then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
         ) (Freevars.M.keys (Freevars.exp e));
-        compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
+        G.dw_statement e.at ^^ compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
       FuncDec.closed env sort control name args mk_body return_tys exp.at
   | BlockE (decs, e) ->
     let (extend, fill1) = compile_const_decs env pre_ae decs in
