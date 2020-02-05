@@ -1505,9 +1505,7 @@ than the MVP goals, however.
     let producer = Option.unwrap<M.ProducerDoc>(producerTable.getDoc(doc.producer));
 
     /**- remove document from `inventoryTable` */
-    Option.assertSome<M.InventoryDoc>(
-      inventoryTable.rem( id )
-    );
+    Option.assertSome(inventoryTable.rem( id ));
 
     /// xxx an abstraction to hide these type arguments?
     let (updatedInventory, _) =
@@ -1525,7 +1523,7 @@ than the MVP goals, however.
       reserved    = producer.reserved ;
     };
 
-    Option.assertSome<M.ProducerDoc>(
+    Option.assertSome(
       producerTable.updateDoc( producer.id, updatedProducer )
     );
 
@@ -1538,7 +1536,7 @@ than the MVP goals, however.
         keyOf(producer.id), idIsEq,
         keyOf(id), idIsEq
       );
-      Option.assertSome<M.InventoryDoc>(d);
+      Option.assertSome(d);
       t
     };
 
@@ -1727,7 +1725,7 @@ than the MVP goals, however.
 
     let transporter = Option.unwrap<M.TransporterDoc>(transporterTable.getDoc(doc.transporter));
 
-    Option.assertSome<M.RouteDoc>(
+    Option.assertSome(
       routeTable.rem( id )
     );
 
@@ -1744,7 +1742,7 @@ than the MVP goals, however.
       reserved    = transporter.reserved ;
     };
 
-    Option.assertSome<M.TransporterDoc>(
+    Option.assertSome(
       transporterTable.updateDoc( transporter.id, updatedTransporter )
     );
 
@@ -1755,7 +1753,7 @@ than the MVP goals, however.
         keyOf(doc.start_region.id), idIsEq,
         keyOf(doc.id), idIsEq
       );
-      Option.assertSome<M.RouteDoc>(d);
+      Option.assertSome(d);
       t
     };
 
@@ -2226,7 +2224,7 @@ than the MVP goals, however.
         reserved=updatedProducerReserved; // <-- the only field we are updating
       };
 
-      Option.assertSome<M.ProducerDoc>(
+      Option.assertSome(
         producerTable.updateDoc( producerDoc2.id, updatedProducer )
       )
     };
@@ -2249,7 +2247,7 @@ than the MVP goals, however.
         reserved=updatedTransporterReserved; // <-- the only field we are updating
       };
 
-      Option.assertSome<M.TransporterDoc>(
+      Option.assertSome(
         transporterTable.updateDoc( transporterDoc2.id, updatedTransporter )
       )
     };
@@ -2272,7 +2270,7 @@ than the MVP goals, however.
         reserved=updatedRetailerReserved; // <-- the only field we are updating
       };
 
-      Option.assertSome<M.RetailerDoc>(
+      Option.assertSome(
         retailerTable.updateDoc( retailerDoc.id, updatedRetailer )
       )
     };
