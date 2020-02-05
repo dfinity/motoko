@@ -70,6 +70,7 @@ val retE: exp -> exp
 val immuteE: exp -> exp
 val assignE : exp -> exp -> exp
 val labelE : id -> typ -> exp -> exp
+val ret_labelE : typ -> exp -> exp
 val loopE : exp -> exp
 val forE : pat -> exp -> exp -> exp
 val loopWhileE : exp -> exp -> exp

@@ -188,7 +188,6 @@ module E = struct
     (* Local fields (only valid/used inside a function) *)
     (* Static *)
     n_param : int32; (* Number of parameters (to calculate indices of locals) *)
-    return_arity : int; (* Number of return values (for type of Return) *)
 
     (* Immutable *)
 
@@ -220,7 +219,6 @@ module E = struct
     static_roots = ref [];
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
-    return_arity = 0;
     locals = ref [];
     local_names = ref [];
   }
@@ -229,7 +227,6 @@ module E = struct
   let mk_fun_env env n_param return_arity =
     { env with
       n_param;
-      return_arity;
       locals = ref [];
       local_names = ref [];
     }
@@ -326,8 +323,6 @@ module E = struct
         fill (mk_fun ());
     | Some (Defined fi) ->  ()
     | Some (Pending mk_fun) -> ()
-
-  let get_return_arity (env : t) = env.return_arity
 
   let get_func_imports (env : t) = !(env.func_imports)
   let get_other_imports (env : t) = !(env.other_imports)
@@ -5993,11 +5988,6 @@ and compile_exp (env : E.t) ae exp =
       SR.unit,
       compile_exp_as env ae SR.bool e1 ^^
       G.if_ [] G.nop (Dfinity.fail_assert env exp.at)
-    | RetPrim, [e] ->
-      SR.Unreachable,
-      compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
-      FakeMultiVal.store env (Lib.List.make (E.get_return_arity env) I32Type) ^^
-      G.i Return
 
     (* Numeric conversions *)
     | NumConvPrim (t1, t2), [e] -> begin

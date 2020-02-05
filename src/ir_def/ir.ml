@@ -111,7 +111,6 @@ and prim =
   | ArrayPrim of mut * Type.typ       (* array constructor *)
   | IdxPrim                           (* array indexing *)
   | BreakPrim of id                   (* break *)
-  | RetPrim                           (* return *)
   | AwaitPrim                         (* await *)
   | AssertPrim                        (* assertion *)
   | ThrowPrim                         (* throw *)

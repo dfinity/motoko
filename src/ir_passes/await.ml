@@ -88,13 +88,6 @@ and t_exp' context exp' =
       | Some Label -> (breakE id (t_exp context exp1)).it
       | None -> assert false
     end
-  | PrimE (RetPrim, [exp1]) ->
-    begin
-      match LabelEnv.find_opt Return context with
-      | Some (Cont k) -> (retE (k -@- (t_exp context exp1))).it
-      | Some Label -> (retE (t_exp context exp1)).it
-      | None -> assert false
-    end
   | AsyncE (tb, exp1, typ1) ->
      let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *)
      (* add the implicit return/throw label *)
@@ -311,13 +304,6 @@ and c_exp' context exp k =
   | PrimE (BreakPrim id, [exp1]) ->
     begin
       match LabelEnv.find_opt (Named id) context with
-      | Some (Cont k') -> c_exp context exp1 k'
-      | Some Label -> assert false
-      | None -> assert false
-    end
-  | PrimE (RetPrim, [exp1]) ->
-    begin
-      match LabelEnv.find_opt Return context with
       | Some (Cont k') -> c_exp context exp1 k'
       | Some Label -> assert false
       | None -> assert false

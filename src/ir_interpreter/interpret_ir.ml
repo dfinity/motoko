@@ -362,7 +362,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (try (V.as_array v1).(V.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap exp.at "%s" s)
       | BreakPrim id, [v1] -> find id env.labs v1
-      | RetPrim, [v1] -> Option.get env.rets v1
       | ThrowPrim, [v1] -> Option.get env.throws v1
       | AwaitPrim, [v1] ->
         assert env.flavor.has_await;

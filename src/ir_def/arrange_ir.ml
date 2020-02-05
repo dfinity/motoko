@@ -60,7 +60,6 @@ and prim = function
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
-  | RetPrim           -> Atom "RetPrim"
   | AwaitPrim         -> Atom "AwaitPrim"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"

@@ -310,8 +310,9 @@ let type_lit env lit at : T.prim =
 
 (* Expressions *)
 
-let isAsyncE exp =
+let rec isAsyncE exp =
   match exp.it with
+  | LabelE (_, _, e) -> isAsyncE e
   | AsyncE _ (* pre await transformation *)
   | PrimE (CPSAsync _, [_]) (* post await transformation *)
     -> true
@@ -422,13 +423,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
         match T.Env.find_opt id env.labs with
         | None -> error env exp.at "unbound label %s" id
         | Some t1 -> typ exp1 <: t1;
-      end;
-      T.Non <: t (* vacuously true *)
-    | RetPrim, [exp1] ->
-      begin
-        match env.rets with
-        | None -> error env exp.at "misplaced return"
-        | Some t0 -> assert (t0 <> T.Pre); typ exp1 <: t0;
       end;
       T.Non <: t (* vacuously true *)
     | ThrowPrim, [exp1] ->

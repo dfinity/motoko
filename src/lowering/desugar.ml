@@ -100,7 +100,8 @@ and exp' at note = function
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
-    I.FuncE (name, s, control, tbs', args, tys, wrap (exp e))
+    let ret_ty = T.codom control (fun () -> List.hd vars) tys in
+    I.FuncE (name, s, control, tbs', args, tys, ret_labelE ret_ty (wrap (exp e)))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
@@ -142,10 +143,10 @@ and exp' at note = function
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (tb, e) ->
-    I.AsyncE (typ_bind tb, exp e,
-              match note.I.note_typ with
-              | T.Async (t, _) -> t
-              | _ -> assert false)
+    let t1, t2 = match note.I.note_typ with
+      | T.Async (t1, t2) -> t1, t2
+      | _ -> assert false in
+    I.AsyncE (typ_bind tb, ret_labelE t2 (exp e), t1)
   | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
   | S.AssertE e -> I.PrimE (I.AssertPrim, [exp e])
   | S.AnnotE (e, _) -> assert false
@@ -335,10 +336,11 @@ and dec' at n d = match d with
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
     let args, wrap, control, _n_res = to_args n.S.note_typ None p in
     let fn = {
-      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
-         { it = obj at s (Some self_id) es obj_typ;
+      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ],
+        ret_labelE obj_typ (wrap { it = obj at s (Some self_id) es obj_typ;
            at = at;
-           note = { I.note_typ = obj_typ; I.note_eff = T.Triv } });
+           note = { I.note_typ = obj_typ; I.note_eff = T.Triv }
+        }));
       at = at;
       note = { I.note_typ = fun_typ; I.note_eff = T.Triv }
     } in

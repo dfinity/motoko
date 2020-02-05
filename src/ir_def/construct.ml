@@ -304,7 +304,7 @@ let breakE l exp =
   }
 
 let retE exp =
-  { it = PrimE (RetPrim, [exp]);
+  { it = PrimE (BreakPrim "@return", [exp]);
     at = no_region;
     note = { note_eff = eff exp;
              note_typ = T.Non }
@@ -341,6 +341,8 @@ let labelE l typ exp =
     note = { note_eff = eff exp;
              note_typ = typ }
   }
+
+let ret_labelE typ exp = labelE "@return" typ exp
 
 (* Used to desugar for loops, while loops and loop-while loops. *)
 let loopE exp =
