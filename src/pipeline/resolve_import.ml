@@ -131,10 +131,7 @@ let err_prim_pkg msgs =
     text = "the \"prim\" package is built-in, and cannot be mapped to a directory"
     }
 
-let append_extension :
-      (string -> bool) ->
-      string ->
-      string=
+let append_extension : (string -> bool) -> string -> string =
   fun file_exists f ->
   let file_path = f ^ ".mo" in
   let lib_path = Filename.concat f "lib.mo" in
