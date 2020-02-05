@@ -85,14 +85,6 @@ let err_file_does_not_exist' at full_path =
 let err_file_does_not_exist msgs at full_path =
   Diag.add_msg msgs (err_file_does_not_exist' at full_path)
 
-let err_import_musnt_have_extension at full_path =
-  Diag.{
-    sev = Error;
-    at;
-    cat = "import";
-    text = Printf.sprintf "an import must not have an extension, try importing %s as %s instead" full_path (Filename.chop_extension full_path)
-  }
-
 let err_package_not_defined msgs at pkg =
   let open Diag in
   add_msg msgs {
@@ -139,29 +131,22 @@ let err_prim_pkg msgs =
     text = "the \"prim\" package is built-in, and cannot be mapped to a directory"
     }
 
-let append_extension :
-      (string -> bool) ->
-      string ->
-      (string, Source.region -> Diag.message) result =
+let append_extension : (string -> bool) -> string -> string =
   fun file_exists f ->
+  let file_path = f ^ ".mo" in
+  let lib_path = Filename.concat f "lib.mo" in
   if Option.is_some (Lib.String.chop_suffix "/" f) then
-    Ok (Filename.concat f "lib.mo")
-  else if Filename.extension f = "" then
-    if file_exists (f ^ ".mo") then
-      Ok (f ^ ".mo")
-    else
-      Ok (Filename.concat f "lib.mo")
+    lib_path
+  else if file_exists file_path then
+    file_path
   else
-    Error (fun at -> err_import_musnt_have_extension at f)
+    lib_path
 
 let resolve_lib_import at full_path : (string, Diag.message) result =
-  match append_extension Sys.file_exists full_path with
-  | Ok full_path ->
-     if Sys.file_exists full_path
-     then Ok full_path
-     else Error (err_file_does_not_exist' at full_path)
-  | Error mk_err ->
-     Error (mk_err at)
+  let full_path = append_extension Sys.file_exists full_path in
+  if Sys.file_exists full_path
+  then Ok full_path
+  else Error (err_file_does_not_exist' at full_path)
 
 let add_lib_import msgs imported ri_ref at full_path =
   match resolve_lib_import at full_path with
