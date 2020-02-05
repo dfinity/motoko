@@ -10,6 +10,9 @@ The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
 *)
 
+let dwarf_like Wasm.Source.{ left; right } =
+  Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos)
+
 open CustomModule
 
 (* Version *)
@@ -86,9 +89,6 @@ let encode (em : extended_module) =
     if not fnd then dwarf_strings := str :: !dwarf_strings;
     offs
   in
-
-  let dwarf_like Wasm.Source.{ left; right } =
-    Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos) in
 
   let dwarf_tags = ref [Tag (0, [])] in
   let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: ((*Printf.printf "ADDING a %d\n" tag; *)!dwarf_tags) in

@@ -37,9 +37,7 @@ let optimize : instr list -> instr list = fun is ->
       go l' ({i with it = LocalSet n } :: r')
     (* Code after Return, Br or Unreachable is dead *)
     | _, ({ it = Return | Br _ | Unreachable; _ } as i) :: t ->
-      let dwarf_like Wasm.Source.{ left; right } = (* FIXME: Dedup *)
-        Wasm.Source.(left.line < 0 && left.file = no_pos.file && right = no_pos) in
-      let fishDwarf = List.find_opt (fun i -> dwarf_like i.at) in
+      let fishDwarf = List.find_opt (fun i -> Wasm_exts.CustomModuleEncode.dwarf_like i.at) in
       List.rev (match fishDwarf t with
                 | Some dw -> dw::i::l
                 | None -> i::l)
@@ -255,4 +253,10 @@ let dw_tag_children_done : t =
 let dw_tag_no_children t = dw_tag t ^^ dw_tag_children_done
 
 (* Marker for statement boundaries *)
-let dw_statement loc = let open Source in Printf.printf "\tSTATEMENT %s %d %d\n" loc.left.file loc.left.line loc.left.column; nop
+let dw_statement { Source.left; Source.right } =
+  let open Wasm.Source in
+  let left = { file = left.Source.file; line = left.Source.line; column = left.Source.column } in
+  (* right is only differing in the negated line *)
+  let right = { left with line = - left.line } in
+  Printf.printf "\tSTATEMENT %s %d %d\n" left.file left.line left.column;
+  fun _ _ x -> (Nop @@ { left; right }) :: x
