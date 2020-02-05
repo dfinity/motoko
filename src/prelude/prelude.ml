@@ -106,7 +106,7 @@ func @text_chars(xs : Text) : (() -> @Iter<Char>) =
 // The text_of functions do not need to be exposed; the user can just use
 // the show above.
 
-func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : [Text]) : Text {
+func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : Nat -> Text) : Text {
   var text = "";
   var n = x;
 
@@ -116,16 +116,24 @@ func @text_of_num(x : Nat, base : Nat, sep : Nat, digits : [Text]) : Text {
   while (n > 0) {
     let rem = n % base;
     if (i == sep) { text := "_" # text; i := 0 };
-    text := digits[rem] # text;
+    text := digits rem # text;
     n := n / base;
     i += 1;
   };
   return text;
 };
 
-let @decdigits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+func @digits_dec(x : Nat) : Text =
+ (prim "conv_Char_Text" : Char -> Text) (
+   (prim "num_conv_Word32_Char" : Word32 -> Char) (
+     (prim "num_conv_Nat_Word32" : Nat -> Word32) (
+       x + 0x30
+     )
+   )
+ );
+
 func @text_of_Nat(x : Nat) : Text {
-  @text_of_num(x, 10, 3, @decdigits);
+  @text_of_num(x, 10, 3, @digits_dec);
 };
 
 func @text_of_Int(x : Int) : Text {
@@ -133,14 +141,19 @@ func @text_of_Int(x : Int) : Text {
   @text_of_Nat((prim "abs" : Int -> Nat) x)
 };
 
-let @hexdigits =
-  [ "0", "1", "2", "3", "4", "5", "6", "7",
-    "8", "9", "A", "B", "C", "D", "E", "F" ];
+func @digits_hex(x : Nat) : Text =
+ (prim "conv_Char_Text" : Char -> Text) (
+   (prim "num_conv_Word32_Char" : Word32 -> Char) (
+     (prim "num_conv_Nat_Word32" : Nat -> Word32) (
+       x + (if (x < 10) 0x30 else 55)
+     )
+   )
+ );
 func @text_of_Word(x : Nat) : Text {
-  return "0x" # @text_of_num(x, 16, 4, @hexdigits);
+  return "0x" # @text_of_num(x, 16, 4, @digits_hex);
 };
 
-// Thre is some duplication with the prim_module, but we need these here
+// There is some duplication with the prim_module, but we need these here
 // before we can load the prim module
 func @int64ToInt(n : Int64) : Int = (prim "num_conv_Int64_Int" : Int64 -> Int) n;
 func @int32ToInt(n : Int32) : Int = (prim "num_conv_Int32_Int" : Int32 -> Int) n;
