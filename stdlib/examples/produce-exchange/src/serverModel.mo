@@ -40,7 +40,7 @@ uses are is not.
 
 
 public type List<T> = List.List<T>;
-public type Hash = Hash.t;
+public type Hash = Hash.Hash;
 public type Trie<K,V> = Trie.Trie<K,V>;
 public type TrieBuild<K,V> = Trie.Build.TrieBuild<K,V>;
 public type Key<K> = Trie.Key<K>;
