@@ -43,6 +43,7 @@ func foo (a : Int) : Bool {
 // DWARF:          NULL
 // DWARF:        NULL
 
+func baz (a : Int) : Bool = a == 42;
 
 func bar (a : Int) : Int {
     let b = a + 42;
