@@ -627,9 +627,11 @@ let encode (em : extended_module) =
       let g = gap32 () in
       let p = pos s in
       vec local (compress locals);
-      (*let sequence_start = pos s in*)
       let instr_notes = ref Instrs.empty in
-      let note_instr i = modif instr_notes (Instrs.add (pos s, i.at.left)); instr i in
+      let note_instr i =
+        if not (dwarf_like i.at) then
+          modif instr_notes (Instrs.add (pos s, i.at.left));
+        instr i in
       list note_instr body;
       end_ ();
       let sequence_end = pos s in
@@ -638,7 +640,7 @@ let encode (em : extended_module) =
 
     let code_section_start = ref 0
     let code_section fs =
-      section 10 (fun fs -> code_section_start := pos s; Printf.printf "CODE SECTION START    ADDR: %x\n" !code_section_start; vec code fs) fs (fs <> [])
+      section 10 (fun fs -> code_section_start := pos s; vec code fs) fs (fs <> [])
 
     (* Element section *)
     let segment dat seg =
