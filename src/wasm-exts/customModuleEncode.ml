@@ -678,6 +678,7 @@ let encode (em : extended_module) =
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
 
     let uleb128 n = vu64 (Int64.of_int n)
+    let sleb128 n = vs64 (Int64.of_int n)
     let close_section () = u8 0x00
     let write16 = Buffer.add_int16_le s.buf
     let write32 i = Buffer.add_int32_le s.buf (Int32.of_int i)
@@ -825,11 +826,13 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 uleb128 1; (* file_names_count *)
                 List.iter zero_terminated ["charToText.mo"];
             );
-
+(*
             let standard lns = u8 lns in
             let extended lne = u8 0; u8 1; u8 lne in
             standard Dwarf5.dw_LNS_copy;
-            extended Dwarf5.dw_LNE_end_sequence
+            extended Dwarf5.dw_LNE_end_sequence   *)
+            Dwarf5.(Machine.moves u8 uleb128 sleb128
+             [dw_LNS_copy; - dw_LNE_end_sequence])
             ;
               let code_start = !code_section_start in
               let rel addr = addr - code_start in

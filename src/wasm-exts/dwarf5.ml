@@ -385,7 +385,23 @@ let rec infer from toward = match from, toward with
   | (_, _, disc, flags), (t, loc, disc', flags') when disc <> disc' -> failwith "cannot do disc yet"
   | (_, _, _, (s, bb, ep, eb)), (t, loc, disc, (s', bb', ep', eb')) when s <> s' ->
     dw_LNS_negate_stmt :: infer (t, loc, disc, (s', bb, ep, eb)) (t, loc, disc, (s', bb', ep', eb'))
-  | state, state' when state = state' -> []
+  | state, state' when state = state' -> [dw_LNS_copy]
   | _ -> failwith "not covered"
+
+
+let moves u8 uleb sleb =
+  let standard lns = u8 lns in
+  let extended lne = u8 0; u8 1; u8 (- lne) in
+  let rec chase = function
+  | [] -> Printf.printf "DONE\n"
+  | op :: tail when dw_LNS_copy = op -> Printf.printf "COPY\n"; standard op; chase tail
+  | op :: offs :: tail when dw_LNS_advance_pc = op -> Printf.printf "+PC\n"; standard op; uleb offs; chase tail
+  | op :: delta :: tail when dw_LNS_advance_line = op -> Printf.printf "+LINE\n"; standard op; sleb delta; chase tail
+  | op :: file :: tail when dw_LNS_set_file = op -> Printf.printf ":=FILE\n"; standard op; uleb file; chase tail
+  | op :: col :: tail when dw_LNS_set_column = op -> Printf.printf ":=COLUMN\n"; standard op; uleb col; chase tail
+  | op :: tail when dw_LNS_negate_stmt = op -> Printf.printf "~STMT\n"; standard op; chase tail
+  | op :: tail when - dw_LNE_end_sequence = op -> Printf.printf "FIN\n"; extended op; chase tail
+  | _ -> failwith "move not covered"
+  in chase
 
 end
