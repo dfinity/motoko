@@ -47,7 +47,8 @@ actor a {
     Prim.debugPrint l;
     Prim.debugPrintInt(c);
   };
-  public func printLabeledOpt(?l:?Text) {
+  public func printLabeledOpt(lo:?Text) {
+    let ?l = lo;
     Prim.debugPrint l;
     Prim.debugPrintInt(c);
   };

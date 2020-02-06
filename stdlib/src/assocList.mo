@@ -1,7 +1,12 @@
+/**
+[#mod-assocList]
+= `assocList` -- Association lists
+*/
+
 import List "list";
 
 module {
-/**
+/*
 
 Association Lists
 ==================
@@ -15,7 +20,7 @@ Implements the same interface as `Trie`, but as a linked-list of key-value pairs
 // polymorphic association linked lists between keys and values
 public type AssocList<K,V> = List.List<(K,V)>;
 
-  /**
+  /*
    `find`
    --------
    find the value associated with a given key, or null if absent.
@@ -42,7 +47,7 @@ public type AssocList<K,V> = List.List<(K,V)>;
     rec(al)
   };
 
-  /**
+  /*
    `replace`
    ---------
    replace the value associated with a given key, or add it, if missing.
@@ -79,7 +84,7 @@ public type AssocList<K,V> = List.List<(K,V)>;
     rec(al)
   };
 
-  /**
+  /*
    `diff`
    ---------
    The key-value pairs of the final list consist of those pairs of
@@ -105,7 +110,7 @@ public type AssocList<K,V> = List.List<(K,V)>;
     rec(al1)
   };
 
-  /**
+  /*
    `mapAppend`
    --------
   */
@@ -133,7 +138,7 @@ public type AssocList<K,V> = List.List<(K,V)>;
     mapAppend<K,V,W,X>(al1, al2, vbin)
   };
 
-  /**
+  /*
    `disj`
    --------
    This operation generalizes the notion of "set union" to finite maps.
@@ -179,7 +184,7 @@ public type AssocList<K,V> = List.List<(K,V)>;
     rec1(al1)
   };
 
-  /**
+  /*
    `join`
    ---------
    This operation generalizes the notion of "set intersection" to
@@ -209,10 +214,10 @@ public type AssocList<K,V> = List.List<(K,V)>;
   };
 
 
-  /**
+  /*
    `fold`
    ---------
-   */
+  */
   public func fold<K,V,X>(al:AssocList<K,V>,
                    nil:X,
                    cons:(K,V,X)->X)

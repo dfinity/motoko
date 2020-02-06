@@ -1,10 +1,15 @@
+/**
+[#mod-trieMap]
+= `trieMap` -- Functional map
+*/
+
 import T "trie";
 import P "prelude";
 import I "iter";
 import Hash "hash";
 import List "list";
 
-/**
+/*
 
 Trie Map
 =========================
@@ -18,7 +23,7 @@ For now, this class does not permit a direct `clone` operation (neither does `Ha
 */
 
 module {
-public class TrieMap<K,V> (isEq:(K, K) -> Bool, hashOf: K -> T.Hash) {
+public class TrieMap<K,V> (isEq:(K, K) -> Bool, hashOf: K -> Hash.Hash) {
 
   var map = T.empty<K, V>();
   var _count : Nat = 0;

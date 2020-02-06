@@ -111,7 +111,7 @@ main = do
     putStrLn "Starting the session"
     runSession
       (mo_ide
-       <> " --canister-main app.mo --debug"
+       <> " --canister-main app.mo --debug --error-detail 0"
        <> " --package mydep " <> project <> "/mydependency/")
       fullCaps
       "." $ do
@@ -160,9 +160,9 @@ main = do
           actual <- getCompletions doc (Position 7 0)
           liftIO
             (shouldBe
-             ([("empty", Just "() -> Stack")])
              (mapMaybe (\c -> guard (c^.label == "empty")
-                         *> pure (c^.label, c^.detail)) actual))
+                              *> pure (c^.label, c^.detail)) actual)
+             ([("empty", Just "() -> Stack")]))
           --     15 | List.push<Int>(x, s);
           -- ==> 15 | List.pus
           let edit = TextEdit (Range (Position 14 11) (Position 14 27)) "pus"
@@ -191,7 +191,7 @@ main = do
           _ <- applyEdit doc edit
           sendNotification TextDocumentDidSave (DidSaveTextDocumentParams doc)
           (diagnostic:_) <- waitForDiagnostics
-          liftIO (diagnostic^.message `shouldBe` "unexpected token")
+          liftIO (diagnostic^.message `shouldBe` "unexpected token 'import'")
 
         log "Lexer failures don't crash the server"
         withDoc "ListClient.mo" \doc -> do
@@ -212,7 +212,7 @@ main = do
           withDoc "app.mo" \appDoc -> do
             sendNotification TextDocumentDidSave (DidSaveTextDocumentParams appDoc)
             diagnostic:_ <- waitForActualDiagnostics
-            liftIO (diagnostic^.message `shouldBe` "unexpected token")
+            liftIO (diagnostic^.message `shouldBe` "unexpected token 'import'")
 
         log "Rebuilding with package paths"
         withDoc "app.mo" \doc -> do

@@ -1,3 +1,8 @@
+/**
+[#mod-array]
+= `array` -- Arrays
+*/
+
 import Prim "mo:prim";
 module {
   public func equals<A>(a : [A], b : [A], eq : (A,A) -> Bool) : Bool {

@@ -324,9 +324,7 @@ let transform mode env prog =
               let r = [e] -->* (ic_rejectE (errorMessageE e)) in
               let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
-            (* oneway with an `ignore(async _)` body
-               TODO: remove this special casing once async fully supported
-              *)
+            (* oneway, always with `ignore(async _)` body *)
             | Returns,
               { it = BlockE (
                 [{ it = LetD (
@@ -353,9 +351,8 @@ let transform mode env prog =
               let r = [e] -->* tupE [] in (* discard error *)
               let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
               FuncE (x, T.Shared s', Returns, typbinds', args', ret_tys, exp')
-            (* sequential oneway *)
             | Returns, _ ->
-              FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
+              assert false
             | Replies,_ -> assert false
           end
       end

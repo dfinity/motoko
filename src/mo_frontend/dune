@@ -6,7 +6,8 @@
 
 (menhir
   (modules parser)
-  (flags --strict --inspection --unused-tokens --table --cmly))
+  (flags --strict --inspection --unused-tokens --table --cmly -v)
+  (infer false))
 
 (rule
  (targets parser_recover.ml)

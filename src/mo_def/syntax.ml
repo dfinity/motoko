@@ -122,6 +122,15 @@ type inst = (typ list, Type.typ list) Source.annotated_phrase (* For implicit sc
 
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
+type sugar = bool (* Is the source of a function body a block `<block>`,
+                     subject to further desugaring during parse,
+                     or the invariant form `= <exp>`.
+                     In the final output of the parser, the exp in FuncE is
+                     always in its fully desugared form and the
+                     value of the sugar field is irrelevant.
+                     This flag is used to correctly desugar an actor's
+                     public functions as oneway, shared functions *)
+
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
@@ -141,7 +150,7 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | FuncE of string * sort_pat * typ_bind list * pat * typ option * exp  (* function *)
+  | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
   | CallE of exp * inst * exp                  (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance)*)
   | NotE of exp                                (* negation *)
@@ -269,7 +278,8 @@ let ensure_scope_bind var tbs =
   | _ ->
     scope_bind var::tbs
 
-let funcT(sort, tbs, t1, t2) =
+
+let funcT (sort, tbs, t1, t2) =
   match sort.it, t2.it with
   | Type.Local, AsyncT _ ->
     FuncT(sort, ensure_scope_bind "" tbs, t1, t2)
@@ -278,11 +288,43 @@ let funcT(sort, tbs, t1, t2) =
   | _ ->
     FuncT(sort, tbs, t1, t2)
 
-let funcE(f, s, tbs, p, t_opt, e) =
+let is_Async e =
+  match e.it with
+  | AsyncE _ -> true
+  | _ -> false
+
+let is_IgnoreAsync e =
+  match e.it with
+  | BlockE [ { it = IgnoreD
+      { it = AnnotE ({ it = AsyncE _; _},
+        { it = AsyncT (_, { it = TupT[]; _}); _}); _}; _}] ->
+    true
+  | _ -> false
+
+let async f e =
+  AsyncE (scope_bind f, e)  @? e.at
+
+let ignoreAsync f e =
+  BlockE [ IgnoreD (
+    AnnotE (AsyncE (scope_bind f, e)  @? e.at,
+      AsyncT (scope_typ e.at,TupT[] @! e.at) @! e.at) @? e.at ) @? e.at] @? e.at
+
+let desugar sp f t_opt (sugar, e) =
+  match sugar, e with
+  | (false, e) -> false, e (* body declared as EQ e *)
+  | (true, e) -> (* body declared as immediate block *)
+    match sp.it, t_opt with
+    | _, Some {it = AsyncT _; _} ->
+      true, async f.it e
+    | Type.Shared _, (None | Some { it = TupT []; _}) ->
+      true, ignoreAsync f.it e
+    | _, _ -> (true, e)
+
+let funcE (f, s, tbs, p, t_opt, sugar, e) =
   match s.it, t_opt, e with
   | Type.Local, Some { it = AsyncT _; _}, {it = AsyncE _; _}
   | Type.Shared _, _, _ ->
-    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, e)
+    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, sugar, e)
   | _ ->
-    FuncE(f, s, tbs, p, t_opt, e)
+    FuncE(f, s, tbs, p, t_opt, sugar, e)
 
