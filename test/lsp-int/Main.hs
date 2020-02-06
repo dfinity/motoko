@@ -160,9 +160,9 @@ main = do
           actual <- getCompletions doc (Position 7 0)
           liftIO
             (shouldBe
-             ([("empty", Just "() -> Stack")])
              (mapMaybe (\c -> guard (c^.label == "empty")
-                         *> pure (c^.label, c^.detail)) actual))
+                              *> pure (c^.label, c^.detail)) actual)
+             ([("empty", Just "() -> Stack")]))
           --     15 | List.push<Int>(x, s);
           -- ==> 15 | List.pus
           let edit = TextEdit (Range (Position 14 11) (Position 14 27)) "pus"
