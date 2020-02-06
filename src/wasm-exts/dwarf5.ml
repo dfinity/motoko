@@ -331,7 +331,8 @@ let line_range = 7
 let opcode_base = dw_LNS_set_isa
 
 type state = int * (int * int * int) * int * (bool * bool * bool * bool)
-let default_loc = (0, 0, 0)
+let default_loc = 0, 0, 0
+let start_state = 0, default_loc, 0, (default_is_stmt, false, false, false)
 
 let interpret (out : state -> unit) : int list -> state -> state =
   function
@@ -358,11 +359,11 @@ let interpret (out : state -> unit) : int list -> state -> state =
 
   | [c] when dw_LNE_end_sequence = c -> (* FIXME: model end_sequence *)
     fun ((op, _, disc, _) as st) ->
-    out st; (0, default_loc, 0, (default_is_stmt, false, false, false))
+    out st; start_state
 
-  | c :: op :: t when dw_LNE_set_address = c ->
+  | c :: op :: t when - dw_LNE_set_address = c ->
     fun (_, loc, disc, flags) -> (op, loc, disc, flags)
-  | c :: disc :: t when dw_LNE_set_discriminator = c ->
+  | c :: disc :: t when - dw_LNE_set_discriminator = c ->
     fun (op, loc, _, flags) -> (op, loc, disc, flags)
 
   | prg -> failwith "invalid program"
