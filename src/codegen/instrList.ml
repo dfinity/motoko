@@ -263,5 +263,5 @@ let dw_statement { Source.left; Source.right } =
   let left = { file = left.Source.file; line = left.Source.line; column = left.Source.column } in
   (* right is only differing in the negated line *)
   let right = { left with line = - left.line } in
-  assert (left.file = "" || Wasm_exts.CustomModuleEncode.is_dwarf_statement { left; right }); Printf.printf "\tSTATEMENT %s %d %d\n" left.file left.line left.column;
+  (* FIXME *)assert (left.file = "" || Wasm_exts.CustomModuleEncode.is_dwarf_statement { left; right });
   fun _ _ x -> (Nop @@ { left; right }) :: x

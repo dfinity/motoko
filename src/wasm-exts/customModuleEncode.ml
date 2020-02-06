@@ -100,6 +100,13 @@ let encode (em : extended_module) =
     offs
   in
 
+  let module S = Set.Make (struct type t = Wasm.Source.pos let compare = compare end) in
+  let statement_positions = ref S.empty in
+
+  let module Instrs = Set.Make (struct type t = int * Wasm.Source.pos let compare = compare end) in
+  let module Seq = Set.Make (struct type t = int * Instrs.t * int let compare = compare end) in
+  let sequence_bounds = ref Seq.empty in
+
   let dwarf_tags = ref [Tag (0, [])] in
   let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: ((*Printf.printf "ADDING a %d\n" tag; *)!dwarf_tags) in
   let close_dwarf () =
@@ -285,7 +292,10 @@ let encode (em : extended_module) =
 
       match e.it with
       | Nop when dwarf_like e.at -> close_dwarf ()
+      | Nop when is_dwarf_statement e.at -> Printf.printf "Line %d\n" e.at.right.line; statement_positions := S.add e.at.left !statement_positions
       | Block (_, es) when dwarf_like e.at -> extract_dwarf (-e.at.left.line) es
+      | _ when (if S.mem e.at.left !statement_positions then Printf.printf "ENCOUNTERED File %s Line %d    ADDR: %x\n" e.at.left.file e.at.left.line (pos s); false) -> assert false;
+
       | Unreachable -> op 0x00
       | Nop -> op 0x01
 
@@ -612,12 +622,18 @@ let encode (em : extended_module) =
       let g = gap32 () in
       let p = pos s in
       vec local (compress locals);
-      list instr body;
+      let sequence_start = pos s in
+      let instr_notes = ref Instrs.empty in
+      let note_instr i = instr_notes := Instrs.add (pos s, i.at.left) !instr_notes; instr i in
+      list note_instr body;
       end_ ();
-      patch_gap32 g (pos s - p)
+      let sequence_end = pos s in
+      patch_gap32 g (sequence_end - p);
+      sequence_bounds := Seq.add (sequence_start, !instr_notes, sequence_end) !sequence_bounds
 
+    let code_section_start = ref 0
     let code_section fs =
-      section 10 (vec code) fs (fs <> [])
+      section 10 (code_section_start := pos s; Printf.printf "CODE SECTION START    ADDR: %x\n" (pos s); vec code) fs (fs <> [])
 
     (* Element section *)
     let segment dat seg =
@@ -808,6 +824,15 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             let extended lne = u8 0; u8 1; u8 lne in
             standard Dwarf5.dw_LNS_copy;
             extended Dwarf5.dw_LNE_end_sequence
+            ;
+              let code_start = !code_section_start in
+              let rel addr = addr - code_start in
+              let sequence (sta, notes, en) =
+                Printf.printf "LINES::::  SEQUENCE start/END    ADDR: %x - %x\n" (rel sta) (rel en);
+                Instrs.iter (fun (addr, {file; line; column}) -> Printf.printf "\tLINES::::  Instr    ADDR: %x - (%s:%d:%d)\n" (rel addr) file line column) notes
+
+              in
+              Seq.iter sequence !sequence_bounds
         )
       in
       custom_section ".debug_line" debug_line_section_body () true
