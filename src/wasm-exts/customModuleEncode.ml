@@ -627,18 +627,18 @@ let encode (em : extended_module) =
       let g = gap32 () in
       let p = pos s in
       vec local (compress locals);
-      let sequence_start = pos s in
+      (*let sequence_start = pos s in*)
       let instr_notes = ref Instrs.empty in
       let note_instr i = modif instr_notes (Instrs.add (pos s, i.at.left)); instr i in
       list note_instr body;
       end_ ();
       let sequence_end = pos s in
       patch_gap32 g (sequence_end - p);
-      modif sequence_bounds (Seq.add (sequence_start, !instr_notes, sequence_end))
+      modif sequence_bounds (Seq.add (p, !instr_notes, sequence_end))
 
     let code_section_start = ref 0
     let code_section fs =
-      section 10 (code_section_start := pos s; Printf.printf "CODE SECTION START    ADDR: %x\n" (pos s); vec code) fs (fs <> [])
+      section 10 (fun fs -> code_section_start := pos s; Printf.printf "CODE SECTION START    ADDR: %x\n" !code_section_start; vec code fs) fs (fs <> [])
 
     (* Element section *)
     let segment dat seg =
@@ -783,7 +783,7 @@ let encode (em : extended_module) =
       in
       custom_section ".debug_str" debug_strings_section_body dss (dss <> [])
 
-    let debug_line_section dss =
+    let debug_line_section fs =
       let debug_line_section_body () =
         unit(fun () ->
             write16 0x0005;
@@ -840,7 +840,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
               Seq.iter sequence !sequence_bounds
         )
       in
-      custom_section ".debug_line" debug_line_section_body () true
+      custom_section ".debug_line" debug_line_section_body () (fs <> [])
 
     (* Module *)
 
@@ -866,7 +866,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       name_section em.name;
       debug_abbrev_section ();
       debug_info_section ();
-      debug_line_section ();
+      debug_line_section m.funcs;
       debug_strings_section !dwarf_strings
   end
   in E.module_ em;
