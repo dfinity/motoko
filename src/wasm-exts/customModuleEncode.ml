@@ -76,6 +76,9 @@ let encode (em : extended_module) =
   let prev_il = ref 0 in
   let prev_ic = ref 0 in
 
+  (* modify reference *)
+  let modif r f = r := f !r in
+
   let rec add_source x = function
     | [] ->
       sources := !sources @ [ x ];
@@ -292,7 +295,9 @@ let encode (em : extended_module) =
 
       match e.it with
       | Nop when dwarf_like e.at -> close_dwarf ()
-      | Nop when is_dwarf_statement e.at -> Printf.printf "Line %d\n" e.at.right.line; statement_positions := S.add e.at.left !statement_positions
+      | Nop when is_dwarf_statement e.at ->
+        Printf.printf "Line %d\n" e.at.right.line;
+        modif statement_positions (S.add e.at.left)
       | Block (_, es) when dwarf_like e.at -> extract_dwarf (-e.at.left.line) es
       | _ when (if S.mem e.at.left !statement_positions then Printf.printf "ENCOUNTERED File %s Line %d    ADDR: %x\n" e.at.left.file e.at.left.line (pos s); false) -> assert false;
 
@@ -624,12 +629,12 @@ let encode (em : extended_module) =
       vec local (compress locals);
       let sequence_start = pos s in
       let instr_notes = ref Instrs.empty in
-      let note_instr i = instr_notes := Instrs.add (pos s, i.at.left) !instr_notes; instr i in
+      let note_instr i = modif instr_notes (Instrs.add (pos s, i.at.left)); instr i in
       list note_instr body;
       end_ ();
       let sequence_end = pos s in
       patch_gap32 g (sequence_end - p);
-      sequence_bounds := Seq.add (sequence_start, !instr_notes, sequence_end) !sequence_bounds
+      modif sequence_bounds (Seq.add (sequence_start, !instr_notes, sequence_end))
 
     let code_section_start = ref 0
     let code_section fs =
