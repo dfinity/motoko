@@ -366,4 +366,26 @@ let interpret (out : state -> unit) : int list -> state -> state =
     fun (op, loc, _, flags) -> (op, loc, disc, flags)
 
   | prg -> failwith "invalid program"
+
+
+
+
+let rec infer from toward = match from, toward with
+  | (f, _, _, _), (t, _, _, _) when t < f -> failwith "can't go backwards"
+  | (0, loc, disc, flags), (t, loc', disc', flags') when t > 0 ->
+    dw_LNS_const_add_pc :: t :: infer (t, loc, disc, flags) (t, loc', disc', flags')
+  | (f, loc, disc, flags), (t, loc', disc', flags') when t > f ->
+    dw_LNS_const_add_pc :: t - f :: infer (t, loc, disc, flags) (t, loc', disc', flags')
+  | (_, (file, line, col), disc, flags), (t, (file', line', col'), disc', flags') when file <> file' ->
+    dw_LNS_set_file :: file' :: infer (t, (file', line, col), disc, flags) (t, (file', line', col'), disc', flags')
+  | (_, (_, line, col), disc, flags), (t, (file, line', col'), disc', flags') when line <> line' ->
+    dw_LNS_advance_line :: line' - line :: infer (t, (file, line', col), disc, flags) (t, (file, line', col'), disc', flags')
+  | (_, (_, _, col), disc, flags), (t, (file, line, col'), disc', flags') when col <> col' ->
+    dw_LNS_set_column :: col' :: infer (t, (file, line, col'), disc', flags') (t, (file, line, col'), disc', flags')
+  | (_, _, disc, flags), (t, loc, disc', flags') when disc <> disc' -> failwith "cannot do disc yet"
+  | (_, _, _, (s, bb, ep, eb)), (t, loc, disc, (s', bb', ep', eb')) when s <> s' ->
+    dw_LNS_negate_stmt :: infer (t, loc, disc, (s', bb, ep, eb)) (t, loc, disc, (s', bb', ep', eb'))
+  | state, state' when state = state' -> []
+  | _ -> failwith "not covered"
+
 end
