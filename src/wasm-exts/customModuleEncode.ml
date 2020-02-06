@@ -103,10 +103,9 @@ let encode (em : extended_module) =
     offs
   in
 
-  let module S = Set.Make (struct type t = Wasm.Source.pos let compare = compare end) in
-  let statement_positions = ref S.empty in
-
   let module Instrs = Set.Make (struct type t = int * Wasm.Source.pos let compare = compare end) in
+  let statement_positions = ref Instrs.empty in
+
   let module Seq = Set.Make (struct type t = int * Instrs.t * int let compare = compare end) in
   let sequence_bounds = ref Seq.empty in
 
@@ -297,9 +296,9 @@ let encode (em : extended_module) =
       | Nop when dwarf_like e.at -> close_dwarf ()
       | Nop when is_dwarf_statement e.at ->
         Printf.printf "Line %d\n" e.at.right.line;
-        modif statement_positions (S.add e.at.left)
+        modif statement_positions (Instrs.add (pos s, e.at.left))
       | Block (_, es) when dwarf_like e.at -> extract_dwarf (-e.at.left.line) es
-      | _ when (if S.mem e.at.left !statement_positions then Printf.printf "ENCOUNTERED File %s Line %d    ADDR: %x\n" e.at.left.file e.at.left.line (pos s); false) -> assert false;
+      (*  | _ when (if S.mem e.at.left !statement_positions then Printf.printf "ENCOUNTERED File %s Line %d    ADDR: %x\n" e.at.left.file e.at.left.line (pos s); false) -> assert false; *)
 
       | Unreachable -> op 0x00
       | Nop -> op 0x01
@@ -836,7 +835,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
               let rel addr = addr - code_start in
               let sequence (sta, notes, en) =
                 Printf.printf "LINES::::  SEQUENCE start/END    ADDR: %x - %x\n" (rel sta) (rel en);
-                Instrs.iter (fun (addr, {file; line; column}) -> Printf.printf "\tLINES::::  Instr    ADDR: %x - (%s:%d:%d)\n" (rel addr) file line column) notes
+                Instrs.iter (fun (addr, ({file; line; column}) as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: %x - (%s:%d:%d)    %s\n" (rel addr) file line column (if Instrs.mem instr !statement_positions then "is_stmt" else "")) notes
 
               in
               Seq.iter sequence !sequence_bounds
