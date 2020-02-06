@@ -826,14 +826,19 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 uleb128 1; (* file_names_count *)
                 List.iter zero_terminated ["charToText.mo"];
             );
-(*
-            let standard lns = u8 lns in
-            let extended lne = u8 0; u8 1; u8 lne in
-            standard Dwarf5.dw_LNS_copy;
-            extended Dwarf5.dw_LNE_end_sequence   *)
-            Dwarf5.(Machine.moves u8 uleb128 sleb128
-             [dw_LNS_copy; - dw_LNE_end_sequence])
-            ;
+            Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
+                      [- dw_LNE_set_address; 0x2345;
+                       dw_LNS_copy;
+
+                       dw_LNS_advance_pc; 1;
+                       dw_LNS_copy;
+
+                       dw_LNS_advance_pc; 1;
+                       dw_LNS_set_column; 13;
+                       dw_LNS_copy;
+
+                       dw_LNS_advance_pc; 1;
+                       - dw_LNE_end_sequence]);
               let code_start = !code_section_start in
               let rel addr = addr - code_start in
               let sequence (sta, notes, en) =

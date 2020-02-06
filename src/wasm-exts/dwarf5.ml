@@ -373,7 +373,7 @@ let interpret (out : state -> unit) : int list -> state -> state =
 let rec infer from toward = match from, toward with
   | (f, _, _, _), (t, _, _, _) when t < f -> failwith "can't go backwards"
   | (0, loc, disc, flags), (t, loc', disc', flags') when t > 0 ->
-    dw_LNS_const_add_pc :: t :: infer (t, loc, disc, flags) (t, loc', disc', flags')
+    - dw_LNE_set_address :: t :: infer (t, loc, disc, flags) (t, loc', disc', flags')
   | (f, loc, disc, flags), (t, loc', disc', flags') when t > f ->
     dw_LNS_const_add_pc :: t - f :: infer (t, loc, disc, flags) (t, loc', disc', flags')
   | (_, (file, line, col), disc, flags), (t, (file', line', col'), disc', flags') when file <> file' ->
@@ -389,9 +389,10 @@ let rec infer from toward = match from, toward with
   | _ -> failwith "not covered"
 
 
-let moves u8 uleb sleb =
+let moves u8 uleb sleb u32 =
   let standard lns = u8 lns in
-  let extended lne = u8 0; u8 1; u8 (- lne) in
+  let extended1 lne = u8 0; u8 1; u8 (- lne) in
+  let extended5 lne = u8 0; u8 5; u8 (- lne) in
   let rec chase = function
   | [] -> Printf.printf "DONE\n"
   | op :: tail when dw_LNS_copy = op -> Printf.printf "COPY\n"; standard op; chase tail
@@ -400,7 +401,8 @@ let moves u8 uleb sleb =
   | op :: file :: tail when dw_LNS_set_file = op -> Printf.printf ":=FILE\n"; standard op; uleb file; chase tail
   | op :: col :: tail when dw_LNS_set_column = op -> Printf.printf ":=COLUMN\n"; standard op; uleb col; chase tail
   | op :: tail when dw_LNS_negate_stmt = op -> Printf.printf "~STMT\n"; standard op; chase tail
-  | op :: tail when - dw_LNE_end_sequence = op -> Printf.printf "FIN\n"; extended op; chase tail
+  | op :: tail when - dw_LNE_end_sequence = op -> Printf.printf "FIN\n"; extended1 op; chase tail
+  | op :: addr :: tail when - dw_LNE_set_address = op -> Printf.printf "NEW ADDR\n"; extended5 op; u32 addr; chase tail
   | _ -> failwith "move not covered"
   in chase
 
