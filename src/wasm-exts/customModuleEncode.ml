@@ -106,8 +106,8 @@ let encode (em : extended_module) =
   let module Instrs = Set.Make (struct type t = int * Wasm.Source.pos let compare = compare end) in
   let statement_positions = ref Instrs.empty in
 
-  let module Seq = Set.Make (struct type t = int * Instrs.t * int let compare = compare end) in
-  let sequence_bounds = ref Seq.empty in
+  let module Sequ = Set.Make (struct type t = int * Instrs.t * int let compare = compare end) in
+  let sequence_bounds = ref Sequ.empty in
 
   let dwarf_tags = ref [Tag (0, [])] in
   let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: ((*Printf.printf "ADDING a %d\n" tag; *)!dwarf_tags) in
@@ -635,7 +635,7 @@ let encode (em : extended_module) =
       end_ ();
       let sequence_end = pos s in
       patch_gap32 g (sequence_end - p);
-      modif sequence_bounds (Seq.add (p, !instr_notes, sequence_end))
+      modif sequence_bounds (Sequ.add (p, !instr_notes, sequence_end))
 
     let code_section_start = ref 0
     let code_section fs =
@@ -839,14 +839,35 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
                        dw_LNS_advance_pc; 1;
                        - dw_LNE_end_sequence]);
-              let code_start = !code_section_start in
-              let rel addr = addr - code_start in
+
+
+            let bumm = Dwarf5.(Machine.(infer
+                                          start_state
+                                          (0x2345, default_loc, 0, default_flags)))
+            in Dwarf5.Machine.moves u8 uleb128 sleb128 write32 bumm;
+
+               let prepend x xs () = Seq.Cons (x, xs) in
+               let code_start = !code_section_start in
+               let rel addr = addr - code_start in
+               let lookup_file file = 1 (* FIXME: for now *) in
+               let stepping (prg, state) (addr, {file; line; column} as instr) : int list * Dwarf5.Machine.state =
+                 let f = lookup_file file in
+                 let stmt = Instrs.mem instr !statement_positions in
+                 let state' = rel addr, (f, line, column), 0, (stmt, false, false, false) in
+                 (* FIXME: quadratic *)
+                 prg @ Dwarf5.Machine.infer state state', state'
+             in
+
               let sequence (sta, notes, en) =
                 Printf.printf "LINES::::  SEQUENCE start/END    ADDR: %x - %x\n" (rel sta) (rel en);
-                Instrs.iter (fun (addr, ({file; line; column}) as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: %x - (%s:%d:%d)    %s\n" (rel addr) file line column (if Instrs.mem instr !statement_positions then "is_stmt" else "")) notes
+                Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: %x - (%s:%d:%d)    %s\n" (rel addr) file line column (if Instrs.mem instr !statement_positions then "is_stmt" else "")) notes;
+
+                let seq = Instrs.to_seq notes in
+                let prg, _ = Seq.fold_left stepping Dwarf5.([- dw_LNE_set_address; sta; dw_LNS_copy], Machine.start_state) seq in
+                Dwarf5.Machine.moves u8 uleb128 sleb128 write32 prg
 
               in
-              Seq.iter sequence !sequence_bounds
+              Sequ.iter sequence !sequence_bounds
         )
       in
       custom_section ".debug_line" debug_line_section_body () (fs <> [])
