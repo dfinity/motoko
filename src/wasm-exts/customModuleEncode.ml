@@ -115,7 +115,7 @@ let encode (em : extended_module) =
   let close_dwarf () =
     match !dwarf_tags with
     | [] -> failwith "no open DW_TAG"
-    | Tag _ :: [] -> Printf.printf "TOPLEVEL: NOT NESTING\n"; ()
+    | Tag _ :: [] -> failwith "TOPLEVEL: NOT NESTING\n"
     | Tag (s, attrs) :: Tag (0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s -> (*Printf.printf "TOPLEVEL: EATING\n"; *)dwarf_tags := Tag (s, tags @ attrs) :: []
     | Tag _ as nested :: Tag (tag, arts) :: t -> dwarf_tags := ((*Printf.printf "NESTING into %d\n" tag; *)Tag (tag, nested :: arts) :: t)
     | _ -> failwith "cannot close DW_AT" in
@@ -849,14 +849,15 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             in
 
             let sequence (sta, notes, en) =
-              Printf.printf "LINES::::  SEQUENCE start/END    ADDR: %x - %x\n" (rel sta) (rel en);
+              let start, ending = rel sta, rel en in
+              Printf.printf "LINES::::  SEQUENCE start/END    ADDR: %x - %x\n" start ending;
               Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: %x - (%s:%d:%d)    %s\n" (rel addr) file line column (if Instrs.mem instr !statement_positions then "is_stmt" else "")) notes;
 
               let seq = Instrs.to_seq notes in
-              let prg, (addr, _, _, _) = Seq.fold_left stepping Dwarf5.([- dw_LNE_set_address; rel sta; dw_LNS_copy], Machine.start_state) seq in
+              let start_state = let _, l, d, f = Dwarf5.Machine.start_state in start, l, d, f in
+              let prg, (addr, _, _, _) = Seq.fold_left stepping Dwarf5.([- dw_LNE_set_address; start; dw_LNS_copy], start_state) seq in
               Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
-                        (prg @ [dw_LNS_advance_pc; rel en - addr; - dw_LNE_end_sequence]))
-
+                        (prg @ [dw_LNS_advance_pc; ending - addr; - dw_LNE_end_sequence]))
             in
             Sequ.iter sequence !sequence_bounds
         )
