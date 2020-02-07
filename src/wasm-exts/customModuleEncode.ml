@@ -90,19 +90,7 @@ let encode (em : extended_module) =
   sources := !sources @ [ "prelude" ];
   sourcesContent := !sourcesContent @ [ Prelude.prelude ];
 
-  let add_string strings str =
-    let rec find_string = function
-      | [] -> false, 0
-      | h :: t when str = h -> let _, offs = find_string t in true, offs
-      | h :: t -> let fnd, offs = find_string t in fnd, if fnd then offs else String.length h + 1 + offs
-    in
-    let fnd, offs = find_string !strings in
-    if not fnd then strings := str :: !strings;
-    offs
-  in
-
-
-  let add_string' gen strings str =
+  let add_string gen strings str =
     let strs = !strings in
     match List.assoc_opt str strs with
     | Some v -> v
@@ -113,7 +101,8 @@ let encode (em : extended_module) =
 
   let dwarf_strings = ref [] in
 
-  let add_dwarf_string = add_string' (function | [] -> 0 | (h, p) :: _ -> String.length h + 1 + p) dwarf_strings in
+  let add_dwarf_string =
+    add_string (function | [] -> 0 | (h, p) :: _ -> String.length h + 1 + p) dwarf_strings in
 
   let module Instrs = Set.Make (struct type t = int * Wasm.Source.pos let compare = compare end) in
   let statement_positions = ref Instrs.empty in
@@ -803,7 +792,7 @@ let encode (em : extended_module) =
         let file_strings = ref [] in
         let add_file_string = function
           | "" -> 0
-          | str -> add_string' (function | [] -> 1 | (_, p) :: _ -> 1 + p) file_strings str
+          | str -> add_string (function | [] -> 1 | (_, p) :: _ -> 1 + p) file_strings str
         in
 
         unit(fun () ->
