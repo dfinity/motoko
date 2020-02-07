@@ -26,6 +26,7 @@ let
     nixpkgs.clang_10 # for wasm building
     nixpkgs.lld_10 # for wasm building
     nixpkgs.llvm_10 # for wasm and DWARF testing
+    nixpkgs.lldb_10 # for wasm and DWARF testing
   ];
 
   # When compiling natively, we want to use `clang` (which is a nixpkgs
