@@ -789,6 +789,13 @@ let encode (em : extended_module) =
 
     let debug_line_section fs =
       let debug_line_section_body () =
+
+        let file_strings = ref [] in
+        let add_file_string = function
+          | "" -> 0
+          | str -> add_string file_strings str
+        in
+
         unit(fun () ->
             write16 0x0005;
             u8 4;
@@ -814,28 +821,28 @@ standard_opcode_lengths[DW_LNS_set_prologue_end] = 0
 standard_opcode_lengths[DW_LNS_set_epilogue_begin] = 0
 standard_opcode_lengths[DW_LNS_set_isa] = 1
                  *)
-                List.iter u8 [0; 1; 1; 1; 1; 0; 0; 0; 1; 0; 0; 1];
+                let open List in
+                iter u8 [0; 1; 1; 1; 1; 0; 0; 0; 1; 0; 0; 1];
 
                 u8 1; (* directory_entry_format_count *)
-                List.iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
+                iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
 
                 uleb128 1; (* directories_count *)
-                List.iter zero_terminated ["directory/inner/."];
+                iter zero_terminated ["directory/inner/."];
 
                 u8 1; (* file_name_entry_format_count *)
-                List.iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
+                iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
 
-                uleb128 1; (* file_names_count *)
-                List.iter zero_terminated ["charToText.mo"];
+                let record_file (_, {file; _}) = ignore (add_file_string file) in
+                Sequ.iter (fun (_, notes, _) -> Instrs.iter record_file notes) !sequence_bounds;
+                uleb128 (length !file_strings);
+                iter zero_terminated (rev !file_strings);
             );
 
             let code_start = !code_section_start in
             let rel addr = addr - code_start in
-            let lookup_file = function
-              | f when f = "" -> 0
-              | file -> 1 (* FIXME: for now *) in
             let stepping (prg, state) (addr, {file; line; column} as instr) : int list * Dwarf5.Machine.state =
-              let f = lookup_file file in
+              let f = add_file_string file in
               let stmt = Instrs.mem instr !statement_positions in
               let state' = rel addr, (f, line, column), 0, (stmt, false, false, false) in
               (* FIXME: quadratic *)
