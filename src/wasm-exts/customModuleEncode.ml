@@ -786,6 +786,29 @@ let encode (em : extended_module) =
       in
       custom_section ".debug_str" debug_strings_section_body dss (dss <> [])
 
+
+    let debug_addr_section fs(* Needed? *) =
+      let debug_addr_section_body () =
+        unit(fun () ->
+            write16 0x0005;
+            u8 4; (* addr_size *)
+            u8 0; (* segment_selector_size *)
+
+(*
+
+.debug_addr contents:
+Addr Section: length = 0x0000000c, version = 0x0005, addr_size = 0x04, seg_size = 0x00
+Addrs: [
+0x0000000000000000
+]
+
+ *)
+            write32 0 (* Address? *)
+        );
+
+        in
+      custom_section ".debug_addr" debug_addr_section_body () true
+
     let debug_line_section fs =
       let debug_line_section_body () =
 
@@ -827,7 +850,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
 
                 uleb128 1; (* directories_count *)
-                iter zero_terminated ["directory/inner/."];
+                iter zero_terminated ["/Users/ggreif/motoko/"];
 
                 u8 1; (* file_name_entry_format_count *)
                 iter uleb128 Dwarf5.[dw_LNCT_path; dw_FORM_string];
@@ -889,6 +912,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       debug_abbrev_section ();
       debug_info_section ();
       debug_line_section m.funcs;
+      debug_addr_section m.funcs;
       debug_strings_section !dwarf_strings
   end
   in E.module_ em;
