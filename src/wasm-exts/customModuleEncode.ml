@@ -90,18 +90,20 @@ let encode (em : extended_module) =
   sources := !sources @ [ "prelude" ];
   sourcesContent := !sourcesContent @ [ Prelude.prelude ];
 
-  let dwarf_strings = ref [] in
-
-  let add_dwarf_string str =
-    let rec find_dwarf_string str = function
+  let add_string strings str =
+    let rec find_string = function
       | [] -> false, 0
-      | h :: t when str = h -> let _, offs = find_dwarf_string str t in true, offs
-      | h :: t -> let fnd, offs = find_dwarf_string str t in fnd, if fnd then offs else String.length h + 1 + offs
+      | h :: t when str = h -> let _, offs = find_string t in true, offs
+      | h :: t -> let fnd, offs = find_string t in fnd, if fnd then offs else String.length h + 1 + offs
     in
-    let fnd, offs = find_dwarf_string str !dwarf_strings in
-    if not fnd then dwarf_strings := str :: !dwarf_strings;
+    let fnd, offs = find_string !strings in
+    if not fnd then strings := str :: !strings;
     offs
   in
+
+  let dwarf_strings = ref [] in
+
+  let add_dwarf_string = add_string dwarf_strings in
 
   let module Instrs = Set.Make (struct type t = int * Wasm.Source.pos let compare = compare end) in
   let statement_positions = ref Instrs.empty in
