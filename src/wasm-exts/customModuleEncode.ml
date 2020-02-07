@@ -101,9 +101,19 @@ let encode (em : extended_module) =
     offs
   in
 
+
+  let add_string' gen strings str =
+    let strs = !strings in
+    match List.assoc_opt str strs with
+    | Some v -> v
+    | _ ->
+      let v = gen strs in
+      let strs' = (str, v) :: strs in strings := strs'; v
+  in
+
   let dwarf_strings = ref [] in
 
-  let add_dwarf_string = add_string dwarf_strings in
+  let add_dwarf_string = add_string' (function | [] -> 0 | (h, p) :: _ -> String.length h + 1 + p) dwarf_strings in
 
   let module Instrs = Set.Make (struct type t = int * Wasm.Source.pos let compare = compare end) in
   let statement_positions = ref Instrs.empty in
@@ -783,7 +793,7 @@ let encode (em : extended_module) =
     let debug_strings_section dss =
       let rec debug_strings_section_body = function
         | [] -> ()
-        | h :: t -> debug_strings_section_body t; zero_terminated h
+        | (h, _) :: t -> debug_strings_section_body t; zero_terminated h
       in
       custom_section ".debug_str" debug_strings_section_body dss (dss <> [])
 
@@ -793,7 +803,7 @@ let encode (em : extended_module) =
         let file_strings = ref [] in
         let add_file_string = function
           | "" -> 0
-          | str -> add_string file_strings str
+          | str -> add_string' (function | [] -> 1 | (_, p) :: _ -> 1 + p) file_strings str
         in
 
         unit(fun () ->
@@ -836,7 +846,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 let record_file (_, {file; _}) = ignore (add_file_string file) in
                 Sequ.iter (fun (_, notes, _) -> Instrs.iter record_file notes) !sequence_bounds;
                 uleb128 (length !file_strings);
-                iter zero_terminated (rev !file_strings);
+                iter zero_terminated (rev_map fst !file_strings);
             );
 
             let code_start = !code_section_start in
