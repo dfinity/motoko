@@ -332,7 +332,8 @@ let opcode_base = dw_LNS_set_isa
 
 type state = int * (int * int * int) * int * (bool * bool * bool * bool)
 let default_loc = 0, 0, 0
-let start_state = 0, default_loc, 0, (default_is_stmt, false, false, false)
+let default_flags = default_is_stmt, false, false, false
+let start_state = 0, default_loc, 0, default_flags
 
 let interpret (out : state -> unit) : int list -> state -> state =
   function
@@ -376,7 +377,7 @@ let rec infer from toward = match from, toward with
   | (0, loc, disc, flags), (t, loc', disc', flags') when t > 0 ->
     - dw_LNE_set_address :: t :: infer (t, loc, disc, flags) (t, loc', disc', flags')
   | (f, loc, disc, flags), (t, loc', disc', flags') when t > f ->
-    dw_LNS_const_add_pc :: t - f :: infer (t, loc, disc, flags) (t, loc', disc', flags')
+    dw_LNS_advance_pc :: t - f :: infer (t, loc, disc, flags) (t, loc', disc', flags')
   | (_, (file, line, col), disc, flags), (t, (file', line', col'), disc', flags') when file <> file' ->
     dw_LNS_set_file :: file' :: infer (t, (file', line, col), disc, flags) (t, (file', line', col'), disc', flags')
   | (_, (_, line, col), disc, flags), (t, (file, line', col'), disc', flags') when line <> line' ->
@@ -398,13 +399,13 @@ let moves u8 uleb sleb u32 =
   | [] -> Printf.printf "DONE\n"
   | op :: tail when dw_LNS_copy = op -> Printf.printf "COPY\n"; standard op; chase tail
   | op :: offs :: tail when dw_LNS_advance_pc = op -> Printf.printf "+PC\n"; standard op; uleb offs; chase tail
-  | op :: delta :: tail when dw_LNS_advance_line = op -> Printf.printf "+LINE\n"; standard op; sleb delta; chase tail
+  | op :: delta :: tail when dw_LNS_advance_line = op -> Printf.printf "+LINE %d\n" delta; standard op; sleb delta; chase tail
   | op :: file :: tail when dw_LNS_set_file = op -> Printf.printf ":=FILE\n"; standard op; uleb file; chase tail
   | op :: col :: tail when dw_LNS_set_column = op -> Printf.printf ":=COLUMN\n"; standard op; uleb col; chase tail
   | op :: tail when dw_LNS_negate_stmt = op -> Printf.printf "~STMT\n"; standard op; chase tail
   | op :: tail when - dw_LNE_end_sequence = op -> Printf.printf "FIN\n"; extended1 op; chase tail
   | op :: addr :: tail when - dw_LNE_set_address = op -> Printf.printf "NEW ADDR\n"; extended5 op; u32 addr; chase tail
-  | _ -> failwith "move not covered"
+  | op :: _ -> Printf.printf "MoVE 0x%x\n" op; failwith "move not covered"
   in chase
 
 end
