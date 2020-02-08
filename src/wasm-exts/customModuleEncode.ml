@@ -23,6 +23,8 @@ let is_dwarf_statement Wasm.Source.{ left; right } =
   && left.line = - right.line
   && left.column = right.column
 
+module Promise = Lib.Promise
+
 open CustomModule
 
 (* Version *)
@@ -694,6 +696,8 @@ let encode (em : extended_module) =
       let section_body abs = List.iteri abbrev abs; close_section () in
       custom_section ".debug_abbrev" section_body Abbreviation.abbreviations true
 
+    let rangelists = Promise.make ()
+
     (* dw_FORM writers *)
     let writeForm : int -> dwarf_artifact -> unit =
       let open Dwarf5 in
@@ -726,7 +730,7 @@ let encode (em : extended_module) =
       | f when dw_FORM_sec_offset = f ->
         begin function
           | FunctionsAttribute attr ->
-            write32 0x0000000c
+            write32 (Promise.value rangelists)
           | _ -> failwith "dw_FORM_sec_offset"
         end
       | f when dw_FORM_flag = f ->
@@ -773,11 +777,11 @@ let encode (em : extended_module) =
         patch s (p + 3) (lsb (n lsr 24)) in
       let g = dw_gap32 () in (* unit_length *)
       let p = pos s in
-      f (); dw_patch_gap32 g (pos s - p)
+      f g; dw_patch_gap32 g (pos s - p)
 
     let debug_info_section () =
       let section_body abs =
-        unit(fun () ->
+        unit(fun _ ->
             write16 0x0005; (* version *)
             u8 Dwarf5.dw_UT_compile; (* unit_type *)
             u8 4; (* address_size *)
@@ -813,9 +817,9 @@ let encode (em : extended_module) =
       custom_section ".debug_str" debug_strings_section_body dss (dss <> [])
 
 
-    let debug_addr_section fs(* Needed? *) =
+    let debug_addr_section fs(* Needed? yes for DW_RLE_startx_length *) =
       let debug_addr_section_body () =
-        unit(fun () ->
+        unit(fun _ ->
             write16 0x0005;
             u8 4; (* addr_size *)
             u8 0; (* segment_selector_size *)
@@ -839,16 +843,13 @@ Addrs: [
     (* 7.28 Range List Table *)
     let debug_rnglists_section sequence_bounds =
       let debug_rnglists_section_body () =
-        unit(fun () ->
+        unit(fun start ->
             write16 0x0005; (* version *)
             u8 4; (* address_size *)
             u8 0; (* segment_selector_size *)
             write32 0; (* offset_entry_count *)
-(*
-            u8 Dwarf5.dw_RLE_start_end;
-            write32 3; write32 35;
-            u8 Dwarf5.dw_RLE_start_length;
-            write32 3; uleb128 35  start/len *)
+
+            Promise.fulfill rangelists (pos s - start);
 
             let code_start = !code_section_start in
             let rel addr = addr - code_start in
@@ -873,11 +874,11 @@ Addrs: [
           | str -> add_string (function | [] -> 1 | (_, p) :: _ -> 1 + p) file_strings str
         in
 
-        unit(fun () ->
+        unit(fun _ ->
             write16 0x0005;
             u8 4;
             u8 0; (* segment_selector_size *)
-            unit(fun () ->
+            unit(fun _ ->
                 u8 1; (* min_inst_length *)
                 u8 1; (* max_ops_per_inst *)
                 u8 1; (* default_is_stmt *)
