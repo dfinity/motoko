@@ -283,7 +283,14 @@ let dw_UT_split_type = 0x06
 let dw_UT_lo_user = 0x80
 let dw_UT_hi_user = 0xff
 
-
+let dw_RLE_end_of_list = 0x00
+let dw_RLE_base_addressx = 0x01
+let dw_RLE_startx_endx = 0x02
+let dw_RLE_startx_length = 0x03
+let dw_RLE_offset_pair = 0x04
+let dw_RLE_base_address = 0x05
+let dw_RLE_start_end = 0x06
+let dw_RLE_start_length = 0x07
 
 (* Line number header entry format name *)
 let dw_LNCT_path = 0x1

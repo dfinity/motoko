@@ -59,6 +59,7 @@ let to_string s =
 type dwarf_artifact = Tag of int * dwarf_artifact list
                     | IntAttribute of int * int
                     | StringAttribute of int * string
+                    | FunctionsAttribute of int
 
 (* Encoding *)
 
@@ -162,6 +163,8 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | (Nop, {line; column; _}) when -line = dw_AT_external ->
         add_dwarf_attribute (IntAttribute (-line, column))
+      | (Nop, {line; _}) when -line = dw_AT_ranges ->
+        add_dwarf_attribute (FunctionsAttribute (-line))
       | (Nop, {line; _}) -> Printf.printf "TAG: %x; ATTR extract: %x\n" tag (-line); failwith "extract"
       | (instr, {line; file; _}) -> Printf.printf "TAG: %x (a.k.a. %d, from: %s); extract: %x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
@@ -720,6 +723,12 @@ let encode (em : extended_module) =
           | IntAttribute (attr, i) -> write32 i
           | _ -> failwith "dw_FORM_addr"
         end
+      | f when dw_FORM_sec_offset = f ->
+        begin function
+          | FunctionsAttribute attr ->
+            write32 0x0000000c
+          | _ -> failwith "dw_FORM_sec_offset"
+        end
       | f when dw_FORM_flag = f ->
         begin function
           | IntAttribute (attr, b) -> u8 b
@@ -741,7 +750,8 @@ let encode (em : extended_module) =
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
           | IntAttribute (a, _) as art -> assert (attr = a); writeForm form art
-          | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art in
+          | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
+          | FunctionsAttribute a as art -> Printf.printf "attr: %x = a: %x \n" attr a ;  assert (attr = a); writeForm form art in
         let rec indexOf cnt = function
           | h :: t when isTag h -> cnt
           | _ :: t -> indexOf (cnt + 1) t
@@ -772,6 +782,22 @@ let encode (em : extended_module) =
             u8 Dwarf5.dw_UT_compile; (* unit_type *)
             u8 4; (* address_size *)
             write32 0x0000; (* debug_abbrev_offset *)
+
+(*
+0x0000000b: DW_TAG_compile_unit [1] *
+              DW_AT_low_pc [DW_FORM_addr]      (0x0000000000000000)
+              DW_AT_ranges [DW_FORM_sec_offset]        (0x00000050
+                 [0x00000003, 0x00000144) "CODE"
+                 [0x00000146, 0x00000271) "CODE"
+                 [0x00000273, 0x000003b1) "CODE")
+ *)
+
+(*
+0x00000078:   DW_TAG_subprogram [8] *
+                DW_AT_low_pc [DW_FORM_addr]    (0x0000000000000003 "CODE")
+                DW_AT_high_pc [DW_FORM_data4]  (0x00000141)
+ *)
+
 
             match !dwarf_tags with
             | [toplevel] -> writeTag toplevel
@@ -808,6 +834,35 @@ Addrs: [
 
         in
       custom_section ".debug_addr" debug_addr_section_body () true
+
+
+    (* 7.28 Range List Table *)
+    let debug_rnglists_section sequence_bounds =
+      let debug_rnglists_section_body () =
+        unit(fun () ->
+            write16 0x0005; (* version *)
+            u8 4; (* address_size *)
+            u8 0; (* segment_selector_size *)
+            write32 0; (* offset_entry_count *)
+(*
+            u8 Dwarf5.dw_RLE_start_end;
+            write32 3; write32 35;
+            u8 Dwarf5.dw_RLE_start_length;
+            write32 3; uleb128 35  start/len *)
+
+            let code_start = !code_section_start in
+            let rel addr = addr - code_start in
+
+            Sequ.iter (fun (st, _, en) ->
+                u8 Dwarf5.dw_RLE_start_length; (* TODO: consider DW_RLE_startx_length *)
+                write32 (rel st);
+                uleb128 (en - st))
+              sequence_bounds;
+            u8 Dwarf5.dw_RLE_end_of_list
+        );
+
+        in
+      custom_section ".debug_rnglists" debug_rnglists_section_body () true
 
     let debug_line_section fs =
       let debug_line_section_body () =
@@ -873,9 +928,9 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
 
             let sequence (sta, notes, en) =
               let start, ending = rel sta, rel en in
-          (*    Printf.printf "LINES::::  SEQUENCE start/END    ADDR: %x - %x\n" start ending;
+              Printf.printf "LINES::::  SEQUENCE start/END    ADDR: %x - %x\n" start ending;
               Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: %x - (%s:%d:%d)    %s\n" (rel addr) file line column (if Instrs.mem instr !statement_positions then "is_stmt" else "")) notes;
-           *)
+           
               let seq = Instrs.to_seq notes in
               let start_state = let _, l, d, f = Dwarf5.Machine.start_state in start, l, d, f in
               let prg, (addr, _, _, _) = Seq.fold_left stepping Dwarf5.([- dw_LNE_set_address; start; dw_LNS_copy], start_state) seq in
@@ -910,6 +965,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       (* other optional sections *)
       name_section em.name;
       debug_abbrev_section ();
+      debug_rnglists_section !sequence_bounds;
       debug_info_section ();
       debug_line_section m.funcs;
       debug_addr_section m.funcs;

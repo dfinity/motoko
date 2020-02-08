@@ -164,6 +164,7 @@ type dw_AT = Producer of string
            | Comp_dir of string
            | Low_pc of int
            | High_pc of int
+           | Ranges
            | Decl_line of int
            | Decl_column of int
            | Prototyped of bool
@@ -205,6 +206,7 @@ let dw_attr : dw_AT -> t =
   | Comp_dir n -> fakeFile n dw_AT_comp_dir Nop
   | Low_pc l -> fakeColumn l dw_AT_low_pc Nop
   | High_pc h -> fakeColumn h dw_AT_high_pc Nop
+  | Ranges -> fakeColumn 0 dw_AT_ranges Nop
   | Decl_line l -> fakeColumn l dw_AT_decl_line Nop
   | Decl_column c -> fakeColumn c dw_AT_decl_column Nop
   | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped Nop
@@ -228,7 +230,8 @@ let dw_tag : dw_TAG -> t =
            (* dw_attr (Stmt_list 0) ^^ FIXME *)
            dw_attr (Comp_dir dir) ^^
            dw_attr (Low_pc 0) ^^
-           dw_attr (High_pc 0xFF) (* FIXME *)
+         (*   dw_attr (High_pc 0xFF) FIXME *)
+           dw_attr Ranges
           ) 0l Wasm.Source.no_region []))
   | Subprogram (name, pos) ->
     fakeColumn 0 dw_TAG_subprogram
