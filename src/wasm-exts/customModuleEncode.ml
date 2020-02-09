@@ -832,7 +832,7 @@ let encode (em : extended_module) =
       custom_section ".debug_str" debug_strings_section_body dss (dss <> [])
 
 
-    let debug_addr_section seqs(* Needed? yes for DW_RLE_startx_length *) =
+    let debug_addr_section seqs =
       let debug_addr_section_body seqs =
         unit(fun _ ->
             write16 0x0005; (* version *)
@@ -851,6 +851,7 @@ let encode (em : extended_module) =
 
     (* 7.28 Range List Table *)
     let debug_rnglists_section sequence_bounds =
+      let index = ref 0 in
       let debug_rnglists_section_body () =
         unit(fun start ->
             write16 0x0005; (* version *)
@@ -859,13 +860,10 @@ let encode (em : extended_module) =
             write32 0; (* offset_entry_count *)
 
             Promise.fulfill rangelists (pos s - start);
-
-            let code_start = !code_section_start in
-            let rel addr = addr - code_start in
-
             Sequ.iter (fun (st, _, en) ->
-                u8 Dwarf5.dw_RLE_start_length; (* TODO: consider DW_RLE_startx_length *)
-                write32 (rel st);
+                u8 Dwarf5.dw_RLE_startx_length;
+                uleb128 !index;
+                index := !index + 1;
                 uleb128 (en - st))
               sequence_bounds;
             u8 Dwarf5.dw_RLE_end_of_list
@@ -975,10 +973,10 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       (* other optional sections *)
       name_section em.name;
       debug_abbrev_section ();
+      debug_addr_section !sequence_bounds;
       debug_rnglists_section !sequence_bounds;
       debug_info_section ();
       debug_line_section m.funcs;
-      debug_addr_section !sequence_bounds;
       debug_strings_section !dwarf_strings
   end
   in E.module_ em;
