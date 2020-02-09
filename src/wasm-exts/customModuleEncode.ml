@@ -762,6 +762,16 @@ let encode (em : extended_module) =
           | _ -> failwith "not encountered" in
         uleb128 (indexOf 1 Abbreviation.abbreviations);
         let nested_tags, attrs = List.partition (function Tag _ -> true | _ -> false) contents in
+
+
+
+     (*   if t = DW_TAG_subprogram
+        then begin
+            Sequ.find_opt
+          end;
+      *)
+
+
         List.iter2 pairing forms attrs;
         List.iter writeTag nested_tags;
         if has_children <> 0 then close_section ()
@@ -817,27 +827,21 @@ let encode (em : extended_module) =
       custom_section ".debug_str" debug_strings_section_body dss (dss <> [])
 
 
-    let debug_addr_section fs(* Needed? yes for DW_RLE_startx_length *) =
-      let debug_addr_section_body () =
+    let debug_addr_section seqs(* Needed? yes for DW_RLE_startx_length *) =
+      let debug_addr_section_body seqs =
         unit(fun _ ->
-            write16 0x0005;
+            write16 0x0005; (* version *)
             u8 4; (* addr_size *)
             u8 0; (* segment_selector_size *)
-
-(*
-
-.debug_addr contents:
-Addr Section: length = 0x0000000c, version = 0x0005, addr_size = 0x04, seg_size = 0x00
-Addrs: [
-0x0000000000000000
-]
-
- *)
-            write32 0 (* Address? *)
-        );
-
-        in
-      custom_section ".debug_addr" debug_addr_section_body () true
+            let write_addr (st, _, _) =
+              let code_start = !code_section_start in
+              let rel addr = addr - code_start in
+              write32 (rel st)
+            in
+            Sequ.iter write_addr seqs;
+        )
+      in
+      custom_section ".debug_addr" debug_addr_section_body seqs (not (Sequ.is_empty seqs))
 
 
     (* 7.28 Range List Table *)
@@ -969,7 +973,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       debug_rnglists_section !sequence_bounds;
       debug_info_section ();
       debug_line_section m.funcs;
-      debug_addr_section m.funcs;
+      debug_addr_section !sequence_bounds;
       debug_strings_section !dwarf_strings
   end
   in E.module_ em;
