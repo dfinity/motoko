@@ -237,7 +237,8 @@ let dw_tag : dw_TAG -> t =
     fakeColumn 0 dw_TAG_subprogram
       (Block
          ([],
-           (dw_attr (Name name) ^^
+           (dw_attr (Low_pc 0) ^^
+            dw_attr (Name name) ^^
             dw_attr (Decl_line pos.Source.line) ^^
             dw_attr (Decl_column pos.Source.column) ^^
             dw_attr (Prototyped true) ^^

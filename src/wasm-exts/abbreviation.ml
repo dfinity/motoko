@@ -11,8 +11,8 @@ let abbreviations =
         (* dw_AT_addr_base, dw_FORM_sec_offset *)
       ] );
     ( dw_TAG_subprogram, dw_CHILDREN_yes,
-      [ (*dw_AT_low_pc, dw_FORM_addr;
-      dw_AT_high_pc, dw_FORM_data4;
+      [ dw_AT_low_pc, dw_FORM_addrx;
+      (*dw_AT_high_pc, dw_FORM_data4;
          (* dw_AT_GNU_all_call_sites, dw_FORM_flag_present; *) *)
       dw_AT_name, dw_FORM_strp;
       (*dw_AT_decl_file, dw_FORM_data1;*)

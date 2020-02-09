@@ -727,6 +727,11 @@ let encode (em : extended_module) =
           | IntAttribute (attr, i) -> write32 i
           | _ -> failwith "dw_FORM_addr"
         end
+      | f when dw_FORM_addrx = f ->
+        begin function
+          | IntAttribute (attr, i) -> uleb128 33(* FIXME: hardcoded *)
+          | _ -> failwith "dw_FORM_addrx"
+        end
       | f when dw_FORM_sec_offset = f ->
         begin function
           | FunctionsAttribute attr ->
