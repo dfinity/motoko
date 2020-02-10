@@ -7,7 +7,6 @@ The point of this abstraction is to to allow adding new entry points, or changin
 
 Certain features here are beyond the specified abilities, in order to support the Motoko test suite. In particular:
 
- * Creating canisters
  * Issuing calls from canister_init
 
 -}

@@ -22,6 +22,7 @@ executable ic-stub-run
   other-modules:       IC.Canister.Pure
   other-modules:       IC.Canister.Persisted
   other-modules:       IC.Wasm.Winter
+  other-modules:       IC.Wasm.WinterMemory
   other-modules:       IC.Wasm.Winter.Persist
   other-modules:       IC.Wasm.Imports
   other-modules:       IC.DRun.Parse
