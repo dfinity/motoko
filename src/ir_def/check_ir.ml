@@ -133,7 +133,6 @@ let check_field_hashes env what at =
 
 
 let rec check_typ env typ : unit =
-  if true then () else
   match typ with
   | T.Pre ->
     error env no_region "illegal T.Pre type"
