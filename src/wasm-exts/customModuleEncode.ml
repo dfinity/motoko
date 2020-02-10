@@ -137,40 +137,37 @@ let encode (em : extended_module) =
     let open Dwarf5 in
 
     let extract = function
-      | (Nop, {line; file; _}) when -line = dw_AT_producer ->
+      | Nop, {line; file; _} when -line = dw_AT_producer ->
         let _offs = add_dwarf_string file in
         add_dwarf_attribute (StringAttribute (-line, file))
-
-      | (Nop, {line; file; _}) when -line = dw_AT_name ->
+      | Nop, {line; file; _} when -line = dw_AT_name ->
         let _offs = add_dwarf_string file in
         add_dwarf_attribute (StringAttribute (-line, file))
-
-      | (Nop, {line; file; _}) when -line = dw_AT_comp_dir ->
+      | Nop, {line; file; _} when -line = dw_AT_comp_dir ->
         let _offs = add_dwarf_string file in
         add_dwarf_attribute (StringAttribute (-line, file))
-
-      | (Nop, {line; column; _}) when -line = dw_AT_language ->
+      | Nop, {line; column; _} when -line = dw_AT_language ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | (Nop, {line; column; _}) when -line = dw_AT_stmt_list ->
+      | Nop, {line; column; _} when -line = dw_AT_stmt_list ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | (Nop, {line; column; _}) when -line = dw_AT_low_pc && tag = dw_TAG_subprogram ->
+      | Nop, {line; column; _} when -line = dw_AT_low_pc && tag = dw_TAG_subprogram ->
         add_dwarf_attribute (IntAttribute (-line, !sequence_number))
-      | (Nop, {line; column; _}) when -line = dw_AT_low_pc ->
+      | Nop, {line; column; _} when -line = dw_AT_low_pc ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | (Nop, {line; column; _}) when -line = dw_AT_high_pc ->
+      | Nop, {line; column; _} when -line = dw_AT_high_pc ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | (Nop, {line; column; _}) when -line = dw_AT_decl_line ->
+      | Nop, {line; column; _} when -line = dw_AT_decl_line ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | (Nop, {line; column; _}) when -line = dw_AT_decl_column ->
+      | Nop, {line; column; _} when -line = dw_AT_decl_column ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | (Nop, {line; column; _}) when -line = dw_AT_prototyped ->
+      | Nop, {line; column; _} when -line = dw_AT_prototyped ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | (Nop, {line; column; _}) when -line = dw_AT_external ->
+      | Nop, {line; column; _} when -line = dw_AT_external ->
         add_dwarf_attribute (IntAttribute (-line, column))
-      | (Nop, {line; _}) when -line = dw_AT_ranges ->
+      | Nop, {line; _} when -line = dw_AT_ranges ->
         add_dwarf_attribute (FunctionsAttribute (-line))
-      | (Nop, {line; _}) -> Printf.printf "TAG: %x; ATTR extract: %x\n" tag (-line); failwith "extract"
-      | (instr, {line; file; _}) -> Printf.printf "TAG: %x (a.k.a. %d, from: %s); extract: %x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
+      | Nop, {line; _} -> Printf.printf "TAG: %x; ATTR extract: %x\n" tag (-line); failwith "extract"
+      | instr, {line; file; _} -> Printf.printf "TAG: %x (a.k.a. %d, from: %s); extract: %x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
     add_dwarf_tag tag;
     let rec add_artifacts = function
