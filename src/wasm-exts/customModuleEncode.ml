@@ -128,6 +128,8 @@ let encode (em : extended_module) =
                   | _ -> assert false
   in
 
+  let sequence_number = ref 0 in
+
   let extract_dwarf tag =
     let open Wasm.Ast in
     let open Wasm.Source in
@@ -153,6 +155,8 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | (Nop, {line; column; _}) when -line = dw_AT_stmt_list ->
         add_dwarf_attribute (IntAttribute (-line, column))
+      | (Nop, {line; column; _}) when -line = dw_AT_low_pc && tag = dw_TAG_subprogram ->
+        add_dwarf_attribute (IntAttribute (-line, !sequence_number))
       | (Nop, {line; column; _}) when -line = dw_AT_low_pc ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | (Nop, {line; column; _}) when -line = dw_AT_high_pc ->
@@ -639,6 +643,7 @@ let encode (em : extended_module) =
         instr i in
       list note_instr body;
       end_ ();
+      sequence_number := 1 + !sequence_number;
       let sequence_end = pos s in
       patch_gap32 g (sequence_end - p);
       modif sequence_bounds (Sequ.add (p, !instr_notes, sequence_end))
@@ -729,7 +734,7 @@ let encode (em : extended_module) =
         end
       | f when dw_FORM_addrx = f ->
         begin function
-          | IntAttribute (attr, i) -> uleb128 33(* FIXME: hardcoded *)
+          | IntAttribute (attr, i) -> uleb128 i
           | _ -> failwith "dw_FORM_addrx"
         end
       | f when dw_FORM_sec_offset = f ->
