@@ -164,6 +164,8 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_external ->
         add_dwarf_attribute (IntAttribute (-line, column))
+      | Nop, {line; column; _} when -line = dw_AT_addr_base ->
+        add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; _} when -line = dw_AT_ranges ->
         add_dwarf_attribute (FunctionsAttribute (-line))
       | Nop, {line; _} -> Printf.printf "TAG: %x; ATTR extract: %x\n" tag (-line); failwith "extract"
@@ -734,6 +736,7 @@ let encode (em : extended_module) =
         end
       | f when dw_FORM_sec_offset = f ->
         begin function
+          | IntAttribute (attr, i) -> write32 i
           | FunctionsAttribute attr ->
             write32 (Promise.value rangelists)
           | _ -> failwith "dw_FORM_sec_offset"
