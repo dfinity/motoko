@@ -34,6 +34,8 @@ data CanisterModule = CanisterModule
   , update_methods :: MethodName ↦ (EntityId -> Responded -> Blob -> UpdateFunc)
   , query_methods :: MethodName ↦ (EntityId -> Blob -> QueryFunc)
   , callbacks :: Callback -> Responded -> Response -> UpdateFunc
+  , pre_upgrade_method :: WasmState -> EntityId -> TrapOr Blob
+  , post_upgrade_method :: CanisterId -> EntityId -> Blob -> Blob -> TrapOr WasmState
   }
 
 parseCanister :: Blob -> Either String CanisterModule
@@ -60,4 +62,8 @@ concreteToAbstractModule wasm_mod = CanisterModule
     ]
   , callbacks = \cb responded res wasm_state ->
     invoke wasm_state (CI.Callback cb responded res)
+  , pre_upgrade_method = \wasm_state caller ->
+        snd <$> invoke wasm_state (CI.PreUpgrade wasm_mod caller)
+  , post_upgrade_method = \cid caller mem dat ->
+        initializeUpgrade wasm_mod cid caller mem dat
   }

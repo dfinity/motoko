@@ -12,12 +12,14 @@ module IC.Wasm.WinterMemory
   , grow
   , read
   , write
+  , export
+  , imp
   )
 where
 
 import Prelude hiding (read)
 
-import qualified Data.ByteString.Lazy as BS
+import Data.ByteString.Lazy (ByteString)
 import Control.Monad.Except
 import Control.Monad.ST
 
@@ -43,9 +45,14 @@ grow mem delta = lift $ do
       Left _   -> -1
       Right () -> oldSize
 
-read :: Memory s -> W.Address -> W.Size -> HostM s BS.ByteString
+read :: Memory s -> W.Address -> W.Size -> HostM s ByteString
 read mem ptr len = withExceptT show $ W.loadBytes mem ptr len
 
-write :: Memory s -> W.Address -> BS.ByteString -> HostM s ()
+write :: Memory s -> W.Address -> ByteString -> HostM s ()
 write mem ptr blob = withExceptT show $ W.storeBytes mem (fromIntegral ptr) blob
 
+export :: Memory s -> ST s ByteString
+export = W.exportMemory
+
+imp :: Memory s -> ByteString -> ST s ()
+imp = W.importMemory

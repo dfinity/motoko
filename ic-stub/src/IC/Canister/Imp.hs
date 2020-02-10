@@ -352,6 +352,10 @@ rawInvoke is (CI.Update name caller responded dat) =
     rawUpdateMethod is name caller responded dat
 rawInvoke is (CI.Callback cb responded res) =
     rawCallbackMethod is cb responded res
+rawInvoke is (CI.PreUpgrade wasm_mod caller) =
+    rawPreUpgrade is wasm_mod caller
+rawInvoke is (CI.PostUpgrade wasm_mod caller mem dat) =
+    rawPostUpgrade is wasm_mod caller mem dat
 
 cantRespond :: Responded
 cantRespond = Responded True
@@ -382,6 +386,49 @@ rawInitializeMethod (ImpState esref cid inst sm) wasm_mod caller dat = do
     Right (_, es') -> return $
       -- TODO: extract canisters and calls here
       Return (calls es')
+
+rawPreUpgrade :: ImpState s -> Module -> EntityId -> ST s (TrapOr Blob)
+rawPreUpgrade (ImpState esref cid inst sm) wasm_mod caller = do
+  result <- runExceptT $ do
+    let es = (initalExecutionState cid inst sm cantRespond)
+              { params = Params
+                  { param_dat    = Nothing
+                  , param_caller = Just caller
+                  , reject_code  = 0
+                  , reject_message = ""
+                  }
+              }
+
+    if "canister_pre_upgrade" `elem` exportedFunctions wasm_mod
+    then withES esref es $ void $ invokeExport inst "canister_pre_upgrade" []
+    else return ((), es)
+         -- TODO: Check no calls are made
+
+  case result of
+    Left  err -> return $ Trap err
+    Right (_, es') -> Return <$> Mem.export (stableMem es')
+
+rawPostUpgrade :: ImpState s -> Module -> EntityId -> Blob -> Blob -> ST s (TrapOr ())
+rawPostUpgrade (ImpState esref cid inst sm) wasm_mod caller mem dat = do
+  result <- runExceptT $ do
+    let es = (initalExecutionState cid inst sm cantRespond)
+              { params = Params
+                  { param_dat    = Just dat
+                  , param_caller = Just caller
+                  , reject_code  = 0
+                  , reject_message = ""
+                  }
+              }
+    lift $ Mem.imp (stableMem es) mem
+
+    if "canister_post_upgrade" `elem` exportedFunctions wasm_mod
+    then withES esref es $ void $ invokeExport inst "canister_post_upgrade" []
+    else return ((), es)
+         -- TODO: Check no calls are made
+
+  case result of
+    Left  err -> return $ Trap err
+    Right ((), _es') -> return $ Return ()
 
 rawQueryMethod :: ImpState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr Response)
 rawQueryMethod (ImpState esref cid inst sm) method caller dat = do

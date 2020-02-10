@@ -27,6 +27,8 @@ printAsyncRequest CreateRequest{} =
     printf "→ create\n"
 printAsyncRequest InstallRequest{} =
     printf "→ install\n"
+printAsyncRequest UpgradeRequest{} =
+    printf "→ upgrade\n"
 printAsyncRequest (UpdateRequest _ _ method arg) =
     printf "→ update %s(%s)\n" method (prettyBlob arg)
 

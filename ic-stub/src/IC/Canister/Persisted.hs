@@ -9,6 +9,7 @@ An implementation of canisters based on persistence, using "IC.Canister.Imp". It
 module IC.Canister.Persisted
     ( WasmState
     , initialize
+    , initializeUpgrade
     , invoke
     )
     where
@@ -32,6 +33,15 @@ initialize wasm_mod cid caller dat = runESST $ \esref ->
       rawInvoke rs (CI.Initialize wasm_mod caller dat) >>= \case
         Trap err -> return $ Trap err
         Return ir -> Return . (ir,) <$> newWasmState wasm_mod rs
+
+initializeUpgrade :: Module -> CanisterId -> EntityId -> Blob -> Blob -> TrapOr WasmState
+initializeUpgrade wasm_mod cid caller mem dat = runESST $ \esref ->
+  rawInitialize esref cid wasm_mod >>= \case
+    Trap err -> return $ Trap err
+    Return rs ->
+      rawInvoke rs (CI.PostUpgrade wasm_mod caller mem dat) >>= \case
+        Trap err -> return $ Trap err
+        Return () -> Return <$> newWasmState wasm_mod rs
 
 invoke :: WasmState -> CI.CanisterMethod r -> TrapOr (WasmState, r)
 invoke s m = runESST $ \esref -> do

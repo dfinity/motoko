@@ -20,3 +20,5 @@ data CanisterMethod r where
     Query :: MethodName -> EntityId -> Blob -> CanisterMethod Response
     Update :: MethodName -> EntityId -> Responded -> Blob -> CanisterMethod UpdateResult
     Callback :: Callback -> Responded -> Response -> CanisterMethod UpdateResult
+    PreUpgrade :: Module -> EntityId -> CanisterMethod Blob
+    PostUpgrade :: Module -> EntityId -> Blob -> Blob -> CanisterMethod ()
