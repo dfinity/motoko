@@ -191,10 +191,6 @@ let await env at async k =
     )
 
 
-let actor_msg env id f c v (k : V.value V.cont) =
-  if env.flags.trace then trace "-> message %s%s" id (string_of_arg env v);
-  f c v k
-
 (* queue a lowered oneway or replying function that no longer does AsyncE on entry *)
 let queue f = fun c v k -> Scheduler.queue (fun () -> f c v k)
 
@@ -204,9 +200,7 @@ let make_unit_message env id call_conv f =
   match call_conv with
   | {sort = T.Shared s; n_res = 0; _} ->
     (* message scheduled by AsyncE in f *)
-    Value.message_func s call_conv.n_args (fun c v k ->
-      actor_msg env id f c v k
-      )
+    Value.message_func s call_conv.n_args f
   | _ ->
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
 
@@ -215,10 +209,8 @@ let make_async_message env id call_conv f =
   let open CC in
   match call_conv with
   | {sort = T.Shared s; control = T.Promises; _} ->
-    Value.async_func s call_conv.n_args call_conv.n_res (fun c v k ->
-      (* message scheduled by AsyncE in f *)
-      actor_msg env id f c v k
-    )
+    (* message scheduled by AsyncE in f *)
+    Value.async_func s call_conv.n_args call_conv.n_res f
   | _ ->
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
 
@@ -229,7 +221,7 @@ let make_lowered_unit_message env id call_conv f =
   | {sort = T.Shared s; n_res = 0; _} ->
     (* message scheduled here (not by f) *)
     Value.message_func s call_conv.n_args (fun c v k ->
-      actor_msg env id (queue f) c v (fun _ -> ());
+      (queue f) c v (fun _ -> ());
       k (V.unit);
     );
   | _ ->
@@ -242,7 +234,7 @@ let make_replying_message env id call_conv f =
   | {sort = T.Shared s; control = T.Replies; _} ->
     Value.replies_func s call_conv.n_args call_conv.n_res (fun c v k ->
       (* message scheduled here (not by f) *)
-      actor_msg env id (queue f) c v (fun _ -> ());
+      (queue f) c v (fun _ -> ());
       k (V.unit)
     )
   | _ ->
