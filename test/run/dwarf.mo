@@ -47,5 +47,6 @@ func baz (a : Int) : Bool = a == 42;
 
 func bar (a : Int) : Int {
     let b = a + 42;
+
     if (foo b) { b } else { ignore b; assert (a != 42); b }
 }
