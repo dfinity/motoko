@@ -924,12 +924,22 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
                 iter zero_terminated (rev_map fst !file_strings);
             );
 
+            (* build the statement loc -> addr map *)
+            let statement_positions = !statement_positions in
+            let module StmtsAt = Map.Make (struct type t = Wasm.Source.pos let compare = compare end) in
+            let statements_at = StmtsAt.of_seq (Seq.map (fun (k, v) -> v, k) (Instrs.to_seq statement_positions)) in
+            let is_statement_at (addr, loc) =
+              match StmtsAt.find_opt loc statements_at with
+              | Some addr' when  addr =  addr' -> true
+              | _ -> false in
+
+            (* generate the line section *)
             let code_start = !code_section_start in
             let rel addr = addr - code_start in
             let stepping (prg, state) (addr, {file; line; column} as instr) : int list * Dwarf5.Machine.state =
               let f = add_file_string file in
-              let stmt = Instrs.mem instr !statement_positions in
-              let state' = rel addr, (f, line, column), 0, (stmt, false, false, false) in
+              let stmt = Instrs.mem instr statement_positions || is_statement_at instr in
+              let state' = rel addr, (f, line, column + 1), 0, (stmt, false, false, false) in
               (* FIXME: quadratic *)
               prg @ Dwarf5.Machine.infer state state', state'
             in
@@ -937,7 +947,7 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             let sequence (sta, notes, en) =
               let start, ending = rel sta, rel en in
               Printf.printf "LINES::::  SEQUENCE start/END    ADDR: %x - %x\n" start ending;
-              Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: %x - (%s:%d:%d)    %s\n" (rel addr) file line column (if Instrs.mem instr !statement_positions then "is_stmt" else "")) notes;
+              Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: %x - (%s:%d:%d)    %s\n" (rel addr) file line column (if Instrs.mem instr statement_positions then "is_stmt" else "")) notes;
            
               let seq = Instrs.to_seq notes in
               let start_state = let _, l, d, f = Dwarf5.Machine.start_state in start, l, d, f in
