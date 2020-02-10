@@ -218,12 +218,14 @@ let rec check_typ env typ : unit =
 and check_con env c =
   if T.ConSet.mem c !(env.seen) then ()
   else
-  env.seen := T.ConSet.add c !(env.seen);
-  let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
-  let cs, ce = check_typ_binds env binds in
-  let ts = List.map (fun c -> T.Con (c, [])) cs in
-  let env' = adjoin_cons env ce in
-  check_typ env' (T.open_ ts typ)
+  begin
+    env.seen := T.ConSet.add c !(env.seen);
+    let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+    let cs, ce = check_typ_binds env binds in
+    let ts = List.map (fun c -> T.Con (c, [])) cs in
+    let env' = adjoin_cons env ce in
+    check_typ env' (T.open_ ts typ)
+  end
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
