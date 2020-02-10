@@ -3,7 +3,12 @@ actor {
   Prim.debugPrint ("init'ed");
 
   var always10 = 10;
+  var state = 1;
   public query func check() : async () { assert (always10 == 10); };
+
+  public let dump = func dump() : Nat { state };
+
+
 }
 
 //CALL query check "DIDL\x00\x00"
