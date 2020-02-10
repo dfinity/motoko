@@ -2933,6 +2933,10 @@ module Dfinity = struct
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_init";
       edesc = nr (FuncExport (nr fi))
+    });
+    E.add_export env (nr {
+      name = Wasm.Utf8.decode "canister_post_upgrade";
+      edesc = nr (FuncExport (nr fi))
     })
 
   let get_self_reference env =
