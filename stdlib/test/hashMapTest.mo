@@ -5,7 +5,7 @@ import Hash "mo:stdlib/hash";
 func textIsEq(x:Text,y:Text):Bool { x == y };
 
 debug {
-  let a = H.HashMap<Text, Nat>(3, textIsEq, Hash.Hash.hashOfText);
+  let a = H.HashMap<Text, Nat>(3, textIsEq, Hash.hashOfText);
 
   ignore a.set("apple", 1);
   ignore a.set("banana", 2);
@@ -21,7 +21,7 @@ debug {
   ignore a.set("AvocadO", 444);
 
   // need to resupply the constructor args; they are private to the object; but, should they be?
-  let b = H.clone<Text, Nat>(a, textIsEq, Hash.Hash.hashOfText);
+  let b = H.clone<Text, Nat>(a, textIsEq, Hash.hashOfText);
 
   // ensure clone has each key-value pair present in original
   for ((k,v) in a.iter()) {
@@ -91,7 +91,7 @@ debug {
 
 
   // test fromIter method
-  let c = H.fromIter<Text, Nat>(b.iter(), 0, textIsEq, Hash.Hash.hashOfText);
+  let c = H.fromIter<Text, Nat>(b.iter(), 0, textIsEq, Hash.hashOfText);
 
   // c agrees with each entry of b
   for ((k,v) in b.iter()) {
