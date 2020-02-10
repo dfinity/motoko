@@ -128,6 +128,7 @@ let encode (em : extended_module) =
                   | _ -> assert false
   in
 
+  (* keeping count of the DWARF code sequence we are in *)
   let sequence_number = ref 0 in
 
   let extract_dwarf tag =
@@ -138,17 +139,14 @@ let encode (em : extended_module) =
     let extract = function
       | (Nop, {line; file; _}) when -line = dw_AT_producer ->
         let _offs = add_dwarf_string file in
-        (* Printf.printf "String dw_AT_producer offset: %d\n" offs; *)
         add_dwarf_attribute (StringAttribute (-line, file))
 
       | (Nop, {line; file; _}) when -line = dw_AT_name ->
         let _offs = add_dwarf_string file in
-        (* Printf.printf "String dw_AT_name offset: %d\n" offs; *)
         add_dwarf_attribute (StringAttribute (-line, file))
 
       | (Nop, {line; file; _}) when -line = dw_AT_comp_dir ->
         let _offs = add_dwarf_string file in
-        (* Printf.printf "String dw_AT_comp_dir offset: %d\n" offs; *)
         add_dwarf_attribute (StringAttribute (-line, file))
 
       | (Nop, {line; column; _}) when -line = dw_AT_language ->
