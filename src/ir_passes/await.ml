@@ -262,7 +262,7 @@ and c_exp' context exp k =
     begin
     match eff exp1 with
     | T.Triv ->
-      { it =SwitchE(t_exp context exp1, cases');
+      { it = SwitchE(t_exp context exp1, cases');
         at = exp.at;
         note = { exp.note with note_typ = answerT } }
     | T.Await ->
