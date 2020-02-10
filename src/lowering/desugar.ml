@@ -52,7 +52,8 @@ let rec exps es = List.map exp es
 and exp e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
     match e.it with
-    | S.AnnotE (e,_) -> exp e
+    | S.AnnotE (e', t) ->
+      { (exp e') with note = typ_note e.note }
     | _ -> typed_phrase' exp' e
 
 and exp' at note = function
