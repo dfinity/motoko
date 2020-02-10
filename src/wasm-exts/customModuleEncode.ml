@@ -953,7 +953,8 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
               let start_state = let _, l, d, f = Dwarf5.Machine.start_state in start, l, d, f in
               let prg, (addr, _, _, _) = Seq.fold_left stepping Dwarf5.([- dw_LNE_set_address; start; dw_LNS_copy], start_state) seq in
               Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
-                        (prg @ [dw_LNS_advance_pc; ending - addr; - dw_LNE_end_sequence]))
+                        (prg @ [dw_LNS_advance_pc; ending - addr - 1; dw_LNS_negate_stmt; dw_LNS_set_epilogue_begin; dw_LNS_copy;
+                                dw_LNS_advance_pc; 1; - dw_LNE_end_sequence]))
             in
             Sequ.iter sequence !sequence_bounds
         )

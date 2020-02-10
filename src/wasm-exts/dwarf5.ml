@@ -410,6 +410,7 @@ let moves u8 uleb sleb u32 =
   | op :: file :: tail when dw_LNS_set_file = op -> Printf.printf ":=FILE\n"; standard op; uleb file; chase tail
   | op :: col :: tail when dw_LNS_set_column = op -> Printf.printf ":=COLUMN\n"; standard op; uleb col; chase tail
   | op :: tail when dw_LNS_negate_stmt = op -> Printf.printf "~STMT\n"; standard op; chase tail
+  | op :: tail when dw_LNS_set_epilogue_begin = op -> Printf.printf ">EPI\n"; standard op; chase tail
   | op :: tail when - dw_LNE_end_sequence = op -> Printf.printf "FIN\n"; extended1 op; chase tail
   | op :: addr :: tail when - dw_LNE_set_address = op -> Printf.printf "NEW ADDR\n"; extended5 op; u32 addr; chase tail
   | op :: _ -> Printf.printf "MoVE 0x%x\n" op; failwith "move not covered"
