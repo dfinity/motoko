@@ -255,6 +255,10 @@ let (@?) it at = Source.({it; at; note = empty_typ_note})
 let (@!) it at = Source.({it; at; note = Type.Pre})
 let (@=) it at = Source.({it; at; note = None})
 
+let dummy_exp = PrimE "@hole" @? no_region
+let dummy_dec = ExpD dummy_exp @? no_region
+let dummy_typ = PrimT "@hole_ty" @! no_region
+
 let scope_typ region =
   Source.(
     { it = PathT (

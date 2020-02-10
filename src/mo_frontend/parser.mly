@@ -136,7 +136,7 @@ let share_expfield (ef : exp_field) =
 %nonassoc SHLOP USHROP SSHROP ROTLOP ROTROP
 %left POWOP
 
-%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) text_like
+%type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_var text_like
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_item
 %type<Mo_def.Syntax.vis> vis
 %type<Mo_def.Syntax.typ_tag> typ_tag
@@ -294,7 +294,7 @@ typ_pre :
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
       in ObjT(s, tfs') @! at $sloc }
 
-typ :
+typ[@recover.cost 2][@recover.expr Mo_def.Syntax.dummy_typ] :
   | t=typ_pre
     { t }
   | s=func_sort_opt tps=typ_params_opt t1=typ_un ARROW t2=typ
@@ -538,7 +538,7 @@ exp_nonvar(B) :
   | d=dec_nonvar
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
-exp(B) :
+exp[@recover.cost 1][@recover.expr Mo_def.Syntax.dummy_exp] (B):
   | e=exp_nonvar(B)
     { e }
   | d=dec_var
@@ -649,12 +649,15 @@ sort_pat_opt :
 (* Declarations *)
 
 dec_var :
-  | VAR x=id t=return_typ? EQ e=exp(ob)
+  | VAR x=id t=return_typ? EQ e=exp_var
     { let e' =
         match t with
         | None -> e
         | Some t -> AnnotE (e, t) @? span t.at e.at
       in VarD(x, e') @? at $sloc }
+
+exp_var [@recover.expr Mo_def.Syntax.dummy_exp] :
+  | e=exp(ob) { e }
 
 dec_nonvar :
   | LET p=pat EQ e=exp(ob)
@@ -687,7 +690,7 @@ dec_nonvar :
   | IGNORE e=exp(ob)
     { IgnoreD e @? at $sloc }
 
-dec :
+dec[@recover.cost 1][@recover.expr Mo_def.Syntax.dummy_dec] :
   | d=dec_var
     { d }
   | d=dec_nonvar

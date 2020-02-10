@@ -78,7 +78,7 @@ module With_recovery : PARSE_INTF = struct
         | `Fail -> (
             match token with
             | Parser.EOF, _, _ -> (
-                match candidates.final with
+                match candidates.R.final with
                 | None -> Error
                 | Some x -> Success x )
             | _ -> Intermediate parser ) )
@@ -101,12 +101,11 @@ let parse_with_recovery entrypoint tokens =
   offer (P.initial entrypoint Lexing.dummy_pos) tokens
 
 let lex_buf lexbuf =
-  Lexer.init ();
   let rec loop acc =
-    match Lexer.token lexbuf with
+    match Lexer.token Lexer.Normal lexbuf with
     | exception Lexer.Error _ -> loop acc
     | token -> (
-        let acc = (token, lexbuf.lex_start_p, lexbuf.lex_curr_p) :: acc in
+        let acc = Lexing.(token, lexbuf.lex_start_p, lexbuf.lex_curr_p) :: acc in
         match token with Parser.EOF -> List.rev acc | _ -> loop acc )
   in
   loop []
@@ -114,10 +113,16 @@ let lex_buf lexbuf =
 let parse_prog : Lexing.lexbuf -> Mo_def.Syntax.prog =
   fun lexbuf ->
   let tokens = lex_buf lexbuf in
-  parse_with_recovery P.Incremental.prog tokens
+  parse_with_recovery P.Incremental.parse_prog tokens ""
 
 let main () =
-  let input = "module {}" in
+  let input = {|
+module {
+  let y = "hello";
+  type Thing = Int;
+  let x: Nat = 5;
+}
+|} in
   let lexbuf = Lexing.from_string input in
-  let prog = parse_expr lexbuf in
-  print_endline "Hello recovery"
+  let prog = parse_prog lexbuf in
+  Wasm.Sexpr.print 80 (Mo_def.Arrange.prog prog)

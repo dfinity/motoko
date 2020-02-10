@@ -19,11 +19,14 @@ let argspec =
     @ Args.error_args
     @ Args.package_args
 
+(* let () =
+ *   Arg.parse argspec ignore usage;
+ *   match !entry_point with
+ *   | None ->
+ *      Printf.eprintf "--canister-main needs to be specified";
+ *      exit 1
+ *   | Some ep ->
+ *      LanguageServer.start ep !debug *)
+
 let () =
-  Arg.parse argspec ignore usage;
-  match !entry_point with
-  | None ->
-     Printf.eprintf "--canister-main needs to be specified";
-     exit 1
-  | Some ep ->
-     LanguageServer.start ep !debug
+  Mo_frontend.Parse_wyc.main ()
