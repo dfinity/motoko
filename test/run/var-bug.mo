@@ -1,7 +1,7 @@
 module {
 
 public func init() : Any {
-  { var x : {#A;#B} = (#A : {#A;#B}) }
+  { var x : {#A;#B} = #A }
 };
 
 }
