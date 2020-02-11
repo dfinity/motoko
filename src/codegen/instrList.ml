@@ -229,7 +229,7 @@ let dw_tag : dw_TAG -> t =
           (dw_attr (Producer "DFINITY Motoko compiler, version 0.1") ^^
            dw_attr (Language dw_LANG_Swift) ^^ (* FIXME *)
            dw_attr (Name file) ^^
-           (* dw_attr (Stmt_list 0) ^^ FIXME *)
+           dw_attr (Stmt_list 0) ^^
            dw_attr (Comp_dir dir) ^^
            dw_attr (Low_pc 0) ^^
            dw_attr (Addr_base 8) ^^ (* FIXME: hardcoded *)

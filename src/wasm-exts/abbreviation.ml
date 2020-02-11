@@ -4,7 +4,7 @@ let abbreviations =
       [ dw_AT_producer, dw_FORM_strp;
         dw_AT_language, dw_FORM_data2;
         dw_AT_name, dw_FORM_strp;
-        (* dw_AT_stmt_list, dw_FORM_sec_offset; *)
+        dw_AT_stmt_list, dw_FORM_sec_offset;
         dw_AT_comp_dir, dw_FORM_strp;
         dw_AT_low_pc, dw_FORM_addr;
         dw_AT_addr_base, dw_FORM_sec_offset;
