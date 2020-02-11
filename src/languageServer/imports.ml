@@ -41,3 +41,17 @@ let slice_imports : string -> string list * import list * string list =
      let (before, lines) = Lib.List.split_at start_line lines in
      let (_, after) = Lib.List.split_at (end_line - start_line + 1) lines in
      (before, List.map match_import decls, after)
+
+let build_file : string list * import list * string list -> string =
+  fun (before, imports, after) ->
+  let print_import (alias, path) = Printf.sprintf "import %s \"%s\";" alias path in
+  let before_lines = String.concat "\n" before in
+  let after_lines = String.concat "\n" after in
+  if imports = [] then
+    before_lines ^ "\n" ^ after_lines
+  else
+    before_lines
+    ^ "\n"
+    ^ String.concat "\n" (List.map print_import imports)
+    ^ "\n"
+    ^ after_lines
