@@ -101,7 +101,7 @@ let ocaml_exe = name: bin:
   in
     # Make standalone on darwin (nothing to do on linux, is static)
     if nixpkgs.stdenv.isDarwin
-    then darwin_standalone { inherit drv; exename = bin; }
+    then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
     else drv;
 in
 
