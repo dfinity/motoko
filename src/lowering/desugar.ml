@@ -52,8 +52,7 @@ let rec exps es = List.map exp es
 and exp e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
     match e.it with
-    | S.AnnotE (e', t) ->
-      { (exp e') with note = typ_note e.note }
+    | S.AnnotE (e', t) -> exp e'
     | _ -> typed_phrase' exp' e
 
 and exp' at note = function
@@ -314,7 +313,7 @@ and dec' at n d = match d with
       I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, t)})
     | _ -> I.LetD (p', e')
     end
-  | S.VarD (i, e) -> I.VarD (i.it, exp e)
+  | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
   | S.ClassD (id, tbs, p, _t_opt, s, self_id, es) ->
     let id' = {id with note = ()} in

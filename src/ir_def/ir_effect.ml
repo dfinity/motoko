@@ -79,6 +79,6 @@ and effect_cases cases =
     max_eff e (effect_cases cases')
 
 and effect_dec dec = match dec.it with
-  | LetD (_,e) | VarD (_,e) -> effect_exp e
+  | LetD (_, e) | VarD (_, _, e) -> effect_exp e
 
 let infer_effect_dec = effect_dec

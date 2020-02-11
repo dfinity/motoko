@@ -6688,7 +6688,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
       compile_exp_as_opt env ae pat_arity e ^^
       fill_code
     )
-  | VarD (name, e) ->
+  | VarD (name, _, e) ->
       assert (AllocHow.M.find_opt name how = Some AllocHow.LocalMut ||
               AllocHow.M.find_opt name how = Some AllocHow.StoreHeap ||
               AllocHow.M.find_opt name how = Some AllocHow.StoreStatic);

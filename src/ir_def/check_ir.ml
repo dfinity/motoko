@@ -855,13 +855,9 @@ and check_dec env dec  =
     ignore (check_pat_exhaustive env pat);
     check_exp env exp;
     typ exp <: pat.note
-  | VarD (id, exp) ->
-    let t0 = try T.Env.find id env.vals with
-             |  Not_found -> error env dec.at "unbound variable %s" id
-    in
-    check (T.is_mut t0) "variable in VarD is not immutable";
+  | VarD (id, t, exp) ->
     check_exp env exp;
-    typ exp <: T.as_immut t0
+    typ exp <: t
 
 and check_decs env decs  =
   List.iter (check_dec env) decs;
@@ -874,11 +870,12 @@ and gather_dec env scope dec : scope =
   | LetD (pat, exp) ->
     let ve = gather_pat env scope.val_env pat in
     { val_env = ve }
-  | VarD (id, exp) ->
+  | VarD (id, t, exp) ->
+    check_typ env t;
     check env dec.at
       (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
-    let ve =  T.Env.add id (T.Mut (typ exp)) scope.val_env in
+    let ve =  T.Env.add id (T.Mut t) scope.val_env in
     { val_env = ve}
 
 (* Programs *)

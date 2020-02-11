@@ -136,7 +136,7 @@ and prim =
 and dec = dec' Source.phrase
 and dec' =
   | LetD of pat * exp                          (* immutable *)
-  | VarD of id * exp                           (* mutable *)
+  | VarD of id * Type.typ * exp                           (* mutable *)
 
 (* Literals *)
 

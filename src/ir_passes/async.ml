@@ -380,7 +380,7 @@ let transform mode env prog =
   and t_dec' dec' =
     match dec' with
     | LetD (pat,exp) -> LetD (t_pat pat,t_exp exp)
-    | VarD (id,exp) -> VarD (id,t_exp exp)
+    | VarD (id, t, exp) -> VarD (id, t_typ t, t_exp exp)
 
   and t_decs decs = List.map t_dec decs
 
