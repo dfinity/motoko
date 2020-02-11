@@ -129,9 +129,9 @@ and dec' rho d = match d with
      let p', rho = pat rho p in
      (fun rho' -> LetD (p',exp rho' e)),
      rho
-  | VarD (i, e) ->
+  | VarD (i, t, e) ->
      let i', rho = id_bind rho i in
-     (fun rho' -> VarD (i',exp rho' e)),
+     (fun rho' -> VarD (i', t, exp rho' e)),
      rho
 
 and decs rho ds =

@@ -135,7 +135,7 @@ and t_dec context dec =
 and t_dec' context dec' =
   match dec' with
   | LetD (pat, exp) -> LetD (pat, t_exp context exp)
-  | VarD (id, exp) -> VarD (id, t_exp context exp)
+  | VarD (id, t, exp) -> VarD (id, t, t_exp context exp)
 
 and t_decs context decs = List.map (t_dec context) decs
 
@@ -393,7 +393,7 @@ and c_dec context dec (k:kont) =
          c_exp context exp (meta (typ exp)
                               (fun v -> block v))
      end
-  | VarD (id,exp) ->
+  | VarD (id, _typ, exp) ->
     begin
       match eff exp with
       | T.Triv ->
@@ -417,7 +417,7 @@ and c_decs context decs k =
 and declare_dec dec exp : exp =
   match dec.it with
   | LetD (pat, _) -> declare_pat pat exp
-  | VarD (id, exp1) -> declare_id id (T.Mut (typ exp1)) exp
+  | VarD (id, typ, exp1) -> declare_id id (T.Mut typ) exp
 
 and declare_decs decs exp : exp =
   match decs with
