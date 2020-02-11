@@ -880,8 +880,8 @@ let encode (em : extended_module) =
 
         let file_strings = ref [] in
         let add_file_string = function
-          | "" -> 0
-          | str -> add_string (function | [] -> 1 | (_, p) :: _ -> 1 + p) file_strings str
+          | "" -> -1 (* assign 0 as a line number? *)
+          | str -> add_string (function | [] -> 0 | (_, p) :: _ -> 1 + p) file_strings str
         in
 
         unit(fun _ ->
