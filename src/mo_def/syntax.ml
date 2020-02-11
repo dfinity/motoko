@@ -328,3 +328,4 @@ let funcE (f, s, tbs, p, t_opt, sugar, e) =
   | _ ->
     FuncE(f, s, tbs, p, t_opt, sugar, e)
 
+exception Imports of dec list

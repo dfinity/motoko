@@ -173,10 +173,12 @@ let share_expfield (ef : exp_field) =
 %type<Mo_def.Syntax.id * Mo_def.Syntax.exp_field list> class_body
 %type<Mo_def.Syntax.case> catch case
 %type<Mo_def.Syntax.dec list -> Mo_def.Syntax.exp'> bl ob
+%type<Mo_def.Syntax.dec list> import_list
 
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
+%start<unit> parse_module_header
 
 %on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%
@@ -720,7 +722,6 @@ class_body :
 
 
 (* Programs *)
-
 imp :
   | IMPORT xf=id_opt EQ? f=TEXT
     { let _, x = xf "import" $sloc in
@@ -736,5 +737,11 @@ parse_prog :
 parse_prog_interactive :
   | start is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
     { fun filename -> { it = is @ ds; at = at $sloc ; note = filename} }
+
+import_list :
+  | is=seplist(imp, semicolon) { raise (Imports is) }
+
+parse_module_header :
+  | start import_list EOF {}
 
 %%
