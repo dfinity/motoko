@@ -939,10 +939,20 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
             (* generate the line section *)
             let code_start = !code_section_start in
             let rel addr = addr - code_start in
-            let stepping (prg, state) (addr, {file; line; column} as instr) : int list * Dwarf5.Machine.state =
+            (* let stepping (prg, state) (addr, {file; line; column} as instr) : int list * Dwarf5.Machine.state =
               let f = add_file_string file in
               let stmt = Instrs.mem instr statement_positions || is_statement_at instr in
               let state' = rel addr, (f, line, column + 1), 0, (stmt, false, false, false) in
+              (* FIXME: quadratic *)
+              prg @ Dwarf5.Machine.infer state state', state'
+            in*)
+
+            let mapping (addr, {file; line; column} as instr) : Dwarf5.Machine.state =
+              let f = add_file_string file in
+              let stmt = Instrs.mem instr statement_positions || is_statement_at instr in
+              rel addr, (f, line, column + 1), 0, (stmt, false, false, false) in
+
+            let joining (prg, state) state' : int list * Dwarf5.Machine.state =
               (* FIXME: quadratic *)
               prg @ Dwarf5.Machine.infer state state', state'
             in
@@ -953,8 +963,23 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
               Instrs.iter (fun (addr, {file; line; column} as instr) -> Printf.printf "\tLINES::::  Instr    ADDR: 0x%x - (%s:%d:%d)    %s\n" (rel addr) file line column (if Instrs.mem instr statement_positions then "is_stmt" else "")) notes;
            
               let seq = Instrs.to_seq notes in
+              (*let states = Seq.map mapping seq in*)
+              (* Decorate first instr, and prepend start address *)
               let start_state = let _, l, d, f = Dwarf5.Machine.start_state in start, l, d, f in
-              let prg, (addr, _, _, _) = Seq.fold_left stepping Dwarf5.([- dw_LNE_set_address; start; dw_LNS_copy], start_state) seq in
+              let states' () =
+                let open Seq in
+                match map mapping seq () with
+                | Cons ((a, l, d, (stm, bb, _, epi)), t) ->
+                  let start_state' = let a, _, d, f = start_state in a, l, d, f in
+                  Cons (start_state', fun () -> Cons ((a, l, d, (stm, bb, false, epi)), t))
+                | Nil -> Cons (start_state, fun () -> Nil)
+              in
+
+              (*let states'' () = Seq.(Cons (_, map mapping seq)) in
+              let prologue_end = Seq.(match seq () with | Nil -> ending | Cons (i, _) -> rel (fst i)) in*)
+              (*let start_state = let _, l, d, f = Dwarf5.Machine.start_state in prologue_end, l, d, f in*)
+              (*let prg, (addr, _, _, _) = Seq.fold_left stepping Dwarf5.([- dw_LNE_set_address; start; dw_LNS_copy; dw_LNS_set_prologue_end], start_state) seq in*)
+              let prg, (addr, _, _, _) = Seq.fold_left joining Dwarf5.([], Machine.start_state) states' in
               Dwarf5.(Machine.moves u8 uleb128 sleb128 write32
                         (prg @ [dw_LNS_advance_pc; ending - addr - 1; dw_LNS_negate_stmt; dw_LNS_set_epilogue_begin; dw_LNS_copy;
                                 dw_LNS_advance_pc; 1; - dw_LNE_end_sequence]))
