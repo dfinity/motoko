@@ -338,7 +338,7 @@ let line_range = 7
 let opcode_base = dw_LNS_set_isa
 
 type state = int * (int * int * int) * int * (bool * bool * bool * bool)
-let default_loc = 0, 0, 0
+let default_loc = 0, 1, 0
 let default_flags = default_is_stmt, false, true, false
 let start_state = 0, default_loc, 0, default_flags
 
