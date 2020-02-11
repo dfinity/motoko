@@ -851,7 +851,6 @@ and close_typ_binds cs tbs =
 
 and check_dec env dec  =
   (* helpers *)
-  let check p = check env dec.at p in
   let (<:) t1 t2 = check_sub env dec.at t1 t2 in
   match dec.it with
   | LetD (pat, exp) ->
