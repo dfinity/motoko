@@ -395,10 +395,8 @@ let rec infer from toward = match from, toward with
   | (_, _, _, (s, bb, ep, be)), (t, loc, disc, (s', bb', ep', be')) when s <> s' ->
     dw_LNS_negate_stmt :: infer (t, loc, disc, (s', bb, ep, be)) (t, loc, disc, (s', bb', ep', be'))
   | (_, _, _, (_, bb, ep, be)), (t, loc, disc, (s, bb', ep', be')) when bb <> bb' -> failwith "cannot do bb yet"
-
-  | (_, _, _, (_, false, true, be)), (t, loc, disc, (s, false, false, be')) ->
-    dw_LNS_set_prologue_end :: infer (t, loc, disc, (s, false, false, be)) (t, loc, disc, (s, false, false, be'))
-
+  | (_, _, _, (_, _, true, be)), (t, loc, disc, (s, bb, false, be')) ->
+    dw_LNS_set_prologue_end :: infer (t, loc, disc, (s, bb, false, be)) (t, loc, disc, (s, bb, false, be'))
   | state, state' when state = state' -> [dw_LNS_copy]
   | _ -> failwith "not covered"
 
