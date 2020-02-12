@@ -27,17 +27,18 @@ class Queue<T>() {
     private var front : List<T> = null;
     private var back : List<T> = null;
 
-    isEmpty() : Bool {
+    public func isEmpty() : Bool {
 	switch(front,back) {
 	case (null,null) true;
 	case _ false;
 	};
     };
 
-    enqueue(t : T) {
+    public func enqueue(t : T) {
 	back := ? (new { head = t; tail = back });
     };
-    dequeue() : T {
+
+    public func dequeue() : T {
 	switch (front,back)
 	{
 	    case (null, null) { assert false;loop{};};
@@ -55,16 +56,17 @@ class Queue<T>() {
     };
 };
 
-class Chan<A> (join : Join) = {
-    private queue : Queue<A> = Queue<A>();
+class Chan<A> (join : Join) {
+    let queue : Queue<A> = Queue<A>();
 
-    isEmpty():Bool = queue.isEmpty();
+    public func isEmpty():Bool = queue.isEmpty();
 
-    post(a : A) {
+    public func post(a : A) {
 	queue.enqueue(a);
 	join.scan();
     };
-    dequeue() : A
+
+    public func dequeue() : A
     {
 	queue.dequeue();
     }
@@ -77,21 +79,21 @@ type Pat<A> = {
     get : () -> A;
 };
 
-func Atom<A>(join : Join, chan : Chan<A>) : Pat<A> = new this {
-    And<B>(chan : Chan<B>):Pat<(A,B)> = Conj<A,B>(join, this, chan);
-    Do (cont: A-> ()) { join.addClause(Clause<A>(this, cont));};
+class Atom<A>(join : Join, chan : Chan<A>) : Pat<A> = this {
+    public func And<B>(chan : Chan<B>):Pat<(A,B)> = Conj<A,B>(join, this, chan);
+    public func Do (cont: A-> ()) { join.addClause(Clause<A>(this, cont));};
 
-    match():Bool { not(chan.isEmpty()); };
-    get():A { chan.dequeue();}
+    public func match():Bool { not(chan.isEmpty()); };
+    public func get():A { chan.dequeue();}
 };
 
-func Conj<A,B>(join : Join, pat:Pat<A>, chan:Chan<B>) : Pat<(A,B)> = new this {
-    And<C>(chan : Chan<C>):Pat<((A,B),C)> =
+class Conj<A,B>(join : Join, pat:Pat<A>, chan:Chan<B>) : Pat<(A,B)> = this  {
+    public func And<C>(chan : Chan<C>):Pat<((A,B),C)> =
      	Conj<(A,B),C>(join, this, chan);
-    Do (cont: ((A,B)) -> ()) { join.addClause(Clause<(A,B)>(this, cont));};
+    public func Do (cont: ((A,B)) -> ()) { join.addClause(Clause<(A,B)>(this, cont));};
 
-    match():Bool { (pat.match() and (not (chan.isEmpty()))); };
-    get():((A,B)) { (pat.get(), chan.dequeue());}
+    public func match():Bool { (pat.match() and (not (chan.isEmpty()))); };
+    public func get():((A,B)) { (pat.get(), chan.dequeue());}
 };
 
 
@@ -102,7 +104,7 @@ class Join() = this {
 	patterns := ?(new { head = c; tail = patterns });
     };
 
-    scan() {
+    public func scan() {
 	var next = patterns;
 	loop {
             switch (next) {
@@ -117,9 +119,9 @@ class Join() = this {
 	};
     };
 
-    Create<A>() : Chan<A> = Chan<A>(this);
+    public func Create<A>() : Chan<A> = Chan<A>(this);
 
-    When<A>(c:Chan<A>):Pat<A> = Atom<A>(this, c);
+    public func When<A>(c:Chan<A>):Pat<A> = Atom<A>(this, c);
 };
 
 type AbsClause = {
@@ -128,8 +130,8 @@ type AbsClause = {
 };
 
 func Clause<A>(pat: Pat<A>, cont: A->()) : AbsClause = new {
-    match():Bool { pat.match(); };
-    fire() {
+    func match():Bool { pat.match(); };
+    func fire() {
 	cont(pat.get());
     };
 };
@@ -139,19 +141,16 @@ func Clause<A>(pat: Pat<A>, cont: A->()) : AbsClause = new {
 
 // an unbounded, asynchronous buffer
 actor Buffer = {
-    private j  = Join();
-    private put = j.Create<Text>();
-    private get = j.Create<shared Text-> ()>();
-    private init  =
-	j.When<Text>(put).And<shared Text-> ()>(get). // type argument inference, please
+    let j  = Join();
+    let put = j.Create<Text>();
+    let get = j.Create<shared Text-> ()>();
+    j.When<Text>(put).And<shared Text-> ()>(get). // type argument inference, please
 	Do( func ( (t,c) : (Text, (shared Text -> ())))  {  // type annotation inference, please
 		c(t);
 	}
-	  );
-    Put(t : Text)
-    {	put.post(t);
-    };
-    Get(c : shared Text-> ()) = get.post(c);
+    );
+    public func Put(t : Text) {	put.post(t); };
+    public func Get(c : shared Text-> ()) { get.post(c); }
 };
 
 
@@ -163,33 +162,30 @@ Buffer.Get(shared func(t:Text) { print(t);});
 // an asynchronous lock
 type Release = shared () -> ();
 actor Lock = {
-    private j  = Join();
-    private free = j.Create<()>();
-    private acquire = j.Create<shared Release -> async ()>();
-    private release() = free.post(());
-    private init  = {
-	j.When<shared Release-> async ()>(acquire).And<()>(free).
+    let j  = Join();
+    let free = j.Create<()>();
+    let acquire = j.Create<shared Release -> async ()>();
+    func release() { free.post(());};
+    j.When<shared Release-> async ()>(acquire).And<()>(free).
 	    Do( func ( (k,_) : (shared Release -> async (), ()))  {  // type annotation inference, please
 		    let _ = k(shared func () = release());
 	    }
-	      );
-	release(); // lock initially free
-    };
-
-    Acquire(k: shared Release -> async ()) { acquire.post(k); }
+    );
+    release(); // lock initially free
+    public func Acquire(k: shared Release -> async ()) { acquire.post(k); }
 };
 
 // a shared output buffer, protected by Lock
 actor Resource {
-    private var buffer = "";
-    write(t:Text) { buffer := buffer # t;};
-    get():async Text{ buffer; };
+    var buffer = "";
+    public func write(t:Text) { buffer := buffer # t;};
+    public func get() : async Text { buffer; };
 };
 
 actor Alice {
-    private name =  ["a","l","i","c","e"];
+    let name =  ["a","l","i","c","e"];
 
-    send(release:Release) : async () {
+    public func send(release:Release) : async () {
     	for (s in name.vals())
 	{
             Resource.write(s);
@@ -200,14 +196,14 @@ actor Alice {
 	release();
     };
 
-    start() { Lock.Acquire(send);}
+    public func start() { Lock.Acquire(send);}
 };
 
 // just like Alice
 actor Charlie {
-    private name =  ["c","h","a","r","l","i","e"];
+    let name =  ["c","h","a","r","l","i","e"];
 
-    send(release:Release) : async () {
+    public func send(release:Release) : async () {
         for (s in name.vals())
 	{
             Resource.write(s);
@@ -218,7 +214,7 @@ actor Charlie {
 	release();
     };
 
-    start() { Lock.Acquire(send);}
+    public func start() { Lock.Acquire(send);}
 };
 
 // proper locking ensures the writes to Resource aren't interleaved.
