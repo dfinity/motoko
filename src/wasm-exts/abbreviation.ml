@@ -28,5 +28,8 @@ let abbreviations =
         dw_AT_decl_line, dw_FORM_data1;
         dw_AT_decl_column, dw_FORM_data1;
       (*dw_AT_type, dw_FORM_ref4*)
+      ] );
+    ( dw_TAG_base_type, dw_CHILDREN_no,
+      [ dw_AT_name, dw_FORM_strp
       ] )
   ]

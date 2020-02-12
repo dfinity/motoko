@@ -114,13 +114,27 @@ let encode (em : extended_module) =
   let sequence_bounds = ref Sequ.empty in
 
   let dwarf_tags = ref [Tag (0, [])] in
-  let add_dwarf_tag tag = dwarf_tags := Tag (tag, []) :: ((*Printf.printf "ADDING a %d\n" tag; *)!dwarf_tags) in
-  let close_dwarf () =
+
+  let is_closed tag =
+    let tag_of (t', _, _) = tag = t' in
+    let (_, has_children, _) = List.find tag_of Abbreviation.abbreviations in
+    not (has_children <> 0)
+  in
+
+  let add_dwarf_tag tag =
+    (* invariant: at most one closed tag waiting for attributes *)
+    dwarf_tags :=
+      match !dwarf_tags with
+      | Tag (t', _) as closed :: Tag (t, arts) :: tail when is_closed tag && is_closed t' ->
+        (Printf.printf "CONTRACTING a 0x%x\n" tag; Tag (tag, []) :: Tag (t, closed :: arts) :: tail)
+      | _ -> Tag (tag, []) :: (Printf.printf "ADDING a 0x%x\n" tag; !dwarf_tags) in
+  let rec close_dwarf () =
     match !dwarf_tags with
     | [] -> failwith "no open DW_TAG"
     | Tag _ :: [] -> failwith "TOPLEVEL: NOT NESTING\n"
-    | Tag (s, attrs) :: Tag (0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s -> (*Printf.printf "TOPLEVEL: EATING\n"; *)dwarf_tags := Tag (s, tags @ attrs) :: []
-    | Tag _ as nested :: Tag (tag, arts) :: t -> dwarf_tags := ((*Printf.printf "NESTING into %d\n" tag; *)Tag (tag, nested :: arts) :: t)
+    | Tag (t', _) as closed :: Tag (t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED\n"; dwarf_tags := Tag (t, closed :: arts) :: tail; close_dwarf ()
+    | Tag (s, attrs) :: Tag (0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s -> Printf.printf "TOPLEVEL: EATING\n"; dwarf_tags := Tag (s, tags @ attrs) :: []
+    | Tag _ as nested :: Tag (tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING into 0x%x\n" tag; Tag (tag, nested :: arts) :: t)
     | _ -> failwith "cannot close DW_AT" in
   let add_dwarf_attribute attr =
     dwarf_tags := match !dwarf_tags with
@@ -131,7 +145,7 @@ let encode (em : extended_module) =
   (* keeping count of the DWARF code sequence we are in *)
   let sequence_number = ref 0 in
 
-  let extract_dwarf tag =
+  let rec extract_dwarf tag =
     let open Wasm.Ast in
     let open Wasm.Source in
     let open Dwarf5 in
@@ -168,8 +182,9 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; _} when -line = dw_AT_ranges ->
         add_dwarf_attribute (FunctionsAttribute (-line))
-      | Nop, {line; _} -> Printf.printf "TAG: %x; ATTR extract: %x\n" tag (-line); failwith "extract"
-      | instr, {line; file; _} -> Printf.printf "TAG: %x (a.k.a. %d, from: %s); extract: %x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
+      | Nop, {line; _} -> Printf.printf "TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line); failwith "extract"
+      | Block (_, es), {line; file; _} -> extract_dwarf (-line) es;
+      | instr, {line; file; _} -> Printf.printf "TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
     add_dwarf_tag tag;
     let rec add_artifacts = function
@@ -771,15 +786,6 @@ let encode (em : extended_module) =
         uleb128 (indexOf 1 Abbreviation.abbreviations);
         let nested_tags, attrs = List.partition (function Tag _ -> true | _ -> false) contents in
 
-
-
-     (*   if t = DW_TAG_subprogram
-        then begin
-            Sequ.find_opt
-          end;
-      *)
-
-
         List.iter2 pairing forms attrs;
         List.iter writeTag nested_tags;
         if has_children <> 0 then close_section ()
@@ -804,22 +810,6 @@ let encode (em : extended_module) =
             u8 Dwarf5.dw_UT_compile; (* unit_type *)
             u8 4; (* address_size *)
             write32 0x0000; (* debug_abbrev_offset *)
-
-(*
-0x0000000b: DW_TAG_compile_unit [1] *
-              DW_AT_low_pc [DW_FORM_addr]      (0x0000000000000000)
-              DW_AT_ranges [DW_FORM_sec_offset]        (0x00000050
-                 [0x00000003, 0x00000144) "CODE"
-                 [0x00000146, 0x00000271) "CODE"
-                 [0x00000273, 0x000003b1) "CODE")
- *)
-
-(*
-0x00000078:   DW_TAG_subprogram [8] *
-                DW_AT_low_pc [DW_FORM_addr]    (0x0000000000000003 "CODE")
-                DW_AT_high_pc [DW_FORM_data4]  (0x00000141)
- *)
-
 
             match !dwarf_tags with
             | [toplevel] -> writeTag toplevel

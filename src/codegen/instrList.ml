@@ -221,8 +221,20 @@ let dw_attr : dw_AT -> t =
  *)
 
 let dw_tag : dw_TAG -> t =
+  let fakeBlock tag attrs = fakeColumn 0 tag (Block ([], attrs 0l Wasm.Source.no_region [])) in
   function
   | Compile_unit (dir, file) ->
+    let base_types =
+      fakeBlock dw_TAG_base_type
+        (dw_attr (Name "Bool") ^^
+           nop) ^^
+      fakeBlock dw_TAG_base_type
+        (dw_attr (Name "Char") ^^
+           nop) ^^
+      fakeBlock dw_TAG_base_type
+        (dw_attr (Name "Word8") ^^
+           nop)
+    in
     fakeColumn 0 dw_TAG_compile_unit
       (Block
          ([],
@@ -234,7 +246,8 @@ let dw_tag : dw_TAG -> t =
            dw_attr (Low_pc 0) ^^
            dw_attr (Addr_base 8) ^^ (* FIXME: hardcoded *)
            dw_attr Ranges
-          ) 0l Wasm.Source.no_region []))
+          ) 0l Wasm.Source.no_region [])) ^^
+      base_types
   | Subprogram (name, pos) ->
     fakeColumn 0 dw_TAG_subprogram
       (Block
@@ -261,7 +274,7 @@ let dw_tag_children_done : t =
   let right = Wasm.Source.no_pos in
   fun _ _ x -> (Nop @@ { left; right }) :: x
 
-let dw_tag_no_children t = dw_tag t ^^ dw_tag_children_done
+let dw_tag_no_children t = dw_tag t
 
 (* Marker for statement boundaries *)
 let dw_statement { Source.left; Source.right } =
