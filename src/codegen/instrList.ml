@@ -221,7 +221,8 @@ let dw_attr : dw_AT -> t =
  *)
 
 let dw_tag : dw_TAG -> t =
-  let fakeBlock tag attrs = fakeColumn 0 tag (Block ([], attrs 0l Wasm.Source.no_region [])) in
+  let fakeBlock tag attrs =
+    fakeColumn 0 tag (Block ([], attrs 0l Wasm.Source.no_region [])) in
   function
   | Compile_unit (dir, file) ->
     let base_types =
@@ -235,38 +236,29 @@ let dw_tag : dw_TAG -> t =
         (dw_attr (Name "Word8") ^^
            nop)
     in
-    fakeColumn 0 dw_TAG_compile_unit
-      (Block
-         ([],
-          (dw_attr (Producer "DFINITY Motoko compiler, version 0.1") ^^
-           dw_attr (Language dw_LANG_Swift) ^^ (* FIXME *)
-           dw_attr (Name file) ^^
-           dw_attr (Stmt_list 0) ^^
-           dw_attr (Comp_dir dir) ^^
-           dw_attr (Low_pc 0) ^^
-           dw_attr (Addr_base 8) ^^ (* FIXME: hardcoded *)
-           dw_attr Ranges
-          ) 0l Wasm.Source.no_region [])) ^^
+    fakeBlock dw_TAG_compile_unit
+      (dw_attr (Producer "DFINITY Motoko compiler, version 0.1") ^^
+       dw_attr (Language dw_LANG_Swift) ^^ (* FIXME *)
+       dw_attr (Name file) ^^
+       dw_attr (Stmt_list 0) ^^
+       dw_attr (Comp_dir dir) ^^
+       dw_attr (Low_pc 0) ^^
+       dw_attr (Addr_base 8) ^^ (* FIXME: hardcoded *)
+       dw_attr Ranges) ^^
       base_types
   | Subprogram (name, pos) ->
-    fakeColumn 0 dw_TAG_subprogram
-      (Block
-         ([],
-           (dw_attr (Low_pc 0) ^^
-            dw_attr (Name name) ^^
-            dw_attr (Decl_line pos.Source.line) ^^
-            dw_attr (Decl_column pos.Source.column) ^^
-            dw_attr (Prototyped true) ^^
-            dw_attr (External false)
-          ) 0l Wasm.Source.no_region []))
+    fakeBlock dw_TAG_subprogram
+      (dw_attr (Low_pc 0) ^^
+       dw_attr (Name name) ^^
+       dw_attr (Decl_line pos.Source.line) ^^
+       dw_attr (Decl_column pos.Source.column) ^^
+       dw_attr (Prototyped true) ^^
+       dw_attr (External false))
   | Formal_parameter (name, pos) ->
-    fakeColumn 0 dw_TAG_formal_parameter
-      (Block
-         ([],
-           (dw_attr (Name name) ^^
-            dw_attr (Decl_line pos.Source.line) ^^
-            dw_attr (Decl_column pos.Source.column)
-          ) 0l Wasm.Source.no_region []))
+    fakeBlock dw_TAG_formal_parameter
+      (dw_attr (Name name) ^^
+       dw_attr (Decl_line pos.Source.line) ^^
+       dw_attr (Decl_column pos.Source.column))
   | _ -> assert false
 
 let dw_tag_children_done : t =
