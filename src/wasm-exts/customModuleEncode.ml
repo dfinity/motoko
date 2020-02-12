@@ -145,7 +145,7 @@ let encode (em : extended_module) =
   (* keeping count of the DWARF code sequence we are in *)
   let sequence_number = ref 0 in
 
-  let rec extract_dwarf tag =
+  let extract_dwarf tag =
     let open Wasm.Ast in
     let open Wasm.Source in
     let open Dwarf5 in
@@ -183,7 +183,6 @@ let encode (em : extended_module) =
       | Nop, {line; _} when -line = dw_AT_ranges ->
         add_dwarf_attribute (FunctionsAttribute (-line))
       | Nop, {line; _} -> Printf.printf "TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line); failwith "extract"
-      | Block (_, es), {line; file; _} -> extract_dwarf (-line) es;
       | instr, {line; file; _} -> Printf.printf "TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
     add_dwarf_tag tag;
