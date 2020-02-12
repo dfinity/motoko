@@ -170,7 +170,8 @@ type dw_AT = Producer of string
            | Decl_column of int
            | Prototyped of bool
            | External of bool
-           | OtherS of int (* REMOVE *)
+           | Bit_size of int
+           | Data_bit_offset of int
 
 (* DWARF tags *)
 
@@ -213,7 +214,8 @@ let dw_attr : dw_AT -> t =
   | Decl_column c -> fakeColumn c dw_AT_decl_column Nop
   | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped Nop
   | External b -> fakeColumn (if b then 1 else 0) dw_AT_external Nop
-  | _ -> assert false
+  | Bit_size s -> fakeColumn s dw_AT_bit_size Nop
+  | Data_bit_offset o -> fakeColumn o dw_AT_data_bit_offset Nop
 
 (* emit a DW_TAG
    When it admits children, these follow sequentially,
@@ -228,13 +230,36 @@ let dw_tag : dw_TAG -> t =
     let base_types =
       fakeBlock dw_TAG_base_type
         (dw_attr (Name "Bool") ^^
-           nop) ^^
+         dw_attr (Bit_size 1) ^^
+         dw_attr (Data_bit_offset 0)) ^^
       fakeBlock dw_TAG_base_type
         (dw_attr (Name "Char") ^^
-           nop) ^^
+         dw_attr (Bit_size 21) ^^
+         dw_attr (Data_bit_offset 8)) ^^
       fakeBlock dw_TAG_base_type
         (dw_attr (Name "Word8") ^^
-           nop)
+         dw_attr (Bit_size 8) ^^
+         dw_attr (Data_bit_offset 24)) ^^
+      fakeBlock dw_TAG_base_type
+        (dw_attr (Name "Nat8") ^^
+         dw_attr (Bit_size 8) ^^
+         dw_attr (Data_bit_offset 24)) ^^
+      fakeBlock dw_TAG_base_type
+        (dw_attr (Name "Int8") ^^
+         dw_attr (Bit_size 8) ^^
+         dw_attr (Data_bit_offset 24)) ^^
+      fakeBlock dw_TAG_base_type
+        (dw_attr (Name "Word16") ^^
+         dw_attr (Bit_size 16) ^^
+         dw_attr (Data_bit_offset 16)) ^^
+      fakeBlock dw_TAG_base_type
+        (dw_attr (Name "Nat16") ^^
+         dw_attr (Bit_size 16) ^^
+         dw_attr (Data_bit_offset 16)) ^^
+      fakeBlock dw_TAG_base_type
+        (dw_attr (Name "Int16") ^^
+         dw_attr (Bit_size 16) ^^
+         dw_attr (Data_bit_offset 16))
     in
     fakeBlock dw_TAG_compile_unit
       (dw_attr (Producer "DFINITY Motoko compiler, version 0.1") ^^
@@ -266,7 +291,7 @@ let dw_tag_children_done : t =
   let right = Wasm.Source.no_pos in
   fun _ _ x -> (Nop @@ { left; right }) :: x
 
-let dw_tag_no_children t = dw_tag t
+let dw_tag_no_children = dw_tag
 
 (* Marker for statement boundaries *)
 let dw_statement { Source.left; Source.right } =

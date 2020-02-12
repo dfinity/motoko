@@ -180,6 +180,10 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_addr_base ->
         add_dwarf_attribute (IntAttribute (-line, column))
+      | Nop, {line; column; _} when -line = dw_AT_bit_size ->
+        add_dwarf_attribute (IntAttribute (-line, column))
+      | Nop, {line; column; _} when -line = dw_AT_data_bit_offset ->
+        add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; _} when -line = dw_AT_ranges ->
         add_dwarf_attribute (FunctionsAttribute (-line))
       | Nop, {line; _} -> Printf.printf "TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line); failwith "extract"
@@ -764,7 +768,7 @@ let encode (em : extended_module) =
         begin function
           | IntAttribute (attr, 0) -> failwith "dw_FORM_flag_present with false"
           | IntAttribute (attr, _) -> ()
-          | _ -> failwith "dw_FORM_flag_presentdw_FORM_flag"
+          | _ -> failwith "dw_FORM_flag_present"
         end
       | _ -> failwith("cannot write form")
 

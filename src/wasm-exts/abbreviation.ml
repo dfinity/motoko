@@ -30,6 +30,8 @@ let abbreviations =
       (*dw_AT_type, dw_FORM_ref4*)
       ] );
     ( dw_TAG_base_type, dw_CHILDREN_no,
-      [ dw_AT_name, dw_FORM_strp
+      [ dw_AT_name, dw_FORM_strp;
+        dw_AT_bit_size, dw_FORM_data1;
+        dw_AT_data_bit_offset, dw_FORM_data1
       ] )
   ]
