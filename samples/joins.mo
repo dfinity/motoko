@@ -6,17 +6,23 @@ https://www.microsoft.com/en-us/research/wp-content/uploads/2007/01/The-Joins-Co
 
 */
 
-// TODO: make addClause, scan, match and get private by passing them directly to Atom, Conj (in place of Join argument) etc.
+
+import Prim "mo:prim";
+
+let print = Prim.debugPrint;
+
+// TODO: make addClause, scan, match and get private by passing them directly to Chan, Conj (in place of Join argument) etc.
 
 //  for awaitable channels (that return results) see awaitablejoins.as
 
+// TODO: use tuple
 type List<T> = ?{head: T; tail: List<T>};
 
 func rev<T>(l:List<T>) : List<T> {
     func go<T>(l:List<T>, acc:List<T>) : List<T> {
 	switch l {
 	case (null) acc;
-	case (?l) go<T>(l.tail, ? (new { head = l.head; tail = acc }));
+	case (?l) go<T>(l.tail, ? { head = l.head; tail = acc });
 	};
     };
     go<T>(l,null);
@@ -35,7 +41,7 @@ class Queue<T>() {
     };
 
     public func enqueue(t : T) {
-	back := ? (new { head = t; tail = back });
+	back := ? { head = t; tail = back };
     };
 
     public func dequeue() : T {
@@ -69,29 +75,22 @@ class Chan<A> (join : Join) {
     public func dequeue() : A
     {
 	queue.dequeue();
-    }
+    };
+
+    public func match():Bool {
+      not(queue.isEmpty())
+    };
+
+    public func get():A { queue.dequeue();};
 };
 
 type Pat<A> = {
-    And : <B> Chan<B> -> Pat<(A,B)>; // causes type-checker looping without hack!
-    Do : (A -> ()) -> ();
     match : () -> Bool;
     get : () -> A;
 };
 
-class Atom<A>(join : Join, chan : Chan<A>) : Pat<A> = this {
-    public func And<B>(chan : Chan<B>):Pat<(A,B)> = Conj<A,B>(join, this, chan);
-    public func Do (cont: A-> ()) { join.addClause(Clause<A>(this, cont));};
 
-    public func match():Bool { not(chan.isEmpty()); };
-    public func get():A { chan.dequeue();}
-};
-
-class Conj<A,B>(join : Join, pat:Pat<A>, chan:Chan<B>) : Pat<(A,B)> = this  {
-    public func And<C>(chan : Chan<C>):Pat<((A,B),C)> =
-     	Conj<(A,B),C>(join, this, chan);
-    public func Do (cont: ((A,B)) -> ()) { join.addClause(Clause<(A,B)>(this, cont));};
-
+class And<A,B>(pat:Pat<A>, chan:Chan<B>) : Pat<(A,B)> = this  {
     public func match():Bool { (pat.match() and (not (chan.isEmpty()))); };
     public func get():((A,B)) { (pat.get(), chan.dequeue());}
 };
@@ -100,8 +99,8 @@ class Conj<A,B>(join : Join, pat:Pat<A>, chan:Chan<B>) : Pat<(A,B)> = this  {
 class Join() = this {
     private var patterns : List<AbsClause> = null;
 
-    addClause(c:AbsClause) {
-	patterns := ?(new { head = c; tail = patterns });
+    private func addClause(c:AbsClause) {
+	patterns := ? { head = c; tail = patterns };
     };
 
     public func scan() {
@@ -121,7 +120,9 @@ class Join() = this {
 
     public func Create<A>() : Chan<A> = Chan<A>(this);
 
-    public func When<A>(c:Chan<A>):Pat<A> = Atom<A>(this, c);
+    public func When<A>(pat : Pat<A>, cont: A->()) {
+      addClause(Clause<A>(pat,cont));
+    };
 };
 
 type AbsClause = {
@@ -129,11 +130,11 @@ type AbsClause = {
     fire: () -> ();
 };
 
-func Clause<A>(pat: Pat<A>, cont: A->()) : AbsClause = new {
-    func match():Bool { pat.match(); };
-    func fire() {
+func Clause<A>(pat: Pat<A>, cont: A->()) : AbsClause = object {
+    public func match():Bool { pat.match(); };
+    public func fire() {
 	cont(pat.get());
-    };
+    }
 };
 
 
@@ -144,8 +145,9 @@ actor Buffer = {
     let j  = Join();
     let put = j.Create<Text>();
     let get = j.Create<shared Text-> ()>();
-    j.When<Text>(put).And<shared Text-> ()>(get). // type argument inference, please
-	Do( func ( (t,c) : (Text, (shared Text -> ())))  {  // type annotation inference, please
+    j.When<(Text,shared Text->())>(And<Text,shared Text ->()>(put,get),
+           // type argument inference, please
+	   func ((t,c)) {
 		c(t);
 	}
     );
@@ -154,10 +156,12 @@ actor Buffer = {
 };
 
 
-Buffer.Put("Hello\n");
-Buffer.Put("World\n");
-Buffer.Get(shared func(t:Text) { print(t);});
-Buffer.Get(shared func(t:Text) { print(t);});
+async {
+  Buffer.Put("Hello\n");
+  Buffer.Put("World\n");
+  Buffer.Get(shared func(t:Text) { print(t);});
+  Buffer.Get(shared func(t:Text) { print(t);});
+};
 
 // an asynchronous lock
 type Release = shared () -> ();
@@ -166,8 +170,9 @@ actor Lock = {
     let free = j.Create<()>();
     let acquire = j.Create<shared Release -> async ()>();
     func release() { free.post(());};
-    j.When<shared Release-> async ()>(acquire).And<()>(free).
-	    Do( func ( (k,_) : (shared Release -> async (), ()))  {  // type annotation inference, please
+    j.When<(shared Release-> async (),())>(
+        And<shared Release -> async (), ()>(acquire,free),
+	func ( (k,_) : (shared Release -> async (), ()))  {  // type annotation inference, please
 		    let _ = k(shared func () = release());
 	    }
     );
