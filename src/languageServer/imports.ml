@@ -40,36 +40,6 @@ let format_imports : import list -> string =
          (List.sort (fun (a1, _) (a2, _) -> compare a1 a2) imports))
     ^ "\n"
 
-(* TODO(Christoph): Maybe I don't need to slice at all here? Could I
-   just make a TextEdit that replaces the import range? *)
-let slice_imports : string -> string list * import list * string list =
-  fun input ->
-  let lines = String.split_on_char '\n' input in
-  match parse_string input with
-  | [] ->
-     (* No imports yet, we'll just start at the top of the file?
-
-        TODO(Christoph): Ideally we'd skip the module documentation
-        comment?*)
-     ([], [], lines)
-  | decls ->
-     let open Source in
-     (* let _ = List.iter (fun d -> print_endline (Source.string_of_region' d.at)) decls in *)
-     let start_line = (List.hd decls).at.left.line - 1 in
-     let end_line = (Lib.List.last decls).at.right.line - 1 in
-     (* let _ = Printf.printf "start_line: %d\nend_line: %d\n" start_line end_line in *)
-     let (before, lines) = Lib.List.split_at start_line lines in
-     let (_, after) = Lib.List.split_at (end_line - start_line + 1) lines in
-     (before, List.map match_import decls, after)
-
-let build_file : string list * import list * string list -> string =
-  fun (before, imports, after) ->
-  let before_lines = String.concat "\n" before in
-  let after_lines = String.concat "\n" after in
-  before_lines
-  ^ "\n" ^ format_imports imports
-  ^ after_lines
-
 let mk_range : int * int -> int * int -> Lsp.range =
   fun (sl, sc) (el, ec) ->
   Lsp.{
