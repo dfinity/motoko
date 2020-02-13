@@ -70,7 +70,7 @@ class Chan<A> (join : Join) {
     public func post(a : A) : async () {
 	queue.enqueue(a);
 	switch (join.scan()) {
-  	  case (?clause) (await clause.fire()());
+  	  case (?clause) (ignore clause.fire()());
           case null return;
         };
     };
@@ -93,7 +93,7 @@ type Pat<A> = {
 };
 
 
-class And<A,B>(pat:Pat<A>, chan:Chan<B>) : Pat<(A,B)> = this  {
+class And<A,B>(pat:Pat<A>, chan:Chan<B>) : Pat<(A,B)> {
     public func match():Bool { (pat.match() and (not (chan.isEmpty()))); };
     public func get():((A,B)) { (pat.get(), chan.dequeue());}
 };
@@ -137,7 +137,7 @@ func Clause<A>(pat: Pat<A>, cont: A-> async ()) : AbsClause = object {
     public func match():Bool { pat.match(); };
     public func fire() : () -> async () {
         let a = pat.get();
-        func () : async () { await cont(a); } // optimize me to avoid scheduling
+        func () : async () { ignore cont(a); } // optimize me to avoid scheduling
     };
 };
 
