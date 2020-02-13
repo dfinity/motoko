@@ -176,13 +176,16 @@ actor Lock = {
     let j  = Join();
     let free = j.Create<()>();
     let acquire = j.Create<shared Release -> ()>();
+
     public func Release() { ignore free.post(());};
+
     j.When<(shared Release -> (),())>(
         And<shared Release -> (), ()>(acquire,free),
 	func ( (k,_) : (shared Release -> (), ())) : async ()  {  // type annotation inference, please
 		    k(Release);
 	    }
     );
+
 
     public func Acquire(k: shared Release -> ()) { ignore acquire.post(k); };
 
