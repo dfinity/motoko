@@ -41,9 +41,11 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
      Lsp_t.{
         completion_item_label = value.DI.name;
         completion_item_kind = 3;
-        completion_item_insertText = tmpl;
-        completion_item_insertTextFormat = 2;
-        completion_item_detail = Some(Type.string_of_typ value.DI.typ);
+        completion_item_insertText = Some tmpl;
+        completion_item_insertTextFormat = Some 2;
+        completion_item_additionalTextEdits = None;
+        completion_item_documentation = Some(Type.string_of_typ value.DI.typ);
+        completion_item_detail = None;
      }
   | DI.TypeDecl ty ->
      let con = ty.DI.typ in
@@ -51,14 +53,16 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
      Lsp_t.{
         completion_item_label = ty.DI.name;
         completion_item_kind = 7;
-        completion_item_insertText = tmpl;
-        completion_item_insertTextFormat = 2;
-        completion_item_detail =
+        completion_item_insertText = Some tmpl;
+        completion_item_insertTextFormat = Some 2;
+        completion_item_additionalTextEdits = None;
+        completion_item_documentation =
           Some
             (Printf.sprintf
                "type %s%s"
                ty.DI.name
                params);
+        completion_item_detail = None;
      }
 
 let import_relative_to_project_root root module_path dependency =
@@ -142,8 +146,10 @@ let completions index logger project_root file_path file_contents line column =
     Lsp_t.{
         completion_item_label = alias;
         completion_item_kind = 9;
-        completion_item_insertText = alias;
-        completion_item_insertTextFormat = 1;
+        completion_item_insertText = Some alias;
+        completion_item_insertTextFormat = Some 1;
+        completion_item_additionalTextEdits = None;
+        completion_item_documentation = None;
         completion_item_detail = None;
     } in
   match find_completion_prefix logger file_contents line column with
