@@ -3062,7 +3062,7 @@ module Dfinity = struct
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
 
-let export_upgrade_scaffold env =
+let export_upgrade_scaffold env = if E.mode env = Flags.StubMode then
   let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       (* grow stable memory if needed *)
       let (set_pages_needed, get_pages_needed) =  new_local env "pages_needed" in
