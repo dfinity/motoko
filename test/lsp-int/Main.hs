@@ -1,8 +1,6 @@
-{-# language OverloadedStrings #-}
-{-# language DuplicateRecordFields #-}
-{-# language ExplicitForAll #-}
-{-# language ScopedTypeVariables #-}
-{-# language BlockArguments #-}
+{-# language OverloadedStrings, DuplicateRecordFields,
+  ExplicitForAll, ScopedTypeVariables, BlockArguments,
+  LambdaCase #-}
 
 module Main where
 
@@ -17,8 +15,8 @@ import           Data.Maybe (mapMaybe)
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Language.Haskell.LSP.Test hiding (message)
-import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..), Location(..), Uri(..), filePathToUri)
-import           Language.Haskell.LSP.Types.Lens (contents, label, detail, message)
+import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..), Location(..), Uri(..), filePathToUri, CompletionDoc(..))
+import           Language.Haskell.LSP.Types.Lens (contents, label, documentation, message)
 import           System.Directory (setCurrentDirectory, makeAbsolute, removeFile)
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure)
@@ -27,6 +25,11 @@ import           System.IO (hPutStr, stderr)
 import           Test.HUnit.Lang (HUnitFailure(..), formatFailureReason)
 import           Test.Hspec (shouldBe, shouldMatchList, shouldContain)
 
+completionDocAsText :: Maybe CompletionDoc -> Maybe Text
+completionDocAsText = fmap \case
+  CompletionDocString t -> t
+  _ -> error "Non-text documentation field"
+
 completionTestCase
   :: TextDocumentIdentifier
   -> Position
@@ -34,7 +37,7 @@ completionTestCase
   -> Session ()
 completionTestCase doc pos pred = do
   actual <- getCompletions doc pos
-  liftIO (pred (map (\c -> (c^.label, c^.detail)) actual))
+  liftIO (pred (map (\c -> (c^.label, completionDocAsText (c^.documentation))) actual))
 
 hoverTestCase
   :: TextDocumentIdentifier
@@ -161,7 +164,7 @@ main = do
           liftIO
             (shouldBe
              (mapMaybe (\c -> guard (c^.label == "empty")
-                              *> pure (c^.label, c^.detail)) actual)
+                              *> pure (c^.label, completionDocAsText (c^.documentation))) actual)
              ([("empty", Just "() -> Stack")]))
           --     15 | List.push<Int>(x, s);
           -- ==> 15 | List.pus
@@ -181,7 +184,7 @@ main = do
           liftIO
             (shouldBe
              (mapMaybe (\c -> guard (c^.label == "word32ToNat")
-                         *> pure (c^.label, c^.detail)) actual)
+                         *> pure (c^.label, completionDocAsText (c^.documentation))) actual)
              ([("word32ToNat", Just "Word32 -> Nat")]))
 
         withDoc "ListClient.mo" \doc -> do
