@@ -95,6 +95,12 @@ let lookup_module
   | Ok (Ic _ | IcAlias _) -> (* TODO *) None
   | Error _ -> None
 
+let rec drop_common_prefix eq l1 l2 =
+  match l1, l2 with
+  | h1 :: t1, h2 :: t2 when eq h1 h2 ->
+      drop_common_prefix eq t1 t2
+  | _ -> (l1, l2)
+
 let shorten_import_path
     : Pipeline.ResolveImport.package_map
    -> string
@@ -114,10 +120,14 @@ let shorten_import_path
   in match pkg_path with
      | Some p -> p
      | None ->
-        (* TODO(Christoph): Do the tricky relative path thing here
-           (Might require accepting the project directory as an
-           argument)*)
-        Filename.remove_extension path
+        let (base', path') =
+          drop_common_prefix
+            String.equal
+            (Lib.String.split (Filename.dirname base) '/')
+            (Lib.String.split path '/') in
+        List.map (fun _ -> "..") base' @ path'
+        |> String.concat "/"
+        |> Filename.remove_extension
 
 let find_with_prefix
     : string
