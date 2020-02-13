@@ -70,7 +70,7 @@ class Chan<A> (join : Join) {
     public func post(a : A) : async () {
 	queue.enqueue(a);
 	switch (join.scan()) {
-	  case (?clause) (await clause.fire());
+  	  case (?clause) (await clause.fire()());
           case null return;
         };
     };
@@ -130,12 +130,15 @@ class Join() = this {
 
 type AbsClause = {
     match: () -> Bool;
-    fire: () -> async ();
+    fire: () -> (() -> async ());
 };
 
 func Clause<A>(pat: Pat<A>, cont: A-> async ()) : AbsClause = object {
     public func match():Bool { pat.match(); };
-    public func fire() : async () { await cont(pat.get()) };
+    public func fire() : () -> async () {
+        let a = pat.get();
+        func () : async () { await cont(a); } // optimize me to avoid scheduling
+    };
 };
 
 
@@ -146,25 +149,26 @@ actor Buffer = {
     let j  = Join();
     let put = j.Create<Text>();
     let get = j.Create<shared Text-> ()>();
-    j.When<(Text,shared Text->())>(And<Text,shared Text ->()>(put,get),
-           // type argument inference, please
+    j.When<(Text,shared Text->())>(
+      And<Text,shared Text ->()>(put, get),
+      // type argument inference, please
 	   // inference for scoped functions too, please, so we can omit the annotation
-	   func ((t,c):(Text, shared Text -> ())) : async () {
-		c(t);
-	   }
+      func ((t,c):(Text, shared Text -> ())) : async () {
+	c(t);
+     }
     );
     public func Put(t : Text) {	ignore put.post(t); };
     public func Get(c : shared Text-> ()) { ignore get.post(c); }
 };
 
-/*
+
 ignore async {
   Buffer.Put("Hello\n");
   Buffer.Put("World\n");
   Buffer.Get(shared func(t:Text) { print(t);});
   Buffer.Get(shared func(t:Text) { print(t);});
 };
-*/
+
 
 // an asynchronous lock
 type Release = shared () -> ();
