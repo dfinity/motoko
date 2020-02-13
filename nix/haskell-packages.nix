@@ -1,11 +1,13 @@
 nix: subpath:
   let stdenv = nix.stdenv; in
   self: super: {
-  haskell-lsp-types = self.haskell-lsp-types_0_19_0_0;
+  haskell-lsp-types = self.haskell-lsp-types_0_20_0_0;
 
-  haskell-lsp = self.haskell-lsp_0_19_0_0;
+  haskell-lsp = self.haskell-lsp_0_20_0_1;
 
-  lsp-test = nix.haskell.lib.dontCheck self.lsp-test_0_9_0_0;
+  parser-combinators = self.parser-combinators_1_2_1;
+
+  lsp-test = nix.haskell.lib.dontCheck self.lsp-test_0_10_1_0;
 
   lsp-int = self.callCabal2nix "lsp-int" (subpath "test/lsp-int") { };
 
