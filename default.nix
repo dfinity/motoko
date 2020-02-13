@@ -149,6 +149,8 @@ rec {
 
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko ic-stub;
+  # populate our nix cache with the right version of cabal2nix
+  inherit (haskellPackages) cabal2nix;
 
   tests =
     let testDerivationArgs = {
