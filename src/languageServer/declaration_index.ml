@@ -92,6 +92,30 @@ let lookup_module
   | Ok (Ic _ | IcAlias _) -> (* TODO *) None
   | Error _ -> None
 
+let shorten_import_path
+    : Pipeline.ResolveImport.package_map
+   -> string
+   -> string
+   -> string =
+  fun pkg_map base path ->
+  let pkg_path =
+    Flags.M.bindings pkg_map
+    |> Lib.List.first_opt (fun (name, pkg_path) ->
+           if Lib.FilePath.is_subpath pkg_path path
+           then
+             let rel_path = Option.get (Lib.FilePath.relative_to pkg_path path) in
+             Some (Printf.sprintf "mo:%s/%s" name (Filename.remove_extension rel_path))
+           else
+             None
+         )
+  in match pkg_path with
+     | Some p -> p
+     | None ->
+        (* TODO(Christoph): Do the tricky relative path thing here
+           (Might require accepting the project directory as an
+           argument)*)
+        Filename.remove_extension path
+
 let empty : unit -> t = fun _ ->
   let open Pipeline.ResolveImport in
   let resolved_flags =
