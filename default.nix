@@ -150,7 +150,7 @@ rec {
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko ic-stub;
   # populate our nix cache with the right version of cabal2nix that
-  # is used by self.callCabal2nix
+  # is used by self.callCabal2nix at evalution time
   inherit (nixpkgs) cabal2nix;
 
   tests =
