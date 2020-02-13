@@ -136,11 +136,11 @@ let completions index logger project_root file_path file_contents line column =
   let imported = Source_file.parse_module_header project_root file_path file_contents in
   let current_uri_opt = Lib.FilePath.relative_to project_root file_path in
   let toplevel_decls =
-     let current_module_decls =
-       current_uri_opt
-       |> opt_bind (fun uri -> DI.lookup_module (Filename.remove_extension uri) index)
-       |> Option.fold ~none:[] ~some:snd in
-     current_module_decls
+    let current_module_decls =
+      current_uri_opt
+      |> opt_bind (fun uri -> DI.lookup_module (Filename.remove_extension uri) index)
+      |> Option.fold ~none:[] ~some:snd in
+    current_module_decls
   in
   let module_alias_completion_item alias =
     Lsp_t.{
@@ -180,8 +180,18 @@ let completions index logger project_root file_path file_contents line column =
             (* The matching import references a module we haven't loaded *)
             [])
      | None ->
-        (* No module with the given prefix was found *)
-        []
+        (* No import with the given alias was found *)
+        let import_edit = Imports.add_import file_contents alias in
+        let possible_imports = DI.find_with_prefix prefix (Lib.FilePath.make_absolute project_root file_path) index in
+        let completions =
+          Lib.List.concat_map (fun (p, ds) ->
+            List.map (fun d ->
+              Lsp_t.{
+                (item_of_ide_decl d) with
+                completion_item_additionalTextEdits = Some [import_edit p];
+                completion_item_detail = Some p
+              }) ds) possible_imports in
+        completions
 
 let completion_handler index logger project_root file_path file_contents position =
   let line = position.Lsp_t.position_line in
