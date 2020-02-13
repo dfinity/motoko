@@ -2817,6 +2817,10 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
+      E.add_func_import env "ic0" "stable_write" (i32s 3) [];
+      E.add_func_import env "ic0" "stable_read" (i32s 3) [];
+      E.add_func_import env "ic0" "stable_size" [] [I32Type];
+      E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
       ()
 
@@ -2932,10 +2936,6 @@ module Dfinity = struct
     let fi = E.add_fun env "start_stub" empty_f in
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_init";
-      edesc = nr (FuncExport (nr fi))
-    });
-    E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_post_upgrade";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -3061,6 +3061,73 @@ module Dfinity = struct
     get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
+
+let export_upgrade_scaffold env =
+  let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
+      (* grow stable memory if needed *)
+      let (set_pages_needed, get_pages_needed) =  new_local env "pages_needed" in
+      G.i MemorySize ^^
+      E.call_import env "ic0" "stable_size" ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      set_pages_needed ^^
+
+      get_pages_needed ^^
+      compile_unboxed_zero ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
+      G.if_ []
+        ( get_pages_needed ^^
+          E.call_import env "ic0" "stable_grow" ^^
+          (* Check result *)
+          compile_unboxed_zero ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          E.then_trap_with env "Cannot grow stable memory."
+        ) G.nop
+      ^^
+
+      (* copy to stable memory *)
+      compile_unboxed_const 0l ^^
+      compile_unboxed_const 0l ^^
+      G.i MemorySize ^^ compile_mul_const page_size ^^
+      E.call_import env "ic0" "stable_write"
+  )) in
+
+  let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
+      (* grow memory if needed *)
+      let (set_pages_needed, get_pages_needed) =  new_local env "pages_needed" in
+      E.call_import env "ic0" "stable_size" ^^
+      G.i MemorySize ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      set_pages_needed ^^
+
+      get_pages_needed ^^
+      compile_unboxed_zero ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
+      G.if_ []
+        ( get_pages_needed ^^
+          G.i MemoryGrow ^^
+          (* Check result *)
+          compile_unboxed_zero ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          E.then_trap_with env "Cannot grow memory."
+        ) G.nop
+      ^^
+
+      (* copy from stable memory *)
+      compile_unboxed_const 0l ^^
+      compile_unboxed_const 0l ^^
+      E.call_import env "ic0" "stable_size" ^^ compile_mul_const page_size ^^
+      E.call_import env "ic0" "stable_read"
+  )) in
+
+  E.add_export env (nr {
+    name = Wasm.Utf8.decode "canister_pre_upgrade";
+    edesc = nr (FuncExport (nr pre_upgrade_fi))
+  });
+
+  E.add_export env (nr {
+    name = Wasm.Utf8.decode "canister_post_upgrade";
+    edesc = nr (FuncExport (nr post_upgrade_fi))
+  })
 
 
 end (* Dfinity *)
@@ -6873,69 +6940,6 @@ and export_actor_field env  ae (f : Ir.field) =
     edesc = nr (FuncExport (nr fi))
   })
 
-and export_dump env ae (f : Ir.field) = if f.it.name = "dump" then begin
-  let sr, code = Var.get_val env ae f.it.var in
-  (* This better be a static method *)
-  let fi = match sr with
-    | SR.Const (_, Const.Fun fi) -> fi
-    | _ -> assert false in
-  (* There should be no code associated with this *)
-  assert (G.is_nop code);
-
-  let sort, control, tbs, arg_tys, return_tys = Type.as_func f.note in
-  assert (sort = Type.Local);
-  assert (control = Type.Returns);
-  assert (tbs = []);
-  assert (arg_tys = []);
-  let return_arity = List.length return_tys in
-
-  let wrap_fi = E.add_fun env "dump_wrap" (Func.of_body env [] [] (fun env ->
-      let (set_ptr, get_ptr) = new_local env "ptr" in
-      let (set_len, get_len) = new_local env "len" in
-      compile_unboxed_zero ^^ (* A dummy closure *)
-      (* no args *)
-      G.i (Call (nr fi)) ^^
-      FakeMultiVal.load env (Lib.List.make return_arity I32Type) ^^
-      StackRep.adjust env (StackRep.of_arity return_arity) SR.Vanilla ^^
-      Serialization.serialize env return_tys ^^
-      set_len ^^ set_ptr ^^
-
-      (* grow stable memory if needed *)
-      (* see Heap.grow_memory *)
-      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
-      get_len ^^ compile_divU_const page_size ^^
-      compile_add_const 1l ^^
-      E.call_import env "ic0" "stable_size" ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      set_pages_needed ^^
-
-      (* Check that the new heap pointer is within the memory *)
-      get_pages_needed ^^
-      compile_unboxed_zero ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
-      G.if_ []
-        ( get_pages_needed ^^
-          E.call_import env "ic0" "stable_grow" ^^
-          (* Check result *)
-          compile_unboxed_zero ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-          E.then_trap_with env "Cannot grow stable memory."
-        ) G.nop
-      ^^
-
-      (* copy to stable memory *)
-      compile_unboxed_const 0l ^^
-      get_ptr ^^
-      get_len ^^
-      E.call_import env "ic0" "stable_copy"
-  )) in
-
-  E.add_export env (nr {
-    name = Wasm.Utf8.decode "canister_pre_upgrade";
-    edesc = nr (FuncExport (nr wrap_fi))
-  })
-end
-
 (* Main actor: Just return the initialization code, and export functions as needed *)
 and main_actor env ae1 ds fs =
   (* Reverse the fs, to a map from variable to exported name *)
@@ -6947,9 +6951,6 @@ and main_actor env ae1 ds fs =
   (* Export the public functions *)
   List.iter (export_actor_field env ae2) fs;
 
-  (* Scaffolding: Compile dump and restore *)
-  List.iter (export_dump env ae2) fs;
-
   decls_code
 
 and conclude_module env start_fi_o =
@@ -6957,6 +6958,8 @@ and conclude_module env start_fi_o =
   FuncDec.export_async_method env;
 
   let static_roots = GC.store_static_roots env in
+
+  Dfinity.export_upgrade_scaffold env;
 
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
@@ -6972,6 +6975,7 @@ and conclude_module env start_fi_o =
   )) in
 
   Dfinity.default_exports env;
+
 
   GC.register env static_roots (E.get_end_of_static_memory env);
 
