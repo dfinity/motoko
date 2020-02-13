@@ -33,9 +33,10 @@ module {}|}
 
 let%test "it puts a file back together with the specified imports" =
   build_file_test
-    (["// I'm just a comment"; "// Another one"], [("List", "lib/list")] ,["module {}"])
+    (["// I'm just a comment"; "// Another one"], [("List", "lib/list"); ("Array", "lib/array")] ,["module {}"])
     {|// I'm just a comment
 // Another one
+import Array "lib/array";
 import List "lib/list";
 module {}|}
 

@@ -2,9 +2,9 @@
 open Mo_frontend
 open Mo_def
 open Source
+module Lsp = Lsp.Lsp_t
 
 type import = string * string
-
 
 let parse_with mode lexer parser =
     Ok (Parsing.parse 0 (parser lexer.Lexing.lex_curr_p) (Lexer.token mode) lexer)
@@ -24,13 +24,33 @@ let match_import : Syntax.dec -> string * string =
   | LetD ({it=VarP {it=name;_};_}, {it=ImportE(s, _);_}) -> (name, s)
   | _ -> ("Can't", "deal with this import format")
 
+let print_import : import -> string =
+  fun (alias, path) ->
+  Printf.sprintf "import %s \"%s\";" alias path
+
+(** Formats an import section. Eg. sorting imports alphabetically*)
+let format_imports : import list -> string =
+  fun imports ->
+  if imports = []
+  then ""
+  else
+    String.concat "\n"
+      (List.map
+         print_import
+         (List.sort (fun (a1, _) (a2, _) -> compare a1 a2) imports))
+    ^ "\n"
+
+(* TODO(Christoph): Maybe I don't need to slice at all here? Could I
+   just make a TextEdit that replaces the import range? *)
 let slice_imports : string -> string list * import list * string list =
   fun input ->
   let lines = String.split_on_char '\n' input in
   match parse_string input with
   | [] ->
      (* No imports yet, we'll just start at the top of the file?
-        (Ideally we'd skip the module documentation comment?)*)
+
+        TODO(Christoph): Ideally we'd skip the module documentation
+        comment?*)
      ([], [], lines)
   | decls ->
      let open Source in
@@ -44,14 +64,45 @@ let slice_imports : string -> string list * import list * string list =
 
 let build_file : string list * import list * string list -> string =
   fun (before, imports, after) ->
-  let print_import (alias, path) = Printf.sprintf "import %s \"%s\";" alias path in
   let before_lines = String.concat "\n" before in
   let after_lines = String.concat "\n" after in
-  if imports = [] then
-    before_lines ^ "\n" ^ after_lines
-  else
-    before_lines
-    ^ "\n"
-    ^ String.concat "\n" (List.map print_import imports)
-    ^ "\n"
-    ^ after_lines
+  before_lines
+  ^ "\n" ^ format_imports imports
+  ^ after_lines
+
+let mk_range : int * int -> int * int -> Lsp.range =
+  fun (sl, sc) (el, ec) ->
+  Lsp.{
+      range_start =
+        { position_line = sl;
+          position_character = sc
+        };
+      range_end_ =
+        { position_line = el;
+          position_character = ec
+        }
+  }
+
+let add_import : string -> string -> string -> Lsp.text_edit =
+  fun input ->
+  (* We do the parsing as soon as we get the input so the curried
+     usage of this function doesn't duplicate work *)
+  match parse_string input with
+  | [] ->
+     fun alias import_path ->
+       Lsp.{
+          text_edit_range = mk_range (0, 0) (0, 0);
+          text_edit_newText = format_imports [(alias, import_path)]
+       }
+    | decls ->
+       let open Source in
+       let start_line = (List.hd decls).at.left.line - 1 in
+       let end_line = (Lib.List.last decls).at.right.line - 1 in
+       let imports = List.map match_import decls in
+       let import_range = mk_range (start_line, 0) (end_line + 1, 0) in
+       fun alias import_path ->
+       let new_imports = (alias, import_path) :: imports in
+       Lsp.{
+           text_edit_range = import_range;
+           text_edit_newText = format_imports new_imports
+       }
