@@ -35,4 +35,13 @@ val shorten_import_path
 
 val lookup_module : string -> t -> (string * ide_decl list) option
 
+val find_with_prefix
+    : string
+    (** The prefix *)
+    -> string
+    (** The file in which the results would be imported *)
+    -> t
+    (** The declaration index *)
+    -> (string * ide_decl list) list
+
 val make_index : (string -> string -> unit) -> Vfs.t -> string list -> t Diag.result

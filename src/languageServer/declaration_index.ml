@@ -50,6 +50,9 @@ let name_of_ide_decl (d : ide_decl) : string =
   | ValueDecl value -> value.name
   | TypeDecl ty -> ty.name
 
+let decl_has_prefix prefix d =
+  Option.is_some (Lib.String.chop_prefix prefix (name_of_ide_decl d))
+
 module Index = Map.Make(String)
 
 type declaration_index = {
@@ -115,6 +118,22 @@ let shorten_import_path
            (Might require accepting the project directory as an
            argument)*)
         Filename.remove_extension path
+
+let find_with_prefix
+    : string
+   -> string
+   -> t
+   -> (string * ide_decl list) list =
+  fun prefix base {modules; package_map; _} ->
+  Index.bindings modules
+  |> List.map (fun (p, ds) ->
+         let import_path =
+           if p = "@prim" then
+             "mo:prim"
+           else
+             shorten_import_path package_map base p in
+         (import_path, List.filter (decl_has_prefix prefix) ds))
+  |> List.filter (fun (_, ds) -> not (ds = []))
 
 let empty : unit -> t = fun _ ->
   let open Pipeline.ResolveImport in
