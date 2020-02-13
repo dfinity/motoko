@@ -69,7 +69,10 @@ class Chan<A> (join : Join) {
 
     public func post(a : A) : async () {
 	queue.enqueue(a);
-	await join.scan();
+	switch (join.scan()) {
+	  case (?clause) (await clause.fire());
+          case null return;
+        };
     };
 
     public func dequeue() : A
@@ -103,14 +106,14 @@ class Join() = this {
 	patterns := ? { head = c; tail = patterns };
     };
 
-    public func scan() : async () { //TBR
+    public func scan() : ? AbsClause {
 	var next = patterns;
 	loop {
             switch (next) {
-            case null return;
+            case null return null;
             case (?n) {
                 if (n.head.match()) {
-                    return await (n.head.fire());
+                    return ? n.head;
                 };
                 next := n.tail;
             };
@@ -145,6 +148,7 @@ actor Buffer = {
     let get = j.Create<shared Text-> ()>();
     j.When<(Text,shared Text->())>(And<Text,shared Text ->()>(put,get),
            // type argument inference, please
+	   // inference for scoped functions too, please, so we can omit the annotation
 	   func ((t,c):(Text, shared Text -> ())) : async () {
 		c(t);
 	   }
@@ -153,13 +157,14 @@ actor Buffer = {
     public func Get(c : shared Text-> ()) { ignore get.post(c); }
 };
 
-
+/*
 ignore async {
   Buffer.Put("Hello\n");
   Buffer.Put("World\n");
   Buffer.Get(shared func(t:Text) { print(t);});
   Buffer.Get(shared func(t:Text) { print(t);});
 };
+*/
 
 // an asynchronous lock
 type Release = shared () -> ();
@@ -175,9 +180,10 @@ actor Lock = {
 	    }
     );
 
+    public func Acquire(k: shared Release -> ()) { ignore acquire.post(k); };
+
     public func Init() { ignore free.post(()); }; // lock initially free
 
-    public func Acquire(k: shared Release -> ()) { ignore acquire.post(k); }
 };
 
 
@@ -224,5 +230,6 @@ actor Charlie {
 };
 
 // proper locking ensures the writes to Resource aren't interleaved.
+Lock.Init();
 Alice.start();
 Charlie.start();
