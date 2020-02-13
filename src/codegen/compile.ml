@@ -2817,17 +2817,19 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
-      E.add_func_import env "ic0" "stable_write" (i32s 3) [];
-      E.add_func_import env "ic0" "stable_read" (i32s 3) [];
-      E.add_func_import env "ic0" "stable_size" [] [I32Type];
-      E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
       ()
 
   let system_imports env =
     match E.mode env with
-    | Flags.ICMode | Flags.StubMode  ->
+    | Flags.ICMode ->
       import_ic0 env
+    | Flags.StubMode  ->
+      import_ic0 env;
+      E.add_func_import env "ic0" "stable_write" (i32s 3) [];
+      E.add_func_import env "ic0" "stable_read" (i32s 3) [];
+      E.add_func_import env "ic0" "stable_size" [] [I32Type];
+      E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type]
     | Flags.WASIMode ->
       E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
