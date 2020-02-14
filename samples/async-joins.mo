@@ -75,11 +75,6 @@ class Chan<A> (join : Join) {
         };
     };
 
-    public func dequeue() : A
-    {
-	queue.dequeue();
-    };
-
     public func match():Bool {
       not(queue.isEmpty())
     };
@@ -95,7 +90,7 @@ type Pat<A> = {
 
 class And<A,B>(pat:Pat<A>, chan:Chan<B>) : Pat<(A,B)> {
     public func match():Bool { (pat.match() and (not (chan.isEmpty()))); };
-    public func get():((A,B)) { (pat.get(), chan.dequeue());}
+    public func get():((A,B)) { (pat.get(), chan.get());}
 };
 
 
