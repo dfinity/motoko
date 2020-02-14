@@ -6,6 +6,7 @@ open Mo_values
 open Syntax
 open Source
 open Operator
+open Parser_lib
 
 
 (* Position handling *)
@@ -178,7 +179,7 @@ let share_expfield (ef : exp_field) =
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
-%start<unit> parse_module_header
+%start<unit> parse_module_header (* Result passed via the Imports exception *)
 
 %on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%

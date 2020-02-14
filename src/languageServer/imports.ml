@@ -15,7 +15,7 @@ let parse_string s =
     let parse = Parser.Incremental.parse_module_header in
     ignore (parse_with Lexer.Normal lexer parse); [])
   with
-  | Mo_def.Syntax.Imports is -> is
+  | Parser_lib.Imports is -> is
   | ex -> []
 
 let match_import : Syntax.dec -> string * string =
@@ -29,7 +29,7 @@ let print_import : import -> string =
   fun (alias, path) ->
   Printf.sprintf "import %s \"%s\";" alias path
 
-(** Formats an import section. Eg. sorting imports alphabetically*)
+(** Formats an import section. Eg. sorting imports alphabetically *)
 let format_imports : import list -> string =
   fun imports ->
   if imports = []
