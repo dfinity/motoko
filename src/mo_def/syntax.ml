@@ -327,4 +327,3 @@ let funcE (f, s, tbs, p, t_opt, sugar, e) =
     FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, sugar, e)
   | _ ->
     FuncE(f, s, tbs, p, t_opt, sugar, e)
-
