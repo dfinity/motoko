@@ -14,8 +14,9 @@ let parse_string s =
     (let lexer = Lexing.from_string s in
     let parse = Parser.Incremental.parse_module_header in
     ignore (parse_with Lexer.Normal lexer parse); [])
-  with Mo_def.Syntax.Imports is ->
-    is
+  with
+  | Mo_def.Syntax.Imports is -> is
+  | ex -> []
 
 let match_import : Syntax.dec -> string * string =
   fun dec ->
