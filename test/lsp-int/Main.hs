@@ -16,7 +16,8 @@ import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Language.Haskell.LSP.Test hiding (message)
 import           Language.Haskell.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), ClientMethod(..), Diagnostic(..), Location(..), Uri(..), filePathToUri, CompletionDoc(..))
-import           Language.Haskell.LSP.Types.Lens (contents, label, documentation, message)
+import qualified Language.Haskell.LSP.Types as LSP
+import           Language.Haskell.LSP.Types.Lens (contents, label, documentation, message, additionalTextEdits, newText)
 import           System.Directory (setCurrentDirectory, makeAbsolute, removeFile)
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure)
@@ -114,8 +115,10 @@ main = do
     putStrLn "Starting the session"
     runSession
       (mo_ide
-       <> " --canister-main app.mo --debug --error-detail 0"
-       <> " --package mydep " <> project <> "/mydependency/")
+       <> " --canister-main app.mo"
+       <> " --debug"
+       <> " --error-detail 0"
+       <> " --package mydep " <> (project </> "mydependency"))
       fullCaps
       "." $ do
         log "Initializing"
@@ -158,7 +161,7 @@ main = do
             [("mydependency/lib.mo", Range (Position 5 17) (Position 5 24))]
 
         log "Completion tests"
-        -- Completing top level definitions:
+        log "Completing top level definitions"
         withDoc "ListClient.mo" \doc -> do
           actual <- getCompletions doc (Position 7 0)
           liftIO
@@ -176,7 +179,7 @@ main = do
             (Position 14 14)
             (`shouldMatchList` [("push",Just "<T>(T, List<T>) -> List<T>")])
 
-        -- Completing primitives:
+        log "Completing primitives"
         withDoc "ListClient.mo" \doc -> do
           let edit = TextEdit (Range (Position 15 0) (Position 15 0)) "Prim."
           _ <- applyEdit doc edit
@@ -186,6 +189,17 @@ main = do
              (mapMaybe (\c -> guard (c^.label == "word32ToNat")
                          *> pure (c^.label, completionDocAsText (c^.documentation))) actual)
              ([("word32ToNat", Just "Word32 -> Nat")]))
+
+        log "Completing not-yet-imported modules"
+        withDoc "ListClient.mo" \doc -> do
+          let edit = TextEdit (Range (Position 15 0) (Position 15 0)) "MyDep.print_"
+          _ <- applyEdit doc edit
+          [actual] <- getCompletions doc (Position 15 12)
+          liftIO do
+            shouldBe (actual^.label) "print_hello"
+            shouldBe (completionDocAsText (actual^.documentation)) (Just "() -> Text")
+            let Just (LSP.List [importEdit]) = actual^.additionalTextEdits
+            shouldContain (Text.lines (importEdit^.newText)) ["import MyDep \"mo:mydep/lib\";"]
 
         withDoc "ListClient.mo" \doc -> do
           --     1 | import List
