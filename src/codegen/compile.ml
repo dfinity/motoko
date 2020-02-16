@@ -1120,7 +1120,7 @@ module Tagged = struct
     | Blob ->
       begin match normalize ty with
       | (Con _ | Any) -> true
-      | (Prim Text) -> true
+      | (Prim (Text|Blob|Principal)) -> true
       | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
@@ -3397,7 +3397,7 @@ module Serialization = struct
     let rec add_typ t =
       match t with
       | Non -> assert false
-      | Prim Blob | Prim Principal ->
+      | Prim (Blob|Principal) ->
         add_typ Type.(Array (Prim Word8))
       | Prim _ -> assert false
       | Tup ts ->
@@ -3519,7 +3519,7 @@ module Serialization = struct
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
         )
-      | Prim Blob | Prim Principal ->
+      | Prim (Blob|Principal) ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         size_word env get_len ^^
@@ -3676,7 +3676,7 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
-      | Prim (Blob | Principal) ->
+      | Prim (Blob|Principal) ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         write_word get_len ^^
@@ -3873,7 +3873,7 @@ module Serialization = struct
 
         (* Any vanilla value works here *)
         Opt.null
-      | Prim Blob ->
+      | Prim (Blob|Principal) ->
         assert_blob_typ env ^^
         read_blob ()
       | Prim Text ->
@@ -4359,8 +4359,8 @@ module StackRep = struct
     | Prim (Nat64 | Int64 | Word64) -> UnboxedWord64
     | Prim (Nat32 | Int32 | Word32) -> UnboxedWord32
     | Prim (Nat8 | Nat16 | Int8 | Int16 | Word8 | Word16 | Char) -> Vanilla
-    | Prim (Text | Blob) -> Vanilla
-    | p -> todo "of_type" (Arrange_ir.typ p) Vanilla
+    | Prim (Text | Blob | Principal) -> Vanilla
+    | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
   let to_block_type env = function
     | Vanilla -> [I32Type]
@@ -5801,7 +5801,7 @@ let compile_binop env t op =
 
 let compile_eq env = function
   | Type.(Prim Text) -> Text.compare env Operator.EqOp
-  | Type.(Prim Blob) -> Blob.compare env Operator.EqOp
+  | Type.(Prim (Blob|Principal)) -> Blob.compare env Operator.EqOp
   | Type.(Prim Bool) -> G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | Type.(Prim (Nat | Int)) -> BigNum.compile_eq env
   | Type.(Prim (Int64 | Nat64 | Word64)) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
@@ -5834,7 +5834,7 @@ let compile_relop env t op =
   let open Operator in
   match t, op with
   | Type.(Prim Text), _ -> Text.compare env op
-  | Type.(Prim Blob), _ -> Blob.compare env op
+  | Type.(Prim (Blob|Principal)), _ -> Blob.compare env op
   | _, EqOp -> compile_eq env t
   | _, NeqOp -> compile_eq env t ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz))
