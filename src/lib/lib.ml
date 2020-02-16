@@ -187,6 +187,9 @@ struct
   and make' n x xs =
     if n = 0 then xs else make' (n - 1) x (x::xs)
 
+  let concat_map f xs =
+    List.concat (List.map f xs)
+
   let rec table n f = table' n f []
   and table' n f xs =
     if n = 0 then xs else table' (n - 1) f (f (n - 1) :: xs)
@@ -275,6 +278,14 @@ struct
   let rec iter_pairs f = function
     | [] -> ()
     | x::ys -> List.iter (fun y -> f x y) ys; iter_pairs f ys
+
+  let rec is_prefix equal prefix list =
+    match prefix with
+    | [] -> true
+    | hd :: tl ->
+      (match list with
+       | [] -> false
+       | hd' :: tl' -> equal hd hd' && is_prefix equal tl tl')
 end
 
 module List32 =
@@ -427,6 +438,15 @@ struct
     if not (Filename.is_relative path)
     then path
     else normalise (Filename.concat base path)
+
+  let segments p = String.split p '/'
+
+  let is_subpath base path =
+    if Filename.is_relative base || Filename.is_relative path
+    then assert false
+    (* We can't just check for prefixing on the string because
+       /path/tosomething is not a subpath of /path/to*)
+    else List.is_prefix (=) (segments base) (segments path)
 end
 
 
