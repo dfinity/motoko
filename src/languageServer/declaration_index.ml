@@ -303,8 +303,11 @@ let make_index_inner logger project_root vfs entry_points : t Diag.result =
   let package_paths = List.map (fun f -> LibPath f @@ Source.no_region) (scan_packages ()) in
   let package_env = Pipeline.chase_imports (Vfs.parse_file vfs) Pipeline.initial_stat_env package_paths in
   let lib_index = match package_env with
-    | Result.Error err ->
+    | Result.Error errs -> begin
+       List.iter (fun err ->
+           logger "lib_index_errors" (Diag.string_of_message err)) errs;
        empty project_root
+      end
     | Result.Ok ((libs, scope), _) ->
        index_from_scope (empty project_root) libs scope in
   (* TODO(Christoph): We should be able to return at least the
