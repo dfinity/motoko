@@ -1,0 +1,11 @@
+→ create
+← completed: canister-id = 0x2a01
+→ install
+← completed
+→ update callshow(0x4449444c0000)
+debug.print: ██  ████      ██
+██  ████      ██
+
+debug.print: IDL error: UTF-8 validation failure
+Trap: EvalTrapError :0.1 "unreachable executed"
+← rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError :0.1 "unreachable executed"
