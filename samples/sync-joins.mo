@@ -26,7 +26,6 @@ let print = Prim.debugPrint;
 
 // TODO: make addClause, scan, match and get private by passing them directly to Msg, Conj (in place of Join argument) etc.
 
-//  for awaitable channels (that return results) see awaitablejoins.as
 
 // TODO: use tuple
 type List<T> = ?{head: T; tail: List<T>};
@@ -137,9 +136,9 @@ type Pat<A> = {
 };
 
 
-class And<A,B>(pat:Pat<A>, chan:Msg<B>) : Pat<(A,B)> {
-    public func match():Bool { (pat.match() and (not (chan.isEmpty()))); };
-    public func get():((A,B)) { (pat.get(), chan.get());}
+class And<A,B>(pat:Pat<A>, msg:Msg<B>) : Pat<(A,B)> {
+    public func match():Bool { (pat.match() and (not (msg.isEmpty()))); };
+    public func get():((A,B)) { (pat.get(), msg.get());}
 };
 
 
