@@ -145,7 +145,7 @@ let find_with_prefix
          (import_path, List.filter (decl_has_prefix prefix) ds))
   |> List.filter (fun (_, ds) -> not (ds = []))
 
-let empty : unit -> t = fun _ ->
+let empty : string -> t = fun cwd ->
   let open Pipeline.ResolveImport in
   let resolved_flags =
     Diag.run
@@ -156,7 +156,7 @@ let empty : unit -> t = fun _ ->
       }) in
   { modules = Index.empty;
     actors = Index.empty;
-    package_map = resolved_flags.packages
+    package_map = Flags.M.map (Lib.FilePath.make_absolute cwd) resolved_flags.packages
   }
 
 module PatternMap = Map.Make(String)
@@ -261,30 +261,62 @@ let populate_definitions
   | Some lib ->
      List.map (find_def lib) decls
 
-let make_index_inner logger vfs entry_points : t Diag.result =
+let list_files_recursively dir =
+  let rec loop result = function
+    | f::fs when Sys.is_directory f ->
+          Sys.readdir f
+          |> Array.to_list
+          |> List.map (Filename.concat f)
+          |> List.append fs
+          |> loop result
+    | f::fs -> loop (f::result) fs
+    | []    -> result in
+  loop [] [dir]
+
+let scan_packages : unit -> string list =
+  fun _ ->
+  let scan_package path =
+    list_files_recursively path
+    |> List.filter (fun f -> Filename.extension f = ".mo") in
+  Flags.M.fold (fun _ v acc -> scan_package v @ acc) !Flags.package_urls []
+
+let index_from_scope : t -> Syntax.lib list -> Scope.t -> t =
+  fun initial_index libs scope ->
+  Type.Env.fold
+    (fun path ty acc ->
+      let path =
+        if path = "@prim" then
+          path
+        else
+          Lib.FilePath.make_absolute (Sys.getcwd ()) path in
+      add_module
+        path
+        (ty
+         |> read_single_module_lib
+         |> Fun.flip Lib.Option.get []
+         |> populate_definitions libs path)
+        acc)
+    scope.Scope.lib_env
+    initial_index
+
+let make_index_inner logger project_root vfs entry_points : t Diag.result =
+  let package_paths = List.map (fun f -> LibPath f @@ Source.no_region) (scan_packages ()) in
+  let package_env = Pipeline.chase_imports (Vfs.parse_file vfs) Pipeline.initial_stat_env package_paths in
+  let lib_index = match package_env with
+    | Result.Error err ->
+       empty project_root
+    | Result.Ok ((libs, scope), _) ->
+       index_from_scope (empty project_root) libs scope in
+  (* TODO(Christoph): We should be able to return at least the
+     lib_index even if compiling from the entry points fails *)
   Pipeline.load_progs
     (Vfs.parse_file vfs)
     entry_points
     Pipeline.initial_stat_env
-  |> Diag.map (fun (libs, _, scope) ->
-         Type.Env.fold
-           (fun path ty acc ->
-             let path =
-               if path = "@prim" then
-                 path
-               else
-                 Lib.FilePath.make_absolute (Sys.getcwd ()) path in
-             add_module
-               path
-               (ty
-                |> read_single_module_lib
-                |> Fun.flip Lib.Option.get []
-                |> populate_definitions libs path)
-               acc)
-           scope.Scope.lib_env
-           (empty ()))
+  |> Diag.map (fun (libs, _, scope) -> index_from_scope lib_index libs scope)
 
-let make_index logger vfs entry_points : t Diag.result =
+
+let make_index logger project_root vfs entry_points : t Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
-  try make_index_inner logger vfs entry_points
-  with _ -> Diag.return (empty ())
+  try make_index_inner logger project_root vfs entry_points
+  with _ -> Diag.return (empty project_root)
