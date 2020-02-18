@@ -113,8 +113,8 @@ let start entry_point debug =
   let vfs = ref Vfs.empty in
   let decl_index =
     let ix = match Declaration_index.make_index log_to_file project_root !vfs [entry_point] with
-      | Error(err) ->
-        List.iter (fun e -> log_to_file "Error" (Diag.string_of_message e))  err;
+      | Error errs ->
+        List.iter (fun err -> log_to_file "Error" (Diag.string_of_message err)) errs;
         startup_diags := errs;
         Declaration_index.empty project_root
       | Ok((ix, _)) -> ix in
