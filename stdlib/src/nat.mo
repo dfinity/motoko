@@ -42,4 +42,11 @@ module {
     x + y;
   };
 
+  public let min : (Nat, Nat) -> Nat = func(x,y) {
+    if (x < y) x else y;
+  };
+
+  public let max : (Nat, Nat) -> Nat = func(x,y) {
+    if (x < y) y else x;
+  };
 }

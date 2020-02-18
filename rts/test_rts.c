@@ -132,9 +132,11 @@ int main () {
   printf("Testing UTF8...\n");
 
   extern bool utf8_valid(const char*, size_t);
-  const int cases = 33;
-  const char* utf8_inputs[cases] = {
+  const char* utf8_inputs[] = {
     "abcd",
+
+    // issue 1208
+    " \xe2\x96\x88 ",
 
     // from https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
     //
@@ -181,10 +183,12 @@ int main () {
     "\xed\xae\x80\xed\xbf\xbf",
     "\xed\xaf\xbf\xed\xb0\x80",
     "\xed\xaf\xbf\xed\xbf\xbf"
+
   };
+  const int cases = sizeof utf8_inputs / sizeof *utf8_inputs;
   for (int i = 0; i < cases; ++i)
   {
-    bool invalid = i > 0;
+    bool invalid = i >= 2; // the first two tests should pass
     assert( invalid != utf8_valid(utf8_inputs[i], strlen(utf8_inputs[i])),
             "%svalid UTF-8 test #%d failed\n", invalid ? "in" : "", i + 1);
   }
