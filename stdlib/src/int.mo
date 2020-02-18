@@ -63,4 +63,12 @@ module {
   public let toInt16   : Int -> Int16 = Prim.intToInt16;
   public let toInt32   : Int -> Int32 = Prim.intToInt32;
   public let toInt64   : Int -> Int64 = Prim.intToInt64;
+
+  public let min : (Int, Int) -> Int = func(x,y) {
+    if (x < y) x else y;
+  };
+
+  public let max : (Int, Int) -> Int = func(x,y) {
+    if (x < y) y else x;
+  };
 }

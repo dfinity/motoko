@@ -50,6 +50,9 @@ let name_of_ide_decl (d : ide_decl) : string =
   | ValueDecl value -> value.name
   | TypeDecl ty -> ty.name
 
+let decl_has_prefix prefix d =
+  Option.is_some (Lib.String.chop_prefix prefix (name_of_ide_decl d))
+
 module Index = Map.Make(String)
 
 type declaration_index = {
@@ -91,6 +94,56 @@ let lookup_module
      |> Option.map (fun decls -> ("@prim", decls))
   | Ok (Ic _ | IcAlias _) -> (* TODO *) None
   | Error _ -> None
+
+let rec drop_common_prefix eq l1 l2 =
+  match l1, l2 with
+  | h1 :: t1, h2 :: t2 when eq h1 h2 ->
+      drop_common_prefix eq t1 t2
+  | _ -> (l1, l2)
+
+let shorten_import_path
+    : Pipeline.ResolveImport.package_map
+   -> string
+   -> string
+   -> string =
+  fun pkg_map base path ->
+  let pkg_path =
+    Flags.M.bindings pkg_map
+    |> Lib.List.first_opt (fun (name, pkg_path) ->
+           if Lib.FilePath.is_subpath pkg_path path
+           then
+             let rel_path = Option.get (Lib.FilePath.relative_to pkg_path path) in
+             Some (Printf.sprintf "mo:%s/%s" name (Filename.remove_extension rel_path))
+           else
+             None
+         )
+  in match pkg_path with
+     | Some p -> p
+     | None ->
+        let (base', path') =
+          drop_common_prefix
+            String.equal
+            (Lib.String.split (Filename.dirname base) '/')
+            (Lib.String.split path '/') in
+        List.map (fun _ -> "..") base' @ path'
+        |> String.concat "/"
+        |> Filename.remove_extension
+
+let find_with_prefix
+    : string
+   -> string
+   -> t
+   -> (string * ide_decl list) list =
+  fun prefix base {modules; package_map; _} ->
+  Index.bindings modules
+  |> List.map (fun (p, ds) ->
+         let import_path =
+           if p = "@prim" then
+             "mo:prim"
+           else
+             shorten_import_path package_map base p in
+         (import_path, List.filter (decl_has_prefix prefix) ds))
+  |> List.filter (fun (_, ds) -> not (ds = []))
 
 let empty : unit -> t = fun _ ->
   let open Pipeline.ResolveImport in
