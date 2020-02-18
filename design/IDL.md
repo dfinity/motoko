@@ -461,11 +461,11 @@ type engine = service {
 
 ### Principal References
 
-A *principal reference* describes an identity encoded by the platform, which is an arbitrary sequence of bytes:
+A *principal reference* points to an identity, such as an actor or a user. Through this, we can authenticate or authorize other services or users.
+
 ```
 <reftype> ::= ... | principal | ...
 ```
-**Note:** This type has the same representation as `vec nat8`. We make it as a separate type to facilitate tranferring identities over the wire.
 
 ### Type Definitions
 
@@ -829,7 +829,7 @@ This section describes how abstract *IDL values* of the types described by the I
 
 Serialisation is defined by three functions `T`, `M`, and `R` given below.
 
-Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references:
+Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references and principal references:
 
 * `ref(r)` indicates an opaque reference, understood only by the underlying system.
 * `id(b)`, indicates a transparent reference to a service addressed by the blob `b`.
@@ -964,7 +964,8 @@ M(id(v*) : service <actortype>) = i8(1) M(v* : vec nat8)
 M(ref(r)   : func <functype>) = i8(0)
 M(pub(s,n) : func <functype>) = i8(1) M(s : service {}) M(n : text)
 
-M(v*: principal)= M(v* : vec nat8)
+M(ref(r) : principal) = i8(0)
+M(id(v*) : principal) = i8(1) M(v* : vec nat8)
 ```
 
 
@@ -992,7 +993,8 @@ R(ref(r) : service <actortype>) = r
 R(id(b*) : service <actortype>) = .
 R(ref(r)   : func <functype>) = r
 R(pub(s,n) : func <functype>) = .
-R(_ : principal) = .
+R(ref(r) : principal) = r
+R(id(b*) : principal) = .
 ```
 
 Note:
