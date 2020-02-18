@@ -132,8 +132,7 @@ int main () {
   printf("Testing UTF8...\n");
 
   extern bool utf8_valid(const char*, size_t);
-  const int cases = 34;
-  const char* utf8_inputs[cases] = {
+  const char* utf8_inputs[] = {
     "abcd",
 
     // issue 1208
@@ -186,6 +185,7 @@ int main () {
     "\xed\xaf\xbf\xed\xbf\xbf"
 
   };
+  const int cases = sizeof utf8_inputs / sizeof *utf8_inputs;
   for (int i = 0; i < cases; ++i)
   {
     bool invalid = i >= 2; // the first two tests should pass
