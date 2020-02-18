@@ -137,7 +137,7 @@ int main () {
     "abcd",
 
     // issue 1208
-    "██    ██\n",
+    " \xe2\x96\x88 ",
 
     // from https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
     //
