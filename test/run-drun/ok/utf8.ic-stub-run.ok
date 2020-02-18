@@ -3,8 +3,7 @@
 → install
 ← completed
 → update callshow(0x4449444c0000)
-debug.print: ██  
-  ██
+debug.print: ██    ██
 
 debug.print: IDL error: UTF-8 validation failure
 Trap: EvalTrapError :0.1 "unreachable executed"
