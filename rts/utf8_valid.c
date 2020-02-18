@@ -71,7 +71,7 @@ utf8_check(const char *src, size_t len, size_t *cursor) {
   unsigned char buf[4];
   uint32_t v;
 
-  for (;;) {
+  while (true) {
     if (cur >= end - 3) {
       if (cur == end)
         break;
