@@ -10,13 +10,7 @@ public func callshow(): async Text {
  };
 
 public func show() : async Text {
-  var accum = "";
-  accum #= "██";
-  accum #= "  ";
-  accum #= "\n";
-  accum #= "  ";
-  accum #= "██";
-  accum #= "\n";
+  let accum = "██    ██\n";
   Prim.debugPrint accum;
   accum
  };
