@@ -127,12 +127,12 @@ let start entry_point debug =
       |> List.map diagnostics_of_message
       |> Lib.List.group (fun (_, f1) (_, f2) -> f1 = f2)
       |> List.map (fun diags ->
-             let (_, file) = List.hd diags in
-             (List.map fst diags, Vfs.uri_from_file file)) in
-
+           let (_, file) = List.hd diags in
+           (List.map fst diags, Vfs.uri_from_file file)) in
     List.iter clear_diagnostics !files_with_diags;
     files_with_diags := List.map snd diags_by_file;
     List.iter (fun (diags, uri) -> publish_diagnostics uri diags) diags_by_file in
+
   let rec loop () =
     let clength = read_line () in
     let cl = "Content-Length: " in
@@ -239,10 +239,10 @@ let start entry_point debug =
        vfs := Vfs.close_file params !vfs
     | (_, `TextDocumentDidSave _) ->
        let msgs = match Declaration_index.make_index log_to_file !vfs [entry_point] with
-        | Error msgs' -> List.iter (fun msg -> log_to_file "rebuild_error" (Diag.string_of_message msg)) msgs'; msgs'
-        | Ok((ix, msgs')) ->
-           decl_index := ix;
-           msgs' in
+         | Error msgs' -> List.iter (fun msg -> log_to_file "rebuild_error" (Diag.string_of_message msg)) msgs'; msgs'
+         | Ok((ix, msgs')) ->
+            decl_index := ix;
+            msgs' in
        sync_diagnostics msgs
     (* Notification messages *)
 
