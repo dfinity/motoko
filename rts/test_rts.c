@@ -188,7 +188,7 @@ int main () {
   };
   for (int i = 0; i < cases; ++i)
   {
-    bool invalid = i > 1;
+    bool invalid = i >= 2; // the first two tests should pass
     assert( invalid != utf8_valid(utf8_inputs[i], strlen(utf8_inputs[i])),
             "%svalid UTF-8 test #%d failed\n", invalid ? "in" : "", i + 1);
   }
