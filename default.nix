@@ -1,6 +1,7 @@
 {
   replay ? 0,
   system ? builtins.currentSystem,
+  internal ? true, # may depend on internal tools
 }:
 
 let nixpkgs = import ./nix { inherit system; }; in
@@ -100,7 +101,7 @@ let ocaml_exe = name: bin:
     };
   in
     # Make standalone on darwin (nothing to do on linux, is static)
-    if nixpkgs.stdenv.isDarwin
+    if nixpkgs.stdenv.isDarwin && internal
     then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
     else drv;
 in
@@ -202,8 +203,6 @@ rec {
             export DESER=deser
             export ESM=${nixpkgs.sources.esm}
             type -p moc && moc --version
-            # run this once to work around self-unpacking-race-condition
-            type -p drun && drun --version
             make -C ${dir}
 
 	    if test -e ${dir}/_out/stats.csv
@@ -222,7 +221,8 @@ rec {
 
     let qc = testDerivation {
       name = "test-qc";
-      buildInputs = [ moc /* nixpkgs.wasm */ wasmtime drun haskellPackages.qc-motoko ];
+      buildInputs =
+        [ moc wasmtime haskellPackages.qc-motoko ] ++ nixpkgs.lib.optional internal drun;
       checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
@@ -252,8 +252,8 @@ rec {
     }; in
 
     { run       = test_subdir "run"       [ moc ] ;
-      run-drun  = test_subdir "run-drun"  [ moc drun ic-stub ];
-      perf      = perf_subdir "perf"      [ moc drun ];
+      run-drun  = test_subdir "run-drun"  ([ moc ic-stub ] ++ nixpkgs.lib.optional internal drun);
+      perf      = perf_subdir "perf"      ([ moc ] ++ nixpkgs.lib.optional internal drun);
       fail      = test_subdir "fail"      [ moc ];
       repl      = test_subdir "repl"      [ moc ];
       ld        = test_subdir "ld"        [ mo-ld ];
@@ -306,7 +306,7 @@ rec {
     '';
   };
 
-  inherit drun;
+  ${if internal then "drun" else null} = drun;
   filecheck = nixpkgs.linkFarm "FileCheck"
     [ { name = "bin/FileCheck"; path = "${nixpkgs.llvm}/bin/FileCheck";} ];
   wabt = nixpkgs.wabt;
