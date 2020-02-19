@@ -1,15 +1,14 @@
 # THIS IS AN AUTOMATICALLY GENERATED FILE. DO NOT EDIT MANUALLY!
-# To regenerate this file execute the following command in this directory:
-#
-# cp $(nix-build ./generate.nix --no-link)/default.nix ./default.nix
-{ mkDerivation, base, exceptions, managed, process, QuickCheck
+# See ./nix/generate.nix for instructions.
+
+{ mkDerivation, pkgs, base, exceptions, managed, process, QuickCheck
 , quickcheck-text, quickcheck-unicode, stdenv, tasty
 , tasty-quickcheck, text, turtle
 }:
 mkDerivation {
   pname = "qc-motoko";
   version = "1";
-  src = ./.;
+  src = import ../gitSource.nix "test/random";
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [
