@@ -1,0 +1,6 @@
+name: motoko
+title: Everything Motoko
+version: 'master'
+start_page: ROOT:motoko.adoc
+nav:
+  - lang-nav.adoc
