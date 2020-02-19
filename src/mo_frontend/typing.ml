@@ -254,10 +254,18 @@ let region_of_scope env typ =
     T.ConEnv.find_opt c env.scopes
   | _ -> None
 
+let string_of_region r =
+  let open Source in
+  let { left; right } = r in
+  let basename = if left.file = "" then "" else Filename.basename left.file in
+  Source.string_of_region
+    { left =  { left with file = basename };
+      right = { right with file = basename } }
+
 let associated_region env typ at =
   match region_of_scope env typ with
   | Some r ->
-    Printf.sprintf "\n  scope %s is %s" (T.string_of_typ_expand typ) (Source.string_of_region r);
+    Printf.sprintf "\n  scope %s is %s" (T.string_of_typ_expand typ) (string_of_region r);
   | None ->
     if T.eq typ (T.Con(C.top_cap,[])) then
       Printf.sprintf "\n  scope %s is the global scope" (T.string_of_typ_expand typ)
@@ -267,7 +275,7 @@ let scope_info env typ at =
   match region_of_scope env typ with
   | Some r ->
     info env r "this is scope %s mentioned in error at %s"
-      (T.string_of_typ_expand typ) (Source.string_of_region at)
+      (T.string_of_typ_expand typ) (string_of_region at)
   | None -> ()
 
 let rec infer_async_cap env sort cs tbs at =
