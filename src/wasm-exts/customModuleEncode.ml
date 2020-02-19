@@ -160,6 +160,8 @@ let encode (em : extended_module) =
       | Nop, {line; file; _} when -line = dw_AT_comp_dir ->
         let _offs = add_dwarf_string file in
         add_dwarf_attribute (StringAttribute (-line, file))
+      | Nop, {line; column; _} when -line = dw_AT_use_UTF8 ->
+        add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_language ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_stmt_list ->
@@ -179,6 +181,8 @@ let encode (em : extended_module) =
       | Nop, {line; column; _} when -line = dw_AT_external ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_addr_base ->
+        add_dwarf_attribute (IntAttribute (-line, column))
+      | Nop, {line; column; _} when -line = dw_AT_byte_size ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_bit_size ->
         add_dwarf_attribute (IntAttribute (-line, column))

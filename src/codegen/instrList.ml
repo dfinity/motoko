@@ -162,6 +162,7 @@ type dw_AT = Producer of string
            | Name of string
            | Stmt_list of int
            | Comp_dir of string
+           | Use_UTF8 of bool
            | Low_pc of int
            | High_pc of int
            | Addr_base of int
@@ -170,8 +171,12 @@ type dw_AT = Producer of string
            | Decl_column of int
            | Prototyped of bool
            | External of bool
+           | Byte_size of int
            | Bit_size of int
            | Data_bit_offset of int
+           | Discr of int (* reference *)
+           | Discr_list
+           | Discr_value
 
 (* DWARF tags *)
 
@@ -182,6 +187,8 @@ type dw_TAG = Compile_unit of string * string (* compilation directory, file nam
             | Typedef
             | Structure_type
             | Member
+            | Variant_part
+            | Variant
 
 (* DWARF high-level structures *)
 
@@ -206,6 +213,7 @@ let dw_attr : dw_AT -> t =
   | Name n -> fakeFile n dw_AT_name Nop
   | Stmt_list l -> fakeColumn l dw_AT_stmt_list Nop
   | Comp_dir n -> fakeFile n dw_AT_comp_dir Nop
+  | Use_UTF8 b -> fakeColumn (if b then 1 else 0) dw_AT_use_UTF8 Nop
   | Low_pc l -> fakeColumn l dw_AT_low_pc Nop
   | High_pc h -> fakeColumn h dw_AT_high_pc Nop
   | Addr_base b -> fakeColumn b dw_AT_addr_base Nop
@@ -214,6 +222,7 @@ let dw_attr : dw_AT -> t =
   | Decl_column c -> fakeColumn c dw_AT_decl_column Nop
   | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped Nop
   | External b -> fakeColumn (if b then 1 else 0) dw_AT_external Nop
+  | Byte_size s -> fakeColumn s dw_AT_byte_size Nop
   | Bit_size s -> fakeColumn s dw_AT_bit_size Nop
   | Data_bit_offset o -> fakeColumn o dw_AT_data_bit_offset Nop
 
@@ -221,6 +230,12 @@ let dw_attr : dw_AT -> t =
    When it admits children, these follow sequentially,
    closed by dw_tag_children_done.
  *)
+
+let dw_tag_children_done : t =
+  let left = { Wasm.Source.no_pos with line = -1 } in
+  let right = Wasm.Source.no_pos in
+  fun _ _ x -> (Nop @@ { left; right }) :: x
+
 
 let dw_tag : dw_TAG -> t =
   let fakeBlock tag attrs =
@@ -261,16 +276,24 @@ let dw_tag : dw_TAG -> t =
          dw_attr (Bit_size 16) ^^
          dw_attr (Data_bit_offset 16))
     in
+    let builtin_types =
+      fakeBlock dw_TAG_structure_type
+        (dw_attr (Name "Nat") ^^
+         dw_attr (Byte_size 4)) ^^
+      dw_tag_children_done
+    in
     fakeBlock dw_TAG_compile_unit
       (dw_attr (Producer "DFINITY Motoko compiler, version 0.1") ^^
        dw_attr (Language dw_LANG_Swift) ^^ (* FIXME *)
        dw_attr (Name file) ^^
        dw_attr (Stmt_list 0) ^^
        dw_attr (Comp_dir dir) ^^
+       dw_attr (Use_UTF8 true) ^^
        dw_attr (Low_pc 0) ^^
        dw_attr (Addr_base 8) ^^ (* FIXME: hardcoded *)
        dw_attr Ranges) ^^
-      base_types
+      base_types ^^
+      builtin_types
   | Subprogram (name, pos) ->
     fakeBlock dw_TAG_subprogram
       (dw_attr (Low_pc 0) ^^
@@ -285,11 +308,6 @@ let dw_tag : dw_TAG -> t =
        dw_attr (Decl_line pos.Source.line) ^^
        dw_attr (Decl_column pos.Source.column))
   | _ -> assert false
-
-let dw_tag_children_done : t =
-  let left = { Wasm.Source.no_pos with line = -1 } in
-  let right = Wasm.Source.no_pos in
-  fun _ _ x -> (Nop @@ { left; right }) :: x
 
 let dw_tag_no_children = dw_tag
 
