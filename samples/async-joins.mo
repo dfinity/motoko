@@ -6,7 +6,7 @@ https://www.microsoft.com/en-us/research/wp-content/uploads/2007/01/The-Joins-Co
 
 */
 
-
+import Nat "mo:stdlib/nat";
 import Prim "mo:prim";
 
 let print = Prim.debugPrint;
@@ -200,7 +200,7 @@ actor Alice {
     let name =  ["a","l","i","c","e"];
 
     public func send(release:Release) :  () {
-    	for (s in name.vals())
+    for (s in name.vals())
 	{
             Resource.write(s);
             await (async ()); // yield to allow interleavings
@@ -218,7 +218,7 @@ actor Charlie {
     let name =  ["c","h","a","r","l","i","e"];
 
     public func send(release:Release) : () {
-        for (s in name.vals())
+    for (s in name.vals())
 	{
             Resource.write(s);
             await (async ()); // yield to allow interleavings
