@@ -1,24 +1,7 @@
 (* Parsing known URLs from mo: and ic: URLs *)
 
 (*
-   parse "mo:std/list"    = Ok (Package ("std", "list"))
-   parse "mo:std/foo/bar" = Ok (Package ("std", "foo/bar"))
-   parse "mo:foo/bar"     = Ok (Package ("foo", "bar"))
-   parse "mo:foo"         = Ok (Package ("foo", ""))
-
-   parse "mo:prim"        = Ok (Prim)
-   parse "mo:prim/bar"    = Error…
-
-   parse "ic:DEADBEEF"    = Ok (Ic "\DE\AD\BE\EF")
-
-   parse "ic-alias:foo"   = Ok (IcAlias "foo")
-
-   parse "std/foo"        = Ok (Relative "std/foo")
-   parse "foo"            = Ok (Relative "foo")
-   parse "./foo"          = Ok (Relative "foo")
-
-
-   parse "something:else" = Error …
+   For usage examples take a look at url_test.ml
 
    TODO: This could be the place to reject things like
      ic: mo: http:std/foo
@@ -38,7 +21,7 @@ let decode_actor_url url : (string, string) result =
   let blob, crc = sub hex 0 (length hex - 2), sub hex (length hex - 2) 2 in
   let bs = Lib.Hex.bytes_of_hex blob in
   let checksum = Lib.CRC.crc8 bs in
-  if checksum <> Lib.Hex.int_of_hex_byte crc then Error "invald checksum in principal ID, please check for typos" else
+  if checksum <> Lib.Hex.int_of_hex_byte crc then Error "invalid checksum in principal ID, please check for typos" else
   Ok bs
 
 type parsed =
@@ -48,6 +31,12 @@ type parsed =
   | IcAlias of string
   | Prim
 
+let string_of_parsed = function
+  | Package (x, y) -> Printf.sprintf "Package (%s, %s)" x y
+  | Relative x -> Printf.sprintf "Relative %s" x
+  | Ic x -> Printf.sprintf "Ic %s" x
+  | IcAlias x -> Printf.sprintf "IcAlias %s" x
+  | Prim -> "Prim"
 
 let parse (f: string) : (parsed, string) result =
   match Lib.String.chop_prefix "mo:" f with
