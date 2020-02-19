@@ -156,6 +156,7 @@ let is_nop (is : t) =
 (* DWARF attributes *)
 
 open Wasm_exts.Dwarf5
+open Wasm_exts.Abbreviation
 
 type dw_AT = Producer of string
            | Language of int
@@ -177,6 +178,7 @@ type dw_AT = Producer of string
            | Discr of int (* reference *)
            | Discr_list
            | Discr_value
+           | Artificial of bool
 
 (* DWARF tags *)
 
@@ -225,6 +227,7 @@ let dw_attr : dw_AT -> t =
   | Byte_size s -> fakeColumn s dw_AT_byte_size Nop
   | Bit_size s -> fakeColumn s dw_AT_bit_size Nop
   | Data_bit_offset o -> fakeColumn o dw_AT_data_bit_offset Nop
+  | Artificial b -> fakeColumn (if b then 1 else 0) dw_AT_artificial Nop
 
 (* emit a DW_TAG
    When it admits children, these follow sequentially,
@@ -280,6 +283,11 @@ let dw_tag : dw_TAG -> t =
       fakeBlock dw_TAG_structure_type
         (dw_attr (Name "Nat") ^^
          dw_attr (Byte_size 4)) ^^
+      fakeBlock dw_TAG_member_Pointer_mark
+        (dw_attr (Name "@pointer_mark") ^^
+         dw_attr (Artificial true) ^^
+         dw_attr (Bit_size 1) ^^
+         dw_attr (Data_bit_offset 1)) ^^
       dw_tag_children_done
     in
     fakeBlock dw_TAG_compile_unit

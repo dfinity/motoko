@@ -190,6 +190,8 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; _} when -line = dw_AT_ranges ->
         add_dwarf_attribute (FunctionsAttribute (-line))
+      | Nop, {line; column; _} when -line = dw_AT_artificial ->
+        add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; _} -> Printf.printf "TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line); failwith "extract"
       | instr, {line; file; _} -> Printf.printf "TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
@@ -715,7 +717,7 @@ let encode (em : extended_module) =
     let zero_terminated str = put_string s str; u8 0
 
     let debug_abbrev_section () =
-      let tag (t, ch, kvs) = uleb128 t; u8 ch; List.iter (fun (k, v) -> uleb128 k; uleb128 v) kvs in
+      let tag (t, ch, kvs) = uleb128 (t land 0xFFFF); u8 ch; List.iter (fun (k, v) -> uleb128 k; uleb128 v) kvs in
       let abbrev i abs = uleb128 (i + 1); tag abs; close_section (); close_section () in
       let section_body abs = List.iteri abbrev abs; close_section () in
       custom_section ".debug_abbrev" section_body Abbreviation.abbreviations true
@@ -783,9 +785,9 @@ let encode (em : extended_module) =
         let (_, has_children, forms) = List.find isTag Abbreviation.abbreviations in
         let pairing (attr, form) = function
           | Tag _ -> failwith "Attribute expected"
-          | IntAttribute (a, _) as art -> assert (attr = a); writeForm form art
+          | IntAttribute (a, _) as art -> if attr <> a then Printf.printf "attr: %x = a: %x \n" attr a ;assert (attr = a); writeForm form art
           | StringAttribute (a, _) as art -> assert (attr = a); writeForm form art
-          | FunctionsAttribute a as art -> Printf.printf "attr: %x = a: %x \n" attr a ;  assert (attr = a); writeForm form art in
+          | FunctionsAttribute a as art -> (* Printf.printf "attr: %x = a: %x \n" attr a ;  *)assert (attr = a); writeForm form art in
         let rec indexOf cnt = function
           | h :: t when isTag h -> cnt
           | _ :: t -> indexOf (cnt + 1) t
