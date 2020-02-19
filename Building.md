@@ -78,3 +78,23 @@ https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable 
    _pass_ it the path to the binary.)
 
 
+## Updating Haskell Packages
+
+When the `.cabal` file of a Haskell package is changed you need to make sure the
+corresponding `default.nix` file (stored in the same directory as the `.cabal`
+file) is kept in sync with it.
+
+As mentioned in the `default.nix` files, these files are automatically generated:
+
+```
+# THIS IS AN AUTOMATICALLY GENERATED FILE. DO NOT EDIT MANUALLY!
+# To regenerate this file execute the following command in this directory:
+#
+# cp $(nix-build ./generate.nix --no-link)/default.nix ./default.nix
+```
+
+Note that they also contain the instructions on how to update them.
+
+Don't worry if you forget to update the `default.nix` file. There are CI jobs
+(like [`haskellSrc2nix.lsp-int`](https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/haskellSrc2nix.lsp-int)
+that check if the files are in sync and fail with a diff if they aren't.
