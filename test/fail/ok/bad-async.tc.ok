@@ -1,0 +1,4 @@
+bad-async.mo:17.1-17.2: syntax error, unexpected token '}', 
+expected one of token or <phrase> sequence:
+  <eof>
+  ; seplist(<dec>,<semicolon>)

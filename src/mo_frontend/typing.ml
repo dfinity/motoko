@@ -72,7 +72,7 @@ let type_warning at text : Diag.message =
   Diag.{sev = Diag.Warning; at; cat = "type"; text}
 
 let type_info at text : Diag.message =
-  Diag.{sev = Diag.Warning; at; cat = "type"; text}
+  Diag.{sev = Diag.Info; at; cat = "type"; text}
 
 
 let error env at fmt =
@@ -1031,7 +1031,7 @@ and infer_exp'' env exp : T.typ =
     (try
        let (t2, t3) = T.as_async_sub t0 t1 in
        if not (T.eq t0 t2) then
-         error env exp.at "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
+         error env exp1.at "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
            (T.string_of_typ_expand t0)
            (T.string_of_typ_expand t2)
            (associated_region env t0 exp.at)

@@ -1,5 +1,24 @@
-illegal-await.mo:3.30-3.37: type error, ill-scoped await: expected async type from current scope $anon-async-3.22, found async type from other scope @
-illegal-await.mo:12.32-12.40: type error, ill-scoped await: expected async type from current scope $anon-async-12.25, found async type from other scope $anon-async-11.10
-illegal-await.mo:13.32-13.40: type error, ill-scoped await: expected async type from current scope $anon-async-13.25, found async type from other scope $anon-async-11.10
-illegal-await.mo:24.7-24.14: type error, ill-scoped await: expected async type from current scope $anon-async-23.11, found async type from other scope $anon-async-21.10
-illegal-await.mo:33.5-33.12: type error, ill-scoped await: expected async type from current scope $Rec, found async type from other scope $
+illegal-await.mo:3.22-3.38: info, this is scope $anon-async-3.22 mentioned in error at illegal-await.mo:3.30-3.37
+illegal-await.mo:3.36-3.37: type error, ill-scoped await: expected async type from current scope $anon-async-3.22, found async type from other scope $top-level
+  scope $anon-async-3.22 is illegal-await.mo:3.22-3.38
+  scope $top-level is the global scope
+illegal-await.mo:11.10-14.4: info, this is scope $anon-async-11.10 mentioned in error at illegal-await.mo:12.32-12.40
+illegal-await.mo:12.25-12.43: info, this is scope $anon-async-12.25 mentioned in error at illegal-await.mo:12.32-12.40
+illegal-await.mo:12.38-12.40: type error, ill-scoped await: expected async type from current scope $anon-async-12.25, found async type from other scope $anon-async-11.10
+  scope $anon-async-12.25 is illegal-await.mo:12.25-12.43
+  scope $anon-async-11.10 is illegal-await.mo:11.10-14.4
+illegal-await.mo:11.10-14.4: info, this is scope $anon-async-11.10 mentioned in error at illegal-await.mo:13.32-13.40
+illegal-await.mo:13.25-13.43: info, this is scope $anon-async-13.25 mentioned in error at illegal-await.mo:13.32-13.40
+illegal-await.mo:13.38-13.40: type error, ill-scoped await: expected async type from current scope $anon-async-13.25, found async type from other scope $anon-async-11.10
+  scope $anon-async-13.25 is illegal-await.mo:13.25-13.43
+  scope $anon-async-11.10 is illegal-await.mo:11.10-14.4
+illegal-await.mo:21.10-26.4: info, this is scope $anon-async-21.10 mentioned in error at illegal-await.mo:24.7-24.14
+illegal-await.mo:23.11-25.6: info, this is scope $anon-async-23.11 mentioned in error at illegal-await.mo:24.7-24.14
+illegal-await.mo:24.13-24.14: type error, ill-scoped await: expected async type from current scope $anon-async-23.11, found async type from other scope $anon-async-21.10
+  scope $anon-async-23.11 is illegal-await.mo:23.11-25.6
+  scope $anon-async-21.10 is illegal-await.mo:21.10-26.4
+illegal-await.mo:31.1-38.2: info, this is scope $ mentioned in error at illegal-await.mo:33.5-33.12
+illegal-await.mo:31.51-38.2: info, this is scope $Rec mentioned in error at illegal-await.mo:33.5-33.12
+illegal-await.mo:33.11-33.12: type error, ill-scoped await: expected async type from current scope $Rec, found async type from other scope $
+  scope $Rec is illegal-await.mo:31.51-38.2
+  scope $ is illegal-await.mo:31.1-38.2
