@@ -138,7 +138,7 @@ let completions index logger project_root file_path file_contents line column =
   let toplevel_decls =
     let current_module_decls =
       current_uri_opt
-      |> opt_bind (fun uri -> DI.lookup_module (Filename.remove_extension uri) index)
+      |> opt_bind (fun uri -> DI.lookup_module project_root (Filename.remove_extension uri) index)
       |> Option.fold ~none:[] ~some:snd in
     current_module_decls
   in
@@ -171,7 +171,7 @@ let completions index logger project_root file_path file_contents line column =
        |> List.find_opt (fun (mn, _) -> String.equal mn alias) in
      match module_path with
      | Some mp ->
-        (match DI.lookup_module (snd mp) index with
+        (match DI.lookup_module project_root (snd mp) index with
          | Some (_, decls) ->
             decls
             |> List.filter (has_prefix prefix)
