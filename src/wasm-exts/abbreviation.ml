@@ -16,6 +16,7 @@ let pseudo_tag base ordinal =
   base lor (ordinal lsr 16)
 
 let dw_TAG_member_Pointer_mark = pseudo_tag Dwarf5.dw_TAG_member 1
+let dw_TAG_member_Word_sized = pseudo_tag Dwarf5.dw_TAG_member 2
 
 let abbreviations =
   let open Dwarf5 in
@@ -64,6 +65,11 @@ let abbreviations =
         dw_AT_artificial, dw_FORM_flag_present;
         dw_AT_bit_size, dw_FORM_data1;
         dw_AT_data_bit_offset, dw_FORM_data1
+      ] );
+    ( dw_TAG_member_Word_sized, dw_CHILDREN_no,
+      [ dw_AT_name, dw_FORM_strp;
+        (*dw_AT_type, dw_FORM_sec_offset;*)
+        dw_AT_byte_size, dw_FORM_data1
       ] );
     ( dw_TAG_variant_part, dw_CHILDREN_yes,
       [ dw_AT_discr, dw_FORM_sec_offset

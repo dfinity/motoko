@@ -192,6 +192,8 @@ let encode (em : extended_module) =
         add_dwarf_attribute (FunctionsAttribute (-line))
       | Nop, {line; column; _} when -line = dw_AT_artificial ->
         add_dwarf_attribute (IntAttribute (-line, column))
+      | Nop, {line; column; _} when -line = dw_AT_discr ->
+        add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; _} -> Printf.printf "TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line); failwith "extract"
       | instr, {line; file; _} -> Printf.printf "TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
