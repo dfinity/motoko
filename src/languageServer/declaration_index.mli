@@ -33,7 +33,11 @@ val shorten_import_path
     (** The path to be shortened *)
     -> string
 
-val lookup_module : string -> t -> (string * ide_decl list) option
+val lookup_module
+    : string
+    -> string
+    -> t
+    -> (string * ide_decl list) option
 
 val find_with_prefix
     : string

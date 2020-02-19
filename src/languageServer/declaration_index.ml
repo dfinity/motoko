@@ -66,11 +66,12 @@ let add_module : string -> ide_decl list -> declaration_index -> declaration_ind
   fun path decls ix -> { ix with modules = Index.add path decls ix.modules}
 
 let lookup_module
+      (project_root : string)
       (path : string)
       (index : t)
     : (string * ide_decl list) option =
   let open Pipeline.URL in
-  let make_absolute = Lib.FilePath.make_absolute (Sys.getcwd ()) in
+  let make_absolute = Lib.FilePath.make_absolute project_root in
   match parse path with
   | Ok (Relative path) ->
      let path =
@@ -214,6 +215,7 @@ let unwrap_module_ast (lib : Syntax.lib): Syntax.exp_field list option =
 
 
 let populate_definitions
+    (project_root : string)
     (libs : Syntax.lib list)
     (path : string)
     (decls : ide_decl list)
@@ -254,7 +256,7 @@ let populate_definitions
        TypeDecl { typ with definition = type_definition } in
   let opt_lib =
     List.find_opt
-      (fun lib -> String.equal path (Lib.FilePath.make_absolute (Sys.getcwd ()) lib.note))
+      (fun lib -> String.equal path (Lib.FilePath.make_absolute project_root lib.note))
       libs in
   match opt_lib with
   | None -> decls
@@ -280,21 +282,21 @@ let scan_packages : unit -> string list =
     |> List.filter (fun f -> Filename.extension f = ".mo") in
   Flags.M.fold (fun _ v acc -> scan_package v @ acc) !Flags.package_urls []
 
-let index_from_scope : t -> Syntax.lib list -> Scope.t -> t =
-  fun initial_index libs scope ->
+let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
+  fun project_root initial_index libs scope ->
   Type.Env.fold
     (fun path ty acc ->
       let path =
         if path = "@prim" then
           path
         else
-          Lib.FilePath.make_absolute (Sys.getcwd ()) path in
+          Lib.FilePath.make_absolute project_root path in
       add_module
         path
         (ty
          |> read_single_module_lib
          |> Fun.flip Lib.Option.get []
-         |> populate_definitions libs path)
+         |> populate_definitions project_root libs path)
         acc)
     scope.Scope.lib_env
     initial_index
@@ -309,14 +311,14 @@ let make_index_inner logger project_root vfs entry_points : t Diag.result =
        empty project_root
       end
     | Result.Ok ((libs, scope), _) ->
-       index_from_scope (empty project_root) libs scope in
+       index_from_scope project_root (empty project_root) libs scope in
   (* TODO(Christoph): We should be able to return at least the
      lib_index even if compiling from the entry points fails *)
   Pipeline.load_progs
     (Vfs.parse_file vfs)
     entry_points
     Pipeline.initial_stat_env
-  |> Diag.map (fun (libs, _, scope) -> index_from_scope lib_index libs scope)
+  |> Diag.map (fun (libs, _, scope) -> index_from_scope project_root lib_index libs scope)
 
 
 let make_index logger project_root vfs entry_points : t Diag.result =

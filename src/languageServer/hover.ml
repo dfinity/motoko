@@ -25,7 +25,7 @@ let hover_handler
   let toplevel_decls =
      let current_module_decls =
        current_uri_opt
-       |> Fun.flip Option.bind (fun uri -> lookup_module uri index)
+       |> Fun.flip Option.bind (fun uri -> lookup_module project_root uri index)
        |> Option.fold ~none:[] ~some:snd in
      current_module_decls in
   let mk_hover_result ide_decl =
@@ -41,7 +41,7 @@ let hover_handler
         | Source_file.Alias (_, path) ->
            Some Lsp.{ hover_result_contents = markup_content path }
         | Source_file.Resolved resolved ->
-           lookup_module resolved.Source_file.path index
+           lookup_module project_root resolved.Source_file.path index
            |> Fun.flip Option.bind (fun (_, decls) ->
                 List.find_opt
                   (fun d -> name_of_ide_decl d = resolved.Source_file.ident)
