@@ -257,13 +257,18 @@ let region_of_scope env typ =
 let associated_region env typ at =
   match region_of_scope env typ with
   | Some r ->
-    info env r "this is scope %s mentioned in error at %s"
-      (T.string_of_typ_expand typ) (Source.string_of_region at);
     Printf.sprintf "\n  scope %s is %s" (T.string_of_typ_expand typ) (Source.string_of_region r);
   | None ->
     if T.eq typ (T.Con(C.top_cap,[])) then
       Printf.sprintf "\n  scope %s is the global scope" (T.string_of_typ_expand typ)
     else ""
+
+let scope_info env typ at =
+  match region_of_scope env typ with
+  | Some r ->
+    info env r "this is scope %s mentioned in error at %s"
+      (T.string_of_typ_expand typ) (Source.string_of_region at)
+  | None -> ()
 
 let rec infer_async_cap env sort cs tbs at =
   match sort, cs, tbs with
@@ -1030,12 +1035,15 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp_promote env exp1 in
     (try
        let (t2, t3) = T.as_async_sub t0 t1 in
-       if not (T.eq t0 t2) then
-         error env exp1.at "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
+       if not (T.eq t0 t2) then begin
+         local_error env exp1.at "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
            (T.string_of_typ_expand t0)
            (T.string_of_typ_expand t2)
            (associated_region env t0 exp.at)
            (associated_region env t2 exp.at);
+         scope_info env t0 exp.at;
+         scope_info env t2 exp.at;
+       end;
        t3
     with Invalid_argument _ ->
       error env exp1.at "expected async type, but expression has type\n  %s"
@@ -1098,12 +1106,15 @@ and check_exp' env0 t exp : T.typ =
     t
   | AsyncE (tb, exp1), T.Async (t1', t') ->
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
-    if not (T.eq t1 t1') then
-      error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
+    if not (T.eq t1 t1') then begin
+      local_error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
         (T.string_of_typ_expand t1)
         (T.string_of_typ_expand t1')
         (associated_region env t1 exp.at)
         (associated_region env t1' exp.at);
+      scope_info env t1 exp.at;
+      scope_info env t1' exp.at
+    end;
     let c, tb, ce, cs = check_typ_bind env tb in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
     let env' =
