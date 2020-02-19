@@ -2,7 +2,7 @@ open Source
 open Mo_types
 
 type t
-val empty : unit -> t
+val empty : string -> t
 val string_of_index : t -> string
 
 type value_decl = {
@@ -33,7 +33,11 @@ val shorten_import_path
     (** The path to be shortened *)
     -> string
 
-val lookup_module : string -> t -> (string * ide_decl list) option
+val lookup_module
+    : string
+    -> string
+    -> t
+    -> (string * ide_decl list) option
 
 val find_with_prefix
     : string
@@ -44,4 +48,12 @@ val find_with_prefix
     (** The declaration index *)
     -> (string * ide_decl list) list
 
-val make_index : (string -> string -> unit) -> Vfs.t -> string list -> t Diag.result
+val make_index
+    : (string -> string -> unit)
+    (** A logger *)
+    -> string
+    (** The project root *)
+    -> Vfs.t
+    -> string list
+    (** The entry points *)
+    -> t Diag.result

@@ -99,7 +99,7 @@ let start entry_point debug =
   let _ = Flags.M.iter
             (fun k v -> log_to_file "package" (Printf.sprintf "%s => %s" k v))
             !Flags.package_urls in
-  let _ = Debug.logger := log_to_file "debug" in
+  let _ = Debug.logger := log_to_file in
   let publish_diagnostics = Channel.publish_diagnostics oc in
   let clear_diagnostics = Channel.clear_diagnostics oc in
   let send_response = Channel.send_response oc in
@@ -110,14 +110,13 @@ let start entry_point debug =
   let _ = log_to_file "project_root" project_root in
   let startup_diags = ref [] in
   let files_with_diags = ref [] in
-
   let vfs = ref Vfs.empty in
   let decl_index =
-    let ix = match Declaration_index.make_index log_to_file !vfs [entry_point] with
+    let ix = match Declaration_index.make_index log_to_file project_root !vfs [entry_point] with
       | Error errs ->
-         List.iter (fun e -> log_to_file "Error" (Diag.string_of_message e)) errs;
-         startup_diags := errs;
-         Declaration_index.empty ()
+        List.iter (fun err -> log_to_file "Error" (Diag.string_of_message err)) errs;
+        startup_diags := errs;
+        Declaration_index.empty project_root
       | Ok((ix, _)) -> ix in
     ref ix in
 
@@ -238,7 +237,7 @@ let start entry_point debug =
     | (_, `TextDocumentDidClose params) ->
        vfs := Vfs.close_file params !vfs
     | (_, `TextDocumentDidSave _) ->
-       let msgs = match Declaration_index.make_index log_to_file !vfs [entry_point] with
+       let msgs = match Declaration_index.make_index log_to_file project_root !vfs [entry_point] with
          | Error msgs' -> List.iter (fun msg -> log_to_file "rebuild_error" (Diag.string_of_message msg)) msgs'; msgs'
          | Ok((ix, msgs')) ->
             decl_index := ix;
