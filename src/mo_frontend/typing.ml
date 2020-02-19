@@ -36,6 +36,7 @@ type env =
     context : exp' list;
     pre : bool;
     msgs : Diag.msg_store;
+    scopes : Source.region T.ConEnv.t;
   }
 
 let env_of_scope msgs scope =
@@ -52,6 +53,7 @@ let env_of_scope msgs scope =
     context = [];
     pre = false;
     msgs;
+    scopes = T.ConEnv.empty;
   }
 
 
@@ -65,8 +67,13 @@ let recover f y = recover_with () f y
 
 let type_error at text : Diag.message =
   Diag.{sev = Diag.Error; at; cat = "type"; text}
+
 let type_warning at text : Diag.message =
   Diag.{sev = Diag.Warning; at; cat = "type"; text}
+
+let type_info at text : Diag.message =
+  Diag.{sev = Diag.Warning; at; cat = "type"; text}
+
 
 let error env at fmt =
   Printf.ksprintf
@@ -77,6 +84,9 @@ let local_error env at fmt =
 
 let warn env at fmt =
   Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_warning at s)) fmt
+
+let info env at fmt =
+  Printf.ksprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
 
 let flag_of_compile_mode mode =
   match mode with
@@ -238,13 +248,32 @@ let check_shared_return env at sort c ts =
   | T.Shared T.Query, _, _ -> error env at "shared query function must have syntactic return type `async <typ>`"
   | _ -> ()
 
-let rec infer_async_cap env sort cs tbs =
+let region_of_scope env typ =
+  match T.normalize typ with
+  | T.Con(c,_) ->
+    T.ConEnv.find_opt c env.scopes
+  | _ -> None
+
+let associated_region env typ at =
+  match region_of_scope env typ with
+  | Some r ->
+    info env r "this is scope %s mentioned in error at %s"
+      (T.string_of_typ_expand typ) (Source.string_of_region at);
+    Printf.sprintf "\n  scope %s is %s" (T.string_of_typ_expand typ) (Source.string_of_region r);
+  | None ->
+    if T.eq typ (T.Con(C.top_cap,[])) then
+      Printf.sprintf "\n  scope %s is the global scope" (T.string_of_typ_expand typ)
+    else ""
+
+let rec infer_async_cap env sort cs tbs at =
   match sort, cs, tbs with
   | (T.Shared T.Write | T.Local) , c::_,  { T.sort = T.Scope; _ }::_ ->
     { env with typs = T.Env.add T.default_scope_var c env.typs;
+               scopes = T.ConEnv.add c at env.scopes;
                async = C.AsyncCap c }
   | (T.Shared T.Query) , c::_,  { T.sort = T.Scope; _ }::_ ->
     { env with typs = T.Env.add T.default_scope_var c env.typs;
+               scopes = T.ConEnv.add c at env.scopes;
                async = C.QueryCap c }
   | T.Shared _, _, _ -> assert false (* impossible given sugaring *)
   | _ -> { env with async = C.NullCap }
@@ -302,7 +331,7 @@ and check_typ' env typ : T.typ =
     T.Tup (List.map (check_typ env) typs)
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, tbs, te, ce = check_typ_binds env binds in
-    let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs in
+    let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs typ.at in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
     let ts1 = List.map (check_typ env') typs1 in
@@ -771,9 +800,9 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
     )
-  | FuncE (_, sort_pat, typ_binds, pat, typ_opt, _sugar, exp) ->
+  | FuncE (_, sort_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort sort_pat.it then
-      error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
+      error_in [Flags.ICMode; Flags.StubMode] env exp1.at "a shared function is only allowed as a public field of an actor";
     let typ = match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
@@ -782,7 +811,7 @@ and infer_exp'' env exp : T.typ =
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let c, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort c ts2;
-    let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs in
+    let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs exp.at in
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
@@ -794,7 +823,7 @@ and infer_exp'' env exp : T.typ =
           rets = Some codom;
           (* async = None; *) }
       in
-      check_exp (adjoin_vals env'' ve2) codom exp;
+      check_exp (adjoin_vals env'' ve2) codom exp1;
       if Type.is_shared_sort sort then begin
         if not (T.shared t1) then
           error_shared env t1 pat.at
@@ -808,12 +837,12 @@ and infer_exp'' env exp : T.typ =
         ) ts2;
         match c, ts2 with
         | T.Returns, [] when sort = T.Shared T.Write ->
-          if not (is_IgnoreAsync exp) then
-            error env exp.at
+          if not (is_IgnoreAsync exp1) then
+            error env exp1.at
               "shared function with () result type has unexpected body:\n  the body must either be of sugared form '{ ... }' \n  or explicit form '= ignore ((async ...) : async ())'"
         | T.Promises, _ ->
-          if not (is_Async exp) then
-            error env exp.at
+          if not (is_Async exp1) then
+            error env exp1.at
               "shared function with async result type has non-async body"
         | _ ->
           error env typ.at "shared function has non-async result type\n  %s"
@@ -985,7 +1014,11 @@ and infer_exp'' env exp : T.typ =
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
     let env' =
-      {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some T.Pre; async = next_cap c} in
+      {(adjoin_typs env ce_scope cs) with
+        labs = T.Env.empty;
+        rets = Some T.Pre;
+        async = next_cap c;
+        scopes = T.ConEnv.add c exp.at env.scopes } in
     let t = infer_exp env' exp1 in
     let t' = T.open_ [t1] (T.close [c] t)  in
     if not (T.shared t') then
@@ -998,8 +1031,11 @@ and infer_exp'' env exp : T.typ =
     (try
        let (t2, t3) = T.as_async_sub t0 t1 in
        if not (T.eq t0 t2) then
-         error env exp.at "ill-scoped await: expected async type from current scope %s, found async type from other scope %s"
-           (T.string_of_typ_expand t0) (T.string_of_typ_expand t2);
+         error env exp.at "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
+           (T.string_of_typ_expand t0)
+           (T.string_of_typ_expand t2)
+           (associated_region env t0 exp.at)
+           (associated_region env t2 exp.at);
        t3
     with Invalid_argument _ ->
       error env exp1.at "expected async type, but expression has type\n  %s"
@@ -1063,13 +1099,20 @@ and check_exp' env0 t exp : T.typ =
   | AsyncE (tb, exp1), T.Async (t1', t') ->
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if not (T.eq t1 t1') then
-      error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s"
+      error env exp.at "async at scope\n  %s\ncannot produce expected scope\n  %s%s%s"
         (T.string_of_typ_expand t1)
-        (T.string_of_typ_expand t1');
+        (T.string_of_typ_expand t1')
+        (associated_region env t1 exp.at)
+        (associated_region env t1' exp.at);
     let c, tb, ce, cs = check_typ_bind env tb in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
     let env' =
-      {(adjoin_typs env ce_scope cs) with labs = T.Env.empty; rets = Some t'; async = next_cap c} in
+      {(adjoin_typs env ce_scope cs) with
+        labs = T.Env.empty;
+        rets = Some t';
+        async = next_cap c;
+        scopes = T.ConEnv.add c exp.at env.scopes;
+      } in
     check_exp env' t' exp1;
     t
   | BlockE decs, _ ->
