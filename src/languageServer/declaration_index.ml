@@ -20,6 +20,15 @@ type ide_decl =
   | ValueDecl of value_decl
   | TypeDecl of type_decl
 
+let string_of_option f = function
+  | None -> "None"
+  | Some x -> "Some " ^ f x
+
+let string_of_list f xs =
+  List.map f xs
+  |> String.concat "; "
+  |> fun x -> "[ " ^ x ^ " ]"
+
 (** For debugging purposes *)
 let string_of_ide_decl = function
   | ValueDecl value ->
@@ -59,11 +68,21 @@ type declaration_index = {
     modules: ide_decl list Index.t;
     actors: ide_decl list Index.t;
     package_map: Pipeline.ResolveImport.package_map;
-    (* TODO: Add the mapping for IC urls here  *)
+    ic_aliases: Pipeline.ResolveImport.aliases;
+    actor_idl_path : Pipeline.ResolveImport.actor_idl_path;
   }
+
 type t = declaration_index
+
 let add_module : string -> ide_decl list -> declaration_index -> declaration_index =
   fun path decls ix -> { ix with modules = Index.add path decls ix.modules}
+
+let ic_id_to_lookup : string option -> string -> string -> string =
+  fun actor_idl_path project_root id ->
+  let crc = Lib.CRC.crc8 id |> Lib.Hex.hex_of_byte in
+  let hex = Lib.Hex.hex_of_bytes id ^ crc in
+  let idl_path = actor_idl_path |> Option.value ~default:project_root in
+  Lib.FilePath.make_absolute project_root (Filename.concat idl_path (hex ^ ".did"))
 
 let lookup_module
       (project_root : string)
@@ -93,7 +112,17 @@ let lookup_module
   | Ok Prim ->
      Index.find_opt "@prim" index.modules
      |> Option.map (fun decls -> ("@prim", decls))
-  | Ok (Ic _ | IcAlias _) -> (* TODO *) None
+  | Ok (Ic id) ->
+     let lookup_path = ic_id_to_lookup index.actor_idl_path project_root id in
+     Index.find_opt lookup_path index.modules
+     |> Option.map (fun decls -> (path, decls))
+  | Ok (IcAlias alias) ->
+     let mic_id = Flags.M.find_opt alias index.ic_aliases in
+     let _ = Debug.log "lookup_module.ic_alias.ic_id" (string_of_option (fun x -> x) mic_id) in
+     Option.bind mic_id (fun id ->
+         let lookup_path = ic_id_to_lookup index.actor_idl_path project_root id in
+         Index.find_opt lookup_path index.modules)
+     |> Option.map (fun decls -> (alias, decls))
   | Error _ -> None
 
 let rec drop_common_prefix eq l1 l2 =
@@ -104,10 +133,24 @@ let rec drop_common_prefix eq l1 l2 =
 
 let shorten_import_path
     : Pipeline.ResolveImport.package_map
+   -> Pipeline.ResolveImport.aliases
    -> string
    -> string
    -> string =
-  fun pkg_map base path ->
+  fun pkg_map ic_aliases base path ->
+  let _ = Debug.log "shorten_import" path in
+  if Filename.extension path = ".did"
+  then
+    let idl_basename = Filename.basename path in
+    Flags.M.bindings ic_aliases
+    |> Lib.List.first_opt (fun (alias, id) ->
+           Debug.log "basename" (Pipeline.URL.idl_basename_of_blob id);
+           if Pipeline.URL.idl_basename_of_blob id = idl_basename then Some alias else None
+         )
+    |> (function
+        | None -> Printf.sprintf "ic:%s" (Filename.remove_extension idl_basename)
+        | Some alias -> Printf.sprintf "canister:%s" alias)
+  else
   let pkg_path =
     Flags.M.bindings pkg_map
     |> Lib.List.first_opt (fun (name, pkg_path) ->
@@ -135,14 +178,14 @@ let find_with_prefix
    -> string
    -> t
    -> (string * ide_decl list) list =
-  fun prefix base {modules; package_map; _} ->
+  fun prefix base {modules; package_map; ic_aliases; _} ->
   Index.bindings modules
   |> List.map (fun (p, ds) ->
          let import_path =
            if p = "@prim" then
              "mo:prim"
            else
-             shorten_import_path package_map base p in
+             shorten_import_path package_map ic_aliases base p in
          (import_path, List.filter (decl_has_prefix prefix) ds))
   |> List.filter (fun (_, ds) -> not (ds = []))
 
@@ -157,7 +200,9 @@ let empty : string -> t = fun cwd ->
       }) in
   { modules = Index.empty;
     actors = Index.empty;
-    package_map = Flags.M.map (Lib.FilePath.make_absolute cwd) resolved_flags.packages
+    package_map = Flags.M.map (Lib.FilePath.make_absolute cwd) resolved_flags.packages;
+    ic_aliases = resolved_flags.aliases;
+    actor_idl_path = resolved_flags.actor_idl_path
   }
 
 module PatternMap = Map.Make(String)
@@ -175,11 +220,6 @@ let rec gather_pat ve pat : pattern_map =
 and gather_pat_field ve pf =
   gather_pat ve pf.it.pat
 
-let string_of_list f xs =
-  List.map f xs
-  |> String.concat "; "
-  |> fun x -> "[ " ^ x ^ " ]"
-
 let string_of_index : declaration_index -> string =
   fun index ->
   Index.bindings index.modules
@@ -192,7 +232,7 @@ let string_of_index : declaration_index -> string =
 
 let read_single_module_lib (ty: Type.typ): ide_decl list option =
   match ty with
-  | Type.Obj (Type.Module, fields) ->
+  | Type.Obj ((Type.Module | Type.Actor), fields) ->
      fields
      |> List.map
           (fun Type.{ lab = name; typ } ->
