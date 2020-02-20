@@ -1,8 +1,7 @@
 # THIS IS AN AUTOMATICALLY GENERATED FILE. DO NOT EDIT MANUALLY!
-# To regenerate this file execute the following command in this directory:
-#
-# cp $(nix-build ./generate.nix --no-link)/default.nix ./default.nix
-{ mkDerivation, base, binary, bytestring, containers
+# See ./nix/generate.nix for instructions.
+
+{ mkDerivation, pkgs, base, binary, bytestring, containers
 , data-default-class, filepath, hex-text, mtl, optparse-applicative
 , primitive, stdenv, text, transformers, utf8-string, vector
 , winter
@@ -10,7 +9,7 @@
 mkDerivation {
   pname = "ic-stub";
   version = "0.1.0.0";
-  src = ./.;
+  src = import ../gitSource.nix "ic-stub";
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [

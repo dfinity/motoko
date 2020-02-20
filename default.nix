@@ -411,24 +411,14 @@ rec {
   };
   stdlib-adocs = stdlib-doc.adocs;
 
-  haskellSrc2nix =
-    let
-      check = dir: nixpkgs.runCommandNoCC "check-${builtins.baseNameOf dir}" {
-        preferLocalBuild = true;
-        allowSubstitutes = false;
-        nativeBuildInputs = [ nixpkgs.diffutils ];
-        expected = import (dir + "/generate.nix") { pkgs = nixpkgs; };
-        inherit dir;
-      } ''
-        diff -U 3 $expected/default.nix $dir/default.nix
-        touch $out
-      '';
-    in {
-      lsp-int = check ./test/lsp-int;
-      qc-motoko = check ./test/random;
-      ic-stub = check ./ic-stub;
-      winter = check ./winter;
-    };
+  check-generated = nixpkgs.runCommandNoCC "check-generated" {
+      nativeBuildInputs = [ nixpkgs.diffutils ];
+      expected = import ./nix/generate.nix { pkgs = nixpkgs; };
+      dir = ./nix/generated;
+    } ''
+      diff -r -U 3 $expected $dir
+      touch $out
+    '';
 
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
@@ -447,6 +437,7 @@ rec {
       users-guide
       ic-stub
       shell
+      check-generated
     ] ++ builtins.attrValues tests
       ++ builtins.attrValues examples;
   };
