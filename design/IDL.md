@@ -459,7 +459,7 @@ type engine = service {
 }
 ```
 
-### Principal References
+#### Principal References
 
 A *principal reference* points to an identity, such as an actor or a user. Through this, we can authenticate or authorize other services or users.
 
