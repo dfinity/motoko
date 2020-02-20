@@ -1,6 +1,6 @@
 open Mo_config
 
-type severity = Warning | Error
+type severity = Warning | Error | Info
 type message = {
   sev : severity;
   at : Source.region;
@@ -50,11 +50,12 @@ let fatal_error at text = { sev = Error; at; cat = "fatal"; text }
 let string_of_message msg =
   let label = match msg.sev with
     | Error -> Printf.sprintf "%s error"  msg.cat
-    | Warning -> "warning" in
+    | Warning -> "warning" 
+    | Info -> "info" in
   Printf.sprintf "%s: %s, %s\n" (Source.string_of_region msg.at) label msg.text
 
 let print_message msg =
-  if msg.sev = Warning && not !Flags.print_warnings
+  if msg.sev <> Error && not !Flags.print_warnings
   then ()
   else Printf.eprintf "%s%!" (string_of_message msg)
 
