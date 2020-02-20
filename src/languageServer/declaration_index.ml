@@ -360,6 +360,8 @@ let make_index_inner logger project_root vfs entry_points : t Diag.result =
       end
     | Result.Ok ((libs, scope), _) ->
        index_from_scope project_root (empty project_root) libs scope in
+  let actor_paths = scan_actors () in
+  let _ = Debug.log "Actor paths" (string_of_list (fun x -> x) actor_paths) in
   let actor_env =
     List.fold_left (fun acc f ->
         Idllib.Pipeline.check_file f
@@ -371,7 +373,7 @@ let make_index_inner logger project_root vfs entry_points : t Diag.result =
           | Result.Ok ((prog, idl_scope, actor_opt), _) ->
              let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
              Scope.adjoin acc (Scope.lib f actor);
-      ) Pipeline.initial_stat_env (scan_actors ()) in
+      ) Pipeline.initial_stat_env actor_paths in
   let actor_index = index_from_scope project_root lib_index [] actor_env in
   (* TODO(Christoph): We should be able to return at least the
      actor_index even if compiling from the entry points fails *)
