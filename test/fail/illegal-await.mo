@@ -1,6 +1,6 @@
 // immediate deadlock
-{
-  let t : async () = async { await t};
+{ 
+  let t : async () = async { await t; };
 };
 
 
@@ -9,8 +9,9 @@
 
 {
   ignore async {
-    let a1 : async () = async{ await a2; }; // illegal await since a1 : Async<X>() </: Async<Y>()
-    let a2 : async () = async{ await a1; }; // illegal await since a2 : Async<X>() </: Async<Z>()
+    let a1 : async () = async { await a2; }; // illegal await since a1 : Async<X>() </: Async<Y>()
+    let a2 : async () = async { await a1; }; // illegal await since a2 : Async<X>() </: Async<Z>()
+    ();
   };
 };
 
@@ -28,7 +29,8 @@
 
 // Recursive deadlock
 
-shared func Rec(n : Int, a : async ()) : async () {
+
+func Rec(n : Int, a : async ()) : async () {
    if (n == 0) {
     await a // <- illegal await since async<@>() </: async<X>()
    }
