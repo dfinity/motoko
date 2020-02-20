@@ -111,14 +111,19 @@ main = do
   project <- makeAbsolute project
   removeFile (project </> "ls.log") `Exception.catch` \(_ :: Exception.SomeException) -> pure ()
   setCurrentDirectory project
-  handleHUnitFailure project $ do
+  let serverCommand = mo_ide
+        <> " --canister-main app.mo"
+        <> " --debug"
+        <> " --error-detail 0"
+        <> " --package mydep " <> (project </> "mydependency")
+        <> " --actor-idl " <> (project </> "idlpath")
+        <> " --actor-alias counter ic:00"
+  putStrLn "Starting server with: "
+  putStrLn serverCommand
+  handleHUnitFailure project do
     putStrLn "Starting the session"
     runSession
-      (mo_ide
-       <> " --canister-main app.mo"
-       <> " --debug"
-       <> " --error-detail 0"
-       <> " --package mydep " <> (project </> "mydependency"))
+      serverCommand
       fullCaps
       "." $ do
         log "Initializing"
@@ -200,6 +205,17 @@ main = do
             shouldBe (completionDocAsText (actual^.documentation)) (Just "() -> Text")
             let Just (LSP.List [importEdit]) = actual^.additionalTextEdits
             shouldContain (Text.lines (importEdit^.newText)) ["import MyDep \"mo:mydep/lib\";"]
+
+        log "Completing on not-yet-imported actors"
+        withDoc "ListClient.mo" \doc -> do
+          let edit = TextEdit (Range (Position 15 0) (Position 15 0)) "Counter.add_"
+          _ <- applyEdit doc edit
+          [actual] <- getCompletions doc (Position 15 12)
+          liftIO do
+            shouldBe (actual^.label) "add_counter"
+            shouldBe (completionDocAsText (actual^.documentation)) (Just "shared Nat -> ()")
+            let Just (LSP.List [importEdit]) = actual^.additionalTextEdits
+            shouldContain (Text.lines (importEdit^.newText)) ["import Counter \"canister:counter\";"]
 
         withDoc "ListClient.mo" \doc -> do
           --     1 | import List
