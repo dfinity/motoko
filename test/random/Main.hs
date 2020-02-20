@@ -39,7 +39,7 @@ main = do
   let tests :: TestTree
       tests = testGroup "Motoko tests" . concat
               $ [ [arithProps, conversionProps, utf8Props] | good]
-              <> [ [matchingProps] | goodDrun]
+              <> [ [matchingProps good] | goodDrun]
 
   if not (good || goodDrun)
   then putStrLn "No embedder available for testing. Done..."
@@ -70,9 +70,10 @@ utf8Props = testGroup "UTF-8 coding"
   , QC.testProperty "chunky iterator (ropes)" $ prop_ropeIterator
   ]
 
-matchingProps = testGroup "Pattern matching"
-  [ QC.testProperty "intra-actor" $ prop_matchStructured
-  , QC.testProperty "inter-actor" $ withMaxSuccess 20 prop_matchInActor
+matchingProps avail = testGroup "Pattern matching" $
+  [ QC.testProperty "intra-actor" $ prop_matchStructured | avail ]
+  <>
+  [ QC.testProperty "inter-actor" $ withMaxSuccess 20 prop_matchInActor
   , QC.testProperty "encoded-Nat" $ withMaxSuccess 10 prop_matchActorNat
   , QC.testProperty "encoded-Int" $ withMaxSuccess 10 prop_matchActorInt
   ]
