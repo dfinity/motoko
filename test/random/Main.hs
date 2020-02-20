@@ -13,7 +13,7 @@ import Test.Tasty
 import Test.Tasty.QuickCheck as QC hiding ((.&.))
 import Test.QuickCheck.Unicode
 import System.Environment
-import qualified Data.Text (null, unpack)
+import qualified Data.Text (null, pack, unpack)
 import Data.Maybe
 import Data.Bool (bool)
 import Data.Proxy
@@ -80,6 +80,7 @@ encodingProps = testGroup "Encoding" $
   [ QC.testProperty "inter-actor" $ withMaxSuccess 20 prop_matchInActor
   , QC.testProperty "encoded-Nat" $ withMaxSuccess 10 prop_matchActorNat
   , QC.testProperty "encoded-Int" $ withMaxSuccess 10 prop_matchActorInt
+  , QC.testProperty "encoded-Text" $ withMaxSuccess 10 prop_matchActorText
   ]
 
 
@@ -331,6 +332,12 @@ prop_matchActorInt int = monadicIO $ do
     let testCase = format ("actor { public func match (i : Int) : async () { assert (switch i { case ("%d%") true; case _ false }) }; public func do () : async () { let res = await match ("%d%" : Int); return res } };") eval'd eval'd
         eval'd = evalN int
     drunScriptNoFuzz "matchActorInt" (Data.Text.unpack testCase)
+
+prop_matchActorText :: UTF8 String -> Property
+prop_matchActorText (UTF8 text) = monadicIO $ do
+    let testCase = format ("actor { public func match (i : Text) : async () { assert (switch i { case (\""%s%"\") true; case _ false }) }; public func do () : async () { let res = await match (\""%s%"\" : Text); return res } };") eval'd eval'd
+        eval'd = Data.Text.pack $ text >>= escape
+    drunScriptNoFuzz "matchActorText" (Data.Text.unpack testCase)
 
 -- instances of MOValue describe "ground values" in
 -- Motoko. These can appear in patterns and have
