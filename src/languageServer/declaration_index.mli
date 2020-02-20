@@ -27,6 +27,8 @@ val name_of_ide_decl : ide_decl -> string
 val shorten_import_path
     : Pipeline.ResolveImport.package_map
     (** The package map for searching package paths *)
+    -> Pipeline.ResolveImport.aliases
+    (** The aliases for looking up canister ids *)
     -> string
     (** The file that ends up containing the import *)
     -> string
