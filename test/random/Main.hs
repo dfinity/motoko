@@ -23,15 +23,27 @@ import GHC.TypeLits hiding (Text)
 import qualified Data.Word
 import Data.Bits (Bits(..), FiniteBits(..))
 import Numeric
+import Data.List (intercalate)
 
 import Turtle
 import Embedder
 -- import Debug.Trace (traceShowId, traceShow)
 
 
-main = setEnv "TASTY_NUM_THREADS" "1" >> defaultMain tests
-  where tests :: TestTree
-        tests = testGroup "Motoko tests" [arithProps, conversionProps, utf8Props, matchingProps]
+main = do
+  putStrLn "Probing embedders..."
+  good <- isHealthy embedder
+  goodDrun <- isHealthy Drun
+  putStrLn . ("Found " <>) . (<> ".") . intercalate " and " . map embedderCommand
+               $ [ embedder | good ] <> [ Drun | goodDrun ]
+  let tests :: TestTree
+      tests = testGroup "Motoko tests" . concat
+              $ [ [arithProps, conversionProps, utf8Props] | good]
+              <> [ [matchingProps] | goodDrun]
+
+  if not (good || goodDrun)
+  then putStrLn "No embedder available for testing. Done..."
+  else setEnv "TASTY_NUM_THREADS" "1" >> defaultMain tests
 
 arithProps = testGroup "Arithmetic/logic"
   [ QC.testProperty "expected failures" $ prop_rejects

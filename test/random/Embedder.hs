@@ -1,6 +1,6 @@
 {-# language OverloadedStrings, {-PartialTypeSignatures,-} ScopedTypeVariables, TupleSections #-}
 
-module Embedder (Embedder(..), WasmAPI(..), embedder, embedderCommand, addCompilerArgs, addEmbedderArgs, invokeEmbedder) where
+module Embedder (Embedder(..), WasmAPI(..), embedder, isHealthy, embedderCommand, addCompilerArgs, addEmbedderArgs, invokeEmbedder) where
 
 import Test.QuickCheck
 
@@ -23,6 +23,11 @@ instance Arbitrary WasmAPI where arbitrary = elements [DontPrint, WASI]
 embedderCommand Reference = "wasm"
 embedderCommand (WasmTime _) = "wasmtime"
 embedderCommand Drun = "drun"
+
+isHealthy :: Embedder -> IO Bool
+isHealthy e = do
+  (res, _) <- shellStrict (embedderCommand e <> " --help") empty
+  pure $ res == ExitSuccess
 
 addCompilerArgs Reference = ("-no-system-api" :)
 addCompilerArgs (WasmTime DontPrint) = ("-no-system-api" :)
