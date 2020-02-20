@@ -41,7 +41,7 @@ in
 
 # When building for linux (but not in nix-shell) we build statically
 let staticpkgs =
-  if nixpkgs.stdenv.isDarwin
+  if nixpkgs.stdenv.isDarwin || not internal
   then nixpkgs
   else nixpkgs.pkgsMusl; in
 
