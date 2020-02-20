@@ -1,0 +1,1 @@
+func (#variant : { #variant : Nat }) = ()

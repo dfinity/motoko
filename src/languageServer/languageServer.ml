@@ -78,6 +78,7 @@ let range_of_region (at : Source.region) : Lsp_t.range = Lsp_t.
 let severity_of_sev : Diag.severity -> Lsp.DiagnosticSeverity.t = function
   | Diag.Error -> Lsp.DiagnosticSeverity.Error
   | Diag.Warning -> Lsp.DiagnosticSeverity.Warning
+  | Diag.Info -> Lsp.DiagnosticSeverity.Information
 
 let diagnostics_of_message (msg : Diag.message) : (Lsp_t.diagnostic * string) = (Lsp_t.
   { diagnostic_range = range_of_region msg.Diag.at;

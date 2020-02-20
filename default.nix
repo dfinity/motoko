@@ -411,6 +411,25 @@ rec {
   };
   stdlib-adocs = stdlib-doc.adocs;
 
+  haskellSrc2nix =
+    let
+      check = dir: nixpkgs.runCommandNoCC "check-${builtins.baseNameOf dir}" {
+        preferLocalBuild = true;
+        allowSubstitutes = false;
+        nativeBuildInputs = [ nixpkgs.diffutils ];
+        expected = import (dir + "/generate.nix") { pkgs = nixpkgs; };
+        inherit dir;
+      } ''
+        diff -U 3 $expected/default.nix $dir/default.nix
+        touch $out
+      '';
+    in {
+      lsp-int = check ./test/lsp-int;
+      qc-motoko = check ./test/random;
+      ic-stub = check ./ic-stub;
+      winter = check ./winter;
+    };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
