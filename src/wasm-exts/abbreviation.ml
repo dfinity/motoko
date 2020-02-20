@@ -30,7 +30,6 @@ let abbreviations =
         dw_AT_low_pc, dw_FORM_addr;
         dw_AT_addr_base, dw_FORM_sec_offset;
         dw_AT_ranges, dw_FORM_sec_offset;
-        (* dw_AT_addr_base, dw_FORM_sec_offset *)
       ] );
     ( dw_TAG_subprogram, dw_CHILDREN_yes,
       [ dw_AT_low_pc, dw_FORM_addrx;
@@ -61,18 +60,18 @@ let abbreviations =
       ] );
     ( dw_TAG_member_Pointer_mark, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
-        (*dw_AT_type, dw_FORM_sec_offset;*)
+        (*dw_AT_type, dw_FORM_ref_udata;*)
         dw_AT_artificial, dw_FORM_flag_present;
         dw_AT_bit_size, dw_FORM_data1;
         dw_AT_data_bit_offset, dw_FORM_data1
       ] );
     ( dw_TAG_member_Word_sized, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
-        (*dw_AT_type, dw_FORM_sec_offset;*)
+        (*dw_AT_type, dw_FORM_ref_udata;*)
         dw_AT_byte_size, dw_FORM_data1
       ] );
     ( dw_TAG_variant_part, dw_CHILDREN_yes,
-      [ dw_AT_discr, dw_FORM_sec_offset
+      [ dw_AT_discr, dw_FORM_ref_udata
       ] );
     ( dw_TAG_variant, dw_CHILDREN_yes,
       [ dw_AT_name, dw_FORM_strp;

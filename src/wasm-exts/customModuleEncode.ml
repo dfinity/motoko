@@ -760,6 +760,11 @@ let encode (em : extended_module) =
           | IntAttribute (attr, i) -> uleb128 i
           | _ -> failwith "dw_FORM_addrx"
         end
+      | f when dw_FORM_ref_udata = f ->
+        begin function
+          | IntAttribute (attr, i) -> uleb128 i
+          | _ -> failwith "dw_FORM_ref_udata"
+        end
       | f when dw_FORM_sec_offset = f ->
         begin function
           | IntAttribute (attr, i) -> write32 i
