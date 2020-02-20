@@ -39,7 +39,7 @@ addEmbedderArgs (WasmTime _) = ("--disable-cache" :) . ("--cranelift" :)
 addEmbedderArgs Drun = ("--extra-batches" :) . ("10" :)
 
 embedderInvocation :: Embedder -> [Text] -> [Text]
-embedderInvocation e args = [embedderCommand e] <> addEmbedderArgs e args
+embedderInvocation e args = embedderCommand e : addEmbedderArgs e args
 
 invokeEmbedder :: Embedder -> Turtle.FilePath -> IO (ExitCode, Text, Text)
 invokeEmbedder embedder wasm = go embedder
