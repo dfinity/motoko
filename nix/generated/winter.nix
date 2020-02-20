@@ -1,7 +1,6 @@
 # THIS IS AN AUTOMATICALLY GENERATED FILE. DO NOT EDIT MANUALLY!
-# To regenerate this file execute the following command in this directory:
-#
-# cp $(nix-build ./generate.nix --no-link)/default.nix ./default.nix
+# See ./nix/generate.nix for instructions.
+
 { mkDerivation, pkgs, array, base, binary, byte-order, bytestring
 , cmdargs, containers, data-default-class, data-fix, deepseq
 , directory, filepath, FloatingHex, lifted-base, microlens-platform
