@@ -89,6 +89,7 @@ This is a summary of the grammar proposed:
 <reftype>  ::=
   | func <functype>
   | service <actortype>
+  | principal
 
 <name> ::= <id> | <text>
 <id>   ::= (A..Z|a..z|_)(A..Z|a..z|_|0..9)*
@@ -266,7 +267,6 @@ Text strings are represented by the type `text` and consist of a sequence of Uni
 ```
 **Note:** The `text` type is distinguished from `vec nat8` (a UTF-8 string) or `vec nat32` (a sequence of code points) in order to allow bindings to map it to a suitable string type, and enable the binary format to select an efficient internal representation independently.
 
-
 #### Null
 
 The type `null` has exactly one value (the *null* value) and therefor carries no information. It can e.g. be used as a placeholder for optional fields that ought to be added to a record in future upgrades, or for *variant cases* that do not need any value, see below.
@@ -424,7 +424,7 @@ type tree = variant {
 
 ### References
 
-A third form of value are *references*. They represent first-class handles to (possibly remote) *functions* or *services*.
+A third form of value are *references*. They represent first-class handles to (possibly remote) *functions*, *services*, or *principals*.
 
 #### Actor References
 
@@ -457,6 +457,14 @@ A *function reference* is described by its function type. For example, they allo
 type engine = service {
   search : (query : text, callback : func (vec result) -> ());
 }
+```
+
+#### Principal References
+
+A *principal reference* points to an identity, such as an actor or a user. Through this, we can authenticate or authorize other services or users.
+
+```
+<reftype> ::= ... | principal | ...
 ```
 
 ### Type Definitions
@@ -821,7 +829,7 @@ This section describes how abstract *IDL values* of the types described by the I
 
 Serialisation is defined by three functions `T`, `M`, and `R` given below.
 
-Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references:
+Most IDL values are self-explanatory, except for references. There are two forms of IDL values for actor references and principal references:
 
 * `ref(r)` indicates an opaque reference, understood only by the underlying system.
 * `id(b)`, indicates a transparent reference to a service addressed by the blob `b`.
@@ -886,6 +894,7 @@ T(func (<datatype1>*) -> (<datatype2>*) <funcann>*) =
   sleb128(-22) T*(<datatype1>*) T*(<datatype2>*) T*(<funcann>*) // 0x6a
 T(service {<methtype>*}) =
   sleb128(-23) T*(<methtype>*)                                    // 0x69
+T(principal)= sleb128(-24)                                        // 0x68
 
 T : <methtype> -> i8*
 T(<name>:<datatype>) = leb128(|utf8(<name>)|) i8*(utf8(<name>)) I(<datatype>)
@@ -950,10 +959,13 @@ M((k,v) : k:<datatype>) = M(v : <datatype>)
 
 M : <val> -> <reftype> -> i8*
 M(ref(r) : service <actortype>) = i8(0)
-M(id(v*) : service <actortype>) = i8(1) M(v* : vec i8)
+M(id(v*) : service <actortype>) = i8(1) M(v* : vec nat8)
 
 M(ref(r)   : func <functype>) = i8(0)
 M(pub(s,n) : func <functype>) = i8(1) M(s : service {}) M(n : text)
+
+M(ref(r) : principal) = i8(0)
+M(id(v*) : principal) = i8(1) M(v* : vec nat8)
 ```
 
 
@@ -981,6 +993,8 @@ R(ref(r) : service <actortype>) = r
 R(id(b*) : service <actortype>) = .
 R(ref(r)   : func <functype>) = r
 R(pub(s,n) : func <functype>) = .
+R(ref(r) : principal) = r
+R(id(b*) : principal) = .
 ```
 
 Note:
@@ -992,7 +1006,7 @@ Note:
 
 Deserialisation is the parallel application of the inverse functions of `T`, `M`, and `R` defined above, with the following mechanism for robustness towards future extensions:
 
-* A serialised type may be headed by an opcode other than the ones defined above (i.e., less than -23). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
+* A serialised type may be headed by an opcode other than the ones defined above (i.e., less than -24). Any such opcode is followed by an LEB128-encoded count, and then a number of bytes corresponding to this count. A type represented that way is called a *future type*.
 
 * A value corresponding to a future type is called a *future value*. It is represented by two LEB128-encoded counts, *m* and *n*, followed by a *m* bytes in the memory representation M and accompanied by *n* corresponding references in R.
 
@@ -1053,6 +1067,7 @@ The types of these values are assumed to be known from context, so the syntax do
 <refval> ::=
   | service <text>             (canister URI)
   | func <text> . <id>         (canister URI and message name)
+  | principal <text>           (principal URI)
 
 <arg> ::= ( <annval>,* )
 
