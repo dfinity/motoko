@@ -9,7 +9,7 @@ import Turtle.Pipe
 
 import Control.Monad.Catch
 import GHC.IO.Exception (IOException)
-import Data.Text (intercalate)
+import Data.Text (unwords)
 import Data.IORef
 -- import Debug.Trace (traceShowId, traceShow)
 
@@ -56,7 +56,7 @@ invokeEmbedder embedder wasm = go embedder
             rm (fileArg control) `catch` \(_ :: GHC.IO.Exception.IOException) -> pure () -- rm -f
             let Right c = toText control
             procs "mkfifo" [c] empty
-            consumer <- forkShell $ inshell (intercalate " " $ embedderInvocation embedder [c]) empty
+            consumer <- forkShell $ inshell (Data.Text.unwords $ embedderInvocation embedder [c]) empty
             let install = unsafeTextToLine $ format ("install ic:2A012B "%s%" 0x") w
 
             pipe (fileArg control) (pure install
