@@ -274,8 +274,13 @@ let associated_region env typ at =
 let scope_info env typ at =
   match region_of_scope env typ with
   | Some r ->
-    info env r "this is scope %s mentioned in error at %s"
-      (T.string_of_typ_expand typ) (string_of_region at)
+    let s = {left = r.left; right = r.left} in
+    let l = { r.right with column = r.right.column - 1 } in
+    let e = {left = l; right = l} in
+    info env s "start of scope %s mentioned in error at %s"
+      (T.string_of_typ_expand typ) (string_of_region at);
+    info env e "end of scope %s mentioned in error at %s"
+      (T.string_of_typ_expand typ) (string_of_region at);
   | None -> ()
 
 let rec infer_async_cap env sort cs tbs at =
