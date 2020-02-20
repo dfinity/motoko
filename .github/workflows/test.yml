@@ -1,0 +1,23 @@
+name: "build"
+on:
+  pull_request:
+  push:
+jobs:
+  tests:
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, macos]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v1
+    - uses: cachix/install-nix-action@70742d22d932888bb199587f910c72183e62c6da
+    - name: "moc-bin"
+      run: nix-build --max-jobs 10 -A moc-bin
+    - name: "mo-ide"
+      run: nix-build --max-jobs 10 -A mo-ide
+    - name: "didc"
+      run: nix-build --max-jobs 10 -A didc
+    - name: "rts"
+      run: nix-build --max-jobs 10 -A rts
+    - name: "stdlib"
+      run: nix-build --max-jobs 10 -A stdlib
