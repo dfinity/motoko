@@ -7,8 +7,7 @@ A simple language for writing Dfinity actors.
 * [Building, installing, developing on Motoko](Building.md).
 * [Overview slides](https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/users-guide/latest/download/1/as-slides.html) ([sources](guide/as-slides.md)).
 * [Draft (incomplete) manual](guide/guide.md).
-* [Prelude](src/prelude/prelude.ml).
-* Beginnings of [standard library](stdlib).
+* [Standard library](stdlib).
 * [Small samples](samples).
 * [Produce Exchange](stdlib/examples/produce-exchange).
 
@@ -259,7 +258,7 @@ charlie.go();
 
 ## Syntax
 
-See [here](design/Syntax.html).
+See [here](design/Syntax.md).
 
 
 ## Semantics
@@ -269,4 +268,4 @@ TODO ...
 
 ## Implementation
 
-See [here](design/Implementation.html)
+See [here](design/Implementation.md)

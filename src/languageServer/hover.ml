@@ -23,11 +23,9 @@ let hover_handler
       (file_path : string) =
   let current_uri_opt = Lib.FilePath.relative_to project_root file_path in
   let toplevel_decls =
-     let current_module_decls =
-       current_uri_opt
-       |> Fun.flip Option.bind (fun uri -> lookup_module project_root uri index)
-       |> Option.fold ~none:[] ~some:snd in
-     current_module_decls in
+    current_uri_opt
+    |> Fun.flip Option.bind (fun uri -> lookup_module project_root uri index)
+    |> Option.fold ~none:[] ~some:snd in
   let mk_hover_result ide_decl =
     Lsp.{ hover_result_contents = markup_content (hover_detail ide_decl) } in
   let hover_result =
