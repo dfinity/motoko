@@ -322,6 +322,14 @@ let scan_packages : unit -> string list =
     |> List.filter (fun f -> Filename.extension f = ".mo") in
   Flags.M.fold (fun _ v acc -> scan_package v @ acc) !Flags.package_urls []
 
+let scan_actors : unit -> string list =
+  fun _ ->
+  match !Flags.actor_idl_path with
+  | None -> []
+  | Some idl_path ->
+     list_files_recursively idl_path
+     |> List.filter (fun f -> Filename.extension f = ".did")
+
 let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
   fun project_root initial_index libs scope ->
   Type.Env.fold
@@ -352,13 +360,26 @@ let make_index_inner logger project_root vfs entry_points : t Diag.result =
       end
     | Result.Ok ((libs, scope), _) ->
        index_from_scope project_root (empty project_root) libs scope in
+  let actor_env =
+    List.fold_left (fun acc f ->
+        Idllib.Pipeline.check_file f
+        |> function
+          | Result.Error errs ->
+             List.iter (fun err ->
+                 logger "actor_index_errors" (Diag.string_of_message err)) errs;
+             acc
+          | Result.Ok ((prog, idl_scope, actor_opt), _) ->
+             let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
+             Scope.adjoin acc (Scope.lib f actor);
+      ) Pipeline.initial_stat_env (scan_actors ()) in
+  let actor_index = index_from_scope project_root lib_index [] actor_env in
   (* TODO(Christoph): We should be able to return at least the
-     lib_index even if compiling from the entry points fails *)
+     actor_index even if compiling from the entry points fails *)
   Pipeline.load_progs
     (Vfs.parse_file vfs)
     entry_points
     Pipeline.initial_stat_env
-  |> Diag.map (fun (libs, _, scope) -> index_from_scope project_root lib_index libs scope)
+  |> Diag.map (fun (libs, _, scope) -> index_from_scope project_root actor_index libs scope)
 
 
 let make_index logger project_root vfs entry_points : t Diag.result =
