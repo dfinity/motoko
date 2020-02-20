@@ -138,7 +138,7 @@ let completions index logger project_root file_path file_contents line column =
   let toplevel_decls =
     let current_module_decls =
       current_uri_opt
-      |> opt_bind (fun uri -> DI.lookup_module (Filename.remove_extension uri) index)
+      |> opt_bind (fun uri -> DI.lookup_module project_root (Filename.remove_extension uri) index)
       |> Option.fold ~none:[] ~some:snd in
     current_module_decls
   in
@@ -171,7 +171,7 @@ let completions index logger project_root file_path file_contents line column =
        |> List.find_opt (fun (mn, _) -> String.equal mn alias) in
      match module_path with
      | Some mp ->
-        (match DI.lookup_module (snd mp) index with
+        (match DI.lookup_module project_root (snd mp) index with
          | Some (_, decls) ->
             decls
             |> List.filter (has_prefix prefix)
@@ -185,12 +185,16 @@ let completions index logger project_root file_path file_contents line column =
         let possible_imports = DI.find_with_prefix prefix (Lib.FilePath.make_absolute project_root file_path) index in
         let completions =
           Lib.List.concat_map (fun (p, ds) ->
-            List.map (fun d ->
-              Lsp_t.{
-                (item_of_ide_decl d) with
-                completion_item_additionalTextEdits = Some [import_edit p];
-                completion_item_detail = Some p
-              }) ds) possible_imports in
+            if p = Filename.basename file_path then
+              (* Self-imports are not allowed *)
+              []
+            else
+              List.map (fun d ->
+                Lsp_t.{
+                  (item_of_ide_decl d) with
+                    completion_item_additionalTextEdits = Some [import_edit p];
+                    completion_item_detail = Some p
+                }) ds) possible_imports in
         completions
 
 let completion_handler index logger project_root file_path file_contents position =

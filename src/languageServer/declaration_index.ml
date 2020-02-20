@@ -20,6 +20,15 @@ type ide_decl =
   | ValueDecl of value_decl
   | TypeDecl of type_decl
 
+let string_of_option f = function
+  | None -> "None"
+  | Some x -> "Some " ^ f x
+
+let string_of_list f xs =
+  List.map f xs
+  |> String.concat "; "
+  |> fun x -> "[ " ^ x ^ " ]"
+
 (** For debugging purposes *)
 let string_of_ide_decl = function
   | ValueDecl value ->
@@ -59,18 +68,29 @@ type declaration_index = {
     modules: ide_decl list Index.t;
     actors: ide_decl list Index.t;
     package_map: Pipeline.ResolveImport.package_map;
-    (* TODO: Add the mapping for IC urls here  *)
+    ic_aliases: Pipeline.ResolveImport.aliases;
+    actor_idl_path : Pipeline.ResolveImport.actor_idl_path;
   }
+
 type t = declaration_index
+
 let add_module : string -> ide_decl list -> declaration_index -> declaration_index =
   fun path decls ix -> { ix with modules = Index.add path decls ix.modules}
 
+let ic_id_to_lookup : string option -> string -> string -> string =
+  fun actor_idl_path project_root id ->
+  let crc = Lib.CRC.crc8 id |> Lib.Hex.hex_of_byte in
+  let hex = Lib.Hex.hex_of_bytes id ^ crc in
+  let idl_path = actor_idl_path |> Option.value ~default:project_root in
+  Lib.FilePath.make_absolute project_root (Filename.concat idl_path (hex ^ ".did"))
+
 let lookup_module
+      (project_root : string)
       (path : string)
       (index : t)
     : (string * ide_decl list) option =
   let open Pipeline.URL in
-  let make_absolute = Lib.FilePath.make_absolute (Sys.getcwd ()) in
+  let make_absolute = Lib.FilePath.make_absolute project_root in
   match parse path with
   | Ok (Relative path) ->
      let path =
@@ -92,7 +112,17 @@ let lookup_module
   | Ok Prim ->
      Index.find_opt "@prim" index.modules
      |> Option.map (fun decls -> ("@prim", decls))
-  | Ok (Ic _ | IcAlias _) -> (* TODO *) None
+  | Ok (Ic id) ->
+     let lookup_path = ic_id_to_lookup index.actor_idl_path project_root id in
+     Index.find_opt lookup_path index.modules
+     |> Option.map (fun decls -> (path, decls))
+  | Ok (IcAlias alias) ->
+     let mic_id = Flags.M.find_opt alias index.ic_aliases in
+     let _ = Debug.log "lookup_module.ic_alias.ic_id" (string_of_option (fun x -> x) mic_id) in
+     Option.bind mic_id (fun id ->
+         let lookup_path = ic_id_to_lookup index.actor_idl_path project_root id in
+         Index.find_opt lookup_path index.modules)
+     |> Option.map (fun decls -> (alias, decls))
   | Error _ -> None
 
 let rec drop_common_prefix eq l1 l2 =
@@ -103,10 +133,24 @@ let rec drop_common_prefix eq l1 l2 =
 
 let shorten_import_path
     : Pipeline.ResolveImport.package_map
+   -> Pipeline.ResolveImport.aliases
    -> string
    -> string
    -> string =
-  fun pkg_map base path ->
+  fun pkg_map ic_aliases base path ->
+  let _ = Debug.log "shorten_import" path in
+  if Filename.extension path = ".did"
+  then
+    let idl_basename = Filename.basename path in
+    Flags.M.bindings ic_aliases
+    |> Lib.List.first_opt (fun (alias, id) ->
+           Debug.log "basename" (Pipeline.URL.idl_basename_of_blob id);
+           if Pipeline.URL.idl_basename_of_blob id = idl_basename then Some alias else None
+         )
+    |> (function
+        | None -> Printf.sprintf "ic:%s" (Filename.remove_extension idl_basename)
+        | Some alias -> Printf.sprintf "canister:%s" alias)
+  else
   let pkg_path =
     Flags.M.bindings pkg_map
     |> Lib.List.first_opt (fun (name, pkg_path) ->
@@ -134,18 +178,18 @@ let find_with_prefix
    -> string
    -> t
    -> (string * ide_decl list) list =
-  fun prefix base {modules; package_map; _} ->
+  fun prefix base {modules; package_map; ic_aliases; _} ->
   Index.bindings modules
   |> List.map (fun (p, ds) ->
          let import_path =
            if p = "@prim" then
              "mo:prim"
            else
-             shorten_import_path package_map base p in
+             shorten_import_path package_map ic_aliases base p in
          (import_path, List.filter (decl_has_prefix prefix) ds))
   |> List.filter (fun (_, ds) -> not (ds = []))
 
-let empty : unit -> t = fun _ ->
+let empty : string -> t = fun cwd ->
   let open Pipeline.ResolveImport in
   let resolved_flags =
     Diag.run
@@ -156,7 +200,9 @@ let empty : unit -> t = fun _ ->
       }) in
   { modules = Index.empty;
     actors = Index.empty;
-    package_map = resolved_flags.packages
+    package_map = Flags.M.map (Lib.FilePath.make_absolute cwd) resolved_flags.packages;
+    ic_aliases = resolved_flags.aliases;
+    actor_idl_path = resolved_flags.actor_idl_path
   }
 
 module PatternMap = Map.Make(String)
@@ -174,11 +220,6 @@ let rec gather_pat ve pat : pattern_map =
 and gather_pat_field ve pf =
   gather_pat ve pf.it.pat
 
-let string_of_list f xs =
-  List.map f xs
-  |> String.concat "; "
-  |> fun x -> "[ " ^ x ^ " ]"
-
 let string_of_index : declaration_index -> string =
   fun index ->
   Index.bindings index.modules
@@ -191,7 +232,7 @@ let string_of_index : declaration_index -> string =
 
 let read_single_module_lib (ty: Type.typ): ide_decl list option =
   match ty with
-  | Type.Obj (Type.Module, fields) ->
+  | Type.Obj ((Type.Module | Type.Actor), fields) ->
      fields
      |> List.map
           (fun Type.{ lab = name; typ } ->
@@ -214,6 +255,7 @@ let unwrap_module_ast (lib : Syntax.lib): Syntax.exp_field list option =
 
 
 let populate_definitions
+    (project_root : string)
     (libs : Syntax.lib list)
     (path : string)
     (decls : ide_decl list)
@@ -254,37 +296,95 @@ let populate_definitions
        TypeDecl { typ with definition = type_definition } in
   let opt_lib =
     List.find_opt
-      (fun lib -> String.equal path (Lib.FilePath.make_absolute (Sys.getcwd ()) lib.note))
+      (fun lib -> String.equal path (Lib.FilePath.make_absolute project_root lib.note))
       libs in
   match opt_lib with
   | None -> decls
   | Some lib ->
      List.map (find_def lib) decls
 
-let make_index_inner logger vfs entry_points : t Diag.result =
+let list_files_recursively dir =
+  let rec loop result = function
+    | f::fs when Sys.is_directory f ->
+          Sys.readdir f
+          |> Array.to_list
+          |> List.map (Filename.concat f)
+          |> List.append fs
+          |> loop result
+    | f::fs -> loop (f::result) fs
+    | []    -> result in
+  loop [] [dir]
+
+let scan_packages : unit -> string list =
+  fun _ ->
+  let scan_package path =
+    list_files_recursively path
+    |> List.filter (fun f -> Filename.extension f = ".mo") in
+  Flags.M.fold (fun _ v acc -> scan_package v @ acc) !Flags.package_urls []
+
+let scan_actors : unit -> string list =
+  fun _ ->
+  match !Flags.actor_idl_path with
+  | None -> []
+  | Some idl_path ->
+     list_files_recursively idl_path
+     |> List.filter (fun f -> Filename.extension f = ".did")
+
+let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
+  fun project_root initial_index libs scope ->
+  Type.Env.fold
+    (fun path ty acc ->
+      let path =
+        if path = "@prim" then
+          path
+        else
+          Lib.FilePath.make_absolute project_root path in
+      add_module
+        path
+        (ty
+         |> read_single_module_lib
+         |> Fun.flip Lib.Option.get []
+         |> populate_definitions project_root libs path)
+        acc)
+    scope.Scope.lib_env
+    initial_index
+
+let make_index_inner logger project_root vfs entry_points : t Diag.result =
+  let package_paths = List.map (fun f -> LibPath f @@ Source.no_region) (scan_packages ()) in
+  let package_env = Pipeline.chase_imports (Vfs.parse_file vfs) Pipeline.initial_stat_env package_paths in
+  let lib_index = match package_env with
+    | Result.Error errs -> begin
+       List.iter (fun err ->
+           logger "lib_index_errors" (Diag.string_of_message err)) errs;
+       empty project_root
+      end
+    | Result.Ok ((libs, scope), _) ->
+       index_from_scope project_root (empty project_root) libs scope in
+  let actor_paths = scan_actors () in
+  let _ = Debug.log "Actor paths" (string_of_list (fun x -> x) actor_paths) in
+  let actor_env =
+    List.fold_left (fun acc f ->
+        Idllib.Pipeline.check_file f
+        |> function
+          | Result.Error errs ->
+             List.iter (fun err ->
+                 logger "actor_index_errors" (Diag.string_of_message err)) errs;
+             acc
+          | Result.Ok ((prog, idl_scope, actor_opt), _) ->
+             let actor = Mo_idl.Idl_to_mo.check_prog idl_scope actor_opt in
+             Scope.adjoin acc (Scope.lib f actor);
+      ) Pipeline.initial_stat_env actor_paths in
+  let actor_index = index_from_scope project_root lib_index [] actor_env in
+  (* TODO(Christoph): We should be able to return at least the
+     actor_index even if compiling from the entry points fails *)
   Pipeline.load_progs
     (Vfs.parse_file vfs)
     entry_points
     Pipeline.initial_stat_env
-  |> Diag.map (fun (libs, _, scope) ->
-         Type.Env.fold
-           (fun path ty acc ->
-             let path =
-               if path = "@prim" then
-                 path
-               else
-                 Lib.FilePath.make_absolute (Sys.getcwd ()) path in
-             add_module
-               path
-               (ty
-                |> read_single_module_lib
-                |> Fun.flip Lib.Option.get []
-                |> populate_definitions libs path)
-               acc)
-           scope.Scope.lib_env
-           (empty ()))
+  |> Diag.map (fun (libs, _, scope) -> index_from_scope project_root actor_index libs scope)
 
-let make_index logger vfs entry_points : t Diag.result =
+
+let make_index logger project_root vfs entry_points : t Diag.result =
   (* TODO(Christoph): Actually handle errors here *)
-  try make_index_inner logger vfs entry_points
-  with _ -> Diag.return (empty ())
+  try make_index_inner logger project_root vfs entry_points
+  with _ -> Diag.return (empty project_root)

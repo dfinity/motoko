@@ -50,12 +50,12 @@ let definition_handler
        | Alias _ -> None
        | Unresolved _ -> None
        | Resolved resolved ->
-          DI.lookup_module resolved.path index
+          DI.lookup_module project_root resolved.path index
           |> opt_bind (find_named resolved.ident)
        | Ident ident ->
           Lib.FilePath.relative_to project_root file_path
           |> opt_bind (fun uri ->
-              DI.lookup_module uri index
+              DI.lookup_module project_root uri index
               |> opt_bind (find_named ident)
       )) in
   let location =

@@ -403,7 +403,7 @@ let interpret_files (senv0, denv0) files : (Scope.scope * Interpret.scope) optio
       | None -> None
       | Some denv2 -> Some (senv1, denv2)
     )
-  
+
 
 let run_prelude () : dyn_env =
   match interpret_prog Interpret.empty_scope prelude with
@@ -428,7 +428,7 @@ let check_files files : check_result =
 
 let check_string s name : check_result =
   Diag.map ignore (load_decl (parse_string name s) initial_stat_env)
-  
+
 (* Generate IDL *)
 
 let generate_idl files : Idllib.Syntax.prog Diag.result =
