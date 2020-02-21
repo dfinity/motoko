@@ -4799,7 +4799,7 @@ module FuncDec = struct
      add them to the closure table, and returns the two callbacks expected by
      call_simple.
 
-     The tupling is necesary because we want to free _both_ closures when
+     The tupling is necessary because we want to free _both_ closures when
      one is called.
 
      The reply callback function exists once per type (it has to do
