@@ -10,4 +10,4 @@ jobs:
     - uses: actions/checkout@v1
     - uses: cachix/install-nix-action@70742d22d932888bb199587f910c72183e62c6da
     - name: "nix-build"
-      run: nix-build --arg internal false --max-jobs 2 -A all-systems-go
+      run: nix-build --arg internal false --max-jobs 1 -A all-systems-go
