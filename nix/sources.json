@@ -32,15 +32,14 @@
         "version": "v1.2.0"
     },
     "nixpkgs": {
-        "branch": "dfinity-motoko",
-        "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
+        "branch": "master",
         "homepage": "https://github.com/NixOS/nixpkgs",
-        "owner": "dfinity-lab",
+        "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "a4e23f32f8d7006e217125a9123b53597b9c0c24",
-        "sha256": "1afpk1w6akfpvyj3n0wmlydpmxzb6khcgl4vhi7qkgg9bp6rngg4",
+        "rev": "82a6834e3b1ae343fed1d9495943fba71d6759fa",
+        "sha256": "0q6vdl3m80mv9vlgix6116vghgnnr1hixa60b3wv7krxx3gaz626",
         "type": "tarball",
-        "url": "https://github.com/dfinity-lab/nixpkgs/archive/a4e23f32f8d7006e217125a9123b53597b9c0c24.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/82a6834e3b1ae343fed1d9495943fba71d6759fa.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
