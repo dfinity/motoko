@@ -40,11 +40,9 @@ let
 in
 
 # When building for linux (but not in nix-shell) we build statically
-let staticpkgs =
-  if nixpkgs.stdenv.isDarwin || !internal
-  then nixpkgs
-  else nixpkgs.pkgsMusl; in
+let is_static = internal && !nixpkgs.stdenv.isDarwin; in
 
+let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 
 # This branches on the pkgs, which is either
 # normal nixpkgs (nix-shell, darwin)
@@ -77,14 +75,14 @@ let darwin_standalone =
 let ocaml_exe = name: bin:
   let
     profile =
-      if nixpkgs.stdenv.isDarwin
-      then "release"
-      else "release-static";
+      if is_static
+      then "release-static"
+      else "release";
 
     drv = staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      ${if nixpkgs.stdenv.isDarwin then null else "allowedRequisites"} = [];
+      ${if is_static then "allowedRequisites" else null} = [];
 
       src = subpath ./src;
 
@@ -222,7 +220,7 @@ rec {
     let qc = testDerivation {
       name = "test-qc";
       buildInputs =
-        [ moc wasmtime drun haskellPackages.qc-motoko ] ++ nixpkgs.lib.optional internal drun;
+        [ moc wasmtime haskellPackages.qc-motoko ] ++ nixpkgs.lib.optional internal drun;
       checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
