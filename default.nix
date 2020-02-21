@@ -222,7 +222,7 @@ rec {
     let qc = testDerivation {
       name = "test-qc";
       buildInputs =
-        [ moc wasmtime drun haskellPackages.qc-motoko ];
+        [ moc wasmtime drun haskellPackages.qc-motoko ] ++ nixpkgs.lib.optional internal drun;
       checkPhase = ''
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
@@ -261,8 +261,7 @@ rec {
       mo-idl    = test_subdir "mo-idl"    [ moc didc ];
       trap      = test_subdir "trap"      [ moc ];
       run-deser = test_subdir "run-deser" [ deser ];
-      inherit lsp unit-tests;
-      ${if internal then "rc" else null} = qc;
+      inherit qc lsp unit-tests;
     };
 
   samples = stdenv.mkDerivation {
