@@ -879,12 +879,25 @@ and infer_exp'' env exp : T.typ =
           "expected function type, but expression produces type\n  %s"
           (T.string_of_typ_expand t1)
     in
-    let ts = check_inst_bounds env tbs typs exp.at in
+    let ts, check_arg =
+      if tbs <> [] && inst.it = [] then
+        let t2 = infer_exp env exp2 in
+        let cts = T.open_binds tbs in
+        let cs = List.map (fun t -> match t with T.Con(c,_) -> c | _ -> assert false) cts in
+        match T.match_typ cs t2 (T.open_ cts t_arg) with
+        | Some ts ->
+          check_typ_bounds env tbs ts (List.map (fun _ -> Source.no_region)  ts) exp.at;
+          ts,
+          fun env t_arg exp ->
+          if not (T.sub t2 t_arg) then
+            error env exp.at "cannot infer type arguments due to subtyping"
+        | None -> error env exp.at "cannot infer type arguments"
+      else check_inst_bounds env tbs typs exp.at, check_exp in
     inst.note <- ts;
     let t_arg = T.open_ ts t_arg in
     let t_ret = T.open_ ts t_ret in
     if not env.pre then begin
-      check_exp env t_arg exp2;
+      check_arg env t_arg exp2;
       if Type.is_shared_sort sort then begin
         if not (T.concrete t_arg) then
           error env exp1.at

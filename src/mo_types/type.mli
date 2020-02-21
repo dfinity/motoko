@@ -226,3 +226,6 @@ val string_of_kind : kind -> string
 val strings_of_kind : kind -> string * string * string
 val string_of_typ_expand : typ -> string
 
+(* Matching *)
+
+val match_typ : con list -> typ -> typ -> typ list option
