@@ -1354,9 +1354,8 @@ let match_typ cs t1 t2 =
 let flexible c = List.exists (Con.eq c) cs
 in
 
-(* let rigid c = not (flexible c)
+let rigid c = not (flexible c)
 in
- *)
 
 let rec match_list p inst xs1 xs2 =
   (match (xs1, xs2) with
@@ -1369,6 +1368,7 @@ let rec match_list p inst xs1 xs2 =
 in
 
 let rec match_typ inst t1 t2 =
+  (* Printf.printf "%s , %s\n" (string_of_typ t1) (string_of_typ t2); *)
   match t1, t2 with
       | Pre, _ | _, Pre ->
         assert false
@@ -1376,22 +1376,16 @@ let rec match_typ inst t1 t2 =
         Some inst
       | Non, Non ->
         Some inst
-      | Con (con1, ts1), Con (con2, ts2) ->
+      | Con (con1, ts1), Con (con2, ts2) when rigid con2->
         (match Con.kind con1, Con.kind con2 with
-         | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-           match_typ inst (open_ ts1 t) t2
-         | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-           match_typ inst t1 (open_ ts2 t)
-         | _ when Con.eq con1 con2 ->
+         | k1, k2 when eq_kind k1 k2 ->
            match_list match_typ inst ts1 ts2
+         | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
+           None (* match_typ inst (open_ ts1 t) t2 *)
+         | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
+           None (* match_typ inst t1 (open_ ts2 t) *)
          | _ ->
            None
-        )
-      | Con (con1, ts1), t2 ->
-        (match Con.kind con1, t2 with
-         | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-           match_typ inst (open_ ts1 t) t2
-         | _ -> None
         )
       | t1, Con (con2, ts2) ->
         (match Con.kind con2 with
@@ -1400,9 +1394,15 @@ let rec match_typ inst t1 t2 =
          | Abs(tbs,_) ->
            if flexible con2 then
              match ConEnv.find_opt con2 inst with
-             | Some t1' -> match_typ inst t1 t1' (* just check equality instead ? *)
+             | Some t1' -> if eq t1 t1' then Some inst else None (* just check equality instead ? *)
              | None -> Some (ConEnv.add con2 t1 inst)
            else None
+        )
+      | Con (con1, ts1), t2 ->
+        (match Con.kind con1, t2 with
+         | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
+           match_typ inst (open_ ts1 t) t2
+         | _ -> None
         )
       | Prim p1, Prim p2 when p1 = p2 ->
         Some inst
@@ -1422,7 +1422,7 @@ let rec match_typ inst t1 t2 =
         if s1 = s2 && c1 = c2 then
           (match match_binds inst tbs1 tbs2 with
            | Some (inst, ts) ->
-             (match match_list match_typ inst (List.map (open_ ts) t21) (List.map (open_ ts) t11) with
+             (match match_list match_typ inst (List.map (open_ ts) t11) (List.map (open_ ts) t21) with
              | Some inst ->
                match_list match_typ inst (List.map (open_ ts) t12) (List.map (open_ ts) t22)
              | None -> None)
