@@ -273,12 +273,8 @@ let start entry_point debug =
     let cl = "Content-Length: " in
     let cll = String.length cl in
     let num =
-      (int_of_string
-        (String.trim
-           (String.sub
-              clength
-              cll
-              (String.length(clength) - cll - 1)))) + 2 in
+      int_of_string
+        String.(trim (sub clength cll (length(clength) - cll - 1))) + 2 in
     let buffer = Buffer.create num in
     Buffer.add_channel buffer stdin num;
     let raw = String.trim (Buffer.contents buffer) in
