@@ -2292,9 +2292,17 @@ end (* Prim *)
 module Object = struct
   (* An object has the following heap layout:
 
-    ┌─────┬──────────┬─────────────┬─────────────┬───┐
-    │ tag │ n_fields │ field_hash1 │ field_data1 │ … │
-    └─────┴──────────┴─────────────┴─────────────┴───┘
+    ┌─────┬──────────┬──────────┬─────────────┬───┐
+    │ tag │ n_fields │ hash_ptr │ field_data1 │ … │
+    └─────┴──────────┴──────────┴─────────────┴───┘
+         ┌────────────╯
+         ↓
+          ┌─────────────┬──────────────┬───┐
+          │ field_hash1 │ field_hash21 │ … │
+          └─────────────┴──────────────┴───┘
+
+    The field hash array lives in static memory (so no size header needed).
+    The hash_ptr is skewed.
 
     The field_data for immutable fields simply point to the value.
 
@@ -2307,10 +2315,11 @@ module Object = struct
     await-translation of objects, and get rid of this indirection.
   *)
 
-  let header_size = Int32.add Tagged.header_size 1l
+  let header_size = Int32.add Tagged.header_size 2l
 
   (* Number of object fields *)
   let size_field = Int32.add Tagged.header_size 0l
+  let hash_ptr_field = Int32.add Tagged.header_size 1l
 
   module FieldEnv = Env.Make(String)
 
@@ -2328,74 +2337,75 @@ module Object = struct
       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
 
-     let sz = Int32.of_int (FieldEnv.cardinal name_pos_map) in
+    let sz = Int32.of_int (FieldEnv.cardinal name_pos_map) in
 
-     (* Allocate memory *)
-     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
-     Heap.alloc env (Int32.add header_size (Int32.mul 2l sz)) ^^
-     set_ri ^^
+    (* Create hash array *)
+    let hashes = fs |>
+      List.map (fun (n,_) -> Mo_types.Hash.hash n) |>
+      List.sort compare in
+    let data = String.concat "" (List.map bytes_of_int32 hashes) in
+    let hash_ptr = E.add_static_bytes env data in
 
-     (* Set tag *)
-     get_ri ^^
-     Tagged.store Tagged.Object ^^
+    (* Allocate memory *)
+    let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
+    Heap.alloc env (Int32.add header_size sz) ^^
+    set_ri ^^
 
-     (* Set size *)
-     get_ri ^^
-     compile_unboxed_const sz ^^
-     Heap.store_field size_field ^^
+    (* Set tag *)
+    get_ri ^^
+    Tagged.store Tagged.Object ^^
 
-     let hash_position env n =
-         let i = FieldEnv.find n name_pos_map in
-         Int32.add header_size (Int32.mul 2l i) in
-     let field_position env n =
-         let i = FieldEnv.find n name_pos_map in
-         Int32.add header_size (Int32.add (Int32.mul 2l i) 1l) in
+    (* Set size *)
+    get_ri ^^
+    compile_unboxed_const sz ^^
+    Heap.store_field size_field ^^
 
-     (* Write all the fields *)
-     let init_field (name, mk_is) : G.t =
-       (* Write the hash *)
-       get_ri ^^
-       compile_unboxed_const (Mo_types.Hash.hash name) ^^
-       Heap.store_field (hash_position env name) ^^
-       (* Write the pointer to the indirection *)
-       get_ri ^^
-       mk_is () ^^
-       Heap.store_field (field_position env name)
-     in
-     G.concat_map init_field fs ^^
+    (* Set hash_ptr *)
+    get_ri ^^
+    compile_unboxed_const hash_ptr ^^
+    Heap.store_field hash_ptr_field ^^
 
-     (* Return the pointer to the object *)
-     get_ri
+    (* Write all the fields *)
+    let init_field (name, mk_is) : G.t =
+      (* Write the pointer to the indirection *)
+      get_ri ^^
+      mk_is () ^^
+      let i = FieldEnv.find name name_pos_map in
+      let offset = Int32.add header_size i in
+      Heap.store_field offset
+    in
+    G.concat_map init_field fs ^^
+
+    (* Return the pointer to the object *)
+    get_ri
 
   (* Returns a pointer to the object field (without following the indirection) *)
   let idx_hash_raw env =
     Func.share_code2 env "obj_idx" (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
-      let (set_f, get_f) = new_local env "f" in
-      let (set_r, get_r) = new_local env "r" in
+      let (set_h_ptr, get_h_ptr) = new_local env "h_ptr" in
 
-      get_x ^^
-      Heap.load_field size_field ^^
+      get_x ^^ Heap.load_field hash_ptr_field ^^ set_h_ptr ^^
+
+      get_x ^^ Heap.load_field size_field ^^
       (* Linearly scan through the fields (binary search can come later) *)
       from_0_to_n env (fun get_i ->
         get_i ^^
-        compile_mul_const 2l ^^
-        compile_add_const header_size ^^
         compile_mul_const Heap.word_size  ^^
-        get_x ^^
+        get_h_ptr ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        set_f ^^
-
-        get_f ^^
-        Heap.load_field 0l ^^ (* the hash field *)
+        Heap.load_field 0l ^^
         get_hash ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
         G.if_ []
-          ( get_f ^^
-            compile_add_const Heap.word_size ^^
-            set_r
+          ( get_i ^^
+            compile_add_const header_size ^^
+            compile_mul_const Heap.word_size ^^
+            get_x ^^
+            G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+            G.i Return
           ) G.nop
       ) ^^
-      get_r
+      E.trap_with env "internal error: object field not found"
     )
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
@@ -3130,7 +3140,6 @@ module HeapTraversal = struct
         ; Tagged.Object,
           get_x ^^
           Heap.load_field Object.size_field ^^
-          compile_mul_const 2l ^^
           compile_add_const Object.header_size
         ; Tagged.Closure,
           get_x ^^
@@ -3215,8 +3224,6 @@ module HeapTraversal = struct
 
         from_0_to_n env (fun get_i ->
           get_i ^^
-          compile_mul_const 2l ^^
-          compile_add_const 1l ^^
           compile_add_const Object.header_size ^^
           compile_mul_const Heap.word_size ^^
           get_x ^^
