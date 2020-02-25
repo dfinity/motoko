@@ -51,3 +51,17 @@ func add(m:N,n:N):N { m/*<N>*/(succ,n) };
 func mult1(m:N,n:N):N { m/*<N>*/(func (a:N) : N { add(a,n)},zero) };
 
 func mult2(m:N,n:N):N { m/*<N>*/(curry/*<N,N,N>*/ add n, zero) };
+
+
+func tricky<T>(f : T -> T) { };
+
+tricky<None>(func f(x:Any):None { f(x);});
+tricky<Any>(func f(x:Any):None { f(x);});
+ignore func <T>()  { tricky<T>(func f(x:Any):None{f(x)}) };
+
+//ignore tricky(func f(x:Any):None { f(x);}); //requires Dolan style bi-matching
+
+func amb<T>(f : T -> T): T->T { f };
+ignore amb<None>(func f(x:Any):None { f(x);}) : None -> None;
+ignore amb<Any>(func f(x:Any):None { f(x);}) : Any -> Any;
+
