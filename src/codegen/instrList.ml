@@ -184,8 +184,9 @@ type dw_AT = Producer of string
 
 type dw_TAG = Compile_unit of string * string (* compilation directory, file name *)
             | Subprogram of string * Source.pos
-            | Formal_parameter of string * Source.pos
+            | Formal_parameter of (string * Source.pos * Mo_types.Type.typ)
             | Variable
+            | Type of Mo_types.Type.typ
             | Typedef
             | Structure_type
             | Member
@@ -202,7 +203,7 @@ let fakeFile (file : string) attr instr' : t =
   (instr' @@ Wasm.Source.{ left = fakeLoc; right = no_pos }) :: instrs
 
 (* fakeColumn gives a fake instruction that encodes a single integer for a
-   DWARF attribute *)
+   DWARF attribute (or tag reference index) *)
 let fakeColumn (column : int) attr instr' : t =
   let fakeLoc = Wasm.Source.{ file = ""; line = -attr; column } in
   fun _ _ instrs ->
@@ -241,44 +242,18 @@ let dw_tag_children_done : t =
   fun _ _ x -> (Nop @@ { left; right }) :: x
 
 
-let dw_tag : dw_TAG -> t =
-  let fakeBlock tag attrs =
-    fakeColumn 0 tag (Block ([], attrs 0l Wasm.Source.no_region [])) in
+let rec dw_tag : dw_TAG -> t =
   function
   | Compile_unit (dir, file) ->
     let base_types =
-      fakeBlock dw_TAG_base_type
-        (dw_attr (Name "Bool") ^^
-         dw_attr (Bit_size 1) ^^
-         dw_attr (Data_bit_offset 0)) ^^
-      fakeBlock dw_TAG_base_type
-        (dw_attr (Name "Char") ^^
-         dw_attr (Bit_size 21) ^^
-         dw_attr (Data_bit_offset 8)) ^^
-      fakeBlock dw_TAG_base_type
-        (dw_attr (Name "Word8") ^^
-         dw_attr (Bit_size 8) ^^
-         dw_attr (Data_bit_offset 24)) ^^
-      fakeBlock dw_TAG_base_type
-        (dw_attr (Name "Nat8") ^^
-         dw_attr (Bit_size 8) ^^
-         dw_attr (Data_bit_offset 24)) ^^
-      fakeBlock dw_TAG_base_type
-        (dw_attr (Name "Int8") ^^
-         dw_attr (Bit_size 8) ^^
-         dw_attr (Data_bit_offset 24)) ^^
-      fakeBlock dw_TAG_base_type
-        (dw_attr (Name "Word16") ^^
-         dw_attr (Bit_size 16) ^^
-         dw_attr (Data_bit_offset 16)) ^^
-      fakeBlock dw_TAG_base_type
-        (dw_attr (Name "Nat16") ^^
-         dw_attr (Bit_size 16) ^^
-         dw_attr (Data_bit_offset 16)) ^^
-      fakeBlock dw_TAG_base_type
-        (dw_attr (Name "Int16") ^^
-         dw_attr (Bit_size 16) ^^
-         dw_attr (Data_bit_offset 16))
+      dw_prim_type Mo_types.Type.Bool ^^
+      dw_prim_type Mo_types.Type.Char ^^
+      dw_prim_type Mo_types.Type.Word8 ^^
+      dw_prim_type Mo_types.Type.Nat8 ^^
+      dw_prim_type Mo_types.Type.Int8 ^^
+      dw_prim_type Mo_types.Type.Word16 ^^
+      dw_prim_type Mo_types.Type.Nat16 ^^
+      dw_prim_type Mo_types.Type.Int16
     in
     let builtin_types =
       fakeBlock dw_TAG_structure_type
@@ -302,7 +277,7 @@ let dw_tag : dw_TAG -> t =
        dw_attr (Comp_dir dir) ^^
        dw_attr (Use_UTF8 true) ^^
        dw_attr (Low_pc 0) ^^
-       dw_attr (Addr_base 8) ^^ (* FIXME: hardcoded *)
+       dw_attr (Addr_base 0) ^^
        dw_attr Ranges) ^^
       base_types ^^
       builtin_types
@@ -314,12 +289,65 @@ let dw_tag : dw_TAG -> t =
        dw_attr (Decl_column pos.Source.column) ^^
        dw_attr (Prototyped true) ^^
        dw_attr (External false))
-  | Formal_parameter (name, pos) ->
+  | Formal_parameter (name, pos, _) ->
     fakeBlock dw_TAG_formal_parameter
       (dw_attr (Name name) ^^
        dw_attr (Decl_line pos.Source.line) ^^
        dw_attr (Decl_column pos.Source.column))
   | _ -> assert false
+and fakeBlock tag attrs =
+  fakeColumn 0 tag (Block ([], attrs 0l Wasm.Source.no_region []))
+and fakeReferenceableBlock tag attrs =
+  let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
+  fakeColumn refslot tag (Block ([], attrs 0l Wasm.Source.no_region []));
+  refslot
+and dw_type =
+  function
+  | Type (Mo_types.Type.Prim pr) -> dw_prim_type pr
+  | _ -> assert false
+and dw_prim_type = function
+  | Mo_types.Type.Bool ->
+    fakeBlock dw_TAG_base_type
+      (dw_attr (Name "Bool") ^^
+       dw_attr (Bit_size 1) ^^
+       dw_attr (Data_bit_offset 0))
+  | Mo_types.Type.Char ->
+    fakeBlock dw_TAG_base_type
+      (dw_attr (Name "Char") ^^
+       dw_attr (Bit_size 21) ^^
+       dw_attr (Data_bit_offset 8))
+  | Mo_types.Type.Word8 ->
+    fakeBlock dw_TAG_base_type
+      (dw_attr (Name "Word8") ^^
+       dw_attr (Bit_size 8) ^^
+       dw_attr (Data_bit_offset 24))
+  | Mo_types.Type.Nat8 ->
+    fakeBlock dw_TAG_base_type
+      (dw_attr (Name "Nat8") ^^
+       dw_attr (Bit_size 8) ^^
+       dw_attr (Data_bit_offset 24))
+  | Mo_types.Type.Int8 ->
+    fakeBlock dw_TAG_base_type
+      (dw_attr (Name "Int8") ^^
+       dw_attr (Bit_size 8) ^^
+       dw_attr (Data_bit_offset 24))
+  | Mo_types.Type.Word16 ->
+    fakeBlock dw_TAG_base_type
+      (dw_attr (Name "Word16") ^^
+       dw_attr (Bit_size 16) ^^
+       dw_attr (Data_bit_offset 16))
+  | Mo_types.Type.Nat16 ->
+    fakeBlock dw_TAG_base_type
+      (dw_attr (Name "Nat16") ^^
+       dw_attr (Bit_size 16) ^^
+       dw_attr (Data_bit_offset 16))
+  | Mo_types.Type.Int16 ->
+    fakeBlock dw_TAG_base_type
+      (dw_attr (Name "Int16") ^^
+       dw_attr (Bit_size 16) ^^
+       dw_attr (Data_bit_offset 16))
+(* | _ -> assert false (* TODO *)*)
+
 
 let dw_tag_no_children = dw_tag
 
@@ -331,3 +359,9 @@ let dw_statement { Source.left; Source.right } =
   let right = { left with line = - left.line } in
   (* FIXME *)assert (left.file = "" || Wasm_exts.CustomModuleEncode.is_dwarf_statement { left; right });
   fun _ _ x -> (Nop @@ { left; right }) :: x
+
+(*
+                                             TODO: reference numbers for certain tags, counted up here,
+                                                                         sent to emitter
+                                                                         retrieved by references, secoffs.
+ *)

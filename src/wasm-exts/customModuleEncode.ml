@@ -56,7 +56,16 @@ let to_string s =
   List.iter (fun (pos, b) -> Bytes.set bs pos b) !(s.patches);
   Bytes.to_string bs
 
-(* DWARF factlets *)
+module References = Map.Make (struct type t = int let compare = compare end)
+
+let dw_references = ref (References.singleton 0 (Lib.Promise.make ()))
+let num_dw_references = ref 1 (* this is the reference into the .debug_addr section *)
+let allocate_reference_slot () =
+  num_dw_references := 1 + !num_dw_references;
+  dw_references := References.add !num_dw_references (Lib.Promise.make ()) !dw_references;
+  !num_dw_references
+
+(* DWARF factlets, a.k.a. DIE *)
 
 type dwarf_artifact = Tag of int * dwarf_artifact list
                     | IntAttribute of int * int
@@ -762,12 +771,12 @@ let encode (em : extended_module) =
         end
       | f when dw_FORM_ref_udata = f ->
         begin function
-          | IntAttribute (attr, i) -> uleb128 i
+          | IntAttribute (attr, i) -> uleb128 (Lib.Promise.value (References.find i !dw_references))
           | _ -> failwith "dw_FORM_ref_udata"
         end
       | f when dw_FORM_sec_offset = f ->
         begin function
-          | IntAttribute (attr, i) -> write32 i
+          | IntAttribute (attr, i) -> write32 (Lib.Promise.value (References.find i !dw_references))
           | FunctionsAttribute attr ->
             write32 (Promise.value rangelists)
           | _ -> failwith "dw_FORM_sec_offset"
@@ -843,13 +852,13 @@ let encode (em : extended_module) =
 
     let debug_addr_section seqs =
       let debug_addr_section_body seqs =
-        unit(fun _ ->
+        unit(fun start ->
+            Lib.Promise.fulfill (References.find 0 !dw_references) start;
             write16 0x0005; (* version *)
             u8 4; (* addr_size *)
             u8 0; (* segment_selector_size *)
             let write_addr (st, _, _) =
-              let code_start = !code_section_start in
-              let rel addr = addr - code_start in
+              let rel addr = addr - !code_section_start in
               write32 (rel st)
             in
             Sequ.iter write_addr seqs;
