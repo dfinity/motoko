@@ -250,7 +250,11 @@ let unwrap_module_ast (lib : Syntax.lib): Syntax.exp_field list option =
   | Syntax.BlockE decs ->
     (match Lib.List.last decs with
     | {it=Syntax.ExpD {it= Syntax.ObjE(_,fields) ;_} ;_} -> Some fields
-    | _ -> None)
+    | {it=Syntax.LetD(_, {it= Syntax.ObjE(_,fields) ;_}) ;_} -> Some fields
+    | d ->
+       Debug.log "unwrap_module_ast"
+         (Wasm.Sexpr.to_string 80 (Arrange.dec d));
+       None)
   | _ -> None
 
 

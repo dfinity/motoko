@@ -133,27 +133,7 @@ let start entry_point debug =
     files_with_diags := List.map snd diags_by_file;
     List.iter (fun (diags, uri) -> publish_diagnostics uri diags) diags_by_file in
 
-  let rec loop () =
-    let clength = read_line () in
-    let cl = "Content-Length: " in
-    let cll = String.length cl in
-    let num =
-      (int_of_string
-        (String.trim
-           (String.sub
-              clength
-              cll
-              (String.length(clength) - cll - 1)))) + 2 in
-    let buffer = Buffer.create num in
-    Buffer.add_channel buffer stdin num;
-    let raw = String.trim (Buffer.contents buffer) in
-    let message = Lsp_j.incoming_message_of_string raw in
-    let message_id = message.Lsp_t.incoming_message_id in
-
-    (match (message_id, message.Lsp_t.incoming_message_params) with
-
-    (* Request messages *)
-
+  let handle_message raw = function
     | (Some id, `Initialize params) ->
        client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
        let completion_options =
@@ -244,7 +224,6 @@ let start entry_point debug =
             decl_index := ix;
             msgs' in
        sync_diagnostics msgs
-    (* Notification messages *)
 
     | (None, `Initialized _) ->
        sync_diagnostics !startup_diags;
@@ -256,8 +235,10 @@ let start entry_point debug =
        response_result_message id (`ShutdownResponse None)
        |> Lsp_j.string_of_response_message
        |> send_response
+
     | (_, `Exit _) ->
        if !shutdown then exit 0 else exit 1
+
     | (Some id, `CompletionRequest params) ->
        let uri =
          params
@@ -285,8 +266,25 @@ let start entry_point debug =
        |> send_response
     (* Unhandled messages *)
     | _ ->
-      log_to_file "unhandled message" raw;
-    );
+      log_to_file "unhandled message" raw in
 
+  let rec loop () =
+    let clength = read_line () in
+    let cl = "Content-Length: " in
+    let cll = String.length cl in
+    let num =
+      int_of_string
+        String.(trim (sub clength cll (length(clength) - cll - 1))) + 2 in
+    let buffer = Buffer.create num in
+    Buffer.add_channel buffer stdin num;
+    let raw = String.trim (Buffer.contents buffer) in
+    let message =
+      try Some (Lsp_j.incoming_message_of_string raw)
+      with _ -> None in
+    (match message with
+     | None -> Debug.log "decoding error" raw
+     | Some message ->
+        let message_id = message.Lsp_t.incoming_message_id in
+        handle_message raw (message_id, message.Lsp_t.incoming_message_params));
     loop ()
   in loop ()
