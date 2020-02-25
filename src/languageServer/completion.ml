@@ -35,7 +35,8 @@ let string_of_item (item : Lsp_t.completion_item) : string =
   item.Lsp_t.completion_item_label
 
 let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
-  let tmpl = template_of_ide_decl d in
+  (* let tmpl = template_of_ide_decl d in *)
+  let tmpl = DI.name_of_ide_decl d in
   match d with
   | DI.ValueDecl value ->
      Lsp_t.{
