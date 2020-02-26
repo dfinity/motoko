@@ -20,11 +20,12 @@ let file_from_uri logger uri =
       let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
       uri
 let abs_file_from_uri logger uri =
-  match Lib.String.chop_prefix "file://" uri with
-   | Some file -> file
-   | None ->
-      let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
-      uri
+  Lib.FilePath.normalise
+    (match Lib.String.chop_prefix "file://" uri with
+     | Some file -> file
+     | None ->
+        let _ = logger "error" ("Failed to strip filename from: " ^ uri) in
+        uri)
 
 let empty = VfsStore.empty
 
