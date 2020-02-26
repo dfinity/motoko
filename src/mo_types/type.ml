@@ -1502,9 +1502,6 @@ in
 let flexible c = List.exists (Con.eq c) cs
 in
 
-let rigid c = not (flexible c)
-in
-
 let rec bimatch_list p inst any xs1 xs2 =
   (match (xs1, xs2) with
   | (x1::xs1, x2::xs2) ->
@@ -1524,11 +1521,7 @@ let rec bimatch_typ ((l,u) as inst) (any:ConSet.t) (t1:typ) (t2:typ) =
   match t1, t2 with
   | Pre, _ | _, Pre ->
     Some inst
-  | Any, Any ->
-    Some inst
   | _, Any ->
-    Some inst
-  | Non, Non ->
     Some inst
   | Non, _ ->
     Some inst
@@ -1599,8 +1592,8 @@ let rec bimatch_typ ((l,u) as inst) (any:ConSet.t) (t1:typ) (t2:typ) =
     (match bimatch_binds inst any tbs1 tbs2 with
      | Some (inst, ts) ->
        let any' = List.fold_right
-                    (function Con(c,[]) -> ConSet.add c
-                            | _ -> assert false) ts any in
+         (function Con(c,[]) -> ConSet.add c | _ -> assert false) ts any
+       in
        (match
          bimatch_list bimatch_typ inst any' (List.map (open_ ts) t21) (List.map (open_ ts) t11)
         with
@@ -1611,9 +1604,8 @@ let rec bimatch_typ ((l,u) as inst) (any:ConSet.t) (t1:typ) (t2:typ) =
     )
     else None
   | Async (t11, t12), Async (t21, t22) ->
-    if eq t11 t21 then (* TBR *)
-      bimatch_typ inst any t12 t22
-    else None
+    (* TBR *)
+    bimatch_list bimatch_typ inst any [t11;t21;t12] [t21;t11;t22]
   | Mut t1', Mut t2' ->
     (* TBR *)
     bimatch_list bimatch_typ inst any [t1';t2'] [t2';t1']
@@ -1673,7 +1665,6 @@ and bimatch_bind ts inst any tb1 tb2 =
 in
   match bimatch_typ (ConEnv.empty, ConEnv.empty) ConSet.empty t1 t2 with
   | Some (l,u) ->
-    (* default undetermined to Non *)
     (try
     Some (List.map
             (fun c ->
@@ -1682,8 +1673,12 @@ in
               | None, Some ub -> ub
               | Some lb, None -> lb
               | Some lb, Some ub ->
-                Printf.printf "ambiguous inst";
-                if eq lb ub then ub else failwith "none") cs)
+                if eq lb ub
+                then ub
+                else
+                  (Printf.printf "\n  ambiguous instantiation %s <: %s <: %s"
+                    (string_of_typ lb) (Con.name c) (string_of_typ ub);
+                  failwith "none")) cs)
     with _ -> None)
   | None -> None
 
