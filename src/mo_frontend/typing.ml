@@ -322,6 +322,14 @@ and check_ErrorCap env s at =
      error env at "misplaced %s; try enclosing in an async expression or query function" s
    | C.NullCap -> error env at "misplaced %s" s
 
+and scope_of_env env =
+  match env.async with
+   | C.AsyncCap c
+   | C.QueryCap c
+   | C.AwaitCap c -> Some (T.Con(c,[]))
+   | C.ErrorCap -> None
+   | C.NullCap -> None
+
 and check_typ env (typ:typ) : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
@@ -880,11 +888,15 @@ and infer_exp'' env exp : T.typ =
           (T.string_of_typ_expand t1)
     in
     let ts, check_arg =
-      if tbs <> [] && inst.it = [] then
+      match tbs, inst.it with
+      | [], [] -> (* no inference required *)
+        [], check_exp
+      | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
+      | _, _::_ -> (* explicit instantiation, check *)
+        check_inst_bounds env tbs typs exp.at, check_exp
+      | _::_, [] -> (* implicit or empty instantiation, infer *) (* TODO: distinguish <> from missing *)
         let t2 = infer_exp env exp2 in
-        let cts = T.open_binds tbs in
-        let cs = List.map (fun t -> match t with T.Con(c,_) -> c | _ -> assert false) cts in
-        match T.bimatch_typ cs t2 (T.open_ cts t_arg) with
+        match T.bimatch_typ (scope_of_env env) tbs t2 t_arg with
         | Some ts ->
           check_typ_bounds env tbs ts (List.map (fun _ -> exp1.at)  ts) exp.at;
           ts,
@@ -892,7 +904,7 @@ and infer_exp'' env exp : T.typ =
           if not (T.sub t2 t_arg) then
             error env exp.at "cannot infer type arguments due to subtyping\n  %s is not a subtype of %s"  (T.string_of_typ_expand t2) (T.string_of_typ_expand t_arg)
         | None -> error env exp.at "cannot infer type arguments"
-      else check_inst_bounds env tbs typs exp.at, check_exp in
+    in
     inst.note <- ts;
     let t_arg = T.open_ ts t_arg in
     let t_ret = T.open_ ts t_ret in

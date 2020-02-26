@@ -1494,7 +1494,11 @@ in
 
 (* Bi-Matching *)
 
-let bimatch_typ cs t1 t2 =
+let bimatch_typ scope_opt tbs t1 t2 =
+
+let ts = open_binds tbs in
+let t2 = open_ ts t2 in
+let cs = List.map (fun t -> match t with Con(c,_) -> c | _ -> assert false) ts in
 
 let rel = ref SS.empty
 in
@@ -1663,22 +1667,35 @@ and bimatch_bind ts inst any tb1 tb2 =
   bimatch_typ inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 in
-  match bimatch_typ (ConEnv.empty, ConEnv.empty) ConSet.empty t1 t2 with
-  | Some (l,u) ->
-    (try
-    Some (List.map
-            (fun c ->
-              match ConEnv.find_opt c l, ConEnv.find_opt c u with
-              | None, None -> Non
-              | None, Some ub -> ub
-              | Some lb, None -> lb
-              | Some lb, Some ub ->
-                if eq lb ub
-                then ub
-                else
-                  (Printf.printf "\n  ambiguous instantiation %s <: %s <: %s"
-                    (string_of_typ lb) (Con.name c) (string_of_typ ub);
-                  failwith "none")) cs)
-    with _ -> None)
-  | None -> None
+  try
+    let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
+    (* TODO, if bounds open return None *)
+    let add c b u = if eq b Any then u else ConEnv.add c b u in
+    let u = List.fold_right2 add cs bds ConEnv.empty in
+    let l,u = match scope_opt, tbs with
+      | Some c, {sort=Scope;_}::tbs ->
+        ConEnv.singleton (List.hd cs) c,
+        add (List.hd cs) (lub c (List.hd bds)) u
+      | None, {sort=Scope;_}::tbs -> failwith ""
+      | _, _ ->
+        ConEnv.empty,
+        u
+    in
+    match bimatch_typ (l, u) ConSet.empty t1 t2 with
+    | Some (l,u) ->
+      Some (List.map
+                 (fun c ->
+                   match ConEnv.find_opt c l, ConEnv.find_opt c u with
+                   | None, None -> Non
+                   | None, Some ub -> ub
+                   | Some lb, None -> lb
+                   | Some lb, Some ub ->
+                     if eq lb ub
+                     then ub
+                     else
+                       (Printf.eprintf "\n  ambiguous instantiation %s <: %s <: %s"
+                          (string_of_typ lb) (Con.name c) (string_of_typ ub);
+                        failwith "none")) cs)
+    | None -> None
+  with _ -> None
 

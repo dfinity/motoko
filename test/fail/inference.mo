@@ -85,10 +85,10 @@ ignore contra(func (x:Nat,y:Nat) {});
 ignore contra(func (x:Nat,y:Int) {});
 ignore contra(func (x:Nat,y:Bool) {});
 
-
+/*
 func coswap<T <: U,U>(x : T,y : T):(U,U){(y,x)};
 ignore coswap(1,2); // works (coz Int <: Nat)
 ignore coswap(1,2:Int); // works (coz Int <: Nat)
 ignore coswap(1,true); // doesn't work unless we lub with with bound
-
+*/
 

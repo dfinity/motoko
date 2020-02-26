@@ -229,4 +229,4 @@ val string_of_typ_expand : typ -> string
 (* Matching *)
 
 val match_typ : con list -> typ -> typ -> typ list option
-val bimatch_typ : con list -> typ -> typ -> typ list option
+val bimatch_typ : typ option -> bind list -> typ -> typ -> typ list option
