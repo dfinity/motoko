@@ -58,16 +58,16 @@ let to_string s =
 
 module References = Map.Make (struct type t = int let compare = compare end)
 
-let dw_references = ref (References.singleton 0 (Lib.Promise.make ()))
-let num_dw_references = ref 1 (* this is the reference into the .debug_addr section *)
+let dw_references = ref (References.singleton 0 (Lib.Promise.make ())) (* this is the reference into the .debug_addr section *)
+let num_dw_references = ref 1
 let allocate_reference_slot () =
-  num_dw_references := 1 + !num_dw_references;
+  num_dw_references := 1 + !num_dw_references; (* FIXME: increment after! *)
   dw_references := References.add !num_dw_references (Lib.Promise.make ()) !dw_references;
   !num_dw_references
 
 (* DWARF factlets, a.k.a. DIE *)
 
-type dwarf_artifact = Tag of int * dwarf_artifact list
+type dwarf_artifact = Tag of int option * int * dwarf_artifact list
                     | IntAttribute of int * int
                     | StringAttribute of int * string
                     | FunctionsAttribute of int
@@ -122,7 +122,7 @@ let encode (em : extended_module) =
   let module Sequ = Set.Make (struct type t = int * Instrs.t * int let compare = compare end) in
   let sequence_bounds = ref Sequ.empty in
 
-  let dwarf_tags = ref [Tag (0, [])] in
+  let dwarf_tags = ref [Tag (None, 0, [])] in
 
   let is_closed tag =
     let tag_of (t', _, _) = tag = t' in
@@ -130,31 +130,31 @@ let encode (em : extended_module) =
     not (has_children <> 0)
   in
 
-  let add_dwarf_tag tag =
+  let add_dwarf_tag refi tag =
     (* invariant: at most one closed tag waiting for attributes *)
     dwarf_tags :=
       match !dwarf_tags with
-      | Tag (t', _) as closed :: Tag (t, arts) :: tail when (*is_closed tag &&*) is_closed t' ->
-        (Printf.printf "CONTRACTING a 0x%x\n" tag; Tag (tag, []) :: Tag (t, closed :: arts) :: tail)
-      | _ -> Tag (tag, []) :: (Printf.printf "ADDING a 0x%x\n" tag; !dwarf_tags) in
+      | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' ->
+        (Printf.printf "CONTRACTING a 0x%x\n" tag; Tag (refi, tag, []) :: Tag (r, t, closed :: arts) :: tail)
+      | tail -> Tag (refi, tag, []) :: (Printf.printf "ADDING a 0x%x%s\n" tag (if refi = None then "" else " has ref"); tail) in
   let rec close_dwarf () =
     match !dwarf_tags with
     | [] -> failwith "no open DW_TAG"
     | Tag _ :: [] -> failwith "TOPLEVEL: NOT NESTING\n"
-    | Tag (t', _) as closed :: Tag (t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED\n"; dwarf_tags := Tag (t, closed :: arts) :: tail; close_dwarf ()
-    | Tag (s, attrs) :: Tag (0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s -> Printf.printf "TOPLEVEL: EATING\n"; dwarf_tags := Tag (s, tags @ attrs) :: []
-    | Tag _ as nested :: Tag (tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING into 0x%x\n" tag; Tag (tag, nested :: arts) :: t)
+    | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED\n"; dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf ()
+    | Tag (r, s, attrs) :: Tag (None, 0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s -> Printf.printf "TOPLEVEL: EATING\n"; dwarf_tags := Tag (r, s, tags @ attrs) :: []
+    | Tag _ as nested :: Tag (r, tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING into 0x%x\n" tag; Tag (r, tag, nested :: arts) :: t)
     | _ -> failwith "cannot close DW_AT" in
   let add_dwarf_attribute attr =
     dwarf_tags := match !dwarf_tags with
-                  | Tag (tag, arts) :: t -> Tag (tag, attr :: arts) :: t
+                  | Tag (r, tag, arts) :: t -> Tag (r, tag, attr :: arts) :: t
                   | _ -> assert false
   in
 
   (* keeping count of the DWARF code sequence we are in *)
   let sequence_number = ref 0 in
 
-  let extract_dwarf tag =
+  let extract_dwarf refi tag =
     let open Wasm.Ast in
     let open Wasm.Source in
     let open Dwarf5 in
@@ -203,10 +203,12 @@ let encode (em : extended_module) =
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_discr ->
         add_dwarf_attribute (IntAttribute (-line, column))
+      | Nop, {line; column; _} when -line = dw_AT_type ->
+        add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; _} -> Printf.printf "TAG: 0x%x; ATTR extract: 0x%x\n" tag (-line); failwith "extract"
       | instr, {line; file; _} -> Printf.printf "TAG: 0x%x (a.k.a. %d, from: %s); extract: 0x%x\n INSTR %s" tag tag file (-line) (Wasm.Sexpr.to_string 80 (Wasm.Arrange.instr (instr @@ Wasm.Source.no_region))); failwith "extract UNKNOWN"
     in
-    add_dwarf_tag tag;
+    add_dwarf_tag (if refi = 0 then None else (Printf.printf "TAGGING REF %d for TAG 0x%x\n" refi tag; Some refi)) tag;
     let rec add_artifacts = function
     | [] -> ()
     | e :: es -> extract (e.it, e.at.left); add_artifacts es in
@@ -339,7 +341,7 @@ let encode (em : extended_module) =
       | Nop when is_dwarf_statement e.at ->
         Printf.printf "Line %d\n" e.at.right.line;
         modif statement_positions (Instrs.add (pos s, e.at.left))
-      | Block (_, es) when dwarf_like e.at -> extract_dwarf (-e.at.left.line) es
+      | Block (_, es) when dwarf_like e.at -> extract_dwarf (e.at.left.column) (-e.at.left.line) es
       (*  | _ when (if S.mem e.at.left !statement_positions then Printf.printf "ENCOUNTERED File %s Line %d    ADDR: %x\n" e.at.left.file e.at.left.line (pos s); false) -> assert false; *)
 
       | Unreachable -> op 0x00
@@ -771,7 +773,7 @@ let encode (em : extended_module) =
         end
       | f when dw_FORM_ref_udata = f ->
         begin function
-          | IntAttribute (attr, i) -> uleb128 (Lib.Promise.value (References.find i !dw_references))
+          | IntAttribute (attr, i) -> Printf.printf "LOOKING FOR %d REF\n" i; uleb128 (Lib.Promise.value (References.find i !dw_references))
           | _ -> failwith "dw_FORM_ref_udata"
         end
       | f when dw_FORM_sec_offset = f ->
@@ -794,8 +796,14 @@ let encode (em : extended_module) =
         end
       | _ -> failwith("cannot write form")
 
+    let info_section_start = ref 0
     let rec writeTag = function
-      | Tag (t, contentsRevd) ->
+      | Tag (r, t, contentsRevd) ->
+        Printf.printf "WRITING TAG: 0x%x\n" t; 
+        begin match r with
+        | Some refi -> Printf.printf "FULFILLING: %d\n" refi; Promise.fulfill (References.find refi !dw_references) (pos s - !info_section_start)
+        | None -> assert (t <> Dwarf5.dw_TAG_base_type)
+        end;
         let contents = List.rev contentsRevd in
         let isTag (t', _, _) = t = t' in
         let (_, has_children, forms) = List.find isTag Abbreviation.abbreviations in
@@ -830,11 +838,12 @@ let encode (em : extended_module) =
 
     let debug_info_section () =
       let section_body abs =
-        unit(fun _ ->
+        unit(fun info_start ->
             write16 0x0005; (* version *)
             u8 Dwarf5.dw_UT_compile; (* unit_type *)
             u8 4; (* address_size *)
             write32 0x0000; (* debug_abbrev_offset *)
+            info_section_start := info_start;
 
             match !dwarf_tags with
             | [toplevel] -> writeTag toplevel
@@ -853,7 +862,7 @@ let encode (em : extended_module) =
     let debug_addr_section seqs =
       let debug_addr_section_body seqs =
         unit(fun start ->
-            Lib.Promise.fulfill (References.find 0 !dw_references) start;
+            Promise.fulfill (References.find 0 !dw_references) start;
             write16 0x0005; (* version *)
             u8 4; (* addr_size *)
             u8 0; (* segment_selector_size *)

@@ -179,6 +179,7 @@ type dw_AT = Producer of string
            | Discr_list
            | Discr_value
            | Artificial of bool
+           | TypeRef of int (* reference *)
 
 (* DWARF tags *)
 
@@ -231,6 +232,7 @@ let dw_attr : dw_AT -> t =
   | Data_bit_offset o -> fakeColumn o dw_AT_data_bit_offset Nop
   | Artificial b -> fakeColumn (if b then 1 else 0) dw_AT_artificial Nop
   | Discr r -> fakeColumn r dw_AT_discr Nop
+  | TypeRef i -> fakeColumn i dw_AT_type Nop
 
 (* emit a DW_TAG
    When it admits children, these follow sequentially,
@@ -268,7 +270,7 @@ let rec dw_tag : dw_TAG -> t =
          dw_attr (Bit_size 1) ^^
          dw_attr (Data_bit_offset 1)) ^^
       fakeBlock dw_TAG_variant_part
-        (dw_attr (Discr 0)) ^^
+        (dw_attr (Discr 0(*FIXME*))) ^^
       dw_tag_children_done ^^ (* closing dw_TAG_variant_part *)
       dw_tag_children_done (* closing dw_TAG_structure_type *)
     in
@@ -292,11 +294,12 @@ let rec dw_tag : dw_TAG -> t =
        dw_attr (Decl_column pos.Source.column) ^^
        dw_attr (Prototyped true) ^^
        dw_attr (External false))
-  | Formal_parameter (name, pos, _) ->
+  | Formal_parameter (name, pos, ty) ->
     fakeBlock dw_TAG_formal_parameter
       (dw_attr (Name name) ^^
        dw_attr (Decl_line pos.Source.line) ^^
-       dw_attr (Decl_column pos.Source.column))
+       dw_attr (Decl_column pos.Source.column) ^^
+       dw_attr (TypeRef (match ty with (* NOT YET | Mo_types.Type.Prim pr -> PrimRefs.find pr !dw_prims *) | _ -> 2 (*FIXME*))))
   (*| Variable ->  *)
   | Type ty -> dw_type ty
   | _ -> assert false
@@ -304,12 +307,12 @@ and fakeBlock tag attrs =
   fakeColumn 0 tag (Block ([], attrs 0l Wasm.Source.no_region []))
 and fakeReferenceableBlock tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
-  fakeColumn refslot tag (Block ([], attrs 0l Wasm.Source.no_region [])),
+  assert (refslot > 0) ; fakeColumn refslot tag (Block ([], attrs 0l Wasm.Source.no_region [])),
   refslot
 and dw_type =
   function
   | Mo_types.Type.Prim pr -> dw_prim_type pr
-  | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Mo_types.Arrange_type.typ typ)); nop (* FIXME assert false *)
+  | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Mo_types.Arrange_type.typ typ)); dw_prim_type Bool (* FIXME assert false *)
 and dw_prim_type prim =
   match PrimRefs.find_opt prim !dw_prims with
   | Some _ -> nop
