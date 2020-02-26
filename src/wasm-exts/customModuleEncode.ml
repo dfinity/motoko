@@ -134,7 +134,7 @@ let encode (em : extended_module) =
     (* invariant: at most one closed tag waiting for attributes *)
     dwarf_tags :=
       match !dwarf_tags with
-      | Tag (t', _) as closed :: Tag (t, arts) :: tail when is_closed tag && is_closed t' ->
+      | Tag (t', _) as closed :: Tag (t, arts) :: tail when (*is_closed tag &&*) is_closed t' ->
         (Printf.printf "CONTRACTING a 0x%x\n" tag; Tag (tag, []) :: Tag (t, closed :: arts) :: tail)
       | _ -> Tag (tag, []) :: (Printf.printf "ADDING a 0x%x\n" tag; !dwarf_tags) in
   let rec close_dwarf () =

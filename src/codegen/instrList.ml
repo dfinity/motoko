@@ -182,16 +182,17 @@ type dw_AT = Producer of string
 
 (* DWARF tags *)
 
-type dw_TAG = Compile_unit of string * string (* compilation directory, file name *)
-            | Subprogram of string * Source.pos
-            | Formal_parameter of (string * Source.pos * Mo_types.Type.typ)
-            | Variable
-            | Type of Mo_types.Type.typ
-            | Typedef
-            | Structure_type
-            | Member
-            | Variant_part
-            | Variant
+type dw_TAG =
+  | Compile_unit of string * string (* compilation directory, file name *)
+  | Subprogram of string * Source.pos
+  | Formal_parameter of (string * Source.pos * Mo_types.Type.typ)
+  | Variable
+  | Type of Mo_types.Type.typ
+  | Typedef
+  | Structure_type
+  | Member
+  | Variant_part
+  | Variant
 
 (* DWARF high-level structures *)
 
@@ -241,6 +242,8 @@ let dw_tag_children_done : t =
   let right = Wasm.Source.no_pos in
   fun _ _ x -> (Nop @@ { left; right }) :: x
 
+module PrimRefs = Map.Make (struct type t = Mo_types.Type.prim let compare = compare end)
+let dw_prims = ref PrimRefs.empty
 
 let rec dw_tag : dw_TAG -> t =
   function
@@ -294,59 +297,70 @@ let rec dw_tag : dw_TAG -> t =
       (dw_attr (Name name) ^^
        dw_attr (Decl_line pos.Source.line) ^^
        dw_attr (Decl_column pos.Source.column))
+  (*| Variable ->  *)
+  | Type ty -> dw_type ty
   | _ -> assert false
 and fakeBlock tag attrs =
   fakeColumn 0 tag (Block ([], attrs 0l Wasm.Source.no_region []))
-and fakeReferenceableBlock tag attrs =
+and fakeReferenceableBlock tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
-  fakeColumn refslot tag (Block ([], attrs 0l Wasm.Source.no_region []));
+  fakeColumn refslot tag (Block ([], attrs 0l Wasm.Source.no_region [])),
   refslot
 and dw_type =
   function
-  | Type (Mo_types.Type.Prim pr) -> dw_prim_type pr
-  | _ -> assert false
-and dw_prim_type = function
-  | Mo_types.Type.Bool ->
-    fakeBlock dw_TAG_base_type
-      (dw_attr (Name "Bool") ^^
-       dw_attr (Bit_size 1) ^^
-       dw_attr (Data_bit_offset 0))
-  | Mo_types.Type.Char ->
-    fakeBlock dw_TAG_base_type
-      (dw_attr (Name "Char") ^^
-       dw_attr (Bit_size 21) ^^
-       dw_attr (Data_bit_offset 8))
-  | Mo_types.Type.Word8 ->
-    fakeBlock dw_TAG_base_type
-      (dw_attr (Name "Word8") ^^
-       dw_attr (Bit_size 8) ^^
-       dw_attr (Data_bit_offset 24))
-  | Mo_types.Type.Nat8 ->
-    fakeBlock dw_TAG_base_type
-      (dw_attr (Name "Nat8") ^^
-       dw_attr (Bit_size 8) ^^
-       dw_attr (Data_bit_offset 24))
-  | Mo_types.Type.Int8 ->
-    fakeBlock dw_TAG_base_type
-      (dw_attr (Name "Int8") ^^
-       dw_attr (Bit_size 8) ^^
-       dw_attr (Data_bit_offset 24))
-  | Mo_types.Type.Word16 ->
-    fakeBlock dw_TAG_base_type
-      (dw_attr (Name "Word16") ^^
-       dw_attr (Bit_size 16) ^^
-       dw_attr (Data_bit_offset 16))
-  | Mo_types.Type.Nat16 ->
-    fakeBlock dw_TAG_base_type
-      (dw_attr (Name "Nat16") ^^
-       dw_attr (Bit_size 16) ^^
-       dw_attr (Data_bit_offset 16))
-  | Mo_types.Type.Int16 ->
-    fakeBlock dw_TAG_base_type
-      (dw_attr (Name "Int16") ^^
-       dw_attr (Bit_size 16) ^^
-       dw_attr (Data_bit_offset 16))
+  | Mo_types.Type.Prim pr -> dw_prim_type pr
+  | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Mo_types.Arrange_type.typ typ)); nop (* FIXME assert false *)
+and dw_prim_type prim =
+  match PrimRefs.find_opt prim !dw_prims with
+  | Some _ -> nop
+  | None ->
+    let dw, refindx =
+      match prim with
+      | Mo_types.Type.Bool ->
+        fakeReferenceableBlock dw_TAG_base_type
+          (dw_attr (Name "Bool") ^^
+           dw_attr (Bit_size 1) ^^
+           dw_attr (Data_bit_offset 0))
+      | Mo_types.Type.Char ->
+        fakeReferenceableBlock dw_TAG_base_type
+          (dw_attr (Name "Char") ^^
+           dw_attr (Bit_size 21) ^^
+           dw_attr (Data_bit_offset 8))
+      | Mo_types.Type.Word8 ->
+        fakeReferenceableBlock dw_TAG_base_type
+          (dw_attr (Name "Word8") ^^
+           dw_attr (Bit_size 8) ^^
+           dw_attr (Data_bit_offset 24))
+      | Mo_types.Type.Nat8 ->
+        fakeReferenceableBlock dw_TAG_base_type
+          (dw_attr (Name "Nat8") ^^
+           dw_attr (Bit_size 8) ^^
+           dw_attr (Data_bit_offset 24))
+      | Mo_types.Type.Int8 ->
+        fakeReferenceableBlock dw_TAG_base_type
+          (dw_attr (Name "Int8") ^^
+           dw_attr (Bit_size 8) ^^
+           dw_attr (Data_bit_offset 24))
+      | Mo_types.Type.Word16 ->
+        fakeReferenceableBlock dw_TAG_base_type
+          (dw_attr (Name "Word16") ^^
+             dw_attr (Bit_size 16) ^^
+               dw_attr (Data_bit_offset 16))
+      | Mo_types.Type.Nat16 ->
+        fakeReferenceableBlock dw_TAG_base_type
+          (dw_attr (Name "Nat16") ^^
+           dw_attr (Bit_size 16) ^^
+           dw_attr (Data_bit_offset 16))
+      | Mo_types.Type.Int16 ->
+        fakeReferenceableBlock dw_TAG_base_type
+          (dw_attr (Name "Int16") ^^
+           dw_attr (Bit_size 16) ^^
+           dw_attr (Data_bit_offset 16))
+      | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Mo_types.Arrange_type.prim prim)); nop, 1(* FIXME *)
 (* | _ -> assert false (* TODO *)*)
+    in
+    dw_prims := PrimRefs.add prim refindx !dw_prims;
+    dw
 
 
 let dw_tag_no_children = dw_tag
