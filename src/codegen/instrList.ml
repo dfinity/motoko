@@ -232,7 +232,7 @@ let dw_attr : dw_AT -> t =
   | Data_bit_offset o -> fakeColumn o dw_AT_data_bit_offset Nop
   | Artificial b -> fakeColumn (if b then 1 else 0) dw_AT_artificial Nop
   | Discr r -> fakeColumn r dw_AT_discr Nop
-  | TypeRef i -> fakeColumn i dw_AT_type Nop
+  | TypeRef i -> assert (i <> 1) ;fakeColumn i dw_AT_type Nop
 
 (* emit a DW_TAG
    When it admits children, these follow sequentially,
@@ -299,7 +299,7 @@ let rec dw_tag : dw_TAG -> t =
       (dw_attr (Name name) ^^
        dw_attr (Decl_line pos.Source.line) ^^
        dw_attr (Decl_column pos.Source.column) ^^
-       dw_attr (TypeRef (match ty with (* NOT YET | Mo_types.Type.Prim pr -> PrimRefs.find pr !dw_prims *) | _ -> 2 (*FIXME*))))
+       dw_attr (TypeRef (Printf.printf "ASKING!\n"; match ty with  | Mo_types.Type.Prim pr -> Printf.printf "SEARCHING!\n"; PrimRefs.find pr !dw_prims | _ -> 0 (*FIXME*))))
   (*| Variable ->  *)
   | Type ty -> dw_type ty
   | _ -> assert false
@@ -359,10 +359,10 @@ and dw_prim_type prim =
           (dw_attr (Name "Int16") ^^
            dw_attr (Bit_size 16) ^^
            dw_attr (Data_bit_offset 16))
-      | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Mo_types.Arrange_type.prim prim)); nop, 1(* FIXME *)
+      | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Mo_types.Arrange_type.prim prim)); nop, 2(* FIXME *)
 (* | _ -> assert false (* TODO *)*)
     in
-    dw_prims := PrimRefs.add prim refindx !dw_prims;
+    dw_prims := (Printf.printf "INSERTING!\n"; assert (refindx <> 1) ;PrimRefs.add prim refindx !dw_prims);
     dw
 
 

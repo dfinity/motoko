@@ -4661,7 +4661,10 @@ module FuncDec = struct
       let ae2 = bind_args env ae1 1 args in
 
       (* Add nested DWARF *)
-      G.(concat_map (fun arg -> dw_tag (Type arg.note)) args) ^^
+      (* prereq has side effects that must happen before generating
+         DWARF for the formal parameters, so we have to strictly evaluate *)
+      let prereq = G.(concat_map (fun arg -> dw_tag (Type arg.note)) args) 0l Wasm.Source.no_region [] in
+      (fun _ _ rest -> prereq @ rest) ^^
       G.(dw_tag (Subprogram (name, at.left))) ^^
       G.(concat_map (fun arg -> dw_tag_no_children (Formal_parameter (arg.it, arg.at.left, arg.note))) args) ^^
       closure_code ^^

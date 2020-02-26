@@ -62,6 +62,7 @@ let dw_references = ref (References.singleton 0 (Lib.Promise.make ())) (* this i
 let num_dw_references = ref 1
 let allocate_reference_slot () =
   num_dw_references := 1 + !num_dw_references; (* FIXME: increment after! *)
+  Printf.printf "ALLOCATED SLOT: %d\n" !num_dw_references;
   dw_references := References.add !num_dw_references (Lib.Promise.make ()) !dw_references;
   !num_dw_references
 
@@ -773,7 +774,7 @@ let encode (em : extended_module) =
         end
       | f when dw_FORM_ref_udata = f ->
         begin function
-          | IntAttribute (attr, i) -> Printf.printf "LOOKING FOR %d REF\n" i; uleb128 (Lib.Promise.value (References.find i !dw_references))
+          | IntAttribute (attr, i) -> Printf.printf "LOOKING FOR %d REF\n" i; assert (i <> 1); uleb128 (Lib.Promise.value (References.find i !dw_references))
           | _ -> failwith "dw_FORM_ref_udata"
         end
       | f when dw_FORM_sec_offset = f ->
