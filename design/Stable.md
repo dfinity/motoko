@@ -1,0 +1,168 @@
+# Stable Variables and Upgrade
+
+To enable persistent state to survive upgrades, a special form of state is needed that we call _stable_.
+
+The compiler needs to take special care to never change the representation of such state.
+To make this requirement feasible, certain type restrictions apply to stable state: essentially it can only contain data.
+
+Stable state is introduced in the form of _stable variable definitions_ that are only allowed (as well as required) in actors.
+
+
+## Language Extension
+
+### Syntax
+
+We require all `let` and `var` declarations in an actor to be declared stable.
+This is to indicate explicitly that special type restrictions apply;
+moreover, in the future, we may allow non-stable declarations for special purposes.
+
+Concretely, the syntax of `<dec-field>` is extended as follows:
+```
+<dec-field> ::=                                          object declaration fields
+  (public|private)? stable? dec                               field
+```
+
+Additional restrictions apply:
+* The `stable` modifier _must_ appear on `let` and `var` declarations that are actor fields.
+* The `stable` modified _must not_ appear anywhere else.
+
+Both restrictions may be relaxed in the future.
+
+(Note: One possible future use case might be to mark private methods as stable, which would be a requisite that they can be handed out as capabilities, because such methods must also remain backwards compatible.)
+
+
+### Typing
+
+A stable declaration must have a _stable type_. Stable types are a superset of _shared_ types: specifically, they additionally allow objects or arrays with mutable components.
+
+Concretely, the `stable` predicate has the same definition as the `shared` predicate (cf. `type.ml`), except that the case for `Mut t` is
+```
+  | Mut t -> go t
+```
+
+That is, shared entails stable.
+Note that this implies that stable types may contain actors or shared functions, but mutability of course does not extend into those.
+
+Note: This implies that stable state can only contain records, not objects (which contain non-shared functions).
+This clearly is a severe restriction.
+But we leave the possibility of "stable classes" for later, since it is not at all obvious how to design or implement them.
+
+
+### Semantics
+
+Installing a new actor runs the initialiser expressions of all stable variables in sequence, like for ordinary variable definitions.
+(In terms of the System API, this happens in the init hook.)
+
+When upgrading an actor, all stable variables that existed in the previous version are pre-initialised with their old values.
+Their initialiser expressions are ignored.
+After that, the initialiser expressions of newly added stable variables are executed in sequence like for ordinary variable definitions.
+(In terms of the System API, this happens in the post_upgrade hook.)
+
+This implies that any expression declaration (or any of the form `let _ = <exp>`, for which expressions are a short-hand) will always be run after an upgrade.
+They can hence be (ab)used as post-upgrade hooks.
+
+Open Question: What about let declarations with multiple variables, some of which existed before while others didn't? Or should we generally not persist `let`-bound values and always re-initialise them? Would that be a pitfall?
+
+Note: With respect to variable initialisation, installing a new actor behaves like upgrading the actor from an empty actor with no pre-existing stable variables.
+
+
+## Stable Signatures
+
+The Candid IDL defines the public interface of an actor, listing the methods that an actor provides and their types.
+When upgrading an actor, this interface may only be modified in backwards-compatible ways:
+* new methods may be added,
+* existing methods may be refined to a subtype.
+This prevents breaking existing clients assuming the current or an earlier interface.
+
+With stable state, a second dimension is added: the _stable signature_ of an actor lists its stable fields and their types.
+When upgrading an actor, this interface may also only be modified in backwards-compatible ways:
+* new variables may be added,
+* existing variables may be refined to a _supertype_.
+This ensures that existing persistent state is still readable with the new version of the program.
+
+The stable signature is not public; its only relevance is to the owner of an actor, as an additional constraint imposed when upgrading the actor.
+
+Stable signatures could also be used to auto-generate interfaces or UI for inspecting or even administering the state of an actor.
+
+
+### Syntax
+
+The stable signature can't be described in terms of IDL types, because it is specific to Motoko and stable types contain more than what the IDL can express.
+
+The textual representation for stable signatures looks like a Motoko actor type:
+```
+actor {
+  stable x : Nat;
+  stable var y : Int;
+  stable z : [var Nat];
+};
+```
+Like in Candid, the actor specification may be preceded by a sequence of auxiliary (Motoko) type definitions, or imports from Motoko modules.
+
+Grammar:
+```
+<typ> ::= ...   (Motoko types)
+
+<field> ::=
+  stable <id> : <typ>
+  stable var <id> : <typ>
+
+<dec> ::=
+  type <id> <typ-params>? = <typ>
+  import <id>? =? <text>
+
+<sig> ::= <dec>;* actor { <field>;* };
+
+```
+
+Question: Should the stable signature become a superset of Candid signatures, i.e., also include methods, but expressed with (richer) Motoko types?
+
+
+### Compiler and System Support
+
+Like the Candid IDL, the Motoko compiler can produce stable signatures for the actors it compiles.
+
+We will also need a tool (the compiler, or a separate one?) that can compare stable signature and verify that an extension is valid according to the Motoko subtyping rules.
+
+To make that test reliable, the stable signature of an actor should be contained in the Wasm module of a deployed Motoko actor.
+That way, it is ensured that accurate signature information is always available for each installed actor.
+One way to store it would be in a Motoko-specific custom section;
+another alternative is as a separate internal asset.
+In either case, it is probably sufficient to use a textual representation.
+
+Like for the IDL, the System would need to provide a way to extract this information from an on-chain canister.
+
+
+## Upgrade Hooks
+
+The System API provides a number of hooks that a canister can implement.
+In particular, this includes the pre & post upgrade hooks.
+
+Motoko does not currently provide a way to define these hooks.
+While the post upgrade hook can be exploited by using expression declarations (see above), there is no immediate way to define the pre upgrade hook.
+
+
+### Syntax
+
+To this end, we further extend the syntax of `<dec-field>` with _upgrade blocks_ of the following form:
+```
+<dec-field> ::= ...
+  | pre_upgrade { <dec>;* }
+  | post_upgrade { <dec>;* }
+```
+These blocks may only occur in an actor body.
+Multiple of these blocks may occur.
+
+
+### Typing
+
+Upgrade blocks need to have type `()`.
+
+
+### Semantics
+
+Upgrade blocks of each kind are simply executed in sequence, before or after an upgrade, respectively. (In terms of the System API, they correspond to the respective hooks.)
+
+Moreover, post upgrade blocks are executed in program order with the initialisers of new variables (see above).
+
+Note that post upgrade blocks differ from expression declarations in the body of an actor in that they are _only_ run after an upgrade, not when first installing the actor.
