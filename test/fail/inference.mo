@@ -92,3 +92,17 @@ ignore coswap(1,2:Int); // works (coz Int <: Nat)
 ignore coswap(1,true); // doesn't work unless we lub with with bound
 */
 
+// support domain driven overloading for scoped monomorphic functions (as before)
+func f(g:shared Nat8 -> ()) : async () {
+  g(1);
+};
+
+func bnd<T <: Int>(x:T):T{x};
+ignore bnd(1:Int) : Int;
+ignore bnd(1) : Nat;
+ignore (if false (bnd(loop {}):Nat) else 1);
+ignore (if false (bnd(loop {}):Int) else 1);
+ignore (if false (bnd(loop {}):None) else 1);
+bnd(true);
+
+
