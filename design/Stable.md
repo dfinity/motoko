@@ -165,4 +165,17 @@ Upgrade blocks of each kind are simply executed in sequence, before or after an 
 
 Moreover, post upgrade blocks are executed in program order with the initialisers of new variables (see above).
 
-Note that post upgrade blocks differ from expression declarations in the body of an actor in that they are _only_ run after an upgrade, not when first installing the actor.
+Note: post upgrade blocks differ from expression declarations in the body of an actor in that they are _only_ run after an upgrade, not when first installing the actor.
+
+
+## Implementation
+
+Until Wasm provides multiple memories, the values of stable variables need to be written to the _stable memory_ provided by the System API.
+There are multiple possible implementation strategies for this:
+
+1. Lazy de/serialisation: the compiler generates a pre_upgrade hook that serialises a map of all stable variables to the stable memory, and a post_upgrade hook that deserialises.
+
+2. Eager de/serialisation: reading/writing a stable variable de/serialises their value directly into a key/value store living in the stable memory.
+Dealing with in-place update on mutable components requires indirections in the store via some extensible table.
+
+3. Possibly other...
