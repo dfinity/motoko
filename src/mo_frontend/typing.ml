@@ -884,13 +884,13 @@ and infer_exp'' env exp : T.typ =
         let t2 = infer_exp env exp2 in
         let cts = T.open_binds tbs in
         let cs = List.map (fun t -> match t with T.Con(c,_) -> c | _ -> assert false) cts in
-        match T.match_typ cs t2 (T.open_ cts t_arg) with
+        match T.bimatch_typ cs t2 (T.open_ cts t_arg) with
         | Some ts ->
           check_typ_bounds env tbs ts (List.map (fun _ -> Source.no_region)  ts) exp.at;
           ts,
           fun env t_arg exp ->
           if not (T.sub t2 t_arg) then
-            error env exp.at "cannot infer type arguments due to subtyping"
+            error env exp.at "cannot infer type arguments due to subtyping\n  %s is not a subtype of %s"  (T.string_of_typ_expand t2) (T.string_of_typ_expand t_arg)
         | None -> error env exp.at "cannot infer type arguments"
       else check_inst_bounds env tbs typs exp.at, check_exp in
     inst.note <- ts;

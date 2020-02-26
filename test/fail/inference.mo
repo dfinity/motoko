@@ -40,7 +40,7 @@ ignore cons(1,nil<Nat>());
 ignore cons(1,cons(2,nil<Nat>()));
 ignore cons(1,cons(2,null:List<Nat>));
 ignore cons(1,cons(2,null:List2<Nat>:List<Nat>));
-ignore cons(1,cons(2,null:List2<Nat>)); //fails
+ignore cons(1,cons(2,null:List2<Nat>));
 
 func curry<A,B,C>(f : (A,B)->C) : A->B->C {
   func(a:A): B->C { func(b:B):C { f(a,b) } }
@@ -59,9 +59,36 @@ tricky<None>(func f(x:Any):None { f(x);});
 tricky<Any>(func f(x:Any):None { f(x);});
 ignore func <T>()  { tricky<T>(func f(x:Any):None{f(x)}) };
 
-//ignore tricky(func f(x:Any):None { f(x);}); //requires Dolan style bi-matching
+ignore tricky(func f(x:Any):None { f(x);});
+ignore tricky(func f(x:None):Any { f(x);}); //requires Dolan style bi-matching
+ignore tricky(func f(x:None):None { f(x);}); //requires Dolan style bi-matching
 
 func amb<T>(f : T -> T): T->T { f };
 ignore amb<None>(func f(x:Any):None { f(x);}) : None -> None;
 ignore amb<Any>(func f(x:Any):None { f(x);}) : Any -> Any;
+
+
+func co<T>(x : T,y : T):(){};
+ignore co<Nat>(1,2);
+ignore co<Int>(1,2:Int);
+ignore co<Any>(1,true);
+ignore co(1,2);
+ignore co(1,2:Int);
+ignore co(1,true);
+
+
+func contra<T>(f:(T,T) -> ()):(){};
+ignore contra<Nat>(func (x:Nat,y:Nat) {});
+ignore contra<Nat>(func (x:Nat,y:Int) {});
+ignore contra<None>(func (x:Nat,y:Bool) {});
+ignore contra(func (x:Nat,y:Nat) {});
+ignore contra(func (x:Nat,y:Int) {});
+ignore contra(func (x:Nat,y:Bool) {});
+
+
+func coswap<T <: U,U>(x : T,y : T):(U,U){(y,x)};
+ignore coswap(1,2); // works (coz Int <: Nat)
+ignore coswap(1,2:Int); // works (coz Int <: Nat)
+ignore coswap(1,true); // doesn't work unless we lub with with bound
+
 
