@@ -7,7 +7,7 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Run on in drun (or, if not possible, in stub)
+#    -d: Run on in drun (or, if not possible, in ic-ref-run)
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
@@ -32,8 +32,8 @@ WASMTIME=${WASMTIME:-wasmtime}
 WASMTIME_OPTIONS="--disable-cache --cranelift"
 DRUN=${DRUN:-drun}
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
-IC_STUB_RUN_WRAPPER=$(realpath $(dirname $0)/ic-stub-run-wrapper.sh)
-IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
+IC_REF_RUN_WRAPPER=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
+IC_REF_RUN=${IC_REF_RUN:-ic-ref-run}
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
@@ -149,7 +149,7 @@ then
 fi
 
 HAVE_DRUN=no
-HAVE_IC_STUB_RUN=no
+HAVE_IC_REF_RUN=no
 
 if [ $DTESTS = yes -o $PERF = yes ]
 then
@@ -170,17 +170,17 @@ fi
 
 if [ $DTESTS = yes -o $PERF = yes ]
 then
-  if $IC_STUB_RUN --help >& /dev/null
+  if $IC_REF_RUN --help >& /dev/null
   then
-    HAVE_IC_STUB_RUN=yes
+    HAVE_IC_REF_RUN=yes
   else
     if [ $ACCEPT = yes ]
     then
-      echo "ERROR: Could not run $IC_STUB_RUN, cannot update expected test output"
+      echo "ERROR: Could not run $IC_REF_RUN, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run $IC_STUB_RUN, will skip some tests"
-      HAVE_IC_STUB_RUN=no
+      echo "WARNING: Could not run $IC_REF_RUN, will skip some tests"
+      HAVE_IC_REF_RUN=no
     fi
   fi
 fi
@@ -299,7 +299,7 @@ do
         if [ $DTESTS = yes ]
         then
           run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
-          run comp-stub $MOC $moc_extra_flags -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.stub.wasm
+          run comp-ref $MOC $moc_extra_flags -ref-system-api --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
 	elif [ $PERF = yes ]
 	then
           run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
@@ -308,7 +308,7 @@ do
         fi
 
         run_if wasm valid wasm-validate $out/$base.wasm
-        run_if stub.wasm valid-stub wasm-validate $out/$base.stub.wasm
+        run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
 
         if [ -e $out/$base.wasm ]
         then
@@ -333,8 +333,8 @@ do
             if [ $HAVE_DRUN = yes ]; then
               run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
             fi
-            if [ $HAVE_IC_STUB_RUN = yes ]; then
-              run_if stub.wasm ic-stub-run $IC_STUB_RUN_WRAPPER $out/$base.stub.wasm $mangled
+            if [ $HAVE_IC_REF_RUN = yes ]; then
+              run_if ref.wasm ic-ref-run $IC_REF_RUN_WRAPPER $out/$base.ref.wasm $mangled
             fi
           elif [ $PERF = yes ]
           then

@@ -11,6 +11,12 @@
         "rev": "fc1706faada19c3bcf0eee941b0468bf0c312d00",
         "type": "git"
     },
+    "ic-ref": {
+        "ref": "master",
+        "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
+        "rev": "ca29f8d9287e6062bc479c98d45255d24cae8a70",
+        "type": "git"
+    },
     "esm": {
         "builtin": false,
         "sha256": "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q",
