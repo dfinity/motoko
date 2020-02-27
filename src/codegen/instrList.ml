@@ -83,6 +83,12 @@ let to_nested_list d pos is =
 let nop : t = fun _ _ rest -> rest
 let (^^) (is1 : t) (is2 : t) : t = fun d pos rest -> is1 d pos (is2 d pos rest)
 
+(* Forcing side effects to happen,
+   only for nesting- and location-oblivious instructions *)
+let effects t =
+  let instrs = t 0l Wasm.Source.no_region [] in
+  fun _ _ rest -> instrs @ rest
+
 (* Singletons *)
 let i (instr : instr') : t = fun _ pos rest -> (instr @@ pos) :: rest
 
