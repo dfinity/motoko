@@ -97,7 +97,7 @@ actor {
   stable z : [var Nat];
 };
 ```
-Like in Candid, the actor specification may be preceded by a sequence of auxiliary (Motoko) type definitions, or imports from Motoko modules.
+Like in Candid, the actor specification may be preceded by a sequence of auxiliary (Motoko) type definitions.
 
 Grammar:
 ```
@@ -109,11 +109,12 @@ Grammar:
 
 <dec> ::=
   type <id> <typ-params>? = <typ>
-  import <id>? =? <text>
 
 <sig> ::= <dec>;* actor { <field>;* };
 
 ```
+
+Note: We could also allow imports if useful.
 
 Question: Should the stable signature become a superset of Candid signatures, i.e., also include methods, but expressed with (richer) Motoko types?
 
@@ -140,6 +141,8 @@ In particular, this includes the pre & post upgrade hooks.
 
 Motoko does not currently provide a way to define these hooks.
 While the post upgrade hook can be exploited by using expression declarations (see above), there is no immediate way to define the pre upgrade hook.
+
+Note: This feature could potentially be deferred until later.
 
 
 ### Syntax
