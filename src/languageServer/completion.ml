@@ -35,7 +35,8 @@ let string_of_item (item : Lsp_t.completion_item) : string =
   item.Lsp_t.completion_item_label
 
 let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
-  let tmpl = template_of_ide_decl d in
+  (* let tmpl = template_of_ide_decl d in *)
+  let tmpl = DI.name_of_ide_decl d in
   match d with
   | DI.ValueDecl value ->
      Lsp_t.{
@@ -44,7 +45,7 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
         completion_item_insertText = Some tmpl;
         completion_item_insertTextFormat = Some 2;
         completion_item_additionalTextEdits = None;
-        completion_item_documentation = Some(Type.string_of_typ value.DI.typ);
+        completion_item_documentation = Some (Pretty.string_of_typ value.DI.typ);
         completion_item_detail = None;
      }
   | DI.TypeDecl ty ->
