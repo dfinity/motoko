@@ -1,17 +1,19 @@
 nix: subpath:
   let stdenv = nix.stdenv; in
   self: super: {
-  haskell-lsp-types = self.haskell-lsp-types_0_19_0_0;
+  haskell-lsp-types = self.haskell-lsp-types_0_20_0_0;
 
-  haskell-lsp = self.haskell-lsp_0_19_0_0;
+  haskell-lsp = self.haskell-lsp_0_20_0_1;
 
-  lsp-test = nix.haskell.lib.dontCheck self.lsp-test_0_9_0_0;
+  parser-combinators = self.parser-combinators_1_2_1;
 
-  lsp-int = self.callCabal2nix "lsp-int" (subpath "test/lsp-int") { };
+  lsp-test = nix.haskell.lib.dontCheck self.lsp-test_0_10_1_0;
 
-  qc-motoko = self.callCabal2nix "qc-motoko" (subpath "test/random") { };
+  lsp-int = super.callPackage generated/lsp-int.nix {};
 
-  winter = self.callCabal2nixWithOptions "winter" nix.sources.winter "--no-check" {};
+  qc-motoko = super.callPackage generated/random.nix {};
 
-  ic-stub = self.callCabal2nixWithOptions "ic-stub" (subpath "ic-stub") "-frelease" { };
+  winter = super.callPackage generated/winter.nix {};
+
+  ic-stub = super.callPackage generated/ic-stub.nix {};
 }

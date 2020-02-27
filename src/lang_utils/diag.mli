@@ -1,6 +1,6 @@
 (* A common data type for diagnostic messages *)
 
-type severity = Warning | Error
+type severity = Warning | Error | Info
 
 type message = {
   sev : severity;

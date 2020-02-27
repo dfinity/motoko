@@ -78,6 +78,7 @@ let range_of_region (at : Source.region) : Lsp_t.range = Lsp_t.
 let severity_of_sev : Diag.severity -> Lsp.DiagnosticSeverity.t = function
   | Diag.Error -> Lsp.DiagnosticSeverity.Error
   | Diag.Warning -> Lsp.DiagnosticSeverity.Warning
+  | Diag.Info -> Lsp.DiagnosticSeverity.Information
 
 let diagnostics_of_message (msg : Diag.message) : (Lsp_t.diagnostic * string) = (Lsp_t.
   { diagnostic_range = range_of_region msg.Diag.at;
@@ -99,7 +100,7 @@ let start entry_point debug =
   let _ = Flags.M.iter
             (fun k v -> log_to_file "package" (Printf.sprintf "%s => %s" k v))
             !Flags.package_urls in
-  let _ = Debug.logger := log_to_file "debug" in
+  let _ = Debug.logger := log_to_file in
   let publish_diagnostics = Channel.publish_diagnostics oc in
   let clear_diagnostics = Channel.clear_diagnostics oc in
   let send_response = Channel.send_response oc in
@@ -108,37 +109,31 @@ let start entry_point debug =
   let client_capabilities = ref None in
   let project_root = Sys.getcwd () in
   let _ = log_to_file "project_root" project_root in
+  let startup_diags = ref [] in
   let files_with_diags = ref [] in
-
   let vfs = ref Vfs.empty in
   let decl_index =
-    let ix = match Declaration_index.make_index log_to_file !vfs [entry_point] with
-      | Error(err) ->
-        List.iter (fun e -> log_to_file "Error" (Diag.string_of_message e))  err;
-        Declaration_index.empty ()
+    let ix = match Declaration_index.make_index log_to_file project_root !vfs [entry_point] with
+      | Error errs ->
+        List.iter (fun err -> log_to_file "Error" (Diag.string_of_message err)) errs;
+        startup_diags := errs;
+        Declaration_index.empty project_root
       | Ok((ix, _)) -> ix in
     ref ix in
-  let rec loop () =
-    let clength = read_line () in
-    let cl = "Content-Length: " in
-    let cll = String.length cl in
-    let num =
-      (int_of_string
-        (String.trim
-           (String.sub
-              clength
-              cll
-              (String.length(clength) - cll - 1)))) + 2 in
-    let buffer = Buffer.create num in
-    Buffer.add_channel buffer stdin num;
-    let raw = String.trim (Buffer.contents buffer) in
-    let message = Lsp_j.incoming_message_of_string raw in
-    let message_id = message.Lsp_t.incoming_message_id in
 
-    (match (message_id, message.Lsp_t.incoming_message_params) with
+  let sync_diagnostics msgs =
+    let diags_by_file =
+      msgs
+      |> List.map diagnostics_of_message
+      |> Lib.List.group (fun (_, f1) (_, f2) -> f1 = f2)
+      |> List.map (fun diags ->
+           let (_, file) = List.hd diags in
+           (List.map fst diags, Vfs.uri_from_file file)) in
+    List.iter clear_diagnostics !files_with_diags;
+    files_with_diags := List.map snd diags_by_file;
+    List.iter (fun (diags, uri) -> publish_diagnostics uri diags) diags_by_file in
 
-    (* Request messages *)
-
+  let handle_message raw = function
     | (Some id, `Initialize params) ->
        client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
        let completion_options =
@@ -223,28 +218,16 @@ let start entry_point debug =
     | (_, `TextDocumentDidClose params) ->
        vfs := Vfs.close_file params !vfs
     | (_, `TextDocumentDidSave _) ->
-       let msgs = match Declaration_index.make_index log_to_file !vfs [entry_point] with
-        | Error msgs' -> List.iter (fun msg -> log_to_file "rebuild_error" (Diag.string_of_message msg)) msgs'; msgs'
-        | Ok((ix, msgs')) ->
-           decl_index := ix;
-           msgs' in
-       let diags_by_file =
-         msgs
-         |> List.map diagnostics_of_message
-         |> Lib.List.group (fun (_, f1) (_, f2) -> f1 = f2)
-         |> List.map (fun diags ->
-                let (_, file) = List.hd diags in
-                (List.map fst diags, Vfs.uri_from_file file)) in
-
-       List.iter clear_diagnostics !files_with_diags;
-       files_with_diags := List.map snd diags_by_file;
-       List.iter (fun (diags, uri) ->
-           let _ = log_to_file "diag_uri" uri in
-           publish_diagnostics uri diags) diags_by_file;
-
-    (* Notification messages *)
+       let msgs = match Declaration_index.make_index log_to_file project_root !vfs [entry_point] with
+         | Error msgs' -> List.iter (fun msg -> log_to_file "rebuild_error" (Diag.string_of_message msg)) msgs'; msgs'
+         | Ok((ix, msgs')) ->
+            decl_index := ix;
+            msgs' in
+       sync_diagnostics msgs
 
     | (None, `Initialized _) ->
+       sync_diagnostics !startup_diags;
+       startup_diags := [];
        show_message Lsp.MessageType.Info "Motoko LS initialized";
 
     | (Some id, `Shutdown _) ->
@@ -252,8 +235,10 @@ let start entry_point debug =
        response_result_message id (`ShutdownResponse None)
        |> Lsp_j.string_of_response_message
        |> send_response
+
     | (_, `Exit _) ->
        if !shutdown then exit 0 else exit 1
+
     | (Some id, `CompletionRequest params) ->
        let uri =
          params
@@ -281,8 +266,25 @@ let start entry_point debug =
        |> send_response
     (* Unhandled messages *)
     | _ ->
-      log_to_file "unhandled message" raw;
-    );
+      log_to_file "unhandled message" raw in
 
+  let rec loop () =
+    let clength = read_line () in
+    let cl = "Content-Length: " in
+    let cll = String.length cl in
+    let num =
+      int_of_string
+        String.(trim (sub clength cll (length(clength) - cll - 1))) + 2 in
+    let buffer = Buffer.create num in
+    Buffer.add_channel buffer stdin num;
+    let raw = String.trim (Buffer.contents buffer) in
+    let message =
+      try Some (Lsp_j.incoming_message_of_string raw)
+      with _ -> None in
+    (match message with
+     | None -> Debug.log "decoding error" raw
+     | Some message ->
+        let message_id = message.Lsp_t.incoming_message_id in
+        handle_message raw (message_id, message.Lsp_t.incoming_message_params));
     loop ()
   in loop ()

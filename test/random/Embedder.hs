@@ -1,6 +1,6 @@
 {-# language OverloadedStrings, {-PartialTypeSignatures,-} ScopedTypeVariables, TupleSections #-}
 
-module Embedder (Embedder(..), WasmAPI(..), embedder, embedderCommand, addCompilerArgs, addEmbedderArgs, invokeEmbedder) where
+module Embedder (Embedder(..), WasmAPI(..), embedder, isHealthy, embedderCommand, addCompilerArgs, addEmbedderArgs, invokeEmbedder) where
 
 import Test.QuickCheck
 
@@ -9,7 +9,9 @@ import Turtle.Pipe
 
 import Control.Monad.Catch
 import GHC.IO.Exception (IOException)
+import Data.Text (unwords)
 import Data.IORef
+-- import Debug.Trace (traceShowId, traceShow)
 
 data WasmAPI = DontPrint | WASI
 
@@ -22,6 +24,11 @@ embedderCommand Reference = "wasm"
 embedderCommand (WasmTime _) = "wasmtime"
 embedderCommand Drun = "drun"
 
+isHealthy :: Embedder -> IO Bool
+isHealthy e = do
+  (res, _) <- shellStrict (embedderCommand e <> " --help") empty
+  pure $ res == ExitSuccess
+
 addCompilerArgs Reference = ("-no-system-api" :)
 addCompilerArgs (WasmTime DontPrint) = ("-no-system-api" :)
 addCompilerArgs (WasmTime WASI) = ("-wasi-system-api" :)
@@ -30,6 +37,9 @@ addCompilerArgs Drun = id
 addEmbedderArgs Reference = id
 addEmbedderArgs (WasmTime _) = ("--disable-cache" :) . ("--cranelift" :)
 addEmbedderArgs Drun = ("--extra-batches" :) . ("10" :)
+
+embedderInvocation :: Embedder -> [Text] -> [Text]
+embedderInvocation e args = embedderCommand e : addEmbedderArgs e args
 
 invokeEmbedder :: Embedder -> Turtle.FilePath -> IO (ExitCode, Text, Text)
 invokeEmbedder embedder wasm = go embedder
@@ -46,7 +56,7 @@ invokeEmbedder embedder wasm = go embedder
             rm (fileArg control) `catch` \(_ :: GHC.IO.Exception.IOException) -> pure () -- rm -f
             let Right c = toText control
             procs "mkfifo" [c] empty
-            consumer <- forkShell $ inshell ("drun --extra-batches 100 " <> c) empty
+            consumer <- forkShell $ inshell (Data.Text.unwords $ embedderInvocation embedder [c]) empty
             let install = unsafeTextToLine $ format ("install ic:2A012B "%s%" 0x") w
 
             pipe (fileArg control) (pure install

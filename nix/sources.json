@@ -2,13 +2,13 @@
     "common": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/common",
-        "rev": "233f63f23f0a207f291693fc1983a92a53e28b59",
+        "rev": "7278afe2b6ddcd0c78c82fae38160bc4583fc1a6",
         "type": "git"
     },
     "dfinity": {
-        "ref": "master",
+        "ref": "v0.5.0",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "c9459e781f5b4b77452949f1e63725612b2201c3",
+        "rev": "fc1706faada19c3bcf0eee941b0468bf0c312d00",
         "type": "git"
     },
     "esm": {
@@ -33,14 +33,13 @@
     },
     "nixpkgs": {
         "branch": "master",
-        "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
         "homepage": "https://github.com/NixOS/nixpkgs",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "82875a20ba444110396f95537b18247898e40e22",
-        "sha256": "1xy2zn3hkcv66ddvscr3l32jcx1qg9h14zvhmy5zf0pcfb8gn42i",
+        "rev": "82a6834e3b1ae343fed1d9495943fba71d6759fa",
+        "sha256": "0q6vdl3m80mv9vlgix6116vghgnnr1hixa60b3wv7krxx3gaz626",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/82875a20ba444110396f95537b18247898e40e22.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/82a6834e3b1ae343fed1d9495943fba71d6759fa.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

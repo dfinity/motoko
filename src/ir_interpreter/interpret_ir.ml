@@ -128,7 +128,6 @@ struct
     if not (Queue.is_empty q) then (yield (); run ())
 end
 
- 
 (* Async auxiliary functions *)
 
 (* Are these just duplicates of the corresponding functions in interpret.ml? If so, refactor *)
@@ -192,22 +191,16 @@ let await env at async k =
     )
 
 
-let actor_msg env id f c v (k : V.value V.cont) =
-  if env.flags.trace then trace "-> message %s%s" id (string_of_arg env v);
-  Scheduler.queue (fun () ->
-    if env.flags.trace then trace "<- message %s%s" id (string_of_arg env v);
-    incr trace_depth;
-    f c v k
-  )
+(* queue a lowered oneway or replying function that no longer does AsyncE on entry *)
+let queue f = fun c v k -> Scheduler.queue (fun () -> f c v k)
 
 let make_unit_message env id call_conv f =
+  assert env.flavor.has_async_typ;
   let open CC in
   match call_conv with
   | {sort = T.Shared s; n_res = 0; _} ->
-    Value.message_func s call_conv.n_args (fun c v k ->
-      actor_msg env id f c v (fun _ -> ());
-      k V.unit
-    )
+    (* message scheduled by AsyncE in f *)
+    Value.message_func s call_conv.n_args f
   | _ ->
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
 
@@ -216,13 +209,21 @@ let make_async_message env id call_conv f =
   let open CC in
   match call_conv with
   | {sort = T.Shared s; control = T.Promises; _} ->
-    Value.async_func s call_conv.n_args call_conv.n_res (fun c v k ->
-      let async = make_async () in
-      actor_msg env id f c v (fun v_async ->
-        get_async (V.as_async v_async) (set_async async) (reject_async async)
-      );
-      k (V.Async async)
-    )
+    (* message scheduled by AsyncE in f *)
+    Value.async_func s call_conv.n_args call_conv.n_res f
+  | _ ->
+    failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
+
+let make_lowered_unit_message env id call_conv f =
+  assert (not env.flavor.has_async_typ);
+  let open CC in
+  match call_conv with
+  | {sort = T.Shared s; n_res = 0; _} ->
+    (* message scheduled here (not by f) *)
+    Value.message_func s call_conv.n_args (fun c v k ->
+      (queue f) c v (fun _ -> ());
+      k (V.unit);
+    );
   | _ ->
     failwith ("unexpected call_conv " ^ string_of_call_conv call_conv)
 
@@ -232,7 +233,8 @@ let make_replying_message env id call_conv f =
   match call_conv with
   | {sort = T.Shared s; control = T.Replies; _} ->
     Value.replies_func s call_conv.n_args call_conv.n_res (fun c v k ->
-      actor_msg env id f c v (fun v -> ());
+      (* message scheduled here (not by f) *)
+      (queue f) c v (fun _ -> ());
       k (V.unit)
     )
   | _ ->
@@ -240,7 +242,11 @@ let make_replying_message env id call_conv f =
 
 let make_message env x cc f : V.value =
   match cc.CC.control with
-  | T.Returns -> make_unit_message env x cc f
+  | T.Returns ->
+    if env.flavor.has_async_typ then
+      make_unit_message env x cc f
+    else
+      make_lowered_unit_message env x cc f
   | T.Promises -> make_async_message env x cc f
   | T.Replies -> make_replying_message env x cc f
 
@@ -748,7 +754,7 @@ and interpret_block env ro decs exp k =
 and declare_dec dec : val_env =
   match dec.it with
   | LetD (pat, _) -> declare_pat pat
-  | VarD (id, _) -> declare_id id
+  | VarD (id, _,  _) -> declare_id id
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -765,7 +771,7 @@ and interpret_dec env dec k =
       define_pat env pat v;
       k ()
     )
-  | VarD (id, exp) ->
+  | VarD (id, _, exp) ->
     interpret_exp env exp (fun v ->
       define_id env id (V.Mut (ref v));
       k ()

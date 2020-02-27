@@ -55,6 +55,7 @@ type env =
     labs : lab_env;
     rets : ret_env;
     async : T.con option;
+    seen : con_env ref;
   }
 
 let env_of_scope scope flavor : env =
@@ -64,6 +65,7 @@ let env_of_scope scope flavor : env =
     labs = T.Env.empty;
     rets = None;
     async = None;
+    seen = ref T.ConSet.empty;
   }
 
 
@@ -141,10 +143,7 @@ let rec check_typ env typ : unit =
     begin
       match Con.kind c with
       | T.Def (tbs,_) ->
-        if not (T.ConSet.mem c env.cons) then
-          (* an anonymous recursive type, check its def but beware recursion
-             future: use a visited set *)
-          check_con {env with cons = T.ConSet.add c env.cons} c;
+        check_con env c;
         check_typ_bounds env tbs typs no_region
       | T.Abs (tbs, _) ->
         check env no_region (T.ConSet.mem c env.cons) "free type constructor %s "
@@ -217,12 +216,16 @@ let rec check_typ env typ : unit =
     check_con env c
 
 and check_con env c =
-  let env = {env with cons = T.ConSet.add c env.cons} in
-  let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
-  let cs, ce = check_typ_binds env binds in
-  let ts = List.map (fun c -> T.Con (c, [])) cs in
-  let env' = adjoin_cons env ce in
-  check_typ env' (T.open_ ts typ)
+  if T.ConSet.mem c !(env.seen) then ()
+  else
+  begin
+    env.seen := T.ConSet.add c !(env.seen);
+    let T.Abs (binds,typ) | T.Def (binds, typ) = Con.kind c in
+    let cs, ce = check_typ_binds env binds in
+    let ts = List.map (fun c -> T.Con (c, [])) cs in
+    let env' = adjoin_cons env ce in
+    check_typ env' (T.open_ ts typ)
+  end
 
 and check_typ_field env s typ_field : unit =
   let T.{lab; typ} = typ_field in
@@ -848,20 +851,15 @@ and close_typ_binds cs tbs =
 
 and check_dec env dec  =
   (* helpers *)
-  let check p = check env dec.at p in
   let (<:) t1 t2 = check_sub env dec.at t1 t2 in
   match dec.it with
   | LetD (pat, exp) ->
     ignore (check_pat_exhaustive env pat);
     check_exp env exp;
     typ exp <: pat.note
-  | VarD (id, exp) ->
-    let t0 = try T.Env.find id env.vals with
-             |  Not_found -> error env dec.at "unbound variable %s" id
-    in
-    check (T.is_mut t0) "variable in VarD is not immutable";
+  | VarD (id, t, exp) ->
     check_exp env exp;
-    typ exp <: T.as_immut t0
+    typ exp <: t
 
 and check_decs env decs  =
   List.iter (check_dec env) decs;
@@ -874,11 +872,12 @@ and gather_dec env scope dec : scope =
   | LetD (pat, exp) ->
     let ve = gather_pat env scope.val_env pat in
     { val_env = ve }
-  | VarD (id, exp) ->
+  | VarD (id, t, exp) ->
+    check_typ env t;
     check env dec.at
       (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
-    let ve =  T.Env.add id (T.Mut (typ exp)) scope.val_env in
+    let ve =  T.Env.add id (T.Mut t) scope.val_env in
     { val_env = ve}
 
 (* Programs *)

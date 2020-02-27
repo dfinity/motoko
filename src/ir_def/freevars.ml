@@ -120,7 +120,7 @@ and id i = M.singleton i {captured = false; eager = true}
 
 and dec d = match d.it with
   | LetD (p, e) -> pat p +++ exp e
-  | VarD (i, e) -> (M.empty, S.singleton i) +++ exp e
+  | VarD (i, _, e) -> (M.empty, S.singleton i) +++ exp e
 
 (* The variables captured by a function. May include the function itself! *)
 and captured e =

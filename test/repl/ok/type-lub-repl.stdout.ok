@@ -28,5 +28,5 @@ Motoko 0.1 interpreter
 > 25 : Int
 > 42 : Int
 >   func : (C, D) -> [C]
-> [async (?4), async (?(-42))] : [(async<@> (?Int))]
+> [async (?4), async (?(-42))] : [(async<$top-level> (?Int))]
 > 

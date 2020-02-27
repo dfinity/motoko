@@ -164,7 +164,7 @@ let tagE i e =
  }
 
 let dec_eff dec = match dec.it with
-  | LetD (_,e) | VarD (_,e) -> eff e
+  | LetD (_,e) | VarD (_, _, e) -> eff e
 
 let rec simpl_decs decs = List.concat (List.map simpl_dec decs)
 and simpl_dec dec = match dec.it with
@@ -377,8 +377,8 @@ let letP pat exp = LetD (pat, exp) @@ no_region
 
 let letD x exp = letP (varP x) exp
 
-let varD x exp =
-  VarD (x, exp) @@ no_region
+let varD x t exp =
+  VarD (x, t, exp) @@ no_region
 
 let expD exp =
   let pat = { it = WildP; at = exp.at; note = exp.note.note_typ } in

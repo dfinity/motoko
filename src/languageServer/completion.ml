@@ -35,15 +35,18 @@ let string_of_item (item : Lsp_t.completion_item) : string =
   item.Lsp_t.completion_item_label
 
 let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
-  let tmpl = template_of_ide_decl d in
+  (* let tmpl = template_of_ide_decl d in *)
+  let tmpl = DI.name_of_ide_decl d in
   match d with
   | DI.ValueDecl value ->
      Lsp_t.{
         completion_item_label = value.DI.name;
         completion_item_kind = 3;
-        completion_item_insertText = tmpl;
-        completion_item_insertTextFormat = 2;
-        completion_item_detail = Some(Type.string_of_typ value.DI.typ);
+        completion_item_insertText = Some tmpl;
+        completion_item_insertTextFormat = Some 2;
+        completion_item_additionalTextEdits = None;
+        completion_item_documentation = Some (Pretty.string_of_typ value.DI.typ);
+        completion_item_detail = None;
      }
   | DI.TypeDecl ty ->
      let con = ty.DI.typ in
@@ -51,14 +54,16 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
      Lsp_t.{
         completion_item_label = ty.DI.name;
         completion_item_kind = 7;
-        completion_item_insertText = tmpl;
-        completion_item_insertTextFormat = 2;
-        completion_item_detail =
+        completion_item_insertText = Some tmpl;
+        completion_item_insertTextFormat = Some 2;
+        completion_item_additionalTextEdits = None;
+        completion_item_documentation =
           Some
             (Printf.sprintf
                "type %s%s"
                ty.DI.name
                params);
+        completion_item_detail = None;
      }
 
 let import_relative_to_project_root root module_path dependency =
@@ -132,18 +137,20 @@ let completions index logger project_root file_path file_contents line column =
   let imported = Source_file.parse_module_header project_root file_path file_contents in
   let current_uri_opt = Lib.FilePath.relative_to project_root file_path in
   let toplevel_decls =
-     let current_module_decls =
-       current_uri_opt
-       |> opt_bind (fun uri -> DI.lookup_module uri index)
-       |> Option.fold ~none:[] ~some:snd in
-     current_module_decls
+    let current_module_decls =
+      current_uri_opt
+      |> opt_bind (fun uri -> DI.lookup_module project_root (Filename.remove_extension uri) index)
+      |> Option.fold ~none:[] ~some:snd in
+    current_module_decls
   in
   let module_alias_completion_item alias =
     Lsp_t.{
         completion_item_label = alias;
         completion_item_kind = 9;
-        completion_item_insertText = alias;
-        completion_item_insertTextFormat = 1;
+        completion_item_insertText = Some alias;
+        completion_item_insertTextFormat = Some 1;
+        completion_item_additionalTextEdits = None;
+        completion_item_documentation = None;
         completion_item_detail = None;
     } in
   match find_completion_prefix logger file_contents line column with
@@ -165,7 +172,7 @@ let completions index logger project_root file_path file_contents line column =
        |> List.find_opt (fun (mn, _) -> String.equal mn alias) in
      match module_path with
      | Some mp ->
-        (match DI.lookup_module (snd mp) index with
+        (match DI.lookup_module project_root (snd mp) index with
          | Some (_, decls) ->
             decls
             |> List.filter (has_prefix prefix)
@@ -174,8 +181,22 @@ let completions index logger project_root file_path file_contents line column =
             (* The matching import references a module we haven't loaded *)
             [])
      | None ->
-        (* No module with the given prefix was found *)
-        []
+        (* No import with the given alias was found *)
+        let import_edit = Imports.add_import file_contents alias in
+        let possible_imports = DI.find_with_prefix prefix (Lib.FilePath.make_absolute project_root file_path) index in
+        let completions =
+          Lib.List.concat_map (fun (p, ds) ->
+            if p = Filename.basename file_path then
+              (* Self-imports are not allowed *)
+              []
+            else
+              List.map (fun d ->
+                Lsp_t.{
+                  (item_of_ide_decl d) with
+                    completion_item_additionalTextEdits = Some [import_edit p];
+                    completion_item_detail = Some p
+                }) ds) possible_imports in
+        completions
 
 let completion_handler index logger project_root file_path file_contents position =
   let line = position.Lsp_t.position_line in
