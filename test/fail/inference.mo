@@ -112,9 +112,9 @@ bnd(true);
 
 
 func scopeco<T>(f:<U>T->U){};
-scopeco(func<V>(x:V):V{x});
+scopeco(func<V>(x:V):V{x}); // reject due to scope violation
 func scopecontra<T>(f:<U>U->T){};
-scopecontra(func<V>(x:V):V{x});
+scopecontra(func<V>(x:V):V{x}); // reject due to scope violation
 
 
 //TODO: invariant mutables, constructor constraints, bail on open bounds
