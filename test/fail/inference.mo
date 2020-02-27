@@ -91,9 +91,9 @@ ignore contra(func (x:Nat,y:Bool) {});
 
 
 func coswap<T <: U,U>(x : T,y : T):(U,U){(y,x)};
-ignore coswap(1,2); // works (coz Int <: Nat)
-ignore coswap(1,2:Int); // works (coz Int <: Nat)
-ignore coswap(1,true); // doesn't work unless we lub with bound
+ignore coswap(1,2); // rejected due to open bounds
+ignore coswap(1,2:Int); // rejected due to open bounds
+ignore coswap(1,true); // rejected due to open bounds
 
 
 // support domain driven overloading for implicitly scoped,
@@ -111,6 +111,10 @@ ignore (if false (bnd(loop {}):None) else 1); // fails, underspecialized, requir
 bnd(true);
 
 
+func scopeco<T>(f:<U>T->U){};
+scopeco(func<V>(x:V):V{x});
+func scopecontra<T>(f:<U>U->T){};
+scopecontra(func<V>(x:V):V{x});
 
 
 //TODO: invariant mutables, constructor constraints, bail on open bounds
