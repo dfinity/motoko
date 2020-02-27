@@ -2827,7 +2827,9 @@ module Lifecycle = struct
     | InUpdate
     | InQuery
     | PostQuery (* an invalid state *)
-  (* To be added later: InPreUpgrade PostPreUpgrade InPostUpgrade *)
+    | InPreUpgrade
+    | PostPreUpgrade (* an invalid state *)
+    | InPostUpgrade
 
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
@@ -2840,6 +2842,9 @@ module Lifecycle = struct
     | InUpdate -> 5l
     | InQuery -> 6l
     | PostQuery -> 7l
+    | InPreUpgrade -> 8l
+    | PostPreUpgrade -> 9l
+    | InPostUpgrade -> 10l
 
   let ptr = Stack.end_
   let end_ = Int32.add Stack.end_ Heap.word_size
@@ -2856,6 +2861,18 @@ module Lifecycle = struct
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
+    | InPreUpgrade -> [Idle]
+    | PostPreUpgrade -> [InPreUpgrade]
+    | InPostUpgrade -> [PreInit]
+
+  let get env =
+    compile_unboxed_const ptr ^^
+    load_unskewed_ptr
+
+  let set env new_state =
+    compile_unboxed_const ptr ^^
+    compile_unboxed_const (int_of_state new_state) ^^
+    store_unskewed_ptr
 
   let trans env new_state =
     let name = "trans_state" ^ Int32.to_string (int_of_state new_state) in
@@ -2864,16 +2881,12 @@ module Lifecycle = struct
         let rec go = function
         | [] -> E.trap_with env "internal error: unexpected state"
         | (s::ss) ->
-          compile_unboxed_const (int_of_state s) ^^
-          compile_unboxed_const ptr ^^ load_unskewed_ptr ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          get env ^^ compile_eq_const (int_of_state s) ^^
           G.if_ [] (G.i (Br (nr 1l))) G.nop ^^
           go ss
         in go (pre_states new_state)
       ) ^^
-      compile_unboxed_const ptr ^^
-      compile_unboxed_const (int_of_state new_state) ^^
-      store_unskewed_ptr
+      set env new_state
     )
 
 end (* Lifecycle *)
@@ -3149,6 +3162,8 @@ module Dfinity = struct
 
 let export_upgrade_scaffold env = if E.mode env = Flags.StubMode then
   let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
+      Lifecycle.trans env Lifecycle.InPreUpgrade ^^
+
       (* grow stable memory if needed *)
       let (set_pages_needed, get_pages_needed) =  new_local env "pages_needed" in
       G.i MemorySize ^^
@@ -3173,10 +3188,14 @@ let export_upgrade_scaffold env = if E.mode env = Flags.StubMode then
       compile_unboxed_const 0l ^^
       compile_unboxed_const 0l ^^
       G.i MemorySize ^^ compile_mul_const page_size ^^
-      E.call_import env "ic0" "stable_write"
+      E.call_import env "ic0" "stable_write" ^^
+
+      Lifecycle.trans env Lifecycle.PostPreUpgrade
   )) in
 
   let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
+      Lifecycle.trans env Lifecycle.InPostUpgrade ^^
+
       (* grow memory if needed *)
       let (set_pages_needed, get_pages_needed) =  new_local env "pages_needed" in
       E.call_import env "ic0" "stable_size" ^^
@@ -3201,7 +3220,10 @@ let export_upgrade_scaffold env = if E.mode env = Flags.StubMode then
       compile_unboxed_const 0l ^^
       compile_unboxed_const 0l ^^
       E.call_import env "ic0" "stable_size" ^^ compile_mul_const page_size ^^
-      E.call_import env "ic0" "stable_read"
+      E.call_import env "ic0" "stable_read" ^^
+
+      (* set, not trans, as we just copied the memory over *)
+      Lifecycle.set env Lifecycle.Idle
   )) in
 
   E.add_export env (nr {
