@@ -33,9 +33,7 @@ let name c = c.name
 let to_string' show_stamps c =
   if not show_stamps || c.stamp = 0 then c.name else Printf.sprintf "%s/%i" c.name c.stamp
 
-(* TODO(Christoph): Deduping this fails with some kind of "weak" type variable *)
-let to_string c =
-  if c.stamp = 0 then c.name else Printf.sprintf "%s/%i" c.name c.stamp
+let to_string c = to_string' true c
 
 let eq c1 c2 = (c1.name, c1.stamp) = (c2.name, c2.stamp)
 let compare c1 c2 = compare (c1.name, c1.stamp) (c2.name, c2.stamp)
