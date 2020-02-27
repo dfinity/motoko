@@ -1121,6 +1121,10 @@ let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
 open Printf
 
+type pretty_config = {
+    show_stamps: bool
+  }
+
 let string_of_prim = function
   | Null -> "Null"
   | Bool -> "Bool"
@@ -1148,8 +1152,8 @@ let string_of_prim = function
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
 
-let string_of_con' vs c =
-  let s = Con.to_string c in
+let string_of_con' cfg vs c =
+  let s = Con.to_string' cfg.show_stamps c in
   if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
 let string_of_obj_sort = function
@@ -1162,56 +1166,56 @@ let string_of_func_sort = function
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
 
-let rec string_of_typ_nullary vs = function
+let rec string_of_typ_nullary cfg vs = function
   | Pre -> "???"
   | Any -> "Any"
   | Non -> "None"
   | Prim p -> string_of_prim p
   | Var (s, i) -> (try string_of_var (List.nth vs i) with _ -> sprintf "??? %s %i" s i)
-  | Con (c, []) -> string_of_con' vs c
+  | Con (c, []) -> string_of_con' cfg vs c
   | Con (c, ts) ->
-    sprintf "%s<%s>" (string_of_con' vs c)
-      (String.concat ", " (List.map (string_of_typ' vs) ts))
+    sprintf "%s<%s>" (string_of_con' cfg vs c)
+      (String.concat ", " (List.map (string_of_typ'' cfg vs) ts))
   | Tup ts ->
     sprintf "(%s%s)"
-      (String.concat ", " (List.map (string_of_typ' vs) ts))
+      (String.concat ", " (List.map (string_of_typ'' cfg vs) ts))
       (if List.length ts = 1 then "," else "")
   | Array (Mut t) ->
-    sprintf "[var %s]" (string_of_typ_nullary vs t)
+    sprintf "[var %s]" (string_of_typ_nullary cfg vs t)
   | Array t ->
-    sprintf "[%s]" (string_of_typ_nullary vs t)
+    sprintf "[%s]" (string_of_typ_nullary cfg vs t)
   | Obj (Object, fs) ->
-    sprintf "{%s}" (String.concat "; " (List.map (string_of_field vs) fs))
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_field cfg vs) fs))
   | Variant [] -> "{#}"
   | Variant fs ->
-    sprintf "{%s}" (String.concat "; " (List.map (string_of_tag vs) fs))
+    sprintf "{%s}" (String.concat "; " (List.map (string_of_tag cfg vs) fs))
   | Typ c ->
-    sprintf "= (type %s)" (string_of_kind (Con.kind c))
-  | t -> sprintf "(%s)" (string_of_typ' vs t)
+    sprintf "= (type %s)" (string_of_kind' cfg (Con.kind c))
+  | t -> sprintf "(%s)" (string_of_typ'' cfg vs t)
 
-and string_of_dom vs ts =
-  let dom = string_of_typ_nullary vs (seq ts) in
+and string_of_dom cfg vs ts =
+  let dom = string_of_typ_nullary cfg vs (seq ts) in
   match ts with
   | [Tup _] ->
      sprintf "(%s)" dom
   | _ -> dom
 
-and string_of_cod vs ts =
-  let cod = string_of_typ' vs (seq ts) in
+and string_of_cod cfg vs ts =
+  let cod = string_of_typ'' cfg vs (seq ts) in
   match ts with
   | [Tup _] -> sprintf "(%s)" cod
   | _ -> cod
 
-and string_of_control_cod sugar c vs ts =
+and string_of_control_cod cfg sugar c vs ts =
   match c, ts with
   (* sugar *)
   | Returns, [Async (_,t)] when sugar ->
-    sprintf "async %s" (string_of_typ' vs t)
+    sprintf "async %s" (string_of_typ'' cfg vs t)
   | Promises, ts when sugar ->
-    sprintf "async %s" (string_of_cod vs ts)
+    sprintf "async %s" (string_of_cod cfg vs ts)
   (* explicit *)
-  | (Returns | Promises), _ -> string_of_cod vs ts
-  | Replies, _ -> sprintf "replies %s"  (string_of_cod vs ts)
+  | (Returns | Promises), _ -> string_of_cod cfg vs ts
+  | Replies, _ -> sprintf "replies %s"  (string_of_cod cfg vs ts)
 
 and can_sugar t = match t with
   | Func(s, Promises, tbs, ts1, ts2)
@@ -1244,7 +1248,7 @@ and can_omit n t =
     end
   in go n t
 
-and string_of_typ' vs t =
+and string_of_typ'' cfg vs t =
   match t with
   | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
     let vs' = vars_of_binds vs tbs in
@@ -1253,50 +1257,50 @@ and string_of_typ' vs t =
       match tbs with
       | [tb] ->
          sprintf "%s%s -> %s" (string_of_func_sort s)
-          (string_of_dom vs ts1)
-          (string_of_control_cod true c vs ts2)
+          (string_of_dom cfg vs ts1)
+          (string_of_control_cod cfg true c vs ts2)
       | _ ->
         sprintf "%s%s%s -> %s"
-          (string_of_func_sort s) (string_of_binds (vs' @ vs) vs'' tbs')
-          (string_of_dom (vs' @ vs) ts1) (string_of_control_cod true c (vs' @ vs) ts2)
+          (string_of_func_sort s) (string_of_binds cfg (vs' @ vs) vs'' tbs')
+          (string_of_dom cfg (vs' @ vs) ts1) (string_of_control_cod cfg true c (vs' @ vs) ts2)
     end
   | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
-      (string_of_dom vs ts1)
-      (string_of_control_cod false c vs ts2)
+      (string_of_dom cfg vs ts1)
+      (string_of_control_cod cfg false c vs ts2)
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = vars_of_binds vs tbs in
     sprintf "%s%s%s -> %s"
-      (string_of_func_sort s) (string_of_binds (vs' @ vs) vs' tbs)
-      (string_of_dom (vs' @ vs) ts1) (string_of_control_cod false c (vs' @ vs) ts2)
+      (string_of_func_sort s) (string_of_binds cfg (vs' @ vs) vs' tbs)
+      (string_of_dom cfg (vs' @ vs) ts1) (string_of_control_cod cfg false c (vs' @ vs) ts2)
   | Opt t ->
-    sprintf "?%s"  (string_of_typ_nullary vs t)
+    sprintf "?%s"  (string_of_typ_nullary cfg vs t)
   | Async (t1, t2) ->
     (match t1 with
-     | Var(_, n) when fst (List.nth vs n) = "" -> sprintf "async %s" (string_of_typ_nullary vs t2)
-     | _ -> sprintf "async<%s> %s" (string_of_typ' vs t1) (string_of_typ_nullary vs t2))
+     | Var(_, n) when fst (List.nth vs n) = "" -> sprintf "async %s" (string_of_typ_nullary cfg vs t2)
+     | _ -> sprintf "async<%s> %s" (string_of_typ'' cfg vs t1) (string_of_typ_nullary cfg vs t2))
   | Obj (s, fs) ->
-    sprintf "%s%s" (string_of_obj_sort s) (string_of_typ_nullary vs (Obj (Object, fs)))
+    sprintf "%s%s" (string_of_obj_sort s) (string_of_typ_nullary cfg vs (Obj (Object, fs)))
   | Typ c ->
-    sprintf "= (%s,%s)" (Con.to_string c) (string_of_kind (Con.kind c))
+    sprintf "= (%s,%s)" (Con.to_string' cfg.show_stamps c) (string_of_kind' cfg (Con.kind c))
   | Mut t ->
-    sprintf "var %s" (string_of_typ' vs t)
-  | t -> string_of_typ_nullary vs t
+    sprintf "var %s" (string_of_typ'' cfg vs t)
+  | t -> string_of_typ_nullary cfg vs t
 
-and string_of_field vs {lab; typ} =
+and string_of_field cfg vs {lab; typ} =
   match typ with
   | Typ c ->
-    let op, sbs, st = strings_of_kind (Con.kind c) in
+    let op, sbs, st = strings_of_kind' cfg (Con.kind c) in
     sprintf "type %s%s %s %s" lab sbs op st
   | Mut t' ->
-    sprintf "var %s : %s" lab (string_of_typ' vs t')
+    sprintf "var %s : %s" lab (string_of_typ'' cfg vs t')
   | _ ->
-    sprintf "%s : %s" lab (string_of_typ' vs typ)
+    sprintf "%s : %s" lab (string_of_typ'' cfg vs typ)
 
-and string_of_tag vs {lab; typ} =
+and string_of_tag cfg vs {lab; typ} =
   match typ with
   | Tup [] -> sprintf "#%s" lab
-  | _ -> sprintf "#%s : %s" lab (string_of_typ' vs typ)
+  | _ -> sprintf "#%s : %s" lab (string_of_typ'' cfg vs typ)
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs
@@ -1306,30 +1310,33 @@ and name_of_var vs v =
   | [] -> v
   | v'::vs' -> name_of_var vs' (if v = v' then (fst v, snd v + 1) else v)
 
-and string_of_bind vs v {bound; _} =
+and string_of_bind cfg vs v {bound; _} =
   string_of_var v ^
-  (if bound = Any then "" else " <: " ^ string_of_typ' vs bound)
+  (if bound = Any then "" else " <: " ^ string_of_typ'' cfg vs bound)
 
-and string_of_binds vs vs' = function
+and string_of_binds cfg vs vs' = function
   | [] -> ""
-  | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind vs) vs' tbs) ^ ">"
+  | tbs -> "<" ^ String.concat ", " (List.map2 (string_of_bind cfg vs) vs' tbs) ^ ">"
 
 
-and strings_of_kind k =
+and strings_of_kind' cfg k =
   let op, tbs, t =
     match k with
     | Def (tbs, t) -> "=", tbs, t
     | Abs (tbs, t) -> "<:", tbs, t
   in
   let vs = vars_of_binds [] tbs in
-  op, string_of_binds vs vs tbs, string_of_typ' vs t
+  op, string_of_binds cfg vs vs tbs, string_of_typ'' cfg vs t
 
-and string_of_kind k =
-  let op, sbs, st = strings_of_kind k in
+and string_of_kind' cfg k =
+  let op, sbs, st = strings_of_kind' cfg k in
   sprintf "%s %s%s" op sbs st
 
-let string_of_con : con -> string = string_of_con' []
-let string_of_typ : typ -> string = string_of_typ' []
+let strings_of_kind : kind -> (string * string * string) = strings_of_kind' { show_stamps = true }
+let string_of_kind : kind -> string = string_of_kind' { show_stamps = true }
+let string_of_con : con -> string = string_of_con' { show_stamps = true } []
+let string_of_typ' : pretty_config -> typ -> string = fun cfg -> string_of_typ'' cfg []
+let string_of_typ : typ -> string = string_of_typ' { show_stamps = true }
 let _ = str := string_of_typ
 
 let rec string_of_typ_expand t =
@@ -1344,4 +1351,3 @@ let rec string_of_typ_expand t =
       | t' -> s ^ " = " ^ string_of_typ_expand t'
     )
   | _ -> s
-

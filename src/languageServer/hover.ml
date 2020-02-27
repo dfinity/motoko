@@ -5,9 +5,9 @@ module DI = Declaration_index
 
 let hover_detail = function
   | ValueDecl value ->
-     value.name ^ " : " ^ Type.string_of_typ value.typ
+     value.name ^ " : " ^ Type.(string_of_typ' { show_stamps = false } value.typ)
   | TypeDecl ty ->
-     let _, params, _ = Type.strings_of_kind (Con.kind ty.typ) in
+     let _, params, _ = Type.(strings_of_kind' { show_stamps = false } (Con.kind ty.typ)) in
      Printf.sprintf "public type %s%s" ty.name params
 
 let markup_content (msg : string) : Lsp.markup_content =

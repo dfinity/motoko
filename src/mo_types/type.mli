@@ -217,12 +217,18 @@ val scope_bind : bind
 
 (* Pretty printing *)
 
+type pretty_config = {
+    show_stamps: bool
+  }
+
 val string_of_obj_sort : obj_sort -> string
 val string_of_func_sort : func_sort -> string
 val string_of_con : con -> string
 val string_of_prim : prim -> string
 val string_of_typ : typ -> string
+val string_of_typ' : pretty_config -> typ -> string
 val string_of_kind : kind -> string
 val strings_of_kind : kind -> string * string * string
+val strings_of_kind' : pretty_config -> kind -> string * string * string
 val string_of_typ_expand : typ -> string
 
