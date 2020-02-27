@@ -1158,7 +1158,7 @@ let string_of_func_sort = function
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
 
-module MakePretty(Cfg:sig val show_stamps : bool end) =
+module MakePretty(Cfg : sig val show_stamps : bool end) =
   struct
 
 let string_of_con' vs c =
@@ -1357,4 +1357,4 @@ module type Pretty = sig
   val string_of_typ_expand : typ -> string
 end
 
-include MakePretty(struct let show_stamps=true end)
+include MakePretty(struct let show_stamps = true end)
