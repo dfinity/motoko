@@ -24,7 +24,7 @@ Concretely, the syntax of `<dec-field>` is extended as follows:
 
 Additional restrictions apply:
 * The `stable` modifier _must_ appear on `let` and `var` declarations that are actor fields.
-* The `stable` modified _must not_ appear anywhere else.
+* The `stable` modifier _must not_ appear anywhere else.
 
 Both restrictions may be relaxed in the future.
 
