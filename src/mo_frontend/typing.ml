@@ -894,7 +894,7 @@ and infer_exp'' env exp : T.typ =
       | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
       | _, _::_ -> (* explicit instantiation, check *)
         check_inst_bounds env tbs typs exp.at, check_exp
-      | _::_, [] -> (* implicit or empty instantiation, infer *) (* TODO: distinguish <> from missing *)
+      | _::_, [] -> (* implicit or empty instantiation, infer *) (* TODO: distinguish explicit empty instantation <> from omitted instantiation *)
         let t2 = infer_exp env exp2 in
         match T.bimatch_typ (scope_of_env env) tbs t2 t_arg with
         | Some ts ->
@@ -903,7 +903,14 @@ and infer_exp'' env exp : T.typ =
           fun env t_arg exp ->
           if not (T.sub t2 t_arg) then
             error env exp.at "cannot infer type arguments due to subtyping\n  %s is not a subtype of %s"  (T.string_of_typ_expand t2) (T.string_of_typ_expand t_arg)
-        | None -> error env exp.at "cannot infer type arguments"
+        | None ->
+          error env exp.at "function of type %s cannot be instantiated to consume argument of type %s" (T.string_of_typ t1)
+      (T.string_of_typ t2)
+        | exception (Failure msg) ->
+          error env exp.at "cannot instantiate function of type %s to argument of type %s:\n  %s"
+            (T.string_of_typ t1)
+            (T.string_of_typ t2)
+            msg
     in
     inst.note <- ts;
     let t_arg = T.open_ ts t_arg in
