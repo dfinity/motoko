@@ -1,0 +1,38 @@
+inference.mo:87.27-87.32: warning, this pattern is never matched
+inference.mo:61.14-61.41: type error, expression of type
+  None -> Any
+cannot produce expected type
+  None -> None
+inference.mo:62.13-62.40: type error, expression of type
+  None -> Any
+cannot produce expected type
+  Any -> Any
+inference.mo:66.8-66.43: type error, cannot instantiate function of type <T>(T -> T) -> () to argument of type Any -> None:
+  under-constrained implicit instantiation None <: T <: Any,
+  with None =/= Any; explicit type instantiation required
+inference.mo:67.8-67.43: type error, cannot instantiate function of type <T>(T -> T) -> () to argument of type None -> Any:
+  over-constrained implicit instantiation requires Any <: T <: None,
+  but Any </: None
+inference.mo:94.8-94.19: type error, cannot instantiate function of type <T <: U, U>(T, T) -> (U, U) to argument of type (Nat, Nat):
+  type parameter T has an open bound U/9 mentioning another type parameter
+; explicit type instantiation required
+inference.mo:95.8-95.23: type error, cannot instantiate function of type <T <: U, U>(T, T) -> (U, U) to argument of type (Nat, Int):
+  type parameter T has an open bound U/10 mentioning another type parameter
+; explicit type instantiation required
+inference.mo:96.8-96.22: type error, cannot instantiate function of type <T <: U, U>(T, T) -> (U, U) to argument of type (Nat, Bool):
+  type parameter T has an open bound U/11 mentioning another type parameter
+; explicit type instantiation required
+inference.mo:107.8-107.14: type error, cannot instantiate function of type <T <: Int>T -> T to argument of type Nat:
+  under-constrained implicit instantiation Nat <: T <: Int,
+  with Nat =/= Int; explicit type instantiation required
+inference.mo:108.19-108.31: type error, expression of type
+  Int
+cannot produce expected type
+  Nat
+inference.mo:110.19-110.31: type error, expression of type
+  Int
+cannot produce expected type
+  None
+inference.mo:111.1-111.10: type error, cannot instantiate function of type <T <: Int>T -> T to argument of type Bool:
+  over-constrained implicit instantiation requires Bool <: T <: Int,
+  but Bool </: Int

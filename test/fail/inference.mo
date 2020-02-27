@@ -55,13 +55,17 @@ func mult2(m:N,n:N):N { m/*<N>*/(curry/*<N,N,N>*/ add n, zero) };
 
 func tricky<T>(f : T -> T) { };
 
+//explicit instantiation
 tricky<None>(func f(x:Any):None { f(x);});
 tricky<Any>(func f(x:Any):None { f(x);});
+tricky<None>(func f(x:None):Any { f(x);}); // correctly rejected
+tricky<Any>(func f(x:None):Any { f(x);}); // correctly rejected
 ignore func <T>()  { tricky<T>(func f(x:Any):None{f(x)}) };
 
+// implicit instantiation
 ignore tricky(func f(x:Any):None { f(x);});
-ignore tricky(func f(x:None):Any { f(x);}); //requires Dolan style bi-matching
-ignore tricky(func f(x:None):None { f(x);}); //requires Dolan style bi-matching
+ignore tricky(func f(x:None):Any { f(x);}); // fails, inconsitent instantiation required.
+ignore tricky(func f(x:None):None { f(x);});
 
 func amb<T>(f : T -> T): T->T { f };
 ignore amb<None>(func f(x:Any):None { f(x);}) : None -> None;
@@ -85,24 +89,29 @@ ignore contra(func (x:Nat,y:Nat) {});
 ignore contra(func (x:Nat,y:Int) {});
 ignore contra(func (x:Nat,y:Bool) {});
 
-/*
+
 func coswap<T <: U,U>(x : T,y : T):(U,U){(y,x)};
 ignore coswap(1,2); // works (coz Int <: Nat)
 ignore coswap(1,2:Int); // works (coz Int <: Nat)
-ignore coswap(1,true); // doesn't work unless we lub with with bound
-*/
+ignore coswap(1,true); // doesn't work unless we lub with bound
 
-// support domain driven overloading for scoped monomorphic functions (as before)
+
+// support domain driven overloading for implicitly scoped,
+// otherwise monomorphic functions (as before)
 func f(g:shared Nat8 -> ()) : async () {
   g(1);
 };
 
 func bnd<T <: Int>(x:T):T{x};
 ignore bnd(1:Int) : Int;
-ignore bnd(1) : Nat;
-ignore (if false (bnd(loop {}):Nat) else 1);
+ignore bnd(1) : Nat; // fails, under-constrained
+ignore (if false (bnd(loop {}):Nat) else 1); // fails, underspecialized, requires expected ret typ info
 ignore (if false (bnd(loop {}):Int) else 1);
-ignore (if false (bnd(loop {}):None) else 1);
+ignore (if false (bnd(loop {}):None) else 1); // fails, underspecialized, requires expected ret typ info
 bnd(true);
 
+
+
+
+//TODO: invariant mutables, constructor constraints, bail on open bounds
 
