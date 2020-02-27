@@ -2813,7 +2813,7 @@ module Lifecycle = struct
     | Started (* (start) has run *)
   *)
     | InInit (* canister_init *)
-    | Running (* basic steady state *)
+    | Idle (* basic steady state *)
     | InUpdate
     | InQuery
     | PostQuery (* an invalid state *)
@@ -2826,7 +2826,7 @@ module Lifecycle = struct
     | Started -> 2l
     *)
     | InInit -> 3l
-    | Running -> 4l
+    | Idle -> 4l
     | InUpdate -> 5l
     | InQuery -> 6l
     | PostQuery -> 7l
@@ -2842,9 +2842,9 @@ module Lifecycle = struct
     | Started -> [InStart]
     *)
     | InInit -> [PreInit]
-    | Running -> [InInit; InUpdate]
-    | InUpdate -> [Running]
-    | InQuery -> [Running]
+    | Idle -> [InInit; InUpdate]
+    | InUpdate -> [Idle]
+    | InQuery -> [Idle]
     | PostQuery -> [InQuery]
 
   let trans env new_state =
@@ -3000,7 +3000,7 @@ module Dfinity = struct
       Lifecycle.trans env Lifecycle.InInit ^^
       (* Collect garbage *)
       G.i (Call (nr (E.built_in env1 "collect"))) ^^
-      Lifecycle.trans env Lifecycle.Running
+      Lifecycle.trans env Lifecycle.Idle
     ) in
     let fi = E.add_fun env "canister_init" empty_f in
     E.add_export env (nr {
@@ -4747,7 +4747,7 @@ module FuncDec = struct
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
         G.i (Call (nr (E.built_in env "collect"))) ^^
-        Lifecycle.trans env Lifecycle.Running
+        Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
       | _ -> assert false
