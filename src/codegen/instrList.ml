@@ -324,52 +324,33 @@ and dw_prim_type prim =
   match PrimRefs.find_opt prim !dw_prims with
   | Some _ -> nop
   | None ->
+    let name = Name (Type.string_of_prim prim) in
     let dw, refindx =
       match prim with
       | Type.Bool ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr (Name "Bool") ^^
+          (dw_attr name ^^
            dw_attr (Bit_size 1) ^^
            dw_attr (Data_bit_offset 0))
       | Type.Char ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr (Name "Char") ^^
+          (dw_attr name ^^
            dw_attr (Bit_size 21) ^^
            dw_attr (Data_bit_offset 8))
-      | Type.Word8 ->
+      | Type.(Word8 | Nat8 | Int8) ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr (Name "Word8") ^^
+          (dw_attr name ^^
            dw_attr (Bit_size 8) ^^
            dw_attr (Data_bit_offset 24))
-      | Type.Nat8 ->
+      | Type.(Word16 | Nat16 | Int16) ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr (Name "Nat8") ^^
-           dw_attr (Bit_size 8) ^^
-           dw_attr (Data_bit_offset 24))
-      | Type.Int8 ->
-        fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr (Name "Int8") ^^
-           dw_attr (Bit_size 8) ^^
-           dw_attr (Data_bit_offset 24))
-      | Type.Word16 ->
-        fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr (Name "Word16") ^^
-             dw_attr (Bit_size 16) ^^
-               dw_attr (Data_bit_offset 16))
-      | Type.Nat16 ->
-        fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr (Name "Nat16") ^^
-           dw_attr (Bit_size 16) ^^
-           dw_attr (Data_bit_offset 16))
-      | Type.Int16 ->
-        fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr (Name "Int16") ^^
+          (dw_attr name ^^
            dw_attr (Bit_size 16) ^^
            dw_attr (Data_bit_offset 16))
       | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); nop, 2(* FIXME *)
 (* | _ -> assert false (* TODO *)*)
     in
-    dw_prims := (Printf.printf "INSERTING!\n"; assert (refindx <> 1) ;PrimRefs.add prim refindx !dw_prims);
+    dw_prims := PrimRefs.add prim refindx !dw_prims;
     dw
 
 
