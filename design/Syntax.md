@@ -122,9 +122,7 @@ Productions marked * probably deferred to later versions.
   import <id>? =? <text>                                      import
 
 <dec-field> ::=                                          object declaration fields
-  (public|private)? stable? dec                               field
-  pre_upgrade { <dec>;* }                                     actor pre-upgrade action
-  post_upgrade { <dec>;* }                                    actor post-upgrade action
+  (public|private|system)? (flexible|stable)? dec             field
 ```
 
 ## Programs

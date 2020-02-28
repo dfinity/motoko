@@ -12,19 +12,18 @@ Stable state is introduced in the form of _stable variable definitions_ that are
 
 ### Syntax
 
-We require all `let` and `var` declarations in an actor to be declared stable.
-This is to indicate explicitly that special type restrictions apply;
-moreover, in the future, we may allow non-stable declarations for special purposes.
+We require all `let` and `var` declarations in an actor to be declared either stable or flexible.
+This is to indicate explicitly that special type restrictions apply.
 
 Concretely, the syntax of `<dec-field>` is extended as follows:
 ```
-<dec-field> ::=                                          object declaration fields
-  (public|private)? stable? dec                               field
+<dec-field> ::=
+  (public|private)? (stable|flexible)? dec
 ```
 
 Additional restrictions apply:
-* The `stable` modifier _must_ appear on `let` and `var` declarations that are actor fields.
-* The `stable` modifier _must not_ appear anywhere else.
+* Either a `stable` or `flexible` modifier _must_ appear on `let` and `var` declarations that are actor fields.
+* A `stable` or `flexible` modifier _must not_ appear anywhere else.
 
 Both restrictions may be relaxed in the future.
 
@@ -50,18 +49,18 @@ But we leave the possibility of "stable classes" for later, since it is not at a
 
 ### Semantics
 
-Installing a new actor runs the initialiser expressions of all stable variables in sequence, like for ordinary variable definitions.
+Installing a new actor runs the initialiser expressions of all flexible and stable variables in sequence, like for ordinary variable definitions in an object.
 (In terms of the System API, this happens in the init hook.)
 
 When upgrading an actor, all stable variables that existed in the previous version are pre-initialised with their old values.
 Their initialiser expressions are ignored.
-After that, the initialiser expressions of newly added stable variables are executed in sequence like for ordinary variable definitions.
+After that, the initialiser expressions of flexible and newly added stable variables are executed in sequence, like for ordinary variable definitions.
 (In terms of the System API, this happens in the post_upgrade hook.)
 
 This implies that any expression declaration (or any of the form `let _ = <exp>`, for which expressions are a short-hand) will always be run after an upgrade.
 They can hence be (ab)used as post-upgrade hooks.
 
-Open Question: What about let declarations with multiple variables, some of which existed before while others didn't? Or should we generally not persist `let`-bound values and always re-initialise them? Would that be a pitfall?
+Open Question: What about let declarations with multiple variables, some of which existed before while others didn't? Or should we generally not persist `let`-bound values and always re-initialise them? Would that be a pitfall? Should we forbid it (how?)?
 
 Note: With respect to variable initialisation, installing a new actor behaves like upgrading the actor from an empty actor with no pre-existing stable variables.
 
@@ -147,28 +146,36 @@ Note: This feature could potentially be deferred until later.
 
 ### Syntax
 
-To this end, we further extend the syntax of `<dec-field>` with _upgrade blocks_ of the following form:
+To this end, we further extend the syntax of `<dec-field>` with _system methods_ of the following form:
 ```
 <dec-field> ::= ...
-  | pre_upgrade { <dec>;* }
-  | post_upgrade { <dec>;* }
+  (public|private|system)? (flexible|stable)? dec
 ```
-These blocks may only occur in an actor body.
-Multiple of these blocks may occur.
+Again, additional restrictions apply:
+* A `system` modifier _may only_ appear on `func` declarations that are actor fields.
+* A `system` modifier _must not_ appear anywhere else.
+
+Two system methods are recognised by their name:
+* `preupgrade`
+* `postupgrade`
+
+The set of system functions may be extended in the future.
 
 
 ### Typing
 
-Upgrade blocks need to have type `()`.
+The required type of system methods depends on their name:
+* `preupgrade : () -> ()`
+* `postupgrade : () -> ()`
 
 
 ### Semantics
 
-Upgrade blocks of each kind are simply executed in sequence, before or after an upgrade, respectively. (In terms of the System API, they correspond to the respective hooks.)
+Pre-upgrade and post-upgrade methods are executed before or after an upgrade, respectively. (In terms of the System API, they correspond to the respective hooks.)
 
-Moreover, post upgrade blocks are executed in program order with the initialisers of new variables (see above).
+Moreover, a post-upgrade method is executed after the actor body and its variable initialisers have run (see above).
 
-Note: post upgrade blocks differ from expression declarations in the body of an actor in that they are _only_ run after an upgrade, not when first installing the actor.
+Note: The post-upgrade method differs from expression declarations in the body of an actor in that they are _only_ run after an upgrade, not when first installing the actor.
 
 
 ## Implementation
@@ -180,5 +187,6 @@ There are multiple possible implementation strategies for this:
 
 2. Eager de/serialisation: reading/writing a stable variable de/serialises their value directly into a key/value store living in the stable memory.
 Dealing with in-place update on mutable components requires indirections in the store via some extensible table.
+It also necessitates some form of garbage collection of the stable heap.
 
-3. Possibly other...
+3. Possibly other, like more smarter incremental approaches...
