@@ -36,5 +36,11 @@ cannot produce expected type
 inference.mo:111.1-111.10: type error, cannot instantiate function of type <T <: Int>T -> T to argument of type Bool:
   over-constrained implicit instantiation requires Bool <: T <: Int,
   but Bool </: Int
-inference.mo:115.1-115.27: type error, function of type <T>(<U>T -> U) -> () cannot be instantiated to consume argument of type <V>V -> V
-inference.mo:117.1-117.31: type error, function of type <T>(<U>U -> T) -> () cannot be instantiated to consume argument of type <V>V -> V
+inference.mo:116.1-116.27: type error, function of type <T>(<U>T -> U) -> () cannot be instantiated to consume argument of type <V>V -> V
+inference.mo:118.1-118.31: type error, function of type <T>(<U>U -> T) -> () cannot be instantiated to consume argument of type <V>V -> V
+inference.mo:125.1-125.9: type error, expression of type
+  Nat
+cannot produce expected type
+  ()
+inference.mo:126.1-126.13: type error, function of type <T>[T] -> T cannot be instantiated to consume argument of type [var Nat]
+inference.mo:129.1-129.13: type error, function of type <T>[var T] -> T cannot be instantiated to consume argument of type [Nat]

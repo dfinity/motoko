@@ -111,6 +111,7 @@ ignore (if false (bnd(loop {}):None) else 1); // fails, underspecialized, requir
 bnd(true);
 
 
+// reject scope violations
 func scopeco<T>(f:<U>T->U){};
 scopeco(func<V>(x:V):V{x}); // reject due to scope violation
 func scopecontra<T>(f:<U>U->T){};
@@ -119,3 +120,11 @@ scopecontra(func<V>(x:V):V{x}); // reject due to scope violation
 
 //TODO: invariant mutables, constructor constraints, bail on open bounds
 
+// reject instantiations at `var _`
+func sub<T>(x:[T]):T{x[0]};
+sub([1]);
+sub([var 1]); // reject
+
+func sub_mut<T>(x:[var T]):T{x[0]};
+sub_mut([1]); // reject
+sub_mut([var 1]);

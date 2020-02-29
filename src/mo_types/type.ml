@@ -1544,7 +1544,7 @@ let bimatch_typ scope_opt tbs t1 t2 =
       Some inst
     | _, Con (con2, ts2) when flexible con2 ->
       assert (ts2 = []);
-      if mentions t1 any then
+      if mentions t1 any || is_mut (normalize t1) then
         None
       else
         (match ConEnv.find_opt con2 l with
@@ -1554,7 +1554,7 @@ let bimatch_typ scope_opt tbs t1 t2 =
          | None -> Some (ConEnv.add con2 t1 l, u))
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
-      if mentions t2 any then
+      if mentions t2 any || is_mut (normalize t2) then
         None
       else
         (match ConEnv.find_opt con1 u with
