@@ -128,3 +128,24 @@ sub([var 1]); // reject
 func sub_mut<T>(x:[var T]):T{x[0]};
 sub_mut([1]); // reject
 sub_mut([var 1]);
+
+// tricky examples involving open typing with bounded parameters
+func g<T <: Int>(x:T) {
+   func f<U <: {}>(y:U) {};
+   f(x); // reject, overconstrained U
+};
+
+func h<T <: {}>(x:T) {
+   func f<U <: {}>(y:U) {};
+   f(x); // reject, underconstrained U
+};
+
+func i<T <: Any>(x:T) {
+   func f<U <: T>(y:U):U{y};
+   ignore f(x); // accept
+};
+
+func j<T <: Any>(x:T) {
+   func f<U <: T>(y:U):U{y};
+   ignore f(x) : None; // fail (requires inference w.r.t expected type
+};

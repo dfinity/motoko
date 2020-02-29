@@ -44,3 +44,17 @@ cannot produce expected type
   ()
 inference.mo:126.1-126.13: type error, function of type <T>[T] -> T cannot be instantiated to consume argument of type [var Nat]
 inference.mo:129.1-129.13: type error, function of type <T>[var T] -> T cannot be instantiated to consume argument of type [Nat]
+inference.mo:130.1-130.17: type error, expression of type
+  Nat
+cannot produce expected type
+  ()
+inference.mo:135.4-135.8: type error, cannot instantiate function of type <U <: {}>U -> () to argument of type T/34:
+  over-constrained implicit instantiation requires T/34 <: U <: {},
+  but T/34 </: {}
+inference.mo:140.4-140.8: type error, cannot instantiate function of type <U <: {}>U -> () to argument of type T/35:
+  under-constrained implicit instantiation T/35 <: U <: {},
+  with T/35 =/= {}; explicit type instantiation required
+inference.mo:150.11-150.15: type error, expression of type
+  T/37
+cannot produce expected type
+  None
