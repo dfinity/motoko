@@ -14,6 +14,8 @@ module IC.Wasm.Winter.Persist
   ( PInstance
   , persistInstance
   , resumeInstance
+  , persistMemory
+  , resumeMemory
   )
   where
 
@@ -45,6 +47,12 @@ persistInstance i = PInstance <$> persist i
 
 resumeInstance :: Instance s -> PInstance -> ST s ()
 resumeInstance i (PInstance p) = resume i p
+
+persistMemory :: W.MemoryInst (ST s) -> ST s ByteString
+persistMemory i = persist i
+
+resumeMemory :: W.MemoryInst (ST s) -> ByteString -> ST s ()
+resumeMemory i p = resume i p
 
 class Monad (M a) => Persistable a where
   type Persisted a :: *

@@ -1148,10 +1148,6 @@ let string_of_prim = function
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
 
-let string_of_con' vs c =
-  let s = Con.to_string c in
-  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
-
 let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
@@ -1161,6 +1157,13 @@ let string_of_func_sort = function
   | Local -> ""
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
+
+module MakePretty(Cfg : sig val show_stamps : bool end) =
+  struct
+
+let string_of_con' vs c =
+  let s = Con.to_string' Cfg.show_stamps c in
+  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
@@ -1344,8 +1347,15 @@ let rec string_of_typ_expand t =
       | t' -> s ^ " = " ^ string_of_typ_expand t'
     )
   | _ -> s
+end
 
-
+module type Pretty = sig
+  val string_of_con : con -> string
+  val string_of_typ : typ -> string
+  val string_of_kind : kind -> string
+  val strings_of_kind : kind -> string * string * string
+  val string_of_typ_expand : typ -> string
+end
 
 (* Matching *)
 
@@ -1491,6 +1501,7 @@ in
   | None -> None
 
 
+include MakePretty(struct let show_stamps = true end)
 
 (* Bi-Matching *)
 
@@ -1723,4 +1734,7 @@ let bimatch_typ scope_opt tbs t1 t2 =
               fail_over_constrained lb c ub)
         cs)
     | None -> None
+
+
+
 

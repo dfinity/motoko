@@ -42,6 +42,7 @@ import IC.Logger
 data AsyncRequest
     = CreateRequest UserId (Maybe CanisterId)
     | InstallRequest CanisterId UserId Blob Blob
+    | UpgradeRequest CanisterId UserId Blob Blob
     | UpdateRequest CanisterId UserId MethodName Blob
   deriving (Eq, Ord, Show)
 
@@ -187,7 +188,7 @@ createEmptyCanister cid =
 
 installCanister :: ICT m => CanisterId -> CanisterModule -> WasmState -> m ()
 installCanister cid can_mod wasm_state =
-  -- Check that canister exists but is empty before?
+  -- Check that canister exists but is empty before? No, also used for upgrade.
   modify (\ic -> ic { canisters =
     M.insert cid (Just (CanState {can_mod, wasm_state})) (canisters ic)
   })
@@ -238,6 +239,25 @@ processRequest r@(InstallRequest canister_id user_id can_mod dat) =
           mapM_ (newCall ctxt_id) new_calls
           setReqStatus r $ Completed CompleteUnit
 
+processRequest r@(UpgradeRequest canister_id user_id new_can_mod dat) = do
+  let res = setReqStatus r
+  case parseCanister new_can_mod of
+    Left err ->
+      setReqStatus r $ Rejected (RC_SYS_FATAL, "Parsing failed: " ++ err)
+    Right new_can_mod ->
+      gets (M.lookup canister_id . canisters) >>= \case
+        Nothing -> res $ Rejected (RC_DESTINATION_INVALID, "canister does not exist: " ++ show canister_id)
+        Just Nothing -> res $ Rejected (RC_DESTINATION_INVALID, "canister is empty")
+        Just (Just (CanState old_wasm_state old_can_mod)) ->
+          case pre_upgrade_method old_can_mod old_wasm_state user_id of
+            Trap msg -> res $ Rejected (RC_CANISTER_ERROR, "Pre-upgrade trapped: " ++ msg)
+            Return mem ->
+              case post_upgrade_method new_can_mod user_id user_id mem dat of
+                Trap msg -> res $ Rejected (RC_CANISTER_ERROR, "post-upgrade trapped: " ++ msg)
+                Return new_wasm_state -> do
+                  installCanister canister_id new_can_mod new_wasm_state
+                  res $ Completed CompleteUnit
+
 processRequest r@(UpdateRequest canister_id _user_id method arg) = do
   ctxt_id <- newCallContext $ CallContext
     { canister = canister_id
@@ -283,6 +303,7 @@ rememberTrap ctxt_id msg =
 callerOfRequest :: AsyncRequest -> EntityId
 callerOfRequest (CreateRequest user_id _) = user_id
 callerOfRequest (InstallRequest _ user_id _ _) = user_id
+callerOfRequest (UpgradeRequest _ user_id _ _) = user_id
 callerOfRequest (UpdateRequest _ user_id _ _) = user_id
 
 callerOfCallID :: ICT m => CallId -> m EntityId

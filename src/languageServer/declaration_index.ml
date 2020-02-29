@@ -138,7 +138,7 @@ let shorten_import_path
    -> string
    -> string =
   fun pkg_map ic_aliases base path ->
-  let _ = Debug.log "shorten_import" path in
+  let _ = Debug.log "shorten_import" (Printf.sprintf "base: %s, path: %s" base path) in
   if Filename.extension path = ".did"
   then
     let idl_basename = Filename.basename path in

@@ -548,7 +548,7 @@ let from_0_to_n env mk_body =
 let load_unskewed_ptr : G.t =
   G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
 
-let _store_unskewed_ptr : G.t =
+let store_unskewed_ptr : G.t =
   G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
 
 let load_ptr : G.t =
@@ -893,11 +893,11 @@ module Stack = struct
      We sometimes use the stack space if we need small amounts of scratch space.
   *)
 
-  let end_of_stack = page_size (* 64k of stack *)
+  let end_ = page_size (* 64k of stack *)
 
   let register_globals env =
     (* stack pointer *)
-    E.add_global32 env "__stack_pointer" Mutable end_of_stack;
+    E.add_global32 env "__stack_pointer" Mutable end_;
     E.export_global env "__stack_pointer"
 
   let get_stack_ptr env =
@@ -2807,6 +2807,91 @@ module Tuple = struct
 
 end (* Tuple *)
 
+module Lifecycle = struct
+  (*
+  This module models the life cycle of a canister as a very simple state machine,
+  keeps track of the current state of the canister, and traps noisily if an
+  unexpected transition happens. Such a transition would either be a bug in the
+  underlying system, or in our RTS.
+  *)
+
+  type state =
+    | PreInit
+  (* We do not use the (start) function when compiling canisters, so skip
+     these two:
+    | InStart
+    | Started (* (start) has run *)
+  *)
+    | InInit (* canister_init *)
+    | Idle (* basic steady state *)
+    | InUpdate
+    | InQuery
+    | PostQuery (* an invalid state *)
+    | InPreUpgrade
+    | PostPreUpgrade (* an invalid state *)
+    | InPostUpgrade
+
+  let int_of_state = function
+    | PreInit -> 0l (* Automatically null *)
+    (*
+    | InStart -> 1l
+    | Started -> 2l
+    *)
+    | InInit -> 3l
+    | Idle -> 4l
+    | InUpdate -> 5l
+    | InQuery -> 6l
+    | PostQuery -> 7l
+    | InPreUpgrade -> 8l
+    | PostPreUpgrade -> 9l
+    | InPostUpgrade -> 10l
+
+  let ptr = Stack.end_
+  let end_ = Int32.add Stack.end_ Heap.word_size
+
+  (* Which states may come before this *)
+  let pre_states = function
+    | PreInit -> []
+    (*
+    | InStart -> [PreInit]
+    | Started -> [InStart]
+    *)
+    | InInit -> [PreInit]
+    | Idle -> [InInit; InUpdate]
+    | InUpdate -> [Idle]
+    | InQuery -> [Idle]
+    | PostQuery -> [InQuery]
+    | InPreUpgrade -> [Idle]
+    | PostPreUpgrade -> [InPreUpgrade]
+    | InPostUpgrade -> [PreInit]
+
+  let get env =
+    compile_unboxed_const ptr ^^
+    load_unskewed_ptr
+
+  let set env new_state =
+    compile_unboxed_const ptr ^^
+    compile_unboxed_const (int_of_state new_state) ^^
+    store_unskewed_ptr
+
+  let trans env new_state =
+    let name = "trans_state" ^ Int32.to_string (int_of_state new_state) in
+    Func.share_code0 env name [] (fun env ->
+      G.block_ [] (
+        let rec go = function
+        | [] -> E.trap_with env "internal error: unexpected state"
+        | (s::ss) ->
+          get env ^^ compile_eq_const (int_of_state s) ^^
+          G.if_ [] (G.i (Br (nr 1l))) G.nop ^^
+          go ss
+        in go (pre_states new_state)
+      ) ^^
+      set env new_state
+    )
+
+end (* Lifecycle *)
+
+
 module Dfinity = struct
   (* Dfinity-specific stuff: System imports, databufs etc. *)
 
@@ -2832,8 +2917,14 @@ module Dfinity = struct
 
   let system_imports env =
     match E.mode env with
-    | Flags.ICMode | Flags.StubMode  ->
+    | Flags.ICMode ->
       import_ic0 env
+    | Flags.StubMode  ->
+      import_ic0 env;
+      E.add_func_import env "ic0" "stable_write" (i32s 3) [];
+      E.add_func_import env "ic0" "stable_read" (i32s 3) [];
+      E.add_func_import env "ic0" "stable_size" [] [I32Type];
+      E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type]
     | Flags.WASIMode ->
       E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
@@ -2931,15 +3022,16 @@ module Dfinity = struct
       edesc = nr (TableExport (nr 0l))
     })
 
-  let export_start env start_fi =
+  let export_init env start_fi =
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
-    (* Create an empty message *)
     let empty_f = Func.of_body env [] [] (fun env1 ->
       G.i (Call (nr start_fi)) ^^
+      Lifecycle.trans env Lifecycle.InInit ^^
       (* Collect garbage *)
-      G.i (Call (nr (E.built_in env1 "collect")))
+      G.i (Call (nr (E.built_in env1 "collect"))) ^^
+      Lifecycle.trans env Lifecycle.Idle
     ) in
-    let fi = E.add_fun env "start_stub" empty_f in
+    let fi = E.add_fun env "canister_init" empty_f in
     E.add_export env (nr {
       name = Wasm.Utf8.decode "canister_init";
       edesc = nr (FuncExport (nr fi))
@@ -3067,6 +3159,82 @@ module Dfinity = struct
     get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
+
+let export_upgrade_scaffold env = if E.mode env = Flags.StubMode then
+  let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
+      Lifecycle.trans env Lifecycle.InPreUpgrade ^^
+
+      (* grow stable memory if needed *)
+      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
+      G.i MemorySize ^^
+      E.call_import env "ic0" "stable_size" ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      set_pages_needed ^^
+
+      get_pages_needed ^^
+      compile_unboxed_zero ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
+      G.if_ []
+        ( get_pages_needed ^^
+          E.call_import env "ic0" "stable_grow" ^^
+          (* Check result *)
+          compile_unboxed_zero ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          E.then_trap_with env "Cannot grow stable memory."
+        ) G.nop
+      ^^
+
+      (* copy to stable memory *)
+      compile_unboxed_const 0l ^^
+      compile_unboxed_const 0l ^^
+      G.i MemorySize ^^ compile_mul_const page_size ^^
+      E.call_import env "ic0" "stable_write" ^^
+
+      Lifecycle.trans env Lifecycle.PostPreUpgrade
+  )) in
+
+  let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
+      Lifecycle.trans env Lifecycle.InPostUpgrade ^^
+
+      (* grow memory if needed *)
+      let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
+      E.call_import env "ic0" "stable_size" ^^
+      G.i MemorySize ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      set_pages_needed ^^
+
+      get_pages_needed ^^
+      compile_unboxed_zero ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GtS)) ^^
+      G.if_ []
+        ( get_pages_needed ^^
+          G.i MemoryGrow ^^
+          (* Check result *)
+          compile_unboxed_zero ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          E.then_trap_with env "Cannot grow memory."
+        ) G.nop
+      ^^
+
+      (* copy from stable memory *)
+      compile_unboxed_const 0l ^^
+      compile_unboxed_const 0l ^^
+      E.call_import env "ic0" "stable_size" ^^ compile_mul_const page_size ^^
+      E.call_import env "ic0" "stable_read" ^^
+
+      (* set, not trans, as we just copied the memory over *)
+      Lifecycle.set env Lifecycle.Idle
+  )) in
+
+  E.add_export env (nr {
+    name = Wasm.Utf8.decode "canister_pre_upgrade";
+    edesc = nr (FuncExport (nr pre_upgrade_fi))
+  });
+
+  E.add_export env (nr {
+    name = Wasm.Utf8.decode "canister_post_upgrade";
+    edesc = nr (FuncExport (nr post_upgrade_fi))
+  })
 
 
 end (* Dfinity *)
@@ -4671,14 +4839,25 @@ module FuncDec = struct
       mk_body env ae2
     ))
 
+  let message_start env sort = match sort with
+      | Type.Shared Type.Write ->
+        Lifecycle.trans env Lifecycle.InUpdate
+      | Type.Shared Type.Query ->
+        Lifecycle.trans env Lifecycle.InQuery
+      | _ -> assert false
+
   let message_cleanup env sort = match sort with
-      | Type.Shared Type.Write -> G.i (Call (nr (E.built_in env "collect")))
-      | Type.Shared Type.Query -> G.i Nop
+      | Type.Shared Type.Write ->
+        G.i (Call (nr (E.built_in env "collect"))) ^^
+        Lifecycle.trans env Lifecycle.Idle
+      | Type.Shared Type.Query ->
+        Lifecycle.trans env Lifecycle.PostQuery
       | _ -> assert false
 
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env [] [] (fun env -> G.with_region at (
+      message_start env sort ^^
       (* reply early for a oneway *)
       (if control = Type.Returns
        then
@@ -4812,6 +4991,7 @@ module FuncDec = struct
   let closures_to_reply_reject_callbacks env ts =
     let reply_name = "@callback<" ^ Serialization.typ_id (Type.Tup ts) ^ ">" in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
+        message_start env (Type.Shared Type.Write) ^^
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
@@ -4831,6 +5011,7 @@ module FuncDec = struct
 
     let reject_name = "@reject_callback" in
     Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
+        message_start env (Type.Shared Type.Write) ^^
         (* Look up closure *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
@@ -4917,6 +5098,8 @@ module FuncDec = struct
     | Flags.ICMode | Flags.StubMode ->
       Func.define_built_in env name [] [] (fun env ->
         let (set_closure, get_closure) = new_local env "closure" in
+
+        message_start env (Type.Shared Type.Write) ^^
 
         (* Check that we are calling this *)
         Dfinity.assert_caller_self env ^^
@@ -6895,6 +7078,8 @@ and conclude_module env start_fi_o =
 
   let static_roots = GC.store_static_roots env in
 
+  Dfinity.export_upgrade_scaffold env;
+
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
   E.add_global32 env "__heap_base" Immutable (E.get_end_of_static_memory env);
@@ -6909,6 +7094,7 @@ and conclude_module env start_fi_o =
   )) in
 
   Dfinity.default_exports env;
+
 
   GC.register env static_roots (E.get_end_of_static_memory env);
 
@@ -6967,7 +7153,7 @@ and conclude_module env start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts Dfinity.trap_with Stack.end_of_stack in
+  let env = E.mk_global mode rts Dfinity.trap_with Lifecycle.end_ in
 
   Heap.register_globals env;
   Stack.register_globals env;
@@ -6979,7 +7165,7 @@ let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule
   let start_fun = compile_start_func env progs in
   let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o = match E.mode env with
-    | Flags.ICMode | Flags.StubMode -> Dfinity.export_start env start_fi; None
+    | Flags.ICMode | Flags.StubMode -> Dfinity.export_init env start_fi; None
     | Flags.WasmMode | Flags.WASIMode-> Some (nr start_fi) in
 
   conclude_module env start_fi_o
