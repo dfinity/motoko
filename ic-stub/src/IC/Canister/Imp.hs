@@ -10,7 +10,7 @@ The canister interface, presented imperatively (or impurely), i.e. without rollb
 -}
 module IC.Canister.Imp
  ( ESRef
- , ImpState
+ , ImpState(..)
  , runESST
  , rawInitialize
  , rawInvoke
@@ -26,10 +26,11 @@ import Control.Monad.ST
 import Control.Monad.Except
 import Data.STRef
 import Data.Maybe
-import Data.Int
+import Data.Int -- TODO: Should be Word32 in most cases
 
 import IC.Types
 import IC.Wasm.Winter
+import IC.Wasm.WinterMemory as Mem
 import IC.Wasm.Imports
 import qualified IC.Canister.Interface as CI
 
@@ -47,6 +48,7 @@ data Params = Params
 
 data ExecutionState s = ExecutionState
   { inst :: Instance s
+  , stableMem :: Memory s
   , self_id :: CanisterId
   , params :: Params
   -- now the mutable parts
@@ -57,9 +59,10 @@ data ExecutionState s = ExecutionState
   }
 
 
-initalExecutionState :: CanisterId -> Instance s -> Responded -> ExecutionState s
-initalExecutionState self_id inst responded = ExecutionState
+initalExecutionState :: CanisterId -> Instance s -> Memory s -> Responded -> ExecutionState s
+initalExecutionState self_id inst stableMem responded = ExecutionState
   { inst
+  , stableMem
   , self_id
   , params = Params Nothing Nothing 0 ""
   , responded
@@ -149,6 +152,10 @@ systemAPI esref =
   , toImport "ic0" "canister_self_copy" canister_self_copy
   , toImport "ic0" "canister_self_size" canister_self_size
   , toImport "ic0" "call_simple" call_simple
+  , toImport "ic0" "stable_size" stable_size
+  , toImport "ic0" "stable_grow" stable_grow
+  , toImport "ic0" "stable_write" stable_write
+  , toImport "ic0" "stable_read" stable_read
   , toImport "ic0" "debug_print" debug_print
   , toImport "ic0" "trap" explicit_trap
   ]
@@ -227,7 +234,7 @@ systemAPI esref =
     msg_reply_data_append :: (Int32, Int32) -> HostM s ()
     msg_reply_data_append (src, size) = do
       assert_not_responded
-      bytes <- copy_from_canister "debug_print" src size
+      bytes <- copy_from_canister "msg_reply_data_append" src size
       appendReplyData esref bytes
 
     msg_reply :: () -> HostM s ()
@@ -239,7 +246,7 @@ systemAPI esref =
     msg_reject :: (Int32, Int32) -> HostM s ()
     msg_reject (src, size) = do
       assert_not_responded
-      bytes <- copy_from_canister "debug_print" src size
+      bytes <- copy_from_canister "msg_reject" src size
       let msg = BSU.toString bytes
       setResponse esref $ Reject (RC_CANISTER_REJECT, msg)
 
@@ -278,6 +285,31 @@ systemAPI esref =
         }
       return 0
 
+    stable_size :: () -> HostM s Int32
+    stable_size () = do
+      m <- gets stableMem
+      Mem.size m
+
+    stable_grow :: Int32 -> HostM s Int32
+    stable_grow delta = do
+      m <- gets stableMem
+      Mem.grow m delta
+
+    stable_write :: (Int32, Int32, Int32) -> HostM s ()
+    stable_write (dst, src, size) = do
+      m <- gets stableMem
+      i <- getsES esref inst
+      blob <- getBytes i (fromIntegral src) size
+      Mem.write m (fromIntegral dst) blob
+
+    stable_read :: (Int32, Int32, Int32) -> HostM s ()
+    stable_read (dst, src, size) = do
+      m <- gets stableMem
+      i <- getsES esref inst
+      blob <- Mem.read m (fromIntegral src) size
+      setBytes i (fromIntegral dst) blob
+
+
     debug_print :: (Int32, Int32) -> HostM s ()
     debug_print (src, size) = do
       -- TODO: This should be a non-trapping copy
@@ -295,24 +327,35 @@ systemAPI esref =
 -- additional remembered information like the CanisterId
 -- and the 'ESRef' that the system api functions are accessing
 
-type ImpState s = (ESRef s, CanisterId, Instance s)
+data ImpState s = ImpState
+  { isESRef :: ESRef s
+  , isCanisterId :: CanisterId
+  , isInstance :: Instance s
+  , isStableMem :: Memory s
+  }
 
 rawInitialize :: ESRef s -> CanisterId -> Module -> ST s (TrapOr (ImpState s))
 rawInitialize esref cid wasm_mod = do
-  result <- runExceptT $ initialize wasm_mod (systemAPI esref)
+  result <- runExceptT $ (,)
+    <$> initialize wasm_mod (systemAPI esref)
+    <*> Mem.new
   case result of
     Left  err -> return $ Trap err
-    Right inst -> return $ Return (esref, cid, inst)
+    Right (inst, sm) -> return $ Return $ ImpState esref cid inst sm
 
 rawInvoke :: ImpState s -> CI.CanisterMethod r -> ST s (TrapOr r)
-rawInvoke esref (CI.Initialize wasm_mod caller dat) =
-    rawInitializeMethod esref wasm_mod caller dat
-rawInvoke esref (CI.Query name caller dat) =
-    rawQueryMethod esref name caller dat
-rawInvoke esref (CI.Update name caller responded dat) =
-    rawUpdateMethod esref name caller responded dat
-rawInvoke esref (CI.Callback cb responded res) =
-    rawCallbackMethod esref cb responded res
+rawInvoke is (CI.Initialize wasm_mod caller dat) =
+    rawInitializeMethod is wasm_mod caller dat
+rawInvoke is (CI.Query name caller dat) =
+    rawQueryMethod is name caller dat
+rawInvoke is (CI.Update name caller responded dat) =
+    rawUpdateMethod is name caller responded dat
+rawInvoke is (CI.Callback cb responded res) =
+    rawCallbackMethod is cb responded res
+rawInvoke is (CI.PreUpgrade wasm_mod caller) =
+    rawPreUpgrade is wasm_mod caller
+rawInvoke is (CI.PostUpgrade wasm_mod caller mem dat) =
+    rawPostUpgrade is wasm_mod caller mem dat
 
 cantRespond :: Responded
 cantRespond = Responded True
@@ -321,9 +364,9 @@ canRespond :: Responded
 canRespond = Responded False
 
 rawInitializeMethod :: ImpState s -> Module -> EntityId -> Blob -> ST s (TrapOr InitResult)
-rawInitializeMethod (esref, cid, inst) wasm_mod caller dat = do
+rawInitializeMethod (ImpState esref cid inst sm) wasm_mod caller dat = do
   result <- runExceptT $ do
-    let es = (initalExecutionState cid inst cantRespond)
+    let es = (initalExecutionState cid inst sm cantRespond)
               { params = Params
                   { param_dat    = Just dat
                   , param_caller = Just caller
@@ -344,9 +387,52 @@ rawInitializeMethod (esref, cid, inst) wasm_mod caller dat = do
       -- TODO: extract canisters and calls here
       Return (calls es')
 
+rawPreUpgrade :: ImpState s -> Module -> EntityId -> ST s (TrapOr Blob)
+rawPreUpgrade (ImpState esref cid inst sm) wasm_mod caller = do
+  result <- runExceptT $ do
+    let es = (initalExecutionState cid inst sm cantRespond)
+              { params = Params
+                  { param_dat    = Nothing
+                  , param_caller = Just caller
+                  , reject_code  = 0
+                  , reject_message = ""
+                  }
+              }
+
+    if "canister_pre_upgrade" `elem` exportedFunctions wasm_mod
+    then withES esref es $ void $ invokeExport inst "canister_pre_upgrade" []
+    else return ((), es)
+         -- TODO: Check no calls are made
+
+  case result of
+    Left  err -> return $ Trap err
+    Right (_, es') -> Return <$> Mem.export (stableMem es')
+
+rawPostUpgrade :: ImpState s -> Module -> EntityId -> Blob -> Blob -> ST s (TrapOr ())
+rawPostUpgrade (ImpState esref cid inst sm) wasm_mod caller mem dat = do
+  result <- runExceptT $ do
+    let es = (initalExecutionState cid inst sm cantRespond)
+              { params = Params
+                  { param_dat    = Just dat
+                  , param_caller = Just caller
+                  , reject_code  = 0
+                  , reject_message = ""
+                  }
+              }
+    lift $ Mem.imp (stableMem es) mem
+
+    if "canister_post_upgrade" `elem` exportedFunctions wasm_mod
+    then withES esref es $ void $ invokeExport inst "canister_post_upgrade" []
+    else return ((), es)
+         -- TODO: Check no calls are made
+
+  case result of
+    Left  err -> return $ Trap err
+    Right ((), _es') -> return $ Return ()
+
 rawQueryMethod :: ImpState s -> MethodName -> EntityId -> Blob -> ST s (TrapOr Response)
-rawQueryMethod (esref, cid, inst) method caller dat = do
-  let es = (initalExecutionState cid inst canRespond)
+rawQueryMethod (ImpState esref cid inst sm) method caller dat = do
+  let es = (initalExecutionState cid inst sm canRespond)
             { params = Params
                 { param_dat    = Just dat
                 , param_caller = Just caller
@@ -365,8 +451,8 @@ rawQueryMethod (esref, cid, inst) method caller dat = do
       | otherwise -> return $ Trap "No response"
 
 rawUpdateMethod :: ImpState s -> MethodName -> EntityId -> Responded -> Blob -> ST s (TrapOr UpdateResult)
-rawUpdateMethod (esref, cid, inst) method caller responded dat = do
-  let es = (initalExecutionState cid inst responded)
+rawUpdateMethod (ImpState esref cid inst sm) method caller responded dat = do
+  let es = (initalExecutionState cid inst sm responded)
             { params = Params
                 { param_dat    = Just dat
                 , param_caller = Just caller
@@ -382,13 +468,13 @@ rawUpdateMethod (esref, cid, inst) method caller responded dat = do
     Right (_, es') -> return $ Return (calls es', response es')
 
 rawCallbackMethod :: ImpState s -> Callback -> Responded -> Response -> ST s (TrapOr UpdateResult)
-rawCallbackMethod (esref, cid, inst) callback responded res = do
+rawCallbackMethod (ImpState esref cid inst sm) callback responded res = do
   let params = case res of
         Reply dat ->
           Params { param_dat = Just dat, param_caller = Nothing, reject_code = 0, reject_message = "" }
         Reject (rc, reject_message) ->
           Params { param_dat = Nothing, param_caller = Nothing, reject_code = rejectCode rc, reject_message }
-  let es = (initalExecutionState cid inst responded) { params }
+  let es = (initalExecutionState cid inst sm responded) { params }
 
   let WasmClosure fun_idx env = case res of
         Reply {}  -> reply_callback callback

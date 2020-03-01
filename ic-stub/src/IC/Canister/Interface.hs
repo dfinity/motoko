@@ -7,7 +7,6 @@ The point of this abstraction is to to allow adding new entry points, or changin
 
 Certain features here are beyond the specified abilities, in order to support the Motoko test suite. In particular:
 
- * Creating canisters
  * Issuing calls from canister_init
 
 -}
@@ -21,3 +20,5 @@ data CanisterMethod r where
     Query :: MethodName -> EntityId -> Blob -> CanisterMethod Response
     Update :: MethodName -> EntityId -> Responded -> Blob -> CanisterMethod UpdateResult
     Callback :: Callback -> Responded -> Response -> CanisterMethod UpdateResult
+    PreUpgrade :: Module -> EntityId -> CanisterMethod Blob
+    PostUpgrade :: Module -> EntityId -> Blob -> Blob -> CanisterMethod ()
