@@ -217,12 +217,18 @@ val scope_bind : bind
 
 (* Pretty printing *)
 
+val string_of_prim : prim -> string
 val string_of_obj_sort : obj_sort -> string
 val string_of_func_sort : func_sort -> string
-val string_of_con : con -> string
-val string_of_prim : prim -> string
-val string_of_typ : typ -> string
-val string_of_kind : kind -> string
-val strings_of_kind : kind -> string * string * string
-val string_of_typ_expand : typ -> string
 
+module type Pretty = sig
+  val string_of_con : con -> string
+  val string_of_typ : typ -> string
+  val string_of_kind : kind -> string
+  val strings_of_kind : kind -> string * string * string
+  val string_of_typ_expand : typ -> string
+end
+
+module MakePretty(Cfg : sig val show_stamps : bool end) : Pretty
+
+include Pretty

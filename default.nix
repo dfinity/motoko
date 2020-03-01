@@ -41,11 +41,9 @@ let
 in
 
 # When building for linux (but not in nix-shell) we build statically
-let staticpkgs =
-  if nixpkgs.stdenv.isDarwin
-  then nixpkgs
-  else nixpkgs.pkgsMusl; in
+let is_static = !nixpkgs.stdenv.isDarwin; in
 
+let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 
 # This branches on the pkgs, which is either
 # normal nixpkgs (nix-shell, darwin)
@@ -78,14 +76,14 @@ let darwin_standalone =
 let ocaml_exe = name: bin:
   let
     profile =
-      if nixpkgs.stdenv.isDarwin
-      then "release"
-      else "release-static";
+      if is_static
+      then "release-static"
+      else "release";
 
     drv = staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      ${if nixpkgs.stdenv.isDarwin then null else "allowedRequisites"} = [];
+      ${if is_static then "allowedRequisites" else null} = [];
 
       src = subpath ./src;
 
@@ -103,7 +101,7 @@ let ocaml_exe = name: bin:
   in
     # Make standalone on darwin (nothing to do on linux, is static)
     if nixpkgs.stdenv.isDarwin
-    then darwin_standalone { inherit drv; exename = bin; }
+    then darwin_standalone { inherit drv; usePackager = false; exename = bin; }
     else drv;
 in
 
@@ -413,6 +411,15 @@ rec {
   };
   stdlib-adocs = stdlib-doc.adocs;
 
+  check-generated = nixpkgs.runCommandNoCC "check-generated" {
+      nativeBuildInputs = [ nixpkgs.diffutils ];
+      expected = import ./nix/generate.nix { pkgs = nixpkgs; };
+      dir = ./nix/generated;
+    } ''
+      diff -r -U 3 $expected $dir
+      touch $out
+    '';
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
@@ -430,6 +437,7 @@ rec {
       users-guide
       ic-stub
       shell
+      check-generated
     ] ++ builtins.attrValues tests
       ++ builtins.attrValues examples;
   };

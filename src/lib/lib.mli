@@ -11,6 +11,7 @@ end
 module List :
 sig
   val equal : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
+  val concat_map : ('a -> 'b list) -> 'a list -> 'b list
   val make : int -> 'a -> 'a list
   val table : int -> (int -> 'a) -> 'a list
   val group : ('a -> 'a -> bool) -> 'a list -> 'a list list
@@ -29,6 +30,7 @@ sig
   val compare : ('a -> 'a -> int) -> 'a list -> 'a list -> int
   val is_ordered : ('a -> 'a -> int) -> 'a list -> bool
   val is_strictly_ordered : ('a -> 'a -> int) -> 'a list -> bool
+  val is_prefix : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
 
   val iter_pairs : ('a -> 'a -> unit) -> 'a list -> unit
 end
@@ -168,4 +170,17 @@ sig
   val relative_to : string -> string -> string option
 
   val make_absolute : string -> string -> string
+
+  (**
+   * Checks whether one path is nested below another.
+   * Must only be called on two absolute paths!
+   *
+   * Examples:
+   *
+   * is_subpath "/home" "/home/path" = true
+   * is_subpath "/home" "/path" = false
+   * is_subpath "/home/path" "/home" = false
+   * is_subpath "/home" "/homepath" = false
+   *)
+  val is_subpath : string -> string -> bool
 end

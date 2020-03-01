@@ -21,7 +21,7 @@ function realpath() {
 
 
 ACCEPT=no
-DRUN=no
+DTESTS=no
 IDL=no
 PERF=no
 MOC=${MOC:-$(realpath $(dirname $0)/../src/moc)}
@@ -30,6 +30,7 @@ DIDC=${DIDC:-$(realpath $(dirname $0)/../src/didc)}
 export MO_LD
 WASMTIME=${WASMTIME:-wasmtime}
 WASMTIME_OPTIONS="--disable-cache --cranelift"
+DRUN=${DRUN:-drun}
 DRUN_WRAPPER=$(realpath $(dirname $0)/drun-wrapper.sh)
 IC_STUB_RUN_WRAPPER=$(realpath $(dirname $0)/ic-stub-run-wrapper.sh)
 IC_STUB_RUN=${IC_STUB_RUN:-ic-stub-run}
@@ -43,7 +44,7 @@ while getopts "adpstir" o; do
             ACCEPT=yes
             ;;
         d)
-            DRUN=yes
+            DTESTS=yes
             ;;
         p)
             PERF=yes
@@ -146,6 +147,44 @@ then
     echo "Warning: \$PERF_OUT not set" >&2
   fi
 fi
+
+HAVE_DRUN=no
+HAVE_IC_STUB_RUN=no
+
+if [ $DTESTS = yes -o $PERF = yes ]
+then
+  if $DRUN --version >& /dev/null
+  then
+    HAVE_DRUN=yes
+  else
+    if [ $ACCEPT = yes ]
+    then
+      echo "ERROR: Could not run $DRUN, cannot update expected test output"
+      exit 1
+    else
+      echo "WARNING: Could not run $DRUN, will skip some tests"
+      HAVE_DRUN=no
+    fi
+  fi
+fi
+
+if [ $DTESTS = yes -o $PERF = yes ]
+then
+  if $IC_STUB_RUN --help >& /dev/null
+  then
+    HAVE_IC_STUB_RUN=yes
+  else
+    if [ $ACCEPT = yes ]
+    then
+      echo "ERROR: Could not run $IC_STUB_RUN, cannot update expected test output"
+      exit 1
+    else
+      echo "WARNING: Could not run $IC_STUB_RUN, will skip some tests"
+      HAVE_IC_STUB_RUN=no
+    fi
+  fi
+fi
+
 
 for file in "$@";
 do
@@ -257,7 +296,7 @@ do
 
 
         # Compile
-        if [ $DRUN = yes ]
+        if [ $DTESTS = yes ]
         then
           run comp $MOC $moc_extra_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
           run comp-stub $MOC $moc_extra_flags -stub-system-api --hide-warnings --map -c $mangled -o $out/$base.stub.wasm
@@ -297,16 +336,22 @@ do
         # Run compiled program
         if [ "$SKIP_RUNNING" != yes ]
         then
-          if [ $DRUN = yes ]
+          if [ $DTESTS = yes ]
           then
-            run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
-            run_if stub.wasm ic-stub-run $IC_STUB_RUN_WRAPPER $out/$base.stub.wasm $mangled
+            if [ $HAVE_DRUN = yes ]; then
+              run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled
+            fi
+            if [ $HAVE_IC_STUB_RUN = yes ]; then
+              run_if stub.wasm ic-stub-run $IC_STUB_RUN_WRAPPER $out/$base.stub.wasm $mangled
+            fi
           elif [ $PERF = yes ]
           then
-            run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled 222> $out/$base.metrics
-	    if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
-	    then
-              LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+            if [ $HAVE_DRUN = yes ]; then
+              run_if wasm drun-run $DRUN_WRAPPER $out/$base.wasm $mangled 222> $out/$base.metrics
+              if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
+              then
+                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^gas_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+              fi
             fi
           else
             run_if wasm wasm-run $WASMTIME $WASMTIME_OPTIONS $out/$base.wasm

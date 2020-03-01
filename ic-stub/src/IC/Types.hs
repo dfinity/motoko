@@ -75,3 +75,5 @@ type ExistingCanisters = [CanisterId]
 
 type InitResult = [MethodCall]
 type UpdateResult = ([MethodCall], Maybe Response)
+
+type StableMemory = Blob
