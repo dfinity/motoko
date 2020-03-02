@@ -37,10 +37,10 @@
         "homepage": "https://github.com/NixOS/nixpkgs",
         "owner": "ggreif",
         "repo": "nixpkgs",
-        "rev": "18491d68fd0994bccde3d48d5a35af17b27a9648",
-        "sha256": "0sclafi5yjmakkh3kb8rwxjgm7ynykc5bv47s383nzy0rnhikdlw",
+        "rev": "599d9748324866761bb88389235b69f9d391aec1",
+        "sha256": "0wrnz6iw8xr1j5c5aps80jyscd3jvl11zim7fzvmdzj5y7pyv3zv",
         "type": "tarball",
-        "url": "https://github.com/ggreif/nixpkgs/archive/18491d68fd0994bccde3d48d5a35af17b27a9648.tar.gz",
+        "url": "https://github.com/ggreif/nixpkgs/archive/599d9748324866761bb88389235b69f9d391aec1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
@@ -62,12 +62,12 @@
         "builtin": false,
         "description": "Haskell port of the WebAssembly OCaml reference interpreter",
         "homepage": "https://github.com/WebAssembly/spec/tree/master/interpreter",
-        "owner": "dfinity-side-projects",
+        "owner": "ggreif",
         "repo": "winter",
-        "rev": "1e16b471644be26160cc20c4e2144c643c547ed8",
-        "sha256": "191fk1dv8vp28rwpl75nz9y3pbypc8jv9w669mvl9d2k5f74jirm",
+        "rev": "31b449b9aaed096ebfd61eca6ed18e3249e81544",
+        "sha256": "149f42q6qyc743sx8zysjirarifzyv8ff9ak7v5nw2ljp9cc7n7z",
         "type": "tarball",
-        "url": "https://github.com/dfinity-side-projects/winter/archive/1e16b471644be26160cc20c4e2144c643c547ed8.tar.gz",
+        "url": "https://github.com/ggreif/winter/archive/31b449b9aaed096ebfd61eca6ed18e3249e81544.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
