@@ -225,6 +225,27 @@ let dw_AT_loclists_base = 0x8c
 let dw_AT_lo_user = 0x2000
 let dw_AT_hi_user = 0x3fff
 
+let dw_ATE_address = 0x01
+let dw_ATE_boolean = 0x02
+let dw_ATE_complex_float = 0x03
+let dw_ATE_float = 0x04
+let dw_ATE_signed = 0x05
+let dw_ATE_signed_char = 0x06
+let dw_ATE_unsigned = 0x07
+let dw_ATE_unsigned_char = 0x08
+let dw_ATE_imaginary_float = 0x09
+let dw_ATE_packed_decimal = 0x0a
+let dw_ATE_numeric_string = 0x0b
+let dw_ATE_edited = 0x0c
+let dw_ATE_signed_fixed = 0x0d
+let dw_ATE_unsigned_fixed = 0x0e
+let dw_ATE_decimal_float = 0x0f
+let dw_ATE_UTF = 0x10
+let dw_ATE_UCS = 0x11
+let dw_ATE_ASCII = 0x12
+let dw_ATE_lo_user = 0x80
+let dw_ATE_hi_user = 0xff
+
 let dw_FORM_addr = 0x01
 (* Reserved = 0x02 *)
 let dw_FORM_block2 = 0x03
