@@ -19,6 +19,12 @@
         "url_template": "https://registry.npmjs.org/esm/-/esm-<version>.tgz",
         "version": "3.2.25"
     },
+    "ic-ref": {
+        "ref": "master",
+        "repo": "ssh://git@github.com/dfinity-lab/ic-ref",
+        "rev": "611af28895c2962040b06e506f822e0878612967",
+        "type": "git"
+    },
     "libtommath": {
         "builtin": false,
         "description": "LibTomMath is a free open source portable number theoretic multiple-precision integer library written entirely in C.",
