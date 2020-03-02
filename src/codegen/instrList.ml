@@ -319,6 +319,7 @@ and fakeReferenceableBlock tag attrs : t * int =
 and dw_type =
   function
   | Type.Prim pr -> dw_prim_type pr
+  (* | Type.Opt inner -> assert false templated type *)
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_prim_type Bool (* FIXME assert false *)
 and dw_prim_type prim =
   match PrimRefs.find_opt prim !dw_prims with
@@ -347,6 +348,17 @@ and dw_prim_type prim =
           (dw_attr name ^^
            dw_attr (Bit_size 16) ^^
            dw_attr (Data_bit_offset 16))
+      | Type.Word32 ->
+        let pointer_key = fakeReferenceableBlock dw_TAG_base_type_Anon
+                            (dw_attr (Bit_size 1) ^^
+                             dw_attr (Data_bit_offset 1)) in
+        let internalU32 = fakeReferenceableBlock dw_TAG_base_type_Unsigned_Bytes_Anon
+                            (dw_attr (Byte_size 4) ^^
+                             dw_attr (Data_bit_offset 2)) in
+        let internalU30 = fakeReferenceableBlock dw_TAG_base_type_Unsigned_Anon
+                            (dw_attr (Bit_size 30) ^^
+                             dw_attr (Data_bit_offset 2)) in
+        dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32]))
       | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); nop, 2(* FIXME *)
 (* | _ -> assert false (* TODO *)*)
     in

@@ -6575,6 +6575,8 @@ and compile_exp (env : E.t) ae exp =
       | Type.Promises -> assert false in
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
+    let dump_ty (t : Ir.typ_bind) = Printf.printf "Type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ t.it.bound)) in
+    List.iter dump_ty typ_binds;
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     SR.unit,
@@ -6947,6 +6949,8 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
           if not (VarEnv.NameEnv.mem v ae.VarEnv.vars)
           then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
         ) (Freevars.M.keys (Freevars.exp e));
+    let dump_ty i (t : Ir.arg) = Printf.printf "%d Type(compile_const_exp): %s\n" i (Wasm.Sexpr.to_string 80 (Arrange_type.typ t.note)) in
+    List.iteri dump_ty args;
         G.dw_statement e.at ^^ compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
       FuncDec.closed env sort control name args mk_body return_tys exp.at
   | BlockE (decs, e) ->
