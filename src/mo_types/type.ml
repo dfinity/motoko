@@ -1362,7 +1362,7 @@ include MakePretty(struct let show_stamps = true end)
 
 (* Bi-Matching *)
 
-let bimatch_typ scope_opt tbs t1 t2 =
+let bi_match_typ scope_opt tbs t1 t2 =
 
   let ts = open_binds tbs in
   let t2 = open_ ts t2 in
@@ -1373,17 +1373,17 @@ let bimatch_typ scope_opt tbs t1 t2 =
 
   let mentions typ ce = not (ConSet.is_empty (ConSet.inter (cons typ ConSet.empty) ce)) in
 
-  let rec bimatch_list p rel eq inst any xs1 xs2 =
+  let rec bi_match_list p rel eq inst any xs1 xs2 =
     (match (xs1, xs2) with
     | (x1::xs1, x2::xs2) ->
       (match p rel eq inst any x1 x2 with
-      | Some inst -> bimatch_list p rel eq inst any xs1 xs2
+      | Some inst -> bi_match_list p rel eq inst any xs1 xs2
       | None -> None)
     | [], [] -> Some inst
     | _, _ -> None)
   in
 
-  let rec bimatch_typ rel eq ((l,u) as inst) (any:ConSet.t) (t1:typ) (t2:typ) =
+  let rec bi_match_typ rel eq ((l,u) as inst) (any:ConSet.t) (t1:typ) (t2:typ) =
     if t1 == t2 || SS.mem (t1, t2) !rel
     then Some inst
     else begin
@@ -1443,29 +1443,29 @@ let bimatch_typ scope_opt tbs t1 t2 =
   | Con (con1, ts1), Con (con2, ts2) ->
       (match Con.kind con1, Con.kind con2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-        bimatch_typ rel eq inst any (open_ ts1 t) t2
+        bi_match_typ rel eq inst any (open_ ts1 t) t2
       | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-        bimatch_typ rel eq inst any t1 (open_ ts2 t)
+        bi_match_typ rel eq inst any t1 (open_ ts2 t)
       | _ when Con.eq con1 con2 ->
         assert (ts1 = []);
         assert (ts2 = []);
         Some inst
       | Abs (tbs, t), _ when rel != eq ->
-        bimatch_typ rel eq inst any (open_ ts1 t) t2
+        bi_match_typ rel eq inst any (open_ ts1 t) t2
       | _ -> None
       )
     | Con (con1, ts1), t2 ->
       (match Con.kind con1, t2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-        bimatch_typ rel eq inst any (open_ ts1 t) t2
+        bi_match_typ rel eq inst any (open_ ts1 t) t2
       | Abs (tbs, t), _ when rel != eq ->
-        bimatch_typ rel eq inst any (open_ ts1 t) t2
+        bi_match_typ rel eq inst any (open_ ts1 t) t2
       | _ -> None
       )
     | t1, Con (con2, ts2) ->
       (match Con.kind con2 with
       | Def (tbs, t) -> (* TBR this may fail to terminate *)
-        bimatch_typ rel eq inst any t1 (open_ ts2 t)
+        bi_match_typ rel eq inst any t1 (open_ ts2 t)
       | _ -> None
       )
     | Prim p1, Prim p2 when p1 = p2 ->
@@ -1474,53 +1474,53 @@ let bimatch_typ scope_opt tbs t1 t2 =
       if p1 = Nat && p2 = Int then Some inst else None
     | Obj (s1, tfs1), Obj (s2, tfs2) ->
       if s1 = s2 then
-        bimatch_fields rel eq inst any tfs1 tfs2
+        bi_match_fields rel eq inst any tfs1 tfs2
       else None
     | Array t1', Array t2' ->
-      bimatch_typ rel eq inst any t1' t2'
+      bi_match_typ rel eq inst any t1' t2'
     | Opt t1', Opt t2' ->
-      bimatch_typ rel eq inst any t1' t2'
+      bi_match_typ rel eq inst any t1' t2'
     | Prim Null, Opt t2' when rel != eq ->
       Some inst
     | Variant fs1, Variant fs2 ->
-      bimatch_tags rel eq inst any fs1 fs2
+      bi_match_tags rel eq inst any fs1 fs2
     | Tup ts1, Tup ts2 ->
-      bimatch_list bimatch_typ rel eq inst any ts1 ts2
+      bi_match_list bi_match_typ rel eq inst any ts1 ts2
     | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
       if s1 = s2 && c1 = c2 then
-      (match bimatch_binds rel eq inst any tbs1 tbs2 with
+      (match bi_match_binds rel eq inst any tbs1 tbs2 with
        | Some (inst, ts) ->
          let any' = List.fold_right
            (function Con(c,[]) -> ConSet.add c | _ -> assert false) ts any
          in
          (match
-           bimatch_list bimatch_typ rel eq inst any' (List.map (open_ ts) t21) (List.map (open_ ts) t11)
+           bi_match_list bi_match_typ rel eq inst any' (List.map (open_ ts) t21) (List.map (open_ ts) t11)
           with
          | Some inst ->
-           bimatch_list bimatch_typ rel eq inst any' (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+           bi_match_list bi_match_typ rel eq inst any' (List.map (open_ ts) t12) (List.map (open_ ts) t22)
          | None -> None)
        | None -> None
       )
       else None
     | Async (t11, t12), Async (t21, t22) ->
       (* TBR *)
-      (match biequate_typ rel eq inst any t11 t12  with
+      (match bi_equate_typ rel eq inst any t11 t12  with
        | Some inst ->
-         bimatch_typ rel eq inst any t12 t22
+         bi_match_typ rel eq inst any t12 t22
        | None -> None)
     | Mut t1', Mut t2' ->
       (* TBR *)
-      biequate_typ rel eq inst any t1' t2'
+      bi_equate_typ rel eq inst any t1' t2'
     | Typ c1, Typ c2 ->
       (* TBR *)
       if eq_con eq c1 c2 then Some inst else None
     | _, _ -> None
     end
 
-  and biequate_typ rel eq inst any t1 t2 =
-    bimatch_typ eq eq inst any t1 t2
+  and bi_equate_typ rel eq inst any t1 t2 =
+    bi_match_typ eq eq inst any t1 t2
 
-  and bimatch_fields rel eq inst any tfs1 tfs2 =
+  and bi_match_fields rel eq inst any tfs1 tfs2 =
     (* Assume that tfs1 and tfs2 are sorted. *)
     match tfs1, tfs2 with
     | [], [] ->
@@ -1530,16 +1530,16 @@ let bimatch_typ scope_opt tbs t1 t2 =
     | tf1::tfs1', tf2::tfs2' ->
       (match compare_field tf1 tf2 with
       | 0 ->
-       (match bimatch_typ rel eq inst any tf1.typ tf2.typ with
-        | Some inst -> bimatch_fields rel eq inst any tfs1' tfs2'
+       (match bi_match_typ rel eq inst any tf1.typ tf2.typ with
+        | Some inst -> bi_match_fields rel eq inst any tfs1' tfs2'
         | None -> None)
       | -1 when rel != eq ->
-        bimatch_fields rel eq inst any tfs1' tfs2
+        bi_match_fields rel eq inst any tfs1' tfs2
       | _ -> None
       )
     | _, _ -> None
 
-  and bimatch_tags rel eq inst any tfs1 tfs2 =
+  and bi_match_tags rel eq inst any tfs1 tfs2 =
     (* Assume that tfs1 and tfs2 are sorted. *)
     match tfs1, tfs2 with
     | [], [] ->
@@ -1549,23 +1549,23 @@ let bimatch_typ scope_opt tbs t1 t2 =
     | tf1::tfs1', tf2::tfs2' ->
       (match compare_field tf1 tf2 with
       | 0 ->
-        (match bimatch_typ rel eq inst any tf1.typ tf2.typ with
-         | Some inst -> bimatch_tags rel eq inst any tfs1' tfs2'
+        (match bi_match_typ rel eq inst any tf1.typ tf2.typ with
+         | Some inst -> bi_match_tags rel eq inst any tfs1' tfs2'
          | None -> None)
       | +1  when rel != eq->
-        bimatch_tags rel eq inst any tfs1 tfs2'
+        bi_match_tags rel eq inst any tfs1 tfs2'
       | _ -> None
       )
     | _, _ -> None
 
-  and bimatch_binds rel eq inst any tbs1 tbs2 =
+  and bi_match_binds rel eq inst any tbs1 tbs2 =
     let ts = open_binds tbs2 in
-    match bimatch_list (bimatch_bind ts) rel eq inst any tbs2 tbs1 with
+    match bi_match_list (bi_match_bind ts) rel eq inst any tbs2 tbs1 with
     | Some inst -> Some (inst,ts)
     | None -> None
 
-  and bimatch_bind ts rel eq inst any tb1 tb2 =
-    bimatch_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
+  and bi_match_bind ts rel eq inst any tb1 tb2 =
+    bi_match_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
   and fail_under_constrained lb c ub =
     let lb = string_of_typ lb in
@@ -1603,7 +1603,7 @@ let bimatch_typ scope_opt tbs t1 t2 =
         ConEnv.empty,
         u
     in
-    match bimatch_typ (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty t1 t2 with
+    match bi_match_typ (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty t1 t2 with
     | Some (l,u) ->
       Some (List.map
         (fun c ->

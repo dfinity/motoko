@@ -896,7 +896,7 @@ and infer_exp'' env exp : T.typ =
         check_inst_bounds env tbs typs exp.at, check_exp
       | _::_, [] -> (* implicit or empty instantiation, infer *) (* TODO: distinguish explicit empty instantation <> from omitted instantiation *)
         let t2 = infer_exp env exp2 in
-        match T.bimatch_typ (scope_of_env env) tbs t2 t_arg with
+        match T.bi_match_typ (scope_of_env env) tbs t2 t_arg with
         | Some ts ->
           check_typ_bounds env tbs ts (List.map (fun _ -> exp1.at)  ts) exp.at;
           ts,
