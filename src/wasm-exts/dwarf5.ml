@@ -246,6 +246,18 @@ let dw_ATE_ASCII = 0x12
 let dw_ATE_lo_user = 0x80
 let dw_ATE_hi_user = 0xff
 
+let dw_DS_unsigned = 0x01
+let dw_DS_leading_overpunch = 0x02
+let dw_DS_trailing_overpunch = 0x03
+let dw_DS_leading_separate = 0x04
+let dw_DS_trailing_separate = 0x05
+
+let dw_END_default = 0x00
+let dw_END_big = 0x01
+let dw_END_little = 0x02
+let dw_END_lo_user = 0x40
+let dw_END_hi_user = 0xff
+  
 let dw_FORM_addr = 0x01
 (* Reserved = 0x02 *)
 let dw_FORM_block2 = 0x03
