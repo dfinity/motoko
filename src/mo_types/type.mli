@@ -233,5 +233,4 @@ module MakePretty(Cfg : sig val show_stamps : bool end) : Pretty
 
 include Pretty
 
-val match_typ : con list -> typ -> typ -> typ list option
 val bimatch_typ : typ option -> bind list -> typ -> typ -> typ list option
