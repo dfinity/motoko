@@ -58,3 +58,6 @@ inference.mo:150.11-150.15: type error, expression of type
   T/37
 cannot produce expected type
   None
+inference.mo:165.8-165.52: type error, cannot instantiate function of type <T>(Bool, [var T], [var T]) -> [var T] to argument of type (Bool, [var Nat], [var Int]):
+  over-constrained implicit instantiation requires Int <: T <: Nat,
+  but Int </: Nat

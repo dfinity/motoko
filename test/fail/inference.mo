@@ -147,5 +147,19 @@ func i<T <: Any>(x:T) {
 
 func j<T <: Any>(x:T) {
    func f<U <: T>(y:U):U{y};
-   ignore f(x) : None; // fail (requires inference w.r.t expected type
+   ignore f(x) : None; // fail (requires inference w.r.t expected type)
 };
+
+// immutable arrays
+
+func choose<T>(b:Bool,x:[T],y:[T]):[T] {if b x else y};
+ignore choose(true,[1:Nat],[1:Nat]);
+ignore choose(true,[1:Int],[1:Int]);
+ignore choose(true,[1:Nat],[1:Int]);
+
+
+// mutable arrays
+func choose_var<T>(b:Bool,x:[var T],y:[var T]):[var T] {if b x else y};
+ignore choose_var(true,[var (1:Nat)],[var (1:Nat)]);
+ignore choose_var(true,[var (1:Int)],[var (1:Int)]);
+ignore choose_var(true,[var (1:Nat)],[var (1:Int)]); // rejected as overconstrained (variance not applicable
