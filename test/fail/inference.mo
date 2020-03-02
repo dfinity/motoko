@@ -162,4 +162,4 @@ ignore choose(true,[1:Nat],[1:Int]);
 func choose_var<T>(b:Bool,x:[var T],y:[var T]):[var T] {if b x else y};
 ignore choose_var(true,[var (1:Nat)],[var (1:Nat)]);
 ignore choose_var(true,[var (1:Int)],[var (1:Int)]);
-ignore choose_var(true,[var (1:Nat)],[var (1:Int)]); // rejected as overconstrained (variance not applicable
+ignore choose_var(true,[var (1:Nat)],[var (1:Int)]); // rejected as overconstrained (variance not applicable)
