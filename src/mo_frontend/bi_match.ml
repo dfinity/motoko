@@ -1,10 +1,12 @@
 open Mo_types
 open Type
 
+open MakePretty(struct let show_stamps = false end)
+
 (* Bi-Matching *)
 
 module SS = Set.Make (struct type t = typ * typ let compare = compare end)
-          
+
 let bi_match_typ scope_opt tbs t1 t2 =
 
   let ts = open_binds tbs in
@@ -229,7 +231,7 @@ let bi_match_typ scope_opt tbs t1 t2 =
   and fail_open_bound c bd =
     let c = Con.name c in
     let bd = string_of_typ bd in
-    failwith (Printf.sprintf "type parameter %s has an open bound %s mentioning another type parameter\n; explicit type instantiation required" c bd)
+    failwith (Printf.sprintf "type parameter %s has an open bound %s mentioning another type parameter:\n  explicit type instantiation required" c bd)
 
   in
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
@@ -248,7 +250,7 @@ let bi_match_typ scope_opt tbs t1 t2 =
     in
     match bi_match_typ (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty t1 t2 with
     | Some (l,u) ->
-      Some (List.map
+      List.map
         (fun c ->
           match ConEnv.find_opt c l, ConEnv.find_opt c u with
           | None, None -> Non
@@ -261,8 +263,12 @@ let bi_match_typ scope_opt tbs t1 t2 =
               fail_under_constrained lb c ub
             else
               fail_over_constrained lb c ub)
-        cs)
-    | None -> None
+        cs
+    | None -> failwith (Printf.sprintf
+                "no instantiation of %s makes %s a subtype of %s"
+                (String.concat "," (List.map string_of_con cs))
+                (string_of_typ t1) (string_of_typ t2))
+
 
 
 

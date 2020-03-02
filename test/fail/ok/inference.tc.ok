@@ -14,14 +14,14 @@ inference.mo:67.8-67.43: type error, cannot instantiate function of type <T>(T -
   over-constrained implicit instantiation requires Any <: T <: None,
   but Any </: None
 inference.mo:94.8-94.19: type error, cannot instantiate function of type <T <: U, U>(T, T) -> (U, U) to argument of type (Nat, Nat):
-  type parameter T has an open bound U/11 mentioning another type parameter
-; explicit type instantiation required
+  type parameter T has an open bound U mentioning another type parameter:
+  explicit type instantiation required
 inference.mo:95.8-95.23: type error, cannot instantiate function of type <T <: U, U>(T, T) -> (U, U) to argument of type (Nat, Int):
-  type parameter T has an open bound U/12 mentioning another type parameter
-; explicit type instantiation required
+  type parameter T has an open bound U mentioning another type parameter:
+  explicit type instantiation required
 inference.mo:96.8-96.22: type error, cannot instantiate function of type <T <: U, U>(T, T) -> (U, U) to argument of type (Nat, Bool):
-  type parameter T has an open bound U/13 mentioning another type parameter
-; explicit type instantiation required
+  type parameter T has an open bound U mentioning another type parameter:
+  explicit type instantiation required
 inference.mo:107.8-107.14: type error, cannot instantiate function of type <T <: Int>T -> T to argument of type Nat:
   under-constrained implicit instantiation Nat <: T <: Int,
   with Nat =/= Int; explicit type instantiation required
@@ -36,24 +36,28 @@ cannot produce expected type
 inference.mo:111.1-111.10: type error, cannot instantiate function of type <T <: Int>T -> T to argument of type Bool:
   over-constrained implicit instantiation requires Bool <: T <: Int,
   but Bool </: Int
-inference.mo:116.1-116.27: type error, function of type <T>(<U>T -> U) -> () cannot be instantiated to consume argument of type <V>V -> V
-inference.mo:118.1-118.31: type error, function of type <T>(<U>U -> T) -> () cannot be instantiated to consume argument of type <V>V -> V
+inference.mo:116.1-116.27: type error, cannot instantiate function of type <T>(<U>T -> U) -> () to argument of type <V>V -> V:
+  no instantiation of T makes <V>V -> V a subtype of <U>T -> U
+inference.mo:118.1-118.31: type error, cannot instantiate function of type <T>(<U>U -> T) -> () to argument of type <V>V -> V:
+  no instantiation of T makes <V>V -> V a subtype of <U>U -> T
 inference.mo:125.1-125.9: type error, expression of type
   Nat
 cannot produce expected type
   ()
-inference.mo:126.1-126.13: type error, function of type <T>[T] -> T cannot be instantiated to consume argument of type [var Nat]
-inference.mo:129.1-129.13: type error, function of type <T>[var T] -> T cannot be instantiated to consume argument of type [Nat]
+inference.mo:126.1-126.13: type error, cannot instantiate function of type <T>[T] -> T to argument of type [var Nat]:
+  no instantiation of T makes [var Nat] a subtype of [T]
+inference.mo:129.1-129.13: type error, cannot instantiate function of type <T>[var T] -> T to argument of type [Nat]:
+  no instantiation of T makes [Nat] a subtype of [var T]
 inference.mo:130.1-130.17: type error, expression of type
   Nat
 cannot produce expected type
   ()
 inference.mo:135.4-135.8: type error, cannot instantiate function of type <U <: {}>U -> () to argument of type T/34:
-  over-constrained implicit instantiation requires T/34 <: U <: {},
-  but T/34 </: {}
+  over-constrained implicit instantiation requires T <: U <: {},
+  but T </: {}
 inference.mo:140.4-140.8: type error, cannot instantiate function of type <U <: {}>U -> () to argument of type T/35:
-  under-constrained implicit instantiation T/35 <: U <: {},
-  with T/35 =/= {}; explicit type instantiation required
+  under-constrained implicit instantiation T <: U <: {},
+  with T =/= {}; explicit type instantiation required
 inference.mo:150.11-150.15: type error, expression of type
   T/37
 cannot produce expected type

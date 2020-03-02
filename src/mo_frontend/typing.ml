@@ -897,15 +897,12 @@ and infer_exp'' env exp : T.typ =
       | _::_, [] -> (* implicit or empty instantiation, infer *) (* TODO: distinguish explicit empty instantation <> from omitted instantiation *)
         let t2 = infer_exp env exp2 in
         match Bi_match.bi_match_typ (scope_of_env env) tbs t2 t_arg with
-        | Some ts ->
+        | ts ->
           check_typ_bounds env tbs ts (List.map (fun _ -> exp1.at)  ts) exp.at;
           ts,
           fun env t_arg exp ->
           if not (T.sub t2 t_arg) then
             error env exp.at "cannot infer type arguments due to subtyping\n  %s is not a subtype of %s"  (T.string_of_typ_expand t2) (T.string_of_typ_expand t_arg)
-        | None ->
-          error env exp.at "function of type %s cannot be instantiated to consume argument of type %s" (T.string_of_typ t1)
-      (T.string_of_typ t2)
         | exception (Failure msg) ->
           error env exp.at "cannot instantiate function of type %s to argument of type %s:\n  %s"
             (T.string_of_typ t1)
