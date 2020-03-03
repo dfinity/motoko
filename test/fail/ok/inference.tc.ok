@@ -65,3 +65,5 @@ cannot produce expected type
 inference.mo:165.8-165.52: type error, cannot instantiate function of type <T>(Bool, [var T], [var T]) -> [var T] to argument of type (Bool, [var Nat], [var Int]):
   over-constrained implicit instantiation requires Int <: T <: Nat,
   but Int </: Nat
+inference.mo:170.8-170.44: type error, cannot instantiate function of type <T>{x : T} -> T to argument of type {type x = Nat}:
+  no instantiation of T makes {type x = Nat} a subtype of {x : T}
