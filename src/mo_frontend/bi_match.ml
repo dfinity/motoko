@@ -91,7 +91,7 @@ let bi_match_typ scope_opt tbs ts1 ts2 =
           | None -> ConEnv.add con1 t2 u
         in
         Some (l,u)
-  | Con (con1, ts1), Con (con2, ts2) ->
+    | Con (con1, ts1), Con (con2, ts2) ->
       (match Con.kind con1, Con.kind con2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any (open_ ts1 t) t2
@@ -223,7 +223,7 @@ let bi_match_typ scope_opt tbs ts1 ts2 =
     let c = Con.name c in
     let ub = string_of_typ ub in
     failwith (Printf.sprintf
-      "under-constrained implicit instantiation %s <: %s <: %s,\n  with %s =/= %s; explicit type instantiation required"
+      "under-constrained implicit instantiation %s <: %s <: %s, with %s =/= %s;\nexplicit type instantiation required"
       lb c ub lb ub)
 
   and fail_over_constrained lb c ub =
@@ -231,13 +231,13 @@ let bi_match_typ scope_opt tbs ts1 ts2 =
     let c = Con.name c in
     let ub = string_of_typ ub in
     failwith (Printf.sprintf
-      "over-constrained implicit instantiation requires %s <: %s <: %s,\n  but %s </: %s"
+      "over-constrained implicit instantiation requires %s <: %s <: %s, but %s </: %s;\nno valid instantiation exists"
       lb c ub lb ub)
 
   and fail_open_bound c bd =
     let c = Con.name c in
     let bd = string_of_typ bd in
-    failwith (Printf.sprintf "type parameter %s has an open bound %s mentioning another type parameter:\n  explicit type instantiation required" c bd)
+    failwith (Printf.sprintf "type parameter %s has an open bound %s mentioning another type parameter;\nexplicit type instantiation required due to limitation of inference" c bd)
 
   in
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
@@ -273,7 +273,7 @@ let bi_match_typ scope_opt tbs ts1 ts2 =
         cs
     | None -> failwith (Printf.sprintf
        "no instantiation of %s makes %s"
-       (String.concat " , " (List.map string_of_con cs))
+       (String.concat ", " (List.map string_of_con cs))
        (String.concat " and "
          (List.map2 (fun t1 t2 ->
            Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))

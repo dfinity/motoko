@@ -63,8 +63,8 @@ tricky<Any>(func f(x:None):Any { f(x);}); // correctly rejected
 ignore func <T>()  { tricky<T>(func f(x:Any):None{f(x)}) };
 
 // implicit instantiation
-ignore tricky(func f(x:Any):None { f(x);});
-ignore tricky(func f(x:None):Any { f(x);}); // fails, inconsitent instantiation required.
+ignore tricky(func f(x:Any):None { f(x);}); // fails, under-constrained
+ignore tricky(func f(x:None):Any { f(x);}); // fails, inconsistent instantiation required.
 ignore tricky(func f(x:None):None { f(x);});
 
 func amb<T>(f : T -> T): T->T { f };
@@ -104,12 +104,12 @@ func f(g:shared Nat8 -> ()) : async () {
 
 func bnd<T <: Int>(x:T):T{x};
 ignore bnd(1:Int) : Int;
-ignore bnd(1) : Nat; // fails, under-constrained
-ignore (if false (bnd(loop {}):Nat) else 1); // fails, underspecialized, requires expected ret typ info
+ignore bnd(1) : Nat; // ok, uses expected type
+ignore (if false (bnd(loop {}):Nat) else 1); // ok, given expected type
 ignore (if false (bnd(loop {}):Int) else 1);
-ignore (if false (bnd(loop {}):None) else 1); // fails, underspecialized, requires expected ret typ info
-bnd(true);
-
+ignore (if false (bnd(loop {}):None) else 1); // ok, given expected type
+ignore bnd(true); // reject, overconstrained
+bnd(true); // reject, overconstrained
 
 // reject scope violations
 func scopeco<T>(f:<U>T->U){};
@@ -120,14 +120,16 @@ scopecontra(func<V>(x:V):V{x}); // reject due to scope violation
 
 //TODO: invariant mutables, constructor constraints, bail on open bounds
 
-// reject instantiations at `var _`
+// reject instantiations at  `var _` (not denotable)
 func sub<T>(x:[T]):T{x[0]};
-sub([1]);
-sub([var 1]); // reject
+ignore sub([1]);
+sub([]);
+ignore sub([var 1]); // reject
 
 func sub_mut<T>(x:[var T]):T{x[0]};
 sub_mut([1]); // reject
-sub_mut([var 1]);
+ignore sub_mut([var 1]);  // ok
+sub_mut([var 1]); // reject
 
 // tricky examples involving open typing with bounded parameters
 func g<T <: Int>(x:T) {
@@ -147,7 +149,12 @@ func i<T <: Any>(x:T) {
 
 func j<T <: Any>(x:T) {
    func f<U <: T>(y:U):U{y};
-   ignore f(x) : None; // fail (requires inference w.r.t expected type)
+   ignore f(x) : None; // fail (overconstrained)
+};
+
+func k<T <: Any>(x:T) {
+   func f<U <: T>(y:U):U{y};
+   ignore f(x) : T;
 };
 
 // immutable arrays

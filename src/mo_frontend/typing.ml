@@ -903,8 +903,9 @@ and infer_exp'' env exp : T.typ =
           fun env t_arg exp ->
           if not (T.sub t2 t_arg) then
             error env exp.at "cannot infer type arguments due to subtyping\n  %s is not a subtype of %s"  (T.string_of_typ_expand t2) (T.string_of_typ_expand t_arg)
-        | exception (Failure msg) ->
-          error env exp.at "cannot instantiate function of type %s to argument of type %s:\n  %s"
+        | exception Failure msg ->
+          error env exp.at
+            "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s\n"
             (T.string_of_typ t1)
             (T.string_of_typ t2)
             msg
@@ -1258,10 +1259,12 @@ and check_exp' env0 t exp : T.typ =
           fun env t_arg exp ->
           if not (T.sub t2 t_arg) then
             error env exp.at "cannot infer type arguments due to subtyping\n  %s is not a subtype of %s"  (T.string_of_typ_expand t2) (T.string_of_typ_expand t_arg)
-        | exception (Failure msg) ->
-          error env exp.at "cannot instantiate function of type %s to argument of type %s:\n  %s"
+        | exception Failure msg ->
+          error env exp.at
+            "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s\nto produce result of type\n  %s\n%s"
             (T.string_of_typ t1)
             (T.string_of_typ t2)
+            (T.string_of_typ t)
             msg
     in
     inst.note <- ts;
@@ -1280,6 +1283,11 @@ and check_exp' env0 t exp : T.typ =
             (T.string_of_typ_expand t_ret);
       end
     end;
+    if not (T.sub t_ret t) then
+      local_error env0 exp.at
+        "expression of type\n  %s\ncannot produce expected type\n  %s"
+        (T.string_of_typ_expand t_ret)
+        (T.string_of_typ_expand t);
     t
   | _ ->
     let t' = infer_exp env0 exp in
