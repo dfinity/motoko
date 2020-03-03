@@ -7,6 +7,10 @@ open MakePretty(struct let show_stamps = false end)
 
 module SS = Set.Make (struct type t = typ * typ let compare = compare end)
 
+let denotable t =
+  let t' = normalize t in
+  not (is_mut t' || is_typ t')
+
 let bi_match_typ scope_opt tbs t1 t2 =
 
   let ts = open_binds tbs in
@@ -47,7 +51,7 @@ let bi_match_typ scope_opt tbs t1 t2 =
       Some inst
     | _, Con (con2, ts2) when flexible con2 ->
       assert (ts2 = []);
-      if mentions t1 any || is_mut (normalize t1) then
+      if mentions t1 any || not (denotable t1) then
         None
       else
         let l =
@@ -67,7 +71,7 @@ let bi_match_typ scope_opt tbs t1 t2 =
         Some (l,u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
-      if mentions t2 any || is_mut (normalize t2) then
+      if mentions t2 any || not (denotable t2) then
         None
       else
         let l = if rel != eq then l else
