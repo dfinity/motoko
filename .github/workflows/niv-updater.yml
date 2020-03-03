@@ -19,9 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: niv-updater-action
-        uses: knl/niv-updater-action@v3
+        uses: knl/niv-updater-action@v4
         with:
           # might be too noisy
           blacklist: 'nixpkgs,dfinity'
+          labels: |
+            automerge-squash
         env:
           GITHUB_TOKEN: ${{ secrets.NIV_UPDATER_TOKEN }}
