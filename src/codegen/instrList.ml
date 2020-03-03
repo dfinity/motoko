@@ -187,6 +187,7 @@ type dw_AT = Producer of string
            | Discr_value
            | Artificial of bool
            | TypeRef of int (* reference *)
+           | Encoding of int
 
 (* DWARF tags *)
 
@@ -196,8 +197,9 @@ type dw_TAG =
   | Formal_parameter of (string * Source.pos * Type.typ)
   | Variable
   | Type of Type.typ
-  | Typedef
-  | Structure_type
+  | Typedef of string * Type.typ
+  | Pointer_type of int (* needed? *)
+  | Structure_type of int (* needed? *)
   | Member
   | Variant_part
   | Variant
@@ -240,6 +242,7 @@ let dw_attr : dw_AT -> t =
   | Artificial b -> fakeColumn (if b then 1 else 0) dw_AT_artificial Nop
   | Discr r -> fakeColumn r dw_AT_discr Nop
   | TypeRef i -> assert (i <> 1) ;fakeColumn i dw_AT_type Nop
+  | Encoding e -> fakeColumn e dw_AT_encoding Nop
 
 (* emit a DW_TAG
    When it admits children, these follow sequentially,
@@ -253,6 +256,9 @@ let dw_tag_children_done : t =
 
 module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
+
+let pointer_key = ref None
+
 
 let rec dw_tag : dw_TAG -> t =
   function
@@ -268,11 +274,14 @@ let rec dw_tag : dw_TAG -> t =
       dw_prim_type Type.Int16
     in
     let builtin_types =
+      let pointer_key_dw, pointer_key = lookup_pointer_key () in
+      pointer_key_dw ^^
       fakeBlock dw_TAG_structure_type
         (dw_attr (Name "Nat") ^^
          dw_attr (Byte_size 4)) ^^
       fakeBlock dw_TAG_member_Pointer_mark
         (dw_attr (Name "@pointer_mark") ^^
+         dw_attr (TypeRef pointer_key) ^^
          dw_attr (Artificial true) ^^
          dw_attr (Bit_size 1) ^^
          dw_attr (Data_bit_offset 1)) ^^
@@ -291,8 +300,8 @@ let rec dw_tag : dw_TAG -> t =
        dw_attr (Low_pc 0) ^^
        dw_attr (Addr_base 0) ^^
        dw_attr Ranges) ^^
-      base_types ^^
-      builtin_types
+      base_types (* ^^
+      builtin_types *)
   | Subprogram (name, pos) ->
     fakeBlock dw_TAG_subprogram
       (dw_attr (Low_pc 0) ^^
@@ -310,17 +319,30 @@ let rec dw_tag : dw_TAG -> t =
   (*| Variable ->  *)
   | Type ty -> dw_type ty
   | _ -> assert false
+and lookup_pointer_key () : t * int =
+  match !pointer_key with
+  | Some r -> Printf.printf "pointer_key!!!  %d\n" r;nop, r
+  | None ->
+    let dw, r =
+      fakeReferenceableBlock (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
+        (dw_attr (Bit_size 1) ^^
+         dw_attr (Data_bit_offset 1)) in
+    pointer_key := Some r;Printf.printf "pointer_key!  %d\n" r;
+    dw, r
 and fakeBlock tag attrs =
   fakeColumn 0 tag (Block ([], attrs 0l Wasm.Source.no_region []))
 and fakeReferenceableBlock tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
-  assert (refslot > 0) ; fakeColumn refslot tag (Block ([], attrs 0l Wasm.Source.no_region [])),
+  fakeColumn refslot tag (Block ([], attrs 0l Wasm.Source.no_region [])),
   refslot
 and dw_type =
   function
   | Type.Prim pr -> dw_prim_type pr
   (* | Type.Opt inner -> assert false templated type *)
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_prim_type Bool (* FIXME assert false *)
+
+and (^^<) dw1 (dw2, r) = (dw1 ^^ dw2, r)
+and (^^>) (dw1, r) dw2 = (dw1 ^^ dw2, r)
 and dw_prim_type prim =
   match PrimRefs.find_opt prim !dw_prims with
   | Some _ -> nop
@@ -349,16 +371,69 @@ and dw_prim_type prim =
            dw_attr (Bit_size 16) ^^
            dw_attr (Data_bit_offset 16))
       | Type.Word32 ->
-        let pointer_key = fakeReferenceableBlock dw_TAG_base_type_Anon
-                            (dw_attr (Bit_size 1) ^^
-                             dw_attr (Data_bit_offset 1)) in
-        let internalU32 = fakeReferenceableBlock dw_TAG_base_type_Unsigned_Bytes_Anon
-                            (dw_attr (Byte_size 4) ^^
-                             dw_attr (Data_bit_offset 2)) in
-        let internalU30 = fakeReferenceableBlock dw_TAG_base_type_Unsigned_Anon
-                            (dw_attr (Bit_size 30) ^^
-                             dw_attr (Data_bit_offset 2)) in
-        dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32]))
+        let internalU30 =
+          fakeReferenceableBlock dw_TAG_base_type_Unsigned_Anon
+            (dw_attr (Bit_size 30) ^^
+             dw_attr (Data_bit_offset 2) ^^
+             dw_attr (Encoding dw_ATE_unsigned)) in
+        let internalU32_dw, internalU32 =
+          fakeReferenceableBlock dw_TAG_base_type_Unsigned_Bytes_Anon
+            (dw_attr (Byte_size 4) ^^
+             dw_attr (Data_bit_offset 2) ^^
+             dw_attr (Encoding dw_ATE_unsigned)) in
+        let pointedU32 =
+          internalU32_dw ^^<
+          fakeReferenceableBlock dw_TAG_pointer_type
+            (dw_attr (TypeRef internalU32)) in
+        let pointer_key_dw, pointer_key = lookup_pointer_key () in
+        let flag_member_dw, flag_member =
+          pointer_key_dw ^^<
+          fakeReferenceableBlock dw_TAG_member_Pointer_mark
+            (dw_attr (Name "@pointer_mark") ^^ (* TODO: make it anonymous? *)
+             dw_attr (TypeRef pointer_key) ^^
+             dw_attr (Artificial true) ^^
+             dw_attr (Bit_size 1) ^^
+             dw_attr (Data_bit_offset 1)) in
+        let variant_part =
+          flag_member_dw ^^
+          fakeBlock dw_TAG_variant_part
+            (dw_attr (Discr flag_member)) ^^
+          dw_tag_children_done
+        in
+
+(*
+<3><444>: Abbrev Number: 6 (DW_TAG_structure_type)
+   <445>   DW_AT_name        : (indirect string, offset: 0xa7f7f): Option<&u8>
+   <449>   DW_AT_byte_size   : 8
+   <44a>   DW_AT_alignment   : 8
+      <4><44b>: Abbrev Number: 9 (DW_TAG_member)
+         <44c>   DW_AT_type        : <0x509>
+         <450>   DW_AT_alignment   : 8
+         <451>   DW_AT_data_member_location: 0
+         <452>   DW_AT_artificial  : 1
+      <4><452>: Abbrev Number: 10 (DW_TAG_variant_part)
+         <453>   DW_AT_discr       : <0x44b>
+            <5><457>: Abbrev Number: 11 (DW_TAG_variant)
+               <458>   DW_AT_discr_value : 0
+                  <6><459>: Abbrev Number: 12 (DW_TAG_member)
+                     <45a>   DW_AT_type        : <0x46b>
+                     <45e>   DW_AT_alignment   : 8
+                     <45f>   DW_AT_data_member_location: 0
+                  <6><460>: Abbrev Number: 0
+            <5><461>: Abbrev Number: 13 (DW_TAG_variant)
+                  <6><462>: Abbrev Number: 12 (DW_TAG_member)
+                     <463>   DW_AT_type        : <0x472>
+                     <467>   DW_AT_alignment   : 8
+                     <468>   DW_AT_data_member_location: 0
+
+ *)
+
+        fakeReferenceableBlock dw_TAG_structure_type
+          (dw_attr name ^^
+           dw_attr (Byte_size 4)) ^^>
+          variant_part ^^
+          dw_tag_children_done
+      (*  dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32])) *)
       | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); nop, 2(* FIXME *)
 (* | _ -> assert false (* TODO *)*)
     in

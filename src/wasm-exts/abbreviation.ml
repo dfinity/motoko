@@ -13,10 +13,13 @@ A regular tag is just a pseudo-tag with an ordinal of 0.
 
 let pseudo_tag base ordinal =
   assert (base > 0 && base <= Dwarf5.dw_TAG_hi_user);
-  base lor (ordinal lsr 16)
+  base lor (ordinal lsl 16)
 
 let dw_TAG_member_Pointer_mark = pseudo_tag Dwarf5.dw_TAG_member 1
 let dw_TAG_member_Word_sized = pseudo_tag Dwarf5.dw_TAG_member 2
+let dw_TAG_base_type_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 1
+let dw_TAG_base_type_Unsigned_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 2
+let dw_TAG_base_type_Unsigned_Bytes_Anon = pseudo_tag Dwarf5.dw_TAG_base_type 3
 
 let abbreviations =
   let open Dwarf5 in
@@ -54,13 +57,29 @@ let abbreviations =
         dw_AT_bit_size, dw_FORM_data1;
         dw_AT_data_bit_offset, dw_FORM_data1
       ] );
+    ( dw_TAG_base_type_Anon, dw_CHILDREN_no,
+      [ dw_AT_bit_size, dw_FORM_data1;
+        dw_AT_data_bit_offset, dw_FORM_data1
+      ] );
+    ( dw_TAG_base_type_Unsigned_Anon, dw_CHILDREN_no,
+      [ dw_AT_bit_size, dw_FORM_data1;
+        dw_AT_data_bit_offset, dw_FORM_data1;
+        dw_AT_encoding, dw_FORM_data1
+      ] );
+    ( dw_TAG_base_type_Unsigned_Bytes_Anon, dw_CHILDREN_no,
+      [ dw_AT_byte_size, dw_FORM_data1;
+        dw_AT_encoding, dw_FORM_data1
+      ] );
+    ( dw_TAG_pointer_type, dw_CHILDREN_no,
+      [ dw_AT_type, dw_FORM_ref_udata
+      ] );
     ( dw_TAG_structure_type, dw_CHILDREN_yes,
       [ dw_AT_name, dw_FORM_strp;
         dw_AT_byte_size, dw_FORM_data1
       ] );
     ( dw_TAG_member_Pointer_mark, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
-        (*dw_AT_type, dw_FORM_ref_udata;*)
+        dw_AT_type, dw_FORM_ref_udata;
         dw_AT_artificial, dw_FORM_flag_present;
         dw_AT_bit_size, dw_FORM_data1;
         dw_AT_data_bit_offset, dw_FORM_data1
@@ -73,7 +92,7 @@ let abbreviations =
     ( dw_TAG_variant_part, dw_CHILDREN_yes,
       [ dw_AT_discr, dw_FORM_ref_udata
       ] );
-    ( dw_TAG_variant, dw_CHILDREN_yes,
+    ( dw_TAG_variant, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
         dw_AT_byte_size, dw_FORM_data1
       ] )
