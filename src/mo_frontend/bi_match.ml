@@ -7,10 +7,12 @@ open MakePretty(struct let show_stamps = false end)
 
 module SS = Set.Make (struct type t = typ * typ let compare = compare end)
 
-let bi_match_typ scope_opt tbs t1 t2 =
+let bi_match_typ scope_opt tbs ts1 ts2 =
 
   let ts = open_binds tbs in
-  let t2 = open_ ts t2 in
+  let ts1 = List.map (open_ ts) ts1 in
+  let ts2 = List.map (open_ ts) ts2 in
+
   let cs = List.map (fun t -> match t with Con(c,_) -> c | _ -> assert false) ts in
 
   let flexible c = List.exists (Con.eq c) cs
@@ -248,7 +250,8 @@ let bi_match_typ scope_opt tbs t1 t2 =
         ConEnv.empty,
         u
     in
-    match bi_match_typ (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty t1 t2 with
+    match bi_match_list
+            bi_match_typ (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty ts1 ts2 with
     | Some (l,u) ->
       List.map
         (fun c ->
@@ -265,9 +268,12 @@ let bi_match_typ scope_opt tbs t1 t2 =
               fail_over_constrained lb c ub)
         cs
     | None -> failwith (Printf.sprintf
-                "no instantiation of %s makes %s a subtype of %s"
-                (String.concat "," (List.map string_of_con cs))
-                (string_of_typ t1) (string_of_typ t2))
+       "no instantiation of %s makes %s"
+       (String.concat " , " (List.map string_of_con cs))
+       (String.concat " and "
+         (List.map2 (fun t1 t2 ->
+           Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))
+           ts1 ts2)))
 
 
 
