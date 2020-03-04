@@ -8,7 +8,7 @@
     "dfinity": {
         "ref": "master",
         "repo": "ssh://git@github.com/dfinity-lab/dfinity",
-        "rev": "4baa063b5b30beef964551b5b7b3a4d9f0189857",
+        "rev": "0da72185468e67a02e3283cb26d243ea812af9ed",
         "type": "git"
     },
     "esm": {
