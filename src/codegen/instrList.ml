@@ -274,6 +274,7 @@ let rec dw_tag : dw_TAG -> t =
       dw_prim_type Type.Int16
     in
     let builtin_types =
+      dw_prim_type Type.Int ^^
       let pointer_key_dw, pointer_key = lookup_pointer_key () in
       pointer_key_dw ^^
       fakeBlock dw_TAG_structure_type
@@ -370,6 +371,26 @@ and dw_prim_type prim =
           (dw_attr name ^^
            dw_attr (Bit_size 16) ^^
            dw_attr (Data_bit_offset 16))
+      | Type.(Int(* | Nat*)) ->
+        let pointer_key_dw, pointer_key = lookup_pointer_key () in
+        let struct_dw, struct_ref =
+          fakeReferenceableBlock dw_TAG_structure_type
+            (dw_attr name ^^
+             dw_attr (Byte_size 4)) in
+        let mark_dw, mark = fakeReferenceableBlock dw_TAG_member_Pointer_mark
+          (dw_attr (Name "@pointer_mark") ^^
+           dw_attr (TypeRef pointer_key) ^^
+           dw_attr (Artificial true) ^^
+           dw_attr (Bit_size 1) ^^
+           dw_attr (Data_bit_offset 1)) in
+        pointer_key_dw ^^
+        struct_dw ^^
+        mark_dw ^^
+        fakeBlock dw_TAG_variant_part
+          (dw_attr (Discr mark)) ^^
+        dw_tag_children_done ^^ (* closing dw_TAG_variant_part *)
+        dw_tag_children_done,  (* closing dw_TAG_structure_type *)
+        struct_ref
       | Type.Word32 ->
         let internalU30 =
           fakeReferenceableBlock dw_TAG_base_type_Unsigned_Anon
