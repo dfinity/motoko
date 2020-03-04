@@ -1,5 +1,5 @@
 → create
-← completed: canister-id = 0x2a01
+← completed: canister-id = ic:2a012b
 → install
 ← completed
 → query rose(0x4449444c016d00010003000400020000000000)
