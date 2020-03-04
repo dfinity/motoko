@@ -7,17 +7,21 @@ open MakePretty(struct let show_stamps = false end)
 
 module SS = Set.Make (struct type t = typ * typ let compare = compare end)
 
+(* Types that are denotable (ranged over) by type variables *)
 let denotable t =
   let t' = normalize t in
   not (is_mut t' || is_typ t')
 
-let verify tbs subs ts =
+(* Check instantiation `ts` satisfies bounds `tbs` and all the pairwise sub-typing relations in `subs`;
+   used to sanity check inferred instantiations *)
+let verify_inst tbs subs ts =
   List.length tbs = List.length ts &&
   List.for_all2 (fun t tb -> sub t (open_ ts tb.bound)) ts tbs &&
   List.for_all (fun (t1,t2) -> sub (open_ ts t1) (open_ ts t2)) subs
 
 let bi_match_typ scope_opt tbs subs =
   let ts = open_binds tbs in
+
   let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
   let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
 
@@ -42,7 +46,6 @@ let bi_match_typ scope_opt tbs subs =
     then Some inst
     else begin
     rel := SS.add (t1, t2) !rel;
-    (*  Printf.printf "%s %s\n" (!str t1) (!str t2); *)
     match t1, t2 with
     | Pre, _ | _, Pre ->
       Some inst
@@ -240,7 +243,8 @@ let bi_match_typ scope_opt tbs subs =
   and fail_open_bound c bd =
     let c = Con.name c in
     let bd = string_of_typ bd in
-    failwith (Printf.sprintf "type parameter %s has an open bound %s mentioning another type parameter;\nexplicit type instantiation required due to limitation of inference" c bd)
+    failwith (Printf.sprintf
+      "type parameter %s has an open bound %s mentioning another type parameter;\nexplicit type instantiation required due to limitation of inference" c bd)
 
   in
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
@@ -252,7 +256,8 @@ let bi_match_typ scope_opt tbs subs =
       | Some c, {sort=Scope;_}::tbs ->
         ConEnv.singleton (List.hd cs) c,
         add (List.hd cs) (lub c (List.hd bds)) u
-      | None, {sort=Scope;_}::tbs -> failwith "scope instantiation required but no scope available"
+      | None, {sort=Scope;_}::tbs ->
+         failwith "scope instantiation required but no scope available"
       | _, _ ->
         ConEnv.empty,
         u
@@ -275,12 +280,13 @@ let bi_match_typ scope_opt tbs subs =
               fail_over_constrained lb c ub)
         cs
       in
-      if verify tbs subs us then
+      if verify_inst tbs subs us then
         us
       else
-        (failwith
-          (Printf.sprintf "bug: inferred bad instantiation\n  <%s>;\nplease report this error message as a bug and, for now, supply an explicit instantiation instead"
-             (String.concat ", " (List.map string_of_typ us))))
+        failwith
+          (Printf.sprintf
+             "bug: inferred bad instantiation\n  <%s>;\nplease report this error message as a bug and, for now, supply an explicit instantiation instead"
+            (String.concat ", " (List.map string_of_typ us)))
     | None -> failwith (Printf.sprintf
        "no instantiation of %s makes %s"
        (String.concat ", " (List.map string_of_con cs))

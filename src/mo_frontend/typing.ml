@@ -1216,7 +1216,8 @@ and infer_call env exp1 inst exp2 at t_opt =
       if not env.pre then check_exp env t_arg exp2;
       [], t_arg, t_ret
     | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
-    | _, _::_ -> (* explicit instantiation, check argument against it*)
+    | _, _::_ ->
+      (* explicit instantiation, check argument against instantiated domain *)
       let ts = check_inst_bounds env tbs typs at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
@@ -1255,6 +1256,7 @@ and infer_call env exp1 inst exp2 at t_opt =
           (T.string_of_typ_expand t_ret');
       end
     end;
+  (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
 (* Cases *)
