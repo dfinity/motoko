@@ -1249,9 +1249,9 @@ and check_exp' env0 t exp : T.typ =
         check_inst_bounds env tbs typs exp.at, check_exp
       | _::_, [] -> (* implicit or empty instantiation, infer *) (* TODO: distinguish explicit empty instantiation `<>` from omitted instantiation `` *)
         let t2 = infer_exp env exp2 in
-        match Bi_match.bi_match_typ (scope_of_env env) tbs
-                [t2; t_ret]
-                [t_arg; t]
+        match
+          (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_arg <: t1] *)
+          Bi_match.bi_match_typ (scope_of_env env) tbs [t2; t_ret] [t_arg; t]
         with
         | ts ->
           check_typ_bounds env tbs ts (List.map (fun _ -> exp1.at)  ts) exp.at;
