@@ -29,13 +29,13 @@ let bi_match_typ scope_opt tbs subs =
   let mentions typ ce = not (ConSet.is_empty (ConSet.inter (cons typ) ce)) in
 
   let rec bi_match_list p rel eq inst any xs1 xs2 =
-    (match (xs1, xs2) with
-    | (x1::xs1, x2::xs2) ->
+    match (xs1, xs2) with
+    | x1::xs1, x2::xs2 ->
       (match p rel eq inst any x1 x2 with
       | Some inst -> bi_match_list p rel eq inst any xs1 xs2
       | None -> None)
     | [], [] -> Some inst
-    | _, _ -> None)
+    | _, _ -> None
   in
 
   let rec bi_match_typ rel eq ((l,u) as inst) (any:ConSet.t) (t1:typ) (t2:typ) =
@@ -289,7 +289,6 @@ let bi_match_typ scope_opt tbs subs =
          (List.map2 (fun t1 t2 ->
            Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))
            ts1 ts2)))
-
 
 
 
