@@ -17,7 +17,6 @@ let verify tbs subs ts =
   List.for_all (fun (t1,t2) -> sub (open_ ts t1) (open_ ts t2)) subs
 
 let bi_match_typ scope_opt tbs subs =
-
   let ts = open_binds tbs in
   let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
   let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
@@ -289,6 +288,5 @@ let bi_match_typ scope_opt tbs subs =
          (List.map2 (fun t1 t2 ->
            Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))
            ts1 ts2)))
-
 
 
