@@ -11,11 +11,16 @@ let denotable t =
   let t' = normalize t in
   not (is_mut t' || is_typ t')
 
-let bi_match_typ scope_opt tbs ts1 ts2 =
+let verify tbs subs ts =
+  List.length tbs = List.length ts &&
+  List.for_all2 (fun t tb -> sub t (open_ ts tb.bound)) ts tbs &&
+  List.for_all (fun (t1,t2) -> sub (open_ ts t1) (open_ ts t2)) subs
+
+let bi_match_typ scope_opt tbs subs =
 
   let ts = open_binds tbs in
-  let ts1 = List.map (open_ ts) ts1 in
-  let ts2 = List.map (open_ ts) ts2 in
+  let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
+  let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
 
   let cs = List.map (fun t -> match t with Con(c,_) -> c | _ -> assert false) ts in
 
@@ -257,7 +262,7 @@ let bi_match_typ scope_opt tbs ts1 ts2 =
     match bi_match_list
             bi_match_typ (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty ts1 ts2 with
     | Some (l,u) ->
-      List.map
+      let us = List.map
         (fun c ->
           match ConEnv.find_opt c l, ConEnv.find_opt c u with
           | None, None -> Non
@@ -271,6 +276,13 @@ let bi_match_typ scope_opt tbs ts1 ts2 =
             else
               fail_over_constrained lb c ub)
         cs
+      in
+      if verify tbs subs us then
+        us
+      else
+        (failwith
+          (Printf.sprintf "bug: inferred bad instantiation\n  <%s>;\nplease report this error message as a bug and, for now, supply an explicit instantiation instead"
+             (String.concat ", " (List.map string_of_typ us))))
     | None -> failwith (Printf.sprintf
        "no instantiation of %s makes %s"
        (String.concat ", " (List.map string_of_con cs))

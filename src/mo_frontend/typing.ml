@@ -1210,40 +1210,40 @@ and infer_call env exp1 inst exp2 at t_opt =
         "expected function type, but expression produces type\n  %s"
         (T.string_of_typ_expand t1)
   in
-  let ts, check_arg =
+  let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], [] -> (* no inference required *)
-      [], check_exp
+      if not env.pre then check_exp env t_arg exp2;
+      [], t_arg, t_ret
     | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
     | _, _::_ -> (* explicit instantiation, check argument against it*)
-      check_inst_bounds env tbs typs at, check_exp
+      let ts = check_inst_bounds env tbs typs at in
+      let t_arg' = T.open_ ts t_arg in
+      let t_ret' = T.open_ ts t_ret in
+      if not env.pre then check_exp env t_arg' exp2;
+      ts, t_arg', t_ret'
     | _::_, [] -> (* implicit or empty instantiation, infer *) (* TODO: distinguish explicit empty instantiation `<>` from omitted instantiation `` *)
       let t2 = infer_exp env exp2 in
         match
           (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_arg <: t] *)
           Bi_match.bi_match_typ (scope_of_env env) tbs
-            [t2; t_ret] [t_arg; t]
+            [(t2, t_arg); (t_ret, t)]
         with
         | ts ->
-          check_typ_bounds env tbs ts (List.map (fun _ -> exp1.at)  ts) at;
-          ts,
-          fun env t_arg' exp ->
-          if not (T.sub t2 t_arg') then
-            error env exp.at "cannot infer type arguments due to subtyping\n  %s is not a subtype of %s"  (T.string_of_typ_expand t2) (T.string_of_typ_expand t_arg)
+          let t_arg' = T.open_ ts t_arg in
+          let t_ret' = T.open_ ts t_ret in
+          ts, t_arg', t_ret'
         | exception Failure msg ->
           error env at
-            "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s%s"
+            "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\n%s"
             (T.string_of_typ t1)
             (T.string_of_typ t2)
             (if Option.is_none t_opt then ""
-             else  Printf.sprintf "\nto produce result of type\n  %s\n" (T.string_of_typ t))
+             else  Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
             msg
   in
   inst.note <- ts;
-  let t_arg' = T.open_ ts t_arg in
-  let t_ret' = T.open_ ts t_ret in
   if not env.pre then begin
-    check_arg env t_arg' exp2;
     if Type.is_shared_sort sort then begin
       if not (T.concrete t_arg') then
         error env exp1.at
