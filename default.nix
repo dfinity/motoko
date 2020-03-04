@@ -148,7 +148,7 @@ rec {
   };
 
   # “our” Haskell packages
-  inherit (haskellPackages) lsp-int qc-motoko ic-stub;
+  inherit (haskellPackages) lsp-int qc-motoko /*ic-stub*/;
 
   tests =
     let testDerivationArgs = {
@@ -252,7 +252,7 @@ rec {
     }; in
 
     { run       = test_subdir "run"       [ moc ] ;
-      run-drun  = test_subdir "run-drun"  [ moc drun ic-stub ];
+   #   run-drun  = test_subdir "run-drun"  [ moc drun ic-stub ];
       perf      = perf_subdir "perf"      [ moc drun ];
       fail      = test_subdir "fail"      [ moc ];
       repl      = test_subdir "repl"      [ moc ];
@@ -435,7 +435,7 @@ rec {
       stdlib-doc
       stdlib-adocs
       users-guide
-      ic-stub
+   #   ic-stub
       shell
       check-generated
     ] ++ builtins.attrValues tests
