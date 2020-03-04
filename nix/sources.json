@@ -61,18 +61,5 @@
         "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "v0.2.0"
-    },
-    "winter": {
-        "branch": "master",
-        "builtin": false,
-        "description": "Haskell port of the WebAssembly OCaml reference interpreter",
-        "homepage": "https://github.com/WebAssembly/spec/tree/master/interpreter",
-        "owner": "dfinity-side-projects",
-        "repo": "winter",
-        "rev": "1e16b471644be26160cc20c4e2144c643c547ed8",
-        "sha256": "191fk1dv8vp28rwpl75nz9y3pbypc8jv9w669mvl9d2k5f74jirm",
-        "type": "tarball",
-        "url": "https://github.com/dfinity-side-projects/winter/archive/1e16b471644be26160cc20c4e2144c643c547ed8.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
