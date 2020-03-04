@@ -1201,10 +1201,10 @@ and check_exp' env0 t exp : T.typ =
 
 and infer_call env exp1 inst exp2 at t_opt =
   let t = Lib.Option.get t_opt T.Any in
-  let typs = inst.it in
+  let n = match inst.it with None -> 0 | Some typs ->  List.length typs in
   let t1 = infer_exp_promote env exp1 in
   let sort, tbs, t_arg, t_ret =
-    try T.as_func_sub T.Local (List.length typs) t1
+    try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->
       error env exp1.at
         "expected function type, but expression produces type\n  %s"
@@ -1212,17 +1212,18 @@ and infer_call env exp1 inst exp2 at t_opt =
   in
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
-    | [], [] -> (* no inference required *)
+    | [], (None | Some []) -> (* no inference required *)
       if not env.pre then check_exp env t_arg exp2;
       [], t_arg, t_ret
     | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
-    | _, _::_ -> (* explicit instantiation, check argument against it*)
+    | _, Some _ -> (* explicit instantiation, check argument against it*)
+      let typs = match inst.it with None -> [] | Some typs -> typs in
       let ts = check_inst_bounds env tbs typs at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then check_exp env t_arg' exp2;
       ts, t_arg', t_ret'
-    | _::_, [] -> (* implicit or empty instantiation, infer *) (* TODO: distinguish explicit empty instantiation `<>` from omitted instantiation `` *)
+    | _::_, None -> (* implicit, infer *)
       let t2 = infer_exp env exp2 in
         match
           (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_arg <: t] *)

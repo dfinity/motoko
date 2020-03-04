@@ -175,3 +175,11 @@ ignore choose_var(true,[var (1:Nat)],[var (1:Int)]); // rejected as overconstrai
 func select<T>(o:object {x:T}):T{ o.x };
 ignore select(object {public let x=1});
 ignore select(object {public type x = Nat}); // reject
+
+// distinguish empty <> from omitted instantiation, no inference when empty
+func fst<T,U>((t,u):(T,U)):T{t};
+ignore fst((1,2));
+ignore fst<Nat,Int>((1,2));
+ignore fst<>((1,2)); // reject
+
+

@@ -138,3 +138,4 @@ to argument of type
 to produce result of type
   Any
 no instantiation of T makes {type x = Nat} <: {x : T} and T <: Any
+inference.mo:183.8-183.20: type error, too few type arguments
