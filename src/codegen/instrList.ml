@@ -280,30 +280,18 @@ let rec dw_tag : dw_TAG -> t =
       dw_prim_type Type.Int
     in
     fakeBlock dw_TAG_compile_unit
-      (dw_attr (Producer "DFINITY Motoko compiler, version 0.1") ^^
-       dw_attr (Language dw_LANG_Swift) ^^ (* FIXME *)
-       dw_attr (Name file) ^^
-       dw_attr (Stmt_list 0) ^^
-       dw_attr (Comp_dir dir) ^^
-       dw_attr (Use_UTF8 true) ^^
-       dw_attr (Low_pc 0) ^^
-       dw_attr (Addr_base 0) ^^
-       dw_attr Ranges) ^^
-      base_types ^^
-      builtin_types
+      (dw_attrs
+         [ Producer "DFINITY Motoko compiler, version 0.1";
+           Language dw_LANG_Swift; Name file; Stmt_list 0;
+           Comp_dir dir; Use_UTF8 true; Low_pc 0; Addr_base 0; Ranges ]) ^^
+      base_types (*^^
+      builtin_types*)
   | Subprogram (name, pos) ->
     fakeBlock dw_TAG_subprogram
-      (dw_attr (Low_pc 0) ^^
-       dw_attr (Name name) ^^
-       dw_attr (Decl_line pos.Source.line) ^^
-       dw_attr (Decl_column pos.Source.column) ^^
-       dw_attr (Prototyped true) ^^
-       dw_attr (External false))
+      (dw_attrs [Low_pc 0; Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty) ->
     fakeBlock dw_TAG_formal_parameter
-      (dw_attr (Name name) ^^
-       dw_attr (Decl_line pos.Source.line) ^^
-       dw_attr (Decl_column pos.Source.column) ^^
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column] ^^
        dw_attr (TypeRef (Printf.printf "ASKING!\n"; match ty with  | Type.Prim pr -> Printf.printf "SEARCHING!\n"; PrimRefs.find pr !dw_prims | _ -> 0 (*FIXME*))))
   (*| Variable ->  *)
   | Type ty -> dw_type ty
@@ -314,8 +302,7 @@ and lookup_pointer_key () : t * int =
   | None ->
     let dw, r =
       fakeReferenceableBlock (assert (dw_TAG_base_type_Anon > dw_TAG_base_type); dw_TAG_base_type_Anon)
-        (dw_attr (Bit_size 1) ^^
-         dw_attr (Data_bit_offset 1)) in
+        (dw_attrs [Bit_size 1; Data_bit_offset 1]) in
     pointer_key := Some r;Printf.printf "pointer_key!  %d\n" r;
     dw, r
 and fakeBlock tag attrs =
@@ -351,7 +338,7 @@ and dw_prim_type prim =
       | Type.(Word16 | Nat16 | Int16) ->
         fakeReferenceableBlock dw_TAG_base_type
           (dw_attrs [name; Bit_size 16; Data_bit_offset 16])
-      | Type.(Int (*| Nat*)) ->
+      | Type.(Int | Nat) ->
         let pointer_key_dw, pointer_key = lookup_pointer_key () in
         let struct_dw, struct_ref = fakeReferenceableBlock dw_TAG_structure_type
           (dw_attrs [name; Byte_size 4]) in
@@ -416,8 +403,7 @@ and dw_prim_type prim =
  *)
 
         fakeReferenceableBlock dw_TAG_structure_type
-          (dw_attr name ^^
-           dw_attr (Byte_size 4)) ^^>
+          (dw_attrs [name; Byte_size 4]) ^^>
           variant_part ^^
           dw_tag_children_done
       (*  dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32])) *)
