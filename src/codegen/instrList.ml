@@ -244,6 +244,8 @@ let dw_attr : dw_AT -> t =
   | TypeRef i -> assert (i <> 1) ;fakeColumn i dw_AT_type Nop
   | Encoding e -> fakeColumn e dw_AT_encoding Nop
 
+let dw_attrs = concat_map dw_attr
+
 (* emit a DW_TAG
    When it admits children, these follow sequentially,
    closed by dw_tag_children_done.
@@ -275,21 +277,7 @@ let rec dw_tag : dw_TAG -> t =
     in
     let builtin_types =
       dw_prim_type Type.Int ^^
-      let pointer_key_dw, pointer_key = lookup_pointer_key () in
-      pointer_key_dw ^^
-      fakeBlock dw_TAG_structure_type
-        (dw_attr (Name "Nat") ^^
-         dw_attr (Byte_size 4)) ^^
-      fakeBlock dw_TAG_member_Pointer_mark
-        (dw_attr (Name "@pointer_mark") ^^
-         dw_attr (TypeRef pointer_key) ^^
-         dw_attr (Artificial true) ^^
-         dw_attr (Bit_size 1) ^^
-         dw_attr (Data_bit_offset 1)) ^^
-      fakeBlock dw_TAG_variant_part
-        (dw_attr (Discr 0(*FIXME*))) ^^
-      dw_tag_children_done ^^ (* closing dw_TAG_variant_part *)
-      dw_tag_children_done (* closing dw_TAG_structure_type *)
+      dw_prim_type Type.Nat
     in
     fakeBlock dw_TAG_compile_unit
       (dw_attr (Producer "DFINITY Motoko compiler, version 0.1") ^^
@@ -371,18 +359,12 @@ and dw_prim_type prim =
           (dw_attr name ^^
            dw_attr (Bit_size 16) ^^
            dw_attr (Data_bit_offset 16))
-      | Type.(Int(* | Nat*)) ->
+      | Type.(Int (*| Nat*)) ->
         let pointer_key_dw, pointer_key = lookup_pointer_key () in
-        let struct_dw, struct_ref =
-          fakeReferenceableBlock dw_TAG_structure_type
-            (dw_attr name ^^
-             dw_attr (Byte_size 4)) in
+        let struct_dw, struct_ref = fakeReferenceableBlock dw_TAG_structure_type
+          (dw_attrs [name; Byte_size 4]) in
         let mark_dw, mark = fakeReferenceableBlock dw_TAG_member_Pointer_mark
-          (dw_attr (Name "@pointer_mark") ^^
-           dw_attr (TypeRef pointer_key) ^^
-           dw_attr (Artificial true) ^^
-           dw_attr (Bit_size 1) ^^
-           dw_attr (Data_bit_offset 1)) in
+          (dw_attrs [Name "@pointer_mark"; TypeRef pointer_key; Artificial true; Bit_size 1; Data_bit_offset 1]) in
         pointer_key_dw ^^
         struct_dw ^^
         mark_dw ^^
