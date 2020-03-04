@@ -21,7 +21,7 @@ open Type
    * subtyping ( _ <: _) on variables that occur strictly positively in subs
    * super-typing ( _ :> _) on variables that occur strictly negatively in subs
    * equivalence ( _ = _ ) on variables that occur both positively and negatively in subs
-   * {(Non,Non)} on variables that don't occur in subs
+   * trivial {(Non,Non)} on variables that don't occur in subs
 
    (modulo mixing my left foot with my right)
 *)
