@@ -276,8 +276,8 @@ let rec dw_tag : dw_TAG -> t =
       dw_prim_type Type.Int16
     in
     let builtin_types =
-      dw_prim_type Type.Int ^^
-      dw_prim_type Type.Nat
+      dw_prim_type Type.Nat ^^
+      dw_prim_type Type.Int
     in
     fakeBlock dw_TAG_compile_unit
       (dw_attr (Producer "DFINITY Motoko compiler, version 0.1") ^^
@@ -341,24 +341,16 @@ and dw_prim_type prim =
       match prim with
       | Type.Bool ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr name ^^
-           dw_attr (Bit_size 1) ^^
-           dw_attr (Data_bit_offset 0))
+          (dw_attrs [name; Bit_size 1; Data_bit_offset 0])
       | Type.Char ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr name ^^
-           dw_attr (Bit_size 21) ^^
-           dw_attr (Data_bit_offset 8))
+          (dw_attrs [name; Bit_size 21; Data_bit_offset 8])
       | Type.(Word8 | Nat8 | Int8) ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr name ^^
-           dw_attr (Bit_size 8) ^^
-           dw_attr (Data_bit_offset 24))
+          (dw_attrs [name; Bit_size 8; Data_bit_offset 24])
       | Type.(Word16 | Nat16 | Int16) ->
         fakeReferenceableBlock dw_TAG_base_type
-          (dw_attr name ^^
-           dw_attr (Bit_size 16) ^^
-           dw_attr (Data_bit_offset 16))
+          (dw_attrs [name; Bit_size 16; Data_bit_offset 16])
       | Type.(Int (*| Nat*)) ->
         let pointer_key_dw, pointer_key = lookup_pointer_key () in
         let struct_dw, struct_ref = fakeReferenceableBlock dw_TAG_structure_type
@@ -376,14 +368,10 @@ and dw_prim_type prim =
       | Type.Word32 ->
         let internalU30 =
           fakeReferenceableBlock dw_TAG_base_type_Unsigned_Anon
-            (dw_attr (Bit_size 30) ^^
-             dw_attr (Data_bit_offset 2) ^^
-             dw_attr (Encoding dw_ATE_unsigned)) in
+            (dw_attrs [Bit_size 30; Data_bit_offset 2; Encoding dw_ATE_unsigned]) in
         let internalU32_dw, internalU32 =
           fakeReferenceableBlock dw_TAG_base_type_Unsigned_Bytes_Anon
-            (dw_attr (Byte_size 4) ^^
-             dw_attr (Data_bit_offset 2) ^^
-             dw_attr (Encoding dw_ATE_unsigned)) in
+            (dw_attrs [Byte_size 4; Data_bit_offset 2; Encoding dw_ATE_unsigned]) in
         let pointedU32 =
           internalU32_dw ^^<
           fakeReferenceableBlock dw_TAG_pointer_type
@@ -392,11 +380,7 @@ and dw_prim_type prim =
         let flag_member_dw, flag_member =
           pointer_key_dw ^^<
           fakeReferenceableBlock dw_TAG_member_Pointer_mark
-            (dw_attr (Name "@pointer_mark") ^^ (* TODO: make it anonymous? *)
-             dw_attr (TypeRef pointer_key) ^^
-             dw_attr (Artificial true) ^^
-             dw_attr (Bit_size 1) ^^
-             dw_attr (Data_bit_offset 1)) in
+            (dw_attrs [Name "@pointer_mark"; TypeRef pointer_key; Artificial true; Bit_size 1; Data_bit_offset 1]) in
         let variant_part =
           flag_member_dw ^^
           fakeBlock dw_TAG_variant_part
