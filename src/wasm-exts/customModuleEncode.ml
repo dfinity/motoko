@@ -145,9 +145,9 @@ let encode (em : extended_module) =
     | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED\n"; dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf ()
     | Tag (None, s, attrs_tags) :: Tag (None, 0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s ->
       Printf.printf "TOPLEVEL: EATING\n";
-      (* we have to be careful to only reference tags already written *)
-      let unit_tags, unit_attrs = List.partition (function Tag _ -> true | _ -> false) attrs_tags in
-      dwarf_tags := Tag (None, s, unit_tags @ tags @ unit_attrs) :: []
+      (* we have to be careful to only reference tags already written,
+         so maintain creation order *)
+      dwarf_tags := Tag (None, s, attrs_tags @ tags) :: []
     | Tag _ as nested :: Tag (r, tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING into 0x%x\n" tag; Tag (r, tag, nested :: arts) :: t)
     | _ -> failwith "cannot close DW_AT" in
   let add_dwarf_attribute attr =
