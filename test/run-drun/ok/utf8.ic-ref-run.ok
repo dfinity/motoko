@@ -1,5 +1,5 @@
 → create
-← completed: canister-id = 0x2a01
+← completed: canister-id = ic:2a012b
 → install
 ← completed
 → update callshow(0x4449444c0000)
