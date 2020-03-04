@@ -1,0 +1,12 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ query absolute(0x4449444c00017d2a)
+← completed: 0x4449444c00017d2a
+→ query absolute(0x4449444c00017c56)
+← completed: 0x4449444c00017d2a
+→ query absolutes(0x4449444c016d7d0100022a19)
+← completed: 0x4449444c016d7d0100022a19
+→ query absolutes(0x4449444c016d7c0100025619)
+← completed: 0x4449444c016d7d0100022a19

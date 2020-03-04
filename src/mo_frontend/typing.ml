@@ -93,7 +93,7 @@ let flag_of_compile_mode mode =
   | Flags.ICMode -> ""
   | Flags.WASIMode -> " and flag -wasi-system-api"
   | Flags.WasmMode -> " and flag -no-system-api"
-  | Flags.StubMode -> " and flag -stub-system-api"
+  | Flags.RefMode -> " and flag -ref-system-api"
 
 let compile_mode_error mode env at fmt =
   Printf.ksprintf
@@ -774,7 +774,7 @@ and infer_exp'' env exp : T.typ =
     )
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
-      error_in [Flags.ICMode; Flags.StubMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
+      error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
     let env' = if sort.it = T.Actor then {env with async = C.NullCap; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
@@ -828,7 +828,7 @@ and infer_exp'' env exp : T.typ =
     )
   | FuncE (_, sort_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort sort_pat.it then
-      error_in [Flags.ICMode; Flags.StubMode] env exp1.at "a shared function is only allowed as a public field of an actor";
+      error_in [Flags.ICMode; Flags.RefMode] env exp1.at "a shared function is only allowed as a public field of an actor";
     let typ = match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
@@ -1157,7 +1157,7 @@ and check_exp' env0 t exp : T.typ =
   | FuncE (_, sort_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
     let sort, ve = check_sort_pat env sort_pat in
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
-      error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
+      error_in [Flags.ICMode; Flags.RefMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let codom = T.codom c (fun () -> assert false) ts2 in
@@ -1671,7 +1671,7 @@ and infer_obj env s fields at : T.typ =
       ) fields;
       List.iter (fun ef ->
         if ef.it.vis.it = Syntax.Private && is_actor_method ef.it.dec then
-          error_in [Flags.ICMode; Flags.StubMode] env ef.it.dec.at
+          error_in [Flags.ICMode; Flags.RefMode] env ef.it.dec.at
             "a shared function cannot be private"
       ) fields;
     end;
@@ -2003,14 +2003,14 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (id, typ_binds, pat, _, sort, _, _) ->
     if sort.it = T.Actor then
-      error_in [Flags.ICMode; Flags.StubMode] env dec.at
+      error_in [Flags.ICMode; Flags.RefMode] env dec.at
         "actor classes are not supported; use an actor declaration instead";
      let rec is_unit_pat p = match p.it with
       | ParP p -> is_unit_pat p
       | TupP [] -> true
       | _ -> false in
     if sort.it = T.Actor && not (is_unit_pat pat) then
-      error_in [Flags.StubMode] env dec.at
+      error_in [Flags.RefMode] env dec.at
         "actor classes with parameters are not supported; use an actor declaration instead";
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
@@ -2065,7 +2065,7 @@ let check_actors scope progs : unit Diag.result =
           | [] -> ()
           | [d] -> ()
           | (d::ds) when is_actor_dec d ->
-            recover (error_in [Flags.ICMode; Flags.StubMode] env d.at)
+            recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
               "an actor must be the last declaration in a program"
           | (d::ds) -> go ds in
         go prog
