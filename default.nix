@@ -12,10 +12,11 @@ let subpath = p: import ./nix/gitSource.nix p; in
 let dfinity-src =
   let env = builtins.getEnv "DFINITY_SRC"; in
   if env != "" then env else nixpkgs.sources.dfinity; in
-
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
-
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
+
+let ic-ref-pkgs = import nixpkgs.sources.ic-ref { inherit (nixpkgs) system; }; in
+let ic-ref = ic-ref-pkgs.ic-ref; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -146,7 +147,9 @@ rec {
   };
 
   # “our” Haskell packages
-  inherit (haskellPackages) lsp-int qc-motoko ic-stub;
+  inherit (haskellPackages) lsp-int qc-motoko;
+
+  inherit ic-ref;
 
   tests =
     let testDerivationArgs = {
@@ -250,7 +253,7 @@ rec {
     }; in
 
     { run       = test_subdir "run"       [ moc ] ;
-      run-drun  = test_subdir "run-drun"  [ moc drun ic-stub ];
+      run-drun  = test_subdir "run-drun"  [ moc drun ic-ref ];
       perf      = perf_subdir "perf"      [ moc drun ];
       fail      = test_subdir "fail"      [ moc ];
       repl      = test_subdir "repl"      [ moc ];
@@ -433,7 +436,7 @@ rec {
       stdlib-doc
       stdlib-adocs
       users-guide
-      ic-stub
+      ic-ref
       shell
       check-generated
     ] ++ builtins.attrValues tests

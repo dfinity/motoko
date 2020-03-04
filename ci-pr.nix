@@ -1,4 +1,4 @@
-{ src ? { rev = null; }, base ? null }:
+{ src ? { rev = null; } }:
 let
   nixpkgs = import ./nix { };
 
@@ -15,10 +15,10 @@ let
   };
 
 in
-import ./ci.nix { inherit src; } // nixpkgs.lib.optionalAttrs (base != null) {
+import ./ci.nix { inherit src; } // nixpkgs.lib.optionalAttrs (src ? mergeBase) {
   perf-delta =
     let
-      baseJobs = import "${base}/default.nix" { system = "x86_64-linux"; };
+      baseJobs = import (src.mergeBase + "/default.nix") { system = "x86_64-linux"; };
       prJobs = import ./default.nix { system = "x86_64-linux"; };
     in
     nixpkgs.runCommandNoCC "perf-delta" {
