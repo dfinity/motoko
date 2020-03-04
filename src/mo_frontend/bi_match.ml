@@ -24,8 +24,7 @@ let bi_match_typ scope_opt tbs subs =
 
   let cs = List.map (fun t -> match t with Con(c,_) -> c | _ -> assert false) ts in
 
-  let flexible c = List.exists (Con.eq c) cs
-  in
+  let flexible c = List.exists (Con.eq c) cs in
 
   let mentions typ ce = not (ConSet.is_empty (ConSet.inter (cons typ) ce)) in
 
@@ -290,7 +289,6 @@ let bi_match_typ scope_opt tbs subs =
          (List.map2 (fun t1 t2 ->
            Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))
            ts1 ts2)))
-
 
 
 
