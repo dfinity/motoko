@@ -8,7 +8,7 @@ open Type
      * every `(t1,t2)` in `subs` satisfies `open_ ts t1 <: open_ ts t2`
      * any `Scope` parameter in `tbs` is instantiated with scope_opt, iff scope_opt <> None.
    or fails with exception `Failure msg` if
-     * tbs contains open bounds mentioning parameters in tbs (a limitiation); or
+     * `tbs` contains open bounds mentioning parameters in `tbs` (a limitation); or
      * no such instantiation exists due to
        * a subtype violation; or
        * some parameter in `tbs` being under constrained (`ts` is ambiguous); or
@@ -18,7 +18,7 @@ open Type
 
    The ordering on instantiations `ts` is determined pointwise depending on the
    occurrence of that variable in `subs` and is:
-   * subtyping ( _ <: _) on variables that occur strictly positively in subs
+   * sub-typing ( _ <: _) on variables that occur strictly positively in subs
    * super-typing ( _ :> _) on variables that occur strictly negatively in subs
    * equivalence ( _ = _ ) on variables that occur both positively and negatively in subs
    * trivial {(Non,Non)} on variables that don't occur in subs
