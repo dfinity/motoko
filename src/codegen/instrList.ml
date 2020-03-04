@@ -300,8 +300,8 @@ let rec dw_tag : dw_TAG -> t =
        dw_attr (Low_pc 0) ^^
        dw_attr (Addr_base 0) ^^
        dw_attr Ranges) ^^
-      base_types (* ^^
-      builtin_types *)
+      base_types ^^
+      builtin_types
   | Subprogram (name, pos) ->
     fakeBlock dw_TAG_subprogram
       (dw_attr (Low_pc 0) ^^
