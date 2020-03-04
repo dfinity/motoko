@@ -1,7 +1,0 @@
-→ create
-← completed: canister-id = 0x2a01
-→ install
-← completed
-→ update Bad(0x4449444c0000)
-debug.print: ok
-← completed: 0x4449444c0000

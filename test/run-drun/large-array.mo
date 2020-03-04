@@ -8,4 +8,4 @@ Prim.debugPrint "done";
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-//SKIP comp-stub
+//SKIP comp-ref

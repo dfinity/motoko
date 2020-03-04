@@ -2,7 +2,7 @@
 
 module M = Map.Make(String)
 
-type compile_mode = WasmMode | ICMode | StubMode | WASIMode
+type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
 let trace = ref false
 let verbose = ref false
