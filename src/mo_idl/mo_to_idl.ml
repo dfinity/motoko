@@ -61,7 +61,7 @@ let prim p =
   | Char -> I.PrimT I.Nat32
   | Text -> I.PrimT I.Text
   | Blob -> I.VecT (I.PrimT I.Nat8 @@ no_region)
-  | Principal -> I.VecT (I.PrimT I.Nat8 @@ no_region) (* could also be an empty service? *)
+  | Principal -> I.PrincipalT
   | Error -> assert false
 
 let rec typ t =
