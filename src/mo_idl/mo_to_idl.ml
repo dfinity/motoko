@@ -1,40 +1,39 @@
 open Mo_types
 open Mo_types.Type
 open Source
-open Printf
 module E = Mo_def.Syntax
 module I = Idllib.Syntax
 
 let env = ref Env.empty
-(* For monomorphization *)
-let stamp = ref Env.empty
-(* can you replace this by a map with domain (Con.name) = string, ordered by Con.compare and implicit codomain int (or even int ref) *)
 
-let type_map = ref Env.empty
-(* can you replace this by a map with domain (con * typ list), ordered by 
-compare and implicit codomain int *)
+(* For monomorphization *)
+module Stamp = Map.Make(String)
+let stamp = ref Stamp.empty
+
+module TypeMap = Map.Make (struct type t = con * typ list let compare = compare end)
+let type_map = ref TypeMap.empty
 
 let normalize str =
   let illegal_chars = ['-'; '/';] in
   String.map (fun c -> if List.mem c illegal_chars then '_' else c) str
 
 let string_of_con vs c =
-  let name = string_of_con c in (* maybe use Con.name instead, excluding the stamp *)
+  let name = Con.name c in
   match Con.kind c with
   | Def ([], _) -> normalize name
   | Def (tbs, _) ->
-     let id = sprintf "%s<%s>" name (String.concat "," (List.map string_of_typ vs)) in
+     let id = (c, vs) in
      let n =
-       match Env.find_opt id !type_map with
+       match TypeMap.find_opt id !type_map with
        | None ->
-          (match Env.find_opt name !stamp with
+          (match Stamp.find_opt name !stamp with
            | None ->
-              stamp := Env.add name 1 !stamp;
-              type_map := Env.add id 1 !type_map;
+              stamp := Stamp.add name 1 !stamp;
+              type_map := TypeMap.add id 1 !type_map;
               1
            | Some n ->
-              stamp := Env.add name (n+1) !stamp;
-              type_map := Env.add id (n+1) !type_map;
+              stamp := Stamp.add name (n+1) !stamp;
+              type_map := TypeMap.add id (n+1) !type_map;
               n+1)
        | Some n -> n
      in Printf.sprintf "%s_%d" (normalize name) n
@@ -73,14 +72,21 @@ let rec typ t =
   | Var (s, i) -> assert false
   | Con (c, ts) ->
      (match Con.kind c with
-     | Def ([], Prim p) -> prim p
-     | Def ([], Any) -> I.PrimT I.Reserved
-     | Def ([], Non) -> I.PrimT I.Empty
-     | Def (_, t) ->
-        chase_con ts c;
-        I.VarT (string_of_con ts c @@ no_region)
-     | _ -> assert false
-     )
+      | Def (_, t) ->
+         (match (open_ ts t) with
+          | Prim p -> prim p
+          | Any -> I.PrimT I.Reserved
+          | Non -> I.PrimT I.Empty
+          | t ->
+             let id = string_of_con ts c in
+             if not (Env.mem id !env) then
+               begin
+                 env := Env.add id (I.PreT @@ no_region) !env;
+                 let t = typ t in
+                 env := Env.add id t !env
+               end;
+             I.VarT (string_of_con ts c @@ no_region))
+      | _ -> assert false)
   | Typ c -> assert false
   | Tup ts ->
      if ts = [] then
@@ -146,16 +152,6 @@ and meths fs =
                  meth = typ f.typ} @@ no_region in
          meth :: list
     ) fs []
-and chase_con ts c =
-  let id = string_of_con ts c in
-  if not (Env.mem id !env) then
-    (match Con.kind c with
-     | Def (tbs, t) ->
-         env := Env.add id (I.PreT @@ no_region) !env;
-         (*let t = typ vs t in*)
-         let t = typ (open_ ts t) in
-         env := Env.add id t !env
-     | _ -> assert false)
 
 let is_actor_con c =
   match Con.kind c with
@@ -164,7 +160,7 @@ let is_actor_con c =
 
 let chase_decs env =
   ConSet.iter (fun c ->
-      if is_actor_con c then chase_con [] c
+      if is_actor_con c then ignore (typ (Con (c,[])))
     ) env.Scope.con_env
 
 let gather_decs () =
