@@ -19,7 +19,7 @@ let verify_inst tbs subs ts =
   List.for_all2 (fun t tb -> sub t (open_ ts tb.bound)) ts tbs &&
   List.for_all (fun (t1,t2) -> sub (open_ ts t1) (open_ ts t2)) subs
 
-let bi_match_typ scope_opt tbs subs =
+let bi_match_subs scope_opt tbs subs =
   let ts = open_binds tbs in
 
   let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
@@ -27,7 +27,9 @@ let bi_match_typ scope_opt tbs subs =
 
   let cs = List.map (fun t -> match t with Con(c,_) -> c | _ -> assert false) ts in
 
-  let flexible c = List.exists (Con.eq c) cs in
+  let flexible =
+    let cons = ConSet.of_list cs in
+    fun c -> ConSet.mem c cons in
 
   let mentions typ ce = not (ConSet.is_empty (ConSet.inter (cons typ) ce)) in
 

@@ -26,6 +26,6 @@ open Type
    (modulo mixing my left foot with my right)
 *)
 
-val bi_match_typ :
+val bi_match_subs :
   scope option -> bind list -> (typ * typ) list ->
   typ list (* raises Failure *)
