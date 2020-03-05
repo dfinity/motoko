@@ -1199,8 +1199,8 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t);
     t'
 
-and infer_call env exp1 inst exp2 at t_opt =
-  let t = Lib.Option.get t_opt T.Any in
+and infer_call env exp1 inst exp2 at t_expect_opt =
+  let t = Lib.Option.get t_expect_opt T.Any in
   let n = match inst.it with None -> 0 | Some typs ->  List.length typs in
   let t1 = infer_exp_promote env exp1 in
   let sort, tbs, t_arg, t_ret =
@@ -1216,7 +1216,8 @@ and infer_call env exp1 inst exp2 at t_opt =
       if not env.pre then check_exp env t_arg exp2;
       [], t_arg, t_ret
     | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
-    | _, Some _ -> (* explicit instantiation, check argument against it*)
+     | _, Some _ ->
+      (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some typs -> typs in
       let ts = check_inst_bounds env tbs typs at in
       let t_arg' = T.open_ ts t_arg in
@@ -1227,7 +1228,7 @@ and infer_call env exp1 inst exp2 at t_opt =
       let t2 = infer_exp env exp2 in
         match
           (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_arg <: t] *)
-          Bi_match.bi_match_typ (scope_of_env env) tbs
+          Bi_match.bi_match_subs (scope_of_env env) tbs
             [(t2, t_arg); (t_ret, t)]
         with
         | ts ->
@@ -1239,7 +1240,7 @@ and infer_call env exp1 inst exp2 at t_opt =
             "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\n%s"
             (T.string_of_typ t1)
             (T.string_of_typ t2)
-            (if Option.is_none t_opt then ""
+            (if Option.is_none t_expect_opt then ""
              else  Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
             msg
   in
@@ -1256,6 +1257,7 @@ and infer_call env exp1 inst exp2 at t_opt =
           (T.string_of_typ_expand t_ret');
       end
     end;
+  (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
 (* Cases *)
