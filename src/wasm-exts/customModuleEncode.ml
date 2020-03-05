@@ -66,7 +66,7 @@ let allocate_reference_slot () =
   dw_references := References.add !num_dw_references (Lib.Promise.make ()) !dw_references;
   !num_dw_references
 
-(* DWARF factlets, a.k.a. DIE *)
+(* DWARF factlets, a.k.a. DIEs *)
 
 type dwarf_artifact = Tag of int option * int * dwarf_artifact list
                     | IntAttribute of int * int
@@ -146,16 +146,14 @@ let encode (em : extended_module) =
     | Tag (None, s, attrs_tags) :: Tag (None, 0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s ->
       Printf.printf "TOPLEVEL: EATING\n";
       (* we have to be careful to only reference tags already written,
-         so maintain creation order *)
+         so maintain creation order; reversal happens in writeTag *)
       let ref_priority a b = match a, b with
         | Tag (Some m, _, _), Tag (Some n, _, _) -> compare n m
         | _, Tag (Some _, _, _) -> -1
         | Tag (Some _, _, _), _ -> 1
         | _ -> 0 in
-      let refs_first = List.stable_sort ref_priority (attrs_tags @ tags) in
-      (*let other_tags, defining_tags = List.partition (function Tag (None, _, _) -> true | _ -> false) (attrs_tags @ tags) in
-      dwarf_tags := Tag (None, s, other_tags @ defining_tags) :: [] *)
-      dwarf_tags := Tag (None, s, refs_first) :: []
+      let refs_back = List.stable_sort ref_priority (attrs_tags @ tags) in
+      dwarf_tags := Tag (None, s, refs_back) :: []
     | Tag _ as nested :: Tag (r, tag, arts) :: t -> dwarf_tags := (Printf.printf "NESTING into 0x%x\n" tag; Tag (r, tag, nested :: arts) :: t)
     | _ -> failwith "cannot close DW_AT" in
   let add_dwarf_attribute attr =
