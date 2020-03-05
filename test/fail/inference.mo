@@ -172,6 +172,7 @@ ignore choose_var(true, [var (1:Int)], [var (1:Int)]);
 ignore choose_var(true, [var (1:Nat)], [var (1:Int)]); // rejected as overconstrained (variance not applicable)
 
 // reject type components as (non denotable) instantiations
+
 func select<T>(o : object {x : T}) : T { o.x };
 ignore select(object {public let x = 1});
 ignore select(object {public type x = Nat}); // reject
