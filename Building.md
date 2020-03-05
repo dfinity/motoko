@@ -44,7 +44,7 @@ installing all required tools without nix is out of scope).
    nix-env -i -f . -A filecheck
    nix-env -i -f . -A wabt
    nix-env -i -f . -A drun
-   nix-env -i -f . -A ic-stub
+   nix-env -i -f . -A ic-run
    ```
  * Building the Motoko runtime without nix is tricky. But you can run
    ```
@@ -78,3 +78,15 @@ https://github.com/ocaml/dune/issues/57 to see when a coverage report is viable 
    _pass_ it the path to the binary.)
 
 
+## Updating Haskell Packages
+
+When the `.cabal` file of a Haskell package is changed you need to make sure the
+corresponding `default.nix` file (stored in `nix/generated/`) is kept in sync
+with it.
+
+As mentioned in the `nix/generate.nix` files, these files are automatically
+generated. See `nix/generate.nix` for the command to update them.
+
+Don't worry if you forget to update the `default.nix` file, the CI job
+`check-generated` checks if these files are in sync and fail with a diff if
+they aren't.

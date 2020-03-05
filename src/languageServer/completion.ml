@@ -35,7 +35,8 @@ let string_of_item (item : Lsp_t.completion_item) : string =
   item.Lsp_t.completion_item_label
 
 let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
-  let tmpl = template_of_ide_decl d in
+  (* let tmpl = template_of_ide_decl d in *)
+  let tmpl = DI.name_of_ide_decl d in
   match d with
   | DI.ValueDecl value ->
      Lsp_t.{
@@ -44,7 +45,7 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
         completion_item_insertText = Some tmpl;
         completion_item_insertTextFormat = Some 2;
         completion_item_additionalTextEdits = None;
-        completion_item_documentation = Some(Type.string_of_typ value.DI.typ);
+        completion_item_documentation = Some (Pretty.string_of_typ value.DI.typ);
         completion_item_detail = None;
      }
   | DI.TypeDecl ty ->
@@ -138,7 +139,7 @@ let completions index logger project_root file_path file_contents line column =
   let toplevel_decls =
     let current_module_decls =
       current_uri_opt
-      |> opt_bind (fun uri -> DI.lookup_module (Filename.remove_extension uri) index)
+      |> opt_bind (fun uri -> DI.lookup_module project_root (Filename.remove_extension uri) index)
       |> Option.fold ~none:[] ~some:snd in
     current_module_decls
   in
@@ -171,7 +172,7 @@ let completions index logger project_root file_path file_contents line column =
        |> List.find_opt (fun (mn, _) -> String.equal mn alias) in
      match module_path with
      | Some mp ->
-        (match DI.lookup_module (snd mp) index with
+        (match DI.lookup_module project_root (snd mp) index with
          | Some (_, decls) ->
             decls
             |> List.filter (has_prefix prefix)

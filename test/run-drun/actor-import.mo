@@ -3,7 +3,7 @@
 
 // this imports our own IDL, stored in actor-import
 
-// currently hard-codes the ic-stub self id
+// currently hard-codes the ic-ref self id
 // once we have actor aliases we can let run.sh set an alias.
 
 import imported1 "ic:2A012B";

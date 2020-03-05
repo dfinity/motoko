@@ -520,37 +520,38 @@ let avoid cons t =
 
 (* Collecting type constructors *)
 
-let rec cons t cs =
+let rec cons' t cs =
   match t with
   | Var _ ->  cs
   | (Prim _ | Any | Non | Pre ) -> cs
   | Con (c, ts) ->
-    List.fold_right cons ts (ConSet.add c cs)
+    List.fold_right cons' ts (ConSet.add c cs)
   | (Opt t | Mut t | Array t) ->
-    cons t cs
+    cons' t cs
   | Async (t1, t2) ->
-    cons t2 (cons t1 cs)
-  | Tup ts -> List.fold_right cons ts cs
+    cons' t2 (cons' t1 cs)
+  | Tup ts -> List.fold_right cons' ts cs
   | Func (s, c, tbs, ts1, ts2) ->
     let cs = List.fold_right cons_bind tbs  cs in
-    let cs = List.fold_right cons ts1 cs in
-    List.fold_right cons ts2 cs
+    let cs = List.fold_right cons' ts1 cs in
+    List.fold_right cons' ts2 cs
   | (Obj (_, fs) | Variant fs) ->
     List.fold_right cons_field fs cs
   | Typ c -> ConSet.add c cs
 
 and cons_bind tb cs =
-  cons tb.bound cs
+  cons' tb.bound cs
 
 and cons_field {lab; typ} cs =
-  cons typ cs
+  cons' typ cs
 
 let cons_kind k =
   match k with
   | Def (tbs, t)
   | Abs (tbs, t) ->
-    cons t (List.fold_right cons_bind tbs ConSet.empty)
+    cons' t (List.fold_right cons_bind tbs ConSet.empty)
 
+let cons t = cons' t ConSet.empty
 
 (* Checking for concrete types *)
 
@@ -1148,10 +1149,6 @@ let string_of_prim = function
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
 
-let string_of_con' vs c =
-  let s = Con.to_string c in
-  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
-
 let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
@@ -1161,6 +1158,13 @@ let string_of_func_sort = function
   | Local -> ""
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
+
+module MakePretty(Cfg : sig val show_stamps : bool end) =
+  struct
+
+let string_of_con' vs c =
+  let s = Con.to_string' Cfg.show_stamps c in
+  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
@@ -1344,4 +1348,15 @@ let rec string_of_typ_expand t =
       | t' -> s ^ " = " ^ string_of_typ_expand t'
     )
   | _ -> s
+end
 
+module type Pretty = sig
+  val string_of_con : con -> string
+  val string_of_typ : typ -> string
+  val string_of_kind : kind -> string
+  val strings_of_kind : kind -> string * string * string
+  val string_of_typ_expand : typ -> string
+end
+
+
+include MakePretty(struct let show_stamps = true end)

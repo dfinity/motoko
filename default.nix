@@ -12,10 +12,11 @@ let subpath = p: import ./nix/gitSource.nix p; in
 let dfinity-src =
   let env = builtins.getEnv "DFINITY_SRC"; in
   if env != "" then env else nixpkgs.sources.dfinity; in
-
 let dfinity-pkgs = import dfinity-src { inherit (nixpkgs) system; }; in
-
 let drun = dfinity-pkgs.drun or dfinity-pkgs.dfinity.drun; in
+
+let ic-ref-pkgs = import nixpkgs.sources.ic-ref { inherit (nixpkgs) system; }; in
+let ic-ref = ic-ref-pkgs.ic-ref; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -39,11 +40,9 @@ let
 in
 
 # When building for linux (but not in nix-shell) we build statically
-let staticpkgs =
-  if nixpkgs.stdenv.isDarwin
-  then nixpkgs
-  else nixpkgs.pkgsMusl; in
+let is_static = !nixpkgs.stdenv.isDarwin; in
 
+let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
 
 # This branches on the pkgs, which is either
 # normal nixpkgs (nix-shell, darwin)
@@ -76,14 +75,14 @@ let darwin_standalone =
 let ocaml_exe = name: bin:
   let
     profile =
-      if nixpkgs.stdenv.isDarwin
-      then "release"
-      else "release-static";
+      if is_static
+      then "release-static"
+      else "release";
 
     drv = staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      ${if nixpkgs.stdenv.isDarwin then null else "allowedRequisites"} = [];
+      ${if is_static then "allowedRequisites" else null} = [];
 
       src = subpath ./src;
 
@@ -148,7 +147,9 @@ rec {
   };
 
   # “our” Haskell packages
-  inherit (haskellPackages) lsp-int qc-motoko ic-stub;
+  inherit (haskellPackages) lsp-int qc-motoko;
+
+  inherit ic-ref;
 
   tests =
     let testDerivationArgs = {
@@ -252,7 +253,7 @@ rec {
     }; in
 
     { run       = test_subdir "run"       [ moc ] ;
-      run-drun  = test_subdir "run-drun"  [ moc drun ic-stub ];
+      run-drun  = test_subdir "run-drun"  [ moc drun ic-ref ];
       perf      = perf_subdir "perf"      [ moc drun ];
       fail      = test_subdir "fail"      [ moc ];
       repl      = test_subdir "repl"      [ moc ];
@@ -411,6 +412,15 @@ rec {
   };
   stdlib-adocs = stdlib-doc.adocs;
 
+  check-generated = nixpkgs.runCommandNoCC "check-generated" {
+      nativeBuildInputs = [ nixpkgs.diffutils ];
+      expected = import ./nix/generate.nix { pkgs = nixpkgs; };
+      dir = ./nix/generated;
+    } ''
+      diff -r -U 3 $expected $dir
+      touch $out
+    '';
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
@@ -426,8 +436,9 @@ rec {
       stdlib-doc
       stdlib-adocs
       users-guide
-      ic-stub
+      ic-ref
       shell
+      check-generated
     ] ++ builtins.attrValues tests
       ++ builtins.attrValues examples;
   };
