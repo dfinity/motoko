@@ -13,7 +13,7 @@ let stamp = ref Env.empty
 let type_map = ref Env.empty
 (* can you replace this by a map with domain (con * typ list), ordered by 
 compare and implicit codomain int *)
-             
+
 let normalize str =
   let illegal_chars = ['-'; '/';] in
   String.map (fun c -> if List.mem c illegal_chars then '_' else c) str
@@ -65,62 +65,42 @@ let prim p =
   | Principal -> I.VecT (I.PrimT I.Nat8 @@ no_region) (* could also be an empty service? *)
   | Error -> assert false
 
-let rec typ vs t =
+let rec typ t =
   (match t with
   | Any -> I.PrimT I.Reserved
   | Non -> I.PrimT I.Empty
   | Prim p -> prim p
-  | Var (s, i) ->
-    (* matching on Var is dubious -
-       ideally we should use [Type.open_ ts typ] to go under binders
-       [Type.close cs typ] to introduce binders *)
-    (typ vs (List.nth vs i)).it
-  | Con (c, []) ->
+  | Var (s, i) -> assert false
+  | Con (c, ts) ->
      (match Con.kind c with
      | Def ([], Prim p) -> prim p
      | Def ([], Any) -> I.PrimT I.Reserved
      | Def ([], Non) -> I.PrimT I.Empty
-     | _ ->
-        chase_con vs c;
-        I.VarT (string_of_con vs c @@ no_region)
+     | Def (_, t) ->
+        chase_con ts c;
+        I.VarT (string_of_con ts c @@ no_region)
+     | _ -> assert false
      )
-  | Con (c, ts) ->
-    let ts =
-      (* this looks like a broken attempt at subsitution, but only when the arguments are variables - why? *)
-      List.map (fun t ->
-           match t with
-           | Var (s, i) -> List.nth vs i (* see above *)
-           | _ -> t
-         ) ts
-    in
-    (match Con.kind c with
-     | Def (tbs, t) ->
-       (* use this for inlining defs, doesn't work with recursion
-          (typ ts t).it
-        *)
-       chase_con ts c;
-       I.VarT (string_of_con ts c @@ no_region)
-     | _ -> assert false)
   | Typ c -> assert false
   | Tup ts ->
      if ts = [] then
        I.PrimT I.Null
      else
-       I.RecordT (tuple vs ts)
-  | Array t -> I.VecT (typ vs t)
-  | Opt t -> I.OptT (typ vs t)
+       I.RecordT (tuple ts)
+  | Array t -> I.VecT (typ t)
+  | Opt t -> I.OptT (typ t)
   | Obj (Object, fs) ->
-     I.RecordT (List.map (field vs) fs)
-  | Obj (Actor, fs) -> I.ServT (meths vs fs)
+     I.RecordT (List.map field fs)
+  | Obj (Actor, fs) -> I.ServT (meths fs)
   | Obj (Module, _) -> assert false
   | Variant fs ->
-     I.VariantT (List.map (field vs) fs)
+     I.VariantT (List.map field fs)
   | Func (Shared s, c, tbs, ts1, ts2) ->
      let nons = List.map (fun _ -> Non) tbs in
      let ts1, ts2 =
        (List.map (open_ nons) ts1,
         List.map (open_ nons) ts2) in
-     let t1 = args vs ts1 in
+     let t1 = args ts1 in
      (match ts2, c with
      | [], Returns -> I.FuncT ([I.Oneway @@ no_region], t1, [])
      | ts, Promises ->
@@ -128,28 +108,28 @@ let rec typ vs t =
          (match s with
           | Query -> [I.Query @@ no_region]
           | Write -> []),
-         t1, args vs ts)
+         t1, args ts)
      | _ -> assert false)
   | Func _ -> assert false
   | Async _ -> assert false
   | Mut t -> assert false
   | Pre -> assert false
   ) @@ no_region
-and field vs {lab; typ=t} =
+and field {lab; typ=t} =
   let open Idllib.Escape in
   match unescape lab with
   | Nat nat ->
-     I.{label = I.Id nat @@ no_region; typ = typ vs t} @@ no_region
+     I.{label = I.Id nat @@ no_region; typ = typ t} @@ no_region
   | Id id ->
-     I.{label = I.Named id @@ no_region; typ = typ vs t} @@ no_region
-and tuple vs ts =
+     I.{label = I.Named id @@ no_region; typ = typ t} @@ no_region
+and tuple ts =
   List.mapi (fun i x ->
       let id = Lib.Uint32.of_int i in
-      I.{label = I.Unnamed id @@ no_region; typ = typ vs x} @@ no_region
+      I.{label = I.Unnamed id @@ no_region; typ = typ x} @@ no_region
     ) ts
-and args vs ts =
-  List.map (typ vs) ts
-and meths vs fs =
+and args ts =
+  List.map typ ts
+and meths fs =
   List.fold_right (fun f list ->
       match f.typ with
       | Typ c ->
@@ -160,19 +140,20 @@ and meths vs fs =
            match unescape f.lab with
            | Nat nat ->
               I.{var = Lib.Uint32.to_string nat @@ no_region;
-                 meth = typ vs f.typ} @@ no_region
+                 meth = typ f.typ} @@ no_region
            | Id id ->
               I.{var = id @@ no_region;
-                 meth = typ vs f.typ} @@ no_region in
+                 meth = typ f.typ} @@ no_region in
          meth :: list
     ) fs []
-and chase_con vs c =
-  let id = string_of_con vs c in
+and chase_con ts c =
+  let id = string_of_con ts c in
   if not (Env.mem id !env) then
     (match Con.kind c with
-     | Def (_, t) ->
+     | Def (tbs, t) ->
          env := Env.add id (I.PreT @@ no_region) !env;
-         let t = typ vs t in
+         (*let t = typ vs t in*)
+         let t = typ (open_ ts t) in
          env := Env.add id t !env
      | _ -> assert false)
 
@@ -222,7 +203,7 @@ let actor progs =
      let prog = Lib.List.last progs in
      match find_last_actor prog with
      | None -> None
-     | Some t -> Some (typ [] t)
+     | Some t -> Some (typ t)
 
 let prog (progs, senv) : I.prog =
   env := Env.empty;
