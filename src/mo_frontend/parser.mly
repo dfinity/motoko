@@ -175,6 +175,7 @@ let share_expfield (ef : exp_field) =
 %type<Mo_def.Syntax.case> catch case
 %type<Mo_def.Syntax.dec list -> Mo_def.Syntax.exp'> bl ob
 %type<Mo_def.Syntax.dec list> import_list
+%type<Mo_def.Syntax.inst> inst
 
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
@@ -310,6 +311,13 @@ typ_item :
 typ_args :
   | LT ts=seplist(typ, COMMA) GT { ts }
 
+inst :
+  | (* empty *)
+    { { it = None; at = no_region; note = [] } }
+  | LT ts=seplist(typ, COMMA) GT
+    { { it = Some ts; at = at $sloc; note = [] } }
+
+
 %inline typ_params_opt :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
@@ -435,8 +443,8 @@ exp_post(B) :
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post(ob) DOT x=id
     { DotE(e, x) @? at $sloc }
-  | e1=exp_post(ob) tso=typ_args? e2=exp_nullary(ob)
-    { CallE(e1, {it = Lib.Option.get tso []; at = no_region; note = []}, e2) @? at $sloc }
+  | e1=exp_post(ob) inst=inst e2=exp_nullary(ob)
+    { CallE(e1, inst, e2) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
