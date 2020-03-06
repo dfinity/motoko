@@ -96,11 +96,11 @@ let rec typ t =
   | Array t -> I.VecT (typ t)
   | Opt t -> I.OptT (typ t)
   | Obj (Object, fs) ->
-     I.RecordT (List.map field fs)
+     I.RecordT (fields fs)
   | Obj (Actor, fs) -> I.ServT (meths fs)
   | Obj (Module, _) -> assert false
   | Variant fs ->
-     I.VariantT (List.map field fs)
+     I.VariantT (fields fs)
   | Func (Shared s, c, tbs, ts1, ts2) ->
      let nons = List.map (fun _ -> Non) tbs in
      let ts1, ts2 =
@@ -128,6 +128,9 @@ and field {lab; typ=t} =
      I.{label = I.Id nat @@ no_region; typ = typ t} @@ no_region
   | Id id ->
      I.{label = I.Named id @@ no_region; typ = typ t} @@ no_region
+and fields fs =
+  List.map field
+    (List.filter (fun f -> not (is_typ f.typ)) fs)
 and tuple ts =
   List.mapi (fun i x ->
       let id = Lib.Uint32.of_int i in
