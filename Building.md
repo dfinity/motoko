@@ -44,7 +44,7 @@ installing all required tools without nix is out of scope).
    nix-env -i -f . -A filecheck
    nix-env -i -f . -A wabt
    nix-env -i -f . -A drun
-   nix-env -i -f . -A ic-stub
+   nix-env -i -f . -A ic-run
    ```
  * Building the Motoko runtime without nix is tricky. But you can run
    ```
