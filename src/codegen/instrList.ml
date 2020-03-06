@@ -359,7 +359,7 @@ and dw_prim_type prim =
             (dw_attrs [Bit_size 30; Data_bit_offset 2; Encoding dw_ATE_unsigned]) in
         let internalU32_dw, internalU32 =
           fakeReferenceableBlock dw_TAG_base_type_Unsigned_Bytes_Anon
-            (dw_attrs [Byte_size 4; Data_bit_offset 2; Encoding dw_ATE_unsigned]) in
+            (dw_attrs [Byte_size 4; Encoding dw_ATE_unsigned]) in
         let pointedU32 =
           internalU32_dw ^^<
           fakeReferenceableBlock dw_TAG_pointer_type
@@ -377,7 +377,12 @@ and dw_prim_type prim =
             (dw_attr (Discr_value 0)) ^^
           fakeBlock dw_TAG_member_Pointer_mark (* FIXME *)
             (dw_attrs [Name "@non-pointer"; TypeRef (snd internalU30); Artificial true; Bit_size 30; Data_bit_offset 2]) ^^
-          dw_tag_children_done ^^ (* variant *)
+          dw_tag_children_done ^^ (* variant 0 *)
+          fakeBlock dw_TAG_variant
+            (dw_attr (Discr_value 1)) ^^
+          fakeBlock dw_TAG_member_Pointer_mark (* FIXME *)
+            (dw_attrs [Name "@pointer"; TypeRef (snd pointedU32); Artificial true; Bit_size 32; Data_bit_offset 0]) ^^
+          dw_tag_children_done ^^ (* variant 1 *)
           dw_tag_children_done (* variant part *)
         in
 
@@ -408,7 +413,7 @@ and dw_prim_type prim =
 
  *)
 
-        fst internalU30 ^^<
+        (fst pointedU32 ^^ fst internalU30) ^^<
         fakeReferenceableBlock dw_TAG_structure_type
           (dw_attrs [name; Byte_size 4]) ^^>
           variant_part ^^
