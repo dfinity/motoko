@@ -88,7 +88,7 @@ let pp_prim p =
   | Float64 -> "Float64"
   | Bool -> "Bool"
   | Text -> "Text"
-  | Null -> "Unit"
+  | Null -> "Null"
   | Reserved -> "None"
   | Empty -> "None"
 
@@ -123,8 +123,7 @@ let rec pp_typ ppf t =
      str ppf ")";
   | ServT ts ->
      pp_open_hovbox ppf 1;
-     kwd ppf "new";
-     str ppf "IDL.ActorInterface({";
+     str ppf "IDL.Service({";
      concat ppf pp_meth "," ts;
      str ppf "})";
      pp_close_box ppf ();
