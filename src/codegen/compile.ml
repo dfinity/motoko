@@ -3496,8 +3496,8 @@ module Serialization = struct
     (* NB: Prim Blob does not map to a primitive IDL type *)
     | Any -> Some 16
     | Non -> Some 17
+    | Prim Principal -> Some 24
     | _ -> None
-
   let type_desc env ts : string =
     let open Type in
 
@@ -3572,8 +3572,8 @@ module Serialization = struct
     let rec add_typ t =
       match t with
       | Non -> assert false
-      | Prim (Blob|Principal) ->
-        add_typ Type.(Array (Prim Word8))
+      | Prim Blob ->
+         add_typ Type.(Array (Prim Word8))
       | Prim _ -> assert false
       | Tup ts ->
         add_sleb128 (-20);
@@ -3694,7 +3694,7 @@ module Serialization = struct
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
         )
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         size_word env get_len ^^
@@ -3724,6 +3724,9 @@ module Serialization = struct
         get_x ^^ Arr.load_field 0l ^^ size env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ size env (Prim Text)
       | Obj (Actor, _) ->
+        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
+        get_x ^^ size env (Prim Blob)
+      | Prim Principal ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ size env (Prim Blob)
       | Non ->
@@ -3851,7 +3854,7 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         write_word get_len ^^
@@ -3873,6 +3876,9 @@ module Serialization = struct
       | Obj (Actor, _) ->
         write_byte (compile_unboxed_const 1l) ^^
         get_x ^^ write env (Prim Blob)
+      | Prim Principal ->
+        write_byte (compile_unboxed_const 1l) ^^
+        get_x ^^ write env (Prim Blob)         
       | Non ->
         E.trap_with env "serializing value of type None"
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
@@ -4048,9 +4054,15 @@ module Serialization = struct
 
         (* Any vanilla value works here *)
         Opt.null
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         assert_blob_typ env ^^
         read_blob ()
+      | Prim Principal ->
+        assert_prim_typ t ^^
+        read_byte_tagged
+          [ E.trap_with env "IDL error: unexpected principal reference"
+            ; read_blob ()
+          ]           
       | Prim Text ->
         assert_prim_typ t ^^
         read_text ()
