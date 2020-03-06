@@ -184,7 +184,7 @@ type dw_AT = Producer of string
            | Data_bit_offset of int
            | Discr of int (* reference *)
            | Discr_list
-           | Discr_value
+           | Discr_value of int
            | Artificial of bool
            | TypeRef of int (* reference *)
            | Encoding of int
@@ -243,6 +243,7 @@ let dw_attr : dw_AT -> t =
   | Discr r -> fakeColumn r dw_AT_discr Nop
   | TypeRef i -> assert (i <> 1) ;fakeColumn i dw_AT_type Nop
   | Encoding e -> fakeColumn e dw_AT_encoding Nop
+  | Discr_value v -> fakeColumn v dw_AT_discr_value Nop
 
 let dw_attrs = concat_map dw_attr
 
@@ -372,7 +373,12 @@ and dw_prim_type prim =
           flag_member_dw ^^
           fakeBlock dw_TAG_variant_part
             (dw_attr (Discr flag_member)) ^^
-          dw_tag_children_done
+          fakeBlock dw_TAG_variant
+            (dw_attr (Discr_value 0)) ^^
+          fakeBlock dw_TAG_member_Pointer_mark (* FIXME *)
+            (dw_attrs [Name "@non-pointer"; TypeRef (snd internalU30); Artificial true; Bit_size 30; Data_bit_offset 2]) ^^
+          dw_tag_children_done ^^ (* variant *)
+          dw_tag_children_done (* variant part *)
         in
 
 (*
@@ -402,6 +408,7 @@ and dw_prim_type prim =
 
  *)
 
+        fst internalU30 ^^<
         fakeReferenceableBlock dw_TAG_structure_type
           (dw_attrs [name; Byte_size 4]) ^^>
           variant_part ^^

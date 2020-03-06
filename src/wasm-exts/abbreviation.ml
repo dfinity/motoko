@@ -92,8 +92,7 @@ let abbreviations =
     ( dw_TAG_variant_part, dw_CHILDREN_yes,
       [ dw_AT_discr, dw_FORM_ref_udata
       ] );
-    ( dw_TAG_variant, dw_CHILDREN_no,
-      [ dw_AT_name, dw_FORM_strp;
-        dw_AT_byte_size, dw_FORM_data1
+    ( dw_TAG_variant, dw_CHILDREN_yes,
+      [ dw_AT_discr_value, dw_FORM_data1
       ] )
   ]
