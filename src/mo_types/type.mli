@@ -35,6 +35,7 @@ type prim =
   | Principal
 
 type t = typ
+
 and typ =
   | Var of var * int                          (* variable *)
   | Con of con * typ list                     (* constructor *)
@@ -45,13 +46,14 @@ and typ =
   | Opt of typ                                (* option *)
   | Tup of typ list                           (* tuple *)
   | Func of func_sort * control * bind list * typ list * typ list  (* function *)
-  | Async of typ * typ                        (* future *)
+  | Async of scope * typ                        (* future *)
   | Mut of typ                                (* mutable type *)
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Pre                                       (* pre-type *)
 
+and scope = typ
 
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
@@ -176,9 +178,11 @@ val inhabited : typ -> bool
 val span : typ -> int option
 
 
-(* Cons occuring in kind *)
+(* Constructor occurrences *)
 
+val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
+
 
 
 (* Equivalence and Subtyping *)
@@ -232,3 +236,4 @@ end
 module MakePretty(Cfg : sig val show_stamps : bool end) : Pretty
 
 include Pretty
+
