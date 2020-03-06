@@ -3724,10 +3724,7 @@ module Serialization = struct
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Arr.load_field 0l ^^ size env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ size env (Prim Text)
-      | Obj (Actor, _) ->
-        inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
-        get_x ^^ size env (Prim Blob)
-      | Prim Principal ->
+      | Obj (Actor, _) | Prim Principal ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ size env (Prim Blob)
       | Non ->
@@ -3874,12 +3871,9 @@ module Serialization = struct
         write_byte (compile_unboxed_const 1l) ^^
         get_x ^^ Arr.load_field 0l ^^ write env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ write env (Prim Text)
-      | Obj (Actor, _) ->
+      | Obj (Actor, _) | Prim Principal ->
         write_byte (compile_unboxed_const 1l) ^^
         get_x ^^ write env (Prim Blob)
-      | Prim Principal ->
-        write_byte (compile_unboxed_const 1l) ^^
-        get_x ^^ write env (Prim Blob)         
       | Non ->
         E.trap_with env "serializing value of type None"
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
