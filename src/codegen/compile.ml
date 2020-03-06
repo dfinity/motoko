@@ -3498,6 +3498,7 @@ module Serialization = struct
     | Non -> Some 17
     | Prim Principal -> Some 24
     | _ -> None
+
   let type_desc env ts : string =
     let open Type in
 
@@ -3573,7 +3574,7 @@ module Serialization = struct
       match t with
       | Non -> assert false
       | Prim Blob ->
-         add_typ Type.(Array (Prim Word8))
+        add_typ Type.(Array (Prim Word8))
       | Prim _ -> assert false
       | Tup ts ->
         add_sleb128 (-20);

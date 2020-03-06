@@ -17,11 +17,11 @@ let normalize str =
   let illegal_chars = ['-'; '/';] in
   String.map (fun c -> if List.mem c illegal_chars then '_' else c) str
 
-let string_of_con vs c =
+let monomorphize_con vs c =
   let name = Con.name c in
   match Con.kind c with
   | Def ([], _) -> normalize name
-  | Def (tbs, _) ->
+  | Def _ ->
      let id = (c, vs) in
      let n =
        match TypeMap.find_opt id !type_map with
@@ -78,14 +78,14 @@ let rec typ t =
           | Any -> I.PrimT I.Reserved
           | Non -> I.PrimT I.Empty
           | t ->
-             let id = string_of_con ts c in
+             let id = monomorphize_con ts c in
              if not (Env.mem id !env) then
                begin
                  env := Env.add id (I.PreT @@ no_region) !env;
                  let t = typ t in
                  env := Env.add id t !env
                end;
-             I.VarT (string_of_con ts c @@ no_region))
+             I.VarT (id @@ no_region))
       | _ -> assert false)
   | Typ c -> assert false
   | Tup ts ->
