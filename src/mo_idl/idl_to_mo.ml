@@ -49,6 +49,7 @@ let is_tuple fs =
 let rec check_typ env t =
   match t.it with
   | PrimT p -> check_prim p
+  | PrincipalT -> M.Prim M.Principal
   | VarT {it=id; _} ->
      (match M.Env.find_opt id !m_env with
       | None ->
