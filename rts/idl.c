@@ -83,7 +83,13 @@ export int32_t read_i32_of_sleb128(buf *buf) {
 
 bool is_primitive_type(int32_t ty) {
   static const int32_t IDL_PRIM_lowest = -17;
-  return ty >= IDL_PRIM_lowest || ty == IDL_REF_principal;
+  return ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal);
+}
+
+void check_type(int32_t ty, uint32_t n_types) {
+  if (!is_primitive_type(ty) && ty >= n_types) {
+    idl_trap_with("type index out of range");
+  }
 }
 
 /*
@@ -119,36 +125,38 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   for (int i = 0; i < n_types; i++) {
     typtbl[i] = buf->p;
     int32_t ty = read_i32_of_sleb128(buf);
-    if (is_primitive_type(ty)) {
+    if (ty >= 0) {
+      idl_trap_with("illeagal type table"); // illegal      
+    } else if (is_primitive_type(ty)) {
       idl_trap_with("primitive type in type table"); // illegal
     } else if (ty == IDL_CON_opt) {
       int32_t t = read_i32_of_sleb128(buf);
-      if (!is_primitive_type(t) || t >= n_types) idl_trap_with("type index out of range");
+      check_type(t, n_types);
     } else if (ty == IDL_CON_vec) {
       int32_t t = read_i32_of_sleb128(buf);
-      if (!is_primitive_type(t) || t >= n_types) idl_trap_with("type index out of range");
+      check_type(t, n_types);
     } else if (ty == IDL_CON_record) {
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         read_u32_of_leb128(buf);
         int32_t t = read_i32_of_sleb128(buf);
-        if (!is_primitive_type(t) || t >= n_types) idl_trap_with("type index out of range");
+        check_type(t, n_types);
       }
     } else if (ty == IDL_CON_variant) {
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         read_u32_of_leb128(buf);
         int32_t t = read_i32_of_sleb128(buf);
-        if (!is_primitive_type(t) || t >= n_types) idl_trap_with("type index out of range");
+        check_type(t, n_types);
       }
     } else if (ty == IDL_CON_func) {
       // arg types
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         int32_t t = read_i32_of_sleb128(buf);
-        if (!is_primitive_type(t) || t >= n_types) idl_trap_with("type index out of range");
+        check_type(t, n_types);
       }
       // ret types
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         int32_t t = read_i32_of_sleb128(buf);
-        if (!is_primitive_type(t) || t >= n_types) idl_trap_with("type index out of range");
+        check_type(t, n_types);
       }
       // annotations
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
@@ -161,7 +169,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
         (buf->p) += size;
         // type
         int32_t t = read_i32_of_sleb128(buf);
-        if (!is_primitive_type(t) || t >= n_types) idl_trap_with("type index out of range");
+        check_type(t, n_types);
       }
     } else { // future type
       uint32_t n = read_u32_of_leb128(buf);
@@ -172,8 +180,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   *main_types_out = buf->p;
   for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
     int32_t t = read_i32_of_sleb128(buf);
-    if (!is_primitive_type(t) || t >= n_types)
-      idl_trap_with("type index out of range");
+    check_type(t, n_types);
   }
 
   *typtbl_out = typtbl;
