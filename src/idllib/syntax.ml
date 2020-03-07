@@ -40,6 +40,7 @@ and typ' =
   | RecordT of typ_field list  (* record *)
   | VariantT of typ_field list (* variant *)
   | ServT of typ_meth list (* service reference *)
+  | PrincipalT
   | PreT   (* pre-type *)
 
 and typ_field = typ_field' Source.phrase
