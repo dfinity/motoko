@@ -81,12 +81,12 @@ export int32_t read_i32_of_sleb128(buf *buf) {
 
 #define IDL_REF_principal (-24)
 
-bool is_primitive_type(int32_t ty) {
+static bool is_primitive_type(int32_t ty) {
   static const int32_t IDL_PRIM_lowest = -17;
   return ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal);
 }
 
-void check_type(int32_t ty, uint32_t n_types) {
+static void check_type(int32_t ty, uint32_t n_types) {
   if (!is_primitive_type(ty) && ty >= n_types) {
     idl_trap_with("type index out of range");
   }
