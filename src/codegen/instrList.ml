@@ -285,8 +285,8 @@ let rec dw_tag : dw_TAG -> t =
          [ Producer "DFINITY Motoko compiler, version 0.1";
            Language dw_LANG_Swift; Name file; Stmt_list 0;
            Comp_dir dir; Use_UTF8 true; Low_pc 0; Addr_base 0; Ranges ]) ^^
-      base_types (*^^
-      builtin_types*)
+      base_types ^^
+      builtin_types
   | Subprogram (name, pos) ->
     fakeBlock dw_TAG_subprogram
       (dw_attrs [Low_pc 0(*FIXME*); Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
