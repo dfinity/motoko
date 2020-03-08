@@ -20,7 +20,6 @@ let normalize str =
 let monomorphize_con vs c =
   let name = Con.name c in
   match Con.kind c with
-  | Def ([], _) -> normalize name
   | Def _ ->
      let id = (c, vs) in
      let n =
@@ -36,7 +35,9 @@ let monomorphize_con vs c =
               type_map := TypeMap.add id (n+1) !type_map;
               n+1)
        | Some n -> n
-     in Printf.sprintf "%s_%d" (normalize name) n
+     in
+     if n == 1 then normalize name
+     else Printf.sprintf "%s_%d" (normalize name) n
   | _ -> assert false
 
 let prim p =
