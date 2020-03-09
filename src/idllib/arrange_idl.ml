@@ -55,6 +55,7 @@ and typ t = match t.it with
   | VariantT cts        -> "VariantT" $$ List.map typ_field cts
   | FuncT (ms, s, t) -> "FuncT" $$ List.map typ s @ List.map typ t @ List.map mode ms
   | ServT ts -> "ServT" $$ List.map typ_meth ts
+  | PrincipalT -> Atom "PrincipalT"
   | PreT -> Atom "PreT"
                         
 and dec d = match d.it with
@@ -100,6 +101,7 @@ let rec pp_typ ppf t =
      pp_print_break ppf 0 (-2);
      str ppf "}";
      pp_close_box ppf ()
+  | PrincipalT -> str ppf "principal"
   | PreT -> assert false);
   pp_close_box ppf ()
 and pp_fields ppf name fs =
