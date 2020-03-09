@@ -132,32 +132,32 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
       idl_trap_with("primitive type in type table"); // illegal
     } else if (ty == IDL_CON_opt) {
       int32_t t = read_i32_of_sleb128(buf);
-      check_type(t, n_types);
+      check_typearg(t, n_types);
     } else if (ty == IDL_CON_vec) {
       int32_t t = read_i32_of_sleb128(buf);
-      check_type(t, n_types);
+      check_typearg(t, n_types);
     } else if (ty == IDL_CON_record) {
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         read_u32_of_leb128(buf);
         int32_t t = read_i32_of_sleb128(buf);
-        check_type(t, n_types);
+        check_typearg(t, n_types);
       }
     } else if (ty == IDL_CON_variant) {
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         read_u32_of_leb128(buf);
         int32_t t = read_i32_of_sleb128(buf);
-        check_type(t, n_types);
+        check_typearg(t, n_types);
       }
     } else if (ty == IDL_CON_func) {
       // arg types
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         int32_t t = read_i32_of_sleb128(buf);
-        check_type(t, n_types);
+        check_typearg(t, n_types);
       }
       // ret types
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
         int32_t t = read_i32_of_sleb128(buf);
-        check_type(t, n_types);
+        check_typearg(t, n_types);
       }
       // annotations
       for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
@@ -170,7 +170,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
         (buf->p) += size;
         // type
         int32_t t = read_i32_of_sleb128(buf);
-        check_type(t, n_types);
+        check_typearg(t, n_types);
       }
     } else { // future type
       uint32_t n = read_u32_of_leb128(buf);
@@ -181,7 +181,7 @@ export void parse_idl_header(buf *buf, uint8_t ***typtbl_out, uint8_t **main_typ
   *main_types_out = buf->p;
   for (uint32_t n = read_u32_of_leb128(buf); n > 0; n--) {
     int32_t t = read_i32_of_sleb128(buf);
-    check_type(t, n_types);
+    check_typearg(t, n_types);
   }
 
   *typtbl_out = typtbl;
@@ -242,9 +242,11 @@ export void skip_any(buf *b, uint8_t **typtbl, int32_t t, int32_t depth) {
         idl_trap_with("skip_any: encountered empty");
       case IDL_REF_principal:
         {
-          advance(b, 1);
-          uint32_t len = read_u32_of_leb128(b);
-          advance(b, len);
+          if (read_byte(b)) {
+            uint32_t len = read_u32_of_leb128(b);
+            advance(b, len);
+          }
+          return;
         }
       default:
         idl_trap_with("skip_any: unknown prim");
