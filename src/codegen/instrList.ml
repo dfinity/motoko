@@ -444,7 +444,7 @@ and dw_enum vnts =
     let enum_ref =
       (* reference to enumeration_type *)
       let internal_enum =
-        fakeReferenceableBlock dw_TAG_enumeration_type (dw_attr (Name "HUH??")) in
+        fakeReferenceableBlock dw_TAG_enumeration_type (dw_attr (Artificial true)) in
       let enumerator i name = fakeBlock dw_TAG_enumerator (dw_attrs [Name name; Const_value i]) in
       (fst internal_enum ^^
        concat_mapi enumerator selectors ^^

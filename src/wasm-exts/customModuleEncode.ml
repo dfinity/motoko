@@ -747,7 +747,10 @@ let encode (em : extended_module) =
     let zero_terminated str = put_string s str; u8 0
 
     let debug_abbrev_section () =
-      let tag (t, ch, kvs) = uleb128 (t land 0xFFFF); u8 ch; List.iter (fun (k, v) -> uleb128 k; uleb128 v) kvs in
+      let tag (t, ch, kvs) =
+        uleb128 (t land 0xFFFF); u8 ch;
+        assert (kvs <> []); (* these run risk of dead-code elimination *)
+        List.iter (fun (k, v) -> uleb128 k; uleb128 v) kvs in
       let abbrev i abs = uleb128 (i + 1); tag abs; close_section (); close_section () in
       let section_body abs = List.iteri abbrev abs; close_section () in
       custom_section ".debug_abbrev" section_body Abbreviation.abbreviations true

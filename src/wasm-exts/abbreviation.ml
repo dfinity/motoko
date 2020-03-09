@@ -99,7 +99,8 @@ let abbreviations =
       [ dw_AT_discr_value, dw_FORM_data1
       ] );
     ( dw_TAG_enumeration_type, dw_CHILDREN_yes,
-      [dw_AT_name, dw_FORM_strp] );
+      [ dw_AT_artificial, dw_FORM_flag_present (* to avoid elimination *)
+      ] );
     ( dw_TAG_enumerator, dw_CHILDREN_no,
       [ dw_AT_name, dw_FORM_strp;
         dw_AT_const_value, dw_FORM_data4
