@@ -294,8 +294,7 @@ let rec dw_tag : dw_TAG -> t =
       (dw_attrs [Low_pc 0(*FIXME*); Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty) ->
     fakeBlock dw_TAG_formal_parameter
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column] ^^
-       dw_attr (TypeRef (Printf.printf "ASKING!\n"; match ty with  | Type.Prim pr -> Printf.printf "SEARCHING!\n"; PrimRefs.find pr !dw_prims | _ -> 0 (*FIXME*))))
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty))])
   (*| Variable ->  *)
   | Type ty -> dw_type ty
   | _ -> assert false
@@ -314,19 +313,21 @@ and fakeReferenceableBlock tag attrs : t * int =
   let refslot = Wasm_exts.CustomModuleEncode.allocate_reference_slot () in
   fakeColumn refslot tag (Block ([], attrs 0l Wasm.Source.no_region [])),
   refslot
-and dw_type =
+and dw_type ty = fst (dw_type_ref ty)
+and dw_type_ref =
   function
-  | Type.Prim pr -> dw_prim_type pr
+  | Type.Prim pr -> dw_prim_type_ref pr
   | Type.Variant vs when is_enum vs -> Printf.printf "AN ENUM!\n"; dw_enum vs
 
   (* | Type.Opt inner -> assert false templated type *)
-  | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_prim_type Bool (* FIXME assert false *)
+  | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_prim_type_ref Bool (* FIXME assert false *)
 
 and (^^<) dw1 (dw2, r) = (dw1 ^^ dw2, r)
 and (^^>) (dw1, r) dw2 = (dw1 ^^ dw2, r)
-and dw_prim_type prim =
+and dw_prim_type prim = fst (dw_prim_type_ref prim)
+and dw_prim_type_ref prim =
   match PrimRefs.find_opt prim !dw_prims with
-  | Some _ -> nop
+  | Some r -> nop, r
   | None ->
     let name = Name (Type.string_of_prim prim) in
     let dw, refindx =
@@ -404,7 +405,7 @@ and dw_prim_type prim =
          <453>   DW_AT_discr       : <0x44b>
             <5><457>: Abbrev Number: 11 (DW_TAG_variant)
                <458>   DW_AT_discr_value : 0
-                  <6><459>: Abbrev Number: 12 (DW_TAG_member)
+                  <6><459>: Abbrev Number: 12 (DW_TAG_memberrefindx)
                      <45a>   DW_AT_type        : <0x46b>
                      <45e>   DW_AT_alignment   : 8
                      <45f>   DW_AT_data_member_location: 0
@@ -427,16 +428,16 @@ and dw_prim_type prim =
 (* | _ -> assert false (* TODO *)*)
     in
     dw_prims := PrimRefs.add prim refindx !dw_prims;
-    dw
+    dw, refindx
 and is_enum =
   let no_payload = function
     | Type.{typ = Tup []; _} -> true
     | _ -> false in
   List.for_all no_payload
-and dw_enum vnts : t =
+and dw_enum vnts =
   let selectors = List.map (fun Type.{lab; _} -> lab) vnts in
   match EnumRefs.find_opt selectors !dw_enums with
-  | Some r -> nop
+  | Some r -> nop, r
   | None ->
     let enum_ptr =
       (* pointer to struct of variants *)
@@ -457,7 +458,7 @@ and dw_enum vnts : t =
       fakeReferenceableBlock dw_TAG_pointer_type
         (dw_attr (TypeRef (snd internal_struct))) in
     dw_enums := EnumRefs.add selectors (snd enum_ptr) !dw_enums;
-    fst enum_ptr
+    enum_ptr
 
 let dw_tag_no_children = dw_tag
 
