@@ -259,6 +259,8 @@ let dw_tag_children_done : t =
 
 module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
+module EnumRefs = Map.Make (struct type t = string list let compare = compare end)
+let dw_enums = ref EnumRefs.empty
 
 let pointer_key = ref None
 
@@ -315,6 +317,8 @@ and fakeReferenceableBlock tag attrs : t * int =
 and dw_type =
   function
   | Type.Prim pr -> dw_prim_type pr
+  | Type.Variant vs when is_enum vs -> Printf.printf "AN ENUM!\n"; dw_enum vs
+
   (* | Type.Opt inner -> assert false templated type *)
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_prim_type Bool (* FIXME assert false *)
 
@@ -424,7 +428,36 @@ and dw_prim_type prim =
     in
     dw_prims := PrimRefs.add prim refindx !dw_prims;
     dw
-
+and is_enum =
+  let no_payload = function
+    | Type.{typ = Tup []; _} -> true
+    | _ -> false in
+  List.for_all no_payload
+and dw_enum vnts : t =
+  let selectors = List.map (fun Type.{lab; _} -> lab) vnts in
+  match EnumRefs.find_opt selectors !dw_enums with
+  | Some r -> nop
+  | None ->
+    let enum_ptr =
+      (* pointer to struct of variants *)
+      let internal_struct =
+        fakeReferenceableBlock dw_TAG_structure_type
+          (dw_attrs [Name "@anon_TODO"; Byte_size 4]) in
+      let key_member =
+        fakeReferenceableBlock dw_TAG_member_Word_sized
+          (dw_attrs [Name "@discr"; Byte_size 4]) in
+      let variant_part =
+        fakeBlock dw_TAG_variant_part
+          (dw_attr (Discr (snd key_member))) ^^
+        dw_tag_children_done (* variant part *) in
+      (fst internal_struct ^^
+       fst key_member ^^
+       variant_part ^^
+       dw_tag_children_done (* struct_type *)) ^^<
+      fakeReferenceableBlock dw_TAG_pointer_type
+        (dw_attr (TypeRef (snd internal_struct))) in
+    dw_enums := EnumRefs.add selectors (snd enum_ptr) !dw_enums;
+    fst enum_ptr
 
 let dw_tag_no_children = dw_tag
 
