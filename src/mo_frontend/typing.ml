@@ -322,6 +322,14 @@ and check_ErrorCap env s at =
      error env at "misplaced %s; try enclosing in an async expression or query function" s
    | C.NullCap -> error env at "misplaced %s" s
 
+and scope_of_env env =
+  match env.async with
+   | C.AsyncCap c
+   | C.QueryCap c
+   | C.AwaitCap c -> Some (T.Con(c,[]))
+   | C.ErrorCap -> None
+   | C.NullCap -> None
+
 and check_typ env (typ:typ) : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
@@ -870,33 +878,7 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, inst, exp2) ->
-    let typs = inst.it in
-    let t1 = infer_exp_promote env exp1 in
-    let sort, tbs, t_arg, t_ret =
-      try T.as_func_sub T.Local (List.length typs) t1
-      with Invalid_argument _ ->
-        error env exp1.at
-          "expected function type, but expression produces type\n  %s"
-          (T.string_of_typ_expand t1)
-    in
-    let ts = check_inst_bounds env tbs typs exp.at in
-    inst.note <- ts;
-    let t_arg = T.open_ ts t_arg in
-    let t_ret = T.open_ ts t_ret in
-    if not env.pre then begin
-      check_exp env t_arg exp2;
-      if Type.is_shared_sort sort then begin
-        if not (T.concrete t_arg) then
-          error env exp1.at
-            "shared function argument contains abstract type\n  %s"
-            (T.string_of_typ_expand t_arg);
-        if not (T.concrete t_ret) then
-          error env exp2.at
-            "shared function call result contains abstract type\n  %s"
-            (T.string_of_typ_expand t_ret);
-      end
-    end;
-    t_ret
+    infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
     let t, scope = infer_block env decs exp.at in
     (try T.avoid scope.Scope.con_env t with T.Unavoidable c ->
@@ -1200,6 +1182,14 @@ and check_exp' env0 t exp : T.typ =
     in
     check_exp (adjoin_vals env' ve2) t2 exp;
     t
+  | CallE (exp1, inst, exp2), _ ->
+    let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
+    if not (T.sub t' t) then
+      local_error env0 exp.at
+        "expression of type\n  %s\ncannot produce expected type\n  %s"
+        (T.string_of_typ_expand t')
+        (T.string_of_typ_expand t);
+    t
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
@@ -1209,6 +1199,66 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t);
     t'
 
+and infer_call env exp1 inst exp2 at t_expect_opt =
+  let t = Lib.Option.get t_expect_opt T.Any in
+  let n = match inst.it with None -> 0 | Some typs ->  List.length typs in
+  let t1 = infer_exp_promote env exp1 in
+  let sort, tbs, t_arg, t_ret =
+    try T.as_func_sub T.Local n t1
+    with Invalid_argument _ ->
+      error env exp1.at
+        "expected function type, but expression produces type\n  %s"
+        (T.string_of_typ_expand t1)
+  in
+  let ts, t_arg', t_ret' =
+    match tbs, inst.it with
+    | [], (None | Some []) -> (* no inference required *)
+      if not env.pre then check_exp env t_arg exp2;
+      [], t_arg, t_ret
+    | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
+     | _, Some _ ->
+      (* explicit instantiation, check argument against instantiated domain *)
+      let typs = match inst.it with None -> [] | Some typs -> typs in
+      let ts = check_inst_bounds env tbs typs at in
+      let t_arg' = T.open_ ts t_arg in
+      let t_ret' = T.open_ ts t_ret in
+      if not env.pre then check_exp env t_arg' exp2;
+      ts, t_arg', t_ret'
+    | _::_, None -> (* implicit, infer *)
+      let t2 = infer_exp env exp2 in
+        match
+          (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_arg <: t] *)
+          Bi_match.bi_match_subs (scope_of_env env) tbs
+            [(t2, t_arg); (t_ret, t)]
+        with
+        | ts ->
+          let t_arg' = T.open_ ts t_arg in
+          let t_ret' = T.open_ ts t_ret in
+          ts, t_arg', t_ret'
+        | exception Failure msg ->
+          error env at
+            "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\n%s"
+            (T.string_of_typ t1)
+            (T.string_of_typ t2)
+            (if Option.is_none t_expect_opt then ""
+             else  Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
+            msg
+  in
+  inst.note <- ts;
+  if not env.pre then begin
+    if Type.is_shared_sort sort then begin
+      if not (T.concrete t_arg') then
+        error env exp1.at
+          "shared function argument contains abstract type\n  %s"
+          (T.string_of_typ_expand t_arg');
+      if not (T.concrete t_ret') then
+        error env exp2.at
+          "shared function call result contains abstract type\n  %s"
+          (T.string_of_typ_expand t_ret');
+      end
+    end;
+  (* note t_ret' <: t checked by caller if necessary *)
+  t_ret'
 
 (* Cases *)
 
