@@ -86,10 +86,11 @@ static bool is_primitive_type(int32_t ty) {
   return ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal);
 }
 
-static void check_type(int32_t ty, uint32_t n_types) {
-  if (!is_primitive_type(ty) && ty >= n_types) {
-    idl_trap_with("type index out of range");
-  }
+static void check_typearg(int32_t ty, uint32_t n_types) {
+  // arguments to type constructors can be:
+  if (is_primitive_type(ty)) return;  // primitive types
+  if (ty >=0 && ty < n_types) return; // type indices.
+  idl_trap_with("invalid type argument");
 }
 
 /*
