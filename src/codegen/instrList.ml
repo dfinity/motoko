@@ -184,6 +184,7 @@ type dw_AT = Producer of string
            | Data_bit_offset of int
            | Discr of int (* reference *)
            | Discr_list
+           | Const_value of int
            | Discr_value of int
            | Artificial of bool
            | TypeRef of int (* reference *)
@@ -244,6 +245,7 @@ let dw_attr : dw_AT -> t =
   | TypeRef i -> assert (i <> 1) ;fakeColumn i dw_AT_type Nop
   | Encoding e -> fakeColumn e dw_AT_encoding Nop
   | Discr_value v -> fakeColumn v dw_AT_discr_value Nop
+  | Const_value v -> fakeColumn v dw_AT_const_value Nop
 
 let dw_attrs = concat_map dw_attr
 
@@ -439,26 +441,18 @@ and dw_enum vnts =
   match EnumRefs.find_opt selectors !dw_enums with
   | Some r -> nop, r
   | None ->
-    let enum_ptr =
-      (* pointer to struct of variants *)
-      let internal_struct =
-        fakeReferenceableBlock dw_TAG_structure_type
-          (dw_attrs [Name "@anon_TODO"; Byte_size 4]) in
-      let key_member =
-        fakeReferenceableBlock dw_TAG_member_Word_sized
-          (dw_attrs [Name "@discr"; Byte_size 4]) in
-      let variant_part =
-        fakeBlock dw_TAG_variant_part
-          (dw_attr (Discr (snd key_member))) ^^
-        dw_tag_children_done (* variant part *) in
-      (fst internal_struct ^^
-       fst key_member ^^
-       variant_part ^^
-       dw_tag_children_done (* struct_type *)) ^^<
-      fakeReferenceableBlock dw_TAG_pointer_type
-        (dw_attr (TypeRef (snd internal_struct))) in
-    dw_enums := EnumRefs.add selectors (snd enum_ptr) !dw_enums;
-    enum_ptr
+    let enum_ref =
+      (* reference to enumeration_type *)
+      let internal_enum =
+        fakeReferenceableBlock dw_TAG_enumeration_type (dw_attr (Name "HUH??")) in
+      let enumerator i name = fakeBlock dw_TAG_enumerator (dw_attrs [Name name; Const_value i]) in
+      (fst internal_enum ^^
+       concat_mapi enumerator selectors ^^
+       dw_tag_children_done (* enumeration_type *)) ^^<
+      fakeReferenceableBlock dw_TAG_reference_type
+        (dw_attr (TypeRef (snd internal_enum))) in
+    dw_enums := EnumRefs.add selectors (snd enum_ref) !dw_enums;
+    enum_ref
 
 let dw_tag_no_children = dw_tag
 

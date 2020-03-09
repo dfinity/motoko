@@ -70,7 +70,10 @@ let abbreviations =
       [ dw_AT_byte_size, dw_FORM_data1;
         dw_AT_encoding, dw_FORM_data1
       ] );
-    ( dw_TAG_pointer_type, dw_CHILDREN_no,
+    ( dw_TAG_pointer_type, dw_CHILDREN_no, (* TODO: use dw_TAG_reference_type *)
+      [ dw_AT_type, dw_FORM_ref_udata
+      ] );
+    ( dw_TAG_reference_type, dw_CHILDREN_no, (* TODO: BETTER: DW_TAG_rvalue_reference_type *)
       [ dw_AT_type, dw_FORM_ref_udata
       ] );
     ( dw_TAG_structure_type, dw_CHILDREN_yes,
@@ -94,5 +97,11 @@ let abbreviations =
       ] );
     ( dw_TAG_variant, dw_CHILDREN_yes,
       [ dw_AT_discr_value, dw_FORM_data1
+      ] );
+    ( dw_TAG_enumeration_type, dw_CHILDREN_yes,
+      [dw_AT_name, dw_FORM_strp] );
+    ( dw_TAG_enumerator, dw_CHILDREN_no,
+      [ dw_AT_name, dw_FORM_strp;
+        dw_AT_const_value, dw_FORM_data4
       ] )
   ]

@@ -141,7 +141,7 @@ let encode (em : extended_module) =
   let rec close_dwarf () =
     match !dwarf_tags with
     | [] -> failwith "no open DW_TAG"
-    | Tag _ :: [] -> failwith "TOPLEVEL: NOT NESTING\n"
+    | Tag _ :: [] -> failwith "TOPLEVEL: NOT NESTING"
     | Tag (_, t', _) as closed :: Tag (r, t, arts) :: tail when is_closed t' -> Printf.printf "PUSHING CLOSED\n"; dwarf_tags := Tag (r, t, closed :: arts) :: tail; close_dwarf ()
     | Tag (None, s, attrs_tags) :: Tag (None, 0, tags) :: [] when Dwarf5.dw_TAG_compile_unit = s ->
       Printf.printf "TOPLEVEL: EATING\n";
@@ -213,6 +213,8 @@ let encode (em : extended_module) =
       | Nop, {line; column; _} when -line = dw_AT_artificial ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_discr ->
+        add_dwarf_attribute (IntAttribute (-line, column))
+      | Nop, {line; column; _} when -line = dw_AT_const_value ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_discr_value ->
         add_dwarf_attribute (IntAttribute (-line, column))
