@@ -1,5 +1,0 @@
---- sort-record-fields.run
-+++ sort-record-fields.run-ir
-@@ -0,0 +1,2 @@
-+Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-+(unknown location): IR type error, object type's fields are not distinct and sorted {name : Text; age : Nat}
