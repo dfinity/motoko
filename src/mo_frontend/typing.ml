@@ -1367,7 +1367,7 @@ and infer_pats at env pats ts ve : T.typ list * Scope.val_env =
 
 and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_env =
   match pfs with
-  | [] -> (T.Object, List.rev ts), ve
+  | [] -> (T.Object, List.sort T.compare_field ts), ve
   | pf::pfs' ->
     let typ, ve1 = infer_pat env pf.it.pat in
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
