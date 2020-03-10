@@ -261,8 +261,10 @@ let dw_tag_children_done : t =
 
 module PrimRefs = Map.Make (struct type t = Type.prim let compare = compare end)
 let dw_prims = ref PrimRefs.empty
-module EnumRefs = Map.Make (struct type t = string list let compare = compare end)
+module EnumRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
 let dw_enums = ref EnumRefs.empty
+module ObjectRefs = Map.Make (struct type t = string list let compare = compare end) (* FIXME: consider types *)
+let dw_objects = ref ObjectRefs.empty
 
 let pointer_key = ref None
 
@@ -319,7 +321,8 @@ and dw_type ty = fst (dw_type_ref ty)
 and dw_type_ref =
   function
   | Type.Prim pr -> dw_prim_type_ref pr
-  | Type.Variant vs when is_enum vs -> Printf.printf "AN ENUM!\n"; dw_enum vs
+  | Type.Variant vs when is_enum vs -> dw_enum vs
+  | Type.Obj (_, fs) -> dw_object fs
 
   (* | Type.Opt inner -> assert false templated type *)
   | typ -> Printf.printf "Cannot type typ: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ)); dw_prim_type_ref Bool (* FIXME assert false *)
@@ -455,6 +458,26 @@ and dw_enum vnts =
         (dw_attr (TypeRef (snd internal_enum))) in
     dw_enums := EnumRefs.add selectors (snd enum_ref) !dw_enums;
     enum_ref
+and dw_object fs =
+  let selectors = List.map (fun Type.{lab; _} -> lab) fs in
+  match ObjectRefs.find_opt selectors !dw_objects with
+  | Some r -> nop, r
+  | None ->
+    let struct_ref =
+      (* reference to enumeration_type *)
+      let internal_struct =
+        fakeReferenceableBlock dw_TAG_structure_type (dw_attrs [Name "@obj"; Byte_size 4]) in
+      let field name =
+        let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in (* TODO *)
+        fakeBlock dw_TAG_member_Word_sized (dw_attrs [Name name; Byte_size 4]) in
+      (fst internal_struct ^^
+       concat_map field selectors ^^
+       dw_tag_children_done (* structure_type *)) ^^<
+      fakeReferenceableBlock dw_TAG_reference_type
+        (dw_attr (TypeRef (snd internal_struct))) in
+    dw_objects := ObjectRefs.add selectors (snd struct_ref) !dw_objects;
+    struct_ref
+
 
 let dw_tag_no_children = dw_tag
 
