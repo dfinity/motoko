@@ -19,6 +19,7 @@ let chase_env env actor =
   let rec chase t =
     match t.it with
     | PrimT _ -> ()
+    | PrincipalT -> ()
     | VarT id ->
        if not (TS.mem id.it !seen) then begin
          seen := TS.add id.it !seen;
@@ -46,6 +47,7 @@ let infer_rec env_list =
   let rec go t =
     match t.it with
     | PrimT _ -> ()
+    | PrincipalT -> ()
     | VarT id ->
        if not (TS.mem id.it !seen) then begin
          seen := TS.add id.it !seen;
@@ -86,7 +88,7 @@ let pp_prim p =
   | Float64 -> "Float64"
   | Bool -> "Bool"
   | Text -> "Text"
-  | Null -> "Unit"
+  | Null -> "Null"
   | Reserved -> "None"
   | Empty -> "None"
 
@@ -106,6 +108,7 @@ let rec pp_typ ppf t =
   (match t.it with
   | VarT s -> id ppf s
   | PrimT p -> str ppf ("IDL."^(pp_prim p))
+  | PrincipalT -> str ppf "IDL.Principal"
   | RecordT ts -> pp_fields ppf ts
   | VecT t -> str ppf "IDL.Vec("; pp_typ ppf t; str ppf ")";
   | OptT t -> str ppf "IDL.Opt("; pp_typ ppf t; str ppf ")";
@@ -120,8 +123,7 @@ let rec pp_typ ppf t =
      str ppf ")";
   | ServT ts ->
      pp_open_hovbox ppf 1;
-     kwd ppf "new";
-     str ppf "IDL.ActorInterface({";
+     str ppf "IDL.Service({";
      concat ppf pp_meth "," ts;
      str ppf "})";
      pp_close_box ppf ();

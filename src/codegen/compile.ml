@@ -2919,7 +2919,7 @@ module Dfinity = struct
     match E.mode env with
     | Flags.ICMode ->
       import_ic0 env
-    | Flags.StubMode  ->
+    | Flags.RefMode  ->
       import_ic0 env;
       E.add_func_import env "ic0" "stable_write" (i32s 3) [];
       E.add_func_import env "ic0" "stable_read" (i32s 3) [];
@@ -2934,7 +2934,7 @@ module Dfinity = struct
   let print_ptr_len env =
     match E.mode env with
     | Flags.WasmMode -> G.i Drop ^^ G.i Drop
-    | Flags.ICMode | Flags.StubMode -> system_call env "ic0" "debug_print"
+    | Flags.ICMode | Flags.RefMode -> system_call env "ic0" "debug_print"
     | Flags.WASIMode ->
       Func.share_code2 env "print_ptr" (("ptr", I32Type), ("len", I32Type)) [] (fun env get_ptr get_len ->
         Stack.with_words env "io_vec" 6l (fun get_iovec_ptr ->
@@ -3005,7 +3005,7 @@ module Dfinity = struct
     match E.mode env with
     | Flags.WasmMode -> G.i Unreachable
     | Flags.WASIMode -> compile_static_print env (s ^ "\n") ^^ G.i Unreachable
-    | Flags.ICMode | Flags.StubMode -> Blob.lit env s ^^ ic_trap_str env ^^ G.i Unreachable
+    | Flags.ICMode | Flags.RefMode -> Blob.lit env s ^^ ic_trap_str env ^^ G.i Unreachable
 
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
@@ -3023,7 +3023,7 @@ module Dfinity = struct
     })
 
   let export_init env start_fi =
-    assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let empty_f = Func.of_body env [] [] (fun env1 ->
       G.i (Call (nr start_fi)) ^^
       Lifecycle.trans env Lifecycle.InInit ^^
@@ -3039,7 +3039,7 @@ module Dfinity = struct
 
   let get_self_reference env =
     match E.mode env with
-    | Flags.ICMode | Flags.StubMode ->
+    | Flags.ICMode | Flags.RefMode ->
       Func.share_code0 env "canister_self" [I32Type] (fun env ->
         let (set_len, get_len) = new_local env "len" in
         let (set_blob, get_blob) = new_local env "blob" in
@@ -3060,7 +3060,7 @@ module Dfinity = struct
   let caller env =
     SR.Vanilla,
     match E.mode env with
-    | Flags.ICMode | Flags.StubMode ->
+    | Flags.ICMode | Flags.RefMode ->
       let (set_len, get_len) = new_local env "len" in
       let (set_blob, get_blob) = new_local env "blob" in
       system_call env "ic0" "msg_caller_size" ^^
@@ -3077,7 +3077,7 @@ module Dfinity = struct
 
   let reject env arg_instrs =
     match E.mode env with
-    | Flags.ICMode | Flags.StubMode ->
+    | Flags.ICMode | Flags.RefMode ->
       arg_instrs ^^
       Blob.as_ptr_len env ^^
       system_call env "ic0" "msg_reject"
@@ -3126,7 +3126,7 @@ module Dfinity = struct
   (* Actor reference on the stack *)
   let actor_public_field env name =
     match E.mode env with
-    | Flags.ICMode | Flags.StubMode ->
+    | Flags.ICMode | Flags.RefMode ->
       (* simply tuple canister name and function name *)
       Blob.lit env name ^^
       Tuple.from_stack env 2
@@ -3160,7 +3160,7 @@ module Dfinity = struct
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
 
-let export_upgrade_scaffold env = if E.mode env = Flags.StubMode then
+let export_upgrade_scaffold env = if E.mode env = Flags.RefMode then
   let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
 
@@ -3496,6 +3496,7 @@ module Serialization = struct
     (* NB: Prim Blob does not map to a primitive IDL type *)
     | Any -> Some 16
     | Non -> Some 17
+    | Prim Principal -> Some 24
     | _ -> None
 
   let type_desc env ts : string =
@@ -3522,7 +3523,6 @@ module Serialization = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
-          | Prim Principal -> ()
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
             assert false
@@ -3572,7 +3572,7 @@ module Serialization = struct
     let rec add_typ t =
       match t with
       | Non -> assert false
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         add_typ Type.(Array (Prim Word8))
       | Prim _ -> assert false
       | Tup ts ->
@@ -3694,7 +3694,7 @@ module Serialization = struct
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
         )
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         size_word env get_len ^^
@@ -3723,7 +3723,7 @@ module Serialization = struct
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Arr.load_field 0l ^^ size env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ size env (Prim Text)
-      | Obj (Actor, _) ->
+      | Obj (Actor, _) | Prim Principal ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ size env (Prim Blob)
       | Non ->
@@ -3851,7 +3851,7 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         write_word get_len ^^
@@ -3870,7 +3870,7 @@ module Serialization = struct
         write_byte (compile_unboxed_const 1l) ^^
         get_x ^^ Arr.load_field 0l ^^ write env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ write env (Prim Text)
-      | Obj (Actor, _) ->
+      | Obj (Actor, _) | Prim Principal ->
         write_byte (compile_unboxed_const 1l) ^^
         get_x ^^ write env (Prim Blob)
       | Non ->
@@ -4048,9 +4048,15 @@ module Serialization = struct
 
         (* Any vanilla value works here *)
         Opt.null
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         assert_blob_typ env ^^
         read_blob ()
+      | Prim Principal ->
+        assert_prim_typ t ^^
+        read_byte_tagged
+          [ E.trap_with env "IDL error: unexpected principal reference"
+            ; read_blob ()
+          ]           
       | Prim Text ->
         assert_prim_typ t ^^
         read_text ()
@@ -4179,13 +4185,13 @@ module Serialization = struct
 
   let argument_data_size env =
     match E.mode env with
-    | Flags.ICMode | Flags.StubMode ->
+    | Flags.ICMode | Flags.RefMode ->
       Dfinity.system_call env "ic0" "msg_arg_data_size"
     | _ -> assert false
 
   let argument_data_copy env get_dest get_length =
     match E.mode env with
-    | Flags.ICMode | Flags.StubMode ->
+    | Flags.ICMode | Flags.RefMode ->
       get_dest ^^
       (compile_unboxed_const 0l) ^^
       get_length ^^
@@ -4239,7 +4245,7 @@ module Serialization = struct
       E.else_trap_with env "data buffer not filled " ^^
 
       match E.mode env with
-      | Flags.ICMode | Flags.StubMode ->
+      | Flags.ICMode | Flags.RefMode ->
         get_refs_size ^^
         compile_unboxed_const 0l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -5061,7 +5067,7 @@ module FuncDec = struct
 
   let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
     match E.mode env with
-    | Flags.ICMode | Flags.StubMode ->
+    | Flags.ICMode | Flags.RefMode ->
 
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
@@ -5080,7 +5086,7 @@ module FuncDec = struct
 
   let ic_call_one_shot env ts get_meth_pair get_arg =
     match E.mode env with
-    | Flags.ICMode | Flags.StubMode ->
+    | Flags.ICMode | Flags.RefMode ->
 
       (* The callee *)
       get_meth_pair ^^ Arr.load_field 0l ^^ Blob.as_ptr_len env ^^
@@ -5103,7 +5109,7 @@ module FuncDec = struct
   let export_async_method env =
     let name = Dfinity.async_method_name in
     begin match E.mode env with
-    | Flags.ICMode | Flags.StubMode ->
+    | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
         let (set_closure, get_closure) = new_local env "closure" in
 
@@ -6460,7 +6466,7 @@ and compile_exp (env : E.t) ae exp =
 
     | ICReplyPrim ts, [e] ->
       SR.unit, begin match E.mode env with
-      | Flags.ICMode | Flags.StubMode ->
+      | Flags.ICMode | Flags.RefMode ->
         compile_exp_as env ae SR.Vanilla e ^^
         (* TODO: We can try to avoid the boxing and pass the arguments to
           serialize individually *)
@@ -6473,7 +6479,7 @@ and compile_exp (env : E.t) ae exp =
       SR.unit, Dfinity.reject env (compile_exp_vanilla env ae e)
 
     | ICCallerPrim, [] ->
-      assert (E.mode env = Flags.ICMode || E.mode env = Flags.StubMode);
+      assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
       Dfinity.caller env
 
     | ICCallPrim, [f;e;k;r] ->
@@ -7062,7 +7068,7 @@ and export_actor_field env  ae (f : Ir.field) =
 
   E.add_export env (nr {
     name = Wasm.Utf8.decode (match E.mode env with
-      | Flags.ICMode | Flags.StubMode ->
+      | Flags.ICMode | Flags.RefMode ->
         Mo_types.Type.(
         match normalize f.note with
         |  Func(Shared sort,_,_,_,_) ->
@@ -7180,7 +7186,7 @@ let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule
   let start_fun = compile_start_func env progs in
   let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o = match E.mode env with
-    | Flags.(ICMode | StubMode) -> Dfinity.export_init env start_fi; None
+    | Flags.(ICMode | RefMode) -> Dfinity.export_init env start_fi; None
     | Flags.(WasmMode | WASIMode) -> Some (nr start_fi) in
 
   conclude_module env start_fi_o

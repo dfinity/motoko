@@ -93,7 +93,7 @@ let flag_of_compile_mode mode =
   | Flags.ICMode -> ""
   | Flags.WASIMode -> " and flag -wasi-system-api"
   | Flags.WasmMode -> " and flag -no-system-api"
-  | Flags.StubMode -> " and flag -stub-system-api"
+  | Flags.RefMode -> " and flag -ref-system-api"
 
 let compile_mode_error mode env at fmt =
   Printf.ksprintf
@@ -321,6 +321,14 @@ and check_ErrorCap env s at =
    | C.QueryCap _ ->
      error env at "misplaced %s; try enclosing in an async expression or query function" s
    | C.NullCap -> error env at "misplaced %s" s
+
+and scope_of_env env =
+  match env.async with
+   | C.AsyncCap c
+   | C.QueryCap c
+   | C.AwaitCap c -> Some (T.Con(c,[]))
+   | C.ErrorCap -> None
+   | C.NullCap -> None
 
 and check_typ env (typ:typ) : T.typ =
   let t = check_typ' env typ in
@@ -766,7 +774,7 @@ and infer_exp'' env exp : T.typ =
     )
   | ObjE (sort, fields) ->
     if not in_prog && sort.it = T.Actor then
-      error_in [Flags.ICMode; Flags.StubMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
+      error_in [Flags.ICMode; Flags.RefMode] env exp.at "non-toplevel actor; an actor can only be declared at the toplevel of a program";
     let env' = if sort.it = T.Actor then {env with async = C.NullCap; in_actor = true} else env in
     infer_obj env' sort.it fields exp.at
   | DotE (exp1, id) ->
@@ -820,7 +828,7 @@ and infer_exp'' env exp : T.typ =
     )
   | FuncE (_, sort_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort sort_pat.it then
-      error_in [Flags.ICMode; Flags.StubMode] env exp1.at "a shared function is only allowed as a public field of an actor";
+      error_in [Flags.ICMode; Flags.RefMode] env exp1.at "a shared function is only allowed as a public field of an actor";
     let typ = match typ_opt with
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
@@ -870,33 +878,7 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, inst, exp2) ->
-    let typs = inst.it in
-    let t1 = infer_exp_promote env exp1 in
-    let sort, tbs, t_arg, t_ret =
-      try T.as_func_sub T.Local (List.length typs) t1
-      with Invalid_argument _ ->
-        error env exp1.at
-          "expected function type, but expression produces type\n  %s"
-          (T.string_of_typ_expand t1)
-    in
-    let ts = check_inst_bounds env tbs typs exp.at in
-    inst.note <- ts;
-    let t_arg = T.open_ ts t_arg in
-    let t_ret = T.open_ ts t_ret in
-    if not env.pre then begin
-      check_exp env t_arg exp2;
-      if Type.is_shared_sort sort then begin
-        if not (T.concrete t_arg) then
-          error env exp1.at
-            "shared function argument contains abstract type\n  %s"
-            (T.string_of_typ_expand t_arg);
-        if not (T.concrete t_ret) then
-          error env exp2.at
-            "shared function call result contains abstract type\n  %s"
-            (T.string_of_typ_expand t_ret);
-      end
-    end;
-    t_ret
+    infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
     let t, scope = infer_block env decs exp.at in
     (try T.avoid scope.Scope.con_env t with T.Unavoidable c ->
@@ -1175,7 +1157,7 @@ and check_exp' env0 t exp : T.typ =
   | FuncE (_, sort_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
     let sort, ve = check_sort_pat env sort_pat in
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
-      error_in [Flags.ICMode; Flags.StubMode] env exp.at "a shared function is only allowed as a public field of an actor";
+      error_in [Flags.ICMode; Flags.RefMode] env exp.at "a shared function is only allowed as a public field of an actor";
     let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let codom = T.codom c (fun () -> assert false) ts2 in
@@ -1200,6 +1182,14 @@ and check_exp' env0 t exp : T.typ =
     in
     check_exp (adjoin_vals env' ve2) t2 exp;
     t
+  | CallE (exp1, inst, exp2), _ ->
+    let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
+    if not (T.sub t' t) then
+      local_error env0 exp.at
+        "expression of type\n  %s\ncannot produce expected type\n  %s"
+        (T.string_of_typ_expand t')
+        (T.string_of_typ_expand t);
+    t
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
@@ -1209,6 +1199,66 @@ and check_exp' env0 t exp : T.typ =
         (T.string_of_typ_expand t);
     t'
 
+and infer_call env exp1 inst exp2 at t_expect_opt =
+  let t = Lib.Option.get t_expect_opt T.Any in
+  let n = match inst.it with None -> 0 | Some typs ->  List.length typs in
+  let t1 = infer_exp_promote env exp1 in
+  let sort, tbs, t_arg, t_ret =
+    try T.as_func_sub T.Local n t1
+    with Invalid_argument _ ->
+      error env exp1.at
+        "expected function type, but expression produces type\n  %s"
+        (T.string_of_typ_expand t1)
+  in
+  let ts, t_arg', t_ret' =
+    match tbs, inst.it with
+    | [], (None | Some []) -> (* no inference required *)
+      if not env.pre then check_exp env t_arg exp2;
+      [], t_arg, t_ret
+    | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
+     | _, Some _ ->
+      (* explicit instantiation, check argument against instantiated domain *)
+      let typs = match inst.it with None -> [] | Some typs -> typs in
+      let ts = check_inst_bounds env tbs typs at in
+      let t_arg' = T.open_ ts t_arg in
+      let t_ret' = T.open_ ts t_ret in
+      if not env.pre then check_exp env t_arg' exp2;
+      ts, t_arg', t_ret'
+    | _::_, None -> (* implicit, infer *)
+      let t2 = infer_exp env exp2 in
+        match
+          (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_arg <: t] *)
+          Bi_match.bi_match_subs (scope_of_env env) tbs
+            [(t2, t_arg); (t_ret, t)]
+        with
+        | ts ->
+          let t_arg' = T.open_ ts t_arg in
+          let t_ret' = T.open_ ts t_ret in
+          ts, t_arg', t_ret'
+        | exception Failure msg ->
+          error env at
+            "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\n%s"
+            (T.string_of_typ t1)
+            (T.string_of_typ t2)
+            (if Option.is_none t_expect_opt then ""
+             else  Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
+            msg
+  in
+  inst.note <- ts;
+  if not env.pre then begin
+    if Type.is_shared_sort sort then begin
+      if not (T.concrete t_arg') then
+        error env exp1.at
+          "shared function argument contains abstract type\n  %s"
+          (T.string_of_typ_expand t_arg');
+      if not (T.concrete t_ret') then
+        error env exp2.at
+          "shared function call result contains abstract type\n  %s"
+          (T.string_of_typ_expand t_ret');
+      end
+    end;
+  (* note t_ret' <: t checked by caller if necessary *)
+  t_ret'
 
 (* Cases *)
 
@@ -1317,7 +1367,7 @@ and infer_pats at env pats ts ve : T.typ list * Scope.val_env =
 
 and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_env =
   match pfs with
-  | [] -> (T.Object, List.rev ts), ve
+  | [] -> (T.Object, List.sort T.compare_field ts), ve
   | pf::pfs' ->
     let typ, ve1 = infer_pat env pf.it.pat in
     let ve' = disjoint_union env at "duplicate binding for %s in pattern" ve ve1 in
@@ -1624,7 +1674,7 @@ and infer_obj env s fields at : T.typ =
       ) fields;
       List.iter (fun ef ->
         if ef.it.vis.it = Syntax.Private && is_actor_method ef.it.dec then
-          error_in [Flags.ICMode; Flags.StubMode] env ef.it.dec.at
+          error_in [Flags.ICMode; Flags.RefMode] env ef.it.dec.at
             "a shared function cannot be private"
       ) fields;
     end;
@@ -1956,14 +2006,14 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (id, typ_binds, pat, _, sort, _, _) ->
     if sort.it = T.Actor then
-      error_in [Flags.ICMode; Flags.StubMode] env dec.at
+      error_in [Flags.ICMode; Flags.RefMode] env dec.at
         "actor classes are not supported; use an actor declaration instead";
      let rec is_unit_pat p = match p.it with
       | ParP p -> is_unit_pat p
       | TupP [] -> true
       | _ -> false in
     if sort.it = T.Actor && not (is_unit_pat pat) then
-      error_in [Flags.StubMode] env dec.at
+      error_in [Flags.RefMode] env dec.at
         "actor classes with parameters are not supported; use an actor declaration instead";
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
@@ -2018,7 +2068,7 @@ let check_actors scope progs : unit Diag.result =
           | [] -> ()
           | [d] -> ()
           | (d::ds) when is_actor_dec d ->
-            recover (error_in [Flags.ICMode; Flags.StubMode] env d.at)
+            recover (error_in [Flags.ICMode; Flags.RefMode] env d.at)
               "an actor must be the last declaration in a program"
           | (d::ds) -> go ds in
         go prog

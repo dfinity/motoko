@@ -111,6 +111,7 @@ let check_cycle env =
 let rec check_typ env t =
   match t.it with
   | PrimT prim -> t
+  | PrincipalT -> t
   | VarT id -> ignore (find_type env id); t
   | FuncT (ms, t1, t2) ->
      let t1' = List.map (fun t -> check_typ env t) t1 in

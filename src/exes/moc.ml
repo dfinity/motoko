@@ -71,9 +71,9 @@ let argspec = Arg.align [
   "-wasi-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
       " use the WASI system API (wasmtime)";
-  "-stub-system-api",
-    Arg.Unit (fun () -> Flags.(compile_mode := StubMode)),
-      " use the future DFINITY system API (ic-stub-run)";
+  "-ref-system-api",
+    Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
+      " use the future DFINITY system API (ic-ref-run)";
   (* TODO: bring this back (possibly with flipped default)
            as soon as the multi-value `wasm` library is out.
   "-multi-value", Arg.Set Flags.multi_value, " use multi-value extension";
@@ -124,7 +124,6 @@ let process_files files : unit =
   | Idl ->
     set_out_file files ".did";
     let prog = Diag.run (Pipeline.generate_idl files) in
-    ignore (Diag.run (Idllib.Pipeline.check_prog prog));
     let oc = open_out !out_file in
     let idl_code = Idllib.Arrange_idl.string_of_prog prog in
     output_string oc idl_code; close_out oc

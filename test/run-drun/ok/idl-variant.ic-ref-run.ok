@@ -1,0 +1,6 @@
+→ create
+← completed: canister-id = ic:2a012b
+→ install
+← completed
+→ query numify(0x4449444c016b03d583b702008790c0bd0479dc9790cb0e790100000220000000)
+← completed: 0x4449444c016b03d583b702008790c0bd0479dc9790cb0e790100000120000000

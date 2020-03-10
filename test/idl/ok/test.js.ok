@@ -3,11 +3,11 @@ export default ({ IDL }) => {
  const B = my_type
  const message = IDL.Record({'_25_': B, '_26_': IDL.None, 'name': IDL.Text})
  const broker =
-  new IDL.ActorInterface({
+  IDL.Service({
    'find':
     IDL.Func([IDL.Text],
      [
-      new IDL.ActorInterface({'up': IDL.Func([], [], []),
+      IDL.Service({'up': IDL.Func([], [], []),
        'current': IDL.Func([], [IDL.Nat], [])})
       ],
       [])})
