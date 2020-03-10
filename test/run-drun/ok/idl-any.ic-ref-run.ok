@@ -50,6 +50,12 @@ debug.print: ok: Foo
 → query any(0x4449444c0002707103466f6f)
 debug.print: ok: Foo
 ← completed: 0x4449444c0000
+→ query any(0x4449444c000268710003466f6f)
+debug.print: ok: Foo
+← completed: 0x4449444c0000
+→ query any(0x4449444c000268710104deadbeef03466f6f)
+debug.print: ok: Foo
+← completed: 0x4449444c0000
 → query any(0x4449444c016e710200710003466f6f)
 debug.print: ok: Foo
 ← completed: 0x4449444c0000

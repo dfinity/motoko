@@ -3523,7 +3523,6 @@ module Serialization = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
-          | Prim Principal -> ()
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
             assert false
