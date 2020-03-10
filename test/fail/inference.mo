@@ -190,5 +190,5 @@ ignore cons(1, cons(2, nil())) : List<Nat>;
 
 func req(x : Nat) : async Int { return x };
 func send<T <: Nat>( f: Nat -> async Int, x : T) : async Int { f(x); };
-async { let _ : async Any = send(req,0);};
+async { ignore send(req,0);};
 
