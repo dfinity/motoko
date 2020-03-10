@@ -140,3 +140,15 @@ to produce result of type
 no instantiation of T makes {type x = Nat} <: {x : T} and T <: Any
 inference.mo:183.8-183.21: type error, too few type arguments
 inference.mo:186.8-186.15: type error, too few type arguments
+inference.mo:191.30-191.31: type error, unbound variable x
+inference.mo:192.62-192.66: type error, expression of type
+  async<$send> Int
+cannot produce expected type
+  Int
+inference.mo:193.29-193.40: type error, cannot implicitly instantiate function of type
+  <T <: Nat>(Nat -> async Int, T) -> async Int
+to argument of type
+  (() -> async (), Nat)
+to produce result of type
+  async<$anon-async-193.1> Any
+no instantiation of $, T makes (() -> async (), Nat) <: (Nat -> async Int, T) and async<$> Int <: async<$anon-async-193.1> Any
