@@ -445,9 +445,11 @@ and dw_enum vnts =
       (* reference to enumeration_type *)
       let internal_enum =
         fakeReferenceableBlock dw_TAG_enumeration_type (dw_attr (Artificial true)) in
-      let enumerator i name = fakeBlock dw_TAG_enumerator (dw_attrs [Name name; Const_value i]) in
+      let enumerator name =
+        let hash = Lib.Uint32.to_int (Idllib.IdlHash.idl_hash name) in
+        fakeBlock dw_TAG_enumerator (dw_attrs [Name name; Const_value hash]) in
       (fst internal_enum ^^
-       concat_mapi enumerator selectors ^^
+       concat_map enumerator selectors ^^
        dw_tag_children_done (* enumeration_type *)) ^^<
       fakeReferenceableBlock dw_TAG_reference_type
         (dw_attr (TypeRef (snd internal_enum))) in
