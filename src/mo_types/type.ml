@@ -1253,16 +1253,17 @@ and string_of_typ' vs t =
   | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
     let vs' = vars_of_binds vs tbs in
     let vs'', tbs' = List.tl vs', List.tl tbs in
+    let vs'vs = vs' @ vs in
     begin
       match tbs with
       | [tb] ->
          sprintf "%s%s -> %s" (string_of_func_sort s)
-          (string_of_dom vs ts1)
-          (string_of_control_cod true c vs ts2)
+          (string_of_dom (vs'vs) ts1)
+          (string_of_control_cod true c (vs'vs) ts2)
       | _ ->
         sprintf "%s%s%s -> %s"
-          (string_of_func_sort s) (string_of_binds (vs' @ vs) vs'' tbs')
-          (string_of_dom (vs' @ vs) ts1) (string_of_control_cod true c (vs' @ vs) ts2)
+          (string_of_func_sort s) (string_of_binds (vs'vs) vs'' tbs')
+          (string_of_dom (vs'vs) ts1) (string_of_control_cod true c (vs'vs) ts2)
     end
   | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
@@ -1270,9 +1271,10 @@ and string_of_typ' vs t =
       (string_of_control_cod false c vs ts2)
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = vars_of_binds vs tbs in
+    let vs'vs = vs' @ vs in
     sprintf "%s%s%s -> %s"
-      (string_of_func_sort s) (string_of_binds (vs' @ vs) vs' tbs)
-      (string_of_dom (vs' @ vs) ts1) (string_of_control_cod false c (vs' @ vs) ts2)
+      (string_of_func_sort s) (string_of_binds (vs'vs) vs' tbs)
+      (string_of_dom (vs'vs) ts1) (string_of_control_cod false c (vs'vs) ts2)
   | Opt t ->
     sprintf "?%s"  (string_of_typ_nullary vs t)
   | Async (t1, t2) ->
