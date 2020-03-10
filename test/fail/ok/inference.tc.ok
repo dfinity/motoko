@@ -144,10 +144,3 @@ inference.mo:192.64-192.68: type error, expression of type
   async<$send> Int
 cannot produce expected type
   Int
-inference.mo:193.29-193.40: type error, cannot implicitly instantiate function of type
-  <T <: Nat>(Nat -> async Int, T) -> async Int
-to argument of type
-  (Nat -> async Int, Nat)
-to produce result of type
-  async<$anon-async-193.1> Any
-no instantiation of $, T makes (Nat -> async Int, Nat) <: (Nat -> async Int, T) and async<$> Int <: async<$anon-async-193.1> Any
