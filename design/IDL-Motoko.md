@@ -85,6 +85,7 @@ e(Word<n>) = nat<n> for n = 8, 16, 32, 64
 e(Float) = float64
 e(Char) = nat32
 e(Text) = text
+e(Principal) = principal
 e({ <typ-field>;* }) = record { ef(<typ-field>);* }
 e(variant { <typ-field>;* }) = variant { ef(<typ-field>);* }
 e([<typ>]) = vec (e(<typ>))
@@ -139,6 +140,7 @@ i(record { <fieldtype>;* }) = { if(<fieldtype>);* }
 i(variant { <fieldtype>;* }) = variant { ivf(<fieldtype>);* }
 i(func <functype>) = ifn(<functype>)
 i(service { <methtype>;* }) = actor { im(<methtype>);* }
+i(principal) = Principal
 
 if : <fieldtype> -> <typ>
 if(<name> : <datatype>) = escape(<name>) : i(<datatype>)

@@ -55,3 +55,7 @@ debug.print: ok: Foo
 Ok: Payload: 0x4449444c0000
 debug.print: ok: Foo
 Ok: Payload: 0x4449444c0000
+debug.print: ok: Foo
+Ok: Payload: 0x4449444c0000
+debug.print: ok: Foo
+Ok: Payload: 0x4449444c0000
