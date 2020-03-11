@@ -132,6 +132,12 @@ public func then<Token,A,B>(pa:Parser<Token,A>,f: A -> B) : Parser<Token,B> {
 };
 
 // <<
+public func right<Token,A,B>(pa:Parser<Token,A>,pb: Parser<Token,B>) : Parser<Token,B> {
+  bind(pa,
+      (func _ = pb) : A -> Parser<Token,B>);
+};
+
+// <<
 public func left<Token,A,B>(pa:Parser<Token,A>,pb: Parser<Token,B>) : Parser<Token,A> {
   bind(pa,
       (func a = bind(pb,(func _ = ret a) : B -> Parser<Token,A>))
@@ -158,8 +164,11 @@ public func count<Token,A>(n:Nat,pa:Parser<Token,A>) : Parser<Token,List.List<A>
   else ret (List.nil<A>()); // needs <A> or constraint.
 };
 
-public func between<Token,A,B,C>(pa : Parser<Token,A>,pb: Parser<Token,B>, pc : Parser<Token,C>> {
-    righ(op,left(pc,pb));
+public func between<Token,A,B,C>(
+    pa : Parser<Token,A>,
+    pb: Parser<Token,B>, 
+    pc : Parser<Token,C>) : Parser<Token,C> {
+    right(pa, left(pc, pb));
 }
 
 
