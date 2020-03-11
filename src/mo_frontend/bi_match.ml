@@ -162,16 +162,14 @@ let bi_match_subs scope_opt tbs subs =
       )
       else None
     | Async (t11, t12), Async (t21, t22) ->
-      (* TBR *)
-      (match bi_equate_typ rel eq inst any t11 t12  with
+      (match bi_equate_typ rel eq inst any t11 t21  with
        | Some inst ->
          bi_match_typ rel eq inst any t12 t22
        | None -> None)
     | Mut t1', Mut t2' ->
-      (* TBR *)
       bi_equate_typ rel eq inst any t1' t2'
     | Typ c1, Typ c2 ->
-      (* TBR *)
+      (* NB: we assume c1, c2 closed *)
       if Type.eq t1 t2 then Some inst else None
     | _, _ -> None
     end
