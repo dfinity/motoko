@@ -107,7 +107,7 @@ public func any<Token>(ls : Input<Token>):Monad<Token,Token> {
 };
 
 public func satisfy<Token>(test : Token -> Bool) : Parser<Token,Token> {
-   bind((func ls = any ls) // needs implicit instantiation
+   bind((func ls = any ls) // eta-expand for implicit specialization - can we do better?
         : Parser<Token,Token>,
         (func res = if (test res) (ret res) else mzero())
         : Token -> Parser<Token,Token>)
