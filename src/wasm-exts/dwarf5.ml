@@ -512,6 +512,7 @@ let dw_OP_bit_piece = 0x9d
 let dw_OP_lo_user = 0xe0
 let dw_OP_hi_user = 0xff
 
+let dw_OP_WASM_location = 0xeb (* see module Location, below *)
 
 module Machine =
 struct
@@ -609,5 +610,26 @@ let moves u8 uleb sleb u32 =
   | op :: addr :: tail when - dw_LNE_set_address = op -> Printf.printf "NEW ADDR\n"; extended5 op; u32 addr; chase tail
   | op :: _ -> Printf.printf "MoVE 0x%x\n" op; failwith "move not covered"
   in chase
+
+end
+
+module Location =
+struct
+(*
+DW_OP_WASM_location := 0xEB ;; available DWARF extension code
+
+wasm-op := wasm-local | wasm-global | wasm-operand-stack
+
+wasm-local := 0x00 i:uleb128
+wasm-global := 0x01 i:uleb128
+wasm-operand-stack := 0x02
+ *)
+
+let dw_OP_WASM_local =
+  assert (dw_OP_hi_user + 1 = 1 lsl 8);
+  dw_OP_WASM_location lor 0x00
+
+let dw_OP_WASM_local = dw_OP_WASM_location lor (0x01 lsl 8)
+let dw_OP_WASM_stack = dw_OP_WASM_location lor (0x02 lsl 8)
 
 end
