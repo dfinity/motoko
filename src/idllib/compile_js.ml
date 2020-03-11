@@ -199,8 +199,7 @@ let pp_actor ppf t recs =
   kwd ppf "return";
   (match t.it with
    | ServT tp ->
-      kwd ppf "new";
-      str ppf "IDL.ActorInterface({";
+      str ppf "IDL.Service({";
       concat ppf pp_meth "," tp;
       str ppf "});"
    | VarT var ->
