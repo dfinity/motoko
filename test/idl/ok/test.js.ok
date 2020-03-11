@@ -11,7 +11,7 @@ export default ({ IDL }) => {
        'current': IDL.Func([], [IDL.Nat], [])})
       ],
       [])})
- return new IDL.ActorInterface({
+ return IDL.Service({
   'addUser': IDL.Func([IDL.Text, IDL.Nat8], [IDL.Nat64], []),
   'userName': IDL.Func([IDL.Nat64], [IDL.Text], ['query']),
   'userAge': IDL.Func([IDL.Nat64], [IDL.Nat8], ['query']),
