@@ -629,7 +629,20 @@ let dw_OP_WASM_local =
   assert (dw_OP_hi_user + 1 = 1 lsl 8);
   dw_OP_WASM_location lor 0x00
 
-let dw_OP_WASM_local = dw_OP_WASM_location lor (0x01 lsl 8)
+let dw_OP_WASM_global = dw_OP_WASM_location lor (0x01 lsl 8)
 let dw_OP_WASM_stack = dw_OP_WASM_location lor (0x02 lsl 8)
+
+(* Difference-lists-based builder *)
+
+type t = int list -> int list
+
+let local n rest =
+  dw_OP_WASM_local :: n :: rest
+
+let global n rest =
+  dw_OP_WASM_global :: n :: rest
+
+let operand_stack n rest =
+  dw_OP_WASM_stack :: n :: rest
 
 end
