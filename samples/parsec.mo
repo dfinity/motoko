@@ -104,7 +104,7 @@ public func any<Token>(ls : Input<Token>):Monad<Token,Token> {
 };
 
 public func statisfy<Token>(test : Token -> Bool) : Parser<Token,Token> {
-   bind((func ls = any ls)
+   bind((func ls = any ls) // needs implicit instantiation
         : Parser<Token,Token>,
         (func res = if (test res) (ret res) else mzero())
         : Token -> Parser<Token,Token>)
@@ -126,33 +126,41 @@ public func eof<Token,A>(x : A) : Parser<Token,A> {
 
 
 // =>
-func then<Token,A,B>(pa:Parser<Token,A>,f: A -> B) : Parser<Token,B> {
+public func then<Token,A,B>(pa:Parser<Token,A>,f: A -> B) : Parser<Token,B> {
   bind(pa,
       (func a = ret (f a)) : A -> Parser<Token,B>);
 };
 
 // <<
-func left<Token,A,B>(pa:Parser<Token,A>,pb: Parser<Token,B>) : Parser<Token,A> {
+public func left<Token,A,B>(pa:Parser<Token,A>,pb: Parser<Token,B>) : Parser<Token,A> {
   bind(pa,
       (func a = bind(pb,(func _ = ret a) : B -> Parser<Token,A>))
       : A -> Parser<Token,A>);
 };
 
 // <~>
-func cons<Token,A>(pa:Parser<Token,A>,pas: Parser<Token,List.List<A>>) : Parser<Token,List.List<A>> {
+public func cons<Token,A>(pa:Parser<Token,A>,pas: Parser<Token,List.List<A>>) : Parser<Token,List.List<A>> {
   bind(pa,
       (func a = bind(pas,(func as = ret (List.push(a,as))) : List.List<A> -> Parser<Token,List.List<A>>))
       : A -> Parser<Token,List.List<A>>);
 };
 
 
-func choice<Token,A>(ps: List.List<Parser<Token,A>>) : Parser<Token,A> {
+public func choice<Token,A>(ps: List.List<Parser<Token,A>>) : Parser<Token,A> {
   switch ps {
     case null mzero();
     case (?(p,ps)) (choose p (choice ps));
   };
 };
 
+public func count<Token,A>(n:Nat,pa:Parser<Token,A>) : Parser<Token,List.List<A>> {
+  if (n > 0) cons(pa,count(n-1,pa)) 
+  else ret (List.nil<A>()); // needs <A> or constraint.
+};
+
+public func between<Token,A,B,C>(pa : Parser<Token,A>,pb: Parser<Token,B>, pc : Parser<Token,C>> {
+    righ(op,left(pc,pb));
+}
 
 
 }
