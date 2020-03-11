@@ -13,7 +13,7 @@ import Prim "mo:prim";
 
 module Parsec {
 
-module Lazy {
+public module Lazy {
   public class t<A>(f:() -> A) {
     var state : {#delay : (() -> A); #result : A} 
         = #delay f;
@@ -26,7 +26,7 @@ module Lazy {
   };
 };
 
-module LazyStream = {
+public module LazyStream = {
   public type t<A> = ? (A, Lazy.t<t<A>>);
 
   public func ofIter<A>(iter:Iter.Iter<A>) : t<A> {
@@ -65,10 +65,35 @@ func explode(t : Text) : List.List<Char> {
    List.rev(l);
 };
 
-func o<T,U,V>(f:T->U,g:U -> V) : T -> V = func x = g(f(x));
+func o<T,U,V>(f:T->U,g:U -> V) : T -> V { func x { g(f(x)) }} ;
 
-// func parse(parser:T,input)
-// prims
+public type Input<Token> = LazyStream.t<Token>;
+public type Monad<Token, Result> = ?(Result, Input<Token>);
+public type Parser<Token, Result> = Input<Token> -> ?(Result,Input<Token>);
 
+public func ret<Token,A>(x:A):Parser<Token,A> { func input { ?(x,input) }};
+
+public func bind<Token,A,B>(pa: Parser<Token,A>):(A -> Parser<Token,B>)-> Parser<Token,B> {
+  func f { 
+    func input { 
+      switch (pa input) {
+        case (?(result,input)) (f result input);
+        case null null;
+      }
+   }
+  } 
+};
+
+public func either<Token,A>(x: Parser<Token,A>):Parser<Token,A> -> Parser<Token,A> {
+  func y { 
+    func input { 
+      let ret = x input;
+      switch ret {
+        case (? _) ret;
+        case null (y input);
+      }
+   }
+  } 
+}
 
 }
