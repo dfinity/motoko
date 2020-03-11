@@ -1,21 +1,23 @@
 
 
-// mini parsec implementation based on opal
-
+// mini parsec implementation based on OCaml opal
+// 
 // compile with 
 // ../src/moc --package stdlib ../stdlib/src parsec.mo
  
+
+import Char "mo:stdlib/char";
 import Iter "mo:stdlib/iter";
 import List "mo:stdlib/list";
-import Char "mo:stdlib/char";
-import Text "mo:stdlib/text";
 import Prim "mo:prim";
+import Text "mo:stdlib/text";
 
 module Parsec {
 
 public module Lazy {
   public class t<A>(f:() -> A) {
     var state : {#delay : (() -> A); #result : A} 
+              // ^^ required for correct store typing
         = #delay f;
     public func force(): A {
         switch state {
@@ -55,7 +57,8 @@ public module LazyStream = {
 // utils
 
 func implode(cs : List.List<Char>) : Text = 
-  List.foldRight(cs, "", func(c:Char,t:Text):Text { Prim.charToText c # t}); // TBR
+  // TBR
+  List.foldRight(cs, "", func(c:Char,t:Text):Text { Prim.charToText c # t}); 
 
 func explode(t : Text) : List.List<Char> { 
    var l : List.List<Char> = null;
@@ -103,7 +106,7 @@ public func any<Token>(ls : Input<Token>):Monad<Token,Token> {
   }
 };
 
-public func statisfy<Token>(test : Token -> Bool) : Parser<Token,Token> {
+public func satisfy<Token>(test : Token -> Bool) : Parser<Token,Token> {
    bind((func ls = any ls) // needs implicit instantiation
         : Parser<Token,Token>,
         (func res = if (test res) (ret res) else mzero())
@@ -131,7 +134,7 @@ public func then<Token,A,B>(pa:Parser<Token,A>,f: A -> B) : Parser<Token,B> {
       (func a = ret (f a)) : A -> Parser<Token,B>);
 };
 
-// <<
+// >>
 public func right<Token,A,B>(pa:Parser<Token,A>,pb: Parser<Token,B>) : Parser<Token,B> {
   bind(pa,
       (func _ = pb) : A -> Parser<Token,B>);
@@ -165,10 +168,115 @@ public func count<Token,A>(n:Nat,pa:Parser<Token,A>) : Parser<Token,List.List<A>
 };
 
 public func between<Token,A,B,C>(
-    pa : Parser<Token,A>,
-    pb: Parser<Token,B>, 
-    pc : Parser<Token,C>) : Parser<Token,C> {
-    right(pa, left(pc, pb));
+  pa : Parser<Token,A>,
+  pb: Parser<Token,B>, 
+  pc : Parser<Token,C>) : Parser<Token,C> {
+  right(pa, left(pc, pb));
+};
+
+public func option<Token,A>(default : A, pa: Parser<Token,A>) : Parser<Token,A> {
+     choose pa (ret default)
+};
+
+public func optional<Token,A>(pa : Parser<Token,A>) : Parser<Token,()> {
+    option((),right(pa,ret<Token,()>()));// needs <...> or constraint
+};
+
+public func skipMany<Token,A>(pa : Parser<Token,A>) : Parser<Token,()> {
+   option((),bind(pa,(func _ = skipMany pa) : A -> Parser<Token,()>)); // needs constraint
+};
+
+
+public func skipMany1<Token,A>(pa : Parser<Token,A>) : Parser<Token,()> {
+  right(pa, skipMany pa) 
+};
+
+public func many<Token,A>(pa : Parser<Token,A>) : Parser<Token, List.List<A>> {
+  option(List.nil<A>(),
+    bind(pa,
+     (func a { 
+       bind(many pa, 
+            (func as { ret (List.push(a,as)) }) :
+            List.List<A> -> Parser<Token,List.List<A>>) }) // needs constraint
+      : A -> Parser<Token, List.List<A>> )) // needs constraint
+};
+
+public func many1<Token,A>(pa : Parser<Token,A>) : Parser<Token,List.List<A>> {
+  cons(pa, many pa);
+};
+
+// TODO sep_by .. chainr
+
+// singletons
+public func exactly<Token>(eq : (Token,Token) -> Bool, t : Token) : Parser<Token,Token> {
+  satisfy (func (t1:Token) : Bool = eq(t, t1))
+};
+
+public func oneOf<Token>(eq : (Token,Token)-> Bool, tokens: List.List<Token>): Parser<Token,Token>  {
+  satisfy (func (t:Token) : Bool { List.exists(tokens,func (t1: Token) : Bool = eq(t,t1)) })
+};
+
+public func noneOf<Token>(eq : (Token,Token) -> Bool, tokens: List.List<Token>): Parser<Token,Token>  {
+  satisfy (func (t:Token) : Bool { not List.exists(tokens, func (t1: Token) : Bool = eq(t,t1)) })
+};
+
+public func range<Token>(leq : (Token, Token) -> Bool, l:Token, r: Token): Parser<Token,Token>  {
+  satisfy (func (t:Token) : Bool { leq(l,t) and leq(t,l) })
+};
+
+// Char parsers
+// place in a class otherwise rejected as non-static
+// alternative is to eta-expand each one
+// annoyance: all decs must be typed in order to refer to previous outer combinators
+//            is that a bug?
+
+public class CharParsers() {
+
+func eq(c1:Char,c2:Char) : Bool { c1 == c2 };
+
+//IDE Bug: notice how `func ... = ...` syntax breaks IDE coloring of next dec (leq)
+func eq0(c1:Char,c2:Char) : Bool = c1 == c2 ;
+
+func leq(c1:Char,c2:Char) : Bool { c1 <= c2 };
+
+public let space : Parser<Char,Char> =
+  oneOf<Char>(func (c1,c2) { c1 == c2 },
+    List.fromArray ([' ' , '\t', '\r', '\n']));
+
+public let spaces : Parser<Char,()> = skipMany space;
+
+public let newline : Parser<Char,Char> = exactly(eq,'\n');
+
+public let tab : Parser<Char,Char> = exactly(eq,'\n');
+
+public let upper : Parser<Char,Char> = range(leq,'A','Z');
+
+public let lower : Parser<Char,Char> = range(leq,'a','z');
+
+public let digit : Parser<Char,Char> = range(leq,'0','9');
+
+public let letter : Parser<Char,Char> = choose lower upper;
+
+public let alpha_num : Parser<Char,Char> = choose letter digit;
+
+public let hex_digit : Parser<Char,Char> = 
+  choose (range(leq,'a','f')) (choose (range(leq,'A','F')) digit);
+
+public let oct_digit :  Parser<Char,Char> = range(leq,'0','7');
+
+public func lexeme<A>(pa:Parser<Char,A>) : Parser<Char,A> { right(spaces, pa) };
+
+public func token(t : Text) : Parser<Char,Text> {
+   //TBR
+   func iter(i:Iter.Iter<Char>) : Parser<Char,Text> {
+      switch (i.next()) {
+         case null (ret t);
+         case (?c) (right(exactly(eq,c),iter i));
+      }
+   };
+   lexeme (iter (t.chars()));
+}
+
 }
 
 
