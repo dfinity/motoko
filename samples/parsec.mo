@@ -69,22 +69,20 @@ func o<T,U,V>(f:T->U,g:U -> V) : T -> V { func x { g(f(x)) }} ;
 
 public type Input<Token> = LazyStream.t<Token>;
 public type Monad<Token, Result> = ?(Result, Input<Token>);
-public type Parser<Token, Result> = Input<Token> -> ?(Result,Input<Token>);
+public type Parser<Token, Result> = Input<Token> -> Monad<Token,Result>;
 
 public func ret<Token,A>(x:A):Parser<Token,A> { func input { ?(x,input) }};
 
-public func bind<Token,A,B>(pa: Parser<Token,A>):(A -> Parser<Token,B>)-> Parser<Token,B> {
-  func f { 
+public func bind<Token,A,B>(pa: Parser<Token,A>, f: A -> Parser<Token,B>): Parser<Token,B> {
     func input { 
       switch (pa input) {
         case (?(result,input)) (f result input);
         case null null;
       }
-   }
-  } 
+   } 
 };
 
-public func either<Token,A>(x: Parser<Token,A>):Parser<Token,A> -> Parser<Token,A> {
+public func choose<Token,A>(x: Parser<Token,A>):Parser<Token,A> -> Parser<Token,A> {
   func y { 
     func input { 
       let ret = x input;
@@ -94,6 +92,67 @@ public func either<Token,A>(x: Parser<Token,A>):Parser<Token,A> -> Parser<Token,
       }
    }
   } 
-}
+};
+
+public func mzero<Token,A>() : Parser<Token,A> = func (_ : Input<Token>) : Monad<Token,A> =  null;
+
+public func any<Token>(ls : Input<Token>):Monad<Token,Token> {
+  switch ls {
+    case (?(token, input)) (?(token, input.force()));
+    case null null;
+  }
+};
+
+public func statisfy<Token>(test : Token -> Bool) : Parser<Token,Token> {
+   bind((func ls = any ls)
+        : Parser<Token,Token>,
+        (func res = if (test res) (ret res) else mzero())
+        : Token -> Parser<Token,Token>)
+        
+};
+
+public func eof<Token,A>(x : A) : Parser<Token,A> {
+  func input { 
+    switch input {
+      case null (?(x,null));
+      case _ null;
+    }
+  }
+};
+
+
+// derived
+
+
+
+// =>
+func then<Token,A,B>(pa:Parser<Token,A>,f: A -> B) : Parser<Token,B> {
+  bind(pa,
+      (func a = ret (f a)) : A -> Parser<Token,B>);
+};
+
+// <<
+func left<Token,A,B>(pa:Parser<Token,A>,pb: Parser<Token,B>) : Parser<Token,A> {
+  bind(pa,
+      (func a = bind(pb,(func _ = ret a) : B -> Parser<Token,A>))
+      : A -> Parser<Token,A>);
+};
+
+// <~>
+func cons<Token,A>(pa:Parser<Token,A>,pas: Parser<Token,List.List<A>>) : Parser<Token,List.List<A>> {
+  bind(pa,
+      (func a = bind(pas,(func as = ret (List.push(a,as))) : List.List<A> -> Parser<Token,List.List<A>>))
+      : A -> Parser<Token,List.List<A>>);
+};
+
+
+func choice<Token,A>(ps: List.List<Parser<Token,A>>) : Parser<Token,A> {
+  switch ps {
+    case null mzero();
+    case (?(p,ps)) (choose p (choice ps));
+  };
+};
+
+
 
 }
