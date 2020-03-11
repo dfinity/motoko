@@ -4,6 +4,10 @@ loosely based on:
 
 https://www.microsoft.com/en-us/research/wp-content/uploads/2007/01/The-Joins-Concurrency-Library.pdf
 
+run with
+../src/moc -r --package stdlib ../stdlib/src async-joins.mo
+
+
 */
 
 import Nat "mo:stdlib/nat";
@@ -20,10 +24,10 @@ type List<T> = ?{head: T; tail: List<T>};
 
 func rev<T>(l:List<T>) : List<T> {
     func go<T>(l:List<T>, acc:List<T>) : List<T> {
-	switch l {
-	case (null) acc;
-	case (?l) go<T>(l.tail, ? { head = l.head; tail = acc });
-	};
+        switch l {
+            case (null) acc;
+            case (?l) go<T>(l.tail, ? { head = l.head; tail = acc });
+        };
     };
     go<T>(l,null);
 };
@@ -34,31 +38,30 @@ class Queue<T>() {
     private var back : List<T> = null;
 
     public func isEmpty() : Bool {
-	switch(front,back) {
-	case (null,null) true;
-	case _ false;
-	};
+        switch (front, back) {
+            case (null, null) true;
+            case _ false;
+        };  
     };
 
     public func enqueue(t : T) {
-	back := ? { head = t; tail = back };
+        back := ? { head = t; tail = back };
     };
 
     public func dequeue() : T {
-	switch (front,back)
-	{
-	    case (null, null) { assert false;loop{};};
-	    case (?f, _) {
-		let t = f.head;
-		front := f.tail;
-		t;
-	    };
-	    case (null,?b) {
-      		front := rev<T>(back);
-		back := null;
-		dequeue();
-	    };
-	};
+        switch (front,back) {
+            case (null, null) { assert false;loop{};};
+            case (?f, _) {
+                let t = f.head;
+                front := f.tail;
+                t;
+            };  
+            case (null,?b) {
+                front := rev<T>(back);
+                back := null;
+                dequeue();
+            };
+        };
     };
 };
 
@@ -68,15 +71,15 @@ class Chan<A> (join : Join) {
     public func isEmpty():Bool = queue.isEmpty();
 
     public func post(a : A) : async () {
-	queue.enqueue(a);
-	switch (join.scan()) {
-  	  case (?clause) (ignore clause.fire()());
+    queue.enqueue(a);
+    switch (join.scan()) {
+        case (?clause) (ignore clause.fire()());
           case null return;
         };
     };
 
     public func match():Bool {
-      not(queue.isEmpty())
+        not(queue.isEmpty())
     };
 
     public func get():A { queue.dequeue();};
@@ -89,8 +92,12 @@ type Pat<A> = {
 
 
 class And<A,B>(pat:Pat<A>, chan:Chan<B>) : Pat<(A,B)> {
-    public func match():Bool { (pat.match() and (not (chan.isEmpty()))); };
-    public func get():((A,B)) { (pat.get(), chan.get());}
+    public func match():Bool { 
+        pat.match() and (not (chan.isEmpty()));
+    };
+    public func get():((A,B)) { 
+        (pat.get(), chan.get());
+    }
 };
 
 
@@ -98,22 +105,22 @@ class Join() = this {
     private var patterns : List<AbsClause> = null;
 
     private func addClause(c:AbsClause) {
-	patterns := ? { head = c; tail = patterns };
+        patterns := ? { head = c; tail = patterns };
     };
 
     public func scan() : ? AbsClause {
-	var next = patterns;
-	loop {
+        var next = patterns;
+        loop {
             switch (next) {
-            case null return null;
-            case (?n) {
-                if (n.head.match()) {
-                    return ? n.head;
+                case null return null;
+                case (?n) {
+                    if (n.head.match()) {
+                        return ? n.head;
+                    };  
+                    next := n.tail;
                 };
-                next := n.tail;
             };
-            };
-	};
+        };
     };
 
     public func Create<A>() : Chan<A> = Chan<A>(this);
@@ -142,14 +149,13 @@ func Clause<A>(pat: Pat<A>, cont: A-> async ()) : AbsClause = object {
 // an unbounded, asynchronous buffer
 actor Buffer = {
     let j  = Join();
-    let put = j.Create<Text>();
-    let get = j.Create<shared Text-> ()>();
-    j.When<(Text,shared Text->())>(
-      And<Text,shared Text ->()>(put, get),
-      // type argument inference, please
-	   // inference for scoped functions too, please, so we can omit the annotation
-      func ((t,c):(Text, shared Text -> ())) : async () {
-	c(t);
+    let put : Chan<Text> = j.Create();
+    let get : Chan<shared Text-> ()> = j.Create();
+    j.When(
+      And(put, get),
+      // inference for scoped functions too, please, so we can omit the annotation
+      func ((t:Text,c:shared Text -> ())) : async () {
+          c(t);
      }
     );
     public func Put(t : Text) {	ignore put.post(t); };
@@ -169,16 +175,16 @@ ignore async {
 type Release = shared () -> ();
 actor Lock = {
     let j  = Join();
-    let free = j.Create<()>();
-    let acquire = j.Create<shared Release -> ()>();
+    let free : Chan<()> = j.Create();
+    let acquire : Chan<shared Release -> ()> = j.Create();
 
     public func Release() { ignore free.post(());};
 
-    j.When<(shared Release -> (),())>(
-        And<shared Release -> (), ()>(acquire,free),
-	func ( (k,_) : (shared Release -> (), ())) : async ()  {  // type annotation inference, please
-		    k(Release);
-	    }
+    j.When(
+        And(acquire,free),
+        func ((k:shared Release -> (), ())) : async ()  {  // type annotation inference, please
+            k(Release);
+        }
     );
 
 
@@ -201,13 +207,13 @@ actor Alice {
 
     public func send(release:Release) :  () {
     for (s in name.vals())
-	{
-            Resource.write(s);
-            await (async ()); // yield to allow interleavings
-	};
-	print (await Resource.get());
-	print ("\n");
-	release();
+    {
+        Resource.write(s);
+        await (async ()); // yield to allow interleavings
+    };
+    print (await Resource.get());
+    print ("\n");
+    release();
     };
 
     public func start() { ignore Lock.Acquire(send);}
@@ -219,13 +225,13 @@ actor Charlie {
 
     public func send(release:Release) : () {
     for (s in name.vals())
-	{
-            Resource.write(s);
-            await (async ()); // yield to allow interleavings
-	};
-	print (await Resource.get());
-	print ("\n");
-	release();
+    {
+        Resource.write(s);
+        await (async ()); // yield to allow interleavings
+    };
+    print (await Resource.get());
+    print ("\n");
+    release();
     };
 
     public func start() { ignore Lock.Acquire(send);}
