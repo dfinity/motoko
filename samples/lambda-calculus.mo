@@ -46,33 +46,33 @@ func printInner(parens: Bool, lc: LC): Text {
 
 type Token = { #lam; #dot; #lparen; #rparen; #ident: Text; };
 
-let ident: P.Parser<Token, Text> = P.token<Token, Text>(func t = switch t {
+let ident = P.token(func (t : Token) : ?Text { switch t {
     case (#ident(i)) ?i;
     case _ null;
-});
+}});
 
-let lam: P.Parser<Token, ()> = P.token<Token, ()>(func t = switch t {
+let lam = P.token(func (t:Token) :? () { switch t {
     case (#lam) ?();
     case _ null;
-});
+}});
 
-let dot: P.Parser<Token, ()> = P.token<Token, ()>(func t = switch t {
+let dot = P.token(func (t:Token) :? () { switch t {
     case (#dot) ?();
     case _ null;
-});
+}});
 
-let lparen: P.Parser<Token, ()> = P.token<Token, ()>(func t = switch t {
+let lparen = P.token(func (t:Token) : ? () { switch t {
     case (#lparen) ?();
     case _ null;
-});
+}});
 
-let rparen: P.Parser<Token, ()> = P.token<Token, ()>(func t = switch t {
+let rparen = P.token(func (t:Token) : ?() { switch t {
     case (#rparen) ?();
     case _ null;
-});
+}});
 
 class LCParser() {
-    let parseVar: P.Parser<Token, LC> = P.then<Token, Text, LC>(ident, func v = #lcvar(v));
+    let parseVar : P.Parser<Token, LC> = P.then(ident, func (v:Text) : LC = #lcvar(v));
     func parseParens(): P.Parser<Token, LC> =
         // Unfortunately between loops here?
         // P.between<Token, (), (), LC>(lparen, rparen, parseLC());
@@ -119,9 +119,9 @@ class LCParser() {
 
 
 func main() {
-    let input: P.Input<Token> =
+    let input =
         P.LazyStream.ofIter(
-            Iter.fromArray<Token>(
+            Iter.fromArray(
                 [ #lparen, #lam, #ident "x", #dot, #ident "x", #ident "x", #rparen
                 , #lparen, #lam, #ident "x", #dot, #ident "x", #ident "x", #rparen
                 ]
