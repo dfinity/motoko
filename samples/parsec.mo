@@ -1,4 +1,3 @@
-
 // mini parsec implementation based on OCaml opal
 //  https://github.com/pyrocat101/opal/
 // implemented to exercise motoko argument type inference
@@ -11,26 +10,26 @@
 // not terrible, but see comments and remaining explicit instantiations
 
 // Lesson: we often have to choose between argument type inference and
-// unnotated anonymous function arguments. Why? type argument nference relies on 
+// unnotated anonymous function arguments. Why? type argument nference relies on
 // inferring argument types but implicit function typing relies on
-// checking the function against an expect argument type. 
+// checking the function against an expect argument type.
 // choice your poison.
 
-// compile with 
+// compile with
 // ../src/moc --package stdlib ../stdlib/src parsec.mo
- 
 
 import Char "mo:stdlib/char";
+import Debug "mo:stdlib/debug";
 import Iter "mo:stdlib/iter";
 import List "mo:stdlib/list";
 import Prim "mo:prim";
 import Text "mo:stdlib/text";
 
-module Parsec {
+module {
 
   public module Lazy {
     public class t<A>(f:() -> A) {
-      var state : {#delay : (() -> A); #result : A} 
+      var state : {#delay : (() -> A); #result : A}
                 // ^^ required for correct store typing
           = #delay f;
       public func force(): A {
@@ -70,11 +69,11 @@ module Parsec {
 
   // utils
 
-  func implode(cs : List.List<Char>) : Text = 
+  func implode(cs : List.List<Char>) : Text =
     // TBR
-    List.foldRight(cs, "", func(c:Char,t:Text):Text { Prim.charToText c # t}); 
+    List.foldRight(cs, "", func(c:Char,t:Text):Text { Prim.charToText c # t});
 
-  func explode(t : Text) : List.List<Char> { 
+  func explode(t : Text) : List.List<Char> {
     var l : List.List<Char> = null;
     for (c in t.chars()){
         l := List.push(c,l);
@@ -91,24 +90,24 @@ module Parsec {
   public func ret<Token,A>(x:A):Parser<Token,A> { func input { ?(x,input) }};
 
   public func bind<Token,A,B>(pa: Parser<Token,A>, f: A -> Parser<Token,B>): Parser<Token,B> {
-      func input { 
+      func input {
         switch (pa input) {
           case (?(result,input)) (f result input);
           case null null;
         }
-    } 
+    }
   };
 
   public func choose<Token,A>(x: Parser<Token,A>):Parser<Token,A> -> Parser<Token,A> {
-    func y { 
-      func input { 
+    func y {
+      func input {
         let ret = x input;
         switch ret {
           case (? _) ret;
           case null (y input);
         }
     }
-    } 
+    }
   };
 
   public func mzero<Token,A>() : Parser<Token,A> = func (_ : Input<Token>) : Monad<Token,A> =  null;
@@ -120,16 +119,23 @@ module Parsec {
     }
   };
 
+  public func token<Token, A>(f : Token -> ?A): Parser<Token, A> {
+    bind((func ls = any ls): Parser<Token, Token>, (func(res: Token) = switch (f(res)) {
+      case null mzero();
+      case (?a) ret(a);
+    }) : Token -> Parser<Token, A>)
+  };
+
   public func satisfy<Token>(test : Token -> Bool) : Parser<Token,Token> {
     bind((func ls = any ls) // eta-expand for implicit specialization - can we do better?
           : Parser<Token,Token>,
           (func res = if (test res) (ret res) else mzero())
           : Token -> Parser<Token,Token>)
-          
+
   };
 
   public func eof<Token,A>(x : A) : Parser<Token,A> {
-    func input { 
+    func input {
       switch input {
         case null (?(x,null));
         case _ null;
@@ -175,13 +181,13 @@ module Parsec {
   };
 
   public func count<Token,A>(n:Nat,pa:Parser<Token,A>) : Parser<Token,List.List<A>> {
-    if (n > 0) cons(pa,count(n-1,pa)) 
+    if (n > 0) cons(pa,count(n-1,pa))
     else ret (List.nil<A>()); // needs <A> or constraint.
   };
 
   public func between<Token,A,B,C>(
     pa : Parser<Token,A>,
-    pb: Parser<Token,B>, 
+    pb: Parser<Token,B>,
     pc : Parser<Token,C>) : Parser<Token,C> {
     right(pa, left(pc, pb));
   };
@@ -200,14 +206,14 @@ module Parsec {
 
 
   public func skipMany1<Token,A>(pa : Parser<Token,A>) : Parser<Token,()> {
-    right(pa, skipMany pa) 
+    right(pa, skipMany pa)
   };
 
   public func many<Token,A>(pa : Parser<Token,A>) : Parser<Token, List.List<A>> {
     option(List.nil<A>(),
       bind(pa,
-      (func a { 
-        bind(many pa, 
+      (func a {
+        bind(many pa,
               (func as { ret (List.push(a,as)) }) :
               List.List<A> -> Parser<Token,List.List<A>>) }) // needs constraint
         : A -> Parser<Token, List.List<A>> )) // needs constraint
@@ -271,7 +277,7 @@ module Parsec {
 
     public let alpha_num : Parser<Char,Char> = choose letter digit;
 
-    public let hex_digit : Parser<Char,Char> = 
+    public let hex_digit : Parser<Char,Char> =
       choose (range(leq,'a','f')) (choose (range(leq,'A','F')) digit);
 
     public let oct_digit :  Parser<Char,Char> = range(leq,'0','7');
