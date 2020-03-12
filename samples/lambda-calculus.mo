@@ -72,48 +72,51 @@ let rparen = P.token(func (t:Token) : ?() { switch t {
 }});
 
 class LCParser() {
-    let parseVar : P.Parser<Token, LC> = P.then(ident, func (v:Text) : LC = #lcvar(v));
-    func parseParens(): P.Parser<Token, LC> =
+    type LCParser = P.Parser<Token, LC>;
+    let parseVar : LCParser = P.then(ident, func (v:Text) : LC = #lcvar(v));
+    func parseParens(): LCParser =
         // Unfortunately between loops here?
         // P.between<Token, (), (), LC>(lparen, rparen, parseLC());
-        P.bind<Token, (), LC>(
+        P.bind(
             lparen,
-            func () = P.bind<Token, LC, LC>(
+            func (_:()) : LCParser = P.bind(
                 parseLC(),
-                func lc = P.bind<Token, (), LC>(
+                func (lc : LC) : LCParser = P.bind(
                     rparen,
-                    func () = P.ret(lc)
+                    func (_:()) : LCParser = P.ret(lc)
                 )
             )
         );
 
-    func parseLambda(): P.Parser<Token, LC> = P.bind<Token, (), LC>(
+    func parseLambda(): LCParser = P.bind(
         lam,
-        func () = P.bind<Token, Text, LC>(
+        func (_: ())  : LCParser { P.bind(
             ident,
-            func binder = P.bind<Token, (), LC>(
+            func (binder:Text) : LCParser { P.bind(
                 dot,
-                func () = P.bind<Token, LC, LC>(
+                func (_:()) : LCParser { P.bind(
                     parseLC(),
-                    func body = P.ret(lclam(binder, body))
-                )
-            )
+                    func (body:LC) : LCParser = P.ret(lclam(binder, body))
+                )}
+            )}
+
         )
+        }
     );
 
-    public func parseAtom(): P.Parser<Token, LC> = P.choice (List.fromArray([
+    public func parseAtom(): LCParser = P.choice(List.fromArray([
         parseParens(),
         parseVar,
         parseLambda(),
     ]));
 
-    public func parseLC(): P.Parser<Token, LC> =
-      P.bind<Token, List.List<LC>, LC>(
+    public func parseLC(): LCParser =
+      P.bind(
             P.many1(parseAtom()),
-            func atoms = {
+            func (atoms : List.List<LC>) : LCParser {
                 let (hd, args) = List.pop(atoms);
                 let fn = Option.unwrap(hd);
-                P.ret(List.foldLeft<LC, LC>(args, fn, func (arg, acc) = lcapp(acc, arg)))
+                P.ret(List.foldLeft(args, fn, func (arg:LC, acc:LC) : LC = lcapp(acc, arg)))
             });
 };
 
