@@ -98,6 +98,12 @@ module {
     }
   };
 
+  public func pair<Token,A,B>(pa: Parser<Token,A>, pb : Parser<Token,B>): Parser<Token,(A,B)> {
+    bind(pa,(func (a:A) : Parser<Token,(A,B)> { 
+      bind(pb,(func (b:B) : Parser<Token,(A,B)> { ret (a,b) }))
+    }))
+  };
+  
   public func choose<Token,A>(x: Parser<Token,A>):Parser<Token,A> -> Parser<Token,A> {
     func y {
       func input {

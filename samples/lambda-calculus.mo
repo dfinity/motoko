@@ -74,7 +74,8 @@ let rparen = P.token(func (t:Token) : ?() { switch t {
 class LCParser() {
     type LCParser = P.Parser<Token, LC>;
     let parseVar : LCParser = P.then(ident, func (v:Text) : LC = #lcvar(v));
-    func parseParens(): LCParser =
+    
+    func parseParens_(): LCParser {
         // Unfortunately between loops here?
         // P.between<Token, (), (), LC>(lparen, rparen, parseLC());
         P.bind(
@@ -87,22 +88,18 @@ class LCParser() {
                 )
             )
         );
+    };
 
-    func parseLambda(): LCParser = P.bind(
-        lam,
-        func (_: ())  : LCParser { P.bind(
-            ident,
-            func (binder:Text) : LCParser { P.bind(
-                dot,
-                func (_:()) : LCParser { P.bind(
-                    parseLC(),
-                    func (body:LC) : LCParser = P.ret(lclam(binder, body))
-                )}
-            )}
+    func delay<Token, Result>(f:() -> P.Parser<Token,Result>) : P.Parser<Token,Result> = func (i:P.Input<Token>) : P.Monad<Token,Result> { f () i};
 
-        )
-        }
-    );
+    func parseParens() : LCParser =
+        P.bind(P.between(lparen, rparen, delay parseLC),
+            func (lc: LC): LCParser {  P.ret lc });
+
+    func parseLambda(): LCParser = 
+        P.bind(P.pair(P.between(lam,dot,ident),delay parseLC),
+               func (p:(Text,LC)) : LCParser { P.ret (lclam(p.0,p.1)) });
+               
 
     public func parseAtom(): LCParser = P.choice(List.fromArray([
         parseParens(),
