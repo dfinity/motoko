@@ -1,10 +1,13 @@
 // compile and run with
 // ../src/moc -wasi-system-api --package stdlib ../stdlib/src lambda-calculus.mo && wasmtime lambda-calculus.wasm
+import Array "mo:stdlib/array";
+import Char "mo:stdlib/char";
 import Debug "mo:stdlib/debug";
 import Iter "mo:stdlib/iter";
 import List "mo:stdlib/list";
 import Option "mo:stdlib/option";
 import P "parsec";
+import Text "mo:stdlib/text";
 
 type LC =
     { #lcvar: Text
@@ -51,22 +54,22 @@ let ident = P.token(func (t : Token) : ?Text { switch t {
     case _ null;
 }});
 
-let lam = P.token(func (t:Token) :? () { switch t {
+let lam = P.token(func (t : Token) : ?() { switch t {
     case (#lam) ?();
     case _ null;
 }});
 
-let dot = P.token(func (t:Token) :? () { switch t {
+let dot = P.token(func (t : Token) : ?() { switch t {
     case (#dot) ?();
     case _ null;
 }});
 
-let lparen = P.token(func (t:Token) : ? () { switch t {
+let lparen = P.token(func (t : Token) : ?() { switch t {
     case (#lparen) ?();
     case _ null;
 }});
 
-let rparen = P.token(func (t:Token) : ?() { switch t {
+let rparen = P.token(func (t : Token) : ?() { switch t {
     case (#rparen) ?();
     case _ null;
 }});
@@ -120,16 +123,83 @@ class LCParser() {
             });
 };
 
+let lex: Text -> ?[Token] = func(input) {
+    var lookahead: ?Char = null;
+    let inputIter = Text.toIter(input);
+    var tokens: [Token] = [];
+
+    func peek(): ?Char {
+        lookahead := next();
+        lookahead
+    };
+
+    func next(): ?Char {
+        let res = switch(lookahead) {
+          case null inputIter.next();
+          case (?(v)) {
+            lookahead := null;
+            ?v
+          }
+        };
+        // Debug.print("Next is: " # Option.option(res, Char.toText, "None"));
+        res
+    };
+
+    func bump() {
+        let _ = next();
+        ()
+    };
+
+    func isWhitespace(c : Char) : Bool {
+        c == ' ' or c == '\n' or c == '\t' or c == '\r'
+    };
+
+    func isIdentStart(c : Char) : Bool {
+        c >= 'A' and c <= 'z'
+    };
+
+    func isIdent(c : Char) : Bool {
+        isIdentStart(c) or Char.isDigit(c)
+    };
+
+    func recognize(token : Token) {
+        tokens := Array.append(tokens, [token])
+    };
+
+    func dropWS() {
+        while(Option.option(peek(), isWhitespace, false)) bump()
+    };
+
+    dropWS();
+    while(true) {
+      switch(next()) {
+        case null return ?tokens;
+        case (?('\\')) recognize(#lam);
+        case (?('.')) recognize(#dot);
+        case (?('(')) recognize(#lparen);
+        case (?(')')) recognize(#rparen);
+        case (?c) {
+          if (isIdentStart(c)) {
+            var ident = Char.toText(c);
+            while(Option.option(peek(), isIdent, false)) {
+              ident #= Char.toText(Option.unwrap(next()))
+            };
+            recognize(#ident ident)
+          } else {
+            Debug.print("Failed to handle: " # Char.toText(c));
+            return null;
+          }
+        };
+      };
+      dropWS();
+    };
+    ?tokens
+};
 
 func main() {
-    let input =
-        P.LazyStream.ofIter(
-            Iter.fromArray(
-                [ #lparen, #lam, #ident "x", #dot, #ident "x", #ident "x", #rparen
-                , #lparen, #lam, #ident "x", #dot, #ident "x", #ident "x", #rparen
-                ]
-            )
-        );
+    // Parses the Omega combinator
+    let tokens = Option.unwrap(lex("(\\x. x x) (\\x. x x)"));
+    let input = P.LazyStream.ofIter(Iter.fromArray(tokens));
     switch (LCParser().parseLC()(input)) {
         case (?(lc, _)) Debug.print(printLC(lc));
         case null Debug.print("Failed to parse");
