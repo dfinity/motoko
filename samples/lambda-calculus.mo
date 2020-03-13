@@ -76,17 +76,17 @@ module LCParser = {
     type LCParser = P.Parser<Token, LC>;
     
     func parseVar() : LCParser { 
-        P.map(ident, func (v:Text) : LC = #lcvar(v))
+        P.map(ident, lcvar)
     };
     
-    func parseParens() : LCParser =
-        P.map(P.between(lparen, P.delay parseLC, rparen),
-            func (lc : LC) : LC {  lc });
-
-    func parseLambda(): LCParser = 
+    func parseParens() : LCParser {
+        P.between(lparen, P.delay parseLC, rparen);
+    };
+    
+    func parseLambda(): LCParser {
         P.map(P.pair(P.between(lam, ident, dot), P.delay parseLC),
                func ((v, lc) : (Text,LC)) : LC { lclam(v,lc) });
-               
+    };          
 
     public func parseAtom(): LCParser  {
         P.choice(List.fromArray([
