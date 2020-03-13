@@ -98,6 +98,7 @@ module {
     }
   };
 
+  // not in opal: used to sequence parsers
   public func pair<Token,A,B>(pa: Parser<Token,A>, pb : Parser<Token,B>): Parser<Token,(A,B)> {
     bind(pa,(func (a:A) : Parser<Token,(A,B)> { 
       bind(pb,(func (b:B) : Parser<Token,(A,B)> { ret (a,b) }))
@@ -149,6 +150,8 @@ module {
     }
   };
 
+  // not in opal: used to delay recursion
+  public func delay<Token, Result>(f:() -> Parser<Token,Result>) : Parser<Token,Result> = func (i:Input<Token>) : Monad<Token,Result> { f () i};
 
   // derived
 
@@ -193,10 +196,11 @@ module {
 
   public func between<Token,A,B,C>(
     pa : Parser<Token,A>,
-    pb: Parser<Token,B>,
-    pc : Parser<Token,C>) : Parser<Token,C> {
-    right(pa, left(pc, pb));
+    pb : Parser<Token,B>,
+    pc : Parser<Token,C>) : Parser<Token,B> {
+    right(pa, left(pb, pc));
   };
+  
 
   public func option<Token,A>(default : A, pa: Parser<Token,A>) : Parser<Token,A> {
       choose pa (ret default)
