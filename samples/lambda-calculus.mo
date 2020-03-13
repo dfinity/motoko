@@ -85,7 +85,7 @@ module LCParser = {
     
     func parseLambda(): LCParser {
         P.map(P.pair(P.between(lam, ident, dot), P.delay parseLC),
-               func ((v, lc) : (Text,LC)) : LC { lclam(v,lc) });
+            func ((v, lc) : (Text,LC)) : LC { lclam(v,lc) });
     };          
 
     public func parseAtom(): LCParser  {
@@ -93,7 +93,8 @@ module LCParser = {
             parseParens(),
             parseVar(),
             parseLambda(),
-    ]))};
+        ]))
+    };
 
     public func parseLC(): LCParser {
         P.map(P.pair(parseAtom(), P.many(parseAtom())),
