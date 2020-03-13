@@ -76,7 +76,7 @@ module {
   func explode(t : Text) : List.List<Char> {
     var l : List.List<Char> = null;
     for (c in t.chars()){
-        l := List.push(c,l);
+        l := List.push(c, l);
     };
     List.rev(l);
   };
@@ -129,7 +129,7 @@ module {
   public func token<Token, A>(f : Token -> ?A): Parser<Token, A> {
     bind((func ls = any ls): Parser<Token, Token>, (func(res: Token) = switch (f(res)) {
       case null mzero();
-      case (?a) ret(a);
+      case (?a) ret a;
     }) : Token -> Parser<Token, A>)
   };
 
@@ -156,7 +156,7 @@ module {
   // derived
 
   // =>
-  public func then<Token,A,B>(pa:Parser<Token,A>,f: A -> B) : Parser<Token,B> {
+  public func map<Token,A,B>(pa:Parser<Token,A>,f: A -> B) : Parser<Token,B> {
     bind(pa,
         (func a = ret (f a)) : A -> Parser<Token,B>);
   };
@@ -190,7 +190,7 @@ module {
   };
 
   public func count<Token,A>(n:Nat,pa:Parser<Token,A>) : Parser<Token,List.List<A>> {
-    if (n > 0) cons(pa,count(n-1,pa))
+    if (n > 0) cons(pa,count(n-1, pa))
     else ret (List.nil<A>()); // needs <A> or constraint.
   };
 
@@ -241,15 +241,15 @@ module {
   };
 
   public func oneOf<Token>(eq : (Token,Token)-> Bool, tokens: List.List<Token>): Parser<Token,Token>  {
-    satisfy (func (t:Token) : Bool { List.exists(tokens,func (t1: Token) : Bool = eq(t,t1)) })
+    satisfy (func (t:Token) : Bool { List.exists(tokens, func (t1: Token) : Bool = eq(t, t1)) })
   };
 
   public func noneOf<Token>(eq : (Token,Token) -> Bool, tokens: List.List<Token>): Parser<Token,Token>  {
-    satisfy (func (t:Token) : Bool { not List.exists(tokens, func (t1: Token) : Bool = eq(t,t1)) })
+    satisfy (func (t:Token) : Bool { not List.exists(tokens, func (t1: Token) : Bool = eq(t, t1)) })
   };
 
   public func range<Token>(leq : (Token, Token) -> Bool, l:Token, r: Token): Parser<Token,Token>  {
-    satisfy (func (t:Token) : Bool { leq(l,t) and leq(t,l) })
+    satisfy (func (t:Token) : Bool { leq(l, t) and leq(t, l) })
   };
 
   // Char parsers
@@ -269,19 +269,19 @@ module {
 
     public let space : Parser<Char,Char> =
       oneOf<Char>(func (c1,c2) { c1 == c2 },
-        List.fromArray ([' ' , '\t', '\r', '\n']));
+        List.fromArray([' ', '\t', '\r', '\n']));
 
     public let spaces : Parser<Char,()> = skipMany space;
 
-    public let newline : Parser<Char,Char> = exactly(eq,'\n');
+    public let newline : Parser<Char,Char> = exactly(eq, '\n');
 
-    public let tab : Parser<Char,Char> = exactly(eq,'\n');
+    public let tab : Parser<Char,Char> = exactly(eq, '\n');
 
-    public let upper : Parser<Char,Char> = range(leq,'A','Z');
+    public let upper : Parser<Char,Char> = range(leq, 'A', 'Z');
 
-    public let lower : Parser<Char,Char> = range(leq,'a','z');
+    public let lower : Parser<Char,Char> = range(leq, 'a', 'z');
 
-    public let digit : Parser<Char,Char> = range(leq,'0','9');
+    public let digit : Parser<Char,Char> = range(leq, '0', '9');
 
     public let letter : Parser<Char,Char> = choose lower upper;
 
@@ -290,7 +290,7 @@ module {
     public let hex_digit : Parser<Char,Char> =
       choose (range(leq,'a','f')) (choose (range(leq,'A','F')) digit);
 
-    public let oct_digit :  Parser<Char,Char> = range(leq,'0','7');
+    public let oct_digit :  Parser<Char,Char> = range(leq, '0', '7');
 
     public func lexeme<A>(pa:Parser<Char,A>) : Parser<Char,A> { right(spaces, pa) };
 
@@ -299,7 +299,7 @@ module {
       func iter(i:Iter.Iter<Char>) : Parser<Char,Text> {
           switch (i.next()) {
             case null (ret t);
-            case (?c) (right(exactly(eq,c),iter i));
+            case (?c) (right(exactly(eq, c), iter i));
           }
       };
       lexeme (iter (t.chars()));

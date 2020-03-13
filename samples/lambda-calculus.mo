@@ -74,16 +74,17 @@ let rparen = P.token(func (t:Token) : ?() { switch t {
 module LCParser = {
 
     type LCParser = P.Parser<Token, LC>;
+    
     func parseVar() : LCParser { 
-        P.then(ident, func (v:Text) : LC = #lcvar(v))
+        P.map(ident, func (v:Text) : LC = #lcvar(v))
     };
     
     func parseParens() : LCParser =
-        P.then(P.between(lparen, P.delay parseLC, rparen),
+        P.map(P.between(lparen, P.delay parseLC, rparen),
             func (lc : LC) : LC {  lc });
 
     func parseLambda(): LCParser = 
-        P.then(P.pair(P.between(lam, ident, dot), P.delay parseLC),
+        P.map(P.pair(P.between(lam, ident, dot), P.delay parseLC),
                func ((v, lc) : (Text,LC)) : LC { lclam(v,lc) });
                
 
@@ -95,7 +96,7 @@ module LCParser = {
     ]))};
 
     public func parseLC(): LCParser {
-        P.then(P.pair(parseAtom(), P.many(parseAtom())),
+        P.map(P.pair(parseAtom(), P.many(parseAtom())),
             func ((lc, lcs) : (LC, List.List<LC>)) : LC {
                 List.foldLeft(lcs, lc, func (arg:LC, acc:LC) : LC = lcapp(acc, arg))
             });
