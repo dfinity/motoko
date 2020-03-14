@@ -256,8 +256,9 @@ let bi_match_subs scope_opt tbs subs =
     List.iter2 (fun c bd -> if mentions bd ce then fail_open_bound c bd) cs bds;
     let l, u = match scope_opt, tbs with
       | Some c, {sort = Scope; _}::tbs ->
-        ConEnv.singleton (List.hd cs) c,
-        ConEnv.singleton (List.hd cs) (glb c (List.hd bds))
+        let c0 = List.hd cs in
+        ConEnv.singleton c0 c,
+        ConEnv.singleton c0 c
       | None, {sort = Scope; _}::tbs ->
         failwith "scope instantiation required but no scope available"
       | _, _ ->

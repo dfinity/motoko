@@ -46,7 +46,7 @@ func curry<A,B,C>(f : (A,B)->C) : A->B->C {
   func(a:A): B->C { func(b:B):C { f(a,b) } }
 };
 
-func add(m:N, n:N) : N { m/*<N>*/(succ,n) }; 
+func add(m:N, n:N) : N { m/*<N>*/(succ,n) };
 
 func mult1(m:N, n:N): N { m/*<N>*/(func (a:N) : N { add(a,n)},zero) };
 
