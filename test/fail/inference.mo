@@ -139,7 +139,7 @@ func g<T <: Int>(x : T) {
 
 func h<T <: {}>(x : T) {
    func f<U <: {}>(y : U) {};
-   f(x); // reject, underconstrained U
+   f(x); // accept
 };
 
 func i<T <: Any>(x : T) {

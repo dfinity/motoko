@@ -12,6 +12,10 @@ let denotable t =
   let t' = normalize t in
   not (is_mut t' || is_typ t')
 
+let bound c = match Con.kind c with
+  | Abs ([], t) -> t
+  | _ -> assert false
+
 (* Check instantiation `ts` satisfies bounds `tbs` and all the pairwise sub-typing relations in `subs`;
    used to sanity check inferred instantiations *)
 let verify_inst tbs subs ts =
@@ -250,17 +254,15 @@ let bi_match_subs scope_opt tbs subs =
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
     let ce = ConSet.of_list cs in
     List.iter2 (fun c bd -> if mentions bd ce then fail_open_bound c bd) cs bds;
-    let add c b u = if eq b Any then u else ConEnv.add c b u in
-    let u = List.fold_right2 add cs bds ConEnv.empty in
     let l, u = match scope_opt, tbs with
       | Some c, {sort = Scope; _}::tbs ->
         ConEnv.singleton (List.hd cs) c,
-        add (List.hd cs) (lub c (List.hd bds)) u
+        ConEnv.singleton (List.hd cs) (glb c (List.hd bds))
       | None, {sort = Scope; _}::tbs ->
-         failwith "scope instantiation required but no scope available"
+        failwith "scope instantiation required but no scope available"
       | _, _ ->
         ConEnv.empty,
-        u
+        ConEnv.empty
     in
     match
       bi_match_list bi_match_typ
@@ -271,9 +273,13 @@ let bi_match_subs scope_opt tbs subs =
         (fun c ->
           match ConEnv.find_opt c l, ConEnv.find_opt c u with
           | None, None -> Non
-          | None, Some ub -> ub
-          | Some lb, None -> lb
+          | None, Some ub -> glb ub (bound c)
+          | Some lb, None ->
+            if sub lb (bound c) then
+              lb
+            else fail_over_constrained lb c (bound c)
           | Some lb, Some ub ->
+            let ub = glb ub (bound c) in
             if eq lb ub then
               ub
             else if sub lb ub then
