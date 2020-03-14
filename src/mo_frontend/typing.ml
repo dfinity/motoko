@@ -1225,7 +1225,8 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     | _::_, None -> (* implicit, infer *)
       let t2 = infer_exp env exp2 in
       try
-        (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_ret <: t] *)      let ts =
+        (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_ret <: t] *) 
+         let ts =
           Bi_match.bi_match_subs (scope_of_env env) tbs
             [(t2, t_arg); (t_ret, t)] in
         let t_arg' = T.open_ ts t_arg in
