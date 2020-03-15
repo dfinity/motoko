@@ -100,11 +100,11 @@ module {
 
   // not in opal: used to sequence parsers
   public func pair<Token,A,B>(pa: Parser<Token,A>, pb : Parser<Token,B>): Parser<Token,(A,B)> {
-    bind(pa,(func (a:A) : Parser<Token,(A,B)> { 
+    bind(pa,(func (a:A) : Parser<Token,(A,B)> {
       bind(pb,(func (b:B) : Parser<Token,(A,B)> { ret (a,b) }))
     }))
   };
-  
+
   public func choose<Token,A>(x: Parser<Token,A>):Parser<Token,A> -> Parser<Token,A> {
     func y {
       func input {
@@ -200,7 +200,7 @@ module {
     pc : Parser<Token,C>) : Parser<Token,B> {
     right(pa, left(pb, pc));
   };
-  
+
 
   public func option<Token,A>(default : A, pa: Parser<Token,A>) : Parser<Token,A> {
       choose pa (ret default)
@@ -234,6 +234,78 @@ module {
   };
 
   // TODO sep_by .. chainr
+
+  public func sepBy1<Token,A,B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+    : Parser<Token,List.List<A>> {
+    cons(pa, many (right(sep, pa)))
+  };
+
+  public func sepBy<Token,A,B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+    : Parser<Token,List.List<A>> {
+    choose
+      (sepBy1(pa,sep))
+      (ret (List.nil<A>())) // NB: can't infer but need to provide A
+  };
+
+  public func endBy1<Token,A,B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+    : Parser<Token,List.List<A>> {
+    left(sepBy1(pa, sep), sep)
+  };
+
+  public func endBy<Token,A,B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+    : Parser<Token,List.List<A>> {
+    choose
+      (endBy1(pa, sep))
+      (ret (List.nil<A>())) // NB: can't infer but need to provide A
+  };
+
+  public func chainl1<Token,A,B>(
+    pa : Parser<Token,A>,
+    op: Parser<Token, (A, A) -> A>)
+    : Parser<Token,A> {
+    func iter(a : A):Parser<Token,A> {
+      choose
+       (bind(
+         pair(op, pa),
+         func ((f : (A, A) -> A, b : A)) :  Parser<Token, A> { iter (f(a,b)) }))
+       (ret a)
+    };
+    bind(pa,iter)
+  };
+
+  public func chainl<Token,A,B>(
+    pa : Parser<Token,A>,
+    op: Parser<Token, (A, A) -> A>,
+    default : A ) : Parser<Token,A> {
+    choose
+      (chainl1(pa, op))
+      (ret default)
+  };
+
+  public func chainr1<Token,A,B>(
+    pa : Parser<Token,A>,
+    op: Parser<Token, (A, A) -> A>)
+    : Parser<Token,A> {
+    bind(pa,
+      func (a : A) :  Parser<Token, A>
+      { bind(
+          op,
+          func (f:(A, A)-> A) : Parser<Token,A> {
+            choose
+              (map(chainr1(pa, op), func (a2:A) : A { f (a,a2)}))
+              (ret a)
+          })
+      })
+  };
+
+  public func chainr<Token,A,B>(
+    pa : Parser<Token,A>,
+    op: Parser<Token, (A, A) -> A>,
+    default : A ) : Parser<Token,A> {
+    choose
+      (chainr1(pa, op))
+      (ret default)
+  };
 
   // singletons (need to pass in eq/leq)
   public func exactly<Token>(eq : (Token,Token) -> Bool, t : Token) : Parser<Token,Token> {
