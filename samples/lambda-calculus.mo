@@ -41,10 +41,10 @@ func printLC(lc: LC): Text {
 };
 
 func printInner(parens: Bool, lc: LC): Text {
-        switch (lc) {
-          case (#lcvar(v)) v;
-          case (#lcapp{fun; arg}) parensIf(parens, printInner(true, fun) # " " # printLC(arg));
-          case (#lclam{binder; body}) parensIf(parens, "\\" # binder # ". " # printLC(body));
+    switch (lc) {
+        case (#lcvar(v)) v;
+        case (#lcapp{fun; arg}) parensIf(parens, printInner(true, fun) # " " # printLC(arg));
+        case (#lclam{binder; body}) parensIf(parens, "\\" # binder # ". " # printLC(body));
     }
 };
 
@@ -75,6 +75,7 @@ let rparen = P.token(func (t : Token) : ?() { switch t {
     case _ null;
 }});
 
+
 func showToken(tkn: Token): Text =
   switch(tkn) {
     case (#lam) "LAM";
@@ -87,53 +88,38 @@ func showToken(tkn: Token): Text =
 
 func printToken(tkn: Token): () = Debug.print(showToken(tkn));
 
-class LCParser() {
+module LCParser = {
+
     type LCParser = P.Parser<Token, LC>;
-    let parseVar : LCParser = P.then(ident, func (v:Text) : LC = #lcvar(v));
-    func parseParens(): LCParser =
-        // Unfortunately between loops here?
-        // P.between<Token, (), (), LC>(lparen, rparen, parseLC());
-        P.bind(
-            lparen,
-            func (_:()) : LCParser = P.bind(
-                parseLC(),
-                func (lc : LC) : LCParser = P.bind(
-                    rparen,
-                    func (_:()) : LCParser = P.ret(lc)
-                )
-            )
-        );
 
-    func parseLambda(): LCParser = P.bind(
-        lam,
-        func (_: ())  : LCParser { P.bind(
-            ident,
-            func (binder:Text) : LCParser { P.bind(
-                dot,
-                func (_:()) : LCParser { P.bind(
-                    parseLC(),
-                    func (body:LC) : LCParser = P.ret(lclam(binder, body))
-                )}
-            )}
+    func parseVar() : LCParser {
+        P.map(ident, lcvar)
+    };
 
-        )
-        }
-    );
+    func parseParens() : LCParser {
+        P.between(lparen, P.delay parseLC, rparen);
+    };
 
-    public func parseAtom(): LCParser = P.choice(List.fromArray([
-        parseParens(),
-        parseVar,
-        parseLambda(),
-    ]));
+    func parseLambda(): LCParser {
+        P.map(P.pair(P.between(lam, ident, dot), P.delay parseLC),
+            func ((v, lc) : (Text,LC)) : LC { lclam(v,lc) });
+    };
 
-    public func parseLC(): LCParser =
-      P.bind(
-            P.many1(parseAtom()),
-            func (atoms : List.List<LC>) : LCParser {
-                let (hd, args) = List.pop(atoms);
-                let fn = Option.unwrap(hd);
-                P.ret(List.foldLeft(args, fn, func (arg:LC, acc:LC) : LC = lcapp(acc, arg)))
+    public func parseAtom(): LCParser  {
+        P.choice(List.fromArray([
+            parseParens(),
+            parseVar(),
+            parseLambda(),
+        ]))
+    };
+
+    public func parseLC(): LCParser {
+        P.map(P.pair(parseAtom(), P.many(parseAtom())),
+            func ((lc, lcs) : (LC, List.List<LC>)) : LC {
+                List.foldLeft(lcs, lc, func (arg:LC, acc:LC) : LC = lcapp(acc, arg))
             });
+    }
+
 };
 
 let lex: Text -> ?[Token] = func(input) {
@@ -215,7 +201,7 @@ let lexIdent: P.Parser<Char, Token> = cp.lexeme(
   P.bind(
     cp.letter,
     func(c: Char): P.Parser<Char, Token> {
-      P.then(
+      P.map(
         P.many(cp.alpha_num),
         func (cs: List.List<Char>): Token {
           let ident: Text =
@@ -241,7 +227,7 @@ let lexCombinator = func(input : Text) : ?[Token] {
   func const<A>(a: A): Any -> A = func(_) = a;
 
   let token = func(t: Text, tkn: Token): P.Parser<Char, Token> =
-      P.then<Char, Text, Token>(cp.token(t), const(tkn));
+      P.map<Char, Text, Token>(cp.token(t), const(tkn));
 
   let parser = P.many(
     P.choice(
@@ -279,7 +265,7 @@ func main() {
     let _ = Array.map<Token, ()>(func t = printToken t, tokens);
 
     let input = P.LazyStream.ofIter(Iter.fromArray(tokens));
-    switch (LCParser().parseLC()(input)) {
+    switch (LCParser.parseLC()(input)) {
         case (?(lc, _)) Debug.print(printLC(lc));
         case null Debug.print("Failed to parse");
     }
