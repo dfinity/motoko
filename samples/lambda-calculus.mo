@@ -7,6 +7,7 @@ import Iter "mo:stdlib/iter";
 import List "mo:stdlib/list";
 import Option "mo:stdlib/option";
 import P "parsec";
+import Prim "mo:prim";
 import Text "mo:stdlib/text";
 
 type LC =
@@ -73,6 +74,18 @@ let rparen = P.token(func (t : Token) : ?() { switch t {
     case (#rparen) ?();
     case _ null;
 }});
+
+func showToken(tkn: Token): Text =
+  switch(tkn) {
+    case (#lam) "LAM";
+    case (#dot) "DOT";
+    case (#lparen) "LPAREN";
+    case (#rparen) "RPAREN";
+    case (#ident(i)) "IDENT(" # i # ")";
+  };
+
+
+func printToken(tkn: Token): () = Debug.print(showToken(tkn));
 
 class LCParser() {
     type LCParser = P.Parser<Token, LC>;
@@ -196,9 +209,75 @@ let lex: Text -> ?[Token] = func(input) {
     ?tokens
 };
 
+let cp = P.CharParsers();
+
+let lexIdent: P.Parser<Char, Token> = cp.lexeme(
+  P.bind(
+    cp.letter,
+    func(c: Char): P.Parser<Char, Token> {
+      P.then(
+        P.many(cp.alpha_num),
+        func (cs: List.List<Char>): Token {
+          let ident: Text =
+            List.foldLeft(
+              cs,
+              Char.toText c,
+              func (c: Char, acc: Text): Text = acc # Char.toText(c)
+            );
+          #ident ident
+        }
+      )
+    }
+  )
+);
+
+func runCharParser<A>(parser: P.Parser<Char, A>, input: Text): A {
+  let (res, _) = Option.unwrap(parser(P.LazyStream.ofText(input)));
+  res
+};
+
+let lexCombinator = func(input : Text) : ?[Token] {
+
+  func const<A>(a: A): Any -> A = func(_) = a;
+
+  let token = func(t: Text, tkn: Token): P.Parser<Char, Token> =
+      P.then<Char, Text, Token>(cp.token(t), const(tkn));
+
+  let parser = P.many(
+    P.choice(
+      List.fromArray([
+        lexIdent,
+        token(".", #dot),
+        token("\\", #lam),
+        token("(", #lparen),
+        token(")", #rparen),
+      ]))
+  );
+
+  switch (parser(P.LazyStream.ofText(input))) {
+    case (?(tkns, _)) ?(List.toArray(tkns));
+    case null null;
+  }
+};
+
+
 func main() {
     // Parses the Omega combinator
-    let tokens = Option.unwrap(lex("(\\x. x x) (\\x. x x)"));
+    // let identParse = runCharParser(lexIdent, "lol");
+    // Debug.print("Ident parse:");
+    // Debug.print("=====================");
+    // printToken identParse;
+
+    let tokensImp = Option.unwrap(lex("(\\x. x x) (\\x. x x)"));
+    Debug.print("Imperative lex:");
+    Debug.print("=====================");
+    let _ = Array.map<Token, ()>(func t = printToken t, tokensImp);
+
+    let tokens: [Token] = Option.unwrap(lexCombinator("(\\x. x x) (\\x. x x)"));
+    Debug.print("Combinator based lex:");
+    Debug.print("=====================");
+    let _ = Array.map<Token, ()>(func t = printToken t, tokens);
+
     let input = P.LazyStream.ofIter(Iter.fromArray(tokens));
     switch (LCParser().parseLC()(input)) {
         case (?(lc, _)) Debug.print(printLC(lc));
