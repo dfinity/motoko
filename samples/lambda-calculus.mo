@@ -37,97 +37,84 @@ func printLC(lc: LC): Text {
 };
 
 func printInner(parens: Bool, lc: LC): Text {
-        switch (lc) {
-          case (#lcvar(v)) v;
-          case (#lcapp{fun; arg}) parensIf(parens, printInner(true, fun) # " " # printLC(arg));
-          case (#lclam{binder; body}) parensIf(parens, "\\" # binder # ". " # printLC(body));
+    switch (lc) {
+        case (#lcvar(v)) v;
+        case (#lcapp{fun; arg}) parensIf(parens, printInner(true, fun) # " " # printLC(arg));
+        case (#lclam{binder; body}) parensIf(parens, "\\" # binder # ". " # printLC(body));
     }
 };
 
 type Token = { #lam; #dot; #lparen; #rparen; #ident: Text; };
 
-let ident: P.Parser<Token, Text> = P.token<Token, Text>(func t = switch t {
+let ident = P.token(func (t : Token) : ?Text { switch t {
     case (#ident(i)) ?i;
     case _ null;
-});
+}});
 
-let lam: P.Parser<Token, ()> = P.token<Token, ()>(func t = switch t {
+let lam = P.token(func (t:Token) :? () { switch t {
     case (#lam) ?();
     case _ null;
-});
+}});
 
-let dot: P.Parser<Token, ()> = P.token<Token, ()>(func t = switch t {
+let dot = P.token(func (t:Token) :? () { switch t {
     case (#dot) ?();
     case _ null;
-});
+}});
 
-let lparen: P.Parser<Token, ()> = P.token<Token, ()>(func t = switch t {
+let lparen = P.token(func (t:Token) : ? () { switch t {
     case (#lparen) ?();
     case _ null;
-});
+}});
 
-let rparen: P.Parser<Token, ()> = P.token<Token, ()>(func t = switch t {
+let rparen = P.token(func (t:Token) : ?() { switch t {
     case (#rparen) ?();
     case _ null;
-});
+}});
 
-class LCParser() {
-    let parseVar: P.Parser<Token, LC> = P.then<Token, Text, LC>(ident, func v = #lcvar(v));
-    func parseParens(): P.Parser<Token, LC> =
-        // Unfortunately between loops here?
-        // P.between<Token, (), (), LC>(lparen, rparen, parseLC());
-        P.bind<Token, (), LC>(
-            lparen,
-            func () = P.bind<Token, LC, LC>(
-                parseLC(),
-                func lc = P.bind<Token, (), LC>(
-                    rparen,
-                    func () = P.ret(lc)
-                )
-            )
-        );
+module LCParser = {
 
-    func parseLambda(): P.Parser<Token, LC> = P.bind<Token, (), LC>(
-        lam,
-        func () = P.bind<Token, Text, LC>(
-            ident,
-            func binder = P.bind<Token, (), LC>(
-                dot,
-                func () = P.bind<Token, LC, LC>(
-                    parseLC(),
-                    func body = P.ret(lclam(binder, body))
-                )
-            )
-        )
-    );
+    type LCParser = P.Parser<Token, LC>;
 
-    public func parseAtom(): P.Parser<Token, LC> = P.choice (List.fromArray([
-        parseParens(),
-        parseVar,
-        parseLambda(),
-    ]));
+    func parseVar() : LCParser {
+        P.map(ident, lcvar)
+    };
 
-    public func parseLC(): P.Parser<Token, LC> =
-      P.bind<Token, List.List<LC>, LC>(
-            P.many1(parseAtom()),
-            func atoms = {
-                let (hd, args) = List.pop(atoms);
-                let fn = Option.unwrap(hd);
-                P.ret(List.foldLeft<LC, LC>(args, fn, func (arg, acc) = lcapp(acc, arg)))
+    func parseParens() : LCParser {
+        P.between(lparen, P.delay parseLC, rparen);
+    };
+
+    func parseLambda(): LCParser {
+        P.map(P.pair(P.between(lam, ident, dot), P.delay parseLC),
+            func ((v, lc) : (Text,LC)) : LC { lclam(v,lc) });
+    };
+
+    public func parseAtom(): LCParser  {
+        P.choice(List.fromArray([
+            parseParens(),
+            parseVar(),
+            parseLambda(),
+        ]))
+    };
+
+    public func parseLC(): LCParser {
+        P.map(P.pair(parseAtom(), P.many(parseAtom())),
+            func ((lc, lcs) : (LC, List.List<LC>)) : LC {
+                List.foldLeft(lcs, lc, func (arg:LC, acc:LC) : LC = lcapp(acc, arg))
             });
+    }
+
 };
 
-
 func main() {
-    let input: P.Input<Token> =
+    let input =
         P.LazyStream.ofIter(
-            Iter.fromArray<Token>(
+            Iter.fromArray(
                 [ #lparen, #lam, #ident "x", #dot, #ident "x", #ident "x", #rparen
                 , #lparen, #lam, #ident "x", #dot, #ident "x", #ident "x", #rparen
                 ]
             )
         );
-    switch (LCParser().parseLC()(input)) {
+    switch (LCParser.parseLC()(input)) {
         case (?(lc, _)) Debug.print(printLC(lc));
         case null Debug.print("Failed to parse");
     }

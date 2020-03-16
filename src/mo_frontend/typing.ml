@@ -1234,6 +1234,8 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         | ts ->
           let t_arg' = T.open_ ts t_arg in
           let t_ret' = T.open_ ts t_ret in
+          info env {left = exp1.at.right; right = exp2.at.left }
+            "inferred instantiation <%s>" (String.concat "," (List.map T.string_of_typ ts));
           ts, t_arg', t_ret'
         | exception Failure msg ->
           error env at
