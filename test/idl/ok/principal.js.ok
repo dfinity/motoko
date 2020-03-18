@@ -1,4 +1,4 @@
 export default ({ IDL }) => {
- return new IDL.ActorInterface({
+ return IDL.Service({
   'getCaller': IDL.Func([], [IDL.Principal, IDL.Nat32], [])});
 };

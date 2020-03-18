@@ -107,14 +107,6 @@ to produce result of type
   ()
 over-constrained implicit instantiation requires T <: U <: {}, but T </: {};
 no valid instantiation exists
-inference.mo:142.4-142.8: type error, cannot implicitly instantiate function of type
-  <U <: {}>U -> ()
-to argument of type
-  T/35
-to produce result of type
-  ()
-under-constrained implicit instantiation T <: U <: {}, with T =/= {};
-explicit type instantiation required
 inference.mo:152.11-152.15: type error, cannot implicitly instantiate function of type
   <U <: T/37>U -> U
 to argument of type
@@ -140,3 +132,7 @@ to produce result of type
 no instantiation of T makes {type x = Nat} <: {x : T} and T <: Any
 inference.mo:183.8-183.21: type error, too few type arguments
 inference.mo:186.8-186.15: type error, too few type arguments
+inference.mo:192.64-192.68: type error, expression of type
+  async<$send> Int
+cannot produce expected type
+  Int
