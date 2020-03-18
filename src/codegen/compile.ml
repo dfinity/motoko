@@ -3161,6 +3161,7 @@ module Dfinity = struct
     E.else_trap_with env "not a self-call"
 
 let export_upgrade_scaffold env =
+  if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
   let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
 
