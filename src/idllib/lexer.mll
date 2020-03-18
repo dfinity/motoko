@@ -130,6 +130,7 @@ rule token = parse
   | "record" { RECORD }
   | "variant" { VARIANT }
   | "blob" { BLOB }
+  | "principal" { PRINCIPAL }
 
   | id as s { ID s }
 
