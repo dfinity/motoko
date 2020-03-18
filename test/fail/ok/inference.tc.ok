@@ -107,14 +107,6 @@ to produce result of type
   ()
 over-constrained implicit instantiation requires T <: U <: {}, but T </: {};
 no valid instantiation exists
-inference.mo:142.4-142.8: type error, cannot implicitly instantiate function of type
-  <U <: {}>U -> ()
-to argument of type
-  T/35
-to produce result of type
-  ()
-under-constrained implicit instantiation T <: U <: {}, with T =/= {};
-explicit type instantiation required
 inference.mo:152.11-152.15: type error, cannot implicitly instantiate function of type
   <U <: T/37>U -> U
 to argument of type
