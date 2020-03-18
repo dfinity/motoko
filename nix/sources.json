@@ -39,14 +39,14 @@
     },
     "nixpkgs": {
         "branch": "nixos-20.03",
-        "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": "https://github.com/NixOS/nixpkgs",
         "owner": "NixOS",
-        "repo": "nixpkgs-channels",
+        "repo": "nixpkgs",
         "rev": "d195a68f87cff12fe07170ad545b5c9e0df400b5",
         "sha256": "0kxs5nwf1pwwg9zlisyk1na89wlhfflp50yg7yak8l2389n2li54",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs-channels/archive/d195a68f87cff12fe07170ad545b5c9e0df400b5.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/d195a68f87cff12fe07170ad545b5c9e0df400b5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
