@@ -366,7 +366,7 @@ let as_async = function Async (t1, t2) -> (t1, t2) | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_typ = function Typ c -> c | _ -> invalid "as_typ"
-let as_con = function Con(c,ts) -> c,ts | _ -> invalid "as_con"
+let as_con = function Con (c, ts) -> c,ts | _ -> invalid "as_con"
 
 let as_seq t =
   match normalize t with
