@@ -154,7 +154,7 @@ let bi_match_subs scope_opt tbs subs =
       (match bi_match_binds rel eq inst any tbs1 tbs2 with
        | Some (inst, ts) ->
          let any' = List.fold_right
-           (function t -> ConSet.add (fst (as_con t))) ts any
+           (fun t -> ConSet.add (fst (as_con t))) ts any
          in
          (match
            bi_match_list bi_match_typ rel eq inst any' (List.map (open_ ts) t21) (List.map (open_ ts) t11)
@@ -304,4 +304,3 @@ let bi_match_subs scope_opt tbs subs =
           (List.map2 (fun t1 t2 ->
             Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))
             ts1 ts2)))
-
