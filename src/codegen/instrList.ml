@@ -189,6 +189,7 @@ type dw_AT = Producer of string
            | Artificial of bool
            | TypeRef of int (* reference *)
            | Encoding of int
+           | Location of string (* for now *)
 
 (* DWARF tags *)
 
@@ -246,6 +247,7 @@ let dw_attr : dw_AT -> t =
   | Encoding e -> fakeColumn e dw_AT_encoding Nop
   | Discr_value v -> fakeColumn v dw_AT_discr_value Nop
   | Const_value v -> fakeColumn v dw_AT_const_value Nop
+  | Location n -> fakeFile n dw_AT_location Nop
 
 let dw_attrs = concat_map dw_attr
 
@@ -298,7 +300,7 @@ let rec dw_tag : dw_TAG -> t =
       (dw_attrs [Low_pc 0(*FIXME*); Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty) ->
     fakeBlock dw_TAG_formal_parameter
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty))])
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location "\xEB\x02\x00"])
   (*| Variable ->  *)
   | Type ty -> dw_type ty
   | _ -> assert false

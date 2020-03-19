@@ -180,6 +180,8 @@ let encode (em : extended_module) =
       | Nop, {line; file; _} when -line = dw_AT_comp_dir ->
         let _offs = add_dwarf_string file in
         add_dwarf_attribute (StringAttribute (-line, file))
+      | Nop, {line; file; _} when -line = dw_AT_location ->
+        add_dwarf_attribute (StringAttribute (-line, file))
       | Nop, {line; column; _} when -line = dw_AT_use_UTF8 ->
         add_dwarf_attribute (IntAttribute (-line, column))
       | Nop, {line; column; _} when -line = dw_AT_language ->
@@ -745,6 +747,7 @@ let encode (em : extended_module) =
     let write16 = Buffer.add_int16_le s.buf
     let write32 i = Buffer.add_int32_le s.buf (Int32.of_int i)
     let zero_terminated str = put_string s str; u8 0
+    let writeBlock1 str = let len = String.length str in assert (len < 256); u8 len; put_string s str
 
     let debug_abbrev_section () =
       let tag (t, ch, kvs) =
@@ -802,6 +805,11 @@ let encode (em : extended_module) =
           | FunctionsAttribute attr ->
             write32 (Promise.value rangelists)
           | _ -> failwith "dw_FORM_sec_offset"
+        end
+      | f when dw_FORM_block1 = f ->
+        begin function
+          | StringAttribute (attr, str) -> writeBlock1 str
+          | _ -> failwith "dw_FORM_block1"
         end
       | f when dw_FORM_flag = f ->
         begin function
@@ -1035,7 +1043,13 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
         | op :: n :: r when dw_OP_WASM_stack = op ->
           u8 dw_OP_WASM_location; u8 0x02; uleb128 n; write_loclist r
         | _ -> failwith "write_loclist" in
-      let debug_loclists_section_body () = () in
+      let debug_loclists_section_body () =
+        write16 0x0005; (* version *)
+        u8 4; (* address_size *)
+        u8 0; (* segment_selector_size *)
+        write32 0; (* offset_entry_count *)
+
+      in
       custom_section ".debug_loclists" debug_loclists_section_body () true
 
     (* Module *)
