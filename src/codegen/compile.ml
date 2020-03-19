@@ -4841,13 +4841,21 @@ module FuncDec = struct
       (* Add arguments to the environment (shifted by 1) *)
       let ae2 = bind_args env ae1 1 args in
 
+let printVar name = function
+        | Some (VarEnv.Local i) -> Printf.printf "Local %s at %d\n" name (Int32.to_int i)
+        | _ -> Printf.printf "Elsewhere %s\n" name in
+List.iter (fun v -> printVar v.it (VarEnv.lookup_var ae2 v.it)) args;
+
       (* Add nested DWARF *)
       (* prereq has side effects that must happen before generating
          DWARF for the formal parameters, so we have to strictly evaluate *)
+      let var_location arg = match VarEnv.lookup_var ae2 arg with
+        | Some (VarEnv.Local i) -> Int32.to_int i
+        | _ -> failwith "var_location" in
       let prereq = G.(effects (concat_map (fun arg -> dw_tag (Type arg.note)) args)) in
       prereq ^^
       G.(dw_tag (Subprogram (name, at.left))) ^^
-      G.(concat_map (fun arg -> dw_tag_no_children (Formal_parameter (arg.it, arg.at.left, arg.note))) args) ^^
+      G.(concat_map (fun arg -> dw_tag_no_children (Formal_parameter (arg.it, arg.at.left, arg.note, var_location arg.it))) args) ^^
       closure_code ^^
       mk_body env ae2 ^^
       G.dw_tag_children_done

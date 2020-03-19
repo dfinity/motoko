@@ -196,7 +196,7 @@ type dw_AT = Producer of string
 type dw_TAG =
   | Compile_unit of string * string (* compilation directory, file name *)
   | Subprogram of string * Source.pos
-  | Formal_parameter of (string * Source.pos * Type.typ)
+  | Formal_parameter of (string * Source.pos * Type.typ * int)
   | Variable
   | Type of Type.typ
   | Typedef of string * Type.typ
@@ -298,7 +298,7 @@ let rec dw_tag : dw_TAG -> t =
   | Subprogram (name, pos) ->
     fakeBlock dw_TAG_subprogram
       (dw_attrs [Low_pc 0(*FIXME*); Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
-  | Formal_parameter (name, pos, ty) ->
+  | Formal_parameter (name, pos, ty, slot) ->
     fakeBlock dw_TAG_formal_parameter
       (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location "\xEB\x02\x00"])
   (*| Variable ->  *)
