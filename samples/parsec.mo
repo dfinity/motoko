@@ -45,13 +45,13 @@ module {
     public type t<A> = ? (A, Lazy.t<t<A>>);
 
     public func ofIter<A>(iter:Iter.Iter<A>) : t<A> {
-    func next(iter:Iter.Iter<A>) : t<A> {
+      func next(iter:Iter.Iter<A>) : t<A> {
         switch (iter.next()) {
           case (?a) (?(a, Lazy.t(func () : t<A> { next iter ; })));
           case null null
         };
       };
-    next iter
+      next iter
     };
 
     public func ofFunc<A>(f:() -> ?A) : t<A> {
@@ -69,11 +69,11 @@ module {
 
   // utils
 
-  func implode(cs : List.List<Char>) : Text =
+  public func implode(cs : List.List<Char>) : Text =
     // TBR
     List.foldRight(cs, "", func(c:Char,t:Text):Text { Prim.charToText c # t});
 
-  func explode(t : Text) : List.List<Char> {
+  public func explode(t : Text) : List.List<Char> {
     var l : List.List<Char> = null;
     for (c in t.chars()){
         l := List.push(c, l);
@@ -203,11 +203,11 @@ module {
 
 
   public func option<Token,A>(default : A, pa: Parser<Token,A>) : Parser<Token,A> {
-      choose pa (ret default)
+    choose pa (ret default)
   };
 
   public func optional<Token,A>(pa : Parser<Token,A>) : Parser<Token,()> {
-      option((),right(pa,ret<Token,()>()));// needs <...> or constraint
+    option((),right(pa,ret<Token,()>()));// needs <...> or constraint
   };
 
   public func skipMany<Token,A>(pa : Parser<Token,A>) : Parser<Token,()> {
@@ -321,7 +321,7 @@ module {
   };
 
   public func range<Token>(leq : (Token, Token) -> Bool, l:Token, r: Token): Parser<Token,Token>  {
-    satisfy (func (t:Token) : Bool { leq(l, t) and leq(t, l) })
+    satisfy (func (t:Token) : Bool { leq(l, t) and leq(t, r) })
   };
 
   // Char parsers
@@ -334,13 +334,10 @@ module {
 
     func eq(c1:Char,c2:Char) : Bool { c1 == c2 };
 
-    //IDE Bug: notice how `func ... = ...` syntax breaks IDE coloring of next dec (leq)
-    func eq0(c1:Char,c2:Char) : Bool = c1 == c2 ;
-
     func leq(c1:Char,c2:Char) : Bool { c1 <= c2 };
 
     public let space : Parser<Char,Char> =
-      oneOf<Char>(func (c1,c2) { c1 == c2 },
+      oneOf<Char>(func (c1, c2) { c1 == c2 },
         List.fromArray([' ', '\t', '\r', '\n']));
 
     public let spaces : Parser<Char,()> = skipMany space;

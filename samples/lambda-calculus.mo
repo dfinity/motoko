@@ -55,24 +55,24 @@ let ident = P.token(func (t : Token) : ?Text { switch t {
   case _ null;
 }});
 
-let lam = P.token(func (t : Token) : ?() { switch t {
-  case (#lam) ?();
-  case _ null;
+let lam = P.satisfy(func (t : Token) : Bool { switch t {
+  case (#lam) true;
+  case _ false;
 }});
 
-let dot = P.token(func (t : Token) : ?() { switch t {
-  case (#dot) ?();
-  case _ null;
+let dot = P.satisfy(func (t : Token) : Bool { switch t {
+  case (#dot) true;
+  case _ false;
 }});
 
-let lparen = P.token(func (t : Token) : ?() { switch t {
-  case (#lparen) ?();
-  case _ null;
+let lparen = P.satisfy(func (t : Token) : Bool { switch t {
+  case (#lparen) true;
+  case _ false;
 }});
 
-let rparen = P.token(func (t : Token) : ?() { switch t {
-  case (#rparen) ?();
-  case _ null;
+let rparen = P.satisfy(func (t : Token) : Bool { switch t {
+  case (#rparen) true;
+  case _ false;
 }});
 
 
@@ -122,104 +122,14 @@ module LCParser = {
 
 };
 
-let lex: Text -> ?[Token] = func(input) {
-  var lookahead: ?Char = null;
-  let inputIter = Text.toIter(input);
-  var tokens: [Token] = [];
-
-  func peek(): ?Char {
-    lookahead := next();
-    lookahead
-  };
-
-  func next(): ?Char {
-    let res = switch(lookahead) {
-      case null inputIter.next();
-      case (?(v)) {
-      lookahead := null;
-      ?v
-      }
-    };
-    // Debug.print("Next is: " # Option.option(res, Char.toText, "None"));
-    res
-  };
-
-  func bump() {
-    let _ = next();
-    ()
-  };
-
-  func isWhitespace(c : Char) : Bool {
-    c == ' ' or c == '\n' or c == '\t' or c == '\r'
-  };
-
-  func isIdentStart(c : Char) : Bool {
-    c >= 'A' and c <= 'z'
-  };
-
-  func isIdent(c : Char) : Bool {
-    isIdentStart(c) or Char.isDigit(c)
-  };
-
-  func recognize(token : Token) {
-    tokens := Array.append(tokens, [token])
-  };
-
-  func dropWS() {
-    while(Option.option(peek(), isWhitespace, false)) bump()
-  };
-
-  dropWS();
-  while(true) {
-    switch(next()) {
-    case null return ?tokens;
-    case (?('\\')) recognize(#lam);
-    case (?('.')) recognize(#dot);
-    case (?('(')) recognize(#lparen);
-    case (?(')')) recognize(#rparen);
-    case (?c) {
-      if (isIdentStart(c)) {
-      var ident = Char.toText(c);
-      while(Option.option(peek(), isIdent, false)) {
-        ident #= Char.toText(Option.unwrap(next()))
-      };
-      recognize(#ident ident)
-      } else {
-      Debug.print("Failed to handle: " # Char.toText(c));
-      return null;
-      }
-    };
-    };
-    dropWS();
-  };
-  ?tokens
-};
-
 let cp = P.CharParsers();
 
-let lexIdent: P.Parser<Char, Token> = cp.lexeme(
-  P.bind(
-  cp.letter,
-  func(c: Char): P.Parser<Char, Token> {
-    P.map(
-    P.many(cp.alpha_num),
-    func (cs: List.List<Char>): Token {
-      let ident: Text =
-      List.foldLeft(
-        cs,
-        Char.toText c,
-        func (c: Char, acc: Text): Text = acc # Char.toText(c)
-      );
-      #ident ident
-    }
-    )
-  }
-  )
-);
 
-func runCharParser<A>(parser: P.Parser<Char, A>, input: Text): A {
-  let (res, _) = Option.unwrap(parser(P.LazyStream.ofText(input)));
-  res
+func runCharParser<A>(parser: P.Parser<Char, A>, input: Text): ?A {
+  switch (parser(P.LazyStream.ofText(input))) {
+    case (? (a,_)) (?a);
+    case null null;
+  }
 };
 
 let lexCombinator = func(input : Text) : ?[Token] {
@@ -227,38 +137,33 @@ let lexCombinator = func(input : Text) : ?[Token] {
   func const<A>(a: A): Any -> A = func(_) = a;
 
   let token = func(t: Text, tkn: Token): P.Parser<Char, Token> =
-    P.map<Char, Text, Token>(cp.token(t), const(tkn));
+    P.right(cp.token(t),P.ret<Char,Token>(tkn) );
 
-  let parser = P.many(
-  P.choice(
-    List.fromArray([
-    lexIdent,
-    token(".", #dot),
-    token("\\", #lam),
-    token("(", #lparen),
-    token(")", #rparen),
-    ]))
+  let ident : P.Parser<Char,Token> =
+
+  P.map(P.right(cp.spaces,P.cons(cp.letter,P.many(cp.alpha_num))),
+  func (cs : List.List<Char>) : Token { #ident (P.implode(cs)) });
+
+  let lexer = P.many(
+    P.choice(
+      List.fromArray([
+        ident,
+        token(".", #dot),
+        token("\\", #lam),
+        token("(", #lparen),
+        token(")", #rparen)]))
   );
 
-  switch (parser(P.LazyStream.ofText(input))) {
-  case (?(tkns, _)) ?(List.toArray(tkns));
-  case null null;
+  switch (lexer(P.LazyStream.ofText(input))) {
+    case (?(tkns, _)) ?(List.toArray(tkns));
+    case null null;
   }
 };
 
 
 func main() {
   // Parses the Omega combinator
-  // let identParse = runCharParser(lexIdent, "lol");
-  // Debug.print("Ident parse:");
-  // Debug.print("=====================");
-  // printToken identParse;
-
-  let tokensImp = Option.unwrap(lex("(\\x. x x) (\\x. x x)"));
-  Debug.print("Imperative lex:");
-  Debug.print("=====================");
-  let _ = Array.map<Token, ()>(func t = printToken t, tokensImp);
-
+ 
   let tokens: [Token] = Option.unwrap(lexCombinator("(\\x. x x) (\\x. x x)"));
   Debug.print("Combinator based lex:");
   Debug.print("=====================");
@@ -266,8 +171,8 @@ func main() {
 
   let input = P.LazyStream.ofIter(Iter.fromArray(tokens));
   switch (LCParser.parseLC()(input)) {
-  case (?(lc, _)) Debug.print(printLC(lc));
-  case null Debug.print("Failed to parse");
+    case (?(lc, _)) Debug.print(printLC(lc));
+    case null Debug.print("Failed to parse");
   }
 };
 
