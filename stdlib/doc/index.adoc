@@ -27,7 +27,7 @@ include::option.adoc[leveloffset=+1]
 include::function.adoc[leveloffset=+1]
 include::array.adoc[leveloffset=+1]
 include::blob.adoc[leveloffset=+1]
-include::principalId.adoc[leveloffset=+1]
+include::principal.adoc[leveloffset=+1]
 
 // Complex data structures
 
