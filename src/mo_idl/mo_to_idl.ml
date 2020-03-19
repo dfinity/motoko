@@ -13,14 +13,9 @@ let stamp = ref Stamp.empty
 module TypeMap = Map.Make (struct type t = con * typ list let compare = compare end)
 let type_map = ref TypeMap.empty
 
-let normalize str =
-  let illegal_chars = ['-'; '/';] in
-  String.map (fun c -> if List.mem c illegal_chars then '_' else c) str
-
 let monomorphize_con vs c =
   let name = Con.name c in
   match Con.kind c with
-  | Def ([], _) -> normalize name
   | Def _ ->
      let id = (c, vs) in
      let n =
@@ -36,7 +31,9 @@ let monomorphize_con vs c =
               type_map := TypeMap.add id (n+1) !type_map;
               n+1)
        | Some n -> n
-     in Printf.sprintf "%s_%d" (normalize name) n
+     in
+     if n == 1 then name
+     else Printf.sprintf "%s_%d" name n
   | _ -> assert false
 
 let prim p =
