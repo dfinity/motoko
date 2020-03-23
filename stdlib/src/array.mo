@@ -156,9 +156,11 @@ module {
   public func tabulateVar<A>(len : Nat,  gen : Nat -> A) : [var A] {
     if (len == 0) { return [var] };
     let xs = Prim.Array_init<A>(len, gen 0);
-    for (i in range(1,len-1)) {
-      xs[i] := gen i;
-    };
+    if (len > 1) {
+      for (i in range(1,len-1)) {
+        xs[i] := gen i;
+      };
+    }
     return xs;
   };
 }
