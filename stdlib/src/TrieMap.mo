@@ -1,13 +1,13 @@
 /**
-[#mod-trieMap]
-= `trieMap` -- Functional map
+[#mod-TrieMap]
+= `TrieMap` -- Functional map
 */
 
-import T "trie";
-import P "prelude";
-import I "iter";
-import Hash "hash";
-import List "list";
+import T "Trie";
+import P "Prelude";
+import I "Iter";
+import Hash "Hash";
+import List "List";
 
 /*
 
