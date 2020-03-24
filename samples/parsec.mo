@@ -364,7 +364,6 @@ module {
     public func lexeme<A>(pa:Parser<Char,A>) : Parser<Char,A> { right(spaces, pa) };
 
     public func token(t : Text) : Parser<Char,Text> {
-      //TBR
       func iter(i:Iter.Iter<Char>) : Parser<Char,Text> {
           switch (i.next()) {
             case null (ret t);

@@ -122,52 +122,53 @@ module LCParser = {
 
 };
 
-let cp = P.CharParsers();
 
+let tokens = func(input : Text) : Iter.Iter<Token> {
+  let cp = P.CharParsers();
+  
+  func text(t : Text, token: Token): P.Parser<Char, Token> {
+    P.right(cp.token(t), P.ret<Char,Token>(token)) };
 
-func runCharParser<A>(parser: P.Parser<Char, A>, input: Text): ?A {
-  switch (parser(P.LazyStream.ofText(input))) {
-    case (? (a,_)) (?a);
-    case null null;
-  }
-};
+  func ident(f : Text -> Token) : P.Parser<Char,Token> {
+    P.map(
+      P.right(cp.spaces, P.cons(cp.letter, P.many(cp.alpha_num))),
+      func (cs : List.List<Char>) : Token { f (P.implode(cs)) });
+  };
 
-let lexCombinator = func(input : Text) : ?[Token] {
+  let token = P.choice(List.fromArray([
+        ident(func t { #ident t }),
+        text(".", #dot),
+        text("\\", #lam),
+        text("(", #lparen),
+        text(")", #rparen)]));
 
-  let token = func(t: Text, tkn: Token): P.Parser<Char, Token> =
-    P.right(cp.token(t),P.ret<Char,Token>(tkn) );
+  var state = P.LazyStream.ofText(input) ;
 
-  let ident : P.Parser<Char,Token> =
-
-  P.map(P.right(cp.spaces,P.cons(cp.letter,P.many(cp.alpha_num))),
-  func (cs : List.List<Char>) : Token { #ident (P.implode(cs)) });
-
-  let lexer = P.many(
-    P.choice(
-      List.fromArray([
-        ident,
-        token(".", #dot),
-        token("\\", #lam),
-        token("(", #lparen),
-        token(")", #rparen)]))
-  );
-
-  switch (lexer(P.LazyStream.ofText(input))) {
-    case (?(tkns, _)) ?(List.toArray(tkns));
-    case null null;
+  object { 
+    public func next() : ?Token {
+      switch (token(state)) {
+        case (?(tok, rest)) { 
+          state := rest;
+          ? tok
+        };
+        case null null;
+      }
+    }
   }
 };
 
 
 func main() {
   // Parses the Omega combinator
- 
-  let tokens: [Token] = Option.unwrap(lexCombinator("(\\x. x x) (\\x. x x)"));
-  Debug.print("Combinator based lex:");
-  Debug.print("=====================");
-  let _ = Array.map<Token, ()>(func t = printToken t, tokens);
+  let omega = "(\\x. x x) (\\x. x x)";
 
-  let input = P.LazyStream.ofIter(Iter.fromArray(tokens));
+  // tokenize
+  for (token in tokens omega) {
+    printToken token;
+  };
+
+  // parse
+  let input = P.LazyStream.ofIter(tokens omega);
   switch (LCParser.parseLC()(input)) {
     case (?(lc, _)) Debug.print(printLC(lc));
     case null Debug.print("Failed to parse");
