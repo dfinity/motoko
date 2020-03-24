@@ -1,10 +1,10 @@
 /**
-[#mod-hash]
-= `hash` -- Hash values
+[#mod-Hash]
+= `Hash` -- Hash values
 */
 
 import Prim "mo:prim";
-import Iter "iter";
+import Iter "Iter";
 
 module {
   /**

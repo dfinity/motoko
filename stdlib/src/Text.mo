@@ -1,12 +1,12 @@
 /**
-[#mod-text]
-= `text` -- Text values
+[#mod-Text]
+= `Text` -- Text values
 
 This type describes a valid, human-readable text. It does not contain arbitrary
 binary data.
 */
 
-import Iter "iter";
+import Iter "Iter";
 
 module {
 
@@ -16,7 +16,7 @@ module {
   };
 
   /**
-  Creates an <<mod-iter,iterator>> that traverses the characters of the text.
+  Creates an <<mod-Iter,iterator>> that traverses the characters of the text.
   */
   public let toIter : Text -> Iter.Iter<Char> =
     func(text) = text.chars()

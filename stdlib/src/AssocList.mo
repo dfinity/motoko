@@ -1,9 +1,9 @@
 /**
-[#mod-assocList]
-= `assocList` -- Association lists
+[#mod-AssocList]
+= `AssocList` -- Association lists
 */
 
-import List "list";
+import List "List";
 
 module {
 /*
