@@ -1,6 +1,6 @@
 /**
-[#mod-trieSet]
-= `trieSet` -- Functional set
+[#mod-TrieSet]
+= `TrieSet` -- Functional set
 */
 
 /*
@@ -22,8 +22,8 @@
    in the future, we might avoid this via https://dfinity.atlassian.net/browse/AST-32
 
 */
-import Trie "trie";
-import Hash "hash";
+import Trie "Trie";
+import Hash "Hash";
 
 module {
 public type Hash = Hash.Hash;

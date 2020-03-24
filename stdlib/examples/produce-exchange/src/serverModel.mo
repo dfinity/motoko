@@ -1,18 +1,18 @@
-import Debug "mo:stdlib/debug";
-import P "mo:stdlib/prelude";
+import Debug "mo:stdlib/Debug";
+import P "mo:stdlib/Prelude";
 
 import T "serverTypes";
 import L "serverLang";
 import M "serverModelTypes";
 
-import List "mo:stdlib/list";
-import Hash "mo:stdlib/hash";
-import Option "mo:stdlib/option";
-import Trie "mo:stdlib/trie";
-import Iter "mo:stdlib/iter";
-import Array "mo:stdlib/array";
+import List "mo:stdlib/List";
+import Hash "mo:stdlib/Hash";
+import Option "mo:stdlib/Option";
+import Trie "mo:stdlib/Trie";
+import Iter "mo:stdlib/Iter";
+import Array "mo:stdlib/Array";
 
-import Result "mo:stdlib/result";
+import Result "mo:stdlib/Result";
 import DT = "docTable";
 
 module {
