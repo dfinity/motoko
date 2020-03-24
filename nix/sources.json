@@ -38,15 +38,16 @@
         "version": "v1.2.0"
     },
     "nixpkgs": {
-        "branch": "nixos-20.03",
+        "branch": "release-20.03",
+        "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
-        "homepage": "https://github.com/NixOS/nixpkgs",
+        "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "99a3d7a86fce9e9c9f23b3e304d7d2b1270a12b8",
-        "sha256": "0i40cl3n6600z2lkwrpiy28dcnv2r63fcgfswj91aaf1xfn2chql",
+        "rev": "1a7a473831b00df2b13f712671f3b64318fb77a2",
+        "sha256": "17cy01kisb393xchbarrxwjh4lmbrx7f9gkd93rmlr7zcwanjw0l",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/99a3d7a86fce9e9c9f23b3e304d7d2b1270a12b8.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/1a7a473831b00df2b13f712671f3b64318fb77a2.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
