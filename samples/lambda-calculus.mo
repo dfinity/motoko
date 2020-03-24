@@ -134,8 +134,6 @@ func runCharParser<A>(parser: P.Parser<Char, A>, input: Text): ?A {
 
 let lexCombinator = func(input : Text) : ?[Token] {
 
-  func const<A>(a: A): Any -> A = func(_) = a;
-
   let token = func(t: Text, tkn: Token): P.Parser<Char, Token> =
     P.right(cp.token(t),P.ret<Char,Token>(tkn) );
 
