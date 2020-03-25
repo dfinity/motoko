@@ -10,7 +10,7 @@ SAMPLES:= test
 
 all:
 	rm -f lambda-calculus.txt
-	$(MOC) --package stdlib $(MOC)/../../stdlib/src -ref-system-api -r -v lambda-calculus.mo >lambda-calculus.txt 2>&1
+	$(MOC) --package stdlib ../../stdlib/src -ref-system-api -r -v lambda-calculus.mo >lambda-calculus.txt 2>&1
 	cat lambda-calculus.txt
 
 clean:

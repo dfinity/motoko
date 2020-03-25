@@ -3,7 +3,7 @@
 # This works with bash
 
 MOC?=../src/moc
-MOC_FLAGS= --package stdlib $(MOC)/../../stdlib/src -r -t -v
+MOC_FLAGS= -r -t -v
 
 
 SAMPLES:=$(basename $(wildcard *.mo))
