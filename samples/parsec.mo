@@ -18,12 +18,12 @@
 // compile with
 // ../src/moc --package stdlib ../stdlib/src parsec.mo
 
-import Char "mo:stdlib/char";
-import Debug "mo:stdlib/debug";
-import Iter "mo:stdlib/iter";
-import List "mo:stdlib/list";
+import Char "mo:stdlib/Char";
+import Debug "mo:stdlib/Debug";
+import Iter "mo:stdlib/Iter";
+import List "mo:stdlib/List";
 import Prim "mo:prim";
-import Text "mo:stdlib/text";
+import Text "mo:stdlib/Text";
 
 module {
 

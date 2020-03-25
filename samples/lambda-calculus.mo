@@ -1,14 +1,14 @@
 // compile and run with
 // ../src/moc -wasi-system-api --package stdlib ../stdlib/src lambda-calculus.mo && wasmtime lambda-calculus.wasm
-import Array "mo:stdlib/array";
-import Char "mo:stdlib/char";
-import Debug "mo:stdlib/debug";
-import Iter "mo:stdlib/iter";
-import List "mo:stdlib/list";
-import Option "mo:stdlib/option";
+import Array "mo:stdlib/Array";
+import Char "mo:stdlib/Char";
+import Debug "mo:stdlib/Debug";
+import Iter "mo:stdlib/Iter";
+import List "mo:stdlib/List";
+import Option "mo:stdlib/Option";
 import P "parsec";
 import Prim "mo:prim";
-import Text "mo:stdlib/text";
+import Text "mo:stdlib/Text";
 
 type Id = Text;
 
@@ -107,8 +107,7 @@ module Lexer = {
 class Parser() {
 
   type Token = Lexer.Token;
-
-  type TermParser = P.Parser<Token, Term>;
+  type Parser = P.Parser<Token, Term>;
 
   let ident = P.token(func (t : Token) : ?Text { switch t {
      case (#ident(i)) ?i;
@@ -135,33 +134,26 @@ class Parser() {
     case _ false;
   }});
 
-  func parseId() : TermParser {
-    P.map(ident, id)
-  };
-
-  func parseParens() : TermParser {
-    P.between(lparen, P.delay parseTerm, rparen);
-  };
-
-  func parseLambda() : TermParser {
-    P.map(P.pair(P.between(lam, ident, dot), P.delay parseTerm),
+  func Id() : Parser = P.map(ident, id);
+  
+  func Parens() : Parser = P.between(lparen, P.delay Term, rparen);
+  
+  func Lambda() : Parser = 
+    P.map(P.pair(P.between(lam, ident, dot), P.delay Term),
       func ((v, tm) : (Text,Term)) : Term { lambda(v,tm) });
-  };
 
-  func parseAtom() : TermParser  {
+  func Atom() : Parser =
     P.choice([
-      parseParens(),
-      parseId(),
-      parseLambda()
-    ])
-  };
-
-  public func parseTerm() : TermParser {
-    P.map(P.pair(parseAtom(), P.many(parseAtom())),
+      Parens(),
+      Id(),
+      Lambda()
+    ]);
+  
+  public func Term() : Parser =
+    P.map(P.pair(Atom(), P.many(Atom())),
       func ((tm, tms) : (Term, List.List<Term>)) : Term {
         List.foldLeft(tms, tm, func (arg:Term, acc:Term) : Term = app(acc, arg))
       });
-  }
 
 };
 
@@ -177,7 +169,7 @@ func test() {
 
   // parse
   let input = P.LazyStream.ofIter(Lexer.tokens omega);
-  switch (Parser().parseTerm()(input)) {
+  switch (Parser().Term()(input)) {
     case (?(tm, _)) Debug.print(printTerm(tm));
     case null Debug.print("Failed to parse");
   }
