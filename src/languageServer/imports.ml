@@ -1,5 +1,5 @@
-open Mo_frontend
 (** Import management for Motoko's language server *)
+open Mo_frontend
 
 open Mo_def
 open Source
