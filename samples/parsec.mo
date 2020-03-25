@@ -13,7 +13,7 @@
 // unnotated anonymous function arguments. Why? type argument nference relies on
 // inferring argument types but implicit function typing relies on
 // checking the function against an expect argument type.
-// choice your poison.
+// Choose your poison.
 
 // compile with
 // ../src/moc --package stdlib ../stdlib/src parsec.mo
