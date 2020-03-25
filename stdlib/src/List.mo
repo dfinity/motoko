@@ -1,14 +1,14 @@
 /**
-[#mod-list]
-= `list` -- Lists
+[#mod-List]
+= `List` -- Lists
 
 This module provides purely-functional, singly-linked lists.
 
 
 */
 
-import Array "array";
-import Option "option";
+import Array "Array";
+import Option "Option";
 
 module {
 

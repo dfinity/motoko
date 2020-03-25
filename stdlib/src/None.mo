@@ -1,6 +1,6 @@
 /**
-[#mod-none]
-= `none` -- The absent value
+[#mod-None]
+= `None` -- The absent value
 
 The `None` type represents a type with _no_ value, often used to mark dead
 code.
