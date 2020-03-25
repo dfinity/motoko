@@ -238,26 +238,26 @@ module {
         : A -> Parser<Token, List.List<A>> )) // needs constraint
   };
 
-  public func many1<Token,A>(pa : Parser<Token,A>) : Parser<Token,List.List<A>> {
+  public func many1<Token, A>(pa : Parser<Token, A>) : Parser<Token, List.List<A>> {
     cons(pa, many pa);
   };
 
-  public func sepBy1<Token, A, B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+  public func sepBy1<Token, A, B>(pa : Parser<Token, A>, sep : Parser<Token, B>)
     : Parser<Token,List.List<A>> {
     cons(pa, many(right(sep, pa)))
   };
 
-  public func sepBy<Token, A, B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+  public func sepBy<Token, A, B>(pa : Parser<Token, A>, sep : Parser<Token, B>)
     : Parser<Token,List.List<A>> {
     choose(sepBy1(pa, sep), ret<Token, List.List<A>>(List.nil())) // NB: can't infer but need to provide <...>
   };
 
-  public func endBy1<Token, A, B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+  public func endBy1<Token, A, B>(pa : Parser<Token, A>, sep : Parser<Token, B>)
     : Parser<Token,List.List<A>> {
     left(sepBy1(pa, sep), sep)
   };
 
-  public func endBy<Token, A, B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+  public func endBy<Token, A, B>(pa : Parser<Token, A>, sep : Parser<Token, B>)
     : Parser<Token,List.List<A>> {
     choose(endBy1(pa, sep), ret<Token, List.List<A>>(List.nil())) // NB: can't infer but need to <...>
   };
