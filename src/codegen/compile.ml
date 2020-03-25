@@ -7191,6 +7191,12 @@ let compile mode module_name rts (progs : Ir.prog list) : Wasm_exts.CustomModule
   let start_fi = E.add_fun env "start" start_fun in
   let start_fi_o = match E.mode env with
     | Flags.(ICMode | RefMode) -> Dfinity.export_init env start_fi; None
-    | Flags.(WasmMode | WASIMode) -> Some (nr start_fi) in
+    | Flags.WASIMode ->
+      E.add_export env (nr {
+                            name = Wasm.Utf8.decode "_start";
+                            edesc = nr (FuncExport (nr start_fi))
+      });
+      None
+    | Flags.WasmMode -> Some (nr start_fi) in
 
   conclude_module env start_fi_o
