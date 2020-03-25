@@ -16,8 +16,6 @@ export default ({ IDL }) => {
  stream.fill(
   IDL.Opt(
    IDL.Record({'head': IDL.Nat, 'next': IDL.Func([], [stream], ['query'])})))
- s.fill(
-  new IDL.ActorInterface({'f': t,
-   'g': IDL.Func([list], [B, tree, stream], [])}))
+ s.fill(IDL.Service({'f': t, 'g': IDL.Func([list], [B, tree, stream], [])}))
  return s.getType();
 };

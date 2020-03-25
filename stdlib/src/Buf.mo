@@ -1,11 +1,11 @@
 /**
-[#mod-buf]
-= `buf` -- Growing buffers
+[#mod-Buf]
+= `Buf` -- Growing buffers
 */
 
-import P "prelude";
-import I "iter";
-import A "array";
+import P "Prelude";
+import I "Iter";
+import A "Array";
 
 module {
 

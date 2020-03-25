@@ -2913,6 +2913,10 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
+      E.add_func_import env "ic0" "stable_write" (i32s 3) [];
+      E.add_func_import env "ic0" "stable_read" (i32s 3) [];
+      E.add_func_import env "ic0" "stable_size" [] [I32Type];
+      E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
       ()
 
   let system_imports env =
@@ -2920,11 +2924,7 @@ module Dfinity = struct
     | Flags.ICMode ->
       import_ic0 env
     | Flags.RefMode  ->
-      import_ic0 env;
-      E.add_func_import env "ic0" "stable_write" (i32s 3) [];
-      E.add_func_import env "ic0" "stable_read" (i32s 3) [];
-      E.add_func_import env "ic0" "stable_size" [] [I32Type];
-      E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type]
+      import_ic0 env
     | Flags.WASIMode ->
       E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
@@ -3160,7 +3160,8 @@ module Dfinity = struct
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
 
-let export_upgrade_scaffold env = if E.mode env = Flags.RefMode then
+let export_upgrade_scaffold env =
+  if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
   let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
 
@@ -3496,6 +3497,7 @@ module Serialization = struct
     (* NB: Prim Blob does not map to a primitive IDL type *)
     | Any -> Some 16
     | Non -> Some 17
+    | Prim Principal -> Some 24
     | _ -> None
 
   let type_desc env ts : string =
@@ -3522,7 +3524,6 @@ module Serialization = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
-          | Prim Principal -> ()
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
             assert false
@@ -3572,7 +3573,7 @@ module Serialization = struct
     let rec add_typ t =
       match t with
       | Non -> assert false
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         add_typ Type.(Array (Prim Word8))
       | Prim _ -> assert false
       | Tup ts ->
@@ -3694,7 +3695,7 @@ module Serialization = struct
           get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
           size env t
         )
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         size_word env get_len ^^
@@ -3723,7 +3724,7 @@ module Serialization = struct
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Arr.load_field 0l ^^ size env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ size env (Prim Text)
-      | Obj (Actor, _) ->
+      | Obj (Actor, _) | Prim Principal ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ size env (Prim Blob)
       | Non ->
@@ -3851,7 +3852,7 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
         get_x ^^ Heap.load_field Blob.len_field ^^ set_len ^^
         write_word get_len ^^
@@ -3870,7 +3871,7 @@ module Serialization = struct
         write_byte (compile_unboxed_const 1l) ^^
         get_x ^^ Arr.load_field 0l ^^ write env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field 1l ^^ write env (Prim Text)
-      | Obj (Actor, _) ->
+      | Obj (Actor, _) | Prim Principal ->
         write_byte (compile_unboxed_const 1l) ^^
         get_x ^^ write env (Prim Blob)
       | Non ->
@@ -4048,9 +4049,15 @@ module Serialization = struct
 
         (* Any vanilla value works here *)
         Opt.null
-      | Prim (Blob|Principal) ->
+      | Prim Blob ->
         assert_blob_typ env ^^
         read_blob ()
+      | Prim Principal ->
+        assert_prim_typ t ^^
+        read_byte_tagged
+          [ E.trap_with env "IDL error: unexpected principal reference"
+            ; read_blob ()
+          ]           
       | Prim Text ->
         assert_prim_typ t ^^
         read_text ()

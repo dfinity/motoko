@@ -1,10 +1,10 @@
 /**
-[#mod-iter]
-= `iter` -- Iterators
+[#mod-Iter]
+= `Iter` -- Iterators
 */
 
-import Array "array";
-import List "list";
+import Array "Array";
+import List "List";
 
 module {
   public type Iter<T> = {next : () -> ?T};

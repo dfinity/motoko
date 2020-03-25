@@ -1,9 +1,9 @@
 /**
-[#mod-option]
-= `option` -- Optional values
+[#mod-Option]
+= `Option` -- Optional values
 */
 
-import P "prelude";
+import P "Prelude";
 
 module {
 
@@ -73,7 +73,7 @@ public let apply : <A, B>(?(A -> B), ?A) -> ?B =
 /**
 Applies an function to an optional value. Returns `null` if the argument is `null`, or the function returns `null`.
 
-NOTE: Together with <<option-pure,`pure`>>, this forms a “monad”.
+NOTE: Together with <<Option_pure,`pure`>>, this forms a “monad”.
 */
 public let bind : <A, B>(?A, A -> ?B) -> ?B =
   func<A, B>(x : ?A, f : A -> ?B) : ?B {

@@ -1,6 +1,6 @@
 /**
-[#mod-debug]
-= `debug` -- Debugging aids
+[#mod-Debug]
+= `Debug` -- Debugging aids
 */
 
 import Prim "mo:prim";

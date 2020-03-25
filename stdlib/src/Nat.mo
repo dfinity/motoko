@@ -1,6 +1,6 @@
 /**
-[#mod-nat]
-= `nat` -- Natural numbers
+[#mod-Nat]
+= `Nat` -- Natural numbers
 
 Most operations on natural numbers (e.g. addition) are available as built-in operators (`1 + 1`).
 This module provides conversion functions.
@@ -10,8 +10,8 @@ The conversions `toNat*` will trap if the number is out of bounds; the conversio
 */
 
 import Prim "mo:prim";
-import Int "int";
-import Prelude "prelude";
+import Int "Int";
+import Prelude "Prelude";
 
 module {
 
