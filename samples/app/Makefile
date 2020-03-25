@@ -5,7 +5,6 @@
 MOC?=../../src/moc
 # we need to specify the output if there is more than one .mo file
 OUT=main.wasm
-LIB=list.mo types.mo server.mo client.mo
 
 SAMPLES:= test
 
