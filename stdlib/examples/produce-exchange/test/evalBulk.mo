@@ -1,8 +1,8 @@
-import Debug = "mo:stdlib/debug";
+import Debug = "mo:stdlib/Debug";
 import T = "../src/serverTypes";
 import A = "../src/serverActor";
-import Result = "mo:stdlib/result";
-import Option = "mo:stdlib/option";
+import Result = "mo:stdlib/Result";
+import Option = "mo:stdlib/Option";
 
 func printEntityCount(entname:Text, count:Nat) {
   Debug.print ("- " # entname # " count: " # debug_show count # "\n");

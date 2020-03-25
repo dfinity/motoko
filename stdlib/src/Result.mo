@@ -1,10 +1,10 @@
 /**
-[#mod-result]
-= `result` -- Error-annotated values
+[#mod-Result]
+= `Result` -- Error-annotated values
 */
 
-import P "prelude";
-import Array "array";
+import P "Prelude";
+import Array "Array";
 
 module {
 /*

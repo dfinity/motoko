@@ -1,6 +1,6 @@
 /**
-[#mod-char]
-= `char` -- Characters
+[#mod-Char]
+= `Char` -- Characters
 */
 
 import Prim "mo:prim";

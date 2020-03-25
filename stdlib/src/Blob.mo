@@ -1,6 +1,6 @@
 /*
-[#mod-blob]
-= `blob` -- Binary blobs
+[#mod-Blob]
+= `Blob` -- Binary blobs
 */
 
 import Prim "mo:prim";

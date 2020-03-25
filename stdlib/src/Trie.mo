@@ -1,16 +1,16 @@
 /**
-[#mod-trie]
-= `trie` -- Functional map
+[#mod-Trie]
+= `Trie` -- Functional map
 */
 
 import Prim "mo:prim";
-import P "prelude";
-import Option "option";
-import Hash "hash";
-import A "array";
+import P "Prelude";
+import Option "Option";
+import Hash "Hash";
+import A "Array";
 
-import List "list";
-import AssocList "assocList";
+import List "List";
+import AssocList "AssocList";
 
 module {
 /*
