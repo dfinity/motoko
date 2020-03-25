@@ -4841,11 +4841,6 @@ module FuncDec = struct
       (* Add arguments to the environment (shifted by 1) *)
       let ae2 = bind_args env ae1 1 args in
 
-let printVar name = function
-        | Some (VarEnv.Local i) -> Printf.printf "Local %s at %d\n" name (Int32.to_int i)
-        | _ -> Printf.printf "Elsewhere %s\n" name in
-List.iter (fun v -> printVar v.it (VarEnv.lookup_var ae2 v.it)) args;
-
       (* Add nested DWARF *)
       (* prereq has side effects that must happen before generating
          DWARF for the formal parameters, so we have to strictly evaluate *)
