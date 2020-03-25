@@ -1,6 +1,6 @@
 /**
-[#mod-int]
-= `int` -- Integer numbers
+[#mod-Int]
+= `Int` -- Integer numbers
 
 Most operations on natural numbers (e.g. addition) are available as built-in operators (`1 + 1`).
 This module provides conversion functions.
@@ -9,7 +9,7 @@ The conversions `toInt*` will trap if the number is out of bounds.
 */
 
 import Prim "mo:prim";
-import Prelude "prelude";
+import Prelude "Prelude";
 
 module {
   /**

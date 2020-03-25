@@ -1,6 +1,6 @@
 /**
-[#mod-prelude]
-= `prelude` -- General utilities
+[#mod-Prelude]
+= `Prelude` -- General utilities
 */
 
 import Prim "mo:prim";

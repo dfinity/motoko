@@ -168,7 +168,7 @@ then
   fi
 fi
 
-if [ $DTESTS = yes -o $PERF = yes ]
+if [ $DTESTS = yes ]
 then
   if $IC_REF_RUN --help >& /dev/null
   then

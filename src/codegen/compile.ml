@@ -2913,6 +2913,10 @@ module Dfinity = struct
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
+      E.add_func_import env "ic0" "stable_write" (i32s 3) [];
+      E.add_func_import env "ic0" "stable_read" (i32s 3) [];
+      E.add_func_import env "ic0" "stable_size" [] [I32Type];
+      E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type];
       ()
 
   let system_imports env =
@@ -2920,11 +2924,7 @@ module Dfinity = struct
     | Flags.ICMode ->
       import_ic0 env
     | Flags.RefMode  ->
-      import_ic0 env;
-      E.add_func_import env "ic0" "stable_write" (i32s 3) [];
-      E.add_func_import env "ic0" "stable_read" (i32s 3) [];
-      E.add_func_import env "ic0" "stable_size" [] [I32Type];
-      E.add_func_import env "ic0" "stable_grow" [I32Type] [I32Type]
+      import_ic0 env
     | Flags.WASIMode ->
       E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
@@ -3160,7 +3160,8 @@ module Dfinity = struct
     compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.else_trap_with env "not a self-call"
 
-let export_upgrade_scaffold env = if E.mode env = Flags.RefMode then
+let export_upgrade_scaffold env =
+  if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
   let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
 

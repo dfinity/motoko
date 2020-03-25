@@ -397,11 +397,22 @@ rec {
     src = subpath ./stdlib/doc;
     outputs = [ "out" "adocs" ];
     buildInputs = with nixpkgs;
-      [ bash perl asciidoctor ];
+      [ bash perl asciidoctor html-proofer ];
     buildPhase = ''
       patchShebangs .
       make STDLIB=${stdlib}
     '';
+
+    doCheck = true;
+    # These ones are needed for htmlproofer
+    LOCALE_ARCHIVE = nixpkgs.lib.optionalString nixpkgs.stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    LANG = "en_US.UTF-8";
+    LC_TYPE = "en_US.UTF-8";
+    LANGUAGE = "en_US.UTF-8";
+    checkPhase = ''
+      htmlproofer --disable-external _out/
+    '';
+
     installPhase = ''
       mkdir -p $out
       mv _out/* $out/

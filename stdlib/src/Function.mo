@@ -1,6 +1,6 @@
 /**
-[#mod-function]
-= `function` -- Functions on functions
+[#mod-Function]
+= `Function` -- Functions on functions
 */
 
 module {

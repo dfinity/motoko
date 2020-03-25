@@ -13,7 +13,7 @@ type usage_info = { captured : bool; eager : bool }
 
 let join u1 u2 = {
   captured = u1.captured || u2.captured;
-  eager = u1.captured || u2.captured
+  eager = u1.eager || u2.eager
 }
 
 module M = Env.Make(String)
