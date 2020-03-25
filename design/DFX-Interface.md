@@ -53,11 +53,13 @@ In order to compile a motoko file, `dfx` invokes `moc` with
 
     moc some/path/input.mo            \
         -o another/path/output.wasm   \
-        { --package pkgname pkgpath } \
-        { --actor-alias alias url }
-        [ --actor-idl actorpath ]
+        [ --actor-idl actorpath ]     \
+        [ --mappings mappings/path ]
 
-in an environment where `MOC_RTS` points to the location of the Motoko runtime system.
+in an environment where `MOC_RTS` points to the location of the Motoko runtime system. When `--mappings` is specified `mappings/path` should be a file containing one package or one actor mapping at a time like so:
+
+    --actor-alias alias url
+    --package pkgname pkgpath
 
 This _reads_ the following files
  * `some/path/input.mo`
@@ -127,13 +129,12 @@ Invoking the IDE
 In order to start the language server, `dfx` invokes
 
     mo-ide --canister-main some/path/main.mo \
-        { --package pkgname pkgpath }        \
-        { --actor-alias alias url }
-        [ --actor-idl actorpath ]
+        [ --actor-idl actorpath ]            \
+        [ --mappings mappings/path ]
 
 with `stdin` and `stdout` connected to the LSP client.
 
-This may _read_ the same files as `moc` would.
+This may _read_ the same files as `moc` would, and _watch_ the mappings file and reload according to changes to it.
 
 Listing dependencies
 --------------------
