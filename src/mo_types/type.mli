@@ -108,6 +108,7 @@ val is_func : typ -> bool
 val is_async : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
+val is_con : typ -> bool
 
 val as_prim : prim -> typ -> unit
 val as_obj : typ -> obj_sort * field list
@@ -122,6 +123,7 @@ val as_async : typ -> typ * typ
 val as_mut : typ -> typ
 val as_immut : typ -> typ
 val as_typ : typ -> con
+val as_con : typ -> con * typ list
 
 val as_prim_sub : prim -> typ -> unit
 val as_obj_sub : string list -> typ -> obj_sort * field list

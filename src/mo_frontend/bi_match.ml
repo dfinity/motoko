@@ -12,12 +12,16 @@ let denotable t =
   let t' = normalize t in
   not (is_mut t' || is_typ t')
 
+let bound c = match Con.kind c with
+  | Abs ([], t) -> t
+  | _ -> assert false
+
 (* Check instantiation `ts` satisfies bounds `tbs` and all the pairwise sub-typing relations in `subs`;
    used to sanity check inferred instantiations *)
 let verify_inst tbs subs ts =
   List.length tbs = List.length ts &&
   List.for_all2 (fun t tb -> sub t (open_ ts tb.bound)) ts tbs &&
-  List.for_all (fun (t1,t2) -> sub (open_ ts t1) (open_ ts t2)) subs
+  List.for_all (fun (t1, t2) -> sub (open_ ts t1) (open_ ts t2)) subs
 
 let bi_match_subs scope_opt tbs subs =
   let ts = open_binds tbs in
@@ -25,7 +29,7 @@ let bi_match_subs scope_opt tbs subs =
   let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
   let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
 
-  let cs = List.map (fun t -> match t with Con(c,_) -> c | _ -> assert false) ts in
+  let cs = List.map (fun t -> fst (as_con t)) ts in
 
   let flexible =
     let cons = ConSet.of_list cs in
@@ -43,7 +47,7 @@ let bi_match_subs scope_opt tbs subs =
     | _, _ -> None
   in
 
-  let rec bi_match_typ rel eq ((l,u) as inst) (any:ConSet.t) (t1:typ) (t2:typ) =
+  let rec bi_match_typ rel eq ((l, u) as inst) any t1 t2 =
     if t1 == t2 || SS.mem (t1, t2) !rel
     then Some inst
     else begin
@@ -72,13 +76,13 @@ let bi_match_subs scope_opt tbs subs =
           | None -> ConEnv.add con2 t1 l
         in
         let u = if rel != eq then u else
-         match ConEnv.find_opt con2 u with
-         | Some t1' ->
-           let glb = glb t1 t1' in
-           ConEnv.add con2 glb u
-         | None -> ConEnv.add con2 t1 u
+          match ConEnv.find_opt con2 u with
+          | Some t1' ->
+            let glb = glb t1 t1' in
+            ConEnv.add con2 glb u
+          | None -> ConEnv.add con2 t1 u
         in
-        Some (l,u)
+        Some (l, u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
       if mentions t2 any || not (denotable t2) then
@@ -98,7 +102,7 @@ let bi_match_subs scope_opt tbs subs =
             ConEnv.add con1 glb u
           | None -> ConEnv.add con1 t2 u
         in
-        Some (l,u)
+        Some (l, u)
     | Con (con1, ts1), Con (con2, ts2) ->
       (match Con.kind con1, Con.kind con2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
@@ -150,7 +154,7 @@ let bi_match_subs scope_opt tbs subs =
       (match bi_match_binds rel eq inst any tbs1 tbs2 with
        | Some (inst, ts) ->
          let any' = List.fold_right
-           (function Con(c,[]) -> ConSet.add c | _ -> assert false) ts any
+           (fun t -> ConSet.add (fst (as_con t))) ts any
          in
          (match
            bi_match_list bi_match_typ rel eq inst any' (List.map (open_ ts) t21) (List.map (open_ ts) t11)
@@ -187,9 +191,9 @@ let bi_match_subs scope_opt tbs subs =
     | tf1::tfs1', tf2::tfs2' ->
       (match compare_field tf1 tf2 with
       | 0 ->
-       (match bi_match_typ rel eq inst any tf1.typ tf2.typ with
-        | Some inst -> bi_match_fields rel eq inst any tfs1' tfs2'
-        | None -> None)
+        (match bi_match_typ rel eq inst any tf1.typ tf2.typ with
+         | Some inst -> bi_match_fields rel eq inst any tfs1' tfs2'
+         | None -> None)
       | -1 when rel != eq ->
         bi_match_fields rel eq inst any tfs1' tfs2
       | _ -> None
@@ -250,28 +254,33 @@ let bi_match_subs scope_opt tbs subs =
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
     let ce = ConSet.of_list cs in
     List.iter2 (fun c bd -> if mentions bd ce then fail_open_bound c bd) cs bds;
-    let add c b u = if eq b Any then u else ConEnv.add c b u in
-    let u = List.fold_right2 add cs bds ConEnv.empty in
-    let l,u = match scope_opt, tbs with
-      | Some c, {sort=Scope;_}::tbs ->
-        ConEnv.singleton (List.hd cs) c,
-        add (List.hd cs) (lub c (List.hd bds)) u
-      | None, {sort=Scope;_}::tbs ->
-         failwith "scope instantiation required but no scope available"
+    let l, u = match scope_opt, tbs with
+      | Some c, {sort = Scope; _}::tbs ->
+        let c0 = List.hd cs in
+        ConEnv.singleton c0 c,
+        ConEnv.singleton c0 c
+      | None, {sort = Scope; _}::tbs ->
+        failwith "scope instantiation required but no scope available"
       | _, _ ->
         ConEnv.empty,
-        u
+        ConEnv.empty
     in
-    match bi_match_list
-            bi_match_typ (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty ts1 ts2 with
-    | Some (l,u) ->
+    match
+      bi_match_list bi_match_typ
+        (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty ts1 ts2
+    with
+    | Some (l, u) ->
       let us = List.map
         (fun c ->
           match ConEnv.find_opt c l, ConEnv.find_opt c u with
           | None, None -> Non
-          | None, Some ub -> ub
-          | Some lb, None -> lb
+          | None, Some ub -> glb ub (bound c)
+          | Some lb, None ->
+            if sub lb (bound c) then
+              lb
+            else fail_over_constrained lb c (bound c)
           | Some lb, Some ub ->
+            let ub = glb ub (bound c) in
             if eq lb ub then
               ub
             else if sub lb ub then
@@ -287,12 +296,11 @@ let bi_match_subs scope_opt tbs subs =
           (Printf.sprintf
              "bug: inferred bad instantiation\n  <%s>;\nplease report this error message as a bug and, for now, supply an explicit instantiation instead"
             (String.concat ", " (List.map string_of_typ us)))
-    | None -> failwith (Printf.sprintf
-       "no instantiation of %s makes %s"
-       (String.concat ", " (List.map string_of_con cs))
-       (String.concat " and "
-         (List.map2 (fun t1 t2 ->
-           Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))
-           ts1 ts2)))
-
-
+    | None ->
+      failwith (Printf.sprintf
+        "no instantiation of %s makes %s"
+        (String.concat ", " (List.map string_of_con cs))
+        (String.concat " and "
+          (List.map2 (fun t1 t2 ->
+            Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))
+            ts1 ts2)))

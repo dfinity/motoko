@@ -1,14 +1,14 @@
 /**
-[#mod-hashMap]
-= `hashMap` -- Mutable hash map
+[#mod-HashMap]
+= `HashMap` -- Mutable hash map
 */
 
 import Prim "mo:prim";
-import P "prelude";
-import A "array";
-import Hash "hash";
-import Iter "iter";
-import AssocList "assocList";
+import P "Prelude";
+import A "Array";
+import Hash "Hash";
+import Iter "Iter";
+import AssocList "AssocList";
 
 module {
 

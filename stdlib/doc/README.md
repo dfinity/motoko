@@ -11,18 +11,18 @@ Run `make`. The output is in `_out`.
 
 The tool creates HTML anchors of these forms:
 
- * `#mod-foo` for the module `foo`
+ * `#mod-Foo` for the module `Foo`
    (These are actually not generated, but are put in manually)
- * `#foo_bar` for value `bar` in module `foo`
- * `#foo_Bar` for type `Bar` in module `foo`
+ * `#Foo_bar` for value `bar` in module `Foo`
+ * `#Foo_Bar` for type `Bar` in module `Foo`
 
 To refer to them, use asciidoc syntax, as in
 
-    Also see <<list_map,the `map` function for lists>>.
+    Also see <<List_map,the `map` function for lists>>.
 
 ## Conventions and assumptions
 
-See `stdlib/src/list.mo` for inspiration.
+See `stdlib/src/List.mo` for inspiration.
 
 The doc generation tools requires the standard library code to be in a certain
 shape:

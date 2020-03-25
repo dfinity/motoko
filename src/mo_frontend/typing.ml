@@ -1212,9 +1212,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   in
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
-    | [], (None | Some []) -> (* no inference required *)
-      if not env.pre then check_exp env t_arg exp2;
-      [], t_arg, t_ret
+    | [], (None | Some [])  (* no inference required *)
     | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
      | _, Some _ ->
       (* explicit instantiation, check argument against instantiated domain *)
@@ -1226,27 +1224,26 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
       let t2 = infer_exp env exp2 in
-        match
-          (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_arg <: t] *)
+      try
+        (* i.e. exists_unique ts . t2 <: open_ ts t_arg /\ open ts_ t_ret <: t] *) 
+        let ts =
           Bi_match.bi_match_subs (scope_of_env env) tbs
-            [(t2, t_arg); (t_ret, t)]
-        with
-        | ts ->
-          let t_arg' = T.open_ ts t_arg in
-          let t_ret' = T.open_ ts t_ret in
-          (*
+            [(t2, t_arg); (t_ret, t)] in
+        let t_arg' = T.open_ ts t_arg in
+        let t_ret' = T.open_ ts t_ret in
+        (*
           info env {left = exp1.at.right; right = exp2.at.left }
             "inferred instantiation <%s>" (String.concat "," (List.map T.string_of_typ ts));
           *)
-          ts, t_arg', t_ret'
-        | exception Failure msg ->
-          error env at
-            "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\n%s"
-            (T.string_of_typ t1)
-            (T.string_of_typ t2)
-            (if Option.is_none t_expect_opt then ""
-             else  Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
-            msg
+        ts, t_arg', t_ret'
+      with Failure msg ->
+        error env at
+          "cannot implicitly instantiate function of type\n  %s\nto argument of type\n  %s%s\n%s"
+          (T.string_of_typ t1)
+          (T.string_of_typ t2)
+          (if Option.is_none t_expect_opt then ""
+           else  Printf.sprintf "\nto produce result of type\n  %s" (T.string_of_typ t))
+          msg
   in
   inst.note <- ts;
   if not env.pre then begin
@@ -1259,8 +1256,8 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         error env exp2.at
           "shared function call result contains abstract type\n  %s"
           (T.string_of_typ_expand t_ret');
-      end
-    end;
+    end
+  end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
