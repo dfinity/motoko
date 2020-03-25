@@ -186,12 +186,20 @@ module {
       : A -> Parser<Token,List.List<A>>);
   };
 
-  public func choice<Token, A>(ps: List.List<Parser<Token, A>>) : Parser<Token, A> {
-    switch ps {
-      case null mzero();
-      case (?(p,ps)) (choose(p, choice ps));
-    };
+  public func choice<Token, A>(ps: [Parser<Token, A>]) : Parser<Token, A> {
+    func input { 
+      label l
+      for (p in ps.vals()) {
+        let r = p input;
+        switch r {
+          case null { continue l; };
+          case _ return r;
+        }
+      };
+      return null;
+    }
   };
+  
 
   public func count<Token,A>(n : Nat, pa : Parser<Token, A>) : Parser<Token, List.List<A>> {
     if (n > 0) cons(pa, count(n-1, pa))

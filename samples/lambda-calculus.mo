@@ -106,11 +106,11 @@ module LCParser = {
   };
 
   public func parseAtom(): LCParser  {
-    P.choice(List.fromArray([
+    P.choice([
       parseParens(),
       parseVar(),
-      parseLambda(),
-    ]))
+      parseLambda()
+    ])
   };
 
   public func parseLC(): LCParser {
@@ -121,7 +121,6 @@ module LCParser = {
   }
 
 };
-
 
 let tokens = func(input : Text) : Iter.Iter<Token> {
   let cp = P.CharParsers();
@@ -136,12 +135,12 @@ let tokens = func(input : Text) : Iter.Iter<Token> {
       func (cs : List.List<Char>) : Token { f (P.implode(cs)) });
   };
 
-  let token = P.choice(List.fromArray([
+  let token = P.choice([
         ident(func t { #ident t }),
         text(".", #dot),
         text("\\", #lam),
         text("(", #lparen),
-        text(")", #rparen)]));
+        text(")", #rparen)]);
 
   var state = P.LazyStream.ofText(input) ;
 
