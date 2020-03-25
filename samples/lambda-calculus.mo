@@ -10,44 +10,47 @@ import P "parsec";
 import Prim "mo:prim";
 import Text "mo:stdlib/Text";
 
-type Id = Text;
+module Syntax {
 
-type Term =
-  { #id : Id
-  ; #app : (Term, Term)
-  ; #lam : (Id, Term)
+  public type Id = Text;
+
+  public type Term =
+    { #id : Id
+    ; #app : (Term, Term)
+    ; #lam : (Id, Term)
+    };
+
+  public func id(v: Id): Term {
+    #id(v)
   };
 
-func id(v: Id): Term {
-  #id(v)
-};
+  public func lambda(id : Id, body : Term) : Term {
+    #lam (id, body)
+  };
 
-func lambda(id : Id, body : Term) : Term {
-  #lam (id, body)
-};
+  public func app(fun : Term, arg : Term) : Term {
+    #app(fun,  arg)
+  };
 
-func app(fun : Term, arg : Term) : Term {
-  #app(fun,  arg)
-};
+  func parensIf(b: Bool, t: Text) : Text {
+    if (b) {
+      "(" # t # ")"
+    } else {
+      t
+    }
+  };
 
-func parensIf(b: Bool, t: Text) : Text {
-  if (b) {
-    "(" # t # ")"
-  } else {
-    t
-  }
-};
+  func printInner(parens : Bool, tm : Term) : Text {
+    switch (tm) {
+      case (#id(v)) v;
+      case (#app(fun, arg)) parensIf(parens, printInner(true, fun) # " " # printTerm(arg));
+      case (#lam(id, body)) parensIf(parens, "\\" # id # ". " # printTerm(body));
+    }
+  };
 
-func printTerm(tm : Term) : Text {
-  printInner(false, tm)
-};
-
-func printInner(parens : Bool, tm : Term) : Text {
-  switch (tm) {
-    case (#id(v)) v;
-    case (#app(fun, arg)) parensIf(parens, printInner(true, fun) # " " # printTerm(arg));
-    case (#lam(id, body)) parensIf(parens, "\\" # id # ". " # printTerm(body));
-  }
+  public func printTerm(tm : Term) : Text {
+    printInner(false, tm)
+  };
 };
 
 module Lexer = {
@@ -107,7 +110,9 @@ module Lexer = {
 class Parser() {
 
   type Token = Lexer.Token;
-  type Parser = P.Parser<Token, Term>;
+  type Term  = Syntax.Term;
+
+  type Parser = P.Parser<Token, Syntax.Term>;
 
   let ident = P.token(func (t : Token) : ?Text { switch t {
      case (#ident(i)) ?i;
@@ -134,25 +139,25 @@ class Parser() {
     case _ false;
   }});
 
-  func Id() : Parser = P.map(ident, id);
+  func id() : Parser = P.map(ident, Syntax.id);
   
-  func Parens() : Parser = P.between(lparen, P.delay Term, rparen);
+  func parens() : Parser = P.between(lparen, P.delay term, rparen);
   
-  func Lambda() : Parser = 
-    P.map(P.pair(P.between(lam, ident, dot), P.delay Term),
-      func ((v, tm) : (Text,Term)) : Term { lambda(v,tm) });
+  func lambda() : Parser = 
+    P.map(P.pair(P.between(lam, ident, dot), P.delay term),
+      func ((v, tm) : (Text,Term)) : Term { Syntax.lambda(v, tm) });
 
-  func Atom() : Parser =
+  func atom() : Parser =
     P.choice([
-      Parens(),
-      Id(),
-      Lambda()
+      parens(),
+      id(),
+      lambda()
     ]);
   
-  public func Term() : Parser =
-    P.map(P.pair(Atom(), P.many(Atom())),
+  public func term() : Parser =
+    P.map(P.pair(atom(), P.many(atom())),
       func ((tm, tms) : (Term, List.List<Term>)) : Term {
-        List.foldLeft(tms, tm, func (arg:Term, acc:Term) : Term = app(acc, arg))
+        List.foldLeft(tms, tm, func (arg:Term, acc:Term) : Term = Syntax.app(acc, arg))
       });
 
 };
@@ -168,9 +173,10 @@ func test() {
   };
 
   // parse
+  let parse = Parser().term();
   let input = P.LazyStream.ofIter(Lexer.tokens omega);
-  switch (Parser().Term()(input)) {
-    case (?(tm, _)) Debug.print(printTerm(tm));
+  switch (parse(input)) {
+    case (?(tm, _)) Debug.print(Syntax.printTerm(tm));
     case null Debug.print("Failed to parse");
   }
 };
