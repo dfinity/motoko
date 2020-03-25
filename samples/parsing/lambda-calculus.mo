@@ -1,14 +1,13 @@
 // compile and run with
 // ../src/moc -wasi-system-api --package stdlib ../../stdlib/src lambda-calculus.mo && wasmtime lambda-calculus.wasm
-import Array "mo:stdlib/Array";
-import Char "mo:stdlib/Char";
+
+
 import Debug "mo:stdlib/Debug";
 import Iter "mo:stdlib/Iter";
 import List "mo:stdlib/List";
-import Option "mo:stdlib/Option";
+
 import P "../parsec";
-import Prim "mo:prim";
-import Text "mo:stdlib/Text";
+
 
 module Syntax {
 
