@@ -153,7 +153,7 @@ module {
   };
 
   // not in opal: used to delay recursion
-  public func delay<Token, Result>(f : () -> Parser<Token, Result>) : Parser<Token, Result> = 
+  public func delay<Token, Result>(f : () -> Parser<Token, Result>) : Parser<Token, Result> =
     func (i : Input<Token>) : Monad<Token, Result> { f () i};
 
   // derived
@@ -187,7 +187,7 @@ module {
   };
 
   public func choice<Token, A>(ps: [Parser<Token, A>]) : Parser<Token, A> {
-    func input { 
+    func input {
       label l
       for (p in ps.vals()) {
         let r = p input;
@@ -199,7 +199,6 @@ module {
       return null;
     }
   };
-  
 
   public func count<Token,A>(n : Nat, pa : Parser<Token, A>) : Parser<Token, List.List<A>> {
     if (n > 0) cons(pa, count(n-1, pa))
@@ -362,13 +361,13 @@ module {
 
     public let hex_digit : Parser<Char, Char> =
       choose(range(leq, 'a', 'f'),
-        choose (range(leq, 'A', 'F'), 
+        choose (range(leq, 'A', 'F'),
           digit));
 
     public let oct_digit :  Parser<Char, Char> = range(leq, '0', '7');
 
-    public func lexeme<A>(pa : Parser<Char, A>) : Parser<Char, A> { 
-      right(spaces, pa) 
+    public func lexeme<A>(pa : Parser<Char, A>) : Parser<Char, A> {
+      right(spaces, pa)
     };
 
     public func token(t : Text) : Parser<Char, Text> {
