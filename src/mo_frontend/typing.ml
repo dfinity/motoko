@@ -1234,7 +1234,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         (*
           info env {left = exp1.at.right; right = exp2.at.left }
             "inferred instantiation <%s>" (String.concat "," (List.map T.string_of_typ ts));
-          *)
+        *)
         ts, t_arg', t_ret'
       with Failure msg ->
         error env at
