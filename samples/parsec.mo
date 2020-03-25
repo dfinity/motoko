@@ -29,8 +29,8 @@ module {
 
   public module Lazy {
     public class t<A>(f:() -> A) {
-      var state : {#delay : (() -> A); #result : A}
-                // ^^ required for correct store typing
+      var state : { #delay : (() -> A); #result : A}
+             // ^ required for correct store typing
           = #delay f;
       public func force(): A {
           switch state {
@@ -54,8 +54,8 @@ module {
       next iter
     };
 
-    public func ofFunc<A>(f:() -> ?A) : t<A> {
-      func next(f:()->?A) : t<A> {
+    public func ofFunc<A>(f: () -> ?A) : t<A> {
+      func next(f : () -> ?A) : t<A> {
         switch (f ()) {
         case (?a) (?(a, Lazy.t(func () : t<A> { next f; })));
         case null null
@@ -64,14 +64,18 @@ module {
       next f
     };
 
-    public func ofText(t : Text):t<Char> = ofIter(Text.toIter t);
+    public func ofText(t : Text) : t<Char> = ofIter(Text.toIter t);
   };
 
   // utils
 
   public func implode(cs : List.List<Char>) : Text =
-    // TBR
-    List.foldRight(cs, "", func(c:Char,t:Text):Text { Prim.charToText c # t});
+  { var t = "";
+    for (c in Iter.fromList cs) {
+      t #= Char.toText c
+    };
+    t
+  };
 
   public func explode(t : Text) : List.List<Char> {
     var l : List.List<Char> = null;
@@ -81,15 +85,15 @@ module {
     List.rev(l);
   };
 
-  func o<T,U,V>(f:T->U,g:U -> V) : T -> V { func x { g(f(x)) }} ;
-
   public type Input<Token> = LazyStream.t<Token>;
+
   public type Monad<Token, Result> = ?(Result, Input<Token>);
-  public type Parser<Token, Result> = Input<Token> -> Monad<Token,Result>;
+
+  public type Parser<Token, Result> = Input<Token> -> Monad<Token, Result>;
 
   public func ret<Token,A>(x:A):Parser<Token,A> { func input { ?(x,input) }};
 
-  public func bind<Token,A,B>(pa: Parser<Token,A>, f: A -> Parser<Token,B>): Parser<Token,B> {
+  public func bind<Token, A, B>(pa : Parser<Token,A>, f : A -> Parser<Token, B>): Parser<Token, B> {
       func input {
         switch (pa input) {
           case (?(result,input)) (f result input);
@@ -99,21 +103,19 @@ module {
   };
 
   // not in opal: used to sequence parsers
-  public func pair<Token,A,B>(pa: Parser<Token,A>, pb : Parser<Token,B>): Parser<Token,(A,B)> {
-    bind(pa,(func (a:A) : Parser<Token,(A,B)> {
-      bind(pb,(func (b:B) : Parser<Token,(A,B)> { ret (a,b) }))
+  public func pair<Token,A,B>(pa : Parser<Token, A>, pb : Parser<Token, B>) : Parser<Token, (A, B)> {
+    bind(pa,(func (a : A) : Parser<Token, (A, B)> {
+      bind(pb,(func (b : B) : Parser<Token, (A, B)> { ret (a,b) }))
     }))
   };
 
-  public func choose<Token,A>(x: Parser<Token,A>):Parser<Token,A> -> Parser<Token,A> {
-    func y {
-      func input {
-        let ret = x input;
-        switch ret {
-          case (? _) ret;
-          case null (y input);
-        }
-    }
+  public func choose<Token,A>(pa1: Parser<Token, A>, pa2 : Parser<Token, A>) : Parser<Token, A> {
+    func input {
+      let r1 = pa1 input;
+      switch r1 {
+       case null (pa2 input);
+       case _ r1;
+     }
     }
   };
 
@@ -126,7 +128,7 @@ module {
     }
   };
 
-  public func token<Token, A>(f : Token -> ?A): Parser<Token, A> {
+  public func token<Token, A>(f : Token -> ?A) : Parser<Token, A> {
     bind((func ls = any ls): Parser<Token, Token>, (func(res: Token) = switch (f(res)) {
       case null mzero();
       case (?a) ret a;
@@ -141,85 +143,85 @@ module {
 
   };
 
-  public func eof<Token,A>(x : A) : Parser<Token,A> {
+  public func eof<Token, A>(a : A) : Parser<Token,A> {
     func input {
       switch input {
-        case null (?(x,null));
+        case null (?(a,null));
         case _ null;
       }
     }
   };
 
   // not in opal: used to delay recursion
-  public func delay<Token, Result>(f:() -> Parser<Token,Result>) : Parser<Token,Result> = func (i:Input<Token>) : Monad<Token,Result> { f () i};
+  public func delay<Token, Result>(f : () -> Parser<Token, Result>) : Parser<Token, Result> = 
+    func (i : Input<Token>) : Monad<Token, Result> { f () i};
 
   // derived
 
   // =>
-  public func map<Token,A,B>(pa:Parser<Token,A>,f: A -> B) : Parser<Token,B> {
+  public func map<Token,  A, B>(pa : Parser<Token, A>, f : A -> B) : Parser<Token, B> {
     bind(pa,
-        (func a = ret (f a)) : A -> Parser<Token,B>);
+        (func a = ret (f a)) : A -> Parser<Token,B >);
   };
 
   // >>
-  public func right<Token,A,B>(pa:Parser<Token,A>,pb: Parser<Token,B>) : Parser<Token,B> {
+  public func right<Token, A, B>(pa : Parser<Token, A>, pb : Parser<Token, B>) : Parser<Token, B> {
     bind(pa,
         (func _ = pb) : A -> Parser<Token,B>);
   };
 
   // <<
-  public func left<Token,A,B>(pa:Parser<Token,A>,pb: Parser<Token,B>) : Parser<Token,A> {
-    bind(pa,
-        (func a = bind(pb,(func _ = ret a) : B -> Parser<Token,A>))
-        : A -> Parser<Token,A>);
+  public func left<Token, A, B>(pa : Parser<Token,A>, pb : Parser<Token, B>) : Parser<Token, A> {
+    bind(
+      pa,
+      (func a = bind(pb,(func _ = ret a) : B -> Parser<Token, A>))
+      : A -> Parser<Token,A>);
   };
 
   // <~>
-  public func cons<Token,A>(pa:Parser<Token,A>,pas: Parser<Token,List.List<A>>) : Parser<Token,List.List<A>> {
-    bind(pa,
-        (func a = bind(pas,(func as = ret (List.push(a,as))) : List.List<A> -> Parser<Token,List.List<A>>))
-        : A -> Parser<Token,List.List<A>>);
+  public func cons<Token, A>(pa : Parser<Token, A>, pas : Parser<Token, List.List<A>>) : Parser<Token, List.List<A>> {
+    bind(
+      pa,
+      (func a = bind(pas,(func as = ret (List.push(a,as))) : List.List<A> -> Parser<Token, List.List<A>>))
+      : A -> Parser<Token,List.List<A>>);
   };
 
-
-  public func choice<Token,A>(ps: List.List<Parser<Token,A>>) : Parser<Token,A> {
+  public func choice<Token, A>(ps: List.List<Parser<Token, A>>) : Parser<Token, A> {
     switch ps {
       case null mzero();
-      case (?(p,ps)) (choose p (choice ps));
+      case (?(p,ps)) (choose(p, choice ps));
     };
   };
 
-  public func count<Token,A>(n:Nat,pa:Parser<Token,A>) : Parser<Token,List.List<A>> {
-    if (n > 0) cons(pa,count(n-1, pa))
+  public func count<Token,A>(n : Nat, pa : Parser<Token, A>) : Parser<Token, List.List<A>> {
+    if (n > 0) cons(pa, count(n-1, pa))
     else ret (List.nil<A>()); // needs <A> or constraint.
   };
 
-  public func between<Token,A,B,C>(
-    pa : Parser<Token,A>,
-    pb : Parser<Token,B>,
-    pc : Parser<Token,C>) : Parser<Token,B> {
+  public func between<Token, A, B, C>(
+    pa : Parser<Token, A>,
+    pb : Parser<Token, B>,
+    pc : Parser<Token, C>) : Parser<Token, B> {
     right(pa, left(pb, pc));
   };
 
-
-  public func option<Token,A>(default : A, pa: Parser<Token,A>) : Parser<Token,A> {
-    choose pa (ret default)
+  public func option<Token, A>(default : A, pa : Parser<Token, A>) : Parser<Token, A> {
+    choose(pa, ret<Token, A> default)
   };
 
-  public func optional<Token,A>(pa : Parser<Token,A>) : Parser<Token,()> {
-    option((),right(pa,ret<Token,()>()));// needs <...> or constraint
+  public func optional<Token, A>(pa : Parser<Token, A>) : Parser<Token, ()> {
+    option((), right(pa, ret<Token,()>()));// needs <...> or constraint
   };
 
-  public func skipMany<Token,A>(pa : Parser<Token,A>) : Parser<Token,()> {
-    option((),bind(pa,(func _ = skipMany pa) : A -> Parser<Token,()>)); // needs constraint
+  public func skipMany<Token, A>(pa : Parser<Token, A>) : Parser<Token, ()> {
+    option((), bind(pa, (func _ = skipMany pa) : A -> Parser<Token, ()>)); // needs constraint
   };
 
-
-  public func skipMany1<Token,A>(pa : Parser<Token,A>) : Parser<Token,()> {
+  public func skipMany1<Token, A>(pa : Parser<Token, A>) : Parser<Token, ()> {
     right(pa, skipMany pa)
   };
 
-  public func many<Token,A>(pa : Parser<Token,A>) : Parser<Token, List.List<A>> {
+  public func many<Token, A>(pa : Parser<Token, A>) : Parser<Token, List.List<A>> {
     option(List.nil<A>(),
       bind(pa,
       (func a {
@@ -233,94 +235,88 @@ module {
     cons(pa, many pa);
   };
 
-  // TODO sep_by .. chainr
-
-  public func sepBy1<Token,A,B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+  public func sepBy1<Token, A, B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
     : Parser<Token,List.List<A>> {
-    cons(pa, many (right(sep, pa)))
+    cons(pa, many(right(sep, pa)))
   };
 
-  public func sepBy<Token,A,B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+  public func sepBy<Token, A, B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
     : Parser<Token,List.List<A>> {
-    choose
-      (sepBy1(pa,sep))
-      (ret (List.nil<A>())) // NB: can't infer but need to provide A
+    choose(sepBy1(pa, sep), ret<Token, List.List<A>>(List.nil())) // NB: can't infer but need to provide <...>
   };
 
-  public func endBy1<Token,A,B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+  public func endBy1<Token, A, B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
     : Parser<Token,List.List<A>> {
     left(sepBy1(pa, sep), sep)
   };
 
-  public func endBy<Token,A,B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
+  public func endBy<Token, A, B>(pa : Parser<Token,A>, sep : Parser<Token,B>)
     : Parser<Token,List.List<A>> {
-    choose
-      (endBy1(pa, sep))
-      (ret (List.nil<A>())) // NB: can't infer but need to provide A
+    choose(endBy1(pa, sep), ret<Token, List.List<A>>(List.nil())) // NB: can't infer but need to <...>
   };
 
-  public func chainl1<Token,A,B>(
-    pa : Parser<Token,A>,
-    op: Parser<Token, (A, A) -> A>)
+  public func chainl1<Token, A, B>(
+    pa : Parser<Token, A>,
+    op : Parser<Token, (A, A) -> A>)
     : Parser<Token,A> {
     func iter(a : A):Parser<Token,A> {
-      choose
-       (bind(
+      choose(
+        bind(
          pair(op, pa),
-         func ((f : (A, A) -> A, b : A)) :  Parser<Token, A> { iter (f(a,b)) }))
-       (ret a)
+         func ((f : (A, A) -> A, b : A)) :  Parser<Token, A> { iter (f(a,b)) }),
+        ret<Token, A> a)
     };
     bind(pa,iter)
   };
 
-  public func chainl<Token,A,B>(
-    pa : Parser<Token,A>,
+  public func chainl<Token, A, B>(
+    pa : Parser<Token, A>,
     op: Parser<Token, (A, A) -> A>,
-    default : A ) : Parser<Token,A> {
-    choose
-      (chainl1(pa, op))
-      (ret default)
+    default : A) : Parser<Token, A> {
+    choose(
+      chainl1(pa, op),
+      ret<Token,A> default)
   };
 
-  public func chainr1<Token,A,B>(
-    pa : Parser<Token,A>,
+  public func chainr1<Token, A, B>(
+    pa : Parser<Token, A>,
     op: Parser<Token, (A, A) -> A>)
-    : Parser<Token,A> {
+    : Parser<Token, A> {
     bind(pa,
       func (a : A) :  Parser<Token, A>
       { bind(
           op,
-          func (f:(A, A)-> A) : Parser<Token,A> {
-            choose
-              (map(chainr1(pa, op), func (a2:A) : A { f (a,a2)}))
-              (ret a)
+          func (f:(A, A)-> A) : Parser<Token, A> {
+            choose(
+              map(chainr1(pa, op), func (a2:A) : A { f (a, a2)}),
+              ret<Token, A> a)
           })
       })
   };
 
-  public func chainr<Token,A,B>(
-    pa : Parser<Token,A>,
+  public func chainr<Token, A, B>(
+    pa : Parser<Token, A>,
     op: Parser<Token, (A, A) -> A>,
-    default : A ) : Parser<Token,A> {
-    choose
-      (chainr1(pa, op))
-      (ret default)
+    default : A) : Parser<Token, A> {
+    choose(
+      chainr1(pa, op),
+      ret<Token, A> default)
   };
 
   // singletons (need to pass in eq/leq)
-  public func exactly<Token>(eq : (Token,Token) -> Bool, t : Token) : Parser<Token,Token> {
+  public func exactly<Token>(eq : (Token, Token) -> Bool, t : Token) : Parser<Token, Token> {
     satisfy (func (t1:Token) : Bool = eq(t, t1))
   };
 
-  public func oneOf<Token>(eq : (Token,Token)-> Bool, tokens: List.List<Token>): Parser<Token,Token>  {
+  public func oneOf<Token>(eq : (Token, Token)-> Bool, tokens : List.List<Token>) : Parser<Token, Token>  {
     satisfy (func (t:Token) : Bool { List.exists(tokens, func (t1: Token) : Bool = eq(t, t1)) })
   };
 
-  public func noneOf<Token>(eq : (Token,Token) -> Bool, tokens: List.List<Token>): Parser<Token,Token>  {
+  public func noneOf<Token>(eq : (Token, Token) -> Bool, tokens : List.List<Token>) : Parser<Token, Token>  {
     satisfy (func (t:Token) : Bool { not List.exists(tokens, func (t1: Token) : Bool = eq(t, t1)) })
   };
 
-  public func range<Token>(leq : (Token, Token) -> Bool, l:Token, r: Token): Parser<Token,Token>  {
+  public func range<Token>(leq : (Token, Token) -> Bool, l:Token, r: Token) : Parser<Token, Token>  {
     satisfy (func (t:Token) : Bool { leq(l, t) and leq(t, r) })
   };
 
@@ -332,45 +328,49 @@ module {
 
   public class CharParsers() {
 
-    func eq(c1:Char,c2:Char) : Bool { c1 == c2 };
+    func eq(c1 : Char, c2 : Char) : Bool { c1 == c2 };
 
-    func leq(c1:Char,c2:Char) : Bool { c1 <= c2 };
+    func leq(c1 : Char, c2:Char) : Bool { c1 <= c2 };
 
-    public let space : Parser<Char,Char> =
+    public let space : Parser<Char, Char> =
       oneOf<Char>(func (c1, c2) { c1 == c2 },
         List.fromArray([' ', '\t', '\r', '\n']));
 
-    public let spaces : Parser<Char,()> = skipMany space;
+    public let spaces : Parser<Char, ()> = skipMany space;
 
-    public let newline : Parser<Char,Char> = exactly(eq, '\n');
+    public let newline : Parser<Char, Char> = exactly(eq, '\n');
 
-    public let tab : Parser<Char,Char> = exactly(eq, '\n');
+    public let tab : Parser<Char, Char> = exactly(eq, '\n');
 
-    public let upper : Parser<Char,Char> = range(leq, 'A', 'Z');
+    public let upper : Parser<Char, Char> = range(leq, 'A', 'Z');
 
-    public let lower : Parser<Char,Char> = range(leq, 'a', 'z');
+    public let lower : Parser<Char, Char> = range(leq, 'a', 'z');
 
-    public let digit : Parser<Char,Char> = range(leq, '0', '9');
+    public let digit : Parser<Char, Char> = range(leq, '0', '9');
 
-    public let letter : Parser<Char,Char> = choose lower upper;
+    public let letter : Parser<Char, Char> = choose(lower, upper);
 
-    public let alpha_num : Parser<Char,Char> = choose letter digit;
+    public let alpha_num : Parser<Char, Char> = choose(letter, digit);
 
-    public let hex_digit : Parser<Char,Char> =
-      choose (range(leq,'a','f')) (choose (range(leq,'A','F')) digit);
+    public let hex_digit : Parser<Char, Char> =
+      choose(range(leq, 'a', 'f'),
+        choose (range(leq, 'A', 'F'), 
+          digit));
 
-    public let oct_digit :  Parser<Char,Char> = range(leq, '0', '7');
+    public let oct_digit :  Parser<Char, Char> = range(leq, '0', '7');
 
-    public func lexeme<A>(pa:Parser<Char,A>) : Parser<Char,A> { right(spaces, pa) };
+    public func lexeme<A>(pa : Parser<Char, A>) : Parser<Char, A> { 
+      right(spaces, pa) 
+    };
 
-    public func token(t : Text) : Parser<Char,Text> {
-      func iter(i:Iter.Iter<Char>) : Parser<Char,Text> {
+    public func token(t : Text) : Parser<Char, Text> {
+      func iter(i:Iter.Iter<Char>) : Parser<Char, Text> {
           switch (i.next()) {
             case null (ret t);
             case (?c) (right(exactly(eq, c), iter i));
           }
       };
-      lexeme (iter (t.chars()));
+      lexeme(iter(t.chars()));
     }
 
   }

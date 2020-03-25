@@ -127,7 +127,8 @@ let tokens = func(input : Text) : Iter.Iter<Token> {
   let cp = P.CharParsers();
   
   func text(t : Text, token: Token): P.Parser<Char, Token> {
-    P.right(cp.token(t), P.ret<Char,Token>(token)) };
+    P.right(cp.token(t), P.ret<Char,Token>(token)) 
+  };
 
   func ident(f : Text -> Token) : P.Parser<Char,Token> {
     P.map(
