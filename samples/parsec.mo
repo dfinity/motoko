@@ -4,8 +4,8 @@
 
 // Some deviations due to lack of polymorphic comparison, meaning we need to pass
 // eq and leq functions to the singleton combinators (see below)
-// We typically use tuples (e.g. bind), not currying (eg. choose),
-// but could unformly refactor to either as in Ocaml.
+// We typically use tuples (e.g. bind), not currying (eg. Opal's choose),
+// but could uniformly refactor to either as in Ocaml.
 
 // not terrible, but see comments and remaining explicit instantiations
 
@@ -18,6 +18,7 @@
 // compile with
 // ../src/moc --package stdlib ../stdlib/src parsec.mo
 
+import Array "mo:stdlib/Array";
 import Char "mo:stdlib/Char";
 import Debug "mo:stdlib/Debug";
 import Iter "mo:stdlib/Iter";
@@ -315,12 +316,22 @@ module {
     satisfy (func (t1 : Token) : Bool = eq(t, t1))
   };
 
-  public func oneOf<Token>(eq : (Token, Token)-> Bool, tokens : List.List<Token>) : Parser<Token, Token>  {
-    satisfy (func (t : Token) : Bool { List.exists(tokens, func (t1 : Token) : Bool = eq(t, t1)) })
+  public func oneOf<Token>(eq : (Token, Token)-> Bool, tokens : [Token]) : Parser<Token, Token>  {
+    satisfy (func (t : Token) : Bool { 
+      for (t1 in tokens.vals()) {
+        if (eq(t, t1)) { return true }
+      };
+      return false
+    })
   };
 
-  public func noneOf<Token>(eq : (Token, Token) -> Bool, tokens : List.List<Token>) : Parser<Token, Token>  {
-    satisfy (func (t : Token) : Bool { not List.exists(tokens, func (t1 : Token) : Bool = eq(t, t1)) })
+  public func noneOf<Token>(eq : (Token, Token) -> Bool, tokens : [Token]) : Parser<Token, Token>  {
+    satisfy (func (t : Token) : Bool {
+      for (t1 in tokens.vals()) {
+        if (eq(t, t1)) { return false }
+      };
+      return true;
+    })
   };
 
   public func range<Token>(leq : (Token, Token) -> Bool, l : Token, r : Token) : Parser<Token, Token>  {
@@ -341,7 +352,7 @@ module {
 
     public let space : Parser<Char, Char> =
       oneOf<Char>(func (c1, c2) { c1 == c2 },
-        List.fromArray([' ', '\t', '\r', '\n']));
+       [' ', '\t', '\r', '\n']);
 
     public let spaces : Parser<Char, ()> = skipMany space;
 
