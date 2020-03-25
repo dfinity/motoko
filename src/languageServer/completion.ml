@@ -71,9 +71,11 @@ let import_relative_to_project_root root module_path dependency =
   match Lib.FilePath.relative_to root module_path with
   | None -> None
   | Some root_to_module ->
-      root_to_module |> Filename.dirname
+      root_to_module
+      |> Filename.dirname
       |> Fun.flip Filename.concat dependency
-      |> Lib.FilePath.normalise |> Option.some
+      |> Lib.FilePath.normalise
+      |> Option.some
 
 (* Given a source file and a cursor position in that file, figure out
    the prefix relevant to searching completions. For example, given:
@@ -124,7 +126,8 @@ let find_completion_prefix logger file line column : (string * string) option =
   try loop (next ()) with _ -> None
 
 let has_prefix (prefix : string) (ide_decl : DI.ide_decl) : bool =
-  ide_decl |> DI.name_of_ide_decl
+  ide_decl
+  |> DI.name_of_ide_decl
   |> Lib.String.chop_prefix prefix
   |> Option.is_some
 

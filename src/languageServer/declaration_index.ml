@@ -18,7 +18,9 @@ let string_of_list f xs =
 (** For debugging purposes *)
 let string_of_ide_decl = function
   | ValueDecl value ->
-      "ValueDecl{ name = " ^ String.escaped value.name ^ ", typ = "
+      "ValueDecl{ name = "
+      ^ String.escaped value.name
+      ^ ", typ = "
       ^ Type.string_of_typ value.typ
       ^ Lib.Option.get
           (Option.map
@@ -27,7 +29,9 @@ let string_of_ide_decl = function
           ""
       ^ " }"
   | TypeDecl ty ->
-      "TypeDecl{ name = " ^ String.escaped ty.name ^ ", typ = "
+      "TypeDecl{ name = "
+      ^ String.escaped ty.name
+      ^ ", typ = "
       ^ Type.string_of_con ty.typ
       ^ Lib.Option.get
           (Option.map
@@ -152,7 +156,8 @@ let shorten_import_path :
             (Lib.String.split path '/')
         in
         List.map (fun _ -> "..") base' @ path'
-        |> String.concat "/" |> Filename.remove_extension
+        |> String.concat "/"
+        |> Filename.remove_extension
 
 let find_with_prefix : string -> string -> t -> (string * ide_decl list) list =
  fun prefix base { modules; package_map; ic_aliases; _ } ->
@@ -280,9 +285,11 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
 let list_files_recursively dir =
   let rec loop result = function
     | f :: fs when Sys.is_directory f ->
-        Sys.readdir f |> Array.to_list
+        Sys.readdir f
+        |> Array.to_list
         |> List.map (Filename.concat f)
-        |> List.append fs |> loop result
+        |> List.append fs
+        |> loop result
     | f :: fs -> loop (f :: result) fs
     | [] -> result
   in
@@ -313,7 +320,9 @@ let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
         else Lib.FilePath.make_absolute project_root path
       in
       add_module path
-        ( ty |> read_single_module_lib |> Fun.flip Lib.Option.get []
+        ( ty
+        |> read_single_module_lib
+        |> Fun.flip Lib.Option.get []
         |> populate_definitions project_root libs path )
         acc)
     scope.Scope.lib_env initial_index

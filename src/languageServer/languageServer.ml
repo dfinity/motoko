@@ -155,7 +155,6 @@ let start entry_point debug =
     in
     ref ix
   in
-
   let sync_diagnostics msgs =
     let diags_by_file =
       msgs
@@ -169,7 +168,6 @@ let start entry_point debug =
     files_with_diags := List.map snd diags_by_file;
     List.iter (fun (diags, uri) -> publish_diagnostics uri diags) diags_by_file
   in
-
   let handle_message raw = function
     | Some id, `Initialize params ->
         client_capabilities := Some params.Lsp_t.initialize_params_capabilities;
@@ -289,7 +287,8 @@ let start entry_point debug =
     | Some id, `Shutdown _ ->
         shutdown := true;
         response_result_message id (`ShutdownResponse None)
-        |> Lsp_j.string_of_response_message |> send_response
+        |> Lsp_j.string_of_response_message
+        |> send_response
     | _, `Exit _ -> if !shutdown then exit 0 else exit 1
     | Some id, `CompletionRequest params ->
         let uri =
@@ -318,7 +317,6 @@ let start entry_point debug =
     (* Unhandled messages *)
     | _ -> log_to_file "unhandled message" raw
   in
-
   let rec loop () =
     let clength = read_line () in
     let cl = "Content-Length: " in

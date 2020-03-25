@@ -63,9 +63,11 @@ let import_relative_to_project_root root module_path dependency =
     match Lib.FilePath.relative_to root module_path with
     | None -> None
     | Some root_to_module ->
-        root_to_module |> Filename.dirname
+        root_to_module
+        |> Filename.dirname
         |> Fun.flip Filename.concat dependency
-        |> Lib.FilePath.normalise |> Option.some
+        |> Lib.FilePath.normalise
+        |> Option.some
 
 (* Given the source of a module, figure out under what names what
    modules have been imported. Normalizes the imported modules

@@ -106,7 +106,8 @@ and apply_change lines
         match affected with
         | [] -> text
         | [ aff ] ->
-            String.sub aff 0 sc ^ text
+            String.sub aff 0 sc
+            ^ text
             ^ String.sub aff ec (String.length aff - ec)
         | affected ->
             let init, last = Lib.List.split_last affected in
