@@ -10,41 +10,43 @@ import P "parsec";
 import Prim "mo:prim";
 import Text "mo:stdlib/text";
 
-type LC =
-  { #lcvar: Text
-  ; #lcapp: { fun: LC; arg: LC }
-  ; #lclam: { binder: Text; body: LC }
+type Id = Text;
+
+type Term =
+  { #id : Id
+  ; #app : (Term, Term)
+  ; #lam : (Id, Term)
   };
 
-func lcvar(v: Text): LC {
-  #lcvar(v)
+func id(v: Id): Term {
+  #id(v)
 };
 
-func lclam(binder_: Text, body_: LC): LC {
-  #lclam { binder = binder_; body = body_ }
+func lambda(id : Id, body : Term) : Term {
+  #lam (id, body)
 };
 
-func lcapp(fun_: LC, arg_: LC): LC {
-  #lcapp{ fun = fun_; arg = arg_ }
+func app(fun : Term, arg : Term) : Term {
+  #app(fun,  arg)
 };
 
-func parensIf(b: Bool, t: Text): Text {
-  if(b) {
+func parensIf(b: Bool, t: Text) : Text {
+  if (b) {
     "(" # t # ")"
   } else {
     t
   }
 };
 
-func printLC(lc: LC): Text {
-  printInner(false, lc)
+func printTerm(tm : Term) : Text {
+  printInner(false, tm)
 };
 
-func printInner(parens: Bool, lc: LC): Text {
-  switch (lc) {
-    case (#lcvar(v)) v;
-    case (#lcapp{fun; arg}) parensIf(parens, printInner(true, fun) # " " # printLC(arg));
-    case (#lclam{binder; body}) parensIf(parens, "\\" # binder # ". " # printLC(body));
+func printInner(parens : Bool, tm : Term) : Text {
+  switch (tm) {
+    case (#id(v)) v;
+    case (#app(fun, arg)) parensIf(parens, printInner(true, fun) # " " # printTerm(arg));
+    case (#lam(id, body)) parensIf(parens, "\\" # id # ". " # printTerm(body));
   }
 };
 
@@ -76,7 +78,7 @@ let rparen = P.satisfy(func (t : Token) : Bool { switch t {
 }});
 
 
-func showToken(tkn: Token): Text =
+func showToken(tkn : Token) : Text =
   switch(tkn) {
   case (#lam) "LAM";
   case (#dot) "DOT";
@@ -88,35 +90,35 @@ func showToken(tkn: Token): Text =
 
 func printToken(tkn: Token): () = Debug.print(showToken(tkn));
 
-module LCParser = {
+module TermParser = {
 
-  type LCParser = P.Parser<Token, LC>;
+  type TermParser = P.Parser<Token, Term>;
 
-  func parseVar() : LCParser {
-    P.map(ident, lcvar)
+  func parseId() : TermParser {
+    P.map(ident, id)
   };
 
-  func parseParens() : LCParser {
-    P.between(lparen, P.delay parseLC, rparen);
+  func parseParens() : TermParser {
+    P.between(lparen, P.delay parseTerm, rparen);
   };
 
-  func parseLambda(): LCParser {
-    P.map(P.pair(P.between(lam, ident, dot), P.delay parseLC),
-      func ((v, lc) : (Text,LC)) : LC { lclam(v,lc) });
+  func parseLambda(): TermParser {
+    P.map(P.pair(P.between(lam, ident, dot), P.delay parseTerm),
+      func ((v, tm) : (Text,Term)) : Term { lambda(v,tm) });
   };
 
-  public func parseAtom(): LCParser  {
+  public func parseAtom(): TermParser  {
     P.choice([
       parseParens(),
-      parseVar(),
+      parseId(),
       parseLambda()
     ])
   };
 
-  public func parseLC(): LCParser {
+  public func parseTerm(): TermParser {
     P.map(P.pair(parseAtom(), P.many(parseAtom())),
-      func ((lc, lcs) : (LC, List.List<LC>)) : LC {
-        List.foldLeft(lcs, lc, func (arg:LC, acc:LC) : LC = lcapp(acc, arg))
+      func ((tm, tms) : (Term, List.List<Term>)) : Term {
+        List.foldLeft(tms, tm, func (arg:Term, acc:Term) : Term = app(acc, arg))
       });
   }
 
@@ -124,9 +126,9 @@ module LCParser = {
 
 let tokens = func(input : Text) : Iter.Iter<Token> {
   let cp = P.CharParsers();
-  
+
   func text(t : Text, token: Token): P.Parser<Char, Token> {
-    P.right(cp.token(t), P.ret<Char,Token>(token)) 
+    P.right(cp.token(t), P.ret<Char,Token>(token))
   };
 
   func ident(f : Text -> Token) : P.Parser<Char,Token> {
@@ -144,10 +146,10 @@ let tokens = func(input : Text) : Iter.Iter<Token> {
 
   var state = P.LazyStream.ofText(input) ;
 
-  object { 
+  object {
     public func next() : ?Token {
       switch (token(state)) {
-        case (?(tok, rest)) { 
+        case (?(tok, rest)) {
           state := rest;
           ? tok
         };
@@ -156,7 +158,6 @@ let tokens = func(input : Text) : Iter.Iter<Token> {
     }
   }
 };
-
 
 func main() {
   // Parses the Omega combinator
@@ -169,8 +170,8 @@ func main() {
 
   // parse
   let input = P.LazyStream.ofIter(tokens omega);
-  switch (LCParser.parseLC()(input)) {
-    case (?(lc, _)) Debug.print(printLC(lc));
+  switch (TermParser.parseTerm()(input)) {
+    case (?(tm, _)) Debug.print(printTerm(tm));
     case null Debug.print("Failed to parse");
   }
 };
