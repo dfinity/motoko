@@ -352,6 +352,18 @@ rec {
     '';
   };
 
+  check-formatting = stdenv.mkDerivation {
+    name = "check-formatting";
+    buildInputs = with nixpkgs; [ ocamlformat ];
+    src = subpath "./src";
+    doCheck = true;
+    phases = "unpackPhase checkPhase installPhase";
+    installPhase = "touch $out";
+    checkPhase = ''
+      ocamlformat --check languageServer/*.{ml,mli}
+    '';
+  };
+
   stdlib-tests = stdenv.mkDerivation {
     name = "stdlib-tests";
     src = subpath ./stdlib/test;
@@ -449,6 +461,7 @@ rec {
       users-guide
       ic-ref
       shell
+      check-formatting
       check-generated
     ] ++ builtins.attrValues tests
       ++ builtins.attrValues examples;
@@ -469,7 +482,7 @@ rec {
         rts.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ] ++
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlformat nixpkgs.ocamlPackages.utop ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
