@@ -58,12 +58,14 @@ let to_string s =
 
 module References = Map.Make (struct type t = int let compare = compare end)
 
-let dw_references = ref (References.singleton 0 (Lib.Promise.make ())) (* this is the reference into the .debug_addr section *)
-let num_dw_references = ref 1
+let dw_references = ref References.(add 1 (Promise.make ()) (singleton 0 (Promise.make ())))
+   (* 0: this is the reference into the .debug_addr section
+      1: Stmt_list, reference into the .debug_line section *)
+let num_dw_references = ref 2
 let allocate_reference_slot () =
   num_dw_references := 1 + !num_dw_references; (* FIXME: increment after! *)
   Printf.printf "ALLOCATED SLOT: %d\n" !num_dw_references;
-  dw_references := References.add !num_dw_references (Lib.Promise.make ()) !dw_references;
+  dw_references := References.add !num_dw_references (Promise.make ()) !dw_references;
   !num_dw_references
 
 (* DWARF factlets, a.k.a. DIEs *)
@@ -796,12 +798,12 @@ let encode (em : extended_module) =
         end
       | f when dw_FORM_ref_udata = f ->
         begin function
-          | IntAttribute (attr, i) -> Printf.printf "LOOKING FOR %d REF\n" i; assert (i <> 1); uleb128 (Lib.Promise.value (References.find i !dw_references))
+          | IntAttribute (attr, i) -> Printf.printf "LOOKING FOR %d REF\n" i; assert (i <> 1); uleb128 (Promise.value (References.find i !dw_references))
           | _ -> failwith "dw_FORM_ref_udata"
         end
       | f when dw_FORM_sec_offset = f ->
         begin function
-          | IntAttribute (attr, i) -> write32 (Lib.Promise.value (References.find i !dw_references))
+          | IntAttribute (attr, i) -> write32 (Promise.value (References.find i !dw_references))
           | FunctionsAttribute attr ->
             write32 (Promise.value rangelists)
           | _ -> failwith "dw_FORM_sec_offset"
@@ -890,7 +892,7 @@ let encode (em : extended_module) =
     let debug_addr_section seqs =
       let debug_addr_section_body seqs =
         unit(fun start ->
-            Promise.fulfill (References.find 0 !dw_references) start;
+            Promise.fulfill (References.find 0 !dw_references) 0; (* FIXME: SHOULD NOT BE Promise at all, constant *)
             write16 0x0005; (* version *)
             u8 4; (* addr_size *)
             u8 0; (* segment_selector_size *)
@@ -936,7 +938,8 @@ let encode (em : extended_module) =
           | str -> add_string (function | [] -> 0 | (_, p) :: _ -> 1 + p) file_strings str
         in
 
-        unit(fun _ ->
+        unit(fun start ->
+            Promise.fulfill (References.find 1 !dw_references) 0;
             write16 0x0005;
             u8 4;
             u8 0; (* segment_selector_size *)
@@ -1077,9 +1080,9 @@ standard_opcode_lengths[DW_LNS_set_isa] = 1
       debug_abbrev_section ();
       debug_addr_section !sequence_bounds;
       debug_rnglists_section !sequence_bounds;
-      debug_loclists_section ();
-      debug_info_section ();
+      (*debug_loclists_section (); NOT YET*)
       debug_line_section m.funcs;
+      debug_info_section ();
       debug_strings_section !dwarf_strings
   end
   in E.module_ em;

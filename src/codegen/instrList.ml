@@ -233,7 +233,7 @@ let dw_attr : dw_AT -> t =
   | Low_pc l -> fakeColumn l dw_AT_low_pc Nop
   | High_pc h -> fakeColumn h dw_AT_high_pc Nop
   | Addr_base b -> fakeColumn b dw_AT_addr_base Nop
-  | Ranges -> fakeColumn 0 dw_AT_ranges Nop
+  | Ranges -> fakeColumn 0(* FIXME *) dw_AT_ranges Nop
   | Decl_line l -> fakeColumn l dw_AT_decl_line Nop
   | Decl_column c -> fakeColumn c dw_AT_decl_column Nop
   | Prototyped b -> fakeColumn (if b then 1 else 0) dw_AT_prototyped Nop
@@ -291,7 +291,7 @@ let rec dw_tag : dw_TAG -> t =
     fakeBlock dw_TAG_compile_unit
       (dw_attrs
          [ Producer "DFINITY Motoko compiler, version 0.1";
-           Language dw_LANG_Swift; Name file; Stmt_list 0;
+           Language dw_LANG_Swift; Name file; Stmt_list 1;
            Comp_dir dir; Use_UTF8 true; Low_pc 0; Addr_base 0; Ranges ]) ^^
       base_types ^^
       builtin_types
@@ -300,7 +300,7 @@ let rec dw_tag : dw_TAG -> t =
       (dw_attrs [Low_pc 0(*FIXME*); Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; Prototyped true; External false])
   | Formal_parameter (name, pos, ty, slot) ->
     fakeBlock dw_TAG_formal_parameter
-      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location "\xEB\x02\x00"])
+      (dw_attrs [Name name; Decl_line pos.Source.line; Decl_column pos.Source.column; TypeRef (snd (dw_type_ref ty)); Location "\xEB\x02\x00"(*FIXME*)])
   (*| Variable ->  *)
   | Type ty -> dw_type ty
   | _ -> assert false
@@ -431,7 +431,7 @@ and dw_prim_type_ref prim =
           variant_part ^^
           dw_tag_children_done
       (*  dw_tag (Variant_part (pointer_key, [Variant internalU30, Variant pointedU32])) *)
-      | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); nop, 2(* FIXME *)
+      | ty -> Printf.printf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.prim prim)); nop, 3(* FIXME *)
 (* | _ -> assert false (* TODO *)*)
     in
     dw_prims := PrimRefs.add prim refindx !dw_prims;
