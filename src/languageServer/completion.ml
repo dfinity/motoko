@@ -6,46 +6,18 @@ module DI = Declaration_index
 let string_of_list f xs =
   List.map f xs |> String.concat "; " |> fun x -> "[ " ^ x ^ " ]"
 
-let template_of_ide_decl decl =
-  let supply = ref 0 in
-  let fresh () =
-    supply := !supply + 1;
-    string_of_int !supply
-  in
-  match decl with
-  | DI.ValueDecl value -> (
-      match value.DI.typ with
-      | Type.Func (_, _, binds, ty_list1, ty_list2) ->
-          let ty_args =
-            binds
-            |> List.filter Type.(fun { sort; _ } -> sort = Type)
-            |> List.map (fun Type.{ var; bound; _ } ->
-                   Printf.sprintf "${%s:%s}" (fresh ()) var)
-            |> String.concat ", "
-          in
-          let args =
-            ty_list1
-            |> List.map (fun _ -> Printf.sprintf "$%s" (fresh ()))
-            |> String.concat ", "
-          in
-          let ty_args = if ty_args = "" then "" else "<" ^ ty_args ^ ">" in
-          Printf.sprintf "%s%s(%s)" value.DI.name ty_args args
-      | _ -> value.DI.name )
-  | DI.TypeDecl ty -> ty.DI.name
-
 let string_of_item (item : Lsp_t.completion_item) : string =
   item.Lsp_t.completion_item_label
 
 let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
-  (* let tmpl = template_of_ide_decl d in *)
-  let tmpl = DI.name_of_ide_decl d in
+  let comp = DI.name_of_ide_decl d in
   match d with
   | DI.ValueDecl value ->
       Lsp_t.
         {
           completion_item_label = value.DI.name;
           completion_item_kind = 3;
-          completion_item_insertText = Some tmpl;
+          completion_item_insertText = Some comp;
           completion_item_insertTextFormat = Some 2;
           completion_item_additionalTextEdits = None;
           completion_item_documentation =
@@ -59,7 +31,7 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
         {
           completion_item_label = ty.DI.name;
           completion_item_kind = 7;
-          completion_item_insertText = Some tmpl;
+          completion_item_insertText = Some comp;
           completion_item_insertTextFormat = Some 2;
           completion_item_additionalTextEdits = None;
           completion_item_documentation =
