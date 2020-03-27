@@ -105,6 +105,8 @@ let has_prefix (prefix : string) (ide_decl : DI.ide_decl) : bool =
 
 let opt_bind f = function None -> None | Some x -> f x
 
+let is_capital : string -> bool = fun s -> String.capitalize_ascii s = s
+
 let completions index logger project_root file_path file_contents line column =
   let imported =
     Source_file.parse_module_header project_root file_path file_contents
@@ -159,7 +161,9 @@ let completions index logger project_root file_path file_contents line column =
           | None ->
               (* The matching import references a module we haven't loaded *)
               [] )
-      | None ->
+      (* We only try to add imports for capital aliases. Once we've got
+       *  proper scoping information this can be improved *)
+      | None when is_capital alias ->
           (* No import with the given alias was found *)
           let import_edit = Imports.add_import file_contents alias in
           let possible_imports =
@@ -186,7 +190,8 @@ let completions index logger project_root file_path file_contents line column =
                     ds)
               possible_imports
           in
-          completions )
+          completions
+      | None -> [] )
 
 let completion_handler index logger project_root file_path file_contents
     position =
