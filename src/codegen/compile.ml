@@ -1274,7 +1274,7 @@ module BoxedWord64 = struct
     let (set_i, get_i) = new_local env "boxed_i64" in
     Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.store Tagged.Int ^^
+    get_i ^^ Tagged.(store Int) ^^
     get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
     get_i
 
@@ -1359,7 +1359,7 @@ module BoxedSmallWord = struct
     let (set_i, get_i) = new_local env "boxed_i32" in
     Heap.alloc env 2l ^^
     set_i ^^
-    get_i ^^ Tagged.store Tagged.SmallWord ^^
+    get_i ^^ Tagged.(store SmallWord) ^^
     get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
     get_i
 
@@ -2353,7 +2353,7 @@ module Object = struct
 
     (* Set tag *)
     get_ri ^^
-    Tagged.store Tagged.Object ^^
+    Tagged.(store Object) ^^
 
     (* Set size *)
     get_ri ^^
@@ -2469,7 +2469,7 @@ module Blob = struct
       Heap.dyn_alloc_bytes env ^^
       set_x ^^
 
-      get_x ^^ Tagged.store Tagged.Blob ^^
+      get_x ^^ Tagged.(store Blob) ^^
       get_x ^^ get_len ^^ Heap.store_field len_field ^^
       get_x
    )
@@ -2703,7 +2703,7 @@ module Arr = struct
 
     (* Write header *)
     get_r ^^
-    Tagged.store Tagged.Array ^^
+    Tagged.(store Array) ^^
     get_r ^^
     get_len ^^
     Heap.store_field len_field ^^
@@ -4389,7 +4389,7 @@ module GC = struct
 
     (* Set indirection *)
     get_obj ^^
-    Tagged.store Tagged.Indirection ^^
+    Tagged.(store Indirection) ^^
     get_obj ^^
     get_new_ptr ^^
     Heap.store_field 1l ^^
@@ -4942,7 +4942,7 @@ module FuncDec = struct
 
         (* Store the tag *)
         get_clos ^^
-        Tagged.store Tagged.Closure ^^
+        Tagged.(store Closure) ^^
 
         (* Store the function pointer number: *)
         get_clos ^^
