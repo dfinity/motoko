@@ -1615,6 +1615,12 @@ module ReadBuf = struct
     G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
     advance get_buf (compile_unboxed_const 8l)
 
+  let read_float64 env get_buf =
+    check_space env get_buf (compile_unboxed_const 8l) ^^
+    get_ptr get_buf ^^
+    G.i (Load {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
+    advance get_buf (compile_unboxed_const 8l)
+
   let read_blob env get_buf get_len =
     check_space env get_buf get_len ^^
     (* Already has destination address on the stack *)
@@ -3702,7 +3708,7 @@ module Serialization = struct
       | Prim (Int8|Nat8|Word8) -> inc_data_size (compile_unboxed_const 1l)
       | Prim (Int16|Nat16|Word16) -> inc_data_size (compile_unboxed_const 2l)
       | Prim (Int32|Nat32|Word32|Char) -> inc_data_size (compile_unboxed_const 4l)
-      | Prim (Int64|Nat64|Word64) -> inc_data_size (compile_unboxed_const 8l)
+      | Prim (Int64|Nat64|Word64|Float) -> inc_data_size (compile_unboxed_const 8l)
       | Prim Bool -> inc_data_size (compile_unboxed_const 1l)
       | Prim Null -> G.nop
       | Any -> G.nop
@@ -3813,6 +3819,11 @@ module Serialization = struct
         get_x ^^
         BigNum.compile_store_to_data_buf_signed env ^^
         advance_data_buf
+      | Prim Float ->
+        get_data_buf ^^
+        get_x ^^ Float.unbox env ^^
+        G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
+        compile_unboxed_const 8l ^^ advance_data_buf
       | Prim (Int64|Nat64|Word64) ->
         get_data_buf ^^
         get_x ^^ BoxedWord64.unbox env ^^
@@ -4044,6 +4055,10 @@ module Serialization = struct
             get_data_buf ^^
             BigNum.compile_load_from_data_buf env true
           end
+      | Prim Float ->
+        assert_prim_typ t ^^
+        ReadBuf.read_float64 env get_data_buf ^^
+        Float.box env
       | Prim (Int64|Nat64|Word64) ->
         assert_prim_typ t ^^
         ReadBuf.read_word64 env get_data_buf ^^
