@@ -6093,6 +6093,10 @@ let compile_relop env t op =
     G.i (Test (Wasm.Values.I32 I32Op.Eqz))
   | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Word8 | Word16 | Word32 | Word64 | Char as t1)), op1 ->
     compile_comparison env t1 op1
+  | Type.(Prim Float), GtOp -> G.i (Compare (Wasm.Values.F64 F64Op.Gt))
+  | Type.(Prim Float), GeOp -> G.i (Compare (Wasm.Values.F64 F64Op.Ge))
+  | Type.(Prim Float), LeOp -> G.i (Compare (Wasm.Values.F64 F64Op.Le))
+  | Type.(Prim Float), LtOp -> G.i (Compare (Wasm.Values.F64 F64Op.Lt))
   | _ -> todo_trap env "compile_relop" (Arrange_ops.relop op)
 
 let compile_load_field env typ name =
