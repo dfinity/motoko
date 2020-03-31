@@ -434,6 +434,15 @@ func clzWord64(w : Word64) : Word64 = (prim "clz64" : Word64 -> Word64) w;
 func ctzWord64(w : Word64) : Word64 = (prim "ctz64" : Word64 -> Word64) w;
 func btstWord64(w : Word64, amount : Word64) : Bool = (prim "btst64" : (Word64, Word64) -> Word64) (w, amount) != (0 : Word64);
 
+// Float operations
+
+func floatAbs(f : Float) : Float = (prim "fabs" : Float -> Float) f;
+func floatSqrt(f : Float) : Float = (prim "fsqrt" : Float -> Float) f;
+func floatCeil(f : Float) : Float = (prim "fceil" : Float -> Float) f;
+func floatFloor(f : Float) : Float = (prim "ffloor" : Float -> Float) f;
+func floatTrunc(f : Float) : Float = (prim "ftrunc" : Float -> Float) f;
+func floatNearest(f : Float) : Float = (prim "fnearest" : Float -> Float) f;
+
 // Array utilities
 
 func Array_init<T>(len : Nat,  x : T) : [var T] {

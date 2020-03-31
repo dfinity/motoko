@@ -197,7 +197,12 @@ let num_conv_prim t1 t2 =
 
 let prim = function
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
-
+  | "fabs" -> fun _ v k -> k (Float (Float.abs (as_float v)))
+  | "fsqrt" -> fun _ v k -> k (Float (Float.sqrt (as_float v)))
+  | "fceil" -> fun _ v k -> k (Float (Float.ceil (as_float v)))
+  | "ffloor" -> fun _ v k -> k (Float (Float.floor (as_float v)))
+  | "ftrunc" -> fun _ v k -> k (Float (Float.trunc (as_float v)))
+  | "fnearest" -> fun _ v k -> k (Float (Float.nearest (as_float v)))
 
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->
