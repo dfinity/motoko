@@ -1,6 +1,6 @@
 /**
-[#mod-array]
-= `array` -- Arrays
+[#mod-Array]
+= `Array` -- Arrays
 */
 
 import Prim "mo:prim";

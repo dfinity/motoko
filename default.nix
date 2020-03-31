@@ -352,6 +352,18 @@ rec {
     '';
   };
 
+  check-formatting = stdenv.mkDerivation {
+    name = "check-formatting";
+    buildInputs = with nixpkgs; [ ocamlformat ];
+    src = subpath "./src";
+    doCheck = true;
+    phases = "unpackPhase checkPhase installPhase";
+    installPhase = "touch $out";
+    checkPhase = ''
+      ocamlformat --check languageServer/*.{ml,mli}
+    '';
+  };
+
   stdlib-tests = stdenv.mkDerivation {
     name = "stdlib-tests";
     src = subpath ./stdlib/test;
@@ -395,11 +407,22 @@ rec {
     src = subpath ./stdlib/doc;
     outputs = [ "out" "adocs" ];
     buildInputs = with nixpkgs;
-      [ bash perl asciidoctor ];
+      [ bash perl asciidoctor html-proofer ];
     buildPhase = ''
       patchShebangs .
       make STDLIB=${stdlib}
     '';
+
+    doCheck = true;
+    # These ones are needed for htmlproofer
+    LOCALE_ARCHIVE = nixpkgs.lib.optionalString nixpkgs.stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
+    LANG = "en_US.UTF-8";
+    LC_TYPE = "en_US.UTF-8";
+    LANGUAGE = "en_US.UTF-8";
+    checkPhase = ''
+      htmlproofer --disable-external _out/
+    '';
+
     installPhase = ''
       mkdir -p $out
       mv _out/* $out/
@@ -438,6 +461,7 @@ rec {
       users-guide
       ic-ref
       shell
+      check-formatting
       check-generated
     ] ++ builtins.attrValues tests
       ++ builtins.attrValues examples;
@@ -458,7 +482,7 @@ rec {
         rts.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ] ++
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlformat nixpkgs.ocamlPackages.utop ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
