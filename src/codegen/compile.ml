@@ -6442,6 +6442,24 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
       G.i (Unary (Wasm.Values.F64 F64Op.Nearest))
 
+    | OtherPrim "fmin", [e; f] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      compile_exp_as env ae SR.UnboxedFloat64 f ^^
+      G.i (Binary (Wasm.Values.F64 F64Op.Min))
+
+    | OtherPrim "fmax", [e; f] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      compile_exp_as env ae SR.UnboxedFloat64 f ^^
+      G.i (Binary (Wasm.Values.F64 F64Op.Max))
+
+    | OtherPrim "fcopysign", [e; f] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      compile_exp_as env ae SR.UnboxedFloat64 f ^^
+      G.i (Binary (Wasm.Values.F64 F64Op.CopySign))
+
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
       E.call_import env "rts" "version"

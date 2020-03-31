@@ -442,6 +442,9 @@ func floatCeil(f : Float) : Float = (prim "fceil" : Float -> Float) f;
 func floatFloor(f : Float) : Float = (prim "ffloor" : Float -> Float) f;
 func floatTrunc(f : Float) : Float = (prim "ftrunc" : Float -> Float) f;
 func floatNearest(f : Float) : Float = (prim "fnearest" : Float -> Float) f;
+func floatMin(f : Float, g : Float) : Float = (prim "fmin" : (Float, Float) -> Float) (f, g);
+func floatMax(f : Float, g : Float) : Float = (prim "fmax" : (Float, Float) -> Float) (f, g);
+func floatCopysign(f : Float, g : Float) : Float = (prim "fcopysign" : (Float, Float) -> Float) (f, g);
 
 // Array utilities
 

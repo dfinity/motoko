@@ -203,6 +203,21 @@ let prim = function
   | "ffloor" -> fun _ v k -> k (Float (Float.floor (as_float v)))
   | "ftrunc" -> fun _ v k -> k (Float (Float.trunc (as_float v)))
   | "fnearest" -> fun _ v k -> k (Float (Float.nearest (as_float v)))
+  | "fmin" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [a; b] ->
+       k (Float (Float.min (as_float a) (as_float b)))
+     | _ -> assert false)
+  | "fmax" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [a; b] ->
+       k (Float (Float.max (as_float a) (as_float b)))
+     | _ -> assert false)
+  | "fcopysign" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [a; b] ->
+       k (Float (Float.copysign (as_float a) (as_float b)))
+     | _ -> assert false)
 
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->
