@@ -180,6 +180,7 @@ func @text_of_Word8(x : Word8) : Text = @text_of_Word (@word8ToNat x);
 func @text_of_Word16(x : Word16) : Text = @text_of_Word (@word16ToNat x);
 func @text_of_Word32(x : Word32) : Text = @text_of_Word (@word32ToNat x);
 func @text_of_Word64(x : Word64) : Text = @text_of_Word (@word64ToNat x);
+func @text_of_Float(x : Float) : Text = "42"; /*TODO*/
 
 
 func @text_of_Bool(b : Bool) : Text {

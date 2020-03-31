@@ -77,7 +77,7 @@ actor a {
   public func incfloat(f64 : Float) : () {
     f += f64;
     assert(f == 42.0);
-    //Prim.debugPrint(f);
+    Prim.debugPrint(debug_show(f));
   };
 
   public func go() : () {
