@@ -1,8 +1,0 @@
-compile_relop: LtOp
-compile_relop: LtOp
-compile_relop: LeOp
-compile_relop: LeOp
-compile_relop: GtOp
-compile_relop: GtOp
-compile_relop: GeOp
-compile_relop: GeOp
