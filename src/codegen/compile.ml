@@ -6412,6 +6412,36 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_vanilla env ae e ^^
       BigNum.compile_abs env
 
+    | OtherPrim "fabs", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Abs))
+
+    | OtherPrim "fsqrt", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Sqrt))
+
+    | OtherPrim "fceil", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Ceil))
+
+    | OtherPrim "ffloor", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Floor))
+
+    | OtherPrim "ftrunc", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Trunc))
+
+    | OtherPrim "fnearest", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      G.i (Unary (Wasm.Values.F64 F64Op.Nearest))
+
     | OtherPrim "rts_version", [] ->
       SR.Vanilla,
       E.call_import env "rts" "version"
