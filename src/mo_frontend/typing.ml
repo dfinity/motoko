@@ -1554,7 +1554,7 @@ and pub_fields fields : region T.Env.t * region T.Env.t =
 
 and pub_field field xs : region T.Env.t * region T.Env.t =
   match field.it with
-  | {vis; dec} when vis.it = Public -> pub_dec dec xs
+  | {vis; dec; _} when vis.it = Public -> pub_dec dec xs
   | _ -> xs
 
 and pub_dec dec xs : region T.Env.t * region T.Env.t =
@@ -1890,7 +1890,7 @@ and infer_dec_typdecs env dec : Scope.t =
       {it = VarP id; _},
       {it = ObjE ({it = sort; _}, fields); at; _}
     ) ->
-    let decs = List.map (fun {it = {vis;dec}; _} -> dec) fields in
+    let decs = List.map (fun {it = { vis; dec; _ }; _} -> dec) fields in
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
     let obj_scope_typs = infer_block_typdecs env' decs in
