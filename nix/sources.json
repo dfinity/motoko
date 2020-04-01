@@ -38,14 +38,15 @@
         "version": "v1.2.0"
     },
     "nixpkgs": {
-        "branch": "nixpkgs-unstable",
+        "branch": "wasilibc-20190712",
+        "description": "Nix Packages collection",
         "homepage": "https://github.com/NixOS/nixpkgs",
-        "owner": "NixOS",
-        "repo": "nixpkgs-channels",
-        "rev": "ca3531850844e185d483fb878fcd00c6b44069e5",
-        "sha256": "1s1zhzdbmdd7l936g7ydzsjqdi5k5ch6vpjilil0jiwjhrpkw3m4",
+        "owner": "ggreif",
+        "repo": "nixpkgs",
+        "rev": "a9a9c32b95e7e147fd69b42fc78ef52d1be860ee",
+        "sha256": "0kqk3py51kb5zn2wbg9cd4s9c9i90bx0avrs1vaj7ks69y3a7dia",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/ca3531850844e185d483fb878fcd00c6b44069e5.tar.gz",
+        "url": "https://github.com/ggreif/nixpkgs/archive/a9a9c32b95e7e147fd69b42fc78ef52d1be860ee.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
