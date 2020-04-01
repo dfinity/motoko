@@ -1,5 +1,5 @@
 export default ({ IDL }) => {
- return new IDL.ActorInterface({'f': IDL.Func([IDL.Nat8], [IDL.Int16], []),
+ return IDL.Service({'f': IDL.Func([IDL.Nat8], [IDL.Int16], []),
   'g': IDL.Func([IDL.Nat64], [IDL.Int64], []),
   'h': IDL.Func([IDL.Int8], [IDL.Nat], [])});
 };

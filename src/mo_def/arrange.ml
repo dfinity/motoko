@@ -62,7 +62,9 @@ let rec exp e = match e.it with
   | ThrowE e            -> "ThrowE"  $$ [exp e]
   | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
 
-and inst ts = List.map typ ts.it
+and inst inst = match inst.it with
+  | None -> []
+  | Some ts -> List.map typ ts
 
 and pat p = match p.it with
   | WildP           -> Atom "WildP"

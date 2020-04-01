@@ -1,6 +1,6 @@
-import Array "mo:stdlib/array";
-import Prelude "mo:stdlib/prelude";
-import Text "mo:stdlib/text";
+import Array "mo:stdlib/Array";
+import Prelude "mo:stdlib/Prelude";
+import Text "mo:stdlib/Text";
 
 Prelude.printLn("Array");
 
@@ -246,4 +246,16 @@ Prelude.printLn("Array");
   for (i in actual.keys()) {
     assert(actual[i] == expected[i]);
   };
+};
+
+{
+  Prelude.printLn("  tabulateVar");
+
+  // regression test for (fixed) issues in base cases, where func was called too often:
+
+  let test0 = Array.tabulateVar<Nat>(0, func (i:Nat) { assert(false); 0 });
+  let test1 = Array.tabulateVar<Nat>(1, func (i:Nat) { assert(i < 1); 0 });
+  let test2 = Array.tabulateVar<Nat>(2, func (i:Nat) { assert(i < 2); 0 });
+  let test3 = Array.tabulateVar<Nat>(3, func (i:Nat) { assert(i < 3); 0 });
+
 };

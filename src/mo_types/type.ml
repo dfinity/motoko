@@ -349,6 +349,7 @@ let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_typ = function Typ _ -> true | _ -> false
+let is_con = function Con _ -> true | _ -> false
 
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
@@ -365,6 +366,7 @@ let as_async = function Async (t1, t2) -> (t1, t2) | _ -> invalid "as_async"
 let as_mut = function Mut t -> t | _ -> invalid "as_mut"
 let as_immut = function Mut t -> t | t -> t
 let as_typ = function Typ c -> c | _ -> invalid "as_typ"
+let as_con = function Con (c, ts) -> c,ts | _ -> invalid "as_con"
 
 let as_seq t =
   match normalize t with
@@ -520,37 +522,38 @@ let avoid cons t =
 
 (* Collecting type constructors *)
 
-let rec cons t cs =
+let rec cons' t cs =
   match t with
   | Var _ ->  cs
   | (Prim _ | Any | Non | Pre ) -> cs
   | Con (c, ts) ->
-    List.fold_right cons ts (ConSet.add c cs)
+    List.fold_right cons' ts (ConSet.add c cs)
   | (Opt t | Mut t | Array t) ->
-    cons t cs
+    cons' t cs
   | Async (t1, t2) ->
-    cons t2 (cons t1 cs)
-  | Tup ts -> List.fold_right cons ts cs
+    cons' t2 (cons' t1 cs)
+  | Tup ts -> List.fold_right cons' ts cs
   | Func (s, c, tbs, ts1, ts2) ->
     let cs = List.fold_right cons_bind tbs  cs in
-    let cs = List.fold_right cons ts1 cs in
-    List.fold_right cons ts2 cs
+    let cs = List.fold_right cons' ts1 cs in
+    List.fold_right cons' ts2 cs
   | (Obj (_, fs) | Variant fs) ->
     List.fold_right cons_field fs cs
   | Typ c -> ConSet.add c cs
 
 and cons_bind tb cs =
-  cons tb.bound cs
+  cons' tb.bound cs
 
 and cons_field {lab; typ} cs =
-  cons typ cs
+  cons' typ cs
 
 let cons_kind k =
   match k with
   | Def (tbs, t)
   | Abs (tbs, t) ->
-    cons t (List.fold_right cons_bind tbs ConSet.empty)
+    cons' t (List.fold_right cons_bind tbs ConSet.empty)
 
+let cons t = cons' t ConSet.empty
 
 (* Checking for concrete types *)
 
@@ -1148,10 +1151,6 @@ let string_of_prim = function
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s.%d" x i
 
-let string_of_con' vs c =
-  let s = Con.to_string c in
-  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
-
 let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
@@ -1161,6 +1160,13 @@ let string_of_func_sort = function
   | Local -> ""
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
+
+module MakePretty(Cfg : sig val show_stamps : bool end) =
+  struct
+
+let string_of_con' vs c =
+  let s = Con.to_string' Cfg.show_stamps c in
+  if List.mem (s, 0) vs then s ^ "/0" else s  (* TBR *)
 
 let rec string_of_typ_nullary vs = function
   | Pre -> "???"
@@ -1249,16 +1255,17 @@ and string_of_typ' vs t =
   | Func (s, c, tbs, ts1, ts2) when can_sugar t ->
     let vs' = vars_of_binds vs tbs in
     let vs'', tbs' = List.tl vs', List.tl tbs in
+    let vs'vs = vs' @ vs in
     begin
       match tbs with
       | [tb] ->
          sprintf "%s%s -> %s" (string_of_func_sort s)
-          (string_of_dom vs ts1)
-          (string_of_control_cod true c vs ts2)
+          (string_of_dom (vs'vs) ts1)
+          (string_of_control_cod true c (vs'vs) ts2)
       | _ ->
         sprintf "%s%s%s -> %s"
-          (string_of_func_sort s) (string_of_binds (vs' @ vs) vs'' tbs')
-          (string_of_dom (vs' @ vs) ts1) (string_of_control_cod true c (vs' @ vs) ts2)
+          (string_of_func_sort s) (string_of_binds (vs'vs) vs'' tbs')
+          (string_of_dom (vs'vs) ts1) (string_of_control_cod true c (vs'vs) ts2)
     end
   | Func (s, c, [], ts1, ts2) ->
     sprintf "%s%s -> %s" (string_of_func_sort s)
@@ -1266,9 +1273,10 @@ and string_of_typ' vs t =
       (string_of_control_cod false c vs ts2)
   | Func (s, c, tbs, ts1, ts2) ->
     let vs' = vars_of_binds vs tbs in
+    let vs'vs = vs' @ vs in
     sprintf "%s%s%s -> %s"
-      (string_of_func_sort s) (string_of_binds (vs' @ vs) vs' tbs)
-      (string_of_dom (vs' @ vs) ts1) (string_of_control_cod false c (vs' @ vs) ts2)
+      (string_of_func_sort s) (string_of_binds (vs'vs) vs' tbs)
+      (string_of_dom (vs'vs) ts1) (string_of_control_cod false c (vs'vs) ts2)
   | Opt t ->
     sprintf "?%s"  (string_of_typ_nullary vs t)
   | Async (t1, t2) ->
@@ -1344,4 +1352,15 @@ let rec string_of_typ_expand t =
       | t' -> s ^ " = " ^ string_of_typ_expand t'
     )
   | _ -> s
+end
 
+module type Pretty = sig
+  val string_of_con : con -> string
+  val string_of_typ : typ -> string
+  val string_of_kind : kind -> string
+  val strings_of_kind : kind -> string * string * string
+  val string_of_typ_expand : typ -> string
+end
+
+
+include MakePretty(struct let show_stamps = true end)

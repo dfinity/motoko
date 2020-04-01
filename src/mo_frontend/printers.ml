@@ -150,6 +150,7 @@ let string_of_symbol symbol : string =
   | X (N N_func_body) -> "<func_body>"
   | X (N N_imp) -> "<imp>"
   | X (N N_import_list) -> "<import_list>"
+  | X (N N_inst) -> "<inst>"
   | X (N N_lit) -> "<lit>"
   | X (N N_ob) -> "<ob>"
   | X (N N_obj_body) -> "<obj_body>"
