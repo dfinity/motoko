@@ -19,7 +19,7 @@ TOMMATHFILES=\
 TOMMATHSRC ?= $(PWD)/../../libtommath
 
 #
-# Various libtommath flags, in particuliar telling it to use our own memory
+# Various libtommath flags, in particular telling it to use our own memory
 # manager
 #
 
