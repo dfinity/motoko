@@ -107,7 +107,7 @@ let list_build : 'a -> 'a -> 'a -> 'a list -> 'a list = fun pre sep post xs ->
 let catE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   { it = PrimE (BinPrim (T.text, Operator.CatOp), [e1; e2])
   ; at = no_region
-  ; note = { note_typ = T.text; note_eff = T.Triv }
+  ; note = { Note.def with Note.typ = T.text }
   }
 
 let cat_list : Ir.exp list -> Ir.exp = fun es ->

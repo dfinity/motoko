@@ -38,7 +38,7 @@ let apply_sign op l = Syntax.(match op, l with
 let phrase f x = { x with it = f x.it }
 
 let typ_note : S.typ_note -> I.typ_note =
-  fun {S.note_typ;S.note_eff} -> {I.note_typ;I.note_eff}
+  fun {S.note_typ;S.note_eff} -> Note.{def with typ = note_typ; eff = note_eff}
 
 let phrase' f x =
   { x with it = f x.at x.note x.it }
@@ -58,7 +58,7 @@ and exp e =
 and exp' at note = function
   | S.VarE i -> I.VarE i.it
   | S.ActorUrlE e ->
-    I.(PrimE (ActorOfIdBlob note.note_typ, [url e]))
+    I.(PrimE (ActorOfIdBlob note.Note.typ, [url e]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
@@ -72,7 +72,7 @@ and exp' at note = function
   | S.ProjE (e, i) -> (projE (exp e) i).it
   | S.OptE e -> (optE (exp e)).it
   | S.ObjE (s, es) ->
-    obj at s None es note.I.note_typ
+    obj at s None es note.Note.typ
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -87,7 +87,7 @@ and exp' at note = function
     end
   | S.AssignE (e1, e2) -> I.AssignE (lexp e1, exp e2)
   | S.ArrayE (m, es) ->
-    let t = T.as_array note.I.note_typ in
+    let t = T.as_array note.Note.typ in
     I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
   | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
@@ -96,7 +96,7 @@ and exp' at note = function
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
         (T.Shared ss, None)
       | T.Shared (ss, sp) -> (T.Shared ss, Some sp) in
-    let args, wrap, control, res_tys = to_args note.I.note_typ po p in
+    let args, wrap, control, res_tys = to_args note.Note.typ po p in
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
@@ -125,7 +125,7 @@ and exp' at note = function
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
   | S.BlockE [] -> unitE.it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
-  | S.BlockE ds -> I.BlockE (block (T.is_unit note.I.note_typ) ds)
+  | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
   | S.NotE e -> I.IfE (exp e, falseE, trueE)
   | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
   | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
@@ -143,7 +143,7 @@ and exp' at note = function
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (tb, e) ->
     I.AsyncE (typ_bind tb, exp e,
-              match note.I.note_typ with
+              match note.Note.typ with
               | T.Async (t, _) -> t
               | _ -> assert false)
   | S.AwaitE e -> I.PrimE (I.AwaitPrim, [exp e])
@@ -154,7 +154,7 @@ and exp' at note = function
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath fp -> I.VarE (id_of_full_path fp).it
     | S.PrimPath -> I.VarE (id_of_full_path "@prim").it
-    | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.note_typ, [blobE blob_id]))
+    | S.IDLPath (fp, blob_id) -> I.(PrimE (ActorOfIdBlob note.Note.typ, [blobE blob_id]))
     end
   | S.PrimE s -> raise (Invalid_argument ("Unapplied prim " ^ s))
 
@@ -164,7 +164,7 @@ and url e =
     | S.AnnotE (e,_) -> url e
     | _ ->
       let transformed = typed_phrase' (url' e) e in
-      I.{ transformed with note = { transformed.note with note_typ = T.blob } }
+      { transformed with note = Note.{ transformed.note with typ = T.blob } }
 
 and url' e at _ _ = I.(PrimE (BlobOfIcUrl, [exp e]))
 
@@ -338,9 +338,9 @@ and dec' at n d = match d with
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [obj_typ], wrap
          { it = obj at s (Some self_id) es obj_typ;
            at = at;
-           note = { I.note_typ = obj_typ; I.note_eff = T.Triv } });
+           note = Note.{ def with typ = obj_typ } });
       at = at;
-      note = { I.note_typ = fun_typ; I.note_eff = T.Triv }
+      note = Note.{ def with typ = fun_typ }
     } in
     I.LetD (varPat, fn)
 
