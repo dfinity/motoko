@@ -22,7 +22,7 @@ TOMMATHSRC ?= $(shell pwd)/../../libtommath
 MUSLSRC ?= $(shell pwd)/../../wasi-libc/libc-top-half/musl
 
 #
-# Various libtommath flags, in particuliar telling it to use our own memory
+# Various libtommath flags, in particular telling it to use our own memory
 # manager
 #
 
