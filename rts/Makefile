@@ -80,6 +80,10 @@ TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
 
+#
+# Look into following directories for source dependencies
+#
+
 vpath %.c $(MUSLSRC)/src/math $(TOMMATHSRC)
 
 #
