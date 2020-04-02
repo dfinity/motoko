@@ -206,11 +206,6 @@ rec {
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
             make -C ${dir}
-
-	    if test -e ${dir}/_out/stats.csv
-	    then
-	      cp ${dir}/_out/stats.csv $out
-	    fi
           '';
       }; in
 
@@ -218,7 +213,13 @@ rec {
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
           export PERF_OUT=$out
-        '' + args.checkPhase;
+        '' + args.checkPhase + ''
+          if ! grep -q ^gas/ $out
+          then
+            echo "perf stats do not include gas. change in drun output format?" >&2
+            exit 1
+          fi
+        '';
       }); in
 
     let qc = testDerivation {
