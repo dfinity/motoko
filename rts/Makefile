@@ -17,7 +17,7 @@ TOMMATHFILES=\
    s_mp_balance_mul s_mp_toom_mul s_mp_toom_sqr s_mp_karatsuba_sqr s_mp_sqr_fast s_mp_sqr s_mp_karatsuba_mul s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr mp_decr mp_add_d mp_sub_d
 
 MUSLFILES=exp_data pow_data pow fabs sin cos __math_invalid \
-          floor scalbn \
+          floor scalbn frexp strnlen memchr memset memcpy snprintf vsnprintf vfprintf \
           __math_oflow __math_uflow __math_xflow \
           __rem_pio2 __rem_pio2_large __sin __cos
 
@@ -87,7 +87,7 @@ MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
 # Look into following directories for source dependencies
 #
 
-vpath %.c $(MUSLSRC)/src/math $(TOMMATHSRC)
+vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(TOMMATHSRC)
 
 #
 # Our part of the RTS, Wasm and native
@@ -108,7 +108,7 @@ _build/native/tommath_%.o: %.c rts.h buf.h | _build/native
 	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
 
 _build/wasm/musl_%.o: %.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) -I$(MUSLSRC) -isystem $(MUSLSRC)/arch/wasm32 -isystem $(MUSLSRC)/src/include -isystem $(MUSLSRC)/src/internal -isystem $(MUSL_WASI_SYSROOT)/include --std=c11 $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) -I$(MUSLSRC) -isystem $(MUSLSRC)/arch/wasm32 -isystem $(MUSLSRC)/src/include -isystem $(MUSLSRC)/src/internal -isystem $(MUSL_WASI_SYSROOT)/include -I $(MUSLSRC)/../headers/private --std=c11 --target=wasm32-emscripten -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 -DNL_ARGMAX=9 -D__wasilibc_printscan_no_long_double -D__wasilibc_printscan_full_support_option='""' -Derrno='(*({ static int bla = 0; &bla; }))' -D__wasi__ -D__NEED_va_list -D__NEED_off_t $< --output $@
 
 RTS_WASM_O=$(RTSFILES:%=_build/wasm/_%.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/_%.o)

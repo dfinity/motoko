@@ -175,6 +175,32 @@ export as_ptr bigint_of_word64_signed(int64_t b) {
   return r;
 }
 
+
+/* Stubbery */
+
+int wctomb(char *s, wchar_t wc) { *s = '\0'; }
+int fputs(const char *s, void *f) { return 0; }
+void abort(void) __attribute__((__noreturn__)) { bigint_trap(); }
+char *strerror(int e) { return ""; }
+int __towrite(void *f) { return false; }
+
+struct _IO_FILE {
+	unsigned flags;
+	unsigned char *rpos, *rend;
+	int (*close)(struct _IO_FILE *);
+	unsigned char *wend, *wpos;
+	unsigned char *wbase;
+	size_t (*read)(struct _IO_FILE *, unsigned char *, size_t);
+	size_t (*write)(struct _IO_FILE *, const unsigned char *, size_t);
+};
+size_t __fwritex(const unsigned char *s, size_t l, struct _IO_FILE *f) { return f->write(f, s, l); }
+
+export as_ptr float_fmt(double a) {
+  extern int snprintf(char *__restrict, size_t, const char *__restrict, ...);
+  char buf[50];
+  const int chars = snprintf(buf, sizeof buf, "%f", a);
+  return text_of_ptr_size(buf, chars);
+}
 export double float_pow(double a, double b) {
   extern double pow(double, double);
   return pow(a, b);
@@ -187,6 +213,11 @@ export double float_cos(double a) {
   extern double cos(double);
   return cos(a);
 }
+/* END Float stuff, needs to go in another file! */
+
+
+
+
 export bool bigint_eq(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) == 0;
 }
