@@ -100,19 +100,19 @@ let selfRefE typ =
 let asyncE typ1 typ2 e =
   { it = PrimE (CPSAsync typ1, [e]);
     at = no_region;
-    note = Note.{ typ = T.Async (typ1, typ2); eff = eff e }
+    note = Note.{ def with typ = T.Async (typ1, typ2); eff = eff e }
   }
 
 let assertE e =
   { it = PrimE (AssertPrim, [e]);
     at = no_region;
-    note = Note.{ typ = T.unit; eff = eff e}
+    note = Note.{ def with typ = T.unit; eff = eff e}
   }
 
 let awaitE typ e1 e2 =
   { it = PrimE (CPSAwait, [e1; e2]);
     at = no_region;
-    note = Note.{ typ = T.unit; eff = max_eff (eff e1) (eff e2) }
+    note = Note.{ def with typ = T.unit; eff = max_eff (eff e1) (eff e2) }
   }
 
 let ic_replyE ts e =
@@ -121,13 +121,13 @@ let ic_replyE ts e =
   | _ -> assert (T.sub (T.Tup ts) (e.note.Note.typ)));
   { it = PrimE (ICReplyPrim ts, [e]);
     at = no_region;
-    note = Note.{ typ = T.unit; eff = eff e }
+    note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
 let ic_rejectE e =
   { it = PrimE (ICRejectPrim, [e]);
     at = no_region;
-    note = Note.{ typ = T.unit; eff = eff e }
+    note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
 let ic_callE f e k r =
@@ -136,7 +136,7 @@ let ic_callE f e k r =
   let eff = List.fold_left max_eff T.Triv effs in
   { it = PrimE (ICCallPrim, es);
     at = no_region;
-    note = Note.{ typ = T.unit; eff = eff }
+    note = Note.{ def with typ = T.unit; eff = eff }
   }
 
 
@@ -146,20 +146,20 @@ let projE e n =
   match typ e with
   | T.Tup ts ->
      { it = PrimE (ProjPrim n, [e]);
-       note = Note.{ typ = List.nth ts n; eff = eff e };
+       note = Note.{ def with typ = List.nth ts n; eff = eff e };
        at = no_region;
      }
   | _ -> failwith "projE"
 
 let optE e =
  { it = PrimE (OptPrim, [e]);
-   note = Note.{ typ = T.Opt (typ e); eff = eff e };
+   note = Note.{ def with typ = T.Opt (typ e); eff = eff e };
    at = no_region;
  }
 
 let tagE i e =
  { it = PrimE (TagPrim i, [e]);
-   note = Note.{ typ = T.Variant [{T.lab = i; typ = typ e}]; eff = eff e };
+   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e}]; eff = eff e };
    at = no_region;
  }
 
@@ -255,7 +255,7 @@ let switch_optE exp1 exp2 pat exp3 typ1  =
             note = () }]
         );
     at = no_region;
-    note = Note.{
+    note = Note.{ def with
       typ = typ1;
       eff = max_eff (eff exp1) (max_eff (eff exp2) (eff exp3))
     }
