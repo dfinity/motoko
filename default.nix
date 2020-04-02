@@ -105,6 +105,16 @@ let ocaml_exe = name: bin:
 in
 
 rec {
+  musl-wasi-sysroot = stdenv.mkDerivation {
+    name = "musl-wasi-sysroot";
+    buildInputs = [ nixpkgs.sources.musl-wasi ];
+    phases = [ "installPhase" ];
+    installPhase = ''
+      cp --no-preserve=mode ${nixpkgs.sources.musl-wasi}/Makefile ./mk
+      substituteInPlace ./mk --replace "cp -r" "cp --no-preserve=mode -r"
+      make --makefile=$(pwd)/mk -C ${nixpkgs.sources.musl-wasi} SYSROOT="$out" include_dirs
+    '';
+  };
   rts = stdenv.mkDerivation {
     name = "moc-rts";
 
@@ -116,6 +126,8 @@ rec {
     preBuild = ''
       ${llvmEnv}
       export TOMMATHSRC=${nixpkgs.sources.libtommath}
+      export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
+      export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
     '';
 
     doCheck = true;
@@ -489,6 +501,8 @@ rec {
     shellHook = llvmEnv;
     ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
+    MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
+    MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     NIX_FONTCONFIG_FILE = users-guide.NIX_FONTCONFIG_FILE;
     LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
 

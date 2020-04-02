@@ -16,11 +16,11 @@ TOMMATHFILES=\
    mp_init_size mp_exch mp_clear mp_copy mp_count_bits mp_mul_2d mp_rshd mp_mul_d mp_div_2d mp_mod_2d \
    s_mp_balance_mul s_mp_toom_mul s_mp_toom_sqr s_mp_karatsuba_sqr s_mp_sqr_fast s_mp_sqr s_mp_karatsuba_mul s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr mp_decr mp_add_d mp_sub_d
 
-MUSLFILES=exp_data pow_data pow fabs __math_invalid __math_oflow __math_uflow __math_xflow
+MUSLFILES=exp_data pow_data pow fabs sin cos __math_invalid __math_oflow __math_uflow __math_xflow
 
-TOMMATHSRC ?= $(shell pwd)/../../libtommath
-MUSLSRC ?= $(shell pwd)/../../wasi-libc/libc-top-half/musl
-
+TOMMATHSRC ?= $(CURDIR)/../../libtommath
+MUSLSRC ?= $(CURDIR)/../../wasi-libc/libc-top-half/musl
+MUSL_WASI_SYSROOT ?= $(MUSLSRC)/../../sysroot
 #
 # Various libtommath flags, in particular telling it to use our own memory
 # manager
@@ -69,17 +69,11 @@ _build/wasm _build/native:
 # Building the libtommath files, Wasm and native
 #
 
-
 _build/wasm/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
 
-
 _build/native/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/native
 	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
-
-
-# make WASM_CC=clang-10 WASM_AR=llvm-ar WASM_NM=llvm-nm WASM_CFLAGS="-O2 -DNDEBUG -isystem $(pwd)/sysroot/include" -j10
-
 
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
@@ -106,7 +100,7 @@ _build/native/tommath_%.o: %.c rts.h buf.h | _build/native
 	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11 $< --output $@
 
 _build/wasm/musl_%.o: %.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) -I$(MUSLSRC) -isystem $(MUSLSRC)/arch/wasm32 -isystem $(MUSLSRC)/src/include -isystem $(MUSLSRC)/src/internal -isystem $(MUSLSRC)/../../sysroot/include --std=c11 $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) -I$(MUSLSRC) -isystem $(MUSLSRC)/arch/wasm32 -isystem $(MUSLSRC)/src/include -isystem $(MUSLSRC)/src/internal -isystem $(MUSL_WASI_SYSROOT)/include --std=c11 $< --output $@
 
 RTS_WASM_O=$(RTSFILES:%=_build/wasm/_%.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/_%.o)
