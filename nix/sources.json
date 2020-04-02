@@ -47,8 +47,7 @@
         "sha256": "17wlkpl495zs4cl3djdqaf089a4bhbrj87z2i2gm21cvmfqmva7p",
         "type": "tarball",
         "url": "https://github.com/WebAssembly/wasi-libc/archive/4b41c5d5ec64f1219e57e474c027d8552c1503ff.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "9efc2f428358564fe64c374d762d0bfce1d92507"
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
         "branch": "wasilibc-20190712",
