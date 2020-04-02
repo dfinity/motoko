@@ -69,17 +69,17 @@ _build/wasm _build/native:
 # Building the libtommath files, Wasm and native
 #
 
-_build/wasm/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/wasm
+_build/wasm/tommath_%.o: bn_%.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
 
-_build/native/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/native
+_build/native/tommath_%.o: bn_%.c | _build/native
 	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
 
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
 
-vpath %.c $(MUSLSRC)/src/math
+vpath %.c $(MUSLSRC)/src/math $(TOMMATHSRC)
 
 #
 # Our part of the RTS, Wasm and native
@@ -94,10 +94,10 @@ _build/native/_%.o: %.c rts.h buf.h | _build/native
 	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11 $< --output $@
 
 _build/wasm/tommath_%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11 $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
 
 _build/native/tommath_%.o: %.c rts.h buf.h | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11 $< --output $@
+	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
 
 _build/wasm/musl_%.o: %.c | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) -I$(MUSLSRC) -isystem $(MUSLSRC)/arch/wasm32 -isystem $(MUSLSRC)/src/include -isystem $(MUSLSRC)/src/internal -isystem $(MUSL_WASI_SYSROOT)/include --std=c11 $< --output $@
