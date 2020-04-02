@@ -16,8 +16,10 @@ TOMMATHFILES=\
    mp_init_size mp_exch mp_clear mp_copy mp_count_bits mp_mul_2d mp_rshd mp_mul_d mp_div_2d mp_mod_2d \
    s_mp_balance_mul s_mp_toom_mul s_mp_toom_sqr s_mp_karatsuba_sqr s_mp_sqr_fast s_mp_sqr s_mp_karatsuba_mul s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr mp_decr mp_add_d mp_sub_d
 
-TOMMATHSRC ?= $(PWD)/../../libtommath
-MUSLSRC ?= $(PWD)/../wasi-libc/libc-top-half/musl
+MUSLFILES=exp_data pow_data pow fabs __math_invalid __math_oflow __math_uflow __math_xflow
+
+TOMMATHSRC ?= $(shell pwd)/../../libtommath
+MUSLSRC ?= $(shell pwd)/../../wasi-libc/libc-top-half/musl
 
 #
 # Various libtommath flags, in particuliar telling it to use our own memory
@@ -81,7 +83,6 @@ _build/native/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/native
 
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
-MUSLFILES=exp_data pow_data pow fabs __math_invalid __math_oflow __math_uflow __math_xflow
 MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
 
 vpath %.c $(MUSLSRC)/src/math
