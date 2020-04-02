@@ -264,14 +264,14 @@ and c_exp' context exp k =
     | T.Triv ->
       { it = SwitchE(t_exp context exp1, cases');
         at = exp.at;
-        note = { exp.note with note_typ = answerT } }
+        note = Note.{ exp.note with typ = answerT } }
     | T.Await ->
        c_exp context exp1
          (meta (typ exp1)
            (fun v1 ->
              { it = SwitchE(v1, cases');
                at = exp.at;
-               note = { exp.note with note_typ = answerT } }))
+               note = Note.{ exp.note with typ = answerT } }))
     end)
   | TryE (exp1, cases) ->
     (* TODO: do we need to reify f? *)
@@ -301,11 +301,11 @@ and c_exp' context exp k =
       k -*- (t_exp context exp1)
     | T.Await ->
       blockE
-        [funcD throw e
-          { it = SwitchE (e, cases');
-            at = exp.at;
-            note = { note_eff = T.Await; (* shouldn't matter *)
-                     note_typ = T.unit } }]
+        [funcD throw e {
+          it = SwitchE (e, cases');
+          at = exp.at;
+          note = Note.{ def with typ = T.unit; eff = T.Await; (* shouldn't matter *) }
+        }]
         (c_exp context' exp1 (ContVar k))
     end))
   | LoopE exp1 ->

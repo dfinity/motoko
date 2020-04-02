@@ -27,8 +27,7 @@ module ConRenaming = E.Make(struct type t = T.con let compare = Con.compare end)
 let selfcallE ts e1 e2 e3 =
  { it = SelfCallE (ts, e1, e2, e3);
   at = no_region;
-  note = { note_typ = T.unit;
-           note_eff = T.Triv }
+  note = Note.{ def with typ = T.unit }
 }
 
 let error_ty =
@@ -221,8 +220,10 @@ let transform mode env prog =
 
   let rec t_exp (exp: exp) =
     { it = t_exp' exp;
-      note = { note_typ = t_typ exp.note.note_typ;
-               note_eff = exp.note.note_eff};
+      note = Note.{ def with
+        typ = t_typ exp.note.typ;
+        eff = exp.note.eff
+      };
       at = exp.at;
     }
   and t_exp' (exp:exp) =

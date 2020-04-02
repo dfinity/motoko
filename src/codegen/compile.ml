@@ -6059,13 +6059,13 @@ let rec compile_lexp (env : E.t) ae lexp =
   | DotLE (e, n) ->
      compile_exp_vanilla env ae e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
-     Object.idx env e.note.note_typ n,
+     Object.idx env e.note.Note.typ n,
      store_ptr
 
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
-  | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.note_typ) es ->
+  | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.Note.typ) es ->
     (* Handle dead code separately, so that we can rely on useful type
        annotations below *)
     SR.Unreachable,
@@ -6079,7 +6079,7 @@ and compile_exp (env : E.t) ae exp =
     begin match p, es with
     (* Calls *)
     | CallPrim _, [e1; e2] ->
-      let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
+      let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.Note.typ in
       let n_args = List.length arg_tys in
       let return_arity = match control with
         | Type.Returns -> List.length ret_tys
@@ -6109,7 +6109,7 @@ and compile_exp (env : E.t) ae exp =
 
           let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
           let (set_arg, get_arg) = new_local env "arg" in
-          let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
+          let _, _, _, ts, _ = Type.as_func e1.note.Note.typ in
           code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
           set_meth_pair ^^
           compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
@@ -6163,7 +6163,7 @@ and compile_exp (env : E.t) ae exp =
       | _ ->
         SR.Vanilla,
         code1 ^^ StackRep.adjust env sr SR.Vanilla ^^
-        Object.load_idx env e.note.note_typ name
+        Object.load_idx env e.note.Note.typ name
       end
     | ActorDotPrim name, [e] ->
       SR.Vanilla,
@@ -6246,7 +6246,7 @@ and compile_exp (env : E.t) ae exp =
           BigNum.truncate_to_word64 env)
 
       | Int, (Int8|Int16|Int32) ->
-        let ty = exp.note.note_typ in
+        let ty = exp.note.Note.typ in
         StackRep.of_type ty,
         let pty = prim_of_typ ty in
         compile_exp_vanilla env ae e ^^
@@ -6269,7 +6269,7 @@ and compile_exp (env : E.t) ae exp =
           BigNum.truncate_to_word64 env)
 
       | Nat, (Nat8|Nat16|Nat32) ->
-        let ty = exp.note.note_typ in
+        let ty = exp.note.Note.typ in
         StackRep.of_type ty,
         let pty = prim_of_typ ty in
         compile_exp_vanilla env ae e ^^
@@ -6478,8 +6478,8 @@ and compile_exp (env : E.t) ae exp =
     | ICCallPrim, [f;e;k;r] ->
       SR.unit, begin
       (* TBR: Can we do better than using the notes? *)
-      let _, _, _, ts1, _ = Type.as_func f.note.note_typ in
-      let _, _, _, ts2, _ = Type.as_func k.note.note_typ in
+      let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
+      let _, _, _, ts2, _ = Type.as_func k.note.Note.typ in
       let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
       let (set_arg, get_arg) = new_local env "arg" in
       let (set_k, get_k) = new_local env "k" in
@@ -6604,7 +6604,7 @@ and compile_exp (env : E.t) ae exp =
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
-        if Object.is_mut_field env exp.note.note_typ f.it.name
+        if Object.is_mut_field env exp.note.Note.typ f.it.name
         then Var.get_val_ptr env ae f.it.var
         else Var.get_val_vanilla env ae f.it.var)) in
     Object.lit_raw env fs'
