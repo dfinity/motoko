@@ -179,6 +179,14 @@ export double float_pow(double a, double b) {
   extern double pow(double, double);
   return pow(a, b);
 }
+export double float_sin(double a) {
+  extern double sin(double);
+  return sin(a);
+}
+export double float_cos(double a) {
+  extern double cos(double);
+  return cos(a);
+}
 export bool bigint_eq(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) == 0;
 }

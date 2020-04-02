@@ -447,6 +447,11 @@ func floatMin(f : Float, g : Float) : Float = (prim "fmin" : (Float, Float) -> F
 func floatMax(f : Float, g : Float) : Float = (prim "fmax" : (Float, Float) -> Float) (f, g);
 func floatCopysign(f : Float, g : Float) : Float = (prim "fcopysign" : (Float, Float) -> Float) (f, g);
 
+// Trigonometric functions
+
+func sin(f : Float) : Float = (prim "fsin" : Float -> Float) f;
+func cos(f : Float) : Float = (prim "fcos" : Float -> Float) f;
+
 // Array utilities
 
 func Array_init<T>(len : Nat,  x : T) : [var T] {
