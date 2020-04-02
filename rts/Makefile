@@ -17,6 +17,7 @@ TOMMATHFILES=\
    s_mp_balance_mul s_mp_toom_mul s_mp_toom_sqr s_mp_karatsuba_sqr s_mp_sqr_fast s_mp_sqr s_mp_karatsuba_mul s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr mp_decr mp_add_d mp_sub_d
 
 TOMMATHSRC ?= $(PWD)/../../libtommath
+MUSLSRC ?= $(PWD)/../wasi-libc/libc-top-half/musl
 
 #
 # Various libtommath flags, in particuliar telling it to use our own memory
@@ -47,7 +48,7 @@ CLANG_FLAGS = \
 #
 
 WASM_FLAGS = \
-   --target=wasm32-unknown-emscripten-wasm -fvisibility=hidden \
+   --target=wasm32-emscripten -fvisibility=hidden \
    -fno-builtin -ffreestanding \
    --optimize=3 \
 
@@ -68,14 +69,22 @@ _build/wasm _build/native:
 
 
 _build/wasm/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/wasm
-	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
 
 
 _build/native/tommath_%.o: $(TOMMATHSRC)/bn_%.c | _build/native
-	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
+	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
+
+
+# make WASM_CC=clang-10 WASM_AR=llvm-ar WASM_NM=llvm-nm WASM_CFLAGS="-O2 -DNDEBUG -isystem $(pwd)/sysroot/include" -j10
+
 
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
+MUSLFILES=exp_data pow_data pow fabs __math_invalid __math_oflow __math_uflow __math_xflow
+MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
+
+vpath %.c $(MUSLSRC)/src/math
 
 #
 # Our part of the RTS, Wasm and native
@@ -83,20 +92,29 @@ TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
 
 RTSFILES=rts idl bigint buf utf8_valid closure-table text blob url
 
-_build/wasm/%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) -c $(CLANG_FLAGS) $(WASM_FLAGS)  $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
+_build/wasm/_%.o: %.c rts.h buf.h | _build/wasm
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11 $< --output $@
 
-_build/native/%.o: %.c rts.h buf.h | _build/native
-	$(CLANG) -c $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11  $< --output $@
+_build/native/_%.o: %.c rts.h buf.h | _build/native
+	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11 $< --output $@
 
-RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
-RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
+_build/wasm/tommath_%.o: %.c rts.h buf.h | _build/wasm
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11 $< --output $@
+
+_build/native/tommath_%.o: %.c rts.h buf.h | _build/native
+	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11 $< --output $@
+
+_build/wasm/musl_%.o: %.c | _build/wasm
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) -I$(MUSLSRC) -isystem $(MUSLSRC)/arch/wasm32 -isystem $(MUSLSRC)/src/include -isystem $(MUSLSRC)/src/internal -isystem $(MUSLSRC)/../../sysroot/include --std=c11 $< --output $@
+
+RTS_WASM_O=$(RTSFILES:%=_build/wasm/_%.o)
+RTS_NATIVE_O=$(RTSFILES:%=_build/native/_%.o)
 
 #
 # The actual RTS, as we ship it with the compiler
 #
 
-mo-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O)
+mo-rts.wasm: $(RTS_WASM_O) $(TOMMATH_WASM_O) $(MUSL_WASM_O)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
 		--export=__wasm_call_ctors \

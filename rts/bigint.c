@@ -175,6 +175,10 @@ export as_ptr bigint_of_word64_signed(int64_t b) {
   return r;
 }
 
+export double float_pow(double a, double b) {
+  extern double pow(double, double);
+  return pow(a, b);
+}
 export bool bigint_eq(as_ptr a, as_ptr b) {
   return mp_cmp(BIGINT_PAYLOAD(a), BIGINT_PAYLOAD(b)) == 0;
 }
