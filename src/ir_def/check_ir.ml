@@ -564,7 +564,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp1 <: t;
     check_cases env T.catch t cases;
   | LoopE exp1 ->
-    check_exp env exp1;
+    check_exp { env with lvl = NotTopLvl } exp1;
     typ exp1 <: T.unit;
     T.Non <: t (* vacuously true *)
   | LabelE (id, t0, exp1) ->
@@ -580,7 +580,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     let t1 = typ exp1 in
     let env' =
       {(adjoin_cons env ce)
-       with labs = T.Env.empty; rets = Some t1; async = Some c} in
+       with labs = T.Env.empty; rets = Some t1; async = Some c; lvl = NotTopLvl} in
     check_exp env' exp1;
     let t1' = T.open_ [t0] (T.close [c] t1)  in
     t1' <: T.Any; (* vacuous *)
@@ -633,7 +633,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     check (not env.flavor.Ir.has_async_typ) "SelfCallE in async flavor";
     List.iter (check_typ env) ts;
-    check_exp env exp_f;
+    check_exp { env with lvl = NotTopLvl } exp_f;
     check_exp env exp_k;
     check_exp env exp_r;
     typ exp_f <: T.unit;
