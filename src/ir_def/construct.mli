@@ -31,8 +31,6 @@ val fresh_id : string -> unit -> id
 val fresh_var : string -> typ -> var
 val fresh_vars : string -> typ list -> var list
 
-val clone : exp -> exp
-
 (* Patterns *)
 
 val varP : var -> pat

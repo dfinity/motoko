@@ -40,10 +40,6 @@ let fresh_var name_base typ : var =
 let fresh_vars name_base ts =
   List.mapi (fun i t -> fresh_var (Printf.sprintf "%s%i" name_base i) t) ts
 
-(* Cloning of notes (to avoid unwanted sharing) *)
-
-let clone exp = { exp with note = exp.note }
-
 (* Patterns *)
 
 let varP (n, typ) =
@@ -571,4 +567,3 @@ let forE pat exp1 exp2 =
 let unreachableE () =
   (* Do we want a dedicated UnreachableE in the AST? *)
   loopE (unitE ())
-
