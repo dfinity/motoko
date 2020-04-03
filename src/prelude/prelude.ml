@@ -446,6 +446,8 @@ func floatNearest(f : Float) : Float = (prim "fnearest" : Float -> Float) f;
 func floatMin(f : Float, g : Float) : Float = (prim "fmin" : (Float, Float) -> Float) (f, g);
 func floatMax(f : Float, g : Float) : Float = (prim "fmax" : (Float, Float) -> Float) (f, g);
 func floatCopysign(f : Float, g : Float) : Float = (prim "fcopysign" : (Float, Float) -> Float) (f, g);
+func floatToInt64(f : Float) : Int64 = (prim "Float->Int64" : Float -> Int64) (f);
+func int64ToFloat(n : Int64) : Float = (prim "Int64->Float" : Int64 -> Float) (n);
 
 // Trigonometric functions
 

@@ -78,6 +78,12 @@ actor a {
     f += f64;
     assert(f == 42.0);
     Prim.debugPrint(debug_show(f));
+    c += Prim.int64ToInt(Prim.floatToInt64(f));
+    Prim.debugPrintInt(c);
+    f += Prim.int64ToFloat(Prim.intToInt64(c));
+    Prim.debugPrint(debug_show(f));
+    f += Prim.int64ToFloat(Prim.intToInt64(-c));
+    Prim.debugPrint(debug_show(f));
   };
 
   public func go() : () {

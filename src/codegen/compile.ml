@@ -727,6 +727,8 @@ module RTS = struct
     E.add_func_import env "rts" "float_sin" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_cos" [F64Type] [F64Type];
     E.add_func_import env "rts" "float_fmt" [F64Type] [I32Type];
+    E.add_func_import env "rts" "float_to_I64" [F64Type] [I64Type];
+    E.add_func_import env "rts" "float_of_I64" [I64Type] [F64Type];
     ()
 
 end (* RTS *)
@@ -6478,6 +6480,16 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
       E.call_import env "rts" "float_fmt"
+
+    | OtherPrim "Float->Int64", [e] ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedFloat64 e ^^
+      E.call_import env "rts" "float_to_I64"
+
+    | OtherPrim "Int64->Float", [e] ->
+      SR.UnboxedFloat64,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      E.call_import env "rts" "float_of_I64"
 
     | OtherPrim "fsin", [e] ->
       SR.UnboxedFloat64,
