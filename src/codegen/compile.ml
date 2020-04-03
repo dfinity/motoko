@@ -4676,6 +4676,7 @@ module VarEnv = struct
   *)
 
   let mk_fun_ae ae = { ae with
+    lvl = NotTopLvl;
     vars = NameEnv.filter (fun v l ->
       let non_local = is_non_local l in
       (* For debugging, enable this:
@@ -4961,18 +4962,16 @@ module FuncDec = struct
       else assert false (* no first class shared functions *)
 
   let lit env ae name sort control free_vars args mk_body ret_tys at =
-    let ae' = VarEnv.{ ae with lvl = NotTopLvl } in
-
     let captured = List.filter (VarEnv.needs_capture ae) free_vars in
 
-    if ae'.VarEnv.lvl = VarEnv.TopLvl then assert (captured = []);
+    if ae.VarEnv.lvl = VarEnv.TopLvl then assert (captured = []);
 
     if captured = []
     then
       let (ct, fill) = closed env sort control name args mk_body ret_tys at in
-      fill env ae';
+      fill env ae;
       (SR.Const ct, G.nop)
-    else closure env ae' sort control name captured args mk_body ret_tys at
+    else closure env ae sort control name captured args mk_body ret_tys at
 
   (* Returns the index of a saved closure *)
   let async_body env ae ts free_vars mk_body at =
