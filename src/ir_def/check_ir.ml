@@ -343,8 +343,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
   let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
   (* check note for sharing *)
-  check  (exp.note.Note.check < env.check_iter)
-    "AST note visited before: %s" (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+  check (exp.note.Note.check < env.check_iter) "AST note visited before";
   exp.note <- Note.{ exp.note with check = env.check_iter };
   (* check type annotation *)
   let t = E.typ exp in
