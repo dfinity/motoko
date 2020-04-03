@@ -210,11 +210,59 @@ and with_self i typ decs =
 
 and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
+  let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+  let stabs = List.map (fun ef -> ef.it.S.stab) es in
+  let pairs = List.map2 stabilize stabs ds in
+  let fieldss = List.map fst pairs in
+  let mk_ds = List.map snd pairs in
+  let ty = T.Obj(T.Object,List.sort T.compare_field (List.concat fieldss)) in
+  let state = fresh_var "state" (T.Opt ty) in
+  let ds = List.map (fun mk_d -> mk_d state) mk_ds in
+  let ds = letD state
+     { it = I.LitE (I.NullLit);
+       at = no_region;
+       note = {I.note_typ = state.note.I.note_typ; I.note_eff = T.Triv}
+     }::ds in
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in
   I.ActorE (ds', fs, obj_typ)
+
+and stabilize stab_opt d =
+  let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
+  match s, d.it with
+  | (S.Flexible, _) ->
+    ([], fun v -> d)
+  | (S.Stable, I.VarD(i, t, e)) ->
+    ([Type.{ lab = i; typ = t }], fun v -> d)
+  | (S.Stable, I.LetD(p, e)) ->
+    let fields = fields_of_pat [] p in
+    (fields, fun v -> d)
+
+and fields_of_pat acc p = match p.it with
+  | I.WildP ->
+    acc
+  | I.VarP i ->
+    T.{ lab = i; typ = p.note }::acc
+  | I.TupP ps ->
+    fields_of_pats acc ps
+  | I.ObjP pfs ->
+    fields_of_pats acc (Ir.pats_of_obj_pat pfs)
+  | I.LitP l ->
+    acc
+  | I.OptP p ->
+    fields_of_pat acc p
+  | I.TagP (i, p)     ->
+    fields_of_pat acc p
+  | I.AltP (p1, p2)   ->
+    fields_of_pat (fields_of_pat acc p1) p2
+
+and fields_of_pats acc ps =
+  match ps with
+  | [] -> acc
+  | p::ps' ->
+    fields_of_pats (fields_of_pat acc p) ps'
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in
@@ -295,8 +343,9 @@ and block force_unit ds =
   | _, _ ->
     (decs ds, tupE [])
 
+and is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true
+
 and decs ds =
-  let is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true in
   List.map dec (List.filter is_not_typD ds)
 
 and dec d = { (phrase' dec' d) with note = () }

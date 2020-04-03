@@ -2,8 +2,8 @@ import Prim "mo:prim";
 actor {
   Prim.debugPrint ("init'ed");
 
-  stable var always10 = 10;
-  stable var c = 1;
+  var always10 = 10;
+  var c = 1;
   public func inc() { c += 1; };
   public query func check(n : Int) : async () {
     assert (c == n);
