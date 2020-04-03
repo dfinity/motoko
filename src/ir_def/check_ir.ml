@@ -49,8 +49,11 @@ type ret_env = T.typ option
 *)
 type con_env = T.ConSet.t
 
+type lvl = TopLvl | NotTopLvl
+
 type env =
   { flavor : Ir.flavor;
+    lvl  : lvl;
     vals : val_env;
     cons : con_env;
     labs : lab_env;
@@ -61,6 +64,7 @@ type env =
 
 let env_of_scope scope flavor : env =
   { flavor;
+    lvl = TopLvl;
     vals = T.Env.map (fun typ -> { typ; const = true }) scope.Scope.val_env;
     cons = T.ConSet.empty;
     labs = T.Env.empty;
@@ -615,7 +619,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     if T.is_shared_sort sort then List.iter (check_concrete env exp.at) ret_tys;
     let codom = T.codom control (fun () -> List.hd ts) ret_tys in
     let env'' =
-      {env' with labs = T.Env.empty; rets = Some codom; async = None} in
+      {env' with labs = T.Env.empty; rets = Some codom; async = None; lvl = NotTopLvl} in
     check_exp (adjoin_vals env'' ve) exp;
     check_sub env' exp.at (typ exp) codom;
     (* Now construct the function type and compare with the annotation *)
@@ -665,6 +669,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | VarE id ->
       check (T.Env.find id env.vals).const "const VarE %s with non-const variable" id
     | FuncE (x, s, c, tp, as_ , ts, body) ->
+      if env.lvl = NotTopLvl then
       Freevars.M.iter (fun v _ ->
         check (T.Env.find v env.vals).const "const FuncE with non-const free variable %s" v
       ) (Freevars.exp exp)
