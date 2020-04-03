@@ -235,7 +235,15 @@ and stabilize stab_opt d =
   | (S.Flexible, _) ->
     ([], fun v -> d)
   | (S.Stable, I.VarD(i, t, e)) ->
-    ([Type.{ lab = i; typ = t }], fun v -> d)
+    ([Type.{ lab = i; typ = t }],
+     fun v ->
+     let s = fresh_var "s" (T.as_opt v.note.I.note_typ) in
+     varD i t
+       (switch_optE v
+          e
+          (varP s) (dotE s i t)
+          t)
+    )
   | (S.Stable, I.LetD(p, e)) ->
     let fields = fields_of_pat [] p in
     (fields, fun v -> d)
