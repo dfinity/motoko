@@ -5,8 +5,6 @@ open Ir_effect
 module Con = Mo_types.Con
 module T = Mo_types.Type
 
-type var = exp
-
 (* Field names *)
 
 let nameN s = s
@@ -15,24 +13,12 @@ let nextN = "next"
 
 (* Identifiers *)
 
-let idE id typ =
-  { it = VarE id;
-    at = no_region;
-    note = Note.{ def with typ = typ }
-  }
+type var = (string * T.typ)
 
-let id_of_exp x =
-  match x.it with
-  | VarE x -> x
-  | _ -> failwith "Impossible: id_of_exp"
+let var id typ = (id, typ)
 
-let arg_of_exp x =
-  match x.it with
-  | VarE i -> { it = i; at = x.at; note = x.note.Note.typ }
-  | _ -> failwith "Impossible: arg_of_exp"
-
-let exp_of_arg a =
-  idE a.it a.note
+let id_of_var (id, _) = id
+let typ_of_var (_, typ) = typ
 
 (* Fresh id generation *)
 
@@ -47,9 +33,9 @@ let fresh name_base () : string =
 let fresh_id name_base () : id =
   fresh name_base ()
 
-let fresh_var name_base typ : exp =
+let fresh_var name_base typ : var =
   let name = fresh name_base () in
-  idE name typ
+  var name typ
 
 let fresh_vars name_base ts =
   List.mapi (fun i t -> fresh_var (Printf.sprintf "%s%i" name_base i) t) ts
@@ -60,10 +46,10 @@ let clone exp = { exp with note = exp.note }
 
 (* Patterns *)
 
-let varP x =
-  { it = VarP (id_of_exp x);
-    at = x.at;
-    note = x.note.Note.typ
+let varP (n, typ) =
+  { it = VarP n;
+    at = no_region;
+    note = typ
   }
 
 let tupP pats =
@@ -77,6 +63,9 @@ let seqP ps =
   | ps -> tupP ps
 
 (* Primitives *)
+
+let varE (id, typ) =
+  { it = VarE id; at = no_region; note = Note.{ def with typ } }
 
 let primE prim es =
   let typ = match prim with
@@ -322,9 +311,9 @@ let lexp_of_exp' = function
 
 let lexp_of_exp (e:exp) = { e with it = lexp_of_exp' e.it; note = typ e }
 
-let assignE exp1 exp2 =
-  assert (T.is_mut (typ exp1));
-  { it = AssignE (lexp_of_exp exp1, exp2);
+let assignE v exp2 =
+  assert (T.is_mut (typ_of_var v));
+  { it = AssignE (lexp_of_exp (varE v), exp2);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff = eff exp2 };
   }
@@ -374,13 +363,12 @@ let expD exp =
   let pat = { it = WildP; at = exp.at; note = exp.note.Note.typ } in
   LetD (pat, exp) @@ exp.at
 
-let let_no_shadow x exp decs =
-  let id = id_of_exp x in
+let let_no_shadow (id, typ) exp decs =
   (* could be replaced by a more simple “defined by this decs” function *)
   let (_,f) = Freevars.decs decs in
   if Freevars.S.mem id f
   then decs
-  else [ letD x exp ] @ decs
+  else [ letD (id, typ) exp ] @ decs
 
 (* Derived expressions *)
 
@@ -395,6 +383,10 @@ let ignoreE exp =
 
 
 (* Mono-morphic function expression *)
+let arg_of_var (id, typ) =
+  { it = id; at = no_region; note = typ }
+let var_of_arg { it = id; note = typ; _} = (id, typ) 
+
 let funcE name typ x exp =
   let sort, control, arg_tys, ret_tys = match typ with
     | T.Func(s, c, _, ts1, ts2) -> s, c, ts1, ts2
@@ -402,11 +394,11 @@ let funcE name typ x exp =
   let args, exp' =
     if List.length arg_tys = 1;
     then
-      [ arg_of_exp x ], exp
+      [ arg_of_var x ], exp
     else
       let vs = fresh_vars "param" arg_tys in
-      List.map arg_of_exp vs,
-      blockE [letD x (tupE vs)] exp
+      List.map arg_of_var vs,
+      blockE [letD x (tupE (List.map varE vs))] exp
   in
   ({it = FuncE
      ( name,
@@ -432,7 +424,7 @@ let nary_funcE name typ xs exp =
         sort,
         control,
         [],
-        List.map arg_of_exp xs,
+        List.map arg_of_var xs,
         ret_tys,
         exp
       );
@@ -441,19 +433,12 @@ let nary_funcE name typ xs exp =
   })
 
 (* Mono-morphic function declaration, sharing inferred from f's type *)
-let funcD f x exp =
-  match f.it, x.it with
-  | VarE _, VarE _ ->
-    letD f (funcE (id_of_exp f) (typ f) x exp)
-  | _ -> failwith "Impossible: funcD"
+let funcD ((id, typ) as f) x exp =
+  letD f (funcE id typ x exp)
 
 (* Mono-morphic, n-ary function declaration *)
-let nary_funcD f xs exp =
-  match f.it with
-  | VarE _ ->
-    letD f (nary_funcE (id_of_exp f) (typ f) xs exp)
-  | _ -> failwith "Impossible: funcD"
-
+let nary_funcD ((id, typ) as f) xs exp =
+  letD f (nary_funcE id typ xs exp)
 
 (* Continuation types *)
 
@@ -478,12 +463,12 @@ let seqE es =
 
 (* local lambda *)
 let (-->) x exp =
-  let fun_ty = T.Func (T.Local, T.Returns, [], T.as_seq (typ x), T.as_seq (typ exp)) in
+  let fun_ty = T.Func (T.Local, T.Returns, [], T.as_seq (typ_of_var x), T.as_seq (typ exp)) in
   funcE "$lambda" fun_ty x exp
 
 (* n-ary local lambda *)
 let (-->*) xs exp =
-  let fun_ty = T.Func (T.Local, T.Returns, [], List.map typ xs, T.as_seq (typ exp)) in
+  let fun_ty = T.Func (T.Local, T.Returns, [], List.map typ_of_var xs, T.as_seq (typ exp)) in
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
@@ -576,7 +561,7 @@ let forE pat exp1 exp2 =
   letE nxt (dotE exp1 (nameN "next") tnxt) (
     labelE lab T.unit (
       loopE (
-        switch_optE (callE nxt [] (tupE []))
+        switch_optE (callE (varE nxt) [] (tupE []))
           (breakE lab (tupE []))
           pat exp2 T.unit
       )

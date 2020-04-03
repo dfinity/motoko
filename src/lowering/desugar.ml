@@ -206,7 +206,7 @@ and build_fields obj_typ =
     | _ -> assert false
 
 and with_self i typ decs =
-  let_no_shadow (idE i typ) (selfRefE typ) decs
+  let_no_shadow (var i typ) (selfRefE typ) decs
 
 and build_actor at self_id es obj_typ =
   let fs = build_fields obj_typ in
@@ -222,7 +222,7 @@ and build_obj at s self_id es obj_typ =
   let ret_ds, ret_o =
     match self_id with
     | None -> [], obj_e
-    | Some id -> let self = idE id.it obj_typ in [ letD self obj_e ], self
+    | Some id -> let self = var id.it obj_typ in [ letD self obj_e ], varE self
   in I.BlockE (decs (List.map (fun ef -> ef.it.S.dec) es) @ ret_ds, ret_o)
 
 and typ_binds tbs = List.map typ_bind tbs
@@ -247,8 +247,8 @@ and array_dotE array_ty proj e =
       then T.Array (T.Mut varA)
       else T.Array varA in
     let ty_param = {T.var = "A"; sort = T.Type; T.bound = T.Any} in
-    let f = idE name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
-    callE f [element_ty] e in
+    let f = var name (fun_ty [ty_param] [poly_array_ty] [fun_ty [] t1 t2]) in
+    callE (varE f) [element_ty] e in
   match T.is_mut (T.as_array array_ty), proj with
     | true,  "len"  -> call "@mut_array_len"    [] [T.nat]
     | false, "len"  -> call "@immut_array_len"  [] [T.nat]
@@ -264,8 +264,8 @@ and array_dotE array_ty proj e =
 and blob_dotE proj e =
   let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
   let call name t1 t2 =
-    let f = idE name (fun_ty [T.blob] [fun_ty t1 t2]) in
-    callE f [] e in
+    let f = var name (fun_ty [T.blob] [fun_ty t1 t2]) in
+    callE (varE f) [] e in
   match proj with
     | "size"   -> call "@blob_size"   [] [T.nat]
     | "bytes" -> call "@blob_bytes" [] [T.iter_obj T.(Prim Word8)]
@@ -274,8 +274,8 @@ and blob_dotE proj e =
 and text_dotE proj e =
   let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
   let call name t1 t2 =
-    let f = idE name (fun_ty [T.text] [fun_ty t1 t2]) in
-    callE f [] e in
+    let f = var name (fun_ty [T.text] [fun_ty t1 t2]) in
+    callE (varE f) [] e in
   match proj with
     | "len"   -> call "@text_len"   [] [T.nat]
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
@@ -287,10 +287,10 @@ and block force_unit ds =
   | _, S.ExpD e ->
     (decs prefix, exp e)
   | false, S.LetD ({it = S.VarP x; _}, e) ->
-    (decs ds, idE x.it e.note.S.note_typ)
+    (decs ds, varE (var x.it e.note.S.note_typ))
   | false, S.LetD (p', e') ->
     let x = fresh_var "x" (e'.note.S.note_typ) in
-    (decs prefix @ [letD x (exp e'); letP (pat p') x], clone x)
+    (decs prefix @ [letD x (exp e'); letP (pat p') (varE x)], varE x)
   | _ , S.IgnoreD _ (* redundant, but explicit *)
   | _, _ ->
     (decs ds, tupE [])
@@ -426,12 +426,12 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
       (fun e -> e)
     | S.WildP ->
       let v = fresh_var "param" p.note in
-      arg_of_exp v,
+      arg_of_var v,
       (fun e -> e)
     |  _ ->
       let v = fresh_var "param" p.note in
-      arg_of_exp v,
-      (fun e -> blockE [letP (pat p) v] e)
+      arg_of_var v,
+      (fun e -> blockE [letP (pat p) (varE v)] e)
   in
 
   let args, wrap =
@@ -439,7 +439,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | _, (S.AnnotP _ | S.ParP _) -> assert false
     | _, S.WildP ->
       let vs = fresh_vars "ignored" tys in
-      List.map arg_of_exp vs,
+      List.map arg_of_var vs,
       (fun e -> e)
     | 1, _ ->
       let a, wrap = to_arg p in
@@ -454,8 +454,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
       ) ps ([], fun e -> e)
     | _, _ ->
       let vs = fresh_vars "param" tys in
-      List.map arg_of_exp vs,
-      (fun e -> blockE [letP (pat p) (tupE vs)] e)
+      List.map arg_of_var vs,
+      (fun e -> blockE [letP (pat p) (tupE (List.map varE vs))] e)
   in
 
   let wrap_po e =
@@ -467,7 +467,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
         [letD v (primE I.ICCallerPrim []);
          letP (pat p)
            (newObjE T.Object
-              [{ it = {Ir.name = "caller"; var = id_of_exp v};
+              [{ it = {Ir.name = "caller"; var = id_of_var v};
                  at = no_region;
                  note = T.caller }]
               T.ctxt)]

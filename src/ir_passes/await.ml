@@ -14,8 +14,8 @@ let fresh_err_cont ()  = fresh_var "r" (err_contT)
 
 (* continuations, syntactic and meta-level *)
 
-type kont = ContVar of exp
-          | MetaCont of T.typ * (exp -> exp)
+type kont = ContVar of var
+          | MetaCont of T.typ * (var -> exp)
 
 let meta typ exp =
   let expanded = ref false in
@@ -29,7 +29,7 @@ let meta typ exp =
 (* reify a continuation as syntax *)
 let letcont k scope =
   match k with
-  | ContVar k' -> scope (clone k') (* letcont eta-contraction *)
+  | ContVar k' -> scope k' (* letcont eta-contraction *)
   | MetaCont (typ, cont) ->
     let k' = fresh_cont typ in
     let v = fresh_var "v" typ in
@@ -41,11 +41,11 @@ type label = Return | Throw | Named of string
 
 let ( -@- ) k exp2 =
   match k with
-  | ContVar exp1 ->
-     clone exp1 -*- exp2
-  | MetaCont (typ,k) ->
+  | ContVar v ->
+     varE v -*- exp2
+  | MetaCont (typ, k) ->
      match exp2.it with
-     | VarE _ -> k exp2
+     | VarE v -> k (var v exp2.note.Note.typ)
      | _ ->
         let u = fresh_var "u" typ in
         letE u exp2 (k u)
@@ -159,15 +159,15 @@ and binary context k binE e1 e2 =
   | T.Triv, T.Await ->
     let v1 = fresh_var "v" (typ e1) in (* TBR *)
     letE v1 (t_exp context e1)
-      (c_exp context e2 (meta (typ e2) (fun v2 -> k -@- binE v1 v2)))
+      (c_exp context e2 (meta (typ e2) (fun v2 -> k -@- binE (varE v1) (varE v2))))
   | T.Await, T.Await ->
     c_exp context e1
       (meta (typ e1) (fun v1 ->
            c_exp context e2
              (meta (typ e2) (fun v2 ->
-                  k -@- binE v1 v2))))
+                  k -@- binE (varE v1) (varE v2)))))
   | T.Await, T.Triv ->
-    c_exp context e1 (meta (typ e1) (fun v1 -> k -@- binE v1 (t_exp context e2)))
+    c_exp context e1 (meta (typ e1) (fun v1 -> k -@- binE (varE v1) (t_exp context e2)))
   | T.Triv, T.Triv ->
     assert false
 
@@ -183,10 +183,10 @@ and nary context k naryE es =
       | T.Triv ->
         let v1 = fresh_var "v" (typ e1) in
         letE v1 (t_exp context e1)
-          (nary_aux (v1 :: vs) es)
+          (nary_aux (varE v1 :: vs) es)
       | T.Await ->
         c_exp context e1
-          (meta (typ e1) (fun v1 -> nary_aux (v1 :: vs) es))
+          (meta (typ e1) (fun v1 -> nary_aux (varE v1 :: vs) es))
   in
   nary_aux [] es
 
@@ -194,7 +194,7 @@ and nary context k naryE es =
 and c_if context k e1 e2 e3 =
   letcont k (fun k ->
   let trans_branch exp = match eff exp with
-    | T.Triv -> clone k -*- t_exp context exp
+    | T.Triv -> varE k -*- t_exp context exp
     | T.Await -> c_exp context exp (ContVar k)
   in
   let e2 = trans_branch e2 in
@@ -203,7 +203,7 @@ and c_if context k e1 e2 e3 =
   | T.Triv ->
     ifE (t_exp context e1) e2 e3 answerT
   | T.Await ->
-    c_exp context e1 (meta (typ e1) (fun v1 -> ifE v1 e2 e3 answerT))
+    c_exp context e1 (meta (typ e1) (fun v1 -> ifE (varE v1) e2 e3 answerT))
   )
 
 and c_loop context k e1 =
@@ -215,12 +215,12 @@ and c_loop context k e1 =
     let v1 = fresh_var "v" T.unit in
     blockE
       [funcD loop v1 (c_exp context e1 (ContVar loop))]
-      (clone loop -*- unitE ())
+      (varE loop -*- unitE ())
 
 and c_assign context k e lexp1 exp2 =
  match lexp1.it with
  | VarLE _ ->
-   unary context k (fun v2 -> e (AssignE(lexp1, v2))) exp2
+   unary context k (fun v2 -> e (AssignE(lexp1, varE v2))) exp2
  | DotLE (exp11, id) ->
    binary context k (fun v11 v2 ->
      e (AssignE ({lexp1 with it = DotLE (v11, id)}, v2))) exp11 exp2
@@ -257,7 +257,7 @@ and c_exp' context exp k =
     let cases' = List.map
       (fun {it = {pat;exp}; at; note} ->
         let exp' = match eff exp with
-          | T.Triv -> k -*- (t_exp context exp)
+          | T.Triv -> varE k -*- (t_exp context exp)
           | T.Await -> c_exp context exp (ContVar k)
         in
         {it = { pat; exp = exp' }; at; note})
@@ -273,7 +273,7 @@ and c_exp' context exp k =
        c_exp context exp1
          (meta (typ exp1)
            (fun v1 ->
-             { it = SwitchE(v1, cases');
+             { it = SwitchE(varE v1, cases');
                at = exp.at;
                note = Note.{ exp.note with typ = answerT } }))
     end)
@@ -284,19 +284,19 @@ and c_exp' context exp k =
     letcont k (fun k ->
     match eff exp1 with
     | T.Triv ->
-      k -*- (t_exp context exp1)
+      varE k -*- (t_exp context exp1)
     | T.Await ->
       let error = fresh_var "v" T.catch  in
       let cases' =
         List.map
           (fun {it = {pat;exp}; at; note} ->
             let exp' = match eff exp with
-              | T.Triv -> k -*- (t_exp context exp)
+              | T.Triv -> varE k -*- (t_exp context exp)
               | T.Await -> c_exp context exp (ContVar k)
             in
             { it = {pat;exp = exp' }; at; note })
           cases
-        @ [{ it = {pat = varP error; exp = f -*- error};
+        @ [{ it = {pat = varP error; exp = varE f -*- varE error};
              at = no_region;
              note = ()
         }] in
@@ -305,7 +305,7 @@ and c_exp' context exp k =
       blockE
         [ let e = fresh_var "e" T.catch in
           funcD throw e {
-            it = SwitchE (e, cases');
+            it = SwitchE (varE e, cases');
             at = exp.at;
             note = Note.{ def with typ = T.unit; eff = T.Await; (* shouldn't matter *) }
           }
@@ -360,18 +360,18 @@ and c_exp' context exp k =
     in
     letcont r (fun r ->
      letcont k (fun k ->
-       let kr = tupE [k;r] in
+       let kr = tupE [varE k; varE r] in
        match eff exp1 with
        | T.Triv ->
           awaitE (typ exp) (t_exp context exp1) kr
        | T.Await ->
           c_exp context  exp1
-            (meta (typ exp1) (fun v1 -> (awaitE (typ exp) v1 kr)))
+            (meta (typ exp1) (fun v1 -> (awaitE (typ exp) (varE v1) kr)))
      ))
   | DeclareE (id, typ, exp1) ->
-    unary context k (fun v1 -> e (DeclareE (id, typ, v1))) exp1
+    unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
   | DefineE (id, mut, exp1) ->
-    unary context k (fun v1 -> e (DefineE (id, mut, v1))) exp1
+    unary context k (fun v1 -> e (DefineE (id, mut, varE v1))) exp1
   | NewObjE _ -> exp
   | SelfCallE _ -> assert false
   | PrimE (p, exps) ->
@@ -394,8 +394,7 @@ and c_dec context dec (k:kont) =
        | T.Triv ->
          block (t_exp context exp)
        | T.Await ->
-         c_exp context exp (meta (typ exp)
-                              (fun v -> block v))
+         c_exp context exp (meta (typ exp) (fun v -> block (varE v)))
      end
   | VarD (id, _typ, exp) ->
     begin
@@ -405,7 +404,7 @@ and c_dec context dec (k:kont) =
       | T.Await ->
         c_exp context exp
           (meta (typ exp)
-            (fun v -> k -@- define_idE id Var v))
+            (fun v -> k -@- define_idE id Var (varE v)))
     end
 
 
@@ -460,8 +459,7 @@ and rename_pat' pat =
   | LitP _ -> (PatEnv.empty, pat.it)
   | VarP id ->
     let v = fresh_var "v" pat.note in
-    (PatEnv.singleton id v,
-     VarP (id_of_exp v))
+    (PatEnv.singleton id v, VarP (id_of_var v))
   | TupP pats ->
     let (patenv,pats') = rename_pats pats in
     (patenv,TupP pats')
@@ -494,7 +492,7 @@ and define_pat patenv pat : dec list =
   | LitP _ ->
     []
   | VarP id ->
-    [ expD (define_idE id Const (PatEnv.find id patenv)) ]
+    [ expD (define_idE id Const (varE (PatEnv.find id patenv))) ]
   | TupP pats -> define_pats patenv pats
   | ObjP pfs -> define_pats patenv (pats_of_obj_pat pfs)
   | OptP pat1

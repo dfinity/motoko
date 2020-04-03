@@ -11,7 +11,6 @@ open Type
    at the loss of some precision in OCaml typing.
 *)
 
-type var = exp
 
 (* Field names *)
 
@@ -20,16 +19,19 @@ val nextN : Type.lab
 
 (* Identifiers *)
 
+type var
+
+val var : string -> typ -> var
+val id_of_var : var -> string
+val typ_of_var : var -> typ
+val arg_of_var : var -> arg
+val var_of_arg : arg -> var
+
 val fresh_id : string -> unit -> id
 val fresh_var : string -> typ -> var
 val fresh_vars : string -> typ list -> var list
 
 val clone : exp -> exp
-
-val idE : id -> typ -> exp
-val id_of_exp : var -> id
-val arg_of_exp : var -> arg
-val exp_of_arg : arg -> var
 
 (* Patterns *)
 
@@ -40,6 +42,7 @@ val seqP : pat list -> pat
 
 (* Expressions *)
 
+val varE : var -> exp
 val primE : Ir.prim -> exp list -> exp
 val selfRefE : typ -> exp
 val asyncE : typ -> typ -> exp -> exp
@@ -70,7 +73,7 @@ val tupE : exp list -> exp
 val breakE: id -> exp -> exp
 val retE: exp -> exp
 val immuteE: exp -> exp
-val assignE : exp -> exp -> exp
+val assignE : var -> exp -> exp
 val labelE : id -> typ -> exp -> exp
 val loopE : exp -> exp
 val forE : pat -> exp -> exp -> exp
