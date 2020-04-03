@@ -587,12 +587,12 @@ let lower_prog mode senv libs progs name =
   let prog_ir = async_lowering mode !Flags.async_lowering initial_stat_env prog_ir name in
   let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
   let prog_ir = show_translation true initial_stat_env prog_ir name in
-  analyze "static vals" Static_vals.analyze initial_stat_env prog_ir name;
+  analyze "constness analysis" Const.analyze initial_stat_env prog_ir name;
   prog_ir
 
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let prelude_ir = Lowering.Desugar.transform prelude in
-  analyze "static vals" Static_vals.analyze initial_stat_env prelude_ir "prelude";
+  analyze "constness analysis" Const.analyze initial_stat_env prelude_ir "prelude";
   let name = name_progs progs in
   let prog_ir = lower_prog mode initial_stat_env libs progs name in
   phase "Compiling" name;
