@@ -41,6 +41,28 @@ TOMMATH_FLAGS = \
   -DMP_NO_FILE \
 
 #
+# Various musl flags, in particular telling it to not have long doubles
+# and exclude <errno.h>, which pulls in too many dependencies
+#
+
+MUSL_FLAGS = \
+  -I $(MUSLSRC) \
+  -isystem $(MUSLSRC)/arch/wasm32 \
+  -isystem $(MUSLSRC)/src/include \
+  -isystem $(MUSLSRC)/src/internal \
+  -isystem $(MUSL_WASI_SYSROOT)/include \
+  -I $(MUSLSRC)/../headers/private \
+  --target=wasm32-emscripten \
+  -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 \
+  -DNL_ARGMAX=9 \
+  -D__wasilibc_printscan_no_long_double \
+  -D__wasilibc_printscan_full_support_option='""' \
+  -Derrno='(*({ static int bla = 0; &bla; }))' \
+  -D__wasi__ \
+  -D__NEED_va_list \
+  -D__NEED_off_t
+
+#
 # clang flags used both for Wasm compilation and native (i.e. test suite) compilation
 #
 
@@ -108,7 +130,7 @@ _build/native/tommath_%.o: %.c rts.h buf.h | _build/native
 	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
 
 _build/wasm/musl_%.o: %.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) -I$(MUSLSRC) -isystem $(MUSLSRC)/arch/wasm32 -isystem $(MUSLSRC)/src/include -isystem $(MUSLSRC)/src/internal -isystem $(MUSL_WASI_SYSROOT)/include -I $(MUSLSRC)/../headers/private --std=c11 --target=wasm32-emscripten -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 -DNL_ARGMAX=9 -D__wasilibc_printscan_no_long_double -D__wasilibc_printscan_full_support_option='""' -Derrno='(*({ static int bla = 0; &bla; }))' -D__wasi__ -D__NEED_va_list -D__NEED_off_t $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(MUSL_FLAGS) --std=c11 $< --output $@
 
 RTS_WASM_O=$(RTSFILES:%=_build/wasm/_%.o)
 RTS_NATIVE_O=$(RTSFILES:%=_build/native/_%.o)
