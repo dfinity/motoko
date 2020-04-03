@@ -68,6 +68,8 @@ MUSL_FLAGS = \
   -D'TOKENPASTE(x, y)=TOKENPASTE0(x, y)' \
   -D'__fwritex=TOKENPASTE(__fwritex_,__LINE__)' \
   -D'__fwritex_155(s, l, f)=(f->write((f), (s), (l)))' \
+  -D'__towrite=TOKENPASTE(__towrite_,__LINE__)' \
+  -D'__towrite_723(f)=(0)' \
   -D__wasilibc_printscan_no_long_double \
   -D__wasilibc_printscan_full_support_option='""' \
   -D__wasi__ \

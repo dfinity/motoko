@@ -182,7 +182,6 @@ int wctomb(char *s, wchar_t wc) { *s = '\0'; }
 int fputs(const char *s, void *f) { return 0; }
 void abort(void) __attribute__((__noreturn__)) { bigint_trap(); }
 char *strerror(int e) { return ""; }
-int __towrite(void *f) { return false; }
 
 export as_ptr float_fmt(double a) {
   extern int snprintf(char *__restrict, size_t, const char *__restrict, ...);
