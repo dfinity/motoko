@@ -215,6 +215,8 @@ let prim = function
     (match Value.as_tup v with
      | [a; b] -> k (Float (Float.copysign (as_float a) (as_float b)))
      | _ -> assert false)
+  | "fsin" -> fun _ v k -> k Float.(Float (of_float (Stdlib.sin (to_float (as_float v)))))
+  | "fcos" -> fun _ v k -> k Float.(Float (of_float (Stdlib.cos (to_float (as_float v)))))
 
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->
