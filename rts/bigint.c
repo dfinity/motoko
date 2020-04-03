@@ -176,13 +176,6 @@ export as_ptr bigint_of_word64_signed(int64_t b) {
 }
 
 
-/* Stubbery */
-
-int wctomb(char *s, wchar_t wc) { *s = '\0'; }
-int fputs(const char *s, void *f) { return 0; }
-void abort(void) __attribute__((__noreturn__)) { bigint_trap(); }
-char *strerror(int e) { return ""; }
-
 export long long float_to_I64(double a) {
   return a;
 }
