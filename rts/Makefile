@@ -133,7 +133,7 @@ vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(TOMMA
 # Our part of the RTS, Wasm and native
 #
 
-RTSFILES=rts idl bigint buf utf8_valid closure-table text blob url
+RTSFILES=rts idl bigint float buf utf8_valid closure-table text blob url
 
 _build/wasm/%.o: %.c rts.h buf.h | _build/wasm
 	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
