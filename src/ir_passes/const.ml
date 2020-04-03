@@ -137,13 +137,15 @@ let rec exp lvl env e : lazy_bool =
     | DeclareE (id, _, e1) ->
       exp_ lvl (M.add id surely_false env) e1;
       surely_false
-    | AssignE (_, e1) | LoopE e1 | LabelE (_, _, e1) | AsyncE (_, e1, _)
-    | DefineE (_, _, e1) ->
+    | LoopE e1 | AsyncE (_, e1, _) ->
+      exp_ NotTopLvl env e1;
+      surely_false
+    | AssignE (_, e1) | LabelE (_, _, e1) | DefineE (_, _, e1) ->
       exp_ lvl env e1;
       surely_false
     | IfE (e1, e2, e3)
     | SelfCallE (_, e1, e2, e3) ->
-      exp_ lvl env e1;
+      exp_ NotTopLvl env e1;
       exp_ lvl env e2;
       exp_ lvl env e3;
       surely_false
