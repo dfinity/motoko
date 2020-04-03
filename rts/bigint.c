@@ -184,17 +184,6 @@ void abort(void) __attribute__((__noreturn__)) { bigint_trap(); }
 char *strerror(int e) { return ""; }
 int __towrite(void *f) { return false; }
 
-struct _IO_FILE {
-	unsigned flags;
-	unsigned char *rpos, *rend;
-	int (*close)(struct _IO_FILE *);
-	unsigned char *wend, *wpos;
-	unsigned char *wbase;
-	size_t (*read)(struct _IO_FILE *, unsigned char *, size_t);
-	size_t (*write)(struct _IO_FILE *, const unsigned char *, size_t);
-};
-size_t __fwritex(const unsigned char *s, size_t l, struct _IO_FILE *f) { return f->write(f, s, l); }
-
 export as_ptr float_fmt(double a) {
   extern int snprintf(char *__restrict, size_t, const char *__restrict, ...);
   char buf[50];

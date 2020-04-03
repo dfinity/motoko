@@ -44,9 +44,18 @@ TOMMATH_FLAGS = \
 # Various musl flags, in particular telling it to not have long doubles
 # and exclude <errno.h>, which pulls in too many dependencies
 #
+# Note: we use a bit of magic to get rid of invocations to __fwritex
+#       - the headers contain a declaration, we rename it to (__fwritex ## __LINE__)
+#       - similarly the invocation becomes __fwritex_155(...) which we inline immediately
+#       Be aware that upon bumps of the musl sources the line number may move a bit
+#       and will need tweaks below.
+#       Similarly we define include guards (to suppress certain headers), but those should be
+#       pretty stable.
+#       TODO: wasm2wat mo-rts.wasm | grep -F '(import' | grep __fwritex_
+#
+#       See also https://stackoverflow.com/questions/1597007/creating-c-macro-with-and-line-token-concatenation-with-positioning-macr
 
 MUSL_FLAGS = \
-  -I $(MUSLSRC) \
   -isystem $(MUSLSRC)/arch/wasm32 \
   -isystem $(MUSLSRC)/src/include \
   -isystem $(MUSLSRC)/src/internal \
@@ -55,6 +64,10 @@ MUSL_FLAGS = \
   -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 \
   -Derrno='(*({ static int bla = 0; &bla; }))' \
   -DNL_ARGMAX=9 \
+  -D'TOKENPASTE0(x, y)=x \#\# y' \
+  -D'TOKENPASTE(x, y)=TOKENPASTE0(x, y)' \
+  -D'__fwritex=TOKENPASTE(__fwritex_,__LINE__)' \
+  -D'__fwritex_155(s, l, f)=(f->write((f), (s), (l)))' \
   -D__wasilibc_printscan_no_long_double \
   -D__wasilibc_printscan_full_support_option='""' \
   -D__wasi__ \
