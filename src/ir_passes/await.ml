@@ -215,7 +215,7 @@ and c_loop context k e1 =
     let v1 = fresh_var "v" T.unit in
     blockE
       [funcD loop v1 (c_exp context e1 (ContVar loop))]
-      (varE loop -*- unitE)
+      (varE loop -*- unitE ())
 
 and c_assign context k e lexp1 exp2 =
  match lexp1.it with
@@ -411,7 +411,7 @@ and c_dec context dec (k:kont) =
 and c_decs context decs k =
   match decs with
   | [] ->
-    k -@- unitE
+    k -@- unitE ()
   | dec :: decs ->
     c_dec context dec (meta T.unit (fun v -> c_decs context decs k))
 

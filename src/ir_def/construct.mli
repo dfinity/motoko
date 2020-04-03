@@ -31,7 +31,6 @@ val fresh_id : string -> unit -> id
 val fresh_var : string -> typ -> var
 val fresh_vars : string -> typ list -> var list
 
-
 (* Patterns *)
 
 val varP : var -> pat
@@ -59,7 +58,7 @@ val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
 val ignoreE : exp -> exp
 
-val unitE : exp
+val unitE : unit -> exp
 val boolE : bool -> exp
 
 val callE : exp -> typ list -> exp -> exp
@@ -83,7 +82,7 @@ val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp
 val newObjE : obj_sort -> Ir.field list -> typ -> exp
 
-val unreachableE : exp
+val unreachableE : unit -> exp
 
 (* Declarations *)
 

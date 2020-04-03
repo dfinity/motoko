@@ -22,8 +22,8 @@ let id_of_full_path (fp : string) : Syntax.id =
 
 (* Combinators used in the desugaring *)
 
-let trueE : Ir.exp = boolE true
-let falseE : Ir.exp = boolE false
+let trueE () : Ir.exp = boolE true
+let falseE () : Ir.exp = boolE false
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
@@ -123,12 +123,12 @@ and exp' at note = function
     I.PrimE (I.OtherPrim p, [exp e])
   | S.CallE (e1, inst, e2) ->
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
-  | S.BlockE [] -> unitE.it
+  | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
-  | S.NotE e -> I.IfE (exp e, falseE, trueE)
-  | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE)
-  | S.OrE (e1, e2) -> I.IfE (exp e1, trueE, exp e2)
+  | S.NotE e -> I.IfE (exp e, falseE (), trueE ())
+  | S.AndE (e1, e2) -> I.IfE (exp e1, exp e2, falseE ())
+  | S.OrE (e1, e2) -> I.IfE (exp e1, trueE (), exp e2)
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
@@ -136,7 +136,7 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
-  | S.DebugE e -> if !Mo_config.Flags.release_mode then unitE.it else (exp e).it
+  | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
