@@ -544,6 +544,12 @@ let tailcall_optimization =
 let show_translation =
   transform_if "Translate show" Show.transform
 
+let analyze anal_name anal env prog name =
+  phase anal_name name;
+  anal env prog;
+  if !Flags.check_ir
+  then Check_ir.check_prog !Flags.verbose env anal_name prog
+
 
 (* Compilation *)
 
@@ -581,6 +587,7 @@ let lower_prog mode senv libs progs name =
   let prog_ir = async_lowering mode !Flags.async_lowering initial_stat_env prog_ir name in
   let prog_ir = tailcall_optimization true initial_stat_env prog_ir name in
   let prog_ir = show_translation true initial_stat_env prog_ir name in
+  analyze "static vals" Static_vals.analyze initial_stat_env prog_ir name;
   prog_ir
 
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
