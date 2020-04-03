@@ -12,7 +12,7 @@ let typ t = Atom (Type.string_of_typ t)
 let prim_ty p = typ (Type.Prim p)
 let kind k = Atom (Type.string_of_kind k)
 
-let rec exp e = match e.it with
+let rec exp e = (if e.note.Note.const then (fun x -> "Const" $$ [x]) else (fun x -> x)) (match e.it with
   | VarE i              -> "VarE"    $$ [id i]
   | LitE l              -> "LitE"    $$ [lit l]
   | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
@@ -31,7 +31,7 @@ let rec exp e = match e.it with
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
   | ActorE (ds, fs, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
-  | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
+  | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs)
 
 and lexp le = match le.it with
   | VarLE i             -> "VarLE" $$ [id i]
