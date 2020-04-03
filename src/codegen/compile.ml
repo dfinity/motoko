@@ -4549,7 +4549,7 @@ module StackRep = struct
     | UnboxedWord32 -> "UnboxedWord32"
     | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
     | Unreachable -> "Unreachable"
-    | Const _ -> "StaticThing"
+    | Const _ -> "Const"
 
   let join (sr1 : t) (sr2 : t) = match sr1, sr2 with
     | _, _ when sr1 = sr2 -> sr1
@@ -4560,6 +4560,8 @@ module StackRep = struct
     | _, Vanilla -> Vanilla
     | Vanilla, _ -> Vanilla
     | Const _, Const _ -> Vanilla
+    | Const _, UnboxedTuple 0 -> UnboxedTuple 0
+    | UnboxedTuple 0, Const _-> UnboxedTuple 0
     | _, _ ->
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
@@ -6025,7 +6027,9 @@ let rec compile_lexp (env : E.t) ae lexp =
 
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
-  match exp.it with
+  if exp.note.Note.const
+  then let (c, fill) = compile_const_exp env ae exp in fill env ae; (SR.Const c, G.nop)
+  else match exp.it with
   | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.Note.typ) es ->
     (* Handle dead code separately, so that we can rely on useful type
        annotations below *)
