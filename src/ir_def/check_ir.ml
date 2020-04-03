@@ -5,8 +5,6 @@ open Source
 module T = Type
 module E = Ir_effect
 
-(* TODO: make note immutable, perhaps just using type abstraction *)
-
 (* TODO:
    dereferencing is still implicit in the IR (see immut_typ below);
    consider making it explicit as part of desugaring.
@@ -15,6 +13,23 @@ module E = Ir_effect
 (* TODO: enforce second-class nature of T.Mut? in check_typ *)
 
 (* TODO: check escape of free mutables via actors *)
+
+
+(*
+Note [Detecting unwanted sharing]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Some passes (in particular, finding constant expressions) do mutable updates
+to the AST notes. This would be bad if these notes were shared within the AST.
+So Check_ir checks that: At each note it passes, it bumps the note.check counter
+to env.check_iter. If it comes across a note.check == env.check_iter, then
+either Check_ir visited the note twice (not good) or the note was shared (also
+not good).
+
+The initial check_iter is chosen by looking at the top-level note.check and
+bumping it.
+
+*)
 
 (* Helpers *)
 
@@ -56,9 +71,10 @@ type env =
     rets : ret_env;
     async : T.con option;
     seen : con_env ref;
+    check_iter : int; (* To detect unwsharing *)
   }
 
-let env_of_scope scope flavor : env =
+let env_of_scope scope flavor check_iter : env =
   { flavor;
     vals = scope.Scope.val_env;
     cons = T.ConSet.empty;
@@ -66,6 +82,7 @@ let env_of_scope scope flavor : env =
     rets = None;
     async = None;
     seen = ref T.ConSet.empty;
+    check_iter;
   }
 
 
@@ -325,6 +342,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
   let check p = check env exp.at p in
   let (<:) t1 t2 = check_sub env exp.at t1 t2 in
   let (<~) t1 t2 = (if T.is_mut t2 then t1 else T.as_immut t1) <: t2 in
+  (* check note for sharing *)
+  check  (exp.note.Note.check < env.check_iter)
+    "AST note visited before: %s" (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+  exp.note <- Note.{ exp.note with check = env.check_iter };
   (* check type annotation *)
   let t = E.typ exp in
   check_typ env t;
@@ -883,7 +904,7 @@ and gather_dec env scope dec : scope =
 (* Programs *)
 
 let check_prog verbose scope phase (((ds, exp), flavor) as prog) : unit =
-  let env = env_of_scope scope flavor in
+  let env = env_of_scope scope flavor (exp.note.Note.check + 1) in
   try
     let scope = gather_block_decs env ds in
     let env' = adjoin env scope in

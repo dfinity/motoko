@@ -8,6 +8,10 @@ module R = Rename
 module T = Type
 open Construct
 
+let fresh_cont typ = fresh_var "k" (contT typ)
+
+let fresh_err_cont ()  = fresh_var "r" (err_contT)
+
 (* continuations, syntactic and meta-level *)
 
 type kont = ContVar of exp
@@ -25,7 +29,7 @@ let meta typ exp =
 (* reify a continuation as syntax *)
 let letcont k scope =
   match k with
-  | ContVar k' -> scope k' (* letcont eta-contraction *)
+  | ContVar k' -> scope (clone k') (* letcont eta-contraction *)
   | MetaCont (typ, cont) ->
     let k' = fresh_cont typ in
     let v = fresh_var "v" typ in
@@ -38,7 +42,7 @@ type label = Return | Throw | Named of string
 let ( -@- ) k exp2 =
   match k with
   | ContVar exp1 ->
-     exp1 -*- exp2
+     clone exp1 -*- exp2
   | MetaCont (typ,k) ->
      match exp2.it with
      | VarE _ -> k exp2
@@ -84,14 +88,14 @@ and t_exp' context exp' =
   | PrimE (BreakPrim id, [exp1]) ->
     begin
       match LabelEnv.find_opt (Named id) context with
-      | Some (Cont k) -> (retE (k -@- (t_exp context exp1))).it
+      | Some (Cont k) -> (retE (k -@- t_exp context exp1)).it
       | Some Label -> (breakE id (t_exp context exp1)).it
       | None -> assert false
     end
   | PrimE (RetPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Return context with
-      | Some (Cont k) -> (retE (k -@- (t_exp context exp1))).it
+      | Some (Cont k) -> (retE (k -@- t_exp context exp1)).it
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
@@ -190,7 +194,7 @@ and nary context k naryE es =
 and c_if context k e1 e2 e3 =
   letcont k (fun k ->
   let trans_branch exp = match eff exp with
-    | T.Triv -> k -*- t_exp context exp
+    | T.Triv -> clone k -*- t_exp context exp
     | T.Await -> c_exp context exp (ContVar k)
   in
   let e2 = trans_branch e2 in
@@ -203,15 +207,15 @@ and c_if context k e1 e2 e3 =
   )
 
 and c_loop context k e1 =
-  let loop = fresh_var "loop" (contT T.unit) in
   match eff e1 with
   | T.Triv ->
     assert false
   | T.Await ->
+    let loop = fresh_var "loop" (contT T.unit) in
     let v1 = fresh_var "v" T.unit in
     blockE
       [funcD loop v1 (c_exp context e1 (ContVar loop))]
-      (loop -*- unitE)
+      (clone loop -*- unitE ())
 
 and c_assign context k e lexp1 exp2 =
  match lexp1.it with
@@ -278,36 +282,36 @@ and c_exp' context exp k =
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->
     letcont k (fun k ->
-    let cases' = List.map
-      (fun {it = {pat;exp}; at; note} ->
-        let exp' = match eff exp with
-          | T.Triv -> k -*- (t_exp context exp)
-          | T.Await -> c_exp context exp (ContVar k)
-        in
-        { it = {pat;exp = exp' }; at; note })
-      cases
-    in
-    let error = fresh_var "v" T.catch  in
-    let cases' = cases' @ [
-      { it = {pat = varP error; exp = f -*- error};
-        at = no_region;
-        note = () }] in
-    let throw = fresh_err_cont () in
-    let e =  fresh_var "e" T.catch in
-    let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
-    begin
     match eff exp1 with
     | T.Triv ->
       k -*- (t_exp context exp1)
     | T.Await ->
+      let error = fresh_var "v" T.catch  in
+      let cases' =
+        List.map
+          (fun {it = {pat;exp}; at; note} ->
+            let exp' = match eff exp with
+              | T.Triv -> k -*- (t_exp context exp)
+              | T.Await -> c_exp context exp (ContVar k)
+            in
+            { it = {pat;exp = exp' }; at; note })
+          cases
+        @ [{ it = {pat = varP error; exp = f -*- error};
+             at = no_region;
+             note = ()
+        }] in
+      let throw = fresh_err_cont () in
+      let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
       blockE
-        [funcD throw e {
-          it = SwitchE (e, cases');
-          at = exp.at;
-          note = Note.{ def with typ = T.unit; eff = T.Await; (* shouldn't matter *) }
-        }]
+        [ let e = fresh_var "e" T.catch in
+          funcD throw e {
+            it = SwitchE (e, cases');
+            at = exp.at;
+            note = Note.{ def with typ = T.unit; eff = T.Await; (* shouldn't matter *) }
+          }
+        ]
         (c_exp context' exp1 (ContVar k))
-    end))
+    ))
   | LoopE exp1 ->
     c_loop context k exp1
   | LabelE (id, _typ, exp1) ->
@@ -408,7 +412,7 @@ and c_dec context dec (k:kont) =
 and c_decs context decs k =
   match decs with
   | [] ->
-    k -@- unitE
+    k -@- unitE ()
   | dec :: decs ->
     c_dec context dec (meta T.unit (fun v -> c_decs context decs k))
 

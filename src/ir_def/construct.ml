@@ -54,6 +54,9 @@ let fresh_var name_base typ : exp =
 let fresh_vars name_base ts =
   List.mapi (fun i t -> fresh_var (Printf.sprintf "%s%i" name_base i) t) ts
 
+(* Cloning of notes (to avoid unwanted sharing) *)
+
+let clone exp = { exp with note = exp.note }
 
 (* Patterns *)
 
@@ -289,7 +292,7 @@ let tupE exps =
     note = Note.{ def with typ = T.Tup (List.map typ exps); eff };
   }
 
-let unitE = tupE []
+let unitE () = tupE []
 
 let breakE l exp =
   { it = PrimE (BreakPrim l, [exp]);
@@ -462,10 +465,6 @@ let err_contT =  T.Func (T.Local, T.Returns, [], [T.catch], [])
 
 let cpsT typ = T.Func (T.Local, T.Returns, [], [contT typ; err_contT], [])
 
-let fresh_cont typ = fresh_var "k" (contT typ)
-
-let fresh_err_cont ()  = fresh_var "r" (err_contT)
-
 (* Sequence expressions *)
 
 let seqE es =
@@ -584,7 +583,7 @@ let forE pat exp1 exp2 =
     )
   )
 
-let unreachableE =
-  (* Do we want UnreachableE in the AST *)
-  loopE unitE
+let unreachableE () =
+  (* Do we want a dedicated UnreachableE in the AST? *)
+  loopE (unitE ())
 

@@ -24,6 +24,8 @@ val fresh_id : string -> unit -> id
 val fresh_var : string -> typ -> var
 val fresh_vars : string -> typ list -> var list
 
+val clone : exp -> exp
+
 val idE : id -> typ -> exp
 val id_of_exp : var -> id
 val arg_of_exp : var -> arg
@@ -55,7 +57,7 @@ val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
 val ignoreE : exp -> exp
 
-val unitE : exp
+val unitE : unit -> exp
 val boolE : bool -> exp
 
 val callE : exp -> typ list -> exp -> exp
@@ -79,7 +81,7 @@ val declare_idE : id -> typ -> exp -> exp
 val define_idE : id -> mut -> exp -> exp
 val newObjE : obj_sort -> Ir.field list -> typ -> exp
 
-val unreachableE : exp
+val unreachableE : unit -> exp
 
 (* Declarations *)
 
@@ -98,8 +100,6 @@ val answerT : typ
 val contT : typ -> typ
 val err_contT : typ
 val cpsT : typ -> typ
-val fresh_cont : typ -> var
-val fresh_err_cont : unit -> var
 
 (* Sequence expressions *)
 

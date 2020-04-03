@@ -29,8 +29,6 @@ type lit =
 
 (* Patterns *)
 
-type 'a phrase = ('a, Note.t) Source.annotated_phrase
-
 type typ_bind' = {con : Type.con; sort: Type.bind_sort; bound : Type.typ}
 type typ_bind = typ_bind' Source.phrase
 
@@ -59,6 +57,7 @@ type arg = (string, Type.typ) Source.annotated_phrase
 
 (* Expressions *)
 
+type 'a phrase = ('a, Note.t) Source.annotated_phrase
 type exp = exp' phrase
 and exp' =
   | PrimE of (prim * exp list)                 (* primitive *)

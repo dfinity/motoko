@@ -97,11 +97,11 @@ let invoke_text_of_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e -
     T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.text]) in
   callE (idE "@text_of_array_mut" fun_typ) [t] (tupE [f; e])
 
-let list_build : 'a -> 'a -> 'a -> 'a list -> 'a list = fun pre sep post xs ->
+let list_build : 'a -> (unit -> 'a) -> 'a -> 'a list -> 'a list = fun pre sep post xs ->
   let rec go = function
     | [] -> [ post ]
     | [x] -> [ x; post ]
-    | x::xs -> [ x; sep ] @ go xs
+    | x::xs -> [ x; sep () ] @ go xs
   in [ pre ] @ go xs
 
 let catE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
@@ -172,23 +172,23 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     define_show t (invoke_prelude_show "@text_of_Char" t (argE t)),
     []
   | T.(Prim Null) ->
-    define_show t (textE ("null")),
+    define_show t (textE "null"),
     []
   | T.Func _ ->
-    define_show t (textE ("func")),
+    define_show t (textE "func"),
     []
   | T.Con (c,_) ->
     (* t is normalized, so this is a type parameter *)
     define_show t (textE ("show_for: cannot handle type parameter " ^ T.string_of_typ t)),
     []
   | T.Tup [] ->
-    define_show t (textE ("()")),
+    define_show t (textE "()"),
     []
   | T.Tup ts' ->
     let ts' = List.map T.normalize ts' in
     define_show t (
       cat_list (list_build
-        (textE "(") (textE ", ") (textE ")")
+        (textE "(") (fun () -> textE ", ") (textE ")")
         (List.mapi (fun i t' -> invoke_generated_show t' (projE (argE t) i)) ts')
       )
     ),
@@ -210,7 +210,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
   | T.Obj (T.Object, fs) ->
     define_show t (
       cat_list (list_build
-        (textE "{") (textE "; ") (textE "}")
+        (textE "{") (fun () -> textE "; ") (textE "}")
         (List.map (fun f ->
           let t' = T.as_immut (T.normalize f.Type.typ) in
           catE
@@ -235,7 +235,7 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     ),
     List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Non ->
-    define_show t unreachableE,
+    define_show t (unreachableE ()),
     []
   | _ -> assert false (* Should be prevented by can_show *)
 
