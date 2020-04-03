@@ -592,6 +592,7 @@ let lower_prog mode senv libs progs name =
 
 let compile_prog mode do_link libs progs : Wasm_exts.CustomModule.extended_module =
   let prelude_ir = Lowering.Desugar.transform prelude in
+  analyze "static vals" Static_vals.analyze initial_stat_env prelude_ir "prelude";
   let name = name_progs progs in
   let prog_ir = lower_prog mode initial_stat_env libs progs name in
   phase "Compiling" name;
