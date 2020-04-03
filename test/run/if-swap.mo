@@ -1,0 +1,11 @@
+func wantSeeSwap() : Nat =
+    if (true != true) 42 else 25
+
+// CHECK-LABEL: wantSeeSwap
+// CHECK: i32.eq
+// CHECK-NEXT: i32.eqz
+// CHECK-NEXT: if (result i32)
+// CHECK-NEXT: i32.const 168
+// CHECK-NEXT: else
+// CHECK-NEXT: i32.const 100
+
