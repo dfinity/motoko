@@ -52,12 +52,11 @@ MUSL_FLAGS = \
   -isystem $(MUSLSRC)/src/internal \
   -isystem $(MUSL_WASI_SYSROOT)/include \
   -I $(MUSLSRC)/../headers/private \
-  --target=wasm32-emscripten \
   -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 \
+  -Derrno='(*({ static int bla = 0; &bla; }))' \
   -DNL_ARGMAX=9 \
   -D__wasilibc_printscan_no_long_double \
   -D__wasilibc_printscan_full_support_option='""' \
-  -Derrno='(*({ static int bla = 0; &bla; }))' \
   -D__wasi__ \
   -D__NEED_va_list \
   -D__NEED_off_t
@@ -67,16 +66,18 @@ MUSL_FLAGS = \
 #
 
 CLANG_FLAGS = \
-   --compile  \
+   --compile \
    -fpic \
    -fvisibility=hidden \
+   --std=c11
 
 #
 # clang flags only used during Wasm compilation
 #
 
 WASM_FLAGS = \
-   --target=wasm32-emscripten -fvisibility=hidden \
+   --target=wasm32-emscripten \
+   -fvisibility=hidden \
    -fno-builtin -ffreestanding \
    --optimize=3 \
 
@@ -96,10 +97,10 @@ _build/wasm _build/native:
 #
 
 _build/wasm/tommath_%.o: bn_%.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 _build/native/tommath_%.o: bn_%.c | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
+	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 TOMMATH_WASM_O=$(TOMMATHFILES:%=_build/wasm/tommath_%.o)
 TOMMATH_NATIVE_O=$(TOMMATHFILES:%=_build/native/tommath_%.o)
@@ -117,23 +118,23 @@ vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(TOMMA
 
 RTSFILES=rts idl bigint buf utf8_valid closure-table text blob url
 
-_build/wasm/_%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11 $< --output $@
+_build/wasm/%.o: %.c rts.h buf.h | _build/wasm
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
 
-_build/native/_%.o: %.c rts.h buf.h | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) --std=c11 $< --output $@
+_build/native/%.o: %.c rts.h buf.h | _build/native
+	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) -I$(TOMMATHSRC) $< --output $@
 
 _build/wasm/tommath_%.o: %.c rts.h buf.h | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 _build/native/tommath_%.o: %.c rts.h buf.h | _build/native
-	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) --std=c11 $< --output $@
+	$(CLANG) $(CLANG_FLAGS) $(TOMMATH_FLAGS) $< --output $@
 
 _build/wasm/musl_%.o: %.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(MUSL_FLAGS) --std=c11 $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS) $(WASM_FLAGS) $(MUSL_FLAGS) $< --output $@
 
-RTS_WASM_O=$(RTSFILES:%=_build/wasm/_%.o)
-RTS_NATIVE_O=$(RTSFILES:%=_build/native/_%.o)
+RTS_WASM_O=$(RTSFILES:%=_build/wasm/%.o)
+RTS_NATIVE_O=$(RTSFILES:%=_build/native/%.o)
 
 #
 # The actual RTS, as we ship it with the compiler
