@@ -24,7 +24,7 @@ open Ir
   propagate more knowledge automatically. When one of them knows it is going to
   be surely false, then it updates the corresponding `note.const` field.
 
-  This works even in the presence of recursion, becuase it is monotonous: We start
+  This works even in the presence of recursion, becuase it is monotonic: We start
   with true (possibly constant) and only use implications to connect these values, so
   all propagations of “false” eventually terminate.
 
