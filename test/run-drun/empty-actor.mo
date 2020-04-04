@@ -1,7 +1,7 @@
 actor {};
 
 // The prelude should not require any code (besides maybe a call to collect) at runtime
-// CHECK: (func $start (type 4))
+// DON'TCHECK: (func $start (type 4))
 
 // CHECK:  (func $canister_init (type 4)
 // CHECK-NEXT:    call $start

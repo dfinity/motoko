@@ -440,6 +440,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         f (V.Tup[vc; kv; rv]) v2 k
       | ICCallerPrim, [] ->
         k env.caller
+      | ICStableRead _, [] ->
+        k V.Null (* faking it *)
+      | ICStableWrite _, [v1] ->
+        k V.unit (* faking it *)
       | SelfRef _, [] ->
         k (V.Text env.self)
       | _ ->

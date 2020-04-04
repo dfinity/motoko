@@ -3164,6 +3164,11 @@ let export_upgrade_scaffold env =
   if E.mode env = Flags.ICMode || E.mode env = Flags.RefMode then
   let pre_upgrade_fi = E.add_fun env "pre_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
+      (* TODO:
+         call wellknown (internal) @stableWrite function of
+         actor to serialize stable decs' composite value to stable store
+         (utilizing type-indexed prim call `ICStableWrite ty [e]`)
+      *)
 
       (* grow stable memory if needed *)
       let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
@@ -6489,7 +6494,22 @@ and compile_exp (env : E.t) ae exp =
       compile_exp_as env ae SR.Vanilla k ^^ set_k ^^
       compile_exp_as env ae SR.Vanilla r ^^ set_r ^^
       FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r
-      end
+        end
+
+    | ICStableRead ty, [] ->
+      (* TODO:
+      On initial install, return Null
+      On upgrade, deserialize stable store to v : ty, returning ? v
+      *)
+      compile_lit env NullLit
+
+    | ICStableWrite ty, [e] ->
+      SR.unit,
+      compile_exp_as env ae SR.Vanilla e ^^
+      (* TODO:
+         don't discard but serialise value of e : ty to stable store
+      *)
+      G.i Drop
 
     (* Unknown prim *)
     | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
