@@ -176,6 +176,9 @@ val concrete : typ -> bool
 val shared : typ -> bool
 val find_unshared : typ -> typ option
 val is_shared_func : typ -> bool
+
+val stable : typ -> bool
+
 val inhabited : typ -> bool
 val span : typ -> int option
 

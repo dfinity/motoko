@@ -129,6 +129,8 @@ and prim =
   | ICRejectPrim
   | ICCallerPrim
   | ICCallPrim
+  | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
+  | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
 
 
 (* Declarations *)

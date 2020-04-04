@@ -495,6 +495,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
+    | ICStableRead t1, [] ->
+      check (T.stable t1) "Unstable type argument to ICStableRead";
+      T.Opt t1 <: t
+    | ICStableWrite t1, [exp1] ->
+      check (T.stable t1) "Unstable type argument to ICStableWrite";
+      typ exp1 <: t1;
+      T.unit <: t
     | NumConvPrim (p1, p2), [e] ->
       (* we could check if this conversion is supported *)
       typ e <: T.Prim p1;

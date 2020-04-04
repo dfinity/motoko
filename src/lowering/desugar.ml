@@ -215,15 +215,29 @@ and build_actor at self_id es obj_typ =
   let stabs = List.map (fun ef -> ef.it.S.stab) es in
   let pairs = List.map2 stabilize stabs ds in
   let fieldss = List.map fst pairs in
+  let fields = List.concat fieldss in
   let mk_ds = List.map snd pairs in
-  let ty = T.Obj(T.Object,List.sort T.compare_field (List.concat fieldss)) in
+  let ty = T.Obj (T.Object, List.sort T.compare_field fields) in
   let state = fresh_var "state" (T.Opt ty) in
   let ds = List.map (fun mk_d -> mk_d state) mk_ds in
-  let ds = letD state
-     { it = I.LitE (I.NullLit);
-       at = no_region;
-       note = {I.note_typ = state.note.I.note_typ; I.note_eff = T.Triv}
-     }::ds in
+  let stableWrite = idE "@stableWrite" (T.Func(T.Local, T.Returns, [], [], [])) in
+  let ds =
+    letD state (primE (I.ICStableRead ty) []) ::
+    nary_funcD stableWrite []
+      (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
+       blockE
+         [letP (seqP (List.map varP vs)) (* dereference any mutable vars *)
+            (seqE (List.map (fun f -> idE f.T.lab f.T.typ) fields))]
+         (primE (I.ICStableWrite ty)
+            [ newObjE T.Object
+                (List.map2 (fun f v ->
+                     { it = {I.name = f.Type.lab; I.var = id_of_exp v};
+                       at = no_region;
+                       note = f.Type.typ }
+                   ) fields vs)
+                ty])) ::
+    ds
+  in
   let ds' = match self_id with
     | Some n -> with_self n.it obj_typ ds
     | None -> ds in

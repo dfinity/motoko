@@ -81,6 +81,8 @@ let primE prim es =
     | ICReplyPrim _ -> T.Non
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
+    | ICStableRead t -> T.Opt t
+    | ICStableWrite _ -> T.unit
     | CastPrim (t1, t2) -> t2
     | _ -> assert false (* implement more as needed *)
   in
