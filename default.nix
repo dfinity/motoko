@@ -206,11 +206,6 @@ rec {
             # run this once to work around self-unpacking-race-condition
             type -p drun && drun --version
             make -C ${dir}
-
-	    if test -e ${dir}/_out/stats.csv
-	    then
-	      cp ${dir}/_out/stats.csv $out
-	    fi
           '';
       }; in
 
@@ -218,7 +213,13 @@ rec {
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
           export PERF_OUT=$out
-        '' + args.checkPhase;
+        '' + args.checkPhase + ''
+          if ! grep -q ^gas/ $out
+          then
+            echo "perf stats do not include gas. change in drun output format?" >&2
+            exit 1
+          fi
+        '';
       }); in
 
     let qc = testDerivation {
@@ -352,6 +353,18 @@ rec {
     '';
   };
 
+  check-formatting = stdenv.mkDerivation {
+    name = "check-formatting";
+    buildInputs = with nixpkgs; [ ocamlformat ];
+    src = subpath "./src";
+    doCheck = true;
+    phases = "unpackPhase checkPhase installPhase";
+    installPhase = "touch $out";
+    checkPhase = ''
+      ocamlformat --check languageServer/*.{ml,mli}
+    '';
+  };
+
   stdlib-tests = stdenv.mkDerivation {
     name = "stdlib-tests";
     src = subpath ./stdlib/test;
@@ -449,6 +462,7 @@ rec {
       users-guide
       ic-ref
       shell
+      check-formatting
       check-generated
     ] ++ builtins.attrValues tests
       ++ builtins.attrValues examples;
@@ -469,7 +483,7 @@ rec {
         rts.buildInputs ++
         js.buildInputs ++
         users-guide.buildInputs ++
-        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlPackages.utop ] ++
+        [ nixpkgs.ncurses nixpkgs.ocamlPackages.merlin nixpkgs.ocamlformat nixpkgs.ocamlPackages.utop ] ++
         builtins.concatMap (d: d.buildInputs) (builtins.attrValues tests)
       ));
 
