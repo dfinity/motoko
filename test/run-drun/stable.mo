@@ -3,6 +3,8 @@ actor {
   Prim.debugPrint ("init'ed");
 
   stable let always10 = 10;
+  stable let () = ();
+  stable let (fst,snd) = ("hello","world");
   stable var c = 1;
   public func inc() { c += 1; };
   public query func check(n : Int) : async () {

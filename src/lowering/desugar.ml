@@ -246,7 +246,20 @@ and stabilize stab_opt d =
     )
   | (S.Stable, I.LetD(p, e)) ->
     let fields = fields_of_pat [] p in
-    (fields, fun v -> d)
+    (fields, fun v ->
+     let s = fresh_var "s" (T.as_opt v.note.I.note_typ) in
+     let p', e_none, e_some, t =
+       let ids = List.map (fun field -> idE field.T.lab field.T.typ) fields in
+       let projs = List.map (fun field -> dotE s field.T.lab field.T.typ) fields in
+       let ts = List.map (fun field -> field.T.typ) fields in
+       seqP (List.map varP ids), seqE ids, seqE projs, T.seq ts
+     in
+     letP p'
+       (switch_optE v
+          (blockE [letP p e] e_none)
+          (varP s) (e_some)
+         t))
+
 
 and fields_of_pat acc p = match p.it with
   | I.WildP ->
