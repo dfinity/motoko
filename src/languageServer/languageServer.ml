@@ -143,6 +143,21 @@ let diagnostics_of_message : Diag.message -> Lsp_t.diagnostic * string =
       },
     msg.Diag.at.Source.left.Source.file )
 
+(** A record with all the mutable state and caches the Language Server needs *)
+type ls_state = {
+  decl_index : Declaration_index.t ref;  (** Our index of known definitions *)
+  vfs : Vfs.t ref;
+      (** The virtual file system. Our knowledge of opened files and their contents *)
+  startup_diagnostics : Diag.messages ref;
+      (** Diagnostics we encountered when building the index on startup. These need to
+       ** be cached here because we can't report them until initialization is completed  *)
+  files_with_diagnostics : Vfs.uri list ref;
+      (** All files with known diagnostics. We need to store them so that we can clear
+       ** their diagnostics once compilation succeeds *)
+  shutdown : bool ref;
+      (** Have we received the shutdown message?, A quirk of the LSP *)
+}
+
 let start : string -> bool -> 'a =
  fun entry_point debug ->
   let debug_channel : out_channel option =
@@ -163,28 +178,31 @@ let start : string -> bool -> 'a =
       !Flags.package_urls
   in
   let _ = Debug.logger := IO.log_to_file in
-  let shutdown = ref false in
-  let client_capabilities = ref None in
   let project_root = Sys.getcwd () in
+  let ls_state =
+    {
+      vfs = ref Vfs.empty;
+      decl_index = ref (Declaration_index.empty project_root);
+      startup_diagnostics = ref [];
+      files_with_diagnostics = ref [];
+      shutdown = ref false;
+    }
+  in
+  let client_capabilities = ref None in
   let _ = IO.log_to_file "project_root" project_root in
-  let startup_diags = ref [] in
-  let files_with_diags = ref [] in
-  let vfs = ref Vfs.empty in
-  let decl_index =
-    let ix =
+  let _ =
+    ls_state.decl_index :=
       match
-        Declaration_index.make_index IO.log_to_file project_root !vfs
+        Declaration_index.make_index IO.log_to_file project_root !(ls_state.vfs)
           [ entry_point ]
       with
       | Error errs ->
           List.iter
             (fun err -> IO.log_to_file "Error" (Diag.string_of_message err))
             errs;
-          startup_diags := errs;
+          ls_state.startup_diagnostics := errs;
           Declaration_index.empty project_root
       | Ok (ix, _) -> ix
-    in
-    ref ix
   in
   let sync_diagnostics msgs =
     let diags_by_file =
@@ -195,8 +213,8 @@ let start : string -> bool -> 'a =
              let _, file = List.hd diags in
              (Vfs.uri_from_file file, List.map fst diags))
     in
-    List.iter IO.clear_diagnostics !files_with_diags;
-    files_with_diags := List.map fst diags_by_file;
+    List.iter IO.clear_diagnostics !(ls_state.files_with_diagnostics);
+    ls_state.files_with_diagnostics := List.map fst diags_by_file;
     List.iter (Lib.Fun.uncurry IO.publish_diags) diags_by_file
   in
   let handle_message raw = function
@@ -247,7 +265,7 @@ let start : string -> bool -> 'a =
         in
         let position = params.Lsp_t.text_document_position_params_position in
         let response =
-          match Vfs.read_file uri !vfs with
+          match Vfs.read_file uri !(ls_state.vfs) with
           | None ->
               response_error_message id
                 Lsp_t.
@@ -258,8 +276,8 @@ let start : string -> bool -> 'a =
                   }
           | Some file_content ->
               let result =
-                Hover.hover_handler IO.log_to_file !decl_index position
-                  file_content project_root
+                Hover.hover_handler IO.log_to_file !(ls_state.decl_index)
+                  position file_content project_root
                   (Vfs.abs_file_from_uri IO.log_to_file uri)
               in
               response_result_message id result
@@ -272,7 +290,7 @@ let start : string -> bool -> 'a =
         in
         let position = params.Lsp_t.text_document_position_params_position in
         let response =
-          match Vfs.read_file uri !vfs with
+          match Vfs.read_file uri !(ls_state.vfs) with
           | None ->
               response_error_message id
                 Lsp_t.
@@ -284,21 +302,24 @@ let start : string -> bool -> 'a =
                   }
           | Some file_content ->
               let result =
-                Definition.definition_handler !decl_index position file_content
-                  project_root
+                Definition.definition_handler !(ls_state.decl_index) position
+                  file_content project_root
                   (Vfs.abs_file_from_uri IO.log_to_file uri)
               in
               response_result_message id result
         in
         IO.send (Lsp_j.string_of_response_message response)
-    | _, `TextDocumentDidOpen params -> vfs := Vfs.open_file params !vfs
-    | _, `TextDocumentDidChange params -> vfs := Vfs.update_file params !vfs
-    | _, `TextDocumentDidClose params -> vfs := Vfs.close_file params !vfs
+    | _, `TextDocumentDidOpen params ->
+        ls_state.vfs := Vfs.open_file params !(ls_state.vfs)
+    | _, `TextDocumentDidChange params ->
+        ls_state.vfs := Vfs.update_file params !(ls_state.vfs)
+    | _, `TextDocumentDidClose params ->
+        ls_state.vfs := Vfs.close_file params !(ls_state.vfs)
     | _, `TextDocumentDidSave _ ->
         let msgs =
           match
-            Declaration_index.make_index IO.log_to_file project_root !vfs
-              [ entry_point ]
+            Declaration_index.make_index IO.log_to_file project_root
+              !(ls_state.vfs) [ entry_point ]
           with
           | Error msgs' ->
               List.iter
@@ -307,20 +328,20 @@ let start : string -> bool -> 'a =
                 msgs';
               msgs'
           | Ok (ix, msgs') ->
-              decl_index := ix;
+              ls_state.decl_index := ix;
               msgs'
         in
         sync_diagnostics msgs
     | None, `Initialized _ ->
-        sync_diagnostics !startup_diags;
-        startup_diags := [];
+        sync_diagnostics !(ls_state.startup_diagnostics);
+        ls_state.startup_diagnostics := [];
         IO.show_message Lsp.MessageType.Info "Motoko LS initialized"
     | Some id, `Shutdown _ ->
-        shutdown := true;
+        ls_state.shutdown := true;
         response_result_message id (`ShutdownResponse None)
         |> Lsp_j.string_of_response_message
         |> IO.send
-    | _, `Exit _ -> if !shutdown then exit 0 else exit 1
+    | _, `Exit _ -> if !(ls_state.shutdown) then exit 0 else exit 1
     | Some id, `CompletionRequest params ->
         let uri =
           params.Lsp_t.text_document_position_params_textDocument
@@ -328,7 +349,7 @@ let start : string -> bool -> 'a =
         in
         let position = params.Lsp_t.text_document_position_params_position in
         let response =
-          match Vfs.read_file uri !vfs with
+          match Vfs.read_file uri !(ls_state.vfs) with
           | None ->
               response_error_message id
                 Lsp_t.
@@ -339,8 +360,8 @@ let start : string -> bool -> 'a =
                        opened yet";
                   }
           | Some file_content ->
-              Completion.completion_handler !decl_index IO.log_to_file
-                project_root
+              Completion.completion_handler !(ls_state.decl_index)
+                IO.log_to_file project_root
                 (Vfs.abs_file_from_uri IO.log_to_file uri)
                 file_content position
               |> response_result_message id
