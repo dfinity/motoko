@@ -113,7 +113,7 @@ let position_of_pos : Source.pos -> Lsp_t.position =
   Lsp_t.
     {
       (* The LSP spec requires zero-based positions *)
-      position_line = (if pos.Source.line > 0 then pos.Source.line - 1 else 0);
+      position_line = max 0 (pos.Source.line - 1);
       position_character = pos.Source.column;
     }
 
