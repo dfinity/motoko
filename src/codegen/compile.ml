@@ -6392,7 +6392,17 @@ and compile_exp (env : E.t) ae exp =
         SR.Vanilla,
         compile_exp_as env ae SR.UnboxedWord32 e ^^
         Func.share_code1 env "Word32->Char" ("n", I32Type) [I32Type]
-          UnboxedSmallWord.check_and_box_codepoint
+        UnboxedSmallWord.check_and_box_codepoint
+
+      | Float, Int64 ->
+        SR.UnboxedWord64,
+        compile_exp_as env ae SR.UnboxedFloat64 e ^^
+        E.call_import env "rts" "float_to_I64"
+
+      | Int64, Float ->
+        SR.UnboxedFloat64,
+        compile_exp_as env ae SR.UnboxedWord64 e ^^
+        E.call_import env "rts" "float_of_I64"
 
       | _ -> SR.Unreachable, todo_trap env "compile_exp" (Arrange_ir.exp exp)
       end
@@ -6480,16 +6490,6 @@ and compile_exp (env : E.t) ae exp =
       SR.Vanilla,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
       E.call_import env "rts" "float_fmt"
-
-    | OtherPrim "Float->Int64", [e] ->
-      SR.UnboxedWord64,
-      compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "float_to_I64"
-
-    | OtherPrim "Int64->Float", [e] ->
-      SR.UnboxedFloat64,
-      compile_exp_as env ae SR.UnboxedWord64 e ^^
-      E.call_import env "rts" "float_of_I64"
 
     | OtherPrim "fsin", [e] ->
       SR.UnboxedFloat64,

@@ -193,6 +193,8 @@ let num_conv_prim t1 t2 =
   | T.Word32, T.Char -> fun _ v k ->
     let i = Conv.int_of_word32_u (as_word32 v)
     in if i < 0xD800 || i >= 0xE000 && i < 0x110000 then k (Char i) else raise (Invalid_argument "character value out of bounds")
+  | T.Float, T.Int64 -> fun _ v k -> k (Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v)))))
+  | T.Int64, T.Float -> fun _ v k -> k (Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v)))))
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
 let prim =
@@ -218,8 +220,6 @@ let prim =
      | [a; b] -> k (Float (Float.copysign (as_float a) (as_float b)))
      | _ -> assert false)
   | "Float->Text" -> fun _ v k -> k (Text (Float.to_string (as_float v)))
-  | "Float->Int64" -> fun _ v k -> k (Int64 (Int_64.of_big_int (Big_int.big_int_of_int64 (Wasm.I64_convert.trunc_f64_s (as_float v)))))
-  | "Int64->Float" -> fun _ v k -> k (Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v)))))
   | "fsin" -> fun _ v k -> k (via_float Stdlib.sin v)
   | "fcos" -> fun _ v k -> k (via_float Stdlib.cos v)
 
