@@ -218,7 +218,7 @@ and build_actor at self_id es obj_typ =
   let fields = List.concat fieldss in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Object, List.sort T.compare_field fields) in
-  let state = fresh_var "state" (T.Opt ty) in
+  let state = fresh_var "state" ty in
   let ds = List.map (fun mk_d -> mk_d state) mk_ds in
   let stableWrite = idE "@stableWrite" (T.Func(T.Local, T.Returns, [], [], [])) in
   let ds =
@@ -227,7 +227,7 @@ and build_actor at self_id es obj_typ =
       (let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
        blockE
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars *)
-            (seqE (List.map (fun f -> idE f.T.lab f.T.typ) fields))]
+            (seqE (List.map (fun f -> optE (idE f.T.lab (T.as_opt (f.T.typ)))) fields))]
          (primE (I.ICStableWrite ty)
             [ newObjE T.Object
                 (List.map2 (fun f v ->
@@ -249,15 +249,18 @@ and stabilize stab_opt d =
   | (S.Flexible, _) ->
     ([], fun v -> d)
   | (S.Stable, I.VarD(i, t, e)) ->
-    ([Type.{ lab = i; typ = t }],
+    ([Type.{ lab = i; typ = T.Opt t }],
      fun v ->
-     let s = fresh_var "s" (T.as_opt v.note.I.note_typ) in
+     let s = fresh_var "s" t in
      varD i t
-       (switch_optE v
+       (switch_optE (dotE v i (T.Opt t))
           e
-          (varP s) (dotE s i t)
+          (varP s) s
           t)
     )
+  | (S.Stable, I.LetD(p, e)) ->
+    assert false
+(*
   | (S.Stable, I.LetD(p, e)) ->
     let fields = fields_of_pat [] p in
     (fields, fun v ->
@@ -279,7 +282,7 @@ and fields_of_pat acc p = match p.it with
   | I.WildP ->
     acc
   | I.VarP i ->
-    T.{ lab = i; typ = p.note }::acc
+    T.{ lab = i; typ = T.Opt p.note }::acc
   | I.TupP ps ->
     fields_of_pats acc ps
   | I.ObjP pfs ->
@@ -298,6 +301,7 @@ and fields_of_pats acc ps =
   | [] -> acc
   | p::ps' ->
     fields_of_pats (fields_of_pat acc p) ps'
+*)
 
 and build_obj at s self_id es obj_typ =
   let fs = build_fields obj_typ in

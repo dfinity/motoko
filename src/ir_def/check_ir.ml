@@ -320,6 +320,13 @@ let isAsyncE exp =
     -> true
   | _ -> false
 
+let store_typ t  =
+  T.stable t &&
+  match t with
+  | T.Obj(T.Object, fts) ->
+    List.for_all (fun f -> T.is_opt f.T.typ) fts
+  | _ -> false
+
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
@@ -496,10 +503,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (T.string_of_typ_expand t1)
       end
     | ICStableRead t1, [] ->
-      check (T.stable t1) "Unstable type argument to ICStableRead";
-      T.Opt t1 <: t
+      check (store_typ t1) "Invalid type argument to ICStableRead";
+      t1 <: t
     | ICStableWrite t1, [exp1] ->
-      check (T.stable t1) "Unstable type argument to ICStableWrite";
+      check (store_typ t1) "Invalid type argument to ICStableWrite";
       typ exp1 <: t1;
       T.unit <: t
     | NumConvPrim (p1, p2), [e] ->

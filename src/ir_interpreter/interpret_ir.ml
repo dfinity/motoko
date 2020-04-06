@@ -440,8 +440,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         f (V.Tup[vc; kv; rv]) v2 k
       | ICCallerPrim, [] ->
         k env.caller
-      | ICStableRead _, [] ->
-        k V.Null (* faking it *)
+      | ICStableRead t, [] ->
+        let (_, tfs) = T.as_obj t in
+        let ve = List.fold_left
+          (fun ve' tf -> V.Env.add tf.T.lab V.Null ve')
+          V.Env.empty tfs
+        in
+        k (V.Obj ve)
       | ICStableWrite _, [v1] ->
         k V.unit (* faking it *)
       | SelfRef _, [] ->

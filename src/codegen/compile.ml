@@ -6498,10 +6498,20 @@ and compile_exp (env : E.t) ae exp =
 
     | ICStableRead ty, [] ->
       (* TODO:
-      On initial install, return Null
-      On upgrade, deserialize stable store to v : ty, returning ? v
+         * On initial install:
+           1. return record of nulls
+         * On upgrade:
+           1. deserialize stable store to v : ty,
+           inserting null values for missing fields.
+           2. return v
       *)
-      compile_lit env NullLit
+      let (_, fs) = Type.as_obj ty in
+      let fs' = List.map
+        (fun f -> (f.Type.lab, fun () -> Opt.null))
+        fs
+      in
+      SR.Vanilla,
+      Object.lit_raw env fs'
 
     | ICStableWrite ty, [e] ->
       SR.unit,
