@@ -63,13 +63,21 @@ struct
 
   let read_message : unit -> string * Lsp_t.incoming_message option =
    fun () ->
-    let clength = input_line OC.in_channel in
-    let cl = "Content-Length: " in
-    let cll = String.length cl in
     let num =
-      int_of_string String.(trim (sub clength cll (length clength - cll - 1)))
-      + 2
+      (* Every LSP message begins with a content length header *)
+      input_line OC.in_channel
+      |> Lib.String.chop_prefix "Content-Length: "
+      (* If this fails the protocol was broken and we abort. Should we recover from this? *)
+      |> Option.get
+      (* `input_line` does not consume the trailing \r, so we need to trim it off here *)
+      |> String.trim
+      |> int_of_string
+      (* The protocol terminates the content length header with two \r\n s. Our `input_line`
+         call consumed the first, but we still need to eat the second one, so we add 2 to
+         the length of the message *)
+      |> ( + ) 2
     in
+
     let buffer = Buffer.create num in
     Buffer.add_channel buffer stdin num;
     let raw = String.trim (Buffer.contents buffer) in
