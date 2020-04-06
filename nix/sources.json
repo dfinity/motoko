@@ -39,6 +39,7 @@
     },
     "musl-wasi": {
         "branch": "master",
+        "builtin": false,
         "description": "WASI libc implementation for WebAssembly",
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
