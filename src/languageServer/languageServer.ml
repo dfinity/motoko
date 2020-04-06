@@ -193,11 +193,11 @@ let start : string -> bool -> 'a =
       |> Lib.List.group (fun (_, f1) (_, f2) -> f1 = f2)
       |> List.map (fun diags ->
              let _, file = List.hd diags in
-             (List.map fst diags, Vfs.uri_from_file file))
+             (Vfs.uri_from_file file, List.map fst diags))
     in
     List.iter IO.clear_diagnostics !files_with_diags;
-    files_with_diags := List.map snd diags_by_file;
-    List.iter (fun (diags, uri) -> IO.publish_diags uri diags) diags_by_file
+    files_with_diags := List.map fst diags_by_file;
+    List.iter (Lib.Fun.uncurry IO.publish_diags) diags_by_file
   in
   let handle_message raw = function
     | Some id, `Initialize params ->
