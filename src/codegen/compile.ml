@@ -109,23 +109,17 @@ The fields fall into the following categories:
  1. Static global fields. Never change.
     Example: whether we are compiling with -no-system-api
 
- 2. Immutable global fields. Change in a well-scoped manner.
-    Example: Mapping from Motoko names to their location.
-
- 3. Mutable global fields. Change only monotonously.
+ 2. Mutable global fields. Change only monotonically.
     These are used to register things like functions. This should be monotone
     in the sense that entries are only added, and that the order should not
     matter in a significant way. In some instances, the list contains futures
     so that we can reserve and know the _position_ of the thing before we have
     to actually fill it in.
 
- 4. Static local fields. Never change within a function.
+ 3. Static local fields. Never change within a function.
     Example: number of parameters and return values
 
- 5. Immutable local fields. Change in a well-scoped manner.
-    Example: Jump label depth
-
- 6. Mutable local fields. See above
+ 4. Mutable local fields. See above
     Example: Name and type of locals.
 
 **)
@@ -190,8 +184,6 @@ module E = struct
     (* Static *)
     n_param : int32; (* Number of parameters (to calculate indices of locals) *)
     return_arity : int; (* Number of return values (for type of Return) *)
-
-    (* Immutable *)
 
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
@@ -4715,18 +4707,25 @@ module VarEnv = struct
     | HeapStatic _ -> true
     | Const _ -> true
 
+  type lvl = TopLvl | NotTopLvl
+
   (*
   The source variable environment:
-  In scope variables and in-scope jump labels
+   - Whether we are on the top level
+   - In-scope variables
+   - scope jump labels
   *)
+
 
   module NameEnv = Env.Make(String)
   type t = {
+    lvl : lvl;
     vars : varloc NameEnv.t; (* variables ↦ their location *)
     labels : G.depth NameEnv.t; (* jump label ↦ their depth *)
   }
 
   let empty_ae = {
+    lvl = TopLvl;
     vars = NameEnv.empty;
     labels = NameEnv.empty;
   }
@@ -4736,6 +4735,7 @@ module VarEnv = struct
   *)
 
   let mk_fun_ae ae = { ae with
+    lvl = NotTopLvl;
     vars = NameEnv.filter (fun v l ->
       let non_local = is_non_local l in
       (* For debugging, enable this:
@@ -5021,8 +5021,9 @@ module FuncDec = struct
       else assert false (* no first class shared functions *)
 
   let lit env ae name sort control free_vars args mk_body ret_tys at =
-
     let captured = List.filter (VarEnv.needs_capture ae) free_vars in
+
+    if ae.VarEnv.lvl = VarEnv.TopLvl then assert (captured = []);
 
     if captured = []
     then
@@ -5302,8 +5303,6 @@ module AllocHow = struct
     ))
   let joins = List.fold_left join M.empty
 
-  type lvl = TopLvl | NotTopLvl
-
   let map_of_set = Freevars.map_of_set
   let set_of_map = Freevars.set_of_map
   let disjoint s1 s2 = S.is_empty (S.inter s1 s2)
@@ -5336,12 +5335,12 @@ module AllocHow = struct
          - everything that is non-static (i.e. still in locals)
     *)
     match lvl with
-    | NotTopLvl ->
+    | VarEnv.NotTopLvl ->
       map_of_set StoreHeap (S.union
         (S.inter (set_of_map (M.filter is_local_mut how)) captured)
         (S.inter (set_of_map (M.filter is_local how)) (S.diff captured seen))
       )
-    | TopLvl ->
+    | VarEnv.TopLvl ->
       map_of_set StoreStatic
         (S.inter (set_of_map (M.filter is_local how)) captured)
 
@@ -5382,7 +5381,7 @@ module AllocHow = struct
       | LetD ({it = VarP _; _}, e) when
         is_const_exp e &&
         disjoint (Freevars.eager_vars f) (set_of_map (M.filter is_not_const how_all)) &&
-        (lvl = TopLvl || disjoint (Freevars.captured_vars f) (set_of_map (M.filter require_closure how_all)))
+        (lvl = VarEnv.TopLvl || disjoint (Freevars.captured_vars f) (set_of_map (M.filter require_closure how_all)))
       -> map_of_set (Const : how) d
 
 
@@ -5407,7 +5406,8 @@ module AllocHow = struct
     | VarEnv.HeapInd _ -> StoreHeap
     ) ae.VarEnv.vars
 
-  let decs (ae : VarEnv.t) lvl decs captured_in_body : allocHow =
+  let decs (ae : VarEnv.t) decs captured_in_body : allocHow =
+    let lvl = ae.VarEnv.lvl in
     let how_outer = how_of_ae ae in
     let defined_here = snd (Freevars.decs decs) in (* TODO: implement gather_decs more directly *)
     let how_outer = Freevars.diff how_outer defined_here in (* shadowing *)
@@ -6129,13 +6129,13 @@ let rec compile_lexp (env : E.t) ae lexp =
   | DotLE (e, n) ->
      compile_exp_vanilla env ae e ^^
      (* Only real objects have mutable fields, no need to branch on the tag *)
-     Object.idx env e.note.note_typ n,
+     Object.idx env e.note.Note.typ n,
      store_ptr
 
 and compile_exp (env : E.t) ae exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   match exp.it with
-  | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.note_typ) es ->
+  | PrimE (p, es) when List.exists (fun e -> Type.is_non e.note.Note.typ) es ->
     (* Handle dead code separately, so that we can rely on useful type
        annotations below *)
     SR.Unreachable,
@@ -6149,7 +6149,7 @@ and compile_exp (env : E.t) ae exp =
     begin match p, es with
     (* Calls *)
     | CallPrim _, [e1; e2] ->
-      let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.note_typ in
+      let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.Note.typ in
       let n_args = List.length arg_tys in
       let return_arity = match control with
         | Type.Returns -> List.length ret_tys
@@ -6179,7 +6179,7 @@ and compile_exp (env : E.t) ae exp =
 
           let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
           let (set_arg, get_arg) = new_local env "arg" in
-          let _, _, _, ts, _ = Type.as_func e1.note.note_typ in
+          let _, _, _, ts, _ = Type.as_func e1.note.Note.typ in
           code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
           set_meth_pair ^^
           compile_exp_as env ae SR.Vanilla e2 ^^ set_arg ^^
@@ -6233,7 +6233,7 @@ and compile_exp (env : E.t) ae exp =
       | _ ->
         SR.Vanilla,
         code1 ^^ StackRep.adjust env sr SR.Vanilla ^^
-        Object.load_idx env e.note.note_typ name
+        Object.load_idx env e.note.Note.typ name
       end
     | ActorDotPrim name, [e] ->
       SR.Vanilla,
@@ -6316,7 +6316,7 @@ and compile_exp (env : E.t) ae exp =
           BigNum.truncate_to_word64 env)
 
       | Int, (Int8|Int16|Int32) ->
-        let ty = exp.note.note_typ in
+        let ty = exp.note.Note.typ in
         StackRep.of_type ty,
         let pty = prim_of_typ ty in
         compile_exp_vanilla env ae e ^^
@@ -6339,7 +6339,7 @@ and compile_exp (env : E.t) ae exp =
           BigNum.truncate_to_word64 env)
 
       | Nat, (Nat8|Nat16|Nat32) ->
-        let ty = exp.note.note_typ in
+        let ty = exp.note.Note.typ in
         StackRep.of_type ty,
         let pty = prim_of_typ ty in
         compile_exp_vanilla env ae e ^^
@@ -6621,8 +6621,8 @@ and compile_exp (env : E.t) ae exp =
     | ICCallPrim, [f;e;k;r] ->
       SR.unit, begin
       (* TBR: Can we do better than using the notes? *)
-      let _, _, _, ts1, _ = Type.as_func f.note.note_typ in
-      let _, _, _, ts2, _ = Type.as_func k.note.note_typ in
+      let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
+      let _, _, _, ts2, _ = Type.as_func k.note.Note.typ in
       let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
       let (set_arg, get_arg) = new_local env "arg" in
       let (set_k, get_k) = new_local env "k" in
@@ -6659,7 +6659,7 @@ and compile_exp (env : E.t) ae exp =
       (code2 ^^ StackRep.adjust env sr2 sr)
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
-    let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs captured in
+    let (ae', code1) = compile_decs env ae decs captured in
     let (sr, code2) = compile_exp env ae' exp in
     (sr, code1 ^^ code2)
   | LabelE (name, _ty, e) ->
@@ -6676,7 +6676,8 @@ and compile_exp (env : E.t) ae exp =
     )
   | LoopE e ->
     SR.Unreachable,
-    G.loop_ [] (compile_exp_unit env ae e ^^ G.i (Br (nr 0l))
+    let ae' = VarEnv.{ ae with lvl = NotTopLvl } in
+    G.loop_ [] (compile_exp_unit env ae' e ^^ G.i (Br (nr 0l))
     )
     ^^
    G.i Unreachable
@@ -6747,7 +6748,7 @@ and compile_exp (env : E.t) ae exp =
     SR.Vanilla,
     let fs' = fs |> List.map
       (fun (f : Ir.field) -> (f.it.name, fun () ->
-        if Object.is_mut_field env exp.note.note_typ f.it.name
+        if Object.is_mut_field env exp.note.Note.typ f.it.name
         then Var.get_val_ptr env ae f.it.var
         else Var.get_val_vanilla env ae f.it.var)) in
     Object.lit_raw env fs'
@@ -6759,7 +6760,7 @@ and compile_exp_as env ae sr_out e =
     (* Some optimizations for certain sr_out and expressions *)
     | _ , BlockE (decs, exp) ->
       let captured = Freevars.captured_vars (Freevars.exp exp) in
-      let (ae', code1) = compile_decs env ae AllocHow.NotTopLvl decs captured in
+      let (ae', code1) = compile_decs env ae decs captured in
       let code2 = compile_exp_as env ae' sr_out exp in
       code1 ^^ code2
     (* Fallback to whatever stackrep compile_exp chooses *)
@@ -7039,8 +7040,8 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> G.t) =
         Var.set_val env ae name
       )
 
-and compile_decs_public env pre_ae lvl decs v2en captured_in_body : VarEnv.t * G.t =
-  let how = AllocHow.decs pre_ae lvl decs captured_in_body in
+and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * G.t =
+  let how = AllocHow.decs pre_ae decs captured_in_body in
   let rec go pre_ae decs = match decs with
     | []          -> (pre_ae, G.nop, fun _ -> G.nop)
     | [dec]       -> compile_dec env pre_ae how v2en dec
@@ -7057,24 +7058,14 @@ and compile_decs_public env pre_ae lvl decs v2en captured_in_body : VarEnv.t * G
   let code = mk_code ae1 in
   (ae1, alloc_code ^^ code)
 
-and compile_decs env ae lvl decs captured_in_body : VarEnv.t * G.t =
-  compile_decs_public env ae lvl decs E.NameEnv.empty captured_in_body
-
-and compile_top_lvl_expr env ae e = match e.it with
-  | BlockE (decs, exp) ->
-    let captured = Freevars.captured_vars (Freevars.exp e) in
-    let (ae', code1) = compile_decs env ae AllocHow.TopLvl decs captured in
-    let code2 = compile_top_lvl_expr env ae' exp in
-    code1 ^^ code2
-  | _ ->
-    let (sr, code) = compile_exp env ae e in
-    code ^^ StackRep.drop env sr
+and compile_decs env ae decs captured_in_body : VarEnv.t * G.t =
+  compile_decs_public env ae decs E.NameEnv.empty captured_in_body
 
 and compile_prog env ae (ds, e) =
-    let captured = Freevars.captured_vars (Freevars.exp e) in
-    let (ae', code1) = compile_decs env ae AllocHow.TopLvl ds captured in
-    let code2 = compile_top_lvl_expr env ae' e in
-    (ae', code1 ^^ code2)
+  let captured = Freevars.captured_vars (Freevars.exp e) in
+  let (ae', code1) = compile_decs env ae ds captured in
+  let (sr, code2) = compile_exp env ae' e in
+  (ae', code1 ^^ code2 ^^ StackRep.drop env sr)
 
 and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   match exp.it with
@@ -7215,7 +7206,7 @@ and main_actor env ae1 ds fs =
   let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Compile the declarations *)
-  let (ae2, decls_code) = compile_decs_public env ae1 AllocHow.TopLvl ds v2en Freevars.S.empty in
+  let (ae2, decls_code) = compile_decs_public env ae1 ds v2en Freevars.S.empty in
 
   (* Export the public functions *)
   List.iter (export_actor_field env ae2) fs;
