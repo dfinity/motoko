@@ -29,7 +29,7 @@ open Ir
   all propagations of “false” eventually terminate.
 
   This analysis relies on the fact that AST notes are mutable. So sharing AST
-  nodes would be bad.  Check_ir checks that this is the case.
+  nodes would be bad.  Check_ir checks for the absence of sharing.
 *)
 
 (* The lazy bool value type *)
