@@ -663,18 +663,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
     t0 <: t
   end;
   (* check const annotation *)
+  let check_var ctxt v =
+    check (T.Env.find v env.vals).const "const %s with non-const variable %s" ctxt v in
   if exp.note.Note.const
   then begin
     match exp.it with
-    | VarE id ->
-      check (T.Env.find id env.vals).const "const VarE %s with non-const variable" id
+    | VarE id -> check_var "VarE" id
     | FuncE (x, s, c, tp, as_ , ts, body) ->
       if env.lvl = NotTopLvl then
-      Freevars.M.iter (fun v _ ->
-        check (T.Env.find v env.vals).const "const FuncE with non-const free variable %s" v
-      ) (Freevars.exp exp)
+      Freevars.M.iter (fun v _ -> check_var "FuncE" v) (Freevars.exp exp)
     | NewObjE (Type.(Object | Module), fs, t) when T.is_immutable_obj t ->
-      ()
+      List.iter (fun f -> check_var "NewObjE" f.it.var) fs
     | PrimE (DotPrim n, [e1]) ->
       check e1.note.Note.const "constant DotPrim on non-constant subexpression"
     | BlockE (ds, e) ->
