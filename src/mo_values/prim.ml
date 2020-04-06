@@ -195,7 +195,9 @@ let num_conv_prim t1 t2 =
     in if i < 0xD800 || i >= 0xE000 && i < 0x110000 then k (Char i) else raise (Invalid_argument "character value out of bounds")
   | t1, t2 -> raise (Invalid_argument ("Value.num_conv_prim: " ^ T.string_of_typ (T.Prim t1) ^ T.string_of_typ (T.Prim t2) ))
 
-let prim = function
+let prim =
+  let via_float f v = Float.(Float (of_float (f (to_float (as_float v))))) in
+  function
   | "abs" -> fun _ v k -> k (Int (Nat.abs (as_int v)))
   | "fabs" -> fun _ v k -> k (Float (Float.abs (as_float v)))
   | "fsqrt" -> fun _ v k -> k (Float (Float.sqrt (as_float v)))
@@ -215,8 +217,8 @@ let prim = function
     (match Value.as_tup v with
      | [a; b] -> k (Float (Float.copysign (as_float a) (as_float b)))
      | _ -> assert false)
-  | "fsin" -> fun _ v k -> k Float.(Float (of_float (Stdlib.sin (to_float (as_float v)))))
-  | "fcos" -> fun _ v k -> k Float.(Float (of_float (Stdlib.cos (to_float (as_float v)))))
+  | "fsin" -> fun _ v k -> k (via_float Stdlib.sin v)
+  | "fcos" -> fun _ v k -> k (via_float Stdlib.cos v)
 
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->
